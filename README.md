@@ -24,7 +24,9 @@ kernel_slicer
 8) put "add_subdirectory(kernel_slicer)" to CMakeLists.txt in "clang-tools-extra" folder
 
 9) ninja (from build folder of clang)
+
    the new executable will be build in the "llvm-project/build/bin" folder
-    
+   
+   you may also used provided VS Code config
 
  
