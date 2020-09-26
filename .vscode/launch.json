@@ -9,29 +9,9 @@
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/../../build/bin/kslicer",
-            "args"   : ["test.cpp", ""],
+            "args"   : ["${workspaceFolder}/data/test.cpp", ""],
             "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}/data",
-            "environment": [],
-            "externalConsole": true,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        
-        {
-            "name": "(gdb) Launch",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/../../build/bin/kslicer",
-            "args": ["test.cpp", ""],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/data",
+            "cwd"    : "${workspaceFolder}/../../build/bin",
             "environment": [],
             "externalConsole": true,
             "MIMode": "gdb",
