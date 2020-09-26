@@ -1,7 +1,6 @@
 # kernel_slicer
 kernel_slicer
 
-
 1) sudo apt-get install install cmake
 
 2) sudo apt-get install install ninja-build
@@ -16,8 +15,11 @@ kernel_slicer
 
 6) ninja
 
-7) put folder on this project project in to "llvm-project/clang-tools-extra" to form "llvm-project/clang-tools-extra/kernel_slicer"
+7) go to 'llvm-project/clang-tools-extra'
 
+8) git clone https://github.com/Ray-Tracing-Systems/kernel_slicer.git
+   i.e. put folder on this project project in to "llvm-project/clang-tools-extra" to form "llvm-project/clang-tools-extra/kernel_slicer"
+   
 8) put "add_subdirectory(kernel_slicer)" to CMakeLists.txt in "clang-tools-extra" folder
 
 9) ninja (from build folder of clang)
