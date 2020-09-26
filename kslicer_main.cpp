@@ -13,6 +13,9 @@ using namespace clang::ast_matchers;
 using namespace clang::tooling;
 using namespace llvm;
 
+
+#include <iostream>
+
 //StatementMatcher LoopMatcher =
 //  forStmt(hasLoopInit(declStmt(hasSingleDecl(varDecl(
 //    hasInitializer(integerLiteral(equals(0)))))))).bind("forLoop");
@@ -52,7 +55,7 @@ static bool areSameExpr(ASTContext *Context, const Expr *First,
 class LoopPrinter : public MatchFinder::MatchCallback 
 {
 public :
-  virtual void run(const MatchFinder::MatchResult &Result);
+  virtual void run(const MatchFinder::MatchResult &Result) override;
 };
 
 
@@ -88,6 +91,7 @@ static cl::extrahelp MoreHelp("\nMore help text...\n");
 
 int main(int argc, const char **argv) 
 {
+  std::cout << "tool start" << std::endl;
   CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
   ClangTool Tool(OptionsParser.getCompilations(),
                  OptionsParser.getSourcePathList());
