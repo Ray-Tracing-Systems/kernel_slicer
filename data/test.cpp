@@ -1,5 +1,15 @@
 #include <iostream>
 
+namespace n { namespace m { class C {}; } }
+
+class Test
+{
+public:
+  int GetData() const { return m_data; }
+private:
+  int m_data;
+};
+
 int main(int argc, const char** argv) 
 { 
   for(int i=0;i<10;i++)
