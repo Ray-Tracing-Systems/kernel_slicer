@@ -43,19 +43,20 @@ struct FunctionInfo
   std::vector<Arg> args;
 };
 
-// RecursiveASTVisitor is is the big-kahuna visitor that traverses
-// everything in the AST.
+// RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.
+//
 class MyRecursiveASTVisitor : public RecursiveASTVisitor<MyRecursiveASTVisitor>
 {
 public:
   
-  std::string ADDED_PREFFIX;// = "PREF_";
+  std::string ADDED_PREFFIX;
   std::string MAIN_NAME;
+  std::string MAIN_CLASS_NAME;
 
-  MyRecursiveASTVisitor(Rewriter &R, std::string pref, std::string main_name) : ADDED_PREFFIX(pref), MAIN_NAME(main_name), Rewrite(R)  { }
+  MyRecursiveASTVisitor(Rewriter &R, std::string pref, std::string main_name, std::string main_class) : ADDED_PREFFIX(pref), MAIN_NAME(main_name), MAIN_CLASS_NAME(main_class), Rewrite(R), m_mainFuncNode(nullptr)  { }
   
   bool VisitCXXMethodDecl(CXXMethodDecl* f);
-  
+  bool VisitVarDecl(VarDecl* var);
   //bool VisitFunctionDecl(FunctionDecl *f);
   //bool VisitCallExpr(CallExpr *CE);
 
@@ -63,6 +64,7 @@ public:
   std::string GetNewNameFor(std::string s);
 
   Rewriter& Rewrite;
+  CXXMethodDecl* m_mainFuncNode;
 
 private:
   void ProcessFunction(FunctionDecl *f);
@@ -176,17 +178,43 @@ bool MyRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f)
 
     if(fname.find("kernel_") != std::string::npos)
     {
-      QualType qThisType = f->getThisType(); 
-      std::string thisTypeName = qThisType.getAsString();
+      const QualType qThisType       = f->getThisType();   
+      const QualType classType       = qThisType.getTypePtr()->getPointeeType();
+      const std::string thisTypeName = classType.getAsString();
       
-      ProcessFunction(f);
-      std::cout << "found kernel:\t" << fname.c_str() << " of type:\t" << thisTypeName.c_str() << std::endl;
+      if(thisTypeName == std::string("class ") + MAIN_CLASS_NAME || thisTypeName == std::string("struct ") + MAIN_CLASS_NAME)
+      {
+        ProcessFunction(f);
+        std::cout << "found kernel:\t" << fname.c_str() << " of type:\t" << thisTypeName.c_str() << std::endl;
+      }
+    }
+    else if(fname == MAIN_NAME)
+    {
+      m_mainFuncNode = f;
+      std::cout << "main function has found:\t" << fname.c_str() << std::endl;
     }
 
     Rewrite.ReplaceText(dni.getSourceRange(), GetNewNameFor(fname));
   }
 
   return true; // returning false aborts the traversal
+}
+
+bool MyRecursiveASTVisitor::VisitVarDecl(VarDecl* var)
+{
+  //const DeclarationNameInfo dni = var->getNameInfo();
+  //const DeclarationName dn      = dni.getName();
+  //const std::string vname       = dn.getAsString();
+  //
+  //std::cout << vname.c_str() << std::endl;
+ 
+  if(var->isLocalVarDecl())
+  {
+    
+  }
+
+
+  return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -197,7 +225,7 @@ class MyASTConsumer : public ASTConsumer
 {
  public:
 
-  MyASTConsumer(Rewriter &Rewrite, std::string pref, std::string main_name) : rv(Rewrite, pref, main_name) { }
+  MyASTConsumer(Rewriter &Rewrite, std::string pref, std::string main_name, std::string main_class) : rv(Rewrite, pref, main_name, main_class) { }
   bool HandleTopLevelDecl(DeclGroupRef d) override;
   MyRecursiveASTVisitor rv;
 };
@@ -214,6 +242,9 @@ bool MyASTConsumer::HandleTopLevelDecl(DeclGroupRef d)
   return true; // keep going
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, char **argv)
 {
@@ -313,9 +344,7 @@ int main(int argc, char **argv)
   compiler.getDiagnosticClient().BeginSourceFile(compiler.getLangOpts(),
                                                 &compiler.getPreprocessor());
 
-  std::string pref = "prtex4_";
-  std::string main_name = "main";
-  MyASTConsumer astConsumer(Rewrite, pref, main_name);
+  MyASTConsumer astConsumer(Rewrite, "prtex4_", "PathTrace", "TestClass");
 
   // Convert <file>.c to <file_out>.c
   std::string outName (fileName);
