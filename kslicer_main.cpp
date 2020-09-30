@@ -36,10 +36,10 @@ struct FunctionInfo
   {
     std::string type;
     std::string name;
-    int size;
+    int         size;
   };
-  std::string return_type;
-  std::string name;
+  std::string      return_type;
+  std::string      name;
   std::vector<Arg> args;
 };
 
@@ -47,17 +47,23 @@ struct FunctionInfo
 // everything in the AST.
 class MyRecursiveASTVisitor : public RecursiveASTVisitor<MyRecursiveASTVisitor>
 {
-
- public:
+public:
+  
   std::string ADDED_PREFFIX;// = "PREF_";
   std::string MAIN_NAME;
-  MyRecursiveASTVisitor(Rewriter &R, std::string pref, std::string main_name) : Rewrite(R), ADDED_PREFFIX(pref), MAIN_NAME(main_name) { }
-  void ProcessFunction(FunctionDecl *f);
+
+  MyRecursiveASTVisitor(Rewriter &R, std::string pref, std::string main_name) : ADDED_PREFFIX(pref), MAIN_NAME(main_name), Rewrite(R)  { }
   bool VisitFunctionDecl(FunctionDecl *f);
+  bool VisitCXXMethodDecl(CXXMethodDecl* f);
   bool VisitCallExpr(CallExpr *CE);
+
   std::map<std::string, FunctionInfo> functions;
   std::string GetNewNameFor(std::string s);
-  Rewriter &Rewrite;
+
+  Rewriter& Rewrite;
+
+private:
+  void ProcessFunction(FunctionDecl *f);
 };
 
 std::string MyRecursiveASTVisitor::GetNewNameFor(std::string s) {
@@ -67,7 +73,8 @@ std::string MyRecursiveASTVisitor::GetNewNameFor(std::string s) {
 bool MyRecursiveASTVisitor::VisitCallExpr(CallExpr *CE) 
 {
   FunctionDecl *FD = CE->getDirectCallee();
-  if (FD) {
+  if (FD) 
+  {
     DeclarationNameInfo dni = FD->getNameInfo();
     DeclarationName dn = dni.getName();
     std::string fname = dn.getAsString();
@@ -102,30 +109,32 @@ FunctionInfo::Arg ProcessParameter(ParmVarDecl *p) {
   return arg;
 }
 
-void MyRecursiveASTVisitor::ProcessFunction(FunctionDecl *f) {
-  if (!f || !f->hasBody()) {
+void MyRecursiveASTVisitor::ProcessFunction(FunctionDecl *f) 
+{
+  if (!f || !f->hasBody()) 
     return;
-  }
+  
   FunctionInfo info;
   DeclarationNameInfo dni = f->getNameInfo();
   DeclarationName dn = dni.getName();
   info.name = dn.getAsString();
   QualType q = f->getReturnType();
-  const Type *typ = q.getTypePtr();
+  //const Type *typ = q.getTypePtr();
   info.return_type = QualType::getAsString(q.split(), PrintingPolicy{ {} });
-  for (int i = 0; i < f->getNumParams(); ++i) {
+  for (unsigned int i = 0; i < f->getNumParams(); ++i) {
     info.args.push_back(ProcessParameter(f->parameters()[i]));
   }
   functions[info.name] = info;
 }
+
 
 bool MyRecursiveASTVisitor::VisitFunctionDecl(FunctionDecl *f)
 {
   ProcessFunction(f);
   if (f->hasBody())
   {
-    SourceRange sr = f->getSourceRange();
-    Stmt *s = f->getBody();
+    //SourceRange sr = f->getSourceRange();
+    //Stmt *s = f->getBody();
 
     QualType q = f->getReturnType();
     std::string ret;
@@ -136,7 +145,8 @@ bool MyRecursiveASTVisitor::VisitFunctionDecl(FunctionDecl *f)
     std::string fname = dn.getAsString();
     
     // Point to start of function declaration
-    SourceLocation ST = sr.getBegin();
+    //SourceLocation ST = sr.getBegin();
+
     // Add comment
     if (fname == MAIN_NAME) {
       llvm::errs() << "Found main()\n";
@@ -146,7 +156,7 @@ bool MyRecursiveASTVisitor::VisitFunctionDecl(FunctionDecl *f)
       //decl_end = f->getNameInfo().getEndLoc().getLocWithOffset(1);
       Rewrite.InsertText(decl_end, ", _PROCTEXTAILTAG_", true, true);
     }
-    char fc[256];
+    //char fc[256];
     Rewrite.ReplaceText(dni.getSourceRange(), GetNewNameFor(fname));
     
   }
@@ -154,12 +164,33 @@ bool MyRecursiveASTVisitor::VisitFunctionDecl(FunctionDecl *f)
   return true; // returning false aborts the traversal
 }
 
+
+bool MyRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f) 
+{
+  if (f->hasBody())
+  {
+    // Get name of function
+    const DeclarationNameInfo dni = f->getNameInfo();
+    const DeclarationName dn      = dni.getName();
+    const std::string fname       = dn.getAsString();
+
+    if(fname.find("kernel_") != std::string::npos)
+      std::cout << "found kernel \t" << fname.c_str() << std::endl;
+  }
+
+  return true; // returning false aborts the traversal
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class MyASTConsumer : public ASTConsumer
 {
  public:
 
   MyASTConsumer(Rewriter &Rewrite, std::string pref, std::string main_name) : rv(Rewrite, pref, main_name) { }
-  virtual bool HandleTopLevelDecl(DeclGroupRef d);
+  bool HandleTopLevelDecl(DeclGroupRef d) override;
   MyRecursiveASTVisitor rv;
 };
 
@@ -200,8 +231,8 @@ int main(int argc, char **argv)
 
   CompilerInstance compiler;
   DiagnosticOptions diagnosticOptions;
-  compiler.createDiagnostics();
-  //compiler.createDiagnostics(argc, argv);
+  compiler.createDiagnostics(); //compiler.createDiagnostics(argc, argv);
+
 
   // Create an invocation that passes any flags to preprocessor
   std::shared_ptr<CompilerInvocation> Invocation = std::make_shared<CompilerInvocation>();
@@ -254,15 +285,16 @@ int main(int argc, char **argv)
   LangOptions langOpts;
   langOpts.GNUMode = 1; 
   //langOpts.CXXExceptions = 1; 
-  langOpts.RTTI = 1; 
-  langOpts.Bool = 1; 
-  langOpts.CPlusPlus = 1; 
+  langOpts.RTTI        = 1; 
+  langOpts.Bool        = 1; 
+  langOpts.CPlusPlus   = 1; 
   langOpts.CPlusPlus14 = 1;
   langOpts.CPlusPlus17 = 1;
   compiler.createPreprocessor(clang::TU_Complete);
   compiler.getPreprocessorOpts().UsePredefines = false;
   compiler.getLangOpts() = langOpts;
   compiler.createASTContext();
+
   // Initialize rewriter
   Rewriter Rewrite;
   Rewrite.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
@@ -279,10 +311,12 @@ int main(int argc, char **argv)
 
   // Convert <file>.c to <file_out>.c
   std::string outName (fileName);
-  size_t ext = outName.rfind(".");
-  if (ext == std::string::npos)
-     ext = outName.length();
-  outName.insert(ext, "_out");
+  {
+    size_t ext = outName.rfind(".");
+    if (ext == std::string::npos)
+       ext = outName.length();
+    outName.insert(ext, "_out");
+  }
 
   llvm::errs() << "Output to: " << outName << "\n";
   std::error_code OutErrorInfo;
@@ -296,8 +330,7 @@ int main(int argc, char **argv)
     compiler.getDiagnosticClient().EndSourceFile();
 
     // Now output rewritten source code
-    const RewriteBuffer *RewriteBuf =
-      Rewrite.getRewriteBufferFor(compiler.getSourceManager().getMainFileID());
+    const RewriteBuffer *RewriteBuf = Rewrite.getRewriteBufferFor(compiler.getSourceManager().getMainFileID());
     outFile << std::string(RewriteBuf->begin(), RewriteBuf->end());
   }
   else
@@ -308,7 +341,7 @@ int main(int argc, char **argv)
   outFile.close();
   for (auto &a : astConsumer.rv.functions) {
     std::cout << a.first << " " << a.second.return_type << std::endl;
-    for (int i = 0; i < a.second.args.size(); ++i) {
+    for (size_t i = 0; i < a.second.args.size(); ++i) {
       std::cout << a.second.args[i].name << ":" << a.second.args[i].type << ":" << a.second.args[i].size << std::endl;
     }
     std::cout << std::endl;

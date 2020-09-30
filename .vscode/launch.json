@@ -9,11 +9,30 @@
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/../../build/bin/kslicer",
-            "args"   : ["${workspaceFolder}/data/test_class.cpp", "--"],
+            "args"   : ["${workspaceFolder}/ipavlov_data/parseme.cpp"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}/../../build/bin",
             "environment": [],
-            "externalConsole": true,
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name"   : "Launch2",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/../../build/bin/kslicer",
+            "args"   : ["${workspaceFolder}/data/test_class.cpp"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}/../../build/bin",
+            "environment": [],
+            "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [
                 {
