@@ -28,6 +28,10 @@
 #include "clang/Rewrite/Frontend/Rewriters.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
+#include "ast_matchers.h"
+
+#include "clang/Tooling/CommonOptionsParser.h"
+
 using namespace clang;
 
 struct FunctionInfo 
@@ -53,7 +57,7 @@ public:
   std::string MAIN_NAME;
   std::string MAIN_CLASS_NAME;
 
-  MyRecursiveASTVisitor(Rewriter &R, std::string pref, std::string main_name, std::string main_class) : ADDED_PREFFIX(pref), MAIN_NAME(main_name), MAIN_CLASS_NAME(main_class), Rewrite(R), m_mainFuncNode(nullptr)  { }
+  MyRecursiveASTVisitor(Rewriter &R, std::string pref, std::string main_name, std::string main_class) : ADDED_PREFFIX(pref), MAIN_NAME(main_name), MAIN_CLASS_NAME(main_class), m_rewriter(R), m_mainFuncNode(nullptr)  { }
   
   bool VisitCXXMethodDecl(CXXMethodDecl* f);
   bool VisitVarDecl(VarDecl* var);
@@ -63,7 +67,7 @@ public:
   std::map<std::string, FunctionInfo> functions;
   std::string GetNewNameFor(std::string s);
 
-  Rewriter& Rewrite;
+  Rewriter&      m_rewriter;
   CXXMethodDecl* m_mainFuncNode;
 
 private:
@@ -194,7 +198,7 @@ bool MyRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f)
       std::cout << "main function has found:\t" << fname.c_str() << std::endl;
     }
 
-    Rewrite.ReplaceText(dni.getSourceRange(), GetNewNameFor(fname));
+    m_rewriter.ReplaceText(dni.getSourceRange(), GetNewNameFor(fname));
   }
 
   return true; // returning false aborts the traversal
@@ -208,9 +212,16 @@ bool MyRecursiveASTVisitor::VisitVarDecl(VarDecl* var)
   //
   //std::cout << vname.c_str() << std::endl;
  
+  auto& srcManagerRef = m_rewriter.getSourceMgr();
+
+  //if(var->isThisDeclarationADefinition() == clang::VarDecl::Definition)
+  //{
+  //  
+  //}
+
   if(var->isLocalVarDecl())
   {
-    
+   
   }
 
 
@@ -245,8 +256,17 @@ bool MyASTConsumer::HandleTopLevelDecl(DeclGroupRef d)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+static llvm::cl::OptionCategory GDOpts("global-detect options");
 
-int main(int argc, char **argv)
+const char * addl_help = "Report all functions that use global variable, or all sites at which "
+                         "global variables are used";
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int main(int argc, const char **argv)
 {
   struct stat sb;
 
@@ -385,5 +405,24 @@ int main(int argc, char **argv)
     }
     std::cout << std::endl;
   }
+  
+  // now process variables ... 
+  //
+  {
+    clang::tooling::CommonOptionsParser OptionsParser(argc, argv, GDOpts, addl_help);
+    clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
+
+    clang::ast_matchers::StatementMatcher global_var_matcher = kslicer::all_global_var_matcher();
+    
+    kslicer::Global_Printer printer(std::cout);
+    clang::ast_matchers::MatchFinder finder;
+    
+    finder.addMatcher(global_var_matcher, &printer);
+  
+    auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
+  
+    std::cout << "tool run res = " << res << std::endl;
+  }
+
   return 0;
 }

@@ -42,6 +42,10 @@ inline Lite_Hit RayTraceImpl(float3 rayPos, float3 rayDir)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 const int tid = 0;
 
+int g_someGlobalVariable = 0;
+int g_someGlobalVariableReferencedInFunction = 0;
+
+
 class TestClass // : public DataClass
 {
 public:
@@ -63,6 +67,7 @@ void TestClass::kernel_InitAccumData(float3* accumColor, float3* accumuThoroughp
   accumColor[tid]        = make_float3(0,0,0);
   accumuThoroughput[tid] = make_float3(1,1,1);
   currColor[tid]         = make_float3(0,0,0);
+  g_someGlobalVariableReferencedInFunction = 55;
 }
 
 void  TestClass::kernel_RayTrace(const float3* in_ray_pos, const float3* in_ray_dir, 
