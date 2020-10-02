@@ -18,6 +18,8 @@ namespace kslicer
   clang::ast_matchers::StatementMatcher all_global_var_matcher();
   clang::ast_matchers::StatementMatcher mk_global_var_matcher(std::string const & g_var_name = "");
 
+  clang::ast_matchers::StatementMatcher mk_local_var_matcher_of_function(std::string const& funcName);
+
   std::string locationAsString(clang::SourceLocation loc, clang::SourceManager const * const sm);
   std::string sourceRangeAsString(clang::SourceRange r, clang::SourceManager const * sm);
 
@@ -46,6 +48,7 @@ namespace kslicer
     {
       using namespace clang;
       n_matches_++;
+      /*
       FunctionDecl const * func_decl = result.Nodes.getNodeAs<FunctionDecl>("function");
       Expr const * g_var             = result.Nodes.getNodeAs<Expr>("globalReference");
       VarDecl const * var            = result.Nodes.getNodeAs<VarDecl>("gvarName");
@@ -65,7 +68,29 @@ namespace kslicer
         check_ptr(func_decl, "func_decl", "", s_);
         check_ptr(g_var, "g_var", "", s_);
         check_ptr(var, "var", "", s_);
+      }*/
+
+      FunctionDecl const * func_decl = result.Nodes.getNodeAs<FunctionDecl>("targetFunction");
+      Expr const * l_var             = result.Nodes.getNodeAs<Expr>("localReference");
+      VarDecl const * var            = result.Nodes.getNodeAs<VarDecl>("locVarName");
+
+      clang::SourceManager & src_manager(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
+
+      if(func_decl && l_var && var) 
+      {
+        s_ << "In function '" << func_decl->getNameAsString() << "' ";
+        s_ << "'" << var->getNameAsString() << "' referred to at ";
+        std::string sr(sourceRangeAsString(l_var->getSourceRange(), &src_manager));
+        s_ << sr;
+        s_ << "\n";
       }
+      else 
+      {
+        check_ptr(func_decl, "func_decl", "", s_);
+        check_ptr(l_var, "l_var", "", s_);
+        check_ptr(var, "var", "", s_);
+      }
+
       return;
     }  // run
   
@@ -73,6 +98,6 @@ namespace kslicer
     uint32_t n_matches_;
   };  // class Global_Printer
 
-};
+}
 
 #endif

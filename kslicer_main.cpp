@@ -60,7 +60,7 @@ public:
   MyRecursiveASTVisitor(Rewriter &R, std::string pref, std::string main_name, std::string main_class) : ADDED_PREFFIX(pref), MAIN_NAME(main_name), MAIN_CLASS_NAME(main_class), m_rewriter(R), m_mainFuncNode(nullptr)  { }
   
   bool VisitCXXMethodDecl(CXXMethodDecl* f);
-  bool VisitVarDecl(VarDecl* var);
+
   //bool VisitFunctionDecl(FunctionDecl *f);
   //bool VisitCallExpr(CallExpr *CE);
 
@@ -202,30 +202,6 @@ bool MyRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f)
   }
 
   return true; // returning false aborts the traversal
-}
-
-bool MyRecursiveASTVisitor::VisitVarDecl(VarDecl* var)
-{
-  //const DeclarationNameInfo dni = var->getNameInfo();
-  //const DeclarationName dn      = dni.getName();
-  //const std::string vname       = dn.getAsString();
-  //
-  //std::cout << vname.c_str() << std::endl;
- 
-  auto& srcManagerRef = m_rewriter.getSourceMgr();
-
-  //if(var->isThisDeclarationADefinition() == clang::VarDecl::Definition)
-  //{
-  //  
-  //}
-
-  if(var->isLocalVarDecl())
-  {
-   
-  }
-
-
-  return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -409,15 +385,19 @@ int main(int argc, const char **argv)
   // now process variables ... 
   //
   {
-    clang::tooling::CommonOptionsParser OptionsParser(argc, argv, GDOpts, addl_help);
+    const char* argv2[] = {argv[0], argv[1], "--"};
+    int argc2 = sizeof(argv2)/sizeof(argv2[0]);
+
+    clang::tooling::CommonOptionsParser OptionsParser(argc2, argv2, GDOpts, addl_help);
     clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
-    clang::ast_matchers::StatementMatcher global_var_matcher = kslicer::all_global_var_matcher();
+    //clang::ast_matchers::StatementMatcher global_var_matcher = kslicer::all_global_var_matcher();
+    clang::ast_matchers::StatementMatcher local_var_matcher  = kslicer::mk_local_var_matcher_of_function("PathTrace");
     
     kslicer::Global_Printer printer(std::cout);
     clang::ast_matchers::MatchFinder finder;
     
-    finder.addMatcher(global_var_matcher, &printer);
+    finder.addMatcher(local_var_matcher, &printer);
   
     auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
   

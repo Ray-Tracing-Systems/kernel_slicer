@@ -4,7 +4,7 @@ namespace kslicer
 {
   std::string last_fname = "";
   uint32_t last_lineno = 0xFFFFFFF;
-};
+}
 
 std::string kslicer::locationAsString(clang::SourceLocation loc, clang::SourceManager const * const sm)
 {
@@ -89,4 +89,20 @@ clang::ast_matchers::StatementMatcher kslicer::mk_global_var_matcher(std::string
     )
   ).bind("globalReference");
 } 
+
+clang::ast_matchers::StatementMatcher kslicer::mk_local_var_matcher_of_function(std::string const& a_funcName)
+{
+  using namespace clang::ast_matchers;
+  return
+  declRefExpr(
+    to(
+      varDecl(
+        hasLocalStorage()
+      ).bind("locVarName")
+    ) // to
+   ,hasAncestor(
+      functionDecl(hasName(a_funcName)).bind("targetFunction")
+    )
+  ).bind("localReference");
+}
 
