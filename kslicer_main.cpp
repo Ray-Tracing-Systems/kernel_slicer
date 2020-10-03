@@ -192,7 +192,8 @@ std::string GetKernelSourceCode(const clang::CXXMethodDecl* node, clang::SourceM
 {
   clang::SourceLocation b(node->getBeginLoc()), _e(node->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
-  return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
+  std::string methodSource = std::string(sm.getCharacterData(b), sm.getCharacterData(e));
+  return methodSource.substr(methodSource.find_first_of('{'));
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
