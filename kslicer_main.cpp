@@ -193,7 +193,16 @@ std::string GetKernelSourceCode(const clang::CXXMethodDecl* node, clang::SourceM
   clang::SourceLocation b(node->getBeginLoc()), _e(node->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
   std::string methodSource = std::string(sm.getCharacterData(b), sm.getCharacterData(e));
-  return methodSource.substr(methodSource.find_first_of('{'));
+
+  std::stringstream strOut;
+  strOut << "{" << std::endl;
+  strOut << "  /////////////////////////////////////////////////" << std::endl;
+  strOut << "  const int tid = get_global_id(0);" << std::endl;
+  strOut << "  if (tid >= iNumElements)" << std::endl;
+  strOut << "    return;" << std::endl;
+  strOut << "  /////////////////////////////////////////////////" << std::endl;
+
+  return strOut.str() + methodSource.substr(methodSource.find_first_of('{')+1);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

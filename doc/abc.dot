@@ -1,0 +1,40 @@
+digraph abc {rankdir=TD;
+
+hit[shape="parallelogram"];
+ray_pos[shape="parallelogram"];
+ray_dir[shape="parallelogram"];
+RayTrace;
+
+ray_pos -> RayTrace;
+ray_dir -> RayTrace;
+RayTrace -> hit;
+
+HitEnvironment;
+flags[shape="parallelogram"];
+misPrev[shape="parallelogram"];
+currColor[shape="parallelogram"];
+
+hit -> HitEnvironment;
+ray_dir -> HitEnvironment;
+ray_pos -> HitEnvironment;
+HitEnvironment -> flags;
+HitEnvironment -> misPrev;
+HitEnvironment -> currColor;
+
+surfElem[shape="parallelogram"];
+EvalSurface;
+
+hit -> EvalSurface;
+ray_dir -> EvalSurface;
+ray_pos -> EvalSurface;
+EvalSurface -> surfElem;
+
+EvalEmission;
+ray_dir -> EvalEmission;
+ray_pos -> EvalEmission;
+surfElem -> EvalEmission;
+flags -> EvalEmission;
+misPrev -> EvalEmission;
+hit -> EvalEmission;
+EvalEmission -> currColor
+}

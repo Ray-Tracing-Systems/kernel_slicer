@@ -1,0 +1,232 @@
+\documentclass[a4paper,12pt]{article}
+
+\usepackage{cmap}					% поиск в PDF
+\usepackage[T2A]{fontenc}			% кодировка
+\usepackage[utf8]{inputenc}			% кодировка исходного текста
+\usepackage[english,russian]{babel}	% локализация и переносы
+
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage[pdf]{graphviz}
+
+%\author{}
+\title{Техническое задание на разработку source-to-source транслятора.}
+\date{\today}
+
+\begin{document} % Конец преамбулы, начало текста.
+
+\maketitle
+
+\section{Цель}
+
+Глобальная цель: Создание инструмента, уменьшающего трудоёмкость переноса C/C++ кода с виртуальными функциями на GPU в ряде приложений, построенных по определённому шаблону. 
+
+Локальная цель: написание транслятора С/C++ кода в набор OpenCL ядер (подаваемых далее в \href{https://github.com/google/clspv}{clspv}) и создания дерева вызовов для автоматической генерации обвязки на Vulkan.
+
+\section{Задачи}
+
+На вход транслятору подаётся несколько <<.cpp>> файлов, в которых код соответствует определённому шаблону.  В качестве примера подобного шаблона можно взять класс <<IntegratorMISPTLoop2>>, \href{https://github.com/Ray-Tracing-Systems/HydraCore/blob/dev/hydra_drv/CPUExp_Integrators.h}{объявленный здесь} (строка 398) и \href{https://github.com/Ray-Tracing-Systems/HydraCore/blob/dev/hydra_drv/CPUExp_Integrators_PT_Loop.cpp}{его реализацию}.
+
+\subsection{Шаблон}
+
+В упомянутых файлах определены следующие элементы (имена элементов известны, также подаются на вход):
+
+\begin{enumerate}
+\item Главный класс <<MainClass>> (в примере это <<IntegratorMISPTLoop2>>), возможно наследуемый от базового класса <<DataClass>> (в примере это <<IntegratorCommon>>).
+
+\item В классе <<MainClass>> определена главная функция-член <<MainFunction>> (в примере это <<PathTrace>>). 
+
+\item В классах <<MainClass>> или <<DataClass>> определены интересующие данные с префиксом <<m\_>> и другие данные, не интересующие транслятор (в примере это m\_pGlobals, m\_matStorage и.т.д).
+
+\item В классе <<MainClass>> определены функции-члены с префиксом <<kernel\_>>. Их содержимое по большей части нас не интересует, но интересуют их аргументы. Эти функции будут транслироваться в OpenCL-ные кернелы, подаваемые на вход компилятору clspv.
+
+\item Вызовы функций-члены с префиксом <<kernel\_>> могут встречаться только внутри главной функции в виде линейной последовательности вызовов либо в единственном цикле (как в примере).
+
+\item Между главной функцией и функциями-членами с префиксом <<kernel\_>> могут передаваться только встроенные типы и POD структуры по указателю либо по значению. Из этого правила есть одно исключение (с.м. последний пункт в списке) -- указатель на указатель на диспетчеризуемый класс. 
+
+\item Дополнительные (будем называть их диспетчеризуемыми) классы с виртуальными функциями (в примере к сожалению отсутствуют) с таким же префиксом <<kernel\_>>. 
+
+\item Вызов виртуальных функций из дополнительных классов осуществляется только в главной функции по аналогии с вызовами функций-члены с префиксом <<kernel\_>>. 
+
+\item Создавать объекты диспетчирезуемых классов могут только функции-члены главного класса с префиксом <<kernel\_>> строго определённым образом, который транслятор знает (в данный момент этот вопрос ещё не решён, видимо также по имени или префиксу). В листинге \ref{lightexample} приведён пример диспетчирезуемого класса <<ILight>>.
+
+\end{enumerate}
+
+\begin{lstlisting}[language=C++, caption=Пример диспетчиризуемого класса ILight с виртуальными функциями., captionpos=b, label=lightexample]
+float3 MainClass::MainFunction(...)
+{
+  ...
+  float   lightPickProb;
+  ILight* pLight = 0;
+  kernel_LightSelect(&surfElem, depth, ...
+                     &pLight);
+  
+  ShadowSample explicitSam;
+  pLight->kernel_LightSample(&surfElem, ... &explicitSam);
+}
+\end{lstlisting}
+
+
+\subsection{Поиск основных сущностей}
+
+Необходимо найти следующие элементыв (ноды в AST, связанные в этими нодами имена):
+
+\begin{enumerate}
+\item Главный класс <<MainClass>> и его базовый класс <<DataClass>>;
+\item Главную функцию <<MainFunction>> в классе <<MainClass>>;
+\item Все функции-члены класса <<MainClass>> с префиксом <<kernel\_>>;
+\item Аргументы главной функции <<MainFunction>>;
+\item Аргументы для каждой функции-члена с префиксом <<kernel\_>>.
+
+\item Все локальные переменные функции <<MainFunction>>, которые являются встроенными типами либо POD структурами и передаются внутрь функций  с префиксом <<kernel\_>>. Эти типы нужно разделить на 3 группы: втроенные типы, POD-структуры и указатели диспетчеризуемых классов.
+
+\item Если внутри главной функции <<MainFunction>> присутствует цикл, тогда необходимо найти все условные конструкции выхода из цикла (как в примере, строчка 287). Функций с префиксом <<kernel\_>>, которые входят в такие условные конструкции нужно пометить флажком. Можно считать что такие функции возвращают bool, в отличие от других функций-челнов с префиксом <<kernel\_>>, которые ничего не возвращают.
+
+\end{enumerate}
+
+\subsection{Генерация кернелов}
+
+Для всех функций с префиксом <<kernel\_>> (как функций-членов главного класса, так и всех функций-членов всех реализаций диспетчеризуемых классов) необходимо произвести ряд тривиальных преобразований, преобразующих их в OpenCL-ые кернелы.
+
+\begin{lstlisting}[language=C++, caption=Пример входа для void функции, captionpos=b, label=inputexample]
+void MainClass::kernel_RayTrace(const float3* ray_pos, 
+                                const float3* ray_dir, 
+                                Lite_Hit* hit)
+{
+  hit[tid] = rayTrace(ray_pos[tid], ray_dir[tid]); 
+}
+\end{lstlisting}
+
+%\vspace{50pt}
+
+\begin{lstlisting}[language=C++, caption=Пример входа для void функции, captionpos=b, label=outputexample]
+__kernel void 
+kernel_RayTrace(__global const float3* restrict ray_pos, 
+                __global const float3* restrict ray_dir,
+                __global Lite_Hit*     restrict hit,
+                
+                __global const uint*   restrict in_threadFlags,
+                const uint iNumElements,
+{
+  /////////////////////////////////////////////////
+  const int tid = get_global_id(0);
+  if (tid >= iNumElements)
+    return;
+  if((in_threadFlags[tid] & THREAD_IS_DEAD) != 0)
+    return;
+  /////////////////////////////////////////////////
+  
+  hit[tid] = rayTrace(ray_pos[tid], ray_dir[tid]); 
+}
+\end{lstlisting}
+
+\newpage
+
+Для всех функций с префиксом <<kernel\_>>, возвращаюших bool нужно добавить установку флага в конец кернела.
+
+
+\begin{lstlisting}[language=C++, caption=Пример входа для bool функции, captionpos=b, label=inputexample2]
+bool MainClass::kernel_HitEnvironment(const float3* ray_dir, 
+                                      const Lite_Hit* hit, 
+                                      const MisData* misPrev, 
+                                      const uint* flags,
+                                      float3* currColor)
+{
+  if (HitNone(hit[tid]))
+  {
+    currColor[tid] = environmentColor(...);
+    return true;
+  }
+
+  return false;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption=Пример выхода для bool функции, captionpos=b, label=outputexample]
+__kernel void 
+kernel_HitEnvironment(__global const float3* restrict ray_dir,
+                      __global const Lite_Hit* restrict hit,
+                      ...
+                      __global uint*   restrict in_threadFlags,
+                      const uint iNumElements,
+{
+  /////////////////////////////////////////////////
+  const int tid = get_global_id(0);
+  if (tid >= iNumElements)
+    return;
+  if((in_threadFlags[tid] & THREAD_IS_DEAD) != 0)
+    return;
+  bool terminateThread = false;
+  /////////////////////////////////////////////////
+
+  if (HitNone(hit[tid]))
+  {
+    currColor[tid] = environmentColor(...);
+    /////////////////////////////////////////////////
+    terminateThread = true;
+    if(terminateThread)
+    {
+      in_threadFlags[tid] |= THREAD_IS_DEAD;
+      return;
+    }
+    /////////////////////////////////////////////////
+  }
+  
+  /////////////////////////////////////////////////
+  terminateThread = false;
+  if(terminateThread)
+  {
+    in_threadFlags[tid] |= THREAD_IS_DEAD;
+    return;
+  }
+  /////////////////////////////////////////////////
+}
+\end{lstlisting}
+
+\subsection{Построение графа вызовов для кернелов}
+
+Необходимо сгенерировать граф потока данных, в котором будут отмечены функции и данные. Данный граф предполагается в дальнейшем использовать для анализа и генерации обвязки на Vulkan. Пример графа для куска кода из \href{https://github.com/Ray-Tracing-Systems/HydraCore/blob/dev/hydra_drv/CPUExp_Integrators_PT_Loop.cpp}{основного примера}:
+
+\digraph[scale=0.4]{abc}{rankdir=TD;
+	
+	hit[shape="parallelogram"];
+	ray_pos[shape="parallelogram"];
+	ray_dir[shape="parallelogram"];
+	RayTrace;
+	
+	ray_pos -> RayTrace;
+    ray_dir -> RayTrace;
+    RayTrace -> hit;
+    
+    HitEnvironment;
+    flags[shape="parallelogram"];
+    misPrev[shape="parallelogram"];
+    currColor[shape="parallelogram"];
+    
+    hit -> HitEnvironment;
+    ray_dir -> HitEnvironment;
+    ray_pos -> HitEnvironment;
+    HitEnvironment -> flags;
+    HitEnvironment -> misPrev;
+    HitEnvironment -> currColor;
+    
+    surfElem[shape="parallelogram"];
+    EvalSurface;
+    
+    hit -> EvalSurface;
+    ray_dir -> EvalSurface;
+    ray_pos -> EvalSurface;
+    EvalSurface -> surfElem;
+    
+    EvalEmission;
+    ray_dir -> EvalEmission;
+    ray_pos -> EvalEmission;
+    surfElem -> EvalEmission;
+    flags -> EvalEmission;
+    misPrev -> EvalEmission;
+    hit -> EvalEmission;
+    EvalEmission -> currColor
+}
+
+
+\end{document} % Конец текста.
