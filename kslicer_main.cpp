@@ -201,8 +201,15 @@ std::string GetKernelSourceCode(const clang::CXXMethodDecl* node, clang::SourceM
   strOut << "  if (tid >= iNumElements)" << std::endl;
   strOut << "    return;" << std::endl;
   strOut << "  /////////////////////////////////////////////////" << std::endl;
-
   return strOut.str() + methodSource.substr(methodSource.find_first_of('{')+1);
+}
+
+void ReplaceOpenCLBuiltInTypes(std::string& a_typeName)
+{
+  std::string lmStucts("struct LiteMath::");
+  auto found1 = a_typeName.find(lmStucts);
+  if(found1 != std::string::npos)
+    a_typeName.replace(found1, lmStucts.length(), "");
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -349,39 +356,22 @@ int main(int argc, const char **argv)
 
       const auto& funcInfo = a.second;
       assert(funcInfo.astNode != nullptr);
-      //const auto nameInfo      = funcInfo.astNode->getNameInfo();
-      //clang::SourceRange range = nameInfo.getSourceRange();
-      //std::string  sourceCode  = range.printToString(compiler.getSourceManager());
       std::string sourceCode = GetKernelSourceCode(funcInfo.astNode, compiler.getSourceManager());
     
       outFileCL << std::endl;
       outFileCL << "__kernel void " << a.first << "(" << std::endl;
 
-      for (size_t i = 0; i < a.second.args.size(); ++i) 
+      for (const auto& arg : a.second.args) 
       {
-        const auto& arg = a.second.args[i];
-        outFileCL << "  __global " << arg.type.c_str() << " restrict " << arg.name.c_str();
-
-        if(i != a.second.args.size()-1)
-          outFileCL << "," << std::endl;
-        else
-          outFileCL << ")" << std::endl;
+        std::string typeStr = arg.type.c_str();
+        ReplaceOpenCLBuiltInTypes(typeStr);
+        outFileCL << "  __global " << typeStr.c_str() << " restrict " << arg.name.c_str() << "," << std::endl;
       }
+      outFileCL << "  const uint iNumElements)" << std::endl;
       outFileCL << sourceCode.c_str() << std::endl << std::endl;
     }
     outFileCL.close();
   }
-
-  //std::cout << std::endl;
-  //outFile.close();
-  //for (auto &a : astConsumer.rv.functions) 
-  //{
-  //  std::cout << a.first << " " << a.second.return_type << std::endl;
-  //  for (size_t i = 0; i < a.second.args.size(); ++i) {
-  //    std::cout << a.second.args[i].name << ":" << a.second.args[i].type << ":" << a.second.args[i].size << std::endl;
-  //  }
-  //  std::cout << std::endl;
-  //}
 
   // now process variables and kernel calls
   //
