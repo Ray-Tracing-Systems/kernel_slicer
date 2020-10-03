@@ -4,6 +4,7 @@
 #include <vector>
 #include <system_error>
 #include <iostream>
+#include <fstream>
 
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
@@ -45,6 +46,8 @@ struct FunctionInfo
   std::string      return_type;
   std::string      name;
   std::vector<Arg> args;
+
+  const CXXMethodDecl* astNode = nullptr;
 };
 
 // RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.
@@ -61,9 +64,6 @@ public:
   
   bool VisitCXXMethodDecl(CXXMethodDecl* f);
 
-  //bool VisitFunctionDecl(FunctionDecl *f);
-  //bool VisitCallExpr(CallExpr *CE);
-
   std::map<std::string, FunctionInfo> functions;
   std::string GetNewNameFor(std::string s);
 
@@ -71,33 +71,12 @@ public:
   CXXMethodDecl* m_mainFuncNode;
 
 private:
-  void ProcessFunction(FunctionDecl *f);
+  void ProcessKernelDef(const CXXMethodDecl *f);
 };
 
 std::string MyRecursiveASTVisitor::GetNewNameFor(std::string s) {
   return ADDED_PREFFIX + s;
 }
-
-//bool MyRecursiveASTVisitor::VisitCallExpr(CallExpr *CE) 
-//{
-//  FunctionDecl *FD = CE->getDirectCallee();
-//  if (FD) 
-//  {
-//    DeclarationNameInfo dni = FD->getNameInfo();
-//    DeclarationName dn = dni.getName();
-//    std::string fname = dn.getAsString();
-//    if (fname == "readAttr") {
-//      auto expr = cast<clang::ImplicitCastExpr>(CE->getArg(1));
-//      std::string param = cast<clang::StringLiteral>(expr->getSubExpr())->getString().str();
-//      Rewrite.ReplaceText(CE->getSourceRange(), "readAttr_" + param + "(sHit)");
-//    }
-//    
-//    if (FD->hasBody()) {
-//      Rewrite.ReplaceText(CE->getBeginLoc(), fname.size(), GetNewNameFor(fname));
-//    }
-//  }
-//  return true;
-//}
 
 int GetSizeByType(std::string t) {
   return 1;
@@ -117,7 +96,7 @@ FunctionInfo::Arg ProcessParameter(ParmVarDecl *p) {
   return arg;
 }
 
-void MyRecursiveASTVisitor::ProcessFunction(FunctionDecl *f) 
+void MyRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDecl *f) 
 {
   if (!f || !f->hasBody()) 
     return;
@@ -129,47 +108,13 @@ void MyRecursiveASTVisitor::ProcessFunction(FunctionDecl *f)
   QualType q = f->getReturnType();
   //const Type *typ = q.getTypePtr();
   info.return_type = QualType::getAsString(q.split(), PrintingPolicy{ {} });
+  info.astNode     = f;
+
   for (unsigned int i = 0; i < f->getNumParams(); ++i) {
     info.args.push_back(ProcessParameter(f->parameters()[i]));
   }
   functions[info.name] = info;
 }
-
-//bool MyRecursiveASTVisitor::VisitFunctionDecl(FunctionDecl *f)
-//{
-//  ProcessFunction(f);
-//  if (f->hasBody())
-//  {
-//    //SourceRange sr = f->getSourceRange();
-//    //Stmt *s = f->getBody();
-//
-//    QualType q = f->getReturnType();
-//    std::string ret;
-//    ret = QualType::getAsString(q.split(), PrintingPolicy{ {} });
-//    // Get name of function
-//    DeclarationNameInfo dni = f->getNameInfo();
-//    DeclarationName dn = dni.getName();
-//    std::string fname = dn.getAsString();
-//    
-//    // Point to start of function declaration
-//    //SourceLocation ST = sr.getBegin();
-//
-//    // Add comment
-//    if (fname == MAIN_NAME) {
-//      llvm::errs() << "Found main()\n";
-//      int num_params = f->getNumParams();
-//      auto param = f->getParamDecl(num_params - 1);
-//      SourceLocation decl_end = param->getEndLoc().getLocWithOffset(param->getName().size());
-//      //decl_end = f->getNameInfo().getEndLoc().getLocWithOffset(1);
-//      Rewrite.InsertText(decl_end, ", _PROCTEXTAILTAG_", true, true);
-//    }
-//    //char fc[256];
-//    Rewrite.ReplaceText(dni.getSourceRange(), GetNewNameFor(fname));
-//    
-//  }
-//
-//  return true; // returning false aborts the traversal
-//}
 
 bool MyRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f) 
 {
@@ -188,7 +133,7 @@ bool MyRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f)
       
       if(thisTypeName == std::string("class ") + MAIN_CLASS_NAME || thisTypeName == std::string("struct ") + MAIN_CLASS_NAME)
       {
-        ProcessFunction(f);
+        ProcessKernelDef(f);
         std::cout << "found kernel:\t" << fname.c_str() << " of type:\t" << thisTypeName.c_str() << std::endl;
       }
     }
@@ -237,6 +182,18 @@ static llvm::cl::OptionCategory GDOpts("global-detect options");
 const char * addl_help = "Report all functions that use global variable, or all sites at which "
                          "global variables are used";
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+clang::LangOptions lopt;
+
+std::string GetKernelSourceCode(const clang::CXXMethodDecl* node, clang::SourceManager& sm) 
+{
+  clang::SourceLocation b(node->getBeginLoc()), _e(node->getEndLoc());
+  clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
+  return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -372,17 +329,39 @@ int main(int argc, const char **argv)
     llvm::errs() << "Cannot open " << outName << " for writing\n";
   }
 
-  std::cout << std::endl;
-  outFile.close();
-  for (auto &a : astConsumer.rv.functions) {
-    std::cout << a.first << " " << a.second.return_type << std::endl;
-    for (size_t i = 0; i < a.second.args.size(); ++i) {
-      std::cout << a.second.args[i].name << ":" << a.second.args[i].type << ":" << a.second.args[i].size << std::endl;
+  // write kernels to .cl file
+  //
+  {
+    std::ofstream outFileCL("data/generated.cl");
+    for (const auto& a : astConsumer.rv.functions)  
+    {
+      std::cout << a.first << " " << a.second.return_type << std::endl;
+
+      const auto& funcInfo = a.second;
+      assert(funcInfo.astNode != nullptr);
+      //const auto nameInfo      = funcInfo.astNode->getNameInfo();
+      //clang::SourceRange range = nameInfo.getSourceRange();
+      //std::string  sourceCode  = range.printToString(compiler.getSourceManager());
+      std::string sourceCode = GetKernelSourceCode(funcInfo.astNode, compiler.getSourceManager());
+    
+      outFileCL << "//kernel: " << a.first << " " << a.second.return_type << std::endl;
+      outFileCL << sourceCode.c_str() << std::endl << std::endl;
     }
-    std::cout << std::endl;
+    outFileCL.close();
   }
-  
-  // now process variables ... 
+
+  //std::cout << std::endl;
+  //outFile.close();
+  //for (auto &a : astConsumer.rv.functions) 
+  //{
+  //  std::cout << a.first << " " << a.second.return_type << std::endl;
+  //  for (size_t i = 0; i < a.second.args.size(); ++i) {
+  //    std::cout << a.second.args[i].name << ":" << a.second.args[i].type << ":" << a.second.args[i].size << std::endl;
+  //  }
+  //  std::cout << std::endl;
+  //}
+
+  // now process variables and kernel calls
   //
   {
     const char* argv2[] = {argv[0], argv[1], "--"};
