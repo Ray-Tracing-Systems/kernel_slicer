@@ -60,7 +60,7 @@ public:
   void  kernel_TestColor(const Lite_Hit* in_hit, float3* out_color);
 
 private:
-TestClass
+};
 
 void TestClass::kernel_InitAccumData(float3* accumColor, float3* accumuThoroughput, float3* currColor)
 {

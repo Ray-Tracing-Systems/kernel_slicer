@@ -391,8 +391,8 @@ int main(int argc, const char **argv)
     clang::tooling::CommonOptionsParser OptionsParser(argc2, argv2, GDOpts, addl_help);
     clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
-    //clang::ast_matchers::StatementMatcher global_var_matcher = kslicer::all_global_var_matcher();
-    clang::ast_matchers::StatementMatcher local_var_matcher  = kslicer::mk_local_var_matcher_of_function("PathTrace");
+    //clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::mk_local_var_matcher_of_function("PathTrace");
+    clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::mk_krenel_call_matcher_from_function("PathTrace");
     
     kslicer::Global_Printer printer(std::cout);
     clang::ast_matchers::MatchFinder finder;

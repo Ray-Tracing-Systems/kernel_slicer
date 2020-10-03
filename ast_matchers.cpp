@@ -95,14 +95,19 @@ clang::ast_matchers::StatementMatcher kslicer::mk_local_var_matcher_of_function(
   using namespace clang::ast_matchers;
   return
   declRefExpr(
-    to(
-      varDecl(
-        hasLocalStorage()
-      ).bind("locVarName")
-    ) // to
-   ,hasAncestor(
-      functionDecl(hasName(a_funcName)).bind("targetFunction")
+    to(varDecl(hasLocalStorage()).bind("locVarName")),
+       hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction")
     )
   ).bind("localReference");
 }
 
+clang::ast_matchers::StatementMatcher kslicer::mk_krenel_call_matcher_from_function(std::string const& a_funcName)
+{
+  using namespace clang::ast_matchers;
+  return 
+  cxxMemberCallExpr(
+    allOf(
+        hasAncestor( functionDecl(hasName(a_funcName)).bind("targetFunction") ),
+        callee(functionDecl().bind("fdecl"))
+   )).bind("functionCall");
+}
