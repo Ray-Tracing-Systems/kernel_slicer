@@ -354,7 +354,19 @@ int main(int argc, const char **argv)
       //std::string  sourceCode  = range.printToString(compiler.getSourceManager());
       std::string sourceCode = GetKernelSourceCode(funcInfo.astNode, compiler.getSourceManager());
     
-      outFileCL << "//kernel: " << a.first << " " << a.second.return_type << std::endl;
+      outFileCL << std::endl;
+      outFileCL << "__kernel void " << a.first << "(" << std::endl;
+
+      for (size_t i = 0; i < a.second.args.size(); ++i) 
+      {
+        const auto& arg = a.second.args[i];
+        outFileCL << "  __global " << arg.type.c_str() << " restrict " << arg.name.c_str();
+
+        if(i != a.second.args.size()-1)
+          outFileCL << "," << std::endl;
+        else
+          outFileCL << ")" << std::endl;
+      }
       outFileCL << sourceCode.c_str() << std::endl << std::endl;
     }
     outFileCL.close();
