@@ -57,39 +57,6 @@ std::string kslicer::sourceRangeAsString(clang::SourceRange r, clang::SourceMana
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-clang::ast_matchers::StatementMatcher kslicer::all_global_var_matcher()
-{
-  using namespace clang::ast_matchers;
-  return
-  declRefExpr(
-    to(
-      varDecl(
-        hasGlobalStorage()
-      ).bind("gvarName")
-    ) // to
-   ,hasAncestor(
-      functionDecl().bind("function")
-    )
-  ).bind("globalReference");
-} 
-
-clang::ast_matchers::StatementMatcher kslicer::mk_global_var_matcher(std::string const & g_var_name)
-{
-  using namespace clang::ast_matchers;
-  return
-  declRefExpr(
-    to(
-      varDecl(
-        hasGlobalStorage()
-       ,hasName(g_var_name)
-      ).bind("gvarName")
-    )
-   ,hasAncestor(
-      functionDecl().bind("function")
-    )
-  ).bind("globalReference");
-} 
-
 clang::ast_matchers::StatementMatcher kslicer::mk_local_var_matcher_of_function(std::string const& a_funcName)
 {
   using namespace clang::ast_matchers;
@@ -106,8 +73,8 @@ clang::ast_matchers::StatementMatcher kslicer::mk_krenel_call_matcher_from_funct
   using namespace clang::ast_matchers;
   return 
   cxxMemberCallExpr(
-    allOf(
-        hasAncestor( functionDecl(hasName(a_funcName)).bind("targetFunction") ),
-        callee(functionDecl().bind("fdecl"))
-   )).bind("functionCall");
+    allOf(hasAncestor( functionDecl(hasName(a_funcName)).bind("targetFunction") ),
+          callee(functionDecl().bind("fdecl"))
+         )
+  ).bind("functionCall");
 }

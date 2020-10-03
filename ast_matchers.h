@@ -15,9 +15,6 @@ namespace kslicer
   using namespace llvm;
   using namespace clang::ast_matchers;
 
-  clang::ast_matchers::StatementMatcher all_global_var_matcher();
-  clang::ast_matchers::StatementMatcher mk_global_var_matcher(std::string const & g_var_name = "");
-
   clang::ast_matchers::StatementMatcher mk_local_var_matcher_of_function(std::string const& funcName);
   clang::ast_matchers::StatementMatcher mk_krenel_call_matcher_from_function(std::string const& funcName);
 
@@ -43,69 +40,52 @@ namespace kslicer
   {
   public:
 
-    explicit Global_Printer(std::ostream & s) : s_(s), n_matches_(0) {}
-   
-    //void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
-    //{
-    //  using namespace clang;
-    //  n_matches_++;
-    // 
-    //  FunctionDecl const * func_decl = result.Nodes.getNodeAs<FunctionDecl>("targetFunction");
-    //  Expr const * l_var             = result.Nodes.getNodeAs<Expr>("localReference");
-    //  VarDecl const * var            = result.Nodes.getNodeAs<VarDecl>("locVarName");
-    //
-    //  clang::SourceManager & src_manager(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
-    //
-    //  if(func_decl && l_var && var) 
-    //  {
-    //    s_ << "In function '" << func_decl->getNameAsString() << "' ";
-    //    s_ << "'" << var->getNameAsString() << "' referred to at ";
-    //    std::string sr(sourceRangeAsString(l_var->getSourceRange(), &src_manager));
-    //    s_ << sr;
-    //    s_ << "\n";
-    //  }
-    //  else 
-    //  {
-    //    check_ptr(func_decl, "func_decl", "", s_);
-    //    check_ptr(l_var, "l_var", "", s_);
-    //    check_ptr(var, "var", "", s_);
-    //  }
-    //
-    //  return;
-    //} 
+    explicit Global_Printer(std::ostream & s) : m_out(s){}
 
     void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
     {
       using namespace clang;
-      n_matches_++;
      
       FunctionDecl      const * func_decl = result.Nodes.getNodeAs<FunctionDecl>     ("targetFunction");
       CXXMemberCallExpr const * kern_call = result.Nodes.getNodeAs<CXXMemberCallExpr>("functionCall");
       CXXMethodDecl     const * kern      = result.Nodes.getNodeAs<CXXMethodDecl>    ("fdecl");
 
+      Expr              const * l_var     = result.Nodes.getNodeAs<Expr>   ("localReference");
+      VarDecl           const * var       = result.Nodes.getNodeAs<VarDecl>("locVarName");
+
       clang::SourceManager& src_manager(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
 
       if(func_decl && kern_call && kern) 
       {
-        s_ << "In function '" << func_decl->getNameAsString() << "' ";
-        s_ << "'" << kern->getNameAsString() << "' referred to at ";
+        m_out << "In function '" << func_decl->getNameAsString() << "' ";
+        m_out << "method '" << kern->getNameAsString() << "' referred to at ";
         std::string sr(sourceRangeAsString(kern_call->getSourceRange(), &src_manager));
-        s_ << sr;
-        s_ << "\n";
+        m_out << sr;
+        m_out << "\n";
+      }
+      else if(func_decl && l_var && var)
+      {
+        m_out << "In function '" << func_decl->getNameAsString() << "' ";
+        m_out << "variable '" << var->getNameAsString() << "' referred to at ";
+        std::string sr(sourceRangeAsString(l_var->getSourceRange(), &src_manager));
+        m_out << sr;
+        m_out << "\n";
       }
       else 
       {
-        check_ptr(func_decl, "func_decl", "", s_);
-        check_ptr(kern_call, "kern_call", "", s_);
-        check_ptr(kern,      "kern", "", s_);
+        check_ptr(l_var,     "l_var", "", m_out);
+        check_ptr(var,       "var",   "", m_out);
+
+        check_ptr(func_decl, "func_decl", "", m_out);
+        check_ptr(kern_call, "kern_call", "", m_out);
+        check_ptr(kern,      "kern",      "", m_out);
       }
 
       return;
     }  // run
     
-  
-    std::ostream & s_;
-    uint32_t n_matches_;
+    std::ostream& m_out;
+
   };  // class Global_Printer
 
 }

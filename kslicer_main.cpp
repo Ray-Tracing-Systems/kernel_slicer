@@ -391,13 +391,14 @@ int main(int argc, const char **argv)
     clang::tooling::CommonOptionsParser OptionsParser(argc2, argv2, GDOpts, addl_help);
     clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
-    //clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::mk_local_var_matcher_of_function("PathTrace");
-    clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::mk_krenel_call_matcher_from_function("PathTrace");
+    clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::mk_local_var_matcher_of_function("PathTrace");
+    clang::ast_matchers::StatementMatcher kernel_matcher    = kslicer::mk_krenel_call_matcher_from_function("PathTrace");
     
     kslicer::Global_Printer printer(std::cout);
     clang::ast_matchers::MatchFinder finder;
     
     finder.addMatcher(local_var_matcher, &printer);
+    finder.addMatcher(kernel_matcher,    &printer);
   
     auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
   
