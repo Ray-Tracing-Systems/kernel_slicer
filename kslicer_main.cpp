@@ -197,7 +197,7 @@ std::string GetKernelSourceCode(const clang::CXXMethodDecl* node, clang::SourceM
   std::stringstream strOut;
   strOut << "{" << std::endl;
   strOut << "  /////////////////////////////////////////////////" << std::endl;
-  strOut << "  const int tid = get_global_id(0);" << std::endl;
+  strOut << "  const uint tid = get_global_id(0);" << std::endl;
   strOut << "  if (tid >= iNumElements)" << std::endl;
   strOut << "    return;" << std::endl;
   strOut << "  /////////////////////////////////////////////////" << std::endl;
@@ -210,6 +210,11 @@ void ReplaceOpenCLBuiltInTypes(std::string& a_typeName)
   auto found1 = a_typeName.find(lmStucts);
   if(found1 != std::string::npos)
     a_typeName.replace(found1, lmStucts.length(), "");
+
+  //std::string stucts("struct");
+  //auto found2 = a_typeName.find(stucts);
+  //if(found2 != std::string::npos)
+  //  a_typeName.replace(found2, stucts.length(), "");
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
