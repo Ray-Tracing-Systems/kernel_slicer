@@ -221,6 +221,32 @@ void ReplaceOpenCLBuiltInTypes(std::string& a_typeName)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::string& fileName)
+{
+  std::unordered_map<std::string, std::string> cmdLineParams;
+  for(int i=0; i<argc; i++)
+  {
+    std::string key(argv[i]);
+    if(key.size() > 0 && key[0]=='-')
+    {
+      if(i != argc-1) // not last argument
+      {
+        cmdLineParams[key] = argv[i+1];
+        i++;
+      }
+      else
+        cmdLineParams[key] = "";
+    }
+    else if(key.find(".cpp") != std::string::npos)
+      fileName = key;
+  }
+  return cmdLineParams;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 int main(int argc, const char **argv)
 {
   struct stat sb;
@@ -230,11 +256,27 @@ int main(int argc, const char **argv)
     llvm::errs() << "Usage: <filename>\n";
     return 1;
   }
+  
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  std::string fileName;
+  auto params = ReadCommandLineParams(argc, argv, fileName);
+
+  std::string mainClassName = "TestClass";
+  std::string mainFuncName  = "PathTrace";
+  std::string outGenerated  = "data/generated.cl";
+  
+  if(params.find("-mainClass") != params.end())
+    mainClassName = params["-mainClass"];
+
+  if(params.find("-mainFunc") != params.end())
+    mainFuncName = params["-mainFunc"];
+
+  if(params.find("-out") != params.end())
+    outGenerated = params["-out"];
 
   llvm::ArrayRef<const char*> args(argv+1, argv+argc);
-
-  // Get filename
-  std::string fileName(argv[argc - 1]);
 
   // Make sure it exists
   if (stat(fileName.c_str(), &sb) == -1)
@@ -242,6 +284,9 @@ int main(int argc, const char **argv)
     perror(fileName.c_str());
     exit(EXIT_FAILURE);
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   CompilerInstance compiler;
   DiagnosticOptions diagnosticOptions;
@@ -319,7 +364,7 @@ int main(int argc, const char **argv)
   compiler.getDiagnosticClient().BeginSourceFile(compiler.getLangOpts(),
                                                 &compiler.getPreprocessor());
 
-  MyASTConsumer astConsumer(Rewrite, "prtex4_", "PathTrace", "TestClass");
+  MyASTConsumer astConsumer(Rewrite, "prtex4_", mainFuncName.c_str(), mainClassName.c_str());
 
   // Convert <file>.c to <file_out>.c
   std::string outName (fileName);
@@ -354,7 +399,11 @@ int main(int argc, const char **argv)
   // write kernels to .cl file
   //
   {
-    std::ofstream outFileCL("data/generated.cl");
+    std::ofstream outFileCL(outGenerated.c_str());
+
+    if(!outFileCL.is_open())
+      llvm::errs() << "Cannot open " << outGenerated.c_str() << " for writing\n";
+
     for (const auto& a : astConsumer.rv.functions)  
     {
       std::cout << a.first << " " << a.second.return_type << std::endl;
@@ -387,8 +436,8 @@ int main(int argc, const char **argv)
     clang::tooling::CommonOptionsParser OptionsParser(argc2, argv2, GDOpts, addl_help);
     clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
-    clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::mk_local_var_matcher_of_function("PathTrace");
-    clang::ast_matchers::StatementMatcher kernel_matcher    = kslicer::mk_krenel_call_matcher_from_function("PathTrace");
+    clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::mk_local_var_matcher_of_function(mainFuncName.c_str());
+    clang::ast_matchers::StatementMatcher kernel_matcher    = kslicer::mk_krenel_call_matcher_from_function(mainFuncName.c_str());
     
     kslicer::Global_Printer printer(std::cout);
     clang::ast_matchers::MatchFinder finder;

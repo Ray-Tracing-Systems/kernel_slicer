@@ -38,7 +38,7 @@ public:
   
   void MainFunc(uint tidX, uint tidY, uint* out_color);
 
-  void kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY);        // (tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
+  void kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY);        // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 
   void kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFar, 
                        Lite_Hit* out_hit, uint tidX, uint tidY);
@@ -57,7 +57,7 @@ private:
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY) // (tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
+void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 {
   const float3 rayDir = EyeRayDir((float)tidX, (float)tidY, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
   const float3 rayPos = make_float3(0.0f, 0.0f, 0.0f);
@@ -115,10 +115,7 @@ void test_class_exec()
   for(int y=0;y<WIN_HEIGHT;y++)
   {
     for(int x=0;x<WIN_WIDTH;x++)
-    {
-      float4 resultingColor;
       test.MainFunc(x,y,pixelData.data());
-    }
   }
 
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);

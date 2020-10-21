@@ -41,7 +41,28 @@
                     "ignoreFailures": true
                 }
             ]
-        }
+        },
+        {
+            "name"   : "Launch (app_01)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/../../build/bin/kslicer",
+            "args"   : ["${workspaceFolder}/apps/01_intersectSphere/test_class.cpp", 
+                        "-mainFunc", "MainFunc",
+                        "-out", "${workspaceFolder}/apps/01_intersectSphere/z_generated.cl"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
         
         
 

@@ -67,7 +67,7 @@ void TestClass::kernel_InitAccumData(float3* accumColor, float3* accumuThoroughp
   accumColor[tid]        = make_float3(0,0,0);
   accumuThoroughput[tid] = make_float3(1,1,1);
   currColor[tid]         = make_float3(0,0,0);
-  g_someGlobalVariableReferencedInFunction = 55;
+  //g_someGlobalVariableReferencedInFunction = 55;
 }
 
 void  TestClass::kernel_RayTrace(const float3* in_ray_pos, const float3* in_ray_dir, 
@@ -76,7 +76,7 @@ void  TestClass::kernel_RayTrace(const float3* in_ray_pos, const float3* in_ray_
   const float3 ray_pos = in_ray_pos[tid];
   const float3 ray_dir = in_ray_dir[tid];
 
-  out_hit[tid] = RayTraceImpl(ray_pos, ray_dir);
+  //out_hit[tid] = RayTraceImpl(ray_pos, ray_dir);
 }
 
 void  TestClass::kernel_TestColor(const Lite_Hit* in_hit, float3* out_color)
