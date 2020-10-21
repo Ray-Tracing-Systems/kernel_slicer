@@ -188,7 +188,7 @@ const char * addl_help = "Report all functions that use global variable, or all 
 
 clang::LangOptions lopt;
 
-std::string GetKernelSourceCode(const clang::CXXMethodDecl* node, clang::SourceManager& sm) 
+std::string GetKernelSourceCode(const clang::CXXMethodDecl* node, clang::SourceManager& sm, const std::vector<std::string>& threadIdNames) 
 {
   clang::SourceLocation b(node->getBeginLoc()), _e(node->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
@@ -197,7 +197,8 @@ std::string GetKernelSourceCode(const clang::CXXMethodDecl* node, clang::SourceM
   std::stringstream strOut;
   strOut << "{" << std::endl;
   strOut << "  /////////////////////////////////////////////////" << std::endl;
-  strOut << "  const uint tid = get_global_id(0);" << std::endl;
+  for(size_t i=0;i<threadIdNames.size();i++)
+    strOut << "  const uint " << threadIdNames[i].c_str() << " = get_global_id(" << i << ");"<< std::endl;
   strOut << "  if (tid >= iNumElements)" << std::endl;
   strOut << "    return;" << std::endl;
   strOut << "  /////////////////////////////////////////////////" << std::endl;
@@ -246,6 +247,70 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void PrintKernelToCL(std::ostream& outFileCL, const FunctionInfo& funcInfo, const std::string& kernName, clang::SourceManager& sm)
+{
+  assert(funcInfo.astNode != nullptr);
+
+  bool foundThreadIdX = false; std::string tidXName = "tid";
+  bool foundThreadIdY = false; std::string tidYName = "tid2";
+  bool foundThreadIdZ = false; std::string tidZName = "tid3";
+
+  outFileCL << std::endl;
+  outFileCL << "__kernel void " << kernName.c_str() << "(" << std::endl;
+  for (const auto& arg : funcInfo.args) 
+  {
+    std::string typeStr = arg.type.c_str();
+    ReplaceOpenCLBuiltInTypes(typeStr);
+
+    bool skip = false;
+
+    if(arg.name == "tid" || arg.name == "tidX") // todo: check several names ... 
+    {
+      skip           = true;
+      foundThreadIdX = true;
+      tidXName       = arg.name;
+    }
+
+    if(arg.name == "tidY") // todo: check several names ... 
+    {
+      skip           = true;
+      foundThreadIdY = true;
+      tidYName       = arg.name;
+    }
+
+    if(arg.name == "tidZ") // todo: check several names ... 
+    {
+      skip           = true;
+      foundThreadIdZ = true;
+      tidZName       = arg.name;
+    }
+    
+    if(!skip)
+      outFileCL << "  __global " << typeStr.c_str() << " restrict " << arg.name.c_str() << "," << std::endl;
+  }
+  
+  outFileCL << "  const uint iNumElements)" << std::endl;
+
+  std::vector<std::string> threadIdNames;
+
+  if(foundThreadIdX)
+    threadIdNames.push_back(tidXName);
+
+  if(foundThreadIdY)
+    threadIdNames.push_back(tidYName);
+
+  if(foundThreadIdZ)
+    threadIdNames.push_back(tidZName);
+
+  std::string sourceCode = GetKernelSourceCode(funcInfo.astNode, sm, threadIdNames);
+  outFileCL << sourceCode.c_str() << std::endl << std::endl;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 int main(int argc, const char **argv)
 {
@@ -400,30 +465,15 @@ int main(int argc, const char **argv)
   //
   {
     std::ofstream outFileCL(outGenerated.c_str());
-
     if(!outFileCL.is_open())
       llvm::errs() << "Cannot open " << outGenerated.c_str() << " for writing\n";
 
     for (const auto& a : astConsumer.rv.functions)  
     {
       std::cout << a.first << " " << a.second.return_type << std::endl;
-
-      const auto& funcInfo = a.second;
-      assert(funcInfo.astNode != nullptr);
-      std::string sourceCode = GetKernelSourceCode(funcInfo.astNode, compiler.getSourceManager());
-    
-      outFileCL << std::endl;
-      outFileCL << "__kernel void " << a.first << "(" << std::endl;
-
-      for (const auto& arg : a.second.args) 
-      {
-        std::string typeStr = arg.type.c_str();
-        ReplaceOpenCLBuiltInTypes(typeStr);
-        outFileCL << "  __global " << typeStr.c_str() << " restrict " << arg.name.c_str() << "," << std::endl;
-      }
-      outFileCL << "  const uint iNumElements)" << std::endl;
-      outFileCL << sourceCode.c_str() << std::endl << std::endl;
+      PrintKernelToCL(outFileCL, a.second, a.first, compiler.getSourceManager());
     }
+
     outFileCL.close();
   }
 
