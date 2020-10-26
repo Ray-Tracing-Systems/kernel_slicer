@@ -67,11 +67,12 @@ public:
   std::map<std::string, FunctionInfo> functions;
   std::string GetNewNameFor(std::string s);
 
-  Rewriter&      m_rewriter;
-  CXXMethodDecl* m_mainFuncNode;
+  Rewriter& m_rewriter;
+  const CXXMethodDecl* m_mainFuncNode;
 
 private:
   void ProcessKernelDef(const CXXMethodDecl *f);
+  void ProcessMainFunc(const CXXMethodDecl *f);
 };
 
 std::string MyRecursiveASTVisitor::GetNewNameFor(std::string s) {
@@ -116,6 +117,11 @@ void MyRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDecl *f)
   functions[info.name] = info;
 }
 
+void MyRecursiveASTVisitor::ProcessMainFunc(const CXXMethodDecl *f)
+{
+  m_mainFuncNode = f;
+}
+
 bool MyRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f) 
 {
   if (f->hasBody())
@@ -139,7 +145,7 @@ bool MyRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f)
     }
     else if(fname == MAIN_NAME)
     {
-      m_mainFuncNode = f;
+      ProcessMainFunc(f);
       std::cout << "main function has found:\t" << fname.c_str() << std::endl;
     }
 
@@ -203,6 +209,16 @@ std::string GetKernelSourceCode(const clang::CXXMethodDecl* node, clang::SourceM
   strOut << "    return;" << std::endl;
   strOut << "  /////////////////////////////////////////////////" << std::endl;
   return strOut.str() + methodSource.substr(methodSource.find_first_of('{')+1);
+}
+
+
+std::string GetMainFuncCode(const clang::CXXMethodDecl* node, clang::SourceManager& sm) 
+{
+  clang::SourceLocation b(node->getBeginLoc()), _e(node->getEndLoc());
+  clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
+  std::string methodSource = std::string(sm.getCharacterData(b), sm.getCharacterData(e));
+
+  return methodSource;
 }
 
 void ReplaceOpenCLBuiltInTypes(std::string& a_typeName)
@@ -419,7 +435,7 @@ int main(int argc, const char **argv)
   compiler.getLangOpts() = langOpts;
   compiler.createASTContext();
 
-  // Initialize rewriter
+  // Initialize rewriter. We still need Rewriter for change main function to call 'kernel_xxxCmd' instead of 'kernel_xxx'
   Rewriter Rewrite;
   Rewrite.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
@@ -443,7 +459,6 @@ int main(int argc, const char **argv)
   llvm::errs() << "Output to: " << outName << "\n";
   std::error_code OutErrorInfo;
   std::error_code ok;
-  llvm::raw_fd_ostream outFile(llvm::StringRef(outName), OutErrorInfo, llvm::sys::fs::F_None);
 
   if (OutErrorInfo == ok)
   {
@@ -451,15 +466,45 @@ int main(int argc, const char **argv)
     ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
     compiler.getDiagnosticClient().EndSourceFile();
 
+    //std::string mainFunc = GetMainFuncCode(astConsumer.rv.m_mainFuncNode, compiler.getSourceManager());
+    //std::ofstream fout(outName);
+    //fout << mainFunc.c_str() << std::endl;
+    //fout.close();
+
     // Now output rewritten source code
-    const RewriteBuffer *RewriteBuf = Rewrite.getRewriteBufferFor(compiler.getSourceManager().getMainFileID());
-    assert(RewriteBuf != nullptr);
-    outFile << std::string(RewriteBuf->begin(), RewriteBuf->end());
+    // llvm::raw_fd_ostream outFile(llvm::StringRef(outName), OutErrorInfo, llvm::sys::fs::F_None);
+    // const RewriteBuffer *RewriteBuf = Rewrite.getRewriteBufferFor(compiler.getSourceManager().getMainFileID());
+    // assert(RewriteBuf != nullptr);
+    // outFile << std::string(RewriteBuf->begin(), RewriteBuf->end());
   }
   else
   {
     llvm::errs() << "Cannot open " << outName << " for writing\n";
   }
+
+  // traverse only main function and rename kernel_ to cmd_
+  {
+    Rewriter rewrite2;
+    rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+    MyRecursiveASTVisitor rv(rewrite2, "prtex5_",  mainFuncName.c_str(), mainClassName.c_str());
+    rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(astConsumer.rv.m_mainFuncNode));
+    
+    auto node = astConsumer.rv.m_mainFuncNode;
+    clang::SourceLocation b(node->getBeginLoc()), _e(node->getEndLoc());
+    clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), lopt));
+    std::string mainFuncCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
+
+    std::ofstream fout(outName);
+    fout << mainFuncCode.c_str() << std::endl;
+    //llvm::raw_fd_ostream outFile(llvm::StringRef(outName), OutErrorInfo, llvm::sys::fs::F_None);
+    //{
+    //  const RewriteBuffer *RewriteBuf = rewrite2.getRewriteBufferFor(compiler.getSourceManager().getMainFileID());
+    //  assert(RewriteBuf != nullptr);
+    //  outFile << std::string(RewriteBuf->begin(), RewriteBuf->end());
+    //}
+  }
+
+
 
   // write kernels to .cl file
   //
