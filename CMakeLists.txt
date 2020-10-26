@@ -7,6 +7,7 @@ set(LLVM_LINK_COMPONENTS support)
 add_clang_executable(kslicer
                      kslicer_main.cpp
                      ast_matchers.cpp
+                     class_gen.cpp
                      )
 
 target_link_libraries(kslicer
