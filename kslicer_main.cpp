@@ -6,6 +6,8 @@
 #include <iostream>
 #include <fstream>
 
+#include <unordered_map>
+
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/ADT/IntrusiveRefCntPtr.h"
@@ -36,7 +38,10 @@
 
 using namespace clang;
 
-struct FunctionInfo 
+/**
+\brief for each method MainClass::kernel_XXX
+*/
+struct KernelInfo 
 {
   struct Arg 
   {
@@ -50,6 +55,18 @@ struct FunctionInfo
 
   const CXXMethodDecl* astNode = nullptr;
 };
+
+/**
+\brief for data member of MainClass
+*/
+struct DataMemberInfo 
+{
+  std::string name;
+  std::string type;
+  size_t      sizeInBytes;              // may be not needed due to using sizeof in generated code, but it is useful for sorting members by size and making apropriate aligment
+  size_t      offsetInTargetBuffer = 0; // offset in bytes in terget buffer that stores all data members
+};
+
 
 // RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.
 //
@@ -65,7 +82,8 @@ public:
   bool VisitCXXMethodDecl(CXXMethodDecl* f);
   bool VisitFieldDecl    (FieldDecl* var);
 
-  std::map<std::string, FunctionInfo> functions;
+  std::unordered_map<std::string, KernelInfo>     functions;
+  std::unordered_map<std::string, DataMemberInfo> dataMembers;
   const CXXMethodDecl* m_mainFuncNode;
 
 private:
@@ -75,10 +93,10 @@ private:
   const ASTContext& m_astContext;
 };
 
-FunctionInfo::Arg ProcessParameter(ParmVarDecl *p) {
+KernelInfo::Arg ProcessParameter(ParmVarDecl *p) {
   QualType q = p->getType();
   const Type *typ = q.getTypePtr();
-  FunctionInfo::Arg arg;
+  KernelInfo::Arg arg;
   arg.name = p->getNameAsString();
   arg.type = QualType::getAsString(q.split(), PrintingPolicy{ {} });
   arg.size = 1;
@@ -94,7 +112,7 @@ void MyRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDecl *f)
   if (!f || !f->hasBody()) 
     return;
   
-  FunctionInfo info;
+  KernelInfo info;
   DeclarationNameInfo dni = f->getNameInfo();
   DeclarationName dn = dni.getName();
   info.name = dn.getAsString();
@@ -153,19 +171,21 @@ bool MyRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
  
   const std::string& thisTypeName = rd->getName().str();
 
-  //const DeclarationNameInfo dni = var->getNameInfo();
-  //const DeclarationName dn      = dni.getName();
-  //const std::string fname       = dn.getAsString();
-  //
-  //const QualType qThisType       = var->getThisType();   
-  //const QualType classType       = qThisType.getTypePtr()->getPointeeType();
-  //const std::string thisTypeName = classType.getAsString();
-
   if(thisTypeName == MAIN_CLASS_NAME)
   {
-    std::cout << "found class data member: " << fd->getName().str().c_str() << " of type:\t" << qt.getAsString().c_str() << ", isPOD = " << qt.isPODType(m_astContext) << std::endl;
+    std::cout << "found class data member: " << fd->getName().str().c_str() << " of type:\t" << qt.getAsString().c_str() << ", isPOD = " << qt.isCXX11PODType(m_astContext) << std::endl;
+
+    auto typeInfo = m_astContext.getTypeInfo(qt);
+
+    DataMemberInfo member;
+    member.name        = fd->getName().str();
+    member.type        = qt.getAsString();
+    member.sizeInBytes = typeInfo.Width / 8; 
+    member.offsetInTargetBuffer = 0;
+
+    dataMembers[member.name] = member;
   }
-  
+
   return true;
 }
 
@@ -269,7 +289,7 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PrintKernelToCL(std::ostream& outFileCL, const FunctionInfo& funcInfo, const std::string& kernName, clang::SourceManager& sm)
+void PrintKernelToCL(std::ostream& outFileCL, const KernelInfo& funcInfo, const std::string& kernName, clang::SourceManager& sm)
 {
   assert(funcInfo.astNode != nullptr);
 
