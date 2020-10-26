@@ -60,9 +60,10 @@ public:
   std::string MAIN_NAME;
   std::string MAIN_CLASS_NAME;
 
-  MyRecursiveASTVisitor(std::string main_name, std::string main_class) : MAIN_NAME(main_name), MAIN_CLASS_NAME(main_class), m_mainFuncNode(nullptr)  { }
+  MyRecursiveASTVisitor(std::string main_name, std::string main_class, const ASTContext& a_astContext) : MAIN_NAME(main_name), MAIN_CLASS_NAME(main_class), m_mainFuncNode(nullptr), m_astContext(a_astContext)  { }
   
   bool VisitCXXMethodDecl(CXXMethodDecl* f);
+  bool VisitFieldDecl    (FieldDecl* var);
 
   std::map<std::string, FunctionInfo> functions;
   const CXXMethodDecl* m_mainFuncNode;
@@ -70,6 +71,8 @@ public:
 private:
   void ProcessKernelDef(const CXXMethodDecl *f);
   void ProcessMainFunc(const CXXMethodDecl *f);
+
+  const ASTContext& m_astContext;
 };
 
 FunctionInfo::Arg ProcessParameter(ParmVarDecl *p) {
@@ -142,6 +145,30 @@ bool MyRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f)
   return true; // returning false aborts the traversal
 }
 
+
+bool MyRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
+{
+  const clang::RecordDecl* rd = fd->getParent();
+  const clang::QualType    qt = fd->getType();
+ 
+  const std::string& thisTypeName = rd->getName().str();
+
+  //const DeclarationNameInfo dni = var->getNameInfo();
+  //const DeclarationName dn      = dni.getName();
+  //const std::string fname       = dn.getAsString();
+  //
+  //const QualType qThisType       = var->getThisType();   
+  //const QualType classType       = qThisType.getTypePtr()->getPointeeType();
+  //const std::string thisTypeName = classType.getAsString();
+
+  if(thisTypeName == MAIN_CLASS_NAME)
+  {
+    std::cout << "found class data member: " << fd->getName().str().c_str() << " of type:\t" << qt.getAsString().c_str() << ", isPOD = " << qt.isPODType(m_astContext) << std::endl;
+  }
+  
+  return true;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -150,9 +177,10 @@ class MyASTConsumer : public ASTConsumer
 {
  public:
 
-  MyASTConsumer(std::string main_name, std::string main_class) : rv(main_name, main_class) { }
+  MyASTConsumer(std::string main_name, std::string main_class, const ASTContext& a_astContext) : rv(main_name, main_class, a_astContext) { }
   bool HandleTopLevelDecl(DeclGroupRef d) override;
   MyRecursiveASTVisitor rv;
+  
 };
 
 bool MyASTConsumer::HandleTopLevelDecl(DeclGroupRef d)
@@ -418,7 +446,7 @@ int main(int argc, const char **argv)
 
   // (1) traverse source code of main file first
   //
-  MyASTConsumer astConsumer(mainFuncName.c_str(), mainClassName.c_str());
+  MyASTConsumer astConsumer(mainFuncName.c_str(), mainClassName.c_str(), compiler.getASTContext());
 
   // Convert <file>.c to <file_out>.c
   std::string outName (fileName);
