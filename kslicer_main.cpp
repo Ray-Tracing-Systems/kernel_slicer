@@ -204,7 +204,6 @@ bool MyRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
     {
       auto specDecl = dyn_cast<ClassTemplateSpecializationDecl>(typeDecl); 
       assert(specDecl != nullptr);
-      std::cout << "templated type is found" << std::endl;
       
       member.isContainer   = true;
       member.containerType = specDecl->getNameAsString();
@@ -216,6 +215,8 @@ bool MyRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
         member.containerDataType = templateArgs[0].getAsType().getAsString();
       else
         member.containerDataType = "unknown";
+
+      std::cout << "container " << member.containerType.c_str() << " of " <<  member.containerDataType.c_str() << std::endl;
     }
     else
     {
