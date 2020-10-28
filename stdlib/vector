@@ -1,0 +1,6 @@
+//vector
+
+namespace std
+{
+  template<class T> class vector;
+};

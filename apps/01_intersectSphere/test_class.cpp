@@ -1,8 +1,9 @@
+#include <vector>
+#include "include/BasicLogic.h" // We assume that all code that should pe passed to kernels will be just included both for CPU and OpenCL
+
 #include <iostream>
 #include <fstream>
-#include <vector>
 
-#include "include/BasicLogic.h" // We assume that all code that should pe passed to kernels will be just included both for CPU and OpenCL
 
 static inline float4x4 perspectiveMatrix(float fovy, float aspect, float zNear, float zFar)
 {

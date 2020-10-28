@@ -414,6 +414,8 @@ int main(int argc, const char **argv)
   std::string mainClassName = "TestClass";
   std::string mainFuncName  = "PathTrace";
   std::string outGenerated  = "data/generated.cl";
+  std::string stdlibFolder  = "";
+
   
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
@@ -423,6 +425,9 @@ int main(int argc, const char **argv)
 
   if(params.find("-out") != params.end())
     outGenerated = params["-out"];
+
+  if(params.find("-stdlibfolder") != params.end())
+    stdlibFolder = params["-stdlibfolder"];
 
   llvm::ArrayRef<const char*> args(argv+1, argv+argc);
 
@@ -456,13 +461,14 @@ int main(int argc, const char **argv)
   compiler.createFileManager();
   compiler.createSourceManager(compiler.getFileManager());
 
-  HeaderSearchOptions &headerSearchOptions = compiler.getHeaderSearchOpts();
+  // <Warning!!> -- Begin of Platform Specific Code
+  HeaderSearchOptions &headerSearchOptions = compiler.getHeaderSearchOpts();  
+  headerSearchOptions.AddPath(stdlibFolder.c_str(), clang::frontend::Angled, false, false);
 
-  headerSearchOptions.AddPath("/usr/include/c++/7.5.0", clang::frontend::Angled, false, false);
-  headerSearchOptions.AddPath("/usr/local/include", clang::frontend::Angled, false, false);
-  headerSearchOptions.AddPath("/usr/include",       clang::frontend::Angled, false, false);
-  headerSearchOptions.AddPath("/usr/include/clang/10/include", clang::frontend::Angled, false, false);
-
+  // headerSearchOptions.AddPath("/usr/local/include", clang::frontend::Angled, false, false);
+  // headerSearchOptions.AddPath("/usr/include",       clang::frontend::Angled, false, false);
+  // //headerSearchOptions.AddPath("/usr/include/c++/7.5.0", clang::frontend::Angled, false, false);
+  // //headerSearchOptions.AddPath("/usr/include/clang/10/include", clang::frontend::Angled, false, false);
 
   // </Warning!!> -- End of Platform Specific Code
 
