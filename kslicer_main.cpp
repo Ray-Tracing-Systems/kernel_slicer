@@ -27,11 +27,11 @@
 #include "clang/Basic/Diagnostic.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/AST/ASTConsumer.h"
+#include "clang/AST/DeclTemplate.h"
 #include "clang/Parse/ParseAST.h"
 #include "clang/Rewrite/Frontend/Rewriters.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Tooling/CommonOptionsParser.h"
-
 
 #include "ast_matchers.h"
 #include "class_gen.h"
@@ -65,6 +65,10 @@ struct DataMemberInfo
   std::string type;
   size_t      sizeInBytes;              // may be not needed due to using sizeof in generated code, but it is useful for sorting members by size and making apropriate aligment
   size_t      offsetInTargetBuffer = 0; // offset in bytes in terget buffer that stores all data members
+  
+  bool isContainer = false;
+  std::string containerType;
+  std::string containerDataType;
 };
 
 
@@ -175,13 +179,51 @@ bool MyRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
   {
     std::cout << "found class data member: " << fd->getName().str().c_str() << " of type:\t" << qt.getAsString().c_str() << ", isPOD = " << qt.isCXX11PODType(m_astContext) << std::endl;
 
-    auto typeInfo = m_astContext.getTypeInfo(qt);
-
     DataMemberInfo member;
     member.name        = fd->getName().str();
     member.type        = qt.getAsString();
-    member.sizeInBytes = typeInfo.Width / 8; 
+    member.sizeInBytes = 0; 
     member.offsetInTargetBuffer = 0;
+    
+    if(fd->getName().str().find("m_someBufferData") != std::string::npos)
+    {
+      int a = 2;
+    }
+
+    // now we should check werther this field is std::vector<XXX> or just XXX; 
+    //
+    const Type* fieldTypePtr = qt.getTypePtr(); //qt.getTypePtr();
+    assert(fieldTypePtr != nullptr);
+
+    //const char* typeClassName = fieldTypePtr->getTypeClassName();
+    //std::cout << "typeClassName = " << typeClassName << std::endl;
+
+    auto typeDecl = fieldTypePtr->getAsRecordDecl();
+    
+    if (typeDecl != nullptr && isa<ClassTemplateSpecializationDecl>(typeDecl)) 
+    {
+      auto specDecl = dyn_cast<ClassTemplateSpecializationDecl>(typeDecl); 
+      assert(specDecl != nullptr);
+      std::cout << "templated type is found" << std::endl;
+      
+      member.isContainer   = true;
+      member.containerType = specDecl->getNameAsString();
+      //member.containerDataType;
+      
+      const auto& templateArgs = specDecl->getTemplateArgs();
+      
+      if(templateArgs.size() > 0)
+        member.containerDataType = templateArgs[0].getAsType().getAsString();
+      else
+        member.containerDataType = "unknown";
+    }
+    else
+    {
+      auto typeInfo      = m_astContext.getTypeInfo(qt);
+      member.sizeInBytes = typeInfo.Width / 8; 
+      member.offsetInTargetBuffer = 0;
+    }
+    
 
     dataMembers[member.name] = member;
   }
@@ -396,7 +438,8 @@ int main(int argc, const char **argv)
 
   CompilerInstance compiler;
   DiagnosticOptions diagnosticOptions;
-  compiler.createDiagnostics(); //compiler.createDiagnostics(argc, argv);
+  compiler.createDiagnostics();
+  //compiler.createDiagnostics(argc, argv);
 
 
   // Create an invocation that passes any flags to preprocessor
@@ -415,34 +458,12 @@ int main(int argc, const char **argv)
 
   HeaderSearchOptions &headerSearchOptions = compiler.getHeaderSearchOpts();
 
-  headerSearchOptions.AddPath("/usr/include/c++/4.6",
-          clang::frontend::Angled,
-          false,
-          false);
-  headerSearchOptions.AddPath("/usr/include/c++/4.6/i686-linux-gnu",
-          clang::frontend::Angled,
-          false,
-          false);
-  headerSearchOptions.AddPath("/usr/include/c++/4.6/backward",
-          clang::frontend::Angled,
-          false,
-          false);
-  headerSearchOptions.AddPath("/usr/local/include",
-          clang::frontend::Angled,
-          false,
-          false);
-  headerSearchOptions.AddPath("/usr/local/lib/clang/3.3/include",
-          clang::frontend::Angled,
-          false,
-          false);
-  headerSearchOptions.AddPath("/usr/include/i386-linux-gnu",
-          clang::frontend::Angled,
-          false,
-          false);
-  headerSearchOptions.AddPath("/usr/include",
-          clang::frontend::Angled,
-          false,
-          false);
+  headerSearchOptions.AddPath("/usr/include/c++/7.5.0", clang::frontend::Angled, false, false);
+  headerSearchOptions.AddPath("/usr/local/include", clang::frontend::Angled, false, false);
+  headerSearchOptions.AddPath("/usr/include",       clang::frontend::Angled, false, false);
+  headerSearchOptions.AddPath("/usr/include/clang/10/include", clang::frontend::Angled, false, false);
+
+
   // </Warning!!> -- End of Platform Specific Code
 
 

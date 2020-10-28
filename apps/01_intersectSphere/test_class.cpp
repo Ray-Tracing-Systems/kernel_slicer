@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <vector>
 
 #include "include/BasicLogic.h" // We assume that all code that should pe passed to kernels will be just included both for CPU and OpenCL
 
@@ -25,6 +26,10 @@ static inline float4x4 perspectiveMatrix(float fovy, float aspect, float zNear, 
 
 uint fakeOffset (uint x, uint y) { return 0; } 
 
+template<class T> struct MyTestVector
+{
+  T data[6];
+};
 
 class TestClass // : public DataClass
 {
@@ -48,7 +53,10 @@ public:
 private:
 
   float4x4 m_worldViewProjInv;
-
+  float m_data1;
+  float m_data2[4];
+  std::vector<float>  m_someBufferData;
+  MyTestVector<float> m_someBufferData2;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
