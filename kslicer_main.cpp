@@ -184,31 +184,23 @@ bool MyRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
     member.type        = qt.getAsString();
     member.sizeInBytes = 0; 
     member.offsetInTargetBuffer = 0;
-    
-    if(fd->getName().str().find("m_someBufferData") != std::string::npos)
-    {
-      int a = 2;
-    }
 
     // now we should check werther this field is std::vector<XXX> or just XXX; 
     //
-    const Type* fieldTypePtr = qt.getTypePtr(); //qt.getTypePtr();
+    const Type* fieldTypePtr = qt.getTypePtr(); 
     assert(fieldTypePtr != nullptr);
 
-    //const char* typeClassName = fieldTypePtr->getTypeClassName();
-    //std::cout << "typeClassName = " << typeClassName << std::endl;
+    if(fieldTypePtr->isPointerType()) // we ignore pointers due to we can't pass them to GPU correctly
+      return true;
 
-    auto typeDecl = fieldTypePtr->getAsRecordDecl();
-    
+    auto typeDecl = fieldTypePtr->getAsRecordDecl();    
     if (typeDecl != nullptr && isa<ClassTemplateSpecializationDecl>(typeDecl)) 
     {
       auto specDecl = dyn_cast<ClassTemplateSpecializationDecl>(typeDecl); 
       assert(specDecl != nullptr);
       
       member.isContainer   = true;
-      member.containerType = specDecl->getNameAsString();
-      //member.containerDataType;
-      
+      member.containerType = specDecl->getNameAsString();      
       const auto& templateArgs = specDecl->getTemplateArgs();
       
       if(templateArgs.size() > 0)
@@ -224,7 +216,6 @@ bool MyRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
       member.sizeInBytes = typeInfo.Width / 8; 
       member.offsetInTargetBuffer = 0;
     }
-    
 
     dataMembers[member.name] = member;
   }
