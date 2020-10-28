@@ -1,9 +1,9 @@
 # kernel_slicer
 kernel_slicer
 
-1) sudo apt-get install install cmake
+1) sudo apt-get install cmake
 
-2) sudo apt-get install install ninja-build
+2) sudo apt-get install ninja-build
 
 3) git clone https://github.com/llvm/llvm-project.git 
   
