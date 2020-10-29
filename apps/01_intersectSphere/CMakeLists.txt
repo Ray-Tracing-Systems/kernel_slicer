@@ -23,7 +23,7 @@ endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -fopenmp")
 
-add_executable(test main.cpp test_class.cpp Bitmap.cpp)
+add_executable(testapp main.cpp test_class.cpp Bitmap.cpp)
 
-set_target_properties(test PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 

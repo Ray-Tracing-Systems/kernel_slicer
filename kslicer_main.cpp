@@ -38,6 +38,11 @@
 
 using namespace clang;
 
+namespace kslicer
+{  
+  const std::string GetProjPrefix() { return std::string("kgen_"); };
+};
+
 /**
 \brief for each method MainClass::kernel_XXX
 */
@@ -70,7 +75,6 @@ struct DataMemberInfo
   std::string containerType;
   std::string containerDataType;
 };
-
 
 // RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.
 //
@@ -268,13 +272,15 @@ std::string GetKernelSourceCode(const clang::CXXMethodDecl* node, clang::SourceM
   clang::SourceLocation b(node->getBeginLoc()), _e(node->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
   std::string methodSource = std::string(sm.getCharacterData(b), sm.getCharacterData(e));
+  
+  const std::string numThreadsName = kslicer::GetProjPrefix() + "iNumElements";
 
   std::stringstream strOut;
   strOut << "{" << std::endl;
   strOut << "  /////////////////////////////////////////////////" << std::endl;
   for(size_t i=0;i<threadIdNames.size();i++)
     strOut << "  const uint " << threadIdNames[i].c_str() << " = get_global_id(" << i << ");"<< std::endl;
-  strOut << "  if (tid >= iNumElements)" << std::endl;
+  strOut << "  if (tid >= " << numThreadsName.c_str() << ")" << std::endl;
   strOut << "    return;" << std::endl;
   strOut << "  /////////////////////////////////////////////////" << std::endl;
   return strOut.str() + methodSource.substr(methodSource.find_first_of('{')+1);
@@ -287,10 +293,10 @@ void ReplaceOpenCLBuiltInTypes(std::string& a_typeName)
   if(found1 != std::string::npos)
     a_typeName.replace(found1, lmStucts.length(), "");
 
-  //std::string stucts("struct");
-  //auto found2 = a_typeName.find(stucts);
-  //if(found2 != std::string::npos)
-  //  a_typeName.replace(found2, stucts.length(), "");
+  std::string lm("LiteMath::");
+  auto found2 = a_typeName.find(lm);
+  if(found2 != std::string::npos)
+    a_typeName.replace(found2, lm.length(), "");
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -365,7 +371,11 @@ void PrintKernelToCL(std::ostream& outFileCL, const KernelInfo& funcInfo, const 
       outFileCL << "  __global " << typeStr.c_str() << " restrict " << arg.name.c_str() << "," << std::endl;
   }
   
-  outFileCL << "  const uint iNumElements)" << std::endl;
+  const std::string numThreadsName = kslicer::GetProjPrefix() + "iNumElements";
+  const std::string m_dataName     = kslicer::GetProjPrefix() + "data";
+
+  outFileCL << "  __global const uint* restrict " << m_dataName.c_str() << "," << std::endl;
+  outFileCL << "  const uint " << numThreadsName.c_str() << ")" << std::endl;
 
   std::vector<std::string> threadIdNames;
 
