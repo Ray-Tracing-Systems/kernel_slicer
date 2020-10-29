@@ -27,7 +27,7 @@
    i.e. put folder on this project project in to "llvm-project/clang-tools-extra" to form "llvm-project/clang-tools-extra/kernel_slicer"
    
 8) put "add_subdirectory(kernel_slicer)" to CMakeLists.txt in "clang-tools-extra" folder
-9) Rename "CMakeLists.txt" to "CMakeLists2.txt"  
+9) Rename "CMakeLists.txt" to "CMakeLists2.txt"  (please don't commit)
 10) Rename "CMakeLists1.txt" to "CMakeLists.txt" (please rename back before commiting!)
 11) ninja (from build folder of clang)
      the new executable will be build in the "llvm-project/build/bin" folder
