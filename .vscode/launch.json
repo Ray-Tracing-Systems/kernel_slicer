@@ -5,48 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name"   : "Launch",
-            "type"   : "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/../../build/bin/kslicer",
-            "args"   : ["${workspaceFolder}/ipavlov_data/parseme.cpp"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}/../../build/bin",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name"   : "Launch2",
-            "type"   : "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/../../build/bin/kslicer",
-            "args"   : ["${workspaceFolder}/data/test_class.cpp"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
             "name"   : "Launch (app_01)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/../../build/bin/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/01_intersectSphere/test_class.cpp", 
                         "-mainFunc", "MainFunc",
                         "-out", "${workspaceFolder}/apps/01_intersectSphere/z_generated.cl", 
