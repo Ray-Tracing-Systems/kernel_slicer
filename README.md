@@ -7,7 +7,7 @@
 2) sudo touch /usr/lib/llvm-10/bin/yaml-bench 
 3) sudo apt-get install libclang-10-dev 
 4) use Cmake and make
-5) you may also used provided VS Code config to launch test applications
+5) you may also use provided VS Code config to launch test applications (tasks.json and launch.json)
 
 # Build(2): clang plugin
 
@@ -31,6 +31,6 @@
 10) Rename "CMakeLists1.txt" to "CMakeLists.txt" (please rename back before commiting!)
 11) ninja (from build folder of clang)
      the new executable will be build in the "llvm-project/build/bin" folder
-     you may also used provided VS Code config (please use launch1.json file !!!, rename it is the same way as CMakeLists)
+     you may also used provided VS Code config (tasks1.json and launch1.json)
 
  
