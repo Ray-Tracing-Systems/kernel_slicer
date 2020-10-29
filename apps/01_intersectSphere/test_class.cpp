@@ -55,7 +55,7 @@ private:
 
   float4x4 m_worldViewProjInv;
   float m_data1;
-  float m_data2[4];
+  float m_data2[3];
   std::vector<float>  m_someBufferData;
   MyTestVector<float> m_someBufferData2;
 };

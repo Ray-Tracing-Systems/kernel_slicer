@@ -35,46 +35,15 @@
 
 #include "ast_matchers.h"
 #include "class_gen.h"
+#include "kslicer.h"
 
 using namespace clang;
 
-namespace kslicer
-{  
-  const std::string GetProjPrefix() { return std::string("kgen_"); };
-};
+const std::string kslicer::GetProjPrefix() { return std::string("kgen_"); };
 
-/**
-\brief for each method MainClass::kernel_XXX
-*/
-struct KernelInfo 
-{
-  struct Arg 
-  {
-    std::string type;
-    std::string name;
-    int         size;
-  };
-  std::string      return_type;
-  std::string      name;
-  std::vector<Arg> args;
 
-  const CXXMethodDecl* astNode = nullptr;
-};
-
-/**
-\brief for data member of MainClass
-*/
-struct DataMemberInfo 
-{
-  std::string name;
-  std::string type;
-  size_t      sizeInBytes;              // may be not needed due to using sizeof in generated code, but it is useful for sorting members by size and making apropriate aligment
-  size_t      offsetInTargetBuffer = 0; // offset in bytes in terget buffer that stores all data members
-  
-  bool isContainer = false;
-  std::string containerType;
-  std::string containerDataType;
-};
+using kslicer::KernelInfo;
+using kslicer::DataMemberInfo;
 
 // RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.
 //
@@ -542,6 +511,13 @@ int main(int argc, const char **argv)
     }
 
     outFileCL.close();
+  }
+  
+  // calc offsets for all class variables
+  //
+  {
+    auto classVariables = kslicer::MakeClassDataListAndCalcOffsets(astConsumer.rv.dataMembers);
+    std::cout << "placed classVariables num = " << classVariables.size() << std::endl;
   }
 
   // now process variables and kernel calls

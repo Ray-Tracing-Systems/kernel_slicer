@@ -19,6 +19,7 @@ add_executable(kslicer
                kslicer_main.cpp
                ast_matchers.cpp
                class_gen.cpp
+               class_data.cpp
                )
 
 target_link_libraries(kslicer PRIVATE -lclang -lLLVM-10 
