@@ -1,7 +1,7 @@
 # Project overview
   ...
   
-# Build(1): as stan-dalone
+# Build(1): as stand-alone project
 
 1) sudo apt-get install llvm-10-dev
 2) sudo touch /usr/lib/llvm-10/bin/yaml-bench 
@@ -9,7 +9,7 @@
 4) use Cmake and make
 5) you may also use provided VS Code config to launch test applications (tasks.json and launch.json)
 
-# Build(2): as a part of clang/llvm
+# Build(2): as a part of clang/llvm project
 
 1) sudo apt-get install cmake
 2) sudo apt-get install ninja-build
