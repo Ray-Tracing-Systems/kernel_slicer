@@ -423,6 +423,8 @@ int main(int argc, const char **argv)
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  kslicer::MainClassInfo inputCodeInfo;
+
   CompilerInstance compiler;
   DiagnosticOptions diagnosticOptions;
   compiler.createDiagnostics();
@@ -443,16 +445,8 @@ int main(int argc, const char **argv)
   compiler.createFileManager();
   compiler.createSourceManager(compiler.getFileManager());
 
-  // <Warning!!> -- Begin of Platform Specific Code
   HeaderSearchOptions &headerSearchOptions = compiler.getHeaderSearchOpts();  
   headerSearchOptions.AddPath(stdlibFolder.c_str(), clang::frontend::Angled, false, false);
-
-  // headerSearchOptions.AddPath("/usr/local/include", clang::frontend::Angled, false, false);
-  // headerSearchOptions.AddPath("/usr/include",       clang::frontend::Angled, false, false);
-  // //headerSearchOptions.AddPath("/usr/include/c++/7.5.0", clang::frontend::Angled, false, false);
-  // //headerSearchOptions.AddPath("/usr/include/clang/10/include", clang::frontend::Angled, false, false);
-
-  // </Warning!!> -- End of Platform Specific Code
 
 
   // Allow C++ code to get rewritten
@@ -473,37 +467,32 @@ int main(int argc, const char **argv)
   compiler.getSourceManager().setMainFileID( compiler.getSourceManager().createFileID( pFile, clang::SourceLocation(), clang::SrcMgr::C_User));
   compiler.getDiagnosticClient().BeginSourceFile(compiler.getLangOpts(), &compiler.getPreprocessor());
 
-  // (1) traverse source code of main file first
-  //
-  MyASTConsumer astConsumer(mainFuncName.c_str(), mainClassName.c_str(), compiler.getASTContext());
-
-  // Convert <file>.c to <file_out>.c
-  std::string outName (fileName);
+  ////////////////////////////////////////////////////////////////////////
+  std::string outName(fileName);
   {
     size_t ext = outName.rfind(".");
     if (ext == std::string::npos)
        ext = outName.length();
     outName.insert(ext, "_out");
   }
-
   llvm::errs() << "Output to: " << outName << "\n";
-  std::error_code OutErrorInfo;
-  std::error_code ok;
+  ////////////////////////////////////////////////////////////////////////
 
-  if (OutErrorInfo == ok)
+  // (1) traverse source code of main file first
+  //
   {
-    // Parse the AST
+    MyASTConsumer astConsumer(mainFuncName.c_str(), mainClassName.c_str(), compiler.getASTContext());  
     ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
     compiler.getDiagnosticClient().EndSourceFile();
-  }
-  else
-  {
-    llvm::errs() << "Cannot open " << outName << " for writing\n";
+  
+    inputCodeInfo.allFunctions   = astConsumer.rv.functions;
+    inputCodeInfo.allDataMembers = astConsumer.rv.dataMembers;
+    inputCodeInfo.mainFuncNode   = astConsumer.rv.m_mainFuncNode;
   }
 
   // (2) traverse only main function and rename kernel_ to cmd_
   {
-    std::string mainFuncCode = kslicer::ProcessMainFunc(astConsumer.rv.m_mainFuncNode, compiler);
+    std::string mainFuncCode = kslicer::ProcessMainFunc(inputCodeInfo.mainFuncNode, compiler);
     std::ofstream fout(outName);
     fout << mainFuncCode.c_str() << std::endl;
   }
@@ -515,7 +504,7 @@ int main(int argc, const char **argv)
     if(!outFileCL.is_open())
       llvm::errs() << "Cannot open " << outGenerated.c_str() << " for writing\n";
 
-    for (const auto& a : astConsumer.rv.functions)  
+    for (const auto& a : inputCodeInfo.allFunctions)  
     {
       std::cout << a.first << " " << a.second.return_type << std::endl;
       PrintKernelToCL(outFileCL, a.second, a.first, compiler.getSourceManager());
@@ -524,14 +513,15 @@ int main(int argc, const char **argv)
     outFileCL.close();
   }
   
-  // calc offsets for all class variables
+  // put kernel list to inputCodeInfo
   //
   {
-    auto classVariables = kslicer::MakeClassDataListAndCalcOffsets(astConsumer.rv.dataMembers);
-    std::cout << "placed classVariables num = " << classVariables.size() << std::endl;
+    inputCodeInfo.kernels.reserve(inputCodeInfo.allFunctions.size());
+    for (const auto& k : inputCodeInfo.allFunctions)
+      inputCodeInfo.kernels.push_back(k.second);
   }
 
-  // now process variables and kernel calls
+  // now process variables and kernel calls of main function
   //
   {
     const char* argv2[] = {argv[0], argv[1], "--"};
@@ -552,6 +542,16 @@ int main(int argc, const char **argv)
     auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
   
     std::cout << "tool run res = " << res << std::endl;
+  }
+
+  // at this step we must filter data variables to store only those which are referenced inside kernels calls
+  //
+
+  // calc offsets for all class variables
+  //
+  {
+    inputCodeInfo.localVariables = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
+    std::cout << "placed classVariables num = " << inputCodeInfo.localVariables.size() << std::endl;
   }
 
   return 0;

@@ -2,6 +2,7 @@
 #define KSLICER_H
 
 #include <string>
+#include <vector>
 #include <unordered_map>
 
 #include "clang/AST/DeclCXX.h"
@@ -44,7 +45,24 @@ namespace kslicer
     std::string containerType;
     std::string containerDataType;
   };
+  
+  /**
+  \brief collector of all information about input main class
+  */
+  struct MainClassInfo
+  {
+    std::vector<KernelInfo>      kernels;
+    std::vector<DataMemberInfo>  localVariables;
+    std::vector<DataMemberInfo>  containers;
 
+    std::unordered_map<std::string, KernelInfo>     allFunctions;
+    std::unordered_map<std::string, DataMemberInfo> allDataMembers;
+    const clang::CXXMethodDecl*                     mainFuncNode;
+  };
+
+  /**
+  \brief select local variables of main class that can be placed in auxilary buffer
+  */
   std::vector<DataMemberInfo> MakeClassDataListAndCalcOffsets(std::unordered_map<std::string, DataMemberInfo>& vars);
 
 };
