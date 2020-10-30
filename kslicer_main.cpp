@@ -166,8 +166,20 @@ bool MyRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
     if(fieldTypePtr->isPointerType()) // we ignore pointers due to we can't pass them to GPU correctly
       return true;
 
-    auto typeDecl = fieldTypePtr->getAsRecordDecl();    
-    if (typeDecl != nullptr && isa<ClassTemplateSpecializationDecl>(typeDecl)) 
+    auto typeDecl = fieldTypePtr->getAsRecordDecl();  
+
+    if(fieldTypePtr->isConstantArrayType())
+    {
+      auto arrayType = dyn_cast<ConstantArrayType>(fieldTypePtr); 
+      assert(arrayType != nullptr);
+      QualType 	qtOfElem       = arrayType->getElementType(); 
+      member.containerDataType = qtOfElem.getAsString(); 
+      member.arraySize         = arrayType->getSize().getLimitedValue();      
+      auto typeInfo      = m_astContext.getTypeInfo(qt);
+      member.sizeInBytes = typeInfo.Width / 8; 
+      member.isArray     = true;
+    }  
+    else if (typeDecl != nullptr && isa<ClassTemplateSpecializationDecl>(typeDecl)) 
     {
       auto specDecl = dyn_cast<ClassTemplateSpecializationDecl>(typeDecl); 
       assert(specDecl != nullptr);
@@ -187,7 +199,6 @@ bool MyRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
     {
       auto typeInfo      = m_astContext.getTypeInfo(qt);
       member.sizeInBytes = typeInfo.Width / 8; 
-      member.offsetInTargetBuffer = 0;
     }
 
     dataMembers[member.name] = member;

@@ -19,7 +19,7 @@ struct less_than_key
   }
 };
 
-static size_t AlignedSize(const size_t a_size)
+static inline size_t AlignedSize(const size_t a_size)
 {
   size_t currSize = 4;
   while(a_size > currSize)
@@ -32,7 +32,6 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
   std::vector<kslicer::DataMemberInfo> resVars;
   resVars.reserve(a_vars.size());
   
-
   // (1) get variables and sort them by size
   //
   for(const auto& keyval : a_vars)

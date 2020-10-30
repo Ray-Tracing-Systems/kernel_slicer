@@ -39,6 +39,8 @@ namespace kslicer
     size_t      offsetInTargetBuffer = 0; // offset in bytes in terget buffer that stores all data members
     
     bool isContainer = false;
+    bool isArray     = false; // if is array, element type stored incontainerDataType 
+    size_t arraySize = 0;
     std::string containerType;
     std::string containerDataType;
   };
