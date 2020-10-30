@@ -1,5 +1,5 @@
 # Project overview
-![](logo.png)
+<img align="center" src="logo.png">
 
 # Build(1): as stand-alone project
 
