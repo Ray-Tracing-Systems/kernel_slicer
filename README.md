@@ -1,7 +1,5 @@
 # Project overview
-
-<img src="logo" alt="drawing" width="600"/>
-
+![](./logo.png =600x)
 
 # Build(1): as stand-alone project
 
