@@ -70,6 +70,13 @@ std::string GetKernelSourceCode(const clang::CXXMethodDecl* node, clang::SourceM
   return strOut.str() + methodSource.substr(methodSource.find_first_of('{')+1);
 }
 
+std::string GetRangeSourceCode(const clang::SourceRange a_range, clang::SourceManager& sm) 
+{
+  clang::SourceLocation b(a_range.getBegin()), _e(a_range.getEnd());
+  clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
+  return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
+}
+
 void ReplaceOpenCLBuiltInTypes(std::string& a_typeName)
 {
   std::string lmStucts("struct LiteMath::");
@@ -288,6 +295,8 @@ int main(int argc, const char **argv)
     inputCodeInfo.allKernels     = astConsumer.rv.functions;
     inputCodeInfo.allDataMembers = astConsumer.rv.dataMembers;
     inputCodeInfo.mainFuncNode   = astConsumer.rv.m_mainFuncNode;
+    inputCodeInfo.mainClassName  = mainClassName;
+    inputCodeInfo.mainClassFileName = fileName;
   }
   
   // init clang tooling
@@ -320,31 +329,25 @@ int main(int argc, const char **argv)
       if(k.second.usedInMainFunc)
         inputCodeInfo.kernels.push_back(k.second);
   }
-  
-  //for(const auto& kernel : inputCodeInfo.kernels)
-  //{
-  //  if(kernel.name == "kernel_InitEyeRay")
-  //  {
-  //    kernel.astNode->dump();
-  //    std::cout << std::endl;
-  //  }
-  //}
 
   // (3) now mark all data members, methods and functions which are actually used in kernels; we will ignore others. 
   //
+  kslicer::VariableAndFunctionFilter filter(std::cout, inputCodeInfo, compiler.getSourceManager());
   { 
-    kslicer::VariableAndFunctionFilter filter(std::cout, inputCodeInfo, mainClassName);
-    
     for(const auto& kernel : inputCodeInfo.kernels)
     {
       clang::ast_matchers::StatementMatcher dataMemberMatcher = kslicer::mk_member_var_matcher_of_method(kernel.name);
+      clang::ast_matchers::StatementMatcher funcMatcher       = kslicer::mk_function_call_matcher_from_function(kernel.name);
   
       clang::ast_matchers::MatchFinder finder;
       finder.addMatcher(dataMemberMatcher, &filter);
+      finder.addMatcher(funcMatcher, &filter);
     
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
       std::cout << "[filter] for " << kernel.name.c_str() << ";\ttool run res = " << res << std::endl;
     }
+
+    //inputCodeInfo.localFunctions = filter.GetUsedFunctions();
   }
 
   // (4) calc offsets for all class variables; ingore unused members that were not marked on previous step
@@ -354,20 +357,40 @@ int main(int argc, const char **argv)
     std::cout << "placed classVariables num = " << inputCodeInfo.localVariables.size() << std::endl;
   }
 
-  // (2) traverse only main function and rename kernel_ to cmd_
+  // (5) traverse only main function and rename kernel_ to cmd_
   {
     std::string mainFuncCode = kslicer::ProcessMainFunc(inputCodeInfo.mainFuncNode, compiler);
     std::ofstream fout(outName);
     fout << mainFuncCode.c_str() << std::endl;
   }
 
-  // (3) write kernels to .cl file
+  std::ofstream outFileCL(outGenerated.c_str());
+  if(!outFileCL.is_open())
+    llvm::errs() << "Cannot open " << outGenerated.c_str() << " for writing\n";
+
+
+  outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
+  outFileCL << "/////////////////// local functions /////////////////////////////////" << std::endl;
+  outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
+  outFileCL << std::endl;
+
+  // (6) write local functions to .cl file
+  //
+  for (const auto& f : filter.usedFunctions)  
+  {
+    std::string funcSourceCode = GetRangeSourceCode(f.second, compiler.getSourceManager());
+    outFileCL << funcSourceCode.c_str() << std::endl;
+  }
+
+  outFileCL << std::endl;
+  outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
+  outFileCL << "/////////////////// kernels /////////////////////////////////////////" << std::endl;
+  outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
+  outFileCL << std::endl;
+
+  // (7) write kernels to .cl file
   //
   {
-    std::ofstream outFileCL(outGenerated.c_str());
-    if(!outFileCL.is_open())
-      llvm::errs() << "Cannot open " << outGenerated.c_str() << " for writing\n";
-
     for (const auto& k : inputCodeInfo.kernels)  
     {
       std::cout << k.name << " " << k.return_type << std::endl;

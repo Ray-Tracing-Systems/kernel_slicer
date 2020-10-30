@@ -5,9 +5,14 @@
 #include "clang/Tooling/Tooling.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 
+#include "clang/Basic/SourceManager.h"
+
 #include <string>
 #include <sstream>
 #include <iostream>
+
+#include <unordered_map>
+#include <vector>
 
 #include "kslicer.h"
 
@@ -21,6 +26,7 @@ namespace kslicer
   clang::ast_matchers::StatementMatcher mk_krenel_call_matcher_from_function(std::string const& funcName);
 
   clang::ast_matchers::StatementMatcher mk_member_var_matcher_of_method(std::string const& funcName);
+  clang::ast_matchers::StatementMatcher mk_function_call_matcher_from_function(std::string const& funcName);
 
   std::string locationAsString(clang::SourceLocation loc, clang::SourceManager const * const sm);
   std::string sourceRangeAsString(clang::SourceRange r, clang::SourceManager const * sm);
@@ -99,8 +105,8 @@ namespace kslicer
   {
   public:
 
-    explicit VariableAndFunctionFilter(std::ostream& s, kslicer::MainClassInfo& a_allInfo, const std::string& a_mainClassName) : 
-                                       m_out(s), m_allInfo(a_allInfo), m_mainClassName(a_mainClassName) {}
+    explicit VariableAndFunctionFilter(std::ostream& s, kslicer::MainClassInfo& a_allInfo, clang::SourceManager& a_sm) : 
+                                       m_out(s), m_allInfo(a_allInfo), m_sourceManager(a_sm) { usedFunctions.clear(); }
 
     void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
     {
@@ -110,23 +116,46 @@ namespace kslicer
       MemberExpr        const * l_var     = result.Nodes.getNodeAs<MemberExpr>("memberReference");
       FieldDecl         const * var       = result.Nodes.getNodeAs<FieldDecl>("memberName");
 
+      CallExpr const * funcCall = result.Nodes.getNodeAs<CallExpr>("functionCall");
+      FunctionDecl const * func = result.Nodes.getNodeAs<FunctionDecl>("fdecl");
+
       clang::SourceManager& src_manager(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
 
       if(func_decl && l_var && var)
       {
         const RecordDecl* parentClass = var->getParent(); 
-        if(parentClass != nullptr && parentClass->getNameAsString() == m_mainClassName)
+        if(parentClass != nullptr && parentClass->getNameAsString() == m_allInfo.mainClassName)
         {
           m_allInfo.allDataMembers[var->getNameAsString()].usedInKernel = true;
           //m_out << "In function '" << func_decl->getNameAsString() << "' ";
           //m_out << "variable '" << var->getNameAsString() << "'" << " of " <<  parentClass->getNameAsString() << std::endl;
         }
       }
+      else if(func_decl && funcCall && func)
+      {
+        auto funcSourceRange = func->getSourceRange();
+        auto fileName  = m_sourceManager.getFilename(funcSourceRange.getBegin());
+        if(fileName == m_allInfo.mainClassFileName)
+        {
+          if(usedFunctions.find(func->getNameAsString()) == usedFunctions.end())
+          {
+            usedFunctions[func->getNameAsString()] = funcSourceRange;
+            //m_out << "In function '" << func_decl->getNameAsString() << "' ";
+            //m_out << "method '" << func->getNameAsString() << "' referred to at ";
+            //std::string sr(sourceRangeAsString(funcCall->getSourceRange(), &src_manager));
+            //m_out << sr;
+            //m_out << "\n";
+          }
+        }
+      }
       else 
       {
         check_ptr(l_var,     "l_var", "", m_out);
         check_ptr(var,       "var",   "", m_out);
+
         check_ptr(func_decl, "func_decl", "", m_out);
+        check_ptr(funcCall,  "kern_call", "", m_out);
+        check_ptr(func,      "kern",      "", m_out);
       }
 
       return;
@@ -135,6 +164,17 @@ namespace kslicer
     std::ostream&  m_out;
     MainClassInfo& m_allInfo;
     std::string    m_mainClassName;
+    clang::SourceManager& m_sourceManager;
+
+    std::unordered_map<std::string, clang::SourceRange> usedFunctions;
+
+    //std::vector<const clang::FunctionDecl*> GetUsedFunctions()
+    //{
+    //  std::vector<const clang::FunctionDecl*> res;
+    //  for(auto fDecl : usedFunctions)
+    //    res.push_back((const clang::FunctionDecl*)fDecl.second);
+    //  return res;
+    //}
 
   };  // class Global_Printer
 

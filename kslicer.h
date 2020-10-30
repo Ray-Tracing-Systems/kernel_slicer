@@ -53,13 +53,19 @@ namespace kslicer
   */
   struct MainClassInfo
   {
-    std::vector<KernelInfo>      kernels;
-    std::vector<DataMemberInfo>  localVariables;
-    std::vector<DataMemberInfo>  containers;
+    std::vector<KernelInfo>      kernels;         ///<! only those kerneles which are called from main function
+    std::vector<DataMemberInfo>  localVariables;  ///<! only those member variables which are referenced from kernels 
+    std::vector<DataMemberInfo>  containers;      ///<! containers that should be transformed to buffers
 
     std::unordered_map<std::string, KernelInfo>     allKernels;
     std::unordered_map<std::string, DataMemberInfo> allDataMembers;
     const clang::CXXMethodDecl*                     mainFuncNode;
+
+    //std::vector<const clang::FunctionDecl*>  localFunctions; ///<! functions from main file that should be generated in .cl file
+    //std::vector<const clang::CXXMethodDecl*> localMembers;   ///<! member function of main class that should be decorated and then generated in .cl file 
+
+    std::string mainClassName;
+    std::string mainClassFileName;
   };
 
   /**

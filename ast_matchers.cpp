@@ -79,6 +79,16 @@ clang::ast_matchers::StatementMatcher kslicer::mk_krenel_call_matcher_from_funct
   ).bind("functionCall");
 }
 
+clang::ast_matchers::StatementMatcher kslicer::mk_function_call_matcher_from_function(std::string const& a_funcName)
+{
+  using namespace clang::ast_matchers;
+  return 
+  callExpr(
+    allOf(hasAncestor( cxxMethodDecl(hasName(a_funcName)).bind("targetFunction") ),
+          callee(functionDecl().bind("fdecl"))
+         )
+  ).bind("functionCall");
+}
 
 clang::ast_matchers::StatementMatcher kslicer::mk_member_var_matcher_of_method(std::string const& a_funcName)
 {
