@@ -1,6 +1,6 @@
 # Project overview
 
-![](logo.png)
+![](logo.png = 600x450)
 
 
 # Build(1): as stand-alone project
