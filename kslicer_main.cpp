@@ -333,11 +333,11 @@ int main(int argc, const char **argv)
   // (3) now mark all data members, methods and functions which are actually used in kernels; we will ignore others. 
   //
   { 
-    kslicer::VariableAndFunctionFilter filter(std::cout, inputCodeInfo);
+    kslicer::VariableAndFunctionFilter filter(std::cout, inputCodeInfo, mainClassName);
     
     for(const auto& kernel : inputCodeInfo.kernels)
     {
-      clang::ast_matchers::StatementMatcher dataMemberMatcher = kslicer::mk_member_var_matcher_of_method(kernel.name.c_str());
+      clang::ast_matchers::StatementMatcher dataMemberMatcher = kslicer::mk_member_var_matcher_of_method(kernel.name);
   
       clang::ast_matchers::MatchFinder finder;
       finder.addMatcher(dataMemberMatcher, &filter);
@@ -345,6 +345,13 @@ int main(int argc, const char **argv)
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
       std::cout << "[filter] for " << kernel.name.c_str() << ";\ttool run res = " << res << std::endl;
     }
+  }
+
+  // (4) calc offsets for all class variables; ingore unused members that were not marked on previous step
+  //
+  {
+    inputCodeInfo.localVariables = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
+    std::cout << "placed classVariables num = " << inputCodeInfo.localVariables.size() << std::endl;
   }
 
   // (2) traverse only main function and rename kernel_ to cmd_
@@ -374,12 +381,6 @@ int main(int argc, const char **argv)
   // at this step we must filter data variables to store only those which are referenced inside kernels calls
   //
 
-  // calc offsets for all class variables
-  //
-  {
-    inputCodeInfo.localVariables = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
-    std::cout << "placed classVariables num = " << inputCodeInfo.localVariables.size() << std::endl;
-  }
 
   return 0;
 }

@@ -85,7 +85,7 @@ clang::ast_matchers::StatementMatcher kslicer::mk_member_var_matcher_of_method(s
   using namespace clang::ast_matchers;
   return
   memberExpr(
-    hasDeclaration(namedDecl().bind("memberName")),
+    hasDeclaration(fieldDecl().bind("memberName")),
     hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction"))
   ).bind("memberReference");
 }

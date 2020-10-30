@@ -99,32 +99,33 @@ namespace kslicer
   {
   public:
 
-    explicit VariableAndFunctionFilter(std::ostream& s, kslicer::MainClassInfo& a_allInfo) : m_out(s), m_allInfo(a_allInfo) {}
+    explicit VariableAndFunctionFilter(std::ostream& s, kslicer::MainClassInfo& a_allInfo, const std::string& a_mainClassName) : 
+                                       m_out(s), m_allInfo(a_allInfo), m_mainClassName(a_mainClassName) {}
 
     void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
     {
       using namespace clang;
      
       FunctionDecl      const * func_decl = result.Nodes.getNodeAs<FunctionDecl>("targetFunction");
-
       MemberExpr        const * l_var     = result.Nodes.getNodeAs<MemberExpr>("memberReference");
-      NamedDecl         const * var       = result.Nodes.getNodeAs<NamedDecl>("memberName");
+      FieldDecl         const * var       = result.Nodes.getNodeAs<FieldDecl>("memberName");
 
       clang::SourceManager& src_manager(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
 
       if(func_decl && l_var && var)
       {
-        m_out << "In function '" << func_decl->getNameAsString() << "' ";
-        m_out << "variable '" << var->getNameAsString() << "' referred to at ";
-        std::string sr(sourceRangeAsString(l_var->getSourceRange(), &src_manager));
-        m_out << sr;
-        m_out << "\n";
+        const RecordDecl* parentClass = var->getParent(); 
+        if(parentClass != nullptr && parentClass->getNameAsString() == m_mainClassName)
+        {
+          m_allInfo.allDataMembers[var->getNameAsString()].usedInKernel = true;
+          //m_out << "In function '" << func_decl->getNameAsString() << "' ";
+          //m_out << "variable '" << var->getNameAsString() << "'" << " of " <<  parentClass->getNameAsString() << std::endl;
+        }
       }
       else 
       {
         check_ptr(l_var,     "l_var", "", m_out);
         check_ptr(var,       "var",   "", m_out);
-
         check_ptr(func_decl, "func_decl", "", m_out);
       }
 
@@ -133,6 +134,7 @@ namespace kslicer
     
     std::ostream&  m_out;
     MainClassInfo& m_allInfo;
+    std::string    m_mainClassName;
 
   };  // class Global_Printer
 

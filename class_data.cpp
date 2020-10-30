@@ -36,7 +36,7 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
   //
   for(const auto& keyval : a_vars)
   {
-    if(!keyval.second.isContainer)
+    if(!keyval.second.isContainer && keyval.second.usedInKernel)
       resVars.push_back(keyval.second);
   }
 
