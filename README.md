@@ -1,5 +1,7 @@
 # Project overview
-<img align="center" src="logo.png">
+<p align="center">
+  <img align="center" src="logo.png">
+</p>
 
 # Build(1): as stand-alone project
 
