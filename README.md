@@ -1,7 +1,6 @@
 # Project overview
-<p align="center">
-  <img align="center" src="logo.png">
-</p>
+<img src="logo.png">
+Powered by clang/llvm!
 
 # Build(1): as stand-alone project
 
