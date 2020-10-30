@@ -33,17 +33,19 @@
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 
+#include "kslicer.h"
+#include "initial_pass.h"
 #include "ast_matchers.h"
 #include "class_gen.h"
-#include "kslicer.h"
 
 using namespace clang;
 
 const std::string kslicer::GetProjPrefix() { return std::string("kgen_"); };
 
-
 using kslicer::KernelInfo;
 using kslicer::DataMemberInfo;
+
+/*
 
 // RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.
 //
@@ -218,33 +220,21 @@ class MyASTConsumer : public ASTConsumer
   MyASTConsumer(std::string main_name, std::string main_class, const ASTContext& a_astContext) : rv(main_name, main_class, a_astContext) { }
   bool HandleTopLevelDecl(DeclGroupRef d) override;
   MyRecursiveASTVisitor rv;
-  
 };
 
 bool MyASTConsumer::HandleTopLevelDecl(DeclGroupRef d)
 {
   typedef DeclGroupRef::iterator iter;
-
   for (iter b = d.begin(), e = d.end(); b != e; ++b)
-  {
     rv.TraverseDecl(*b);
-  }
-
   return true; // keep going
 }
+*/
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static llvm::cl::OptionCategory GDOpts("global-detect options");
-
-const char * addl_help = "Report all functions that use global variable, or all sites at which "
-                         "global variables are used";
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 clang::LangOptions lopt;
 
 std::string GetKernelSourceCode(const clang::CXXMethodDecl* node, clang::SourceManager& sm, const std::vector<std::string>& threadIdNames) 
@@ -397,7 +387,6 @@ int main(int argc, const char **argv)
   std::string mainFuncName  = "PathTrace";
   std::string outGenerated  = "data/generated.cl";
   std::string stdlibFolder  = "";
-
   
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
@@ -427,9 +416,7 @@ int main(int argc, const char **argv)
 
   CompilerInstance compiler;
   DiagnosticOptions diagnosticOptions;
-  compiler.createDiagnostics();
-  //compiler.createDiagnostics(argc, argv);
-
+  compiler.createDiagnostics();  //compiler.createDiagnostics(argc, argv);
 
   // Create an invocation that passes any flags to preprocessor
   std::shared_ptr<CompilerInvocation> Invocation = std::make_shared<CompilerInvocation>();
@@ -441,13 +428,13 @@ int main(int argc, const char **argv)
   pto->Triple     = llvm::sys::getDefaultTargetTriple();
   TargetInfo *pti = TargetInfo::CreateTargetInfo(compiler.getDiagnostics(), pto);
   compiler.setTarget(pti);
-
   compiler.createFileManager();
   compiler.createSourceManager(compiler.getFileManager());
-
+  
+  // (0) add path dummy include files for STL and e.t.c. (we don't want to parse actually std library)
+  //
   HeaderSearchOptions &headerSearchOptions = compiler.getHeaderSearchOpts();  
   headerSearchOptions.AddPath(stdlibFolder.c_str(), clang::frontend::Angled, false, false);
-
 
   // Allow C++ code to get rewritten
   LangOptions langOpts;
@@ -481,7 +468,7 @@ int main(int argc, const char **argv)
   // (1) traverse source code of main file first
   //
   {
-    MyASTConsumer astConsumer(mainFuncName.c_str(), mainClassName.c_str(), compiler.getASTContext());  
+    kslicer::InitialPassASTConsumer astConsumer(mainFuncName.c_str(), mainClassName.c_str(), compiler.getASTContext());  
     ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
     compiler.getDiagnosticClient().EndSourceFile();
   
@@ -527,7 +514,7 @@ int main(int argc, const char **argv)
     const char* argv2[] = {argv[0], argv[1], "--"};
     int argc2 = sizeof(argv2)/sizeof(argv2[0]);
 
-    clang::tooling::CommonOptionsParser OptionsParser(argc2, argv2, GDOpts, addl_help);
+    clang::tooling::CommonOptionsParser OptionsParser(argc2, argv2, GDOpts);
     clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
     clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::mk_local_var_matcher_of_function(mainFuncName.c_str());
