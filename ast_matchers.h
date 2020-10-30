@@ -9,6 +9,8 @@
 #include <sstream>
 #include <iostream>
 
+#include "kslicer.h"
+
 namespace kslicer
 {
   using namespace clang::tooling;
@@ -17,6 +19,8 @@ namespace kslicer
 
   clang::ast_matchers::StatementMatcher mk_local_var_matcher_of_function(std::string const& funcName);
   clang::ast_matchers::StatementMatcher mk_krenel_call_matcher_from_function(std::string const& funcName);
+
+  clang::ast_matchers::StatementMatcher mk_member_var_matcher_of_method(std::string const& funcName);
 
   std::string locationAsString(clang::SourceLocation loc, clang::SourceManager const * const sm);
   std::string sourceRangeAsString(clang::SourceRange r, clang::SourceManager const * sm);
@@ -36,11 +40,11 @@ namespace kslicer
     if(!p) { s << tabs << "Invalid pointer " << name << "\n"; }
   }
 
-  class Global_Printer : public clang::ast_matchers::MatchFinder::MatchCallback 
+  class MainFuncAnalyzer : public clang::ast_matchers::MatchFinder::MatchCallback 
   {
   public:
 
-    explicit Global_Printer(std::ostream & s) : m_out(s){}
+    explicit MainFuncAnalyzer(std::ostream& s, kslicer::MainClassInfo& a_allInfo) : m_out(s), m_allInfo(a_allInfo) {}
 
     void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
     {
@@ -62,6 +66,7 @@ namespace kslicer
         std::string sr(sourceRangeAsString(kern_call->getSourceRange(), &src_manager));
         m_out << sr;
         m_out << "\n";
+        m_allInfo.allKernels[kern->getNameAsString()].usedInMainFunc = true; // mark this kernel is used
       }
       else if(func_decl && l_var && var)
       {
@@ -85,6 +90,49 @@ namespace kslicer
     }  // run
     
     std::ostream& m_out;
+    MainClassInfo& m_allInfo;
+
+  };  // class MainFuncAnalyzer
+
+
+  class VariableAndFunctionFilter : public clang::ast_matchers::MatchFinder::MatchCallback 
+  {
+  public:
+
+    explicit VariableAndFunctionFilter(std::ostream& s, kslicer::MainClassInfo& a_allInfo) : m_out(s), m_allInfo(a_allInfo) {}
+
+    void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
+    {
+      using namespace clang;
+     
+      FunctionDecl      const * func_decl = result.Nodes.getNodeAs<FunctionDecl>("targetFunction");
+
+      MemberExpr        const * l_var     = result.Nodes.getNodeAs<MemberExpr>("memberReference");
+      NamedDecl         const * var       = result.Nodes.getNodeAs<NamedDecl>("memberName");
+
+      clang::SourceManager& src_manager(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
+
+      if(func_decl && l_var && var)
+      {
+        m_out << "In function '" << func_decl->getNameAsString() << "' ";
+        m_out << "variable '" << var->getNameAsString() << "' referred to at ";
+        std::string sr(sourceRangeAsString(l_var->getSourceRange(), &src_manager));
+        m_out << sr;
+        m_out << "\n";
+      }
+      else 
+      {
+        check_ptr(l_var,     "l_var", "", m_out);
+        check_ptr(var,       "var",   "", m_out);
+
+        check_ptr(func_decl, "func_decl", "", m_out);
+      }
+
+      return;
+    }  // run
+    
+    std::ostream&  m_out;
+    MainClassInfo& m_allInfo;
 
   };  // class Global_Printer
 

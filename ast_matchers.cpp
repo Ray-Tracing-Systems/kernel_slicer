@@ -80,13 +80,12 @@ clang::ast_matchers::StatementMatcher kslicer::mk_krenel_call_matcher_from_funct
 }
 
 
-//clang::ast_matchers::StatementMatcher kslicer::mk_krenel_call_matcher_from_function(std::string const& a_funcName)
-//{
-//  using namespace clang::ast_matchers;
-//  return 
-//  cxxMemberCallExpr(
-//    allOf(hasAncestor( functionDecl(hasName(a_funcName)).bind("targetFunction") ),
-//          callee(functionDecl().bind("fdecl"))
-//         )
-//  ).bind("functionCall");
-//}
+clang::ast_matchers::StatementMatcher kslicer::mk_member_var_matcher_of_method(std::string const& a_funcName)
+{
+  using namespace clang::ast_matchers;
+  return
+  memberExpr(
+    hasDeclaration(namedDecl().bind("memberName")),
+    hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction"))
+  ).bind("memberReference");
+}

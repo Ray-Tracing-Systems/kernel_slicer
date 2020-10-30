@@ -27,6 +27,7 @@ namespace kslicer
     std::vector<Arg> args;
   
     const clang::CXXMethodDecl* astNode = nullptr;
+    bool usedInMainFunc = false;
   };
 
   /**
@@ -36,12 +37,13 @@ namespace kslicer
   {
     std::string name;
     std::string type;
-    size_t      sizeInBytes;              // may be not needed due to using sizeof in generated code, but it is useful for sorting members by size and making apropriate aligment
-    size_t      offsetInTargetBuffer = 0; // offset in bytes in terget buffer that stores all data members
+    size_t      sizeInBytes;              ///<! may be not needed due to using sizeof in generated code, but it is useful for sorting members by size and making apropriate aligment
+    size_t      offsetInTargetBuffer = 0; ///<! offset in bytes in terget buffer that stores all data members
     
-    bool isContainer = false;
-    bool isArray     = false; // if is array, element type stored incontainerDataType 
-    size_t arraySize = 0;
+    bool isContainer  = false;
+    bool isArray      = false; ///<! if is array, element type stored incontainerDataType 
+    bool usedInKernel = false; ///<! if any kernel use the member --> true; if no one uses --> false.
+    size_t arraySize  = 0;
     std::string containerType;
     std::string containerDataType;
   };
@@ -55,7 +57,7 @@ namespace kslicer
     std::vector<DataMemberInfo>  localVariables;
     std::vector<DataMemberInfo>  containers;
 
-    std::unordered_map<std::string, KernelInfo>     allFunctions;
+    std::unordered_map<std::string, KernelInfo>     allKernels;
     std::unordered_map<std::string, DataMemberInfo> allDataMembers;
     const clang::CXXMethodDecl*                     mainFuncNode;
   };

@@ -45,192 +45,6 @@ const std::string kslicer::GetProjPrefix() { return std::string("kgen_"); };
 using kslicer::KernelInfo;
 using kslicer::DataMemberInfo;
 
-/*
-
-// RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.
-//
-class MyRecursiveASTVisitor : public RecursiveASTVisitor<MyRecursiveASTVisitor>
-{
-public:
-  
-  std::string MAIN_NAME;
-  std::string MAIN_CLASS_NAME;
-
-  MyRecursiveASTVisitor(std::string main_name, std::string main_class, const ASTContext& a_astContext) : MAIN_NAME(main_name), MAIN_CLASS_NAME(main_class), m_mainFuncNode(nullptr), m_astContext(a_astContext)  { }
-  
-  bool VisitCXXMethodDecl(CXXMethodDecl* f);
-  bool VisitFieldDecl    (FieldDecl* var);
-
-  std::unordered_map<std::string, KernelInfo>     functions;
-  std::unordered_map<std::string, DataMemberInfo> dataMembers;
-  const CXXMethodDecl* m_mainFuncNode;
-
-private:
-  void ProcessKernelDef(const CXXMethodDecl *f);
-  void ProcessMainFunc(const CXXMethodDecl *f);
-
-  const ASTContext& m_astContext;
-};
-
-KernelInfo::Arg ProcessParameter(ParmVarDecl *p) {
-  QualType q = p->getType();
-  const Type *typ = q.getTypePtr();
-  KernelInfo::Arg arg;
-  arg.name = p->getNameAsString();
-  arg.type = QualType::getAsString(q.split(), PrintingPolicy{ {} });
-  arg.size = 1;
-  if (typ->isPointerType()) {
-    arg.size = 1; // Because C always pass reference
-  }
-  
-  return arg;
-}
-
-void MyRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDecl *f) 
-{
-  if (!f || !f->hasBody()) 
-    return;
-  
-  KernelInfo info;
-  DeclarationNameInfo dni = f->getNameInfo();
-  DeclarationName dn = dni.getName();
-  info.name = dn.getAsString();
-  QualType q = f->getReturnType();
-  //const Type *typ = q.getTypePtr();
-  info.return_type = QualType::getAsString(q.split(), PrintingPolicy{ {} });
-  info.astNode     = f;
-
-  for (unsigned int i = 0; i < f->getNumParams(); ++i) {
-    info.args.push_back(ProcessParameter(f->parameters()[i]));
-  }
-  functions[info.name] = info;
-}
-
-void MyRecursiveASTVisitor::ProcessMainFunc(const CXXMethodDecl *f)
-{
-  m_mainFuncNode = f;
-}
-
-bool MyRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f) 
-{
-  if (f->hasBody())
-  {
-    // Get name of function
-    const DeclarationNameInfo dni = f->getNameInfo();
-    const DeclarationName dn      = dni.getName();
-    const std::string fname       = dn.getAsString();
-
-    if(fname.find("kernel_") != std::string::npos)
-    {
-      const QualType qThisType       = f->getThisType();   
-      const QualType classType       = qThisType.getTypePtr()->getPointeeType();
-      const std::string thisTypeName = classType.getAsString();
-      
-      if(thisTypeName == std::string("class ") + MAIN_CLASS_NAME || thisTypeName == std::string("struct ") + MAIN_CLASS_NAME)
-      {
-        ProcessKernelDef(f);
-        std::cout << "found kernel:\t" << fname.c_str() << " of type:\t" << thisTypeName.c_str() << std::endl;
-      }
-    }
-    else if(fname == MAIN_NAME)
-    {
-      ProcessMainFunc(f);
-      std::cout << "main function has found:\t" << fname.c_str() << std::endl;
-    }
-  }
-
-  return true; // returning false aborts the traversal
-}
-
-
-bool MyRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
-{
-  const clang::RecordDecl* rd = fd->getParent();
-  const clang::QualType    qt = fd->getType();
- 
-  const std::string& thisTypeName = rd->getName().str();
-
-  if(thisTypeName == MAIN_CLASS_NAME)
-  {
-    std::cout << "found class data member: " << fd->getName().str().c_str() << " of type:\t" << qt.getAsString().c_str() << ", isPOD = " << qt.isCXX11PODType(m_astContext) << std::endl;
-
-    DataMemberInfo member;
-    member.name        = fd->getName().str();
-    member.type        = qt.getAsString();
-    member.sizeInBytes = 0; 
-    member.offsetInTargetBuffer = 0;
-
-    // now we should check werther this field is std::vector<XXX> or just XXX; 
-    //
-    const Type* fieldTypePtr = qt.getTypePtr(); 
-    assert(fieldTypePtr != nullptr);
-
-    if(fieldTypePtr->isPointerType()) // we ignore pointers due to we can't pass them to GPU correctly
-      return true;
-
-    auto typeDecl = fieldTypePtr->getAsRecordDecl();  
-
-    if(fieldTypePtr->isConstantArrayType())
-    {
-      auto arrayType = dyn_cast<ConstantArrayType>(fieldTypePtr); 
-      assert(arrayType != nullptr);
-      QualType 	qtOfElem       = arrayType->getElementType(); 
-      member.containerDataType = qtOfElem.getAsString(); 
-      member.arraySize         = arrayType->getSize().getLimitedValue();      
-      auto typeInfo      = m_astContext.getTypeInfo(qt);
-      member.sizeInBytes = typeInfo.Width / 8; 
-      member.isArray     = true;
-    }  
-    else if (typeDecl != nullptr && isa<ClassTemplateSpecializationDecl>(typeDecl)) 
-    {
-      auto specDecl = dyn_cast<ClassTemplateSpecializationDecl>(typeDecl); 
-      assert(specDecl != nullptr);
-      
-      member.isContainer   = true;
-      member.containerType = specDecl->getNameAsString();      
-      const auto& templateArgs = specDecl->getTemplateArgs();
-      
-      if(templateArgs.size() > 0)
-        member.containerDataType = templateArgs[0].getAsType().getAsString();
-      else
-        member.containerDataType = "unknown";
-
-      std::cout << "container " << member.containerType.c_str() << " of " <<  member.containerDataType.c_str() << std::endl;
-    }
-    else
-    {
-      auto typeInfo      = m_astContext.getTypeInfo(qt);
-      member.sizeInBytes = typeInfo.Width / 8; 
-    }
-
-    dataMembers[member.name] = member;
-  }
-
-  return true;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class MyASTConsumer : public ASTConsumer
-{
- public:
-
-  MyASTConsumer(std::string main_name, std::string main_class, const ASTContext& a_astContext) : rv(main_name, main_class, a_astContext) { }
-  bool HandleTopLevelDecl(DeclGroupRef d) override;
-  MyRecursiveASTVisitor rv;
-};
-
-bool MyASTConsumer::HandleTopLevelDecl(DeclGroupRef d)
-{
-  typedef DeclGroupRef::iterator iter;
-  for (iter b = d.begin(), e = d.end(); b != e; ++b)
-    rv.TraverseDecl(*b);
-  return true; // keep going
-}
-*/
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -366,7 +180,6 @@ void PrintKernelToCL(std::ostream& outFileCL, const KernelInfo& funcInfo, const 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 int main(int argc, const char **argv)
 {
   struct stat sb;
@@ -472,9 +285,66 @@ int main(int argc, const char **argv)
     ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
     compiler.getDiagnosticClient().EndSourceFile();
   
-    inputCodeInfo.allFunctions   = astConsumer.rv.functions;
+    inputCodeInfo.allKernels     = astConsumer.rv.functions;
     inputCodeInfo.allDataMembers = astConsumer.rv.dataMembers;
     inputCodeInfo.mainFuncNode   = astConsumer.rv.m_mainFuncNode;
+  }
+  
+  // init clang tooling
+  //
+  const char* argv2[] = {argv[0], argv[1], "--"};
+  int argc2 = sizeof(argv2)/sizeof(argv2[0]);
+
+  clang::tooling::CommonOptionsParser OptionsParser(argc2, argv2, GDOpts);
+  clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
+
+  // (2) now process variables and kernel calls of main function
+  //
+  {
+    clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::mk_local_var_matcher_of_function(mainFuncName.c_str());
+    clang::ast_matchers::StatementMatcher kernel_matcher    = kslicer::mk_krenel_call_matcher_from_function(mainFuncName.c_str());
+    
+    kslicer::MainFuncAnalyzer printer(std::cout, inputCodeInfo);
+    clang::ast_matchers::MatchFinder finder;
+    
+    finder.addMatcher(local_var_matcher, &printer);
+    finder.addMatcher(kernel_matcher,    &printer);
+   
+    auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
+    std::cout << "tool run res = " << res << std::endl;
+    
+    // filter out unused kernels
+    //
+    inputCodeInfo.kernels.reserve(inputCodeInfo.allKernels.size());
+    for (const auto& k : inputCodeInfo.allKernels)
+      if(k.second.usedInMainFunc)
+        inputCodeInfo.kernels.push_back(k.second);
+  }
+  
+  //for(const auto& kernel : inputCodeInfo.kernels)
+  //{
+  //  if(kernel.name == "kernel_InitEyeRay")
+  //  {
+  //    kernel.astNode->dump();
+  //    std::cout << std::endl;
+  //  }
+  //}
+
+  // (3) now mark all data members, methods and functions which are actually used in kernels; we will ignore others. 
+  //
+  { 
+    kslicer::VariableAndFunctionFilter filter(std::cout, inputCodeInfo);
+    
+    for(const auto& kernel : inputCodeInfo.kernels)
+    {
+      clang::ast_matchers::StatementMatcher dataMemberMatcher = kslicer::mk_member_var_matcher_of_method(kernel.name.c_str());
+  
+      clang::ast_matchers::MatchFinder finder;
+      finder.addMatcher(dataMemberMatcher, &filter);
+    
+      auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
+      std::cout << "[filter] for " << kernel.name.c_str() << ";\ttool run res = " << res << std::endl;
+    }
   }
 
   // (2) traverse only main function and rename kernel_ to cmd_
@@ -491,45 +361,15 @@ int main(int argc, const char **argv)
     if(!outFileCL.is_open())
       llvm::errs() << "Cannot open " << outGenerated.c_str() << " for writing\n";
 
-    for (const auto& a : inputCodeInfo.allFunctions)  
+    for (const auto& k : inputCodeInfo.kernels)  
     {
-      std::cout << a.first << " " << a.second.return_type << std::endl;
-      PrintKernelToCL(outFileCL, a.second, a.first, compiler.getSourceManager());
+      std::cout << k.name << " " << k.return_type << std::endl;
+      PrintKernelToCL(outFileCL, k, k.name, compiler.getSourceManager());
     }
 
     outFileCL.close();
   }
-  
-  // put kernel list to inputCodeInfo
-  //
-  {
-    inputCodeInfo.kernels.reserve(inputCodeInfo.allFunctions.size());
-    for (const auto& k : inputCodeInfo.allFunctions)
-      inputCodeInfo.kernels.push_back(k.second);
-  }
 
-  // now process variables and kernel calls of main function
-  //
-  {
-    const char* argv2[] = {argv[0], argv[1], "--"};
-    int argc2 = sizeof(argv2)/sizeof(argv2[0]);
-
-    clang::tooling::CommonOptionsParser OptionsParser(argc2, argv2, GDOpts);
-    clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
-
-    clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::mk_local_var_matcher_of_function(mainFuncName.c_str());
-    clang::ast_matchers::StatementMatcher kernel_matcher    = kslicer::mk_krenel_call_matcher_from_function(mainFuncName.c_str());
-    
-    kslicer::Global_Printer printer(std::cout);
-    clang::ast_matchers::MatchFinder finder;
-    
-    finder.addMatcher(local_var_matcher, &printer);
-    finder.addMatcher(kernel_matcher,    &printer);
-  
-    auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
-  
-    std::cout << "tool run res = " << res << std::endl;
-  }
 
   // at this step we must filter data variables to store only those which are referenced inside kernels calls
   //
