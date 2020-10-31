@@ -22,11 +22,11 @@ namespace kslicer
   using namespace llvm;
   using namespace clang::ast_matchers;
 
-  clang::ast_matchers::StatementMatcher mk_local_var_matcher_of_function(std::string const& funcName);
-  clang::ast_matchers::StatementMatcher mk_krenel_call_matcher_from_function(std::string const& funcName);
+  clang::ast_matchers::StatementMatcher MakeMatch_LocalVarOfMethod(std::string const& funcName); 
+  clang::ast_matchers::StatementMatcher MakeMatch_MethodCallFromMethod(std::string const& funcName); 
 
-  clang::ast_matchers::StatementMatcher mk_member_var_matcher_of_method(std::string const& funcName);
-  clang::ast_matchers::StatementMatcher mk_function_call_matcher_from_function(std::string const& funcName);
+  clang::ast_matchers::StatementMatcher MakeMatch_MemberVarOfMethod(std::string const& funcName);     
+  clang::ast_matchers::StatementMatcher MakeMatch_FunctionCallFromFunction(std::string const& funcName);
 
   std::string locationAsString(clang::SourceLocation loc, clang::SourceManager const * const sm);
   std::string sourceRangeAsString(clang::SourceRange r, clang::SourceManager const * sm);

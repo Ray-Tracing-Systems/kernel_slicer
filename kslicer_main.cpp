@@ -310,8 +310,8 @@ int main(int argc, const char **argv)
   // (2) now process variables and kernel calls of main function
   //
   {
-    clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::mk_local_var_matcher_of_function(mainFuncName.c_str());
-    clang::ast_matchers::StatementMatcher kernel_matcher    = kslicer::mk_krenel_call_matcher_from_function(mainFuncName.c_str());
+    clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::MakeMatch_LocalVarOfMethod(mainFuncName.c_str());
+    clang::ast_matchers::StatementMatcher kernel_matcher    = kslicer::MakeMatch_MethodCallFromMethod(mainFuncName.c_str());
     
     kslicer::MainFuncAnalyzer printer(std::cout, inputCodeInfo);
     clang::ast_matchers::MatchFinder finder;
@@ -336,8 +336,8 @@ int main(int argc, const char **argv)
   { 
     for(const auto& kernel : inputCodeInfo.kernels)
     {
-      clang::ast_matchers::StatementMatcher dataMemberMatcher = kslicer::mk_member_var_matcher_of_method(kernel.name);
-      clang::ast_matchers::StatementMatcher funcMatcher       = kslicer::mk_function_call_matcher_from_function(kernel.name);
+      clang::ast_matchers::StatementMatcher dataMemberMatcher = kslicer::MakeMatch_MemberVarOfMethod(kernel.name);
+      clang::ast_matchers::StatementMatcher funcMatcher       = kslicer::MakeMatch_FunctionCallFromFunction(kernel.name);
   
       clang::ast_matchers::MatchFinder finder;
       finder.addMatcher(dataMemberMatcher, &filter);

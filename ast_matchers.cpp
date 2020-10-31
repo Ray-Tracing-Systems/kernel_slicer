@@ -57,18 +57,18 @@ std::string kslicer::sourceRangeAsString(clang::SourceRange r, clang::SourceMana
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-clang::ast_matchers::StatementMatcher kslicer::mk_local_var_matcher_of_function(std::string const& a_funcName)
+clang::ast_matchers::StatementMatcher kslicer::MakeMatch_LocalVarOfMethod(std::string const& a_funcName)
 {
   using namespace clang::ast_matchers;
   return
   declRefExpr(
     to(varDecl(hasLocalStorage()).bind("locVarName")),
-       hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction")
+       hasAncestor(cxxMethodDecl(hasName(a_funcName)).bind("targetFunction")
     )
   ).bind("localReference");
 }
 
-clang::ast_matchers::StatementMatcher kslicer::mk_krenel_call_matcher_from_function(std::string const& a_funcName)
+clang::ast_matchers::StatementMatcher kslicer::MakeMatch_MethodCallFromMethod(std::string const& a_funcName)
 {
   using namespace clang::ast_matchers;
   return 
@@ -79,7 +79,7 @@ clang::ast_matchers::StatementMatcher kslicer::mk_krenel_call_matcher_from_funct
   ).bind("functionCall");
 }
 
-clang::ast_matchers::StatementMatcher kslicer::mk_function_call_matcher_from_function(std::string const& a_funcName)
+clang::ast_matchers::StatementMatcher kslicer::MakeMatch_FunctionCallFromFunction(std::string const& a_funcName)
 {
   using namespace clang::ast_matchers;
   return 
@@ -90,7 +90,7 @@ clang::ast_matchers::StatementMatcher kslicer::mk_function_call_matcher_from_fun
   ).bind("functionCall");
 }
 
-clang::ast_matchers::StatementMatcher kslicer::mk_member_var_matcher_of_method(std::string const& a_funcName)
+clang::ast_matchers::StatementMatcher kslicer::MakeMatch_MemberVarOfMethod(std::string const& a_funcName)
 {
   using namespace clang::ast_matchers;
   return
