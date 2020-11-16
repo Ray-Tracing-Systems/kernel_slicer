@@ -192,6 +192,8 @@ class HeaderLister : public clang::PPCallbacks
 {
 public:
 
+  HeaderLister(kslicer::MainClassInfo* a_pInfo) : m_pGlobInfo(a_pInfo) {}
+
   void InclusionDirective(clang::SourceLocation HashLoc,
                           const clang::Token &IncludeTok,
                           llvm::StringRef FileName, bool IsAngled,
@@ -205,12 +207,14 @@ public:
     if(!IsAngled)
     {
       assert(File != nullptr);
-      std::string filename = std::string(RelativePath.begin(), RelativePath.end());
-      std::cout << "[HeaderLister]: " << filename.c_str() << std::endl;    
+      std::string filename = std::string(RelativePath.begin(), RelativePath.end()); 
+      m_pGlobInfo->allIncludeFiles[filename] = false;   
     }
   }
 
 private:
+
+  kslicer::MainClassInfo* m_pGlobInfo;
 
 };
 
@@ -307,7 +311,7 @@ int main(int argc, const char **argv)
   
   // register our header lister
   {
-    auto pHeaderLister = std::make_unique<HeaderLister>();
+    auto pHeaderLister = std::make_unique<HeaderLister>(&inputCodeInfo);
     compiler.getPreprocessor().addPPCallbacks(std::move(pHeaderLister));
   }
 
@@ -406,6 +410,12 @@ int main(int argc, const char **argv)
   if(!outFileCL.is_open())
     llvm::errs() << "Cannot open " << outGenerated.c_str() << " for writing\n";
 
+  // list include files
+  //
+  for(auto keyVal : inputCodeInfo.allIncludeFiles)
+  {
+    std::cout << "[include]: " << keyVal.first.c_str() << " = " << keyVal.second << std::endl;
+  }
 
   outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
   outFileCL << "/////////////////// local functions /////////////////////////////////" << std::endl;
@@ -441,6 +451,7 @@ int main(int argc, const char **argv)
 
   // at this step we must filter data variables to store only those which are referenced inside kernels calls
   //
+
 
 
   return 0;

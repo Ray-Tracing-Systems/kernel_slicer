@@ -66,6 +66,8 @@ namespace kslicer
 
     std::string mainClassName;
     std::string mainClassFileName;
+
+    std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
   };
 
   /**
