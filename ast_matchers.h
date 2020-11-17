@@ -119,7 +119,7 @@ namespace kslicer
       CallExpr const * funcCall = result.Nodes.getNodeAs<CallExpr>("functionCall");
       FunctionDecl const * func = result.Nodes.getNodeAs<FunctionDecl>("fdecl");
 
-      clang::SourceManager& src_manager(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
+      clang::SourceManager& srcMgr(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
 
       if(func_decl && l_var && var)
       {
@@ -142,11 +142,17 @@ namespace kslicer
             usedFunctions[func->getNameAsString()] = funcSourceRange;
             //m_out << "In function '" << func_decl->getNameAsString() << "' ";
             //m_out << "method '" << func->getNameAsString() << "' referred to at ";
-            //std::string sr(sourceRangeAsString(funcCall->getSourceRange(), &src_manager));
+            //std::string sr(sourceRangeAsString(funcCall->getSourceRange(), &srcMgr));
             //m_out << sr;
             //m_out << "\n";
           }
         }
+        
+        usedFiles[srcMgr.getFilename(func->getLocation()).str()] = true; // mark include files that used by functions; we need to put such includes in .cl file
+
+        //std::string funcName        = func->getNameAsString();
+        //std::string fileNameOfAFunc = srcMgr.getFilename(func->getLocation()).str();
+        //std::cout << "[VariableAndFunctionFilter]: fileName = " << fileNameOfAFunc.c_str() << " of " << funcName.c_str() << std::endl;
       }
       else 
       {
@@ -167,6 +173,7 @@ namespace kslicer
     clang::SourceManager& m_sourceManager;
 
     std::unordered_map<std::string, clang::SourceRange> usedFunctions;
+    std::unordered_map<std::string, bool>               usedFiles;
 
     //std::vector<const clang::FunctionDecl*> GetUsedFunctions()
     //{

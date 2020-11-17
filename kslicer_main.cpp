@@ -412,10 +412,23 @@ int main(int argc, const char **argv)
 
   // list include files
   //
-  for(auto keyVal : inputCodeInfo.allIncludeFiles)
+  outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
+  outFileCL << "/////////////////// include files ///////////////////////////////////" << std::endl;
+  outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
+  outFileCL << std::endl;
+
+  for(auto keyVal : inputCodeInfo.allIncludeFiles) // we will search for only used include files among all of them (quoted, angled were excluded earlier)
   {
-    std::cout << "[include]: " << keyVal.first.c_str() << " = " << keyVal.second << std::endl;
+    for(auto keyVal2 : filter.usedFiles)
+    {
+      if(keyVal2.first.find(keyVal.first) != std::string::npos)
+      {
+        //std::cout << "[include]: " << keyVal.first.c_str() << " = " << keyVal.second << std::endl;
+        outFileCL << "#include \"" << keyVal.first.c_str() << "\"" << std::endl;
+      }
+    }
   }
+  outFileCL << std::endl;
 
   outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
   outFileCL << "/////////////////// local functions /////////////////////////////////" << std::endl;
