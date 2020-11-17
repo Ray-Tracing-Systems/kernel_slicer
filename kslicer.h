@@ -6,6 +6,7 @@
 #include <unordered_map>
 
 #include "clang/AST/DeclCXX.h"
+#include "clang/Frontend/CompilerInstance.h"
 
 namespace kslicer
 {
@@ -54,7 +55,7 @@ namespace kslicer
   struct MainClassInfo
   {
     std::vector<KernelInfo>      kernels;         ///<! only those kerneles which are called from main function
-    std::vector<DataMemberInfo>  localVariables;  ///<! only those member variables which are referenced from kernels 
+    std::vector<DataMemberInfo>  classVariables;  ///<! only those member variables which are referenced from kernels 
     std::vector<DataMemberInfo>  containers;      ///<! containers that should be transformed to buffers
 
     std::unordered_map<std::string, KernelInfo>     allKernels;
@@ -74,6 +75,11 @@ namespace kslicer
   \brief select local variables of main class that can be placed in auxilary buffer
   */
   std::vector<DataMemberInfo> MakeClassDataListAndCalcOffsets(std::unordered_map<std::string, DataMemberInfo>& vars);
+
+  
+  void ReplaceOpenCLBuiltInTypes(std::string& a_typeName);
+
+  std::string ProcessKernel(const clang::CXXMethodDecl* a_node, clang::CompilerInstance& compiler, const MainClassInfo& a_codeInfo);
 
 };
 

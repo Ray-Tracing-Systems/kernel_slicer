@@ -51,25 +51,6 @@ using kslicer::DataMemberInfo;
 static llvm::cl::OptionCategory GDOpts("global-detect options");
 clang::LangOptions lopt;
 
-std::string GetKernelSourceCode(const clang::CXXMethodDecl* node, clang::SourceManager& sm, const std::vector<std::string>& threadIdNames) 
-{
-  clang::SourceLocation b(node->getBeginLoc()), _e(node->getEndLoc());
-  clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
-  std::string methodSource = std::string(sm.getCharacterData(b), sm.getCharacterData(e));
-  
-  const std::string numThreadsName = kslicer::GetProjPrefix() + "iNumElements";
-
-  std::stringstream strOut;
-  strOut << "{" << std::endl;
-  strOut << "  /////////////////////////////////////////////////" << std::endl;
-  for(size_t i=0;i<threadIdNames.size();i++)
-    strOut << "  const uint " << threadIdNames[i].c_str() << " = get_global_id(" << i << ");"<< std::endl;
-  strOut << "  if (tid >= " << numThreadsName.c_str() << ")" << std::endl;
-  strOut << "    return;" << std::endl;
-  strOut << "  /////////////////////////////////////////////////" << std::endl;
-  return strOut.str() + methodSource.substr(methodSource.find_first_of('{')+1);
-}
-
 std::string GetRangeSourceCode(const clang::SourceRange a_range, clang::SourceManager& sm) 
 {
   clang::SourceLocation b(a_range.getBegin()), _e(a_range.getEnd());
@@ -77,7 +58,7 @@ std::string GetRangeSourceCode(const clang::SourceRange a_range, clang::SourceMa
   return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
 }
 
-void ReplaceOpenCLBuiltInTypes(std::string& a_typeName)
+void kslicer::ReplaceOpenCLBuiltInTypes(std::string& a_typeName)
 {
   std::string lmStucts("struct LiteMath::");
   auto found1 = a_typeName.find(lmStucts);
@@ -120,9 +101,11 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PrintKernelToCL(std::ostream& outFileCL, const KernelInfo& funcInfo, const std::string& kernName, clang::SourceManager& sm)
+void PrintKernelToCL(std::ostream& outFileCL, const KernelInfo& funcInfo, const std::string& kernName, clang::CompilerInstance& compiler, const kslicer::MainClassInfo& a_inputCodeInfo)
 {
   assert(funcInfo.astNode != nullptr);
+
+  clang::SourceManager& sm = compiler.getSourceManager();
 
   bool foundThreadIdX = false; std::string tidXName = "tid";
   bool foundThreadIdY = false; std::string tidYName = "tid2";
@@ -133,7 +116,7 @@ void PrintKernelToCL(std::ostream& outFileCL, const KernelInfo& funcInfo, const 
   for (const auto& arg : funcInfo.args) 
   {
     std::string typeStr = arg.type.c_str();
-    ReplaceOpenCLBuiltInTypes(typeStr);
+    kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
 
     bool skip = false;
 
@@ -179,8 +162,21 @@ void PrintKernelToCL(std::ostream& outFileCL, const KernelInfo& funcInfo, const 
   if(foundThreadIdZ)
     threadIdNames.push_back(tidZName);
 
-  std::string sourceCode = GetKernelSourceCode(funcInfo.astNode, sm, threadIdNames);
-  outFileCL << sourceCode.c_str() << std::endl << std::endl;
+  std::string sourceCodeFull = kslicer::ProcessKernel(funcInfo.astNode, compiler, a_inputCodeInfo);
+  std::string sourceCodeCut  = sourceCodeFull.substr(sourceCodeFull.find_first_of('{')+1);
+
+  std::stringstream strOut;
+  {
+    strOut << "{" << std::endl;
+    strOut << "  /////////////////////////////////////////////////" << std::endl;
+    for(size_t i=0;i<threadIdNames.size();i++)
+      strOut << "  const uint " << threadIdNames[i].c_str() << " = get_global_id(" << i << ");"<< std::endl; 
+    strOut << "  if (tid >= " << numThreadsName.c_str() << ")" << std::endl;                                 // TODO: change this for 2D and 3D cases (!)
+    strOut << "    return;" << std::endl;
+    strOut << "  /////////////////////////////////////////////////" << std::endl;
+  }
+
+  outFileCL << strOut.str() << sourceCodeCut.c_str() << std::endl << std::endl;
 }
 
 
@@ -395,8 +391,8 @@ int main(int argc, const char **argv)
   // (4) calc offsets for all class variables; ingore unused members that were not marked on previous step
   //
   {
-    inputCodeInfo.localVariables = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
-    std::cout << "placed classVariables num = " << inputCodeInfo.localVariables.size() << std::endl;
+    inputCodeInfo.classVariables = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
+    std::cout << "placed classVariables num = " << inputCodeInfo.classVariables.size() << std::endl;
   }
 
   // (5) traverse only main function and rename kernel_ to cmd_
@@ -455,17 +451,14 @@ int main(int argc, const char **argv)
     for (const auto& k : inputCodeInfo.kernels)  
     {
       std::cout << k.name << " " << k.return_type << std::endl;
-      PrintKernelToCL(outFileCL, k, k.name, compiler.getSourceManager());
+      PrintKernelToCL(outFileCL, k, k.name, compiler, inputCodeInfo);
     }
 
     outFileCL.close();
   }
 
-
   // at this step we must filter data variables to store only those which are referenced inside kernels calls
   //
-
-
 
   return 0;
 }

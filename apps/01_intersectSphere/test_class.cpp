@@ -116,7 +116,7 @@ void TestClass::MainFunc(uint tidX, uint tidY, uint* out_color)
 
 #include "Bitmap.h"
 
-void test_class_exec()
+void test_class_cpu()
 {
   TestClass test;
   std::vector<uint> pixelData(WIN_WIDTH*WIN_HEIGHT);
