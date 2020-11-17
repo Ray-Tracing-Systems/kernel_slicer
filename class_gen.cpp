@@ -85,7 +85,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitMemberExpr(MemberExpr* expr)
   const std::string buffName = kslicer::GetProjPrefix() + "data"; 
   std::stringstream strOut;
   strOut << "*(  "; 
-  strOut << "(const " << fieldType.c_str() << "*)" << "(" << buffName.c_str() << "+" << (p->second.offsetInTargetBuffer/sizeof(uint32_t)) << ")";
+  strOut << "(__global const " << fieldType.c_str() << "*)" << "(" << buffName.c_str() << "+" << (p->second.offsetInTargetBuffer/sizeof(uint32_t)) << ")";
   strOut << "  )";
   
   m_rewriter.ReplaceText(expr->getExprLoc(), strOut.str());

@@ -5,9 +5,9 @@
 #define MAXFLOAT 1e37f
 #endif
 
-struct float4x4
+typedef struct float4x4T
 {
   float4 m_col[4];
-};
+} float4x4;
 
 #endif

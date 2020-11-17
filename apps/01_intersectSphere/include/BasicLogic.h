@@ -81,13 +81,13 @@ static inline float4 mul4x4x4(float4x4 m, float4 v)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct Lite_Hit
+typedef struct Lite_HitT
 {
   float t;
   int   primId; 
   int   instId;
   int   geomId;
-};
+} Lite_Hit;
 
 static inline float3 EyeRayDir(float x, float y, float w, float h, float4x4 a_mViewProjInv) // g_mViewProjInv
 {
@@ -122,7 +122,7 @@ inline float2 RaySphereHit(float3 orig, float3 dir, float4 sphere) // see Ray Tr
 	float3 remedyTerm  = deltap - ddp * dir;
 	float discriminant = radius * radius - dot(remedyTerm, remedyTerm);
 
-  float2 result(0,0);
+  float2 result = {0,0};
 	if (discriminant >= 0.0f)
 	{
 		const float sqrtVal = sqrt(discriminant);
