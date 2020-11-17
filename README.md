@@ -1,5 +1,5 @@
 # Project overview
-<img src="logo.png" width = "600" align = "center">
+<img src="logo.png" width = "300" align = "center">
 Powered by clang/llvm!
 
 # Build(1): as stand-alone project
