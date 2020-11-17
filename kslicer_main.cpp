@@ -145,22 +145,36 @@ void PrintKernelToCL(std::ostream& outFileCL, const KernelInfo& funcInfo, const 
       outFileCL << "  __global " << typeStr.c_str() << " restrict " << arg.name.c_str() << "," << std::endl;
   }
   
+  std::vector<std::string> threadIdNames;
+  {
+    if(foundThreadIdX)
+      threadIdNames.push_back(tidXName);
+    if(foundThreadIdY)
+      threadIdNames.push_back(tidYName);
+    if(foundThreadIdZ)
+      threadIdNames.push_back(tidZName);
+  }
+
   const std::string numThreadsName = kslicer::GetProjPrefix() + "iNumElements";
   const std::string m_dataName     = kslicer::GetProjPrefix() + "data";
 
   outFileCL << "  __global const uint* restrict " << m_dataName.c_str() << "," << std::endl;
-  outFileCL << "  const uint " << numThreadsName.c_str() << ")" << std::endl;
 
-  std::vector<std::string> threadIdNames;
+  if(threadIdNames.size() == 0)
+    outFileCL << "  const uint " << numThreadsName.c_str() << ")" << std::endl;
+  else
+  {
+    const char* XYZ[] = {"X","Y","Z"};
+    for(size_t i=0;i<threadIdNames.size();i++)
+    {
+      outFileCL << "  const uint " << numThreadsName.c_str() << XYZ[i];
+      if(i != threadIdNames.size()-1)
+        outFileCL << "," << std::endl;
+      else
+        outFileCL << ")" << std::endl;
+    }
+  }
 
-  if(foundThreadIdX)
-    threadIdNames.push_back(tidXName);
-
-  if(foundThreadIdY)
-    threadIdNames.push_back(tidYName);
-
-  if(foundThreadIdZ)
-    threadIdNames.push_back(tidZName);
 
   std::string sourceCodeFull = kslicer::ProcessKernel(funcInfo.astNode, compiler, a_inputCodeInfo);
   std::string sourceCodeCut  = sourceCodeFull.substr(sourceCodeFull.find_first_of('{')+1);
@@ -171,8 +185,31 @@ void PrintKernelToCL(std::ostream& outFileCL, const KernelInfo& funcInfo, const 
     strOut << "  /////////////////////////////////////////////////" << std::endl;
     for(size_t i=0;i<threadIdNames.size();i++)
       strOut << "  const uint " << threadIdNames[i].c_str() << " = get_global_id(" << i << ");"<< std::endl; 
-    strOut << "  if (tid >= " << numThreadsName.c_str() << ")" << std::endl;                                 // TODO: change this for 2D and 3D cases (!)
-    strOut << "    return;" << std::endl;
+    
+    if(threadIdNames.size() == 1)
+    {
+      strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << ")" << std::endl;                          
+      strOut << "    return;" << std::endl;
+    }
+    else if(threadIdNames.size() == 2)
+    {
+      strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << "X";
+      strOut << " || "   << threadIdNames[1].c_str() << " >= " << numThreadsName.c_str() << "Y" <<  ")" << std::endl;                          
+      strOut << "    return;" << std::endl;
+    }
+    else if(threadIdNames.size() == 3)
+    {
+      strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << "X";
+      strOut << " || "   << threadIdNames[1].c_str() << " >= " << numThreadsName.c_str() << "Y";  
+      strOut << " || "   << threadIdNames[2].c_str() << " >= " << numThreadsName.c_str() << "Z" <<  ")" << std::endl;                        
+      strOut << "    return;" << std::endl;
+    }
+    else
+    {
+      assert(false);
+    }
+    
+    
     strOut << "  /////////////////////////////////////////////////" << std::endl;
   }
 
