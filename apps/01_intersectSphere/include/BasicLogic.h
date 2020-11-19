@@ -104,7 +104,7 @@ static inline float3 EyeRayDir(float x, float y, float w, float h, float4x4 a_mV
   return normalize(to_float3(pos));
 }
 
-inline float2 RaySphereHit(float3 orig, float3 dir, float4 sphere) // see Ray Tracing Gems Book
+static inline float2 RaySphereHit(float3 orig, float3 dir, float4 sphere) // see Ray Tracing Gems Book
 {
   const float3 center = to_float3(sphere);
   const float  radius = sphere.w;
@@ -140,7 +140,7 @@ inline float2 RaySphereHit(float3 orig, float3 dir, float4 sphere) // see Ray Tr
 }
 
 
-inline Lite_Hit RayTraceImpl(float3 rayPos, float3 rayDir) 
+static inline Lite_Hit RayTraceImpl(float3 rayPos, float3 rayDir) 
 {
   // some imple here ... 
   //
@@ -164,7 +164,7 @@ inline Lite_Hit RayTraceImpl(float3 rayPos, float3 rayDir)
 #define WIN_WIDTH  512
 #define WIN_HEIGHT 512
 
-uint pitchOffset(uint x, uint y) { return y*WIN_WIDTH + x; } 
+static uint pitchOffset(uint x, uint y) { return y*WIN_WIDTH + x; } 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -119,7 +119,7 @@ void TestClass::MainFunc(uint tidX, uint tidY, uint* out_color)
 void test_class_cpu()
 {
   TestClass test;
-  std::vector<uint> pixelData(WIN_WIDTH*WIN_HEIGHT);
+  std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
   
   for(int y=0;y<WIN_HEIGHT;y++)
   {
