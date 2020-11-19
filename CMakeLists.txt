@@ -7,6 +7,7 @@ find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
+include_directories("include")
 include_directories(${LLVM_INCLUDE_DIRS})
 link_directories(${LLVM_INCLUDE_DIRS}/../lib)
 add_definitions(${LLVM_DEFINITIONS})
@@ -21,6 +22,7 @@ add_executable(kslicer
                class_gen.cpp
                class_data.cpp
                initial_pass.cpp
+               template_rendering.cpp
                )
 
 target_link_libraries(kslicer PRIVATE -lclang -lLLVM-10 

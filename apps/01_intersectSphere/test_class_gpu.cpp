@@ -6,8 +6,6 @@
 #include <memory>
 #include <chrono>
 
-#include <vulkan/vulkan.h>
-
 #include "vk_utils.h"
 #include "vk_program.h"
 #include "vk_copy.h"

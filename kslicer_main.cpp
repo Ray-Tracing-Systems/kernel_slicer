@@ -40,6 +40,9 @@
 
 using namespace clang;
 
+#include "template_rendering.h"
+
+
 const std::string kslicer::GetProjPrefix() { return std::string("kgen_"); };
 
 using kslicer::KernelInfo;
@@ -367,10 +370,11 @@ int main(int argc, const char **argv)
     ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
     compiler.getDiagnosticClient().EndSourceFile();
   
-    inputCodeInfo.allKernels     = astConsumer.rv.functions;
-    inputCodeInfo.allDataMembers = astConsumer.rv.dataMembers;
-    inputCodeInfo.mainFuncNode   = astConsumer.rv.m_mainFuncNode;
-    inputCodeInfo.mainClassName  = mainClassName;
+    inputCodeInfo.allKernels        = astConsumer.rv.functions;
+    inputCodeInfo.allDataMembers    = astConsumer.rv.dataMembers;
+    inputCodeInfo.mainFuncNode      = astConsumer.rv.m_mainFuncNode;
+    inputCodeInfo.mainClassName     = mainClassName;
+    inputCodeInfo.mainFuncName      = mainFuncName;
     inputCodeInfo.mainClassFileName = fileName;
   }
   
@@ -492,6 +496,17 @@ int main(int argc, const char **argv)
     }
 
     outFileCL.close();
+  }
+  
+  // (8) print class_generated.h
+  //
+  {
+    const size_t lastindex = inputCodeInfo.mainClassFileName.find_last_of("."); 
+    assert(lastindex != std::string::npos);
+    const std::string rawname = inputCodeInfo.mainClassFileName.substr(0, lastindex); 
+    std::ofstream fout(rawname + "_generated.h");
+    kslicer::PrintGeneratedClassDecl("templates/main_class_decl.h", inputCodeInfo, fout);
+    fout.close(); 
   }
 
   // at this step we must filter data variables to store only those which are referenced inside kernels calls
