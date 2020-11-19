@@ -366,16 +366,18 @@ int main(int argc, const char **argv)
   // (1) traverse source code of main file first
   //
   {
-    kslicer::InitialPassASTConsumer astConsumer(mainFuncName.c_str(), mainClassName.c_str(), compiler.getASTContext());  
+    kslicer::InitialPassASTConsumer astConsumer(mainFuncName.c_str(), mainClassName.c_str(), compiler.getASTContext(), compiler.getSourceManager());  
     ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
     compiler.getDiagnosticClient().EndSourceFile();
   
-    inputCodeInfo.allKernels        = astConsumer.rv.functions;
-    inputCodeInfo.allDataMembers    = astConsumer.rv.dataMembers;
-    inputCodeInfo.mainFuncNode      = astConsumer.rv.m_mainFuncNode;
-    inputCodeInfo.mainClassName     = mainClassName;
-    inputCodeInfo.mainFuncName      = mainFuncName;
-    inputCodeInfo.mainClassFileName = fileName;
+    inputCodeInfo.allKernels     = astConsumer.rv.functions;
+    inputCodeInfo.allDataMembers = astConsumer.rv.dataMembers;
+    inputCodeInfo.mainFuncNode   = astConsumer.rv.m_mainFuncNode;
+    inputCodeInfo.mainClassName  = mainClassName;
+    inputCodeInfo.mainFuncName   = mainFuncName;
+
+    inputCodeInfo.mainClassFileName    = fileName;
+    inputCodeInfo.mainClassFileInclude = astConsumer.rv.MAIN_FILE_INCLUDE;
   }
   
   // init clang tooling
@@ -501,12 +503,7 @@ int main(int argc, const char **argv)
   // (8) print class_generated.h
   //
   {
-    const size_t lastindex = inputCodeInfo.mainClassFileName.find_last_of("."); 
-    assert(lastindex != std::string::npos);
-    const std::string rawname = inputCodeInfo.mainClassFileName.substr(0, lastindex); 
-    std::ofstream fout(rawname + "_generated.h");
-    kslicer::PrintGeneratedClassDecl("templates/main_class_decl.h", inputCodeInfo, fout);
-    fout.close(); 
+    kslicer::PrintGeneratedClassDecl("templates/main_class_decl.h", inputCodeInfo);
   }
 
   // at this step we must filter data variables to store only those which are referenced inside kernels calls

@@ -20,8 +20,10 @@ namespace kslicer
     
     std::string MAIN_NAME;
     std::string MAIN_CLASS_NAME;
+    std::string MAIN_FILE_INCLUDE;
   
-    InitialPassRecursiveASTVisitor(std::string main_name, std::string main_class, const ASTContext& a_astContext) : MAIN_NAME(main_name), MAIN_CLASS_NAME(main_class), m_mainFuncNode(nullptr), m_astContext(a_astContext)  { }
+    InitialPassRecursiveASTVisitor(std::string main_name, std::string main_class, const ASTContext& a_astContext, clang::SourceManager& a_sm) : 
+                                   MAIN_NAME(main_name), MAIN_CLASS_NAME(main_class), m_mainFuncNode(nullptr), m_astContext(a_astContext), m_sourceManager(a_sm)  { }
     
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
     bool VisitFieldDecl    (FieldDecl* var);
@@ -34,14 +36,15 @@ namespace kslicer
     void ProcessKernelDef(const CXXMethodDecl *f);
     void ProcessMainFunc(const CXXMethodDecl *f);
   
-    const ASTContext& m_astContext;
+    const ASTContext&     m_astContext;
+    clang::SourceManager& m_sourceManager;
   };
   
   class InitialPassASTConsumer : public ASTConsumer
   {
    public:
   
-    InitialPassASTConsumer(std::string main_name, std::string main_class, const ASTContext& a_astContext) : rv(main_name, main_class, a_astContext) { }
+    InitialPassASTConsumer(std::string main_name, std::string main_class, const ASTContext& a_astContext, clang::SourceManager& a_sm) : rv(main_name, main_class, a_astContext, a_sm) { }
     bool HandleTopLevelDecl(DeclGroupRef d) override;
     InitialPassRecursiveASTVisitor rv;
   };

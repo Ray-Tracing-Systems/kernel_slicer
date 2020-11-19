@@ -83,6 +83,10 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
   {
     std::cout << "found class data member: " << fd->getName().str().c_str() << " of type:\t" << qt.getAsString().c_str() << ", isPOD = " << qt.isCXX11PODType(m_astContext) << std::endl;
 
+    auto funcSourceRange = rd->getSourceRange();
+    auto fileName        = m_sourceManager.getFilename(funcSourceRange.getBegin());
+    this->MAIN_FILE_INCLUDE = fileName;
+
     DataMemberInfo member;
     member.name        = fd->getName().str();
     member.type        = qt.getAsString();

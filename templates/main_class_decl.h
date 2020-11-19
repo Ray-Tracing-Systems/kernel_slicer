@@ -9,7 +9,6 @@ public:
   {{MainClassName}}_Generated(){}
   ~{{MainClassName}}_Generated(){}
 
-  virtual void Init();
   virtual void UpdateAll();
 
   virtual void {{MainFuncName}}Cmd();

@@ -6,7 +6,7 @@
 
 namespace kslicer
 {
-  void PrintGeneratedClassDecl(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo, std::ostream& a_out); 
+  void PrintGeneratedClassDecl(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo); 
 };
 
 #endif
