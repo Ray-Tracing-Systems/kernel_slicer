@@ -438,13 +438,8 @@ int main(int argc, const char **argv)
     std::cout << "placed classVariables num = " << inputCodeInfo.classVariables.size() << std::endl;
   }
 
-  // (5) traverse only main function and rename kernel_ to cmd_
-  {
-    std::string mainFuncCode = kslicer::ProcessMainFunc(inputCodeInfo.mainFuncNode, compiler);
-    std::ofstream fout(outName);
-    fout << mainFuncCode.c_str() << std::endl;
-  }
-
+  // (5) ...
+  // 
   std::ofstream outFileCL(outGenerated.c_str());
   if(!outFileCL.is_open())
     llvm::errs() << "Cannot open " << outGenerated.c_str() << " for writing\n";
@@ -500,11 +495,16 @@ int main(int argc, const char **argv)
     outFileCL.close();
   }
   
-  // (8) print class_generated.h
+  // (8) genarate cpp code with Vulkan calls
   //
   {
+    // traverse only main function and rename kernel_ to cmd_
+    std::string mainFuncCodeGenerated = kslicer::ProcessMainFunc(inputCodeInfo.mainFuncNode, compiler);
+  
     kslicer::PrintVulkanBasicsFile  ("templates/vulkan_basics.h", inputCodeInfo);
+    const std::string fileName = \
     kslicer::PrintGeneratedClassDecl("templates/main_class_decl.h", inputCodeInfo);
+    kslicer::PrintGeneratedClassImpl("templates/main_class_impl.cpp", fileName, inputCodeInfo, mainFuncCodeGenerated); 
   }
 
   // at this step we must filter data variables to store only those which are referenced inside kernels calls
