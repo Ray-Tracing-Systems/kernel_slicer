@@ -30,7 +30,7 @@ public:
     UpdateVectorMembers(a_pCopyEngine);
   }
 
-  virtual void {{MainFuncName}}Cmd(VkCommandBuffer a_commandBuffer);
+  {{MainFuncDecl}}
   
   {{KernelsDecl}}
 
@@ -43,6 +43,8 @@ protected:
 
   VkQueue computeQueue  = VK_NULL_HANDLE;
   VkQueue transferQueue = VK_NULL_HANDLE;
+
+  VkCommandBuffer m_currCmdBuffer = VK_NULL_HANDLE;
 
   virtual void UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);

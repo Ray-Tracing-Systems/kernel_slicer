@@ -32,7 +32,7 @@ void kslicer::PrintVulkanBasicsFile(const std::string& a_declTemplateFilePath, c
   fout.close();
 }
 
-std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo)
+std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo, const std::string& a_mainFuncDecl)
 {
   std::string rawname;
   {
@@ -52,7 +52,8 @@ std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFi
   json data;
   data["Includes"]      = strOut.str();
   data["MainClassName"] = a_classInfo.mainClassName;
-  data["MainFuncName"]  = a_classInfo.mainFuncName;
+  //data["MainFuncName"]  = a_classInfo.mainFuncName;
+  data["MainFuncDecl"]  = a_mainFuncDecl;
 
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";
@@ -90,6 +91,7 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
   data["Includes"]         = "";
   data["IncludeClassDecl"] = mainInclude;
   data["MainFuncCmd"]      = a_mainFuncCodeGen;
+  data["KernelsCmd"]       = "";
   
   inja::Environment env;
   inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());

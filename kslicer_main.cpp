@@ -498,12 +498,14 @@ int main(int argc, const char **argv)
   // (8) genarate cpp code with Vulkan calls
   //
   {
-    // traverse only main function and rename kernel_ to cmd_
-    std::string mainFuncCodeGenerated = kslicer::ProcessMainFunc(inputCodeInfo.mainFuncNode, compiler);
+    // traverse only main function and rename kernel_xxx to xxxCmd
+    std::string mainFuncGeneratedDecl;
+    std::string mainFuncCodeGenerated = kslicer::ProcessMainFunc(inputCodeInfo.mainFuncNode, compiler, inputCodeInfo.mainClassName,
+                                                                 mainFuncGeneratedDecl);
   
     kslicer::PrintVulkanBasicsFile  ("templates/vulkan_basics.h", inputCodeInfo);
     const std::string fileName = \
-    kslicer::PrintGeneratedClassDecl("templates/main_class_decl.h", inputCodeInfo);
+    kslicer::PrintGeneratedClassDecl("templates/main_class_decl.h", inputCodeInfo, mainFuncGeneratedDecl);
     kslicer::PrintGeneratedClassImpl("templates/main_class_impl.cpp", fileName, inputCodeInfo, mainFuncCodeGenerated); 
   }
 

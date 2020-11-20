@@ -7,7 +7,7 @@
 
 {{Includes}}
 
+{{KernelsCmd}}
 
 {{MainFuncCmd}}
-
 

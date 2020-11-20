@@ -30,11 +30,14 @@ namespace kslicer
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
   
+    std::string mainFuncCmdName;
+
   private:
     Rewriter& m_rewriter;
   };
 
-  std::string ProcessMainFunc(const CXXMethodDecl* a_node, clang::CompilerInstance& compiler);
+  std::string ProcessMainFunc(const CXXMethodDecl* a_node, clang::CompilerInstance& compiler, const std::string& a_mainClassName, 
+                              std::string& a_outFuncDecl);
 
   class KernelReplacerASTVisitor : public RecursiveASTVisitor<KernelReplacerASTVisitor> // replace all expressions with class variables to kgen_data buffer access
   {
@@ -56,9 +59,7 @@ namespace kslicer
     std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
   };
 
-
-
-
 }
+
 
 #endif

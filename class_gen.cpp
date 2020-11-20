@@ -10,7 +10,8 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f)
     const DeclarationName dn      = dni.getName();
     const std::string fname       = dn.getAsString();
 
-    m_rewriter.ReplaceText(dni.getSourceRange(), fname + "Cmd" );
+    mainFuncCmdName = fname + "Cmd";
+    m_rewriter.ReplaceText(dni.getSourceRange(), mainFuncCmdName);
   }
 
   return true; // returning false aborts the traversal
@@ -33,7 +34,17 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
   return true; 
 }
 
-std::string kslicer::ProcessMainFunc(const CXXMethodDecl* a_node, clang::CompilerInstance& compiler)
+bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to) 
+{
+  size_t start_pos = str.find(from);
+  if(start_pos == std::string::npos)
+    return false;
+  str.replace(start_pos, from.length(), to);
+  return true;
+}
+
+std::string kslicer::ProcessMainFunc(const CXXMethodDecl* a_node, clang::CompilerInstance& compiler, const std::string& a_mainClassName,
+                                     std::string& a_outFuncDecl)
 {
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
@@ -44,7 +55,36 @@ std::string kslicer::ProcessMainFunc(const CXXMethodDecl* a_node, clang::Compile
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
   
-  return rewrite2.getRewrittenText(clang::SourceRange(b,e));
+  std::string sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
+  
+  // (1) TestClass::MainFuncCmd --> TestClass_Generated::MainFuncCmd
+  // 
+  const std::string replaceFrom = a_mainClassName + "::" + rv.mainFuncCmdName;
+  const std::string replaceTo   = a_mainClassName + "_Generated" + "::" + rv.mainFuncCmdName;
+
+  assert(ReplaceFirst(sourceCode, replaceFrom, replaceTo));
+
+  // (2) add input command Buffer as first argument
+  //
+  {
+    size_t roundBracketPos = sourceCode.find("(");
+    sourceCode = (sourceCode.substr(0, roundBracketPos) + "(VkCommandBuffer a_commandBuffer, " + sourceCode.substr(roundBracketPos+2)); 
+  }
+
+  // (3) set m_currCmdBuffer with input command bufer
+  //
+  {
+    size_t bracePos = sourceCode.find("{");
+    sourceCode = (sourceCode.substr(0, bracePos) + "{\n  m_currCmdBuffer = a_commandBuffer; \n\n" + sourceCode.substr(bracePos+2)); 
+  }
+
+  // (4) get function decl from full function code
+  //
+  std::string mainFuncDecl = sourceCode.substr(0, sourceCode.find(")")+1) + ";";
+  assert(ReplaceFirst(mainFuncDecl, a_mainClassName + "_Generated" + "::", ""));
+
+  a_outFuncDecl = "virtual " + mainFuncDecl;
+  return sourceCode;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
