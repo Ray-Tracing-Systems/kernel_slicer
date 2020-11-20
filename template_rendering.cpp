@@ -32,7 +32,8 @@ void kslicer::PrintVulkanBasicsFile(const std::string& a_declTemplateFilePath, c
   fout.close();
 }
 
-std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo, const std::string& a_mainFuncDecl)
+std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo, 
+                                             const std::string& a_mainFuncDecl, const std::vector<std::string>& kernelsCallCmdDecl)
 {
   std::string rawname;
   {
@@ -49,6 +50,14 @@ std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFi
   std::stringstream strOut;
   strOut << "#include \"" << mainInclude.c_str() << "\"" << std::endl;
 
+  std::stringstream strOut2;
+  for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
+  {
+    if(i != 0)
+      strOut2 << "  ";
+    strOut2 << "virtual " << kernelsCallCmdDecl[i].c_str() << ";\n";
+  }
+
   json data;
   data["Includes"]      = strOut.str();
   data["MainClassName"] = a_classInfo.mainClassName;
@@ -57,7 +66,7 @@ std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFi
 
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";
-  data["KernelsDecl"]                  = "";
+  data["KernelsDecl"]                  = strOut2.str();
   
   inja::Environment env;
   inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());
@@ -74,7 +83,8 @@ std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFi
 void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath, 
                                       const std::string& a_includeName, 
                                       const MainClassInfo& a_classInfo,
-                                      const std::string& a_mainFuncCodeGen)
+                                      const std::string& a_mainFuncCodeGen,
+                                      const std::vector<std::string>& kernelsCallCmdDecl)
 {
   std::string folderPath  = GetFolderPath(a_includeName);
   std::string mainInclude = a_includeName;
@@ -87,11 +97,24 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
     rawname = a_classInfo.mainClassFileName.substr(0, lastindex); 
   }
 
+  std::stringstream strOut2;
+  for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
+  {
+    std::string kernDecl = kernelsCallCmdDecl[i];
+    size_t voidPos = kernDecl.find("void ");
+    assert(voidPos != std::string::npos);
+    std::string kernDecl2 = kernDecl.substr(0, voidPos + 4) + " " + a_classInfo.mainClassName + "_Generated::" + kernDecl.substr(voidPos + 5); 
+    strOut2 << kernDecl2.c_str() << "\n";
+    strOut2 << "{" << std::endl;
+    strOut2 << std::endl;
+    strOut2 << "}" << std::endl << std::endl;
+  }
+
   json data;
   data["Includes"]         = "";
   data["IncludeClassDecl"] = mainInclude;
   data["MainFuncCmd"]      = a_mainFuncCodeGen;
-  data["KernelsCmd"]       = "";
+  data["KernelsCmd"]       = strOut2.str();
   
   inja::Environment env;
   inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());

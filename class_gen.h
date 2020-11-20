@@ -59,7 +59,10 @@ namespace kslicer
     std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
   };
 
+  std::vector<std::string> ObtainKernelsDecl(const std::vector<KernelInfo>& a_kernelsData, clang::SourceManager& sm, const std::string& a_mainClassName);
+
 }
 
+bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 
 #endif

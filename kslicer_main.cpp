@@ -498,6 +498,8 @@ int main(int argc, const char **argv)
   // (8) genarate cpp code with Vulkan calls
   //
   {
+    std::vector<std::string> kernelsCallCmdDecl = ObtainKernelsDecl(inputCodeInfo.kernels, compiler.getSourceManager(), inputCodeInfo.mainClassName);
+
     // traverse only main function and rename kernel_xxx to xxxCmd
     std::string mainFuncGeneratedDecl;
     std::string mainFuncCodeGenerated = kslicer::ProcessMainFunc(inputCodeInfo.mainFuncNode, compiler, inputCodeInfo.mainClassName,
@@ -505,8 +507,8 @@ int main(int argc, const char **argv)
   
     kslicer::PrintVulkanBasicsFile  ("templates/vulkan_basics.h", inputCodeInfo);
     const std::string fileName = \
-    kslicer::PrintGeneratedClassDecl("templates/main_class_decl.h", inputCodeInfo, mainFuncGeneratedDecl);
-    kslicer::PrintGeneratedClassImpl("templates/main_class_impl.cpp", fileName, inputCodeInfo, mainFuncCodeGenerated); 
+    kslicer::PrintGeneratedClassDecl("templates/main_class_decl.h", inputCodeInfo, mainFuncGeneratedDecl, kernelsCallCmdDecl);
+    kslicer::PrintGeneratedClassImpl("templates/main_class_impl.cpp", fileName, inputCodeInfo, mainFuncCodeGenerated, kernelsCallCmdDecl); 
   }
 
   // at this step we must filter data variables to store only those which are referenced inside kernels calls

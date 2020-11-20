@@ -85,4 +85,6 @@ namespace kslicer
 
 };
 
+std::string GetRangeSourceCode(const clang::SourceRange a_range, clang::SourceManager& sm); 
+
 #endif
