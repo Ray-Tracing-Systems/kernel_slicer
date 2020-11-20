@@ -6,6 +6,7 @@
 
 namespace kslicer
 {
+  void PrintVulkanBasicsFile(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo);
   void PrintGeneratedClassDecl(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo); 
 };
 

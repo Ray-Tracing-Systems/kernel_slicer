@@ -503,6 +503,7 @@ int main(int argc, const char **argv)
   // (8) print class_generated.h
   //
   {
+    kslicer::PrintVulkanBasicsFile  ("templates/vulkan_basics.h", inputCodeInfo);
     kslicer::PrintGeneratedClassDecl("templates/main_class_decl.h", inputCodeInfo);
   }
 
