@@ -27,7 +27,7 @@ static inline float4x4 perspectiveMatrix(float fovy, float aspect, float zNear, 
   return res;
 }
 
-uint fakeOffset (uint x, uint y) { return 0; } 
+static inline uint fakeOffset (uint x, uint y) { return 0; } 
 
 template<class T> struct MyTestVector
 {

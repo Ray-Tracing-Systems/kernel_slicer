@@ -11,6 +11,9 @@
 #include "vk_copy.h"
 #include "vk_buffer.h"
 
+#include "vulkan_basics.h"
+void TestKernel(VulkanContext a_vkData);
+
 void test_class_gpu()
 {
   // (1) init vulkan
@@ -38,6 +41,9 @@ void test_class_gpu()
   std::vector<const char*> validationLayers, deviceExtensions;
   VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
   vk_utils::queueFamilyIndices fIDs = {};
+
+  deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
+
   fIDs.compute = queueComputeFID;
   device       = vk_utils::CreateLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures, fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
   commandPool  = vk_utils::CreateCommandPool(device, physicalDevice, VK_QUEUE_COMPUTE_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
@@ -49,6 +55,17 @@ void test_class_gpu()
     auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT);
     vkGetDeviceQueue(device, queueComputeFID, 0, &computeQueue);
     vkGetDeviceQueue(device, queueComputeFID, 0, &transferQueue);
+  }
+
+  {
+    VulkanContext ctx;
+    ctx.instance       = instance;
+    ctx.physicalDevice = physicalDevice;
+    ctx.device         = device;
+    ctx.commandPool    = commandPool;
+    ctx.computeQueue   = computeQueue;
+    ctx.transferQueue  = transferQueue;
+    TestKernel(ctx);
   }
 
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
