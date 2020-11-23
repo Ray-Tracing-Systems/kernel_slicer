@@ -55,9 +55,32 @@ void TestKernel(VulkanContext vk_data)
 
    
   std::string shaderName = "z_generated.cl.spv";
-  //const uint32_t currentWgSize = WG_SIZE;
 
-  pMaker->CreateShader(vk_data.device, shaderName.c_str(), nullptr, "kernel_InitEyeRay");
+  VkSpecializationMapEntry specializationEntries[3] = {};
+  {
+    specializationEntries[0].constantID = 0;
+    specializationEntries[0].offset     = 0;
+    specializationEntries[0].size       = sizeof(uint32_t);
+  
+    specializationEntries[1].constantID = 1;
+    specializationEntries[1].offset     = sizeof(uint32_t);
+    specializationEntries[1].size       = sizeof(uint32_t);
+  
+    specializationEntries[2].constantID = 2;
+    specializationEntries[2].offset     = 2 * sizeof(uint32_t);
+    specializationEntries[2].size       = sizeof(uint32_t);
+  }
+
+  uint32_t specializationData[3] = {16, 16, 1};
+  VkSpecializationInfo specsForWGSIze = {};
+  {
+    specsForWGSIze.mapEntryCount = 3;
+    specsForWGSIze.pMapEntries   = specializationEntries;
+    specsForWGSIze.dataSize      = 3 * sizeof(uint32_t);
+    specsForWGSIze.pData         = specializationData;
+  }
+
+  pMaker->CreateShader(vk_data.device, shaderName.c_str(), &specsForWGSIze, "kernel_InitEyeRay");
   
   VkDescriptorSet ds        = VK_NULL_HANDLE;
   VkDescriptorSetLayout dsl = VK_NULL_HANDLE; 
