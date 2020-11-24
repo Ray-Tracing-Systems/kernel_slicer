@@ -6,6 +6,7 @@
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 
 #include "clang/Basic/SourceManager.h"
+#include "clang/AST/ASTContext.h"
 
 #include <string>
 #include <sstream>
@@ -13,6 +14,7 @@
 
 #include <unordered_map>
 #include <vector>
+#include <algorithm>
 
 #include "kslicer.h"
 
@@ -50,7 +52,11 @@ namespace kslicer
   {
   public:
 
-    explicit MainFuncAnalyzer(std::ostream& s, kslicer::MainClassInfo& a_allInfo) : m_out(s), m_allInfo(a_allInfo) {}
+    explicit MainFuncAnalyzer(std::ostream& s, kslicer::MainClassInfo& a_allInfo, const clang::ASTContext& a_astContext) : 
+                              m_out(s), m_allInfo(a_allInfo), m_astContext(a_astContext) 
+    {
+      m_namesToIngore = kslicer::GetAllPredefinedThreadIdNames(); 
+    }
 
     void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
     {
@@ -81,6 +87,42 @@ namespace kslicer
         std::string sr(sourceRangeAsString(l_var->getSourceRange(), &src_manager));
         m_out << sr;
         m_out << "\n";
+        
+        const clang::QualType qt = var->getType();
+        const auto typePtr = qt.getTypePtr(); 
+        assert(typePtr != nullptr);
+        
+        auto elementId = std::find(m_namesToIngore.begin(), m_namesToIngore.end(), var->getNameAsString());
+
+        if(typePtr->isPointerType() || elementId != m_namesToIngore.end()) // ignore pointers and variables with special names
+          return;
+
+        auto typeInfo = m_astContext.getTypeInfo(qt);
+
+        DataLocalVarInfo varInfo;
+        varInfo.name        = var->getNameAsString();
+        varInfo.type        = qt.getAsString();
+        varInfo.sizeInBytes = typeInfo.Width / 8;
+        
+        varInfo.isArray   = false;
+        varInfo.arraySize = 0;
+        varInfo.typeOfArrayElement = ""; 
+        
+        if(typePtr->isConstantArrayType())
+        {
+          auto arrayType = dyn_cast<ConstantArrayType>(typePtr); 
+          assert(arrayType != nullptr);
+
+          QualType qtOfElem = arrayType->getElementType(); 
+          auto typeInfo2 = m_astContext.getTypeInfo(qtOfElem);
+
+          varInfo.arraySize = arrayType->getSize().getLimitedValue();      
+          varInfo.typeOfArrayElement = qtOfElem.getAsString();
+          varInfo.sizeInBytesOfArrayElement = typeInfo2.Width / 8;
+          varInfo.isArray = true;
+        }
+
+        m_allInfo.mainFuncLocals[varInfo.name] = varInfo;
       }
       else 
       {
@@ -97,6 +139,9 @@ namespace kslicer
     
     std::ostream& m_out;
     MainClassInfo& m_allInfo;
+    const clang::ASTContext&  m_astContext;
+
+    std::vector<std::string> m_namesToIngore;
 
   };  // class MainFuncAnalyzer
 

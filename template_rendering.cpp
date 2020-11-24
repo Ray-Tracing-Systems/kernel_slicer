@@ -67,6 +67,8 @@ std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFi
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";
   data["KernelsDecl"]                  = strOut2.str();
+
+  data["LocalVarsBuffersDecl"]         = "";      
   
   inja::Environment env;
   inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());
@@ -113,8 +115,16 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
   json data;
   data["Includes"]         = "";
   data["IncludeClassDecl"] = mainInclude;
+  data["MainClassName"]    = a_classInfo.mainClassName;
   data["MainFuncCmd"]      = a_mainFuncCodeGen;
   data["KernelsCmd"]       = strOut2.str();
+  data["TotalDescriptorSets"]  = 16;
+  data["LocalVarsBuffersInit"] = "";
+
+  data["LocalVarsBuffersInit"] = "";
+  data["ClassVectorsBuffersInit"] = "";
+  data["LocalVarsBuffersDestroy"] = "";
+  data["ClassVectorsBuffersDestroy"] = "";
   
   inja::Environment env;
   inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());

@@ -104,6 +104,11 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+std::vector<std::string> kslicer::GetAllPredefinedThreadIdNames()
+{
+  return {"tid", "tidX", "tidY", "tidZ"};
+}
+
 void PrintKernelToCL(std::ostream& outFileCL, const KernelInfo& funcInfo, const std::string& kernName, clang::CompilerInstance& compiler, const kslicer::MainClassInfo& a_inputCodeInfo)
 {
   assert(funcInfo.astNode != nullptr);
@@ -394,7 +399,7 @@ int main(int argc, const char **argv)
     clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::MakeMatch_LocalVarOfMethod(mainFuncName.c_str());
     clang::ast_matchers::StatementMatcher kernel_matcher    = kslicer::MakeMatch_MethodCallFromMethod(mainFuncName.c_str());
     
-    kslicer::MainFuncAnalyzer printer(std::cout, inputCodeInfo);
+    kslicer::MainFuncAnalyzer printer(std::cout, inputCodeInfo, compiler.getASTContext());
     clang::ast_matchers::MatchFinder finder;
     
     finder.addMatcher(local_var_matcher, &printer);

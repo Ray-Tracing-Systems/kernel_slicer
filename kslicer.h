@@ -48,6 +48,21 @@ namespace kslicer
     std::string containerType;
     std::string containerDataType;
   };
+
+  /**
+  \brief for local variables of MainFunc
+  */
+  struct DataLocalVarInfo 
+  {
+    std::string name;
+    std::string type;
+    size_t      sizeInBytes;
+
+    bool        isArray   = false;
+    size_t      arraySize = 0;
+    std::string typeOfArrayElement;
+    size_t      sizeInBytesOfArrayElement = 0;
+  };
   
   /**
   \brief collector of all information about input main class
@@ -60,7 +75,9 @@ namespace kslicer
 
     std::unordered_map<std::string, KernelInfo>     allKernels;
     std::unordered_map<std::string, DataMemberInfo> allDataMembers;
-    const clang::CXXMethodDecl*                     mainFuncNode;
+
+    const clang::CXXMethodDecl*                       mainFuncNode;
+    std::unordered_map<std::string, DataLocalVarInfo> mainFuncLocals;
 
     //std::vector<const clang::FunctionDecl*>  localFunctions; ///<! functions from main file that should be generated in .cl file
     //std::vector<const clang::CXXMethodDecl*> localMembers;   ///<! member function of main class that should be decorated and then generated in .cl file 
@@ -82,7 +99,8 @@ namespace kslicer
   void ReplaceOpenCLBuiltInTypes(std::string& a_typeName);
 
   std::string ProcessKernel(const clang::CXXMethodDecl* a_node, clang::CompilerInstance& compiler, const MainClassInfo& a_codeInfo);
-
+  
+  std::vector<std::string> GetAllPredefinedThreadIdNames();
 };
 
 std::string GetRangeSourceCode(const clang::SourceRange a_range, clang::SourceManager& sm); 
