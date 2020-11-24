@@ -13,7 +13,7 @@ class {{MainClassName}}_Generated : public {{MainClassName}}
 {
 public:
 
-  {{MainClassName}}_Generated(VulkanContext a_vkContext) 
+  {{MainClassName}}_Generated(VulkanContext a_vkContext, size_t a_maxThreadsCount) 
   {
     instance       = a_vkContext.instance;
     physicalDevice = a_vkContext.physicalDevice;
@@ -21,7 +21,7 @@ public:
     computeQueue   = a_vkContext.computeQueue;
     transferQueue  = a_vkContext.transferQueue;
     InitHelpers();
-    InitBuffers();
+    InitBuffers(a_maxThreadsCount);
   }
 
   ~{{MainClassName}}_Generated();
@@ -52,7 +52,7 @@ protected:
   VkPhysicalDeviceProperties m_devProps;
 
   void InitHelpers();
-  virtual void InitBuffers();
+  virtual void InitBuffers(size_t a_maxThreadsCount);
 
   virtual void UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
@@ -60,7 +60,10 @@ protected:
   {{PlainMembersUpdateFunctions}}
   {{VectorMembersUpdateFunctions}}
 
-  {{LocalVarsBuffersDecl}}
+## for BufferName in LocalVarsBuffersDecl
+  VkBuffer {{BufferName}}Buffer = VK_NULL_HANDLE;
+## endfor
+
   VkBuffer m_classDataBuffer = VK_NULL_HANDLE;
   VkDeviceMemory m_allMem    = VK_NULL_HANDLE;
 };

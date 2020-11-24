@@ -12,6 +12,15 @@ std::string GetFolderPath(const std::string& a_filePath)
   return a_filePath.substr(0, lastindex); 
 }
 
+std::vector<std::string> GetVarNames(const std::unordered_map<std::string, kslicer::DataLocalVarInfo>& a_locals)
+{
+  std::vector<std::string> localVarNames;
+  localVarNames.reserve(a_locals.size());
+  for(const auto& v : a_locals)
+    localVarNames.push_back(v.first);
+  return localVarNames;
+}
+
 void MakeAbsolutePathRelativeTo(std::string& a_filePath, const std::string& a_folderPath)
 {
   if(a_filePath.find(a_folderPath) != std::string::npos)  // cut off folder path
@@ -67,8 +76,7 @@ std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFi
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";
   data["KernelsDecl"]                  = strOut2.str();
-
-  data["LocalVarsBuffersDecl"]         = "";      
+  data["LocalVarsBuffersDecl"]         = GetVarNames(a_classInfo.mainFuncLocals);      
   
   inja::Environment env;
   inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());
@@ -119,13 +127,22 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
   data["MainFuncCmd"]      = a_mainFuncCodeGen;
   data["KernelsCmd"]       = strOut2.str();
   data["TotalDescriptorSets"]  = 16;
-  data["LocalVarsBuffersInit"] = "";
 
-  data["LocalVarsBuffersInit"] = "";
-  data["ClassVectorsBuffersInit"] = "";
-  data["LocalVarsBuffersDestroy"] = "";
-  data["ClassVectorsBuffersDestroy"] = "";
+  size_t allClassVarsSizeInBytes = 0;
+  for(const auto& var : a_classInfo.classVariables)
+    allClassVarsSizeInBytes += var.sizeInBytes;
   
+  data["AllClassVarsSize"]  = allClassVarsSizeInBytes;
+
+  data["LocalVarsBuffers"] = std::vector<std::string>();
+  for(const auto& v : a_classInfo.mainFuncLocals)
+  {
+    json local;
+    local["Name"] = v.second.name;
+    local["Type"] = v.second.type;
+    data["LocalVarsBuffers"].push_back(local);
+  }
+
   inja::Environment env;
   inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());
   std::string result  = env.render(temp, data);
