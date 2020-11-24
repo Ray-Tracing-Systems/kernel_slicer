@@ -70,13 +70,22 @@ std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFi
   json data;
   data["Includes"]      = strOut.str();
   data["MainClassName"] = a_classInfo.mainClassName;
-  //data["MainFuncName"]  = a_classInfo.mainFuncName;
   data["MainFuncDecl"]  = a_mainFuncDecl;
 
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";
   data["KernelsDecl"]                  = strOut2.str();
-  data["LocalVarsBuffersDecl"]         = GetVarNames(a_classInfo.mainFuncLocals);      
+  data["LocalVarsBuffersDecl"]         = GetVarNames(a_classInfo.mainFuncLocals);   
+
+  data["KernelNames"] = std::vector<std::string>();  
+  for(const auto& k : a_classInfo.allKernels)
+  {
+    std::string kernName = k.first;
+    auto pos = kernName.find("kernel_");
+    if(pos != std::string::npos)
+      kernName = kernName.substr(7);
+    data["KernelNames"].push_back(kernName);
+  }
   
   inja::Environment env;
   inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());
@@ -151,6 +160,19 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
     local["Offset"] = v.offsetInTargetBuffer;
     local["Size"]   = v.sizeInBytes;
     data["ClassVars"].push_back(local);
+  }
+
+  data["Kernels"] = std::vector<std::string>();  
+  for(const auto& k : a_classInfo.allKernels)
+  {
+    std::string kernName = k.first;
+    auto pos = kernName.find("kernel_");
+    if(pos != std::string::npos)
+      kernName = kernName.substr(7);
+    json local;
+    local["Name"]         = kernName;
+    local["OriginalName"] = k.first;
+    data["Kernels"].push_back(local);
   }
 
   inja::Environment env;

@@ -69,15 +69,15 @@ void TestKernel(VulkanContext vk_data)
   }
 
   uint32_t specializationData[3] = {16, 16, 1};
-  VkSpecializationInfo specsForWGSIze = {};
+  VkSpecializationInfo specsForWGSize = {};
   {
-    specsForWGSIze.mapEntryCount = 3;
-    specsForWGSIze.pMapEntries   = specializationEntries;
-    specsForWGSIze.dataSize      = 3 * sizeof(uint32_t);
-    specsForWGSIze.pData         = specializationData;
+    specsForWGSize.mapEntryCount = 3;
+    specsForWGSize.pMapEntries   = specializationEntries;
+    specsForWGSize.dataSize      = 3 * sizeof(uint32_t);
+    specsForWGSize.pData         = specializationData;
   }
 
-  pMaker->CreateShader(vk_data.device, "z_generated.cl.spv", &specsForWGSIze, "kernel_InitEyeRay");
+  pMaker->CreateShader(vk_data.device, "z_generated.cl.spv", &specsForWGSize, "kernel_InitEyeRay");
   //pMaker->CreateShader(vk_data.device, "z_test.comp.spv", &specsForWGSIze, "main");
   
   VkDescriptorSet ds        = VK_NULL_HANDLE;

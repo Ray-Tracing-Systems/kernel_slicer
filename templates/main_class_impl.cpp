@@ -31,6 +31,45 @@ void {{MainClassName}}_Generated::InitHelpers()
 
 }
 
+void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ)
+{
+  VkSpecializationMapEntry specializationEntries[3] = {};
+  {
+    specializationEntries[0].constantID = 0;
+    specializationEntries[0].offset     = 0;
+    specializationEntries[0].size       = sizeof(uint32_t);
+  
+    specializationEntries[1].constantID = 1;
+    specializationEntries[1].offset     = sizeof(uint32_t);
+    specializationEntries[1].size       = sizeof(uint32_t);
+  
+    specializationEntries[2].constantID = 2;
+    specializationEntries[2].offset     = 2 * sizeof(uint32_t);
+    specializationEntries[2].size       = sizeof(uint32_t);
+  }
+
+  uint32_t specializationData[3] = {16, 16, 1};
+  VkSpecializationInfo specsForWGSize = {};
+  {
+    specsForWGSize.mapEntryCount = 3;
+    specsForWGSize.pMapEntries   = specializationEntries;
+    specsForWGSize.dataSize      = 3 * sizeof(uint32_t);
+    specsForWGSize.pData         = specializationData;
+  }
+ 
+  VkDescriptorSet ds        = VK_NULL_HANDLE;
+  VkDescriptorSetLayout dsl = VK_NULL_HANDLE; 
+
+## for Kernel in Kernels
+  m_pMaker->CreateShader(device, a_filePath, &specsForWGSize, "{{Kernel.OriginalName}}");
+
+  {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, dsl, sizeof(uint32_t)*2);
+  {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);   
+
+## endfor
+
+}
+
 void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
 {
 ## for Var in ClassVars

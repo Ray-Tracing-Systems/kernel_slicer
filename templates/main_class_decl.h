@@ -15,7 +15,8 @@ class {{MainClassName}}_Generated : public {{MainClassName}}
 {
 public:
 
-  {{MainClassName}}_Generated(VulkanContext a_vkContext, size_t a_maxThreadsCount) 
+  {{MainClassName}}_Generated(VulkanContext a_vkContext, size_t a_maxThreadsCount, 
+                              uint32_t a_blockSizeX, uint32_t a_blockSizeY = 1, uint32_t a_blockSizeZ = 1) 
   {
     instance       = a_vkContext.instance;
     physicalDevice = a_vkContext.physicalDevice;
@@ -24,6 +25,7 @@ public:
     transferQueue  = a_vkContext.transferQueue;
     InitHelpers();
     InitBuffers(a_maxThreadsCount);
+    InitKernels("z_generated.cl.spv", a_blockSizeX, a_blockSizeY, a_blockSizeZ);
   }
 
   ~{{MainClassName}}_Generated();
@@ -53,8 +55,10 @@ protected:
   std::unique_ptr<vkfw::ProgramBindings>      m_pBindings = nullptr;
   VkPhysicalDeviceProperties m_devProps;
 
-  void InitHelpers();
+  virtual void InitHelpers();
   virtual void InitBuffers(size_t a_maxThreadsCount);
+  virtual void InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ);
+
 
   virtual void UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
@@ -68,6 +72,12 @@ protected:
 
   VkBuffer m_classDataBuffer = VK_NULL_HANDLE;
   VkDeviceMemory m_allMem    = VK_NULL_HANDLE;
+
+## for KernelName in KernelNames
+  VkPipelineLayout {{KernelName}}Layout   = VK_NULL_HANDLE;
+  VkPipeline       {{KernelName}}Pipeline = VK_NULL_HANDLE;   
+## endfor
+  
 };
 
 #endif
