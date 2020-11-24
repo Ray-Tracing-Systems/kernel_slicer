@@ -53,7 +53,7 @@ public:
   
   void kernel_TestColor(const Lite_Hit* in_hit, uint* out_color, uint tidX, uint tidY);
 
-private:
+protected:
 
   float4x4 m_worldViewProjInv;
   float m_data1;

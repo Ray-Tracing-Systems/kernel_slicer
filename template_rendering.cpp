@@ -143,6 +143,16 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
     data["LocalVarsBuffers"].push_back(local);
   }
 
+  data["ClassVars"] = std::vector<std::string>();
+  for(const auto& v : a_classInfo.classVariables)
+  {
+    json local;
+    local["Name"]   = v.name;
+    local["Offset"] = v.offsetInTargetBuffer;
+    local["Size"]   = v.sizeInBytes;
+    data["ClassVars"].push_back(local);
+  }
+
   inja::Environment env;
   inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());
   std::string result  = env.render(temp, data);

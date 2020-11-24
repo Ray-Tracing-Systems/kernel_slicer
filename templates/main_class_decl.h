@@ -6,6 +6,8 @@
 
 #include "vulkan_basics.h"
 #include "vk_program.h"
+#include "vk_compute_pipeline.h"
+#include "vk_buffer.h"
 
 {{Includes}}
 
@@ -47,8 +49,8 @@ protected:
 
   VkCommandBuffer m_currCmdBuffer = VK_NULL_HANDLE;
 
-  vkfw::ComputePipelineMaker m_pMaker    = nullptr;
-  vkfw::ProgramBindings      m_pBindings = nullptr;
+  std::unique_ptr<vkfw::ComputePipelineMaker> m_pMaker    = nullptr;
+  std::unique_ptr<vkfw::ProgramBindings>      m_pBindings = nullptr;
   VkPhysicalDeviceProperties m_devProps;
 
   void InitHelpers();
