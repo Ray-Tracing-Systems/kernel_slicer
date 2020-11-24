@@ -53,9 +53,6 @@ void TestKernel(VulkanContext vk_data)
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-   
-  std::string shaderName = "z_generated.cl.spv";
-
   VkSpecializationMapEntry specializationEntries[3] = {};
   {
     specializationEntries[0].constantID = 0;
@@ -80,7 +77,8 @@ void TestKernel(VulkanContext vk_data)
     specsForWGSIze.pData         = specializationData;
   }
 
-  pMaker->CreateShader(vk_data.device, shaderName.c_str(), &specsForWGSIze, "kernel_InitEyeRay");
+  pMaker->CreateShader(vk_data.device, "z_generated.cl.spv", &specsForWGSIze, "kernel_InitEyeRay");
+  //pMaker->CreateShader(vk_data.device, "z_test.comp.spv", &specsForWGSIze, "main");
   
   VkDescriptorSet ds        = VK_NULL_HANDLE;
   VkDescriptorSetLayout dsl = VK_NULL_HANDLE; 
