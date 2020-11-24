@@ -37,6 +37,7 @@ void {{MainClassName}}::InitBuffers(size_t a_maxThreadsCount)
   
 ## for Buffer in LocalVarsBuffers
   {{Buffer.Name}}Buffer = vkfw::CreateBuffer(vk_data.device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  allBuffers.push_back({{Buffer.Name}}Buffer);
 ## endfor
 
   m_classDataBuffer = vkfw::CreateBuffer(vk_data.device, {{AllClassVarsSize}},  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
