@@ -179,6 +179,7 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
     local["ArgCount"]     = k.second.args.size();
 
     local["Args"]         = std::vector<std::string>();
+    size_t actualSize     = 0;
     for(const auto& arg : k.second.args)
     {
       auto elementId = std::find(predefinedNames.begin(), predefinedNames.end(), arg.name);
@@ -189,8 +190,11 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
       argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
       argData["Name"]  = arg.name;
       argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
+      argData["Id"]    = actualSize;
       local["Args"].push_back(argData);
+      actualSize++;
     }
+    local["ArgCount"] = actualSize;
 
     data["Kernels"].push_back(local);
   }

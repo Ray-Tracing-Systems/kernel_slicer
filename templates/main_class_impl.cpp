@@ -42,11 +42,11 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout
   
 ## for KernelARG in Kernel.Args
   // binding for {{KernelARG.Name}}
-  dsBindings[{{loop.index1}}].binding            = {{loop.index1}};
-  dsBindings[{{loop.index1}}].descriptorType     = {{KernelARG.Type}};
-  dsBindings[{{loop.index1}}].descriptorCount    = 1;
-  dsBindings[{{loop.index1}}].stageFlags         = {{KernelARG.Flags}};
-  dsBindings[{{loop.index1}}].pImmutableSamplers = nullptr;
+  dsBindings[{{KernelARG.Id}}].binding            = {{KernelARG.Id}};
+  dsBindings[{{KernelARG.Id}}].descriptorType     = {{KernelARG.Type}};
+  dsBindings[{{KernelARG.Id}}].descriptorCount    = 1;
+  dsBindings[{{KernelARG.Id}}].stageFlags         = {{KernelARG.Flags}};
+  dsBindings[{{KernelARG.Id}}].pImmutableSamplers = nullptr;
 
 ## endfor
   
