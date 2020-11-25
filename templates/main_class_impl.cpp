@@ -12,6 +12,10 @@
   m_pMaker    = nullptr;
   m_pBindings = nullptr;
 
+## for Kernel in Kernels
+  vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
+## endfor
+
 ## for Buffer in LocalVarsBuffers
   vkDestroyBuffer(device, {{Buffer.Name}}Buffer, nullptr);
 ## endfor
@@ -31,6 +35,33 @@ void {{MainClassName}}_Generated::InitHelpers()
 
 }
 
+## for Kernel in Kernels
+VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout()
+{
+  VkDescriptorSetLayoutBinding dsBindings[{{Kernel.ArgCount}}] = {};
+  
+## for KernelARG in Kernel.Args
+  // binding for {{KernelARG.Name}}
+  dsBindings[{{loop.index1}}].binding            = {{loop.index1}};
+  dsBindings[{{loop.index1}}].descriptorType     = {{KernelARG.Type}};
+  dsBindings[{{loop.index1}}].descriptorCount    = 1;
+  dsBindings[{{loop.index1}}].stageFlags         = {{KernelARG.Flags}};
+  dsBindings[{{loop.index1}}].pImmutableSamplers = nullptr;
+
+## endfor
+  
+  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
+  descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  descriptorSetLayoutCreateInfo.bindingCount = uint32_t({{Kernel.ArgCount}});
+  descriptorSetLayoutCreateInfo.pBindings    = dsBindings;
+  
+  VkDescriptorSetLayout layout = nullptr;
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
+  return layout;
+}
+
+## endfor
+
 void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ)
 {
   VkSpecializationMapEntry specializationEntries[3] = {};
@@ -48,7 +79,7 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
     specializationEntries[2].size       = sizeof(uint32_t);
   }
 
-  uint32_t specializationData[3] = {16, 16, 1};
+  uint32_t specializationData[3] = {a_blockSizeX, a_blockSizeY, a_blockSizeZ};
   VkSpecializationInfo specsForWGSize = {};
   {
     specsForWGSize.mapEntryCount = 3;
@@ -57,13 +88,12 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
     specsForWGSize.pData         = specializationData;
   }
  
-  VkDescriptorSet ds        = VK_NULL_HANDLE;
-  VkDescriptorSetLayout dsl = VK_NULL_HANDLE; 
 
 ## for Kernel in Kernels
+  {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
   m_pMaker->CreateShader(device, a_filePath, &specsForWGSize, "{{Kernel.OriginalName}}");
 
-  {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, dsl, sizeof(uint32_t)*2);
+  {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, sizeof(uint32_t)*2);
   {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);   
 
 ## endfor

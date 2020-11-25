@@ -1,5 +1,6 @@
 #include "template_rendering.h"
 #include <inja.hpp>
+#include <algorithm>
 
 // Just for convenience
 using namespace inja;
@@ -162,6 +163,8 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
     data["ClassVars"].push_back(local);
   }
 
+  auto predefinedNames = kslicer::GetAllPredefinedThreadIdNames();
+
   data["Kernels"] = std::vector<std::string>();  
   for(const auto& k : a_classInfo.allKernels)
   {
@@ -169,9 +172,26 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
     auto pos = kernName.find("kernel_");
     if(pos != std::string::npos)
       kernName = kernName.substr(7);
+    
     json local;
     local["Name"]         = kernName;
     local["OriginalName"] = k.first;
+    local["ArgCount"]     = k.second.args.size();
+
+    local["Args"]         = std::vector<std::string>();
+    for(const auto& arg : k.second.args)
+    {
+      auto elementId = std::find(predefinedNames.begin(), predefinedNames.end(), arg.name);
+      if(elementId != predefinedNames.end()) // exclude predefined names from bindings
+        continue;
+
+      json argData;
+      argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+      argData["Name"]  = arg.name;
+      argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
+      local["Args"].push_back(argData);
+    }
+
     data["Kernels"].push_back(local);
   }
 

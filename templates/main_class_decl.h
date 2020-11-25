@@ -74,8 +74,10 @@ protected:
   VkDeviceMemory m_allMem    = VK_NULL_HANDLE;
 
 ## for KernelName in KernelNames
-  VkPipelineLayout {{KernelName}}Layout   = VK_NULL_HANDLE;
-  VkPipeline       {{KernelName}}Pipeline = VK_NULL_HANDLE;   
+  VkPipelineLayout      {{KernelName}}Layout   = VK_NULL_HANDLE;
+  VkPipeline            {{KernelName}}Pipeline = VK_NULL_HANDLE; 
+  VkDescriptorSetLayout {{KernelName}}DSLayout = VK_NULL_HANDLE;  
+  VkDescriptorSetLayout Create{{KernelName}}DSLayout();
 ## endfor
   
 };
