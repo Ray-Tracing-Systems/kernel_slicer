@@ -73,20 +73,20 @@ namespace kslicer
 
       if(func_decl && kern_call && kern) 
       {
-        m_out << "In function '" << func_decl->getNameAsString() << "' ";
-        m_out << "method '" << kern->getNameAsString() << "' referred to at ";
-        std::string sr(sourceRangeAsString(kern_call->getSourceRange(), &src_manager));
-        m_out << sr;
-        m_out << "\n";
+        //m_out << "In function '" << func_decl->getNameAsString() << "' ";
+        //m_out << "method '" << kern->getNameAsString() << "' referred to at ";
+        //std::string sr(sourceRangeAsString(kern_call->getSourceRange(), &src_manager));
+        //m_out << sr;
+        //m_out << "\n";
         m_allInfo.allKernels[kern->getNameAsString()].usedInMainFunc = true; // mark this kernel is used
       }
       else if(func_decl && l_var && var)
       {
-        m_out << "In function '" << func_decl->getNameAsString() << "' ";
-        m_out << "variable '" << var->getNameAsString() << "' referred to at ";
-        std::string sr(sourceRangeAsString(l_var->getSourceRange(), &src_manager));
-        m_out << sr;
-        m_out << "\n";
+        //m_out << "In function '" << func_decl->getNameAsString() << "' ";
+        //m_out << "variable '" << var->getNameAsString() << "' referred to at ";
+        //std::string sr(sourceRangeAsString(l_var->getSourceRange(), &src_manager));
+        //m_out << sr;
+        //m_out << "\n";
         
         const clang::QualType qt = var->getType();
         const auto typePtr = qt.getTypePtr(); 

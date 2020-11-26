@@ -508,7 +508,7 @@ int main(int argc, const char **argv)
     // traverse only main function and rename kernel_xxx to xxxCmd
     std::string mainFuncGeneratedDecl;
     std::string mainFuncCodeGenerated = kslicer::ProcessMainFunc(inputCodeInfo.mainFuncNode, compiler, inputCodeInfo.mainClassName,
-                                                                 mainFuncGeneratedDecl);
+                                                                 mainFuncGeneratedDecl, inputCodeInfo.allDescriptorSetsInfo);
   
     kslicer::PrintVulkanBasicsFile  ("templates/vulkan_basics.h", inputCodeInfo);
     const std::string fileName = \

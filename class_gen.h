@@ -20,24 +20,36 @@ namespace kslicer
 {
   using namespace llvm;
   using namespace clang;
+  
+  /**\brief put all args together with comma or ',' to gave unique key for any concrete argument sequence.
+      \return unique strig key which you can pass in std::unordered_map for example 
+  */
+  std::string MakeKernellCallSignature(const std::vector<ArgReferenceOnCall>& a_args);
 
   class MainFuncASTVisitor : public RecursiveASTVisitor<MainFuncASTVisitor>
   {
   public:
     
-    MainFuncASTVisitor(Rewriter &R) : m_rewriter(R) { }
+    MainFuncASTVisitor(Rewriter &R, clang::SourceManager& a_sm) : m_rewriter(R), m_sm(a_sm), m_kernellCallTagId(0) { }
     
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
   
-    std::string mainFuncCmdName;
+    std::string                                    mainFuncCmdName;
+    std::unordered_map<std::string, uint32_t>      dsIdBySignature;
+    std::vector< std::vector<ArgReferenceOnCall> > m_descriptorSetsInfo;
 
   private:
+
+    std::vector<ArgReferenceOnCall> ExtractArgumentsOfAKernelCall(CXXMemberCallExpr* f);
+
     Rewriter& m_rewriter;
+    clang::SourceManager& m_sm;
+    uint32_t m_kernellCallTagId;
   };
 
   std::string ProcessMainFunc(const CXXMethodDecl* a_node, clang::CompilerInstance& compiler, const std::string& a_mainClassName, 
-                              std::string& a_outFuncDecl);
+                              std::string& a_outFuncDecl, std::vector< std::vector<ArgReferenceOnCall> >& a_outDsInfo);
 
   class KernelReplacerASTVisitor : public RecursiveASTVisitor<KernelReplacerASTVisitor> // replace all expressions with class variables to kgen_data buffer access
   {

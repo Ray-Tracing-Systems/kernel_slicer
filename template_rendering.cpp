@@ -77,6 +77,7 @@ std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFi
   data["VectorMembersUpdateFunctions"] = "";
   data["KernelsDecl"]                  = strOut2.str();
   data["LocalVarsBuffersDecl"]         = GetVarNames(a_classInfo.mainFuncLocals);   
+  data["TotalDSNumber"]                = a_classInfo.allDescriptorSetsInfo.size();
 
   data["KernelNames"] = std::vector<std::string>();  
   for(const auto& k : a_classInfo.allKernels)

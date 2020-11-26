@@ -78,7 +78,10 @@ protected:
   VkPipeline            {{KernelName}}Pipeline = VK_NULL_HANDLE; 
   VkDescriptorSetLayout {{KernelName}}DSLayout = VK_NULL_HANDLE;  
   VkDescriptorSetLayout Create{{KernelName}}DSLayout();
+
 ## endfor
+
+  VkDescriptorSet m_allGeneratedDS[{{TotalDSNumber}}];
   
 };
 

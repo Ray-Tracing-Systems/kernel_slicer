@@ -1,6 +1,9 @@
 #include "class_gen.h"
 #include "kslicer.h"
 
+#include <sstream>
+#include <algorithm>
+
 bool kslicer::MainFuncASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f) 
 {
   if (f->hasBody())
@@ -27,12 +30,103 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
   auto p = fname.find("kernel_");
   if(p != std::string::npos)
   {
+    
+    // extract arguments to form correct descriptor set
+    //
+    auto args            = ExtractArgumentsOfAKernelCall(f);
+    // !!! TODO: detect correct arg type here !!!  
+    std::string callSign = MakeKernellCallSignature(args);
+
+    auto p2 = dsIdBySignature.find(callSign);
+    if(p2 == dsIdBySignature.end())
+    {
+      dsIdBySignature[callSign] = m_descriptorSetsInfo.size();
+      p2 = dsIdBySignature.find(callSign);
+      m_descriptorSetsInfo.push_back(args);
+    }
+
     std::string kernName = fname.substr(p + 7);
-    m_rewriter.ReplaceText(f->getExprLoc(), kernName + "Cmd");
+    std::stringstream strOut;
+    //strOut << "// call tag id = " << m_kernellCallTagId << "; argsNum = " << f->getNumArgs() << std::endl;
+    
+    strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
+    strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
+
+    strOut << "  " << kernName.c_str() << "Cmd";
+  
+    m_rewriter.ReplaceText(f->getExprLoc(), strOut.str());
+    m_kernellCallTagId++;
   }
 
   return true; 
 }
+
+std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArgumentsOfAKernelCall(CXXMemberCallExpr* f)
+{
+  std::vector<kslicer::ArgReferenceOnCall> args; 
+  args.reserve(20);
+
+  auto predefinedNames = GetAllPredefinedThreadIdNames();
+  
+  for(size_t i=0;i<f->getNumArgs();i++)
+  {
+    const Expr* currArgExpr = f->getArgs()[i];
+    assert(currArgExpr != nullptr);
+    auto sourceRange = currArgExpr->getSourceRange();
+    std::string text = GetRangeSourceCode(sourceRange, m_sm);
+  
+    ArgReferenceOnCall arg;    
+    if(text[0] == '&')
+    {
+      arg.umpersanned = true;
+      text = text.substr(1);
+    }
+
+    auto elementId = std::find(predefinedNames.begin(), predefinedNames.end(), text); // exclude predefined names from arguments
+    if(elementId != predefinedNames.end())
+      continue;
+
+    arg.varName = text;
+    args.push_back(arg); 
+  }
+
+  return args;
+}
+
+std::string kslicer::MakeKernellCallSignature(const std::vector<ArgReferenceOnCall>& a_args)
+{
+  std::stringstream strOut;
+  for(const auto& arg : a_args)
+  {
+    switch(arg.argType)
+    {
+      case KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL:
+      strOut << "[L]";
+      break;
+
+      case KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG:
+      strOut << "[A]";
+      break;
+
+      case KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR:
+      strOut << "[V]";
+      break;
+      
+      case KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_POD:
+      strOut << "[P]";
+      break;
+
+      default:
+      strOut << "[U]";
+      break;
+    };
+
+    strOut << arg.varName.c_str();
+  }
+
+  return strOut.str();
+}
+
 
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to) 
 {
@@ -44,12 +138,12 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
 }
 
 std::string kslicer::ProcessMainFunc(const CXXMethodDecl* a_node, clang::CompilerInstance& compiler, const std::string& a_mainClassName,
-                                     std::string& a_outFuncDecl)
+                                     std::string& a_outFuncDecl, std::vector< std::vector<ArgReferenceOnCall> >& a_outDsInfo)
 {
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
-  kslicer::MainFuncASTVisitor rv(rewrite2);
+  kslicer::MainFuncASTVisitor rv(rewrite2, compiler.getSourceManager());
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
   
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
@@ -84,6 +178,7 @@ std::string kslicer::ProcessMainFunc(const CXXMethodDecl* a_node, clang::Compile
   assert(ReplaceFirst(mainFuncDecl, a_mainClassName + "_Generated" + "::", ""));
 
   a_outFuncDecl = "virtual " + mainFuncDecl;
+  a_outDsInfo.swap(rv.m_descriptorSetsInfo);
   return sourceCode;
 }
 
