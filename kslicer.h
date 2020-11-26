@@ -81,6 +81,12 @@ namespace kslicer
     bool umpersanned           = false; // just signal that '&' was applied to this argument, and thus it is likely to be (ARG_REFERENCE_LOCAL or ARG_REFERENCE_CLASS_POD)
   };
 
+
+  struct KernelCallInfo
+  {
+    std::string                     kernelName;
+    std::vector<ArgReferenceOnCall> allDescriptorSetsInfo;
+  };
   
   /**
   \brief collector of all information about input main class
@@ -105,8 +111,8 @@ namespace kslicer
     std::string mainClassFileInclude;
     std::string mainFuncName;
 
-    std::unordered_map<std::string, bool>          allIncludeFiles; // true if we need to include it in to CL, false otherwise
-    std::vector< std::vector<ArgReferenceOnCall> > allDescriptorSetsInfo;
+    std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
+    std::vector<KernelCallInfo>           allDescriptorSetsInfo;
   };
 
   /**

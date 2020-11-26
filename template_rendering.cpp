@@ -42,6 +42,24 @@ void kslicer::PrintVulkanBasicsFile(const std::string& a_declTemplateFilePath, c
   fout.close();
 }
 
+static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(const std::vector<std::string>& kernelsCallCmdDecl)
+{
+  std::unordered_map<std::string,std::string> kernelDeclByName;
+  for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
+  {
+    std::string kernDecl = kernelsCallCmdDecl[i];
+    size_t voidPos = kernDecl.find("void ");
+    size_t rbPos   = kernDecl.find("Cmd(");
+
+    assert(voidPos != std::string::npos);
+    assert(rbPos != std::string::npos);
+    
+    std::string kernName       = kernDecl.substr(voidPos + 5, rbPos - 5);
+    kernelDeclByName[kernName] = kernDecl.substr(voidPos + 5);
+  }
+  return kernelDeclByName;
+}
+
 std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo, 
                                              const std::string& a_mainFuncDecl, const std::vector<std::string>& kernelsCallCmdDecl)
 {
@@ -118,25 +136,34 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
     rawname = a_classInfo.mainClassFileName.substr(0, lastindex); 
   }
 
-  std::stringstream strOut2;
-  for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
-  {
-    std::string kernDecl = kernelsCallCmdDecl[i];
-    size_t voidPos = kernDecl.find("void ");
-    assert(voidPos != std::string::npos);
-    std::string kernDecl2 = kernDecl.substr(0, voidPos + 4) + " " + a_classInfo.mainClassName + "_Generated::" + kernDecl.substr(voidPos + 5); 
-    strOut2 << kernDecl2.c_str() << "\n";
-    strOut2 << "{" << std::endl;
-    strOut2 << std::endl;
-    strOut2 << "}" << std::endl << std::endl;
-  }
+  auto kernelDeclByName = MakeMapForKernelsDeclByName(kernelsCallCmdDecl);
+
+  //std::stringstream strOut2;
+  //for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
+  //{
+  //  std::string kernDecl = kernelsCallCmdDecl[i];
+  //  size_t voidPos = kernDecl.find("void ");
+  //  size_t rbPos   = kernDecl.find("Cmd(");
+//
+  //  assert(voidPos != std::string::npos);
+  //  assert(rbPos != std::string::npos);
+  //  
+  //  std::string kernName       = kernDecl.substr(voidPos + 5, rbPos - 5);
+  //  kernelDeclByName[kernName] = kernDecl.substr(voidPos + 5);
+  //   
+  //  std::string kernDecl2 = kernDecl.substr(0, voidPos + 4) + " " + a_classInfo.mainClassName + "_Generated::" + kernDecl.substr(voidPos + 5); 
+  //  strOut2 << kernDecl2.c_str() << "\n";
+  //  strOut2 << "{" << std::endl;
+  //  strOut2 << std::endl;
+  //  strOut2 << "}" << std::endl << std::endl;
+  //}
 
   json data;
   data["Includes"]         = "";
   data["IncludeClassDecl"] = mainInclude;
   data["MainClassName"]    = a_classInfo.mainClassName;
   data["MainFuncCmd"]      = a_mainFuncCodeGen;
-  data["KernelsCmd"]       = strOut2.str();
+  //data["KernelsCmd"]       = strOut2.str();
   data["TotalDescriptorSets"]  = 16;
 
   size_t allClassVarsSizeInBytes = 0;
@@ -178,6 +205,7 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
     local["Name"]         = kernName;
     local["OriginalName"] = k.first;
     local["ArgCount"]     = k.second.args.size();
+    local["Decl"]         = kernelDeclByName[kernName];
 
     local["Args"]         = std::vector<std::string>();
     size_t actualSize     = 0;
@@ -198,6 +226,29 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
     local["ArgCount"] = actualSize;
 
     data["Kernels"].push_back(local);
+  }
+
+  data["TotalDSNumber"] = a_classInfo.allDescriptorSetsInfo.size();
+
+  data["DescriptorSets"] = std::vector<std::string>();
+  for(size_t i=0;i<a_classInfo.allDescriptorSetsInfo.size();i++)
+  {
+    auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
+
+    json local;
+    local["Id"]        = i;
+    local["Layout"]    = dsArgs.kernelName + "DSLayout";
+    local["ArgNumber"] = dsArgs.allDescriptorSetsInfo.size();
+    local["Args"]      = std::vector<std::string>();
+   
+    for(size_t j=0;j<dsArgs.allDescriptorSetsInfo.size();j++)
+    {
+      json arg;
+      arg["Id"]   = j;
+      arg["Name"] = dsArgs.allDescriptorSetsInfo[j].varName;
+      local["Args"].push_back(arg);
+    }
+    data["DescriptorSets"].push_back(local);
   }
 
   inja::Environment env;

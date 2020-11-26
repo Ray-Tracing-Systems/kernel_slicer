@@ -30,7 +30,8 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
   auto p = fname.find("kernel_");
   if(p != std::string::npos)
   {
-    
+    std::string kernName = fname.substr(p + 7);
+
     // extract arguments to form correct descriptor set
     //
     auto args            = ExtractArgumentsOfAKernelCall(f);
@@ -40,12 +41,14 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
     auto p2 = dsIdBySignature.find(callSign);
     if(p2 == dsIdBySignature.end())
     {
-      dsIdBySignature[callSign] = m_descriptorSetsInfo.size();
+      dsIdBySignature[callSign] = m_kernCallTypes.size();
       p2 = dsIdBySignature.find(callSign);
-      m_descriptorSetsInfo.push_back(args);
-    }
 
-    std::string kernName = fname.substr(p + 7);
+      KernelCallInfo call;
+      call.kernelName            = kernName;
+      call.allDescriptorSetsInfo = args;
+      m_kernCallTypes.push_back(call);
+    }
     std::stringstream strOut;
     //strOut << "// call tag id = " << m_kernellCallTagId << "; argsNum = " << f->getNumArgs() << std::endl;
     
@@ -138,7 +141,7 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
 }
 
 std::string kslicer::ProcessMainFunc(const CXXMethodDecl* a_node, clang::CompilerInstance& compiler, const std::string& a_mainClassName,
-                                     std::string& a_outFuncDecl, std::vector< std::vector<ArgReferenceOnCall> >& a_outDsInfo)
+                                     std::string& a_outFuncDecl, std::vector<KernelCallInfo>& a_outDsInfo)
 {
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
@@ -178,7 +181,7 @@ std::string kslicer::ProcessMainFunc(const CXXMethodDecl* a_node, clang::Compile
   assert(ReplaceFirst(mainFuncDecl, a_mainClassName + "_Generated" + "::", ""));
 
   a_outFuncDecl = "virtual " + mainFuncDecl;
-  a_outDsInfo.swap(rv.m_descriptorSetsInfo);
+  a_outDsInfo.swap(rv.m_kernCallTypes);
   return sourceCode;
 }
 

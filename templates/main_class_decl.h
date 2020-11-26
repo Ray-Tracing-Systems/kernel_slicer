@@ -23,9 +23,15 @@ public:
     device         = a_vkContext.device;
     computeQueue   = a_vkContext.computeQueue;
     transferQueue  = a_vkContext.transferQueue;
+    
+    m_blockSize[0] = a_blockSizeX;
+    m_blockSize[1] = a_blockSizeY;
+    m_blockSize[2] = a_blockSizeZ;
+
     InitHelpers();
     InitBuffers(a_maxThreadsCount);
     InitKernels("z_generated.cl.spv", a_blockSizeX, a_blockSizeY, a_blockSizeZ);
+    InitAllGeneratedDescriptorSets();
   }
 
   ~{{MainClassName}}_Generated();
@@ -58,7 +64,7 @@ protected:
   virtual void InitHelpers();
   virtual void InitBuffers(size_t a_maxThreadsCount);
   virtual void InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ);
-
+  virtual void InitAllGeneratedDescriptorSets();
 
   virtual void UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
@@ -81,7 +87,9 @@ protected:
 
 ## endfor
 
+  VkDescriptorPool m_dsPool = VK_NULL_HANDLE;
   VkDescriptorSet m_allGeneratedDS[{{TotalDSNumber}}];
+  uint32_t m_blockSize[3];
   
 };
 
