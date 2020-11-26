@@ -510,6 +510,8 @@ int main(int argc, const char **argv)
     std::string mainFuncCodeGenerated = kslicer::ProcessMainFunc(inputCodeInfo.mainFuncNode, compiler, inputCodeInfo.mainClassName,
                                                                  mainFuncGeneratedDecl, inputCodeInfo.allDescriptorSetsInfo);
   
+    inputCodeInfo.mainFuncInOuts = kslicer::ListPointerParamsOfMainFunc(inputCodeInfo.mainFuncNode);
+
     kslicer::PrintVulkanBasicsFile  ("templates/vulkan_basics.h", inputCodeInfo);
     const std::string fileName = \
     kslicer::PrintGeneratedClassDecl("templates/main_class_decl.h", inputCodeInfo, mainFuncGeneratedDecl, kernelsCallCmdDecl);

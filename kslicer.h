@@ -64,6 +64,14 @@ namespace kslicer
     size_t      sizeInBytesOfArrayElement = 0;
   };
 
+  /**
+  \brief for arguments of MainFunc which are pointers
+  */
+  struct InOutVarInfo 
+  {
+    std::string name;
+  };
+
   // assume there could be only 4 form of kernel arg when kernel is called
   //
   enum class KERN_CALL_ARG_TYPE{
@@ -102,6 +110,7 @@ namespace kslicer
 
     const clang::CXXMethodDecl*                       mainFuncNode;
     std::unordered_map<std::string, DataLocalVarInfo> mainFuncLocals;
+    std::unordered_map<std::string, InOutVarInfo>     mainFuncInOuts;
 
     //std::vector<const clang::FunctionDecl*>  localFunctions; ///<! functions from main file that should be generated in .cl file
     //std::vector<const clang::CXXMethodDecl*> localMembers;   ///<! member function of main class that should be decorated and then generated in .cl file 

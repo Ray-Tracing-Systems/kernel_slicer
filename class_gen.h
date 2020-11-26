@@ -51,6 +51,8 @@ namespace kslicer
   std::string ProcessMainFunc(const CXXMethodDecl* a_node, clang::CompilerInstance& compiler, const std::string& a_mainClassName, 
                               std::string& a_outFuncDecl, std::vector<KernelCallInfo>& a_outDsInfo);
 
+  std::unordered_map<std::string, InOutVarInfo> ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node);
+
   class KernelReplacerASTVisitor : public RecursiveASTVisitor<KernelReplacerASTVisitor> // replace all expressions with class variables to kgen_data buffer access
   {
   public:
