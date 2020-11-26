@@ -159,16 +159,13 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets()
     writeDescriptorSet[{{Arg.Id}}].dstBinding       = {{Arg.Id}};
     writeDescriptorSet[{{Arg.Id}}].descriptorCount  = 1;
     writeDescriptorSet[{{Arg.Id}}].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-
-    writeDescriptorSet[{{Arg.Id}}].pBufferInfo = &descriptorBufferInfo[{{Arg.Id}}];
-    writeDescriptorSet[{{Arg.Id}}].pImageInfo  = nullptr;
+    writeDescriptorSet[{{Arg.Id}}].pBufferInfo      = &descriptorBufferInfo[{{Arg.Id}}];
+    writeDescriptorSet[{{Arg.Id}}].pImageInfo       = nullptr;
     writeDescriptorSet[{{Arg.Id}}].pTexelBufferView = nullptr; // #TODO: update here!
 
 ## endfor
-
     vkUpdateDescriptorSets(device, uint32_t(writeDescriptorSet.size()), writeDescriptorSet.data(), 0, NULL);
   }
-
 ## endfor
 }
 
