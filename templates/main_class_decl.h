@@ -15,14 +15,13 @@ class {{MainClassName}}_Generated : public {{MainClassName}}
 {
 public:
 
-  {{MainClassName}}_Generated(VulkanContext a_vkContext, size_t a_maxThreadsCount, 
-                              uint32_t a_blockSizeX, uint32_t a_blockSizeY = 1, uint32_t a_blockSizeZ = 1) 
+  {{MainClassName}}_Generated() {}
+
+  virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount, 
+                                 uint32_t a_blockSizeX, uint32_t a_blockSizeY = 1, uint32_t a_blockSizeZ = 1) 
   {
-    instance       = a_vkContext.instance;
-    physicalDevice = a_vkContext.physicalDevice;
-    device         = a_vkContext.device;
-    computeQueue   = a_vkContext.computeQueue;
-    transferQueue  = a_vkContext.transferQueue;
+    physicalDevice = a_physicalDevice;
+    device         = a_device;
     
     m_blockSize[0] = a_blockSizeX;
     m_blockSize[1] = a_blockSizeY;
@@ -33,7 +32,7 @@ public:
     InitKernels("z_generated.cl.spv", a_blockSizeX, a_blockSizeY, a_blockSizeZ);
   }
 
-  virtual void SetInputOutput(
+  virtual void SetVulkanInputOutput(
 ## for BufferName in InOutVars
     VkBuffer a_{{BufferName}}Buffer,
     size_t   a_{{BufferName}}Offset,
@@ -61,14 +60,10 @@ public:
 
 protected:
   
-  VkInstance       instance       = VK_NULL_HANDLE;
   VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
   VkDevice         device         = VK_NULL_HANDLE;
 
-  VkQueue computeQueue  = VK_NULL_HANDLE;
-  VkQueue transferQueue = VK_NULL_HANDLE;
-
-  VkCommandBuffer m_currCmdBuffer = VK_NULL_HANDLE;
+  VkCommandBuffer  m_currCmdBuffer = VK_NULL_HANDLE;
 
   std::unique_ptr<vkfw::ComputePipelineMaker> m_pMaker = nullptr;
   VkPhysicalDeviceProperties m_devProps;

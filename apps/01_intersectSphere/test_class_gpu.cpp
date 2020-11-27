@@ -14,6 +14,8 @@
 #include "vulkan_basics.h"
 void TestKernel(VulkanContext a_vkData);
 
+#include "test_class_generated.h"
+
 void test_class_gpu()
 {
   // (1) init vulkan
@@ -57,18 +59,19 @@ void test_class_gpu()
     vkGetDeviceQueue(device, queueComputeFID, 0, &transferQueue);
   }
 
-  {
-    VulkanContext ctx;
-    ctx.instance       = instance;
-    ctx.physicalDevice = physicalDevice;
-    ctx.device         = device;
-    ctx.commandPool    = commandPool;
-    ctx.computeQueue   = computeQueue;
-    ctx.transferQueue  = transferQueue;
-    TestKernel(ctx);
-  }
-
+  VulkanContext ctx;
+  ctx.instance       = instance;
+  ctx.physicalDevice = physicalDevice;
+  ctx.device         = device;
+  ctx.commandPool    = commandPool;
+  ctx.computeQueue   = computeQueue;
+  ctx.transferQueue  = transferQueue;
+  //TestKernel(ctx);
+  
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
+
+  auto pGPUImpl = std::make_shared<TestClass_Generated>();     // !!! USING GENERATED CODE !!! 
+  pGPUImpl->InitVulkanObjects(device, physicalDevice, 16, 16); // !!! USING GENERATED CODE !!!
 
   // (3) Create buffer
   //
@@ -76,6 +79,9 @@ void test_class_gpu()
   VkBuffer colorBuffer     = vkfw::CreateBuffer(device, bufferSize,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   VkDeviceMemory colorMem  = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {colorBuffer});
   
+  pGPUImpl->SetVulkanInputOutput(colorBuffer, 0);              // !!! USING GENERATED CODE !!! 
+  pGPUImpl->UpdateAll(pCopyHelper);                            // !!! USING GENERATED CODE !!!
+
   // (4) fill buffer with yellow color
   //
   {
@@ -85,7 +91,10 @@ void test_class_gpu()
     beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    vkCmdFillBuffer(commandBuffer, colorBuffer, 0, VK_WHOLE_SIZE, 0x0000FFFF); // yellow color
+    //vkCmdFillBuffer(commandBuffer, colorBuffer, 0, VK_WHOLE_SIZE, 0x0000FFFF); // yellow color
+
+    pGPUImpl->MainFuncCmd(commandBuffer, WIN_WIDTH, WIN_HEIGHT, nullptr);  // !!! USING GENERATED CODE !!! 
+
     vkEndCommandBuffer(commandBuffer);  
     
     auto start = std::chrono::high_resolution_clock::now();
@@ -104,6 +113,7 @@ void test_class_gpu()
   // (6) destroy and free resources before exit
   //
   pCopyHelper = nullptr;
+  pGPUImpl = nullptr;
 
   vkDestroyBuffer(device, colorBuffer, nullptr);
   vkFreeMemory(device, colorMem, nullptr);

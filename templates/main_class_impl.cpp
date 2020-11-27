@@ -34,7 +34,7 @@ void {{MainClassName}}_Generated::InitHelpers()
 ## for Kernel in Kernels
 VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout()
 {
-  VkDescriptorSetLayoutBinding dsBindings[{{Kernel.ArgCount}}] = {};
+  VkDescriptorSetLayoutBinding dsBindings[{{Kernel.ArgCount}}+1] = {};
   
 ## for KernelARG in Kernel.Args
   // binding for {{KernelARG.Name}}
@@ -45,10 +45,15 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout
   dsBindings[{{KernelARG.Id}}].pImmutableSamplers = nullptr;
 
 ## endfor
+  dsBindings[{{Kernel.ArgCount}}].binding            = {{Kernel.ArgCount}};
+  dsBindings[{{Kernel.ArgCount}}].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[{{Kernel.ArgCount}}].descriptorCount    = 1;
+  dsBindings[{{Kernel.ArgCount}}].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[{{Kernel.ArgCount}}].pImmutableSamplers = nullptr;
   
   VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
   descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  descriptorSetLayoutCreateInfo.bindingCount = uint32_t({{Kernel.ArgCount}});
+  descriptorSetLayoutCreateInfo.bindingCount = uint32_t({{Kernel.ArgCount}}+1);
   descriptorSetLayoutCreateInfo.pBindings    = dsBindings;
   
   VkDescriptorSetLayout layout = nullptr;
@@ -135,8 +140,8 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets()
 ## for DescriptorSet in DescriptorSets
   // descriptor set #{{DescriptorSet.Id}} 
   {
-    std::vector<VkDescriptorBufferInfo> descriptorBufferInfo({{DescriptorSet.ArgNumber}});
-    std::vector<VkWriteDescriptorSet>   writeDescriptorSet({{DescriptorSet.ArgNumber}});
+    std::vector<VkDescriptorBufferInfo> descriptorBufferInfo({{DescriptorSet.ArgNumber}}+1);
+    std::vector<VkWriteDescriptorSet>   writeDescriptorSet({{DescriptorSet.ArgNumber}}+1);
 
 ## for Arg in DescriptorSet.Args
     descriptorBufferInfo[{{Arg.Id}}]        = VkDescriptorBufferInfo{};
@@ -155,6 +160,21 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets()
     writeDescriptorSet[{{Arg.Id}}].pTexelBufferView = nullptr; 
 
 ## endfor
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}]        = VkDescriptorBufferInfo{};
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].buffer = m_classDataBuffer;
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].offset = 0;
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].range  = VK_WHOLE_SIZE;  
+
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}]                  = VkWriteDescriptorSet{};
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].dstSet           = m_allGeneratedDS[{{DescriptorSet.Id}}];
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].dstBinding       = {{DescriptorSet.ArgNumber}};
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorCount  = 1;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pBufferInfo      = &descriptorBufferInfo[{{DescriptorSet.ArgNumber}}];
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pImageInfo       = nullptr;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pTexelBufferView = nullptr; 
+   
     vkUpdateDescriptorSets(device, uint32_t(writeDescriptorSet.size()), writeDescriptorSet.data(), 0, NULL);
   }
 ## endfor
