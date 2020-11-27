@@ -5,9 +5,9 @@
 #include <memory>
 
 #include "vulkan_basics.h"
-#include "vk_program.h"
 #include "vk_compute_pipeline.h"
 #include "vk_buffer.h"
+#include "vk_utils.h"
 
 {{Includes}}
 
@@ -31,6 +31,19 @@ public:
     InitHelpers();
     InitBuffers(a_maxThreadsCount);
     InitKernels("z_generated.cl.spv", a_blockSizeX, a_blockSizeY, a_blockSizeZ);
+  }
+
+  virtual void SetInputOutput(
+## for BufferName in InOutVars
+    VkBuffer a_{{BufferName}}Buffer,
+    size_t   a_{{BufferName}}Offset,
+## endfor
+    uint32_t dummyArgument = 0)
+  {
+## for BufferName in InOutVars
+    {{BufferName}}Buffer = a_{{BufferName}}Buffer;
+    {{BufferName}}Offset = a_{{BufferName}}Offset;
+## endfor
     InitAllGeneratedDescriptorSets();
   }
 
@@ -57,8 +70,7 @@ protected:
 
   VkCommandBuffer m_currCmdBuffer = VK_NULL_HANDLE;
 
-  std::unique_ptr<vkfw::ComputePipelineMaker> m_pMaker    = nullptr;
-  std::unique_ptr<vkfw::ProgramBindings>      m_pBindings = nullptr;
+  std::unique_ptr<vkfw::ComputePipelineMaker> m_pMaker = nullptr;
   VkPhysicalDeviceProperties m_devProps;
 
   virtual void InitHelpers();
@@ -74,6 +86,12 @@ protected:
 
 ## for BufferName in LocalVarsBuffersDecl
   VkBuffer {{BufferName}}Buffer = VK_NULL_HANDLE;
+  size_t   {{BufferName}}Offset = 0;
+## endfor
+
+## for BufferName in InOutVars
+  VkBuffer {{BufferName}}Buffer = VK_NULL_HANDLE;
+  size_t   {{BufferName}}Offset = 0;
 ## endfor
 
   VkBuffer m_classDataBuffer = VK_NULL_HANDLE;

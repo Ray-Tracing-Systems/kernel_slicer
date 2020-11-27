@@ -86,6 +86,7 @@ namespace kslicer
   {
     KERN_CALL_ARG_TYPE argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_UNKNOWN_TYPE;
     std::string        varName = "";
+    std::string        amfName = "";    // Argument of Main Function Name, the name of function which this arguments belongs to
     bool umpersanned           = false; // just signal that '&' was applied to this argument, and thus it is likely to be (ARG_REFERENCE_LOCAL or ARG_REFERENCE_CLASS_POD)
   };
 

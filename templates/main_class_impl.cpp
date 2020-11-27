@@ -9,8 +9,7 @@
 
 {{MainClassName}}_Generated::~{{MainClassName}}_Generated()
 {
-  m_pMaker    = nullptr;
-  m_pBindings = nullptr;
+  m_pMaker = nullptr;
 
 ## for Kernel in Kernels
   vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
@@ -30,11 +29,6 @@ void {{MainClassName}}_Generated::InitHelpers()
 {
   vkGetPhysicalDeviceProperties(physicalDevice, &m_devProps);
   m_pMaker = std::make_unique<vkfw::ComputePipelineMaker>();
-
-  VkDescriptorType dtype = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  uint32_t dtypesize     = {{TotalDescriptorSets}};
-  m_pBindings            = std::make_unique<vkfw::ProgramBindings>(device, &dtype, &dtypesize, 1);
-
 }
 
 ## for Kernel in Kernels
@@ -90,7 +84,6 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
     specsForWGSize.pData         = specializationData;
   }
  
-
 ## for Kernel in Kernels
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
   m_pMaker->CreateShader(device, a_filePath, &specsForWGSize, "{{Kernel.OriginalName}}");
@@ -99,7 +92,6 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
   {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);   
 
 ## endfor
-
 }
 
 void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets()
@@ -119,7 +111,6 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets()
     
     VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, NULL, &m_dsPool));
   }
-
 
   // allocate all descriptor sets
   //
@@ -150,8 +141,8 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets()
 ## for Arg in DescriptorSet.Args
     descriptorBufferInfo[{{Arg.Id}}]        = VkDescriptorBufferInfo{};
     descriptorBufferInfo[{{Arg.Id}}].buffer = {{Arg.Name}}Buffer;
-    descriptorBufferInfo[{{Arg.Id}}].offset = 0;              // #TODO: update here if osset is known!
-    descriptorBufferInfo[{{Arg.Id}}].range  = VK_WHOLE_SIZE;  // #TODO: is it possiable to update here?
+    descriptorBufferInfo[{{Arg.Id}}].offset = {{Arg.Name}}Offset;
+    descriptorBufferInfo[{{Arg.Id}}].range  = VK_WHOLE_SIZE;  
 
     writeDescriptorSet[{{Arg.Id}}]                  = VkWriteDescriptorSet{};
     writeDescriptorSet[{{Arg.Id}}].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -161,7 +152,7 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets()
     writeDescriptorSet[{{Arg.Id}}].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     writeDescriptorSet[{{Arg.Id}}].pBufferInfo      = &descriptorBufferInfo[{{Arg.Id}}];
     writeDescriptorSet[{{Arg.Id}}].pImageInfo       = nullptr;
-    writeDescriptorSet[{{Arg.Id}}].pTexelBufferView = nullptr; // #TODO: update here!
+    writeDescriptorSet[{{Arg.Id}}].pTexelBufferView = nullptr; 
 
 ## endfor
     vkUpdateDescriptorSets(device, uint32_t(writeDescriptorSet.size()), writeDescriptorSet.data(), 0, NULL);

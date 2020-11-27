@@ -34,9 +34,19 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
 
     // extract arguments to form correct descriptor set
     //
-    auto args            = ExtractArgumentsOfAKernelCall(f);
-    // !!! TODO: detect correct arg type here !!!  
-    std::string callSign = MakeKernellCallSignature(args);
+    auto args = ExtractArgumentsOfAKernelCall(f);
+    for(auto& arg : args)
+    {
+      if(arg.argType != KERN_CALL_ARG_TYPE::ARG_REFERENCE_UNKNOWN_TYPE)
+        continue;
+
+      auto p2 = m_argsOfMainFunc.find(arg.varName);
+      if(p2 != m_argsOfMainFunc.end())
+      {
+        arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG;
+      }
+    }
+    std::string callSign = MakeKernellCallSignature(args, m_mainFuncName);
 
     auto p2 = dsIdBySignature.find(callSign);
     if(p2 == dsIdBySignature.end())
@@ -96,7 +106,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArg
   return args;
 }
 
-std::string kslicer::MakeKernellCallSignature(const std::vector<ArgReferenceOnCall>& a_args)
+std::string kslicer::MakeKernellCallSignature(const std::vector<ArgReferenceOnCall>& a_args, const std::string& a_mainFuncName)
 {
   std::stringstream strOut;
   for(const auto& arg : a_args)
@@ -108,7 +118,7 @@ std::string kslicer::MakeKernellCallSignature(const std::vector<ArgReferenceOnCa
       break;
 
       case KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG:
-      strOut << "[A]";
+      strOut << "[A][" << a_mainFuncName.c_str() << "]" ;
       break;
 
       case KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR:
@@ -140,13 +150,15 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
   return true;
 }
 
-std::string kslicer::ProcessMainFunc(const CXXMethodDecl* a_node, clang::CompilerInstance& compiler, const std::string& a_mainClassName,
+std::string kslicer::ProcessMainFunc(const CXXMethodDecl* a_node, clang::CompilerInstance& compiler, const std::string& a_mainClassName, const std::string& a_mainFuncName,
                                      std::string& a_outFuncDecl, std::vector<KernelCallInfo>& a_outDsInfo)
 {
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
-  kslicer::MainFuncASTVisitor rv(rewrite2, compiler.getSourceManager());
+  auto inOutParamList = kslicer::ListPointerParamsOfMainFunc(a_node);
+
+  kslicer::MainFuncASTVisitor rv(rewrite2, compiler.getSourceManager(), a_mainFuncName, inOutParamList);
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
   
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());

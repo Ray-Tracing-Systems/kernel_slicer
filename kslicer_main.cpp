@@ -507,15 +507,15 @@ int main(int argc, const char **argv)
 
     // traverse only main function and rename kernel_xxx to xxxCmd
     std::string mainFuncGeneratedDecl;
-    std::string mainFuncCodeGenerated = kslicer::ProcessMainFunc(inputCodeInfo.mainFuncNode, compiler, inputCodeInfo.mainClassName,
+    std::string mainFuncCodeGenerated = kslicer::ProcessMainFunc(inputCodeInfo.mainFuncNode, compiler, inputCodeInfo.mainClassName, inputCodeInfo.mainFuncName,
                                                                  mainFuncGeneratedDecl, inputCodeInfo.allDescriptorSetsInfo);
   
     inputCodeInfo.mainFuncInOuts = kslicer::ListPointerParamsOfMainFunc(inputCodeInfo.mainFuncNode);
 
     kslicer::PrintVulkanBasicsFile  ("templates/vulkan_basics.h", inputCodeInfo);
     const std::string fileName = \
-    kslicer::PrintGeneratedClassDecl("templates/main_class_decl.h", inputCodeInfo, mainFuncGeneratedDecl, kernelsCallCmdDecl);
-    kslicer::PrintGeneratedClassImpl("templates/main_class_impl.cpp", fileName, inputCodeInfo, mainFuncCodeGenerated, kernelsCallCmdDecl); 
+    kslicer::PrintGeneratedClassDecl("templates/main_class_decl.h", inputCodeInfo, mainFuncGeneratedDecl, kernelsCallCmdDecl, inputCodeInfo.mainFuncName);
+    kslicer::PrintGeneratedClassImpl("templates/main_class_impl.cpp", fileName, inputCodeInfo, mainFuncCodeGenerated, kernelsCallCmdDecl, inputCodeInfo.mainFuncName); 
   }
 
   // at this step we must filter data variables to store only those which are referenced inside kernels calls

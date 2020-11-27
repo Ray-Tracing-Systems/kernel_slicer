@@ -24,13 +24,14 @@ namespace kslicer
   /**\brief put all args together with comma or ',' to gave unique key for any concrete argument sequence.
       \return unique strig key which you can pass in std::unordered_map for example 
   */
-  std::string MakeKernellCallSignature(const std::vector<ArgReferenceOnCall>& a_args);
+  std::string MakeKernellCallSignature(const std::vector<ArgReferenceOnCall>& a_args, const std::string& a_mainFuncName);
 
   class MainFuncASTVisitor : public RecursiveASTVisitor<MainFuncASTVisitor>
   {
   public:
     
-    MainFuncASTVisitor(Rewriter &R, clang::SourceManager& a_sm) : m_rewriter(R), m_sm(a_sm), m_kernellCallTagId(0) { }
+    MainFuncASTVisitor(Rewriter &R, clang::SourceManager& a_sm, const std::string& a_mainFuncName, const std::unordered_map<std::string, InOutVarInfo>& a_args) : 
+                       m_rewriter(R), m_sm(a_sm), m_kernellCallTagId(0), m_mainFuncName(a_mainFuncName), m_argsOfMainFunc(a_args) { }
     
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
@@ -46,9 +47,12 @@ namespace kslicer
     Rewriter& m_rewriter;
     clang::SourceManager& m_sm;
     uint32_t m_kernellCallTagId;
+    
+    std::string m_mainFuncName;
+    std::unordered_map<std::string, InOutVarInfo> m_argsOfMainFunc;
   };
 
-  std::string ProcessMainFunc(const CXXMethodDecl* a_node, clang::CompilerInstance& compiler, const std::string& a_mainClassName, 
+  std::string ProcessMainFunc(const CXXMethodDecl* a_node, clang::CompilerInstance& compiler, const std::string& a_mainClassName, const std::string& a_mainFuncName,
                               std::string& a_outFuncDecl, std::vector<KernelCallInfo>& a_outDsInfo);
 
   std::unordered_map<std::string, InOutVarInfo> ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node);
