@@ -18,7 +18,7 @@ public:
   {{MainClassName}}_Generated() {}
 
   virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount, 
-                                 uint32_t a_blockSizeX, uint32_t a_blockSizeY = 1, uint32_t a_blockSizeZ = 1) 
+                                 uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ) 
   {
     physicalDevice = a_physicalDevice;
     device         = a_device;

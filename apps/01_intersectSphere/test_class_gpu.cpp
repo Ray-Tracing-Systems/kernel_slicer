@@ -13,6 +13,7 @@
 
 #include "vulkan_basics.h"
 void TestKernel(VulkanContext a_vkData);
+void TestKernel2(VulkanContext vk_data);
 
 #include "test_class_generated.h"
 
@@ -67,11 +68,12 @@ void test_class_gpu()
   ctx.computeQueue   = computeQueue;
   ctx.transferQueue  = transferQueue;
   //TestKernel(ctx);
+  TestKernel2(ctx);
   
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 
   auto pGPUImpl = std::make_shared<TestClass_Generated>();     // !!! USING GENERATED CODE !!! 
-  pGPUImpl->InitVulkanObjects(device, physicalDevice, 16, 16); // !!! USING GENERATED CODE !!!
+  pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT, 16, 16, 1); // !!! USING GENERATED CODE !!!
 
   // (3) Create buffer
   //
@@ -91,8 +93,8 @@ void test_class_gpu()
     beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    //vkCmdFillBuffer(commandBuffer, colorBuffer, 0, VK_WHOLE_SIZE, 0x0000FFFF); // yellow color
 
+    //vkCmdFillBuffer(commandBuffer, colorBuffer, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
     pGPUImpl->MainFuncCmd(commandBuffer, WIN_WIDTH, WIN_HEIGHT, nullptr);  // !!! USING GENERATED CODE !!! 
 
     vkEndCommandBuffer(commandBuffer);  
