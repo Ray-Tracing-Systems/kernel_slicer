@@ -68,7 +68,7 @@ void test_class_gpu()
   ctx.computeQueue   = computeQueue;
   ctx.transferQueue  = transferQueue;
   //TestKernel(ctx);
-  TestKernel2(ctx);
+  //TestKernel2(ctx);
   
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 

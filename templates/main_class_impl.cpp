@@ -213,6 +213,10 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
 void {{MainClassName}}_Generated::{{Kernel.Decl}}
 {
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
+  
+  uint32_t pcData[2] = {tidX, tidY};
+  vkCmdPushConstants(m_currCmdBuffer, TestColorLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t)*2, pcData);
+  
   vkCmdDispatch(m_currCmdBuffer, tidX/m_blockSize[0], tidY/m_blockSize[1], 1);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
