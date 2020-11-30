@@ -101,6 +101,18 @@ namespace kslicer
     std::string              name;
     std::vector<std::string> kernelNames;
   };
+
+  struct MainFuncInfo
+  {
+    std::string                                       Name;
+    const clang::CXXMethodDecl*                       Node;
+    std::unordered_map<std::string, DataLocalVarInfo> Locals;
+    std::unordered_map<std::string, InOutVarInfo>     InOuts;
+
+    std::string              GeneratedDecl;
+    std::string              CodeGenerated;
+    std::vector<std::string> KernelsCallCmdDecl;
+  };
   
   /**
   \brief collector of all information about input main class
@@ -114,9 +126,7 @@ namespace kslicer
     std::unordered_map<std::string, KernelInfo>     allKernels;
     std::unordered_map<std::string, DataMemberInfo> allDataMembers;
 
-    const clang::CXXMethodDecl*                       mainFuncNode;
-    std::unordered_map<std::string, DataLocalVarInfo> mainFuncLocals;
-    std::unordered_map<std::string, InOutVarInfo>     mainFuncInOuts;
+    std::vector<MainFuncInfo>                       mainFunc;
 
     //std::vector<const clang::FunctionDecl*>  localFunctions; ///<! functions from main file that should be generated in .cl file
     //std::vector<const clang::CXXMethodDecl*> localMembers;   ///<! member function of main class that should be decorated and then generated in .cl file 
@@ -124,7 +134,6 @@ namespace kslicer
     std::string mainClassName;
     std::string mainClassFileName;
     std::string mainClassFileInclude;
-    std::string mainFuncName;
 
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;

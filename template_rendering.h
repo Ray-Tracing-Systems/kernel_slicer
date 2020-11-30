@@ -9,10 +9,12 @@
 namespace kslicer
 {
   void PrintVulkanBasicsFile(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo);
+ 
   std::string PrintGeneratedClassDecl(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo, 
-                                      const std::string& a_mainFuncDecl, const std::vector<std::string>& kernelsCallCmdDecl, const std::string& a_mainFuncName); 
+                                      const std::vector<MainFuncInfo>& a_methodsToGenerate);
+
   void PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath, const std::string& a_includeName, const MainClassInfo& a_classInfo,
-                               const std::string& a_mainFuncCodeGen, const std::vector<std::string>& kernelsCallCmdDecl, const std::string& a_mainFuncName); 
+                               const std::vector<MainFuncInfo>& a_methodsToGenerate); 
 };
 
 #endif

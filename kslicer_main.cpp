@@ -376,49 +376,55 @@ int main(int argc, const char **argv)
   std::cout << "Seeking for MainFunc of " << mainClassName.c_str() << std::endl;
   auto MainFuncList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, compiler.getASTContext());
 
-  assert(MainFuncList.size() == 1);
+  inputCodeInfo.mainFunc.resize(MainFuncList.size());
+  inputCodeInfo.mainClassName = mainClassName;
 
-  std::string mainFuncName = MainFuncList.begin()->first;
-
-  // (1) traverse source code of main file first
-  //
-  std::cout << "Traversing " << mainClassName.c_str() << std::endl;
+  size_t mainFuncId = 0;
+  for(const auto f : MainFuncList)
   {
-    kslicer::InitialPassASTConsumer astConsumer(mainFuncName.c_str(), mainClassName.c_str(), compiler.getASTContext(), compiler.getSourceManager());  
-    ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
-    compiler.getDiagnosticClient().EndSourceFile();
-  
-    inputCodeInfo.allKernels     = astConsumer.rv.functions;
-    inputCodeInfo.allDataMembers = astConsumer.rv.dataMembers;
-    inputCodeInfo.mainFuncNode   = astConsumer.rv.m_mainFuncNode;
-    inputCodeInfo.mainClassName  = mainClassName;
-    inputCodeInfo.mainFuncName   = mainFuncName;
-
-    inputCodeInfo.mainClassFileName    = fileName;
-    inputCodeInfo.mainClassFileInclude = astConsumer.rv.MAIN_FILE_INCLUDE;
-  }
-  
-  // (2) now process variables and kernel calls of main function
-  //
-  {
-    clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::MakeMatch_LocalVarOfMethod(mainFuncName.c_str());
-    clang::ast_matchers::StatementMatcher kernel_matcher    = kslicer::MakeMatch_MethodCallFromMethod(mainFuncName.c_str());
+    const std::string& mainFuncName = f.first;
     
-    kslicer::MainFuncAnalyzer printer(std::cout, inputCodeInfo, compiler.getASTContext());
-    clang::ast_matchers::MatchFinder finder;
-    
-    finder.addMatcher(local_var_matcher, &printer);
-    finder.addMatcher(kernel_matcher,    &printer);
-   
-    auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
-    std::cout << "tool run res = " << res << std::endl;
-    
-    // filter out unused kernels
+    // (1) traverse source code of main file first
     //
-    inputCodeInfo.kernels.reserve(inputCodeInfo.allKernels.size());
-    for (const auto& k : inputCodeInfo.allKernels)
-      if(k.second.usedInMainFunc)
-        inputCodeInfo.kernels.push_back(k.second);
+    std::cout << "Traversing " << mainClassName.c_str() << std::endl; 
+    {
+      kslicer::InitialPassASTConsumer astConsumer(mainFuncName.c_str(), mainClassName.c_str(), compiler.getASTContext(), compiler.getSourceManager());  
+      ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
+      compiler.getDiagnosticClient().EndSourceFile();
+    
+      inputCodeInfo.allKernels     = astConsumer.rv.functions;    // TODO: exclude repeating!!!
+      inputCodeInfo.allDataMembers = astConsumer.rv.dataMembers;  // TODO: exclude repeating!!!     
+      inputCodeInfo.mainClassFileName    = fileName;
+      inputCodeInfo.mainClassFileInclude = astConsumer.rv.MAIN_FILE_INCLUDE;
+
+      inputCodeInfo.mainFunc[mainFuncId].Name = mainFuncName;
+      inputCodeInfo.mainFunc[mainFuncId].Node = astConsumer.rv.m_mainFuncNode;
+    }
+  
+    // (2) now process variables and kernel calls of main function
+    //
+    {
+      clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::MakeMatch_LocalVarOfMethod(mainFuncName.c_str());
+      clang::ast_matchers::StatementMatcher kernel_matcher    = kslicer::MakeMatch_MethodCallFromMethod(mainFuncName.c_str());
+      
+      kslicer::MainFuncAnalyzer printer(std::cout, inputCodeInfo, compiler.getASTContext(), mainFuncId);
+      clang::ast_matchers::MatchFinder finder;
+      
+      finder.addMatcher(local_var_matcher, &printer);
+      finder.addMatcher(kernel_matcher,    &printer);
+     
+      auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
+      std::cout << "tool run res = " << res << std::endl;
+      
+      // filter out unused kernels
+      //
+      inputCodeInfo.kernels.reserve(inputCodeInfo.allKernels.size());
+      for (const auto& k : inputCodeInfo.allKernels)
+        if(k.second.usedInMainFunc)
+          inputCodeInfo.kernels.push_back(k.second);
+    }
+
+    mainFuncId++;
   }
 
   // (3) now mark all data members, methods and functions which are actually used in kernels; we will ignore others. 
@@ -504,27 +510,31 @@ int main(int argc, const char **argv)
 
     outFileCL.close();
   }
+
+
+  // ??? // at this step we must filter data variables to store only those which are referenced inside kernels calls
+  // ??? //
   
   // (8) genarate cpp code with Vulkan calls
   //
+  for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
-    std::vector<std::string> kernelsCallCmdDecl = ObtainKernelsDecl(inputCodeInfo.kernels, compiler.getSourceManager(), inputCodeInfo.mainClassName);
+    mainFunc.KernelsCallCmdDecl = ObtainKernelsDecl(inputCodeInfo.kernels, compiler.getSourceManager(), inputCodeInfo.mainClassName);
 
-    // traverse only main function and rename kernel_xxx to xxxCmd
-    std::string mainFuncGeneratedDecl;
-    std::string mainFuncCodeGenerated = kslicer::ProcessMainFunc(inputCodeInfo.mainFuncNode, compiler, inputCodeInfo.mainClassName, inputCodeInfo.mainFuncName,
-                                                                 mainFuncGeneratedDecl, inputCodeInfo.allDescriptorSetsInfo);
+    mainFunc.CodeGenerated = kslicer::ProcessMainFunc(mainFunc.Node, compiler, inputCodeInfo.mainClassName, mainFunc.Name,
+                                                      mainFunc.GeneratedDecl, inputCodeInfo.allDescriptorSetsInfo);
   
-    inputCodeInfo.mainFuncInOuts = kslicer::ListPointerParamsOfMainFunc(inputCodeInfo.mainFuncNode);
-
+    mainFunc.InOuts = kslicer::ListPointerParamsOfMainFunc(mainFunc.Node);
+  }
+  
+  // (9) genarate cpp code with Vulkan calls using template text rendering and appropriate template FOR ALL 'mainFunc'-tions
+  //
+  {
     kslicer::PrintVulkanBasicsFile  ("templates/vulkan_basics.h", inputCodeInfo);
     const std::string fileName = \
-    kslicer::PrintGeneratedClassDecl("templates/rt_class_decl.h", inputCodeInfo, mainFuncGeneratedDecl, kernelsCallCmdDecl, inputCodeInfo.mainFuncName);
-    kslicer::PrintGeneratedClassImpl("templates/rt_class_impl.cpp", fileName, inputCodeInfo, mainFuncCodeGenerated, kernelsCallCmdDecl, inputCodeInfo.mainFuncName); 
+    kslicer::PrintGeneratedClassDecl("templates/rt_class_decl.h", inputCodeInfo, inputCodeInfo.mainFunc);
+    kslicer::PrintGeneratedClassImpl("templates/rt_class_impl.cpp", fileName, inputCodeInfo, inputCodeInfo.mainFunc); 
   }
-
-  // at this step we must filter data variables to store only those which are referenced inside kernels calls
-  //
 
   return 0;
 }

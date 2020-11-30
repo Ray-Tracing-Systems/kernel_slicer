@@ -54,7 +54,9 @@ public:
     UpdateVectorMembers(a_pCopyEngine);
   }
 
-  {{MainFuncDecl}}
+## for MainFunc in MainFunctions  
+  {{MainFunc.Decl}}
+## endfor
   
   {{KernelsDecl}}
 

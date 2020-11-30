@@ -61,8 +61,14 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
 }
 
 std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo, 
-                                             const std::string& a_mainFuncDecl, const std::vector<std::string>& kernelsCallCmdDecl, const std::string& a_mainFuncName)
+                                             const std::vector<MainFuncInfo>& a_methodsToGenerate)
 {
+  assert(a_methodsToGenerate.size() == 1);
+
+  const std::string&              a_mainFuncDecl     = a_methodsToGenerate[0].GeneratedDecl;
+  const std::vector<std::string>& kernelsCallCmdDecl = a_methodsToGenerate[0].KernelsCallCmdDecl;
+  const std::string&              a_mainFuncName     = a_methodsToGenerate[0].Name;
+
   std::string rawname;
   {
     size_t lastindex = a_classInfo.mainClassFileName.find_last_of("."); 
@@ -89,13 +95,21 @@ std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFi
   json data;
   data["Includes"]      = strOut.str();
   data["MainClassName"] = a_classInfo.mainClassName;
-  data["MainFuncDecl"]  = a_mainFuncDecl;
+  //data["MainFuncDecl"]  = a_mainFuncDecl;
 
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";
-  data["KernelsDecl"]                  = strOut2.str();
-  data["LocalVarsBuffersDecl"]         = GetVarNames(a_classInfo.mainFuncLocals, a_mainFuncName);   
+  data["KernelsDecl"]                  = strOut2.str();   
   data["TotalDSNumber"]                = a_classInfo.allDescriptorSetsInfo.size();
+
+  data["MainFunctions"] = std::vector<std::string>(); 
+  for(const auto& mainFunc : a_methodsToGenerate)
+  {
+    json local;
+    local["Decl"] = mainFunc.GeneratedDecl;
+    local["Name"] = mainFunc.Name;
+    data["MainFunctions"].push_back(local);
+  }
 
   data["KernelNames"] = std::vector<std::string>();  
   for(const auto& k : a_classInfo.allKernels)
@@ -107,8 +121,12 @@ std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFi
     data["KernelNames"].push_back(kernName);
   }
 
+  // #TODO(!!!): generate local variables for ALL MAIN FUNCTIONS!!!
+  data["LocalVarsBuffersDecl"]         = GetVarNames(a_classInfo.mainFunc[0].Locals, a_mainFuncName);
+  
+  // #TODO(!!!): generate local variables for ALL MAIN FUNCTIONS!!!
   data["InOutVars"] = std::vector<std::string>();
-  for(const auto& v : a_classInfo.mainFuncInOuts)
+  for(const auto& v : a_classInfo.mainFunc[0].InOuts)
     data["InOutVars"].push_back(a_mainFuncName + "_" + v.first);
   
   inja::Environment env;
@@ -123,13 +141,17 @@ std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFi
   return includeFileName;
 } 
 
-void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath, 
-                                      const std::string& a_includeName, 
-                                      const MainClassInfo& a_classInfo,
-                                      const std::string& a_mainFuncCodeGen,
-                                      const std::vector<std::string>& kernelsCallCmdDecl,
-                                      const std::string& a_mainFuncName)
+void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath, const std::string& a_includeName, const MainClassInfo& a_classInfo,
+                                      const std::vector<MainFuncInfo>& a_methodsToGenerate)
 {
+  
+  assert(a_methodsToGenerate.size() == 1);
+
+  const std::string&              a_mainFuncDecl     = a_methodsToGenerate[0].GeneratedDecl;
+  const std::vector<std::string>& kernelsCallCmdDecl = a_methodsToGenerate[0].KernelsCallCmdDecl;
+  const std::string&              a_mainFuncName     = a_methodsToGenerate[0].Name;
+  const std::string&              a_mainFuncCodeGen  = a_methodsToGenerate[0].CodeGenerated;
+
   std::string folderPath  = GetFolderPath(a_includeName);
   std::string mainInclude = a_includeName;
   MakeAbsolutePathRelativeTo(mainInclude, folderPath);
@@ -158,7 +180,7 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
   data["AllClassVarsSize"]  = allClassVarsSizeInBytes;
 
   data["LocalVarsBuffers"] = std::vector<std::string>();
-  for(const auto& v : a_classInfo.mainFuncLocals)
+  for(const auto& v : a_classInfo.mainFunc[0].Locals)
   {
     json local;
     local["Name"] = a_mainFuncName + "_" + v.second.name;
