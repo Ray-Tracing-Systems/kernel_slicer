@@ -6,7 +6,7 @@
         {
             "label": "BuildRelease",
             "type": "shell",
-            "command": "d cmake-build-release && make -j 4",
+            "command": "cd cmake-build-release && make -j 4",
             "group": {
                 "kind": "build",
                 "isDefault": false

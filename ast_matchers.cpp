@@ -79,6 +79,17 @@ clang::ast_matchers::StatementMatcher kslicer::MakeMatch_MethodCallFromMethod(st
   ).bind("functionCall");
 }
 
+clang::ast_matchers::StatementMatcher kslicer::MakeMatch_MethodCallFromMethod()
+{
+  using namespace clang::ast_matchers;
+  return 
+  cxxMemberCallExpr(
+    allOf(hasAncestor( cxxMethodDecl().bind("targetFunction") ),
+          callee(cxxMethodDecl().bind("fdecl"))
+         )
+  ).bind("functionCall");
+}
+
 clang::ast_matchers::StatementMatcher kslicer::MakeMatch_FunctionCallFromFunction(std::string const& a_funcName)
 {
   using namespace clang::ast_matchers;
@@ -98,4 +109,83 @@ clang::ast_matchers::StatementMatcher kslicer::MakeMatch_MemberVarOfMethod(std::
     hasDeclaration(fieldDecl().bind("memberName")),
     hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction"))
   ).bind("memberReference");
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class MainFuncSeeker : public clang::ast_matchers::MatchFinder::MatchCallback 
+{
+public:
+  explicit MainFuncSeeker(std::ostream& s, const std::string& a_mainClassName, const clang::ASTContext& a_astContext) : 
+                            m_out(s), m_mainClassName(a_mainClassName), m_astContext(a_astContext) 
+  {
+  }
+
+  void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
+  {
+    using namespace clang;
+   
+    CXXMethodDecl     const * func_decl = result.Nodes.getNodeAs<CXXMethodDecl>    ("targetFunction");
+    CXXMemberCallExpr const * kern_call = result.Nodes.getNodeAs<CXXMemberCallExpr>("functionCall");
+    CXXMethodDecl     const * kern      = result.Nodes.getNodeAs<CXXMethodDecl>    ("fdecl");
+
+    if(func_decl && kern_call && kern) 
+    {
+      const auto pClass = func_decl->getParent();
+      assert(pClass != nullptr);
+      if(pClass->getName().str() == m_mainClassName &&  kern->getNameAsString().find("kernel_") != std::string::npos)
+      {
+        //std::cout << func_decl->getNameAsString() << " --> " << kern->getNameAsString() << std::endl;
+        auto p = m_mainFunctions.find(func_decl->getNameAsString());
+        if(p == m_mainFunctions.end())
+        {
+          kslicer::MainFuncNameInfo info;
+          info.name = func_decl->getNameAsString();
+          info.kernelNames.push_back(kern->getNameAsString());
+          m_mainFunctions[func_decl->getNameAsString()] = info;
+        }
+        else
+        {
+          auto& kernNames = p->second.kernelNames;
+          auto elementId = std::find(kernNames.begin(), kernNames.end(), kern->getNameAsString());
+          if(elementId == kernNames.end())
+            kernNames.push_back(kern->getNameAsString());
+        }
+        
+      }
+    }
+    else 
+    {
+      kslicer::check_ptr(func_decl, "func_decl", "", m_out);
+      kslicer::check_ptr(kern_call, "kern_call", "", m_out);
+      kslicer::check_ptr(kern,      "kern",      "", m_out);
+    }
+    return;
+  }  // run
+  
+  std::ostream&            m_out;
+  const std::string&       m_mainClassName;
+  const clang::ASTContext& m_astContext;
+  std::unordered_map<std::string, kslicer::MainFuncNameInfo> m_mainFunctions;
+}; 
+
+std::unordered_map<std::string, kslicer::MainFuncNameInfo> kslicer::ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
+                                                                                           const std::string& a_mainClassName, 
+                                                                                           const clang::ASTContext& a_astContext)
+{
+  auto kernelCallMatcher = kslicer::MakeMatch_MethodCallFromMethod();
+  
+  MainFuncSeeker printer(std::cout, a_mainClassName, a_astContext);
+  clang::ast_matchers::MatchFinder finder;
+  finder.addMatcher(kernelCallMatcher,  &printer);
+
+  auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
+  if(res != 0) 
+    std::cout << "[Seeking for MainFunc]: tool run res = " << res << std::endl;
+
+  return printer.m_mainFunctions;
 }

@@ -280,15 +280,11 @@ int main(int argc, const char **argv)
   auto params = ReadCommandLineParams(argc, argv, fileName);
 
   std::string mainClassName = "TestClass";
-  std::string mainFuncName  = "PathTrace";
   std::string outGenerated  = "data/generated.cl";
   std::string stdlibFolder  = "";
   
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
-
-  if(params.find("-mainFunc") != params.end())
-    mainFuncName = params["-mainFunc"];
 
   if(params.find("-out") != params.end())
     outGenerated = params["-out"];
@@ -356,7 +352,6 @@ int main(int argc, const char **argv)
     compiler.getPreprocessor().addPPCallbacks(std::move(pHeaderLister));
   }
 
-
   ////////////////////////////////////////////////////////////////////////
   std::string outName(fileName);
   {
@@ -367,9 +362,27 @@ int main(int argc, const char **argv)
   }
   llvm::errs() << "Output to: " << outName << "\n";
   ////////////////////////////////////////////////////////////////////////
+    
+  // init clang tooling
+  //
+  const char* argv2[] = {argv[0], argv[1], "--"};
+  int argc2 = sizeof(argv2)/sizeof(argv2[0]);
+
+  clang::tooling::CommonOptionsParser OptionsParser(argc2, argv2, GDOpts);
+  clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
+
+  // (0) find all "Main" functions, a functions which call kernels. Kerels are also listed for each mainFunc;
+  //
+  std::cout << "Seeking for MainFunc of " << mainClassName.c_str() << std::endl;
+  auto MainFuncList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, compiler.getASTContext());
+
+  assert(MainFuncList.size() == 1);
+
+  std::string mainFuncName = MainFuncList.begin()->first;
 
   // (1) traverse source code of main file first
   //
+  std::cout << "Traversing " << mainClassName.c_str() << std::endl;
   {
     kslicer::InitialPassASTConsumer astConsumer(mainFuncName.c_str(), mainClassName.c_str(), compiler.getASTContext(), compiler.getSourceManager());  
     ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
@@ -385,14 +398,6 @@ int main(int argc, const char **argv)
     inputCodeInfo.mainClassFileInclude = astConsumer.rv.MAIN_FILE_INCLUDE;
   }
   
-  // init clang tooling
-  //
-  const char* argv2[] = {argv[0], argv[1], "--"};
-  int argc2 = sizeof(argv2)/sizeof(argv2[0]);
-
-  clang::tooling::CommonOptionsParser OptionsParser(argc2, argv2, GDOpts);
-  clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
-
   // (2) now process variables and kernel calls of main function
   //
   {

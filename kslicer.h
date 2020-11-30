@@ -90,11 +90,16 @@ namespace kslicer
     bool umpersanned           = false; // just signal that '&' was applied to this argument, and thus it is likely to be (ARG_REFERENCE_LOCAL or ARG_REFERENCE_CLASS_POD)
   };
 
-
   struct KernelCallInfo
   {
     std::string                     kernelName;
     std::vector<ArgReferenceOnCall> allDescriptorSetsInfo;
+  };
+
+  struct MainFuncNameInfo
+  {
+    std::string              name;
+    std::vector<std::string> kernelNames;
   };
   
   /**

@@ -9,12 +9,12 @@
 #include "clang/AST/ASTContext.h"
 
 #include <string>
+#include <vector>
+#include <unordered_map>
+#include <algorithm>
+
 #include <sstream>
 #include <iostream>
-
-#include <unordered_map>
-#include <vector>
-#include <algorithm>
 
 #include "kslicer.h"
 
@@ -25,13 +25,18 @@ namespace kslicer
   using namespace clang::ast_matchers;
 
   clang::ast_matchers::StatementMatcher MakeMatch_LocalVarOfMethod(std::string const& funcName); 
-  clang::ast_matchers::StatementMatcher MakeMatch_MethodCallFromMethod(std::string const& funcName); 
+  clang::ast_matchers::StatementMatcher MakeMatch_MethodCallFromMethod(std::string const& funcName); // from method with name 'funcName'
+  clang::ast_matchers::StatementMatcher MakeMatch_MethodCallFromMethod();                            // from any method
 
   clang::ast_matchers::StatementMatcher MakeMatch_MemberVarOfMethod(std::string const& funcName);     
   clang::ast_matchers::StatementMatcher MakeMatch_FunctionCallFromFunction(std::string const& funcName);
 
   std::string locationAsString(clang::SourceLocation loc, clang::SourceManager const * const sm);
   std::string sourceRangeAsString(clang::SourceRange r, clang::SourceManager const * sm);
+
+  std::unordered_map<std::string, MainFuncNameInfo> ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
+                                                                           const std::string& a_mainClassName, 
+                                                                           const clang::ASTContext& a_astContext);
 
   /**\brief Complain if pointer is invalid.
   \param p: pointer
@@ -69,7 +74,7 @@ namespace kslicer
       Expr              const * l_var     = result.Nodes.getNodeAs<Expr>   ("localReference");
       VarDecl           const * var       = result.Nodes.getNodeAs<VarDecl>("locVarName");
 
-      clang::SourceManager& src_manager(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
+      //clang::SourceManager& src_manager(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
 
       if(func_decl && kern_call && kern) 
       {

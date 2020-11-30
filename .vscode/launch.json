@@ -10,7 +10,6 @@
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/01_intersectSphere/test_class.cpp", 
-                        "-mainFunc", "MainFunc",
                         "-out", "${workspaceFolder}/apps/01_intersectSphere/z_generated.cl", 
                         "-stdlibfolder", "${workspaceFolder}/stdlib", 
                         "-v"],
