@@ -32,20 +32,22 @@ public:
     InitKernels("z_generated.cl.spv", a_blockSizeX, a_blockSizeY, a_blockSizeZ);
   }
 
-  virtual void SetVulkanInputOutput(
-## for BufferName in InOutVars
+## for MainFunc in MainFunctions
+  virtual void SetVulkanInputOutputFor_{{MainFunc.Name}}(
+## for BufferName in MainFunc.InOutVars
     VkBuffer a_{{BufferName}}Buffer,
     size_t   a_{{BufferName}}Offset,
 ## endfor
     uint32_t dummyArgument = 0)
   {
-## for BufferName in InOutVars
-    {{BufferName}}Buffer = a_{{BufferName}}Buffer;
-    {{BufferName}}Offset = a_{{BufferName}}Offset;
+## for BufferName in MainFunc.InOutVars
+    {{MainFunc.Name}}_local.{{BufferName}}Buffer = a_{{BufferName}}Buffer;
+    {{MainFunc.Name}}_local.{{BufferName}}Offset = a_{{BufferName}}Offset;
 ## endfor
-    InitAllGeneratedDescriptorSets();
+    InitAllGeneratedDescriptorSets_{{MainFunc.Name}}();
   }
 
+## endfor
   ~{{MainClassName}}_Generated();
 
   virtual void UpdateAll(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
@@ -73,7 +75,10 @@ protected:
   virtual void InitHelpers();
   virtual void InitBuffers(size_t a_maxThreadsCount);
   virtual void InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ);
-  virtual void InitAllGeneratedDescriptorSets();
+
+## for MainFunc in MainFunctions
+  virtual void InitAllGeneratedDescriptorSets_{{MainFunc.Name}}();
+## endfor
 
   virtual void UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
@@ -81,14 +86,21 @@ protected:
   {{PlainMembersUpdateFunctions}}
   {{VectorMembersUpdateFunctions}}
 
-## for BufferName in LocalVarsBuffersDecl
-  VkBuffer {{BufferName}}Buffer = VK_NULL_HANDLE;
-  size_t   {{BufferName}}Offset = 0;
-## endfor
+## for MainFunc in MainFunctions  
+  struct {{MainFunc.Name}}_Data
+  {
+## for BufferName in MainFunc.LocalVarsBuffersDecl
+    VkBuffer {{BufferName}}Buffer = VK_NULL_HANDLE;
+    size_t   {{BufferName}}Offset = 0;
 
-## for BufferName in InOutVars
-  VkBuffer {{BufferName}}Buffer = VK_NULL_HANDLE;
-  size_t   {{BufferName}}Offset = 0;
+## endfor
+## for BufferName in MainFunc.InOutVars
+    VkBuffer {{BufferName}}Buffer = VK_NULL_HANDLE;
+    size_t   {{BufferName}}Offset = 0;
+
+## endfor
+  } {{MainFunc.Name}}_local;
+
 ## endfor
 
   VkBuffer m_classDataBuffer = VK_NULL_HANDLE;

@@ -29,6 +29,8 @@ namespace kslicer
   
     const clang::CXXMethodDecl* astNode = nullptr;
     bool usedInMainFunc = false;
+
+    std::string DeclCmd;
   };
 
   /**
@@ -111,7 +113,6 @@ namespace kslicer
 
     std::string              GeneratedDecl;
     std::string              CodeGenerated;
-    std::vector<std::string> KernelsCallCmdDecl;
   };
   
   /**

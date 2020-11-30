@@ -280,11 +280,9 @@ std::string kslicer::ProcessKernel(const CXXMethodDecl* a_node, clang::CompilerI
   return rewrite2.getRewrittenText(clang::SourceRange(b,e));
 }
 
-
-std::vector<std::string> kslicer::ObtainKernelsDecl(const std::vector<kslicer::KernelInfo>& a_kernelsData, clang::SourceManager& sm, const std::string& a_mainClassName)
+void kslicer::ObtainKernelsDecl(std::vector<kslicer::KernelInfo>& a_kernelsData, clang::SourceManager& sm, const std::string& a_mainClassName)
 {
-  std::vector<std::string> kernelsCallCmdDecl;
-  for (const auto& k : a_kernelsData)  
+  for (auto& k : a_kernelsData)  
   {
     assert(k.astNode != nullptr);
     auto sourceRange = k.astNode->getSourceRange();
@@ -294,7 +292,6 @@ std::vector<std::string> kslicer::ObtainKernelsDecl(const std::vector<kslicer::K
     assert(ReplaceFirst(kernelCmdDecl, a_mainClassName + "::", ""));
     assert(ReplaceFirst(kernelCmdDecl,"kernel_", ""));
     assert(ReplaceFirst(kernelCmdDecl,"(", "Cmd("));
-    kernelsCallCmdDecl.push_back(kernelCmdDecl);
+    k.DeclCmd = kernelCmdDecl;
   }
-  return kernelsCallCmdDecl;
 }

@@ -517,10 +517,9 @@ int main(int argc, const char **argv)
   
   // (8) genarate cpp code with Vulkan calls
   //
+  ObtainKernelsDecl(inputCodeInfo.kernels, compiler.getSourceManager(), inputCodeInfo.mainClassName);
   for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
-    mainFunc.KernelsCallCmdDecl = ObtainKernelsDecl(inputCodeInfo.kernels, compiler.getSourceManager(), inputCodeInfo.mainClassName);
-
     mainFunc.CodeGenerated = kslicer::ProcessMainFunc(mainFunc.Node, compiler, inputCodeInfo.mainClassName, mainFunc.Name,
                                                       mainFunc.GeneratedDecl, inputCodeInfo.allDescriptorSetsInfo);
   
