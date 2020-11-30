@@ -141,9 +141,7 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
   
   assert(a_methodsToGenerate.size() == 1);
 
-  const std::string&              a_mainFuncDecl     = a_methodsToGenerate[0].GeneratedDecl;
-  const std::string&              a_mainFuncName     = a_methodsToGenerate[0].Name;
-  const std::string&              a_mainFuncCodeGen  = a_methodsToGenerate[0].CodeGenerated;
+  const std::string& a_mainFuncName     = a_methodsToGenerate[0].Name;
 
   std::string folderPath  = GetFolderPath(a_includeName);
   std::string mainInclude = a_includeName;
@@ -166,24 +164,13 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
   data["Includes"]         = "";
   data["IncludeClassDecl"] = mainInclude;
   data["MainClassName"]    = a_classInfo.mainClassName;
-  data["MainFuncCmd"]      = a_mainFuncCodeGen;
-  //data["KernelsCmd"]       = strOut2.str();
-  data["TotalDescriptorSets"]  = 16;
+  data["TotalDescriptorSets"] = a_classInfo.allDescriptorSetsInfo.size(); ///// ?????????????????????????????????????????????????????
 
   size_t allClassVarsSizeInBytes = 0;
   for(const auto& var : a_classInfo.classVariables)
     allClassVarsSizeInBytes += var.sizeInBytes;
   
   data["AllClassVarsSize"]  = allClassVarsSizeInBytes;
-
-  data["LocalVarsBuffers"] = std::vector<std::string>();
-  for(const auto& v : a_classInfo.mainFunc[0].Locals)
-  {
-    json local;
-    local["Name"] = a_mainFuncName + "_" + v.second.name;
-    local["Type"] = v.second.type;
-    data["LocalVarsBuffers"].push_back(local);
-  }
 
   data["ClassVars"] = std::vector<std::string>();
   for(const auto& v : a_classInfo.classVariables)
@@ -234,25 +221,43 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
 
   data["TotalDSNumber"] = a_classInfo.allDescriptorSetsInfo.size();
 
-  data["DescriptorSets"] = std::vector<std::string>();
-  for(size_t i=0;i<a_classInfo.allDescriptorSetsInfo.size();i++)
+  data["MainFunctions"] = std::vector<std::string>();
+  for(const auto& mainFunc : a_methodsToGenerate)
   {
-    auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
-
-    json local;
-    local["Id"]        = i;
-    local["Layout"]    = dsArgs.kernelName + "DSLayout";
-    local["ArgNumber"] = dsArgs.allDescriptorSetsInfo.size();
-    local["Args"]      = std::vector<std::string>();
-   
-    for(size_t j=0;j<dsArgs.allDescriptorSetsInfo.size();j++)
+    json data2;
+    data2["Name"]           = mainFunc.Name;
+    data2["DescriptorSets"] = std::vector<std::string>();
+    for(size_t i=0;i<a_classInfo.allDescriptorSetsInfo.size();i++)
     {
-      json arg;
-      arg["Id"]   = j;
-      arg["Name"] = a_mainFuncName + "_" + dsArgs.allDescriptorSetsInfo[j].varName;
-      local["Args"].push_back(arg);
+      auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
+  
+      json local;
+      local["Id"]        = i;
+      local["Layout"]    = dsArgs.kernelName + "DSLayout";
+      local["ArgNumber"] = dsArgs.allDescriptorSetsInfo.size();
+      local["Args"]      = std::vector<std::string>();
+     
+      for(size_t j=0;j<dsArgs.allDescriptorSetsInfo.size();j++)
+      {
+        json arg;
+        arg["Id"]   = j;
+        arg["Name"] = mainFunc.Name + "_local." + dsArgs.allDescriptorSetsInfo[j].varName;
+        local["Args"].push_back(arg);
+      }
+      data2["DescriptorSets"].push_back(local);
     }
-    data["DescriptorSets"].push_back(local);
+
+    data2["MainFuncCmd"]      = mainFunc.CodeGenerated;
+    data2["LocalVarsBuffers"] = std::vector<std::string>();
+    for(const auto& v : a_classInfo.mainFunc[0].Locals)
+    {
+      json local;
+      local["Name"] = mainFunc.Name + "_local." + v.second.name;
+      local["Type"] = v.second.type;
+      data2["LocalVarsBuffers"].push_back(local);
+    }
+
+    data["MainFunctions"].push_back(data2);
   }
 
   inja::Environment env;

@@ -17,10 +17,12 @@
 ## endfor
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
 
-## for Buffer in LocalVarsBuffers
+## for MainFunc in MainFunctions
+## for Buffer in MainFunc.LocalVarsBuffers
   vkDestroyBuffer(device, {{Buffer.Name}}Buffer, nullptr);
 ## endfor
 
+## endfor
   vkDestroyBuffer(device, m_classDataBuffer, nullptr);
   vkFreeMemory   (device, m_allMem, nullptr);
 }
@@ -99,7 +101,8 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
 ## endfor
 }
 
-void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets()
+## for MainFunc in MainFunctions
+void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name}}()
 {
   // allocate pool
   //
@@ -121,7 +124,7 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets()
   //
   {
     VkDescriptorSetLayout layouts[{{TotalDSNumber}}] = {};
-## for DescriptorSet in DescriptorSets
+## for DescriptorSet in MainFunc.DescriptorSets
     layouts[{{DescriptorSet.Id}}] = {{DescriptorSet.Layout}};
 ## endfor
 
@@ -130,14 +133,11 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets()
     descriptorSetAllocateInfo.descriptorPool     = m_dsPool;  
     descriptorSetAllocateInfo.descriptorSetCount = {{TotalDSNumber}};     
     descriptorSetAllocateInfo.pSetLayouts        = layouts;
-  
-    auto tmpRes = vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, m_allGeneratedDS);
-    VK_CHECK_RESULT(tmpRes);
   }
  
   // now create actual bindings
   //
-## for DescriptorSet in DescriptorSets
+## for DescriptorSet in MainFunc.DescriptorSets
   // descriptor set #{{DescriptorSet.Id}} 
   {
     std::vector<VkDescriptorBufferInfo> descriptorBufferInfo({{DescriptorSet.ArgNumber}}+1);
@@ -180,6 +180,9 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets()
 ## endfor
 }
 
+## endfor
+
+
 void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
 {
 ## for Var in ClassVars
@@ -187,20 +190,20 @@ void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vkfw::ICopy
 ## endfor
 }
 
-
 void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
 {
 
 }
 
-
 void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
 {
   std::vector<VkBuffer> allBuffers;
-  
-## for Buffer in LocalVarsBuffers
+
+## for MainFunc in MainFunctions  
+## for Buffer in MainFunc.LocalVarsBuffers
   {{Buffer.Name}}Buffer = vkfw::CreateBuffer(device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
   allBuffers.push_back({{Buffer.Name}}Buffer);
+## endfor
 ## endfor
 
   m_classDataBuffer = vkfw::CreateBuffer(device, {{AllClassVarsSize}},  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
@@ -225,5 +228,8 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
 
 ## endfor
 
-{{MainFuncCmd}}
+## for MainFunc in MainFunctions
+{{MainFunc.MainFuncCmd}}
+
+## endfor
 
