@@ -124,7 +124,7 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
   //
   {
     VkDescriptorSetLayout layouts[{{TotalDSNumber}}] = {};
-## for DescriptorSet in MainFunc.DescriptorSets
+## for DescriptorSet in  MainFunc.DescriptorSets
     layouts[{{DescriptorSet.Id}}] = {{DescriptorSet.Layout}};
 ## endfor
 
@@ -133,8 +133,11 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     descriptorSetAllocateInfo.descriptorPool     = m_dsPool;  
     descriptorSetAllocateInfo.descriptorSetCount = {{TotalDSNumber}};     
     descriptorSetAllocateInfo.pSetLayouts        = layouts;
+  
+    auto tmpRes = vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, m_allGeneratedDS);
+    VK_CHECK_RESULT(tmpRes);
   }
- 
+
   // now create actual bindings
   //
 ## for DescriptorSet in MainFunc.DescriptorSets
