@@ -95,7 +95,7 @@ namespace kslicer
   struct KernelCallInfo
   {
     std::string                     kernelName;
-    std::vector<ArgReferenceOnCall> allDescriptorSetsInfo;
+    std::vector<ArgReferenceOnCall> descriptorSetsInfo;
   };
 
   struct MainFuncNameInfo

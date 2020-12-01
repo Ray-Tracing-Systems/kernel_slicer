@@ -30,6 +30,7 @@ public:
     InitHelpers();
     InitBuffers(a_maxThreadsCount);
     InitKernels("z_generated.cl.spv", a_blockSizeX, a_blockSizeY, a_blockSizeZ);
+    AllocateAllDescriptorSets();
   }
 
 ## for MainFunc in MainFunctions
@@ -75,9 +76,11 @@ protected:
   virtual void InitHelpers();
   virtual void InitBuffers(size_t a_maxThreadsCount);
   virtual void InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ);
+  virtual void AllocateAllDescriptorSets();
 
 ## for MainFunc in MainFunctions
   virtual void InitAllGeneratedDescriptorSets_{{MainFunc.Name}}();
+  bool m_dsAllocatedFor_{{MainFunc.Name}} = false;
 ## endfor
 
   virtual void UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);

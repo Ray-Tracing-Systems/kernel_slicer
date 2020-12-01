@@ -101,8 +101,7 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
 ## endfor
 }
 
-## for MainFunc in MainFunctions
-void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name}}()
+void {{MainClassName}}_Generated::AllocateAllDescriptorSets()
 {
   // allocate pool
   //
@@ -119,9 +118,14 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     
     VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, NULL, &m_dsPool));
   }
+}
 
+## for MainFunc in MainFunctions
+void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name}}()
+{
   // allocate all descriptor sets
   //
+  if(!m_dsAllocatedFor_{{MainFunc.Name}})
   {
     VkDescriptorSetLayout layouts[{{TotalDSNumber}}] = {};
 ## for DescriptorSet in  MainFunc.DescriptorSets
@@ -136,6 +140,7 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
   
     auto tmpRes = vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, m_allGeneratedDS);
     VK_CHECK_RESULT(tmpRes);
+    m_dsAllocatedFor_{{MainFunc.Name}} = true;
   }
 
   // now create actual bindings

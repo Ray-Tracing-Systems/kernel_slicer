@@ -56,7 +56,7 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
 
       KernelCallInfo call;
       call.kernelName            = kernName;
-      call.allDescriptorSetsInfo = args;
+      call.descriptorSetsInfo = args;
       m_kernCallTypes.push_back(call);
     }
     std::stringstream strOut;
