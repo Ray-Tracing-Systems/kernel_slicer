@@ -63,8 +63,6 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
 std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo, 
                                              const std::vector<MainFuncInfo>& a_methodsToGenerate)
 {
-  assert(a_methodsToGenerate.size() == 1);
-
   std::string rawname;
   {
     size_t lastindex = a_classInfo.mainClassFileName.find_last_of("."); 
@@ -138,11 +136,6 @@ std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFi
 void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath, const std::string& a_includeName, const MainClassInfo& a_classInfo,
                                       const std::vector<MainFuncInfo>& a_methodsToGenerate)
 {
-  
-  assert(a_methodsToGenerate.size() == 1);
-
-  const std::string& a_mainFuncName     = a_methodsToGenerate[0].Name;
-
   std::string folderPath  = GetFolderPath(a_includeName);
   std::string mainInclude = a_includeName;
   MakeAbsolutePathRelativeTo(mainInclude, folderPath);
@@ -198,23 +191,46 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
     local["ArgCount"]     = k.second.args.size();
     local["Decl"]         = kernelDeclByName[kernName];
 
+    std::vector<std::string> threadIdNamesList;
+
     local["Args"]         = std::vector<std::string>();
     size_t actualSize     = 0;
     for(const auto& arg : k.second.args)
     {
       auto elementId = std::find(predefinedNames.begin(), predefinedNames.end(), arg.name);
       if(elementId != predefinedNames.end()) // exclude predefined names from bindings
+      {
+        threadIdNamesList.push_back(arg.name);
         continue;
-
+      }
       json argData;
       argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
-      argData["Name"]  = a_mainFuncName + "_" + arg.name;
+      argData["Name"]  = arg.name;
       argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
       argData["Id"]    = actualSize;
       local["Args"].push_back(argData);
       actualSize++;
     }
     local["ArgCount"] = actualSize;
+
+    std::sort(threadIdNamesList.begin(), threadIdNamesList.end());
+    
+    assert(threadIdNamesList.size() > 0);
+
+    if(threadIdNamesList.size() > 0)
+      local["tidX"] = threadIdNamesList[0];
+    else
+      local["tidX"] = 1;
+
+    if(threadIdNamesList.size() > 1)
+      local["tidY"] = threadIdNamesList[1];
+    else
+      local["tidY"] = 1;
+
+    if(threadIdNamesList.size() > 2)
+      local["tidZ"] = threadIdNamesList[2];
+    else
+      local["tidZ"] = 1;
 
     data["Kernels"].push_back(local);
   }
@@ -234,14 +250,14 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
       json local;
       local["Id"]        = i;
       local["Layout"]    = dsArgs.kernelName + "DSLayout";
-      local["ArgNumber"] = dsArgs.allDescriptorSetsInfo.size();
+      local["ArgNumber"] = dsArgs.descriptorSetsInfo.size();
       local["Args"]      = std::vector<std::string>();
      
-      for(size_t j=0;j<dsArgs.allDescriptorSetsInfo.size();j++)
+      for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
         json arg;
         arg["Id"]   = j;
-        arg["Name"] = mainFunc.Name + "_local." + dsArgs.allDescriptorSetsInfo[j].varName;
+        arg["Name"] = mainFunc.Name + "_local." + dsArgs.descriptorSetsInfo[j].varName;
         local["Args"].push_back(arg);
       }
       data2["DescriptorSets"].push_back(local);

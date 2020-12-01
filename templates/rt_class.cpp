@@ -95,7 +95,7 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
   m_pMaker->CreateShader(device, a_filePath, &specsForWGSize, "{{Kernel.OriginalName}}");
 
-  {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, sizeof(uint32_t)*2);
+  {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, sizeof(uint32_t)*4);
   {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);   
 
 ## endfor
@@ -225,10 +225,10 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
 {
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   
-  uint32_t pcData[2] = {tidX, tidY};
-  vkCmdPushConstants(m_currCmdBuffer, TestColorLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t)*2, pcData);
+  uint32_t pcData[4] = { {{Kernel.tidX}}, {{Kernel.tidY}}, {{Kernel.tidZ}}, 1};
+  vkCmdPushConstants(m_currCmdBuffer, TestColorLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t)*4, pcData);
   
-  vkCmdDispatch(m_currCmdBuffer, tidX/m_blockSize[0], tidY/m_blockSize[1], 1);
+  vkCmdDispatch(m_currCmdBuffer, {{Kernel.tidX}}/m_blockSize[0], {{Kernel.tidY}}/m_blockSize[1], {{Kernel.tidZ}}/m_blockSize[2]);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
