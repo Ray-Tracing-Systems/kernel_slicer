@@ -531,8 +531,8 @@ int main(int argc, const char **argv)
   {
     kslicer::PrintVulkanBasicsFile  ("templates/vulkan_basics.h", inputCodeInfo);
     const std::string fileName = \
-    kslicer::PrintGeneratedClassDecl("templates/rt_class_decl.h", inputCodeInfo, inputCodeInfo.mainFunc);
-    kslicer::PrintGeneratedClassImpl("templates/rt_class_impl.cpp", fileName, inputCodeInfo, inputCodeInfo.mainFunc); 
+    kslicer::PrintGeneratedClassDecl("templates/rt_class.h", inputCodeInfo, inputCodeInfo.mainFunc);
+    kslicer::PrintGeneratedClassImpl("templates/rt_class.cpp", fileName, inputCodeInfo, inputCodeInfo.mainFunc); 
   }
 
   return 0;
