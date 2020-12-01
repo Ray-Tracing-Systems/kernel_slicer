@@ -3,6 +3,7 @@
 #include <random>
 
 static inline uint fakeOffset (uint x, uint y) { return 0; } 
+static inline uint fakeOffset (uint x) { return 0; } 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -41,66 +42,36 @@ void TestClass::InitSpheresScene(int a_numSpheres, int a_seed)
     }
   }
    
-  // generate spheres position and radius according to Tabula-Rasa
-  //
-  bool collision = false;
-  int iterNum = 0;
-  do
+  for(int i=0;i<a_numSpheres;i++)
   {
-    for(int i=0;i<a_numSpheres;i++)
-    {
-      spheresPosRadius[i] = make_float4(spheresPosDistr(generator),
-                                        spheresPosDistr(generator),
-                                        spheresPosDistr(generator)-10.0f,
-                                        spheresRadDistr(generator));
-    }
-    
-    collision = false;
-    for(int i=0;i<a_numSpheres;i++)
-    {
-      const float4 sphereData1 = spheresPosRadius[i];
-      const float3 spherePos1  = to_float3(sphereData1);
-      const float  sphereR1    = sphereData1.w;
+    spheresPosRadius[i] = make_float4(spheresPosDistr(generator),
+                                      spheresPosDistr(generator),
+                                      spheresPosDistr(generator)-10.0f,
+                                      spheresRadDistr(generator));
+  }
   
-      for(int j = i+1;j<a_numSpheres;j++)
-      {
-        const float4 sphereData2 = spheresPosRadius[j];
-        const float3 spherePos2  = to_float3(sphereData2);
-        const float  sphereR2    = sphereData2.w;
-  
-        const float minDist = sphereR1+sphereR2;
-        if(lengthSquare(spherePos1-spherePos2) < minDist*minDist)
-        {
-          collision = true;
-          break;
-        }
-      }
-  
-      if(collision)
-        break;
-    }  
-
-    iterNum++;
-  } while (collision && iterNum < 1000);
-
-  std::cout << "[InitSpheresScene]: Tabula-Rasa was applieds " << iterNum << " times" << std::endl;
 }
 
-void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
+void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, uint* flags, float4* rayPosAndNear, float4* rayDirAndFar) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 {
-  const float3 rayDir = EyeRayDir((float)tidX, (float)tidY, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
+  const uint XY = packedXY[tid];
+
+  const uint x = (XY & 0x0000FFFF);
+  const uint y = (XY & 0xFFFF0000) >> 16;
+
+  const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
   const float3 rayPos = make_float3(0.0f, 0.0f, 0.0f);
   
-  rayPosAndNear[fakeOffset(tidX,tidY)] = to_float4(rayPos, 0.0f);
-  rayDirAndFar [fakeOffset(tidX,tidY)] = to_float4(rayDir, MAXFLOAT);
-  flags        [fakeOffset(tidX,tidY)] = 0;
+  rayPosAndNear[fakeOffset(tid)] = to_float4(rayPos, 0.0f);
+  rayDirAndFar [fakeOffset(tid)] = to_float4(rayDir, MAXFLOAT);
+  flags        [fakeOffset(tid)] = 0;
 }
 
-void TestClass::kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFar, 
-                                Lite_Hit* out_hit, uint tidX, uint tidY)
+void TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar, 
+                                Lite_Hit* out_hit)
 {
-  const float3 rayPos = to_float3(rayPosAndNear[fakeOffset(tidX,tidY)]);
-  const float3 rayDir = to_float3(rayDirAndFar[fakeOffset(tidX,tidY)]);
+  const float3 rayPos = to_float3(rayPosAndNear[fakeOffset(tid)]);
+  const float3 rayDir = to_float3(rayDirAndFar [fakeOffset(tid)]);
 
   Lite_Hit res;
   res.primId = -1;
@@ -119,33 +90,49 @@ void TestClass::kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFa
     }
   }
 
-  out_hit     [fakeOffset(tidX,tidY)]   = res;
-  rayDirAndFar[fakeOffset(tidX,tidY)].w = res.t;
+  out_hit     [fakeOffset(tid)]   = res;
+  rayDirAndFar[fakeOffset(tid)].w = res.t;
 }
 
-void TestClass::kernel_TestColor(const Lite_Hit* in_hit, uint* out_color, uint tidX, uint tidY)
+void TestClass::kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit, 
+                                        uint* out_color)
 {
-  const uint primId = in_hit[fakeOffset(tidX,tidY)].primId;
+  const uint primId = in_hit[fakeOffset(tid)].primId;
 
   if(primId != -1)
-    out_color[pitchOffset(tidX,tidY)] = RealColorToUint32_f3(spheresMaterials[primId].color);
+    out_color[tid] = RealColorToUint32_f3(spheresMaterials[primId].color);
   else
-    out_color[pitchOffset(tidX,tidY)] = 0x00000000;
+    out_color[tid] = 0x00000000;
 }
 
-void TestClass::CastSingleRay(uint tidX, uint tidY, uint* out_color)
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
+{
+  out_pakedXY[pitchOffset(tidX,tidY)] = ((tidY << 16) & 0xFFFF0000) | (tidX & 0x0000FFFF);
+}
+
+void TestClass::PackXY(uint tidX, uint tidY, uint* out_pakedXY)
+{
+  kernel_PackXY(tidX, tidY, out_pakedXY);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
 {
   float4 rayPosAndNear, rayDirAndFar;
   uint   flags;
 
-  kernel_InitEyeRay(&flags, &rayPosAndNear, &rayDirAndFar, tidX, tidY);
+  kernel_InitEyeRay(tid, in_pakedXY, &flags, &rayPosAndNear, &rayDirAndFar);
 
   Lite_Hit hit;
-  kernel_RayTrace(&rayPosAndNear, &rayDirAndFar, 
-                  &hit, tidX, tidY);
+  kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, 
+                  &hit);
   
-  kernel_TestColor(&hit, 
-                   out_color, tidX, tidY);
+  kernel_GetMaterialColor(tid, &hit, out_color);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -159,11 +146,18 @@ void test_class_cpu()
 {
   TestClass test;
   std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
+  std::vector<uint32_t> packedXY(WIN_WIDTH*WIN_HEIGHT);
   
   for(int y=0;y<WIN_HEIGHT;y++)
   {
     for(int x=0;x<WIN_WIDTH;x++)
-      test.CastSingleRay(x,y,pixelData.data());
+      test.PackXY(x, y, packedXY.data());
+  }
+
+  for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
+  {
+    test.CastSingleRay(i, packedXY.data(),
+                       pixelData.data());
   }
 
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);

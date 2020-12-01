@@ -60,15 +60,20 @@ public:
     m_worldViewProjInv  = inverse4x4(proj);
     InitSpheresScene(10);
   }
-  
-  void CastSingleRay(uint tidX, uint tidY, uint* out_color);
 
-  void kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY);        // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
+  void PackXY(uint tidX, uint tidY, uint* out_pakedXY);
 
-  void kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFar, 
-                       Lite_Hit* out_hit, uint tidX, uint tidY);
+  void CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color);
+
+  void kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY);
+
+  void kernel_InitEyeRay(uint tid, const uint* packedXY, uint* flags, float4* rayPosAndNear, float4* rayDirAndFar);        // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
+
+  void kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar, 
+                       Lite_Hit* out_hit);
   
-  void kernel_TestColor(const Lite_Hit* in_hit, uint* out_color, uint tidX, uint tidY);
+  void kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit, 
+                               uint* out_color);
 
 protected:
 
