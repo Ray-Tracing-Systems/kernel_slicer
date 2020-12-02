@@ -1,8 +1,6 @@
 #include "test_class.h"
 #include "include/crandom.h"
 
-#include <random>
-
 static inline uint fakeOffset (uint x, uint y) { return 0; } 
 static inline uint fakeOffset (uint x) { return 0; } 
 
@@ -11,44 +9,44 @@ static inline uint fakeOffset (uint x) { return 0; }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void TestClass::InitSpheresScene(int a_numSpheres, int a_seed)
-{
-  srand(a_seed);
+{ 
+  spheresPosRadius.resize(8);
+  spheresMaterials.resize(8);
 
-  spheresPosRadius.resize(a_numSpheres);
-  spheresMaterials.resize(a_numSpheres);
+  spheresPosRadius[0] = float4(0,-10000.0f,0,9999.0f);
+  spheresMaterials[0].flags = 0;
+  spheresMaterials[0].color = float3(0.5,0.5,0.5);
 
-  std::default_random_engine generator(a_seed);
-  std::uniform_real_distribution<float> distrColors(0.25f, 0.75f);
-  std::uniform_real_distribution<float> spheresPosDistr(-5.0f, 5.0f);
-  std::uniform_real_distribution<float> spheresRadDistr(0.25f, 3.0f);
-  
-  // generate material properties first
-  //
-  for(int i=0;i<a_numSpheres;i++)
-  {
-    bool isEmissive = (i % 5) == 0;
-    if(isEmissive)
-    {
-      spheresMaterials[i].flags = MTL_EMISSIVE;
-      spheresMaterials[i].color = float3(10,10,10);
-    }
-    else
-    {
-      spheresMaterials[i].flags = 0;
-      spheresMaterials[i].color = float3(0.25f + distrColors(generator), 
-                                         0.25f + distrColors(generator), 
-                                         0.25f + distrColors(generator));
-    }
-  }
-   
-  for(int i=0;i<a_numSpheres;i++)
-  {
-    spheresPosRadius[i] = make_float4(spheresPosDistr(generator),
-                                      spheresPosDistr(generator),
-                                      spheresPosDistr(generator)-10.0f,
-                                      spheresRadDistr(generator));
-  }
-  
+  spheresPosRadius[1] = float4(0,0,-4,1);
+  spheresMaterials[1].flags = MTL_EMISSIVE;
+  spheresMaterials[1].color = float3(5,5,5);
+
+  const float col = 0.75f;
+  const float eps = 0.00f;
+
+  spheresPosRadius[2] = float4(-2,0,-4,1);
+  spheresMaterials[2].flags = 0;
+  spheresMaterials[2].color = float3(col,eps,eps);
+
+  spheresPosRadius[3] = float4(+2,0,-4,1);
+  spheresMaterials[3].flags = 0;
+  spheresMaterials[3].color = float3(eps,col,col);
+
+  spheresPosRadius[4] = float4(-1,1.5,-4.5,1);
+  spheresMaterials[4].flags = 0;
+  spheresMaterials[4].color = float3(col,col,eps);
+
+  spheresPosRadius[5] = float4(+1,1.5,-4.5,1);
+  spheresMaterials[5].flags = 0;
+  spheresMaterials[5].color = float3(eps,eps,col);
+
+  spheresPosRadius[6] = float4(-1,-0.5,-3,0.5);
+  spheresMaterials[6].flags = 0;
+  spheresMaterials[6].color = float3(eps,col,eps);
+
+  spheresPosRadius[7] = float4(+1,-0.5,-3,0.5);
+  spheresMaterials[7].flags = 0;
+  spheresMaterials[7].color = float3(eps,col,eps);
 }
 
 void TestClass::InitRandomGens(int a_maxThreads)
@@ -95,7 +93,7 @@ void TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   {
     const float2 tNearAndFar = RaySphereHit(rayPos, rayDir, spheresPosRadius[sphereId]);
   
-    if(tNearAndFar.x < tNearAndFar.y && tNearAndFar.x < res.t)
+    if(tNearAndFar.x < tNearAndFar.y && tNearAndFar.x > 0.0f && tNearAndFar.x < res.t)
     {
       res.t      = tNearAndFar.x;
       res.primId = sphereId;
@@ -164,9 +162,9 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit,
   const float3 hitPos  = rayPos + rayDir*hit.t;
   const float3 hitNorm = normalize(hitPos - sphPos);
 
-  RandomGen gen = m_randomGens[fakeOffset(tid)];
+  RandomGen gen = m_randomGens[tid];
   const float2 uv = rndFloat2_Pseudo(&gen);
-  m_randomGens[fakeOffset(tid)] = gen;
+  m_randomGens[tid] = gen;
 
   const float3 newDir   = MapSampleToCosineDistribution(uv.x, uv.y, hitNorm, hitNorm, 1.0f);
   const float  cosTheta = dot(newDir, hitNorm);
@@ -244,7 +242,7 @@ void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, flo
 
 void test_class_cpu()
 {
-  TestClass test;
+  TestClass test(WIN_WIDTH*WIN_HEIGHT);
 
   std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
   std::vector<uint32_t> packedXY(WIN_WIDTH*WIN_HEIGHT);
@@ -264,14 +262,20 @@ void test_class_cpu()
     test.CastSingleRay(i, packedXY.data(), pixelData.data());
 
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+  //return;
 
   // now test path tracing
   //
   const int PASS_NUMBER = 100;
+  const int ITERS_PER_PASS_NUMBER = 4;
   for(int passId = 0; passId < PASS_NUMBER; passId++)
   {
+    #pragma omp parallel for default(shared)
     for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
-      test.StupidPathTrace(i, 5, packedXY.data(), realColor.data());
+    {
+      for(int j=0;j<ITERS_PER_PASS_NUMBER;j++)
+        test.StupidPathTrace(i, 6, packedXY.data(), realColor.data());
+    }
 
     if(passId%10 == 0)
     {
@@ -283,11 +287,18 @@ void test_class_cpu()
   
   std::cout << std::endl;
 
-  const float normConst = 1.0f/float(PASS_NUMBER);
+  const float normConst = 1.0f/float(PASS_NUMBER*ITERS_PER_PASS_NUMBER);
+  const float invGamma  = 1.0f / 2.2f;
 
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
-    pixelData[i] = RealColorToUint32(realColor[i]*normConst);
-
+  {
+    float4 color = realColor[i]*normConst;
+    color.x      = powf(color.x, invGamma);
+    color.y      = powf(color.y, invGamma);
+    color.z      = powf(color.z, invGamma);
+    color.w      = 1.0f;
+    pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
+  }
   SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
 
   //std::cout << resultingColor.x << " " << resultingColor.y << " " << resultingColor.z << std::endl;
