@@ -14,6 +14,8 @@ namespace LiteMath
   const float INF_POSITIVE = +std::numeric_limits<float>::infinity();
   const float INF_NEGATIVE = -std::numeric_limits<float>::infinity();
 
+  template<typename T> inline T SQR(T x) { return x * x; }
+
   typedef unsigned int    uint;
 
   static inline int as_int(float x) 
@@ -49,18 +51,6 @@ namespace LiteMath
     
     inline float& operator[](int i)       { return M[i]; }
     inline float  operator[](int i) const { return M[i]; }
-
-    inline float4 operator*(const float4& b) const { return float4{x * b.x, y * b.y, z * b.z, w * b.w}; }
-
-    inline float4& operator/=(const float rhs) 
-    {
-      const float inv = 1.0f/rhs; 
-      x *= inv;
-      y *= inv;
-      z *= inv;
-      w *= inv; 
-      return *this; 
-    }
     
     union
     {
@@ -68,6 +58,43 @@ namespace LiteMath
       float  M[4];
     };
   };
+
+  static inline float4 operator * (const float4 & u, float v) { return float4(u.x * v, u.y * v, u.z * v, u.w * v); }
+  static inline float4 operator / (const float4 & u, float v) { return float4(u.x / v, u.y / v, u.z / v, u.w / v); }
+  static inline float4 operator + (const float4 & u, float v) { return float4(u.x + v, u.y + v, u.z + v, u.w + v); }
+  static inline float4 operator - (const float4 & u, float v) { return float4(u.x - v, u.y - v, u.z - v, u.w - v); }
+  static inline float4 operator * (float v, const float4 & u) { return float4(v * u.x, v * u.y, v * u.z, v * u.w); }
+  static inline float4 operator / (float v, const float4 & u) { return float4(v / u.x, v / u.y, v / u.z, v / u.w); }
+  static inline float4 operator + (float v, const float4 & u) { return float4(u.x + v, u.y + v, u.z + v, u.w + v); }
+  static inline float4 operator - (float v, const float4 & u) { return float4(u.x - v, u.y - v, u.z - v, u.w - v); }
+
+  static inline float4 operator + (const float4 & u, const float4 & v) { return float4(u.x + v.x, u.y + v.y, u.z + v.z, u.w + v.w); }
+  static inline float4 operator - (const float4 & u, const float4 & v) { return float4(u.x - v.x, u.y - v.y, u.z - v.z, u.w - v.w); }
+  static inline float4 operator * (const float4 & u, const float4 & v) { return float4(u.x * v.x, u.y * v.y, u.z * v.z, u.w * v.w); }
+  static inline float4 operator / (const float4 & u, const float4 & v) { return float4(u.x / v.x, u.y / v.y, u.z / v.z, u.w / v.w); }
+
+  static inline float4 & operator += (float4 & u, const float4 & v) { u.x += v.x; u.y += v.y; u.z += v.z; u.w += v.w; return u; }
+  static inline float4 & operator -= (float4 & u, const float4 & v) { u.x -= v.x; u.y -= v.y; u.z -= v.z; u.w -= v.w; return u; }
+  static inline float4 & operator *= (float4 & u, const float4 & v) { u.x *= v.x; u.y *= v.y; u.z *= v.z; u.w *= v.w; return u; }
+  static inline float4 & operator /= (float4 & u, const float4 & v) { u.x /= v.x; u.y /= v.y; u.z /= v.z; u.w /= v.w; return u; }
+
+  static inline float4 & operator += (float4 & u, float v) { u.x += v; u.y += v; u.z += v; u.w += v; return u; }
+  static inline float4 & operator -= (float4 & u, float v) { u.x -= v; u.y -= v; u.z -= v; u.w -= v; return u; }
+  static inline float4 & operator *= (float4 & u, float v) { u.x *= v; u.y *= v; u.z *= v; u.w *= v; return u; }
+  static inline float4 & operator /= (float4 & u, float v) { u.x /= v; u.y /= v; u.z /= v; u.w /= v; return u; }
+
+  static inline float4   operator -(const float4 & v) { return float4(-v.x, -v.y, -v.z, -v.w); }
+
+  static inline float4 lerp(const float4 & u, const float4 & v, float t) { return u + t * (v - u); }
+  static inline float  dot(const float4 & u, const float4 & v) { return (u.x*v.x + u.y*v.y + u.z*v.z + u.w*v.w); }
+  static inline float  dot3(const float4 & u, const float4 & v) { return (u.x*v.x + u.y*v.y + u.z*v.z); }
+
+  static inline float  length3(const float4 & u) { return sqrtf(SQR(u.x) + SQR(u.y) + SQR(u.z)); }
+  static inline float  length(const float4 & u) { return sqrtf(SQR(u.x) + SQR(u.y) + SQR(u.z) + SQR(u.w)); }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   struct float3
   {
@@ -116,8 +143,6 @@ namespace LiteMath
     const float t = (float)(rand()) / (float)RAND_MAX;
     return s + t*(e - s);
   }
-
-  template<typename T> inline T SQR(T x) { return x * x; }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
