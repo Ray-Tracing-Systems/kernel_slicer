@@ -239,6 +239,33 @@ std::unordered_map<std::string, kslicer::InOutVarInfo> kslicer::ListPointerParam
   return params;
 }
 
+void kslicer::MarkKernelArgumenstForFakeOffset(const std::vector<KernelCallInfo>& a_calls, std::vector<KernelInfo>& kernels)
+{
+  for(const auto& call : a_calls)
+  {
+    // find kernel:
+    size_t found = size_t(-1); 
+    for(size_t i=0; i<kernels.size(); i++)
+    {
+      if(kernels[i].name == std::string("kernel_") + call.kernelName)
+      {
+        found = i;
+        break;
+      }
+    }
+
+    if(found != size_t(-1)) 
+    {
+      auto& actualParameters = call.descriptorSetsInfo;
+      for(size_t argId = 0; argId<actualParameters.size(); argId++)
+      {
+        if(actualParameters[argId].argType == kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL)
+          kernels[found].args[argId].needFakeOffset = true;
+      }
+    }
+  }
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

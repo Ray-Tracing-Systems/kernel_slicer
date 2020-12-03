@@ -81,6 +81,7 @@ namespace kslicer
   };
 
   void ObtainKernelsDecl(std::vector<KernelInfo>& a_kernelsData, clang::SourceManager& sm, const std::string& a_mainClassName);
+  void MarkKernelArgumenstForFakeOffset(const std::vector<KernelCallInfo>& a_calls, std::vector<KernelInfo>& kernels);
 
 }
 

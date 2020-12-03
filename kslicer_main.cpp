@@ -464,7 +464,7 @@ int main(int argc, const char **argv)
   for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
     mainFunc.CodeGenerated = inputCodeInfo.ProcessMainFunc_RTCase(mainFunc, compiler,
-                                                           inputCodeInfo.allDescriptorSetsInfo);
+                                                                  inputCodeInfo.allDescriptorSetsInfo);
   
     mainFunc.InOuts = kslicer::ListPointerParamsOfMainFunc(mainFunc.Node);
   }
@@ -477,6 +477,13 @@ int main(int argc, const char **argv)
     kslicer::PrintGeneratedClassDecl("templates/rt_class.h", inputCodeInfo, inputCodeInfo.mainFunc);
     kslicer::PrintGeneratedClassImpl("templates/rt_class.cpp", fileName, inputCodeInfo, inputCodeInfo.mainFunc); 
   }
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg
+  //
+  kslicer::MarkKernelArgumenstForFakeOffset(inputCodeInfo.allDescriptorSetsInfo, // ==>
+                                            inputCodeInfo.kernels);              // <==
 
   // (7) ...
   // 
@@ -523,7 +530,7 @@ int main(int argc, const char **argv)
   outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
   outFileCL << std::endl;
 
-  // (7) write kernels to .cl file
+  // (9) write kernels to .cl file
   //
   {
     for (const auto& k : inputCodeInfo.kernels)  

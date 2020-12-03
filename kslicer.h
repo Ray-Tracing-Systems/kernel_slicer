@@ -22,7 +22,9 @@ namespace kslicer
       std::string type;
       std::string name;
       int         size;
+      bool needFakeOffset = false;
     };
+    
     std::string      return_type;
     std::string      name;
     std::vector<Arg> args;
