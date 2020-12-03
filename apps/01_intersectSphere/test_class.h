@@ -29,7 +29,8 @@ static inline float4x4 perspectiveMatrix(float fovy, float aspect, float zNear, 
 
 template<class T> struct MyTestVector
 {
-  T data[6];
+  T _data[6];
+  T* data() { return &_data[0]; }
 };
 
 class TestClass // : public DataClass
@@ -54,10 +55,10 @@ public:
 protected:
 
   float4x4 m_worldViewProjInv;
-  float m_data1;
+  unsigned int m_data1;
   float m_data2[3];
-  std::vector<float>  m_someBufferData;
-  MyTestVector<float> m_someBufferData2;
+  std::vector<unsigned int>  m_someBufferData;
+  MyTestVector<unsigned int> m_someBufferData2;
 };
 
 #endif

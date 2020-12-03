@@ -57,7 +57,7 @@ public:
 
   TestClass(int a_maxThreads = 1)
   {
-    const float4x4 proj = perspectiveMatrix(90.0f, 1.0f, 0.1f, 100.0f);
+    const float4x4 proj = perspectiveMatrix(90.0f, 1.0f, 0.01f, 1000.0f);
     m_worldViewProjInv  = inverse4x4(proj);
     InitSpheresScene(10);
     InitRandomGens(a_maxThreads);

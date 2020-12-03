@@ -450,8 +450,8 @@ int main(int argc, const char **argv)
   // (4) calc offsets for all class variables; ingore unused members that were not marked on previous step
   //
   {
-    inputCodeInfo.classVariables = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
-    std::cout << "placed classVariables num = " << inputCodeInfo.classVariables.size() << std::endl;
+    inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
+    std::cout << "placed classVariables num = " << inputCodeInfo.dataMembers.size() << std::endl;
   }
 
   // (5) ...
@@ -518,10 +518,11 @@ int main(int argc, const char **argv)
   // (8) genarate cpp code with Vulkan calls
   //
   ObtainKernelsDecl(inputCodeInfo.kernels, compiler.getSourceManager(), inputCodeInfo.mainClassName);
+  inputCodeInfo.allDescriptorSetsInfo.clear();
   for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
-    mainFunc.CodeGenerated = kslicer::ProcessMainFunc(mainFunc.Node, compiler, inputCodeInfo.mainClassName, mainFunc.Name,
-                                                      mainFunc.GeneratedDecl, inputCodeInfo.allDescriptorSetsInfo);
+    mainFunc.CodeGenerated = inputCodeInfo.ProcessMainFunc_RTCase(mainFunc, compiler,
+                                                           inputCodeInfo.allDescriptorSetsInfo);
   
     mainFunc.InOuts = kslicer::ListPointerParamsOfMainFunc(mainFunc.Node);
   }

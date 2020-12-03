@@ -1,3 +1,4 @@
+#include <vector>
 #include "test_class.h"
 
 static inline uint fakeOffset (uint x, uint y) { return 0; } 
@@ -36,6 +37,14 @@ void TestClass::kernel_TestColor(const Lite_Hit* in_hit, uint* out_color, uint t
     out_color[pitchOffset(tidX,tidY)] = 0x00FF0000;
 }
 
+
+template<class T>
+struct MyTestVector2
+{
+  T  _data[6];
+  T * data() { return &_data[0]; }
+};
+
 void TestClass::MainFunc(uint tidX, uint tidY, uint* out_color)
 {
   float4 rayPosAndNear, rayDirAndFar;
@@ -47,6 +56,7 @@ void TestClass::MainFunc(uint tidX, uint tidY, uint* out_color)
   kernel_RayTrace(&rayPosAndNear, &rayDirAndFar, 
                   &hit, tidX, tidY);
   
+  //MyTestVector2<unsigned int> testData2;
   kernel_TestColor(&hit, 
                    out_color, tidX, tidY);
 }

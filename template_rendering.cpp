@@ -160,13 +160,13 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
   data["TotalDescriptorSets"] = a_classInfo.allDescriptorSetsInfo.size(); ///// ?????????????????????????????????????????????????????
 
   size_t allClassVarsSizeInBytes = 0;
-  for(const auto& var : a_classInfo.classVariables)
+  for(const auto& var : a_classInfo.dataMembers)
     allClassVarsSizeInBytes += var.sizeInBytes;
   
   data["AllClassVarsSize"]  = allClassVarsSizeInBytes;
 
   data["ClassVars"] = std::vector<std::string>();
-  for(const auto& v : a_classInfo.classVariables)
+  for(const auto& v : a_classInfo.dataMembers)
   {
     json local;
     local["Name"]   = v.name;

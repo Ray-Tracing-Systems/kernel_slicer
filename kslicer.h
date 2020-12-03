@@ -120,17 +120,14 @@ namespace kslicer
   */
   struct MainClassInfo
   {
-    std::vector<KernelInfo>      kernels;         ///<! only those kerneles which are called from main function
-    std::vector<DataMemberInfo>  classVariables;  ///<! only those member variables which are referenced from kernels 
-    std::vector<DataMemberInfo>  containers;      ///<! containers that should be transformed to buffers
+    std::vector<KernelInfo>      kernels;     ///<! only those kerneles which are called from main function
+    std::vector<DataMemberInfo>  dataMembers; ///<! only those member variables which are referenced from kernels 
+    std::vector<DataMemberInfo>  containers;  ///<! containers that should be transformed to buffers
 
     std::unordered_map<std::string, KernelInfo>     allKernels;
     std::unordered_map<std::string, DataMemberInfo> allDataMembers;
 
     std::vector<MainFuncInfo>                       mainFunc;
-
-    //std::vector<const clang::FunctionDecl*>  localFunctions; ///<! functions from main file that should be generated in .cl file
-    //std::vector<const clang::CXXMethodDecl*> localMembers;   ///<! member function of main class that should be decorated and then generated in .cl file 
 
     std::string mainClassName;
     std::string mainClassFileName;
@@ -138,6 +135,10 @@ namespace kslicer
 
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
+
+
+    std::string ProcessMainFunc_RTCase(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler,
+                                       std::vector<KernelCallInfo>& a_outDsInfo);
   };
 
   /**
