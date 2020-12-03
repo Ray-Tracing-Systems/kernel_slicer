@@ -35,17 +35,6 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
     // extract arguments to form correct descriptor set
     //
     auto args = ExtractArgumentsOfAKernelCall(f);
-    for(auto& arg : args)                         // in this loop we have to define argument (actual parameter) type
-    {
-      if(arg.argType != KERN_CALL_ARG_TYPE::ARG_REFERENCE_UNKNOWN_TYPE)
-        continue;
-
-      auto p2 = m_argsOfMainFunc.find(arg.varName);
-      if(p2 != m_argsOfMainFunc.end())
-      {
-        arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG;
-      }
-    }
     std::string callSign = MakeKernellCallSignature(args, m_mainFuncName);
 
     auto p2 = dsIdBySignature.find(callSign);
@@ -97,7 +86,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArg
       auto pClassVar = m_allClassMembers.find(text);
       if(pClassVar != m_allClassMembers.end())
       {
-        if(text.find(".data()") != std::string::npos)
+        if(text.find(".data()") != std::string::npos)     // TODO: CHECK CLANG MAILING LIST ANSWER, DO NOT WORKS YET!!!
           arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR;
         else
           arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_POD;
@@ -110,6 +99,20 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArg
 
     arg.varName = text;
     args.push_back(arg); 
+  }
+
+  for(auto& arg : args)                         // in this loop we have to define argument (actual parameter) type
+  {
+    if(arg.argType != KERN_CALL_ARG_TYPE::ARG_REFERENCE_UNKNOWN_TYPE)
+      continue;
+    
+    auto p2 = m_argsOfMainFunc.find(arg.varName);
+    if(p2 != m_argsOfMainFunc.end())
+      arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG;
+
+    auto p3 = m_mainFuncLocals.find(arg.varName);
+    if(p3 != m_mainFuncLocals.end())
+      arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL;
   }
 
   return args;
@@ -174,7 +177,7 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
 
   //a_node->dump();
 
-  kslicer::MainFuncASTVisitor rv(rewrite2, a_mainFuncName, inOutParamList, this->allDataMembers);
+  kslicer::MainFuncASTVisitor rv(rewrite2, a_mainFuncName, inOutParamList, this->allDataMembers, a_mainFunc.Locals);
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
   
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
