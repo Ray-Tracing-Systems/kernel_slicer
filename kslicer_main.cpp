@@ -454,7 +454,31 @@ int main(int argc, const char **argv)
     std::cout << "placed classVariables num = " << inputCodeInfo.dataMembers.size() << std::endl;
   }
 
-  // (5) ...
+  // ??? // at this step we must filter data variables to store only those which are referenced inside kernels calls
+  // ??? //
+  
+  // (5) genarate cpp code with Vulkan calls
+  //
+  ObtainKernelsDecl(inputCodeInfo.kernels, compiler.getSourceManager(), inputCodeInfo.mainClassName);
+  inputCodeInfo.allDescriptorSetsInfo.clear();
+  for(auto& mainFunc : inputCodeInfo.mainFunc)
+  {
+    mainFunc.CodeGenerated = inputCodeInfo.ProcessMainFunc_RTCase(mainFunc, compiler,
+                                                           inputCodeInfo.allDescriptorSetsInfo);
+  
+    mainFunc.InOuts = kslicer::ListPointerParamsOfMainFunc(mainFunc.Node);
+  }
+  
+  // (6) genarate cpp code with Vulkan calls using template text rendering and appropriate template FOR ALL 'mainFunc'-tions
+  //
+  {
+    kslicer::PrintVulkanBasicsFile  ("templates/vulkan_basics.h", inputCodeInfo);
+    const std::string fileName = \
+    kslicer::PrintGeneratedClassDecl("templates/rt_class.h", inputCodeInfo, inputCodeInfo.mainFunc);
+    kslicer::PrintGeneratedClassImpl("templates/rt_class.cpp", fileName, inputCodeInfo, inputCodeInfo.mainFunc); 
+  }
+
+  // (7) ...
   // 
   std::ofstream outFileCL(outGenerated.c_str());
   if(!outFileCL.is_open())
@@ -485,7 +509,7 @@ int main(int argc, const char **argv)
   outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
   outFileCL << std::endl;
 
-  // (6) write local functions to .cl file
+  // (8) write local functions to .cl file
   //
   for (const auto& f : filter.usedFunctions)  
   {
@@ -509,31 +533,6 @@ int main(int argc, const char **argv)
     }
 
     outFileCL.close();
-  }
-
-
-  // ??? // at this step we must filter data variables to store only those which are referenced inside kernels calls
-  // ??? //
-  
-  // (8) genarate cpp code with Vulkan calls
-  //
-  ObtainKernelsDecl(inputCodeInfo.kernels, compiler.getSourceManager(), inputCodeInfo.mainClassName);
-  inputCodeInfo.allDescriptorSetsInfo.clear();
-  for(auto& mainFunc : inputCodeInfo.mainFunc)
-  {
-    mainFunc.CodeGenerated = inputCodeInfo.ProcessMainFunc_RTCase(mainFunc, compiler,
-                                                           inputCodeInfo.allDescriptorSetsInfo);
-  
-    mainFunc.InOuts = kslicer::ListPointerParamsOfMainFunc(mainFunc.Node);
-  }
-  
-  // (9) genarate cpp code with Vulkan calls using template text rendering and appropriate template FOR ALL 'mainFunc'-tions
-  //
-  {
-    kslicer::PrintVulkanBasicsFile  ("templates/vulkan_basics.h", inputCodeInfo);
-    const std::string fileName = \
-    kslicer::PrintGeneratedClassDecl("templates/rt_class.h", inputCodeInfo, inputCodeInfo.mainFunc);
-    kslicer::PrintGeneratedClassImpl("templates/rt_class.cpp", fileName, inputCodeInfo, inputCodeInfo.mainFunc); 
   }
 
   return 0;
