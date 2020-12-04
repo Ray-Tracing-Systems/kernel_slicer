@@ -1,7 +1,6 @@
 #include <vector>
 #include "test_class.h"
 
-static inline uint fakeOffset (uint x, uint y) { return 0; } 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -14,24 +13,23 @@ void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* ra
   const float3 rayDir = EyeRayDir((float)tidX, (float)tidY, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
   const float3 rayPos = make_float3(0.0f, 0.0f, 0.0f);
   
-  rayPosAndNear[fakeOffset(tidX,tidY)] = to_float4(rayPos, 0.0f);
-  rayDirAndFar [fakeOffset(tidX,tidY)] = to_float4(rayDir, MAXFLOAT);
-  flags        [fakeOffset(tidX,tidY)] = 0;
+  *(rayPosAndNear) = to_float4(rayPos, 0.0f);
+  *(rayDirAndFar ) = to_float4(rayDir, MAXFLOAT);
+  *flags           = 0;
 }
 
 void TestClass::kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFar, 
                                 Lite_Hit* out_hit, uint tidX, uint tidY)
 {
-  const Lite_Hit hit = RayTraceImpl(to_float3(rayPosAndNear[fakeOffset(tidX,tidY)]), to_float3(rayDirAndFar [fakeOffset(tidX,tidY)]));
-
-  out_hit     [fakeOffset(tidX,tidY)]   = hit;
-  rayDirAndFar[fakeOffset(tidX,tidY)].w = hit.t;
+  *out_hit = RayTraceImpl(to_float3(*rayPosAndNear), to_float3(*rayDirAndFar));
 }
 
 void TestClass::kernel_TestColor(const Lite_Hit* in_hit, uint* out_color, uint tidX, uint tidY)
 {
+  Lite_Hit hit = (*in_hit);
   float x = 2.0f;
-  if(in_hit[fakeOffset(tidX,tidY)].primId != -1)
+
+  if(hit.primId != -1)
     out_color[pitchOffset(tidX,tidY)] = 0x000000FF;
   else
     out_color[pitchOffset(tidX,tidY)] = 0x00FF0000;

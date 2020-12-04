@@ -151,11 +151,11 @@ namespace kslicer
   
   void ReplaceOpenCLBuiltInTypes(std::string& a_typeName);
 
-  std::string ProcessKernel(const clang::CXXMethodDecl* a_node, clang::CompilerInstance& compiler, const MainClassInfo& a_codeInfo);
-  
+  std::string ProcessKernel(const KernelInfo& a_funcInfo, clang::CompilerInstance& compiler, const MainClassInfo& a_codeInfo);  
   std::vector<std::string> GetAllPredefinedThreadIdNames();
+
+  std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler);
 };
 
-std::string GetRangeSourceCode(const clang::SourceRange a_range, clang::SourceManager& sm); 
 
 #endif

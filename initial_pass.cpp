@@ -66,7 +66,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
     {
       ProcessMainFunc(f);
       std::cout << "main function has found:\t" << fname.c_str() << std::endl;
-      f->dump();
+      //f->dump();
     }
   }
 

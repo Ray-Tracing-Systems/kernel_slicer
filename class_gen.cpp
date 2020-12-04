@@ -63,6 +63,7 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
   return true; 
 }
 
+
 std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArgumentsOfAKernelCall(CXXMemberCallExpr* f)
 {
   std::vector<kslicer::ArgReferenceOnCall> args; 
@@ -75,7 +76,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArg
     const Expr* currArgExpr = f->getArgs()[i];
     assert(currArgExpr != nullptr);
     auto sourceRange = currArgExpr->getSourceRange();
-    std::string text = GetRangeSourceCode(sourceRange, m_sm);
+    std::string text = GetRangeSourceCode(sourceRange, m_compiler);
   
     ArgReferenceOnCall arg;    
     if(text[0] == '&')
@@ -189,7 +190,7 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
 
   //a_node->dump();
 
-  kslicer::MainFuncASTVisitor rv(rewrite2, a_mainFuncName, inOutParamList, this->allDataMembers, a_mainFunc.Locals);
+  kslicer::MainFuncASTVisitor rv(rewrite2, compiler, a_mainFuncName, inOutParamList, this->allDataMembers, a_mainFunc.Locals);
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
   
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
@@ -319,17 +320,66 @@ bool kslicer::KernelReplacerASTVisitor::VisitMemberExpr(MemberExpr* expr)
   strOut << "(__global const " << fieldType.c_str() << "*)" << "(" << buffName.c_str() << "+" << (p->second.offsetInTargetBuffer/sizeof(uint32_t)) << ")";
   strOut << "  )";
   
-  m_rewriter.ReplaceText(expr->getExprLoc(), strOut.str());
+  m_rewriter.ReplaceText(expr->getSourceRange(), strOut.str());
   
   return true;
 }
 
-std::string kslicer::ProcessKernel(const CXXMethodDecl* a_node, clang::CompilerInstance& compiler, const kslicer::MainClassInfo& a_codeInfo)
+bool kslicer::KernelReplacerASTVisitor::CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr)
 {
+  bool needOffset = false;
+  for(const auto arg: m_args)
+  {
+    if(exprStr.find(arg.name) != std::string::npos)
+    {
+      if(arg.needFakeOffset)
+      {
+        needOffset = true;
+        break;
+      }
+    }
+  }
+
+  return needOffset;
+}
+
+bool kslicer::KernelReplacerASTVisitor::VisitUnaryOperator(UnaryOperator* expr)
+{
+  // detect " *(something)"
+
+  if(expr->canOverflow() || expr->isArithmeticOp()) // -UnaryOperator ...'LiteMath::uint':'unsigned int' lvalue prefix '*' cannot overflow
+    return true;
+ 
+  std::string exprAll = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+
+  if(exprAll.find("*") != 0)
+    return true;
+
+  Expr* subExpr =	expr->getSubExpr();
+  if(subExpr == nullptr)
+    return true;
+
+  std::string exprInside = GetRangeSourceCode(subExpr->getSourceRange(), m_compiler);
+
+  // check if this argument actually need fake Offset
+  //
+  const bool needOffset = CheckIfExprHasArgumentThatNeedFakeOffset(exprInside);
+
+  if(needOffset)
+    m_rewriter.ReplaceText(expr->getSourceRange(), exprInside + "[fakeOffset(tidX,tidY)]");
+
+  return true;
+}
+
+std::string kslicer::ProcessKernel(const KernelInfo& a_funcInfo, clang::CompilerInstance& compiler, const kslicer::MainClassInfo& a_codeInfo)
+{
+  const CXXMethodDecl* a_node = a_funcInfo.astNode;
+  //a_node->dump();
+
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
-  kslicer::KernelReplacerASTVisitor rv(rewrite2, a_codeInfo.mainClassName, a_codeInfo.dataMembers);
+  kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, a_codeInfo.mainClassName, a_codeInfo.dataMembers, a_funcInfo.args);
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
   
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
@@ -338,13 +388,13 @@ std::string kslicer::ProcessKernel(const CXXMethodDecl* a_node, clang::CompilerI
   return rewrite2.getRewrittenText(clang::SourceRange(b,e));
 }
 
-void kslicer::ObtainKernelsDecl(std::vector<kslicer::KernelInfo>& a_kernelsData, clang::SourceManager& sm, const std::string& a_mainClassName)
+void kslicer::ObtainKernelsDecl(std::vector<kslicer::KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName)
 {
   for (auto& k : a_kernelsData)  
   {
     assert(k.astNode != nullptr);
     auto sourceRange = k.astNode->getSourceRange();
-    std::string kernelSourceCode = GetRangeSourceCode(sourceRange, sm);
+    std::string kernelSourceCode = GetRangeSourceCode(sourceRange, compiler);
     
     std::string kernelCmdDecl = kernelSourceCode.substr(0, kernelSourceCode.find(")")+1);
     assert(ReplaceFirst(kernelCmdDecl, a_mainClassName + "::", ""));

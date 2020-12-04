@@ -39,9 +39,7 @@
 #include "class_gen.h"
 
 using namespace clang;
-
 #include "template_rendering.h"
-
 
 const std::string kslicer::GetProjPrefix() { return std::string("kgen_"); };
 
@@ -51,13 +49,15 @@ using kslicer::DataMemberInfo;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-static llvm::cl::OptionCategory GDOpts("global-detect options");
-clang::LangOptions lopt;
 
-std::string GetRangeSourceCode(const clang::SourceRange a_range, clang::SourceManager& sm) 
+std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler) 
 {
+  const clang::SourceManager& sm = compiler.getSourceManager();
+  const clang::LangOptions& lopt = compiler.getLangOpts();
+
   clang::SourceLocation b(a_range.getBegin()), _e(a_range.getEnd());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
+
   return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
 }
 
@@ -184,7 +184,7 @@ void PrintKernelToCL(std::ostream& outFileCL, const KernelInfo& funcInfo, const 
   }
 
 
-  std::string sourceCodeFull = kslicer::ProcessKernel(funcInfo.astNode, compiler, a_inputCodeInfo);
+  std::string sourceCodeFull = kslicer::ProcessKernel(funcInfo, compiler, a_inputCodeInfo);
   std::string sourceCodeCut  = sourceCodeFull.substr(sourceCodeFull.find_first_of('{')+1);
 
   std::stringstream strOut;
@@ -368,7 +368,8 @@ int main(int argc, const char **argv)
   //
   const char* argv2[] = {argv[0], argv[1], "--"};
   int argc2 = sizeof(argv2)/sizeof(argv2[0]);
-
+  
+  llvm::cl::OptionCategory GDOpts("global-detect options");
   clang::tooling::CommonOptionsParser OptionsParser(argc2, argv2, GDOpts);
   clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
@@ -460,7 +461,7 @@ int main(int argc, const char **argv)
   
   // (5) genarate cpp code with Vulkan calls
   //
-  ObtainKernelsDecl(inputCodeInfo.kernels, compiler.getSourceManager(), inputCodeInfo.mainClassName);
+  ObtainKernelsDecl(inputCodeInfo.kernels, compiler, inputCodeInfo.mainClassName);
   inputCodeInfo.allDescriptorSetsInfo.clear();
   for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
@@ -521,7 +522,7 @@ int main(int argc, const char **argv)
   //
   for (const auto& f : filter.usedFunctions)  
   {
-    std::string funcSourceCode = GetRangeSourceCode(f.second, compiler.getSourceManager());
+    std::string funcSourceCode = kslicer::GetRangeSourceCode(f.second, compiler);
     outFileCL << funcSourceCode.c_str() << std::endl;
   }
 

@@ -5,6 +5,8 @@ namespace std
 { 
   template<class T> struct vector
   {
+    vector(){}
+    vector(unsigned int a_size){}
     unsigned int size() const { return 0; }
     const T* data() const { return nullptr; }
     T* data()             { return nullptr; }
