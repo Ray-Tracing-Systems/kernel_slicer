@@ -1,0 +1,15 @@
+#ifndef STD_LIMITS_H
+#define STD_LIMITS_H
+
+namespace std
+{ 
+  template<class T> 
+  struct numeric_limits
+  {
+    static T infinity() { return T(1e38f); }
+  };
+
+  
+};
+
+#endif////

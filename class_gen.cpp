@@ -85,12 +85,18 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArg
 
       auto pClassVar = m_allClassMembers.find(text);
       if(pClassVar != m_allClassMembers.end())
+        arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_POD;
+    }
+    else if(text.find(".data()") != std::string::npos) 
+    {
+      std::string varName = text.substr(0, text.find(".data()"));
+      auto pClassVar = m_allClassMembers.find(varName);
+      if(pClassVar == m_allClassMembers.end())
       {
-        if(text.find(".data()") != std::string::npos)     // TODO: CHECK CLANG MAILING LIST ANSWER, DO NOT WORKS YET!!!
-          arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR;
-        else
-          arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_POD;
+        std::cout << "[KernelCallError]: vector<...> variable '" << varName.c_str() << "' was not found in class!" << std::endl; 
       }
+
+      arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR;
     }
 
     auto elementId = std::find(predefinedNames.begin(), predefinedNames.end(), text); // exclude predefined names from arguments
@@ -113,6 +119,12 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArg
     auto p3 = m_mainFuncLocals.find(arg.varName);
     if(p3 != m_mainFuncLocals.end())
       arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL;
+  }
+
+  for(auto& arg : args) // in this loop we have to define argument (actual parameter) type
+  {
+    if(arg.argType == KERN_CALL_ARG_TYPE::ARG_REFERENCE_UNKNOWN_TYPE)
+      std::cout << "[KernelCallError]: variable '" << arg.varName.c_str() << "' was not classified!" << std::endl; 
   }
 
   return args;

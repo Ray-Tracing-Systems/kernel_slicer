@@ -320,6 +320,17 @@ int main(int argc, const char **argv)
   pto->Triple     = llvm::sys::getDefaultTargetTriple();
   TargetInfo *pti = TargetInfo::CreateTargetInfo(compiler.getDiagnostics(), pto);
   compiler.setTarget(pti);
+
+  {
+    compiler.getLangOpts().GNUMode = 1; 
+    //compiler.getLangOpts().CXXExceptions = 1; 
+    compiler.getLangOpts().RTTI        = 1; 
+    compiler.getLangOpts().Bool        = 1; 
+    compiler.getLangOpts().CPlusPlus   = 1; 
+    compiler.getLangOpts().CPlusPlus14 = 1;
+    compiler.getLangOpts().CPlusPlus17 = 1;
+  }
+
   compiler.createFileManager();
   compiler.createSourceManager(compiler.getFileManager());
   
@@ -328,18 +339,8 @@ int main(int argc, const char **argv)
   HeaderSearchOptions &headerSearchOptions = compiler.getHeaderSearchOpts();  
   headerSearchOptions.AddPath(stdlibFolder.c_str(), clang::frontend::Angled, false, false);
 
-  // Allow C++ code to get rewritten
-  LangOptions langOpts;
-  langOpts.GNUMode = 1; 
-  //langOpts.CXXExceptions = 1; 
-  langOpts.RTTI        = 1; 
-  langOpts.Bool        = 1; 
-  langOpts.CPlusPlus   = 1; 
-  langOpts.CPlusPlus14 = 1;
-  langOpts.CPlusPlus17 = 1;
   compiler.createPreprocessor(clang::TU_Complete);
   compiler.getPreprocessorOpts().UsePredefines = false;
-  compiler.getLangOpts() = langOpts;
   compiler.createASTContext();
 
   const FileEntry *pFile = compiler.getFileManager().getFile(fileName).get();

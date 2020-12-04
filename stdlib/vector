@@ -1,11 +1,14 @@
-//vector
+#ifndef STD_VECTOR_H
+#define STD_VECTOR_H
 
 namespace std
-{
+{ 
   template<class T> struct vector
   {
-    size_t size()   const { return 0; }
+    unsigned int size() const { return 0; }
     const T* data() const { return nullptr; }
     T* data()             { return nullptr; }
   };
 };
+
+#endif
