@@ -424,9 +424,9 @@ int main(int argc, const char **argv)
     }
 
     mainFuncId++;
+    std::cout << "}" << std::endl;
   }
 
-  std::cout << "}" << std::endl;
   std::cout << std::endl;
 
   std::cout << "(2) Mark data members, methods and functions which are actually used in kernels." << std::endl; 
@@ -503,7 +503,7 @@ int main(int argc, const char **argv)
   kslicer::MarkKernelArgumenstForFakeOffset(inputCodeInfo.allDescriptorSetsInfo, // ==>
                                             inputCodeInfo.kernels);              // <==
 
-  // (7) ...
+  // print final cl file
   // 
   std::ofstream outFileCL(outGenerated.c_str());
   if(!outFileCL.is_open())
@@ -541,6 +541,9 @@ int main(int argc, const char **argv)
     std::string funcSourceCode = kslicer::GetRangeSourceCode(f.second, compiler);
     outFileCL << funcSourceCode.c_str() << std::endl;
   }
+
+  outFileCL << "uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }                                      // for 2D threading" << std::endl;
+  outFileCL << "uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading" << std::endl;
 
   outFileCL << std::endl;
   outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;

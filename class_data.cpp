@@ -42,7 +42,7 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
 
   std::sort(resVars.begin(), resVars.end(), less_than_key());
 
-  //// (2) now assign correct offsets taking in mind align
+  // (2) now assign correct offsets taking in mind align
   //
   size_t offsetInBytes = 0;
   for(auto& var : resVars)
