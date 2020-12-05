@@ -59,13 +59,13 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
       if(thisTypeName == std::string("class ") + MAIN_CLASS_NAME || thisTypeName == std::string("struct ") + MAIN_CLASS_NAME)
       {
         ProcessKernelDef(f);
-        std::cout << "found kernel:\t" << fname.c_str() << " of type:\t" << thisTypeName.c_str() << std::endl;
+        std::cout << "  found kernel:\t" << fname.c_str() << std::endl;
       }
     }
     else if(fname == MAIN_NAME)
     {
       ProcessMainFunc(f);
-      std::cout << "main function has found:\t" << fname.c_str() << std::endl;
+      //std::cout << "main function has found:\t" << fname.c_str() << std::endl;
       //f->dump();
     }
   }
@@ -82,7 +82,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
 
   if(thisTypeName == MAIN_CLASS_NAME)
   {
-    std::cout << "found class data member: " << fd->getName().str().c_str() << " of type:\t" << qt.getAsString().c_str() << ", isPOD = " << qt.isCXX11PODType(m_astContext) << std::endl;
+    std::cout << "  found data member: " << fd->getName().str().c_str() << " of type\t" << qt.getAsString().c_str() << ", isPOD = " << qt.isCXX11PODType(m_astContext) << std::endl;
 
     auto funcSourceRange = rd->getSourceRange();
     auto fileName        = m_sourceManager.getFilename(funcSourceRange.getBegin());
@@ -129,7 +129,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
       else
         member.containerDataType = "unknown";
 
-      std::cout << "container " << member.containerType.c_str() << " of " <<  member.containerDataType.c_str() << std::endl;
+      std::cout << "  found container of type " << member.containerType.c_str() << ", which data type is " <<  member.containerDataType.c_str() << std::endl;
     }
     else
     {

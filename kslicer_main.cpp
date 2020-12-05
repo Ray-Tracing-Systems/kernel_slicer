@@ -292,13 +292,21 @@ int main(int argc, const char **argv)
   if(params.find("-stdlibfolder") != params.end())
     stdlibFolder = params["-stdlibfolder"];
 
-  llvm::ArrayRef<const char*> args(argv+1, argv+argc);
+  std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
+  argsForClang.reserve(argc);
+  for(int i=1;i<argc;i++)
+  {
+    auto p = params.find(argv[i]);
+    if(p == params.end()) 
+      argsForClang.push_back(argv[i]);
+  }
+  llvm::ArrayRef<const char*> args(argsForClang.data(), argsForClang.data() + argsForClang.size());
 
   // Make sure it exists
   if (stat(fileName.c_str(), &sb) == -1)
   {
-    perror(fileName.c_str());
-    exit(EXIT_FAILURE);
+    std::cout << "[main]: error, input file " << fileName.c_str() << "not found!" << std::endl;
+    return 0;
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -352,17 +360,6 @@ int main(int argc, const char **argv)
     auto pHeaderLister = std::make_unique<HeaderLister>(&inputCodeInfo);
     compiler.getPreprocessor().addPPCallbacks(std::move(pHeaderLister));
   }
-
-  ////////////////////////////////////////////////////////////////////////
-  std::string outName(fileName);
-  {
-    size_t ext = outName.rfind(".");
-    if (ext == std::string::npos)
-       ext = outName.length();
-    outName.insert(ext, "_out");
-  }
-  llvm::errs() << "Output to: " << outName << "\n";
-  ////////////////////////////////////////////////////////////////////////
     
   // init clang tooling
   //
@@ -373,37 +370,37 @@ int main(int argc, const char **argv)
   clang::tooling::CommonOptionsParser OptionsParser(argc2, argv2, GDOpts);
   clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
-  // (0) find all "Main" functions, a functions which call kernels. Kerels are also listed for each mainFunc;
+  // (0) find all "Main" functions, a functions which call kernels. Kernels are also listed for each mainFunc;
   //
-  std::cout << "Seeking for MainFunc of " << mainClassName.c_str() << std::endl;
   auto MainFuncList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, compiler.getASTContext());
 
   inputCodeInfo.mainFunc.resize(MainFuncList.size());
-  inputCodeInfo.mainClassName = mainClassName;
+  inputCodeInfo.mainClassName     = mainClassName;
+  inputCodeInfo.mainClassFileName = fileName;
 
   size_t mainFuncId = 0;
   for(const auto f : MainFuncList)
   {
     const std::string& mainFuncName = f.first;
     
-    // (1) traverse source code of main file first
+    // (1.1) traverse source code of main file first
     //
-    std::cout << "Traversing " << mainClassName.c_str() << std::endl; 
+    std::cout << "(1) Processing " << mainClassName.c_str() << "::" << mainFuncName.c_str() << "(...)" << std::endl; 
+    std::cout << "{" << std::endl;
     {
       kslicer::InitialPassASTConsumer astConsumer(mainFuncName.c_str(), mainClassName.c_str(), compiler.getASTContext(), compiler.getSourceManager());  
       ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
       compiler.getDiagnosticClient().EndSourceFile();
     
-      inputCodeInfo.allKernels     = astConsumer.rv.functions;    // TODO: exclude repeating!!!
-      inputCodeInfo.allDataMembers = astConsumer.rv.dataMembers;  // TODO: exclude repeating!!!     
-      inputCodeInfo.mainClassFileName    = fileName;
+      inputCodeInfo.allKernels.merge(astConsumer.rv.functions);    
+      inputCodeInfo.allDataMembers.merge(astConsumer.rv.dataMembers);   
       inputCodeInfo.mainClassFileInclude = astConsumer.rv.MAIN_FILE_INCLUDE;
 
       inputCodeInfo.mainFunc[mainFuncId].Name = mainFuncName;
       inputCodeInfo.mainFunc[mainFuncId].Node = astConsumer.rv.m_mainFuncNode;
     }
   
-    // (2) now process variables and kernel calls of main function
+    // (1.2) now process variables and kernel calls of main function
     //
     {
       clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::MakeMatch_LocalVarOfMethod(mainFuncName.c_str());
@@ -416,7 +413,7 @@ int main(int argc, const char **argv)
       finder.addMatcher(kernel_matcher,    &printer);
      
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
-      std::cout << "tool run res = " << res << std::endl;
+      std::cout << "  (" << mainFuncName.c_str() << "): " << "Tool.run res = " << res << std::endl;
       
       // filter out unused kernels
       //
@@ -429,8 +426,12 @@ int main(int argc, const char **argv)
     mainFuncId++;
   }
 
-  // (3) now mark all data members, methods and functions which are actually used in kernels; we will ignore others. 
-  //
+  std::cout << "}" << std::endl;
+  std::cout << std::endl;
+
+  std::cout << "(2) Mark data members, methods and functions which are actually used in kernels." << std::endl; 
+  std::cout << "{" << std::endl;
+
   kslicer::VariableAndFunctionFilter filter(std::cout, inputCodeInfo, compiler.getSourceManager());
   { 
     for(const auto& kernel : inputCodeInfo.kernels)
@@ -443,44 +444,59 @@ int main(int argc, const char **argv)
       finder.addMatcher(funcMatcher, &filter);
     
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
-      std::cout << "[filter] for " << kernel.name.c_str() << ";\ttool run res = " << res << std::endl;
+      std::cout << "  process " << kernel.name.c_str() << ";\ttool run res = " << res << std::endl;
     }
-
-    //inputCodeInfo.localFunctions = filter.GetUsedFunctions();
   }
+
+  std::cout << "}" << std::endl;
+  std::cout << std::endl;
+
+  std::cout << "(3) Calc offsets for all class variables; ingore unused members that were not marked on previous step" << std::endl; 
+  std::cout << "{" << std::endl;
 
   // (4) calc offsets for all class variables; ingore unused members that were not marked on previous step
   //
   {
     inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
-    std::cout << "placed classVariables num = " << inputCodeInfo.dataMembers.size() << std::endl;
+    std::cout << "  placed classVariables num = " << inputCodeInfo.dataMembers.size() << std::endl;
   }
 
-  // ??? // at this step we must filter data variables to store only those which are referenced inside kernels calls
-  // ??? //
+  std::cout << "}" << std::endl;
+  std::cout << std::endl;
   
+  std::cout << "(4) Process All 'Main' functions to generate all 'MainCmd' " << std::endl; 
+  std::cout << "{" << std::endl;
+
   // (5) genarate cpp code with Vulkan calls
   //
   ObtainKernelsDecl(inputCodeInfo.kernels, compiler, inputCodeInfo.mainClassName);
   inputCodeInfo.allDescriptorSetsInfo.clear();
   for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
+    std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
+
     mainFunc.CodeGenerated = inputCodeInfo.ProcessMainFunc_RTCase(mainFunc, compiler,
                                                                   inputCodeInfo.allDescriptorSetsInfo);
   
     mainFunc.InOuts = kslicer::ListPointerParamsOfMainFunc(mainFunc.Node);
   }
+
+  std::cout << "}" << std::endl;
+  std::cout << std::endl;
   
-  // (6) genarate cpp code with Vulkan calls using template text rendering and appropriate template FOR ALL 'mainFunc'-tions
-  //
+  std::cout << "(5) Perform final templated text rendering to generate Vulkan calls {}" << std::endl; 
+  std::cout << "{" << std::endl;
   {
     kslicer::PrintVulkanBasicsFile  ("templates/vulkan_basics.h", inputCodeInfo);
     const std::string fileName = \
     kslicer::PrintGeneratedClassDecl("templates/rt_class.h", inputCodeInfo, inputCodeInfo.mainFunc);
     kslicer::PrintGeneratedClassImpl("templates/rt_class.cpp", fileName, inputCodeInfo, inputCodeInfo.mainFunc); 
   }
+  std::cout << "}" << std::endl;
+  std::cout << std::endl;
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  std::cout << "(6) Generate OpenCL kernels" << std::endl; 
+  std::cout << "{" << std::endl;
 
   // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg
   //
@@ -504,9 +520,9 @@ int main(int argc, const char **argv)
   {
     for(auto keyVal2 : filter.usedFiles)
     {
-      if(keyVal2.first.find(keyVal.first) != std::string::npos)
+      if(keyVal2.first.find(keyVal.first)                      != std::string::npos && 
+         inputCodeInfo.mainClassFileInclude.find(keyVal.first) == std::string::npos)
       {
-        //std::cout << "[include]: " << keyVal.first.c_str() << " = " << keyVal.second << std::endl;
         outFileCL << "#include \"" << keyVal.first.c_str() << "\"" << std::endl;
       }
     }
@@ -537,12 +553,15 @@ int main(int argc, const char **argv)
   {
     for (const auto& k : inputCodeInfo.kernels)  
     {
-      std::cout << k.name << " " << k.return_type << std::endl;
+      std::cout << "  processing " << k.name << " " << k.return_type << std::endl;
       PrintKernelToCL(outFileCL, k, k.name, compiler, inputCodeInfo);
     }
 
     outFileCL.close();
   }
+
+  std::cout << "}" << std::endl;
+  std::cout << std::endl;
 
   return 0;
 }
