@@ -1,1 +1,15 @@
 /////
+
+namespace std
+{
+  struct coutT 
+  { 
+    void flush();
+  };
+
+  static const char* endl = "\n";
+  static coutT cout;
+};
+
+template<class T> 
+std::coutT& operator<<(std::coutT& out, T& rhs) { return out; }

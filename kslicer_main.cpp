@@ -143,6 +143,8 @@ private:
 
 };
 
+std::string GetFolderPath(const std::string& a_filePath);
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -256,25 +258,33 @@ int main(int argc, const char **argv)
 
   // (0) find all "Main" functions, a functions which call kernels. Kernels are also listed for each mainFunc;
   //
-  auto MainFuncList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, compiler.getASTContext());
+  std::cout << "(0) Listing main functions of " << mainClassName.c_str()  << std::endl; 
+  auto mainFuncList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, compiler.getASTContext());
+  std::cout << "{" << std::endl;
+  for(const auto& f : mainFuncList)
+    std::cout << "  found " << f.first.c_str() << std::endl;
+  std::cout << "}" << std::endl;
 
-  inputCodeInfo.mainFunc.resize(MainFuncList.size());
+  inputCodeInfo.mainFunc.resize(mainFuncList.size());
   inputCodeInfo.mainClassName     = mainClassName;
   inputCodeInfo.mainClassFileName = fileName;
+  
+  kslicer::InitialPassASTConsumer astConsumer("", "", compiler.getASTContext(), compiler.getSourceManager()); 
 
   size_t mainFuncId = 0;
-  for(const auto f : MainFuncList)
+  for(const auto f : mainFuncList)
   {
     const std::string& mainFuncName = f.first;
-    
+
     // (1.1) traverse source code of main file first
     //
     std::cout << "(1) Processing " << mainClassName.c_str() << "::" << mainFuncName.c_str() << "(...)" << std::endl; 
     std::cout << "{" << std::endl;
-    {
-      kslicer::InitialPassASTConsumer astConsumer(mainFuncName.c_str(), mainClassName.c_str(), compiler.getASTContext(), compiler.getSourceManager());  
+    { 
+      astConsumer.rv.MAIN_NAME       = mainFuncName;
+      astConsumer.rv.MAIN_CLASS_NAME = mainClassName;
+
       ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
-      compiler.getDiagnosticClient().EndSourceFile();
     
       inputCodeInfo.allKernels.merge(astConsumer.rv.functions);    
       inputCodeInfo.allDataMembers.merge(astConsumer.rv.dataMembers);   
@@ -312,6 +322,7 @@ int main(int argc, const char **argv)
   }
 
   std::cout << std::endl;
+  compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
 
   std::cout << "(2) Mark data members, methods and functions which are actually used in kernels." << std::endl; 
   std::cout << "{" << std::endl;
@@ -389,7 +400,7 @@ int main(int argc, const char **argv)
   
   // finally generate kernels
   //
-  kslicer::PrintGeneratedCLFile("templates/generated.cl", outGenerated, inputCodeInfo, filter.usedFiles, filter.usedFunctions, compiler);
+  kslicer::PrintGeneratedCLFile("templates/generated.cl", GetFolderPath(inputCodeInfo.mainClassFileName), inputCodeInfo, filter.usedFiles, filter.usedFunctions, compiler);
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;

@@ -287,11 +287,12 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
 }
 
 
-void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::string& a_outFileName, const MainClassInfo& a_classInfo, 
+void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::string& a_outFolder, const MainClassInfo& a_classInfo, 
                                    const std::unordered_map<std::string, bool>& usedFiles, 
                                    const std::unordered_map<std::string, clang::SourceRange>& usedFunctions,
                                    const clang::CompilerInstance& compiler)
 {
+  const std::string& a_outFileName = a_outFolder + "/" + "z_generated.cl";
   json data;
 
   // (1) put includes
