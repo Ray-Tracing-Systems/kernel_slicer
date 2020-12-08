@@ -258,43 +258,45 @@ int main(int argc, const char **argv)
 
   // (0) find all "Main" functions, a functions which call kernels. Kernels are also listed for each mainFunc;
   //
+  std::vector<std::string> mainFunctNames; 
+  mainFunctNames.reserve(20);
+  
   std::cout << "(0) Listing main functions of " << mainClassName.c_str()  << std::endl; 
   auto mainFuncList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, compiler.getASTContext());
   std::cout << "{" << std::endl;
   for(const auto& f : mainFuncList)
+  {
     std::cout << "  found " << f.first.c_str() << std::endl;
+    mainFunctNames.push_back(f.first);
+  }
   std::cout << "}" << std::endl;
+  std::cout << std::endl;
 
   inputCodeInfo.mainFunc.resize(mainFuncList.size());
   inputCodeInfo.mainClassName     = mainClassName;
   inputCodeInfo.mainClassFileName = fileName;
   
-  kslicer::InitialPassASTConsumer astConsumer("", "", compiler.getASTContext(), compiler.getSourceManager()); 
+  std::cout << "(1) Processing class " << mainClassName.c_str() << std::endl; 
+  std::cout << "{" << std::endl;
+
+  // Parse code
+  //
+  kslicer::InitialPassASTConsumer astConsumer(mainFunctNames, mainClassName, compiler.getASTContext(), compiler.getSourceManager()); 
+  ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
+  compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
+
+  inputCodeInfo.allKernels           = astConsumer.rv.functions;    
+  inputCodeInfo.allDataMembers       = astConsumer.rv.dataMembers;   
+  inputCodeInfo.mainClassFileInclude = astConsumer.rv.MAIN_FILE_INCLUDE;
 
   size_t mainFuncId = 0;
   for(const auto f : mainFuncList)
   {
     const std::string& mainFuncName = f.first;
+    inputCodeInfo.mainFunc[mainFuncId].Name = mainFuncName;
+    inputCodeInfo.mainFunc[mainFuncId].Node = astConsumer.rv.m_mainFuncNodes[mainFuncName];
 
-    // (1.1) traverse source code of main file first
-    //
-    std::cout << "(1) Processing " << mainClassName.c_str() << "::" << mainFuncName.c_str() << "(...)" << std::endl; 
-    std::cout << "{" << std::endl;
-    { 
-      astConsumer.rv.MAIN_NAME       = mainFuncName;
-      astConsumer.rv.MAIN_CLASS_NAME = mainClassName;
-
-      ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
-    
-      inputCodeInfo.allKernels.merge(astConsumer.rv.functions);    
-      inputCodeInfo.allDataMembers.merge(astConsumer.rv.dataMembers);   
-      inputCodeInfo.mainClassFileInclude = astConsumer.rv.MAIN_FILE_INCLUDE;
-
-      inputCodeInfo.mainFunc[mainFuncId].Name = mainFuncName;
-      inputCodeInfo.mainFunc[mainFuncId].Node = astConsumer.rv.m_mainFuncNode;
-    }
-  
-    // (1.2) now process variables and kernel calls of main function
+    // Now process variables and kernel calls for each main function
     //
     {
       clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::MakeMatch_LocalVarOfMethod(mainFuncName.c_str());
@@ -307,7 +309,7 @@ int main(int argc, const char **argv)
       finder.addMatcher(kernel_matcher,    &printer);
      
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
-      std::cout << "  (" << mainFuncName.c_str() << "): " << "Tool.run res = " << res << std::endl;
+      std::cout << "  process vars and kernel calls for " << mainFuncName.c_str() << "(...): " << res << std::endl;
       
       // filter out unused kernels
       //
@@ -318,11 +320,10 @@ int main(int argc, const char **argv)
     }
 
     mainFuncId++;
-    std::cout << "}" << std::endl;
   }
-
+  
+  std::cout << "}" << std::endl;
   std::cout << std::endl;
-  compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
 
   std::cout << "(2) Mark data members, methods and functions which are actually used in kernels." << std::endl; 
   std::cout << "{" << std::endl;

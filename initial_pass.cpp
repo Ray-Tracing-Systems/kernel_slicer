@@ -36,10 +36,7 @@ void kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDe
   functions[info.name] = info;
 }
 
-void kslicer::InitialPassRecursiveASTVisitor::ProcessMainFunc(const CXXMethodDecl *f)
-{
-  m_mainFuncNode = f;
-}
+
 
 bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f) 
 {
@@ -52,19 +49,19 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
 
     if(fname.find("kernel_") != std::string::npos)
     {
-      const QualType qThisType       = f->getThisType();   
-      const QualType classType       = qThisType.getTypePtr()->getPointeeType();
-      const std::string thisTypeName = classType.getAsString();
-      
+      const QualType qThisType = f->getThisType();   
+      const QualType classType = qThisType.getTypePtr()->getPointeeType();
+      std::string thisTypeName = classType.getAsString();
+
       if(thisTypeName == std::string("class ") + MAIN_CLASS_NAME || thisTypeName == std::string("struct ") + MAIN_CLASS_NAME)
       {
         ProcessKernelDef(f);
         std::cout << "  found kernel:\t" << fname.c_str() << std::endl;
       }
     }
-    else if(fname == MAIN_NAME)
+    else if(m_mainFuncts.find(fname) != m_mainFuncts.end())
     {
-      ProcessMainFunc(f);
+      m_mainFuncNodes[fname] = f;
       //std::cout << "main function has found:\t" << fname.c_str() << std::endl;
       //f->dump();
     }
