@@ -24,7 +24,12 @@
 
 ## endfor
   vkDestroyBuffer(device, m_classDataBuffer, nullptr);
-  vkFreeMemory   (device, m_allMem, nullptr);
+
+  if(m_allMem != VK_NULL_HANDLE)
+    vkFreeMemory(device, m_allMem, nullptr);
+  
+  if(m_vecMem != VK_NULL_HANDLE)
+    vkFreeMemory(device, m_vecMem, nullptr);
 }
 
 void {{MainClassName}}_Generated::InitHelpers()

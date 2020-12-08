@@ -120,7 +120,15 @@ std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFi
       kernName = kernName.substr(7);
     data["KernelNames"].push_back(kernName);
   }
-  
+
+  data["VectorMembers"] = std::vector<std::string>();
+  for(const auto var : a_classInfo.dataMembers)
+  {
+    if(var.isContainer)
+      data["VectorMembers"].push_back(var.name);
+  }
+
+
   inja::Environment env;
   inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());
   std::string result  = env.render(temp, data);

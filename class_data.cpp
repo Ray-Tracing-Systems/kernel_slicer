@@ -53,5 +53,11 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
     offsetInBytes += alignedSize;
   }
 
+  for(const auto& keyval : a_vars)
+  {
+    if(keyval.second.usedInKernel && keyval.second.isContainer)
+      resVars.push_back(keyval.second);
+  }
+
   return resVars;
 }

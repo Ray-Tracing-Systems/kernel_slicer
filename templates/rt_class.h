@@ -106,7 +106,19 @@ protected:
 
 ## endfor
 
+  struct StdVectorMembersGPUData
+  {
+## for Vector in VectorMembers
+    VkBuffer {{Vector}}Buffer = VK_NULL_HANDLE;
+## endfor
+
+## for Vector in VectorMembers
+    size_t   {{Vector}}SizeOffsetInCDB = 0;
+## endfor
+  } m_vdata;
+
   VkBuffer m_classDataBuffer = VK_NULL_HANDLE;
+  VkDeviceMemory m_vecMem    = VK_NULL_HANDLE;
   VkDeviceMemory m_allMem    = VK_NULL_HANDLE;
 
 ## for KernelName in KernelNames

@@ -363,7 +363,7 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  std::cout << "(3) Calc offsets for all class variables; ingore unused members that were not marked on previous step" << std::endl; 
+  std::cout << "(3) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl; 
   std::cout << "{" << std::endl;
 
   // (4) calc offsets for all class variables; ingore unused members that were not marked on previous step
