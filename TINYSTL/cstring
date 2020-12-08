@@ -1,0 +1,6 @@
+#ifndef STD_CSTRING_H
+#define STD_CSTRING_H
+
+void* memcpy( void* dest, const void* src, unsigned long long int count);
+	
+#endif
