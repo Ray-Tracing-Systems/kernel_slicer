@@ -145,6 +145,16 @@ private:
 
 std::string GetFolderPath(const std::string& a_filePath);
 
+const char* GetClangToolingErrorCodeMessage(int code)
+{
+  if(code == 0)
+    return "OK";
+  else if (code == 1)
+    return "ERROR";
+  else
+    return "SKIPPED_FILES";  
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -289,6 +299,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.allDataMembers       = astConsumer.rv.dataMembers;   
   inputCodeInfo.mainClassFileInclude = astConsumer.rv.MAIN_FILE_INCLUDE;
 
+  std::unordered_set<std::string> processedKernels;
   size_t mainFuncId = 0;
   for(const auto f : mainFuncList)
   {
@@ -309,14 +320,19 @@ int main(int argc, const char **argv)
       finder.addMatcher(kernel_matcher,    &printer);
      
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
-      std::cout << "  process vars and kernel calls for " << mainFuncName.c_str() << "(...): " << res << std::endl;
+      std::cout << "  process vars and kernel calls for " << mainFuncName.c_str() << "(...): " << GetClangToolingErrorCodeMessage(res) << std::endl;
       
       // filter out unused kernels
       //
       inputCodeInfo.kernels.reserve(inputCodeInfo.allKernels.size());
       for (const auto& k : inputCodeInfo.allKernels)
-        if(k.second.usedInMainFunc)
+      {
+        if(k.second.usedInMainFunc && processedKernels.find(k.first) == processedKernels.end())
+        {
           inputCodeInfo.kernels.push_back(k.second);
+          processedKernels.insert(k.first);
+        }
+      }
     }
 
     mainFuncId++;
@@ -340,7 +356,7 @@ int main(int argc, const char **argv)
       finder.addMatcher(funcMatcher, &filter);
     
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
-      std::cout << "  process " << kernel.name.c_str() << ";\ttool run res = " << res << std::endl;
+      std::cout << "  process " << kernel.name.c_str() << ":\t" << GetClangToolingErrorCodeMessage(res) << std::endl;
     }
   }
 
