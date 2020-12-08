@@ -63,7 +63,6 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
   return true; 
 }
 
-
 std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArgumentsOfAKernelCall(CXXMemberCallExpr* f)
 {
   std::vector<kslicer::ArgReferenceOnCall> args; 
@@ -93,9 +92,9 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArg
       std::string varName = text.substr(0, text.find(".data()"));
       auto pClassVar = m_allClassMembers.find(varName);
       if(pClassVar == m_allClassMembers.end())
-      {
         std::cout << "[KernelCallError]: vector<...> variable '" << varName.c_str() << "' was not found in class!" << std::endl; 
-      }
+      else
+        pClassVar->second.usedInKernel = true;
 
       arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR;
     }

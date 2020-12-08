@@ -96,6 +96,7 @@ protected:
   std::vector<float4>          spheresPosRadius;
   std::vector<SphereMaterial>  spheresMaterials;
   std::vector<RandomGen>       m_randomGens;
+  std::vector<float>           m_unusedVector;
 };
 
 #endif
