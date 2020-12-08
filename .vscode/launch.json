@@ -11,7 +11,7 @@
             "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/01_intersectSphere/test_class.cpp", 
                         "-out", "${workspaceFolder}/apps/01_intersectSphere/z_generated.cl", 
-                        "-stdlibfolder", "${workspaceFolder}/stdlib", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL", 
                         "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",

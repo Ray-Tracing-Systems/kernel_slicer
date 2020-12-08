@@ -108,7 +108,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArg
     args.push_back(arg); 
   }
 
-  for(auto& arg : args)                         // in this loop we have to define argument (actual parameter) type
+  for(auto& arg : args)  // in this loop we have to define argument (actual parameter) type
   {
     if(arg.argType != KERN_CALL_ARG_TYPE::ARG_REFERENCE_UNKNOWN_TYPE)
       continue;
@@ -122,7 +122,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArg
       arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL;
   }
 
-  for(auto& arg : args) // in this loop we have to define argument (actual parameter) type
+  for(auto& arg : args) // check we don't have unknown types of arguments
   {
     if(arg.argType == KERN_CALL_ARG_TYPE::ARG_REFERENCE_UNKNOWN_TYPE)
       std::cout << "[KernelCallError]: variable '" << arg.varName.c_str() << "' was not classified!" << std::endl; 
@@ -297,8 +297,46 @@ bool kslicer::KernelReplacerASTVisitor::VisitMemberExpr(MemberExpr* expr)
 
   const std::string thisTypeName = pRecodDecl->getNameAsString();
   if(thisTypeName != m_mainClassName)
+  {
+    // process access to arguments payload->xxx
+    //
+    Expr* baseExpr = expr->getBase(); 
+    assert(baseExpr != nullptr);
+
+    const std::string baseName = GetRangeSourceCode(baseExpr->getSourceRange(), m_compiler);
+
+    size_t foundId  = size_t(-1);
+    bool needOffset = false;
+    for(size_t i=0;i<m_args.size();i++)
+    {
+      if(m_args[i].name == baseName)
+      {
+        foundId    = i;
+        needOffset = m_args[i].needFakeOffset;
+        break;
+      }
+    }
+
+    if(foundId == size_t(-1)) // we didn't found 'payload' in kernela arguments, so just ignore it
+      return true;
+    
+    // now split 'payload->xxx' to 'payload' (baseName) and 'xxx' (memberName); 
+    // 
+    const std::string exprContent = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    auto pos = exprContent.find("->");
+    assert(pos != std::string::npos);
+
+    const std::string memberName = exprContent.substr(pos+2);
+
+    if(needOffset)
+       m_rewriter.ReplaceText(expr->getSourceRange(), baseName + "[" + m_fakeOffsetExp + "]." + memberName);
+
     return true;
- 
+  }
+
+  // process access to class member data
+  // 
+
   // (1) get type of variable itself because we need to cast pointer to this type
   //
   QualType qt = pFieldDecl->getTypeSourceInfo()->getType();

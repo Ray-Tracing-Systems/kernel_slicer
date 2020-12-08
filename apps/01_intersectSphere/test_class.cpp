@@ -26,10 +26,9 @@ void TestClass::kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFa
 
 void TestClass::kernel_TestColor(const Lite_Hit* in_hit, uint* out_color, uint tidX, uint tidY)
 {
-  Lite_Hit hit = (*in_hit);
   float x = 2.0f;
 
-  if(hit.primId != -1)
+  if(in_hit->primId != -1)
     out_color[pitchOffset(tidX,tidY)] = 0x000000FF;
   else
     out_color[pitchOffset(tidX,tidY)] = 0x00FF0000;
