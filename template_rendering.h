@@ -15,6 +15,11 @@ namespace kslicer
 
   void PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath, const std::string& a_includeName, const MainClassInfo& a_classInfo,
                                const std::vector<MainFuncInfo>& a_methodsToGenerate); 
+
+  void PrintGeneratedCLFile(const std::string& a_inFileName, const std::string& a_outFileName, const MainClassInfo& a_classInfo, 
+                            const std::unordered_map<std::string, bool>& usedFiles, 
+                            const std::unordered_map<std::string, clang::SourceRange>& usedFunctions,
+                            const clang::CompilerInstance& compiler);
 };
 
 #endif

@@ -439,7 +439,7 @@ std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo) // ti
     return "tid";
 }
 
-std::string kslicer::ProcessKernel(const KernelInfo& a_funcInfo, clang::CompilerInstance& compiler, const kslicer::MainClassInfo& a_codeInfo)
+std::string kslicer::ProcessKernel(const KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, const kslicer::MainClassInfo& a_codeInfo)
 {
   const CXXMethodDecl* a_node = a_funcInfo.astNode;
   //a_node->dump();

@@ -285,3 +285,164 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
   fout << result.c_str() << std::endl;
   fout.close();
 }
+
+
+void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::string& a_outFileName, const MainClassInfo& a_classInfo, 
+                                   const std::unordered_map<std::string, bool>& usedFiles, 
+                                   const std::unordered_map<std::string, clang::SourceRange>& usedFunctions,
+                                   const clang::CompilerInstance& compiler)
+{
+  json data;
+
+  // (1) put includes
+  //
+  data["Includes"] = std::vector<std::string>();
+  for(auto keyVal : a_classInfo.allIncludeFiles) // we will search for only used include files among all of them (quoted, angled were excluded earlier)
+  {
+    for(auto keyVal2 : usedFiles)
+    {
+      if(keyVal2.first.find(keyVal.first)                   != std::string::npos && 
+        a_classInfo.mainClassFileInclude.find(keyVal.first) == std::string::npos)
+        data["Includes"].push_back(keyVal.first);
+    }
+  }
+
+  // (2) local functions
+  //
+  data["LocalFunctions"] = std::vector<std::string>();
+  for (const auto& f : usedFunctions)  
+    data["LocalFunctions"].push_back(kslicer::GetRangeSourceCode(f.second, compiler));
+
+  data["LocalFunctions"].push_back("uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }                                      // for 2D threading");
+  data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");
+
+  // (3) put kernels
+  //
+  data["Kernels"] = std::vector<std::string>();
+  
+  clang::SourceManager& sm = compiler.getSourceManager();
+  
+  for (const auto& k : a_classInfo.kernels)  
+  {
+    std::cout << "  processing " << k.name << std::endl;
+    bool foundThreadIdX = false; std::string tidXName = "tid";
+    bool foundThreadIdY = false; std::string tidYName = "tid2";
+    bool foundThreadIdZ = false; std::string tidZName = "tid3";
+
+    json args;
+    for (const auto& arg : k.args) 
+    {
+      std::string typeStr = arg.type;
+      kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
+      
+      json argj;
+      argj["Type"] = typeStr;
+      argj["Name"] = arg.name;
+
+      bool skip = false;
+      
+      if(arg.name == "tid" || arg.name == "tidX") // todo: check several names ... 
+      {
+        skip           = true;
+        foundThreadIdX = true;
+        tidXName       = arg.name;
+      }
+  
+      if(arg.name == "tidY") // todo: check several names ... 
+      {
+        skip           = true;
+        foundThreadIdY = true;
+        tidYName       = arg.name;
+      }
+  
+      if(arg.name == "tidZ") // todo: check several names ... 
+      {
+        skip           = true;
+        foundThreadIdZ = true;
+        tidZName       = arg.name;
+      }
+
+      if(!skip)
+        args.push_back(argj);
+    }
+    
+    // add kgen_data buffer and skiped predefined ThreadId back
+    //
+    {
+      json argj;
+      argj["Type"] = "uint*";
+      argj["Name"] = kslicer::GetProjPrefix() + "data";
+      args.push_back(argj);
+    }
+
+    std::vector<std::string> threadIdNames;
+    {
+      if(foundThreadIdX)
+        threadIdNames.push_back(tidXName);
+      if(foundThreadIdY)
+        threadIdNames.push_back(tidYName);
+      if(foundThreadIdZ)
+        threadIdNames.push_back(tidZName);
+    }
+
+    const std::string numThreadsName = kslicer::GetProjPrefix() + "iNumElements";
+    json argSizes;
+    const char* XYZ[] = {"X","Y","Z"};
+    for(size_t i=0;i<threadIdNames.size();i++)
+      argSizes.push_back(numThreadsName + XYZ[i]);
+
+    
+    json kernelJson;
+    kernelJson["Args"]        = args;
+    kernelJson["ArgSizes"]    = argSizes;
+    kernelJson["Name"]        = k.name;
+
+    std::string sourceCodeFull = kslicer::ProcessKernel(k, compiler, a_classInfo);
+    std::string sourceCodeCut  = sourceCodeFull.substr(sourceCodeFull.find_first_of('{')+1);
+    
+    kernelJson["Source"] = sourceCodeCut;
+    
+    std::stringstream strOut;
+    {
+      strOut << "/////////////////////////////////////////////////" << std::endl;
+      for(size_t i=0;i<threadIdNames.size();i++)
+        strOut << "  const uint " << threadIdNames[i].c_str() << " = get_global_id(" << i << ");"<< std::endl; 
+      
+      if(threadIdNames.size() == 1)
+      {
+        strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << ")" << std::endl;                          
+        strOut << "    return;" << std::endl;
+      }
+      else if(threadIdNames.size() == 2)
+      {
+        strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << "X";
+        strOut << " || "   << threadIdNames[1].c_str() << " >= " << numThreadsName.c_str() << "Y" <<  ")" << std::endl;                          
+        strOut << "    return;" << std::endl;
+      }
+      else if(threadIdNames.size() == 3)
+      {
+        strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << "X";
+        strOut << " || "   << threadIdNames[1].c_str() << " >= " << numThreadsName.c_str() << "Y";  
+        strOut << " || "   << threadIdNames[2].c_str() << " >= " << numThreadsName.c_str() << "Z" <<  ")" << std::endl;                        
+        strOut << "    return;" << std::endl;
+      }
+      else
+      {
+        assert(false);
+      }
+      strOut << "  /////////////////////////////////////////////////";
+    }
+    
+    kernelJson["Prolog"] = strOut.str();
+
+    data["Kernels"].push_back(kernelJson);
+  }
+
+  inja::Environment env;
+  inja::Template temp = env.parse_template(a_inFileName.c_str());
+  std::string result  = env.render(temp, data);
+  
+  std::ofstream fout(a_outFileName);
+  fout << result.c_str() << std::endl;
+  fout.close();
+}

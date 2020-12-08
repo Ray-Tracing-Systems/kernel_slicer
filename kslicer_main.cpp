@@ -109,122 +109,6 @@ std::vector<std::string> kslicer::GetAllPredefinedThreadIdNames()
   return {"tid", "tidX", "tidY", "tidZ"};
 }
 
-void PrintKernelToCL(std::ostream& outFileCL, const KernelInfo& funcInfo, const std::string& kernName, clang::CompilerInstance& compiler, const kslicer::MainClassInfo& a_inputCodeInfo)
-{
-  assert(funcInfo.astNode != nullptr);
-
-  clang::SourceManager& sm = compiler.getSourceManager();
-
-  bool foundThreadIdX = false; std::string tidXName = "tid";
-  bool foundThreadIdY = false; std::string tidYName = "tid2";
-  bool foundThreadIdZ = false; std::string tidZName = "tid3";
-
-  outFileCL << std::endl;
-  outFileCL << "__kernel void " << kernName.c_str() << "(" << std::endl;
-  for (const auto& arg : funcInfo.args) 
-  {
-    std::string typeStr = arg.type.c_str();
-    kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
-
-    bool skip = false;
-
-    if(arg.name == "tid" || arg.name == "tidX") // todo: check several names ... 
-    {
-      skip           = true;
-      foundThreadIdX = true;
-      tidXName       = arg.name;
-    }
-
-    if(arg.name == "tidY") // todo: check several names ... 
-    {
-      skip           = true;
-      foundThreadIdY = true;
-      tidYName       = arg.name;
-    }
-
-    if(arg.name == "tidZ") // todo: check several names ... 
-    {
-      skip           = true;
-      foundThreadIdZ = true;
-      tidZName       = arg.name;
-    }
-    
-    if(!skip)
-      outFileCL << "  __global " << typeStr.c_str() << " restrict " << arg.name.c_str() << "," << std::endl;
-  }
-  
-  std::vector<std::string> threadIdNames;
-  {
-    if(foundThreadIdX)
-      threadIdNames.push_back(tidXName);
-    if(foundThreadIdY)
-      threadIdNames.push_back(tidYName);
-    if(foundThreadIdZ)
-      threadIdNames.push_back(tidZName);
-  }
-
-  const std::string numThreadsName = kslicer::GetProjPrefix() + "iNumElements";
-  const std::string m_dataName     = kslicer::GetProjPrefix() + "data";
-
-  outFileCL << "  __global const uint* restrict " << m_dataName.c_str() << "," << std::endl;
-
-  if(threadIdNames.size() == 0)
-    outFileCL << "  const uint " << numThreadsName.c_str() << ")" << std::endl;
-  else
-  {
-    const char* XYZ[] = {"X","Y","Z"};
-    for(size_t i=0;i<threadIdNames.size();i++)
-    {
-      outFileCL << "  const uint " << numThreadsName.c_str() << XYZ[i];
-      if(i != threadIdNames.size()-1)
-        outFileCL << "," << std::endl;
-      else
-        outFileCL << ")" << std::endl;
-    }
-  }
-
-
-  std::string sourceCodeFull = kslicer::ProcessKernel(funcInfo, compiler, a_inputCodeInfo);
-  std::string sourceCodeCut  = sourceCodeFull.substr(sourceCodeFull.find_first_of('{')+1);
-
-  std::stringstream strOut;
-  {
-    strOut << "{" << std::endl;
-    strOut << "  /////////////////////////////////////////////////" << std::endl;
-    for(size_t i=0;i<threadIdNames.size();i++)
-      strOut << "  const uint " << threadIdNames[i].c_str() << " = get_global_id(" << i << ");"<< std::endl; 
-    
-    if(threadIdNames.size() == 1)
-    {
-      strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << ")" << std::endl;                          
-      strOut << "    return;" << std::endl;
-    }
-    else if(threadIdNames.size() == 2)
-    {
-      strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << "X";
-      strOut << " || "   << threadIdNames[1].c_str() << " >= " << numThreadsName.c_str() << "Y" <<  ")" << std::endl;                          
-      strOut << "    return;" << std::endl;
-    }
-    else if(threadIdNames.size() == 3)
-    {
-      strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << "X";
-      strOut << " || "   << threadIdNames[1].c_str() << " >= " << numThreadsName.c_str() << "Y";  
-      strOut << " || "   << threadIdNames[2].c_str() << " >= " << numThreadsName.c_str() << "Z" <<  ")" << std::endl;                        
-      strOut << "    return;" << std::endl;
-    }
-    else
-    {
-      assert(false);
-    }
-    
-    
-    strOut << "  /////////////////////////////////////////////////" << std::endl;
-  }
-
-  outFileCL << strOut.str() << sourceCodeCut.c_str() << std::endl << std::endl;
-}
-
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -484,7 +368,7 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
   
-  std::cout << "(5) Perform final templated text rendering to generate Vulkan calls {}" << std::endl; 
+  std::cout << "(5) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
   std::cout << "{" << std::endl;
   {
     kslicer::PrintVulkanBasicsFile  ("templates/vulkan_basics.h", inputCodeInfo);
@@ -502,66 +386,10 @@ int main(int argc, const char **argv)
   //
   kslicer::MarkKernelArgumenstForFakeOffset(inputCodeInfo.allDescriptorSetsInfo, // ==>
                                             inputCodeInfo.kernels);              // <==
-
-  // print final cl file
-  // 
-  std::ofstream outFileCL(outGenerated.c_str());
-  if(!outFileCL.is_open())
-    llvm::errs() << "Cannot open " << outGenerated.c_str() << " for writing\n";
-
-  // list include files
+  
+  // finally generate kernels
   //
-  outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
-  outFileCL << "/////////////////// include files ///////////////////////////////////" << std::endl;
-  outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
-  outFileCL << std::endl;
-
-  for(auto keyVal : inputCodeInfo.allIncludeFiles) // we will search for only used include files among all of them (quoted, angled were excluded earlier)
-  {
-    for(auto keyVal2 : filter.usedFiles)
-    {
-      if(keyVal2.first.find(keyVal.first)                      != std::string::npos && 
-         inputCodeInfo.mainClassFileInclude.find(keyVal.first) == std::string::npos)
-      {
-        outFileCL << "#include \"" << keyVal.first.c_str() << "\"" << std::endl;
-      }
-    }
-  }
-  outFileCL << std::endl;
-
-  outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
-  outFileCL << "/////////////////// local functions /////////////////////////////////" << std::endl;
-  outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
-  outFileCL << std::endl;
-
-  // (8) write local functions to .cl file
-  //
-  for (const auto& f : filter.usedFunctions)  
-  {
-    std::string funcSourceCode = kslicer::GetRangeSourceCode(f.second, compiler);
-    outFileCL << funcSourceCode.c_str() << std::endl;
-  }
-
-  outFileCL << "uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }                                      // for 2D threading" << std::endl;
-  outFileCL << "uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading" << std::endl;
-
-  outFileCL << std::endl;
-  outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
-  outFileCL << "/////////////////// kernels /////////////////////////////////////////" << std::endl;
-  outFileCL << "/////////////////////////////////////////////////////////////////////" << std::endl;
-  outFileCL << std::endl;
-
-  // (9) write kernels to .cl file
-  //
-  {
-    for (const auto& k : inputCodeInfo.kernels)  
-    {
-      std::cout << "  processing " << k.name << " " << k.return_type << std::endl;
-      PrintKernelToCL(outFileCL, k, k.name, compiler, inputCodeInfo);
-    }
-
-    outFileCL.close();
-  }
+  kslicer::PrintGeneratedCLFile("templates/generated.cl", outGenerated, inputCodeInfo, filter.usedFiles, filter.usedFunctions, compiler);
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
