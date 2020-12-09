@@ -45,6 +45,8 @@ namespace kslicer
     size_t      sizeInBytes;              ///<! may be not needed due to using sizeof in generated code, but it is useful for sorting members by size and making apropriate aligment
     size_t      offsetInTargetBuffer = 0; ///<! offset in bytes in terget buffer that stores all data members
     
+    bool        isContainerInfo = false;  ///<! auto generated std::vector<T>::size() or capacity() or some analogue
+
     bool isContainer  = false;
     bool isArray      = false; ///<! if is array, element type stored incontainerDataType 
     bool usedInKernel = false; ///<! if any kernel use the member --> true; if no one uses --> false.

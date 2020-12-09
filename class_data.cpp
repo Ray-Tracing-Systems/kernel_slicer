@@ -38,6 +38,20 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
   {
     if(!keyval.second.isContainer && keyval.second.usedInKernel)
       resVars.push_back(keyval.second);
+    else if(keyval.second.usedInKernel && keyval.second.isContainer)
+    {
+      kslicer::DataMemberInfo size;
+      size.type         = "unsigned int";
+      size.sizeInBytes  = sizeof(unsigned int);
+      size.name         = keyval.second.name + "_size";
+      size.usedInKernel = true;
+      size.isContainerInfo = true;
+      kslicer::DataMemberInfo capacity = size;
+      capacity.name     = keyval.second.name + "_capacity";
+
+      resVars.push_back(size);
+      resVars.push_back(capacity);
+    }
   }
 
   std::sort(resVars.begin(), resVars.end(), less_than_key());

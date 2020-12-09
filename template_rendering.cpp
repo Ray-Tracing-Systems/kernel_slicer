@@ -173,14 +173,49 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
   
   data["AllClassVarsSize"]  = allClassVarsSizeInBytes;
 
+  std::unordered_map<std::string, DataMemberInfo> containersInfo; 
+  containersInfo.reserve(a_classInfo.dataMembers.size());
+
   data["ClassVars"] = std::vector<std::string>();
   for(const auto& v : a_classInfo.dataMembers)
   {
+    if(v.isContainerInfo)
+    {
+      containersInfo[v.name] = v;
+      continue;
+    }
+
+    if(v.isContainer)
+      continue;
+
     json local;
     local["Name"]   = v.name;
     local["Offset"] = v.offsetInTargetBuffer;
     local["Size"]   = v.sizeInBytes;
     data["ClassVars"].push_back(local);
+  }
+
+  data["ClassVectorVars"] = std::vector<std::string>();
+  for(const auto& v : a_classInfo.dataMembers)
+  {
+    if(!v.isContainer)
+      continue;
+    
+    std::string sizeName     = v.name + "_size";
+    std::string capacityName = v.name + "_capacity";
+
+    auto p1 = containersInfo.find(sizeName);
+    auto p2 = containersInfo.find(capacityName);
+
+    assert(p1 != containersInfo.end() && p2 != containersInfo.end());
+
+    json local;
+    local["Name"]           = v.name;
+    local["SizeOffset"]     = p1->second.offsetInTargetBuffer;
+    local["CapacityOffset"] = p2->second.offsetInTargetBuffer;
+    local["TypeOfData"]     = v.containerDataType;
+
+    data["ClassVectorVars"].push_back(local);
   }
 
   auto predefinedNames = kslicer::GetAllPredefinedThreadIdNames();

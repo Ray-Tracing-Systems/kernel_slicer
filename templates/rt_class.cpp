@@ -1,5 +1,8 @@
 #include <vector>
 #include <memory>
+#include <limits>
+
+#include <cassert>
 
 #include "vulkan_basics.h"
 
@@ -205,7 +208,21 @@ void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vkfw::ICopy
 
 void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
 {
+  const size_t maxAllowedSize = std::numeric_limits<uint32_t>::max();
 
+## for Var in ClassVectorVars
+  {
+    uint32_t sizeOfVector     = uint32_t( {{Var.Name}}.size() ); assert( {{Var.Name}}.size() < maxAllowedSize );
+    uint32_t capacityOfVector = uint32_t( {{Var.Name}}.capacity() ); assert( {{Var.Name}}.capacity() < maxAllowedSize );
+    a_pCopyEngine->UpdateBuffer(m_classDataBuffer, {{Var.SizeOffset}}, &sizeOfVector, sizeof(uint32_t));
+    a_pCopyEngine->UpdateBuffer(m_classDataBuffer, {{Var.CapacityOffset}}, &capacityOfVector, sizeof(uint32_t));
+  }
+
+## endfor
+
+## for Var in ClassVectorVars
+  a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}.data(), {{Var.Name}}.size()*sizeof({{Var.TypeOfData}}) );
+## endfor
 }
 
 void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
