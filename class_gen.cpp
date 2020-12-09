@@ -345,20 +345,23 @@ bool kslicer::KernelReplacerASTVisitor::VisitMemberExpr(MemberExpr* expr)
   // (2) get variable offset in buffer by its name 
   //
   const std::string fieldName = pFieldDecl->getNameAsString(); 
-  const auto p = m_variables.find(fieldName);
-  if(p == m_variables.end())
+  const auto pMember = m_variables.find(fieldName);
+  if(pMember == m_variables.end())
     return true;
 
-  // (3) put *(pointer+offset) instead of variable name
+  // (3) put *(pointer+offset) instead of variable name, leave containers as they are
   //
-  const std::string buffName = kslicer::GetProjPrefix() + "data"; 
-  std::stringstream strOut;
-  strOut << "*(  "; 
-  strOut << "(__global const " << fieldType.c_str() << "*)" << "(" << buffName.c_str() << "+" << (p->second.offsetInTargetBuffer/sizeof(uint32_t)) << ")";
-  strOut << "  )";
-  
-  m_rewriter.ReplaceText(expr->getSourceRange(), strOut.str());
-  
+  if(!pMember->second.isContainer)
+  {
+    const std::string buffName = kslicer::GetProjPrefix() + "data"; 
+    std::stringstream strOut;
+    strOut << "*(  "; 
+    strOut << "(__global const " << fieldType.c_str() << "*)" << "(" << buffName.c_str() << "+" << (pMember->second.offsetInTargetBuffer/sizeof(uint32_t)) << ")";
+    strOut << "  )";
+    
+    m_rewriter.ReplaceText(expr->getSourceRange(), strOut.str());
+  }
+
   return true;
 }
 
