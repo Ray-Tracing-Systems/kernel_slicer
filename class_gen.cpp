@@ -272,7 +272,23 @@ void kslicer::MarkKernelArgumenstForFakeOffset(const std::vector<KernelCallInfo>
       for(size_t argId = 0; argId<actualParameters.size(); argId++)
       {
         if(actualParameters[argId].argType == kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL)
-          kernels[found].args[argId].needFakeOffset = true;
+        {
+          // kernels[found].args[argId].needFakeOffset = true; /// !!! DOES NOT WORKS !!! Need Naming matching !!!
+          size_t found2 = size_t(-1);
+          for(size_t j=0;j< kernels[found].args.size();j++)
+          {
+            if(kernels[found].args[j].name == actualParameters[argId].varName)
+            {
+              found2 = j;
+              break;
+            }
+          }
+
+          if(found2 != size_t(-1))
+            kernels[found].args[found2].needFakeOffset = true;
+          else
+            std::cout << "  [MarkKernelArgumenstForFakeOffset]: can't match argument " <<  actualParameters[argId].varName.c_str() << " for " << kernels[found].name.c_str() << std::endl;
+        }
       }
     }
   }
