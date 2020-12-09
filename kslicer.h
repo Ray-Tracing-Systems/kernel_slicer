@@ -157,6 +157,7 @@ namespace kslicer
   std::vector<std::string> GetAllPredefinedThreadIdNames();
 
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler);
+  std::string CutOffFileExt(const std::string& a_filePath);
 };
 
 

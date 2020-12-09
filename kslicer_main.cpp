@@ -61,6 +61,15 @@ std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const 
   return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
 }
 
+std::string kslicer::CutOffFileExt(const std::string& a_filePath)
+{
+  const size_t lastindex = a_filePath.find_last_of("."); 
+  if(lastindex != std::string::npos)
+    return a_filePath.substr(0, lastindex); 
+  else
+    return a_filePath;
+}
+
 void kslicer::ReplaceOpenCLBuiltInTypes(std::string& a_typeName)
 {
   std::string lmStucts("struct LiteMath::");
@@ -401,17 +410,11 @@ int main(int argc, const char **argv)
   {
     kslicer::PrintVulkanBasicsFile("templates/vulkan_basics.h", inputCodeInfo);
 
-    std::string rawname;
-    {
-      size_t lastindex = inputCodeInfo.mainClassFileName.find_last_of("."); 
-      assert(lastindex != std::string::npos);
-      rawname = inputCodeInfo.mainClassFileName.substr(0, lastindex); 
-    }
-
+    std::string rawname = kslicer::CutOffFileExt(inputCodeInfo.mainClassFileName);
     auto json = PrepareJsonForAllCPP(inputCodeInfo, inputCodeInfo.mainFunc, rawname + "_generated.h");
     
-    kslicer::ApplyJsonToTemplate("templates/rt_class.h",   rawname + "_generated.h", json); 
-    kslicer::ApplyJsonToTemplate("templates/rt_class.cpp", rawname + "_generated.cpp", json);
+    kslicer::ApplyJsonToTemplate("templates/rt_class.h",      rawname + "_generated.h", json); 
+    kslicer::ApplyJsonToTemplate("templates/rt_class.cpp",    rawname + "_generated.cpp", json);
     kslicer::ApplyJsonToTemplate("templates/rt_class_ds.cpp", rawname + "_generated_ds.cpp", json);
   }
   std::cout << "}" << std::endl;
