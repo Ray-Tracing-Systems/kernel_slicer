@@ -182,24 +182,24 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   auto kernelDeclByName = MakeMapForKernelsDeclByName(kernelsCallCmdDecl);
 
   data["Kernels"] = std::vector<std::string>();  
-  for(const auto& k : a_classInfo.allKernels)
+  for(const auto& k : a_classInfo.kernels)
   {
-    std::string kernName = k.first;
+    std::string kernName = k.name;
     auto pos = kernName.find("kernel_");
     if(pos != std::string::npos)
       kernName = kernName.substr(7);
     
     json local;
     local["Name"]         = kernName;
-    local["OriginalName"] = k.first;
-    local["ArgCount"]     = k.second.args.size();
+    local["OriginalName"] = k.name;
+    local["ArgCount"]     = k.args.size();
     local["Decl"]         = kernelDeclByName[kernName];
 
     std::vector<std::string> threadIdNamesList;
 
     local["Args"]         = std::vector<std::string>();
     size_t actualSize     = 0;
-    for(const auto& arg : k.second.args)
+    for(const auto& arg : k.args)
     {
       auto elementId = std::find(predefinedNames.begin(), predefinedNames.end(), arg.name);
       if(elementId != predefinedNames.end()) // exclude predefined names from bindings
@@ -215,6 +215,18 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       local["Args"].push_back(argData);
       actualSize++;
     }
+
+    for(const auto& name : k.usedVectors)
+    {
+      json argData;
+      argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+      argData["Name"]  = name;
+      argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
+      argData["Id"]    = actualSize;
+      local["Args"].push_back(argData);
+      actualSize++;
+    }
+
     local["ArgCount"] = actualSize;
 
     std::sort(threadIdNamesList.begin(), threadIdNamesList.end());
@@ -400,15 +412,6 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       if(!skip)
         args.push_back(argj);
     }
-    
-    // add kgen_data buffer and skiped predefined ThreadId back
-    //
-    {
-      json argj;
-      argj["Type"] = "uint*";
-      argj["Name"] = kslicer::GetProjPrefix() + "data";
-      args.push_back(argj);
-    }
 
     // now add all std::vector members
     //
@@ -424,6 +427,15 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       json argj;
       argj["Type"] = typeStr + "*";
       argj["Name"] = pVecMember->second.name;
+      args.push_back(argj);
+    }
+
+    // add kgen_data buffer and skiped predefined ThreadId back
+    //
+    {
+      json argj;
+      argj["Type"] = "uint*";
+      argj["Name"] = kslicer::GetProjPrefix() + "data";
       args.push_back(argj);
     }
 

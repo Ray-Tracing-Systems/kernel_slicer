@@ -56,6 +56,7 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout
   dsBindings[{{KernelARG.Id}}].pImmutableSamplers = nullptr;
 
 ## endfor
+  // binding for POD members stored in m_classDataBuffer
   dsBindings[{{Kernel.ArgCount}}].binding            = {{Kernel.ArgCount}};
   dsBindings[{{Kernel.ArgCount}}].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
   dsBindings[{{Kernel.ArgCount}}].descriptorCount    = 1;
