@@ -412,6 +412,7 @@ int main(int argc, const char **argv)
     
     kslicer::ApplyJsonToTemplate("templates/rt_class.h",   rawname + "_generated.h", json); 
     kslicer::ApplyJsonToTemplate("templates/rt_class.cpp", rawname + "_generated.cpp", json);
+    kslicer::ApplyJsonToTemplate("templates/rt_class_ds.cpp", rawname + "_generated_ds.cpp", json);
   }
   std::cout << "}" << std::endl;
   std::cout << std::endl;
