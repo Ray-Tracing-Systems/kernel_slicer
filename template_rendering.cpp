@@ -294,6 +294,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
         local["Args"].push_back(arg);
         realId++;
       }
+
+      // #TODO: Add Vector Members bindings here ... 
+      //
       
       local["ArgNumber"] = realId;
 
