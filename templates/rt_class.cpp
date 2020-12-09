@@ -5,10 +5,7 @@
 #include <cassert>
 
 #include "vulkan_basics.h"
-
 #include "{{IncludeClassDecl}}"
-
-{{Includes}}
 
 {{MainClassName}}_Generated::~{{MainClassName}}_Generated()
 {

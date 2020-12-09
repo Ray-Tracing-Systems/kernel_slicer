@@ -60,20 +60,20 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
   return kernelDeclByName;
 }
 
-std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo, 
-                                             const std::vector<MainFuncInfo>& a_methodsToGenerate)
+nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, 
+                                             const std::vector<MainFuncInfo>& a_methodsToGenerate, 
+                                             const std::string& a_genIncude)
 {
-  std::string rawname;
-  {
-    size_t lastindex = a_classInfo.mainClassFileName.find_last_of("."); 
-    assert(lastindex != std::string::npos);
-    rawname = a_classInfo.mainClassFileName.substr(0, lastindex); 
-  }
+  std::string folderPath           = GetFolderPath(a_classInfo.mainClassFileName);
+  std::string mainInclude          = a_classInfo.mainClassFileInclude;
+  std::string mainIncludeGenerated = a_genIncude;
 
-  std::string folderPath = GetFolderPath(a_classInfo.mainClassFileName);
-  std::string mainInclude = a_classInfo.mainClassFileInclude;
-  
   MakeAbsolutePathRelativeTo(mainInclude, folderPath);
+  MakeAbsolutePathRelativeTo(mainIncludeGenerated, folderPath);
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   std::stringstream strOut;
   strOut << "#include \"" << mainInclude.c_str() << "\"" << std::endl;
@@ -89,27 +89,11 @@ std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFi
   json data;
   data["Includes"]      = strOut.str();
   data["MainClassName"] = a_classInfo.mainClassName;
-  //data["MainFuncDecl"]  = a_mainFuncDecl;
 
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";
   data["KernelsDecl"]                  = strOut2.str();   
   data["TotalDSNumber"]                = a_classInfo.allDescriptorSetsInfo.size();
-
-  data["MainFunctions"] = std::vector<std::string>(); 
-  for(const auto& mainFunc : a_methodsToGenerate)
-  {
-    json local;
-    local["Decl"] = mainFunc.GeneratedDecl;
-    local["Name"] = mainFunc.Name;
-    local["LocalVarsBuffersDecl"] = GetVarNames(mainFunc.Locals);
-
-    local["InOutVars"] = std::vector<std::string>();
-    for(const auto& v : mainFunc.InOuts)
-      local["InOutVars"].push_back(v.first);
-
-    data["MainFunctions"].push_back(local);
-  }
 
   data["KernelNames"] = std::vector<std::string>();  
   for(const auto& k : a_classInfo.kernels)
@@ -128,44 +112,12 @@ std::string kslicer::PrintGeneratedClassDecl(const std::string& a_declTemplateFi
       data["VectorMembers"].push_back(var.name);
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  inja::Environment env;
-  inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());
-  std::string result  = env.render(temp, data);
-  
-  std::string includeFileName = rawname + "_generated.h";
-  std::ofstream fout(includeFileName);
-  fout << result.c_str() << std::endl;
-  fout.close();
-
-  return includeFileName;
-} 
-
-void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath, const std::string& a_includeName, const MainClassInfo& a_classInfo,
-                                      const std::vector<MainFuncInfo>& a_methodsToGenerate)
-{
-  std::string folderPath  = GetFolderPath(a_includeName);
-  std::string mainInclude = a_includeName;
-  MakeAbsolutePathRelativeTo(mainInclude, folderPath);
-
-  std::string rawname;
-  {
-    size_t lastindex = a_classInfo.mainClassFileName.find_last_of("."); 
-    assert(lastindex != std::string::npos);
-    rawname = a_classInfo.mainClassFileName.substr(0, lastindex); 
-  }
-
-  std::vector<std::string> kernelsCallCmdDecl(a_classInfo.kernels.size());
-  for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
-    kernelsCallCmdDecl[i] = a_classInfo.kernels[i].DeclCmd;
- 
-  auto kernelDeclByName = MakeMapForKernelsDeclByName(kernelsCallCmdDecl);
-
-  json data;
-  data["Includes"]         = "";
-  data["IncludeClassDecl"] = mainInclude;
-  data["MainClassName"]    = a_classInfo.mainClassName;
-  data["TotalDescriptorSets"] = a_classInfo.allDescriptorSetsInfo.size(); ///// ?????????????????????????????????????????????????????
+  data["IncludeClassDecl"]    = mainIncludeGenerated;
+  data["TotalDescriptorSets"] = a_classInfo.allDescriptorSetsInfo.size(); // #TODO: REFACTOR THIS !!!
+  data["TotalDSNumber"]       = a_classInfo.allDescriptorSetsInfo.size(); // #TODO: REFACTOR THIS !!! 
 
   size_t allClassVarsSizeInBytes = 0;
   for(const auto& var : a_classInfo.dataMembers)
@@ -218,7 +170,16 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
     data["ClassVectorVars"].push_back(local);
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   auto predefinedNames = kslicer::GetAllPredefinedThreadIdNames();
+
+  std::vector<std::string> kernelsCallCmdDecl(a_classInfo.kernels.size());
+  for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
+    kernelsCallCmdDecl[i] = a_classInfo.kernels[i].DeclCmd;
+ 
+  auto kernelDeclByName = MakeMapForKernelsDeclByName(kernelsCallCmdDecl);
 
   data["Kernels"] = std::vector<std::string>();  
   for(const auto& k : a_classInfo.allKernels)
@@ -277,15 +238,27 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
 
     data["Kernels"].push_back(local);
   }
-
-  data["TotalDSNumber"] = a_classInfo.allDescriptorSetsInfo.size();
+  
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   data["MainFunctions"] = std::vector<std::string>();
   for(const auto& mainFunc : a_methodsToGenerate)
   {
     json data2;
-    data2["Name"]           = mainFunc.Name;
-    data2["DescriptorSets"] = std::vector<std::string>();
+    data2["Name"]                 = mainFunc.Name;
+    data2["DescriptorSets"]       = std::vector<std::string>();
+    
+    // for decl
+    //
+    data2["Decl"]                 = mainFunc.GeneratedDecl;
+    data2["LocalVarsBuffersDecl"] = GetVarNames(mainFunc.Locals);
+    data2["InOutVars"] = std::vector<std::string>();
+    for(const auto& v : mainFunc.InOuts)
+      data2["InOutVars"].push_back(v.first);
+
+    // for impl, ds bindings
+    //
     for(size_t i=0;i<a_classInfo.allDescriptorSetsInfo.size();i++)
     {
       auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
@@ -305,7 +278,9 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
       }
       data2["DescriptorSets"].push_back(local);
     }
-
+    
+    // for impl, other
+    //
     data2["MainFuncCmd"]      = mainFunc.CodeGenerated;
     data2["LocalVarsBuffers"] = std::vector<std::string>();
     for(const auto& v : a_classInfo.mainFunc[0].Locals)
@@ -319,12 +294,19 @@ void kslicer::PrintGeneratedClassImpl(const std::string& a_declTemplateFilePath,
     data["MainFunctions"].push_back(data2);
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  return data;
+}
+
+void kslicer::ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, const std::string& a_outFilePath, const nlohmann::json& a_data)
+{
   inja::Environment env;
   inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());
-  std::string result  = env.render(temp, data);
+  std::string result  = env.render(temp, a_data);
   
-  std::string cppFileName = rawname + "_generated.cpp";
-  std::ofstream fout(cppFileName);
+  std::ofstream fout(a_outFilePath);
   fout << result.c_str() << std::endl;
   fout.close();
 }

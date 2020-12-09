@@ -399,10 +399,19 @@ int main(int argc, const char **argv)
   std::cout << "(5) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
   std::cout << "{" << std::endl;
   {
-    kslicer::PrintVulkanBasicsFile  ("templates/vulkan_basics.h", inputCodeInfo);
-    const std::string fileName = \
-    kslicer::PrintGeneratedClassDecl("templates/rt_class.h", inputCodeInfo, inputCodeInfo.mainFunc);
-    kslicer::PrintGeneratedClassImpl("templates/rt_class.cpp", fileName, inputCodeInfo, inputCodeInfo.mainFunc); 
+    kslicer::PrintVulkanBasicsFile("templates/vulkan_basics.h", inputCodeInfo);
+
+    std::string rawname;
+    {
+      size_t lastindex = inputCodeInfo.mainClassFileName.find_last_of("."); 
+      assert(lastindex != std::string::npos);
+      rawname = inputCodeInfo.mainClassFileName.substr(0, lastindex); 
+    }
+
+    auto json = PrepareJsonForAllCPP(inputCodeInfo, inputCodeInfo.mainFunc, rawname + "_generated.h");
+    
+    kslicer::ApplyJsonToTemplate("templates/rt_class.h",   rawname + "_generated.h", json); 
+    kslicer::ApplyJsonToTemplate("templates/rt_class.cpp", rawname + "_generated.cpp", json);
   }
   std::cout << "}" << std::endl;
   std::cout << std::endl;
