@@ -75,6 +75,7 @@ protected:
 
   virtual void InitHelpers();
   virtual void InitBuffers(size_t a_maxThreadsCount);
+  virtual void InitMemberBuffers();
   virtual void InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ);
   virtual void AllocateAllDescriptorSets();
 

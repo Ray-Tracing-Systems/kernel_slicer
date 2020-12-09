@@ -28,11 +28,15 @@
 ## endfor
   vkDestroyBuffer(device, m_classDataBuffer, nullptr);
 
+## for Var in ClassVectorVars
+  vkDestroyBuffer(device, m_vdata.{{Var.Name}}Buffer, nullptr);
+## endfor
+
   if(m_allMem != VK_NULL_HANDLE)
     vkFreeMemory(device, m_allMem, nullptr);
   
-  if(m_vecMem != VK_NULL_HANDLE)
-    vkFreeMemory(device, m_vecMem, nullptr);
+  if(m_vdata.m_vecMem != VK_NULL_HANDLE)
+    vkFreeMemory(device, m_vdata.m_vecMem, nullptr);
 }
 
 void {{MainClassName}}_Generated::InitHelpers()
@@ -238,8 +242,21 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
 
   m_classDataBuffer = vkfw::CreateBuffer(device, {{AllClassVarsSize}},  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   allBuffers.push_back(m_classDataBuffer);
+  
+  if(allBuffers.size() > 0)
+    m_allMem = vkfw::AllocateAndBindWithPadding(device, physicalDevice, allBuffers);
+}
 
-  m_allMem = vkfw::AllocateAndBindWithPadding(device, physicalDevice, allBuffers);
+void {{MainClassName}}_Generated::InitMemberBuffers()
+{
+  std::vector<VkBuffer> memberVectors;
+## for Var in ClassVectorVars
+  m_vdata.{{Var.Name}}Buffer = vkfw::CreateBuffer(device, {{Var.Name}}.capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
+## endfor
+  
+  if(memberVectors.size() > 0)
+    m_vdata.m_vecMem = vkfw::AllocateAndBindWithPadding(device, physicalDevice, memberVectors);
 }
 
 ## for Kernel in Kernels
