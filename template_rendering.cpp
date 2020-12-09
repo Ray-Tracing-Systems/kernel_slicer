@@ -401,6 +401,23 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       args.push_back(argj);
     }
 
+    // now add all std::vector members
+    //
+    for(const auto& name : k.usedVectors)
+    {
+      auto pVecMember = a_classInfo.allDataMembers.find(name);
+      assert(pVecMember != a_classInfo.allDataMembers.end());
+      assert(pVecMember->second.isContainer);
+      
+      std::string typeStr = pVecMember->second.containerDataType;
+      kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
+
+      json argj;
+      argj["Type"] = typeStr + "*";
+      argj["Name"] = pVecMember->second.name;
+      args.push_back(argj);
+    }
+
     std::vector<std::string> threadIdNames;
     {
       if(foundThreadIdX)

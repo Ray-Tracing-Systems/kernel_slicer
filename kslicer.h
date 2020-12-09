@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "clang/AST/DeclCXX.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -33,10 +34,11 @@ namespace kslicer
     bool usedInMainFunc = false;
 
     std::string DeclCmd;
+    std::unordered_set<std::string> usedVectors; // list of all std::vector<T> member names which is referenced inside kernel
   };
 
   /**
-  \brief for data member of MainClass
+  \brief for each data member of MainClass
   */
   struct DataMemberInfo 
   {

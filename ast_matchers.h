@@ -149,6 +149,8 @@ namespace kslicer
     explicit VariableAndFunctionFilter(std::ostream& s, kslicer::MainClassInfo& a_allInfo, clang::SourceManager& a_sm) : 
                                        m_out(s), m_allInfo(a_allInfo), m_sourceManager(a_sm) { usedFunctions.clear(); }
 
+    kslicer::KernelInfo* currKernel = nullptr;
+
     void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
     {
       using namespace clang;
@@ -167,9 +169,13 @@ namespace kslicer
         const RecordDecl* parentClass = var->getParent(); 
         if(parentClass != nullptr && parentClass->getNameAsString() == m_allInfo.mainClassName)
         {
-          m_allInfo.allDataMembers[var->getNameAsString()].usedInKernel = true;
-          //m_out << "In function '" << func_decl->getNameAsString() << "' ";
-          //m_out << "variable '" << var->getNameAsString() << "'" << " of " <<  parentClass->getNameAsString() << std::endl;
+          auto pDataMember = m_allInfo.allDataMembers.find(var->getNameAsString());
+          assert(pDataMember != m_allInfo.allDataMembers.end());
+          assert(currKernel  != nullptr);
+
+          pDataMember->second.usedInKernel = true;
+          if(pDataMember->second.isContainer)
+            currKernel->usedVectors.insert(pDataMember->first);
         }
       }
       else if(func_decl && funcCall && func)
@@ -181,19 +187,10 @@ namespace kslicer
           if(usedFunctions.find(func->getNameAsString()) == usedFunctions.end())
           {
             usedFunctions[func->getNameAsString()] = funcSourceRange;
-            //m_out << "In function '" << func_decl->getNameAsString() << "' ";
-            //m_out << "method '" << func->getNameAsString() << "' referred to at ";
-            //std::string sr(sourceRangeAsString(funcCall->getSourceRange(), &srcMgr));
-            //m_out << sr;
-            //m_out << "\n";
           }
         }
         
         usedFiles[srcMgr.getFilename(func->getLocation()).str()] = true; // mark include files that used by functions; we need to put such includes in .cl file
-
-        //std::string funcName        = func->getNameAsString();
-        //std::string fileNameOfAFunc = srcMgr.getFilename(func->getLocation()).str();
-        //std::cout << "[VariableAndFunctionFilter]: fileName = " << fileNameOfAFunc.c_str() << " of " << funcName.c_str() << std::endl;
       }
       else 
       {

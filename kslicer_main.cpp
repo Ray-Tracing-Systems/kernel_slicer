@@ -355,15 +355,18 @@ int main(int argc, const char **argv)
 
   kslicer::VariableAndFunctionFilter filter(std::cout, inputCodeInfo, compiler.getSourceManager());
   { 
-    for(const auto& kernel : inputCodeInfo.kernels)
+    for(auto& kernel : inputCodeInfo.kernels)
     {
       clang::ast_matchers::StatementMatcher dataMemberMatcher = kslicer::MakeMatch_MemberVarOfMethod(kernel.name);
       clang::ast_matchers::StatementMatcher funcMatcher       = kslicer::MakeMatch_FunctionCallFromFunction(kernel.name);
-  
+       
       clang::ast_matchers::MatchFinder finder;
       finder.addMatcher(dataMemberMatcher, &filter);
       finder.addMatcher(funcMatcher, &filter);
-    
+      
+      kernel.usedVectors.clear();  // !!! THIS IS IMPORTANT !!!
+      filter.currKernel = &kernel; // !!! usedVectors will be filled during 'Tool.run' !!!
+
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
       std::cout << "  process " << kernel.name.c_str() << ":\t" << GetClangToolingErrorCodeMessage(res) << std::endl;
     }
