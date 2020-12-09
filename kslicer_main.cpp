@@ -399,8 +399,7 @@ int main(int argc, const char **argv)
   {
     std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
 
-    mainFunc.CodeGenerated = inputCodeInfo.ProcessMainFunc_RTCase(mainFunc, compiler,
-                                                                  inputCodeInfo.allDescriptorSetsInfo);
+    mainFunc.CodeGenerated = inputCodeInfo.ProcessMainFunc_RTCase(mainFunc, compiler, inputCodeInfo.allDescriptorSetsInfo);
   
     mainFunc.InOuts = kslicer::ListPointerParamsOfMainFunc(mainFunc.Node);
   }

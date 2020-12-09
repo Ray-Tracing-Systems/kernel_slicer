@@ -101,7 +101,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArg
 
     auto elementId = std::find(predefinedNames.begin(), predefinedNames.end(), text); // exclude predefined names from arguments
     if(elementId != predefinedNames.end())
-      continue;
+      arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_THREAD_ID;
 
     arg.varName = text;
     args.push_back(arg); 
@@ -151,6 +151,10 @@ std::string kslicer::MakeKernellCallSignature(const std::vector<ArgReferenceOnCa
       
       case KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_POD:
       strOut << "[P]";
+      break;
+
+      case KERN_CALL_ARG_TYPE::ARG_REFERENCE_THREAD_ID:
+      strOut << "[T]";
       break;
 
       default:
@@ -223,8 +227,11 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
   std::string mainFuncDecl = sourceCode.substr(0, sourceCode.find(")")+1) + ";";
   assert(ReplaceFirst(mainFuncDecl, a_mainClassName + "_Generated" + "::", ""));
 
+  for(auto& kernCall : rv.m_kernCallTypes)
+    kernCall.mainFuncName = a_mainFunc.Name;
+
   a_outFuncDecl = "virtual " + mainFuncDecl;
-  a_outDsInfo.swap(rv.m_kernCallTypes);
+  a_outDsInfo.insert(a_outDsInfo.end(), rv.m_kernCallTypes.begin(), rv.m_kernCallTypes.end() );
   return sourceCode;
 }
 
@@ -272,23 +279,7 @@ void kslicer::MarkKernelArgumenstForFakeOffset(const std::vector<KernelCallInfo>
       for(size_t argId = 0; argId<actualParameters.size(); argId++)
       {
         if(actualParameters[argId].argType == kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL)
-        {
-          // kernels[found].args[argId].needFakeOffset = true; /// !!! DOES NOT WORKS !!! Need Naming matching !!!
-          size_t found2 = size_t(-1);
-          for(size_t j=0;j< kernels[found].args.size();j++)
-          {
-            if(kernels[found].args[j].name == actualParameters[argId].varName)
-            {
-              found2 = j;
-              break;
-            }
-          }
-
-          if(found2 != size_t(-1))
-            kernels[found].args[found2].needFakeOffset = true;
-          else
-            std::cout << "  [MarkKernelArgumenstForFakeOffset]: can't match argument " <<  actualParameters[argId].varName.c_str() << " for " << kernels[found].name.c_str() << std::endl;
-        }
+          kernels[found].args[argId].needFakeOffset = true; 
       }
     }
   }

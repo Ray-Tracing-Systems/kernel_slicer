@@ -87,6 +87,7 @@ namespace kslicer
     ARG_REFERENCE_ARG           = 1, // Passing the pointer that was supplied to the argument of MainFunc (for example, just "out_color") 
     ARG_REFERENCE_CLASS_VECTOR  = 2, // Passing a pointer to a class member of type std::vector<T>::data() (for example m_materials.data())
     ARG_REFERENCE_CLASS_POD     = 3, // Passing a pointer to a member of the class of type plain old data. For example, "&m_worldViewProjInv"
+    ARG_REFERENCE_THREAD_ID     = 4, // Passing tidX, tidY or tidZ
     ARG_REFERENCE_UNKNOWN_TYPE  = 9  // Unknown type of arument yet. Generaly means we need to furthe process it, for example find among class variables or local variables
     };
 
@@ -101,6 +102,7 @@ namespace kslicer
   struct KernelCallInfo
   {
     std::string                     kernelName;
+    std::string                     mainFuncName;
     std::vector<ArgReferenceOnCall> descriptorSetsInfo;
   };
 

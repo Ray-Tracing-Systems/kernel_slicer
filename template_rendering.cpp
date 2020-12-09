@@ -241,6 +241,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  auto predefinedNamesId = GetAllPredefinedThreadIdNames();
 
   data["MainFunctions"] = std::vector<std::string>();
   for(const auto& mainFunc : a_methodsToGenerate)
@@ -266,16 +267,24 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       json local;
       local["Id"]        = i;
       local["Layout"]    = dsArgs.kernelName + "DSLayout";
-      local["ArgNumber"] = dsArgs.descriptorSetsInfo.size();
       local["Args"]      = std::vector<std::string>();
-     
+
+      uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
+        auto elementId = std::find(predefinedNamesId.begin(), predefinedNamesId.end(), dsArgs.descriptorSetsInfo[j].varName); // exclude predefined names from arguments
+        if(elementId != predefinedNamesId.end())
+          continue;
+
         json arg;
-        arg["Id"]   = j;
+        arg["Id"]   = realId;
         arg["Name"] = mainFunc.Name + "_local." + dsArgs.descriptorSetsInfo[j].varName;
         local["Args"].push_back(arg);
+        realId++;
       }
+      
+      local["ArgNumber"] = realId;
+
       data2["DescriptorSets"].push_back(local);
     }
     
