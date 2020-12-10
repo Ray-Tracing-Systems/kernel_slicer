@@ -271,14 +271,16 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
 
     // for impl, ds bindings
     //
-    for(size_t i=0;i<a_classInfo.allDescriptorSetsInfo.size();i++)
+    for(size_t i=mainFunc.startDSNumber; i<mainFunc.endDSNumber; i++)
     {
       auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
   
       json local;
-      local["Id"]        = i;
-      local["Layout"]    = dsArgs.kernelName + "DSLayout";
-      local["Args"]      = std::vector<std::string>();
+      local["Id"]         = i;
+      local["KernelName"] = dsArgs.kernelName;
+      local["Layout"]     = dsArgs.kernelName + "DSLayout";
+      local["Args"]       = std::vector<std::string>();
+      local["ArgNames"]   = std::vector<std::string>();
 
       uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
@@ -291,6 +293,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
         arg["Id"]   = realId;
         arg["Name"] = mainFunc.Name + "_local." + dsArgs.descriptorSetsInfo[j].varName;
         local["Args"].push_back(arg);
+        local["ArgNames"].push_back(dsArgs.descriptorSetsInfo[j].varName);
         realId++;
       }
 
@@ -327,15 +330,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     // for impl, other
     //
     data2["MainFuncCmd"] = mainFunc.CodeGenerated;
-    //data2["LocalVarsBuffers"] = std::vector<std::string>();
-    //for(const auto& v : a_classInfo.mainFunc[0].Locals)
-    //{
-    //  json local;
-    //  local["Name"] = mainFunc.Name + "_local." + v.second.name;
-    //  local["Type"] = v.second.type;
-    //  data2["LocalVarsBuffers"].push_back(local);
-    //}
-
     data["MainFunctions"].push_back(data2);
   }
 

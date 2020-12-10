@@ -102,7 +102,6 @@ namespace kslicer
   struct KernelCallInfo
   {
     std::string                     kernelName;
-    std::string                     mainFuncName;
     std::vector<ArgReferenceOnCall> descriptorSetsInfo;
   };
 
@@ -121,6 +120,9 @@ namespace kslicer
 
     std::string              GeneratedDecl;
     std::string              CodeGenerated;
+
+    size_t startDSNumber = 0;
+    size_t endDSNumber   = 0;
   };
   
   /**

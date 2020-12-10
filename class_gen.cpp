@@ -191,9 +191,11 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
-  //a_node->dump();
+  a_mainFunc.startDSNumber = a_outDsInfo.size();
 
   kslicer::MainFuncASTVisitor rv(rewrite2, compiler, a_mainFuncName, inOutParamList, this->allDataMembers, a_mainFunc.Locals);
+
+  rv.m_kernCallTypes = a_outDsInfo;
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
   
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
@@ -227,11 +229,11 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
   std::string mainFuncDecl = sourceCode.substr(0, sourceCode.find(")")+1) + ";";
   assert(ReplaceFirst(mainFuncDecl, a_mainClassName + "_Generated" + "::", ""));
 
-  for(auto& kernCall : rv.m_kernCallTypes)
-    kernCall.mainFuncName = a_mainFunc.Name;
-
   a_outFuncDecl = "virtual " + mainFuncDecl;
-  a_outDsInfo.insert(a_outDsInfo.end(), rv.m_kernCallTypes.begin(), rv.m_kernCallTypes.end() );
+  a_outDsInfo   = rv.m_kernCallTypes;
+
+  a_mainFunc.endDSNumber = a_outDsInfo.size();
+
   return sourceCode;
 }
 

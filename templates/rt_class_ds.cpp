@@ -52,7 +52,7 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
   // now create actual bindings
   //
 ## for DescriptorSet in MainFunc.DescriptorSets
-  // descriptor set #{{DescriptorSet.Id}} 
+  // descriptor set #{{DescriptorSet.Id}}: {{DescriptorSet.KernelName}}Cmd ({{DescriptorSet.ArgNames}})
   {
     std::vector<VkDescriptorBufferInfo> descriptorBufferInfo({{DescriptorSet.ArgNumber}}+1);
     std::vector<VkWriteDescriptorSet>   writeDescriptorSet({{DescriptorSet.ArgNumber}}+1);
