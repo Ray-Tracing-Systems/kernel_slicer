@@ -368,9 +368,45 @@ bool kslicer::KernelReplacerASTVisitor::VisitMemberExpr(MemberExpr* expr)
     
     m_rewriter.ReplaceText(expr->getSourceRange(), strOut.str());
   }
-
+  //else
+  //{
+  //  const std::string exprContent = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  //  int a = 2;
+  //}
+  
   return true;
 }
+
+bool kslicer::KernelReplacerASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
+{
+  // Get name of function
+  //
+  const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
+  const DeclarationName dn      = dni.getName();
+  const std::string fname       = dn.getAsString();
+  
+  // Get name of "this" type; we should check wherther this member is std::vector<T>  
+  //
+  const clang::QualType qt = f->getObjectType();
+  const std::string& thisTypeName = qt.getAsString();
+  //const auto* fieldTypePtr = qt.getTypePtr(); 
+  //assert(fieldTypePtr != nullptr);
+  //auto typeDecl = fieldTypePtr->getAsRecordDecl();  
+  CXXRecordDecl* typeDecl = f->getRecordDecl(); 
+
+  const bool isVector = (typeDecl != nullptr && isa<ClassTemplateSpecializationDecl>(typeDecl)) && thisTypeName.find("vector<") != std::string::npos; 
+
+  if(fname == "size" || fname == "capacity" && isVector)
+  {
+    const std::string exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
+    const auto posOfPoint = exprContent.find(".");
+    const std::string memberName = exprContent.substr(0, posOfPoint);
+    m_rewriter.ReplaceText(f->getSourceRange(), memberName + "_" + fname);
+  }
+ 
+  return true;
+}
+
 
 bool kslicer::KernelReplacerASTVisitor::CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr)
 {

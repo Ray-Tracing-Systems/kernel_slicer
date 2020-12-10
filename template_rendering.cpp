@@ -363,6 +363,11 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
                                    const std::unordered_map<std::string, clang::SourceRange>& usedFunctions,
                                    const clang::CompilerInstance& compiler)
 {
+  std::unordered_map<std::string, DataMemberInfo> dataMembersCached;
+  dataMembersCached.reserve(a_classInfo.dataMembers.size());
+  for(const auto& member : a_classInfo.dataMembers)
+    dataMembersCached[member.name] = member;
+
   const std::string& a_outFileName = a_outFolder + "/" + "z_generated.cl";
   json data;
 
@@ -401,7 +406,8 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
     bool foundThreadIdY = false; std::string tidYName = "tid2";
     bool foundThreadIdZ = false; std::string tidZName = "tid3";
 
-    json args;
+    json args = std::vector<std::string>();
+    json vecs = std::vector<std::string>();
     for (const auto& arg : k.args) 
     {
       std::string typeStr = arg.type;
@@ -442,9 +448,14 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
     //
     for(const auto& name : k.usedVectors)
     {
-      auto pVecMember = a_classInfo.allDataMembers.find(name);
-      assert(pVecMember != a_classInfo.allDataMembers.end());
+      auto pVecMember     = dataMembersCached.find(name);
+      auto pVecSizeMember = dataMembersCached.find(name + "_size");
+
+      assert(pVecMember     != dataMembersCached.end());
+      assert(pVecSizeMember != dataMembersCached.end());
+
       assert(pVecMember->second.isContainer);
+      assert(pVecSizeMember->second.isContainerInfo);
       
       std::string typeStr = pVecMember->second.containerDataType;
       kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
@@ -452,7 +463,9 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       json argj;
       argj["Type"] = typeStr + "*";
       argj["Name"] = pVecMember->second.name;
+      argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
       args.push_back(argj);
+      vecs.push_back(argj);
     }
 
     // add kgen_data buffer and skiped predefined ThreadId back
@@ -484,6 +497,7 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
     json kernelJson;
     kernelJson["Args"]        = args;
     kernelJson["ArgSizes"]    = argSizes;
+    kernelJson["Vecs"]        = vecs;
     kernelJson["Name"]        = k.name;
 
     std::string sourceCodeFull = kslicer::ProcessKernel(k, compiler, a_classInfo);
@@ -493,33 +507,31 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
     
     std::stringstream strOut;
     {
-      strOut << "/////////////////////////////////////////////////" << std::endl;
       for(size_t i=0;i<threadIdNames.size();i++)
         strOut << "  const uint " << threadIdNames[i].c_str() << " = get_global_id(" << i << ");"<< std::endl; 
       
       if(threadIdNames.size() == 1)
       {
         strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << ")" << std::endl;                          
-        strOut << "    return;" << std::endl;
+        strOut << "    return;";
       }
       else if(threadIdNames.size() == 2)
       {
         strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << "X";
         strOut << " || "   << threadIdNames[1].c_str() << " >= " << numThreadsName.c_str() << "Y" <<  ")" << std::endl;                          
-        strOut << "    return;" << std::endl;
+        strOut << "    return;";
       }
       else if(threadIdNames.size() == 3)
       {
         strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << "X";
         strOut << " || "   << threadIdNames[1].c_str() << " >= " << numThreadsName.c_str() << "Y";  
         strOut << " || "   << threadIdNames[2].c_str() << " >= " << numThreadsName.c_str() << "Z" <<  ")" << std::endl;                        
-        strOut << "    return;" << std::endl;
+        strOut << "    return;";
       }
       else
       {
         assert(false);
       }
-      strOut << "  /////////////////////////////////////////////////";
     }
     
     kernelJson["Prolog"] = strOut.str();

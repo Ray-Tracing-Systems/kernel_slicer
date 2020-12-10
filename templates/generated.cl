@@ -29,7 +29,12 @@ __kernel void {{Kernel.Name}}(
 ## endfor 
   const uint a_dummyArg)
 {
-  {{Kernel.Prolog}}
-  {{Kernel.Source}}
+  /////////////////////////////////////////////////
+{{Kernel.Prolog}}
+## for Vec in Kernel.Vecs 
+  const uint {{Vec.Name}}_size = kgen_data[{{Vec.SizeOffset}}];
+## endfor
+  /////////////////////////////////////////////////
+{{Kernel.Source}}
 
 ## endfor

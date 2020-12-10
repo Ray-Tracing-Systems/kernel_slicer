@@ -79,6 +79,7 @@ namespace kslicer
 
     bool VisitMemberExpr(MemberExpr* expr);
     bool VisitUnaryOperator(UnaryOperator* expr);
+    bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
   
   private:
 
