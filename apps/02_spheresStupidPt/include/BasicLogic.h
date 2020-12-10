@@ -8,6 +8,7 @@
 #else
   #include "LiteMath.h"   // implementation of _same_ functions on the CPU
   using namespace LiteMath;
+  #define __global 
 #endif
 
 // (2) put you ligic or math code that will be same for CPU and GPU
@@ -262,6 +263,20 @@ static inline float3 OffsRayPos(const float3 a_hitPos, const float3 a_surfaceNor
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+enum MATERIAL_FLAGS{ MTL_EMISSIVE = 1 };
+
+typedef struct MaterialT
+{
+  float3 color;
+  uint   flags;
+
+} SphereMaterial;
+
+static inline bool   IsMtlEmissive(__global const SphereMaterial* a_mtl)       { return (a_mtl->flags & MTL_EMISSIVE) != 0; }
+static inline float3 GetMtlDiffuseColor(__global const SphereMaterial* a_mtl)  { return IsMtlEmissive(a_mtl) ? make_float3(0,0,0) : a_mtl->color; }
+static inline float3 GetMtlEmissiveColor(__global const SphereMaterial* a_mtl) { return IsMtlEmissive(a_mtl) != 0 ? a_mtl->color : make_float3(0,0,0); }
 
 #endif

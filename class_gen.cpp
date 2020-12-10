@@ -368,11 +368,6 @@ bool kslicer::KernelReplacerASTVisitor::VisitMemberExpr(MemberExpr* expr)
     
     m_rewriter.ReplaceText(expr->getSourceRange(), strOut.str());
   }
-  //else
-  //{
-  //  const std::string exprContent = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-  //  int a = 2;
-  //}
   
   return true;
 }

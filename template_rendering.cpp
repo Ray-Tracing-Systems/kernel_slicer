@@ -512,7 +512,7 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       
       if(threadIdNames.size() == 1)
       {
-        strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << ")" << std::endl;                          
+        strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << "X" << ")" << std::endl;                          
         strOut << "    return;";
       }
       else if(threadIdNames.size() == 2)
