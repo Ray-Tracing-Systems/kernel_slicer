@@ -297,6 +297,28 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
 
       // #TODO: Add Vector Members bindings here ... 
       //
+      size_t kernelId = size_t(-1);
+      for(size_t j=0;j<a_classInfo.kernels.size();j++)
+      {
+        if(a_classInfo.kernels[j].name == std::string("kernel_") + dsArgs.kernelName)
+        {
+          kernelId = j;
+          break;
+        }
+      }
+
+      if(kernelId != size_t(-1))
+      {
+        const auto& kernel = a_classInfo.kernels[kernelId];
+        for(const auto& vecName : kernel.usedVectors)
+        {
+          json arg;
+          arg["Id"]   = realId;
+          arg["Name"] = "m_vdata." + vecName;
+          local["Args"].push_back(arg);
+          realId++;
+        }
+      }
       
       local["ArgNumber"] = realId;
 
