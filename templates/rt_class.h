@@ -82,7 +82,6 @@ protected:
 
 ## for MainFunc in MainFunctions
   virtual void InitAllGeneratedDescriptorSets_{{MainFunc.Name}}();
-  bool m_dsAllocatedFor_{{MainFunc.Name}} = false;
 ## endfor
 
   virtual void UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);

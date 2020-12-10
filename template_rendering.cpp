@@ -326,11 +326,22 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
 
       data2["DescriptorSets"].push_back(local);
     }
-    
+
     // for impl, other
     //
     data2["MainFuncCmd"] = mainFunc.CodeGenerated;
+
     data["MainFunctions"].push_back(data2);
+  }
+
+  data["DescriptorSetsAll"] = std::vector<std::string>();
+  for(size_t i=0; i< a_classInfo.allDescriptorSetsInfo.size();i++)
+  {
+    const auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
+    json local;
+    local["Id"]         = i;
+    local["Layout"]     = dsArgs.kernelName + "DSLayout";
+    data["DescriptorSetsAll"].push_back(local);
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

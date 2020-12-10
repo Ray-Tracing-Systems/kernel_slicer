@@ -117,8 +117,9 @@ namespace kslicer
           varInfo.isArray = true;
         }
 
-        if(var->isLocalVarDecl()) // list only local variables, exclude function arguments
+        if(var->isLocalVarDecl()) // list only local variables, exclude function arguments 
         {
+          // can also check isCXXForRangeDecl() and check for index ... in some way ...
           m_allInfo.mainFunc[m_mainFuncId].Locals[varInfo.name] = varInfo;
         }
       }

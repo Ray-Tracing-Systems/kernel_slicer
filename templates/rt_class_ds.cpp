@@ -11,44 +11,38 @@ void {{MainClassName}}_Generated::AllocateAllDescriptorSets()
 {
   // allocate pool
   //
-  {
-    VkDescriptorPoolSize buffersSize;
-    buffersSize.type            = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    buffersSize.descriptorCount = {{TotalDSNumber}} + 1; // add one to exclude zero case
+  VkDescriptorPoolSize buffersSize;
+  buffersSize.type            = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  buffersSize.descriptorCount = {{TotalDSNumber}} + 1; // add one to exclude zero case
+
+  VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
+  descriptorPoolCreateInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  descriptorPoolCreateInfo.maxSets       = {{TotalDSNumber}} + 1; // add one to exclude zero case
+  descriptorPoolCreateInfo.poolSizeCount = 1;
+  descriptorPoolCreateInfo.pPoolSizes    = &buffersSize;
   
-    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
-    descriptorPoolCreateInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    descriptorPoolCreateInfo.maxSets       = {{TotalDSNumber}} + 1; // add one to exclude zero case
-    descriptorPoolCreateInfo.poolSizeCount = 1;
-    descriptorPoolCreateInfo.pPoolSizes    = &buffersSize;
-    
-    VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, NULL, &m_dsPool));
-  }
+  VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, NULL, &m_dsPool));
+  
+  // allocate all descriptor sets
+  //
+  VkDescriptorSetLayout layouts[{{TotalDSNumber}}] = {};
+## for DescriptorSet in DescriptorSetsAll
+  layouts[{{DescriptorSet.Id}}] = {{DescriptorSet.Layout}};
+## endfor
+
+  VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
+  descriptorSetAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  descriptorSetAllocateInfo.descriptorPool     = m_dsPool;  
+  descriptorSetAllocateInfo.descriptorSetCount = {{TotalDSNumber}};     
+  descriptorSetAllocateInfo.pSetLayouts        = layouts;
+
+  auto tmpRes = vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, m_allGeneratedDS);
+  VK_CHECK_RESULT(tmpRes); 
 }
 
 ## for MainFunc in MainFunctions
 void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name}}()
 {
-  // allocate all descriptor sets
-  //
-  if(!m_dsAllocatedFor_{{MainFunc.Name}})
-  {
-    VkDescriptorSetLayout layouts[{{TotalDSNumber}}] = {};
-## for DescriptorSet in  MainFunc.DescriptorSets
-    layouts[{{DescriptorSet.Id}}] = {{DescriptorSet.Layout}};
-## endfor
-
-    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
-    descriptorSetAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    descriptorSetAllocateInfo.descriptorPool     = m_dsPool;  
-    descriptorSetAllocateInfo.descriptorSetCount = {{TotalDSNumber}};     
-    descriptorSetAllocateInfo.pSetLayouts        = layouts;
-  
-    auto tmpRes = vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, m_allGeneratedDS);
-    VK_CHECK_RESULT(tmpRes);
-    m_dsAllocatedFor_{{MainFunc.Name}} = true;
-  }
-
   // now create actual bindings
   //
 ## for DescriptorSet in MainFunc.DescriptorSets
