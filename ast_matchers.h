@@ -117,7 +117,10 @@ namespace kslicer
           varInfo.isArray = true;
         }
 
-        m_allInfo.mainFunc[m_mainFuncId].Locals[varInfo.name] = varInfo;
+        if(var->isLocalVarDecl()) // list only local variables, exclude function arguments
+        {
+          m_allInfo.mainFunc[m_mainFuncId].Locals[varInfo.name] = varInfo;
+        }
       }
       else 
       {

@@ -51,6 +51,8 @@ public:
 ## endfor
   ~{{MainClassName}}_Generated();
 
+  virtual void InitMemberBuffers();
+
   virtual void UpdateAll(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
   {
     UpdatePlainMembers(a_pCopyEngine);
@@ -75,7 +77,6 @@ protected:
 
   virtual void InitHelpers();
   virtual void InitBuffers(size_t a_maxThreadsCount);
-  virtual void InitMemberBuffers();
   virtual void InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ);
   virtual void AllocateAllDescriptorSets();
 
@@ -93,9 +94,9 @@ protected:
 ## for MainFunc in MainFunctions  
   struct {{MainFunc.Name}}_Data
   {
-## for BufferName in MainFunc.LocalVarsBuffersDecl
-    VkBuffer {{BufferName}}Buffer = VK_NULL_HANDLE;
-    size_t   {{BufferName}}Offset = 0;
+## for Buffer in MainFunc.LocalVarsBuffersDecl
+    VkBuffer {{Buffer.Name}}Buffer = VK_NULL_HANDLE;
+    size_t   {{Buffer.Name}}Offset = 0;
 
 ## endfor
 ## for BufferName in MainFunc.InOutVars

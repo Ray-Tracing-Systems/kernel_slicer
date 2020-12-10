@@ -18,8 +18,8 @@
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
 
 ## for MainFunc in MainFunctions
-## for Buffer in MainFunc.LocalVarsBuffers
-  vkDestroyBuffer(device, {{Buffer.Name}}Buffer, nullptr);
+## for Buffer in MainFunc.LocalVarsBuffersDecl
+  vkDestroyBuffer(device, {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer, nullptr);
 ## endfor
 
 ## endfor
@@ -143,9 +143,9 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
   std::vector<VkBuffer> allBuffers;
 
 ## for MainFunc in MainFunctions  
-## for Buffer in MainFunc.LocalVarsBuffers
-  {{Buffer.Name}}Buffer = vkfw::CreateBuffer(device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-  allBuffers.push_back({{Buffer.Name}}Buffer);
+## for Buffer in MainFunc.LocalVarsBuffersDecl
+  {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer = vkfw::CreateBuffer(device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  allBuffers.push_back({{MainFunc.Name}}_local.{{Buffer.Name}}Buffer);
 ## endfor
 ## endfor
 

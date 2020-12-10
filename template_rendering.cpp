@@ -13,15 +13,6 @@ std::string GetFolderPath(const std::string& a_filePath)
   return a_filePath.substr(0, lastindex); 
 }
 
-std::vector<std::string> GetVarNames(const std::unordered_map<std::string, kslicer::DataLocalVarInfo>& a_locals)
-{
-  std::vector<std::string> localVarNames;
-  localVarNames.reserve(a_locals.size());
-  for(const auto& v : a_locals)
-    localVarNames.push_back(v.first);
-  return localVarNames;
-}
-
 void MakeAbsolutePathRelativeTo(std::string& a_filePath, const std::string& a_folderPath)
 {
   if(a_filePath.find(a_folderPath) != std::string::npos)  // cut off folder path
@@ -265,7 +256,15 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     // for decl
     //
     data2["Decl"]                 = mainFunc.GeneratedDecl;
-    data2["LocalVarsBuffersDecl"] = GetVarNames(mainFunc.Locals);
+    data2["LocalVarsBuffersDecl"] = std::vector<std::string>();
+    for(const auto& v : mainFunc.Locals)
+    {
+      json local;
+      local["Name"] = v.second.name;
+      local["Type"] = v.second.type;
+      data2["LocalVarsBuffersDecl"].push_back(local);
+    }
+
     data2["InOutVars"] = std::vector<std::string>();
     for(const auto& v : mainFunc.InOuts)
       data2["InOutVars"].push_back(v.first);
@@ -327,15 +326,15 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     
     // for impl, other
     //
-    data2["MainFuncCmd"]      = mainFunc.CodeGenerated;
-    data2["LocalVarsBuffers"] = std::vector<std::string>();
-    for(const auto& v : a_classInfo.mainFunc[0].Locals)
-    {
-      json local;
-      local["Name"] = mainFunc.Name + "_local." + v.second.name;
-      local["Type"] = v.second.type;
-      data2["LocalVarsBuffers"].push_back(local);
-    }
+    data2["MainFuncCmd"] = mainFunc.CodeGenerated;
+    //data2["LocalVarsBuffers"] = std::vector<std::string>();
+    //for(const auto& v : a_classInfo.mainFunc[0].Locals)
+    //{
+    //  json local;
+    //  local["Name"] = mainFunc.Name + "_local." + v.second.name;
+    //  local["Type"] = v.second.type;
+    //  data2["LocalVarsBuffers"].push_back(local);
+    //}
 
     data["MainFunctions"].push_back(data2);
   }
