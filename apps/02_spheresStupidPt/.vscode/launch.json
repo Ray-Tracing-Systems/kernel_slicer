@@ -11,9 +11,9 @@
             "program": "${workspaceFolder}/cmake-build-release/testapp",
             "args"   : ["aaa", "bbb"],
             "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}/cmake-build-release",
+            "cwd"    : "${workspaceFolder}",
             "environment": [],
-            "externalConsole": true,
+            "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [
                 {

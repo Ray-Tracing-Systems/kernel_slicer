@@ -12,9 +12,6 @@
 #include "vk_buffer.h"
 
 #include "vulkan_basics.h"
-void TestKernel(VulkanContext a_vkData);
-void TestKernel2(VulkanContext vk_data);
-
 #include "test_class_generated.h"
 
 void test_class_gpu()
