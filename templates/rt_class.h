@@ -112,6 +112,7 @@ protected:
   {
 ## for Vector in VectorMembers
     VkBuffer {{Vector}}Buffer = VK_NULL_HANDLE;
+    size_t   {{Vector}}Offset = 0;
 ## endfor
     VkDeviceMemory m_vecMem = VK_NULL_HANDLE;
   } m_vdata;

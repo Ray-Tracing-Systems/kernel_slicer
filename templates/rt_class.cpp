@@ -174,7 +174,7 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   
   uint32_t pcData[4] = { {{Kernel.tidX}}, {{Kernel.tidY}}, {{Kernel.tidZ}}, 1};
-  vkCmdPushConstants(m_currCmdBuffer, TestColorLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t)*4, pcData);
+  vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t)*4, pcData);
   
   vkCmdDispatch(m_currCmdBuffer, {{Kernel.tidX}}/m_blockSize[0], {{Kernel.tidY}}/m_blockSize[1], {{Kernel.tidZ}}/m_blockSize[2]);
 
