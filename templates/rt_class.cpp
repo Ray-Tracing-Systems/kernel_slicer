@@ -177,7 +177,7 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
 {
   std::vector<VkBuffer> memberVectors;
 ## for Var in ClassVectorVars
-  m_vdata.{{Var.Name}}Buffer = vkfw::CreateBuffer(device, {{Var.Name}}.capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  m_vdata.{{Var.Name}}Buffer = vkfw::CreateBuffer(device, {{Var.Name}}.capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
 ## endfor
   
