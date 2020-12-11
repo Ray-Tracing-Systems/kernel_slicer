@@ -3,6 +3,8 @@
 
 #include <vector>
 #include <memory>
+#include <string>
+#include <unordered_map>
 
 #include "vulkan_basics.h"
 #include "vk_compute_pipeline.h"
@@ -17,8 +19,15 @@ public:
 
   {{MainClassName}}_Generated() {}
 
+  struct KernelConfig
+  {
+    std::string kernelName;
+    uint32_t    blockSize[3] = {1,1,1};
+  };
+
   virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount, 
-                                 uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ) 
+                                 uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ, 
+                                 KernelConfig* a_kernelConfigs = nullptr, size_t a_configSize = 0) 
   {
     physicalDevice = a_physicalDevice;
     device         = a_device;
@@ -29,7 +38,7 @@ public:
 
     InitHelpers();
     InitBuffers(a_maxThreadsCount);
-    InitKernels("z_generated.cl.spv", a_blockSizeX, a_blockSizeY, a_blockSizeZ);
+    InitKernels("z_generated.cl.spv", a_blockSizeX, a_blockSizeY, a_blockSizeZ, a_kernelConfigs, a_configSize);
     AllocateAllDescriptorSets();
   }
 
@@ -77,7 +86,8 @@ protected:
 
   virtual void InitHelpers();
   virtual void InitBuffers(size_t a_maxThreadsCount);
-  virtual void InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ);
+  virtual void InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ,
+                           KernelConfig* a_kernelConfigs, size_t a_configSize);
   virtual void AllocateAllDescriptorSets();
 
 ## for MainFunc in MainFunctions
@@ -130,6 +140,7 @@ protected:
   VkDescriptorPool m_dsPool = VK_NULL_HANDLE;
   VkDescriptorSet m_allGeneratedDS[{{TotalDSNumber}}];
   uint32_t m_blockSize[3];
+  std::unordered_map<std::string, KernelConfig> m_kernelExceptions;
   
 };
 

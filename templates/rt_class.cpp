@@ -75,7 +75,8 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout
 
 ## endfor
 
-void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ)
+void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ,
+                                              KernelConfig* a_kernelConfigs, size_t a_configSize)
 {
   VkSpecializationMapEntry specializationEntries[3] = {};
   {
@@ -100,13 +101,29 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
     specsForWGSize.dataSize      = 3 * sizeof(uint32_t);
     specsForWGSize.pData         = specializationData;
   }
- 
-## for Kernel in Kernels
-  {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
-  m_pMaker->CreateShader(device, a_filePath, &specsForWGSize, "{{Kernel.OriginalName}}");
+  
+  VkSpecializationInfo specsForWGSizeExcep = specsForWGSize;
+  m_kernelExceptions.clear();
+  for(size_t i=0;i<a_configSize;i++)
+    m_kernelExceptions[a_kernelConfigs[i].kernelName] = a_kernelConfigs[i];
 
-  {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, sizeof(uint32_t)*4);
-  {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);   
+## for Kernel in Kernels
+  {
+    auto ex = m_kernelExceptions.find("{{Kernel.OriginalName}}");
+    if(ex == m_kernelExceptions.end())
+    {
+      m_pMaker->CreateShader(device, a_filePath, &specsForWGSize, "{{Kernel.OriginalName}}");
+    }
+    else
+    {
+      specsForWGSizeExcep.pData = ex->second.blockSize;   
+      m_pMaker->CreateShader(device, a_filePath, &specsForWGSizeExcep, "{{Kernel.OriginalName}}");
+    }    
+    
+    {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
+    {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, sizeof(uint32_t)*4);
+    {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);   
+  }
 
 ## endfor
 }
@@ -171,12 +188,24 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
 ## for Kernel in Kernels
 void {{MainClassName}}_Generated::{{Kernel.Decl}}
 {
+  uint32_t blockSizeX = m_blockSize[0];
+  uint32_t blockSizeY = m_blockSize[1];
+  uint32_t blockSizeZ = m_blockSize[2];
+
+  auto ex = m_kernelExceptions.find("{{Kernel.OriginalName}}");
+  if(ex != m_kernelExceptions.end())
+  {
+    blockSizeX = ex->second.blockSize[0];
+    blockSizeY = ex->second.blockSize[1];
+    blockSizeZ = ex->second.blockSize[2];
+  }
+
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   
   uint32_t pcData[4] = { {{Kernel.tidX}}, {{Kernel.tidY}}, {{Kernel.tidZ}}, 1};
   vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t)*4, pcData);
   
-  vkCmdDispatch(m_currCmdBuffer, {{Kernel.tidX}}/m_blockSize[0], {{Kernel.tidY}}/m_blockSize[1], {{Kernel.tidZ}}/m_blockSize[2]);
+  vkCmdDispatch(m_currCmdBuffer, {{Kernel.tidX}}/blockSizeX, {{Kernel.tidY}}/blockSizeY, {{Kernel.tidZ}}/blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  

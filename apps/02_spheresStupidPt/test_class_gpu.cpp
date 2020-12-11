@@ -69,9 +69,9 @@ void test_class_gpu()
   
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 
-  //auto pGPUImpl = std::make_shared<TestClass_Generated>();                              // !!! USING GENERATED CODE !!! 
-  //pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT, 256, 1, 1); // !!! USING GENERATED CODE !!!
-  //pGPUImpl->InitMemberBuffers();                                                        // !!! USING GENERATED CODE !!!
+  auto pGPUImpl = std::make_shared<TestClass_Generated>();                              // !!! USING GENERATED CODE !!! 
+  pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT, 256, 1, 1); // !!! USING GENERATED CODE !!!
+  pGPUImpl->InitMemberBuffers();                                                        // !!! USING GENERATED CODE !!!
 
   // (3) Create buffer
   //
@@ -114,7 +114,7 @@ void test_class_gpu()
   // (6) destroy and free resources before exit
   //
   pCopyHelper = nullptr;
-  //pGPUImpl = nullptr;                                                       // !!! USING GENERATED CODE !!! 
+  pGPUImpl = nullptr;                                                       // !!! USING GENERATED CODE !!! 
 
   vkDestroyBuffer(device, colorBuffer, nullptr);
   vkFreeMemory(device, colorMem, nullptr);
