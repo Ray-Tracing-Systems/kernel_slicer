@@ -12,44 +12,37 @@ void TestClass::InitSpheresScene(int a_numSpheres, int a_seed)
   spheresMaterials.resize(8);
 
   spheresPosRadius[0] = float4(0,-10000.0f,0,9999.0f);
-  spheresMaterials[0].flags = 0;
-  spheresMaterials[0].color = float3(0.5,0.5,0.5);
+  spheresMaterials[0].color = float4(0.5,0.5,0.5, 0.0f);
 
   spheresPosRadius[1] = float4(0,0,-4,1);
-  spheresMaterials[1].flags = MTL_EMISSIVE;
-  spheresMaterials[1].color = float3(5,5,5);
+  spheresMaterials[1].color = float4(1,1,1,5);
 
   const float col = 0.75f;
   const float eps = 0.00f;
 
   spheresPosRadius[2] = float4(-2,0,-4,1);
-  spheresMaterials[2].flags = 0;
-  spheresMaterials[2].color = float3(col,eps,eps);
+  spheresMaterials[2].color = float4(col,eps,eps,0);
 
   spheresPosRadius[3] = float4(+2,0,-4,1);
-  spheresMaterials[3].flags = 0;
-  spheresMaterials[3].color = float3(eps,col,col);
+  spheresMaterials[3].color = float4(eps,col,col,0);
 
   spheresPosRadius[4] = float4(-1,1.5,-4.5,1);
-  spheresMaterials[4].flags = 0;
-  spheresMaterials[4].color = float3(col,col,eps);
+  spheresMaterials[4].color = float4(col,col,eps,0);
 
   spheresPosRadius[5] = float4(+1,1.5,-4.5,1);
-  spheresMaterials[5].flags = 0;
-  spheresMaterials[5].color = float3(eps,eps,col);
+  spheresMaterials[5].color = float4(eps,eps,col,0);
 
   spheresPosRadius[6] = float4(-1,-0.5,-3,0.5);
-  spheresMaterials[6].flags = 0;
-  spheresMaterials[6].color = float3(eps,col,eps);
+  spheresMaterials[6].color = float4(eps,col,eps,0);
 
   spheresPosRadius[7] = float4(+1,-0.5,-3,0.5);
-  spheresMaterials[7].flags = 0;
-  spheresMaterials[7].color = float3(eps,col,eps);
+  spheresMaterials[7].color = float4(eps,col,eps,0);
 }
 
 void TestClass::InitRandomGens(int a_maxThreads)
 {
   m_randomGens.resize(a_maxThreads);
+  #pragma omp parallel for default(shared)
   for(int i=0;i<a_maxThreads;i++)
     m_randomGens[i] = RandomGenInit(i);
 }
@@ -105,7 +98,7 @@ void TestClass::kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit,
                                         uint* out_color)
 {
   if(in_hit->primId != -1)
-    out_color[tid] = RealColorToUint32_f3(spheresMaterials[in_hit->primId].color);
+    out_color[tid] = RealColorToUint32_f3(to_float3(spheresMaterials[in_hit->primId].color));
   else
     out_color[tid] = 0x00000000;
 }

@@ -43,6 +43,8 @@ public:
     InitRandomGens(a_maxThreads);
   }
 
+  void InitRandomGens(int a_maxThreads);
+
   void PackXY(uint tidX, uint tidY, uint* out_pakedXY);
   void CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color);
   void StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color);
@@ -70,7 +72,6 @@ public:
 protected:
 
   void InitSpheresScene(int a_numSpheres, int a_seed = 0);
-  void InitRandomGens(int a_maxThreads);
 
   float4x4                     m_worldViewProjInv;
   std::vector<float4>          spheresPosRadius;
