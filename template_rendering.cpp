@@ -507,8 +507,17 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
     std::string sourceCodeFull = kslicer::ProcessKernel(k, compiler, a_classInfo);
     std::string sourceCodeCut  = sourceCodeFull.substr(sourceCodeFull.find_first_of('{')+1);
     
-    kernelJson["Source"] = sourceCodeCut;
-    
+    kernelJson["Source"]      = sourceCodeCut;
+
+    kernelJson["threadDim"]   = threadIdNames.size();
+    kernelJson["threadNames"] = threadIdNames;
+    if(threadIdNames.size() == 1)
+      kernelJson["threadName1"] = threadIdNames[0];
+    if(threadIdNames.size() == 2)
+      kernelJson["threadName2"] = threadIdNames[1];
+    if(threadIdNames.size() == 3)
+      kernelJson["threadName3"] = threadIdNames[2];
+
     std::stringstream strOut;
     {
       for(size_t i=0;i<threadIdNames.size();i++)

@@ -30,7 +30,17 @@ __kernel void {{Kernel.Name}}(
   const uint a_dummyArg)
 {
   /////////////////////////////////////////////////
-{{Kernel.Prolog}}
+  {% for name in Kernel.threadNames %}  
+	const uint {{name}} = get_global_id({{ loop.index }}); 
+  {% endfor %}
+  {% if Kernel.threadDim == 3 %}
+  // 3
+  {% else if Kernel.threadDim == 2 %}
+  // 2
+  {% else %}
+  // 1
+  {% endif %}
+
 ## for Vec in Kernel.Vecs 
   const uint {{Vec.Name}}_size = kgen_data[{{Vec.SizeOffset}}];
 ## endfor
