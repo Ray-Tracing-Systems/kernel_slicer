@@ -506,48 +506,27 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
 
     std::string sourceCodeFull = kslicer::ProcessKernel(k, compiler, a_classInfo);
     std::string sourceCodeCut  = sourceCodeFull.substr(sourceCodeFull.find_first_of('{')+1);
-    
+                sourceCodeCut  = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
+
     kernelJson["Source"]      = sourceCodeCut;
 
     kernelJson["threadDim"]   = threadIdNames.size();
     kernelJson["threadNames"] = threadIdNames;
-    if(threadIdNames.size() == 1)
-      kernelJson["threadName1"] = threadIdNames[0];
-    if(threadIdNames.size() == 2)
-      kernelJson["threadName2"] = threadIdNames[1];
-    if(threadIdNames.size() == 3)
-      kernelJson["threadName3"] = threadIdNames[2];
-
-    std::stringstream strOut;
+    if(threadIdNames.size() >= 1)
     {
-      for(size_t i=0;i<threadIdNames.size();i++)
-        strOut << "  const uint " << threadIdNames[i].c_str() << " = get_global_id(" << i << ");"<< std::endl; 
-      
-      if(threadIdNames.size() == 1)
-      {
-        strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << "X" << ")" << std::endl;                          
-        strOut << "    return;";
-      }
-      else if(threadIdNames.size() == 2)
-      {
-        strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << "X";
-        strOut << " || "   << threadIdNames[1].c_str() << " >= " << numThreadsName.c_str() << "Y" <<  ")" << std::endl;                          
-        strOut << "    return;";
-      }
-      else if(threadIdNames.size() == 3)
-      {
-        strOut << "  if (" << threadIdNames[0].c_str() << " >= " << numThreadsName.c_str() << "X";
-        strOut << " || "   << threadIdNames[1].c_str() << " >= " << numThreadsName.c_str() << "Y";  
-        strOut << " || "   << threadIdNames[2].c_str() << " >= " << numThreadsName.c_str() << "Z" <<  ")" << std::endl;                        
-        strOut << "    return;";
-      }
-      else
-      {
-        assert(false);
-      }
+      kernelJson["threadName1"] = threadIdNames[0];
+      kernelJson["threadSize1"] = argSizes[0];
     }
-    
-    kernelJson["Prolog"] = strOut.str();
+    if(threadIdNames.size() >= 2)
+    {
+      kernelJson["threadName2"] = threadIdNames[1];
+      kernelJson["threadSize2"] = argSizes[1];
+    }
+    if(threadIdNames.size() == 3)
+    {
+      kernelJson["threadName3"] = threadIdNames[2];
+      kernelJson["threadSize2"] = argSizes[2];
+    }
 
     data["Kernels"].push_back(kernelJson);
   }
