@@ -20,16 +20,18 @@ void kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDe
 {
   if (!f || !f->hasBody()) 
     return;
+
+  const QualType retType  = f->getReturnType();
+  std::string retTypeName = retType.getAsString();
+
+  DeclarationNameInfo dni = f->getNameInfo();
+  DeclarationName dn      = dni.getName();
   
   KernelInfo info;
-  DeclarationNameInfo dni = f->getNameInfo();
-  DeclarationName dn = dni.getName();
-  info.name = dn.getAsString();
-  QualType q = f->getReturnType();
-  //const Type *typ = q.getTypePtr();
-  info.return_type = QualType::getAsString(q.split(), PrintingPolicy{ {} });
+  info.name        = dn.getAsString();
   info.astNode     = f;
-
+  info.return_type = retType.getAsString();
+  info.isBoolTyped = retType.isTrivialType(m_astContext) && (retTypeName == "bool" || retTypeName == "_Bool");
   for (unsigned int i = 0; i < f->getNumParams(); ++i) {
     info.args.push_back(ProcessParameter(f->parameters()[i]));
   }

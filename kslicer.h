@@ -32,6 +32,8 @@ namespace kslicer
   
     const clang::CXXMethodDecl* astNode = nullptr;
     bool usedInMainFunc = false;
+    bool isBoolTyped    = false; ///<! special case: if kernel return boolean, we analyze loop exit (break) or function exit (return) expression
+    bool usedInExitExpr = false;
 
     std::string DeclCmd;
     std::unordered_set<std::string> usedVectors; // list of all std::vector<T> member names which is referenced inside kernel
@@ -118,6 +120,7 @@ namespace kslicer
     std::unordered_map<std::string, DataLocalVarInfo> Locals;
     std::unordered_map<std::string, InOutVarInfo>     InOuts;
     std::unordered_set<std::string>                   ExcludeList;
+    std::unordered_set<uint64_t>                      ExitExprLocations;
 
     std::string GeneratedDecl;
     std::string CodeGenerated;
@@ -165,6 +168,8 @@ namespace kslicer
 
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler);
   std::string CutOffFileExt(const std::string& a_filePath);
+
+  uint64_t GetHashOfSourceRange(const clang::SourceRange& a_range);
 };
 
 

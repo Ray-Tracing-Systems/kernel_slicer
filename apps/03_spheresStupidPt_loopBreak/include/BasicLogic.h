@@ -204,7 +204,7 @@ static inline void CoordinateSystem(float3 v1, float3* v2, float3* v3)
 #define GEPSILON      5e-6f
 #define DEPSILON      1e-20f
 
-enum THREAD_FLAGS { THREAD_IS_DEAD = 2147483648};
+//enum THREAD_FLAGS { THREAD_IS_DEAD = 2147483648};
 
 static inline float3 MapSampleToCosineDistribution(float r1, float r2, float3 direction, float3 hit_norm, float power)
 {

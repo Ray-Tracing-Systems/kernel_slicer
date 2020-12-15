@@ -119,6 +119,19 @@ clang::ast_matchers::StatementMatcher kslicer::MakeMatch_SingleForLoopInsideFunc
          ).bind("forLoop");
 }
 
+clang::ast_matchers::StatementMatcher kslicer::MakeMatch_IfInsideForLoopInsideFunction(std::string const& a_funcName)
+{
+  return forStmt(hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction")),
+                 hasDescendant(ifStmt(
+                                hasDescendant(cxxMemberCallExpr().bind("functionCall")),
+                                anyOf(hasDescendant(breakStmt().bind("breakLoop")), 
+                                      hasDescendant(returnStmt().bind("exitFunction"))) 
+                               ).bind("ifCond"))
+         ).bind("forLoop");
+}
+
+// hasTrueExpression(expr()) 
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

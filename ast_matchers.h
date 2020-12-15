@@ -31,6 +31,7 @@ namespace kslicer
   clang::ast_matchers::StatementMatcher MakeMatch_MemberVarOfMethod(std::string const& funcName);     
   clang::ast_matchers::StatementMatcher MakeMatch_FunctionCallFromFunction(std::string const& funcName);
   clang::ast_matchers::StatementMatcher MakeMatch_SingleForLoopInsideFunction(std::string const& funcName);
+  clang::ast_matchers::StatementMatcher MakeMatch_IfInsideForLoopInsideFunction(std::string const& funcName);
 
   std::string locationAsString(clang::SourceLocation loc, clang::SourceManager const * const sm);
   std::string sourceRangeAsString(clang::SourceRange r, clang::SourceManager const * sm);
@@ -84,6 +85,12 @@ namespace kslicer
       ForStmt const * forLoop = result.Nodes.getNodeAs<ForStmt>("forLoop");
       VarDecl const * forIter = result.Nodes.getNodeAs<VarDecl>("loopIter"); 
 
+      // for if statements inside for loop, which are goint to break loop
+      //
+      IfStmt     const * ifCond = result.Nodes.getNodeAs<IfStmt>("ifCond"); 
+      BreakStmt  const * brkExp = result.Nodes.getNodeAs<BreakStmt>("breakLoop");
+      ReturnStmt const * extExp = result.Nodes.getNodeAs<ReturnStmt>("exitFunction"); 
+
       if(func_decl && kern_call && kern) // found kernel call in MainFunc
       {
         auto pKernel = m_allInfo.allKernels.find(kern->getNameAsString());  
@@ -135,6 +142,17 @@ namespace kslicer
       else if(func_decl && forLoop && forIter) // found for expression inside MainFunc
       {
         m_allInfo.mainFunc[m_mainFuncId].ExcludeList.insert(forIter->getNameAsString());
+      }
+      else if(func_decl && kern_call && ifCond)
+      {
+        auto kernDecl = kern_call->getMethodDecl();
+        auto pKernel  = m_allInfo.allKernels.find(kernDecl->getNameAsString());  
+        if(pKernel != m_allInfo.allKernels.end() && (brkExp || extExp)) 
+        {
+          pKernel->second.usedInExitExpr = true; // mark this kernel is used in exit expression
+          uint64_t hashValue = kslicer::GetHashOfSourceRange(ifCond->getSourceRange());
+          m_allInfo.mainFunc[m_mainFuncId].ExitExprLocations.insert( hashValue );
+        }
       }
       else 
       {

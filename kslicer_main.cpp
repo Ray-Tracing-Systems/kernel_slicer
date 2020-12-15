@@ -61,6 +61,15 @@ std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const 
   return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
 }
 
+uint64_t kslicer::GetHashOfSourceRange(const clang::SourceRange& a_range)
+{
+  //const uint32_t hash1 = a_range.getBegin().getHashValue(); // getHashValue presents in clang 12, but not in clang 10!
+  //const uint32_t hash2 = a_range.getEnd().getHashValue();   // getHashValue presents in clang 12, but not in clang 10!
+  const uint32_t hash1 = a_range.getBegin().getRawEncoding(); // getRawEncoding presents in clang 10, what about clang 12?
+  const uint32_t hash2 = a_range.getEnd().getRawEncoding();   // getRawEncoding presents in clang 10, what about clang 12?
+  return (uint64_t(hash1) << 32) | uint64_t(hash2);
+}
+
 std::string kslicer::CutOffFileExt(const std::string& a_filePath)
 {
   const size_t lastindex = a_filePath.find_last_of("."); 
@@ -210,7 +219,7 @@ int main(int argc, const char **argv)
   // Make sure it exists
   if (stat(fileName.c_str(), &sb) == -1)
   {
-    std::cout << "[main]: error, input file " << fileName.c_str() << "not found!" << std::endl;
+    std::cout << "[main]: error, input file " << fileName.c_str() << " not found!" << std::endl;
     return 0;
   }
 
@@ -322,13 +331,15 @@ int main(int argc, const char **argv)
       clang::ast_matchers::StatementMatcher localVar_matcher = kslicer::MakeMatch_LocalVarOfMethod(mainFuncName);
       clang::ast_matchers::StatementMatcher kernel_matcher   = kslicer::MakeMatch_MethodCallFromMethod(mainFuncName);
       clang::ast_matchers::StatementMatcher forLoop_matcher  = kslicer::MakeMatch_SingleForLoopInsideFunction(mainFuncName);
-      
+      clang::ast_matchers::StatementMatcher ifExit_matcher   = kslicer::MakeMatch_IfInsideForLoopInsideFunction(mainFuncName);
+
       kslicer::MainFuncAnalyzer matcherHandler(std::cout, inputCodeInfo, compiler.getASTContext(), mainFuncId);
       clang::ast_matchers::MatchFinder finder;
       
       finder.addMatcher(localVar_matcher, &matcherHandler);
       finder.addMatcher(kernel_matcher,   &matcherHandler);
       finder.addMatcher(forLoop_matcher,  &matcherHandler);
+      finder.addMatcher(ifExit_matcher,   &matcherHandler);
      
       std::cout << "  process vars and kernel calls for " << mainFuncName.c_str() << "(...): ";
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
