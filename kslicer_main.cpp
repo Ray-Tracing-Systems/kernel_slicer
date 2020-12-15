@@ -319,17 +319,20 @@ int main(int argc, const char **argv)
     // Now process variables and kernel calls for each main function
     //
     {
-      clang::ast_matchers::StatementMatcher local_var_matcher = kslicer::MakeMatch_LocalVarOfMethod(mainFuncName.c_str());
-      clang::ast_matchers::StatementMatcher kernel_matcher    = kslicer::MakeMatch_MethodCallFromMethod(mainFuncName.c_str());
+      clang::ast_matchers::StatementMatcher localVar_matcher = kslicer::MakeMatch_LocalVarOfMethod(mainFuncName);
+      clang::ast_matchers::StatementMatcher kernel_matcher   = kslicer::MakeMatch_MethodCallFromMethod(mainFuncName);
+      clang::ast_matchers::StatementMatcher forLoop_matcher  = kslicer::MakeMatch_SingleForLoopInsideFunction(mainFuncName);
       
-      kslicer::MainFuncAnalyzer printer(std::cout, inputCodeInfo, compiler.getASTContext(), mainFuncId);
+      kslicer::MainFuncAnalyzer matcherHandler(std::cout, inputCodeInfo, compiler.getASTContext(), mainFuncId);
       clang::ast_matchers::MatchFinder finder;
       
-      finder.addMatcher(local_var_matcher, &printer);
-      finder.addMatcher(kernel_matcher,    &printer);
+      finder.addMatcher(localVar_matcher, &matcherHandler);
+      finder.addMatcher(kernel_matcher,   &matcherHandler);
+      finder.addMatcher(forLoop_matcher,  &matcherHandler);
      
+      std::cout << "  process vars and kernel calls for " << mainFuncName.c_str() << "(...): ";
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
-      std::cout << "  process vars and kernel calls for " << mainFuncName.c_str() << "(...): " << GetClangToolingErrorCodeMessage(res) << std::endl;
+      std::cout << GetClangToolingErrorCodeMessage(res) << std::endl;
       
       // filter out unused kernels
       //
@@ -341,6 +344,16 @@ int main(int argc, const char **argv)
           inputCodeInfo.kernels.push_back(k.second);
           processedKernels.insert(k.first);
         }
+      }
+
+      // filter out excluded local variables
+      //
+      auto& mainFuncRef = inputCodeInfo.mainFunc[mainFuncId];
+      for(const auto& var : mainFuncRef.ExcludeList)
+      {
+        auto ex = mainFuncRef.Locals.find(var);
+        if(ex != mainFuncRef.Locals.end())
+          mainFuncRef.Locals.erase(ex);
       }
     }
 

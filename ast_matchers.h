@@ -30,6 +30,7 @@ namespace kslicer
 
   clang::ast_matchers::StatementMatcher MakeMatch_MemberVarOfMethod(std::string const& funcName);     
   clang::ast_matchers::StatementMatcher MakeMatch_FunctionCallFromFunction(std::string const& funcName);
+  clang::ast_matchers::StatementMatcher MakeMatch_SingleForLoopInsideFunction(std::string const& funcName);
 
   std::string locationAsString(clang::SourceLocation loc, clang::SourceManager const * const sm);
   std::string sourceRangeAsString(clang::SourceRange r, clang::SourceManager const * sm);
@@ -66,22 +67,30 @@ namespace kslicer
     void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
     {
       using namespace clang;
-     
+      
+      // for kernel call inside MainFunc
+      //
       FunctionDecl      const * func_decl = result.Nodes.getNodeAs<FunctionDecl>     ("targetFunction");
       CXXMemberCallExpr const * kern_call = result.Nodes.getNodeAs<CXXMemberCallExpr>("functionCall");
       CXXMethodDecl     const * kern      = result.Nodes.getNodeAs<CXXMethodDecl>    ("fdecl");
-
-      Expr              const * l_var     = result.Nodes.getNodeAs<Expr>   ("localReference");
-      VarDecl           const * var       = result.Nodes.getNodeAs<VarDecl>("locVarName");
-
       
-      if(func_decl && kern_call && kern) 
+      // for local variable decl inside MainFunc
+      //
+      Expr    const * l_var = result.Nodes.getNodeAs<Expr>   ("localReference");
+      VarDecl const * var   = result.Nodes.getNodeAs<VarDecl>("locVarName");
+
+      // for for expression inside MainFunc
+      //
+      ForStmt const * forLoop = result.Nodes.getNodeAs<ForStmt>("forLoop");
+      VarDecl const * forIter = result.Nodes.getNodeAs<VarDecl>("loopIter"); 
+
+      if(func_decl && kern_call && kern) // found kernel call in MainFunc
       {
         auto pKernel = m_allInfo.allKernels.find(kern->getNameAsString());  
         if(pKernel != m_allInfo.allKernels.end()) 
           pKernel->second.usedInMainFunc = true; // mark this kernel is used
       }
-      else if(func_decl && l_var && var)
+      else if(func_decl && l_var && var) // found local variable in MainFunc
       {
         const clang::QualType qt = var->getType();
         const auto typePtr = qt.getTypePtr(); 
@@ -123,10 +132,14 @@ namespace kslicer
           m_allInfo.mainFunc[m_mainFuncId].Locals[varInfo.name] = varInfo;
         }
       }
+      else if(func_decl && forLoop && forIter) // found for expression inside MainFunc
+      {
+        m_allInfo.mainFunc[m_mainFuncId].ExcludeList.insert(forIter->getNameAsString());
+      }
       else 
       {
-        check_ptr(l_var,     "l_var", "", m_out);
-        check_ptr(var,       "var",   "", m_out);
+        check_ptr(l_var,     "l_var", "",     m_out);
+        check_ptr(var,       "var",   "",     m_out);
 
         check_ptr(func_decl, "func_decl", "", m_out);
         check_ptr(kern_call, "kern_call", "", m_out);

@@ -117,9 +117,10 @@ namespace kslicer
     const clang::CXXMethodDecl*                       Node;
     std::unordered_map<std::string, DataLocalVarInfo> Locals;
     std::unordered_map<std::string, InOutVarInfo>     InOuts;
+    std::unordered_set<std::string>                   ExcludeList;
 
-    std::string              GeneratedDecl;
-    std::string              CodeGenerated;
+    std::string GeneratedDecl;
+    std::string CodeGenerated;
 
     size_t startDSNumber = 0;
     size_t endDSNumber   = 0;

@@ -111,6 +111,13 @@ clang::ast_matchers::StatementMatcher kslicer::MakeMatch_MemberVarOfMethod(std::
   ).bind("memberReference");
 }
 
+clang::ast_matchers::StatementMatcher kslicer::MakeMatch_SingleForLoopInsideFunction(std::string const& a_funcName)
+{
+  using namespace clang::ast_matchers;
+  return forStmt(hasLoopInit(declStmt(hasSingleDecl(varDecl().bind("loopIter")))),
+                 hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction"))
+         ).bind("forLoop");
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
