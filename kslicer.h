@@ -122,6 +122,7 @@ namespace kslicer
     clang::SourceRange kernelCallRange;
     clang::SourceRange ifExprRange;
     ExitStmtKind       exprKind;
+    bool               isNegative = false;
   };
 
   struct MainFuncInfo

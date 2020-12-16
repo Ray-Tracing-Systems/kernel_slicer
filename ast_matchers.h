@@ -148,6 +148,15 @@ namespace kslicer
       }
       else if(func_decl && kern_call && ifCond)
       {
+        bool hasNegativeCondition = false;
+        auto conBody = ifCond->getCond();
+        if(isa<UnaryOperator>(conBody))
+        {
+          const auto bodyOp    = dyn_cast<UnaryOperator>(conBody);
+          std::string opStr    = bodyOp->getOpcodeStr(bodyOp->getOpcode());
+          hasNegativeCondition = (opStr == "!");
+        }
+
         auto kernDecl = kern_call->getMethodDecl();
         auto pKernel  = m_allInfo.allKernels.find(kernDecl->getNameAsString());  
         if(pKernel != m_allInfo.allKernels.end() && (brkExp || extExp)) 
@@ -163,6 +172,7 @@ namespace kslicer
             info.exprKind = kslicer::ExitStmtKind::EXIT_TYPE_LOOP_BREAK;
           else
             info.exprKind = kslicer::ExitStmtKind::EXIT_TYPE_FUNCTION_RETURN;
+          info.isNegative = hasNegativeCondition;
           CurrMainFunc().ExitExprIfCond[hashValue] = info; // ExitExprIfCond[ifCond] = kern_call;
         }
       }
