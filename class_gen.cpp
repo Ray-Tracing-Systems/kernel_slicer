@@ -254,17 +254,17 @@ void kslicer::AddThreadFlagsIfNeeded_LoopBreak_RTCase(std::vector<MainFuncInfo>&
     }
   }
 
-  // add flags to kernels which we didn't process yet
+  if(kernelsToAddFlags.empty())
+    return;
+
+  // (2) add flags to kernels which we didn't process yet
   //
   while(!kernelsToAddFlags.empty())
   {
     // (2.1) process kernels
     //
     for(auto kernName : kernelsToAddFlags)
-    {
-      // process kernel
       kernelsAddedFlags.insert(kernName);
-    }
 
     // (2.2) find all main functions which used processed kernels 
     //
@@ -297,11 +297,89 @@ void kslicer::AddThreadFlagsIfNeeded_LoopBreak_RTCase(std::vector<MainFuncInfo>&
     }
   }
 
-
-  // (3) Check special cases and repor user if fuck-up is happened
+  // (3) finally add actual variables to MainFunc, arguments to kernels and reference to kernel call 
   //
 
-  // Pleas note
+  DataLocalVarInfo   tFlagsLocalVar;
+  //ArgReferenceOnCall tFlagsArgRef;
+  KernelInfo::Arg    tFlagsArg;
+
+  tFlagsLocalVar.name = "threadFlags";
+  tFlagsLocalVar.type = "uint";
+  tFlagsLocalVar.sizeInBytes = sizeof(uint32_t);
+  
+  tFlagsArg.name           = "kgen_threadFlags";
+  tFlagsArg.needFakeOffset = true;
+  tFlagsArg.size           = 1; // array size 
+  tFlagsArg.type           = "uint";
+
+  //tFlagsArgRef.argType     = KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL;
+  //tFlagsArgRef.varName     = "threadFlags";
+  //tFlagsArgRef.amfName     = ""; // set this later for each MainFunction
+  //tFlagsArgRef.umpersanned = true;
+  
+  // list kernels
+  //
+  std::unordered_map<std::string, size_t> kernelIdByName;
+  for(size_t i=0;i<a_kernelList.size();i++)
+    kernelIdByName[a_kernelList[i].name] = i;
+  
+  // Add threadFlags to kernel arguments
+  //
+  for(auto kName : kernelsAddedFlags)
+  {
+    assert(kernelIdByName.find(kName) != kernelIdByName.end());
+    auto& kernel = a_kernelList[kernelIdByName[kName]];
+    
+    size_t foundId = size_t(-1);
+    for(size_t i=0;i<kernel.args.size();i++)
+    {
+      if(kernel.args[i].name == tFlagsArg.name)
+      {
+        foundId = i;
+        break;
+      }
+    }
+
+    if(foundId == size_t(-1))
+      kernel.args.push_back(tFlagsArg);
+  }  
+ 
+  // add thread flags to MainFuncions and all kernel calls for each MainFunc
+  //
+  for(auto& mainFunc : a_mainFuncList)
+  {
+    auto p = mainFunc.Locals.find(tFlagsLocalVar.name);
+    if(p != mainFunc.Locals.end() || !mainFunc.needToAddThreadFlags)
+      continue;
+
+    mainFunc.Locals[tFlagsLocalVar.name] = tFlagsLocalVar;
+
+    //for(auto& call : a_kernelCalls)
+    //{
+    //  auto p2 = kernelIdByName.find(call.kernelName);
+    //  if(p2 != kernelIdByName.end())
+    //  {
+    //    std::string amfName = "";
+    //    size_t found = size_t(-1);
+    //    for(size_t j=0; j<call.descriptorSetsInfo.size(); j++)
+    //    {
+    //      amfName = call.descriptorSetsInfo[j].amfName;
+    //      if(call.descriptorSetsInfo[j].varName == tFlagsArgRef.varName)
+    //      {
+    //        found = j;
+    //        break;
+    //      }
+    //
+    //      if(found == size_t(-1))
+    //      {
+    //        tFlagsArgRef.amfName = amfName;
+    //        call.descriptorSetsInfo.push_back(tFlagsArgRef);
+    //      }
+    //    }
+    //  }
+    //}
+  }
 
 }
 

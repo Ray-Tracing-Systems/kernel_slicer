@@ -373,8 +373,6 @@ int main(int argc, const char **argv)
   
   std::cout << "}" << std::endl;
   std::cout << std::endl;
-  
-  kslicer::AddThreadFlagsIfNeeded_LoopBreak_RTCase(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
 
   std::cout << "(2) Mark data members, methods and functions which are actually used in kernels." << std::endl; 
   std::cout << "{" << std::endl;
@@ -414,6 +412,8 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
   
+  kslicer::AddThreadFlagsIfNeeded_LoopBreak_RTCase(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
+
   std::cout << "(4) Process All 'Main' functions to generate all 'MainCmd' " << std::endl; 
   std::cout << "{" << std::endl;
 
@@ -426,13 +426,13 @@ int main(int argc, const char **argv)
     std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
 
     mainFunc.CodeGenerated = inputCodeInfo.ProcessMainFunc_RTCase(mainFunc, compiler, inputCodeInfo.allDescriptorSetsInfo);
-  
-    mainFunc.InOuts = kslicer::ListPointerParamsOfMainFunc(mainFunc.Node);
+    mainFunc.InOuts        = kslicer::ListPointerParamsOfMainFunc(mainFunc.Node);
   }
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
-  
+
+
   std::cout << "(5) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
   std::cout << "{" << std::endl;
   {

@@ -170,7 +170,9 @@ namespace kslicer
                                        std::vector<KernelCallInfo>& a_outDsInfo);
   };
 
-  void AddThreadFlagsIfNeeded_LoopBreak_RTCase(std::vector<MainFuncInfo>& a_mainFuncList, std::vector<KernelInfo>& a_kernelList);
+  void AddThreadFlagsIfNeeded_LoopBreak_RTCase(std::vector<MainFuncInfo>&   a_mainFuncList, 
+                                               std::vector<KernelInfo>&     a_kernelList);
+
 
   /**
   \brief select local variables of main class that can be placed in auxilary buffer
