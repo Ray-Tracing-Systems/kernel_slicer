@@ -431,7 +431,9 @@ int main(int argc, const char **argv)
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
-
+  
+  kslicer::AddThreadFlagsForCalls_LoopBreak_RTCase(inputCodeInfo.mainFunc, inputCodeInfo.kernels, // ==>
+                                                   inputCodeInfo.allDescriptorSetsInfo);          // <==
 
   std::cout << "(5) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
   std::cout << "{" << std::endl;

@@ -97,7 +97,6 @@ namespace kslicer
   {
     KERN_CALL_ARG_TYPE argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_UNKNOWN_TYPE;
     std::string        varName = "";
-    std::string        amfName = "";    // Argument of Main Function Name, the name of function which this arguments belongs to
     bool umpersanned           = false; // just signal that '&' was applied to this argument, and thus it is likely to be (ARG_REFERENCE_LOCAL or ARG_REFERENCE_CLASS_POD)
   };
 
@@ -172,6 +171,10 @@ namespace kslicer
 
   void AddThreadFlagsIfNeeded_LoopBreak_RTCase(std::vector<MainFuncInfo>&   a_mainFuncList, 
                                                std::vector<KernelInfo>&     a_kernelList);
+
+  void AddThreadFlagsForCalls_LoopBreak_RTCase(const std::vector<MainFuncInfo>&   a_mainFuncList, 
+                                               const std::vector<KernelInfo>&     a_kernelList,
+                                               std::vector<KernelCallInfo>&       a_kernelCalls);
 
 
   /**

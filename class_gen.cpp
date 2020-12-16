@@ -301,7 +301,6 @@ void kslicer::AddThreadFlagsIfNeeded_LoopBreak_RTCase(std::vector<MainFuncInfo>&
   //
 
   DataLocalVarInfo   tFlagsLocalVar;
-  //ArgReferenceOnCall tFlagsArgRef;
   KernelInfo::Arg    tFlagsArg;
 
   tFlagsLocalVar.name = "threadFlags";
@@ -311,12 +310,7 @@ void kslicer::AddThreadFlagsIfNeeded_LoopBreak_RTCase(std::vector<MainFuncInfo>&
   tFlagsArg.name           = "kgen_threadFlags";
   tFlagsArg.needFakeOffset = true;
   tFlagsArg.size           = 1; // array size 
-  tFlagsArg.type           = "uint";
-
-  //tFlagsArgRef.argType     = KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL;
-  //tFlagsArgRef.varName     = "threadFlags";
-  //tFlagsArgRef.amfName     = ""; // set this later for each MainFunction
-  //tFlagsArgRef.umpersanned = true;
+  tFlagsArg.type           = "uint*";
   
   // list kernels
   //
@@ -354,35 +348,53 @@ void kslicer::AddThreadFlagsIfNeeded_LoopBreak_RTCase(std::vector<MainFuncInfo>&
       continue;
 
     mainFunc.Locals[tFlagsLocalVar.name] = tFlagsLocalVar;
-
-    //for(auto& call : a_kernelCalls)
-    //{
-    //  auto p2 = kernelIdByName.find(call.kernelName);
-    //  if(p2 != kernelIdByName.end())
-    //  {
-    //    std::string amfName = "";
-    //    size_t found = size_t(-1);
-    //    for(size_t j=0; j<call.descriptorSetsInfo.size(); j++)
-    //    {
-    //      amfName = call.descriptorSetsInfo[j].amfName;
-    //      if(call.descriptorSetsInfo[j].varName == tFlagsArgRef.varName)
-    //      {
-    //        found = j;
-    //        break;
-    //      }
-    //
-    //      if(found == size_t(-1))
-    //      {
-    //        tFlagsArgRef.amfName = amfName;
-    //        call.descriptorSetsInfo.push_back(tFlagsArgRef);
-    //      }
-    //    }
-    //  }
-    //}
   }
 
 }
 
+void kslicer::AddThreadFlagsForCalls_LoopBreak_RTCase(const std::vector<MainFuncInfo>&   a_mainFuncList, 
+                                                      const std::vector<KernelInfo>&     a_kernelList,
+                                                      std::vector<KernelCallInfo>&       a_kernelCalls)
+{
+  // list kernels
+  //
+  std::unordered_map<std::string, size_t> kernelIdByName;
+  for(size_t i=0;i<a_kernelList.size();i++)
+    kernelIdByName[a_kernelList[i].name] = i;
+
+  ArgReferenceOnCall tFlagsArgRef;
+  tFlagsArgRef.argType     = KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL;
+  tFlagsArgRef.varName     = "threadFlags";
+  tFlagsArgRef.umpersanned = true;
+
+  // add thread flags to MainFuncions and all kernel calls for each MainFunc
+  //
+  for(auto& mainFunc : a_mainFuncList)
+  {
+    if(!mainFunc.needToAddThreadFlags)
+      continue;
+
+    for(auto& call : a_kernelCalls)
+    {
+      auto p2 = kernelIdByName.find(std::string("kernel_") + call.kernelName);
+      if(p2 != kernelIdByName.end())
+      {
+        size_t found = size_t(-1);
+        for(size_t j=0; j<call.descriptorSetsInfo.size(); j++)
+        {
+          if(call.descriptorSetsInfo[j].varName == tFlagsArgRef.varName)
+          {
+            found = j;
+            break;
+          }
+    
+          //if(found == size_t(-1))
+          //  call.descriptorSetsInfo.push_back(tFlagsArgRef);
+        }
+      }
+    }
+  }
+}
 
 std::unordered_map<std::string, kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node)
 {
