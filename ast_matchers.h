@@ -65,6 +65,8 @@ namespace kslicer
       m_namesToIngore = kslicer::GetAllPredefinedThreadIdNames(); 
     }
 
+    MainFuncInfo& CurrMainFunc() { return m_allInfo.mainFunc[m_mainFuncId]; }
+
     void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
     {
       using namespace clang;
@@ -95,7 +97,8 @@ namespace kslicer
       {
         auto pKernel = m_allInfo.allKernels.find(kern->getNameAsString());  
         if(pKernel != m_allInfo.allKernels.end()) 
-          pKernel->second.usedInMainFunc = true; // mark this kernel is used
+          pKernel->second.usedInMainFunc = true;                    // mark this kernel is used
+        CurrMainFunc().UsedKernels.insert(kern->getNameAsString()); // add  this kernel to list of used kernels by MainFunc 
       }
       else if(func_decl && l_var && var) // found local variable in MainFunc
       {
@@ -136,12 +139,12 @@ namespace kslicer
         if(var->isLocalVarDecl()) // list only local variables, exclude function arguments 
         {
           // can also check isCXXForRangeDecl() and check for index ... in some way ...
-          m_allInfo.mainFunc[m_mainFuncId].Locals[varInfo.name] = varInfo;
+          CurrMainFunc().Locals[varInfo.name] = varInfo;
         }
       }
       else if(func_decl && forLoop && forIter) // found for expression inside MainFunc
       {
-        m_allInfo.mainFunc[m_mainFuncId].ExcludeList.insert(forIter->getNameAsString());
+        CurrMainFunc().ExcludeList.insert(forIter->getNameAsString());
       }
       else if(func_decl && kern_call && ifCond)
       {
@@ -151,7 +154,16 @@ namespace kslicer
         {
           pKernel->second.usedInExitExpr = true; // mark this kernel is used in exit expression
           uint64_t hashValue = kslicer::GetHashOfSourceRange(ifCond->getSourceRange());
-          m_allInfo.mainFunc[m_mainFuncId].ExitExprLocations.insert( hashValue );
+
+          kslicer::ExitStatementInfo info;
+          info.kernelName      = kernDecl->getNameAsString();
+          info.kernelCallRange = kern_call->getSourceRange();
+          info.ifExprRange     = ifCond->getSourceRange();
+          if(brkExp)
+            info.exprKind = kslicer::ExitStmtKind::EXIT_TYPE_LOOP_BREAK;
+          else
+            info.exprKind = kslicer::ExitStmtKind::EXIT_TYPE_FUNCTION_RETURN;
+          CurrMainFunc().ExitExprIfCond[hashValue] = info; // ExitExprIfCond[ifCond] = kern_call;
         }
       }
       else 

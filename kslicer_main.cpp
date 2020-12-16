@@ -341,7 +341,7 @@ int main(int argc, const char **argv)
       finder.addMatcher(forLoop_matcher,  &matcherHandler);
       finder.addMatcher(ifExit_matcher,   &matcherHandler);
      
-      std::cout << "  process vars and kernel calls for " << mainFuncName.c_str() << "(...): ";
+      std::cout << "  process main function: " << mainFuncName.c_str() << "(...): ";
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
       std::cout << GetClangToolingErrorCodeMessage(res) << std::endl;
       
@@ -373,6 +373,8 @@ int main(int argc, const char **argv)
   
   std::cout << "}" << std::endl;
   std::cout << std::endl;
+  
+  kslicer::AddThreadFlagsIfNeeded_LoopBreak_RTCase(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
 
   std::cout << "(2) Mark data members, methods and functions which are actually used in kernels." << std::endl; 
   std::cout << "{" << std::endl;

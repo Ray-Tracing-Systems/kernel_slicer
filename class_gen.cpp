@@ -237,6 +237,74 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
   return sourceCode;
 }
 
+void kslicer::AddThreadFlagsIfNeeded_LoopBreak_RTCase(std::vector<MainFuncInfo>& a_mainFuncList, std::vector<KernelInfo>& a_kernelList)
+{
+  // (1) first scan all main functions, if no one needed just exit
+  //
+  std::unordered_set<std::string> kernelsToAddFlags;
+  std::unordered_set<std::string> kernelsAddedFlags;
+
+  for(auto& mainFunc : a_mainFuncList)
+  {
+    if(mainFunc.ExitExprIfCond.size() != 0)
+    {
+      for(const auto& kernelName : mainFunc.UsedKernels)
+        kernelsToAddFlags.insert(kernelName);
+      mainFunc.needToAddThreadFlags = true;
+    }
+  }
+
+  // add flags to kernels which we didn't process yet
+  //
+  while(!kernelsToAddFlags.empty())
+  {
+    // (2.1) process kernels
+    //
+    for(auto kernName : kernelsToAddFlags)
+    {
+      // process kernel
+      kernelsAddedFlags.insert(kernName);
+    }
+
+    // (2.2) find all main functions which used processed kernels 
+    //
+    for(auto& mainFunc : a_mainFuncList)
+    {
+      for(const auto& kernelName : kernelsAddedFlags)
+      {
+        if(mainFunc.UsedKernels.find(kernelName) != mainFunc.UsedKernels.end())
+        {
+          mainFunc.needToAddThreadFlags = true;
+          break;
+        }
+      }
+    }
+
+    // (2.3) process main functions again, check we processed all kernels for each main function which 'needToAddThreadFlags' 
+    //
+    kernelsToAddFlags.clear();
+    for(const auto& mainFunc : a_mainFuncList)
+    {
+      if(!mainFunc.needToAddThreadFlags)
+        continue;
+
+      for(const auto& kName : mainFunc.UsedKernels)
+      {
+        const auto p = kernelsAddedFlags.find(kName);
+        if(p == kernelsAddedFlags.end())
+          kernelsToAddFlags.insert(kName);
+      }
+    }
+  }
+
+
+  // (3) Check special cases and repor user if fuck-up is happened
+  //
+
+  // Pleas note
+
+}
+
 
 std::unordered_map<std::string, kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node)
 {

@@ -113,6 +113,17 @@ namespace kslicer
     std::vector<std::string> kernelNames;
   };
 
+  enum class ExitStmtKind { EXIT_TYPE_FUNCTION_RETURN = 1, 
+                            EXIT_TYPE_LOOP_BREAK      = 2};
+
+  struct ExitStatementInfo
+  {
+    std::string        kernelName;
+    clang::SourceRange kernelCallRange;
+    clang::SourceRange ifExprRange;
+    ExitStmtKind       exprKind;
+  };
+
   struct MainFuncInfo
   {
     std::string                                       Name;
@@ -120,13 +131,16 @@ namespace kslicer
     std::unordered_map<std::string, DataLocalVarInfo> Locals;
     std::unordered_map<std::string, InOutVarInfo>     InOuts;
     std::unordered_set<std::string>                   ExcludeList;
-    std::unordered_set<uint64_t>                      ExitExprLocations;
+    std::unordered_map<uint64_t, ExitStatementInfo>   ExitExprIfCond;
+    std::unordered_set<std::string>                   UsedKernels;
 
     std::string GeneratedDecl;
     std::string CodeGenerated;
 
     size_t startDSNumber = 0;
     size_t endDSNumber   = 0;
+
+    bool   needToAddThreadFlags = false;
   };
   
   /**
@@ -155,6 +169,8 @@ namespace kslicer
                                        std::vector<KernelCallInfo>& a_outDsInfo);
   };
 
+  void AddThreadFlagsIfNeeded_LoopBreak_RTCase(std::vector<MainFuncInfo>& a_mainFuncList, std::vector<KernelInfo>& a_kernelList);
+
   /**
   \brief select local variables of main class that can be placed in auxilary buffer
   */
@@ -171,6 +187,7 @@ namespace kslicer
 
   uint64_t GetHashOfSourceRange(const clang::SourceRange& a_range);
 };
+
 
 
 #endif
