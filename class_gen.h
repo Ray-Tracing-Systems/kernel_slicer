@@ -73,8 +73,9 @@ namespace kslicer
     KernelReplacerASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, const std::string& a_mainClassName, 
                              const std::vector<kslicer::DataMemberInfo>& a_variables, 
                              const std::vector<kslicer::KernelInfo::Arg>& a_args,
-                             const std::string& a_fakeOffsetExpr) : 
-                             m_rewriter(R), m_compiler(a_compiler), m_mainClassName(a_mainClassName), m_args(a_args), m_fakeOffsetExp(a_fakeOffsetExpr) 
+                             const std::string& a_fakeOffsetExpr,
+                             const bool a_needToModifyReturn) : 
+                             m_rewriter(R), m_compiler(a_compiler), m_mainClassName(a_mainClassName), m_args(a_args), m_fakeOffsetExp(a_fakeOffsetExpr), m_needModifyExitCond(a_needToModifyReturn) 
     { 
       m_variables.reserve(a_variables.size());
       for(const auto& var : a_variables) 
@@ -84,6 +85,7 @@ namespace kslicer
     bool VisitMemberExpr(MemberExpr* expr);
     bool VisitUnaryOperator(UnaryOperator* expr);
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
+    bool VisitReturnStmt(ReturnStmt* ret);
   
   private:
 
@@ -95,6 +97,7 @@ namespace kslicer
     std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
     const std::vector<kslicer::KernelInfo::Arg>&             m_args;
     const std::string&                                       m_fakeOffsetExp;
+    bool                                                     m_needModifyExitCond;
   };
 
   void ObtainKernelsDecl(std::vector<KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName);

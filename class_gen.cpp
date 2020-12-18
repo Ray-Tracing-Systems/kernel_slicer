@@ -618,6 +618,20 @@ bool kslicer::KernelReplacerASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr
   return true;
 }
 
+bool kslicer::KernelReplacerASTVisitor::VisitReturnStmt(ReturnStmt* ret)
+{
+  Expr* retExpr = ret->getRetValue();
+  if (!retExpr || !m_needModifyExitCond)
+    return true;
+
+  std::string retExprText = GetRangeSourceCode(retExpr->getSourceRange(), m_compiler);
+  std::stringstream strOut;
+  strOut << "if(" << retExprText.c_str() << ")" << " kgen_threadFlags[" << m_fakeOffsetExp.c_str() << "] = ((kgen_tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : (kgen_tFlagsMask & KGEN_FLAG_RETURN)";
+
+  m_rewriter.ReplaceText(ret->getSourceRange(), strOut.str());
+  return true;
+}
+
 
 bool kslicer::KernelReplacerASTVisitor::CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr)
 {
@@ -705,7 +719,7 @@ std::string kslicer::ProcessKernel(const KernelInfo& a_funcInfo, const clang::Co
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
-  kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, a_codeInfo.mainClassName, a_codeInfo.dataMembers, a_funcInfo.args, fakeOffsetExpr);
+  kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, a_codeInfo.mainClassName, a_codeInfo.dataMembers, a_funcInfo.args, fakeOffsetExpr, a_funcInfo.isBoolTyped);
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
   
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());

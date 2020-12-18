@@ -365,6 +365,7 @@ void kslicer::ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, con
   fout.close();
 }
 
+std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo);
 
 void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::string& a_outFolder, const MainClassInfo& a_classInfo, 
                                    const std::unordered_map<std::string, bool>& usedFiles, 
@@ -523,7 +524,7 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
 
     kernelJson["shouldCheckExitFlag"] = k.checkThreadFlags;
     kernelJson["checkFlagsExpr"]      = "//xxx//";
-    kernelJson["ThreadOffset"]        = "tid";
+    kernelJson["ThreadOffset"]        = GetFakeOffsetExpression(k);
 
     data["Kernels"].push_back(kernelJson);
   }

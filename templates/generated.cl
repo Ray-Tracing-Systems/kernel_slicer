@@ -43,4 +43,5 @@ __kernel void {{Kernel.Name}}(
   {% endfor %}/////////////////////////////////////////////////////////////////
 {{Kernel.Source}}
 }
+
 ## endfor
