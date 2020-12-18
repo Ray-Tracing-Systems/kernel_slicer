@@ -45,6 +45,7 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
 
       KernelCallInfo call;
       call.kernelName         = kernName;
+      call.originalName       = fname;
       call.callerName         = m_mainFuncName;
       call.descriptorSetsInfo = args;
       m_kernCallTypes.push_back(call);
@@ -52,9 +53,20 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
     std::stringstream strOut;
     //strOut << "// call tag id = " << m_kernellCallTagId << "; argsNum = " << f->getNumArgs() << std::endl;
     
+    // understand if we are inside the loop, or outside of it
+    //
+    std::string flagsVariableName = "outOfForFlags";
+
+    auto callSourceRangeHash = kslicer::GetHashOfSourceRange(f->getSourceRange());
+    auto p3 = m_mainFunc.CallsInsideFor.find(callSourceRangeHash);
+    if(p3 != m_mainFunc.CallsInsideFor.end())
+    {
+      flagsVariableName = "inForFlags";
+    }
+
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
-    strOut << "  vkCmdPushConstants(m_currCmdBuffer," << kernName.c_str() << "Layout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint32_t)*3, sizeof(uint32_t)*1, &outOfForFlags);" << std::endl;
+    strOut << "  vkCmdPushConstants(m_currCmdBuffer," << kernName.c_str() << "Layout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint32_t)*3, sizeof(uint32_t)*1, &" << flagsVariableName.c_str() << ");" << std::endl;
     strOut << "  " << kernName.c_str() << "Cmd";
   
     m_rewriter.ReplaceText(f->getExprLoc(), strOut.str());
@@ -194,7 +206,7 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
 
   a_mainFunc.startDSNumber = a_outDsInfo.size();
 
-  kslicer::MainFuncASTVisitor rv(rewrite2, compiler, a_mainFuncName, inOutParamList, this->allDataMembers, a_mainFunc.Locals);
+  kslicer::MainFuncASTVisitor rv(rewrite2, compiler, a_mainFunc, inOutParamList, this->allDataMembers);
 
   rv.m_kernCallTypes = a_outDsInfo;
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
@@ -222,7 +234,7 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
   //
   {
     size_t bracePos = sourceCode.find("{");
-    sourceCode = (sourceCode.substr(0, bracePos) + "{\n  m_currCmdBuffer = a_commandBuffer; \n  uint32_t outOfForFlags = 1; \n  uint32_t inForFlags = 2; \n\n" + sourceCode.substr(bracePos+2)); 
+    sourceCode = (sourceCode.substr(0, bracePos) + "{\n  m_currCmdBuffer = a_commandBuffer; \n  uint32_t outOfForFlags = KGEN_OUTSIDE_OF_FOR; \n  uint32_t inForFlags = KGEN_INSIDE_FOR; \n\n" + sourceCode.substr(bracePos+2)); 
   }
 
   // (4) get function decl from full function code

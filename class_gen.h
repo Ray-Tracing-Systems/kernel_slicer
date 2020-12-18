@@ -30,13 +30,12 @@ namespace kslicer
   {
   public:
     
-    MainFuncASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, const std::string& a_mainFuncName, 
+    MainFuncASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, MainFuncInfo& a_mainFunc, 
                        const std::unordered_map<std::string, InOutVarInfo>& a_args, 
-                       std::unordered_map<std::string, DataMemberInfo>& a_members,
-                       const std::unordered_map<std::string, DataLocalVarInfo>& a_locals) : 
+                       std::unordered_map<std::string, DataMemberInfo>& a_members) : 
                        m_rewriter(R), m_compiler(a_compiler), m_sm(R.getSourceMgr()), 
-                       m_kernellCallTagId(0), m_mainFuncName(a_mainFuncName), 
-                       m_argsOfMainFunc(a_args), m_allClassMembers(a_members), m_mainFuncLocals(a_locals) { }
+                       m_kernellCallTagId(0), m_mainFuncName(a_mainFunc.Name), 
+                       m_argsOfMainFunc(a_args), m_allClassMembers(a_members), m_mainFuncLocals(a_mainFunc.Locals), m_mainFunc(a_mainFunc) { }
     
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
@@ -58,6 +57,7 @@ namespace kslicer
     
     std::string m_mainFuncName;
     std::unordered_map<std::string, InOutVarInfo> m_argsOfMainFunc;
+    MainFuncInfo& m_mainFunc;
   };
 
   std::unordered_map<std::string, InOutVarInfo> ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node);
