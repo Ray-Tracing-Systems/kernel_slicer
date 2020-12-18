@@ -32,6 +32,8 @@ namespace kslicer
   clang::ast_matchers::StatementMatcher MakeMatch_FunctionCallFromFunction(std::string const& funcName);
   clang::ast_matchers::StatementMatcher MakeMatch_SingleForLoopInsideFunction(std::string const& funcName);
   clang::ast_matchers::StatementMatcher MakeMatch_IfInsideForLoopInsideFunction(std::string const& funcName);
+  clang::ast_matchers::StatementMatcher MakeMatch_FunctionCallInsideForLoopInsideFunction(std::string const& funcName);
+  clang::ast_matchers::StatementMatcher MakeMatch_IfReturnFromFunction(std::string const& funcName);
 
   std::string locationAsString(clang::SourceLocation loc, clang::SourceManager const * const sm);
   std::string sourceRangeAsString(clang::SourceRange r, clang::SourceManager const * sm);
@@ -162,19 +164,31 @@ namespace kslicer
         if(pKernel != m_allInfo.allKernels.end() && (brkExp || extExp)) 
         {
           pKernel->second.usedInExitExpr = true; // mark this kernel is used in exit expression
-          uint64_t hashValue = kslicer::GetHashOfSourceRange(ifCond->getSourceRange());
+          const uint64_t hashValue1 = kslicer::GetHashOfSourceRange(ifCond->getSourceRange());
+          const uint64_t hashValue2 = kslicer::GetHashOfSourceRange(kern_call->getSourceRange());
 
-          kslicer::ExitStatementInfo info;
+          kslicer::KernelStatementInfo info;
           info.kernelName      = kernDecl->getNameAsString();
           info.kernelCallRange = kern_call->getSourceRange();
           info.ifExprRange     = ifCond->getSourceRange();
           if(brkExp)
-            info.exprKind = kslicer::ExitStmtKind::EXIT_TYPE_LOOP_BREAK;
+            info.exprKind = kslicer::KernelStmtKind::EXIT_TYPE_LOOP_BREAK;
           else
-            info.exprKind = kslicer::ExitStmtKind::EXIT_TYPE_FUNCTION_RETURN;
+            info.exprKind = kslicer::KernelStmtKind::EXIT_TYPE_FUNCTION_RETURN;
           info.isNegative = hasNegativeCondition;
-          CurrMainFunc().ExitExprIfCond[hashValue] = info; // ExitExprIfCond[ifCond] = kern_call;
+          CurrMainFunc().ExitExprIfCond[hashValue1] = info; // ExitExprIfCond[ifCond]    = kern_call;
+          CurrMainFunc().CallsInsideFor[hashValue2] = info; // CallsInsideFor[kern_call] = kern_call;
         }
+      }
+      else if(func_decl && kern_call && forLoop) // same as previous , but without ifCond: just a kernell call inside for loop
+      {
+        auto kernDecl = kern_call->getMethodDecl();
+        const uint64_t hashValue2 = kslicer::GetHashOfSourceRange(kern_call->getSourceRange());
+        kslicer::KernelStatementInfo info;
+        info.exprKind        = kslicer::KernelStmtKind::CALL_TYPE_SIMPLE;
+        info.kernelName      = kernDecl->getNameAsString();
+        info.kernelCallRange = kern_call->getSourceRange();
+        CurrMainFunc().CallsInsideFor[hashValue2] = info; // CallsInsideFor[kern_call] = kern_call;
       }
       else 
       {

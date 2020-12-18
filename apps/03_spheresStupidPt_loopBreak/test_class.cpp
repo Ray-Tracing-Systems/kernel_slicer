@@ -177,8 +177,9 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
   kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
 
   Lite_Hit hit;
-  kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar,
-                  &hit);
+  if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar,
+                  &hit))
+    return;
   
   kernel_GetMaterialColor(tid, &hit, out_color);
 }

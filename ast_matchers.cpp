@@ -114,23 +114,44 @@ clang::ast_matchers::StatementMatcher kslicer::MakeMatch_MemberVarOfMethod(std::
 clang::ast_matchers::StatementMatcher kslicer::MakeMatch_SingleForLoopInsideFunction(std::string const& a_funcName)
 {
   using namespace clang::ast_matchers;
-  return forStmt(hasLoopInit(declStmt(hasSingleDecl(varDecl().bind("loopIter")))),
-                 hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction"))
-         ).bind("forLoop");
+  return 
+  forStmt(hasLoopInit(declStmt(hasSingleDecl(varDecl().bind("loopIter")))),
+          hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction"))
+  ).bind("forLoop");
 }
 
 clang::ast_matchers::StatementMatcher kslicer::MakeMatch_IfInsideForLoopInsideFunction(std::string const& a_funcName)
 {
-  return forStmt(hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction")),
-                 hasDescendant(ifStmt(
-                                hasDescendant(cxxMemberCallExpr().bind("functionCall")),
-                                anyOf(hasDescendant(breakStmt().bind("breakLoop")), 
-                                      hasDescendant(returnStmt().bind("exitFunction"))) 
-                               ).bind("ifCond"))
-         ).bind("forLoop");
+  using namespace clang::ast_matchers;
+  return 
+  forStmt(hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction")),
+          hasDescendant(ifStmt(
+                         hasDescendant(cxxMemberCallExpr().bind("functionCall")),            // #TODO: check this call is inside if condition !!!
+                         anyOf(hasDescendant(breakStmt().bind("breakLoop")), 
+                               hasDescendant(returnStmt().bind("exitFunction"))) 
+                        ).bind("ifCond"))
+  ).bind("forLoop");
 }
 
-// hasTrueExpression(expr()) 
+clang::ast_matchers::StatementMatcher kslicer::MakeMatch_FunctionCallInsideForLoopInsideFunction(std::string const& a_funcName)
+{
+  using namespace clang::ast_matchers;
+  return 
+  forStmt(hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction")),
+          hasDescendant(cxxMemberCallExpr().bind("functionCall"))
+  ).bind("forLoop");
+}
+
+clang::ast_matchers::StatementMatcher kslicer::MakeMatch_IfReturnFromFunction(std::string const& a_funcName)
+{
+  using namespace clang::ast_matchers;
+  return 
+  ifStmt(
+    hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction")),
+    hasDescendant(cxxMemberCallExpr().bind("functionCall")),                                 // #TODO: check this call is inside if condition !!!
+    hasDescendant(returnStmt().bind("exitFunction"))
+  ).bind("ifCond");
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -113,15 +113,16 @@ namespace kslicer
     std::vector<std::string> kernelNames;
   };
 
-  enum class ExitStmtKind { EXIT_TYPE_FUNCTION_RETURN = 1, 
-                            EXIT_TYPE_LOOP_BREAK      = 2};
+  enum class KernelStmtKind { CALL_TYPE_SIMPLE          = 1,
+                              EXIT_TYPE_FUNCTION_RETURN = 2, 
+                              EXIT_TYPE_LOOP_BREAK      = 3};
 
-  struct ExitStatementInfo
+  struct KernelStatementInfo
   {
     std::string        kernelName;
     clang::SourceRange kernelCallRange;
     clang::SourceRange ifExprRange;
-    ExitStmtKind       exprKind;
+    KernelStmtKind     exprKind = KernelStmtKind::CALL_TYPE_SIMPLE;
     bool               isNegative = false;
   };
 
@@ -132,14 +133,18 @@ namespace kslicer
     std::unordered_map<std::string, DataLocalVarInfo> Locals;
     std::unordered_map<std::string, InOutVarInfo>     InOuts;
     std::unordered_set<std::string>                   ExcludeList;
-    std::unordered_map<uint64_t, ExitStatementInfo>   ExitExprIfCond;
     std::unordered_set<std::string>                   UsedKernels;
-
+    
     std::string GeneratedDecl;
     std::string CodeGenerated;
 
     size_t startDSNumber = 0;
     size_t endDSNumber   = 0;
+
+    // RT template specific
+    //
+    std::unordered_map<uint64_t, KernelStatementInfo> ExitExprIfCond;
+    std::unordered_map<uint64_t, KernelStatementInfo> CallsInsideFor;
 
     bool   needToAddThreadFlags = false;
   };
