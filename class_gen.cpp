@@ -61,6 +61,8 @@ std::string kslicer::MainFuncASTVisitor::MakeKernelCallCmdString(CXXMemberCallEx
     if(p3 != m_mainFunc.CallsInsideFor.end())
     {
       flagsVariableName = "inForFlags";
+      if(p3->second.isNegative)
+        flagsVariableName += "N";
     }
 
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
@@ -284,8 +286,22 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
   // (3) set m_currCmdBuffer with input command bufer
   //
   {
+    std::stringstream strOut;
+    strOut << "{" << std::endl;
+    strOut << "  m_currCmdBuffer = a_commandBuffer;" << std::endl;
+    if(!a_mainFunc.ExcludeList.empty())
+    {
+      strOut << "  const uint32_t outOfForFlags  = KGEN_FLAG_RETURN;" << std::endl;
+      strOut << "  const uint32_t inForFlags     = KGEN_FLAG_RETURN | KGEN_FLAG_RETURN;" << std::endl;
+      strOut << "  const uint32_t outOfForFlagsN = KGEN_FLAG_RETURN | KGEN_FLAG_SET_EXIT_NEGATIVE;" << std::endl;
+      strOut << "  const uint32_t inForFlagsN    = KGEN_FLAG_RETURN | KGEN_FLAG_RETURN | KGEN_FLAG_DONT_SET_EXIT;" << std::endl;
+      strOut << "  const uint32_t outOfForFlagsD = KGEN_FLAG_RETURN | KGEN_FLAG_SET_EXIT_NEGATIVE;" << std::endl;
+      strOut << "  const uint32_t inForFlagsD    = KGEN_FLAG_RETURN | KGEN_FLAG_RETURN | KGEN_FLAG_DONT_SET_EXIT;" << std::endl;
+    }
+    strOut << std::endl;
+
     size_t bracePos = sourceCode.find("{");
-    sourceCode = (sourceCode.substr(0, bracePos) + "{\n  m_currCmdBuffer = a_commandBuffer; \n  uint32_t outOfForFlags = KGEN_FLAG_RETURN; \n  uint32_t inForFlags = KGEN_FLAG_BREAK | KGEN_FLAG_RETURN; \n\n" + sourceCode.substr(bracePos+2)); 
+    sourceCode = (sourceCode.substr(0, bracePos) + strOut.str() + sourceCode.substr(bracePos+2)); 
   }
 
   // (4) get function decl from full function code
@@ -626,7 +642,13 @@ bool kslicer::KernelReplacerASTVisitor::VisitReturnStmt(ReturnStmt* ret)
 
   std::string retExprText = GetRangeSourceCode(retExpr->getSourceRange(), m_compiler);
   std::stringstream strOut;
-  strOut << "if(" << retExprText.c_str() << ")" << " kgen_threadFlags[" << m_fakeOffsetExp.c_str() << "] = ((kgen_tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : (kgen_tFlagsMask & KGEN_FLAG_RETURN)";
+  strOut << "{" << std::endl;
+  strOut << "    const bool exitHappened = (kgen_tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0 ? !(" <<  retExprText.c_str() << ") : (" << retExprText.c_str() << ");" << std::endl;
+  strOut << "    if((kgen_tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)" << std::endl;
+  strOut << "    {" << std::endl;
+  strOut << "      kgen_threadFlags[" << m_fakeOffsetExp.c_str() << "] = ((kgen_tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;" << std::endl;
+  strOut << "    }" << std::endl;
+  strOut << "  }";
 
   m_rewriter.ReplaceText(ret->getSourceRange(), strOut.str());
   return true;
