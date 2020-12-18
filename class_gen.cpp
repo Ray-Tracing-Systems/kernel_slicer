@@ -285,7 +285,7 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
   //
   {
     size_t bracePos = sourceCode.find("{");
-    sourceCode = (sourceCode.substr(0, bracePos) + "{\n  m_currCmdBuffer = a_commandBuffer; \n  uint32_t outOfForFlags = KGEN_FLAG_RETURN; \n  uint32_t inForFlags = KGEN_FLAG_BREAK; \n\n" + sourceCode.substr(bracePos+2)); 
+    sourceCode = (sourceCode.substr(0, bracePos) + "{\n  m_currCmdBuffer = a_commandBuffer; \n  uint32_t outOfForFlags = KGEN_FLAG_RETURN; \n  uint32_t inForFlags = KGEN_FLAG_BREAK | KGEN_FLAG_RETURN; \n\n" + sourceCode.substr(bracePos+2)); 
   }
 
   // (4) get function decl from full function code
@@ -400,7 +400,10 @@ void kslicer::AddThreadFlagsIfNeeded_LoopBreak_RTCase(std::vector<MainFuncInfo>&
     }
 
     if(foundId == size_t(-1))
+    {
       kernel.args.push_back(tFlagsArg);
+      kernel.checkThreadFlags = true;
+    }
   }  
  
   // add thread flags to MainFuncions and all kernel calls for each MainFunc

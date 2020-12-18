@@ -521,6 +521,10 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       kernelJson["threadName3"] = threadIdNames[2];
     }
 
+    kernelJson["shouldCheckExitFlag"] = k.checkThreadFlags;
+    kernelJson["checkFlagsExpr"]      = "//xxx//";
+    kernelJson["ThreadOffset"]        = "tid";
+
     data["Kernels"].push_back(kernelJson);
   }
 

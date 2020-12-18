@@ -34,6 +34,7 @@ namespace kslicer
     bool usedInMainFunc = false;
     bool isBoolTyped    = false; ///<! special case: if kernel return boolean, we analyze loop exit (break) or function exit (return) expression
     bool usedInExitExpr = false;
+    bool checkThreadFlags = false;
 
     std::string DeclCmd;
     std::unordered_set<std::string> usedVectors; // list of all std::vector<T> member names which is referenced inside kernel

@@ -37,6 +37,8 @@ __kernel void {{Kernel.Name}}(
     return;{% else if Kernel.threadDim == 2 %}if({{Kernel.threadName1}} >= kgen_iNumElementsX || {{Kernel.threadName2}} >= kgen_iNumElementsY)
     return;{% else %}if({{Kernel.threadName1}} >= kgen_iNumElementsX)
     return;{% endif %}
+  {% if Kernel.shouldCheckExitFlag %}if((kgen_threadFlags[{{Kernel.ThreadOffset}}] & kgen_tFlagsMask) != 0) 
+    break;{% endif %}
   {% for Vec in Kernel.Vecs %}const uint {{Vec.Name}}_size = kgen_data[{{Vec.SizeOffset}}]; 
   {% endfor %}/////////////////////////////////////////////////////////////////
 {{Kernel.Source}}
