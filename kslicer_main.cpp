@@ -343,7 +343,7 @@ int main(int argc, const char **argv)
       finder.addMatcher(forLoop_matcher,  &matcherHandler);
       finder.addMatcher(ifExit_matcher,   &matcherHandler);
       finder.addMatcher(kernelInsideFor,  &matcherHandler);
-      finder.addMatcher(ifReturn_matcher,  &matcherHandler);
+      finder.addMatcher(ifReturn_matcher, &matcherHandler);
      
       std::cout << "  process main function: " << mainFuncName.c_str() << "(...): ";
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());

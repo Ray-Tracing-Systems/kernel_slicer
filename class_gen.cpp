@@ -54,7 +54,7 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
     
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
-
+    strOut << "  vkCmdPushConstants(m_currCmdBuffer," << kernName.c_str() << "Layout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint32_t)*3, sizeof(uint32_t)*1, &outOfForFlags);" << std::endl;
     strOut << "  " << kernName.c_str() << "Cmd";
   
     m_rewriter.ReplaceText(f->getExprLoc(), strOut.str());
@@ -222,7 +222,7 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
   //
   {
     size_t bracePos = sourceCode.find("{");
-    sourceCode = (sourceCode.substr(0, bracePos) + "{\n  m_currCmdBuffer = a_commandBuffer; \n\n" + sourceCode.substr(bracePos+2)); 
+    sourceCode = (sourceCode.substr(0, bracePos) + "{\n  m_currCmdBuffer = a_commandBuffer; \n  uint32_t outOfForFlags = 1; \n  uint32_t inForFlags = 2; \n\n" + sourceCode.substr(bracePos+2)); 
   }
 
   // (4) get function decl from full function code

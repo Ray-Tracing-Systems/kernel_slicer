@@ -178,7 +178,7 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
 
   Lite_Hit hit;
   if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar,
-                  &hit))
+                      &hit))
     return;
   
   kernel_GetMaterialColor(tid, &hit, out_color);
