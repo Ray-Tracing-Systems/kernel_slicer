@@ -39,6 +39,7 @@ namespace kslicer
     
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
+    bool VisitIfStmt(IfStmt* ifExpr);
   
     std::string                               mainFuncCmdName;
     std::unordered_map<std::string, uint32_t> dsIdBySignature;
@@ -49,6 +50,7 @@ namespace kslicer
   private:
 
     std::vector<ArgReferenceOnCall> ExtractArgumentsOfAKernelCall(CXXMemberCallExpr* f);
+    std::string MakeKernelCallCmdString(CXXMemberCallExpr* f);
 
     Rewriter&                      m_rewriter;
     const clang::SourceManager&    m_sm;
@@ -58,6 +60,8 @@ namespace kslicer
     std::string m_mainFuncName;
     std::unordered_map<std::string, InOutVarInfo> m_argsOfMainFunc;
     MainFuncInfo& m_mainFunc;
+
+    std::unordered_set<uint64_t> m_alreadyProcessedCalls;
   };
 
   std::unordered_map<std::string, InOutVarInfo> ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node);

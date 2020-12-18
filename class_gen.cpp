@@ -20,39 +20,38 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f)
   return true; // returning false aborts the traversal
 }
 
-bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
+std::string kslicer::MainFuncASTVisitor::MakeKernelCallCmdString(CXXMemberCallExpr* f)
 {
-  // Get name of function
   const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
-
+  
   auto p = fname.find("kernel_");
-  if(p != std::string::npos)
+  assert(p != std::string::npos);
+  std::string kernName = fname.substr(p + 7);
+
+  // extract arguments to form correct descriptor set
+  //
+  auto args = ExtractArgumentsOfAKernelCall(f);
+  std::string callSign = MakeKernellCallSignature(args, m_mainFuncName);
+  auto p2 = dsIdBySignature.find(callSign);
+  if(p2 == dsIdBySignature.end())
   {
-    std::string kernName = fname.substr(p + 7);
+    dsIdBySignature[callSign] = m_kernCallTypes.size();
+    p2 = dsIdBySignature.find(callSign);
+    KernelCallInfo call;
+    call.kernelName         = kernName;
+    call.originalName       = fname;
+    call.callerName         = m_mainFuncName;
+    call.descriptorSetsInfo = args;
+    m_kernCallTypes.push_back(call);
+  }
 
-    // extract arguments to form correct descriptor set
-    //
-    auto args = ExtractArgumentsOfAKernelCall(f);
-    std::string callSign = MakeKernellCallSignature(args, m_mainFuncName);
+  std::string textOfCall = GetRangeSourceCode(f->getSourceRange(), m_compiler);
+  std::string textOfArgs = textOfCall.substr( textOfCall.find("("));
 
-    auto p2 = dsIdBySignature.find(callSign);
-    if(p2 == dsIdBySignature.end())
-    {
-      dsIdBySignature[callSign] = m_kernCallTypes.size();
-      p2 = dsIdBySignature.find(callSign);
-
-      KernelCallInfo call;
-      call.kernelName         = kernName;
-      call.originalName       = fname;
-      call.callerName         = m_mainFuncName;
-      call.descriptorSetsInfo = args;
-      m_kernCallTypes.push_back(call);
-    }
-    std::stringstream strOut;
-    //strOut << "// call tag id = " << m_kernellCallTagId << "; argsNum = " << f->getNumArgs() << std::endl;
-    
+  std::stringstream strOut;
+  {
     // understand if we are inside the loop, or outside of it
     //
     std::string flagsVariableName = "outOfForFlags";
@@ -67,13 +66,65 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
     strOut << "  vkCmdPushConstants(m_currCmdBuffer," << kernName.c_str() << "Layout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint32_t)*3, sizeof(uint32_t)*1, &" << flagsVariableName.c_str() << ");" << std::endl;
-    strOut << "  " << kernName.c_str() << "Cmd";
+    strOut << "  " << kernName.c_str() << "Cmd" << textOfArgs.c_str();
+  }
   
-    m_rewriter.ReplaceText(f->getExprLoc(), strOut.str());
-    m_kernellCallTagId++;
+  return strOut.str();
+}
+
+
+bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
+{
+  // Get name of function
+  const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
+  const DeclarationName dn      = dni.getName();
+  const std::string fname       = dn.getAsString();
+
+  auto p = fname.find("kernel_");
+  if(p != std::string::npos)
+  {
+    std::string callStr = MakeKernelCallCmdString(f);
+
+    auto p2 = m_alreadyProcessedCalls.find(kslicer::GetHashOfSourceRange(f->getSourceRange()));
+    if(p2 == m_alreadyProcessedCalls.end())
+    {
+      m_rewriter.ReplaceText(f->getSourceRange(), callStr); // getExprLoc
+      m_kernellCallTagId++;
+    }
   }
 
   return true; 
+}
+
+bool kslicer::MainFuncASTVisitor::VisitIfStmt(IfStmt* ifExpr)
+{
+  Expr* conBody = ifExpr->getCond();
+  if(isa<UnaryOperator>(conBody)) // if(!kernel_XXX(...))
+  {
+    const auto bodyOp = dyn_cast<UnaryOperator>(conBody);
+    conBody = bodyOp->getSubExpr();
+  }
+
+  if(isa<CXXMemberCallExpr>(conBody))
+  {
+    CXXMemberCallExpr* f = dyn_cast<CXXMemberCallExpr>(conBody); // extract kernel_XXX(...)
+    
+    // Get name of function
+    const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
+    const DeclarationName dn      = dni.getName();
+    const std::string fname       = dn.getAsString();
+  
+    auto p = fname.find("kernel_");
+    if(p != std::string::npos)
+    {
+      std::string callStr = MakeKernelCallCmdString(f);
+      m_rewriter.ReplaceText(ifExpr->getSourceRange(), callStr);
+      m_kernellCallTagId++;
+      m_alreadyProcessedCalls.insert( kslicer::GetHashOfSourceRange(f->getSourceRange()) );
+    }
+  }
+
+  return true;
 }
 
 std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArgumentsOfAKernelCall(CXXMemberCallExpr* f)
@@ -234,7 +285,7 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
   //
   {
     size_t bracePos = sourceCode.find("{");
-    sourceCode = (sourceCode.substr(0, bracePos) + "{\n  m_currCmdBuffer = a_commandBuffer; \n  uint32_t outOfForFlags = KGEN_OUTSIDE_OF_FOR; \n  uint32_t inForFlags = KGEN_INSIDE_FOR; \n\n" + sourceCode.substr(bracePos+2)); 
+    sourceCode = (sourceCode.substr(0, bracePos) + "{\n  m_currCmdBuffer = a_commandBuffer; \n  uint32_t outOfForFlags = KGEN_FLAG_RETURN; \n  uint32_t inForFlags = KGEN_FLAG_BREAK; \n\n" + sourceCode.substr(bracePos+2)); 
   }
 
   // (4) get function decl from full function code

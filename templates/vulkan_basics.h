@@ -14,7 +14,7 @@ struct VulkanContext
   VkQueue transferQueue = VK_NULL_HANDLE;
 };
 
-static constexpr uint32_t KGEN_OUTSIDE_OF_FOR = 1;
-static constexpr uint32_t KGEN_INSIDE_FOR     = 2;
+static constexpr uint32_t KGEN_FLAG_RETURN = 1;
+static constexpr uint32_t KGEN_FLAG_BREAK  = 2;
 
 #endif

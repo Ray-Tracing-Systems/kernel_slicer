@@ -494,17 +494,9 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       if(foundThreadIdZ)
         threadIdNames.push_back(tidZName);
     }
-
-    const std::string numThreadsName = kslicer::GetProjPrefix() + "iNumElements";
-    json argSizes;
-    const char* XYZ[] = {"X","Y","Z"};
-    for(size_t i=0;i<threadIdNames.size();i++)
-      argSizes.push_back(numThreadsName + XYZ[i]);
-
     
     json kernelJson;
     kernelJson["Args"]        = args;
-    kernelJson["ArgSizes"]    = argSizes;
     kernelJson["Vecs"]        = vecs;
     kernelJson["Name"]        = k.name;
 
@@ -519,17 +511,14 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
     if(threadIdNames.size() >= 1)
     {
       kernelJson["threadName1"] = threadIdNames[0];
-      kernelJson["threadSize1"] = argSizes[0];
     }
     if(threadIdNames.size() >= 2)
     {
       kernelJson["threadName2"] = threadIdNames[1];
-      kernelJson["threadSize2"] = argSizes[1];
     }
     if(threadIdNames.size() == 3)
     {
       kernelJson["threadName3"] = threadIdNames[2];
-      kernelJson["threadSize2"] = argSizes[2];
     }
 
     data["Kernels"].push_back(kernelJson);
