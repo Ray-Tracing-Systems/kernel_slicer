@@ -45,6 +45,7 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
 
       KernelCallInfo call;
       call.kernelName         = kernName;
+      call.callerName         = m_mainFuncName;
       call.descriptorSetsInfo = args;
       m_kernCallTypes.push_back(call);
     }
@@ -356,11 +357,14 @@ void kslicer::AddThreadFlagsForCalls_LoopBreak_RTCase(const std::vector<MainFunc
                                                       const std::vector<KernelInfo>&     a_kernelList,
                                                       std::vector<KernelCallInfo>&       a_kernelCalls)
 {
-  // list kernels
+  // list kernels and main functions
   //
   std::unordered_map<std::string, size_t> kernelIdByName;
+  std::unordered_map<std::string, size_t> mainFuncIdByName;
   for(size_t i=0;i<a_kernelList.size();i++)
     kernelIdByName[a_kernelList[i].name] = i;
+   for(size_t i=0;i<a_mainFuncList.size();i++)
+    mainFuncIdByName[a_mainFuncList[i].Name] = i;
 
   ArgReferenceOnCall tFlagsArgRef;
   tFlagsArgRef.argType     = KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL;
@@ -369,31 +373,17 @@ void kslicer::AddThreadFlagsForCalls_LoopBreak_RTCase(const std::vector<MainFunc
 
   // add thread flags to MainFuncions and all kernel calls for each MainFunc
   //
-  for(auto& mainFunc : a_mainFuncList)
+  for(auto& call : a_kernelCalls)
   {
+    const auto& mainFunc = a_mainFuncList[mainFuncIdByName[call.callerName]];
     if(!mainFunc.needToAddThreadFlags)
       continue;
 
-    for(auto& call : a_kernelCalls)
-    {
-      auto p2 = kernelIdByName.find(std::string("kernel_") + call.kernelName);
-      if(p2 != kernelIdByName.end())
-      {
-        size_t found = size_t(-1);
-        for(size_t j=0; j<call.descriptorSetsInfo.size(); j++)
-        {
-          if(call.descriptorSetsInfo[j].varName == tFlagsArgRef.varName)
-          {
-            found = j;
-            break;
-          }
-    
-          //if(found == size_t(-1))
-          //  call.descriptorSetsInfo.push_back(tFlagsArgRef);
-        }
-      }
-    }
+    auto p2 = kernelIdByName.find(std::string("kernel_") + call.kernelName);
+    if(p2 != kernelIdByName.end())
+      call.descriptorSetsInfo.push_back(tFlagsArgRef);
   }
+  
 }
 
 std::unordered_map<std::string, kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node)
