@@ -780,6 +780,8 @@ void kslicer::ObtainKernelsDecl(std::vector<kslicer::KernelInfo>& a_kernelsData,
     assert(ReplaceFirst(kernelCmdDecl, a_mainClassName + "::", ""));
     assert(ReplaceFirst(kernelCmdDecl,"kernel_", ""));
     assert(ReplaceFirst(kernelCmdDecl,"(", "Cmd("));
+    if(k.isBoolTyped)
+      ReplaceFirst(kernelCmdDecl,"bool ", "void ");
     k.DeclCmd = kernelCmdDecl;
   }
 }
