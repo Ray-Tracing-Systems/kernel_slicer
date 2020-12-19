@@ -97,7 +97,7 @@ void TestClass::kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit,
   if(in_hit->primId != -1)
     out_color[tid] = RealColorToUint32_f3(to_float3(spheresMaterials[in_hit->primId].color));
   else
-    out_color[tid] = 0x00000000;
+    out_color[tid] = 0x00700000;
 }
 
 void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)

@@ -40,7 +40,7 @@ __kernel void {{Kernel.Name}}(
     return;{% else %}if({{Kernel.threadName1}} >= kgen_iNumElementsX)
     return;{% endif %}
   {% if Kernel.shouldCheckExitFlag %}if((kgen_threadFlags[{{Kernel.ThreadOffset}}] & kgen_tFlagsMask) != 0) 
-    break;{% endif %}
+    return;{% endif %}
   {% for Vec in Kernel.Vecs %}const uint {{Vec.Name}}_size = kgen_data[{{Vec.SizeOffset}}]; 
   {% endfor %}/////////////////////////////////////////////////////////////////
 {{Kernel.Source}}
