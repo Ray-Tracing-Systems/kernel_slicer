@@ -146,6 +146,7 @@ namespace kslicer
     // RT template specific
     //
     std::unordered_map<uint64_t, KernelStatementInfo> ExitExprIfCond;
+    std::unordered_map<uint64_t, KernelStatementInfo> ExitExprIfCall;
     std::unordered_map<uint64_t, KernelStatementInfo> CallsInsideFor;
 
     bool   needToAddThreadFlags = false;
@@ -156,7 +157,7 @@ namespace kslicer
   */
   struct MainClassInfo
   {
-    std::vector<KernelInfo>      kernels;     ///<! only those kerneles which are called from main function
+    std::vector<KernelInfo>      kernels;     ///<! only those kerneles which are called from main functions
     std::vector<DataMemberInfo>  dataMembers; ///<! only those member variables which are referenced from kernels 
     std::vector<DataMemberInfo>  containers;  ///<! containers that should be transformed to buffers
 

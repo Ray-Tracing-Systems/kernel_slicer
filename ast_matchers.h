@@ -177,6 +177,8 @@ namespace kslicer
             info.exprKind = kslicer::KernelStmtKind::EXIT_TYPE_FUNCTION_RETURN;
           info.isNegative = hasNegativeCondition;
           CurrMainFunc().ExitExprIfCond[hashValue1] = info; // ExitExprIfCond[ifCond]    = kern_call;
+          CurrMainFunc().ExitExprIfCall[hashValue2] = info; // ExitExprIfCond[kern_call] = kern_call;
+          if(forLoop)
           CurrMainFunc().CallsInsideFor[hashValue2] = info; // CallsInsideFor[kern_call] = kern_call;
         }
       }
@@ -184,11 +186,15 @@ namespace kslicer
       {
         auto kernDecl = kern_call->getMethodDecl();
         const uint64_t hashValue2 = kslicer::GetHashOfSourceRange(kern_call->getSourceRange());
-        kslicer::KernelStatementInfo info;
-        info.exprKind        = kslicer::KernelStmtKind::CALL_TYPE_SIMPLE;
-        info.kernelName      = kernDecl->getNameAsString();
-        info.kernelCallRange = kern_call->getSourceRange();
-        CurrMainFunc().CallsInsideFor[hashValue2] = info; // CallsInsideFor[kern_call] = kern_call;
+       
+        if(CurrMainFunc().CallsInsideFor.find(hashValue2) == CurrMainFunc().CallsInsideFor.end()) // see previous branch, if(forLoop) ...  at the end of branch
+        {
+          kslicer::KernelStatementInfo info;
+          info.exprKind        = kslicer::KernelStmtKind::CALL_TYPE_SIMPLE;
+          info.kernelName      = kernDecl->getNameAsString();
+          info.kernelCallRange = kern_call->getSourceRange();
+          CurrMainFunc().CallsInsideFor[hashValue2] = info; // CallsInsideFor[kern_call] = kern_call;
+        }
       }
       else 
       {

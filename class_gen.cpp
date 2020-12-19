@@ -54,14 +54,29 @@ std::string kslicer::MainFuncASTVisitor::MakeKernelCallCmdString(CXXMemberCallEx
   {
     // understand if we are inside the loop, or outside of it
     //
-    std::string flagsVariableName = "outOfForFlags";
+    auto pKernel = m_kernels.find(fname);
+    assert(pKernel != m_kernels.end()); 
 
     auto callSourceRangeHash = kslicer::GetHashOfSourceRange(f->getSourceRange());
     auto p3 = m_mainFunc.CallsInsideFor.find(callSourceRangeHash);
+    auto p4 = m_mainFunc.ExitExprIfCall.find(callSourceRangeHash);
+
+    std::string flagsVariableName = "";
     if(p3 != m_mainFunc.CallsInsideFor.end())
     {
       flagsVariableName = "inForFlags";
-      if(p3->second.isNegative)
+      
+      if(pKernel->second.isBoolTyped && p4 == m_mainFunc.ExitExprIfCall.end())
+        flagsVariableName += "D";
+      else if(p3->second.isNegative)
+        flagsVariableName += "N";
+    }
+    else 
+    {
+      flagsVariableName = "outOfForFlags";
+      if(pKernel->second.isBoolTyped && p4 == m_mainFunc.ExitExprIfCall.end())
+        flagsVariableName += "D";
+      else if(p4 != m_mainFunc.ExitExprIfCall.end() && p4->second.isNegative)
         flagsVariableName += "N";
     }
 
@@ -259,7 +274,7 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
 
   a_mainFunc.startDSNumber = a_outDsInfo.size();
 
-  kslicer::MainFuncASTVisitor rv(rewrite2, compiler, a_mainFunc, inOutParamList, this->allDataMembers);
+  kslicer::MainFuncASTVisitor rv(rewrite2, compiler, a_mainFunc, inOutParamList, this->allDataMembers, this->kernels);
 
   rv.m_kernCallTypes = a_outDsInfo;
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
@@ -292,11 +307,11 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
     if(!a_mainFunc.ExcludeList.empty())
     {
       strOut << "  const uint32_t outOfForFlags  = KGEN_FLAG_RETURN;" << std::endl;
-      strOut << "  const uint32_t inForFlags     = KGEN_FLAG_RETURN | KGEN_FLAG_RETURN;" << std::endl;
+      strOut << "  const uint32_t inForFlags     = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK;" << std::endl;
       strOut << "  const uint32_t outOfForFlagsN = KGEN_FLAG_RETURN | KGEN_FLAG_SET_EXIT_NEGATIVE;" << std::endl;
-      strOut << "  const uint32_t inForFlagsN    = KGEN_FLAG_RETURN | KGEN_FLAG_RETURN | KGEN_FLAG_DONT_SET_EXIT;" << std::endl;
-      strOut << "  const uint32_t outOfForFlagsD = KGEN_FLAG_RETURN | KGEN_FLAG_SET_EXIT_NEGATIVE;" << std::endl;
-      strOut << "  const uint32_t inForFlagsD    = KGEN_FLAG_RETURN | KGEN_FLAG_RETURN | KGEN_FLAG_DONT_SET_EXIT;" << std::endl;
+      strOut << "  const uint32_t inForFlagsN    = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK | KGEN_FLAG_SET_EXIT_NEGATIVE;" << std::endl;
+      strOut << "  const uint32_t outOfForFlagsD = KGEN_FLAG_RETURN | KGEN_FLAG_DONT_SET_EXIT;" << std::endl;
+      strOut << "  const uint32_t inForFlagsD    = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK | KGEN_FLAG_DONT_SET_EXIT;" << std::endl;
     }
     strOut << std::endl;
 

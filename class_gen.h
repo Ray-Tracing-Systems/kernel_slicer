@@ -32,10 +32,15 @@ namespace kslicer
     
     MainFuncASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, MainFuncInfo& a_mainFunc, 
                        const std::unordered_map<std::string, InOutVarInfo>& a_args, 
-                       std::unordered_map<std::string, DataMemberInfo>& a_members) : 
+                       std::unordered_map<std::string, DataMemberInfo>& a_members,
+                       const std::vector<KernelInfo>& a_kernels) : 
                        m_rewriter(R), m_compiler(a_compiler), m_sm(R.getSourceMgr()), 
                        m_kernellCallTagId(0), m_mainFuncName(a_mainFunc.Name), 
-                       m_argsOfMainFunc(a_args), m_allClassMembers(a_members), m_mainFuncLocals(a_mainFunc.Locals), m_mainFunc(a_mainFunc) { }
+                       m_argsOfMainFunc(a_args), m_allClassMembers(a_members), m_mainFuncLocals(a_mainFunc.Locals), m_mainFunc(a_mainFunc) 
+    { 
+      for(const auto& k : a_kernels)
+        m_kernels[k.name] = k;    
+    }
     
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
@@ -59,6 +64,7 @@ namespace kslicer
     
     std::string m_mainFuncName;
     std::unordered_map<std::string, InOutVarInfo> m_argsOfMainFunc;
+    std::unordered_map<std::string, KernelInfo>   m_kernels;
     MainFuncInfo& m_mainFunc;
 
     std::unordered_set<uint64_t> m_alreadyProcessedCalls;
