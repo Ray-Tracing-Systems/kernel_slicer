@@ -38,9 +38,9 @@ void TestClass::MainFunc(uint tidX, uint tidY, uint* out_color)
 }
 ```
 
-Here we have four local variables which will be translated to buffers and three kernel functions which will be translated to kernels. It is developer responsibility to define how to split code to kernels, but in general this is should be consistenmt with program logic in normal CPU code.
+Here we have three local variables (*rayPosAndNear, rayDirAndFar, hit*) which will be translated to buffers and three kernel functions which will be translated to kernels. It is **developer responsibility** to define how to split code to kernels, but in general this is should be consistent with splitting your program logic to functions in normal CPU code.
 
-You can think of the local variables of the control function variables as being on the stack (well, which in general is true for CPU code). And think about the code that is implemented inside the kernels --- as about the code that uses exclusively registers and stores the result on the stack in these variables.
+You can imagine local variables of the control function as being placed on the stack (which in general is happened for CPU code). And think about the code that is implemented inside the kernels --- as about highly optimized code that mostly uses registers and stores the result on the stack in these variables.
 
 Now let us see input and generated source code for kernel_InitEyeRay:
 ```cpp
@@ -79,10 +79,36 @@ __kernel void kernel_InitEyeRay(
 
 Here you can see several things happened:
 
-1. For all local variables of control functions that were passed to kernels by address, thread offsets were added;
+1. For all local variables of control functions that were **passed to kernels by address** , thread offsets were added;
 
-2. For class member m_worldViewProjInv which is accesed inside "TestClass::kernel_InitEyeRay" the code was changed to access this member via data buffer 'kgen_data' at particular offet. In the generated Vulkan code we will also have method to update m_worldViewProjInv at MATRIX_OFFSET.
+2. For class member m_worldViewProjInv which is accesed inside "TestClass::kernel_InitEyeRay" the code was changed to access this member via data buffer 'kgen_data' at particular offset. In the generated Vulkan code we will also have method to update m_worldViewProjInv at MATRIX_OFFSET.
+
+Here you saw that inside kernel functions you can access data class member *m_worldViewProjInv* which is understanded by the translator and transformed to appropriate GPU code. In the following examples, you will see that you can directly access std::vector<...> data members of main class inside kernels. Also you can call member functions from kernels (**WORK IN PROGRESS!**) which turns GPU programming to just writing common object oriented code in C++ for some cases.
+
+Now let us see what happends inside generated control function:
 
 
-## Image Processing Vectorization (IPV) Pattern
+```cpp
+void TestClass_Generated::MainFuncCmd(VkCommandBuffer a_commandBuffer, int tidX, uint tidY, uint* out_color)
+{
+  m_currCmdBuffer = a_commandBuffer;
+
+  float4 rayPosAndNear, rayDirAndFar;
+  vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, InitEyeRayLayout, 0, 1, &m_allGeneratedDS[0], 0, nullptr);
+  InitEyeRayCmd(tidX, tidY, &rayPosAndNear, &rayDirAndFar);
+
+  Lite_Hit hit;
+  vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, RayTraceLayout, 0, 1, &m_allGeneratedDS[1], 0, nullptr);
+  RayTraceCmd(tidX, tidY, &rayPosAndNear, &rayDirAndFar, 
+              &hit);
+  
+  vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, TestColorLayout, 0, 1, &m_allGeneratedDS[2], 0, nullptr);
+  TestColorCmd(tidX, tidY, &hit, 
+               out_color);
+}
+```
+
+Since we use automatic source-to-source translation, you shouldn't be confused with old variables (*rayPosAndNear, rayDirAndFar, hit*) which are still presented but not used this time. Here we have to pay attention to 2 things. First, the control flow has been preserved. Second, for each kernel call specific descriptor set was initialized and *vkCmdBindDescriptorSets*  is inserted before kernel calls to bind corrent input and ouptut buffers to each kernel.
+
+The full source code of this example is located at [apps/01_intersectSphere/](apps/01_intersectSphere/)
 
