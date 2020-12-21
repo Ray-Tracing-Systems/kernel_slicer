@@ -81,11 +81,11 @@ In practical applications of Ray Tracing there is a problem with effitiency of c
 
 * [Example #1: single kernel ](README_ex00.md)
 
-* [Example #2: passing data between kernels](README_ex0.md)
+* [Example #2: passing data between kernels](README_ex01.md)
 
-* [Example #3: path tracing with loop-break](README_ex3.md)
+* [Example #3: path tracing with loop-break](README_ex03.md)
 
-* [Example #4: virtual kernel call (WORK IN PROGRESS!)](README_ex3.md)
+* [Example #4: virtual kernel call (WORK IN PROGRESS!)](README_ex04.md)
 
 ## Image Processing Vectorization (IPV) Pattern
 
