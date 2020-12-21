@@ -91,10 +91,12 @@ In fact there are at least several existing ways to deal with such code:
 
 Now the biggest problem is that all of these ways are quite **(1) different and (2) difficult to implement**  scenarious of the same algorithm.  In most cases, for example, thread flags will be optimal. But if you have large number of iterations (well, usually larger than 50), other options may be useful for performance. But which one? The full thead compactions as were implemented in [Streaming Path Tracing](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.217.7304&rep=rep1&type=pdf) may be quite [expencieve](http://www.sci.utah.edu/~wald//Publications/2011/PathCompaction/compact.pdf), because it change access pattern to your payload data and break memory coalescing. More lite and simple way is to perform thread compaction in shared memory for separate thread blocks (and probably use larger thread blocks, for example 512 threads). But this still may lead to significant overhead for lite kernels and thus you should decide which kernels are exposed for this optimization and which of them are not. Using Vulkan RTX may be the best option, but do you always have ray tracing hardware on the customer side? 
 
-What kernel_slicer actually does for you in this case, it is allow you to **focus on the logic implementation** and leave optimizations to translator back-end. You don't have to do all of this piece of oprimization yourself because it is stupid and mechanical work! Just leave you logic in its original form and forget about this quite low-level details!  
+What kernel_slicer actually does for you in this case, it is allow you to **focus on the logic implementation** and leave optimizations to translator back-end. You don't have to do all of this piece of optimization yourself because it is stupid and mechanical work! Just leave you logic in its original form and forget about this quite low-level details!  
 
 **(!!!) WARNING (!!!) Currently we use only thread flags. Other implementations are our FUTURE WORK!**  
+
 Moreover, you can simply try different optimizations transparently by just telling the compiler what optimization it needs to apply. Then you can test performance and decide which of these options is best for your application.
+
 **(!!!) WARNING (!!!) Currently we use only thread flags. Other implementations are our FUTURE WORK(!**  
 
 ## std::vector's data access
