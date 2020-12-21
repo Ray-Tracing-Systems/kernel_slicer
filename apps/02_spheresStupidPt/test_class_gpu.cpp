@@ -107,14 +107,14 @@ void test_class_gpu()
   
   VkDeviceMemory colorMem  = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {xyBuffer, colorBuffer1, colorBuffer2});
   
-  pGPUImpl->SetVulkanInputOutputFor_PackXY(xyBuffer, 0);               // !!! USING GENERATED CODE !!! 
+  pGPUImpl->SetVulkanInOutFor_PackXY(xyBuffer, 0);              // !!! USING GENERATED CODE !!! 
 
-  pGPUImpl->SetVulkanInputOutputFor_CastSingleRay(colorBuffer1, 0,     // !!! USING GENERATED CODE !!!
-                                                  xyBuffer, 0);        // !!! USING GENERATED CODE !!!
+  pGPUImpl->SetVulkanInOutFor_CastSingleRay(colorBuffer1, 0,    // !!! USING GENERATED CODE !!!
+                                            xyBuffer, 0);       // !!! USING GENERATED CODE !!!
 
-  pGPUImpl->SetVulkanInputOutputFor_StupidPathTrace(colorBuffer2, 0,   // !!! USING GENERATED CODE !!!
-                                                    xyBuffer,     0);  // !!! USING GENERATED CODE !!!
-  pGPUImpl->UpdateAll(pCopyHelper);                                    // !!! USING GENERATED CODE !!!
+  pGPUImpl->SetVulkanInOutFor_StupidPathTrace(colorBuffer2, 0,  // !!! USING GENERATED CODE !!!
+                                              xyBuffer,     0); // !!! USING GENERATED CODE !!!
+  pGPUImpl->UpdateAll(pCopyHelper);                             // !!! USING GENERATED CODE !!!
   
   // now compute some thing useful
   //

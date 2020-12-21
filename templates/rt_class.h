@@ -43,7 +43,7 @@ public:
   }
 
 ## for MainFunc in MainFunctions
-  virtual void SetVulkanInputOutputFor_{{MainFunc.Name}}(
+  virtual void SetVulkanInOutFor_{{MainFunc.Name}}(
 ## for BufferName in MainFunc.InOutVars
     VkBuffer a_{{BufferName}}Buffer,
     size_t   a_{{BufferName}}Offset,

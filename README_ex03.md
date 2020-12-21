@@ -3,7 +3,7 @@
 
 Let's now consider a more interesting case and finally do some path tracing (fig. 1)! The full source code of this example is located at [apps/01_intersectSphere/](apps/03_spheresStupidPt_loopBreak/).
 
-<p align = "center"><img src="images/ptspheres.png" align = "center"></p><p align = "center">Fig. 1. Very basic example of path tracing in Vukan with our RTV tempplate</p><BR>
+<p align = "center"><img src="images/ptspheres.png" align = "center"></p><p align = "center">Fig. 1. Very basic example of path tracing in Vukan with our RTV pattern </p><BR>
 
 ## if(...) break and if(...) return inside control functions
 

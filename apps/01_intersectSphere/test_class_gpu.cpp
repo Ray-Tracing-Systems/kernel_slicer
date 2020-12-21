@@ -81,7 +81,7 @@ void test_class_gpu()
   VkBuffer colorBuffer     = vkfw::CreateBuffer(device, bufferSize,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   VkDeviceMemory colorMem  = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {colorBuffer});
   
-  pGPUImpl->SetVulkanInputOutputFor_MainFunc(colorBuffer, 0); // !!! USING GENERATED CODE !!! 
+  pGPUImpl->SetVulkanInOutFor_MainFunc(colorBuffer, 0); // !!! USING GENERATED CODE !!! 
   pGPUImpl->UpdateAll(pCopyHelper);                           // !!! USING GENERATED CODE !!!
 
   // (4) fill buffer with yellow color
