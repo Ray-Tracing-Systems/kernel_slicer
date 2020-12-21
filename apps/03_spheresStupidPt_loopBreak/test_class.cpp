@@ -253,8 +253,8 @@ void test_class_cpu()
     if(passId%10 == 0)
     {
       const float progress = 100.0f*float(passId)/float(PASS_NUMBER);
-      //std::cout << "progress = " << progress << "%   \r";
-      //std::cout.flush();
+      std::cout << "progress = " << progress << "%   \r";
+      std::cout.flush();
     }
   }
   
