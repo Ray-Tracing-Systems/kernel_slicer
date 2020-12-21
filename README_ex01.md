@@ -3,7 +3,7 @@
 
 The kernel_slicer can be thought of a sort of high level vectorization technology (fig. 2) which uses Vulkan as a core back-end for actual code vectorization. In fact we have many existing vectorization technologies like CUDA, OpenCL, ISPC, Vulkan and some other like [enoki](https://github.com/mitsuba-renderer/enoki "structured vectorization and differentiation on modern processor architectures"), TBD add more ...
 
-<p align = "center"><img src="vector_inst.png" width = "500" align = "center"></p><p align = "center">Fig. 2. Code vectorization technology idea</p><BR>
+<p align = "center"><img src="images/vector_inst.png" width = "500" align = "center"></p><p align = "center">Fig. 2. Code vectorization technology idea</p><BR>
 
 When you are exploring different ways of splitting your code into pieces to better optimize those pieces with a vectorizing compiler, you have to try many different variants which is time consuming with Vulkan and make optimization process hard.
 
@@ -110,5 +110,5 @@ void TestClass_Generated::MainFuncCmd(VkCommandBuffer a_commandBuffer, int tidX,
 
 Since we use automatic source-to-source translation, you shouldn't be confused with old variables (*rayPosAndNear, rayDirAndFar, hit*) which are still presented but not used this time. Here we have to pay attention to 2 things. First, the control flow has been preserved. Second, for each kernel call specific descriptor set was initialized and *vkCmdBindDescriptorSets*  is inserted before kernel calls to bind corrent input and ouptut buffers to each kernel.
 
-The full source code of this example is located at [apps/01_intersectSphere/](apps/01_intersectSphere/)
+The full source code of this example is located at [apps/01_intersectSphere/](apps/01_intersectSphere/). The example is relatively simple, it generate ray in first kernel, intersect sphere in the second one and then finally put color to resulting *out_color* in the third one. 
 

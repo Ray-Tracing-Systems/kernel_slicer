@@ -1,5 +1,5 @@
 # kernel_slicer: CPU to GPU (Vulkan) translator
-<p align = "center"><img src="logo.png" width = "600"></p>
+<p align = "center"><img src="images/logo.png" width = "600"></p>
 <p align = "center">Fig. 1. Our translator has many heads due to many existing programming patterns.</p><BR>
 This project is based on clang (fig. 1.). We sincerely thank the clang front-end developers for the great structure and documentation of their project!
 
@@ -21,9 +21,9 @@ kernel_slicer is auto-programming tool which takes C++ code as input and port th
 
 * We also keep in mind [Circle shader compiler](https://github.com/seanbaxter/shaders "writing shaders in C++ with Circle compiler") which we are going to use in future as one of our back-ends; 
 
-* Let's summarize again: you have to bind generated code to your program yourself, thus you can't you escape Vulkan experience. This can be done by directly using generated class. You can also override some functions if you want to change behaviour of some generated code parts;
+* Let's summarize again: you have to bind generated code to your program yourself, thus you can't  escape Vulkan experience. You can directly use generated class. You can also override some functions if you want to change behaviour of some parts of generated code;
 
-* Our main users are Vulkan developers that has to use Vulkan due to some specific hardware features or performance requirenments. Therefore, we initially pay special attention to interaction between generated and hand written (which can use any desired hardware extensions) code which assumed to be done via inheritance and virtual function overrides;
+* Our main users are Vulkan developers that has to use Vulkan due to some specific hardware features or performance requirenments. Therefore, we initially pay special attention to interaction between generated and hand written code (which can use any desired hardware extensions). Such interaction is assumed to be done via inheritance and virtual function overides;
 
 # Build(1): as stand-alone project
 
@@ -71,18 +71,21 @@ kernel_slicer is auto-programming tool which takes C++ code as input and port th
 
 12. You will need also to build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders").
 
-# Concept 
+# Concept and general workflow
 
 # Patterns
 
 ## Ray Tracing Vectorization (RTV) Pattern
 
-In practical applications of Ray Tracing there is a problem with effitiency of complex code: if fact you can't just put all your code for ray/path evaluation to a single kernel if you take care about performance. So, developers usually split their implementation in multiple kernels and pass data between kernels via main memory and may use some optimizations like thread compaction or path regeneration. In the same time, kernels need to access arbitrary data of materials, light and geometry. So, in our opinion RTV template is quite general vectorization template. 
+In practical applications of Ray Tracing there is a problem with effitiency of complex code: if fact you can't just put all your code for ray/path evaluation to a single kernel if you take care about performance. So, developers usually split their implementation in multiple kernels and pass some data (*which is called payload in RTX*) between kernels via main memory and may use some optimizations like thread compaction or path regeneration or RTX pipileine in Vulkan. In the same time, kernels need to access arbitrary data of materials, light and geometry. Therefore, in our opinion RTV patterns is quite general vectorization pattern which can be used for many different applications other than ray tracing. 
 
 * [Example #1: single kernel ](README_ex00.md)
 
-* [Example #2: passing data between kernels](README_ex01.md)
+* [Example #2: passing data between kernels](README_ex0.md)
 
+* [Example #3: path tracing with loop-break](README_ex3.md)
+
+* [Example #4: virtual kernel call (WORK IN PROGRESS!)](README_ex3.md)
 
 ## Image Processing Vectorization (IPV) Pattern
 
