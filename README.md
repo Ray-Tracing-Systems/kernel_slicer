@@ -73,6 +73,79 @@ kernel_slicer is auto-programming tool which takes C++ code as input and port th
 
 # Concept and general workflow
 
+Now let us discuss general workflow of using kernel_slicer to port you code to GPU (Fig. 2):
+
+
+<p align = "center"><img src="images/concept.jpg" width = "858"></p>
+<p align = "center">Fig. 2. Sceme of our translator usage.</p><BR>
+
+* To the first, suppose your logic on the CPU is implemented in some class (called *MyClass*) inside *MyClass.h* and *MyClass.cpp* files; 
+
+* And suppose that you class *MyClass.h* is used by another file *my_logic_cpu.cpp* which is normal C++ code;
+
+* Now we know that our logic is implemented inside some *MyClass* methods and we also know that *MyClass* is implemented according to some programming pattern supported by ernel_slicer. Not OOP patterns, like in [Gang of Four](https://en.wikipedia.org/wiki/Design_Patterns) book, but rather that some high level domain specific pattern for concrete set of applications. Like ray tracing, image processing, [CFD](https://en.wikipedia.org/wiki/Computational_fluid_dynamics) or other.
+
+* You give *MyClass.cpp* to the translator, tell it pattern name, and then got your optimized GPU implementation to be generated in three files: *MyClass_Generated.h*, *MyClass_Generated.cpp* and *z_generated.cl*.
+
+  * MyClass_Generated.h represent interface of the generated class;
+
+  * MyClass_Generated.cpp contain generated Vulkan calls (and actually can be split to several files because Vulkan despriptor se initialization code is quite huge usually);
+
+  * generated.cl contain generated kernels;
+  
+* The generated C++ implementation in *MyClass_Generated.cpp* assume that you will compile *z_generated.cl* manually with [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") to get *z_generated.cl.spv*;
+
+* Now you should plug generated implementation in to your application by creating *my_logic_cpu.cpp* which will use interface provided by *MyClass_Generated.h*.
+
+* Please note that the code which is implemented in *include/MyFunctions.h* assumed to be portable and should works as it is both for CPU compiler and clspv. It is your responsibility to follow clspv restrictions (well, at least for a while). 
+
+## runing examples
+
+1. Clone kernel_slicer and build it;
+
+2. build clspv;
+
+3. Select one of examples from app folder. We use the simplest one in this tutorial: "apps/01_intersectSphere".
+
+4. (temp) clone vkfw from cbvh project to apps to form "apps/vkfw"; 
+
+5. (optional) Understand CPU code. You may comment all Vulkan includes and generated files from CMakeLists.txt (test_class_generated.cpp and test_class_generated_ds.cpp) to build and run only cpu code. And please comment "test_class_gpu()" call in main.cpp; You may fix CMake and includes back later.
+
+6. Run kernel kslicer with the folowing command line (examples are stored in ".vscode/launch.json") from the project folder (i.e. the folder where this README.md is located): 
+
+```
+./kslicer "apps/01_intersectSphere/test_class.cpp" -mainClass "TestClass" -stdlibfolder "TINYSTL" -v
+```
+
+Now generated files should apper in  "apps/01_intersectSphere" folder.
+
+ 7. Go to "apps/01_intersectSphere" and edit "z_generated.cl". Sorry, includes are still not done. You need to replace "LiteMath.h" to "include/OpenCLMath.h"; Check if there is some other wrong includes which are not expected in GPU code and remove them (not fo this example).
+ 
+ 8. Put clspv to "apps/01_intersectSphere" and run:
+ 
+ ```
+./clspv z_generated.cl -o z_generated.cl.spv -pod-pushconstant 
+```
+ 
+ If you dot z_generated.cl.spv file, kernels were compiled succesfully. 
+ 
+ 9. Now you can bind generated code to some your Vulkan code. We provide simple example in *test_class_gpu.cpp*.
+ 
+ 10. Build and run the application (don't forget to get back "test_class_gpu()" call in main.cpp if you previously comment it) from the sample folder "apps/01_intersectSphere". Now you should have 2 identical images in the sample forder: the first from the CPU code path and the second from the GPU one.  
+ 
+ 
+## if it does not work
+
+In the current status our generator does pretty simple and stupid work. Therefore, not much things can goes wrong:
+
+1. If you got error message from *kslicer* application on the translation stage please read and understand it. Currently, the most common problem on this stage is absence of some functions from the STL. Just define these functions in *TINYSTL* directory. Note that you don't have to implement them, just define required interface to clang AST parser got them!
+
+2. If your generated code can not be not compiled, seems you dont follow the pattern or there is some-thing which is not supported by our translator yet;
+
+3. If you don't see some functions in generated code which are supposed to be there, you don't follow the pattern and kernel_slicer just ignore such code;
+
+4. If you have some error messages from clspv, analyze them and understand what happened; Since our technology uses clspv, you have to follow its restrictions: add "__global" qualificator to pointers which assumed to access GPU global memory, don't compare/check pointers to zero, and other.   
+
 # Patterns
 
 ## Ray Tracing Vectorization (RTV) Pattern
