@@ -94,11 +94,11 @@ void TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   *out_hit = res;
 }
 
-void TestClass::kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit, 
+void TestClass::kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit, const SphereMaterial* a_sphereMats,
                                         uint* out_color)
 {
   if(in_hit->primId != -1)
-    out_color[tid] = RealColorToUint32_f3(to_float3(spheresMaterials[in_hit->primId].color));
+    out_color[tid] = RealColorToUint32_f3(to_float3(a_sphereMats[in_hit->primId].color));
   else
     out_color[tid] = 0x00700000;
 }
@@ -195,7 +195,8 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
   kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &flags,
                   &hit);
   
-  kernel_GetMaterialColor(tid, &hit, out_color);
+  kernel_GetMaterialColor(tid, &hit, spheresMaterials.data(), 
+                          out_color);
 }
 
 void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color)

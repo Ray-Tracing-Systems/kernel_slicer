@@ -141,11 +141,21 @@ Now generated files should apper in  "apps/01_intersectSphere" folder.
 
 (+) can use vector.size() inside kernels;
 
+(+) can pass vector.data() to kernel in control function;
+
+```cpp
+void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
+{
+  ... 
+  Lite_Hit hit; 
+  kernel_GetMaterialColor(tid, &hit, spheresMaterials.data(), // ok, this is valid
+                          out_color);
+}
+```
+
 (-) can't **yet** use vector.capacity() inside kernels (**not implemented**);
 
 (-) can't **yet** vector.data() method inside kernel (**not implemented**);
-
-(-) can **yet** pass vector.data() to kernel inside control function (**not implemented**);
 
 (-) can't **yet** use vector.push_back() inside kernels (**not implemented**);
 

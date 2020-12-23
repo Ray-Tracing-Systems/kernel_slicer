@@ -56,7 +56,7 @@ public:
   void kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar, const uint* flags,
                        Lite_Hit* out_hit);
   
-  void kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit, 
+  void kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit, const SphereMaterial* a_sphereMats,
                                uint* out_color);
 
   void kernel_InitAccumData(uint tid, float4* accumColor, float4* accumuThoroughput);

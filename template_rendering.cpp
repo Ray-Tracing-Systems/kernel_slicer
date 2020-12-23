@@ -55,6 +55,15 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
   return kernelDeclByName;
 }
 
+std::string GetDSArgName(const std::string& a_mainFuncName, const std::string& a_dsVarName)
+{
+  auto posOfData = a_dsVarName.find(".data()");
+  if(posOfData != std::string::npos)
+    return std::string("m_vdata.") + a_dsVarName.substr(0, posOfData);
+  else
+    return a_mainFuncName + "_local." + a_dsVarName; 
+}
+
 nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, 
                                              const std::vector<MainFuncInfo>& a_methodsToGenerate, 
                                              const std::string& a_genIncude)
@@ -293,9 +302,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
         if(elementId != predefinedNamesId.end())
           continue;
 
+        const std::string dsArgName = GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j].varName);
+
         json arg;
         arg["Id"]   = realId;
-        arg["Name"] = mainFunc.Name + "_local." + dsArgs.descriptorSetsInfo[j].varName;
+        arg["Name"] = dsArgName;
         local["Args"].push_back(arg);
         local["ArgNames"].push_back(dsArgs.descriptorSetsInfo[j].varName);
         realId++;
