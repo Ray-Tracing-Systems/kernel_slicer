@@ -184,7 +184,7 @@ class TestClass // main class
 
 (-) can't use pointer members inside kernels (**forbidden**). The translator will ignore pointer members because it can't know size of your data which is mandatory. However you still may use pointers for normal CPU code in your class, but please don't expect we can port their data to GPU;
 
-(-) can't print to std output or files inside kernels (**not planned for implementation**). Although this functionality can in principle be implemented, we see no critical in it because it is supposed that you will debuyg your code on the CPU and then just comment out all file/streams output;
+(-) can't print to std output or files inside kernels (**not planned for implementation**). Although this functionality can be implemented, we see no critical need in it because it is supposed that you will debug your code on the CPU and then just comment out all file/streams output inside kernel code;
 
 ## if it does not work
 
