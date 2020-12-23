@@ -83,15 +83,15 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
 
 * And suppose that you class *MyClass.h* is used by another file *my_logic_cpu.cpp* which is normal C++ code;
 
-* Now we know that our logic is implemented inside some *MyClass* methods and we also know that *MyClass* is implemented according to some programming pattern supported by ernel_slicer. Not OOP patterns, like in [Gang of Four](https://en.wikipedia.org/wiki/Design_Patterns) book, but rather that some high level domain specific pattern for concrete set of applications. Like ray tracing, image processing, [CFD](https://en.wikipedia.org/wiki/Computational_fluid_dynamics) or other.
+* Now we know that our logic is implemented inside some *MyClass* methods and we also know that *MyClass* is implemented according to some programming pattern supported by kernel_slicer. Not OOP patterns, like in [Gang of Four](https://en.wikipedia.org/wiki/Design_Patterns) book, but some high level domain specific pattern for concrete set of applications or algorithms. Like ray tracing, image processing, [CFD](https://en.wikipedia.org/wiki/Computational_fluid_dynamics) or other.
 
-* You give *MyClass.cpp* to the translator, tell it pattern name, and then got your optimized GPU implementation to be generated in three files: *MyClass_Generated.h*, *MyClass_Generated.cpp* and *z_generated.cl*.
+* You give *MyClass.cpp* to the translator, tell it pattern name, and then got your optimized GPU implementation in Vulkan to be generated in three files: *MyClass_Generated.h*, *MyClass_Generated.cpp* and *z_generated.cl*.
 
-  * MyClass_Generated.h represent interface of the generated class;
+  * MyClass_Generated.h represent Vulkan interface to the generated class;
 
-  * MyClass_Generated.cpp contain generated Vulkan calls (and actually can be split to several files because Vulkan despriptor se initialization code is quite huge usually);
+  * MyClass_Generated.cpp contain generated Vulkan calls (and in fact can be split to multiple files because Vulkan despriptor set initialization code is quite huge);
 
-  * generated.cl contain generated kernels;
+  * generated.cl (z_generated.cl currently) contain generated kernels;
   
 * The generated C++ implementation in *MyClass_Generated.cpp* assume that you will compile *z_generated.cl* manually with [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") to get *z_generated.cl.spv*;
 
@@ -132,11 +132,63 @@ Now generated files should apper in  "apps/01_intersectSphere" folder.
  9. Now you can bind generated code to some your Vulkan code. We provide simple example in *test_class_gpu.cpp*.
  
  10. Build and run the application (don't forget to get back "test_class_gpu()" call in main.cpp if you previously comment it) from the sample folder "apps/01_intersectSphere". Now you should have 2 identical images in the sample forder: the first from the CPU code path and the second from the GPU one.  
- 
- 
+
+## Feature list: what you can do and what you should avoid
+
+(+) can access POD-like class data members inside kernels;
+
+(+) can access class data members of std::vector type inside kernels;
+
+(+) can use vector.size() inside kernels;
+
+(-) can't **yet** use vector.capacity() inside kernels (**not implemented**);
+
+(-) can't **yet** vector.data() method inside kernel (**not implemented**);
+
+(-) can **yet** pass vector.data() to kernel inside control function (**not implemented**);
+
+(-) can't **yet** use vector.push_back() inside kernels (**not implemented**);
+
+(-) can't **yet** use nested vector types. I.e. if std::vector is inside some structure which is stored in std::vector in main class (**not implemented**);
+
+So, here some examples about class-members access:
+
+```cpp
+struct MyTestStruct
+{
+  float myData[4];
+};
+
+struct MyNestedTestStruct
+{
+  float myData[4];
+  std::vector<float> nestedData;
+};
+
+class TestClass // main class
+{
+  float4x4 m_worldViewProjInv;                        // ok
+  unsigned int m_data1;                               // ok
+  float m_data2[3];                                   // ok
+  std::vector<unsigned int>        m_someBufferData1; // ok
+  std::vector<MyTestStruct>        m_someBufferData2; // also ok
+  std::vector<MyNestedTestStruct>  m_someBufferData3; // ILLEGAL! NOT YET SUPPORTED!
+};
+```
+
+(-) can't **yet** call virtual kernels (**not implemented**);
+
+(-) can't **yet** use class methods inside kernels (**not implemented**);
+
+(-) can't **yet** inherit your class from some other class (**not implemented**);
+
+(-) can't use pointer members inside kernels (**forbidden**). The translator will ignore pointer members because it can't know size of your data which is mandatory. However you still may use pointers for normal CPU code in your class, but please don't expect we can port their data to GPU;
+
+(-) can't print to std output or files inside kernels (**not planned for implementation**). Although this functionality can in principle be implemented, we see no critical in it because it is supposed that you will debuyg your code on the CPU and then just comment out all file/streams output;
+
 ## if it does not work
 
-In the current status our generator does pretty simple and stupid work. Therefore, not much things can goes wrong:
+In the current status our generator does pretty simple and stupid work. Therefore, not much things can go wrong:
 
 1. If you got error message from *kslicer* application on the translation stage please read and understand it. Currently, the most common problem on this stage is absence of some functions from the STL. Just define these functions in *TINYSTL* directory. Note that you don't have to implement them, just define required interface to clang AST parser got them!
 
