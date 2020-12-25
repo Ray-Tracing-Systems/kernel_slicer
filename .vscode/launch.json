@@ -71,6 +71,29 @@
                 }
             ]
         },
+
+        {
+            "name"   : "Launch (app_04)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/04_filter_bloom_bad/test_class.cpp",
+                        "-mainClass", "ToneMapping", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL", 
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
         
         
 

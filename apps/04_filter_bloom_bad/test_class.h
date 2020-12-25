@@ -2,7 +2,6 @@
 #define TEST_CLASS_H
 
 #include "include/BasicLogic.h" // We assume that all code that should pe passed to kernels will be just included both for CPU and OpenCL
-#include "include/crandom.h"
 
 #include <vector>
 #include <iostream>

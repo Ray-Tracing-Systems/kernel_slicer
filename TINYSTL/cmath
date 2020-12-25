@@ -20,11 +20,15 @@ float tanf(float x);
 float pow(float x, float power);
 float powf(float x, float power);
 
+float exp(float x);
+float expf(float x);
+
 static const unsigned int RAND_MAX = 65535;
 static const float        MAXFLOAT = 1e37f;
 
 unsigned int rand();
 
 typedef unsigned int uint32_t;
+typedef unsigned long long int uint64_t;
 
 #endif
