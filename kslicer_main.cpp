@@ -403,22 +403,9 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  std::cout << "(3) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl; 
-  std::cout << "{" << std::endl;
-
-  // (4) calc offsets for all class variables; ingore unused members that were not marked on previous step
-  //
-  {
-    inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
-    std::cout << "  placed classVariables num = " << inputCodeInfo.dataMembers.size() << std::endl;
-  }
-
-  std::cout << "}" << std::endl;
-  std::cout << std::endl;
-  
   kslicer::AddThreadFlagsIfNeeded_LoopBreak_RTCase(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
 
-  std::cout << "(4) Process All 'Main' functions to generate all 'MainCmd' " << std::endl; 
+  std::cout << "(3) Process All 'Main' functions to generate all 'MainCmd' " << std::endl; 
   std::cout << "{" << std::endl;
 
   // (5) genarate cpp code with Vulkan calls
@@ -438,6 +425,21 @@ int main(int argc, const char **argv)
   
   kslicer::AddThreadFlagsForCalls_LoopBreak_RTCase(inputCodeInfo.mainFunc, inputCodeInfo.kernels, // ==>
                                                    inputCodeInfo.allDescriptorSetsInfo);          // <==
+
+  
+  std::cout << "(4) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl; 
+  std::cout << "{" << std::endl;
+
+  // (4) calc offsets for all class variables; ingore unused members that were not marked on previous step
+  //
+  {
+    inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
+    std::cout << "  placed classVariables num = " << inputCodeInfo.dataMembers.size() << std::endl;
+  }
+
+  std::cout << "}" << std::endl;
+  std::cout << std::endl;
+  
 
   std::cout << "(5) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
   std::cout << "{" << std::endl;

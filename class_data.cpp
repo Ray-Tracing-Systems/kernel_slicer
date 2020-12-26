@@ -38,7 +38,7 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
   {
     if(!keyval.second.isContainer && keyval.second.usedInKernel)
       resVars.push_back(keyval.second);
-    else if(keyval.second.usedInKernel && keyval.second.isContainer)
+    else if((keyval.second.usedInKernel || keyval.second.usedInMainFn) && keyval.second.isContainer)
     {
       kslicer::DataMemberInfo size;
       size.type         = "unsigned int";
@@ -69,7 +69,7 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
 
   for(const auto& keyval : a_vars)
   {
-    if(keyval.second.usedInKernel && keyval.second.isContainer)
+    if((keyval.second.usedInKernel || keyval.second.usedInMainFn) && keyval.second.isContainer)
       resVars.push_back(keyval.second);
   }
 

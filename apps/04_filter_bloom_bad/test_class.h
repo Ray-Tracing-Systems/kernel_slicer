@@ -54,11 +54,11 @@ public:
 
   void Bloom(int w, int h, const float4* inData4f, unsigned int* outData1ui);
   
-  void ExtractBrightPixels(int tidX, int tidY, const float4* inData4f, float4* a_brightPixels);
-  void DownSample4x(int tidX, int tidY, const float4* a_daraFullRes, float4* a_dataSmallRes);
-  void BlurX(int tidX, int tidY, const float4* a_dataIn, float4* a_dataOut);
-  void BlurY(int tidX, int tidY, const float4* a_dataIn, float4* a_dataOut);
-  void MixAndToneMap(int tidX, int tidY, const float4* inData4f, const float4* inBrightPixels, unsigned int* outData1ui);
+  void ExtractBrightPixels(int tidX, int tidY, const float4* inData4f);
+  void DownSample4x(int tidX, int tidY);
+  void BlurX(int tidX, int tidY);
+  void BlurY(int tidX, int tidY);
+  void MixAndToneMap(int tidX, int tidY, const float4* inData4f, unsigned int* outData1ui);
 
 protected:
 

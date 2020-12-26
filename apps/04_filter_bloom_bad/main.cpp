@@ -24,6 +24,6 @@ int main(int argc, const char** argv)
   assert(addressToCkeck % 16 == 0); // check if address is aligned!!!
 
   tone_mapping_cpu(w, h, hdrData.data(), "zout_cpu.bmp");
-  //tone_mapping_cpu(w, h, hdrData.data(), "zout_gpu.bmp");
+  tone_mapping_gpu(w, h, hdrData.data(), "zout_gpu.bmp");
   return 0;
 }

@@ -4,7 +4,7 @@
 
 inline uint pitch(uint x, uint y, uint pitch) { return y*pitch + x; }  
 
-inline float4 sample(const float4* data, int w, int h, float a_texCoordX, float a_texCoordY)
+inline float4 sample(__global const float4* data, int w, int h, float a_texCoordX, float a_texCoordY)
 {
   const float fw = (float)(w);
   const float fh = (float)(h);
@@ -138,9 +138,9 @@ void ToneMapping::kernel_MixAndToneMap(int tidX, int tidY, const float4* inData4
   float4 sampledColor = sample(inBrightPixels, m_widthSmall, m_heightSmall, texCoordX, texCoordY);
   float4 colorSumm    = clamp(sampledColor + inData4f[pitch(tidX, tidY, m_width)], 0.0f, 1.0f);
 
-  colorSumm.x = powf(colorSumm.x, m_gammaInv);
-  colorSumm.y = powf(colorSumm.y, m_gammaInv);
-  colorSumm.z = powf(colorSumm.z, m_gammaInv);
+  colorSumm.x = pow(colorSumm.x, m_gammaInv);
+  colorSumm.y = pow(colorSumm.y, m_gammaInv);
+  colorSumm.z = pow(colorSumm.z, m_gammaInv);
   colorSumm.w = 1.0f;
 
   outData1ui[pitch(tidX, tidY, m_width)] = RealColorToUint32( colorSumm );
@@ -151,32 +151,30 @@ void ToneMapping::kernel_MixAndToneMap(int tidX, int tidY, const float4* inData4
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ToneMapping::ExtractBrightPixels(int tidX, int tidY, const float4* inData4f, 
-                                      float4* a_brightPixels)
+void ToneMapping::ExtractBrightPixels(int tidX, int tidY, const float4* inData4f)
 
 {
-  kernel_ExtractBrightPixels(tidX, tidY, inData4f, a_brightPixels);
+  kernel_ExtractBrightPixels(tidX, tidY, inData4f, m_brightPixels.data());
 }
 
-void ToneMapping::DownSample4x(int tidX, int tidY, const float4* a_daraFullRes, 
-                               float4* a_dataSmallRes)
+void ToneMapping::DownSample4x(int tidX, int tidY)
 {
-  kernel_DownSample4x(tidX, tidY, a_daraFullRes, a_dataSmallRes);
+  kernel_DownSample4x(tidX, tidY, m_brightPixels.data(), m_downsampledImage.data());
 }
 
-void ToneMapping::BlurX(int tidX, int tidY, const float4* a_dataIn, float4* a_dataOut)
+void ToneMapping::BlurX(int tidX, int tidY)
 {
-  kernel_BlurX(tidX, tidY, a_dataIn, a_dataOut);
+  kernel_BlurX(tidX, tidY, m_downsampledImage.data(), m_tempImage.data());
 }
 
-void ToneMapping::BlurY(int tidX, int tidY, const float4* a_dataIn, float4* a_dataOut)
+void ToneMapping::BlurY(int tidX, int tidY)
 {
-  kernel_BlurY(tidX, tidY, a_dataIn, a_dataOut);
+  kernel_BlurY(tidX, tidY, m_tempImage.data(), m_downsampledImage.data());
 }
 
-void ToneMapping::MixAndToneMap(int tidX, int tidY, const float4* inData4f, const float4* inBrightPixels, unsigned int* outData1ui)
+void ToneMapping::MixAndToneMap(int tidX, int tidY, const float4* inData4f, unsigned int* outData1ui)
 {
-  kernel_MixAndToneMap(tidX, tidY, inData4f, inBrightPixels, outData1ui);
+  kernel_MixAndToneMap(tidX, tidY, inData4f, m_downsampledImage.data(), outData1ui);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -195,29 +193,29 @@ void ToneMapping::Bloom(int w, int h, const float4* inData4f,
   //
   for(int y=0;y<h;y++)
     for(int x=0;x<w;x++)
-      ExtractBrightPixels(x, y, inData4f, m_brightPixels.data());
+      ExtractBrightPixels(x, y, inData4f);
 
   // (2) Downsample (m_brightPixels => m_downsampledImage (w/4, h/4) )
   //
   for(int y=0;y<m_heightSmall;y++)
     for(int x=0;x<m_widthSmall;x++) 
-      DownSample4x(x, y, m_brightPixels.data(), m_downsampledImage.data());
+      DownSample4x(x, y);
 
   // (3) GaussBlur (m_downsampledImage => m_downsampledImage)
   //
   for(int y=0;y<m_heightSmall;y++)
     for(int x=0;x<m_widthSmall;x++) 
-      BlurX(x, y, m_downsampledImage.data(), m_tempImage.data()); // m_downsampledImage => m_tempImage
+      BlurX(x, y); // m_downsampledImage => m_tempImage
 
   for(int y=0;y<m_heightSmall;y++)
     for(int x=0;x<m_widthSmall;x++) 
-      BlurY(x, y, m_tempImage.data(), m_downsampledImage.data()); // m_tempImage => m_downsampledImage
+      BlurY(x, y); // m_tempImage => m_downsampledImage
 
   // (4) MixAndToneMap(inData4f, m_downsampledImage) => outData1ui
   //
   for(int y=0;y<h;y++)
     for(int x=0;x<w;x++) 
-      MixAndToneMap(x,y, inData4f, m_downsampledImage.data(), outData1ui);
+      MixAndToneMap(x,y, inData4f, outData1ui);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

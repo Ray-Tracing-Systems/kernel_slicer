@@ -24,20 +24,20 @@ public:
    void SetVulkanInOutFor_Bloom(VkBuffer inColor, size_t inOffset, 
                                 VkBuffer outColor, size_t outOffset)
    {
-     //this->SetVulkanInOutFor_ExtractBrightPixels(this->brightPixelsGPU,0,inColor,inOffset);
-     //this->SetVulkanInOutFor_DownSample4x(this->brightPixelsGPUSmall,0, this->brightPixelsGPU,0);
-     //this->SetVulkanInOutFor_BlurX(...)
-     //this->SetVulkanInOutFor_BlurY(...)
-     //this->SetVulkanInOutFor_MixAndToneMap(outColor, outOffset, this->brightPixelsGPUSmall,0);
+     SetVulkanInOutFor_ExtractBrightPixels(inColor, inOffset);
+     SetVulkanInOutFor_DownSample4x();
+     SetVulkanInOutFor_BlurX();
+     SetVulkanInOutFor_BlurY();
+     SetVulkanInOutFor_MixAndToneMap(outColor, outOffset, inColor, inOffset);
    }  
 
    void BloomCmd(VkCommandBuffer a_commandBuffer, int width, int height)
    {
-     ExtractBrightPixelsCmd(a_commandBuffer, width, height, nullptr, nullptr);
-     DownSample4xCmd(a_commandBuffer, width, height, nullptr, nullptr);
-     BlurXCmd(a_commandBuffer, width, height, nullptr, nullptr);
-     BlurYCmd(a_commandBuffer, width, height, nullptr, nullptr);
-     MixAndToneMapCmd(a_commandBuffer, width, height, nullptr, nullptr, nullptr);
+     ExtractBrightPixelsCmd(a_commandBuffer, width, height, nullptr);
+     DownSample4xCmd(a_commandBuffer, width, height);
+     BlurXCmd(a_commandBuffer, width, height);
+     BlurYCmd(a_commandBuffer, width, height);
+     MixAndToneMapCmd(a_commandBuffer, width, height, nullptr, nullptr);
    }
 };
 
@@ -130,8 +130,6 @@ void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
     //vkCmdFillBuffer(commandBuffer, colorBufferLDR, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
-
-    vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
     pGPUImpl->BloomCmd(commandBuffer, w, h);                                      // !!! USING GENERATED CODE !!! 
     vkEndCommandBuffer(commandBuffer);  
     

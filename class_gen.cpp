@@ -175,7 +175,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArg
       if(pClassVar == m_allClassMembers.end())
         std::cout << "[KernelCallError]: vector<...> variable '" << varName.c_str() << "' was not found in class!" << std::endl; 
       else
-        pClassVar->second.usedInKernel = true;
+        pClassVar->second.usedInMainFn = true;
 
       arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR;
     }
