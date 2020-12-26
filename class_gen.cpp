@@ -284,19 +284,13 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
   
   std::string sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
   
-  // (1) TestClass::MainFuncCmd --> TestClass_Generated::MainFuncCmd
+  // (1) TestClass::MainFuncCmd --> TestClass_Generated::MainFuncCmd and add input command Buffer as first argument
   // 
   const std::string replaceFrom = a_mainClassName + "::" + rv.mainFuncCmdName;
   const std::string replaceTo   = a_mainClassName + "_Generated" + "::" + rv.mainFuncCmdName;
 
   assert(ReplaceFirst(sourceCode, replaceFrom, replaceTo));
-
-  // (2) add input command Buffer as first argument
-  //
-  {
-    size_t roundBracketPos = sourceCode.find("(");
-    sourceCode = (sourceCode.substr(0, roundBracketPos) + "(VkCommandBuffer a_commandBuffer, " + sourceCode.substr(roundBracketPos+2)); 
-  }
+  assert(ReplaceFirst(sourceCode, "(", "(VkCommandBuffer a_commandBuffer, "));
 
   // (3) set m_currCmdBuffer with input command bufer and add other prolog to MainFunCmd
   //
