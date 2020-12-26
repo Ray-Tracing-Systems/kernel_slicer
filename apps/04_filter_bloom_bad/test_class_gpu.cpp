@@ -14,7 +14,34 @@
 #include "vulkan_basics.h"
 #include "test_class_generated.h"
 
-void test_class_gpu()
+class ToneMapping_GPU : public ToneMapping_Generated
+{
+public:
+
+  ToneMapping_GPU(){}  
+   ~ToneMapping_GPU(){}
+
+   void SetVulkanInOutFor_Bloom(VkBuffer inColor, size_t inOffset, 
+                                VkBuffer outColor, size_t outOffset)
+   {
+     //this->SetVulkanInOutFor_ExtractBrightPixels(this->brightPixelsGPU,0,inColor,inOffset);
+     //this->SetVulkanInOutFor_DownSample4x(this->brightPixelsGPUSmall,0, this->brightPixelsGPU,0);
+     //this->SetVulkanInOutFor_BlurX(...)
+     //this->SetVulkanInOutFor_BlurY(...)
+     //this->SetVulkanInOutFor_MixAndToneMap(outColor, outOffset, this->brightPixelsGPUSmall,0);
+   }  
+
+   void BloomCmd(VkCommandBuffer a_commandBuffer, int width, int height)
+   {
+     ExtractBrightPixelsCmd(a_commandBuffer, width, height, nullptr, nullptr);
+     DownSample4xCmd(a_commandBuffer, width, height, nullptr, nullptr);
+     BlurXCmd(a_commandBuffer, width, height, nullptr, nullptr);
+     BlurYCmd(a_commandBuffer, width, height, nullptr, nullptr);
+     MixAndToneMapCmd(a_commandBuffer, width, height, nullptr, nullptr, nullptr);
+   }
+};
+
+void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
 {
   // (1) init vulkan
   //
@@ -70,51 +97,28 @@ void test_class_gpu()
     vkGetDeviceQueue(device, queueComputeFID, 0, &transferQueue);
   }
 
-  VulkanContext ctx;
-  ctx.instance       = instance;
-  ctx.physicalDevice = physicalDevice;
-  ctx.device         = device;
-  ctx.commandPool    = commandPool;
-  ctx.computeQueue   = computeQueue;
-  ctx.transferQueue  = transferQueue;
-  //TestKernel(ctx);
-  //TestKernel2(ctx);
-  
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 
-  TestClass_Generated::KernelConfig packXYConfig;                                       // !!! USING GENERATED CODE !!!
-  packXYConfig.kernelName = "kernel_PackXY";                                            // !!! USING GENERATED CODE !!!
-  packXYConfig.blockSize[0] = 16;                                                       // !!! USING GENERATED CODE !!!
-  packXYConfig.blockSize[1] = 16;                                                       // !!! USING GENERATED CODE !!!
-  packXYConfig.blockSize[2] = 1;                                                        // !!! USING GENERATED CODE !!!
+  auto pGPUImpl = std::make_shared<ToneMapping_GPU>();                // !!! USING GENERATED CODE !!! 
+  pGPUImpl->InitVulkanObjects(device, physicalDevice, w*h, 32, 8, 1); // !!! USING GENERATED CODE !!!
 
-  auto pGPUImpl = std::make_shared<TestClass_Generated>();                              // !!! USING GENERATED CODE !!! 
-  pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT, 256, 1, 1,  // !!! USING GENERATED CODE !!!
-                              &packXYConfig, 1);                                        // !!! USING GENERATED CODE !!!
-
-  // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
-  //
-  pGPUImpl->InitRandomGens(WIN_WIDTH*WIN_HEIGHT);                                       // !!! USING GENERATED CODE !!!
-  pGPUImpl->InitMemberBuffers();                                                        // !!! USING GENERATED CODE !!!
+  pGPUImpl->SetMaxImageSize(w, h);                                    // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
+  pGPUImpl->InitMemberBuffers();                                      // !!! USING GENERATED CODE !!!
 
   // (3) Create buffer
   //
-  const size_t bufferSize1 = WIN_WIDTH*WIN_HEIGHT*sizeof(uint32_t);
-  const size_t bufferSize2 = WIN_WIDTH*WIN_HEIGHT*sizeof(float)*4;
-  VkBuffer xyBuffer        = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  VkBuffer colorBuffer1    = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  VkBuffer colorBuffer2    = vkfw::CreateBuffer(device, bufferSize2,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  
-  VkDeviceMemory colorMem  = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {xyBuffer, colorBuffer1, colorBuffer2});
-  
-  pGPUImpl->SetVulkanInOutFor_PackXY(xyBuffer, 0);              // !!! USING GENERATED CODE !!! 
+  const size_t bufferSizeLDR = w*h*sizeof(uint32_t);
+  const size_t bufferSizeHDR = w*h*sizeof(float)*4;
+  VkBuffer colorBufferLDR    = vkfw::CreateBuffer(device, bufferSizeLDR,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  VkBuffer colorBufferHDR    = vkfw::CreateBuffer(device, bufferSizeHDR,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
-  pGPUImpl->SetVulkanInOutFor_CastSingleRay(colorBuffer1, 0,    // !!! USING GENERATED CODE !!!
-                                            xyBuffer, 0);       // !!! USING GENERATED CODE !!!
+  VkDeviceMemory colorMem    = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {colorBufferLDR, colorBufferHDR});
 
-  pGPUImpl->SetVulkanInOutFor_StupidPathTrace(colorBuffer2, 0,  // !!! USING GENERATED CODE !!!
-                                              xyBuffer,     0); // !!! USING GENERATED CODE !!!
-  pGPUImpl->UpdateAll(pCopyHelper);                             // !!! USING GENERATED CODE !!!
+  pGPUImpl->SetVulkanInOutFor_Bloom(colorBufferHDR, 0,  // ==> 
+                                    colorBufferLDR, 0); // <==
+
+  pCopyHelper->UpdateBuffer(colorBufferHDR, 0, a_hdrData, w*h*sizeof(float)*4);
+  pGPUImpl->UpdateAll(pCopyHelper);                                   // !!! USING GENERATED CODE !!!
   
   // now compute some thing useful
   //
@@ -125,67 +129,21 @@ void test_class_gpu()
     beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    //vkCmdFillBuffer(commandBuffer, xyBuffer, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
-    pGPUImpl->PackXYCmd(commandBuffer, WIN_WIDTH, WIN_HEIGHT, nullptr);       // !!! USING GENERATED CODE !!! 
-    vkCmdFillBuffer(commandBuffer, colorBuffer2, 0, VK_WHOLE_SIZE, 0);        // clear accumulated color
-    vkEndCommandBuffer(commandBuffer);  
-    vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
+    //vkCmdFillBuffer(commandBuffer, colorBufferLDR, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
 
-    vkResetCommandBuffer(commandBuffer, 0);
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    pGPUImpl->CastSingleRayCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, nullptr, nullptr);  // !!! USING GENERATED CODE !!! 
+    pGPUImpl->BloomCmd(commandBuffer, w, h);                                      // !!! USING GENERATED CODE !!! 
     vkEndCommandBuffer(commandBuffer);  
-   
+    
     auto start = std::chrono::high_resolution_clock::now();
     vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
     auto stop = std::chrono::high_resolution_clock::now();
-    float ms  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-    std::cout << ms << " ms for full command buffer execution " << std::endl;
+    auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+    std::cout << ms << " ms for command buffer execution " << std::endl;
 
-    std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
-    pCopyHelper->ReadBuffer(colorBuffer1, 0, pixelData.data(), pixelData.size()*sizeof(uint32_t));
-    SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-
-    std::cout << "begin path tracing passes ... " << std::endl;
-
-    vkResetCommandBuffer(commandBuffer, 0);
-    vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    pGPUImpl->StupidPathTraceCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, 6, nullptr, nullptr);  // !!! USING GENERATED CODE !!! 
-    vkEndCommandBuffer(commandBuffer);  
-    
-    start = std::chrono::high_resolution_clock::now();
-    const int NUM_PASSES = 1000.0f;
-    for(int i=0;i<NUM_PASSES;i++)
-    {
-      vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
-      if(i % 100 == 0)
-      {
-        std::cout << "progress (gpu) = " << 100.0f*float(i)/float(NUM_PASSES) << "% \r";
-        std::cout.flush();
-      }
-    }
-    std::cout << std::endl;
-
-    stop = std::chrono::high_resolution_clock::now();
-    ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-    std::cout << ms << " ms for " << NUM_PASSES << " times of command buffer execution " << std::endl;
-
-    std::vector<float4> pixelsf(WIN_WIDTH*WIN_HEIGHT);
-    pCopyHelper->ReadBuffer(colorBuffer2, 0, pixelsf.data(), pixelsf.size()*sizeof(float4));
-       
-    const float normConst = 1.0f/float(NUM_PASSES);
-    const float invGamma  = 1.0f / 2.2f;
-  
-    for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
-    {
-      float4 color = pixelsf[i]*normConst;
-      color.x      = powf(color.x, invGamma);
-      color.y      = powf(color.y, invGamma);
-      color.z      = powf(color.z, invGamma);
-      color.w      = 1.0f;
-      pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
-    }
-    SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    std::vector<unsigned int> pixels(w*h);
+    pCopyHelper->ReadBuffer(colorBufferLDR, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
+    SaveBMP(a_outName, pixels.data(), w, h);
 
     std::cout << std::endl;
   }
@@ -195,9 +153,8 @@ void test_class_gpu()
   pCopyHelper = nullptr;
   pGPUImpl = nullptr;                                                       // !!! USING GENERATED CODE !!! 
 
-  vkDestroyBuffer(device, xyBuffer, nullptr);
-  vkDestroyBuffer(device, colorBuffer1, nullptr);
-  vkDestroyBuffer(device, colorBuffer2, nullptr);
+  vkDestroyBuffer(device, colorBufferLDR, nullptr);
+  vkDestroyBuffer(device, colorBufferHDR, nullptr);
   vkFreeMemory(device, colorMem, nullptr);
 
   vkDestroyCommandPool(device, commandPool, nullptr);
