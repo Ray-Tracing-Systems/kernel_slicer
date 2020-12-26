@@ -184,10 +184,6 @@ void ToneMapping::kernel_MixAndToneMap(int width, int height, const float4* inDa
 void ToneMapping::Bloom(int w, int h, const float4* inData4f, 
                         unsigned int* outData1ui)
 {
-  // (0) We separate code of all vectors resize to a functions because in GPU code we will have to allocate memory in advance!
-  //
-  SetMaxImageSize(w,h);
-
   // (1) ExtractBrightPixels (inData4f => m_brightPixels (w,h))
   //
   kernel_ExtractBrightPixels(w, h, inData4f, 
@@ -221,6 +217,7 @@ void tone_mapping_cpu(int w, int h, float* a_hdrData, const char* a_outName)
 {
   ToneMapping filter;
   std::vector<uint>  ldrData(w*h);
+  filter.SetMaxImageSize(w,h);
   filter.Bloom(w,h, (const float4*)a_hdrData, ldrData.data());
   SaveBMP(a_outName, ldrData.data(), w, h);
   return;
