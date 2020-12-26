@@ -34,9 +34,9 @@ public:
    void BloomCmd(VkCommandBuffer a_commandBuffer, int width, int height)
    {
      ExtractBrightPixelsCmd(a_commandBuffer, width, height, nullptr);
-     DownSample4xCmd(a_commandBuffer, width, height);
-     BlurXCmd(a_commandBuffer, width, height);
-     BlurYCmd(a_commandBuffer, width, height);
+     DownSample4xCmd(a_commandBuffer, width/4, height/4);
+     BlurXCmd(a_commandBuffer, width/4, height/4);
+     BlurYCmd(a_commandBuffer, width/4, height/4);
      MixAndToneMapCmd(a_commandBuffer, width, height, nullptr, nullptr);
    }
 };
