@@ -196,6 +196,7 @@ int main(int argc, const char **argv)
   std::string mainClassName = "TestClass";
   std::string outGenerated  = "data/generated.cl";
   std::string stdlibFolder  = "";
+  std::string patternName   = "rtv";
   
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
@@ -205,6 +206,9 @@ int main(int argc, const char **argv)
 
   if(params.find("-stdlibfolder") != params.end())
     stdlibFolder = params["-stdlibfolder"];
+
+  if(params.find("-pattern") != params.end())
+    patternName = params["-pattern"];
 
   std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
   argsForClang.reserve(argc);
@@ -226,7 +230,8 @@ int main(int argc, const char **argv)
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  kslicer::MainClassInfo inputCodeInfo;
+  std::unique_ptr<kslicer::MainClassInfo> pInputCodeInfoImpl = std::make_unique<kslicer::RTVPattern>();
+  kslicer::MainClassInfo& inputCodeInfo = *pInputCodeInfoImpl;
 
   CompilerInstance compiler;
   DiagnosticOptions diagnosticOptions;
@@ -303,7 +308,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.mainFunc.resize(mainFuncList.size());
   inputCodeInfo.mainClassName     = mainClassName;
   inputCodeInfo.mainClassFileName = fileName;
-  
+
   std::cout << "(1) Processing class " << mainClassName.c_str() << std::endl; 
   std::cout << "{" << std::endl;
 
@@ -403,10 +408,10 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  kslicer::AddThreadFlagsIfNeeded_LoopBreak_RTCase(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
-
   std::cout << "(3) Process All 'Main' functions to generate all 'MainCmd' " << std::endl; 
   std::cout << "{" << std::endl;
+
+  inputCodeInfo.AddSpecialLocalVariablesToMainFunc(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
 
   // (5) genarate cpp code with Vulkan calls
   //
@@ -416,15 +421,16 @@ int main(int argc, const char **argv)
   {
     std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
 
-    mainFunc.CodeGenerated = inputCodeInfo.ProcessMainFunc_RTCase(mainFunc, compiler, inputCodeInfo.allDescriptorSetsInfo);
+    mainFunc.CodeGenerated = inputCodeInfo.ProcessMainFunc(mainFunc, compiler, inputCodeInfo.allDescriptorSetsInfo);
     mainFunc.InOuts        = kslicer::ListPointerParamsOfMainFunc(mainFunc.Node);
   }
+
+  inputCodeInfo.PlugSpecialVariablesInCalls(inputCodeInfo.mainFunc, inputCodeInfo.kernels, // ==>
+                                            inputCodeInfo.allDescriptorSetsInfo);          // <==
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
   
-  kslicer::AddThreadFlagsForCalls_LoopBreak_RTCase(inputCodeInfo.mainFunc, inputCodeInfo.kernels, // ==>
-                                                   inputCodeInfo.allDescriptorSetsInfo);          // <==
 
   
   std::cout << "(4) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl; 
@@ -461,8 +467,8 @@ int main(int argc, const char **argv)
 
   // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg
   //
-  kslicer::MarkKernelArgumenstForFakeOffset(inputCodeInfo.allDescriptorSetsInfo, // ==>
-                                            inputCodeInfo.kernels);              // <==
+  kslicer::MarkKernelArgumenstForFakeOffset_RTCase(inputCodeInfo.allDescriptorSetsInfo, // ==>
+                                                   inputCodeInfo.kernels);              // <==
   
   // finally generate kernels
   //

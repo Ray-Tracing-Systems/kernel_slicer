@@ -174,16 +174,35 @@ namespace kslicer
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
 
 
-    std::string ProcessMainFunc_RTCase(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler,
-                                       std::vector<KernelCallInfo>& a_outDsInfo);
+    virtual std::string ProcessMainFunc(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler,
+                                        std::vector<KernelCallInfo>& a_outDsInfo) = 0;
+
+    virtual void AddSpecialLocalVariablesToMainFunc(std::vector<MainFuncInfo>&   a_mainFuncList, 
+                                                    std::vector<KernelInfo>&     a_kernelList) {}
+
+    virtual void PlugSpecialVariablesInCalls(const std::vector<MainFuncInfo>&   a_mainFuncList, 
+                                             const std::vector<KernelInfo>&     a_kernelList,
+                                             std::vector<KernelCallInfo>&       a_kernelCalls) {}    
+
+
+    //virtual std::shared_ptr<IMainFuncMatcherProcessor> CreateMainFuncMatcherProcessor(...)                                         
   };
 
-  void AddThreadFlagsIfNeeded_LoopBreak_RTCase(std::vector<MainFuncInfo>&   a_mainFuncList, 
-                                               std::vector<KernelInfo>&     a_kernelList);
 
-  void AddThreadFlagsForCalls_LoopBreak_RTCase(const std::vector<MainFuncInfo>&   a_mainFuncList, 
-                                               const std::vector<KernelInfo>&     a_kernelList,
-                                               std::vector<KernelCallInfo>&       a_kernelCalls);
+  struct RTVPattern : public MainClassInfo
+  {
+    std::string ProcessMainFunc(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler,
+                                std::vector<KernelCallInfo>& a_outDsInfo) override;
+
+    void AddSpecialLocalVariablesToMainFunc(std::vector<MainFuncInfo>&   a_mainFuncList, 
+                                            std::vector<KernelInfo>&     a_kernelList) override;
+
+    void PlugSpecialVariablesInCalls(const std::vector<MainFuncInfo>&   a_mainFuncList, 
+                                     const std::vector<KernelInfo>&     a_kernelList,
+                                     std::vector<KernelCallInfo>&       a_kernelCalls) override;    
+
+    //return std::make_shared<kslicer::MainFuncAnalyzerRT>(std::cout, inputCodeInfo, compiler.getASTContext(), mainFuncId);                                    
+  };
 
 
   /**

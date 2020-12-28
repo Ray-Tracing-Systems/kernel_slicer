@@ -21,6 +21,7 @@ namespace kslicer
   using namespace llvm;
   using namespace clang;
   
+  
   /**\brief put all args together with comma or ',' to gave unique key for any concrete argument sequence.
       \return unique strig key which you can pass in std::unordered_map for example 
   */
@@ -107,7 +108,7 @@ namespace kslicer
   };
 
   void ObtainKernelsDecl(std::vector<KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName);
-  void MarkKernelArgumenstForFakeOffset(const std::vector<KernelCallInfo>& a_calls, std::vector<KernelInfo>& kernels);
+  void MarkKernelArgumenstForFakeOffset_RTCase(const std::vector<KernelCallInfo>& a_calls, std::vector<KernelInfo>& kernels);
 
 }
 

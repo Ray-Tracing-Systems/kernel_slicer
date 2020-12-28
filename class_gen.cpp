@@ -259,8 +259,10 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
   return true;
 }
 
-std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler,
-                                                           std::vector<KernelCallInfo>& a_outDsInfo)
+
+
+std::string kslicer::RTVPattern::ProcessMainFunc(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler,
+                                                 std::vector<KernelCallInfo>& a_outDsInfo)
 {
   const std::string&   a_mainClassName = this->mainClassName;
   const CXXMethodDecl* a_node          = a_mainFunc.Node;
@@ -329,7 +331,9 @@ std::string kslicer::MainClassInfo::ProcessMainFunc_RTCase(MainFuncInfo& a_mainF
   return sourceCode;
 }
 
-void kslicer::AddThreadFlagsIfNeeded_LoopBreak_RTCase(std::vector<MainFuncInfo>& a_mainFuncList, std::vector<KernelInfo>& a_kernelList)
+
+// old AddThreadFlagsIfNeeded_LoopBreak_RTCase
+void kslicer::RTVPattern::AddSpecialLocalVariablesToMainFunc(std::vector<MainFuncInfo>& a_mainFuncList, std::vector<KernelInfo>& a_kernelList)
 {
   // (1) first scan all main functions, if no one needed just exit
   //
@@ -447,7 +451,8 @@ void kslicer::AddThreadFlagsIfNeeded_LoopBreak_RTCase(std::vector<MainFuncInfo>&
 
 }
 
-void kslicer::AddThreadFlagsForCalls_LoopBreak_RTCase(const std::vector<MainFuncInfo>&   a_mainFuncList, 
+// old AddThreadFlagsForCalls_LoopBreak_RTCase
+void kslicer::RTVPattern::PlugSpecialVariablesInCalls(const std::vector<MainFuncInfo>&   a_mainFuncList, 
                                                       const std::vector<KernelInfo>&     a_kernelList,
                                                       std::vector<KernelCallInfo>&       a_kernelCalls)
 {
@@ -502,7 +507,7 @@ std::unordered_map<std::string, kslicer::InOutVarInfo> kslicer::ListPointerParam
   return params;
 }
 
-void kslicer::MarkKernelArgumenstForFakeOffset(const std::vector<KernelCallInfo>& a_calls, std::vector<KernelInfo>& kernels)
+void kslicer::MarkKernelArgumenstForFakeOffset_RTCase(const std::vector<KernelCallInfo>& a_calls, std::vector<KernelInfo>& kernels)
 {
   for(const auto& call : a_calls)
   {
