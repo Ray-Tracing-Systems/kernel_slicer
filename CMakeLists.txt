@@ -20,6 +20,7 @@ add_executable(kslicer
                kslicer_main.cpp
                ast_matchers.cpp
                class_gen.cpp
+               class_gen_ipv.cpp
                class_data.cpp
                initial_pass.cpp
                template_rendering.cpp

@@ -57,12 +57,12 @@ namespace kslicer
     if(!p) { s << tabs << "Invalid pointer " << name << "\n"; }
   }
 
-  class MainFuncAnalyzer : public clang::ast_matchers::MatchFinder::MatchCallback 
+  class MainFuncAnalyzerRT : public clang::ast_matchers::MatchFinder::MatchCallback 
   {
   public:
 
-    explicit MainFuncAnalyzer(std::ostream& s, kslicer::MainClassInfo& a_allInfo, const clang::ASTContext& a_astContext, kslicer::MainFuncInfo& a_mainFuncRef) : 
-                              m_out(s), m_allInfo(a_allInfo), m_astContext(a_astContext), m_mainFuncRef(a_mainFuncRef) 
+    explicit MainFuncAnalyzerRT(std::ostream& s, kslicer::MainClassInfo& a_allInfo, const clang::ASTContext& a_astContext, kslicer::MainFuncInfo& a_mainFuncRef) : 
+                                m_out(s), m_allInfo(a_allInfo), m_astContext(a_astContext), m_mainFuncRef(a_mainFuncRef) 
     {
       m_namesToIngore = kslicer::GetAllPredefinedThreadIdNames(); 
     }
@@ -290,15 +290,10 @@ namespace kslicer
     std::unordered_map<std::string, clang::SourceRange> usedFunctions;
     std::unordered_map<std::string, bool>               usedFiles;
 
-    //std::vector<const clang::FunctionDecl*> GetUsedFunctions()
-    //{
-    //  std::vector<const clang::FunctionDecl*> res;
-    //  for(auto fDecl : usedFunctions)
-    //    res.push_back((const clang::FunctionDecl*)fDecl.second);
-    //  return res;
-    //}
+  };  // class VariableAndFunctionFilter
 
-  };  // class Global_Printer
+
+  //
 
 }
 

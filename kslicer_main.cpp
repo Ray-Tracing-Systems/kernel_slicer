@@ -229,9 +229,21 @@ int main(int argc, const char **argv)
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<kslicer::MainClassInfo> pImplPattern = nullptr;
+  if(patternName == "rtv")
+    pImplPattern = std::make_shared<kslicer::RTV_Pattern>();
+  else if(patternName == "ipv")
+    pImplPattern = std::make_shared<kslicer::IPV_Pattern>();
+  else
+  { 
+    std::cout << "wrong pattern name '" << patternName.c_str() << "' " << std::endl; 
+    exit(0);
+  }
+  kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<kslicer::MainClassInfo> pInputCodeInfoImpl = std::make_unique<kslicer::RTVPattern>();
-  kslicer::MainClassInfo& inputCodeInfo = *pInputCodeInfoImpl;
+  std::unique_ptr<kslicer::MainClassInfo> pInputCodeInfoImpl = nullptr;
 
   CompilerInstance compiler;
   DiagnosticOptions diagnosticOptions;
@@ -457,8 +469,8 @@ int main(int argc, const char **argv)
 
   // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg
   //
-  kslicer::MarkKernelArgumenstForFakeOffset_RTCase(inputCodeInfo.allDescriptorSetsInfo, // ==>
-                                                   inputCodeInfo.kernels);              // <==
+  inputCodeInfo.ProcessKernelsArgumens(inputCodeInfo.allDescriptorSetsInfo, // ==>
+                                       inputCodeInfo.kernels);              // <==
   
   // finally generate kernels
   //

@@ -260,9 +260,13 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
   return true;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-std::string kslicer::RTVPattern::ProcessMainFunc(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler,
+std::string kslicer::RTV_Pattern::ProcessMainFunc(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler,
                                                  std::vector<KernelCallInfo>& a_outDsInfo)
 {
   const std::string&   a_mainClassName = this->mainClassName;
@@ -333,8 +337,7 @@ std::string kslicer::RTVPattern::ProcessMainFunc(MainFuncInfo& a_mainFunc, clang
 }
 
 
-// old AddThreadFlagsIfNeeded_LoopBreak_RTCase
-void kslicer::RTVPattern::AddSpecialLocalVariablesToMainFunc(std::vector<MainFuncInfo>& a_mainFuncList, std::vector<KernelInfo>& a_kernelList)
+void kslicer::RTV_Pattern::AddSpecialLocalVariablesToMainFunc(std::vector<MainFuncInfo>& a_mainFuncList, std::vector<KernelInfo>& a_kernelList)
 {
   // (1) first scan all main functions, if no one needed just exit
   //
@@ -452,8 +455,7 @@ void kslicer::RTVPattern::AddSpecialLocalVariablesToMainFunc(std::vector<MainFun
 
 }
 
-// old AddThreadFlagsForCalls_LoopBreak_RTCase
-void kslicer::RTVPattern::PlugSpecialVariablesInCalls(const std::vector<MainFuncInfo>&   a_mainFuncList, 
+void kslicer::RTV_Pattern::PlugSpecialVariablesInCalls(const std::vector<MainFuncInfo>&   a_mainFuncList, 
                                                       const std::vector<KernelInfo>&     a_kernelList,
                                                       std::vector<KernelCallInfo>&       a_kernelCalls)
 {
@@ -489,7 +491,7 @@ void kslicer::RTVPattern::PlugSpecialVariablesInCalls(const std::vector<MainFunc
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::vector<clang::ast_matchers::StatementMatcher> kslicer::RTVPattern::ListMatchersForSecondPass(const std::string& mainFuncName)
+std::vector<clang::ast_matchers::StatementMatcher> kslicer::RTV_Pattern::ListMatchersForSecondPass(const std::string& mainFuncName)
 {
   std::vector<clang::ast_matchers::StatementMatcher> list;
   list.push_back(kslicer::MakeMatch_LocalVarOfMethod(mainFuncName));
@@ -501,13 +503,40 @@ std::vector<clang::ast_matchers::StatementMatcher> kslicer::RTVPattern::ListMatc
   return list;
 }
 
-std::shared_ptr<clang::ast_matchers::MatchFinder::MatchCallback> 
-kslicer::RTVPattern::MakeMatcherProcessorForSecondPass(std::ostream&            s, 
+std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> 
+kslicer::RTV_Pattern::MakeMatcherProcessorForSecondPass(std::ostream&            s, 
                                                        kslicer::MainClassInfo&  a_allInfo, 
                                                        const clang::ASTContext& a_astContext, 
                                                        kslicer::MainFuncInfo&   a_mainFuncRef)
 {
-  return std::make_shared<kslicer::MainFuncAnalyzer>(s, a_allInfo, a_astContext, a_mainFuncRef);
+  return std::move(std::make_unique<kslicer::MainFuncAnalyzerRT>(s, a_allInfo, a_astContext, a_mainFuncRef));
+}
+
+void kslicer::RTV_Pattern::ProcessKernelsArgumens(const std::vector<KernelCallInfo>& a_calls, std::vector<KernelInfo>& kernels)
+{
+  for(const auto& call : a_calls)
+  {
+    // find kernel:
+    size_t found = size_t(-1); 
+    for(size_t i=0; i<kernels.size(); i++)
+    {
+      if(kernels[i].name == std::string("kernel_") + call.kernelName)
+      {
+        found = i;
+        break;
+      }
+    }
+
+    if(found != size_t(-1)) 
+    {
+      auto& actualParameters = call.descriptorSetsInfo;
+      for(size_t argId = 0; argId<actualParameters.size(); argId++)
+      {
+        if(actualParameters[argId].argType == kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL)
+          kernels[found].args[argId].needFakeOffset = true; 
+      }
+    }
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -537,33 +566,6 @@ std::unordered_map<std::string, kslicer::InOutVarInfo> kslicer::ListPointerParam
   }
 
   return params;
-}
-
-void kslicer::MarkKernelArgumenstForFakeOffset_RTCase(const std::vector<KernelCallInfo>& a_calls, std::vector<KernelInfo>& kernels)
-{
-  for(const auto& call : a_calls)
-  {
-    // find kernel:
-    size_t found = size_t(-1); 
-    for(size_t i=0; i<kernels.size(); i++)
-    {
-      if(kernels[i].name == std::string("kernel_") + call.kernelName)
-      {
-        found = i;
-        break;
-      }
-    }
-
-    if(found != size_t(-1)) 
-    {
-      auto& actualParameters = call.descriptorSetsInfo;
-      for(size_t argId = 0; argId<actualParameters.size(); argId++)
-      {
-        if(actualParameters[argId].argType == kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL)
-          kernels[found].args[argId].needFakeOffset = true; 
-      }
-    }
-  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
