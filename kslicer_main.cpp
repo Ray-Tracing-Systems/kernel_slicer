@@ -334,23 +334,13 @@ int main(int argc, const char **argv)
     // Now process each main function: variables and kernel calls, if()->break and if()->return statements.
     //
     {
-      clang::ast_matchers::StatementMatcher localVar_matcher = kslicer::MakeMatch_LocalVarOfMethod(mainFuncName);
-      clang::ast_matchers::StatementMatcher kernel_matcher   = kslicer::MakeMatch_MethodCallFromMethod(mainFuncName);
-      clang::ast_matchers::StatementMatcher forLoop_matcher  = kslicer::MakeMatch_SingleForLoopInsideFunction(mainFuncName);
-      clang::ast_matchers::StatementMatcher ifExit_matcher   = kslicer::MakeMatch_IfInsideForLoopInsideFunction(mainFuncName);
-      clang::ast_matchers::StatementMatcher kernelInsideFor  = kslicer::MakeMatch_FunctionCallInsideForLoopInsideFunction(mainFuncName);
-      clang::ast_matchers::StatementMatcher ifReturn_matcher = kslicer::MakeMatch_IfReturnFromFunction(mainFuncName);
+      auto allMatchers = inputCodeInfo.ListMatchersForSecondPass(mainFuncName);
+      auto pMatcherPrc = inputCodeInfo.MakeMatcherProcessorForSecondPass(std::cout, inputCodeInfo, compiler.getASTContext(), mainFuncRef);
 
-      kslicer::MainFuncAnalyzer matcherHandler(std::cout, inputCodeInfo, compiler.getASTContext(), mainFuncRef);
       clang::ast_matchers::MatchFinder finder;
+      for(auto& matcher : allMatchers)
+        finder.addMatcher(matcher, pMatcherPrc.get());
       
-      finder.addMatcher(localVar_matcher, &matcherHandler);
-      finder.addMatcher(kernel_matcher,   &matcherHandler);
-      finder.addMatcher(forLoop_matcher,  &matcherHandler);
-      finder.addMatcher(ifExit_matcher,   &matcherHandler);
-      finder.addMatcher(kernelInsideFor,  &matcherHandler);
-      finder.addMatcher(ifReturn_matcher, &matcherHandler);
-     
       std::cout << "  process main function: " << mainFuncName.c_str() << "(...): ";
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
       std::cout << GetClangToolingErrorCodeMessage(res) << std::endl;

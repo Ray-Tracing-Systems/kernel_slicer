@@ -8,6 +8,7 @@
 
 #include "clang/AST/DeclCXX.h"
 #include "clang/Frontend/CompilerInstance.h"
+#include "clang/ASTMatchers/ASTMatchFinder.h"
 
 namespace kslicer
 {
@@ -173,6 +174,15 @@ namespace kslicer
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
 
+    
+    virtual std::vector<clang::ast_matchers::StatementMatcher> ListMatchersForSecondPass(const std::string& mainFuncName) = 0;
+    
+
+    virtual std::shared_ptr<clang::ast_matchers::MatchFinder::MatchCallback> 
+    MakeMatcherProcessorForSecondPass(std::ostream& s, 
+                                      kslicer::MainClassInfo& a_allInfo, 
+                                      const clang::ASTContext& a_astContext, 
+                                      kslicer::MainFuncInfo& a_mainFuncRef) = 0;
 
     virtual std::string ProcessMainFunc(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler,
                                         std::vector<KernelCallInfo>& a_outDsInfo) = 0;
@@ -183,14 +193,20 @@ namespace kslicer
     virtual void PlugSpecialVariablesInCalls(const std::vector<MainFuncInfo>&   a_mainFuncList, 
                                              const std::vector<KernelInfo>&     a_kernelList,
                                              std::vector<KernelCallInfo>&       a_kernelCalls) {}    
-
-
-    //virtual std::shared_ptr<IMainFuncMatcherProcessor> CreateMainFuncMatcherProcessor(...)                                         
+                                     
   };
 
 
   struct RTVPattern : public MainClassInfo
   {
+    std::shared_ptr<clang::ast_matchers::MatchFinder::MatchCallback> 
+    MakeMatcherProcessorForSecondPass(std::ostream& s, 
+                                      kslicer::MainClassInfo& a_allInfo, 
+                                      const clang::ASTContext& a_astContext, 
+                                      kslicer::MainFuncInfo& a_mainFuncRef) override;
+
+    std::vector<clang::ast_matchers::StatementMatcher> ListMatchersForSecondPass(const std::string& mainFuncName) override;
+
     std::string ProcessMainFunc(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler,
                                 std::vector<KernelCallInfo>& a_outDsInfo) override;
 

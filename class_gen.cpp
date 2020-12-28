@@ -1,5 +1,6 @@
-#include "class_gen.h"
 #include "kslicer.h"
+#include "class_gen.h"
+#include "ast_matchers.h"
 
 #include <sstream>
 #include <algorithm>
@@ -484,6 +485,37 @@ void kslicer::RTVPattern::PlugSpecialVariablesInCalls(const std::vector<MainFunc
   }
   
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+std::vector<clang::ast_matchers::StatementMatcher> kslicer::RTVPattern::ListMatchersForSecondPass(const std::string& mainFuncName)
+{
+  std::vector<clang::ast_matchers::StatementMatcher> list;
+  list.push_back(kslicer::MakeMatch_LocalVarOfMethod(mainFuncName));
+  list.push_back(kslicer::MakeMatch_MethodCallFromMethod(mainFuncName));
+  list.push_back(kslicer::MakeMatch_SingleForLoopInsideFunction(mainFuncName));
+  list.push_back(kslicer::MakeMatch_IfInsideForLoopInsideFunction(mainFuncName));
+  list.push_back(kslicer::MakeMatch_FunctionCallInsideForLoopInsideFunction(mainFuncName));
+  list.push_back(kslicer::MakeMatch_IfReturnFromFunction(mainFuncName));
+  return list;
+}
+
+std::shared_ptr<clang::ast_matchers::MatchFinder::MatchCallback> 
+kslicer::RTVPattern::MakeMatcherProcessorForSecondPass(std::ostream&            s, 
+                                                       kslicer::MainClassInfo&  a_allInfo, 
+                                                       const clang::ASTContext& a_astContext, 
+                                                       kslicer::MainFuncInfo&   a_mainFuncRef)
+{
+  return std::make_shared<kslicer::MainFuncAnalyzer>(s, a_allInfo, a_astContext, a_mainFuncRef);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 std::unordered_map<std::string, kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node)
 {
