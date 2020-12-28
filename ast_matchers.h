@@ -61,13 +61,13 @@ namespace kslicer
   {
   public:
 
-    explicit MainFuncAnalyzer(std::ostream& s, kslicer::MainClassInfo& a_allInfo, const clang::ASTContext& a_astContext, size_t a_mainFuncId) : 
-                              m_out(s), m_allInfo(a_allInfo), m_astContext(a_astContext), m_mainFuncId(a_mainFuncId) 
+    explicit MainFuncAnalyzer(std::ostream& s, kslicer::MainClassInfo& a_allInfo, const clang::ASTContext& a_astContext, kslicer::MainFuncInfo& a_mainFuncRef) : 
+                              m_out(s), m_allInfo(a_allInfo), m_astContext(a_astContext), m_mainFuncRef(a_mainFuncRef) 
     {
       m_namesToIngore = kslicer::GetAllPredefinedThreadIdNames(); 
     }
 
-    MainFuncInfo& CurrMainFunc() { return m_allInfo.mainFunc[m_mainFuncId]; }
+    MainFuncInfo& CurrMainFunc() { return m_mainFuncRef; }
 
     void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
     {
@@ -214,7 +214,7 @@ namespace kslicer
     const clang::ASTContext&  m_astContext;
 
     std::vector<std::string> m_namesToIngore;
-    size_t m_mainFuncId = 0;
+    kslicer::MainFuncInfo& m_mainFuncRef;
 
   };  // class MainFuncAnalyzer
 

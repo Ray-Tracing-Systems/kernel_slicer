@@ -327,8 +327,9 @@ int main(int argc, const char **argv)
   for(const auto f : mainFuncList)
   {
     const std::string& mainFuncName = f.first;
-    inputCodeInfo.mainFunc[mainFuncId].Name = mainFuncName;
-    inputCodeInfo.mainFunc[mainFuncId].Node = astConsumer.rv.m_mainFuncNodes[mainFuncName];
+    auto& mainFuncRef = inputCodeInfo.mainFunc[mainFuncId];
+    mainFuncRef.Name  = mainFuncName;
+    mainFuncRef.Node  = astConsumer.rv.m_mainFuncNodes[mainFuncName];
 
     // Now process each main function: variables and kernel calls, if()->break and if()->return statements.
     //
@@ -340,7 +341,7 @@ int main(int argc, const char **argv)
       clang::ast_matchers::StatementMatcher kernelInsideFor  = kslicer::MakeMatch_FunctionCallInsideForLoopInsideFunction(mainFuncName);
       clang::ast_matchers::StatementMatcher ifReturn_matcher = kslicer::MakeMatch_IfReturnFromFunction(mainFuncName);
 
-      kslicer::MainFuncAnalyzer matcherHandler(std::cout, inputCodeInfo, compiler.getASTContext(), mainFuncId);
+      kslicer::MainFuncAnalyzer matcherHandler(std::cout, inputCodeInfo, compiler.getASTContext(), mainFuncRef);
       clang::ast_matchers::MatchFinder finder;
       
       finder.addMatcher(localVar_matcher, &matcherHandler);
@@ -368,7 +369,6 @@ int main(int argc, const char **argv)
 
       // filter out excluded local variables
       //
-      auto& mainFuncRef = inputCodeInfo.mainFunc[mainFuncId];
       for(const auto& var : mainFuncRef.ExcludeList)
       {
         auto ex = mainFuncRef.Locals.find(var);
