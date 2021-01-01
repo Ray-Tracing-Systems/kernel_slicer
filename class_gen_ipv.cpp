@@ -12,10 +12,11 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::string kslicer::IPV_Pattern::ProcessMainFunc(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler,
-                                                 std::vector<KernelCallInfo>& a_outDsInfo)
+std::string kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
   const std::string&   a_mainClassName = this->mainClassName;
+  auto&                a_outDsInfo     = this->allDescriptorSetsInfo;
+
   const CXXMethodDecl* a_node          = a_mainFunc.Node;
   const std::string&   a_mainFuncName  = a_mainFunc.Name;
   std::string&         a_outFuncDecl   = a_mainFunc.GeneratedDecl;
@@ -85,7 +86,7 @@ std::string kslicer::IPV_Pattern::ProcessMainFunc(MainFuncInfo& a_mainFunc, clan
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::vector<clang::ast_matchers::StatementMatcher> kslicer::IPV_Pattern::ListMatchersForSecondPass(const std::string& mainFuncName)
+kslicer::IPV_Pattern::MList kslicer::IPV_Pattern::ListMatchers_CF(const std::string& mainFuncName)
 {
   std::vector<clang::ast_matchers::StatementMatcher> list;
   list.push_back(kslicer::MakeMatch_LocalVarOfMethod(mainFuncName));
@@ -97,15 +98,10 @@ std::vector<clang::ast_matchers::StatementMatcher> kslicer::IPV_Pattern::ListMat
   return list;
 }
 
-std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> 
-kslicer::IPV_Pattern::MakeMatcherProcessorForSecondPass(std::ostream&            s, 
-                                                       kslicer::MainClassInfo&  a_allInfo, 
-                                                       const clang::ASTContext& a_astContext, 
-                                                       kslicer::MainFuncInfo&   a_mainFuncRef)
+kslicer::IPV_Pattern::MHandlerPtr kslicer::IPV_Pattern::MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext)
 {
-  return std::move(std::make_unique<kslicer::MainFuncAnalyzerRT>(s, a_allInfo, a_astContext, a_mainFuncRef));
+  return std::move(std::make_unique<kslicer::MainFuncAnalyzerRT>(std::cout, *this, a_astContext, a_mainFuncRef));
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

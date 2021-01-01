@@ -174,26 +174,24 @@ namespace kslicer
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
 
-    ////// 
-    virtual std::vector<clang::ast_matchers::StatementMatcher> ListMatchersForSecondPass(const std::string& mainFuncName) = 0;
-  
-    virtual std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> 
-    MakeMatcherProcessorForSecondPass(std::ostream& s, 
-                                      kslicer::MainClassInfo& a_allInfo, 
-                                      const clang::ASTContext& a_astContext, 
-                                      kslicer::MainFuncInfo& a_mainFuncRef) = 0;
-    //////
+    typedef std::vector<clang::ast_matchers::StatementMatcher> MList;
+    typedef std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> MHandlerPtr;
 
-    virtual std::string ProcessMainFunc(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler,
-                                        std::vector<KernelCallInfo>& a_outDsInfo) = 0;
+    ////
+    // 
+    virtual MList       ListMatchers_CF(const std::string& mainFuncName) = 0;
+    virtual MHandlerPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext) = 0;
+    virtual std::string VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) = 0;
 
-    virtual void AddSpecialLocalVariablesToMainFunc(std::vector<MainFuncInfo>&   a_mainFuncList, 
-                                                    std::vector<KernelInfo>&     a_kernelList) {}
+    virtual void AddSpecVars_CF(std::vector<MainFuncInfo>&   a_mainFuncList, 
+                                std::vector<KernelInfo>&     a_kernelList) {}
 
-    virtual void PlugSpecialVariablesInCalls(const std::vector<MainFuncInfo>&   a_mainFuncList, 
-                                             const std::vector<KernelInfo>&     a_kernelList,
-                                             std::vector<KernelCallInfo>&       a_kernelCalls) {}    
+    virtual void PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&   a_mainFuncList, 
+                                        const std::vector<KernelInfo>&     a_kernelList,
+                                        std::vector<KernelCallInfo>&       a_kernelCalls) {}    
                                      
+    //// \\
+
 
     virtual void ProcessKernelsArgumens(const std::vector<KernelCallInfo>& a_calls, std::vector<KernelInfo>& kernels) { }
 
@@ -202,21 +200,15 @@ namespace kslicer
 
   struct RTV_Pattern : public MainClassInfo
   {
-    std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> 
-    MakeMatcherProcessorForSecondPass(std::ostream& s, 
-                                      kslicer::MainClassInfo& a_allInfo, 
-                                      const clang::ASTContext& a_astContext, 
-                                      kslicer::MainFuncInfo& a_mainFuncRef) override;
+    MList       ListMatchers_CF(const std::string& mainFuncName) override;
+    MHandlerPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext) override;
 
-    std::vector<clang::ast_matchers::StatementMatcher> ListMatchersForSecondPass(const std::string& mainFuncName) override;
+    std::string VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;
 
-    std::string ProcessMainFunc(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler,
-                                std::vector<KernelCallInfo>& a_outDsInfo) override;
-
-    void AddSpecialLocalVariablesToMainFunc(std::vector<MainFuncInfo>&   a_mainFuncList, 
+    void AddSpecVars_CF(std::vector<MainFuncInfo>&   a_mainFuncList, 
                                             std::vector<KernelInfo>&     a_kernelList) override;
 
-    void PlugSpecialVariablesInCalls(const std::vector<MainFuncInfo>&   a_mainFuncList, 
+    void PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&   a_mainFuncList, 
                                      const std::vector<KernelInfo>&     a_kernelList,
                                      std::vector<KernelCallInfo>&       a_kernelCalls) override;    
 
@@ -225,16 +217,10 @@ namespace kslicer
 
   struct IPV_Pattern : public MainClassInfo
   {
-    std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> 
-    MakeMatcherProcessorForSecondPass(std::ostream& s, 
-                                      kslicer::MainClassInfo& a_allInfo, 
-                                      const clang::ASTContext& a_astContext, 
-                                      kslicer::MainFuncInfo& a_mainFuncRef) override;
+    MList       ListMatchers_CF(const std::string& mainFuncName) override;
+    MHandlerPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext) override;
   
-    std::vector<clang::ast_matchers::StatementMatcher> ListMatchersForSecondPass(const std::string& mainFuncName) override;
-  
-    std::string ProcessMainFunc(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler,
-                                std::vector<KernelCallInfo>& a_outDsInfo) override;                           
+    std::string VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;                           
   };
 
 

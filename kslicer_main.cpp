@@ -346,8 +346,8 @@ int main(int argc, const char **argv)
     // Now process each main function: variables and kernel calls, if()->break and if()->return statements.
     //
     {
-      auto allMatchers = inputCodeInfo.ListMatchersForSecondPass(mainFuncName);
-      auto pMatcherPrc = inputCodeInfo.MakeMatcherProcessorForSecondPass(std::cout, inputCodeInfo, compiler.getASTContext(), mainFuncRef);
+      auto allMatchers = inputCodeInfo.ListMatchers_CF(mainFuncName);
+      auto pMatcherPrc = inputCodeInfo.MatcherHandler_CF(mainFuncRef, compiler.getASTContext());
 
       clang::ast_matchers::MatchFinder finder;
       for(auto& matcher : allMatchers)
@@ -413,7 +413,7 @@ int main(int argc, const char **argv)
   std::cout << "(3) Process All 'Main' functions to generate all 'MainCmd' " << std::endl; 
   std::cout << "{" << std::endl;
 
-  inputCodeInfo.AddSpecialLocalVariablesToMainFunc(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
+  inputCodeInfo.AddSpecVars_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
 
   // (5) genarate cpp code with Vulkan calls
   //
@@ -423,11 +423,11 @@ int main(int argc, const char **argv)
   {
     std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
 
-    mainFunc.CodeGenerated = inputCodeInfo.ProcessMainFunc(mainFunc, compiler, inputCodeInfo.allDescriptorSetsInfo);
+    mainFunc.CodeGenerated = inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);
     mainFunc.InOuts        = kslicer::ListPointerParamsOfMainFunc(mainFunc.Node);
   }
 
-  inputCodeInfo.PlugSpecialVariablesInCalls(inputCodeInfo.mainFunc, inputCodeInfo.kernels, // ==>
+  inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, // ==>
                                             inputCodeInfo.allDescriptorSetsInfo);          // <==
 
   std::cout << "}" << std::endl;

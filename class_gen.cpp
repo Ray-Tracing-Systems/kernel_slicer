@@ -266,10 +266,11 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::string kslicer::RTV_Pattern::ProcessMainFunc(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler,
-                                                 std::vector<KernelCallInfo>& a_outDsInfo)
+std::string kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
   const std::string&   a_mainClassName = this->mainClassName;
+  auto&                a_outDsInfo     = this->allDescriptorSetsInfo;
+
   const CXXMethodDecl* a_node          = a_mainFunc.Node;
   const std::string&   a_mainFuncName  = a_mainFunc.Name;
   std::string&         a_outFuncDecl   = a_mainFunc.GeneratedDecl;
@@ -337,7 +338,7 @@ std::string kslicer::RTV_Pattern::ProcessMainFunc(MainFuncInfo& a_mainFunc, clan
 }
 
 
-void kslicer::RTV_Pattern::AddSpecialLocalVariablesToMainFunc(std::vector<MainFuncInfo>& a_mainFuncList, std::vector<KernelInfo>& a_kernelList)
+void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::vector<KernelInfo>& a_kernelList)
 {
   // (1) first scan all main functions, if no one needed just exit
   //
@@ -455,7 +456,7 @@ void kslicer::RTV_Pattern::AddSpecialLocalVariablesToMainFunc(std::vector<MainFu
 
 }
 
-void kslicer::RTV_Pattern::PlugSpecialVariablesInCalls(const std::vector<MainFuncInfo>&   a_mainFuncList, 
+void kslicer::RTV_Pattern::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&   a_mainFuncList, 
                                                       const std::vector<KernelInfo>&     a_kernelList,
                                                       std::vector<KernelCallInfo>&       a_kernelCalls)
 {
@@ -491,7 +492,7 @@ void kslicer::RTV_Pattern::PlugSpecialVariablesInCalls(const std::vector<MainFun
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::vector<clang::ast_matchers::StatementMatcher> kslicer::RTV_Pattern::ListMatchersForSecondPass(const std::string& mainFuncName)
+kslicer::RTV_Pattern::MList kslicer::RTV_Pattern::ListMatchers_CF(const std::string& mainFuncName)
 {
   std::vector<clang::ast_matchers::StatementMatcher> list;
   list.push_back(kslicer::MakeMatch_LocalVarOfMethod(mainFuncName));
@@ -503,13 +504,9 @@ std::vector<clang::ast_matchers::StatementMatcher> kslicer::RTV_Pattern::ListMat
   return list;
 }
 
-std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> 
-kslicer::RTV_Pattern::MakeMatcherProcessorForSecondPass(std::ostream&            s, 
-                                                       kslicer::MainClassInfo&  a_allInfo, 
-                                                       const clang::ASTContext& a_astContext, 
-                                                       kslicer::MainFuncInfo&   a_mainFuncRef)
+kslicer::RTV_Pattern::MHandlerPtr kslicer::RTV_Pattern::MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext)
 {
-  return std::move(std::make_unique<kslicer::MainFuncAnalyzerRT>(s, a_allInfo, a_astContext, a_mainFuncRef));
+  return std::move(std::make_unique<kslicer::MainFuncAnalyzerRT>(std::cout, *this, a_astContext, a_mainFuncRef));
 }
 
 void kslicer::RTV_Pattern::ProcessKernelsArgumens(const std::vector<KernelCallInfo>& a_calls, std::vector<KernelInfo>& kernels)
