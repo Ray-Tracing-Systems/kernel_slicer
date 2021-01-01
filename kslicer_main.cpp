@@ -387,24 +387,24 @@ int main(int argc, const char **argv)
 
   std::cout << "(2) Mark data members, methods and functions which are actually used in kernels." << std::endl; 
   std::cout << "{" << std::endl;
+  
+  std::unordered_map<std::string, clang::SourceRange> usedFunctions_KF; // ==> accumulate information about used by kernel (KF) functions here
+  std::unordered_map<std::string, bool>               usedFiles_KF;     // ==> accumulate information about used by kernel (KF) files     here
 
-  kslicer::VariableAndFunctionFilter filter(std::cout, inputCodeInfo, compiler.getSourceManager());
-  { 
-    for(auto& kernel : inputCodeInfo.kernels)
-    {
-      clang::ast_matchers::StatementMatcher dataMemberMatcher = kslicer::MakeMatch_MemberVarOfMethod(kernel.name);
-      clang::ast_matchers::StatementMatcher funcMatcher       = kslicer::MakeMatch_FunctionCallFromFunction(kernel.name);
-       
-      clang::ast_matchers::MatchFinder finder;
-      finder.addMatcher(dataMemberMatcher, &filter);
-      finder.addMatcher(funcMatcher, &filter);
-      
-      kernel.usedVectors.clear();  // !!! THIS IS IMPORTANT !!!
-      filter.currKernel = &kernel; // !!! usedVectors will be filled during 'Tool.run' !!!
+  for(auto& kernel : inputCodeInfo.kernels)
+  {
+    auto kernelMatchers = inputCodeInfo.ListMatchers_KF(kernel.name);
+   
+    kslicer::VariableAndFunctionFilter filter(std::cout, inputCodeInfo, compiler.getSourceManager(), &kernel);
+    clang::ast_matchers::MatchFinder finder;
+    for(auto& matcher : kernelMatchers)
+       finder.addMatcher(matcher, &filter);
 
-      auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
-      std::cout << "  process " << kernel.name.c_str() << ":\t" << GetClangToolingErrorCodeMessage(res) << std::endl;
-    }
+    auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
+    std::cout << "  process " << kernel.name.c_str() << ":\t" << GetClangToolingErrorCodeMessage(res) << std::endl;
+
+    usedFunctions_KF.merge(filter.usedFunctions);
+    usedFiles_KF.merge(filter.usedFiles);
   }
 
   std::cout << "}" << std::endl;
@@ -469,12 +469,12 @@ int main(int argc, const char **argv)
 
   // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg
   //
-  inputCodeInfo.ProcessKernelsArgumens(inputCodeInfo.allDescriptorSetsInfo, // ==>
-                                       inputCodeInfo.kernels);              // <==
-  
+  for(const auto& call : inputCodeInfo.allDescriptorSetsInfo)
+    inputCodeInfo.ProcessCallArs_KF(call);
+
   // finally generate kernels
   //
-  kslicer::PrintGeneratedCLFile("templates/generated.cl", GetFolderPath(inputCodeInfo.mainClassFileName), inputCodeInfo, filter.usedFiles, filter.usedFunctions, compiler);
+  kslicer::PrintGeneratedCLFile("templates/generated.cl", GetFolderPath(inputCodeInfo.mainClassFileName), inputCodeInfo, usedFiles_KF, usedFunctions_KF, compiler);
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;

@@ -509,38 +509,46 @@ kslicer::RTV_Pattern::MHandlerPtr kslicer::RTV_Pattern::MatcherHandler_CF(kslice
   return std::move(std::make_unique<kslicer::MainFuncAnalyzerRT>(std::cout, *this, a_astContext, a_mainFuncRef));
 }
 
-void kslicer::RTV_Pattern::ProcessKernelsArgumens(const std::vector<KernelCallInfo>& a_calls, std::vector<KernelInfo>& kernels)
-{
-  for(const auto& call : a_calls)
-  {
-    // find kernel:
-    size_t found = size_t(-1); 
-    for(size_t i=0; i<kernels.size(); i++)
-    {
-      if(kernels[i].name == std::string("kernel_") + call.kernelName)
-      {
-        found = i;
-        break;
-      }
-    }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    if(found != size_t(-1)) 
+kslicer::RTV_Pattern::MList kslicer::RTV_Pattern::ListMatchers_KF(const std::string& a_kernelName)
+{
+  std::vector<clang::ast_matchers::StatementMatcher> list;
+  list.push_back(kslicer::MakeMatch_MemberVarOfMethod(a_kernelName));
+  list.push_back(kslicer::MakeMatch_FunctionCallFromFunction(a_kernelName));
+  return list;
+}
+
+void kslicer::RTV_Pattern::ProcessCallArs_KF(const KernelCallInfo& a_call)
+{
+  const auto& call = a_call;
+  
+  // find kernel:
+  //
+  size_t found = size_t(-1); 
+  for(size_t i=0; i<kernels.size(); i++)
+  {
+    if(kernels[i].name == std::string("kernel_") + call.kernelName)
     {
-      auto& actualParameters = call.descriptorSetsInfo;
-      for(size_t argId = 0; argId<actualParameters.size(); argId++)
-      {
-        if(actualParameters[argId].argType == kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL)
-          kernels[found].args[argId].needFakeOffset = true; 
-      }
+      found = i;
+      break;
+    }
+  }
+
+  if(found != size_t(-1)) 
+  {
+    auto& actualParameters = call.descriptorSetsInfo;
+    for(size_t argId = 0; argId<actualParameters.size(); argId++)
+    {
+      if(actualParameters[argId].argType == kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL)
+        kernels[found].args[argId].needFakeOffset = true; 
     }
   }
 }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 std::unordered_map<std::string, kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node)

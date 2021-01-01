@@ -223,8 +223,12 @@ namespace kslicer
   {
   public:
 
-    explicit VariableAndFunctionFilter(std::ostream& s, kslicer::MainClassInfo& a_allInfo, clang::SourceManager& a_sm) : 
-                                       m_out(s), m_allInfo(a_allInfo), m_sourceManager(a_sm) { usedFunctions.clear(); }
+    explicit VariableAndFunctionFilter(std::ostream& s, kslicer::MainClassInfo& a_allInfo, clang::SourceManager& a_sm,  kslicer::KernelInfo* a_currKernel) : 
+                                       m_out(s), m_allInfo(a_allInfo), m_sourceManager(a_sm), currKernel(a_currKernel) 
+    {
+       usedFunctions.clear();
+       currKernel->usedVectors.clear(); 
+    }
 
     kslicer::KernelInfo* currKernel = nullptr;
 

@@ -177,7 +177,7 @@ namespace kslicer
     typedef std::vector<clang::ast_matchers::StatementMatcher> MList;
     typedef std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> MHandlerPtr;
 
-    ////
+    //// Processing Control Functions (CF)
     // 
     virtual MList       ListMatchers_CF(const std::string& mainFuncName) = 0;
     virtual MHandlerPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext) = 0;
@@ -192,8 +192,11 @@ namespace kslicer
                                      
     //// \\
 
-
-    virtual void ProcessKernelsArgumens(const std::vector<KernelCallInfo>& a_calls, std::vector<KernelInfo>& kernels) { }
+    //// Processing Kernel Functions (KF)
+    //
+    virtual MList ListMatchers_KF(const std::string& mainFuncName) = 0; 
+    
+    virtual void ProcessCallArs_KF(const KernelCallInfo& a_call) { };
 
   };
 
@@ -205,14 +208,15 @@ namespace kslicer
 
     std::string VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;
 
-    void AddSpecVars_CF(std::vector<MainFuncInfo>&   a_mainFuncList, 
-                                            std::vector<KernelInfo>&     a_kernelList) override;
+    void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, 
+                        std::vector<KernelInfo>&   a_kernelList) override;
 
-    void PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&   a_mainFuncList, 
-                                     const std::vector<KernelInfo>&     a_kernelList,
-                                     std::vector<KernelCallInfo>&       a_kernelCalls) override;    
-
-    void ProcessKernelsArgumens(const std::vector<KernelCallInfo>& a_calls, std::vector<KernelInfo>& kernels) override;                                  
+    void PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>& a_mainFuncList, 
+                                const std::vector<KernelInfo>&   a_kernelList,
+                                std::vector<KernelCallInfo>&     a_kernelCalls) override;    
+    
+    MList ListMatchers_KF(const std::string& mainFuncName) override;
+    void ProcessCallArs_KF(const KernelCallInfo& a_call) override;                                
   };
 
   struct IPV_Pattern : public MainClassInfo
@@ -220,7 +224,9 @@ namespace kslicer
     MList       ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext) override;
   
-    std::string VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;                           
+    std::string VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override; 
+
+    MList ListMatchers_KF(const std::string& mainFuncName) override;                          
   };
 
 
