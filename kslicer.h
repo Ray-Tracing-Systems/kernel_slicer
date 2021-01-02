@@ -153,6 +153,8 @@ namespace kslicer
     bool   needToAddThreadFlags = false;
   };
   
+  class VariableAndFunctionFilter;
+
   /**
   \brief collector of all information about input main class
   */
@@ -174,14 +176,15 @@ namespace kslicer
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
 
-    typedef std::vector<clang::ast_matchers::StatementMatcher> MList;
-    typedef std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> MHandlerPtr;
+    typedef std::vector<clang::ast_matchers::StatementMatcher>               MList;
+    typedef std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> MHandlerCFPtr;
+    typedef std::unique_ptr<kslicer::VariableAndFunctionFilter>              MHandlerKFPtr;
 
     //// Processing Control Functions (CF)
     // 
-    virtual MList       ListMatchers_CF(const std::string& mainFuncName) = 0;
-    virtual MHandlerPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext) = 0;
-    virtual std::string VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) = 0;
+    virtual MList         ListMatchers_CF(const std::string& mainFuncName) = 0;
+    virtual MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext) = 0;
+    virtual std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) = 0;
 
     virtual void AddSpecVars_CF(std::vector<MainFuncInfo>&   a_mainFuncList, 
                                 std::vector<KernelInfo>&     a_kernelList) {}
@@ -194,7 +197,8 @@ namespace kslicer
 
     //// Processing Kernel Functions (KF)
     //
-    virtual MList ListMatchers_KF(const std::string& mainFuncName) = 0; 
+    virtual MList         ListMatchers_KF(const std::string& mainFuncName) = 0; 
+    virtual MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm) = 0;
     
     virtual void ProcessCallArs_KF(const KernelCallInfo& a_call) { };
 
@@ -204,7 +208,7 @@ namespace kslicer
   struct RTV_Pattern : public MainClassInfo
   {
     MList       ListMatchers_CF(const std::string& mainFuncName) override;
-    MHandlerPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext) override;
+    MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext) override;
 
     std::string VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;
 
@@ -215,18 +219,20 @@ namespace kslicer
                                 const std::vector<KernelInfo>&   a_kernelList,
                                 std::vector<KernelCallInfo>&     a_kernelCalls) override;    
     
-    MList ListMatchers_KF(const std::string& mainFuncName) override;
-    void ProcessCallArs_KF(const KernelCallInfo& a_call) override;                                
+    MList         ListMatchers_KF(const std::string& mainFuncName) override;
+    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm) override;
+    void          ProcessCallArs_KF(const KernelCallInfo& a_call) override;                                
   };
 
   struct IPV_Pattern : public MainClassInfo
   {
-    MList       ListMatchers_CF(const std::string& mainFuncName) override;
-    MHandlerPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext) override;
+    MList         ListMatchers_CF(const std::string& mainFuncName) override;
+    MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext) override;
   
-    std::string VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override; 
+    std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override; 
 
-    MList ListMatchers_KF(const std::string& mainFuncName) override;                          
+    MList         ListMatchers_KF(const std::string& mainFuncName) override;
+    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm) override;                          
   };
 
 

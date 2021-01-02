@@ -394,17 +394,17 @@ int main(int argc, const char **argv)
   for(auto& kernel : inputCodeInfo.kernels)
   {
     auto kernelMatchers = inputCodeInfo.ListMatchers_KF(kernel.name);
-   
-    kslicer::VariableAndFunctionFilter filter(std::cout, inputCodeInfo, compiler.getSourceManager(), &kernel);
+    auto pFilter        = inputCodeInfo.MatcherHandler_KF(kernel, compiler.getSourceManager());
+
     clang::ast_matchers::MatchFinder finder;
     for(auto& matcher : kernelMatchers)
-       finder.addMatcher(matcher, &filter);
+       finder.addMatcher(matcher, pFilter.get());
 
     auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
     std::cout << "  process " << kernel.name.c_str() << ":\t" << GetClangToolingErrorCodeMessage(res) << std::endl;
 
-    usedFunctions_KF.merge(filter.usedFunctions);
-    usedFiles_KF.merge(filter.usedFiles);
+    usedFunctions_KF.merge(pFilter->usedFunctions);
+    usedFiles_KF.merge(pFilter->usedFiles);
   }
 
   std::cout << "}" << std::endl;

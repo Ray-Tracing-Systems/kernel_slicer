@@ -98,7 +98,7 @@ kslicer::IPV_Pattern::MList kslicer::IPV_Pattern::ListMatchers_CF(const std::str
   return list;
 }
 
-kslicer::IPV_Pattern::MHandlerPtr kslicer::IPV_Pattern::MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext)
+kslicer::IPV_Pattern::MHandlerCFPtr kslicer::IPV_Pattern::MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext)
 {
   return std::move(std::make_unique<kslicer::MainFuncAnalyzerRT>(std::cout, *this, a_astContext, a_mainFuncRef));
 }
@@ -116,3 +116,9 @@ kslicer::IPV_Pattern::MList kslicer::IPV_Pattern::ListMatchers_KF(const std::str
   list.push_back(kslicer::MakeMatch_FunctionCallFromFunction(a_kernelName));
   return list;
 }
+
+kslicer::IPV_Pattern::MHandlerKFPtr kslicer::IPV_Pattern::MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm)
+{
+  return std::move(std::make_unique<kslicer::VariableAndFunctionFilter>(std::cout, *this, a_sm, &kernel));
+}
+
