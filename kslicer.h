@@ -105,7 +105,7 @@ namespace kslicer
   struct KernelCallInfo
   {
     std::string                     kernelName;
-    std::string                     originalName;
+    std::string                     originKernelName;
     std::string                     callerName;
     std::vector<ArgReferenceOnCall> descriptorSetsInfo;
   };
@@ -179,6 +179,10 @@ namespace kslicer
     typedef std::vector<clang::ast_matchers::StatementMatcher>               MList;
     typedef std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> MHandlerCFPtr;
     typedef std::unique_ptr<kslicer::VariableAndFunctionFilter>              MHandlerKFPtr;
+
+    virtual std::string RemoveKernelPrefix(const std::string& a_funcName) const; ///<! "kernel_XXX" --> "XXX"; 
+    virtual bool        IsKernel(const std::string& a_funcName) const;           ///<! return true if function is a kernel
+
 
     //// Processing Control Functions (CF)
     // 

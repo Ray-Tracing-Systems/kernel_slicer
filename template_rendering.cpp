@@ -102,10 +102,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   data["KernelNames"] = std::vector<std::string>();  
   for(const auto& k : a_classInfo.kernels)
   {
-    std::string kernName = k.name;
-    auto pos = kernName.find("kernel_");
-    if(pos != std::string::npos)
-      kernName = kernName.substr(7);
+    std::string kernName = a_classInfo.RemoveKernelPrefix(k.name);
     data["KernelNames"].push_back(kernName);
   }
 
@@ -188,10 +185,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   data["Kernels"] = std::vector<std::string>();  
   for(const auto& k : a_classInfo.kernels)
   {
-    std::string kernName = k.name;
-    auto pos = kernName.find("kernel_");
-    if(pos != std::string::npos)
-      kernName = kernName.substr(7);
+    std::string kernName = a_classInfo.RemoveKernelPrefix(k.name);
     
     json local;
     local["Name"]         = kernName;
@@ -312,12 +306,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
         realId++;
       }
 
-      // #TODO: Add Vector Members bindings here ... 
-      //
       size_t kernelId = size_t(-1);
       for(size_t j=0;j<a_classInfo.kernels.size();j++)
       {
-        if(a_classInfo.kernels[j].name == std::string("kernel_") + dsArgs.kernelName)
+        if(a_classInfo.kernels[j].name == dsArgs.originKernelName)
         {
           kernelId = j;
           break;

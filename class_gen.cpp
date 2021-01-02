@@ -42,7 +42,7 @@ std::string kslicer::MainFuncASTVisitor::MakeKernelCallCmdString(CXXMemberCallEx
     p2 = dsIdBySignature.find(callSign);
     KernelCallInfo call;
     call.kernelName         = kernName;
-    call.originalName       = fname;
+    call.originKernelName       = fname;
     call.callerName         = m_mainFuncName;
     call.descriptorSetsInfo = args;
     m_kernCallTypes.push_back(call);
@@ -265,6 +265,22 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+std::string kslicer::MainClassInfo::RemoveKernelPrefix(const std::string& a_funcName) const
+{
+  auto pos = a_funcName.find("kernel_");
+  if(pos != std::string::npos)
+    return a_funcName.substr(7);
+  else
+    return a_funcName;
+}
+
+bool kslicer::MainClassInfo::IsKernel(const std::string& a_funcName) const
+{
+  auto pos = a_funcName.find("kernel_");
+  return (pos != std::string::npos);
+}
+
 
 std::string kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {

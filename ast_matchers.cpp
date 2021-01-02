@@ -194,7 +194,7 @@ public:
     {
       const auto pClass = func_decl->getParent();
       assert(pClass != nullptr);
-      if(pClass->getName().str() == m_mainClassName &&  kern->getNameAsString().find("kernel_") != std::string::npos)
+      if(pClass->getName().str() == m_mainClassName && kern->getNameAsString().find("kernel_") != std::string::npos)
       {
         //std::cout << func_decl->getNameAsString() << " --> " << kern->getNameAsString() << std::endl;
         auto p = m_mainFunctions.find(func_decl->getNameAsString());
