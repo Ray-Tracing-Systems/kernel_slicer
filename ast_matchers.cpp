@@ -153,6 +153,22 @@ clang::ast_matchers::StatementMatcher kslicer::MakeMatch_IfReturnFromFunction(st
   ).bind("ifCond");
 }
 
+// https://stackoverflow.com/questions/36880574/finding-nested-loops-with-clang-ast-statementmatcher
+//
+clang::ast_matchers::StatementMatcher kslicer::MakeMatch_ForLoopInsideFunction(std::string const& a_funcName)
+{
+  using namespace clang::ast_matchers;
+  return 
+  //forStmt(hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction"))
+  //).bind("loop");
+
+  forStmt(hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction")),
+          hasLoopInit(declStmt(hasSingleDecl(varDecl().bind("initVar")))),
+          hasCondition(binaryOperator(hasLHS(ignoringParenImpCasts(declRefExpr(to(varDecl().bind("condVar"))))))),
+          hasIncrement(unaryOperator(hasUnaryOperand(declRefExpr(to(varDecl().bind("incVar"))))))
+  ).bind("loop");
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

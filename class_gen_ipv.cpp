@@ -114,11 +114,56 @@ kslicer::IPV_Pattern::MList kslicer::IPV_Pattern::ListMatchers_KF(const std::str
   std::vector<clang::ast_matchers::StatementMatcher> list;
   list.push_back(kslicer::MakeMatch_MemberVarOfMethod(a_kernelName));
   list.push_back(kslicer::MakeMatch_FunctionCallFromFunction(a_kernelName));
+  list.push_back(kslicer::MakeMatch_ForLoopInsideFunction(a_kernelName));
   return list;
 }
 
+static bool areSameVariable(const clang::ValueDecl *First, const clang::ValueDecl *Second) 
+{
+  return First && Second && First->getCanonicalDecl() == Second->getCanonicalDecl();
+}
+
+
+class LoopHandlerInsideKernelsIPV : public kslicer::VariableAndFunctionFilter
+{
+public:
+  explicit LoopHandlerInsideKernelsIPV(std::ostream& s, kslicer::MainClassInfo& a_allInfo, clang::SourceManager& a_sm,  kslicer::KernelInfo* a_currKernel) : VariableAndFunctionFilter(s, a_allInfo, a_sm, a_currKernel)
+  {
+
+  } 
+
+  void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
+  {
+    using namespace clang;
+    const FunctionDecl* func_decl = result.Nodes.getNodeAs<FunctionDecl>("targetFunction");
+    const ForStmt* forLoop        = result.Nodes.getNodeAs<ForStmt>("loop");
+
+    clang::SourceManager& srcMgr(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
+
+    if(forLoop && func_decl)
+    {
+      const VarDecl *initVar = result.Nodes.getNodeAs<clang::VarDecl>("initVar");
+      const VarDecl *condVar = result.Nodes.getNodeAs<clang::VarDecl>("condVar");
+      const VarDecl *incVar  = result.Nodes.getNodeAs<clang::VarDecl>("incVar");
+      
+      if(areSameVariable(initVar,condVar) && areSameVariable(initVar, incVar))
+      {
+        std::string name = initVar->getNameAsString();
+        std::cout << "  [LoopHandlerIPV]: Variable name is: " << name.c_str() << std::endl;
+      }
+    }
+    else
+      VariableAndFunctionFilter::run(result);
+
+    return;
+  }  // run
+
+};
+
+
+
 kslicer::IPV_Pattern::MHandlerKFPtr kslicer::IPV_Pattern::MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm)
 {
-  return std::move(std::make_unique<kslicer::VariableAndFunctionFilter>(std::cout, *this, a_sm, &kernel));
+  return std::move(std::make_unique<LoopHandlerInsideKernelsIPV>(std::cout, *this, a_sm, &kernel));
 }
 

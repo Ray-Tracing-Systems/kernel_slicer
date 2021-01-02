@@ -74,31 +74,31 @@ void ToneMapping::SetMaxImageSize(int w, int h)
 
 void ToneMapping::kernel_ExtractBrightPixels(int width, int height, const float4* inData4f, float4* a_brightPixels)
 {  
-  for(int tidY=0;tidY<height;tidY++)
+  for(int y=0;y<height;y++)
   {
-    for(int tidX=0;tidX<width;tidX++)
+    for(int x=0;x<width;x++)
     {
-      float4 pixel = inData4f[pitch(tidX, tidY, m_width)];
+      float4 pixel = inData4f[pitch(x, y, m_width)];
       if(pixel.x >= 1.0f || pixel.y >= 1.0f || pixel.z >= 1.0f)
-        a_brightPixels[pitch(tidX, tidY, m_width)] = pixel;
+        a_brightPixels[pitch(x, y, m_width)] = pixel;
       else
-        a_brightPixels[pitch(tidX, tidY, m_width)] = make_float4(0,0,0,0);      
+        a_brightPixels[pitch(x, y, m_width)] = make_float4(0,0,0,0);      
     }
   }
 }
 
 void ToneMapping::kernel_DownSample4x(int width, int height, const float4* a_dataFullRes, float4* a_dataSmallRes)
 {
-  for(int tidY=0;tidY<height;tidY++)
+  for(int j=0;j<height;j++)
   {
-    for(int tidX=0;tidX<width;tidX++)
+    for(int i=0;i<width;i++)
     {
       float4 average = make_float4(0,0,0,0);
       for(int y=0;y<4;y++)
         for(int x=0;x<4;x++)
-          average += a_dataFullRes[pitch(tidX*4 + x, tidY*4 + y, m_width)];
+          average += a_dataFullRes[pitch(i*4 + x, j*4 + y, m_width)];
       
-      a_dataSmallRes[pitch(tidX, tidY, m_widthSmall)] = average*(1.0f/16.0f);
+      a_dataSmallRes[pitch(i, j, m_widthSmall)] = average*(1.0f/16.0f);
     }
   }
 }

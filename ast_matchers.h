@@ -35,6 +35,8 @@ namespace kslicer
   clang::ast_matchers::StatementMatcher MakeMatch_FunctionCallInsideForLoopInsideFunction(std::string const& funcName);
   clang::ast_matchers::StatementMatcher MakeMatch_IfReturnFromFunction(std::string const& funcName);
 
+  clang::ast_matchers::StatementMatcher MakeMatch_ForLoopInsideFunction(std::string const& funcName);
+
   std::string locationAsString(clang::SourceLocation loc, clang::SourceManager const * const sm);
   std::string sourceRangeAsString(clang::SourceRange r, clang::SourceManager const * sm);
 
@@ -195,16 +197,7 @@ namespace kslicer
           info.kernelCallRange = kern_call->getSourceRange();
           CurrMainFunc().CallsInsideFor[hashValue2] = info; // CallsInsideFor[kern_call] = kern_call;
         }
-      }
-      else 
-      {
-        check_ptr(l_var,     "l_var", "",     m_out);
-        check_ptr(var,       "var",   "",     m_out);
-
-        check_ptr(func_decl, "func_decl", "", m_out);
-        check_ptr(kern_call, "kern_call", "", m_out);
-        check_ptr(kern,      "kern",      "", m_out);
-      }
+      }clang::ast_matchers::StatementMatcher MakeMatch_ForLoopInsideFunction(std::string const& funcName);
 
       return;
     }  // run
