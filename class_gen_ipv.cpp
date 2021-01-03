@@ -45,18 +45,10 @@ uint32_t kslicer::IPV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel)
     return 0;
 } 
 
-std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::IPV_Pattern::GetKernelTIDArgs(const KernelInfo& a_kernel) const
+bool kslicer::IPV_Pattern::IsThreadIdArg(const KernelInfo::Arg& arg, const KernelInfo& a_kernel) const 
 {
-  std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> args;
   assert(false); // NOT IMPLEMENTED!
-  return args;
-}
-
-std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::IPV_Pattern::GetKernelCommonArgs(const KernelInfo& a_kernel) const
-{
-  std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> args;
-  assert(false); // NOT IMPLEMENTED!
-  return args;
+  return false; 
 }
 
 std::string kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)

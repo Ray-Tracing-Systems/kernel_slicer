@@ -403,6 +403,9 @@ int main(int argc, const char **argv)
     auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
     std::cout << "  process " << kernel.name.c_str() << ":\t" << GetClangToolingErrorCodeMessage(res) << std::endl;
 
+    for(auto& arg : kernel.args) // it is important to run this loop after second stage at which kernel matchers are applied!
+      arg.isThreadID = inputCodeInfo.IsThreadIdArg(arg, kernel);
+
     usedFunctions_KF.merge(pFilter->usedFunctions);
     usedFiles_KF.merge(pFilter->usedFiles);
   }

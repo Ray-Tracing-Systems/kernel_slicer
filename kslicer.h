@@ -25,6 +25,7 @@ namespace kslicer
       std::string name;
       int         size;
       bool needFakeOffset = false;
+      bool isThreadID     = false;
     };
     
     std::string      return_type;
@@ -183,6 +184,7 @@ namespace kslicer
 
     virtual std::string RemoveKernelPrefix(const std::string& a_funcName) const; ///<! "kernel_XXX" --> "XXX"; 
     virtual bool        IsKernel(const std::string& a_funcName) const;           ///<! return true if function is a kernel
+    virtual bool        IsThreadIdArg(const KernelInfo::Arg& arg, const KernelInfo& a_kernel) const = 0;  ///<! return true if argument is used as threadId
 
 
     //// Processing Control Functions (CF)
@@ -218,13 +220,15 @@ namespace kslicer
       std::string argName;
     };
    
-    virtual std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const = 0; 
-    virtual std::vector<ArgTypeAndNamePair> GetKernelCommonArgs(const KernelInfo& a_kernel) const = 0;
+    virtual std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const; 
+    virtual std::vector<ArgTypeAndNamePair> GetKernelCommonArgs(const KernelInfo& a_kernel) const;
   };
 
 
   struct RTV_Pattern : public MainClassInfo
   {
+    bool          IsThreadIdArg(const KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override;
+
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext) override;
 
@@ -241,15 +245,14 @@ namespace kslicer
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm) override;
     void          ProcessCallArs_KF(const KernelCallInfo& a_call) override;   
 
-    uint32_t                        GetKernelDim(const KernelInfo& a_kernel) const override;     
-    std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const override;  
-    std::vector<ArgTypeAndNamePair> GetKernelCommonArgs(const KernelInfo& a_kernel) const override;                       
+    uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;                       
   };
 
   struct IPV_Pattern : public MainClassInfo
   {
     std::string   RemoveKernelPrefix(const std::string& a_funcName) const override; ///<! "kernel2D_XXX" --> "XXX"; 
     bool          IsKernel(const std::string& a_funcName) const override;           ///<! return true if function is a kernel
+    bool          IsThreadIdArg(const KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override;
 
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext) override;
@@ -259,9 +262,7 @@ namespace kslicer
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm) override; 
 
-    uint32_t                        GetKernelDim(const KernelInfo& a_kernel) const override;
-    std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const override;   
-    std::vector<ArgTypeAndNamePair> GetKernelCommonArgs(const KernelInfo& a_kernel) const override;                      
+    uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;                     
   };
 
 

@@ -174,8 +174,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto predefinedNames = kslicer::GetAllPredefinedThreadIdNamesRTV();
-
   std::vector<std::string> kernelsCallCmdDecl(a_classInfo.kernels.size());
   for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
     kernelsCallCmdDecl[i] = a_classInfo.kernels[i].DeclCmd;
@@ -199,8 +197,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     size_t actualSize     = 0;
     for(const auto& arg : k.args)
     {
-      auto elementId = std::find(predefinedNames.begin(), predefinedNames.end(), arg.name);
-      if(elementId != predefinedNames.end()) // exclude predefined names from bindings
+      if(arg.isThreadID) // exclude TID args bindings
       {
         threadIdNamesList.push_back(arg.name);
         continue;
