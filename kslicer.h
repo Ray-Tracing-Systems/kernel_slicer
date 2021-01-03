@@ -39,6 +39,7 @@ namespace kslicer
 
     std::string DeclCmd;
     std::unordered_set<std::string> usedVectors; // list of all std::vector<T> member names which is referenced inside kernel
+    std::string rewrittenText;
   };
 
   /**
@@ -160,7 +161,7 @@ namespace kslicer
   */
   struct MainClassInfo
   {
-    std::vector<KernelInfo>      kernels;     ///<! only those kerneles which are called from main functions
+    std::vector<KernelInfo>      kernels;     ///<! only those kernels which are called from 'Main'/'Control' functions
     std::vector<DataMemberInfo>  dataMembers; ///<! only those member variables which are referenced from kernels 
     std::vector<DataMemberInfo>  containers;  ///<! containers that should be transformed to buffers
 
@@ -203,7 +204,8 @@ namespace kslicer
     //
     virtual MList         ListMatchers_KF(const std::string& mainFuncName) = 0; 
     virtual MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm) = 0;
-    
+    virtual std::string   VisitAndRewrite_KF(const KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler);
+
     virtual void ProcessCallArs_KF(const KernelCallInfo& a_call) { };
     
     //// These methods used for final template text rendering
@@ -271,8 +273,6 @@ namespace kslicer
 
   
   void ReplaceOpenCLBuiltInTypes(std::string& a_typeName);
-
-  std::string ProcessKernel(const KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, const MainClassInfo& a_codeInfo);  
   std::vector<std::string> GetAllPredefinedThreadIdNamesRTV();
 
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler);

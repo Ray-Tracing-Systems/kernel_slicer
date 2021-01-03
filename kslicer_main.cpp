@@ -472,6 +472,9 @@ int main(int argc, const char **argv)
   for(const auto& call : inputCodeInfo.allDescriptorSetsInfo)
     inputCodeInfo.ProcessCallArs_KF(call);
 
+  for(auto& k : inputCodeInfo.kernels)
+    k.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k, compiler);
+
   // finally generate kernels
   //
   kslicer::PrintGeneratedCLFile("templates/generated.cl", GetFolderPath(inputCodeInfo.mainClassFileName), inputCodeInfo, usedFiles_KF, usedFunctions_KF, compiler);

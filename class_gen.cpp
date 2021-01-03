@@ -852,7 +852,7 @@ std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo) // ti
     return "tid";
 }
 
-std::string kslicer::ProcessKernel(const KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, const kslicer::MainClassInfo& a_codeInfo)
+std::string kslicer::MainClassInfo::VisitAndRewrite_KF(const KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
 {
   const CXXMethodDecl* a_node = a_funcInfo.astNode;
   //a_node->dump();
@@ -862,7 +862,7 @@ std::string kslicer::ProcessKernel(const KernelInfo& a_funcInfo, const clang::Co
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
-  kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, a_codeInfo.mainClassName, a_codeInfo.dataMembers, a_funcInfo.args, fakeOffsetExpr, a_funcInfo.isBoolTyped);
+  kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, this->mainClassName, this->dataMembers, a_funcInfo.args, fakeOffsetExpr, a_funcInfo.isBoolTyped);
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
   
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
@@ -870,6 +870,7 @@ std::string kslicer::ProcessKernel(const KernelInfo& a_funcInfo, const clang::Co
   
   return rewrite2.getRewrittenText(clang::SourceRange(b,e));
 }
+
 
 void kslicer::ObtainKernelsDecl(std::vector<kslicer::KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo)
 {

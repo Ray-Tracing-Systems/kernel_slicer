@@ -431,48 +431,6 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
     for(auto tid : tidArgs)
       threadIdNames.push_back(tid.argName);
 
-    //bool foundThreadIdX = false; std::string tidXName = "tid";
-    //bool foundThreadIdY = false; std::string tidYName = "tid2";
-    //bool foundThreadIdZ = false; std::string tidZName = "tid3";
-    //
-    //json args = std::vector<std::string>();
-    //json vecs = std::vector<std::string>();
-    //for (const auto& arg : k.args) 
-    //{
-    //  std::string typeStr = arg.type;
-    //  kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
-    //  
-    //  json argj;
-    //  argj["Type"] = typeStr;
-    //  argj["Name"] = arg.name;
-    //
-    //  bool skip = false;
-    //  
-    //  if(arg.name == "tid" || arg.name == "tidX") // todo: check several names ... 
-    //  {
-    //    skip           = true;
-    //    foundThreadIdX = true;
-    //    tidXName       = arg.name;
-    //  }
-    //
-    //  if(arg.name == "tidY") // todo: check several names ... 
-    //  {
-    //    skip           = true;
-    //    foundThreadIdY = true;
-    //    tidYName       = arg.name;
-    //  }
-    //
-    //  if(arg.name == "tidZ") // todo: check several names ... 
-    //  {
-    //    skip           = true;
-    //    foundThreadIdZ = true;
-    //    tidZName       = arg.name;
-    //  }
-    //
-    //  if(!skip)
-    //    args.push_back(argj);
-    //}
-
     // now add all std::vector members
     //
     json vecs = std::vector<std::string>();
@@ -506,28 +464,14 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       argj["Name"] = kslicer::GetProjPrefix() + "data";
       args.push_back(argj);
     }
-
-    //std::vector<std::string> threadIdNames;
-    //{
-    //  if(foundThreadIdX)
-    //    threadIdNames.push_back(tidXName);
-    //  if(foundThreadIdY)
-    //    threadIdNames.push_back(tidYName);
-    //  if(foundThreadIdZ)
-    //    threadIdNames.push_back(tidZName);
-    //}
     
     json kernelJson;
     kernelJson["Args"]        = args;
     kernelJson["Vecs"]        = vecs;
     kernelJson["Name"]        = k.name;
 
-    std::string sourceCodeFull = kslicer::ProcessKernel(k, compiler, a_classInfo);
-    std::string sourceCodeCut  = sourceCodeFull.substr(sourceCodeFull.find_first_of('{')+1);
-                sourceCodeCut  = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
-
-    kernelJson["Source"]      = sourceCodeCut;
-
+    std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
+    kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
     kernelJson["threadDim"]   = threadIdNames.size();
     kernelJson["threadNames"] = threadIdNames;
     if(threadIdNames.size() >= 1)

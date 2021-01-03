@@ -176,7 +176,7 @@ class LoopHandlerInsideKernelsIPV : public kslicer::VariableAndFunctionFilter
 public:
   explicit LoopHandlerInsideKernelsIPV(std::ostream& s, kslicer::MainClassInfo& a_allInfo, clang::SourceManager& a_sm,  kslicer::KernelInfo* a_currKernel) : VariableAndFunctionFilter(s, a_allInfo, a_sm, a_currKernel)
   {
-    //m_maxNesting = a_allInfo.KernelDim(a_currKernel->Name ... ) 
+    m_maxNesting = a_allInfo.GetKernelDim(*a_currKernel); 
   } 
 
   void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
