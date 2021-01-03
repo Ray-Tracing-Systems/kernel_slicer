@@ -205,13 +205,25 @@ namespace kslicer
     virtual MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm) = 0;
     
     virtual void ProcessCallArs_KF(const KernelCallInfo& a_call) { };
+    
+    //// These methods used for final template text rendering
+    //
+    virtual uint32_t GetKernelDim(const KernelInfo& a_kernel) const = 0; 
 
+    struct ArgTypeAndNamePair
+    {
+      std::string typeName;
+      std::string argName;
+    };
+   
+    virtual std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const = 0; 
+    virtual std::vector<ArgTypeAndNamePair> GetKernelCommonArgs(const KernelInfo& a_kernel) const = 0;
   };
 
 
   struct RTV_Pattern : public MainClassInfo
   {
-    MList       ListMatchers_CF(const std::string& mainFuncName) override;
+    MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext) override;
 
     std::string VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;
@@ -225,18 +237,29 @@ namespace kslicer
     
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm) override;
-    void          ProcessCallArs_KF(const KernelCallInfo& a_call) override;                                
+    void          ProcessCallArs_KF(const KernelCallInfo& a_call) override;   
+
+    uint32_t                        GetKernelDim(const KernelInfo& a_kernel) const override;     
+    std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const override;  
+    std::vector<ArgTypeAndNamePair> GetKernelCommonArgs(const KernelInfo& a_kernel) const override;                       
   };
 
   struct IPV_Pattern : public MainClassInfo
   {
+    std::string   RemoveKernelPrefix(const std::string& a_funcName) const override; ///<! "kernel2D_XXX" --> "XXX"; 
+    bool          IsKernel(const std::string& a_funcName) const override;           ///<! return true if function is a kernel
+
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext) override;
   
     std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override; 
 
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
-    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm) override;                          
+    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm) override; 
+
+    uint32_t                        GetKernelDim(const KernelInfo& a_kernel) const override;
+    std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const override;   
+    std::vector<ArgTypeAndNamePair> GetKernelCommonArgs(const KernelInfo& a_kernel) const override;                      
   };
 
 
@@ -250,7 +273,7 @@ namespace kslicer
   void ReplaceOpenCLBuiltInTypes(std::string& a_typeName);
 
   std::string ProcessKernel(const KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, const MainClassInfo& a_codeInfo);  
-  std::vector<std::string> GetAllPredefinedThreadIdNames();
+  std::vector<std::string> GetAllPredefinedThreadIdNamesRTV();
 
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler);
   std::string CutOffFileExt(const std::string& a_filePath);

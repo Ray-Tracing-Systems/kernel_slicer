@@ -174,7 +174,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto predefinedNames = kslicer::GetAllPredefinedThreadIdNames();
+  auto predefinedNames = kslicer::GetAllPredefinedThreadIdNamesRTV();
 
   std::vector<std::string> kernelsCallCmdDecl(a_classInfo.kernels.size());
   for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
@@ -251,7 +251,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  auto predefinedNamesId = GetAllPredefinedThreadIdNames();
+  auto predefinedNamesId = GetAllPredefinedThreadIdNamesRTV();
 
   data["MainFunctions"] = std::vector<std::string>();
   for(const auto& mainFunc : a_methodsToGenerate)
@@ -414,50 +414,68 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
   for (const auto& k : a_classInfo.kernels)  
   {
     std::cout << "  processing " << k.name << std::endl;
-    bool foundThreadIdX = false; std::string tidXName = "tid";
-    bool foundThreadIdY = false; std::string tidYName = "tid2";
-    bool foundThreadIdZ = false; std::string tidZName = "tid3";
-
+    
+    auto commonArgs = a_classInfo.GetKernelCommonArgs(k);
+    auto tidArgs    = a_classInfo.GetKernelTIDArgs(k);
+    
     json args = std::vector<std::string>();
-    json vecs = std::vector<std::string>();
-    for (const auto& arg : k.args) 
+    for(auto commonArg : commonArgs)
     {
-      std::string typeStr = arg.type;
-      kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
-      
       json argj;
-      argj["Type"] = typeStr;
-      argj["Name"] = arg.name;
-
-      bool skip = false;
-      
-      if(arg.name == "tid" || arg.name == "tidX") // todo: check several names ... 
-      {
-        skip           = true;
-        foundThreadIdX = true;
-        tidXName       = arg.name;
-      }
-  
-      if(arg.name == "tidY") // todo: check several names ... 
-      {
-        skip           = true;
-        foundThreadIdY = true;
-        tidYName       = arg.name;
-      }
-  
-      if(arg.name == "tidZ") // todo: check several names ... 
-      {
-        skip           = true;
-        foundThreadIdZ = true;
-        tidZName       = arg.name;
-      }
-
-      if(!skip)
-        args.push_back(argj);
+      argj["Type"] = commonArg.typeName;
+      argj["Name"] = commonArg.argName;
+      args.push_back(argj);
     }
+
+    std::vector<std::string> threadIdNames;
+    for(auto tid : tidArgs)
+      threadIdNames.push_back(tid.argName);
+
+    //bool foundThreadIdX = false; std::string tidXName = "tid";
+    //bool foundThreadIdY = false; std::string tidYName = "tid2";
+    //bool foundThreadIdZ = false; std::string tidZName = "tid3";
+    //
+    //json args = std::vector<std::string>();
+    //json vecs = std::vector<std::string>();
+    //for (const auto& arg : k.args) 
+    //{
+    //  std::string typeStr = arg.type;
+    //  kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
+    //  
+    //  json argj;
+    //  argj["Type"] = typeStr;
+    //  argj["Name"] = arg.name;
+    //
+    //  bool skip = false;
+    //  
+    //  if(arg.name == "tid" || arg.name == "tidX") // todo: check several names ... 
+    //  {
+    //    skip           = true;
+    //    foundThreadIdX = true;
+    //    tidXName       = arg.name;
+    //  }
+    //
+    //  if(arg.name == "tidY") // todo: check several names ... 
+    //  {
+    //    skip           = true;
+    //    foundThreadIdY = true;
+    //    tidYName       = arg.name;
+    //  }
+    //
+    //  if(arg.name == "tidZ") // todo: check several names ... 
+    //  {
+    //    skip           = true;
+    //    foundThreadIdZ = true;
+    //    tidZName       = arg.name;
+    //  }
+    //
+    //  if(!skip)
+    //    args.push_back(argj);
+    //}
 
     // now add all std::vector members
     //
+    json vecs = std::vector<std::string>();
     for(const auto& name : k.usedVectors)
     {
       auto pVecMember     = dataMembersCached.find(name);
@@ -489,15 +507,15 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       args.push_back(argj);
     }
 
-    std::vector<std::string> threadIdNames;
-    {
-      if(foundThreadIdX)
-        threadIdNames.push_back(tidXName);
-      if(foundThreadIdY)
-        threadIdNames.push_back(tidYName);
-      if(foundThreadIdZ)
-        threadIdNames.push_back(tidZName);
-    }
+    //std::vector<std::string> threadIdNames;
+    //{
+    //  if(foundThreadIdX)
+    //    threadIdNames.push_back(tidXName);
+    //  if(foundThreadIdY)
+    //    threadIdNames.push_back(tidYName);
+    //  if(foundThreadIdZ)
+    //    threadIdNames.push_back(tidZName);
+    //}
     
     json kernelJson;
     kernelJson["Args"]        = args;

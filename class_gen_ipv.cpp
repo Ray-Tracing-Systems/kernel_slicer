@@ -5,12 +5,59 @@
 #include <sstream>
 #include <algorithm>
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+std::string kslicer::IPV_Pattern::RemoveKernelPrefix(const std::string& a_funcName) const ///<! "kernel2D_XXX" --> "XXX"; 
+{
+  std::string name = a_funcName;
+  if(ReplaceFirst(name, "kernel1D_", "") || ReplaceFirst(name, "kernel2D_", "") || ReplaceFirst(name, "kernel3D_", ""))
+    return name;
+  else
+    return a_funcName;
+}
+
+bool kslicer::IPV_Pattern::IsKernel(const std::string& a_funcName) const ///<! return true if function is a kernel
+{
+  auto pos1 = a_funcName.find("kernel1D_");
+  auto pos2 = a_funcName.find("kernel2D_");
+  auto pos3 = a_funcName.find("kernel3D_");
+  return (pos1 != std::string::npos) || (pos2 != std::string::npos) || (pos3 != std::string::npos); 
+}
+
+uint32_t kslicer::IPV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel) const
+{
+  const std::string& a_funcName = a_kernel.name;
+  auto pos1 = a_funcName.find("kernel1D_");
+  auto pos2 = a_funcName.find("kernel2D_");
+  auto pos3 = a_funcName.find("kernel3D_");
+
+  if(pos1 != std::string::npos)
+    return 1;
+  else if(pos2 != std::string::npos) 
+    return 2;
+  else if(pos3 != std::string::npos)
+    return 3;
+  else
+    return 0;
+} 
+
+std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::IPV_Pattern::GetKernelTIDArgs(const KernelInfo& a_kernel) const
+{
+  std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> args;
+  assert(false); // NOT IMPLEMENTED!
+  return args;
+}
+
+std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::IPV_Pattern::GetKernelCommonArgs(const KernelInfo& a_kernel) const
+{
+  std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> args;
+  assert(false); // NOT IMPLEMENTED!
+  return args;
+}
 
 std::string kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
@@ -129,7 +176,7 @@ class LoopHandlerInsideKernelsIPV : public kslicer::VariableAndFunctionFilter
 public:
   explicit LoopHandlerInsideKernelsIPV(std::ostream& s, kslicer::MainClassInfo& a_allInfo, clang::SourceManager& a_sm,  kslicer::KernelInfo* a_currKernel) : VariableAndFunctionFilter(s, a_allInfo, a_sm, a_currKernel)
   {
-
+    //m_maxNesting = a_allInfo.KernelDim(a_currKernel->Name ... ) 
   } 
 
   void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
@@ -158,6 +205,8 @@ public:
     return;
   }  // run
 
+
+  uint32_t m_maxNesting = 0;
 };
 
 

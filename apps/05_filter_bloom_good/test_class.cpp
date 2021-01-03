@@ -72,7 +72,7 @@ void ToneMapping::SetMaxImageSize(int w, int h)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ToneMapping::kernel_ExtractBrightPixels(int width, int height, const float4* inData4f, float4* a_brightPixels)
+void ToneMapping::kernel2D_ExtractBrightPixels(int width, int height, const float4* inData4f, float4* a_brightPixels)
 {  
   for(int y=0;y<height;y++)
   {
@@ -87,7 +87,7 @@ void ToneMapping::kernel_ExtractBrightPixels(int width, int height, const float4
   }
 }
 
-void ToneMapping::kernel_DownSample4x(int width, int height, const float4* a_dataFullRes, float4* a_dataSmallRes)
+void ToneMapping::kernel2D_DownSample4x(int width, int height, const float4* a_dataFullRes, float4* a_dataSmallRes)
 {
   for(int j=0;j<height;j++)
   {
@@ -103,7 +103,7 @@ void ToneMapping::kernel_DownSample4x(int width, int height, const float4* a_dat
   }
 }
 
-void ToneMapping::kernel_BlurX(int width, int height, const float4* a_dataIn, float4* a_dataOut)
+void ToneMapping::kernel2D_BlurX(int width, int height, const float4* a_dataIn, float4* a_dataOut)
 {
   for(int tidY=0;tidY<height;tidY++)
   {
@@ -129,7 +129,7 @@ void ToneMapping::kernel_BlurX(int width, int height, const float4* a_dataIn, fl
   }
 }
 
-void ToneMapping::kernel_BlurY(int width, int height, const float4* a_dataIn, float4* a_dataOut)
+void ToneMapping::kernel2D_BlurY(int width, int height, const float4* a_dataIn, float4* a_dataOut)
 {
   for(int tidY=0;tidY<height;tidY++)
   {
@@ -155,7 +155,7 @@ void ToneMapping::kernel_BlurY(int width, int height, const float4* a_dataIn, fl
   }
 }
 
-void ToneMapping::kernel_MixAndToneMap(int width, int height, const float4* inData4f, const float4* inBrightPixels, unsigned int* outData1ui)
+void ToneMapping::kernel2D_MixAndToneMap(int width, int height, const float4* inData4f, const float4* inBrightPixels, unsigned int* outData1ui)
 {
   for(int tidY=0;tidY<height;tidY++)
   {
@@ -186,26 +186,26 @@ void ToneMapping::Bloom(int w, int h, const float4* inData4f,
 {
   // (1) ExtractBrightPixels (inData4f => m_brightPixels (w,h))
   //
-  kernel_ExtractBrightPixels(w, h, inData4f, 
-                             m_brightPixels.data());
+  kernel2D_ExtractBrightPixels(w, h, inData4f, 
+                               m_brightPixels.data());
 
   // (2) Downsample (m_brightPixels => m_downsampledImage (w/4, h/4) )
   //
-  kernel_DownSample4x(m_widthSmall, m_heightSmall, m_brightPixels.data(), 
-                      m_downsampledImage.data());
+  kernel2D_DownSample4x(m_widthSmall, m_heightSmall, m_brightPixels.data(), 
+                        m_downsampledImage.data());
 
   // (3) GaussBlur (m_downsampledImage => m_downsampledImage)
   //
-  kernel_BlurX(m_widthSmall, m_heightSmall, m_downsampledImage.data(), 
-               m_tempImage.data()); // m_downsampledImage => m_tempImage
+  kernel2D_BlurX(m_widthSmall, m_heightSmall, m_downsampledImage.data(), 
+                 m_tempImage.data()); // m_downsampledImage => m_tempImage
 
-  kernel_BlurY(m_widthSmall, m_heightSmall, m_tempImage.data(), 
-               m_downsampledImage.data()); // m_tempImage => m_downsampledImage
+  kernel2D_BlurY(m_widthSmall, m_heightSmall, m_tempImage.data(), 
+                 m_downsampledImage.data()); // m_tempImage => m_downsampledImage
 
   // (4) MixAndToneMap(inData4f, m_downsampledImage) => outData1ui
   //
-  kernel_MixAndToneMap(w,h, inData4f, m_downsampledImage.data(), 
-                       outData1ui);
+  kernel2D_MixAndToneMap(w,h, inData4f, m_downsampledImage.data(), 
+                         outData1ui);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

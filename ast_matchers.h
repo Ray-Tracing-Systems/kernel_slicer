@@ -67,7 +67,7 @@ namespace kslicer
     explicit MainFuncAnalyzerRT(std::ostream& s, kslicer::MainClassInfo& a_allInfo, const clang::ASTContext& a_astContext, kslicer::MainFuncInfo& a_mainFuncRef) : 
                                 m_out(s), m_allInfo(a_allInfo), m_astContext(a_astContext), m_mainFuncRef(a_mainFuncRef) 
     {
-      m_namesToIngore = kslicer::GetAllPredefinedThreadIdNames(); 
+      m_namesToIngore = kslicer::GetAllPredefinedThreadIdNamesRTV(); 
     }
 
     MainFuncInfo& CurrMainFunc() { return m_mainFuncRef; }

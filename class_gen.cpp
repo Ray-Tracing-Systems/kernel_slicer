@@ -146,7 +146,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArg
   std::vector<kslicer::ArgReferenceOnCall> args; 
   args.reserve(20);
 
-  auto predefinedNames = GetAllPredefinedThreadIdNames();
+  auto predefinedNames = GetAllPredefinedThreadIdNamesRTV();
   
   for(size_t i=0;i<f->getNumArgs();i++)
   {
@@ -277,6 +277,54 @@ bool kslicer::MainClassInfo::IsKernel(const std::string& a_funcName) const
   return (pos != std::string::npos);
 }
 
+std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::RTV_Pattern::GetKernelTIDArgs(const KernelInfo& a_kernel) const
+{
+  std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> args;
+  auto pdef = GetAllPredefinedThreadIdNamesRTV();
+  for (const auto& arg : a_kernel.args) 
+  {    
+    auto id = std::find(pdef.begin(), pdef.end(), arg.name);
+    if(id != pdef.end())
+    { 
+      std::string typeStr = arg.type;
+      kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
+
+      ArgTypeAndNamePair arg2;
+      arg2.argName  = arg.name;
+      arg2.typeName = typeStr;
+      args.push_back(arg2);
+    }
+  }
+
+  return args;
+}
+
+std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::RTV_Pattern::GetKernelCommonArgs(const KernelInfo& a_kernel) const
+{
+  std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> args;
+  auto pdef = GetAllPredefinedThreadIdNamesRTV();
+  for (const auto& arg : a_kernel.args) 
+  {    
+    auto id = std::find(pdef.begin(), pdef.end(), arg.name);
+    if(id == pdef.end())
+    { 
+      std::string typeStr = arg.type;
+      kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
+
+      ArgTypeAndNamePair arg2;
+      arg2.argName  = arg.name;
+      arg2.typeName = typeStr;
+      args.push_back(arg2);
+    }
+  }
+
+  return args;
+}
+
+uint32_t kslicer::RTV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel) const
+{
+  return uint32_t(GetKernelTIDArgs(a_kernel).size());
+} 
 
 std::string kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
@@ -777,7 +825,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitUnaryOperator(UnaryOperator* expr)
 
 std::vector<std::string> GetKernelThreadIdNames(const kslicer::KernelInfo& a_funcInfo)
 {
-  auto predefined = kslicer::GetAllPredefinedThreadIdNames();
+  auto predefined = kslicer::GetAllPredefinedThreadIdNamesRTV();
   std::vector<std::string> threadIds;
   for(const auto& arg : a_funcInfo.args)
   {
@@ -832,7 +880,8 @@ void kslicer::ObtainKernelsDecl(std::vector<kslicer::KernelInfo>& a_kernelsData,
     std::string kernelSourceCode = GetRangeSourceCode(sourceRange, compiler);
     
     std::string kernelCmdDecl = kernelSourceCode.substr(0, kernelSourceCode.find(")")+1);
-    assert(ReplaceFirst(kernelCmdDecl, a_mainClassName + "::", ""));    
+    assert(ReplaceFirst(kernelCmdDecl, a_mainClassName + "::", ""));
+    
     kernelCmdDecl = a_codeInfo.RemoveKernelPrefix(kernelCmdDecl);
 
     assert(ReplaceFirst(kernelCmdDecl,"(", "Cmd("));

@@ -56,11 +56,11 @@ public:
 
 protected:
 
-  void kernel_ExtractBrightPixels(int tidX, int tidY, const float4* inData4f, float4* a_brightPixels);
-  void kernel_DownSample4x(int x, int y, const float4* a_daraFullRes, float4* a_dataSmallRes);
-  void kernel_BlurX(int tidX, int tidY, const float4* a_dataIn, float4* a_dataOut);
-  void kernel_BlurY(int tidX, int tidY, const float4* a_dataIn, float4* a_dataOut);
-  void kernel_MixAndToneMap(int tidX, int tidY, const float4* inData4f, const float4* inBrightPixels, unsigned int* outData1ui);
+  void kernel2D_ExtractBrightPixels(int tidX, int tidY, const float4* inData4f, float4* a_brightPixels);
+  void kernel2D_DownSample4x(int x, int y, const float4* a_daraFullRes, float4* a_dataSmallRes);
+  void kernel2D_BlurX(int tidX, int tidY, const float4* a_dataIn, float4* a_dataOut);
+  void kernel2D_BlurY(int tidX, int tidY, const float4* a_dataIn, float4* a_dataOut);
+  void kernel2D_MixAndToneMap(int tidX, int tidY, const float4* inData4f, const float4* inBrightPixels, unsigned int* outData1ui);
 
   std::vector<float4> m_brightPixels;
   std::vector<float4> m_downsampledImage;
