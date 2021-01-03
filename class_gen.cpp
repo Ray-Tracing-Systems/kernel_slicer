@@ -785,32 +785,16 @@ bool kslicer::KernelReplacerASTVisitor::VisitUnaryOperator(UnaryOperator* expr)
   return true;
 }
 
-
-std::vector<std::string> GetKernelThreadIdNames(const kslicer::KernelInfo& a_funcInfo)
+//// tid, fakeOffset(tidX,tidY,kgen_iNumElementsX) or fakeOffset2(tidX,tidY,tidX,kgen_iNumElementsX, kgen_iNumElementsY)
+//
+std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds) 
 {
-  auto predefined = kslicer::GetAllPredefinedThreadIdNamesRTV();
-  std::vector<std::string> threadIds;
-  for(const auto& arg : a_funcInfo.args)
-  {
-    auto elementId = std::find(predefined.begin(), predefined.end(), arg.name);
-    if(elementId != predefined.end())
-      threadIds.push_back(arg.name);
-  }
-  return threadIds;
-}
-
-std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo) // tid, fakeOffset(tidX,tidY,kgen_iNumElementsX) or fakeOffset2(tidX,tidY,tidX,kgen_iNumElementsX, kgen_iNumElementsY)
-{
-  std::vector<std::string> threadIds = GetKernelThreadIdNames(a_funcInfo);
-  
-  assert(threadIds.size() != 0);
-
   if(threadIds.size() == 1)
-    return threadIds[0];
+    return threadIds[0].argName;
   else if(threadIds.size() == 2)
-    return std::string("fakeOffset(") + threadIds[0] + "," + threadIds[1] + ",kgen_iNumElementsX)";
+    return std::string("fakeOffset(") + threadIds[0].argName + "," + threadIds[1].argName + ",kgen_iNumElementsX)";
   else if(threadIds.size() == 3)
-    return std::string("fakeOffset(") + threadIds[0] + "," + threadIds[1] + "," + threadIds[2] + ",kgen_iNumElementsX,kgen_iNumElementsY)";
+    return std::string("fakeOffset(") + threadIds[0].argName + "," + threadIds[1].argName + "," + threadIds[2].argName + ",kgen_iNumElementsX,kgen_iNumElementsY)";
   else
     return "tid";
 }
@@ -820,7 +804,7 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(const KernelInfo& a_funcI
   const CXXMethodDecl* a_node = a_funcInfo.astNode;
   //a_node->dump();
 
-  std::string fakeOffsetExpr = GetFakeOffsetExpression(a_funcInfo);
+  std::string fakeOffsetExpr = GetFakeOffsetExpression(a_funcInfo, GetKernelTIDArgs(a_funcInfo));
 
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
