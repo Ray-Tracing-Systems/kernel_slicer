@@ -307,7 +307,7 @@ int main(int argc, const char **argv)
   mainFunctNames.reserve(20);
   
   std::cout << "(0) Listing main functions of " << mainClassName.c_str()  << std::endl; 
-  auto mainFuncList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, compiler.getASTContext());
+  auto mainFuncList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, compiler.getASTContext(), inputCodeInfo);
   std::cout << "{" << std::endl;
   for(const auto& f : mainFuncList)
   {
@@ -326,7 +326,7 @@ int main(int argc, const char **argv)
 
   // Parse code
   //
-  kslicer::InitialPassASTConsumer astConsumer(mainFunctNames, mainClassName, compiler.getASTContext(), compiler.getSourceManager()); 
+  kslicer::InitialPassASTConsumer astConsumer(mainFunctNames, mainClassName, compiler.getASTContext(), compiler.getSourceManager(), inputCodeInfo); 
   ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
   compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
 
@@ -417,7 +417,7 @@ int main(int argc, const char **argv)
 
   // (5) genarate cpp code with Vulkan calls
   //
-  ObtainKernelsDecl(inputCodeInfo.kernels, compiler, inputCodeInfo.mainClassName);
+  ObtainKernelsDecl(inputCodeInfo.kernels, compiler, inputCodeInfo.mainClassName, inputCodeInfo);
   inputCodeInfo.allDescriptorSetsInfo.clear();
   for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
@@ -428,7 +428,7 @@ int main(int argc, const char **argv)
   }
 
   inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, // ==>
-                                            inputCodeInfo.allDescriptorSetsInfo);          // <==
+                                       inputCodeInfo.allDescriptorSetsInfo);          // <==
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;

@@ -28,7 +28,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, c
 
   a_mainFunc.startDSNumber = a_outDsInfo.size();
 
-  kslicer::MainFuncASTVisitor rv(rewrite2, compiler, a_mainFunc, inOutParamList, this->allDataMembers, this->kernels);
+  kslicer::MainFuncASTVisitor rv(rewrite2, compiler, a_mainFunc, inOutParamList, this);
 
   rv.m_kernCallTypes = a_outDsInfo;
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));

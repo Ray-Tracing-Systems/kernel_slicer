@@ -177,8 +177,8 @@ clang::ast_matchers::StatementMatcher kslicer::MakeMatch_ForLoopInsideFunction(s
 class MainFuncSeeker : public clang::ast_matchers::MatchFinder::MatchCallback 
 {
 public:
-  explicit MainFuncSeeker(std::ostream& s, const std::string& a_mainClassName, const clang::ASTContext& a_astContext) : 
-                            m_out(s), m_mainClassName(a_mainClassName), m_astContext(a_astContext) 
+  explicit MainFuncSeeker(std::ostream& s, const std::string& a_mainClassName, const clang::ASTContext& a_astContext, const kslicer::MainClassInfo& a_codeInfo) : 
+                          m_out(s), m_mainClassName(a_mainClassName), m_astContext(a_astContext), m_codeInfo(a_codeInfo) 
   {
   }
 
@@ -194,7 +194,7 @@ public:
     {
       const auto pClass = func_decl->getParent();
       assert(pClass != nullptr);
-      if(pClass->getName().str() == m_mainClassName && kern->getNameAsString().find("kernel_") != std::string::npos)
+      if(pClass->getName().str() == m_mainClassName && m_codeInfo.IsKernel(kern->getNameAsString()))
       {
         //std::cout << func_decl->getNameAsString() << " --> " << kern->getNameAsString() << std::endl;
         auto p = m_mainFunctions.find(func_decl->getNameAsString());
@@ -224,19 +224,21 @@ public:
     return;
   }  // run
   
-  std::ostream&            m_out;
-  const std::string&       m_mainClassName;
-  const clang::ASTContext& m_astContext;
+  std::ostream&                 m_out;
+  const std::string&            m_mainClassName;
+  const clang::ASTContext&      m_astContext;
+  const kslicer::MainClassInfo& m_codeInfo;
   std::unordered_map<std::string, kslicer::MainFuncNameInfo> m_mainFunctions;
 }; 
 
 std::unordered_map<std::string, kslicer::MainFuncNameInfo> kslicer::ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
                                                                                            const std::string& a_mainClassName, 
-                                                                                           const clang::ASTContext& a_astContext)
+                                                                                           const clang::ASTContext& a_astContext,
+                                                                                           const MainClassInfo& a_codeInfo)
 {
   auto kernelCallMatcher = kslicer::MakeMatch_MethodCallFromMethod();
   
-  MainFuncSeeker printer(std::cout, a_mainClassName, a_astContext);
+  MainFuncSeeker printer(std::cout, a_mainClassName, a_astContext, a_codeInfo);
   clang::ast_matchers::MatchFinder finder;
   finder.addMatcher(kernelCallMatcher,  &printer);
 

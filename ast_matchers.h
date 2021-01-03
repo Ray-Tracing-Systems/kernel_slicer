@@ -42,7 +42,8 @@ namespace kslicer
 
   std::unordered_map<std::string, MainFuncNameInfo> ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
                                                                            const std::string& a_mainClassName, 
-                                                                           const clang::ASTContext& a_astContext);
+                                                                           const clang::ASTContext& a_astContext,
+                                                                           const MainClassInfo& a_codeInfo);
 
   /**\brief Complain if pointer is invalid.
   \param p: pointer

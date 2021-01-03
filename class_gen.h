@@ -32,14 +32,12 @@ namespace kslicer
   public:
     
     MainFuncASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, MainFuncInfo& a_mainFunc, 
-                       const std::unordered_map<std::string, InOutVarInfo>& a_args, 
-                       std::unordered_map<std::string, DataMemberInfo>& a_members,
-                       const std::vector<KernelInfo>& a_kernels) : 
+                       const std::unordered_map<std::string, InOutVarInfo>& a_args, MainClassInfo* a_pCodeInfo) : 
                        m_rewriter(R), m_compiler(a_compiler), m_sm(R.getSourceMgr()), 
-                       m_kernellCallTagId(0), m_mainFuncName(a_mainFunc.Name), 
-                       m_argsOfMainFunc(a_args), m_allClassMembers(a_members), m_mainFuncLocals(a_mainFunc.Locals), m_mainFunc(a_mainFunc) 
+                       m_kernellCallTagId(0), m_mainFuncName(a_mainFunc.Name), m_mainFuncLocals(a_mainFunc.Locals),
+                       m_argsOfMainFunc(a_args), m_pCodeInfo(a_pCodeInfo), m_allClassMembers(a_pCodeInfo->allDataMembers), m_mainFunc(a_mainFunc) 
     { 
-      for(const auto& k : a_kernels)
+      for(const auto& k : a_pCodeInfo->kernels)
         m_kernels[k.name] = k;    
     }
     
@@ -47,9 +45,9 @@ namespace kslicer
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
     bool VisitIfStmt(IfStmt* ifExpr);
   
-    std::string                               mainFuncCmdName;
-    std::unordered_map<std::string, uint32_t> dsIdBySignature;
-    std::vector< KernelCallInfo >             m_kernCallTypes;
+    std::string                                              mainFuncCmdName;
+    std::unordered_map<std::string, uint32_t>                dsIdBySignature;
+    std::vector< KernelCallInfo >                            m_kernCallTypes;
     std::unordered_map<std::string, DataMemberInfo>&         m_allClassMembers;
     const std::unordered_map<std::string, DataLocalVarInfo>& m_mainFuncLocals;
 
@@ -69,6 +67,7 @@ namespace kslicer
     MainFuncInfo& m_mainFunc;
 
     std::unordered_set<uint64_t> m_alreadyProcessedCalls;
+    MainClassInfo* m_pCodeInfo = nullptr;
   };
 
   std::unordered_map<std::string, InOutVarInfo> ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node);
@@ -107,7 +106,7 @@ namespace kslicer
     bool                                                     m_needModifyExitCond;
   };
 
-  void ObtainKernelsDecl(std::vector<KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName);
+  void ObtainKernelsDecl(std::vector<KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo);
 
 }
 

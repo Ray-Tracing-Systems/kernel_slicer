@@ -26,10 +26,8 @@ std::string kslicer::MainFuncASTVisitor::MakeKernelCallCmdString(CXXMemberCallEx
   const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
-  
-  auto p = fname.find("kernel_");
-  assert(p != std::string::npos);
-  std::string kernName = fname.substr(p + 7);
+
+  const std::string kernName    = m_pCodeInfo->RemoveKernelPrefix(fname);
 
   // extract arguments to form correct descriptor set
   //
@@ -42,7 +40,7 @@ std::string kslicer::MainFuncASTVisitor::MakeKernelCallCmdString(CXXMemberCallEx
     p2 = dsIdBySignature.find(callSign);
     KernelCallInfo call;
     call.kernelName         = kernName;
-    call.originKernelName       = fname;
+    call.originKernelName   = fname;
     call.callerName         = m_mainFuncName;
     call.descriptorSetsInfo = args;
     m_kernCallTypes.push_back(call);
@@ -98,8 +96,7 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
 
-  auto p = fname.find("kernel_");
-  if(p != std::string::npos)
+  if(m_pCodeInfo->IsKernel(fname))
   {
     std::string callStr = MakeKernelCallCmdString(f);
 
@@ -132,8 +129,7 @@ bool kslicer::MainFuncASTVisitor::VisitIfStmt(IfStmt* ifExpr)
     const DeclarationName dn      = dni.getName();
     const std::string fname       = dn.getAsString();
   
-    auto p = fname.find("kernel_");
-    if(p != std::string::npos)
+    if(m_pCodeInfo->IsKernel(fname))
     {
       std::string callStr = MakeKernelCallCmdString(f);
       m_rewriter.ReplaceText(ifExpr->getSourceRange(), callStr);
@@ -268,9 +264,9 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
 
 std::string kslicer::MainClassInfo::RemoveKernelPrefix(const std::string& a_funcName) const
 {
-  auto pos = a_funcName.find("kernel_");
-  if(pos != std::string::npos)
-    return a_funcName.substr(7);
+  std::string name = a_funcName;
+  if(ReplaceFirst(name, "kernel_", ""))
+    return name;
   else
     return a_funcName;
 }
@@ -298,7 +294,7 @@ std::string kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, c
 
   a_mainFunc.startDSNumber = a_outDsInfo.size();
 
-  kslicer::MainFuncASTVisitor rv(rewrite2, compiler, a_mainFunc, inOutParamList, this->allDataMembers, this->kernels);
+  kslicer::MainFuncASTVisitor rv(rewrite2, compiler, a_mainFunc, inOutParamList, this);
 
   rv.m_kernCallTypes = a_outDsInfo;
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
@@ -473,8 +469,8 @@ void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncL
 }
 
 void kslicer::RTV_Pattern::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&   a_mainFuncList, 
-                                                      const std::vector<KernelInfo>&     a_kernelList,
-                                                      std::vector<KernelCallInfo>&       a_kernelCalls)
+                                                  const std::vector<KernelInfo>&     a_kernelList,
+                                                  std::vector<KernelCallInfo>&       a_kernelCalls)
 {
   // list kernels and main functions
   //
@@ -482,7 +478,7 @@ void kslicer::RTV_Pattern::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo
   std::unordered_map<std::string, size_t> mainFuncIdByName;
   for(size_t i=0;i<a_kernelList.size();i++)
     kernelIdByName[a_kernelList[i].name] = i;
-   for(size_t i=0;i<a_mainFuncList.size();i++)
+  for(size_t i=0;i<a_mainFuncList.size();i++)
     mainFuncIdByName[a_mainFuncList[i].Name] = i;
 
   ArgReferenceOnCall tFlagsArgRef;
@@ -498,7 +494,7 @@ void kslicer::RTV_Pattern::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo
     if(!mainFunc.needToAddThreadFlags)
       continue;
 
-    auto p2 = kernelIdByName.find(std::string("kernel_") + call.kernelName);
+    auto p2 = kernelIdByName.find(call.originKernelName);
     if(p2 != kernelIdByName.end())
       call.descriptorSetsInfo.push_back(tFlagsArgRef);
   }
@@ -553,7 +549,7 @@ void kslicer::RTV_Pattern::ProcessCallArs_KF(const KernelCallInfo& a_call)
   size_t found = size_t(-1); 
   for(size_t i=0; i<kernels.size(); i++)
   {
-    if(kernels[i].name == std::string("kernel_") + call.kernelName)
+    if(kernels[i].name == call.originKernelName)
     {
       found = i;
       break;
@@ -827,7 +823,7 @@ std::string kslicer::ProcessKernel(const KernelInfo& a_funcInfo, const clang::Co
   return rewrite2.getRewrittenText(clang::SourceRange(b,e));
 }
 
-void kslicer::ObtainKernelsDecl(std::vector<kslicer::KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName)
+void kslicer::ObtainKernelsDecl(std::vector<kslicer::KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo)
 {
   for (auto& k : a_kernelsData)  
   {
@@ -836,8 +832,9 @@ void kslicer::ObtainKernelsDecl(std::vector<kslicer::KernelInfo>& a_kernelsData,
     std::string kernelSourceCode = GetRangeSourceCode(sourceRange, compiler);
     
     std::string kernelCmdDecl = kernelSourceCode.substr(0, kernelSourceCode.find(")")+1);
-    assert(ReplaceFirst(kernelCmdDecl, a_mainClassName + "::", ""));
-    assert(ReplaceFirst(kernelCmdDecl,"kernel_", ""));
+    assert(ReplaceFirst(kernelCmdDecl, a_mainClassName + "::", ""));    
+    kernelCmdDecl = a_codeInfo.RemoveKernelPrefix(kernelCmdDecl);
+
     assert(ReplaceFirst(kernelCmdDecl,"(", "Cmd("));
     if(k.isBoolTyped)
       ReplaceFirst(kernelCmdDecl,"bool ", "void ");

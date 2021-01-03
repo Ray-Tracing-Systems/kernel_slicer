@@ -48,8 +48,8 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
     const DeclarationNameInfo dni = f->getNameInfo();
     const DeclarationName dn      = dni.getName();
     const std::string fname       = dn.getAsString();
-
-    if(fname.find("kernel_") != std::string::npos)
+    
+    if(m_codeInfo.IsKernel(fname))
     {
       const QualType qThisType = f->getThisType();   
       const QualType classType = qThisType.getTypePtr()->getPointeeType();
