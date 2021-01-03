@@ -75,6 +75,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   MakeAbsolutePathRelativeTo(mainInclude, folderPath);
   MakeAbsolutePathRelativeTo(mainIncludeGenerated, folderPath);
 
+  std::unordered_map<std::string, size_t> kernelIdByName;
+  for(size_t i=0;i<a_classInfo.kernels.size();i++)
+    kernelIdByName[a_classInfo.kernels[i].name] = i;
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -248,7 +252,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  auto predefinedNamesId = GetAllPredefinedThreadIdNamesRTV();
 
   data["MainFunctions"] = std::vector<std::string>();
   for(const auto& mainFunc : a_methodsToGenerate)
@@ -278,7 +281,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     for(size_t i=mainFunc.startDSNumber; i<mainFunc.endDSNumber; i++)
     {
       auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
-  
+      const auto kernId  = kernelIdByName[dsArgs.originKernelName];
+      const auto& kernel = a_classInfo.kernels[kernId];
+
       json local;
       local["Id"]         = i;
       local["KernelName"] = dsArgs.kernelName;
@@ -289,8 +294,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
-        auto elementId = std::find(predefinedNamesId.begin(), predefinedNamesId.end(), dsArgs.descriptorSetsInfo[j].varName); // exclude predefined names from arguments
-        if(elementId != predefinedNamesId.end())
+        if(kernel.args[j].isThreadID)
           continue;
 
         const std::string dsArgName = GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j].varName);
