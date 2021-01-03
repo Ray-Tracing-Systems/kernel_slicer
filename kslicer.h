@@ -30,8 +30,9 @@ namespace kslicer
     
     std::string      return_type;
     std::string      name;
-    std::vector<Arg> args;
-  
+    std::vector<Arg> args;            ///<! all arguments of a kernel
+    std::vector<Arg> argsTIDSelected; ///<! selected arguments which are threadIds during kernel analyzing with matchers on the second pass 
+
     const clang::CXXMethodDecl* astNode = nullptr;
     bool usedInMainFunc = false;
     bool isBoolTyped    = false; ///<! special case: if kernel return boolean, we analyze loop exit (break) or function exit (return) expression
@@ -205,7 +206,7 @@ namespace kslicer
     //// Processing Kernel Functions (KF)
     //
     virtual MList         ListMatchers_KF(const std::string& mainFuncName) = 0; 
-    virtual MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm) = 0;
+    virtual MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm, const clang::ASTContext& a_astContext) = 0;
     virtual std::string   VisitAndRewrite_KF(const KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler);
 
     virtual void ProcessCallArs_KF(const KernelCallInfo& a_call) { };
@@ -242,7 +243,7 @@ namespace kslicer
                                 std::vector<KernelCallInfo>&     a_kernelCalls) override;    
     
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
-    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm) override;
+    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm, const clang::ASTContext& a_astContext) override;
     void          ProcessCallArs_KF(const KernelCallInfo& a_call) override;   
 
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;                       
@@ -260,7 +261,7 @@ namespace kslicer
     std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override; 
 
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
-    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm) override; 
+    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm, const clang::ASTContext& a_astContext) override; 
 
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;                     
   };

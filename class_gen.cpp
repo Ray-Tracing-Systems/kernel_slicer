@@ -540,9 +540,9 @@ kslicer::RTV_Pattern::MList kslicer::RTV_Pattern::ListMatchers_KF(const std::str
   return list;
 }
 
-kslicer::RTV_Pattern::MHandlerKFPtr kslicer::RTV_Pattern::MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm)
+kslicer::RTV_Pattern::MHandlerKFPtr kslicer::RTV_Pattern::MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm, const clang::ASTContext& a_astContext)
 {
-  return std::move(std::make_unique<kslicer::VariableAndFunctionFilter>(std::cout, *this, a_sm, &kernel));
+  return std::move(std::make_unique<kslicer::VariableAndFunctionFilter>(std::cout, *this, a_sm, &kernel, a_astContext));
 }
 
 void kslicer::RTV_Pattern::ProcessCallArs_KF(const KernelCallInfo& a_call)

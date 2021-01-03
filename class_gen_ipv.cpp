@@ -166,9 +166,11 @@ static bool areSameVariable(const clang::ValueDecl *First, const clang::ValueDec
 class LoopHandlerInsideKernelsIPV : public kslicer::VariableAndFunctionFilter
 {
 public:
-  explicit LoopHandlerInsideKernelsIPV(std::ostream& s, kslicer::MainClassInfo& a_allInfo, clang::SourceManager& a_sm,  kslicer::KernelInfo* a_currKernel) : VariableAndFunctionFilter(s, a_allInfo, a_sm, a_currKernel)
+  explicit LoopHandlerInsideKernelsIPV(std::ostream& s, kslicer::MainClassInfo& a_allInfo, clang::SourceManager& a_sm,  kslicer::KernelInfo* a_currKernel, const clang::ASTContext& a_astContext) : 
+                                       VariableAndFunctionFilter(s, a_allInfo, a_sm, a_currKernel, a_astContext)
   {
-    m_maxNesting = a_allInfo.GetKernelDim(*a_currKernel); 
+    m_maxNesting = a_allInfo.GetKernelDim(*a_currKernel);
+    a_currKernel->argsTIDSelected.clear(); 
   } 
 
   void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
@@ -189,6 +191,18 @@ public:
       {
         std::string name = initVar->getNameAsString();
         std::cout << "  [LoopHandlerIPV]: Variable name is: " << name.c_str() << std::endl;
+        if(currKernel->argsTIDSelected.size() < m_maxNesting)
+        {
+          const clang::QualType qt = initVar->getType();
+          //const auto typeInfo      = m_astContext.getTypeInfo(qt);
+          
+          kslicer::KernelInfo::Arg tidArg;
+          tidArg.name       = initVar->getNameAsString();
+          tidArg.type       = qt.getAsString();
+          tidArg.size       = 1;
+          tidArg.isThreadID = true;
+          currKernel->argsTIDSelected.push_back(tidArg);
+        }
       }
     }
     else
@@ -203,8 +217,8 @@ public:
 
 
 
-kslicer::IPV_Pattern::MHandlerKFPtr kslicer::IPV_Pattern::MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm)
+kslicer::IPV_Pattern::MHandlerKFPtr kslicer::IPV_Pattern::MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm, const clang::ASTContext& a_astContext)
 {
-  return std::move(std::make_unique<LoopHandlerInsideKernelsIPV>(std::cout, *this, a_sm, &kernel));
+  return std::move(std::make_unique<LoopHandlerInsideKernelsIPV>(std::cout, *this, a_sm, &kernel, a_astContext));
 }
 
