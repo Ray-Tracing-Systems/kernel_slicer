@@ -65,9 +65,12 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::IPV_Pattern::Ge
       ArgTypeAndNamePair arg2;
       arg2.argName  = found->name;
       arg2.typeName = found->type;
+      arg2.id       = found - a_kernel.loopIters.begin();
       args.push_back(arg2);
     }
   }
+
+  std::sort(args.begin(), args.end(), [](const auto& a, const auto & b) { return a.id < b.id; });
 
   return args;
 }
@@ -243,18 +246,11 @@ kslicer::IPV_Pattern::MHandlerKFPtr kslicer::IPV_Pattern::MatcherHandler_KF(Kern
 
 std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(const KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
 {
-  const CXXMethodDecl* a_node = a_funcInfo.astNode;
-
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
   kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, this->mainClassName, this->dataMembers, a_funcInfo.args, "", a_funcInfo.isBoolTyped);
-  rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
+  rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
   
-  //clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
-  //clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
-  //return rewrite2.getRewrittenText(clang::SourceRange(b,e));
   return rewrite2.getRewrittenText(a_funcInfo.loopInsides);
 }
-
-

@@ -228,6 +228,7 @@ namespace kslicer
     {
       std::string typeName;
       std::string argName;
+      uint32_t    id;       ///<! used to preserve or change loops order
     };
    
     virtual std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const; 
