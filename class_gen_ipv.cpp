@@ -62,9 +62,13 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::IPV_Pattern::Ge
       auto found = std::find_if(a_kernel.loopIters.begin(), a_kernel.loopIters.end(), 
                                 [&](const auto& val){ return arg.name == val.sizeExpr; });
 
+      std::string typeStr = found->type;
+      kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
+
       ArgTypeAndNamePair arg2;
       arg2.argName  = found->name;
-      arg2.typeName = found->type;
+      arg2.sizeName = found->sizeExpr;
+      arg2.typeName = typeStr;
       arg2.id       = found - a_kernel.loopIters.begin();
       args.push_back(arg2);
     }

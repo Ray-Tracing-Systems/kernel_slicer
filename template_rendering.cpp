@@ -66,7 +66,8 @@ std::string GetDSArgName(const std::string& a_mainFuncName, const std::string& a
 
 nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, 
                                              const std::vector<MainFuncInfo>& a_methodsToGenerate, 
-                                             const std::string& a_genIncude)
+                                             const std::string& a_genIncude,
+                                             const uint32_t    threadsOrder[3])
 {
   std::string folderPath           = GetFolderPath(a_classInfo.mainClassFileName);
   std::string mainInclude          = a_classInfo.mainClassFileInclude;
@@ -195,17 +196,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     local["ArgCount"]     = k.args.size();
     local["Decl"]         = kernelDeclByName[kernName];
 
-    std::vector<std::string> threadIdNamesList;
-
     local["Args"]         = std::vector<std::string>();
     size_t actualSize     = 0;
     for(const auto& arg : k.args)
     {
       if(arg.isThreadID || arg.isLoopSize) // exclude TID and loopSize args bindings
-      {
-        threadIdNamesList.push_back(arg.name);
         continue;
-      }
       
       json argData;
       argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
@@ -228,10 +224,16 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     }
 
     local["ArgCount"] = actualSize;
-
-    std::sort(threadIdNamesList.begin(), threadIdNamesList.end());
-    
+  
+    auto tidArgs = a_classInfo.GetKernelTIDArgs(k);
+    std::vector<std::string> threadIdNamesList(tidArgs.size());
+    assert(threadIdNamesList.size() <= 3);
     assert(threadIdNamesList.size() > 0);
+
+    // change threads/loops order if required
+    //
+    for(size_t i=0;i<tidArgs.size();i++)
+      threadIdNamesList[i] = tidArgs[threadsOrder[i]].sizeName;
 
     if(threadIdNamesList.size() > 0)
       local["tidX"] = threadIdNamesList[0];
@@ -375,7 +377,8 @@ std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const
 void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::string& a_outFolder, const MainClassInfo& a_classInfo, 
                                    const std::unordered_map<std::string, bool>& usedFiles, 
                                    const std::unordered_map<std::string, clang::SourceRange>& usedFunctions,
-                                   const clang::CompilerInstance& compiler)
+                                   const clang::CompilerInstance& compiler,
+                                   const uint32_t  threadsOrder[3])
 {
   std::unordered_map<std::string, DataMemberInfo> dataMembersCached;
   dataMembersCached.reserve(a_classInfo.dataMembers.size());
@@ -429,9 +432,11 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       args.push_back(argj);
     }
 
-    std::vector<std::string> threadIdNames;
-    for(auto tid : tidArgs)
-      threadIdNames.push_back(tid.argName);
+    assert(tidArgs.size() <= 3);
+
+    std::vector<std::string> threadIdNames(tidArgs.size());
+    for(size_t i=0;i<tidArgs.size();i++)
+      threadIdNames[i] = tidArgs[threadsOrder[i]].argName;
 
     // now add all std::vector members
     //

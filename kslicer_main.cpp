@@ -197,6 +197,7 @@ int main(int argc, const char **argv)
   std::string outGenerated  = "data/generated.cl";
   std::string stdlibFolder  = "";
   std::string patternName   = "rtv";
+  uint32_t    threadsOrder[3] = {0,1,2};
   
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
@@ -458,7 +459,7 @@ int main(int argc, const char **argv)
     kslicer::PrintVulkanBasicsFile("templates/vulkan_basics.h", inputCodeInfo);
 
     std::string rawname = kslicer::CutOffFileExt(inputCodeInfo.mainClassFileName);
-    auto json = PrepareJsonForAllCPP(inputCodeInfo, inputCodeInfo.mainFunc, rawname + "_generated.h");
+    auto json = PrepareJsonForAllCPP(inputCodeInfo, inputCodeInfo.mainFunc, rawname + "_generated.h", threadsOrder); 
     
     kslicer::ApplyJsonToTemplate("templates/rt_class.h",      rawname + "_generated.h", json); 
     kslicer::ApplyJsonToTemplate("templates/rt_class.cpp",    rawname + "_generated.cpp", json);
@@ -480,7 +481,7 @@ int main(int argc, const char **argv)
 
   // finally generate kernels
   //
-  kslicer::PrintGeneratedCLFile("templates/generated.cl", GetFolderPath(inputCodeInfo.mainClassFileName), inputCodeInfo, usedFiles_KF, usedFunctions_KF, compiler);
+  kslicer::PrintGeneratedCLFile("templates/generated.cl", GetFolderPath(inputCodeInfo.mainClassFileName), inputCodeInfo, usedFiles_KF, usedFunctions_KF, compiler, threadsOrder);
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;

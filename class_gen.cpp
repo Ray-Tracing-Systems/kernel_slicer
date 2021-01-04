@@ -830,10 +830,14 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
 
       ArgTypeAndNamePair arg2;
       arg2.argName  = arg.name;
+      arg2.sizeName = arg.name;
       arg2.typeName = typeStr;
+      arg2.id       = 0;
       args.push_back(arg2);
     }
   }
+
+  std::sort(args.begin(), args.end(), [](const auto& a, const auto & b) { return a.argName < b.argName; });
 
   return args;
 }

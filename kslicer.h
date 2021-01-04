@@ -228,6 +228,7 @@ namespace kslicer
     {
       std::string typeName;
       std::string argName;
+      std::string sizeName;
       uint32_t    id;       ///<! used to preserve or change loops order
     };
    
