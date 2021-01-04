@@ -404,7 +404,7 @@ int main(int argc, const char **argv)
     std::cout << "  process " << kernel.name.c_str() << ":\t" << GetClangToolingErrorCodeMessage(res) << std::endl;
 
     for(auto& arg : kernel.args) // it is important to run this loop after second stage at which kernel matchers are applied!
-      arg.isThreadID = inputCodeInfo.IsThreadIdArg(arg, kernel);
+      inputCodeInfo.ProcessKernelArg(arg, kernel);
 
     usedFunctions_KF.merge(pFilter->usedFunctions);
     usedFiles_KF.merge(pFilter->usedFiles);

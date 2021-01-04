@@ -45,11 +45,11 @@ uint32_t kslicer::IPV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel)
     return 0;
 } 
 
-bool kslicer::IPV_Pattern::IsThreadIdArg(const KernelInfo::Arg& arg, const KernelInfo& a_kernel) const 
+void kslicer::IPV_Pattern::ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const 
 {
   auto found = std::find_if(a_kernel.loopIters.begin(), a_kernel.loopIters.end(), 
-                           [&](const auto& val){ return arg.name == val.name && arg.type == val.type; });
-  return (found != a_kernel.loopIters.end());
+                           [&](const auto& val){ return arg.name == val.sizeExpr; });
+  arg.isLoopSize = (found != a_kernel.loopIters.end());
 }
 
 std::string kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
@@ -196,14 +196,10 @@ public:
         if(currKernel->loopIters.size() < m_maxNesting)
         {
           const clang::QualType qt = initVar->getType();
-          //const auto typeInfo      = m_astContext.getTypeInfo(qt);
-          //const std::string baseName = GetRangeSourceCode(loopSZ->getSourceRange(), m_compiler);
-          
-          kslicer::KernelInfo::Arg tidArg;
+          kslicer::KernelInfo::LoopIter tidArg;
           tidArg.name       = initVar->getNameAsString();
           tidArg.type       = qt.getAsString();
-          tidArg.size       = 1;
-          tidArg.isThreadID = true;
+          tidArg.sizeExpr   = kslicer::GetRangeSourceCode(loopSZ->getSourceRange(), m_compiler);
           currKernel->loopIters.push_back(tidArg);
         }
       }

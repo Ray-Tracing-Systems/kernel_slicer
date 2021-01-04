@@ -25,7 +25,8 @@ namespace kslicer
       std::string name;
       int         size;
       bool needFakeOffset = false;
-      bool isThreadID     = false;
+      bool isThreadID     = false; ///<! used by RTV-like patterns where loop is defined out of kernel
+      bool isLoopSize     = false; ///<! used by IPV-like patterns where loop is defined inside kernel
     };
 
     struct LoopIter 
@@ -37,8 +38,8 @@ namespace kslicer
     
     std::string      return_type;
     std::string      name;
-    std::vector<Arg> args;      ///<! all arguments of a kernel
-    std::vector<Arg> loopIters; ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
+    std::vector<Arg> args;           ///<! all arguments of a kernel
+    std::vector<LoopIter> loopIters; ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
 
     const clang::CXXMethodDecl* astNode = nullptr;
     bool usedInMainFunc = false;
@@ -190,9 +191,9 @@ namespace kslicer
     typedef std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> MHandlerCFPtr;
     typedef std::unique_ptr<kslicer::VariableAndFunctionFilter>              MHandlerKFPtr;
 
-    virtual std::string RemoveKernelPrefix(const std::string& a_funcName) const; ///<! "kernel_XXX" --> "XXX"; 
-    virtual bool        IsKernel(const std::string& a_funcName) const;           ///<! return true if function is a kernel
-    virtual bool        IsThreadIdArg(const KernelInfo::Arg& arg, const KernelInfo& a_kernel) const = 0;  ///<! return true if argument is used as threadId
+    virtual std::string RemoveKernelPrefix(const std::string& a_funcName) const;                       ///<! "kernel_XXX" --> "XXX"; 
+    virtual bool        IsKernel(const std::string& a_funcName) const;                                 ///<! return true if function is a kernel
+    virtual void        ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const { }   ///<!  
 
 
     //// Processing Control Functions (CF)
@@ -235,8 +236,6 @@ namespace kslicer
 
   struct RTV_Pattern : public MainClassInfo
   {
-    bool          IsThreadIdArg(const KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override;
-
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
 
@@ -253,14 +252,14 @@ namespace kslicer
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override;
     void          ProcessCallArs_KF(const KernelCallInfo& a_call) override;   
 
-    uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;                       
+    uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
+    void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override;                       
   };
 
   struct IPV_Pattern : public MainClassInfo
   {
     std::string   RemoveKernelPrefix(const std::string& a_funcName) const override; ///<! "kernel2D_XXX" --> "XXX"; 
     bool          IsKernel(const std::string& a_funcName) const override;           ///<! return true if function is a kernel
-    bool          IsThreadIdArg(const KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override;
 
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
@@ -270,7 +269,8 @@ namespace kslicer
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override; 
 
-    uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;                     
+    uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
+    void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override;                     
   };
 
 

@@ -572,11 +572,11 @@ void kslicer::RTV_Pattern::ProcessCallArs_KF(const KernelCallInfo& a_call)
   }
 }
 
-bool kslicer::RTV_Pattern::IsThreadIdArg(const KernelInfo::Arg& arg, const KernelInfo& a_kernel) const 
+void kslicer::RTV_Pattern::ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const 
 {
   auto pdef = GetAllPredefinedThreadIdNamesRTV();
   auto id   = std::find(pdef.begin(), pdef.end(), arg.name);
-  return (id != pdef.end()); 
+  arg.isThreadID = (id != pdef.end()); 
 }
 
 std::unordered_map<std::string, kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node)
