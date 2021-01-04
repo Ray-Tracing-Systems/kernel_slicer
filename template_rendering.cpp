@@ -201,11 +201,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     size_t actualSize     = 0;
     for(const auto& arg : k.args)
     {
-      if(arg.isThreadID) // exclude TID args bindings
+      if(arg.isThreadID || arg.isLoopSize) // exclude TID and loopSize args bindings
       {
         threadIdNamesList.push_back(arg.name);
         continue;
       }
+      
       json argData;
       argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
       argData["Name"]  = arg.name;

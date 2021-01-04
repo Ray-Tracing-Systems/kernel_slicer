@@ -843,7 +843,7 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
   std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> args;
   for (const auto& arg : a_kernel.args) 
   {    
-    if(!arg.isThreadID)
+    if(!arg.isThreadID && !arg.isLoopSize)
     { 
       std::string typeStr = arg.type;
       kslicer::ReplaceOpenCLBuiltInTypes(typeStr);

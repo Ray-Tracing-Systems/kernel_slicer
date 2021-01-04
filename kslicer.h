@@ -38,8 +38,9 @@ namespace kslicer
     
     std::string      return_type;
     std::string      name;
-    std::vector<Arg> args;           ///<! all arguments of a kernel
-    std::vector<LoopIter> loopIters; ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
+    std::vector<Arg> args;             ///<! all arguments of a kernel
+    std::vector<LoopIter> loopIters;   ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
+    clang::SourceRange    loopInsides; ///<! used by IPV pattern to extract loops insides and make them kernel source
 
     const clang::CXXMethodDecl* astNode = nullptr;
     bool usedInMainFunc = false;
@@ -238,7 +239,6 @@ namespace kslicer
   {
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
-
     std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;
 
     void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, 
@@ -263,14 +263,16 @@ namespace kslicer
 
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
-  
     std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override; 
 
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override; 
+    std::string   VisitAndRewrite_KF(const KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler);
 
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
-    void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override;                     
+    void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override; 
+
+    std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const override;                    
   };
 
 

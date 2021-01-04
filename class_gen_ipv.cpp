@@ -52,6 +52,26 @@ void kslicer::IPV_Pattern::ProcessKernelArg(KernelInfo::Arg& arg, const KernelIn
   arg.isLoopSize = (found != a_kernel.loopIters.end());
 }
 
+std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::IPV_Pattern::GetKernelTIDArgs(const KernelInfo& a_kernel) const 
+{
+  std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> args;
+  for (const auto& arg : a_kernel.args) 
+  {    
+    if(arg.isLoopSize)
+    { 
+      auto found = std::find_if(a_kernel.loopIters.begin(), a_kernel.loopIters.end(), 
+                                [&](const auto& val){ return arg.name == val.sizeExpr; });
+
+      ArgTypeAndNamePair arg2;
+      arg2.argName  = found->name;
+      arg2.typeName = found->type;
+      args.push_back(arg2);
+    }
+  }
+
+  return args;
+}
+
 std::string kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
   const std::string&   a_mainClassName = this->mainClassName;
@@ -189,10 +209,10 @@ public:
       const VarDecl* incVar  = result.Nodes.getNodeAs<clang::VarDecl>("incVar");
       const Expr*    loopSZ  = result.Nodes.getNodeAs<clang::Expr>   ("loopSize");
       
-      if(areSameVariable(initVar,condVar) && areSameVariable(initVar, incVar))
+      if(areSameVariable(initVar,condVar) && areSameVariable(initVar, incVar) && loopSZ)
       {
         std::string name = initVar->getNameAsString();
-        std::cout << "  [LoopHandlerIPV]: Variable name is: " << name.c_str() << std::endl;
+        //std::cout << "  [LoopHandlerIPV]: Variable name is: " << name.c_str() << std::endl;
         if(currKernel->loopIters.size() < m_maxNesting)
         {
           const clang::QualType qt = initVar->getType();
@@ -201,6 +221,7 @@ public:
           tidArg.type       = qt.getAsString();
           tidArg.sizeExpr   = kslicer::GetRangeSourceCode(loopSZ->getSourceRange(), m_compiler);
           currKernel->loopIters.push_back(tidArg);
+          currKernel->loopInsides = forLoop->getBody()->getSourceRange();
         }
       }
     }
@@ -215,9 +236,25 @@ public:
 };
 
 
-
 kslicer::IPV_Pattern::MHandlerKFPtr kslicer::IPV_Pattern::MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compile)
 {
   return std::move(std::make_unique<LoopHandlerInsideKernelsIPV>(std::cout, *this, &kernel, a_compile));
 }
+
+std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(const KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
+{
+  const CXXMethodDecl* a_node = a_funcInfo.astNode;
+
+  Rewriter rewrite2;
+  rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+
+  kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, this->mainClassName, this->dataMembers, a_funcInfo.args, "", a_funcInfo.isBoolTyped);
+  rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
+  
+  //clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
+  //clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
+  //return rewrite2.getRewrittenText(clang::SourceRange(b,e));
+  return rewrite2.getRewrittenText(a_funcInfo.loopInsides);
+}
+
 
