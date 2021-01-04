@@ -347,7 +347,7 @@ int main(int argc, const char **argv)
     //
     {
       auto allMatchers = inputCodeInfo.ListMatchers_CF(mainFuncName);
-      auto pMatcherPrc = inputCodeInfo.MatcherHandler_CF(mainFuncRef, compiler.getASTContext());
+      auto pMatcherPrc = inputCodeInfo.MatcherHandler_CF(mainFuncRef, compiler);
 
       clang::ast_matchers::MatchFinder finder;
       for(auto& matcher : allMatchers)
@@ -394,7 +394,7 @@ int main(int argc, const char **argv)
   for(auto& kernel : inputCodeInfo.kernels)
   {
     auto kernelMatchers = inputCodeInfo.ListMatchers_KF(kernel.name);
-    auto pFilter        = inputCodeInfo.MatcherHandler_KF(kernel, compiler.getSourceManager(), compiler.getASTContext());
+    auto pFilter        = inputCodeInfo.MatcherHandler_KF(kernel, compiler);
 
     clang::ast_matchers::MatchFinder finder;
     for(auto& matcher : kernelMatchers)

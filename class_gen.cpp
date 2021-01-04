@@ -521,9 +521,9 @@ kslicer::RTV_Pattern::MList kslicer::RTV_Pattern::ListMatchers_CF(const std::str
   return list;
 }
 
-kslicer::RTV_Pattern::MHandlerCFPtr kslicer::RTV_Pattern::MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext)
+kslicer::RTV_Pattern::MHandlerCFPtr kslicer::RTV_Pattern::MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler)
 {
-  return std::move(std::make_unique<kslicer::MainFuncAnalyzerRT>(std::cout, *this, a_astContext, a_mainFuncRef));
+  return std::move(std::make_unique<kslicer::MainFuncAnalyzerRT>(std::cout, *this, a_compiler.getASTContext(), a_mainFuncRef));
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -540,9 +540,9 @@ kslicer::RTV_Pattern::MList kslicer::RTV_Pattern::ListMatchers_KF(const std::str
   return list;
 }
 
-kslicer::RTV_Pattern::MHandlerKFPtr kslicer::RTV_Pattern::MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm, const clang::ASTContext& a_astContext)
+kslicer::RTV_Pattern::MHandlerKFPtr kslicer::RTV_Pattern::MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler)
 {
-  return std::move(std::make_unique<kslicer::VariableAndFunctionFilter>(std::cout, *this, a_sm, &kernel, a_astContext));
+  return std::move(std::make_unique<kslicer::VariableAndFunctionFilter>(std::cout, *this, &kernel, a_compiler));
 }
 
 void kslicer::RTV_Pattern::ProcessCallArs_KF(const KernelCallInfo& a_call)

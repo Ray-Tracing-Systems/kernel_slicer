@@ -158,13 +158,12 @@ clang::ast_matchers::StatementMatcher kslicer::MakeMatch_IfReturnFromFunction(st
 clang::ast_matchers::StatementMatcher kslicer::MakeMatch_ForLoopInsideFunction(std::string const& a_funcName)
 {
   using namespace clang::ast_matchers;
+  auto ArrayBoundMatcher = expr(hasType(isInteger())).bind("loopSize");
   return 
-  //forStmt(hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction"))
-  //).bind("loop");
-
   forStmt(hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction")),
           hasLoopInit(declStmt(hasSingleDecl(varDecl().bind("initVar")))),
-          hasCondition(binaryOperator(hasLHS(ignoringParenImpCasts(declRefExpr(to(varDecl().bind("condVar"))))))),
+          hasCondition(binaryOperator(hasLHS(ignoringParenImpCasts(declRefExpr(to(varDecl().bind("condVar"))))),
+                                      hasRHS(ArrayBoundMatcher))),
           hasIncrement(unaryOperator(hasUnaryOperand(declRefExpr(to(varDecl().bind("incVar"))))))
   ).bind("loop");
 }

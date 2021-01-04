@@ -47,20 +47,9 @@ uint32_t kslicer::IPV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel)
 
 bool kslicer::IPV_Pattern::IsThreadIdArg(const KernelInfo::Arg& arg, const KernelInfo& a_kernel) const 
 {
-  //size_t found = size_t(-1);
-  //for(size_t i=0;i<a_kernel.argsTIDSelected.size();i++)
-  //{
-  //  if(arg.name == a_kernel.argsTIDSelected[i].name && arg.type == a_kernel.argsTIDSelected[i].type)
-  //  {
-  //    found = i;
-  //    break;
-  //  }
-  //}
-  //return (found != size_t(-1)); 
-
-  auto found = std::find_if(a_kernel.argsTIDSelected.begin(), a_kernel.argsTIDSelected.end(), 
+  auto found = std::find_if(a_kernel.loopIters.begin(), a_kernel.loopIters.end(), 
                            [&](const auto& val){ return arg.name == val.name && arg.type == val.type; });
-  return (found != a_kernel.argsTIDSelected.end());
+  return (found != a_kernel.loopIters.end());
 }
 
 std::string kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
@@ -149,9 +138,9 @@ kslicer::IPV_Pattern::MList kslicer::IPV_Pattern::ListMatchers_CF(const std::str
   return list;
 }
 
-kslicer::IPV_Pattern::MHandlerCFPtr kslicer::IPV_Pattern::MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::ASTContext& a_astContext)
+kslicer::IPV_Pattern::MHandlerCFPtr kslicer::IPV_Pattern::MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler)
 {
-  return std::move(std::make_unique<kslicer::MainFuncAnalyzerRT>(std::cout, *this, a_astContext, a_mainFuncRef));
+  return std::move(std::make_unique<kslicer::MainFuncAnalyzerRT>(std::cout, *this, a_compiler.getASTContext(), a_mainFuncRef));
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -178,11 +167,11 @@ static bool areSameVariable(const clang::ValueDecl *First, const clang::ValueDec
 class LoopHandlerInsideKernelsIPV : public kslicer::VariableAndFunctionFilter
 {
 public:
-  explicit LoopHandlerInsideKernelsIPV(std::ostream& s, kslicer::MainClassInfo& a_allInfo, clang::SourceManager& a_sm,  kslicer::KernelInfo* a_currKernel, const clang::ASTContext& a_astContext) : 
-                                       VariableAndFunctionFilter(s, a_allInfo, a_sm, a_currKernel, a_astContext)
+  explicit LoopHandlerInsideKernelsIPV(std::ostream& s, kslicer::MainClassInfo& a_allInfo, kslicer::KernelInfo* a_currKernel, const clang::CompilerInstance& a_compiler) : 
+                                       VariableAndFunctionFilter(s, a_allInfo, a_currKernel, a_compiler)
   {
     m_maxNesting = a_allInfo.GetKernelDim(*a_currKernel);
-    a_currKernel->argsTIDSelected.clear(); 
+    a_currKernel->loopIters.clear(); 
   } 
 
   void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
@@ -195,25 +184,27 @@ public:
 
     if(forLoop && func_decl)
     {
-      const VarDecl *initVar = result.Nodes.getNodeAs<clang::VarDecl>("initVar");
-      const VarDecl *condVar = result.Nodes.getNodeAs<clang::VarDecl>("condVar");
-      const VarDecl *incVar  = result.Nodes.getNodeAs<clang::VarDecl>("incVar");
+      const VarDecl* initVar = result.Nodes.getNodeAs<clang::VarDecl>("initVar");
+      const VarDecl* condVar = result.Nodes.getNodeAs<clang::VarDecl>("condVar");
+      const VarDecl* incVar  = result.Nodes.getNodeAs<clang::VarDecl>("incVar");
+      const Expr*    loopSZ  = result.Nodes.getNodeAs<clang::Expr>   ("loopSize");
       
       if(areSameVariable(initVar,condVar) && areSameVariable(initVar, incVar))
       {
         std::string name = initVar->getNameAsString();
         std::cout << "  [LoopHandlerIPV]: Variable name is: " << name.c_str() << std::endl;
-        if(currKernel->argsTIDSelected.size() < m_maxNesting)
+        if(currKernel->loopIters.size() < m_maxNesting)
         {
           const clang::QualType qt = initVar->getType();
           //const auto typeInfo      = m_astContext.getTypeInfo(qt);
+          //const std::string baseName = GetRangeSourceCode(loopSZ->getSourceRange(), m_compiler);
           
           kslicer::KernelInfo::Arg tidArg;
           tidArg.name       = initVar->getNameAsString();
           tidArg.type       = qt.getAsString();
           tidArg.size       = 1;
           tidArg.isThreadID = true;
-          currKernel->argsTIDSelected.push_back(tidArg);
+          currKernel->loopIters.push_back(tidArg);
         }
       }
     }
@@ -229,8 +220,8 @@ public:
 
 
 
-kslicer::IPV_Pattern::MHandlerKFPtr kslicer::IPV_Pattern::MatcherHandler_KF(KernelInfo& kernel, clang::SourceManager& a_sm, const clang::ASTContext& a_astContext)
+kslicer::IPV_Pattern::MHandlerKFPtr kslicer::IPV_Pattern::MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compile)
 {
-  return std::move(std::make_unique<LoopHandlerInsideKernelsIPV>(std::cout, *this, a_sm, &kernel, a_astContext));
+  return std::move(std::make_unique<LoopHandlerInsideKernelsIPV>(std::cout, *this, &kernel, a_compile));
 }
 
