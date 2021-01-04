@@ -173,6 +173,34 @@ const char* GetClangToolingErrorCodeMessage(int code)
     return "SKIPPED_FILES";  
 }
 
+void ReadThreadsOrderFromStr(const std::string& threadsOrderStr, uint32_t  threadsOrder[3])
+{
+  auto size = std::min<size_t>(threadsOrderStr.size(), 3);
+  for(size_t symbId = 0; symbId < size; symbId++)
+  {
+    switch(threadsOrderStr[symbId])
+    {
+      case 'x':
+      case 'X':
+      case '0':
+      threadsOrder[symbId] = 0;
+      break;
+      case 'y':
+      case 'Y':
+      case '1':
+      threadsOrder[symbId] = 1;
+      break;
+      case 'z':
+      case 'Z':
+      case '2':
+      threadsOrder[symbId] = 2;
+      break;
+      default:
+      break;
+    };
+  }
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -210,6 +238,9 @@ int main(int argc, const char **argv)
 
   if(params.find("-pattern") != params.end())
     patternName = params["-pattern"];
+
+  if(params.find("-reorderLoops") != params.end())
+    ReadThreadsOrderFromStr(params["-reorderLoops"], threadsOrder);
 
   std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
   argsForClang.reserve(argc);
