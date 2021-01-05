@@ -152,7 +152,6 @@ void ToneMapping::kernel_MixAndToneMap(int tidX, int tidY, const float4* inData4
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void ToneMapping::ExtractBrightPixels(int tidX, int tidY, const float4* inData4f)
-
 {
   kernel_ExtractBrightPixels(tidX, tidY, inData4f, m_brightPixels.data());
 }

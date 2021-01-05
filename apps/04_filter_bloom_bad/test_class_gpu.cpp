@@ -28,7 +28,8 @@ public:
      SetVulkanInOutFor_DownSample4x();
      SetVulkanInOutFor_BlurX();
      SetVulkanInOutFor_BlurY();
-     SetVulkanInOutFor_MixAndToneMap(outColor, outOffset, inColor, inOffset);
+     SetVulkanInOutFor_MixAndToneMap(inColor, inOffset,
+                                     outColor, outOffset);
    }  
 
    void BloomCmd(VkCommandBuffer a_commandBuffer, int width, int height)
