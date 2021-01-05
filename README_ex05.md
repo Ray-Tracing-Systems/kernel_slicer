@@ -137,7 +137,7 @@ __kernel void kernel2D_ExtractBrightPixels(
     a_brightPixels[pitch(x, y, m_width)] = make_float4(0,0,0,0);      
 }
 ```
-So, the transformation is general is straitforward except that we read 'm_width' from some buffer named 'kgen_data'. Well 'kgen_data' is uniform buffer in wich host code should put data.
+So, the transformation is general is straitforward except that we read 'm_width' from some buffer named 'kgen_data'. Well 'kgen_data' is uniform buffer in which host code should put data.
 Here you can see that in generated host code offset in bytes for 'm_width' is 48, and 48/sizeof(uint) = 12 which therefore is correct index for our data member.
 
 ```cpp
@@ -184,16 +184,16 @@ public:
   auto pGPUImpl = std::make_shared<ToneMapping_Generated>();         
   pGPUImpl->InitVulkanObjects(device, physicalDevice, w*h, 32, 8, 1); 
 ```
-2. InitMemberBuffers. This function will init all internal buffers with the current size of used std::vectors. So, you have to call it **after** all vector memebers aere initialized with the correct size by SetMaxImageSize:
+2. InitMemberBuffers. This function will init all internal buffers with the current **capacity** of used std::vectors. So, you have to call it **after** all vector memebers aere initialized with the correct size by SetMaxImageSize:
 ```cpp
   pGPUImpl->SetMaxImageSize(w, h);                                    
   pGPUImpl->InitMemberBuffers();      
 ```
-3. UpdateAll. This is interesting one. This function will update (CPU ==> GPU) all data members which are used in kernels via provided by used implementation of *vkfw::ICopyEngine::UpdateBuffer*. Of course, we do not know what kind of data you are going to update and how often. Therefore, all we can do is provide you with functions and an interface for updating both individual data members and all data combined. The implementation is the user responsibility but we provide simpe implementation in our examples of course. If you are goint to implement some advanced logic you have 2 options which can be used both separately or siumultaniously:
+3. UpdateAll. This is interesting one. This function will update (CPU ==> GPU) all data members which are used in kernels via provided by used implementation of *vkfw::ICopyEngine::UpdateBuffer*. Of course, we do not know what kind of data you are going to update and how often. Therefore, all we can do is provide you with functions and an interface for updating both individual data members and all data combined. The implementation is the user responsibility but we provide simpe implementation in our examples of course. If you are goint to implement some advanced logic you have two options which can be used both separately or siumultaniously:
 
     1. Create another class 'ToneMapping_GPU' which inherits 'ToneMapping_Generated'. In this class you can implement any advanced uppdate logic. For example if you know that some vectors pushed new data in their end, you need to update only end of the vector (Note that GPU memory for vectors is allocated using vector.capacity() number of bytes). 
 
-    2. Create advanced implementation of *vkfw::ICopyEngine*. For example you can collect small updates in separate host buffers and right after UpdateAll() is finished you may flush all such updates. 
+    2. Create advanced implementation of *vkfw::ICopyEngine*. For example you can collect small updates in separate host buffers and right after UpdateAll() is finished you may actually perform all such updates. 
 
     ```cpp
     pGPUImpl->UpdateAll(pCopyHelper);                                    
@@ -207,5 +207,5 @@ pGPUImpl->SetVulkanInOutFor_Bloom(colorBufferHDR, 0,  // ==>
                                   colorBufferLDR, 0); // <==
 ``` 
 
-5. BloomCmd. Finally you can use 'BloomCmd' to write filter logic sequence to command buffer (which constist of several kernels run with apropriate dewscriptor sets bindings).
+5. BloomCmd. Finally you can use 'BloomCmd' to write Bloom kernel sequence to command buffer (which constist of several kernel dispatchs with apropriate dewscriptor sets bindings).
 
