@@ -86,7 +86,7 @@ You should now pay attention to a number of points, some of which are important 
 
 * (general) Other functions (both member and non member) can be called both from KF and CF (calling member functions inside KF is **not yet implemented!**);
 
-* (IPV specific) Kernel Functions have of of further prefixes: "kernel1D_", "kernel2D_" or "kernel3D_". This is the way how they are distinguished. Such functions will be transformed to GPU kernels;
+* (IPV specific) Kernel Functions have one of further prefixes: "kernel1D_", "kernel2D_" or "kernel3D_". This is the way how they are distinguished. Such functions will be transformed to GPU kernels;
 
 * (IPV specific) Kernel Functions contain thread loops inside. A prefix in the kernel name will define how many nested loops should be eliminated from kernels source code to transform it to GPU kernel;
 
