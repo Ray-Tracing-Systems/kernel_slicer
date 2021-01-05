@@ -97,6 +97,7 @@ void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
 
   pGPUImpl->SetMaxImageSize(w, h);                                    // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
   pGPUImpl->InitMemberBuffers();                                      // !!! USING GENERATED CODE !!!
+  pGPUImpl->UpdateAll(pCopyHelper);                                   // !!! USING GENERATED CODE !!!
 
   // (3) Create buffer
   //
@@ -111,7 +112,6 @@ void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
                                     colorBufferLDR, 0); // <==
 
   pCopyHelper->UpdateBuffer(colorBufferHDR, 0, a_hdrData, w*h*sizeof(float)*4);
-  pGPUImpl->UpdateAll(pCopyHelper);                                   // !!! USING GENERATED CODE !!!
   
   // now compute some thing useful
   //
