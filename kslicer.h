@@ -146,7 +146,7 @@ namespace kslicer
     std::string                                       Name;
     const clang::CXXMethodDecl*                       Node;
     std::unordered_map<std::string, DataLocalVarInfo> Locals;
-    std::unordered_map<std::string, InOutVarInfo>     InOuts;
+    std::vector<InOutVarInfo>                         InOuts;
     std::unordered_set<std::string>                   ExcludeList;
     std::unordered_set<std::string>                   UsedKernels;
     

@@ -277,7 +277,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
 
     data2["InOutVars"] = std::vector<std::string>();
     for(const auto& v : mainFunc.InOuts)
-      data2["InOutVars"].push_back(v.first);
+      data2["InOutVars"].push_back(v.name);
 
     // for impl, ds bindings
     //

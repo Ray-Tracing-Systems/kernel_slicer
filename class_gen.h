@@ -32,13 +32,16 @@ namespace kslicer
   public:
     
     MainFuncASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, MainFuncInfo& a_mainFunc, 
-                       const std::unordered_map<std::string, InOutVarInfo>& a_args, MainClassInfo* a_pCodeInfo) : 
+                       const std::vector<InOutVarInfo>& a_args, MainClassInfo* a_pCodeInfo) : 
                        m_rewriter(R), m_compiler(a_compiler), m_sm(R.getSourceMgr()), 
                        m_kernellCallTagId(0), m_mainFuncName(a_mainFunc.Name), m_mainFuncLocals(a_mainFunc.Locals),
-                       m_argsOfMainFunc(a_args), m_pCodeInfo(a_pCodeInfo), m_allClassMembers(a_pCodeInfo->allDataMembers), m_mainFunc(a_mainFunc) 
+                       m_pCodeInfo(a_pCodeInfo), m_allClassMembers(a_pCodeInfo->allDataMembers), m_mainFunc(a_mainFunc) 
     { 
       for(const auto& k : a_pCodeInfo->kernels)
-        m_kernels[k.name] = k;    
+        m_kernels[k.name] = k;   
+
+      for(const auto& arg : a_args) 
+        m_argsOfMainFunc[arg.name] = arg;
     }
     
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
@@ -70,7 +73,7 @@ namespace kslicer
     MainClassInfo* m_pCodeInfo = nullptr;
   };
 
-  std::unordered_map<std::string, InOutVarInfo> ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node);
+  std::vector<InOutVarInfo> ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node);
 
   class KernelReplacerASTVisitor : public RecursiveASTVisitor<KernelReplacerASTVisitor> // replace all expressions with class variables to kgen_data buffer access
   {

@@ -14,6 +14,25 @@
 #include "vulkan_basics.h"
 #include "test_class_generated.h"
 
+//class ToneMapping_Debug : public ToneMapping_Generated
+//{
+//public:
+//  
+//  void SaveTestImageNow(const char* a_outName, std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
+//  {
+//    std::vector<float4> realColor(m_width*m_height);    
+//    std::vector<unsigned int> pixels(m_width*m_height);
+//
+//    //a_pCopyEngine->ReadBuffer(colorBufferLDR, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
+//    a_pCopyEngine->ReadBuffer(m_vdata.m_brightPixelsBuffer, 0, realColor.data(), realColor.size()*sizeof(float4));
+//
+//    for(int i=0;i<pixels.size();i++)
+//      pixels[i] = RealColorToUint32(clamp(realColor[i], 0.0f, 1.0f));
+//    
+//    SaveBMP(a_outName, pixels.data(), m_width, m_height);
+//  }
+//};
+
 
 void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
 {
@@ -104,8 +123,6 @@ void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
     //vkCmdFillBuffer(commandBuffer, colorBufferLDR, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
-
-    vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
     pGPUImpl->BloomCmd(commandBuffer, w, h, nullptr, nullptr);         // !!! USING GENERATED CODE !!! 
     vkEndCommandBuffer(commandBuffer);  
     
@@ -118,6 +135,8 @@ void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
     std::vector<unsigned int> pixels(w*h);
     pCopyHelper->ReadBuffer(colorBufferLDR, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
     SaveBMP(a_outName, pixels.data(), w, h);
+
+    //pGPUImpl->SaveTestImageNow("z_test.bmp", pCopyHelper);
 
     std::cout << std::endl;
   }

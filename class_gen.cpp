@@ -579,9 +579,9 @@ void kslicer::RTV_Pattern::ProcessKernelArg(KernelInfo::Arg& arg, const KernelIn
   arg.isThreadID = (id != pdef.end()); 
 }
 
-std::unordered_map<std::string, kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node)
+std::vector<kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node)
 {
-  std::unordered_map<std::string, InOutVarInfo> params;
+  std::vector<InOutVarInfo> params;
   for(int i=0;i<a_node->getNumParams();i++)
   {
     const ParmVarDecl* currParam = a_node->getParamDecl(i);
@@ -595,7 +595,7 @@ std::unordered_map<std::string, kslicer::InOutVarInfo> kslicer::ListPointerParam
     
     InOutVarInfo var;
     var.name = currParam->getNameAsString();
-    params[var.name] = var;
+    params.push_back(var);
   }
 
   return params;
