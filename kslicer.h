@@ -68,7 +68,7 @@ namespace kslicer
     bool isArray         = false; ///<! if is array, element type stored incontainerDataType;
     bool usedInKernel    = false; ///<! if any kernel use the member --> true; if no one uses --> false;
     bool usedInMainFn    = false; ///<! if std::vector is used in MainFunction like vector.data().
-    size_t arraySize     = 0;
+    size_t      arraySize     = 0;
     std::string containerType;
     std::string containerDataType;
   };

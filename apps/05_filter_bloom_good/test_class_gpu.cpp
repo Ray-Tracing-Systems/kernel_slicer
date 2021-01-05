@@ -14,32 +14,6 @@
 #include "vulkan_basics.h"
 #include "test_class_generated.h"
 
-class ToneMapping_GPU : public ToneMapping_Generated
-{
-public:
-
-  ToneMapping_GPU(){}  
-   ~ToneMapping_GPU(){}
-
-   void SetVulkanInOutFor_Bloom(VkBuffer inColor, size_t inOffset, 
-                                VkBuffer outColor, size_t outOffset)
-   {
-     //this->SetVulkanInOutFor_ExtractBrightPixels(this->brightPixelsGPU,0,inColor,inOffset);
-     //this->SetVulkanInOutFor_DownSample4x(this->brightPixelsGPUSmall,0, this->brightPixelsGPU,0);
-     //this->SetVulkanInOutFor_BlurX(...)
-     //this->SetVulkanInOutFor_BlurY(...)
-     //this->SetVulkanInOutFor_MixAndToneMap(outColor, outOffset, this->brightPixelsGPUSmall,0);
-   }  
-
-   void BloomCmd(VkCommandBuffer a_commandBuffer, int width, int height)
-   {
-     ExtractBrightPixelsCmd(a_commandBuffer, width, height, nullptr, nullptr);
-     DownSample4xCmd(a_commandBuffer, width, height, nullptr, nullptr);
-     BlurXCmd(a_commandBuffer, width, height, nullptr, nullptr);
-     BlurYCmd(a_commandBuffer, width, height, nullptr, nullptr);
-     MixAndToneMapCmd(a_commandBuffer, width, height, nullptr, nullptr, nullptr);
-   }
-};
 
 void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
 {
@@ -99,7 +73,7 @@ void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
 
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 
-  auto pGPUImpl = std::make_shared<ToneMapping_GPU>();                // !!! USING GENERATED CODE !!! 
+  auto pGPUImpl = std::make_shared<ToneMapping_Generated>();          // !!! USING GENERATED CODE !!! 
   pGPUImpl->InitVulkanObjects(device, physicalDevice, w*h, 32, 8, 1); // !!! USING GENERATED CODE !!!
 
   pGPUImpl->SetMaxImageSize(w, h);                                    // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
@@ -132,7 +106,7 @@ void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
     //vkCmdFillBuffer(commandBuffer, colorBufferLDR, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
 
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    pGPUImpl->BloomCmd(commandBuffer, w, h);                                      // !!! USING GENERATED CODE !!! 
+    pGPUImpl->BloomCmd(commandBuffer, w, h, nullptr, nullptr);         // !!! USING GENERATED CODE !!! 
     vkEndCommandBuffer(commandBuffer);  
     
     auto start = std::chrono::high_resolution_clock::now();

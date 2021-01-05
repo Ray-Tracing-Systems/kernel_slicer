@@ -297,7 +297,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
-        if(kernel.args[j].isThreadID)
+        if(kernel.args[j].isThreadID || kernel.args[j].isLoopSize)
           continue;
 
         const std::string dsArgName = GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j].varName);

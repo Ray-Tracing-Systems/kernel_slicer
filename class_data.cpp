@@ -15,7 +15,10 @@ struct less_than_key
 {
   inline bool operator() (const kslicer::DataMemberInfo& struct1, const kslicer::DataMemberInfo& struct2)
   {
-    return (struct1.sizeInBytes > struct2.sizeInBytes);
+    if(struct1.sizeInBytes != struct2.sizeInBytes)
+      return (struct1.sizeInBytes > struct2.sizeInBytes);
+    else
+      return struct1.name < struct2.name;
   }
 };
 
