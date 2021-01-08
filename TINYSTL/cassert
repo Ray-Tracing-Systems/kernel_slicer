@@ -1,0 +1,4 @@
+// cassert file
+
+void assert(bool x);
+
