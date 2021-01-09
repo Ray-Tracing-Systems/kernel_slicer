@@ -1,7 +1,3 @@
-#include <iostream>
-#include <fstream>
-#include <sstream>
-
 #include "include/LiteMath.h"
 
 #include "test_class.h"
@@ -25,22 +21,26 @@ static float4 randFloat4(const float4& min_value, const float4& max_value) {
 void nBody::perform() {
   kernel1D_GenerateBodies();
   for (uint32_t i = 0; i < m_iters; ++i) {
-    dumpPositions(i);
+    dumpPositions();
     kernel1D_UpdateVelocity();
     kernel1D_UpdatePosition();
   }
-  dumpPositions(m_iters);
+  dumpPositions();
 }
 
 void nBody::kernel1D_GenerateBodies() {
   for (auto& body : m_bodies) {
-    body.pos_weight = randFloat4(float4(-1, -1, -1, 0), float4(1, 1, 1, 10));
+    body.pos_weight = randFloat4(float4(-1, -1, -1, -10), float4(1, 1, 1, 10));
     body.vel_charge = randFloat4(float4(-1, -1, -1, -1), float4(1, 1, 1, 1));
   }
 }
 
 float3 xyz(const float4& vec) {
   return float3(vec.x, vec.y, vec.z);
+}
+
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
 }
 
 void nBody::kernel1D_UpdateVelocity() {
@@ -50,7 +50,7 @@ void nBody::kernel1D_UpdateVelocity() {
       if (i == j) {
         continue;
       }
-      float3 bodyToBody = xyz(m_bodies[j].pos_weight - m_bodies[i].pos_weight);
+      float3 bodyToBody = -xyz(m_bodies[j].pos_weight - m_bodies[i].pos_weight) * sgn(m_bodies[i].pos_weight.w);
       acceleration += bodyToBody * m_bodies[j].pos_weight.w / std::pow(length(bodyToBody) + 1e-5f, 3.0f);
     }
     acceleration *= dt;
@@ -68,15 +68,10 @@ void nBody::kernel1D_UpdatePosition() {
   }
 }
 
-void nBody::dumpPositions(uint32_t marker) {
-  std::stringstream ss;
-  ss << "dumps/BodiesDumpCPU_" << marker;
-  std::ofstream output(ss.str(), std::ios::binary);
-  output.write(reinterpret_cast<const char*>(&BODIES_COUNT), sizeof(BODIES_COUNT));
+void nBody::dumpPositions() {
   for (const auto& body: m_bodies) {
-    output.write(reinterpret_cast<const char*>(&body.pos_weight), sizeof(body.pos_weight));
+    debugOutput.write(reinterpret_cast<const char*>(&body.pos_weight), sizeof(body.pos_weight));
   }
-  output.close();
 }
 
 void n_body_cpu(uint32_t seed, uint32_t iterations) {
