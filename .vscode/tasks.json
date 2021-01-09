@@ -7,19 +7,13 @@
             "label": "BuildRelease",
             "type": "shell",
             "command": "cd cmake-build-release && make -j 8",
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            }
+            "group": "build"
         },
         {
             "label": "BuildDebug",
             "type": "shell",
             "command": "cd cmake-build-debug && make -j 8",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "group": "build"
         }
     ]
 }
