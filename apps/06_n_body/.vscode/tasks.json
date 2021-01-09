@@ -13,7 +13,10 @@
             "label": "BuildDebug",
             "type": "shell",
             "command": "cd cmake-build-debug && make -j 8",
-            "group": "build"
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
         },
         {
             "label": "Build Kernels",
