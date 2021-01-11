@@ -31,6 +31,13 @@ public:
     if(f->isOverloadedOperator())
       return true;
 
+    std::string fileName = m_sm.getFilename(f->getSourceRange().getBegin()); // check that we are in test_class.cpp or test_class.h or sms like that;                                                                             
+    if(fileName.find("include/") != std::string::npos)                       // definitely exclude everything from 'include/' folder
+      return true;
+
+    if(fileName.find(".h") == std::string::npos && fileName.find(".cpp") == std::string::npos && fileName.find(".cxx") == std::string::npos)
+      return true;
+
     FuncData func;
     func.name     = f->getNameAsString();
     func.astNode  = f;
@@ -83,10 +90,15 @@ void kslicer::ExtractUsedCode(MainClassInfo& a_codeInfo, std::unordered_map<std:
 
     visitor.TraverseDecl(const_cast<clang::FunctionDecl*>(currFunc.astNode));
 
+    for(auto& f : visitor.usedFunctions)
+      functionsToProcess.push(f.second);      
+
     usedFunctions.merge(visitor.usedFunctions);
     visitor.usedFunctions.clear();
   }
 
-  int a = 2;
+  a_usedFunctions.clear();
+  for(const auto& f : usedFunctions)
+    a_usedFunctions[f.second.name] = f.second.srcRange;
 
 }
