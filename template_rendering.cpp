@@ -393,6 +393,9 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
   data["Includes"] = std::vector<std::string>();
   for(auto keyVal : a_classInfo.allIncludeFiles) // we will search for only used include files among all of them (quoted, angled were excluded earlier)
   {
+    if(keyVal.first.find("include/") == std::string::npos) // inlude in OpenCL kernels only those code which is in 'include' folder
+      continue;
+
     for(auto keyVal2 : usedFiles)
     {
       if(keyVal2.first.find(keyVal.first)                   != std::string::npos && 
