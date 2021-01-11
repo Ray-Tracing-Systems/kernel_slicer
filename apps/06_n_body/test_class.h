@@ -3,13 +3,15 @@
 #include <vector>
 #include <fstream>
 
+#include "include/OpenCLMath.h"
+
 class nBody
 {
   static constexpr uint32_t BODIES_COUNT = 500;
   static constexpr float dt = 1e-3f;
   struct BodyState {
-    LiteMath::float4 pos_weight;
-    LiteMath::float4 vel_charge;
+    float4 pos_weight;
+    float4 vel_charge;
   };
   uint32_t m_seed;
   uint32_t m_iters;

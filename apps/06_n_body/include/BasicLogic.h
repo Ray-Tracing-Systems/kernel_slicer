@@ -1,83 +1,7 @@
 #ifndef BASIC_PROJ_LOGIC_H
 #define BASIC_PROJ_LOGIC_H
 
-// (1) Dealing with code/math that differs for CPU and GPU
-//
-#ifdef __OPENCL_VERSION__
-  #include "OpenCLMath.h" // include some additional math or code you need to be applied in OpenCL kernels
-#else
-  #include "LiteMath.h"   // implementation of _same_ functions on the CPU
-  using namespace LiteMath;
-  #define __global 
-#endif
-
-// (2) put you ligic or math code that will be same for CPU and GPU
-//
-#define INV_TWOPI 0.15915494309189533577f
-
-static inline float2 make_float2(float a, float b)
-{
-  float2 res;
-  res.x = a;
-  res.y = b;
-  return res;
-}
-
-static inline float3 make_float3(float a, float b, float c)
-{
-  float3 res;
-  res.x = a;
-  res.y = b;
-  res.z = c;
-  return res;
-}
-
-static inline float4 make_float4(float a, float b, float c, float d)
-{
-  float4 res;
-  res.x = a;
-  res.y = b;
-  res.z = c;
-  res.w = d;
-  return res;
-}
-
-static inline float2 to_float2(float4 f4)
-{
-  float2 res;
-  res.x = f4.x;
-  res.y = f4.y;
-  return res;
-}
-
-static inline float3 to_float3(float4 f4)
-{
-  float3 res;
-  res.x = f4.x;
-  res.y = f4.y;
-  res.z = f4.z;
-  return res;
-}
-
-static inline float4 to_float4(float3 v, float w)
-{
-  float4 res;
-  res.x = v.x;
-  res.y = v.y;
-  res.z = v.z;
-  res.w = w;
-  return res;
-}
-
-static inline float4 mul4x4x4(float4x4 m, float4 v)
-{
-  float4 res;
-  res.x = v.x * m.m_col[0].x + v.y * m.m_col[1].x + v.z * m.m_col[2].x + v.w * m.m_col[3].x;
-  res.y = v.x * m.m_col[0].y + v.y * m.m_col[1].y + v.z * m.m_col[2].y + v.w * m.m_col[3].y;
-  res.z = v.x * m.m_col[0].z + v.y * m.m_col[1].z + v.z * m.m_col[2].z + v.w * m.m_col[3].z;
-  res.w = v.x * m.m_col[0].w + v.y * m.m_col[1].w + v.z * m.m_col[2].w + v.w * m.m_col[3].w;
-  return res;
-}
+#include "OpenCLMath.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -164,6 +88,11 @@ static inline uint RealColorToUint32(float4 real_color)
   return red | (green << 8) | (blue << 16) | (alpha << 24);
 }
 
+#define WIN_WIDTH  512
+#define WIN_HEIGHT 512
+
+static uint pitchOffset(uint x, uint y) { return y*WIN_WIDTH + x; } 
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static inline void CoordinateSystem(float3 v1, float3* v2, float3* v3)
@@ -184,22 +113,11 @@ static inline void CoordinateSystem(float3 v1, float3* v2, float3* v3)
   (*v3) = cross(v1, (*v2));
 }
 
-#ifndef M_PI
-#define M_PI          3.14159265358979323846f
-#endif
-
-#ifndef M_TWOPI
-#define M_TWOPI       6.28318530717958647692f
-#endif
-
-#ifndef INV_PI
-#define INV_PI        0.31830988618379067154f
-#endif
 
 #define GEPSILON      5e-6f
 #define DEPSILON      1e-20f
 
-//enum THREAD_FLAGS { THREAD_IS_DEAD = 2147483648};
+enum THREAD_FLAGS { THREAD_IS_DEAD = 2147483648};
 
 static inline float3 MapSampleToCosineDistribution(float r1, float r2, float3 direction, float3 hit_norm, float power)
 {

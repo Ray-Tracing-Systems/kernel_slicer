@@ -1,8 +1,5 @@
-#include "include/LiteMath.h"
-
+#include "include/OpenCLMath.h"
 #include "test_class.h"
-
-using namespace LiteMath;
 
 static float randFloat(const float min_value, const float max_value) {
   return static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * (max_value - min_value) + min_value;

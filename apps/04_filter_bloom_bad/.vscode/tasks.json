@@ -6,20 +6,29 @@
         {
             "label": "BuildRelease",
             "type": "shell",
-            "command": "cd cmake-build-release && make -j 8",
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            }
+            "command": "cd cmake-build-release && make -j 4",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
         },
         {
             "label": "BuildDebug",
             "type": "shell",
-            "command": "cd cmake-build-debug && make -j 8",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "command": "cd cmake-build-debug && make -j 4",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build Kernels",
+            "type": "shell",
+            "command": "../clspv z_generated.cl -o z_generated.cl.spv -pod-pushconstant",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
 }

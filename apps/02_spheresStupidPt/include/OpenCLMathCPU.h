@@ -1,5 +1,5 @@
-#ifndef VFLOAT4_ALL_H
-#define VFLOAT4_ALL_H
+#ifndef OPENCL_MATH_CPU_H
+#define OPENCL_MATH_CPU_H
 
 #include <cmath>
 #include <initializer_list>
@@ -140,12 +140,6 @@ namespace LiteMath
   static inline int max  (int a, int b)        { return a > b ? a : b; }                                    
   static inline int min  (int a, int b)        { return a < b ? a : b; }                                    
   static inline int clamp(int u, int a, int b) { const int   r = (a > u) ? a : u; return (r < b) ? r : b; } 
-
-  inline float rnd(float s, float e)
-  {
-    const float t = (float)(rand()) / (float)RAND_MAX;
-    return s + t*(e - s);
-  }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -295,21 +289,6 @@ namespace LiteMath
   };
 
   
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  static inline bool IntersectBox2Box2(float2 box1Min, float2 box1Max, float2 box2Min, float2 box2Max)
-  {
-    return box1Min.x <= box2Max.x && box2Min.x <= box1Max.x &&
-           box1Min.y <= box2Max.y && box2Min.y <= box1Max.y;
-  }
-
-  static inline bool IntersectBox2Box2(int2 box1Min, int2 box1Max, int2 box2Min, int2 box2Max)
-  {
-    return box1Min.x <= box2Max.x && box2Min.x <= box1Max.x &&
-           box1Min.y <= box2Max.y && box2Min.y <= box1Max.y;
-  }
-
   struct float4x4
   {
     inline float4x4()  { identity(); }

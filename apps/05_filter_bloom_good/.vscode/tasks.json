@@ -13,13 +13,19 @@
             "label": "BuildDebug",
             "type": "shell",
             "command": "cd cmake-build-debug && make -j 8",
-            "group": "build"
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
         },
         {
             "label": "Build Kernels",
             "type": "shell",
             "command": "../clspv z_generated.cl -o z_generated.cl.spv -pod-pushconstant",
-            "group": "build"
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
 }

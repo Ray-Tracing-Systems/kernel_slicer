@@ -1,5 +1,9 @@
+#ifndef OPENCLMATH_H
+#define OPENCLMATH_H
+
 // (1) Dealing with code/math that differs for CPU and GPU
 //
+
 #ifdef __OPENCL_VERSION__
   #include "OpenCLMathGPU.h" // include some additional math or code you need to be applied in OpenCL kernels
 #else
@@ -10,7 +14,21 @@
 
 // (2) put you general logoc math code that will be same for CPU and GPU
 //
-#define INV_TWOPI 0.15915494309189533577f
+#ifndef M_PI
+#define M_PI          3.14159265358979323846f
+#endif
+
+#ifndef M_TWOPI
+#define M_TWOPI       6.28318530717958647692f
+#endif
+
+#ifndef INV_PI
+#define INV_PI        0.31830988618379067154f
+#endif
+
+#ifdef  INV_TWOPI
+#define INV_TWOPI     0.15915494309189533577f
+#endif 
 
 static inline float2 make_float2(float a, float b)
 {
@@ -75,3 +93,5 @@ static inline float4 mul4x4x4(float4x4 m, float4 v)
   res.w = v.x * m.m_col[0].w + v.y * m.m_col[1].w + v.z * m.m_col[2].w + v.w * m.m_col[3].w;
   return res;
 }
+
+#endif

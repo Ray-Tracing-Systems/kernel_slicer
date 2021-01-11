@@ -116,22 +116,19 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
 ```
 ./kslicer "apps/05_filter_bloom_good/test_class.cpp" -pattern "ipv" -mainClass "TestClass" -stdlibfolder "TINYSTL" -v
 ```
-
 Now generated files should apper in  "apps/05_filter_bloom_good" folder.
 
- 7. Go to "apps/05_filter_bloom_good" and edit "z_generated.cl". Sorry, includes are still not done. You need to replace "LiteMath.h" to "include/OpenCLMath.h"; Check if there is some other wrong includes which are not expected in GPU code and remove them (not for this example).
+7. Put clspv to "apps/05_filter_bloom_good" and run:
  
- 8. Put clspv to "apps/05_filter_bloom_good" and run:
- 
- ```
+```
 ./clspv z_generated.cl -o z_generated.cl.spv -pod-pushconstant 
 ```
  
- If you got z_generated.cl.spv file, kernels were compiled succesfully. 
+If you got z_generated.cl.spv file, kernels were compiled succesfully. 
  
- 9. Now you can bind generated code to some your Vulkan code. We provide simple example in *test_class_gpu.cpp*.
- 
- 10. Build and run application (don't forget to get back "tone_mapping_gpu()" call in main.cpp if you previously comment it) from the sample folder "apps/05_filter_bloom_good". Now you should have 2 identical images in the sample forder: the first from the CPU code path and the second from the GPU one.  
+8. Now you can bind generated code to some your Vulkan code. We provide simple example in *test_class_gpu.cpp*.
+
+9. Build and run application (don't forget to get back "tone_mapping_gpu()" call in main.cpp if you previously comment it) from the sample folder "apps/05_filter_bloom_good". Now you should have 2 identical images in the sample forder: the first from the CPU code path and the second from the GPU one.  
 
 ## Feature list: what you can do and what you should avoid
 
