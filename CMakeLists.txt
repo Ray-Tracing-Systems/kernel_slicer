@@ -22,6 +22,7 @@ add_executable(kslicer
                class_gen.cpp
                class_gen_ipv.cpp
                class_data.cpp
+               extractor.cpp
                initial_pass.cpp
                template_rendering.cpp
                )

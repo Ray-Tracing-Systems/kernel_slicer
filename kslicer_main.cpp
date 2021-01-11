@@ -37,6 +37,7 @@
 #include "initial_pass.h"
 #include "ast_matchers.h"
 #include "class_gen.h"
+#include "extractor.h"
 
 using namespace clang;
 #include "template_rendering.h"
@@ -441,6 +442,9 @@ int main(int argc, const char **argv)
     usedFunctions_KF.merge(pFilter->usedFunctions);
     usedFiles_KF.merge(pFilter->usedFiles);
   }
+  
+  kslicer::ExtractUsedCode(inputCodeInfo, usedFunctions_KF, compiler); // recursive processing of functions used by kernel, extracting all needed functions
+  //kslicer::ProcessIncludes(inputCodeInfo, usedFiles_KF);
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;

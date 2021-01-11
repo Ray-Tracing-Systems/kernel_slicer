@@ -213,13 +213,13 @@ namespace kslicer
   };  // class MainFuncAnalyzer
 
 
-  class VariableAndFunctionFilter : public clang::ast_matchers::MatchFinder::MatchCallback 
+  class UsedCodeFilter : public clang::ast_matchers::MatchFinder::MatchCallback 
   {
   public:
 
-    explicit VariableAndFunctionFilter(std::ostream& s, kslicer::MainClassInfo& a_allInfo,  kslicer::KernelInfo* a_currKernel, const clang::CompilerInstance& a_compiler) : 
-                                       m_out(s), m_allInfo(a_allInfo), currKernel(a_currKernel), 
-                                       m_compiler(a_compiler), m_sourceManager(a_compiler.getSourceManager()), m_astContext(a_compiler.getASTContext())
+    explicit UsedCodeFilter(std::ostream& s, kslicer::MainClassInfo& a_allInfo,  kslicer::KernelInfo* a_currKernel, const clang::CompilerInstance& a_compiler) : 
+                            m_out(s), m_allInfo(a_allInfo), currKernel(a_currKernel), 
+                            m_compiler(a_compiler), m_sourceManager(a_compiler.getSourceManager()), m_astContext(a_compiler.getASTContext())
     {
        usedFunctions.clear();
        currKernel->usedVectors.clear(); 
@@ -261,9 +261,7 @@ namespace kslicer
         if(fileName == m_allInfo.mainClassFileName)
         {
           if(usedFunctions.find(func->getNameAsString()) == usedFunctions.end())
-          {
             usedFunctions[func->getNameAsString()] = funcSourceRange;
-          }
         }
         
         usedFiles[srcMgr.getFilename(func->getLocation()).str()] = true; // mark include files that used by functions; we need to put such includes in .cl file
@@ -292,7 +290,7 @@ namespace kslicer
     std::unordered_map<std::string, bool>               usedFiles;
 
 
-  };  // class VariableAndFunctionFilter
+  };  // class UsedCodeFilter
 
 
   //

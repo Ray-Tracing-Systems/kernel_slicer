@@ -165,7 +165,7 @@ namespace kslicer
     bool   needToAddThreadFlags = false;
   };
   
-  class VariableAndFunctionFilter;
+  class UsedCodeFilter;
 
   /**
   \brief collector of all information about input main class
@@ -190,7 +190,7 @@ namespace kslicer
 
     typedef std::vector<clang::ast_matchers::StatementMatcher>               MList;
     typedef std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> MHandlerCFPtr;
-    typedef std::unique_ptr<kslicer::VariableAndFunctionFilter>              MHandlerKFPtr;
+    typedef std::unique_ptr<kslicer::UsedCodeFilter>              MHandlerKFPtr;
 
     virtual std::string RemoveKernelPrefix(const std::string& a_funcName) const;                       ///<! "kernel_XXX" --> "XXX"; 
     virtual bool        IsKernel(const std::string& a_funcName) const;                                 ///<! return true if function is a kernel

@@ -191,11 +191,11 @@ static bool areSameVariable(const clang::ValueDecl *First, const clang::ValueDec
 }
 
 
-class LoopHandlerInsideKernelsIPV : public kslicer::VariableAndFunctionFilter
+class LoopHandlerInsideKernelsIPV : public kslicer::UsedCodeFilter
 {
 public:
   explicit LoopHandlerInsideKernelsIPV(std::ostream& s, kslicer::MainClassInfo& a_allInfo, kslicer::KernelInfo* a_currKernel, const clang::CompilerInstance& a_compiler) : 
-                                       VariableAndFunctionFilter(s, a_allInfo, a_currKernel, a_compiler)
+                                       UsedCodeFilter(s, a_allInfo, a_currKernel, a_compiler)
   {
     m_maxNesting = a_allInfo.GetKernelDim(*a_currKernel);
     a_currKernel->loopIters.clear(); 
@@ -233,7 +233,7 @@ public:
       }
     }
     else
-      VariableAndFunctionFilter::run(result);
+      UsedCodeFilter::run(result);
 
     return;
   }  // run
