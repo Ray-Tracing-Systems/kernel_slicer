@@ -15,7 +15,7 @@
         {
             "label": "BuildDebug",
             "type": "shell",
-            "command": "cd cmake-build-debug && make -j 8",
+            "command": "cd cmake-build-debug && make -j 4",
             "group": "build",
             "problemMatcher": [
                 "$gcc"
