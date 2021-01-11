@@ -5,6 +5,8 @@
 #define MAXFLOAT 1e37f
 #endif
 
+#define	RAND_MAX	2147483647
+
 typedef uint uint32_t;
 typedef int  int32_t;
 

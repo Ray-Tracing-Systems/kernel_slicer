@@ -1,34 +1,33 @@
-#include "include/OpenCLMath.h"
 #include "test_class.h"
+#include "include/crandom.h"
+#include "include/OpenCLMath.h"
 
-static float randFloat(const float min_value, const float max_value) {
-  return static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * (max_value - min_value) + min_value;
+static uint32_t nextRandValue(const uint32_t value) {
+  return value * 22695477 + 1; // Borland C random
 }
 
-static float4 randFloat4(const float4& min_value, const float4& max_value) {
-  return float4(
-    randFloat(min_value.x, max_value.x),
-    randFloat(min_value.y, max_value.y),
-    randFloat(min_value.z, max_value.z),
-    randFloat(min_value.w, max_value.w)
-  );
+static float4 randFloat4(float4 min_value, float4 max_value, const uint32_t threadId) {
+  
+  RandomGen gen = RandomGenInit(nextRandValue(threadId));
+  return rndFloat4_Pseudo(&gen)*(max_value - min_value) + min_value;
 }
 
 
 void nBody::perform() {
   kernel1D_GenerateBodies(BODIES_COUNT);
   for (uint32_t i = 0; i < m_iters; ++i) {
-    // dumpPositions();
+    dumpPositions();
     kernel1D_UpdateVelocity(BODIES_COUNT);
     kernel1D_UpdatePosition(BODIES_COUNT);
   }
-  // dumpPositions();
+  //dumpPositions();
 }
 
 void nBody::kernel1D_GenerateBodies(uint32_t bodies_count) {
+  
   for (uint32_t i = 0; i < bodies_count; ++i) {
-    m_bodies[i].pos_weight = randFloat4(float4(-1, -1, -1, -10), float4(1, 1, 1, 10));
-    m_bodies[i].vel_charge = randFloat4(float4(-1, -1, -1, -1), float4(1, 1, 1, 1));
+    m_bodies[i].pos_weight = randFloat4(float4(-1, -1, -1, 10), float4(1, 1, 1, 10), i);
+    m_bodies[i].vel_charge = randFloat4(float4(-1, -1, -1, -1), float4(1, 1, 1, 1), i*i + i*7 + 1);
   }
 }
 
@@ -51,7 +50,7 @@ void nBody::kernel1D_UpdateVelocity(uint32_t bodies_count) {
       if (i == j) {
         continue;
       }
-      float3 bodyToBody = -xyz(m_bodies[j].pos_weight - m_bodies[i].pos_weight) * sgn(m_bodies[i].pos_weight.w);
+      float3 bodyToBody = xyz(m_bodies[j].pos_weight - m_bodies[i].pos_weight); // * sgn(m_bodies[i].pos_weight.w);
       acceleration += bodyToBody * m_bodies[j].pos_weight.w / pow3(length(bodyToBody) + 1e-5f);
     }
     acceleration *= dt;
@@ -69,11 +68,16 @@ void nBody::kernel1D_UpdatePosition(uint32_t bodies_count) {
   }
 }
 
-// void nBody::dumpPositions() {
-//   for (const auto& body: m_bodies) {
-//     debugOutput.write(reinterpret_cast<const char*>(&body.pos_weight), sizeof(body.pos_weight));
-//   }
-// }
+void nBody::dumpPositions() {
+
+  if(!debugOutput.is_open())
+    return;
+
+  for (const auto& body: m_bodies) {
+    debugOutput.write(reinterpret_cast<const char*>(&body.pos_weight), sizeof(body.pos_weight));
+  }
+  debugOutput.flush();
+}
 
 void n_body_cpu(uint32_t seed, uint32_t iterations) {
   nBody bodies(seed, iterations);

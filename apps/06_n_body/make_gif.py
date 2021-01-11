@@ -9,8 +9,9 @@ frames = []
 with open(FILENAME, "rb") as fin:
   bodies_count = struct.unpack("I", fin.read(4))[0]
   iters_count = struct.unpack("I", fin.read(4))[0]
+  print("bodies_count = ", bodies_count, ", iters_count = ", iters_count)
   colors = np.random.rand(bodies_count, 3)
-  for _ in range(iters_count):
+  for frameId in range(iters_count):
     frame = np.zeros((RESOLUTION, RESOLUTION, 3), dtype="uint8")
     for i in range(bodies_count):
       body = struct.unpack("ffff", fin.read(16))
@@ -28,5 +29,6 @@ with open(FILENAME, "rb") as fin:
           color = (255 * max(1 - (h * h + j * j) ** 0.5 / RADIUS, 0) * colors[i])
           frame[x1, y1] += color.astype("uint8")
     frames.append(frame)
+    print("progress = ", 100.0*float(frameId)/float(iters_count),"%", end='\r', flush=True)
 
 imageio.mimsave('bodies_CPU.gif', frames)

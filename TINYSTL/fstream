@@ -1,1 +1,22 @@
 /////
+
+namespace std
+{
+
+  namespace ios
+  {
+    enum modes { binary = 0 };
+  };
+
+  struct ofstream
+  { 
+    ofstream();
+    ofstream(const char*, int a_mode = 0);
+    void write(const char*, size_t a_size);
+    size_t read(char* data, size_t a_size);
+    bool is_open();
+    void flush();
+  };
+
+
+};
