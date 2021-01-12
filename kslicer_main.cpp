@@ -25,9 +25,12 @@
 #include "clang/Lex/Lexer.h"
 #include "clang/Lex/PreprocessorOptions.h"
 #include "clang/Basic/Diagnostic.h"
+
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/AST/ASTConsumer.h"
+#include "clang/AST/ASTTypeTraits.h"
 #include "clang/AST/DeclTemplate.h"
+
 #include "clang/Parse/ParseAST.h"
 #include "clang/Rewrite/Frontend/Rewriters.h"
 #include "clang/Rewrite/Core/Rewriter.h"
@@ -384,7 +387,7 @@ int main(int argc, const char **argv)
 
       clang::ast_matchers::MatchFinder finder;
       for(auto& matcher : allMatchers)
-        finder.addMatcher(matcher, pMatcherPrc.get());
+        finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource,matcher), pMatcherPrc.get());
       
       std::cout << "  process main function: " << mainFuncName.c_str() << "(...): ";
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
@@ -428,7 +431,7 @@ int main(int argc, const char **argv)
 
     clang::ast_matchers::MatchFinder finder;
     for(auto& matcher : kernelMatchers)
-       finder.addMatcher(matcher, pFilter.get());
+      finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, matcher), pFilter.get());
 
     auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
     std::cout << "  process " << kernel.name.c_str() << ":\t" << GetClangToolingErrorCodeMessage(res) << std::endl;

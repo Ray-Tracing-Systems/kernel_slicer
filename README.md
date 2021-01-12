@@ -118,13 +118,13 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
 ```
 Now generated files should apper in  "apps/05_filter_bloom_good" folder.
 
-7. Put clspv to "apps/05_filter_bloom_good" and run:
+7. Put clspv to "apps" folder and then run futher command from concrete folder sample:
  
 ```
-./clspv z_generated.cl -o z_generated.cl.spv -pod-pushconstant 
+../clspv z_generated.cl -o z_generated.cl.spv -pod-pushconstant 
 ```
  
-If you got z_generated.cl.spv file, kernels were compiled succesfully. 
+If you got z_generated.cl.spv file, kernels were compiled succesfully. In VS Code config this process is called "Build Kernels".
  
 8. Now you can bind generated code to some your Vulkan code. We provide simple example in *test_class_gpu.cpp*.
 
