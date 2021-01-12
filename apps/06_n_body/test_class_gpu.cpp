@@ -1,5 +1,3 @@
-#include "include/BasicLogic.h" 
-
 #include <vector>
 #include <iostream>
 #include <memory>
@@ -72,7 +70,7 @@ void n_body_gpu(uint32_t seed, uint32_t iterations)
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 
   auto pGPUImpl = std::make_shared<nBody_Generated>();          // !!! USING GENERATED CODE !!! 
-  pGPUImpl->InitVulkanObjects(device, physicalDevice, w*h, 32, 8, 1); // !!! USING GENERATED CODE !!!
+  pGPUImpl->InitVulkanObjects(device, physicalDevice, nBody::BODIES_COUNT, 32, 8, 1); // !!! USING GENERATED CODE !!!
 
   pGPUImpl->InitMemberBuffers();                                      // !!! USING GENERATED CODE !!!
   pGPUImpl->UpdateAll(pCopyHelper);                                   // !!! USING GENERATED CODE !!!
@@ -100,7 +98,7 @@ void n_body_gpu(uint32_t seed, uint32_t iterations)
     std::cout << ms << " ms for command buffer execution " << std::endl;
 
     std::vector<unsigned int> pixels(pGPUImpl->m_bodies.size());
-    pCopyHelper->ReadBuffer(, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
+    // pCopyHelper->ReadBuffer(, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
 
     std::cout << std::endl;
   }

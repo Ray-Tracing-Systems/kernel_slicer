@@ -26,13 +26,13 @@ void nBody::perform() {
 void nBody::kernel1D_GenerateBodies(uint32_t bodies_count) {
   
   for (uint32_t i = 0; i < bodies_count; ++i) {
-    m_bodies[i].pos_weight = randFloat4(float4(-1, -1, -1, 10), float4(1, 1, 1, 10), i);
-    m_bodies[i].vel_charge = randFloat4(float4(-1, -1, -1, -1), float4(1, 1, 1, 1), i*i + i*7 + 1);
+    m_bodies[i].pos_weight = randFloat4(make_float4(-1, -1, -1, 10), make_float4(1, 1, 1, 10), i);
+    m_bodies[i].vel_charge = randFloat4(make_float4(-1, -1, -1, -1), make_float4(1, 1, 1, 1), i*i + i*7 + 1);
   }
 }
 
-float3 xyz(const float4& vec) {
-  return float3(vec.x, vec.y, vec.z);
+float3 xyz(const float4 vec) {
+  return make_float3(vec.x, vec.y, vec.z);
 }
 
 template <typename T> int sgn(T val) {
@@ -80,6 +80,7 @@ void nBody::dumpPositions() {
 }
 
 void n_body_cpu(uint32_t seed, uint32_t iterations) {
-  nBody bodies(seed, iterations);
+  nBody bodies;
+  bodies.setParameters(seed, iterations);
   bodies.perform();
 }
