@@ -221,8 +221,7 @@ namespace kslicer
                             m_out(s), m_allInfo(a_allInfo), currKernel(a_currKernel), 
                             m_compiler(a_compiler), m_sourceManager(a_compiler.getSourceManager()), m_astContext(a_compiler.getASTContext())
     {
-       usedFunctions.clear();
-       currKernel->usedVectors.clear(); 
+    
     }
 
     kslicer::KernelInfo* currKernel = nullptr;
@@ -256,15 +255,7 @@ namespace kslicer
       }
       else if(func_decl && funcCall && func)
       {
-        auto funcSourceRange = func->getSourceRange();
-        auto fileName  = m_sourceManager.getFilename(funcSourceRange.getBegin());
-        if(fileName == m_allInfo.mainClassFileName)
-        {
-          if(usedFunctions.find(func->getNameAsString()) == usedFunctions.end())
-            usedFunctions[func->getNameAsString()] = funcSourceRange;
-        }
-        
-        usedFiles[srcMgr.getFilename(func->getLocation()).str()] = true; // mark include files that used by functions; we need to put such includes in .cl file
+        //
       }
       else 
       {
@@ -285,11 +276,6 @@ namespace kslicer
     const clang::SourceManager&    m_sourceManager;
     const clang::ASTContext&       m_astContext;
     const clang::CompilerInstance& m_compiler;
-
-    std::unordered_map<std::string, clang::SourceRange> usedFunctions;
-    std::unordered_map<std::string, bool>               usedFiles;
-
-
   };  // class UsedCodeFilter
 
 

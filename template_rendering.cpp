@@ -375,7 +375,6 @@ void kslicer::ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, con
 std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds);
 
 void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::string& a_outFolder, const MainClassInfo& a_classInfo, 
-                                   const std::unordered_map<std::string, bool>& usedFiles, 
                                    const std::unordered_map<std::string, clang::SourceRange>& usedFunctions,
                                    const clang::CompilerInstance& compiler,
                                    const uint32_t  threadsOrder[3])

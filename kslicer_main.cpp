@@ -420,9 +420,6 @@ int main(int argc, const char **argv)
 
   std::cout << "(2) Mark data members, methods and functions which are actually used in kernels." << std::endl; 
   std::cout << "{" << std::endl;
-  
-  std::unordered_map<std::string, clang::SourceRange> usedFunctions_KF; // ==> accumulate information about used by kernel (KF) functions here
-  std::unordered_map<std::string, bool>               usedFiles_KF;     // ==> accumulate information about used by kernel (KF) files     here
 
   for(auto& kernel : inputCodeInfo.kernels)
   {
@@ -438,13 +435,10 @@ int main(int argc, const char **argv)
 
     for(auto& arg : kernel.args) // it is important to run this loop after second stage at which kernel matchers are applied!
       inputCodeInfo.ProcessKernelArg(arg, kernel);
-
-    usedFunctions_KF.merge(pFilter->usedFunctions);
-    usedFiles_KF.merge(pFilter->usedFiles);
   }
   
+  std::unordered_map<std::string, clang::SourceRange> usedFunctions_KF;
   kslicer::ExtractUsedCode(inputCodeInfo, usedFunctions_KF, compiler); // recursive processing of functions used by kernel, extracting all needed functions
-  //kslicer::ProcessIncludes(inputCodeInfo, usedFiles_KF);
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
@@ -516,7 +510,7 @@ int main(int argc, const char **argv)
 
   // finally generate kernels
   //
-  kslicer::PrintGeneratedCLFile("templates/generated.cl", GetFolderPath(inputCodeInfo.mainClassFileName), inputCodeInfo, usedFiles_KF, usedFunctions_KF, compiler, threadsOrder);
+  kslicer::PrintGeneratedCLFile("templates/generated.cl", GetFolderPath(inputCodeInfo.mainClassFileName), inputCodeInfo, usedFunctions_KF, compiler, threadsOrder);
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
