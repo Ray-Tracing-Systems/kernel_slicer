@@ -31,7 +31,7 @@ void nBody::kernel1D_GenerateBodies(uint32_t bodies_count) {
   }
 }
 
-float3 xyz(const float4 vec) {
+static float3 xyz(const float4 vec) {
   return make_float3(vec.x, vec.y, vec.z);
 }
 
@@ -45,8 +45,8 @@ static float pow3(float value) {
 
 void nBody::kernel1D_UpdateVelocity(uint32_t bodies_count) {
   for (uint32_t i = 0; i < bodies_count; ++i) {
-    float3 acceleration(0, 0, 0);
-    for (uint32_t j = 0; j < bodies_count; ++j) {
+    float3 acceleration = make_float3(0, 0, 0);
+    for (uint32_t j = 0; j < m_bodies.size(); ++j) {
       if (i == j) {
         continue;
       }
