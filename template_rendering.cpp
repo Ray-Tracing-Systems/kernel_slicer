@@ -376,6 +376,7 @@ std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const
 
 void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::string& a_outFolder, const MainClassInfo& a_classInfo, 
                                    const std::vector<kslicer::FuncData>& usedFunctions,
+                                   const std::vector<kslicer::DeclInClass>& usedDecl,
                                    const clang::CompilerInstance& compiler,
                                    const uint32_t  threadsOrder[3])
 {
@@ -399,7 +400,13 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       data["Includes"].push_back(keyVal.first);
   }
 
-  // (2) local functions
+  // (2) declarations of struct, constants and typedefs inside class
+  //
+  data["ClassDecls"] = std::vector<std::string>();
+  //for(const auto decl : usedDecl)
+  //  data["ClassDecls"].push_back( kslicer::GetRangeSourceCode(decl.srcRange, compiler) );
+
+  // (3) local functions
   //
   data["LocalFunctions"] = std::vector<std::string>();
   for (const auto& f : usedFunctions)  
@@ -408,7 +415,7 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
   data["LocalFunctions"].push_back("uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }                                      // for 2D threading");
   data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");
 
-  // (3) put kernels
+  // (4) put kernels
   //
   data["Kernels"] = std::vector<std::string>();
   

@@ -180,6 +180,21 @@ namespace kslicer
     int                depthUse = 0;    ///!< depth Of Usage; 0 -- for kernels; 1 -- for functions called from kernel; 2 -- for functions called from functions called from kernels
                                         ///!< please note that if function is called under different depth, maximum depth should be stored in this variable;
   };
+  
+  enum class DECL_IN_CLASS{ DECL_STRUCT, DECL_TYPEDEF, DECL_CONSTANT, DECL_UNKNOWN};
+
+  /**
+  \brief declaration of types and constant inside main class
+  */
+  struct DeclInClass
+  {
+    std::string        name;
+    std::string        type;
+    clang::SourceRange srcRange;
+    uint64_t           srcHash;
+    uint32_t           order = 0; ///<! to sort them before put in generated kernels source code
+    DECL_IN_CLASS      kind  = DECL_IN_CLASS::DECL_UNKNOWN;
+  };
 
   class UsedCodeFilter;
 

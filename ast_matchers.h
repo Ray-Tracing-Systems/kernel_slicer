@@ -290,7 +290,7 @@ namespace kslicer
     explicit TC_Extractor(kslicer::MainClassInfo& a_allInfo, const clang::CompilerInstance& a_compiler) : 
                           m_allInfo(a_allInfo), m_compiler(a_compiler), m_sourceManager(a_compiler.getSourceManager()), m_astContext(a_compiler.getASTContext())
     {
-    
+      m_currId = 0;
     }
 
     void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
@@ -309,7 +309,16 @@ namespace kslicer
           if(pDef != nullptr)
           {
             std::cout << "  [TC_Extractor]: found " << pDef->getNameAsString() << " inside " << pMainClass->getNameAsString() << std::endl;
-            foundTypes[pTargetStruct->getNameAsString()] = kslicer::GetHashOfSourceRange(pDef->getSourceRange());
+
+            kslicer::DeclInClass decl;
+            decl.name     = pDef->getNameAsString();
+            decl.type     = pDef->getNameAsString();
+            decl.srcRange = pDef->getSourceRange ();
+            decl.srcHash  = kslicer::GetHashOfSourceRange(decl.srcRange);
+            decl.order    = m_currId;
+            decl.kind     = kslicer::DECL_IN_CLASS::DECL_STRUCT;
+            foundDecl[decl.srcHash] = decl;
+            m_currId++;
           }
         }
 
@@ -328,8 +337,9 @@ namespace kslicer
     const clang::SourceManager&    m_sourceManager;
     const clang::ASTContext&       m_astContext;
     const clang::CompilerInstance& m_compiler;
+    int m_currId = 0;
 
-    std::unordered_map<std::string, uint64_t> foundTypes;
+    std::unordered_map<uint64_t, kslicer::DeclInClass> foundDecl;
 
   };  // class UsedCodeFilter
 
