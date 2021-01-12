@@ -673,8 +673,9 @@ bool kslicer::KernelReplacerASTVisitor::VisitMemberExpr(MemberExpr* expr)
     return true;
 
   // (3) put *(pointer+offset) instead of variable name, leave containers as they are
+  // read only large data structures because small can be readn once in the neggining of kernel
   //
-  if(!pMember->second.isContainer)
+  if(!pMember->second.isContainer && pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD) 
   {
     const std::string buffName = kslicer::GetProjPrefix() + "data"; 
     std::stringstream strOut;
@@ -799,7 +800,7 @@ std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const
     return "tid";
 }
 
-std::string kslicer::MainClassInfo::VisitAndRewrite_KF(const KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
+std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
 {
   const CXXMethodDecl* a_node = a_funcInfo.astNode;
   //a_node->dump();

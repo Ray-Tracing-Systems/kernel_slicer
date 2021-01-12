@@ -437,7 +437,7 @@ int main(int argc, const char **argv)
       inputCodeInfo.ProcessKernelArg(arg, kernel);
   }
   
-  std::vector<kslicer::FuncData> usedFunctions_KF = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
+  std::vector<kslicer::FuncData> usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
@@ -465,8 +465,6 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
   
-
-  
   std::cout << "(4) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl; 
   std::cout << "{" << std::endl;
 
@@ -480,7 +478,6 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
   
-
   std::cout << "(5) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
   std::cout << "{" << std::endl;
   {
@@ -509,7 +506,7 @@ int main(int argc, const char **argv)
 
   // finally generate kernels
   //
-  kslicer::PrintGeneratedCLFile("templates/generated.cl", GetFolderPath(inputCodeInfo.mainClassFileName), inputCodeInfo, usedFunctions_KF, compiler, threadsOrder);
+  kslicer::PrintGeneratedCLFile("templates/generated.cl", GetFolderPath(inputCodeInfo.mainClassFileName), inputCodeInfo, usedByKernelsFunctions, compiler, threadsOrder);
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;

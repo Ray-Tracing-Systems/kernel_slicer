@@ -49,7 +49,8 @@ namespace kslicer
     bool checkThreadFlags = false;
 
     std::string DeclCmd;
-    std::unordered_set<std::string> usedVectors; // list of all std::vector<T> member names which is referenced inside kernel
+    std::unordered_set<std::string> usedVectors; ///<! list of all std::vector<T> member names which is referenced inside kernel
+    std::unordered_set<std::string> usedMembers; ///<! list of all other variables used inside kernel
     std::string rewrittenText;
   };
 
@@ -231,7 +232,7 @@ namespace kslicer
     //
     virtual MList         ListMatchers_KF(const std::string& mainFuncName) = 0; 
     virtual MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) = 0;
-    virtual std::string   VisitAndRewrite_KF(const KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler);
+    virtual std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler);
 
     virtual void ProcessCallArs_KF(const KernelCallInfo& a_call) { };
     
@@ -284,7 +285,7 @@ namespace kslicer
 
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override; 
-    std::string   VisitAndRewrite_KF(const KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler);
+    std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler);
 
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
     void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override; 
@@ -293,13 +294,11 @@ namespace kslicer
   };
 
 
-
   /**
   \brief select local variables of main class that can be placed in auxilary buffer
   */
   std::vector<DataMemberInfo> MakeClassDataListAndCalcOffsets(std::unordered_map<std::string, DataMemberInfo>& vars);
 
-  
   void ReplaceOpenCLBuiltInTypes(std::string& a_typeName);
   std::vector<std::string> GetAllPredefinedThreadIdNamesRTV();
 
@@ -307,6 +306,9 @@ namespace kslicer
   std::string CutOffFileExt(const std::string& a_filePath);
 
   uint64_t GetHashOfSourceRange(const clang::SourceRange& a_range);
+
+  static constexpr size_t READ_BEFORE_USE_THRESHOLD = sizeof(float)*8;
+
 };
 
 

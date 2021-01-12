@@ -42,6 +42,7 @@ __kernel void {{Kernel.Name}}(
   {% if Kernel.shouldCheckExitFlag %}if((kgen_threadFlags[{{Kernel.ThreadOffset}}] & kgen_tFlagsMask) != 0) 
     return;{% endif %}
   {% for Vec in Kernel.Vecs %}const uint {{Vec.Name}}_size = kgen_data[{{Vec.SizeOffset}}]; 
+  {% endfor %}{% for Member in Kernel.Members %}const {{Member.Type}} {{Member.Name}} = *( (__global {{Member.Type}}*)(kgen_data + {{Member.Offset}}) );
   {% endfor %}/////////////////////////////////////////////////////////////////
 {{Kernel.Source}}
 }

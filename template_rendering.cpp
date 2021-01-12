@@ -460,6 +460,28 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       args.push_back(argj);
       vecs.push_back(argj);
     }
+    
+    std::vector<kslicer::DataMemberInfo> membersToRead;
+    for(const auto& name : k.usedMembers)
+      membersToRead.push_back(dataMembersCached[name]);
+    
+    std::sort(membersToRead.begin(), membersToRead.end(), [](const auto& a, const auto& b) { return a.offsetInTargetBuffer < b.offsetInTargetBuffer; });
+
+    json members = std::vector<std::string>();
+    for(const auto member : membersToRead)
+    {
+      if(member.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD) // read large data structures directly inside kernel code, don't read them at the beggining of kernel.
+        continue;
+
+      std::string typeStr = member.type;
+      kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
+      
+      json memberData;
+      memberData["Type"]   = typeStr;
+      memberData["Name"]   = member.name;
+      memberData["Offset"] = member.offsetInTargetBuffer / sizeof(uint32_t);
+      members.push_back(memberData);
+    }
 
     // add kgen_data buffer and skiped predefined ThreadId back
     //
@@ -471,9 +493,10 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
     }
     
     json kernelJson;
-    kernelJson["Args"]        = args;
-    kernelJson["Vecs"]        = vecs;
-    kernelJson["Name"]        = k.name;
+    kernelJson["Args"]    = args;
+    kernelJson["Vecs"]    = vecs;
+    kernelJson["Members"] = members;
+    kernelJson["Name"]    = k.name;
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));

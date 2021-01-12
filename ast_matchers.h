@@ -251,6 +251,8 @@ namespace kslicer
           pDataMember->second.usedInKernel = true;
           if(pDataMember->second.isContainer)
             currKernel->usedVectors.insert(pDataMember->first);
+          else
+            currKernel->usedMembers.insert(pDataMember->first);
         }
       }
       else if(func_decl && funcCall && func)
