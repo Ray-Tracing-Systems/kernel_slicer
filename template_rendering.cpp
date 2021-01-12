@@ -395,13 +395,9 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
   {
     if(keyVal.first.find("include/") == std::string::npos) // inlude in OpenCL kernels only those code which is in 'include' folder
       continue;
-
-    for(auto keyVal2 : usedFiles)
-    {
-      if(keyVal2.first.find(keyVal.first)                   != std::string::npos && 
-        a_classInfo.mainClassFileInclude.find(keyVal.first) == std::string::npos)
-        data["Includes"].push_back(keyVal.first);
-    }
+   
+    if(a_classInfo.mainClassFileInclude.find(keyVal.first) == std::string::npos)
+      data["Includes"].push_back(keyVal.first);
   }
 
   // (2) local functions
