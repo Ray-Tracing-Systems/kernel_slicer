@@ -437,8 +437,7 @@ int main(int argc, const char **argv)
       inputCodeInfo.ProcessKernelArg(arg, kernel);
   }
   
-  std::unordered_map<std::string, clang::SourceRange> usedFunctions_KF;
-  kslicer::ExtractUsedCode(inputCodeInfo, usedFunctions_KF, compiler); // recursive processing of functions used by kernel, extracting all needed functions
+  std::vector<kslicer::FuncData> usedFunctions_KF = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;

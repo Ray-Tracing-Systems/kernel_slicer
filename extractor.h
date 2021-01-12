@@ -14,7 +14,7 @@ namespace kslicer
   using namespace llvm;
   using namespace clang;
 
-  void ExtractUsedCode(MainClassInfo& a_codeInfo, std::unordered_map<std::string, clang::SourceRange>& a_usedFunctions, const clang::CompilerInstance& a_compiler);
+  std::vector<kslicer::FuncData> ExtractUsedFunctions(MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);
 
 };
 

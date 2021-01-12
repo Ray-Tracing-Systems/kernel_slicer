@@ -375,7 +375,7 @@ void kslicer::ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, con
 std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds);
 
 void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::string& a_outFolder, const MainClassInfo& a_classInfo, 
-                                   const std::unordered_map<std::string, clang::SourceRange>& usedFunctions,
+                                   const std::vector<kslicer::FuncData>& usedFunctions,
                                    const clang::CompilerInstance& compiler,
                                    const uint32_t  threadsOrder[3])
 {
@@ -403,7 +403,7 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
   //
   data["LocalFunctions"] = std::vector<std::string>();
   for (const auto& f : usedFunctions)  
-    data["LocalFunctions"].push_back(kslicer::GetRangeSourceCode(f.second, compiler));
+    data["LocalFunctions"].push_back(kslicer::GetRangeSourceCode(f.srcRange, compiler));
 
   data["LocalFunctions"].push_back("uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }                                      // for 2D threading");
   data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");

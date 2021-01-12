@@ -3,16 +3,6 @@
 
 #include <queue>
 
-struct FuncData
-{
-  const clang::FunctionDecl* astNode;
-  std::string        name;
-  clang::SourceRange srcRange;
-  uint64_t           srcHash;
-  bool               isMember = false;
-  bool               isKernel = false;
-};
-
 class FuncExtractor : public clang::RecursiveASTVisitor<FuncExtractor>
 {
 public:
@@ -38,18 +28,19 @@ public:
     if(fileName.find(".h") == std::string::npos && fileName.find(".cpp") == std::string::npos && fileName.find(".cxx") == std::string::npos)
       return true;
 
-    FuncData func;
+    kslicer::FuncData func;
     func.name     = f->getNameAsString();
     func.astNode  = f;
     func.srcRange = f->getSourceRange(); 
     func.srcHash  = kslicer::GetHashOfSourceRange(func.srcRange);
     func.isMember = clang::isa<clang::CXXMethodDecl>(func.astNode);
     func.isKernel = false;                                           // TODO: add check here with pattern implementation functions IsKernel
+    func.depthUse = 0;
     usedFunctions[func.srcHash] = func;
     return true;
   }
 
-  std::unordered_map<uint64_t, FuncData> usedFunctions;
+  std::unordered_map<uint64_t, kslicer::FuncData> usedFunctions;
 
 private:
   const clang::SourceManager&    m_sm;
@@ -58,19 +49,20 @@ private:
 };
 
 
-void kslicer::ExtractUsedCode(MainClassInfo& a_codeInfo, std::unordered_map<std::string, clang::SourceRange>& a_usedFunctions, const clang::CompilerInstance& a_compiler)
+std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
 {
   std::queue<FuncData> functionsToProcess; 
 
   for(const auto& kernel : a_codeInfo.kernels)
   {
-    FuncData func;
+    kslicer::FuncData func;
     func.name     = kernel.name;
     func.astNode  = kernel.astNode;
     func.srcRange = kernel.astNode->getSourceRange();
     func.srcHash  = GetHashOfSourceRange(func.srcRange);
     func.isMember = true; //isa<clang::CXXMethodDecl>(kernel.astNode);
     func.isKernel = true;
+    func.depthUse = 0;
     functionsToProcess.push(func);
   }
 
@@ -91,14 +83,29 @@ void kslicer::ExtractUsedCode(MainClassInfo& a_codeInfo, std::unordered_map<std:
     visitor.TraverseDecl(const_cast<clang::FunctionDecl*>(currFunc.astNode));
 
     for(auto& f : visitor.usedFunctions)
-      functionsToProcess.push(f.second);      
+    {
+      auto nextFunc     = f.second;
+      nextFunc.depthUse = currFunc.depthUse + 1;
+      functionsToProcess.push(nextFunc);      
+    }
+    
+    for(auto foundCall : visitor.usedFunctions)
+    {
+      auto p = usedFunctions.find(foundCall.first);
+      if(p == usedFunctions.end())
+        usedFunctions[foundCall.first] = foundCall.second;
+      else
+        p->second.depthUse++;
+    }
 
-    usedFunctions.merge(visitor.usedFunctions);
     visitor.usedFunctions.clear();
   }
 
-  a_usedFunctions.clear();
+  std::vector<kslicer::FuncData> result; result.reserve(usedFunctions.size());
   for(const auto& f : usedFunctions)
-    a_usedFunctions[f.second.name] = f.second.srcRange;
-
+    result.push_back(f.second);
+  
+  std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.depthUse > b.depthUse; });
+ 
+  return result;
 }

@@ -165,6 +165,21 @@ namespace kslicer
     bool   needToAddThreadFlags = false;
   };
   
+  /**
+  \brief Both for common functions and member functions called from kernels
+  */
+  struct FuncData
+  {
+    const clang::FunctionDecl* astNode;
+    std::string        name;
+    clang::SourceRange srcRange;
+    uint64_t           srcHash;
+    bool               isMember = false;
+    bool               isKernel = false;
+    int                depthUse = 0;    ///!< depth Of Usage; 0 -- for kernels; 1 -- for functions called from kernel; 2 -- for functions called from functions called from kernels
+                                        ///!< please note that if function is called under different depth, maximum depth should be stored in this variable;
+  };
+
   class UsedCodeFilter;
 
   /**
