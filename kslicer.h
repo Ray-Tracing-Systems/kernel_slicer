@@ -250,6 +250,9 @@ namespace kslicer
    
     virtual std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const; 
     virtual std::vector<ArgTypeAndNamePair> GetKernelCommonArgs(const KernelInfo& a_kernel) const;
+
+    virtual std::string GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler, std::vector<KernelCallInfo>& a_outDSInfo);
+    virtual std::string GetCFDeclFromSource(const std::string& sourceCode);
   };
 
 

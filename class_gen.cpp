@@ -277,13 +277,7 @@ bool kslicer::MainClassInfo::IsKernel(const std::string& a_funcName) const
   return (pos != std::string::npos);
 }
 
-
-uint32_t kslicer::RTV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel) const
-{
-  return uint32_t(GetKernelTIDArgs(a_kernel).size());
-} 
-
-std::string kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
+std::string kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler, std::vector<KernelCallInfo>& a_outDSInfo)
 {
   const std::string&   a_mainClassName = this->mainClassName;
   auto&                a_outDsInfo     = this->allDescriptorSetsInfo;
@@ -303,7 +297,8 @@ std::string kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, c
 
   rv.m_kernCallTypes = a_outDsInfo;
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
-  
+  a_outDsInfo        = rv.m_kernCallTypes;
+
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
   
@@ -315,7 +310,15 @@ std::string kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, c
   const std::string replaceTo   = a_mainClassName + "_Generated" + "::" + rv.mainFuncCmdName;
 
   assert(ReplaceFirst(sourceCode, replaceFrom, replaceTo));
-  assert(ReplaceFirst(sourceCode, "(", "(VkCommandBuffer a_commandBuffer, "));
+
+  if(a_mainFunc.Node->getNumParams() != 0)
+  {
+    assert(ReplaceFirst(sourceCode, "(", "(VkCommandBuffer a_commandBuffer, "));
+  }
+  else
+  {
+    assert(ReplaceFirst(sourceCode, "(", "(VkCommandBuffer a_commandBuffer"));
+  }
 
   // (3) set m_currCmdBuffer with input command bufer and add other prolog to MainFunCmd
   //
@@ -341,14 +344,33 @@ std::string kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, c
     sourceCode = (sourceCode.substr(0, bracePos) + strOut.str() + sourceCode.substr(bracePos+2)); 
   }
 
-  // (4) get function decl from full function code
-  //
+  return sourceCode;
+}
+
+std::string kslicer::MainClassInfo::GetCFDeclFromSource(const std::string& sourceCode)
+{
   std::string mainFuncDecl = sourceCode.substr(0, sourceCode.find(")")+1) + ";";
-  assert(ReplaceFirst(mainFuncDecl, a_mainClassName + "_Generated" + "::", ""));
+  assert(ReplaceFirst(mainFuncDecl, mainClassName + "_Generated" + "::", ""));
+  return "virtual " + mainFuncDecl;
+}
 
-  a_outFuncDecl = "virtual " + mainFuncDecl;
-  a_outDsInfo   = rv.m_kernCallTypes;
 
+uint32_t kslicer::RTV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel) const
+{
+  return uint32_t(GetKernelTIDArgs(a_kernel).size());
+} 
+
+std::string kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
+{
+  const std::string&   a_mainClassName = this->mainClassName;
+  auto&                a_outDsInfo     = this->allDescriptorSetsInfo;
+
+  const CXXMethodDecl* a_node          = a_mainFunc.Node;
+  const std::string&   a_mainFuncName  = a_mainFunc.Name;
+  std::string&         a_outFuncDecl   = a_mainFunc.GeneratedDecl;
+
+  std::string sourceCode = GetCFSourceCodeCmd(a_mainFunc, compiler, a_outDsInfo);
+  a_outFuncDecl          = GetCFDeclFromSource(sourceCode); 
   a_mainFunc.endDSNumber = a_outDsInfo.size();
 
   return sourceCode;
