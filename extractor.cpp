@@ -7,11 +7,13 @@ class FuncExtractor : public clang::RecursiveASTVisitor<FuncExtractor>
 {
 public:
   
-  FuncExtractor(const clang::CompilerInstance& a_compiler) : m_compiler(a_compiler), m_sm(a_compiler.getSourceManager())
+  FuncExtractor(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo) : m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_patternImpl(a_codeInfo)
   { 
     
   }
   
+  std::string currProcessedFuncName;
+
   bool VisitCallExpr(clang::CallExpr* call)
   {
     clang::FunctionDecl* f = call->getDirectCallee();
@@ -34,9 +36,19 @@ public:
     func.srcRange = f->getSourceRange(); 
     func.srcHash  = kslicer::GetHashOfSourceRange(func.srcRange);
     func.isMember = clang::isa<clang::CXXMethodDecl>(func.astNode);
-    func.isKernel = false;                                           // TODO: add check here with pattern implementation functions IsKernel
+    func.isKernel = m_patternImpl.IsKernel(func.name);
     func.depthUse = 0;
     usedFunctions[func.srcHash] = func;
+
+    if(func.isKernel)
+    {
+      auto beginLoc = func.srcRange.getBegin();
+      std::string fileName = m_sm.getFilename(beginLoc);
+      std::cout << "[FuncExtractor] ERROR! " << currProcessedFuncName.c_str() << " --> " << func.name.c_str() << std::endl; 
+      std::cout << "[FuncExtractor] file:  " << fileName.c_str() << ", line: " << m_sm.getPresumedLoc(beginLoc).getLine() << std::endl;
+      std::cout << "[FuncExtractor] calling kernel from a kernel is not allowed currently!" << std::endl;
+    }
+
     return true;
   }
 
@@ -45,6 +57,7 @@ public:
 private:
   const clang::SourceManager&    m_sm;
   const clang::CompilerInstance& m_compiler;
+  kslicer::MainClassInfo&        m_patternImpl;
 
 };
 
@@ -71,7 +84,7 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
   usedFunctions.reserve(functionsToProcess.size()*10);
   usedMembers.reserve(functionsToProcess.size()*2);
   
-  FuncExtractor visitor(a_compiler); // first traverse kernels to get first level of used functions
+  FuncExtractor visitor(a_compiler, a_codeInfo); // first traverse kernels to get first level of used functions
   while(!functionsToProcess.empty())
   {
     auto currFunc = functionsToProcess.front(); functionsToProcess.pop();
@@ -79,7 +92,8 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
       usedFunctions[currFunc.srcHash] = currFunc;
     else if(!currFunc.isKernel && currFunc.isMember)
       usedMembers[currFunc.srcHash] = currFunc; 
-
+    
+    visitor.currProcessedFuncName = currFunc.name;
     visitor.TraverseDecl(const_cast<clang::FunctionDecl*>(currFunc.astNode));
 
     for(auto& f : visitor.usedFunctions)
