@@ -81,9 +81,9 @@ static std::string get_source_text_raw(clang::SourceRange range, const clang::So
  * 
  * @see get_source_text_raw()
  */
-static std::string get_source_text(clang::SourceRange range, const clang::SourceManager& sm) 
+static std::string get_source_text(clang::SourceRange range, const clang::SourceManager& sm, const clang::LangOptions lo) 
 {
-  clang::LangOptions lo;
+  //clang::LangOptions lo;
 
   // NOTE: sm.getSpellingLoc() used in case the range corresponds to a macro/preprocessed source.
   auto start_loc = sm.getSpellingLoc(range.getBegin());
@@ -95,7 +95,7 @@ static std::string get_source_text(clang::SourceRange range, const clang::Source
 
 std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler) 
 {
-  return get_source_text(a_range, compiler.getSourceManager());
+  return get_source_text(a_range, compiler.getSourceManager(), compiler.getLangOpts());
 }
 
 //std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler) 

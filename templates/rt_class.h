@@ -58,7 +58,7 @@ public:
   }
 
 ## endfor
-  ~{{MainClassName}}_Generated();
+  virtual ~{{MainClassName}}_Generated();
 
   virtual void InitMemberBuffers();
 
