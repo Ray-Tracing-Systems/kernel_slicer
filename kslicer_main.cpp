@@ -439,13 +439,28 @@ int main(int argc, const char **argv)
     for(auto& arg : kernel.args) // it is important to run this loop after second stage at which kernel matchers are applied!
       inputCodeInfo.ProcessKernelArg(arg, kernel);
   }
-  
-  std::vector<kslicer::FuncData> usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  std::cout << "(3) Process control functions to generate all 'MainCmd' functions" << std::endl; 
+  std::vector<kslicer::FuncData> usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
+
+  std::cout << "(3) Extract constants and structs from 'MainClass' " << std::endl; 
+  std::cout << "{" << std::endl;
+  {
+    auto structMatcher = kslicer::MakeMatch_StructDeclInsideClass(inputCodeInfo.mainClassName);
+    
+    clang::ast_matchers::MatchFinder finder;
+    kslicer::TC_Extractor typeAndConstantsHandler(inputCodeInfo, compiler);
+    finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, structMatcher), &typeAndConstantsHandler);
+
+    auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
+    std::cout << "  [TC_Extractor]: end process constants and structs" << std::endl;
+  }
+  std::cout << "}" << std::endl;
+  std::cout << std::endl;
+
+  std::cout << "(4) Process control functions to generate all 'MainCmd' functions" << std::endl; 
   std::cout << "{" << std::endl;
 
   inputCodeInfo.AddSpecVars_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
@@ -468,7 +483,7 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
   
-  std::cout << "(4) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl; 
+  std::cout << "(5) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl; 
   std::cout << "{" << std::endl;
 
   // (4) calc offsets for all class variables; ingore unused members that were not marked on previous step
@@ -481,7 +496,7 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
   
-  std::cout << "(5) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
+  std::cout << "(6) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
   std::cout << "{" << std::endl;
   {
     kslicer::PrintVulkanBasicsFile("templates/vulkan_basics.h", inputCodeInfo);
@@ -496,7 +511,7 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  std::cout << "(6) Generate OpenCL kernels" << std::endl; 
+  std::cout << "(7) Generate OpenCL kernels" << std::endl; 
   std::cout << "{" << std::endl;
 
   // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg

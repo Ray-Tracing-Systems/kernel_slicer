@@ -37,6 +37,8 @@ namespace kslicer
 
   clang::ast_matchers::StatementMatcher MakeMatch_ForLoopInsideFunction(std::string const& funcName);
 
+  clang::ast_matchers::DeclarationMatcher MakeMatch_StructDeclInsideClass(std::string const& className);
+
   std::string locationAsString(clang::SourceLocation loc, clang::SourceManager const * const sm);
   std::string sourceRangeAsString(clang::SourceRange r, clang::SourceManager const * sm);
 
@@ -281,7 +283,55 @@ namespace kslicer
   };  // class UsedCodeFilter
 
 
-  //
+  class TC_Extractor : public clang::ast_matchers::MatchFinder::MatchCallback 
+  {
+  public:
+
+    explicit TC_Extractor(kslicer::MainClassInfo& a_allInfo, const clang::CompilerInstance& a_compiler) : 
+                          m_allInfo(a_allInfo), m_compiler(a_compiler), m_sourceManager(a_compiler.getSourceManager()), m_astContext(a_compiler.getASTContext())
+    {
+    
+    }
+
+    void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
+    {
+      using namespace clang;
+     
+      const CXXRecordDecl* const pMainClass    = result.Nodes.getNodeAs<CXXRecordDecl>("mainClass");
+      const RecordDecl*    const pTargetStruct = result.Nodes.getNodeAs<RecordDecl>("targetStruct");
+
+      if(pMainClass && pTargetStruct)
+      {
+        if(pTargetStruct->getNameAsString() != pMainClass->getNameAsString())
+        {
+          auto pDef = pTargetStruct->getDefinition();
+          
+          if(pDef != nullptr)
+          {
+            std::cout << "  [TC_Extractor]: found " << pDef->getNameAsString() << " inside " << pMainClass->getNameAsString() << std::endl;
+            foundTypes[pTargetStruct->getNameAsString()] = kslicer::GetHashOfSourceRange(pDef->getSourceRange());
+          }
+        }
+
+        //bool 	isOrContainsUnion() 
+      }
+      else 
+      {
+        check_ptr(pMainClass,     "pMainClass",      "", std::cout);
+        check_ptr(pTargetStruct,  "pTargetStruct",   "", std::cout);
+      }
+
+      return;
+    }  // run
+    
+    MainClassInfo&                 m_allInfo;
+    const clang::SourceManager&    m_sourceManager;
+    const clang::ASTContext&       m_astContext;
+    const clang::CompilerInstance& m_compiler;
+
+    std::unordered_map<std::string, uint64_t> foundTypes;
+
+  };  // class UsedCodeFilter
 
 }
 
