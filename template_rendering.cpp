@@ -408,8 +408,20 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
   {
     if(!decl.extracted)
       continue;
+    
+    switch(decl.kind)
+    {
+      case kslicer::DECL_IN_CLASS::DECL_STRUCT:
+      data["ClassDecls"].push_back( kslicer::GetRangeSourceCode(decl.srcRange, compiler) + ";" );
+      break;
 
-    data["ClassDecls"].push_back( kslicer::GetRangeSourceCode(decl.srcRange, compiler) + ";" );
+      case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
+      data["ClassDecls"].push_back( std::string("#define ") + decl.name + " ((" + decl.type + ")" + kslicer::GetRangeSourceCode(decl.srcRange, compiler) + ")" );
+      break;
+
+      default:
+      break;
+    };
     //std::cout << kslicer::GetRangeSourceCode(decl.srcRange, compiler) << std::endl;
   }
   

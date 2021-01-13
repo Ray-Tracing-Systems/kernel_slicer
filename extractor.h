@@ -14,7 +14,7 @@ namespace kslicer
   using namespace llvm;
   using namespace clang;
 
-  std::vector<kslicer::FuncData> ExtractUsedFunctions(MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);
+  std::vector<kslicer::FuncData>    ExtractUsedFunctions(MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);
   std::vector<kslicer::DeclInClass> ExtractUsedTC(const  std::vector<kslicer::DeclInClass>& a_listedNames, MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);
 
 };

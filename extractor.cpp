@@ -164,6 +164,31 @@ public:
     return true;
   } 
 
+  bool VisitVarDecl(clang::VarDecl* var)
+  {
+    if(var->isImplicit() || !var->isConstexpr())
+      return true;
+
+    const clang::QualType qt = var->getType();
+    const auto typePtr = qt.getTypePtr(); 
+    if(typePtr->isPointerType())
+      return true;
+    
+    auto p = usedDecls.find(var->getNameAsString());
+    if(p != usedDecls.end())
+    {
+      const clang::Expr* initExpr = var->getAnyInitializer();
+      if(initExpr != nullptr)
+      {
+        p->second.srcRange  = initExpr->getSourceRange();
+        p->second.srcHash   = kslicer::GetHashOfSourceRange(p->second.srcRange);
+        p->second.extracted = true;
+      }
+    }
+
+    return true;
+  }
+
 private:
 
   const clang::SourceManager&    m_sm;

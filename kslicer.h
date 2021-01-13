@@ -190,7 +190,6 @@ namespace kslicer
   {
     std::string        name;
     std::string        type;
-    std::string        value;
     clang::SourceRange srcRange;
     uint64_t           srcHash;
     uint32_t           order = 0; ///<! to sort them before put in generated kernels source code
