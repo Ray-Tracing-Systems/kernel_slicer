@@ -408,6 +408,9 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
   {
     if(!decl.extracted)
       continue;
+
+    std::string typeInCL = decl.type;
+    ReplaceFirst(typeInCL, "const", "__constant");
     
     switch(decl.kind)
     {
@@ -416,7 +419,8 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       break;
 
       case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
-      data["ClassDecls"].push_back( std::string("#define ") + decl.name + " ((" + decl.type + ")" + kslicer::GetRangeSourceCode(decl.srcRange, compiler) + ")" );
+      //data["ClassDecls"].push_back( std::string("#define ") + decl.name + " ((" + decl.type + ")" + kslicer::GetRangeSourceCode(decl.srcRange, compiler) + ")" );
+      data["ClassDecls"].push_back( typeInCL + " " + decl.name + " = " + kslicer::GetRangeSourceCode(decl.srcRange, compiler) + ";");
       break;
 
       default:
