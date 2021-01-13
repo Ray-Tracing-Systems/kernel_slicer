@@ -509,7 +509,7 @@ int main(int argc, const char **argv)
     finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, varMatcher), &typeAndConstantsHandler);
 
     auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
-    std::cout << "  [TC_Extractor]: end process constants and structs" << std::endl;
+    std::cout << "  [TC_Extractor]: end process constants and structs:\t" << GetClangToolingErrorCodeMessage(res) << std::endl;
 
     usedDecls.resize(0);
     usedDecls.reserve(typeAndConstantsHandler.foundDecl.size());
