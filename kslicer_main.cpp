@@ -413,6 +413,13 @@ int main(int argc, const char **argv)
   inputCodeInfo.allKernels           = astConsumer.rv.functions;    
   inputCodeInfo.allDataMembers       = astConsumer.rv.dataMembers;   
   inputCodeInfo.mainClassFileInclude = astConsumer.rv.MAIN_FILE_INCLUDE;
+  inputCodeInfo.mainClassASTNode     = astConsumer.rv.m_mainClassASTNode;
+
+  if(inputCodeInfo.mainClassASTNode == nullptr)
+  {
+    std::cout << "[main]: ERROR, main class " << mainClassName.c_str() << " not found" << std::endl;
+    return 0;
+  }
 
   std::unordered_set<std::string> processedKernels;
   size_t mainFuncId = 0;
@@ -494,10 +501,12 @@ int main(int argc, const char **argv)
   std::cout << "{" << std::endl;
   {
     auto structMatcher = kslicer::MakeMatch_StructDeclInsideClass(inputCodeInfo.mainClassName);
+    auto varMatcher    = kslicer::MakeMatch_VarDeclInsideClass(inputCodeInfo.mainClassName);
     
     clang::ast_matchers::MatchFinder finder;
     kslicer::TC_Extractor typeAndConstantsHandler(inputCodeInfo, compiler);
     finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, structMatcher), &typeAndConstantsHandler);
+    finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, varMatcher), &typeAndConstantsHandler);
 
     auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
     std::cout << "  [TC_Extractor]: end process constants and structs" << std::endl;
@@ -508,6 +517,7 @@ int main(int argc, const char **argv)
       usedDecls.push_back(decl.second);
 
     std::sort(usedDecls.begin(), usedDecls.end(), [](const auto& a, const auto& b) { return a.order < b.order; } );
+    usedDecls = kslicer::ExtractUsedTC(usedDecls, inputCodeInfo, compiler);
   }
   std::cout << "}" << std::endl;
   std::cout << std::endl;

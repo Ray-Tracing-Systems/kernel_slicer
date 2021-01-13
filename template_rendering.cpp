@@ -373,6 +373,7 @@ void kslicer::ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, con
 }
 
 std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds);
+bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 
 void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::string& a_outFolder, const MainClassInfo& a_classInfo, 
                                    const std::vector<kslicer::FuncData>& usedFunctions,
@@ -403,9 +404,15 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
   // (2) declarations of struct, constants and typedefs inside class
   //
   data["ClassDecls"] = std::vector<std::string>();
-  //for(const auto decl : usedDecl)
-  //  data["ClassDecls"].push_back( kslicer::GetRangeSourceCode(decl.srcRange, compiler) );
+  for(const auto decl : usedDecl)
+  {
+    if(!decl.extracted)
+      continue;
 
+    data["ClassDecls"].push_back( kslicer::GetRangeSourceCode(decl.srcRange, compiler) + ";" );
+    //std::cout << kslicer::GetRangeSourceCode(decl.srcRange, compiler) << std::endl;
+  }
+  
   // (3) local functions
   //
   data["LocalFunctions"] = std::vector<std::string>();
@@ -459,6 +466,7 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       
       std::string typeStr = pVecMember->second.containerDataType;
       kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
+      ReplaceFirst(typeStr, a_classInfo.mainClassName + "::", "");
 
       json argj;
       argj["Type"] = typeStr + "*";

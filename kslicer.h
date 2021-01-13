@@ -190,10 +190,12 @@ namespace kslicer
   {
     std::string        name;
     std::string        type;
+    std::string        value;
     clang::SourceRange srcRange;
     uint64_t           srcHash;
     uint32_t           order = 0; ///<! to sort them before put in generated kernels source code
     DECL_IN_CLASS      kind  = DECL_IN_CLASS::DECL_UNKNOWN;
+    bool               extracted = false;
   };
 
   class UsedCodeFilter;
@@ -215,6 +217,8 @@ namespace kslicer
     std::string mainClassName;
     std::string mainClassFileName;
     std::string mainClassFileInclude;
+    const clang::CXXRecordDecl* mainClassASTNode = nullptr;
+
 
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;

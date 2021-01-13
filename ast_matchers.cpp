@@ -175,9 +175,18 @@ clang::ast_matchers::DeclarationMatcher kslicer::MakeMatch_StructDeclInsideClass
 {
   using namespace clang::ast_matchers;
   return
-  recordDecl(
+  cxxRecordDecl(
     hasAncestor(cxxRecordDecl(hasName(className)).bind("mainClass"))
   ).bind("targetStruct");
+}
+
+clang::ast_matchers::DeclarationMatcher kslicer::MakeMatch_VarDeclInsideClass(std::string const& className)
+{
+  using namespace clang::ast_matchers;
+  return
+  varDecl(
+    hasAncestor(cxxRecordDecl(hasName(className)).bind("mainClass"))
+  ).bind("targetVar");
 }
 
 

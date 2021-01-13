@@ -123,3 +123,63 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
  
   return result;
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class DeclExtractor : public clang::RecursiveASTVisitor<DeclExtractor>
+{
+public:
+  
+  DeclExtractor(const clang::CompilerInstance& a_compiler, const std::vector<kslicer::DeclInClass>& a_listedNames) : m_compiler(a_compiler), m_sm(a_compiler.getSourceManager())
+  { 
+    for(const auto& decl : a_listedNames)
+      usedDecls[decl.name] = decl;
+  }
+
+  std::unordered_map<std::string, kslicer::DeclInClass> usedDecls;
+
+  bool VisitCXXRecordDecl(clang::CXXRecordDecl* record)
+  {
+    const auto pType = record->getTypeForDecl(); 
+    const auto qt    = pType->getLocallyUnqualifiedSingleStepDesugaredType();
+    const std::string typeName = qt.getAsString();
+
+    const auto ddPos = typeName.find("::");
+    if(ddPos == std::string::npos)
+      return true;
+
+    const std::string key = typeName.substr(ddPos+2);
+    auto p = usedDecls.find(key);
+    if(p != usedDecls.end())
+    {
+      p->second.srcRange  = record->getSourceRange();
+      p->second.srcHash   = kslicer::GetHashOfSourceRange( p->second.srcRange);
+      p->second.extracted = true;
+    }
+
+    return true;
+  } 
+
+private:
+
+  const clang::SourceManager&    m_sm;
+  const clang::CompilerInstance& m_compiler;
+
+};
+
+
+std::vector<kslicer::DeclInClass> kslicer::ExtractUsedTC(const std::vector<kslicer::DeclInClass>& a_listedNames, MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
+{
+  DeclExtractor visitor(a_compiler, a_listedNames);
+  visitor.TraverseDecl(const_cast<clang::CXXRecordDecl*>(a_codeInfo.mainClassASTNode));
+
+  std::vector<kslicer::DeclInClass> result(a_listedNames.size());
+  for(const auto& decl : visitor.usedDecls)
+    result[decl.second.order] = decl.second;
+
+  return result;
+}

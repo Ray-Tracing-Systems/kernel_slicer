@@ -33,12 +33,15 @@ namespace kslicer
     }
     
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
+    bool VisitCXXRecordDecl(CXXRecordDecl* record);
     bool VisitFieldDecl    (FieldDecl* var);
   
     std::unordered_map<std::string, KernelInfo>           functions;
     std::unordered_map<std::string, DataMemberInfo>       dataMembers;
     std::unordered_map<std::string, const CXXMethodDecl*> m_mainFuncNodes;
   
+    const CXXRecordDecl* m_mainClassASTNode = nullptr;
+
   private:
     void ProcessKernelDef(const CXXMethodDecl *f);
   
