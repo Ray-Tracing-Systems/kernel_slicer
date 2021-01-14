@@ -34,6 +34,7 @@ namespace kslicer
       std::string type;
       std::string name;
       std::string sizeExpr;
+      uint32_t    loopNesting = 0;
     };
     
     std::string      return_type;

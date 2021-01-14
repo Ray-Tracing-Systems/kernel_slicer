@@ -169,9 +169,10 @@ public:
         {
           const clang::QualType qt = initVar->getType();
           kslicer::KernelInfo::LoopIter tidArg;
-          tidArg.name       = initVar->getNameAsString();
-          tidArg.type       = qt.getAsString();
-          tidArg.sizeExpr   = kslicer::GetRangeSourceCode(loopSZ->getSourceRange(), m_compiler);
+          tidArg.name        = initVar->getNameAsString();
+          tidArg.type        = qt.getAsString();
+          tidArg.sizeExpr    = kslicer::GetRangeSourceCode(loopSZ->getSourceRange(), m_compiler);
+          tidArg.loopNesting = uint32_t(currKernel->loopIters.size());
           currKernel->loopIters.push_back(tidArg);
           currKernel->loopInsides = forLoop->getBody()->getSourceRange();
         }

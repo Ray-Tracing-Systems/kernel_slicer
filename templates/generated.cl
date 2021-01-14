@@ -35,16 +35,16 @@ __kernel void {{Kernel.Name}}(
 ## for Arg in Kernel.Args 
   __global {{Arg.Type}} restrict {{Arg.Name}},
 ## endfor
-  const uint kgen_iNumElementsX, 
-  const uint kgen_iNumElementsY,
-  const uint kgen_iNumElementsZ,
+  const uint {{Kernel.threadIdName1}}, 
+  const uint {{Kernel.threadIdName2}},
+  const uint {{Kernel.threadIdName3}},
   const uint kgen_tFlagsMask)
 {
   /////////////////////////////////////////////////////////////////
   {% for name in Kernel.threadNames %}const uint {{name}} = get_global_id({{ loop.index }}); 
-  {% endfor %}{% if Kernel.threadDim == 3 %}if({{Kernel.threadName1}} >= kgen_iNumElementsX || {{Kernel.threadName2}} >= kgen_iNumElementsY || {{Kernel.threadName3}} >= kgen_iNumElementsZ)
-    return;{% else if Kernel.threadDim == 2 %}if({{Kernel.threadName1}} >= kgen_iNumElementsX || {{Kernel.threadName2}} >= kgen_iNumElementsY)
-    return;{% else %}if({{Kernel.threadName1}} >= kgen_iNumElementsX)
+  {% endfor %}{% if Kernel.threadDim == 3 %}if({{Kernel.threadName1}} >= {{Kernel.threadIdName1}} || {{Kernel.threadName2}} >= {{Kernel.threadIdName2}} || {{Kernel.threadName3}} >= {{Kernel.threadIdName3}})
+    return;{% else if Kernel.threadDim == 2 %}if({{Kernel.threadName1}} >= {{Kernel.threadIdName1}} || {{Kernel.threadName2}} >= {{Kernel.threadIdName2}})
+    return;{% else %}if({{Kernel.threadName1}} >= {{Kernel.threadIdName1}})
     return;{% endif %}
   {% if Kernel.shouldCheckExitFlag %}if((kgen_threadFlags[{{Kernel.ThreadOffset}}] & kgen_tFlagsMask) != 0) 
     return;{% endif %}

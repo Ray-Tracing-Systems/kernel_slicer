@@ -530,21 +530,35 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
+    
+    //////////////////////////////////////////////////////////////////////////////////////////
+
     kernelJson["threadDim"]   = threadIdNames.size();
     kernelJson["threadNames"] = threadIdNames;
     if(threadIdNames.size() >= 1)
-    {
       kernelJson["threadName1"] = threadIdNames[0];
-    }
     if(threadIdNames.size() >= 2)
-    {
       kernelJson["threadName2"] = threadIdNames[1];
-    }
     if(threadIdNames.size() == 3)
-    {
       kernelJson["threadName3"] = threadIdNames[2];
+
+    std::string tidNames[3] = {"kgen_iNumElementsX", "kgen_iNumElementsY", "kgen_iNumElementsZ"};
+ 
+    if(k.loopIters.size() != 0) 
+    {
+      for(const auto& iter : k.loopIters)
+      {
+        uint32_t loopIdReorderd  = threadsOrder[iter.loopNesting];
+        tidNames[loopIdReorderd] = iter.sizeExpr;                   // #TODO: assert that this expression does not contain .size(); if it does
+      }                                                             // we must change it to 'vec_size2' for example 
     }
 
+    kernelJson["threadIdName1"] = tidNames[0];
+    kernelJson["threadIdName2"] = tidNames[1];
+    kernelJson["threadIdName3"] = tidNames[2]; 
+
+    //////////////////////////////////////////////////////////////////////////////////////////
+ 
     kernelJson["shouldCheckExitFlag"] = k.checkThreadFlags;
     kernelJson["checkFlagsExpr"]      = "//xxx//";
     kernelJson["ThreadOffset"]        = GetFakeOffsetExpression(k, a_classInfo.GetKernelTIDArgs(k));
