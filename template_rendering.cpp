@@ -440,9 +440,8 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
 
   // (4) put kernels
   //
-  data["Kernels"] = std::vector<std::string>();
-  
   clang::SourceManager& sm = compiler.getSourceManager();
+  data["Kernels"] = std::vector<std::string>();
   
   for (const auto& k : a_classInfo.kernels)  
   {

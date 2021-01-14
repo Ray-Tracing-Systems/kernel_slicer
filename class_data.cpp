@@ -17,6 +17,10 @@ struct less_than_key
   {
     if(struct1.sizeInBytes != struct2.sizeInBytes)
       return (struct1.sizeInBytes > struct2.sizeInBytes);
+    else if(struct1.isContainerInfo && !struct2.isContainerInfo)
+      return false;
+    else if(!struct1.isContainerInfo && struct2.isContainerInfo)
+      return true;
     else
       return struct1.name < struct2.name;
   }
