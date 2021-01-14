@@ -31,8 +31,10 @@ std::string kslicer::MainFuncASTVisitor::MakeKernelCallCmdString(CXXMemberCallEx
 
   // extract arguments to form correct descriptor set
   //
-  auto args = ExtractArgumentsOfAKernelCall(f);
-  std::string callSign = MakeKernellCallSignature(args, m_mainFuncName);
+  std::stringstream strOut1;
+  strOut1 << "_" << m_dsTagId;                                                           // temporary disable DS hashes due to we didn't account for
+  auto args = ExtractArgumentsOfAKernelCall(f);                                         // member vectors that have to be bound also and accounted here!
+  std::string callSign = MakeKernellCallSignature(args, m_mainFuncName) + strOut1.str(); //
   auto p2 = dsIdBySignature.find(callSign);
   if(p2 == dsIdBySignature.end())
   {
@@ -45,6 +47,7 @@ std::string kslicer::MainFuncASTVisitor::MakeKernelCallCmdString(CXXMemberCallEx
     call.descriptorSetsInfo = args;
     m_kernCallTypes.push_back(call);
   }
+  m_dsTagId++;
 
   std::string textOfCall = GetRangeSourceCode(f->getSourceRange(), m_compiler);
   std::string textOfArgs = textOfCall.substr( textOfCall.find("("));
@@ -81,7 +84,8 @@ std::string kslicer::MainFuncASTVisitor::MakeKernelCallCmdString(CXXMemberCallEx
 
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
-    strOut << "  vkCmdPushConstants(m_currCmdBuffer," << kernName.c_str() << "Layout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint32_t)*3, sizeof(uint32_t)*1, &" << flagsVariableName.c_str() << ");" << std::endl;
+    if(m_pCodeInfo->NeedThreadFlags())
+      strOut << "  vkCmdPushConstants(m_currCmdBuffer," << kernName.c_str() << "Layout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint32_t)*3, sizeof(uint32_t)*1, &" << flagsVariableName.c_str() << ");" << std::endl;
     strOut << "  " << kernName.c_str() << "Cmd" << textOfArgs.c_str();
   }
   
@@ -322,10 +326,12 @@ std::string kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc,
 
   // (3) set m_currCmdBuffer with input command bufer and add other prolog to MainFunCmd
   //
+  std::stringstream strOut;
+  strOut << "{" << std::endl;
+  strOut << "  m_currCmdBuffer = a_commandBuffer;" << std::endl;
+
+  if(this->NeedThreadFlags())
   {
-    std::stringstream strOut;
-    strOut << "{" << std::endl;
-    strOut << "  m_currCmdBuffer = a_commandBuffer;" << std::endl;
     strOut << "  const uint32_t outOfForFlags  = KGEN_FLAG_RETURN;" << std::endl;
     strOut << "  const uint32_t inForFlags     = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK;" << std::endl;
     if(a_mainFunc.needToAddThreadFlags)
@@ -338,11 +344,11 @@ std::string kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc,
       strOut << "  VkMemoryBarrier fillBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT }; " << std::endl;
       strOut << "  vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 1, &fillBarrier, 0, nullptr, 0, nullptr); " << std::endl;
     }
-    strOut << std::endl;
-
-    size_t bracePos = sourceCode.find("{");
-    sourceCode = (sourceCode.substr(0, bracePos) + strOut.str() + sourceCode.substr(bracePos+2)); 
+    strOut << std::endl; 
   }
+
+  size_t bracePos = sourceCode.find("{");
+  sourceCode = (sourceCode.substr(0, bracePos) + strOut.str() + sourceCode.substr(bracePos+2));
 
   return sourceCode;
 }

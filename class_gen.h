@@ -34,7 +34,7 @@ namespace kslicer
     MainFuncASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, MainFuncInfo& a_mainFunc, 
                        const std::vector<InOutVarInfo>& a_args, MainClassInfo* a_pCodeInfo) : 
                        m_rewriter(R), m_compiler(a_compiler), m_sm(R.getSourceMgr()), 
-                       m_kernellCallTagId(0), m_mainFuncName(a_mainFunc.Name), m_mainFuncLocals(a_mainFunc.Locals),
+                       m_kernellCallTagId(0), m_dsTagId(0), m_mainFuncName(a_mainFunc.Name), m_mainFuncLocals(a_mainFunc.Locals),
                        m_pCodeInfo(a_pCodeInfo), m_allClassMembers(a_pCodeInfo->allDataMembers), m_mainFunc(a_mainFunc) 
     { 
       for(const auto& k : a_pCodeInfo->kernels)
@@ -63,6 +63,7 @@ namespace kslicer
     const clang::SourceManager&    m_sm;
     const clang::CompilerInstance& m_compiler;
     uint32_t m_kernellCallTagId;
+    uint32_t m_dsTagId;
     
     std::string m_mainFuncName;
     std::unordered_map<std::string, InOutVarInfo> m_argsOfMainFunc;

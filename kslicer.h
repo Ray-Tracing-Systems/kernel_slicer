@@ -271,6 +271,8 @@ namespace kslicer
 
     virtual std::string GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler, std::vector<KernelCallInfo>& a_outDSInfo);
     virtual std::string GetCFDeclFromSource(const std::string& sourceCode);
+
+    virtual bool NeedThreadFlags() const { return false; }
   };
 
 
@@ -292,7 +294,9 @@ namespace kslicer
     void          ProcessCallArs_KF(const KernelCallInfo& a_call) override;   
 
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
-    void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override;                       
+    void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override;     
+
+    bool NeedThreadFlags() const override { return true; }                  
   };
 
   struct IPV_Pattern : public MainClassInfo
@@ -311,7 +315,8 @@ namespace kslicer
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
     void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override; 
 
-    std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const override;                    
+    std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const override; 
+    bool NeedThreadFlags() const override { return false; }                   
   };
 
 
