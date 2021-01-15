@@ -27,6 +27,9 @@ namespace kslicer
       bool needFakeOffset = false;
       bool isThreadID     = false; ///<! used by RTV-like patterns where loop is defined out of kernel
       bool isLoopSize     = false; ///<! used by IPV-like patterns where loop is defined inside kernel
+      bool isPointer      = false;
+
+      bool IsUser() const { return !isThreadID && !isLoopSize && !needFakeOffset && !isPointer; }
     };
 
     struct LoopIter 

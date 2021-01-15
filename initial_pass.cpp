@@ -10,7 +10,8 @@ static kslicer::KernelInfo::Arg ProcessParameter(clang::ParmVarDecl *p)
   arg.type = clang::QualType::getAsString(q.split(), clang::PrintingPolicy{ {} });
   arg.size = 1;
   if (typ->isPointerType()) {
-    arg.size = 1; // Because C always pass reference
+    arg.size      = 1; // Because C always pass reference
+    arg.isPointer = true;
   }
   
   return arg;

@@ -24,19 +24,21 @@ void TestClass::kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFa
   *out_hit = RayTraceImpl(to_float3(*rayPosAndNear), to_float3(*rayDirAndFar));
 }
 
-void TestClass::kernel_TestColor(const Lite_Hit* in_hit, uint* out_color, uint tidX, uint tidY)
+void TestClass::kernel_TestColor(const Lite_Hit* in_hit, uint* out_color, uint tidX, uint tidY, uint sphereColor, uint backColor)
 {
   float x = 2.0f;
 
   if(in_hit->primId != -1)
-    out_color[pitchOffset(tidX,tidY)] = 0x000000FF;
+    out_color[pitchOffset(tidX,tidY)] = sphereColor;
   else
-    out_color[pitchOffset(tidX,tidY)] = 0x00FF0000;
+    out_color[pitchOffset(tidX,tidY)] = backColor;
 }
 
 
 void TestClass::MainFunc(uint tidX, uint tidY, uint* out_color)
 {
+  const uint32_t mySphereColor = 0x000000FF;
+  
   float4 rayPosAndNear, rayDirAndFar;
   uint   flags;
 
@@ -46,8 +48,7 @@ void TestClass::MainFunc(uint tidX, uint tidY, uint* out_color)
   kernel_RayTrace(&rayPosAndNear, &rayDirAndFar, 
                   &hit, tidX, tidY);
   
-  kernel_TestColor(&hit, 
-                   out_color, tidX, tidY);
+  kernel_TestColor(&hit, out_color, tidX, tidY, mySphereColor, 0x00FF0000);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

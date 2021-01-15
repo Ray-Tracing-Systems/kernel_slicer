@@ -64,6 +64,20 @@ std::string GetDSArgName(const std::string& a_mainFuncName, const std::string& a
     return a_mainFuncName + "_local." + a_dsVarName; 
 }
 
+std::vector<kslicer::KernelInfo::Arg> GetUserKernelArgs(const std::vector<kslicer::KernelInfo::Arg>& a_allArgs)
+{
+  std::vector<kslicer::KernelInfo::Arg> result;
+  result.reserve(a_allArgs.size());
+
+  for(const auto& arg : a_allArgs)
+  {
+    if(arg.IsUser())
+      result.push_back(arg);
+  }
+
+  return result;
+}
+
 nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, 
                                              const std::vector<MainFuncInfo>& a_methodsToGenerate, 
                                              const std::string& a_genIncude,
@@ -189,6 +203,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   for(const auto& k : a_classInfo.kernels)
   {
     std::string kernName = a_classInfo.RemoveKernelPrefix(k.name);
+    const auto auxArgs   = GetUserKernelArgs(k.args);
     
     json local;
     local["Name"]         = kernName;
@@ -200,7 +215,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     size_t actualSize     = 0;
     for(const auto& arg : k.args)
     {
-      if(arg.isThreadID || arg.isLoopSize) // exclude TID and loopSize args bindings
+      if(arg.isThreadID || arg.isLoopSize || arg.IsUser()) // exclude TID and loopSize args bindings
         continue;
       
       json argData;
@@ -250,6 +265,18 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     else
       local["tidZ"] = 1;
 
+    // put auxArgs to push constants
+    //
+    local["AuxArgs"] = std::vector<std::string>();
+    for(auto arg : auxArgs)
+    {
+      json argData;
+      argData["Name"] = arg.name;
+      argData["Type"] = arg.type;
+      local["AuxArgs"].push_back(argData);
+    }
+    
+
     data["Kernels"].push_back(local);
   }
   
@@ -297,7 +324,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
-        if(kernel.args[j].isThreadID || kernel.args[j].isLoopSize)
+        if(kernel.args[j].isThreadID || kernel.args[j].isLoopSize || kernel.args[j].IsUser())
           continue;
 
         const std::string dsArgName = GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j].varName);
@@ -410,7 +437,7 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       continue;
 
     std::string typeInCL = decl.type;
-    ReplaceFirst(typeInCL, "const", "__constant");
+    ReplaceFirst(typeInCL, "const", "__constant static");
     
     switch(decl.kind)
     {
@@ -505,6 +532,7 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
 
       std::string typeStr = member.type;
       kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
+      ReplaceFirst(typeStr, a_classInfo.mainClassName + "::", "");
       
       json memberData;
       memberData["Type"]   = typeStr;
@@ -521,12 +549,27 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       argj["Name"] = kslicer::GetProjPrefix() + "data";
       args.push_back(argj);
     }
+
+    const auto userArgsArr = GetUserKernelArgs(k.args);
+    json userArgs = std::vector<std::string>();
+    for(const auto& arg : userArgsArr)
+    {
+      std::string typeStr = arg.type;
+      kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
+      ReplaceFirst(typeStr, a_classInfo.mainClassName + "::", "");
+
+      json argj;
+      argj["Type"] = typeStr;
+      argj["Name"] = arg.name;
+      userArgs.push_back(argj);
+    }
     
     json kernelJson;
-    kernelJson["Args"]    = args;
-    kernelJson["Vecs"]    = vecs;
-    kernelJson["Members"] = members;
-    kernelJson["Name"]    = k.name;
+    kernelJson["Args"]     = args;
+    kernelJson["Vecs"]     = vecs;
+    kernelJson["UserArgs"] = userArgs;
+    kernelJson["Members"]  = members;
+    kernelJson["Name"]     = k.name;
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));

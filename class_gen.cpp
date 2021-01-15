@@ -33,7 +33,7 @@ std::string kslicer::MainFuncASTVisitor::MakeKernelCallCmdString(CXXMemberCallEx
   //
   std::stringstream strOut1;
   strOut1 << "_" << m_dsTagId;                                                           // temporary disable DS hashes due to we didn't account for
-  auto args = ExtractArgumentsOfAKernelCall(f);                                         // member vectors that have to be bound also and accounted here!
+  auto args = ExtractArgumentsOfAKernelCall(f);                                          // member vectors that have to be bound also and accounted here!
   std::string callSign = MakeKernellCallSignature(args, m_mainFuncName) + strOut1.str(); //
   auto p2 = dsIdBySignature.find(callSign);
   if(p2 == dsIdBySignature.end())
@@ -85,7 +85,7 @@ std::string kslicer::MainFuncASTVisitor::MakeKernelCallCmdString(CXXMemberCallEx
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
     if(m_pCodeInfo->NeedThreadFlags())
-      strOut << "  vkCmdPushConstants(m_currCmdBuffer," << kernName.c_str() << "Layout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint32_t)*3, sizeof(uint32_t)*1, &" << flagsVariableName.c_str() << ");" << std::endl;
+      strOut << "  vkCmdPushConstants(m_currCmdBuffer," << kernName.c_str() << "Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t)*1, &" << flagsVariableName.c_str() << ");" << std::endl;
     strOut << "  " << kernName.c_str() << "Cmd" << textOfArgs.c_str();
   }
   
@@ -203,11 +203,17 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArg
       arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL;
   }
 
-  for(auto& arg : args) // check we don't have unknown types of arguments
-  {
-    if(arg.argType == KERN_CALL_ARG_TYPE::ARG_REFERENCE_UNKNOWN_TYPE)
-      std::cout << "[KernelCallError]: variable '" << arg.varName.c_str() << "' was not classified!" << std::endl; 
-  }
+  // for(auto& arg : args) // check we don't have unknown types of arguments // well, in fact now we can ) Use arguments
+  // {
+  //   if(arg.argType == KERN_CALL_ARG_TYPE::ARG_REFERENCE_UNKNOWN_TYPE)
+  //   {
+  //     auto beginLoc        = f->getSourceRange().getBegin();
+  //     std::string fileName = m_sm.getFilename(beginLoc);
+  //     const auto line      = m_sm.getPresumedLoc(beginLoc).getLine();
+  //     std::cout << "  WARNING: expr '" << arg.varName.c_str() << "' was not classified; file: " << fileName.c_str() << ", line: " << line << std::endl; 
+  //   }
+  //  
+  // }
 
   return args;
 }
@@ -876,7 +882,7 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
   std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> args;
   for (const auto& arg : a_kernel.args) 
   {    
-    if(!arg.isThreadID && !arg.isLoopSize)
+    if(!arg.isThreadID && !arg.isLoopSize && !arg.IsUser())
     { 
       std::string typeStr = arg.type;
       kslicer::ReplaceOpenCLBuiltInTypes(typeStr);

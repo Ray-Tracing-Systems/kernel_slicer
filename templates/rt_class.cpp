@@ -121,7 +121,7 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
     }    
     
     {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
-    {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, sizeof(uint32_t)*4);
+    {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, 128); // at least 128 bytes for push constants
     {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);   
   }
 
@@ -202,9 +202,22 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
 
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   
-  uint32_t pcData[3] = { {{Kernel.tidX}}, {{Kernel.tidY}}, {{Kernel.tidZ}} };
-  vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t)*3, pcData);
-  
+  struct KernelArgsPC
+  {
+    uint32_t m_sizeX;
+    uint32_t m_sizeY;
+    uint32_t m_sizeZ;
+    {% for Arg in Kernel.AuxArgs %}{{Arg.Type}} m_{{Arg.Name}}; 
+    {% endfor %}
+    uint32_t m_dummy;
+  } pcData;
+
+  pcData.m_sizeX = {{Kernel.tidX}};
+  pcData.m_sizeY = {{Kernel.tidY}};
+  pcData.m_sizeZ = {{Kernel.tidZ}};
+  {% for Arg in Kernel.AuxArgs %}pcData.m_{{Arg.Name}} = {{Arg.Name}}; 
+  {% endfor %}pcData.m_dummy = 0;
+  vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint32_t)*1, sizeof(KernelArgsPC), &pcData);
   vkCmdDispatch(m_currCmdBuffer, {{Kernel.tidX}}/blockSizeX, {{Kernel.tidY}}/blockSizeY, {{Kernel.tidZ}}/blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };

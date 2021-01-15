@@ -144,7 +144,7 @@ namespace kslicer
           varInfo.isArray = true;
         }
 
-        if(var->isLocalVarDecl()) // list only local variables, exclude function arguments 
+        if(var->isLocalVarDecl() && !var->isConstexpr() && !qt.isConstQualified()) // list only local variables, exclude function arguments and all constants 
         {
           // can also check isCXXForRangeDecl() and check for index ... in some way ...
           CurrMainFunc().Locals[varInfo.name] = varInfo;

@@ -50,7 +50,7 @@ public:
   void kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFar, 
                        Lite_Hit* out_hit, uint tidX, uint tidY);
   
-  void kernel_TestColor(const Lite_Hit* in_hit, uint* out_color, uint tidX, uint tidY);
+  void kernel_TestColor(const Lite_Hit* in_hit, uint* out_color, uint tidX, uint tidY, uint sphereColor, uint backColor);
 
 protected:
 
