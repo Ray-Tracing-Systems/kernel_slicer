@@ -24,7 +24,7 @@
         {
             "label": "Build Kernels",
             "type": "shell",
-            "command": "../clspv z_generated.cl -o z_generated.cl.spv -pod-pushconstant",
+            "command": "../clspv z_generated.cl -o z_generated.cl.spv -cl-fast-relaxed-math -cl-opt-disable -cl-single-precision-constant -cl-denorms-are-zero -cl-fp32-correctly-rounded-divide-sqrt -pod-pushconstant",
             "group": "build",
             "problemMatcher": [
                 "$gcc"

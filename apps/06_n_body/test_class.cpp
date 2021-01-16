@@ -7,20 +7,17 @@ static uint32_t nextRandValue(const uint32_t value) {
 }
 
 static float4 randFloat4(float4 min_value, float4 max_value, const uint32_t threadId) {
-  
   RandomGen gen = RandomGenInit(nextRandValue(threadId));
   return rndFloat4_Pseudo(&gen)*(max_value - min_value) + min_value;
 }
 
-
-void nBody::perform() {
+void nBody::perform(BodyState *out_bodies) {
   kernel1D_GenerateBodies(BODIES_COUNT);
   for (uint32_t i = 0; i < m_iters; ++i) {
-    dumpPositions();
     kernel1D_UpdateVelocity(BODIES_COUNT);
     kernel1D_UpdatePosition(BODIES_COUNT);
   }
-  //dumpPositions();
+  kernel1D_ReadData(out_bodies, BODIES_COUNT);
 }
 
 void nBody::kernel1D_GenerateBodies(uint32_t bodies_count) {
@@ -51,7 +48,7 @@ void nBody::kernel1D_UpdateVelocity(uint32_t bodies_count) {
         continue;
       }
       float3 bodyToBody = xyz(m_bodies[j].pos_weight - m_bodies[i].pos_weight); // * sgn(m_bodies[i].pos_weight.w);
-      acceleration += bodyToBody * m_bodies[j].pos_weight.w / pow3(length(bodyToBody) + 1e-5f);
+      acceleration += bodyToBody * m_bodies[j].pos_weight.w / (pow3(length(bodyToBody)) + 1e-5f);
     }
     acceleration *= dt;
     m_bodies[i].vel_charge.x += acceleration.x;
@@ -68,19 +65,16 @@ void nBody::kernel1D_UpdatePosition(uint32_t bodies_count) {
   }
 }
 
-void nBody::dumpPositions() {
-
-  if(!debugOutput.is_open())
-    return;
-
-  for (const auto& body: m_bodies) {
-    debugOutput.write(reinterpret_cast<const char*>(&body.pos_weight), sizeof(body.pos_weight));
+void nBody::kernel1D_ReadData(BodyState *out_bodies, uint32_t bodies_count) {
+  for (uint32_t i = 0; i < bodies_count; ++i) {
+    out_bodies[i] = m_bodies[i];
   }
-  debugOutput.flush();
 }
 
-void n_body_cpu(uint32_t seed, uint32_t iterations) {
+std::vector<nBody::BodyState> n_body_cpu(uint32_t seed, uint32_t iterations) {
   nBody bodies;
+  std::vector<nBody::BodyState> outBodies(nBody::BODIES_COUNT);
   bodies.setParameters(seed, iterations);
-  bodies.perform();
+  bodies.perform(outBodies.data());
+  return outBodies;
 }
