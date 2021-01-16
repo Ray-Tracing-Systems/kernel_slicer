@@ -9,22 +9,22 @@ typedef struct RandomGenT
 
 } RandomGen;
 
-static inline unsigned int NextState(RandomGen* gen)
+static inline uint32_t NextState(RandomGen* gen)
 {
-  const unsigned int x = (gen->state).x * 17 + (gen->state).y * 13123;
-  (gen->state).x = (x << 13) ^ x;
+  const uint32_t x = (gen->state).x * 17 + (gen->state).y * 13123;
+  (gen->state).x = (x << 13u) ^ x;
   (gen->state).y ^= (x << 7);
   return x;
 }
 
-static inline RandomGen RandomGenInit(const int a_seed)
+static inline RandomGen RandomGenInit(const uint32_t a_seed)
 {
   RandomGen gen;
 
-  gen.state.x  = (a_seed * (a_seed * a_seed * 15731 + 74323) + 871483);
-  gen.state.y  = (a_seed * (a_seed * a_seed * 13734 + 37828) + 234234);
+  gen.state.x = (a_seed * (a_seed * a_seed * 15731 + 74323) + 871483);
+  gen.state.y = (a_seed * (a_seed * a_seed * 13734 + 37828) + 234234);
 
-  for(int i=0;i<(a_seed%7);i++)
+  for(uint32_t i = 0; i < (a_seed % 7u); i++)
     NextState(&gen);
 
   return gen;
