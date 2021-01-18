@@ -886,6 +886,7 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
     { 
       std::string typeStr = arg.type;
       kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
+      ReplaceFirst(typeStr, this->mainClassName + "::", "");
 
       ArgTypeAndNamePair arg2;
       arg2.argName  = arg.name;
