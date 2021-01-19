@@ -204,20 +204,21 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   
   struct KernelArgsPC
   {
+    {% for Arg in Kernel.AuxArgs %}{{Arg.Type}} m_{{Arg.Name}}; 
+    {% endfor %}
     uint32_t m_sizeX;
     uint32_t m_sizeY;
     uint32_t m_sizeZ;
-    {% for Arg in Kernel.AuxArgs %}{{Arg.Type}} m_{{Arg.Name}}; 
-    {% endfor %}
-    uint32_t m_dummy;
+    uint32_t m_tFlags;
   } pcData;
-
-  pcData.m_sizeX = {{Kernel.tidX}};
-  pcData.m_sizeY = {{Kernel.tidY}};
-  pcData.m_sizeZ = {{Kernel.tidZ}};
+  
+  pcData.m_sizeX  = {{Kernel.tidX}};
+  pcData.m_sizeY  = {{Kernel.tidY}};
+  pcData.m_sizeZ  = {{Kernel.tidZ}};
+  pcData.m_tFlags = m_currThreadFlags;
   {% for Arg in Kernel.AuxArgs %}pcData.m_{{Arg.Name}} = {{Arg.Name}}; 
-  {% endfor %}pcData.m_dummy = 0;
-  vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(uint32_t)*1, sizeof(KernelArgsPC), &pcData);
+  {% endfor %}
+  vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
   vkCmdDispatch(m_currCmdBuffer, {{Kernel.tidX}}/blockSizeX, {{Kernel.tidY}}/blockSizeY, {{Kernel.tidZ}}/blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };

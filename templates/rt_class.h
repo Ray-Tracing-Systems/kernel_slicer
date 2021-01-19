@@ -79,7 +79,8 @@ protected:
   VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
   VkDevice         device         = VK_NULL_HANDLE;
 
-  VkCommandBuffer  m_currCmdBuffer = VK_NULL_HANDLE;
+  VkCommandBuffer  m_currCmdBuffer   = VK_NULL_HANDLE;
+  uint32_t         m_currThreadFlags = 0;
 
   std::unique_ptr<vkfw::ComputePipelineMaker> m_pMaker = nullptr;
   VkPhysicalDeviceProperties m_devProps;

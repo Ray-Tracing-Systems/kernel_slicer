@@ -81,11 +81,12 @@ std::string kslicer::MainFuncASTVisitor::MakeKernelCallCmdString(CXXMemberCallEx
       else if(p4 != m_mainFunc.ExitExprIfCall.end() && p4->second.isNegative)
         flagsVariableName += "N";
     }
-
+    
+    // m_currThreadFlags
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
     if(m_pCodeInfo->NeedThreadFlags())
-      strOut << "  vkCmdPushConstants(m_currCmdBuffer," << kernName.c_str() << "Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t)*1, &" << flagsVariableName.c_str() << ");" << std::endl;
+      strOut << "  m_currThreadFlags = " << flagsVariableName.c_str() << ";" << std::endl;
     strOut << "  " << kernName.c_str() << "Cmd" << textOfArgs.c_str();
   }
   
