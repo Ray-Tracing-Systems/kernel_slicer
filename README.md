@@ -114,7 +114,7 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
 6. Run kernel kslicer with the folowing command line (examples are stored in ".vscode/launch.json") from the project folder (i.e. the folder where this README.md is located): 
 
 ```
-./kslicer "apps/05_filter_bloom_good/test_class.cpp" -pattern "ipv" -mainClass "TestClass" -stdlibfolder "TINYSTL" -v
+./kslicer "apps/05_filter_bloom_good/test_class.cpp" -pattern "ipv" -mainClass "ToneMapping" -stdlibfolder "TINYSTL" -v
 ```
 Now generated files should apper in  "apps/05_filter_bloom_good" folder.
 
