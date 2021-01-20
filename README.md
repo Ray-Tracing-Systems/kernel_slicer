@@ -132,6 +132,8 @@ If you got z_generated.cl.spv file, kernels were compiled succesfully. In VS Cod
 
 ## Feature list: what you can do and what you should avoid
 
+(+) can declare structs and constants (via constexpr) in class;
+
 (+) can access POD-like class data members inside kernels;
 
 (+) can access class data members of std::vector type inside kernels;
