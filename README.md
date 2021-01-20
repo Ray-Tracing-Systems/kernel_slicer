@@ -212,18 +212,18 @@ In the current status our generator does pretty simple and stupid work. Therefor
 We begin with the simplest pattern which we call "Image Processing Vectorization (IPV) Pattern". In fact, this pattern **implements standart parallel for** which is common for any GPU programming technology. Therefore, we recommend that you start your acquaintance with our technology from the Image Processing examples. Please note that this pattern is quite general and can be used for many different aplications other than Image Processing. 
 
 
-* [Example #5: Bloom filter](README_ex05.md)
+* [Example #5: Bloom filter](doc/README_ex05.md)
 
 ## Ray Tracing Vectorization (RTV) Pattern
 
 In practical applications of Ray Tracing there is a problem with effitiency of complex code: if fact you can't just put all your code for ray/path evaluation to a single kernel if you take care about performance. So, developers usually split their implementation in multiple kernels and pass some data (*which is called payload in RTX*) between kernels via main memory and may use some optimizations like thread compaction or path regeneration or RTX pipileine in Vulkan. In the same time, kernels need to access arbitrary data of materials, light and geometry. Therefore, in our opinion RTV patterns is quite general vectorization pattern which can be used for many different applications other than ray tracing. 
 
-* [Example #1: single kernel ](README_ex00.md)
+* [Example #1: single kernel ](doc/README_ex00.md)
 
-* [Example #2: passing data between kernels](README_ex01.md)
+* [Example #2: passing data between kernels](doc/README_ex01.md)
 
-* [Example #3: path tracing with loop-break](README_ex03.md)
+* [Example #3: path tracing with loop-break](doc/README_ex03.md)
 
-* [Example #4: virtual kernel call (WORK IN PROGRESS!)](README_ex04.md)
+* [Example #4: virtual kernel call (WORK IN PROGRESS!)](doc/README_ex04.md)
 
 
