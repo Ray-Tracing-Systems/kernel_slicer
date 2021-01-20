@@ -201,7 +201,7 @@ namespace kslicer
           info.kernelCallRange = kern_call->getSourceRange();
           CurrMainFunc().CallsInsideFor[hashValue2] = info; // CallsInsideFor[kern_call] = kern_call;
         }
-      }clang::ast_matchers::StatementMatcher MakeMatch_ForLoopInsideFunction(std::string const& funcName);
+      }
 
       return;
     }  // run

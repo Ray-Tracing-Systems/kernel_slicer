@@ -116,6 +116,27 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
   return true; 
 }
 
+bool kslicer::MainFuncASTVisitor::VisitCallExpr(CallExpr* call)
+{
+  if(isa<CXXMemberCallExpr>(call)) // because we process them in "VisitCXXMemberCallExpr"
+    return true;
+
+  const FunctionDecl* fDecl = call->getDirectCallee();  
+  if(fDecl == nullptr)             // definitely can't process nullpointer 
+    return true;
+
+  // Get name of function
+  //
+  const DeclarationNameInfo dni = fDecl->getNameInfo();
+  const DeclarationName dn      = dni.getName();
+  const std::string fname       = dn.getAsString();
+  
+  if(fname == "memcpy")
+    m_rewriter.ReplaceText(call->getSourceRange(), "//here Alex should replace memcpy to vkCmdFillBuffer");
+
+  return true;
+}
+
 bool kslicer::MainFuncASTVisitor::VisitIfStmt(IfStmt* ifExpr)
 {
   Expr* conBody = ifExpr->getCond();

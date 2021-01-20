@@ -46,6 +46,7 @@ namespace kslicer
     
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
+    bool VisitCallExpr(CallExpr* f);
     bool VisitIfStmt(IfStmt* ifExpr);
   
     std::string                                              mainFuncCmdName;
