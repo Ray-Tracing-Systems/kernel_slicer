@@ -228,4 +228,7 @@ In practical applications of Ray Tracing there is a problem with effitiency of c
 
 * [Example #4: virtual kernel call (WORK IN PROGRESS!)](doc/README_ex04.md)
 
+## Internal documentaion
+
+The documentation for general concepts of how it works is located [here](doc/README_internal.md)
 

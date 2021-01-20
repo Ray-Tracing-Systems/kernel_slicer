@@ -401,7 +401,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.mainClassName     = mainClassName;
   inputCodeInfo.mainClassFileName = fileName;
 
-  std::cout << "(1) Processing class " << mainClassName.c_str() << std::endl; 
+  std::cout << "(1) Processing class " << mainClassName.c_str() << " with initial pass" << std::endl; 
   std::cout << "{" << std::endl;
 
   // Parse code
@@ -420,6 +420,12 @@ int main(int argc, const char **argv)
     std::cout << "[main]: ERROR, main class " << mainClassName.c_str() << " not found" << std::endl;
     return 0;
   }
+
+  std::cout << "}" << std::endl;
+  std::cout << std::endl;
+
+  std::cout << "(2) Process control functions; extract local variables, known calls like memcpy,sort,std::fill and other " << std::endl; 
+  std::cout << "{" << std::endl;
 
   std::unordered_set<std::string> processedKernels;
   size_t mainFuncId = 0;
@@ -440,7 +446,7 @@ int main(int argc, const char **argv)
       for(auto& matcher : allMatchers)
         finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource,matcher), pMatcherPrc.get());
       
-      std::cout << "  process main function: " << mainFuncName.c_str() << "(...): ";
+      std::cout << "  process control function: " << mainFuncName.c_str() << "(...): ";
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
       std::cout << GetClangToolingErrorCodeMessage(res) << std::endl;
       
@@ -472,7 +478,7 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  std::cout << "(2) Mark data members, methods and functions which are actually used in kernels." << std::endl; 
+  std::cout << "(3) Mark data members, methods and functions which are actually used in kernels." << std::endl; 
   std::cout << "{" << std::endl;
 
   for(auto& kernel : inputCodeInfo.kernels)
@@ -497,7 +503,7 @@ int main(int argc, const char **argv)
   std::vector<kslicer::FuncData>    usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
   std::vector<kslicer::DeclInClass> usedDecls;
   
-  std::cout << "(3) Extract constants and structs from 'MainClass' " << std::endl; 
+  std::cout << "(4) Extract constants and structs from 'MainClass' " << std::endl; 
   std::cout << "{" << std::endl;
   {
     auto structMatcher = kslicer::MakeMatch_StructDeclInsideClass(inputCodeInfo.mainClassName);
@@ -522,7 +528,7 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  std::cout << "(4) Process control functions to generate all 'MainCmd' functions" << std::endl; 
+  std::cout << "(5) Process control functions to generate all 'MainCmd' functions" << std::endl; 
   std::cout << "{" << std::endl;
 
   inputCodeInfo.AddSpecVars_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
@@ -545,7 +551,7 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
   
-  std::cout << "(5) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl; 
+  std::cout << "(6) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl; 
   std::cout << "{" << std::endl;
 
   // (4) calc offsets for all class variables; ingore unused members that were not marked on previous step
@@ -558,7 +564,7 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
   
-  std::cout << "(6) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
+  std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
   std::cout << "{" << std::endl;
   {
     kslicer::PrintVulkanBasicsFile("templates/vulkan_basics.h", inputCodeInfo);
@@ -566,14 +572,14 @@ int main(int argc, const char **argv)
     std::string rawname = kslicer::CutOffFileExt(inputCodeInfo.mainClassFileName);
     auto json = PrepareJsonForAllCPP(inputCodeInfo, inputCodeInfo.mainFunc, rawname + "_generated.h", threadsOrder); 
     
-    kslicer::ApplyJsonToTemplate("templates/rt_class.h",      rawname + "_generated.h", json); 
-    kslicer::ApplyJsonToTemplate("templates/rt_class.cpp",    rawname + "_generated.cpp", json);
-    kslicer::ApplyJsonToTemplate("templates/rt_class_ds.cpp", rawname + "_generated_ds.cpp", json);
+    kslicer::ApplyJsonToTemplate("templates/vk_class.h",      rawname + "_generated.h", json); 
+    kslicer::ApplyJsonToTemplate("templates/vk_class.cpp",    rawname + "_generated.cpp", json);
+    kslicer::ApplyJsonToTemplate("templates/vk_class_ds.cpp", rawname + "_generated_ds.cpp", json);
   }
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  std::cout << "(7) Generate OpenCL kernels" << std::endl; 
+  std::cout << "(8) Generate OpenCL kernels" << std::endl; 
   std::cout << "{" << std::endl;
 
   // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg
