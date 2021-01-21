@@ -356,6 +356,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
           arg["Id"]   = realId;
           arg["Name"] = "m_vdata." + vecName;
           local["Args"].push_back(arg);
+          local["ArgNames"].push_back(vecName);
           realId++;
         }
       }
