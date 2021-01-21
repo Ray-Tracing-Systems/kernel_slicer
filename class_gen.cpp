@@ -27,14 +27,17 @@ std::string kslicer::MainFuncASTVisitor::MakeKernelCallCmdString(CXXMemberCallEx
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
 
+  const auto pKernelInfo = m_kernels.find(fname);
+  assert(pKernelInfo != m_kernels.end());
+
   const std::string kernName    = m_pCodeInfo->RemoveKernelPrefix(fname);
 
   // extract arguments to form correct descriptor set
-  //
-  std::stringstream strOut1;
-  strOut1 << "_" << m_dsTagId;                                                           // temporary disable DS hashes due to we didn't account for
-  auto args = ExtractArgumentsOfAKernelCall(f);                                          // member vectors that have to be bound also and accounted here!
-  std::string callSign = MakeKernellCallSignature(args, m_mainFuncName) + strOut1.str(); //
+  // 
+  //std::stringstream strOut1;
+  //strOut1 << "_" << m_dsTagId;                                                    
+  const auto args     = ExtractArgumentsOfAKernelCall(f);                                          
+  const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, pKernelInfo->second.usedVectors); // + strOut1.str();
   auto p2 = dsIdBySignature.find(callSign);
   if(p2 == dsIdBySignature.end())
   {
@@ -240,7 +243,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArg
   return args;
 }
 
-std::string kslicer::MakeKernellCallSignature(const std::vector<ArgReferenceOnCall>& a_args, const std::string& a_mainFuncName)
+std::string kslicer::MakeKernellCallSignature(const std::string& a_mainFuncName, const std::vector<ArgReferenceOnCall>& a_args, const std::unordered_set<std::string>& a_usedVectors)
 {
   std::stringstream strOut;
   for(const auto& arg : a_args)
@@ -274,6 +277,9 @@ std::string kslicer::MakeKernellCallSignature(const std::vector<ArgReferenceOnCa
 
     strOut << arg.varName.c_str();
   }
+
+  for(const auto& vecName : a_usedVectors)
+    strOut << "[MV][" << vecName.c_str() << "]";
 
   return strOut.str();
 }

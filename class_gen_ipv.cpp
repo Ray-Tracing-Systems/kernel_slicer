@@ -81,16 +81,13 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::IPV_Pattern::Ge
 
 std::string kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
-  const std::string&   a_mainClassName = this->mainClassName;
-  auto&                a_outDsInfo     = this->allDescriptorSetsInfo;
+  //const std::string&   a_mainClassName = this->mainClassName;
+  //const CXXMethodDecl* a_node          = a_mainFunc.Node;
+  //const std::string&   a_mainFuncName  = a_mainFunc.Name;
 
-  const CXXMethodDecl* a_node          = a_mainFunc.Node;
-  const std::string&   a_mainFuncName  = a_mainFunc.Name;
-  std::string&         a_outFuncDecl   = a_mainFunc.GeneratedDecl;
-
-  std::string sourceCode = GetCFSourceCodeCmd(a_mainFunc, compiler, a_outDsInfo); // TODO: may simplify impl for image processing
-  a_outFuncDecl          = GetCFDeclFromSource(sourceCode); 
-  a_mainFunc.endDSNumber = a_outDsInfo.size();
+  std::string sourceCode   = GetCFSourceCodeCmd(a_mainFunc, compiler, allDescriptorSetsInfo); // TODO: may simplify impl for image processing
+  a_mainFunc.GeneratedDecl = GetCFDeclFromSource(sourceCode); 
+  a_mainFunc.endDSNumber   = allDescriptorSetsInfo.size();
 
   return sourceCode;
 }
