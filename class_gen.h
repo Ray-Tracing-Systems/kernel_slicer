@@ -34,8 +34,8 @@ namespace kslicer
     MainFuncASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, MainFuncInfo& a_mainFunc, 
                        const std::vector<InOutVarInfo>& a_args, MainClassInfo* a_pCodeInfo) : 
                        m_rewriter(R), m_compiler(a_compiler), m_sm(R.getSourceMgr()), 
-                       m_kernellCallTagId(0), m_dsTagId(0), m_mainFuncName(a_mainFunc.Name), m_mainFuncLocals(a_mainFunc.Locals),
-                       m_pCodeInfo(a_pCodeInfo), m_allClassMembers(a_pCodeInfo->allDataMembers), m_mainFunc(a_mainFunc) 
+                       m_dsTagId(0), m_mainFuncName(a_mainFunc.Name), m_mainFuncLocals(a_mainFunc.Locals),
+                       m_pCodeInfo(a_pCodeInfo), m_allClassMembers(a_pCodeInfo->allDataMembers), m_mainFunc(a_mainFunc), allDescriptorSetsInfo(a_pCodeInfo->allDescriptorSetsInfo) 
     { 
       for(const auto& k : a_pCodeInfo->kernels)
         m_kernels[k.name] = k;   
@@ -51,7 +51,7 @@ namespace kslicer
   
     std::string                                              mainFuncCmdName;
     std::unordered_map<std::string, uint32_t>                dsIdBySignature;
-    std::vector< KernelCallInfo >                            m_kernCallTypes;
+    std::vector< KernelCallInfo >&                           allDescriptorSetsInfo;
     std::unordered_map<std::string, DataMemberInfo>&         m_allClassMembers;
     const std::unordered_map<std::string, DataLocalVarInfo>& m_mainFuncLocals;
 
@@ -63,7 +63,6 @@ namespace kslicer
     Rewriter&                      m_rewriter;
     const clang::SourceManager&    m_sm;
     const clang::CompilerInstance& m_compiler;
-    uint32_t m_kernellCallTagId;
     uint32_t m_dsTagId;
     
     std::string m_mainFuncName;

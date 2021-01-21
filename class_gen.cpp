@@ -41,14 +41,14 @@ std::string kslicer::MainFuncASTVisitor::MakeKernelCallCmdString(CXXMemberCallEx
   auto p2 = dsIdBySignature.find(callSign);
   if(p2 == dsIdBySignature.end())
   {
-    dsIdBySignature[callSign] = m_kernCallTypes.size();
+    dsIdBySignature[callSign] = allDescriptorSetsInfo.size();
     p2 = dsIdBySignature.find(callSign);
     KernelCallInfo call;
     call.kernelName         = kernName;
     call.originKernelName   = fname;
     call.callerName         = m_mainFuncName;
     call.descriptorSetsInfo = args;
-    m_kernCallTypes.push_back(call);
+    allDescriptorSetsInfo.push_back(call);
   }
   m_dsTagId++;
 
@@ -112,7 +112,6 @@ bool kslicer::MainFuncASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
     if(p2 == m_alreadyProcessedCalls.end())
     {
       m_rewriter.ReplaceText(f->getSourceRange(), callStr); // getExprLoc
-      m_kernellCallTagId++;
     }
   }
 
@@ -162,7 +161,6 @@ bool kslicer::MainFuncASTVisitor::VisitIfStmt(IfStmt* ifExpr)
     {
       std::string callStr = MakeKernelCallCmdString(f);
       m_rewriter.ReplaceText(ifExpr->getSourceRange(), callStr);
-      m_kernellCallTagId++;
       m_alreadyProcessedCalls.insert( kslicer::GetHashOfSourceRange(f->getSourceRange()) );
     }
   }
@@ -315,11 +313,9 @@ bool kslicer::MainClassInfo::IsKernel(const std::string& a_funcName) const
   return (pos != std::string::npos);
 }
 
-std::string kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler, std::vector<KernelCallInfo>& a_outDSInfo)
+std::string kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
   const std::string&   a_mainClassName = this->mainClassName;
-  auto&                a_outDsInfo     = this->allDescriptorSetsInfo;
-
   const CXXMethodDecl* a_node          = a_mainFunc.Node;
   const std::string&   a_mainFuncName  = a_mainFunc.Name;
   std::string&         a_outFuncDecl   = a_mainFunc.GeneratedDecl;
@@ -329,13 +325,10 @@ std::string kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc,
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
-  a_mainFunc.startDSNumber = a_outDsInfo.size();
+  a_mainFunc.startDSNumber = allDescriptorSetsInfo.size();
 
-  kslicer::MainFuncASTVisitor rv(rewrite2, compiler, a_mainFunc, inOutParamList, this);
-
-  rv.m_kernCallTypes = a_outDsInfo;
+  kslicer::MainFuncASTVisitor rv(rewrite2, compiler, a_mainFunc, inOutParamList, this); // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
-  a_outDsInfo        = rv.m_kernCallTypes;
 
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
@@ -403,15 +396,13 @@ uint32_t kslicer::RTV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel)
 std::string kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
   const std::string&   a_mainClassName = this->mainClassName;
-  auto&                a_outDsInfo     = this->allDescriptorSetsInfo;
-
   const CXXMethodDecl* a_node          = a_mainFunc.Node;
   const std::string&   a_mainFuncName  = a_mainFunc.Name;
   std::string&         a_outFuncDecl   = a_mainFunc.GeneratedDecl;
 
-  std::string sourceCode = GetCFSourceCodeCmd(a_mainFunc, compiler, a_outDsInfo);
+  std::string sourceCode = GetCFSourceCodeCmd(a_mainFunc, compiler); // ==> write this->allDescriptorSetsInfo
   a_outFuncDecl          = GetCFDeclFromSource(sourceCode); 
-  a_mainFunc.endDSNumber = a_outDsInfo.size();
+  a_mainFunc.endDSNumber = allDescriptorSetsInfo.size();
 
   return sourceCode;
 }
