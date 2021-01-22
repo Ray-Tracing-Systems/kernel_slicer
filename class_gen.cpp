@@ -756,32 +756,20 @@ bool kslicer::KernelReplacerASTVisitor::VisitMemberExpr(MemberExpr* expr)
   // process access to class member data
   // 
 
-  // (1) get type of variable itself because we need to cast pointer to this type
-  //
-  QualType qt = pFieldDecl->getTypeSourceInfo()->getType();
-  std::string fieldType = qt.getAsString();
-  kslicer::ReplaceOpenCLBuiltInTypes(fieldType);
-
-  // (2) get variable offset in buffer by its name 
+  // (1) get variable offset in buffer by its name 
   //
   const std::string fieldName = pFieldDecl->getNameAsString(); 
   const auto pMember = m_variables.find(fieldName);
   if(pMember == m_variables.end())
     return true;
 
-  // (3) put *(pointer+offset) instead of variable name, leave containers as they are
-  // read only large data structures because small can be readn once in the neggining of kernel
+  // (2) put ubo->var instead of var, leave containers as they are
+  // process arrays and large data structures because small can be read once in the neggining of kernel
   //
   if(pMember->second.isArray || (!pMember->second.isContainer && pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD)) 
   {
     std::stringstream strOut;
     strOut << "ubo->" << pMember->second.name; // TODO: if circle
-    
-    //const std::string buffName = kslicer::GetProjPrefix() + "data"; 
-    //strOut << "*(  "; 
-    //strOut << "(__global const " << fieldType.c_str() << "*)" << "(" << buffName.c_str() << "+" << (pMember->second.offsetInTargetBuffer/sizeof(uint32_t)) << ")";
-    //strOut << "  )";
-    
     m_rewriter.ReplaceText(expr->getSourceRange(), strOut.str());
   }
   
@@ -925,13 +913,10 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
   {    
     if(arg.isThreadID)
     { 
-      std::string typeStr = arg.type;
-      kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
-
       ArgTypeAndNamePair arg2;
       arg2.argName  = arg.name;
       arg2.sizeName = arg.name;
-      arg2.typeName = typeStr;
+      arg2.typeName = RemoveTypeNamespaces(arg.type);
       arg2.id       = 0;
       args.push_back(arg2);
     }
@@ -949,13 +934,9 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
   {    
     if(!arg.isThreadID && !arg.isLoopSize && !arg.IsUser())
     { 
-      std::string typeStr = arg.type;
-      kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
-      ReplaceFirst(typeStr, this->mainClassName + "::", "");
-
       ArgTypeAndNamePair arg2;
       arg2.argName  = arg.name;
-      arg2.typeName = typeStr;
+      arg2.typeName = RemoveTypeNamespaces(arg.type);
       args.push_back(arg2);
     }
   }

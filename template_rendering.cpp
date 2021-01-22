@@ -421,8 +421,7 @@ nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const s
     std::string typeStr = member.type;
     if(member.isArray)
       typeStr = typeStr.substr(0, typeStr.find("["));
-    kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
-    ReplaceFirst(typeStr, a_classInfo.mainClassName + "::", "");
+    typeStr = a_classInfo.RemoveTypeNamespaces(typeStr);
 
     size_t sizeO = member.sizeInBytes;
     size_t sizeA = member.alignedSizeInBytes;
@@ -558,13 +557,9 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
 
       assert(pVecMember->second.isContainer);
       assert(pVecSizeMember->second.isContainerInfo);
-      
-      std::string typeStr = pVecMember->second.containerDataType;
-      kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
-      ReplaceFirst(typeStr, a_classInfo.mainClassName + "::", "");
 
       json argj;
-      argj["Type"] = typeStr + "*";
+      argj["Type"] = a_classInfo.RemoveTypeNamespaces(pVecMember->second.containerDataType) + "*";
       argj["Name"] = pVecMember->second.name;
       argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
       args.push_back(argj);
@@ -583,12 +578,8 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       if(member.isArray || member.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD) // read large data structures directly inside kernel code, don't read them at the beggining of kernel.
         continue;
 
-      std::string typeStr = member.type;
-      kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
-      ReplaceFirst(typeStr, a_classInfo.mainClassName + "::", "");
-      
       json memberData;
-      memberData["Type"]   = typeStr;
+      memberData["Type"]   = a_classInfo.RemoveTypeNamespaces(member.type);
       memberData["Name"]   = member.name;
       memberData["Offset"] = member.offsetInTargetBuffer / sizeof(uint32_t);
       members.push_back(memberData);
@@ -598,12 +589,8 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
     json userArgs = std::vector<std::string>();
     for(const auto& arg : userArgsArr)
     {
-      std::string typeStr = arg.type;
-      kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
-      ReplaceFirst(typeStr, a_classInfo.mainClassName + "::", "");
-
       json argj;
-      argj["Type"] = typeStr;
+      argj["Type"] = a_classInfo.RemoveTypeNamespaces(arg.type);
       argj["Name"] = arg.name;
       userArgs.push_back(argj);
     }

@@ -279,6 +279,8 @@ namespace kslicer
     virtual std::string GetCFDeclFromSource(const std::string& sourceCode);
 
     virtual bool NeedThreadFlags() const { return false; }
+
+    virtual std::string RemoveTypeNamespaces(const std::string& a_str) const;
   };
 
 
