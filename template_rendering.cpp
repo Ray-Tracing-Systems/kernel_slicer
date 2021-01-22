@@ -81,7 +81,8 @@ std::vector<kslicer::KernelInfo::Arg> GetUserKernelArgs(const std::vector<kslice
 nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, 
                                              const std::vector<MainFuncInfo>& a_methodsToGenerate, 
                                              const std::string& a_genIncude,
-                                             const uint32_t    threadsOrder[3])
+                                             const uint32_t    threadsOrder[3],
+                                             const std::string& uboIncludeName, const nlohmann::json& uboJson)
 {
   std::string folderPath           = GetFolderPath(a_classInfo.mainClassFileName);
   std::string mainInclude          = a_classInfo.mainClassFileInclude;
@@ -111,6 +112,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
 
   json data;
   data["Includes"]      = strOut.str();
+  data["UBOIncl"]       = uboIncludeName;
   data["MainClassName"] = a_classInfo.mainClassName;
 
   data["PlainMembersUpdateFunctions"]  = "";
@@ -403,11 +405,52 @@ void kslicer::ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, con
 std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds);
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 
+
+nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const std::vector<kslicer::DataMemberInfo>& a_dataMembers)
+{
+  nlohmann::json data;
+  
+  auto podMembers = filter(a_classInfo.dataMembers, [](auto& memb) { return !memb.isContainer; });
+  uint32_t dummyCounter = 0;
+  data["MainClassName"]   = a_classInfo.mainClassName;
+  data["UBOStructFields"] = std::vector<std::string>();
+  for(auto member : podMembers)
+  {
+    std::string typeStr = member.type;
+    kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
+    ReplaceFirst(typeStr, a_classInfo.mainClassName + "::", "");
+
+    size_t sizeO = member.sizeInBytes;
+    size_t sizeA = member.alignedSizeInBytes;
+
+    json uboField;
+    uboField["Type"] = typeStr;
+    uboField["Name"] = member.name;
+    data["UBOStructFields"].push_back(uboField);
+    
+    while(sizeO < sizeA)
+    {
+      std::stringstream strOut;
+      strOut << "dummy" << dummyCounter;
+      dummyCounter++;
+      sizeO += sizeof(uint32_t);
+      uboField["Type"] = "unsigned int";
+      uboField["Name"] = strOut.str();
+      data["UBOStructFields"].push_back(uboField);
+    }
+
+    assert(sizeO == sizeA);
+  }
+
+  return data;
+}
+
 void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::string& a_outFolder, const MainClassInfo& a_classInfo, 
                                    const std::vector<kslicer::FuncData>& usedFunctions,
                                    const std::vector<kslicer::DeclInClass>& usedDecl,
                                    const clang::CompilerInstance& compiler,
-                                   const uint32_t  threadsOrder[3])
+                                   const uint32_t  threadsOrder[3],
+                                   const std::string& uboIncludeName, const nlohmann::json& uboJson)
 {
   std::unordered_map<std::string, DataMemberInfo> dataMembersCached;
   dataMembersCached.reserve(a_classInfo.dataMembers.size());
@@ -428,6 +471,7 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
     if(a_classInfo.mainClassFileInclude.find(keyVal.first) == std::string::npos)
       data["Includes"].push_back(keyVal.first);
   }
+  data["UBOIncl"] = uboIncludeName;
 
   // (2) declarations of struct, constants and typedefs inside class
   //
@@ -456,7 +500,7 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
     };
     //std::cout << kslicer::GetRangeSourceCode(decl.srcRange, compiler) << std::endl;
   }
-  
+
   // (3) local functions
   //
   data["LocalFunctions"] = std::vector<std::string>();

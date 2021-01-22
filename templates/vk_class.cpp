@@ -6,6 +6,7 @@
 
 #include "vulkan_basics.h"
 #include "{{IncludeClassDecl}}"
+#include "include/{{UBOIncl}}"
 
 {{MainClassName}}_Generated::~{{MainClassName}}_Generated()
 {
@@ -131,25 +132,20 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
 
 void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
 {
+  const size_t maxAllowedSize = std::numeric_limits<uint32_t>::max();
+
 ## for Var in ClassVars
-  a_pCopyEngine->UpdateBuffer(m_classDataBuffer, {{Var.Offset}}, &{{Var.Name}}, {{Var.Size}});
+  m_uboData.{{Var.Name}} = {{Var.Name}};
 ## endfor
+## for Var in ClassVectorVars 
+  m_uboData.{{Var.Name}}_size     = uint32_t( {{Var.Name}}.size() );    assert( {{Var.Name}}.size() < maxAllowedSize );
+  m_uboData.{{Var.Name}}_capacity = uint32_t( {{Var.Name}}.capacity() ); assert( {{Var.Name}}.capacity() < maxAllowedSize );
+## endfor
+  a_pCopyEngine->UpdateBuffer(m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
 }
 
 void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
 {
-  const size_t maxAllowedSize = std::numeric_limits<uint32_t>::max();
-
-## for Var in ClassVectorVars
-  {
-    uint32_t sizeOfVector     = uint32_t( {{Var.Name}}.size() ); assert( {{Var.Name}}.size() < maxAllowedSize );
-    uint32_t capacityOfVector = uint32_t( {{Var.Name}}.capacity() ); assert( {{Var.Name}}.capacity() < maxAllowedSize );
-    a_pCopyEngine->UpdateBuffer(m_classDataBuffer, {{Var.SizeOffset}}, &sizeOfVector, sizeof(uint32_t));
-    a_pCopyEngine->UpdateBuffer(m_classDataBuffer, {{Var.CapacityOffset}}, &capacityOfVector, sizeof(uint32_t));
-  }
-
-## endfor
-
 ## for Var in ClassVectorVars
   a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}.data(), {{Var.Name}}.size()*sizeof({{Var.TypeOfData}}) );
 ## endfor
@@ -166,7 +162,7 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
 ## endfor
 ## endfor
 
-  m_classDataBuffer = vkfw::CreateBuffer(device, {{AllClassVarsSize}},  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  m_classDataBuffer = vkfw::CreateBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   allBuffers.push_back(m_classDataBuffer);
   
   if(allBuffers.size() > 0)

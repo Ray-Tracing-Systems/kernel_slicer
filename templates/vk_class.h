@@ -12,6 +12,7 @@
 #include "vk_utils.h"
 
 {{Includes}}
+#include "include/{{UBOIncl}}"
 
 class {{MainClassName}}_Generated : public {{MainClassName}}
 {
@@ -142,6 +143,8 @@ protected:
   VkDescriptorSet m_allGeneratedDS[{{TotalDSNumber}}];
   uint32_t m_blockSize[3];
   std::unordered_map<std::string, KernelConfig> m_kernelExceptions;
+
+  {{MainClassName}}_UBO_Data m_uboData;
   
 };
 

@@ -5,6 +5,7 @@
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
+#include <algorithm>
 
 #include "clang/AST/DeclCXX.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -66,6 +67,7 @@ namespace kslicer
     std::string name;
     std::string type;
     size_t      sizeInBytes;              ///<! may be not needed due to using sizeof in generated code, but it is useful for sorting members by size and making apropriate aligment
+    size_t      alignedSizeInBytes   = 0; ///<! aligned size will be known when data will be placed to a buffer
     size_t      offsetInTargetBuffer = 0; ///<! offset in bytes in terget buffer that stores all data members
     
     bool isContainerInfo = false; ///<! auto generated std::vector<T>::size() or capacity() or some analogue
@@ -329,6 +331,7 @@ namespace kslicer
   */
   std::vector<DataMemberInfo> MakeClassDataListAndCalcOffsets(std::unordered_map<std::string, DataMemberInfo>& vars);
 
+
   void ReplaceOpenCLBuiltInTypes(std::string& a_typeName);
   std::vector<std::string> GetAllPredefinedThreadIdNamesRTV();
 
@@ -336,11 +339,17 @@ namespace kslicer
   std::string CutOffFileExt(const std::string& a_filePath);
 
   uint64_t GetHashOfSourceRange(const clang::SourceRange& a_range);
-
   static constexpr size_t READ_BEFORE_USE_THRESHOLD = sizeof(float)*8;
 
 };
 
+template <typename Cont, typename Pred>
+Cont filter(const Cont &container, Pred predicate) 
+{
+  Cont result;
+  std::copy_if(container.begin(), container.end(), std::back_inserter(result), predicate);
+  return result;
+}
 
 
 #endif

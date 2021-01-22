@@ -556,9 +556,15 @@ int main(int argc, const char **argv)
 
   // (4) calc offsets for all class variables; ingore unused members that were not marked on previous step
   //
+  inputCodeInfo.dataMembers  = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
+  auto jsonUBO               = kslicer::PrepareUBOJson(inputCodeInfo, inputCodeInfo.dataMembers);
+  std::string uboIncludeName = inputCodeInfo.mainClassName + "_ubo.h";
+
+  std::cout << "  placed classVariables num = " << inputCodeInfo.dataMembers.size() << std::endl;
   {
-    inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
-    std::cout << "  placed classVariables num = " << inputCodeInfo.dataMembers.size() << std::endl;
+    std::string rawname        = GetFolderPath(inputCodeInfo.mainClassFileName);
+    std::string outName        = rawname + "/include/" + uboIncludeName;
+    kslicer::ApplyJsonToTemplate("templates/ubo_def.h",  outName, jsonUBO);
   }
 
   std::cout << "}" << std::endl;
@@ -570,7 +576,7 @@ int main(int argc, const char **argv)
     kslicer::PrintVulkanBasicsFile("templates/vulkan_basics.h", inputCodeInfo);
 
     std::string rawname = kslicer::CutOffFileExt(inputCodeInfo.mainClassFileName);
-    auto json = PrepareJsonForAllCPP(inputCodeInfo, inputCodeInfo.mainFunc, rawname + "_generated.h", threadsOrder); 
+    auto json = PrepareJsonForAllCPP(inputCodeInfo, inputCodeInfo.mainFunc, rawname + "_generated.h", threadsOrder, uboIncludeName, jsonUBO); 
     
     kslicer::ApplyJsonToTemplate("templates/vk_class.h",      rawname + "_generated.h", json); 
     kslicer::ApplyJsonToTemplate("templates/vk_class.cpp",    rawname + "_generated.cpp", json);
@@ -593,7 +599,7 @@ int main(int argc, const char **argv)
   // finally generate kernels
   //
   kslicer::PrintGeneratedCLFile("templates/generated.cl", GetFolderPath(inputCodeInfo.mainClassFileName), 
-                                inputCodeInfo, usedByKernelsFunctions, usedDecls, compiler, threadsOrder);
+                                inputCodeInfo, usedByKernelsFunctions, usedDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
