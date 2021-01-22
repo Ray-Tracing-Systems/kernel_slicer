@@ -163,9 +163,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       continue;
 
     json local;
-    local["Name"]   = v.name;
-    local["Offset"] = v.offsetInTargetBuffer;
-    local["Size"]   = v.sizeInBytes;
+    local["Name"]      = v.name;
+    local["Offset"]    = v.offsetInTargetBuffer;
+    local["Size"]      = v.sizeInBytes;
+    local["IsArray"]   = v.isArray;
+    local["ArraySize"] = v.arraySize;
     data["ClassVars"].push_back(local);
   }
 
@@ -417,6 +419,8 @@ nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const s
   for(auto member : podMembers)
   {
     std::string typeStr = member.type;
+    if(member.isArray)
+      typeStr = typeStr.substr(0, typeStr.find("["));
     kslicer::ReplaceOpenCLBuiltInTypes(typeStr);
     ReplaceFirst(typeStr, a_classInfo.mainClassName + "::", "");
 
@@ -424,8 +428,10 @@ nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const s
     size_t sizeA = member.alignedSizeInBytes;
 
     json uboField;
-    uboField["Type"] = typeStr;
-    uboField["Name"] = member.name;
+    uboField["Type"]      = typeStr;
+    uboField["Name"]      = member.name;
+    uboField["IsArray"]   = member.isArray;
+    uboField["ArraySize"] =  member.arraySize;
     data["UBOStructFields"].push_back(uboField);
     
     while(sizeO < sizeA)
@@ -574,7 +580,7 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
     json members = std::vector<std::string>();
     for(const auto member : membersToRead)
     {
-      if(member.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD) // read large data structures directly inside kernel code, don't read them at the beggining of kernel.
+      if(member.isArray || member.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD) // read large data structures directly inside kernel code, don't read them at the beggining of kernel.
         continue;
 
       std::string typeStr = member.type;

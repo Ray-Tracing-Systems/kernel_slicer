@@ -41,6 +41,10 @@ public:
   {
     const float4x4 proj = perspectiveMatrix(90.0f, 1.0f, 0.1f, 100.0f);
     m_worldViewProjInv  = inverse4x4(proj);
+    m_data1 = 0;
+    m_data2[0] = 1.0f;
+    m_data2[1] = 2.0f;
+    m_data2[2] = 0.5f;
   }
   
   void MainFunc(uint tidX, uint tidY, uint* out_color);

@@ -135,12 +135,13 @@ void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vkfw::ICopy
   const size_t maxAllowedSize = std::numeric_limits<uint32_t>::max();
 
 ## for Var in ClassVars
-  m_uboData.{{Var.Name}} = {{Var.Name}};
+  {% if Var.IsArray %}memcpy(m_uboData.{{Var.Name}},{{Var.Name}},sizeof({{Var.Name}}));{% else %}m_uboData.{{Var.Name}} = {{Var.Name}};{% endif %}
 ## endfor
 ## for Var in ClassVectorVars 
   m_uboData.{{Var.Name}}_size     = uint32_t( {{Var.Name}}.size() );    assert( {{Var.Name}}.size() < maxAllowedSize );
   m_uboData.{{Var.Name}}_capacity = uint32_t( {{Var.Name}}.capacity() ); assert( {{Var.Name}}.capacity() < maxAllowedSize );
 ## endfor
+
   a_pCopyEngine->UpdateBuffer(m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
 }
 

@@ -11,7 +11,7 @@
 void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 {
   const float3 rayDir = EyeRayDir((float)tidX, (float)tidY, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
-  const float3 rayPos = make_float3(0.0f, 0.0f, 0.0f);
+  const float3 rayPos = make_float3(m_data2[0], m_data2[1], m_data2[2]);
   
   *(rayPosAndNear) = to_float4(rayPos, 0.0f);
   *(rayDirAndFar ) = to_float4(rayDir, MAXFLOAT);

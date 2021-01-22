@@ -772,7 +772,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitMemberExpr(MemberExpr* expr)
   // (3) put *(pointer+offset) instead of variable name, leave containers as they are
   // read only large data structures because small can be readn once in the neggining of kernel
   //
-  if(!pMember->second.isContainer && pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD) 
+  if(pMember->second.isArray || (!pMember->second.isContainer && pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD)) 
   {
     std::stringstream strOut;
     strOut << "ubo->" << pMember->second.name; // TODO: if circle
