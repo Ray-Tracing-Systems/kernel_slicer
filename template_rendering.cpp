@@ -460,6 +460,8 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
   const std::string& a_outFileName = a_outFolder + "/" + "z_generated.cl";
   json data;
 
+  data["MainClassName"] = a_classInfo.mainClassName;
+
   // (1) put includes
   //
   data["Includes"] = std::vector<std::string>();
@@ -584,15 +586,6 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
       memberData["Name"]   = member.name;
       memberData["Offset"] = member.offsetInTargetBuffer / sizeof(uint32_t);
       members.push_back(memberData);
-    }
-
-    // add kgen_data buffer and skiped predefined ThreadId back
-    //
-    {
-      json argj;
-      argj["Type"] = "uint*";
-      argj["Name"] = kslicer::GetProjPrefix() + "data";
-      args.push_back(argj);
     }
 
     const auto userArgsArr = GetUserKernelArgs(k.args);

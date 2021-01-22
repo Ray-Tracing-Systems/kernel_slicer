@@ -40,6 +40,7 @@ __kernel void {{Kernel.Name}}(
 ## for UserArg in Kernel.UserArgs 
   {{UserArg.Type}} {{UserArg.Name}},
 ## endfor
+   __global struct {{MainClassName}}_UBO_Data* restrict ubo,
   const uint {{Kernel.threadIdName1}}, 
   const uint {{Kernel.threadIdName2}},
   const uint {{Kernel.threadIdName3}},
@@ -53,8 +54,8 @@ __kernel void {{Kernel.Name}}(
     return;{% endif %}
   {% if Kernel.shouldCheckExitFlag %}if((kgen_threadFlags[{{Kernel.ThreadOffset}}] & kgen_tFlagsMask) != 0) 
     return;{% endif %}
-  {% for Vec in Kernel.Vecs %}const uint {{Vec.Name}}_size = kgen_data[{{Vec.SizeOffset}}]; 
-  {% endfor %}{% for Member in Kernel.Members %}const {{Member.Type}} {{Member.Name}} = *( (__global {{Member.Type}}*)(kgen_data + {{Member.Offset}}) );
+  {% for Vec in Kernel.Vecs %}const uint {{Vec.Name}}_size = ubo->{{Vec.Name}}_size; 
+  {% endfor %}{% for Member in Kernel.Members %}const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
   {% endfor %}/////////////////////////////////////////////////////////////////
 {{Kernel.Source}}
 }

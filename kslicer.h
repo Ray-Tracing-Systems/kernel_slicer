@@ -339,7 +339,7 @@ namespace kslicer
   std::string CutOffFileExt(const std::string& a_filePath);
 
   uint64_t GetHashOfSourceRange(const clang::SourceRange& a_range);
-  static constexpr size_t READ_BEFORE_USE_THRESHOLD = sizeof(float)*8;
+  static constexpr size_t READ_BEFORE_USE_THRESHOLD = sizeof(float)*4;
 
 };
 
