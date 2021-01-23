@@ -46,7 +46,7 @@ public:
   }
 
   void InitRandomGens(int a_maxThreads);
-  int LoadScene(const std::string& path);
+  int LoadScene(const std::string& bvhPath, const std::string& meshPath);
 
   void PackXY(uint tidX, uint tidY, uint* out_pakedXY);
   void CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color);
@@ -77,6 +77,8 @@ protected:
   void InitSpheresScene(int a_numSpheres, int a_seed = 0);
 
   BVHTree                      m_bvhTree;
+  SimpleMesh                   m_mesh;
+
   float4x4                     m_worldViewProjInv;
   std::vector<float4>          spheresPosRadius;
   std::vector<SphereMaterial>  spheresMaterials;

@@ -40,14 +40,12 @@ void TestClass::InitSpheresScene(int a_numSpheres, int a_seed)
 }
 
 
-int TestClass::LoadScene(const std::string& path)
+int TestClass::LoadScene(const std::string& bvhPath, const std::string& meshPath)
 {
-
   std::fstream input_file;
-
-  input_file.open(path, std::ios::binary | std::ios::in);
+  input_file.open(bvhPath, std::ios::binary | std::ios::in);
   if (!input_file) {
-    std::cerr << "File error <" << path << ">\n";
+    std::cerr << "BVH file error <" << bvhPath << ">\n";
     return 1;
   }
 
@@ -64,6 +62,35 @@ int TestClass::LoadScene(const std::string& path)
   input_file.read((char *) m_bvhTree.intervals.data(), sizeof(Interval) * header.node_length);
   input_file.read((char *) m_bvhTree.indicesReordered.data(), sizeof(uint) * header.indices_length);
   input_file.read((char *) m_bvhTree.depthRanges.data(), sizeof(Interval) * header.depth_length);
+
+  std::fstream input_file_mesh;
+  input_file_mesh.open(meshPath, std::ios::binary | std::ios::in);
+  if (!input_file_mesh) {
+    std::cerr << "Mesh file error <" << meshPath << ">\n";
+    return 1;
+  }
+  
+  VSGFHeader meshHeader;
+
+  input_file_mesh.read((char*)&meshHeader, sizeof(VSGFHeader));
+  m_mesh = SimpleMesh(meshHeader.verticesNum, meshHeader.indicesNum);
+
+  input_file_mesh.read((char*)m_mesh.vPos4f.data(),  m_mesh.vPos4f.size()*sizeof(float)*4);
+
+  if(!(meshHeader.flags & HAS_NO_NORMALS))
+    input_file_mesh.read((char*)m_mesh.vNorm4f.data(), m_mesh.vNorm4f.size()*sizeof(float)*4);
+  else
+    memset(m_mesh.vNorm4f.data(), 0, m_mesh.vNorm4f.size()*sizeof(float)*4);  
+
+  if(meshHeader.flags & HAS_TANGENT)
+    input_file_mesh.read((char*)m_mesh.vTang4f.data(), m_mesh.vTang4f.size()*sizeof(float)*4);
+  else
+    memset(m_mesh.vTang4f.data(), 0, m_mesh.vTang4f.size()*sizeof(float)*4);
+
+  input_file_mesh.read((char*)m_mesh.vTexCoord2f.data(), m_mesh.vTexCoord2f.size()*sizeof(float)*2);
+  input_file_mesh.read((char*)m_mesh.indices.data(),    m_mesh.indices.size()*sizeof(unsigned int));
+  input_file_mesh.read((char*)m_mesh.matIndices.data(), m_mesh.matIndices.size()*sizeof(unsigned int));
+  input_file_mesh.close();
 
   return 0;
 
@@ -89,7 +116,7 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   const uint y = (XY & 0xFFFF0000) >> 16;
 
   const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
-  const float3 rayPos = make_float3(0.0f, 0.0f, 0.0f);
+  const float3 rayPos = make_float3(0.0f, 2.5f, 5.0f);
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
   *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
@@ -122,6 +149,51 @@ bool RayBoxIntersection(float3 ray_pos, float3 ray_dir, float3 boxMin, float3 bo
   return (tmin <= tmax) && (tmax > 0.f);
 }
 
+Lite_Hit IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float4 rayDirAndFar,
+                             const uint* a_indices, uint a_start, uint a_count, const float4* a_vert)
+{
+  const float tNear    = rayPosAndNear[3];
+
+  const float4& ray_pos = rayPosAndNear;
+  const float4& ray_dir = rayDirAndFar;
+
+  Lite_Hit result;
+  result.t      = rayDirAndFar[3];
+  result.primId = -1;
+
+  const uint triAddressEnd = a_start + a_count;
+
+  for (uint triAddress = a_start; triAddress < triAddressEnd; triAddress += 3)
+  {
+    const uint A = a_indices[triAddress + 0];
+    const uint B = a_indices[triAddress + 1];
+    const uint C = a_indices[triAddress + 2];
+
+    const float4 A_pos = a_vert[A];
+    const float4 B_pos = a_vert[B];
+    const float4 C_pos = a_vert[C];
+
+    const float4 edge1 = B_pos - A_pos;
+    const float4 edge2 = C_pos - A_pos;
+    const float4 pvec  = cross(ray_dir, edge2);
+    const float4 tvec  = ray_pos - A_pos;
+    const float4 qvec  = cross(tvec, edge1);
+    const float invDet = 1.0f / std::max(dot3(edge1, pvec), 1e-6f);
+
+    const float v = dot3(tvec, pvec)*invDet;
+    const float u = dot3(qvec, ray_dir)*invDet;
+    const float t = dot3(edge2, qvec)*invDet;
+
+    if (v > -1e-6f && u > -1e-6f && (u + v < 1.0f + 1e-6f) && t > tNear && t < result.t)
+    {
+      result.t      = t;
+      result.primId = triAddress/3;
+    }
+  }
+
+  return result;
+}
+
 bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                                 Lite_Hit* out_hit)
 {
@@ -133,7 +205,7 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   res.instId = -1;
   res.geomId = -1;
   res.t      = MAXFLOAT;
-
+  float min_t = 1e38f;
   uint32_t nodeIdx = 0;
   auto currNode = m_bvhTree.nodes[nodeIdx];
   while(true)
@@ -159,6 +231,17 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
       if(intersects)
       {
         //instersect all primitives
+        const auto startCount = m_bvhTree.intervals[nodeIdx];
+        float4 rp = *rayPosAndNear;
+        float4 rd = *rayDirAndFar;
+        const auto localHit   = IntersectAllPrimitivesInLeaf(rp, rd, m_bvhTree.indicesReordered.data(),
+                                                             startCount.start*3, startCount.count*3,
+                                                             m_mesh.vPos4f.data());
+        if (localHit.t < min_t)
+        {
+          min_t = localHit.t;
+          res = localHit;
+        }
       }
 
       if(currNode.escapeIndex == 0xFFFFFFFE)
@@ -168,7 +251,6 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
     currNode = m_bvhTree.nodes[nodeIdx];
   }
   
-
   *out_hit = res;
   return (res.primId != -1);
 }
@@ -177,7 +259,9 @@ void TestClass::kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit,
                                         uint* out_color)
 {
   if(in_hit->primId != -1)
-    out_color[tid] = RealColorToUint32_f3(to_float3(spheresMaterials[in_hit->primId].color));
+  {
+    out_color[tid] = RealColorToUint32_f3(to_float3(spheresMaterials[in_hit->primId % 3].color));
+  }
   else
     out_color[tid] = 0x00700000;
 }
@@ -205,18 +289,20 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit,
   const float3 rayPos = to_float3(*rayPosAndNear);
   const float3 rayDir = to_float3(*rayDirAndFar );
 
-  if( IsMtlEmissive(&spheresMaterials[hit.primId]) )
+  if( IsMtlEmissive(&spheresMaterials[hit.primId % 3]) )
   {
-    float4 emissiveColor = to_float4(GetMtlEmissiveColor(&spheresMaterials[hit.primId]), 0.0f);
+    float4 emissiveColor = to_float4(GetMtlEmissiveColor(&spheresMaterials[hit.primId % 3]), 0.0f);
     *accumColor = emissiveColor*(*accumThoroughput);
     return;
   }
 
-  const float3 sphPos    = to_float3(spheresPosRadius[hit.primId]);
-  const float3 diffColor = GetMtlDiffuseColor(&spheresMaterials[hit.primId]);
+
+  //const float3 sphPos    = to_float3(spheresPosRadius[hit.primId % 3]);
+  const float3 diffColor = GetMtlDiffuseColor(&spheresMaterials[hit.primId % 3]);
 
   const float3 hitPos  = rayPos + rayDir*hit.t;
-  const float3 hitNorm = normalize(hitPos - sphPos);
+  //const float3 hitNorm = normalize(hitPos - sphPos);
+  const float3 hitNorm = float3(m_mesh.vNorm4f[hit.primId].x, m_mesh.vNorm4f[hit.primId].y, m_mesh.vNorm4f[hit.primId].z);
 
   RandomGen gen = m_randomGens[tid];
   const float2 uv = rndFloat2_Pseudo(&gen);
@@ -311,7 +397,7 @@ void test_class_cpu()
       test.PackXY(x, y, packedXY.data());
   }
 
-  test.LoadScene("lucy.bvh");
+  test.LoadScene("lucy.bvh", "lucy.vsgf");
   // test simple ray casting
   //
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
