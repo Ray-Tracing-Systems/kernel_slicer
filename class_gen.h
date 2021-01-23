@@ -81,14 +81,13 @@ namespace kslicer
   {
   public:
     
-    KernelReplacerASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, 
-                             MainClassInfo*            a_pCodeInfo, 
-                             const kslicer::KernelInfo a_kernelInfo,
-                             const std::string&        a_fakeOffsetExpr) : 
-                             m_rewriter(R), m_compiler(a_compiler), m_pCodeInfo(a_pCodeInfo), m_mainClassName(a_pCodeInfo->mainClassName), 
-                             m_args(a_kernelInfo.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_needModifyExitCond(a_kernelInfo.isBoolTyped) 
+    KernelReplacerASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, const std::string& a_mainClassName, 
+                             const std::vector<kslicer::DataMemberInfo>& a_variables, 
+                             const std::vector<kslicer::KernelInfo::Arg>& a_args,
+                             const std::string& a_fakeOffsetExpr,
+                             const bool a_needToModifyReturn) : 
+                             m_rewriter(R), m_compiler(a_compiler), m_mainClassName(a_mainClassName), m_args(a_args), m_fakeOffsetExp(a_fakeOffsetExpr), m_needModifyExitCond(a_needToModifyReturn) 
     { 
-      const auto& a_variables = a_pCodeInfo->dataMembers;
       m_variables.reserve(a_variables.size());
       for(const auto& var : a_variables) 
         m_variables[var.name] = var;
@@ -103,11 +102,9 @@ namespace kslicer
 
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
 
+    Rewriter&   m_rewriter;
     const clang::CompilerInstance& m_compiler;
-    Rewriter&      m_rewriter;
-    MainClassInfo* m_pCodeInfo = nullptr;
-    std::string    m_mainClassName;
-
+    std::string m_mainClassName;
     std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
     const std::vector<kslicer::KernelInfo::Arg>&             m_args;
     const std::string&                                       m_fakeOffsetExp;

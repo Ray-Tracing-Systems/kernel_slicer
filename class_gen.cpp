@@ -763,13 +763,14 @@ bool kslicer::KernelReplacerASTVisitor::VisitMemberExpr(MemberExpr* expr)
   if(pMember == m_variables.end())
     return true;
 
-  // (2) put ubo->var or ubo.var or other instead of var, leave containers as they are
+  // (2) put ubo->var instead of var, leave containers as they are
   // process arrays and large data structures because small can be read once in the neggining of kernel
   //
   if(pMember->second.isArray || (!pMember->second.isContainer && pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD)) 
   {
-    std::string rewritten = m_pCodeInfo->pShaderCC->UBOAccess(pMember->second.name);
-    m_rewriter.ReplaceText(expr->getSourceRange(), rewritten);
+    std::stringstream strOut;
+    strOut << "ubo->" << pMember->second.name; // TODO: if circle
+    m_rewriter.ReplaceText(expr->getSourceRange(), strOut.str());
   }
   
   return true;
@@ -829,7 +830,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitReturnStmt(ReturnStmt* ret)
 bool kslicer::KernelReplacerASTVisitor::CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr)
 {
   bool needOffset = false;
-  for(const auto& arg: m_args)
+  for(const auto arg: m_args)
   {
     if(exprStr.find(arg.name) != std::string::npos)
     {
@@ -896,7 +897,7 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
-  kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, this, a_funcInfo, fakeOffsetExpr);
+  kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, this->mainClassName, this->dataMembers, a_funcInfo.args, fakeOffsetExpr, a_funcInfo.isBoolTyped);
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
   
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());

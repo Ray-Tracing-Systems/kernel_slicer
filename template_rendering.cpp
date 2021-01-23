@@ -450,7 +450,7 @@ nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const s
   return data;
 }
 
-json kslicer::PrepareJsonForKernels(const MainClassInfo& a_classInfo, 
+void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::string& a_outFolder, const MainClassInfo& a_classInfo, 
                                    const std::vector<kslicer::FuncData>& usedFunctions,
                                    const std::vector<kslicer::DeclInClass>& usedDecl,
                                    const clang::CompilerInstance& compiler,
@@ -462,7 +462,7 @@ json kslicer::PrepareJsonForKernels(const MainClassInfo& a_classInfo,
   for(const auto& member : a_classInfo.dataMembers)
     dataMembersCached[member.name] = member;
 
-
+  const std::string& a_outFileName = a_outFolder + "/" + "z_generated.cl";
   json data;
 
   data["MainClassName"] = a_classInfo.mainClassName;
@@ -640,5 +640,11 @@ json kslicer::PrepareJsonForKernels(const MainClassInfo& a_classInfo,
     data["Kernels"].push_back(kernelJson);
   }
 
-  return data;
+  inja::Environment env;
+  inja::Template temp = env.parse_template(a_inFileName.c_str());
+  std::string result  = env.render(temp, data);
+  
+  std::ofstream fout(a_outFileName);
+  fout << result.c_str() << std::endl;
+  fout.close();
 }

@@ -17,14 +17,15 @@ namespace kslicer
 
   nlohmann::json PrepareUBOJson(const MainClassInfo& a_classInfo, const std::vector<kslicer::DataMemberInfo>& a_dataMembers);
 
-  nlohmann::json PrepareJsonForKernels(const MainClassInfo& a_classInfo, 
-                                       const std::vector<kslicer::FuncData>& usedFunctions,
-                                       const std::vector<kslicer::DeclInClass>& usedDecl,
-                                       const clang::CompilerInstance& compiler,
-                                       const uint32_t    threadsOrder[3],
-                                       const std::string& uboIncludeName, const nlohmann::json& uboJson);
-
   void ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, const std::string& a_suffix, const nlohmann::json& a_data); 
+
+
+  void PrintGeneratedCLFile(const std::string& a_inFileName, const std::string& a_outFileName, const MainClassInfo& a_classInfo, 
+                            const std::vector<kslicer::FuncData>& usedFunctions,
+                            const std::vector<kslicer::DeclInClass>& usedDecl,
+                            const clang::CompilerInstance& compiler,
+                            const uint32_t    threadsOrder[3],
+                            const std::string& uboIncludeName, const nlohmann::json& uboJson);
 };
 
 #endif
