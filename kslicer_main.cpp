@@ -614,8 +614,10 @@ int main(int argc, const char **argv)
 
   // finally generate kernels
   //
-  kslicer::PrintGeneratedCLFile("templates/generated.cl", GetFolderPath(inputCodeInfo.mainClassFileName), 
-                                inputCodeInfo, usedByKernelsFunctions, usedDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
+  const std::string& outFileName = GetFolderPath(inputCodeInfo.mainClassFileName) + "/" + "z_generated.cl";
+
+  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, usedDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
+  kslicer::ApplyJsonToTemplate("templates/generated.cl", outFileName, json);
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
