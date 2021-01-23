@@ -768,9 +768,8 @@ bool kslicer::KernelReplacerASTVisitor::VisitMemberExpr(MemberExpr* expr)
   //
   if(pMember->second.isArray || (!pMember->second.isContainer && pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD)) 
   {
-    std::stringstream strOut;
-    strOut << "ubo->" << pMember->second.name; // TODO: if circle
-    m_rewriter.ReplaceText(expr->getSourceRange(), strOut.str());
+    std::string rewrittenName = m_codeInfo->pShaderCC->UBOAccess(pMember->second.name);
+    m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenName);
   }
   
   return true;
@@ -897,7 +896,7 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
-  kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, this->mainClassName, this->dataMembers, a_funcInfo.args, fakeOffsetExpr, a_funcInfo.isBoolTyped);
+  kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, this, a_funcInfo, fakeOffsetExpr);
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
   
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());

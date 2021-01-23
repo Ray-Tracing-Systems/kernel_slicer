@@ -281,6 +281,7 @@ int main(int argc, const char **argv)
   std::string outGenerated  = "data/generated.cl";
   std::string stdlibFolder  = "";
   std::string patternName   = "rtv";
+  std::string shaderCCName  = "clspv";
   uint32_t    threadsOrder[3] = {0,1,2};
   
   if(params.find("-mainClass") != params.end())
@@ -297,6 +298,9 @@ int main(int argc, const char **argv)
 
   if(params.find("-reorderLoops") != params.end())
     ReadThreadsOrderFromStr(params["-reorderLoops"], threadsOrder);
+
+  if(params.find("-shaderCC") != params.end())
+    shaderCCName = params["-shaderCC"];
 
   std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
   argsForClang.reserve(argc);
@@ -328,6 +332,10 @@ int main(int argc, const char **argv)
     exit(0);
   }
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
+  if(shaderCCName == "circle" || shaderCCName == "Circle")
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::CircleCompiler>();
+  else
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>();
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
