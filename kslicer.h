@@ -22,9 +22,9 @@ namespace kslicer
   {
     struct Arg 
     {
-      std::string type;
-      std::string name;
-      int         size;
+      std::string type    = "";
+      std::string name    = "";
+      int         size    = 1;
       bool needFakeOffset = false;
       bool isThreadID     = false; ///<! used by RTV-like patterns where loop is defined out of kernel
       bool isLoopSize     = false; ///<! used by IPV-like patterns where loop is defined inside kernel

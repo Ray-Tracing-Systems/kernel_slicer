@@ -331,7 +331,7 @@ int main(int argc, const char **argv)
     std::cout << "wrong pattern name '" << patternName.c_str() << "' " << std::endl; 
     exit(0);
   }
-  
+
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
   if(shaderCCName == "circle" || shaderCCName == "Circle")
     inputCodeInfo.pShaderCC = std::make_unique<kslicer::CircleCompiler>();
@@ -615,8 +615,10 @@ int main(int argc, const char **argv)
 
   // finally generate kernels
   //
-  kslicer::PrintGeneratedCLFile("templates/generated.cl", GetFolderPath(inputCodeInfo.mainClassFileName), 
-                                inputCodeInfo, usedByKernelsFunctions, usedDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
+  const std::string a_outFileName = GetFolderPath(inputCodeInfo.mainClassFileName) + "/" + "z_generated.cl";
+
+  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, usedDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
+  kslicer::ApplyJsonToTemplate("templates/generated.cl", a_outFileName, json);  
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;

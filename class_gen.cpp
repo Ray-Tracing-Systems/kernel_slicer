@@ -829,7 +829,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitReturnStmt(ReturnStmt* ret)
 bool kslicer::KernelReplacerASTVisitor::CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr)
 {
   bool needOffset = false;
-  for(const auto arg: m_args)
+  for(const auto& arg: m_args)
   {
     if(exprStr.find(arg.name) != std::string::npos)
     {
