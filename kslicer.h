@@ -212,18 +212,21 @@ namespace kslicer
     IShaderCompiler(){}
     virtual ~IShaderCompiler(){}
     virtual std::string UBOAccess(const std::string& a_name) const = 0;
+
+    virtual bool IsSingleSource() const = 0;
   };
 
   struct ClspvCompiler : IShaderCompiler
   {
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo->") + a_name; };
+    bool        IsSingleSource() const override { return true; }
   };
 
   struct CircleCompiler : IShaderCompiler
   {
-   std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
+    std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
+    bool        IsSingleSource() const override { return false; }
   };
-
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

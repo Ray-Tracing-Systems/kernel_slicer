@@ -7,6 +7,7 @@
 #include <fstream>
 
 #include <unordered_map>
+#include <iomanip>
 
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
@@ -617,10 +618,42 @@ int main(int argc, const char **argv)
   const std::string& outFileName = GetFolderPath(inputCodeInfo.mainClassFileName) + "/" + "z_generated.cl";
 
   auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, usedDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
-  kslicer::ApplyJsonToTemplate("templates/generated.cl", outFileName, json);
+  
+  if(inputCodeInfo.pShaderCC->IsSingleSource())
+    kslicer::ApplyJsonToTemplate("templates/generated.cl", outFileName, json);
+  else
+  {
+    nlohmann::json copy, kernels;
+    for (auto& el : json.items())
+    {
+      std::cout << el.key() << std::endl;
+      if(std::string(el.key()) == "Kernels")
+        kernels = json[el.key()];
+      else
+        copy[el.key()] = json[el.key()];
+    }
+
+    for(auto& kernel : kernels.items())
+    {
+      nlohmann::json currKerneJson = copy;
+      currKerneJson["Kernels"] = nlohmann::json::array();
+      currKerneJson["Kernels"].push_back(kernel);
+
+      //std::ofstream file(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_kernel1.json");
+      //file << std::setw(2) << currKerneJson;
+      //file.close();
+      //break;
+    }
+
+   
+  }
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
+  
+  //std::ofstream file(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_kernels.json");
+  //file << std::setw(2) << json;
+  //file.close();
 
   return 0;
 }
