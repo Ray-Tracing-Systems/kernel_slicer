@@ -18,6 +18,7 @@ void nBody::perform(BodyState *out_bodies) {
     kernel1D_UpdatePosition(BODIES_COUNT);
   }
   kernel1D_ReadData(out_bodies, BODIES_COUNT);
+  //memcpy(out_bodies, m_bodies.data(), m_bodies.size()*sizeof(BodyState));
 }
 
 void nBody::kernel1D_GenerateBodies(uint32_t bodies_count) {

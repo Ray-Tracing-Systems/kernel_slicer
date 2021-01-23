@@ -32,7 +32,10 @@ namespace kslicer
 
       bool IsUser() const { return !isThreadID && !isLoopSize && !needFakeOffset && !isPointer; }
     };
-
+    
+    /**
+    \brief for IPV pattern loops are defined inside kernels
+    */
     struct LoopIter 
     {
       std::string type;
@@ -48,9 +51,9 @@ namespace kslicer
     clang::SourceRange    loopInsides; ///<! used by IPV pattern to extract loops insides and make them kernel source
 
     const clang::CXXMethodDecl* astNode = nullptr;
-    bool usedInMainFunc = false;
-    bool isBoolTyped    = false; ///<! special case: if kernel return boolean, we analyze loop exit (break) or function exit (return) expression
-    bool usedInExitExpr = false;
+    bool usedInMainFunc   = false;
+    bool isBoolTyped      = false; ///<! special case: if kernel return boolean, we analyze loop exit (break) or function exit (return) expression
+    bool usedInExitExpr   = false;
     bool checkThreadFlags = false;
 
     std::string DeclCmd;
@@ -75,7 +78,8 @@ namespace kslicer
     bool isArray         = false; ///<! if is array, element type stored incontainerDataType;
     bool usedInKernel    = false; ///<! if any kernel use the member --> true; if no one uses --> false;
     bool usedInMainFn    = false; ///<! if std::vector is used in MainFunction like vector.data().
-    size_t      arraySize     = 0;
+    
+    size_t      arraySize = 0;
     std::string containerType;
     std::string containerDataType;
   };
@@ -205,6 +209,32 @@ namespace kslicer
 
   class UsedCodeFilter;
 
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  struct IShaderCompiler
+  {
+    IShaderCompiler(){}
+    virtual ~IShaderCompiler(){}
+    virtual std::string UBOAccess(const std::string& a_name) const = 0;
+  };
+
+  struct ClspvCompiler : IShaderCompiler
+  {
+    std::string UBOAccess(const std::string& a_name) const override { return "ubo->" + a_name; };
+  };
+
+  struct CircleCompiler : IShaderCompiler
+  {
+   std::string UBOAccess(const std::string& a_name) const override { return "ubo." + a_name; };
+  };
+
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   /**
   \brief collector of all information about input main class
   */
@@ -227,10 +257,11 @@ namespace kslicer
 
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
+    std::unique_ptr<IShaderCompiler>      pShaderCC = nullptr;
 
     typedef std::vector<clang::ast_matchers::StatementMatcher>               MList;
     typedef std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> MHandlerCFPtr;
-    typedef std::unique_ptr<kslicer::UsedCodeFilter>              MHandlerKFPtr;
+    typedef std::unique_ptr<kslicer::UsedCodeFilter>                         MHandlerKFPtr;
 
     virtual std::string RemoveKernelPrefix(const std::string& a_funcName) const;                       ///<! "kernel_XXX" --> "XXX"; 
     virtual bool        IsKernel(const std::string& a_funcName) const;                                 ///<! return true if function is a kernel
@@ -327,12 +358,12 @@ namespace kslicer
     bool NeedThreadFlags() const override { return false; }                   
   };
 
+  
 
   /**
   \brief select local variables of main class that can be placed in auxilary buffer
   */
   std::vector<DataMemberInfo> MakeClassDataListAndCalcOffsets(std::unordered_map<std::string, DataMemberInfo>& vars);
-
 
   void ReplaceOpenCLBuiltInTypes(std::string& a_typeName);
   std::vector<std::string> GetAllPredefinedThreadIdNamesRTV();
