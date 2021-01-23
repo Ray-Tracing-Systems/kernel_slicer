@@ -334,9 +334,9 @@ int main(int argc, const char **argv)
 
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
   if(shaderCCName == "circle" || shaderCCName == "Circle")
-    inputCodeInfo.pShaderCC = std::make_unique<kslicer::CircleCompiler>();
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::CircleCompiler>();
   else
-    inputCodeInfo.pShaderCC = std::make_unique<kslicer::ClspvCompiler>();
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>();
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

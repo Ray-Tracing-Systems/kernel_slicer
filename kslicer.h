@@ -257,7 +257,7 @@ namespace kslicer
 
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
-    std::unique_ptr<IShaderCompiler>      pShaderCC = nullptr;
+    std::shared_ptr<IShaderCompiler>      pShaderCC = nullptr;
 
     typedef std::vector<clang::ast_matchers::StatementMatcher>               MList;
     typedef std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> MHandlerCFPtr;
