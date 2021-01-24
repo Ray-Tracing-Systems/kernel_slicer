@@ -57,7 +57,7 @@ namespace kslicer
 
   private:
 
-    std::vector<ArgReferenceOnCall> ExtractArgumentsOfAKernelCall(CXXMemberCallExpr* f);
+    std::vector<ArgReferenceOnCall> ExtractArgumentsOfAKernelCall(CallExpr* f);
     std::string MakeKernelCallCmdString(CXXMemberCallExpr* f);
     std::string MakeServiceKernelCallCmdString(CallExpr* call);
 

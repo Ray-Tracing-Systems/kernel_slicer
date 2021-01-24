@@ -315,6 +315,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     for(size_t i=mainFunc.startDSNumber; i<mainFunc.endDSNumber; i++)
     {
       auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
+      const bool handMadeKernels = kernelIdByName.find(dsArgs.originKernelName) == kernelIdByName.end();
       const auto kernId  = kernelIdByName[dsArgs.originKernelName];
       const auto& kernel = a_classInfo.kernels[kernId];
 
@@ -328,7 +329,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
-        if(kernel.args[j].isThreadID || kernel.args[j].isLoopSize || kernel.args[j].IsUser())
+        if(!handMadeKernels && (kernel.args[j].isThreadID || kernel.args[j].isLoopSize || kernel.args[j].IsUser()))
           continue;
 
         const std::string dsArgName = GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j].varName);
