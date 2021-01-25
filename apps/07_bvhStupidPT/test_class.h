@@ -98,7 +98,7 @@ public:
   void kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar);        // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 
   bool kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
-                       Lite_Hit* out_hit, uint* indicesReordered, float4* meshVerts);
+                       Lite_Hit* out_hit, const uint* indicesReordered, const float4* meshVerts);
   
   void kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit, 
                                uint* out_color);

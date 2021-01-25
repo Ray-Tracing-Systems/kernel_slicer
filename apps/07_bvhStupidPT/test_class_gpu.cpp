@@ -51,6 +51,7 @@ void test_class_gpu()
   std::vector<const char*> validationLayers, deviceExtensions;
   VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
   vk_utils::queueFamilyIndices fIDs = {};
+//  enabledDeviceFeatures.shaderInt64 = VK_TRUE;
 
   deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
   deviceExtensions.push_back("VK_KHR_shader_float16_int8"); 

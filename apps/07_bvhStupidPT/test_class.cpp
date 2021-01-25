@@ -143,7 +143,7 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
 }
 
-bool RayBoxIntersection(float3 ray_pos, float3 ray_dir, float3 boxMin, float3 boxMax, float tmin, float tmax)
+static bool RayBoxIntersection(float3 ray_pos, float3 ray_dir, float3 boxMin, float3 boxMax, float tmin, float tmax)
 {
   ray_dir.x = 1.0f/ray_dir.x;
   ray_dir.y = 1.0f/ray_dir.y;
@@ -170,8 +170,8 @@ bool RayBoxIntersection(float3 ray_pos, float3 ray_dir, float3 boxMin, float3 bo
   return (tmin <= tmax) && (tmax > 0.f);
 }
 
-Lite_Hit IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float4 rayDirAndFar,
-                             const uint* a_indices, uint a_start, uint a_count, const float4* a_vert)
+static Lite_Hit IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float4 rayDirAndFar,
+                                      __global const uint* a_indices, uint a_start, uint a_count, __global const float4* a_vert)
 {
   const float tNear    = rayPosAndNear[3];
 
@@ -183,8 +183,7 @@ Lite_Hit IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float4 r
   result.primId = -1;
 
   const uint triAddressEnd = a_start + a_count;
-
-  for (uint triAddress = a_start; triAddress < triAddressEnd; triAddress += 3)
+  for (uint triAddress = a_start; triAddress < triAddressEnd; triAddress = triAddress + 3u)
   {
     const uint A = a_indices[triAddress + 0];
     const uint B = a_indices[triAddress + 1];
@@ -217,7 +216,7 @@ Lite_Hit IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float4 r
 }
 
 bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
-                                Lite_Hit* out_hit, uint* indicesReordered, float4* meshVerts)
+                                Lite_Hit* out_hit, const uint* indicesReordered, const float4* meshVerts)
 {
   const float3 rayPos = to_float3(*rayPosAndNear);
   const float3 rayDir = to_float3(*rayDirAndFar );
@@ -228,7 +227,7 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   res.geomId = -1;
   res.t      = MAXFLOAT;
   float min_t = 1e38f;
-  uint32_t nodeIdx = 0;
+  uint nodeIdx = 0;
   struct BVHNode currNode = m_nodes[nodeIdx];
   while(true)
   {
@@ -256,9 +255,9 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
         struct Interval startCount = m_intervals[nodeIdx];
         float4 rp = *rayPosAndNear;
         float4 rd = *rayDirAndFar;
-        const Lite_Hit localHit   = IntersectAllPrimitivesInLeaf(rp, rd, indicesReordered,
-                                                             startCount.start*3, startCount.count*3,
-                                                                 meshVerts);
+        const Lite_Hit localHit =  IntersectAllPrimitivesInLeaf(rp, rd, indicesReordered,
+                                                                startCount.start*3, startCount.count*3,
+                                                                meshVerts);
         if (localHit.t < min_t)
         {
           min_t = localHit.t;
