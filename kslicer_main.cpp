@@ -7,6 +7,7 @@
 #include <fstream>
 
 #include <unordered_map>
+#include <iomanip>
 
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
@@ -281,6 +282,7 @@ int main(int argc, const char **argv)
   std::string outGenerated  = "data/generated.cl";
   std::string stdlibFolder  = "";
   std::string patternName   = "rtv";
+  std::string shaderCCName  = "clspv";
   uint32_t    threadsOrder[3] = {0,1,2};
   
   if(params.find("-mainClass") != params.end())
@@ -297,6 +299,9 @@ int main(int argc, const char **argv)
 
   if(params.find("-reorderLoops") != params.end())
     ReadThreadsOrderFromStr(params["-reorderLoops"], threadsOrder);
+
+  if(params.find("-shaderCC") != params.end())
+    shaderCCName = params["-shaderCC"];
 
   std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
   argsForClang.reserve(argc);
@@ -328,6 +333,10 @@ int main(int argc, const char **argv)
     exit(0);
   }
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
+  if(shaderCCName == "circle" || shaderCCName == "Circle")
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::CircleCompiler>();
+  else
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>();
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -606,11 +615,45 @@ int main(int argc, const char **argv)
 
   // finally generate kernels
   //
-  kslicer::PrintGeneratedCLFile("templates/generated.cl", GetFolderPath(inputCodeInfo.mainClassFileName), 
-                                inputCodeInfo, usedByKernelsFunctions, usedDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
+  const std::string& outFileName = GetFolderPath(inputCodeInfo.mainClassFileName) + "/" + "z_generated.cl";
+
+  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, usedDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
+  
+  if(inputCodeInfo.pShaderCC->IsSingleSource())
+    kslicer::ApplyJsonToTemplate("templates/generated.cl", outFileName, json);
+  else
+  {
+    nlohmann::json copy, kernels;
+    for (auto& el : json.items())
+    {
+      std::cout << el.key() << std::endl;
+      if(std::string(el.key()) == "Kernels")
+        kernels = json[el.key()];
+      else
+        copy[el.key()] = json[el.key()];
+    }
+
+    for(auto& kernel : kernels.items())
+    {
+      nlohmann::json currKerneJson = copy;
+      currKerneJson["Kernels"] = nlohmann::json::array();
+      currKerneJson["Kernels"].push_back(kernel);
+
+      //std::ofstream file(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_kernel1.json");
+      //file << std::setw(2) << currKerneJson;
+      //file.close();
+      //break;
+    }
+
+   
+  }
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
+  
+  //std::ofstream file(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_kernels.json");
+  //file << std::setw(2) << json;
+  //file.close();
 
   return 0;
 }

@@ -57,7 +57,7 @@ namespace kslicer
 
   private:
 
-    std::vector<ArgReferenceOnCall> ExtractArgumentsOfAKernelCall(CXXMemberCallExpr* f);
+    std::vector<ArgReferenceOnCall> ExtractArgumentsOfAKernelCall(CallExpr* f);
     std::string MakeKernelCallCmdString(CXXMemberCallExpr* f);
     std::string MakeServiceKernelCallCmdString(CallExpr* call);
 
@@ -81,13 +81,12 @@ namespace kslicer
   {
   public:
     
-    KernelReplacerASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, const std::string& a_mainClassName, 
-                             const std::vector<kslicer::DataMemberInfo>& a_variables, 
-                             const std::vector<kslicer::KernelInfo::Arg>& a_args,
-                             const std::string& a_fakeOffsetExpr,
-                             const bool a_needToModifyReturn) : 
-                             m_rewriter(R), m_compiler(a_compiler), m_mainClassName(a_mainClassName), m_args(a_args), m_fakeOffsetExp(a_fakeOffsetExpr), m_needModifyExitCond(a_needToModifyReturn) 
+    KernelReplacerASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
+                             const kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr) : 
+                             m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_mainClassName(a_codeInfo->mainClassName), 
+                             m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_needModifyExitCond(a_kernel.isBoolTyped) 
     { 
+      const auto& a_variables = a_codeInfo->dataMembers;
       m_variables.reserve(a_variables.size());
       for(const auto& var : a_variables) 
         m_variables[var.name] = var;
@@ -104,6 +103,7 @@ namespace kslicer
 
     Rewriter&   m_rewriter;
     const clang::CompilerInstance& m_compiler;
+    MainClassInfo* m_codeInfo;
     std::string m_mainClassName;
     std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
     const std::vector<kslicer::KernelInfo::Arg>&             m_args;

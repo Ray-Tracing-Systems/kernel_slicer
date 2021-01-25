@@ -315,6 +315,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     for(size_t i=mainFunc.startDSNumber; i<mainFunc.endDSNumber; i++)
     {
       auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
+      const bool handMadeKernels = kernelIdByName.find(dsArgs.originKernelName) == kernelIdByName.end();
       const auto kernId  = kernelIdByName[dsArgs.originKernelName];
       const auto& kernel = a_classInfo.kernels[kernId];
 
@@ -328,7 +329,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
-        if(kernel.args[j].isThreadID || kernel.args[j].isLoopSize || kernel.args[j].IsUser())
+        if(!handMadeKernels && (kernel.args[j].isThreadID || kernel.args[j].isLoopSize || kernel.args[j].IsUser()))
           continue;
 
         const std::string dsArgName = GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j].varName);
@@ -450,7 +451,7 @@ nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const s
   return data;
 }
 
-void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::string& a_outFolder, const MainClassInfo& a_classInfo, 
+json kslicer::PrepareJsonForKernels(const MainClassInfo& a_classInfo, 
                                    const std::vector<kslicer::FuncData>& usedFunctions,
                                    const std::vector<kslicer::DeclInClass>& usedDecl,
                                    const clang::CompilerInstance& compiler,
@@ -462,9 +463,7 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
   for(const auto& member : a_classInfo.dataMembers)
     dataMembersCached[member.name] = member;
 
-  const std::string& a_outFileName = a_outFolder + "/" + "z_generated.cl";
   json data;
-
   data["MainClassName"] = a_classInfo.mainClassName;
 
   // (1) put includes
@@ -640,11 +639,5 @@ void kslicer::PrintGeneratedCLFile(const std::string& a_inFileName, const std::s
     data["Kernels"].push_back(kernelJson);
   }
 
-  inja::Environment env;
-  inja::Template temp = env.parse_template(a_inFileName.c_str());
-  std::string result  = env.render(temp, data);
-  
-  std::ofstream fout(a_outFileName);
-  fout << result.c_str() << std::endl;
-  fout.close();
+  return data;
 }

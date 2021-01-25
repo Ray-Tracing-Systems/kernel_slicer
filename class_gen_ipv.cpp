@@ -193,7 +193,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
-  kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, this->mainClassName, this->dataMembers, a_funcInfo.args, "", a_funcInfo.isBoolTyped);
+  kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, this, a_funcInfo, "");
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
   
   return rewrite2.getRewrittenText(a_funcInfo.loopInsides);

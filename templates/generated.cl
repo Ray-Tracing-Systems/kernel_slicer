@@ -61,3 +61,14 @@ __kernel void {{Kernel.Name}}(
 }
 
 ## endfor
+
+__kernel void copyKernelFloat(
+  __global float* restrict out_data,
+  __global float* restrict in_data,
+  const uint length)
+{
+  const uint i = get_global_id(0);
+  if(i >= length)
+    return;
+  out_data[i] = in_data[i];
+}

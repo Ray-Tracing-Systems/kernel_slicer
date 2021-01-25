@@ -98,20 +98,22 @@ std::string kslicer::MainFuncASTVisitor::MakeKernelCallCmdString(CXXMemberCallEx
 
 std::string kslicer::MainFuncASTVisitor::MakeServiceKernelCallCmdString(CallExpr* call)
 {
-  std::string kernName = "MyMemcpy"; // extract from 'call' exact name of service function;
+  std::string kernName = "copyKernelFloat"; // extract from 'call' exact name of service function;
                                      // replace it with actual name we are going to used in generated HOST(!!!) code. 
                                      // for example it can be 'MyMemcpy' for 'memcpy' if in host code we have (MyMemcpyLayout, MyMemcpyPipeline, MyMemcpyDSLayout)
                                      // please note that you should init MyMemcpyLayout, MyMemcpyPipeline, MyMemcpyDSLayout yourself in the generated code!                                      
   
+  auto memCpyArgs = ExtractArgumentsOfAKernelCall(call);
+
   std::vector<ArgReferenceOnCall> args(2); // TODO: extract corretc arguments from memcpy (CallExpr* call)
   {
-    args[0].argType = kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG;
-    args[0].varName = "out_bodies";
+    args[0].argType = memCpyArgs[0].argType;
+    args[0].varName = memCpyArgs[0].varName;
 
-    args[1].argType = kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR;
-    args[1].varName = "m_bodies.data()";
+    args[1].argType = memCpyArgs[1].argType;
+    args[1].varName = memCpyArgs[1].varName;
   }
-  
+
   const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, std::unordered_set<std::string>()); // + strOut1.str();
   auto p2 = dsIdBySignature.find(callSign);
   if(p2 == dsIdBySignature.end())
@@ -127,11 +129,10 @@ std::string kslicer::MainFuncASTVisitor::MakeServiceKernelCallCmdString(CallExpr
   }
   m_dsTagId++;
 
-
   std::stringstream strOut;
   strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
   strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
-  strOut << "  " << kernName.c_str() << "Cmd();";
+  strOut << "  " << kernName.c_str() << "Cmd(" << memCpyArgs[2].varName << " / sizeof(float))";
 
   return strOut.str();
 }
@@ -176,8 +177,8 @@ bool kslicer::MainFuncASTVisitor::VisitCallExpr(CallExpr* call)
   
   if(fname == "memcpy")
   {
-    std::string testStr = MakeServiceKernelCallCmdString(call); //to Alex: go to function 'MakeServiceKernelCallCmdString' and fihish it;
-    m_rewriter.ReplaceText(call->getSourceRange(), "//here Alex should replace memcpy to vkCmdCopyBuffer or custome kernel call");
+    std::string testStr = MakeServiceKernelCallCmdString(call);
+    m_rewriter.ReplaceText(call->getSourceRange(), testStr);
   }
 
   return true;
@@ -212,7 +213,7 @@ bool kslicer::MainFuncASTVisitor::VisitIfStmt(IfStmt* ifExpr)
   return true;
 }
 
-std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArgumentsOfAKernelCall(CXXMemberCallExpr* f)
+std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArgumentsOfAKernelCall(CallExpr* f)
 {
   std::vector<kslicer::ArgReferenceOnCall> args; 
   args.reserve(20);
@@ -768,9 +769,8 @@ bool kslicer::KernelReplacerASTVisitor::VisitMemberExpr(MemberExpr* expr)
   //
   if(pMember->second.isArray || (!pMember->second.isContainer && pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD)) 
   {
-    std::stringstream strOut;
-    strOut << "ubo->" << pMember->second.name; // TODO: if circle
-    m_rewriter.ReplaceText(expr->getSourceRange(), strOut.str());
+    std::string rewrittenName = m_codeInfo->pShaderCC->UBOAccess(pMember->second.name);
+    m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenName);
   }
   
   return true;
@@ -897,7 +897,7 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
-  kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, this->mainClassName, this->dataMembers, a_funcInfo.args, fakeOffsetExpr, a_funcInfo.isBoolTyped);
+  kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, this, a_funcInfo, fakeOffsetExpr);
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
   
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());

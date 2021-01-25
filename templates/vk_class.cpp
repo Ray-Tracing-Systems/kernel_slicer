@@ -8,6 +8,8 @@
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
 
+constexpr static uint32_t MEMCPY_BLOCK_SIZE = 256;
+
 {{MainClassName}}_Generated::~{{MainClassName}}_Generated()
 {
   m_pMaker = nullptr;
@@ -16,6 +18,7 @@
   vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
 ## endfor
+  vkDestroyDescriptorSetLayout(device, copyKernelFloatDSLayout, nullptr);
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
 
 ## for MainFunc in MainFunctions
@@ -76,6 +79,39 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout
 
 ## endfor
 
+VkDescriptorSetLayout {{MainClassName}}_Generated::CreatecopyKernelFloatDSLayout()
+{
+  VkDescriptorSetLayoutBinding dsBindings[3] = {};
+
+  dsBindings[0].binding            = 0;
+  dsBindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[0].descriptorCount    = 1;
+  dsBindings[0].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[0].pImmutableSamplers = nullptr;
+
+  dsBindings[1].binding            = 1;
+  dsBindings[1].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[1].descriptorCount    = 1;
+  dsBindings[1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[1].pImmutableSamplers = nullptr;
+
+  // binding for POD members stored in m_classDataBuffer
+  dsBindings[2].binding            = 2;
+  dsBindings[2].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[2].descriptorCount    = 1;
+  dsBindings[2].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[2].pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
+  descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  descriptorSetLayoutCreateInfo.bindingCount = 3;
+  descriptorSetLayoutCreateInfo.pBindings    = dsBindings;
+
+  VkDescriptorSetLayout layout = nullptr;
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
+  return layout;
+}
+
 void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ,
                                               KernelConfig* a_kernelConfigs, size_t a_configSize)
 {
@@ -127,6 +163,14 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
   }
 
 ## endfor
+
+  uint32_t specializationDataMemcpy[3] = {MEMCPY_BLOCK_SIZE, 1, 1};
+  specsForWGSize.pData = specializationDataMemcpy;
+  m_pMaker->CreateShader(device, a_filePath, &specsForWGSize, "copyKernelFloat");
+
+  copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
+  copyKernelFloatLayout   = m_pMaker->MakeLayout(device, copyKernelFloatDSLayout, sizeof(uint32_t)); // for this kernel we only need 4 bytes 
+  copyKernelFloatPipeline = m_pMaker->MakePipeline(device);
 }
 
 
@@ -216,13 +260,30 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   {% for Arg in Kernel.AuxArgs %}pcData.m_{{Arg.Name}} = {{Arg.Name}}; 
   {% endfor %}
   vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
-  vkCmdDispatch(m_currCmdBuffer, {{Kernel.tidX}}/blockSizeX, {{Kernel.tidY}}/blockSizeY, {{Kernel.tidZ}}/blockSizeZ);
+  vkCmdDispatch(
+    m_currCmdBuffer,
+    ({{Kernel.tidX}} + blockSizeX - 1) / blockSizeX,
+    ({{Kernel.tidY}} + blockSizeY - 1) / blockSizeY,
+    ({{Kernel.tidZ}} + blockSizeZ - 1) / blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
 }
 
 ## endfor
+
+void {{MainClassName}}_Generated::copyKernelFloatCmd(uint32_t length)
+{
+  uint32_t blockSizeX = MEMCPY_BLOCK_SIZE;
+
+  vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, copyKernelFloatPipeline);
+
+  vkCmdPushConstants(m_currCmdBuffer, copyKernelFloatLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &length);
+  vkCmdDispatch(m_currCmdBuffer, (length + blockSizeX - 1) / blockSizeX, 1, 1);
+
+  VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
+  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+}
 
 ## for MainFunc in MainFunctions
 {{MainFunc.MainFuncCmd}}

@@ -203,6 +203,36 @@ namespace kslicer
     bool               extracted = false;
   };
 
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  struct IShaderCompiler
+  {
+    IShaderCompiler(){}
+    virtual ~IShaderCompiler(){}
+    virtual std::string UBOAccess(const std::string& a_name) const = 0;
+
+    virtual bool IsSingleSource() const = 0;
+  };
+
+  struct ClspvCompiler : IShaderCompiler
+  {
+    std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo->") + a_name; };
+    bool        IsSingleSource() const override { return true; }
+  };
+
+  struct CircleCompiler : IShaderCompiler
+  {
+    std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
+    bool        IsSingleSource() const override { return false; }
+  };
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
   class UsedCodeFilter;
 
   /**
@@ -228,9 +258,11 @@ namespace kslicer
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
 
+    std::shared_ptr<IShaderCompiler>      pShaderCC = nullptr;
+
     typedef std::vector<clang::ast_matchers::StatementMatcher>               MList;
     typedef std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> MHandlerCFPtr;
-    typedef std::unique_ptr<kslicer::UsedCodeFilter>              MHandlerKFPtr;
+    typedef std::unique_ptr<kslicer::UsedCodeFilter>                         MHandlerKFPtr;
 
     virtual std::string RemoveKernelPrefix(const std::string& a_funcName) const;                       ///<! "kernel_XXX" --> "XXX"; 
     virtual bool        IsKernel(const std::string& a_funcName) const;                                 ///<! return true if function is a kernel

@@ -15,7 +15,7 @@ kernel_slicer is auto-programming tool which takes C++ code as input and port th
 
 * Patterns are specific cases of algorithms/software which has known efficient implemantation for GPUs. Because we have additional knowllege about algorithm during translation, we can embede specific optimisation to our translator and leave program logic code clean of these optimisations; 
 
-* Currently we support only one pattern for Ray Tracing. Our next pattern will be for Image Processing; 
+* Currently we support 2 patterns: Image Processing Vectorization (IPV) and Ray Tracing Vectorization (RTV). We recommend you to start with IPV because it is simple and straitforward pattern for extraction parallel for; The RTV pattern is differs and assume that in normal CPU code parallel for loops are placed out of kernels and control functions;
 
 * Our tool is not classic compiler. It generate kernels source code for [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") and C++ code for Vulkan calls to run kernels correcly. 
 
@@ -159,6 +159,8 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
 (-) can't **yet** use vector.push_back() inside kernels (**not implemented**);
 
 (-) can't **yet** use nested vector types. I.e. if std::vector is inside some structure which is stored in std::vector in main class (**not implemented**);
+
+(+) can use memcpy in control functions for IPV pattern;
 
 So, here some examples about class-members access:
 

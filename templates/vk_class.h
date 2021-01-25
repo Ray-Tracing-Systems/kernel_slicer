@@ -72,6 +72,8 @@ public:
 ## for MainFunc in MainFunctions  
   {{MainFunc.Decl}}
 ## endfor
+
+  virtual void copyKernelFloatCmd(uint32_t length);
   
   {{KernelsDecl}}
 
@@ -138,6 +140,11 @@ protected:
   VkDescriptorSetLayout Create{{KernelName}}DSLayout();
 
 ## endfor
+
+  VkPipelineLayout      copyKernelFloatLayout   = VK_NULL_HANDLE;
+  VkPipeline            copyKernelFloatPipeline = VK_NULL_HANDLE;
+  VkDescriptorSetLayout copyKernelFloatDSLayout = VK_NULL_HANDLE;
+  VkDescriptorSetLayout CreatecopyKernelFloatDSLayout();
 
   VkDescriptorPool m_dsPool = VK_NULL_HANDLE;
   VkDescriptorSet m_allGeneratedDS[{{TotalDSNumber}}];
