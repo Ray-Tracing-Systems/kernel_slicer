@@ -103,10 +103,14 @@ namespace kslicer
 
       if(func_decl && kern_call && kern) // found kernel call in MainFunc
       {
-        auto pKernel = m_allInfo.allKernels.find(kern->getNameAsString());  
-        if(pKernel != m_allInfo.allKernels.end()) 
-          pKernel->second.usedInMainFunc = true;                    // mark this kernel is used
-        CurrMainFunc().UsedKernels.insert(kern->getNameAsString()); // add  this kernel to list of used kernels by MainFunc 
+        std::string kName = kern->getNameAsString();
+        if(m_allInfo.IsKernel(kName))
+        {
+          auto pKernel = m_allInfo.allKernels.find(kName);  
+          if(pKernel != m_allInfo.allKernels.end()) 
+            pKernel->second.usedInMainFunc = true;  // mark this kernel is used
+          CurrMainFunc().UsedKernels.insert(kName); // add  this kernel to list of used kernels by MainFunc 
+        }
       }
       else if(func_decl && l_var && var) // found local variable in MainFunc
       {
@@ -206,12 +210,12 @@ namespace kslicer
       return;
     }  // run
     
-    std::ostream& m_out;
-    MainClassInfo& m_allInfo;
+    std::ostream&             m_out;
+    MainClassInfo&            m_allInfo;
     const clang::ASTContext&  m_astContext;
 
-    std::vector<std::string> m_namesToIngore;
-    kslicer::MainFuncInfo& m_mainFuncRef;
+    std::vector<std::string>  m_namesToIngore;
+    kslicer::MainFuncInfo&    m_mainFuncRef;
 
   };  // class MainFuncAnalyzer
 
