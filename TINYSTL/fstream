@@ -5,7 +5,7 @@ namespace std
 
   namespace ios
   {
-    enum modes { binary = 0 };
+    enum modes { binary = 0, in = 1L << 3 };
   };
 
   struct ofstream
@@ -16,6 +16,18 @@ namespace std
     size_t read(char* data, size_t a_size);
     bool is_open();
     void flush();
+  };
+  
+  struct fstream
+  { 
+    fstream();
+    fstream(const char*, int a_mode = 0);
+    void write(const char*, size_t a_size);
+    size_t read(char* data, size_t a_size);
+    bool is_open();
+    void flush();
+    void open(const char*, int a_mode = 0);
+    void close();
   };
 
 

@@ -39,37 +39,52 @@ void TestClass::InitSpheresScene(int a_numSpheres, int a_seed)
   spheresMaterials[7].color = float4(eps,col,eps,0);
 }
 
-
-int TestClass::LoadScene(const std::string& bvhPath, const std::string& meshPath)
+int TestClass::LoadScene(const char* bvhPath, const char* meshPath)
 {
   std::fstream input_file;
   input_file.open(bvhPath, std::ios::binary | std::ios::in);
-  if (!input_file) {
-    std::cerr << "BVH file error <" << bvhPath << ">\n";
+  if (!input_file.is_open())
+  {
+    std::cout << "BVH file error <" << bvhPath << ">\n";
     return 1;
   }
-
+  struct BVHDataHeader
+  {
+    uint64_t node_length;
+    uint64_t indices_length;
+    uint64_t depth_length;
+    uint64_t geom_id;
+  };
   BVHDataHeader header;
   input_file.read((char *) &header, sizeof(BVHDataHeader));
 
-  m_bvhTree.geomID = header.geom_id;
-  m_bvhTree.nodes.resize(header.node_length);
-  m_bvhTree.intervals.resize(header.node_length);
-  m_bvhTree.indicesReordered.resize(header.indices_length);
-  m_bvhTree.depthRanges.resize(header.depth_length);
+//  m_bvhTree.geomID = header.geom_id;
+  m_nodes.resize(header.node_length);
+  m_intervals.resize(header.node_length);
+  m_indicesReordered.resize(header.indices_length);
+//  m_depthRanges.resize(header.depth_length);
 
-  input_file.read((char *) m_bvhTree.nodes.data(), sizeof(BVHNode) * header.node_length);
-  input_file.read((char *) m_bvhTree.intervals.data(), sizeof(Interval) * header.node_length);
-  input_file.read((char *) m_bvhTree.indicesReordered.data(), sizeof(uint) * header.indices_length);
-  input_file.read((char *) m_bvhTree.depthRanges.data(), sizeof(Interval) * header.depth_length);
+  input_file.read((char *) m_nodes.data(), sizeof(BVHNode) * header.node_length);
+  input_file.read((char *) m_intervals.data(), sizeof(Interval) * header.node_length);
+  input_file.read((char *) m_indicesReordered.data(), sizeof(uint) * header.indices_length);
+//  input_file.read((char *) m_bvhTree.depthRanges.data(), sizeof(Interval) * header.depth_length);
 
   std::fstream input_file_mesh;
   input_file_mesh.open(meshPath, std::ios::binary | std::ios::in);
-  if (!input_file_mesh) {
-    std::cerr << "Mesh file error <" << meshPath << ">\n";
+  if (!input_file_mesh.is_open())
+  {
+    std::cout << "Mesh file error <" << meshPath << ">\n";
     return 1;
   }
-  
+
+  struct VSGFHeader
+  {
+    uint64_t fileSizeInBytes;
+    uint32_t verticesNum;
+    uint32_t indicesNum;
+    uint32_t materialsNum;
+    uint32_t flags;
+  };
   VSGFHeader meshHeader;
 
   input_file_mesh.read((char*)&meshHeader, sizeof(VSGFHeader));
@@ -91,6 +106,12 @@ int TestClass::LoadScene(const std::string& bvhPath, const std::string& meshPath
   input_file_mesh.read((char*)m_mesh.indices.data(),    m_mesh.indices.size()*sizeof(unsigned int));
   input_file_mesh.read((char*)m_mesh.matIndices.data(), m_mesh.matIndices.size()*sizeof(unsigned int));
   input_file_mesh.close();
+
+  m_vPos4f.resize(m_mesh.vPos4f.size());
+  m_vPos4f = m_mesh.vPos4f;
+
+  m_vNorm4f.resize(m_mesh.vNorm4f.size());
+  m_vNorm4f = m_mesh.vNorm4f;
 
   return 0;
 
@@ -116,13 +137,13 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   const uint y = (XY & 0xFFFF0000) >> 16;
 
   const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
-  const float3 rayPos = make_float3(0.0f, 2.5f, 5.0f);
+  const float3 rayPos = camPos;
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
   *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
 }
 
-bool RayBoxIntersection(float3 ray_pos, float3 ray_dir, float3 boxMin, float3 boxMax, float &tmin, float &tmax)
+bool RayBoxIntersection(float3 ray_pos, float3 ray_dir, float3 boxMin, float3 boxMax, float tmin, float tmax)
 {
   ray_dir.x = 1.0f/ray_dir.x;
   ray_dir.y = 1.0f/ray_dir.y;
@@ -131,20 +152,20 @@ bool RayBoxIntersection(float3 ray_pos, float3 ray_dir, float3 boxMin, float3 bo
   float lo = ray_dir.x*(boxMin.x - ray_pos.x);
   float hi = ray_dir.x*(boxMax.x - ray_pos.x);
 
-  tmin = fminf(lo, hi);
-  tmax = fmaxf(lo, hi);
+  tmin = fmin(lo, hi);
+  tmax = fmax(lo, hi);
 
   float lo1 = ray_dir.y*(boxMin.y - ray_pos.y);
   float hi1 = ray_dir.y*(boxMax.y - ray_pos.y);
 
-  tmin = fmaxf(tmin, fminf(lo1, hi1));
-  tmax = fminf(tmax, fmaxf(lo1, hi1));
+  tmin = fmax(tmin, fmin(lo1, hi1));
+  tmax = fmin(tmax, fmax(lo1, hi1));
 
   float lo2 = ray_dir.z*(boxMin.z - ray_pos.z);
   float hi2 = ray_dir.z*(boxMax.z - ray_pos.z);
 
-  tmin = fmaxf(tmin, fminf(lo2, hi2));
-  tmax = fminf(tmax, fmaxf(lo2, hi2));
+  tmin = fmax(tmin, fmin(lo2, hi2));
+  tmax = fmin(tmax, fmax(lo2, hi2));
 
   return (tmin <= tmax) && (tmax > 0.f);
 }
@@ -154,8 +175,8 @@ Lite_Hit IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float4 r
 {
   const float tNear    = rayPosAndNear[3];
 
-  const float4& ray_pos = rayPosAndNear;
-  const float4& ray_dir = rayDirAndFar;
+  const float4 ray_pos = rayPosAndNear;
+  const float4 ray_dir = rayDirAndFar;
 
   Lite_Hit result;
   result.t      = rayDirAndFar[3];
@@ -178,11 +199,12 @@ Lite_Hit IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float4 r
     const float4 pvec  = cross(ray_dir, edge2);
     const float4 tvec  = ray_pos - A_pos;
     const float4 qvec  = cross(tvec, edge1);
-    const float invDet = 1.0f / std::max(dot3(edge1, pvec), 1e-6f);
+    const float dotTmp = dot(to_float3(edge1), to_float3(pvec));
+    const float invDet = 1.0f / (dotTmp > 1e-6f ? dotTmp : 1e-6f);
 
-    const float v = dot3(tvec, pvec)*invDet;
-    const float u = dot3(qvec, ray_dir)*invDet;
-    const float t = dot3(edge2, qvec)*invDet;
+    const float v = dot(to_float3(tvec), to_float3(pvec))*invDet;
+    const float u = dot(to_float3(qvec), to_float3(ray_dir))*invDet;
+    const float t = dot(to_float3(edge2), to_float3(qvec))*invDet;
 
     if (v > -1e-6f && u > -1e-6f && (u + v < 1.0f + 1e-6f) && t > tNear && t < result.t)
     {
@@ -195,7 +217,7 @@ Lite_Hit IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float4 r
 }
 
 bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
-                                Lite_Hit* out_hit)
+                                Lite_Hit* out_hit, uint* indicesReordered, float4* meshVerts)
 {
   const float3 rayPos = to_float3(*rayPosAndNear);
   const float3 rayDir = to_float3(*rayDirAndFar );
@@ -207,7 +229,7 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   res.t      = MAXFLOAT;
   float min_t = 1e38f;
   uint32_t nodeIdx = 0;
-  auto currNode = m_bvhTree.nodes[nodeIdx];
+  struct BVHNode currNode = m_nodes[nodeIdx];
   while(true)
   {
     float tmin = 1e38f;
@@ -231,12 +253,12 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
       if(intersects)
       {
         //instersect all primitives
-        const auto startCount = m_bvhTree.intervals[nodeIdx];
+        struct Interval startCount = m_intervals[nodeIdx];
         float4 rp = *rayPosAndNear;
         float4 rd = *rayDirAndFar;
-        const auto localHit   = IntersectAllPrimitivesInLeaf(rp, rd, m_bvhTree.indicesReordered.data(),
+        const Lite_Hit localHit   = IntersectAllPrimitivesInLeaf(rp, rd, indicesReordered,
                                                              startCount.start*3, startCount.count*3,
-                                                             m_mesh.vPos4f.data());
+                                                                 meshVerts);
         if (localHit.t < min_t)
         {
           min_t = localHit.t;
@@ -248,7 +270,7 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
         break;
       nodeIdx = currNode.escapeIndex;
     }
-    currNode = m_bvhTree.nodes[nodeIdx];
+    currNode = m_nodes[nodeIdx];
   }
   
   *out_hit = res;
@@ -296,13 +318,12 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit,
     return;
   }
 
-
   //const float3 sphPos    = to_float3(spheresPosRadius[hit.primId % 3]);
   const float3 diffColor = GetMtlDiffuseColor(&spheresMaterials[hit.primId % 3]);
 
   const float3 hitPos  = rayPos + rayDir*hit.t;
   //const float3 hitNorm = normalize(hitPos - sphPos);
-  const float3 hitNorm = float3(m_mesh.vNorm4f[hit.primId].x, m_mesh.vNorm4f[hit.primId].y, m_mesh.vNorm4f[hit.primId].z);
+  const float3 hitNorm = make_float3(m_vNorm4f[hit.primId].x, m_vNorm4f[hit.primId].y, m_vNorm4f[hit.primId].z);
 
   RandomGen gen = m_randomGens[tid];
   const float2 uv = rndFloat2_Pseudo(&gen);
@@ -346,7 +367,7 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
 
   Lite_Hit hit;
   if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar,
-                      &hit))
+                      &hit, m_indicesReordered.data(), m_vPos4f.data()))
     return;
   
   kernel_GetMaterialColor(tid, &hit, out_color);
@@ -363,7 +384,7 @@ void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, flo
   for(int depth = 0; depth < a_maxDepth; depth++) 
   {
     Lite_Hit hit;
-    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit))
+    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, m_indicesReordered.data(), m_vPos4f.data()))
       break;
 
     kernel_NextBounce(tid, &hit, 
