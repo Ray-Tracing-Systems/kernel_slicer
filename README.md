@@ -160,6 +160,8 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
 
 (-) can't **yet** use nested vector types. I.e. if std::vector is inside some structure which is stored in std::vector in main class (**not implemented**);
 
+(+) can use memcpy in control functions for IPV pattern;
+
 So, here some examples about class-members access:
 
 ```cpp
