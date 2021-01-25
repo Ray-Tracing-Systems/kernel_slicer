@@ -8,6 +8,8 @@
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
 
+constexpr static uint32_t MEMCPY_BLOCK_SIZE = 256;
+
 {{MainClassName}}_Generated::~{{MainClassName}}_Generated()
 {
   m_pMaker = nullptr;
@@ -16,6 +18,7 @@
   vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
 ## endfor
+  vkDestroyDescriptorSetLayout(device, copyKernelFloatDSLayout, nullptr);
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
 
 ## for MainFunc in MainFunctions
@@ -161,10 +164,12 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
 
 ## endfor
 
+  uint32_t specializationDataMemcpy[3] = {MEMCPY_BLOCK_SIZE, 1, 1};
+  specsForWGSize.pData = specializationDataMemcpy;
   m_pMaker->CreateShader(device, a_filePath, &specsForWGSize, "copyKernelFloat");
 
   copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
-  copyKernelFloatLayout   = m_pMaker->MakeLayout(device, copyKernelFloatDSLayout, 128); // at least 128 bytes for push constants
+  copyKernelFloatLayout   = m_pMaker->MakeLayout(device, copyKernelFloatDSLayout, sizeof(uint32_t)); // for this kernel we only need 4 bytes 
   copyKernelFloatPipeline = m_pMaker->MakePipeline(device);
 }
 
@@ -269,31 +274,12 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
 
 void {{MainClassName}}_Generated::copyKernelFloatCmd(uint32_t length)
 {
-  uint32_t blockSizeX = m_blockSize[0];
-  uint32_t blockSizeY = m_blockSize[1];
-  uint32_t blockSizeZ = m_blockSize[2];
+  uint32_t blockSizeX = MEMCPY_BLOCK_SIZE;
 
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, copyKernelFloatPipeline);
 
-  struct KernelArgsPC
-  {
-    uint32_t m_sizeX;
-    uint32_t m_sizeY;
-    uint32_t m_sizeZ;
-    uint32_t m_tFlags;
-  } pcData;
-
-  pcData.m_sizeX  = length;
-  pcData.m_sizeY  = 1;
-  pcData.m_sizeZ  = 1;
-  pcData.m_tFlags = m_currThreadFlags;
-
-  vkCmdPushConstants(m_currCmdBuffer, copyKernelFloatLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
-  vkCmdDispatch(
-    m_currCmdBuffer,
-    (length + blockSizeX - 1) / blockSizeX,
-    (1 + blockSizeY - 1) / blockSizeY,
-    (1 + blockSizeZ - 1) / blockSizeZ);
+  vkCmdPushConstants(m_currCmdBuffer, copyKernelFloatLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &length);
+  vkCmdDispatch(m_currCmdBuffer, (length + blockSizeX - 1) / blockSizeX, 1, 1);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
