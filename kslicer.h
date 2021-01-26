@@ -217,6 +217,7 @@ namespace kslicer
     virtual std::string ProcessBufferType(const std::string& a_typeName) const { return a_typeName; };
 
     virtual bool IsSingleSource() const = 0;
+    virtual std::string ShaderFolder() const { return ""; }
   };
 
   struct ClspvCompiler : IShaderCompiler
@@ -229,6 +230,8 @@ namespace kslicer
   {
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
     bool        IsSingleSource() const override { return false; }
+    std::string ShaderFolder()   const override { return "shaders_circle"; }
+
     std::string ProcessBufferType(const std::string& a_typeName) const override 
     { 
       std::string type = a_typeName;

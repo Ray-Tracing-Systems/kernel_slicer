@@ -146,15 +146,17 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
 
 ## for Kernel in Kernels
   {
+    {% if MultipleSourceShaders %}std::string shaderPath = "{{ShaderFolder}}/{{Kernel.OriginalName}}.cpp.spv"; {% else %}std::string shaderPath = a_filePath; {% endif %}
+
     auto ex = m_kernelExceptions.find("{{Kernel.OriginalName}}");
     if(ex == m_kernelExceptions.end())
     {
-      m_pMaker->CreateShader(device, a_filePath, &specsForWGSize, "{{Kernel.OriginalName}}");
+      m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSize, "{{Kernel.OriginalName}}");
     }
     else
     {
       specsForWGSizeExcep.pData = ex->second.blockSize;   
-      m_pMaker->CreateShader(device, a_filePath, &specsForWGSizeExcep, "{{Kernel.OriginalName}}");
+      m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSizeExcep, "{{Kernel.OriginalName}}");
     }    
     
     {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();

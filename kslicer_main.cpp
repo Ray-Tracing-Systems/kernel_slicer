@@ -640,7 +640,7 @@ int main(int argc, const char **argv)
     }
     
     std::string folderPath = GetFolderPath(inputCodeInfo.mainClassFileName);
-    std::string shaderPath = folderPath + "/" + "shaders_circle";
+    std::string shaderPath = folderPath + "/" + inputCodeInfo.pShaderCC->ShaderFolder();
     #ifdef WIN32
     mkdir(shaderPath.c_str());
     #else

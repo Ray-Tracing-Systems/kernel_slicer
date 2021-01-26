@@ -203,6 +203,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
  
   auto kernelDeclByName = MakeMapForKernelsDeclByName(kernelsCallCmdDecl);
 
+  data["MultipleSourceShaders"] = !a_classInfo.pShaderCC->IsSingleSource();
+  data["ShaderFolder"]          = a_classInfo.pShaderCC->ShaderFolder();
+
   data["Kernels"] = std::vector<std::string>();  
   for(const auto& k : a_classInfo.kernels)
   {
