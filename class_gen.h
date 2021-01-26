@@ -115,6 +115,4 @@ namespace kslicer
 
 }
 
-bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
-
 #endif

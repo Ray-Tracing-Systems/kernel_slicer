@@ -452,11 +452,11 @@ nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const s
 }
 
 json kslicer::PrepareJsonForKernels(const MainClassInfo& a_classInfo, 
-                                   const std::vector<kslicer::FuncData>& usedFunctions,
-                                   const std::vector<kslicer::DeclInClass>& usedDecl,
-                                   const clang::CompilerInstance& compiler,
-                                   const uint32_t  threadsOrder[3],
-                                   const std::string& uboIncludeName, const nlohmann::json& uboJson)
+                                    const std::vector<kslicer::FuncData>& usedFunctions,
+                                    const std::vector<kslicer::DeclInClass>& usedDecl,
+                                    const clang::CompilerInstance& compiler,
+                                    const uint32_t  threadsOrder[3],
+                                    const std::string& uboIncludeName, const nlohmann::json& uboJson)
 {
   std::unordered_map<std::string, DataMemberInfo> dataMembersCached;
   dataMembersCached.reserve(a_classInfo.dataMembers.size());
@@ -532,7 +532,7 @@ json kslicer::PrepareJsonForKernels(const MainClassInfo& a_classInfo,
     for(auto commonArg : commonArgs)
     {
       json argj;
-      argj["Type"] = commonArg.typeName;
+      argj["Type"] = a_classInfo.pShaderCC->ProcessBufferType(commonArg.typeName);
       argj["Name"] = commonArg.argName;
       args.push_back(argj);
     }
@@ -595,11 +595,12 @@ json kslicer::PrepareJsonForKernels(const MainClassInfo& a_classInfo,
     }
     
     json kernelJson;
-    kernelJson["Args"]     = args;
-    kernelJson["Vecs"]     = vecs;
-    kernelJson["UserArgs"] = userArgs;
-    kernelJson["Members"]  = members;
-    kernelJson["Name"]     = k.name;
+    kernelJson["Args"]       = args;
+    kernelJson["Vecs"]       = vecs;
+    kernelJson["UserArgs"]   = userArgs;
+    kernelJson["Members"]    = members;
+    kernelJson["Name"]       = k.name;
+    kernelJson["UBOBinding"] = args.size(); // for circle
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));

@@ -11,6 +11,8 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 
+bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
+
 namespace kslicer
 {
   const std::string GetProjPrefix();
@@ -212,6 +214,7 @@ namespace kslicer
     IShaderCompiler(){}
     virtual ~IShaderCompiler(){}
     virtual std::string UBOAccess(const std::string& a_name) const = 0;
+    virtual std::string ProcessBufferType(const std::string& a_typeName) const { return a_typeName; };
 
     virtual bool IsSingleSource() const = 0;
   };
@@ -226,6 +229,13 @@ namespace kslicer
   {
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
     bool        IsSingleSource() const override { return false; }
+    std::string ProcessBufferType(const std::string& a_typeName) const override 
+    { 
+      std::string type = a_typeName;
+      ReplaceFirst(type, "*", "");
+      ReplaceFirst(type, "const", "");
+      return type; 
+    };
   };
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

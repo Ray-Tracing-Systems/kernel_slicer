@@ -46,6 +46,12 @@
 using namespace clang;
 #include "template_rendering.h"
 
+#ifdef _WIN32
+  #include <direct.h>     // for windows mkdir
+#else
+  #include <sys/stat.h>   // for linux mkdir
+#endif
+
 const std::string kslicer::GetProjPrefix() { return std::string("kgen_"); };
 
 using kslicer::KernelInfo;
@@ -626,26 +632,35 @@ int main(int argc, const char **argv)
     nlohmann::json copy, kernels;
     for (auto& el : json.items())
     {
-      std::cout << el.key() << std::endl;
+      //std::cout << el.key() << std::endl;
       if(std::string(el.key()) == "Kernels")
         kernels = json[el.key()];
       else
         copy[el.key()] = json[el.key()];
     }
-
+    
+    std::string folderPath = GetFolderPath(inputCodeInfo.mainClassFileName);
+    std::string shaderPath = folderPath + "/" + "shaders_circle";
+    #ifdef WIN32
+    mkdir(shaderPath.c_str());
+    #else
+    mkdir(shaderPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    #endif
+    
+    std::ofstream buildSH(shaderPath + "/build.sh");
+    buildSH << "#!/bin/sh" << std::endl;
     for(auto& kernel : kernels.items())
     {
       nlohmann::json currKerneJson = copy;
-      currKerneJson["Kernels"] = nlohmann::json::array();
-      currKerneJson["Kernels"].push_back(kernel);
-
-      //std::ofstream file(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_kernel1.json");
-      //file << std::setw(2) << currKerneJson;
-      //file.close();
-      //break;
+      currKerneJson["Kernels"] = std::vector<std::string>();
+      currKerneJson["Kernels"].push_back(kernel.value());
+      
+      std::string outFileName = std::string(kernel.value()["Name"]) + ".cpp";
+      std::string outFilePath = shaderPath + "/" + outFileName;
+      kslicer::ApplyJsonToTemplate("templates/gen_circle.cxx", outFilePath, currKerneJson);
+      buildSH << "../../circle -shader -c -emit-spirv " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DUSE_CIRCLE_CC -I.. " << std::endl;
     }
-
-   
+    buildSH.close();
   }
 
   std::cout << "}" << std::endl;
