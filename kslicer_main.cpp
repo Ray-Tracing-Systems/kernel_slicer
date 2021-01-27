@@ -660,6 +660,12 @@ int main(int argc, const char **argv)
       kslicer::ApplyJsonToTemplate("templates/gen_circle.cxx", outFilePath, currKerneJson);
       buildSH << "../../circle -shader -c -emit-spirv " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DUSE_CIRCLE_CC -I.. " << std::endl;
     }
+    
+    nlohmann::json emptyJson;
+    std::string outFileServ = shaderPath + "/" + "serv_kernels.cpp";
+    kslicer::ApplyJsonToTemplate("templates/ser_circle.cxx", outFileServ, emptyJson);
+    buildSH << "../../circle -shader -c -emit-spirv " << outFileServ.c_str() << " -o " << outFileServ.c_str() << ".spv" << " -DUSE_CIRCLE_CC -I.. " << std::endl;
+
     buildSH.close();
   }
 
