@@ -560,9 +560,11 @@ json kslicer::PrepareJsonForKernels(const MainClassInfo& a_classInfo,
 
       assert(pVecMember->second.isContainer);
       assert(pVecSizeMember->second.isContainerInfo);
-
+       
+      std::string buffType = a_classInfo.RemoveTypeNamespaces(pVecMember->second.containerDataType) + "*";
+ 
       json argj;
-      argj["Type"] = a_classInfo.RemoveTypeNamespaces(pVecMember->second.containerDataType) + "*";
+      argj["Type"] = a_classInfo.pShaderCC->ProcessBufferType(buffType);
       argj["Name"] = pVecMember->second.name;
       argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
       args.push_back(argj);

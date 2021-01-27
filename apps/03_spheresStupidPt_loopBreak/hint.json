@@ -1,0 +1,4 @@
+{"WorkGroupSize": {
+  "default"       : [256, 1, 1],
+  "kernel_PackXY" : [16, 16, 1]
+}}
