@@ -621,14 +621,22 @@ int main(int argc, const char **argv)
 
   // finally generate kernels
   //
-  const std::string& outFileName = GetFolderPath(inputCodeInfo.mainClassFileName) + "/" + "z_generated.cl";
-
+  const std::string templatePath = inputCodeInfo.pShaderCC->TemplatePath();
   auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, usedDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
   
   if(inputCodeInfo.pShaderCC->IsSingleSource())
-    kslicer::ApplyJsonToTemplate("templates/generated.cl", outFileName, json);
-  else
   {
+    const std::string outFileName  = GetFolderPath(inputCodeInfo.mainClassFileName) + "/" + inputCodeInfo.pShaderCC->ShaderSingleFile();
+    kslicer::ApplyJsonToTemplate(templatePath, outFileName, json);
+
+    std::ofstream buildSH(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_build.sh");
+    buildSH << "#!/bin/sh" << std::endl;
+    std::string build = inputCodeInfo.pShaderCC->BuildCommand();
+    buildSH << build.c_str() << std::endl;
+    buildSH.close();
+  }
+  else // if need to compile each kernel inside separate file
+  { 
     nlohmann::json copy, kernels;
     for (auto& el : json.items())
     {

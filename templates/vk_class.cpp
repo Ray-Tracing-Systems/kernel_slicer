@@ -173,7 +173,7 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
   m_pMaker->CreateShader(device, servPath.c_str(), &specsForWGSize, "copyKernelFloat");
 
   copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
-  copyKernelFloatLayout   = m_pMaker->MakeLayout(device, copyKernelFloatDSLayout, sizeof(uint32_t)); // for this kernel we only need 4 bytes 
+  copyKernelFloatLayout   = m_pMaker->MakeLayout(device, copyKernelFloatDSLayout, 128); // at least 128 bytes for push constants
   copyKernelFloatPipeline = m_pMaker->MakePipeline(device);
 }
 

@@ -114,6 +114,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   data["Includes"]      = strOut.str();
   data["UBOIncl"]       = uboIncludeName;
   data["MainClassName"] = a_classInfo.mainClassName;
+  data["ShaderSingleFile"] = a_classInfo.pShaderCC->ShaderSingleFile();
 
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";

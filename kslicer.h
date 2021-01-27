@@ -216,21 +216,31 @@ namespace kslicer
     virtual std::string UBOAccess(const std::string& a_name) const = 0;
     virtual std::string ProcessBufferType(const std::string& a_typeName) const { return a_typeName; };
 
-    virtual bool IsSingleSource() const = 0;
-    virtual std::string ShaderFolder() const { return ""; }
+    virtual bool        IsSingleSource()   const = 0;
+    virtual std::string ShaderFolder()     const = 0;
+    virtual std::string ShaderSingleFile() const = 0;
+    virtual std::string TemplatePath()     const = 0; 
+    virtual std::string BuildCommand()     const = 0;
   };
 
   struct ClspvCompiler : IShaderCompiler
   {
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo->") + a_name; };
-    bool        IsSingleSource() const override { return true; }
+    bool        IsSingleSource()   const override { return true; }
+    std::string ShaderFolder()     const override { return ""; }
+    std::string ShaderSingleFile() const override { return "z_generated.cl"; }
+    std::string TemplatePath()     const override { return "templates/generated.cl"; }
+    std::string BuildCommand()     const override { return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-pushconstant"; } 
   };
 
   struct CircleCompiler : IShaderCompiler
   {
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
-    bool        IsSingleSource() const override { return false; }
-    std::string ShaderFolder()   const override { return "shaders_circle"; }
+    bool        IsSingleSource()   const override { return true; }
+    std::string ShaderFolder()     const override { return "shaders_circle"; }
+    std::string ShaderSingleFile() const override { return "z_generated.cxx"; }
+    std::string TemplatePath()     const override { return "templates/gen_circle.cxx"; }
+    std::string BuildCommand()     const override { return std::string("../circle -shader -c -emit-spirv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -DUSE_CIRCLE_CC"; }
 
     std::string ProcessBufferType(const std::string& a_typeName) const override 
     { 

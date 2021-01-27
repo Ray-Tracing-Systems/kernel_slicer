@@ -39,7 +39,7 @@ public:
 
     InitHelpers();
     InitBuffers(a_maxThreadsCount);
-    InitKernels("z_generated.cl.spv", a_blockSizeX, a_blockSizeY, a_blockSizeZ, a_kernelConfigs, a_configSize);
+    InitKernels("{{ShaderSingleFile}}.spv", a_blockSizeX, a_blockSizeY, a_blockSizeZ, a_kernelConfigs, a_configSize);
     AllocateAllDescriptorSets();
   }
 
