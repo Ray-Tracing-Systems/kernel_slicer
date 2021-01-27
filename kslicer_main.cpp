@@ -289,6 +289,7 @@ int main(int argc, const char **argv)
   std::string stdlibFolder  = "";
   std::string patternName   = "rtv";
   std::string shaderCCName  = "clspv";
+  std::string hintFile      = "";
   uint32_t    threadsOrder[3] = {0,1,2};
   
   if(params.find("-mainClass") != params.end())
@@ -308,6 +309,9 @@ int main(int argc, const char **argv)
 
   if(params.find("-shaderCC") != params.end())
     shaderCCName = params["-shaderCC"];
+
+  if(params.find("-hint") != params.end())
+    hintFile = params["-hint"];
 
   std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
   argsForClang.reserve(argc);
@@ -610,6 +614,37 @@ int main(int argc, const char **argv)
 
   std::cout << "(8) Generate OpenCL kernels" << std::endl; 
   std::cout << "{" << std::endl;
+
+  // if user set custom work group size for kernels via hint file we should apply it befor generating kernels
+  if(hintFile != "")
+  {
+    std::ifstream ifs(hintFile);
+    nlohmann::json hintJson = nlohmann::json::parse(ifs);
+    nlohmann::json wgszJson = hintJson["WorkGroupSize"];
+    
+    uint32_t defaultWgSize[3] = {256,1,1};
+    defaultWgSize[0] = wgszJson["default"][0];
+    defaultWgSize[1] = wgszJson["default"][1];
+    defaultWgSize[2] = wgszJson["default"][2];
+
+    for(auto& kernel : inputCodeInfo.kernels)
+    {
+      auto it = wgszJson.find(kernel.name);
+      if(it != wgszJson.end())
+      {
+        std::string wgStr = (*it)[kernel.name];
+        kernel.injectedWgSize[0] = (*it)[0];
+        kernel.injectedWgSize[1] = (*it)[1];
+        kernel.injectedWgSize[2] = (*it)[2];
+      }
+      else
+      {
+        kernel.injectedWgSize[0] = defaultWgSize[0];
+        kernel.injectedWgSize[1] = defaultWgSize[1];
+        kernel.injectedWgSize[2] = defaultWgSize[2];
+      }
+    }
+  }
 
   // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg
   //

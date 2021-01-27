@@ -59,6 +59,8 @@ namespace kslicer
     std::unordered_set<std::string> usedVectors; ///<! list of all std::vector<T> member names which is referenced inside kernel
     std::unordered_set<std::string> usedMembers; ///<! list of all other variables used inside kernel
     std::string rewrittenText;
+
+    uint32_t injectedWgSize[3] = {256,1,1};      ///<! workgroup size for the case when setting wgsize with spec constant is not allowed
   };
 
   /**

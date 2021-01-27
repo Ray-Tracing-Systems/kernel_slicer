@@ -635,6 +635,10 @@ json kslicer::PrepareJsonForKernels(const MainClassInfo& a_classInfo,
     kernelJson["threadIdName2"] = tidNames[1];
     kernelJson["threadIdName3"] = tidNames[2]; 
 
+    kernelJson["WGSizeX"]       = k.injectedWgSize[0]; // injected wourg group size for circle 
+    kernelJson["WGSizeY"]       = k.injectedWgSize[1]; // 
+    kernelJson["WGSizeZ"]       = k.injectedWgSize[2]; // 
+
     //////////////////////////////////////////////////////////////////////////////////////////
  
     kernelJson["shouldCheckExitFlag"] = k.checkThreadFlags;

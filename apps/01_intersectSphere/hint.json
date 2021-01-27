@@ -1,0 +1,3 @@
+{"WorkGroupSize": {
+  "default" : [16, 16, 1]
+}}

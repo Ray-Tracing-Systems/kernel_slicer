@@ -40,7 +40,7 @@ namespace {{Kernel.Name}}_REGION {
 ## endfor
 [[using spirv: buffer, binding({{ Kernel.UBOBinding }})]] struct {{MainClassName}}_UBO_Data ubo;
 
-extern "C" [[using spirv: comp, local_size(16,16), push]]
+extern "C" [[using spirv: comp, local_size({{Kernel.WGSizeX}},{{Kernel.WGSizeY}},{{Kernel.WGSizeZ}}), push]]
 void {{Kernel.Name}}(
 ## for UserArg in Kernel.UserArgs 
   {{UserArg.Type}} {{UserArg.Name}},
@@ -78,4 +78,3 @@ void copyKernelFloat(const uint length)
     return;
   out_data[i] = in_data[i];
 }
-

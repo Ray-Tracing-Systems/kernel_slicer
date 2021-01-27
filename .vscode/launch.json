@@ -34,7 +34,8 @@
             "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/01_intersectSphere/test_class.cpp", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
-                        "-pattern", "rtv", 
+                        "-pattern",  "rtv", 
+                        "-hint", "${workspaceFolder}/apps/01_intersectSphere/hint.json",
                         "-shaderCC", "circle"
                         "-v"],
             "stopAtEntry": false,
