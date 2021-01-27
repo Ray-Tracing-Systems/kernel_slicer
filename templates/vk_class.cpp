@@ -166,9 +166,11 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
 
 ## endfor
 
+  {% if MultipleSourceShaders %}std::string servPath = "{{ShaderFolder}}/serv_kernels.cpp.spv"; {% else %}std::string servPath = a_filePath;{% endif %}
+
   uint32_t specializationDataMemcpy[3] = {MEMCPY_BLOCK_SIZE, 1, 1};
   specsForWGSize.pData = specializationDataMemcpy;
-  m_pMaker->CreateShader(device, a_filePath, &specsForWGSize, "copyKernelFloat");
+  m_pMaker->CreateShader(device, servPath.c_str(), &specsForWGSize, "copyKernelFloat");
 
   copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
   copyKernelFloatLayout   = m_pMaker->MakeLayout(device, copyKernelFloatDSLayout, sizeof(uint32_t)); // for this kernel we only need 4 bytes 

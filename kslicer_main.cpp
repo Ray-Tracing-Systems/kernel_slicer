@@ -673,7 +673,7 @@ int main(int argc, const char **argv)
   std::cout << std::endl;
   
   //std::ofstream file(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_kernels.json");
-  //file << std::setw(2) << json;
+  //file << std::setw(2) << json; //
   //file.close();
 
   return 0;
