@@ -7,9 +7,13 @@
 #ifdef __OPENCL_VERSION__
   #include "OpenCLMathGPU.h" // include some additional math or code you need to be applied in OpenCL kernels
 #else
+  #ifdef USE_CIRCLE_CC
+  #include "CircleToCLMath.h"
+  #else
   #include "OpenCLMathCPU.h"   // implementation of _same_ functions on the CPU
   using namespace LiteMath;
   #define __global 
+  #endif
 #endif
 
 // (2) put you general logoc math code that will be same for CPU and GPU

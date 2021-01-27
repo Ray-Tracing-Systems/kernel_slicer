@@ -632,7 +632,6 @@ int main(int argc, const char **argv)
       auto it = wgszJson.find(kernel.name);
       if(it != wgszJson.end())
       {
-        std::string wgStr = (*it)[kernel.name];
         kernel.injectedWgSize[0] = (*it)[0];
         kernel.injectedWgSize[1] = (*it)[1];
         kernel.injectedWgSize[2] = (*it)[2];
