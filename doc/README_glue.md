@@ -86,13 +86,15 @@ pGPUImpl->StupidPathTraceCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, 6, nullptr, nu
 
 * **Overides** for *TestClass_Generated* functions in *TestClass_GPU*. This case is a bit more complex because it requires understanding of *TestClass_Generated* by the user. However general algorithm is straitforward: First override all functions which are affected by your changes; call orginal versions from *TestClass_Generated* via "Base::SomeFunction(...)"; Second, override additional functions for particular kernel call;
 
-
 ```cpp
 // (1) Override all functions which are affected by your changes
 //
-void TestClass_GPU::SetVulkanInOutFor_PackXY(VkBuffer a_out_pakedXYBuffer, size_t a_out_pakedXYOffset, uint32_t dummyArgument = 0)
+void SetVulkanInOutFor_StupidPathTrace(
+   VkBuffer a_in_pakedXYBuffer, size_t a_in_pakedXYOffset,
+   VkBuffer a_out_colorBuffer,  size_t a_out_colorOffset,
+   uint32_t dummyArgument = 0)
 {
-  Base::SetVulkanInOutFor_PackXY(a_out_pakedXYBuffer, a_out_pakedXYOffset, dummyArgument);
+  Base::SetVulkanInOutFor_StupidPathTrace(a_in_pakedXYBuffer, a_in_pakedXYOffset, a_out_colorBuffer, a_out_colorOffset, dummyArgument);
   // implement your logic here
 }
 
