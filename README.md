@@ -21,9 +21,9 @@ kernel_slicer is auto-programming tool which takes C++ code as input and port th
 
 * We also keep in mind [Circle shader compiler](https://github.com/seanbaxter/shaders "writing shaders in C++ with Circle compiler") which we are going to use in future as one of our back-ends; 
 
-* Let's summarize again: you have to bind generated code to your program yourself, thus you can't  escape Vulkan experience. You can directly use generated class. You can also override some functions if you want to change behaviour of some parts of generated code;
+* Let's summarize again: you have to bind generated code to your program yourself, thus you can't  escape Vulkan experience. You can directly use generated class. You can also override some functions if you want to change behaviour of some parts of generated code (see [Example of glue code](doc/README_glue.md));
 
-* Our main users are Vulkan developers that has to use Vulkan due to some specific hardware features or performance requirenments. Therefore, we initially pay special attention to interaction between generated and hand written code (which can use any desired hardware extensions). Such interaction is assumed to be done via inheritance and virtual function overides;
+* Our main users are Vulkan developers that has to use Vulkan due to some specific hardware features or performance requirenments. Therefore, we initially pay special attention to interaction between generated and hand written code (which can use any desired hardware extensions). Such interaction is assumed to be done via inheritance and virtual function overides (see [Example of glue code](doc/README_glue.md));
 
 # Build(1): as stand-alone project
 
