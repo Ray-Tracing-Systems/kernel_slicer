@@ -110,7 +110,7 @@ void TestClass_GPU::UpdateAll(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
 
 ...
 
-// (2) Second, override additional functions for particular kernel call
+// (2) Second, override additional functions for particular kernel call which will put desired sequence of commands in command buffer;
 //
 void TestClass_Generated::RayTraceCmd(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar, Lite_Hit* out_hit)
 {
