@@ -90,7 +90,7 @@ namespace kslicer
       m_variables.reserve(a_variables.size());
       for(const auto& var : a_variables) 
         m_variables[var.name] = var;
-      m_alwaysRewriteUBO = false;
+      m_processLoopInitCode = false;
     }
 
     bool VisitMemberExpr(MemberExpr* expr);
@@ -99,7 +99,7 @@ namespace kslicer
     bool VisitReturnStmt(ReturnStmt* ret);
   
   protected:
-    bool m_alwaysRewriteUBO;
+    bool m_processLoopInitCode;
 
   private:
 
@@ -121,7 +121,7 @@ namespace kslicer
      KernelInitLoopReplacerASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, const kslicer::KernelInfo& a_kernel) : 
                                       KernelReplacerASTVisitor(R,a_compiler, a_codeInfo, a_kernel,"")
      {
-       m_alwaysRewriteUBO = true;
+       m_processLoopInitCode = true;
      } 
 
     bool VisitUnaryOperator(UnaryOperator* expr) {return true;} // disable them currently

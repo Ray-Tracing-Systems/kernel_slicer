@@ -55,8 +55,7 @@ __kernel void {{Kernel.Name}}(
     return;{% endif %}
   {% if Kernel.shouldCheckExitFlag %}if((kgen_threadFlags[{{Kernel.ThreadOffset}}] & kgen_tFlagsMask) != 0) 
     return;{% endif %}
-  {% for Vec in Kernel.Vecs %}const uint {{Vec.Name}}_size = ubo->{{Vec.Name}}_size; 
-  {% endfor %}{% for Member in Kernel.Members %}const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
+  {% for Member in Kernel.Members %}const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
   {% endfor %}/////////////////////////////////////////////////////////////////
 {{Kernel.Source}}
 }

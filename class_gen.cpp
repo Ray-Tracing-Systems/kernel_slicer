@@ -767,7 +767,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitMemberExpr(MemberExpr* expr)
   // (2) put ubo->var instead of var, leave containers as they are
   // process arrays and large data structures because small can be read once in the neggining of kernel
   //
-  if(m_alwaysRewriteUBO || pMember->second.isArray || (!pMember->second.isContainer && pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD)) 
+  if(m_processLoopInitCode || pMember->second.isArray || (!pMember->second.isContainer && pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD)) 
   {
     std::string rewrittenName = m_codeInfo->pShaderCC->UBOAccess(pMember->second.name);
     m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenName);
@@ -794,13 +794,45 @@ bool kslicer::KernelReplacerASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr
   CXXRecordDecl* typeDecl = f->getRecordDecl(); 
 
   const bool isVector = (typeDecl != nullptr && isa<ClassTemplateSpecializationDecl>(typeDecl)) && thisTypeName.find("vector<") != std::string::npos; 
-
-  if(fname == "size" || fname == "capacity" && isVector)
+  
+  if(isVector)
   {
     const std::string exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
-    const auto posOfPoint = exprContent.find(".");
-    const std::string memberName = exprContent.substr(0, posOfPoint);
-    m_rewriter.ReplaceText(f->getSourceRange(), memberName + "_" + fname);
+    const auto posOfPoint         = exprContent.find(".");
+    const std::string memberNameA = exprContent.substr(0, posOfPoint);
+
+    if(fname == "size" || fname == "capacity")
+    {
+      const std::string memberNameB = memberNameA + "_" + fname;
+      m_rewriter.ReplaceText(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
+    }
+    else if(fname == "resize")
+    {
+      if(m_processLoopInitCode)
+      {
+        //assert(f->getNumArgs() == 1);
+        //const Expr* currArgExpr  = f->getArgs()[0];
+        //std::string newSizeValue = kslicer::GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler); 
+        //std::string memberNameB  = memberNameA + "_size = " + newSizeValue;
+        //m_rewriter.ReplaceText(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
+        m_rewriter.ReplaceText(f->getSourceRange(), "//replace resize()");
+      }
+    }
+    else if(fname == "push_back")
+    {
+      m_rewriter.ReplaceText(f->getSourceRange(), "//replace push_back()");
+    }
+    else if(fname == "data")
+    {
+      m_rewriter.ReplaceText(f->getSourceRange(), memberNameA);
+    }
+    else 
+    {
+      const clang::SourceManager& sm = m_compiler.getSourceManager();
+      auto beginLoc = f->getSourceRange().getBegin();
+      std::string fileName = std::string(sm.getFilename(beginLoc));
+      std::cout << "[KernelReplacer] ERROR! Unsuppoted std::vector method " << fname.c_str() << "; file:  " << fileName.c_str() << ", line: " << sm.getPresumedLoc(beginLoc).getLine() << std::endl;
+    }
   }
  
   return true;
