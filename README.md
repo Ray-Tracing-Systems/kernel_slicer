@@ -39,38 +39,6 @@ kernel_slicer is auto-programming tool which takes C++ code as input and port th
 
 6. You will need also to build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders").
 
-# Build(2): as a part of llvm project
-1. sudo apt-get install cmake
-
-2. sudo apt-get install ninja-build
-
-3. git clone https://github.com/llvm/llvm-project.git 
-
-4. cd llvm-project 
-   mkdir build 
-   cd build
-
-5. cmake -G Ninja ../llvm -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" 
-
-6. ninja
-
-7. go to 'llvm-project/clang-tools-extra'
-
-8. git clone https://github.com/Ray-Tracing-Systems/kernel_slicer.git
-   i.e. put folder on this project project in to "llvm-project/clang-tools-extra" to form "llvm-project/clang-tools-extra/kernel_slicer"
-   
-8. put "add_subdirectory(kernel_slicer)" to CMakeLists.txt in "clang-tools-extra" folder
-
-9. Rename "CMakeLists.txt" to "CMakeLists2.txt"  (please don't commit)
-
-10. Rename "CMakeLists1.txt" to "CMakeLists.txt" (please rename back before commiting!)
-
-11. ninja (from build folder of clang)
-     the new executable will be build in the "llvm-project/build/bin" folder
-     you may also used provided VS Code config to build and run test cases (tasks1.json and launch1.json)
-
-12. You will need also to build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders").
-
 # Concept and general workflow
 
 Now let us discuss general workflow of using kernel_slicer to port you code to GPU (Fig. 2):
