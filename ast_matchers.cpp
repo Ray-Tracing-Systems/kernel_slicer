@@ -168,6 +168,15 @@ clang::ast_matchers::StatementMatcher kslicer::MakeMatch_ForLoopInsideFunction(s
   ).bind("loop");
 }
 
+clang::ast_matchers::StatementMatcher kslicer::MakeMatch_BeforeForLoopInsideFunction(std::string const& a_funcName)
+{
+  using namespace clang::ast_matchers;
+  return
+  compoundStmt( hasAncestor(functionDecl(hasName(a_funcName)).bind("targetFunction")),
+                unless(hasAncestor(forStmt()))
+  ).bind("loopInitCode");
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

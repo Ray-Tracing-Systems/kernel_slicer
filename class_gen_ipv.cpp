@@ -121,6 +121,7 @@ kslicer::IPV_Pattern::MList kslicer::IPV_Pattern::ListMatchers_KF(const std::str
   list.push_back(kslicer::MakeMatch_MemberVarOfMethod(a_kernelName));
   list.push_back(kslicer::MakeMatch_FunctionCallFromFunction(a_kernelName));
   list.push_back(kslicer::MakeMatch_ForLoopInsideFunction(a_kernelName));
+  list.push_back(kslicer::MakeMatch_BeforeForLoopInsideFunction(a_kernelName));
   return list;
 }
 
@@ -144,7 +145,8 @@ public:
   {
     using namespace clang;
     const FunctionDecl* func_decl = result.Nodes.getNodeAs<FunctionDecl>("targetFunction");
-    const ForStmt* forLoop        = result.Nodes.getNodeAs<ForStmt>("loop");
+    const ForStmt*      forLoop   = result.Nodes.getNodeAs<ForStmt>("loop");
+    const CompoundStmt* loopInit  = result.Nodes.getNodeAs<CompoundStmt>("loopInitCode");
 
     clang::SourceManager& srcMgr(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
 
@@ -170,6 +172,25 @@ public:
           currKernel->loopIters.push_back(tidArg);
           currKernel->loopInsides = forLoop->getBody()->getSourceRange();
         }
+      }
+    }
+    else if(loopInit && func_decl)
+    {
+      //const auto fnNameInfo    = func_decl->getNameInfo();
+      //const DeclarationName dn = fnNameInfo.getName();
+      //const std::string fname  = dn.getAsString();
+      //auto name2 = currKernel->name;
+      
+      currKernel->loopInitStatements.clear();
+      for(auto p = loopInit->body_begin(); p != loopInit->body_end(); ++p)
+      {
+        const Stmt* expr = *p; 
+        if(isa<ForStmt>(expr))
+          break;
+
+        kslicer::KernelInfo::LoopInitStatement stmt;
+        stmt.srcRange = expr->getSourceRange();
+        currKernel->loopInitStatements.push_back(stmt);
       }
     }
     else

@@ -42,12 +42,19 @@ namespace kslicer
       std::string sizeExpr;
       uint32_t    loopNesting = 0;
     };
+
+    struct LoopInitStatement
+    {
+      clang::SourceRange srcRange;
+
+    };
     
     std::string      return_type;
     std::string      name;
     std::vector<Arg> args;             ///<! all arguments of a kernel
     std::vector<LoopIter> loopIters;   ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
     clang::SourceRange    loopInsides; ///<! used by IPV pattern to extract loops insides and make them kernel source
+    std::vector<LoopInitStatement> loopInitStatements; ///<!
 
     const clang::CXXMethodDecl* astNode = nullptr;
     bool usedInMainFunc = false;

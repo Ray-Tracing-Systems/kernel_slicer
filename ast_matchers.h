@@ -36,6 +36,7 @@ namespace kslicer
   clang::ast_matchers::StatementMatcher MakeMatch_IfReturnFromFunction(std::string const& funcName);
 
   clang::ast_matchers::StatementMatcher MakeMatch_ForLoopInsideFunction(std::string const& funcName);
+  clang::ast_matchers::StatementMatcher MakeMatch_BeforeForLoopInsideFunction(std::string const& funcName);
 
   clang::ast_matchers::DeclarationMatcher MakeMatch_StructDeclInsideClass(std::string const& className);
   clang::ast_matchers::DeclarationMatcher MakeMatch_VarDeclInsideClass(std::string const& className);
