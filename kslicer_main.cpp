@@ -491,11 +491,13 @@ int main(int argc, const char **argv)
   {
     auto structMatcher = kslicer::MakeMatch_StructDeclInsideClass(inputCodeInfo.mainClassName);
     auto varMatcher    = kslicer::MakeMatch_VarDeclInsideClass(inputCodeInfo.mainClassName);
+    auto tpdefMatcher  = kslicer::MakeMatch_TypedefInsideClass(inputCodeInfo.mainClassName);
     
     clang::ast_matchers::MatchFinder finder;
     kslicer::TC_Extractor typeAndConstantsHandler(inputCodeInfo, compiler);
     finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, structMatcher), &typeAndConstantsHandler);
-    finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, varMatcher), &typeAndConstantsHandler);
+    finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, varMatcher),    &typeAndConstantsHandler);
+    finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, tpdefMatcher),  &typeAndConstantsHandler);
 
     auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
     std::cout << "  [TC_Extractor]: end process constants and structs:\t" << GetClangToolingErrorCodeMessage(res) << std::endl;

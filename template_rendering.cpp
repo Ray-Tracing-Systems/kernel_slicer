@@ -505,6 +505,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       data["ClassDecls"].push_back( typeInCL + " " + decl.name + " = " + kslicer::GetRangeSourceCode(decl.srcRange, compiler) + ";");
       break;
 
+      case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
+      data["ClassDecls"].push_back("typedef " + typeInCL + " " + decl.name + ";");
+      break;
+
       default:
       break;
     };

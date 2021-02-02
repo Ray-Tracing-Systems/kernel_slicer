@@ -39,6 +39,7 @@ namespace kslicer
 
   clang::ast_matchers::DeclarationMatcher MakeMatch_StructDeclInsideClass(std::string const& className);
   clang::ast_matchers::DeclarationMatcher MakeMatch_VarDeclInsideClass(std::string const& className);
+  clang::ast_matchers::DeclarationMatcher MakeMatch_TypedefInsideClass(std::string const& className);
 
   std::string locationAsString(clang::SourceLocation loc, clang::SourceManager const * const sm);
   std::string sourceRangeAsString(clang::SourceRange r, clang::SourceManager const * sm);
@@ -305,6 +306,7 @@ namespace kslicer
       const CXXRecordDecl* const pMainClass    = result.Nodes.getNodeAs<CXXRecordDecl>("mainClass");
       const CXXRecordDecl* const pTargetStruct = result.Nodes.getNodeAs<CXXRecordDecl>("targetStruct");
       const VarDecl*       const pTargetVar    = result.Nodes.getNodeAs<VarDecl>      ("targetVar");
+      const TypedefDecl*   const pTargetTpdf   = result.Nodes.getNodeAs<TypedefDecl>  ("targetTypedef");
 
       if(pMainClass && pTargetStruct)
       {
@@ -341,8 +343,8 @@ namespace kslicer
             kslicer::DeclInClass decl;
             decl.name     = pDef->getNameAsString();
             decl.type     = qt.getAsString();
-            decl.srcRange = pDef->getSourceRange();                       // (!!!) DON'T WORK (!!!)
-            decl.srcHash  = kslicer::GetHashOfSourceRange(decl.srcRange); // (!!!) DON'T WORK (!!!)
+            decl.srcRange = pDef->getSourceRange();                       // (!!!) DON'T WORK (!!!) // NEED SECOND PASS !!!
+            decl.srcHash  = kslicer::GetHashOfSourceRange(decl.srcRange); // (!!!) DON'T WORK (!!!) // NEED SECOND PASS !!!
             decl.order    = m_currId;
             decl.kind     = kslicer::DECL_IN_CLASS::DECL_CONSTANT;
             if(foundDecl.find(decl.name) == foundDecl.end())
@@ -353,11 +355,29 @@ namespace kslicer
           }
         }
       }
+      else if(pMainClass && pTargetTpdf)
+      {
+        const auto qt = pTargetTpdf->getUnderlyingType();
+        
+        kslicer::DeclInClass decl;
+        decl.name     = pTargetTpdf->getNameAsString();
+        decl.type     = qt.getAsString();
+        decl.srcRange = pTargetTpdf->getSourceRange();                // (!!!) DON'T WORK (!!!) // NEED SECOND PASS !!!
+        decl.srcHash  = kslicer::GetHashOfSourceRange(decl.srcRange); // (!!!) DON'T WORK (!!!) // NEED SECOND PASS !!!
+        decl.order    = m_currId;
+        decl.kind     = kslicer::DECL_IN_CLASS::DECL_TYPEDEF;
+        if(foundDecl.find(decl.name) == foundDecl.end())
+        {
+          foundDecl[decl.name] = decl;
+          m_currId++;
+        }
+      }
       else 
       {
         check_ptr(pMainClass,     "pMainClass",    "", std::cout);
         check_ptr(pTargetStruct,  "pTargetStruct", "", std::cout);
         check_ptr(pTargetVar,     "pTargetVar",    "", std::cout);
+        check_ptr(pTargetTpdf,    "pTargetTpdf",   "", std::cout);
       }
 
       return;

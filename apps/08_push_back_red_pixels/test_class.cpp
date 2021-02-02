@@ -45,7 +45,7 @@ void RedPixels::kernel1D_FindRedPixels(const uint32_t* a_data, size_t a_dataSize
     const uint32_t pixValue = a_data[i];
     if(PixelIsRed(pixValue))
     {
-      struct PixelInfo info;
+      PixelInfo info;
       info.index = i;
       info.value = pixValue;
       m_foundPixels.push_back(info);

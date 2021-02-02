@@ -12,11 +12,13 @@ class RedPixels
 {
 public:
 
-  struct PixelInfo
+  typedef struct PixelInfoT
   {
     uint32_t value;
     uint32_t index;
-  };
+  }PixelInfo;
+
+  typedef uint32_t MyHandle;
   
   void SetMaxDataSize(size_t a_size); 
   void ProcessPixels(const uint32_t* a_data, size_t a_dataSize);

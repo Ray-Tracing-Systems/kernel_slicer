@@ -190,15 +190,20 @@ public:
     return true;
   }
 
-  //bool VisitTypedefNameDec(clang::TypedefNameDec* tDecl)
-  //{
-  //  const auto qt1 = tDecl->getTypeSourceInfo().getType();
-  //  const auto qt2 = tDecl->getUnderlyingType();
-  //
-  //  const std::string typeName1 = qt1.getAsString();
-  //  const std::string typeName2 = qt2.getAsString(); 
-  //  return true;
-  //}
+  bool VisitTypedefDecl(clang::TypedefDecl* tDecl)
+  { 
+    auto p = usedDecls.find(tDecl->getNameAsString());
+    if(p != usedDecls.end())
+    {
+      //const std::string typeName = qt2.getAsString(); 
+      //const auto qt2 = tDecl->getUnderlyingType();
+      //const std::string typeName1 = tDecl->getNameAsString();
+      p->second.srcRange  = tDecl->getSourceRange();
+      p->second.srcHash   = kslicer::GetHashOfSourceRange(p->second.srcRange);
+      p->second.extracted = true;
+    }
+    return true;
+  }
 
 private:
 
