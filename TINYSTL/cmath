@@ -28,7 +28,7 @@ static const float        MAXFLOAT = 1e37f;
 
 unsigned int rand();
 
-typedef unsigned int uint32_t;
-typedef unsigned long long int uint64_t;
+#include <cstdint>
+
 
 #endif

@@ -335,4 +335,6 @@ namespace std {
 	}
 }
 
+#include <cstdint>
+
 #endif // TINYSTL_VECTOR_H

@@ -1,0 +1,7 @@
+#ifndef STD_CSTDINT_H
+#define STD_CSTDINT_H
+
+typedef unsigned int uint32_t;
+typedef unsigned long long int uint64_t;
+
+#endif
