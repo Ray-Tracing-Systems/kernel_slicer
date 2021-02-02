@@ -46,7 +46,6 @@ namespace kslicer
     struct LoopInitStatement
     {
       clang::SourceRange srcRange;
-
     };
     
     std::string      return_type;
@@ -278,6 +277,7 @@ namespace kslicer
 
     std::unordered_map<std::string, KernelInfo>     allKernels;
     std::unordered_map<std::string, DataMemberInfo> allDataMembers;
+    //std::unordered_set<uint64_t>                  allLoopInitStatements; ///<! source locations hashes of code which is met inside loop-init statements inside kernels (IPV only)
 
     std::vector<MainFuncInfo>                       mainFunc;
 

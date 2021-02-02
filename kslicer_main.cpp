@@ -478,6 +478,9 @@ int main(int argc, const char **argv)
 
     for(auto& arg : kernel.args) // it is important to run this loop after second stage at which kernel matchers are applied!
       inputCodeInfo.ProcessKernelArg(arg, kernel);
+
+    //for(auto& initStm : kernel.loopInitStatements)
+    //  inputCodeInfo.allLoopInitStatements.insert(kslicer::GetHashOfSourceRange(initStm.srcRange));
   }
 
   std::cout << "}" << std::endl;

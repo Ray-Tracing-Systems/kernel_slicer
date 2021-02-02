@@ -659,8 +659,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     // if we have additional init statements we should add additional init kernel before our kernel
     //
     std::stringstream strOut;
-    strOut << "  if(get_global_id(0) != 0) return;" << std::endl; // initialization kernel run in single thread mode anyway
-    
+    strOut << "  if(get_global_id(0) != 0)" << std::endl; // initialization kernel run in single thread mode anyway
+    strOut << "    return; " << std::endl; 
+
     for(const auto stmt : k.loopInitStatements)
     {
       std::string text = kslicer::GetRangeSourceCode(stmt.srcRange, compiler);
@@ -668,8 +669,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
 
     //kslicer::GetRangeSourceCode(f.srcRange, compiler)
-    kernelJson["Name"]   = k.name + "_LoopInit";
-    kernelJson["Source"] = strOut.str();
+    kernelJson["Name"]    = k.name + "_LoopInit";
+    kernelJson["Source"]  = strOut.str();
+    kernelJson["Members"] = std::vector<json>();
     data["Kernels"].push_back(kernelJson);
   }
 
