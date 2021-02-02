@@ -27,11 +27,11 @@ kernel_slicer is auto-programming tool which takes C++ code as input and port th
 
 # Build(1): as stand-alone project
 
-1. sudo apt-get install llvm-10-dev
+1. sudo apt-get install llvm-11-dev
 
-2. sudo touch /usr/lib/llvm-10/bin/yaml-bench 
+2. sudo touch /usr/lib/llvm-11/bin/yaml-bench 
 
-3. sudo apt-get install libclang-10-dev 
+3. sudo apt-get install libclang-11-dev 
 
 4. use Cmake and make
 

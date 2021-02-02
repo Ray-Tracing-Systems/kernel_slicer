@@ -165,7 +165,7 @@ namespace kslicer
         if(isa<UnaryOperator>(conBody))
         {
           const auto bodyOp    = dyn_cast<UnaryOperator>(conBody);
-          std::string opStr    = bodyOp->getOpcodeStr(bodyOp->getOpcode());
+          std::string opStr    = std::string( bodyOp->getOpcodeStr(bodyOp->getOpcode()) );
           hasNegativeCondition = (opStr == "!");
         }
 

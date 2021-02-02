@@ -61,60 +61,16 @@ using kslicer::DataMemberInfo;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// https://stackoverflow.com/questions/11083066/getting-the-source-behind-clangs-ast
-
-/**
- * Gets the portion of the code that corresponds to given SourceRange exactly as
- * the range is given.
- *
- * @warning The end location of the SourceRange returned by some Clang functions 
- * (such as clang::Expr::getSourceRange) might actually point to the first character
- * (the "location") of the last token of the expression, rather than the character
- * past-the-end of the expression like clang::Lexer::getSourceText expects.
- * get_source_text_raw() does not take this into account. Use get_source_text()
- * instead if you want to get the source text including the last token.
- *
- * @warning This function does not obtain the source of a macro/preprocessor expansion.
- * Use get_source_text() for that.
- */
-static std::string get_source_text_raw(clang::SourceRange range, const clang::SourceManager& sm) 
-{
-  return clang::Lexer::getSourceText(clang::CharSourceRange::getCharRange(range), sm, clang::LangOptions());
-}
-
-/**
- * Gets the portion of the code that corresponds to given SourceRange, including the
- * last token. Returns expanded macros.
- * 
- * @see get_source_text_raw()
- */
-static std::string get_source_text(clang::SourceRange range, const clang::SourceManager& sm, const clang::LangOptions lo) 
-{
-  //clang::LangOptions lo;
-
-  // NOTE: sm.getSpellingLoc() used in case the range corresponds to a macro/preprocessed source.
-  auto start_loc = sm.getSpellingLoc(range.getBegin());
-  auto last_token_loc = sm.getSpellingLoc(range.getEnd());
-  auto end_loc = clang::Lexer::getLocForEndOfToken(last_token_loc, 0, sm, lo);
-  auto printable_range = clang::SourceRange{start_loc, end_loc};
-  return get_source_text_raw(printable_range, sm);
-}
-
 std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler) 
 {
-  return get_source_text(a_range, compiler.getSourceManager(), compiler.getLangOpts());
-}
+  const clang::SourceManager& sm = compiler.getSourceManager();
+  const clang::LangOptions& lopt = compiler.getLangOpts();
 
-//std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler) 
-//{
-//  const clang::SourceManager& sm = compiler.getSourceManager();
-//  const clang::LangOptions& lopt = compiler.getLangOpts();
-//
-//  clang::SourceLocation b(a_range.getBegin()), _e(a_range.getEnd());
-//  clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
-//
-//  return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
-//}
+  clang::SourceLocation b(a_range.getBegin()), _e(a_range.getEnd());
+  clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
+
+  return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
+}
 
 uint64_t kslicer::GetHashOfSourceRange(const clang::SourceRange& a_range)
 {

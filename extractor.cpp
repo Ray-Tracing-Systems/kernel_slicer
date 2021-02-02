@@ -1,5 +1,6 @@
 #include "extractor.h"
 #include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/AST/Decl.h"
 
 #include <queue>
 
@@ -23,7 +24,7 @@ public:
     if(f->isOverloadedOperator())
       return true;
 
-    std::string fileName = m_sm.getFilename(f->getSourceRange().getBegin()); // check that we are in test_class.cpp or test_class.h or sms like that;                                                                             
+    std::string fileName = std::string(m_sm.getFilename(f->getSourceRange().getBegin())); // check that we are in test_class.cpp or test_class.h or sms like that;                                                                             
     if(fileName.find("include/") != std::string::npos)                       // definitely exclude everything from 'include/' folder
       return true;
 
@@ -43,7 +44,7 @@ public:
     if(func.isKernel)
     {
       auto beginLoc = func.srcRange.getBegin();
-      std::string fileName = m_sm.getFilename(beginLoc);
+      std::string fileName = std::string(m_sm.getFilename(beginLoc));
       std::cout << "[FuncExtractor] ERROR! " << currProcessedFuncName.c_str() << " --> " << func.name.c_str() << std::endl; 
       std::cout << "[FuncExtractor] file:  " << fileName.c_str() << ", line: " << m_sm.getPresumedLoc(beginLoc).getLine() << std::endl;
       std::cout << "[FuncExtractor] calling kernel from a kernel is not allowed currently!" << std::endl;
@@ -188,6 +189,16 @@ public:
 
     return true;
   }
+
+  //bool VisitTypedefNameDec(clang::TypedefNameDec* tDecl)
+  //{
+  //  const auto qt1 = tDecl->getTypeSourceInfo().getType();
+  //  const auto qt2 = tDecl->getUnderlyingType();
+  //
+  //  const std::string typeName1 = qt1.getAsString();
+  //  const std::string typeName2 = qt2.getAsString(); 
+  //  return true;
+  //}
 
 private:
 
