@@ -146,7 +146,7 @@ public:
     using namespace clang;
     const FunctionDecl* func_decl = result.Nodes.getNodeAs<FunctionDecl>("targetFunction");
     const ForStmt*      forLoop   = result.Nodes.getNodeAs<ForStmt>("loop");
-    const CompoundStmt* loopInit  = result.Nodes.getNodeAs<CompoundStmt>("loopInitCode");
+    const CompoundStmt* loopOutsidesInit  = result.Nodes.getNodeAs<CompoundStmt>("loopInitCode");
 
     clang::SourceManager& srcMgr(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
 
@@ -174,24 +174,21 @@ public:
         }
       }
     }
-    else if(loopInit && func_decl)
+    else if(loopOutsidesInit && func_decl)
     {
-      //const auto fnNameInfo    = func_decl->getNameInfo();
-      //const DeclarationName dn = fnNameInfo.getName();
-      //const std::string fname  = dn.getAsString();
-      //auto name2 = currKernel->name;
-      
-      currKernel->loopInitStatements.clear();
-      for(auto p = loopInit->body_begin(); p != loopInit->body_end(); ++p)
+      currKernel->loopOutsidesInit    = loopOutsidesInit->getSourceRange();
+      clang::SourceLocation endOfInit = currKernel->loopOutsidesInit.getEnd();
+      for(auto p = loopOutsidesInit->body_begin(); p != loopOutsidesInit->body_end(); ++p)
       {
         const Stmt* expr = *p; 
         if(isa<ForStmt>(expr))
           break;
-
-        kslicer::KernelInfo::LoopInitStatement stmt;
-        stmt.srcRange = expr->getSourceRange();
-        currKernel->loopInitStatements.push_back(stmt);
+        
+        endOfInit = expr->getSourceRange().getEnd(); 
       }
+
+      currKernel->hasLoopInit = (currKernel->loopOutsidesInit.getEnd() != endOfInit);
+      currKernel->loopOutsidesInit.setEnd(endOfInit);
     }
     else
       UsedCodeFilter::run(result);
@@ -218,4 +215,15 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
   
   return rewrite2.getRewrittenText(a_funcInfo.loopInsides);
+}
+
+std::string kslicer::IPV_Pattern::VisitAndRewrite_KFLoopInit(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
+{
+  Rewriter rewrite2;
+  rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+
+  kslicer::KernelInitLoopReplacerASTVisitor rv(rewrite2, compiler, this, a_funcInfo);
+  rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
+
+  return rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit) + ";";
 }

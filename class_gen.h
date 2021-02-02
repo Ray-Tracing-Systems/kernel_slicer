@@ -90,6 +90,7 @@ namespace kslicer
       m_variables.reserve(a_variables.size());
       for(const auto& var : a_variables) 
         m_variables[var.name] = var;
+      m_alwaysRewriteUBO = false;
     }
 
     bool VisitMemberExpr(MemberExpr* expr);
@@ -97,6 +98,9 @@ namespace kslicer
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
     bool VisitReturnStmt(ReturnStmt* ret);
   
+  protected:
+    bool m_alwaysRewriteUBO;
+
   private:
 
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
@@ -109,6 +113,19 @@ namespace kslicer
     const std::vector<kslicer::KernelInfo::Arg>&             m_args;
     const std::string&                                       m_fakeOffsetExp;
     bool                                                     m_needModifyExitCond;
+  };
+
+  class KernelInitLoopReplacerASTVisitor : public KernelReplacerASTVisitor
+  {
+  public:
+     KernelInitLoopReplacerASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, const kslicer::KernelInfo& a_kernel) : 
+                                      KernelReplacerASTVisitor(R,a_compiler, a_codeInfo, a_kernel,"")
+     {
+       m_alwaysRewriteUBO = true;
+     } 
+
+    bool VisitUnaryOperator(UnaryOperator* expr) {return true;} // disable them currently
+    bool VisitReturnStmt   (ReturnStmt* ret)     {return true;} // disable them currently
   };
 
   void ObtainKernelsDecl(std::vector<KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo);

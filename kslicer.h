@@ -53,7 +53,8 @@ namespace kslicer
     std::vector<Arg> args;             ///<! all arguments of a kernel
     std::vector<LoopIter> loopIters;   ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
     clang::SourceRange    loopInsides; ///<! used by IPV pattern to extract loops insides and make them kernel source
-    std::vector<LoopInitStatement> loopInitStatements; ///<!
+    clang::SourceRange    loopOutsidesInit;     ///<! used by IPV pattern to extract code before loops and then make additional initialization kernel
+    bool                  hasLoopInit  = false; ///<! indicate that we actually has loop init part inside IPV kernel
 
     const clang::CXXMethodDecl* astNode = nullptr;
     bool usedInMainFunc = false;
@@ -64,7 +65,8 @@ namespace kslicer
     std::string DeclCmd;
     std::unordered_set<std::string> usedVectors; ///<! list of all std::vector<T> member names which is referenced inside kernel
     std::unordered_set<std::string> usedMembers; ///<! list of all other variables used inside kernel
-    std::string rewrittenText;
+    std::string rewrittenText;                   ///<! rewritten source code of a kernel
+    std::string rewrittenInit;                   ///<! rewritten loop initialization code for kernel
 
     uint32_t injectedWgSize[3] = {256,1,1};      ///<! workgroup size for the case when setting wgsize with spec constant is not allowed
   };
@@ -321,6 +323,7 @@ namespace kslicer
     virtual MList         ListMatchers_KF(const std::string& mainFuncName) = 0; 
     virtual MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) = 0;
     virtual std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler);
+    virtual std::string   VisitAndRewrite_KFLoopInit(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) { return ""; }
 
     virtual void ProcessCallArs_KF(const KernelCallInfo& a_call) { };
     
@@ -381,8 +384,9 @@ namespace kslicer
     std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override; 
 
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
-    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override; 
-    std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler);
+    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler)            override; 
+    std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)         override;
+    std::string   VisitAndRewrite_KFLoopInit(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) override;
 
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
     void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override; 

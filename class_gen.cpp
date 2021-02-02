@@ -767,9 +767,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitMemberExpr(MemberExpr* expr)
   // (2) put ubo->var instead of var, leave containers as they are
   // process arrays and large data structures because small can be read once in the neggining of kernel
   //
-  //const uint64_t codeHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
-  //auto  pCodePos = m_codeInfo->allLoopInitStatements.find(codeHash);
-  if(pMember->second.isArray || (!pMember->second.isContainer && pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD)) 
+  if(m_alwaysRewriteUBO || pMember->second.isArray || (!pMember->second.isContainer && pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD)) 
   {
     std::string rewrittenName = m_codeInfo->pShaderCC->UBOAccess(pMember->second.name);
     m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenName);
