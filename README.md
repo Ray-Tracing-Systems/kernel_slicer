@@ -106,7 +106,7 @@ If you got z_generated.cl.spv file, kernels were compiled succesfully. In VS Cod
 
 (+) can access class data members of std::vector type inside kernels;
 
-(+) can use vector.size() inside kernels;
+(+) can use vector.size(), vector.capacity(), vector.data() inside kernels;
 
 (+) can pass vector.data() to kernel in control function;
 
@@ -119,10 +119,6 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
                           out_color);
 }
 ```
-
-(-) can't **yet** use vector.capacity() inside kernels (**not implemented**);
-
-(-) can't **yet** vector.data() method inside kernel (**not implemented**);
 
 (-) can't **yet** use vector.push_back() inside kernels (**not implemented**);
 

@@ -84,22 +84,18 @@ namespace kslicer
     KernelReplacerASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
                              const kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr) : 
                              m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_mainClassName(a_codeInfo->mainClassName), 
-                             m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_needModifyExitCond(a_kernel.isBoolTyped) 
+                             m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_needModifyExitCond(a_kernel.isBoolTyped), m_currKernel(a_kernel) 
     { 
       const auto& a_variables = a_codeInfo->dataMembers;
       m_variables.reserve(a_variables.size());
       for(const auto& var : a_variables) 
         m_variables[var.name] = var;
-      m_processLoopInitCode = false;
     }
 
     bool VisitMemberExpr(MemberExpr* expr);
     bool VisitUnaryOperator(UnaryOperator* expr);
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
     bool VisitReturnStmt(ReturnStmt* ret);
-  
-  protected:
-    bool m_processLoopInitCode;
 
   private:
 
@@ -113,19 +109,7 @@ namespace kslicer
     const std::vector<kslicer::KernelInfo::Arg>&             m_args;
     const std::string&                                       m_fakeOffsetExp;
     bool                                                     m_needModifyExitCond;
-  };
-
-  class KernelInitLoopReplacerASTVisitor : public KernelReplacerASTVisitor
-  {
-  public:
-     KernelInitLoopReplacerASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, const kslicer::KernelInfo& a_kernel) : 
-                                      KernelReplacerASTVisitor(R,a_compiler, a_codeInfo, a_kernel,"")
-     {
-       m_processLoopInitCode = true;
-     } 
-
-    bool VisitUnaryOperator(UnaryOperator* expr) {return true;} // disable them currently
-    bool VisitReturnStmt   (ReturnStmt* ret)     {return true;} // disable them currently
+    const kslicer::KernelInfo&                               m_currKernel;
   };
 
   void ObtainKernelsDecl(std::vector<KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo);

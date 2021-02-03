@@ -206,7 +206,7 @@ kslicer::IPV_Pattern::MHandlerKFPtr kslicer::IPV_Pattern::MatcherHandler_KF(Kern
   return std::move(std::make_unique<LoopHandlerInsideKernelsIPV>(std::cout, *this, &kernel, a_compile));
 }
 
-std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
+std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, std::string& a_outLoopInitCode)
 {
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
@@ -214,16 +214,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   kslicer::KernelReplacerASTVisitor rv(rewrite2, compiler, this, a_funcInfo, "");
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
   
-  return rewrite2.getRewrittenText(a_funcInfo.loopInsides);
+  a_outLoopInitCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit) + ";";
+  return              rewrite2.getRewrittenText(a_funcInfo.loopInsides);
 }
 
-std::string kslicer::IPV_Pattern::VisitAndRewrite_KFLoopInit(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
-{
-  Rewriter rewrite2;
-  rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-
-  kslicer::KernelInitLoopReplacerASTVisitor rv(rewrite2, compiler, this, a_funcInfo);
-  rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
-
-  return rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit) + ";";
-}

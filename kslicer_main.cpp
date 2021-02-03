@@ -612,11 +612,7 @@ int main(int argc, const char **argv)
     inputCodeInfo.ProcessCallArs_KF(call);
 
   for(auto& k : inputCodeInfo.kernels)
-  {
-    k.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k, compiler);
-    if(k.hasLoopInit)
-      k.rewrittenInit = inputCodeInfo.VisitAndRewrite_KFLoopInit(k, compiler);
-  }
+    k.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k, compiler, k.rewrittenInit);
 
   // finally generate kernels
   //

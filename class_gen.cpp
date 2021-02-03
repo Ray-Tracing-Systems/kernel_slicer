@@ -767,8 +767,11 @@ bool kslicer::KernelReplacerASTVisitor::VisitMemberExpr(MemberExpr* expr)
   // (2) put ubo->var instead of var, leave containers as they are
   // process arrays and large data structures because small can be read once in the neggining of kernel
   //
-  if(m_processLoopInitCode || pMember->second.isArray || (!pMember->second.isContainer && pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD)) 
+  const bool isInLoopInitPart = expr->getSourceRange().getBegin() <= m_currKernel.loopOutsidesInit.getEnd();
+  const bool hasLargeSize     = (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);
+  if(!pMember->second.isContainer && (isInLoopInitPart || pMember->second.isArray || hasLargeSize)) 
   {
+    //const std::string debugMe = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
     std::string rewrittenName = m_codeInfo->pShaderCC->UBOAccess(pMember->second.name);
     m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenName);
   }
@@ -808,14 +811,13 @@ bool kslicer::KernelReplacerASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr
     }
     else if(fname == "resize")
     {
-      if(m_processLoopInitCode)
+      if(f->getSourceRange().getBegin() <= m_currKernel.loopOutsidesInit.getEnd())
       {
-        //assert(f->getNumArgs() == 1);
-        //const Expr* currArgExpr  = f->getArgs()[0];
-        //std::string newSizeValue = kslicer::GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler); 
-        //std::string memberNameB  = memberNameA + "_size = " + newSizeValue;
-        //m_rewriter.ReplaceText(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
-        m_rewriter.ReplaceText(f->getSourceRange(), "//replace resize()");
+        assert(f->getNumArgs() == 1);
+        const Expr* currArgExpr  = f->getArgs()[0];
+        std::string newSizeValue = kslicer::GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler); 
+        std::string memberNameB  = memberNameA + "_size = " + newSizeValue;
+        m_rewriter.ReplaceText(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
       }
     }
     else if(fname == "push_back")
@@ -919,7 +921,7 @@ std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const
     return "tid";
 }
 
-std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
+std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, std::string& a_outLoopInitCode)
 {
   const CXXMethodDecl* a_node = a_funcInfo.astNode;
   //a_node->dump();

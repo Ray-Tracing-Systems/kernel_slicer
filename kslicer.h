@@ -322,8 +322,7 @@ namespace kslicer
     //
     virtual MList         ListMatchers_KF(const std::string& mainFuncName) = 0; 
     virtual MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) = 0;
-    virtual std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler);
-    virtual std::string   VisitAndRewrite_KFLoopInit(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) { return ""; }
+    virtual std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, std::string& a_outLoopInitCode);
 
     virtual void ProcessCallArs_KF(const KernelCallInfo& a_call) { };
     
@@ -384,9 +383,8 @@ namespace kslicer
     std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override; 
 
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
-    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler)            override; 
-    std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)         override;
-    std::string   VisitAndRewrite_KFLoopInit(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) override;
+    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override; 
+    std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, std::string& a_outLoopInitCode) override;
 
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
     void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override; 
