@@ -88,6 +88,8 @@ protected:
   std::unique_ptr<vkfw::ComputePipelineMaker> m_pMaker = nullptr;
   VkPhysicalDeviceProperties m_devProps;
 
+  VkBufferMemoryBarrier BarrierForUBOUpdate();
+
   virtual void InitHelpers();
   virtual void InitBuffers(size_t a_maxThreadsCount);
   virtual void InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ,
@@ -133,12 +135,17 @@ protected:
   VkBuffer m_classDataBuffer = VK_NULL_HANDLE;
   VkDeviceMemory m_allMem    = VK_NULL_HANDLE;
 
-## for KernelName in KernelNames
-  VkPipelineLayout      {{KernelName}}Layout   = VK_NULL_HANDLE;
-  VkPipeline            {{KernelName}}Pipeline = VK_NULL_HANDLE; 
-  VkDescriptorSetLayout {{KernelName}}DSLayout = VK_NULL_HANDLE;  
-  VkDescriptorSetLayout Create{{KernelName}}DSLayout();
-
+## for Kernel in Kernels
+  VkPipelineLayout      {{Kernel.Name}}Layout   = VK_NULL_HANDLE;
+  VkPipeline            {{Kernel.Name}}Pipeline = VK_NULL_HANDLE; 
+  VkDescriptorSetLayout {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;  
+  VkDescriptorSetLayout Create{{Kernel.Name}}DSLayout();
+  {% if Kernel.HasLoopInit %}
+  VkPipelineLayout      {{Kernel.Name}}LoopInitLayout   = VK_NULL_HANDLE;
+  VkPipeline            {{Kernel.Name}}LoopInitPipeline = VK_NULL_HANDLE; 
+  VkDescriptorSetLayout {{Kernel.Name}}LoopInitDSLayout = VK_NULL_HANDLE;  
+  VkDescriptorSetLayout Create{{Kernel.Name}}LoopInitDSLayout(); 
+  {% endif %}
 ## endfor
 
   VkPipelineLayout      copyKernelFloatLayout   = VK_NULL_HANDLE;

@@ -121,13 +121,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   data["KernelsDecl"]                  = strOut2.str();   
   data["TotalDSNumber"]                = a_classInfo.allDescriptorSetsInfo.size();
 
-  data["KernelNames"] = std::vector<std::string>();  
-  for(const auto& k : a_classInfo.kernels)
-  {
-    std::string kernName = a_classInfo.RemoveKernelPrefix(k.name);
-    data["KernelNames"].push_back(kernName);
-  }
-
   data["VectorMembers"] = std::vector<std::string>();
   for(const auto var : a_classInfo.dataMembers)
   {
@@ -217,6 +210,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     local["Name"]         = kernName;
     local["OriginalName"] = k.name;
     local["ArgCount"]     = k.args.size();
+    local["HasLoopInit"]  = k.hasLoopInit;
     local["Decl"]         = kernelDeclByName[kernName];
 
     local["Args"]         = std::vector<std::string>();
@@ -656,15 +650,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     // if we have additional init statements we should add additional init kernel before our kernel
     //
     if(k.hasLoopInit)
-    {
-      std::stringstream strOut;
-      strOut << "  if(get_global_id(0) != 0)" << std::endl; // initialization kernel run in single thread mode anyway
-      strOut << "    return; " << std::endl; 
-      
-      std::string sourceCodeCut2 = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1);
-      
+    {      
       kernelJson["Name"]    = k.name + "_LoopInit";
-      kernelJson["Source"]  = strOut.str() + sourceCodeCut2;
+      kernelJson["Source"]  = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1);
       kernelJson["Members"] = std::vector<json>();
       data["Kernels"].push_back(kernelJson);
     }

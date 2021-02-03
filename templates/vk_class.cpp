@@ -17,6 +17,10 @@ constexpr static uint32_t MEMCPY_BLOCK_SIZE = 256;
 ## for Kernel in Kernels
   vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
+  {% if Kernel.HasLoopInit %}
+  vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}LoopInitDSLayout, nullptr);
+  {{Kernel.Name}}LoopInitDSLayout = VK_NULL_HANDLE;
+  {% endif %}
 ## endfor
   vkDestroyDescriptorSetLayout(device, copyKernelFloatDSLayout, nullptr);
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
@@ -76,7 +80,37 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout
   VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
   return layout;
 }
+{% if Kernel.HasLoopInit %}
+VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}LoopInitDSLayout()
+{
+  VkDescriptorSetLayoutBinding dsBindings[{{Kernel.ArgCount}}+1] = {};
+  
+## for KernelARG in Kernel.Args
+  // binding for {{KernelARG.Name}}
+  dsBindings[{{KernelARG.Id}}].binding            = {{KernelARG.Id}};
+  dsBindings[{{KernelARG.Id}}].descriptorType     = {{KernelARG.Type}};
+  dsBindings[{{KernelARG.Id}}].descriptorCount    = 1;
+  dsBindings[{{KernelARG.Id}}].stageFlags         = {{KernelARG.Flags}};
+  dsBindings[{{KernelARG.Id}}].pImmutableSamplers = nullptr;
 
+## endfor
+  // binding for POD members stored in m_classDataBuffer
+  dsBindings[{{Kernel.ArgCount}}].binding            = {{Kernel.ArgCount}};
+  dsBindings[{{Kernel.ArgCount}}].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[{{Kernel.ArgCount}}].descriptorCount    = 1;
+  dsBindings[{{Kernel.ArgCount}}].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[{{Kernel.ArgCount}}].pImmutableSamplers = nullptr;
+  
+  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
+  descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  descriptorSetLayoutCreateInfo.bindingCount = uint32_t({{Kernel.ArgCount}}+1);
+  descriptorSetLayoutCreateInfo.pBindings    = dsBindings;
+  
+  VkDescriptorSetLayout layout = nullptr;
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
+  return layout;
+}
+{% endif %}
 ## endfor
 
 VkDescriptorSetLayout {{MainClassName}}_Generated::CreatecopyKernelFloatDSLayout()
@@ -161,7 +195,14 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
     
     {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
     {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, 128); // at least 128 bytes for push constants
-    {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);   
+    {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);  
+    {% if Kernel.HasLoopInit %}
+    uint32_t singleThreadConfig[3] = {1,1,1};
+    specsForWGSizeExcep.pData = singleThreadConfig;   
+    m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSizeExcep, "{{Kernel.OriginalName}}_LoopInit");
+    {{Kernel.Name}}LoopInitDSLayout = Create{{Kernel.Name}}LoopInitDSLayout();
+    {{Kernel.Name}}LoopInitLayout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}LoopInitDSLayout, 128); // at least 128 bytes for push constants
+    {{Kernel.Name}}LoopInitPipeline = m_pMaker->MakePipeline(device);{% endif %} 
   }
 
 ## endfor
@@ -245,12 +286,9 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
     blockSizeZ = ex->second.blockSize[2];
   }
 
-  vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
-  
   struct KernelArgsPC
   {
-    {% for Arg in Kernel.AuxArgs %}{{Arg.Type}} m_{{Arg.Name}}; 
-    {% endfor %}
+    {% for Arg in Kernel.AuxArgs %}{{Arg.Type}} m_{{Arg.Name}}; {% endfor %}
     uint32_t m_sizeX;
     uint32_t m_sizeY;
     uint32_t m_sizeZ;
@@ -261,17 +299,20 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   pcData.m_sizeY  = {{Kernel.tidY}};
   pcData.m_sizeZ  = {{Kernel.tidZ}};
   pcData.m_tFlags = m_currThreadFlags;
-  {% for Arg in Kernel.AuxArgs %}pcData.m_{{Arg.Name}} = {{Arg.Name}}; 
-  {% endfor %}
+  {% for Arg in Kernel.AuxArgs %}pcData.m_{{Arg.Name}} = {{Arg.Name}}; {% endfor %}
+  {% if Kernel.HasLoopInit %}
+  vkCmdBindPipeline (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}LoopInitPipeline);
+  vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}LoopInitLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
+  vkCmdDispatch(m_currCmdBuffer, 1, 1, 1); 
+  VkBufferMemoryBarrier barUBO = BarrierForUBOUpdate();
+  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
+  {% endif %}
+  vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
-  vkCmdDispatch(
-    m_currCmdBuffer,
-    ({{Kernel.tidX}} + blockSizeX - 1) / blockSizeX,
-    ({{Kernel.tidY}} + blockSizeY - 1) / blockSizeY,
-    ({{Kernel.tidZ}} + blockSizeZ - 1) / blockSizeZ);
+  vkCmdDispatch(m_currCmdBuffer, ({{Kernel.tidX}} + blockSizeX - 1) / blockSizeX, ({{Kernel.tidY}} + blockSizeY - 1) / blockSizeY, ({{Kernel.tidZ}} + blockSizeZ - 1) / blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
-  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
+  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
 }
 
 ## endfor
@@ -287,6 +328,21 @@ void {{MainClassName}}_Generated::copyKernelFloatCmd(uint32_t length)
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+}
+
+VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForUBOUpdate()
+{
+  VkBufferMemoryBarrier bar = {};
+  bar.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  bar.pNext               = NULL;
+  bar.srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT;
+  bar.dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
+  bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bar.buffer = m_classDataBuffer;
+  bar.offset = 0;
+  bar.size   = VK_WHOLE_SIZE;
+  return bar;
 }
 
 ## for MainFunc in MainFunctions
