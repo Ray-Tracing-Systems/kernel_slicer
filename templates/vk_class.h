@@ -145,7 +145,8 @@ protected:
   VkPipeline            {{Kernel.Name}}LoopInitPipeline = VK_NULL_HANDLE; 
   VkDescriptorSetLayout {{Kernel.Name}}LoopInitDSLayout = VK_NULL_HANDLE;  
   VkDescriptorSetLayout Create{{Kernel.Name}}LoopInitDSLayout(); 
-  {% endif %}
+  {% endif %}void InitKernel_{{Kernel.Name}}(const char* a_filePath, VkSpecializationInfo specsForWGSize);
+
 ## endfor
 
   VkPipelineLayout      copyKernelFloatLayout   = VK_NULL_HANDLE;
@@ -160,6 +161,7 @@ protected:
 
   {{MainClassName}}_UBO_Data m_uboData;
   
+  constexpr static uint32_t MEMCPY_BLOCK_SIZE = 256;
 };
 
 #endif

@@ -37,6 +37,7 @@ add_executable(testapp main.cpp
                        test_class_gpu.cpp
                        test_class_generated.cpp 
                        test_class_generated_ds.cpp 
+                       test_class_generated_init.cpp
                        Bitmap.cpp
                        imageutils.cpp 
                        ../vkfw/vk_utils.cpp
