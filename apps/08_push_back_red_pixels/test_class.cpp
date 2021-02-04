@@ -33,7 +33,7 @@ void RedPixels::kernel1D_CountRedPixels(const uint32_t* a_data, size_t a_dataSiz
   for(uint32_t i = 0; i<a_dataSize; i++)
   {
     if(PixelIsRed(a_data[i]))
-      m_redPixelsNum++;
+      m_redPixelsNum += 1;
   }
 }
 

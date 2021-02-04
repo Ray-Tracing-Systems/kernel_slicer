@@ -558,12 +558,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       assert(pVecMember->second.isContainer);
       assert(pVecSizeMember->second.isContainerInfo);
-       
+
       std::string buffType = a_classInfo.RemoveTypeNamespaces(pVecMember->second.containerDataType) + "*";
- 
+
       json argj;
-      argj["Type"] = a_classInfo.pShaderCC->ProcessBufferType(buffType);
-      argj["Name"] = pVecMember->second.name;
+      argj["Type"]       = a_classInfo.pShaderCC->ProcessBufferType(buffType);
+      argj["Name"]       = pVecMember->second.name;
       argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
       args.push_back(argj);
       vecs.push_back(argj);
@@ -579,6 +579,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     for(const auto member : membersToRead)
     {
       if(member.isArray || member.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD) // read large data structures directly inside kernel code, don't read them at the beggining of kernel.
+        continue;
+
+      if(k.subjectedToReduction.find(member.name) != k.subjectedToReduction.end())         // exclude this opt for members which subjected to reduction
         continue;
 
       json memberData;

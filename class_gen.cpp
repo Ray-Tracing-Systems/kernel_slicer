@@ -881,14 +881,39 @@ bool kslicer::KernelReplacerASTVisitor::CheckIfExprHasArgumentThatNeedFakeOffset
 
 bool kslicer::KernelReplacerASTVisitor::VisitUnaryOperator(UnaryOperator* expr)
 {
+  const auto op = expr->getOpcodeStr(expr->getOpcode());
+  //const auto opCheck = std::string(op);
+  //std::string opCheck2 = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+
+  if(op == "++" || op == "--") // detect ++ and -- for reduction
+  {
+    auto opRange = expr->getSourceRange();
+    if(opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
+      return true;   
+  
+    const auto op = expr->getOpcodeStr(expr->getOpcode());
+    std::string leftStr = GetRangeSourceCode(expr->getSubExpr()->getSourceRange(), m_compiler);
+    
+    auto p = m_currKernel.usedMembers.find(leftStr);
+    if(p != m_currKernel.usedMembers.end())
+    {
+      KernelInfo::ReductionAccess access;
+      access.type      = KernelInfo::REDUCTION_TYPE::UNKNOWN;
+      access.rightExpr = "";
+    
+      if(op == "++")
+        access.type    = KernelInfo::REDUCTION_TYPE::ADD_ONE;
+      else if(op == "--")
+        access.type    = KernelInfo::REDUCTION_TYPE::SUB_ONE;
+      
+      m_currKernel.subjectedToReduction[leftStr] = access;
+      m_rewriter.ReplaceText(expr->getSourceRange(), "// reduce " + leftStr + " with " + std::string(op));
+    }
+  }
+
   // detect " *(something)"
-
-  if(expr->canOverflow() || expr->isArithmeticOp()) // -UnaryOperator ...'LiteMath::uint':'unsigned int' lvalue prefix '*' cannot overflow
-    return true;
- 
-  std::string exprAll = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-
-  if(exprAll.find("*") != 0)
+  //
+  if(expr->canOverflow() || op != "*") // -UnaryOperator ...'LiteMath::uint':'unsigned int' lvalue prefix '*' cannot overflow
     return true;
 
   Expr* subExpr =	expr->getSubExpr();
@@ -904,6 +929,45 @@ bool kslicer::KernelReplacerASTVisitor::VisitUnaryOperator(UnaryOperator* expr)
   if(needOffset)
     m_rewriter.ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
 
+  return true;
+}
+
+bool kslicer::KernelReplacerASTVisitor::VisitCompoundAssignOperator(CompoundAssignOperator* expr)
+{
+  auto opRange = expr->getSourceRange();
+  if(opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
+    return true;   
+
+  const Expr* lhs = expr->getLHS();
+  const Expr* rhs = expr->getRHS();
+  const auto op   = expr->getOpcodeStr();
+  std::string leftStr = GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
+
+  auto p = m_currKernel.usedMembers.find(leftStr);
+  if(p != m_currKernel.usedMembers.end())
+  {
+    KernelInfo::ReductionAccess access;
+    access.type      = KernelInfo::REDUCTION_TYPE::UNKNOWN;
+    access.rightExpr = GetRangeSourceCode(rhs->getSourceRange(), m_compiler);
+
+    if(op == "+=")
+      access.type    = KernelInfo::REDUCTION_TYPE::ADD;
+    else if(op == "*=")
+      access.type    = KernelInfo::REDUCTION_TYPE::MUL;
+    else if(op == "-=")
+      access.type    = KernelInfo::REDUCTION_TYPE::SUB;
+      
+    m_currKernel.subjectedToReduction[leftStr] = access;
+    m_rewriter.ReplaceText(expr->getSourceRange(), "// reduce " + leftStr + " with " + std::string(op) + " and " + access.rightExpr);
+  }
+
+  return true;
+}
+
+bool kslicer::KernelReplacerASTVisitor::VisitBinaryOperator(BinaryOperator* expr)
+{
+  //const auto op = expr->getOpcodeStr();
+  //const auto opCheck = std::string(op);
   return true;
 }
 

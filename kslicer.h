@@ -48,11 +48,19 @@ namespace kslicer
       clang::SourceRange srcRange;
     };
     
-    std::string      return_type;
-    std::string      name;
-    std::vector<Arg> args;             ///<! all arguments of a kernel
-    std::vector<LoopIter> loopIters;   ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
-    clang::SourceRange    loopInsides; ///<! used by IPV pattern to extract loops insides and make them kernel source
+    enum class REDUCTION_TYPE {ADD_ONE = 1, ADD = 2, MUL = 3, FUNC = 4, SUB = 5, SUB_ONE,  UNKNOWN = 255};
+
+    struct ReductionAccess
+    {
+      REDUCTION_TYPE type;
+      std::string    rightExpr;
+    };
+    
+    std::string      return_type;               ///<! func. return type
+    std::string      name;                      ///<! func. name
+    std::vector<Arg> args;                      ///<! all arguments of a kernel
+    std::vector<LoopIter> loopIters;            ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
+    clang::SourceRange    loopInsides;          ///<! used by IPV pattern to extract loops insides and make them kernel source
     clang::SourceRange    loopOutsidesInit;     ///<! used by IPV pattern to extract code before loops and then make additional initialization kernel
     bool                  hasLoopInit  = false; ///<! indicate that we actually has loop init part inside IPV kernel
 
@@ -65,6 +73,8 @@ namespace kslicer
     std::string DeclCmd;
     std::unordered_set<std::string> usedVectors; ///<! list of all std::vector<T> member names which is referenced inside kernel
     std::unordered_set<std::string> usedMembers; ///<! list of all other variables used inside kernel
+    std::unordered_map<std::string, ReductionAccess> subjectedToReduction; ///<! if member is used in reduction expression
+
     std::string rewrittenText;                   ///<! rewritten source code of a kernel
     std::string rewrittenInit;                   ///<! rewritten loop initialization code for kernel
 

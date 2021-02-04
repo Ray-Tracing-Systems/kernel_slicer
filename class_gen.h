@@ -82,7 +82,7 @@ namespace kslicer
   public:
     
     KernelReplacerASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
-                             const kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr) : 
+                            kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr) : 
                              m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_mainClassName(a_codeInfo->mainClassName), 
                              m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_needModifyExitCond(a_kernel.isBoolTyped), m_currKernel(a_kernel) 
     { 
@@ -97,6 +97,9 @@ namespace kslicer
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
     bool VisitReturnStmt(ReturnStmt* ret);
 
+    bool VisitCompoundAssignOperator(CompoundAssignOperator* expr); // +=, *=, -= to detect reduction
+    bool VisitBinaryOperator(BinaryOperator* expr);
+
   private:
 
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
@@ -109,7 +112,7 @@ namespace kslicer
     const std::vector<kslicer::KernelInfo::Arg>&             m_args;
     const std::string&                                       m_fakeOffsetExp;
     bool                                                     m_needModifyExitCond;
-    const kslicer::KernelInfo&                               m_currKernel;
+    kslicer::KernelInfo&                                     m_currKernel;
   };
 
   void ObtainKernelsDecl(std::vector<KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo);
