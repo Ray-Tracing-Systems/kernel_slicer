@@ -395,6 +395,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
 void kslicer::ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, const std::string& a_outFilePath, const nlohmann::json& a_data)
 {
   inja::Environment env;
+  env.set_trim_blocks(true);
+  env.set_lstrip_blocks(true);
+
   inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());
   std::string result  = env.render(temp, a_data);
   
@@ -429,7 +432,7 @@ nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const s
     uboField["Type"]      = typeStr;
     uboField["Name"]      = member.name;
     uboField["IsArray"]   = member.isArray;
-    uboField["ArraySize"] =  member.arraySize;
+    uboField["ArraySize"] = member.arraySize;
     data["UBOStructFields"].push_back(uboField);
     
     while(sizeO < sizeA)
@@ -674,6 +677,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["HasEpilog"]  = k.isBoolTyped || reductionVars.size() != 0;
     kernelJson["IsBoolean"]  = k.isBoolTyped;
     kernelJson["SubjToRed"]  = reductionVars;
+    kernelJson["HasReduct"]  = (reductionVars.size() > 0);
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));

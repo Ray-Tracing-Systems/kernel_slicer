@@ -47,31 +47,58 @@ __kernel void {{Kernel.Name}}(
   const uint {{Kernel.threadIdName3}},
   const uint kgen_tFlagsMask)
 {
-  ///////////////////////////////////////////////////////////////// 
-  {% for name in Kernel.threadNames %}const uint {{name}} = get_global_id({{ loop.index }}); 
-  {% endfor %}{% if Kernel.threadDim == 3 %}if({{Kernel.threadName1}} >= {{Kernel.threadIdName1}} || {{Kernel.threadName2}} >= {{Kernel.threadIdName2}} || {{Kernel.threadName3}} >= {{Kernel.threadIdName3}})
-    return;{% else if Kernel.threadDim == 2 %}if({{Kernel.threadName1}} >= {{Kernel.threadIdName1}} || {{Kernel.threadName2}} >= {{Kernel.threadIdName2}})
-    return;{% else %}if({{Kernel.threadName1}} >= {{Kernel.threadIdName1}})
-    return;{% endif %}
-  {% if Kernel.shouldCheckExitFlag %}if((kgen_threadFlags[{{Kernel.ThreadOffset}}] & kgen_tFlagsMask) != 0) 
-    return;{% endif %}
-  {% for Member in Kernel.Members %}const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
-  {% endfor %}{% if Kernel.IsBoolean %}bool kgenExitCond = false;{% endif %}
-  {% if Kernel.HasEpilog %}{% for redvar in Kernel.SubjToRed %} 
-  __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
-  {{redvar.Name}}Shared[get_local_id(0)] = {{redvar.Init}}; {% endfor %} 
+  ///////////////////////////////////////////////////////////////// prolog
+  {% for name in Kernel.threadNames %}
+  const uint {{name}} = get_global_id({{ loop.index }}); 
+  {% endfor %}
+  {% if Kernel.threadDim == 3 %}
+  if({{Kernel.threadName1}} >= {{Kernel.threadIdName1}} || {{Kernel.threadName2}} >= {{Kernel.threadIdName2}} || {{Kernel.threadName3}} >= {{Kernel.threadIdName3}})
+    return;
+  {% else if Kernel.threadDim == 2 %}
+  if({{Kernel.threadName1}} >= {{Kernel.threadIdName1}} || {{Kernel.threadName2}} >= {{Kernel.threadIdName2}})
+    return;
+  {% else %}
+  if({{Kernel.threadName1}} >= {{Kernel.threadIdName1}})
+    return;
   {% endif %}
-  ///////////////////////////////////////////////////////////////// 
+  {% if Kernel.shouldCheckExitFlag %}
+  if((kgen_threadFlags[{{Kernel.ThreadOffset}}] & kgen_tFlagsMask) != 0) 
+    return;
+  {% endif %}
+  {% for Member in Kernel.Members %}
+  const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
+  {% endfor %}
+  {% if Kernel.IsBoolean %}
+  bool kgenExitCond = false;
+  {% endif %}
+  {% if Kernel.HasEpilog %}
+  {% for redvar in Kernel.SubjToRed %} 
+  __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
+  {{redvar.Name}}Shared[get_local_id(0)] = {{redvar.Init}}; 
+  {% endfor %} 
+  {% endif %}
+  ///////////////////////////////////////////////////////////////// prolog
 {{Kernel.Source}}
   {% if Kernel.HasEpilog %}
-  ///////////////////////////////////////////////////////////////// 
+  ///////////////////////////////////////////////////////////////// epilog
   KGEN_EPILOG:
-  {% if Kernel.IsBoolean %}{
+  {% if Kernel.IsBoolean %}
+  {
     const bool exitHappened = (kgen_tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0 ? !kgenExitCond : kgenExitCond;
     if((kgen_tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)
       kgen_threadFlags[tid] = ((kgen_tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
-  };{% endif %}
-  ///////////////////////////////////////////////////////////////// 
+  };
+  {% endif %}
+  {% if Kernel.HasReduct %}
+  {
+    uint32_t localId = get_local_id(0);
+    SYNCTHREADS;
+    {% for redvar in Kernel.SubjToRed %} 
+    // {{redvar.Name}}Shared[localId] += {{redvar.Name}}Shared[localId + c]; 
+    {% endfor %}
+  }
+  {% endif %}
+  ///////////////////////////////////////////////////////////////// epilog
   {% endif %}
 }
 
