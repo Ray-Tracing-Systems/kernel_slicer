@@ -84,7 +84,7 @@ namespace kslicer
     KernelReplacerASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
                             kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr) : 
                              m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_mainClassName(a_codeInfo->mainClassName), 
-                             m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_needModifyExitCond(a_kernel.isBoolTyped), m_currKernel(a_kernel) 
+                             m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_kernelIsBoolTyped(a_kernel.isBoolTyped), m_currKernel(a_kernel) 
     { 
       const auto& a_variables = a_codeInfo->dataMembers;
       m_variables.reserve(a_variables.size());
@@ -111,7 +111,7 @@ namespace kslicer
     std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
     const std::vector<kslicer::KernelInfo::Arg>&             m_args;
     const std::string&                                       m_fakeOffsetExp;
-    bool                                                     m_needModifyExitCond;
+    bool                                                     m_kernelIsBoolTyped;
     kslicer::KernelInfo&                                     m_currKernel;
   };
 

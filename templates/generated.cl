@@ -47,7 +47,7 @@ __kernel void {{Kernel.Name}}(
   const uint {{Kernel.threadIdName3}},
   const uint kgen_tFlagsMask)
 {
-  /////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////// 
   {% for name in Kernel.threadNames %}const uint {{name}} = get_global_id({{ loop.index }}); 
   {% endfor %}{% if Kernel.threadDim == 3 %}if({{Kernel.threadName1}} >= {{Kernel.threadIdName1}} || {{Kernel.threadName2}} >= {{Kernel.threadIdName2}} || {{Kernel.threadName3}} >= {{Kernel.threadIdName3}})
     return;{% else if Kernel.threadDim == 2 %}if({{Kernel.threadName1}} >= {{Kernel.threadIdName1}} || {{Kernel.threadName2}} >= {{Kernel.threadIdName2}})
@@ -56,8 +56,19 @@ __kernel void {{Kernel.Name}}(
   {% if Kernel.shouldCheckExitFlag %}if((kgen_threadFlags[{{Kernel.ThreadOffset}}] & kgen_tFlagsMask) != 0) 
     return;{% endif %}
   {% for Member in Kernel.Members %}const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
-  {% endfor %}/////////////////////////////////////////////////////////////////
+  {% endfor %} {% if Kernel.IsBoolean %}bool kgenExitCond = false;{% endif %}
+  ///////////////////////////////////////////////////////////////// 
 {{Kernel.Source}}
+  {% if Kernel.HasEpilog %}
+  ///////////////////////////////////////////////////////////////// 
+  KGEN_END:
+  {% if Kernel.IsBoolean %}{
+    const bool exitHappened = (kgen_tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0 ? !kgenExitCond : kgenExitCond;
+    if((kgen_tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)
+      kgen_threadFlags[tid] = ((kgen_tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
+  };{% endif %}
+  ///////////////////////////////////////////////////////////////// 
+  {% endif %}
 }
 
 ## endfor

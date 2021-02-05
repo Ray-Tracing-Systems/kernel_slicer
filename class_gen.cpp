@@ -838,20 +838,20 @@ bool kslicer::KernelReplacerASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr
 bool kslicer::KernelReplacerASTVisitor::VisitReturnStmt(ReturnStmt* ret)
 {
   Expr* retExpr = ret->getRetValue();
-  if (!retExpr || !m_needModifyExitCond)
+  if (!retExpr || !m_kernelIsBoolTyped)
     return true;
 
   std::string retExprText = GetRangeSourceCode(retExpr->getSourceRange(), m_compiler);
-  std::stringstream strOut;
-  strOut << "{" << std::endl;
-  strOut << "    const bool exitHappened = (kgen_tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0 ? !(" <<  retExprText.c_str() << ") : (" << retExprText.c_str() << ");" << std::endl;
-  strOut << "    if((kgen_tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)" << std::endl;
-  strOut << "    {" << std::endl;
-  strOut << "      kgen_threadFlags[" << m_fakeOffsetExp.c_str() << "] = ((kgen_tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;" << std::endl;
-  strOut << "    }" << std::endl;
-  strOut << "  }";
+  //std::stringstream strOut;
+  //strOut << "{" << std::endl;
+  //strOut << "    const bool exitHappened = (kgen_tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0 ? !(" <<  retExprText.c_str() << ") : (" << retExprText.c_str() << ");" << std::endl;
+  //strOut << "    if((kgen_tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)" << std::endl;
+  //strOut << "    {" << std::endl;
+  //strOut << "      kgen_threadFlags[" << m_fakeOffsetExp.c_str() << "] = ((kgen_tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;" << std::endl;
+  //strOut << "    }" << std::endl;
+  //strOut << "  }";
 
-  m_rewriter.ReplaceText(ret->getSourceRange(), strOut.str());
+  m_rewriter.ReplaceText(ret->getSourceRange(), std::string("kgenExitCond = ") + retExprText + "; goto KGEN_END");
   return true;
 }
 

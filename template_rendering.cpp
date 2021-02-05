@@ -608,6 +608,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["Members"]    = members;
     kernelJson["Name"]       = k.name;
     kernelJson["UBOBinding"] = args.size(); // for circle
+    kernelJson["HasEpilog"]  = k.isBoolTyped;
+    kernelJson["IsBoolean"]  = k.isBoolTyped;
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
