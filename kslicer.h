@@ -57,6 +57,7 @@ namespace kslicer
       std::string    funcName;
       std::string    dataType = "UnknownType";
       std::string    GetInitialValue() const;
+      std::string    GetOp() const;
     };
 
     

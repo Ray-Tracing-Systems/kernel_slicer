@@ -607,34 +607,35 @@ int main(int argc, const char **argv)
   std::cout << "{" << std::endl;
 
   // if user set custom work group size for kernels via hint file we should apply it befor generating kernels
+  
+  nlohmann::json wgszJson;
+  uint32_t defaultWgSize[3] = {256,1,1};
   if(hintFile != "")
   {
     std::ifstream ifs(hintFile);
     nlohmann::json hintJson = nlohmann::json::parse(ifs);
-    nlohmann::json wgszJson = hintJson["WorkGroupSize"];
-    
-    uint32_t defaultWgSize[3] = {256,1,1};
+    wgszJson = hintJson["WorkGroupSize"];
     defaultWgSize[0] = wgszJson["default"][0];
     defaultWgSize[1] = wgszJson["default"][1];
     defaultWgSize[2] = wgszJson["default"][2];
+  }
 
-    for(auto& kernel : inputCodeInfo.kernels)
+  for(auto& kernel : inputCodeInfo.kernels)
+  {
+    auto it = wgszJson.find(kernel.name);
+    if(it != wgszJson.end())
     {
-      auto it = wgszJson.find(kernel.name);
-      if(it != wgszJson.end())
-      {
-        kernel.injectedWgSize[0] = (*it)[0];
-        kernel.injectedWgSize[1] = (*it)[1];
-        kernel.injectedWgSize[2] = (*it)[2];
-      }
-      else
-      {
-        kernel.injectedWgSize[0] = defaultWgSize[0];
-        kernel.injectedWgSize[1] = defaultWgSize[1];
-        kernel.injectedWgSize[2] = defaultWgSize[2];
-      }
-      kernel.warpSize = warpSize;
+      kernel.injectedWgSize[0] = (*it)[0];
+      kernel.injectedWgSize[1] = (*it)[1];
+      kernel.injectedWgSize[2] = (*it)[2];
     }
+    else
+    {
+      kernel.injectedWgSize[0] = defaultWgSize[0];
+      kernel.injectedWgSize[1] = defaultWgSize[1];
+      kernel.injectedWgSize[2] = defaultWgSize[2];
+    }
+    kernel.warpSize = warpSize;
   }
 
   // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg

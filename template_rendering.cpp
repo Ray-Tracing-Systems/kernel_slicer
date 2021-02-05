@@ -452,6 +452,32 @@ nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const s
   return data;
 }
 
+std::string kslicer::KernelInfo::ReductionAccess::GetOp() const
+{
+  switch(type)
+  {
+    case REDUCTION_TYPE::ADD_ONE:
+    case REDUCTION_TYPE::ADD:
+    case REDUCTION_TYPE::SUB:
+    case REDUCTION_TYPE::SUB_ONE:
+    {
+      return "+=";
+    }
+    break;
+    case REDUCTION_TYPE::MUL:
+      return "*=";
+    break;
+    case REDUCTION_TYPE::FUNC:
+      return funcName;
+    break;
+
+    default:
+      return "+";
+    break;
+  };
+
+}
+
 std::string kslicer::KernelInfo::ReductionAccess::GetInitialValue() const // best in nomination shitty code
 {
   switch(type)
@@ -664,6 +690,17 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       varJ["Type"] = var.second.dataType;
       varJ["Name"] = var.first;
       varJ["Init"] = var.second.GetInitialValue();
+      varJ["Op"]   = var.second.GetOp();
+
+      varJ["RedLoop1"] = std::vector<std::string>();
+      varJ["RedLoop2"] = std::vector<std::string>();
+      
+      for (uint c = k.injectedWgSize[0]/2; c>k.warpSize; c/=2)
+        varJ["RedLoop1"].push_back(c);
+
+      for (uint c = k.warpSize; c>0; c/=2)
+        varJ["RedLoop2"].push_back(c);
+
       reductionVars.push_back(varJ);
     }
     

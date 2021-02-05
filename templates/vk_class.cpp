@@ -12,7 +12,11 @@ void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vkfw::ICopy
   const size_t maxAllowedSize = std::numeric_limits<uint32_t>::max();
 
 ## for Var in ClassVars
-  {% if Var.IsArray %}memcpy(m_uboData.{{Var.Name}},{{Var.Name}},sizeof({{Var.Name}}));{% else %}m_uboData.{{Var.Name}} = {{Var.Name}};{% endif %}
+  {% if Var.IsArray %}
+  memcpy(m_uboData.{{Var.Name}},{{Var.Name}},sizeof({{Var.Name}}));
+  {% else %}
+  m_uboData.{{Var.Name}} = {{Var.Name}};
+  {% endif %}
 ## endfor
 ## for Var in ClassVectorVars 
   m_uboData.{{Var.Name}}_size     = uint32_t( {{Var.Name}}.size() );    assert( {{Var.Name}}.size() < maxAllowedSize );
@@ -46,7 +50,9 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
 
   struct KernelArgsPC
   {
-    {% for Arg in Kernel.AuxArgs %}{{Arg.Type}} m_{{Arg.Name}}; {% endfor %}
+    {% for Arg in Kernel.AuxArgs %}
+    {{Arg.Type}} m_{{Arg.Name}}; 
+    {% endfor %}
     uint32_t m_sizeX;
     uint32_t m_sizeY;
     uint32_t m_sizeZ;
@@ -57,7 +63,9 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   pcData.m_sizeY  = {{Kernel.tidY}};
   pcData.m_sizeZ  = {{Kernel.tidZ}};
   pcData.m_tFlags = m_currThreadFlags;
-  {% for Arg in Kernel.AuxArgs %}pcData.m_{{Arg.Name}} = {{Arg.Name}}; {% endfor %}
+  {% for Arg in Kernel.AuxArgs %}
+  pcData.m_{{Arg.Name}} = {{Arg.Name}}; 
+  {% endfor %}
   {% if Kernel.HasLoopInit %}
   vkCmdBindPipeline (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}LoopInitPipeline);
   vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}LoopInitLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);

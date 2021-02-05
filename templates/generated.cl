@@ -91,10 +91,17 @@ __kernel void {{Kernel.Name}}(
   {% endif %}
   {% if Kernel.HasReduct %}
   {
-    uint32_t localId = get_local_id(0);
+    const uint32_t localId = get_local_id(0);
     SYNCTHREADS;
     {% for redvar in Kernel.SubjToRed %} 
-    // {{redvar.Name}}Shared[localId] += {{redvar.Name}}Shared[localId + c]; 
+    {% for offset in redvar.RedLoop1 %} 
+    if (localId < {{offset}}) 
+      {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
+    SYNCTHREADS;
+    {% endfor %}
+    {% for offset in redvar.RedLoop2 %} 
+    {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
+    {% endfor %}
     {% endfor %}
   }
   {% endif %}
