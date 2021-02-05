@@ -964,10 +964,80 @@ bool kslicer::KernelReplacerASTVisitor::VisitCompoundAssignOperator(CompoundAssi
   return true;
 }
 
-bool kslicer::KernelReplacerASTVisitor::VisitBinaryOperator(BinaryOperator* expr)
+bool kslicer::KernelReplacerASTVisitor::VisitBinaryOperator(BinaryOperator* expr) // detect reduction like m_var = F(m_var,expr)
 {
-  //const auto op = expr->getOpcodeStr();
-  //const auto opCheck = std::string(op);
+  auto opRange = expr->getSourceRange();
+  if(opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
+    return true;  
+
+  const auto op = expr->getOpcodeStr();
+  if(op != "=")
+    return true;
+  
+  const Expr* lhs = expr->getLHS();
+  const Expr* rhs = expr->getRHS();
+
+  if(!isa<MemberExpr>(lhs))
+    return true;
+
+  std::string leftStr  = GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
+  auto p = m_currKernel.usedMembers.find(leftStr);
+  if(p == m_currKernel.usedMembers.end())
+    return true;
+
+  //std::string rightStr = GetRangeSourceCode(rhs->getSourceRange(), m_compiler);
+  //int a = 2;
+  
+  if(!isa<CallExpr>(rhs))
+  {
+    std::string exprStr = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    std::cout << "unsupported type of reduction via assigment inside loop: " << exprStr.c_str() << std::endl;
+    return true;
+  }
+  
+  auto call    = dyn_cast<CallExpr>(rhs);
+  auto numArgs = call->getNumArgs();
+  if(numArgs != 2)
+  {
+    std::string exprStr = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    std::cout << "function which is used in reduction must have 2 args: " << exprStr.c_str() << std::endl;
+    return true;
+  }
+  
+  const Expr* arg0 = call->getArg(0);
+  const Expr* arg1 = call->getArg(1);
+
+  std::string arg0Str = GetRangeSourceCode(arg0->getSourceRange(), m_compiler);
+  std::string arg1Str = GetRangeSourceCode(arg1->getSourceRange(), m_compiler);
+  
+  std::string secondArg;
+  if(arg0Str == leftStr)
+  {
+    secondArg = arg1Str;
+  }
+  else if(arg1Str == leftStr)
+  {
+    secondArg = arg0Str;
+  }
+  else
+  {
+    std::string exprStr = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    std::cout << "incorrect arguments of reduction function, one of them must be same as assigment result: " << exprStr.c_str() << std::endl;
+    return true;
+  }
+
+  const std::string callExpr = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+  const std::string fname    = callExpr.substr(0, callExpr.find_first_of('('));
+  
+  KernelInfo::ReductionAccess access;
+ 
+  access.type      = KernelInfo::REDUCTION_TYPE::FUNC;
+  access.funcName  = fname;
+  access.rightExpr = secondArg;
+
+  m_currKernel.subjectedToReduction[leftStr] = access;
+  m_rewriter.ReplaceText(expr->getSourceRange(), "// func. reduce " + leftStr + " with " + fname + " and " + access.rightExpr);
+
   return true;
 }
 
