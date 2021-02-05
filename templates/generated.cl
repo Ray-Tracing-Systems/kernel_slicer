@@ -56,7 +56,7 @@ __kernel void {{Kernel.Name}}(
   {% if Kernel.shouldCheckExitFlag %}if((kgen_threadFlags[{{Kernel.ThreadOffset}}] & kgen_tFlagsMask) != 0) 
     return;{% endif %}
   {% for Member in Kernel.Members %}const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
-  {% endfor %} {% if Kernel.IsBoolean %}bool kgenExitCond = false;{% endif %}
+  {% endfor %}{% if Kernel.IsBoolean %}bool kgenExitCond = false;{% endif %}
   ///////////////////////////////////////////////////////////////// 
 {{Kernel.Source}}
   {% if Kernel.HasEpilog %}
@@ -72,6 +72,29 @@ __kernel void {{Kernel.Name}}(
 }
 
 ## endfor
+
+/* TODO for redection
+
+__local float4 sdata[256];
+
+uint32_t localId =  get_local_id(0);
+
+static for (uint c = 256 / 2; c>32; c /= 2) where 32 is warp size
+{
+  if (localId < c)
+    sdata[localId] += sdata[localId + c];
+  SYNCTHREADS_LOCAL;
+}
+
+sdata[localId] += sdata[localId + 32]; 
+sdata[localId] += sdata[localId + 16]; 
+sdata[localId] += sdata[localId +  8]; 
+sdata[localId] += sdata[localId +  4]; 
+sdata[localId] += sdata[localId +  2]; 
+sdata[localId] += sdata[localId +  1]; 
+
+*/
+
 
 __kernel void copyKernelFloat(
   __global float* restrict out_data,

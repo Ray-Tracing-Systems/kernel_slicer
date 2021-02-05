@@ -80,6 +80,7 @@ namespace kslicer
     std::string rewrittenInit;                   ///<! rewritten loop initialization code for kernel
 
     uint32_t injectedWgSize[3] = {256,1,1};      ///<! workgroup size for the case when setting wgsize with spec constant is not allowed
+    uint32_t warpSize          = 32;             ///<! warp size in which we can rely on to omit sync in reduction and e.t.c.
   };
 
   /**

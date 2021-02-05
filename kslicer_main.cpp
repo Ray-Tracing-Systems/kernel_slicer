@@ -272,6 +272,7 @@ int main(int argc, const char **argv)
   std::string shaderCCName  = "clspv";
   std::string hintFile      = "";
   uint32_t    threadsOrder[3] = {0,1,2};
+  uint32_t    warpSize      = 32;
   
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
@@ -293,6 +294,9 @@ int main(int argc, const char **argv)
 
   if(params.find("-hint") != params.end())
     hintFile = params["-hint"];
+
+  if(params.find("-warpSize") != params.end())
+    warpSize = atoi(params["-warpSize"].c_str());
 
   std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
   argsForClang.reserve(argc);
@@ -629,6 +633,7 @@ int main(int argc, const char **argv)
         kernel.injectedWgSize[1] = defaultWgSize[1];
         kernel.injectedWgSize[2] = defaultWgSize[2];
       }
+      kernel.warpSize = warpSize;
     }
   }
 

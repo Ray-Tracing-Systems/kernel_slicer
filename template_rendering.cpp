@@ -636,8 +636,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       }                                                             // we must change it to 'vec_size2' for example 
     }
 
-    kernelJson["threadIdName1"] = tidNames[0];
-    kernelJson["threadIdName2"] = tidNames[1];
+    kernelJson["threadIdName1"] = tidNames[0]; 
+    kernelJson["threadIdName2"] = tidNames[1]; 
     kernelJson["threadIdName3"] = tidNames[2]; 
 
     kernelJson["WGSizeX"]       = k.injectedWgSize[0]; // injected wourg group size for circle 
