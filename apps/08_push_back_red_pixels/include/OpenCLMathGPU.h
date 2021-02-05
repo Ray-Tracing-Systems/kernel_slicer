@@ -13,4 +13,6 @@ typedef struct float4x4T
   float4 m_col[4];
 } float4x4;
 
+#define SYNCTHREADS barrier(CLK_LOCAL_MEM_FENCE)
+
 #endif

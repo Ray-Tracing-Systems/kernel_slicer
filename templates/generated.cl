@@ -57,11 +57,15 @@ __kernel void {{Kernel.Name}}(
     return;{% endif %}
   {% for Member in Kernel.Members %}const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
   {% endfor %}{% if Kernel.IsBoolean %}bool kgenExitCond = false;{% endif %}
+  {% if Kernel.HasEpilog %}{% for redvar in Kernel.SubjToRed %} 
+  __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
+  {{redvar.Name}}Shared[get_local_id(0)] = {{redvar.Init}}; {% endfor %} 
+  {% endif %}
   ///////////////////////////////////////////////////////////////// 
 {{Kernel.Source}}
   {% if Kernel.HasEpilog %}
   ///////////////////////////////////////////////////////////////// 
-  KGEN_END:
+  KGEN_EPILOG:
   {% if Kernel.IsBoolean %}{
     const bool exitHappened = (kgen_tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0 ? !kgenExitCond : kgenExitCond;
     if((kgen_tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)
@@ -75,15 +79,14 @@ __kernel void {{Kernel.Name}}(
 
 /* TODO for redection
 
-__local float4 sdata[256];
+__local float sdata[256];
 
 uint32_t localId =  get_local_id(0);
 
 static for (uint c = 256 / 2; c>32; c /= 2) where 32 is warp size
 {
-  if (localId < c)
-    sdata[localId] += sdata[localId + c];
-  SYNCTHREADS_LOCAL;
+  if (localId < c) sdata[localId] += sdata[localId + c];
+  SYNCTHREADS;
 }
 
 sdata[localId] += sdata[localId + 32]; 

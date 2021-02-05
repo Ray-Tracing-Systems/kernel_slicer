@@ -449,6 +449,59 @@ nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const s
   return data;
 }
 
+std::string kslicer::KernelInfo::ReductionAccess::GetInitialValue() const // best in nomination shitty code
+{
+  switch(type)
+  {
+    case REDUCTION_TYPE::ADD_ONE:
+    case REDUCTION_TYPE::ADD:
+    case REDUCTION_TYPE::SUB:
+    case REDUCTION_TYPE::SUB_ONE:
+    {
+      if(dataType == "int2")   return "make_int2(0,0)";
+      if(dataType == "uint2")  return "make_uint2(0,0)";
+      if(dataType == "float2") return "make_float2(0,0)";
+      
+      if(dataType == "int3")   return "make_int3(0,0,0)";
+      if(dataType == "uint3")  return "make_uint3(0,0,0)";
+      if(dataType == "float3") return "make_float3(0,0,0)";
+
+      if(dataType == "int4")   return "make_int4(0,0,0,0)";
+      if(dataType == "uint4")  return "make_uint4(0,0,0,0)";
+      if(dataType == "float4") return "make_float4(0,0,0,0)";
+      return "0";
+    }
+    break;
+    case REDUCTION_TYPE::MUL:
+      if(dataType == "int2")   return "make_int2(1,1)";
+      if(dataType == "uint2")  return "make_uint2(1,1)";
+      if(dataType == "float2") return "make_float2(1,1)";
+      
+      if(dataType == "int3")   return "make_int3(1,1,1)";
+      if(dataType == "uint3")  return "make_uint3(1,1,1)";
+      if(dataType == "float3") return "make_float3(1,1,1)";
+
+      if(dataType == "int4")   return "make_int4(1,1,1,1)";
+      if(dataType == "uint4")  return "make_uint4(1,1,1,1)";
+      if(dataType == "float4") return "make_float4(1,1,1,1)";
+      return "1";
+    break;
+    case REDUCTION_TYPE::FUNC:
+    {
+      if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return "MAXFLOAT";
+      if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return "-MAXFLOAT";
+      return "0";
+    }
+    break;
+
+    default:
+    break;
+  };
+
+  return "0";
+}
+
+
 json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo, 
                                     const std::vector<kslicer::FuncData>& usedFunctions,
                                     const std::vector<kslicer::DeclInClass>& usedDecl,
@@ -600,6 +653,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Name"] = arg.name;
       userArgs.push_back(argj);
     }
+
+    json reductionVars = std::vector<std::string>();
+    for(const auto& var : k.subjectedToReduction)
+    {
+      json varJ;
+      varJ["Type"] = var.second.dataType;
+      varJ["Name"] = var.first;
+      varJ["Init"] = var.second.GetInitialValue();
+      reductionVars.push_back(varJ);
+    }
     
     json kernelJson;
     kernelJson["Args"]       = args;
@@ -608,8 +671,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["Members"]    = members;
     kernelJson["Name"]       = k.name;
     kernelJson["UBOBinding"] = args.size(); // for circle
-    kernelJson["HasEpilog"]  = k.isBoolTyped;
+    kernelJson["HasEpilog"]  = k.isBoolTyped || reductionVars.size() != 0;
     kernelJson["IsBoolean"]  = k.isBoolTyped;
+    kernelJson["SubjToRed"]  = reductionVars;
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
@@ -665,3 +729,4 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   return data;
 }
+

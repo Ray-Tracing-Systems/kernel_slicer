@@ -55,7 +55,10 @@ namespace kslicer
       REDUCTION_TYPE type;
       std::string    rightExpr;
       std::string    funcName;
+      std::string    dataType = "UnknownType";
+      std::string    GetInitialValue() const;
     };
+
     
     std::string      return_type;               ///<! func. return type
     std::string      name;                      ///<! func. name

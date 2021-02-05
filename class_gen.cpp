@@ -851,7 +851,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitReturnStmt(ReturnStmt* ret)
   //strOut << "    }" << std::endl;
   //strOut << "  }";
 
-  m_rewriter.ReplaceText(ret->getSourceRange(), std::string("kgenExitCond = ") + retExprText + "; goto KGEN_END");
+  m_rewriter.ReplaceText(ret->getSourceRange(), std::string("kgenExitCond = ") + retExprText + "; goto KGEN_EPILOG");
   return true;
 }
 
@@ -880,6 +880,10 @@ bool kslicer::KernelReplacerASTVisitor::VisitUnaryOperator(UnaryOperator* expr)
   //const auto opCheck = std::string(op);
   //std::string opCheck2 = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 
+  Expr* subExpr =	expr->getSubExpr();
+  if(subExpr == nullptr)
+    return true;
+
   if(op == "++" || op == "--") // detect ++ and -- for reduction
   {
     auto opRange = expr->getSourceRange();
@@ -887,7 +891,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitUnaryOperator(UnaryOperator* expr)
       return true;   
   
     const auto op = expr->getOpcodeStr(expr->getOpcode());
-    std::string leftStr = GetRangeSourceCode(expr->getSubExpr()->getSourceRange(), m_compiler);
+    std::string leftStr = GetRangeSourceCode(subExpr->getSourceRange(), m_compiler);
     
     auto p = m_currKernel.usedMembers.find(leftStr);
     if(p != m_currKernel.usedMembers.end())
@@ -895,11 +899,13 @@ bool kslicer::KernelReplacerASTVisitor::VisitUnaryOperator(UnaryOperator* expr)
       KernelInfo::ReductionAccess access;
       access.type      = KernelInfo::REDUCTION_TYPE::UNKNOWN;
       access.rightExpr = "";
-    
+      access.dataType  = subExpr->getType().getAsString();
+
       if(op == "++")
         access.type    = KernelInfo::REDUCTION_TYPE::ADD_ONE;
       else if(op == "--")
         access.type    = KernelInfo::REDUCTION_TYPE::SUB_ONE;
+
       
       m_currKernel.subjectedToReduction[leftStr] = access;
       m_rewriter.ReplaceText(expr->getSourceRange(), "// reduce " + leftStr + " with " + std::string(op));
@@ -909,10 +915,6 @@ bool kslicer::KernelReplacerASTVisitor::VisitUnaryOperator(UnaryOperator* expr)
   // detect " *(something)"
   //
   if(expr->canOverflow() || op != "*") // -UnaryOperator ...'LiteMath::uint':'unsigned int' lvalue prefix '*' cannot overflow
-    return true;
-
-  Expr* subExpr =	expr->getSubExpr();
-  if(subExpr == nullptr)
     return true;
 
   std::string exprInside = GetRangeSourceCode(subExpr->getSourceRange(), m_compiler);
@@ -933,9 +935,9 @@ bool kslicer::KernelReplacerASTVisitor::VisitCompoundAssignOperator(CompoundAssi
   if(opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
     return true;   
 
-  const Expr* lhs = expr->getLHS();
-  const Expr* rhs = expr->getRHS();
-  const auto op   = expr->getOpcodeStr();
+  const Expr* lhs     = expr->getLHS();
+  const Expr* rhs     = expr->getRHS();
+  const auto  op      = expr->getOpcodeStr();
   std::string leftStr = GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
 
   auto p = m_currKernel.usedMembers.find(leftStr);
@@ -944,6 +946,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitCompoundAssignOperator(CompoundAssi
     KernelInfo::ReductionAccess access;
     access.type      = KernelInfo::REDUCTION_TYPE::UNKNOWN;
     access.rightExpr = GetRangeSourceCode(rhs->getSourceRange(), m_compiler);
+    access.dataType  = rhs->getType().getAsString();
 
     if(op == "+=")
       access.type    = KernelInfo::REDUCTION_TYPE::ADD;
@@ -953,7 +956,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitCompoundAssignOperator(CompoundAssi
       access.type    = KernelInfo::REDUCTION_TYPE::SUB;
       
     m_currKernel.subjectedToReduction[leftStr] = access;
-    m_rewriter.ReplaceText(expr->getSourceRange(), "// reduce " + leftStr + " with " + std::string(op) + " and " + access.rightExpr);
+    m_rewriter.ReplaceText(expr->getSourceRange(), leftStr + "Shared[get_local_id(0)] " + std::string(op) + " " + access.rightExpr);
   }
 
   return true;
@@ -1023,6 +1026,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitBinaryOperator(BinaryOperator* expr
   access.type      = KernelInfo::REDUCTION_TYPE::FUNC;
   access.funcName  = fname;
   access.rightExpr = secondArg;
+  access.dataType  = lhs->getType().getAsString();
 
   m_currKernel.subjectedToReduction[leftStr] = access;
   m_rewriter.ReplaceText(expr->getSourceRange(), "// func. reduce " + leftStr + " with " + fname + " and " + access.rightExpr);
