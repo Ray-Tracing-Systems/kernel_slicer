@@ -275,12 +275,10 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFuncASTVisitor::ExtractArg
   // {
   //   if(arg.argType == KERN_CALL_ARG_TYPE::ARG_REFERENCE_UNKNOWN_TYPE)
   //   {
-  //     auto beginLoc        = f->getSourceRange().getBegin();
-  //     std::string fileName = m_sm.getFilename(beginLoc);
-  //     const auto line      = m_sm.getPresumedLoc(beginLoc).getLine();
-  //     std::cout << "  WARNING: expr '" << arg.varName.c_str() << "' was not classified; file: " << fileName.c_str() << ", line: " << line << std::endl; 
+  //     std::stringstream strOut;
+  //     strOut << "  WARNING: expr '" << arg.varName.c_str() << "' was not classified"; 
+  //     kslicer::PrintError(strOut.str(), f->getSourceRange(), m_sm);  
   //   }
-  //  
   // }
 
   return args;
@@ -830,10 +828,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitCXXMemberCallExpr(CXXMemberCallExpr
     }
     else 
     {
-      const clang::SourceManager& sm = m_compiler.getSourceManager();
-      auto beginLoc = f->getSourceRange().getBegin();
-      std::string fileName = std::string(sm.getFilename(beginLoc));
-      std::cout << "[KernelReplacer] ERROR! Unsuppoted std::vector method " << fname.c_str() << "; file:  " << fileName.c_str() << ", line: " << sm.getPresumedLoc(beginLoc).getLine() << std::endl;
+      kslicer::PrintError(std::string("Unsuppoted std::vector method") + fname, f->getSourceRange(), m_compiler.getSourceManager());
     }
   }
  
@@ -984,14 +979,10 @@ bool kslicer::KernelReplacerASTVisitor::VisitBinaryOperator(BinaryOperator* expr
   auto p = m_currKernel.usedMembers.find(leftStr);
   if(p == m_currKernel.usedMembers.end())
     return true;
-
-  //std::string rightStr = GetRangeSourceCode(rhs->getSourceRange(), m_compiler);
-  //int a = 2;
   
   if(!isa<CallExpr>(rhs))
   {
-    std::string exprStr = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-    std::cout << "unsupported type of reduction via assigment inside loop: " << exprStr.c_str() << std::endl;
+    PrintError("unsupported expression for reduction via assigment inside loop; must be 'a = f(a,b)'", rhs->getSourceRange(), m_compiler.getSourceManager());
     return true;
   }
   
@@ -999,8 +990,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitBinaryOperator(BinaryOperator* expr
   auto numArgs = call->getNumArgs();
   if(numArgs != 2)
   {
-    std::string exprStr = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-    std::cout << "function which is used in reduction must have 2 args: " << exprStr.c_str() << std::endl;
+    PrintError("function which is used in reduction must have 2 args; a = f(a,b)'", expr->getSourceRange(), m_compiler.getSourceManager());
     return true;
   }
   
@@ -1021,8 +1011,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitBinaryOperator(BinaryOperator* expr
   }
   else
   {
-    std::string exprStr = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-    std::cout << "incorrect arguments of reduction function, one of them must be same as assigment result: " << exprStr.c_str() << std::endl;
+    PrintError("incorrect arguments of reduction function, one of them must be same as assigment result; a = f(a,b)'", call->getSourceRange(), m_compiler.getSourceManager());
     return true;
   }
 

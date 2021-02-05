@@ -415,10 +415,14 @@ namespace kslicer
   std::vector<std::string> GetAllPredefinedThreadIdNamesRTV();
 
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler);
+  std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::SourceManager& sm);
   std::string CutOffFileExt(const std::string& a_filePath);
 
   uint64_t GetHashOfSourceRange(const clang::SourceRange& a_range);
   static constexpr size_t READ_BEFORE_USE_THRESHOLD = sizeof(float)*4;
+
+  void PrintError(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm);
+  //const clang::SourceManager&
 
 };
 

@@ -72,6 +72,16 @@ std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const 
   return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
 }
 
+std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const clang::SourceManager& sm) 
+{
+  clang::LangOptions lopt;
+
+  clang::SourceLocation b(a_range.getBegin()), _e(a_range.getEnd());
+  clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
+
+  return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
+}
+
 uint64_t kslicer::GetHashOfSourceRange(const clang::SourceRange& a_range)
 {
   //const uint32_t hash1 = a_range.getBegin().getHashValue(); // getHashValue presents in clang 12, but not in clang 10!
@@ -79,6 +89,21 @@ uint64_t kslicer::GetHashOfSourceRange(const clang::SourceRange& a_range)
   const uint32_t hash1 = a_range.getBegin().getRawEncoding(); // getRawEncoding presents in clang 10, what about clang 12?
   const uint32_t hash2 = a_range.getEnd().getRawEncoding();   // getRawEncoding presents in clang 10, what about clang 12?
   return (uint64_t(hash1) << 32) | uint64_t(hash2);
+}
+
+void kslicer::PrintError(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm)
+{
+  const auto beginLoc  = a_range.getBegin();
+  const auto inFileLoc = a_sm.getPresumedLoc(beginLoc);
+  
+  const auto fileName = std::string(a_sm.getFilename(beginLoc));
+  const auto line     = inFileLoc.getLine();
+  const auto col      = inFileLoc.getColumn();
+
+  std::string code = GetRangeSourceCode(a_range, a_sm);
+
+  std::cout << fileName.c_str() << ":" << line << ":" << col << ": error: " << a_msg << std::endl;
+  std::cout << "--> " << code.c_str() << std::endl;
 }
 
 std::string kslicer::CutOffFileExt(const std::string& a_filePath)

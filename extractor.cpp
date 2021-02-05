@@ -43,11 +43,7 @@ public:
 
     if(func.isKernel)
     {
-      auto beginLoc = func.srcRange.getBegin();
-      std::string fileName = std::string(m_sm.getFilename(beginLoc));
-      std::cout << "[FuncExtractor] ERROR! " << currProcessedFuncName.c_str() << " --> " << func.name.c_str() << std::endl; 
-      std::cout << "[FuncExtractor] file:  " << fileName.c_str() << ", line: " << m_sm.getPresumedLoc(beginLoc).getLine() << std::endl;
-      std::cout << "[FuncExtractor] calling kernel from a kernel is not allowed currently!" << std::endl;
+      kslicer::PrintError(std::string("Calling kernel from a kernel is not allowed currently, ") + currProcessedFuncName, func.srcRange, m_sm);
     }
 
     return true;
