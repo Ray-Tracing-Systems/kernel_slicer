@@ -451,7 +451,7 @@ std::string kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, c
 }
 
 
-void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::vector<KernelInfo>& a_kernelList)
+void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList)
 {
   // (1) first scan all main functions, if no one needed just exit
   //
@@ -526,19 +526,12 @@ void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncL
   tFlagsArg.size           = 1; // array size 
   tFlagsArg.type           = "uint*";
   
-  // list kernels
-  //
-  std::unordered_map<std::string, size_t> kernelIdByName;
-  for(size_t i=0;i<a_kernelList.size();i++)
-    kernelIdByName[a_kernelList[i].name] = i;
-  
   // Add threadFlags to kernel arguments
   //
   for(auto kName : kernelsAddedFlags)
   {
-    assert(kernelIdByName.find(kName) != kernelIdByName.end());
-    auto& kernel = a_kernelList[kernelIdByName[kName]];
-    
+    auto& kernel = a_kernelList[kName];
+
     size_t foundId = size_t(-1);
     for(size_t i=0;i<kernel.args.size();i++)
     {
@@ -569,16 +562,13 @@ void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncL
 
 }
 
-void kslicer::RTV_Pattern::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&   a_mainFuncList, 
-                                                  const std::vector<KernelInfo>&     a_kernelList,
-                                                  std::vector<KernelCallInfo>&       a_kernelCalls)
+void kslicer::RTV_Pattern::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&                   a_mainFuncList, 
+                                                  const std::unordered_map<std::string, KernelInfo>& a_kernelList,
+                                                  std::vector<KernelCallInfo>&                       a_kernelCalls)
 {
   // list kernels and main functions
   //
-  std::unordered_map<std::string, size_t> kernelIdByName;
   std::unordered_map<std::string, size_t> mainFuncIdByName;
-  for(size_t i=0;i<a_kernelList.size();i++)
-    kernelIdByName[a_kernelList[i].name] = i;
   for(size_t i=0;i<a_mainFuncList.size();i++)
     mainFuncIdByName[a_mainFuncList[i].Name] = i;
 
@@ -595,8 +585,8 @@ void kslicer::RTV_Pattern::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo
     if(!mainFunc.needToAddThreadFlags)
       continue;
 
-    auto p2 = kernelIdByName.find(call.originKernelName);
-    if(p2 != kernelIdByName.end())
+    auto p2 = a_kernelList.find(call.originKernelName);
+    if(p2 != a_kernelList.end())
       call.descriptorSetsInfo.push_back(tFlagsArgRef);
   }
   
@@ -643,27 +633,14 @@ kslicer::RTV_Pattern::MHandlerKFPtr kslicer::RTV_Pattern::MatcherHandler_KF(Kern
 
 void kslicer::RTV_Pattern::ProcessCallArs_KF(const KernelCallInfo& a_call)
 {
-  const auto& call = a_call;
-  
-  // find kernel:
-  //
-  size_t found = size_t(-1); 
-  for(size_t i=0; i<kernels.size(); i++)
+  auto pFoundKernel = kernels.find(a_call.originKernelName);
+  if(pFoundKernel != kernels.end()) 
   {
-    if(kernels[i].name == call.originKernelName)
-    {
-      found = i;
-      break;
-    }
-  }
-
-  if(found != size_t(-1)) 
-  {
-    auto& actualParameters = call.descriptorSetsInfo;
+    auto& actualParameters = a_call.descriptorSetsInfo;
     for(size_t argId = 0; argId<actualParameters.size(); argId++)
     {
       if(actualParameters[argId].argType == kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL)
-        kernels[found].args[argId].needFakeOffset = true; 
+        pFoundKernel->second.args[argId].needFakeOffset = true; 
     }
   }
 }
@@ -1104,12 +1081,12 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
   return args;
 }
 
-void kslicer::ObtainKernelsDecl(std::vector<kslicer::KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo)
+void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo)
 {
   for (auto& k : a_kernelsData)  
   {
-    assert(k.astNode != nullptr);
-    auto sourceRange = k.astNode->getSourceRange();
+    assert(k.second.astNode != nullptr);
+    auto sourceRange = k.second.astNode->getSourceRange();
     std::string kernelSourceCode = GetRangeSourceCode(sourceRange, compiler);
     
     std::string kernelCmdDecl = kernelSourceCode.substr(0, kernelSourceCode.find(")")+1);
@@ -1118,8 +1095,8 @@ void kslicer::ObtainKernelsDecl(std::vector<kslicer::KernelInfo>& a_kernelsData,
     kernelCmdDecl = a_codeInfo.RemoveKernelPrefix(kernelCmdDecl);
 
     assert(ReplaceFirst(kernelCmdDecl,"(", "Cmd("));
-    if(k.isBoolTyped)
+    if(k.second.isBoolTyped)
       ReplaceFirst(kernelCmdDecl,"bool ", "void ");
-    k.DeclCmd = kernelCmdDecl;
+    k.second.DeclCmd = kernelCmdDecl;
   }
 }

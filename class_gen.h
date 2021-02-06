@@ -35,11 +35,9 @@ namespace kslicer
                        const std::vector<InOutVarInfo>& a_args, MainClassInfo* a_pCodeInfo) : 
                        m_rewriter(R), m_compiler(a_compiler), m_sm(R.getSourceMgr()), 
                        m_dsTagId(0), m_mainFuncName(a_mainFunc.Name), m_mainFuncLocals(a_mainFunc.Locals),
-                       m_pCodeInfo(a_pCodeInfo), m_allClassMembers(a_pCodeInfo->allDataMembers), m_mainFunc(a_mainFunc), allDescriptorSetsInfo(a_pCodeInfo->allDescriptorSetsInfo) 
+                       m_pCodeInfo(a_pCodeInfo), m_allClassMembers(a_pCodeInfo->allDataMembers), m_mainFunc(a_mainFunc), allDescriptorSetsInfo(a_pCodeInfo->allDescriptorSetsInfo),
+                       m_kernels(a_pCodeInfo->kernels) 
     { 
-      for(const auto& k : a_pCodeInfo->kernels)
-        m_kernels[k.name] = k;   
-
       for(const auto& arg : a_args) 
         m_argsOfMainFunc[arg.name] = arg;
     }
@@ -67,8 +65,8 @@ namespace kslicer
     uint32_t m_dsTagId;
     
     std::string m_mainFuncName;
-    std::unordered_map<std::string, InOutVarInfo> m_argsOfMainFunc;
-    std::unordered_map<std::string, KernelInfo>   m_kernels;
+    std::unordered_map<std::string, InOutVarInfo>      m_argsOfMainFunc;
+    const std::unordered_map<std::string, KernelInfo>& m_kernels;
     MainFuncInfo& m_mainFunc;
 
     std::unordered_set<uint64_t> m_alreadyProcessedCalls;
@@ -115,7 +113,7 @@ namespace kslicer
     kslicer::KernelInfo&                                     m_currKernel;
   };
 
-  void ObtainKernelsDecl(std::vector<KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo);
+  void ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo);
 
 }
 

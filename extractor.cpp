@@ -63,12 +63,12 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
 {
   std::queue<FuncData> functionsToProcess; 
 
-  for(const auto& kernel : a_codeInfo.kernels)
+  for(const auto& k : a_codeInfo.kernels)
   {
     kslicer::FuncData func;
-    func.name     = kernel.name;
-    func.astNode  = kernel.astNode;
-    func.srcRange = kernel.astNode->getSourceRange();
+    func.name     = k.second.name;
+    func.astNode  = k.second.astNode;
+    func.srcRange = k.second.astNode->getSourceRange();
     func.srcHash  = GetHashOfSourceRange(func.srcRange);
     func.isMember = true; //isa<clang::CXXMethodDecl>(kernel.astNode);
     func.isKernel = true;

@@ -297,11 +297,11 @@ namespace kslicer
     std::unordered_map<std::string, KernelInfo>     allKernels;     ///<! list of all kernels; used only on the second pass to identify Control Functions; it is not recommended to use it anywhere else
     std::unordered_map<std::string, DataMemberInfo> allDataMembers; ///<! list of all class data members;
 
-    std::vector<KernelInfo>      kernels;         ///<! only those kernels which are called from 'Main'/'Control' functions
-    std::vector<std::string>     indirectKernels; ///<! list of all kernel names which require indirect dispatch
-    std::vector<DataMemberInfo>  dataMembers;     ///<! only those member variables which are referenced from kernels 
-    std::vector<DataMemberInfo>  containers;      ///<! containers that should be transformed to buffers
-    std::vector<MainFuncInfo>    mainFunc;        ///<! list of all control functions
+    std::unordered_map<std::string, KernelInfo> kernels;         ///<! only those kernels which are called from 'Main'/'Control' functions
+    std::vector<std::string>                    indirectKernels; ///<! list of all kernel names which require indirect dispatch; The order is essential because it is used for indirect buffer offsets 
+    std::vector<DataMemberInfo>                 dataMembers;     ///<! only those member variables which are referenced from kernels 
+    std::vector<DataMemberInfo>                 containers;      ///<! containers that should be transformed to buffers
+    std::vector<MainFuncInfo>                   mainFunc;        ///<! list of all control functions
 
     std::string mainClassName;
     std::string mainClassFileName;
@@ -329,12 +329,11 @@ namespace kslicer
     virtual MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) = 0;
     virtual std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) = 0;
 
-    virtual void AddSpecVars_CF(std::vector<MainFuncInfo>&   a_mainFuncList, 
-                                std::vector<KernelInfo>&     a_kernelList) {}
+    virtual void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList) {}
 
-    virtual void PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&   a_mainFuncList, 
-                                        const std::vector<KernelInfo>&     a_kernelList,
-                                        std::vector<KernelCallInfo>&       a_kernelCalls) {}    
+    virtual void PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&                      a_mainFuncList, 
+                                        const std::unordered_map<std::string, KernelInfo>&    a_kernelList,
+                                        std::vector<KernelCallInfo>&                          a_kernelCalls) {}    
                                      
     //// \\
 
@@ -376,12 +375,11 @@ namespace kslicer
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
     std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;
 
-    void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, 
-                        std::vector<KernelInfo>&   a_kernelList) override;
+    void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>&  a_kernelList) override;
 
-    void PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>& a_mainFuncList, 
-                                const std::vector<KernelInfo>&   a_kernelList,
-                                std::vector<KernelCallInfo>&     a_kernelCalls) override;    
+    void PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&                   a_mainFuncList, 
+                                const std::unordered_map<std::string, KernelInfo>& a_kernelList,
+                                std::vector<KernelCallInfo>&                       a_kernelCalls) override;    
     
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override;

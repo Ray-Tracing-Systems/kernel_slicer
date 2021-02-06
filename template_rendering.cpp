@@ -91,10 +91,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   MakeAbsolutePathRelativeTo(mainInclude, folderPath);
   MakeAbsolutePathRelativeTo(mainIncludeGenerated, folderPath);
 
-  std::unordered_map<std::string, size_t> kernelIdByName;
-  for(size_t i=0;i<a_classInfo.kernels.size();i++)
-    kernelIdByName[a_classInfo.kernels[i].name] = i;
-
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -103,12 +99,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   strOut << "#include \"" << mainInclude.c_str() << "\"" << std::endl;
 
   std::stringstream strOut2;
-  for(size_t i=0;i<a_classInfo.kernels.size();i++)
-  {
-    if(i != 0)
-      strOut2 << "  ";
-    strOut2 << "virtual " << a_classInfo.kernels[i].DeclCmd.c_str() << ";\n";
-  }
+  for(const auto& k : a_classInfo.kernels)
+    strOut2 << "virtual " << k.second.DeclCmd.c_str() << ";\n";
 
   json data;
   data["Includes"]      = strOut.str();
@@ -191,18 +183,20 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::string> kernelsCallCmdDecl(a_classInfo.kernels.size());
-  for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
-    kernelsCallCmdDecl[i] = a_classInfo.kernels[i].DeclCmd;
- 
+  std::vector<std::string> kernelsCallCmdDecl; 
+  kernelsCallCmdDecl.reserve(a_classInfo.kernels.size());
+  for(const auto& k : a_classInfo.kernels)
+    kernelsCallCmdDecl.push_back(k.second.DeclCmd);  
+
   auto kernelDeclByName = MakeMapForKernelsDeclByName(kernelsCallCmdDecl);
 
   data["MultipleSourceShaders"] = !a_classInfo.pShaderCC->IsSingleSource();
   data["ShaderFolder"]          = a_classInfo.pShaderCC->ShaderFolder();
 
   data["Kernels"] = std::vector<std::string>();  
-  for(const auto& k : a_classInfo.kernels)
+  for(const auto& nk : a_classInfo.kernels)
   {
+    const auto& k        = nk.second;
     std::string kernName = a_classInfo.RemoveKernelPrefix(k.name);
     const auto auxArgs   = GetUserKernelArgs(k.args);
     
@@ -312,10 +306,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     //
     for(size_t i=mainFunc.startDSNumber; i<mainFunc.endDSNumber; i++)
     {
-      auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
-      const bool handMadeKernels = kernelIdByName.find(dsArgs.originKernelName) == kernelIdByName.end();
-      const auto kernId  = kernelIdByName[dsArgs.originKernelName];
-      const auto& kernel = a_classInfo.kernels[kernId];
+      auto& dsArgs               = a_classInfo.allDescriptorSetsInfo[i];
+      const auto pFoundKernel    = a_classInfo.kernels.find(dsArgs.originKernelName);
+      const bool handMadeKernels = (pFoundKernel == a_classInfo.kernels.end());
 
       json local;
       local["Id"]         = i;
@@ -327,7 +320,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
-        if(!handMadeKernels && (kernel.args[j].isThreadID || kernel.args[j].isLoopSize || kernel.args[j].IsUser()))
+        if(!handMadeKernels && (pFoundKernel->second.args[j].isThreadID || pFoundKernel->second.args[j].isLoopSize || pFoundKernel->second.args[j].IsUser()))
           continue;
 
         const std::string dsArgName = GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j].varName);
@@ -339,21 +332,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
         local["ArgNames"].push_back(dsArgs.descriptorSetsInfo[j].varName);
         realId++;
       }
-
-      size_t kernelId = size_t(-1);
-      for(size_t j=0;j<a_classInfo.kernels.size();j++)
+      
+      //const auto pFoundKernel = a_classInfo.kernels.find(dsArgs.originKernelName);
+      if(pFoundKernel != a_classInfo.kernels.end())
       {
-        if(a_classInfo.kernels[j].name == dsArgs.originKernelName)
-        {
-          kernelId = j;
-          break;
-        }
-      }
-
-      if(kernelId != size_t(-1))
-      {
-        const auto& kernel = a_classInfo.kernels[kernelId];
-        for(const auto& vecName : kernel.usedVectors)
+        for(const auto& vecName : pFoundKernel->second.usedVectors)
         {
           json arg;
           arg["Id"]   = realId;
@@ -526,8 +509,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   clang::SourceManager& sm = compiler.getSourceManager();
   data["Kernels"] = std::vector<std::string>();
   
-  for (const auto& k : a_classInfo.kernels)  
+  for (const auto& nk : a_classInfo.kernels)  
   {
+    const auto& k = nk.second;
     std::cout << "  processing " << k.name << std::endl;
     
     auto commonArgs = a_classInfo.GetKernelCommonArgs(k);

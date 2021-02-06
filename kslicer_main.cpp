@@ -439,7 +439,6 @@ int main(int argc, const char **argv)
   std::cout << "(2) Process control functions; extract local variables, known calls like memcpy,sort,std::fill and other " << std::endl; 
   std::cout << "{" << std::endl;
 
-  std::unordered_set<std::string> processedKernels;
   size_t mainFuncId = 0;
   for(const auto f : mainFuncList)
   {
@@ -465,13 +464,11 @@ int main(int argc, const char **argv)
       // filter out unused kernels
       //
       inputCodeInfo.kernels.reserve(inputCodeInfo.allKernels.size());
+      inputCodeInfo.kernels.clear();
       for (const auto& k : inputCodeInfo.allKernels)
       {
-        if(k.second.usedInMainFunc && processedKernels.find(k.first) == processedKernels.end())
-        {
-          inputCodeInfo.kernels.push_back(k.second);
-          processedKernels.insert(k.first);
-        }
+        if(k.second.usedInMainFunc && inputCodeInfo.kernels.find(k.first) == inputCodeInfo.kernels.end())
+          inputCodeInfo.kernels[k.first] = k.second;
       }
 
       // filter out excluded local variables
@@ -493,8 +490,9 @@ int main(int argc, const char **argv)
   std::cout << "(3) Mark data members, methods and functions which are actually used in kernels." << std::endl; 
   std::cout << "{" << std::endl;
 
-  for(auto& kernel : inputCodeInfo.kernels)
+  for(auto& nk : inputCodeInfo.kernels)
   {
+    auto& kernel        = nk.second;
     auto kernelMatchers = inputCodeInfo.ListMatchers_KF(kernel.name);
     auto pFilter        = inputCodeInfo.MatcherHandler_KF(kernel, compiler);
 
@@ -620,8 +618,9 @@ int main(int argc, const char **argv)
     defaultWgSize[2] = wgszJson["default"][2];
   }
 
-  for(auto& kernel : inputCodeInfo.kernels)
+  for(auto& nk : inputCodeInfo.kernels)
   {
+    auto& kernel = nk.second;
     auto it = wgszJson.find(kernel.name);
     if(it != wgszJson.end())
     {
@@ -644,7 +643,7 @@ int main(int argc, const char **argv)
     inputCodeInfo.ProcessCallArs_KF(call);
 
   for(auto& k : inputCodeInfo.kernels)
-    k.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k, compiler, k.rewrittenInit);
+    k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit);
 
   // finally generate kernels
   //
