@@ -21,7 +21,7 @@ std::string kslicer::KernelInfo::ReductionAccess::GetOp() const
     break;
 
     default:
-      return "+";
+      return "+=";
     break;
   };
 

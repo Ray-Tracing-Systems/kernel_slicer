@@ -906,9 +906,8 @@ bool kslicer::KernelReplacerASTVisitor::VisitUnaryOperator(UnaryOperator* expr)
       else if(op == "--")
         access.type    = KernelInfo::REDUCTION_TYPE::SUB_ONE;
 
-      
       m_currKernel.subjectedToReduction[leftStr] = access;
-      m_rewriter.ReplaceText(expr->getSourceRange(), "// reduce " + leftStr + " with " + std::string(op));
+      m_rewriter.ReplaceText(expr->getSourceRange(), leftStr + "Shared[get_local_id(0)]++");
     }
   }
 
@@ -956,7 +955,7 @@ bool kslicer::KernelReplacerASTVisitor::VisitCompoundAssignOperator(CompoundAssi
       access.type    = KernelInfo::REDUCTION_TYPE::SUB;
       
     m_currKernel.subjectedToReduction[leftStr] = access;
-    m_rewriter.ReplaceText(expr->getSourceRange(), leftStr + "Shared[get_local_id(0)] " + std::string(op) + " " + access.rightExpr);
+    m_rewriter.ReplaceText(expr->getSourceRange(), leftStr + "Shared[get_local_id(0)] " + access.GetOp() + " " + access.rightExpr);
   }
 
   return true;
