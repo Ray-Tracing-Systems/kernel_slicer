@@ -63,18 +63,18 @@ namespace kslicer
     };
 
     
-    std::string      return_type;               ///<! func. return type
-    std::string      name;                      ///<! func. name
-    std::vector<Arg> args;                      ///<! all arguments of a kernel
+    std::string           return_type;          ///<! func. return type
+    std::string           name;                 ///<! func. name
+    std::vector<Arg>      args;                 ///<! all arguments of a kernel
     std::vector<LoopIter> loopIters;            ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
     clang::SourceRange    loopInsides;          ///<! used by IPV pattern to extract loops insides and make them kernel source
     clang::SourceRange    loopOutsidesInit;     ///<! used by IPV pattern to extract code before loops and then make additional initialization kernel
-    bool                  hasLoopInit  = false; ///<! indicate that we actually has loop init part inside IPV kernel
+    bool                  hasLoopInit  = false; ///<! used by IPV pattern; indicate that we actually has loop init part inside IPV kernel
 
     const clang::CXXMethodDecl* astNode = nullptr;
-    bool usedInMainFunc = false;
-    bool isBoolTyped    = false; ///<! special case: if kernel return boolean, we analyze loop exit (break) or function exit (return) expression
-    bool usedInExitExpr = false;
+    bool usedInMainFunc = false;                ///<! wherther kernel is actually used or just declared
+    bool isBoolTyped    = false;                ///<! used by RTV pattern; special case: if kernel return boolean, we analyze loop exit (break) or function exit (return) expression
+    bool usedInExitExpr = false;                ///<! used by RTV pattern; if kernel is used in Control Function in if(kernelXXX()) --> break or return extression
     bool checkThreadFlags = false;
 
     std::string DeclCmd;
@@ -87,6 +87,9 @@ namespace kslicer
 
     uint32_t injectedWgSize[3] = {256,1,1};      ///<! workgroup size for the case when setting wgsize with spec constant is not allowed
     uint32_t warpSize          = 32;             ///<! warp size in which we can rely on to omit sync in reduction and e.t.c.
+
+    bool      isIndirect      = false;           ///<! IPV pattern; if loop size is defined by class member variable or vector size, we interpret it as indirect dispatching
+    uint32_t  indirectBlockId = 0;               ///<! IPV pattern; for such kernels we have to know some offset in indirect buffer for thread blocks number (use int4 data for each kernel)
   };
 
   /**
@@ -100,14 +103,14 @@ namespace kslicer
     size_t      alignedSizeInBytes   = 0; ///<! aligned size will be known when data will be placed to a buffer
     size_t      offsetInTargetBuffer = 0; ///<! offset in bytes in terget buffer that stores all data members
     
-    bool isContainerInfo = false; ///<! auto generated std::vector<T>::size() or capacity() or some analogue
-    bool isContainer     = false; ///<! if std::vector<...>
-    bool isArray         = false; ///<! if is array, element type stored incontainerDataType;
-    bool usedInKernel    = false; ///<! if any kernel use the member --> true; if no one uses --> false;
-    bool usedInMainFn    = false; ///<! if std::vector is used in MainFunction like vector.data().
-    size_t      arraySize     = 0;
-    std::string containerType;
-    std::string containerDataType;
+    bool isContainerInfo  = false; ///<! auto generated std::vector<T>::size() or capacity() or some analogue
+    bool isContainer      = false; ///<! if std::vector<...>
+    bool isArray          = false; ///<! if is array, element type stored incontainerDataType;
+    bool usedInKernel     = false; ///<! if any kernel use the member --> true; if no one uses --> false;
+    bool usedInMainFn     = false; ///<! if std::vector is used in MainFunction like vector.data().
+    size_t      arraySize = 0;     ///<! 'N' if data is declared as 'array[N]';
+    std::string containerType;     ///<! std::vector usually
+    std::string containerDataType; ///<! data type 'T' inside of std::vector<T>
   };
 
   /**
@@ -291,15 +294,14 @@ namespace kslicer
   */
   struct MainClassInfo
   {
-    std::vector<KernelInfo>      kernels;     ///<! only those kernels which are called from 'Main'/'Control' functions
-    std::vector<DataMemberInfo>  dataMembers; ///<! only those member variables which are referenced from kernels 
-    std::vector<DataMemberInfo>  containers;  ///<! containers that should be transformed to buffers
+    std::unordered_map<std::string, KernelInfo>     allKernels;     ///<! list of all kernels; used only on the second pass to identify Control Functions; it is not recommended to use it anywhere else
+    std::unordered_map<std::string, DataMemberInfo> allDataMembers; ///<! list of all class data members;
 
-    std::unordered_map<std::string, KernelInfo>     allKernels;
-    std::unordered_map<std::string, DataMemberInfo> allDataMembers;
-    //std::unordered_set<uint64_t>                  allLoopInitStatements; ///<! source locations hashes of code which is met inside loop-init statements inside kernels (IPV only)
-
-    std::vector<MainFuncInfo>                       mainFunc;
+    std::vector<KernelInfo>      kernels;         ///<! only those kernels which are called from 'Main'/'Control' functions
+    std::vector<std::string>     indirectKernels; ///<! list of all kernel names which require indirect dispatch
+    std::vector<DataMemberInfo>  dataMembers;     ///<! only those member variables which are referenced from kernels 
+    std::vector<DataMemberInfo>  containers;      ///<! containers that should be transformed to buffers
+    std::vector<MainFuncInfo>    mainFunc;        ///<! list of all control functions
 
     std::string mainClassName;
     std::string mainClassFileName;
