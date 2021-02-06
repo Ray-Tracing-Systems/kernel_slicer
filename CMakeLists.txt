@@ -25,6 +25,7 @@ add_executable(kslicer
                extractor.cpp
                initial_pass.cpp
                template_rendering.cpp
+               reduction.cpp
                )
 
 target_link_libraries(kslicer PRIVATE -lclang -lLLVM-11 

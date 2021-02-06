@@ -7,6 +7,17 @@
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
 
+static uint32_t ComputeReductionSteps(uint32_t whole_size, uint32_t wg_size)
+{
+  uint32_t steps = 0;
+  while (whole_size > 1)
+  {
+    steps++;
+    whole_size = (whole_size + wg_size - 1) / wg_size;
+  }
+  return steps;
+}
+
 void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
 {
   const size_t maxAllowedSize = std::numeric_limits<uint32_t>::max();

@@ -452,85 +452,6 @@ nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const s
   return data;
 }
 
-std::string kslicer::KernelInfo::ReductionAccess::GetOp() const
-{
-  switch(type)
-  {
-    case REDUCTION_TYPE::ADD_ONE:
-    case REDUCTION_TYPE::ADD:
-    case REDUCTION_TYPE::SUB:
-    case REDUCTION_TYPE::SUB_ONE:
-    {
-      return "+=";
-    }
-    break;
-    case REDUCTION_TYPE::MUL:
-      return "*=";
-    break;
-    case REDUCTION_TYPE::FUNC:
-      return funcName;
-    break;
-
-    default:
-      return "+";
-    break;
-  };
-
-}
-
-std::string kslicer::KernelInfo::ReductionAccess::GetInitialValue() const // best in nomination shitty code
-{
-  switch(type)
-  {
-    case REDUCTION_TYPE::ADD_ONE:
-    case REDUCTION_TYPE::ADD:
-    case REDUCTION_TYPE::SUB:
-    case REDUCTION_TYPE::SUB_ONE:
-    {
-      if(dataType == "int2")   return "make_int2(0,0)";
-      if(dataType == "uint2")  return "make_uint2(0,0)";
-      if(dataType == "float2") return "make_float2(0,0)";
-      
-      if(dataType == "int3")   return "make_int3(0,0,0)";
-      if(dataType == "uint3")  return "make_uint3(0,0,0)";
-      if(dataType == "float3") return "make_float3(0,0,0)";
-
-      if(dataType == "int4")   return "make_int4(0,0,0,0)";
-      if(dataType == "uint4")  return "make_uint4(0,0,0,0)";
-      if(dataType == "float4") return "make_float4(0,0,0,0)";
-      return "0";
-    }
-    break;
-    case REDUCTION_TYPE::MUL:
-      if(dataType == "int2")   return "make_int2(1,1)";
-      if(dataType == "uint2")  return "make_uint2(1,1)";
-      if(dataType == "float2") return "make_float2(1,1)";
-      
-      if(dataType == "int3")   return "make_int3(1,1,1)";
-      if(dataType == "uint3")  return "make_uint3(1,1,1)";
-      if(dataType == "float3") return "make_float3(1,1,1)";
-
-      if(dataType == "int4")   return "make_int4(1,1,1,1)";
-      if(dataType == "uint4")  return "make_uint4(1,1,1,1)";
-      if(dataType == "float4") return "make_float4(1,1,1,1)";
-      return "1";
-    break;
-    case REDUCTION_TYPE::FUNC:
-    {
-      if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return "MAXFLOAT";
-      if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return "-MAXFLOAT";
-      return "0";
-    }
-    break;
-
-    default:
-    break;
-  };
-
-  return "0";
-}
-
-
 json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo, 
                                     const std::vector<kslicer::FuncData>& usedFunctions,
                                     const std::vector<kslicer::DeclInClass>& usedDecl,
@@ -691,6 +612,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       varJ["Name"] = var.first;
       varJ["Init"] = var.second.GetInitialValue();
       varJ["Op"]   = var.second.GetOp();
+      varJ["SupportAtomic"] = var.second.SupportAtomicLastStep();
+      varJ["AtomicOp"]      = var.second.GetAtomicImplCode();
 
       varJ["RedLoop1"] = std::vector<std::string>();
       varJ["RedLoop2"] = std::vector<std::string>();
@@ -761,9 +684,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     //
     if(k.hasLoopInit)
     {      
-      kernelJson["Name"]    = k.name + "_LoopInit";
-      kernelJson["Source"]  = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1);
-      kernelJson["Members"] = std::vector<json>();
+      kernelJson["Name"]      = k.name + "_LoopInit";
+      kernelJson["Source"]    = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1);
+      kernelJson["Members"]   = std::vector<json>();
+      kernelJson["HasReduct"] = false;
+      kernelJson["HasEpilog"] = false;
       data["Kernels"].push_back(kernelJson);
     }
   }

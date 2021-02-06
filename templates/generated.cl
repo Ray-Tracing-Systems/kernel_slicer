@@ -80,7 +80,6 @@ __kernel void {{Kernel.Name}}(
   ///////////////////////////////////////////////////////////////// prolog
 {{Kernel.Source}}
   {% if Kernel.HasEpilog %}
-  ///////////////////////////////////////////////////////////////// epilog
   KGEN_EPILOG:
   {% if Kernel.IsBoolean %}
   {
@@ -102,10 +101,15 @@ __kernel void {{Kernel.Name}}(
     {% for offset in redvar.RedLoop2 %} 
     {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
     {% endfor %}
+    if(localId == 0)
+      {% if redvar.SupportAtomic %}
+      {{redvar.AtomicOp}}(&ubo->{{redvar.Name}}, {{redvar.Name}}Shared[0]);
+      {% else %}
+      //outTempBuff[get_global_id(0)/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[0]; // TODO: finish impl
+      {% endif %}
     {% endfor %}
   }
   {% endif %}
-  ///////////////////////////////////////////////////////////////// epilog
   {% endif %}
 }
 

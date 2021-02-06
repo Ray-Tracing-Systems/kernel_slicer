@@ -56,8 +56,10 @@ namespace kslicer
       std::string    rightExpr;
       std::string    funcName;
       std::string    dataType = "UnknownType";
-      std::string    GetInitialValue() const;
-      std::string    GetOp() const;
+      std::string    GetInitialValue()  const;
+      std::string    GetOp()            const;
+      bool           SupportAtomicLastStep() const;
+      std::string    GetAtomicImplCode()     const;
     };
 
     
