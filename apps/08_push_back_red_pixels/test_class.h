@@ -33,6 +33,7 @@ protected:
 
   uint32_t               m_size;
   uint32_t               m_redPixelsNum;
+  uint32_t               m_otherPixelsNum;
   std::vector<PixelInfo> m_foundPixels;
 
 };

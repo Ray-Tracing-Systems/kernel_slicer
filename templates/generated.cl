@@ -93,6 +93,7 @@ __kernel void {{Kernel.Name}}(
     const uint32_t localId = get_local_id(0);
     SYNCTHREADS;
     {% for redvar in Kernel.SubjToRed %} 
+    ///////////////////////////////////////////////////////////////// reduction for {{redvar.Name}}
     {% for offset in redvar.RedLoop1 %} 
     if (localId < {{offset}}) 
       {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
