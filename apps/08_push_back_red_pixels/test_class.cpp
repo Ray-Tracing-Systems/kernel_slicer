@@ -29,7 +29,8 @@ void RedPixels::SetMaxDataSize(size_t a_size)
 
 void RedPixels::kernel1D_CountRedPixels(const uint32_t* a_data, size_t a_dataSize)
 {
-  m_redPixelsNum = 0;
+  m_redPixelsNum   = 0;
+  m_otherPixelsNum = 0;
   for(uint32_t i = 0; i<a_dataSize; i++)
   {
     if(PixelIsRed(a_data[i]))
