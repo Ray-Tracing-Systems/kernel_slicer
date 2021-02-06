@@ -92,23 +92,28 @@ __kernel void {{Kernel.Name}}(
   {
     const uint32_t localId = get_local_id(0);
     SYNCTHREADS;
-    {% for redvar in Kernel.SubjToRed %} 
-    ///////////////////////////////////////////////////////////////// reduction for {{redvar.Name}}
-    {% for offset in redvar.RedLoop1 %} 
+    {% for offset in Kernel.RedLoop1 %} 
+    {% for redvar in Kernel.SubjToRed %}
     if (localId < {{offset}}) 
       {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
+    {% endfor %}
     SYNCTHREADS;
     {% endfor %}
-    {% for offset in redvar.RedLoop2 %} 
+    {% for offset in Kernel.RedLoop2 %} 
+    {% for redvar in Kernel.SubjToRed %}
     {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
     {% endfor %}
+    {% endfor %}
     if(localId == 0)
+    {
+      {% for redvar in Kernel.SubjToRed %}
       {% if redvar.SupportAtomic %}
       {{redvar.AtomicOp}}(&ubo->{{redvar.Name}}, {{redvar.Name}}Shared[0]);
       {% else %}
       //outTempBuff[get_global_id(0)/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[0]; // TODO: finish impl
       {% endif %}
-    {% endfor %}
+      {% endfor %}
+    }
   }
   {% endif %}
   {% endif %}

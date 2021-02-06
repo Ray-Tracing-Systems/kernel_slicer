@@ -615,19 +615,26 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       varJ["SupportAtomic"] = var.second.SupportAtomicLastStep();
       varJ["AtomicOp"]      = var.second.GetAtomicImplCode();
 
-      varJ["RedLoop1"] = std::vector<std::string>();
-      varJ["RedLoop2"] = std::vector<std::string>();
-      
-      for (uint c = k.injectedWgSize[0]/2; c>k.warpSize; c/=2)
-        varJ["RedLoop1"].push_back(c);
-
-      for (uint c = k.warpSize; c>0; c/=2)
-        varJ["RedLoop2"].push_back(c);
+      //varJ["RedLoop1"] = std::vector<std::string>();
+      //varJ["RedLoop2"] = std::vector<std::string>();
+      //
+      //for (uint c = k.injectedWgSize[0]/2; c>k.warpSize; c/=2)
+      //  varJ["RedLoop1"].push_back(c);
+      //
+      //for (uint c = k.warpSize; c>0; c/=2)
+      //  varJ["RedLoop2"].push_back(c);
 
       reductionVars.push_back(varJ);
     }
     
     json kernelJson;
+    kernelJson["RedLoop1"] = std::vector<std::string>();
+    kernelJson["RedLoop2"] = std::vector<std::string>();
+    for (uint c = k.injectedWgSize[0]/2; c>k.warpSize; c/=2)
+      kernelJson["RedLoop1"].push_back(c);
+    for (uint c = k.warpSize; c>0; c/=2)
+      kernelJson["RedLoop2"].push_back(c);
+    
     kernelJson["Args"]       = args;
     kernelJson["Vecs"]       = vecs;
     kernelJson["UserArgs"]   = userArgs;
