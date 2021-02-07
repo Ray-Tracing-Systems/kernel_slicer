@@ -5,16 +5,8 @@
 #include <sstream>
 #include <algorithm>
 
-
-void kslicer::MainClassInfo::AddTempBufferToKernel(const std::string a_buffName, KernelInfo& a_kernel, size_t a_bufferSizeInBytes)
+void kslicer::MainClassInfo::AddTempBufferToKernel(const std::string buffName, KernelInfo& a_kernel)
 {
-  // (0) make full name for such a vector
-  //
-  std::stringstream strOut;
-  strOut << "tmp_" << a_buffName << "_" << a_bufferSizeInBytes;
-  
-  std::string buffName = strOut.str();
-
   // (1) append vector to this->allDataMembers
   //
   auto pFoundMember = allDataMembers.find(buffName);
@@ -28,6 +20,7 @@ void kslicer::MainClassInfo::AddTempBufferToKernel(const std::string a_buffName,
     vecMemberTmp.usedInKernel  = true;
     vecMemberTmp.containerType = "std::vector";
     vecMemberTmp.containerDataType = "uint";
+    vecMemberTmp.isSilentService   = true; // we dont have to generate code for update of vector or vector size for such vectors
     pFoundMember = allDataMembers.insert({buffName, vecMemberTmp}).first;
   }
 

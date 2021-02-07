@@ -141,11 +141,12 @@ protected:
   VkDescriptorSetLayout {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;  
   VkDescriptorSetLayout Create{{Kernel.Name}}DSLayout();
   {% if Kernel.HasLoopInit %}
-  VkPipelineLayout      {{Kernel.Name}}LoopInitLayout   = VK_NULL_HANDLE;
-  VkPipeline            {{Kernel.Name}}LoopInitPipeline = VK_NULL_HANDLE; 
-  VkDescriptorSetLayout {{Kernel.Name}}LoopInitDSLayout = VK_NULL_HANDLE;  
-  VkDescriptorSetLayout Create{{Kernel.Name}}LoopInitDSLayout(); 
-  {% endif %}void InitKernel_{{Kernel.Name}}(const char* a_filePath, VkSpecializationInfo specsForWGSize);
+  VkPipelineLayout      {{Kernel.Name}}InitLayout   = VK_NULL_HANDLE;
+  VkPipeline            {{Kernel.Name}}InitPipeline = VK_NULL_HANDLE; 
+  VkDescriptorSetLayout {{Kernel.Name}}InitDSLayout = VK_NULL_HANDLE;  
+  VkDescriptorSetLayout Create{{Kernel.Name}}InitDSLayout(); 
+  {% endif %}
+  void InitKernel_{{Kernel.Name}}(const char* a_filePath, VkSpecializationInfo specsForWGSize);
 
 ## endfor
 

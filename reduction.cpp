@@ -79,6 +79,20 @@ std::string kslicer::KernelInfo::ReductionAccess::GetInitialValue() const // bes
   return "0";
 }
 
+size_t kslicer::KernelInfo::ReductionAccess::GetSizeOfDataType() const
+{
+  size_t numElements = 1;
+  auto lastSymb = dataType[dataType.size()-1];
+  if(lastSymb=='2')
+    numElements = 2;
+  else if(lastSymb=='3')
+    numElements = 3;
+  else if(lastSymb == '4')
+    numElements = 4;
+
+  return sizeof(uint32_t)*numElements;
+}
+
 bool kslicer::KernelInfo::ReductionAccess::SupportAtomicLastStep() const
 {
   if(type == REDUCTION_TYPE::MUL)

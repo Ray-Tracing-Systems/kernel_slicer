@@ -496,6 +496,21 @@ int main(int argc, const char **argv)
       inputCodeInfo.ProcessKernelArg(arg, kernel);
 
     inputCodeInfo.VisitAndPrepare_KF(kernel, compiler);
+    if(kernel.hasFinishPass) // add additional buffers for reduction
+    {
+      uint32_t buffNumber = 0;
+      for(auto& redVar : kernel.subjectedToReduction)
+      {
+        if(redVar.second.SupportAtomicLastStep())
+          continue;
+        
+        std::stringstream strOut;
+        strOut << "tmp" << buffNumber << redVar.second.GetSizeOfDataType();
+        inputCodeInfo.AddTempBufferToKernel(strOut.str(), kernel);
+        redVar.second.tmpVarName = strOut.str();
+        buffNumber++;
+      }
+    }
   }
 
   std::cout << "}" << std::endl;

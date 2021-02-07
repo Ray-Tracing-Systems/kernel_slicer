@@ -54,11 +54,13 @@ namespace kslicer
       REDUCTION_TYPE type;
       std::string    rightExpr;
       std::string    funcName;
-      std::string    dataType = "UnknownType";
+      std::string    dataType   = "UnknownType";
+      std::string    tmpVarName = "UnknownReductionOutput";
       std::string    GetInitialValue()  const;
       std::string    GetOp()            const;
       bool           SupportAtomicLastStep() const;
       std::string    GetAtomicImplCode()     const;
+      size_t         GetSizeOfDataType()     const;
     };
     
     std::string           return_type;          ///<! func. return type
@@ -106,7 +108,9 @@ namespace kslicer
     bool isContainer      = false; ///<! if std::vector<...>
     bool isArray          = false; ///<! if is array, element type stored incontainerDataType;
     bool usedInKernel     = false; ///<! if any kernel use the member --> true; if no one uses --> false;
-    bool usedInMainFn     = false; ///<! if std::vector is used in MainFunction like vector.data().
+    bool usedInMainFn     = false; ///<! if std::vector is used in MainFunction like vector.data();
+    bool isSilentService  = false; ///<! if this is service and 'implicit' data which was agged by generator, not by user;
+
     size_t      arraySize = 0;     ///<! 'N' if data is declared as 'array[N]';
     std::string containerType;     ///<! std::vector usually
     std::string containerDataType; ///<! data type 'T' inside of std::vector<T>
@@ -365,7 +369,7 @@ namespace kslicer
     virtual bool NeedThreadFlags() const { return false; }
     virtual std::string RemoveTypeNamespaces(const std::string& a_str) const;
 
-    virtual void AddTempBufferToKernel(const std::string a_buffName, KernelInfo& a_kernel, size_t a_bufferSizeInBytes); ///<! if kernel need some additional buffers (for reduction for example) use this function 
+    virtual void AddTempBufferToKernel(const std::string a_buffName, KernelInfo& a_kernel); ///<! if kernel need some additional buffers (for reduction for example) use this function 
   };
 
 

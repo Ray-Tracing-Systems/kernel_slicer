@@ -112,7 +112,7 @@ __kernel void {{Kernel.Name}}(
       {% if redvar.SupportAtomic %}
       {{redvar.AtomicOp}}(&ubo->{{redvar.Name}}, {{redvar.Name}}Shared[0]);
       {% else %}
-      //outTempBuff[get_global_id(0)/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[0]; // TODO: finish impl
+      {{ redvar.OutTempName }}[get_global_id(0)/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[0]; // fill finish reduction in subsequent kernel passes
       {% endif %}
       {% endfor %}
     }

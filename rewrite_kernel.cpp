@@ -212,7 +212,7 @@ bool kslicer::KernelRewriter::VisitUnaryOperator(UnaryOperator* expr)
       
       if(m_infoPass)
       {
-        m_currKernel.hasFinishPass = !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
+        m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
         m_currKernel.subjectedToReduction[leftStr] = access;
       }
       else
@@ -265,7 +265,7 @@ bool kslicer::KernelRewriter::VisitCompoundAssignOperator(CompoundAssignOperator
     
     if(m_infoPass)
     {
-      m_currKernel.hasFinishPass = !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
+      m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
       m_currKernel.subjectedToReduction[leftStr] = access;
     }
     else
@@ -343,7 +343,7 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
 
   if(m_infoPass)
   {
-    m_currKernel.hasFinishPass = !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
+    m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
     m_currKernel.subjectedToReduction[leftStr] = access;
   }
   else

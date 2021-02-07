@@ -160,7 +160,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   data["ClassVectorVars"] = std::vector<std::string>();
   for(const auto& v : a_classInfo.dataMembers)
   {
-    if(!v.isContainer)
+    if(!v.isContainer || v.isSilentService)
       continue;
     
     std::string sizeName     = v.name + "_size";
@@ -599,6 +599,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       varJ["Name"] = var.first;
       varJ["Init"] = var.second.GetInitialValue();
       varJ["Op"]   = var.second.GetOp();
+      varJ["OutTempName"]   = var.second.tmpVarName;
       varJ["SupportAtomic"] = var.second.SupportAtomicLastStep();
       varJ["AtomicOp"]      = var.second.GetAtomicImplCode();
 
@@ -671,20 +672,22 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["shouldCheckExitFlag"] = k.checkThreadFlags;
     kernelJson["checkFlagsExpr"]      = "//xxx//";
     kernelJson["ThreadOffset"]        = kslicer::GetFakeOffsetExpression(k, a_classInfo.GetKernelTIDArgs(k));
-
-    data["Kernels"].push_back(kernelJson);
+  
+    auto original = kernelJson;
     
     // if we have additional init statements we should add additional init kernel before our kernel
     //
     if(k.hasInitPass)
     {      
-      kernelJson["Name"]      = k.name + "_LoopInit";
+      kernelJson["Name"]      = k.name + "_Init";
       kernelJson["Source"]    = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1);
       kernelJson["Members"]   = std::vector<json>();
       kernelJson["HasReduct"] = false;
       kernelJson["HasEpilog"] = false;
       data["Kernels"].push_back(kernelJson);
     }
+
+    data["Kernels"].push_back(original);
   }
 
   return data;

@@ -16,8 +16,8 @@
   vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
   {% if Kernel.HasLoopInit %}
-  vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}LoopInitDSLayout, nullptr);
-  {{Kernel.Name}}LoopInitDSLayout = VK_NULL_HANDLE;
+  vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}InitDSLayout, nullptr);
+  {{Kernel.Name}}InitDSLayout = VK_NULL_HANDLE;
   {% endif %}
 ## endfor
   vkDestroyDescriptorSetLayout(device, copyKernelFloatDSLayout, nullptr);
@@ -79,7 +79,7 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout
   return layout;
 }
 {% if Kernel.HasLoopInit %}
-VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}LoopInitDSLayout()
+VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}InitDSLayout()
 {
   VkDescriptorSetLayoutBinding dsBindings[{{Kernel.ArgCount}}+1] = {};
   
@@ -168,10 +168,10 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {% if Kernel.HasLoopInit %}
   uint32_t singleThreadConfig[3] = {1,1,1};
   specsForWGSizeExcep.pData = singleThreadConfig;   
-  m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSizeExcep, "{{Kernel.OriginalName}}_LoopInit");
-  {{Kernel.Name}}LoopInitDSLayout = Create{{Kernel.Name}}LoopInitDSLayout();
-  {{Kernel.Name}}LoopInitLayout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}LoopInitDSLayout, 128); // at least 128 bytes for push constants
-  {{Kernel.Name}}LoopInitPipeline = m_pMaker->MakePipeline(device);{% endif %} 
+  m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSizeExcep, "{{Kernel.OriginalName}}_Init");
+  {{Kernel.Name}}InitDSLayout = Create{{Kernel.Name}}InitDSLayout();
+  {{Kernel.Name}}InitLayout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}InitDSLayout, 128); // at least 128 bytes for push constants
+  {{Kernel.Name}}InitPipeline = m_pMaker->MakePipeline(device);{% endif %} 
 }
 
 ## endfor

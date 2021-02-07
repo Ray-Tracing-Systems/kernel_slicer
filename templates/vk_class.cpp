@@ -78,8 +78,8 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   pcData.m_{{Arg.Name}} = {{Arg.Name}}; 
   {% endfor %}
   {% if Kernel.HasLoopInit %}
-  vkCmdBindPipeline (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}LoopInitPipeline);
-  vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}LoopInitLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
+  vkCmdBindPipeline (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}InitPipeline);
+  vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}InitLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
   vkCmdDispatch(m_currCmdBuffer, 1, 1, 1); 
   VkBufferMemoryBarrier barUBO = BarrierForUBOUpdate();
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
