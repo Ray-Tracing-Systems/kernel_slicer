@@ -21,6 +21,7 @@ add_executable(kslicer
                ast_matchers.cpp
                class_gen.cpp
                class_gen_ipv.cpp
+               class_gen_rtv.cpp
                class_data.cpp
                extractor.cpp
                initial_pass.cpp

@@ -15,7 +15,6 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
 
 namespace kslicer
 {
-  const std::string GetProjPrefix();
 
   /**
   \brief for each method MainClass::kernel_XXX
@@ -61,7 +60,6 @@ namespace kslicer
       bool           SupportAtomicLastStep() const;
       std::string    GetAtomicImplCode()     const;
     };
-
     
     std::string           return_type;          ///<! func. return type
     std::string           name;                 ///<! func. name
@@ -69,7 +67,8 @@ namespace kslicer
     std::vector<LoopIter> loopIters;            ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
     clang::SourceRange    loopInsides;          ///<! used by IPV pattern to extract loops insides and make them kernel source
     clang::SourceRange    loopOutsidesInit;     ///<! used by IPV pattern to extract code before loops and then make additional initialization kernel
-    bool                  hasLoopInit  = false; ///<! used by IPV pattern; indicate that we actually has loop init part inside IPV kernel
+    bool                  hasInitPass   = false;///<! used by IPV pattern (currently); indicate that we need insert additional single-threaded run before current kernel
+    bool                  hasFinishPass = false;///<! used by IPV pattern (currently); indicate that we need insert additional passes              after  current kernel
 
     const clang::CXXMethodDecl* astNode = nullptr;
     bool usedInMainFunc = false;                ///<! wherther kernel is actually used or just declared
@@ -77,7 +76,7 @@ namespace kslicer
     bool usedInExitExpr = false;                ///<! used by RTV pattern; if kernel is used in Control Function in if(kernelXXX()) --> break or return extression
     bool checkThreadFlags = false;
 
-    std::string DeclCmd;
+    std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
     std::unordered_set<std::string> usedVectors; ///<! list of all std::vector<T> member names which is referenced inside kernel
     std::unordered_set<std::string> usedMembers; ///<! list of all other variables used inside kernel
     std::unordered_map<std::string, ReductionAccess> subjectedToReduction; ///<! if member is used in reduction expression
@@ -88,8 +87,8 @@ namespace kslicer
     uint32_t injectedWgSize[3] = {256,1,1};      ///<! workgroup size for the case when setting wgsize with spec constant is not allowed
     uint32_t warpSize          = 32;             ///<! warp size in which we can rely on to omit sync in reduction and e.t.c.
 
-    bool      isIndirect      = false;           ///<! IPV pattern; if loop size is defined by class member variable or vector size, we interpret it as indirect dispatching
-    uint32_t  indirectBlockId = 0;               ///<! IPV pattern; for such kernels we have to know some offset in indirect buffer for thread blocks number (use int4 data for each kernel)
+    bool      isIndirect      = false;           ///<! IPV pattern (currently); if loop size is defined by class member variable or vector size, we interpret it as indirect dispatching
+    uint32_t  indirectBlockId = 0;               ///<! IPV pattern (currently); for such kernels we have to know some offset in indirect buffer for thread blocks number (use int4 data for each kernel)
   };
 
   /**
@@ -300,7 +299,6 @@ namespace kslicer
     std::unordered_map<std::string, KernelInfo> kernels;         ///<! only those kernels which are called from 'Main'/'Control' functions
     std::vector<std::string>                    indirectKernels; ///<! list of all kernel names which require indirect dispatch; The order is essential because it is used for indirect buffer offsets 
     std::vector<DataMemberInfo>                 dataMembers;     ///<! only those member variables which are referenced from kernels 
-    std::vector<DataMemberInfo>                 containers;      ///<! containers that should be transformed to buffers
     std::vector<MainFuncInfo>                   mainFunc;        ///<! list of all control functions
 
     std::string mainClassName;
@@ -364,8 +362,9 @@ namespace kslicer
     virtual std::string GetCFDeclFromSource(const std::string& sourceCode);
 
     virtual bool NeedThreadFlags() const { return false; }
-
     virtual std::string RemoveTypeNamespaces(const std::string& a_str) const;
+
+    virtual void AddTempBufferToKernel(const std::string a_buffName, KernelInfo& a_kernel, size_t a_bufferSizeInBytes); ///<! if kernel need some additional buffers (for reduction for example) use this function 
   };
 
 

@@ -204,7 +204,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     local["Name"]         = kernName;
     local["OriginalName"] = k.name;
     local["ArgCount"]     = k.args.size();
-    local["HasLoopInit"]  = k.hasLoopInit;
+    local["HasLoopInit"]  = k.hasInitPass;
     local["Decl"]         = kernelDeclByName[kernName];
 
     local["Args"]         = std::vector<std::string>();
@@ -673,7 +673,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     
     // if we have additional init statements we should add additional init kernel before our kernel
     //
-    if(k.hasLoopInit)
+    if(k.hasInitPass)
     {      
       kernelJson["Name"]      = k.name + "_LoopInit";
       kernelJson["Source"]    = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1);

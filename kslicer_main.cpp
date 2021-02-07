@@ -52,8 +52,6 @@ using namespace clang;
   #include <sys/stat.h>   // for linux mkdir
 #endif
 
-const std::string kslicer::GetProjPrefix() { return std::string("kgen_"); };
-
 using kslicer::KernelInfo;
 using kslicer::DataMemberInfo;
 
@@ -160,15 +158,6 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
       fileName = key;
   }
   return cmdLineParams;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-std::vector<std::string> kslicer::GetAllPredefinedThreadIdNamesRTV()
-{
-  return {"tid", "tidX", "tidY", "tidZ"};
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -324,7 +313,7 @@ int main(int argc, const char **argv)
     pImplPattern = std::make_shared<kslicer::IPV_Pattern>();
   else
   { 
-    std::cout << "wrong pattern name '" << patternName.c_str() << "' " << std::endl; 
+    std::cout << "[main]: wrong pattern name '" << patternName.c_str() << "' " << std::endl; 
     exit(0);
   }
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
@@ -569,8 +558,6 @@ int main(int argc, const char **argv)
   std::cout << "(6) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl; 
   std::cout << "{" << std::endl;
 
-  // (4) calc offsets for all class variables; ingore unused members that were not marked on previous step
-  //
   inputCodeInfo.dataMembers  = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
   auto jsonUBO               = kslicer::PrepareUBOJson(inputCodeInfo, inputCodeInfo.dataMembers);
   std::string uboIncludeName = inputCodeInfo.mainClassName + "_ubo.h";

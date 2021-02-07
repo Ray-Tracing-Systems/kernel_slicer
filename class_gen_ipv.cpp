@@ -187,7 +187,7 @@ public:
         endOfInit = expr->getSourceRange().getEnd(); 
       }
 
-      currKernel->hasLoopInit = (currKernel->loopOutsidesInit.getEnd() != endOfInit);
+      currKernel->hasInitPass = (currKernel->loopOutsidesInit.getEnd() != endOfInit);
       currKernel->loopOutsidesInit.setEnd(endOfInit);
     }
     else
