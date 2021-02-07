@@ -389,7 +389,10 @@ void kslicer::ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, con
   fout.close();
 }
 
-std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds);
+namespace kslicer
+{
+  std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds);
+};
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 
 
@@ -667,7 +670,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
  
     kernelJson["shouldCheckExitFlag"] = k.checkThreadFlags;
     kernelJson["checkFlagsExpr"]      = "//xxx//";
-    kernelJson["ThreadOffset"]        = GetFakeOffsetExpression(k, a_classInfo.GetKernelTIDArgs(k));
+    kernelJson["ThreadOffset"]        = kslicer::GetFakeOffsetExpression(k, a_classInfo.GetKernelTIDArgs(k));
 
     data["Kernels"].push_back(kernelJson);
     

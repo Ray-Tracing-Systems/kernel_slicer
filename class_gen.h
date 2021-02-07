@@ -21,22 +21,21 @@ namespace kslicer
   using namespace llvm;
   using namespace clang;
   
-  
   /**\brief put all args together with comma or ',' to gave unique key for any concrete argument sequence.
       \return unique strig key which you can pass in std::unordered_map for example 
   */
   std::string MakeKernellCallSignature(const std::string& a_mainFuncName, const std::vector<ArgReferenceOnCall>& a_args, const std::unordered_set<std::string>& a_usedVectors);
 
-  class MainFuncASTVisitor : public RecursiveASTVisitor<MainFuncASTVisitor>
+  class MainFunctionRewriter : public RecursiveASTVisitor<MainFunctionRewriter>
   {
   public:
     
-    MainFuncASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, MainFuncInfo& a_mainFunc, 
-                       const std::vector<InOutVarInfo>& a_args, MainClassInfo* a_pCodeInfo) : 
-                       m_rewriter(R), m_compiler(a_compiler), m_sm(R.getSourceMgr()), 
-                       m_dsTagId(0), m_mainFuncName(a_mainFunc.Name), m_mainFuncLocals(a_mainFunc.Locals),
-                       m_pCodeInfo(a_pCodeInfo), m_allClassMembers(a_pCodeInfo->allDataMembers), m_mainFunc(a_mainFunc), allDescriptorSetsInfo(a_pCodeInfo->allDescriptorSetsInfo),
-                       m_kernels(a_pCodeInfo->kernels) 
+    MainFunctionRewriter(Rewriter &R, const clang::CompilerInstance& a_compiler, MainFuncInfo& a_mainFunc, 
+                         const std::vector<InOutVarInfo>& a_args, MainClassInfo* a_pCodeInfo) : 
+                         m_rewriter(R), m_compiler(a_compiler), m_sm(R.getSourceMgr()), 
+                         m_dsTagId(0), m_mainFuncName(a_mainFunc.Name), m_mainFuncLocals(a_mainFunc.Locals),
+                         m_pCodeInfo(a_pCodeInfo), m_allClassMembers(a_pCodeInfo->allDataMembers), m_mainFunc(a_mainFunc), allDescriptorSetsInfo(a_pCodeInfo->allDescriptorSetsInfo),
+                         m_kernels(a_pCodeInfo->kernels) 
     { 
       for(const auto& arg : a_args) 
         m_argsOfMainFunc[arg.name] = arg;
@@ -75,14 +74,13 @@ namespace kslicer
 
   std::vector<InOutVarInfo> ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node);
 
-  class KernelReplacerASTVisitor : public RecursiveASTVisitor<KernelReplacerASTVisitor> // replace all expressions with class variables to kgen_data buffer access
+  class KernelRewriter : public RecursiveASTVisitor<KernelRewriter> // replace all expressions with class variables to kgen_data buffer access
   {
   public:
     
-    KernelReplacerASTVisitor(Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
-                            kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr) : 
-                             m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_mainClassName(a_codeInfo->mainClassName), 
-                             m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_kernelIsBoolTyped(a_kernel.isBoolTyped), m_currKernel(a_kernel) 
+    KernelRewriter(Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr, const bool a_infoPass = false) : 
+                   m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_mainClassName(a_codeInfo->mainClassName), 
+                   m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_kernelIsBoolTyped(a_kernel.isBoolTyped), m_currKernel(a_kernel), m_infoPass(a_infoPass) 
     { 
       const auto& a_variables = a_codeInfo->dataMembers;
       m_variables.reserve(a_variables.size());
@@ -91,12 +89,12 @@ namespace kslicer
     }
 
     bool VisitMemberExpr(MemberExpr* expr);
-    bool VisitUnaryOperator(UnaryOperator* expr);
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
     bool VisitReturnStmt(ReturnStmt* ret);
 
+    bool VisitUnaryOperator(UnaryOperator* expr);                   // ++, --, (*var) =  ...
     bool VisitCompoundAssignOperator(CompoundAssignOperator* expr); // +=, *=, -= to detect reduction
-    bool VisitBinaryOperator(BinaryOperator* expr);
+    bool VisitBinaryOperator(BinaryOperator* expr);                 // m_var = f(m_var, expr)
 
   private:
 
@@ -111,10 +109,12 @@ namespace kslicer
     const std::string&                                       m_fakeOffsetExp;
     bool                                                     m_kernelIsBoolTyped;
     kslicer::KernelInfo&                                     m_currKernel;
+    bool                                                     m_infoPass;
   };
 
   void ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo);
-
+  std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds);
 }
+
 
 #endif

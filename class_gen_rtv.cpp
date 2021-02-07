@@ -11,6 +11,20 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//// tid, fakeOffset(tidX,tidY,kgen_iNumElementsX) or fakeOffset2(tidX,tidY,tidX,kgen_iNumElementsX, kgen_iNumElementsY)
+//
+std::string kslicer::GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds) 
+{
+  if(threadIds.size() == 1)
+    return threadIds[0].argName;
+  else if(threadIds.size() == 2)
+    return std::string("fakeOffset(") + threadIds[0].argName + "," + threadIds[1].argName + ",kgen_iNumElementsX)";
+  else if(threadIds.size() == 3)
+    return std::string("fakeOffset(") + threadIds[0].argName + "," + threadIds[1].argName + "," + threadIds[2].argName + ",kgen_iNumElementsX,kgen_iNumElementsY)";
+  else
+    return "tid";
+}
+
 std::vector<std::string> kslicer::GetAllPredefinedThreadIdNamesRTV()
 {
   return {"tid", "tidX", "tidY", "tidZ"};
