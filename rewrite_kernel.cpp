@@ -11,8 +11,10 @@
 
 bool kslicer::KernelRewriter::VisitMemberExpr(MemberExpr* expr)
 {
-  ValueDecl* pValueDecl =	expr->getMemberDecl();
-  
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return true; 
+
+  ValueDecl* pValueDecl = expr->getMemberDecl();
   if(!isa<FieldDecl>(pValueDecl))
     return true;
 
@@ -87,6 +89,9 @@ bool kslicer::KernelRewriter::VisitMemberExpr(MemberExpr* expr)
 
 bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
 {
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return true; 
+
   // Get name of function
   //
   const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
@@ -96,11 +101,8 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
   // Get name of "this" type; we should check wherther this member is std::vector<T>  
   //
   const clang::QualType qt = f->getObjectType();
-  const std::string& thisTypeName = qt.getAsString();
-  //const auto* fieldTypePtr = qt.getTypePtr(); 
-  //assert(fieldTypePtr != nullptr);
-  //auto typeDecl = fieldTypePtr->getAsRecordDecl();  
-  CXXRecordDecl* typeDecl = f->getRecordDecl(); 
+  const auto& thisTypeName = qt.getAsString();
+  CXXRecordDecl* typeDecl  = f->getRecordDecl(); 
 
   const bool isVector = (typeDecl != nullptr && isa<ClassTemplateSpecializationDecl>(typeDecl)) && thisTypeName.find("vector<") != std::string::npos; 
   
@@ -145,6 +147,9 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
 
 bool kslicer::KernelRewriter::VisitReturnStmt(ReturnStmt* ret)
 {
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return true; 
+      
   Expr* retExpr = ret->getRetValue();
   if (!retExpr || !m_kernelIsBoolTyped)
     return true;
@@ -204,9 +209,14 @@ bool kslicer::KernelRewriter::VisitUnaryOperator(UnaryOperator* expr)
         access.type    = KernelInfo::REDUCTION_TYPE::ADD_ONE;
       else if(op == "--")
         access.type    = KernelInfo::REDUCTION_TYPE::SUB_ONE;
-
-      m_currKernel.subjectedToReduction[leftStr] = access;
-      m_rewriter.ReplaceText(expr->getSourceRange(), leftStr + "Shared[get_local_id(0)]++");
+      
+      if(m_infoPass)
+      {
+        m_currKernel.hasFinishPass = !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
+        m_currKernel.subjectedToReduction[leftStr] = access;
+      }
+      else
+        m_rewriter.ReplaceText(expr->getSourceRange(), leftStr + "Shared[get_local_id(0)]++");
     }
   }
 
@@ -252,9 +262,14 @@ bool kslicer::KernelRewriter::VisitCompoundAssignOperator(CompoundAssignOperator
       access.type    = KernelInfo::REDUCTION_TYPE::MUL;
     else if(op == "-=")
       access.type    = KernelInfo::REDUCTION_TYPE::SUB;
-      
-    m_currKernel.subjectedToReduction[leftStr] = access;
-    m_rewriter.ReplaceText(expr->getSourceRange(), leftStr + "Shared[get_local_id(0)] " + access.GetOp() + " " + access.rightExpr);
+    
+    if(m_infoPass)
+    {
+      m_currKernel.hasFinishPass = !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
+      m_currKernel.subjectedToReduction[leftStr] = access;
+    }
+    else
+      m_rewriter.ReplaceText(expr->getSourceRange(), leftStr + "Shared[get_local_id(0)] " + access.GetOp() + " " + access.rightExpr);
   }
 
   return true;
@@ -326,8 +341,13 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
   access.rightExpr = secondArg;
   access.dataType  = lhs->getType().getAsString();
 
-  m_currKernel.subjectedToReduction[leftStr] = access;
-  m_rewriter.ReplaceText(expr->getSourceRange(), "// func. reduce " + leftStr + " with " + fname + " and " + access.rightExpr);
+  if(m_infoPass)
+  {
+    m_currKernel.hasFinishPass = !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
+    m_currKernel.subjectedToReduction[leftStr] = access;
+  }
+  else
+    m_rewriter.ReplaceText(expr->getSourceRange(), "// func. reduce " + leftStr + " with " + fname + " and " + access.rightExpr);
 
   return true;
 }

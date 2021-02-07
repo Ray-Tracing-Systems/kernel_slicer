@@ -219,3 +219,11 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   return              rewrite2.getRewrittenText(a_funcInfo.loopInsides);
 }
 
+void kslicer::IPV_Pattern::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
+{
+  Rewriter rewrite2;
+  rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+  kslicer::KernelRewriter rv(rewrite2, compiler, this, a_funcInfo, "", true); /// --> last parameter is true which means informational pass for KernelRewriter !!!
+  rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
+}
+
