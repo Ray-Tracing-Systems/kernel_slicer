@@ -111,6 +111,7 @@ __kernel void {{Kernel.Name}}(
     {% for redvar in Kernel.SubjToRed %}
     {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
     {% endfor %}
+    SYNCTHREADS;
     {% endfor %}
     if(localId == 0)
     {

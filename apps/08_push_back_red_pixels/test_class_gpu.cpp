@@ -126,7 +126,7 @@ void process_image_gpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedP
 
     std::cout << "[gpu]: m_redPixelsNum     = " << uboData.m_redPixelsNum << std::endl;
     std::cout << "[gpu]: m_foundPixels_size = " << uboData.m_foundPixels_size << std::endl;
-    std::cout << "[gpu]: m_testPixelsAmount = " << uboData.m_testPixelsAmount << std::endl;
+    //std::cout << "[gpu]: m_testPixelsAmount = " << uboData.m_testPixelsAmount << std::endl;
 
     //std::vector<unsigned int> pixels(w*h);
     //pCopyHelper->ReadBuffer(colorBufferOUT, 0, pixels.data(), pixels.size()*sizeof(unsigned int));

@@ -196,7 +196,11 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
   InitKernel_{{Kernel.Name}}(a_filePath, specsForWGSize);
 ## endfor
 
-  {% if MultipleSourceShaders %}std::string servPath = "{{ShaderFolder}}/serv_kernels.cpp.spv"; {% else %}std::string servPath = a_filePath;{% endif %}
+  {% if MultipleSourceShaders %}
+  std::string servPath = "{{ShaderFolder}}/serv_kernels.cpp.spv"; 
+  {% else %}
+  std::string servPath = a_filePath;
+  {% endif %}
 
   uint32_t specializationDataMemcpy[3] = {MEMCPY_BLOCK_SIZE, 1, 1};
   specsForWGSize.pData = specializationDataMemcpy;
