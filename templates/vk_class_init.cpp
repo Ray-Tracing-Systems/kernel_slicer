@@ -245,7 +245,11 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
 
 ## for MainFunc in MainFunctions  
 ## for Buffer in MainFunc.LocalVarsBuffersDecl
+  {% if Buffer.TransferDST %}
+  {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer = vkfw::CreateBuffer(device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  {% else %}
   {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer = vkfw::CreateBuffer(device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  {% endif %}
   allBuffers.push_back({{MainFunc.Name}}_local.{{Buffer.Name}}Buffer);
 ## endfor
 ## endfor

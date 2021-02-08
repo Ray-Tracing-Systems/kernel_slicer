@@ -308,6 +308,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       json local;
       local["Name"] = v.second.name;
       local["Type"] = v.second.type;
+      local["TransferDST"] = (v.second.name == "threadFlags"); // rtv thread flags
+      
       data2["LocalVarsBuffersDecl"].push_back(local);
     }
 

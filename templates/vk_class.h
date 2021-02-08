@@ -89,6 +89,7 @@ protected:
   VkPhysicalDeviceProperties m_devProps;
 
   VkBufferMemoryBarrier BarrierForUBOUpdate();
+  VkBufferMemoryBarrier BarrierForClearFlags(VkBuffer a_buffer);
 
   virtual void InitHelpers();
   virtual void InitBuffers(size_t a_maxThreadsCount);

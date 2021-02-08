@@ -116,9 +116,24 @@ VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForUBOUpdate()
   bar.dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
   bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
   bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  bar.buffer = m_classDataBuffer;
-  bar.offset = 0;
-  bar.size   = VK_WHOLE_SIZE;
+  bar.buffer              = m_classDataBuffer;
+  bar.offset              = 0;
+  bar.size                = VK_WHOLE_SIZE;
+  return bar;
+}
+
+VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForClearFlags(VkBuffer a_buffer)
+{
+  VkBufferMemoryBarrier bar = {};
+  bar.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  bar.pNext               = NULL;
+  bar.srcAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT;
+  bar.dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
+  bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bar.buffer              = a_buffer;
+  bar.offset              = 0;
+  bar.size                = VK_WHOLE_SIZE;
   return bar;
 }
 

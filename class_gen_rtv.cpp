@@ -112,7 +112,6 @@ void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncL
 
   // (3) finally add actual variables to MainFunc, arguments to kernels and reference to kernel call 
   //
-
   DataLocalVarInfo   tFlagsLocalVar;
   KernelInfo::Arg    tFlagsArg;
 
