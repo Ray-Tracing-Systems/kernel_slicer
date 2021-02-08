@@ -24,10 +24,11 @@
 {{LocalFunc}}
 
 ## endfor
-#define KGEN_FLAG_RETURN 1
-#define KGEN_FLAG_BREAK  2
-#define KGEN_FLAG_DONT_SET_EXIT 4
+#define KGEN_FLAG_RETURN            1
+#define KGEN_FLAG_BREAK             2
+#define KGEN_FLAG_DONT_SET_EXIT     4
 #define KGEN_FLAG_SET_EXIT_NEGATIVE 8
+#define KGEN_REDUCTION_LAST_STEP    16
 
 /////////////////////////////////////////////////////////////////////
 /////////////////// kernels /////////////////////////////////////////
@@ -142,6 +143,52 @@ __kernel void {{Kernel.Name}}_Reduction(
 {
   const uint globalId = get_global_id(0);
   const uint localId  = get_local_id(0);
+ 
+  {% for redvar in Kernel.SubjToRed %}
+  {% if not redvar.SupportAtomic %}
+  __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
+  {{redvar.Name}}Shared[localId] = {{ redvar.OutTempName }}[{{Kernel.threadIdName2}} + globalId]; // use {{Kernel.threadIdName2}} for 'InputOffset' 
+  {% endif %}
+  {% endfor %}
+  SYNCTHREADS;
+  {% for offset in Kernel.RedLoop1 %} 
+  if (localId < {{offset}}) 
+  {
+    {% for redvar in Kernel.SubjToRed %}
+    {% if not redvar.SupportAtomic %}
+    {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
+    {% endif %}
+    {% endfor %}
+  }
+  SYNCTHREADS;
+  {% endfor %}
+  {% for offset in Kernel.RedLoop2 %} 
+  {% for redvar in Kernel.SubjToRed %}
+  {% if not redvar.SupportAtomic %}
+  {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
+  {% endif %}
+  {% endfor %}
+  {% endfor %}
+  if(localId == 0)
+  {
+    if(kgen_tFlagsMask & KGEN_REDUCTION_LAST_STEP != 0)
+    {
+      {% for redvar in Kernel.SubjToRed %}
+      {% if not redvar.SupportAtomic %}
+      ubo->{{redvar.Name}} = {{redvar.Name}}Shared[0];
+      {% endif %}
+      {% endfor %}
+    }
+    else
+    {
+      {% for redvar in Kernel.SubjToRed %}
+      {% if not redvar.SupportAtomic %}
+      {{ redvar.OutTempName }}[{{Kernel.threadIdName3}} + globalId/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[0]; // use {{Kernel.threadIdName3}} for 'OutputOffset'
+      {% endif %}
+      {% endfor %}
+    }
+  }
+ 
 
 }
 {% endif %}
