@@ -124,8 +124,10 @@ void process_image_gpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedP
     RedPixels_UBO_Data uboData;
     pCopyHelper->ReadBuffer(pGPUImpl->GiveMeUBO(), 0, &uboData, sizeof(RedPixels_UBO_Data));
 
-    std::cout << "[gpu]: m_redPixelsNum     = " << uboData.m_redPixelsNum << std::endl;
-    std::cout << "[gpu]: m_foundPixels_size = " << uboData.m_foundPixels_size << std::endl;
+    std::cout << "[gpu]: m_redPixelsNum   = " << uboData.m_redPixelsNum << std::endl;
+    std::cout << "[gpu]: m_otherPixelsNum = " << uboData.m_otherPixelsNum << std::endl;
+
+    //std::cout << "[gpu]: m_foundPixels_size = " << uboData.m_foundPixels_size << std::endl;
     //std::cout << "[gpu]: m_testPixelsAmount = " << uboData.m_testPixelsAmount << std::endl;
 
     //std::vector<unsigned int> pixels(w*h);

@@ -26,7 +26,7 @@ public:
   const std::vector<PixelInfo>& GetFoundPixels() const { return m_foundPixels; }
   const uint32_t                GetRedPixelsAmount() const { return m_redPixelsNum; }
 
-protected:
+//protected:
   
   void kernel1D_CountRedPixels(const uint32_t* a_data, size_t a_dataSize);
   void kernel1D_FindRedPixels(const uint32_t* a_data, size_t a_dataSize);

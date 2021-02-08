@@ -84,5 +84,9 @@ void process_image_cpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedP
   filter.ProcessPixels(a_inPixels.data(), a_inPixels.size());
   a_outPixels = filter.GetFoundPixels();
   assert(a_outPixels.size() == filter.GetRedPixelsAmount());
+
+  std::cout << "[cpu]: m_redPixelsNum   = " << filter.m_redPixelsNum << std::endl;
+  std::cout << "[cpu]: m_otherPixelsNum = " << filter.m_otherPixelsNum << std::endl;
+
   return;
 }
