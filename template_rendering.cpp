@@ -606,6 +606,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       userArgs.push_back(argj);
     }
 
+    bool needFinishReductionPass = false;
     json reductionVars = std::vector<std::string>();
     for(const auto& var : k.subjectedToReduction)
     {
@@ -617,16 +618,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       varJ["OutTempName"]   = var.second.tmpVarName;
       varJ["SupportAtomic"] = var.second.SupportAtomicLastStep();
       varJ["AtomicOp"]      = var.second.GetAtomicImplCode();
-
-      //varJ["RedLoop1"] = std::vector<std::string>();
-      //varJ["RedLoop2"] = std::vector<std::string>();
-      //
-      //for (uint c = k.injectedWgSize[0]/2; c>k.warpSize; c/=2)
-      //  varJ["RedLoop1"].push_back(c);
-      //
-      //for (uint c = k.warpSize; c>0; c/=2)
-      //  varJ["RedLoop2"].push_back(c);
-
+      needFinishReductionPass = needFinishReductionPass || !varJ["SupportAtomic"];
       reductionVars.push_back(varJ);
     }
     
@@ -648,6 +640,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["IsBoolean"]  = k.isBoolTyped;
     kernelJson["SubjToRed"]  = reductionVars;
     kernelJson["HasReduct"]  = (reductionVars.size() > 0);
+    kernelJson["FinishRed"]  = needFinishReductionPass;
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
@@ -687,7 +680,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["shouldCheckExitFlag"] = k.checkThreadFlags;
     kernelJson["checkFlagsExpr"]      = "//xxx//";
     kernelJson["ThreadOffset"]        = kslicer::GetFakeOffsetExpression(k, a_classInfo.GetKernelTIDArgs(k));
-  
+    kernelJson["InitKPass"]           = false;
+
     auto original = kernelJson;
     
     // if we have additional init statements we should add additional init kernel before our kernel
@@ -699,6 +693,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["Members"]   = std::vector<json>();
       kernelJson["HasReduct"] = false;
       kernelJson["HasEpilog"] = false;
+      kernelJson["FinishRed"] = false;
+      kernelJson["InitKPass"] = true;
       data["Kernels"].push_back(kernelJson);
     }
 

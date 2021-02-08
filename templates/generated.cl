@@ -47,6 +47,10 @@ __kernel void {{Kernel.Name}}(
   const uint {{Kernel.threadIdName3}},
   const uint kgen_tFlagsMask)
 {
+  {% if Kernel.InitKPass %}
+  if(get_global_id(0)!=0)
+    return;
+  {% else %}
   ///////////////////////////////////////////////////////////////// prolog
   {% for name in Kernel.threadNames %}
   const uint {{name}} = get_global_id({{ loop.index }}); 
@@ -78,6 +82,7 @@ __kernel void {{Kernel.Name}}(
   {% endfor %} 
   {% endif %}
   ///////////////////////////////////////////////////////////////// prolog
+  {% endif %}
 {{Kernel.Source}}
   {% if Kernel.HasEpilog %}
   KGEN_EPILOG:
@@ -120,6 +125,26 @@ __kernel void {{Kernel.Name}}(
   {% endif %}
   {% endif %}
 }
+{% if Kernel.FinishRed %}
+
+__kernel void {{Kernel.Name}}_Reduction(
+## for Arg in Kernel.Args 
+  __global {{Arg.Type}} restrict {{Arg.Name}},
+## endfor
+## for UserArg in Kernel.UserArgs 
+  {{UserArg.Type}} {{UserArg.Name}},
+## endfor
+   __global struct {{MainClassName}}_UBO_Data* restrict ubo,
+  const uint {{Kernel.threadIdName1}}, 
+  const uint {{Kernel.threadIdName2}},
+  const uint {{Kernel.threadIdName3}},
+  const uint kgen_tFlagsMask)
+{
+  const uint globalId = get_global_id(0);
+  const uint localId  = get_local_id(0);
+
+}
+{% endif %}
 
 ## endfor
 
