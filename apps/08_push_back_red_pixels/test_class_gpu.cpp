@@ -1,4 +1,3 @@
-#include "include/BasicLogic.h" 
 #include "Bitmap.h"
 
 #include <vector>
@@ -14,32 +13,16 @@
 #include "vulkan_basics.h"
 #include "test_class_generated.h"
 
-class ToneMapping_GPU : public ToneMapping_Generated
+#include "include/RedPixels_ubo.h"
+
+class RedPixels_GPU : public RedPixels_Generated
 {
 public:
+  RedPixels_GPU(){}
 
-  ToneMapping_GPU(){}  
-   ~ToneMapping_GPU(){}
+  VkBufferUsageFlags GetAdditionalFlagsForUBO() override { return VK_BUFFER_USAGE_TRANSFER_SRC_BIT; }
+  VkBuffer GiveMeUBO() { return m_classDataBuffer; }
 
-   void SetVulkanInOutFor_Bloom(VkBuffer inColor, size_t inOffset, 
-                                VkBuffer outColor, size_t outOffset)
-   {
-     SetVulkanInOutFor_ExtractBrightPixels(inColor, inOffset);
-     SetVulkanInOutFor_DownSample4x();
-     SetVulkanInOutFor_BlurX();
-     SetVulkanInOutFor_BlurY();
-     SetVulkanInOutFor_MixAndToneMap(inColor, inOffset,
-                                     outColor, outOffset);
-   }  
-
-   void BloomCmd(VkCommandBuffer a_commandBuffer, int width, int height)
-   {
-     ExtractBrightPixelsCmd(a_commandBuffer, width, height, nullptr);
-     DownSample4xCmd(a_commandBuffer, width/4, height/4);
-     BlurXCmd(a_commandBuffer, width/4, height/4);
-     BlurYCmd(a_commandBuffer, width/4, height/4);
-     MixAndToneMapCmd(a_commandBuffer, width, height, nullptr, nullptr);
-   }
 };
 
 void process_image_gpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedPixels::PixelInfo>& a_outPixels)
@@ -100,27 +83,25 @@ void process_image_gpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedP
 
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 
-  auto pGPUImpl = std::make_shared<ToneMapping_GPU>();                // !!! USING GENERATED CODE !!! 
-  pGPUImpl->InitVulkanObjects(device, physicalDevice, w*h, 32, 8, 1); // !!! USING GENERATED CODE !!!
-
-  pGPUImpl->SetMaxImageSize(w, h);                                    // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
-  pGPUImpl->InitMemberBuffers();                                      // !!! USING GENERATED CODE !!!
+  auto pGPUImpl = std::make_shared<RedPixels_GPU>();                                 // !!! USING GENERATED CODE !!! 
+  pGPUImpl->InitVulkanObjects(device, physicalDevice, a_inPixels.size(), 256, 1, 1); // !!! USING GENERATED CODE !!!
+  
+  pGPUImpl->SetMaxDataSize(a_inPixels.size());                         // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
+  pGPUImpl->InitMemberBuffers();                                       // !!! USING GENERATED CODE !!!
 
   // (3) Create buffer
   //
-  const size_t bufferSizeLDR = w*h*sizeof(uint32_t);
-  const size_t bufferSizeHDR = w*h*sizeof(float)*4;
+  const size_t bufferSizeLDR = a_inPixels.size()*sizeof(uint32_t);
   VkBuffer colorBufferLDR    = vkfw::CreateBuffer(device, bufferSizeLDR,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  VkBuffer colorBufferHDR    = vkfw::CreateBuffer(device, bufferSizeHDR,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  VkBuffer colorBufferOUT    = vkfw::CreateBuffer(device, bufferSizeLDR,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
-  VkDeviceMemory colorMem    = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {colorBufferLDR, colorBufferHDR});
+  VkDeviceMemory colorMem    = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {colorBufferLDR, colorBufferOUT});
 
-  pGPUImpl->SetVulkanInOutFor_Bloom(colorBufferHDR, 0,  // ==> 
-                                    colorBufferLDR, 0); // <==
-
-  pCopyHelper->UpdateBuffer(colorBufferHDR, 0, a_hdrData, w*h*sizeof(float)*4);
-  pGPUImpl->UpdateAll(pCopyHelper);                                   // !!! USING GENERATED CODE !!!
+  pGPUImpl->SetVulkanInOutFor_ProcessPixels(colorBufferLDR, 0); // <==
+  pGPUImpl->UpdateAll(pCopyHelper);                             // !!! USING GENERATED CODE !!!
   
+  pCopyHelper->UpdateBuffer(colorBufferLDR, 0, a_inPixels.data(), bufferSizeLDR);
+
   // now compute some thing useful
   //
   {
@@ -131,7 +112,7 @@ void process_image_gpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedP
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
     //vkCmdFillBuffer(commandBuffer, colorBufferLDR, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
-    pGPUImpl->BloomCmd(commandBuffer, w, h);                                      // !!! USING GENERATED CODE !!! 
+    pGPUImpl->ProcessPixelsCmd(commandBuffer, nullptr, a_inPixels.size()); // !!! USING GENERATED CODE !!! 
     vkEndCommandBuffer(commandBuffer);  
     
     auto start = std::chrono::high_resolution_clock::now();
@@ -140,9 +121,16 @@ void process_image_gpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedP
     auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
     std::cout << ms << " ms for command buffer execution " << std::endl;
 
-    std::vector<unsigned int> pixels(w*h);
-    pCopyHelper->ReadBuffer(colorBufferLDR, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
-    SaveBMP(a_outName, pixels.data(), w, h);
+    RedPixels_UBO_Data uboData;
+    pCopyHelper->ReadBuffer(pGPUImpl->GiveMeUBO(), 0, &uboData, sizeof(RedPixels_UBO_Data));
+
+    std::cout << "[gpu]: m_redPixelsNum     = " << uboData.m_redPixelsNum << std::endl;
+    std::cout << "[gpu]: m_foundPixels_size = " << uboData.m_foundPixels_size << std::endl;
+    std::cout << "[gpu]: m_testPixelsAmount = " << uboData.m_testPixelsAmount << std::endl;
+
+    //std::vector<unsigned int> pixels(w*h);
+    //pCopyHelper->ReadBuffer(colorBufferOUT, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
+    //SaveBMP(a_outName, pixels.data(), w, h);
 
     std::cout << std::endl;
   }
@@ -153,7 +141,7 @@ void process_image_gpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedP
   pGPUImpl = nullptr;                                                       // !!! USING GENERATED CODE !!! 
 
   vkDestroyBuffer(device, colorBufferLDR, nullptr);
-  vkDestroyBuffer(device, colorBufferHDR, nullptr);
+  vkDestroyBuffer(device, colorBufferOUT, nullptr);
   vkFreeMemory(device, colorMem, nullptr);
 
   vkDestroyCommandPool(device, commandPool, nullptr);

@@ -7,6 +7,11 @@
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
 
+VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO()
+{
+  return 0;
+}
+
 static uint32_t ComputeReductionSteps(uint32_t whole_size, uint32_t wg_size)
 {
   uint32_t steps = 0;
@@ -40,7 +45,8 @@ void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vkfw::ICopy
 void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
 {
 ## for Var in ClassVectorVars
-  a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}.data(), {{Var.Name}}.size()*sizeof({{Var.TypeOfData}}) );
+  if({{Var.Name}}.size() > 0)
+    a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}.data(), {{Var.Name}}.size()*sizeof({{Var.TypeOfData}}) );
 ## endfor
 }
 
@@ -94,7 +100,9 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
     VkBufferMemoryBarrier redBars   [{{Kernel.RedVarsFPNum}}]; 
     VkBuffer              redBuffers[{{Kernel.RedVarsFPNum}}+1] = { {% for RedVarName in Kernel.RedVarsFPArr %}m_vdata.{{RedVarName}}Buffer, {% endfor %} VK_NULL_HANDLE};
     BarriersForSeveralBuffers(redBuffers, redBars, {{Kernel.RedVarsFPNum}});
-    VkBufferMemoryBarrier barUBO2 = BarrierForSingleBuffer(m_classDataBuffer);
+    {% if not Kernel.HasLoopInit %}
+    VkBufferMemoryBarrier barUBO = BarrierForSingleBuffer(m_classDataBuffer);
+    {% endif %}
 
     vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, {{Kernel.RedVarsFPNum}}, redBars, 0, nullptr);
     vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}ReductionPipeline);
@@ -125,7 +133,7 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
       wholeSize  =  (wholeSize + wgSize - 1) / wgSize;
     }
   }
-  
+
   {% endif %}
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
@@ -188,6 +196,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
     a_outBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     a_outBarriers[i].buffer              = a_inBuffers[i];
     a_outBarriers[i].offset              = 0;
+    a_outBarriers[i].size                = VK_WHOLE_SIZE;
   }
 }
 

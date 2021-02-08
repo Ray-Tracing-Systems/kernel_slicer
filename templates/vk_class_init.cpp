@@ -222,7 +222,7 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
 ## endfor
 ## endfor
 
-  m_classDataBuffer = vkfw::CreateBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  m_classDataBuffer = vkfw::CreateBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | GetAdditionalFlagsForUBO());
   allBuffers.push_back(m_classDataBuffer);
   
   {% for Buffer in RedVectorVars %}

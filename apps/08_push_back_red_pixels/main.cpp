@@ -17,6 +17,7 @@ int main(int argc, const char** argv)
   
   std::vector<RedPixels::PixelInfo> resCPU, resGPU;
   process_image_cpu(inputImageData, resCPU);
+  process_image_gpu(inputImageData, resGPU);
 
   std::cout << "found " << resCPU.size() << " red pixels" << std::endl;
   

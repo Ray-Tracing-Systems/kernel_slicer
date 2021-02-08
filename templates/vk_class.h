@@ -152,6 +152,9 @@ protected:
 
 ## endfor
 
+  virtual VkBufferUsageFlags GetAdditionalFlagsForUBO();
+
+
   VkPipelineLayout      copyKernelFloatLayout   = VK_NULL_HANDLE;
   VkPipeline            copyKernelFloatPipeline = VK_NULL_HANDLE;
   VkDescriptorSetLayout copyKernelFloatDSLayout = VK_NULL_HANDLE;
