@@ -139,14 +139,11 @@ protected:
 ## for Kernel in Kernels
   VkPipelineLayout      {{Kernel.Name}}Layout   = VK_NULL_HANDLE;
   VkPipeline            {{Kernel.Name}}Pipeline = VK_NULL_HANDLE; 
-  VkDescriptorSetLayout {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;  
-  VkDescriptorSetLayout Create{{Kernel.Name}}DSLayout();
+  VkDescriptorSetLayout {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
   {% if Kernel.HasLoopInit %}
-  VkPipelineLayout      {{Kernel.Name}}InitLayout   = VK_NULL_HANDLE;
   VkPipeline            {{Kernel.Name}}InitPipeline = VK_NULL_HANDLE; 
-  VkDescriptorSetLayout {{Kernel.Name}}InitDSLayout = VK_NULL_HANDLE;  
-  VkDescriptorSetLayout Create{{Kernel.Name}}InitDSLayout(); 
-  {% endif %}
+  {% endif %}  
+  VkDescriptorSetLayout Create{{Kernel.Name}}DSLayout();
   void InitKernel_{{Kernel.Name}}(const char* a_filePath, VkSpecializationInfo specsForWGSize);
 
 ## endfor

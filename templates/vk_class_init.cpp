@@ -26,10 +26,6 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
 ## for Kernel in Kernels
   vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
-  {% if Kernel.HasLoopInit %}
-  vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}InitDSLayout, nullptr);
-  {{Kernel.Name}}InitDSLayout = VK_NULL_HANDLE;
-  {% endif %}
 ## endfor
   vkDestroyDescriptorSetLayout(device, copyKernelFloatDSLayout, nullptr);
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
@@ -92,37 +88,6 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout
   VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
   return layout;
 }
-{% if Kernel.HasLoopInit %}
-VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}InitDSLayout()
-{
-  VkDescriptorSetLayoutBinding dsBindings[{{Kernel.ArgCount}}+1] = {};
-  
-## for KernelARG in Kernel.Args
-  // binding for {{KernelARG.Name}}
-  dsBindings[{{KernelARG.Id}}].binding            = {{KernelARG.Id}};
-  dsBindings[{{KernelARG.Id}}].descriptorType     = {{KernelARG.Type}};
-  dsBindings[{{KernelARG.Id}}].descriptorCount    = 1;
-  dsBindings[{{KernelARG.Id}}].stageFlags         = {{KernelARG.Flags}};
-  dsBindings[{{KernelARG.Id}}].pImmutableSamplers = nullptr;
-
-## endfor
-  // binding for POD members stored in m_classDataBuffer
-  dsBindings[{{Kernel.ArgCount}}].binding            = {{Kernel.ArgCount}};
-  dsBindings[{{Kernel.ArgCount}}].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  dsBindings[{{Kernel.ArgCount}}].descriptorCount    = 1;
-  dsBindings[{{Kernel.ArgCount}}].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
-  dsBindings[{{Kernel.ArgCount}}].pImmutableSamplers = nullptr;
-  
-  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
-  descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  descriptorSetLayoutCreateInfo.bindingCount = uint32_t({{Kernel.ArgCount}}+1);
-  descriptorSetLayoutCreateInfo.pBindings    = dsBindings;
-  
-  VkDescriptorSetLayout layout = nullptr;
-  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
-  return layout;
-}
-{% endif %}
 ## endfor
 
 VkDescriptorSetLayout {{MainClassName}}_Generated::CreatecopyKernelFloatDSLayout()
@@ -186,9 +151,8 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   uint32_t singleThreadConfig[3] = {1,1,1};
   specsForWGSizeExcep.pData = singleThreadConfig;   
   m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSizeExcep, "{{Kernel.OriginalName}}_Init");
-  {{Kernel.Name}}InitDSLayout = Create{{Kernel.Name}}InitDSLayout();
-  {{Kernel.Name}}InitLayout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}InitDSLayout, 128); // at least 128 bytes for push constants
-  {{Kernel.Name}}InitPipeline = m_pMaker->MakePipeline(device);{% endif %} 
+  {{Kernel.Name}}InitPipeline = m_pMaker->MakePipeline(device);
+  {% endif %} 
 }
 
 ## endfor
