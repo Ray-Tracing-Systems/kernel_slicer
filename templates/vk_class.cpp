@@ -94,6 +94,7 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
     VkBufferMemoryBarrier redBars   [{{Kernel.RedVarsFPNum}}]; 
     VkBuffer              redBuffers[{{Kernel.RedVarsFPNum}}+1] = { {% for RedVarName in Kernel.RedVarsFPArr %}m_vdata.{{RedVarName}}Buffer, {% endfor %} VK_NULL_HANDLE};
     BarriersForSeveralBuffers(redBuffers, redBars, {{Kernel.RedVarsFPNum}});
+    VkBufferMemoryBarrier barUBO2 = BarrierForSingleBuffer(m_classDataBuffer);
 
     vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, {{Kernel.RedVarsFPNum}}, redBars, 0, nullptr);
     vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}ReductionPipeline);
@@ -114,11 +115,17 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
       vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
       vkCmdDispatch(m_currCmdBuffer, wholeSize, 1, 1);
       
+      if(wholeSize <= wgSize)
+        vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
+      else
+        vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, {{Kernel.RedVarsFPNum}}, redBars, 0, nullptr);
+        
       currOffset += wholeSize;
       oldSize    =  wholeSize;
       wholeSize  =  (wholeSize + wgSize - 1) / wgSize;
     }
   }
+  
   {% endif %}
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
