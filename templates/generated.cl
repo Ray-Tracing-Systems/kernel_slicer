@@ -59,6 +59,7 @@ __kernel void {{Kernel.Name}}(
   {{redvar.Name}}Shared[get_local_id(0)] = {{redvar.Init}}; 
   {% endfor %} 
   {% endif %}
+  SYNCTHREADS;
   {% for name in Kernel.threadNames %}
   const uint {{name}} = get_global_id({{ loop.index }}); 
   {% endfor %}
@@ -108,10 +109,12 @@ __kernel void {{Kernel.Name}}(
     SYNCTHREADS;
     {% endfor %}
     {% for offset in Kernel.RedLoop2 %} 
-    {% for redvar in Kernel.SubjToRed %}
-    {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
-    {% endfor %}
-    SYNCTHREADS;
+    if (localId < {{offset}}) 
+    {
+      {% for redvar in Kernel.SubjToRed %}
+      {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
+      {% endfor %}
+    }
     {% endfor %}
     if(localId == 0)
     {
