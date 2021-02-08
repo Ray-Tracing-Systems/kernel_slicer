@@ -163,6 +163,7 @@ protected:
   {{MainClassName}}_UBO_Data m_uboData;
   
   constexpr static uint32_t MEMCPY_BLOCK_SIZE = 256;
+  constexpr static uint32_t REDUCTION_BLOCK_SIZE = 256;
 };
 
 #endif

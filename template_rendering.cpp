@@ -160,7 +160,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   data["ClassVectorVars"] = std::vector<std::string>();
   for(const auto& v : a_classInfo.dataMembers)
   {
-    if(!v.isContainer || v.isSilentService)
+    if(!v.isContainer || v.usage != kslicer::DATA_USAGE::USAGE_USER)
       continue;
     
     std::string sizeName     = v.name + "_size";
@@ -178,6 +178,19 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     local["TypeOfData"]     = v.containerDataType;
 
     data["ClassVectorVars"].push_back(local);
+  }
+
+  data["RedVectorVars"] = std::vector<std::string>();
+  for(const auto& v : a_classInfo.dataMembers)
+  {
+    if(!v.isContainer || v.usage != kslicer::DATA_USAGE::USAGE_SLICER_REDUCTION)
+      continue;
+    
+    json local;
+    local["Name"] = v.name;
+    local["Type"] = v.containerDataType;
+
+    data["RedVectorVars"].push_back(local);
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

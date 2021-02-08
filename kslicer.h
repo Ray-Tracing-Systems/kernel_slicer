@@ -93,6 +93,8 @@ namespace kslicer
     uint32_t  indirectBlockId = 0;               ///<! IPV pattern (currently); for such kernels we have to know some offset in indirect buffer for thread blocks number (use int4 data for each kernel)
   };
 
+  enum class DATA_USAGE{ USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
+
   /**
   \brief for each data member of MainClass
   */
@@ -104,12 +106,13 @@ namespace kslicer
     size_t      alignedSizeInBytes   = 0; ///<! aligned size will be known when data will be placed to a buffer
     size_t      offsetInTargetBuffer = 0; ///<! offset in bytes in terget buffer that stores all data members
     
-    bool isContainerInfo  = false; ///<! auto generated std::vector<T>::size() or capacity() or some analogue
-    bool isContainer      = false; ///<! if std::vector<...>
-    bool isArray          = false; ///<! if is array, element type stored incontainerDataType;
-    bool usedInKernel     = false; ///<! if any kernel use the member --> true; if no one uses --> false;
-    bool usedInMainFn     = false; ///<! if std::vector is used in MainFunction like vector.data();
-    bool isSilentService  = false; ///<! if this is service and 'implicit' data which was agged by generator, not by user;
+    bool isContainerInfo   = false; ///<! auto generated std::vector<T>::size() or capacity() or some analogue
+    bool isContainer       = false; ///<! if std::vector<...>
+    bool isArray           = false; ///<! if is array, element type stored incontainerDataType;
+    bool usedInKernel      = false; ///<! if any kernel use the member --> true; if no one uses --> false;
+    bool usedInMainFn      = false; ///<! if std::vector is used in MainFunction like vector.data();
+    
+    DATA_USAGE  usage = DATA_USAGE::USAGE_USER; ///<! if this is service and 'implicit' data which was agged by generator, not by user;
 
     size_t      arraySize = 0;     ///<! 'N' if data is declared as 'array[N]';
     std::string containerType;     ///<! std::vector usually

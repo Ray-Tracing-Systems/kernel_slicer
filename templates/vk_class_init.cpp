@@ -8,6 +8,17 @@
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
 
+static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t wg_size)
+{
+  uint32_t sizeTotal = 0;
+  while (whole_size > 1)
+  {
+    whole_size  = (whole_size + wg_size - 1) / wg_size;
+    sizeTotal  += std::max<uint32_t>(whole_size / wg_size, 1);
+  }
+  return sizeTotal;
+}
+
 {{MainClassName}}_Generated::~{{MainClassName}}_Generated()
 {
   m_pMaker = nullptr;
@@ -24,16 +35,19 @@
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
 
 ## for MainFunc in MainFunctions
-## for Buffer in MainFunc.LocalVarsBuffersDecl
+  {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
   vkDestroyBuffer(device, {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer, nullptr);
-## endfor
+  {% endfor %}
 
 ## endfor
+ 
   vkDestroyBuffer(device, m_classDataBuffer, nullptr);
-
-## for Var in ClassVectorVars
-  vkDestroyBuffer(device, m_vdata.{{Var.Name}}Buffer, nullptr);
-## endfor
+  {% for Buffer in ClassVectorVars %}
+  vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
+  {% endfor %}
+  {% for Buffer in RedVectorVars %}
+  vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
+  {% endfor %}
 
   if(m_allMem != VK_NULL_HANDLE)
     vkFreeMemory(device, m_allMem, nullptr);
@@ -148,8 +162,11 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::CreatecopyKernelFloatDSLayout
 void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_filePath, VkSpecializationInfo specsForWGSize)
 {
   VkSpecializationInfo specsForWGSizeExcep = specsForWGSize;
-
-  {% if MultipleSourceShaders %}std::string shaderPath = "{{ShaderFolder}}/{{Kernel.OriginalName}}.cpp.spv"; {% else %}std::string shaderPath = a_filePath; {% endif %}
+  {% if MultipleSourceShaders %}
+  std::string shaderPath = "{{ShaderFolder}}/{{Kernel.OriginalName}}.cpp.spv"; 
+  {% else %}
+  std::string shaderPath = a_filePath; 
+  {% endif %}
 
   auto ex = m_kernelExceptions.find("{{Kernel.OriginalName}}");
   if(ex == m_kernelExceptions.end())
@@ -236,6 +253,14 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
   m_classDataBuffer = vkfw::CreateBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   allBuffers.push_back(m_classDataBuffer);
   
+  {% for Buffer in RedVectorVars %}
+  {
+    const size_t sizeOfBuffer = ComputeReductionAuxBufferElements(a_maxThreadsCount, REDUCTION_BLOCK_SIZE)*sizeof({{Buffer.Type}});
+    m_vdata.{{Buffer.Name}}Buffer = vkfw::CreateBuffer(device, sizeOfBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    allBuffers.push_back(m_vdata.{{Buffer.Name}}Buffer);
+  }
+  {% endfor %}
+
   if(allBuffers.size() > 0)
     m_allMem = vkfw::AllocateAndBindWithPadding(device, physicalDevice, allBuffers);
 }

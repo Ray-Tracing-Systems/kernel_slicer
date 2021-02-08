@@ -505,7 +505,7 @@ int main(int argc, const char **argv)
           continue;
         
         std::stringstream strOut;
-        strOut << "tmp" << buffNumber << redVar.second.GetSizeOfDataType();
+        strOut << "tmpred" << buffNumber << redVar.second.GetSizeOfDataType();
         inputCodeInfo.AddTempBufferToKernel(strOut.str(), kernel);
         redVar.second.tmpVarName = strOut.str();
         buffNumber++;
