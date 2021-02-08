@@ -213,14 +213,14 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     std::string kernName = a_classInfo.RemoveKernelPrefix(k.name);
     const auto auxArgs   = GetUserKernelArgs(k.args);
     
-    json local;
-    local["Name"]         = kernName;
-    local["OriginalName"] = k.name;
-    local["ArgCount"]     = k.args.size();
-    local["HasLoopInit"]  = k.hasInitPass;
-    local["Decl"]         = kernelDeclByName[kernName];
+    json kernelJson;
+    kernelJson["Name"]         = kernName;
+    kernelJson["OriginalName"] = k.name;
+    kernelJson["ArgCount"]     = k.args.size();
+    kernelJson["HasLoopInit"]  = k.hasInitPass;
+    kernelJson["Decl"]         = kernelDeclByName[kernName];
 
-    local["Args"]         = std::vector<std::string>();
+    kernelJson["Args"]         = std::vector<std::string>();
     size_t actualSize     = 0;
     for(const auto& arg : k.args)
     {
@@ -232,7 +232,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       argData["Name"]  = arg.name;
       argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
       argData["Id"]    = actualSize;
-      local["Args"].push_back(argData);
+      kernelJson["Args"].push_back(argData);
       actualSize++;
     }
 
@@ -243,11 +243,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       argData["Name"]  = name;
       argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
       argData["Id"]    = actualSize;
-      local["Args"].push_back(argData);
+      kernelJson["Args"].push_back(argData);
       actualSize++;
     }
 
-    local["ArgCount"] = actualSize;
+    kernelJson["ArgCount"] = actualSize;
   
     auto tidArgs = a_classInfo.GetKernelTIDArgs(k);
     std::vector<std::string> threadIdNamesList(tidArgs.size());
@@ -260,33 +260,45 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       threadIdNamesList[i] = tidArgs[threadsOrder[i]].sizeName;
 
     if(threadIdNamesList.size() > 0)
-      local["tidX"] = threadIdNamesList[0];
+      kernelJson["tidX"] = threadIdNamesList[0];
     else
-      local["tidX"] = 1;
+      kernelJson["tidX"] = 1;
 
     if(threadIdNamesList.size() > 1)
-      local["tidY"] = threadIdNamesList[1];
+      kernelJson["tidY"] = threadIdNamesList[1];
     else
-      local["tidY"] = 1;
+      kernelJson["tidY"] = 1;
 
     if(threadIdNamesList.size() > 2)
-      local["tidZ"] = threadIdNamesList[2];
+      kernelJson["tidZ"] = threadIdNamesList[2];
     else
-      local["tidZ"] = 1;
+      kernelJson["tidZ"] = 1;
 
     // put auxArgs to push constants
     //
-    local["AuxArgs"] = std::vector<std::string>();
+    kernelJson["AuxArgs"] = std::vector<std::string>();
     for(auto arg : auxArgs)
     {
       json argData;
       argData["Name"] = arg.name;
       argData["Type"] = arg.type;
-      local["AuxArgs"].push_back(argData);
+      kernelJson["AuxArgs"].push_back(argData);
     }
     
+    // identify wherther we nedd to add reduction pass after current kernel
+    //
+    auto reductionVarNames = std::vector<std::string>();
+    for(const auto& var : k.subjectedToReduction)
+    {
+      if(!var.second.SupportAtomicLastStep())
+        reductionVarNames.push_back(var.second.tmpVarName);
+    }
+      
+    kernelJson["FinishRed"]    = (reductionVarNames.size() !=0);
+    kernelJson["RedVarsFPNum"] = reductionVarNames.size();
+    kernelJson["RedVarsFPArr"] = reductionVarNames;
 
-    data["Kernels"].push_back(local);
+    data["Kernels"].push_back(kernelJson);
   }
   
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

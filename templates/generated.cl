@@ -53,6 +53,12 @@ __kernel void {{Kernel.Name}}(
     return;
   {% else %}
   ///////////////////////////////////////////////////////////////// prolog
+  {% if Kernel.HasEpilog %}
+  {% for redvar in Kernel.SubjToRed %} 
+  __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
+  {{redvar.Name}}Shared[get_local_id(0)] = {{redvar.Init}}; 
+  {% endfor %} 
+  {% endif %}
   {% for name in Kernel.threadNames %}
   const uint {{name}} = get_global_id({{ loop.index }}); 
   {% endfor %}
@@ -75,12 +81,6 @@ __kernel void {{Kernel.Name}}(
   {% endfor %}
   {% if Kernel.IsBoolean %}
   bool kgenExitCond = false;
-  {% endif %}
-  {% if Kernel.HasEpilog %}
-  {% for redvar in Kernel.SubjToRed %} 
-  __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
-  {{redvar.Name}}Shared[get_local_id(0)] = {{redvar.Init}}; 
-  {% endfor %} 
   {% endif %}
   ///////////////////////////////////////////////////////////////// prolog
   {% endif %}
@@ -143,11 +143,19 @@ __kernel void {{Kernel.Name}}_Reduction(
 {
   const uint globalId = get_global_id(0);
   const uint localId  = get_local_id(0);
- 
+
   {% for redvar in Kernel.SubjToRed %}
   {% if not redvar.SupportAtomic %}
   __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
-  {{redvar.Name}}Shared[localId] = {{ redvar.OutTempName }}[{{Kernel.threadIdName2}} + globalId]; // use {{Kernel.threadIdName2}} for 'InputOffset' 
+  {{redvar.Name}}Shared[localId] = {{redvar.Init}}; 
+  {% endif %}
+  {% endfor %}
+  {% for redvar in Kernel.SubjToRed %}
+  {% if not redvar.SupportAtomic %}
+  if(globalId < {{Kernel.threadIdName1}})
+  {
+    {{redvar.Name}}Shared[localId] = {{ redvar.OutTempName }}[{{Kernel.threadIdName2}} + globalId]; // use {{Kernel.threadIdName2}} for 'InputOffset' 
+  }
   {% endif %}
   {% endfor %}
   SYNCTHREADS;

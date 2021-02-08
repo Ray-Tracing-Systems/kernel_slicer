@@ -88,8 +88,9 @@ protected:
   std::unique_ptr<vkfw::ComputePipelineMaker> m_pMaker = nullptr;
   VkPhysicalDeviceProperties m_devProps;
 
-  VkBufferMemoryBarrier BarrierForUBOUpdate();
   VkBufferMemoryBarrier BarrierForClearFlags(VkBuffer a_buffer);
+  VkBufferMemoryBarrier BarrierForSingleBuffer(VkBuffer a_buffer);
+  void BarriersForSeveralBuffers(VkBuffer* a_inBuffers, VkBufferMemoryBarrier* a_outBarriers, uint32_t a_buffersNum);
 
   virtual void InitHelpers();
   virtual void InitBuffers(size_t a_maxThreadsCount);
@@ -141,7 +142,10 @@ protected:
   VkPipeline            {{Kernel.Name}}Pipeline = VK_NULL_HANDLE; 
   VkDescriptorSetLayout {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
   {% if Kernel.HasLoopInit %}
-  VkPipeline            {{Kernel.Name}}InitPipeline = VK_NULL_HANDLE; 
+  VkPipeline            {{Kernel.Name}}InitPipeline = VK_NULL_HANDLE;
+  {% endif %}  
+  {% if Kernel.FinishRed %}
+  VkPipeline            {{Kernel.Name}}ReductionPipeline = VK_NULL_HANDLE; 
   {% endif %}  
   VkDescriptorSetLayout Create{{Kernel.Name}}DSLayout();
   void InitKernel_{{Kernel.Name}}(const char* a_filePath, VkSpecializationInfo specsForWGSize);

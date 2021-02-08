@@ -147,6 +147,10 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
   {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, 128); // at least 128 bytes for push constants
   {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);  
+  {% if Kernel.FinishRed %}
+  m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSizeExcep, "{{Kernel.OriginalName}}_Reduction");
+  {{Kernel.Name}}ReductionPipeline = m_pMaker->MakePipeline(device);
+  {% endif %} 
   {% if Kernel.HasLoopInit %}
   uint32_t singleThreadConfig[3] = {1,1,1};
   specsForWGSizeExcep.pData = singleThreadConfig;   

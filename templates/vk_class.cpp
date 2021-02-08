@@ -80,14 +80,46 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
 
   vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
   {% if Kernel.HasLoopInit %}
-  VkBufferMemoryBarrier barUBO = BarrierForUBOUpdate();
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}InitPipeline);
   vkCmdDispatch(m_currCmdBuffer, 1, 1, 1); 
+  VkBufferMemoryBarrier barUBO = BarrierForSingleBuffer(m_classDataBuffer);
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
   {% endif %}
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   vkCmdDispatch(m_currCmdBuffer, ({{Kernel.tidX}} + blockSizeX - 1) / blockSizeX, ({{Kernel.tidY}} + blockSizeY - 1) / blockSizeY, ({{Kernel.tidZ}} + blockSizeZ - 1) / blockSizeZ);
 
+  {% if Kernel.FinishRed %}
+  ///// complete kernel with reduction passes
+  {
+    VkBufferMemoryBarrier redBars   [{{Kernel.RedVarsFPNum}}]; 
+    VkBuffer              redBuffers[{{Kernel.RedVarsFPNum}}+1] = { {% for RedVarName in Kernel.RedVarsFPArr %}m_vdata.{{RedVarName}}Buffer, {% endfor %} VK_NULL_HANDLE};
+    BarriersForSeveralBuffers(redBuffers, redBars, {{Kernel.RedVarsFPNum}});
+
+    vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, {{Kernel.RedVarsFPNum}}, redBars, 0, nullptr);
+    vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}ReductionPipeline);
+    
+    uint32_t oldSize    = {{Kernel.tidX}};
+    uint32_t wholeSize  = (oldSize + blockSizeX - 1) / blockSizeX; // assume first pass of reduction is done inside kernel itself
+    uint32_t wgSize     = REDUCTION_BLOCK_SIZE;
+    uint32_t currOffset = 0;
+    while (wholeSize > 1)
+    {
+      pcData.m_sizeX  = oldSize;                // put current size here
+      pcData.m_sizeY  = currOffset;             // put input offset here
+      pcData.m_sizeZ  = currOffset + wholeSize; // put output offet here
+      pcData.m_tFlags = m_currThreadFlags;      // now flags:
+      if(wholeSize <= wgSize)                   // stop if last pass
+        pcData.m_tFlags |= KGEN_REDUCTION_LAST_STEP;
+        
+      vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
+      vkCmdDispatch(m_currCmdBuffer, wholeSize, 1, 1);
+      
+      currOffset += wholeSize;
+      oldSize    =  wholeSize;
+      wholeSize  =  (wholeSize + wgSize - 1) / wgSize;
+    }
+  }
+  {% endif %}
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
 }
@@ -107,21 +139,6 @@ void {{MainClassName}}_Generated::copyKernelFloatCmd(uint32_t length)
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 }
 
-VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForUBOUpdate()
-{
-  VkBufferMemoryBarrier bar = {};
-  bar.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-  bar.pNext               = NULL;
-  bar.srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT;
-  bar.dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
-  bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  bar.buffer              = m_classDataBuffer;
-  bar.offset              = 0;
-  bar.size                = VK_WHOLE_SIZE;
-  return bar;
-}
-
 VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForClearFlags(VkBuffer a_buffer)
 {
   VkBufferMemoryBarrier bar = {};
@@ -135,6 +152,36 @@ VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForClearFlags(VkBuffer
   bar.offset              = 0;
   bar.size                = VK_WHOLE_SIZE;
   return bar;
+}
+
+VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForSingleBuffer(VkBuffer a_buffer)
+{
+  VkBufferMemoryBarrier bar = {};
+  bar.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  bar.pNext               = NULL;
+  bar.srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT;
+  bar.dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
+  bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bar.buffer              = a_buffer;
+  bar.offset              = 0;
+  bar.size                = VK_WHOLE_SIZE;
+  return bar;
+}
+
+void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffers, VkBufferMemoryBarrier* a_outBarriers, uint32_t a_buffersNum)
+{
+  for(uint32_t i=0; i<a_buffersNum;i++)
+  {
+    a_outBarriers[i].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    a_outBarriers[i].pNext               = NULL;
+    a_outBarriers[i].srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT;
+    a_outBarriers[i].dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
+    a_outBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    a_outBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    a_outBarriers[i].buffer              = a_inBuffers[i];
+    a_outBarriers[i].offset              = 0;
+  }
 }
 
 ## for MainFunc in MainFunctions
