@@ -372,7 +372,7 @@ namespace kslicer
     virtual bool NeedThreadFlags() const { return false; }
     virtual std::string RemoveTypeNamespaces(const std::string& a_str) const;
 
-    virtual void AddTempBufferToKernel(const std::string a_buffName, KernelInfo& a_kernel); ///<! if kernel need some additional buffers (for reduction for example) use this function 
+    virtual void AddTempBufferToKernel(const std::string a_buffName, const std::string a_elemTypeName, KernelInfo& a_kernel); ///<! if kernel need some additional buffers (for reduction for example) use this function 
   };
 
 

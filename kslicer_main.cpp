@@ -506,7 +506,7 @@ int main(int argc, const char **argv)
         
         std::stringstream strOut;
         strOut << "tmpred" << buffNumber << redVar.second.GetSizeOfDataType();
-        inputCodeInfo.AddTempBufferToKernel(strOut.str(), kernel);
+        inputCodeInfo.AddTempBufferToKernel(strOut.str(), redVar.second.dataType, kernel);
         redVar.second.tmpVarName = strOut.str();
         buffNumber++;
       }

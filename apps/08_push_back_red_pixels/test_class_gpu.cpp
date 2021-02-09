@@ -129,14 +129,14 @@ void process_image_gpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedP
     std::cout << "[gpu]: m_testPixelsAmount = " << uboData.m_testPixelsAmount << std::endl;
     //std::cout << "[gpu]: m_foundPixels_size = " << uboData.m_foundPixels_size << std::endl;
     
-    std::vector<float> fredBufferData(1024+4+1);
-    pCopyHelper->ReadBuffer(pGPUImpl->GiveMeTempBuffer(), 0, fredBufferData.data(), sizeof(float)*fredBufferData.size());
-    
+    //std::vector<float> fredBufferData(1024+4+1);
+    //pCopyHelper->ReadBuffer(pGPUImpl->GiveMeTempBuffer(), 0, fredBufferData.data(), sizeof(float)*fredBufferData.size());
+    //
     //std::ofstream fout("z_out.txt");
     //for(size_t i=0;i<fredBufferData.size();i++)
     //fout << i << ":\t" << fredBufferData[i] << std::endl;
     //fout.close();
-
+    
     //std::vector<unsigned int> pixels(w*h);
     //pCopyHelper->ReadBuffer(colorBufferOUT, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
     //SaveBMP(a_outName, pixels.data(), w, h);

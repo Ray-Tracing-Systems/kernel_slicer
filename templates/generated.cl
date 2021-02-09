@@ -154,6 +154,7 @@ __kernel void {{Kernel.Name}}_Reduction(
   {{redvar.Name}}Shared[localId] = {{redvar.Init}}; 
   {% endif %}
   {% endfor %}
+  SYNCTHREADS;
   {% for redvar in Kernel.SubjToRed %}
   {% if not redvar.SupportAtomic %}
   if(globalId < {{Kernel.threadIdName1}})

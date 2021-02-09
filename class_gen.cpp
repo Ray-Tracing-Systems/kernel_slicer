@@ -5,7 +5,7 @@
 #include <sstream>
 #include <algorithm>
 
-void kslicer::MainClassInfo::AddTempBufferToKernel(const std::string buffName, KernelInfo& a_kernel)
+void kslicer::MainClassInfo::AddTempBufferToKernel(const std::string buffName, const std::string a_elemTypeName, KernelInfo& a_kernel)
 {
   // (1) append vector to this->allDataMembers
   //
@@ -14,12 +14,12 @@ void kslicer::MainClassInfo::AddTempBufferToKernel(const std::string buffName, K
   {
     DataMemberInfo vecMemberTmp;
     vecMemberTmp.name          = buffName;
-    vecMemberTmp.type          = "std::vector<uint>";
+    vecMemberTmp.type          = std::string("std::vector<") + a_elemTypeName + ">";
     vecMemberTmp.sizeInBytes   = 4; // not used by containers
     vecMemberTmp.isContainer   = true;
     vecMemberTmp.usedInKernel  = true;
     vecMemberTmp.containerType = "std::vector";
-    vecMemberTmp.containerDataType = "uint";
+    vecMemberTmp.containerDataType = a_elemTypeName;
     vecMemberTmp.usage  = kslicer::DATA_USAGE::USAGE_SLICER_REDUCTION; // we dont have to generate code for update of vector or vector size for such vectors
     pFoundMember = allDataMembers.insert({buffName, vecMemberTmp}).first;
   }
