@@ -287,11 +287,16 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     
     // identify wherther we nedd to add reduction pass after current kernel
     //
-    auto reductionVarNames = std::vector<std::string>();
+    json reductionVarNames = std::vector<std::string>();
     for(const auto& var : k.subjectedToReduction)
     {
       if(!var.second.SupportAtomicLastStep())
-        reductionVarNames.push_back(var.second.tmpVarName);
+      {
+        json varData;
+        varData["Name"] = var.second.tmpVarName;
+        varData["Type"] = var.second.dataType;
+        reductionVarNames.push_back(varData);
+      }
     }
       
     kernelJson["FinishRed"]    = (reductionVarNames.size() !=0);

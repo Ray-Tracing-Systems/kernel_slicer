@@ -98,7 +98,8 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   ///// complete kernel with reduction passes
   {
     VkBufferMemoryBarrier redBars   [{{Kernel.RedVarsFPNum}}]; 
-    VkBuffer              redBuffers[{{Kernel.RedVarsFPNum}}+1] = { {% for RedVarName in Kernel.RedVarsFPArr %}m_vdata.{{RedVarName}}Buffer, {% endfor %} VK_NULL_HANDLE};
+    VkBuffer              redBuffers[{{Kernel.RedVarsFPNum}}+1] = { {% for RedVarName in Kernel.RedVarsFPArr %}m_vdata.{{RedVarName.Name}}Buffer, {% endfor %} VK_NULL_HANDLE};
+    size_t                szOfElems[{{Kernel.RedVarsFPNum}}+1] = { {% for RedVarName in Kernel.RedVarsFPArr %}sizeof({{RedVarName.Type}}), {% endfor %} 0};
     BarriersForSeveralBuffers(redBuffers, redBars, {{Kernel.RedVarsFPNum}});
     {% if not Kernel.HasLoopInit %}
     VkBufferMemoryBarrier barUBO = BarrierForSingleBuffer(m_classDataBuffer);
@@ -127,8 +128,16 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
       if(wholeSize <= wgSize)
         vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
       else
+      {
+        uint32_t arrSize = sizeof(redBars)/sizeof(redBars[0]);
+        for(int barId=0;barId<arrSize;barId++)
+        {
+          redBars[barId].offset = pcData.m_sizeZ*szOfElems[barId]; // put output offset here (for barrier)
+          redBars[barId].size   = nextSize;                        // put output data size (for barrier)
+        }
         vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, {{Kernel.RedVarsFPNum}}, redBars, 0, nullptr);
-        
+      } 
+
       currOffset += wholeSize;
       oldSize    =  wholeSize;
       wholeSize  =  nextSize;
