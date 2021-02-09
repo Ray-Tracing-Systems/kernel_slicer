@@ -177,13 +177,16 @@ __kernel void {{Kernel.Name}}_Reduction(
   {% for offset in Kernel.RedLoop2 %} 
   {% for redvar in Kernel.SubjToRed %}
   {% if not redvar.SupportAtomic %}
-  {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
+  if (localId < {{offset}}) 
+  {
+    {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
+  }
   {% endif %}
   {% endfor %}
   {% endfor %}
   if(localId == 0)
   {
-    if(kgen_tFlagsMask & KGEN_REDUCTION_LAST_STEP != 0)
+    if((kgen_tFlagsMask & KGEN_REDUCTION_LAST_STEP) != 0)
     {
       {% for redvar in Kernel.SubjToRed %}
       {% if not redvar.SupportAtomic %}

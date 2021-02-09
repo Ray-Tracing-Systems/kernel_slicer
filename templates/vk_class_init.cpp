@@ -14,7 +14,7 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
   while (whole_size > 1)
   {
     whole_size  = (whole_size + wg_size - 1) / wg_size;
-    sizeTotal  += std::max<uint32_t>(whole_size / wg_size, 1);
+    sizeTotal  += std::max<uint32_t>(whole_size, 1);
   }
   return sizeTotal;
 }

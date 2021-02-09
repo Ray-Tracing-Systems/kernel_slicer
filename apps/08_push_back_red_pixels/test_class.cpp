@@ -31,13 +31,13 @@ void RedPixels::kernel1D_CountRedPixels(const uint32_t* a_data, size_t a_dataSiz
 {
   m_redPixelsNum     = 0;
   m_otherPixelsNum   = 0;
-  //m_testPixelsAmount = 0.0f;
+  m_testPixelsAmount = 0.0f;
   for(uint32_t i = 0; i<a_dataSize; i++)
   {
     if(PixelIsRed(a_data[i]))
     {
       m_redPixelsNum++;
-      //m_testPixelsAmount += 0.5f; // for example some function which define how pixel is red more precicely
+      m_testPixelsAmount += 0.5f; // for example some function which define how pixel is red more precicely
     }
     else
       m_otherPixelsNum++;

@@ -113,6 +113,7 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
     uint32_t currOffset = 0;
     while (wholeSize > 1)
     {
+      uint32_t nextSize = (wholeSize + wgSize - 1) / wgSize;
       pcData.m_sizeX  = oldSize;                // put current size here
       pcData.m_sizeY  = currOffset;             // put input offset here
       pcData.m_sizeZ  = currOffset + wholeSize; // put output offet here
@@ -121,7 +122,7 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
         pcData.m_tFlags |= KGEN_REDUCTION_LAST_STEP;
         
       vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
-      vkCmdDispatch(m_currCmdBuffer, wholeSize, 1, 1);
+      vkCmdDispatch(m_currCmdBuffer, nextSize, 1, 1);
       
       if(wholeSize <= wgSize)
         vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
@@ -130,7 +131,7 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
         
       currOffset += wholeSize;
       oldSize    =  wholeSize;
-      wholeSize  =  (wholeSize + wgSize - 1) / wgSize;
+      wholeSize  =  nextSize;
     }
   }
 
