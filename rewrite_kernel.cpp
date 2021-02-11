@@ -337,8 +337,8 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
     return true;
   }
 
-  const std::string callExpr = GetRangeSourceCode(call->getSourceRange(), m_compiler);
-  const std::string fname    = callExpr.substr(0, callExpr.find_first_of('('));
+  std::string callExpr = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+  std::string fname    = callExpr.substr(0, callExpr.find_first_of('('));
   
   KernelInfo::ReductionAccess access;
  
@@ -353,7 +353,10 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
     m_currKernel.subjectedToReduction[leftStr] = access;
   }
   else
-    m_rewriter.ReplaceText(expr->getSourceRange(), "// func. reduce " + leftStr + " with " + fname + " and " + access.rightExpr);
-
+  {
+    std::string left = leftStr + "Shared[get_local_id(0)]";
+    ReplaceFirst(fname, "std::", "");
+    m_rewriter.ReplaceText(expr->getSourceRange(), left + " = " + fname + "(" + left + ", " + access.rightExpr + ")" ); 
+  }
   return true;
 }

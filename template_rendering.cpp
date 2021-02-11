@@ -632,6 +632,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       varJ["Name"] = var.first;
       varJ["Init"] = var.second.GetInitialValue();
       varJ["Op"]   = var.second.GetOp();
+      varJ["NegLastStep"]   = (var.second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB || var.second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB_ONE);
+      varJ["BinFuncForm"]   = (var.second.type == kslicer::KernelInfo::REDUCTION_TYPE::FUNC);
       varJ["OutTempName"]   = var.second.tmpVarName;
       varJ["SupportAtomic"] = var.second.SupportAtomicLastStep();
       varJ["AtomicOp"]      = var.second.GetAtomicImplCode();

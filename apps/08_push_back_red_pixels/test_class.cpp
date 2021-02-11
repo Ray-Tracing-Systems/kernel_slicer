@@ -1,6 +1,7 @@
 #include "test_class.h"
 #include "Bitmap.h"
 #include <cassert>
+#include <algorithm>
 
 inline bool PixelIsRed(uint32_t a_pixelValue)
 {
@@ -32,15 +33,25 @@ void RedPixels::kernel1D_CountRedPixels(const uint32_t* a_data, size_t a_dataSiz
   m_redPixelsNum     = 0;
   m_otherPixelsNum   = 0;
   m_testPixelsAmount = 0.0f;
+  m_testMin          = +100000000.0f;
+  m_testMax          = -100000000.0f;
+
   for(uint32_t i = 0; i<a_dataSize; i++)
   {
     if(PixelIsRed(a_data[i]))
     {
       m_redPixelsNum++;
-      m_testPixelsAmount += 0.5f; // for example some function which define how pixel is red more precicely
+      m_testPixelsAmount -= 0.5f; // for example some function which define how pixel is red more precicely
     }
     else
+    {
+      float strangeVal = ((float)a_data[i])*((float)i);
+      if(i == 1000)
+        strangeVal = -10.0f;
+      m_testMin = std::min(m_testMin, strangeVal);
+      m_testMax = std::max(m_testMax, strangeVal);
       m_otherPixelsNum++;
+    }
   }
 }
 
@@ -85,8 +96,12 @@ void process_image_cpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedP
   a_outPixels = filter.GetFoundPixels();
   assert(a_outPixels.size() == filter.GetRedPixelsAmount());
 
-  std::cout << "[cpu]: m_redPixelsNum   = " << filter.m_redPixelsNum << std::endl;
-  std::cout << "[cpu]: m_otherPixelsNum = " << filter.m_otherPixelsNum << std::endl;
+  std::cout << "[cpu]: m_redPixelsNum     = " << filter.m_redPixelsNum << std::endl;
+  std::cout << "[cpu]: m_otherPixelsNum   = " << filter.m_otherPixelsNum << std::endl;
+  std::cout << "[cpu]: m_testPixelsAmount = " << filter.m_testPixelsAmount << std::endl;
+  std::cout << "[cpu]: m_foundPixels_size = " << filter.m_foundPixels.size() << std::endl;
+  std::cout << "[cpu]: m_testMin(float)   = " << filter.m_testMin << std::endl;
+  std::cout << "[cpu]: m_testMax(float)   = " << filter.m_testMax << std::endl;
 
   return;
 }

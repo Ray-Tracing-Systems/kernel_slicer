@@ -129,7 +129,9 @@ void process_image_gpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedP
     std::cout << "[gpu]: m_otherPixelsNum   = " << uboData.m_otherPixelsNum << std::endl;
     std::cout << "[gpu]: m_testPixelsAmount = " << uboData.m_testPixelsAmount << std::endl;
     std::cout << "[gpu]: m_foundPixels_size = " << uboData.m_foundPixels_size << std::endl;
-    
+    std::cout << "[gpu]: m_testMin(float)   = " << uboData.m_testMin << std::endl;
+    std::cout << "[gpu]: m_testMax(float)   = " << uboData.m_testMax << std::endl;
+
     //std::vector<float> fredBufferData(1024+4+1);
     //pCopyHelper->ReadBuffer(pGPUImpl->GiveMeTempBuffer(), 0, fredBufferData.data(), sizeof(float)*fredBufferData.size());
     //

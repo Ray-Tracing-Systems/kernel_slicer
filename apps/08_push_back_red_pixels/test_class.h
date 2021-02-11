@@ -35,6 +35,7 @@ public:
   uint32_t               m_redPixelsNum;
   uint32_t               m_otherPixelsNum;
   float                  m_testPixelsAmount = 0.0f;
+  float                  m_testMin, m_testMax;
   std::vector<PixelInfo> m_foundPixels;
 
 };

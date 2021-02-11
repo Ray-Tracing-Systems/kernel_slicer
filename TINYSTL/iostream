@@ -12,4 +12,4 @@ namespace std
 };
 
 template<class T> 
-std::coutT& operator<<(std::coutT& out, T& rhs) { return out; }
+std::coutT& operator<<(std::coutT& out, T rhs) { return out; }

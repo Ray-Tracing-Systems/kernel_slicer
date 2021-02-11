@@ -58,6 +58,7 @@ namespace kslicer
       std::string    tmpVarName = "UnknownReductionOutput";
       std::string    GetInitialValue()  const;
       std::string    GetOp()            const;
+
       bool           SupportAtomicLastStep() const;
       std::string    GetAtomicImplCode()     const;
       size_t         GetSizeOfDataType()     const;

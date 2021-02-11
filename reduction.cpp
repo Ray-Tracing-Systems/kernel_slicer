@@ -1,6 +1,8 @@
 #include "kslicer.h"
 #include <locale>
 
+bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
+
 std::string kslicer::KernelInfo::ReductionAccess::GetOp() const
 {
   switch(type)
@@ -17,7 +19,11 @@ std::string kslicer::KernelInfo::ReductionAccess::GetOp() const
       return "*=";
     break;
     case REDUCTION_TYPE::FUNC:
-      return funcName;
+    {
+      std::string copyName = funcName;
+      ReplaceFirst(copyName, "std::", "");
+      return copyName;
+    }
     break;
 
     default:
@@ -98,6 +104,15 @@ bool kslicer::KernelInfo::ReductionAccess::SupportAtomicLastStep() const
   if(type == REDUCTION_TYPE::MUL)
     return false;
 
+  if(type == REDUCTION_TYPE::FUNC)
+  {
+    if(funcName != "min" && funcName == "std::min")
+      return false;
+
+    if(funcName != "max" && funcName != "std::max")
+      return false;
+  }
+
   const char* supportedTypes[] = {"int", "uint", "unsigned int", "int32_t", "uint32_t",
                                   "int2", "uint2", "int3", "uint3", "int4", "uint4"}; 
 
@@ -128,8 +143,8 @@ std::string kslicer::KernelInfo::ReductionAccess::GetAtomicImplCode() const
 
     case REDUCTION_TYPE::FUNC:
     {
-      if(funcName == "min" || funcName == "std::min" || funcName == "fmin") res = "atom_min";
-      if(funcName == "max" || funcName == "std::max" || funcName == "fmax") res = "atom_max";
+      if(funcName == "min" || funcName == "std::min") res = "atomic_min";
+      if(funcName == "max" || funcName == "std::max") res = "atomic_max";
     }
     break;
 
