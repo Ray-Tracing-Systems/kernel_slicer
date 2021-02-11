@@ -130,7 +130,13 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
     }
     else if(fname == "push_back")
     {
-      m_rewriter.ReplaceText(f->getSourceRange(), "//replace push_back()");
+      assert(f->getNumArgs() == 1);
+      const Expr* currArgExpr  = f->getArgs()[0];
+      std::string newElemValue = kslicer::GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler);
+
+      std::string memberNameB  = memberNameA + "_size";
+      m_rewriter.ReplaceText(f->getSourceRange(), std::string("{ uint offset = atomic_inc(&") + m_codeInfo->pShaderCC->UBOAccess(memberNameB) + "); " + 
+                                                                 memberNameA + "[offset] = " + newElemValue + ";}");
     }
     else if(fname == "data")
     {
