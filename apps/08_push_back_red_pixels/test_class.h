@@ -30,6 +30,8 @@ public:
   
   void kernel1D_CountRedPixels(const uint32_t* a_data, size_t a_dataSize);
   void kernel1D_FindRedPixels(const uint32_t* a_data, size_t a_dataSize);
+  void kernel1D_CopyPixels(const uint32_t* a_data, size_t a_dataSize, PixelInfo* a_outPixels);
+
   void kernel1D_PaintRedPixelsToYellow(uint32_t* a_data);
 
   uint32_t               m_size;
@@ -38,7 +40,7 @@ public:
   float                  m_testPixelsAmount = 0.0f;
   float                  m_testMin, m_testMax;
   std::vector<PixelInfo> m_foundPixels;
-
+  //std::vector<PixelInfo> m_pixelsCopy;
 };
 
 #endif

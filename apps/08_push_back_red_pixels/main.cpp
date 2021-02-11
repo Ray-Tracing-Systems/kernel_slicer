@@ -20,7 +20,7 @@ int main(int argc, const char** argv)
   process_image_cpu(resCPU);
   process_image_gpu(resGPU);
 
-  std::cout << "found " << resCPU.size() << " red pixels" << std::endl;
+  //std::cout << "found " << resCPU.size() << " red pixels" << std::endl;
   
   //SaveBMP("z_out_cpu.bmp", resCPU.data(), w, h);
   //SaveBMP("z_out_gpu.bmp", resGPU.data(), w, h);
