@@ -21,7 +21,7 @@ public:
   typedef uint32_t MyHandle;
   
   void SetMaxDataSize(size_t a_size); 
-  void ProcessPixels(const uint32_t* a_data, size_t a_dataSize);
+  void ProcessPixels(uint32_t* a_data, size_t a_dataSize);
 
   const std::vector<PixelInfo>& GetFoundPixels() const { return m_foundPixels; }
   const uint32_t                GetRedPixelsAmount() const { return m_redPixelsNum; }
@@ -30,6 +30,7 @@ public:
   
   void kernel1D_CountRedPixels(const uint32_t* a_data, size_t a_dataSize);
   void kernel1D_FindRedPixels(const uint32_t* a_data, size_t a_dataSize);
+  void kernel1D_PaintRedPixelsToYellow(uint32_t* a_data);
 
   uint32_t               m_size;
   uint32_t               m_redPixelsNum;

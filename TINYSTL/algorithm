@@ -1,3 +1,4 @@
+#include <vector>
 
 namespace std
 {
@@ -6,4 +7,10 @@ namespace std
 
   template< class T >
   const T max( const T& a, const T& b ) { return a; }
+  
+  template<class X>
+  typename vector<X>::iterator back_inserter(vector<X>& vec);
+
+  template< class Iter, class P >
+  void copy_if(Iter begin, Iter end, Iter begin2, P predicate) {}
 };

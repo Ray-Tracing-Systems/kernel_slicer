@@ -25,7 +25,7 @@ public:
   VkBuffer GiveMeTempBuffer() { return m_vdata.tmpred04Buffer; }
 };
 
-void process_image_gpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedPixels::PixelInfo>& a_outPixels)
+void process_image_gpu(std::vector<uint32_t>& a_inPixels)
 {
   // (1) init vulkan
   //
