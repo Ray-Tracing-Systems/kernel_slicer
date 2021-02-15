@@ -25,7 +25,7 @@ public:
   //VkBuffer GiveMeTempBuffer() { return m_vdata.tmpred04Buffer; }
 };
 
-void process_image_gpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedPixels::PixelInfo>& a_outPixels)
+void process_image_gpu(std::vector<uint32_t>& a_inPixels)
 {
   // (1) init vulkan
   //
@@ -61,6 +61,7 @@ void process_image_gpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedP
 
   std::vector<const char*> validationLayers, deviceExtensions;
   VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
+  enabledDeviceFeatures.shaderInt64 = VK_TRUE;
   vk_utils::queueFamilyIndices fIDs = {};
 
   deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
@@ -127,8 +128,10 @@ void process_image_gpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedP
     std::cout << "[gpu]: m_redPixelsNum     = " << uboData.m_redPixelsNum << std::endl;
     std::cout << "[gpu]: m_otherPixelsNum   = " << uboData.m_otherPixelsNum << std::endl;
     std::cout << "[gpu]: m_testPixelsAmount = " << uboData.m_testPixelsAmount << std::endl;
-    //std::cout << "[gpu]: m_foundPixels_size = " << uboData.m_foundPixels_size << std::endl;
-    
+    std::cout << "[gpu]: m_foundPixels_size = " << uboData.m_foundPixels_size << std::endl;
+    std::cout << "[gpu]: m_testMin(float)   = " << uboData.m_testMin << std::endl;
+    std::cout << "[gpu]: m_testMax(float)   = " << uboData.m_testMax << std::endl;
+
     //std::vector<float> fredBufferData(1024+4+1);
     //pCopyHelper->ReadBuffer(pGPUImpl->GiveMeTempBuffer(), 0, fredBufferData.data(), sizeof(float)*fredBufferData.size());
     //

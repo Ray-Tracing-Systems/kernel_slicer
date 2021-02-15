@@ -103,7 +103,11 @@ __kernel void {{Kernel.Name}}(
     if (localId < {{offset}}) 
     {
       {% for redvar in Kernel.SubjToRed %}
+      {% if redvar.BinFuncForm %}
+      {{redvar.Name}}Shared[localId] = {{redvar.Op}}({{redvar.Name}}Shared[localId], {{redvar.Name}}Shared[localId + {{offset}}]);
+      {% else %}
       {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
+      {% endif %}
       {% endfor %}
     }
     SYNCTHREADS;
@@ -112,7 +116,11 @@ __kernel void {{Kernel.Name}}(
     if (localId < {{offset}}) 
     {
       {% for redvar in Kernel.SubjToRed %}
+      {% if redvar.BinFuncForm %}
+      {{redvar.Name}}Shared[localId] = {{redvar.Op}}({{redvar.Name}}Shared[localId], {{redvar.Name}}Shared[localId + {{offset}}]);
+      {% else %}
       {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
+      {% endif %}
       {% endfor %}
     }
     {% endfor %}
@@ -155,35 +163,43 @@ __kernel void {{Kernel.Name}}_Reduction(
   {% endif %}
   {% endfor %}
   SYNCTHREADS;
-  {% for redvar in Kernel.SubjToRed %}
-  {% if not redvar.SupportAtomic %}
   if(globalId < {{Kernel.threadIdName1}})
   {
+    {% for redvar in Kernel.SubjToRed %}
+    {% if not redvar.SupportAtomic %}
     {{redvar.Name}}Shared[localId] = {{ redvar.OutTempName }}[{{Kernel.threadIdName2}} + globalId]; // use {{Kernel.threadIdName2}} for 'InputOffset' 
+    {% endif %}
+    {% endfor %}
   }
-  {% endif %}
-  {% endfor %}
   SYNCTHREADS;
   {% for offset in Kernel.RedLoop1 %} 
   if (localId < {{offset}}) 
   {
     {% for redvar in Kernel.SubjToRed %}
     {% if not redvar.SupportAtomic %}
+    {% if redvar.BinFuncForm %}
+    {{redvar.Name}}Shared[localId] = {{redvar.Op}}({{redvar.Name}}Shared[localId], {{redvar.Name}}Shared[localId + {{offset}}]);
+    {% else %}
     {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
+    {% endif %}
     {% endif %}
     {% endfor %}
   }
   SYNCTHREADS;
   {% endfor %}
   {% for offset in Kernel.RedLoop2 %} 
-  {% for redvar in Kernel.SubjToRed %}
-  {% if not redvar.SupportAtomic %}
   if (localId < {{offset}}) 
   {
+    {% for redvar in Kernel.SubjToRed %}
+    {% if not redvar.SupportAtomic %}
+    {% if redvar.BinFuncForm %}
+    {{redvar.Name}}Shared[localId] = {{redvar.Op}}({{redvar.Name}}Shared[localId], {{redvar.Name}}Shared[localId + {{offset}}]);
+    {% else %}
     {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
+    {% endif %}
+    {% endif %}
+    {% endfor %}
   }
-  {% endif %}
-  {% endfor %}
   {% endfor %}
   if(localId == 0)
   {
@@ -191,7 +207,15 @@ __kernel void {{Kernel.Name}}_Reduction(
     {
       {% for redvar in Kernel.SubjToRed %}
       {% if not redvar.SupportAtomic %}
-      ubo->{{redvar.Name}} = {{redvar.Name}}Shared[0];
+      {% if redvar.NegLastStep %}
+      ubo->{{redvar.Name}} -= {{redvar.Name}}Shared[0];
+      {% else %}
+      {% if redvar.BinFuncForm %}
+      ubo->{{redvar.Name}} = {{redvar.Op}}(ubo->{{redvar.Name}}, {{redvar.Name}}Shared[0]);
+      {% else %}
+      ubo->{{redvar.Name}} {{redvar.Op}} {{redvar.Name}}Shared[0];
+      {% endif %}
+      {% endif %}
       {% endif %}
       {% endfor %}
     }
@@ -204,8 +228,6 @@ __kernel void {{Kernel.Name}}_Reduction(
       {% endfor %}
     }
   }
- 
-
 }
 {% endif %}
 

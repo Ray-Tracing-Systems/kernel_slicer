@@ -130,7 +130,13 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
     }
     else if(fname == "push_back")
     {
-      m_rewriter.ReplaceText(f->getSourceRange(), "//replace push_back()");
+      assert(f->getNumArgs() == 1);
+      const Expr* currArgExpr  = f->getArgs()[0];
+      std::string newElemValue = kslicer::GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler);
+
+      std::string memberNameB  = memberNameA + "_size";
+      m_rewriter.ReplaceText(f->getSourceRange(), std::string("{ uint offset = atomic_inc(&") + m_codeInfo->pShaderCC->UBOAccess(memberNameB) + "); " + 
+                                                                 memberNameA + "[offset] = " + newElemValue + ";}");
     }
     else if(fname == "data")
     {
@@ -331,8 +337,8 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
     return true;
   }
 
-  const std::string callExpr = GetRangeSourceCode(call->getSourceRange(), m_compiler);
-  const std::string fname    = callExpr.substr(0, callExpr.find_first_of('('));
+  std::string callExpr = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+  std::string fname    = callExpr.substr(0, callExpr.find_first_of('('));
   
   KernelInfo::ReductionAccess access;
  
@@ -347,7 +353,10 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
     m_currKernel.subjectedToReduction[leftStr] = access;
   }
   else
-    m_rewriter.ReplaceText(expr->getSourceRange(), "// func. reduce " + leftStr + " with " + fname + " and " + access.rightExpr);
-
+  {
+    std::string left = leftStr + "Shared[get_local_id(0)]";
+    ReplaceFirst(fname, "std::", "");
+    m_rewriter.ReplaceText(expr->getSourceRange(), left + " = " + fname + "(" + left + ", " + access.rightExpr + ")" ); 
+  }
   return true;
 }
