@@ -22,7 +22,7 @@ public:
 
   VkBufferUsageFlags GetAdditionalFlagsForUBO() override { return VK_BUFFER_USAGE_TRANSFER_SRC_BIT; }
   VkBuffer GiveMeUBO() { return m_classDataBuffer; }
-  VkBuffer GiveMeTempBuffer() { return m_vdata.tmpred04Buffer; }
+  //VkBuffer GiveMeTempBuffer() { return m_vdata.tmpred04Buffer; }
 };
 
 void process_image_gpu(const std::vector<uint32_t>& a_inPixels, std::vector<RedPixels::PixelInfo>& a_outPixels)
