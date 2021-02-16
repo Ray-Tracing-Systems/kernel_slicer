@@ -57,9 +57,9 @@ __kernel void {{Kernel.Name}}(
   {% for redvar in Kernel.SubjToRed %} 
   __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
   {{redvar.Name}}Shared[get_local_id(0)] = {{redvar.Init}}; 
-  {% endfor %} 
+  {% endfor %}
+  SYNCTHREADS; 
   {% endif %}
-  SYNCTHREADS;
   {% for name in Kernel.threadNames %}
   const uint {{name}} = get_global_id({{ loop.index }}); 
   {% endfor %}
