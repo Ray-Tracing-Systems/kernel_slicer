@@ -5,7 +5,7 @@ This project is based on clang (fig. 1.). We sincerely thank the clang front-end
 
 # Project overview
 
-kernel_slicer is auto-programming tool which takes C++ code as input and port this code to GPU by generating Vulkan implemantation automaticly using source-to-source transtation. The current goal of this project is to increase developer productivity when porting CPU code to Vulkan which is time consuming work in general. Please read several short remarks about our project.
+kernel_slicer is prototype auto-programming tool which takes C++ code as input and port this code to GPU by generating optimized Vulkan implemantation automaticly using source-to-source transtation and domain specific knowlege. The current goal of this project is to increase developer productivity when porting CPU code to Vulkan which is time consuming work in general. Please read several short remarks about our project.
 
 * We generate C++ source code in Vulkan. We don't (and don't plan currently) to support any other back-ends (like CUDA or OpenCL) since we see no need for this. Nevertheless, if you see such a need for your project and you like our concept, please contact us;
 
