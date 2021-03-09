@@ -33,8 +33,7 @@ namespace std
   template<typename T, int n>
   class array
   {
-    T m_data[n];
-
+  public:
     T* data() { return m_data; }
     const T* data() const { return m_data; }
    
@@ -42,6 +41,8 @@ namespace std
     inline       T& operator[](size_t idx) { return m_data[idx];}
 
     size_t size() const { return size_t(n); }
+  private:
+    T m_data[n];
   };
 };
 

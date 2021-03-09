@@ -28,6 +28,22 @@ static const float        MAXFLOAT = 1e37f;
 
 unsigned int rand();
 
+namespace std
+{
+  template<typename T> T max(T a, T b);
+  template<typename T> T min(T a, T b);
+
+  template<typename T> T abs(T x);
+  template<typename T> T sqrt(T x);
+  
+  template<typename T> T sin(T x);
+  template<typename T> T cos(T x);
+  template<typename T> T tan(T x);
+  
+  template<typename T> T pow(T x, T power);
+  template<typename T> T exp(T x);
+};
+
 #include <cstdint>
 
 
