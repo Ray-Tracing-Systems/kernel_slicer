@@ -2,6 +2,7 @@
 #include "Bitmap.h"
 #include <cassert>
 #include <algorithm>
+#include <array>
 
 const float PI = float(3.14159265358979323846f);
 

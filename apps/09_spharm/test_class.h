@@ -1,7 +1,6 @@
 #ifndef TEST_CLASS_H
 #define TEST_CLASS_H
 
-#include <array>
 #include <vector>
 #include <iostream>
 #include <fstream>
