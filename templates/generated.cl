@@ -53,14 +53,12 @@ __kernel void {{Kernel.Name}}(
     return;
   {% else %}
   ///////////////////////////////////////////////////////////////// prolog
-  {% if Kernel.HasEpilog %}
   {% for redvar in Kernel.SubjToRed %} 
   __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
   {{redvar.Name}}Shared[get_local_id(0)] = {{redvar.Init}}; 
   {% endfor %}
   {% if  length(Kernel.SubjToRed) > 0 %}
   SYNCTHREADS; 
-  {% endif %}
   {% endif %}
   {% for name in Kernel.threadNames %}
   const uint {{name}} = get_global_id({{ loop.index }}); 
@@ -97,7 +95,7 @@ __kernel void {{Kernel.Name}}(
       kgen_threadFlags[tid] = ((kgen_tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
   };
   {% endif %}
-  {% if Kernel.HasReduct %}
+  {% if length(Kernel.SubjToRed) > 0 %}
   {
     const uint32_t localId = get_local_id(0);
     SYNCTHREADS;

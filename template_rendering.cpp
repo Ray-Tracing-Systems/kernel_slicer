@@ -658,7 +658,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["HasEpilog"]  = k.isBoolTyped || reductionVars.size() != 0;
     kernelJson["IsBoolean"]  = k.isBoolTyped;
     kernelJson["SubjToRed"]  = reductionVars;
-    kernelJson["HasReduct"]  = (reductionVars.size() > 0);
     kernelJson["FinishRed"]  = needFinishReductionPass;
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
@@ -710,7 +709,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["Name"]      = k.name + "_Init";
       kernelJson["Source"]    = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1);
       kernelJson["Members"]   = std::vector<json>();
-      kernelJson["HasReduct"] = false;
       kernelJson["HasEpilog"] = false;
       kernelJson["FinishRed"] = false;
       kernelJson["InitKPass"] = true;
