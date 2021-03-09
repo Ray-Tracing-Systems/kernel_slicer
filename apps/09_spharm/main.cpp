@@ -25,7 +25,7 @@ int main(int argc, const char** argv)
       out.write(reinterpret_cast<char*>(&result[i]), sizeof(result[i]));
     }
   }
-  system(("python gen_image.py " + filename).c_str());
+  system(("python3 gen_image.py " + filename).c_str());
   
   return 0;
 }

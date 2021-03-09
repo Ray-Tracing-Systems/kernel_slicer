@@ -51,7 +51,7 @@ void SphHarm::kernel2D_IntegrateSphHarm(uint32_t* a_data, uint32_t a_width, uint
   coefs[6] *= 0.25f * std::sqrt(5.0f / PI);
   coefs[7] *= -0.5f * std::sqrt(15.0f / PI);
   coefs[8] *= 0.25f * std::sqrt(15.0f / PI);
-  for (uint32_t i = 0; i < coefs.size(); ++i) {
+  for (uint32_t i = 0; i < COEFS_COUNT; ++i) {
     coefs[i] /= a_height * a_width;
     coefs[i] *= PI;
   }
@@ -75,7 +75,8 @@ void SphHarm::ProcessPixels(uint32_t* a_data, uint32_t a_width, uint32_t a_heigh
 std::array<LiteMath::float3, 9> process_image_cpu(std::vector<uint32_t>& a_inPixels, uint32_t a_width, uint32_t a_height)
 {
   SphHarm integrator;
-
+  std::array<LiteMath::float3, 9> resCoeffs;
   integrator.ProcessPixels(a_inPixels.data(), a_width, a_height);
-  return integrator.GetCoefficients();
+  integrator.GetCoefficients(resCoeffs.data());
+  return resCoeffs;
 }
