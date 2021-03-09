@@ -58,7 +58,9 @@ __kernel void {{Kernel.Name}}(
   __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
   {{redvar.Name}}Shared[get_local_id(0)] = {{redvar.Init}}; 
   {% endfor %}
+  {% if  length(Kernel.SubjToRed) > 0 %}
   SYNCTHREADS; 
+  {% endif %}
   {% endif %}
   {% for name in Kernel.threadNames %}
   const uint {{name}} = get_global_id({{ loop.index }}); 
