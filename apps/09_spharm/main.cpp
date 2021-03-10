@@ -3,6 +3,7 @@
 #include <vector>
 #include <cstdint>
 #include <cassert>
+#include <array>
 
 #include "test_class.h"
 #include "Bitmap.h"

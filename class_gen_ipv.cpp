@@ -212,7 +212,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
-  kslicer::KernelRewriter rv(rewrite2, compiler, this, a_funcInfo, "");
+  kslicer::KernelRewriter rv(rewrite2, compiler, this, a_funcInfo, "", false);
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
   
   a_outLoopInitCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit) + ";";

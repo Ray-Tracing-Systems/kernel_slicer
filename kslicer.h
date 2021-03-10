@@ -259,16 +259,63 @@ namespace kslicer
     virtual std::string ShaderSingleFile() const = 0;
     virtual std::string TemplatePath()     const = 0; 
     virtual std::string BuildCommand()     const = 0;
+
+    virtual std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const { return a_call; }
+    virtual bool        IsVectorTypeNeedsContructorReplacement(const std::string& a_typeName) const { return false; }
+    virtual std::string VectorTypeContructorReplace(const std::string& a_typeName, const std::string& a_call) const { return a_call; }
   };
 
   struct ClspvCompiler : IShaderCompiler
   {
+    ClspvCompiler()
+    {
+      m_ctorReplacement["float2"] = "make_float2";
+      m_ctorReplacement["float3"] = "make_float3";
+      m_ctorReplacement["float4"] = "make_float4";
+
+      m_ctorReplacement["int2"]   = "make_int2";
+      m_ctorReplacement["int3"]   = "make_int3";
+      m_ctorReplacement["int4"]   = "make_int4";
+
+      m_ctorReplacement["uint2"]  = "make_uint2";
+      m_ctorReplacement["uint3"]  = "make_uint3";
+      m_ctorReplacement["uint4"]  = "make_uint4";
+    }
+
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo->") + a_name; };
     bool        IsSingleSource()   const override { return true; }
     std::string ShaderFolder()     const override { return ""; }
     std::string ShaderSingleFile() const override { return "z_generated.cl"; }
     std::string TemplatePath()     const override { return "templates/generated.cl"; }
     std::string BuildCommand()     const override { return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-pushconstant"; } 
+    
+    std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override
+    {
+      std::string call = a_call;
+      if(a_typeName == "float")
+      {
+        ReplaceFirst(call, "std::min", "fmin");
+        ReplaceFirst(call, "std::max", "fmax"); 
+      }
+      ReplaceFirst(call, "std::", "");
+      return call;
+    }
+
+    bool IsVectorTypeNeedsContructorReplacement(const std::string& a_typeName) const override
+    {
+      return (m_ctorReplacement.find(a_typeName) != m_ctorReplacement.end());
+    }
+
+    std::string VectorTypeContructorReplace(const std::string& a_typeName, const std::string& a_call) const override 
+    { 
+      std::string call = a_call;
+      auto p = m_ctorReplacement.find(a_typeName);
+      ReplaceFirst(call, p->first + "(", p->second + "(");
+      return call; 
+    }
+
+  private:
+    std::unordered_map<std::string, std::string> m_ctorReplacement;
   };
 
   struct CircleCompiler : IShaderCompiler

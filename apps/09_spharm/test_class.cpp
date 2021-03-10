@@ -4,8 +4,6 @@
 #include <algorithm>
 #include <array>
 
-const float PI = float(3.14159265358979323846f);
-
 using namespace LiteMath;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -13,11 +11,10 @@ using namespace LiteMath;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-float sqr(float x) { return x * x; }
+inline float sqr(float x) { return x * x; }
 
 void SphHarm::kernel2D_IntegrateSphHarm(uint32_t* a_data, uint32_t a_width, uint32_t a_height)
 {
-  const float SQRT_PI = std::sqrt(PI);
   //Iterate over height
   for (uint32_t i = 0; i < a_height; ++i) {
     //Iterate over width
@@ -42,19 +39,26 @@ void SphHarm::kernel2D_IntegrateSphHarm(uint32_t* a_data, uint32_t a_width, uint
       coefs[8] += color * direction.x * direction.x - direction.y * direction.y;
     }
   }
-  //Finalize coefficients
-  coefs[0] *= 0.5f / std::sqrt(PI);
-  coefs[1] *= -0.5f * std::sqrt(3.0f / PI);
-  coefs[2] *= 0.5 * std::sqrt(3.0f / PI);
-  coefs[3] *= -0.5f * std::sqrt(3.0f / PI);
-  coefs[4] *= 0.5f * std::sqrt(15.0f / PI);
-  coefs[5] *= -0.5f * std::sqrt(15.0f / PI);
-  coefs[6] *= 0.25f * std::sqrt(5.0f / PI);
-  coefs[7] *= -0.5f * std::sqrt(15.0f / PI);
-  coefs[8] *= 0.25f * std::sqrt(15.0f / PI);
-  for (uint32_t i = 0; i < COEFS_COUNT; ++i) {
-    coefs[i] /= a_height * a_width;
-    coefs[i] *= PI;
+}
+
+void SphHarm::kernel1D_FinalizeCoeff(uint32_t a_size, uint32_t a_width, uint32_t a_height)
+{
+  for(uint32_t j=0;j<a_size;j++)
+  {
+    //Finalize coefficients
+    coefs[0] *= 0.5f / std::sqrt(PI);
+    coefs[1] *= -0.5f * std::sqrt(3.0f / PI);
+    coefs[2] *= 0.5f * std::sqrt(3.0f / PI);
+    coefs[3] *= -0.5f * std::sqrt(3.0f / PI);
+    coefs[4] *= 0.5f * std::sqrt(15.0f / PI);
+    coefs[5] *= -0.5f * std::sqrt(15.0f / PI);
+    coefs[6] *= 0.25f * std::sqrt(5.0f / PI);
+    coefs[7] *= -0.5f * std::sqrt(15.0f / PI);
+    coefs[8] *= 0.25f * std::sqrt(15.0f / PI);
+    for (uint32_t i = 0; i < COEFS_COUNT; ++i) {
+      coefs[i] /= a_height * a_width;
+      coefs[i] *= PI;
+    }
   }
 }
 
@@ -66,6 +70,7 @@ void SphHarm::kernel2D_IntegrateSphHarm(uint32_t* a_data, uint32_t a_width, uint
 void SphHarm::ProcessPixels(uint32_t* a_data, uint32_t a_width, uint32_t a_height)
 {
   kernel2D_IntegrateSphHarm(a_data, a_width, a_height);
+  kernel1D_FinalizeCoeff(1, a_width, a_height);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

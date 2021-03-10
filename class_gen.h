@@ -78,9 +78,10 @@ namespace kslicer
   {
   public:
     
-    KernelRewriter(Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr, const bool a_infoPass = false) : 
+    KernelRewriter(Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, 
+                  const std::string& a_fakeOffsetExpr, const bool a_infoPass) : 
                    m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_mainClassName(a_codeInfo->mainClassName), 
-                   m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_kernelIsBoolTyped(a_kernel.isBoolTyped), m_currKernel(a_kernel), m_infoPass(a_infoPass) 
+                   m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_kernelIsBoolTyped(a_kernel.isBoolTyped), m_currKernel(a_kernel), m_infoPass(a_infoPass)
     { 
       const auto& a_variables = a_codeInfo->dataMembers;
       m_variables.reserve(a_variables.size());
@@ -90,6 +91,8 @@ namespace kslicer
 
     bool VisitMemberExpr(MemberExpr* expr);
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
+    bool VisitCallExpr(CallExpr* f);
+    bool VisitCXXConstructExpr(CXXConstructExpr* call);
     bool VisitReturnStmt(ReturnStmt* ret);
 
     bool VisitUnaryOperator(UnaryOperator* expr);                   // ++, --, (*var) =  ...
@@ -100,10 +103,10 @@ namespace kslicer
 
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
 
-    Rewriter&   m_rewriter;
-    const clang::CompilerInstance& m_compiler;
-    MainClassInfo* m_codeInfo;
-    std::string m_mainClassName;
+    Rewriter&                                                m_rewriter;
+    const clang::CompilerInstance&                           m_compiler;
+    MainClassInfo*                                           m_codeInfo;
+    std::string                                              m_mainClassName;
     std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
     const std::vector<kslicer::KernelInfo::Arg>&             m_args;
     const std::string&                                       m_fakeOffsetExp;

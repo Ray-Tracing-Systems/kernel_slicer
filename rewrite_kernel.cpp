@@ -87,6 +87,70 @@ bool kslicer::KernelRewriter::VisitMemberExpr(MemberExpr* expr)
   return true;
 }
 
+bool kslicer::KernelRewriter::VisitCallExpr(CallExpr* call)
+{
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return true; 
+
+  if(isa<CXXMemberCallExpr>(call)) // process in VisitCXXMemberCallExpr
+    return true;
+
+  const FunctionDecl* fDecl = call->getDirectCallee();  
+  if(fDecl == nullptr)             // dfnameefinitely can't process nullpointer 
+    return true;
+
+  // Get name of function
+  //
+  const DeclarationNameInfo dni = fDecl->getNameInfo();
+  const DeclarationName dn      = dni.getName();
+  const std::string fname       = dn.getAsString();
+  
+  ////////////////////// DOUBLE REWRITE BUG FURTHER, SEE 8-th SAMPLE !!!!!!!!!!!!!!!!!!!!!
+
+  //if(fDecl->isInStdNamespace())
+  //{
+  //  std::string argsType = "";
+  //  if(call->getNumArgs() > 0)
+  //  {
+  //    const Expr* firstArgExpr = call->getArgs()[0];
+  //    const QualType qt        = firstArgExpr->getType();
+  //    argsType                 = qt.getAsString();
+  //  }
+  //
+  //  const std::string text    = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+  //  const std::string textRes = m_codeInfo->pShaderCC->ReplaceCallFromStdNamespace(text,argsType);
+  //  m_rewriter.ReplaceText(call->getSourceRange(), textRes);
+  //  //std::cout << "  " << text.c_str() << " of type " << argsType.c_str() << "; --> " <<  textRes.c_str() << std::endl;
+  //}
+ 
+  return true;
+}
+
+bool kslicer::KernelRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
+{
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return true; 
+
+  CXXConstructorDecl* ctorDecl = call->getConstructor();
+  assert(ctorDecl != nullptr);
+  
+  // Get name of function
+  //
+  const DeclarationNameInfo dni = ctorDecl->getNameInfo();
+  const DeclarationName dn      = dni.getName();
+  const std::string fname       = dn.getAsString();
+  
+  if(m_codeInfo->pShaderCC->IsVectorTypeNeedsContructorReplacement(fname))
+  {
+    const std::string text    = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+    const std::string textRes = m_codeInfo->pShaderCC->VectorTypeContructorReplace(fname, text);
+    m_rewriter.ReplaceText(call->getSourceRange(), textRes);
+  }
+
+  return true;
+}
+
+
 bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
