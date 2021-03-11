@@ -113,6 +113,7 @@ namespace kslicer
     bool                                                     m_kernelIsBoolTyped;
     kslicer::KernelInfo&                                     m_currKernel;
     bool                                                     m_infoPass;
+    std::unordered_set<uint64_t>                             m_rewrittenFunctions;
   };
 
   void ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo);

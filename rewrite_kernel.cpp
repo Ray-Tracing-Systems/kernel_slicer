@@ -101,27 +101,28 @@ bool kslicer::KernelRewriter::VisitCallExpr(CallExpr* call)
 
   // Get name of function
   //
-  const DeclarationNameInfo dni = fDecl->getNameInfo();
-  const DeclarationName dn      = dni.getName();
-  const std::string fname       = dn.getAsString();
-  
-  ////////////////////// DOUBLE REWRITE BUG FURTHER, SEE 8-th SAMPLE !!!!!!!!!!!!!!!!!!!!!
+  std::string fname = fDecl->getNameInfo().getName().getAsString();
 
-  //if(fDecl->isInStdNamespace())
-  //{
-  //  std::string argsType = "";
-  //  if(call->getNumArgs() > 0)
-  //  {
-  //    const Expr* firstArgExpr = call->getArgs()[0];
-  //    const QualType qt        = firstArgExpr->getType();
-  //    argsType                 = qt.getAsString();
-  //  }
-  //
-  //  const std::string text    = GetRangeSourceCode(call->getSourceRange(), m_compiler);
-  //  const std::string textRes = m_codeInfo->pShaderCC->ReplaceCallFromStdNamespace(text,argsType);
-  //  m_rewriter.ReplaceText(call->getSourceRange(), textRes);
-  //  //std::cout << "  " << text.c_str() << " of type " << argsType.c_str() << "; --> " <<  textRes.c_str() << std::endl;
-  //}
+  if(fDecl->isInStdNamespace())
+  {
+    std::string argsType = "";
+    if(call->getNumArgs() > 0)
+    {
+      const Expr* firstArgExpr = call->getArgs()[0];
+      const QualType qt        = firstArgExpr->getType();
+      argsType                 = qt.getAsString();
+    }
+
+    auto funcCallHash = kslicer::GetHashOfSourceRange(call->getSourceRange());
+    if(m_rewrittenFunctions.find(funcCallHash) == m_rewrittenFunctions.end())
+    {
+      const std::string text    = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+      const std::string textRes = m_codeInfo->pShaderCC->ReplaceCallFromStdNamespace(text,argsType);
+      m_rewriter.ReplaceText(call->getSourceRange(), textRes);
+      //std::cout << "  " << text.c_str() << " of type " << argsType.c_str() << "; --> " <<  textRes.c_str() << std::endl;
+      m_rewrittenFunctions.insert(funcCallHash);
+    }
+  }
  
   return true;
 }
@@ -411,16 +412,19 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
   access.rightExpr = secondArg;
   access.dataType  = lhs->getType().getAsString();
 
+  auto funcCallHash = kslicer::GetHashOfSourceRange(call->getSourceRange());
+
   if(m_infoPass)
   {
     m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
     m_currKernel.subjectedToReduction[leftStr] = access;
   }
-  else
+  else if(m_rewrittenFunctions.find(funcCallHash) == m_rewrittenFunctions.end())
   {
     std::string left = leftStr + "Shared[get_local_id(0)]";
     ReplaceFirst(fname, "std::", "");
     m_rewriter.ReplaceText(expr->getSourceRange(), left + " = " + fname + "(" + left + ", " + access.rightExpr + ")" ); 
+    m_rewrittenFunctions.insert(funcCallHash);
   }
   return true;
 }
