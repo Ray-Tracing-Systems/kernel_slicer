@@ -308,17 +308,9 @@ bool kslicer::KernelRewriter::VisitUnaryOperator(UnaryOperator* expr)
   return true;
 }
 
-bool kslicer::KernelRewriter::VisitCompoundAssignOperator(CompoundAssignOperator* expr)
+void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Expr* lhs, const Expr* rhs, const Expr* expr)
 {
-  auto opRange = expr->getSourceRange();
-  if(opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
-    return true;   
-
-  const Expr* lhs     = expr->getLHS();
-  const Expr* rhs     = expr->getRHS();
-  const auto  op      = expr->getOpcodeStr();
   std::string leftStr = GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
-
   auto p = m_currKernel.usedMembers.find(leftStr);
   if(p != m_currKernel.usedMembers.end())
   {
@@ -342,7 +334,42 @@ bool kslicer::KernelRewriter::VisitCompoundAssignOperator(CompoundAssignOperator
     else
       m_rewriter.ReplaceText(expr->getSourceRange(), leftStr + "Shared[get_local_id(0)] " + access.GetOp(m_codeInfo->pShaderCC) + " " + access.rightExpr);
   }
+}
 
+
+bool kslicer::KernelRewriter::VisitCompoundAssignOperator(CompoundAssignOperator* expr)
+{
+  auto opRange = expr->getSourceRange();
+  if(opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
+    return true;   
+
+  const Expr* lhs = expr->getLHS();
+  const Expr* rhs = expr->getRHS();
+  const auto  op  = expr->getOpcodeStr();
+
+  ProcessReductionOp(op.str(), lhs, rhs, expr);
+
+  return true;
+}
+
+bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr(CXXOperatorCallExpr* expr)
+{
+  auto opRange = expr->getSourceRange();
+  if(opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
+    return true;   
+
+  const auto numArgs = expr->getNumArgs();
+  if(numArgs != 2)
+    return true; 
+
+  std::string op = GetRangeSourceCode(SourceRange(expr->getOperatorLoc()), m_compiler);  
+  if(op == "+=" || op == "-=" || op == "*=")
+  {
+    const Expr* lhs = expr->getArg(0);
+    const Expr* rhs = expr->getArg(1);
+
+    ProcessReductionOp(op, lhs, rhs, expr);
+  }
   return true;
 }
 

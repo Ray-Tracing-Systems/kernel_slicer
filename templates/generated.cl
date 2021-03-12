@@ -48,11 +48,11 @@ __kernel void {{Kernel.Name}}(
   const uint {{Kernel.threadIdName3}},
   const uint kgen_tFlagsMask)
 {
+  ///////////////////////////////////////////////////////////////// prolog
   {% if Kernel.InitKPass %}
   if(get_global_id(0)!=0)
     return;
   {% else %}
-  ///////////////////////////////////////////////////////////////// prolog
   {% for redvar in Kernel.SubjToRed %} 
   __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
   {{redvar.Name}}Shared[get_local_id(0)] = {{redvar.Init}}; 
@@ -83,8 +83,8 @@ __kernel void {{Kernel.Name}}(
   {% if Kernel.IsBoolean %}
   bool kgenExitCond = false;
   {% endif %}
-  ///////////////////////////////////////////////////////////////// prolog
   {% endif %}
+  ///////////////////////////////////////////////////////////////// prolog
 {{Kernel.Source}}
   {% if Kernel.HasEpilog %}
   KGEN_EPILOG:

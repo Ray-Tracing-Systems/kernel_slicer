@@ -96,12 +96,14 @@ namespace kslicer
     bool VisitReturnStmt(ReturnStmt* ret);
 
     bool VisitUnaryOperator(UnaryOperator* expr);                   // ++, --, (*var) =  ...
-    bool VisitCompoundAssignOperator(CompoundAssignOperator* expr); // +=, *=, -= to detect reduction
+    bool VisitCompoundAssignOperator(CompoundAssignOperator* expr); // +=, *=, -=; to detect reduction
+    bool VisitCXXOperatorCallExpr(CXXOperatorCallExpr* expr);       // +=, *=, -=; to detect reduction for custom data types (float3/float4 for example)
     bool VisitBinaryOperator(BinaryOperator* expr);                 // m_var = f(m_var, expr)
 
   private:
 
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
+    void ProcessReductionOp(const std::string& op, const Expr* lhs, const Expr* rhs, const Expr* expr);
 
     Rewriter&                                                m_rewriter;
     const clang::CompilerInstance&                           m_compiler;
