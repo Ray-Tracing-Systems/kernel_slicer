@@ -115,7 +115,6 @@ namespace kslicer
     bool                                                     m_kernelIsBoolTyped;
     kslicer::KernelInfo&                                     m_currKernel;
     bool                                                     m_infoPass;
-    std::unordered_set<uint64_t>                             m_rewrittenFunctions;
     std::unordered_set<uint64_t>                             m_rewrittenNodes;
   };
   

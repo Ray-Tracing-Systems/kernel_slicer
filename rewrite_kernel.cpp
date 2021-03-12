@@ -75,13 +75,17 @@ bool kslicer::KernelRewriter::VisitMemberExpr(MemberExpr* expr)
   // (2) put ubo->var instead of var, leave containers as they are
   // process arrays and large data structures because small can be read once in the neggining of kernel
   //
+  auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+
   const bool isInLoopInitPart = expr->getSourceRange().getBegin() <= m_currKernel.loopOutsidesInit.getEnd();
   const bool hasLargeSize     = (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);
-  if(!pMember->second.isContainer && (isInLoopInitPart || pMember->second.isArray || hasLargeSize)) 
+  const bool rewrittenEarly   = (m_rewrittenNodes.find(exprHash) != m_rewrittenNodes.end());
+  if(!pMember->second.isContainer && (isInLoopInitPart || pMember->second.isArray || hasLargeSize) && !rewrittenEarly && !m_infoPass) 
   {
     //const std::string debugMe = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
     std::string rewrittenName = m_codeInfo->pShaderCC->UBOAccess(pMember->second.name);
     m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenName);
+    kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes);
   }
   
   return true;
@@ -114,13 +118,13 @@ bool kslicer::KernelRewriter::VisitCallExpr(CallExpr* call)
     }
 
     auto funcCallHash = kslicer::GetHashOfSourceRange(call->getSourceRange());
-    if(m_rewrittenFunctions.find(funcCallHash) == m_rewrittenFunctions.end())
+    if(m_rewrittenNodes.find(funcCallHash) == m_rewrittenNodes.end())
     {
       const std::string text    = GetRangeSourceCode(call->getSourceRange(), m_compiler);
       const std::string textRes = m_codeInfo->pShaderCC->ReplaceCallFromStdNamespace(text,argsType);
       m_rewriter.ReplaceText(call->getSourceRange(), textRes);
       //std::cout << "  " << text.c_str() << " of type " << argsType.c_str() << "; --> " <<  textRes.c_str() << std::endl;
-      m_rewrittenFunctions.insert(funcCallHash);
+      kslicer::MarkRewrittenRecursive(call, m_rewrittenNodes);
     }
   }
  
@@ -274,6 +278,7 @@ bool kslicer::KernelRewriter::VisitUnaryOperator(UnaryOperator* expr)
       KernelInfo::ReductionAccess access;
       access.type      = KernelInfo::REDUCTION_TYPE::UNKNOWN;
       access.rightExpr = "";
+      access.leftExpr  = leftStr;
       access.dataType  = subExpr->getType().getAsString();
 
       if(op == "++")
@@ -310,14 +315,25 @@ bool kslicer::KernelRewriter::VisitUnaryOperator(UnaryOperator* expr)
 
 void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Expr* lhs, const Expr* rhs, const Expr* expr)
 {
+  std::string leftVar = GetRangeSourceCode(lhs->getSourceRange().getBegin(), m_compiler);
   std::string leftStr = GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
-  auto p = m_currKernel.usedMembers.find(leftStr);
+  auto p = m_currKernel.usedMembers.find(leftVar);
   if(p != m_currKernel.usedMembers.end())
   {
     KernelInfo::ReductionAccess access;
     access.type      = KernelInfo::REDUCTION_TYPE::UNKNOWN;
     access.rightExpr = GetRangeSourceCode(rhs->getSourceRange(), m_compiler);
+    access.leftExpr  = leftStr;
     access.dataType  = rhs->getType().getAsString();
+    ReplaceFirst(access.dataType, "const ", "");
+    access.dataType = m_codeInfo->RemoveTypeNamespaces(access.dataType);
+   
+    if(leftVar != leftStr && leftStr.find("[") != std::string::npos && leftStr.find("]") != std::string::npos)
+    {
+      access.leftIsArray = true;
+      ReplaceFirst(access.leftExpr, "[", "");
+      ReplaceFirst(access.leftExpr, "]", "");
+    }
 
     if(op == "+=")
       access.type    = KernelInfo::REDUCTION_TYPE::ADD;
@@ -326,13 +342,20 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
     else if(op == "-=")
       access.type    = KernelInfo::REDUCTION_TYPE::SUB;
     
+    auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+    auto lhsHash  = kslicer::GetHashOfSourceRange(lhs->getSourceRange());
+    auto rhsHash  = kslicer::GetHashOfSourceRange(rhs->getSourceRange());
+
     if(m_infoPass)
     {
       m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
       m_currKernel.subjectedToReduction[leftStr] = access;
     }
-    else
-      m_rewriter.ReplaceText(expr->getSourceRange(), leftStr + "Shared[get_local_id(0)] " + access.GetOp(m_codeInfo->pShaderCC) + " " + access.rightExpr);
+    else if(m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end())
+    {
+      m_rewriter.ReplaceText(expr->getSourceRange(), access.leftExpr + "Shared[get_local_id(0)] " + access.GetOp(m_codeInfo->pShaderCC) + " " + access.rightExpr);
+      kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes);
+    }
   }
 }
 
@@ -437,16 +460,17 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
   access.type      = KernelInfo::REDUCTION_TYPE::FUNC;
   access.funcName  = fname;
   access.rightExpr = secondArg;
+  access.leftExpr  = leftStr;
   access.dataType  = lhs->getType().getAsString();
 
-  auto funcCallHash = kslicer::GetHashOfSourceRange(call->getSourceRange());
+  auto funcCallHash = kslicer::GetHashOfSourceRange(call->getSourceRange()); 
 
   if(m_infoPass)
   {
     m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
     m_currKernel.subjectedToReduction[leftStr] = access;
   }
-  else if(m_rewrittenFunctions.find(funcCallHash) == m_rewrittenFunctions.end())
+  else if(m_rewrittenNodes.find(funcCallHash) == m_rewrittenNodes.end())
   {
     std::string argsType = "";
     if(call->getNumArgs() > 0)
@@ -459,7 +483,24 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
     std::string left = leftStr + "Shared[get_local_id(0)]";
     fname = m_codeInfo->pShaderCC->ReplaceCallFromStdNamespace(fname, argsType);
     m_rewriter.ReplaceText(expr->getSourceRange(), left + " = " + fname + "(" + left + ", " + access.rightExpr + ")" ); 
-    m_rewrittenFunctions.insert(funcCallHash);
+    kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes);
   }
   return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool kslicer::NodesMarker::VisitStmt(Stmt* expr)
+{
+  auto hash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+  m_rewrittenNodes.insert(hash);
+  return true;
+}
+
+void kslicer::MarkRewrittenRecursive(const clang::Stmt* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes)
+{
+  kslicer::NodesMarker rv(a_rewrittenNodes); 
+  rv.TraverseStmt(const_cast<clang::Stmt*>(currNode));
 }
