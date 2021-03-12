@@ -629,7 +629,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       json varJ;
       varJ["Type"] = var.second.dataType;
-      varJ["Name"] = var.first;
+      varJ["Name"] = var.second.leftExpr;
       varJ["Init"] = var.second.GetInitialValue();
       varJ["Op"]   = var.second.GetOp(a_classInfo.pShaderCC);
       varJ["NegLastStep"]   = (var.second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB || var.second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB_ONE);

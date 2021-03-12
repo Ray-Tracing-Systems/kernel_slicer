@@ -54,6 +54,9 @@ namespace kslicer
     {
       REDUCTION_TYPE type;
       std::string    rightExpr;
+      std::string    leftExpr; // altered left expression (arrays and other ... )
+      bool           leftIsArray = false;
+      
       std::string    funcName;
       std::string    dataType   = "UnknownType";
       std::string    tmpVarName = "UnknownReductionOutput";
