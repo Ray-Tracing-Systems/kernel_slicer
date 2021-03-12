@@ -15,6 +15,7 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
 
 namespace kslicer
 {
+  struct IShaderCompiler;
 
   /**
   \brief for each method MainClass::kernel_XXX
@@ -57,7 +58,7 @@ namespace kslicer
       std::string    dataType   = "UnknownType";
       std::string    tmpVarName = "UnknownReductionOutput";
       std::string    GetInitialValue()  const;
-      std::string    GetOp()            const;
+      std::string    GetOp(std::shared_ptr<IShaderCompiler> pShaderCC) const;
 
       bool           SupportAtomicLastStep() const;
       std::string    GetAtomicImplCode()     const;
@@ -292,7 +293,7 @@ namespace kslicer
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override
     {
       std::string call = a_call;
-      if(a_typeName == "float")
+      if(a_typeName == "float" || a_typeName == "const float")
       {
         ReplaceFirst(call, "std::min", "fmin");
         ReplaceFirst(call, "std::max", "fmax"); 

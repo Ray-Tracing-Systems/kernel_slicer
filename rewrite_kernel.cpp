@@ -96,7 +96,7 @@ bool kslicer::KernelRewriter::VisitCallExpr(CallExpr* call)
     return true;
 
   const FunctionDecl* fDecl = call->getDirectCallee();  
-  if(fDecl == nullptr)             // dfnameefinitely can't process nullpointer 
+  if(fDecl == nullptr)             // definitely can't process nullpointer 
     return true;
 
   // Get name of function
@@ -340,7 +340,7 @@ bool kslicer::KernelRewriter::VisitCompoundAssignOperator(CompoundAssignOperator
       m_currKernel.subjectedToReduction[leftStr] = access;
     }
     else
-      m_rewriter.ReplaceText(expr->getSourceRange(), leftStr + "Shared[get_local_id(0)] " + access.GetOp() + " " + access.rightExpr);
+      m_rewriter.ReplaceText(expr->getSourceRange(), leftStr + "Shared[get_local_id(0)] " + access.GetOp(m_codeInfo->pShaderCC) + " " + access.rightExpr);
   }
 
   return true;
@@ -421,8 +421,16 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
   }
   else if(m_rewrittenFunctions.find(funcCallHash) == m_rewrittenFunctions.end())
   {
+    std::string argsType = "";
+    if(call->getNumArgs() > 0)
+    {
+      const Expr* firstArgExpr = call->getArgs()[0];
+      const QualType qt        = firstArgExpr->getType();
+      argsType                 = qt.getAsString();
+    }
+
     std::string left = leftStr + "Shared[get_local_id(0)]";
-    ReplaceFirst(fname, "std::", "");
+    fname = m_codeInfo->pShaderCC->ReplaceCallFromStdNamespace(fname, argsType);
     m_rewriter.ReplaceText(expr->getSourceRange(), left + " = " + fname + "(" + left + ", " + access.rightExpr + ")" ); 
     m_rewrittenFunctions.insert(funcCallHash);
   }

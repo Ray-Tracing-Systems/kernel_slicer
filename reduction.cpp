@@ -3,7 +3,7 @@
 
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 
-std::string kslicer::KernelInfo::ReductionAccess::GetOp() const
+std::string kslicer::KernelInfo::ReductionAccess::GetOp(std::shared_ptr<IShaderCompiler> pShaderCC) const
 {
   switch(type)
   {
@@ -19,11 +19,7 @@ std::string kslicer::KernelInfo::ReductionAccess::GetOp() const
       return "*=";
     break;
     case REDUCTION_TYPE::FUNC:
-    {
-      std::string copyName = funcName;
-      ReplaceFirst(copyName, "std::", "");
-      return copyName;
-    }
+      return pShaderCC->ReplaceCallFromStdNamespace(funcName, dataType);
     break;
 
     default:
