@@ -53,13 +53,22 @@ __kernel void {{Kernel.Name}}(
   if(get_global_id(0)!=0)
     return;
   {% else %}
+  {% if length(Kernel.SubjToRed) > 0 %}
   {% for redvar in Kernel.SubjToRed %} 
   __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
-  {{redvar.Name}}Shared[get_local_id(0)] = {{redvar.Init}}; 
   {% endfor %}
-  {% if  length(Kernel.SubjToRed) > 0 %}
+  {
+    {% if Kernel.threadDim == 1 %}
+    const uint localId = get_local_id(0); 
+    {% else %}
+    const uint localId = get_local_id(0) + get_local_size(0)*get_local_id(1); 
+    {% endif %}
+    {% for redvar in Kernel.SubjToRed %} 
+    {{redvar.Name}}Shared[localId] = {{redvar.Init}}; 
+    {% endfor %}
+  }
   SYNCTHREADS; 
-  {% endif %}
+  {% endif %}                                                                                   {# END IF length(Kernel.SubjToRed) > 0 #}
   {% for name in Kernel.threadNames %}
   const uint {{name}} = get_global_id({{ loop.index }}); 
   {% endfor %}
@@ -97,7 +106,11 @@ __kernel void {{Kernel.Name}}(
   {% endif %}
   {% if length(Kernel.SubjToRed) > 0 %}
   {
-    const uint32_t localId = get_local_id(0);
+    {% if Kernel.threadDim == 1 %}
+    const uint localId = get_local_id(0); 
+    {% else %}
+    const uint localId = get_local_id(0) + get_local_size(0)*get_local_id(1); 
+    {% endif %}
     SYNCTHREADS;
     {% for offset in Kernel.RedLoop1 %} 
     if (localId < {{offset}}) 
@@ -120,6 +133,9 @@ __kernel void {{Kernel.Name}}(
       {{redvar.Name}}Shared[localId] = {{redvar.Op}}({{redvar.Name}}Shared[localId], {{redvar.Name}}Shared[localId + {{offset}}]);
       {% else %}
       {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
+      {% endif %}
+      {% if Kernel.threadDim > 1 %}
+      SYNCTHREADS;
       {% endif %}
       {% endfor %}
     }

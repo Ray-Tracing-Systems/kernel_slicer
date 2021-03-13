@@ -286,13 +286,19 @@ bool kslicer::KernelRewriter::VisitUnaryOperator(UnaryOperator* expr)
       else if(op == "--")
         access.type    = KernelInfo::REDUCTION_TYPE::SUB_ONE;
       
+      auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+
       if(m_infoPass)
       {
         m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
         m_currKernel.subjectedToReduction[leftStr] = access;
       }
-      else
-        m_rewriter.ReplaceText(expr->getSourceRange(), leftStr + "Shared[get_local_id(0)]++");
+      else if(m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end())
+      {
+        std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim());
+        m_rewriter.ReplaceText(expr->getSourceRange(), leftStr + "Shared[" + localIdStr + "]++");
+        kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes);
+      }
     }
   }
 
@@ -353,7 +359,8 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
     }
     else if(m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end())
     {
-      m_rewriter.ReplaceText(expr->getSourceRange(), access.leftExpr + "Shared[get_local_id(0)] " + access.GetOp(m_codeInfo->pShaderCC) + " " + access.rightExpr);
+      std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim());
+      m_rewriter.ReplaceText(expr->getSourceRange(), access.leftExpr + "Shared[" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + access.rightExpr);
       kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes);
     }
   }
@@ -479,8 +486,9 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
       const QualType qt        = firstArgExpr->getType();
       argsType                 = qt.getAsString();
     }
-
-    std::string left = leftStr + "Shared[get_local_id(0)]";
+    
+    std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim());
+    std::string left       = leftStr + "Shared[" + localIdStr + "]";
     fname = m_codeInfo->pShaderCC->ReplaceCallFromStdNamespace(fname, argsType);
     m_rewriter.ReplaceText(expr->getSourceRange(), left + " = " + fname + "(" + left + ", " + access.rightExpr + ")" ); 
     kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes);

@@ -72,6 +72,8 @@ namespace kslicer
     std::string           name;                 ///<! func. name
     std::vector<Arg>      args;                 ///<! all arguments of a kernel
     std::vector<LoopIter> loopIters;            ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
+    uint32_t GetDim() const { return uint32_t(loopIters.size());}
+
     clang::SourceRange    loopInsides;          ///<! used by IPV pattern to extract loops insides and make them kernel source
     clang::SourceRange    loopOutsidesInit;     ///<! used by IPV pattern to extract code before loops and then make additional initialization kernel
     bool                  hasInitPass   = false;///<! used by IPV pattern (currently); indicate that we need insert additional single-threaded run before current kernel (for reduction init or indirect dispatch buffer init)
@@ -263,6 +265,7 @@ namespace kslicer
     virtual std::string ShaderSingleFile() const = 0;
     virtual std::string TemplatePath()     const = 0; 
     virtual std::string BuildCommand()     const = 0;
+    virtual std::string LocalIdExpr(uint32_t a_kernelDim) const = 0;
 
     virtual std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const { return a_call; }
     virtual bool        IsVectorTypeNeedsContructorReplacement(const std::string& a_typeName) const { return false; }
@@ -293,6 +296,14 @@ namespace kslicer
     std::string TemplatePath()     const override { return "templates/generated.cl"; }
     std::string BuildCommand()     const override { return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-pushconstant"; } 
     
+    std::string LocalIdExpr(uint32_t a_kernelDim) const override
+    {
+      if(a_kernelDim == 1)
+        return "get_local_id(0)";
+      else
+        return "get_local_id(0) + get_local_size(0)*get_local_id(1)";
+    }
+
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override
     {
       std::string call = a_call;
@@ -330,6 +341,14 @@ namespace kslicer
     std::string ShaderSingleFile() const override { return "z_generated.cxx"; }
     std::string TemplatePath()     const override { return "templates/gen_circle.cxx"; }
     std::string BuildCommand()     const override { return std::string("../circle -shader -c -emit-spirv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -DUSE_CIRCLE_CC"; }
+   
+    std::string LocalIdExpr(uint32_t a_kernelDim) const override
+    {
+      if(a_kernelDim == 1)
+        return "get_local_id(0)";
+      else
+        return "get_local_id(0) + get_local_size(0)*get_local_id(1)";
+    }
 
     std::string ProcessBufferType(const std::string& a_typeName) const override 
     { 
