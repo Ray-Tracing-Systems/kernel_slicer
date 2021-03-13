@@ -73,6 +73,7 @@ namespace kslicer
   };
 
   std::vector<InOutVarInfo> ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node);
+  void MarkRewrittenRecursive(const clang::Stmt* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes);
 
   class KernelRewriter : public RecursiveASTVisitor<KernelRewriter> // replace all expressions with class variables to kgen_data buffer access
   {
@@ -101,10 +102,6 @@ namespace kslicer
     bool VisitBinaryOperator(BinaryOperator* expr);                 // m_var = f(m_var, expr)
 
   private:
-    
-    std::string FunctionCallRewrite(const CallExpr* call);
-    std::string FunctionCallRewrite(const CXXConstructExpr* call);
-    std::string RecursiveRewrite   (const Stmt* expr); // double/multiple pass rewrite purpose
 
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
     void ProcessReductionOp(const std::string& op, const Expr* lhs, const Expr* rhs, const Expr* expr);
@@ -120,6 +117,20 @@ namespace kslicer
     kslicer::KernelInfo&                                     m_currKernel;
     bool                                                     m_infoPass;
     std::unordered_set<uint64_t>                             m_rewrittenNodes;
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    std::string FunctionCallRewrite(const CallExpr* call);
+    std::string FunctionCallRewrite(const CXXConstructExpr* call);
+    std::string RecursiveRewrite   (const Stmt* expr); // double/multiple pass rewrite purpose
+
+    inline bool WasNotRewrittenYet(const clang::Stmt* expr)
+    {
+      auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+      return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
+    }
+
+    inline void MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
   };
   
   class NodesMarker : public RecursiveASTVisitor<NodesMarker> // mark all subsequent nodes to be rewritten, put their ash codes in 'rewrittenNodes'
@@ -131,9 +142,6 @@ namespace kslicer
   private:
     std::unordered_set<uint64_t>& m_rewrittenNodes;
   };
-  
-  void MarkRewrittenRecursive(const clang::Stmt* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes);
-
 
   void ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo);
   std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds);

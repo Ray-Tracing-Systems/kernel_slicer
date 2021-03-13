@@ -56,10 +56,10 @@ bool kslicer::KernelRewriter::VisitMemberExpr(MemberExpr* expr)
 
     const std::string memberName = exprContent.substr(pos+2);
 
-    if(needOffset)
+    if(needOffset && WasNotRewrittenYet(expr))
     {
       m_rewriter.ReplaceText(expr->getSourceRange(), baseName + "[" + m_fakeOffsetExp + "]." + memberName);
-      MarkRewrittenRecursive(expr, m_rewrittenNodes);
+      MarkRewritten(expr);
     }
 
     return true;
@@ -82,13 +82,12 @@ bool kslicer::KernelRewriter::VisitMemberExpr(MemberExpr* expr)
   //
   const bool isInLoopInitPart = expr->getSourceRange().getBegin() <= m_currKernel.loopOutsidesInit.getEnd();
   const bool hasLargeSize     = (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);
-  const bool wasNotRewritten  = (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end()); 
-  if(!pMember->second.isContainer && (isInLoopInitPart || pMember->second.isArray || hasLargeSize) && wasNotRewritten && !m_infoPass) 
+  if(!pMember->second.isContainer && (isInLoopInitPart || pMember->second.isArray || hasLargeSize) && WasNotRewrittenYet(expr) && !m_infoPass) 
   {
     //const std::string debugMe = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
     std::string rewrittenName = m_codeInfo->pShaderCC->UBOAccess(pMember->second.name);
     m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenName);
-    MarkRewrittenRecursive(expr, m_rewrittenNodes);
+    MarkRewritten(expr);
   }
   
   return true;
@@ -156,11 +155,10 @@ bool kslicer::KernelRewriter::VisitCallExpr(CallExpr* call)
       argsType                 = qt.getAsString();
     }
     
-    auto funcCallHash = kslicer::GetHashOfSourceRange(call->getSourceRange());
-    if(m_rewrittenNodes.find(funcCallHash) == m_rewrittenNodes.end())
+    if(WasNotRewrittenYet(call))
     {      
       m_rewriter.ReplaceText(call->getSourceRange(), FunctionCallRewrite(call));
-      MarkRewrittenRecursive(call, m_rewrittenNodes);
+      MarkRewritten(call);
       //std::cout << "  " << text.c_str() << " of type " << argsType.c_str() << "; --> " <<  textRes.c_str() << std::endl;
     }
   }
@@ -181,15 +179,13 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
   const DeclarationNameInfo dni = ctorDecl->getNameInfo();
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
-  
-  auto exprHash = kslicer::GetHashOfSourceRange(call->getSourceRange());
 
-  if(m_codeInfo->pShaderCC->IsVectorTypeNeedsContructorReplacement(fname) && m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end())
+  if(m_codeInfo->pShaderCC->IsVectorTypeNeedsContructorReplacement(fname) && WasNotRewrittenYet(call))
   {
     const std::string text    = FunctionCallRewrite(call);
     const std::string textRes = m_codeInfo->pShaderCC->VectorTypeContructorReplace(fname, text);
     m_rewriter.ReplaceText(call->getSourceRange(), textRes);
-    MarkRewrittenRecursive(call, m_rewrittenNodes);
+    MarkRewritten(call);
   }
 
   return true;
@@ -216,7 +212,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
   const bool isVector = (typeDecl != nullptr && isa<ClassTemplateSpecializationDecl>(typeDecl)) && thisTypeName.find("vector<") != std::string::npos; 
   const auto exprHash = kslicer::GetHashOfSourceRange(f->getSourceRange());
 
-  if(isVector && m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end())
+  if(isVector && WasNotRewrittenYet(f))
   {
     const std::string exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
     const auto posOfPoint         = exprContent.find(".");
@@ -226,7 +222,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
     {
       const std::string memberNameB = memberNameA + "_" + fname;
       m_rewriter.ReplaceText(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
-      MarkRewrittenRecursive(f, m_rewrittenNodes);
+      MarkRewritten(f);
     }
     else if(fname == "resize")
     {
@@ -237,7 +233,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
         std::string newSizeValue = kslicer::GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler); 
         std::string memberNameB  = memberNameA + "_size = " + newSizeValue;
         m_rewriter.ReplaceText(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
-        MarkRewrittenRecursive(f, m_rewrittenNodes);
+        MarkRewritten(f);
       }
     }
     else if(fname == "push_back")
@@ -249,12 +245,12 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
       std::string memberNameB  = memberNameA + "_size";
       m_rewriter.ReplaceText(f->getSourceRange(), std::string("{ uint offset = atomic_inc(&") + m_codeInfo->pShaderCC->UBOAccess(memberNameB) + "); " + 
                                                                  memberNameA + "[offset] = " + newElemValue + ";}");
-      MarkRewrittenRecursive(f, m_rewrittenNodes);
+      MarkRewritten(f);
     }
     else if(fname == "data")
     {
       m_rewriter.ReplaceText(f->getSourceRange(), memberNameA);
-      MarkRewrittenRecursive(f, m_rewrittenNodes);
+      MarkRewritten(f);
     }
     else 
     {
@@ -274,12 +270,11 @@ bool kslicer::KernelRewriter::VisitReturnStmt(ReturnStmt* ret)
   if (!retExpr || !m_kernelIsBoolTyped)
     return true;
   
-  auto exprHash = kslicer::GetHashOfSourceRange(ret->getSourceRange());
-  if(m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end())
+  if(WasNotRewrittenYet(ret))
   {
     std::string retExprText = RecursiveRewrite(retExpr);
     m_rewriter.ReplaceText(ret->getSourceRange(), std::string("kgenExitCond = ") + retExprText + "; goto KGEN_EPILOG");
-    MarkRewrittenRecursive(ret, m_rewrittenNodes);
+    MarkRewritten(ret);
   }
 
   return true;
@@ -322,10 +317,9 @@ bool kslicer::KernelRewriter::VisitUnaryOperator(UnaryOperator* expr)
     
     const auto op = expr->getOpcodeStr(expr->getOpcode());
     std::string leftStr = GetRangeSourceCode(subExpr->getSourceRange(), m_compiler);
-    const auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
 
     auto p = m_currKernel.usedMembers.find(leftStr);
-    if(p != m_currKernel.usedMembers.end() && m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end())
+    if(p != m_currKernel.usedMembers.end() && WasNotRewrittenYet(expr))
     {
       KernelInfo::ReductionAccess access;
       access.type      = KernelInfo::REDUCTION_TYPE::UNKNOWN;
@@ -348,7 +342,7 @@ bool kslicer::KernelRewriter::VisitUnaryOperator(UnaryOperator* expr)
         std::string leftStr2   = RecursiveRewrite(expr->getSubExpr()); 
         std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim());
         m_rewriter.ReplaceText(expr->getSourceRange(), leftStr2 + "Shared[" + localIdStr + "]++");
-        MarkRewrittenRecursive(expr, m_rewrittenNodes);
+        MarkRewritten(expr);
       }
     }
   }
@@ -359,15 +353,14 @@ bool kslicer::KernelRewriter::VisitUnaryOperator(UnaryOperator* expr)
     return true;
 
   std::string exprInside = RecursiveRewrite(subExpr);
-  auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
 
   // check if this argument actually need fake Offset
   //
   const bool needOffset = CheckIfExprHasArgumentThatNeedFakeOffset(exprInside);
-  if(needOffset && m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end())
+  if(needOffset && WasNotRewrittenYet(expr))
   {
     m_rewriter.ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
-    MarkRewrittenRecursive(expr, m_rewrittenNodes);
+    MarkRewritten(expr);
   }
 
   return true;
@@ -409,13 +402,13 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
       m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
       m_currKernel.subjectedToReduction[leftStr] = access;
     }
-    else if(m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end())
+    else if(WasNotRewrittenYet(expr))
     {
       std::string leftStr2   = RecursiveRewrite(lhs);
       std::string rightStr2  = RecursiveRewrite(rhs);
       std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim());
       m_rewriter.ReplaceText(expr->getSourceRange(), leftStr2 + "Shared[" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + rightStr2);
-      MarkRewrittenRecursive(expr, m_rewrittenNodes);
+      MarkRewritten(expr);
     }
   }
 }
@@ -531,7 +524,7 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
     m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
     m_currKernel.subjectedToReduction[leftStr] = access;
   }
-  else if (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end())
+  else if (WasNotRewrittenYet(expr))
   {
     std::string argsType = "";
     if(call->getNumArgs() > 0)
@@ -547,7 +540,7 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
     const std::string left       = leftStr2 + "Shared[" + localIdStr + "]";
     fname = m_codeInfo->pShaderCC->ReplaceCallFromStdNamespace(fname, argsType);
     m_rewriter.ReplaceText(expr->getSourceRange(), left + " = " + fname + "(" + left + ", " + rightStr2 + ")" ); 
-    MarkRewrittenRecursive(expr, m_rewrittenNodes);
+    MarkRewritten(expr);
   }
   return true;
 }
