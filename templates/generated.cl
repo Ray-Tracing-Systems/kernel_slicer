@@ -134,11 +134,11 @@ __kernel void {{Kernel.Name}}(
       {% else %}
       {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
       {% endif %}
-      {% if Kernel.threadDim > 1 %}
-      SYNCTHREADS;
-      {% endif %}
       {% endfor %}
     }
+    {% if Kernel.threadDim > 1 %}
+    SYNCTHREADS;
+    {% endif %}
     {% endfor %}
     if(localId == 0)
     {

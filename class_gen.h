@@ -101,6 +101,10 @@ namespace kslicer
     bool VisitBinaryOperator(BinaryOperator* expr);                 // m_var = f(m_var, expr)
 
   private:
+    
+    std::string FunctionCallRewrite(const CallExpr* call);
+    std::string FunctionCallRewrite(const CXXConstructExpr* call);
+    std::string RecursiveRewrite   (const Stmt* expr); // double/multiple pass rewrite purpose
 
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
     void ProcessReductionOp(const std::string& op, const Expr* lhs, const Expr* rhs, const Expr* expr);
