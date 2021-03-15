@@ -485,7 +485,10 @@ static json ReductionAccessFill(const kslicer::KernelInfo::ReductionAccess& seco
   varJ["IsArray"]       = second.leftIsArray;
   varJ["ArraySize"]     = second.arraySize;
   if(second.leftIsArray)
-    varJ["Name"]        = second.arrayName;
+  {
+    varJ["Name"]         = second.arrayName;
+    varJ["OutTempNameA"] = second.arrayTmpBufferNames;
+  }
   return varJ;
 }
 
@@ -653,8 +656,15 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         subjToRedCopy[var.first] = var.second;
         continue;
       }
-
-      subjToRedArray[var.second.arrayName] = var.second;
+      
+      auto p = subjToRedArray.find(var.second.arrayName);
+      if(p != subjToRedArray.end())
+        p->second.arrayTmpBufferNames.push_back(var.second.tmpVarName);
+      else
+      {
+        subjToRedArray[var.second.arrayName] = var.second;
+        subjToRedArray[var.second.arrayName].arrayTmpBufferNames.push_back(var.second.tmpVarName);
+      }
     } 
 
     bool needFinishReductionPass = false;

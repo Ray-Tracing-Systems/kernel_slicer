@@ -176,11 +176,11 @@ __kernel void {{Kernel.Name}}(
       {% endif %}
       {% endfor %}
       {% for redvar in Kernel.ArrsToRed %}
-      {% for index in range(redvar.ArraySize) %}
+      {% for outName in redvar.OutTempNameA %}
       {% if redvar.SupportAtomic %}
       {{redvar.AtomicOp}}(&(ubo->{{redvar.Name}}[{{loop.index}}]), {{redvar.Name}}Shared[{{loop.index}}][0]);
       {% else %}
-      {{ redvar.OutTempName }}[get_global_id(0)/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[{{loop.index}}][0]; // finish reduction in subsequent kernel passes
+      {{ outName }}[get_global_id(0)/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[{{loop.index}}][0]; // finish reduction in subsequent kernel passes
       {% endif %}
       {% endfor %}
       {% endfor %}
@@ -210,33 +210,17 @@ __kernel void {{Kernel.Name}}_Reduction(
   {% for redvar in Kernel.SubjToRed %}
   {% if not redvar.SupportAtomic %}
   __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
-  {{redvar.Name}}Shared[localId] = {{redvar.Init}}; 
+  {{redvar.Name}}Shared[localId] = (globalId < {{Kernel.threadIdName1}}) ?  {{ redvar.OutTempName }}[{{Kernel.threadIdName2}} + globalId]  :  {{redvar.Init}}; // use {{Kernel.threadIdName2}} for 'InputOffset'
   {% endif %}
   {% endfor %}
   {% for redvar in Kernel.ArrsToRed %}
   __local {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][{{Kernel.WGSizeX}}]; 
-  {% for index in range(redvar.ArraySize) %}
+  {% for outName in redvar.OutTempNameA %}
   {% if not redvar.SupportAtomic %}
-  {{redvar.Name}}Shared[{{loop.index}}][localId] = {{redvar.Init}}; 
+  {{redvar.Name}}Shared[{{loop.index}}][localId] = (globalId < {{Kernel.threadIdName1}}) ? {{ outName }}[{{Kernel.threadIdName2}} + globalId] : {{redvar.Init}}; // use {{Kernel.threadIdName2}} for 'InputOffset'
   {% endif %}
   {% endfor %}
   {% endfor %}
-  SYNCTHREADS;
-  if(globalId < {{Kernel.threadIdName1}})
-  {
-    {% for redvar in Kernel.SubjToRed %}
-    {% if not redvar.SupportAtomic %}
-    {{redvar.Name}}Shared[localId] = {{ redvar.OutTempName }}[{{Kernel.threadIdName2}} + globalId]; // use {{Kernel.threadIdName2}} for 'InputOffset' 
-    {% endif %}
-    {% endfor %}
-    {% for redvar in Kernel.ArrsToRed %}
-    {% for index in range(redvar.ArraySize) %}
-    {% if not redvar.SupportAtomic %}
-    {{redvar.Name}}Shared[{{loop.index}}][localId] = {{ redvar.OutTempName }}[{{Kernel.threadIdName2}} + globalId]; // use {{Kernel.threadIdName2}} for 'InputOffset' 
-    {% endif %}
-    {% endfor %}
-    {% endfor %}
-  }
   SYNCTHREADS;
   {% for offset in Kernel.RedLoop1 %} 
   if (localId < {{offset}}) 
@@ -326,9 +310,9 @@ __kernel void {{Kernel.Name}}_Reduction(
       {% endif %}
       {% endfor %}
       {% for redvar in Kernel.ArrsToRed %}
-      {% for index in range(redvar.ArraySize) %}
+      {% for outName in redvar.OutTempNameA %}
       {% if not redvar.SupportAtomic %}
-      {{ redvar.OutTempName }}[{{Kernel.threadIdName3}} + globalId/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[{{loop.index}}][0]; // use {{Kernel.threadIdName3}} for 'OutputOffset'
+      {{ outName }}[{{Kernel.threadIdName3}} + globalId/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[{{loop.index}}][0]; // use {{Kernel.threadIdName3}} for 'OutputOffset'
       {% endif %}
       {% endfor %}
       {% endfor %}

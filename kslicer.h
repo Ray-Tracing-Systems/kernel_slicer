@@ -59,6 +59,7 @@ namespace kslicer
       uint32_t       arraySize   = 0;
       std::string    arrayIndex;
       std::string    arrayName;
+      std::vector<std::string> arrayTmpBufferNames;
       
       std::string    funcName;
       std::string    dataType   = "UnknownType";
