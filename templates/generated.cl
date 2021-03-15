@@ -168,11 +168,16 @@ __kernel void {{Kernel.Name}}(
     {% endfor %}
     if(localId == 0)
     {
+      {% if Kernel.threadDim == 1 %}
+      const uint globalId = get_global_id(0); 
+      {% else %}
+      const uint globalId = get_global_id(0) + get_global_size(0)*get_global_id(1); 
+      {% endif %}
       {% for redvar in Kernel.SubjToRed %}
       {% if redvar.SupportAtomic %}
       {{redvar.AtomicOp}}(&ubo->{{redvar.Name}}, {{redvar.Name}}Shared[0]);
       {% else %}
-      {{ redvar.OutTempName }}[get_global_id(0)/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[0]; // finish reduction in subsequent kernel passes
+      {{ redvar.OutTempName }}[globalId/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[0]; // finish reduction in subsequent kernel passes
       {% endif %}
       {% endfor %}
       {% for redvar in Kernel.ArrsToRed %}
@@ -180,7 +185,7 @@ __kernel void {{Kernel.Name}}(
       {% if redvar.SupportAtomic %}
       {{redvar.AtomicOp}}(&(ubo->{{redvar.Name}}[{{loop.index}}]), {{redvar.Name}}Shared[{{loop.index}}][0]);
       {% else %}
-      {{ outName }}[get_global_id(0)/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[{{loop.index}}][0]; // finish reduction in subsequent kernel passes
+      {{ outName }}[globalId/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[{{loop.index}}][0]; // finish reduction in subsequent kernel passes
       {% endif %}
       {% endfor %}
       {% endfor %}
