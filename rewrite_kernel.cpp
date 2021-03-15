@@ -381,11 +381,42 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
     ReplaceFirst(access.dataType, "const ", "");
     access.dataType = m_codeInfo->RemoveTypeNamespaces(access.dataType);
    
-    if(leftVar != leftStr && leftStr.find("[") != std::string::npos && leftStr.find("]") != std::string::npos)
+    if(leftVar != leftStr && isa<ArraySubscriptExpr>(lhs))
     {
+      auto lhsArray    = dyn_cast<const ArraySubscriptExpr>(lhs);
+      const Expr* idx  = lhsArray->getIdx();  // array index
+      const Expr* name = lhsArray->getBase(); // array name
+
       access.leftIsArray = true;
-      ReplaceFirst(access.leftExpr, "[", "");
-      ReplaceFirst(access.leftExpr, "]", "");
+      access.arraySize   = 0;
+      access.arrayIndex  = GetRangeSourceCode(idx->getSourceRange(), m_compiler);
+      access.arrayName   = GetRangeSourceCode(name->getSourceRange(), m_compiler); 
+      
+      // extract array size
+      //
+      const Expr* nextNode = lhsArray->getLHS();
+      
+      if(isa<ImplicitCastExpr>(nextNode))
+      {
+        auto cast = dyn_cast<const ImplicitCastExpr>(nextNode);
+        nextNode  = cast->getSubExpr();
+      }
+      
+      if(isa<MemberExpr>(nextNode))
+      {
+        const MemberExpr* pMemberExpr = dyn_cast<const MemberExpr>(nextNode); 
+        const ValueDecl*  valDecl     = pMemberExpr->getMemberDecl();
+        const QualType    qt          = valDecl->getType();
+        const auto        typePtr     = qt.getTypePtr(); 
+        if(typePtr->isConstantArrayType()) 
+        {    
+          auto arrayType   = dyn_cast<const ConstantArrayType>(typePtr);     
+          access.arraySize = arrayType->getSize().getLimitedValue(); 
+        } 
+      }
+   
+      if(access.arraySize == 0)
+        kslicer::PrintError("[KernelRewriter::ProcessReductionOp]: can't determine array size ", lhs->getSourceRange(), m_compiler.getSourceManager());
     }
 
     if(op == "+=")

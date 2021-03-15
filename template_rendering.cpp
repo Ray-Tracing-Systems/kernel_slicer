@@ -470,6 +470,25 @@ nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const s
   return data;
 }
 
+static json ReductionAccessFill(const kslicer::KernelInfo::ReductionAccess& second, std::shared_ptr<kslicer::IShaderCompiler> pShaderCC)
+{
+  json varJ;
+  varJ["Type"]          = second.dataType;
+  varJ["Name"]          = second.leftExpr;
+  varJ["Init"]          = second.GetInitialValue();
+  varJ["Op"]            = second.GetOp(pShaderCC);
+  varJ["NegLastStep"]   = (second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB || second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB_ONE);
+  varJ["BinFuncForm"]   = (second.type == kslicer::KernelInfo::REDUCTION_TYPE::FUNC);
+  varJ["OutTempName"]   = second.tmpVarName;
+  varJ["SupportAtomic"] = second.SupportAtomicLastStep();
+  varJ["AtomicOp"]      = second.GetAtomicImplCode();
+  varJ["IsArray"]       = second.leftIsArray;
+  varJ["ArraySize"]     = second.arraySize;
+  if(second.leftIsArray)
+    varJ["Name"]        = second.arrayName;
+  return varJ;
+}
+
 json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo, 
                                     const std::vector<kslicer::FuncData>& usedFunctions,
                                     const std::vector<kslicer::DeclInClass>& usedDecl,
@@ -622,23 +641,37 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Name"] = arg.name;
       userArgs.push_back(argj);
     }
+    
+    // extract all arrays access in seperate map
+    //
+    std::unordered_map<std::string, KernelInfo::ReductionAccess> subjToRedCopy; subjToRedCopy.reserve(k.subjectedToReduction.size());
+    std::unordered_map<std::string, KernelInfo::ReductionAccess> subjToRedArray;
+    for(const auto& var : k.subjectedToReduction)
+    {
+      if(!var.second.leftIsArray)
+      {
+        subjToRedCopy[var.first] = var.second;
+        continue;
+      }
+
+      subjToRedArray[var.second.arrayName] = var.second;
+    } 
 
     bool needFinishReductionPass = false;
     json reductionVars = std::vector<std::string>();
-    for(const auto& var : k.subjectedToReduction)
+    json reductionArrs = std::vector<std::string>();
+    for(const auto& var : subjToRedCopy)
     {
-      json varJ;
-      varJ["Type"] = var.second.dataType;
-      varJ["Name"] = var.second.leftExpr;
-      varJ["Init"] = var.second.GetInitialValue();
-      varJ["Op"]   = var.second.GetOp(a_classInfo.pShaderCC);
-      varJ["NegLastStep"]   = (var.second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB || var.second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB_ONE);
-      varJ["BinFuncForm"]   = (var.second.type == kslicer::KernelInfo::REDUCTION_TYPE::FUNC);
-      varJ["OutTempName"]   = var.second.tmpVarName;
-      varJ["SupportAtomic"] = var.second.SupportAtomicLastStep();
-      varJ["AtomicOp"]      = var.second.GetAtomicImplCode();
+      json varJ = ReductionAccessFill(var.second, a_classInfo.pShaderCC);
       needFinishReductionPass = needFinishReductionPass || !varJ["SupportAtomic"];
       reductionVars.push_back(varJ);
+    }
+
+    for(const auto& var : subjToRedArray)
+    {
+      json varJ = ReductionAccessFill(var.second, a_classInfo.pShaderCC);
+      needFinishReductionPass = needFinishReductionPass || !varJ["SupportAtomic"];
+      reductionArrs.push_back(varJ);
     }
     
     json kernelJson;
@@ -655,9 +688,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["Members"]    = members;
     kernelJson["Name"]       = k.name;
     kernelJson["UBOBinding"] = args.size(); // for circle
-    kernelJson["HasEpilog"]  = k.isBoolTyped || reductionVars.size() != 0;
+    kernelJson["HasEpilog"]  = k.isBoolTyped || reductionVars.size() != 0 || reductionArrs.size() != 0;
     kernelJson["IsBoolean"]  = k.isBoolTyped;
     kernelJson["SubjToRed"]  = reductionVars;
+    kernelJson["ArrsToRed"]  = reductionArrs;
     kernelJson["FinishRed"]  = needFinishReductionPass;
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);

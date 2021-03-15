@@ -53,9 +53,12 @@ __kernel void {{Kernel.Name}}(
   if(get_global_id(0)!=0)
     return;
   {% else %}
-  {% if length(Kernel.SubjToRed) > 0 %}
+  {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                        {# BEG. REDUCTION INIT #}
   {% for redvar in Kernel.SubjToRed %} 
   __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
+  {% endfor %}
+  {% for redvar in Kernel.ArrsToRed %} 
+  __local {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][{{Kernel.WGSizeX}}]; 
   {% endfor %}
   {
     {% if Kernel.threadDim == 1 %}
@@ -66,9 +69,14 @@ __kernel void {{Kernel.Name}}(
     {% for redvar in Kernel.SubjToRed %} 
     {{redvar.Name}}Shared[localId] = {{redvar.Init}}; 
     {% endfor %}
+    {% for redvar in Kernel.ArrsToRed %} 
+    {% for index in range(redvar.ArraySize) %}
+    {{redvar.Name}}Shared[{{loop.index}}][localId] = {{redvar.Init}}; 
+    {% endfor %}
+    {% endfor %}
   }
   SYNCTHREADS; 
-  {% endif %}                                                                                   {# END IF length(Kernel.SubjToRed) > 0 #}
+  {% endif %}                                                                                   {# END. REDUCTION INIT #}
   {% for name in Kernel.threadNames %}
   const uint {{name}} = get_global_id({{ loop.index }}); 
   {% endfor %}
@@ -104,7 +112,7 @@ __kernel void {{Kernel.Name}}(
       kgen_threadFlags[tid] = ((kgen_tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
   };
   {% endif %}
-  {% if length(Kernel.SubjToRed) > 0 %}
+  {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                      {# BEG. REDUCTION PASS #}
   {
     {% if Kernel.threadDim == 1 %}
     const uint localId = get_local_id(0); 
@@ -122,6 +130,15 @@ __kernel void {{Kernel.Name}}(
       {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
       {% endif %}
       {% endfor %}
+      {% for redvar in Kernel.ArrsToRed %}
+      {% for index in range(redvar.ArraySize) %}
+      {% if redvar.BinFuncForm %}
+      {{redvar.Name}}Shared[{{loop.index}}][localId] = {{redvar.Op}}({{redvar.Name}}Shared[{{loop.index}}][localId], {{redvar.Name}}Shared[{{loop.index}}][localId + {{offset}}]);
+      {% else %}
+      {{redvar.Name}}Shared[{{loop.index}}][localId] {{redvar.Op}} {{redvar.Name}}Shared[{{loop.index}}][localId + {{offset}}];
+      {% endif %}
+      {% endfor %}
+      {% endfor %}
     }
     SYNCTHREADS;
     {% endfor %}
@@ -135,6 +152,15 @@ __kernel void {{Kernel.Name}}(
       {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
       {% endif %}
       {% endfor %}
+      {% for redvar in Kernel.ArrsToRed %}
+      {% for index in range(redvar.ArraySize) %}
+      {% if redvar.BinFuncForm %}
+      {{redvar.Name}}Shared[{{loop.index}}][localId] = {{redvar.Op}}({{redvar.Name}}Shared[{{loop.index}}][localId], {{redvar.Name}}Shared[{{loop.index}}][localId + {{offset}}]);
+      {% else %}
+      {{redvar.Name}}Shared[{{loop.index}}][localId] {{redvar.Op}} {{redvar.Name}}Shared[{{loop.index}}][localId + {{offset}}];
+      {% endif %}
+      {% endfor %}
+      {% endfor %}
     }
     {% if Kernel.threadDim > 1 %}
     SYNCTHREADS;
@@ -146,11 +172,20 @@ __kernel void {{Kernel.Name}}(
       {% if redvar.SupportAtomic %}
       {{redvar.AtomicOp}}(&ubo->{{redvar.Name}}, {{redvar.Name}}Shared[0]);
       {% else %}
-      {{ redvar.OutTempName }}[get_global_id(0)/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[0]; // fill finish reduction in subsequent kernel passes
+      {{ redvar.OutTempName }}[get_global_id(0)/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[0]; // finish reduction in subsequent kernel passes
       {% endif %}
       {% endfor %}
+      {% for redvar in Kernel.ArrsToRed %}
+      {% for index in range(redvar.ArraySize) %}
+      {% if redvar.SupportAtomic %}
+      {{redvar.AtomicOp}}(&(ubo->{{redvar.Name}}[{{loop.index}}]), {{redvar.Name}}Shared[{{loop.index}}][0]);
+      {% else %}
+      {{ redvar.OutTempName }}[get_global_id(0)/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[{{loop.index}}][0]; // finish reduction in subsequent kernel passes
+      {% endif %}
+      {% endfor %}
+      {% endfor %}
     }
-  }
+  }                                                                                             {# END. REDUCTION PASS #}
   {% endif %}
   {% endif %}
 }
@@ -178,13 +213,28 @@ __kernel void {{Kernel.Name}}_Reduction(
   {{redvar.Name}}Shared[localId] = {{redvar.Init}}; 
   {% endif %}
   {% endfor %}
+  {% for redvar in Kernel.ArrsToRed %}
+  __local {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][{{Kernel.WGSizeX}}]; 
+  {% for index in range(redvar.ArraySize) %}
+  {% if not redvar.SupportAtomic %}
+  {{redvar.Name}}Shared[{{loop.index}}][localId] = {{redvar.Init}}; 
+  {% endif %}
+  {% endfor %}
+  {% endfor %}
   SYNCTHREADS;
   if(globalId < {{Kernel.threadIdName1}})
   {
     {% for redvar in Kernel.SubjToRed %}
     {% if not redvar.SupportAtomic %}
-    {{redvar.Name}}Shared[localId] = {{ redvar.OutTempName }}[{{Kernel.threadIdName2}} + globalId]; // use {{Kernel.threadIdName2}} for 'InputOffset' 
+    {{redvar.Name}}Shared[{{loop.index}}][localId] = {{ redvar.OutTempName }}[{{Kernel.threadIdName2}} + globalId]; // use {{Kernel.threadIdName2}} for 'InputOffset' 
     {% endif %}
+    {% endfor %}
+    {% for redvar in Kernel.ArrsToRed %}
+    {% for index in range(redvar.ArraySize) %}
+    {% if not redvar.SupportAtomic %}
+    {{redvar.Name}}Shared[{{loop.index}}][localId] = {{ redvar.OutTempName }}[{{Kernel.threadIdName2}} + globalId]; // use {{Kernel.threadIdName2}} for 'InputOffset' 
+    {% endif %}
+    {% endfor %}
     {% endfor %}
   }
   SYNCTHREADS;
@@ -200,6 +250,17 @@ __kernel void {{Kernel.Name}}_Reduction(
     {% endif %}
     {% endif %}
     {% endfor %}
+    {% for redvar in Kernel.ArrsToRed %}
+    {% for index in range(redvar.ArraySize) %}
+    {% if not redvar.SupportAtomic %}
+    {% if redvar.BinFuncForm %}
+    {{redvar.Name}}Shared[{{loop.index}}][localId] = {{redvar.Op}}({{redvar.Name}}Shared[{{loop.index}}][localId], {{redvar.Name}}Shared[{{loop.index}}][localId + {{offset}}]);
+    {% else %}
+    {{redvar.Name}}Shared[{{loop.index}}][localId] {{redvar.Op}} {{redvar.Name}}Shared[{{loop.index}}][localId + {{offset}}];
+    {% endif %}
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
   }
   SYNCTHREADS;
   {% endfor %}
@@ -214,6 +275,17 @@ __kernel void {{Kernel.Name}}_Reduction(
     {{redvar.Name}}Shared[localId] {{redvar.Op}} {{redvar.Name}}Shared[localId + {{offset}}];
     {% endif %}
     {% endif %}
+    {% endfor %}
+    {% for redvar in Kernel.ArrsToRed %}
+    {% for index in range(redvar.ArraySize) %}
+    {% if not redvar.SupportAtomic %}
+    {% if redvar.BinFuncForm %}
+    {{redvar.Name}}Shared[{{loop.index}}][localId] = {{redvar.Op}}({{redvar.Name}}Shared[{{loop.index}}][localId], {{redvar.Name}}Shared[{{loop.index}}][localId + {{offset}}]);
+    {% else %}
+    {{redvar.Name}}Shared[{{loop.index}}][localId] {{redvar.Op}} {{redvar.Name}}Shared[{{loop.index}}][localId + {{offset}}];
+    {% endif %}
+    {% endif %}
+    {% endfor %}
     {% endfor %}
   }
   {% endfor %}
@@ -234,6 +306,17 @@ __kernel void {{Kernel.Name}}_Reduction(
       {% endif %}
       {% endif %}
       {% endfor %}
+      {% for redvar in Kernel.ArrsToRed %}
+      {% for index in range(redvar.ArraySize) %}
+      {% if not redvar.SupportAtomic %}
+      {% if redvar.BinFuncForm %}
+      ubo->{{redvar.Name}}[{{loop.index}}] = {{redvar.Op}}(ubo->{{redvar.Name}}[{{loop.index}}], {{redvar.Name}}Shared[{{loop.index}}][0]);
+      {% else %}
+      ubo->{{redvar.Name}}[{{loop.index}}] {{redvar.Op}} {{redvar.Name}}Shared[{{loop.index}}][0];
+      {% endif %}
+      {% endif %}
+      {% endfor %}
+      {% endfor %}
     }
     else
     {
@@ -242,13 +325,19 @@ __kernel void {{Kernel.Name}}_Reduction(
       {{ redvar.OutTempName }}[{{Kernel.threadIdName3}} + globalId/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[0]; // use {{Kernel.threadIdName3}} for 'OutputOffset'
       {% endif %}
       {% endfor %}
+      {% for redvar in Kernel.ArrsToRed %}
+      {% for index in range(redvar.ArraySize) %}
+      {% if not redvar.SupportAtomic %}
+      {{ redvar.OutTempName }}[{{Kernel.threadIdName3}} + globalId/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[{{loop.index}}][0]; // use {{Kernel.threadIdName3}} for 'OutputOffset'
+      {% endif %}
+      {% endfor %}
+      {% endfor %}
     }
   }
 }
 {% endif %}
 
 ## endfor
-
 
 __kernel void copyKernelFloat(
   __global float* restrict out_data,

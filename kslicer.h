@@ -56,6 +56,9 @@ namespace kslicer
       std::string    rightExpr;
       std::string    leftExpr; // altered left expression (arrays and other ... )
       bool           leftIsArray = false;
+      uint32_t       arraySize   = 0;
+      std::string    arrayIndex;
+      std::string    arrayName;
       
       std::string    funcName;
       std::string    dataType   = "UnknownType";
