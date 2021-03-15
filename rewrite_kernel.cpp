@@ -437,10 +437,12 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
     }
     else if(WasNotRewrittenYet(expr))
     {
-      std::string leftStr2   = RecursiveRewrite(lhs);
       std::string rightStr2  = RecursiveRewrite(rhs);
       std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim());
-      m_rewriter.ReplaceText(expr->getSourceRange(), leftStr2 + "Shared[" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + rightStr2);
+      if(access.leftIsArray)
+        m_rewriter.ReplaceText(expr->getSourceRange(), access.arrayName + "Shared[" + access.arrayIndex + "][" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + rightStr2);
+      else
+        m_rewriter.ReplaceText(expr->getSourceRange(), leftVar + "Shared[" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + rightStr2);
       MarkRewritten(expr);
     }
   }
