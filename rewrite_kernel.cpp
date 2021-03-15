@@ -156,8 +156,10 @@ bool kslicer::KernelRewriter::VisitCallExpr(CallExpr* call)
     }
     
     if(WasNotRewrittenYet(call))
-    {      
-      m_rewriter.ReplaceText(call->getSourceRange(), FunctionCallRewrite(call));
+    { 
+      auto debugMeIn = GetRangeSourceCode(call->getSourceRange(), m_compiler);     
+      auto textRes   = FunctionCallRewrite(call);
+      m_rewriter.ReplaceText(call->getSourceRange(), textRes);
       MarkRewritten(call);
       //std::cout << "  " << text.c_str() << " of type " << argsType.c_str() << "; --> " <<  textRes.c_str() << std::endl;
     }
@@ -579,13 +581,12 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
 
 std::string kslicer::KernelRewriter::RecursiveRewrite(const Stmt* expr)
 {
-  Rewriter rewrite;
-  rewrite.setSourceMgr(m_compiler.getSourceManager(), m_compiler.getLangOpts());
-
+  std::string debugMeIn = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
   KernelRewriter rvCopy = *this;
-  rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
 
-  return rewrite.getRewrittenText(expr->getSourceRange());
+  rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
+  std::string outRes = m_rewriter.getRewrittenText(expr->getSourceRange());
+  return outRes;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
