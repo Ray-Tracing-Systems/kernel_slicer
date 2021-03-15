@@ -20,9 +20,9 @@ void SphHarm::kernel2D_IntegrateSphHarm(uint32_t* a_data, uint32_t a_width, uint
     //Iterate over width
     for (uint32_t j = 0; j < a_width; ++j) {
       //Create a direction to texel
-      const float phi = (j + 0.5f) / a_width * PI * 2.0f;
-      const float theta = (0.5 - (i + 0.5f) / a_height) * PI;
-      const float3 direction = float3(std::sin(phi) * std::cos(theta), std::sin(theta), std::cos(phi) * std::cos(theta));
+      const float phi = (i + 0.5f) / a_height * PI * 2.0f;
+      const float theta = 2.0f * std::acos(std::sqrt(1.0f - (j + 0.5f) / a_width));
+      const float3 direction = float3(std::cos(phi) * std::sin(theta), std::sin(phi) * std::sin(theta), std::cos(theta));
       //Extract color
       const uint32_t texelIdx = i * a_width + j;
       const uint32_t texelData = a_data[texelIdx];
@@ -36,7 +36,7 @@ void SphHarm::kernel2D_IntegrateSphHarm(uint32_t* a_data, uint32_t a_width, uint
       coefs[5] += color * direction.y * direction.z;
       coefs[6] += color * (2 * direction.z * direction.z - direction.x * direction.x - direction.y * direction.y);
       coefs[7] += color * direction.x * direction.z;
-      coefs[8] += color * direction.x * direction.x - direction.y * direction.y;
+      coefs[8] += color * (direction.x * direction.x - direction.y * direction.y);
     }
   }
 }
@@ -57,7 +57,7 @@ void SphHarm::kernel1D_FinalizeCoeff(uint32_t a_size, uint32_t a_width, uint32_t
     coefs[8] *= 0.25f * std::sqrt(15.0f / PI);
     for (uint32_t i = 0; i < COEFS_COUNT; ++i) {
       coefs[i] /= a_height * a_width;
-      coefs[i] *= PI;
+      coefs[i] *= 4.0f * PI;
     }
   }
 }
