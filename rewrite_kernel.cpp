@@ -180,7 +180,7 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
 
-  if(m_codeInfo->pShaderCC->IsVectorTypeNeedsContructorReplacement(fname) && WasNotRewrittenYet(call))
+  if(m_codeInfo->pShaderCC->IsVectorTypeNeedsContructorReplacement(fname) && WasNotRewrittenYet(call) && call->getNumArgs() > 1)
   {
     const std::string text    = FunctionCallRewrite(call);
     const std::string textRes = m_codeInfo->pShaderCC->VectorTypeContructorReplace(fname, text);
