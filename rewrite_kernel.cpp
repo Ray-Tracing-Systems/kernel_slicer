@@ -228,7 +228,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
     }
     else if(fname == "resize")
     {
-      if(f->getSourceRange().getBegin() <= m_currKernel.loopOutsidesInit.getEnd())
+      if(f->getSourceRange().getBegin() <= m_currKernel.loopOutsidesInit.getEnd()) // TODO: SEEMS INCORECT LOGIC
       {
         assert(f->getNumArgs() == 1);
         const Expr* currArgExpr  = f->getArgs()[0];
@@ -314,8 +314,9 @@ bool kslicer::KernelRewriter::VisitUnaryOperator(UnaryOperator* expr)
   if(op == "++" || op == "--") // detect ++ and -- for reduction
   {
     auto opRange = expr->getSourceRange();
-    if(opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
-      return true;   
+    if(opRange.getEnd()   <= m_currKernel.loopInsides.getBegin() || 
+       opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
+      return true;     
     
     const auto op = expr->getOpcodeStr(expr->getOpcode());
     std::string leftStr = GetRangeSourceCode(subExpr->getSourceRange(), m_compiler);
@@ -452,7 +453,8 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
 bool kslicer::KernelRewriter::VisitCompoundAssignOperator(CompoundAssignOperator* expr)
 {
   auto opRange = expr->getSourceRange();
-  if(opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
+  if(opRange.getEnd()   <= m_currKernel.loopInsides.getBegin() || 
+     opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
     return true;   
 
   const Expr* lhs = expr->getLHS();
@@ -467,14 +469,24 @@ bool kslicer::KernelRewriter::VisitCompoundAssignOperator(CompoundAssignOperator
 bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr(CXXOperatorCallExpr* expr)
 {
   auto opRange = expr->getSourceRange();
-  if(opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
+  if(opRange.getEnd()   <= m_currKernel.loopInsides.getBegin() || 
+     opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
     return true;   
 
   const auto numArgs = expr->getNumArgs();
   if(numArgs != 2)
     return true; 
-
+  
   std::string op = GetRangeSourceCode(SourceRange(expr->getOperatorLoc()), m_compiler);  
+  std::string debug = GetRangeSourceCode(opRange, m_compiler);  
+
+  std::cout << "op == '" << op.c_str() << "' " << std::endl;
+  std::cout << "opRange          [" << opRange.getBegin().getRawEncoding() << ":" << opRange.getEnd().getRawEncoding() << "]" << std::endl;
+  std::cout << "loopOutsidesInit [" << m_currKernel.loopOutsidesInit.getBegin().getRawEncoding() << ":" << m_currKernel.loopOutsidesInit.getEnd().getRawEncoding() << "]" << std::endl;
+  std::cout << "loopInsides      [" << m_currKernel.loopInsides.getBegin().getRawEncoding() << ":" << m_currKernel.loopInsides.getEnd().getRawEncoding() << "]" << std::endl;
+  std::cout << "loopOutsidesFin  [" << m_currKernel.loopOutsidesFinish.getBegin().getRawEncoding() << ":" << m_currKernel.loopOutsidesFinish.getEnd().getRawEncoding() << "]" << std::endl;
+  std::cout << std::endl;
+
   if(op == "+=" || op == "-=" || op == "*=")
   {
     const Expr* lhs = expr->getArg(0);

@@ -157,7 +157,7 @@ std::vector<kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CX
   return params;
 }
 
-std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, std::string& a_outLoopInitCode)
+std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode)
 {
   const CXXMethodDecl* a_node = a_funcInfo.astNode;
   //a_node->dump();

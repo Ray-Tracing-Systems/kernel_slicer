@@ -760,6 +760,17 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
 
     data["Kernels"].push_back(original);
+
+    if(k.hasFinishPassSelf)
+    {
+      kernelJson["Name"]      = k.name + "_Finish";
+      kernelJson["Source"]    = k.rewrittenFinish;
+      kernelJson["Members"]   = std::vector<json>();
+      kernelJson["HasEpilog"] = false;
+      kernelJson["FinishRed"] = false;
+      kernelJson["InitKPass"] = true;
+      data["Kernels"].push_back(kernelJson);
+    }
   }
 
   return data;

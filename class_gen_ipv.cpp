@@ -177,18 +177,34 @@ public:
     else if(loopOutsidesInit && func_decl)
     {
       currKernel->loopOutsidesInit    = loopOutsidesInit->getSourceRange();
+      //auto debugMe = kslicer::GetRangeSourceCode(loopOutsidesInit->getSourceRange(), m_compiler);
+      //std::cout << "debugMe = " << debugMe.c_str() << std::endl;
       clang::SourceLocation endOfInit = currKernel->loopOutsidesInit.getEnd();
-      for(auto p = loopOutsidesInit->body_begin(); p != loopOutsidesInit->body_end(); ++p)
+      auto p = loopOutsidesInit->body_begin();
+      for(; p != loopOutsidesInit->body_end(); ++p)
       {
         const Stmt* expr = *p; 
-        if(isa<ForStmt>(expr))
+        if(isa<ForStmt>(expr))                                                                 // TODO: CHECK THIS IS EXACTLY THE FOR WE NEED! HOW?
           break;
-        
+      
         endOfInit = expr->getSourceRange().getEnd(); 
       }
 
       currKernel->hasInitPass = (currKernel->loopOutsidesInit.getEnd() != endOfInit);
       currKernel->loopOutsidesInit.setEnd(endOfInit);
+      
+      ++p;
+      if(p != loopOutsidesInit->body_end())
+      {
+        const Stmt* beginOfEnd = *p;
+        currKernel->loopOutsidesFinish.setBegin(beginOfEnd->getSourceRange().getBegin());
+        p = loopOutsidesInit->body_end(); --p;
+        const Stmt* endOfFinish = *p;
+        currKernel->loopOutsidesFinish.setEnd(endOfFinish->getSourceRange().getEnd());
+        currKernel->hasFinishPassSelf = (currKernel->loopOutsidesFinish.getBegin() != currKernel->loopOutsidesFinish.getEnd());
+        //auto debugMeTail = kslicer::GetRangeSourceCode(currKernel->loopOutsidesFinish, m_compiler);
+        //std::cout << "debugMeTail = " << debugMeTail.c_str() << std::endl;
+      }
     }
     else
       UsedCodeFilter::run(result);
@@ -206,7 +222,8 @@ kslicer::IPV_Pattern::MHandlerKFPtr kslicer::IPV_Pattern::MatcherHandler_KF(Kern
   return std::move(std::make_unique<LoopHandlerInsideKernelsIPV>(std::cout, *this, &kernel, a_compile));
 }
 
-std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, std::string& a_outLoopInitCode)
+std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, 
+                                                     std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode)
 {
   //a_funcInfo.astNode->dump();
   Rewriter rewrite2;
@@ -215,8 +232,10 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   kslicer::KernelRewriter rv(rewrite2, compiler, this, a_funcInfo, "", false);
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
   
-  a_outLoopInitCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit) + ";";
-  return              rewrite2.getRewrittenText(a_funcInfo.loopInsides);
+  a_outLoopInitCode   = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit) + ";";
+  a_outLoopFinishCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesFinish);
+  //std::cout << a_outLoopFinishCode.c_str() << std::endl;
+  return                rewrite2.getRewrittenText(a_funcInfo.loopInsides);
 }
 
 void kslicer::IPV_Pattern::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)

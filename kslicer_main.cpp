@@ -644,7 +644,7 @@ int main(int argc, const char **argv)
     inputCodeInfo.ProcessCallArs_KF(call);
 
   for(auto& k : inputCodeInfo.kernels)
-    k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit);
+    k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
 
   // finally generate kernels
   //
