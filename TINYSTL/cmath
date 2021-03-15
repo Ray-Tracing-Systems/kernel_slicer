@@ -17,6 +17,11 @@ float sinf(float x);
 float cosf(float x);
 float tanf(float x);
 
+float asin (float x);
+float acos (float x);
+float atan (float y_over_x);
+float atan2 (float y, float x);
+
 float pow(float x, float power);
 float powf(float x, float power);
 
@@ -33,18 +38,22 @@ namespace std
   template<typename T> T max(T a, T b) { return (a >  b) ? b : a; }
   template<typename T> T min(T a, T b) { return (a <= b) ? a : b; }
 
-  template<typename T> T abs(T x);
-  template<typename T> T sqrt(T x);
+  template<typename T> T abs(T x)  { return (x >= 0) ? x : -x; }
+  template<typename T> T sqrt(T x) { return x; }
   
-  template<typename T> T sin(T x);
-  template<typename T> T cos(T x);
-  template<typename T> T tan(T x);
+  template<typename T> T sin(T x) { return x; }
+  template<typename T> T cos(T x) { return x; }
+  template<typename T> T tan(T x) { return x; }
   
-  template<typename T> T pow(T x, T power);
-  template<typename T> T exp(T x);
+  template<typename T> T pow(T x, T power) { return x; }
+  template<typename T> T exp(T x)          { return x; }
+
+  template<typename T> T asin  (T x) { return x; }
+  template<typename T> T acos  (T x) { return x; }
+  template<typename T> T atan  (T y_over_x) { return y_over_x; }
+  template<typename T> T atan2 (T y, T x) { return y; }
 };
 
 #include <cstdint>
-
 
 #endif

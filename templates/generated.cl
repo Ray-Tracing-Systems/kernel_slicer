@@ -226,7 +226,7 @@ __kernel void {{Kernel.Name}}_Reduction(
   {
     {% for redvar in Kernel.SubjToRed %}
     {% if not redvar.SupportAtomic %}
-    {{redvar.Name}}Shared[{{loop.index}}][localId] = {{ redvar.OutTempName }}[{{Kernel.threadIdName2}} + globalId]; // use {{Kernel.threadIdName2}} for 'InputOffset' 
+    {{redvar.Name}}Shared[localId] = {{ redvar.OutTempName }}[{{Kernel.threadIdName2}} + globalId]; // use {{Kernel.threadIdName2}} for 'InputOffset' 
     {% endif %}
     {% endfor %}
     {% for redvar in Kernel.ArrsToRed %}
