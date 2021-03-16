@@ -22,7 +22,7 @@ public:
 
   VkBufferUsageFlags GetAdditionalFlagsForUBO() override { return VK_BUFFER_USAGE_TRANSFER_SRC_BIT; }
   VkBuffer           GiveMeUBO() { return m_classDataBuffer; }
-  //VkBuffer GiveMeTempBuffer() { return m_vdata.tmpred04Buffer; }
+  VkBuffer           GiveMeTempBuffer() { return m_vdata.tmpred012Buffer; }
 };
 
 std::array<LiteMath::float3, 9> process_image_gpu(std::vector<uint32_t>& a_inPixels, uint32_t a_width, uint32_t a_height)
@@ -122,6 +122,21 @@ std::array<LiteMath::float3, 9> process_image_gpu(std::vector<uint32_t>& a_inPix
     SphHarm_UBO_Data uboData;
     pCopyHelper->ReadBuffer(pGPUImpl->GiveMeUBO(), 0, &uboData, sizeof(SphHarm_UBO_Data));
     memcpy(result.data(), uboData.coefs, result.size()*sizeof(float3));
+
+    //std::vector<float3> tempSumm(3214); // ((a_width*a_height)/256);
+    //pCopyHelper->ReadBuffer(pGPUImpl->GiveMeTempBuffer(), 0, tempSumm.data(), tempSumm.size()*sizeof(float3));
+    //
+    //std::ofstream fout("colors.txt");
+    //uint32_t currSize   = (a_width*a_height)/256;
+    //uint32_t currOffset = 0;
+    //while(currSize > 1)
+    //{
+    //  for(uint32_t i=0;i<currSize;i++)
+    //    fout << i << ":\t" << tempSumm[currOffset+i].x << " " << tempSumm[currOffset+i].y << " " << tempSumm[currOffset+i].z << std::endl;
+    //  fout << "================================" << std::endl;
+    //  currOffset += currSize;
+    //  currSize = (currSize + 256 - 1) / 256;
+    //}
   }
   
   // (6) destroy and free resources before exit
