@@ -95,6 +95,9 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   vkCmdDispatch(m_currCmdBuffer, ({{Kernel.tidX}} + blockSizeX - 1) / blockSizeX, ({{Kernel.tidY}} + blockSizeY - 1) / blockSizeY, ({{Kernel.tidZ}} + blockSizeZ - 1) / blockSizeZ);
 
   {% if Kernel.FinishRed %}
+  {% if Kernel.HasLoopFinish %}
+  KernelArgsPC oldPCData = pcData;
+  {% endif %}
   ///// complete kernel with reduction passes
   {
     VkBufferMemoryBarrier redBars   [{{Kernel.RedVarsFPNum}}]; 
@@ -145,6 +148,7 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
   {% if Kernel.HasLoopFinish %}
+  vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &oldPCData);
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}FinishPipeline);
   vkCmdDispatch(m_currCmdBuffer, 1, 1, 1); 
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);

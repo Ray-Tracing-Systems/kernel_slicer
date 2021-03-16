@@ -112,7 +112,7 @@ namespace LiteMath
 
     union
     {
-      struct {float x, y, z; };
+      struct {float x, y, z, w; };
       float M[3];
     };
   };
