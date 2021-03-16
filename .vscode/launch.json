@@ -285,6 +285,7 @@
                         "-mainClass", "SphHarm", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
+                        "-reorderLoops", "YX",
                         "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",

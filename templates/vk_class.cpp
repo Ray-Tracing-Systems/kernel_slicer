@@ -108,8 +108,13 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
     vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, {{Kernel.RedVarsFPNum}}, redBars, 0, nullptr);
     vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}ReductionPipeline);
     
+    {% if Kernel.threadDim == 1 %}
     uint32_t oldSize    = {{Kernel.tidX}};
     uint32_t wholeSize  = (oldSize + blockSizeX - 1) / blockSizeX; // assume first pass of reduction is done inside kernel itself
+    {% else %}
+    uint32_t oldSize    = {{Kernel.tidX}}*{{Kernel.tidY}};
+    uint32_t wholeSize  = (oldSize + blockSizeX*blockSizeY - 1) / (blockSizeX*blockSizeY); // assume first pass of reduction is done inside kernel itself
+    {% endif %}
     uint32_t wgSize     = REDUCTION_BLOCK_SIZE;
     uint32_t currOffset = 0;
     while (wholeSize > 1)
