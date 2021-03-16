@@ -184,10 +184,9 @@ public:
       for(; p != loopOutsidesInit->body_end(); ++p)
       {
         const Stmt* expr = *p; 
-        if(isa<ForStmt>(expr))                                                                 // TODO: CHECK THIS IS EXACTLY THE FOR WE NEED! HOW?
-          break;
-      
-        endOfInit = expr->getSourceRange().getEnd(); 
+        if(isa<ForStmt>(expr))                       // TODO: CHECK THIS IS EXACTLY THE 'for' WE NEED! HOW?
+          break;                                     // TODO: REMEMBER 'for' LOCATION IN SOME VARIABLE AND IGNORE OTHER 'fors' INSIDE 'if(forLoop && func_decl)'        
+        endOfInit = expr->getSourceRange().getEnd(); // TODO: WHICH ARE NOT INSIDE THIS FOR AND NOT THIS FOR ITSELF.
       }
 
       currKernel->hasInitPass = (currKernel->loopOutsidesInit.getEnd() != endOfInit);

@@ -298,10 +298,14 @@ __kernel void {{Kernel.Name}}_Reduction(
       {% for redvar in Kernel.ArrsToRed %}
       {% for index in range(redvar.ArraySize) %}
       {% if not redvar.SupportAtomic %}
+      {% if redvar.NegLastStep %}
+      ubo->{{redvar.Name}}[{{loop.index}}] -= {{redvar.Name}}Shared[{{loop.index}}][0];
+      {% else %}
       {% if redvar.BinFuncForm %}
       ubo->{{redvar.Name}}[{{loop.index}}] = {{redvar.Op}}(ubo->{{redvar.Name}}[{{loop.index}}], {{redvar.Name}}Shared[{{loop.index}}][0]);
       {% else %}
       ubo->{{redvar.Name}}[{{loop.index}}] {{redvar.Op}} {{redvar.Name}}Shared[{{loop.index}}][0];
+      {% endif %}
       {% endif %}
       {% endif %}
       {% endfor %}
