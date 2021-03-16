@@ -156,6 +156,10 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   specsForWGSizeExcep.pData = singleThreadConfig;   
   m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSizeExcep, "{{Kernel.OriginalName}}_Init");
   {{Kernel.Name}}InitPipeline = m_pMaker->MakePipeline(device);
+  {% if Kernel.HasLoopFinish %}
+  m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSizeExcep, "{{Kernel.OriginalName}}_Finish");
+  {{Kernel.Name}}FinishPipeline = m_pMaker->MakePipeline(device);
+  {% endif %}
   {% endif %} 
 }
 

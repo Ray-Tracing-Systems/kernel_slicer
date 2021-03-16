@@ -143,7 +143,10 @@ protected:
   VkDescriptorSetLayout {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
   {% if Kernel.HasLoopInit %}
   VkPipeline            {{Kernel.Name}}InitPipeline = VK_NULL_HANDLE;
-  {% endif %}  
+  {% endif %} 
+  {% if Kernel.HasLoopFinish %}
+  VkPipeline            {{Kernel.Name}}FinishPipeline = VK_NULL_HANDLE;
+  {% endif %}   
   {% if Kernel.FinishRed %}
   VkPipeline            {{Kernel.Name}}ReductionPipeline = VK_NULL_HANDLE; 
   {% endif %}  

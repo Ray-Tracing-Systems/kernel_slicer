@@ -218,8 +218,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     kernelJson["OriginalName"] = k.name;
     kernelJson["ArgCount"]     = k.args.size();
     kernelJson["HasLoopInit"]  = k.hasInitPass;
+    kernelJson["HasLoopFinish"]= k.hasFinishPassSelf;
     kernelJson["Decl"]         = kernelDeclByName[kernName];
-
     kernelJson["Args"]         = std::vector<std::string>();
     size_t actualSize     = 0;
     for(const auto& arg : k.args)

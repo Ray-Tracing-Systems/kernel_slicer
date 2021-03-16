@@ -101,10 +101,7 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
     VkBuffer              redBuffers[{{Kernel.RedVarsFPNum}}+1] = { {% for RedVarName in Kernel.RedVarsFPArr %}m_vdata.{{RedVarName.Name}}Buffer, {% endfor %} VK_NULL_HANDLE};
     size_t                szOfElems[{{Kernel.RedVarsFPNum}}+1] = { {% for RedVarName in Kernel.RedVarsFPArr %}sizeof({{RedVarName.Type}}), {% endfor %} 0};
     BarriersForSeveralBuffers(redBuffers, redBars, {{Kernel.RedVarsFPNum}});
-    {% if not Kernel.HasLoopInit %}
-    VkBufferMemoryBarrier barUBO = BarrierForSingleBuffer(m_classDataBuffer);
-    {% endif %}
-
+    
     vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, {{Kernel.RedVarsFPNum}}, redBars, 0, nullptr);
     vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}ReductionPipeline);
     
@@ -147,6 +144,11 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   {% endif %}
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
+  {% if Kernel.HasLoopFinish %}
+  vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}FinishPipeline);
+  vkCmdDispatch(m_currCmdBuffer, 1, 1, 1); 
+  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+  {% endif %}   
 }
 
 ## endfor

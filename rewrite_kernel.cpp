@@ -478,14 +478,14 @@ bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr(CXXOperatorCallExpr* expr
     return true; 
   
   std::string op = GetRangeSourceCode(SourceRange(expr->getOperatorLoc()), m_compiler);  
-  std::string debug = GetRangeSourceCode(opRange, m_compiler);  
-
-  std::cout << "op == '" << op.c_str() << "' " << std::endl;
-  std::cout << "opRange          [" << opRange.getBegin().getRawEncoding() << ":" << opRange.getEnd().getRawEncoding() << "]" << std::endl;
-  std::cout << "loopOutsidesInit [" << m_currKernel.loopOutsidesInit.getBegin().getRawEncoding() << ":" << m_currKernel.loopOutsidesInit.getEnd().getRawEncoding() << "]" << std::endl;
-  std::cout << "loopInsides      [" << m_currKernel.loopInsides.getBegin().getRawEncoding() << ":" << m_currKernel.loopInsides.getEnd().getRawEncoding() << "]" << std::endl;
-  std::cout << "loopOutsidesFin  [" << m_currKernel.loopOutsidesFinish.getBegin().getRawEncoding() << ":" << m_currKernel.loopOutsidesFinish.getEnd().getRawEncoding() << "]" << std::endl;
-  std::cout << std::endl;
+  
+  //std::string debug = GetRangeSourceCode(opRange, m_compiler);  
+  //std::cout << "op == '" << op.c_str() << "' " << std::endl;
+  //std::cout << "opRange          [" << opRange.getBegin().getRawEncoding() << ":" << opRange.getEnd().getRawEncoding() << "]" << std::endl;
+  //std::cout << "loopOutsidesInit [" << m_currKernel.loopOutsidesInit.getBegin().getRawEncoding() << ":" << m_currKernel.loopOutsidesInit.getEnd().getRawEncoding() << "]" << std::endl;
+  //std::cout << "loopInsides      [" << m_currKernel.loopInsides.getBegin().getRawEncoding() << ":" << m_currKernel.loopInsides.getEnd().getRawEncoding() << "]" << std::endl;
+  //std::cout << "loopOutsidesFin  [" << m_currKernel.loopOutsidesFinish.getBegin().getRawEncoding() << ":" << m_currKernel.loopOutsidesFinish.getEnd().getRawEncoding() << "]" << std::endl;
+  //std::cout << std::endl;
 
   if(op == "+=" || op == "-=" || op == "*=")
   {
