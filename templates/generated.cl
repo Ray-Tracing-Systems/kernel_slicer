@@ -169,15 +169,15 @@ __kernel void {{Kernel.Name}}(
     if(localId == 0)
     {
       {% if Kernel.threadDim == 1 %}
-      const uint globalId = get_global_id(0); 
+      const uint offset = get_group_id(0);
       {% else %}
-      const uint globalId = get_global_id(0) + get_global_size(0)*get_global_id(1); 
+      const uint offset = get_group_id(0) + get_num_groups(0)*get_group_id(1);
       {% endif %}
       {% for redvar in Kernel.SubjToRed %}
       {% if redvar.SupportAtomic %}
       {{redvar.AtomicOp}}(&ubo->{{redvar.Name}}, {{redvar.Name}}Shared[0]);
       {% else %}
-      {{ redvar.OutTempName }}[globalId/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[0]; // finish reduction in subsequent kernel passes
+      {{ redvar.OutTempName }}[offset] = {{redvar.Name}}Shared[0]; // finish reduction in subsequent kernel passes
       {% endif %}
       {% endfor %}
       {% for redvar in Kernel.ArrsToRed %}
@@ -185,7 +185,7 @@ __kernel void {{Kernel.Name}}(
       {% if redvar.SupportAtomic %}
       {{redvar.AtomicOp}}(&(ubo->{{redvar.Name}}[{{loop.index}}]), {{redvar.Name}}Shared[{{loop.index}}][0]);
       {% else %}
-      {{ outName }}[globalId/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[{{loop.index}}][0]; // finish reduction in subsequent kernel passes
+      {{ outName }}[offset] = {{redvar.Name}}Shared[{{loop.index}}][0]; // finish reduction in subsequent kernel passes
       {% endif %}
       {% endfor %}
       {% endfor %}
@@ -311,13 +311,13 @@ __kernel void {{Kernel.Name}}_Reduction(
     {
       {% for redvar in Kernel.SubjToRed %}
       {% if not redvar.SupportAtomic %}
-      {{ redvar.OutTempName }}[{{Kernel.threadIdName3}} + globalId/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[0]; // use {{Kernel.threadIdName3}} for 'OutputOffset'
+      {{ redvar.OutTempName }}[{{Kernel.threadIdName3}} + get_group_id(0)] = {{redvar.Name}}Shared[0]; // use {{Kernel.threadIdName3}} for 'OutputOffset'
       {% endif %}
       {% endfor %}
       {% for redvar in Kernel.ArrsToRed %}
       {% for outName in redvar.OutTempNameA %}
       {% if not redvar.SupportAtomic %}
-      {{ outName }}[{{Kernel.threadIdName3}} + globalId/{{Kernel.WGSizeX}}] = {{redvar.Name}}Shared[{{loop.index}}][0]; // use {{Kernel.threadIdName3}} for 'OutputOffset'
+      {{ outName }}[{{Kernel.threadIdName3}} + get_group_id(0)] = {{redvar.Name}}Shared[{{loop.index}}][0]; // use {{Kernel.threadIdName3}} for 'OutputOffset'
       {% endif %}
       {% endfor %}
       {% endfor %}
