@@ -233,7 +233,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
   
   a_outLoopInitCode   = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit) + ";";
-  a_outLoopFinishCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesFinish);
+  a_outLoopFinishCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesFinish) + ";";
   //std::cout << a_outLoopFinishCode.c_str() << std::endl;
   return                rewrite2.getRewrittenText(a_funcInfo.loopInsides);
 }

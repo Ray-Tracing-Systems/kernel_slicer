@@ -148,15 +148,20 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, 128); // at least 128 bytes for push constants
   {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);  
   {% if Kernel.FinishRed %}
+  
+  uint32_t reductionConfig[3] = {256,1,1};
+  specsForWGSizeExcep.pData = reductionConfig; 
   m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSizeExcep, "{{Kernel.OriginalName}}_Reduction");
   {{Kernel.Name}}ReductionPipeline = m_pMaker->MakePipeline(device);
   {% endif %} 
   {% if Kernel.HasLoopInit %}
+  
   uint32_t singleThreadConfig[3] = {1,1,1};
   specsForWGSizeExcep.pData = singleThreadConfig;   
   m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSizeExcep, "{{Kernel.OriginalName}}_Init");
   {{Kernel.Name}}InitPipeline = m_pMaker->MakePipeline(device);
   {% if Kernel.HasLoopFinish %}
+  
   m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSizeExcep, "{{Kernel.OriginalName}}_Finish");
   {{Kernel.Name}}FinishPipeline = m_pMaker->MakePipeline(device);
   {% endif %}
