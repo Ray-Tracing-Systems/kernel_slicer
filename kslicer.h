@@ -100,8 +100,8 @@ namespace kslicer
     std::string rewrittenInit;                   ///<! rewritten loop initialization code for kernel
     std::string rewrittenFinish;                 ///<! rewritten loop finish         code for kernel
 
-    uint32_t injectedWgSize[3] = {256,1,1};      ///<! workgroup size for the case when setting wgsize with spec constant is not allowed
-    uint32_t warpSize          = 32;             ///<! warp size in which we can rely on to omit sync in reduction and e.t.c.
+    uint32_t wgSize[3] = {256,1,1};              ///<! workgroup size for the case when setting wgsize with spec constant is not allowed
+    uint32_t warpSize  = 32;                     ///<! warp size in which we can rely on to omit sync in reduction and e.t.c.
 
     bool      isIndirect      = false;           ///<! IPV pattern (currently); if loop size is defined by class member variable or vector size, we interpret it as indirect dispatching
     uint32_t  indirectBlockId = 0;               ///<! IPV pattern (currently); for such kernels we have to know some offset in indirect buffer for thread blocks number (use int4 data for each kernel)

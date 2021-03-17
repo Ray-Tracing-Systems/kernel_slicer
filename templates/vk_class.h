@@ -26,20 +26,14 @@ public:
     uint32_t    blockSize[3] = {1,1,1};
   };
 
-  virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount, 
-                                 uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ, 
-                                 KernelConfig* a_kernelConfigs = nullptr, size_t a_configSize = 0) 
+  virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount) 
   {
     physicalDevice = a_physicalDevice;
     device         = a_device;
-    
-    m_blockSize[0] = a_blockSizeX;
-    m_blockSize[1] = a_blockSizeY;
-    m_blockSize[2] = a_blockSizeZ;
 
     InitHelpers();
     InitBuffers(a_maxThreadsCount);
-    InitKernels("{{ShaderSingleFile}}.spv", a_blockSizeX, a_blockSizeY, a_blockSizeZ, a_kernelConfigs, a_configSize);
+    InitKernels("{{ShaderSingleFile}}.spv");
     AllocateAllDescriptorSets();
   }
 
@@ -94,8 +88,7 @@ protected:
 
   virtual void InitHelpers();
   virtual void InitBuffers(size_t a_maxThreadsCount);
-  virtual void InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ,
-                           KernelConfig* a_kernelConfigs, size_t a_configSize);
+  virtual void InitKernels(const char* a_filePath);
   virtual void AllocateAllDescriptorSets();
 
 ## for MainFunc in MainFunctions
@@ -151,7 +144,7 @@ protected:
   VkPipeline            {{Kernel.Name}}ReductionPipeline = VK_NULL_HANDLE; 
   {% endif %}  
   VkDescriptorSetLayout Create{{Kernel.Name}}DSLayout();
-  void InitKernel_{{Kernel.Name}}(const char* a_filePath, VkSpecializationInfo specsForWGSize);
+  void InitKernel_{{Kernel.Name}}(const char* a_filePath);
 
 ## endfor
 
@@ -165,8 +158,6 @@ protected:
 
   VkDescriptorPool m_dsPool = VK_NULL_HANDLE;
   VkDescriptorSet m_allGeneratedDS[{{TotalDSNumber}}];
-  uint32_t m_blockSize[3];
-  std::unordered_map<std::string, KernelConfig> m_kernelExceptions;
 
   {{MainClassName}}_UBO_Data m_uboData;
   

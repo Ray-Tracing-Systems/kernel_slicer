@@ -86,9 +86,9 @@ std::array<LiteMath::float3, 9> process_image_gpu(std::vector<uint32_t>& a_inPix
 
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 
-  auto pGPUImpl = std::make_shared<SphHarm_GPU>();                                  // !!! USING GENERATED CODE !!! 
-  pGPUImpl->InitVulkanObjects(device, physicalDevice, a_inPixels.size(), 32, 8, 1); // !!! USING GENERATED CODE !!!
-  pGPUImpl->InitMemberBuffers();                                                    // !!! USING GENERATED CODE !!!
+  auto pGPUImpl = std::make_shared<SphHarm_GPU>();                        // !!! USING GENERATED CODE !!! 
+  pGPUImpl->InitVulkanObjects(device, physicalDevice, a_inPixels.size()); // !!! USING GENERATED CODE !!!
+  pGPUImpl->InitMemberBuffers();                                          // !!! USING GENERATED CODE !!!
 
   // (3) Create buffer
   //
@@ -123,20 +123,20 @@ std::array<LiteMath::float3, 9> process_image_gpu(std::vector<uint32_t>& a_inPix
     pCopyHelper->ReadBuffer(pGPUImpl->GiveMeUBO(), 0, &uboData, sizeof(SphHarm_UBO_Data));
     memcpy(result.data(), uboData.coefs, result.size()*sizeof(float3));
 
-    //std::vector<float3> tempSumm(3214); // ((a_width*a_height)/256);
-    //pCopyHelper->ReadBuffer(pGPUImpl->GiveMeTempBuffer(), 0, tempSumm.data(), tempSumm.size()*sizeof(float3));
-    //
-    //std::ofstream fout("colors.txt");
-    //uint32_t currSize   = (a_width*a_height)/256;
-    //uint32_t currOffset = 0;
-    //while(currSize > 1)
-    //{
-    //  for(uint32_t i=0;i<currSize;i++)
-    //    fout << i << ":\t" << tempSumm[currOffset+i].x << " " << tempSumm[currOffset+i].y << " " << tempSumm[currOffset+i].z << std::endl;
-    //  fout << "================================" << std::endl;
-    //  currOffset += currSize;
-    //  currSize = (currSize + 256 - 1) / 256;
-    //}
+    std::vector<float3> tempSumm(3214); // ((a_width*a_height)/256);
+    pCopyHelper->ReadBuffer(pGPUImpl->GiveMeTempBuffer(), 0, tempSumm.data(), tempSumm.size()*sizeof(float3));
+    
+    std::ofstream fout("colors.txt");
+    uint32_t currSize   = (a_width*a_height)/256;
+    uint32_t currOffset = 0;
+    while(currSize > 1)
+    {
+      for(uint32_t i=0;i<currSize;i++)
+        fout << i << ":\t" << tempSumm[currOffset+i].x << " " << tempSumm[currOffset+i].y << " " << tempSumm[currOffset+i].z << std::endl;
+      fout << "================================" << std::endl;
+      currOffset += currSize;
+      currSize = (currSize + 256 - 1) / 256;
+    }
   }
   
   // (6) destroy and free resources before exit
