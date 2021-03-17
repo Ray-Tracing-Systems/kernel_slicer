@@ -304,6 +304,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     kernelJson["RedVarsFPNum"] = reductionVarNames.size();
     kernelJson["RedVarsFPArr"] = reductionVarNames;
 
+    kernelJson["WGSizeX"]      = k.wgSize[0]; //
+    kernelJson["WGSizeY"]      = k.wgSize[1]; // 
+    kernelJson["WGSizeZ"]      = k.wgSize[2]; // 
+
     data["Kernels"].push_back(kernelJson);
   }
   
@@ -736,7 +740,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["threadIdName2"] = tidNames[1]; 
     kernelJson["threadIdName3"] = tidNames[2]; 
 
-    kernelJson["WGSizeX"]       = k.wgSize[0]; // injected wourg group size for circle 
+    kernelJson["WGSizeX"]       = k.wgSize[0]; //
     kernelJson["WGSizeY"]       = k.wgSize[1]; // 
     kernelJson["WGSizeZ"]       = k.wgSize[2]; // 
 

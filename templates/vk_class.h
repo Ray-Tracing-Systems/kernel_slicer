@@ -151,7 +151,7 @@ protected:
   VkPipeline            {{Kernel.Name}}ReductionPipeline = VK_NULL_HANDLE; 
   {% endif %}  
   VkDescriptorSetLayout Create{{Kernel.Name}}DSLayout();
-  void InitKernel_{{Kernel.Name}}(const char* a_filePath, VkSpecializationInfo specsForWGSize);
+  void InitKernel_{{Kernel.Name}}(const char* a_filePath);
 
 ## endfor
 
@@ -166,7 +166,6 @@ protected:
   VkDescriptorPool m_dsPool = VK_NULL_HANDLE;
   VkDescriptorSet m_allGeneratedDS[{{TotalDSNumber}}];
   uint32_t m_blockSize[3];
-  std::unordered_map<std::string, KernelConfig> m_kernelExceptions;
 
   {{MainClassName}}_UBO_Data m_uboData;
   

@@ -124,45 +124,30 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::CreatecopyKernelFloatDSLayout
 }
 
 ## for Kernel in Kernels
-void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_filePath, VkSpecializationInfo specsForWGSize)
+void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_filePath)
 {
-  VkSpecializationInfo specsForWGSizeExcep = specsForWGSize;
   {% if MultipleSourceShaders %}
   std::string shaderPath = "{{ShaderFolder}}/{{Kernel.OriginalName}}.cpp.spv"; 
   {% else %}
   std::string shaderPath = a_filePath; 
   {% endif %}
 
-  auto ex = m_kernelExceptions.find("{{Kernel.OriginalName}}");
-  if(ex == m_kernelExceptions.end())
-  {
-    m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSize, "{{Kernel.OriginalName}}");
-  }
-  else
-  {
-    specsForWGSizeExcep.pData = ex->second.blockSize;   
-    m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSizeExcep, "{{Kernel.OriginalName}}");
-  }    
-    
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}");
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
   {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, 128); // at least 128 bytes for push constants
   {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);  
   {% if Kernel.FinishRed %}
   
-  uint32_t reductionConfig[3] = {256,1,1};
-  specsForWGSizeExcep.pData = reductionConfig; 
-  m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSizeExcep, "{{Kernel.OriginalName}}_Reduction");
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_Reduction");
   {{Kernel.Name}}ReductionPipeline = m_pMaker->MakePipeline(device);
   {% endif %} 
   {% if Kernel.HasLoopInit %}
   
-  uint32_t singleThreadConfig[3] = {1,1,1};
-  specsForWGSizeExcep.pData = singleThreadConfig;   
-  m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSizeExcep, "{{Kernel.OriginalName}}_Init");
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_Init");
   {{Kernel.Name}}InitPipeline = m_pMaker->MakePipeline(device);
   {% if Kernel.HasLoopFinish %}
   
-  m_pMaker->CreateShader(device, shaderPath.c_str(), &specsForWGSizeExcep, "{{Kernel.OriginalName}}_Finish");
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_Finish");
   {{Kernel.Name}}FinishPipeline = m_pMaker->MakePipeline(device);
   {% endif %}
   {% endif %} 
@@ -173,36 +158,8 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
 void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ,
                                               KernelConfig* a_kernelConfigs, size_t a_configSize)
 {
-  VkSpecializationMapEntry specializationEntries[3] = {};
-  {
-    specializationEntries[0].constantID = 0;
-    specializationEntries[0].offset     = 0;
-    specializationEntries[0].size       = sizeof(uint32_t);
-  
-    specializationEntries[1].constantID = 1;
-    specializationEntries[1].offset     = sizeof(uint32_t);
-    specializationEntries[1].size       = sizeof(uint32_t);
-  
-    specializationEntries[2].constantID = 2;
-    specializationEntries[2].offset     = 2 * sizeof(uint32_t);
-    specializationEntries[2].size       = sizeof(uint32_t);
-  }
-
-  uint32_t specializationData[3] = {a_blockSizeX, a_blockSizeY, a_blockSizeZ};
-  VkSpecializationInfo specsForWGSize = {};
-  {
-    specsForWGSize.mapEntryCount = 3;
-    specsForWGSize.pMapEntries   = specializationEntries;
-    specsForWGSize.dataSize      = 3 * sizeof(uint32_t);
-    specsForWGSize.pData         = specializationData;
-  }
-  
-  m_kernelExceptions.clear();
-  for(size_t i=0;i<a_configSize;i++)
-    m_kernelExceptions[a_kernelConfigs[i].kernelName] = a_kernelConfigs[i];
-
 ## for Kernel in Kernels
-  InitKernel_{{Kernel.Name}}(a_filePath, specsForWGSize);
+  InitKernel_{{Kernel.Name}}(a_filePath);
 ## endfor
 
   {% if MultipleSourceShaders %}
@@ -211,9 +168,7 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a
   std::string servPath = a_filePath;
   {% endif %}
 
-  uint32_t specializationDataMemcpy[3] = {MEMCPY_BLOCK_SIZE, 1, 1};
-  specsForWGSize.pData = specializationDataMemcpy;
-  m_pMaker->CreateShader(device, servPath.c_str(), &specsForWGSize, "copyKernelFloat");
+  m_pMaker->CreateShader(device, servPath.c_str(), nullptr, "copyKernelFloat");
 
   copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
   copyKernelFloatLayout   = m_pMaker->MakeLayout(device, copyKernelFloatDSLayout, 128); // at least 128 bytes for push constants
