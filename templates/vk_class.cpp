@@ -53,9 +53,17 @@ void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vkfw::ICop
 ## for Kernel in Kernels
 void {{MainClassName}}_Generated::{{Kernel.Decl}}
 {
-  constexpr uint32_t blockSizeX = {{Kernel.WgSize0}};
-  constexpr uint32_t blockSizeY = {{Kernel.WgSize1}};
-  constexpr uint32_t blockSizeZ = {{Kernel.WgSize2}};
+  uint32_t blockSizeX = m_blockSize[0];
+  uint32_t blockSizeY = m_blockSize[1];
+  uint32_t blockSizeZ = m_blockSize[2];
+
+  auto ex = m_kernelExceptions.find("{{Kernel.OriginalName}}");
+  if(ex != m_kernelExceptions.end())
+  {
+    blockSizeX = ex->second.blockSize[0];
+    blockSizeY = ex->second.blockSize[1];
+    blockSizeZ = ex->second.blockSize[2];
+  }
 
   struct KernelArgsPC
   {

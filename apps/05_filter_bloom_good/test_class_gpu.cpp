@@ -55,7 +55,7 @@ void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
   enabledLayers.push_back("VK_LAYER_LUNARG_standard_validation");
   instance = vk_utils::CreateInstance(enableValidationLayers, enabledLayers, extensions);
 
-  physicalDevice       = vk_utils::FindPhysicalDevice(instance, true, 1);
+  physicalDevice       = vk_utils::FindPhysicalDevice(instance, true, 0);
   auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
   
   // query for shaderInt8
@@ -92,12 +92,12 @@ void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
 
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 
-  auto pGPUImpl = std::make_shared<ToneMapping_Generated>(); // !!! USING GENERATED CODE !!! 
-  pGPUImpl->InitVulkanObjects(device, physicalDevice, w*h);  // !!! USING GENERATED CODE !!!
+  auto pGPUImpl = std::make_shared<ToneMapping_Generated>();          // !!! USING GENERATED CODE !!! 
+  pGPUImpl->InitVulkanObjects(device, physicalDevice, w*h, 32, 8, 1); // !!! USING GENERATED CODE !!!
 
-  pGPUImpl->SetMaxImageSize(w, h);                           // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
-  pGPUImpl->InitMemberBuffers();                             // !!! USING GENERATED CODE !!!
-  pGPUImpl->UpdateAll(pCopyHelper);                          // !!! USING GENERATED CODE !!!
+  pGPUImpl->SetMaxImageSize(w, h);                                    // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
+  pGPUImpl->InitMemberBuffers();                                      // !!! USING GENERATED CODE !!!
+  pGPUImpl->UpdateAll(pCopyHelper);                                   // !!! USING GENERATED CODE !!!
 
   // (3) Create buffer
   //

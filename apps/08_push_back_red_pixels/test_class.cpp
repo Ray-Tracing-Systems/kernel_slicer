@@ -2,7 +2,6 @@
 #include "Bitmap.h"
 #include <cassert>
 #include <algorithm>
-//#include <chrono>
 
 inline bool PixelIsRed(uint32_t a_pixelValue)
 {
@@ -49,7 +48,7 @@ void RedPixels::kernel1D_CountRedPixels(const uint32_t* a_data, size_t a_dataSiz
     {
       float strangeVal = ((float)a_data[i])*((float)i);
       if(i == 1000)
-        strangeVal = -11.75f;
+        strangeVal = -10.0f;
       m_testMin = std::min(m_testMin, strangeVal);
       m_testMax = std::max(m_testMax, strangeVal);
       m_otherPixelsNum++;
@@ -124,13 +123,10 @@ void process_image_cpu(std::vector<uint32_t>& a_inPixels)
   RedPixels filter;
 
   filter.SetMaxDataSize(a_inPixels.size());
-  
-  //auto start = std::chrono::high_resolution_clock::now();
   filter.ProcessPixels(a_inPixels.data(), a_inPixels.size());
   
-  //auto stop = std::chrono::high_resolution_clock::now();
-  //auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-  //std::cout << ms << " ms for CPU execution " << std::endl;
+  //a_outPixels = filter.GetFoundPixels();
+  //assert(a_outPixels.size() == filter.GetRedPixelsAmount());
 
   std::cout << "[cpu]: m_redPixelsNum     = " << filter.m_redPixelsNum << std::endl;
   std::cout << "[cpu]: m_otherPixelsNum   = " << filter.m_otherPixelsNum << std::endl;

@@ -72,8 +72,8 @@ void test_class_gpu()
   
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 
-  auto pGPUImpl = std::make_shared<TestClass_Generated>();                   // !!! USING GENERATED CODE !!! 
-  pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT); // !!! USING GENERATED CODE !!!
+  auto pGPUImpl = std::make_shared<TestClass_Generated>();     // !!! USING GENERATED CODE !!! 
+  pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT, 16, 16, 1); // !!! USING GENERATED CODE !!!
 
   // (3) Create buffer
   //

@@ -31,9 +31,6 @@ include_directories("../vkfw")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -fopenmp")
 
-#uncomment this to detect broken memory problems via gcc sanitizers
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize-address-use-after-scope -fno-omit-frame-pointer -fsanitize=leak -fsanitize=undefined -fsanitize=bounds-strict")
-
 add_executable(testapp main.cpp 
                        test_class.cpp
                        test_class_gpu.cpp

@@ -84,8 +84,8 @@ void process_image_gpu(std::vector<uint32_t>& a_inPixels)
 
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 
-  auto pGPUImpl = std::make_shared<RedPixels_GPU>();                      // !!! USING GENERATED CODE !!! 
-  pGPUImpl->InitVulkanObjects(device, physicalDevice, a_inPixels.size()); // !!! USING GENERATED CODE !!!
+  auto pGPUImpl = std::make_shared<RedPixels_GPU>();                                 // !!! USING GENERATED CODE !!! 
+  pGPUImpl->InitVulkanObjects(device, physicalDevice, a_inPixels.size(), 256, 1, 1); // !!! USING GENERATED CODE !!!
   
   pGPUImpl->SetMaxDataSize(a_inPixels.size());                         // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
   pGPUImpl->InitMemberBuffers();                                       // !!! USING GENERATED CODE !!!

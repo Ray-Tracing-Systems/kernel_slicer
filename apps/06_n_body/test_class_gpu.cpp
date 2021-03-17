@@ -71,9 +71,9 @@ std::vector<nBody::BodyState> n_body_gpu(uint32_t seed, uint32_t iterations)
 
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 
-  auto pGPUImpl = std::make_shared<nBody_Generated>();                      // !!! USING GENERATED CODE !!!
+  auto pGPUImpl = std::make_shared<nBody_Generated>();          // !!! USING GENERATED CODE !!!
   pGPUImpl->setParameters(seed, iterations);
-  pGPUImpl->InitVulkanObjects(device, physicalDevice, nBody::BODIES_COUNT); // !!! USING GENERATED CODE !!!
+  pGPUImpl->InitVulkanObjects(device, physicalDevice, nBody::BODIES_COUNT, 32, 1, 1); // !!! USING GENERATED CODE !!!
 
   pGPUImpl->InitMemberBuffers();                                      // !!! USING GENERATED CODE !!!
   pGPUImpl->UpdateAll(pCopyHelper);                                   // !!! USING GENERATED CODE !!!
