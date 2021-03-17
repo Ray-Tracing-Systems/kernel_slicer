@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <algorithm>
+#include <sstream>
 
 #include "clang/AST/DeclCXX.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -100,8 +101,8 @@ namespace kslicer
     std::string rewrittenInit;                   ///<! rewritten loop initialization code for kernel
     std::string rewrittenFinish;                 ///<! rewritten loop finish         code for kernel
 
-    uint32_t injectedWgSize[3] = {256,1,1};      ///<! workgroup size for the case when setting wgsize with spec constant is not allowed
-    uint32_t warpSize          = 32;             ///<! warp size in which we can rely on to omit sync in reduction and e.t.c.
+    uint32_t wgSize[3] = {256,1,1};              ///<! workgroup size for the case when setting wgsize with spec constant is not allowed
+    uint32_t warpSize  = 32;                     ///<! warp size in which we can rely on to omit sync in reduction and e.t.c.
 
     bool      isIndirect      = false;           ///<! IPV pattern (currently); if loop size is defined by class member variable or vector size, we interpret it as indirect dispatching
     uint32_t  indirectBlockId = 0;               ///<! IPV pattern (currently); for such kernels we have to know some offset in indirect buffer for thread blocks number (use int4 data for each kernel)
@@ -272,7 +273,7 @@ namespace kslicer
     virtual std::string ShaderSingleFile() const = 0;
     virtual std::string TemplatePath()     const = 0; 
     virtual std::string BuildCommand()     const = 0;
-    virtual std::string LocalIdExpr(uint32_t a_kernelDim) const = 0;
+    virtual std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const = 0;
 
     virtual std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const { return a_call; }
     virtual bool        IsVectorTypeNeedsContructorReplacement(const std::string& a_typeName) const { return false; }
@@ -303,12 +304,16 @@ namespace kslicer
     std::string TemplatePath()     const override { return "templates/generated.cl"; }
     std::string BuildCommand()     const override { return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-pushconstant"; } 
     
-    std::string LocalIdExpr(uint32_t a_kernelDim) const override
+    std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override
     {
       if(a_kernelDim == 1)
         return "get_local_id(0)";
       else
-        return "get_local_id(0) + get_local_size(0)*get_local_id(1)";
+      {
+        std::stringstream strOut;
+        strOut << "get_local_id(0) + " << a_wgSize[0] << "*get_local_id(1)";
+        return strOut.str();
+      }
     }
 
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override
@@ -349,12 +354,16 @@ namespace kslicer
     std::string TemplatePath()     const override { return "templates/gen_circle.cxx"; }
     std::string BuildCommand()     const override { return std::string("../circle -shader -c -emit-spirv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -DUSE_CIRCLE_CC"; }
    
-    std::string LocalIdExpr(uint32_t a_kernelDim) const override
+    std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override
     {
       if(a_kernelDim == 1)
         return "get_local_id(0)";
       else
-        return "get_local_id(0) + get_local_size(0)*get_local_id(1)";
+      {
+        std::stringstream strOut;
+        strOut << "get_local_id(0) + " << a_wgSize[0] << "*get_local_id(1)";
+        return strOut.str();
+      }
     }
 
     std::string ProcessBufferType(const std::string& a_typeName) const override 

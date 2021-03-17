@@ -586,6 +586,46 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
   
+  // if user set custom work group size for kernels via hint file we should apply it befor generating kernels
+  //
+  nlohmann::json wgszJson;
+  uint32_t defaultWgSize[3] = {256,1,1};
+  if(hintFile != "")
+  {
+    std::ifstream ifs(hintFile);
+    nlohmann::json hintJson = nlohmann::json::parse(ifs);
+    wgszJson         = hintJson["WorkGroupSize"];
+    defaultWgSize[0] = wgszJson["default"][0];
+    defaultWgSize[1] = wgszJson["default"][1];
+    defaultWgSize[2] = wgszJson["default"][2];
+  }
+
+  for(auto& nk : inputCodeInfo.kernels)
+  {
+    auto& kernel   = nk.second;
+    auto kernelDim = kernel.GetDim();
+    auto it = wgszJson.find(kernel.name);
+    if(it != wgszJson.end())
+    {
+      kernel.wgSize[0] = (*it)[0];
+      kernel.wgSize[1] = (*it)[1];
+      kernel.wgSize[2] = (*it)[2];
+    }
+    else if(kernelDim == 2)
+    {
+      kernel.wgSize[0] = 32;
+      kernel.wgSize[1] = 8;
+      kernel.wgSize[2] = 1;
+    }
+    else
+    {
+      kernel.wgSize[0] = defaultWgSize[0];
+      kernel.wgSize[1] = defaultWgSize[1];
+      kernel.wgSize[2] = defaultWgSize[2];
+    }
+    kernel.warpSize = warpSize;
+  }
+
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
   std::cout << "{" << std::endl;
   {
@@ -604,39 +644,6 @@ int main(int argc, const char **argv)
 
   std::cout << "(8) Generate OpenCL kernels" << std::endl; 
   std::cout << "{" << std::endl;
-
-  // if user set custom work group size for kernels via hint file we should apply it befor generating kernels
-  
-  nlohmann::json wgszJson;
-  uint32_t defaultWgSize[3] = {256,1,1};
-  if(hintFile != "")
-  {
-    std::ifstream ifs(hintFile);
-    nlohmann::json hintJson = nlohmann::json::parse(ifs);
-    wgszJson = hintJson["WorkGroupSize"];
-    defaultWgSize[0] = wgszJson["default"][0];
-    defaultWgSize[1] = wgszJson["default"][1];
-    defaultWgSize[2] = wgszJson["default"][2];
-  }
-
-  for(auto& nk : inputCodeInfo.kernels)
-  {
-    auto& kernel = nk.second;
-    auto it = wgszJson.find(kernel.name);
-    if(it != wgszJson.end())
-    {
-      kernel.injectedWgSize[0] = (*it)[0];
-      kernel.injectedWgSize[1] = (*it)[1];
-      kernel.injectedWgSize[2] = (*it)[2];
-    }
-    else
-    {
-      kernel.injectedWgSize[0] = defaultWgSize[0];
-      kernel.injectedWgSize[1] = defaultWgSize[1];
-      kernel.injectedWgSize[2] = defaultWgSize[2];
-    }
-    kernel.warpSize = warpSize;
-  }
 
   // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg
   //
