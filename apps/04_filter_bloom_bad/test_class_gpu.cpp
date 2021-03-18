@@ -100,11 +100,11 @@ void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
 
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 
-  auto pGPUImpl = std::make_shared<ToneMapping_GPU>();                // !!! USING GENERATED CODE !!! 
-  pGPUImpl->InitVulkanObjects(device, physicalDevice, w*h, 32, 8, 1); // !!! USING GENERATED CODE !!!
+  auto pGPUImpl = std::make_shared<ToneMapping_GPU>();      // !!! USING GENERATED CODE !!! 
+  pGPUImpl->InitVulkanObjects(device, physicalDevice, w*h); // !!! USING GENERATED CODE !!!
 
-  pGPUImpl->SetMaxImageSize(w, h);                                    // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
-  pGPUImpl->InitMemberBuffers();                                      // !!! USING GENERATED CODE !!!
+  pGPUImpl->SetMaxImageSize(w, h);                          // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
+  pGPUImpl->InitMemberBuffers();                            // !!! USING GENERATED CODE !!!
 
   // (3) Create buffer
   //

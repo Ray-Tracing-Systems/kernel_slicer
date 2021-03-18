@@ -155,8 +155,7 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
 
 ## endfor
 
-void {{MainClassName}}_Generated::InitKernels(const char* a_filePath, uint32_t a_blockSizeX, uint32_t a_blockSizeY, uint32_t a_blockSizeZ,
-                                              KernelConfig* a_kernelConfigs, size_t a_configSize)
+void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
 {
 ## for Kernel in Kernels
   InitKernel_{{Kernel.Name}}(a_filePath);
