@@ -235,6 +235,7 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
     }
 
     nodeIdx = (currNode.leftOffset == 0xFFFFFFFF || !intersects) ? currNode.escapeIndex : currNode.leftOffset;
+    nodeIdx = (nodeIdx == 0) ? 0xFFFFFFFE : nodeIdx;
   }
   
   *out_hit = res;
