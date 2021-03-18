@@ -143,7 +143,7 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
 }
 
-static bool RayBoxIntersection(float4 ray_pos, float4 ray_dir, float3 boxMin, float3 boxMax)
+static bool RayBoxIntersection(float4 ray_pos, float4 ray_dir, const float boxMin[3], const float boxMax[3])
 {
   float tmin = ray_pos.w;
   float tmax = ray_dir.w;
@@ -152,20 +152,20 @@ static bool RayBoxIntersection(float4 ray_pos, float4 ray_dir, float3 boxMin, fl
   ray_dir.y = 1.0f/ray_dir.y;
   ray_dir.z = 1.0f/ray_dir.z;
 
-  float lo = ray_dir.x*(boxMin.x - ray_pos.x);
-  float hi = ray_dir.x*(boxMax.x - ray_pos.x);
+  float lo = ray_dir.x*(boxMin[0] - ray_pos.x);
+  float hi = ray_dir.x*(boxMax[0] - ray_pos.x);
 
   tmin = fmin(lo, hi);
   tmax = fmax(lo, hi);
 
-  float lo1 = ray_dir.y*(boxMin.y - ray_pos.y);
-  float hi1 = ray_dir.y*(boxMax.y - ray_pos.y);
+  float lo1 = ray_dir.y*(boxMin[1] - ray_pos.y);
+  float hi1 = ray_dir.y*(boxMax[1] - ray_pos.y);
 
   tmin = fmax(tmin, fmin(lo1, hi1));
   tmax = fmin(tmax, fmax(lo1, hi1));
 
-  float lo2 = ray_dir.z*(boxMin.z - ray_pos.z);
-  float hi2 = ray_dir.z*(boxMax.z - ray_pos.z);
+  float lo2 = ray_dir.z*(boxMin[2] - ray_pos.z);
+  float hi2 = ray_dir.z*(boxMax[2] - ray_pos.z);
 
   tmin = fmax(tmin, fmin(lo2, hi2));
   tmax = fmin(tmax, fmax(lo2, hi2));

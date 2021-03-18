@@ -4,10 +4,10 @@
 
 struct BVHNode
 {
-  float3 boxMin;
-  uint   leftOffset;
-  float3 boxMax;
-  uint   escapeIndex;
+  float boxMin[3];
+  uint  leftOffset;
+  float boxMax[3];
+  uint  escapeIndex;
 };
 
 static inline bool IsLeaf (const struct BVHNode* a_node) { return (a_node->leftOffset == 0xFFFFFFFF); }
