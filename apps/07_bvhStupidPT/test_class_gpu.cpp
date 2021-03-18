@@ -51,7 +51,7 @@ void test_class_gpu()
   std::vector<const char*> validationLayers, deviceExtensions;
   VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
   vk_utils::queueFamilyIndices fIDs = {};
-//  enabledDeviceFeatures.shaderInt64 = VK_TRUE;
+  enabledDeviceFeatures.shaderInt64 = VK_TRUE;
 
   deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
   deviceExtensions.push_back("VK_KHR_shader_float16_int8"); 
@@ -82,16 +82,9 @@ void test_class_gpu()
   //TestKernel2(ctx);
   
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
-
-  TestClass_Generated::KernelConfig packXYConfig;                                       // !!! USING GENERATED CODE !!!
-  packXYConfig.kernelName = "kernel_PackXY";                                            // !!! USING GENERATED CODE !!!
-  packXYConfig.blockSize[0] = 16;                                                       // !!! USING GENERATED CODE !!!
-  packXYConfig.blockSize[1] = 16;                                                       // !!! USING GENERATED CODE !!!
-  packXYConfig.blockSize[2] = 1;                                                        // !!! USING GENERATED CODE !!!
-
-  auto pGPUImpl = std::make_shared<TestClass_Generated>();                              // !!! USING GENERATED CODE !!! 
-  pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT, 256, 1, 1,  // !!! USING GENERATED CODE !!!
-                              &packXYConfig, 1);                                        // !!! USING GENERATED CODE !!!
+  auto pGPUImpl = std::make_shared<TestClass_Generated>();                   // !!! USING GENERATED CODE !!! 
+  pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT); // !!! USING GENERATED CODE !!!                        
+  pGPUImpl->LoadScene("lucy.bvh", "lucy.vsgf");
 
   // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
   //
@@ -147,48 +140,47 @@ void test_class_gpu()
     pCopyHelper->ReadBuffer(colorBuffer1, 0, pixelData.data(), pixelData.size()*sizeof(uint32_t));
     SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
 
-    std::cout << "begin path tracing passes ... " << std::endl;
+    //std::cout << "begin path tracing passes ... " << std::endl;
+    //
+    //vkResetCommandBuffer(commandBuffer, 0);
+    //vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
+    //pGPUImpl->StupidPathTraceCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, 6, nullptr, nullptr);  // !!! USING GENERATED CODE !!! 
+    //vkEndCommandBuffer(commandBuffer);  
+    //
+    //start = std::chrono::high_resolution_clock::now();
+    //const int NUM_PASSES = 1000.0f;
+    //for(int i=0;i<NUM_PASSES;i++)
+    //{
+    //  vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
+    //  if(i % 100 == 0)
+    //  {
+    //    std::cout << "progress (gpu) = " << 100.0f*float(i)/float(NUM_PASSES) << "% \r";
+    //    std::cout.flush();
+    //  }
+    //}
+    //std::cout << std::endl;
+    //stop = std::chrono::high_resolution_clock::now();
+    //ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+    //std::cout << ms << " ms for " << NUM_PASSES << " times of command buffer execution " << std::endl;
 
-    vkResetCommandBuffer(commandBuffer, 0);
-    vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    pGPUImpl->StupidPathTraceCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, 6, nullptr, nullptr);  // !!! USING GENERATED CODE !!! 
-    vkEndCommandBuffer(commandBuffer);  
-    
-    start = std::chrono::high_resolution_clock::now();
-    const int NUM_PASSES = 1000.0f;
-    for(int i=0;i<NUM_PASSES;i++)
-    {
-      vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
-      if(i % 100 == 0)
-      {
-        std::cout << "progress (gpu) = " << 100.0f*float(i)/float(NUM_PASSES) << "% \r";
-        std::cout.flush();
-      }
-    }
-    std::cout << std::endl;
-
-    stop = std::chrono::high_resolution_clock::now();
-    ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-    std::cout << ms << " ms for " << NUM_PASSES << " times of command buffer execution " << std::endl;
-
-    std::vector<float4> pixelsf(WIN_WIDTH*WIN_HEIGHT);
-    pCopyHelper->ReadBuffer(colorBuffer2, 0, pixelsf.data(), pixelsf.size()*sizeof(float4));
-       
-    const float normConst = 1.0f/float(NUM_PASSES);
-    const float invGamma  = 1.0f / 2.2f;
-  
-    for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
-    {
-      float4 color = pixelsf[i]*normConst;
-      color.x      = powf(color.x, invGamma);
-      color.y      = powf(color.y, invGamma);
-      color.z      = powf(color.z, invGamma);
-      color.w      = 1.0f;
-      pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
-    }
-    SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-
-    std::cout << std::endl;
+    //std::vector<float4> pixelsf(WIN_WIDTH*WIN_HEIGHT);
+    //pCopyHelper->ReadBuffer(colorBuffer2, 0, pixelsf.data(), pixelsf.size()*sizeof(float4));
+    //   
+    //const float normConst = 1.0f/float(NUM_PASSES);
+    //const float invGamma  = 1.0f / 2.2f;
+    //
+    //for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
+    //{
+    //  float4 color = pixelsf[i]*normConst;
+    //  color.x      = powf(color.x, invGamma);
+    //  color.y      = powf(color.y, invGamma);
+    //  color.z      = powf(color.z, invGamma);
+    //  color.w      = 1.0f;
+    //  pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
+    //}
+    //SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    //
+    //std::cout << std::endl;
   }
   
   // (6) destroy and free resources before exit

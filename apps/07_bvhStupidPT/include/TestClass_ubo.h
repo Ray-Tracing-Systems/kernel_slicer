@@ -1,6 +1,8 @@
 #ifndef TestClass_UBO_H
 #define TestClass_UBO_H
 
+#include "OpenCLMath.h"
+
 struct TestClass_UBO_Data
 {
   float4x4 m_worldViewProjInv;

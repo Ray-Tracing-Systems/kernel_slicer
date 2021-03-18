@@ -143,8 +143,11 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
 }
 
-static bool RayBoxIntersection(float3 ray_pos, float3 ray_dir, float3 boxMin, float3 boxMax, float tmin, float tmax)
+static bool RayBoxIntersection(float4 ray_pos, float4 ray_dir, float3 boxMin, float3 boxMax)
 {
+  float tmin = ray_pos.w;
+  float tmax = ray_dir.w;
+
   ray_dir.x = 1.0f/ray_dir.x;
   ray_dir.y = 1.0f/ray_dir.y;
   ray_dir.z = 1.0f/ray_dir.z;
@@ -170,18 +173,10 @@ static bool RayBoxIntersection(float3 ray_pos, float3 ray_dir, float3 boxMin, fl
   return (tmin <= tmax) && (tmax > 0.f);
 }
 
-static Lite_Hit IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float4 rayDirAndFar,
-                                      __global const uint* a_indices, uint a_start, uint a_count, __global const float4* a_vert)
+static void IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float4 rayDirAndFar,
+                                         __global const uint* a_indices, uint a_start, uint a_count, __global const float4* a_vert,
+                                         Lite_Hit* pHit)
 {
-  const float tNear    = rayPosAndNear[3];
-
-  const float4 ray_pos = rayPosAndNear;
-  const float4 ray_dir = rayDirAndFar;
-
-  Lite_Hit result;
-  result.t      = rayDirAndFar[3];
-  result.primId = -1;
-
   const uint triAddressEnd = a_start + a_count;
   for (uint triAddress = a_start; triAddress < triAddressEnd; triAddress = triAddress + 3u)
   {
@@ -195,81 +190,51 @@ static Lite_Hit IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const f
 
     const float4 edge1 = B_pos - A_pos;
     const float4 edge2 = C_pos - A_pos;
-    const float4 pvec  = cross(ray_dir, edge2);
-    const float4 tvec  = ray_pos - A_pos;
+    const float4 pvec  = cross(rayDirAndFar, edge2);
+    const float4 tvec  = rayPosAndNear - A_pos;
     const float4 qvec  = cross(tvec, edge1);
     const float dotTmp = dot(to_float3(edge1), to_float3(pvec));
     const float invDet = 1.0f / (dotTmp > 1e-6f ? dotTmp : 1e-6f);
 
     const float v = dot(to_float3(tvec), to_float3(pvec))*invDet;
-    const float u = dot(to_float3(qvec), to_float3(ray_dir))*invDet;
+    const float u = dot(to_float3(qvec), to_float3(rayDirAndFar))*invDet;
     const float t = dot(to_float3(edge2), to_float3(qvec))*invDet;
 
-    if (v > -1e-6f && u > -1e-6f && (u + v < 1.0f + 1e-6f) && t > tNear && t < result.t)
+    if (v > -1e-6f && u > -1e-6f && (u + v < 1.0f + 1e-6f) && t > rayPosAndNear.w && t < pHit->t)
     {
-      result.t      = t;
-      result.primId = triAddress/3;
+      pHit->t      = t;
+      pHit->primId = triAddress/3;
     }
   }
 
-  return result;
 }
 
 bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                                 Lite_Hit* out_hit, const uint* indicesReordered, const float4* meshVerts)
 {
-  const float3 rayPos = to_float3(*rayPosAndNear);
-  const float3 rayDir = to_float3(*rayDirAndFar );
+  float4 rayPos = *rayPosAndNear;
+  float4 rayDir = *rayDirAndFar ;
 
   Lite_Hit res;
   res.primId = -1;
   res.instId = -1;
   res.geomId = -1;
-  res.t      = MAXFLOAT;
-  float min_t = 1e38f;
-  uint nodeIdx = 0;
-  struct BVHNode currNode = m_nodes[nodeIdx];
-  while(true)
-  {
-    float tmin = 1e38f;
-    float tmax = 0;
-    const bool intersects = RayBoxIntersection(rayPos, rayDir, currNode.boxMin, currNode.boxMax, tmin, tmax);
-    if(currNode.leftOffset != 0xFFFFFFFF)
-    {
-      if(intersects)
-      {
-        nodeIdx = currNode.leftOffset;
-      }
-      else
-      {
-        if(currNode.escapeIndex == 0xFFFFFFFE)
-          break;
-        nodeIdx = currNode.escapeIndex;
-      }
-    }
-    else //leaf
-    {
-      if(intersects)
-      {
-        //instersect all primitives
-        struct Interval startCount = m_intervals[nodeIdx];
-        float4 rp = *rayPosAndNear;
-        float4 rd = *rayDirAndFar;
-        const Lite_Hit localHit =  IntersectAllPrimitivesInLeaf(rp, rd, indicesReordered,
-                                                                startCount.start*3, startCount.count*3,
-                                                                meshVerts);
-        if (localHit.t < min_t)
-        {
-          min_t = localHit.t;
-          res = localHit;
-        }
-      }
+  res.t      = rayDir.w;
 
-      if(currNode.escapeIndex == 0xFFFFFFFE)
-        break;
-      nodeIdx = currNode.escapeIndex;
+  uint nodeIdx = 0;
+  while(nodeIdx < 0xFFFFFFFE)
+  {
+    const struct BVHNode currNode = m_nodes[nodeIdx];
+    const bool intersects         = RayBoxIntersection(rayPos, rayDir, currNode.boxMin, currNode.boxMax);
+
+    if(intersects && currNode.leftOffset == 0xFFFFFFFF) //leaf
+    {
+      struct Interval startCount = m_intervals[nodeIdx];
+      IntersectAllPrimitivesInLeaf(rayPos, rayDir, indicesReordered, startCount.start*3, startCount.count*3, meshVerts, 
+                                   &res);
     }
-    currNode = m_nodes[nodeIdx];
+
+    nodeIdx = (currNode.leftOffset == 0xFFFFFFFF || !intersects) ? currNode.escapeIndex : currNode.leftOffset;
   }
   
   *out_hit = res;
@@ -420,12 +385,14 @@ void test_class_cpu()
   test.LoadScene("lucy.bvh", "lucy.vsgf");
   // test simple ray casting
   //
+  #pragma omp parallel for default(shared)
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
     test.CastSingleRay(i, packedXY.data(), pixelData.data());
 
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   //return;
 
+  /*
   // now test path tracing
   //
   const int PASS_NUMBER = 100;
@@ -462,6 +429,7 @@ void test_class_cpu()
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }
   SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+  */
 
   return;
 }
