@@ -343,7 +343,7 @@ bool kslicer::KernelRewriter::VisitUnaryOperator(UnaryOperator* expr)
       else
       {
         std::string leftStr2   = RecursiveRewrite(expr->getSubExpr()); 
-        std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim());
+        std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim(), m_currKernel.wgSize);
         m_rewriter.ReplaceText(expr->getSourceRange(), leftStr2 + "Shared[" + localIdStr + "]++");
         MarkRewritten(expr);
       }
@@ -439,7 +439,7 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
     else if(WasNotRewrittenYet(expr))
     {
       std::string rightStr2  = RecursiveRewrite(rhs);
-      std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim());
+      std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim(), m_currKernel.wgSize);
       if(access.leftIsArray)
         m_rewriter.ReplaceText(expr->getSourceRange(), access.arrayName + "Shared[" + access.arrayIndex + "][" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + rightStr2);
       else
@@ -583,7 +583,7 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
     
     const std::string leftStr2   = RecursiveRewrite(arg0);
     const std::string rightStr2  = RecursiveRewrite(arg1);
-    const std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim());
+    const std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim(), m_currKernel.wgSize);
     const std::string left       = leftStr2 + "Shared[" + localIdStr + "]";
     fname = m_codeInfo->pShaderCC->ReplaceCallFromStdNamespace(fname, argsType);
     m_rewriter.ReplaceText(expr->getSourceRange(), left + " = " + fname + "(" + left + ", " + rightStr2 + ")" ); 

@@ -86,9 +86,9 @@ std::array<LiteMath::float3, 9> process_image_gpu(std::vector<uint32_t>& a_inPix
 
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 
-  auto pGPUImpl = std::make_shared<SphHarm_GPU>();                                  // !!! USING GENERATED CODE !!! 
-  pGPUImpl->InitVulkanObjects(device, physicalDevice, a_inPixels.size(), 32, 8, 1); // !!! USING GENERATED CODE !!!
-  pGPUImpl->InitMemberBuffers();                                                    // !!! USING GENERATED CODE !!!
+  auto pGPUImpl = std::make_shared<SphHarm_GPU>();                        // !!! USING GENERATED CODE !!! 
+  pGPUImpl->InitVulkanObjects(device, physicalDevice, a_inPixels.size()); // !!! USING GENERATED CODE !!!
+  pGPUImpl->InitMemberBuffers();                                          // !!! USING GENERATED CODE !!!
 
   // (3) Create buffer
   //

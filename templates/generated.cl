@@ -34,7 +34,8 @@
 /////////////////// kernels /////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 
-## for Kernel in Kernels  
+## for Kernel in Kernels 
+__attribute__((reqd_work_group_size({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}}))) 
 __kernel void {{Kernel.Name}}(
 ## for Arg in Kernel.Args 
   __global {{Arg.Type}} restrict {{Arg.Name}},
@@ -55,16 +56,16 @@ __kernel void {{Kernel.Name}}(
   {% else %}
   {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                        {# BEG. REDUCTION INIT #}
   {% for redvar in Kernel.SubjToRed %} 
-  __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
+  __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}}]; 
   {% endfor %}
   {% for redvar in Kernel.ArrsToRed %} 
-  __local {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][{{Kernel.WGSizeX}}]; 
+  __local {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][{{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}}]; 
   {% endfor %}
   {
     {% if Kernel.threadDim == 1 %}
     const uint localId = get_local_id(0); 
     {% else %}
-    const uint localId = get_local_id(0) + get_local_size(0)*get_local_id(1); 
+    const uint localId = get_local_id(0) + {{Kernel.WGSizeX}}*get_local_id(1); 
     {% endif %}
     {% for redvar in Kernel.SubjToRed %} 
     {{redvar.Name}}Shared[localId] = {{redvar.Init}}; 
@@ -117,7 +118,7 @@ __kernel void {{Kernel.Name}}(
     {% if Kernel.threadDim == 1 %}
     const uint localId = get_local_id(0); 
     {% else %}
-    const uint localId = get_local_id(0) + get_local_size(0)*get_local_id(1); 
+    const uint localId = get_local_id(0) + {{Kernel.WGSizeX}}*get_local_id(1); 
     {% endif %}
     SYNCTHREADS;
     {% for offset in Kernel.RedLoop1 %} 
@@ -193,9 +194,11 @@ __kernel void {{Kernel.Name}}(
   }                                                                                             {# END. REDUCTION PASS #}
   {% endif %}
   {% endif %}
+
 }
 {% if Kernel.FinishRed %}
 
+__attribute__((reqd_work_group_size(256, 1, 1)))
 __kernel void {{Kernel.Name}}_Reduction(
 ## for Arg in Kernel.Args 
   __global {{Arg.Type}} restrict {{Arg.Name}},
@@ -214,12 +217,12 @@ __kernel void {{Kernel.Name}}_Reduction(
 
   {% for redvar in Kernel.SubjToRed %}
   {% if not redvar.SupportAtomic %}
-  __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}]; 
+  __local {{redvar.Type}} {{redvar.Name}}Shared[256]; 
   {{redvar.Name}}Shared[localId] = (globalId < {{Kernel.threadIdName1}}) ?  {{ redvar.OutTempName }}[{{Kernel.threadIdName2}} + globalId]  :  {{redvar.Init}}; // use {{Kernel.threadIdName2}} for 'InputOffset'
   {% endif %}
   {% endfor %}
   {% for redvar in Kernel.ArrsToRed %}
-  __local {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][{{Kernel.WGSizeX}}]; 
+  __local {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][256]; 
   {% for outName in redvar.OutTempNameA %}
   {% if not redvar.SupportAtomic %}
   {{redvar.Name}}Shared[{{loop.index}}][localId] = (globalId < {{Kernel.threadIdName1}}) ? {{ outName }}[{{Kernel.threadIdName2}} + globalId] : {{redvar.Init}}; // use {{Kernel.threadIdName2}} for 'InputOffset'
@@ -332,6 +335,7 @@ __kernel void {{Kernel.Name}}_Reduction(
 
 ## endfor
 
+__attribute__((reqd_work_group_size(256, 1, 1)))
 __kernel void copyKernelFloat(
   __global float* restrict out_data,
   __global float* restrict in_data,

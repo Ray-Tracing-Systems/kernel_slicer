@@ -304,6 +304,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     kernelJson["RedVarsFPNum"] = reductionVarNames.size();
     kernelJson["RedVarsFPArr"] = reductionVarNames;
 
+    kernelJson["WGSizeX"]      = k.wgSize[0]; //
+    kernelJson["WGSizeY"]      = k.wgSize[1]; // 
+    kernelJson["WGSizeZ"]      = k.wgSize[2]; // 
+
     data["Kernels"].push_back(kernelJson);
   }
   
@@ -688,7 +692,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     json kernelJson;
     kernelJson["RedLoop1"] = std::vector<std::string>();
     kernelJson["RedLoop2"] = std::vector<std::string>();
-    for (uint c = k.injectedWgSize[0]/2; c>k.warpSize; c/=2)
+
+    const uint32_t blockSize = k.wgSize[0]*k.wgSize[1]*k.wgSize[2];
+    for (uint c = blockSize/2; c>k.warpSize; c/=2)
       kernelJson["RedLoop1"].push_back(c);
     for (uint c = k.warpSize; c>0; c/=2)
       kernelJson["RedLoop2"].push_back(c);
@@ -734,9 +740,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["threadIdName2"] = tidNames[1]; 
     kernelJson["threadIdName3"] = tidNames[2]; 
 
-    kernelJson["WGSizeX"]       = k.injectedWgSize[0]; // injected wourg group size for circle 
-    kernelJson["WGSizeY"]       = k.injectedWgSize[1]; // 
-    kernelJson["WGSizeZ"]       = k.injectedWgSize[2]; // 
+    kernelJson["WGSizeX"]       = k.wgSize[0]; //
+    kernelJson["WGSizeY"]       = k.wgSize[1]; // 
+    kernelJson["WGSizeZ"]       = k.wgSize[2]; // 
 
     //////////////////////////////////////////////////////////////////////////////////////////
  
@@ -757,6 +763,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["HasEpilog"] = false;
       kernelJson["FinishRed"] = false;
       kernelJson["InitKPass"] = true;
+      kernelJson["WGSizeX"]   = 1;
+      kernelJson["WGSizeY"]   = 1;
+      kernelJson["WGSizeZ"]   = 1;
       data["Kernels"].push_back(kernelJson);
     }
 
@@ -770,6 +779,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["HasEpilog"] = false;
       kernelJson["FinishRed"] = false;
       kernelJson["InitKPass"] = true;
+      kernelJson["WGSizeX"]   = 1;
+      kernelJson["WGSizeY"]   = 1;
+      kernelJson["WGSizeZ"]   = 1;
       data["Kernels"].push_back(kernelJson);
     }
   }
