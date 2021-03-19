@@ -764,6 +764,14 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["checkFlagsExpr"]      = "//xxx//";
     kernelJson["ThreadOffset"]        = kslicer::GetFakeOffsetExpression(k, a_classInfo.GetKernelTIDArgs(k));
     kernelJson["InitKPass"]           = false;
+    kernelJson["IsIndirect"]          = k.isIndirect;
+    if(k.isIndirect)
+    {
+      kernelJson["IndirectSizeX"]  = "XXX";
+      kernelJson["IndirectSizeY"]  = "YYY";
+      kernelJson["IndirectSizeZ"]  = "ZZZ";
+      kernelJson["IndirectOffset"] = 0; 
+    }
 
     auto original = kernelJson;
     
