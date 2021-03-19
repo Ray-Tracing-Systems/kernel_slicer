@@ -324,10 +324,14 @@ namespace kslicer
       {
         ReplaceFirst(call, "std::min", "fmin");
         ReplaceFirst(call, "std::max", "fmax");
+        ReplaceFirst(call, "std::abs", "fabs");
+        
         if(call == "min")
           ReplaceFirst(call, "min", "fmin");
         if(call == "max")
-          ReplaceFirst(call, "max", "fmax"); 
+          ReplaceFirst(call, "max", "fmax");
+        if(call == "abs")
+          ReplaceFirst(call, "abs", "fabs"); 
       }
       ReplaceFirst(call, "std::", "");
       return call;
