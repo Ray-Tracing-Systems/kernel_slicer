@@ -155,20 +155,20 @@ static bool RayBoxIntersection(float4 ray_pos, float4 ray_dir, const float boxMi
   float lo = ray_dir.x*(boxMin[0] - ray_pos.x);
   float hi = ray_dir.x*(boxMax[0] - ray_pos.x);
 
-  tmin = fmin(lo, hi);
-  tmax = fmax(lo, hi);
+  tmin = std::min(lo, hi);
+  tmax = std::max(lo, hi);
 
   float lo1 = ray_dir.y*(boxMin[1] - ray_pos.y);
   float hi1 = ray_dir.y*(boxMax[1] - ray_pos.y);
 
-  tmin = fmax(tmin, fmin(lo1, hi1));
-  tmax = fmin(tmax, fmax(lo1, hi1));
+  tmin = std::max(tmin, std::min(lo1, hi1));
+  tmax = std::min(tmax, std::max(lo1, hi1));
 
   float lo2 = ray_dir.z*(boxMin[2] - ray_pos.z);
   float hi2 = ray_dir.z*(boxMax[2] - ray_pos.z);
 
-  tmin = fmax(tmin, fmin(lo2, hi2));
-  tmax = fmin(tmax, fmax(lo2, hi2));
+  tmin = std::max(tmin, std::min(lo2, hi2));
+  tmax = std::min(tmax, std::max(lo2, hi2));
 
   return (tmin <= tmax) && (tmax > 0.f);
 }

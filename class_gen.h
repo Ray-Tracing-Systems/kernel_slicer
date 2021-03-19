@@ -132,6 +132,42 @@ namespace kslicer
 
     inline void MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
   };
+
+  class FunctionRewriter : public RecursiveASTVisitor<FunctionRewriter> // 
+  {
+  public:
+    
+    FunctionRewriter(Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) : 
+                     m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo)
+    { 
+      
+    }
+
+    bool VisitCallExpr(CallExpr* f);
+    bool VisitCXXConstructExpr(CXXConstructExpr* call);
+
+  private:
+
+    Rewriter&                                                m_rewriter;
+    const clang::CompilerInstance&                           m_compiler;
+    MainClassInfo*                                           m_codeInfo;
+    std::unordered_set<uint64_t>                             m_rewrittenNodes;
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    std::string FunctionCallRewrite(const CallExpr* call);
+    std::string FunctionCallRewrite(const CXXConstructExpr* call);
+    std::string RecursiveRewrite   (const Stmt* expr); // double/multiple pass rewrite purpose
+
+    inline bool WasNotRewrittenYet(const clang::Stmt* expr)
+    {
+      auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+      return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
+    }
+
+    inline void MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
+  };
+  
   
   class NodesMarker : public RecursiveASTVisitor<NodesMarker> // mark all subsequent nodes to be rewritten, put their ash codes in 'rewrittenNodes'
   {

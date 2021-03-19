@@ -1,4 +1,10 @@
 #include "template_rendering.h"
+#include "class_gen.h"
+
+#include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/Rewrite/Frontend/Rewriters.h"
+#include "clang/Rewrite/Core/Rewriter.h"
+
 #include <inja.hpp>
 #include <algorithm>
 
@@ -560,9 +566,17 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   // (3) local functions
   //
   data["LocalFunctions"] = std::vector<std::string>();
-  for (const auto& f : usedFunctions)  
-    data["LocalFunctions"].push_back(kslicer::GetRangeSourceCode(f.srcRange, compiler));
+  {
+    clang::Rewriter rewrite2;
+    rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+    kslicer::FunctionRewriter rv(rewrite2, compiler, &a_classInfo);
 
+    for (const auto& f : usedFunctions) 
+    { 
+      rv.TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
+      data["LocalFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
+    }
+  }
   data["LocalFunctions"].push_back("uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }                                      // for 2D threading");
   data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");
 

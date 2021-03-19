@@ -97,7 +97,7 @@ std::string kslicer::KernelRewriter::FunctionCallRewrite(const CallExpr* call)
 {
   const FunctionDecl* fDecl = call->getDirectCallee();  
   if(fDecl == nullptr)             // definitely can't process nullpointer 
-    return "[FunctionCallRewrite_ERROR]";
+    return "[KernelRewriter::FunctionCallRewrite_ERROR]";
  
   std::string textRes = fDecl->getNameInfo().getName().getAsString(); //m_codeInfo->pShaderCC->ReplaceCallFromStdNamespace(fname, argsType);
       
@@ -595,27 +595,8 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
 
 std::string kslicer::KernelRewriter::RecursiveRewrite(const Stmt* expr)
 {
-  std::string debugMeIn = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  //std::string debugMeIn = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
   KernelRewriter rvCopy = *this;
-
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
-  std::string outRes = m_rewriter.getRewrittenText(expr->getSourceRange());
-  return outRes;
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool kslicer::NodesMarker::VisitStmt(Stmt* expr)
-{
-  auto hash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
-  m_rewrittenNodes.insert(hash);
-  return true;
-}
-
-void kslicer::MarkRewrittenRecursive(const clang::Stmt* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes)
-{
-  kslicer::NodesMarker rv(a_rewrittenNodes); 
-  rv.TraverseStmt(const_cast<clang::Stmt*>(currNode));
+  return m_rewriter.getRewrittenText(expr->getSourceRange());
 }

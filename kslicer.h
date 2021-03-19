@@ -319,10 +319,15 @@ namespace kslicer
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override
     {
       std::string call = a_call;
-      if(a_typeName == "float" || a_typeName == "const float")
+      if(a_typeName == "float" || a_typeName == "const float" || a_typeName == "float2" || a_typeName == "const float2" ||
+         a_typeName == "float3" || a_typeName == "const float3" || a_typeName == "float4" || a_typeName == "const float4")
       {
         ReplaceFirst(call, "std::min", "fmin");
-        ReplaceFirst(call, "std::max", "fmax"); 
+        ReplaceFirst(call, "std::max", "fmax");
+        if(call == "min")
+          ReplaceFirst(call, "min", "fmin");
+        if(call == "max")
+          ReplaceFirst(call, "max", "fmax"); 
       }
       ReplaceFirst(call, "std::", "");
       return call;

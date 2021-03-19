@@ -26,6 +26,7 @@ add_executable(kslicer
                extractor.cpp
                initial_pass.cpp
                template_rendering.cpp
+               rewrite_functions.cpp
                rewrite_kernel.cpp
                rewrite_control.cpp
                reduction.cpp
