@@ -55,20 +55,15 @@ void kslicer::IPV_Pattern::ProcessKernelArg(KernelInfo::Arg& arg, const KernelIn
 std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::IPV_Pattern::GetKernelTIDArgs(const KernelInfo& a_kernel) const 
 {
   std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> args;
-  for (const auto& arg : a_kernel.args) 
+  for (uint32_t i = 0; i < a_kernel.loopIters.size(); i++) 
   {    
-    if(arg.isLoopSize)
-    { 
-      auto found = std::find_if(a_kernel.loopIters.begin(), a_kernel.loopIters.end(), 
-                                [&](const auto& val){ return arg.name == val.sizeExpr; });
-
-      ArgTypeAndNamePair arg2;
-      arg2.argName  = found->name;
-      arg2.sizeName = found->sizeExpr;
-      arg2.typeName = RemoveTypeNamespaces(found->type);
-      arg2.id       = found - a_kernel.loopIters.begin();
-      args.push_back(arg2);
-    }
+    const auto& arg = a_kernel.loopIters[i];
+    ArgTypeAndNamePair arg2;
+    arg2.argName  = arg.name;
+    arg2.sizeName = arg.sizeExpr;
+    arg2.typeName = RemoveTypeNamespaces(arg.type);
+    arg2.id       = i;
+    args.push_back(arg2);
   }
 
   std::sort(args.begin(), args.end(), [](const auto& a, const auto & b) { return a.id < b.id; });

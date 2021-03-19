@@ -422,8 +422,8 @@ namespace kslicer
     virtual std::string RemoveKernelPrefix(const std::string& a_funcName) const;                       ///<! "kernel_XXX" --> "XXX"; 
     virtual bool        IsKernel(const std::string& a_funcName) const;                                 ///<! return true if function is a kernel
     virtual void        ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const { }   ///<!  
-
-
+    virtual bool        IsIndirect(const KernelInfo& a_kernel) const; 
+   
     //// Processing Control Functions (CF)
     // 
     virtual MList         ListMatchers_CF(const std::string& mainFuncName) = 0;

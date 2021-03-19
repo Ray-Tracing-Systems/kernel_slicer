@@ -495,7 +495,10 @@ int main(int argc, const char **argv)
     for(auto& arg : kernel.args) // it is important to run this loop after second stage at which kernel matchers are applied!
       inputCodeInfo.ProcessKernelArg(arg, kernel);
 
+    kernel.isIndirect = inputCodeInfo.IsIndirect(kernel);
+
     inputCodeInfo.VisitAndPrepare_KF(kernel, compiler);
+    
     if(kernel.hasFinishPass) // add additional buffers for reduction
     {
       uint32_t buffNumber = 0;
