@@ -74,8 +74,8 @@ void RedPixels::kernel1D_FindRedPixels(const uint32_t* a_data, size_t a_dataSize
 
 void RedPixels::kernel1D_PaintRedPixelsToYellow(uint32_t* a_data)
 {
-  for(uint32_t i = 0; i<m_foundPixels.size(); i++)
-    a_data[m_foundPixels[i].index] = 0x0000FFFF;
+  for(uint32_t pixelId = 0; pixelId < m_foundPixels.size(); pixelId++)
+    a_data[m_foundPixels[pixelId].index] = 0x0000FFFF;
 }
 
 void RedPixels::kernel1D_CopyPixels(const uint32_t* a_data, size_t a_dataSize, PixelInfo* a_outPixels)
@@ -110,7 +110,7 @@ void RedPixels::ProcessPixels(uint32_t* a_data, size_t a_dataSize)
   //kernel1D_CopyPixels(a_data, a_dataSize, m_pixelsCopy.data());
   //m_foundPixels = filter(m_pixelsCopy, [](const auto& pixel) { return PixelIsRed(pixel.value); } );
 
-  //kernel1D_PaintRedPixelsToYellow(a_data);
+  kernel1D_PaintRedPixelsToYellow(a_data);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

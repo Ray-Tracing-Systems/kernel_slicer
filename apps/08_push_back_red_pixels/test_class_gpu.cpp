@@ -94,9 +94,7 @@ void process_image_gpu(std::vector<uint32_t>& a_inPixels)
   //
   const size_t bufferSizeLDR = a_inPixels.size()*sizeof(uint32_t);
   VkBuffer colorBufferLDR    = vkfw::CreateBuffer(device, bufferSizeLDR,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  VkBuffer colorBufferOUT    = vkfw::CreateBuffer(device, bufferSizeLDR,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-
-  VkDeviceMemory colorMem    = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {colorBufferLDR, colorBufferOUT});
+  VkDeviceMemory colorMem    = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {colorBufferLDR});
 
   pGPUImpl->SetVulkanInOutFor_ProcessPixels(colorBufferLDR, 0); // <==
   pGPUImpl->UpdateAll(pCopyHelper);                             // !!! USING GENERATED CODE !!!
@@ -140,10 +138,7 @@ void process_image_gpu(std::vector<uint32_t>& a_inPixels)
     //fout << i << ":\t" << fredBufferData[i] << std::endl;
     //fout.close();
     
-    //std::vector<unsigned int> pixels(w*h);
-    //pCopyHelper->ReadBuffer(colorBufferOUT, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
-    //SaveBMP(a_outName, pixels.data(), w, h);
-
+    pCopyHelper->ReadBuffer(colorBufferLDR, 0, a_inPixels.data(), a_inPixels.size()*sizeof(unsigned int));
     std::cout << std::endl;
   }
   
@@ -153,7 +148,6 @@ void process_image_gpu(std::vector<uint32_t>& a_inPixels)
   pGPUImpl = nullptr;                                                       // !!! USING GENERATED CODE !!! 
 
   vkDestroyBuffer(device, colorBufferLDR, nullptr);
-  vkDestroyBuffer(device, colorBufferOUT, nullptr);
   vkFreeMemory(device, colorMem, nullptr);
 
   vkDestroyCommandPool(device, commandPool, nullptr);
