@@ -675,6 +675,52 @@ int main(int argc, const char **argv)
     buildSH << "#!/bin/sh" << std::endl;
     std::string build = inputCodeInfo.pShaderCC->BuildCommand();
     buildSH << build.c_str() << std::endl;
+
+    // clspv unfortunately force use to use this hacky way to set desired destcripror set (see -distinct-kernel-descriptor-sets option of clspv).
+    // we create for each kernel with indirect dispatch seperate file with first dummy kernel (which will be bound to zero-th descriptor set)
+    // and our XXX_IndirectUpdate kerner which in that way will be bound to the first descriptor set.  
+    //
+    if(inputCodeInfo.m_indirectBufferSize != 0) 
+    {
+      nlohmann::json copy, kernels;
+      for (auto& el : json.items())
+      {
+        //std::cout << el.key() << std::endl;
+        if(std::string(el.key()) == "Kernels")
+          kernels = json[el.key()];
+        else
+          copy[el.key()] = json[el.key()];
+      }
+
+      std::string folderPath = GetFolderPath(inputCodeInfo.mainClassFileName);
+      std::string shaderPath = folderPath + "/" + inputCodeInfo.pShaderCC->ShaderFolder();
+      #ifdef WIN32
+      mkdir(shaderPath.c_str());
+      #else
+      mkdir(shaderPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+      #endif
+
+      for(auto& kernel : kernels.items())
+      {
+        if(kernel.value()["IsIndirect"])
+        {
+          nlohmann::json currKerneJson = copy;
+          currKerneJson["Kernels"] = std::vector<std::string>();
+          currKerneJson["Kernels"].push_back(kernel.value());
+
+          std::string outFileName = std::string(kernel.value()["Name"]) + ".cl";
+          std::string outFilePath = shaderPath + "/" + outFileName;
+       
+          std::ofstream file("debug.json");
+          file << currKerneJson.dump(2);
+
+          kslicer::ApplyJsonToTemplate("templates/indirect.cl", outFilePath, currKerneJson);
+          buildSH << "../clspv " << outFilePath.c_str() << " -o " << outFilePath.c_str() << ".spv -pod-pushconstant -distinct-kernel-descriptor-sets -I." << std::endl;
+        }
+      }
+
+    }
+
     buildSH.close();
   }
   else // if need to compile each kernel inside separate file

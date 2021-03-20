@@ -299,7 +299,7 @@ namespace kslicer
 
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo->") + a_name; };
     bool        IsSingleSource()   const override { return true; }
-    std::string ShaderFolder()     const override { return ""; }
+    std::string ShaderFolder()     const override { return "clspv_shaders_aux"; }
     std::string ShaderSingleFile() const override { return "z_generated.cl"; }
     std::string TemplatePath()     const override { return "templates/generated.cl"; }
     std::string BuildCommand()     const override { return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-pushconstant"; } 
