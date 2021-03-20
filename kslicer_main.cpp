@@ -496,6 +496,11 @@ int main(int argc, const char **argv)
       inputCodeInfo.ProcessKernelArg(arg, kernel);
 
     kernel.isIndirect = inputCodeInfo.IsIndirect(kernel);
+    if(kernel.isIndirect)
+    {
+      kernel.indirectBlockOffset = inputCodeInfo.m_indirectBufferSize;
+      inputCodeInfo.m_indirectBufferSize++;
+    }
 
     inputCodeInfo.VisitAndPrepare_KF(kernel, compiler);
     

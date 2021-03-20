@@ -38,8 +38,7 @@
 {% if Kernel.IsIndirect %}
 // indirect update kernel for {{Kernel.Name}}
 __attribute__((reqd_work_group_size(1, 1, 1)))
-__kernel void {{Kernel.Name}}_UpdateIndirect(__global struct {{MainClassName}}_UBO_Data* restrict ubo, 
-                                             __global uint4* indirectBuffer)
+__kernel void {{Kernel.Name}}_UpdateIndirect(__global struct {{MainClassName}}_UBO_Data* restrict ubo, __global uint4* indirectBuffer)
 {
   uint4 blocksNum = {0,0,0,0};
   blocksNum.x = ({{Kernel.IndirectSizeX}} + {{Kernel.WGSizeX}} - 1)/{{Kernel.WGSizeX}};
@@ -121,7 +120,9 @@ __kernel void {{Kernel.Name}}(
   {% endif %}
   {% endif %}
   ///////////////////////////////////////////////////////////////// prolog
-{{Kernel.Source}}
+  {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
+  {{Kernel.Source}}
+  {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {% if Kernel.HasEpilog %}
   KGEN_EPILOG:
   {% if Kernel.IsBoolean %}

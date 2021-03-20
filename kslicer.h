@@ -104,8 +104,8 @@ namespace kslicer
     uint32_t wgSize[3] = {256,1,1};              ///<! workgroup size for the case when setting wgsize with spec constant is not allowed
     uint32_t warpSize  = 32;                     ///<! warp size in which we can rely on to omit sync in reduction and e.t.c.
 
-    bool      isIndirect      = false;           ///<! IPV pattern (currently); if loop size is defined by class member variable or vector size, we interpret it as indirect dispatching
-    uint32_t  indirectBlockId = 0;               ///<! IPV pattern (currently); for such kernels we have to know some offset in indirect buffer for thread blocks number (use int4 data for each kernel)
+    bool      isIndirect = false;                ///<! IPV pattern (currently); if loop size is defined by class member variable or vector size, we interpret it as indirect dispatching
+    uint32_t  indirectBlockOffset = 0;           ///<! IPV pattern (currently); for such kernels we have to know some offset in indirect buffer for thread blocks number (use int4 data for each kernel)
   };
 
   enum class DATA_USAGE{ USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
@@ -414,6 +414,8 @@ namespace kslicer
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
 
     std::shared_ptr<IShaderCompiler>      pShaderCC = nullptr;
+    
+    uint32_t                              m_indirectBufferSize = 0; ///<! size of indirect buffer
 
     typedef std::vector<clang::ast_matchers::StatementMatcher>               MList;
     typedef std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> MHandlerCFPtr;
@@ -530,6 +532,7 @@ namespace kslicer
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler);
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::SourceManager& sm);
   std::string CutOffFileExt(const std::string& a_filePath);
+  std::string ReplaceSizeCapacityExpr(const std::string& a_str);
 
   uint64_t GetHashOfSourceRange(const clang::SourceRange& a_range);
   static constexpr size_t READ_BEFORE_USE_THRESHOLD = sizeof(float)*4;

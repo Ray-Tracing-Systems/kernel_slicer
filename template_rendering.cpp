@@ -767,10 +767,29 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["IsIndirect"]          = k.isIndirect;
     if(k.isIndirect)
     {
-      kernelJson["IndirectSizeX"]  = "XXX";
-      kernelJson["IndirectSizeY"]  = "YYY";
-      kernelJson["IndirectSizeZ"]  = "ZZZ";
-      kernelJson["IndirectOffset"] = 0; 
+      kernelJson["IndirectSizeX"]  = "0";
+      kernelJson["IndirectSizeY"]  = "0";
+      kernelJson["IndirectSizeZ"]  = "0";
+      
+      if(k.loopIters.size() > 0)
+      {
+        std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[0].sizeExpr);
+        kernelJson["IndirectSizeX"] = a_classInfo.pShaderCC->UBOAccess(exprContent); 
+      }
+
+      if(k.loopIters.size() > 1)
+      {
+        std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[1].sizeExpr);
+        kernelJson["IndirectSizeY"] = a_classInfo.pShaderCC->UBOAccess(exprContent); 
+      }
+
+      if(k.loopIters.size() > 2)
+      {
+        std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[2].sizeExpr);
+        kernelJson["IndirectSizeZ"] = a_classInfo.pShaderCC->UBOAccess(exprContent); 
+      }
+
+      kernelJson["IndirectOffset"] = k.indirectBlockOffset; 
     }
 
     auto original = kernelJson;
@@ -809,5 +828,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   }
 
   return data;
+}
+
+std::string kslicer::ReplaceSizeCapacityExpr(const std::string& a_str)
+{
+  const auto posOfPoint = a_str.find(".");
+  if(posOfPoint != std::string::npos)
+  {
+    const std::string memberNameA = a_str.substr(0, posOfPoint);
+    const std::string fname       = a_str.substr(posOfPoint+1);
+    return memberNameA + "_" + fname.substr(0, fname.find("("));
+  }
+  else
+    return a_str;
 }
 

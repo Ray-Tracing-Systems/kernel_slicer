@@ -226,10 +226,10 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   kslicer::KernelRewriter rv(rewrite2, compiler, this, a_funcInfo, "", false);
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
   
-  a_outLoopInitCode   = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit) + ";";
+  a_outLoopInitCode   = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit)   + ";";
   a_outLoopFinishCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesFinish) + ";";
   //std::cout << a_outLoopFinishCode.c_str() << std::endl;
-  return                rewrite2.getRewrittenText(a_funcInfo.loopInsides);
+  return                rewrite2.getRewrittenText(a_funcInfo.loopInsides)        + ";";
 }
 
 void kslicer::IPV_Pattern::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
