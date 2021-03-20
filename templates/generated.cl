@@ -6,7 +6,6 @@
 #include "{{Incl}}"
 ## endfor
 
-
 /////////////////////////////////////////////////////////////////////
 /////////////////// declarations in class ///////////////////////////
 /////////////////////////////////////////////////////////////////////
@@ -82,13 +81,13 @@ __kernel void {{Kernel.Name}}(
   const uint {{name}} = get_global_id({{ loop.index }}); 
   {% endfor %}
   {% if Kernel.threadDim == 3 %}
-  if({{Kernel.threadName1}} >= {{Kernel.threadIdName1}} || {{Kernel.threadName2}} >= {{Kernel.threadIdName2}} || {{Kernel.threadName3}} >= {{Kernel.threadIdName3}})
+  if({{Kernel.threadName1}} >= {{Kernel.IndirectSizeX}} || {{Kernel.threadName2}} >= {{Kernel.IndirectSizeY}} || {{Kernel.threadName3}} >= {{Kernel.IndirectSizeZ}})
     return;
   {% else if Kernel.threadDim == 2 %}
-  if({{Kernel.threadName1}} >= {{Kernel.threadIdName1}} || {{Kernel.threadName2}} >= {{Kernel.threadIdName2}})
+  if({{Kernel.threadName1}} >= {{Kernel.IndirectSizeX}} || {{Kernel.threadName2}} >= {{Kernel.IndirectSizeY}})
     return;
   {% else %}
-  if({{Kernel.threadName1}} >= {{Kernel.threadIdName1}})
+  if({{Kernel.threadName1}} >= {{Kernel.IndirectSizeX}})
     return;
   {% endif %}
   {% if Kernel.shouldCheckExitFlag %}

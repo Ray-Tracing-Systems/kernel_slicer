@@ -790,6 +790,15 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       }
 
       kernelJson["IndirectOffset"] = k.indirectBlockOffset; 
+      kernelJson["threadIdName1"]  = "kgen_iNumElementsX";
+      kernelJson["threadIdName2"]  = "kgen_iNumElementsY";
+      kernelJson["threadIdName3"]  = "kgen_iNumElementsZ";
+    }
+    else
+    {
+      kernelJson["IndirectSizeX"] = tidNames[0]; 
+      kernelJson["IndirectSizeY"] = tidNames[1]; 
+      kernelJson["IndirectSizeZ"] = tidNames[2]; 
     }
 
     auto original = kernelJson;
