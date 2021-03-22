@@ -51,6 +51,17 @@ void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vkfw::ICop
 }
 
 ## for Kernel in Kernels
+{% if Kernel.IsIndirect %}
+void {{MainClassName}}_Generated::{{Kernel.Name}}_UpdateIndirect()
+{
+  VkBufferMemoryBarrier barIndirect = BarrierForIndirectBufferUpdate(m_indirectBuffer);
+  vkCmdBindDescriptorSets(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectUpdateLayout, 0, 1, &m_indirectUpdateDS, 0, nullptr);
+  vkCmdBindPipeline      (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectUpdate{{Kernel.Name}}Pipeline);
+  vkCmdDispatch          (m_currCmdBuffer, 1, 1, 1);
+  vkCmdPipelineBarrier   (m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0, nullptr, 1, &barIndirect, 0, nullptr);
+}
+
+{% endif %}
 void {{MainClassName}}_Generated::{{Kernel.Decl}}
 {
   uint32_t blockSizeX = {{Kernel.WGSizeX}};
@@ -84,18 +95,12 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
   {% endif %}
 
-  {% if Kernel.IsIndirect %}
-  VkBufferMemoryBarrier barIndirect = BarrierForIndirectBufferUpdate(m_indirectBuffer);
-  vkCmdBindDescriptorSets(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectUpdateLayout, 1, 1, &m_indirectUpdateDS, 0, nullptr);
-  vkCmdBindPipeline      (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectUpdate{{Kernel.Name}}Pipeline);
-  vkCmdDispatch          (m_currCmdBuffer, 1, 1, 1);
-  vkCmdPipelineBarrier   (m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0, nullptr, 1, &barIndirect, 0, nullptr);
   vkCmdBindPipeline      (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
+  {% if Kernel.IsIndirect %}
   vkCmdDispatchIndirect  (m_currCmdBuffer, m_indirectBuffer, {{Kernel.IndirectOffset}}*sizeof(uint32_t)*4);
   {% else %}
-  vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   vkCmdDispatch(m_currCmdBuffer, ({{Kernel.tidX}} + blockSizeX - 1) / blockSizeX, ({{Kernel.tidY}} + blockSizeY - 1) / blockSizeY, ({{Kernel.tidZ}} + blockSizeZ - 1) / blockSizeZ);
-
+  
   {% if Kernel.FinishRed %}
   {% if Kernel.HasLoopFinish %}
   KernelArgsPC oldPCData = pcData;

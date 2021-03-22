@@ -86,6 +86,8 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
     }
     
     // m_currThreadFlags
+    if(pKernel->second.isIndirect)
+      strOut << kernName.c_str() << "_UpdateIndirect();" << std::endl << "  ";
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
     if(m_pCodeInfo->NeedThreadFlags())

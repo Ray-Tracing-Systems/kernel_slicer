@@ -121,7 +121,7 @@ protected:
   } m_vdata;
 
   {% if length(IndirectDispatches) > 0 %}
-  void InitIndirectBufferUpdateResources();
+  void InitIndirectBufferUpdateResources(const char* a_filePath);
   void InitIndirectDescriptorSets();
   VkBufferMemoryBarrier BarrierForIndirectBufferUpdate(VkBuffer a_buffer);
   VkBuffer              m_indirectBuffer  = VK_NULL_HANDLE;
@@ -151,7 +151,9 @@ protected:
   {% endif %}  
   VkDescriptorSetLayout Create{{Kernel.Name}}DSLayout();
   void InitKernel_{{Kernel.Name}}(const char* a_filePath);
-
+  {% if Kernel.IsIndirect %}
+  void {{Kernel.Name}}_UpdateIndirect();
+  {% endif %}
 ## endfor
 
   virtual VkBufferUsageFlags GetAdditionalFlagsForUBO();

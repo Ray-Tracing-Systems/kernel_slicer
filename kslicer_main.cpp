@@ -700,24 +700,24 @@ int main(int argc, const char **argv)
       mkdir(shaderPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
       #endif
 
-      for(auto& kernel : kernels.items())
-      {
-        if(kernel.value()["IsIndirect"])
-        {
-          nlohmann::json currKerneJson = copy;
-          currKerneJson["Kernels"] = std::vector<std::string>();
-          currKerneJson["Kernels"].push_back(kernel.value());
-
-          std::string outFileName = std::string(kernel.value()["Name"]) + "_UpdateIndirect" + ".cl";
-          std::string outFilePath = shaderPath + "/" + outFileName;
-       
-          std::ofstream file("debug.json");
-          file << currKerneJson.dump(2);
-
-          kslicer::ApplyJsonToTemplate("templates/indirect.cl", outFilePath, currKerneJson);
-          buildSH << "../clspv " << outFilePath.c_str() << " -o " << outFilePath.c_str() << ".spv -pod-pushconstant -distinct-kernel-descriptor-sets -I." << std::endl;
-        }
-      }
+      //for(auto& kernel : kernels.items())
+      //{
+      //  if(kernel.value()["IsIndirect"])
+      //  {
+      //    nlohmann::json currKerneJson = copy;
+      //    currKerneJson["Kernels"] = std::vector<std::string>();
+      //    currKerneJson["Kernels"].push_back(kernel.value());
+      //
+      //    std::string outFileName = std::string(kernel.value()["Name"]) + "_UpdateIndirect" + ".cl";
+      //    std::string outFilePath = shaderPath + "/" + outFileName;
+      // 
+      //    std::ofstream file("debug.json");
+      //    file << currKerneJson.dump(2);
+      //
+      //    kslicer::ApplyJsonToTemplate("templates/indirect.cl", outFilePath, currKerneJson);
+      //    buildSH << "../clspv " << outFilePath.c_str() << " -o " << outFilePath.c_str() << ".spv -pod-pushconstant -distinct-kernel-descriptor-sets -I." << std::endl;
+      //  }
+      //}
 
     }
 

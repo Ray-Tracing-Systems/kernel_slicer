@@ -181,7 +181,7 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
   copyKernelFloatLayout   = m_pMaker->MakeLayout(device, copyKernelFloatDSLayout, 128); // at least 128 bytes for push constants
   copyKernelFloatPipeline = m_pMaker->MakePipeline(device);
   {% if length(IndirectDispatches) > 0 %}
-  InitIndirectBufferUpdateResources();
+  InitIndirectBufferUpdateResources(a_filePath);
   {% endif %}
 }
 
@@ -235,7 +235,7 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
 }
 
 {% if length(IndirectDispatches) > 0 %}
-void {{MainClassName}}_Generated::InitIndirectBufferUpdateResources()
+void {{MainClassName}}_Generated::InitIndirectBufferUpdateResources(const char* a_filePath)
 {
   // (1) init m_indirectUpdateDSLayout
   //
@@ -270,19 +270,19 @@ void {{MainClassName}}_Generated::InitIndirectBufferUpdateResources()
  
   VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &m_indirectUpdateLayout));
 
+  VkShaderModule tempShaderModule = VK_NULL_HANDLE;
+
+  std::vector<uint32_t> code = vk_utils::ReadFile(a_filePath);
+  VkShaderModuleCreateInfo createInfo = {};
+  createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+  createInfo.pCode    = code.data();
+  createInfo.codeSize = code.size()*sizeof(uint32_t);
+  VK_CHECK_RESULT(vkCreateShaderModule(device, &createInfo, NULL, &tempShaderModule));
+
   {% for Dispatch in IndirectDispatches %}
   // create indrect update pipeline for {{Dispatch.OriginalName}}
   //
   {
-    VkShaderModule tempShaderModule = VK_NULL_HANDLE;
-
-    std::vector<uint32_t> code = vk_utils::ReadFile("{{Dispatch.ShaderPath}}");
-    VkShaderModuleCreateInfo createInfo = {};
-    createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.pCode    = code.data();
-    createInfo.codeSize = code.size()*sizeof(uint32_t);
-    VK_CHECK_RESULT(vkCreateShaderModule(device, &createInfo, NULL, &tempShaderModule));
-
     VkPipelineShaderStageCreateInfo shaderStageInfo = {};
     shaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     shaderStageInfo.stage  = VK_SHADER_STAGE_COMPUTE_BIT;
@@ -294,10 +294,10 @@ void {{MainClassName}}_Generated::InitIndirectBufferUpdateResources()
     pipelineCreateInfo.stage  = shaderStageInfo;
     pipelineCreateInfo.layout = m_indirectUpdateLayout;
     VK_CHECK_RESULT(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &m_indirectUpdate{{Dispatch.KernelName}}Pipeline));
-
-    vkDestroyShaderModule(device, tempShaderModule, VK_NULL_HANDLE);
   }
   {% endfor %}
+
+  vkDestroyShaderModule(device, tempShaderModule, VK_NULL_HANDLE);
 }
 
 VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForIndirectBufferUpdate(VkBuffer a_buffer)
