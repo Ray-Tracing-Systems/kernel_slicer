@@ -229,6 +229,9 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
   {% endif %}
   if(memberVectors.size() > 0)
     m_vdata.m_vecMem = vkfw::AllocateAndBindWithPadding(device, physicalDevice, memberVectors);
+  {% if length(IndirectDispatches) > 0 %}
+  InitIndirectDescriptorSets();
+  {% endif %}
 }
 
 {% if length(IndirectDispatches) > 0 %}
@@ -256,12 +259,14 @@ void {{MainClassName}}_Generated::InitIndirectBufferUpdateResources()
 
   VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &m_indirectUpdateDSLayout));
 
+  VkDescriptorSetLayout oneTwo[2] = {m_indirectUpdateDSLayout,m_indirectUpdateDSLayout};
+
   VkPipelineLayoutCreateInfo  pipelineLayoutInfo = {};
   pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   pipelineLayoutInfo.pushConstantRangeCount = 0;
   pipelineLayoutInfo.pPushConstantRanges    = nullptr;
-  pipelineLayoutInfo.pSetLayouts            = &m_indirectUpdateDSLayout; 
-  pipelineLayoutInfo.setLayoutCount         = 1;
+  pipelineLayoutInfo.pSetLayouts            = oneTwo; 
+  pipelineLayoutInfo.setLayoutCount         = 2;
  
   VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &m_indirectUpdateLayout));
 
@@ -282,7 +287,7 @@ void {{MainClassName}}_Generated::InitIndirectBufferUpdateResources()
     shaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     shaderStageInfo.stage  = VK_SHADER_STAGE_COMPUTE_BIT;
     shaderStageInfo.module = tempShaderModule;
-    shaderStageInfo.pName  = "{{Dispatch.OriginalName}}";
+    shaderStageInfo.pName  = "{{Dispatch.OriginalName}}_UpdateIndirect";
 
     VkComputePipelineCreateInfo pipelineCreateInfo = {};
     pipelineCreateInfo.sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -293,53 +298,6 @@ void {{MainClassName}}_Generated::InitIndirectBufferUpdateResources()
     vkDestroyShaderModule(device, tempShaderModule, VK_NULL_HANDLE);
   }
   {% endfor %}
-
-  // (m_classDataBuffer, m_indirectBuffer) ==> m_indirectUpdateDS
-  {
-    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
-    descriptorSetAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    descriptorSetAllocateInfo.descriptorPool     = m_dsPool;  
-    descriptorSetAllocateInfo.descriptorSetCount = 1;     
-    descriptorSetAllocateInfo.pSetLayouts        = &m_indirectUpdateDSLayout;
-  
-    auto tmpRes = vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, &m_indirectUpdateDS);
-    VK_CHECK_RESULT(tmpRes); 
-
-    VkDescriptorBufferInfo descriptorBufferInfo[2];
-    VkWriteDescriptorSet   writeDescriptorSet[2];
-
-    descriptorBufferInfo[0]        = VkDescriptorBufferInfo{};
-    descriptorBufferInfo[0].buffer = m_classDataBuffer;
-    descriptorBufferInfo[0].offset = 0;
-    descriptorBufferInfo[0].range  = VK_WHOLE_SIZE;  
-
-    writeDescriptorSet[0]                  = VkWriteDescriptorSet{};
-    writeDescriptorSet[0].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSet[0].dstSet           = m_indirectUpdateDS;
-    writeDescriptorSet[0].dstBinding       = 0;
-    writeDescriptorSet[0].descriptorCount  = 1;
-    writeDescriptorSet[0].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    writeDescriptorSet[0].pBufferInfo      = &descriptorBufferInfo[0];
-    writeDescriptorSet[0].pImageInfo       = nullptr;
-    writeDescriptorSet[0].pTexelBufferView = nullptr; 
-
-    descriptorBufferInfo[1]        = VkDescriptorBufferInfo{};
-    descriptorBufferInfo[1].buffer = m_indirectBuffer;
-    descriptorBufferInfo[1].offset = 0;
-    descriptorBufferInfo[1].range  = VK_WHOLE_SIZE;  
-
-    writeDescriptorSet[1]                  = VkWriteDescriptorSet{};
-    writeDescriptorSet[1].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSet[1].dstSet           = m_indirectUpdateDS;
-    writeDescriptorSet[1].dstBinding       = 0;
-    writeDescriptorSet[1].descriptorCount  = 1;
-    writeDescriptorSet[1].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    writeDescriptorSet[1].pBufferInfo      = &descriptorBufferInfo[1];
-    writeDescriptorSet[1].pImageInfo       = nullptr;
-    writeDescriptorSet[1].pTexelBufferView = nullptr; 
-
-    vkUpdateDescriptorSets(device, 2, writeDescriptorSet, 0, NULL);
-  }
 }
 
 VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForIndirectBufferUpdate(VkBuffer a_buffer)

@@ -122,6 +122,7 @@ protected:
 
   {% if length(IndirectDispatches) > 0 %}
   void InitIndirectBufferUpdateResources();
+  void InitIndirectDescriptorSets();
   VkBufferMemoryBarrier BarrierForIndirectBufferUpdate(VkBuffer a_buffer);
   VkBuffer              m_indirectBuffer  = VK_NULL_HANDLE;
   VkPipelineLayout      m_indirectUpdateLayout   = VK_NULL_HANDLE;

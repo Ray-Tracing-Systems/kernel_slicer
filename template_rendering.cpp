@@ -91,6 +91,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
                                              const std::string& uboIncludeName, const nlohmann::json& uboJson)
 {
   std::string folderPath           = GetFolderPath(a_classInfo.mainClassFileName);
+  std::string shaderPath           = "./" + a_classInfo.pShaderCC->ShaderFolder();
   std::string mainInclude          = a_classInfo.mainClassFileInclude;
   std::string mainIncludeGenerated = a_genIncude;
 
@@ -220,13 +221,16 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     std::string kernName = a_classInfo.RemoveKernelPrefix(k.name);
     const auto auxArgs   = GetUserKernelArgs(k.args);
     
+    std::string outFileName = k.name + "_UpdateIndirect" + ".cl.spv";
+    std::string outFilePath = shaderPath + "/" + outFileName;
+
     if(k.isIndirect)
     {
       json indirectJson;
       indirectJson["KernelName"]   = kernName;
       indirectJson["OriginalName"] = k.name;
-      indirectJson["ShaderPath"] = "SomeShaderPath/SomeShaderFile.spv";
-      indirectJson["Offset"]     = k.indirectBlockOffset;
+      indirectJson["ShaderPath"]   = outFilePath.c_str();
+      indirectJson["Offset"]       = k.indirectBlockOffset;
       data["IndirectDispatches"].push_back(indirectJson);
     }
 
