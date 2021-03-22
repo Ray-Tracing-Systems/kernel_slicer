@@ -22,6 +22,7 @@ public:
 
   VkBufferUsageFlags GetAdditionalFlagsForUBO() override { return VK_BUFFER_USAGE_TRANSFER_SRC_BIT; }
   VkBuffer GiveMeUBO() { return m_classDataBuffer; }
+  VkBuffer GiveMeIndirectBuffer() { return m_indirectBuffer; }
   //VkBuffer GiveMeTempBuffer() { return m_vdata.tmpred04Buffer; }
 };
 
@@ -129,6 +130,9 @@ void process_image_gpu(std::vector<uint32_t>& a_inPixels)
     std::cout << "[gpu]: m_foundPixels_size = " << uboData.m_foundPixels_size << std::endl;
     std::cout << "[gpu]: m_testMin(float)   = " << uboData.m_testMin << std::endl;
     std::cout << "[gpu]: m_testMax(float)   = " << uboData.m_testMax << std::endl;
+    
+    uint32_t indirectSize[4] = {0,0,0,0};
+    pCopyHelper->ReadBuffer(pGPUImpl->GiveMeIndirectBuffer(), 0, indirectSize, sizeof(uint32_t)*4);
 
     //std::vector<float> fredBufferData(1024+4+1);
     //pCopyHelper->ReadBuffer(pGPUImpl->GiveMeTempBuffer(), 0, fredBufferData.data(), sizeof(float)*fredBufferData.size());
