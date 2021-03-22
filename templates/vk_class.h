@@ -121,7 +121,14 @@ protected:
   } m_vdata;
 
   {% if length(IndirectDispatches) > 0 %}
-  VkBuffer m_indirectBuffer  = VK_NULL_HANDLE;
+  void InitIndirectBufferUpdateResources();
+  VkBuffer              m_indirectBuffer  = VK_NULL_HANDLE;
+  VkPipelineLayout      m_indirectUpdateLayout   = VK_NULL_HANDLE;
+  VkDescriptorSetLayout m_indirectUpdateDSLayout = VK_NULL_HANDLE;
+  VkDescriptorSet       m_indirectUpdateDS       = VK_NULL_HANDLE;
+  {% for Dispatch in IndirectDispatches %}
+  VkPipeline            m_indirectUpdate{{Dispatch.KernelName}}Pipeline = VK_NULL_HANDLE; 
+  {% endfor %}
   {% endif %}
 
   VkBuffer m_classDataBuffer = VK_NULL_HANDLE;

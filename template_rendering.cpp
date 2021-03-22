@@ -223,7 +223,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     if(k.isIndirect)
     {
       json indirectJson;
-      indirectJson["KernelName"] = kernName;
+      indirectJson["KernelName"]   = kernName;
+      indirectJson["OriginalName"] = k.name;
+      indirectJson["ShaderPath"] = "SomeShaderPath/SomeShaderFile.spv";
       indirectJson["Offset"]     = k.indirectBlockOffset;
       data["IndirectDispatches"].push_back(indirectJson);
     }

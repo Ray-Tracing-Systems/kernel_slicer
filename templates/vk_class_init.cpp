@@ -46,6 +46,11 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
   {% endfor %}
   {% if length(IndirectDispatches) > 0 %}
   vkDestroyBuffer(device, m_indirectBuffer, nullptr);
+  vkDestroyDescriptorSetLayout(device, m_indirectUpdateDSLayout, nullptr);
+  vkDestroyPipelineLayout(device, m_indirectUpdateLayout, nullptr);
+  {% for Dispatch in IndirectDispatches %}
+  vkDestroyPipeline(device, m_indirectUpdate{{Dispatch.KernelName}}Pipeline, nullptr);
+  {% endfor %}
   {% endif %}
 
   if(m_allMem != VK_NULL_HANDLE)
@@ -175,6 +180,9 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
   copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
   copyKernelFloatLayout   = m_pMaker->MakeLayout(device, copyKernelFloatDSLayout, 128); // at least 128 bytes for push constants
   copyKernelFloatPipeline = m_pMaker->MakePipeline(device);
+  {% if length(IndirectDispatches) > 0 %}
+  InitIndirectBufferUpdateResources();
+  {% endif %}
 }
 
 void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
@@ -222,3 +230,115 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
   if(memberVectors.size() > 0)
     m_vdata.m_vecMem = vkfw::AllocateAndBindWithPadding(device, physicalDevice, memberVectors);
 }
+
+{% if length(IndirectDispatches) > 0 %}
+void {{MainClassName}}_Generated::InitIndirectBufferUpdateResources()
+{
+  // (1) init m_indirectUpdateDSLayout
+  //
+  VkDescriptorSetLayoutBinding bindings[2] = {};
+  bindings[0].binding            = 0;
+  bindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  bindings[0].descriptorCount    = 1;
+  bindings[0].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  bindings[0].pImmutableSamplers = nullptr;
+
+  bindings[1].binding            = 1;
+  bindings[1].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  bindings[1].descriptorCount    = 1;
+  bindings[1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  bindings[1].pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
+  descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  descriptorSetLayoutCreateInfo.bindingCount = 2;
+  descriptorSetLayoutCreateInfo.pBindings    = bindings;
+
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &m_indirectUpdateDSLayout));
+
+  VkPipelineLayoutCreateInfo  pipelineLayoutInfo = {};
+  pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  pipelineLayoutInfo.pushConstantRangeCount = 0;
+  pipelineLayoutInfo.pPushConstantRanges    = nullptr;
+  pipelineLayoutInfo.pSetLayouts            = &m_indirectUpdateDSLayout; 
+  pipelineLayoutInfo.setLayoutCount         = 1;
+ 
+  VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &m_indirectUpdateLayout));
+
+  {% for Dispatch in IndirectDispatches %}
+  // create indrect update pipeline for {{Dispatch.OriginalName}}
+  //
+  {
+    VkShaderModule tempShaderModule = VK_NULL_HANDLE;
+
+    std::vector<uint32_t> code = vk_utils::ReadFile("{{Dispatch.ShaderPath}}");
+    VkShaderModuleCreateInfo createInfo = {};
+    createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfo.pCode    = code.data();
+    createInfo.codeSize = code.size()*sizeof(uint32_t);
+    VK_CHECK_RESULT(vkCreateShaderModule(device, &createInfo, NULL, &tempShaderModule));
+
+    VkPipelineShaderStageCreateInfo shaderStageInfo = {};
+    shaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shaderStageInfo.stage  = VK_SHADER_STAGE_COMPUTE_BIT;
+    shaderStageInfo.module = tempShaderModule;
+    shaderStageInfo.pName  = "{{Dispatch.OriginalName}}";
+
+    VkComputePipelineCreateInfo pipelineCreateInfo = {};
+    pipelineCreateInfo.sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineCreateInfo.stage  = shaderStageInfo;
+    pipelineCreateInfo.layout = m_indirectUpdateLayout;
+    VK_CHECK_RESULT(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &m_indirectUpdate{{Dispatch.KernelName}}Pipeline));
+
+    vkDestroyShaderModule(device, tempShaderModule, VK_NULL_HANDLE);
+  }
+  {% endfor %}
+
+  // (m_classDataBuffer, m_indirectBuffer) ==> m_indirectUpdateDS
+  {
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
+    descriptorSetAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    descriptorSetAllocateInfo.descriptorPool     = m_dsPool;  
+    descriptorSetAllocateInfo.descriptorSetCount = 1;     
+    descriptorSetAllocateInfo.pSetLayouts        = &m_indirectUpdateDSLayout;
+  
+    auto tmpRes = vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, &m_indirectUpdateDS);
+    VK_CHECK_RESULT(tmpRes); 
+
+    VkDescriptorBufferInfo descriptorBufferInfo[2];
+    VkWriteDescriptorSet   writeDescriptorSet[2];
+
+    descriptorBufferInfo[0]        = VkDescriptorBufferInfo{};
+    descriptorBufferInfo[0].buffer = m_classDataBuffer;
+    descriptorBufferInfo[0].offset = 0;
+    descriptorBufferInfo[0].range  = VK_WHOLE_SIZE;  
+
+    writeDescriptorSet[0]                  = VkWriteDescriptorSet{};
+    writeDescriptorSet[0].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSet[0].dstSet           = m_indirectUpdateDS;
+    writeDescriptorSet[0].dstBinding       = 0;
+    writeDescriptorSet[0].descriptorCount  = 1;
+    writeDescriptorSet[0].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    writeDescriptorSet[0].pBufferInfo      = &descriptorBufferInfo[0];
+    writeDescriptorSet[0].pImageInfo       = nullptr;
+    writeDescriptorSet[0].pTexelBufferView = nullptr; 
+
+    descriptorBufferInfo[1]        = VkDescriptorBufferInfo{};
+    descriptorBufferInfo[1].buffer = m_indirectBuffer;
+    descriptorBufferInfo[1].offset = 0;
+    descriptorBufferInfo[1].range  = VK_WHOLE_SIZE;  
+
+    writeDescriptorSet[1]                  = VkWriteDescriptorSet{};
+    writeDescriptorSet[1].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSet[1].dstSet           = m_indirectUpdateDS;
+    writeDescriptorSet[1].dstBinding       = 0;
+    writeDescriptorSet[1].descriptorCount  = 1;
+    writeDescriptorSet[1].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    writeDescriptorSet[1].pBufferInfo      = &descriptorBufferInfo[1];
+    writeDescriptorSet[1].pImageInfo       = nullptr;
+    writeDescriptorSet[1].pTexelBufferView = nullptr; 
+
+    vkUpdateDescriptorSets(device, 2, writeDescriptorSet, 0, NULL);
+  }
+}
+{% endif %}
