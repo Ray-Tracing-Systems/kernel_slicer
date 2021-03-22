@@ -44,6 +44,9 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
   {% for Buffer in RedVectorVars %}
   vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
   {% endfor %}
+  {% if length(IndirectDispatches) > 0 %}
+  vkDestroyBuffer(device, m_indirectBuffer, nullptr);
+  {% endif %}
 
   if(m_allMem != VK_NULL_HANDLE)
     vkFreeMemory(device, m_allMem, nullptr);
@@ -212,6 +215,10 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
 ## endfor
   
+  {% if length(IndirectDispatches) > 0 %}
+  m_indirectBuffer = vkfw::CreateBuffer(device, {{length(IndirectDispatches)}}*sizeof(uint32_t)*4, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
+  memberVectors.push_back(m_indirectBuffer);
+  {% endif %}
   if(memberVectors.size() > 0)
     m_vdata.m_vecMem = vkfw::AllocateAndBindWithPadding(device, physicalDevice, memberVectors);
 }

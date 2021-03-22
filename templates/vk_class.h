@@ -120,6 +120,10 @@ protected:
     VkDeviceMemory m_vecMem = VK_NULL_HANDLE;
   } m_vdata;
 
+  {% if length(IndirectDispatches) > 0 %}
+  VkBuffer m_indirectBuffer  = VK_NULL_HANDLE;
+  {% endif %}
+
   VkBuffer m_classDataBuffer = VK_NULL_HANDLE;
   VkDeviceMemory m_allMem    = VK_NULL_HANDLE;
 
@@ -142,7 +146,6 @@ protected:
 ## endfor
 
   virtual VkBufferUsageFlags GetAdditionalFlagsForUBO();
-
 
   VkPipelineLayout      copyKernelFloatLayout   = VK_NULL_HANDLE;
   VkPipeline            copyKernelFloatPipeline = VK_NULL_HANDLE;

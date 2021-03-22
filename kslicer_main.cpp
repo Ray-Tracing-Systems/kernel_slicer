@@ -708,8 +708,8 @@ int main(int argc, const char **argv)
           currKerneJson["Kernels"] = std::vector<std::string>();
           currKerneJson["Kernels"].push_back(kernel.value());
 
-          std::string outFileName = std::string(kernel.value()["Name"]) + ".cl";
-          std::string outFilePath = inputCodeInfo.pShaderCC->ShaderFolder() + "/" + outFileName;
+          std::string outFileName = std::string(kernel.value()["Name"]) + "_UpdateIndirect" + ".cl";
+          std::string outFilePath = shaderPath + "/" + outFileName;
        
           std::ofstream file("debug.json");
           file << currKerneJson.dump(2);

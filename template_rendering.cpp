@@ -212,13 +212,22 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   data["MultipleSourceShaders"] = !a_classInfo.pShaderCC->IsSingleSource();
   data["ShaderFolder"]          = a_classInfo.pShaderCC->ShaderFolder();
 
-  data["Kernels"] = std::vector<std::string>();  
+  data["IndirectDispatches"] = std::vector<std::string>();
+  data["Kernels"]            = std::vector<std::string>();  
   for(const auto& nk : a_classInfo.kernels)
   {
     const auto& k        = nk.second;
     std::string kernName = a_classInfo.RemoveKernelPrefix(k.name);
     const auto auxArgs   = GetUserKernelArgs(k.args);
     
+    if(k.isIndirect)
+    {
+      json indirectJson;
+      indirectJson["KernelName"] = kernName;
+      indirectJson["Offset"]     = k.indirectBlockOffset;
+      data["IndirectDispatches"].push_back(indirectJson);
+    }
+
     json kernelJson;
     kernelJson["Name"]         = kernName;
     kernelJson["OriginalName"] = k.name;
