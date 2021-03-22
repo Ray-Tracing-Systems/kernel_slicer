@@ -341,4 +341,19 @@ void {{MainClassName}}_Generated::InitIndirectBufferUpdateResources()
     vkUpdateDescriptorSets(device, 2, writeDescriptorSet, 0, NULL);
   }
 }
+
+VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForIndirectBufferUpdate(VkBuffer a_buffer)
+{
+  VkBufferMemoryBarrier bar = {};
+  bar.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  bar.pNext               = NULL;
+  bar.srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT;
+  bar.dstAccessMask       = VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+  bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bar.buffer              = a_buffer;
+  bar.offset              = 0;
+  bar.size                = VK_WHOLE_SIZE;
+  return bar;
+}
 {% endif %}
