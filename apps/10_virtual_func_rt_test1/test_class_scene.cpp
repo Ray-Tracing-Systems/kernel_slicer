@@ -11,17 +11,13 @@ void TestClass::InitSpheresScene(int a_numSpheres, int a_seed)
   spheresMaterials.resize(10);
 
   spheresMaterials[0].color = float4(0.5,0.5,0.5, 0.0f); // grayOverrideMat
-  spheresMaterials[1].color = float4(0.078, 0, 0.156, 0.0f); // hydra_placeholder_material
-
-  const float col = 0.75f;
-  const float eps = 0.00f;
-
-  spheresMaterials[2].color = float4(0.0235294,0.6,0.0235294,0); // Green
-  spheresMaterials[3].color = float4(0.0847059,0.144706,0.265882,0); // Blue
-  spheresMaterials[4].color = float4(0.6,0.0235294,0.0235294,0); // Red
+  spheresMaterials[4].color = float4(0.078, 0, 0.156, 0.0f); // hydra_placeholder_material
+  spheresMaterials[2].color = float4(0.0235294, 0.6, 0.0235294,0); // Green
+  spheresMaterials[3].color = float4(0.0847059, 0.144706,0.265882,0); // Blue
+  spheresMaterials[1].color = float4(0.6,0.0235294,0.0235294,0); // Red
   spheresMaterials[5].color = float4(0.6,0.6,0.6,0); // White
   spheresMaterials[6].color = float4(0.8,0.715294,0,0); // teaport_material, phong or ggx
-  spheresMaterials[7].color = float4(0.0,0.0,0.0,0); // mirror
+  spheresMaterials[7].color = float4(0,0,0,0); // mirror
   spheresMaterials[8].color = float4(0,0,0,0); // environment_material
   spheresMaterials[9].color = float4(1,1,1,28); // TPhotometricLight001_material
 }
@@ -94,15 +90,35 @@ int TestClass::LoadScene(const char* bvhPath, const char* meshPath)
 
   m_vPos4f      = m_mesh.vPos4f;
   m_vNorm4f     = m_mesh.vNorm4f;
-  m_materialIds = m_mesh.matIndices;
+  
+  std::cout << "[LoadScene]: fixing material indices back ... " << std::endl;
+
+  m_materialIds.resize(m_mesh.matIndices.size());   
+  //m_materialIds = m_mesh.matIndices; // // NO!!! Need to reorder them accordimg to reorderedIndices!!!
+  #pragma omp parallel for
+  for(uint32_t triIdNew = 0; triIdNew < m_mesh.TrianglesNum(); triIdNew++)
+  {
+    const uint32_t A = m_indicesReordered[triIdNew*3+0];
+    const uint32_t B = m_indicesReordered[triIdNew*3+1];
+    const uint32_t C = m_indicesReordered[triIdNew*3+2];
+
+    for(uint32_t triIdOld = 0; triIdOld < m_mesh.TrianglesNum(); triIdOld++)
+    {
+      const uint32_t AOld = m_mesh.indices[triIdOld*3+0];
+      const uint32_t BOld = m_mesh.indices[triIdOld*3+1];
+      const uint32_t COld = m_mesh.indices[triIdOld*3+2];
+
+      if(A == AOld && B == BOld && C == COld)
+      {
+        m_materialIds[triIdNew] = m_mesh.matIndices[triIdOld];
+        break;
+      } 
+    }
+  }
 
   std::cout << "IndicesNum   = " << m_mesh.indices.size() << std::endl;
   std::cout << "TrianglesNum = " << m_mesh.TrianglesNum() << std::endl;
   std::cout << "MateriaIdNum = " << m_mesh.matIndices.size() << std::endl;
-
-  //std::ofstream outFile("mid.txt");
-  //for(size_t i=0;i<m_materialIds.size();i++)
-  //outFile << m_materialIds[i] << std::endl;
 
   return 0;
 
