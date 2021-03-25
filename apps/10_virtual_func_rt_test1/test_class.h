@@ -120,13 +120,13 @@ protected:
 //  BVHTree                      m_bvhTree;
   std::vector<struct BVHNode>  m_nodes;
   std::vector<struct Interval> m_intervals;
-  std::vector<uint>            m_indicesReordered;
-  SimpleMesh                   m_mesh;
+  std::vector<uint32_t>        m_indicesReordered;
+  std::vector<uint32_t>        m_materialIds;
+
   std::vector<LiteMath::float4> m_vPos4f;      // copy from m_mesh
   std::vector<LiteMath::float4> m_vNorm4f;     // copy from m_mesh
 
   float4x4                     m_worldViewProjInv;
-  std::vector<float4>          spheresPosRadius;
   std::vector<SphereMaterial>  spheresMaterials;
   std::vector<RandomGen>       m_randomGens;
 };

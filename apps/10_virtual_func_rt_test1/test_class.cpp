@@ -1,123 +1,6 @@
 #include "test_class.h"
 #include "include/crandom.h"
 
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void TestClass::InitSpheresScene(int a_numSpheres, int a_seed)
-{ 
-  spheresPosRadius.resize(8);
-  spheresMaterials.resize(8);
-
-  spheresPosRadius[0] = float4(0,-10000.0f,0,9999.0f);
-  spheresMaterials[0].color = float4(0.5,0.5,0.5, 0.0f);
-
-  spheresPosRadius[1] = float4(0,0,-4,1);
-  spheresMaterials[1].color = float4(1,1,1,5);
-
-  const float col = 0.75f;
-  const float eps = 0.00f;
-
-  spheresPosRadius[2] = float4(-2,0,-4,1);
-  spheresMaterials[2].color = float4(col,eps,eps,0);
-
-  spheresPosRadius[3] = float4(+2,0,-4,1);
-  spheresMaterials[3].color = float4(eps,col,col,0);
-
-  spheresPosRadius[4] = float4(-1,1.5,-4.5,1);
-  spheresMaterials[4].color = float4(col,col,eps,0);
-
-  spheresPosRadius[5] = float4(+1,1.5,-4.5,1);
-  spheresMaterials[5].color = float4(eps,eps,col,0);
-
-  spheresPosRadius[6] = float4(-1,-0.5,-3,0.5);
-  spheresMaterials[6].color = float4(eps,col,eps,0);
-
-  spheresPosRadius[7] = float4(+1,-0.5,-3,0.5);
-  spheresMaterials[7].color = float4(eps,col,eps,0);
-}
-
-int TestClass::LoadScene(const char* bvhPath, const char* meshPath)
-{
-  std::fstream input_file;
-  input_file.open(bvhPath, std::ios::binary | std::ios::in);
-  if (!input_file.is_open())
-  {
-    std::cout << "BVH file error <" << bvhPath << ">\n";
-    return 1;
-  }
-  struct BVHDataHeader
-  {
-    uint64_t node_length;
-    uint64_t indices_length;
-    uint64_t depth_length;
-    uint64_t geom_id;
-  };
-  BVHDataHeader header;
-  input_file.read((char *) &header, sizeof(BVHDataHeader));
-
-//  m_bvhTree.geomID = header.geom_id;
-  m_nodes.resize(header.node_length);
-  m_intervals.resize(header.node_length);
-  m_indicesReordered.resize(header.indices_length);
-//  m_depthRanges.resize(header.depth_length);
-
-  input_file.read((char *) m_nodes.data(), sizeof(BVHNode) * header.node_length);
-  input_file.read((char *) m_intervals.data(), sizeof(Interval) * header.node_length);
-  input_file.read((char *) m_indicesReordered.data(), sizeof(uint) * header.indices_length);
-//  input_file.read((char *) m_bvhTree.depthRanges.data(), sizeof(Interval) * header.depth_length);
-
-  std::fstream input_file_mesh;
-  input_file_mesh.open(meshPath, std::ios::binary | std::ios::in);
-  if (!input_file_mesh.is_open())
-  {
-    std::cout << "Mesh file error <" << meshPath << ">\n";
-    return 1;
-  }
-
-  struct VSGFHeader
-  {
-    uint64_t fileSizeInBytes;
-    uint32_t verticesNum;
-    uint32_t indicesNum;
-    uint32_t materialsNum;
-    uint32_t flags;
-  };
-  VSGFHeader meshHeader;
-
-  input_file_mesh.read((char*)&meshHeader, sizeof(VSGFHeader));
-  m_mesh = SimpleMesh(meshHeader.verticesNum, meshHeader.indicesNum);
-
-  input_file_mesh.read((char*)m_mesh.vPos4f.data(),  m_mesh.vPos4f.size()*sizeof(float)*4);
-
-  if(!(meshHeader.flags & HAS_NO_NORMALS))
-    input_file_mesh.read((char*)m_mesh.vNorm4f.data(), m_mesh.vNorm4f.size()*sizeof(float)*4);
-  else
-    memset(m_mesh.vNorm4f.data(), 0, m_mesh.vNorm4f.size()*sizeof(float)*4);  
-
-  if(meshHeader.flags & HAS_TANGENT)
-    input_file_mesh.read((char*)m_mesh.vTang4f.data(), m_mesh.vTang4f.size()*sizeof(float)*4);
-  else
-    memset(m_mesh.vTang4f.data(), 0, m_mesh.vTang4f.size()*sizeof(float)*4);
-
-  input_file_mesh.read((char*)m_mesh.vTexCoord2f.data(), m_mesh.vTexCoord2f.size()*sizeof(float)*2);
-  input_file_mesh.read((char*)m_mesh.indices.data(),    m_mesh.indices.size()*sizeof(unsigned int));
-  input_file_mesh.read((char*)m_mesh.matIndices.data(), m_mesh.matIndices.size()*sizeof(unsigned int));
-  input_file_mesh.close();
-
-  m_vPos4f.resize(m_mesh.vPos4f.size());
-  m_vPos4f = m_mesh.vPos4f;
-
-  m_vNorm4f.resize(m_mesh.vNorm4f.size());
-  m_vNorm4f = m_mesh.vNorm4f;
-
-  return 0;
-
-}
-
-
 void TestClass::InitRandomGens(int a_maxThreads)
 {
   m_randomGens.resize(a_maxThreads);
@@ -247,7 +130,8 @@ void TestClass::kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit,
 {
   if(in_hit->primId != -1)
   {
-    out_color[tid] = RealColorToUint32_f3(to_float3(spheresMaterials[in_hit->primId % 3].color));
+    uint32_t mtId  = in_hit->primId % 10; // m_materialIds[in_hit->primId];
+    out_color[tid] = RealColorToUint32_f3(to_float3(spheresMaterials[mtId].color));
   }
   else
     out_color[tid] = 0x00700000;
