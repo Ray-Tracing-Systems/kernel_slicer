@@ -1,6 +1,51 @@
 #include "test_class.h"
 #include "include/crandom.h"
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum GEOM_FLAGS{ HAS_TANGENT    = 1,
+  UNUSED2        = 2,
+  UNUSED4        = 4,
+  HAS_NO_NORMALS = 8};
+
+struct SimpleMesh
+{
+  static const uint64_t POINTS_IN_TRIANGLE = 3;
+  SimpleMesh(){}
+  SimpleMesh(int a_vertNum, int a_indNum) { Resize(a_vertNum, a_indNum); }
+
+  inline size_t VerticesNum()  const { return vPos4f.size(); }
+  inline size_t IndicesNum()   const { return indices.size();  }
+  inline size_t TrianglesNum() const { return IndicesNum() / POINTS_IN_TRIANGLE;  }
+  inline void   Resize(uint32_t a_vertNum, uint32_t a_indNum)
+  {
+    vPos4f.resize(a_vertNum);
+    vNorm4f.resize(a_vertNum);
+    vTang4f.resize(a_vertNum);
+    vTexCoord2f.resize(a_vertNum);
+    indices.resize(a_indNum);
+    matIndices.resize(a_indNum/3);
+  };
+
+  inline size_t SizeInBytes() const
+  {
+    return vPos4f.size()*sizeof(float)*4  +
+           vNorm4f.size()*sizeof(float)*4 +
+           vTang4f.size()*sizeof(float)*4 +
+           vTexCoord2f.size()*sizeof(float)*2 +
+           indices.size()*sizeof(int) +
+           matIndices.size()*sizeof(int);
+  }
+  std::vector<LiteMath::float4> vPos4f;      //
+  std::vector<LiteMath::float4> vNorm4f;     //
+  std::vector<LiteMath::float4> vTang4f;     //
+  std::vector<float2>                       vTexCoord2f; //
+  std::vector<unsigned int>                 indices;     // size = 3*TrianglesNum() for triangle mesh, 4*TrianglesNum() for quad mesh
+  std::vector<unsigned int>                 matIndices;  // size = 1*TrianglesNum()
+};
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
