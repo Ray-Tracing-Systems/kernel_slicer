@@ -80,7 +80,7 @@ public:
 
   TestClass(int a_maxThreads = 1)
   {
-    const float4x4 proj = perspectiveMatrix(90.0f, 1.0f, 0.01f, 100.0f);
+    const float4x4 proj = perspectiveMatrix(45.0f, 1.0f, 0.01f, 100.0f);
     m_worldViewProjInv  = inverse4x4(proj);
     InitSpheresScene(10);
     InitRandomGens(a_maxThreads);
@@ -114,7 +114,7 @@ public:
                                 float4* out_color);
 
 protected:
-  float3 camPos = float3(0.0f, 0.85f, 2.75f);
+  float3 camPos = float3(0.0f, 0.85f, 4.5f);
   void InitSpheresScene(int a_numSpheres, int a_seed = 0);
 
 //  BVHTree                      m_bvhTree;
