@@ -199,4 +199,12 @@ static inline bool   IsMtlEmissive(__global const SphereMaterial* a_mtl)       {
 static inline float3 GetMtlDiffuseColor(__global const SphereMaterial* a_mtl)  { return to_float3(a_mtl->color); }
 static inline float3 GetMtlEmissiveColor(__global const SphereMaterial* a_mtl) { return to_float3(a_mtl->color)*a_mtl->color.w; }
 
+typedef struct MatSampleT
+{
+  float3 bsdfVal;
+  float  pdf; 
+  float3 direction;
+  int    flags;
+} MatSample;
+
 #endif

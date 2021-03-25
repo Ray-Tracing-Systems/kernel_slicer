@@ -33,6 +33,46 @@ static inline float4x4 perspectiveMatrix(float fovy, float aspect, float zNear, 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct IMaterial
+{
+  IMaterial(){}
+  virtual ~IMaterial() {}
+
+  virtual float3 kernel_GetColor(uint tid, uint* out_color) = 0;
+
+  virtual void   kernel_SampleNextBounce(uint tid, const Lite_Hit* in_hit, 
+                                         float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput) {}
+};
+
+struct LambertMaterial : public IMaterial
+{
+  LambertMaterial(float3 a_color) { m_color[0] = a_color[0]; m_color[1] = a_color[1]; m_color[2] = a_color[2]; }
+  float3 kernel_GetColor(uint tid, uint* out_color) override { return float3(m_color[0], m_color[1], m_color[2]); }
+  float m_color[3];
+};
+
+struct PerfectMirrorMaterial : public IMaterial
+{
+  float3 kernel_GetColor(uint tid, uint* out_color) override { return float3(0,0,0); }
+};
+
+struct EmissiveMaterial : public IMaterial
+{
+  float3 kernel_GetColor(uint tid, uint* out_color) override { return intensity*float3(1,1,1); }
+  float  intensity;
+};
+
+struct GGXGlossyMaterial : public IMaterial
+{
+  GGXGlossyMaterial(float3 a_color) { color[0] = a_color[0]; color[1] = a_color[1]; color[2] = a_color[2]; roughness = 0.5f; }
+  float3 kernel_GetColor(uint tid, uint* out_color) override { return float3(0.5,1,0.5); }
+  float color[3];
+  float roughness;
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class TestClass // : public DataClass
 {
 public:
@@ -72,6 +112,10 @@ public:
   void kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, 
                                 float4* out_color);
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  IMaterial* kernel_MakeMaterial(const Lite_Hit* in_hit);
+
 protected:
   float3 camPos = float3(0.0f, 0.85f, 4.5f);
   void InitSpheresScene(int a_numSpheres, int a_seed = 0);
@@ -83,6 +127,9 @@ protected:
   std::vector<uint32_t>        m_materialIds;
   std::vector<float4>          m_vPos4f;      // copy from m_mesh
   std::vector<float4>          m_vNorm4f;     // copy from m_mesh
+
+  std::vector<uint32_t>        m_materialData;
+  std::vector<uint32_t>        m_materialOffsets;
 
   float4x4                     m_worldViewProjInv;
   std::vector<SphereMaterial>  spheresMaterials;
