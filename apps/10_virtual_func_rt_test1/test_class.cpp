@@ -130,8 +130,9 @@ void TestClass::kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit,
 {
   if(in_hit->primId != -1)
   {
-    uint32_t mtId  = in_hit->primId % 10; // m_materialIds[in_hit->primId];
-    out_color[tid] = RealColorToUint32_f3(to_float3(spheresMaterials[mtId].color));
+    //uint32_t mtId  = in_hit->primId % 10; 
+    uint32_t mtId  = m_materialIds[in_hit->primId];
+    out_color[tid] = RealColorToUint32(spheresMaterials[mtId].color);
   }
   else
     out_color[tid] = 0x00700000;

@@ -45,16 +45,14 @@ int TestClass::LoadScene(const char* bvhPath, const char* meshPath)
   BVHDataHeader header;
   input_file.read((char *) &header, sizeof(BVHDataHeader));
 
-//  m_bvhTree.geomID = header.geom_id;
   m_nodes.resize(header.node_length);
   m_intervals.resize(header.node_length);
   m_indicesReordered.resize(header.indices_length);
-//  m_depthRanges.resize(header.depth_length);
 
   input_file.read((char *) m_nodes.data(), sizeof(BVHNode) * header.node_length);
   input_file.read((char *) m_intervals.data(), sizeof(Interval) * header.node_length);
   input_file.read((char *) m_indicesReordered.data(), sizeof(uint) * header.indices_length);
-//  input_file.read((char *) m_bvhTree.depthRanges.data(), sizeof(Interval) * header.depth_length);
+  //input_file.read((char *) m_bvhTree.depthRanges.data(), sizeof(Interval) * header.depth_length);
 
   std::fstream input_file_mesh;
   input_file_mesh.open(meshPath, std::ios::binary | std::ios::in);
@@ -97,6 +95,10 @@ int TestClass::LoadScene(const char* bvhPath, const char* meshPath)
   m_vPos4f      = m_mesh.vPos4f;
   m_vNorm4f     = m_mesh.vNorm4f;
   m_materialIds = m_mesh.matIndices;
+
+  std::cout << "IndicesNum   = " << m_mesh.indices.size() << std::endl;
+  std::cout << "TrianglesNum = " << m_mesh.TrianglesNum() << std::endl;
+  std::cout << "MateriaIdNum = " << m_mesh.matIndices.size() << std::endl;
 
   //std::ofstream outFile("mid.txt");
   //for(size_t i=0;i<m_materialIds.size();i++)
