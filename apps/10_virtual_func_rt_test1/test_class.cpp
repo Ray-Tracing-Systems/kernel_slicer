@@ -209,7 +209,7 @@ IMaterial* TestClass::kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit)
 {
   int primId = in_hit->primId;
   if(primId == -1)
-    return nullptr;
+    return (__global EmptyMaterial*)m_materialData.data();
 
   const uint32_t mtId         = m_materialIds    [primId];
   const uint32_t objectPtr    = m_materialOffsets[mtId];
@@ -258,8 +258,7 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
   
   IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
   
-  if(pMaterial != nullptr)
-    pMaterial->kernel_GetColor(tid, out_color);
+  pMaterial->kernel_GetColor(tid, out_color);
 }
 
 void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color)

@@ -42,7 +42,8 @@ struct IMaterial
   enum {TYPE_ID_LAMBERT    = 0, 
         TYPE_ID_MIRROR     = 1, 
         TYPE_ID_EMISSIVE   = 2, 
-        TYPE_ID_GGX_GLOSSY = 3};
+        TYPE_ID_GGX_GLOSSY = 3,
+        TYPE_ID_EMPTY      = 15};
 
   IMaterial(){}
   virtual ~IMaterial() {}
@@ -65,7 +66,7 @@ struct LambertMaterial : public IMaterial
   { 
     out_color[tid] = RealColorToUint32_f3(float3(m_color[0], m_color[1], m_color[2])); 
   }
-  
+
   uint32_t GetTypeId() const override { return TYPE_ID_LAMBERT; }
   size_t   GetSizeOf() const override { return sizeof(LambertMaterial); }
 };
@@ -104,6 +105,15 @@ struct GGXGlossyMaterial : public IMaterial
   float roughness;
   uint32_t GetTypeId() const override { return TYPE_ID_GGX_GLOSSY; }
   size_t   GetSizeOf() const override { return sizeof(GGXGlossyMaterial); }
+};
+
+struct EmptyMaterial : public IMaterial
+{
+  EmptyMaterial() {}
+  void kernel_GetColor(uint tid, uint* out_color) override  { }
+
+  uint32_t GetTypeId() const override { return TYPE_ID_EMPTY; }
+  size_t   GetSizeOf() const override { return sizeof(EmptyMaterial); }
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
