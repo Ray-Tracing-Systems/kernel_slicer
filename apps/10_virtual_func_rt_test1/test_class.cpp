@@ -205,13 +205,35 @@ void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, c
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-IMaterial* TestClass::kernel_MakeMaterial(const Lite_Hit* in_hit)
+IMaterial* TestClass::kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit)
 {
-  if(in_hit->primId != -1)
+  int primId = in_hit->primId;
+  if(primId == -1)
     return nullptr;
 
-  const uint32_t mtId         = m_materialIds[in_hit->primId];
-  const uint32_t objectOffset = m_materialOffsets[mtId];
+  const uint32_t mtId         = m_materialIds    [primId];
+  const uint32_t objectPtr    = m_materialOffsets[mtId];
+
+  const uint32_t objectOffset = (objectPtr & IMaterial::OBJ_ID_MASK);
+  const uint32_t objectTag    = (objectPtr & IMaterial::TYPE_ID_MASK) >> (32 - IMaterial::TYPE_BITS);
+  
+  switch(objectTag)
+  {
+    case IMaterial::TYPE_ID_LAMBERT:
+    return (__global LambertMaterial*)(m_materialData.data() + objectOffset);
+
+    case IMaterial::TYPE_ID_MIRROR:
+    return (__global PerfectMirrorMaterial*)(m_materialData.data() + objectOffset);
+
+    case IMaterial::TYPE_ID_EMISSIVE:
+    return (__global EmissiveMaterial*)(m_materialData.data() + objectOffset);
+
+    case IMaterial::TYPE_ID_GGX_GLOSSY:
+    return (__global GGXGlossyMaterial*)(m_materialData.data() + objectOffset);
+
+    default:
+    break;
+  };
 
   return nullptr;
 }
@@ -234,7 +256,10 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
                       &hit, m_indicesReordered.data(), m_vPos4f.data()))
     return;
   
-  kernel_GetMaterialColor(tid, &hit, out_color);
+  IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
+  
+  if(pMaterial != nullptr)
+    pMaterial->kernel_GetColor(tid, out_color);
 }
 
 void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color)

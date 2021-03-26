@@ -30,15 +30,27 @@ static inline float4x4 perspectiveMatrix(float fovy, float aspect, float zNear, 
   return res;
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct IMaterial
 {
+  static constexpr uint32_t TYPE_BITS    = 4;          // number bits for type encoding in index; 
+  static constexpr uint32_t TYPE_ID_MASK = 0xF0000000; // mask which we can get from TYPE_BITS
+  static constexpr uint32_t OBJ_ID_MASK  = 0x0FFFFFFF; // (32 - TYPE_BITS) is left for object/thread id.
+
+  enum {TYPE_ID_LAMBERT    = 0, 
+        TYPE_ID_MIRROR     = 1, 
+        TYPE_ID_EMISSIVE   = 2, 
+        TYPE_ID_GGX_GLOSSY = 3};
+
   IMaterial(){}
   virtual ~IMaterial() {}
 
-  virtual float3 kernel_GetColor(uint tid, uint* out_color) = 0;
+  virtual uint32_t GetTypeId() const = 0;
+  virtual size_t   GetSizeOf() const = 0;
+
+  virtual void   kernel_GetColor(uint tid, uint* out_color) = 0;
 
   virtual void   kernel_SampleNextBounce(uint tid, const Lite_Hit* in_hit, 
                                          float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput) {}
@@ -47,31 +59,55 @@ struct IMaterial
 struct LambertMaterial : public IMaterial
 {
   LambertMaterial(float3 a_color) { m_color[0] = a_color[0]; m_color[1] = a_color[1]; m_color[2] = a_color[2]; }
-  float3 kernel_GetColor(uint tid, uint* out_color) override { return float3(m_color[0], m_color[1], m_color[2]); }
   float m_color[3];
+
+  void  kernel_GetColor(uint tid, uint* out_color) override 
+  { 
+    out_color[tid] = RealColorToUint32_f3(float3(m_color[0], m_color[1], m_color[2])); 
+  }
+  
+  uint32_t GetTypeId() const override { return TYPE_ID_LAMBERT; }
+  size_t   GetSizeOf() const override { return sizeof(LambertMaterial); }
 };
 
 struct PerfectMirrorMaterial : public IMaterial
 {
-  float3 kernel_GetColor(uint tid, uint* out_color) override { return float3(0,0,0); }
+  void kernel_GetColor(uint tid, uint* out_color) override 
+  { 
+    out_color[tid] = RealColorToUint32_f3(float3(0,0,0)); 
+  }
+  uint32_t GetTypeId() const override { return TYPE_ID_MIRROR; }
+  size_t   GetSizeOf() const override { return sizeof(PerfectMirrorMaterial); }
 };
 
 struct EmissiveMaterial : public IMaterial
 {
-  float3 kernel_GetColor(uint tid, uint* out_color) override { return intensity*float3(1,1,1); }
+  void   kernel_GetColor(uint tid, uint* out_color) override 
+  { 
+    out_color[tid] = RealColorToUint32_f3(intensity*float3(1,1,1)); 
+  }
+
   float  intensity;
+  uint32_t GetTypeId() const override { return TYPE_ID_EMISSIVE; }
+  size_t   GetSizeOf() const override { return sizeof(EmissiveMaterial); }
 };
 
 struct GGXGlossyMaterial : public IMaterial
 {
   GGXGlossyMaterial(float3 a_color) { color[0] = a_color[0]; color[1] = a_color[1]; color[2] = a_color[2]; roughness = 0.5f; }
-  float3 kernel_GetColor(uint tid, uint* out_color) override { return float3(0.5,1,0.5); }
+  void  kernel_GetColor(uint tid, uint* out_color) override 
+  { 
+    out_color[tid] = RealColorToUint32_f3(float3(color[0], color[1], color[2])); 
+  }
+
   float color[3];
   float roughness;
+  uint32_t GetTypeId() const override { return TYPE_ID_GGX_GLOSSY; }
+  size_t   GetSizeOf() const override { return sizeof(GGXGlossyMaterial); }
 };
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class TestClass // : public DataClass
 {
@@ -114,11 +150,13 @@ public:
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  IMaterial* kernel_MakeMaterial(const Lite_Hit* in_hit);
+  IMaterial* kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit);
 
 protected:
   float3 camPos = float3(0.0f, 0.85f, 4.5f);
   void InitSpheresScene(int a_numSpheres, int a_seed = 0);
+
+  uint32_t PackObject(uint32_t*& pData, IMaterial* a_pObject);
 
 //  BVHTree                      m_bvhTree;
   std::vector<struct BVHNode>  m_nodes;

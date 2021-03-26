@@ -50,6 +50,12 @@ struct SimpleMesh
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+uint32_t TestClass::PackObject(uint32_t*& pData, IMaterial* a_pObject)
+{
+  const uint32_t offset = uint32_t(pData - m_materialData.data());   // TODO: encode offset and type in single uint32_t
+  pData += a_pObject->GetSizeOf()/sizeof(uint32_t);
+  return offset | (a_pObject->GetTypeId() << (32 - IMaterial::TYPE_BITS));
+}
 
 void TestClass::InitSpheresScene(int a_numSpheres, int a_seed)
 { 
@@ -73,49 +79,19 @@ void TestClass::InitSpheresScene(int a_numSpheres, int a_seed)
   //
   m_materialData.resize(10*maxSize/sizeof(uint32_t));
   m_materialOffsets.resize(10);
-
+  
   uint32_t* pData = m_materialData.data();
-  
-  m_materialOffsets[0] = uint32_t(pData - m_materialData.data());            // TODO: encode offset and type in single uint32_t
-  auto* pGrey = new (pData) LambertMaterial(float3(0.5,0.5,0.5)); 
-  pData += sizeof(LambertMaterial)/sizeof(uint32_t);
-  
-  m_materialOffsets[1] = uint32_t(pData - m_materialData.data());
-  auto* pRed = new (pData) LambertMaterial(float3(0.6,0.0235294,0.0235294)); 
-  pData += sizeof(LambertMaterial)/sizeof(uint32_t);
-
-  m_materialOffsets[2] = uint32_t(pData - m_materialData.data());
-  auto* pGreen = new (pData) LambertMaterial(float3(0.0235294, 0.6, 0.0235294)); 
-  pData += sizeof(LambertMaterial)/sizeof(uint32_t);
-
-  m_materialOffsets[3] = uint32_t(pData - m_materialData.data());
-  auto* pTeapotMtl = new (pData) GGXGlossyMaterial(float3(0.0235294, 0.6, 0.0235294)); 
-  pData += sizeof(GGXGlossyMaterial)/sizeof(uint32_t);
-
-  m_materialOffsets[4] = uint32_t(pData - m_materialData.data());
-  auto* pBlue = new (pData) LambertMaterial(float3(0.0847059, 0.144706,0.265882)); 
-  pData += sizeof(LambertMaterial)/sizeof(uint32_t);
-
-  m_materialOffsets[5] = uint32_t(pData - m_materialData.data());
-  auto* pWhite = new (pData) LambertMaterial(float3(0.6,0.6,0.6)); 
-  pData += sizeof(LambertMaterial)/sizeof(uint32_t);
-
-  m_materialOffsets[6] = uint32_t(pData - m_materialData.data());
-  auto* pSomething = new (pData) LambertMaterial(float3(0.078, 0, 0.156)); 
-  pData += sizeof(LambertMaterial)/sizeof(uint32_t);
-
-  m_materialOffsets[7] = uint32_t(pData - m_materialData.data());
-  auto* pMirror = new (pData) PerfectMirrorMaterial; 
-  pData += sizeof(PerfectMirrorMaterial)/sizeof(uint32_t);
-
-  m_materialOffsets[8] = uint32_t(pData - m_materialData.data());
-  auto* pEnvUnused = new (pData) PerfectMirrorMaterial; 
-  pData += sizeof(PerfectMirrorMaterial)/sizeof(uint32_t);
-
-  m_materialOffsets[9] = uint32_t(pData - m_materialData.data());
-  auto* pEmissive = new (pData) EmissiveMaterial; 
-  pData += sizeof(EmissiveMaterial)/sizeof(uint32_t);
-  
+   
+  m_materialOffsets[0] = PackObject(pData, new (pData) LambertMaterial(float3(0.5,0.5,0.5))                  );
+  m_materialOffsets[1] = PackObject(pData, new (pData) LambertMaterial(float3(0.6,0.0235294,0.0235294))      );
+  m_materialOffsets[2] = PackObject(pData, new (pData) LambertMaterial(float3(0.0235294, 0.6, 0.0235294))    );
+  m_materialOffsets[3] = PackObject(pData, new (pData) GGXGlossyMaterial(float3(0.8,0.715294,0))             );
+  m_materialOffsets[4] = PackObject(pData, new (pData) LambertMaterial(float3(0.0847059, 0.144706,0.265882)) );
+  m_materialOffsets[5] = PackObject(pData, new (pData) PerfectMirrorMaterial                                 );
+  m_materialOffsets[6] = PackObject(pData, new (pData) LambertMaterial(float3(0.25,0.0,0.5))                 );
+  m_materialOffsets[7] = PackObject(pData, new (pData) PerfectMirrorMaterial);
+  m_materialOffsets[8] = PackObject(pData, new (pData) PerfectMirrorMaterial);
+  m_materialOffsets[9] = PackObject(pData, new (pData) EmissiveMaterial);  
 }
 
 int TestClass::LoadScene(const char* bvhPath, const char* meshPath)
