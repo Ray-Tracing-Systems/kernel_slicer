@@ -54,7 +54,7 @@ uint32_t TestClass::PackObject(uint32_t*& pData, IMaterial* a_pObject)
 {
   const uint32_t offset = uint32_t(pData - m_materialData.data());   // TODO: encode offset and type in single uint32_t
   pData += a_pObject->GetSizeOf()/sizeof(uint32_t);
-  return offset | (a_pObject->GetTypeId() << (32 - IMaterial::TYPE_BITS));
+  return offset | (a_pObject->GetTag() << (32 - IMaterial::TAG_BITS));
 }
 
 void TestClass::InitSpheresScene(int a_numSpheres, int a_seed)

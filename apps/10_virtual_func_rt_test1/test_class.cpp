@@ -214,8 +214,8 @@ IMaterial* TestClass::kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit)
   const uint32_t mtId         = m_materialIds    [primId];
   const uint32_t objectPtr    = m_materialOffsets[mtId];
 
-  const uint32_t objectOffset = (objectPtr & IMaterial::OBJ_ID_MASK);
-  const uint32_t objectTag    = (objectPtr & IMaterial::TYPE_ID_MASK) >> (32 - IMaterial::TYPE_BITS);
+  const uint32_t objectOffset = (objectPtr & IMaterial::OFS_MASK);
+  const uint32_t objectTag    = (objectPtr & IMaterial::TAG_MASK) >> (32 - IMaterial::TAG_BITS);
   
   switch(objectTag)
   {
@@ -257,7 +257,7 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
     return;
   
   IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
-  
+
   pMaterial->kernel_GetColor(tid, out_color);
 }
 
