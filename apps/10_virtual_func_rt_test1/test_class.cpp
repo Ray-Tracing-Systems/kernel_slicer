@@ -219,16 +219,16 @@ IMaterial* TestClass::kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit)
   
   switch(objectTag)
   {
-    case IMaterial::TYPE_ID_LAMBERT:
+    case IMaterial::TAG_LAMBERT:
     return (__global LambertMaterial*)(m_materialData.data() + objectOffset);
 
-    case IMaterial::TYPE_ID_MIRROR:
+    case IMaterial::TAG_MIRROR:
     return (__global PerfectMirrorMaterial*)(m_materialData.data() + objectOffset);
 
-    case IMaterial::TYPE_ID_EMISSIVE:
+    case IMaterial::TAG_EMISSIVE:
     return (__global EmissiveMaterial*)(m_materialData.data() + objectOffset);
 
-    case IMaterial::TYPE_ID_GGX_GLOSSY:
+    case IMaterial::TAG_GGX_GLOSSY:
     return (__global GGXGlossyMaterial*)(m_materialData.data() + objectOffset);
 
     default:

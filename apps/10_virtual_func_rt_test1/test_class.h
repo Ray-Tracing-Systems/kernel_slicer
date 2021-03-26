@@ -39,14 +39,14 @@ struct IMaterial
   static constexpr uint32_t TAG_MASK = 0xF0000000; // mask which we can get from TAG_BITS
   static constexpr uint32_t OFS_MASK = 0x0FFFFFFF; // (32 - TAG_BITS) is left for object/thread id.
 
-  enum {TYPE_ID_LAMBERT    = 0, 
-        TYPE_ID_MIRROR     = 1, 
-        TYPE_ID_EMISSIVE   = 2, 
-        TYPE_ID_GGX_GLOSSY = 3,
-        TYPE_ID_EMPTY      = 15};
+  enum {TAG_LAMBERT    = 0, 
+        TAG_MIRROR     = 1, 
+        TAG_EMISSIVE   = 2, 
+        TAG_GGX_GLOSSY = 3,
+        TAG_ID_EMPTY   = 15};
 
   IMaterial(){}
-  virtual ~IMaterial() {}
+  //virtual ~IMaterial() {}                        // DISPATCHING ON GPU CLASSES MUST NOT HAVE DESTRUCTOR
 
   virtual uint32_t GetTag() const = 0;
   virtual size_t   GetSizeOf() const = 0;
@@ -67,7 +67,7 @@ struct LambertMaterial : public IMaterial
     out_color[tid] = RealColorToUint32_f3(float3(m_color[0], m_color[1], m_color[2])); 
   }
 
-  uint32_t GetTag() const override { return TYPE_ID_LAMBERT; }
+  uint32_t GetTag() const override { return TAG_LAMBERT; }
   size_t   GetSizeOf() const override { return sizeof(LambertMaterial); }
 };
 
@@ -77,7 +77,7 @@ struct PerfectMirrorMaterial : public IMaterial
   { 
     out_color[tid] = RealColorToUint32_f3(float3(0,0,0)); 
   }
-  uint32_t GetTag() const override { return TYPE_ID_MIRROR; }
+  uint32_t GetTag() const override { return TAG_MIRROR; }
   size_t   GetSizeOf() const override { return sizeof(PerfectMirrorMaterial); }
 };
 
@@ -89,7 +89,7 @@ struct EmissiveMaterial : public IMaterial
   }
 
   float  intensity;
-  uint32_t GetTag() const override { return TYPE_ID_EMISSIVE; }
+  uint32_t GetTag() const override { return TAG_EMISSIVE; }
   size_t   GetSizeOf() const override { return sizeof(EmissiveMaterial); }
 };
 
@@ -103,7 +103,7 @@ struct GGXGlossyMaterial : public IMaterial
 
   float color[3];
   float roughness;
-  uint32_t GetTag() const override { return TYPE_ID_GGX_GLOSSY; }
+  uint32_t GetTag() const override { return TAG_GGX_GLOSSY; }
   size_t   GetSizeOf() const override { return sizeof(GGXGlossyMaterial); }
 };
 
@@ -112,7 +112,7 @@ struct EmptyMaterial : public IMaterial
   EmptyMaterial() {}
   void kernel_GetColor(uint tid, uint* out_color) override  { }
 
-  uint32_t GetTag() const override { return TYPE_ID_EMPTY; }
+  uint32_t GetTag() const override { return TAG_ID_EMPTY; }
   size_t   GetSizeOf() const override { return sizeof(EmptyMaterial); }
 };
 
