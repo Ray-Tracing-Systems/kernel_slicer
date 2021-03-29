@@ -1,0 +1,40 @@
+#ifndef TEST_CLASS_H
+#define TEST_CLASS_H
+
+#include "include/BasicLogic.h" // We assume that all code that should pe passed to kernels will be just included both for CPU and OpenCL
+
+#include <vector>
+#include <iostream>
+#include <fstream>
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class ToneMapping 
+{
+public:
+
+  ToneMapping()
+  {    
+    m_gammaInv = 1.0f / 2.2f;
+  }
+  
+  void SetMaxImageSize(int w, int h);
+
+  // Base on IPT color space by Ebner and Fairchild (1998).
+  void IPTcompress(int w, int h, const float4* inData4f, unsigned int* outData1ui);
+
+protected:
+
+  void kernel2D_IPTcompress(int tidX, int tidY, const float4* inData4f, unsigned int* outData1ui);
+  
+  int   m_width;
+  int   m_height;
+  float m_gammaInv;
+};
+
+#endif
