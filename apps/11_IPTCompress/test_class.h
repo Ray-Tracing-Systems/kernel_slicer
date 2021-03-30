@@ -30,7 +30,7 @@ public:
 
 protected:
 
-  void kernel2D_IPTcompress(int tidX, int tidY, const float4* inData4f, unsigned int* outData1ui);
+  void kernel1D_IPTcompress(int a_size, const float4* inData4f, unsigned int* outData1ui);
   
   int   m_width;
   int   m_height;
