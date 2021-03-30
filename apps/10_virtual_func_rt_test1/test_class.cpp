@@ -217,25 +217,7 @@ IMaterial* TestClass::kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit)
   const uint32_t objectOffset = (objectPtr & IMaterial::OFS_MASK);
   const uint32_t objectTag    = (objectPtr & IMaterial::TAG_MASK) >> (32 - IMaterial::TAG_BITS);
   
-  switch(objectTag)
-  {
-    case IMaterial::TAG_LAMBERT:
-    return (__global LambertMaterial*)(m_materialData.data() + objectOffset);
-
-    case IMaterial::TAG_MIRROR:
-    return (__global PerfectMirrorMaterial*)(m_materialData.data() + objectOffset);
-
-    case IMaterial::TAG_EMISSIVE:
-    return (__global EmissiveMaterial*)(m_materialData.data() + objectOffset);
-
-    case IMaterial::TAG_GGX_GLOSSY:
-    return (__global GGXGlossyMaterial*)(m_materialData.data() + objectOffset);
-
-    default:
-    break;
-  };
-
-  return nullptr;
+  return (__global IMaterial*)(m_materialData.data() + objectOffset);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
