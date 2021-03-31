@@ -2,10 +2,10 @@
 #include "Bitmap.h"
 #include <cassert>
 
-inline uint pitch(uint x, uint y, uint pitch) { return y*pitch + x; }  
+inline static uint pitch(uint x, uint y, uint pitch) { return y*pitch + x; }  
 
 
-void SaveTestImage(const float4* data, int w, int h)
+static void SaveTestImage(const float4* data, int w, int h)
 {
   std::vector<uint> ldrData(w*h);
   for(size_t i=0;i<w*h;i++)
@@ -14,19 +14,19 @@ void SaveTestImage(const float4* data, int w, int h)
 }
 
 
-void ConvertSrgbToXyz(float3* a_data)
+static void ConvertSrgbToXyz(float3* a_data)
 {
   const float R = a_data->x;
   const float G = a_data->y;
   const float B = a_data->z;
 
-  a_data->x      = R * 0.4124564F + G * 0.3575761F + B * 0.1804375F;
-  a_data->y      = R * 0.2126729F + G * 0.7151522F + B * 0.0721750F;
-  a_data->z      = R * 0.0193339F + G * 0.1191920F + B * 0.9503041F;
+  a_data->x     = R * 0.4124564F + G * 0.3575761F + B * 0.1804375F;
+  a_data->y     = R * 0.2126729F + G * 0.7151522F + B * 0.0721750F;
+  a_data->z     = R * 0.0193339F + G * 0.1191920F + B * 0.9503041F;
 }
 
 
-void ConvertXyzToLmsPower(float3* a_data, const float a_power)
+static void ConvertXyzToLmsPower(float3* a_data, const float a_power)
 {
   float L =  0.4002F * a_data->x + 0.7075F * a_data->y + -0.0807F * a_data->z;
   float M = -0.2280F * a_data->x + 1.1500F * a_data->y +  0.0612F * a_data->z;
@@ -47,31 +47,31 @@ void ConvertXyzToLmsPower(float3* a_data, const float a_power)
 }
 
 
-void ConvertLmsToIpt(float3* a_data)
+static void ConvertLmsToIpt(float3* a_data)
 {
   const float I = 0.4000F * a_data->x +  0.4000F * a_data->y +  0.2000F * a_data->z;
   const float P = 4.4550F * a_data->x + -4.8510F * a_data->y +  0.3960F * a_data->z;
   const float T = 0.8056F * a_data->x +  0.3572F * a_data->y + -1.1628F * a_data->z;
 
-  a_data->x = I;
-  a_data->y = P;
-  a_data->z = T;
+  a_data->x     = I;
+  a_data->y     = P;
+  a_data->z     = T;
 }
 
 
-void ConvertIptToLms(float3* a_data)
+static void ConvertIptToLms(float3* a_data)
 {
   const float L = 0.9999F * a_data->x +  0.0970F * a_data->y +  0.2053F * a_data->z;
   const float M = 0.9999F * a_data->x + -0.1138F * a_data->y +  0.1332F * a_data->z;
   const float S = 0.9999F * a_data->x +  0.0325F * a_data->y + -0.6768F * a_data->z;
 
-  a_data->x = L;
-  a_data->y = M;
-  a_data->z = S;
+  a_data->x     = L;
+  a_data->y     = M;
+  a_data->z     = S;
 }
 
 
-void ConvertLmsToXyzPower(float3* a_data, const float a_power)
+static void ConvertLmsToXyzPower(float3* a_data, const float a_power)
 {
   float L = a_data->x;
   float M = a_data->y;
@@ -90,25 +90,25 @@ void ConvertLmsToXyzPower(float3* a_data, const float a_power)
 }
 
 
-void ConvertXyzToSrgb(float3* a_data)
+static void ConvertXyzToSrgb(float3* a_data)
 {
   const float X = a_data->x;
   const float Y = a_data->y;
   const float Z = a_data->z;
 
-  a_data->x = X *  3.2404542F + Y * -1.5371385F + Z * -0.4985314F;
-  a_data->y = X * -0.9692660F + Y *  1.8760108F + Z *  0.0415560F;
-  a_data->z = X *  0.0556434F + Y * -0.2040259F + Z *  1.0572252F;
+  a_data->x     = X *  3.2404542F + Y * -1.5371385F + Z * -0.4985314F;
+  a_data->y     = X * -0.9692660F + Y *  1.8760108F + Z *  0.0415560F;
+  a_data->z     = X *  0.0556434F + Y * -0.2040259F + Z *  1.0572252F;
 }
 
 
-void Blend(float* inData1, const float inData2, const float amount) // 0 - data1, 1 - data2
+static void Blend(float* inData1, const float inData2, const float amount) // 0 - data1, 1 - data2
 {
   *inData1 = *inData1 + (inData2 - *inData1) * amount;
 }
 
 
-void CompressWithKnee(float* a_data, const float a_compress)
+static void CompressWithKnee(float* a_data, const float a_compress)
 {
   float knee = 10.0F;
   Blend(&knee, 2.0F, pow(a_compress, 0.175F)); // lower = softer
@@ -118,7 +118,7 @@ void CompressWithKnee(float* a_data, const float a_compress)
 }
 
 
-void CompressWithKnee(float3* a_data, const float a_compress)
+static void CompressWithKnee3f(float3* a_data, const float a_compress)
 {
   float knee = 10.0F;
   Blend(&knee, 2.0F, pow(a_compress, 0.175F)); // lower = softer
@@ -130,7 +130,7 @@ void CompressWithKnee(float3* a_data, const float a_compress)
 }
 
 
-void MoreCompressColor_IPT(float3* a_dataIPT)
+static void MoreCompressColor_IPT(float3* a_dataIPT)
 {
   const float saturation = sqrt(a_dataIPT->y * a_dataIPT->y + a_dataIPT->z * a_dataIPT->z);
   const float compSat    = tanh(saturation);
@@ -141,7 +141,7 @@ void MoreCompressColor_IPT(float3* a_dataIPT)
 }
 
 
-void CompressIPT(float3* a_dataIPT, const float a_compress)
+static void CompressIPT(float3* a_dataIPT, const float a_compress)
 {
   // Global compress.
   float compLum    = a_dataIPT->x;
@@ -187,14 +187,14 @@ void ToneMapping::kernel1D_IPTcompress(int a_size, const float4* inData4f, unsig
     ConvertXyzToSrgb    (&pixel);
 
     // little compress in RGB
-    CompressWithKnee(&pixel, 0.01F);
+    CompressWithKnee3f(&pixel, 0.01F);
 
     pixel = clamp(pixel, 0.0F, 1.0F);
 
     const float4 resColor = { 
-      powf(pixel.x, m_gammaInv), 
-      powf(pixel.y, m_gammaInv), 
-      powf(pixel.z, m_gammaInv), 1.0f };
+      (float)pow(pixel.x, m_gammaInv), 
+      (float)pow(pixel.y, m_gammaInv), 
+      (float)pow(pixel.z, m_gammaInv), 1.0f };
 
     outData1ui[i]         = RealColorToUint32(resColor);    
   }
