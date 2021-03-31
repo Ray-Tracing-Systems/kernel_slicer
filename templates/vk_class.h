@@ -134,6 +134,9 @@ protected:
   {% endif %}
 
   VkBuffer m_classDataBuffer = VK_NULL_HANDLE;
+  {% if UseSeparateUBO %}
+  VkBuffer m_uboArgsBuffer = VK_NULL_HANDLE;
+  {% endif %}
   VkDeviceMemory m_allMem    = VK_NULL_HANDLE;
 
 ## for Kernel in Kernels

@@ -112,8 +112,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   json data;
   data["Includes"]      = strOut.str();
   data["UBOIncl"]       = uboIncludeName;
-  data["MainClassName"] = a_classInfo.mainClassName;
+  data["MainClassName"]    = a_classInfo.mainClassName;
   data["ShaderSingleFile"] = a_classInfo.pShaderCC->ShaderSingleFile();
+  data["UseSeparateUBO"]   = a_classInfo.pShaderCC->UseSeparateUBOForArguments();
 
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";
@@ -215,6 +216,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
 
   data["IndirectDispatches"] = std::vector<std::string>();
   data["Kernels"]            = std::vector<std::string>();  
+
   for(const auto& nk : a_classInfo.kernels)
   {
     const auto& k        = nk.second;
@@ -303,6 +305,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
 
     // put auxArgs to push constants
     //
+    int sizeCurr = 0;
     kernelJson["AuxArgs"] = std::vector<std::string>();
     for(auto arg : auxArgs)
     {
@@ -310,6 +313,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       argData["Name"] = arg.name;
       argData["Type"] = arg.type;
       kernelJson["AuxArgs"].push_back(argData);
+      sizeCurr += arg.size;
     }
     
     // identify wherther we nedd to add reduction pass after current kernel

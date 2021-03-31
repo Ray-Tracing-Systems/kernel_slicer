@@ -38,6 +38,10 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
 ## endfor
  
   vkDestroyBuffer(device, m_classDataBuffer, nullptr);
+  {% if UseSeparateUBO %}
+  vkDestroyBuffer(device, m_uboArgsBuffer, nullptr);
+  {% endif %}
+
   {% for Buffer in ClassVectorVars %}
   vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
   {% endfor %}
@@ -202,7 +206,10 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
 
   m_classDataBuffer = vkfw::CreateBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | GetAdditionalFlagsForUBO());
   allBuffers.push_back(m_classDataBuffer);
-  
+  {% if UseSeparateUBO %}
+  m_uboArgsBuffer = vkfw::CreateBuffer(device, 256, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  allBuffers.push_back(m_uboArgsBuffer);
+  {% endif %}
   {% for Buffer in RedVectorVars %}
   {
     const size_t sizeOfBuffer = ComputeReductionAuxBufferElements(a_maxThreadsCount, REDUCTION_BLOCK_SIZE)*sizeof({{Buffer.Type}});
