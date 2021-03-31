@@ -34,7 +34,7 @@
 //};
 
 
-void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
+void Tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
 {
   // (1) init vulkan
   //
@@ -108,8 +108,8 @@ void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
 
   VkDeviceMemory colorMem    = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {colorBufferLDR, colorBufferHDR});
 
-  pGPUImpl->SetVulkanInOutFor_Bloom(colorBufferHDR, 0,  // ==> 
-                                    colorBufferLDR, 0); // <==
+  pGPUImpl->SetVulkanInOutFor_IPTcompress(colorBufferHDR, 0,  // ==> 
+                                          colorBufferLDR, 0); // <==
 
   pCopyHelper->UpdateBuffer(colorBufferHDR, 0, a_hdrData, w*h*sizeof(float)*4);
   
@@ -123,7 +123,7 @@ void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
     //vkCmdFillBuffer(commandBuffer, colorBufferLDR, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
-    pGPUImpl->BloomCmd(commandBuffer, w, h, nullptr, nullptr);         // !!! USING GENERATED CODE !!! 
+    pGPUImpl->IPTcompressCmd(commandBuffer, w, h, nullptr, nullptr);         // !!! USING GENERATED CODE !!! 
     vkEndCommandBuffer(commandBuffer);  
     
     auto start = std::chrono::high_resolution_clock::now();
