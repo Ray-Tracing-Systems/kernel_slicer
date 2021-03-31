@@ -17,10 +17,18 @@ float sinf(float x);
 float cosf(float x);
 float tanf(float x);
 
+float sinh(float x);
+float cosh(float x);
+float tanh(float x);
+
 float asin (float x);
 float acos (float x);
 float atan (float y_over_x);
 float atan2 (float y, float x);
+
+float asinh(float x);
+float acosh(float x);
+float atanh(float y_over_x);
 
 float pow(float x, float power);
 float powf(float x, float power);

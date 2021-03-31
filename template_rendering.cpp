@@ -281,7 +281,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     // change threads/loops order if required
     //
     for(size_t i=0;i<tidArgs.size();i++)
-      threadIdNamesList[i] = tidArgs[threadsOrder[i]].sizeName;
+    {
+      uint32_t tid = std::min<uint32_t>(threadsOrder[i], tidArgs.size()-1);
+      threadIdNamesList[i] = tidArgs[tid].sizeName;
+    }
 
     if(threadIdNamesList.size() > 0)
       kernelJson["tidX"] = threadIdNamesList[0];
@@ -623,7 +626,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     std::vector<std::string> threadIdNames(tidArgs.size());
     for(size_t i=0;i<tidArgs.size();i++)
-      threadIdNames[i] = tidArgs[threadsOrder[i]].argName;
+    {
+      uint32_t tid = std::min<uint32_t>(threadsOrder[i], tidArgs.size()-1);
+      threadIdNames[i] = tidArgs[tid].argName;
+    }
 
     // now add all std::vector members
     //

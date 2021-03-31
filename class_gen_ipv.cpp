@@ -239,5 +239,32 @@ void kslicer::IPV_Pattern::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clan
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
   kslicer::KernelRewriter rv(rewrite2, compiler, this, a_funcInfo, "", true); /// --> last parameter is true which means informational pass for KernelRewriter !!!
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
+
+  // check kernel
+  //
+  if(a_funcInfo.loopIters.size() == 1)
+  {
+    auto pos = a_funcInfo.name.find("kernel1D_");
+    if(pos == std::string::npos)
+      std::cout << "  [KF, ERROR]: wrong naming for 1D kernels, 'kernel1D_' should be used for kernel " << a_funcInfo.name.c_str() << std::endl;
+  }
+  else if (a_funcInfo.loopIters.size() == 2)
+  {
+    auto pos = a_funcInfo.name.find("kernel2D_");
+    if(pos == std::string::npos)
+      std::cout << "  [KF, ERROR]: wrong naming for 2D kernels, 'kernel2D_' should be used for kernel " << a_funcInfo.name.c_str() << std::endl;
+  }
+  else if (a_funcInfo.loopIters.size() == 3)
+  {
+    auto pos = a_funcInfo.name.find("kernel3D_");
+    if(pos == std::string::npos)
+      std::cout << "  [KF, ERROR]: wrong naming for 3D kernels, 'kernel3D_' should be used for kernel " << a_funcInfo.name.c_str() << std::endl;
+  }
+  else
+  {
+    std::cout << "  [KF, ERROR]: wrong loop nesting " << a_funcInfo.loopIters.size() << " for kernel " << a_funcInfo.name.c_str() << std::endl;
+  }
+  
+
 }
 

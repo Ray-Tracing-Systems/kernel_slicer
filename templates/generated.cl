@@ -36,7 +36,7 @@
 ## for Kernel in Kernels
 {% if Kernel.IsIndirect %}
 __attribute__((reqd_work_group_size(1, 1, 1)))
-__kernel void {{Kernel.Name}}_UpdateIndirect(__global struct {{MainClassName}}_UBO_Data* restrict ubo, __global uint4* indirectBuffer)
+__kernel void {{Kernel.Name}}_UpdateIndirect(__global struct {{MainClassName}}_UBO_Data* ubo, __global uint4* indirectBuffer)
 {
   uint4 blocksNum = {1,1,1,0};
   blocksNum.x = ({{Kernel.IndirectSizeX}} + {{Kernel.WGSizeX}} - 1)/{{Kernel.WGSizeX}};
@@ -53,12 +53,12 @@ __kernel void {{Kernel.Name}}_UpdateIndirect(__global struct {{MainClassName}}_U
 __attribute__((reqd_work_group_size({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}}))) 
 __kernel void {{Kernel.Name}}(
 ## for Arg in Kernel.Args 
-  __global {{Arg.Type}} restrict {{Arg.Name}},
+  __global {{Arg.Type}} {{Arg.Name}},
 ## endfor
 ## for UserArg in Kernel.UserArgs 
   {{UserArg.Type}} {{UserArg.Name}},
 ## endfor
-  __global struct {{MainClassName}}_UBO_Data* restrict ubo,
+  __global struct {{MainClassName}}_UBO_Data* ubo,
   const uint {{Kernel.threadIdName1}}, 
   const uint {{Kernel.threadIdName2}},
   const uint {{Kernel.threadIdName3}},
@@ -218,12 +218,12 @@ __kernel void {{Kernel.Name}}(
 __attribute__((reqd_work_group_size(256, 1, 1)))
 __kernel void {{Kernel.Name}}_Reduction(
 ## for Arg in Kernel.Args 
-  __global {{Arg.Type}} restrict {{Arg.Name}},
+  __global {{Arg.Type}} {{Arg.Name}},
 ## endfor
 ## for UserArg in Kernel.UserArgs 
   {{UserArg.Type}} {{UserArg.Name}},
 ## endfor
-   __global struct {{MainClassName}}_UBO_Data* restrict ubo,
+   __global struct {{MainClassName}}_UBO_Data* ubo,
   const uint {{Kernel.threadIdName1}}, 
   const uint {{Kernel.threadIdName2}},
   const uint {{Kernel.threadIdName3}},
@@ -354,8 +354,8 @@ __kernel void {{Kernel.Name}}_Reduction(
 
 __attribute__((reqd_work_group_size(256, 1, 1)))
 __kernel void copyKernelFloat(
-  __global float* restrict out_data,
-  __global float* restrict in_data,
+  __global float* out_data,
+  __global float* in_data,
   const uint length)
 {
   const uint i = get_global_id(0);
