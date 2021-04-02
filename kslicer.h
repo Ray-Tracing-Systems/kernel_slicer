@@ -280,6 +280,7 @@ namespace kslicer
     virtual std::string VectorTypeContructorReplace(const std::string& a_typeName, const std::string& a_call) const { return a_call; }
 
     virtual bool        UseSeparateUBOForArguments() const { return false; }
+    virtual bool        UseSpecConstForWgSize() const { return false; }
   };
 
   struct ClspvCompiler : IShaderCompiler
@@ -312,10 +313,8 @@ namespace kslicer
         return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-pushconstant";
     } 
 
-    bool UseSeparateUBOForArguments() const override
-    {
-      return m_useCpp;
-    }
+    bool UseSeparateUBOForArguments() const override { return m_useCpp; }
+    bool UseSpecConstForWgSize()      const override { return true; }
     
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override
     {

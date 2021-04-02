@@ -68,6 +68,26 @@ void {{MainClassName}}_Generated::InitHelpers()
 {
   vkGetPhysicalDeviceProperties(physicalDevice, &m_devProps);
   m_pMaker = std::make_unique<vkfw::ComputePipelineMaker>();
+  {% if UseSpecConstWgSize %}
+  {
+    m_specializationEntriesWgSize[0].constantID = 0;
+    m_specializationEntriesWgSize[0].offset     = 0;
+    m_specializationEntriesWgSize[0].size       = sizeof(uint32_t);
+  
+    m_specializationEntriesWgSize[1].constantID = 1;
+    m_specializationEntriesWgSize[1].offset     = sizeof(uint32_t);
+    m_specializationEntriesWgSize[1].size       = sizeof(uint32_t);
+  
+    m_specializationEntriesWgSize[2].constantID = 2;
+    m_specializationEntriesWgSize[2].offset     = 2 * sizeof(uint32_t);
+    m_specializationEntriesWgSize[2].size       = sizeof(uint32_t);
+
+    m_specsForWGSize.mapEntryCount = 3;
+    m_specsForWGSize.pMapEntries   = m_specializationEntriesWgSize;
+    m_specsForWGSize.dataSize      = 3 * sizeof(uint32_t);
+    m_specsForWGSize.pData         = nullptr;
+  }
+  {% endif %}
 }
 
 ## for Kernel in Kernels
@@ -143,19 +163,35 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {% else %}
   std::string shaderPath = a_filePath; 
   {% endif %}
-
+  
+  {% if UseSpecConstWgSize %}
+  {
+    uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
+    m_specsForWGSize.pData         = specializationData;
+    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, "{{Kernel.OriginalName}}");
+  }
+  {% else %}
   m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}");
+  {% endif %}
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
   {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, 128); // at least 128 bytes for push constants
   {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);  
   {% if Kernel.FinishRed %}
   
+  {% if UseSpecConstWgSize %}
+  {
+    uint32_t specializationData[3] = { 256, 1, 1 };
+    m_specsForWGSize.pData         = specializationData;
+    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, "{{Kernel.OriginalName}}_Reduction");
+  }
+  {% else %}
   m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_Reduction");
+  {% endif %}
   {{Kernel.Name}}ReductionPipeline = m_pMaker->MakePipeline(device);
   {% endif %} 
   {% if Kernel.HasLoopInit %}
   
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_Init");
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_Init"); 
   {{Kernel.Name}}InitPipeline = m_pMaker->MakePipeline(device);
   {% if Kernel.HasLoopFinish %}
   
@@ -178,9 +214,16 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
   {% else %}
   std::string servPath = a_filePath;
   {% endif %}
-
+  
+  {% if UseSpecConstWgSize %}
+  {
+    uint32_t specializationData[3] = { 256, 1, 1 };
+    m_specsForWGSize.pData         = specializationData;
+    m_pMaker->CreateShader(device, servPath.c_str(), &m_specsForWGSize, "copyKernelFloat");
+  }
+  {% else %}
   m_pMaker->CreateShader(device, servPath.c_str(), nullptr, "copyKernelFloat");
-
+  {% endif %}
   copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
   copyKernelFloatLayout   = m_pMaker->MakeLayout(device, copyKernelFloatDSLayout, 128); // at least 128 bytes for push constants
   copyKernelFloatPipeline = m_pMaker->MakePipeline(device);

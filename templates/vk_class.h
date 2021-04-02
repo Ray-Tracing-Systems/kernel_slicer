@@ -159,6 +159,11 @@ protected:
   {% endif %}
 ## endfor
 
+  {% if UseSpecConstWgSize %}
+  VkSpecializationMapEntry m_specializationEntriesWgSize[3];
+  VkSpecializationInfo     m_specsForWGSize;
+  {% endif %}
+
   virtual VkBufferUsageFlags GetAdditionalFlagsForUBO();
 
   VkPipelineLayout      copyKernelFloatLayout   = VK_NULL_HANDLE;

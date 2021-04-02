@@ -110,11 +110,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     strOut2 << "virtual " << k.second.DeclCmd.c_str() << ";\n";
 
   json data;
-  data["Includes"]      = strOut.str();
-  data["UBOIncl"]       = uboIncludeName;
-  data["MainClassName"]    = a_classInfo.mainClassName;
-  data["ShaderSingleFile"] = a_classInfo.pShaderCC->ShaderSingleFile();
-  data["UseSeparateUBO"]   = a_classInfo.pShaderCC->UseSeparateUBOForArguments();
+  data["Includes"]           = strOut.str();
+  data["UBOIncl"]            = uboIncludeName;
+  data["MainClassName"]      = a_classInfo.mainClassName;
+  data["ShaderSingleFile"]   = a_classInfo.pShaderCC->ShaderSingleFile();
+  data["UseSeparateUBO"]     = a_classInfo.pShaderCC->UseSeparateUBOForArguments();
+  data["UseSpecConstWgSize"] = a_classInfo.pShaderCC->UseSpecConstForWgSize();
 
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";
@@ -540,7 +541,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     dataMembersCached[member.name] = member;
 
   json data;
-  data["MainClassName"] = a_classInfo.mainClassName;
+  data["MainClassName"]      = a_classInfo.mainClassName;
+  data["UseSpecConstWgSize"] = a_classInfo.pShaderCC->UseSpecConstForWgSize();
 
   // (1) put includes
   //
