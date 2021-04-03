@@ -161,7 +161,7 @@
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
                         "-reorderLoops", "YX",
-                        //"-cl-std=", "C++", 
+                        "-cl-std=", "C++", 
                         "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",

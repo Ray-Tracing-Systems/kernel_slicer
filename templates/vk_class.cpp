@@ -87,7 +87,15 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   pcData.m_{{Arg.Name}} = {{Arg.Name}}; 
   {% endfor %}
 
+  {% if UseSeparateUBO %}
+  {
+    vkCmdUpdateBuffer(m_currCmdBuffer, m_uboArgsBuffer, 0, sizeof(KernelArgsPC), &pcData);
+    VkBufferMemoryBarrier barUBO2 = BarrierForArgsUBO(sizeof(KernelArgsPC));
+    vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO2, 0, nullptr);
+  }
+  {% else %}
   vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
+  {% endif %}
   {% if Kernel.HasLoopInit %}
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}InitPipeline);
   vkCmdDispatch(m_currCmdBuffer, 1, 1, 1); 

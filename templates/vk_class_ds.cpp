@@ -48,8 +48,13 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
 ## for DescriptorSet in MainFunc.DescriptorSets
   // descriptor set #{{DescriptorSet.Id}}: {{DescriptorSet.KernelName}}Cmd ({{DescriptorSet.ArgNames}})
   {
+    {% if UseSeparateUBO %}
+    std::vector<VkDescriptorBufferInfo> descriptorBufferInfo({{DescriptorSet.ArgNumber}}+2);
+    std::vector<VkWriteDescriptorSet>   writeDescriptorSet({{DescriptorSet.ArgNumber}}+2);
+    {% else %}
     std::vector<VkDescriptorBufferInfo> descriptorBufferInfo({{DescriptorSet.ArgNumber}}+1);
     std::vector<VkWriteDescriptorSet>   writeDescriptorSet({{DescriptorSet.ArgNumber}}+1);
+    {% endif %}
 
 ## for Arg in DescriptorSet.Args
     descriptorBufferInfo[{{Arg.Id}}]        = VkDescriptorBufferInfo{};
@@ -81,7 +86,24 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pBufferInfo      = &descriptorBufferInfo[{{DescriptorSet.ArgNumber}}];
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pImageInfo       = nullptr;
-    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pTexelBufferView = nullptr; 
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pTexelBufferView = nullptr;
+    {% if UseSeparateUBO %} 
+
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1]        = VkDescriptorBufferInfo{};
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].buffer = m_uboArgsBuffer;
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].offset = 0;
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].range  = VK_WHOLE_SIZE;  
+
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1]                  = VkWriteDescriptorSet{};
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].dstSet           = m_allGeneratedDS[{{DescriptorSet.Id}}];
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].dstBinding       = {{DescriptorSet.ArgNumber}}+1;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].descriptorCount  = 1;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].pBufferInfo      = &descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1];
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].pImageInfo       = nullptr;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].pTexelBufferView = nullptr;
+    {% endif %}
    
     vkUpdateDescriptorSets(device, uint32_t(writeDescriptorSet.size()), writeDescriptorSet.data(), 0, NULL);
   }
