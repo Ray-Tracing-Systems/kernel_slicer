@@ -97,7 +97,7 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout
   {% if UseSeparateUBO %}
   std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+2> dsBindings;
   {% else %}
-  std::array<VkDescriptorSetLayoutBindingm {{Kernel.ArgCount}}+1> dsBindings;
+  std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+1> dsBindings;
   {% endif %}
 
 ## for KernelARG in Kernel.Args
