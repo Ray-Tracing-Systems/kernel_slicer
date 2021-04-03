@@ -314,7 +314,7 @@ namespace kslicer
     } 
 
     bool UseSeparateUBOForArguments() const override { return m_useCpp; }
-    bool UseSpecConstForWgSize()      const override { return true; }
+    bool UseSpecConstForWgSize()      const override { return m_useCpp; }
     
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override
     {
