@@ -1,4 +1,5 @@
 #include <vector>
+#include <array>
 #include <memory>
 #include <limits>
 
@@ -49,11 +50,11 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
   // descriptor set #{{DescriptorSet.Id}}: {{DescriptorSet.KernelName}}Cmd ({{DescriptorSet.ArgNames}})
   {
     {% if UseSeparateUBO %}
-    std::vector<VkDescriptorBufferInfo> descriptorBufferInfo({{DescriptorSet.ArgNumber}}+2);
-    std::vector<VkWriteDescriptorSet>   writeDescriptorSet({{DescriptorSet.ArgNumber}}+2);
+    std::array<VkDescriptorBufferInfo, {{DescriptorSet.ArgNumber}}+2> descriptorBufferInfo;
+    std::array<VkWriteDescriptorSet,   {{DescriptorSet.ArgNumber}}+2> writeDescriptorSet;
     {% else %}
-    std::vector<VkDescriptorBufferInfo> descriptorBufferInfo({{DescriptorSet.ArgNumber}}+1);
-    std::vector<VkWriteDescriptorSet>   writeDescriptorSet({{DescriptorSet.ArgNumber}}+1);
+    std::array<VkDescriptorBufferInfo, {{DescriptorSet.ArgNumber}}+1> descriptorBufferInfo;
+    std::array<VkWriteDescriptorSet,   {{DescriptorSet.ArgNumber}}+1> writeDescriptorSet;
     {% endif %}
 
 ## for Arg in DescriptorSet.Args

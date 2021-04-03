@@ -102,14 +102,13 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   VkBufferMemoryBarrier barUBO = BarrierForSingleBuffer(m_classDataBuffer);
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
   {% endif %}
-
   vkCmdBindPipeline      (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   {% if Kernel.IsIndirect %}
   vkCmdDispatchIndirect  (m_currCmdBuffer, m_indirectBuffer, {{Kernel.IndirectOffset}}*sizeof(uint32_t)*4);
   {% else %}
   vkCmdDispatch(m_currCmdBuffer, ({{Kernel.tidX}} + blockSizeX - 1) / blockSizeX, ({{Kernel.tidY}} + blockSizeY - 1) / blockSizeY, ({{Kernel.tidZ}} + blockSizeZ - 1) / blockSizeZ);
-  
   {% if Kernel.FinishRed %}
+  
   {% if Kernel.HasLoopFinish %}
   KernelArgsPC oldPCData = pcData;
   {% endif %}
@@ -141,8 +140,16 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
       pcData.m_tFlags = m_currThreadFlags;      // now flags:
       if(wholeSize <= wgSize)                   // stop if last pass
         pcData.m_tFlags |= KGEN_REDUCTION_LAST_STEP;
-        
+
+      {% if UseSeparateUBO %}
+      {
+        vkCmdUpdateBuffer(m_currCmdBuffer, m_uboArgsBuffer, 0, sizeof(KernelArgsPC), &pcData);
+        VkBufferMemoryBarrier barUBO2 = BarrierForArgsUBO(sizeof(KernelArgsPC));
+        vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO2, 0, nullptr);
+      }
+      {% else %}
       vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
+      {% endif %} 
       vkCmdDispatch(m_currCmdBuffer, nextSize, 1, 1);
       
       if(wholeSize <= wgSize)
@@ -169,7 +176,16 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
   {% if Kernel.HasLoopFinish %}
+
+  {% if UseSeparateUBO %}
+  {
+    vkCmdUpdateBuffer(m_currCmdBuffer, m_uboArgsBuffer, 0, sizeof(KernelArgsPC), &oldPCData);
+    VkBufferMemoryBarrier barUBO2 = BarrierForArgsUBO(sizeof(KernelArgsPC));
+    vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO2, 0, nullptr);
+  }
+  {% else %}
   vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &oldPCData);
+  {% endif %}
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}FinishPipeline);
   vkCmdDispatch(m_currCmdBuffer, 1, 1, 1); 
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
