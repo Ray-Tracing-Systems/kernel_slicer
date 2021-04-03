@@ -50,21 +50,48 @@ struct SimpleMesh
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+uint32_t TestClass::PackObject(uint32_t*& pData, IMaterial* a_pObject)
+{
+  const uint32_t offset = uint32_t(pData - m_materialData.data());   // TODO: encode offset and type in single uint32_t
+  pData += a_pObject->GetSizeOf()/sizeof(uint32_t);
+  return offset | (a_pObject->GetTag() << (32 - IMaterial::TAG_BITS));
+}
 
 void TestClass::InitSpheresScene(int a_numSpheres, int a_seed)
 { 
   spheresMaterials.resize(10);
 
   spheresMaterials[0].color = float4(0.5,0.5,0.5, 0.0f); // grayOverrideMat
-  spheresMaterials[4].color = float4(0.078, 0, 0.156, 0.0f); // hydra_placeholder_material
+  spheresMaterials[6].color = float4(0.078, 0, 0.156, 0.0f); // hydra_placeholder_material
   spheresMaterials[2].color = float4(0.0235294, 0.6, 0.0235294,0); // Green
-  spheresMaterials[3].color = float4(0.0847059, 0.144706,0.265882,0); // Blue
+  spheresMaterials[4].color = float4(0.0847059, 0.144706,0.265882,0); // Blue
   spheresMaterials[1].color = float4(0.6,0.0235294,0.0235294,0); // Red
   spheresMaterials[5].color = float4(0.6,0.6,0.6,0); // White
-  spheresMaterials[6].color = float4(0.8,0.715294,0,0); // teaport_material, phong or ggx
+  spheresMaterials[3].color = float4(0.8,0.715294,0,0); // teaport_material, phong or ggx
   spheresMaterials[7].color = float4(0,0,0,0); // mirror
   spheresMaterials[8].color = float4(0,0,0,0); // environment_material
   spheresMaterials[9].color = float4(1,1,1,28); // TPhotometricLight001_material
+
+  auto maxSize = std::max( std::max(sizeof(EmissiveMaterial),      sizeof(GGXGlossyMaterial)), 
+                           std::max(sizeof(PerfectMirrorMaterial), sizeof(LambertMaterial)));
+  
+  // using in place new to create objects on the CPU side
+  //
+  m_materialData.resize(10*maxSize/sizeof(uint32_t));
+  m_materialOffsets.resize(10);
+  
+  uint32_t* pData = m_materialData.data();
+   
+  m_materialOffsets[0] = PackObject(pData, new (pData) LambertMaterial(float3(0.5,0.5,0.5))                  );
+  m_materialOffsets[1] = PackObject(pData, new (pData) LambertMaterial(float3(0.6,0.0235294,0.0235294))      );
+  m_materialOffsets[2] = PackObject(pData, new (pData) LambertMaterial(float3(0.0235294, 0.6, 0.0235294))    );
+  m_materialOffsets[3] = PackObject(pData, new (pData) GGXGlossyMaterial(float3(0.8,0.715294,0))             );
+  m_materialOffsets[4] = PackObject(pData, new (pData) LambertMaterial(float3(0.0847059, 0.144706,0.265882)) );
+  m_materialOffsets[5] = PackObject(pData, new (pData) PerfectMirrorMaterial                                 );
+  m_materialOffsets[6] = PackObject(pData, new (pData) LambertMaterial(float3(0.25,0.0,0.5))                 );
+  m_materialOffsets[7] = PackObject(pData, new (pData) PerfectMirrorMaterial);
+  m_materialOffsets[8] = PackObject(pData, new (pData) PerfectMirrorMaterial);
+  m_materialOffsets[9] = PackObject(pData, new (pData) EmissiveMaterial);  
 }
 
 int TestClass::LoadScene(const char* bvhPath, const char* meshPath)

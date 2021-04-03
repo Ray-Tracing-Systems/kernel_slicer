@@ -1,4 +1,5 @@
 #include <vector>
+#include <array>
 #include <memory>
 #include <limits>
 
@@ -38,6 +39,10 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
 ## endfor
  
   vkDestroyBuffer(device, m_classDataBuffer, nullptr);
+  {% if UseSeparateUBO %}
+  vkDestroyBuffer(device, m_uboArgsBuffer, nullptr);
+  {% endif %}
+
   {% for Buffer in ClassVectorVars %}
   vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
   {% endfor %}
@@ -64,13 +69,37 @@ void {{MainClassName}}_Generated::InitHelpers()
 {
   vkGetPhysicalDeviceProperties(physicalDevice, &m_devProps);
   m_pMaker = std::make_unique<vkfw::ComputePipelineMaker>();
+  {% if UseSpecConstWgSize %}
+  {
+    m_specializationEntriesWgSize[0].constantID = 0;
+    m_specializationEntriesWgSize[0].offset     = 0;
+    m_specializationEntriesWgSize[0].size       = sizeof(uint32_t);
+  
+    m_specializationEntriesWgSize[1].constantID = 1;
+    m_specializationEntriesWgSize[1].offset     = sizeof(uint32_t);
+    m_specializationEntriesWgSize[1].size       = sizeof(uint32_t);
+  
+    m_specializationEntriesWgSize[2].constantID = 2;
+    m_specializationEntriesWgSize[2].offset     = 2 * sizeof(uint32_t);
+    m_specializationEntriesWgSize[2].size       = sizeof(uint32_t);
+
+    m_specsForWGSize.mapEntryCount = 3;
+    m_specsForWGSize.pMapEntries   = m_specializationEntriesWgSize;
+    m_specsForWGSize.dataSize      = 3 * sizeof(uint32_t);
+    m_specsForWGSize.pData         = nullptr;
+  }
+  {% endif %}
 }
 
 ## for Kernel in Kernels
 VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout()
 {
-  VkDescriptorSetLayoutBinding dsBindings[{{Kernel.ArgCount}}+1] = {};
-  
+  {% if UseSeparateUBO %}
+  std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+2> dsBindings;
+  {% else %}
+  std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+1> dsBindings;
+  {% endif %}
+
 ## for KernelARG in Kernel.Args
   // binding for {{KernelARG.Name}}
   dsBindings[{{KernelARG.Id}}].binding            = {{KernelARG.Id}};
@@ -86,11 +115,19 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout
   dsBindings[{{Kernel.ArgCount}}].descriptorCount    = 1;
   dsBindings[{{Kernel.ArgCount}}].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
   dsBindings[{{Kernel.ArgCount}}].pImmutableSamplers = nullptr;
+  {% if UseSeparateUBO %}
+  
+  dsBindings[{{Kernel.ArgCount}}+1].binding            = {{Kernel.ArgCount}}+1;
+  dsBindings[{{Kernel.ArgCount}}+1].descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  dsBindings[{{Kernel.ArgCount}}+1].descriptorCount    = 1;
+  dsBindings[{{Kernel.ArgCount}}+1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[{{Kernel.ArgCount}}+1].pImmutableSamplers = nullptr;
+  {% endif %}
   
   VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
   descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  descriptorSetLayoutCreateInfo.bindingCount = uint32_t({{Kernel.ArgCount}}+1);
-  descriptorSetLayoutCreateInfo.pBindings    = dsBindings;
+  descriptorSetLayoutCreateInfo.bindingCount = uint32_t(dsBindings.size());
+  descriptorSetLayoutCreateInfo.pBindings    = dsBindings.data();
   
   VkDescriptorSetLayout layout = nullptr;
   VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
@@ -100,7 +137,11 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout
 
 VkDescriptorSetLayout {{MainClassName}}_Generated::CreatecopyKernelFloatDSLayout()
 {
-  VkDescriptorSetLayoutBinding dsBindings[3] = {};
+  {% if UseSpecConstWgSize %}
+  std::array<VkDescriptorSetLayoutBinding, 3> dsBindings;
+  {% else %}
+  std::array<VkDescriptorSetLayoutBinding, 2> dsBindings;
+  {% endif %}
 
   dsBindings[0].binding            = 0;
   dsBindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -113,18 +154,20 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::CreatecopyKernelFloatDSLayout
   dsBindings[1].descriptorCount    = 1;
   dsBindings[1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
   dsBindings[1].pImmutableSamplers = nullptr;
-
-  // binding for POD members stored in m_classDataBuffer
+  {% if UseSpecConstWgSize %}
+  
+  // binding for POD arguments
   dsBindings[2].binding            = 2;
-  dsBindings[2].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[2].descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
   dsBindings[2].descriptorCount    = 1;
   dsBindings[2].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
   dsBindings[2].pImmutableSamplers = nullptr;
+  {% endif %}
 
   VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
   descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  descriptorSetLayoutCreateInfo.bindingCount = 3;
-  descriptorSetLayoutCreateInfo.pBindings    = dsBindings;
+  descriptorSetLayoutCreateInfo.bindingCount = dsBindings.size();
+  descriptorSetLayoutCreateInfo.pBindings    = dsBindings.data();
 
   VkDescriptorSetLayout layout = nullptr;
   VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
@@ -139,19 +182,35 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {% else %}
   std::string shaderPath = a_filePath; 
   {% endif %}
-
+  
+  {% if UseSpecConstWgSize %}
+  {
+    uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
+    m_specsForWGSize.pData         = specializationData;
+    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, "{{Kernel.OriginalName}}");
+  }
+  {% else %}
   m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}");
+  {% endif %}
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
   {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, 128); // at least 128 bytes for push constants
   {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);  
   {% if Kernel.FinishRed %}
   
+  {% if UseSpecConstWgSize %}
+  {
+    uint32_t specializationData[3] = { 256, 1, 1 };
+    m_specsForWGSize.pData         = specializationData;
+    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, "{{Kernel.OriginalName}}_Reduction");
+  }
+  {% else %}
   m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_Reduction");
+  {% endif %}
   {{Kernel.Name}}ReductionPipeline = m_pMaker->MakePipeline(device);
   {% endif %} 
   {% if Kernel.HasLoopInit %}
   
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_Init");
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_Init"); 
   {{Kernel.Name}}InitPipeline = m_pMaker->MakePipeline(device);
   {% if Kernel.HasLoopFinish %}
   
@@ -174,9 +233,16 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
   {% else %}
   std::string servPath = a_filePath;
   {% endif %}
-
+  
+  {% if UseSpecConstWgSize %}
+  {
+    uint32_t specializationData[3] = { 256, 1, 1 };
+    m_specsForWGSize.pData         = specializationData;
+    m_pMaker->CreateShader(device, servPath.c_str(), &m_specsForWGSize, "copyKernelFloat");
+  }
+  {% else %}
   m_pMaker->CreateShader(device, servPath.c_str(), nullptr, "copyKernelFloat");
-
+  {% endif %}
   copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
   copyKernelFloatLayout   = m_pMaker->MakeLayout(device, copyKernelFloatDSLayout, 128); // at least 128 bytes for push constants
   copyKernelFloatPipeline = m_pMaker->MakePipeline(device);
@@ -202,7 +268,10 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
 
   m_classDataBuffer = vkfw::CreateBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | GetAdditionalFlagsForUBO());
   allBuffers.push_back(m_classDataBuffer);
-  
+  {% if UseSeparateUBO %}
+  m_uboArgsBuffer = vkfw::CreateBuffer(device, 256, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  allBuffers.push_back(m_uboArgsBuffer);
+  {% endif %}
   {% for Buffer in RedVectorVars %}
   {
     const size_t sizeOfBuffer = ComputeReductionAuxBufferElements(a_maxThreadsCount, REDUCTION_BLOCK_SIZE)*sizeof({{Buffer.Type}});
@@ -312,6 +381,23 @@ VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForIndirectBufferUpdat
   bar.buffer              = a_buffer;
   bar.offset              = 0;
   bar.size                = VK_WHOLE_SIZE;
+  return bar;
+}
+{% endif %}
+
+{% if UseSeparateUBO %}
+VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForArgsUBO(size_t a_size)
+{
+  VkBufferMemoryBarrier bar = {};
+  bar.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  bar.pNext               = NULL;
+  bar.srcAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT;
+  bar.dstAccessMask       = VK_ACCESS_UNIFORM_READ_BIT;
+  bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bar.buffer              = m_uboArgsBuffer;
+  bar.offset              = 0;
+  bar.size                = a_size;
   return bar;
 }
 {% endif %}

@@ -278,11 +278,14 @@ namespace kslicer
     virtual std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const { return a_call; }
     virtual bool        IsVectorTypeNeedsContructorReplacement(const std::string& a_typeName) const { return false; }
     virtual std::string VectorTypeContructorReplace(const std::string& a_typeName, const std::string& a_call) const { return a_call; }
+
+    virtual bool        UseSeparateUBOForArguments() const { return false; }
+    virtual bool        UseSpecConstForWgSize() const { return false; }
   };
 
   struct ClspvCompiler : IShaderCompiler
   {
-    ClspvCompiler()
+    ClspvCompiler(bool a_useCPP = false) : m_useCpp(a_useCPP)
     {
       m_ctorReplacement["float2"] = "make_float2";
       m_ctorReplacement["float3"] = "make_float3";
@@ -302,7 +305,16 @@ namespace kslicer
     std::string ShaderFolder()     const override { return "clspv_shaders_aux"; }
     std::string ShaderSingleFile() const override { return "z_generated.cl"; }
     std::string TemplatePath()     const override { return "templates/generated.cl"; }
-    std::string BuildCommand()     const override { return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-pushconstant"; } 
+    std::string BuildCommand()     const override 
+    {
+      if(m_useCpp) 
+        return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-ubo -cl-std=CLC++ -inline-entry-points";  
+      else
+        return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-pushconstant";
+    } 
+
+    bool UseSeparateUBOForArguments() const override { return m_useCpp; }
+    bool UseSpecConstForWgSize()      const override { return m_useCpp; }
     
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override
     {
@@ -352,6 +364,7 @@ namespace kslicer
 
   private:
     std::unordered_map<std::string, std::string> m_ctorReplacement;
+    bool m_useCpp;
   };
 
   struct CircleCompiler : IShaderCompiler

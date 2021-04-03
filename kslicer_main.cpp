@@ -261,7 +261,8 @@ int main(int argc, const char **argv)
   std::string shaderCCName  = "clspv";
   std::string hintFile      = "";
   uint32_t    threadsOrder[3] = {0,1,2};
-  uint32_t    warpSize      = 32;
+  uint32_t    warpSize        = 32;
+  bool        useCppInKernels = false;
   
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
@@ -286,6 +287,11 @@ int main(int argc, const char **argv)
 
   if(params.find("-warpSize") != params.end())
     warpSize = atoi(params["-warpSize"].c_str());
+
+  if(params.find("-cl-std=") != params.end())
+    useCppInKernels = params["-cl-std="].find("++") != std::string::npos;
+  else if(params.find("-cl-std") != params.end())
+    useCppInKernels = params["-cl-std"].find("++") != std::string::npos;
 
   std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
   argsForClang.reserve(argc);
@@ -320,7 +326,7 @@ int main(int argc, const char **argv)
   if(shaderCCName == "circle" || shaderCCName == "Circle")
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::CircleCompiler>();
   else
-    inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>();
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>(useCppInKernels);
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -35,7 +35,9 @@
 
 ## for Kernel in Kernels
 {% if Kernel.IsIndirect %}
+{% if not UseSpecConstWgSize %}
 __attribute__((reqd_work_group_size(1, 1, 1)))
+{% endif %}
 __kernel void {{Kernel.Name}}_UpdateIndirect(__global struct {{MainClassName}}_UBO_Data* ubo, __global uint4* indirectBuffer)
 {
   uint4 blocksNum = {1,1,1,0};
@@ -50,7 +52,9 @@ __kernel void {{Kernel.Name}}_UpdateIndirect(__global struct {{MainClassName}}_U
 } 
 {% endif %}
 
-__attribute__((reqd_work_group_size({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}}))) 
+{% if not UseSpecConstWgSize %}
+__attribute__((reqd_work_group_size({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}})))
+{% endif %} 
 __kernel void {{Kernel.Name}}(
 ## for Arg in Kernel.Args 
   __global {{Arg.Type}} {{Arg.Name}},
@@ -215,7 +219,9 @@ __kernel void {{Kernel.Name}}(
 }
 {% if Kernel.FinishRed %}
 
+{% if not UseSpecConstWgSize %}
 __attribute__((reqd_work_group_size(256, 1, 1)))
+{% endif %}
 __kernel void {{Kernel.Name}}_Reduction(
 ## for Arg in Kernel.Args 
   __global {{Arg.Type}} {{Arg.Name}},
@@ -352,7 +358,9 @@ __kernel void {{Kernel.Name}}_Reduction(
 
 ## endfor
 
+{% if not UseSpecConstWgSize %}
 __attribute__((reqd_work_group_size(256, 1, 1)))
+{% endif %}
 __kernel void copyKernelFloat(
   __global float* out_data,
   __global float* in_data,

@@ -134,6 +134,10 @@ protected:
   {% endif %}
 
   VkBuffer m_classDataBuffer = VK_NULL_HANDLE;
+  {% if UseSeparateUBO %}
+  VkBuffer m_uboArgsBuffer = VK_NULL_HANDLE;
+  VkBufferMemoryBarrier BarrierForArgsUBO(size_t a_size);
+  {% endif %}
   VkDeviceMemory m_allMem    = VK_NULL_HANDLE;
 
 ## for Kernel in Kernels
@@ -155,6 +159,11 @@ protected:
   void {{Kernel.Name}}_UpdateIndirect();
   {% endif %}
 ## endfor
+
+  {% if UseSpecConstWgSize %}
+  VkSpecializationMapEntry m_specializationEntriesWgSize[3];
+  VkSpecializationInfo     m_specsForWGSize;
+  {% endif %}
 
   virtual VkBufferUsageFlags GetAdditionalFlagsForUBO();
 
