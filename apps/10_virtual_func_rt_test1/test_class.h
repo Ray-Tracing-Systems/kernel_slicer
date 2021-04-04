@@ -152,8 +152,8 @@ public:
   bool kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                        Lite_Hit* out_hit, const uint* indicesReordered, const float4* meshVerts);
   
-  void kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit, 
-                               uint* out_color);
+  //void kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit, 
+  //                             uint* out_color);
 
   void kernel_InitAccumData(uint tid, float4* accumColor, float4* accumuThoroughput);
   

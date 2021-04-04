@@ -131,19 +131,6 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   return (res.primId != -1);
 }
 
-void TestClass::kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit, 
-                                        uint* out_color)
-{
-  if(in_hit->primId != -1)
-  {
-    //uint32_t mtId  = in_hit->primId % 10; 
-    uint32_t mtId  = m_materialIds[in_hit->primId];
-    out_color[tid] = RealColorToUint32(spheresMaterials[mtId].color);
-  }
-  else
-    out_color[tid] = 0x00700000;
-}
-
 void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
 {
   out_pakedXY[pitchOffset(tidX,tidY)] = ((tidY << 16) & 0xFFFF0000) | (tidX & 0x0000FFFF);
@@ -159,54 +146,6 @@ void TestClass::kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* o
 {
   out_color[tid] = RealColorToUint32(*a_accumColor);
 }
-
-//void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, 
-//                                  float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput)
-//{
-//  const Lite_Hit hit  = *in_hit;
-//  const float3 rayPos = to_float3(*rayPosAndNear);
-//  const float3 rayDir = to_float3(*rayDirAndFar );
-//
-//  if( IsMtlEmissive(&spheresMaterials[hit.primId % 3]) )
-//  {
-//    float4 emissiveColor = to_float4(GetMtlEmissiveColor(&spheresMaterials[hit.primId % 3]), 0.0f);
-//    *accumColor = emissiveColor*(*accumThoroughput);
-//    return;
-//  }
-//
-//  //const float3 sphPos    = to_float3(spheresPosRadius[hit.primId % 3]);
-//  const float3 diffColor = GetMtlDiffuseColor(&spheresMaterials[hit.primId % 3]);
-//
-//  const float3 hitPos  = rayPos + rayDir*hit.t;
-//  //const float3 hitNorm = normalize(hitPos - sphPos);
-//  const float3 hitNorm = make_float3(m_vNorm4f[hit.primId].x, m_vNorm4f[hit.primId].y, m_vNorm4f[hit.primId].z);
-//
-//  RandomGen gen = m_randomGens[tid];
-//  const float2 uv = rndFloat2_Pseudo(&gen);
-//  m_randomGens[tid] = gen;
-//
-//  const float3 newDir   = MapSampleToCosineDistribution(uv.x, uv.y, hitNorm, hitNorm, 1.0f);
-//  const float  cosTheta = dot(newDir, hitNorm);
-//
-//  const float pdfVal   = cosTheta * INV_PI;
-//  const float3 brdfVal = (cosTheta > 1e-5f) ? diffColor * INV_PI : make_float3(0,0,0);
-//  const float3 bxdfVal = brdfVal * (1.0f / fmax(pdfVal, 1e-10f));
-//
-//  const float3 newPos = OffsRayPos(hitPos, hitNorm, newDir);  
-//
-//  *rayPosAndNear    = to_float4(newPos, 0.0f);
-//  *rayDirAndFar     = to_float4(newDir, MAXFLOAT);
-//  *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f);
-//}
-
-//void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, float4* out_color)
-//{
-//  const uint XY = in_pakedXY[tid];
-//  const uint x  = (XY & 0x0000FFFF);
-//  const uint y  = (XY & 0xFFFF0000) >> 16;
-// 
-//  out_color[y*WIN_WIDTH+x] += *a_accumColor;
-//}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
