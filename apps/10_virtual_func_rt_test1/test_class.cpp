@@ -26,34 +26,27 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
 }
 
-static bool RayBoxIntersection(float4 ray_pos, float4 ray_dir, const float boxMin[3], const float boxMax[3])
+static float2 RayBoxIntersectionLite(const float3 ray_pos, const float3 ray_dir_inv, const float boxMin[3], const float boxMax[3])
 {
-  float tmin = ray_pos.w;
-  float tmax = ray_dir.w;
+  const float lo = ray_dir_inv.x*(boxMin[0] - ray_pos.x);
+  const float hi = ray_dir_inv.x*(boxMax[0] - ray_pos.x);
 
-  ray_dir.x = 1.0f/ray_dir.x;
-  ray_dir.y = 1.0f/ray_dir.y;
-  ray_dir.z = 1.0f/ray_dir.z;
+  float tmin = std::min(lo, hi);
+  float tmax = std::max(lo, hi);
 
-  float lo = ray_dir.x*(boxMin[0] - ray_pos.x);
-  float hi = ray_dir.x*(boxMax[0] - ray_pos.x);
-
-  tmin = std::min(lo, hi);
-  tmax = std::max(lo, hi);
-
-  float lo1 = ray_dir.y*(boxMin[1] - ray_pos.y);
-  float hi1 = ray_dir.y*(boxMax[1] - ray_pos.y);
+  const float lo1 = ray_dir_inv.y*(boxMin[1] - ray_pos.y);
+  const float hi1 = ray_dir_inv.y*(boxMax[1] - ray_pos.y);
 
   tmin = std::max(tmin, std::min(lo1, hi1));
   tmax = std::min(tmax, std::max(lo1, hi1));
 
-  float lo2 = ray_dir.z*(boxMin[2] - ray_pos.z);
-  float hi2 = ray_dir.z*(boxMax[2] - ray_pos.z);
+  const float lo2 = ray_dir_inv.z*(boxMin[2] - ray_pos.z);
+  const float hi2 = ray_dir_inv.z*(boxMax[2] - ray_pos.z);
 
   tmin = std::max(tmin, std::min(lo2, hi2));
   tmax = std::min(tmax, std::max(lo2, hi2));
 
-  return (tmin <= tmax) && (tmax > 0.f);
+  return make_float2(tmin, tmax); //(tmin <= tmax) && (tmax > 0.f);
 }
 
 static void IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float4 rayDirAndFar,
@@ -92,11 +85,23 @@ static void IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float
 
 }
 
+static inline float3 SafeInverse_4to3(float4 d)
+{
+  const float ooeps = 1.0e-36f; // Avoid div by zero.
+  float3 res;
+  res.x = 1.0f / (fabs(d.x) > ooeps ? d.x : copysign(ooeps, d.x));
+  res.y = 1.0f / (fabs(d.y) > ooeps ? d.y : copysign(ooeps, d.y));
+  res.z = 1.0f / (fabs(d.z) > ooeps ? d.z : copysign(ooeps, d.z));
+  return res;
+}
+
 bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                                 Lite_Hit* out_hit, const uint* indicesReordered, const float4* meshVerts)
 {
-  float4 rayPos = *rayPosAndNear;
-  float4 rayDir = *rayDirAndFar ;
+  const float4 rayPos = *rayPosAndNear;
+  const float4 rayDir = *rayDirAndFar ;
+
+  const float3 rayDirInv = SafeInverse_4to3(rayDir);
 
   Lite_Hit res;
   res.primId = -1;
@@ -108,7 +113,8 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   while(nodeIdx < 0xFFFFFFFE)
   {
     const struct BVHNode currNode = m_nodes[nodeIdx];
-    const bool intersects         = RayBoxIntersection(rayPos, rayDir, currNode.boxMin, currNode.boxMax);
+    const float2 boxHit           = RayBoxIntersectionLite(to_float3(rayPos), rayDirInv, currNode.boxMin, currNode.boxMax);
+    const bool   intersects       = (boxHit.x <= boxHit.y) && (boxHit.y > rayPos.w) && (boxHit.x < res.t); // (tmin <= tmax) && (tmax > 0.f) && (tmin < curr_t)
 
     if(intersects && currNode.leftOffset == 0xFFFFFFFF) //leaf
     {
@@ -154,53 +160,53 @@ void TestClass::kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* o
   out_color[tid] = RealColorToUint32(*a_accumColor);
 }
 
-void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, 
-                                  float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput)
-{
-  const Lite_Hit hit  = *in_hit;
-  const float3 rayPos = to_float3(*rayPosAndNear);
-  const float3 rayDir = to_float3(*rayDirAndFar );
+//void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, 
+//                                  float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput)
+//{
+//  const Lite_Hit hit  = *in_hit;
+//  const float3 rayPos = to_float3(*rayPosAndNear);
+//  const float3 rayDir = to_float3(*rayDirAndFar );
+//
+//  if( IsMtlEmissive(&spheresMaterials[hit.primId % 3]) )
+//  {
+//    float4 emissiveColor = to_float4(GetMtlEmissiveColor(&spheresMaterials[hit.primId % 3]), 0.0f);
+//    *accumColor = emissiveColor*(*accumThoroughput);
+//    return;
+//  }
+//
+//  //const float3 sphPos    = to_float3(spheresPosRadius[hit.primId % 3]);
+//  const float3 diffColor = GetMtlDiffuseColor(&spheresMaterials[hit.primId % 3]);
+//
+//  const float3 hitPos  = rayPos + rayDir*hit.t;
+//  //const float3 hitNorm = normalize(hitPos - sphPos);
+//  const float3 hitNorm = make_float3(m_vNorm4f[hit.primId].x, m_vNorm4f[hit.primId].y, m_vNorm4f[hit.primId].z);
+//
+//  RandomGen gen = m_randomGens[tid];
+//  const float2 uv = rndFloat2_Pseudo(&gen);
+//  m_randomGens[tid] = gen;
+//
+//  const float3 newDir   = MapSampleToCosineDistribution(uv.x, uv.y, hitNorm, hitNorm, 1.0f);
+//  const float  cosTheta = dot(newDir, hitNorm);
+//
+//  const float pdfVal   = cosTheta * INV_PI;
+//  const float3 brdfVal = (cosTheta > 1e-5f) ? diffColor * INV_PI : make_float3(0,0,0);
+//  const float3 bxdfVal = brdfVal * (1.0f / fmax(pdfVal, 1e-10f));
+//
+//  const float3 newPos = OffsRayPos(hitPos, hitNorm, newDir);  
+//
+//  *rayPosAndNear    = to_float4(newPos, 0.0f);
+//  *rayDirAndFar     = to_float4(newDir, MAXFLOAT);
+//  *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f);
+//}
 
-  if( IsMtlEmissive(&spheresMaterials[hit.primId % 3]) )
-  {
-    float4 emissiveColor = to_float4(GetMtlEmissiveColor(&spheresMaterials[hit.primId % 3]), 0.0f);
-    *accumColor = emissiveColor*(*accumThoroughput);
-    return;
-  }
-
-  //const float3 sphPos    = to_float3(spheresPosRadius[hit.primId % 3]);
-  const float3 diffColor = GetMtlDiffuseColor(&spheresMaterials[hit.primId % 3]);
-
-  const float3 hitPos  = rayPos + rayDir*hit.t;
-  //const float3 hitNorm = normalize(hitPos - sphPos);
-  const float3 hitNorm = make_float3(m_vNorm4f[hit.primId].x, m_vNorm4f[hit.primId].y, m_vNorm4f[hit.primId].z);
-
-  RandomGen gen = m_randomGens[tid];
-  const float2 uv = rndFloat2_Pseudo(&gen);
-  m_randomGens[tid] = gen;
-
-  const float3 newDir   = MapSampleToCosineDistribution(uv.x, uv.y, hitNorm, hitNorm, 1.0f);
-  const float  cosTheta = dot(newDir, hitNorm);
-
-  const float pdfVal   = cosTheta * INV_PI;
-  const float3 brdfVal = (cosTheta > 1e-5f) ? diffColor * INV_PI : make_float3(0,0,0);
-  const float3 bxdfVal = brdfVal * (1.0f / fmax(pdfVal, 1e-10f));
-
-  const float3 newPos = OffsRayPos(hitPos, hitNorm, newDir);  
-
-  *rayPosAndNear    = to_float4(newPos, 0.0f);
-  *rayDirAndFar     = to_float4(newDir, MAXFLOAT);
-  *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f);
-}
-
-void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, float4* out_color)
-{
-  const uint XY = in_pakedXY[tid];
-  const uint x  = (XY & 0x0000FFFF);
-  const uint y  = (XY & 0xFFFF0000) >> 16;
- 
-  out_color[y*WIN_WIDTH+x] += *a_accumColor;
-}
+//void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, float4* out_color)
+//{
+//  const uint XY = in_pakedXY[tid];
+//  const uint x  = (XY & 0x0000FFFF);
+//  const uint y  = (XY & 0xFFFF0000) >> 16;
+// 
+//  out_color[y*WIN_WIDTH+x] += *a_accumColor;
+//}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -243,27 +249,27 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
   pMaterial->kernel_GetColor(tid, out_color);
 }
 
-void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color)
-{
-  float4 accumColor, accumThoroughput;
-  kernel_InitAccumData(tid, &accumColor, &accumThoroughput);
-
-  float4 rayPosAndNear, rayDirAndFar;
-  kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
-
-  for(int depth = 0; depth < a_maxDepth; depth++) 
-  {
-    Lite_Hit hit;
-    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, m_indicesReordered.data(), m_vPos4f.data()))
-      break;
-
-    kernel_NextBounce(tid, &hit, 
-                      &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput);
-  }
-
-  kernel_ContributeToImage(tid, &accumColor, in_pakedXY, 
-                           out_color);
-}
+//void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color)
+//{
+//  float4 accumColor, accumThoroughput;
+//  kernel_InitAccumData(tid, &accumColor, &accumThoroughput);
+//
+//  float4 rayPosAndNear, rayDirAndFar;
+//  kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
+//
+//  for(int depth = 0; depth < a_maxDepth; depth++) 
+//  {
+//    Lite_Hit hit;
+//    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, m_indicesReordered.data(), m_vPos4f.data()))
+//      break;
+//
+//    kernel_NextBounce(tid, &hit, 
+//                      &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput);
+//  }
+//
+//  kernel_ContributeToImage(tid, &accumColor, in_pakedXY, 
+//                           out_color);
+//}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

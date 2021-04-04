@@ -143,7 +143,7 @@ public:
 
   void PackXY(uint tidX, uint tidY, uint* out_pakedXY);
   void CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color);
-  void StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color);
+  //void StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color);
 
   void kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY);
 
@@ -157,13 +157,13 @@ public:
 
   void kernel_InitAccumData(uint tid, float4* accumColor, float4* accumuThoroughput);
   
-  void kernel_NextBounce(uint tid, const Lite_Hit* in_hit, 
-                         float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput);
+  //void kernel_NextBounce(uint tid, const Lite_Hit* in_hit, 
+  //                       float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput);
 
   void kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* out_color);
 
-  void kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, 
-                                float4* out_color);
+  //void kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, 
+  //                              float4* out_color);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
