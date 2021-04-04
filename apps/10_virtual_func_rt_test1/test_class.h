@@ -52,9 +52,6 @@ struct IMaterial
   virtual size_t   GetSizeOf() const = 0;
 
   virtual void   kernel_GetColor(uint tid, uint* out_color) = 0;
-
-  virtual void   kernel_SampleNextBounce(uint tid, const Lite_Hit* in_hit, 
-                                         float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput) {}
 };
 
 struct LambertMaterial : public IMaterial
