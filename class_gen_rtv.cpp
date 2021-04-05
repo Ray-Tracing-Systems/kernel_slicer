@@ -276,10 +276,16 @@ void kslicer::RTV_Pattern::AddDispatchingKernel(const std::string& a_className, 
 
 void kslicer::RTV_Pattern::ProcessDispatchHierarchies()
 {
+  
   for(const auto& pair : m_vkernelPairs)
   {
 
   }
+
+  //for(auto p : allOtherKernels)
+  //{
+  //  
+  //}
 
   //for(const auto p : m_vkernelMakers)
   //{
