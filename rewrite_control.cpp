@@ -150,12 +150,20 @@ bool kslicer::MainFunctionRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
 
   if(m_pCodeInfo->IsKernel(fname))
   {
-    std::string callStr = MakeKernelCallCmdString(f);
-
-    auto p2 = m_alreadyProcessedCalls.find(kslicer::GetHashOfSourceRange(f->getSourceRange()));
-    if(p2 == m_alreadyProcessedCalls.end())
+    auto pKernel = m_kernels.find(fname);
+    if(pKernel != m_kernels.end())
     {
-      m_rewriter.ReplaceText(f->getSourceRange(), callStr); // getExprLoc
+      std::string callStr = MakeKernelCallCmdString(f);
+  
+      auto p2 = m_alreadyProcessedCalls.find(kslicer::GetHashOfSourceRange(f->getSourceRange()));
+      if(p2 == m_alreadyProcessedCalls.end())
+      {
+        m_rewriter.ReplaceText(f->getSourceRange(), callStr); // getExprLoc
+      }
+    }
+    else
+    {
+      std::cout << "  [MainFunctionRewriter::VisitCXXMemberCallExpr]: can't process kernel call for " << fname.c_str() << std::endl; 
     }
   }
 

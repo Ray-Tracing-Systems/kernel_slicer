@@ -45,18 +45,14 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
   for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
   {
     std::string kernDecl = kernelsCallCmdDecl[i];
-    size_t voidPos = kernDecl.find("void ");
-    size_t boolPos = kernDecl.find("bool ");
-    size_t rbPos   = kernDecl.find("Cmd(");
+    size_t      spacePos = kernDecl.find(" ");
+    size_t      rbPos    = kernDecl.find("Cmd(");
 
-    assert(voidPos != std::string::npos || boolPos != std::string::npos);
-    assert(rbPos != std::string::npos);
+    assert(spacePos != std::string::npos);
+    assert(rbPos   != std::string::npos);    
     
-    if(voidPos == std::string::npos)
-      voidPos = boolPos;
-
-    std::string kernName       = kernDecl.substr(voidPos + 5, rbPos - 5);
-    kernelDeclByName[kernName] = kernDecl.substr(voidPos + 5);
+    std::string kernName       = kernDecl.substr(spacePos + 5, rbPos - 5);
+    kernelDeclByName[kernName] = kernDecl.substr(spacePos + 5);
   }
   return kernelDeclByName;
 }
