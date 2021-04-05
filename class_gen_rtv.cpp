@@ -252,15 +252,37 @@ void kslicer::RTV_Pattern::ProcessKernelArg(KernelInfo::Arg& arg, const KernelIn
   arg.isThreadID = (id != pdef.end()); 
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void kslicer::RTV_Pattern::AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName)
 {
   std::cout << "   found class hierarchy: " << a_className.c_str() << " from " << a_makerName.c_str() << std::endl;
+
+  DHierarchy hdata;
+  hdata.interfaceName = a_className;
+  hdata.makerName     = a_makerName;
+  hdata.implementations.clear();
+  m_vkernelMakers[a_className] = hdata;
 } 
 
 void kslicer::RTV_Pattern::AddDispatchingKernel(const std::string& a_className, const std::string& a_kernelName)
 {
   std::cout << "   found virtual kernel dispatch: " << a_className.c_str() << "::" << a_kernelName.c_str() << std::endl;
+  m_vkernelPairs.push_back(std::pair(a_className, a_kernelName));
 } 
 
+void kslicer::RTV_Pattern::ProcessDispatchHierarchies()
+{
+  for(const auto& pair : m_vkernelPairs)
+  {
 
+  }
+
+  //for(const auto p : m_vkernelMakers)
+  //{
+  //  
+  //}
+}

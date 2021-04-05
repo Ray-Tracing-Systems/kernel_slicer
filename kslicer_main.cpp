@@ -482,6 +482,17 @@ int main(int argc, const char **argv)
   
   std::cout << "}" << std::endl;
   std::cout << std::endl;
+  
+  if(inputCodeInfo.SupportVirtualKernels())
+  {
+    std::cout << "(2.1) Process Virtual Kernels hierarchies" << std::endl; 
+    std::cout << "{" << std::endl;
+    
+    inputCodeInfo.ProcessDispatchHierarchies();
+
+    std::cout << "}" << std::endl;
+    std::cout << std::endl;
+  }
 
   std::cout << "(3) Mark data members, methods and functions which are actually used in kernels." << std::endl; 
   std::cout << "{" << std::endl;

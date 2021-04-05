@@ -456,7 +456,13 @@ namespace kslicer
     virtual void PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&                      a_mainFuncList, 
                                         const std::unordered_map<std::string, KernelInfo>&    a_kernelList,
                                         std::vector<KernelCallInfo>&                          a_kernelCalls) {}    
-                                     
+    
+    virtual bool SupportVirtualKernels() const { return false; }
+    virtual void AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) { } ///<! for Virtual Kernels
+    virtual void AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) { } ///<! for Virtual Kernels
+    virtual void ProcessDispatchHierarchies() {}
+ 
+
     //// \\
 
     //// Processing Kernel Functions (KF)
@@ -468,9 +474,6 @@ namespace kslicer
     virtual void          VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) { } // additional informational pass, does not rewrite the code! 
 
     virtual void ProcessCallArs_KF(const KernelCallInfo& a_call) { };
-
-    virtual void AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) { } ///<! for Virtual Kernels
-    virtual void AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) { } ///<! for Virtual Kernels
 
     //// These methods used for final template text rendering
     //
@@ -515,11 +518,26 @@ namespace kslicer
 
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
     void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override;   
-
-    void          AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) override; ///<! for Virtual Kernels 
+    
+    bool          SupportVirtualKernels() const { return true; }
+    void          AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) override;  ///<! for Virtual Kernels 
     void          AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) override; ///<! for Virtual Kernels 
+    void          ProcessDispatchHierarchies() override;
 
     bool NeedThreadFlags() const override { return true; }                  
+  
+  private:
+    
+    struct DHierarchy
+    {
+      std::string              interfaceName;
+      std::string              makerName;
+      std::vector<std::string> implementations;
+    };
+
+    std::unordered_map<std::string, DHierarchy>         m_vkernelMakers;
+    std::vector< std::pair< std::string, std::string> > m_vkernelPairs;
+
   };
 
   struct IPV_Pattern : public MainClassInfo
