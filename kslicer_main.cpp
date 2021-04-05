@@ -411,17 +411,18 @@ int main(int argc, const char **argv)
   std::cout << "(1) Processing class " << mainClassName.c_str() << " with initial pass" << std::endl; 
   std::cout << "{" << std::endl;
 
-  // Parse code
+  // Parse code, initial pass
   //
   kslicer::InitialPassASTConsumer astConsumer(mainFunctNames, mainClassName, compiler.getASTContext(), compiler.getSourceManager(), inputCodeInfo); 
   ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
   compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
-
-  inputCodeInfo.allKernels           = astConsumer.rv.functions;    
+  
+  inputCodeInfo.allKernels           = astConsumer.rv.functions; 
+  inputCodeInfo.allOtherKernels      = astConsumer.rv.otherFunctions;
   inputCodeInfo.allDataMembers       = astConsumer.rv.dataMembers;   
   inputCodeInfo.mainClassFileInclude = astConsumer.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = astConsumer.rv.m_mainClassASTNode;
-
+  
   if(inputCodeInfo.mainClassASTNode == nullptr)
   {
     std::cout << "[main]: ERROR, main class " << mainClassName.c_str() << " not found" << std::endl;
@@ -452,9 +453,9 @@ int main(int argc, const char **argv)
       for(auto& matcher : allMatchers)
         finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource,matcher), pMatcherPrc.get());
       
-      std::cout << "  process control function: " << mainFuncName.c_str() << "(...): ";
+      std::cout << "  process control function: " << mainFuncName.c_str() << "(...)" << std::endl;
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
-      std::cout << GetClangToolingErrorCodeMessage(res) << std::endl;
+      std::cout << "  process control function: " << mainFuncName.c_str() << "(...) --> " << GetClangToolingErrorCodeMessage(res) << std::endl;
       
       // filter out unused kernels
       //

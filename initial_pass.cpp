@@ -17,7 +17,7 @@ static kslicer::KernelInfo::Arg ProcessParameter(clang::ParmVarDecl *p)
   return arg;
 }
 
-void kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDecl *f) 
+void kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDecl *f, std::unordered_map<std::string, KernelInfo>& a_funcList, const std::string& a_className) 
 {
   if (!f || !f->hasBody()) 
     return;
@@ -30,13 +30,25 @@ void kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDe
   
   KernelInfo info;
   info.name        = dn.getAsString();
+  info.className   = a_className;
   info.astNode     = f;
   info.return_type = retType.getAsString();
   info.isBoolTyped = retType.isTrivialType(m_astContext) && (retTypeName == "bool" || retTypeName == "_Bool");
+  
+  if(retType->isPointerType())
+  {
+    auto qtOfClass    = retType->getPointeeType(); 
+    info.return_class = qtOfClass.getAsString();
+  }
+
   for (unsigned int i = 0; i < f->getNumParams(); ++i) {
     info.args.push_back(ProcessParameter(f->parameters()[i]));
   }
-  functions[info.name] = info;
+
+  if(a_className == MAIN_CLASS_NAME)
+    a_funcList[info.name] = info;
+  else
+    a_funcList[a_className + "::" + info.name] = info;
 }
 
 
@@ -74,9 +86,18 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
 
       if(thisTypeName == std::string("class ") + MAIN_CLASS_NAME || thisTypeName == std::string("struct ") + MAIN_CLASS_NAME)
       {
-        ProcessKernelDef(f);
-        std::cout << "  found kernel:\t" << fname.c_str() << std::endl;
+        ProcessKernelDef(f, functions, MAIN_CLASS_NAME); // MAIN_CLASS_NAME::f ==> functions
+        std::cout << "  found member kernel " << MAIN_CLASS_NAME.c_str() << "::" << fname.c_str() << std::endl;
       }
+      else // extract other kernels and classes
+      {
+        auto spacePos = thisTypeName.find(" ");
+        if(spacePos != std::string::npos)
+          thisTypeName = thisTypeName.substr(spacePos+1);
+        ProcessKernelDef(f, otherFunctions, thisTypeName); // thisTypeName::f ==> otherFunctions
+        std::cout << "  found other kernel " << thisTypeName.c_str() << "::" << fname.c_str() << std::endl;
+      }
+      
     }
     else if(m_mainFuncts.find(fname) != m_mainFuncts.end())
     {

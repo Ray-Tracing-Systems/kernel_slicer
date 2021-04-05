@@ -251,3 +251,16 @@ void kslicer::RTV_Pattern::ProcessKernelArg(KernelInfo::Arg& arg, const KernelIn
   auto id   = std::find(pdef.begin(), pdef.end(), arg.name);
   arg.isThreadID = (id != pdef.end()); 
 }
+
+
+void kslicer::RTV_Pattern::AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName)
+{
+  std::cout << "   found class hierarchy: " << a_className.c_str() << " from " << a_makerName.c_str() << std::endl;
+} 
+
+void kslicer::RTV_Pattern::AddDispatchingKernel(const std::string& a_className, const std::string& a_kernelName)
+{
+  std::cout << "   found virtual kernel dispatch: " << a_className.c_str() << "::" << a_kernelName.c_str() << std::endl;
+} 
+
+

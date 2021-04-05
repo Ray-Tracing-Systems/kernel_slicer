@@ -40,10 +40,12 @@ namespace kslicer
     std::unordered_map<std::string, DataMemberInfo>       dataMembers;
     std::unordered_map<std::string, const CXXMethodDecl*> m_mainFuncNodes;
   
+    std::unordered_map<std::string, KernelInfo>           otherFunctions;
+
     const CXXRecordDecl* m_mainClassASTNode = nullptr;
 
   private:
-    void ProcessKernelDef(const CXXMethodDecl *f);
+    void ProcessKernelDef(const CXXMethodDecl *f,  std::unordered_map<std::string, KernelInfo>& a_funcList, const std::string& a_className);
   
     const ASTContext&     m_astContext;
     clang::SourceManager& m_sourceManager;

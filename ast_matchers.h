@@ -80,25 +80,25 @@ namespace kslicer
       
       // for kernel call inside MainFunc
       //
-      FunctionDecl      const * func_decl = result.Nodes.getNodeAs<FunctionDecl>     ("targetFunction");
-      CXXMemberCallExpr const * kern_call = result.Nodes.getNodeAs<CXXMemberCallExpr>("functionCall");
-      CXXMethodDecl     const * kern      = result.Nodes.getNodeAs<CXXMethodDecl>    ("fdecl");
+      const FunctionDecl      * func_decl = result.Nodes.getNodeAs<FunctionDecl>     ("targetFunction");
+      const CXXMemberCallExpr * kern_call = result.Nodes.getNodeAs<CXXMemberCallExpr>("functionCall");
+      const CXXMethodDecl     * kern      = result.Nodes.getNodeAs<CXXMethodDecl>    ("fdecl");
       
       // for local variable decl inside MainFunc
       //
-      Expr    const * l_var = result.Nodes.getNodeAs<Expr>   ("localReference");
-      VarDecl const * var   = result.Nodes.getNodeAs<VarDecl>("locVarName");
+      const Expr   * l_var = result.Nodes.getNodeAs<Expr>   ("localReference");
+      const VarDecl* var   = result.Nodes.getNodeAs<VarDecl>("locVarName");
 
       // for for expression inside MainFunc
       //
-      ForStmt const * forLoop = result.Nodes.getNodeAs<ForStmt>("forLoop");
-      VarDecl const * forIter = result.Nodes.getNodeAs<VarDecl>("loopIter"); 
+      const ForStmt* forLoop = result.Nodes.getNodeAs<ForStmt>("forLoop");
+      const VarDecl* forIter = result.Nodes.getNodeAs<VarDecl>("loopIter"); 
 
       // for if statements inside for loop, which are goint to break loop
       //
-      IfStmt     const * ifCond = result.Nodes.getNodeAs<IfStmt>("ifCond"); 
-      BreakStmt  const * brkExp = result.Nodes.getNodeAs<BreakStmt>("breakLoop");
-      ReturnStmt const * extExp = result.Nodes.getNodeAs<ReturnStmt>("exitFunction"); 
+      const IfStmt    * ifCond = result.Nodes.getNodeAs<IfStmt>("ifCond"); 
+      const BreakStmt * brkExp = result.Nodes.getNodeAs<BreakStmt>("breakLoop");
+      const ReturnStmt* extExp = result.Nodes.getNodeAs<ReturnStmt>("exitFunction"); 
 
       if(func_decl && kern_call && kern) // found kernel call in MainFunc
       {
@@ -108,6 +108,31 @@ namespace kslicer
           auto pKernel = m_allInfo.allKernels.find(kName);  
           if(pKernel != m_allInfo.allKernels.end()) 
             pKernel->second.usedInMainFunc = true;  // mark this kernel is used
+          
+          const QualType retType = kern->getReturnType();
+          const QualType thsType = kern->getThisType();
+          
+          if(retType->isPointerType())                                                ////  IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
+          {
+            auto qtOfClass = retType->getPointeeType(); 
+            m_allInfo.AddDispatchingHierarchy(qtOfClass.getAsString(), kName);
+            if(pKernel != m_allInfo.allKernels.end()) 
+              pKernel->second.isMaker = true;
+          }
+          else if(thsType->isPointerType() && pKernel == m_allInfo.allKernels.end())  ////  pMaterial->kernel_GetColor(tid, out_color);
+          {
+            auto qtOfClass = thsType->getPointeeType(); 
+            m_allInfo.AddDispatchingKernel(qtOfClass.getAsString(), kName);
+            
+            std::string typeName = qtOfClass.getAsString();
+            auto pos = typeName.find(" ");
+            if(pos != std::string::npos)
+              typeName = typeName.substr(pos+1);
+            auto pKernel2 = m_allInfo.allOtherKernels.find(typeName + "::" + kName);
+            if(pKernel2 != m_allInfo.allOtherKernels.end()) 
+              pKernel2->second.isVirtual = true;
+          }
+          
           CurrMainFunc().UsedKernels.insert(kName); // add  this kernel to list of used kernels by MainFunc 
         }
       }

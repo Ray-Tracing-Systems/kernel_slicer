@@ -74,9 +74,12 @@ namespace kslicer
     };
     
     std::string           return_type;          ///<! func. return type
+    std::string           return_class;         ///<! class name of pointer if pointer is returned
     std::string           name;                 ///<! func. name
+    std::string           className;            ///<! Class::kernel_XXX --> 'Class'
     std::vector<Arg>      args;                 ///<! all arguments of a kernel
     std::vector<LoopIter> loopIters;            ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
+    
     uint32_t GetDim() const { return uint32_t(loopIters.size());}
 
     clang::SourceRange    loopInsides;          ///<! used by IPV pattern to extract loops insides and make them kernel source
@@ -90,7 +93,9 @@ namespace kslicer
     bool usedInMainFunc = false;                ///<! wherther kernel is actually used or just declared
     bool isBoolTyped    = false;                ///<! used by RTV pattern; special case: if kernel return boolean, we analyze loop exit (break) or function exit (return) expression
     bool usedInExitExpr = false;                ///<! used by RTV pattern; if kernel is used in Control Function in if(kernelXXX()) --> break or return extression
-    bool checkThreadFlags = false;
+    bool checkThreadFlags = false;              ///<! used by RTV pattern; if Kernel.shouldCheckExitFlag --> insert check flags code in kernel
+    bool isVirtual      = false;                ///<! used by RTV pattern; if kernel is a 'Virtual Kernel'
+    bool isMaker        = false;                ///<! used by RTV pattern; if kernel is an object Maker
 
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
     std::unordered_set<std::string> usedVectors; ///<! list of all std::vector<T> member names which is referenced inside kernel
@@ -409,8 +414,9 @@ namespace kslicer
   */
   struct MainClassInfo
   {
-    std::unordered_map<std::string, KernelInfo>     allKernels;     ///<! list of all kernels; used only on the second pass to identify Control Functions; it is not recommended to use it anywhere else
-    std::unordered_map<std::string, DataMemberInfo> allDataMembers; ///<! list of all class data members;
+    std::unordered_map<std::string, KernelInfo>     allKernels;      ///<! list of all kernels; used only on the second pass to identify Control Functions; it is not recommended to use it anywhere else
+    std::unordered_map<std::string, KernelInfo>     allOtherKernels; ///<! kernels from other classes. we probably need them if they are used.
+    std::unordered_map<std::string, DataMemberInfo> allDataMembers;  ///<! list of all class data members;
 
     std::unordered_map<std::string, KernelInfo> kernels;         ///<! only those kernels which are called from 'Main'/'Control' functions
     std::vector<std::string>                    indirectKernels; ///<! list of all kernel names which require indirect dispatch; The order is essential because it is used for indirect buffer offsets 
@@ -462,7 +468,10 @@ namespace kslicer
     virtual void          VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) { } // additional informational pass, does not rewrite the code! 
 
     virtual void ProcessCallArs_KF(const KernelCallInfo& a_call) { };
-    
+
+    virtual void AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) { } ///<! for Virtual Kernels
+    virtual void AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) { } ///<! for Virtual Kernels
+
     //// These methods used for final template text rendering
     //
     virtual uint32_t GetKernelDim(const KernelInfo& a_kernel) const = 0; 
@@ -505,7 +514,10 @@ namespace kslicer
     void          ProcessCallArs_KF(const KernelCallInfo& a_call) override;   
 
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
-    void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override;     
+    void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override;   
+
+    void          AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) override; ///<! for Virtual Kernels 
+    void          AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) override; ///<! for Virtual Kernels 
 
     bool NeedThreadFlags() const override { return true; }                  
   };
