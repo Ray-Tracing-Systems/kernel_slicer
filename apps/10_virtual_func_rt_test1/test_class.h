@@ -45,8 +45,7 @@ struct IMaterial
         TAG_GGX_GLOSSY = 3,
         TAG_ID_EMPTY   = 15};
 
-  IMaterial(){}
-  //virtual ~IMaterial() {}                        // Dispatching on GPU hierarchy must not have destructors      
+  IMaterial(){}  // Dispatching on GPU hierarchy must not have destructors, especially virtual      
 
   virtual uint32_t GetTag() const = 0;
   virtual size_t   GetSizeOf() const = 0;

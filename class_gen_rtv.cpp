@@ -128,12 +128,14 @@ void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncL
   //
   for(auto kName : kernelsAddedFlags)
   {
-    auto& kernel = a_kernelList[kName];
+    auto pKernel = a_kernelList.find(kName);
+    if(pKernel == a_kernelList.end())
+      continue;
 
     size_t foundId = size_t(-1);
-    for(size_t i=0;i<kernel.args.size();i++)
+    for(size_t i=0;i<pKernel->second.args.size();i++)
     {
-      if(kernel.args[i].name == tFlagsArg.name)
+      if(pKernel->second.args[i].name == tFlagsArg.name)
       {
         foundId = i;
         break;
@@ -142,8 +144,8 @@ void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncL
 
     if(foundId == size_t(-1))
     {
-      kernel.args.push_back(tFlagsArg);
-      kernel.checkThreadFlags = true;
+      pKernel->second.args.push_back(tFlagsArg);
+      pKernel->second.checkThreadFlags = true;
     }
   }  
  
