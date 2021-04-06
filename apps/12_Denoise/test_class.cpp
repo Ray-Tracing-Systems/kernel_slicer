@@ -115,7 +115,7 @@ void Denoise::SetMaxImageSize(int w, int h)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-void Denoise::kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, float4* a_texColor, float4* a_normDepth)
+void Denoise::kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth, float4* a_texColor, float4* a_normDepth)
 {
   #pragma omp parallel for
   for (size_t i = 0; i < m_size; ++i)
@@ -128,7 +128,7 @@ void Denoise::kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t*
     a_normDepth[i].x = (float)(a_inNormal  [i*4 + 0] / 255.0F);
     a_normDepth[i].y = (float)(a_inNormal  [i*4 + 1] / 255.0F);
     a_normDepth[i].z = (float)(a_inNormal  [i*4 + 2] / 255.0F);
-    a_normDepth[i].w =         a_inDepth   [i*4 + 0];      
+    a_normDepth[i].w =         a_inDepth   [i].x;      
   }
 }
 
@@ -251,7 +251,7 @@ const float4* a_inNormDepth, unsigned int* a_outData1ui, const int a_windowRadiu
 
 
 void Denoise::NLM_denoise(int a_width, const int a_height, const float4* a_inImage, unsigned int* a_outData1ui, const int32_t* a_inTexColor, 
-const int32_t* a_inNormal, const float* a_inDepth,  const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel)
+const int32_t* a_inNormal, const float4* a_inDepth,  const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel)
 {  
   std::vector<float4> texColor(m_size);
   std::vector<float4> normDepth(m_size);
@@ -273,7 +273,7 @@ void Denoise_cpu(int w, int h, float* a_hdrData, int32_t* a_inTexColor, const in
   std::vector<uint> ldrData(w*h);
   
   filter.SetMaxImageSize(w,h);  
-  filter.NLM_denoise(w, h, (const float4*)a_hdrData, ldrData.data(), a_inTexColor, a_inNormal, a_inDepth, a_windowRadius,
+  filter.NLM_denoise(w, h, (const float4*)a_hdrData, ldrData.data(), a_inTexColor, a_inNormal, (const float4*)a_inDepth, a_windowRadius,
                      a_blockRadius, a_noiseLevel);
   
   SaveBMP(a_outName, ldrData.data(), w, h);

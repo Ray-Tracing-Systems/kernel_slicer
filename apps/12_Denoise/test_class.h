@@ -20,11 +20,11 @@ public:
 
   // Non local mean denoise.
   void NLM_denoise(int a_width, const int a_height, const float4* a_inImage, unsigned int* a_outData1ui, const int32_t* a_inTexColor, 
-const int32_t* a_inNormal, const float* a_inDepth, const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
+const int32_t* a_inNormal, const float4* a_inDepth, const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
 
 protected:
 
-  void kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, float4* a_texColor, float4* a_normDepth);
+  void kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth, float4* a_texColor, float4* a_normDepth);
 
   void kernel2D_GuidedTexNormDepthDenoise(int a_width, const int a_height, const float4* a_inImage, const float4* a_inTexColor, 
   const float4* a_inNormDepth, unsigned int* a_outData1ui, const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
