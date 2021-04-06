@@ -113,6 +113,14 @@ std::string kslicer::CutOffFileExt(const std::string& a_filePath)
     return a_filePath;
 }
 
+std::string kslicer::CutOffStructClass(const std::string& a_typeName)
+{
+  auto spacePos = a_typeName.find(" ");
+  if(spacePos != std::string::npos)
+    return a_typeName.substr(spacePos+1);
+  return a_typeName;
+}
+
 void kslicer::ReplaceOpenCLBuiltInTypes(std::string& a_typeName)
 {
   std::string lmStucts("struct LiteMath::");
@@ -413,15 +421,15 @@ int main(int argc, const char **argv)
 
   // Parse code, initial pass
   //
-  kslicer::InitialPassASTConsumer astConsumer(mainFunctNames, mainClassName, compiler.getASTContext(), compiler.getSourceManager(), inputCodeInfo); 
-  ParseAST(compiler.getPreprocessor(), &astConsumer, compiler.getASTContext());
+  kslicer::InitialPassASTConsumer firstPassData(mainFunctNames, mainClassName, compiler.getASTContext(), compiler.getSourceManager(), inputCodeInfo); 
+  ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
   compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
   
-  inputCodeInfo.allKernels           = astConsumer.rv.functions; 
-  inputCodeInfo.allOtherKernels      = astConsumer.rv.otherFunctions;
-  inputCodeInfo.allDataMembers       = astConsumer.rv.dataMembers;   
-  inputCodeInfo.mainClassFileInclude = astConsumer.rv.MAIN_FILE_INCLUDE;
-  inputCodeInfo.mainClassASTNode     = astConsumer.rv.m_mainClassASTNode;
+  inputCodeInfo.allKernels           = firstPassData.rv.functions; 
+  inputCodeInfo.allOtherKernels      = firstPassData.rv.otherFunctions;
+  inputCodeInfo.allDataMembers       = firstPassData.rv.dataMembers;   
+  inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
+  inputCodeInfo.mainClassASTNode     = firstPassData.rv.m_mainClassASTNode;
   
   if(inputCodeInfo.mainClassASTNode == nullptr)
   {
@@ -441,7 +449,7 @@ int main(int argc, const char **argv)
     const std::string& mainFuncName = f.first;
     auto& mainFuncRef = inputCodeInfo.mainFunc[mainFuncId];
     mainFuncRef.Name  = mainFuncName;
-    mainFuncRef.Node  = astConsumer.rv.m_mainFuncNodes[mainFuncName];
+    mainFuncRef.Node  = firstPassData.rv.m_mainFuncNodes[mainFuncName];
 
     // Now process each main function: variables and kernel calls, if()->break and if()->return statements.
     //
@@ -488,7 +496,7 @@ int main(int argc, const char **argv)
     std::cout << "(2.1) Process Virtual Kernels hierarchies" << std::endl; 
     std::cout << "{" << std::endl;
     
-    inputCodeInfo.ProcessDispatchHierarchies();
+    inputCodeInfo.ProcessDispatchHierarchies(firstPassData.rv.m_classList);
 
     std::cout << "}" << std::endl;
     std::cout << std::endl;

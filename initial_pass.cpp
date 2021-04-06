@@ -62,9 +62,9 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* 
   const std::string typeName = qt.getAsString();
 
   if(typeName == std::string("class ") + MAIN_CLASS_NAME || typeName == std::string("struct ") + MAIN_CLASS_NAME)
-  {
     m_mainClassASTNode = record;
-  }
+  else if(!record->isPOD())
+    m_classList.push_back(record);
 
   return true;
 }
@@ -91,9 +91,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
       }
       else // extract other kernels and classes
       {
-        auto spacePos = thisTypeName.find(" ");
-        if(spacePos != std::string::npos)
-          thisTypeName = thisTypeName.substr(spacePos+1);
+        thisTypeName = kslicer::CutOffStructClass(thisTypeName);
         ProcessKernelDef(f, otherFunctions, thisTypeName); // thisTypeName::f ==> otherFunctions
         std::cout << "  found other kernel " << thisTypeName.c_str() << "::" << fname.c_str() << std::endl;
       }

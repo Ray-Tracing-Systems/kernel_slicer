@@ -43,6 +43,7 @@ namespace kslicer
     std::unordered_map<std::string, KernelInfo>           otherFunctions;
 
     const CXXRecordDecl* m_mainClassASTNode = nullptr;
+    std::vector<const clang::CXXRecordDecl*> m_classList;
 
   private:
     void ProcessKernelDef(const CXXMethodDecl *f,  std::unordered_map<std::string, KernelInfo>& a_funcList, const std::string& a_className);

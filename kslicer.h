@@ -460,7 +460,7 @@ namespace kslicer
     virtual bool SupportVirtualKernels() const { return false; }
     virtual void AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) { } ///<! for Virtual Kernels
     virtual void AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) { } ///<! for Virtual Kernels
-    virtual void ProcessDispatchHierarchies() {}
+    virtual void ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls) {}
  
 
     //// \\
@@ -522,20 +522,27 @@ namespace kslicer
     bool          SupportVirtualKernels() const { return true; }
     void          AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) override;  ///<! for Virtual Kernels 
     void          AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) override; ///<! for Virtual Kernels 
-    void          ProcessDispatchHierarchies() override;
+    void          ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls) override;
 
     bool NeedThreadFlags() const override { return true; }                  
   
   private:
     
-    struct DHierarchy
+    struct DImplClass
     {
-      std::string              interfaceName;
-      std::string              makerName;
-      std::vector<std::string> implementations;
+      const clang::CXXRecordDecl* decl = nullptr;
+      std::string name;
     };
 
-    std::unordered_map<std::string, DHierarchy>         m_vkernelMakers;
+    struct DHierarchy
+    {
+      const clang::CXXRecordDecl* interfaceDecl = nullptr;
+      std::string                 interfaceName;
+      std::string                 makerName;   
+      std::vector<DImplClass>     implementations;
+    };
+
+    std::unordered_map<std::string, DHierarchy>         m_vhierarchy;
     std::vector< std::pair< std::string, std::string> > m_vkernelPairs;
 
   };
@@ -575,7 +582,9 @@ namespace kslicer
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler);
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::SourceManager& sm);
   std::string CutOffFileExt(const std::string& a_filePath);
+  std::string CutOffStructClass(const std::string& a_typeName);
   std::string ReplaceSizeCapacityExpr(const std::string& a_str);
+  
 
   uint64_t GetHashOfSourceRange(const clang::SourceRange& a_range);
   static constexpr size_t READ_BEFORE_USE_THRESHOLD = sizeof(float)*4;

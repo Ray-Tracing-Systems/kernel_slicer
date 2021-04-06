@@ -2,6 +2,11 @@
 #include "class_gen.h"
 #include "ast_matchers.h"
 
+#include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/AST/ASTConsumer.h"
+#include "clang/AST/DeclTemplate.h"
+#include "clang/Parse/ParseAST.h"
+
 #include <sstream>
 #include <algorithm>
 
@@ -265,7 +270,7 @@ void kslicer::RTV_Pattern::AddDispatchingHierarchy(const std::string& a_classNam
   hdata.interfaceName = a_className;
   hdata.makerName     = a_makerName;
   hdata.implementations.clear();
-  m_vkernelMakers[a_className] = hdata;
+  m_vhierarchy[a_className] = hdata;
 } 
 
 void kslicer::RTV_Pattern::AddDispatchingKernel(const std::string& a_className, const std::string& a_kernelName)
@@ -274,21 +279,82 @@ void kslicer::RTV_Pattern::AddDispatchingKernel(const std::string& a_className, 
   m_vkernelPairs.push_back(std::pair(a_className, a_kernelName));
 } 
 
-void kslicer::RTV_Pattern::ProcessDispatchHierarchies()
-{
+// RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.
+//
+//class DispatchHirarchySeekerASTVisitor : public clang::RecursiveASTVisitor<DispatchHirarchySeekerASTVisitor>
+//{
+//public:
+//  
+//  DispatchHirarchySeekerASTVisitor(const std::string& a_targetClassName) : m_className(a_targetClassName)
+//  {
+//    
+//  }
+//
+//  bool VisitCXXRecordDecl(clang::CXXRecordDecl* record)
+//  {
+//    if(!record->hasDefinition() || record->isImplicit() || record->isLiteral())
+//      return true;
+//
+//    const auto pType  = record->getTypeForDecl(); 
+//    const auto qt     = pType->getLocallyUnqualifiedSingleStepDesugaredType();
+//    const std::string typeName = qt.getAsString();
+//
+//    //const std::string testName = record->getNameAsString();
+//    //clang::QualType qt = record->getType();
+//    //const std::string typeName = qt.getAsString();
+//    return true;
+//  }
+//
+//private:
+//
+//  const std::string& m_className;
+//};
   
-  for(const auto& pair : m_vkernelPairs)
-  {
 
+void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls)
+{
+  //
+  //
+  for(auto& p : m_vhierarchy)
+  {
+    const clang::CXXRecordDecl* pBaseClass = nullptr;
+    std::string className = kslicer::CutOffStructClass(p.first);
+    
+    // find target base class
+    //
+    for(const auto& decl : a_decls)
+    {
+      const std::string testName = decl->getNameAsString();
+      if(testName == className)
+      {
+        pBaseClass = decl;
+        break;
+      }
+      //std::cout << "  found class: " << testName.c_str() << std::endl;
+    }
+
+    p.second.interfaceDecl = pBaseClass;
+
+    // find all derived classes for target base class
+    //
+    for(const auto& decl : a_decls)
+    {
+      if(decl->isDerivedFrom(pBaseClass))
+      {
+        DImplClass dImpl;
+        dImpl.decl = decl;
+        dImpl.name = decl->getNameAsString();
+        p.second.implementations.push_back(dImpl);
+      }
+    }
+  }
+  
+  // debug output
+  //
+  for(const auto& p : m_vhierarchy)
+  {
+    for(const auto& impl : p.second.implementations)
+      std::cout << "  found " << p.first.c_str() << " --> " << impl.name.c_str() << std::endl;
   }
 
-  //for(auto p : allOtherKernels)
-  //{
-  //  
-  //}
-
-  //for(const auto p : m_vkernelMakers)
-  //{
-  //  
-  //}
 }
