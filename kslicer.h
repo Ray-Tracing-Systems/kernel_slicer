@@ -474,6 +474,7 @@ namespace kslicer
     virtual void          VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) { } // additional informational pass, does not rewrite the code! 
 
     virtual void ProcessCallArs_KF(const KernelCallInfo& a_call) { };
+    virtual bool IsExcludedLocalFunction(const std::string& a_name) const { return false; }
 
     //// These methods used for final template text rendering
     //
@@ -497,6 +498,7 @@ namespace kslicer
     virtual std::string RemoveTypeNamespaces(const std::string& a_str) const;
 
     virtual void AddTempBufferToKernel(const std::string a_buffName, const std::string a_elemTypeName, KernelInfo& a_kernel); ///<! if kernel need some additional buffers (for reduction for example) use this function 
+    
   };
 
 
@@ -524,7 +526,11 @@ namespace kslicer
     void          AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) override; ///<! for Virtual Kernels 
     void          ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls) override;
 
-    bool NeedThreadFlags() const override { return true; }                  
+    bool NeedThreadFlags() const override { return true; } 
+    bool IsExcludedLocalFunction(const std::string& a_name) const override 
+    { 
+      return (a_name == "MakeObjPtr"); 
+    }                 
   
   private:
     

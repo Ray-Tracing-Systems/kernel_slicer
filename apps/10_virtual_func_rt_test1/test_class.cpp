@@ -157,7 +157,6 @@ IMaterial* MakeObjPtr(const uint32_t objectPtr, __global const uint32_t* a_data)
   return (__global IMaterial*)(a_data + objectOffset);
 }
 
-
 IMaterial* TestClass::kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit)
 {
   int primId = in_hit->primId;

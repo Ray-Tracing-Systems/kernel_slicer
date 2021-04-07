@@ -73,7 +73,8 @@ __kernel void {{Kernel.Name}}(
   if(get_global_id(0)!=0)
     return;
   {% else %}
-  {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                        {# BEG. REDUCTION INIT #}
+  {# /*------------------------------------------------------------- BEG. REDUCTION INIT ------------------------------------------------------------- */ #}
+  {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                        
   {% for redvar in Kernel.SubjToRed %} 
   __local {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}}]; 
   {% endfor %}
@@ -96,7 +97,8 @@ __kernel void {{Kernel.Name}}(
     {% endfor %}
   }
   SYNCTHREADS; 
-  {% endif %}                                                                                   {# END. REDUCTION INIT #}
+  {% endif %} 
+  {# /*------------------------------------------------------------- END. REDUCTION INIT ------------------------------------------------------------- */ #}
   {% for name in Kernel.threadNames %}
   const uint {{name}} = get_global_id({{ loop.index }}); 
   {% endfor %}

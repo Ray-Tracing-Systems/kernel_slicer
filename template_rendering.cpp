@@ -49,10 +49,10 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
     size_t      rbPos    = kernDecl.find("Cmd(");
 
     assert(spacePos != std::string::npos);
-    assert(rbPos   != std::string::npos);    
+    assert(rbPos    != std::string::npos);    
     
-    std::string kernName       = kernDecl.substr(spacePos + 5, rbPos - 5);
-    kernelDeclByName[kernName] = kernDecl.substr(spacePos + 5);
+    std::string kernName       = kernDecl.substr(spacePos + 1, rbPos - 5);
+    kernelDeclByName[kernName] = kernDecl.substr(spacePos + 1);
   }
   return kernelDeclByName;
 }
@@ -595,6 +595,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     for (const auto& f : usedFunctions) 
     { 
+      if(a_classInfo.IsExcludedLocalFunction(f.name)) // check exclude list here, don't put such functions in cl file
+        continue; 
       rv.TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
       data["LocalFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
     }
