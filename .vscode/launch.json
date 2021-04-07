@@ -215,6 +215,7 @@
                         "-mainClass", "nBody", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
+                        //"-cl-std=", "C++", // DOES NOT WORKS, STRANGE BUG WITH PUSH CONSTANT AND MAY BE OTHER!
                         "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
@@ -289,7 +290,7 @@
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
                         "-reorderLoops", "YX",
-                        //"-cl-std=", "C++",
+                        //"-cl-std=", "C++", // DOES NOT WORKS! SEEMS TO BE A BUG OF CLSPV.
                         "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",

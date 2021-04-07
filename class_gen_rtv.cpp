@@ -1,6 +1,7 @@
 #include "kslicer.h"
 #include "class_gen.h"
 #include "ast_matchers.h"
+#include "extractor.h"
 
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/AST/ASTConsumer.h"
@@ -267,7 +268,7 @@ void kslicer::RTV_Pattern::AddDispatchingHierarchy(const std::string& a_classNam
   std::cout << "   found class hierarchy: " << a_className.c_str() << " from " << a_makerName.c_str() << std::endl;
 
   DHierarchy hdata;
-  hdata.interfaceName = a_className;
+  hdata.interfaceName = kslicer::CutOffStructClass(a_className);
   hdata.makerName     = a_makerName;
   hdata.implementations.clear();
   m_vhierarchy[a_className] = hdata;
@@ -276,7 +277,7 @@ void kslicer::RTV_Pattern::AddDispatchingHierarchy(const std::string& a_classNam
 void kslicer::RTV_Pattern::AddDispatchingKernel(const std::string& a_className, const std::string& a_kernelName)
 {
   std::cout << "   found virtual kernel dispatch: " << a_className.c_str() << "::" << a_kernelName.c_str() << std::endl;
-  m_vkernelPairs.push_back(std::pair(a_className, a_kernelName));
+  m_vkernelPairs.push_back(std::pair(kslicer::CutOffStructClass(a_className), a_kernelName));
 } 
 
 // RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.
@@ -357,4 +358,14 @@ void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const cl
       std::cout << "  found " << p.first.c_str() << " --> " << impl.name.c_str() << std::endl;
   }
 
+}
+
+void kslicer::RTV_Pattern::ExtractHierarchiesConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool)
+{
+  for(auto& p : m_vhierarchy)
+  {
+    std::cout << "  process " << p.second.interfaceName.c_str() << std::endl;
+    p.second.usedDecls = kslicer::ExtractTCFromClass(p.second.interfaceName, p.second.interfaceDecl, compiler, Tool);
+  }
+  int a = 2;
 }

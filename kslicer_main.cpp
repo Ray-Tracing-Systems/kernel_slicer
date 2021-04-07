@@ -495,9 +495,7 @@ int main(int argc, const char **argv)
   {
     std::cout << "(2.1) Process Virtual Kernels hierarchies" << std::endl; 
     std::cout << "{" << std::endl;
-    
     inputCodeInfo.ProcessDispatchHierarchies(firstPassData.rv.m_classList);
-
     std::cout << "}" << std::endl;
     std::cout << std::endl;
   }
@@ -549,36 +547,22 @@ int main(int argc, const char **argv)
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
-
-  std::vector<kslicer::FuncData>    usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
-  std::vector<kslicer::DeclInClass> usedDecls;
   
-  std::cout << "(4) Extract constants and structs from 'MainClass' " << std::endl; 
+  std::cout << "(4) Extract functions, constants and structs from 'MainClass' " << std::endl; 
   std::cout << "{" << std::endl;
-  {
-    auto structMatcher = kslicer::MakeMatch_StructDeclInsideClass(inputCodeInfo.mainClassName);
-    auto varMatcher    = kslicer::MakeMatch_VarDeclInsideClass(inputCodeInfo.mainClassName);
-    auto tpdefMatcher  = kslicer::MakeMatch_TypedefInsideClass(inputCodeInfo.mainClassName);
-    
-    clang::ast_matchers::MatchFinder finder;
-    kslicer::TC_Extractor typeAndConstantsHandler(inputCodeInfo, compiler);
-    finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, structMatcher), &typeAndConstantsHandler);
-    finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, varMatcher),    &typeAndConstantsHandler);
-    finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, tpdefMatcher),  &typeAndConstantsHandler);
-
-    auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
-    std::cout << "  [TC_Extractor]: end process constants and structs:\t" << GetClangToolingErrorCodeMessage(res) << std::endl;
-
-    usedDecls.resize(0);
-    usedDecls.reserve(typeAndConstantsHandler.foundDecl.size());
-    for(const auto decl : typeAndConstantsHandler.foundDecl)
-      usedDecls.push_back(decl.second);
-
-    std::sort(usedDecls.begin(), usedDecls.end(), [](const auto& a, const auto& b) { return a.order < b.order; } );
-    usedDecls = kslicer::ExtractUsedTC(usedDecls, inputCodeInfo, compiler);
-  }
+  std::vector<kslicer::FuncData> usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
+  std::vector<kslicer::DeclInClass> usedDecls = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
   std::cout << "}" << std::endl;
   std::cout << std::endl;
+
+  if(inputCodeInfo.SupportVirtualKernels())
+  {
+    std::cout << "(4.1) Extract Virtual Kernels hierarchies constants" << std::endl; 
+    std::cout << "{" << std::endl;
+    inputCodeInfo.ExtractHierarchiesConstants(compiler, Tool);
+    std::cout << "}" << std::endl;
+    std::cout << std::endl;
+  }
 
   std::cout << "(5) Process control functions to generate all 'MainCmd' functions" << std::endl; 
   std::cout << "{" << std::endl;

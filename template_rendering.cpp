@@ -603,6 +603,30 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   }
   data["LocalFunctions"].push_back("uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }                                      // for 2D threading");
   data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");
+  
+  auto hierarchies = a_classInfo.GetDispatchingHierarchies();
+  data["Hierarchies"] = std::vector<std::string>();
+  for(const auto& p : hierarchies)
+  {
+    json hierarchy;
+    hierarchy["Name"]      = p.second.interfaceName;
+    hierarchy["Constants"] = std::vector<std::string>();
+    for(const auto& decl : p.second.usedDecls)
+    {
+      if(decl.kind == DECL_IN_CLASS::DECL_CONSTANT)
+      {
+        std::string typeInCL = decl.type;
+        ReplaceFirst(typeInCL, "const", "__constant static");
+
+        json currConstant;
+        currConstant["Type"]  = typeInCL;
+        currConstant["Name"]  = decl.name;
+        currConstant["Value"] = kslicer::GetRangeSourceCode(decl.srcRange, compiler);
+        hierarchy["Constants"].push_back(currConstant);
+      }
+    }
+    data["Hierarchies"].push_back(hierarchy);
+  }
 
   // (4) put kernels
   //

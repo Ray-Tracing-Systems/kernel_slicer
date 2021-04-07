@@ -1,4 +1,6 @@
 #include "extractor.h"
+#include "ast_matchers.h"
+
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/AST/Decl.h"
 
@@ -209,14 +211,41 @@ private:
 };
 
 
-std::vector<kslicer::DeclInClass> kslicer::ExtractUsedTC(const std::vector<kslicer::DeclInClass>& a_listedNames, MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
+std::vector<kslicer::DeclInClass> kslicer::ExtractUsedTC(const std::vector<kslicer::DeclInClass>& a_listedNames, const clang::CXXRecordDecl* classAstNode, const clang::CompilerInstance& a_compiler)
 {
   DeclExtractor visitor(a_compiler, a_listedNames);
-  visitor.TraverseDecl(const_cast<clang::CXXRecordDecl*>(a_codeInfo.mainClassASTNode));
+  visitor.TraverseDecl(const_cast<clang::CXXRecordDecl*>(classAstNode));
 
   std::vector<kslicer::DeclInClass> result(a_listedNames.size());
   for(const auto& decl : visitor.usedDecls)
     result[decl.second.order] = decl.second;
 
   return result;
+}
+
+const char* GetClangToolingErrorCodeMessage(int code);
+
+std::vector<kslicer::DeclInClass> kslicer::ExtractTCFromClass(const std::string& a_className, const clang::CXXRecordDecl* classAstNode,
+                                                              const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool)
+{
+  auto structMatcher = kslicer::MakeMatch_StructDeclInsideClass(a_className);
+  auto varMatcher    = kslicer::MakeMatch_VarDeclInsideClass(a_className);
+  auto tpdefMatcher  = kslicer::MakeMatch_TypedefInsideClass(a_className);
+    
+  clang::ast_matchers::MatchFinder finder;
+  kslicer::TC_Extractor typeAndConstantsHandler(compiler);
+  finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, structMatcher), &typeAndConstantsHandler);
+  finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, varMatcher),    &typeAndConstantsHandler);
+  finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, tpdefMatcher),  &typeAndConstantsHandler);
+
+  auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
+  std::cout << "  [TC_Extractor]: end process constants and structs:\t" << GetClangToolingErrorCodeMessage(res) << std::endl;
+  
+  std::vector<kslicer::DeclInClass> usedDecls;
+  usedDecls.reserve(typeAndConstantsHandler.foundDecl.size());
+  for(const auto decl : typeAndConstantsHandler.foundDecl)
+    usedDecls.push_back(decl.second);
+
+  std::sort(usedDecls.begin(), usedDecls.end(), [](const auto& a, const auto& b) { return a.order < b.order; } );
+  return kslicer::ExtractUsedTC(usedDecls, classAstNode, compiler);
 }

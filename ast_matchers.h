@@ -316,8 +316,8 @@ namespace kslicer
   {
   public:
 
-    explicit TC_Extractor(kslicer::MainClassInfo& a_allInfo, const clang::CompilerInstance& a_compiler) : 
-                          m_allInfo(a_allInfo), m_compiler(a_compiler), m_sourceManager(a_compiler.getSourceManager()), m_astContext(a_compiler.getASTContext())
+    explicit TC_Extractor(const clang::CompilerInstance& a_compiler) : 
+                          m_compiler(a_compiler), m_sourceManager(a_compiler.getSourceManager()), m_astContext(a_compiler.getASTContext())
     {
       m_currId = 0;
     }
@@ -406,7 +406,7 @@ namespace kslicer
       return;
     }  // run
     
-    MainClassInfo&                 m_allInfo;
+    //MainClassInfo&                 m_allInfo;
     const clang::SourceManager&    m_sourceManager;
     const clang::ASTContext&       m_astContext;
     const clang::CompilerInstance& m_compiler;

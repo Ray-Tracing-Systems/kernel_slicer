@@ -11,6 +11,7 @@
 #include "clang/AST/DeclCXX.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
+#include "clang/Tooling/Tooling.h"
 
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 
@@ -461,7 +462,8 @@ namespace kslicer
     virtual void AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) { } ///<! for Virtual Kernels
     virtual void AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) { } ///<! for Virtual Kernels
     virtual void ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls) {}
- 
+    virtual void ExtractHierarchiesConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool) {}
+
 
     //// \\
 
@@ -499,6 +501,23 @@ namespace kslicer
 
     virtual void AddTempBufferToKernel(const std::string a_buffName, const std::string a_elemTypeName, KernelInfo& a_kernel); ///<! if kernel need some additional buffers (for reduction for example) use this function 
     
+    struct DImplClass
+    {
+      const clang::CXXRecordDecl* decl = nullptr;
+      std::string name;
+    };
+
+    struct DHierarchy
+    {
+      const clang::CXXRecordDecl* interfaceDecl = nullptr;
+      std::string                 interfaceName;
+      std::string                 makerName;   
+      std::vector<DImplClass>     implementations;
+      std::vector<kslicer::DeclInClass> usedDecls;
+    };
+
+    virtual std::unordered_map<std::string, DHierarchy> GetDispatchingHierarchies() const { return std::unordered_map<std::string, DHierarchy>(); }
+
   };
 
 
@@ -525,6 +544,7 @@ namespace kslicer
     void          AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) override;  ///<! for Virtual Kernels 
     void          AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) override; ///<! for Virtual Kernels 
     void          ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls) override;
+    void          ExtractHierarchiesConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool) override;
 
     bool NeedThreadFlags() const override { return true; } 
     bool IsExcludedLocalFunction(const std::string& a_name) const override 
@@ -532,21 +552,9 @@ namespace kslicer
       return (a_name == "MakeObjPtr"); 
     }                 
   
-  private:
-    
-    struct DImplClass
-    {
-      const clang::CXXRecordDecl* decl = nullptr;
-      std::string name;
-    };
+    std::unordered_map<std::string, DHierarchy> GetDispatchingHierarchies() const override { return m_vhierarchy; }
 
-    struct DHierarchy
-    {
-      const clang::CXXRecordDecl* interfaceDecl = nullptr;
-      std::string                 interfaceName;
-      std::string                 makerName;   
-      std::vector<DImplClass>     implementations;
-    };
+  private:
 
     std::unordered_map<std::string, DHierarchy>         m_vhierarchy;
     std::vector< std::pair< std::string, std::string> > m_vkernelPairs;

@@ -44,7 +44,7 @@ __kernel void {{Kernel.Name}}(
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   KGEN_EPILOG:
   // process 'kgen_objPtr'
-  // for eqch type preform reduction
+  // for each type preform reduction
   // and then atomic_add
 
 }

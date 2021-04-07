@@ -39,11 +39,11 @@ struct IMaterial
   static constexpr uint32_t TAG_MASK = 0xF0000000; // mask which we can get from TAG_BITS
   static constexpr uint32_t OFS_MASK = 0x0FFFFFFF; // (32 - TAG_BITS) is left for object/thread id.
 
-  enum {TAG_LAMBERT    = 0, 
-        TAG_MIRROR     = 1, 
-        TAG_EMISSIVE   = 2, 
-        TAG_GGX_GLOSSY = 3,
-        TAG_ID_EMPTY   = 15};
+  static constexpr uint32_t TAG_LAMBERT    = 0; 
+  static constexpr uint32_t TAG_MIRROR     = 1; 
+  static constexpr uint32_t TAG_EMISSIVE   = 2; 
+  static constexpr uint32_t TAG_GGX_GLOSSY = 3;
+  static constexpr uint32_t TAG_ID_EMPTY   = 15;
 
   IMaterial(){}  // Dispatching on GPU hierarchy must not have destructors, especially virtual      
 
