@@ -746,8 +746,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["Members"]    = members;
     kernelJson["Name"]       = k.name;
     kernelJson["UBOBinding"] = args.size(); // for circle
-    kernelJson["HasEpilog"]  = k.isBoolTyped || reductionVars.size() != 0 || reductionArrs.size() != 0;
+    kernelJson["HasEpilog"]  = k.isBoolTyped || reductionVars.size() != 0 || reductionArrs.size() != 0 || k.isMaker;
     kernelJson["IsBoolean"]  = k.isBoolTyped;
+    kernelJson["IsMaker"]    = k.isMaker;
+    kernelJson["IsVirtual"]  = k.isVirtual;
     kernelJson["SubjToRed"]  = reductionVars;
     kernelJson["ArrsToRed"]  = reductionArrs;
     kernelJson["FinishRed"]  = needFinishReductionPass;

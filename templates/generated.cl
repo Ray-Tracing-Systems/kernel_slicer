@@ -51,6 +51,9 @@ __kernel void {{Kernel.Name}}_UpdateIndirect(__global struct {{MainClassName}}_U
   indirectBuffer[{{Kernel.IndirectOffset}}] = blocksNum;
 } 
 {% endif %}
+{% if Kernel.IsMaker %}
+{% include "inc_maker.cl" %}
+{% else %}
 
 {% if not UseSpecConstWgSize %}
 __attribute__((reqd_work_group_size({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}})))
@@ -128,6 +131,8 @@ __kernel void {{Kernel.Name}}(
 
 {% include "inc_reduction_finish.h" %}
 {% endif %}
+
+{% endif %} {# /* end if 'Kernel.IsMaker' */ #}
 
 ## endfor
 
