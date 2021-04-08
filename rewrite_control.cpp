@@ -127,6 +127,7 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
     call.originKernelName   = kernName;
     call.callerName         = m_mainFuncName;
     call.descriptorSetsInfo = args;
+    call.isService          = true; 
     allDescriptorSetsInfo.push_back(call);
   }
   m_dsTagId++;

@@ -380,6 +380,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       local["Layout"]     = dsArgs.kernelName + "DSLayout";
       local["Args"]       = std::vector<std::string>();
       local["ArgNames"]   = std::vector<std::string>();
+      local["IsServiceCall"] = dsArgs.isService;
 
       uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
@@ -409,6 +410,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
           local["ArgNames"].push_back(vecName);
           realId++;
         }
+
       }
       
       local["ArgNumber"] = realId;
