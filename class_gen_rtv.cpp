@@ -280,38 +280,6 @@ void kslicer::RTV_Pattern::AddDispatchingKernel(const std::string& a_className, 
   m_vkernelPairs.push_back(std::pair(kslicer::CutOffStructClass(a_className), a_kernelName));
 } 
 
-// RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.
-//
-//class DispatchHirarchySeekerASTVisitor : public clang::RecursiveASTVisitor<DispatchHirarchySeekerASTVisitor>
-//{
-//public:
-//  
-//  DispatchHirarchySeekerASTVisitor(const std::string& a_targetClassName) : m_className(a_targetClassName)
-//  {
-//    
-//  }
-//
-//  bool VisitCXXRecordDecl(clang::CXXRecordDecl* record)
-//  {
-//    if(!record->hasDefinition() || record->isImplicit() || record->isLiteral())
-//      return true;
-//
-//    const auto pType  = record->getTypeForDecl(); 
-//    const auto qt     = pType->getLocallyUnqualifiedSingleStepDesugaredType();
-//    const std::string typeName = qt.getAsString();
-//
-//    //const std::string testName = record->getNameAsString();
-//    //clang::QualType qt = record->getType();
-//    //const std::string typeName = qt.getAsString();
-//    return true;
-//  }
-//
-//private:
-//
-//  const std::string& m_className;
-//};
-  
-
 void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls)
 {
   //
@@ -360,12 +328,66 @@ void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const cl
 
 }
 
+
+class TagSeeker : public clang::RecursiveASTVisitor<TagSeeker>
+{
+public:
+  
+  TagSeeker(const clang::CompilerInstance& a_compiler, std::vector<kslicer::DeclInClass>& a_constants, std::unordered_map<std::string, std::string>& a_tagByName) : 
+            m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_knownConstants(a_constants), m_tagByClassName(a_tagByName) { m_tagByClassName.clear(); }
+
+  bool VisitCXXMethodDecl(const clang::CXXMethodDecl* f)
+  { 
+    if(!f->hasBody())
+      return true;
+
+    // Get name of function
+    const std::string fname = f->getNameInfo().getName().getAsString();
+    if(fname == "GetTag" || fname == "GetTypeId")
+    {
+      const clang::QualType qThisType = f->getThisType();   
+      const clang::QualType classType = qThisType->getPointeeType();
+      const std::string thisTypeName  = kslicer::CutOffStructClass(classType.getAsString());
+      const std::string funcBody      = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
+      
+      for(const auto& decl : m_knownConstants)
+      {
+        auto pos = funcBody.find(decl.name);
+        if(pos != std::string::npos)
+        {
+          m_tagByClassName[thisTypeName] = decl.name;
+          break;
+        }
+      }
+    }
+    
+    return true;
+  }
+
+private:
+
+  const clang::SourceManager&    m_sm;
+  const clang::CompilerInstance& m_compiler;
+  std::vector<kslicer::DeclInClass>& m_knownConstants;
+  std::unordered_map<std::string, std::string>& m_tagByClassName; 
+};
+
+
 void kslicer::RTV_Pattern::ExtractHierarchiesConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool)
 {
   for(auto& p : m_vhierarchy)
   {
+    //// (1) get all constants inside interface
+    //
     std::cout << "  process " << p.second.interfaceName.c_str() << std::endl;
     p.second.usedDecls = kslicer::ExtractTCFromClass(p.second.interfaceName, p.second.interfaceDecl, compiler, Tool);
+
+    //// (2) juxtapose constant TAG and class implementation by analyzing GetTag() function
+    //
+    TagSeeker visitor(compiler, p.second.usedDecls, p.second.tagByClassName);
+    for(auto impl : p.second.implementations)
+      visitor.TraverseDecl(const_cast<clang::CXXRecordDecl*>(impl.decl));
   }
+
   int a = 2;
 }

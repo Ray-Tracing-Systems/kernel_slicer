@@ -515,6 +515,7 @@ namespace kslicer
       std::string                 makerName;   
       std::vector<DImplClass>     implementations;
       std::vector<kslicer::DeclInClass> usedDecls;
+      std::unordered_map<std::string, std::string> tagByClassName; 
     };
 
     virtual std::unordered_map<std::string, DHierarchy> GetDispatchingHierarchies() const { return std::unordered_map<std::string, DHierarchy>(); }

@@ -115,7 +115,7 @@ std::string kslicer::CutOffFileExt(const std::string& a_filePath)
 
 std::string kslicer::CutOffStructClass(const std::string& a_typeName)
 {
-  auto spacePos = a_typeName.find(" ");
+  auto spacePos = a_typeName.find_last_of(" ");
   if(spacePos != std::string::npos)
     return a_typeName.substr(spacePos+1);
   return a_typeName;
