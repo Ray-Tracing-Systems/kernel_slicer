@@ -6,7 +6,7 @@
 #include <cmath>
 
 
-void Denoise_cpu(int w, int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
+void Denoise_cpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
                  const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel, const char* a_outName);
 //void Tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName);
 

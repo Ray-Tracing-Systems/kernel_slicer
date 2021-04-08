@@ -6,6 +6,8 @@
 
 inline static uint pitch(uint x, uint y, uint pitch) { return y*pitch + x; }  
 
+inline static float4 Lerp4f(const float4 u, const float4 v, float t) { return u + t * (v - u); }
+
 static inline float Sqrf(const float x) { return x*x; }
 
 static inline int Clampi(const int x, const int a, const int b)
@@ -15,7 +17,7 @@ static inline int Clampi(const int x, const int a, const int b)
   else            return x;
 }
 
-void SimpleCompressColor(float4* color)
+static void SimpleCompressColor(float4* color)
 {
   color->x /= (1.0F + color->x);
   color->y /= (1.0F + color->y);
@@ -50,14 +52,14 @@ static inline float SurfaceSimilarity(const float4 data1, const float4 data2,con
   if (fabs(d1 - d2) >= MADXDIFF)
     return 0.0F;
 
-  const float normalDiff = sqrtf(1.0F -         (dist / MANXDIFF));
-  const float depthDiff  = sqrtf(1.0F - fabs(d1 - d2) / MADXDIFF);
+  const float normalDiff = sqrt(1.0F -         (dist / MANXDIFF));
+  const float depthDiff  = sqrt(1.0F - fabs(d1 - d2) / MADXDIFF);
 
   return normalDiff * depthDiff;
 }
 
 
-static inline float NLMWeight(const float4* in_buff, int w, int h, int x, int y, int x1, int y1, int a_blockRadius)
+static inline float NLMWeight(__global const float4* in_buff, int w, int h, int x, int y, int x1, int y1, int a_blockRadius)
 {
   float w1        = 0.0f;  // this is what NLM differs from KNN (bilateral)
 
@@ -85,7 +87,7 @@ static inline float NLMWeight(const float4* in_buff, int w, int h, int x, int y,
     }
   }
 
-  return w1 / Sqrf(2.0F * float(a_blockRadius) + 1.0F);
+  return w1 / Sqrf(2.0F * (float)a_blockRadius + 1.0F);
 }
 
 
@@ -102,18 +104,21 @@ static void SaveTestImage(const float4* data, int w, int h)
 }
 
 
-static void Blend(float* inData1, const float inData2, const float amount) // 0 - data1, 1 - data2
+
+
+
+Denoise::Denoise(const int w, const int h)
 {
-  *inData1 = *inData1 + (inData2 - *inData1) * amount;
+  m_width   = w;
+  m_height  = h;
+  m_sizeImg = w * h;  
+
+  m_texColor.resize(m_sizeImg);
+  m_normDepth.resize(m_sizeImg);
 }
 
 
-void Denoise::SetMaxImageSize(int w, int h)
-{
-  m_width  = w;
-  m_height = h;
-  m_size   = w * h;  
-}
+
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -122,82 +127,63 @@ void Denoise::SetMaxImageSize(int w, int h)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-void Denoise::kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth, 
-                                     float4* a_texColor, float4* a_normDepth)
+void Denoise::kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth)
 {
   #pragma omp parallel for
-  for (size_t i = 0; i < m_size; ++i)  
+  for (size_t i = 0; i < m_sizeImg; ++i)  
   {      
     int pxData      = a_inTexColor[i];
     int r           = (pxData & 0x00FF0000) >> 16;
     int g           = (pxData & 0x0000FF00) >> 8;
     int b           = (pxData & 0x000000FF);
 
-    a_texColor[i].x = pow((float)r / 255.0F, m_gamma);
-    a_texColor[i].y = pow((float)g / 255.0F, m_gamma);
-    a_texColor[i].z = pow((float)b / 255.0F, m_gamma);
-    a_texColor[i].w = 0.0F;
+    m_texColor[i].x = pow((float)r / 255.0F, m_gamma);
+    m_texColor[i].y = pow((float)g / 255.0F, m_gamma);
+    m_texColor[i].z = pow((float)b / 255.0F, m_gamma);
+    m_texColor[i].w = 0.0F;
 
     pxData          = a_inNormal[i];
     r               = (pxData & 0x00FF0000) >> 16;
     g               = (pxData & 0x0000FF00) >> 8;
     b               = (pxData & 0x000000FF);
 
-    a_normDepth[i].x = pow((float)r / 255.0F, m_gamma);
-    a_normDepth[i].y = pow((float)g / 255.0F, m_gamma);
-    a_normDepth[i].z = pow((float)b / 255.0F, m_gamma);
-    a_normDepth[i].w = a_inDepth[i].x;      
+    m_normDepth[i].x = pow((float)r / 255.0F, m_gamma);
+    m_normDepth[i].y = pow((float)g / 255.0F, m_gamma);
+    m_normDepth[i].z = pow((float)b / 255.0F, m_gamma);
+    m_normDepth[i].w = a_inDepth[i].x;      
   }
 }
 
 
-void Denoise::kernel2D_GuidedTexNormDepthDenoise(int a_width, const int a_height, const float4* a_inImage, const float4* a_inTexColor, 
-const float4* a_inNormDepth, unsigned int* a_outData1ui, const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel)
+void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_height, const float4* a_inImage, 
+                                                 unsigned int* a_outData1ui, const int a_windowRadius, const int a_blockRadius, 
+                                                 const float a_noiseLevel)
 {     
-  const float g_NoiseLevel       = 1.0f / (a_noiseLevel*a_noiseLevel);
-  const float g_GaussianSigma    = 1.0f / 50.0f;
-  const float g_WeightThreshold  = 0.03f;
-  const float g_LerpCoefficeint  = 0.80f;
-  const float g_CounterThreshold = 0.05f;
+  m_noiseLevel  = 1.0f / (a_noiseLevel * a_noiseLevel);    
+  m_windowArea  = Sqrf(2.0f * (float)(a_windowRadius) + 1.0f);
 
-  const float DEG_TO_RAD         = 0.017453292519943295769236907684886f;
-  const float m_fov              = DEG_TO_RAD * 90.0f;
-
-  ////////////////////////////////////////////////////////////////////
-
-  const int w            = a_width;
-  const int h            = a_height;
-
-  const float4* in_buff  = a_inImage;
-  const float4* in_texc  = a_inTexColor;
-  const float4* nd_buff  = a_inNormDepth;
-  //float4*       out_buff = (float4*)outImage.data();
-
-  const float windowArea = Sqrf(2.0f * float(a_windowRadius) + 1.0f);
-
-  int linesDone          = 0;
 
   #pragma omp parallel for
-  for (int y = 0; y < h; ++y)
+  for (int y = 0; y < a_height; ++y)
   {
-    for (int x = 0; x < w; ++x)
+    for (int x = 0; x < a_width; ++x)
     {
-      const int minX = Clampi(x - a_windowRadius, 0, w - 1);
-      const int maxX = Clampi(x + a_windowRadius, 0, w - 1);
+      const int minX      = Clampi(x - a_windowRadius, 0, a_width - 1);
+      const int maxX      = Clampi(x + a_windowRadius, 0, a_width - 1);
+     
+      const int minY      = Clampi(y - a_windowRadius, 0, a_height - 1);
+      const int maxY      = Clampi(y + a_windowRadius, 0, a_height - 1);
 
-      const int minY = Clampi(y - a_windowRadius, 0, h - 1);
-      const int maxY = Clampi(y + a_windowRadius, 0, h - 1);
+      const float4 c0     = a_inImage  [y * a_width + x];
+      const float4 n0     = m_normDepth[y * a_width + x];
+      //const float4 t0   = in_texc[y*w + x];
 
-      const float4 c0 = in_buff[y*w + x];
-      const float4 n0 = nd_buff[y*w + x];
-      //const float4 t0 = in_texc[y*w + x];
+      const float ppSize  = 1.0F * (float)(a_windowRadius) * ProjectedPixelSize(n0.w, m_fov, (float)(a_width), (float)(a_height));
 
-      float ppSize = 1.0F * float(a_windowRadius) * ProjectedPixelSize(n0.w, m_fov, float(w), float(h));
+      int counterPass     = 0;
 
-      int counterPass = 0;
-
-      float fSum      = 0.0F;
-      float4 result(0, 0, 0, 0);
+      float fSum          = 0.0F;
+      float4 result       = make_float4(0.0F, 0.0F, 0.0F, 0.0F);
 
       // do window
       //
@@ -205,8 +191,8 @@ const float4* a_inNormDepth, unsigned int* a_outData1ui, const int a_windowRadiu
       {
         for (int x1 = minX; x1 <= maxX; ++x1)
         {
-          const float4 c1   = in_buff[y1*w + x1];
-          const float4 n1   = nd_buff[y1*w + x1];
+          const float4 c1   = a_inImage  [y1 * a_width + x1];
+          const float4 n1   = m_normDepth[y1 * a_width + x1];
           //const float4 t1 = in_texc[y1*w + x1];
 
           const int i       = x1 - x;
@@ -214,17 +200,17 @@ const float4* a_inNormDepth, unsigned int* a_outData1ui, const int a_windowRadiu
 
           const float match = SurfaceSimilarity(n0, n1, ppSize);
 
-          const float w1    = NLMWeight(in_buff, w, h, x, y, x1, y1, a_blockRadius);
-          const float wt    = NLMWeight(in_texc, w, h, x, y, x1, y1, a_blockRadius);
+          const float w1    = NLMWeight(a_inImage, a_width, a_height, x, y, x1, y1, a_blockRadius);
+          const float wt    = NLMWeight(m_texColor.data(), a_width, a_height, x, y, x1, y1, a_blockRadius);
           //const float w1  = dot3(c1-c0, c1-c0);
           //const float wt  = dot3(t1-t0, t1-t0);
 
-          const float w2 = exp(-(w1*g_NoiseLevel + (i * i + j * j) * g_GaussianSigma));
-          const float w3 = exp(-(wt*g_NoiseLevel + (i * i + j * j) * g_GaussianSigma));
+          const float w2 = exp(-(w1*m_noiseLevel + (i * i + j * j) * m_gaussianSigma));
+          const float w3 = exp(-(wt*m_noiseLevel + (i * i + j * j) * m_gaussianSigma));
 
           const float wx = w2*w3*clamp(match, 0.25f, 1.0f);
 
-          if (wx > g_WeightThreshold)
+          if (wx > m_weightThreshold)
             counterPass++;
 
           fSum += wx;
@@ -238,7 +224,7 @@ const float4* a_inNormDepth, unsigned int* a_outData1ui, const int a_windowRadiu
       //  But maybe the area is actually edgy and so it's better to take the pixel from the original image?	
       //  This test shows if the area is smooth or not
       //
-      float lerpQ = (float(counterPass) > (g_CounterThreshold * windowArea)) ? 1.0f - g_LerpCoefficeint : g_LerpCoefficeint;
+      const float lerpQ = ((float)(counterPass) > (m_counterThreshold * m_windowArea)) ? 1.0f - m_lerpCoefficeint : m_lerpCoefficeint;
 
       //  This is the last lerp
       //  Most common values for g_LerpCoefficient = [0.85, 1];
@@ -248,16 +234,16 @@ const float4* a_inNormDepth, unsigned int* a_outData1ui, const int a_windowRadiu
       //  RestoredPixel*0.15 + NoisyImage*0.85
       //  That allows to preserve edges more thoroughly
       //
-      result = lerp(result, c0, lerpQ);
+      result = Lerp4f(result, c0, lerpQ);
 
       SimpleCompressColor(&result);
-      a_outData1ui[y*w + x] = RealColorToUint32(result, 1.0F / m_gamma);
+      a_outData1ui[y * a_width + x] = RealColorToUint32(result, 1.0F / m_gamma);
     }
 
     #pragma omp critical       
     {
-      linesDone++;
-      std::cout << "NLM Denoiser: " << int(100.0f*float(linesDone) / float(h)) << std::endl;
+      m_linesDone++;
+      std::cout << "NLM Denoiser: " << (int)(100.0F * (float)(m_linesDone) / (float)(a_height)) << std::endl;
     }        
   }
 }
@@ -268,29 +254,25 @@ const float4* a_inNormDepth, unsigned int* a_outData1ui, const int a_windowRadiu
 
 
 
-void Denoise::NLM_denoise(int a_width, const int a_height, const float4* a_inImage, unsigned int* a_outData1ui, const int32_t* a_inTexColor, 
+void Denoise::NLM_denoise(const int a_width, const int a_height, const float4* a_inImage, unsigned int* a_outData1ui, const int32_t* a_inTexColor, 
 const int32_t* a_inNormal, const float4* a_inDepth,  const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel)
 {  
-  std::vector<float4> texColor(m_size);
-  std::vector<float4> normDepth(m_size);
 
-  kernel1D_int32toFloat4(a_inTexColor, a_inNormal, a_inDepth, texColor.data(), normDepth.data());
+  kernel1D_int32toFloat4(a_inTexColor, a_inNormal, a_inDepth);
 
-  kernel2D_GuidedTexNormDepthDenoise(a_width, a_height, a_inImage, texColor.data(), normDepth.data(),a_outData1ui, 
-                                     a_windowRadius, a_blockRadius, a_noiseLevel); 
+  kernel2D_GuidedTexNormDepthDenoise(a_width, a_height, a_inImage, a_outData1ui, a_windowRadius, a_blockRadius, a_noiseLevel); 
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-void Denoise_cpu(int w, int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
+void Denoise_cpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
                  const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel, const char* a_outName)
 {
-  Denoise filter;
+  Denoise filter(w, h);
   std::vector<uint> ldrData(w*h);
   
-  filter.SetMaxImageSize(w,h);  
   filter.NLM_denoise(w, h, (const float4*)a_hdrData, ldrData.data(), a_inTexColor, a_inNormal, (const float4*)a_inDepth, a_windowRadius,
                      a_blockRadius, a_noiseLevel);
   

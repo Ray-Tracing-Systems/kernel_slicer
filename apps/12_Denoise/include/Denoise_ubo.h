@@ -5,8 +5,14 @@
 
 struct Denoise_UBO_Data
 {
-  float m_gamma;
-  int m_size;
+  int m_linesDone;
+  float m_noiseLevel;
+  int m_sizeImg;
+  float m_windowArea;
+  unsigned int m_normDepth_capacity;
+  unsigned int m_normDepth_size;
+  unsigned int m_texColor_capacity;
+  unsigned int m_texColor_size;
   unsigned int dummy_last;
 };
 
