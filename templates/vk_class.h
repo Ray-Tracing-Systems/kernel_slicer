@@ -113,12 +113,17 @@ protected:
 
   struct StdVectorMembersGPUData
   {
-## for Vector in VectorMembers
+    {% for Vector in VectorMembers %}
     VkBuffer {{Vector}}Buffer = VK_NULL_HANDLE;
     size_t   {{Vector}}Offset = 0;
-## endfor
+    {% endfor %}
     VkDeviceMemory m_vecMem = VK_NULL_HANDLE;
   } m_vdata;
+
+  {% for Hierarchy in DispatchHierarchies %}
+  VkBuffer m_{{Hierarchy.InterfaceName}}ObjPtrBuffer = VK_NULL_HANDLE;
+  size_t   m_{{Hierarchy.InterfaceName}}ObjPtrOffset = 0;
+  {% endfor %}
 
   {% if length(IndirectDispatches) > 0 %}
   void InitIndirectBufferUpdateResources(const char* a_filePath);

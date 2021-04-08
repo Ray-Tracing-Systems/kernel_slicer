@@ -57,6 +57,9 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
   vkDestroyPipeline(device, m_indirectUpdate{{Dispatch.KernelName}}Pipeline, nullptr);
   {% endfor %}
   {% endif %}
+  {% for Hierarchy in DispatchHierarchies %}
+  vkDestroyBuffer(device, m_{{Hierarchy.InterfaceName}}ObjPtrBuffer, nullptr);
+  {% endfor %}
 
   if(m_allMem != VK_NULL_HANDLE)
     vkFreeMemory(device, m_allMem, nullptr);
@@ -278,6 +281,10 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
     m_vdata.{{Buffer.Name}}Buffer = vkfw::CreateBuffer(device, sizeOfBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     allBuffers.push_back(m_vdata.{{Buffer.Name}}Buffer);
   }
+  {% endfor %}
+  {% for Hierarchy in DispatchHierarchies %}
+  m_{{Hierarchy.InterfaceName}}ObjPtrBuffer = vkfw::CreateBuffer(device, sizeof(uint32_t)*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  allBuffers.push_back(m_{{Hierarchy.InterfaceName}}ObjPtrBuffer);
   {% endfor %}
 
   if(allBuffers.size() > 0)

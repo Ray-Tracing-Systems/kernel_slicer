@@ -43,10 +43,10 @@ __kernel void {{Kernel.Name}}(
   {{Kernel.Source}}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   KGEN_EPILOG:
+  kgen_objPtrData[tid] = kgen_objPtr;
   // process 'kgen_objPtr'
   // for each type preform reduction
   // and then atomic_add
-
 }
 
 

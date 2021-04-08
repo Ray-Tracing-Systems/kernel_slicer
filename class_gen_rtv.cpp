@@ -389,5 +389,4 @@ void kslicer::RTV_Pattern::ExtractHierarchiesConstants(const clang::CompilerInst
       visitor.TraverseDecl(const_cast<clang::CXXRecordDecl*>(impl.decl));
   }
 
-  int a = 2;
 }

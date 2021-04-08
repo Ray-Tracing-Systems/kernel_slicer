@@ -270,6 +270,17 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
       actualSize++;
     }
 
+    if(k.isMaker || k.isVirtual)
+    {
+      json argData;
+      argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+      argData["Name"]  = "SomeInterfaceObjPointerData";
+      argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
+      argData["Id"]    = actualSize;
+      kernelJson["Args"].push_back(argData);
+      actualSize++;
+    }
+
     kernelJson["ArgCount"] = actualSize;
   
     auto tidArgs = a_classInfo.GetKernelTIDArgs(k);
@@ -338,6 +349,15 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     data["Kernels"].push_back(kernelJson);
   }
   
+  auto hierarchies = a_classInfo.GetDispatchingHierarchies();
+  data["DispatchHierarchies"] = std::vector<std::string>();
+  for(auto hierarchy : hierarchies)
+  {
+    json jh;
+    jh["InterfaceName"] = hierarchy.second.interfaceName;
+    data["DispatchHierarchies"].push_back(jh);
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -398,10 +418,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
         realId++;
       }
       
-      //const auto pFoundKernel = a_classInfo.kernels.find(dsArgs.originKernelName);
       if(pFoundKernel != a_classInfo.kernels.end())
       {
-        for(const auto& vecName : pFoundKernel->second.usedVectors)
+        for(const auto& vecName : pFoundKernel->second.usedVectors) // add all class-member vectors bindings
         {
           json arg;
           arg["Id"]   = realId;
@@ -411,6 +430,19 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
           realId++;
         }
 
+        if(pFoundKernel->second.isMaker || pFoundKernel->second.isVirtual)
+        {
+          auto hierarchies = a_classInfo.GetDispatchingHierarchies();
+          for(auto hierarchy : hierarchies)
+          {
+            json arg;
+            arg["Id"]   = realId;
+            arg["Name"] = std::string("m_") + hierarchy.second.interfaceName + "ObjPtr";
+            local["Args"].push_back(arg);
+            local["ArgNames"].push_back(hierarchy.second.interfaceName + "ObjPtrData");
+            realId++;
+          }
+        }
       }
       
       local["ArgNumber"] = realId;
@@ -683,6 +715,14 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
       args.push_back(argj);
       vecs.push_back(argj);
+    }
+
+    if(k.isMaker || k.isVirtual) // add to kernel ObjPtr buffer
+    {
+      json argj;
+      argj["Type"]       = "unsigned int*";
+      argj["Name"]       = "kgen_objPtrData";
+      args.push_back(argj);
     }
     
     std::vector<kslicer::DataMemberInfo> membersToRead;
