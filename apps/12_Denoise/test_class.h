@@ -24,7 +24,8 @@ const int32_t* a_inNormal, const float4* a_inDepth, const int a_windowRadius, co
 
 protected:
 
-  void kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth, float4* a_texColor, float4* a_normDepth);
+  void kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth, float4* a_texColor,
+                              float4* a_normDepth);
 
   void kernel2D_GuidedTexNormDepthDenoise(int a_width, const int a_height, const float4* a_inImage, const float4* a_inTexColor, 
   const float4* a_inNormDepth, unsigned int* a_outData1ui, const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
@@ -32,7 +33,7 @@ protected:
   int   m_width;
   int   m_height;
   int   m_size;
-  float m_gammaInv = 1.0f / 2.2f;
+  float m_gamma = 2.2f;
 };
 
 #endif

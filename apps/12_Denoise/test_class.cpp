@@ -15,6 +15,13 @@ static inline int Clampi(const int x, const int a, const int b)
   else            return x;
 }
 
+void SimpleCompressColor(float4* color)
+{
+  color->x /= (1.0F + color->x);
+  color->y /= (1.0F + color->y);
+  color->z /= (1.0F + color->z);
+}
+
 
 static inline float ProjectedPixelSize(const float dist, const float FOV, const float w, const float h)
 {
@@ -89,7 +96,7 @@ static void SaveTestImage(const float4* data, int w, int h)
 
 #pragma omp parallel for
   for(size_t i = 0; i < sizeImg; ++i)
-    ldrData[i] = RealColorToUint32(clamp(data[i], 0.0F, 1.0F));
+    ldrData[i] = RealColorToUint32(data[i], 1.0F / 2.2F);
 
   SaveBMP("ztest.bmp", ldrData.data(), w, h);
 }
@@ -115,20 +122,31 @@ void Denoise::SetMaxImageSize(int w, int h)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-void Denoise::kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth, float4* a_texColor, float4* a_normDepth)
+void Denoise::kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth, 
+                                     float4* a_texColor, float4* a_normDepth)
 {
   #pragma omp parallel for
-  for (size_t i = 0; i < m_size; ++i)
+  for (size_t i = 0; i < m_size; ++i)  
   {      
-    a_texColor[i].x  = (float)(a_inTexColor[i*4 + 0] / 255.0F);
-    a_texColor[i].y  = (float)(a_inTexColor[i*4 + 1] / 255.0F);
-    a_texColor[i].z  = (float)(a_inTexColor[i*4 + 2] / 255.0F);
-    a_texColor[i].w  = (float)(a_inTexColor[i*4 + 3] / 255.0F);
+    int pxData      = a_inTexColor[i];
+    int r           = (pxData & 0x00FF0000) >> 16;
+    int g           = (pxData & 0x0000FF00) >> 8;
+    int b           = (pxData & 0x000000FF);
 
-    a_normDepth[i].x = (float)(a_inNormal  [i*4 + 0] / 255.0F);
-    a_normDepth[i].y = (float)(a_inNormal  [i*4 + 1] / 255.0F);
-    a_normDepth[i].z = (float)(a_inNormal  [i*4 + 2] / 255.0F);
-    a_normDepth[i].w =         a_inDepth   [i].x;      
+    a_texColor[i].x = pow((float)r / 255.0F, m_gamma);
+    a_texColor[i].y = pow((float)g / 255.0F, m_gamma);
+    a_texColor[i].z = pow((float)b / 255.0F, m_gamma);
+    a_texColor[i].w = 0.0F;
+
+    pxData          = a_inNormal[i];
+    r               = (pxData & 0x00FF0000) >> 16;
+    g               = (pxData & 0x0000FF00) >> 8;
+    b               = (pxData & 0x000000FF);
+
+    a_normDepth[i].x = pow((float)r / 255.0F, m_gamma);
+    a_normDepth[i].y = pow((float)g / 255.0F, m_gamma);
+    a_normDepth[i].z = pow((float)b / 255.0F, m_gamma);
+    a_normDepth[i].w = a_inDepth[i].x;      
   }
 }
 
@@ -232,8 +250,8 @@ const float4* a_inNormDepth, unsigned int* a_outData1ui, const int a_windowRadiu
       //
       result = lerp(result, c0, lerpQ);
 
-      //out_buff[y*w + x] = result;
-      a_outData1ui[y*w + x] = RealColorToUint32(result);
+      SimpleCompressColor(&result);
+      a_outData1ui[y*w + x] = RealColorToUint32(result, 1.0F / m_gamma);
     }
 
     #pragma omp critical       
@@ -266,7 +284,7 @@ const int32_t* a_inNormal, const float4* a_inDepth,  const int a_windowRadius, c
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-void Denoise_cpu(int w, int h, float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
+void Denoise_cpu(int w, int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
                  const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel, const char* a_outName)
 {
   Denoise filter;

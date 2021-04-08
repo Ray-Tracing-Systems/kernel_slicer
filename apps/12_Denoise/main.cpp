@@ -6,7 +6,7 @@
 #include <cmath>
 
 
-void Denoise_cpu(int w, int h, float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
+void Denoise_cpu(int w, int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
                  const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel, const char* a_outName);
 //void Tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName);
 
@@ -26,27 +26,27 @@ int main(int argc, const char** argv)
   
   bool hasError = false;
 
-  if(!LoadHDRImageFromFile("WasteWhite_1024sample_lowSize.hdr", &w, &h, hdrData))
+  if(!LoadHDRImageFromFile("WasteWhite_1024sample.hdr", &w, &h, hdrData))
   {
-    std::cout << "can't open input file 'WasteWhite_1024sample_lowSize.hdr' " << std::endl;
+    std::cout << "can't open input file 'WasteWhite_1024sample.hdr' " << std::endl;
     hasError = true;
   }
 
-  if(!LoadHDRImageFromFile("WasteWhite_depth_lowSize.hdr", &w2, &h2, depth))
+  if(!LoadHDRImageFromFile("WasteWhite_depth.hdr", &w2, &h2, depth))
   {
-    std::cout << "can't open input file 'WasteWhite_depth_lowSize.hdr' " << std::endl;
+    std::cout << "can't open input file 'WasteWhite_depth.hdr' " << std::endl;
     hasError = true;
   }
 
-  if(!LoadLDRImageFromFile("WasteWhite_diffcolor_lowSize.png", &w3, &h3, texColor))
+  if(!LoadLDRImageFromFile("WasteWhite_diffcolor.png", &w3, &h3, texColor))
   {
-    std::cout << "can't open input file 'WasteWhite_diffcolor_lowSize.png' " << std::endl;
+    std::cout << "can't open input file 'WasteWhite_diffcolor.png' " << std::endl;
     hasError = true;
   }
 
-  if(!LoadLDRImageFromFile("WasteWhite_normals_lowSize.png", &w4, &h4, normal))
+  if(!LoadLDRImageFromFile("WasteWhite_normals.png", &w4, &h4, normal))
   {
-    std::cout << "can't open input file 'WasteWhite_normals_lowSize.png' " << std::endl;
+    std::cout << "can't open input file 'WasteWhite_normals.png' " << std::endl;
     hasError = true;
   }
 
@@ -78,13 +78,13 @@ int main(int argc, const char** argv)
 
   addressToCkeck = reinterpret_cast<uint64_t>(depth.data());
   assert(addressToCkeck % 16 == 0); // check if address is aligned!!!
-
-  const int   windowRadius = 16;
-  const int   blockRadius  = windowRadius / 2;
+  
+  const int   windowRadius = 21;
+  const int   blockRadius  = 7;
   const float noiseLevel   = 0.1F;
 
   Denoise_cpu(w, h, hdrData.data(), texColor.data(), normal.data(), depth.data(), windowRadius, blockRadius, noiseLevel, "zout_cpu.bmp");
+  //Denoise_gpu(w, h, hdrData.data(), texColor.data(), normal.data(), depth.data(), windowRadius, blockRadius, noiseLevel, "zout_gpu.bmp");  
               
-  //Tone_mapping_gpu(w, h, hdrData.data(), "zout_gpu.bmp");  
   return 0;
 }
