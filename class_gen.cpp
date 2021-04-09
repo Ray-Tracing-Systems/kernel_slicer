@@ -256,16 +256,22 @@ void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_k
   {
     assert(k.second.astNode != nullptr);
     auto sourceRange = k.second.astNode->getSourceRange();
+    
+    std::string funcName         = k.second.astNode->getNameInfo().getAsString();
     std::string kernelSourceCode = GetRangeSourceCode(sourceRange, compiler);
     
-    std::string kernelCmdDecl = kernelSourceCode.substr(0, kernelSourceCode.find(")")+1);
-    assert(ReplaceFirst(kernelCmdDecl, a_mainClassName + "::", ""));
-    
+    auto posBeg      = kernelSourceCode.find(funcName);
+    auto posEnd      = posBeg + funcName.size();
+    auto posEndBrace = kernelSourceCode.find(")");
+
+    std::string kernelCmdDecl = kernelSourceCode.substr(posBeg, posEndBrace+1-posBeg);   
     kernelCmdDecl = a_codeInfo.RemoveKernelPrefix(kernelCmdDecl);
 
     assert(ReplaceFirst(kernelCmdDecl,"(", "Cmd("));
-    if(k.second.isBoolTyped)
-      ReplaceFirst(kernelCmdDecl,"bool ", "void ");
     k.second.DeclCmd = kernelCmdDecl;
+    k.second.RetType = kernelSourceCode.substr(0, posBeg);
+    assert(ReplaceFirst(k.second.RetType, a_mainClassName + "::", ""));
+    if(k.second.isBoolTyped)
+      ReplaceFirst(k.second.RetType,"bool ", "void ");
   }
 }

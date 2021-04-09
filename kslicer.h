@@ -97,7 +97,8 @@ namespace kslicer
     bool checkThreadFlags = false;              ///<! used by RTV pattern; if Kernel.shouldCheckExitFlag --> insert check flags code in kernel
     bool isVirtual      = false;                ///<! used by RTV pattern; if kernel is a 'Virtual Kernel'
     bool isMaker        = false;                ///<! used by RTV pattern; if kernel is an object Maker
-
+    
+    std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
     std::unordered_set<std::string> usedVectors; ///<! list of all std::vector<T> member names which is referenced inside kernel
     std::unordered_set<std::string> usedMembers; ///<! list of all other variables used inside kernel

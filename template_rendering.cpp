@@ -45,14 +45,11 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
   for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
   {
     std::string kernDecl = kernelsCallCmdDecl[i];
-    size_t      spacePos = kernDecl.find(" ");
     size_t      rbPos    = kernDecl.find("Cmd(");
-
-    assert(spacePos != std::string::npos);
     assert(rbPos    != std::string::npos);    
     
-    std::string kernName       = kernDecl.substr(spacePos + 1, rbPos - 5);
-    kernelDeclByName[kernName] = kernDecl.substr(spacePos + 1);
+    std::string kernName       = kernDecl.substr(0, rbPos);
+    kernelDeclByName[kernName] = kernDecl;
   }
   return kernelDeclByName;
 }
@@ -103,7 +100,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
 
   std::stringstream strOut2;
   for(const auto& k : a_classInfo.kernels)
-    strOut2 << "virtual " << k.second.DeclCmd.c_str() << ";\n";
+    strOut2 << "virtual void " << k.second.DeclCmd.c_str() << ";\n"; // << k.second.RetType.c_str()
 
   json data;
   data["Includes"]           = strOut.str();
