@@ -269,13 +269,34 @@ bool kslicer::KernelRewriter::VisitReturnStmt(ReturnStmt* ret)
     return true; 
       
   Expr* retExpr = ret->getRetValue();
-  if (!retExpr || !m_kernelIsBoolTyped)
+  if (!retExpr)
     return true;
   
-  if(WasNotRewrittenYet(ret))
+  if(WasNotRewrittenYet(ret) && m_kernelIsBoolTyped)
   {
     std::string retExprText = RecursiveRewrite(retExpr);
     m_rewriter.ReplaceText(ret->getSourceRange(), std::string("kgenExitCond = ") + retExprText + "; goto KGEN_EPILOG");
+    MarkRewritten(ret);
+  }
+  else if(WasNotRewrittenYet(ret) && m_kernelIsMaker)
+  {
+    clang::Expr* pRetExpr =ret->getRetValue();
+    if(!isa<clang::CallExpr>(pRetExpr))
+      return true;
+    
+    clang::CallExpr* callExpr = dyn_cast<CallExpr>(pRetExpr);
+
+    std::string fname = callExpr->getDirectCallee()->getNameInfo().getName().getAsString();
+    if(fname != "MakeObjPtr")
+      return true;
+    
+    assert(callExpr->getNumArgs() == 2);
+    const Expr* firstArgExpr  = callExpr->getArgs()[0];
+    const Expr* secondArgExpr = callExpr->getArgs()[1];
+
+    std::string retExprText = RecursiveRewrite(firstArgExpr);
+    m_rewriter.ReplaceText(ret->getSourceRange(), std::string("{ kgen_objPtr = ") + retExprText + "; goto KGEN_EPILOG; }");  
+  
     MarkRewritten(ret);
   }
 

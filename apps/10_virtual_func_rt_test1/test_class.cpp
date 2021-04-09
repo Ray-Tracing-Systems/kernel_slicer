@@ -159,12 +159,14 @@ IMaterial* MakeObjPtr(const uint32_t objectPtr, __global const uint32_t* a_data)
 
 IMaterial* TestClass::kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit)
 {
+  uint32_t objPtr = 0;
   int primId = in_hit->primId;
-  if(primId == -1)
-    return MakeObjPtr(0, m_materialData.data());
-
-  const uint32_t mtId = m_materialIds[primId];
-  return MakeObjPtr(m_materialOffsets[mtId], m_materialData.data());
+  if(primId != -1)
+  {
+    const uint32_t mtId = m_materialIds[primId];
+    objPtr = m_materialOffsets[mtId];
+  }
+  return MakeObjPtr(objPtr, m_materialData.data());
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
