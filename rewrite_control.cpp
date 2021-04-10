@@ -164,6 +164,7 @@ bool kslicer::MainFunctionRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
     }
     else
     {
+      //std::string callStr = MakeKernelCallCmdString(f);
       std::cout << "  [MainFunctionRewriter::VisitCXXMemberCallExpr]: can't process kernel call for " << fname.c_str() << std::endl; 
     }
   }

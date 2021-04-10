@@ -270,7 +270,7 @@ void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_k
     assert(ReplaceFirst(kernelCmdDecl,"(", "Cmd("));
     k.second.DeclCmd = kernelCmdDecl;
     k.second.RetType = kernelSourceCode.substr(0, posBeg);
-    assert(ReplaceFirst(k.second.RetType, a_mainClassName + "::", ""));
+    ReplaceFirst(k.second.RetType, a_mainClassName + "::", "");
     if(k.second.isBoolTyped)
       ReplaceFirst(k.second.RetType,"bool ", "void ");
   }

@@ -475,6 +475,22 @@ int main(int argc, const char **argv)
           inputCodeInfo.kernels[k.first] = k.second;
       }
 
+      if(inputCodeInfo.SupportVirtualKernels())
+      {
+        std::unordered_map<std::string, KernelInfo> vkernels;
+        for(const auto& p : inputCodeInfo.allOtherKernels)
+          vkernels[p.second.name] = p.second;
+        
+        for(auto& p : vkernels)
+        {
+          if(inputCodeInfo.kernels.find(p.first) == inputCodeInfo.kernels.end())
+          {
+            p.second.isVirtual             = true;
+            inputCodeInfo.kernels[p.first] = p.second;
+          }
+        }
+      }
+
       // filter out excluded local variables
       //
       for(const auto& var : mainFuncRef.ExcludeList)

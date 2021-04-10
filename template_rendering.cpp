@@ -656,6 +656,17 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         hierarchy["Constants"].push_back(currConstant);
       }
     }
+    hierarchy["Implementations"] = std::vector<std::string>();
+    for(const auto& impl : p.second.implementations)
+    {
+      const auto p2 = p.second.tagByClassName.find(impl.name);
+      assert(p2 != p.second.tagByClassName.end());
+
+      json currImpl;
+      currImpl["ClassName"] = impl.name;
+      currImpl["TagName"]   = p2->second;
+      hierarchy["Implementations"].push_back(currImpl);
+    }
     data["Hierarchies"].push_back(hierarchy);
   }
 
@@ -714,7 +725,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       vecs.push_back(argj);
     }
 
-    if(k.isMaker || k.isVirtual) // add to kernel ObjPtr buffer
+    if(k.isMaker) // add to kernel ObjPtr buffer
     {
       json argj;
       argj["Type"]       = "unsigned int*";
@@ -892,6 +903,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["IndirectSizeY"] = tidNames[1]; 
       kernelJson["IndirectSizeZ"] = tidNames[2]; 
     }
+    
+    if(k.isVirtual)
+      kernelJson["Hierarchy"] = data["Hierarchies"][0]; // !!! TODO: implement correct hierarchy search
+    else
+      kernelJson["Hierarchy"] = json();
 
     auto original = kernelJson;
     

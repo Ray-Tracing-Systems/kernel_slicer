@@ -8,7 +8,8 @@ __kernel void {{Kernel.Name}}(
 ## for UserArg in Kernel.UserArgs 
   {{UserArg.Type}} {{UserArg.Name}},
 ## endfor
-  __global struct {{MainClassName}}_UBO_Data* ubo,
+  __global unsigned int* kgen_objPtrData,
+  __global unsigned int* kgen_objData,
   const uint {{Kernel.threadIdName1}}, 
   const uint {{Kernel.threadIdName2}},
   const uint {{Kernel.threadIdName3}},
@@ -18,22 +19,25 @@ __kernel void {{Kernel.Name}}(
   {% for name in Kernel.threadNames %}
   const uint {{name}} = get_global_id({{ loop.index }}); 
   {% endfor %}
-  uint kgen_objPtr = 0;
   {# /*------------------------------------------------------------- BEG. CHECK EXIT COND ------------------------------------------------------------- */ #}
   {% include "inc_exit_cond.cl" %}
   {# /*------------------------------------------------------------- END. CHECK EXIT COND ------------------------------------------------------------- */ #}
-  {% for Member in Kernel.Members %}
-  const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
-  {% endfor %}
   ///////////////////////////////////////////////////////////////// prolog
-  {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
-  {{Kernel.Source}}
-  {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
-  KGEN_EPILOG:
-  kgen_objPtrData[get_global_id(0)] = kgen_objPtr;
-  // process 'kgen_objPtr'
-  // for each type preform reduction
-  // and then atomic_add
+  
+  const uint kgen_objPtr    = kgen_objPtrData[get_global_id(0)];
+  const uint kgen_objTag    = (kgen_objPtr & {{Kernel.Hierarchy.Name}}_TAG_MASK) >> (32 - {{Kernel.Hierarchy.Name}}_TAG_BITS);
+  const uint kgen_objOffset = (kgen_objPtr & {{Kernel.Hierarchy.Name}}_OFS_MASK);
+
+  switch(kgen_objTag)
+  {
+  {% for Impl in Kernel.Hierarchy.Implementations %}
+    case {{Kernel.Hierarchy.Name}}_{{Impl.TagName}}: // implementation for {{Impl.ClassName}}
+    ((__global {{Impl.ClassName}}*)(kgen_objData + kgen_objOffset))->{{Kernel.Name}}(get_global_id(0){%for Arg in Kernel.Args %}{% if loop.index == length(Kernel.Args)-1 %}){%else%}, {{Arg.Name}}{% endif %}{% endfor %};
+    break;
+  {% endfor %}
+  default:
+  break;
+  };
 }
 
 

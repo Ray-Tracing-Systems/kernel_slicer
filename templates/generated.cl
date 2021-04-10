@@ -58,6 +58,8 @@ __kernel void {{Kernel.Name}}_UpdateIndirect(__global struct {{MainClassName}}_U
 {% endif %}
 {% if Kernel.IsMaker %}
 {% include "inc_maker.cl" %}
+{% else if Kernel.IsVirtual %}
+{% include "inc_vkernel.cl" %}
 {% else %}
 
 {% if not UseSpecConstWgSize %}
@@ -90,20 +92,7 @@ __kernel void {{Kernel.Name}}(
   const uint {{name}} = get_global_id({{ loop.index }}); 
   {% endfor %}
   {# /*------------------------------------------------------------- BEG. CHECK EXIT COND ------------------------------------------------------------- */ #}
-  {% if Kernel.threadDim == 3 %}
-  if({{Kernel.threadName1}} >= {{Kernel.IndirectSizeX}} || {{Kernel.threadName2}} >= {{Kernel.IndirectSizeY}} || {{Kernel.threadName3}} >= {{Kernel.IndirectSizeZ}})
-    return;
-  {% else if Kernel.threadDim == 2 %}
-  if({{Kernel.threadName1}} >= {{Kernel.IndirectSizeX}} || {{Kernel.threadName2}} >= {{Kernel.IndirectSizeY}})
-    return;
-  {% else %}
-  if({{Kernel.threadName1}} >= {{Kernel.IndirectSizeX}})
-    return;
-  {% endif %}
-  {% if Kernel.shouldCheckExitFlag %}
-  if((kgen_threadFlags[{{Kernel.ThreadOffset}}] & kgen_tFlagsMask) != 0) 
-    return;
-  {% endif %}
+  {% include "inc_exit_cond.cl" %}
   {# /*------------------------------------------------------------- END. CHECK EXIT COND ------------------------------------------------------------- */ #}
   {% for Member in Kernel.Members %}
   const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
