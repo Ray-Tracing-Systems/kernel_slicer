@@ -294,6 +294,9 @@ bool kslicer::KernelRewriter::VisitReturnStmt(ReturnStmt* ret)
     const Expr* firstArgExpr  = callExpr->getArgs()[0];
     const Expr* secondArgExpr = callExpr->getArgs()[1];
 
+    m_currKernel.makerObjBufferName = kslicer::GetRangeSourceCode(secondArgExpr->getSourceRange(), m_compiler);
+    ReplaceFirst(m_currKernel.makerObjBufferName, ".data()", "");
+
     std::string retExprText = RecursiveRewrite(firstArgExpr);
     m_rewriter.ReplaceText(ret->getSourceRange(), std::string("{ kgen_objPtr = ") + retExprText + "; goto KGEN_EPILOG; }");  
   

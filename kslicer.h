@@ -98,6 +98,8 @@ namespace kslicer
     bool isVirtual      = false;                ///<! used by RTV pattern; if kernel is a 'Virtual Kernel'
     bool isMaker        = false;                ///<! used by RTV pattern; if kernel is an object Maker
     
+    std::string makerObjBufferName;             ///<! if kernel is maker, this variable store buffer name for storing objects
+
     std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
     std::unordered_set<std::string> usedVectors; ///<! list of all std::vector<T> member names which is referenced inside kernel
