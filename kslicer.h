@@ -97,8 +97,6 @@ namespace kslicer
     bool checkThreadFlags = false;              ///<! used by RTV pattern; if Kernel.shouldCheckExitFlag --> insert check flags code in kernel
     bool isVirtual      = false;                ///<! used by RTV pattern; if kernel is a 'Virtual Kernel'
     bool isMaker        = false;                ///<! used by RTV pattern; if kernel is an object Maker
-    
-    std::string makerObjBufferName;             ///<! if kernel is maker, this variable store buffer name for storing objects
 
     std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
@@ -516,12 +514,15 @@ namespace kslicer
       const clang::CXXRecordDecl* interfaceDecl = nullptr;
       std::string                 interfaceName;
       std::string                 makerName;   
+      std::string                 objBufferName;
       std::vector<DImplClass>     implementations;
       std::vector<kslicer::DeclInClass> usedDecls;
       std::unordered_map<std::string, std::string> tagByClassName; 
     };
-
-    virtual std::unordered_map<std::string, DHierarchy> GetDispatchingHierarchies() const { return std::unordered_map<std::string, DHierarchy>(); }
+    
+    std::unordered_map<std::string, DHierarchy> m_vhierarchy;
+    virtual const std::unordered_map<std::string, DHierarchy>& GetDispatchingHierarchies() const { return m_vhierarchy; }
+    virtual std::unordered_map<std::string, DHierarchy>&       GetDispatchingHierarchies()       { return m_vhierarchy; }
 
   };
 
@@ -556,12 +557,8 @@ namespace kslicer
     { 
       return (a_name == "MakeObjPtr"); 
     }                 
-  
-    std::unordered_map<std::string, DHierarchy> GetDispatchingHierarchies() const override { return m_vhierarchy; }
 
   private:
-
-    std::unordered_map<std::string, DHierarchy>         m_vhierarchy;
     std::vector< std::pair< std::string, std::string> > m_vkernelPairs;
 
   };

@@ -346,7 +346,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     data["Kernels"].push_back(kernelJson);
   }
   
-  auto hierarchies = a_classInfo.GetDispatchingHierarchies();
+  const auto hierarchies = a_classInfo.GetDispatchingHierarchies();
   data["DispatchHierarchies"] = std::vector<std::string>();
   for(auto hierarchy : hierarchies)
   {
