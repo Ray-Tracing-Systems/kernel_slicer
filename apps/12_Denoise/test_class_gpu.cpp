@@ -14,27 +14,8 @@
 #include "vulkan_basics.h"
 #include "test_class_generated.h"
 
-//class ToneMapping_Debug : public ToneMapping_Generated
-//{
-//public:
-//  
-//  void SaveTestImageNow(const char* a_outName, std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
-//  {
-//    std::vector<float4> realColor(m_width*m_height);    
-//    std::vector<unsigned int> pixels(m_width*m_height);
-//
-//    //a_pCopyEngine->ReadBuffer(colorBufferLDR, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
-//    a_pCopyEngine->ReadBuffer(m_vdata.m_brightPixelsBuffer, 0, realColor.data(), realColor.size()*sizeof(float4));
-//
-//    for(int i=0;i<pixels.size();i++)
-//      pixels[i] = RealColorToUint32(clamp(realColor[i], 0.0f, 1.0f));
-//    
-//    SaveBMP(a_outName, pixels.data(), m_width, m_height);
-//  }
-//};
-
-
-void Tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
+void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
+                 const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel, const char* a_outName)
 {
   // (1) init vulkan
   //
@@ -92,26 +73,36 @@ void Tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
 
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 
-  auto pGPUImpl = std::make_shared<ToneMapping_Generated>(); // !!! USING GENERATED CODE !!! 
+  auto pGPUImpl = std::make_shared<Denoise_Generated>();     // !!! USING GENERATED CODE !!! 
   pGPUImpl->InitVulkanObjects(device, physicalDevice, w*h);  // !!! USING GENERATED CODE !!!
 
-  pGPUImpl->SetMaxImageSize(w, h);                           // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
+  pGPUImpl->Resize(w, h);                                    // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
   pGPUImpl->InitMemberBuffers();                             // !!! USING GENERATED CODE !!!
   pGPUImpl->UpdateAll(pCopyHelper);                          // !!! USING GENERATED CODE !!!
 
-  // (3) Create buffer
+  // (3) Create buffers
   //
-  const size_t bufferSizeLDR = w*h*sizeof(uint32_t);
-  const size_t bufferSizeHDR = w*h*sizeof(float)*4;
-  VkBuffer colorBufferLDR    = vkfw::CreateBuffer(device, bufferSizeLDR,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  VkBuffer colorBufferHDR    = vkfw::CreateBuffer(device, bufferSizeHDR,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  const size_t bufferSize1 = w*h*sizeof(uint32_t);
+  const size_t bufferSize4 = w*h*sizeof(float)*4;
 
-  VkDeviceMemory colorMem    = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {colorBufferLDR, colorBufferHDR});
+  VkBuffer buff_hdrData    = vkfw::CreateBuffer(device, bufferSize4,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  VkBuffer buff_inTexColor = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  VkBuffer buff_inNormal   = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  VkBuffer buff_inDepth    = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  VkBuffer buff_outColor   = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
-  pGPUImpl->SetVulkanInOutFor_IPTcompress(colorBufferHDR, 0,  // ==> 
-                                          colorBufferLDR, 0); // <==
+  VkDeviceMemory colorMem  = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {buff_hdrData, buff_inTexColor, buff_inNormal, buff_inDepth, buff_outColor});
 
-  pCopyHelper->UpdateBuffer(colorBufferHDR, 0, a_hdrData, w*h*sizeof(float)*4);
+  pCopyHelper->UpdateBuffer(buff_hdrData   , 0, a_hdrData,    bufferSize4);
+  pCopyHelper->UpdateBuffer(buff_inTexColor, 0, a_inTexColor, bufferSize1);
+  pCopyHelper->UpdateBuffer(buff_inNormal  , 0, a_inNormal,   bufferSize1);
+  pCopyHelper->UpdateBuffer(buff_inDepth   , 0, a_inDepth,    bufferSize1);
+
+  pGPUImpl->SetVulkanInOutFor_NLM_denoise(buff_hdrData,    0,
+                                          buff_outColor,   0,
+                                          buff_inTexColor, 0,
+                                          buff_inNormal,   0,
+                                          buff_inDepth,    0);
   
   // now compute some thing useful
   //
@@ -123,7 +114,7 @@ void Tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
     //vkCmdFillBuffer(commandBuffer, colorBufferLDR, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
-    pGPUImpl->IPTcompressCmd(commandBuffer, w, h, nullptr, nullptr);         // !!! USING GENERATED CODE !!! 
+    pGPUImpl->NLM_denoiseCmd(commandBuffer, w, h, nullptr, nullptr, nullptr, nullptr, nullptr,  a_windowRadius, a_blockRadius, a_noiseLevel);
     vkEndCommandBuffer(commandBuffer);  
     
     auto start = std::chrono::high_resolution_clock::now();
@@ -133,7 +124,7 @@ void Tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
     std::cout << ms << " ms for command buffer execution " << std::endl;
 
     std::vector<unsigned int> pixels(w*h);
-    pCopyHelper->ReadBuffer(colorBufferLDR, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
+    pCopyHelper->ReadBuffer(buff_outColor, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
     SaveBMP(a_outName, pixels.data(), w, h);
 
     //pGPUImpl->SaveTestImageNow("z_test.bmp", pCopyHelper);
@@ -146,8 +137,11 @@ void Tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
   pCopyHelper = nullptr;
   pGPUImpl = nullptr;                                                       // !!! USING GENERATED CODE !!! 
 
-  vkDestroyBuffer(device, colorBufferLDR, nullptr);
-  vkDestroyBuffer(device, colorBufferHDR, nullptr);
+  vkDestroyBuffer(device, buff_hdrData, nullptr);
+  vkDestroyBuffer(device, buff_inTexColor, nullptr);
+  vkDestroyBuffer(device, buff_inNormal, nullptr);
+  vkDestroyBuffer(device, buff_inDepth, nullptr);
+  vkDestroyBuffer(device, buff_outColor, nullptr);
   vkFreeMemory(device, colorMem, nullptr);
 
   vkDestroyCommandPool(device, commandPool, nullptr);

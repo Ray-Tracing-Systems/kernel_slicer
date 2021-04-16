@@ -13,8 +13,11 @@
 class Denoise 
 {
 public:
-
+  
+  Denoise(){}
   Denoise(const int w, const int h);  
+  
+  void Resize(int w, int h); 
 
   // Non local mean denoise.
   void NLM_denoise(const int a_width, const int a_height, const float4* a_inImage, unsigned int* a_outData1ui, const int32_t* a_inTexColor, 

@@ -96,7 +96,7 @@ static void SaveTestImage(const float4* data, int w, int h)
   size_t sizeImg = w * h;
   std::vector<uint> ldrData(sizeImg);
 
-#pragma omp parallel for
+  #pragma omp parallel for
   for(size_t i = 0; i < sizeImg; ++i)
     ldrData[i] = RealColorToUint32(data[i], 1.0F / 2.2F);
 
@@ -104,10 +104,12 @@ static void SaveTestImage(const float4* data, int w, int h)
 }
 
 
-
-
-
 Denoise::Denoise(const int w, const int h)
+{
+  Resize(w,h);
+}
+
+void Denoise::Resize(int w, int h)
 {
   m_width   = w;
   m_height  = h;
@@ -116,9 +118,6 @@ Denoise::Denoise(const int w, const int h)
   m_texColor.resize(m_sizeImg);
   m_normDepth.resize(m_sizeImg);
 }
-
-
-
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
