@@ -81,8 +81,8 @@ int main(int argc, const char** argv)
   addressToCkeck = reinterpret_cast<uint64_t>(depth.data());
   assert(addressToCkeck % 16 == 0); // check if address is aligned!!!
   
-  const int   windowRadius = 21;
-  const int   blockRadius  = 7;
+  const int   windowRadius = 7;
+  const int   blockRadius  = 3;
   const float noiseLevel   = 0.1F;
 
   //Denoise_cpu(w, h, hdrData.data(), texColor.data(), normal.data(), depth.data(), windowRadius, blockRadius, noiseLevel, "zout_cpu.bmp");
