@@ -151,13 +151,15 @@ namespace kslicer
     bool VisitCallExpr(CallExpr* f);
     bool VisitCXXConstructExpr(CXXConstructExpr* call);
 
+    std::unordered_set<uint64_t>                             m_rewrittenNodes;
+
   private:
 
     Rewriter&                                                m_rewriter;
     const clang::CompilerInstance&                           m_compiler;
     MainClassInfo*                                           m_codeInfo;
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    std::unordered_set<uint64_t>                             m_rewrittenNodes;
+   
     inline void MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
 
     std::string FunctionCallRewrite(const CallExpr* call);

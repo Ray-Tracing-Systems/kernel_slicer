@@ -271,7 +271,8 @@ class MemberRewriter : public clang::RecursiveASTVisitor<MemberRewriter> //
 public:
   
   MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo,
-                 std::vector<kslicer::MainClassInfo::DImplFunc>& a_funcs, const std::string& a_currClassName) : m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_processed(a_funcs), m_className(a_currClassName)
+                 std::vector<kslicer::MainClassInfo::DImplFunc>& a_funcs, const std::string& a_currClassName) : m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_processed(a_funcs), m_className(a_currClassName),
+                                                                                                                m_funcRewriter(R, a_compiler, a_codeInfo)
   { 
     
   }
@@ -289,11 +290,10 @@ public:
     if(thisTypeName != m_className) // ignore other than this-> expr
       return true;
     
-    clang::Expr* baseExpr = expr->getBase();
-
     if(WasNotRewrittenYet(expr))
-    { 
-      std::string exprContent = RecursiveRewrite(baseExpr);
+    {
+      const clang::Expr* baseExpr = expr->getBase(); 
+      std::string exprContent     = RecursiveRewrite(baseExpr);
       m_rewriter.ReplaceText(expr->getSourceRange(), "self->" + exprContent);
       MarkRewritten(expr);
     }
@@ -318,7 +318,7 @@ public:
     
     if(WasNotRewrittenYet(fDecl))
     { 
-      std::string funcSourceCode  = RecursiveRewrite(fDecl); // kslicer::GetRangeSourceCode(fDecl->getSourceRange(), m_compiler); // TODO: replace with recursive rewrite please
+      std::string funcSourceCode  = RecursiveRewrite(fDecl); // kslicer::GetRangeSourceCode(fDecl->getSourceRange(), m_compiler); 
       std::string funcSourceCode2 = funcSourceCode.substr(funcSourceCode.find("(")); 
       std::string retType         = funcSourceCode.substr(0, funcSourceCode.find(fname));
   
@@ -341,15 +341,41 @@ public:
     return true;
   }
 
+  //bool VisitCallExpr(clang::CallExpr* f)
+  //{ 
+  //  if(WasNotRewrittenYet(f))
+  //  {
+  //    auto oldSize = m_funcRewriter.m_rewrittenNodes.size();
+  //    m_funcRewriter.VisitCallExpr(f); 
+  //    if(m_funcRewriter.m_rewrittenNodes.size() != oldSize) // need to get feedback ... if rewritten was actually happened
+  //      MarkRewritten(f);
+  //  }
+  //  return true;
+  //}
+
+  bool VisitCXXConstructExpr(clang::CXXConstructExpr* call)
+  {
+    if(WasNotRewrittenYet(call))
+    {
+      auto oldSize = m_funcRewriter.m_rewrittenNodes.size();
+      m_funcRewriter.VisitCXXConstructExpr(call); 
+      if(m_funcRewriter.m_rewrittenNodes.size() != oldSize) // need to get feedback ... if rewritten was actually happened
+        MarkRewritten(call);
+    }
+    return true;
+  }
+
 private:
   clang::Rewriter&               m_rewriter;
   const clang::CompilerInstance& m_compiler;
   kslicer::MainClassInfo*        m_codeInfo;
-  
+    
   std::vector<kslicer::MainClassInfo::DImplFunc>& m_processed;
   const std::string&                              m_className;
   
   bool isCopy = false;
+  kslicer::FunctionRewriter      m_funcRewriter;
+
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   
   std::unordered_set<uint64_t>  m_rewrittenNodes;

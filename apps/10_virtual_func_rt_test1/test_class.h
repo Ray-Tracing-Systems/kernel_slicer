@@ -100,7 +100,8 @@ struct GGXGlossyMaterial : public IMaterial
   
   void  kernel_GetColor(uint tid, uint* out_color) const override 
   { 
-    out_color[tid] = RealColorToUint32_f3(float3(color[0], color[1], color[2])); 
+    float redColor = std::max(1.0f, color[0]);
+    out_color[tid] = RealColorToUint32_f3(float3(redColor, color[1], color[2])); 
   }
 
   float color[3];
