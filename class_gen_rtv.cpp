@@ -278,6 +278,9 @@ public:
   
   bool VisitCXXMethodDecl(clang::CXXMethodDecl* fDecl)
   {
+    if(isCopy)
+      return true;
+
     std::string fname = fDecl->getNameInfo().getName().getAsString();
     auto thisType     = fDecl->getThisType();
     auto qtOfClass    = thisType->getPointeeType(); 
@@ -288,23 +291,28 @@ public:
 
     //std::cout << "    [MemberRewriter]: --> " << fname.c_str() << std::endl;
     
-    std::string funcSourceCode  = kslicer::GetRangeSourceCode(fDecl->getSourceRange(), m_compiler); // TODO: replace with recursive rewrite please
-    std::string funcSourceCode2 = funcSourceCode.substr(funcSourceCode.find("(")); 
-    std::string retType         = funcSourceCode.substr(0, funcSourceCode.find(fname));
-
-    if(fDecl->isConst())
-      ReplaceFirst(funcSourceCode2, "(", "(const " + classTypeName + "* self, ");
-    else
-      ReplaceFirst(funcSourceCode2, "(", "("       + classTypeName + "* self, ");
-
-    ReplaceFirst(funcSourceCode2, "override", "");
-
-    kslicer::MainClassInfo::DImplFunc funcData;
-    funcData.decl = fDecl;
-    funcData.name = fname;
-    funcData.srcRewritten = retType + classTypeName + "_" + fname + funcSourceCode2;
-
-    m_processed.push_back(funcData);
+    if(WasNotRewrittenYet(fDecl))
+    { 
+      std::string funcSourceCode  = RecursiveRewrite(fDecl); // kslicer::GetRangeSourceCode(fDecl->getSourceRange(), m_compiler); // TODO: replace with recursive rewrite please
+      std::string funcSourceCode2 = funcSourceCode.substr(funcSourceCode.find("(")); 
+      std::string retType         = funcSourceCode.substr(0, funcSourceCode.find(fname));
+  
+      if(fDecl->isConst())
+        ReplaceFirst(funcSourceCode2, "(", "(const " + classTypeName + "* self, ");
+      else
+        ReplaceFirst(funcSourceCode2, "(", "("       + classTypeName + "* self, ");
+      
+      ReplaceFirst(funcSourceCode2, "const override", ""); // TODO: make it more careful, seek const after ')' and before '{'
+      ReplaceFirst(funcSourceCode2, "override", "");
+  
+      kslicer::MainClassInfo::DImplFunc funcData;
+      funcData.decl = fDecl;
+      funcData.name = fname;
+      funcData.srcRewritten = retType + classTypeName + "_" + fname + funcSourceCode2;
+  
+      m_processed.push_back(funcData);
+      MarkRewritten(fDecl);
+    }
     return true;
   }
 
@@ -312,13 +320,43 @@ private:
   clang::Rewriter&               m_rewriter;
   const clang::CompilerInstance& m_compiler;
   kslicer::MainClassInfo*        m_codeInfo;
-  std::unordered_set<uint64_t>   m_rewrittenNodes;
-
   std::vector<kslicer::MainClassInfo::DImplFunc>& m_processed;
-  ///////////////////////////////////////////////////////////////////////////////////////////////////
-
   
+  bool isCopy = false;
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  std::unordered_set<uint64_t>  m_rewrittenNodes;
+  inline void MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
+  inline void MarkRewritten(const clang::Decl* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
 
+  inline bool WasNotRewrittenYet(const clang::Stmt* expr)
+  {
+    auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+    return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
+  }
+
+  inline bool WasNotRewrittenYet(const clang::Decl* expr)
+  {
+    auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+    return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
+  }
+
+  std::string RecursiveRewrite(const clang::Stmt* expr)
+  {
+    MemberRewriter rvCopy = *this;
+    rvCopy.isCopy = true;
+    rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
+    return m_rewriter.getRewrittenText(expr->getSourceRange());
+  }
+
+  std::string RecursiveRewrite(const clang::Decl* expr)
+  {
+    MemberRewriter rvCopy = *this;
+    rvCopy.isCopy = true;
+    rvCopy.TraverseDecl(const_cast<clang::Decl*>(expr));
+    return m_rewriter.getRewrittenText(expr->getSourceRange());
+  }
+  
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

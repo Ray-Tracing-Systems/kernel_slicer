@@ -137,3 +137,9 @@ void kslicer::MarkRewrittenRecursive(const clang::Stmt* currNode, std::unordered
   kslicer::NodesMarker rv(a_rewrittenNodes); 
   rv.TraverseStmt(const_cast<clang::Stmt*>(currNode));
 }
+
+void kslicer::MarkRewrittenRecursive(const clang::Decl* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes)
+{
+  kslicer::NodesMarker rv(a_rewrittenNodes); 
+  rv.TraverseDecl(const_cast<clang::Decl*>(currNode));
+}

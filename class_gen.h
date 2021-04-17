@@ -74,6 +74,7 @@ namespace kslicer
 
   std::vector<InOutVarInfo> ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node);
   void MarkRewrittenRecursive(const clang::Stmt* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes);
+  void MarkRewrittenRecursive(const clang::Decl* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes);
 
   class KernelRewriter : public RecursiveASTVisitor<KernelRewriter> // replace all expressions with class variables to kgen_data buffer access
   {
@@ -155,9 +156,9 @@ namespace kslicer
     Rewriter&                                                m_rewriter;
     const clang::CompilerInstance&                           m_compiler;
     MainClassInfo*                                           m_codeInfo;
-    std::unordered_set<uint64_t>                             m_rewrittenNodes;
-
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    std::unordered_set<uint64_t>                             m_rewrittenNodes;
+    inline void MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
 
     std::string FunctionCallRewrite(const CallExpr* call);
     std::string FunctionCallRewrite(const CXXConstructExpr* call);
@@ -168,8 +169,6 @@ namespace kslicer
       auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
       return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
     }
-
-    inline void MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
   };
   
   
