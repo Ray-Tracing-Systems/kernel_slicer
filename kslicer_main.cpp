@@ -511,7 +511,7 @@ int main(int argc, const char **argv)
   {
     std::cout << "(2.1) Process Virtual Kernels hierarchies" << std::endl; 
     std::cout << "{" << std::endl;
-    inputCodeInfo.ProcessDispatchHierarchies(firstPassData.rv.m_classList);
+    inputCodeInfo.ProcessDispatchHierarchies(firstPassData.rv.m_classList, compiler);
     std::cout << "}" << std::endl;
     std::cout << std::endl;
   }

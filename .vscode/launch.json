@@ -86,7 +86,7 @@
                         "-mainClass", "TestClass", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
-                        "-cl-std=", "C++",
+                        //"-cl-std=", "C++",
                         "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",

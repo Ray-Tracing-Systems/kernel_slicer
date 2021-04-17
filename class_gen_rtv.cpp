@@ -263,6 +263,40 @@ void kslicer::RTV_Pattern::ProcessKernelArg(KernelInfo::Arg& arg, const KernelIn
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/**
+\brief AAAA
+*/
+class MemberRewriter : public clang::RecursiveASTVisitor<MemberRewriter> // 
+{
+public:
+  
+  MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo) : m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo)
+  { 
+    
+  }
+  
+  bool VisitCXXMethodDecl(clang::CXXMethodDecl* fDecl)
+  {
+    std::string fname = fDecl->getNameInfo().getName().getAsString();
+
+    std::cout << "    [MemberRewriter]: --> " << fname.c_str() << std::endl;
+
+    return true;
+  }
+
+private:
+  clang::Rewriter&               m_rewriter;
+  const clang::CompilerInstance& m_compiler;
+  kslicer::MainClassInfo*        m_codeInfo;
+  std::unordered_set<uint64_t>   m_rewrittenNodes;
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void kslicer::RTV_Pattern::AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName)
 {
   std::cout << "   found class hierarchy: " << a_className.c_str() << " from " << a_makerName.c_str() << std::endl;
@@ -280,7 +314,7 @@ void kslicer::RTV_Pattern::AddDispatchingKernel(const std::string& a_className, 
   m_vkernelPairs.push_back(std::pair(kslicer::CutOffStructClass(a_className), a_kernelName));
 } 
 
-void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls)
+void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler)
 {
   //
   //
@@ -306,6 +340,10 @@ void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const cl
 
     // find all derived classes for target base class
     //
+    
+    clang::Rewriter rewrite2;
+    rewrite2.setSourceMgr(a_compiler.getSourceManager(), a_compiler.getLangOpts());
+
     for(const auto& decl : a_decls)
     {
       if(decl->isDerivedFrom(pBaseClass))
@@ -313,6 +351,12 @@ void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const cl
         DImplClass dImpl;
         dImpl.decl = decl;
         dImpl.name = decl->getNameAsString();
+        
+        // extract all member functions of class that should be rewritten
+        //
+        MemberRewriter rv(rewrite2, a_compiler, this);
+        rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));
+
         p.second.implementations.push_back(dImpl);
       }
     }

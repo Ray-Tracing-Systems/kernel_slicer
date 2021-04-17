@@ -463,7 +463,7 @@ namespace kslicer
     virtual bool SupportVirtualKernels() const { return false; }
     virtual void AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) { } ///<! for Virtual Kernels
     virtual void AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) { } ///<! for Virtual Kernels
-    virtual void ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls) {}
+    virtual void ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler) {}
     virtual void ExtractHierarchiesConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool) {}
 
 
@@ -503,10 +503,17 @@ namespace kslicer
 
     virtual void AddTempBufferToKernel(const std::string a_buffName, const std::string a_elemTypeName, KernelInfo& a_kernel); ///<! if kernel need some additional buffers (for reduction for example) use this function 
     
+    struct DImplFunc
+    {
+      const clang::CXXMethodDecl* decl = nullptr;
+      std::string                 name;
+    };
+
     struct DImplClass
     {
       const clang::CXXRecordDecl* decl = nullptr;
-      std::string name;
+      std::string                 name;
+      std::vector<DImplFunc>      memberFunctions;
     };
 
     struct DHierarchy
@@ -516,7 +523,8 @@ namespace kslicer
       std::string                 makerName;   
       std::string                 objBufferName;
       std::vector<DImplClass>     implementations;
-      std::vector<kslicer::DeclInClass> usedDecls;
+
+      std::vector<kslicer::DeclInClass>            usedDecls;
       std::unordered_map<std::string, std::string> tagByClassName; 
     };
     
@@ -549,7 +557,7 @@ namespace kslicer
     bool          SupportVirtualKernels() const { return true; }
     void          AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) override;  ///<! for Virtual Kernels 
     void          AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) override; ///<! for Virtual Kernels 
-    void          ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls) override;
+    void          ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler) override;
     void          ExtractHierarchiesConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool) override;
 
     bool NeedThreadFlags() const override { return true; } 
