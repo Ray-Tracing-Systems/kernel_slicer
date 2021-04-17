@@ -78,7 +78,7 @@ bool kslicer::KernelRewriter::VisitMemberExpr(MemberExpr* expr)
   auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
 
   // (2) put ubo->var instead of var, leave containers as they are
-  // process arrays and large data structures because small can be read once in the neggining of kernel
+  // process arrays and large data structures because small can be read once in the beggining of kernel
   //
   const bool isInLoopInitPart = expr->getSourceRange().getBegin() <= m_currKernel.loopOutsidesInit.getEnd();
   const bool hasLargeSize     = (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);

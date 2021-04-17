@@ -78,12 +78,12 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
     const DeclarationName dn      = dni.getName();
     const std::string fname       = dn.getAsString();
     
+    const QualType qThisType = f->getThisType();   
+    const QualType classType = qThisType.getTypePtr()->getPointeeType();
+    std::string thisTypeName = classType.getAsString();
+
     if(m_codeInfo.IsKernel(fname))
     {
-      const QualType qThisType = f->getThisType();   
-      const QualType classType = qThisType.getTypePtr()->getPointeeType();
-      std::string thisTypeName = classType.getAsString();
-
       if(thisTypeName == std::string("class ") + MAIN_CLASS_NAME || thisTypeName == std::string("struct ") + MAIN_CLASS_NAME)
       {
         ProcessKernelDef(f, functions, MAIN_CLASS_NAME); // MAIN_CLASS_NAME::f ==> functions
@@ -103,7 +103,12 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
       //std::cout << "main function has found:\t" << fname.c_str() << std::endl;
       //f->dump();
     }
+    else
+    {
+      //std::cout << "  --> found member func " <<  thisTypeName.c_str() << "::" << fname.c_str() << std::endl;
+    }
   }
+  
 
   return true; // returning false aborts the traversal
 }

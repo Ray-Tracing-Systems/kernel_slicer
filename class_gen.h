@@ -95,7 +95,7 @@ namespace kslicer
     bool VisitCallExpr(CallExpr* f);
     bool VisitCXXConstructExpr(CXXConstructExpr* call);
     bool VisitReturnStmt(ReturnStmt* ret);
-
+                                                                    // to detect reduction inside IPV programming template
     bool VisitUnaryOperator(UnaryOperator* expr);                   // ++, --, (*var) =  ...
     bool VisitCompoundAssignOperator(CompoundAssignOperator* expr); // +=, *=, -=; to detect reduction
     bool VisitCXXOperatorCallExpr(CXXOperatorCallExpr* expr);       // +=, *=, -=; to detect reduction for custom data types (float3/float4 for example)
@@ -133,7 +133,10 @@ namespace kslicer
 
     inline void MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
   };
-
+  
+  /**
+  \brief process local functions (data["LocalFunctions"]), float3 --> make_float3, std::max --> fmax and e.t.c.
+  */
   class FunctionRewriter : public RecursiveASTVisitor<FunctionRewriter> // 
   {
   public:

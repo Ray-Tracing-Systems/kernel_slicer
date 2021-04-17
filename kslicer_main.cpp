@@ -401,7 +401,7 @@ int main(int argc, const char **argv)
   std::vector<std::string> mainFunctNames; 
   mainFunctNames.reserve(20);
   
-  std::cout << "(0) Listing main functions of " << mainClassName.c_str()  << std::endl; 
+  std::cout << "(0) Listing main functions of " << mainClassName.c_str() << std::endl; 
   auto mainFuncList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, compiler.getASTContext(), inputCodeInfo);
   std::cout << "{" << std::endl;
   for(const auto& f : mainFuncList)
