@@ -507,6 +507,7 @@ namespace kslicer
     {
       const clang::CXXMethodDecl* decl = nullptr;
       std::string                 name;
+      std::string                 srcRewritten;
     };
 
     struct DImplClass

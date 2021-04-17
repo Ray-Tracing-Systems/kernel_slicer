@@ -16,8 +16,17 @@
 #include "include/{{UBOIncl}}"
 
 {% for Hierarchy in Hierarchies %}
+/////////////////////////////////////////////////////////////////////
+/////////////////// declarations of {{Hierarchy.Name}}  
+/////////////////////////////////////////////////////////////////////
 {% for Decl in Hierarchy.Constants %}
 {{Decl.Type}} {{Hierarchy.Name}}_{{Decl.Name}} = {{Decl.Value}};
+{% endfor %}
+{% for Impl in Hierarchy.Implementations %} 
+{% for MemberSrc in Impl.MemberFunctions %}
+
+{{MemberSrc}}
+{% endfor %}  
 {% endfor %}    
 {% endfor %}
 /////////////////////////////////////////////////////////////////////

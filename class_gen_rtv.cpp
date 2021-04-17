@@ -264,13 +264,14 @@ void kslicer::RTV_Pattern::ProcessKernelArg(KernelInfo::Arg& arg, const KernelIn
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
-\brief AAAA
+\brief C++ class --> C style struct; this --> self;
 */
 class MemberRewriter : public clang::RecursiveASTVisitor<MemberRewriter> // 
 {
 public:
   
-  MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo) : m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo)
+  MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo,
+                 std::vector<kslicer::MainClassInfo::DImplFunc>& a_funcs) : m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_processed(a_funcs)
   { 
     
   }
@@ -278,9 +279,32 @@ public:
   bool VisitCXXMethodDecl(clang::CXXMethodDecl* fDecl)
   {
     std::string fname = fDecl->getNameInfo().getName().getAsString();
+    auto thisType     = fDecl->getThisType();
+    auto qtOfClass    = thisType->getPointeeType(); 
+    std::string classTypeName = kslicer::CutOffStructClass(qtOfClass.getAsString());
 
-    std::cout << "    [MemberRewriter]: --> " << fname.c_str() << std::endl;
+    if(classTypeName.find(fname) != std::string::npos || classTypeName.find(fname.substr(1)) != std::string::npos || fname == "GetTag" || fname == "GetSizeOf")
+      return true; // exclude constructor, destructor and special functions
 
+    //std::cout << "    [MemberRewriter]: --> " << fname.c_str() << std::endl;
+    
+    std::string funcSourceCode  = kslicer::GetRangeSourceCode(fDecl->getSourceRange(), m_compiler); // TODO: replace with recursive rewrite please
+    std::string funcSourceCode2 = funcSourceCode.substr(funcSourceCode.find("(")); 
+    std::string retType         = funcSourceCode.substr(0, funcSourceCode.find(fname));
+
+    if(fDecl->isConst())
+      ReplaceFirst(funcSourceCode2, "(", "(const " + classTypeName + "* self, ");
+    else
+      ReplaceFirst(funcSourceCode2, "(", "("       + classTypeName + "* self, ");
+
+    ReplaceFirst(funcSourceCode2, "override", "");
+
+    kslicer::MainClassInfo::DImplFunc funcData;
+    funcData.decl = fDecl;
+    funcData.name = fname;
+    funcData.srcRewritten = retType + classTypeName + "_" + fname + funcSourceCode2;
+
+    m_processed.push_back(funcData);
     return true;
   }
 
@@ -289,7 +313,12 @@ private:
   const clang::CompilerInstance& m_compiler;
   kslicer::MainClassInfo*        m_codeInfo;
   std::unordered_set<uint64_t>   m_rewrittenNodes;
+
+  std::vector<kslicer::MainClassInfo::DImplFunc>& m_processed;
   ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+  
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -351,12 +380,8 @@ void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const cl
         DImplClass dImpl;
         dImpl.decl = decl;
         dImpl.name = decl->getNameAsString();
-        
-        // extract all member functions of class that should be rewritten
-        //
-        MemberRewriter rv(rewrite2, a_compiler, this);
-        rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));
-
+        MemberRewriter rv(rewrite2, a_compiler, this, dImpl.memberFunctions);  // extract all member functions of class that should be rewritten
+        rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));        //
         p.second.implementations.push_back(dImpl);
       }
     }
