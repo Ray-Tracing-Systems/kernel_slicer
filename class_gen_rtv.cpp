@@ -271,9 +271,34 @@ class MemberRewriter : public clang::RecursiveASTVisitor<MemberRewriter> //
 public:
   
   MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo,
-                 std::vector<kslicer::MainClassInfo::DImplFunc>& a_funcs) : m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_processed(a_funcs)
+                 std::vector<kslicer::MainClassInfo::DImplFunc>& a_funcs, const std::string& a_currClassName) : m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_processed(a_funcs), m_className(a_currClassName)
   { 
     
+  }
+
+  bool VisitMemberExpr(clang::MemberExpr* expr)
+  {
+    clang::ValueDecl* pValueDecl = expr->getMemberDecl();
+    if(!clang::isa<clang::FieldDecl>(pValueDecl))
+      return true;
+
+    clang::FieldDecl* pFieldDecl   = clang::dyn_cast<clang::FieldDecl>(pValueDecl);
+    clang::RecordDecl* pRecodDecl  = pFieldDecl->getParent();
+    const std::string thisTypeName = pRecodDecl->getNameAsString();
+
+    if(thisTypeName != m_className) // ignore other than this-> expr
+      return true;
+    
+    clang::Expr* baseExpr = expr->getBase();
+
+    if(WasNotRewrittenYet(expr))
+    { 
+      std::string exprContent = RecursiveRewrite(baseExpr);
+      m_rewriter.ReplaceText(expr->getSourceRange(), "self->" + exprContent);
+      MarkRewritten(expr);
+    }
+
+    return true;
   }
   
   bool VisitCXXMethodDecl(clang::CXXMethodDecl* fDecl)
@@ -320,7 +345,9 @@ private:
   clang::Rewriter&               m_rewriter;
   const clang::CompilerInstance& m_compiler;
   kslicer::MainClassInfo*        m_codeInfo;
+  
   std::vector<kslicer::MainClassInfo::DImplFunc>& m_processed;
+  const std::string&                              m_className;
   
   bool isCopy = false;
   ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -418,8 +445,8 @@ void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const cl
         DImplClass dImpl;
         dImpl.decl = decl;
         dImpl.name = decl->getNameAsString();
-        MemberRewriter rv(rewrite2, a_compiler, this, dImpl.memberFunctions);  // extract all member functions of class that should be rewritten
-        rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));        //
+        MemberRewriter rv(rewrite2, a_compiler, this, dImpl.memberFunctions, dImpl.name);  // extract all member functions of class that should be rewritten
+        rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));                    //
         p.second.implementations.push_back(dImpl);
       }
     }
