@@ -265,13 +265,51 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
 
 bool kslicer::KernelRewriter::VisitReturnStmt(ReturnStmt* ret)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-    return true; 
-      
   Expr* retExpr = ret->getRetValue();
   if (!retExpr)
     return true;
   
+  clang::Expr* pRetExpr = ret->getRetValue();
+  if(!isa<clang::CallExpr>(pRetExpr))
+    return true;
+  
+  clang::CallExpr* callExpr = dyn_cast<CallExpr>(pRetExpr);
+
+  // assotiate this buffer with target hierarchy 
+  //
+  auto retQt = pRetExpr->getType();
+  if(retQt->isPointerType())
+    retQt = retQt->getPointeeType();
+
+  std::string fname = callExpr->getDirectCallee()->getNameInfo().getName().getAsString();
+  if(fname != "MakeObjPtr")
+    return true;
+
+  assert(callExpr->getNumArgs() == 2);
+  const Expr* firstArgExpr  = callExpr->getArgs()[0];
+  const Expr* secondArgExpr = callExpr->getArgs()[1];
+ 
+  if(m_infoPass) // don't have to rewrite during infoPass
+  {
+    std::string retTypeName = kslicer::CutOffStructClass(retQt.getAsString());
+    
+    // get ObjData buffer name
+    //
+    std::string makerObjBufferName = kslicer::GetRangeSourceCode(secondArgExpr->getSourceRange(), m_compiler);
+    ReplaceFirst(makerObjBufferName, ".data()", "");
+
+    for(auto& h : m_codeInfo->GetDispatchingHierarchies())
+    {
+      if(h.second.interfaceName == retTypeName)
+      {
+        h.second.objBufferName = makerObjBufferName;       
+        break;
+      }
+    }
+
+    return true; 
+  }
+
   if(WasNotRewrittenYet(ret) && m_kernelIsBoolTyped)
   {
     std::string retExprText = RecursiveRewrite(retExpr);
@@ -279,47 +317,11 @@ bool kslicer::KernelRewriter::VisitReturnStmt(ReturnStmt* ret)
     MarkRewritten(ret);
   }
   else if(WasNotRewrittenYet(ret) && m_kernelIsMaker)
-  {
-    clang::Expr* pRetExpr = ret->getRetValue();
-    if(!isa<clang::CallExpr>(pRetExpr))
-      return true;
-    
-    clang::CallExpr* callExpr = dyn_cast<CallExpr>(pRetExpr);
-
-    std::string fname = callExpr->getDirectCallee()->getNameInfo().getName().getAsString();
-    if(fname != "MakeObjPtr")
-      return true;
-    
-    assert(callExpr->getNumArgs() == 2);
-    const Expr* firstArgExpr  = callExpr->getArgs()[0];
-    const Expr* secondArgExpr = callExpr->getArgs()[1];
-    
-    // get ObjData buffer name
-    //
-    std::string makerObjBufferName = kslicer::GetRangeSourceCode(secondArgExpr->getSourceRange(), m_compiler);
-    ReplaceFirst(makerObjBufferName, ".data()", "");
- 
-    // assotiate this buffer with target hierarchy 
-    //
-    auto retQt = pRetExpr->getType();
-    if(retQt->isPointerType())
-      retQt = retQt->getPointeeType();
-    std::string retTypeName = kslicer::CutOffStructClass(retQt.getAsString());
-    
-    for(auto& h : m_codeInfo->GetDispatchingHierarchies())
-    {
-      if(h.second.interfaceName == retTypeName)
-      {
-        h.second.objBufferName = makerObjBufferName;
-        break;
-      }
-    }
-
+  { 
     // change 'return MakeObjPtr(objPtr, ObjData) to 'kgen_objPtr = objPtr'
     //
     std::string retExprText = RecursiveRewrite(firstArgExpr);
     m_rewriter.ReplaceText(ret->getSourceRange(), std::string("{ kgen_objPtr = ") + retExprText + "; goto KGEN_EPILOG; }");  
-  
     MarkRewritten(ret);
   }
 

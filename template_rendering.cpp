@@ -449,8 +449,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
         {
           auto hierarchies = a_classInfo.GetDispatchingHierarchies();
           assert(hierarchies.size() == 1);
-          auto hierarchy         = hierarchies.begin();
-          local["InterfaceName"] = hierarchy->second.interfaceName;
+          auto hierarchy            = hierarchies.begin();
+          local["ObjectBufferName"] = hierarchy->second.objBufferName;
         }
       }
       

@@ -79,7 +79,7 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
 ## endfor
     {% if not DescriptorSet.IsServiceCall %}
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}]        = VkDescriptorBufferInfo{};
-    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].buffer = {% if DescriptorSet.IsVirtual %}FFFF{% else %}m_classDataBuffer{% endif %};
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].buffer = {% if DescriptorSet.IsVirtual %}m_vdata.{{DescriptorSet.ObjectBufferName}}Buffer{% else %}m_classDataBuffer{% endif %};
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].offset = 0;
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].range  = VK_WHOLE_SIZE;  
 

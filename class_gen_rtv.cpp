@@ -251,6 +251,16 @@ void kslicer::RTV_Pattern::ProcessCallArs_KF(const KernelCallInfo& a_call)
   }
 }
 
+void kslicer::RTV_Pattern::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
+{
+  //a_funcInfo.astNode->dump();
+  Rewriter rewrite2;
+  rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+  kslicer::KernelRewriter rv(rewrite2, compiler, this, a_funcInfo, "", true); /// --> last parameter is true which means informational pass for KernelRewriter !!!
+  rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
+}
+
+
 void kslicer::RTV_Pattern::ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const 
 {
   auto pdef = GetAllPredefinedThreadIdNamesRTV();
