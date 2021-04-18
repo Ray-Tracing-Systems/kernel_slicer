@@ -160,6 +160,7 @@ namespace kslicer
     bool VisitMemberExpr(clang::MemberExpr* expr)        { return VisitMemberExpr_Impl(expr);     }
     bool VisitCXXMethodDecl(clang::CXXMethodDecl* fDecl) { return VisitCXXMethodDecl_Impl(fDecl); }
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f)    { return VisitCXXMemberCallExpr_Impl(f); }
+    bool VisitFieldDecl(FieldDecl* decl)                 { return VisitFieldDecl_Impl(decl);}
 
   protected:
 
@@ -184,6 +185,7 @@ namespace kslicer
     virtual bool VisitMemberExpr_Impl(clang::MemberExpr* expr)        { return true; } // override this in Derived class
     virtual bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) { return true; } // override this in Derived class
     virtual bool VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)    { return true; } // override this in Derived class
+    virtual bool VisitFieldDecl_Impl(FieldDecl* decl)                 { return true; } // override this in Derived class
   };
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

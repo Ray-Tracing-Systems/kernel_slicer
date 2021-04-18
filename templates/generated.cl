@@ -22,7 +22,14 @@
 {% for Decl in Hierarchy.Constants %}
 {{Decl.Type}} {{Hierarchy.Name}}_{{Decl.Name}} = {{Decl.Value}};
 {% endfor %}
-{% for Impl in Hierarchy.Implementations %} 
+{% for Impl in Hierarchy.Implementations %}
+
+  typedef struct {{Impl.ClassName}}T 
+  {
+    {% for Field in Impl.Fields %}
+    {{Field}};
+    {% endfor %}
+  }{{Impl.ClassName}};  
 {% for MemberSrc in Impl.MemberFunctions %}
 
 {{MemberSrc}}

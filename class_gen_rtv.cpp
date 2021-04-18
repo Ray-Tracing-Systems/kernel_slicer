@@ -271,8 +271,8 @@ class MemberRewriter : public kslicer::FunctionRewriter
 public:
   
   MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo,
-                 std::vector<kslicer::MainClassInfo::DImplFunc>& a_funcs, const std::string& a_currClassName) : m_processed(a_funcs), m_className(a_currClassName),
-                                                                                                                FunctionRewriter(R, a_compiler, a_codeInfo)
+                 std::vector<kslicer::MainClassInfo::DImplFunc>& a_funcs, std::vector<std::string>& a_fields, const std::string& a_currClassName) : m_processed(a_funcs), m_fields(a_fields), m_className(a_currClassName),
+                                                                                                                                                    FunctionRewriter(R, a_compiler, a_codeInfo)
   { 
     
   }
@@ -373,9 +373,19 @@ public:
     return true;
   }
 
+  bool VisitFieldDecl_Impl(clang::FieldDecl* pFieldDecl) override 
+  { 
+    clang::RecordDecl* pRecodDecl  = pFieldDecl->getParent();
+    const std::string thisTypeName = pRecodDecl->getNameAsString();
+    if(thisTypeName == m_className)
+      m_fields.push_back(kslicer::GetRangeSourceCode(pFieldDecl->getSourceRange(), m_compiler));
+    return true; 
+  } 
+
 private:
     
   std::vector<kslicer::MainClassInfo::DImplFunc>& m_processed;
+  std::vector<std::string>&                       m_fields;
   const std::string&                              m_className;
   bool isCopy = false;
 
@@ -469,8 +479,8 @@ void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const cl
         DImplClass dImpl;
         dImpl.decl = decl;
         dImpl.name = decl->getNameAsString();
-        MemberRewriter rv(rewrite2, a_compiler, this, dImpl.memberFunctions, dImpl.name);  // extract all member functions of class that should be rewritten
-        rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));                    //
+        MemberRewriter rv(rewrite2, a_compiler, this, dImpl.memberFunctions, dImpl.fields, dImpl.name);  // extract all member functions of class that should be rewritten
+        rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));                                  //
         p.second.implementations.push_back(dImpl);
       }
     }

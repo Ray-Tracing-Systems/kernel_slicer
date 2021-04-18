@@ -670,6 +670,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       currImpl["MemberFunctions"] = std::vector<std::string>();
       for(const auto& member : impl.memberFunctions)
         currImpl["MemberFunctions"].push_back(member.srcRewritten);
+      currImpl["Fields"] = std::vector<std::string>();
+      for(const auto& field : impl.fields)
+        currImpl["Fields"].push_back(field);
       hierarchy["Implementations"].push_back(currImpl);
     }
     data["Hierarchies"].push_back(hierarchy);

@@ -515,6 +515,7 @@ namespace kslicer
       const clang::CXXRecordDecl* decl = nullptr;
       std::string                 name;
       std::vector<DImplFunc>      memberFunctions;
+      std::vector<std::string>    fields;
     };
 
     struct DHierarchy
