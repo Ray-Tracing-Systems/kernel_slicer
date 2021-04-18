@@ -85,7 +85,8 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
         flagsVariableName += "N";
     }
     
-    // m_currThreadFlags
+    if(pKernel->second.isMaker)
+      strOut << "nullptr;" << std::endl << "  ";
     if(pKernel->second.isIndirect)
       strOut << kernName.c_str() << "_UpdateIndirect();" << std::endl << "  ";
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
@@ -101,9 +102,9 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
 std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallExpr* call)
 {
   std::string kernName = "copyKernelFloat"; // extract from 'call' exact name of service function;
-                                     // replace it with actual name we are going to used in generated HOST(!!!) code. 
-                                     // for example it can be 'MyMemcpy' for 'memcpy' if in host code we have (MyMemcpyLayout, MyMemcpyPipeline, MyMemcpyDSLayout)
-                                     // please note that you should init MyMemcpyLayout, MyMemcpyPipeline, MyMemcpyDSLayout yourself in the generated code!                                      
+                                            // replace it with actual name we are going to used in generated HOST(!!!) code. 
+                                            // for example it can be 'MyMemcpy' for 'memcpy' if in host code we have (MyMemcpyLayout, MyMemcpyPipeline, MyMemcpyDSLayout)
+                                            // please note that you should init MyMemcpyLayout, MyMemcpyPipeline, MyMemcpyDSLayout yourself in the generated code!                                      
   
   auto memCpyArgs = ExtractArgumentsOfAKernelCall(call);
 

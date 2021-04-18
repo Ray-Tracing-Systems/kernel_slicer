@@ -107,8 +107,9 @@ void test_class_gpu()
   pGPUImpl->SetVulkanInOutFor_CastSingleRay(xyBuffer, 0,        // !!! USING GENERATED CODE !!!
                                             colorBuffer1, 0);   // !!! USING GENERATED CODE !!!
 
-  pGPUImpl->SetVulkanInOutFor_StupidPathTrace(xyBuffer,         0,  // !!! USING GENERATED CODE !!!
-                                              colorBuffer2,     0); // !!! USING GENERATED CODE !!!
+  //pGPUImpl->SetVulkanInOutFor_StupidPathTrace(xyBuffer,         0,  // !!! USING GENERATED CODE !!!
+  //                                            colorBuffer2,     0); // !!! USING GENERATED CODE !!!
+  
   pGPUImpl->UpdateAll(pCopyHelper);                                 // !!! USING GENERATED CODE !!!
   
   // now compute some thing useful
