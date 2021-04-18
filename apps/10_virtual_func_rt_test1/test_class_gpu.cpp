@@ -89,8 +89,8 @@ void test_class_gpu()
 
   // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
   //
-  pGPUImpl->InitRandomGens(WIN_WIDTH*WIN_HEIGHT);                                       // !!! USING GENERATED CODE !!!
-  pGPUImpl->InitMemberBuffers();                                                        // !!! USING GENERATED CODE !!!
+  pGPUImpl->InitRandomGens(WIN_WIDTH*WIN_HEIGHT);                            // !!! USING GENERATED CODE !!!
+  pGPUImpl->InitMemberBuffers();                                             // !!! USING GENERATED CODE !!!
 
   // (3) Create buffer
   //
@@ -109,7 +109,7 @@ void test_class_gpu()
 
   //pGPUImpl->SetVulkanInOutFor_StupidPathTrace(xyBuffer,         0,  // !!! USING GENERATED CODE !!!
   //                                            colorBuffer2,     0); // !!! USING GENERATED CODE !!!
-  
+
   pGPUImpl->UpdateAll(pCopyHelper);                                 // !!! USING GENERATED CODE !!!
   
   // now compute some thing useful

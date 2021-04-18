@@ -432,6 +432,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
         if(pFoundKernel->second.isMaker || pFoundKernel->second.isVirtual)
         {
           auto hierarchies = a_classInfo.GetDispatchingHierarchies();
+          assert(hierarchies.size() == 1);
           for(auto hierarchy : hierarchies)
           {
             json arg;
@@ -441,6 +442,15 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
             local["ArgNames"].push_back(hierarchy.second.interfaceName + "ObjPtrData");
             realId++;
           }
+        }
+        
+        local["IsVirtual"] = pFoundKernel->second.isVirtual;
+        if(pFoundKernel->second.isVirtual)
+        {
+          auto hierarchies = a_classInfo.GetDispatchingHierarchies();
+          assert(hierarchies.size() == 1);
+          auto hierarchy         = hierarchies.begin();
+          local["InterfaceName"] = hierarchy->second.interfaceName;
         }
       }
       
