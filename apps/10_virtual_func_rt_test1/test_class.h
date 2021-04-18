@@ -83,9 +83,12 @@ struct PerfectMirrorMaterial : public IMaterial
 struct EmissiveMaterial : public IMaterial
 {
   ~EmissiveMaterial() = delete;
+  
+  float3 GetColor() const { return float3(1,1,1); }
+  
   void   kernel_GetColor(uint tid, uint* out_color) const override 
   { 
-    out_color[tid] = RealColorToUint32_f3(intensity*float3(1,1,1)); 
+    out_color[tid] = RealColorToUint32_f3(intensity*GetColor()); 
   }
 
   float  intensity;

@@ -322,10 +322,14 @@ public:
       std::string funcSourceCode2 = funcSourceCode.substr(funcSourceCode.find("(")); 
       std::string retType         = funcSourceCode.substr(0, funcSourceCode.find(fname));
   
+      std::string endStr =  "* self, ";
+      if(fDecl->getNumParams() == 0)
+        endStr = "* self";
+
       if(fDecl->isConst())
-        ReplaceFirst(funcSourceCode2, "(", "(const " + classTypeName + "* self, ");
+        ReplaceFirst(funcSourceCode2, "(", "(const " + classTypeName + endStr);
       else
-        ReplaceFirst(funcSourceCode2, "(", "("       + classTypeName + "* self, ");
+        ReplaceFirst(funcSourceCode2, "(", "("       + classTypeName + endStr);
       
       ReplaceFirst(funcSourceCode2, "const override", ""); // TODO: make it more careful, seek const after ')' and before '{'
       ReplaceFirst(funcSourceCode2, "override", "");
@@ -333,11 +337,39 @@ public:
       kslicer::MainClassInfo::DImplFunc funcData;
       funcData.decl = fDecl;
       funcData.name = fname;
-      funcData.srcRewritten = retType + classTypeName + "_" + fname + funcSourceCode2;
+      funcData.srcRewritten = std::string("  ") + retType + classTypeName + "_" + fname + funcSourceCode2;
   
       m_processed.push_back(funcData);
       MarkRewritten(fDecl);
     }
+    return true;
+  }
+
+  bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* call) override
+  {
+    const clang::FunctionDecl* fDecl = call->getDirectCallee();  
+    const std::string fname          = fDecl->getNameInfo().getName().getAsString();
+    const clang::QualType qt         = call->getObjectType();
+    std::string classTypeName        = kslicer::CutOffStructClass(qt.getAsString());
+
+    if(WasNotRewrittenYet(call))
+    { 
+      std::string textRes = classTypeName + "_" + fname;
+      textRes += "(self";
+      if(call->getNumArgs() > 0)
+        textRes += ",";
+      for(int i=0;i<call->getNumArgs();i++)
+      {
+        textRes += RecursiveRewrite(call->getArg(i));
+        if(i < call->getNumArgs()-1)
+          textRes += ",";
+      }
+      textRes += ")";
+      
+      m_rewriter.ReplaceText(call->getSourceRange(), textRes);
+      MarkRewritten(call);
+    }
+
     return true;
   }
 
