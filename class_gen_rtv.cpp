@@ -327,13 +327,32 @@ public:
         endStr = "* self";
 
       if(fDecl->isConst())
-        ReplaceFirst(funcSourceCode2, "(", "(const " + classTypeName + endStr);
+        ReplaceFirst(funcSourceCode2, "(", "(__global const " + classTypeName + endStr);
       else
-        ReplaceFirst(funcSourceCode2, "(", "("       + classTypeName + endStr);
+        ReplaceFirst(funcSourceCode2, "(", "(__global "       + classTypeName + endStr);
       
-      ReplaceFirst(funcSourceCode2, "const override", ""); // TODO: make it more careful, seek const after ')' and before '{'
-      ReplaceFirst(funcSourceCode2, "override", "");
+      //ReplaceFirst(funcSourceCode2, "const override", ""); // TODO: make it more careful, seek const after ')' and before '{'
+      //ReplaceFirst(funcSourceCode2, "override", "");
   
+      auto posOfBrace   = funcSourceCode2.find(")");
+      auto posOfBracket = funcSourceCode2.find("{");
+      
+      bool seekForReplace = false;
+      int numIter = 0;
+      do
+      {
+        auto posC = funcSourceCode2.find("const",    posOfBrace);
+        auto posO = funcSourceCode2.find("override", posOfBrace);
+        
+        if(posO != std::string::npos && posO < posOfBracket)
+          funcSourceCode2.erase(posO, 8); // "override"
+        else if(posC != std::string::npos && posC < posOfBracket)
+          funcSourceCode2.erase(posC, 5); // "const"
+
+        seekForReplace = (posC != std::string::npos && posC < posOfBracket) || (posO != std::string::npos && posO < posOfBracket);
+        numIter++;
+      } while (seekForReplace && numIter < 3);
+      
       kslicer::MainClassInfo::DImplFunc funcData;
       funcData.decl = fDecl;
       funcData.name = fname;

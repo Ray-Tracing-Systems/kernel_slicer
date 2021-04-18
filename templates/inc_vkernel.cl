@@ -16,15 +16,13 @@ __kernel void {{Kernel.Name}}(
   const uint kgen_tFlagsMask)
 {
   ///////////////////////////////////////////////////////////////// prolog
-  {% for name in Kernel.threadNames %}
-  const uint {{name}} = get_global_id({{ loop.index }}); 
-  {% endfor %}
+  const uint tid = get_global_id(0); 
   {# /*------------------------------------------------------------- BEG. CHECK EXIT COND ------------------------------------------------------------- */ #}
   {% include "inc_exit_cond.cl" %}
   {# /*------------------------------------------------------------- END. CHECK EXIT COND ------------------------------------------------------------- */ #}
   ///////////////////////////////////////////////////////////////// prolog
   
-  const uint kgen_objPtr    = kgen_objPtrData[get_global_id(0)];
+  const uint kgen_objPtr    = kgen_objPtrData[tid];
   const uint kgen_objTag    = (kgen_objPtr & {{Kernel.Hierarchy.Name}}_TAG_MASK) >> (32 - {{Kernel.Hierarchy.Name}}_TAG_BITS);
   const uint kgen_objOffset = (kgen_objPtr & {{Kernel.Hierarchy.Name}}_OFS_MASK);
 
@@ -32,7 +30,10 @@ __kernel void {{Kernel.Name}}(
   {
   {% for Impl in Kernel.Hierarchy.Implementations %}
     case {{Kernel.Hierarchy.Name}}_{{Impl.TagName}}: // implementation for {{Impl.ClassName}}
-    ((__global {{Impl.ClassName}}*)(kgen_objData + kgen_objOffset))->{{Kernel.Name}}(get_global_id(0){%for Arg in Kernel.Args %}{% if loop.index == length(Kernel.Args)-1 %}){%else%}, {{Arg.Name}}{% endif %}{% endfor %};
+    {
+      __global {{Impl.ClassName}}* pSelf = (__global {{Impl.ClassName}}*)(kgen_objData + kgen_objOffset);
+      {{Impl.ClassName}}_{{Kernel.Name}}(pSelf, tid{%for Arg in Kernel.Args %}{% if loop.index == length(Kernel.Args)-1 %}){%else%}, {{Arg.Name}}{% endif %}{% endfor %};
+    }
     break;
   {% endfor %}
   default:
