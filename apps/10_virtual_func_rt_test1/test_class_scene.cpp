@@ -188,6 +188,8 @@ int TestClass::LoadScene(const char* bvhPath, const char* meshPath)
     }
   }
 
+  InitSpheresScene(10);
+
   std::cout << "IndicesNum   = " << m_mesh.indices.size() << std::endl;
   std::cout << "TrianglesNum = " << m_mesh.TrianglesNum() << std::endl;
   std::cout << "MateriaIdNum = " << m_mesh.matIndices.size() << std::endl;

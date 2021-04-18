@@ -134,7 +134,6 @@ public:
   {
     const float4x4 proj = perspectiveMatrix(45.0f, 1.0f, 0.01f, 100.0f);
     m_worldViewProjInv  = inverse4x4(proj);
-    InitSpheresScene(10);
     InitRandomGens(a_maxThreads);
   }
 

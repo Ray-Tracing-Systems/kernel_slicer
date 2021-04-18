@@ -31,7 +31,7 @@ __kernel void {{Kernel.Name}}(
   {% for Impl in Kernel.Hierarchy.Implementations %}
     case {{Kernel.Hierarchy.Name}}_{{Impl.TagName}}: // implementation for {{Impl.ClassName}}
     {
-      __global {{Impl.ClassName}}* pSelf = (__global {{Impl.ClassName}}*)(kgen_objData + kgen_objOffset);
+      __global {{Impl.ClassName}}* pSelf = (__global {{Impl.ClassName}}*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
       {{Impl.ClassName}}_{{Kernel.Name}}(pSelf, tid{%for Arg in Kernel.Args %}{% if loop.index == length(Kernel.Args)-1 %}){%else%}, {{Arg.Name}}{% endif %}{% endfor %};
     }
     break;
