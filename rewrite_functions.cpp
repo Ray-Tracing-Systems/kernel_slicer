@@ -97,11 +97,7 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
   CXXConstructorDecl* ctorDecl = call->getConstructor();
   assert(ctorDecl != nullptr);
   
-  // Get name of function
-  //
-  const DeclarationNameInfo dni = ctorDecl->getNameInfo();
-  const DeclarationName dn      = dni.getName();
-  const std::string fname       = dn.getAsString();
+  const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
 
   if(m_codeInfo->pShaderCC->IsVectorTypeNeedsContructorReplacement(fname) && WasNotRewrittenYet(call) && call->getNumArgs() > 1)
   {
@@ -120,6 +116,7 @@ std::string kslicer::FunctionRewriter::RecursiveRewrite(const Stmt* expr)
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
   return m_rewriter.getRewrittenText(expr->getSourceRange());
 }
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

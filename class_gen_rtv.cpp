@@ -266,18 +266,18 @@ void kslicer::RTV_Pattern::ProcessKernelArg(KernelInfo::Arg& arg, const KernelIn
 /**
 \brief C++ class --> C style struct; this --> self;
 */
-class MemberRewriter : public clang::RecursiveASTVisitor<MemberRewriter> // 
+class MemberRewriter : public kslicer::FunctionRewriter
 {
 public:
   
   MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo,
-                 std::vector<kslicer::MainClassInfo::DImplFunc>& a_funcs, const std::string& a_currClassName) : m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_processed(a_funcs), m_className(a_currClassName),
-                                                                                                                m_funcRewriter(R, a_compiler, a_codeInfo)
+                 std::vector<kslicer::MainClassInfo::DImplFunc>& a_funcs, const std::string& a_currClassName) : m_processed(a_funcs), m_className(a_currClassName),
+                                                                                                                FunctionRewriter(R, a_compiler, a_codeInfo)
   { 
     
   }
 
-  bool VisitMemberExpr(clang::MemberExpr* expr)
+  bool VisitMemberExpr_Impl(clang::MemberExpr* expr) override
   {
     clang::ValueDecl* pValueDecl = expr->getMemberDecl();
     if(!clang::isa<clang::FieldDecl>(pValueDecl))
@@ -301,7 +301,7 @@ public:
     return true;
   }
   
-  bool VisitCXXMethodDecl(clang::CXXMethodDecl* fDecl)
+  bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) override
   {
     if(isCopy)
       return true;
@@ -341,72 +341,38 @@ public:
     return true;
   }
 
-  //bool VisitCallExpr(clang::CallExpr* f)
-  //{ 
-  //  if(WasNotRewrittenYet(f))
-  //  {
-  //    auto oldSize = m_funcRewriter.m_rewrittenNodes.size();
-  //    m_funcRewriter.VisitCallExpr(f); 
-  //    if(m_funcRewriter.m_rewrittenNodes.size() != oldSize) // need to get feedback ... if rewritten was actually happened
-  //      MarkRewritten(f);
-  //  }
-  //  return true;
-  //}
-
-  bool VisitCXXConstructExpr(clang::CXXConstructExpr* call)
-  {
-    if(WasNotRewrittenYet(call))
-    {
-      auto oldSize = m_funcRewriter.m_rewrittenNodes.size();
-      m_funcRewriter.VisitCXXConstructExpr(call); 
-      if(m_funcRewriter.m_rewrittenNodes.size() != oldSize) // need to get feedback ... if rewritten was actually happened
-        MarkRewritten(call);
-    }
-    return true;
-  }
-
 private:
-  clang::Rewriter&               m_rewriter;
-  const clang::CompilerInstance& m_compiler;
-  kslicer::MainClassInfo*        m_codeInfo;
     
   std::vector<kslicer::MainClassInfo::DImplFunc>& m_processed;
   const std::string&                              m_className;
-  
   bool isCopy = false;
-  kslicer::FunctionRewriter      m_funcRewriter;
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   
-  std::unordered_set<uint64_t>  m_rewrittenNodes;
-  inline void MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
+  //std::unordered_set<uint64_t>  m_rewrittenNodes;
   inline void MarkRewritten(const clang::Decl* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
-
-  inline bool WasNotRewrittenYet(const clang::Stmt* expr)
-  {
-    auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
-    return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
-  }
+  inline void MarkRewritten(const clang::Expr* expr) { FunctionRewriter::MarkRewritten(expr); }
 
   inline bool WasNotRewrittenYet(const clang::Decl* expr)
   {
     auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
     return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
   }
-
-  std::string RecursiveRewrite(const clang::Stmt* expr)
-  {
-    MemberRewriter rvCopy = *this;
-    rvCopy.isCopy = true;
-    rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
-    return m_rewriter.getRewrittenText(expr->getSourceRange());
-  }
+  inline bool WasNotRewrittenYet(const clang::Expr* expr) { return FunctionRewriter::WasNotRewrittenYet(expr); }
 
   std::string RecursiveRewrite(const clang::Decl* expr)
   {
     MemberRewriter rvCopy = *this;
     rvCopy.isCopy = true;
     rvCopy.TraverseDecl(const_cast<clang::Decl*>(expr));
+    return m_rewriter.getRewrittenText(expr->getSourceRange());
+  }
+
+  std::string RecursiveRewrite(const clang::Stmt* expr) override
+  {
+    MemberRewriter rvCopy = *this;
+    rvCopy.isCopy = true;
+    rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
     return m_rewriter.getRewrittenText(expr->getSourceRange());
   }
   
