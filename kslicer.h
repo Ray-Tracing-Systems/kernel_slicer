@@ -19,6 +19,8 @@ namespace kslicer
 {
   struct IShaderCompiler;
 
+  enum VKERNEL_IMPL_TYPE { VKERNEL_SWITCH = 0, VKERNEL_INDIRECT_DISPATCH=2 };
+
   /**
   \brief for each method MainClass::kernel_XXX
   */
@@ -528,8 +530,12 @@ namespace kslicer
 
       std::vector<kslicer::DeclInClass>            usedDecls;
       std::unordered_map<std::string, std::string> tagByClassName; 
+
+      VKERNEL_IMPL_TYPE dispatchType = VKERNEL_SWITCH; ///<! simple variant by default
     };
     
+    kslicer::VKERNEL_IMPL_TYPE defaultVkernelType = kslicer::VKERNEL_SWITCH;
+
     std::unordered_map<std::string, DHierarchy> m_vhierarchy;
     virtual const std::unordered_map<std::string, DHierarchy>& GetDispatchingHierarchies() const { return m_vhierarchy; }
     virtual std::unordered_map<std::string, DHierarchy>&       GetDispatchingHierarchies()       { return m_vhierarchy; }

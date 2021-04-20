@@ -290,6 +290,7 @@
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
                         "-reorderLoops", "YX",
+                        "-vkernel_t=", "indirect_dispatch",
                         //"-cl-std=", "C++", // DOES NOT WORKS! SEEMS TO BE A BUG OF CLSPV.
                         "-v"],
             "stopAtEntry": false,

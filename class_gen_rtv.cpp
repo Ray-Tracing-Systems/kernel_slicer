@@ -461,6 +461,7 @@ void kslicer::RTV_Pattern::AddDispatchingHierarchy(const std::string& a_classNam
   DHierarchy hdata;
   hdata.interfaceName = kslicer::CutOffStructClass(a_className);
   hdata.makerName     = a_makerName;
+  hdata.dispatchType  = this->defaultVkernelType;
   hdata.implementations.clear();
   m_vhierarchy[a_className] = hdata;
 } 

@@ -96,7 +96,8 @@ static inline float3 SafeInverse_4to3(float4 d)
 }
 
 bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
-                                Lite_Hit* out_hit, const uint* indicesReordered, const float4* meshVerts)
+                                const uint* indicesReordered, const float4* meshVerts,
+                                Lite_Hit* out_hit)
 {
   const float4 rayPos = *rayPosAndNear;
   const float4 rayDir = *rayDirAndFar ;
@@ -183,8 +184,8 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
   kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
 
   Lite_Hit hit;
-  if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar,
-                      &hit, m_indicesReordered.data(), m_vPos4f.data()))
+  if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, m_indicesReordered.data(), m_vPos4f.data(), 
+                      &hit))
     return;
   
   IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);

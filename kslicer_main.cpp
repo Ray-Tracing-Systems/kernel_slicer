@@ -335,7 +335,17 @@ int main(int argc, const char **argv)
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::CircleCompiler>();
   else
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>(useCppInKernels);
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  if(params.find("-vkernel_t=") != params.end())
+  {
+    if(params["-vkernel_t="] == "switch")
+      inputCodeInfo.defaultVkernelType = kslicer::VKERNEL_SWITCH;
+    else if(params["-vkernel_t="] == "indirect_dispatch")
+      inputCodeInfo.defaultVkernelType = kslicer::VKERNEL_INDIRECT_DISPATCH;
+  }  
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   std::unique_ptr<kslicer::MainClassInfo> pInputCodeInfoImpl = nullptr;
@@ -469,7 +479,7 @@ int main(int argc, const char **argv)
       //
       inputCodeInfo.kernels.reserve(inputCodeInfo.allKernels.size());
       inputCodeInfo.kernels.clear();
-      for (const auto& k : inputCodeInfo.allKernels)
+      for (auto& k : inputCodeInfo.allKernels)
       {
         if(k.second.usedInMainFunc && inputCodeInfo.kernels.find(k.first) == inputCodeInfo.kernels.end())
           inputCodeInfo.kernels[k.first] = k.second;
@@ -607,7 +617,7 @@ int main(int argc, const char **argv)
   std::cout << "{" << std::endl;
 
   inputCodeInfo.dataMembers  = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
-  auto jsonUBO               = kslicer::PrepareUBOJson(inputCodeInfo, inputCodeInfo.dataMembers);
+  auto jsonUBO               = kslicer::PrepareUBOJson(inputCodeInfo, inputCodeInfo.dataMembers, compiler);
   std::string uboIncludeName = inputCodeInfo.mainClassName + "_ubo.h";
 
   std::cout << "  placed classVariables num = " << inputCodeInfo.dataMembers.size() << std::endl;

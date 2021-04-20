@@ -9,6 +9,12 @@ struct {{MainClassName}}_UBO_Data
   {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %};
 ## endfor
   unsigned int dummy_last;
+{% for hierarchy in Hierarchies %}
+  {% for Impl in hierarchy.Implementations %}
+  unsigned int objNum_{{Impl.ClassName}};
+  unsigned int objNum_{{Impl.ClassName}}Acc;
+  {% endfor %}  
+{% endfor %}
 };
 
 #endif

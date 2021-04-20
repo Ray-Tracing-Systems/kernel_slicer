@@ -23,7 +23,8 @@ namespace kslicer
                                        const std::string& uboIncludeName, const nlohmann::json& uboJson);
 
   nlohmann::json PrepareUBOJson(const MainClassInfo& a_classInfo, 
-                                const std::vector<kslicer::DataMemberInfo>& a_dataMembers);
+                                const std::vector<kslicer::DataMemberInfo>& a_dataMembers,
+                                const clang::CompilerInstance& compiler);
 
   void ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, const std::string& a_suffix, const nlohmann::json& a_data); 
 };

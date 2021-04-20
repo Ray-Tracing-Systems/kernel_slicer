@@ -353,7 +353,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
   for(auto hierarchy : hierarchies)
   {
     json jh;
-    jh["InterfaceName"] = hierarchy.second.interfaceName;
+    jh["InterfaceName"]    =  hierarchy.second.interfaceName;
+    jh["IndirectDispatch"] = (hierarchy.second.dispatchType == kslicer::VKERNEL_INDIRECT_DISPATCH);
     data["DispatchHierarchies"].push_back(jh);
   }
 
@@ -431,8 +432,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
 
         if(pFoundKernel->second.isMaker || pFoundKernel->second.isVirtual)
         {
-          auto hierarchies = a_classInfo.GetDispatchingHierarchies();
-          assert(hierarchies.size() == 1);
+          auto hierarchies = a_classInfo.GetDispatchingHierarchies(); // TODO: implement correct hierarchy search here! 
+          assert(hierarchies.size() == 1);                            // 
           for(auto hierarchy : hierarchies)
           {
             json arg;
@@ -447,8 +448,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
         local["IsVirtual"] = pFoundKernel->second.isVirtual;
         if(pFoundKernel->second.isVirtual)
         {
-          auto hierarchies = a_classInfo.GetDispatchingHierarchies();
-          assert(hierarchies.size() == 1);
+          auto hierarchies = a_classInfo.GetDispatchingHierarchies(); // TODO: implement correct hierarchy search here! 
+          assert(hierarchies.size() == 1);                            // 
           auto hierarchy            = hierarchies.begin();
           local["ObjectBufferName"] = hierarchy->second.objBufferName;
         }
@@ -503,7 +504,56 @@ namespace kslicer
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 
 
-nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const std::vector<kslicer::DataMemberInfo>& a_dataMembers)
+static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies, 
+                                     const clang::CompilerInstance& compiler)
+{
+  json data;
+  data = std::vector<std::string>();
+  for(const auto& p : hierarchies)
+  {
+    json hierarchy;
+    hierarchy["Name"]             = p.second.interfaceName;
+    hierarchy["IndirectDispatch"] = (p.second.dispatchType == kslicer::VKERNEL_INDIRECT_DISPATCH);
+    hierarchy["Constants"]        = std::vector<std::string>();
+    for(const auto& decl : p.second.usedDecls)
+    {
+      if(decl.kind == kslicer::DECL_IN_CLASS::DECL_CONSTANT)
+      {
+        std::string typeInCL = decl.type;
+        ReplaceFirst(typeInCL, "const", "__constant static");
+
+        json currConstant;
+        currConstant["Type"]  = typeInCL;
+        currConstant["Name"]  = decl.name;
+        currConstant["Value"] = kslicer::GetRangeSourceCode(decl.srcRange, compiler);
+        hierarchy["Constants"].push_back(currConstant);
+      }
+    }
+    hierarchy["Implementations"] = std::vector<std::string>();
+    for(const auto& impl : p.second.implementations)
+    {
+      const auto p2 = p.second.tagByClassName.find(impl.name);
+      assert(p2 != p.second.tagByClassName.end());
+
+      json currImpl;
+      currImpl["ClassName"] = impl.name;
+      currImpl["TagName"]   = p2->second;
+      currImpl["MemberFunctions"] = std::vector<std::string>();
+      for(const auto& member : impl.memberFunctions)
+        currImpl["MemberFunctions"].push_back(member.srcRewritten);
+      currImpl["Fields"] = std::vector<std::string>();
+      for(const auto& field : impl.fields)
+        currImpl["Fields"].push_back(field);
+      hierarchy["Implementations"].push_back(currImpl);
+    }
+    data.push_back(hierarchy);
+  }
+
+  return data;
+}
+
+
+nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const std::vector<kslicer::DataMemberInfo>& a_dataMembers, const clang::CompilerInstance& compiler)
 {
   nlohmann::json data;
   
@@ -540,6 +590,8 @@ nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const s
     }
 
     assert(sizeO == sizeA);
+   
+   data["Hierarchies"] = PutHierarchiesDataToJson(a_classInfo.GetDispatchingHierarchies(), compiler);
   }
 
   return data;
@@ -566,6 +618,7 @@ static json ReductionAccessFill(const kslicer::KernelInfo::ReductionAccess& seco
   }
   return varJ;
 }
+
 
 json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo, 
                                     const std::vector<kslicer::FuncData>& usedFunctions,
@@ -645,48 +698,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
   }
   data["LocalFunctions"].push_back("uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }                                      // for 2D threading");
-  data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");
-  
-  auto hierarchies = a_classInfo.GetDispatchingHierarchies();
-  data["Hierarchies"] = std::vector<std::string>();
-  for(const auto& p : hierarchies)
-  {
-    json hierarchy;
-    hierarchy["Name"]      = p.second.interfaceName;
-    hierarchy["Constants"] = std::vector<std::string>();
-    for(const auto& decl : p.second.usedDecls)
-    {
-      if(decl.kind == DECL_IN_CLASS::DECL_CONSTANT)
-      {
-        std::string typeInCL = decl.type;
-        ReplaceFirst(typeInCL, "const", "__constant static");
-
-        json currConstant;
-        currConstant["Type"]  = typeInCL;
-        currConstant["Name"]  = decl.name;
-        currConstant["Value"] = kslicer::GetRangeSourceCode(decl.srcRange, compiler);
-        hierarchy["Constants"].push_back(currConstant);
-      }
-    }
-    hierarchy["Implementations"] = std::vector<std::string>();
-    for(const auto& impl : p.second.implementations)
-    {
-      const auto p2 = p.second.tagByClassName.find(impl.name);
-      assert(p2 != p.second.tagByClassName.end());
-
-      json currImpl;
-      currImpl["ClassName"] = impl.name;
-      currImpl["TagName"]   = p2->second;
-      currImpl["MemberFunctions"] = std::vector<std::string>();
-      for(const auto& member : impl.memberFunctions)
-        currImpl["MemberFunctions"].push_back(member.srcRewritten);
-      currImpl["Fields"] = std::vector<std::string>();
-      for(const auto& field : impl.fields)
-        currImpl["Fields"].push_back(field);
-      hierarchy["Implementations"].push_back(currImpl);
-    }
-    data["Hierarchies"].push_back(hierarchy);
-  }
+  //data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");
+  data["Hierarchies"] = PutHierarchiesDataToJson(a_classInfo.GetDispatchingHierarchies(), compiler);
 
   // (4) put kernels
   //
@@ -923,7 +936,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
     
     if(k.isVirtual)
-      kernelJson["Hierarchy"] = data["Hierarchies"][0]; // !!! TODO: implement correct hierarchy search
+      kernelJson["Hierarchy"] = data["Hierarchies"][0]; // !!! TODO: find right hierarchy search
     else
       kernelJson["Hierarchy"] = json();
 
