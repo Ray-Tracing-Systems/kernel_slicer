@@ -52,5 +52,51 @@ __kernel void {{Kernel.Name}}({% include "inc_args.cl" %})
   {% endif %}
 }
 
+{% if Kernel.Hierarchy.IndirectDispatch %}
+{% if not UseSpecConstWgSize %}
+__attribute__((reqd_work_group_size(1, 1, 1)))
+{% endif %} 
+__kernel void {{Kernel.Name}}_ZeroObjCounters({% include "inc_args.cl" %})
+{
+  const uint tid = get_global_id(0); 
+  {% for Impl in Kernel.Hierarchy.Implementations %}
+  ubo->objNum_{{Impl.ClassName}} = 0;
+  {% endfor%}
+}
 
+{% if not UseSpecConstWgSize %}
+__attribute__((reqd_work_group_size(32, 1, 1))) 
+{% endif %} 
+__kernel void {{Kernel.Name}}_CountTypeIntervals({% include "inc_args.cl" %})
+{
+  const uint tid = get_global_id(0); 
+  // use prefix summ 
+}
 
+{% if not UseSpecConstWgSize %}
+__attribute__((reqd_work_group_size({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}})))
+{% endif %} 
+__kernel void {{Kernel.Name}}_Sorter({% include "inc_args.cl" %})
+{
+  ///////////////////////////////////////////////////////////////// prolog
+  {% for name in Kernel.threadNames %}
+  const uint {{name}} = get_global_id({{ loop.index }}); 
+  {% endfor %}
+  uint kgen_objPtr = 0;
+  {# /*------------------------------------------------------------- BEG. CHECK EXIT COND ------------------------------------------------------------- */ #}
+  {% include "inc_exit_cond.cl" %}
+  {# /*------------------------------------------------------------- END. CHECK EXIT COND ------------------------------------------------------------- */ #}
+  {% for Member in Kernel.Members %}
+  const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
+  {% endfor %}
+  ///////////////////////////////////////////////////////////////// prolog
+  {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
+  {{Kernel.Source}}
+  {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
+  //KGEN_EPILOG:
+  const uint kgen_objTag    = (kgen_objPtr & {{Kernel.Hierarchy.Name}}_TAG_MASK) >> (32 - {{Kernel.Hierarchy.Name}}_TAG_BITS);
+  const uint kgen_objOffset = (kgen_objPtr & {{Kernel.Hierarchy.Name}}_OFS_MASK);
+  // use parallel prefix summ
+}
+
+{% endif %} {# /* Kernel.Hierarchy.IndirectDispatch */ #}

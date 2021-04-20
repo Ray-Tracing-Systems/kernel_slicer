@@ -36,19 +36,6 @@
 {{MemberSrc}}
 {% endfor %} {# /* for Impl in Hierarchy.Implementations */ #} 
 {% endfor %} {# /* for Decl in Hierarchy.Constants */ #}
-{% if Hierarchy.IndirectDispatch %}
-
-{% if not UseSpecConstWgSize %}
-__attribute__((reqd_work_group_size(1, 1, 1)))
-{% endif %}
-__kernel void {{Hierarchy.Name}}_ZeroObjCounters(__global struct {{MainClassName}}_UBO_Data* ubo)
-{
-  const uint tid = get_global_id(0); 
-  {% for Impl in Hierarchy.Implementations %}
-  ubo->objNum_{{Impl.ClassName}} = 0;
-  {% endfor%}
-}
-{% endif %}  {# /* Hierarchy.IndirectDispatch */ #}
 {% endfor %} {# /* for Hierarchy in Hierarchies */ #}
 {% endif %}
 /////////////////////////////////////////////////////////////////////
