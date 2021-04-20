@@ -271,6 +271,7 @@ int main(int argc, const char **argv)
   uint32_t    threadsOrder[3] = {0,1,2};
   uint32_t    warpSize        = 32;
   bool        useCppInKernels = false;
+  auto        defaultVkernelType = kslicer::VKERNEL_SWITCH;
   
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
@@ -300,6 +301,14 @@ int main(int argc, const char **argv)
     useCppInKernels = params["-cl-std="].find("++") != std::string::npos;
   else if(params.find("-cl-std") != params.end())
     useCppInKernels = params["-cl-std"].find("++") != std::string::npos;
+
+  if(params.find("-vkernel_t=") != params.end())
+  {
+    if(params["-vkernel_t="] == "switch")
+      defaultVkernelType = kslicer::VKERNEL_SWITCH;
+    else if(params["-vkernel_t="] == "indirect_dispatch")
+      defaultVkernelType = kslicer::VKERNEL_INDIRECT_DISPATCH;
+  }  
 
   std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
   argsForClang.reserve(argc);
@@ -336,18 +345,10 @@ int main(int argc, const char **argv)
   else
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>(useCppInKernels);
 
+  inputCodeInfo.defaultVkernelType = defaultVkernelType;
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  if(params.find("-vkernel_t=") != params.end())
-  {
-    if(params["-vkernel_t="] == "switch")
-      inputCodeInfo.defaultVkernelType = kslicer::VKERNEL_SWITCH;
-    else if(params["-vkernel_t="] == "indirect_dispatch")
-      inputCodeInfo.defaultVkernelType = kslicer::VKERNEL_INDIRECT_DISPATCH;
-  }  
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+  
   std::unique_ptr<kslicer::MainClassInfo> pInputCodeInfoImpl = nullptr;
 
   CompilerInstance compiler;

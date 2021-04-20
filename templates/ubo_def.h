@@ -10,10 +10,13 @@ struct {{MainClassName}}_UBO_Data
 ## endfor
   unsigned int dummy_last;
 {% for hierarchy in Hierarchies %}
+{% if hierarchy.IndirectDispatch %}
+
   {% for Impl in hierarchy.Implementations %}
   unsigned int objNum_{{Impl.ClassName}};
-  unsigned int objNum_{{Impl.ClassName}}Acc;
   {% endfor %}  
+  unsigned int objNumAcc_{{hierarchy.Name}}Acc[{{length(hierarchy.Implementations)}}];
+{% endif %}  
 {% endfor %}
 };
 
