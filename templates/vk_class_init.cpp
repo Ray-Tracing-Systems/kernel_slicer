@@ -29,6 +29,9 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
 ## endfor
   vkDestroyDescriptorSetLayout(device, copyKernelFloatDSLayout, nullptr);
+  {% if length(DispatchHierarchies) > 0 %}
+  vkDestroyDescriptorSetLayout(device, ZeroCountersDSLayout, nullptr);
+  {% endif %} 
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
 
 ## for MainFunc in MainFunctions
@@ -58,7 +61,7 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
   {% endfor %}
   {% endif %}
   {% for Hierarchy in DispatchHierarchies %}
-  vkDestroyBuffer(device, m_{{Hierarchy.InterfaceName}}ObjPtrBuffer, nullptr);
+  vkDestroyBuffer(device, m_{{Hierarchy.Name}}ObjPtrBuffer, nullptr);
   {% endfor %}
 
   if(m_allMem != VK_NULL_HANDLE)
@@ -177,6 +180,27 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::CreatecopyKernelFloatDSLayout
   return layout;
 }
 
+{% if length(DispatchHierarchies) > 0 %}
+VkDescriptorSetLayout {{MainClassName}}_Generated::CreateZeroObjCountersLayout()
+{
+  VkDescriptorSetLayoutBinding dsBinding = {};
+  dsBinding.binding            = 0;
+  dsBinding.descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBinding.descriptorCount    = 1;
+  dsBinding.stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBinding.pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
+  descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  descriptorSetLayoutCreateInfo.bindingCount = 1;
+  descriptorSetLayoutCreateInfo.pBindings    = &dsBinding;
+
+  VkDescriptorSetLayout layout = nullptr;
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
+  return layout;
+}
+{% endif %}
+
 ## for Kernel in Kernels
 void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_filePath)
 {
@@ -252,6 +276,17 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectBufferUpdateResources(a_filePath);
   {% endif %}
+
+  {% if length(DispatchHierarchies) > 0 %}
+  ZeroCountersDSLayout = CreateZeroObjCountersLayout(); 
+  {% for Hierarchy in DispatchHierarchies %}
+  {% if Hierarchy.IndirectDispatch %}
+  m_pMaker->CreateShader(device, servPath.c_str(), nullptr, "{{Hierarchy.Name}}_ZeroObjCounters");
+  {{Hierarchy.Name}}ZeroObjCountersLayout   = m_pMaker->MakeLayout(device, ZeroCountersDSLayout, 0);
+  {{Hierarchy.Name}}ZeroObjCountersPipeline = m_pMaker->MakePipeline(device);
+  {% endif %}  
+  {% endfor %}    
+  {% endif %} {# /* length(DispatchHierarchies) > 0 */ #}
 }
 
 void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
@@ -283,8 +318,8 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
   }
   {% endfor %}
   {% for Hierarchy in DispatchHierarchies %}
-  m_{{Hierarchy.InterfaceName}}ObjPtrBuffer = vkfw::CreateBuffer(device, sizeof(uint32_t)*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-  allBuffers.push_back(m_{{Hierarchy.InterfaceName}}ObjPtrBuffer);
+  m_{{Hierarchy.Name}}ObjPtrBuffer = vkfw::CreateBuffer(device, sizeof(uint32_t)*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  allBuffers.push_back(m_{{Hierarchy.Name}}ObjPtrBuffer);
   {% endfor %}
 
   if(allBuffers.size() > 0)

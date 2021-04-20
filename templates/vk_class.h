@@ -121,17 +121,19 @@ protected:
   } m_vdata;
 
   {% for Hierarchy in DispatchHierarchies %}
-  // Auxilary data and kernels for 'VirtualKernels'; Dispatch hierarchy of '{{Hierarchy.InterfaceName}}'
+  // Auxilary data and kernels for 'VirtualKernels'; Dispatch hierarchy of '{{Hierarchy.Name}}'
   //
-  VkBuffer         m_{{Hierarchy.InterfaceName}}ObjPtrBuffer = VK_NULL_HANDLE;
-  size_t           m_{{Hierarchy.InterfaceName}}ObjPtrOffset = 0;
+  VkBuffer         m_{{Hierarchy.Name}}ObjPtrBuffer = VK_NULL_HANDLE;
+  size_t           m_{{Hierarchy.Name}}ObjPtrOffset = 0;
   {% if Hierarchy.IndirectDispatch %}
-  VkPipelineLayout {{Hierarchy.InterfaceName}}ZeroObjCountersLayout   = VK_NULL_HANDLE;
-  VkPipeline       {{Hierarchy.InterfaceName}}ZeroObjCountersPipeline = VK_NULL_HANDLE; 
+  VkPipelineLayout {{Hierarchy.Name}}ZeroObjCountersLayout   = VK_NULL_HANDLE;
+  VkPipeline       {{Hierarchy.Name}}ZeroObjCountersPipeline = VK_NULL_HANDLE; 
   {% endif %} 
   {% endfor %}
   {% if length(DispatchHierarchies) > 0 %}
   VkDescriptorSetLayout ZeroCountersDSLayout = VK_NULL_HANDLE;
+  VkDescriptorSet       ZeroCountersDS       = VK_NULL_HANDLE;
+  VkDescriptorSetLayout CreateZeroObjCountersLayout();
   {% endif %} 
 
   {% if length(IndirectDispatches) > 0 %}

@@ -677,7 +677,7 @@ int main(int argc, const char **argv)
     kslicer::PrintVulkanBasicsFile("templates/vulkan_basics.h", inputCodeInfo);
 
     std::string rawname = kslicer::CutOffFileExt(inputCodeInfo.mainClassFileName);
-    auto json = PrepareJsonForAllCPP(inputCodeInfo, inputCodeInfo.mainFunc, rawname + "_generated.h", threadsOrder, uboIncludeName, jsonUBO); 
+    auto json = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, rawname + "_generated.h", threadsOrder, uboIncludeName, jsonUBO); 
     
     kslicer::ApplyJsonToTemplate("templates/vk_class.h",        rawname + "_generated.h", json); 
     kslicer::ApplyJsonToTemplate("templates/vk_class.cpp",      rawname + "_generated.cpp", json);

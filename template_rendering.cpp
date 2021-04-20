@@ -77,7 +77,62 @@ std::vector<kslicer::KernelInfo::Arg> GetUserKernelArgs(const std::vector<kslice
   return result;
 }
 
-nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, 
+static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies, 
+                                     const clang::CompilerInstance& compiler)
+{
+  json data;
+  data = std::vector<std::string>();
+  for(const auto& p : hierarchies)
+  {
+    json hierarchy;
+    hierarchy["Name"]             = p.second.interfaceName;
+    hierarchy["IndirectDispatch"] = (p.second.dispatchType == kslicer::VKERNEL_INDIRECT_DISPATCH);
+    hierarchy["Constants"]        = std::vector<std::string>();
+    for(const auto& decl : p.second.usedDecls)
+    {
+      if(decl.kind == kslicer::DECL_IN_CLASS::DECL_CONSTANT)
+      {
+        std::string typeInCL = decl.type;
+        ReplaceFirst(typeInCL, "const", "__constant static");
+
+        json currConstant;
+        currConstant["Type"]  = typeInCL;
+        currConstant["Name"]  = decl.name;
+        currConstant["Value"] = kslicer::GetRangeSourceCode(decl.srcRange, compiler);
+        hierarchy["Constants"].push_back(currConstant);
+      }
+    }
+    hierarchy["Implementations"] = std::vector<std::string>();
+    for(const auto& impl : p.second.implementations)
+    {
+      if(impl.isEmpty)
+        continue;
+
+      const auto p2 = p.second.tagByClassName.find(impl.name);
+      assert(p2 != p.second.tagByClassName.end());
+
+      json currImpl;
+      currImpl["ClassName"] = impl.name;
+      currImpl["TagName"]   = p2->second;
+      currImpl["MemberFunctions"] = std::vector<std::string>();
+      for(const auto& member : impl.memberFunctions)
+      {
+        currImpl["MemberFunctions"].push_back(member.srcRewritten);
+      }
+      currImpl["Fields"] = std::vector<std::string>();
+      for(const auto& field : impl.fields)
+        currImpl["Fields"].push_back(field);
+        
+      hierarchy["Implementations"].push_back(currImpl);
+    }
+
+    data.push_back(hierarchy);
+  }
+
+  return data;
+}
+
+nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, const clang::CompilerInstance& compiler,
                                              const std::vector<MainFuncInfo>& a_methodsToGenerate, 
                                              const std::string& a_genIncude,
                                              const uint32_t    threadsOrder[3],
@@ -348,16 +403,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo,
     data["Kernels"].push_back(kernelJson);
   }
   
-  const auto hierarchies = a_classInfo.GetDispatchingHierarchies();
-  data["DispatchHierarchies"] = std::vector<std::string>();
-  for(auto hierarchy : hierarchies)
-  {
-    json jh;
-    jh["InterfaceName"]    =  hierarchy.second.interfaceName;
-    jh["IndirectDispatch"] = (hierarchy.second.dispatchType == kslicer::VKERNEL_INDIRECT_DISPATCH);
-    data["DispatchHierarchies"].push_back(jh);
-  }
-
+  data["DispatchHierarchies"] = PutHierarchiesDataToJson(a_classInfo.GetDispatchingHierarchies(), compiler);
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -502,62 +548,6 @@ namespace kslicer
   std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds);
 };
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
-
-
-static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies, 
-                                     const clang::CompilerInstance& compiler)
-{
-  json data;
-  data = std::vector<std::string>();
-  for(const auto& p : hierarchies)
-  {
-    json hierarchy;
-    hierarchy["Name"]             = p.second.interfaceName;
-    hierarchy["IndirectDispatch"] = (p.second.dispatchType == kslicer::VKERNEL_INDIRECT_DISPATCH);
-    hierarchy["Constants"]        = std::vector<std::string>();
-    for(const auto& decl : p.second.usedDecls)
-    {
-      if(decl.kind == kslicer::DECL_IN_CLASS::DECL_CONSTANT)
-      {
-        std::string typeInCL = decl.type;
-        ReplaceFirst(typeInCL, "const", "__constant static");
-
-        json currConstant;
-        currConstant["Type"]  = typeInCL;
-        currConstant["Name"]  = decl.name;
-        currConstant["Value"] = kslicer::GetRangeSourceCode(decl.srcRange, compiler);
-        hierarchy["Constants"].push_back(currConstant);
-      }
-    }
-    hierarchy["Implementations"] = std::vector<std::string>();
-    for(const auto& impl : p.second.implementations)
-    {
-      if(impl.isEmpty)
-        continue;
-
-      const auto p2 = p.second.tagByClassName.find(impl.name);
-      assert(p2 != p.second.tagByClassName.end());
-
-      json currImpl;
-      currImpl["ClassName"] = impl.name;
-      currImpl["TagName"]   = p2->second;
-      currImpl["MemberFunctions"] = std::vector<std::string>();
-      for(const auto& member : impl.memberFunctions)
-      {
-        currImpl["MemberFunctions"].push_back(member.srcRewritten);
-      }
-      currImpl["Fields"] = std::vector<std::string>();
-      for(const auto& field : impl.fields)
-        currImpl["Fields"].push_back(field);
-        
-      hierarchy["Implementations"].push_back(currImpl);
-    }
-
-    data.push_back(hierarchy);
-  }
-
-  return data;
-}
 
 
 nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const std::vector<kslicer::DataMemberInfo>& a_dataMembers, const clang::CompilerInstance& compiler)
