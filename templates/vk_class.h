@@ -121,9 +121,18 @@ protected:
   } m_vdata;
 
   {% for Hierarchy in DispatchHierarchies %}
-  VkBuffer m_{{Hierarchy.InterfaceName}}ObjPtrBuffer = VK_NULL_HANDLE;
-  size_t   m_{{Hierarchy.InterfaceName}}ObjPtrOffset = 0;
+  // Auxilary data and kernels for 'VirtualKernels'; Dispatch hierarchy of '{{Hierarchy.InterfaceName}}'
+  //
+  VkBuffer         m_{{Hierarchy.InterfaceName}}ObjPtrBuffer = VK_NULL_HANDLE;
+  size_t           m_{{Hierarchy.InterfaceName}}ObjPtrOffset = 0;
+  {% if Hierarchy.IndirectDispatch %}
+  VkPipelineLayout {{Hierarchy.InterfaceName}}ZeroObjCountersLayout   = VK_NULL_HANDLE;
+  VkPipeline       {{Hierarchy.InterfaceName}}ZeroObjCountersPipeline = VK_NULL_HANDLE; 
+  {% endif %} 
   {% endfor %}
+  {% if length(DispatchHierarchies) > 0 %}
+  VkDescriptorSetLayout ZeroCountersDSLayout = VK_NULL_HANDLE;
+  {% endif %} 
 
   {% if length(IndirectDispatches) > 0 %}
   void InitIndirectBufferUpdateResources(const char* a_filePath);
@@ -145,7 +154,7 @@ protected:
   {% endif %}
   VkDeviceMemory m_allMem    = VK_NULL_HANDLE;
 
-## for Kernel in Kernels
+  {% for Kernel in Kernels %}
   VkPipelineLayout      {{Kernel.Name}}Layout   = VK_NULL_HANDLE;
   VkPipeline            {{Kernel.Name}}Pipeline = VK_NULL_HANDLE; 
   VkDescriptorSetLayout {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
@@ -163,7 +172,7 @@ protected:
   {% if Kernel.IsIndirect %}
   void {{Kernel.Name}}_UpdateIndirect();
   {% endif %}
-## endfor
+  {% endfor %}
 
   {% if UseSpecConstWgSize %}
   VkSpecializationMapEntry m_specializationEntriesWgSize[3];
