@@ -128,12 +128,15 @@ protected:
   {% if Hierarchy.IndirectDispatch %}
   VkPipelineLayout {{Hierarchy.Name}}ZeroObjCountersLayout   = VK_NULL_HANDLE;
   VkPipeline       {{Hierarchy.Name}}ZeroObjCountersPipeline = VK_NULL_HANDLE; 
+  void             {{Hierarchy.Name}}ZeroObjCountersCmd();
   {% endif %} 
   {% endfor %}
   {% if length(DispatchHierarchies) > 0 %}
   VkDescriptorSetLayout ZeroCountersDSLayout = VK_NULL_HANDLE;
   VkDescriptorSet       ZeroCountersDS       = VK_NULL_HANDLE;
   VkDescriptorSetLayout CreateZeroObjCountersLayout();
+  VkDescriptorSet       CreateObjCountersDS();
+  VkBufferMemoryBarrier BarrierForObjCounters(VkBuffer a_buffer);
   {% endif %} 
 
   {% if length(IndirectDispatches) > 0 %}

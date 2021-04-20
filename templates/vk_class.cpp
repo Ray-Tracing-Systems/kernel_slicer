@@ -50,6 +50,17 @@ void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vkfw::ICop
 ## endfor
 }
 
+{% for Hierarchy in DispatchHierarchies %}
+void {{MainClassName}}_Generated::{{Hierarchy.Name}}ZeroObjCountersCmd()
+{
+  VkBufferMemoryBarrier bar = BarrierForObjCounters(m_classDataBuffer);
+  vkCmdBindDescriptorSets(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Hierarchy.Name}}ZeroObjCountersLayout, 0, 1, &ZeroCountersDS, 0, nullptr);
+  vkCmdBindPipeline      (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Hierarchy.Name}}ZeroObjCountersPipeline);
+  vkCmdDispatch          (m_currCmdBuffer, 1, 1, 1);
+  vkCmdPipelineBarrier   (m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &bar, 0, nullptr);
+}
+
+{% endfor %}
 ## for Kernel in Kernels
 {% if Kernel.IsIndirect %}
 void {{MainClassName}}_Generated::{{Kernel.Name}}_UpdateIndirect()
@@ -102,77 +113,42 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   VkBufferMemoryBarrier barUBO = BarrierForSingleBuffer(m_classDataBuffer);
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
   {% endif %}
+  
+  {# /* --------------------------------------------------------------------------------------------------------------------------------------- */ #}
+  {% if Kernel.IsMaker %}
+  // (1) zero obj. counters 
+  //
+  VkBufferMemoryBarrier objCounterBar = BarrierForObjCounters(m_classDataBuffer);
+  //{{Kernel.Hierarchy.Name}}ZeroObjCountersCmd();
+  
+  // (2)  execute maker first time, count objects for each class 
+  //
   vkCmdBindPipeline   (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
-  {% if Kernel.IsIndirect %}
-  vkCmdDispatchIndirect  (m_currCmdBuffer, m_indirectBuffer, {{Kernel.IndirectOffset}}*sizeof(uint32_t)*4);
+  vkCmdDispatch       (m_currCmdBuffer, ({{Kernel.tidX}} + blockSizeX - 1) / blockSizeX, ({{Kernel.tidY}} + blockSizeY - 1) / blockSizeY, ({{Kernel.tidZ}} + blockSizeZ - 1) / blockSizeZ); 
+  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &objCounterBar, 0, nullptr);
+
+  // (3) small prefix summ to compute global offsets for each type region
+  //
+
+  // (4) execute maker second time, count offset for each object using local prefix summ (in the work group) and put ObjPtr at this offset 
+  //
+
+  {% else if Kernel.IsIndirect %}
+  vkCmdBindPipeline    (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
+  vkCmdDispatchIndirect(m_currCmdBuffer, m_indirectBuffer, {{Kernel.IndirectOffset}}*sizeof(uint32_t)*4);
   {% else %}
-  vkCmdDispatch(m_currCmdBuffer, ({{Kernel.tidX}} + blockSizeX - 1) / blockSizeX, ({{Kernel.tidY}} + blockSizeY - 1) / blockSizeY, ({{Kernel.tidZ}} + blockSizeZ - 1) / blockSizeZ);
+  vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
+  vkCmdDispatch    (m_currCmdBuffer, ({{Kernel.tidX}} + blockSizeX - 1) / blockSizeX, ({{Kernel.tidY}} + blockSizeY - 1) / blockSizeY, ({{Kernel.tidZ}} + blockSizeZ - 1) / blockSizeZ);
   {% if Kernel.FinishRed %}
   
   {% if Kernel.HasLoopFinish %}
   KernelArgsPC oldPCData = pcData;
   {% endif %}
-  ///// complete kernel with reduction passes
-  {
-    VkBufferMemoryBarrier redBars   [{{Kernel.RedVarsFPNum}}]; 
-    VkBuffer              redBuffers[{{Kernel.RedVarsFPNum}}+1] = { {% for RedVarName in Kernel.RedVarsFPArr %}m_vdata.{{RedVarName.Name}}Buffer, {% endfor %} VK_NULL_HANDLE};
-    size_t                szOfElems[{{Kernel.RedVarsFPNum}}+1] = { {% for RedVarName in Kernel.RedVarsFPArr %}sizeof({{RedVarName.Type}}), {% endfor %} 0};
-    BarriersForSeveralBuffers(redBuffers, redBars, {{Kernel.RedVarsFPNum}});
-    
-    vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, {{Kernel.RedVarsFPNum}}, redBars, 0, nullptr);
-    vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}ReductionPipeline);
-    
-    {% if Kernel.threadDim == 1 %}
-    uint32_t oldSize    = {{Kernel.tidX}};
-    uint32_t wholeSize  = (oldSize + blockSizeX - 1) / blockSizeX; // assume first pass of reduction is done inside kernel itself
-    {% else %}
-    uint32_t oldSize    = {{Kernel.tidX}}*{{Kernel.tidY}};
-    uint32_t wholeSize  = (oldSize + blockSizeX*blockSizeY - 1) / (blockSizeX*blockSizeY); // assume first pass of reduction is done inside kernel itself
-    {% endif %}
-    uint32_t wgSize     = REDUCTION_BLOCK_SIZE;
-    uint32_t currOffset = 0;
-    while (wholeSize > 1)
-    {
-      uint32_t nextSize = (wholeSize + wgSize - 1) / wgSize;
-      pcData.m_sizeX  = oldSize;                // put current size here
-      pcData.m_sizeY  = currOffset;             // put input offset here
-      pcData.m_sizeZ  = currOffset + wholeSize; // put output offet here
-      pcData.m_tFlags = m_currThreadFlags;      // now flags:
-      if(wholeSize <= wgSize)                   // stop if last pass
-        pcData.m_tFlags |= KGEN_REDUCTION_LAST_STEP;
-
-      {% if UseSeparateUBO %}
-      {
-        vkCmdUpdateBuffer(m_currCmdBuffer, m_uboArgsBuffer, 0, sizeof(KernelArgsPC), &pcData);
-        VkBufferMemoryBarrier barUBO2 = BarrierForArgsUBO(sizeof(KernelArgsPC));
-        vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO2, 0, nullptr);
-      }
-      {% else %}
-      vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
-      {% endif %} 
-      vkCmdDispatch(m_currCmdBuffer, nextSize, 1, 1);
-      
-      if(wholeSize <= wgSize)
-        vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
-      else
-      {
-        uint32_t arrSize = sizeof(redBars)/sizeof(redBars[0]);
-        for(int barId=0;barId<arrSize;barId++)
-        {
-          redBars[barId].offset = pcData.m_sizeZ*szOfElems[barId]; // put output offset here (for barrier)
-          redBars[barId].size   = nextSize;                        // put output data size (for barrier)
-        }
-        vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, {{Kernel.RedVarsFPNum}}, redBars, 0, nullptr);
-      } 
-
-      currOffset += wholeSize;
-      oldSize    =  wholeSize;
-      wholeSize  =  nextSize;
-    }
-  }
+  {% include "inc_reduction_vulkan.cpp" %}
   {% endif %} {# /* Kernel.FinishRed      */ #}
   {% endif %} {# /* NOT INDIRECT DISPATCH */ #}
-  
+  {# /* --------------------------------------------------------------------------------------------------------------------------------------- */ #}
+
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
   {% if Kernel.HasLoopFinish %}

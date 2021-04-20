@@ -199,6 +199,54 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::CreateZeroObjCountersLayout()
   VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
   return layout;
 }
+
+VkDescriptorSet {{MainClassName}}_Generated::CreateObjCountersDS()
+{
+  VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
+  descriptorSetAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  descriptorSetAllocateInfo.descriptorPool     = m_dsPool;  
+  descriptorSetAllocateInfo.descriptorSetCount = 1;     
+  descriptorSetAllocateInfo.pSetLayouts        = &ZeroCountersDSLayout;
+
+  auto tmpRes = vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, &ZeroCountersDS);
+  VK_CHECK_RESULT(tmpRes); 
+
+  VkDescriptorBufferInfo descriptorBufferInfo;
+  VkWriteDescriptorSet   writeDescriptorSet;
+  
+  descriptorBufferInfo        = VkDescriptorBufferInfo{};
+  descriptorBufferInfo.buffer = m_classDataBuffer;
+  descriptorBufferInfo.offset = 0;
+  descriptorBufferInfo.range  = VK_WHOLE_SIZE;  
+
+  writeDescriptorSet                  = VkWriteDescriptorSet{};
+  writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  writeDescriptorSet.dstSet           = ZeroCountersDS;
+  writeDescriptorSet.dstBinding       = 0;
+  writeDescriptorSet.descriptorCount  = 1;
+  writeDescriptorSet.descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  writeDescriptorSet.pBufferInfo      = &descriptorBufferInfo;
+  writeDescriptorSet.pImageInfo       = nullptr;
+  writeDescriptorSet.pTexelBufferView = nullptr; 
+  
+  vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, NULL);
+  return ZeroCountersDS;
+}
+
+VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForObjCounters(VkBuffer a_buffer)
+{
+  VkBufferMemoryBarrier bar = {};
+  bar.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  bar.pNext               = NULL;
+  bar.srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT;
+  bar.dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
+  bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bar.buffer              = a_buffer;
+  bar.offset              = 0;
+  bar.size                = VK_WHOLE_SIZE; // TODO: count offset and size carefully, actually we can do this!
+  return bar;
+}
 {% endif %}
 
 ## for Kernel in Kernels

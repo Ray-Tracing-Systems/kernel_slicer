@@ -18,7 +18,7 @@ void {{MainClassName}}_Generated::AllocateAllDescriptorSets()
 
   VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
   descriptorPoolCreateInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-  descriptorPoolCreateInfo.maxSets       = {{TotalDSNumber}} + 1; // add 1 to prevent zero case
+  descriptorPoolCreateInfo.maxSets       = {{TotalDSNumber}} + 2; // add 1 to prevent zero case and one more for internal needs
   descriptorPoolCreateInfo.poolSizeCount = 1;
   descriptorPoolCreateInfo.pPoolSizes    = &buffersSize;
   
@@ -38,7 +38,10 @@ void {{MainClassName}}_Generated::AllocateAllDescriptorSets()
   descriptorSetAllocateInfo.pSetLayouts        = layouts;
 
   auto tmpRes = vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, m_allGeneratedDS);
-  VK_CHECK_RESULT(tmpRes); 
+  VK_CHECK_RESULT(tmpRes);
+  {% if length(DispatchHierarchies) > 0 %}
+  ZeroCountersDS = CreateObjCountersDS();
+  {% endif %}  
 }
 
 ## for MainFunc in MainFunctions

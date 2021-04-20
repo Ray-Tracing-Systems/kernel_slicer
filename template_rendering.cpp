@@ -262,6 +262,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   data["MultipleSourceShaders"] = !a_classInfo.pShaderCC->IsSingleSource();
   data["ShaderFolder"]          = a_classInfo.pShaderCC->ShaderFolder();
+  data["DispatchHierarchies"]   = PutHierarchiesDataToJson(a_classInfo.GetDispatchingHierarchies(), compiler);
 
   data["IndirectDispatches"] = std::vector<std::string>();
   data["Kernels"]            = std::vector<std::string>();  
@@ -290,6 +291,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["OriginalName"]   = k.name;
     kernelJson["IsIndirect"]     = k.isIndirect;
     kernelJson["IndirectOffset"] = k.indirectBlockOffset;
+    kernelJson["IsMaker"]        = k.isMaker;
+    kernelJson["IsVirtual"]      = k.isVirtual;
     kernelJson["ArgCount"]       = k.args.size();
     kernelJson["HasLoopInit"]    = k.hasInitPass;
     kernelJson["HasLoopFinish"]  = k.hasFinishPassSelf;
@@ -331,7 +334,19 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       argData["Id"]    = actualSize;
       kernelJson["Args"].push_back(argData);
       actualSize++;
+
+      json hierarchy = data["DispatchHierarchies"][0]; // !!! TODO: find right hierarchy, implement search
+      hierarchy["RedLoop1"] = std::vector<std::string>();
+      hierarchy["RedLoop2"] = std::vector<std::string>();
+      const uint32_t blockSize = k.wgSize[0]*k.wgSize[1]*k.wgSize[2];
+      for (uint c = blockSize/2; c>k.warpSize; c/=2)
+        hierarchy["RedLoop1"].push_back(c);
+      for (uint c = k.warpSize; c>0; c/=2)
+        hierarchy["RedLoop2"].push_back(c);
+      kernelJson["Hierarchy"] = hierarchy; 
     }
+    else
+      kernelJson["Hierarchy"] = json();
 
     kernelJson["ArgCount"] = actualSize;
   
@@ -403,7 +418,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["Kernels"].push_back(kernelJson);
   }
   
-  data["DispatchHierarchies"] = PutHierarchiesDataToJson(a_classInfo.GetDispatchingHierarchies(), compiler);
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
