@@ -532,6 +532,9 @@ static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslic
     hierarchy["Implementations"] = std::vector<std::string>();
     for(const auto& impl : p.second.implementations)
     {
+      if(impl.isEmpty)
+        continue;
+        
       const auto p2 = p.second.tagByClassName.find(impl.name);
       assert(p2 != p.second.tagByClassName.end());
 
@@ -540,10 +543,13 @@ static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslic
       currImpl["TagName"]   = p2->second;
       currImpl["MemberFunctions"] = std::vector<std::string>();
       for(const auto& member : impl.memberFunctions)
+      {
         currImpl["MemberFunctions"].push_back(member.srcRewritten);
+      }
       currImpl["Fields"] = std::vector<std::string>();
       for(const auto& field : impl.fields)
         currImpl["Fields"].push_back(field);
+        
       hierarchy["Implementations"].push_back(currImpl);
     }
     data.push_back(hierarchy);

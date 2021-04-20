@@ -510,6 +510,7 @@ namespace kslicer
       const clang::CXXMethodDecl* decl = nullptr;
       std::string                 name;
       std::string                 srcRewritten;
+      bool                        isEmpty = false;
     };
 
     struct DImplClass
@@ -518,6 +519,7 @@ namespace kslicer
       std::string                 name;
       std::vector<DImplFunc>      memberFunctions;
       std::vector<std::string>    fields;
+      bool                        isEmpty = false; ///<! empty if all memberFunctions are empty
     };
 
     struct DHierarchy

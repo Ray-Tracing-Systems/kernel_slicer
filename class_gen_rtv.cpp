@@ -364,10 +364,17 @@ public:
       } while (seekForReplace && numIter < 3);
       
       kslicer::MainClassInfo::DImplFunc funcData;
-      funcData.decl = fDecl;
-      funcData.name = fname;
+      funcData.decl         = fDecl;
+      funcData.name         = fname;
       funcData.srcRewritten = std::string("  ") + retType + classTypeName + "_" + fname + funcSourceCode2;
-  
+      funcData.isEmpty      = false;
+
+      if(clang::isa<clang::CompoundStmt>(fDecl->getBody()))
+      {
+        clang::CompoundStmt* pBody = clang::dyn_cast<clang::CompoundStmt>(fDecl->getBody());
+        funcData.isEmpty = pBody->body_empty();
+      }
+     
       m_processed.push_back(funcData);
       MarkRewritten(fDecl);
     }
@@ -511,6 +518,17 @@ void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const cl
         dImpl.name = decl->getNameAsString();
         MemberRewriter rv(rewrite2, a_compiler, this, dImpl.memberFunctions, dImpl.fields, dImpl.name);  // extract all member functions of class that should be rewritten
         rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));                                  //
+        
+        dImpl.isEmpty = true;
+        for(auto member : dImpl.memberFunctions)
+        {
+          if(!member.isEmpty)
+          {
+            dImpl.isEmpty = false;
+            break;
+          }
+        }
+
         p.second.implementations.push_back(dImpl);
       }
     }
