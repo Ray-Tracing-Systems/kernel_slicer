@@ -534,7 +534,7 @@ static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslic
     {
       if(impl.isEmpty)
         continue;
-        
+
       const auto p2 = p.second.tagByClassName.find(impl.name);
       assert(p2 != p.second.tagByClassName.end());
 
@@ -552,6 +552,7 @@ static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslic
         
       hierarchy["Implementations"].push_back(currImpl);
     }
+
     data.push_back(hierarchy);
   }
 
@@ -941,8 +942,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["IndirectSizeZ"] = tidNames[2]; 
     }
     
-    if(k.isVirtual)
-      kernelJson["Hierarchy"] = data["Hierarchies"][0]; // !!! TODO: find right hierarchy search
+    if(k.isVirtual || k.isMaker)
+    {
+      json hierarchy = data["Hierarchies"][0]; // !!! TODO: find right hierarchy, implement search
+      hierarchy["RedLoop1"] = std::vector<std::string>();
+      hierarchy["RedLoop2"] = std::vector<std::string>();
+      const uint32_t blockSize = k.wgSize[0]*k.wgSize[1]*k.wgSize[2];
+      for (uint c = blockSize/2; c>k.warpSize; c/=2)
+        hierarchy["RedLoop1"].push_back(c);
+      for (uint c = k.warpSize; c>0; c/=2)
+        hierarchy["RedLoop2"].push_back(c);
+      kernelJson["Hierarchy"] = hierarchy; 
+    }
     else
       kernelJson["Hierarchy"] = json();
 

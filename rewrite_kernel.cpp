@@ -320,7 +320,7 @@ bool kslicer::KernelRewriter::VisitReturnStmt(ReturnStmt* ret)
     // change 'return MakeObjPtr(objPtr, ObjData) to 'kgen_objPtr = objPtr'
     //
     std::string retExprText = RecursiveRewrite(firstArgExpr);
-    m_rewriter.ReplaceText(ret->getSourceRange(), std::string("{ kgen_objPtr = ") + retExprText + "; goto KGEN_EPILOG; }");  
+    m_rewriter.ReplaceText(ret->getSourceRange(), std::string("{ kgen_objPtr = ") + retExprText + "; }"); // goto KGEN_EPILOG;  
     MarkRewritten(ret);
   }
 
