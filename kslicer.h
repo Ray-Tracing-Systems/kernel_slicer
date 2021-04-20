@@ -80,6 +80,7 @@ namespace kslicer
     std::string           return_class;         ///<! class name of pointer if pointer is returned
     std::string           name;                 ///<! func. name
     std::string           className;            ///<! Class::kernel_XXX --> 'Class'
+    std::string           interfaceName;        ///<! Name of the interface if the kernel is virtual
     std::vector<Arg>      args;                 ///<! all arguments of a kernel
     std::vector<LoopIter> loopIters;            ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
     
@@ -541,7 +542,7 @@ namespace kslicer
     std::unordered_map<std::string, DHierarchy> m_vhierarchy;
     virtual const std::unordered_map<std::string, DHierarchy>& GetDispatchingHierarchies() const { return m_vhierarchy; }
     virtual std::unordered_map<std::string, DHierarchy>&       GetDispatchingHierarchies()       { return m_vhierarchy; }
-
+    
   };
 
 

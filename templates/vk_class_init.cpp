@@ -29,9 +29,6 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
 ## endfor
   vkDestroyDescriptorSetLayout(device, copyKernelFloatDSLayout, nullptr);
-  {% if length(DispatchHierarchies) > 0 %}
-  vkDestroyDescriptorSetLayout(device, ZeroCountersDSLayout, nullptr);
-  {% endif %} 
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
 
 ## for MainFunc in MainFunctions
@@ -181,58 +178,6 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::CreatecopyKernelFloatDSLayout
 }
 
 {% if length(DispatchHierarchies) > 0 %}
-VkDescriptorSetLayout {{MainClassName}}_Generated::CreateZeroObjCountersLayout()
-{
-  VkDescriptorSetLayoutBinding dsBinding = {};
-  dsBinding.binding            = 0;
-  dsBinding.descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  dsBinding.descriptorCount    = 1;
-  dsBinding.stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
-  dsBinding.pImmutableSamplers = nullptr;
-
-  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
-  descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  descriptorSetLayoutCreateInfo.bindingCount = 1;
-  descriptorSetLayoutCreateInfo.pBindings    = &dsBinding;
-
-  VkDescriptorSetLayout layout = nullptr;
-  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
-  return layout;
-}
-
-VkDescriptorSet {{MainClassName}}_Generated::CreateObjCountersDS()
-{
-  VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
-  descriptorSetAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-  descriptorSetAllocateInfo.descriptorPool     = m_dsPool;  
-  descriptorSetAllocateInfo.descriptorSetCount = 1;     
-  descriptorSetAllocateInfo.pSetLayouts        = &ZeroCountersDSLayout;
-
-  auto tmpRes = vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, &ZeroCountersDS);
-  VK_CHECK_RESULT(tmpRes); 
-
-  VkDescriptorBufferInfo descriptorBufferInfo;
-  VkWriteDescriptorSet   writeDescriptorSet;
-  
-  descriptorBufferInfo        = VkDescriptorBufferInfo{};
-  descriptorBufferInfo.buffer = m_classDataBuffer;
-  descriptorBufferInfo.offset = 0;
-  descriptorBufferInfo.range  = VK_WHOLE_SIZE;  
-
-  writeDescriptorSet                  = VkWriteDescriptorSet{};
-  writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-  writeDescriptorSet.dstSet           = ZeroCountersDS;
-  writeDescriptorSet.dstBinding       = 0;
-  writeDescriptorSet.descriptorCount  = 1;
-  writeDescriptorSet.descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  writeDescriptorSet.pBufferInfo      = &descriptorBufferInfo;
-  writeDescriptorSet.pImageInfo       = nullptr;
-  writeDescriptorSet.pTexelBufferView = nullptr; 
-  
-  vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, NULL);
-  return ZeroCountersDS;
-}
-
 VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForObjCounters(VkBuffer a_buffer)
 {
   VkBufferMemoryBarrier bar = {};
@@ -325,16 +270,6 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
   InitIndirectBufferUpdateResources(a_filePath);
   {% endif %}
 
-  {% if length(DispatchHierarchies) > 0 %}
-  ZeroCountersDSLayout = CreateZeroObjCountersLayout(); 
-  {% for Hierarchy in DispatchHierarchies %}
-  {% if Hierarchy.IndirectDispatch %}
-  m_pMaker->CreateShader(device, servPath.c_str(), nullptr, "{{Hierarchy.Name}}_ZeroObjCounters");
-  {{Hierarchy.Name}}ZeroObjCountersLayout   = m_pMaker->MakeLayout(device, ZeroCountersDSLayout, 0);
-  {{Hierarchy.Name}}ZeroObjCountersPipeline = m_pMaker->MakePipeline(device);
-  {% endif %}  
-  {% endfor %}    
-  {% endif %} {# /* length(DispatchHierarchies) > 0 */ #}
 }
 
 void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)

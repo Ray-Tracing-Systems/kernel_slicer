@@ -132,10 +132,6 @@ protected:
   {% endif %} 
   {% endfor %}
   {% if length(DispatchHierarchies) > 0 %}
-  VkDescriptorSetLayout ZeroCountersDSLayout = VK_NULL_HANDLE;
-  VkDescriptorSet       ZeroCountersDS       = VK_NULL_HANDLE;
-  VkDescriptorSetLayout CreateZeroObjCountersLayout();
-  VkDescriptorSet       CreateObjCountersDS();
   VkBufferMemoryBarrier BarrierForObjCounters(VkBuffer a_buffer);
   {% endif %} 
 

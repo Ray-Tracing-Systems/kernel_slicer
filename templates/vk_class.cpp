@@ -50,17 +50,6 @@ void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vkfw::ICop
 ## endfor
 }
 
-{% for Hierarchy in DispatchHierarchies %}
-void {{MainClassName}}_Generated::{{Hierarchy.Name}}ZeroObjCountersCmd()
-{
-  VkBufferMemoryBarrier bar = BarrierForObjCounters(m_classDataBuffer);
-  vkCmdBindDescriptorSets(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Hierarchy.Name}}ZeroObjCountersLayout, 0, 1, &ZeroCountersDS, 0, nullptr);
-  vkCmdBindPipeline      (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Hierarchy.Name}}ZeroObjCountersPipeline);
-  vkCmdDispatch          (m_currCmdBuffer, 1, 1, 1);
-  vkCmdPipelineBarrier   (m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &bar, 0, nullptr);
-}
-
-{% endfor %}
 ## for Kernel in Kernels
 {% if Kernel.IsIndirect %}
 void {{MainClassName}}_Generated::{{Kernel.Name}}_UpdateIndirect()

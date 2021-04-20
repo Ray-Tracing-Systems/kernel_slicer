@@ -470,7 +470,8 @@ void kslicer::RTV_Pattern::AddDispatchingHierarchy(const std::string& a_classNam
   hdata.makerName     = a_makerName;
   hdata.dispatchType  = this->defaultVkernelType;
   hdata.implementations.clear();
-  m_vhierarchy[a_className] = hdata;
+  m_vhierarchy[hdata.interfaceName] = hdata;
+  allKernels[a_makerName].interfaceName = hdata.interfaceName;
 } 
 
 void kslicer::RTV_Pattern::AddDispatchingKernel(const std::string& a_className, const std::string& a_kernelName)
@@ -527,6 +528,12 @@ void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const cl
             dImpl.isEmpty = false;
             break;
           }
+        }
+
+        for(auto& k : kernels)
+        {
+          if(k.second.className == dImpl.name)
+            k.second.interfaceName = className;
         }
 
         p.second.implementations.push_back(dImpl);

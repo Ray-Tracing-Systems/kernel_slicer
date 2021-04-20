@@ -39,9 +39,6 @@ void {{MainClassName}}_Generated::AllocateAllDescriptorSets()
 
   auto tmpRes = vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, m_allGeneratedDS);
   VK_CHECK_RESULT(tmpRes);
-  {% if length(DispatchHierarchies) > 0 %}
-  ZeroCountersDS = CreateObjCountersDS();
-  {% endif %}  
 }
 
 ## for MainFunc in MainFunctions
