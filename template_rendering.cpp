@@ -366,7 +366,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     else
     {
       json temp;
-      temp["IndirectDispatch"] = false;  
+      temp["IndirectDispatch"] = false; // because of 'Kernel.Hierarchy.IndirectDispatch' check
       kernelJson["Hierarchy"] = temp;
     }
 

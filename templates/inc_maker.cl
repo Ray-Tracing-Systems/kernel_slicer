@@ -139,9 +139,7 @@ __kernel void {{Kernel.Name}}_Sorter({% include "inc_args.cl" %})
     barrier(CLK_LOCAL_MEM_FENCE);
     
     if(isThisType == 1)
-    {
-      const uint objOffset = blockOffset + localOffset - 1;
-    }
+      kgen_objPtrData[blockOffset + localOffset - 1] = kgen_objPtr;
   }
 
   {% endfor %} {# /* Impl in Kernel.Hierarchy.Implementations */ #}
