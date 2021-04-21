@@ -168,7 +168,7 @@ protected:
   {% if Kernel.FinishRed %}
   VkPipeline            {{Kernel.Name}}ReductionPipeline = VK_NULL_HANDLE; 
   {% endif %}  
-  {% if Kernel.IsMaker %}
+  {% if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch %}
   VkPipeline            {{Kernel.Name}}ZeroObjCounters    = VK_NULL_HANDLE;
   VkPipeline            {{Kernel.Name}}CountTypeIntervals = VK_NULL_HANDLE;
   VkPipeline            {{Kernel.Name}}Sorter             = VK_NULL_HANDLE; 

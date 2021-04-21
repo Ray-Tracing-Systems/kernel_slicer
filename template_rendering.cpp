@@ -350,6 +350,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
       json hierarchy = PutHierarchyToJson(dhierarchies[k.interfaceName], compiler); 
       
+      //std::cout << std::endl << "--------------------------" << std::endl;
+      //std::cout << hierarchy.dump(2) << std::endl;
+      //std::cout << std::endl << "--------------------------" << std::endl;
+
       hierarchy["RedLoop1"] = std::vector<std::string>();
       hierarchy["RedLoop2"] = std::vector<std::string>();
       const uint32_t blockSize = k.wgSize[0]*k.wgSize[1]*k.wgSize[2];
@@ -360,7 +364,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       kernelJson["Hierarchy"] = hierarchy; 
     }
     else
-      kernelJson["Hierarchy"] = json();
+    {
+      json temp;
+      temp["IndirectDispatch"] = false;  
+      kernelJson["Hierarchy"] = temp;
+    }
 
     kernelJson["ArgCount"] = actualSize;
   

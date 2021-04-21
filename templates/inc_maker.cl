@@ -48,7 +48,7 @@ __kernel void {{Kernel.Name}}({% include "inc_args.cl" %})
 
   if (localId == 0)
     atomic_add(&ubo->objNum_{{Kernel.Hierarchy.Name}}Src[{{loop.index}}], objNum[0]); // {{Impl.ClassName}}
-  {% endfor %}
+  {% endfor %} {# /* Impl in Kernel.Hierarchy.Implementations */ #}
   {% endif %}
 }
 
@@ -114,6 +114,37 @@ __kernel void {{Kernel.Name}}_Sorter({% include "inc_args.cl" %})
   const uint kgen_objTag    = (kgen_objPtr & {{Kernel.Hierarchy.Name}}_TAG_MASK) >> (32 - {{Kernel.Hierarchy.Name}}_TAG_BITS);
   const uint kgen_objOffset = (kgen_objPtr & {{Kernel.Hierarchy.Name}}_OFS_MASK);
   // use parallel prefix summ
+  {% if Kernel.threadDim == 1 %}
+  const uint localId = get_local_id(0); 
+  {% else %}
+  const uint localId = get_local_id(0) + {{Kernel.WGSizeX}}*get_local_id(1); 
+  {% endif %}
+  const uint lastId  = {{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}}-1;
+  __local uint objNum[2*{{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}}];
+  __local uint blockOffset;
+  {% for Impl in Kernel.Hierarchy.Implementations %}
+  
+  //// count offsets for {{Impl.ClassName}}
+  //
+  {
+    uint isThisType  = (kgen_objTag == {{Kernel.Hierarchy.Name}}_{{Impl.TagName}}) ? 1 : 0;
+    uint localOffset = 0;
+    
+    PREFIX_SUMM_MACRO(isThisType, localOffset, objNum, 32);
+    objNum[localId] = localOffset;
+    barrier(CLK_LOCAL_MEM_FENCE);
+    
+    if(localId == 0)
+      blockOffset = atomic_add(&ubo->objNum_{{Kernel.Hierarchy.Name}}Acc[{{loop.index}}], objNum[lastId]);
+    barrier(CLK_LOCAL_MEM_FENCE);
+    
+    if(isThisType == 1)
+    {
+      const uint objOffset = blockOffset + localOffset - 1;
+    }
+  }
+
+  {% endfor %} {# /* Impl in Kernel.Hierarchy.Implementations */ #}
 }
 
 {% endif %} {# /* Kernel.Hierarchy.IndirectDispatch */ #}

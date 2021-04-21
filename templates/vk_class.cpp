@@ -104,7 +104,7 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   {% endif %}
   
   {# /* --------------------------------------------------------------------------------------------------------------------------------------- */ #}
-  {% if Kernel.IsMaker %}
+  {% if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch %}
   VkBufferMemoryBarrier objCounterBar = BarrierForObjCounters(m_classDataBuffer);
 
   // (1) zero obj. counters 

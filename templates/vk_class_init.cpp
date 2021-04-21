@@ -238,7 +238,7 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {{Kernel.Name}}FinishPipeline = m_pMaker->MakePipeline(device);
   {% endif %}
   {% endif %} 
-  {% if Kernel.IsMaker %}
+  {% if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch %}
   
   m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_ZeroObjCounters");
   {{Kernel.Name}}ZeroObjCounters    = m_pMaker->MakePipeline(device);
