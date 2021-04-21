@@ -7,7 +7,7 @@
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
 
-VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO()
+VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO() const
 {
   return 0;
 }

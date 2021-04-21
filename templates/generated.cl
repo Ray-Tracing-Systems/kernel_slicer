@@ -37,6 +37,25 @@
 {% endfor %} {# /* for Impl in Hierarchy.Implementations */ #} 
 {% endfor %} {# /* for Decl in Hierarchy.Constants */ #}
 {% endfor %} {# /* for Hierarchy in Hierarchies */ #}
+
+#define PREFIX_SUMM_MACRO(idata,odata,l_Data,_bsize)       \
+{                                                          \
+  uint pos = 2 * get_local_id(0) - (get_local_id(0) & (_bsize - 1)); \
+  l_Data[pos] = 0;                                         \
+  pos += _bsize;                                           \
+  l_Data[pos] = idata;                                     \
+                                                           \
+  for (uint offset = 1; offset < _bsize; offset <<= 1)     \
+  {                                                        \
+    barrier(CLK_LOCAL_MEM_FENCE);                          \
+    uint t = l_Data[pos] + l_Data[pos - offset];           \
+    barrier(CLK_LOCAL_MEM_FENCE);                          \
+    l_Data[pos] = t;                                       \
+  }                                                        \
+                                                           \
+  odata = l_Data[pos];                                     \
+}                                                          \
+
 {% endif %}
 /////////////////////////////////////////////////////////////////////
 /////////////////// local functions /////////////////////////////////

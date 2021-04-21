@@ -185,7 +185,7 @@ protected:
   VkSpecializationInfo     m_specsForWGSize;
   {% endif %}
 
-  virtual VkBufferUsageFlags GetAdditionalFlagsForUBO();
+  virtual VkBufferUsageFlags GetAdditionalFlagsForUBO() const;
 
   VkPipelineLayout      copyKernelFloatLayout   = VK_NULL_HANDLE;
   VkPipeline            copyKernelFloatPipeline = VK_NULL_HANDLE;

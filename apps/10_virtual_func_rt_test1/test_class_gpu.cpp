@@ -14,6 +14,17 @@
 #include "vulkan_basics.h"
 #include "test_class_generated.h"
 
+class TestClass_GPU : public TestClass_Generated
+{
+public:
+  VkBufferUsageFlags GetAdditionalFlagsForUBO() const override { return VK_BUFFER_USAGE_TRANSFER_SRC_BIT; }
+
+  void ReadClassData(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine, TestClass_UBO_Data* pData)
+  {
+    a_pCopyEngine->ReadBuffer(m_classDataBuffer, 0, pData, sizeof(TestClass_UBO_Data));
+  }
+};
+
 void test_class_gpu()
 {
   // (1) init vulkan
@@ -78,13 +89,10 @@ void test_class_gpu()
   ctx.commandPool    = commandPool;
   ctx.computeQueue   = computeQueue;
   ctx.transferQueue  = transferQueue;
-  //TestKernel(ctx);
-  //TestKernel2(ctx);
-  
+
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
-  auto pGPUImpl = std::make_shared<TestClass_Generated>();                   // !!! USING GENERATED CODE !!! 
+  auto pGPUImpl    = std::make_shared<TestClass_GPU>();                      // !!! USING GENERATED CODE !!! 
   pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT); // !!! USING GENERATED CODE !!!                        
-  //pGPUImpl->LoadScene("lucy.bvh", "lucy.vsgf");
   pGPUImpl->LoadScene("cornell_collapsed.bvh", "cornell_collapsed.vsgf");
 
   // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
@@ -121,10 +129,7 @@ void test_class_gpu()
     beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    //vkCmdFillBuffer(commandBuffer, xyBuffer, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
-    pGPUImpl->PackXYCmd(commandBuffer, WIN_WIDTH, WIN_HEIGHT, nullptr);       // !!! USING GENERATED CODE !!! 
-    vkCmdFillBuffer(commandBuffer, colorBuffer2, 0, VK_WHOLE_SIZE, 0);        // clear accumulated color
-    vkEndCommandBuffer(commandBuffer);  
+    //vkCmdFillBuffer(commandBuffer, xyBuffer, 0, VK_WpData
     vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
 
     vkResetCommandBuffer(commandBuffer, 0);
@@ -141,6 +146,10 @@ void test_class_gpu()
     std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
     pCopyHelper->ReadBuffer(colorBuffer1, 0, pixelData.data(), pixelData.size()*sizeof(uint32_t));
     SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+
+    TestClass_UBO_Data testData;
+    pGPUImpl->ReadClassData(pCopyHelper, &testData);
+    int a = 2;
 
     //std::cout << "begin path tracing passes ... " << std::endl;
     //
