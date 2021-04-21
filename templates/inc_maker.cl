@@ -130,7 +130,7 @@ __kernel void {{Kernel.Name}}_Sorter({% include "inc_args.cl" %})
     uint isThisType  = (kgen_objTag == {{Kernel.Hierarchy.Name}}_{{Impl.TagName}}) ? 1 : 0;
     uint localOffset = 0;
     
-    PREFIX_SUMM_MACRO(isThisType, localOffset, objNum, 32);
+    PREFIX_SUMM_MACRO(isThisType, localOffset, objNum, {{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}});
     objNum[localId] = localOffset;
     barrier(CLK_LOCAL_MEM_FENCE);
     
