@@ -12,8 +12,8 @@ struct {{MainClassName}}_UBO_Data
 {% for hierarchy in Hierarchies %}
 {% if hierarchy.IndirectDispatch %}
 
-  unsigned int objNum_{{hierarchy.Name}}Src[{{length(hierarchy.Implementations)}}];  
-  unsigned int objNum_{{hierarchy.Name}}Acc[{{length(hierarchy.Implementations)}}];
+  unsigned int objNum_{{hierarchy.Name}}Src[{{hierarchy.ImplAlignedSize}}];  
+  unsigned int objNum_{{hierarchy.Name}}Acc[{{hierarchy.ImplAlignedSize}}];
 {% endif %}  
 {% endfor %}
 };

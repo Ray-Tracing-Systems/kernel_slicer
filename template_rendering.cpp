@@ -77,6 +77,14 @@ std::vector<kslicer::KernelInfo::Arg> GetUserKernelArgs(const std::vector<kslice
   return result;
 }
 
+static inline size_t AlignedSize(const size_t a_size)
+{
+  size_t currSize = 4;
+  while(a_size > currSize)
+    currSize = currSize*2;
+  return currSize;
+}
+
 static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, const clang::CompilerInstance& compiler)
 {
   json hierarchy;
@@ -119,7 +127,8 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
       
     hierarchy["Implementations"].push_back(currImpl);
   }
-
+  hierarchy["ImplAlignedSize"] = AlignedSize(h.implementations.size()+1);
+  
   return hierarchy;  
 }
 
