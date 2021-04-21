@@ -64,28 +64,30 @@ __kernel void {{Kernel.Name}}_ZeroObjCounters({% include "inc_args.cl" %})
 }
 
 {% if not UseSpecConstWgSize %}
-__attribute__((reqd_work_group_size(1, 1, 1))) 
+__attribute__((reqd_work_group_size(32, 1, 1))) 
 {% endif %} 
 __kernel void {{Kernel.Name}}_CountTypeIntervals({% include "inc_args.cl" %})
 {
-  //const uint lid = get_local_id(0); 
-  //__local uint objNum[32*2];
-  //
-  //uint currObjNum = ubo->objNum_{{Kernel.Hierarchy.Name}}Src[lid];
-  //uint summResult = 0;
-  //
-  //PREFIX_SUMM_MACRO(currObjNum, summResult, objNum, 32);
-  //
-  //if(lid < {{length(Kernel.Hierarchy.Implementations)}})
-  //  ubo->objNum_{{Kernel.Hierarchy.Name}}Acc[lid] = summResult;
+  const uint lid = get_local_id(0); 
+  __local uint objNum[32*2];
   
-  uint currSize = 0;
-  for(int i=0; i<{{length(Kernel.Hierarchy.Implementations)}}; i++)
-  {
-    ubo->objNum_{{Kernel.Hierarchy.Name}}Acc[i] = currSize;
-    currSize += ubo->objNum_{{Kernel.Hierarchy.Name}}Src[i];
-  }
-  ubo->objNum_{{Kernel.Hierarchy.Name}}Acc[{{length(Kernel.Hierarchy.Implementations)}}] = currSize;
+  uint currObjNum = ubo->objNum_{{Kernel.Hierarchy.Name}}Src[lid];
+  uint summResult = 0;
+  
+  PREFIX_SUMM_MACRO(currObjNum, summResult, objNum, 32);
+  objNum[lid] = summResult;
+  barrier(CLK_LOCAL_MEM_FENCE);
+
+  if(lid < {{length(Kernel.Hierarchy.Implementations)}}+1)
+    ubo->objNum_{{Kernel.Hierarchy.Name}}Acc[lid] = (lid == 0) ? 0 : objNum[lid-1];
+  
+  //uint currSize = 0;
+  //for(int i=0; i<{{length(Kernel.Hierarchy.Implementations)}}; i++)
+  //{
+  //  ubo->objNum_{{Kernel.Hierarchy.Name}}Acc[i] = currSize;
+  //  currSize += ubo->objNum_{{Kernel.Hierarchy.Name}}Src[i];
+  //}
+  //ubo->objNum_{{Kernel.Hierarchy.Name}}Acc[{{length(Kernel.Hierarchy.Implementations)}}] = currSize;
 }
 
 {% if not UseSpecConstWgSize %}

@@ -112,8 +112,8 @@ namespace LiteMath
 
     union
     {
-      struct {float x, y, z; };
-      float M[3];
+      struct {float x, y, z; }; // same aligment as for float4
+      float M[4];               // same aligment as for float4
     };
   };
 
