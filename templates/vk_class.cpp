@@ -105,29 +105,36 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   
   {# /* --------------------------------------------------------------------------------------------------------------------------------------- */ #}
   {% if Kernel.IsMaker %}
+  VkBufferMemoryBarrier objCounterBar = BarrierForObjCounters(m_classDataBuffer);
+
   // (1) zero obj. counters 
   //
-  VkBufferMemoryBarrier objCounterBar = BarrierForObjCounters(m_classDataBuffer);
-  //{{Kernel.Hierarchy.Name}}ZeroObjCountersCmd();
+  vkCmdBindPipeline   (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}ZeroObjCounters);
+  vkCmdDispatch       (m_currCmdBuffer, 1, 1, 1); 
+  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &objCounterBar, 0, nullptr);
   
   // (2)  execute maker first time, count objects for each class 
   //
   vkCmdBindPipeline   (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
-  vkCmdDispatch       (m_currCmdBuffer, ({{Kernel.tidX}} + blockSizeX - 1) / blockSizeX, ({{Kernel.tidY}} + blockSizeY - 1) / blockSizeY, ({{Kernel.tidZ}} + blockSizeZ - 1) / blockSizeZ); 
+  vkCmdDispatch       (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (pcData.m_sizeZ + blockSizeZ - 1) / blockSizeZ); 
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &objCounterBar, 0, nullptr);
 
   // (3) small prefix summ to compute global offsets for each type region
   //
+  vkCmdBindPipeline   (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}CountTypeIntervals);
+  vkCmdDispatch       (m_currCmdBuffer, 1, 1, 1); 
+  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &objCounterBar, 0, nullptr);
 
   // (4) execute maker second time, count offset for each object using local prefix summ (in the work group) and put ObjPtr at this offset 
   //
-
+  vkCmdBindPipeline   (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Sorter);
+  vkCmdDispatch       (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (pcData.m_sizeZ + blockSizeZ - 1) / blockSizeZ); 
   {% else if Kernel.IsIndirect %}
   vkCmdBindPipeline    (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   vkCmdDispatchIndirect(m_currCmdBuffer, m_indirectBuffer, {{Kernel.IndirectOffset}}*sizeof(uint32_t)*4);
   {% else %}
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
-  vkCmdDispatch    (m_currCmdBuffer, ({{Kernel.tidX}} + blockSizeX - 1) / blockSizeX, ({{Kernel.tidY}} + blockSizeY - 1) / blockSizeY, ({{Kernel.tidZ}} + blockSizeZ - 1) / blockSizeZ);
+  vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (pcData.m_sizeZ + blockSizeZ - 1) / blockSizeZ);
   {% if Kernel.FinishRed %}
   
   {% if Kernel.HasLoopFinish %}

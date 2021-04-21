@@ -238,6 +238,33 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {{Kernel.Name}}FinishPipeline = m_pMaker->MakePipeline(device);
   {% endif %}
   {% endif %} 
+  {% if Kernel.IsMaker %}
+  
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_ZeroObjCounters");
+  {{Kernel.Name}}ZeroObjCounters    = m_pMaker->MakePipeline(device);
+  
+  {% if UseSpecConstWgSize %}
+  {
+    uint32_t specializationData[3] = { 32, 1, 1 };
+    m_specsForWGSize.pData         = specializationData;
+    m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_CountTypeIntervals");
+  }
+  {% else %}
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_CountTypeIntervals");
+  {% endif %}
+  {{Kernel.Name}}CountTypeIntervals = m_pMaker->MakePipeline(device);
+  
+  {% if UseSpecConstWgSize %}
+  {
+    uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
+    m_specsForWGSize.pData         = specializationData;
+    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, "{{Kernel.OriginalName}}_Sorter");
+  }
+  {% else %}
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_Sorter");
+  {% endif %}
+  {{Kernel.Name}}Sorter             = m_pMaker->MakePipeline(device);
+  {% endif %} {#/* if Kernel.IsMaker */ #} 
 }
 
 ## endfor
