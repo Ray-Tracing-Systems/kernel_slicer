@@ -46,23 +46,24 @@ __kernel void {{Kernel.Name}}({% include "inc_args.cl" %})
   
   //// count objects of {{Impl.ClassName}}
   //
-  //objNum[localId] = (kgen_objTag == {{Kernel.Hierarchy.Name}}_{{Impl.TagName}}) ? 1 : 0;
-  //barrier(CLK_LOCAL_MEM_FENCE);
-  //{% for offset in Kernel.Hierarchy.RedLoop1 %} 
-  //if (localId < {{offset}}) 
-  //  objNum[localId] += objNum[localId + {{offset}}];
-  //barrier(CLK_LOCAL_MEM_FENCE);
-  //{% endfor %}
-  //{% for offset in Kernel.Hierarchy.RedLoop2 %} 
-  //if (localId < {{offset}}) 
-  //  objNum[localId] += objNum[localId + {{offset}}];
-  //{% endfor %}
-  //
-  //if (localId == 0)
-  //  atomic_add(&ubo->objNum_{{Kernel.Hierarchy.Name}}Src[{{loop.index}}], objNum[0]); // {{Impl.ClassName}}
+  objNum[localId] = (kgen_objTag == {{Kernel.Hierarchy.Name}}_{{Impl.TagName}}) ? 1 : 0;
+  barrier(CLK_LOCAL_MEM_FENCE);
+  {% for offset in Kernel.Hierarchy.RedLoop1 %} 
+  if (localId < {{offset}}) 
+    objNum[localId] += objNum[localId + {{offset}}];
+  barrier(CLK_LOCAL_MEM_FENCE);
+  {% endfor %}
+  {% for offset in Kernel.Hierarchy.RedLoop2 %} 
+  if (localId < {{offset}}) 
+    objNum[localId] += objNum[localId + {{offset}}];
+  barrier(CLK_LOCAL_MEM_FENCE);  
+  {% endfor %}
+  barrier(CLK_LOCAL_MEM_FENCE);
+  if (localId == 0)
+    atomic_add(&ubo->objNum_{{Kernel.Hierarchy.Name}}Src[{{loop.index}}], objNum[0]); // {{Impl.ClassName}}
   
-  if(kgen_objTag == {{Kernel.Hierarchy.Name}}_{{Impl.TagName}})
-    atomic_add(&ubo->objNum_{{Kernel.Hierarchy.Name}}Src[{{loop.index}}], 1);
+  //if(kgen_objTag == {{Kernel.Hierarchy.Name}}_{{Impl.TagName}})
+  //  atomic_add(&ubo->objNum_{{Kernel.Hierarchy.Name}}Src[{{loop.index}}], 1);
 
   {% endfor %} {# /* Impl in Kernel.Hierarchy.Implementations */ #}
   {% endif %}  {# /* if not Kernel.Hierarchy.IndirectDispatch */ #}
