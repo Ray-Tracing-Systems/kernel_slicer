@@ -976,9 +976,33 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       for (uint c = k.warpSize; c>0; c/=2)
         hierarchy["RedLoop2"].push_back(c);
       kernelJson["Hierarchy"] = hierarchy; 
+      
+      bool isConstObj = false;
+      if(k.isVirtual)
+      {
+        for(const auto& impl : dhierarchies[k.interfaceName].implementations) // TODO: refactor this code to function
+        {
+          for(const auto& member : impl.memberFunctions)
+          {
+            if(member.name == k.name)
+            {
+              isConstObj = member.isConstMember || isConstObj;
+              if(isConstObj)
+                break;
+            }
+          }
+          break; // it is enough to process only one of impl, because function interface is the same for all of them
+        }
+      }
+      kernelJson["IsConstObj"] = isConstObj;
     }
     else
-      kernelJson["Hierarchy"] = json();
+    {
+      json temp;
+      temp["IndirectDispatch"] = false; // because of 'Kernel.Hierarchy.IndirectDispatch' check could happen
+      kernelJson["Hierarchy"]  = temp;
+      kernelJson["IsConstObj"] = false;
+    }
 
     auto original = kernelJson;
     

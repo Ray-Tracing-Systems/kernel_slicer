@@ -364,10 +364,11 @@ public:
       } while (seekForReplace && numIter < 3);
       
       kslicer::MainClassInfo::DImplFunc funcData;
-      funcData.decl         = fDecl;
-      funcData.name         = fname;
-      funcData.srcRewritten = std::string("  ") + retType + classTypeName + "_" + fname + funcSourceCode2;
-      funcData.isEmpty      = false;
+      funcData.decl          = fDecl;
+      funcData.name          = fname;
+      funcData.srcRewritten  = std::string("  ") + retType + classTypeName + "_" + fname + funcSourceCode2;
+      funcData.isEmpty       = false;
+      funcData.isConstMember = fDecl->isConst();
 
       if(clang::isa<clang::CompoundStmt>(fDecl->getBody()))
       {

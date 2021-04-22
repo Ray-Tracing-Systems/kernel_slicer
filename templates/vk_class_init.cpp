@@ -269,7 +269,22 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_Sorter");
   {% endif %}
   {{Kernel.Name}}Sorter             = m_pMaker->MakePipeline(device);
-  {% endif %} {#/* if Kernel.IsMaker */ #} 
+  {% else if Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch %} {# /* if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch */ #} 
+  {% for Impl in Kernel.Hierarchy.Implementations %}
+
+  {% if UseSpecConstWgSize %}
+  {
+    uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
+    m_specsForWGSize.pData         = specializationData;
+    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, "{{Kernel.OriginalName}}_{{Impl.ClassName}}");
+  }
+  {% else %}
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_{{Impl.ClassName}}");
+  {% endif %}
+  {{Kernel.Name}}PipelineArray[{{loop.index}}] = m_pMaker->MakePipeline(device);  
+  {% endfor %}
+ 
+  {% endif %} {# /* if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch */ #} 
 }
 
 ## endfor
