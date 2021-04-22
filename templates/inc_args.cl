@@ -1,3 +1,4 @@
+
 ## for Arg in Kernel.Args 
   __global {{Arg.Type}} {{Arg.Name}},
 ## endfor

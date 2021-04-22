@@ -39,11 +39,11 @@ struct IMaterial
   static constexpr uint32_t TAG_MASK = 0xF0000000; // mask which we can get from TAG_BITS
   static constexpr uint32_t OFS_MASK = 0x0FFFFFFF; // (32 - TAG_BITS) is left for object/thread id.
 
-  static constexpr uint32_t TAG_LAMBERT    = 0; 
-  static constexpr uint32_t TAG_MIRROR     = 1; 
-  static constexpr uint32_t TAG_EMISSIVE   = 2; 
-  static constexpr uint32_t TAG_GGX_GLOSSY = 3;
-  static constexpr uint32_t TAG_ID_EMPTY   = 15;
+  static constexpr uint32_t TAG_EMPTY      = 0;    // !!! #REQUIRED by kernel slicer: Empty/Default impl must have zero both tag and offset
+  static constexpr uint32_t TAG_LAMBERT    = 1; 
+  static constexpr uint32_t TAG_MIRROR     = 2; 
+  static constexpr uint32_t TAG_EMISSIVE   = 3; 
+  static constexpr uint32_t TAG_GGX_GLOSSY = 4;
 
   IMaterial(){}  // Dispatching on GPU hierarchy must not have destructors, especially virtual      
 
@@ -119,7 +119,7 @@ struct EmptyMaterial : public IMaterial
   ~EmptyMaterial() = delete;
   void kernel_GetColor(uint tid, __global uint* out_color) const override  { }
 
-  uint32_t GetTag() const override { return TAG_ID_EMPTY; }
+  uint32_t GetTag() const override { return TAG_EMPTY; }
   size_t   GetSizeOf() const override { return sizeof(EmptyMaterial); }
 };
 

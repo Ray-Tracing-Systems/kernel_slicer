@@ -151,7 +151,7 @@ void TestClass::kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* o
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-IMaterial* MakeObjPtr(const uint32_t objectPtr, __global const uint32_t* a_data)
+IMaterial* MakeObjPtr(uint32_t objectPtr, __global const uint32_t* a_data)
 {
   const uint32_t objectOffset = (objectPtr & IMaterial::OFS_MASK);
   const uint32_t objectTag    = (objectPtr & IMaterial::TAG_MASK) >> (32 - IMaterial::TAG_BITS);
@@ -164,7 +164,7 @@ IMaterial* TestClass::kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit)
   int primId = in_hit->primId;
   if(primId != -1)
   {
-    const uint32_t mtId = m_materialIds[primId];
+    const uint32_t mtId = m_materialIds[primId]+1; // +1 due to empty object
     objPtr = m_materialOffsets[mtId];
   }
   return MakeObjPtr(objPtr, m_materialData.data());

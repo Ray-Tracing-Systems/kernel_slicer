@@ -1,3 +1,15 @@
+{% if Kernel.Hierarchy.IndirectDispatch %}
+{% if not UseSpecConstWgSize %}
+__attribute__((reqd_work_group_size(1, 1, 1)))
+{% endif %} 
+__kernel void {{Kernel.Name}}_ZeroObjCounters({% include "inc_args.cl" %})
+{ 
+  {% for Impl in Kernel.Hierarchy.Implementations %}
+  ubo->objNum_{{Kernel.Hierarchy.Name}}Src[{{loop.index}}] = 0; // {{Impl.ClassName}}
+  {% endfor%}
+}
+
+{% endif %}
 {% if not UseSpecConstWgSize %}
 __attribute__((reqd_work_group_size({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}})))
 {% endif %} 
@@ -8,9 +20,6 @@ __kernel void {{Kernel.Name}}({% include "inc_args.cl" %})
   const uint {{name}} = get_global_id({{ loop.index }}); 
   {% endfor %}
   uint kgen_objPtr = 0;
-  {# /*------------------------------------------------------------- BEG. CHECK EXIT COND ------------------------------------------------------------- */ #}
-  {% include "inc_exit_cond.cl" %}
-  {# /*------------------------------------------------------------- END. CHECK EXIT COND ------------------------------------------------------------- */ #}
   {% for Member in Kernel.Members %}
   const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
   {% endfor %}
@@ -51,17 +60,7 @@ __kernel void {{Kernel.Name}}({% include "inc_args.cl" %})
   {% endfor %} {# /* Impl in Kernel.Hierarchy.Implementations */ #}
   {% endif %}
 }
-
 {% if Kernel.Hierarchy.IndirectDispatch %}
-{% if not UseSpecConstWgSize %}
-__attribute__((reqd_work_group_size(1, 1, 1)))
-{% endif %} 
-__kernel void {{Kernel.Name}}_ZeroObjCounters({% include "inc_args.cl" %})
-{ 
-  {% for Impl in Kernel.Hierarchy.Implementations %}
-  ubo->objNum_{{Kernel.Hierarchy.Name}}Src[{{loop.index}}] = 0; // {{Impl.ClassName}}
-  {% endfor%}
-}
 
 {% if not UseSpecConstWgSize %}
 __attribute__((reqd_work_group_size(32, 1, 1))) 
@@ -100,9 +99,6 @@ __kernel void {{Kernel.Name}}_Sorter({% include "inc_args.cl" %})
   const uint {{name}} = get_global_id({{ loop.index }}); 
   {% endfor %}
   uint kgen_objPtr = 0;
-  {# /*------------------------------------------------------------- BEG. CHECK EXIT COND ------------------------------------------------------------- */ #}
-  {% include "inc_exit_cond.cl" %}
-  {# /*------------------------------------------------------------- END. CHECK EXIT COND ------------------------------------------------------------- */ #}
   {% for Member in Kernel.Members %}
   const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
   {% endfor %}
