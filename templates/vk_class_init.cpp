@@ -237,7 +237,15 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {% endif %} 
   {% if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch %}
   
+  {% if UseSpecConstWgSize %}
+  {
+    uint32_t specializationData[3] = { 32, 1, 1 };
+    m_specsForWGSize.pData         = specializationData;
+    m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_ZeroObjCounters");
+  }
+  {% else %}
   m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_ZeroObjCounters");
+  {% endif %}
   {{Kernel.Name}}ZeroObjCounters    = m_pMaker->MakePipeline(device);
   
   {% if UseSpecConstWgSize %}

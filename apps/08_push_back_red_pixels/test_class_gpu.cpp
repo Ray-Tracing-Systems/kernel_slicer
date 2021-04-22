@@ -20,7 +20,7 @@ class RedPixels_GPU : public RedPixels_Generated
 public:
   RedPixels_GPU(){}
 
-  VkBufferUsageFlags GetAdditionalFlagsForUBO() override { return VK_BUFFER_USAGE_TRANSFER_SRC_BIT; }
+  VkBufferUsageFlags GetAdditionalFlagsForUBO() const override { return VK_BUFFER_USAGE_TRANSFER_SRC_BIT; }
   VkBuffer GiveMeUBO() { return m_classDataBuffer; }
   VkBuffer GiveMeIndirectBuffer() { return m_indirectBuffer; }
   //VkBuffer GiveMeTempBuffer() { return m_vdata.tmpred04Buffer; }

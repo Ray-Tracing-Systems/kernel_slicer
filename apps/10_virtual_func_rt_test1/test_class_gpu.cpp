@@ -24,10 +24,10 @@ public:
     a_pCopyEngine->ReadBuffer(m_classDataBuffer, 0, pData, sizeof(TestClass_UBO_Data));
   }
 
-  std::vector<uint32_t> GetObjPtrArray(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
+  std::vector<uint2> GetObjPtrArray(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
   {
-    std::vector<uint32_t> result(m_maxThreadCount);
-    a_pCopyEngine->ReadBuffer(m_IMaterialObjPtrBuffer, 0, result.data(), result.size()*sizeof(uint32_t));
+    std::vector<uint2> result(m_maxThreadCount);
+    a_pCopyEngine->ReadBuffer(m_IMaterialObjPtrBuffer, 0, result.data(), result.size()*sizeof(uint2));
     return result;
   }
 };
@@ -161,24 +161,25 @@ void test_class_gpu()
     pGPUImpl->ReadClassData(pCopyHelper, &testData);
     int a = 2;
 
-    //std::vector<uint32_t> objPointers = pGPUImpl->GetObjPtrArray(pCopyHelper);
-    //{
-    //  uint currTag = -1, begOffs = 0;
-    //  for(size_t i=0;i<objPointers.size();i++)
-    //  {
-    //    const uint kgen_objTag    = (objPointers[i] & IMaterial::TAG_MASK) >> (32 - IMaterial::TAG_BITS);
-    //    const uint kgen_objOffset = (objPointers[i] & IMaterial::OFS_MASK);
-    //    
-    //    if(currTag != kgen_objTag)
-    //    {
-    //      if(currTag != -1)
-    //        std::cout << currTag << ": [" << begOffs << " : " << i << "]" << std::endl;
-    //      begOffs = i;
-    //      currTag = kgen_objTag;
-    //    }
-    //  }
-    //}
-    
+    // auto objPointers = pGPUImpl->GetObjPtrArray(pCopyHelper);
+    // {
+    //   uint currTag = -1, begOffs = 0;
+    //   for(size_t i=0;i<objPointers.size();i++)
+    //   {
+    //     const uint kgen_objTag    = (objPointers[i].x & IMaterial::TAG_MASK) >> (32 - IMaterial::TAG_BITS);
+    //     const uint kgen_objOffset = (objPointers[i].x & IMaterial::OFS_MASK);
+    //     
+    //     if(currTag != kgen_objTag)
+    //     {
+    //       if(currTag != -1)
+    //         std::cout << currTag << ": " << begOffs << " : " << i << "]" << std::endl;
+    //       begOffs = i;
+    //       currTag = kgen_objTag;
+    //     }
+    //   }
+    // }
+    // int b = 3;
+
     //std::cout << "begin path tracing passes ... " << std::endl;
     //
     //vkResetCommandBuffer(commandBuffer, 0);
