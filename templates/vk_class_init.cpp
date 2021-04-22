@@ -182,9 +182,6 @@ VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForObjCounters(VkBuffe
 {
   VkBufferMemoryBarrier bar = {};
   bar.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-  bar.pNext               = NULL;
-  bar.srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT;
-  bar.dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
   bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
   bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
   bar.buffer              = a_buffer;
@@ -301,6 +298,7 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
 
 void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
 {
+  m_maxThreadCount = a_maxThreadsCount;
   std::vector<VkBuffer> allBuffers;
 
 ## for MainFunc in MainFunctions  
@@ -328,7 +326,7 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
   }
   {% endfor %}
   {% for Hierarchy in DispatchHierarchies %}
-  m_{{Hierarchy.Name}}ObjPtrBuffer = vkfw::CreateBuffer(device, sizeof(uint32_t)*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  m_{{Hierarchy.Name}}ObjPtrBuffer = vkfw::CreateBuffer(device, 2*sizeof(uint32_t)*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
   allBuffers.push_back(m_{{Hierarchy.Name}}ObjPtrBuffer);
   {% endfor %}
 

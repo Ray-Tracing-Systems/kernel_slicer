@@ -120,6 +120,8 @@ protected:
     VkDeviceMemory m_vecMem = VK_NULL_HANDLE;
   } m_vdata;
 
+  size_t m_maxThreadCount = 0;
+
   {% for Hierarchy in DispatchHierarchies %}
   // Auxilary data and kernels for 'VirtualKernels'; Dispatch hierarchy of '{{Hierarchy.Name}}'
   //

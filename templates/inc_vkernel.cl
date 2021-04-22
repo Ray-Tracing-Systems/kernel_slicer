@@ -8,7 +8,7 @@ __kernel void {{Kernel.Name}}(
 ## for UserArg in Kernel.UserArgs 
   {{UserArg.Type}} {{UserArg.Name}},
 ## endfor
-  __global unsigned int* kgen_objPtrData,
+  __global uint2       * kgen_objPtrData,
   __global unsigned int* kgen_objData,
   const uint {{Kernel.threadIdName1}}, 
   const uint {{Kernel.threadIdName2}},
@@ -22,7 +22,7 @@ __kernel void {{Kernel.Name}}(
   {# /*------------------------------------------------------------- END. CHECK EXIT COND ------------------------------------------------------------- */ #}
   ///////////////////////////////////////////////////////////////// prolog
   
-  const uint kgen_objPtr    = kgen_objPtrData[tid];
+  const uint kgen_objPtr    = kgen_objPtrData[tid].x;
   const uint kgen_objTag    = (kgen_objPtr & {{Kernel.Hierarchy.Name}}_TAG_MASK) >> (32 - {{Kernel.Hierarchy.Name}}_TAG_BITS);
   const uint kgen_objOffset = (kgen_objPtr & {{Kernel.Hierarchy.Name}}_OFS_MASK);
 

@@ -29,7 +29,7 @@ __kernel void {{Kernel.Name}}({% include "inc_args.cl" %})
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   //KGEN_EPILOG:
   {% if not Kernel.Hierarchy.IndirectDispatch %}
-  kgen_objPtrData[get_global_id(0)] = kgen_objPtr;
+  kgen_objPtrData[get_global_id(0)] = make_uint2(kgen_objPtr, get_global_id(0)); // put old threadId instead of zero
   {% else %}
   const uint kgen_objTag    = (kgen_objPtr & {{Kernel.Hierarchy.Name}}_TAG_MASK) >> (32 - {{Kernel.Hierarchy.Name}}_TAG_BITS);
   const uint kgen_objOffset = (kgen_objPtr & {{Kernel.Hierarchy.Name}}_OFS_MASK);
@@ -135,7 +135,7 @@ __kernel void {{Kernel.Name}}_Sorter({% include "inc_args.cl" %})
     barrier(CLK_LOCAL_MEM_FENCE);
     
     if(isThisType == 1)
-      kgen_objPtrData[blockOffset + localOffset - 1] = kgen_objPtr;
+      kgen_objPtrData[blockOffset + localOffset - 1] = make_uint2(kgen_objPtr, get_global_id(0));
   }
 
   {% endfor %} {# /* Impl in Kernel.Hierarchy.Implementations */ #}

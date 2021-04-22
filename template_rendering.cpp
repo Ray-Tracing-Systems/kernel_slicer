@@ -788,8 +788,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     if(k.isMaker) // add to kernel ObjPtr buffer
     {
-      json argj;
-      argj["Type"]       = "unsigned int*";
+      json argj; 
+      argj["Type"]       = "uint2       *";
       argj["Name"]       = "kgen_objPtrData";
       args.push_back(argj);
     }

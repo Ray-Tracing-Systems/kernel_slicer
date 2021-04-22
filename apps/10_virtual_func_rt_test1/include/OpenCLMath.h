@@ -94,4 +94,12 @@ static inline float4 mul4x4x4(float4x4 m, float4 v)
   return res;
 }
 
+static inline uint2 make_uint2(uint a, uint b)
+{
+  uint2 res;
+  res.x = a;
+  res.y = b;
+  return res;
+}
+
 #endif
