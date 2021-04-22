@@ -132,24 +132,24 @@ __kernel void {{Kernel.Name}}_Sorter({% include "inc_args.cl" %})
   //
   {
     uint isThisType  = (kgen_objTag == {{Kernel.Hierarchy.Name}}_{{Impl.TagName}}) ? 1 : 0;
-    // uint localOffset = 0;
-    // 
-    // PREFIX_SUMM_MACRO(isThisType, localOffset, objNum, {{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}});
-    // objNum[localId] = localOffset;
-    // barrier(CLK_LOCAL_MEM_FENCE);
-    // 
-    // if(localId == 0)
-    //   blockOffset = atomic_add(&ubo->objNum_{{Kernel.Hierarchy.Name}}Acc[{{loop.index}}], objNum[lastId]);
-    // barrier(CLK_LOCAL_MEM_FENCE);
-    // 
-    // if(isThisType == 1)
-    //   kgen_objPtrData[blockOffset + localOffset - 1] = make_uint2(kgen_objPtr, get_global_id(0));
-
+    uint localOffset = 0;
+    
+    PREFIX_SUMM_MACRO(isThisType, localOffset, objNum, {{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}});
+    objNum[localId] = localOffset;
+    barrier(CLK_LOCAL_MEM_FENCE);
+    
+    if(localId == 0)
+      blockOffset = atomic_add(&ubo->objNum_{{Kernel.Hierarchy.Name}}Acc[{{loop.index}}], objNum[lastId]);
+    barrier(CLK_LOCAL_MEM_FENCE);
+    
     if(isThisType == 1)
-    {
-      uint offset = atomic_add(&ubo->objNum_{{Kernel.Hierarchy.Name}}Tst[{{loop.index}}], 1);
-      kgen_objPtrData[offset] = make_uint2(kgen_objPtr, get_global_id(0));
-    }
+      kgen_objPtrData[blockOffset + localOffset - 1] = make_uint2(kgen_objPtr, get_global_id(0));
+
+    //if(isThisType == 1)
+    //{
+    //  uint offset = atomic_add(&ubo->objNum_{{Kernel.Hierarchy.Name}}Tst[{{loop.index}}], 1);
+    //  kgen_objPtrData[offset] = make_uint2(kgen_objPtr, get_global_id(0));
+    //}
   }
 
   {% endfor %} {# /* Impl in Kernel.Hierarchy.Implementations */ #}

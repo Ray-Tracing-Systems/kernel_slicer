@@ -161,24 +161,24 @@ void test_class_gpu()
     pGPUImpl->ReadClassData(pCopyHelper, &testData);
     int a = 2;
 
-    // auto objPointers = pGPUImpl->GetObjPtrArray(pCopyHelper);
-    // {
-    //   uint currTag = -1, begOffs = 0;
-    //   for(size_t i=0;i<objPointers.size();i++)
-    //   {
-    //     const uint kgen_objTag    = (objPointers[i].x & IMaterial::TAG_MASK) >> (32 - IMaterial::TAG_BITS);
-    //     const uint kgen_objOffset = (objPointers[i].x & IMaterial::OFS_MASK);
-    //     
-    //     if(currTag != kgen_objTag)
-    //     {
-    //       if(currTag != -1)
-    //         std::cout << currTag << ": " << begOffs << " : " << i << "]" << std::endl;
-    //       begOffs = i;
-    //       currTag = kgen_objTag;
-    //     }
-    //   }
-    // }
-    // int b = 3;
+    auto objPointers = pGPUImpl->GetObjPtrArray(pCopyHelper);
+    {
+      uint currTag = -1, begOffs = 0;
+      for(size_t i=0;i<objPointers.size();i++)
+      {
+        const uint kgen_objTag    = (objPointers[i].x & IMaterial::TAG_MASK) >> (32 - IMaterial::TAG_BITS);
+        const uint kgen_objOffset = (objPointers[i].x & IMaterial::OFS_MASK);
+        
+        if(currTag != kgen_objTag)
+        {
+          if(currTag != -1)
+            std::cout << currTag << ": " << begOffs << " : " << i << "]" << std::endl;
+          begOffs = i;
+          currTag = kgen_objTag;
+        }
+      }
+    }
+    int b = 3;
 
     //std::cout << "begin path tracing passes ... " << std::endl;
     //
