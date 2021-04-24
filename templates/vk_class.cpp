@@ -139,8 +139,14 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   vkCmdPipelineBarrier   (m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0, nullptr, 1, &barIndirect, 0, nullptr);
 
   {% else if Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch %}
-  // TODO: virtual kernel call via indirect dispatch
-  //
+  // use reverse order of classes because assume heavy implementations in the end
+  {
+    {% for Impl in Kernel.Hierarchy.Implementations %}
+    vkCmdBindPipeline    (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}PipelineArray[{{length(Kernel.Hierarchy.Implementations)}}-{{loop.index}}-1]);
+    vkCmdDispatchIndirect(m_currCmdBuffer, m_indirectBuffer, ({{length(Kernel.Hierarchy.Implementations)}}-{{loop.index}}-1+{{Kernel.Hierarchy.IndirectOffset}})*sizeof(uint32_t)*4);
+  
+    {% endfor %}
+  }
   {% else if Kernel.IsIndirect %}
   vkCmdBindPipeline    (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   vkCmdDispatchIndirect(m_currCmdBuffer, m_indirectBuffer, {{Kernel.IndirectOffset}}*sizeof(uint32_t)*4);
