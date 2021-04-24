@@ -97,7 +97,9 @@ void {{MainClassName}}_Generated::InitHelpers()
 ## for Kernel in Kernels
 VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout()
 {
-  {% if UseSeparateUBO %}
+  {% if UseSeparateUBO and Kernel.IsVirtual %}
+  std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+3> dsBindings;
+  {% else if UseSeparateUBO or Kernel.IsVirtual %}
   std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+2> dsBindings;
   {% else %}
   std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+1> dsBindings;
@@ -112,19 +114,38 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout
   dsBindings[{{KernelARG.Id}}].pImmutableSamplers = nullptr;
 
 ## endfor
-  // binding for POD members stored in m_classDataBuffer
+  // binding for {% if Kernel.IsVirtual %}kgen_objData{% else %}POD members stored in m_classDataBuffer{% endif %}
+
   dsBindings[{{Kernel.ArgCount}}].binding            = {{Kernel.ArgCount}};
   dsBindings[{{Kernel.ArgCount}}].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
   dsBindings[{{Kernel.ArgCount}}].descriptorCount    = 1;
   dsBindings[{{Kernel.ArgCount}}].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
   dsBindings[{{Kernel.ArgCount}}].pImmutableSamplers = nullptr;
-  {% if UseSeparateUBO %}
+  {% if UseSeparateUBO and Kernel.IsVirtual %}
   
+  // binding for m_classDataBuffer
   dsBindings[{{Kernel.ArgCount}}+1].binding            = {{Kernel.ArgCount}}+1;
-  dsBindings[{{Kernel.ArgCount}}+1].descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  dsBindings[{{Kernel.ArgCount}}+1].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
   dsBindings[{{Kernel.ArgCount}}+1].descriptorCount    = 1;
   dsBindings[{{Kernel.ArgCount}}+1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
   dsBindings[{{Kernel.ArgCount}}+1].pImmutableSamplers = nullptr;
+  
+  // binding for separate ubo
+  dsBindings[{{Kernel.ArgCount}}+2].binding            = {{Kernel.ArgCount}}+1;
+  dsBindings[{{Kernel.ArgCount}}+2].descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  dsBindings[{{Kernel.ArgCount}}+2].descriptorCount    = 1;
+  dsBindings[{{Kernel.ArgCount}}+2].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[{{Kernel.ArgCount}}+2].pImmutableSamplers = nullptr;
+  {% else if UseSeparateUBO or Kernel.IsVirtual %}
+  
+  // binding for {% if UseSeparateUBO%}separate ubo{% else %}m_classDataBuffer {% endif %}
+
+  dsBindings[{{Kernel.ArgCount}}+1].binding            = {{Kernel.ArgCount}}+1;
+  dsBindings[{{Kernel.ArgCount}}+1].descriptorType     = {% if UseSeparateUBO %}VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER{% else %}VK_DESCRIPTOR_TYPE_STORAGE_BUFFER{% endif %};
+  dsBindings[{{Kernel.ArgCount}}+1].descriptorCount    = 1;
+  dsBindings[{{Kernel.ArgCount}}+1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[{{Kernel.ArgCount}}+1].pImmutableSamplers = nullptr;
+  {% else %}
   {% endif %}
   
   VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
@@ -200,6 +221,9 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   std::string shaderPath = a_filePath; 
   {% endif %}
   
+  {% if Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch %}
+  {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
+  {% else%}
   {% if UseSpecConstWgSize %}
   {
     uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
@@ -212,6 +236,7 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
   {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, 128); // at least 128 bytes for push constants
   {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);  
+  {% endif %} {# /* not Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch */ #}
   {% if Kernel.FinishRed %}
   
   {% if UseSpecConstWgSize %}
@@ -271,7 +296,7 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {{Kernel.Name}}Sorter             = m_pMaker->MakePipeline(device);
   {% else if Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch %} {# /* if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch */ #} 
   {% for Impl in Kernel.Hierarchy.Implementations %}
-
+  
   {% if UseSpecConstWgSize %}
   {
     uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
@@ -280,6 +305,9 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   }
   {% else %}
   m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_{{Impl.ClassName}}");
+  {% endif %}
+  {% if loop.index == 0 %}
+  {{Kernel.Name}}Layout = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, 128); // at least 128 bytes for push constants
   {% endif %}
   {{Kernel.Name}}PipelineArray[{{loop.index}}] = m_pMaker->MakePipeline(device);  
   {% endfor %}

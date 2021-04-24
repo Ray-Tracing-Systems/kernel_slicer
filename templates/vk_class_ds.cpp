@@ -49,7 +49,9 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
 ## for DescriptorSet in MainFunc.DescriptorSets
   // descriptor set #{{DescriptorSet.Id}}: {{DescriptorSet.KernelName}}Cmd ({{DescriptorSet.ArgNames}})
   {
-    {% if not DescriptorSet.IsServiceCall and UseSeparateUBO %}
+    {% if not DescriptorSet.IsServiceCall and UseSeparateUBO and DescriptorSet.IsVirtual %}
+    constexpr uint additionalSize = 3;
+    {% else if (not DescriptorSet.IsServiceCall and UseSeparateUBO) or (not DescriptorSet.IsServiceCall and DescriptorSet.IsVirtual) %}
     constexpr uint additionalSize = 2;
     {% else if not DescriptorSet.IsServiceCall or UseSeparateUBO %}
     constexpr uint additionalSize = 1;
@@ -78,8 +80,9 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
 
 ## endfor
     {% if not DescriptorSet.IsServiceCall %}
+    {% if DescriptorSet.IsVirtual %}
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}]        = VkDescriptorBufferInfo{};
-    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].buffer = {% if DescriptorSet.IsVirtual %}m_vdata.{{DescriptorSet.ObjectBufferName}}Buffer{% else %}m_classDataBuffer{% endif %};
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].buffer = m_vdata.{{DescriptorSet.ObjectBufferName}}Buffer;
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].offset = 0;
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].range  = VK_WHOLE_SIZE;  
 
@@ -92,7 +95,40 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pBufferInfo      = &descriptorBufferInfo[{{DescriptorSet.ArgNumber}}];
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pImageInfo       = nullptr;
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pTexelBufferView = nullptr;
-    {% endif %}
+    
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1]        = VkDescriptorBufferInfo{};
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].buffer = m_classDataBuffer;
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].offset = 0;
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].range  = VK_WHOLE_SIZE;  
+
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1]                  = VkWriteDescriptorSet{};
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].dstSet           = m_allGeneratedDS[{{DescriptorSet.Id}}];
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].dstBinding       = {{DescriptorSet.ArgNumber}}+1;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].descriptorCount  = 1;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].pBufferInfo      = &descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1];
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].pImageInfo       = nullptr;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].pTexelBufferView = nullptr;
+
+    {% else %}
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}]        = VkDescriptorBufferInfo{};
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].buffer = m_classDataBuffer;
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].offset = 0;
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].range  = VK_WHOLE_SIZE;  
+
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}]                  = VkWriteDescriptorSet{};
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].dstSet           = m_allGeneratedDS[{{DescriptorSet.Id}}];
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].dstBinding       = {{DescriptorSet.ArgNumber}};
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorCount  = 1;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pBufferInfo      = &descriptorBufferInfo[{{DescriptorSet.ArgNumber}}];
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pImageInfo       = nullptr;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pTexelBufferView = nullptr;
+
+    {% endif %} {#/*  DescriptorSet.IsVirtual */#}
+    {% endif %} {#/* not DescriptorSet.IsServiceCall */#}
     {% if UseSeparateUBO %} 
     
     const size_t uboId = descriptorBufferInfo.size()-1;

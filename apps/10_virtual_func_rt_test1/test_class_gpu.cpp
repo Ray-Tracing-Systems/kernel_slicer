@@ -189,8 +189,8 @@ void test_class_gpu()
     // }
     // int b = 3;
 
-    auto testIndirect = pGPUImpl->GetIndirectBufferData(pCopyHelper);
-    int c = 4;
+    //auto testIndirect = pGPUImpl->GetIndirectBufferData(pCopyHelper);
+    //int c = 4;
 
     //std::cout << "begin path tracing passes ... " << std::endl;
     //
