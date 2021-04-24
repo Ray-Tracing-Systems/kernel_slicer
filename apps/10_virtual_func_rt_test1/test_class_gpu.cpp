@@ -14,6 +14,8 @@
 #include "vulkan_basics.h"
 #include "test_class_generated.h"
 
+using LiteMath::uint4;
+
 class TestClass_GPU : public TestClass_Generated
 {
 public:
@@ -28,6 +30,13 @@ public:
   {
     std::vector<uint2> result(m_maxThreadCount);
     a_pCopyEngine->ReadBuffer(m_IMaterialObjPtrBuffer, 0, result.data(), result.size()*sizeof(uint2));
+    return result;
+  }
+
+  std::vector<uint4> GetIndirectBufferData(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
+  {
+    std::vector<uint4> result(5);
+    a_pCopyEngine->ReadBuffer(m_indirectBuffer, 0, result.data(), result.size()*sizeof(uint4));
     return result;
   }
 };
@@ -179,6 +188,9 @@ void test_class_gpu()
     //   }
     // }
     // int b = 3;
+
+    auto testIndirect = pGPUImpl->GetIndirectBufferData(pCopyHelper);
+    int c = 4;
 
     //std::cout << "begin path tracing passes ... " << std::endl;
     //

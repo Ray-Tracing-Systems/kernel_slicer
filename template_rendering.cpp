@@ -90,6 +90,7 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
   json hierarchy;
   hierarchy["Name"]             = h.interfaceName;
   hierarchy["IndirectDispatch"] = (h.dispatchType == kslicer::VKERNEL_INDIRECT_DISPATCH);
+  hierarchy["IndirectOffset"]   = h.indirectBlockOffset;
   
   hierarchy["Constants"]        = std::vector<std::string>();
   for(const auto& decl : h.usedDecls)
@@ -276,7 +277,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   
   auto dhierarchies             = a_classInfo.GetDispatchingHierarchies();
   data["DispatchHierarchies"]   = PutHierarchiesDataToJson(dhierarchies, compiler);
-
+  
+  data["IndirectBufferSize"] = a_classInfo.m_indirectBufferSize;
   data["IndirectDispatches"] = std::vector<std::string>();
   data["Kernels"]            = std::vector<std::string>();  
 
@@ -297,6 +299,19 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       indirectJson["ShaderPath"]   = outFilePath.c_str();
       indirectJson["Offset"]       = k.indirectBlockOffset;
       data["IndirectDispatches"].push_back(indirectJson);
+    }
+    else if(k.isMaker)
+    {
+      auto p = a_classInfo.m_vhierarchy.find(k.interfaceName);
+      if(p != a_classInfo.m_vhierarchy.end() && p->second.dispatchType == kslicer::VKERNEL_INDIRECT_DISPATCH)
+      {
+        json indirectJson;
+        indirectJson["KernelName"]   = kernName;
+        indirectJson["OriginalName"] = k.name;
+        indirectJson["ShaderPath"]   = outFilePath.c_str();
+        indirectJson["Offset"]       = k.indirectMakerOffset;
+        data["IndirectDispatches"].push_back(indirectJson);
+      }
     }
 
     json kernelJson;

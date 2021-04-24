@@ -272,6 +272,14 @@ namespace LiteMath
     unsigned int x, y;
   };
 
+  struct uint4
+  {
+    uint4() : x(0), y(0), z(0), w(0) {}
+    uint4(unsigned int a, unsigned int b, unsigned int c, unsigned int d) : x(a), y(b), z(c), w(d) {}
+
+    unsigned int x,y,z,w;
+  };
+
   struct ushort2
   {
     ushort2() : x(0), y(0) {}

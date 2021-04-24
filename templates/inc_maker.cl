@@ -6,10 +6,7 @@ __kernel void {{Kernel.Name}}_ZeroObjCounters({% include "inc_args.cl" %})
 { 
   const uint lid = get_local_id(0); 
   if(lid < {{length(Kernel.Hierarchy.Implementations)}})
-  {
     ubo->objNum_{{Kernel.Hierarchy.Name}}Src[lid] = 0;
-    ubo->objNum_{{Kernel.Hierarchy.Name}}Tst[lid] = 0;
-  }
 }
 
 {% endif %}
@@ -86,8 +83,11 @@ __kernel void {{Kernel.Name}}_CountTypeIntervals({% include "inc_args.cl" %})
   barrier(CLK_LOCAL_MEM_FENCE);
 
   if(lid < {{length(Kernel.Hierarchy.Implementations)}}+1)
+  {
     ubo->objNum_{{Kernel.Hierarchy.Name}}Acc[lid] = (lid == 0) ? 0 : objNum[lid-1];
-  
+    ubo->objNum_{{Kernel.Hierarchy.Name}}Off[lid] = (lid == 0) ? 0 : objNum[lid-1];
+  }
+
   //uint currSize = 0;
   //for(int i=0; i<{{length(Kernel.Hierarchy.Implementations)}}; i++)
   //{
@@ -154,5 +154,21 @@ __kernel void {{Kernel.Name}}_Sorter({% include "inc_args.cl" %})
 
   {% endfor %} {# /* Impl in Kernel.Hierarchy.Implementations */ #}
 }
+
+{% if not UseSpecConstWgSize %}
+__attribute__((reqd_work_group_size(32, 1, 1))) 
+{% endif %} 
+__kernel void {{Kernel.Name}}_UpdateIndirect(__global struct {{MainClassName}}_UBO_Data* ubo, __global uint4* indirectBuffer)
+{
+  const uint lid = get_local_id(0); 
+  if(lid < {{length(Kernel.Hierarchy.Implementations)}})
+  {
+    uint4 blocksNum = {1,1,1,0};
+    uint4 zero      = {0,0,0,0};
+    blocksNum.x = (ubo->objNum_{{Kernel.Hierarchy.Name}}Src[lid] + {{Kernel.WGSizeX}} - 1)/{{Kernel.WGSizeX}};
+    blocksNum   = (blocksNum.x == 0) ? zero : blocksNum;
+    indirectBuffer[{{Kernel.Hierarchy.IndirectOffset}}+lid] = blocksNum;
+  }
+} 
 
 {% endif %} {# /* Kernel.Hierarchy.IndirectDispatch */ #}

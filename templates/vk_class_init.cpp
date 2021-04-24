@@ -366,7 +366,7 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
 ## endfor
   
   {% if length(IndirectDispatches) > 0 %}
-  m_indirectBuffer = vkfw::CreateBuffer(device, {{length(IndirectDispatches)}}*sizeof(uint32_t)*4, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
+  m_indirectBuffer = vkfw::CreateBuffer(device, {{IndirectBufferSize}}*sizeof(uint32_t)*4, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
   memberVectors.push_back(m_indirectBuffer);
   {% endif %}
   if(memberVectors.size() > 0)

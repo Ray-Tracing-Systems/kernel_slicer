@@ -114,8 +114,9 @@ namespace kslicer
     uint32_t wgSize[3] = {256,1,1};              ///<! workgroup size for the case when setting wgsize with spec constant is not allowed
     uint32_t warpSize  = 32;                     ///<! warp size in which we can rely on to omit sync in reduction and e.t.c.
 
-    bool      isIndirect = false;                ///<! IPV pattern (currently); if loop size is defined by class member variable or vector size, we interpret it as indirect dispatching
-    uint32_t  indirectBlockOffset = 0;           ///<! IPV pattern (currently); for such kernels we have to know some offset in indirect buffer for thread blocks number (use int4 data for each kernel)
+    bool      isIndirect = false;                ///<! IPV pattern; if loop size is defined by class member variable or vector size, we interpret it as indirect dispatching
+    uint32_t  indirectBlockOffset = 0;           ///<! IPV pattern; for such kernels we have to know some offset in indirect buffer for thread blocks number (use int4 data for each kernel)
+    uint32_t  indirectMakerOffset = 0;           ///<! RTV pattern; kernel-makers have to update size in the indirect buffer  
   };
 
   enum class DATA_USAGE{ USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
@@ -536,6 +537,7 @@ namespace kslicer
       std::unordered_map<std::string, std::string> tagByClassName; 
 
       VKERNEL_IMPL_TYPE dispatchType = VKERNEL_SWITCH; ///<! simple variant by default
+      uint32_t indirectBlockOffset   = 0;
     };
     
     kslicer::VKERNEL_IMPL_TYPE defaultVkernelType = kslicer::VKERNEL_SWITCH;

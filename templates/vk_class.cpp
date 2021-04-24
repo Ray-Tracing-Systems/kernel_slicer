@@ -106,6 +106,7 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   {# /* --------------------------------------------------------------------------------------------------------------------------------------- */ #}
   {% if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch %}
   VkBufferMemoryBarrier objCounterBar = BarrierForObjCounters(m_classDataBuffer);
+  VkBufferMemoryBarrier barIndirect   = BarrierForIndirectBufferUpdate(m_indirectBuffer);
 
   // (1) zero obj. counters 
   //
@@ -129,6 +130,14 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   //
   vkCmdBindPipeline   (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Sorter);
   vkCmdDispatch       (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (pcData.m_sizeZ + blockSizeZ - 1) / blockSizeZ); 
+
+  // (5) update indirect buffer for futher vkernels dispatching
+  //
+  vkCmdBindDescriptorSets(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectUpdateLayout, 0, 1, &m_indirectUpdateDS, 0, nullptr);
+  vkCmdBindPipeline      (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectUpdate{{Kernel.Name}}Pipeline);
+  vkCmdDispatch          (m_currCmdBuffer, 1, 1, 1);
+  vkCmdPipelineBarrier   (m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0, nullptr, 1, &barIndirect, 0, nullptr);
+
   {% else if Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch %}
   // TODO: virtual kernel call via indirect dispatch
   //
