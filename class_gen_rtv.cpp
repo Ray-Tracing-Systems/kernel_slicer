@@ -281,8 +281,10 @@ class MemberRewriter : public kslicer::FunctionRewriter
 public:
   
   MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo,
-                 std::vector<kslicer::MainClassInfo::DImplFunc>& a_funcs, std::vector<std::string>& a_fields, const std::string& a_currClassName) : m_processed(a_funcs), m_fields(a_fields), m_className(a_currClassName),
-                                                                                                                                                    FunctionRewriter(R, a_compiler, a_codeInfo)
+                 std::vector<kslicer::MainClassInfo::DImplFunc>& a_funcs, std::vector<std::string>& a_fields, 
+                 const std::string& a_currClassName, const std::string& a_mainClassName) : m_processed(a_funcs), m_fields(a_fields), 
+                                                                                           m_className(a_currClassName), m_mainClassName(a_mainClassName),
+                                                                                           FunctionRewriter(R, a_compiler, a_codeInfo)
   { 
     
   }
@@ -328,6 +330,7 @@ public:
     
     if(WasNotRewrittenYet(fDecl))
     { 
+      //fDecl->dump();
       std::string funcSourceCode  = RecursiveRewrite(fDecl); // kslicer::GetRangeSourceCode(fDecl->getSourceRange(), m_compiler); 
       std::string funcSourceCode2 = funcSourceCode.substr(funcSourceCode.find("(")); 
       std::string retType         = funcSourceCode.substr(0, funcSourceCode.find(fname));
@@ -341,9 +344,9 @@ public:
       else
         ReplaceFirst(funcSourceCode2, "(", "(__global "       + classTypeName + endStr);
       
-      //ReplaceFirst(funcSourceCode2, "const override", ""); // TODO: make it more careful, seek const after ')' and before '{'
+      //ReplaceFirst(funcSourceCode2, "const override", ""); 
       //ReplaceFirst(funcSourceCode2, "override", "");
-  
+      //
       auto posOfBrace   = funcSourceCode2.find(")");
       auto posOfBracket = funcSourceCode2.find("{");
       
@@ -362,13 +365,26 @@ public:
         seekForReplace = (posC != std::string::npos && posC < posOfBracket) || (posO != std::string::npos && posO < posOfBracket);
         numIter++;
       } while (seekForReplace && numIter < 3);
-      
+
+      // replace main class name to UBO
+      //
+      //bool mainClassDataPass = false;
+      {
+        auto posClassName = funcSourceCode2.find(m_mainClassName, funcSourceCode2.find("("));
+        if(posClassName != std::string::npos && posClassName < posOfBrace)
+        {
+          funcSourceCode2.replace(posClassName, m_mainClassName.size(), "struct " + m_mainClassName + "_UBO_Data");
+          //mainClassDataPass = true;
+        }
+      }
+
       kslicer::MainClassInfo::DImplFunc funcData;
       funcData.decl          = fDecl;
       funcData.name          = fname;
       funcData.srcRewritten  = std::string("  ") + retType + classTypeName + "_" + fname + funcSourceCode2;
       funcData.isEmpty       = false;
       funcData.isConstMember = fDecl->isConst();
+      //funcData.mainClassPass = mainClassDataPass;
 
       if(clang::isa<clang::CompoundStmt>(fDecl->getBody()))
       {
@@ -410,6 +426,12 @@ public:
     return true;
   }
 
+  //bool VisitParmValDecl_Impl(clang::ParmVarDecl* decl) override // does not works for some reason
+  //{ 
+  //  auto text = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler);
+  //  return true; 
+  //} 
+
   bool VisitFieldDecl_Impl(clang::FieldDecl* pFieldDecl) override 
   { 
     clang::RecordDecl* pRecodDecl  = pFieldDecl->getParent();
@@ -424,6 +446,7 @@ private:
   std::vector<kslicer::MainClassInfo::DImplFunc>& m_processed;
   std::vector<std::string>&                       m_fields;
   const std::string&                              m_className;
+  const std::string&                              m_mainClassName;
   bool isCopy = false;
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -518,8 +541,10 @@ void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const cl
         DImplClass dImpl;
         dImpl.decl = decl;
         dImpl.name = decl->getNameAsString();
-        MemberRewriter rv(rewrite2, a_compiler, this, dImpl.memberFunctions, dImpl.fields, dImpl.name);  // extract all member functions of class that should be rewritten
-        rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));                                  //
+        // extract all member functions of class that should be rewritten
+        //
+        MemberRewriter rv(rewrite2, a_compiler, this, dImpl.memberFunctions, dImpl.fields, dImpl.name, this->mainClassName); 
+        rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));                                  
         
         dImpl.isEmpty = true;
         for(auto member : dImpl.memberFunctions)

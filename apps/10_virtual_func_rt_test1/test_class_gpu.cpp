@@ -33,12 +33,12 @@ public:
     return result;
   }
 
-  std::vector<uint4> GetIndirectBufferData(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
-  {
-    std::vector<uint4> result(5);
-    a_pCopyEngine->ReadBuffer(m_indirectBuffer, 0, result.data(), result.size()*sizeof(uint4));
-    return result;
-  }
+  //std::vector<uint4> GetIndirectBufferData(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
+  //{
+  //  std::vector<uint4> result(5);
+  //  a_pCopyEngine->ReadBuffer(m_indirectBuffer, 0, result.data(), result.size()*sizeof(uint4));
+  //  return result;
+  //}
 };
 
 void test_class_gpu()

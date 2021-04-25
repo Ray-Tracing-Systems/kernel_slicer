@@ -190,7 +190,7 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
   
   IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
 
-  pMaterial->kernel_GetColor(tid, out_color);
+  pMaterial->kernel_GetColor(tid, out_color, this);
 }
 
 //void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color)

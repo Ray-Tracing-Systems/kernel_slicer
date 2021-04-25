@@ -33,6 +33,8 @@ static inline float4x4 perspectiveMatrix(float fovy, float aspect, float zNear, 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+class TestClass;
+
 struct IMaterial
 {
   static constexpr uint32_t TAG_BITS = 4;          // number bits for type encoding in index; 
@@ -50,78 +52,9 @@ struct IMaterial
   virtual uint32_t GetTag() const = 0;
   virtual size_t   GetSizeOf() const = 0;
 
-  virtual void   kernel_GetColor(uint tid, __global uint* out_color) const = 0;
+  virtual void   kernel_GetColor(uint tid, __global uint* out_color, const TestClass* a_pGlobals) const = 0;
 };
 
-struct LambertMaterial : public IMaterial
-{
-  LambertMaterial(float3 a_color) { m_color[0] = a_color[0]; m_color[1] = a_color[1]; m_color[2] = a_color[2]; }
-  ~LambertMaterial() = delete;                    
-
-  float m_color[3];
-
-  void  kernel_GetColor(uint tid, __global uint* out_color) const override 
-  { 
-    out_color[tid] = RealColorToUint32_f3(float3(m_color[0], m_color[1], m_color[2])); 
-  }
-
-  uint32_t GetTag() const override { return TAG_LAMBERT; }
-  size_t   GetSizeOf() const override { return sizeof(LambertMaterial); }
-};
-
-struct PerfectMirrorMaterial : public IMaterial
-{
-  ~PerfectMirrorMaterial() = delete;
-  void kernel_GetColor(uint tid, __global uint* out_color) const override 
-  { 
-    out_color[tid] = RealColorToUint32_f3(float3(0,0,0)); 
-  }
-  uint32_t GetTag() const override { return TAG_MIRROR; }
-  size_t   GetSizeOf() const override { return sizeof(PerfectMirrorMaterial); }
-};
-
-struct EmissiveMaterial : public IMaterial
-{
-  ~EmissiveMaterial() = delete;
-  
-  float3 GetColor() const { return float3(1,1,1); }
-  
-  void   kernel_GetColor(uint tid, __global uint* out_color) const override 
-  { 
-    out_color[tid] = RealColorToUint32_f3(intensity*GetColor()); 
-  }
-
-  float  intensity;
-  uint32_t GetTag() const override { return TAG_EMISSIVE; }
-  size_t   GetSizeOf() const override { return sizeof(EmissiveMaterial); }
-};
-
-struct GGXGlossyMaterial : public IMaterial
-{
-  GGXGlossyMaterial(float3 a_color) { color[0] = a_color[0]; color[1] = a_color[1]; color[2] = a_color[2]; roughness = 0.5f; }
-  ~GGXGlossyMaterial() = delete;
-  
-  void  kernel_GetColor(uint tid, __global uint* out_color) const override 
-  { 
-    float redColor = std::max(1.0f, color[0]);
-    out_color[tid] = RealColorToUint32_f3(float3(redColor, color[1], color[2])); 
-  }
-
-  float color[3];
-  float roughness;
-  uint32_t GetTag() const override { return TAG_GGX_GLOSSY; }
-  size_t   GetSizeOf() const override { return sizeof(GGXGlossyMaterial); }
-};
-
-struct EmptyMaterial : public IMaterial
-{
-  EmptyMaterial() {}
-  ~EmptyMaterial() = delete;
-  void kernel_GetColor(uint tid, __global uint* out_color) const override  { }
-
-  uint32_t GetTag() const override { return TAG_EMPTY; }
-  size_t   GetSizeOf() const override { return sizeof(EmptyMaterial); }
-};
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -169,6 +102,8 @@ public:
 
   IMaterial* kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit);
 
+  float3 testColor = float3(0, 1, 1);
+
 protected:
   float3 camPos = float3(0.0f, 0.85f, 4.5f);
   void InitSpheresScene(int a_numSpheres, int a_seed = 0);
@@ -190,5 +125,82 @@ protected:
   std::vector<SphereMaterial>  spheresMaterials;
   std::vector<RandomGen>       m_randomGens;
 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct LambertMaterial : public IMaterial
+{
+  LambertMaterial(float3 a_color) { m_color[0] = a_color[0]; m_color[1] = a_color[1]; m_color[2] = a_color[2]; }
+  ~LambertMaterial() = delete;                    
+
+  float m_color[3];
+
+  void  kernel_GetColor(uint tid, __global uint* out_color, const TestClass* a_pGlobals) const override 
+  { 
+    out_color[tid] = RealColorToUint32_f3(float3(m_color[0], m_color[1], m_color[2])); 
+  }
+
+  uint32_t GetTag() const override { return TAG_LAMBERT; }
+  size_t   GetSizeOf() const override { return sizeof(LambertMaterial); }
+};
+
+struct PerfectMirrorMaterial : public IMaterial
+{
+  ~PerfectMirrorMaterial() = delete;
+  void kernel_GetColor(uint tid, __global uint* out_color, const TestClass* a_pGlobals) const override 
+  { 
+    out_color[tid] = RealColorToUint32_f3(float3(0,0,0)); 
+  }
+  uint32_t GetTag() const override { return TAG_MIRROR; }
+  size_t   GetSizeOf() const override { return sizeof(PerfectMirrorMaterial); }
+};
+
+struct EmissiveMaterial : public IMaterial
+{
+  ~EmissiveMaterial() = delete;
+  
+  float3 GetColor() const { return float3(1,1,1); }
+  
+  void   kernel_GetColor(uint tid, __global uint* out_color, const TestClass* a_pGlobals) const override 
+  { 
+    out_color[tid] = RealColorToUint32_f3(intensity*GetColor()*a_pGlobals->testColor); 
+  }
+
+  float  intensity;
+  uint32_t GetTag() const override { return TAG_EMISSIVE; }
+  size_t   GetSizeOf() const override { return sizeof(EmissiveMaterial); }
+};
+
+struct GGXGlossyMaterial : public IMaterial
+{
+  GGXGlossyMaterial(float3 a_color) { color[0] = a_color[0]; color[1] = a_color[1]; color[2] = a_color[2]; roughness = 0.5f; }
+  ~GGXGlossyMaterial() = delete;
+  
+  void  kernel_GetColor(uint tid, __global uint* out_color, const TestClass* a_pGlobals) const override 
+  { 
+    float redColor = std::max(1.0f, color[0]);
+    out_color[tid] = RealColorToUint32_f3(float3(redColor, color[1], color[2])); 
+  }
+
+  float color[3];
+  float roughness;
+  uint32_t GetTag() const override { return TAG_GGX_GLOSSY; }
+  size_t   GetSizeOf() const override { return sizeof(GGXGlossyMaterial); }
+};
+
+struct EmptyMaterial : public IMaterial
+{
+  EmptyMaterial() {}
+  ~EmptyMaterial() = delete;
+  void kernel_GetColor(uint tid, __global uint* out_color, const TestClass* a_pGlobals) const override  { }
+
+  uint32_t GetTag() const override { return TAG_EMPTY; }
+  size_t   GetSizeOf() const override { return sizeof(EmptyMaterial); }
+};
+
+
 
 #endif

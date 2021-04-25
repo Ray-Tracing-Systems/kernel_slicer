@@ -144,7 +144,7 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
     {% for Impl in Kernel.Hierarchy.Implementations %}
     vkCmdBindPipeline    (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}PipelineArray[{{length(Kernel.Hierarchy.Implementations)}}-{{loop.index}}-1]);
     vkCmdDispatchIndirect(m_currCmdBuffer, m_indirectBuffer, ({{length(Kernel.Hierarchy.Implementations)}}-{{loop.index}}-1+{{Kernel.Hierarchy.IndirectOffset}})*sizeof(uint32_t)*4);
-  
+
     {% endfor %}
   }
   {% else if Kernel.IsIndirect %}
