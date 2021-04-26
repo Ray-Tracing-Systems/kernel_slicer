@@ -501,6 +501,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["Args"]       = std::vector<std::string>();
       local["ArgNames"]   = std::vector<std::string>();
       local["IsServiceCall"] = dsArgs.isService;
+      local["IsVirtual"]     = false;
 
       uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)

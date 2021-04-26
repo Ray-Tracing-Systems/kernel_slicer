@@ -20,7 +20,7 @@ class SphHarm_GPU : public SphHarm_Generated
 public:
   SphHarm_GPU(){}
 
-  VkBufferUsageFlags GetAdditionalFlagsForUBO() override { return VK_BUFFER_USAGE_TRANSFER_SRC_BIT; }
+  VkBufferUsageFlags GetAdditionalFlagsForUBO() const override { return VK_BUFFER_USAGE_TRANSFER_SRC_BIT; }
   VkBuffer           GiveMeUBO() { return m_classDataBuffer; }
   VkBuffer           GiveMeTempBuffer() { return m_vdata.tmpred012Buffer; }
 };

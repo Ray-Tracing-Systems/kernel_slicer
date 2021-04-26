@@ -264,7 +264,7 @@
                         "-mainClass", "RedPixels", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
-                        "-cl-std=", "C++",
+                        //"-cl-std=", "C++",
                         "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",

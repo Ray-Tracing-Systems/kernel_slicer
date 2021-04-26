@@ -52,7 +52,7 @@ struct IMaterial
   virtual uint32_t GetTag() const = 0;
   virtual size_t   GetSizeOf() const = 0;
 
-  virtual void   kernel_GetColor(uint tid, __global uint* out_color, const TestClass* a_pGlobals) const = 0;
+  virtual void   kernel_GetColor(uint tid, __global uint* out_color) const = 0;
 };
 
 
@@ -138,7 +138,7 @@ struct LambertMaterial : public IMaterial
 
   float m_color[3];
 
-  void  kernel_GetColor(uint tid, __global uint* out_color, const TestClass* a_pGlobals) const override 
+  void  kernel_GetColor(uint tid, __global uint* out_color) const override 
   { 
     out_color[tid] = RealColorToUint32_f3(float3(m_color[0], m_color[1], m_color[2])); 
   }
@@ -150,7 +150,7 @@ struct LambertMaterial : public IMaterial
 struct PerfectMirrorMaterial : public IMaterial
 {
   ~PerfectMirrorMaterial() = delete;
-  void kernel_GetColor(uint tid, __global uint* out_color, const TestClass* a_pGlobals) const override 
+  void kernel_GetColor(uint tid, __global uint* out_color) const override 
   { 
     out_color[tid] = RealColorToUint32_f3(float3(0,0,0)); 
   }
@@ -164,9 +164,9 @@ struct EmissiveMaterial : public IMaterial
   
   float3 GetColor() const { return float3(1,1,1); }
   
-  void   kernel_GetColor(uint tid, __global uint* out_color, const TestClass* a_pGlobals) const override 
+  void   kernel_GetColor(uint tid, __global uint* out_color) const override 
   { 
-    out_color[tid] = RealColorToUint32_f3(intensity*GetColor()*a_pGlobals->testColor); 
+    out_color[tid] = RealColorToUint32_f3(intensity*GetColor()); 
   }
 
   float  intensity;
@@ -179,7 +179,7 @@ struct GGXGlossyMaterial : public IMaterial
   GGXGlossyMaterial(float3 a_color) { color[0] = a_color[0]; color[1] = a_color[1]; color[2] = a_color[2]; roughness = 0.5f; }
   ~GGXGlossyMaterial() = delete;
   
-  void  kernel_GetColor(uint tid, __global uint* out_color, const TestClass* a_pGlobals) const override 
+  void  kernel_GetColor(uint tid, __global uint* out_color) const override 
   { 
     float redColor = std::max(1.0f, color[0]);
     out_color[tid] = RealColorToUint32_f3(float3(redColor, color[1], color[2])); 
@@ -195,7 +195,7 @@ struct EmptyMaterial : public IMaterial
 {
   EmptyMaterial() {}
   ~EmptyMaterial() = delete;
-  void kernel_GetColor(uint tid, __global uint* out_color, const TestClass* a_pGlobals) const override  { }
+  void kernel_GetColor(uint tid, __global uint* out_color) const override  { }
 
   uint32_t GetTag() const override { return TAG_EMPTY; }
   size_t   GetSizeOf() const override { return sizeof(EmptyMaterial); }
