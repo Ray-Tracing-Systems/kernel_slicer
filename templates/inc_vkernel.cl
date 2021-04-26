@@ -43,13 +43,16 @@ __attribute__((reqd_work_group_size({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Ke
 {% endif %} 
 __kernel void {{Kernel.Name}}(
 ## for Arg in Kernel.Args 
+  {% if not Arg.IsUBO %}
   __global {{Arg.Type}} {{Arg.Name}},
+  {% endif %}
 ## endfor
 ## for UserArg in Kernel.UserArgs 
   {{UserArg.Type}} {{UserArg.Name}},
 ## endfor
   __global uint2       * kgen_objPtrData,
   __global unsigned int* kgen_objData,
+  __global struct {{MainClassName}}_UBO_Data* ubo,
   const uint {{Kernel.threadIdName1}}, 
   const uint {{Kernel.threadIdName2}},
   const uint {{Kernel.threadIdName3}},
