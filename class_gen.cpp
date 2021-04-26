@@ -237,12 +237,14 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
 {
   std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> args;
   for (const auto& arg : a_kernel.args) 
-  {    
+  { 
     if(!arg.isThreadID && !arg.isLoopSize && !arg.IsUser())
     { 
       ArgTypeAndNamePair arg2;
       arg2.argName  = arg.name;
       arg2.typeName = RemoveTypeNamespaces(arg.type);
+      arg2.isUBO    = (arg.type.find(std::string("class ")  + mainClassName) != std::string::npos || 
+                       arg.type.find(std::string("struct ") + mainClassName) != std::string::npos);
       args.push_back(arg2);
     }
   }

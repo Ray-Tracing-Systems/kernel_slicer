@@ -373,7 +373,7 @@ public:
         auto posClassName = funcSourceCode2.find(m_mainClassName, funcSourceCode2.find("("));
         if(posClassName != std::string::npos && posClassName < posOfBrace)
         {
-          funcSourceCode2.replace(posClassName, m_mainClassName.size(), "struct " + m_mainClassName + "_UBO_Data");
+          funcSourceCode2.replace(posClassName, m_mainClassName.size(), "__global struct " + m_mainClassName + "_UBO_Data");
           //mainClassDataPass = true;
         }
       }

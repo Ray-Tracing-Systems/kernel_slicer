@@ -330,7 +330,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     size_t actualSize     = 0;
     for(const auto& arg : k.args)
     {
-      if(arg.isThreadID || arg.isLoopSize || arg.IsUser()) // exclude TID and loopSize args bindings
+      const auto pos1 = arg.type.find(std::string("class ")  + a_classInfo.mainClassName);
+      const auto pos2 = arg.type.find(std::string("struct ") + a_classInfo.mainClassName);
+      if(arg.isThreadID || arg.isLoopSize || arg.IsUser() ||     // exclude TID and loopSize args bindings
+         pos1 != std::string::npos || pos2 != std::string::npos) // exclude special case of passing MainClass to virtual kernels
         continue;
       
       json argData;
@@ -502,7 +505,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
-        if(!handMadeKernels && (pFoundKernel->second.args[j].isThreadID || pFoundKernel->second.args[j].isLoopSize || pFoundKernel->second.args[j].IsUser()))
+        if(!handMadeKernels && (pFoundKernel->second.args[j].isThreadID || pFoundKernel->second.args[j].isLoopSize || pFoundKernel->second.args[j].IsUser() ||
+                                dsArgs.descriptorSetsInfo[j].varName == "this")) // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
           continue;
 
         const std::string dsArgName = GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j].varName);
@@ -763,8 +767,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     for(auto commonArg : commonArgs)
     {
       json argj;
-      argj["Type"] = a_classInfo.pShaderCC->ProcessBufferType(commonArg.typeName);
-      argj["Name"] = commonArg.argName;
+      argj["Type"]  = a_classInfo.pShaderCC->ProcessBufferType(commonArg.typeName);
+      argj["Name"]  = commonArg.argName;
+      argj["IsUBO"] = commonArg.isUBO;
       args.push_back(argj);
     }
 
@@ -797,6 +802,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Type"]       = a_classInfo.pShaderCC->ProcessBufferType(buffType);
       argj["Name"]       = pVecMember->second.name;
       argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
+      argj["IsUBO"]      = false;
       args.push_back(argj);
       vecs.push_back(argj);
     }
@@ -806,6 +812,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       json argj; 
       argj["Type"]       = "uint2       *";
       argj["Name"]       = "kgen_objPtrData";
+      argj["IsUBO"]      = false;
       args.push_back(argj);
     }
     
@@ -836,8 +843,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     for(const auto& arg : userArgsArr)
     {
       json argj;
-      argj["Type"] = a_classInfo.RemoveTypeNamespaces(arg.type);
-      argj["Name"] = arg.name;
+      argj["Type"]  = a_classInfo.RemoveTypeNamespaces(arg.type);
+      argj["Name"]  = arg.name;
+      argj["IsUBO"] = false;
       userArgs.push_back(argj);
     }
     

@@ -35,8 +35,10 @@
 
 namespace {{Kernel.Name}}_REGION {
 
-## for Arg in Kernel.Args 
-[[using spirv: buffer, binding({{ loop.index }})]] {{Arg.Type}} {{Arg.Name}}[];  
+## for Arg in Kernel.Args
+{% if not Arg.IsUBO %}  
+[[using spirv: buffer, binding({{ loop.index }})]] {{Arg.Type}} {{Arg.Name}}[]; 
+{% endif %} 
 ## endfor
 [[using spirv: buffer, binding({{ Kernel.UBOBinding }})]] struct {{MainClassName}}_UBO_Data ubo;
 

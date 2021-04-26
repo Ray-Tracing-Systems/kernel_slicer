@@ -494,6 +494,7 @@ namespace kslicer
       std::string argName;
       std::string sizeName;
       uint32_t    id;       ///<! used to preserve or change loops order
+      bool        isUBO = false;
     };
    
     virtual std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const; 
