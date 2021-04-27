@@ -92,7 +92,8 @@ void TestClass::InitSpheresScene(int a_numSpheres, int a_seed)
   m_materialOffsets[6+1] = PackObject(pData, new (pData) LambertMaterial(float3(0.25,0.0,0.5))                 );
   m_materialOffsets[7+1] = PackObject(pData, new (pData) PerfectMirrorMaterial);
   m_materialOffsets[8+1] = PackObject(pData, new (pData) PerfectMirrorMaterial);
-  m_materialOffsets[9+1] = PackObject(pData, new (pData) EmissiveMaterial);  
+  m_materialOffsets[9+1] = PackObject(pData, new (pData) EmissiveMaterial(10.0f));  
+  m_emissiveMaterialId   = 10;
 }
 
 int TestClass::LoadScene(const char* bvhPath, const char* meshPath)

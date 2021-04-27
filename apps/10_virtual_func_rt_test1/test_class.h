@@ -102,7 +102,21 @@ public:
 
   IMaterial* kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit);
 
-  float3 testColor = float3(0, 1, 1);
+  struct LightGeom
+  {
+    float3 boxMin;
+    float3 boxMax;
+  };
+  
+
+  float3    testColor = float3(0, 1, 1);
+  uint32_t  m_emissiveMaterialId = 0;
+  LightGeom m_lightGeom = {float3(-0.3f, 2.0f, -0.3f), 
+                           float3(+0.3f, 2.0f, +0.3f)   
+                           };
+
+  static constexpr uint HIT_TRIANGLE_GEOM   = 0;
+  static constexpr uint HIT_FLAT_LIGHT_GEOM = 1;
 
 protected:
   float3 camPos = float3(0.0f, 0.85f, 4.5f);
@@ -160,6 +174,7 @@ struct PerfectMirrorMaterial : public IMaterial
 
 struct EmissiveMaterial : public IMaterial
 {
+  EmissiveMaterial(float a_intensity) : intensity(a_intensity) {}
   ~EmissiveMaterial() = delete;
   
   float3 GetColor() const { return float3(1,1,1); }

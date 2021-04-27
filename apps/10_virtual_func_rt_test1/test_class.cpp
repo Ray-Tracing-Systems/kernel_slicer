@@ -128,6 +128,26 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
     nodeIdx = (nodeIdx == 0) ? 0xFFFFFFFE : nodeIdx;
   }
   
+  // intersect flat light under roof
+  {
+    const float tLightHit  = (m_lightGeom.boxMax.y - rayPos.y)*rayDirInv.y;
+    const float4 hit_point = rayPos + tLightHit*rayDir;
+    
+    bool is_hit = (hit_point.x > m_lightGeom.boxMin.x) && (hit_point.x < m_lightGeom.boxMax.x) &&
+                  (hit_point.z > m_lightGeom.boxMin.z) && (hit_point.z < m_lightGeom.boxMax.z) &&
+                  (tLightHit < res.t);
+  
+    if(is_hit)
+    {
+      res.primId = 0;
+      res.instId = -1;
+      res.geomId = HIT_FLAT_LIGHT_GEOM;
+      res.t      = tLightHit;
+    }
+    else
+      res.geomId = HIT_TRIANGLE_GEOM;
+  }
+  
   *out_hit = res;
   return (res.primId != -1);
 }
@@ -160,13 +180,18 @@ IMaterial* MakeObjPtr(uint32_t objectPtr, __global const uint32_t* a_data)
 
 IMaterial* TestClass::kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit)
 {
-  uint32_t objPtr = 0;
-  int primId = in_hit->primId;
-  if(primId != -1)
+  uint32_t objPtr = 0;  
+ 
+  if(in_hit->geomId == HIT_FLAT_LIGHT_GEOM)
   {
-    const uint32_t mtId = m_materialIds[primId]+1; // +1 due to empty object
+    objPtr = m_materialOffsets[m_emissiveMaterialId];
+  }
+  else if(in_hit->primId != -1)
+  {
+    const uint32_t mtId = m_materialIds[in_hit->primId]+1; // +1 due to empty object
     objPtr = m_materialOffsets[mtId];
   }
+
   return MakeObjPtr(objPtr, m_materialData.data());
 }
 
