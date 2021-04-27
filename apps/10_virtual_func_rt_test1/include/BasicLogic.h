@@ -14,6 +14,12 @@ typedef struct Lite_HitT
   int   geomId;
 } Lite_Hit;
 
+typedef struct LightGeomT
+{
+  float3 boxMin;
+  float3 boxMax;
+} LightGeom;
+
 static inline float3 EyeRayDir(float x, float y, float w, float h, float4x4 a_mViewProjInv) // g_mViewProjInv
 {
   float4 pos = make_float4( 2.0f * (x + 0.5f) / w - 1.0f, 

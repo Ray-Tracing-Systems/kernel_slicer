@@ -102,13 +102,6 @@ public:
 
   IMaterial* kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit);
 
-  struct LightGeom
-  {
-    float3 boxMin;
-    float3 boxMax;
-  };
-  
-
   float3    testColor = float3(0, 1, 1);
   uint32_t  m_emissiveMaterialId = 0;
   LightGeom m_lightGeom = {float3(-0.3f, 2.0f, -0.3f), 
