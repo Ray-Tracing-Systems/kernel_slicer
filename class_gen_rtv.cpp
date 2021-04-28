@@ -286,7 +286,7 @@ class MemberRewriter : public kslicer::FunctionRewriter
 public:
   
   MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::MainClassInfo::DImplClass& dImpl) : 
-                 m_processed(dImpl.memberFunctions), m_fields(dImpl.fields), m_className(dImpl.name), m_mainClassName(a_codeInfo->mainClassName), FunctionRewriter(R, a_compiler, a_codeInfo)
+                 m_processed(dImpl.memberFunctions), m_fields(dImpl.fields), m_className(dImpl.name), m_mainClassName(a_codeInfo->mainClassName), FunctionRewriter(R, a_compiler, a_codeInfo), m_codeInfo(a_codeInfo)
   { 
     
   }
@@ -315,6 +315,38 @@ public:
     return true;
   }
   
+  std::string RewriteMemberDecl(clang::CXXMethodDecl* fDecl, const std::string& classTypeName)
+  {
+    std::string fname  = fDecl->getNameInfo().getName().getAsString();
+    std::string result = m_codeInfo->RemoveTypeNamespaces(fDecl->getReturnType().getAsString()) + " " + classTypeName + "_" + fname + "(__global const " + classTypeName + "* self";
+    if(fDecl->getNumParams() != 0)
+      result += ", ";
+
+    bool isKernel = m_codeInfo->IsKernel(fname); 
+
+    for(uint32_t i=0; i < fDecl->getNumParams(); i++)
+    {
+      const clang::ParmVarDecl* pParam  = fDecl->getParamDecl(i);
+      const clang::QualType typeOfParam =	pParam->getType();
+
+      if(typeOfParam.getAsString().find(m_mainClassName) != std::string::npos)
+      {
+        result += "__global struct " + m_mainClassName + "_UBO_Data* " + pParam->getNameAsString();
+      }
+      else
+      {
+        if(typeOfParam->isPointerType() && isKernel)
+          result += "__global ";
+        result += kslicer::GetRangeSourceCode(pParam->getSourceRange(), m_compiler); 
+      }
+
+      if(i!=fDecl->getNumParams()-1)
+        result += ", ";
+    }
+
+    return result + ")";
+  }
+
   bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) override
   {
     if(isCopy)
@@ -333,57 +365,13 @@ public:
     if(WasNotRewrittenYet(fDecl))
     { 
       //fDecl->dump();
-      std::string funcSourceCode  = RecursiveRewrite(fDecl); // kslicer::GetRangeSourceCode(fDecl->getSourceRange(), m_compiler); 
-      std::string funcSourceCode2 = funcSourceCode.substr(funcSourceCode.find("(")); 
-      std::string retType         = funcSourceCode.substr(0, funcSourceCode.find(fname));
-  
-      std::string endStr =  "* self, ";
-      if(fDecl->getNumParams() == 0)
-        endStr = "* self";
-
-      if(fDecl->isConst())
-        ReplaceFirst(funcSourceCode2, "(", "(__global const " + classTypeName + endStr);
-      else
-        ReplaceFirst(funcSourceCode2, "(", "(__global "       + classTypeName + endStr);
-      
-      //ReplaceFirst(funcSourceCode2, "const override", ""); 
-      //ReplaceFirst(funcSourceCode2, "override", "");
-      //
-      auto posOfBrace   = funcSourceCode2.find(")");
-      auto posOfBracket = funcSourceCode2.find("{");
-      
-      bool seekForReplace = false;
-      int numIter = 0;
-      do
-      {
-        auto posC = funcSourceCode2.find("const",    posOfBrace);
-        auto posO = funcSourceCode2.find("override", posOfBrace);
-        
-        if(posO != std::string::npos && posO < posOfBracket)
-          funcSourceCode2.erase(posO, 8); // "override"
-        else if(posC != std::string::npos && posC < posOfBracket)
-          funcSourceCode2.erase(posC, 5); // "const"
-
-        seekForReplace = (posC != std::string::npos && posC < posOfBracket) || (posO != std::string::npos && posO < posOfBracket);
-        numIter++;
-      } while (seekForReplace && numIter < 3);
-
-      // replace main class name to UBO
-      //
-      //bool mainClassDataPass = false;
-      {
-        auto posClassName = funcSourceCode2.find(m_mainClassName, funcSourceCode2.find("("));
-        if(posClassName != std::string::npos && posClassName < posOfBrace)
-        {
-          funcSourceCode2.replace(posClassName, m_mainClassName.size(), "__global struct " + m_mainClassName + "_UBO_Data");
-          //mainClassDataPass = true;
-        }
-      }
+      std::string declSource = RewriteMemberDecl(fDecl, classTypeName);
+      std::string bodySource = RecursiveRewrite(fDecl->getBody());
 
       kslicer::MainClassInfo::DImplFunc funcData;
       funcData.decl          = fDecl;
       funcData.name          = fname;
-      funcData.srcRewritten  = std::string("  ") + retType + classTypeName + "_" + fname + funcSourceCode2;
+      funcData.srcRewritten  = declSource + bodySource;
       funcData.isEmpty       = false;
       funcData.isConstMember = fDecl->isConst();
       //funcData.mainClassPass = mainClassDataPass;
@@ -449,6 +437,7 @@ private:
   std::vector<std::string>&                       m_fields;
   const std::string&                              m_className;
   const std::string&                              m_mainClassName;
+  kslicer::MainClassInfo*                         m_codeInfo = nullptr;
   bool isCopy = false;
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////

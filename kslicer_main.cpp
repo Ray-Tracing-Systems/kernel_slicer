@@ -543,14 +543,6 @@ int main(int argc, const char **argv)
       kernel.indirectBlockOffset = inputCodeInfo.m_indirectBufferSize;
       inputCodeInfo.m_indirectBufferSize++;
     }
-    else if(kernel.isMaker)
-    {
-      auto p = inputCodeInfo.m_vhierarchy.find(kernel.interfaceName);
-      assert(p != inputCodeInfo.m_vhierarchy.end());
-      kernel.indirectMakerOffset    = inputCodeInfo.m_indirectBufferSize;
-      p->second.indirectBlockOffset = inputCodeInfo.m_indirectBufferSize;
-      inputCodeInfo.m_indirectBufferSize += p->second.implementations.size(); // allocate place for all implementations
-    }
 
     inputCodeInfo.VisitAndPrepare_KF(kernel, compiler);
     
@@ -616,6 +608,19 @@ int main(int argc, const char **argv)
     std::cout << "{" << std::endl;
     inputCodeInfo.ProcessDispatchHierarchies(firstPassData.rv.m_classList, compiler);
     inputCodeInfo.ExtractHierarchiesConstants(compiler, Tool);
+
+    for(auto& k : inputCodeInfo.kernels)
+    {
+      if(k.second.isMaker)
+      {
+        auto p = inputCodeInfo.m_vhierarchy.find(k.second.interfaceName);
+        assert(p != inputCodeInfo.m_vhierarchy.end());
+        k.second.indirectMakerOffset  = inputCodeInfo.m_indirectBufferSize;
+        p->second.indirectBlockOffset = inputCodeInfo.m_indirectBufferSize;
+        inputCodeInfo.m_indirectBufferSize += p->second.implementations.size(); // allocate place for all implementations
+      }
+    }
+
     std::cout << "}" << std::endl;
     std::cout << std::endl;
   }
