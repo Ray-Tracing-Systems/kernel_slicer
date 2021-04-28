@@ -53,8 +53,43 @@ struct IMaterial
   virtual size_t   GetSizeOf() const = 0;
 
   virtual void   kernel_GetColor(uint tid, __global uint* out_color) const = 0;
+  virtual void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
+                                         const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
+                                         float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
+                                         float4* accumColor, float4* accumThoroughput) const = 0;
 };
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+static inline float3 SphericalDirectionPBRT(const float sintheta, const float costheta, const float phi) 
+{ 
+  return make_float3(sintheta * cos(phi), sintheta * sin(phi), costheta); 
+}
+
+static inline float GGX_Distribution(const float cosThetaNH, const float alpha)
+{
+  const float alpha2  = alpha * alpha;
+  const float NH_sqr  = clamp(cosThetaNH * cosThetaNH, 0.0f, 1.0f);
+  const float den     = NH_sqr * alpha2 + (1.0f - NH_sqr);
+  return alpha2 / fmax(M_PI * den * den, 1e-6f);
+}
+
+static inline float GGX_GeomShadMask(const float cosThetaN, const float alpha)
+{
+  // Height - Correlated G.
+  //const float tanNV      = sqrt(1.0f - cosThetaN * cosThetaN) / cosThetaN;
+  //const float a          = 1.0f / (alpha * tanNV);
+  //const float lambda     = (-1.0f + sqrt(1.0f + 1.0f / (a*a))) / 2.0f;
+  //const float G          = 1.0f / (1.0f + lambda);
+
+  // Optimized and equal to the commented-out formulas on top.
+  const float cosTheta_sqr = clamp(cosThetaN*cosThetaN, 0.0f, 1.0f);
+  const float tan2         = (1.0f - cosTheta_sqr) / fmax(cosTheta_sqr, 1e-6f);
+  const float GP           = 2.0f / (1.0f + sqrt(1.0f + alpha * alpha * tan2));
+  return GP;
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -75,28 +110,21 @@ public:
 
   void PackXY(uint tidX, uint tidY, uint* out_pakedXY);
   void CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color);
-  //void StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color);
+  void NaivePathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color);
 
   void kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY);
 
   void kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar);        // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 
   bool kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
-                       const uint* indicesReordered, const float4* meshVerts,
-                       Lite_Hit* out_hit);
-  
-  //void kernel_GetMaterialColor(uint tid, const Lite_Hit* in_hit, 
-  //                             uint* out_color);
+                       Lite_Hit* out_hit, float2* out_bars);
 
   void kernel_InitAccumData(uint tid, float4* accumColor, float4* accumuThoroughput);
   
-  //void kernel_NextBounce(uint tid, const Lite_Hit* in_hit, 
-  //                       float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput);
-
   void kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* out_color);
 
-  //void kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, 
-  //                              float4* out_color);
+  void kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, 
+                                float4* out_color);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -113,7 +141,7 @@ public:
 
 protected:
   float3 camPos = float3(0.0f, 0.85f, 4.5f);
-  void InitSpheresScene(int a_numSpheres, int a_seed = 0);
+  void InitSceneMaterials(int a_numSpheres, int a_seed = 0);
 
   uint32_t PackObject(uint32_t*& pData, IMaterial* a_pObject);
 
@@ -129,7 +157,6 @@ protected:
   std::vector<uint32_t>        m_materialOffsets;
 
   float4x4                     m_worldViewProjInv;
-  std::vector<SphereMaterial>  spheresMaterials;
   std::vector<RandomGen>       m_randomGens;
 };
 
@@ -150,6 +177,34 @@ struct LambertMaterial : public IMaterial
     out_color[tid] = RealColorToUint32_f3(float3(m_color[0], m_color[1], m_color[2])); 
   }
 
+  void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
+                                 const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
+                                 float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
+                                 float4* accumColor, float4* accumThoroughput) const override
+  {
+    const Lite_Hit lHit  = *in_hit;
+    const float3 ray_dir = to_float3(*rayDirAndFar);
+    
+    SurfaceHit hit;
+    hit.pos  = to_float3(*rayPosAndNear) + lHit.t*ray_dir;
+    hit.norm = EvalSurfaceNormal(ray_dir, lHit.primId, *in_bars, in_indices, in_vnorm);
+
+    RandomGen gen   = *pGen;
+    const float2 uv = rndFloat2_Pseudo(&gen);
+    *pGen = gen;
+
+    const float3 newDir   = MapSampleToCosineDistribution(uv.x, uv.y, hit.norm, hit.norm, 1.0f);
+    const float  cosTheta = dot(newDir, hit.norm);
+  
+    const float pdfVal   = cosTheta * INV_PI;
+    const float3 brdfVal = (cosTheta > 1e-5f) ? float3(m_color[0], m_color[1], m_color[2]) * INV_PI : float3(0,0,0);
+    const float3 bxdfVal = brdfVal * (1.0f / fmax(pdfVal, 1e-10f));
+    
+    *rayPosAndNear    = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
+    *rayDirAndFar     = to_float4(newDir, MAXFLOAT);
+    *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f);
+  }
+ 
   uint32_t GetTag() const override { return TAG_LAMBERT; }
   size_t   GetSizeOf() const override { return sizeof(LambertMaterial); }
 };
@@ -161,6 +216,28 @@ struct PerfectMirrorMaterial : public IMaterial
   { 
     out_color[tid] = RealColorToUint32_f3(float3(0,0,0)); 
   }
+  
+  void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
+                                 const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
+                                 float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen,
+                                 float4* accumColor, float4* accumThoroughput) const override
+  {
+    const Lite_Hit lHit  = *in_hit;
+    const float3 ray_dir = to_float3(*rayDirAndFar);
+
+    SurfaceHit hit;
+    hit.pos  = to_float3(*rayPosAndNear) + lHit.t*ray_dir;
+    hit.norm = EvalSurfaceNormal(ray_dir, lHit.primId, *in_bars, in_indices, in_vnorm);
+     
+    float3 newDir = reflect(ray_dir, hit.norm);
+    if (dot(ray_dir, hit.norm) > 0.0f)
+      newDir = ray_dir;
+    
+    *rayPosAndNear     = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
+    *rayDirAndFar      = to_float4(newDir, MAXFLOAT);
+    *accumThoroughput *= float4(0.85f, 0.85f, 0.85f, 0.0f);
+  }
+
   uint32_t GetTag() const override { return TAG_MIRROR; }
   size_t   GetSizeOf() const override { return sizeof(PerfectMirrorMaterial); }
 };
@@ -177,6 +254,21 @@ struct EmissiveMaterial : public IMaterial
     out_color[tid] = RealColorToUint32_f3(intensity*GetColor()); 
   }
 
+  void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
+                                 const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
+                                 float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen,
+                                 float4* accumColor, float4* accumThoroughput) const override
+  {
+    float4 emissiveColor = to_float4(intensity*GetColor(), 0.0f);
+    const float3 ray_dir = to_float3(*rayDirAndFar);
+    if(ray_dir.y <= 0.0f)
+      emissiveColor = float4(0,0,0,0);
+    
+    *accumColor    = emissiveColor*(*accumThoroughput);
+    *rayPosAndNear = make_float4(0,10000000.0f,0,0); // shoot ray out of scene
+    *rayDirAndFar  = make_float4(0,1.0f,0,0);        // 
+  }
+
   float  intensity;
   uint32_t GetTag() const override { return TAG_EMISSIVE; }
   size_t   GetSizeOf() const override { return sizeof(EmissiveMaterial); }
@@ -184,13 +276,83 @@ struct EmissiveMaterial : public IMaterial
 
 struct GGXGlossyMaterial : public IMaterial
 {
-  GGXGlossyMaterial(float3 a_color) { color[0] = a_color[0]; color[1] = a_color[1]; color[2] = a_color[2]; roughness = 0.5f; }
+  GGXGlossyMaterial(float3 a_color) { color[0] = a_color[0]; color[1] = a_color[1]; color[2] = a_color[2]; roughness = 0.3f; }
   ~GGXGlossyMaterial() = delete;
   
   void  kernel_GetColor(uint tid, __global uint* out_color) const override 
   { 
     float redColor = std::max(1.0f, color[0]);
     out_color[tid] = RealColorToUint32_f3(float3(redColor, color[1], color[2])); 
+  }
+
+  void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
+                           const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
+                           float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen,
+                           float4* accumColor, float4* accumThoroughput) const override
+  {
+    const Lite_Hit lHit  = *in_hit;
+    const float3 ray_dir = to_float3(*rayDirAndFar);
+
+    SurfaceHit hit;
+    hit.pos  = to_float3(*rayPosAndNear) + lHit.t*ray_dir;
+    hit.norm = EvalSurfaceNormal(ray_dir, lHit.primId, *in_bars, in_indices, in_vnorm);
+
+    RandomGen gen   = *pGen;
+    const float2 uv = rndFloat2_Pseudo(&gen);
+    *pGen = gen;
+
+    //const float3 newDir   = MapSampleToCosineDistribution(uv.x, uv.y, hit.norm, hit.norm, 1.0f);
+    //const float  cosTheta = dot(newDir, hit.norm);
+    //
+    //const float pdfVal   = cosTheta * INV_PI;
+    //const float3 brdfVal = (cosTheta > 1e-5f) ? float3(color[0], color[1], color[2]) * INV_PI : float3(0,0,0);
+    //const float3 bxdfVal = brdfVal * (1.0f / fmax(pdfVal, 1e-10f)); 
+
+    const float  roughSqr   = roughness * roughness;
+    float3 nx, ny, nz       = hit.norm;
+    CoordinateSystem(nz, &nx, &ny);
+
+    // to PBRT coordinate system
+    const float3 wo = make_float3(-dot(ray_dir, nx), -dot(ray_dir, ny), -dot(ray_dir, nz));  // wo (output) = v = ray_dir
+
+    // Compute sampled half-angle vector wh
+    const float phi       = uv.x * M_TWOPI;
+    const float cosTheta  = clamp(sqrt((1.0f - uv.y) / (1.0f + roughSqr * roughSqr * uv.y - uv.y)), 0.0f, 1.0f);
+    const float sinTheta  = sqrt(1.0f - cosTheta * cosTheta);
+    const float3 wh       = SphericalDirectionPBRT(sinTheta, cosTheta, phi);
+    const float3 wi       = (2.0f * dot(wo, wh) * wh) - wo;                  // Compute incident direction by reflecting about wh. wi (input) = light
+    const float3 newDir   = normalize(wi.x*nx + wi.y*ny + wi.z*nz);          // back to normal coordinate system
+
+    float Pss         = 1.0f;  // Pass single-scattering  
+    const float3 v    = ray_dir * (-1.0f);
+    const float3 l    = newDir;
+    const float dotNV = dot(hit.norm, v);
+    const float dotNL = dot(hit.norm, l);
+    
+    float outPdf = 1.0f; 
+    if (dotNV < 1e-6f || dotNL < 1e-6f)
+    {
+      Pss    = 0.0f;
+      outPdf = 1.0f;
+    }
+    else
+    {
+      const float3 h    = normalize(v + l);  // half vector.
+      const float dotNV = dot(hit.norm, v);
+      const float dotNH = dot(hit.norm, h);
+      const float dotHV = dot(h, v);
+    
+      // Fresnel is not needed here, because it is used for the blend with diffusion.
+      const float D = GGX_Distribution(dotNH, roughSqr);
+      const float G = GGX_GeomShadMask(dotNV, roughSqr) * GGX_GeomShadMask(dotNL, roughSqr); 
+    
+      Pss    = D * G / fmax(4.0f * dotNV * dotNL, 1e-6f);        
+      outPdf = D * dotNH / fmax(4.0f * dotHV, 1e-6f);
+    }  
+
+    *rayPosAndNear    = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
+    *rayDirAndFar     = to_float4(newDir, MAXFLOAT);
+    *accumThoroughput *= cosTheta*to_float4(float3(color[0], color[1], color[2]) * Pss * (1.0f/fmax(outPdf, 1e-5f)), 0.0f);
   }
 
   float color[3];
@@ -204,6 +366,14 @@ struct EmptyMaterial : public IMaterial
   EmptyMaterial() {}
   ~EmptyMaterial() = delete;
   void kernel_GetColor(uint tid, __global uint* out_color) const override  { }
+
+  void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
+                                 const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
+                                 float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen,
+                                 float4* accumColor, float4* accumThoroughput) const override
+  {
+    
+  }
 
   uint32_t GetTag() const override { return TAG_EMPTY; }
   size_t   GetSizeOf() const override { return sizeof(EmptyMaterial); }

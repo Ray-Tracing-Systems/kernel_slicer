@@ -51,7 +51,7 @@ static float2 RayBoxIntersectionLite(const float3 ray_pos, const float3 ray_dir_
 
 static void IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float4 rayDirAndFar,
                                          __global const uint* a_indices, uint a_start, uint a_count, __global const float4* a_vert,
-                                         Lite_Hit* pHit)
+                                         Lite_Hit* pHit, float2* pBars)
 {
   const uint triAddressEnd = a_start + a_count;
   for (uint triAddress = a_start; triAddress < triAddressEnd; triAddress = triAddress + 3u)
@@ -80,6 +80,7 @@ static void IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float
     {
       pHit->t      = t;
       pHit->primId = triAddress/3;
+      (*pBars)     = make_float2(u,v);
     }
   }
 
@@ -96,8 +97,7 @@ static inline float3 SafeInverse_4to3(float4 d)
 }
 
 bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
-                                const uint* indicesReordered, const float4* meshVerts,
-                                Lite_Hit* out_hit)
+                                Lite_Hit* out_hit, float2* out_bars)
 {
   const float4 rayPos = *rayPosAndNear;
   const float4 rayDir = *rayDirAndFar ;
@@ -110,6 +110,8 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   res.geomId = -1;
   res.t      = rayDir.w;
 
+  float2 baricentrics = float2(0,0);
+
   uint nodeIdx = 0;
   while(nodeIdx < 0xFFFFFFFE)
   {
@@ -120,8 +122,8 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
     if(intersects && currNode.leftOffset == 0xFFFFFFFF) //leaf
     {
       struct Interval startCount = m_intervals[nodeIdx];
-      IntersectAllPrimitivesInLeaf(rayPos, rayDir, indicesReordered, startCount.start*3, startCount.count*3, meshVerts, 
-                                   &res);
+      IntersectAllPrimitivesInLeaf(rayPos, rayDir, m_indicesReordered.data(), startCount.start*3, startCount.count*3, m_vPos4f.data(), 
+                                   &res, &baricentrics);
     }
 
     nodeIdx = (currNode.leftOffset == 0xFFFFFFFF || !intersects) ? currNode.escapeIndex : currNode.leftOffset;
@@ -148,7 +150,8 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
       res.geomId = HIT_TRIANGLE_GEOM;
   }
   
-  *out_hit = res;
+  *out_hit  = res;
+  *out_bars = baricentrics;
   return (res.primId != -1);
 }
 
@@ -208,9 +211,9 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
   float4 rayPosAndNear, rayDirAndFar;
   kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
 
-  Lite_Hit hit;
-  if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, m_indicesReordered.data(), m_vPos4f.data(), 
-                      &hit))
+  Lite_Hit hit; 
+  float2   baricentrics; 
+  if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
     return;
   
   IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
@@ -218,27 +221,43 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
   pMaterial->kernel_GetColor(tid, out_color);
 }
 
-//void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color)
-//{
-//  float4 accumColor, accumThoroughput;
-//  kernel_InitAccumData(tid, &accumColor, &accumThoroughput);
-//
-//  float4 rayPosAndNear, rayDirAndFar;
-//  kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
-//
-//  for(int depth = 0; depth < a_maxDepth; depth++) 
-//  {
-//    Lite_Hit hit;
-//    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, m_indicesReordered.data(), m_vPos4f.data()))
-//      break;
-//
-//    kernel_NextBounce(tid, &hit, 
-//                      &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput);
-//  }
-//
-//  kernel_ContributeToImage(tid, &accumColor, in_pakedXY, 
-//                           out_color);
-//}
+void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, float4* out_color)
+{
+  const uint XY = in_pakedXY[tid];
+  const uint x  = (XY & 0x0000FFFF);
+  const uint y  = (XY & 0xFFFF0000) >> 16;
+ 
+  out_color[y*WIN_WIDTH+x] += *a_accumColor;
+}
+
+void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color)
+{
+  float4 accumColor, accumThoroughput;
+  kernel_InitAccumData(tid, &accumColor, &accumThoroughput);
+
+  float4 rayPosAndNear, rayDirAndFar;
+  kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
+
+  Lite_Hit hit; 
+  float2   baricentrics; 
+
+  for(int depth = 0; depth < a_maxDepth; depth++) 
+  {
+    Lite_Hit hit;
+    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
+      break;
+
+    IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
+    
+    pMaterial->kernel_NextBounce(tid, &hit, &baricentrics, 
+                                 m_indicesReordered.data(), m_vPos4f.data(), m_vNorm4f.data(), 
+                                 &rayPosAndNear, &rayDirAndFar, m_randomGens.data(), 
+                                 &accumColor, &accumThoroughput);
+  }
+
+  kernel_ContributeToImage(tid, &accumColor, in_pakedXY, 
+                           out_color);
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -274,10 +293,10 @@ void test_class_cpu()
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   //return;
 
-  /*
+  
   // now test path tracing
   //
-  const int PASS_NUMBER = 100;
+  const int PASS_NUMBER           = 100;
   const int ITERS_PER_PASS_NUMBER = 4;
   for(int passId = 0; passId < PASS_NUMBER; passId++)
   {
@@ -285,7 +304,7 @@ void test_class_cpu()
     for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
     {
       for(int j=0;j<ITERS_PER_PASS_NUMBER;j++)
-        test.StupidPathTrace(i, 6, packedXY.data(), realColor.data());
+        test.NaivePathTrace(i, 6, packedXY.data(), realColor.data());
     }
 
     if(passId%10 == 0)
@@ -311,7 +330,6 @@ void test_class_cpu()
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }
   SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-  */
 
   return;
 }

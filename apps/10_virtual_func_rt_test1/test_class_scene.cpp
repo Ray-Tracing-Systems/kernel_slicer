@@ -57,21 +57,8 @@ uint32_t TestClass::PackObject(uint32_t*& pData, IMaterial* a_pObject)
   return offset | (a_pObject->GetTag() << (32 - IMaterial::TAG_BITS));
 }
 
-void TestClass::InitSpheresScene(int a_numSpheres, int a_seed)
+void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
 { 
-  spheresMaterials.resize(10);
-
-  spheresMaterials[0].color = float4(0.5,0.5,0.5, 0.0f); // grayOverrideMat
-  spheresMaterials[6].color = float4(0.078, 0, 0.156, 0.0f); // hydra_placeholder_material
-  spheresMaterials[2].color = float4(0.0235294, 0.6, 0.0235294,0); // Green
-  spheresMaterials[4].color = float4(0.0847059, 0.144706,0.265882,0); // Blue
-  spheresMaterials[1].color = float4(0.6,0.0235294,0.0235294,0); // Red
-  spheresMaterials[5].color = float4(0.6,0.6,0.6,0); // White
-  spheresMaterials[3].color = float4(0.8,0.715294,0,0); // teaport_material, phong or ggx
-  spheresMaterials[7].color = float4(0,0,0,0); // mirror
-  spheresMaterials[8].color = float4(0,0,0,0); // environment_material
-  spheresMaterials[9].color = float4(1,1,1,28); // TPhotometricLight001_material
-
   auto maxSize = std::max( std::max(sizeof(EmissiveMaterial),      sizeof(GGXGlossyMaterial)), 
                            std::max(sizeof(PerfectMirrorMaterial), sizeof(LambertMaterial)));
   
@@ -86,13 +73,13 @@ void TestClass::InitSpheresScene(int a_numSpheres, int a_seed)
   m_materialOffsets[0+1] = PackObject(pData, new (pData) LambertMaterial(float3(0.5,0.5,0.5))                  );
   m_materialOffsets[1+1] = PackObject(pData, new (pData) LambertMaterial(float3(0.6,0.0235294,0.0235294))      );
   m_materialOffsets[2+1] = PackObject(pData, new (pData) LambertMaterial(float3(0.0235294, 0.6, 0.0235294))    );
-  m_materialOffsets[3+1] = PackObject(pData, new (pData) GGXGlossyMaterial(float3(0.8,0.715294,0))             );
+  m_materialOffsets[3+1] = PackObject(pData, new (pData) GGXGlossyMaterial(float3(0.6,0.6,0.1))                );
   m_materialOffsets[4+1] = PackObject(pData, new (pData) LambertMaterial(float3(0.0847059, 0.144706,0.265882)) );
   m_materialOffsets[5+1] = PackObject(pData, new (pData) PerfectMirrorMaterial                                 );
   m_materialOffsets[6+1] = PackObject(pData, new (pData) LambertMaterial(float3(0.25,0.0,0.5))                 );
   m_materialOffsets[7+1] = PackObject(pData, new (pData) PerfectMirrorMaterial);
   m_materialOffsets[8+1] = PackObject(pData, new (pData) PerfectMirrorMaterial);
-  m_materialOffsets[9+1] = PackObject(pData, new (pData) EmissiveMaterial(10.0f));  
+  m_materialOffsets[9+1] = PackObject(pData, new (pData) EmissiveMaterial(20.0f));  
   m_emissiveMaterialId   = 10;
 }
 
@@ -190,7 +177,7 @@ int TestClass::LoadScene(const char* bvhPath, const char* meshPath)
     }
   }
 
-  InitSpheresScene(10);
+  InitSceneMaterials(10);
 
   std::cout << "IndicesNum   = " << m_mesh.indices.size() << std::endl;
   std::cout << "TrianglesNum = " << m_mesh.TrianglesNum() << std::endl;
