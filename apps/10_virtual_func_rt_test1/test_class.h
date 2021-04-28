@@ -178,9 +178,9 @@ struct LambertMaterial : public IMaterial
   }
 
   void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
-                                 const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
-                                 float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
-                                 float4* accumColor, float4* accumThoroughput) const override
+                           const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
+                           float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
+                           float4* accumColor, float4* accumThoroughput) const override
   {
     const Lite_Hit lHit  = *in_hit;
     const float3 ray_dir = to_float3(*rayDirAndFar);
@@ -189,9 +189,9 @@ struct LambertMaterial : public IMaterial
     hit.pos  = to_float3(*rayPosAndNear) + lHit.t*ray_dir;
     hit.norm = EvalSurfaceNormal(ray_dir, lHit.primId, *in_bars, in_indices, in_vnorm);
 
-    RandomGen gen   = *pGen;
+    RandomGen gen   = pGen[tid];
     const float2 uv = rndFloat2_Pseudo(&gen);
-    *pGen = gen;
+    pGen[tid]       = gen;
 
     const float3 newDir   = MapSampleToCosineDistribution(uv.x, uv.y, hit.norm, hit.norm, 1.0f);
     const float  cosTheta = dot(newDir, hit.norm);
@@ -297,9 +297,9 @@ struct GGXGlossyMaterial : public IMaterial
     hit.pos  = to_float3(*rayPosAndNear) + lHit.t*ray_dir;
     hit.norm = EvalSurfaceNormal(ray_dir, lHit.primId, *in_bars, in_indices, in_vnorm);
 
-    RandomGen gen   = *pGen;
+    RandomGen gen   = pGen[tid];
     const float2 uv = rndFloat2_Pseudo(&gen);
-    *pGen = gen;
+    pGen[tid]       = gen;
 
     //const float3 newDir   = MapSampleToCosineDistribution(uv.x, uv.y, hit.norm, hit.norm, 1.0f);
     //const float  cosTheta = dot(newDir, hit.norm);

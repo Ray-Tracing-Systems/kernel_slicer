@@ -517,15 +517,6 @@ int main(int argc, const char **argv)
   
   std::cout << "}" << std::endl;
   std::cout << std::endl;
-  
-  if(inputCodeInfo.SupportVirtualKernels())
-  {
-    std::cout << "(2.1) Process Virtual Kernels hierarchies" << std::endl; 
-    std::cout << "{" << std::endl;
-    inputCodeInfo.ProcessDispatchHierarchies(firstPassData.rv.m_classList, compiler);
-    std::cout << "}" << std::endl;
-    std::cout << std::endl;
-  }
 
   std::cout << "(3) Mark data members, methods and functions which are actually used in kernels." << std::endl; 
   std::cout << "{" << std::endl;
@@ -590,15 +581,6 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  if(inputCodeInfo.SupportVirtualKernels())
-  {
-    std::cout << "(4.1) Extract Virtual Kernels hierarchies constants" << std::endl; 
-    std::cout << "{" << std::endl;
-    inputCodeInfo.ExtractHierarchiesConstants(compiler, Tool);
-    std::cout << "}" << std::endl;
-    std::cout << std::endl;
-  }
-
   std::cout << "(5) Process control functions to generate all 'MainCmd' functions" << std::endl; 
   std::cout << "{" << std::endl;
 
@@ -619,8 +601,24 @@ int main(int argc, const char **argv)
   inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, // ==>
                                        inputCodeInfo.allDescriptorSetsInfo);          // <==
 
+  // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg
+  //
+  for(const auto& call : inputCodeInfo.allDescriptorSetsInfo)
+    inputCodeInfo.ProcessCallArs_KF(call);
+
   std::cout << "}" << std::endl;
   std::cout << std::endl;
+
+  if(inputCodeInfo.SupportVirtualKernels())
+  {
+    std::cout << "(5.1) Process Virtual Kernels hierarchies" << std::endl; 
+    std::cout << "(5.2) Extract Virtual Kernels hierarchies constants" << std::endl; 
+    std::cout << "{" << std::endl;
+    inputCodeInfo.ProcessDispatchHierarchies(firstPassData.rv.m_classList, compiler);
+    inputCodeInfo.ExtractHierarchiesConstants(compiler, Tool);
+    std::cout << "}" << std::endl;
+    std::cout << std::endl;
+  }
   
   std::cout << "(6) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl; 
   std::cout << "{" << std::endl;
@@ -701,11 +699,6 @@ int main(int argc, const char **argv)
 
   std::cout << "(8) Generate OpenCL kernels" << std::endl; 
   std::cout << "{" << std::endl;
-
-  // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg
-  //
-  for(const auto& call : inputCodeInfo.allDescriptorSetsInfo)
-    inputCodeInfo.ProcessCallArs_KF(call);
 
   for(auto& k : inputCodeInfo.kernels)
     k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);

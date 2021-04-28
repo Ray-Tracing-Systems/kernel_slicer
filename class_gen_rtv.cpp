@@ -277,8 +277,8 @@ void kslicer::RTV_Pattern::ProcessKernelArg(KernelInfo::Arg& arg, const KernelIn
 \brief processing of C++ member function for virtual kernels
 
   1) C++ class --> C style struct; this --> self; 
-  2) *payload => payload[tid]; payload->member => payload[tid].member
-  3) this->vector[...] 
+  2) *payload => payload[tid]; payload->member => payload[tid].member (TBD)
+  3) this->vector[...]                                                (TBD)
 
 */
 class MemberRewriter : public kslicer::FunctionRewriter
