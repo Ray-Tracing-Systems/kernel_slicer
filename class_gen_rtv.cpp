@@ -285,11 +285,8 @@ class MemberRewriter : public kslicer::FunctionRewriter
 {
 public:
   
-  MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo,
-                 std::vector<kslicer::MainClassInfo::DImplFunc>& a_funcs, std::vector<std::string>& a_fields, 
-                 const std::string& a_currClassName, const std::string& a_mainClassName) : m_processed(a_funcs), m_fields(a_fields), 
-                                                                                           m_className(a_currClassName), m_mainClassName(a_mainClassName),
-                                                                                           FunctionRewriter(R, a_compiler, a_codeInfo)
+  MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::MainClassInfo::DImplClass& dImpl) : 
+                 m_processed(dImpl.memberFunctions), m_fields(dImpl.fields), m_className(dImpl.name), m_mainClassName(a_codeInfo->mainClassName), FunctionRewriter(R, a_compiler, a_codeInfo)
   { 
     
   }
@@ -546,9 +543,9 @@ void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const cl
         DImplClass dImpl;
         dImpl.decl = decl;
         dImpl.name = decl->getNameAsString();
-        // extract all member functions of class that should be rewritten
+        // extract all member functions from class that should be rewritten
         //
-        MemberRewriter rv(rewrite2, a_compiler, this, dImpl.memberFunctions, dImpl.fields, dImpl.name, this->mainClassName); 
+        MemberRewriter rv(rewrite2, a_compiler, this, dImpl); 
         rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));                                  
         
         dImpl.isEmpty = true;
