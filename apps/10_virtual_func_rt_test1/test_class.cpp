@@ -230,34 +230,34 @@ void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, c
   out_color[y*WIN_WIDTH+x] += *a_accumColor;
 }
 
-//void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color)
-//{
-//  float4 accumColor, accumThoroughput;
-//  kernel_InitAccumData(tid, &accumColor, &accumThoroughput);
-//
-//  float4 rayPosAndNear, rayDirAndFar;
-//  kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
-//
-//  Lite_Hit hit; 
-//  float2   baricentrics; 
-//
-//  for(int depth = 0; depth < a_maxDepth; depth++) 
-//  {
-//    Lite_Hit hit;
-//    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
-//      break;
-//
-//    IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
-//    
-//    pMaterial->kernel_NextBounce(tid, &hit, &baricentrics, 
-//                                 m_indicesReordered.data(), m_vPos4f.data(), m_vNorm4f.data(), 
-//                                 &rayPosAndNear, &rayDirAndFar, m_randomGens.data(), 
-//                                 &accumColor, &accumThoroughput);
-//  }
-//
-//  kernel_ContributeToImage(tid, &accumColor, in_pakedXY, 
-//                           out_color);
-//}
+void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color)
+{
+  float4 accumColor, accumThoroughput;
+  kernel_InitAccumData(tid, &accumColor, &accumThoroughput);
+
+  float4 rayPosAndNear, rayDirAndFar;
+  kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
+
+  Lite_Hit hit; 
+  float2   baricentrics; 
+
+  for(int depth = 0; depth < a_maxDepth; depth++) 
+  {
+    Lite_Hit hit;
+    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
+      break;
+
+    IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
+    
+    pMaterial->kernel_NextBounce(tid, &hit, &baricentrics, 
+                                 m_indicesReordered.data(), m_vPos4f.data(), m_vNorm4f.data(), 
+                                 &rayPosAndNear, &rayDirAndFar, m_randomGens.data(), 
+                                 &accumColor, &accumThoroughput);
+  }
+
+  kernel_ContributeToImage(tid, &accumColor, in_pakedXY, 
+                           out_color);
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -292,8 +292,6 @@ void test_class_cpu()
 
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
 
-
-  /*
 
   // now test path tracing
   //
@@ -331,8 +329,6 @@ void test_class_cpu()
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }
   SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-
-  */
 
   return;
 }

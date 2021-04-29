@@ -161,7 +161,7 @@ namespace kslicer
     bool VisitCXXMethodDecl(clang::CXXMethodDecl* fDecl) { return VisitCXXMethodDecl_Impl(fDecl); }
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f)    { return VisitCXXMemberCallExpr_Impl(f); }
     bool VisitFieldDecl(FieldDecl* decl)                 { return VisitFieldDecl_Impl(decl);      }
-    //bool VisitParmValDecl(clang::ParmVarDecl* decl)      { return VisitParmValDecl_Impl(decl);    } // dones not works for some reason ... 
+    bool VisitUnaryOperator(UnaryOperator* op)           { return VisitUnaryOperator_Impl(op);    }
 
   protected:
 
@@ -187,7 +187,7 @@ namespace kslicer
     virtual bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) { return true; } // override this in Derived class
     virtual bool VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)    { return true; } // override this in Derived class
     virtual bool VisitFieldDecl_Impl(FieldDecl* decl)                 { return true; } // override this in Derived class
-    //virtual bool VisitParmValDecl_Impl(clang::ParmVarDecl* decl)      { return true; } // override this in Derived class  // dones not works for some reason ... 
+    virtual bool VisitUnaryOperator_Impl(UnaryOperator* op)           { return true; } // override this in Derived class
   };
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

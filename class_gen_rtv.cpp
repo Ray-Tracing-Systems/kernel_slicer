@@ -314,6 +314,29 @@ public:
 
     return true;
   }
+
+  bool VisitUnaryOperator_Impl(clang::UnaryOperator* expr) override 
+  { 
+    const auto op = expr->getOpcodeStr(expr->getOpcode());
+    if(expr->canOverflow() || op != "*") // -UnaryOperator ... lvalue prefix '*' cannot overflow
+      return true;
+
+    clang::Expr* subExpr = expr->getSubExpr();
+    if(subExpr == nullptr)
+      return true;
+    
+    std::string exprInside = kslicer::GetRangeSourceCode(subExpr->getSourceRange(), m_compiler);  ; //RecursiveRewrite(subExpr);
+    if(m_fakeOffsArgs.find(exprInside) == m_fakeOffsArgs.end())
+      return true;
+
+    if(WasNotRewrittenYet(subExpr))
+    {
+      m_rewriter.ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
+      //MarkRewritten(subExpr); // BUG? For some strange reason marking sub expression disable visiting class fields 
+    }
+
+    return true; 
+  }
   
   /// \return whether \p Ty points to a const type, or is a const reference.
   //
@@ -325,9 +348,9 @@ public:
   std::string RewriteMemberDecl(clang::CXXMethodDecl* fDecl, const std::string& classTypeName)
   {
     std::string fname  = fDecl->getNameInfo().getName().getAsString();
-    std::string result = m_codeInfo->RemoveTypeNamespaces(fDecl->getReturnType().getAsString()) + " " + classTypeName + "_" + fname + "(__global const " + classTypeName + "* self";
+    std::string result = m_codeInfo->RemoveTypeNamespaces(fDecl->getReturnType().getAsString()) + " " + classTypeName + "_" + fname + "(\n  __global const " + classTypeName + "* self";
     if(fDecl->getNumParams() != 0)
-      result += ", ";
+      result += ", \n  ";
 
     bool isKernel = m_codeInfo->IsKernel(fname); 
 
@@ -353,10 +376,31 @@ public:
       }
 
       if(i!=fDecl->getNumParams()-1)
-        result += ", ";
+        result += ", \n  ";
     }
 
-    return result + ")";
+    return result + ")\n  ";
+  }
+
+  std::unordered_set<std::string> ListFakeOffArgsForKernelNamed(const std::string& fname)
+  {
+    std::unordered_set<std::string> fakeOffsArgs;
+    if(m_codeInfo->IsKernel(fname))     
+    {
+      auto p = m_codeInfo->kernels.find(fname);
+      if(p != m_codeInfo->kernels.end())
+      {
+         for(const auto& arg : p->second.args)
+         {
+           if(arg.needFakeOffset)
+             fakeOffsArgs.insert(arg.name);
+
+           if(arg.isThreadID)
+             m_fakeOffsetExp = arg.name; // TODO: if we have 2D thread id this is more complex a bit ... 
+         }
+      }
+    }
+    return fakeOffsArgs;
   }
 
   bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) override
@@ -371,14 +415,14 @@ public:
 
     if(classTypeName.find(fname) != std::string::npos || classTypeName.find(fname.substr(1)) != std::string::npos || fname == "GetTag" || fname == "GetSizeOf")
       return true; // exclude constructor, destructor and special functions
-
-    //std::cout << "    [MemberRewriter]: --> " << fname.c_str() << std::endl;
     
-    if(WasNotRewrittenYet(fDecl))
+    if(WasNotRewrittenYet(fDecl->getBody()))
     { 
-      //fDecl->dump();
+      if(m_codeInfo->IsKernel(fname))                          // enable fakeOffset rewrite
+        m_fakeOffsArgs = ListFakeOffArgsForKernelNamed(fname); //
       std::string declSource = RewriteMemberDecl(fDecl, classTypeName);
       std::string bodySource = RecursiveRewrite(fDecl->getBody());
+      m_fakeOffsArgs.clear();                                  // disable fakeOffset rewrite
 
       kslicer::MainClassInfo::DImplFunc funcData;
       funcData.decl          = fDecl;
@@ -395,8 +439,9 @@ public:
       }
      
       m_processed.push_back(funcData);
-      MarkRewritten(fDecl);
+      MarkRewritten(fDecl->getBody());
     }
+
     return true;
   }
 
@@ -428,12 +473,6 @@ public:
     return true;
   }
 
-  //bool VisitParmValDecl_Impl(clang::ParmVarDecl* decl) override // does not works for some reason
-  //{ 
-  //  auto text = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler);
-  //  return true; 
-  //} 
-
   bool VisitFieldDecl_Impl(clang::FieldDecl* pFieldDecl) override 
   { 
     clang::RecordDecl* pRecodDecl  = pFieldDecl->getParent();
@@ -450,28 +489,16 @@ private:
   const std::string&                              m_className;
   const std::string&                              m_mainClassName;
   kslicer::MainClassInfo*                         m_codeInfo = nullptr;
-  bool isCopy = false;
 
+  bool isCopy = false;
+  std::unordered_set<std::string> m_fakeOffsArgs;
+  std::string                     m_fakeOffsetExp;
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   
   //std::unordered_set<uint64_t>  m_rewrittenNodes;
-  inline void MarkRewritten(const clang::Decl* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
-  inline void MarkRewritten(const clang::Expr* expr) { FunctionRewriter::MarkRewritten(expr); }
+  inline void MarkRewritten(const clang::Stmt* expr) { FunctionRewriter::MarkRewritten(expr); }
 
-  inline bool WasNotRewrittenYet(const clang::Decl* expr)
-  {
-    auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
-    return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
-  }
-  inline bool WasNotRewrittenYet(const clang::Expr* expr) { return FunctionRewriter::WasNotRewrittenYet(expr); }
-
-  std::string RecursiveRewrite(const clang::Decl* expr)
-  {
-    MemberRewriter rvCopy = *this;
-    rvCopy.isCopy = true;
-    rvCopy.TraverseDecl(const_cast<clang::Decl*>(expr));
-    return m_rewriter.getRewrittenText(expr->getSourceRange());
-  }
+  inline bool WasNotRewrittenYet(const clang::Stmt* expr) { return FunctionRewriter::WasNotRewrittenYet(expr); }
 
   std::string RecursiveRewrite(const clang::Stmt* expr) override
   {
