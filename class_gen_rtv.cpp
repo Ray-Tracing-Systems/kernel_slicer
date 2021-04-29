@@ -127,6 +127,7 @@ void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncL
   
   tFlagsArg.name           = "kgen_threadFlags";
   tFlagsArg.needFakeOffset = true;
+  tFlagsArg.isThreadFlags  = true;
   tFlagsArg.size           = 1; // array size 
   tFlagsArg.type           = "uint*";
   

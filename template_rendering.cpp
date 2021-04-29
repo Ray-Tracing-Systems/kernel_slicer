@@ -764,6 +764,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     auto commonArgs = a_classInfo.GetKernelCommonArgs(k);
     auto tidArgs    = a_classInfo.GetKernelTIDArgs(k);
     
+    uint VArgsSize = 0;
+
     json args = std::vector<std::string>();
     for(auto commonArg : commonArgs)
     {
@@ -772,6 +774,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Name"]  = commonArg.argName;
       argj["IsUBO"] = commonArg.isUBO;
       args.push_back(argj);
+      if(!commonArg.isThreadFlags)
+        VArgsSize++;
     }
 
     assert(tidArgs.size() <= 3);
@@ -899,6 +903,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     for (uint c = k.warpSize; c>0; c/=2)
       kernelJson["RedLoop2"].push_back(c);
     
+    kernelJson["LastArgNF"]  = VArgsSize; // Last Argument No Flags
     kernelJson["Args"]       = args;
     kernelJson["Vecs"]       = vecs;
     kernelJson["UserArgs"]   = userArgs;

@@ -32,7 +32,7 @@ __kernel void {{Kernel.Name}}_{{Impl.ClassName}}(
   const uint kgen_objOffset = (kgen_objPtr.x & {{Kernel.Hierarchy.Name}}_OFS_MASK);
 
   __global {% if Kernel.IsConstObj %}const {% endif %} {{Impl.ClassName}}* pSelf = (__global {{Impl.ClassName}}*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-  {{Impl.ClassName}}_{{Kernel.Name}}(pSelf, kgen_objPtr.y{%for Arg in Kernel.Args %}{% if loop.index == length(Kernel.Args)-1 %}){%else%}, {% if Arg.IsUBO %}ubo{% else %}{{Arg.Name}}{% endif %}{% endif %}{% endfor %}{%if length(Kernel.Args) == 0 %}){% endif %}; 
+  {{Impl.ClassName}}_{{Kernel.Name}}(pSelf, kgen_objPtr.y{%for Arg in Kernel.Args %}{% if loop.index != Kernel.LastArgNF %}, {% if Arg.IsUBO %}ubo{% else %}{{Arg.Name}}{% endif %}{% endif %}{% endfor %}{%if length(Kernel.Args) == 0 %}){% endif %}); 
 }
 
 {% endfor %} {# /* Impl in Kernel.Hierarchy.Implementations */ #}
@@ -75,7 +75,7 @@ __kernel void {{Kernel.Name}}(
     case {{Kernel.Hierarchy.Name}}_{{Impl.TagName}}: // implementation for {{Impl.ClassName}}
     {
       __global {{Impl.ClassName}}* pSelf = (__global {{Impl.ClassName}}*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      {{Impl.ClassName}}_{{Kernel.Name}}(pSelf, tid{%for Arg in Kernel.Args %}{% if loop.index == length(Kernel.Args)-1 %}){%else%}, {% if Arg.IsUBO %}ubo{% else %}{{Arg.Name}}{% endif %}{% endif %}{% endfor %}{%if length(Kernel.Args) == 0 %}){% endif %};
+      {{Impl.ClassName}}_{{Kernel.Name}}(pSelf, tid{%for Arg in Kernel.Args %}{% if loop.index != Kernel.LastArgNF %}, {% if Arg.IsUBO %}ubo{% else %}{{Arg.Name}}{% endif %}{% endif %}{% endfor %}{%if length(Kernel.Args) == 0 %}){% endif %});
     }
     break;
   {% endfor %}

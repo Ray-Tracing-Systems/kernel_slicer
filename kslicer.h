@@ -31,10 +31,12 @@ namespace kslicer
       std::string type;
       std::string name;
       int         size;
+
       bool needFakeOffset = false;
       bool isThreadID     = false; ///<! used by RTV-like patterns where loop is defined out of kernel
       bool isLoopSize     = false; ///<! used by IPV-like patterns where loop is defined inside kernel
       bool isPointer      = false;
+      bool isThreadFlags  = false; 
 
       bool IsUser() const { return !isThreadID && !isLoopSize && !needFakeOffset && !isPointer; }
     };
@@ -494,7 +496,8 @@ namespace kslicer
       std::string argName;
       std::string sizeName;
       uint32_t    id;       ///<! used to preserve or change loops order
-      bool        isUBO = false;
+      bool        isUBO         = false;
+      bool        isThreadFlags = false;
     };
    
     virtual std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const; 

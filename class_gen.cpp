@@ -245,6 +245,7 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
       arg2.typeName = RemoveTypeNamespaces(arg.type);
       arg2.isUBO    = (arg.type.find(std::string("class ")  + mainClassName) != std::string::npos || 
                        arg.type.find(std::string("struct ") + mainClassName) != std::string::npos);
+      arg2.isThreadFlags = arg.isThreadFlags;
       args.push_back(arg2);
     }
   }
