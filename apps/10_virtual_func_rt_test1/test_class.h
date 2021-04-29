@@ -52,7 +52,8 @@ struct IMaterial
   virtual uint32_t GetTag() const = 0;
   virtual size_t   GetSizeOf() const = 0;
 
-  virtual void   kernel_GetColor(uint tid, __global uint* out_color) const = 0;
+  virtual void   kernel_GetColor(uint tid, __global uint* out_color, const TestClass* a_pGlobals) const = 0;
+
   //virtual void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
   //                                       const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
   //                                       float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
@@ -172,7 +173,7 @@ struct LambertMaterial : public IMaterial
 
   float m_color[3];
 
-  void  kernel_GetColor(uint tid, uint* out_color) const override 
+  void  kernel_GetColor(uint tid, uint* out_color, const TestClass* a_pGlobals) const override 
   { 
     out_color[tid] = RealColorToUint32_f3(float3(m_color[0], m_color[1], m_color[2])); 
   }
@@ -212,9 +213,9 @@ struct LambertMaterial : public IMaterial
 struct PerfectMirrorMaterial : public IMaterial
 {
   ~PerfectMirrorMaterial() = delete;
-  void kernel_GetColor(uint tid, uint* out_color) const override 
+  void kernel_GetColor(uint tid, uint* out_color, const TestClass* a_pGlobals) const override 
   { 
-    out_color[tid] = RealColorToUint32_f3(float3(0,0,0)); 
+    out_color[tid] = RealColorToUint32_f3(a_pGlobals->testColor); 
   }
   
   //void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
@@ -249,7 +250,7 @@ struct EmissiveMaterial : public IMaterial
   
   float3 GetColor() const { return float3(1,1,1); }
   
-  void   kernel_GetColor(uint tid, uint* out_color) const override 
+  void   kernel_GetColor(uint tid, uint* out_color, const TestClass* a_pGlobals) const override 
   { 
     out_color[tid] = RealColorToUint32_f3(intensity*GetColor()); 
   }
@@ -279,7 +280,7 @@ struct GGXGlossyMaterial : public IMaterial
   GGXGlossyMaterial(float3 a_color) { color[0] = a_color[0]; color[1] = a_color[1]; color[2] = a_color[2]; roughness = 0.3f; }
   ~GGXGlossyMaterial() = delete;
   
-  void  kernel_GetColor(uint tid, uint* out_color) const override 
+  void  kernel_GetColor(uint tid, uint* out_color, const TestClass* a_pGlobals) const override 
   { 
     float redColor = std::max(1.0f, color[0]);
     out_color[tid] = RealColorToUint32_f3(float3(redColor, color[1], color[2])); 
@@ -358,7 +359,7 @@ struct EmptyMaterial : public IMaterial
 {
   EmptyMaterial() {}
   ~EmptyMaterial() = delete;
-  void kernel_GetColor(uint tid, uint* out_color) const override  { }
+  void kernel_GetColor(uint tid, uint* out_color, const TestClass* a_pGlobals) const override  { }
 
   //void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
   //                               const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,

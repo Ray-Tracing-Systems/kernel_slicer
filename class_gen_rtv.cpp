@@ -315,6 +315,13 @@ public:
     return true;
   }
   
+  /// \return whether \p Ty points to a const type, or is a const reference.
+  //
+  static bool isPointerToConst(clang::QualType Ty) 
+  {
+    return !Ty->getPointeeType().isNull() && Ty->getPointeeType().getCanonicalType().isConstQualified();
+  }
+
   std::string RewriteMemberDecl(clang::CXXMethodDecl* fDecl, const std::string& classTypeName)
   {
     std::string fname  = fDecl->getNameInfo().getName().getAsString();
@@ -331,7 +338,12 @@ public:
 
       if(typeOfParam.getAsString().find(m_mainClassName) != std::string::npos)
       {
-        result += "__global struct " + m_mainClassName + "_UBO_Data* " + pParam->getNameAsString();
+        if(isPointerToConst(typeOfParam))
+          result += "__global const struct ";
+        else
+          result += "__global struct ";
+        
+        result += m_mainClassName + "_UBO_Data* " + pParam->getNameAsString();
       }
       else
       {

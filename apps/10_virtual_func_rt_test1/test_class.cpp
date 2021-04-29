@@ -218,7 +218,7 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
   
   IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
 
-  pMaterial->kernel_GetColor(tid, out_color);
+  pMaterial->kernel_GetColor(tid, out_color, this);
 }
 
 void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, float4* out_color)
