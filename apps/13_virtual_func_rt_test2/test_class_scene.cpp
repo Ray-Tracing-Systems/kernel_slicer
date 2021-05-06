@@ -74,7 +74,7 @@ void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
   m_materialOffsets[1+1] = PackObject(pData, new (pData) LambertMaterial(float3(0.6,0.0235294,0.0235294))      );
   m_materialOffsets[2+1] = PackObject(pData, new (pData) LambertMaterial(float3(0.0235294, 0.6, 0.0235294))    );
   m_materialOffsets[3+1] = PackObject(pData, new (pData) GGXGlossyMaterial(float3(0.6,0.6,0.1))                );
-  m_materialOffsets[4+1] = PackObject(pData, new (pData) LambertMaterial(float3(0.0847059, 0.144706,0.265882)) );
+  m_materialOffsets[4+1] = PackObject(pData, new (pData) LambertMaterialMix(float3(0.0847059, 0.144706,0.265882)) );
   m_materialOffsets[5+1] = PackObject(pData, new (pData) PerfectMirrorMaterial                                 );
   m_materialOffsets[6+1] = PackObject(pData, new (pData) LambertMaterial(float3(0.25,0.0,0.5))                 );
   m_materialOffsets[7+1] = PackObject(pData, new (pData) PerfectMirrorMaterial);

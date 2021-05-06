@@ -312,7 +312,7 @@ VkDevice vk_utils::CreateLogicalDevice(VkPhysicalDevice physicalDevice, const st
   }
   else
   {
-    a_queueIDXs.graphics = VK_NULL_HANDLE;
+    a_queueIDXs.graphics = 0; //VK_NULL_HANDLE;
   }
 
   // Dedicated compute queue

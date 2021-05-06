@@ -628,12 +628,35 @@ public:
       const clang::QualType qThisType = f->getThisType();   
       const clang::QualType classType = qThisType->getPointeeType();
       const std::string thisTypeName  = kslicer::CutOffStructClass(classType.getAsString());
-      const std::string funcBody      = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
+      
+      auto funcBody = f->getBody();
+      if(clang::isa<clang::CompoundStmt>(funcBody))
+      {
+        clang::CompoundStmt* s2 = clang::dyn_cast<clang::CompoundStmt>(funcBody);
+        for(auto iter = s2->body_begin(); iter != s2->body_end(); ++iter)
+        {
+          if(clang::isa<clang::ReturnStmt>(*iter))
+          {
+            funcBody = *iter;
+            break;
+          }
+        }
+      }
+      
+      if(!clang::isa<clang::ReturnStmt>(funcBody))
+      {
+        std::cout << "  [TagSeeker::Error]: " << "Can't find returt statement in 'GetTag/GetTypeId' fuction body for '" <<  thisTypeName.c_str() <<  "' class." << std::endl;
+        return true;
+      }
+
+      clang::ReturnStmt* retStmt = clang::dyn_cast< clang::ReturnStmt>(funcBody);
+      clang::Expr* retVal        = retStmt->getRetValue(); 
+      const std::string tagName  = kslicer::GetRangeSourceCode(retVal->getSourceRange(), m_compiler);
       
       for(const auto& decl : m_knownConstants)
       {
-        auto pos = funcBody.find(decl.name);
-        if(pos != std::string::npos)
+        //auto pos = funcBody.find(decl.name);
+        if(decl.name == tagName)
         {
           m_tagByClassName[thisTypeName] = decl.name;
           break;
