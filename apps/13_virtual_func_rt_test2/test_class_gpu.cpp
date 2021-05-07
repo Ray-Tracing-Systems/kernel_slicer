@@ -35,12 +35,6 @@ public:
     if(m_rtPipelineLayout) vkDestroyPipelineLayout(device, m_rtPipelineLayout, nullptr);
     if(m_rtPipeline)       vkDestroyPipeline      (device, m_rtPipeline,       nullptr);
   }
-
-  void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount) override
-  {
-    TestClass_Generated::InitVulkanObjects(a_device, a_physicalDevice, a_maxThreadsCount);
-    SetupRTPipeline(a_device);
-  }
   
   VkDescriptorSet       m_rtDS       = nullptr;
   VkDescriptorSetLayout m_rtDSLayout = nullptr;
@@ -63,10 +57,15 @@ public:
     
     VkDescriptorSetLayout inputSets[2] = {RayTraceDSLayout , m_rtDSLayout};
 
+    VkPushConstantRange  pcRange;
+    pcRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    pcRange.offset     = 0;
+    pcRange.size       = 4*sizeof(uint32_t);
+
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
-    pipelineLayoutInfo.pPushConstantRanges    = nullptr;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges    = &pcRange;
     pipelineLayoutInfo.pSetLayouts            = inputSets;
     pipelineLayoutInfo.setLayoutCount         = 2;
     VK_CHECK_RESULT(vkCreatePipelineLayout(a_device, &pipelineLayoutInfo, nullptr, &m_rtPipelineLayout));
@@ -108,10 +107,13 @@ public:
     pcData.m_sizeY  = 1;
     pcData.m_sizeZ  = 1;
     pcData.m_tFlags = m_currThreadFlags;
-  
-    vkCmdPushConstants(m_currCmdBuffer, RayTraceLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
     
-    vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, RayTracePipeline);
+    vkCmdPushConstants(m_currCmdBuffer, m_rtPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
+    
+    VkDescriptorSet dsets[2] = {m_allGeneratedDS[6], m_rtDS};
+    vkCmdBindDescriptorSets(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_rtPipelineLayout, 0, 2, dsets, 0, nullptr);
+
+    vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_rtPipeline);
     vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (pcData.m_sizeZ + blockSizeZ - 1) / blockSizeZ);
   
     VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
@@ -281,6 +283,7 @@ void test_class_gpu()
   pGPUImpl->SetVulkanInOutFor_NaivePathTrace(xyBuffer,   0,   // !!! USING GENERATED CODE !!!
                                              colorBuffer2,0); // !!! USING GENERATED CODE !!!
 
+  pGPUImpl->SetupRTPipeline(device);                          // !!! WRITE BY HAND        !!!
   pGPUImpl->UpdateAll(pCopyHelper);                           // !!! USING GENERATED CODE !!!
   
   // now compute some thing useful
