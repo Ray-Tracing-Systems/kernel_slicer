@@ -44,12 +44,12 @@ void vkfw::ProgramBindings::BindBegin(VkShaderStageFlagBits a_shaderStage)
 
 void vkfw::ProgramBindings::BindBuffer(uint32_t a_loc, VkBuffer a_buff, size_t a_buffOffset, VkDescriptorType a_bindType)
 {
-  vk_utils::PBinding bind;
-  bind.buffView  = VK_NULL_HANDLE;
-  bind.buffer    = a_buff;
+  PBinding bind;
+  bind.buffView     = VK_NULL_HANDLE;
+  bind.buffer       = a_buff;
   bind.bufferOffset = a_buffOffset;
-  bind.imageView = nullptr;
-  bind.type      = a_bindType;
+  bind.imageView    = nullptr;
+  bind.type         = a_bindType;
 
   m_currBindings[a_loc]      = bind;
   m_currBindingsTypes[a_loc] = a_bindType;
@@ -58,7 +58,7 @@ void vkfw::ProgramBindings::BindBuffer(uint32_t a_loc, VkBuffer a_buff, size_t a
 
 void vkfw::ProgramBindings::BindImage(uint32_t a_loc, VkImageView a_imageView, VkDescriptorType a_bindType)
 {
-  vk_utils::PBinding bind;
+  PBinding bind;
   bind.buffer    = nullptr;
   bind.buffView  = nullptr;
   bind.imageView = a_imageView;
@@ -70,7 +70,7 @@ void vkfw::ProgramBindings::BindImage(uint32_t a_loc, VkImageView a_imageView, V
 
 void  vkfw::ProgramBindings::BindImage(uint32_t a_loc, VkImageView a_imageView, VkSampler a_sampler, VkDescriptorType a_bindType)
 {
-  vk_utils::PBinding bind;
+  PBinding bind;
   bind.buffer       = nullptr;
   bind.buffView     = nullptr;
   bind.imageView    = a_imageView;
@@ -81,11 +81,24 @@ void  vkfw::ProgramBindings::BindImage(uint32_t a_loc, VkImageView a_imageView, 
   m_currBindingsTypes[a_loc] = a_bindType;
 }
 
+void vkfw::ProgramBindings::BindAccelStruct(uint32_t a_loc, VkAccelerationStructureKHR handle, VkDescriptorType a_bindType)
+{
+  PBinding bind;
+  bind.buffer    = nullptr;
+  bind.buffView  = nullptr;
+  bind.imageView = nullptr;
+  bind.type      = a_bindType;
+  bind.accelStruct = handle;
+
+  m_currBindings[a_loc]      = bind;
+  m_currBindingsTypes[a_loc] = a_bindType;
+}
+
 vkfw::DSetId vkfw::ProgramBindings::BindEnd(VkDescriptorSet* a_pSet, VkDescriptorSetLayout* a_pLayout)
 {
   // create DS layout key
   //
-  auto currKey = vk_utils::PBKey(m_currBindings, m_stageFlags);
+  auto currKey = PBKey(m_currBindings, m_stageFlags);
   auto p       = m_dsLayouts.find(currKey);
 
   // get DS layout
@@ -151,6 +164,8 @@ vkfw::DSetId vkfw::ProgramBindings::BindEnd(VkDescriptorSet* a_pSet, VkDescripto
   std::vector<VkDescriptorBufferInfo> descriptorBufferInfo(descriptorsInSet);
   std::vector<VkWriteDescriptorSet>   writeDescriptorSet(descriptorsInSet);
   
+  VkWriteDescriptorSetAccelerationStructureKHR descriptorAccelerationStructureInfo {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR};
+
   int top = 0;
   for (auto& binding : m_currBindings)
   {
@@ -181,6 +196,13 @@ vkfw::DSetId vkfw::ProgramBindings::BindEnd(VkDescriptorSet* a_pSet, VkDescripto
       writeDescriptorSet[top].pBufferInfo = &descriptorBufferInfo[top];
       writeDescriptorSet[top].pImageInfo  = nullptr;
     }
+    else if (m_currBindingsTypes[binding.first] == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR)
+    {
+      descriptorAccelerationStructureInfo.accelerationStructureCount = 1;
+      descriptorAccelerationStructureInfo.pAccelerationStructures    = &binding.second.accelStruct;
+      writeDescriptorSet[top].pNext                                  = &descriptorAccelerationStructureInfo;
+    }
+    
     writeDescriptorSet[top].pTexelBufferView = nullptr; // #TODO: update here!
     top++;
   }

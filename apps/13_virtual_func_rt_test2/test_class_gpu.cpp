@@ -23,20 +23,99 @@ using LiteMath::uint4;
 
 class TestClass_GPU : public TestClass_Generated
 {
-public:
-  TestClass_GPU(std::shared_ptr<SceneManager> a_pMgr) : m_pScnMgr(a_pMgr) {}
-  //VkBufferUsageFlags GetAdditionalFlagsForUBO() const override { return VK_BUFFER_USAGE_TRANSFER_SRC_BIT; }
 
-  void ReadClassData(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine, TestClass_UBO_Data* pData)
+public:
+  TestClass_GPU(std::shared_ptr<SceneManager> a_pMgr) : m_pScnMgr(a_pMgr) 
   {
-    a_pCopyEngine->ReadBuffer(m_classDataBuffer, 0, pData, sizeof(TestClass_UBO_Data));
+
   }
 
-  std::vector<uint2> GetObjPtrArray(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
+  ~TestClass_GPU()
   {
-    std::vector<uint2> result(m_maxThreadCount);
-    a_pCopyEngine->ReadBuffer(m_IMaterialObjPtrBuffer, 0, result.data(), result.size()*sizeof(uint2));
-    return result;
+    if(m_rtPipelineLayout) vkDestroyPipelineLayout(device, m_rtPipelineLayout, nullptr);
+    if(m_rtPipeline)       vkDestroyPipeline      (device, m_rtPipeline,       nullptr);
+  }
+
+  void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount) override
+  {
+    TestClass_Generated::InitVulkanObjects(a_device, a_physicalDevice, a_maxThreadsCount);
+    SetupRTPipeline(a_device);
+  }
+  
+  VkDescriptorSet       m_rtDS       = nullptr;
+  VkDescriptorSetLayout m_rtDSLayout = nullptr;
+  std::shared_ptr<vkfw::ProgramBindings> m_pBindings = nullptr;
+  VkPipelineLayout      m_rtPipelineLayout = VK_NULL_HANDLE; 
+  VkPipeline            m_rtPipeline       = VK_NULL_HANDLE; 
+
+  void SetupRTPipeline(VkDevice a_device)
+  {
+    // first DS is from generated code, second is ours
+    //
+    VkDescriptorType dtypes[2] = {VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+    uint32_t     dtypesizes[2] = {1, 1};
+    m_pBindings = std::make_shared<vkfw::ProgramBindings>(a_device, dtypes, dtypesizes, 2, 1);
+    
+    m_pBindings->BindBegin(VK_SHADER_STAGE_COMPUTE_BIT);
+    m_pBindings->BindAccelStruct(0, m_pScnMgr->getTLAS().handle);
+    m_pBindings->BindBuffer     (1, CastSingleRay_local.out_colorBuffer, CastSingleRay_local.out_colorOffset);
+    m_pBindings->BindEnd(&m_rtDS, &m_rtDSLayout);
+    
+    VkDescriptorSetLayout inputSets[2] = {RayTraceDSLayout , m_rtDSLayout};
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+    pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pPushConstantRanges    = nullptr;
+    pipelineLayoutInfo.pSetLayouts            = inputSets;
+    pipelineLayoutInfo.setLayoutCount         = 2;
+    VK_CHECK_RESULT(vkCreatePipelineLayout(a_device, &pipelineLayoutInfo, nullptr, &m_rtPipelineLayout));
+    
+    // load shader and create compute pipeline for RTX accelerated ray tracing via GLSL
+    //
+    auto shaderCode = vk_utils::ReadFile("shaders/raytrace.comp.spv");
+    if(shaderCode.size() == 0)
+      RUN_TIME_ERROR("[TestClass_GPU::SetupRTPipeline]: can not load shaders");
+    VkShaderModule shaderModule = vk_utils::CreateShaderModule(a_device, shaderCode);
+    
+    VkComputePipelineCreateInfo pipelineCreateInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
+    pipelineCreateInfo.stage.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    pipelineCreateInfo.stage.stage  = VK_SHADER_STAGE_COMPUTE_BIT;
+    pipelineCreateInfo.stage.module = shaderModule;
+    pipelineCreateInfo.stage.pName  = "main";
+    pipelineCreateInfo.layout       = m_rtPipelineLayout;
+    
+    VK_CHECK_RESULT(vkCreateComputePipelines(a_device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_rtPipeline));
+
+    vkDestroyShaderModule(a_device, shaderModule, nullptr);
+  }
+  
+  void RayTraceCmd(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar, Lite_Hit* out_hit, float2* out_bars) override
+  {
+    uint32_t blockSizeX = 256;
+    uint32_t blockSizeY = 1;
+    uint32_t blockSizeZ = 1;
+  
+    struct KernelArgsPC
+    {
+      uint32_t m_sizeX;
+      uint32_t m_sizeY;
+      uint32_t m_sizeZ;
+      uint32_t m_tFlags;
+    } pcData;
+    
+    pcData.m_sizeX  = tid;
+    pcData.m_sizeY  = 1;
+    pcData.m_sizeZ  = 1;
+    pcData.m_tFlags = m_currThreadFlags;
+  
+    vkCmdPushConstants(m_currCmdBuffer, RayTraceLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
+    
+    vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, RayTracePipeline);
+    vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (pcData.m_sizeZ + blockSizeZ - 1) / blockSizeZ);
+  
+    VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
+    vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
   }
 
   int LoadScene(const char* bvhPath, const char* meshPath) override
