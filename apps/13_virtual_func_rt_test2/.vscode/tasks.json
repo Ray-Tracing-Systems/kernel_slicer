@@ -26,5 +26,14 @@
             "problemMatcher": [
                 "$gcc"
             ]
+        },
+        {
+            "label": "Build GLSL",
+            "type": "shell",
+            "command": "cd shaders && glslangValidator -V raytrace.comp -o raytrace.comp.spv -DGLSL",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]

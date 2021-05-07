@@ -48,7 +48,7 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
     else if((keyval.second.usedInKernel || keyval.second.usedInMainFn) && keyval.second.isContainer)
     {
       kslicer::DataMemberInfo size;
-      size.type         = "unsigned int";
+      size.type         = "uint";
       size.sizeInBytes  = sizeof(unsigned int);
       size.name         = keyval.second.name + "_size";
       size.usedInKernel = true;

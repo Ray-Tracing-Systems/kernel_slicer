@@ -120,9 +120,9 @@ public:
     vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
   }
 
-  int LoadScene(const char* bvhPath, const char* meshPath) override
+  int LoadScene(const char* bvhPath, const char* meshPath, bool a_needReorder) override
   {
-    if(TestClass_Generated::LoadScene(bvhPath, meshPath) != 0 ) // may not load bvh actually!
+    if(TestClass_Generated::LoadScene(bvhPath, meshPath, false) != 0 ) // may not load bvh actually!
       return 1; 
 
     // make scene from single mesh
@@ -252,13 +252,12 @@ void test_class_gpu()
     vkGetDeviceQueue(device, queueComputeFID, 0, &transferQueue);
   }
 
-
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);\
   auto pScnMgr     = std::make_shared<SceneManager>(device, physicalDevice, queueComputeFID, queueComputeFID, pCopyHelper, true);
   auto pGPUImpl    = std::make_shared<TestClass_GPU>(pScnMgr);               // !!! USING GENERATED CODE !!! 
   
   pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT); // !!! USING GENERATED CODE !!!                        
-  pGPUImpl->LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.bvh", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf");
+  pGPUImpl->LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.bvh", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf", true);
 
   // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
   //
@@ -315,34 +314,8 @@ void test_class_gpu()
     std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
     pCopyHelper->ReadBuffer(colorBuffer1, 0, pixelData.data(), pixelData.size()*sizeof(uint32_t));
     SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-    
+   
     return;
-
-    //TestClass_UBO_Data testData;
-    //pGPUImpl->ReadClassData(pCopyHelper, &testData);
-    //int a = 2;
-
-    // auto objPointers = pGPUImpl->GetObjPtrArray(pCopyHelper);
-    // {
-    //   uint currTag = -1, begOffs = 0;
-    //   for(size_t i=0;i<objPointers.size();i++)
-    //   {
-    //     const uint kgen_objTag    = (objPointers[i].x & IMaterial::TAG_MASK) >> (32 - IMaterial::TAG_BITS);
-    //     const uint kgen_objOffset = (objPointers[i].x & IMaterial::OFS_MASK);
-    //     
-    //     if(currTag != kgen_objTag)
-    //     {
-    //       if(currTag != -1)
-    //         std::cout << currTag << ": " << begOffs << " : " << i << "]" << std::endl;
-    //       begOffs = i;
-    //       currTag = kgen_objTag;
-    //     }
-    //   }
-    // }
-    // int b = 3;
-
-    //auto testIndirect = pGPUImpl->GetIndirectBufferData(pCopyHelper);
-    //int c = 4;
 
     std::cout << "begin path tracing passes ... " << std::endl;
     

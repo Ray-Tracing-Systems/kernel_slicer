@@ -83,7 +83,7 @@ void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
   m_emissiveMaterialId   = 10;
 }
 
-int TestClass::LoadScene(const char* bvhPath, const char* meshPath)
+int TestClass::LoadScene(const char* bvhPath, const char* meshPath, bool a_needReorder)
 {
   std::fstream input_file;
   input_file.open(bvhPath, std::ios::binary | std::ios::in);
@@ -155,26 +155,34 @@ int TestClass::LoadScene(const char* bvhPath, const char* meshPath)
   std::cout << "[LoadScene]: fixing material indices back ... " << std::endl;
 
   m_materialIds.resize(m_mesh.matIndices.size());   
-  //m_materialIds = m_mesh.matIndices; // // NO!!! Need to reorder them accordimg to reorderedIndices!!!
-  #pragma omp parallel for
-  for(uint32_t triIdNew = 0; triIdNew < m_mesh.TrianglesNum(); triIdNew++)
+
+
+  if(a_needReorder)
   {
-    const uint32_t A = m_indicesReordered[triIdNew*3+0];
-    const uint32_t B = m_indicesReordered[triIdNew*3+1];
-    const uint32_t C = m_indicesReordered[triIdNew*3+2];
-
-    for(uint32_t triIdOld = 0; triIdOld < m_mesh.TrianglesNum(); triIdOld++)
+    #pragma omp parallel for
+    for(uint32_t triIdNew = 0; triIdNew < m_mesh.TrianglesNum(); triIdNew++)
     {
-      const uint32_t AOld = m_mesh.indices[triIdOld*3+0];
-      const uint32_t BOld = m_mesh.indices[triIdOld*3+1];
-      const uint32_t COld = m_mesh.indices[triIdOld*3+2];
-
-      if(A == AOld && B == BOld && C == COld)
+      const uint32_t A = m_indicesReordered[triIdNew*3+0];
+      const uint32_t B = m_indicesReordered[triIdNew*3+1];
+      const uint32_t C = m_indicesReordered[triIdNew*3+2];
+  
+      for(uint32_t triIdOld = 0; triIdOld < m_mesh.TrianglesNum(); triIdOld++)
       {
-        m_materialIds[triIdNew] = m_mesh.matIndices[triIdOld];
-        break;
-      } 
+        const uint32_t AOld = m_mesh.indices[triIdOld*3+0];
+        const uint32_t BOld = m_mesh.indices[triIdOld*3+1];
+        const uint32_t COld = m_mesh.indices[triIdOld*3+2];
+  
+        if(A == AOld && B == BOld && C == COld)
+        {
+          m_materialIds[triIdNew] = m_mesh.matIndices[triIdOld];
+          break;
+        } 
+      }
     }
+  }
+  else
+  {
+    m_materialIds = m_mesh.matIndices; // 
   }
 
   InitSceneMaterials(10);

@@ -4,6 +4,8 @@
 
 // https://github.com/KhronosGroup/GLSL/blob/master/extensions/ext/GLSL_EXT_ray_query.txt
 
+#include "../include/TestClass_ubo.h"
+
 struct Lite_Hit
 {
   float t;
@@ -18,24 +20,8 @@ struct Lite_Hit
 #define KGEN_FLAG_SET_EXIT_NEGATIVE 8
 #define KGEN_REDUCTION_LAST_STEP    16
 
-/*
-__attribute__((reqd_work_group_size(256, 1, 1)))
-__kernel void kernel_RayTrace(
-  __global const float4 * rayPosAndNear,
-  __global float4 * rayDirAndFar,
-  __global Lite_Hit * out_hit,
-  __global float2 * out_bars,
-  __global uint* kgen_threadFlags,
-  __global float4* m_vPos4f,
-  __global unsigned int* m_indicesReordered,
-  __global struct Interval* m_intervals,
-  __global struct BVHNode* m_nodes,
-  __global struct TestClass_UBO_Data* ubo,
-  const uint kgen_iNumElementsX, 
-  const uint kgen_iNumElementsY,
-  const uint kgen_iNumElementsZ,
-  const uint kgen_tFlagsMask)
-*/
+#define HIT_TRIANGLE_GEOM 0
+#define HIT_LIGHT_GEOM    1
 
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
@@ -48,7 +34,7 @@ layout(binding = 5, set = 0) buffer Geom1    { vec4     m_vPos4f[];      }; //  
 layout(binding = 6, set = 0) buffer Geom2    { uint     m_indReord[];    }; //  __global unsigned int* m_indicesReordered,
 layout(binding = 7, set = 0) buffer Geom3    { ivec2    m_intervals[];   }; //  __global struct Interval* m_intervals,
 layout(binding = 8, set = 0) buffer Geom4    { vec4     m_nodes[];       }; //  __global struct BVHNode* m_nodes,
-layout(binding = 9, set = 0) buffer SelfData { uint     fakeubo[];       }; //  __global struct TestClass_UBO_Data* ubo,
+layout(binding = 9, set = 0) buffer SelfData { TestClass_UBO_Data     fakeubo; }; //  __global struct TestClass_UBO_Data* ubo,
 
 layout(binding = 0, set = 1) uniform accelerationStructureEXT topLevelAS;
 layout(binding = 1, set = 1) buffer Color { uint test_color[]; };
@@ -62,24 +48,40 @@ layout( push_constant ) uniform kernelIntArgs
 } kgen;
 
 
-//Surf unpackRayQuery(rayQueryEXT rayQuery)
-//{
-//	const int primitiveID = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
-//
-//	ivec3 index = ivec3(indices.i[3 * primitiveID], indices.i[3 * primitiveID + 1], indices.i[3 * primitiveID + 2]);
-//	Vertex v0 = unpackVertex(index.x);
-//	Vertex v1 = unpackVertex(index.y);
-//	Vertex v2 = unpackVertex(index.z);
-//
-//	vec3 barycentricCoords = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, true));
-//	barycentricCoords.x = 1.0 - barycentricCoords.y - barycentricCoords.z;
-//
-//	Surf s;
-//	s.normal = normalize(v0.normal * barycentricCoords.x + v1.normal * barycentricCoords.y + v2.normal * barycentricCoords.z);;
-//	s.pos = normalize(v0.pos * barycentricCoords.x + v1.pos * barycentricCoords.y + v2.pos * barycentricCoords.z);
-//
-//	return s;
-//}
+vec2 RaySphereHit(vec3 orig, vec3 dir, vec4 sphere) // see Ray Tracing Gems Book
+{
+  const vec3  center = sphere.xyz;
+  const float radius = sphere.w;
+
+  // Hearn and Baker equation 10-72 for when radius^2 << distance between origin and center
+  // Also at https://www.cg.tuwien.ac.at/courses/EinfVisComp/Slides/SS16/EVC-11%20Ray-Tracing%20Slides.pdf
+  // Assumes ray direction is normalized
+  //dir = normalize(dir);
+  const vec3   deltap   = center - orig;
+  const float ddp       = dot(dir, deltap);
+  const float deltapdot = dot(deltap, deltap);
+
+  // old way, "standard", though it seems to be worse than the methods above
+  //float discriminant = ddp * ddp - deltapdot + radius * radius;
+  vec3  remedyTerm   = deltap - ddp * dir;
+  float discriminant = radius * radius - dot(remedyTerm, remedyTerm);
+
+  vec2 result = {0,0};
+  if (discriminant >= 0.0f)
+  {
+  	const float sqrtVal = sqrt(discriminant);
+  	// include Press, William H., Saul A. Teukolsky, William T. Vetterling, and Brian P. Flannery, 
+  	// "Numerical Recipes in C," Cambridge University Press, 1992.
+  	const float q = (ddp >= 0) ? (ddp + sqrtVal) : (ddp - sqrtVal);
+  	// we don't bother testing for division by zero
+  	const float t1 = q;
+  	const float t2 = (deltapdot - radius * radius) / q;
+    result.x = min(t1,t2);
+    result.y = max(t1,t2);
+  }
+  
+  return result;
+}
 
 void main() 
 {
@@ -111,19 +113,37 @@ void main()
 
   if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT)
   {
-  	//pixelColor = vec3(1.0f, 1.0f, 0.0f);  
-  	//Surf s = unpackRayQuery(rayQuery);
-  	//vec3 lightVector = vec3(1.0, 1.0, 0.0);
-  	//float dot_product = max(dot(lightVector, s.normal), 0.1);
-  	//pixelColor *= dot_product;
-	const int primitiveID = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);  
-	test_color[tid] = primitiveID;
+	//test_color[tid] = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
+    
+	res.primId    = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
+	res.geomId    = HIT_TRIANGLE_GEOM;
+    
+	vec3 barycentricCoords = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, true));
+    barycentricCoords.x = 1.0 - barycentricCoords.y - barycentricCoords.z;
+
+    out_bars[tid] = barycentricCoords.xy;
   }
   else
   {
-  	//pixelColor = mix(vec3(0.99f, 0.83f, 0.5f), vec3(0.25f, 0.5f, 1.0f), abs(direction.y));
-	test_color[tid] = 0xFF00FF00;
+	//test_color[tid] = 0xFF00FF00;
   }
+
+  // intersect light under roof
+  {
+    const vec2 tNearFar = RaySphereHit(rayPos.xyz, rayDir.xyz, fakeubo.m_lightSphere);
+  
+    if(tNearFar.x < tNearFar.y && tNearFar.x > 0.0f && tNearFar.x < res.t)
+    {
+      res.primId = 0;
+      res.instId = -1;
+      res.geomId = HIT_LIGHT_GEOM;
+      res.t      = tNearFar.x;
+    }
+    else
+      res.geomId = HIT_TRIANGLE_GEOM;
+  }
+
+  out_hit[tid] = res;
 
   bool kgenExitCond = (res.primId != -1); 
   {
