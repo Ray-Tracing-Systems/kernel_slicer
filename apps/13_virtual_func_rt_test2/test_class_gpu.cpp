@@ -27,7 +27,7 @@ class TestClass_GPU : public TestClass_Generated
 public:
   TestClass_GPU(std::shared_ptr<SceneManager> a_pMgr) : m_pScnMgr(a_pMgr) 
   {
-
+    m_enableHWAccel = true;
   }
 
   ~TestClass_GPU()
@@ -41,6 +41,8 @@ public:
   std::shared_ptr<vkfw::ProgramBindings> m_pBindings = nullptr;
   VkPipelineLayout      m_rtPipelineLayout = VK_NULL_HANDLE; 
   VkPipeline            m_rtPipeline       = VK_NULL_HANDLE; 
+
+  bool m_enableHWAccel;
 
   void SetupRTPipeline(VkDevice a_device)
   {
@@ -91,6 +93,11 @@ public:
   
   void RayTraceCmd(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar, Lite_Hit* out_hit, float2* out_bars) override
   {
+    if(!m_enableHWAccel)
+    {
+      TestClass_Generated::RayTraceCmd(tid, rayPosAndNear, rayDirAndFar, out_hit, out_bars);
+      return;
+    }
     uint32_t blockSizeX = 256;
     uint32_t blockSizeY = 1;
     uint32_t blockSizeZ = 1;
@@ -122,7 +129,7 @@ public:
 
   int LoadScene(const char* bvhPath, const char* meshPath, bool a_needReorder) override
   {
-    if(TestClass_Generated::LoadScene(bvhPath, meshPath, false) != 0 ) // may not load bvh actually!
+    if(TestClass_Generated::LoadScene(bvhPath, meshPath, !m_enableHWAccel) != 0 ) // may not load bvh actually!
       return 1; 
 
     // make scene from single mesh
