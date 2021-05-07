@@ -120,7 +120,7 @@ void main()
 	vec3 barycentricCoords = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, true));
     barycentricCoords.x = 1.0 - barycentricCoords.y - barycentricCoords.z;
 
-    out_bars[tid] = barycentricCoords.xy;
+    out_bars[tid] = barycentricCoords.zy;
   }
 
   // intersect light under roof

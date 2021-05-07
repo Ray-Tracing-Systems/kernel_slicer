@@ -180,7 +180,8 @@ int TestClass::LoadScene(const char* bvhPath, const char* meshPath, bool a_needR
   }
   else
   {
-    m_materialIds = m_mesh.matIndices; // 
+    m_materialIds      = m_mesh.matIndices; // will use bvh in RTX, don't need tp reorder indices !!!
+    m_indicesReordered = m_mesh.indices;    // will use bvh in RTX, don't need tp reorder indices !!!
   }
 
   InitSceneMaterials(10);
