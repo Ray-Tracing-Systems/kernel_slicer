@@ -1,11 +1,7 @@
 #pragma once
 
 #include <string>
-#if defined(__ANDROID__) // Dynamic load, use vulkan_wrapper.h to load vulkan functions
-  #include "vulkan_wrapper/vulkan_wrapper.h"
-#else
-  #include <vulkan/vulkan.h>
-#endif
+#include "volk.h"
 
 namespace vkfw 
 {
