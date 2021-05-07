@@ -37,7 +37,7 @@ layout(binding = 8, set = 0) buffer Geom4    { vec4     m_nodes[];       }; //  
 layout(binding = 9, set = 0) buffer SelfData { TestClass_UBO_Data     fakeubo; }; //  __global struct TestClass_UBO_Data* ubo,
 
 layout(binding = 0, set = 1) uniform accelerationStructureEXT topLevelAS;
-layout(binding = 1, set = 1) buffer Color { uint test_color[]; };
+//layout(binding = 1, set = 1) buffer Color { uint test_color[]; };
 
 layout( push_constant ) uniform kernelIntArgs
 {
@@ -105,27 +105,22 @@ void main()
   res.t      = rayDir.w;
 
   rayQueryEXT rayQuery;
-  rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsOpaqueEXT, 0xff, rayPos.xyz, 0.001, rayDir.xyz, 10000.0);
+  rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsOpaqueEXT, 0xff, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w);
 
   vec3 pixelColor = vec3(0.0f, 0.0f, 1.0f);
 
   while(rayQueryProceedEXT(rayQuery)) { }
 
   if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT)
-  {
-	//test_color[tid] = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
-    
+  {    
 	res.primId    = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
 	res.geomId    = HIT_TRIANGLE_GEOM;
+	res.t         = rayQueryGetIntersectionTEXT(rayQuery, true);
     
 	vec3 barycentricCoords = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, true));
     barycentricCoords.x = 1.0 - barycentricCoords.y - barycentricCoords.z;
 
     out_bars[tid] = barycentricCoords.xy;
-  }
-  else
-  {
-	//test_color[tid] = 0xFF00FF00;
   }
 
   // intersect light under roof

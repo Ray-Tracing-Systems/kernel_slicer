@@ -52,7 +52,7 @@ public:
     
     m_pBindings->BindBegin(VK_SHADER_STAGE_COMPUTE_BIT);
     m_pBindings->BindAccelStruct(0, m_pScnMgr->getTLAS().handle);
-    m_pBindings->BindBuffer     (1, CastSingleRay_local.out_colorBuffer, CastSingleRay_local.out_colorOffset);
+    //m_pBindings->BindBuffer     (1, CastSingleRay_local.out_colorBuffer, CastSingleRay_local.out_colorOffset);
     m_pBindings->BindEnd(&m_rtDS, &m_rtDSLayout);
     
     VkDescriptorSetLayout inputSets[2] = {RayTraceDSLayout , m_rtDSLayout};
@@ -110,7 +110,7 @@ public:
     
     vkCmdPushConstants(m_currCmdBuffer, m_rtPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
     
-    VkDescriptorSet dsets[2] = {m_allGeneratedDS[6], m_rtDS};
+    VkDescriptorSet dsets[2] = {m_allGeneratedDS[1], m_rtDS};
     vkCmdBindDescriptorSets(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_rtPipelineLayout, 0, 2, dsets, 0, nullptr);
 
     vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_rtPipeline);
@@ -315,7 +315,7 @@ void test_class_gpu()
     pCopyHelper->ReadBuffer(colorBuffer1, 0, pixelData.data(), pixelData.size()*sizeof(uint32_t));
     SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
    
-    return;
+    //return;
 
     std::cout << "begin path tracing passes ... " << std::endl;
     
@@ -357,12 +357,14 @@ void test_class_gpu()
     }
     SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
     std::cout << std::endl;
+
   }
   
   // (6) destroy and free resources before exit
   //
+  pGPUImpl    = nullptr;     
+  pScnMgr     = nullptr;
   pCopyHelper = nullptr;
-  pGPUImpl = nullptr;                                                       // !!! USING GENERATED CODE !!! 
 
   vkDestroyBuffer(device, xyBuffer, nullptr);
   vkDestroyBuffer(device, colorBuffer1, nullptr);

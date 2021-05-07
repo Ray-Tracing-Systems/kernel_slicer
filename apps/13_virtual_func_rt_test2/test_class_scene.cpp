@@ -153,12 +153,10 @@ int TestClass::LoadScene(const char* bvhPath, const char* meshPath, bool a_needR
   m_vNorm4f     = m_mesh.vNorm4f;
   
   std::cout << "[LoadScene]: fixing material indices back ... " << std::endl;
-
-  m_materialIds.resize(m_mesh.matIndices.size());   
-
-
+   
   if(a_needReorder)
   {
+    m_materialIds.resize(m_mesh.matIndices.size());
     #pragma omp parallel for
     for(uint32_t triIdNew = 0; triIdNew < m_mesh.TrianglesNum(); triIdNew++)
     {
