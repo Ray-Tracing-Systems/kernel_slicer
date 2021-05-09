@@ -14,25 +14,6 @@
 #include "vulkan_basics.h"
 #include "test_class_generated.h"
 
-//class ToneMapping_Debug : public ToneMapping_Generated
-//{
-//public:
-//  
-//  void SaveTestImageNow(const char* a_outName, std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
-//  {
-//    std::vector<float4> realColor(m_width*m_height);    
-//    std::vector<unsigned int> pixels(m_width*m_height);
-//
-//    //a_pCopyEngine->ReadBuffer(colorBufferLDR, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
-//    a_pCopyEngine->ReadBuffer(m_vdata.m_brightPixelsBuffer, 0, realColor.data(), realColor.size()*sizeof(float4));
-//
-//    for(int i=0;i<pixels.size();i++)
-//      pixels[i] = RealColorToUint32(clamp(realColor[i], 0.0f, 1.0f));
-//    
-//    SaveBMP(a_outName, pixels.data(), m_width, m_height);
-//  }
-//};
-
 
 void Tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
 {
@@ -53,7 +34,9 @@ void Tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
   std::vector<const char*> extensions;
   enabledLayers.push_back("VK_LAYER_KHRONOS_validation");
   enabledLayers.push_back("VK_LAYER_LUNARG_standard_validation");
+  VK_CHECK_RESULT(volkInitialize());
   instance = vk_utils::CreateInstance(enableValidationLayers, enabledLayers, extensions);
+  volkLoadInstance(instance);
 
   physicalDevice       = vk_utils::FindPhysicalDevice(instance, true, 0);
   auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
@@ -78,7 +61,8 @@ void Tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
   fIDs.compute = queueComputeFID;
   device       = vk_utils::CreateLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures, 
                                                fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, physDevFeatures2);
-                                              
+  volkLoadDevice(device);
+
   commandPool  = vk_utils::CreateCommandPool(device, physicalDevice, VK_QUEUE_COMPUTE_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
   // (2) initialize vulkan helpers

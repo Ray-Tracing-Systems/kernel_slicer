@@ -312,7 +312,7 @@ VkDevice vk_utils::CreateLogicalDevice(VkPhysicalDevice physicalDevice, const st
   }
   else
   {
-    a_queueIDXs.graphics = VK_NULL_HANDLE;
+    a_queueIDXs.graphics = 0; //VK_NULL_HANDLE;
   }
 
   // Dedicated compute queue
@@ -524,6 +524,22 @@ void vk_utils::ExecuteCommandBufferNow(VkCommandBuffer a_cmdBuff, VkQueue a_queu
   //
   VK_CHECK_RESULT(vkWaitForFences(a_device, 1, &fence, VK_TRUE, FENCE_TIMEOUT));
 
+  vkDestroyFence(a_device, fence, NULL);
+}
+
+void vk_utils::ExecuteCommandBuffersNow(std::vector<VkCommandBuffer> a_cmdBuffers, VkQueue a_queue, VkDevice a_device)
+{
+  VkSubmitInfo submitInfo = {};
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.commandBufferCount = a_cmdBuffers.size();
+  submitInfo.pCommandBuffers = a_cmdBuffers.data();
+  VkFence fence;
+  VkFenceCreateInfo fenceCreateInfo = {};
+  fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  fenceCreateInfo.flags = 0;
+  VK_CHECK_RESULT(vkCreateFence(a_device, &fenceCreateInfo, NULL, &fence));
+  VK_CHECK_RESULT(vkQueueSubmit(a_queue, 1, &submitInfo, fence));
+  VK_CHECK_RESULT(vkWaitForFences(a_device, 1, &fence, VK_TRUE, vk_utils::FENCE_TIMEOUT));
   vkDestroyFence(a_device, fence, NULL);
 }
 

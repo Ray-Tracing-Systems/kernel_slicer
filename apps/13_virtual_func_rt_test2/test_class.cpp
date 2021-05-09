@@ -12,7 +12,7 @@ void TestClass::InitRandomGens(int a_maxThreads)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar, uint* a_flags) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
+void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 {
   const uint XY = packedXY[tid];
 
@@ -24,7 +24,24 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
   *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
-  *a_flags       = 1;
+}
+
+void TestClass::kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar,
+                                                                   float4* accumColor,    float4* accumuThoroughput) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
+{
+  *accumColor        = make_float4(0,0,0,0);
+  *accumuThoroughput = make_float4(1,1,1,0);
+
+  const uint XY = packedXY[tid];
+
+  const uint x = (XY & 0x0000FFFF);
+  const uint y = (XY & 0xFFFF0000) >> 16;
+
+  const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
+  const float3 rayPos = camPos;
+  
+  *rayPosAndNear = to_float4(rayPos, 0.0f);
+  *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
 }
 
 static float2 RayBoxIntersectionLite(const float3 ray_pos, const float3 ray_dir_inv, const float boxMin[3], const float boxMax[3])
@@ -97,12 +114,9 @@ static inline float3 SafeInverse_4to3(float4 d)
   return res;
 }
 
-void TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
-                                Lite_Hit* out_hit, float2* out_bars, uint* a_flags)
+bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
+                                Lite_Hit* out_hit, float2* out_bars)
 {
-  if(*a_flags == 0)
-    return;
-    
   const float4 rayPos = *rayPosAndNear;
   const float4 rayDir = *rayDirAndFar ;
 
@@ -134,21 +148,16 @@ void TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
     nodeIdx = (nodeIdx == 0) ? 0xFFFFFFFE : nodeIdx;
   }
   
-  // intersect flat light under roof
+  // intersect light under roof
   {
-    const float tLightHit  = (m_lightGeom.boxMax.y - rayPos.y)*rayDirInv.y;
-    const float4 hit_point = rayPos + tLightHit*rayDir;
-    
-    bool is_hit = (hit_point.x > m_lightGeom.boxMin.x) && (hit_point.x < m_lightGeom.boxMax.x) &&
-                  (hit_point.z > m_lightGeom.boxMin.z) && (hit_point.z < m_lightGeom.boxMax.z) &&
-                  (tLightHit < res.t);
+    const float2 tNearFar = RaySphereHit(to_float3(rayPos), to_float3(rayDir), m_lightSphere);
   
-    if(is_hit)
+    if(tNearFar.x < tNearFar.y && tNearFar.x > 0.0f && tNearFar.x < res.t)
     {
       res.primId = 0;
       res.instId = -1;
-      res.geomId = HIT_FLAT_LIGHT_GEOM;
-      res.t      = tLightHit;
+      res.geomId = HIT_LIGHT_GEOM;
+      res.t      = tNearFar.x;
     }
     else
       res.geomId = HIT_TRIANGLE_GEOM;
@@ -156,18 +165,12 @@ void TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   
   *out_hit  = res;
   *out_bars = baricentrics;
-  *a_flags  = (res.primId != -1) ? 1 : 0;
+  return (res.primId != -1);
 }
 
 void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
 {
   out_pakedXY[pitchOffset(tidX,tidY)] = ((tidY << 16) & 0xFFFF0000) | (tidX & 0x0000FFFF);
-}
-
-void TestClass::kernel_InitAccumData(uint tid, float4* accumColor, float4* accumuThoroughput)
-{
-  *accumColor        = make_float4(0,0,0,0);
-  *accumuThoroughput = make_float4(1,1,1,0);
 }
 
 void TestClass::kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* out_color)
@@ -185,21 +188,20 @@ IMaterial* MakeObjPtr(uint32_t objectPtr, __global const uint32_t* a_data)
   return (__global IMaterial*)(a_data + objectOffset);
 }
 
-IMaterial* TestClass::kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit, const uint* a_flags)
+IMaterial* TestClass::kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit)
 {
   uint32_t objPtr = 0;  
-  if(*a_flags != 0)
+ 
+  if(in_hit->geomId == HIT_LIGHT_GEOM)
   {
-    if(in_hit->geomId == HIT_FLAT_LIGHT_GEOM)
-    {
-      objPtr = m_materialOffsets[m_emissiveMaterialId];
-    }
-    else if(in_hit->primId != -1)
-    {
-      const uint32_t mtId = m_materialIds[in_hit->primId]+1; // +1 due to empty object
-      objPtr = m_materialOffsets[mtId];
-    }
+    objPtr = m_materialOffsets[m_emissiveMaterialId];
   }
+  else if(in_hit->primId != -1)
+  {
+    const uint32_t mtId = m_materialIds[in_hit->primId]+1; // +1 due to empty object
+    objPtr = m_materialOffsets[mtId];
+  }
+
   return MakeObjPtr(objPtr, m_materialData.data());
 }
 
@@ -214,14 +216,14 @@ void TestClass::PackXY(uint tidX, uint tidY, uint* out_pakedXY)
 void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
 {
   float4 rayPosAndNear, rayDirAndFar;
-  uint   flags;
-  kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar, &flags);
+  kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
 
   Lite_Hit hit; 
   float2   baricentrics; 
-  kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, &flags);
+  if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
+    return;
   
-  IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit, &flags);
+  IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
 
   pMaterial->kernel_GetColor(tid, out_color, this);
 }
@@ -238,11 +240,8 @@ void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, c
 void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color)
 {
   float4 accumColor, accumThoroughput;
-  kernel_InitAccumData(tid, &accumColor, &accumThoroughput);
-
   float4 rayPosAndNear, rayDirAndFar;
-  uint   flags;
-  kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar, &flags);
+  kernel_InitEyeRay2(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput);
 
   Lite_Hit hit; 
   float2   baricentrics; 
@@ -250,9 +249,10 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, floa
   for(int depth = 0; depth < a_maxDepth; depth++) 
   {
     Lite_Hit hit;
-    kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, &flags);
+    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
+      break;
 
-    IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit, &flags);
+    IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
     
     pMaterial->kernel_NextBounce(tid, &hit, &baricentrics, 
                                  m_indicesReordered.data(), m_vPos4f.data(), m_vNorm4f.data(), 
@@ -288,6 +288,7 @@ void test_class_cpu()
   }
 
   test.LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.bvh", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf");
+
   // test simple ray casting
   //
   #pragma omp parallel for default(shared)

@@ -1,0 +1,150 @@
+#version 460
+#extension GL_EXT_ray_query : require
+#extension GL_GOOGLE_include_directive : require
+
+// https://github.com/KhronosGroup/GLSL/blob/master/extensions/ext/GLSL_EXT_ray_query.txt
+
+#include "../include/TestClass_ubo.h"
+
+struct Lite_Hit
+{
+  float t;
+  int   primId; 
+  int   instId;
+  int   geomId;
+};
+
+#define KGEN_FLAG_RETURN            1
+#define KGEN_FLAG_BREAK             2
+#define KGEN_FLAG_DONT_SET_EXIT     4
+#define KGEN_FLAG_SET_EXIT_NEGATIVE 8
+#define KGEN_REDUCTION_LAST_STEP    16
+
+#define HIT_TRIANGLE_GEOM 0
+#define HIT_LIGHT_GEOM    1
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(binding = 0, set = 0) buffer RayPart0 { vec4     rayPosAndNear[]; }; //  __global const float4 * rayPosAndNear
+layout(binding = 1, set = 0) buffer RayPart1 { vec4     rayDirAndFar[];  }; //  __global float4 * rayDirAndFar,
+layout(binding = 2, set = 0) buffer HitPart1 { Lite_Hit out_hit[];       }; //  __global Lite_Hit * out_hit,
+layout(binding = 3, set = 0) buffer HitPart2 { vec2     out_bars[];      }; //  __global float2 * out_bars,
+layout(binding = 4, set = 0) buffer Flags    { uint     threadFlags[];   }; //  __global uint* kgen_threadFlags,
+layout(binding = 5, set = 0) buffer Geom1    { vec4     m_vPos4f[];      }; //  __global float4* m_vPos4f,
+layout(binding = 6, set = 0) buffer Geom2    { uint     m_indReord[];    }; //  __global unsigned int* m_indicesReordered,
+layout(binding = 7, set = 0) buffer Geom3    { ivec2    m_intervals[];   }; //  __global struct Interval* m_intervals,
+layout(binding = 8, set = 0) buffer Geom4    { vec4     m_nodes[];       }; //  __global struct BVHNode* m_nodes,
+layout(binding = 9, set = 0) buffer SelfData { TestClass_UBO_Data     fakeubo; }; //  __global struct TestClass_UBO_Data* ubo,
+
+layout(binding = 0, set = 1) uniform accelerationStructureEXT topLevelAS;
+//layout(binding = 1, set = 1) buffer Color { uint test_color[]; };
+
+layout( push_constant ) uniform kernelIntArgs
+{
+  uint iNumElementsX; // const uint kgen_iNumElementsX, 
+  uint iNumElementsY; // const uint kgen_iNumElementsY,
+  uint iNumElementsZ; // const uint kgen_iNumElementsZ,
+  uint tFlagsMask;    // const uint kgen_tFlagsMask)
+} kgen;
+
+
+vec2 RaySphereHit(vec3 orig, vec3 dir, vec4 sphere) // see Ray Tracing Gems Book
+{
+  const vec3  center = sphere.xyz;
+  const float radius = sphere.w;
+
+  // Hearn and Baker equation 10-72 for when radius^2 << distance between origin and center
+  // Also at https://www.cg.tuwien.ac.at/courses/EinfVisComp/Slides/SS16/EVC-11%20Ray-Tracing%20Slides.pdf
+  // Assumes ray direction is normalized
+  //dir = normalize(dir);
+  const vec3   deltap   = center - orig;
+  const float ddp       = dot(dir, deltap);
+  const float deltapdot = dot(deltap, deltap);
+
+  // old way, "standard", though it seems to be worse than the methods above
+  //float discriminant = ddp * ddp - deltapdot + radius * radius;
+  vec3  remedyTerm   = deltap - ddp * dir;
+  float discriminant = radius * radius - dot(remedyTerm, remedyTerm);
+
+  vec2 result = {0,0};
+  if (discriminant >= 0.0f)
+  {
+  	const float sqrtVal = sqrt(discriminant);
+  	// include Press, William H., Saul A. Teukolsky, William T. Vetterling, and Brian P. Flannery, 
+  	// "Numerical Recipes in C," Cambridge University Press, 1992.
+  	const float q = (ddp >= 0) ? (ddp + sqrtVal) : (ddp - sqrtVal);
+  	// we don't bother testing for division by zero
+  	const float t1 = q;
+  	const float t2 = (deltapdot - radius * radius) / q;
+    result.x = min(t1,t2);
+    result.y = max(t1,t2);
+  }
+  
+  return result;
+}
+
+void main() 
+{
+  ///////////////////////////////////////////////////////////////// prolog
+  const uint tid = gl_GlobalInvocationID.x; 
+  if(tid >= kgen.iNumElementsX)
+    return;
+  if((threadFlags[tid] & kgen.tFlagsMask) != 0) 
+    return;
+
+  //const float4 m_lightSphere = ubo->m_lightSphere;
+  ///////////////////////////////////////////////////////////////// prolog
+  
+  const vec4 rayPos = rayPosAndNear[tid];
+  const vec4 rayDir = rayDirAndFar[tid] ;
+
+  Lite_Hit res;
+  res.primId = -1;
+  res.instId = -1;
+  res.geomId = -1;
+  res.t      = rayDir.w;
+
+  rayQueryEXT rayQuery;
+  rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsOpaqueEXT, 0xff, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w);
+
+  vec3 pixelColor = vec3(0.0f, 0.0f, 1.0f);
+
+  while(rayQueryProceedEXT(rayQuery)) { }
+
+  if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT)
+  {    
+	res.primId    = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
+	res.geomId    = HIT_TRIANGLE_GEOM;
+	res.t         = rayQueryGetIntersectionTEXT(rayQuery, true);
+    
+	vec3 barycentricCoords = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, true));
+    barycentricCoords.x = 1.0 - barycentricCoords.y - barycentricCoords.z;
+
+    out_bars[tid] = barycentricCoords.zy;
+  }
+
+  // intersect light under roof
+  {
+    const vec2 tNearFar = RaySphereHit(rayPos.xyz, rayDir.xyz, fakeubo.m_lightSphere);
+  
+    if(tNearFar.x < tNearFar.y && tNearFar.x > 0.0f && tNearFar.x < res.t)
+    {
+      res.primId = 0;
+      res.instId = -1;
+      res.geomId = HIT_LIGHT_GEOM;
+      res.t      = tNearFar.x;
+    }
+    else
+      res.geomId = HIT_TRIANGLE_GEOM;
+  }
+
+  out_hit[tid] = res;
+
+  bool kgenExitCond = (res.primId != -1); 
+  {
+    const bool exitHappened = (kgen.tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0 ? !kgenExitCond : kgenExitCond;
+    if((kgen.tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)
+      threadFlags[tid] = ((kgen.tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
+  };
+
+}

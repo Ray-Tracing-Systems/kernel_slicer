@@ -1,14 +1,14 @@
 #ifndef VULKAN_PROGRAM_HELPER_H
 #define VULKAN_PROGRAM_HELPER_H
 
-#include <vulkan/vulkan.h>
+#include "volk.h"
 #include "vk_utils.h"
 
 #include <vector>
 #include <map>
 #include <unordered_map>
 
-namespace vk_utils
+namespace vkfw
 {
   struct PBinding
   {
@@ -20,7 +20,7 @@ namespace vk_utils
       bool buffsMatch = ((buffer != nullptr) && (rhs.buffer != nullptr)) ||
                         ((buffer == nullptr) && (rhs.buffer == nullptr));
 
-      bool bufOffsMatch = (bufferOffset == rhs.bufferOffset);
+      bool buffsMatch2 = (bufferOffset == rhs.bufferOffset);
 
       bool imgMatch = ((imageView != nullptr) && (rhs.imageView != nullptr)) ||
                       ((imageView == nullptr) && (rhs.imageView == nullptr));
@@ -28,16 +28,19 @@ namespace vk_utils
       bool samMatch = ((imageSampler != nullptr) && (rhs.imageSampler != nullptr)) ||
                       ((imageSampler == nullptr) && (rhs.imageSampler == nullptr));
 
-      return buffViewMatch && buffsMatch && bufOffsMatch && 
-             imgMatch && samMatch && (type == rhs.type);
+      bool asMatch = ((accelStruct != nullptr) && (rhs.accelStruct != nullptr)) ||
+                      ((accelStruct == nullptr) && (rhs.accelStruct == nullptr));
+
+      return buffViewMatch && buffsMatch && buffsMatch2 && imgMatch && samMatch && asMatch && (type == rhs.type);
     }
 
     VkBufferView buffView     = nullptr;
     VkBuffer     buffer       = nullptr;
     size_t       bufferOffset = 0;
-
     VkImageView  imageView    = nullptr;
     VkSampler    imageSampler = nullptr;
+    VkImageLayout imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    VkAccelerationStructureKHR accelStruct = nullptr;
     VkDescriptorType type;
   };
 
@@ -78,16 +81,15 @@ namespace std
 {
 
   template <>
-  struct hash<vk_utils::PBKey>
+  struct hash<vkfw::PBKey>
   {
-    std::size_t operator()(const vk_utils::PBKey& k) const
+    std::size_t operator()(const vkfw::PBKey& k) const
     {
       using std::size_t;
       using std::hash;
       using std::string;
 
-      // Compute individual hash values for first,
-      // second and third and combine them using XOR and bit shifting:
+      // Compute individual hash values and combine them using XOR and bit shifting:
       //
       size_t currHash = k.m_currBindings.size();
 
@@ -98,7 +100,8 @@ namespace std
         currHash ^= ( (hash<bool>()(b.second.imageView    == nullptr)  << 2 ));
         currHash ^= ( (hash<bool>()(b.second.imageSampler == nullptr)  << 3 ));
         currHash ^= ( (hash<bool>()(b.second.buffer == nullptr)        << 5 ));
-        currHash ^= ( (hash<int> ()(b.second.type))                        << 7);
+        currHash ^= ( (hash<bool>()(b.second.accelStruct == nullptr)   << 7 ));
+        currHash ^= ( (hash<int> ()(b.second.type))                        << 9);
       }
 
       return currHash;

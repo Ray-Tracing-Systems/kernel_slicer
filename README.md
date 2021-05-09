@@ -25,7 +25,9 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 * Our main users are Vulkan developers that has to use Vulkan due to some specific hardware features or performance requirenments. Therefore, we initially pay special attention to interaction between generated and hand written code (which can use any desired hardware extensions). Such interaction is assumed to be done via inheritance and virtual function overides (see [Example of glue code](doc/README_glue.md));
 
-# Build(1): as stand-alone project
+# Build:
+
+0. git clone --recurse-submodules https://github.com/Ray-Tracing-Systems/kernel_slicer
 
 1. sudo apt-get install llvm-11-dev
 
@@ -38,6 +40,8 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 5. you may also use provided VS Code config to build and run test cases (tasks.json and launch.json)
 
 6. You will need also to build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders").
+
+7. Build volk with cmake and leave 'libvolk.a' in 'apps/volk'
 
 # Concept and general workflow
 
@@ -75,28 +79,26 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
 
 3. Select one of examples from app folder. We use the simple example of image processing in this tutorial: "apps/05_filter_bloom_good".
 
-4. (temp) clone vkfw from cbvh project to apps to form "apps/vkfw"; 
+4. (optional) Understand CPU code. You may comment all Vulkan includes and generated files from CMakeLists.txt (test_class_generated.cpp and test_class_generated_ds.cpp) to build and run only cpu code. And please comment "tone_mapping_gpu()" call in main.cpp; You may fix CMake and includes back later.
 
-5. (optional) Understand CPU code. You may comment all Vulkan includes and generated files from CMakeLists.txt (test_class_generated.cpp and test_class_generated_ds.cpp) to build and run only cpu code. And please comment "tone_mapping_gpu()" call in main.cpp; You may fix CMake and includes back later.
-
-6. Run kernel kslicer with the folowing command line (examples are stored in ".vscode/launch.json") from the project folder (i.e. the folder where this README.md is located): 
+5. Run kernel kslicer with the folowing command line (examples are stored in ".vscode/launch.json") from the project folder (i.e. the folder where this README.md is located): 
 
 ```
-./kslicer "apps/05_filter_bloom_good/test_class.cpp" -pattern "ipv" -mainClass "ToneMapping" -stdlibfolder "TINYSTL" -v
+./kslicer "apps/05_filter_bloom_good/test_class.cpp" -pattern "ipv" -mainClass "ToneMapping" -stdlibfolder "TINYSTL" -reorderLoops "YX" -v
 ```
 Now generated files should apper in  "apps/05_filter_bloom_good" folder.
 
-7. Put clspv to "apps" folder and then run futher command from concrete folder sample:
+6. Put clspv to "apps" folder and then run futher command from concrete folder sample:
  
 ```
-../clspv z_generated.cl -o z_generated.cl.spv -pod-pushconstant 
+bash z_build.sh
 ```
  
 If you got z_generated.cl.spv file, kernels were compiled succesfully. In VS Code config this process is called "Build Kernels".
  
-8. Now you can bind generated code to some your Vulkan code. We provide simple example in *test_class_gpu.cpp*.
+7. Now you can bind generated code to some your Vulkan code. We provide simple example in *test_class_gpu.cpp*.
 
-9. Build and run application (don't forget to get back "tone_mapping_gpu()" call in main.cpp if you previously comment it) from the sample folder "apps/05_filter_bloom_good". Now you should have 2 identical images in the sample forder: the first from the CPU code path and the second from the GPU one.  
+8. Build and run application (don't forget to get back "tone_mapping_gpu()" call in main.cpp if you previously comment it) from the sample folder "apps/05_filter_bloom_good". Now you should have 2 identical images in the sample forder: the first from the CPU code path and the second from the GPU one.  
 
 ## Feature list: what you can do and what you should avoid
 
@@ -151,7 +153,7 @@ class TestClass // main class
 };
 ```
 
-(-) can't **yet** call virtual kernels (**not implemented**);
+(+) can call virtual kernels (**see samples 10 and 12 in 'apps'**);
 
 (-) can't **yet** use class methods inside kernels (**not implemented**);
 
@@ -163,7 +165,7 @@ class TestClass // main class
 
 ## if it does not work
 
-In the current status our generator does pretty simple and stupid work. Therefore, not much things can go wrong:
+The kernel_slicer does pretty simple and stupid work. Therefore, not much things can go wrong:
 
 1. If you got error message from *kslicer* application on the translation stage please read and understand it. Currently, the most common problem on this stage is absence of some functions from the STL. Just define these functions in *TINYSTL* directory. Note that you don't have to implement them, just define required interface to clang AST parser got them!
 

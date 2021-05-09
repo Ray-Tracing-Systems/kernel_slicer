@@ -1,7 +1,7 @@
 #ifndef VULKAN_TEXTURE_HELPER_H
 #define VULKAN_TEXTURE_HELPER_H
 
-#include "vulkan_wrapper/vulkan_include.h"
+#include "volk.h"
 #include "vk_copy.h"
 
 #include <vector>

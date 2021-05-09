@@ -26,6 +26,24 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
 }
 
+void TestClass::kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar,
+                                                                   float4* accumColor,    float4* accumuThoroughput) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
+{
+  *accumColor        = make_float4(0,0,0,0);
+  *accumuThoroughput = make_float4(1,1,1,0);
+
+  const uint XY = packedXY[tid];
+
+  const uint x = (XY & 0x0000FFFF);
+  const uint y = (XY & 0xFFFF0000) >> 16;
+
+  const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
+  const float3 rayPos = camPos;
+  
+  *rayPosAndNear = to_float4(rayPos, 0.0f);
+  *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
+}
+
 static float2 RayBoxIntersectionLite(const float3 ray_pos, const float3 ray_dir_inv, const float boxMin[3], const float boxMax[3])
 {
   const float lo = ray_dir_inv.x*(boxMin[0] - ray_pos.x);
@@ -160,12 +178,6 @@ void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
   out_pakedXY[pitchOffset(tidX,tidY)] = ((tidY << 16) & 0xFFFF0000) | (tidX & 0x0000FFFF);
 }
 
-void TestClass::kernel_InitAccumData(uint tid, float4* accumColor, float4* accumuThoroughput)
-{
-  *accumColor        = make_float4(0,0,0,0);
-  *accumuThoroughput = make_float4(1,1,1,0);
-}
-
 void TestClass::kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* out_color)
 {
   out_color[tid] = RealColorToUint32(*a_accumColor);
@@ -233,10 +245,8 @@ void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, c
 void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color)
 {
   float4 accumColor, accumThoroughput;
-  kernel_InitAccumData(tid, &accumColor, &accumThoroughput);
-
   float4 rayPosAndNear, rayDirAndFar;
-  kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
+  kernel_InitEyeRay2(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput);
 
   Lite_Hit hit; 
   float2   baricentrics; 
