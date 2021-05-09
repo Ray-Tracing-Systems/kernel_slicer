@@ -146,7 +146,6 @@ public:
 
 struct RTXDeviceFeatures
 {
-  VkPhysicalDeviceAccelerationStructureFeaturesKHR m_accelStructFeatures{};
   VkPhysicalDeviceAccelerationStructureFeaturesKHR m_enabledAccelStructFeatures{};
   VkPhysicalDeviceBufferDeviceAddressFeatures      m_enabledDeviceAddressFeatures{};
   VkPhysicalDeviceRayQueryFeaturesKHR              m_enabledRayQueryFeatures;
@@ -155,13 +154,6 @@ struct RTXDeviceFeatures
 static RTXDeviceFeatures SetupRTXFeatures(VkPhysicalDevice a_physDev)
 {
   static RTXDeviceFeatures g_rtFeatures;
-
-  g_rtFeatures.m_accelStructFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-
-  VkPhysicalDeviceFeatures2 deviceFeatures2{};
-  deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-  deviceFeatures2.pNext = &g_rtFeatures.m_accelStructFeatures;
-  vkGetPhysicalDeviceFeatures2(a_physDev, &deviceFeatures2);
 
   g_rtFeatures.m_enabledRayQueryFeatures.sType    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
   g_rtFeatures.m_enabledRayQueryFeatures.rayQuery = VK_TRUE;
