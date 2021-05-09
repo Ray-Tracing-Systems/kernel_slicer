@@ -34,7 +34,9 @@ void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
   std::vector<const char*> extensions;
   enabledLayers.push_back("VK_LAYER_KHRONOS_validation");
   enabledLayers.push_back("VK_LAYER_LUNARG_standard_validation");
+  VK_CHECK_RESULT(volkInitialize());
   instance = vk_utils::CreateInstance(enableValidationLayers, enabledLayers, extensions);
+  volkLoadInstance(instance);
 
   physicalDevice       = vk_utils::FindPhysicalDevice(instance, true, 0);
   auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
@@ -59,7 +61,8 @@ void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
   fIDs.compute = queueComputeFID;
   device       = vk_utils::CreateLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures, 
                                                fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, physDevFeatures2);
-                                              
+  volkLoadDevice(device);
+
   commandPool  = vk_utils::CreateCommandPool(device, physicalDevice, VK_QUEUE_COMPUTE_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
   // (2) initialize vulkan helpers

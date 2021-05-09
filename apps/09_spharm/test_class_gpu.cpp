@@ -46,7 +46,10 @@ std::array<LiteMath::float3, 9> process_image_gpu(std::vector<uint32_t>& a_inPix
   std::vector<const char*> extensions;
   enabledLayers.push_back("VK_LAYER_KHRONOS_validation");
   enabledLayers.push_back("VK_LAYER_LUNARG_standard_validation");
+  
+  VK_CHECK_RESULT(volkInitialize());
   instance = vk_utils::CreateInstance(enableValidationLayers, enabledLayers, extensions);
+  volkLoadInstance(instance);
 
   physicalDevice       = vk_utils::FindPhysicalDevice(instance, true, 1);
   auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
@@ -72,6 +75,7 @@ std::array<LiteMath::float3, 9> process_image_gpu(std::vector<uint32_t>& a_inPix
   fIDs.compute = queueComputeFID;
   device       = vk_utils::CreateLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures, 
                                                fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, physDevFeatures2);
+  volkLoadDevice(device);
                                               
   commandPool  = vk_utils::CreateCommandPool(device, physicalDevice, VK_QUEUE_COMPUTE_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
