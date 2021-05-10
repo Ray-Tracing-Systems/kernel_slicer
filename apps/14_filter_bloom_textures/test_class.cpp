@@ -1,6 +1,7 @@
 #include "test_class.h"
 #include "Bitmap.h"
 #include "texture2d.h"
+#include "sampler.h"
 #include <cassert>
 
 inline uint pitch(uint x, uint y, uint pitch) { return y*pitch + x; }  
@@ -158,13 +159,15 @@ void ToneMapping::kernel2D_BlurY(int width, int height, const float4* a_dataIn, 
 
 void ToneMapping::kernel2D_MixAndToneMap(int width, int height, const float4* inData4f, const float4* inBrightPixels, unsigned int* outData1ui)
 {
+  Sampler sampler;
+  sampler.m_filter = Sampler::Filter::MIN_MAG_MIP_LINEAR;
   for(int tidY=0;tidY<height;tidY++)
   {
     for(int tidX=0;tidX<width;tidX++)
     {
       const float texCoordX = (float)(tidX) / (float) (m_width);
       const float texCoordY = (float)(tidY) / (float) (m_height);
-      float4 sampledColor = sample(inBrightPixels, m_widthSmall, m_heightSmall, texCoordX, texCoordY);
+      float4 sampledColor = sample(sampler, inBrightPixels, int2(m_widthSmall, m_heightSmall), float2(texCoordX, texCoordY) * 0.5);
       float4 colorSumm    = clamp(sampledColor + inData4f[pitch(tidX, tidY, m_width)], 0.0f, 1.0f);
     
       colorSumm.x = pow(colorSumm.x, m_gammaInv);
