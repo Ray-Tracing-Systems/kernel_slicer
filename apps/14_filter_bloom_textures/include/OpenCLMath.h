@@ -34,6 +34,14 @@
 #define INV_TWOPI     0.15915494309189533577f
 #endif 
 
+static inline int2 make_int2(int a, int b)
+{
+  int2 res;
+  res.x = a;
+  res.y = b;
+  return res;
+}
+
 static inline float2 make_float2(float a, float b)
 {
   float2 res;

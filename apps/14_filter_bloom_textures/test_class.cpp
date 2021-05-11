@@ -4,9 +4,9 @@
 #include "sampler.h"
 #include <cassert>
 
-inline uint pitch(uint x, uint y, uint pitch) { return y*pitch + x; }  
+inline uint pitch(uint x, uint y, uint pitch) { return y * pitch + x; }  
 
-inline float4 sample(__global const float4* data, int w, int h, float a_texCoordX, float a_texCoordY)
+inline float4 bilinear(__global const float4* data, int w, int h, float a_texCoordX, float a_texCoordY)
 {
   const float fw = (float)(w);
   const float fh = (float)(h);
@@ -22,10 +22,10 @@ inline float4 sample(__global const float4* data, int w, int h, float a_texCoord
   const int px1 = (px < w - 1) ? px + 1 : px;
   const int py1 = (py < h - 1) ? py + 1 : py;
 
-  const int offset0 = (px + py*stride);
-  const int offset1 = (px1 + py*stride);
-  const int offset2 = (px + py1*stride);
-  const int offset3 = (px1 + py1*stride);
+  const int offset0 = (px  + py  * stride);
+  const int offset1 = (px1 + py  * stride);
+  const int offset2 = (px  + py1 * stride);
+  const int offset3 = (px1 + py1 * stride);
 
   const float  alpha = ffx - (float)px;
   const float  beta  = ffy - (float)py;
@@ -74,38 +74,53 @@ void ToneMapping::SetMaxImageSize(int w, int h)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ToneMapping::kernel2D_ExtractBrightPixels(int width, int height, const float4* inData4f, float4* a_brightPixels)
+void ToneMapping::kernel2D_ExtractBrightPixels(int width, int height, const Texture2D<float4>* a_texture2d, const Sampler* a_sampler, Texture2D<float4>* a_brightPixels)
 {  
-  for(int y=0;y<height;y++)
+  for(int y = 0; y < height; y++)
   {
-    for(int x=0;x<width;x++)
+    for(int x = 0; x < width; x++)
     {
-      float4 pixel = inData4f[pitch(x, y, m_width)];
+      //float4 pixel = inData4f[pitch(x, y, m_width)];
+      const float2 uv        = make_float2(x/(float)(width), y/(float)(height));
+      const float4 pixel     = a_texture2d->sample(a_sampler, uv, make_int2(width, height));
+      const uint   pos_pixel = pitch(x, y, m_width);
+
       if(pixel.x >= 1.0f || pixel.y >= 1.0f || pixel.z >= 1.0f)
-        a_brightPixels[pitch(x, y, m_width)] = pixel;
+        a_brightPixels->write_pixel(pos_pixel, pixel);
       else
-        a_brightPixels[pitch(x, y, m_width)] = make_float4(0,0,0,0);      
+        a_brightPixels->write_pixel(pos_pixel, make_float4(0,0,0,0));      
     }
   }
 }
 
-void ToneMapping::kernel2D_DownSample4x(int width, int height, const float4* a_dataFullRes, float4* a_dataSmallRes)
+
+void ToneMapping::kernel2D_DownSample4x(int width, int height, const Texture2D<float4>* a_dataFullRes, const Sampler* a_sampler, Texture2D<float4>* a_dataSmallRes)
 {
-  for(int j=0;j<height;j++)
+  const int2 texSize = make_int2(width, height);
+
+  for(int j = 0; j < height; j++)
   {
-    for(int i=0;i<width;i++)
+    for(int i = 0; i < width; i++)
     {
-      float4 average = make_float4(0,0,0,0);
-      for(int y=0;y<4;y++)
-        for(int x=0;x<4;x++)
-          average += a_dataFullRes[pitch(i*4 + x, j*4 + y, m_width)];
-      
-      a_dataSmallRes[pitch(i, j, m_widthSmall)] = average*(1.0f/16.0f);
+      float4 average = make_float4(0, 0, 0, 0);      
+
+      for(int y = 0; y < 4; y++)
+      {
+        for(int x = 0; x < 4; x++)
+        {
+          const float2 uv = make_float2((float)(i*4 + x) / (float)(width), (float)(j*4 + y) / (float)(height));
+          //average += a_dataFullRes->read_pixel(pitch(i*4 + x, j*4 + y, m_width));
+          average += a_dataFullRes->sample(a_sampler, uv, texSize);
+        }
+      }
+
+      a_dataSmallRes->write_pixel(pitch(i, j, m_widthSmall), average*(1.0f/16.0f));      
     }
   }
 }
 
-void ToneMapping::kernel2D_BlurX(int width, int height, const float4* a_dataIn, float4* a_dataOut)
+
+void ToneMapping::kernel2D_BlurX(int width, int height, const Texture2D<float4>* a_dataIn, const Sampler* a_sampler, Texture2D<float4>* a_dataOut)
 {
   for(int tidY=0;tidY<height;tidY++)
   {
@@ -131,7 +146,7 @@ void ToneMapping::kernel2D_BlurX(int width, int height, const float4* a_dataIn, 
   }
 }
 
-void ToneMapping::kernel2D_BlurY(int width, int height, const float4* a_dataIn, float4* a_dataOut)
+void ToneMapping::kernel2D_BlurY(int width, int height, const Texture2D<float4>* a_dataIn, const Sampler* a_sampler, Texture2D<float4>* a_dataOut)
 {
   for(int tidY=0;tidY<height;tidY++)
   {
@@ -157,7 +172,7 @@ void ToneMapping::kernel2D_BlurY(int width, int height, const float4* a_dataIn, 
   }
 }
 
-void ToneMapping::kernel2D_MixAndToneMap(int width, int height, const float4* inData4f, const float4* inBrightPixels, unsigned int* outData1ui)
+void ToneMapping::kernel2D_MixAndToneMap(int width, int height, const Texture2D<float4>* inData4f, const Sampler* a_sampler, const fTexture2D<float4>* inBrightPixels, unsigned int* outData1ui)
 {
   Sampler sampler;
   sampler.m_filter = Sampler::Filter::MIN_MAG_MIP_LINEAR;
@@ -185,31 +200,25 @@ void ToneMapping::kernel2D_MixAndToneMap(int width, int height, const float4* in
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ToneMapping::Bloom(int w, int h, const float4* inData4f, 
-                        unsigned int* outData1ui)
+void ToneMapping::Bloom(int w, int h, const Texture2D<float4>* a_texture2d, const Sampler* a_sampler, unsigned int* outData1ui)
 {
   // (1) ExtractBrightPixels (inData4f => m_brightPixels (w,h))
   //
-  kernel2D_ExtractBrightPixels(w, h, inData4f, 
-                               m_brightPixels.data());
+  kernel2D_ExtractBrightPixels(w, h, a_texture2d, a_sampler, &m_brightPixels);
 
   // (2) Downsample (m_brightPixels => m_downsampledImage (w/4, h/4) )
   //
-  kernel2D_DownSample4x(m_widthSmall, m_heightSmall, m_brightPixels.data(), 
-                        m_downsampledImage.data());
+  kernel2D_DownSample4x(m_widthSmall, m_heightSmall, &m_brightPixels, a_sampler, &m_downsampledImage);
 
   // (3) GaussBlur (m_downsampledImage => m_downsampledImage)
   //
-  kernel2D_BlurX(m_widthSmall, m_heightSmall, m_downsampledImage.data(), 
-                 m_tempImage.data()); // m_downsampledImage => m_tempImage
+  kernel2D_BlurX(m_widthSmall, m_heightSmall, &m_downsampledImage, a_sampler, &m_tempImage); // m_downsampledImage => m_tempImage
 
-  kernel2D_BlurY(m_widthSmall, m_heightSmall, m_tempImage.data(), 
-                 m_downsampledImage.data()); // m_tempImage => m_downsampledImage
+  kernel2D_BlurY(m_widthSmall, m_heightSmall, &m_tempImage, a_sampler, &m_downsampledImage); // m_tempImage => m_downsampledImage
 
   // (4) MixAndToneMap(inData4f, m_downsampledImage) => outData1ui
   //
-  kernel2D_MixAndToneMap(w,h, inData4f, m_downsampledImage.data(), 
-                         outData1ui);
+  kernel2D_MixAndToneMap(w,h, a_texture2d, a_sampler, &m_downsampledImage, outData1ui);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -219,10 +228,14 @@ void ToneMapping::Bloom(int w, int h, const float4* inData4f,
 
 void tone_mapping_cpu(int w, int h, float* a_hdrData, const char* a_outName)
 {
-  ToneMapping filter;
+  ToneMapping filter;  
+  Sampler sampler;
+  Texture2D<float4> texture(w, h);
   std::vector<uint>  ldrData(w*h);
+
+
   filter.SetMaxImageSize(w,h);
-  filter.Bloom(w,h, (const float4*)a_hdrData, ldrData.data());
+  filter.Bloom(w,h, &texture, &sampler, ldrData.data());
   SaveBMP(a_outName, ldrData.data(), w, h);
 
   // test texture here ... 

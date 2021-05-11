@@ -3,6 +3,10 @@
 
 #include <vector>
 #include <memory>
+#include "sampler.h"
+
+///////////////////////////////////////////////////////////////////////
+
 
 template<typename DataType>
 struct Texture2D
@@ -14,6 +18,16 @@ struct Texture2D
     m_data.resize(w*h);
     memcpy(m_data.data(), a_data, w*h*sizeof(DataType));
   }
+
+  void     resize(int size) { m_data.resize(size); }
+  DataType sample(const Sampler* sampler, float2 uv, const int2 texSize) const;
+
+  DataType read_pixel (const uint posPixel) const { return m_data[posPixel]; }
+  void     write_pixel(const uint posPixel, const DataType color) { m_data[posPixel] = color; }
+
+  int get_width()  const { return m_width;  } 
+  int get_height() const { return m_height; }  
+
 
 protected:
   unsigned int m_width;

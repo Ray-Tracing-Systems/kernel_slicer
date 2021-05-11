@@ -6,6 +6,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include "texture2d.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -45,36 +46,35 @@ public:
   {
     // init weights for gaussian blur
     //
-    m_blurRadius    = 7;
+    m_blurRadius    = 20;
     m_filterWeights = createGaussKernelWeights1D_HDRImage(m_blurRadius*2 + 1, 1.25f);
     m_gammaInv      = 1.0f / 2.2f;
   }
   
   void SetMaxImageSize(int w, int h);
 
-  void Bloom(int w, int h, const float4* inData4f, unsigned int* outData1ui);
+  void Bloom(int w, int h, const Texture2D<float4>* a_texture2d, const Sampler* a_sampler, unsigned int* outData1ui);
+
 
 protected:
+  void kernel2D_ExtractBrightPixels(int tidX, int tidY, const Texture2D<float4>* a_texture2d,   const Sampler* a_sampler,       Texture2D<float4>* a_brightPixels);
+  void kernel2D_DownSample4x       (int x,    int y,    const Texture2D<float4>* a_dataFullRes, const Sampler* a_sampler,       Texture2D<float4>* a_dataSmallRes);
+  void kernel2D_BlurX              (int tidX, int tidY, const Texture2D<float4>* a_dataIn,      const Sampler* a_sampler,       Texture2D<float4>* a_dataOut);
+  void kernel2D_BlurY              (int tidX, int tidY, const Texture2D<float4>* a_dataIn,      const Sampler* a_sampler,       Texture2D<float4>* a_dataOut);
+  void kernel2D_MixAndToneMap      (int tidX, int tidY, const Texture2D<float4>* inData4f,      const Sampler* a_sampler, const Texture2D<float4>* inBrightPixels, unsigned int* outData1ui);
 
-  void kernel2D_ExtractBrightPixels(int tidX, int tidY, const float4* inData4f, float4* a_brightPixels);
-  void kernel2D_DownSample4x(int x, int y, const float4* a_daraFullRes, float4* a_dataSmallRes);
-  void kernel2D_BlurX(int tidX, int tidY, const float4* a_dataIn, float4* a_dataOut);
-  void kernel2D_BlurY(int tidX, int tidY, const float4* a_dataIn, float4* a_dataOut);
-  void kernel2D_MixAndToneMap(int tidX, int tidY, const float4* inData4f, const float4* inBrightPixels, unsigned int* outData1ui);
 
-  std::vector<float4> m_brightPixels;
-  std::vector<float4> m_downsampledImage;
-  std::vector<float4> m_tempImage;
+  Texture2D<float4>   m_brightPixels;
+  Texture2D<float4>   m_downsampledImage;
+  Texture2D<float4>   m_tempImage;
   std::vector<float>  m_filterWeights;
-  int m_blurRadius;
-  
-  int m_width;
-  int m_height;
 
-  int m_widthSmall;
-  int m_heightSmall;
-  float m_gammaInv;
-
+  int                 m_blurRadius;                  
+  int                 m_width;
+  int                 m_height;                
+  int                 m_widthSmall;
+  int                 m_heightSmall;
+  float               m_gammaInv;
 };
 
 #endif
