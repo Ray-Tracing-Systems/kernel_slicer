@@ -32,21 +32,22 @@ include_directories("../vkfw")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -fopenmp")
 
-add_executable(testapp main.cpp 
-                       test_class.cpp
-                       #test_class_gpu.cpp
-                       #test_class_generated.cpp 
-                       #test_class_generated_ds.cpp 
-                       #test_class_generated_init.cpp
-                       Bitmap.cpp
-                       imageutils.cpp 
-                       texture2d.cpp
-                       sampler.cpp
-                       ../vkfw/vk_utils.cpp
-                       ../vkfw/vk_copy.cpp
-                       ../vkfw/vk_buffer.cpp
-                       ../vkfw/vk_compute_pipeline.cpp
-                       ../vkfw/vk_program.cpp)
+add_executable(testapp 
+                      Bitmap.cpp
+                      imageutils.cpp
+                      main.cpp 
+                      sampler.cpp
+                      test_class.cpp
+                      #test_class_gpu.cpp
+                      #test_class_generated.cpp 
+                      #test_class_generated_ds.cpp 
+                      # test_class_generated_init.cpp                      
+                      texture2d.cpp                       
+                      ../vkfw/vk_utils.cpp
+                      ../vkfw/vk_copy.cpp
+                      ../vkfw/vk_buffer.cpp
+                      ../vkfw/vk_compute_pipeline.cpp
+                      ../vkfw/vk_program.cpp)
 
 set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} ${FREEIMAGE_LIBRARIES} OpenMP::OpenMP_CXX)

@@ -5,9 +5,8 @@ template<> float4 Texture2D<float4>::sample(const Sampler* a_sampler, float2 a_u
 {
   bool useBorderColor = false;
 
-  a_uv.x = process_coord(a_sampler->m_addressU, a_uv.x, useBorderColor);
-  a_uv.y = process_coord(a_sampler->m_addressV, a_uv.y, useBorderColor);
-  
+  a_uv = process_coord(a_sampler->m_addressU, a_uv, &useBorderColor);
+    
   if (useBorderColor) {
     return a_sampler->m_borderColor;
   }
@@ -18,7 +17,7 @@ template<> float4 Texture2D<float4>::sample(const Sampler* a_sampler, float2 a_u
   const int    stride      = a_width;
 
   if (a_sampler->m_filter == Sampler::Filter::MIN_MAG_MIP_POINT) {
-    return read_pixel(baseTexel.y * stride + baseTexel.x);
+    return m_data[baseTexel.y * stride + baseTexel.x];
   }
 
   if (a_sampler->m_filter != Sampler::Filter::MIN_MAG_MIP_LINEAR) {
@@ -35,8 +34,8 @@ template<> float4 Texture2D<float4>::sample(const Sampler* a_sampler, float2 a_u
   const int offset3       = (cornerTexel.y * stride + cornerTexel.x);
 
   const float2 lerpCoefs  = scaledUV - float2(baseTexel.x, baseTexel.y);
-  const float4 line1Color = lerp(read_pixel(offset0), read_pixel(offset1), lerpCoefs.x);
-  const float4 line2Color = lerp(read_pixel(offset2), read_pixel(offset3), lerpCoefs.x);
+  const float4 line1Color = lerp(m_data[offset0], m_data[offset1], lerpCoefs.x);
+  const float4 line2Color = lerp(m_data[offset2], m_data[offset3], lerpCoefs.x);
 
   return lerp(line1Color, line2Color, lerpCoefs.y);
 }

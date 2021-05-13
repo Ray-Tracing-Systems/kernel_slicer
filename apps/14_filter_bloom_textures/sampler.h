@@ -87,7 +87,7 @@ struct Sampler {
 
 
 
-float process_coord(Sampler::AddressMode mode, float coord, bool &use_border_color);
+float2 process_coord(const Sampler::AddressMode mode, const float2 coord, bool* use_border_color); 
 float4 sample(Sampler sampler, __global const float4* data, int2 texSize, float2 uv);
 
 

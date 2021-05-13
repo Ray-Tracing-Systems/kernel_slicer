@@ -20,9 +20,7 @@ struct Texture2D
   }
 
   void     resize(int size) { m_data.resize(size); }
-  DataType sample(const Sampler* a_sampler, float2 a_uv, const uint a_width, const uint a_height) const;
-  
-  DataType read_pixel (const uint posPixel) const { return m_data[posPixel]; }
+  DataType sample(const Sampler* a_sampler, float2 a_uv, const uint a_width, const uint a_height) const;    
   void     write_pixel(const uint posPixel, const DataType color) { m_data[posPixel] = color; }
 
   int get_width()  const { return m_width;  } 
