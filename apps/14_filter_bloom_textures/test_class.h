@@ -57,9 +57,9 @@ protected:
 
 
   std::vector<float>  m_filterWeights;
-  Texture2D<float4>*   m_brightPixels;
-  Texture2D<float4>*   m_downsampledImage;
-  Texture2D<float4>*   m_tempImage;
+  Texture2D<float4>*  m_pBrightPixels;
+  Texture2D<float4>*  m_pDownsampledImage;
+  Texture2D<float4>*  m_pTempImage;
 
   int                 m_blurRadius;                  
   int                 m_width;
@@ -67,7 +67,6 @@ protected:
   int                 m_widthSmall;
   int                 m_heightSmall;
   float               m_gammaInv = 1.0f / 2.2f;
-;  
 };
 
 #endif

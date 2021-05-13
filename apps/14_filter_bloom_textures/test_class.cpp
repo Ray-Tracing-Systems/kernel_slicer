@@ -67,13 +67,9 @@ void tone_mapping_cpu(int w, int h, const float* a_hdrData, const char* a_outNam
   Texture2D<float4> texture(w, h);
   std::vector<uint> ldrData(w*h);  
 
-  //filter.SetMaxImageSize(w,h);
-
   filter.Bloom(w, h, &sampler, (const float4*)a_hdrData, &texture, ldrData.data());
   
-  SaveBMP(a_outName, ldrData.data(), w, h);
-  
-  return;
+  SaveBMP(a_outName, ldrData.data(), w, h);  
 }
 
 
@@ -97,12 +93,12 @@ m_width(w), m_height(h), m_widthSmall(w/4), m_heightSmall(h/4)
 {
   // init weights for gaussian blur
   //
-  m_blurRadius    = 200;
+  m_blurRadius    = 100;
   m_filterWeights = createGaussKernelWeights1D_HDRImage(m_blurRadius*2 + 1, 1.25f);
         
-  m_brightPixels     = new Texture2D<float4>(w, h);
-  m_downsampledImage = new Texture2D<float4>(m_widthSmall, m_heightSmall);
-  m_tempImage        = new Texture2D<float4>(m_widthSmall, m_heightSmall);
+  m_pBrightPixels     = new Texture2D<float4>(w, h);
+  m_pDownsampledImage = new Texture2D<float4>(m_widthSmall, m_heightSmall);
+  m_pTempImage        = new Texture2D<float4>(m_widthSmall, m_heightSmall);
 }
 
 
@@ -112,22 +108,22 @@ m_width(w), m_height(h), m_widthSmall(w/4), m_heightSmall(h/4)
 void ToneMapping::Bloom(const int a_width, const int a_height, const Sampler* a_sampler, const float4* a_inData4f, 
                         Texture2D<float4>* a_texture2d, unsigned int* outData1ui)
 {
-  // (1) ExtractBrightPixels (inData4f => m_brightPixels (w,h))
+  // (1) ExtractBrightPixels (inData4f => m_pBrightPixels (w,h))
   //
-  kernel2D_ExtractBrightPixels(a_width, a_height, a_sampler, a_texture2d, m_brightPixels, a_inData4f);
+  kernel2D_ExtractBrightPixels(a_width, a_height, a_sampler, a_texture2d, m_pBrightPixels, a_inData4f);
 
-  // (2) Downsample (m_brightPixels => m_downsampledImage (w/4, h/4) )
+  // (2) Downsample (m_pBrightPixels => m_pDownsampledImage (w/4, h/4) )
   //
-  kernel2D_DownSample4x(m_widthSmall, m_heightSmall, a_sampler, m_brightPixels, m_downsampledImage);
+  kernel2D_DownSample4x(m_widthSmall, m_heightSmall, a_sampler, m_pBrightPixels, m_pDownsampledImage);
 
-  // (3) GaussBlur (m_downsampledImage => m_downsampledImage)
+  // (3) GaussBlur (m_pDownsampledImage => m_pDownsampledImage)
   //
-  kernel2D_BlurX(m_widthSmall, m_heightSmall, a_sampler, m_downsampledImage, m_tempImage); // m_downsampledImage => m_tempImage
-  kernel2D_BlurY(m_widthSmall, m_heightSmall, a_sampler, m_tempImage, m_downsampledImage); // m_tempImage => m_downsampledImage
+  kernel2D_BlurX(m_widthSmall, m_heightSmall, a_sampler, m_pDownsampledImage, m_pTempImage); // m_pDownsampledImage => m_pTempImage
+  kernel2D_BlurY(m_widthSmall, m_heightSmall, a_sampler, m_pTempImage, m_pDownsampledImage); // m_pTempImage => m_pDownsampledImage
 
-  // (4) MixAndToneMap(inData4f, m_downsampledImage) => outData1ui
+  // (4) MixAndToneMap(inData4f, m_pDownsampledImage) => outData1ui
   //
-  kernel2D_MixAndToneMap(a_width, a_height, a_sampler, a_texture2d, m_downsampledImage, outData1ui);
+  kernel2D_MixAndToneMap(a_width, a_height, a_sampler, a_texture2d, m_pDownsampledImage, outData1ui);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -278,8 +274,7 @@ void ToneMapping::kernel2D_MixAndToneMap(const int a_width, const int a_height, 
       const float2 uv         = get_uv(tidX, tidY, a_width, a_height);
       const float4 bloomColor = inBrightPixels->sample(a_sampler, uv);
       float4       colorSumm  = bloomColor + a_texture2d->sample(a_sampler, uv);
-      //float4 colorSumm        = clamp(bloomColor, 0.0f, 1.0f);
-
+      
       SimpleCompressColor(&colorSumm);
 
       colorSumm.x = pow(colorSumm.x, m_gammaInv);
