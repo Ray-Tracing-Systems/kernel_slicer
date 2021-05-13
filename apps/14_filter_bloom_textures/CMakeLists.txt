@@ -40,6 +40,8 @@ add_executable(testapp main.cpp
                        #test_class_generated_init.cpp
                        Bitmap.cpp
                        imageutils.cpp 
+                       texture2d.cpp
+                       sampler.cpp
                        ../vkfw/vk_utils.cpp
                        ../vkfw/vk_copy.cpp
                        ../vkfw/vk_buffer.cpp

@@ -2,7 +2,7 @@
 
 
 
-float process_coord(const Sampler::AddressMode mode, const float coord, bool* use_border_color) 
+float process_coord(const Sampler::AddressMode mode, const float coord, bool& use_border_color) 
 {
   switch (mode)
   {
@@ -15,7 +15,9 @@ float process_coord(const Sampler::AddressMode mode, const float coord, bool* us
     case Sampler::AddressMode::MIRROR_ONCE:
       return clamp(std::abs(coord), 0.0f, 1.0f);
     case Sampler::AddressMode::BORDER:
-      *use_border_color = use_border_color || coord < 0.0f || coord > 1.0f;
+      use_border_color = use_border_color || coord < 0.0f || coord > 1.0f;
+      return coord;
+    default:
       return coord;
   }
   throw std::string("Uknown address mode.");
