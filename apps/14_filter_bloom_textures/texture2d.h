@@ -20,8 +20,8 @@ struct Texture2D
   }
 
   void     resize(int size) { m_data.resize(size); }
-  DataType sample(const Sampler* sampler, float2 uv, const int2 texSize) const;
-
+  DataType sample(const Sampler* a_sampler, float2 a_uv, const uint a_width, const uint a_height) const;
+  
   DataType read_pixel (const uint posPixel) const { return m_data[posPixel]; }
   void     write_pixel(const uint posPixel, const DataType color) { m_data[posPixel] = color; }
 
@@ -34,6 +34,9 @@ protected:
   unsigned int m_height;
   std::vector<DataType> m_data;
 };
+
+
+float2 get_uv(const int x, const int y, const uint width, const uint height);
 
 
 #endif

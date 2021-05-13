@@ -57,11 +57,11 @@ public:
 
 
 protected:
-  void kernel2D_ExtractBrightPixels(int tidX, int tidY, const Texture2D<float4>* a_texture2d,   const Sampler* a_sampler,       Texture2D<float4>* a_brightPixels);
-  void kernel2D_DownSample4x       (int x,    int y,    const Texture2D<float4>* a_dataFullRes, const Sampler* a_sampler,       Texture2D<float4>* a_dataSmallRes);
-  void kernel2D_BlurX              (int tidX, int tidY, const Texture2D<float4>* a_dataIn,      const Sampler* a_sampler,       Texture2D<float4>* a_dataOut);
-  void kernel2D_BlurY              (int tidX, int tidY, const Texture2D<float4>* a_dataIn,      const Sampler* a_sampler,       Texture2D<float4>* a_dataOut);
-  void kernel2D_MixAndToneMap      (int tidX, int tidY, const Texture2D<float4>* inData4f,      const Sampler* a_sampler, const Texture2D<float4>* inBrightPixels, unsigned int* outData1ui);
+  void kernel2D_ExtractBrightPixels(const int a_width, const int a_height, const Texture2D<float4>* a_texture2d, const Sampler* a_sampler,       Texture2D<float4>* a_brightPixels);
+  void kernel2D_DownSample4x       (const int a_width, const int a_height, const Texture2D<float4>* a_texture2d, const Sampler* a_sampler,       Texture2D<float4>* a_dataSmallRes);
+  void kernel2D_BlurX              (const int a_width, const int a_height, const Texture2D<float4>* a_texture2d, const Sampler* a_sampler,       Texture2D<float4>* a_dataOut);
+  void kernel2D_BlurY              (const int a_width, const int a_height, const Texture2D<float4>* a_texture2d, const Sampler* a_sampler,       Texture2D<float4>* a_dataOut);
+  void kernel2D_MixAndToneMap      (const int a_width, const int a_height, const Texture2D<float4>* a_texture2d, const Sampler* a_sampler, const Texture2D<float4>* inBrightPixels, unsigned int* outData1ui);
 
 
   Texture2D<float4>   m_brightPixels;
@@ -74,7 +74,7 @@ protected:
   int                 m_height;                
   int                 m_widthSmall;
   int                 m_heightSmall;
-  float               m_gammaInv;
+  float               m_gammaInv;  
 };
 
 #endif
