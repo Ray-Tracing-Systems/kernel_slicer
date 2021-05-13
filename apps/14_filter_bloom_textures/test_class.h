@@ -42,39 +42,32 @@ class ToneMapping
 {
 public:
 
-  ToneMapping()
-  {
-    // init weights for gaussian blur
-    //
-    m_blurRadius    = 20;
-    m_filterWeights = createGaussKernelWeights1D_HDRImage(m_blurRadius*2 + 1, 1.25f);
-    m_gammaInv      = 1.0f / 2.2f;
-  }
-  
-  void SetMaxImageSize(int w, int h);
+  ToneMapping(const int w, const int h);  
 
-  void Bloom(int w, int h, const Texture2D<float4>* a_texture2d, const Sampler* a_sampler, unsigned int* outData1ui);
+  void Bloom (const int a_width, const int a_height, const Sampler* a_sampler, const float4* a_inData4f,
+              Texture2D<float4>* a_texture2d, unsigned int* outData1ui);
 
 
 protected:
-  void kernel2D_ExtractBrightPixels(const int a_width, const int a_height, const Texture2D<float4>* a_texture2d, const Sampler* a_sampler,       Texture2D<float4>* a_brightPixels);
-  void kernel2D_DownSample4x       (const int a_width, const int a_height, const Texture2D<float4>* a_texture2d, const Sampler* a_sampler,       Texture2D<float4>* a_dataSmallRes);
-  void kernel2D_BlurX              (const int a_width, const int a_height, const Texture2D<float4>* a_texture2d, const Sampler* a_sampler,       Texture2D<float4>* a_dataOut);
-  void kernel2D_BlurY              (const int a_width, const int a_height, const Texture2D<float4>* a_texture2d, const Sampler* a_sampler,       Texture2D<float4>* a_dataOut);
-  void kernel2D_MixAndToneMap      (const int a_width, const int a_height, const Texture2D<float4>* a_texture2d, const Sampler* a_sampler, const Texture2D<float4>* inBrightPixels, unsigned int* outData1ui);
+  void kernel2D_ExtractBrightPixels(const int a_width, const int a_height, const Sampler* a_sampler,       Texture2D<float4>* a_texture2d,        Texture2D<float4>* a_brightPixels, const float4* a_inData4f);
+  void kernel2D_DownSample4x       (const int a_width, const int a_height, const Sampler* a_sampler, const Texture2D<float4>* a_texture2dFullRes, Texture2D<float4>* a_dataSmallRes);
+  void kernel2D_BlurX              (const int a_width, const int a_height, const Sampler* a_sampler, const Texture2D<float4>* a_texture2d,        Texture2D<float4>* a_dataOut);
+  void kernel2D_BlurY              (const int a_width, const int a_height, const Sampler* a_sampler, const Texture2D<float4>* a_texture2d,        Texture2D<float4>* a_dataOut);
+  void kernel2D_MixAndToneMap      (const int a_width, const int a_height, const Sampler* a_sampler, const Texture2D<float4>* a_texture2d,  const Texture2D<float4>* inBrightPixels, unsigned int* outData1ui);
 
 
-  Texture2D<float4>   m_brightPixels;
-  Texture2D<float4>   m_downsampledImage;
-  Texture2D<float4>   m_tempImage;
   std::vector<float>  m_filterWeights;
+  Texture2D<float4>*   m_brightPixels;
+  Texture2D<float4>*   m_downsampledImage;
+  Texture2D<float4>*   m_tempImage;
 
   int                 m_blurRadius;                  
   int                 m_width;
   int                 m_height;                
   int                 m_widthSmall;
   int                 m_heightSmall;
-  float               m_gammaInv;  
+  float               m_gammaInv = 1.0f / 2.2f;
+;  
 };
 
 #endif

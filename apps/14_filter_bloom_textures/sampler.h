@@ -2,8 +2,6 @@
 #define SAMPLER_H
 
 #include "include/OpenCLMath.h"
-//#include <cstdint>
-//#include <cstdio>
 #include <iostream>
 
 struct Sampler {
@@ -73,7 +71,7 @@ struct Sampler {
   AddressMode m_addressU      = AddressMode::WRAP;
   AddressMode m_addressV      = AddressMode::WRAP;
   AddressMode m_addressW      = AddressMode::WRAP;
-  float4      m_borderColor   = float4(0, 0, 0, 0);
+  float4      m_borderColor   = float4(0.0f, 0.0f, 0.0f, 0.0f);
   Filter      m_filter        = Filter::MIN_MAG_MIP_POINT;
   uint8_t     m_maxAnisotropy = 1;
   float       m_maxLOD        = std::numeric_limits<float>::max();
@@ -86,10 +84,6 @@ struct Sampler {
 };
 
 
-
-float2 process_coord(const Sampler::AddressMode mode, const float2 coord, bool* use_border_color); 
-float4 sample(Sampler sampler, __global const float4* data, int2 texSize, float2 uv);
-
-
+inline uint pitch(uint x, uint y, uint pitch) { return y * pitch + x; }  
 
 #endif

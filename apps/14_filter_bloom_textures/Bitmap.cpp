@@ -35,8 +35,9 @@ void WriteBMP(const char* fname, Pixel* a_pixelData, int width, int height)
 
 void SaveBMP(const char* fname, const unsigned int* pixels, int w, int h)
 {
-  std::vector<Pixel> pixels2(w*h);
+  std::vector<Pixel> pixels2(w * h);
 
+#pragma omp parallel for
   for (size_t i = 0; i < pixels2.size(); i++)
   {
     Pixel px;

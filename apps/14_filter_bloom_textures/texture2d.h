@@ -18,13 +18,10 @@ struct Texture2D
     m_data.resize(w*h);
     memcpy(m_data.data(), a_data, w*h*sizeof(DataType));
   }
-
-  void     resize(int size) { m_data.resize(size); }
-  DataType sample(const Sampler* a_sampler, float2 a_uv, const uint a_width, const uint a_height) const;    
+  
+  float2   process_coord(const Sampler::AddressMode mode, const float2 coord, bool* use_border_color) const; 
+  DataType sample(const Sampler* a_sampler, float2 a_uv) const;    
   void     write_pixel(const uint posPixel, const DataType color) { m_data[posPixel] = color; }
-
-  int get_width()  const { return m_width;  } 
-  int get_height() const { return m_height; }  
 
 
 protected:

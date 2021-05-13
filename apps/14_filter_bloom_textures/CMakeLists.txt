@@ -35,8 +35,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -fopenmp")
 add_executable(testapp 
                       Bitmap.cpp
                       imageutils.cpp
-                      main.cpp 
-                      sampler.cpp
+                      main.cpp                       
                       test_class.cpp
                       #test_class_gpu.cpp
                       #test_class_generated.cpp 
