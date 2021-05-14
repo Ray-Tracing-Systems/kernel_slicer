@@ -96,9 +96,9 @@ m_width(w), m_height(h), m_widthSmall(w/4), m_heightSmall(h/4)
   m_blurRadius    = 100;
   m_filterWeights = createGaussKernelWeights1D_HDRImage(m_blurRadius*2 + 1, 1.25f);
         
-  m_pBrightPixels     = new Texture2D<float4>(w, h);
-  m_pDownsampledImage = new Texture2D<float4>(m_widthSmall, m_heightSmall);
-  m_pTempImage        = new Texture2D<float4>(m_widthSmall, m_heightSmall);
+  m_brightPixels.resize(w, h);
+  m_downsampledImage.resize(m_widthSmall, m_heightSmall);
+  m_tempImage.resize(m_widthSmall, m_heightSmall);
 }
 
 
@@ -108,22 +108,22 @@ m_width(w), m_height(h), m_widthSmall(w/4), m_heightSmall(h/4)
 void ToneMapping::Bloom(const int a_width, const int a_height, const Sampler* a_sampler, const float4* a_inData4f, 
                         Texture2D<float4>* a_texture2d, unsigned int* outData1ui)
 {
-  // (1) ExtractBrightPixels (inData4f => m_pBrightPixels (w,h))
+  // (1) ExtractBrightPixels (inData4f => m_brightPixels (w,h))
   //
-  kernel2D_ExtractBrightPixels(a_width, a_height, a_sampler, a_texture2d, m_pBrightPixels, a_inData4f);
+  kernel2D_ExtractBrightPixels(a_width, a_height, a_sampler, a_texture2d, &m_brightPixels, a_inData4f);
 
-  // (2) Downsample (m_pBrightPixels => m_pDownsampledImage (w/4, h/4) )
+  // (2) Downsample (m_brightPixels => m_downsampledImage (w/4, h/4) )
   //
-  kernel2D_DownSample4x(m_widthSmall, m_heightSmall, a_sampler, m_pBrightPixels, m_pDownsampledImage);
+  kernel2D_DownSample4x(m_widthSmall, m_heightSmall, a_sampler, &m_brightPixels, &m_downsampledImage);
 
-  // (3) GaussBlur (m_pDownsampledImage => m_pDownsampledImage)
+  // (3) GaussBlur (m_downsampledImage => m_downsampledImage)
   //
-  kernel2D_BlurX(m_widthSmall, m_heightSmall, a_sampler, m_pDownsampledImage, m_pTempImage); // m_pDownsampledImage => m_pTempImage
-  kernel2D_BlurY(m_widthSmall, m_heightSmall, a_sampler, m_pTempImage, m_pDownsampledImage); // m_pTempImage => m_pDownsampledImage
+  kernel2D_BlurX(m_widthSmall, m_heightSmall, a_sampler, &m_downsampledImage, &m_tempImage); // m_downsampledImage => m_tempImage
+  kernel2D_BlurY(m_widthSmall, m_heightSmall, a_sampler, &m_tempImage, &m_downsampledImage); // m_tempImage => m_downsampledImage
 
-  // (4) MixAndToneMap(inData4f, m_pDownsampledImage) => outData1ui
+  // (4) MixAndToneMap(inData4f, m_downsampledImage) => outData1ui
   //
-  kernel2D_MixAndToneMap(a_width, a_height, a_sampler, a_texture2d, m_pDownsampledImage, outData1ui);
+  kernel2D_MixAndToneMap(a_width, a_height, a_sampler, a_texture2d, &m_downsampledImage, outData1ui);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

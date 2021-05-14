@@ -57,9 +57,9 @@ protected:
 
 
   std::vector<float>  m_filterWeights;
-  Texture2D<float4>*  m_pBrightPixels;
-  Texture2D<float4>*  m_pDownsampledImage;
-  Texture2D<float4>*  m_pTempImage;
+  Texture2D<float4>   m_brightPixels;
+  Texture2D<float4>   m_downsampledImage;
+  Texture2D<float4>   m_tempImage;
 
   int                 m_blurRadius;                  
   int                 m_width;
