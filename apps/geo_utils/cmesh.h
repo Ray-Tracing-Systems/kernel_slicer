@@ -7,7 +7,7 @@
 #include <memory>
 #include <cassert>
 
-#include "include/OpenCLMath.h"
+#include "OpenCLMath.h"
 
 namespace cmesh
 {

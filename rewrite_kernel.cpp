@@ -194,9 +194,9 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
     }
     else
     {
-      auto pos = textOrig.find_first_of("{");
-      if(pos == std::string::npos)
-        pos = textOrig.find_first_of("(");
+      auto pos1 = textOrig.find_first_of("{");
+      auto pos2 = textOrig.find_first_of("(");
+      auto pos  = std::min(pos1, pos2);
       const std::string varName = textOrig.substr(0, pos);
       m_rewriter.ReplaceText(call->getSourceRange(), varName + " = " + textRes);
     }

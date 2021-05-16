@@ -7,7 +7,10 @@
             "label": "BuildRelease",
             "type": "shell",
             "command": "cd cmake-build-release && make -j 8",
-            "group": "build"
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
         },
         {
             "label": "BuildDebug",

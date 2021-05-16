@@ -22,6 +22,7 @@ find_package(Vulkan)
 include_directories(${Vulkan_INCLUDE_DIR})
 include_directories("../vkfw" 
                     "../volk"
+                    "../LiteMath"
                     "../loader_utils"
                     "../geo_utils")
                     

@@ -90,13 +90,14 @@ namespace LiteMath
   static inline float  dot(const float4 & u, const float4 & v) { return (u.x*v.x + u.y*v.y + u.z*v.z + u.w*v.w); }
   static inline float  dot3(const float4 & u, const float4 & v) { return (u.x*v.x + u.y*v.y + u.z*v.z); }
   static inline float4 cross(const float4 & u, const float4 & v) { return float4{u.y*v.z - u.z*v.y, u.z*v.x - u.x*v.z, u.x*v.y - u.y*v.x, u.w}; }
-
   static inline float  length3(const float4 & u) { return sqrtf(SQR(u.x) + SQR(u.y) + SQR(u.z)); }
   static inline float  length(const float4 & u) { return sqrtf(SQR(u.x) + SQR(u.y) + SQR(u.z) + SQR(u.w)); }
   static inline float4 clamp(const float4 & u, float a, float b) 
   { 
     return float4(clamp(u.x, a, b), clamp(u.y, a, b), clamp(u.z, a, b), clamp(u.w, a, b)); 
   }
+
+  static inline float4 normalize(const float4 & u) { return u / length3(u); }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -113,8 +114,8 @@ namespace LiteMath
 
     union
     {
-      struct {float x, y, z; };
-      float M[3];
+      struct {float x, y, z; }; // same aligment as for float4
+      float M[4];               // same aligment as for float4
     };
   };
 
@@ -226,16 +227,22 @@ namespace LiteMath
   static inline float2 normalize(const float2 & u) { return u / length(u); }
 
   static inline float  lerp(float u, float v, float t) { return u + t * (v - u); }
+  static inline float2 floor(float2 v) { return float2(floorf(v.x), floorf(v.y)); }
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  struct uint4
+  static inline float smoothstep(float edge0, float edge1, float x)
   {
-    uint4() : x(0), y(0), z(0), w(0) {}
-    uint4(unsigned int a, unsigned int b, unsigned int c, unsigned int d) : x(a), y(b), z(c), w(d) {}
+    float  tVal = (x - edge0) / (edge1 - edge0);
+    float  t    = fmin(fmax(tVal, 0.0f), 1.0f); 
+    return t * t * (3.0f - 2.0f * t);
+  }
 
-    unsigned int x,y,z,w;
-  };
+  static inline float mix(float x, float y, float a)
+  {
+   return x*(1.0f - a) + y*a;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   struct int3
   {
@@ -278,6 +285,14 @@ namespace LiteMath
     bool operator==(const uint2 &other) const { return (x == other.x && y == other.y) || (x == other.y && y == other.x); }
 
     unsigned int x, y;
+  };
+
+  struct uint4
+  {
+    uint4() : x(0), y(0), z(0), w(0) {}
+    uint4(unsigned int a, unsigned int b, unsigned int c, unsigned int d) : x(a), y(b), z(c), w(d) {}
+
+    unsigned int x,y,z,w;
   };
 
   struct ushort2
@@ -338,6 +353,31 @@ namespace LiteMath
     float4 m_col[4];
   };
 
+
+  static inline float4 mul(float4x4 m, float4 v)
+  {
+    float4 res;
+    res.x = m.get_row(0).x*v.x + m.get_row(0).y*v.y + m.get_row(0).z*v.z + m.get_row(0).w*v.w;
+    res.y = m.get_row(1).x*v.x + m.get_row(1).y*v.y + m.get_row(1).z*v.z + m.get_row(1).w*v.w;
+    res.z = m.get_row(2).x*v.x + m.get_row(2).y*v.y + m.get_row(2).z*v.z + m.get_row(2).w*v.w;
+    res.w = m.get_row(3).x*v.x + m.get_row(3).y*v.y + m.get_row(3).z*v.z + m.get_row(3).w*v.w;
+    return res;
+  }
+
+  static inline float4x4 mul(float4x4 m1, float4x4 m2)
+  {
+    const float4 column1 = mul(m1, m2.col(0));
+    const float4 column2 = mul(m1, m2.col(1));
+    const float4 column3 = mul(m1, m2.col(2));
+    const float4 column4 = mul(m1, m2.col(3));
+    float4x4 res;
+    res.set_col(0, column1);
+    res.set_col(1, column2);
+    res.set_col(2, column3);
+    res.set_col(3, column4);
+
+    return res;
+  }
 
   static inline float4x4 inverse4x4(float4x4 m1)
   {
@@ -423,6 +463,14 @@ namespace LiteMath
     m.set_col(3, m.get_col(3)*vK);
 
     return m;
+  }
+
+  static inline float4x4 transpose(const float4x4& rhs)
+  {
+    float4x4 res;
+    for(int i=0;i<4;i++)
+      res.set_row(i,rhs.get_col(i));
+    return res;
   }
 
 };

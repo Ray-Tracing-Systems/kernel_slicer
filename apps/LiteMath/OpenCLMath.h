@@ -30,6 +30,11 @@
 #define INV_TWOPI     0.15915494309189533577f
 #endif 
 
+typedef struct float3x3T
+{
+  float3 row[3];
+} float3x3;
+
 static inline float2 make_float2(float a, float b)
 {
   float2 res;
@@ -84,6 +89,42 @@ static inline float4 to_float4(float3 v, float w)
   return res;
 }
 
+static inline float3x3 make_float3x3(float3 a, float3 b, float3 c)
+{
+  float3x3 m;
+  m.row[0] = a;
+  m.row[1] = b;
+  m.row[2] = c;
+  return m;
+}
+
+static inline float3x3 make_float3x3_by_columns(float3 a, float3 b, float3 c)
+{
+  float3x3 m;
+  m.row[0].x = a.x;
+  m.row[1].x = a.y;
+  m.row[2].x = a.z;
+
+  m.row[0].y = b.x;
+  m.row[1].y = b.y;
+  m.row[2].y = b.z;
+
+  m.row[0].z = c.x;
+  m.row[1].z = c.y;
+  m.row[2].z = c.z;
+  return m;
+}
+
+
+static inline float3 mul3x3x3(float3x3 m, const float3 v)
+{
+  float3 res;
+  res.x = m.row[0].x*v.x + m.row[0].y*v.y + m.row[0].z*v.z;
+  res.y = m.row[1].x*v.x + m.row[1].y*v.y + m.row[1].z*v.z;
+  res.z = m.row[2].x*v.x + m.row[2].y*v.y + m.row[2].z*v.z;
+  return res;
+}
+
 static inline float4 mul4x4x4(float4x4 m, float4 v)
 {
   float4 res;
@@ -97,14 +138,6 @@ static inline float4 mul4x4x4(float4x4 m, float4 v)
 static inline uint2 make_uint2(uint a, uint b)
 {
   uint2 res;
-  res.x = a;
-  res.y = b;
-  return res;
-}
-
-static inline int2 make_int2(int a, int b)
-{
-  int2 res;
   res.x = a;
   res.y = b;
   return res;
