@@ -413,7 +413,7 @@ int main(int argc, const char **argv)
     if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I')
     {
       std::string includePath = p.first.substr(2);
-      std::cout << "[main]: add include folder: " << includePath.c_str() << std::endl;
+      //std::cout << "[main]: add include folder: " << includePath.c_str() << std::endl;
       headerSearchOptions.AddPath(includePath.c_str(), clang::frontend::Angled, false, false);
     }
   }
