@@ -194,7 +194,10 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
     }
     else
     {
-      const std::string varName = textOrig.substr(0,  textOrig.find_first_of("("));
+      auto pos = textOrig.find_first_of("{");
+      if(pos == std::string::npos)
+        pos = textOrig.find_first_of("(");
+      const std::string varName = textOrig.substr(0, pos);
       m_rewriter.ReplaceText(call->getSourceRange(), varName + " = " + textRes);
     }
     

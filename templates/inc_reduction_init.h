@@ -19,4 +19,4 @@
     {% endfor %}
     {% endfor %}
   }
-  SYNCTHREADS; 
+  barrier(CLK_LOCAL_MEM_FENCE); 

@@ -4,7 +4,7 @@
     {% else %}
     const uint localId = get_local_id(0) + {{Kernel.WGSizeX}}*get_local_id(1); 
     {% endif %}
-    SYNCTHREADS;
+    barrier(CLK_LOCAL_MEM_FENCE);
     {% for offset in Kernel.RedLoop1 %} 
     if (localId < {{offset}}) 
     {
@@ -25,7 +25,7 @@
       {% endfor %}
       {% endfor %}
     }
-    SYNCTHREADS;
+    barrier(CLK_LOCAL_MEM_FENCE);
     {% endfor %}
     {% for offset in Kernel.RedLoop2 %} 
     if (localId < {{offset}}) 
@@ -48,7 +48,7 @@
       {% endfor %}
     }
     {% if Kernel.threadDim > 1 %}
-    SYNCTHREADS;
+    barrier(CLK_LOCAL_MEM_FENCE);
     {% endif %}
     {% endfor %}
     if(localId == 0)

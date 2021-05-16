@@ -191,10 +191,10 @@ void ToneMapping::kernel1D_IPTcompress(int a_size, const float4* inData4f, unsig
 
     pixel = clamp(pixel, 0.0F, 1.0F);
 
-    const float4 resColor = { 
+    const float4 resColor{
       (float)pow(pixel.x, m_gammaInv), 
       (float)pow(pixel.y, m_gammaInv), 
-      (float)pow(pixel.z, m_gammaInv), 1.0f };
+      (float)pow(pixel.z, m_gammaInv), 1.0f};
 
     outData1ui[i]         = RealColorToUint32(resColor);    
   }

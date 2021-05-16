@@ -89,6 +89,7 @@ namespace LiteMath
   static inline float4 lerp(const float4 & u, const float4 & v, float t) { return u + t * (v - u); }
   static inline float  dot(const float4 & u, const float4 & v) { return (u.x*v.x + u.y*v.y + u.z*v.z + u.w*v.w); }
   static inline float  dot3(const float4 & u, const float4 & v) { return (u.x*v.x + u.y*v.y + u.z*v.z); }
+  static inline float4 cross(const float4 & u, const float4 & v) { return float4{u.y*v.z - u.z*v.y, u.z*v.x - u.x*v.z, u.x*v.y - u.y*v.x, u.w}; }
 
   static inline float  length3(const float4 & u) { return sqrtf(SQR(u.x) + SQR(u.y) + SQR(u.z)); }
   static inline float  length(const float4 & u) { return sqrtf(SQR(u.x) + SQR(u.y) + SQR(u.z) + SQR(u.w)); }
@@ -228,6 +229,13 @@ namespace LiteMath
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  struct uint4
+  {
+    uint4() : x(0), y(0), z(0), w(0) {}
+    uint4(unsigned int a, unsigned int b, unsigned int c, unsigned int d) : x(a), y(b), z(c), w(d) {}
+
+    unsigned int x,y,z,w;
+  };
 
   struct int3
   {
