@@ -767,11 +767,8 @@ int main(int argc, const char **argv)
     buildSH << "#!/bin/sh" << std::endl;
     std::string build = inputCodeInfo.pShaderCC->BuildCommand();
     buildSH << build.c_str() << " ";
-    for(auto p : params)
-    {
-      if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I')  // add include folders to the Tool
-        buildSH << p.first.c_str() << " ";
-    }
+    for(auto folder : inputCodeInfo.includeToShadersFolders)
+      buildSH << "-I" << folder.c_str() << " ";
     buildSH << std::endl;
 
     // // clspv unfortunately force use to use this hacky way to set desired destcripror set (see -distinct-kernel-descriptor-sets option of clspv).
