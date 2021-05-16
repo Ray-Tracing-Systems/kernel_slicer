@@ -152,7 +152,7 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
   for(int i=0; i<argc; i++)
   {
     std::string key(argv[i]);
-    if(key.size() > 0 && key[0]=='-')
+    if(key != "-v" && key.size() > 0 && key[0] == '-') // exclude special "-IfoldePath" form, exclude "-v"
     {
       if(i != argc-1) // not last argument
       {
@@ -166,6 +166,23 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
       fileName = key;
   }
   return cmdLineParams;
+}
+
+std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params)
+{
+  std::unordered_set<std::string> values;
+  for(auto p : params) 
+    values.insert(p.second);
+
+  std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
+  argsForClang.reserve(argc);
+  for(int i=1;i<argc;i++)
+  {
+    if(params.find(argv[i]) == params.end() && values.find(argv[i]) == values.end()) 
+      argsForClang.push_back(argv[i]);
+  }
+
+  return argsForClang;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -308,16 +325,21 @@ int main(int argc, const char **argv)
       defaultVkernelType = kslicer::VKERNEL_SWITCH;
     else if(params["-vkernel_t="] == "indirect_dispatch")
       defaultVkernelType = kslicer::VKERNEL_INDIRECT_DISPATCH;
-  }  
+  } 
 
-  std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
-  argsForClang.reserve(argc);
-  for(int i=1;i<argc;i++)
+  std::unordered_set<std::string> values;
+  std::vector<std::string> includeFolderList;
+  std::vector<std::string> includeFolderList2;
+  for(auto p : params) 
   {
-    auto p = params.find(argv[i]);
-    if(p == params.end()) 
-      argsForClang.push_back(argv[i]);
+    values.insert(p.second);
+    if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I' && p.second == "IncludeToShaders")
+      includeFolderList.push_back(p.first.substr(2));
+    else if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I' && p.second == "ExcludeFromShaders")
+      includeFolderList2.push_back(p.first.substr(2));
   }
+
+  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params);  
   llvm::ArrayRef<const char*> args(argsForClang.data(), argsForClang.data() + argsForClang.size());
 
   // Make sure it exists
@@ -340,6 +362,9 @@ int main(int argc, const char **argv)
     exit(0);
   }
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
+  inputCodeInfo.includeToShadersFolders = includeFolderList;  // set shader folders
+  inputCodeInfo.includeCPPFolders       = includeFolderList2; // set common C/C++ folders
+
   if(shaderCCName == "circle" || shaderCCName == "Circle")
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::CircleCompiler>();
   else
@@ -368,7 +393,7 @@ int main(int argc, const char **argv)
 
   {
     compiler.getLangOpts().GNUMode = 1; 
-    //compiler.getLangOpts().CXXExceptions = 1; 
+    compiler.getLangOpts().CXXExceptions = 1; 
     compiler.getLangOpts().RTTI        = 1; 
     compiler.getLangOpts().Bool        = 1; 
     compiler.getLangOpts().CPlusPlus   = 1; 
@@ -383,6 +408,16 @@ int main(int argc, const char **argv)
   //
   HeaderSearchOptions &headerSearchOptions = compiler.getHeaderSearchOpts();  
   headerSearchOptions.AddPath(stdlibFolder.c_str(), clang::frontend::Angled, false, false);
+  for(auto p : params)
+  {
+    if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I')
+    {
+      std::string includePath = p.first.substr(2);
+      std::cout << "[main]: add include folder: " << includePath.c_str() << std::endl;
+      headerSearchOptions.AddPath(includePath.c_str(), clang::frontend::Angled, false, false);
+    }
+  }
+  //headerSearchOptions.Verbose = 1;
 
   compiler.createPreprocessor(clang::TU_Complete);
   compiler.getPreprocessorOpts().UsePredefines = false;
@@ -400,11 +435,21 @@ int main(int argc, const char **argv)
     
   // init clang tooling
   //
-  const char* argv2[] = {argv[0], argv[1], "--"};
-  int argc2 = sizeof(argv2)/sizeof(argv2[0]);
-  
+  std::vector<const char*> argv2 = {argv[0], argv[1]};
+  std::vector<std::string> extraArgs; extraArgs.reserve(32);
+  for(auto p : params)
+  {
+    if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I')  // add include folders to the Tool
+    {
+      extraArgs.push_back(std::string("-extra-arg=") + p.first);
+      argv2.push_back(extraArgs.back().c_str());
+    }
+  }
+  argv2.push_back("--");
+  int argSize = argv2.size();
+
   llvm::cl::OptionCategory GDOpts("global-detect options");
-  clang::tooling::CommonOptionsParser OptionsParser(argc2, argv2, GDOpts);
+  clang::tooling::CommonOptionsParser OptionsParser(argSize, argv2.data(), GDOpts);
   clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
   // (0) find all "Main" functions, a functions which call kernels. Kernels are also listed for each mainFunc;
@@ -721,7 +766,13 @@ int main(int argc, const char **argv)
     std::ofstream buildSH(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_build.sh");
     buildSH << "#!/bin/sh" << std::endl;
     std::string build = inputCodeInfo.pShaderCC->BuildCommand();
-    buildSH << build.c_str() << std::endl;
+    buildSH << build.c_str() << " ";
+    for(auto p : params)
+    {
+      if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I')  // add include folders to the Tool
+        buildSH << p.first.c_str() << " ";
+    }
+    buildSH << std::endl;
 
     // // clspv unfortunately force use to use this hacky way to set desired destcripror set (see -distinct-kernel-descriptor-sets option of clspv).
     // // we create for each kernel with indirect dispatch seperate file with first dummy kernel (which will be bound to zero-th descriptor set)

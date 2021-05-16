@@ -437,6 +437,9 @@ namespace kslicer
     std::string mainClassFileInclude;
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
 
+    std::vector<std::string> includeToShadersFolders;
+    std::vector<std::string> includeCPPFolders;  
+   
 
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;

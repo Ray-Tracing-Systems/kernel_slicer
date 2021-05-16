@@ -12,6 +12,7 @@
             "args"   : ["${workspaceFolder}/apps/01_intersectSphere/test_class.cpp", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv", 
+                        "-I${workspaceFolder}/apps/LiteMath", "IncludeToShaders", // or "ExcludeFromShaders"
                         "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
