@@ -7,7 +7,11 @@
 #ifdef __OPENCL_VERSION__
   #include "OpenCLMathGPU.h" // include some additional math or code you need to be applied in OpenCL kernels
 #else
-  #include "OpenCLMathCPU.h"   // implementation of _same_ functions on the CPU
+  #ifdef KERNEL_SLICER
+  #include "OpenCLMathCPU.h" // pure implementation of _same_ functions on the CPU without vector extensions (you may use it for CPU also for the case)
+  #else
+  #include "OpenCLMathVEX.h" // pure implementation of _same_ functions on the CPU with    vector extensions
+  #endif
   using namespace LiteMath;
   #define __global 
 #endif

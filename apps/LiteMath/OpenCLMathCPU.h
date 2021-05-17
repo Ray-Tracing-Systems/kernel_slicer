@@ -225,9 +225,8 @@ namespace LiteMath
 
   static inline float  length(const float2 & u)    { return sqrtf(SQR(u.x) + SQR(u.y)); }
   static inline float2 normalize(const float2 & u) { return u / length(u); }
-
-  static inline float  lerp(float u, float v, float t) { return u + t * (v - u); }
   static inline float2 floor(float2 v) { return float2(floorf(v.x), floorf(v.y)); }
+  static inline float  lerp(float u, float v, float t) { return u + t * (v - u); }
 
   static inline float smoothstep(float edge0, float edge1, float x)
   {

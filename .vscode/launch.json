@@ -271,6 +271,7 @@
                         "-pattern", "rtv", 
                         "-vkernel_t=", "switch",
                         "-I${workspaceFolder}/apps/LiteMath", "IncludeToShaders",
+                        "-DKERNEL_SLICER"
                         //"-cl-std=", "C++",
                         "-v"],
             "stopAtEntry": false,

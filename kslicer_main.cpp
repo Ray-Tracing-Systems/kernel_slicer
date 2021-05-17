@@ -152,7 +152,11 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
   for(int i=0; i<argc; i++)
   {
     std::string key(argv[i]);
-    if(key != "-v" && key.size() > 0 && key[0] == '-') // exclude special "-IfoldePath" form, exclude "-v"
+    
+    const bool isDefine = key.size() > 1 && key.substr(0,2) == "-D";
+    const bool isKey    = key.size() > 0 && key[0] == '-';
+    
+    if(key != "-v" && !isDefine && isKey) // exclude special "-IfoldePath" form, exclude "-v"
     {
       if(i != argc-1) // not last argument
       {
@@ -420,7 +424,8 @@ int main(int argc, const char **argv)
   //headerSearchOptions.Verbose = 1;
 
   compiler.createPreprocessor(clang::TU_Complete);
-  compiler.getPreprocessorOpts().UsePredefines = false;
+  compiler.getPreprocessorOpts().UsePredefines = true;
+  //compiler.getPreprocessorOpts().addMacroDef("KERNEL_SLICER"); // IT DOES NOT WORKS FOR SOME REASON!!! 
   compiler.createASTContext();
 
   const FileEntry *pFile = compiler.getFileManager().getFile(fileName).get();
