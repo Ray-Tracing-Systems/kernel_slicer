@@ -28,25 +28,25 @@ int main(int argc, const char** argv)
   
   bool hasError = false;
 
-  if(!LoadHDRImageFromFile("WasteWhite_1024sample.hdr", &w, &h, hdrData))
+  if(!LoadHDRImageFromFile("../images/WasteWhite_1024sample.hdr", &w, &h, hdrData))
   {
     std::cout << "can't open input file 'WasteWhite_1024sample.hdr' " << std::endl;
     hasError = true;
   }
 
-  if(!LoadHDRImageFromFile("WasteWhite_depth.hdr", &w2, &h2, depth))
+  if(!LoadHDRImageFromFile("../images/WasteWhite_depth.hdr", &w2, &h2, depth))
   {
     std::cout << "can't open input file 'WasteWhite_depth.hdr' " << std::endl;
     hasError = true;
   }
 
-  if(!LoadLDRImageFromFile("WasteWhite_diffcolor.png", &w3, &h3, texColor))
+  if(!LoadLDRImageFromFile("../images/WasteWhite_diffcolor.png", &w3, &h3, texColor))
   {
     std::cout << "can't open input file 'WasteWhite_diffcolor.png' " << std::endl;
     hasError = true;
   }
 
-  if(!LoadLDRImageFromFile("WasteWhite_normals.png", &w4, &h4, normal))
+  if(!LoadLDRImageFromFile("../images/WasteWhite_normals.png", &w4, &h4, normal))
   {
     std::cout << "can't open input file 'WasteWhite_normals.png' " << std::endl;
     hasError = true;

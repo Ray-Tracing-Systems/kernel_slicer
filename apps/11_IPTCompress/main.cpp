@@ -13,7 +13,7 @@ int main(int argc, const char** argv)
   std::vector<float> hdrData;
   int w,h;
   
-  if(!LoadHDRImageFromFile("kitchen.hdr", &w, &h, hdrData))
+  if(!LoadHDRImageFromFile("../images/kitchen.hdr", &w, &h, hdrData))
   {
     std::cout << "can't open input file 'kitchen.hdr' " << std::endl;
     return 0;

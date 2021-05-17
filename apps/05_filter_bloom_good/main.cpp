@@ -14,7 +14,7 @@ int main(int argc, const char** argv)
 {
   std::vector<float> hdrData;
   int w,h;
-  if(!LoadHDRImageFromFile("nancy_church_2.hdr", &w, &h, hdrData))
+  if(!LoadHDRImageFromFile("../images/nancy_church_2.hdr", &w, &h, hdrData))
   {
     std::cout << "can't open input file 'nancy_church_2.hdr' " << std::endl;
     return 0;
