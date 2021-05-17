@@ -67,6 +67,8 @@ bool LoadLDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<
 
   (*pW) = width;
   (*pH) = height;
+
+  return true;
 }
 
 bool SaveLDRImageToFile(const char* a_fileName, int w, int h, int32_t* data)
@@ -108,10 +110,8 @@ bool SaveLDRImageToFile(const char* a_fileName, int w, int h, int32_t* data)
 }
 
 
-bool LoadHDRImageFromFile(const char* a_fileName, 
-                          int* pW, int* pH, std::vector<float>& a_data)
-{
-  
+bool LoadHDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<float>& a_data)
+{  
     const char* filename = a_fileName;
 
     FREE_IMAGE_FORMAT fif = FIF_UNKNOWN; // image format

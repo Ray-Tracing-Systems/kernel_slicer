@@ -288,6 +288,14 @@ namespace LiteMath
     unsigned short x, y, z, w;
   };
 
+  struct uchar4
+  {
+    uchar4() :x(0), y(0), z(0), w(0) {}
+    uchar4(unsigned char a, unsigned char b, unsigned char c, unsigned char d) : x(a), y(b), z(c), w(d) {}
+
+    unsigned char x, y, z, w;
+  };
+
   
   struct float4x4
   {

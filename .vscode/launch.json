@@ -13,19 +13,45 @@
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv", 
                         "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
             "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
                 {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
             ]
         },
+
+        {
+            "name"   : "Launch (app_01_circle)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/01_intersectSphere/test_class.cpp", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern",  "rtv", 
+                        "-shaderCC", "circle",
+                        "-hint", "${workspaceFolder}/apps/01_intersectSphere/hint.json",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
 
         {
             "name"   : "Launch (app_02)",
@@ -37,15 +63,15 @@
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv", 
                         "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
             "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
                 {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
             ]
@@ -62,15 +88,65 @@
                         "-pattern", "rtv",
                         //"-cl-std=", "C++",
                         "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
             "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
                 {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (app_03_circle)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/03_spheresStupidPt_loopBreak/test_class.cpp",
+                        "-mainClass", "TestClass", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-shaderCC", "circle", 
+                        "-hint", "${workspaceFolder}/apps/03_spheresStupidPt_loopBreak/hint.json",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (app_04)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/04_filter_bloom_bad/test_class.cpp",
+                        "-mainClass", "ToneMapping", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv", 
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
             ]
@@ -88,19 +164,47 @@
                         "-reorderLoops", "YX",
                         //"-cl-std=", "C++", 
                         "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
             "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
                 {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
             ]
         },
+
+        {
+            "name"   : "Launch (app_05_circle)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/05_filter_bloom_good/test_class.cpp",
+                        "-mainClass", "ToneMapping", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-reorderLoops", "YX", 
+                        "-shaderCC", "circle", 
+                        "-hint", "${workspaceFolder}/apps/05_filter_bloom_good/hint.json",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
 
         {
             "name"   : "Launch (app_06)",
@@ -113,15 +217,39 @@
                         "-pattern", "ipv",
                         //"-cl-std=", "C++", // DOES NOT WORKS, STRANGE BUG WITH PUSH CONSTANT AND MAY BE OTHER!
                         "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
             "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
                 {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (app_07)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/07_bvhStupidPT/test_class.cpp",
+                        "-mainClass", "TestClass", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv", 
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
             ]
@@ -138,15 +266,15 @@
                         "-pattern", "ipv",
                         "-cl-std=", "C++",
                         "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
             "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
                 {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
             ]
@@ -164,15 +292,15 @@
                         "-reorderLoops", "YX",
                         //"-cl-std=", "C++", // DOES NOT WORKS! SEEMS TO BE A BUG OF CLSPV.
                         "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
             "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
                 {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
             ]
@@ -190,19 +318,20 @@
                         "-vkernel_t=", "indirect_dispatch",
                         //"-cl-std=", "C++",
                         "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
             "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
                 {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
             ]
         },
+
         {
             "name"   : "Launch (app_11)",
             "type"   : "cppdbg",
@@ -214,19 +343,20 @@
                         "-pattern", "ipv",
                         "-reorderLoops", "YX", 
                         "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
             "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
                 {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
             ]
         },
+
         {
             "name"   : "Launch (app_12)",
             "type"   : "cppdbg",
@@ -238,19 +368,20 @@
                         "-pattern", "ipv",
                         "-reorderLoops", "YX", 
                         "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
             "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
                 {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
             ]
         },
+
         {
             "name"   : "Launch (app_13)",
             "type"   : "cppdbg",
@@ -263,18 +394,45 @@
                         "-vkernel_t=", "switch",
                         //"-cl-std=", "C++",
                         "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
             "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
                 {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
             ]
         },
+
+        {
+            "name"   : "Launch (app_14)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/14_filter_bloom_textures/test_class.cpp",
+                        "-mainClass", "ToneMapping", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv", 
+                        "-vkernel_t=", "indirect_dispatch",
+                        //"-cl-std=", "C++",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
     ]
 }
