@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <cassert>
 
-#include "texture2d.h"
 
 void tone_mapping_cpu(int w, int h, const float* a_hdrData, const char* a_outName);
 void tone_mapping_gpu(int w, int h, const float* a_hdrData, const char* a_outName);
