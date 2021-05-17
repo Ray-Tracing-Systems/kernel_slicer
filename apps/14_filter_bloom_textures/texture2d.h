@@ -21,7 +21,7 @@ struct Texture2D
   
   void     resize(unsigned int width, unsigned int height) { m_width = width; m_height = height; m_data.resize(width*height); }
   float2   process_coord(const Sampler::AddressMode mode, const float2 coord, bool* use_border_color) const; 
-  DataType sample(const Sampler* a_sampler, float2 a_uv) const;    
+  DataType sample(const Sampler& a_sampler, float2 a_uv) const;    
   void     write_pixel(const uint posPixel, const DataType color) { m_data[posPixel] = color; }
 
 

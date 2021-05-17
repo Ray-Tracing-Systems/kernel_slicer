@@ -1,14 +1,14 @@
 #include "texture2d.h"
 
 
-template<> float4 Texture2D<float4>::sample(const Sampler* a_sampler, float2 a_uv) const
+template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_uv) const
 {
   bool useBorderColor = false;
 
-  a_uv = process_coord(a_sampler->m_addressU, a_uv, &useBorderColor);
+  a_uv = process_coord(a_sampler.m_addressU, a_uv, &useBorderColor);
     
   if (useBorderColor) {
-    return a_sampler->m_borderColor;
+    return a_sampler.m_borderColor;
   }
 
   const float2 textureSize = make_float2(m_width, m_height);
@@ -16,11 +16,11 @@ template<> float4 Texture2D<float4>::sample(const Sampler* a_sampler, float2 a_u
   const int2   baseTexel   = make_int2(scaledUV.x, scaledUV.y);
   const int    stride      = m_width;
 
-  if (a_sampler->m_filter == Sampler::Filter::MIN_MAG_MIP_POINT) {
+  if (a_sampler.m_filter == Sampler::Filter::MIN_MAG_MIP_POINT) {
     return m_data[pitch(baseTexel.x, baseTexel.y, stride)];
   }
 
-  if (a_sampler->m_filter != Sampler::Filter::MIN_MAG_MIP_LINEAR) {
+  if (a_sampler.m_filter != Sampler::Filter::MIN_MAG_MIP_LINEAR) {
     fprintf(stderr, "Unsupported filter is used.");
   }
 
