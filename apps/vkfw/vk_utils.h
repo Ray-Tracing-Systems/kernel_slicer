@@ -5,7 +5,7 @@
 #ifndef VULKAN_MINIMAL_COMPUTE_VK_UTILS_H
 #define VULKAN_MINIMAL_COMPUTE_VK_UTILS_H
 
-#include <vulkan/vulkan.h>
+#include "volk.h"
 #include "vk_swapchain.h"
 #include <vector>
 
@@ -104,6 +104,7 @@ namespace vk_utils
   \brief Immediately execute command buffer and wait.
   */
   void ExecuteCommandBufferNow(VkCommandBuffer a_cmdBuff, VkQueue a_queue, VkDevice a_device);
+  void ExecuteCommandBuffersNow(std::vector<VkCommandBuffer> a_cmdBuffers, VkQueue a_queue, VkDevice a_device);
 
   /**
   \brief TBD

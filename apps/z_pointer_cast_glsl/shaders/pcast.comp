@@ -1,0 +1,33 @@
+#version 460
+#extension GL_EXT_buffer_reference    : enable
+#extension GL_EXT_buffer_reference2   : enable
+#extension GL_EXT_scalar_block_layout : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+struct TestClassData
+{
+  float a,b,c;
+};
+
+layout(buffer_reference, buffer_reference_align=4, scalar, binding = 0, set = 0) readonly buffer DataPtr 
+{
+  TestClassData testData;
+};
+
+layout(push_constant, scalar) uniform pushConstants 
+{
+  DataPtr zero; // suppose it is equal to 0, size of uint64_t
+};
+
+layout(binding = 1, set = 0) buffer layout2 { float result[]; };
+
+void main() 
+{
+  const uint offset = 5;          // offset of target object in bytes
+  DataPtr objRef = zero + offset; // access our object
+
+  result[0] = objRef.testData.a;
+  result[1] = objRef.testData.b;
+  result[2] = objRef.testData.c;
+}

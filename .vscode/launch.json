@@ -391,7 +391,7 @@
                         "-mainClass", "TestClass", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv", 
-                        "-vkernel_t=", "indirect_dispatch",
+                        "-vkernel_t=", "switch",
                         //"-cl-std=", "C++",
                         "-v"],
             "stopAtEntry"    : false,

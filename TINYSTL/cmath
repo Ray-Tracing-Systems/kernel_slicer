@@ -38,6 +38,9 @@ float expf(float x);
 
 float copysign(float eps, float val);
 
+float floor(float x);
+float floorf(float x);
+
 static const unsigned int RAND_MAX = 65535;
 static const float        MAXFLOAT = 1e37f;
 

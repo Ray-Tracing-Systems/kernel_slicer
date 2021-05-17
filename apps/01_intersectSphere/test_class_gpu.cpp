@@ -36,7 +36,10 @@ void test_class_gpu()
   std::vector<const char*> extensions;
   enabledLayers.push_back("VK_LAYER_KHRONOS_validation");
   enabledLayers.push_back("VK_LAYER_LUNARG_standard_validation");
+  
+  VK_CHECK_RESULT(volkInitialize());
   instance = vk_utils::CreateInstance(enableValidationLayers, enabledLayers, extensions);
+  volkLoadInstance(instance);
 
   physicalDevice       = vk_utils::FindPhysicalDevice(instance, true, 0);
   auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
@@ -49,6 +52,8 @@ void test_class_gpu()
 
   fIDs.compute = queueComputeFID;
   device       = vk_utils::CreateLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures, fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
+  volkLoadDevice(device);
+
   commandPool  = vk_utils::CreateCommandPool(device, physicalDevice, VK_QUEUE_COMPUTE_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
   // (2) initialize vulkan helpers
@@ -60,16 +65,6 @@ void test_class_gpu()
     vkGetDeviceQueue(device, queueComputeFID, 0, &transferQueue);
   }
 
-  VulkanContext ctx;
-  ctx.instance       = instance;
-  ctx.physicalDevice = physicalDevice;
-  ctx.device         = device;
-  ctx.commandPool    = commandPool;
-  ctx.computeQueue   = computeQueue;
-  ctx.transferQueue  = transferQueue;
-  //TestKernel(ctx);
-  //TestKernel2(ctx);
-  
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
 
   auto pGPUImpl = std::make_shared<TestClass_Generated>();                   // !!! USING GENERATED CODE !!! 

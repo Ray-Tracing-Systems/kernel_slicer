@@ -14,7 +14,7 @@ void {{MainClassName}}_Generated::AllocateAllDescriptorSets()
   //
   VkDescriptorPoolSize buffersSize;
   buffersSize.type            = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  buffersSize.descriptorCount = {{TotalDSNumber}}*4 + 10; // mul 4 and add 10 because of AMD bug
+  buffersSize.descriptorCount = {{TotalDSNumber}}*4 + 100; // mul 4 and add 100 because of AMD bug
 
   VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
   descriptorPoolCreateInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

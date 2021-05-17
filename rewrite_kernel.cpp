@@ -184,9 +184,20 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
 
   if(m_codeInfo->pShaderCC->IsVectorTypeNeedsContructorReplacement(fname) && WasNotRewrittenYet(call) && call->getNumArgs() > 1)
   {
-    const std::string text    = FunctionCallRewrite(call);
-    const std::string textRes = m_codeInfo->pShaderCC->VectorTypeContructorReplace(fname, text);
-    m_rewriter.ReplaceText(call->getSourceRange(), textRes);
+    const std::string textOrig = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+    const std::string text     = FunctionCallRewrite(call);
+    const std::string textRes  = m_codeInfo->pShaderCC->VectorTypeContructorReplace(fname, text);
+
+    if(isa<CXXTemporaryObjectExpr>(call))
+    {
+      m_rewriter.ReplaceText(call->getSourceRange(), textRes);
+    }
+    else
+    {
+      const std::string varName = textOrig.substr(0,  textOrig.find_first_of("("));
+      m_rewriter.ReplaceText(call->getSourceRange(), varName + " = " + textRes);
+    }
+    
     MarkRewritten(call);
   }
 

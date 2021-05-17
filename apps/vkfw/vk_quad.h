@@ -1,7 +1,6 @@
 #ifndef VULKAN_FSQUAD_H
 #define VULKAN_FSQUAD_H
 
-#include "vulkan_wrapper/vulkan_include.h"
 #include "vk_utils.h"
 
 namespace vkfw
