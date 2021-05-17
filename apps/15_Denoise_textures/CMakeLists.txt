@@ -35,12 +35,13 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -fopenmp -fPIC")
 
 add_executable(testapp main.cpp 
                        test_class.cpp
-                       test_class_gpu.cpp
-                       test_class_generated.cpp 
-                       test_class_generated_ds.cpp 
-                       test_class_generated_init.cpp
+                      #  test_class_gpu.cpp
+                      #  test_class_generated.cpp 
+                      #  test_class_generated_ds.cpp 
+                      #  test_class_generated_init.cpp
                        Bitmap.cpp
                        imageutils.cpp 
+                       ../14_filter_bloom_textures/texture2d.cpp
                        ../vkfw/vk_utils.cpp
                        ../vkfw/vk_copy.cpp
                        ../vkfw/vk_buffer.cpp
