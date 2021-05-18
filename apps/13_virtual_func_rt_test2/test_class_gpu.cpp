@@ -110,7 +110,7 @@ public:
       uint32_t m_tFlags;
     } pcData;
     
-    pcData.m_sizeX  = tileOffset;
+    pcData.m_sizeX  = tid;
     pcData.m_sizeY  = 1;
     pcData.m_sizeZ  = tileOffset;
     pcData.m_tFlags = m_currThreadFlags;
@@ -302,46 +302,65 @@ void test_class_gpu()
     constexpr uint totalWork = WIN_WIDTH*WIN_HEIGHT;
     constexpr uint nTiles = 4;
     constexpr uint perTile = totalWork / nTiles;
+    uint tileStart = 0;
+    uint tileEnd   = tileStart + perTile;
+//    uint tileStart = perTile * 2;
+//    uint tileEnd   = tileStart + perTile;
 
-    vkResetCommandBuffer(commandBuffer, 0);
-    vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    pGPUImpl->CastSingleRayCmd(commandBuffer, totalWork, nullptr, nullptr, perTile );  // !!! USING GENERATED CODE !!!
-    vkEndCommandBuffer(commandBuffer);
+    for(uint i = 0; i < nTiles; ++i)
+    {
+      vkResetCommandBuffer(commandBuffer, 0);
+      vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
+      pGPUImpl->CastSingleRayCmd(commandBuffer, totalWork, nullptr, nullptr, tileStart,
+                                 tileEnd);  // !!! USING GENERATED CODE !!!
+      vkEndCommandBuffer(commandBuffer);
 
-    auto start = std::chrono::high_resolution_clock::now();
-    vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
-    auto stop = std::chrono::high_resolution_clock::now();
-    float ms  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-    std::cout << ms << " ms for full command buffer execution " << std::endl;
+      auto start = std::chrono::high_resolution_clock::now();
+      vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
+      auto stop = std::chrono::high_resolution_clock::now();
+      float ms = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count() / 1000.f;
+      std::cout << ms << " ms for full command buffer execution " << std::endl;
+
+      tileStart += perTile;
+      tileEnd   += perTile;
+    }
+
+    tileStart = 0;
+    tileEnd   = tileStart + perTile;
 
     std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
     pCopyHelper->ReadBuffer(colorBuffer1, 0, pixelData.data(), pixelData.size()*sizeof(uint32_t));
     SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-   
-    //return;
 
     std::cout << "begin path tracing passes ... " << std::endl;
-    
-    vkResetCommandBuffer(commandBuffer, 0);
-    vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    pGPUImpl->NaivePathTraceCmd(commandBuffer, totalWork, 6, nullptr, nullptr, perTile);  // !!! USING GENERATED CODE !!!
-    vkEndCommandBuffer(commandBuffer);  
-    
-    start = std::chrono::high_resolution_clock::now();
-    const int NUM_PASSES = 1000;
-    for(int i=0;i<NUM_PASSES;i++)
+
+    constexpr int NUM_PASSES = 1000;
+    for(uint i = 0; i < nTiles; ++i)
     {
-      vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
-      if(i % 100 == 0)
+      vkResetCommandBuffer(commandBuffer, 0);
+      vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
+      pGPUImpl->NaivePathTraceCmd(commandBuffer, totalWork, 6, nullptr, nullptr, tileStart,
+                                  tileEnd);  // !!! USING GENERATED CODE !!!
+      vkEndCommandBuffer(commandBuffer);
+
+      auto start = std::chrono::high_resolution_clock::now();
+      for (int i = 0; i < NUM_PASSES; i++)
       {
-        std::cout << "progress (gpu) = " << 100.0f*float(i)/float(NUM_PASSES) << "% \r";
-        std::cout.flush();
+        vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
+        if (i % 100 == 0)
+        {
+          std::cout << "progress (gpu) = " << 100.0f * float(i) / float(NUM_PASSES) << "% \r";
+          std::cout.flush();
+        }
       }
+      std::cout << std::endl;
+      auto stop = std::chrono::high_resolution_clock::now();
+      float ms = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count() / 1000.f;
+      std::cout << ms << " ms for " << NUM_PASSES << " times of command buffer execution " << std::endl;
+
+      tileStart += perTile;
+      tileEnd   += perTile;
     }
-    std::cout << std::endl;
-    stop = std::chrono::high_resolution_clock::now();
-    ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-    std::cout << ms << " ms for " << NUM_PASSES << " times of command buffer execution " << std::endl;
 
     std::vector<float4> pixelsf(WIN_WIDTH*WIN_HEIGHT);
     pCopyHelper->ReadBuffer(colorBuffer2, 0, pixelsf.data(), pixelsf.size()*sizeof(float4));

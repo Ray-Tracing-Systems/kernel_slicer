@@ -80,8 +80,9 @@ public:
   }
 
   virtual void NaivePathTraceCmd(VkCommandBuffer a_commandBuffer, uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color,
-                                 uint tileOffset);
-  virtual void CastSingleRayCmd(VkCommandBuffer a_commandBuffer, uint tid, uint* in_pakedXY, uint* out_color, uint tileOffset);
+                                 uint tileStart, uint tileEnd);
+  virtual void CastSingleRayCmd(VkCommandBuffer a_commandBuffer, uint tid, uint* in_pakedXY, uint* out_color,
+                                uint tileStart, uint tileEnd);
   virtual void PackXYCmd(VkCommandBuffer a_commandBuffer, uint tidX, uint tidY, uint* out_pakedXY);
 
   virtual void copyKernelFloatCmd(uint32_t length);
