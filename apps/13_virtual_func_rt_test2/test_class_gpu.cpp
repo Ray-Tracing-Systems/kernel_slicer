@@ -91,11 +91,11 @@ public:
     vkDestroyShaderModule(a_device, shaderModule, nullptr);
   }
   
-  void RayTraceCmd(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar, Lite_Hit* out_hit, float2* out_bars) override
+  void RayTraceCmd(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar, Lite_Hit* out_hit, float2* out_bars, uint tileOffset) override
   {
     if(!m_enableHWAccel)
     {
-      TestClass_Generated::RayTraceCmd(tid, rayPosAndNear, rayDirAndFar, out_hit, out_bars);
+      TestClass_Generated::RayTraceCmd(tid, rayPosAndNear, rayDirAndFar, out_hit, out_bars, tileOffset);
       return;
     }
     uint32_t blockSizeX = 256;
@@ -110,9 +110,9 @@ public:
       uint32_t m_tFlags;
     } pcData;
     
-    pcData.m_sizeX  = tid;
+    pcData.m_sizeX  = tileOffset;
     pcData.m_sizeY  = 1;
-    pcData.m_sizeZ  = 1;
+    pcData.m_sizeZ  = tileOffset;
     pcData.m_tFlags = m_currThreadFlags;
     
     vkCmdPushConstants(m_currCmdBuffer, m_rtPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
@@ -121,7 +121,7 @@ public:
     vkCmdBindDescriptorSets(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_rtPipelineLayout, 0, 2, dsets, 0, nullptr);
 
     vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_rtPipeline);
-    vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (pcData.m_sizeZ + blockSizeZ - 1) / blockSizeZ);
+    vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (1 + blockSizeZ - 1) / blockSizeZ);
   
     VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
     vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
@@ -299,11 +299,15 @@ void test_class_gpu()
     vkEndCommandBuffer(commandBuffer);  
     vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
 
+    constexpr uint totalWork = WIN_WIDTH*WIN_HEIGHT;
+    constexpr uint nTiles = 4;
+    constexpr uint perTile = totalWork / nTiles;
+
     vkResetCommandBuffer(commandBuffer, 0);
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    pGPUImpl->CastSingleRayCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, nullptr, nullptr);  // !!! USING GENERATED CODE !!! 
-    vkEndCommandBuffer(commandBuffer);  
-   
+    pGPUImpl->CastSingleRayCmd(commandBuffer, totalWork, nullptr, nullptr, perTile );  // !!! USING GENERATED CODE !!!
+    vkEndCommandBuffer(commandBuffer);
+
     auto start = std::chrono::high_resolution_clock::now();
     vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
     auto stop = std::chrono::high_resolution_clock::now();
@@ -320,11 +324,11 @@ void test_class_gpu()
     
     vkResetCommandBuffer(commandBuffer, 0);
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    pGPUImpl->NaivePathTraceCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, 6, nullptr, nullptr);  // !!! USING GENERATED CODE !!! 
+    pGPUImpl->NaivePathTraceCmd(commandBuffer, totalWork, 6, nullptr, nullptr, perTile);  // !!! USING GENERATED CODE !!!
     vkEndCommandBuffer(commandBuffer);  
     
     start = std::chrono::high_resolution_clock::now();
-    const int NUM_PASSES = 1000.0f;
+    const int NUM_PASSES = 1000;
     for(int i=0;i<NUM_PASSES;i++)
     {
       vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);

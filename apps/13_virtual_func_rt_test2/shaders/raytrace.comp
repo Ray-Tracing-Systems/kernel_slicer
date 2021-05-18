@@ -30,10 +30,12 @@ layout(binding = 1, set = 0) buffer RayPart1 { vec4     rayDirAndFar[];  }; //  
 layout(binding = 2, set = 0) buffer HitPart1 { Lite_Hit out_hit[];       }; //  __global Lite_Hit * out_hit,
 layout(binding = 3, set = 0) buffer HitPart2 { vec2     out_bars[];      }; //  __global float2 * out_bars,
 layout(binding = 4, set = 0) buffer Flags    { uint     threadFlags[];   }; //  __global uint* kgen_threadFlags,
+
 layout(binding = 5, set = 0) buffer Geom1    { vec4     m_vPos4f[];      }; //  __global float4* m_vPos4f,
 layout(binding = 6, set = 0) buffer Geom2    { uint     m_indReord[];    }; //  __global unsigned int* m_indicesReordered,
 layout(binding = 7, set = 0) buffer Geom3    { ivec2    m_intervals[];   }; //  __global struct Interval* m_intervals,
 layout(binding = 8, set = 0) buffer Geom4    { vec4     m_nodes[];       }; //  __global struct BVHNode* m_nodes,
+
 layout(binding = 9, set = 0) buffer SelfData { TestClass_UBO_Data     fakeubo; }; //  __global struct TestClass_UBO_Data* ubo,
 
 layout(binding = 0, set = 1) uniform accelerationStructureEXT topLevelAS;
@@ -89,14 +91,18 @@ void main()
   const uint tid = gl_GlobalInvocationID.x; 
   if(tid >= kgen.iNumElementsX)
     return;
-  if((threadFlags[tid] & kgen.tFlagsMask) != 0) 
+
+  const uint idx = kgen.iNumElementsZ + tid;
+
+  if((threadFlags[idx] & kgen.tFlagsMask) != 0)
     return;
 
   //const float4 m_lightSphere = ubo->m_lightSphere;
   ///////////////////////////////////////////////////////////////// prolog
+
   
-  const vec4 rayPos = rayPosAndNear[tid];
-  const vec4 rayDir = rayDirAndFar[tid] ;
+  const vec4 rayPos = rayPosAndNear[idx];
+  const vec4 rayDir = rayDirAndFar[idx] ;
 
   Lite_Hit res;
   res.primId = -1;
@@ -113,14 +119,14 @@ void main()
 
   if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT)
   {    
-	res.primId    = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
-	res.geomId    = HIT_TRIANGLE_GEOM;
-	res.t         = rayQueryGetIntersectionTEXT(rayQuery, true);
-    
-	vec3 barycentricCoords = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, true));
+    res.primId    = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
+    res.geomId    = HIT_TRIANGLE_GEOM;
+    res.t         = rayQueryGetIntersectionTEXT(rayQuery, true);
+
+    vec3 barycentricCoords = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, true));
     barycentricCoords.x = 1.0 - barycentricCoords.y - barycentricCoords.z;
 
-    out_bars[tid] = barycentricCoords.zy;
+    out_bars[idx] = barycentricCoords.zy;
   }
 
   // intersect light under roof
@@ -138,13 +144,13 @@ void main()
       res.geomId = HIT_TRIANGLE_GEOM;
   }
 
-  out_hit[tid] = res;
+  out_hit[idx] = res;
 
   bool kgenExitCond = (res.primId != -1); 
   {
     const bool exitHappened = (kgen.tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0 ? !kgenExitCond : kgenExitCond;
     if((kgen.tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)
-      threadFlags[tid] = ((kgen.tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
+      threadFlags[idx] = ((kgen.tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
   };
 
 }
