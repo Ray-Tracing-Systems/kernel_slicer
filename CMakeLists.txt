@@ -30,6 +30,8 @@ add_executable(kslicer
                rewrite_kernel.cpp
                rewrite_control.cpp
                reduction.cpp
+               shaders_clspv.cpp
+               shaders_glsl.cpp
                )
 
 target_link_libraries(kslicer PRIVATE -lclang -lLLVM-11 

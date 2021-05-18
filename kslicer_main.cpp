@@ -369,8 +369,8 @@ int main(int argc, const char **argv)
   inputCodeInfo.includeToShadersFolders = includeFolderList;  // set shader folders
   inputCodeInfo.includeCPPFolders       = includeFolderList2; // set common C/C++ folders
 
-  if(shaderCCName == "circle" || shaderCCName == "Circle")
-    inputCodeInfo.pShaderCC = std::make_shared<kslicer::CircleCompiler>();
+  if(shaderCCName == "glsl" || shaderCCName == "GLSL")
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::GLSLCompiler>();
   else
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>(useCppInKernels);
 
@@ -760,110 +760,8 @@ int main(int argc, const char **argv)
 
   // finally generate kernels
   //
-  const std::string templatePath = inputCodeInfo.pShaderCC->TemplatePath();
   auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, usedDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
-  
-  if(inputCodeInfo.pShaderCC->IsSingleSource())
-  {
-    const std::string outFileName  = GetFolderPath(inputCodeInfo.mainClassFileName) + "/" + inputCodeInfo.pShaderCC->ShaderSingleFile();
-    kslicer::ApplyJsonToTemplate(templatePath, outFileName, json);
-
-    std::ofstream buildSH(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_build.sh");
-    buildSH << "#!/bin/sh" << std::endl;
-    std::string build = inputCodeInfo.pShaderCC->BuildCommand();
-    buildSH << build.c_str() << " ";
-    for(auto folder : inputCodeInfo.includeToShadersFolders)
-      buildSH << "-I" << folder.c_str() << " ";
-    buildSH << std::endl;
-
-    // // clspv unfortunately force use to use this hacky way to set desired destcripror set (see -distinct-kernel-descriptor-sets option of clspv).
-    // // we create for each kernel with indirect dispatch seperate file with first dummy kernel (which will be bound to zero-th descriptor set)
-    // // and our XXX_IndirectUpdate kerner which in that way will be bound to the first descriptor set.  
-    // //
-    // if(inputCodeInfo.m_indirectBufferSize != 0) 
-    // {
-    //   nlohmann::json copy, kernels;
-    //   for (auto& el : json.items())
-    //   {
-    //     //std::cout << el.key() << std::endl;
-    //     if(std::string(el.key()) == "Kernels")
-    //       kernels = json[el.key()];
-    //     else
-    //       copy[el.key()] = json[el.key()];
-    //   }
-    // 
-    //   std::string folderPath = GetFolderPath(inputCodeInfo.mainClassFileName);
-    //   std::string shaderPath = folderPath + "/" + inputCodeInfo.pShaderCC->ShaderFolder();
-    //   #ifdef WIN32
-    //   mkdir(shaderPath.c_str());
-    //   #else
-    //   mkdir(shaderPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    //   #endif
-    // 
-    //   //for(auto& kernel : kernels.items())
-    //   //{
-    //   //  if(kernel.value()["IsIndirect"])
-    //   //  {
-    //   //    nlohmann::json currKerneJson = copy;
-    //   //    currKerneJson["Kernels"] = std::vector<std::string>();
-    //   //    currKerneJson["Kernels"].push_back(kernel.value());
-    //   //
-    //   //    std::string outFileName = std::string(kernel.value()["Name"]) + "_UpdateIndirect" + ".cl";
-    //   //    std::string outFilePath = shaderPath + "/" + outFileName;
-    //   // 
-    //   //    std::ofstream file("debug.json");
-    //   //    file << currKerneJson.dump(2);
-    //   //
-    //   //    kslicer::ApplyJsonToTemplate("templates/indirect.cl", outFilePath, currKerneJson);
-    //   //    buildSH << "../clspv " << outFilePath.c_str() << " -o " << outFilePath.c_str() << ".spv -pod-pushconstant -distinct-kernel-descriptor-sets -I." << std::endl;
-    //   //  }
-    //   //}
-    // 
-    // }
-
-    buildSH.close();
-  }
-  else // if need to compile each kernel inside separate file
-  { 
-    nlohmann::json copy, kernels;
-    for (auto& el : json.items())
-    {
-      //std::cout << el.key() << std::endl;
-      if(std::string(el.key()) == "Kernels")
-        kernels = json[el.key()];
-      else
-        copy[el.key()] = json[el.key()];
-    }
-    
-    std::string folderPath = GetFolderPath(inputCodeInfo.mainClassFileName);
-    std::string shaderPath = folderPath + "/" + inputCodeInfo.pShaderCC->ShaderFolder();
-    #ifdef WIN32
-    mkdir(shaderPath.c_str());
-    #else
-    mkdir(shaderPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    #endif
-    
-    std::ofstream buildSH(shaderPath + "/build.sh");
-    buildSH << "#!/bin/sh" << std::endl;
-    for(auto& kernel : kernels.items())
-    {
-      nlohmann::json currKerneJson = copy;
-      currKerneJson["Kernels"] = std::vector<std::string>();
-      currKerneJson["Kernels"].push_back(kernel.value());
-      
-      std::string outFileName = std::string(kernel.value()["Name"]) + ".cpp";
-      std::string outFilePath = shaderPath + "/" + outFileName;
-      kslicer::ApplyJsonToTemplate("templates/gen_circle.cxx", outFilePath, currKerneJson);
-      buildSH << "../../circle -shader -c -emit-spirv " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DUSE_CIRCLE_CC -I.. " << std::endl;
-    }
-    
-    nlohmann::json emptyJson;
-    std::string outFileServ = shaderPath + "/" + "serv_kernels.cpp";
-    kslicer::ApplyJsonToTemplate("templates/ser_circle.cxx", outFileServ, emptyJson);
-    buildSH << "../../circle -shader -c -emit-spirv " << outFileServ.c_str() << " -o " << outFileServ.c_str() << ".spv" << " -DUSE_CIRCLE_CC -I.. " << std::endl;
-
-    buildSH.close();
-  }
+  inputCodeInfo.pShaderCC->GenerateShaders(json, inputCodeInfo.mainClassFileName, inputCodeInfo.includeToShadersFolders);
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;

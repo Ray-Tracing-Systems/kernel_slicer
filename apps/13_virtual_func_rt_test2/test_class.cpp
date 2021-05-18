@@ -1,7 +1,7 @@
 #include "test_class.h"
 #include "include/crandom.h"
 
-#include <chrono>
+//#include <chrono>
 
 void TestClass::InitRandomGens(int a_maxThreads)
 {
@@ -303,7 +303,7 @@ void test_class_cpu()
   // now test path tracing
   //
   
-  auto start = std::chrono::high_resolution_clock::now();
+  //auto start = std::chrono::high_resolution_clock::now();
 
   const int PASS_NUMBER           = 100;
   const int ITERS_PER_PASS_NUMBER = 4;
@@ -324,10 +324,10 @@ void test_class_cpu()
     }
   }
   
-  auto stop = std::chrono::high_resolution_clock::now();
-  auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-  std::cout << ms << " ms for " << PASS_NUMBER*ITERS_PER_PASS_NUMBER << " passes " << std::endl;
-  std::cout << std::endl;
+  //auto stop = std::chrono::high_resolution_clock::now();
+  //auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+  //std::cout << ms << " ms for " << PASS_NUMBER*ITERS_PER_PASS_NUMBER << " passes " << std::endl;
+  //std::cout << std::endl;
 
   const float normConst = 1.0f/float(PASS_NUMBER*ITERS_PER_PASS_NUMBER);
   const float invGamma  = 1.0f / 2.2f;

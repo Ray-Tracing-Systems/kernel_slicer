@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <algorithm>
 #include <sstream>
+#include <inja.hpp>
 
 #include "clang/AST/DeclCXX.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -283,10 +284,11 @@ namespace kslicer
     virtual std::string ProcessBufferType(const std::string& a_typeName) const { return a_typeName; };
 
     virtual bool        IsSingleSource()   const = 0;
-    virtual std::string ShaderFolder()     const = 0;
     virtual std::string ShaderSingleFile() const = 0;
-    virtual std::string TemplatePath()     const = 0; 
-    virtual std::string BuildCommand()     const = 0;
+    virtual std::string ShaderFolder()     const = 0;
+
+    virtual void        GenerateShaders(nlohmann::json& a_kernelsJson, const std::string& mainClassFileName, const std::vector<std::string>& includeToShadersFolders) = 0;
+
     virtual std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const = 0;
 
     virtual std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const { return a_call; }
@@ -299,116 +301,43 @@ namespace kslicer
 
   struct ClspvCompiler : IShaderCompiler
   {
-    ClspvCompiler(bool a_useCPP = false) : m_useCpp(a_useCPP)
-    {
-      m_ctorReplacement["float2"] = "make_float2";
-      m_ctorReplacement["float3"] = "make_float3";
-      m_ctorReplacement["float4"] = "make_float4";
-
-      m_ctorReplacement["int2"]   = "make_int2";
-      m_ctorReplacement["int3"]   = "make_int3";
-      m_ctorReplacement["int4"]   = "make_int4";
-
-      m_ctorReplacement["uint2"]  = "make_uint2";
-      m_ctorReplacement["uint3"]  = "make_uint3";
-      m_ctorReplacement["uint4"]  = "make_uint4";
-    }
-
+    ClspvCompiler(bool a_useCPP = false);
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo->") + a_name; };
     bool        IsSingleSource()   const override { return true; }
     std::string ShaderFolder()     const override { return "clspv_shaders_aux"; }
     std::string ShaderSingleFile() const override { return "z_generated.cl"; }
-    std::string TemplatePath()     const override { return "templates/generated.cl"; }
-    std::string BuildCommand()     const override 
-    {
-      if(m_useCpp) 
-        return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-ubo -cl-std=CLC++ -inline-entry-points";  
-      else
-        return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-pushconstant";
-    } 
 
-    bool UseSeparateUBOForArguments() const override { return m_useCpp; }
-    bool UseSpecConstForWgSize()      const override { return m_useCpp; }
+    void        GenerateShaders(nlohmann::json& a_kernelsJson, const std::string& mainClassFileName, const std::vector<std::string>& includeToShadersFolders) override;
+
+    bool        UseSeparateUBOForArguments() const override { return m_useCpp; }
+    bool        UseSpecConstForWgSize()      const override { return m_useCpp; }
     
-    std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override
-    {
-      if(a_kernelDim == 1)
-        return "get_local_id(0)";
-      else
-      {
-        std::stringstream strOut;
-        strOut << "get_local_id(0) + " << a_wgSize[0] << "*get_local_id(1)";
-        return strOut.str();
-      }
-    }
-
-    std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override
-    {
-      std::string call = a_call;
-      if(a_typeName == "float" || a_typeName == "const float" || a_typeName == "float2" || a_typeName == "const float2" ||
-         a_typeName == "float3" || a_typeName == "const float3" || a_typeName == "float4" || a_typeName == "const float4")
-      {
-        ReplaceFirst(call, "std::min", "fmin");
-        ReplaceFirst(call, "std::max", "fmax");
-        ReplaceFirst(call, "std::abs", "fabs");
-        
-        if(call == "min")
-          ReplaceFirst(call, "min", "fmin");
-        if(call == "max")
-          ReplaceFirst(call, "max", "fmax");
-        if(call == "abs")
-          ReplaceFirst(call, "abs", "fabs"); 
-      }
-      ReplaceFirst(call, "std::", "");
-      return call;
-    }
-
-    bool IsVectorTypeNeedsContructorReplacement(const std::string& a_typeName) const override
-    {
-      return (m_ctorReplacement.find(a_typeName) != m_ctorReplacement.end());
-    }
-
-    std::string VectorTypeContructorReplace(const std::string& a_typeName, const std::string& a_call) const override 
-    { 
-      std::string call = a_call;
-      auto p = m_ctorReplacement.find(a_typeName);
-      ReplaceFirst(call, p->first + "(", p->second + "(");
-      return call; 
-    }
+    std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3])                               const override;
+    std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
+    bool        IsVectorTypeNeedsContructorReplacement(const std::string& a_typeName)                 const override;
+    std::string VectorTypeContructorReplace(const std::string& a_typeName, const std::string& a_call) const override;
 
   private:
+    std::string BuildCommand() const;
+
     std::unordered_map<std::string, std::string> m_ctorReplacement;
     bool m_useCpp;
   };
 
-  struct CircleCompiler : IShaderCompiler
+  struct GLSLCompiler : IShaderCompiler
   {
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
-    bool        IsSingleSource()   const override { return true; }
-    std::string ShaderFolder()     const override { return "shaders_circle"; }
-    std::string ShaderSingleFile() const override { return "z_generated.cxx"; }
-    std::string TemplatePath()     const override { return "templates/gen_circle.cxx"; }
-    std::string BuildCommand()     const override { return std::string("../circle -shader -c -emit-spirv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -DUSE_CIRCLE_CC"; }
+    bool        IsSingleSource()                     const override { return false; }
+    std::string ShaderFolder()                       const override { return "shaders_generated"; }
+    std::string ShaderSingleFile()                   const override { return ""; }
    
-    std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override
-    {
-      if(a_kernelDim == 1)
-        return "get_local_id(0)";
-      else
-      {
-        std::stringstream strOut;
-        strOut << "get_local_id(0) + " << a_wgSize[0] << "*get_local_id(1)";
-        return strOut.str();
-      }
-    }
+    void GenerateShaders(nlohmann::json& a_kernelsJson, const std::string& mainClassFileName, const std::vector<std::string>& includeToShadersFolders) override;
 
-    std::string ProcessBufferType(const std::string& a_typeName) const override 
-    { 
-      std::string type = a_typeName;
-      ReplaceFirst(type, "*", "");
-      ReplaceFirst(type, "const", "");
-      return type; 
-    };
+    std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
+    std::string ProcessBufferType(const std::string& a_typeName)        const override;
+  
+  private:
+    std::string BuildCommand() const;
   };
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
