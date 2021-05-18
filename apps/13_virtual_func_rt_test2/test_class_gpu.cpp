@@ -327,6 +327,8 @@ void test_class_gpu()
 
     tileStart = 0;
     tileEnd   = tileStart + perTile;
+//    tileStart = perTile * 2;
+//    tileEnd   = tileStart + perTile;
 
     std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
     pCopyHelper->ReadBuffer(colorBuffer1, 0, pixelData.data(), pixelData.size()*sizeof(uint32_t));

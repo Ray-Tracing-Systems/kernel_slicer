@@ -76,7 +76,7 @@ void TestClass_Generated::UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine>
     a_pCopyEngine->UpdateBuffer(m_vdata.m_materialDataBuffer, 0, m_materialData.data(), m_materialData.size()*sizeof(unsigned int) );
 }
 
-void TestClass_Generated::GetColorCmd(uint tid, uint* out_color, const TestClass* a_pGlobals)
+void TestClass_Generated::GetColorCmd(uint tid, uint* out_color, const TestClass* a_pGlobals, uint tileOffset)
 {
   uint32_t blockSizeX = 256;
   uint32_t blockSizeY = 1;
@@ -92,13 +92,13 @@ void TestClass_Generated::GetColorCmd(uint tid, uint* out_color, const TestClass
   
   pcData.m_sizeX  = tid;
   pcData.m_sizeY  = 1;
-  pcData.m_sizeZ  = 1;
+  pcData.m_sizeZ  = tileOffset;
   pcData.m_tFlags = m_currThreadFlags;
 
   vkCmdPushConstants(m_currCmdBuffer, GetColorLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
   
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, GetColorPipeline);
-  vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (pcData.m_sizeZ + blockSizeZ - 1) / blockSizeZ);
+  vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (1 + blockSizeZ - 1) / blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
@@ -107,7 +107,7 @@ void TestClass_Generated::GetColorCmd(uint tid, uint* out_color, const TestClass
 void TestClass_Generated::NextBounceCmd(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
                            const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
                            float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
-                           float4* accumColor, float4* accumThoroughput)
+                           float4* accumColor, float4* accumThoroughput, uint tileOffset)
 {
   uint32_t blockSizeX = 256;
   uint32_t blockSizeY = 1;
@@ -123,19 +123,19 @@ void TestClass_Generated::NextBounceCmd(uint tid, const Lite_Hit* in_hit, const 
   
   pcData.m_sizeX  = tid;
   pcData.m_sizeY  = 1;
-  pcData.m_sizeZ  = 1;
+  pcData.m_sizeZ  = tileOffset;
   pcData.m_tFlags = m_currThreadFlags;
 
   vkCmdPushConstants(m_currCmdBuffer, NextBounceLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
   
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, NextBouncePipeline);
-  vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (pcData.m_sizeZ + blockSizeZ - 1) / blockSizeZ);
+  vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (1 + blockSizeZ - 1) / blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
 }
 
-void TestClass_Generated::InitEyeRayCmd(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar)
+void TestClass_Generated::InitEyeRayCmd(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar, uint tileOffset)
 {
   uint32_t blockSizeX = 256;
   uint32_t blockSizeY = 1;
@@ -151,20 +151,20 @@ void TestClass_Generated::InitEyeRayCmd(uint tid, const uint* packedXY, float4* 
   
   pcData.m_sizeX  = tid;
   pcData.m_sizeY  = 1;
-  pcData.m_sizeZ  = 1;
+  pcData.m_sizeZ  = tileOffset;
   pcData.m_tFlags = m_currThreadFlags;
 
   vkCmdPushConstants(m_currCmdBuffer, InitEyeRayLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
   
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, InitEyeRayPipeline);
-  vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (pcData.m_sizeZ + blockSizeZ - 1) / blockSizeZ);
+  vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (1 + blockSizeZ - 1) / blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
 }
 
 void TestClass_Generated::InitEyeRay2Cmd(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar,
-                                                                   float4* accumColor,    float4* accumuThoroughput)
+                                         float4* accumColor, float4* accumuThoroughput, uint tileOffset)
 {
   uint32_t blockSizeX = 256;
   uint32_t blockSizeY = 1;
@@ -180,13 +180,13 @@ void TestClass_Generated::InitEyeRay2Cmd(uint tid, const uint* packedXY, float4*
   
   pcData.m_sizeX  = tid;
   pcData.m_sizeY  = 1;
-  pcData.m_sizeZ  = 1;
+  pcData.m_sizeZ  = tileOffset;
   pcData.m_tFlags = m_currThreadFlags;
 
   vkCmdPushConstants(m_currCmdBuffer, InitEyeRay2Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
   
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, InitEyeRay2Pipeline);
-  vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (pcData.m_sizeZ + blockSizeZ - 1) / blockSizeZ);
+  vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (1 + blockSizeZ - 1) / blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
@@ -209,19 +209,19 @@ void TestClass_Generated::RayTraceCmd(uint tid, const float4* rayPosAndNear, flo
   
   pcData.m_sizeX  = tid;
   pcData.m_sizeY  = 1;
-  pcData.m_sizeZ  = 1;
+  pcData.m_sizeZ  = tileOffset;
   pcData.m_tFlags = m_currThreadFlags;
 
   vkCmdPushConstants(m_currCmdBuffer, RayTraceLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
   
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, RayTracePipeline);
-  vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (pcData.m_sizeZ + blockSizeZ - 1) / blockSizeZ);
+  vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (1 + blockSizeZ - 1) / blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
 }
 
-void TestClass_Generated::MakeMaterialCmd(uint tid, const Lite_Hit* in_hit)
+void TestClass_Generated::MakeMaterialCmd(uint tid, const Lite_Hit* in_hit, uint tileOffset)
 {
   uint32_t blockSizeX = 256;
   uint32_t blockSizeY = 1;
@@ -237,13 +237,13 @@ void TestClass_Generated::MakeMaterialCmd(uint tid, const Lite_Hit* in_hit)
   
   pcData.m_sizeX  = tid;
   pcData.m_sizeY  = 1;
-  pcData.m_sizeZ  = 1;
+  pcData.m_sizeZ  = tileOffset;
   pcData.m_tFlags = m_currThreadFlags;
 
   vkCmdPushConstants(m_currCmdBuffer, MakeMaterialLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
   
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, MakeMaterialPipeline);
-  vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (pcData.m_sizeZ + blockSizeZ - 1) / blockSizeZ);
+  vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (1 + blockSizeZ - 1) / blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
@@ -277,7 +277,8 @@ void TestClass_Generated::PackXYCmd(uint tidX, uint tidY, uint* out_pakedXY)
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
 }
 
-void TestClass_Generated::ContributeToImageCmd(uint tid, const float4* a_accumColor, const uint* in_pakedXY, float4* out_color)
+void TestClass_Generated::ContributeToImageCmd(uint tid, const float4* a_accumColor, const uint* in_pakedXY, float4* out_color,
+                                               uint tileOffset)
 {
   uint32_t blockSizeX = 256;
   uint32_t blockSizeY = 1;
@@ -293,13 +294,13 @@ void TestClass_Generated::ContributeToImageCmd(uint tid, const float4* a_accumCo
   
   pcData.m_sizeX  = tid;
   pcData.m_sizeY  = 1;
-  pcData.m_sizeZ  = 1;
+  pcData.m_sizeZ  = tileOffset;
   pcData.m_tFlags = m_currThreadFlags;
 
   vkCmdPushConstants(m_currCmdBuffer, ContributeToImageLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
   
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ContributeToImagePipeline);
-  vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (pcData.m_sizeZ + blockSizeZ - 1) / blockSizeZ);
+  vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (1 + blockSizeZ - 1) / blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
@@ -367,6 +368,12 @@ void TestClass_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffers, VkBuf
 void TestClass_Generated::NaivePathTraceCmd(VkCommandBuffer a_commandBuffer, uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color,
                                             uint tileStart, uint tileEnd)
 {
+//  uint nThreads = tid;
+//  uint tileStart2 = tileStart;
+//  tileStart = 0;
+
+  uint nThreads = tileEnd - tileStart;
+
   m_currCmdBuffer = a_commandBuffer;
   const uint32_t outOfForFlags  = KGEN_FLAG_RETURN;
   const uint32_t inForFlags     = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK;
@@ -382,7 +389,7 @@ void TestClass_Generated::NaivePathTraceCmd(VkCommandBuffer a_commandBuffer, uin
   float4 rayPosAndNear, rayDirAndFar;
   vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, InitEyeRay2Layout, 0, 1, &m_allGeneratedDS[0], 0, nullptr);
   m_currThreadFlags = outOfForFlags;
-  InitEyeRay2Cmd(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput);
+  InitEyeRay2Cmd(nThreads, in_pakedXY, &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, tileStart);
 
   Lite_Hit hit; 
   float2   baricentrics; 
@@ -392,25 +399,25 @@ void TestClass_Generated::NaivePathTraceCmd(VkCommandBuffer a_commandBuffer, uin
     Lite_Hit hit;
     vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, RayTraceLayout, 0, 1, &m_allGeneratedDS[1], 0, nullptr);
     m_currThreadFlags = inForFlagsN;
-    RayTraceCmd(tileEnd - tileStart, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, tileStart);
+    RayTraceCmd(nThreads, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, tileStart);
 
     IMaterial* pMaterial = nullptr;
     vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, MakeMaterialLayout, 0, 1, &m_allGeneratedDS[2], 0, nullptr);
     m_currThreadFlags = outOfForFlags;
-    MakeMaterialCmd(tid, &hit);
+    MakeMaterialCmd(nThreads, &hit, tileStart);
 //
     vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, NextBounceLayout, 0, 1, &m_allGeneratedDS[3], 0, nullptr);
     m_currThreadFlags = inForFlags;
-    NextBounceCmd(tid, &hit, &baricentrics,
+    NextBounceCmd(nThreads, &hit, &baricentrics,
                                  m_indicesReordered.data(), m_vPos4f.data(), m_vNorm4f.data(),
                                  &rayPosAndNear, &rayDirAndFar, m_randomGens.data(),
-                                 &accumColor, &accumThoroughput);
+                                 &accumColor, &accumThoroughput, tileStart);
   }
 
   vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ContributeToImageLayout, 0, 1, &m_allGeneratedDS[4], 0, nullptr);
   m_currThreadFlags = outOfForFlags;
-  ContributeToImageCmd(tid, &accumColor, in_pakedXY, 
-                           out_color);
+  ContributeToImageCmd(nThreads, &accumColor, in_pakedXY,
+                           out_color, tileStart);
 }
 
 void TestClass_Generated::CastSingleRayCmd(VkCommandBuffer a_commandBuffer, uint tid, uint* in_pakedXY, uint* out_color,
@@ -430,7 +437,7 @@ void TestClass_Generated::CastSingleRayCmd(VkCommandBuffer a_commandBuffer, uint
   float4 rayPosAndNear, rayDirAndFar;
   vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, InitEyeRayLayout, 0, 1, &m_allGeneratedDS[5], 0, nullptr);
   m_currThreadFlags = outOfForFlags;
-  InitEyeRayCmd(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
+  InitEyeRayCmd(tileEnd - tileStart, in_pakedXY, &rayPosAndNear, &rayDirAndFar, tileStart);
 
   Lite_Hit hit; 
   float2   baricentrics; 
@@ -441,11 +448,11 @@ void TestClass_Generated::CastSingleRayCmd(VkCommandBuffer a_commandBuffer, uint
   IMaterial* pMaterial = nullptr;
   vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, MakeMaterialLayout, 0, 1, &m_allGeneratedDS[7], 0, nullptr);
   m_currThreadFlags = outOfForFlags;
-  MakeMaterialCmd(tid, &hit);
+  MakeMaterialCmd(tileEnd - tileStart, &hit, tileStart);
 
   vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, GetColorLayout, 0, 1, &m_allGeneratedDS[8], 0, nullptr);
   m_currThreadFlags = outOfForFlags;
-  GetColorCmd(tid, out_color, this);
+  GetColorCmd(tileEnd - tileStart, out_color, this, tileStart);
 }
 
 void TestClass_Generated::PackXYCmd(VkCommandBuffer a_commandBuffer, uint tidX, uint tidY, uint* out_pakedXY)

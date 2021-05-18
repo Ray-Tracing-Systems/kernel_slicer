@@ -87,19 +87,20 @@ public:
 
   virtual void copyKernelFloatCmd(uint32_t length);
   
-  virtual void GetColorCmd(uint tid, uint* out_color, const TestClass* a_pGlobals);
+  virtual void GetColorCmd(uint tid, uint* out_color, const TestClass* a_pGlobals, uint tileOffset);
   virtual void NextBounceCmd(uint tid, const Lite_Hit* in_hit, const float2* in_bars,
                              const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
                              float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen,
-                             float4* accumColor, float4* accumThoroughput);
-  virtual void InitEyeRayCmd(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar);
+                             float4* accumColor, float4* accumThoroughput, uint tileOffset);
+  virtual void InitEyeRayCmd(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar, uint tileOffset);
   virtual void InitEyeRay2Cmd(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar,
-                                                                     float4* accumColor,    float4* accumuThoroughput);
+                              float4* accumColor, float4* accumuThoroughput, uint tileOffset);
   virtual void RayTraceCmd(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                                   Lite_Hit* out_hit, float2* out_bars, uint tileOffset);
-  virtual void MakeMaterialCmd(uint tid, const Lite_Hit* in_hit);
+  virtual void MakeMaterialCmd(uint tid, const Lite_Hit* in_hit, uint tileOffset);
   virtual void PackXYCmd(uint tidX, uint tidY, uint* out_pakedXY);
-  virtual void ContributeToImageCmd(uint tid, const float4* a_accumColor, const uint* in_pakedXY, float4* out_color);
+  virtual void ContributeToImageCmd(uint tid, const float4* a_accumColor, const uint* in_pakedXY, float4* out_color,
+                                    uint tileOffset);
 
 
 protected:

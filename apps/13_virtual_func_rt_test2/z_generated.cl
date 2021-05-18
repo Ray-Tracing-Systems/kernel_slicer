@@ -485,11 +485,14 @@ __kernel void kernel_GetColor(
   const uint tid = get_global_id(0); 
   if(tid >= kgen_iNumElementsX)
     return;
-  if((kgen_threadFlags[tid] & kgen_tFlagsMask) != 0) 
+
+  const uint idx = kgen_iNumElementsZ + tid;
+
+  if((kgen_threadFlags[idx] & kgen_tFlagsMask) != 0)
     return;
   ///////////////////////////////////////////////////////////////// prolog
   
-  const uint kgen_objPtr    = kgen_objPtrData[tid].x;
+  const uint kgen_objPtr    = kgen_objPtrData[idx].x;
   const uint kgen_objTag    = (kgen_objPtr & IMaterial_TAG_MASK) >> (32 - IMaterial_TAG_BITS);
   const uint kgen_objOffset = (kgen_objPtr & IMaterial_OFS_MASK);
 
@@ -498,31 +501,31 @@ __kernel void kernel_GetColor(
     case IMaterial_TAG_LAMBERT: // implementation for LambertMaterial
     {
       __global LambertMaterial* pSelf = (__global LambertMaterial*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      LambertMaterial_kernel_GetColor(pSelf, tid, out_color, ubo);
+      LambertMaterial_kernel_GetColor(pSelf, idx, out_color, ubo);
     }
     break;
     case IMaterial_TAG_MIRROR: // implementation for PerfectMirrorMaterial
     {
       __global PerfectMirrorMaterial* pSelf = (__global PerfectMirrorMaterial*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      PerfectMirrorMaterial_kernel_GetColor(pSelf, tid, out_color, ubo);
+      PerfectMirrorMaterial_kernel_GetColor(pSelf, idx, out_color, ubo);
     }
     break;
     case IMaterial_TAG_EMISSIVE: // implementation for EmissiveMaterial
     {
       __global EmissiveMaterial* pSelf = (__global EmissiveMaterial*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      EmissiveMaterial_kernel_GetColor(pSelf, tid, out_color, ubo);
+      EmissiveMaterial_kernel_GetColor(pSelf, idx, out_color, ubo);
     }
     break;
     case IMaterial_TAG_GGX_GLOSSY: // implementation for GGXGlossyMaterial
     {
       __global GGXGlossyMaterial* pSelf = (__global GGXGlossyMaterial*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      GGXGlossyMaterial_kernel_GetColor(pSelf, tid, out_color, ubo);
+      GGXGlossyMaterial_kernel_GetColor(pSelf, idx, out_color, ubo);
     }
     break;
     case IMaterial_TAG_LAMBERT_MIX: // implementation for LambertMaterialMix
     {
       __global LambertMaterialMix* pSelf = (__global LambertMaterialMix*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      LambertMaterialMix_kernel_GetColor(pSelf, tid, out_color, ubo);
+      LambertMaterialMix_kernel_GetColor(pSelf, idx, out_color, ubo);
     }
     break;
   default:
@@ -557,11 +560,12 @@ __kernel void kernel_NextBounce(
   const uint tid = get_global_id(0); 
   if(tid >= kgen_iNumElementsX)
     return;
-  if((kgen_threadFlags[tid] & kgen_tFlagsMask) != 0) 
+  const uint idx = kgen_iNumElementsZ + tid;
+  if((kgen_threadFlags[idx] & kgen_tFlagsMask) != 0)
     return;
   ///////////////////////////////////////////////////////////////// prolog
   
-  const uint kgen_objPtr    = kgen_objPtrData[tid].x;
+  const uint kgen_objPtr    = kgen_objPtrData[idx].x;
   const uint kgen_objTag    = (kgen_objPtr & IMaterial_TAG_MASK) >> (32 - IMaterial_TAG_BITS);
   const uint kgen_objOffset = (kgen_objPtr & IMaterial_OFS_MASK);
 
@@ -570,31 +574,31 @@ __kernel void kernel_NextBounce(
     case IMaterial_TAG_LAMBERT: // implementation for LambertMaterial
     {
       __global LambertMaterial* pSelf = (__global LambertMaterial*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      LambertMaterial_kernel_NextBounce(pSelf, tid, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
+      LambertMaterial_kernel_NextBounce(pSelf, idx, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
     }
     break;
     case IMaterial_TAG_MIRROR: // implementation for PerfectMirrorMaterial
     {
       __global PerfectMirrorMaterial* pSelf = (__global PerfectMirrorMaterial*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      PerfectMirrorMaterial_kernel_NextBounce(pSelf, tid, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
+      PerfectMirrorMaterial_kernel_NextBounce(pSelf, idx, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
     }
     break;
     case IMaterial_TAG_EMISSIVE: // implementation for EmissiveMaterial
     {
       __global EmissiveMaterial* pSelf = (__global EmissiveMaterial*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      EmissiveMaterial_kernel_NextBounce(pSelf, tid, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
+      EmissiveMaterial_kernel_NextBounce(pSelf, idx, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
     }
     break;
     case IMaterial_TAG_GGX_GLOSSY: // implementation for GGXGlossyMaterial
     {
       __global GGXGlossyMaterial* pSelf = (__global GGXGlossyMaterial*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      GGXGlossyMaterial_kernel_NextBounce(pSelf, tid, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
+      GGXGlossyMaterial_kernel_NextBounce(pSelf, idx, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
     }
     break;
     case IMaterial_TAG_LAMBERT_MIX: // implementation for LambertMaterialMix
     {
       __global LambertMaterialMix* pSelf = (__global LambertMaterialMix*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      LambertMaterialMix_kernel_NextBounce(pSelf, tid, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
+      LambertMaterialMix_kernel_NextBounce(pSelf, idx, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
     }
     break;
   default:
@@ -620,12 +624,13 @@ __kernel void kernel_InitEyeRay(
   const uint tid = get_global_id(0); 
   if(tid >= kgen_iNumElementsX)
     return;
-  if((kgen_threadFlags[tid] & kgen_tFlagsMask) != 0) 
+  const uint idx = kgen_iNumElementsZ + tid;
+  if((kgen_threadFlags[idx] & kgen_tFlagsMask) != 0)
     return;
   const float3 camPos = ubo->camPos;
   ///////////////////////////////////////////////////////////////// prolog
   
-  const uint XY = packedXY[tid];
+  const uint XY = packedXY[idx];
 
   const uint x = (XY & 0x0000FFFF);
   const uint y = (XY & 0xFFFF0000) >> 16;
@@ -633,8 +638,8 @@ __kernel void kernel_InitEyeRay(
   const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, ubo->m_worldViewProjInv); 
   const float3 rayPos = camPos;
   
-  rayPosAndNear[tid] = to_float4(rayPos, 0.0f);
-  rayDirAndFar[tid]  = to_float4(rayDir, MAXFLOAT);
+  rayPosAndNear[idx] = to_float4(rayPos, 0.0f);
+  rayDirAndFar[idx]  = to_float4(rayDir, MAXFLOAT);
 
 }
 
@@ -658,15 +663,16 @@ __kernel void kernel_InitEyeRay2(
   const uint tid = get_global_id(0); 
   if(tid >= kgen_iNumElementsX)
     return;
-  if((kgen_threadFlags[tid] & kgen_tFlagsMask) != 0) 
+  const uint idx = kgen_iNumElementsZ + tid;
+  if((kgen_threadFlags[idx] & kgen_tFlagsMask) != 0)
     return;
   const float3 camPos = ubo->camPos;
   ///////////////////////////////////////////////////////////////// prolog
   
-  accumColor[tid]        = make_float4(0,0,0,0);
-  accumuThoroughput[tid] = make_float4(1,1,1,0);
+  accumColor[idx]        = make_float4(0,0,0,0);
+  accumuThoroughput[idx] = make_float4(1,1,1,0);
 
-  const uint XY = packedXY[tid];
+  const uint XY = packedXY[idx];
 
   const uint x = (XY & 0x0000FFFF);
   const uint y = (XY & 0xFFFF0000) >> 16;
@@ -674,8 +680,8 @@ __kernel void kernel_InitEyeRay2(
   const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, ubo->m_worldViewProjInv); 
   const float3 rayPos = camPos;
   
-  rayPosAndNear[tid] = to_float4(rayPos, 0.0f);
-  rayDirAndFar[tid]  = to_float4(rayDir, MAXFLOAT);
+  rayPosAndNear[idx] = to_float4(rayPos, 0.0f);
+  rayDirAndFar[idx]  = to_float4(rayDir, MAXFLOAT);
 
 }
 
@@ -702,14 +708,15 @@ __kernel void kernel_RayTrace(
   const uint tid = get_global_id(0); 
   if(tid >= kgen_iNumElementsX)
     return;
-  if((kgen_threadFlags[tid] & kgen_tFlagsMask) != 0) 
+  const uint idx = kgen_iNumElementsZ + tid;
+  if((kgen_threadFlags[idx] & kgen_tFlagsMask) != 0)
     return;
   const float4 m_lightSphere = ubo->m_lightSphere;
   bool kgenExitCond = false;
   ///////////////////////////////////////////////////////////////// prolog
   
-  const float4 rayPos = rayPosAndNear[tid];
-  const float4 rayDir = rayDirAndFar[tid] ;
+  const float4 rayPos = rayPosAndNear[idx];
+  const float4 rayDir = rayDirAndFar[idx] ;
 
   const float3 rayDirInv = SafeInverse_4to3(rayDir);
 
@@ -754,15 +761,15 @@ __kernel void kernel_RayTrace(
       res.geomId = HIT_TRIANGLE_GEOM;
   }
   
-  out_hit[tid]  = res;
-  out_bars[tid] = baricentrics;
+  out_hit[idx]  = res;
+  out_bars[idx] = baricentrics;
   kgenExitCond = (res.primId != -1); goto KGEN_EPILOG;
 
   KGEN_EPILOG:
   {
     const bool exitHappened = (kgen_tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0 ? !kgenExitCond : kgenExitCond;
     if((kgen_tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)
-      kgen_threadFlags[tid] = ((kgen_tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
+      kgen_threadFlags[idx] = ((kgen_tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
   };
 }
 
@@ -782,20 +789,21 @@ __kernel void kernel_MakeMaterial(
   const uint kgen_tFlagsMask)
 {
   ///////////////////////////////////////////////////////////////// prolog
-  const uint tid = get_global_id(0); 
+  const uint tid = get_global_id(0);
+  const uint idx = kgen_iNumElementsZ + tid;
   uint kgen_objPtr = 0;
   const uint32_t m_emissiveMaterialId = ubo->m_emissiveMaterialId;
   ///////////////////////////////////////////////////////////////// prolog
   
   uint32_t objPtr = 0;  
  
-  if(in_hit[tid].geomId == HIT_LIGHT_GEOM)
+  if(in_hit[idx].geomId == HIT_LIGHT_GEOM)
   {
     objPtr = m_materialOffsets[m_emissiveMaterialId];
   }
-  else if(in_hit[tid].primId != -1)
+  else if(in_hit[idx].primId != -1)
   {
-    const uint32_t mtId = m_materialIds[in_hit[tid].primId]+1; // +1 due to empty object
+    const uint32_t mtId = m_materialIds[in_hit[idx].primId]+1; // +1 due to empty object
     objPtr = m_materialOffsets[mtId];
   }
 
@@ -841,18 +849,19 @@ __kernel void kernel_ContributeToImage(
   const uint kgen_tFlagsMask)
 {
   ///////////////////////////////////////////////////////////////// prolog
-  const uint tid = get_global_id(0); 
+  const uint tid = get_global_id(0);
   if(tid >= kgen_iNumElementsX)
     return;
-  if((kgen_threadFlags[tid] & kgen_tFlagsMask) != 0) 
+  const uint idx = kgen_iNumElementsZ + tid;
+  if((kgen_threadFlags[idx] & kgen_tFlagsMask) != 0)
     return;
   ///////////////////////////////////////////////////////////////// prolog
   
-  const uint XY = in_pakedXY[tid];
+  const uint XY = in_pakedXY[idx];
   const uint x  = (XY & 0x0000FFFF);
   const uint y  = (XY & 0xFFFF0000) >> 16;
  
-  out_color[y*WIN_WIDTH+x] += a_accumColor[tid];
+  out_color[y*WIN_WIDTH+x] += a_accumColor[idx];
 
 }
 
