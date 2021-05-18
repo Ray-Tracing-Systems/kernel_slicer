@@ -42,10 +42,11 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     nlohmann::json currKerneJson = copy;
     currKerneJson["Kernel"] = kernel.value();
     
-    std::string outFileName = std::string(kernel.value()["Name"]) + ".glsl";
+    std::string kernelName  = std::string(kernel.value()["Name"]);
+    std::string outFileName = kernelName + ".glsl";
     std::string outFilePath = shaderPath + "/" + outFileName;
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
-    buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
+    buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -e " << kernelName.c_str() << " -DGLSL -I.. ";
     for(auto folder : includeToShadersFolders)
      buildSH << "-I" << folder.c_str() << " ";
     buildSH << std::endl;
@@ -83,6 +84,14 @@ std::string kslicer::GLSLCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_
     return "gl_LocalInvocationID.x";
   }
 }
+
+void kslicer::GLSLCompiler::GetThreadSizeNames(std::string a_strs[3]) const
+{
+  a_strs[0] = "kgenArgs.iNumElementsX";
+  a_strs[1] = "kgenArgs.iNumElementsY";
+  a_strs[2] = "kgenArgs.iNumElementsZ";
+}
+
 
 std::string kslicer::GLSLCompiler::ProcessBufferType(const std::string& a_typeName) const 
 { 

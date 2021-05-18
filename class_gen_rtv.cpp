@@ -19,14 +19,14 @@
 
 //// tid, fakeOffset(tidX,tidY,kgen_iNumElementsX) or fakeOffset2(tidX,tidY,tidX,kgen_iNumElementsX, kgen_iNumElementsY)
 //
-std::string kslicer::GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds) 
-{
+std::string kslicer::GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds, const std::string names[3]) 
+{ 
   if(threadIds.size() == 1)
     return threadIds[0].argName;
   else if(threadIds.size() == 2)
-    return std::string("fakeOffset(") + threadIds[0].argName + "," + threadIds[1].argName + ",kgen_iNumElementsX)";
+    return std::string("fakeOffset(") + threadIds[0].argName + "," + threadIds[1].argName + "," + names[0] + ")";
   else if(threadIds.size() == 3)
-    return std::string("fakeOffset(") + threadIds[0].argName + "," + threadIds[1].argName + "," + threadIds[2].argName + ",kgen_iNumElementsX,kgen_iNumElementsY)";
+    return std::string("fakeOffset2(") + threadIds[0].argName + "," + threadIds[1].argName + "," + threadIds[2].argName + "," + names[0] + "," + names[1] + ")";
   else
     return "tid";
 }

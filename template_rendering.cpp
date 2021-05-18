@@ -596,7 +596,9 @@ void kslicer::ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, con
 
 namespace kslicer
 {
-  std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds);
+  std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, 
+                                      const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds,
+                                      const std::string a_names[3]);
 };
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 
@@ -952,10 +954,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["WGSizeZ"]       = k.wgSize[2]; // 
 
     //////////////////////////////////////////////////////////////////////////////////////////
- 
+    std::string names[3];
+    a_classInfo.pShaderCC->GetThreadSizeNames(names);
+
     kernelJson["shouldCheckExitFlag"] = k.checkThreadFlags;
     kernelJson["checkFlagsExpr"]      = "//xxx//";
-    kernelJson["ThreadOffset"]        = kslicer::GetFakeOffsetExpression(k, a_classInfo.GetKernelTIDArgs(k));
+    kernelJson["ThreadOffset"]        = kslicer::GetFakeOffsetExpression(k, a_classInfo.GetKernelTIDArgs(k), names);
     kernelJson["InitKPass"]           = false;
     kernelJson["IsIndirect"]          = k.isIndirect;
     if(k.isIndirect)

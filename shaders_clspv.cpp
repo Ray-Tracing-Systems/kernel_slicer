@@ -65,6 +65,13 @@ std::string kslicer::ClspvCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a
   }
 }
 
+void kslicer::ClspvCompiler::GetThreadSizeNames(std::string a_strs[3]) const
+{
+  a_strs[0] = "kgen_iNumElementsX";
+  a_strs[1] = "kgen_iNumElementsY";
+  a_strs[2] = "kgen_iNumElementsZ";
+}
+
 std::string kslicer::ClspvCompiler::ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const
 {
   std::string call = a_call;

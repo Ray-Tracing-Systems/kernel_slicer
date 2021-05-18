@@ -297,6 +297,7 @@ namespace kslicer
 
     virtual bool        UseSeparateUBOForArguments() const { return false; }
     virtual bool        UseSpecConstForWgSize() const { return false; }
+    virtual void        GetThreadSizeNames(std::string a_strs[3]) const = 0;
   };
 
   struct ClspvCompiler : IShaderCompiler
@@ -316,6 +317,7 @@ namespace kslicer
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
     bool        IsVectorTypeNeedsContructorReplacement(const std::string& a_typeName)                 const override;
     std::string VectorTypeContructorReplace(const std::string& a_typeName, const std::string& a_call) const override;
+    void        GetThreadSizeNames(std::string a_strs[3])                                             const override;
 
   private:
     std::string BuildCommand() const;
@@ -335,6 +337,7 @@ namespace kslicer
 
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
     std::string ProcessBufferType(const std::string& a_typeName)        const override;
+    void        GetThreadSizeNames(std::string a_strs[3])               const override;
   
   private:
   };

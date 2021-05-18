@@ -197,8 +197,10 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
 {
   const CXXMethodDecl* a_node = a_funcInfo.astNode;
   //a_node->dump();
-
-  std::string fakeOffsetExpr = kslicer::GetFakeOffsetExpression(a_funcInfo, GetKernelTIDArgs(a_funcInfo));
+  
+  std::string names[3];
+  pShaderCC->GetThreadSizeNames(names);
+  std::string fakeOffsetExpr = kslicer::GetFakeOffsetExpression(a_funcInfo, GetKernelTIDArgs(a_funcInfo), names);
 
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());

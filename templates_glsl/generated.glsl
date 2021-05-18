@@ -49,10 +49,10 @@ layout( push_constant ) uniform kernelIntArgs
   {% for UserArg in Kernel.UserArgs %} 
   {{UserArg.Type}} {{UserArg.Name}},
   {% endfor %}
-  uint iNumElementsX; // const uint kgen_iNumElementsX, 
-  uint iNumElementsY; // const uint kgen_iNumElementsY,
-  uint iNumElementsZ; // const uint kgen_iNumElementsZ,
-  uint tFlagsMask;    // const uint kgen_tFlagsMask)
+  uint iNumElementsX; 
+  uint iNumElementsY; 
+  uint iNumElementsZ; 
+  uint tFlagsMask;    
 } kgenArgs;
 
 void {{Kernel.Name}}()
@@ -75,6 +75,7 @@ void {{Kernel.Name}}()
   bool kgenExitCond = false;
   {% endif %}
   {% endif %}
+  
   ///////////////////////////////////////////////////////////////// prolog
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {{Kernel.Source}}
