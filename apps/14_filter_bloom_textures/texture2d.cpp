@@ -1,7 +1,8 @@
 #include "texture2d.h"
 
+///////////////////////////////////////////////////////////////////////
 
-template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_uv) const
+template<> float4 Texture2D<float4, float4>::sample(const Sampler& a_sampler, float2 a_uv) const
 {
   bool useBorderColor = false;
 
@@ -17,7 +18,7 @@ template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_u
   const int    stride      = m_width;
 
   if (a_sampler.m_filter == Sampler::Filter::MIN_MAG_MIP_POINT) {
-    return m_data[pitch(baseTexel.x, baseTexel.y, stride)];
+    return read_pixel(pitch(baseTexel.x, baseTexel.y, stride));
   }
 
   if (a_sampler.m_filter != Sampler::Filter::MIN_MAG_MIP_LINEAR) {
@@ -34,16 +35,143 @@ template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_u
   const int offset3       = pitch(cornerTexel.x, cornerTexel.y, stride);
 
   const float2 lerpCoefs  = scaledUV - float2(baseTexel.x, baseTexel.y);
-  const float4 line1Color = lerp(m_data[offset0], m_data[offset1], lerpCoefs.x);
-  const float4 line2Color = lerp(m_data[offset2], m_data[offset3], lerpCoefs.x);
+  const float4 line1Color = lerpFloat4(m_data[offset0], m_data[offset1], lerpCoefs.x);
+  const float4 line2Color = lerpFloat4(m_data[offset2], m_data[offset3], lerpCoefs.x);
 
-  return lerp(line1Color, line2Color, lerpCoefs.y);
+  return lerpFloat4(line1Color, line2Color, lerpCoefs.y);
 }
 
 
 
-template<typename DataType>
-float2 Texture2D<DataType>::process_coord(const Sampler::AddressMode mode, const float2 coord, bool* use_border_color) const
+template<> float4 Texture2D<uchar4, float4>::sample(const Sampler& a_sampler, float2 a_uv) const
+{
+  bool useBorderColor = false;
+
+  a_uv = process_coord(a_sampler.m_addressU, a_uv, &useBorderColor);
+    
+  if (useBorderColor) {
+    return a_sampler.m_borderColor;
+  }
+
+  const float2 textureSize = make_float2(m_width, m_height);
+  const float2 scaledUV    = textureSize * a_uv;
+  const int2   baseTexel   = make_int2(scaledUV.x, scaledUV.y);
+  const int    stride      = m_width;
+
+  if (a_sampler.m_filter == Sampler::Filter::MIN_MAG_MIP_POINT) {
+    const uint posPixel = pitch(baseTexel.x, baseTexel.y, stride);
+    return read_pixel(posPixel) / 255.0F;
+  }
+
+  if (a_sampler.m_filter != Sampler::Filter::MIN_MAG_MIP_LINEAR) {
+    fprintf(stderr, "Unsupported filter is used.");
+  }
+
+  const int2 cornerTexel = make_int2(
+    baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
+    baseTexel.y < m_height - 1 ? baseTexel.y + 1 : baseTexel.y);
+
+  const int offset0       = pitch(baseTexel.x  , baseTexel.y  , stride);
+  const int offset1       = pitch(cornerTexel.x, baseTexel.y  , stride);
+  const int offset2       = pitch(baseTexel.x  , cornerTexel.y, stride);
+  const int offset3       = pitch(cornerTexel.x, cornerTexel.y, stride);
+
+  const float2 lerpCoefs  = scaledUV - float2(baseTexel.x, baseTexel.y);
+  const float4 line1Color = (float4)(lerpUchar4(m_data[offset0], m_data[offset1], lerpCoefs.x)) / 255.0F;
+  const float4 line2Color = (float4)(lerpUchar4(m_data[offset2], m_data[offset3], lerpCoefs.x)) / 255.0F;
+
+  return lerpFloat4(line1Color, line2Color, lerpCoefs.y);
+}
+
+
+
+template<> uint Texture2D<uint, uint>::sample(const Sampler& a_sampler, float2 a_uv) const
+{
+  bool useBorderColor = false;
+
+  a_uv = process_coord(a_sampler.m_addressU, a_uv, &useBorderColor);
+    
+  if (useBorderColor) {
+    return a_sampler.m_borderColor;
+  }
+
+  const float2 textureSize = make_float2(m_width, m_height);
+  const float2 scaledUV    = textureSize * a_uv;
+  const int2   baseTexel   = make_int2(scaledUV.x, scaledUV.y);
+  const int    stride      = m_width;
+
+  if (a_sampler.m_filter == Sampler::Filter::MIN_MAG_MIP_POINT) {
+    const uint posPixel = pitch(baseTexel.x, baseTexel.y, stride);
+    return read_pixel(posPixel);
+  }
+
+  if (a_sampler.m_filter != Sampler::Filter::MIN_MAG_MIP_LINEAR) {
+    fprintf(stderr, "Unsupported filter is used.");
+  }
+
+  const int2 cornerTexel = make_int2(
+    baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
+    baseTexel.y < m_height - 1 ? baseTexel.y + 1 : baseTexel.y);
+
+  const int offset0       = pitch(baseTexel.x  , baseTexel.y  , stride);
+  const int offset1       = pitch(cornerTexel.x, baseTexel.y  , stride);
+  const int offset2       = pitch(baseTexel.x  , cornerTexel.y, stride);
+  const int offset3       = pitch(cornerTexel.x, cornerTexel.y, stride);
+
+  const float2 lerpCoefs  = scaledUV - float2(baseTexel.x, baseTexel.y);
+  const uint line1Color   = lerpUint(m_data[offset0], m_data[offset1], lerpCoefs.x);
+  const uint line2Color   = lerpUint(m_data[offset2], m_data[offset3], lerpCoefs.x);
+
+  return lerpUint(line1Color, line2Color, lerpCoefs.y);
+}
+
+
+
+template<> float Texture2D<ushort, float>::sample(const Sampler& a_sampler, float2 a_uv) const
+{
+  bool useBorderColor = false;
+
+  a_uv = process_coord(a_sampler.m_addressU, a_uv, &useBorderColor);
+    
+  if (useBorderColor) {
+    return a_sampler.m_borderColor;
+  }
+
+  const float2 textureSize = make_float2(m_width, m_height);
+  const float2 scaledUV    = textureSize * a_uv;
+  const int2   baseTexel   = make_int2(scaledUV.x, scaledUV.y);
+  const int    stride      = m_width;
+
+  if (a_sampler.m_filter == Sampler::Filter::MIN_MAG_MIP_POINT) {
+    const uint posPixel = pitch(baseTexel.x, baseTexel.y, stride);
+    return read_pixel(posPixel) / 65535.0F;
+  }
+
+  if (a_sampler.m_filter != Sampler::Filter::MIN_MAG_MIP_LINEAR) {
+    fprintf(stderr, "Unsupported filter is used.");
+  }
+
+  const int2 cornerTexel = make_int2(
+    baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
+    baseTexel.y < m_height - 1 ? baseTexel.y + 1 : baseTexel.y);
+
+  const int offset0       = pitch(baseTexel.x  , baseTexel.y  , stride);
+  const int offset1       = pitch(cornerTexel.x, baseTexel.y  , stride);
+  const int offset2       = pitch(baseTexel.x  , cornerTexel.y, stride);
+  const int offset3       = pitch(cornerTexel.x, cornerTexel.y, stride);
+
+  const float2 lerpCoefs  = scaledUV - float2(baseTexel.x, baseTexel.y);
+  const float4 line1Color = (float4)(lerpUchar4(m_data[offset0], m_data[offset1], lerpCoefs.x)) / 255.0F;
+  const float4 line2Color = (float4)(lerpUchar4(m_data[offset2], m_data[offset3], lerpCoefs.x)) / 255.0F;
+
+  return lerpFloat4(line1Color, line2Color, lerpCoefs.y);
+}
+
+
+
+
+template<typename inType>
+float2 Texture2D<inType>::process_coord(const Sampler::AddressMode mode, const float2 coord, bool* use_border_color) const
 { 
   float2 res = coord;
 
