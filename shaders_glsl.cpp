@@ -40,8 +40,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   for(auto& kernel : kernels.items())
   {
     nlohmann::json currKerneJson = copy;
-    currKerneJson["Kernels"] = std::vector<std::string>();
-    currKerneJson["Kernels"].push_back(kernel.value());
+    currKerneJson["Kernel"] = kernel.value();
     
     std::string outFileName = std::string(kernel.value()["Name"]) + ".glsl";
     std::string outFilePath = shaderPath + "/" + outFileName;
