@@ -1,5 +1,3 @@
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <stdio.h>
 #include <vector>
 #include <system_error>
@@ -46,7 +44,7 @@
 using namespace clang;
 #include "template_rendering.h"
 
-#ifdef _WIN32
+#ifdef WIN32
   #include <direct.h>     // for windows mkdir
 #else
   #include <sys/stat.h>   // for linux mkdir

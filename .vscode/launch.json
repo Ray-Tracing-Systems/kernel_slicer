@@ -13,6 +13,33 @@
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv", 
                         "-I${workspaceFolder}/apps/LiteMath", "IncludeToShaders", // or "ExcludeFromShaders"
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (app_01/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/01_intersectSphere/test_class.cpp", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv", 
+                        "-I${workspaceFolder}/apps/LiteMath", "IncludeToShaders", // or "ExcludeFromShaders"
+                        "-shaderCC", "glsl",
+                        "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
