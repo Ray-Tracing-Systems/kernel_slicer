@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory>
 #include <chrono>
+#include <thread>
 
 #include "vk_utils.h"
 #include "vk_program.h"
@@ -379,33 +380,71 @@ void test_class_gpu()
 
 
     // ***** Execute *****
+//    {
+//      std::vector<VkFence> fences(nTiles);
+//      auto start = std::chrono::high_resolution_clock::now();
+//      for (int i = 0; i < NUM_PASSES; i++)
+//      {
+////          vk_utils::ExecuteCommandBufferNow(pathCmds[j], computeQueues[j % nComputeQs], device);
+//        for (uint j = 0; j < nTiles; ++j)
+//        {
+//          fences[j] = vk_utils::SubmitCommandBuffer(pathCmds[j], computeQueues[j % nComputeQs], device);
+//        }
+//        for (uint j = 0; j < nTiles; ++j)
+//        {
+//          VK_CHECK_RESULT(vkWaitForFences(device, 1, &fences[j], VK_TRUE, vk_utils::FENCE_TIMEOUT));
+//          vkDestroyFence(device, fences[j], NULL);
+//        }
+//        if (i % 100 == 0)
+//        {
+//          std::cout << "progress (gpu) = " << 100.0f * float(i) / float(NUM_PASSES) << "% \r";
+//          std::cout.flush();
+//        }
+//      }
+//      std::cout << std::endl;
+//      auto stop = std::chrono::high_resolution_clock::now();
+//      float ms = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count() / 1000.f;
+//      std::cout << "Path tracing, all tiles: " << ms << " ms for " << NUM_PASSES
+//                << " times of command buffer execution " << std::endl;
+//
+//    }
+
+    // ***** Execute (multithreaded submission)*****
+    // @TODO: Synchronize queue access (add mutex)
     {
-      std::vector<VkFence> fences(nTiles);
+      std::vector<std::thread> workers(nTiles);
+
       auto start = std::chrono::high_resolution_clock::now();
-      for (int i = 0; i < NUM_PASSES; i++)
+      for (uint j = 0; j < nTiles; ++j)
       {
-//          vk_utils::ExecuteCommandBufferNow(pathCmds[j], computeQueues[j % nComputeQs], device);
-        for (uint j = 0; j < nTiles; ++j)
-        {
-          fences[j] = vk_utils::SubmitCommandBuffer(pathCmds[j], computeQueues[j % nComputeQs], device);
-        }
-        for (uint j = 0; j < nTiles; ++j)
-        {
-          VK_CHECK_RESULT(vkWaitForFences(device, 1, &fences[j], VK_TRUE, vk_utils::FENCE_TIMEOUT));
-          vkDestroyFence(device, fences[j], NULL);
-        }
-        if (i % 100 == 0)
-        {
-          std::cout << "progress (gpu) = " << 100.0f * float(i) / float(NUM_PASSES) << "% \r";
-          std::cout.flush();
-        }
+        auto q = computeQueues[j % nComputeQs];
+//        std::cout << q << std::endl;
+        auto cmd = pathCmds[j];
+        workers[j] = std::move(std::thread([cmd, q, &device](){
+            for (int i = 0; i < NUM_PASSES; i++)
+            {
+              vk_utils::ExecuteCommandBufferNow(cmd, q, device);
+
+              if (i % 100 == 0)
+              {
+                std::stringstream ss;
+                ss << "[tid:" << std::this_thread::get_id() << "] " << "progress (gpu) = "
+                   << 100.0f * float(i) / float(NUM_PASSES) << "% \r";
+                std::cout << ss.str();
+                std::cout.flush();
+              }
+            }
+        }));
       }
       std::cout << std::endl;
+      for (uint j = 0; j < nTiles; ++j)
+      {
+        workers[j].join();
+      }
       auto stop = std::chrono::high_resolution_clock::now();
       float ms = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count() / 1000.f;
       std::cout << "Path tracing, all tiles: " << ms << " ms for " << NUM_PASSES
                 << " times of command buffer execution " << std::endl;
-
     }
 
     std::vector<float4> pixelsf(WIN_WIDTH*WIN_HEIGHT);
