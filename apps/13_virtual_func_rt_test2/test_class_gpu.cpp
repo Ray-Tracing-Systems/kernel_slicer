@@ -307,8 +307,11 @@ void test_class_gpu()
 //    uint tileStart = perTile * 2;
 //    uint tileEnd   = tileStart + perTile;
 
-    for(uint i = 0; i < nTiles; ++i)
+    for(uint j = 0; j < nTiles; ++j)
     {
+      tileStart = perTile * j;
+      tileEnd   = tileStart + perTile;
+
       vkResetCommandBuffer(commandBuffer, 0);
       vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
       pGPUImpl->CastSingleRayCmd(commandBuffer, totalWork, nullptr, nullptr, tileStart,
@@ -320,9 +323,6 @@ void test_class_gpu()
       auto stop = std::chrono::high_resolution_clock::now();
       float ms = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count() / 1000.f;
       std::cout << ms << " ms for full command buffer execution " << std::endl;
-
-      tileStart += perTile;
-      tileEnd   += perTile;
     }
 
     tileStart = 0;
@@ -337,8 +337,11 @@ void test_class_gpu()
     std::cout << "begin path tracing passes ... " << std::endl;
 
     constexpr int NUM_PASSES = 1000;
-    for(uint i = 0; i < nTiles; ++i)
+    for(uint j = 0; j < nTiles; ++j)
     {
+      tileStart = perTile * j;
+      tileEnd   = tileStart + perTile;
+
       vkResetCommandBuffer(commandBuffer, 0);
       vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
       pGPUImpl->NaivePathTraceCmd(commandBuffer, totalWork, 6, nullptr, nullptr, tileStart,
@@ -360,8 +363,6 @@ void test_class_gpu()
       float ms = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count() / 1000.f;
       std::cout << ms << " ms for " << NUM_PASSES << " times of command buffer execution " << std::endl;
 
-      tileStart += perTile;
-      tileEnd   += perTile;
     }
 
     std::vector<float4> pixelsf(WIN_WIDTH*WIN_HEIGHT);

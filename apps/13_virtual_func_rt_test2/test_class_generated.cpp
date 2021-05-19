@@ -372,6 +372,7 @@ void TestClass_Generated::NaivePathTraceCmd(VkCommandBuffer a_commandBuffer, uin
 //  uint tileStart2 = tileStart;
 //  tileStart = 0;
 
+  uint totalWork = tid;
   uint nThreads = tileEnd - tileStart;
 
   m_currCmdBuffer = a_commandBuffer;
@@ -383,7 +384,8 @@ void TestClass_Generated::NaivePathTraceCmd(VkCommandBuffer a_commandBuffer, uin
   const uint32_t inForFlagsD    = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK | KGEN_FLAG_DONT_SET_EXIT;
   vkCmdFillBuffer(a_commandBuffer, NaivePathTrace_local.threadFlagsBuffer, 0, VK_WHOLE_SIZE, 0); // zero thread flags, mark all threads to be active
   VkBufferMemoryBarrier fillBarrier = BarrierForClearFlags(NaivePathTrace_local.threadFlagsBuffer); 
-  vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 1, &fillBarrier, 0, nullptr); 
+  vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                       VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 1, &fillBarrier, 0, nullptr);
 
   float4 accumColor, accumThoroughput;
   float4 rayPosAndNear, rayDirAndFar;
@@ -399,7 +401,7 @@ void TestClass_Generated::NaivePathTraceCmd(VkCommandBuffer a_commandBuffer, uin
     Lite_Hit hit;
     vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, RayTraceLayout, 0, 1, &m_allGeneratedDS[1], 0, nullptr);
     m_currThreadFlags = inForFlagsN;
-    RayTraceCmd(nThreads, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, tileStart);
+    RayTraceCmd(totalWork, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, tileStart);
 
     IMaterial* pMaterial = nullptr;
     vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, MakeMaterialLayout, 0, 1, &m_allGeneratedDS[2], 0, nullptr);
@@ -423,6 +425,9 @@ void TestClass_Generated::NaivePathTraceCmd(VkCommandBuffer a_commandBuffer, uin
 void TestClass_Generated::CastSingleRayCmd(VkCommandBuffer a_commandBuffer, uint tid, uint* in_pakedXY, uint* out_color,
                                            uint tileStart, uint tileEnd)
 {
+  uint totalWork = tid;
+  uint nThreads = tileEnd - tileStart;
+
   m_currCmdBuffer = a_commandBuffer;
   const uint32_t outOfForFlags  = KGEN_FLAG_RETURN;
   const uint32_t inForFlags     = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK;
@@ -437,22 +442,22 @@ void TestClass_Generated::CastSingleRayCmd(VkCommandBuffer a_commandBuffer, uint
   float4 rayPosAndNear, rayDirAndFar;
   vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, InitEyeRayLayout, 0, 1, &m_allGeneratedDS[5], 0, nullptr);
   m_currThreadFlags = outOfForFlags;
-  InitEyeRayCmd(tileEnd - tileStart, in_pakedXY, &rayPosAndNear, &rayDirAndFar, tileStart);
+  InitEyeRayCmd(nThreads, in_pakedXY, &rayPosAndNear, &rayDirAndFar, tileStart);
 
   Lite_Hit hit; 
   float2   baricentrics; 
   vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, RayTraceLayout, 0, 1, &m_allGeneratedDS[6], 0, nullptr);
   m_currThreadFlags = outOfForFlagsN;
-  RayTraceCmd(tileEnd - tileStart, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, tileStart);
+  RayTraceCmd(nThreads, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, tileStart);
   
   IMaterial* pMaterial = nullptr;
   vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, MakeMaterialLayout, 0, 1, &m_allGeneratedDS[7], 0, nullptr);
   m_currThreadFlags = outOfForFlags;
-  MakeMaterialCmd(tileEnd - tileStart, &hit, tileStart);
+  MakeMaterialCmd(nThreads, &hit, tileStart);
 
   vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, GetColorLayout, 0, 1, &m_allGeneratedDS[8], 0, nullptr);
   m_currThreadFlags = outOfForFlags;
-  GetColorCmd(tileEnd - tileStart, out_color, this, tileStart);
+  GetColorCmd(nThreads, out_color, this, tileStart);
 }
 
 void TestClass_Generated::PackXYCmd(VkCommandBuffer a_commandBuffer, uint tidX, uint tidY, uint* out_pakedXY)

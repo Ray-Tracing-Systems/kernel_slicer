@@ -810,7 +810,7 @@ __kernel void kernel_MakeMaterial(
   { kgen_objPtr = objPtr; };
 
   //KGEN_EPILOG:
-  kgen_objPtrData[get_global_id(0)] = make_uint2(kgen_objPtr, get_global_id(0)); // put old threadId instead of zero
+  kgen_objPtrData[idx] = make_uint2(kgen_objPtr, idx); // put old threadId instead of zero
 }
 
 
