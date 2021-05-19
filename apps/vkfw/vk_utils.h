@@ -58,6 +58,11 @@ namespace vk_utils
                                std::vector<const char *> a_extensions, VkPhysicalDeviceFeatures a_deviceFeatures,
                                queueFamilyIndices &a_queueIDXs, VkQueueFlags requestedQueueTypes = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT,
                                VkPhysicalDeviceFeatures2 a_deviceFeatures2 = {});
+  VkDevice CreateLogicalDevice2(VkPhysicalDevice physicalDevice, const std::vector<const char *>& a_enabledLayers,
+                                std::vector<const char *> a_extensions, VkPhysicalDeviceFeatures a_deviceFeatures,
+                                queueFamilyIndices &a_queueIDXs, uint nComputeQueues,
+                                VkQueueFlags requestedQueueTypes = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT,
+                                VkPhysicalDeviceFeatures2 a_deviceFeatures2 = {});
   uint32_t FindMemoryType(uint32_t memoryTypeBits, VkMemoryPropertyFlags properties, VkPhysicalDevice physicalDevice);
 
   size_t   Padding(size_t a_size, size_t a_alignment);
@@ -106,6 +111,7 @@ namespace vk_utils
   void ExecuteCommandBufferNow(VkCommandBuffer a_cmdBuff, VkQueue a_queue, VkDevice a_device);
   void ExecuteCommandBuffersNow(std::vector<VkCommandBuffer> a_cmdBuffers, VkQueue a_queue, VkDevice a_device);
 
+  VkFence SubmitCommandBuffer(VkCommandBuffer a_cmdBuff, VkQueue a_queue, VkDevice a_device);
   /**
   \brief TBD
   */

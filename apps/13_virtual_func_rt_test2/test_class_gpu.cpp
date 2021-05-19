@@ -235,8 +235,12 @@ void test_class_gpu()
   // m_deviceExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
 
   fIDs.compute = queueComputeFID;
-  device       = vk_utils::CreateLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures, 
-                                               fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, physDevFeatures2);
+
+  constexpr uint nComputeQs = 2;
+
+  device       = vk_utils::CreateLogicalDevice2(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures,
+                                               fIDs, nComputeQs,
+                                               VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, physDevFeatures2);
   volkLoadDevice(device);
   LoadRayTracingFunctions(device);
 
@@ -244,14 +248,17 @@ void test_class_gpu()
 
   // (2) initialize vulkan helpers
   //  
-  VkQueue computeQueue, transferQueue;
+  VkQueue transferQueue;
+  std::array<VkQueue, nComputeQs> computeQueues = {VK_NULL_HANDLE};
   {
-    auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT);
-    vkGetDeviceQueue(device, queueComputeFID, 0, &computeQueue);
+    auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_COMPUTE_BIT);
     vkGetDeviceQueue(device, queueComputeFID, 0, &transferQueue);
+
+    for(size_t i = 0; i < computeQueues.size(); ++i)
+      vkGetDeviceQueue(device, queueComputeFID, i, &computeQueues[i]);
   }
 
-  auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);\
+  auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
   auto pScnMgr     = std::make_shared<SceneManager>(device, physicalDevice, queueComputeFID, queueComputeFID, pCopyHelper, true);
   auto pGPUImpl    = std::make_shared<TestClass_GPU>(pScnMgr);               // !!! USING GENERATED CODE !!! 
   
@@ -297,7 +304,7 @@ void test_class_gpu()
     pGPUImpl->PackXYCmd(commandBuffer, WIN_WIDTH, WIN_HEIGHT, nullptr);       // !!! USING GENERATED CODE !!! 
     vkCmdFillBuffer(commandBuffer, colorBuffer2, 0, VK_WHOLE_SIZE, 0);        // clear accumulated color
     vkEndCommandBuffer(commandBuffer);  
-    vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
+    vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueues[0], device);
 
     constexpr uint totalWork = WIN_WIDTH*WIN_HEIGHT;
     constexpr uint nTiles = 4;
@@ -307,22 +314,39 @@ void test_class_gpu()
 //    uint tileStart = perTile * 2;
 //    uint tileEnd   = tileStart + perTile;
 
+    std::vector<VkCommandBuffer> singleRayCmds = vk_utils::CreateCommandBuffers(device, commandPool, nTiles);
+    VkCommandBufferBeginInfo tileBeginCmdInfo = {};
+    tileBeginCmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    tileBeginCmdInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    // ***** Record *****
     for(uint j = 0; j < nTiles; ++j)
     {
       tileStart = perTile * j;
       tileEnd   = tileStart + perTile;
 
-      vkResetCommandBuffer(commandBuffer, 0);
-      vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-      pGPUImpl->CastSingleRayCmd(commandBuffer, totalWork, nullptr, nullptr, tileStart,
+      vkBeginCommandBuffer(singleRayCmds[j], &tileBeginCmdInfo);
+      pGPUImpl->CastSingleRayCmd(singleRayCmds[j], totalWork, nullptr, nullptr, tileStart,
                                  tileEnd);  // !!! USING GENERATED CODE !!!
-      vkEndCommandBuffer(commandBuffer);
+      vkEndCommandBuffer(singleRayCmds[j]);
+    }
 
+    // ***** Execute *****
+    {
       auto start = std::chrono::high_resolution_clock::now();
-      vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
+      std::vector<VkFence> fences(nTiles);
+      for (uint j = 0; j < nTiles; ++j)
+      {
+        fences[j] = vk_utils::SubmitCommandBuffer(singleRayCmds[j], computeQueues[j % nComputeQs], device);
+      }
+      for (uint j = 0; j < nTiles; ++j)
+      {
+        VK_CHECK_RESULT(vkWaitForFences(device, 1, &fences[j], VK_TRUE, vk_utils::FENCE_TIMEOUT));
+        vkDestroyFence(device, fences[j], NULL);
+      }
       auto stop = std::chrono::high_resolution_clock::now();
       float ms = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count() / 1000.f;
-      std::cout << ms << " ms for full command buffer execution " << std::endl;
+      std::cout << "CastSingleRay, all tiles: " << ms << " ms for full command buffer execution " << std::endl;
     }
 
     tileStart = 0;
@@ -336,22 +360,40 @@ void test_class_gpu()
 
     std::cout << "begin path tracing passes ... " << std::endl;
 
+    std::vector<VkCommandBuffer> pathCmds = vk_utils::CreateCommandBuffers(device, commandPool, nTiles);
+    VkCommandBufferBeginInfo pathBeginCmdInfo = {};
+    pathBeginCmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+//    pathBeginCmdInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     constexpr int NUM_PASSES = 1000;
+    // ***** Record *****
     for(uint j = 0; j < nTiles; ++j)
     {
       tileStart = perTile * j;
       tileEnd   = tileStart + perTile;
 
-      vkResetCommandBuffer(commandBuffer, 0);
-      vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-      pGPUImpl->NaivePathTraceCmd(commandBuffer, totalWork, 6, nullptr, nullptr, tileStart,
+      vkBeginCommandBuffer(pathCmds[j], &pathBeginCmdInfo);
+      pGPUImpl->NaivePathTraceCmd(pathCmds[j], totalWork, 6, nullptr, nullptr, tileStart,
                                   tileEnd);  // !!! USING GENERATED CODE !!!
-      vkEndCommandBuffer(commandBuffer);
+      vkEndCommandBuffer(pathCmds[j]);
+    }
 
+
+    // ***** Execute *****
+    {
+      std::vector<VkFence> fences(nTiles);
       auto start = std::chrono::high_resolution_clock::now();
       for (int i = 0; i < NUM_PASSES; i++)
       {
-        vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
+//          vk_utils::ExecuteCommandBufferNow(pathCmds[j], computeQueues[j % nComputeQs], device);
+        for (uint j = 0; j < nTiles; ++j)
+        {
+          fences[j] = vk_utils::SubmitCommandBuffer(pathCmds[j], computeQueues[j % nComputeQs], device);
+        }
+        for (uint j = 0; j < nTiles; ++j)
+        {
+          VK_CHECK_RESULT(vkWaitForFences(device, 1, &fences[j], VK_TRUE, vk_utils::FENCE_TIMEOUT));
+          vkDestroyFence(device, fences[j], NULL);
+        }
         if (i % 100 == 0)
         {
           std::cout << "progress (gpu) = " << 100.0f * float(i) / float(NUM_PASSES) << "% \r";
@@ -361,7 +403,8 @@ void test_class_gpu()
       std::cout << std::endl;
       auto stop = std::chrono::high_resolution_clock::now();
       float ms = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count() / 1000.f;
-      std::cout << ms << " ms for " << NUM_PASSES << " times of command buffer execution " << std::endl;
+      std::cout << "Path tracing, all tiles: " << ms << " ms for " << NUM_PASSES
+                << " times of command buffer execution " << std::endl;
 
     }
 

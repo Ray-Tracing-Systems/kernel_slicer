@@ -353,8 +353,6 @@ VkDevice vk_utils::CreateLogicalDevice(VkPhysicalDevice physicalDevice, const st
     a_queueIDXs.transfer = a_queueIDXs.graphics;
   }
 
-
-
   VkDeviceCreateInfo deviceCreateInfo = {};
   deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
   deviceCreateInfo.enabledLayerCount    = uint32_t(a_enabledLayers.size());
@@ -382,6 +380,96 @@ VkDevice vk_utils::CreateLogicalDevice(VkPhysicalDevice physicalDevice, const st
   return device;
 }
 
+VkDevice vk_utils::CreateLogicalDevice2(VkPhysicalDevice physicalDevice, const std::vector<const char *>& a_enabledLayers,
+                                       std::vector<const char *> a_extensions, VkPhysicalDeviceFeatures a_deviceFeatures,
+                                       queueFamilyIndices &a_queueIDXs, uint nComputeQueues,
+                                       VkQueueFlags requestedQueueTypes, VkPhysicalDeviceFeatures2 a_deviceFeatures2)
+{
+  std::vector<VkDeviceQueueCreateInfo> queueCreateInfos {};
+  const float defaultQueuePriority(0.0f);
+
+  // Graphics queue
+  if (requestedQueueTypes & VK_QUEUE_GRAPHICS_BIT)
+  {
+    a_queueIDXs.graphics = GetQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT);
+    VkDeviceQueueCreateInfo queueInfo{};
+    queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueInfo.queueFamilyIndex = a_queueIDXs.graphics;
+    queueInfo.queueCount = 1;
+    queueInfo.pQueuePriorities = &defaultQueuePriority;
+    queueCreateInfos.push_back(queueInfo);
+  }
+  else
+  {
+    a_queueIDXs.graphics = 0; //VK_NULL_HANDLE;
+  }
+
+  // Dedicated compute queue
+  if (requestedQueueTypes & VK_QUEUE_COMPUTE_BIT)
+  {
+    a_queueIDXs.compute = GetQueueFamilyIndex(physicalDevice, VK_QUEUE_COMPUTE_BIT);
+    if (a_queueIDXs.compute != a_queueIDXs.graphics || queueCreateInfos.size() == 0)
+    {
+      VkDeviceQueueCreateInfo queueInfo{};
+      queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+      queueInfo.queueFamilyIndex = a_queueIDXs.compute;
+      queueInfo.queueCount = nComputeQueues;
+      queueInfo.pQueuePriorities = &defaultQueuePriority;
+      queueCreateInfos.push_back(queueInfo);
+    }
+  }
+  else
+  {
+    a_queueIDXs.compute = a_queueIDXs.graphics;
+  }
+
+  // Dedicated transfer queue
+  if (requestedQueueTypes & VK_QUEUE_TRANSFER_BIT)
+  {
+    a_queueIDXs.transfer = GetQueueFamilyIndex(physicalDevice, VK_QUEUE_COMPUTE_BIT);
+    if ((a_queueIDXs.transfer != a_queueIDXs.graphics) && (a_queueIDXs.transfer != a_queueIDXs.compute) || queueCreateInfos.size() == 0)
+    {
+      VkDeviceQueueCreateInfo queueInfo{};
+      queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+      queueInfo.queueFamilyIndex = a_queueIDXs.transfer;
+      queueInfo.queueCount = 1;
+      queueInfo.pQueuePriorities = &defaultQueuePriority;
+      queueCreateInfos.push_back(queueInfo);
+    }
+  }
+  else
+  {
+    a_queueIDXs.transfer = a_queueIDXs.graphics;
+  }
+
+
+
+  VkDeviceCreateInfo deviceCreateInfo = {};
+  deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+  deviceCreateInfo.enabledLayerCount    = uint32_t(a_enabledLayers.size());
+  deviceCreateInfo.ppEnabledLayerNames  = a_enabledLayers.data();
+  deviceCreateInfo.pQueueCreateInfos    = queueCreateInfos.data();
+  deviceCreateInfo.queueCreateInfoCount = queueCreateInfos.size();
+  if(a_deviceFeatures2.pNext != nullptr)
+  {
+    a_deviceFeatures2.features = a_deviceFeatures;
+    deviceCreateInfo.pEnabledFeatures = nullptr;
+    deviceCreateInfo.pNext = &a_deviceFeatures2;
+  }
+  else
+  {
+    deviceCreateInfo.pEnabledFeatures = &a_deviceFeatures;
+    deviceCreateInfo.pNext = nullptr;
+  }
+  deviceCreateInfo.enabledExtensionCount   = static_cast<uint32_t>(a_extensions.size());
+  deviceCreateInfo.ppEnabledExtensionNames = a_extensions.data();
+
+
+  VkDevice device;
+  VK_CHECK_RESULT(vkCreateDevice(physicalDevice, &deviceCreateInfo, NULL, &device));
+
+  return device;
+}
 
 uint32_t vk_utils::FindMemoryType(uint32_t memoryTypeBits, VkMemoryPropertyFlags properties, VkPhysicalDevice physicalDevice)
 {
@@ -525,6 +613,28 @@ void vk_utils::ExecuteCommandBufferNow(VkCommandBuffer a_cmdBuff, VkQueue a_queu
   VK_CHECK_RESULT(vkWaitForFences(a_device, 1, &fence, VK_TRUE, FENCE_TIMEOUT));
 
   vkDestroyFence(a_device, fence, NULL);
+}
+
+VkFence vk_utils::SubmitCommandBuffer(VkCommandBuffer a_cmdBuff, VkQueue a_queue, VkDevice a_device)
+{
+  // Now we shall finally submit the recorded command bufferStaging to a queue.
+  //
+  VkSubmitInfo submitInfo       = {};
+  submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.commandBufferCount = 1; // submit a single command bufferStaging
+  submitInfo.pCommandBuffers    = &a_cmdBuff; // the command bufferStaging to submit.
+
+  VkFence fence;
+  VkFenceCreateInfo fenceCreateInfo = {};
+  fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  fenceCreateInfo.flags = 0;
+  VK_CHECK_RESULT(vkCreateFence(a_device, &fenceCreateInfo, NULL, &fence));
+
+  // We submit the command bufferStaging on the queue, at the same time giving a fence.
+  //
+  VK_CHECK_RESULT(vkQueueSubmit(a_queue, 1, &submitInfo, fence));
+
+  return fence;
 }
 
 void vk_utils::ExecuteCommandBuffersNow(std::vector<VkCommandBuffer> a_cmdBuffers, VkQueue a_queue, VkDevice a_device)
