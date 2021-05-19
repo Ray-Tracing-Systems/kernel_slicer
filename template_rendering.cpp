@@ -690,8 +690,17 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   //
   data["Includes"] = std::vector<std::string>();
   for(auto keyVal : a_classInfo.allIncludeFiles) // we will search for only used include files among all of them (quoted, angled were excluded earlier)
-  {
-    if(keyVal.first.find("include/") == std::string::npos) // inlude in OpenCL kernels only those code which is in 'include' folder
+  { 
+    bool found = false;
+    for(auto f : a_classInfo.includeToShadersFolders)  // exclude everything from "shader" folders
+    {
+      if(keyVal.first.find(f) != std::string::npos)
+      {
+        found = true;
+        break;
+      }
+    }
+    if(!found)
       continue;
    
     if(a_classInfo.mainClassFileInclude.find(keyVal.first) == std::string::npos)

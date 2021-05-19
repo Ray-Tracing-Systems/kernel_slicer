@@ -368,9 +368,15 @@ int main(int argc, const char **argv)
   inputCodeInfo.includeCPPFolders       = includeFolderList2; // set common C/C++ folders
 
   if(shaderCCName == "glsl" || shaderCCName == "GLSL")
+  {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::GLSLCompiler>();
+    inputCodeInfo.includeCPPFolders.push_back("include/");
+  }
   else
+  {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>(useCppInKernels);
+    inputCodeInfo.includeToShadersFolders.push_back("include/");
+  }
 
   inputCodeInfo.defaultVkernelType = defaultVkernelType;
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

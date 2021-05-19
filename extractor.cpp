@@ -27,9 +27,6 @@ public:
       return true;
 
     std::string fileName = std::string(m_sm.getFilename(f->getSourceRange().getBegin())); // check that we are in test_class.cpp or test_class.h or sms like that;                                                                             
-    if(fileName.find("include/") != std::string::npos)                                    // definitely exclude everything from 'include/' folder
-      return true;
-
     for(auto f : m_patternImpl.includeToShadersFolders)                                   // exclude everything from "shader" folders
     {
       if(fileName.find(f) != std::string::npos)
