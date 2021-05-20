@@ -66,19 +66,21 @@ static inline float2 RaySphereHit(float3 orig, float3 dir, float4 sphere) // see
 
 static inline uint RealColorToUint32_f3(float3 real_color)
 {
-  float  r = real_color.x*255.0f;
-  float  g = real_color.y*255.0f;
-  float  b = real_color.z*255.0f;
+  float  r = clamp(real_color.x, 0.0F, 1.0F);
+  float  g = clamp(real_color.y, 0.0F, 1.0F);
+  float  b = clamp(real_color.z, 0.0F, 1.0F);
+
   unsigned char red = (unsigned char)r, green = (unsigned char)g, blue = (unsigned char)b;
+
   return red | (green << 8) | (blue << 16) | 0xFF000000;
 }
 
-static inline uint RealColorToUint32(float4 real_color)
+static inline uint RealColorToUint32(float4 a_realColor, const float a_gamma)
 {
-  float  r = real_color.x*255.0f;
-  float  g = real_color.y*255.0f;
-  float  b = real_color.z*255.0f;
-  float  a = real_color.w*255.0f;
+  float  r = pow(clamp(a_realColor.x, 0.0F, 1.0F), a_gamma) * 255.0f;
+  float  g = pow(clamp(a_realColor.y, 0.0F, 1.0F), a_gamma) * 255.0f;
+  float  b = pow(clamp(a_realColor.z, 0.0F, 1.0F), a_gamma) * 255.0f;
+  float  a = clamp(a_realColor.w, 0.0F, 1.0F) * 255.0f;
 
   unsigned char red   = (unsigned char)r;
   unsigned char green = (unsigned char)g;
@@ -189,3 +191,4 @@ static inline float3 GetMtlDiffuseColor(__global const SphereMaterial* a_mtl)  {
 static inline float3 GetMtlEmissiveColor(__global const SphereMaterial* a_mtl) { return to_float3(a_mtl->color)*a_mtl->color.w; }
 
 #endif
+

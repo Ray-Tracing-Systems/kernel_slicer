@@ -32,6 +32,8 @@ namespace LiteMath
     memcpy(&res, &x, sizeof(float)); // modern C++ allow only this way, speed ik ok, check assembly with godbolt
     return res; 
   }
+  
+  static inline uint lerpUint(const uint & u, const uint & v, float t) { return u + t * (v - u); }
 
   static inline float as_float(int x)
   {
@@ -40,6 +42,43 @@ namespace LiteMath
     return res; 
   }
 
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  struct uchar4
+  {
+    inline uchar4() : x(0), y(0), z(0), w(0) {}
+    inline uchar4(u_char a, u_char b, u_char c, u_char d) : x(a), y(b), z(c), w(d) {}
+    inline explicit uchar4(u_char a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
+    
+    inline float& operator[](uint i)       { return M[i]; }
+    inline float  operator[](uint i) const { return M[i]; }
+    
+    union
+    {
+      struct {u_char x, y, z, w; };
+      float  M[4];
+    };
+  };
+
+  static inline uchar4 operator * (const uchar4 & u, float v) { return uchar4(u.x * v, u.y * v, u.z * v, u.w * v); }
+  static inline uchar4 operator / (const uchar4 & u, float v) { return uchar4(u.x / v, u.y / v, u.z / v, u.w / v); }
+  static inline uchar4 operator + (const uchar4 & u, float v) { return uchar4(u.x + v, u.y + v, u.z + v, u.w + v); }
+  static inline uchar4 operator - (const uchar4 & u, float v) { return uchar4(u.x - v, u.y - v, u.z - v, u.w - v); }
+  static inline uchar4 operator * (float v, const uchar4 & u) { return uchar4(v * u.x, v * u.y, v * u.z, v * u.w); }
+  static inline uchar4 operator / (float v, const uchar4 & u) { return uchar4(v / u.x, v / u.y, v / u.z, v / u.w); }
+  static inline uchar4 operator + (float v, const uchar4 & u) { return uchar4(u.x + v, u.y + v, u.z + v, u.w + v); }
+  static inline uchar4 operator - (float v, const uchar4 & u) { return uchar4(u.x - v, u.y - v, u.z - v, u.w - v); }
+
+  static inline uchar4 operator + (const uchar4 & u, const uchar4 & v) { return uchar4(u.x + v.x, u.y + v.y, u.z + v.z, u.w + v.w); }
+  static inline uchar4 operator - (const uchar4 & u, const uchar4 & v) { return uchar4(u.x - v.x, u.y - v.y, u.z - v.z, u.w - v.w); }
+  static inline uchar4 operator * (const uchar4 & u, const uchar4 & v) { return uchar4(u.x * v.x, u.y * v.y, u.z * v.z, u.w * v.w); }
+  static inline uchar4 operator / (const uchar4 & u, const uchar4 & v) { return uchar4(u.x / v.x, u.y / v.y, u.z / v.z, u.w / v.w); }
+
+  static inline uchar4 lerpUchar4(const uchar4 & u, const uchar4 & v, float t) { return u + t * (v - u); }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -47,7 +86,8 @@ namespace LiteMath
   struct float4
   {
     inline float4() : x(0), y(0), z(0), w(0) {}
-    inline float4(float a, float b, float c, float d) : x(a), y(b), z(c), w(d) {}
+    inline float4(float a, float b, float c, float d) : x(a), y(b), z(c), w(d) {}    
+    inline float4(uchar4 a) : x(a.x), y(a.y), z(a.z), w(a.w) {}
     inline explicit float4(float a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
     
     inline float& operator[](int i)       { return M[i]; }
@@ -86,7 +126,7 @@ namespace LiteMath
 
   static inline float4   operator -(const float4 & v) { return float4(-v.x, -v.y, -v.z, -v.w); }
 
-  static inline float4 lerp(const float4 & u, const float4 & v, float t) { return u + t * (v - u); }
+  static inline float4 lerpFloat4(const float4 & u, const float4 & v, float t) { return u + t * (v - u); }
   static inline float  dot(const float4 & u, const float4 & v) { return (u.x*v.x + u.y*v.y + u.z*v.z + u.w*v.w); }
   static inline float  dot3(const float4 & u, const float4 & v) { return (u.x*v.x + u.y*v.y + u.z*v.z); }
 
@@ -288,15 +328,11 @@ namespace LiteMath
     unsigned short x, y, z, w;
   };
 
-  struct uchar4
-  {
-    uchar4() :x(0), y(0), z(0), w(0) {}
-    uchar4(unsigned char a, unsigned char b, unsigned char c, unsigned char d) : x(a), y(b), z(c), w(d) {}
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    unsigned char x, y, z, w;
-  };
 
-  
   struct float4x4
   {
     inline float4x4()  { identity(); }
