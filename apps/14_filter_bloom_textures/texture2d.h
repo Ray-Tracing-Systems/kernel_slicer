@@ -8,28 +8,28 @@
 ///////////////////////////////////////////////////////////////////////
 
 
-template<typename inType, typename outType>
+template<typename Type>
 struct Texture2D
 {
   Texture2D() : m_width(0), m_height(0) {}
   Texture2D(unsigned int w, unsigned int h) : m_width(w), m_height(h) { m_data.resize(w*h); }
-  Texture2D(unsigned int w, unsigned int h, const inType* a_data) : m_width(w), m_height(h) 
+  Texture2D(unsigned int w, unsigned int h, const Type* a_data) : m_width(w), m_height(h) 
   {
     m_data.resize(w*h);
-    memcpy(m_data.data(), a_data, w*h*sizeof(inType));
+    memcpy(m_data.data(), a_data, w*h*sizeof(Type));
   }
   
-  void    resize(unsigned int width, unsigned int height) { m_width = width; m_height = height; m_data.resize(width*height); }
-  float2  process_coord(const Sampler::AddressMode mode, const float2 coord, bool* use_border_color) const;   
-  outType sample(const Sampler& a_sampler, float2 a_uv) const;    
+  void   resize(unsigned int width, unsigned int height) { m_width = width; m_height = height; m_data.resize(width*height); }
+  float2 process_coord(const Sampler::AddressMode mode, const float2 coord, bool* use_border_color) const;   
+  float4 sample(const Sampler& a_sampler, float2 a_uv) const;    
 
-  void    write_pixel(const uint posPixel, const inType color) { m_data[posPixel] = color; }
-  outType read_pixel(const uint posPixel) const { return m_data[posPixel]; }
+  void   write_pixel(const uint posPixel, const Type color) { m_data[posPixel] = color; }
+  Type   read_pixel(const uint posPixel) const { return m_data[posPixel]; }
 
 protected:
   unsigned int m_width;
   unsigned int m_height;
-  std::vector<inType> m_data;
+  std::vector<Type> m_data;
 };
 
 

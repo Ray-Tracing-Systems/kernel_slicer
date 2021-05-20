@@ -247,8 +247,9 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
           const float2 uv1    = get_uv(x1, y1, a_width, a_height);
           const float4 c1     = a_texture.sample(a_sampler, uv1);
           //const float4 n1     = m_normDepth.sample(a_sampler, uv1);
-          const float3 normal = decodeNormal(m_normal.sample(a_sampler, uv1));
-          const float  depth  = m_depth.sample(a_sampler, uv1);
+          const uint posPixel = pitch(x1, y1, a_width);
+          const float3 normal = decodeNormal(m_normal.read_pixel(posPixel));
+          const float  depth  = m_depth.read_pixel(posPixel);
           const float4 n1     = make_float4(normal.x, normal.y, normal.z, depth);
 
           //const float4 t1 = in_texc[y1*w + x1];
