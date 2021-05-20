@@ -108,3 +108,108 @@ std::string kslicer::GLSLCompiler::ProcessBufferType(const std::string& a_typeNa
   ReplaceFirst(type, "const", "");
   return type; 
 };
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////  GLSLFunctionRewriter  ////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
+
+/**
+\brief process local functions (data["LocalFunctions"]), float3 --> make_float3, std::max --> fmax and e.t.c.
+*/
+class GLSLFunctionRewriter : public kslicer::FunctionRewriter // 
+{
+public:
+  
+  GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo) : FunctionRewriter(R,a_compiler,a_codeInfo)
+  { 
+    m_vecReplacements["float2"] = "vec2";
+    m_vecReplacements["float3"] = "vec3";
+    m_vecReplacements["float4"] = "vec4";
+    m_vecReplacements["int2"]   = "ivec2";
+    m_vecReplacements["int3"]   = "ivec3";
+    m_vecReplacements["int4"]   = "ivec4";
+    m_vecReplacements["uint2"]  = "uvec2";
+    m_vecReplacements["uint3"]  = "uvec3";
+    m_vecReplacements["uint4"]  = "uvec4";
+  }
+
+  ~GLSLFunctionRewriter()
+  {
+  }
+
+  bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl) override;
+
+protected:
+  
+  std::unordered_map<std::string, std::string> m_vecReplacements;
+
+  std::string RewriteVectorTypeStr(const std::string& a_str);
+  std::string RewriteFuncDecl(clang::FunctionDecl* fDecl);
+
+  std::string RecursiveRewrite(const clang::Stmt* expr) override;
+};
+
+
+std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
+{
+  GLSLFunctionRewriter rvCopy = *this;
+  rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
+  return m_rewriter.getRewrittenText(expr->getSourceRange());
+}
+
+std::string GLSLFunctionRewriter::RewriteVectorTypeStr(const std::string& a_str)
+{
+  std::string typeStr = a_str;
+  ReplaceFirst(typeStr, "LiteMath::", "");
+  ReplaceFirst(typeStr, "glm::",      "");
+  ReplaceFirst(typeStr, "struct ",    "");
+  
+  auto p = m_vecReplacements.find(typeStr);
+  if(p == m_vecReplacements.end())
+    return typeStr;
+  
+  return p->second;
+}
+
+std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
+{
+  std::string retT   = RewriteVectorTypeStr(fDecl->getReturnType().getAsString()); 
+  std::string fname  = fDecl->getNameInfo().getName().getAsString();
+  std::string result = retT + " " + fname + "(";
+
+  for(uint32_t i=0; i < fDecl->getNumParams(); i++)
+  {
+    const clang::ParmVarDecl* pParam  = fDecl->getParamDecl(i);
+    const clang::QualType typeOfParam =	pParam->getType();
+    result += RewriteVectorTypeStr(typeOfParam.getAsString()) + " " + pParam->getNameAsString();
+   
+    if(i!=fDecl->getNumParams()-1)
+      result += ", ";
+  }
+  return result + ") ";
+}
+
+bool GLSLFunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl) 
+{ 
+  if(clang::isa<clang::CXXMethodDecl>(fDecl)) // ignore methods here, for a while ... 
+    return true;
+
+  if(WasNotRewrittenYet(fDecl->getBody()))
+  {
+    const std::string funcDeclText = RewriteFuncDecl(fDecl);
+    const std::string funcBodyText = RecursiveRewrite(fDecl->getBody());
+ 
+    //auto debugMeIn = GetRangeSourceCode(call->getSourceRange(), m_compiler);     
+    m_rewriter.ReplaceText(fDecl->getSourceRange(), funcDeclText + funcBodyText);
+    MarkRewritten(fDecl->getBody());
+  }
+
+  return true; 
+}
+
+
+std::shared_ptr<kslicer::FunctionRewriter> kslicer::GLSLCompiler::MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo)
+{
+  return std::make_shared<GLSLFunctionRewriter>(R, a_compiler, a_codeInfo);
+}

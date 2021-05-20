@@ -105,3 +105,8 @@ std::string kslicer::ClspvCompiler::VectorTypeContructorReplace(const std::strin
   ReplaceFirst(call, p->first + "(", p->second + "(");
   return call; 
 }
+
+std::shared_ptr<kslicer::FunctionRewriter> kslicer::ClspvCompiler::MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo)
+{
+  return std::make_shared<kslicer::FunctionRewriter>(R, a_compiler, a_codeInfo);
+}

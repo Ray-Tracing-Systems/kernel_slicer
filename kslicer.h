@@ -14,6 +14,10 @@
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Tooling.h"
 
+#include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/Rewrite/Frontend/Rewriters.h"
+#include "clang/Rewrite/Core/Rewriter.h"
+
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 
 namespace kslicer
@@ -272,6 +276,63 @@ namespace kslicer
     bool               extracted = false;
   };
 
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////  FunctionRewriter  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  class MainClassInfo;
+
+  /**
+  \brief process local functions (data["LocalFunctions"]), float3 --> make_float3, std::max --> fmax and e.t.c.
+  */
+  class FunctionRewriter : public clang::RecursiveASTVisitor<FunctionRewriter> // 
+  {
+  public:
+    
+    FunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) : 
+                     m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo)
+    { 
+      
+    }
+
+    virtual ~FunctionRewriter(){}
+
+    bool VisitCallExpr(clang::CallExpr* f);
+    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call);
+
+    bool VisitFunctionDecl(clang::FunctionDecl* fDecl)       { return VisitFunctionDecl_Impl(fDecl); }
+    bool VisitCXXMethodDecl(clang::CXXMethodDecl* fDecl)     { return VisitCXXMethodDecl_Impl(fDecl); }
+
+    bool VisitMemberExpr(clang::MemberExpr* expr)            { return VisitMemberExpr_Impl(expr);     }
+    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f) { return VisitCXXMemberCallExpr_Impl(f); }
+    bool VisitFieldDecl(clang::FieldDecl* decl)              { return VisitFieldDecl_Impl(decl);      }
+    bool VisitUnaryOperator(clang::UnaryOperator* op)        { return VisitUnaryOperator_Impl(op);    }
+
+  protected:
+
+    clang::Rewriter&               m_rewriter;
+    const clang::CompilerInstance& m_compiler;
+    MainClassInfo*                 m_codeInfo;
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    
+    std::unordered_set<uint64_t> m_rewrittenNodes;
+    void MarkRewritten(const clang::Stmt* expr);
+    virtual std::string RecursiveRewrite(const clang::Stmt* expr); // double/multiple pass rewrite purpose
+
+    bool WasNotRewrittenYet(const clang::Stmt* expr);
+  
+    std::string FunctionCallRewrite(const clang::CallExpr* call);
+    std::string FunctionCallRewrite(const clang::CXXConstructExpr* call);
+    
+    virtual bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)       { return true; } // override this in Derived class
+    virtual bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl)     { return true; } // override this in Derived class
+
+    virtual bool VisitMemberExpr_Impl(clang::MemberExpr* expr)            { return true; } // override this in Derived class
+    virtual bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) { return true; } // override this in Derived class
+    virtual bool VisitFieldDecl_Impl(clang::FieldDecl* decl)              { return true; } // override this in Derived class
+    virtual bool VisitUnaryOperator_Impl(clang::UnaryOperator* op)        { return true; } // override this in Derived class
+  };
+
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -298,6 +359,8 @@ namespace kslicer
     virtual bool        UseSeparateUBOForArguments() const { return false; }
     virtual bool        UseSpecConstForWgSize() const { return false; }
     virtual void        GetThreadSizeNames(std::string a_strs[3]) const = 0;
+
+    virtual std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) = 0;
   };
 
   struct ClspvCompiler : IShaderCompiler
@@ -318,7 +381,9 @@ namespace kslicer
     bool        IsVectorTypeNeedsContructorReplacement(const std::string& a_typeName)                 const override;
     std::string VectorTypeContructorReplace(const std::string& a_typeName, const std::string& a_call) const override;
     void        GetThreadSizeNames(std::string a_strs[3])                                             const override;
-
+    
+    std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) override;
+ 
   private:
     std::string BuildCommand() const;
 
@@ -338,13 +403,15 @@ namespace kslicer
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
     std::string ProcessBufferType(const std::string& a_typeName)        const override;
     void        GetThreadSizeNames(std::string a_strs[3])               const override;
+
+    std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) override;
   
   private:
   };
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
   class UsedCodeFilter;

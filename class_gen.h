@@ -135,60 +135,6 @@ namespace kslicer
     inline void MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
   };
   
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  ////////////////////////////////////////  FunctionRewriter  ////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  /**
-  \brief process local functions (data["LocalFunctions"]), float3 --> make_float3, std::max --> fmax and e.t.c.
-  */
-  class FunctionRewriter : public RecursiveASTVisitor<FunctionRewriter> // 
-  {
-  public:
-    
-    FunctionRewriter(Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) : 
-                     m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo)
-    { 
-      
-    }
-
-    virtual ~FunctionRewriter(){}
-
-    bool VisitCallExpr(CallExpr* f);
-    bool VisitCXXConstructExpr(CXXConstructExpr* call);
-    
-    bool VisitMemberExpr(clang::MemberExpr* expr)        { return VisitMemberExpr_Impl(expr);     }
-    bool VisitCXXMethodDecl(clang::CXXMethodDecl* fDecl) { return VisitCXXMethodDecl_Impl(fDecl); }
-    bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f)    { return VisitCXXMemberCallExpr_Impl(f); }
-    bool VisitFieldDecl(FieldDecl* decl)                 { return VisitFieldDecl_Impl(decl);      }
-    bool VisitUnaryOperator(UnaryOperator* op)           { return VisitUnaryOperator_Impl(op);    }
-
-  protected:
-
-    Rewriter&                                                m_rewriter;
-    const clang::CompilerInstance&                           m_compiler;
-    MainClassInfo*                                           m_codeInfo;
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    
-    std::unordered_set<uint64_t>                             m_rewrittenNodes;
-    inline void MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
-    virtual std::string RecursiveRewrite(const Stmt* expr); // double/multiple pass rewrite purpose
-
-    inline bool WasNotRewrittenYet(const clang::Stmt* expr)
-    {
-      auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
-      return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
-    }
-
-    std::string FunctionCallRewrite(const CallExpr* call);
-    std::string FunctionCallRewrite(const CXXConstructExpr* call);
-  
-    virtual bool VisitMemberExpr_Impl(clang::MemberExpr* expr)        { return true; } // override this in Derived class
-    virtual bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) { return true; } // override this in Derived class
-    virtual bool VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)    { return true; } // override this in Derived class
-    virtual bool VisitFieldDecl_Impl(FieldDecl* decl)                 { return true; } // override this in Derived class
-    virtual bool VisitUnaryOperator_Impl(UnaryOperator* op)           { return true; } // override this in Derived class
-  };
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////  NodesMarker  //////////////////////////////////////////////////////////

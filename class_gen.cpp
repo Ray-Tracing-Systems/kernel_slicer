@@ -280,3 +280,11 @@ void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_k
       ReplaceFirst(k.second.RetType,"bool ", "void ");
   }
 }
+
+void kslicer::FunctionRewriter::MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
+
+bool kslicer::FunctionRewriter::WasNotRewrittenYet(const clang::Stmt* expr)
+{
+  auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+  return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
+}

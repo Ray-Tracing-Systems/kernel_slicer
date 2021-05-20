@@ -746,13 +746,15 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   {
     clang::Rewriter rewrite2;
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-    kslicer::FunctionRewriter rv(rewrite2, compiler, &a_classInfo);
+    auto pVisitor = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
 
     for (const auto& f : usedFunctions) 
     { 
       if(a_classInfo.IsExcludedLocalFunction(f.name)) // check exclude list here, don't put such functions in cl file
-        continue; 
-      rv.TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
+        continue;
+
+      //f.astNode->dump();   
+      pVisitor->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
       data["LocalFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
     }
   }
