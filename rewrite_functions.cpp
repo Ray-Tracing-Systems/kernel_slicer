@@ -56,7 +56,7 @@ std::string kslicer::FunctionRewriter::FunctionCallRewrite(const CXXConstructExp
   return textRes;
 }
 
-bool kslicer::FunctionRewriter::VisitCallExpr(CallExpr* call)
+bool kslicer::FunctionRewriter::VisitCallExpr_Impl(CallExpr* call)
 {
   if(isa<CXXMemberCallExpr>(call)) // process in VisitCXXMemberCallExpr
     return true;

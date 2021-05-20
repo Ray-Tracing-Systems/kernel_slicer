@@ -115,7 +115,7 @@ std::string kslicer::GLSLCompiler::ProcessBufferType(const std::string& a_typeNa
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
 
 /**
-\brief process local functions (data["LocalFunctions"]), float3 --> make_float3, std::max --> fmax and e.t.c.
+\brief process local functions
 */
 class GLSLFunctionRewriter : public kslicer::FunctionRewriter // 
 {
@@ -132,16 +132,18 @@ public:
     m_vecReplacements["uint2"]  = "uvec2";
     m_vecReplacements["uint3"]  = "uvec3";
     m_vecReplacements["uint4"]  = "uvec4";
+    m_vecReplacements["float4x4"] = "mat4";
   }
 
   ~GLSLFunctionRewriter()
   {
   }
 
-  bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl) override;
-
 protected:
   
+  bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl) override;
+  bool VisitCallExpr_Impl(clang::CallExpr* f) override;
+
   std::unordered_map<std::string, std::string> m_vecReplacements;
 
   std::string RewriteVectorTypeStr(const std::string& a_str);
@@ -183,10 +185,10 @@ std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
     const clang::ParmVarDecl* pParam  = fDecl->getParamDecl(i);
     const clang::QualType typeOfParam =	pParam->getType();
     result += RewriteVectorTypeStr(typeOfParam.getAsString()) + " " + pParam->getNameAsString();
-   
     if(i!=fDecl->getNumParams()-1)
       result += ", ";
   }
+
   return result + ") ";
 }
 
@@ -203,6 +205,33 @@ bool GLSLFunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)
     //auto debugMeIn = GetRangeSourceCode(call->getSourceRange(), m_compiler);     
     m_rewriter.ReplaceText(fDecl->getSourceRange(), funcDeclText + funcBodyText);
     MarkRewritten(fDecl->getBody());
+  }
+
+  return true; 
+}
+
+bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
+{
+  if(clang::isa<clang::CXXMemberCallExpr>(call)) // process CXXMemberCallExpr else-where
+    return true;
+
+  clang::FunctionDecl* fDecl = call->getDirectCallee();
+  if(fDecl == nullptr)
+    return true;
+
+  const std::string fname = fDecl->getNameInfo().getName().getAsString();
+
+  if(fname == "to_float3" && call->getNumArgs() == 1 && WasNotRewrittenYet(call) )
+  {
+    //call->getArg(0)->dump();
+    const std::string exprText = RecursiveRewrite(call->getArg(0));
+    
+    if(clang::isa<clang::CXXConstructExpr>(call->getArg(0)))
+      m_rewriter.ReplaceText(call->getSourceRange(), exprText + ".xyz");
+    else
+      m_rewriter.ReplaceText(call->getSourceRange(), std::string("(") + exprText + ").xyz");
+      
+    MarkRewritten(call);
   }
 
   return true; 

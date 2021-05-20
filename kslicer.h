@@ -297,7 +297,7 @@ namespace kslicer
 
     virtual ~FunctionRewriter(){}
 
-    bool VisitCallExpr(clang::CallExpr* f);
+    bool VisitCallExpr(clang::CallExpr* f)                   { return VisitCallExpr_Impl(f); }
     bool VisitCXXConstructExpr(clang::CXXConstructExpr* call);
 
     bool VisitFunctionDecl(clang::FunctionDecl* fDecl)       { return VisitFunctionDecl_Impl(fDecl); }
@@ -331,6 +331,8 @@ namespace kslicer
     virtual bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) { return true; } // override this in Derived class
     virtual bool VisitFieldDecl_Impl(clang::FieldDecl* decl)              { return true; } // override this in Derived class
     virtual bool VisitUnaryOperator_Impl(clang::UnaryOperator* op)        { return true; } // override this in Derived class
+
+    virtual bool VisitCallExpr_Impl(clang::CallExpr* f);
   };
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
