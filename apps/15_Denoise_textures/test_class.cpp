@@ -4,8 +4,6 @@
 
 /////////////////////////////////////////////////////////////////////////////////
 
-inline static float4 Lerp4f(const float4 u, const float4 v, float t) { return u + t * (v - u); }
-
 static inline float Sqrf(const float x) { return x*x; }
 
 static inline int Clampi(const int x, const int a, const int b)
@@ -250,7 +248,7 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
       //  RestoredPixel*0.15 + NoisyImage*0.85
       //  That allows to preserve edges more thoroughly
       //
-      result = Lerp4f(result, c0, lerpQ);
+      result = lerpFloat4(result, c0, lerpQ);
 
       SimpleCompressColor(&result);
       a_outData1ui[y * a_width + x] = RealColorToUint32(result, 1.0F / m_gamma);
@@ -290,7 +288,9 @@ void Denoise_cpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
                  const char* a_outName)
 {
   Denoise filter(w, h);
-  Sampler           sampler;  
+  Sampler           sampler; 
+  sampler.m_filter = Sampler::Filter::MIN_MAG_LINEAR_MIP_POINT; 
+  
   Texture2D<float4> texture(w, h);
   std::vector<uint> ldrData(w*h);
   

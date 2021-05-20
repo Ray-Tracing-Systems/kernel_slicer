@@ -80,7 +80,7 @@ static inline uint RealColorToUint32(float4 a_realColor, const float a_gamma)
   float  r = pow(clamp(a_realColor.x, 0.0F, 1.0F), a_gamma) * 255.0f;
   float  g = pow(clamp(a_realColor.y, 0.0F, 1.0F), a_gamma) * 255.0f;
   float  b = pow(clamp(a_realColor.z, 0.0F, 1.0F), a_gamma) * 255.0f;
-  float  a = clamp(a_realColor.w, 0.0F, 1.0F) * 255.0f;
+  float  a =     clamp(a_realColor.w, 0.0F, 1.0F)           * 255.0f;
 
   unsigned char red   = (unsigned char)r;
   unsigned char green = (unsigned char)g;

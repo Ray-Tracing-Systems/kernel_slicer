@@ -1,12 +1,11 @@
 #ifndef TEST_CLASS_H
 #define TEST_CLASS_H
 
-#include "include/BasicLogic.h" // We assume that all code that should pe passed to kernels will be just included both for CPU and OpenCL
-
 #include <vector>
 #include <iostream>
 #include <fstream>
 
+#include "../14_filter_bloom_textures/include/BasicLogic.h" // We assume that all code that should pe passed to kernels will be just included both for CPU and OpenCL
 #include "../14_filter_bloom_textures/sampler.h"
 #include "../14_filter_bloom_textures/texture2d.h"
 

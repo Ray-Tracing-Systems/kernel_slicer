@@ -53,7 +53,7 @@ void SaveTestImage(const float4* data, int w, int h)
 
 #pragma omp parallel for
   for(size_t i = 0; i < w * h; i++)
-    ldrData[i] = RealColorToUint32(clamp(data[i], 0.0f, 1.0f));
+    ldrData[i] = RealColorToUint32(clamp(data[i], 0.0f, 1.0f), 1.0F / 2.2F);
 
   SaveBMP("ztest.bmp", ldrData.data(), w, h);
 }
@@ -64,10 +64,12 @@ void tone_mapping_cpu(int w, int h, const float* a_hdrData, const char* a_outNam
 {
   ToneMapping       filter(w, h);  
   Sampler           sampler;  
+  sampler.m_filter = Sampler::Filter::MIN_MAG_LINEAR_MIP_POINT; 
+
   Texture2D<float4> texture(w, h);
   std::vector<uint> ldrData(w*h);  
 
-  filter.Bloom(w, h, &sampler, (const float4*)a_hdrData, texture, ldrData.data());
+  filter.Bloom(w, h, sampler, (const float4*)a_hdrData, texture, ldrData.data());
   
   SaveBMP(a_outName, ldrData.data(), w, h);  
 }
@@ -105,7 +107,7 @@ m_width(w), m_height(h), m_widthSmall(w/4), m_heightSmall(h/4)
 
 
 
-void ToneMapping::Bloom(const int a_width, const int a_height, const Sampler* a_sampler, const float4* a_inData4f, 
+void ToneMapping::Bloom(const int a_width, const int a_height, const Sampler& a_sampler, const float4* a_inData4f, 
                         Texture2D<float4>& a_texture2d, unsigned int* outData1ui)
 {
   // (1) ExtractBrightPixels (inData4f => m_brightPixels (w,h))
@@ -132,7 +134,7 @@ void ToneMapping::Bloom(const int a_width, const int a_height, const Sampler* a_
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-void ToneMapping::kernel2D_ExtractBrightPixels(const int a_width, const int a_height, const Sampler* a_sampler,
+void ToneMapping::kernel2D_ExtractBrightPixels(const int a_width, const int a_height, const Sampler& a_sampler,
                                                Texture2D<float4>& a_texture2d, Texture2D<float4>& a_brightPixels, 
                                                const float4* a_inData4f)
 {  
@@ -156,7 +158,7 @@ void ToneMapping::kernel2D_ExtractBrightPixels(const int a_width, const int a_he
 }
 
 
-void ToneMapping::kernel2D_DownSample4x(const int a_width, const int a_height, const Sampler* a_sampler, 
+void ToneMapping::kernel2D_DownSample4x(const int a_width, const int a_height, const Sampler& a_sampler, 
                                         const Texture2D<float4>& a_texture2dFullRes, Texture2D<float4>& a_dataSmallRes)
 {
   #pragma omp parallel for
@@ -182,7 +184,7 @@ void ToneMapping::kernel2D_DownSample4x(const int a_width, const int a_height, c
 }
 
 
-void ToneMapping::kernel2D_BlurX(const int a_width, const int a_height, const Sampler* a_sampler, 
+void ToneMapping::kernel2D_BlurX(const int a_width, const int a_height, const Sampler& a_sampler, 
                                  const Texture2D<float4>& a_texture2d, Texture2D<float4>& a_dataOut)
 {
   #pragma omp parallel for
@@ -220,7 +222,7 @@ void ToneMapping::kernel2D_BlurX(const int a_width, const int a_height, const Sa
 
 
 
-void ToneMapping::kernel2D_BlurY(const int a_width, const int a_height, const Sampler* a_sampler, 
+void ToneMapping::kernel2D_BlurY(const int a_width, const int a_height, const Sampler& a_sampler, 
                                  const Texture2D<float4>& a_texture2d, Texture2D<float4>& a_dataOut)
 {
   #pragma omp parallel for
@@ -257,7 +259,7 @@ void ToneMapping::kernel2D_BlurY(const int a_width, const int a_height, const Sa
 
 
 
-void ToneMapping::kernel2D_MixAndToneMap(const int a_width, const int a_height, const Sampler* a_sampler, 
+void ToneMapping::kernel2D_MixAndToneMap(const int a_width, const int a_height, const Sampler& a_sampler, 
                                          const Texture2D<float4>& a_texture2d, const Texture2D<float4>& inBrightPixels,
                                          unsigned int* outData1ui)
 {
@@ -276,13 +278,8 @@ void ToneMapping::kernel2D_MixAndToneMap(const int a_width, const int a_height, 
       float4       colorSumm  = bloomColor + a_texture2d.sample(a_sampler, uv);
       
       SimpleCompressColor(&colorSumm);
-
-      colorSumm.x = pow(colorSumm.x, m_gammaInv);
-      colorSumm.y = pow(colorSumm.y, m_gammaInv);
-      colorSumm.z = pow(colorSumm.z, m_gammaInv);
-      colorSumm.w = 1.0f;
     
-      outData1ui[pitch(tidX, tidY, a_width)] = RealColorToUint32(colorSumm);
+      outData1ui[pitch(tidX, tidY, a_width)] = RealColorToUint32(colorSumm, 1.0F / m_gamma);
     }
   }
 }

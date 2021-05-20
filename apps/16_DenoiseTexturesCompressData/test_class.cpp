@@ -169,33 +169,42 @@ void Denoise::kernel1D_PrepareData(const int32_t* a_inTexColor, const int32_t* a
 #pragma omp parallel for
   for (size_t i = 0; i < m_sizeImg; ++i)  
   { 
+    // beauty pass
+
     a_texture.write_pixel(i, a_inImage[i]);
 
-    int pxData      = a_inTexColor[i];
-    int r           = (pxData & 0x00FF0000) >> 16;
-    int g           = (pxData & 0x0000FF00) >> 8;
-    int b           = (pxData & 0x000000FF);
+    // color/albedo pass
+
+    int pxData = a_inTexColor[i];
+    int r      = (pxData & 0x00FF0000) >> 16;
+    int g      = (pxData & 0x0000FF00) >> 8;
+    int b      = (pxData & 0x000000FF);
 
     uchar4 color;    
-    color.x = pow(r, m_gamma);
-    color.y = pow(g, m_gamma);
-    color.z = pow(b, m_gamma);
-    color.w = 0.0F;
+    color.x    = Clampi((int)(pow((float)r / 255.0F, m_gamma) * 255.0F), 0, 255);
+    color.y    = Clampi((int)(pow((float)g / 255.0F, m_gamma) * 255.0F), 0, 255);
+    color.z    = Clampi((int)(pow((float)b / 255.0F, m_gamma) * 255.0F), 0, 255);
+    color.w    = 0;
 
     m_texColor.write_pixel(i, color);
     
+    // normal pass
+
     float3 normal;
-    pxData          = a_inNormal[i];
-    r               = (pxData & 0x00FF0000) >> 16;
-    g               = (pxData & 0x0000FF00) >> 8;
-    b               = (pxData & 0x000000FF);
+    pxData     = a_inNormal[i];
+    r          = (pxData & 0x00FF0000) >> 16;
+    g          = (pxData & 0x0000FF00) >> 8;
+    b          = (pxData & 0x000000FF);
     
-    normal.x = pow((float)r / 255.0F, m_gamma);
-    normal.y = pow((float)g / 255.0F, m_gamma);
-    normal.z = pow((float)b / 255.0F, m_gamma);
+    normal.x   = clamp(pow((float)r / 255.0F, m_gamma), -1.0F, 1.0F);
+    normal.y   = clamp(pow((float)g / 255.0F, m_gamma), -1.0F, 1.0F);
+    normal.z   = clamp(pow((float)b / 255.0F, m_gamma), -1.0F, 1.0F);
       
     m_normal.write_pixel(i, encodeNormal(normal));    
-    m_depth.write_pixel(i, clamp(a_inDepth[i].x, 0.0F, 1.0F) * ((ushort)~0));
+
+    // depth pass
+
+    m_depth.write_pixel(i, (ushort)(clamp(a_inDepth[i].x, 0.0F, 1.0F) * (float)(std::numeric_limits<ushort>::max())));
   }
 }
 
@@ -214,27 +223,28 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
   {
     for (int x = 0; x < a_width; ++x)
     {
-      const int minX      = Clampi(x - a_windowRadius, 0, a_width - 1);
-      const int maxX      = Clampi(x + a_windowRadius, 0, a_width - 1);
-     
-      const int minY      = Clampi(y - a_windowRadius, 0, a_height - 1);
-      const int maxY      = Clampi(y + a_windowRadius, 0, a_height - 1);
+      const int minX        = Clampi(x - a_windowRadius, 0, a_width - 1);
+      const int maxX        = Clampi(x + a_windowRadius, 0, a_width - 1);
+       
+      const int minY        = Clampi(y - a_windowRadius, 0, a_height - 1);
+      const int maxY        = Clampi(y + a_windowRadius, 0, a_height - 1);
       
-      //const float4 c0     = a_inImage  [y * a_width + x];
-      //const float4 n0     = m_normDepth[y * a_width + x];
-      const float2 uv0    = get_uv(x, y, a_width, a_height);
-      const float4 c0     = a_texture.sample(a_sampler, uv0);      
-      const float3 normal = decodeNormal(m_normal.read_pixel(y * a_width + x));
-      const float  depth  = m_depth.read_pixel(y * a_width + x) / 65535.0F;      
-      const float4 n0     = make_float4(normal.x, normal.y, normal.z, depth);
-      //const float4 t0   = in_texc[y*w + x];
+      //const float4 c0       = a_inImage  [y * a_width + x];
+      //const float4 n0       = m_normDepth[y * a_width + x];
+      const float2 uv0      = get_uv(x, y, a_width, a_height);
+      const float4 c0       = a_texture.sample(a_sampler, uv0);  
+      const uint   posPixel = pitch(x, y, a_width);    
+      const float3 normal   = decodeNormal(m_normal.read_pixel(posPixel));
+      const float  depth    = m_depth.read_pixel(posPixel) / (float)(std::numeric_limits<ushort>::max());      
+      const float4 n0       = make_float4(normal.x, normal.y, normal.z, depth);
+      //const float4 t0       = in_texc[y*w + x];
 
-      const float ppSize  = 1.0F * (float)(a_windowRadius) * ProjectedPixelSize(n0.w, m_fov, (float)(a_width), (float)(a_height));
-
-      int counterPass     = 0;
-
-      float fSum          = 0.0F;
-      float4 result       = make_float4(0.0F, 0.0F, 0.0F, 0.0F);
+      const float ppSize    = 1.0F * (float)(a_windowRadius) * ProjectedPixelSize(n0.w, m_fov, (float)(a_width), (float)(a_height));
+  
+      int counterPass       = 0;
+  
+      float fSum            = 0.0F;
+      float4 result         = make_float4(0.0F, 0.0F, 0.0F, 0.0F);
 
       // do window
       //
@@ -244,13 +254,13 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
         {
           //const float4 c1     = a_inImage  [y1 * a_width + x1];
           //const float4 n1     = m_normDepth[y1 * a_width + x1];
-          const float2 uv1    = get_uv(x1, y1, a_width, a_height);
-          const float4 c1     = a_texture.sample(a_sampler, uv1);
+          const float2 uv1      = get_uv(x1, y1, a_width, a_height);
+          const float4 c1       = a_texture.sample(a_sampler, uv1);
           //const float4 n1     = m_normDepth.sample(a_sampler, uv1);
-          const uint posPixel = pitch(x1, y1, a_width);
-          const float3 normal = decodeNormal(m_normal.read_pixel(posPixel));
-          const float  depth  = m_depth.read_pixel(posPixel);
-          const float4 n1     = make_float4(normal.x, normal.y, normal.z, depth);
+          const uint   posPixel = pitch(x1, y1, a_width);
+          const float3 normal   = decodeNormal(m_normal.read_pixel(posPixel));
+          const float  depth    = m_depth.read_pixel(posPixel) / (float)(std::numeric_limits<ushort>::max());
+          const float4 n1       = make_float4(normal.x, normal.y, normal.z, depth);
 
           //const float4 t1 = in_texc[y1*w + x1];
 
@@ -264,15 +274,15 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
           //const float w1  = dot3(c1-c0, c1-c0);
           //const float wt  = dot3(t1-t0, t1-t0);
 
-          const float w2 = exp(-(w1*m_noiseLevel + (i * i + j * j) * m_gaussianSigma));
-          const float w3 = exp(-(wt*m_noiseLevel + (i * i + j * j) * m_gaussianSigma));
-
-          const float wx = w2*w3*clamp(match, 0.25f, 1.0f);
+          const float w2    = exp(-(w1*m_noiseLevel + (i * i + j * j) * m_gaussianSigma));
+          const float w3    = exp(-(wt*m_noiseLevel + (i * i + j * j) * m_gaussianSigma));
+   
+          const float wx    = w2*w3*clamp(match, 0.25f, 1.0f);
 
           if (wx > m_weightThreshold)
             counterPass++;
 
-          fSum += wx;
+          fSum   += wx;
           result += c1 * wx;
         }
       }
@@ -333,7 +343,9 @@ void Denoise_cpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
                  const char* a_outName)
 {
   Denoise filter(w, h);
-  Sampler           sampler;  
+  Sampler           sampler; 
+  sampler.m_filter = Sampler::Filter::MIN_MAG_LINEAR_MIP_POINT; 
+
   Texture2D<float4> texture(w, h);
   std::vector<uint> ldrData(w*h);
   

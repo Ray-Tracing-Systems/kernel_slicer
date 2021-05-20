@@ -17,28 +17,32 @@ template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_u
   const int2   baseTexel   = make_int2(scaledUV.x, scaledUV.y);
   const int    stride      = m_width;
 
-  if (a_sampler.m_filter == Sampler::Filter::MIN_MAG_MIP_POINT) {
+  switch (a_sampler.m_filter)
+  {
+  case Sampler::Filter::MIN_MAG_MIP_POINT:
     return read_pixel(pitch(baseTexel.x, baseTexel.y, stride));
-  }
+  case Sampler::Filter::MIN_MAG_LINEAR_MIP_POINT:
+  {
+    const int2 cornerTexel  = make_int2(baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
+                                        baseTexel.y < m_height - 1 ? baseTexel.y + 1 : baseTexel.y);
 
-  if (a_sampler.m_filter != Sampler::Filter::MIN_MAG_MIP_LINEAR) {
+    const int offset0       = pitch(baseTexel.x  , baseTexel.y  , stride);
+    const int offset1       = pitch(cornerTexel.x, baseTexel.y  , stride);
+    const int offset2       = pitch(baseTexel.x  , cornerTexel.y, stride);
+    const int offset3       = pitch(cornerTexel.x, cornerTexel.y, stride);
+
+    const float2 lerpCoefs  = scaledUV - float2(baseTexel.x, baseTexel.y);
+    const float4 line1Color = lerpFloat4(m_data[offset0], m_data[offset1], lerpCoefs.x);
+    const float4 line2Color = lerpFloat4(m_data[offset2], m_data[offset3], lerpCoefs.x);
+
+    return lerpFloat4(line1Color, line2Color, lerpCoefs.y);
+  }     
+  default:
     fprintf(stderr, "Unsupported filter is used.");
+    break;
   }
 
-  const int2 cornerTexel = make_int2(
-    baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
-    baseTexel.y < m_height - 1 ? baseTexel.y + 1 : baseTexel.y);
-
-  const int offset0       = pitch(baseTexel.x  , baseTexel.y  , stride);
-  const int offset1       = pitch(cornerTexel.x, baseTexel.y  , stride);
-  const int offset2       = pitch(baseTexel.x  , cornerTexel.y, stride);
-  const int offset3       = pitch(cornerTexel.x, cornerTexel.y, stride);
-
-  const float2 lerpCoefs  = scaledUV - float2(baseTexel.x, baseTexel.y);
-  const float4 line1Color = lerpFloat4(m_data[offset0], m_data[offset1], lerpCoefs.x);
-  const float4 line2Color = lerpFloat4(m_data[offset2], m_data[offset3], lerpCoefs.x);
-
-  return lerpFloat4(line1Color, line2Color, lerpCoefs.y);
+  return make_float4(0.0F, 0.0F, 0.0F, 0.0F);
 }
 
 
@@ -58,29 +62,32 @@ template<> float4 Texture2D<uchar4>::sample(const Sampler& a_sampler, float2 a_u
   const int2   baseTexel   = make_int2(scaledUV.x, scaledUV.y);
   const int    stride      = m_width;
 
-  if (a_sampler.m_filter == Sampler::Filter::MIN_MAG_MIP_POINT) {
-    const uint posPixel = pitch(baseTexel.x, baseTexel.y, stride);
-    return read_pixel(posPixel) / 255.0F;
-  }
+  switch (a_sampler.m_filter)
+  {
+  case Sampler::Filter::MIN_MAG_MIP_POINT:
+    return (float4)read_pixel(pitch(baseTexel.x, baseTexel.y, stride)) / 255.0F;
+  case Sampler::Filter::MIN_MAG_LINEAR_MIP_POINT:
+  {
+    const int2 cornerTexel  = make_int2(baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
+                                        baseTexel.y < m_height - 1 ? baseTexel.y + 1 : baseTexel.y);
 
-  if (a_sampler.m_filter != Sampler::Filter::MIN_MAG_MIP_LINEAR) {
+    const int offset0       = pitch(baseTexel.x  , baseTexel.y  , stride);
+    const int offset1       = pitch(cornerTexel.x, baseTexel.y  , stride);
+    const int offset2       = pitch(baseTexel.x  , cornerTexel.y, stride);
+    const int offset3       = pitch(cornerTexel.x, cornerTexel.y, stride);
+
+    const float2 lerpCoefs  = scaledUV - float2(baseTexel.x, baseTexel.y);
+    const float4 line1Color = (float4)(lerpUchar4(m_data[offset0], m_data[offset1], lerpCoefs.x)) / 255.0F;
+    const float4 line2Color = (float4)(lerpUchar4(m_data[offset2], m_data[offset3], lerpCoefs.x)) / 255.0F;
+
+    return lerpFloat4(line1Color, line2Color, lerpCoefs.y);
+  }     
+  default:
     fprintf(stderr, "Unsupported filter is used.");
+    break;
   }
 
-  const int2 cornerTexel = make_int2(
-    baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
-    baseTexel.y < m_height - 1 ? baseTexel.y + 1 : baseTexel.y);
-
-  const int offset0       = pitch(baseTexel.x  , baseTexel.y  , stride);
-  const int offset1       = pitch(cornerTexel.x, baseTexel.y  , stride);
-  const int offset2       = pitch(baseTexel.x  , cornerTexel.y, stride);
-  const int offset3       = pitch(cornerTexel.x, cornerTexel.y, stride);
-
-  const float2 lerpCoefs  = scaledUV - float2(baseTexel.x, baseTexel.y);
-  const float4 line1Color = (float4)(lerpUchar4(m_data[offset0], m_data[offset1], lerpCoefs.x)) / 255.0F;
-  const float4 line2Color = (float4)(lerpUchar4(m_data[offset2], m_data[offset3], lerpCoefs.x)) / 255.0F;
-
-  return lerpFloat4(line1Color, line2Color, lerpCoefs.y);
+  return make_float4(0.0F, 0.0F, 0.0F, 0.0F);
 }
 
 
