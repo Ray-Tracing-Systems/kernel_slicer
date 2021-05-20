@@ -15,6 +15,21 @@ std::string GetFolderPath(const std::string& a_filePath);
 
 void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const std::string& mainClassFileName, const std::vector<std::string>& includeToShadersFolders)
 {
+  std::string folderPath = GetFolderPath(mainClassFileName);
+  std::string shaderPath = folderPath + "/" + this->ShaderFolder();
+  #ifdef WIN32
+  mkdir(shaderPath.c_str());
+  #else
+  mkdir(shaderPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+  #endif
+  
+  // generate header for all used functions in GLSL code
+  //
+  const std::string outFileNameH  = GetFolderPath(mainClassFileName) + "/z_generated.cl";
+  kslicer::ApplyJsonToTemplate("templates_glsl/common_generated.h", shaderPath + "/common_generated.h", a_kernelsJson);  
+  
+  // now generate all glsl shaders
+  //
   const std::string templatePath = "templates_glsl/generated.glsl";
   
   nlohmann::json copy, kernels;
@@ -26,14 +41,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     else
       copy[el.key()] = a_kernelsJson[el.key()];
   }
-    
-  std::string folderPath = GetFolderPath(mainClassFileName);
-  std::string shaderPath = folderPath + "/" + this->ShaderFolder();
-  #ifdef WIN32
-  mkdir(shaderPath.c_str());
-  #else
-  mkdir(shaderPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-  #endif
+  
     
   std::ofstream buildSH(shaderPath + "/build.sh");
   buildSH << "#!/bin/sh" << std::endl;
