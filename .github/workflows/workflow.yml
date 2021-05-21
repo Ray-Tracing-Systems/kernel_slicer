@@ -13,7 +13,7 @@ on:
   workflow_dispatch: 
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
-jobs:
+jobs:    
   eslint:
     runs-on: ubuntu-latest
     steps:
@@ -35,7 +35,7 @@ jobs:
           repo-token: ${{secrets.GITHUB_TOKEN}}
           check-name: eslint # this is the check name from above 👆 where to post annotations
           
-  clang-tidy:    
+  clang-tidy:      
     runs-on: ubuntu-latest
     steps:      
       - uses: actions/checkout@v1      
