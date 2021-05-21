@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v2
 
       # Runs a single command using the runners shell
-      - name: clang-tidy check
+      - name: clang-tidy-check
         # You may pin to the exact commit or the version.
         # uses: muxee/clang-tidy-action@7b55a601bc127aeca89a8d1a67a74159e828fbd6
         uses: muxee/clang-tidy-action@0.0.1-rc1
