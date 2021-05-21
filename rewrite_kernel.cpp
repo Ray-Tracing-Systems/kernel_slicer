@@ -9,7 +9,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool kslicer::KernelRewriter::VisitMemberExpr(MemberExpr* expr)
+bool kslicer::KernelRewriter::VisitMemberExpr_Impl(MemberExpr* expr)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
@@ -129,7 +129,7 @@ std::string kslicer::KernelRewriter::FunctionCallRewrite(const CXXConstructExpr*
   return textRes;
 }
 
-bool kslicer::KernelRewriter::VisitCallExpr(CallExpr* call)
+bool kslicer::KernelRewriter::VisitCallExpr_Impl(CallExpr* call)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
@@ -168,7 +168,7 @@ bool kslicer::KernelRewriter::VisitCallExpr(CallExpr* call)
   return true;
 }
 
-bool kslicer::KernelRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
+bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
@@ -208,7 +208,7 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
 }
 
 
-bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
+bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
@@ -277,7 +277,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
   return true;
 }
 
-bool kslicer::KernelRewriter::VisitReturnStmt(ReturnStmt* ret)
+bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
 {
   Expr* retExpr = ret->getRetValue();
   if (!retExpr)
@@ -360,7 +360,7 @@ bool kslicer::KernelRewriter::CheckIfExprHasArgumentThatNeedFakeOffset(const std
   return needOffset;
 }
 
-bool kslicer::KernelRewriter::VisitUnaryOperator(UnaryOperator* expr)
+bool kslicer::KernelRewriter::VisitUnaryOperator_Impl(UnaryOperator* expr)
 {
   const auto op = expr->getOpcodeStr(expr->getOpcode());
   //const auto opCheck = std::string(op);
@@ -509,7 +509,7 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
 }
 
 
-bool kslicer::KernelRewriter::VisitCompoundAssignOperator(CompoundAssignOperator* expr)
+bool kslicer::KernelRewriter::VisitCompoundAssignOperator_Impl(CompoundAssignOperator* expr)
 {
   auto opRange = expr->getSourceRange();
   if(opRange.getEnd()   <= m_currKernel.loopInsides.getBegin() || 
@@ -525,7 +525,7 @@ bool kslicer::KernelRewriter::VisitCompoundAssignOperator(CompoundAssignOperator
   return true;
 }
 
-bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr(CXXOperatorCallExpr* expr)
+bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(CXXOperatorCallExpr* expr)
 {
   auto opRange = expr->getSourceRange();
   if(opRange.getEnd()   <= m_currKernel.loopInsides.getBegin() || 
@@ -556,7 +556,7 @@ bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr(CXXOperatorCallExpr* expr
   return true;
 }
 
-bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detect reduction like m_var = F(m_var,expr)
+bool kslicer::KernelRewriter::VisitBinaryOperator_Impl(BinaryOperator* expr) // detect reduction like m_var = F(m_var,expr)
 {
   auto opRange = expr->getSourceRange();
   if(opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop

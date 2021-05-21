@@ -204,9 +204,9 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
 
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-
-  kslicer::KernelRewriter rv(rewrite2, compiler, this, a_funcInfo, fakeOffsetExpr, false);
-  rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
+  
+  auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, fakeOffsetExpr, false);
+  pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
   
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));

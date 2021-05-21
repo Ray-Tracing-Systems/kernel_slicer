@@ -312,6 +312,8 @@ namespace kslicer
     bool VisitFieldDecl(clang::FieldDecl* decl)              { return VisitFieldDecl_Impl(decl);      }
     bool VisitUnaryOperator(clang::UnaryOperator* op)        { return VisitUnaryOperator_Impl(op);    }
 
+    const std::unordered_set<uint64_t>& GetProcessedNodes() const { return m_rewrittenNodes; }
+
   protected:
 
     clang::Rewriter&               m_rewriter;
@@ -351,19 +353,20 @@ namespace kslicer
     
     KernelRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr, const bool a_infoPass);
     virtual ~KernelRewriter() {}
+    
+    bool VisitMemberExpr(clang::MemberExpr* expr)              { return VisitMemberExpr_Impl(expr); }
+    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f)   { return VisitCXXMemberCallExpr_Impl(f); }
+    bool VisitCallExpr(clang::CallExpr* f)                     { return VisitCallExpr_Impl(f); }
+    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call)  { return VisitCXXConstructExpr_Impl(call); }
+    bool VisitReturnStmt(clang::ReturnStmt* ret)               { return VisitReturnStmt_Impl(ret); }
+                                                                           
+    bool VisitUnaryOperator(clang::UnaryOperator* expr)        { return VisitUnaryOperator_Impl(expr);  }                       
+    bool VisitBinaryOperator(clang::BinaryOperator* expr)      { return VisitBinaryOperator_Impl(expr); }    
 
-    bool VisitMemberExpr(clang::MemberExpr* expr);
-    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f);
-    bool VisitCallExpr(clang::CallExpr* f);
-    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call);
-    bool VisitReturnStmt(clang::ReturnStmt* ret);
-                                                                           // to detect reduction inside IPV programming template
-    bool VisitUnaryOperator(clang::UnaryOperator* expr);                   // ++, --, (*var) =  ...
-    bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr); // +=, *=, -=; to detect reduction
-    bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr* expr);       // +=, *=, -=; to detect reduction for custom data types (float3/float4 for example)
-    bool VisitBinaryOperator(clang::BinaryOperator* expr);                 // m_var = f(m_var, expr)
+    bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr) { return VisitCompoundAssignOperator_Impl(expr); } 
+    bool VisitCXXOperatorCallExpr   (clang::CXXOperatorCallExpr* expr)    { return VisitCXXOperatorCallExpr_Impl(expr); }
 
-  private:
+  protected:
 
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
     void ProcessReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
@@ -382,6 +385,7 @@ namespace kslicer
     std::unordered_set<uint64_t>                             m_rewrittenNodes;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     std::string FunctionCallRewrite(const clang::CallExpr* call);
     std::string FunctionCallRewrite(const clang::CXXConstructExpr* call);
@@ -389,6 +393,22 @@ namespace kslicer
 
     bool WasNotRewrittenYet(const clang::Stmt* expr);
     void MarkRewritten(const clang::Stmt* expr);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    virtual bool VisitMemberExpr_Impl(clang::MemberExpr* expr);
+    virtual bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f);
+    virtual bool VisitCallExpr_Impl(clang::CallExpr* f);
+    virtual bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call);
+    virtual bool VisitReturnStmt_Impl(clang::ReturnStmt* ret);
+    
+    // to detect reduction inside IPV programming template
+    //
+    virtual bool VisitUnaryOperator_Impl(clang::UnaryOperator* expr);                   // ++, --, (*var) =  ...
+    virtual bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr); // +=, *=, -=; to detect reduction
+    virtual bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr);       // +=, *=, -=; to detect reduction for custom data types (float3/float4 for example)
+    virtual bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr);                 // m_var = f(m_var, expr)
   };
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

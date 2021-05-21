@@ -257,8 +257,9 @@ void kslicer::RTV_Pattern::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clan
   //a_funcInfo.astNode->dump();
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-  kslicer::KernelRewriter rv(rewrite2, compiler, this, a_funcInfo, "", true); /// --> last parameter is true which means informational pass for KernelRewriter !!!
-  rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
+  
+  auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "", true);
+  pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
 }
 
 
