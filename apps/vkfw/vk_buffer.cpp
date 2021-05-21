@@ -23,6 +23,18 @@ VkBuffer vkfw::CreateBuffer(VkDevice a_dev, VkDeviceSize a_size, VkBufferUsageFl
   return buf;
 }
 
+VkBuffer vkfw::CreateBuffer(VkDevice a_dev, VkDeviceSize a_size, VkBufferUsageFlags a_usageFlags, VkSharingMode mode)
+{
+  VkBuffer buf = VK_NULL_HANDLE;
+  VkBufferCreateInfo bufferCreateInfo = {};
+  bufferCreateInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  bufferCreateInfo.size        = a_size;
+  bufferCreateInfo.usage       = a_usageFlags;
+  bufferCreateInfo.sharingMode = mode;
+  VK_CHECK_RESULT(vkCreateBuffer(a_dev, &bufferCreateInfo, VK_NULL_HANDLE, &buf));
+  return buf;
+}
+
 VkMemoryRequirements vkfw::CreateBuffer(VkDevice a_dev, VkDeviceSize a_size, VkBufferUsageFlags a_usageFlags, VkBuffer &a_buf)
 {
   assert(a_dev != VK_NULL_HANDLE);

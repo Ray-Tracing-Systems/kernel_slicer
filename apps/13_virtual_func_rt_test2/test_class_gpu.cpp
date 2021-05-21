@@ -516,7 +516,7 @@ void test_class_gpu_V2()
   physicalDevice       = vk_utils::FindPhysicalDevice(instance, true, 1);
   auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT);
   auto queueComputeFID2 = vk_utils::GetDifferentQueueFamilyIndex(physicalDevice, VK_QUEUE_COMPUTE_BIT, queueComputeFID);
-  auto queueTransferFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT);
+  auto queueTransferFID = 2u;//vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT);
   // query features for RTX
   //
   RTXDeviceFeatures rtxFeatures = SetupRTXFeatures(physicalDevice);
@@ -534,7 +534,7 @@ void test_class_gpu_V2()
 
   std::vector<const char*> validationLayers, deviceExtensions;
   VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
-  vk_utils::queueFamilyIndices fIDs = {.graphics = queueComputeFID, .compute = queueComputeFID2};
+  vk_utils::queueFamilyIndices fIDs = {.graphics = queueComputeFID, .compute = queueComputeFID2, .transfer = queueTransferFID};
   enabledDeviceFeatures.shaderInt64 = VK_TRUE;
 
   // Required by clspv for some reason
@@ -577,8 +577,8 @@ void test_class_gpu_V2()
     vkGetDeviceQueue(device, queueComputeFID2, 0, &computeQueues[1]);
   }
 
-  auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
-  auto pScnMgr     = std::make_shared<SceneManager>(device, physicalDevice, queueComputeFID, queueComputeFID, pCopyHelper, true);
+  auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueTransferFID, 8*1024*1024);
+  auto pScnMgr     = std::make_shared<SceneManager>(device, physicalDevice, queueTransferFID, queueComputeFID, pCopyHelper, true);
 
   auto pGPUImpl1    = std::make_shared<TestClass_GPU>(pScnMgr);
   auto pGPUImpl2    = std::make_shared<TestClass_GPU>(pScnMgr);
@@ -608,9 +608,12 @@ void test_class_gpu_V2()
   //
   const size_t bufferSize1 = WIN_WIDTH*WIN_HEIGHT*sizeof(uint32_t);
   const size_t bufferSize2 = WIN_WIDTH*WIN_HEIGHT*sizeof(float)*4;
-  VkBuffer xyBuffer        = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  VkBuffer colorBuffer1    = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  VkBuffer colorBuffer2    = vkfw::CreateBuffer(device, bufferSize2,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  VkBuffer xyBuffer        = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                                VK_SHARING_MODE_CONCURRENT);
+  VkBuffer colorBuffer1    = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                                VK_SHARING_MODE_CONCURRENT);
+  VkBuffer colorBuffer2    = vkfw::CreateBuffer(device, bufferSize2,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                                VK_SHARING_MODE_CONCURRENT);
 
   VkDeviceMemory colorMem  = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {xyBuffer, colorBuffer1, colorBuffer2});
 

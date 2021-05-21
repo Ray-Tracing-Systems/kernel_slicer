@@ -7,6 +7,8 @@ namespace vkfw
   VkBuffer             CreateBuffer (VkDevice a_dev, VkDeviceSize a_size, VkBufferUsageFlags a_usageFlags);
   VkDeviceMemory       AllocateAndBindWithPadding(VkDevice a_dev, VkPhysicalDevice a_physDev, const std::vector<VkBuffer> a_buffers);
 
+  VkBuffer             CreateBuffer(VkDevice a_dev, VkDeviceSize a_size, VkBufferUsageFlags a_usageFlags, VkSharingMode mode);
+
   VkMemoryRequirements CreateBuffer (VkDevice a_dev, VkDeviceSize a_size, VkBufferUsageFlags a_usageFlags, VkBuffer& a_buf);
   std::vector<size_t>  AssignMemOffsetsWithPadding(const std::vector<VkMemoryRequirements> a_memInfos);
 };
