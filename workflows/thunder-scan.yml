@@ -1,2 +1,13 @@
-- name: DefenseCode ThunderScan Action
+  - name: DefenseCode ThunderScan Action
+  # You may pin to the exact commit or the version.
+  # uses: defensecode/thunderscan-action@2b63a4c495d364bbd7a32011b5ec95aea49780b7
   uses: defensecode/thunderscan-action@v1.0
+  with:
+    # Provide ThunderScan API client path
+    client_path: # default is 
+    # Provide ThunderScan API URL
+    api_url: # default is 
+    # Provide ThunderScan API Token
+    api_token: # default is 
+    # Provide one or more (comma separated) ThunderScan SAST engine IDs to be used for the analysis
+    engines: # optional, default is 
