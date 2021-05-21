@@ -133,6 +133,13 @@ public:
     m_vecReplacements["uint3"]  = "uvec3";
     m_vecReplacements["uint4"]  = "uvec4";
     m_vecReplacements["float4x4"] = "mat4";
+
+    m_funReplacements["fmin"]  = "min";
+    m_funReplacements["fmax"]  = "max";
+    m_funReplacements["fminf"] = "min";
+    m_funReplacements["fmaxf"] = "max";
+    m_funReplacements["fsqrt"] = "sqrt";
+    m_funReplacements["sqrtf"] = "sqrt";
   }
 
   ~GLSLFunctionRewriter()
@@ -145,6 +152,8 @@ protected:
   bool VisitCallExpr_Impl(clang::CallExpr* f) override;
 
   std::unordered_map<std::string, std::string> m_vecReplacements;
+  std::unordered_map<std::string, std::string> m_funReplacements;
+
 
   std::string RewriteVectorTypeStr(const std::string& a_str);
   std::string RewriteFuncDecl(clang::FunctionDecl* fDecl);
@@ -220,17 +229,47 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     return true;
 
   const std::string fname = fDecl->getNameInfo().getName().getAsString();
+  std::string makeSmth = "";
+  if(fname.substr(0, 5) == "make_")
+    makeSmth = fname.substr(5);
 
   if(fname == "to_float3" && call->getNumArgs() == 1 && WasNotRewrittenYet(call) )
   {
-    //call->getArg(0)->dump();
     const std::string exprText = RecursiveRewrite(call->getArg(0));
     
-    if(clang::isa<clang::CXXConstructExpr>(call->getArg(0)))
-      m_rewriter.ReplaceText(call->getSourceRange(), exprText + ".xyz");
+    if(clang::isa<clang::CXXConstructExpr>(call->getArg(0)))                                 // TODO: add other similar node types process here
+      m_rewriter.ReplaceText(call->getSourceRange(), exprText + ".xyz");                     // to_float3(f4Data) ==> f4Data.xyz
     else
-      m_rewriter.ReplaceText(call->getSourceRange(), std::string("(") + exprText + ").xyz");
+      m_rewriter.ReplaceText(call->getSourceRange(), std::string("(") + exprText + ").xyz"); // to_float3(a+b)    ==> (a+b).xyz
       
+    MarkRewritten(call);
+  }
+  else if( (fname == "fmin" || fname == "fmax" || fname == "fminf" || fname == "fmaxf") && call->getNumArgs() == 2 && WasNotRewrittenYet(call))
+  {
+    const std::string A = RecursiveRewrite(call->getArg(0));
+    const std::string B = RecursiveRewrite(call->getArg(1));
+    const std::string nameRewr = m_funReplacements[fname];
+    m_rewriter.ReplaceText(call->getSourceRange(), nameRewr + "(" + A + "," + B + ")");
+    MarkRewritten(call);
+  }
+  else if(makeSmth != "" && call->getNumArgs() !=0 && WasNotRewrittenYet(call) )
+  {
+    std::string rewrittenRes = m_vecReplacements[makeSmth] + "(";
+    for(int i=0;i<call->getNumArgs(); i++)
+    {
+      rewrittenRes += RecursiveRewrite(call->getArg(i));
+      if(i!=call->getNumArgs()-1)
+        rewrittenRes += ", ";
+    }
+    rewrittenRes += ")";
+    m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
+    MarkRewritten(call);
+  }
+  else if(fname == "mul4x4x4" && call->getNumArgs() == 2 && WasNotRewrittenYet(call))
+  {
+    const std::string A = RecursiveRewrite(call->getArg(0));
+    const std::string B = RecursiveRewrite(call->getArg(1));
+    m_rewriter.ReplaceText(call->getSourceRange(), "(" + A + "*" + B + ")");
     MarkRewritten(call);
   }
 
