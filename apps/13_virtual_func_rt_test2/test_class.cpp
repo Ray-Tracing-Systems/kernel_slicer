@@ -287,7 +287,8 @@ void test_class_cpu()
       test.PackXY(x, y, packedXY.data());
   }
 
-  test.LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.bvh", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf");
+  test.LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.bvh", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf",
+                 true ,true);
 
   // test simple ray casting
   //

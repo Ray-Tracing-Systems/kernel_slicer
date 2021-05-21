@@ -130,9 +130,9 @@ protected:
   virtual void UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
 
-  
-  
 
+
+public:
   struct NaivePathTrace_Data
   {
     VkBuffer hitBuffer = VK_NULL_HANDLE;
@@ -164,6 +164,7 @@ protected:
 
   } NaivePathTrace_local;
 
+
   struct CastSingleRay_Data
   {
     VkBuffer hitBuffer = VK_NULL_HANDLE;
@@ -189,6 +190,7 @@ protected:
 
   } CastSingleRay_local;
 
+protected:
   struct PackXY_Data
   {
     VkBuffer out_pakedXYBuffer = VK_NULL_HANDLE;

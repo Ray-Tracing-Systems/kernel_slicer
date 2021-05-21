@@ -401,7 +401,7 @@ void TestClass_Generated::NaivePathTraceCmd(VkCommandBuffer a_commandBuffer, uin
     Lite_Hit hit;
     vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, RayTraceLayout, 0, 1, &m_allGeneratedDS[1], 0, nullptr);
     m_currThreadFlags = inForFlagsN;
-    RayTraceCmd(totalWork, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, tileStart);
+    RayTraceCmd(nThreads, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, tileStart);
 
     IMaterial* pMaterial = nullptr;
     vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, MakeMaterialLayout, 0, 1, &m_allGeneratedDS[2], 0, nullptr);
@@ -448,8 +448,8 @@ void TestClass_Generated::CastSingleRayCmd(VkCommandBuffer a_commandBuffer, uint
   float2   baricentrics; 
   vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, RayTraceLayout, 0, 1, &m_allGeneratedDS[6], 0, nullptr);
   m_currThreadFlags = outOfForFlagsN;
-  RayTraceCmd(nThreads, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, tileStart);
-  
+  RayTraceCmd(nThreads, nullptr, nullptr, &hit, &baricentrics, tileStart);
+
   IMaterial* pMaterial = nullptr;
   vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, MakeMaterialLayout, 0, 1, &m_allGeneratedDS[7], 0, nullptr);
   m_currThreadFlags = outOfForFlags;

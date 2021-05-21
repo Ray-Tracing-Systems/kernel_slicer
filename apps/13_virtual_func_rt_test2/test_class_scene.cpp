@@ -83,7 +83,7 @@ void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
   m_emissiveMaterialId   = 10;
 }
 
-int TestClass::LoadScene(const char* bvhPath, const char* meshPath, bool a_needReorder)
+int TestClass::LoadScene(const char* bvhPath, const char* meshPath, bool a_needReorder, bool a_initMgr)
 {
   std::fstream input_file;
   input_file.open(bvhPath, std::ios::binary | std::ios::in);

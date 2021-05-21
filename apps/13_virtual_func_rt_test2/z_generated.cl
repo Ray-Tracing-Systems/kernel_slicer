@@ -488,11 +488,11 @@ __kernel void kernel_GetColor(
 
   const uint idx = kgen_iNumElementsZ + tid;
 
-  if((kgen_threadFlags[idx] & kgen_tFlagsMask) != 0)
+  if((kgen_threadFlags[tid] & kgen_tFlagsMask) != 0)
     return;
   ///////////////////////////////////////////////////////////////// prolog
   
-  const uint kgen_objPtr    = kgen_objPtrData[idx].x;
+  const uint kgen_objPtr    = kgen_objPtrData[tid].x;
   const uint kgen_objTag    = (kgen_objPtr & IMaterial_TAG_MASK) >> (32 - IMaterial_TAG_BITS);
   const uint kgen_objOffset = (kgen_objPtr & IMaterial_OFS_MASK);
 
@@ -560,12 +560,12 @@ __kernel void kernel_NextBounce(
   const uint tid = get_global_id(0); 
   if(tid >= kgen_iNumElementsX)
     return;
-  const uint idx = kgen_iNumElementsZ + tid;
-  if((kgen_threadFlags[idx] & kgen_tFlagsMask) != 0)
+//  const uint idx = kgen_iNumElementsZ + tid;
+  if((kgen_threadFlags[tid] & kgen_tFlagsMask) != 0)
     return;
   ///////////////////////////////////////////////////////////////// prolog
   
-  const uint kgen_objPtr    = kgen_objPtrData[idx].x;
+  const uint kgen_objPtr    = kgen_objPtrData[tid].x;
   const uint kgen_objTag    = (kgen_objPtr & IMaterial_TAG_MASK) >> (32 - IMaterial_TAG_BITS);
   const uint kgen_objOffset = (kgen_objPtr & IMaterial_OFS_MASK);
 
@@ -574,31 +574,31 @@ __kernel void kernel_NextBounce(
     case IMaterial_TAG_LAMBERT: // implementation for LambertMaterial
     {
       __global LambertMaterial* pSelf = (__global LambertMaterial*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      LambertMaterial_kernel_NextBounce(pSelf, idx, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
+      LambertMaterial_kernel_NextBounce(pSelf, tid, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
     }
     break;
     case IMaterial_TAG_MIRROR: // implementation for PerfectMirrorMaterial
     {
       __global PerfectMirrorMaterial* pSelf = (__global PerfectMirrorMaterial*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      PerfectMirrorMaterial_kernel_NextBounce(pSelf, idx, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
+      PerfectMirrorMaterial_kernel_NextBounce(pSelf, tid, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
     }
     break;
     case IMaterial_TAG_EMISSIVE: // implementation for EmissiveMaterial
     {
       __global EmissiveMaterial* pSelf = (__global EmissiveMaterial*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      EmissiveMaterial_kernel_NextBounce(pSelf, idx, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
+      EmissiveMaterial_kernel_NextBounce(pSelf, tid, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
     }
     break;
     case IMaterial_TAG_GGX_GLOSSY: // implementation for GGXGlossyMaterial
     {
       __global GGXGlossyMaterial* pSelf = (__global GGXGlossyMaterial*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      GGXGlossyMaterial_kernel_NextBounce(pSelf, idx, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
+      GGXGlossyMaterial_kernel_NextBounce(pSelf, tid, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
     }
     break;
     case IMaterial_TAG_LAMBERT_MIX: // implementation for LambertMaterialMix
     {
       __global LambertMaterialMix* pSelf = (__global LambertMaterialMix*)(kgen_objData + kgen_objOffset + 2); // '+ 2' due to vptr (assume 64 bit mode)
-      LambertMaterialMix_kernel_NextBounce(pSelf, idx, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
+      LambertMaterialMix_kernel_NextBounce(pSelf, tid, in_hit, in_bars, in_indices, in_vpos, in_vnorm, rayPosAndNear, rayDirAndFar, pGen, accumColor, accumThoroughput);
     }
     break;
   default:
@@ -625,7 +625,7 @@ __kernel void kernel_InitEyeRay(
   if(tid >= kgen_iNumElementsX)
     return;
   const uint idx = kgen_iNumElementsZ + tid;
-  if((kgen_threadFlags[idx] & kgen_tFlagsMask) != 0)
+  if((kgen_threadFlags[tid] & kgen_tFlagsMask) != 0)
     return;
   const float3 camPos = ubo->camPos;
   ///////////////////////////////////////////////////////////////// prolog
@@ -635,11 +635,11 @@ __kernel void kernel_InitEyeRay(
   const uint x = (XY & 0x0000FFFF);
   const uint y = (XY & 0xFFFF0000) >> 16;
 
-  const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, ubo->m_worldViewProjInv); 
+  const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, ubo->m_worldViewProjInv);
   const float3 rayPos = camPos;
   
-  rayPosAndNear[idx] = to_float4(rayPos, 0.0f);
-  rayDirAndFar[idx]  = to_float4(rayDir, MAXFLOAT);
+  rayPosAndNear[tid] = to_float4(rayPos, 0.0f);
+  rayDirAndFar[tid]  = to_float4(rayDir, MAXFLOAT);
 
 }
 
@@ -664,13 +664,13 @@ __kernel void kernel_InitEyeRay2(
   if(tid >= kgen_iNumElementsX)
     return;
   const uint idx = kgen_iNumElementsZ + tid;
-  if((kgen_threadFlags[idx] & kgen_tFlagsMask) != 0)
+  if((kgen_threadFlags[tid] & kgen_tFlagsMask) != 0)
     return;
   const float3 camPos = ubo->camPos;
   ///////////////////////////////////////////////////////////////// prolog
   
-  accumColor[idx]        = make_float4(0,0,0,0);
-  accumuThoroughput[idx] = make_float4(1,1,1,0);
+  accumColor[tid]        = make_float4(0,0,0,0);
+  accumuThoroughput[tid] = make_float4(1,1,1,0);
 
   const uint XY = packedXY[idx];
 
@@ -680,9 +680,8 @@ __kernel void kernel_InitEyeRay2(
   const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, ubo->m_worldViewProjInv); 
   const float3 rayPos = camPos;
   
-  rayPosAndNear[idx] = to_float4(rayPos, 0.0f);
-  rayDirAndFar[idx]  = to_float4(rayDir, MAXFLOAT);
-
+  rayPosAndNear[tid] = to_float4(rayPos, 0.0f);
+  rayDirAndFar[tid]  = to_float4(rayDir, MAXFLOAT);
 }
 
 
@@ -708,15 +707,15 @@ __kernel void kernel_RayTrace(
   const uint tid = get_global_id(0); 
   if(tid >= kgen_iNumElementsX)
     return;
-  const uint idx = kgen_iNumElementsZ + tid;
-  if((kgen_threadFlags[idx] & kgen_tFlagsMask) != 0)
+
+  if((kgen_threadFlags[tid] & kgen_tFlagsMask) != 0)
     return;
   const float4 m_lightSphere = ubo->m_lightSphere;
   bool kgenExitCond = false;
   ///////////////////////////////////////////////////////////////// prolog
   
-  const float4 rayPos = rayPosAndNear[idx];
-  const float4 rayDir = rayDirAndFar[idx] ;
+  const float4 rayPos = rayPosAndNear[tid];
+  const float4 rayDir = rayDirAndFar[tid] ;
 
   const float3 rayDirInv = SafeInverse_4to3(rayDir);
 
@@ -738,18 +737,18 @@ __kernel void kernel_RayTrace(
     if(intersects && currNode.leftOffset == 0xFFFFFFFF) //leaf
     {
       struct Interval startCount = m_intervals[nodeIdx];
-      IntersectAllPrimitivesInLeaf(rayPos, rayDir, m_indicesReordered, startCount.start*3, startCount.count*3, m_vPos4f, 
+      IntersectAllPrimitivesInLeaf(rayPos, rayDir, m_indicesReordered, startCount.start*3, startCount.count*3, m_vPos4f,
                                    &res, &baricentrics);
     }
 
     nodeIdx = (currNode.leftOffset == 0xFFFFFFFF || !intersects) ? currNode.escapeIndex : currNode.leftOffset;
     nodeIdx = (nodeIdx == 0) ? 0xFFFFFFFE : nodeIdx;
   }
-  
+
   // intersect light under roof
   {
     const float2 tNearFar = RaySphereHit(to_float3(rayPos), to_float3(rayDir), m_lightSphere);
-  
+
     if(tNearFar.x < tNearFar.y && tNearFar.x > 0.0f && tNearFar.x < res.t)
     {
       res.primId = 0;
@@ -760,16 +759,16 @@ __kernel void kernel_RayTrace(
     else
       res.geomId = HIT_TRIANGLE_GEOM;
   }
-  
-  out_hit[idx]  = res;
-  out_bars[idx] = baricentrics;
+
+  out_hit[tid]  = res;
+  out_bars[tid] = baricentrics;
   kgenExitCond = (res.primId != -1); goto KGEN_EPILOG;
 
   KGEN_EPILOG:
   {
     const bool exitHappened = (kgen_tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0 ? !kgenExitCond : kgenExitCond;
     if((kgen_tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)
-      kgen_threadFlags[idx] = ((kgen_tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
+      kgen_threadFlags[tid] = ((kgen_tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
   };
 }
 
@@ -790,27 +789,27 @@ __kernel void kernel_MakeMaterial(
 {
   ///////////////////////////////////////////////////////////////// prolog
   const uint tid = get_global_id(0);
-  const uint idx = kgen_iNumElementsZ + tid;
+
   uint kgen_objPtr = 0;
   const uint32_t m_emissiveMaterialId = ubo->m_emissiveMaterialId;
   ///////////////////////////////////////////////////////////////// prolog
   
   uint32_t objPtr = 0;  
  
-  if(in_hit[idx].geomId == HIT_LIGHT_GEOM)
+  if(in_hit[tid].geomId == HIT_LIGHT_GEOM)
   {
     objPtr = m_materialOffsets[m_emissiveMaterialId];
   }
-  else if(in_hit[idx].primId != -1)
+  else if(in_hit[tid].primId != -1)
   {
-    const uint32_t mtId = m_materialIds[in_hit[idx].primId]+1; // +1 due to empty object
+    const uint32_t mtId = m_materialIds[in_hit[tid].primId]+1; // +1 due to empty object
     objPtr = m_materialOffsets[mtId];
   }
 
   { kgen_objPtr = objPtr; };
 
   //KGEN_EPILOG:
-  kgen_objPtrData[idx] = make_uint2(kgen_objPtr, idx); // put old threadId instead of zero
+  kgen_objPtrData[tid] = make_uint2(kgen_objPtr, tid); // put old threadId instead of zero
 }
 
 
@@ -853,7 +852,7 @@ __kernel void kernel_ContributeToImage(
   if(tid >= kgen_iNumElementsX)
     return;
   const uint idx = kgen_iNumElementsZ + tid;
-  if((kgen_threadFlags[idx] & kgen_tFlagsMask) != 0)
+  if((kgen_threadFlags[tid] & kgen_tFlagsMask) != 0)
     return;
   ///////////////////////////////////////////////////////////////// prolog
   
@@ -861,7 +860,7 @@ __kernel void kernel_ContributeToImage(
   const uint x  = (XY & 0x0000FFFF);
   const uint y  = (XY & 0xFFFF0000) >> 16;
  
-  out_color[y*WIN_WIDTH+x] += a_accumColor[idx];
+  out_color[y*WIN_WIDTH+x] += a_accumColor[tid];
 
 }
 

@@ -92,17 +92,15 @@ void main()
   if(tid >= kgen.iNumElementsX)
     return;
 
-  const uint idx = kgen.iNumElementsZ + tid;
-
-  if((threadFlags[idx] & kgen.tFlagsMask) != 0)
+  if((threadFlags[tid] & kgen.tFlagsMask) != 0)
     return;
 
   //const float4 m_lightSphere = ubo->m_lightSphere;
   ///////////////////////////////////////////////////////////////// prolog
 
   
-  const vec4 rayPos = rayPosAndNear[idx];
-  const vec4 rayDir = rayDirAndFar[idx] ;
+  const vec4 rayPos = rayPosAndNear[tid];
+  const vec4 rayDir = rayDirAndFar[tid] ;
 
   Lite_Hit res;
   res.primId = -1;
@@ -126,7 +124,7 @@ void main()
     vec3 barycentricCoords = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, true));
     barycentricCoords.x = 1.0 - barycentricCoords.y - barycentricCoords.z;
 
-    out_bars[idx] = barycentricCoords.zy;
+    out_bars[tid] = barycentricCoords.zy;
   }
 
   // intersect light under roof
@@ -144,13 +142,13 @@ void main()
       res.geomId = HIT_TRIANGLE_GEOM;
   }
 
-  out_hit[idx] = res;
+  out_hit[tid] = res;
 
   bool kgenExitCond = (res.primId != -1); 
   {
     const bool exitHappened = (kgen.tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0 ? !kgenExitCond : kgenExitCond;
     if((kgen.tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)
-      threadFlags[idx] = ((kgen.tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
+      threadFlags[tid] = ((kgen.tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
   };
 
 }
