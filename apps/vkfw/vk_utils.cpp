@@ -291,6 +291,31 @@ uint32_t vk_utils::GetQueueFamilyIndex(VkPhysicalDevice a_physicalDevice, int a_
   return i;
 }
 
+uint32_t vk_utils::GetDifferentQueueFamilyIndex(VkPhysicalDevice a_physicalDevice, int a_bits, uint32_t oldIdx)
+{
+  uint32_t queueFamilyCount;
+
+  vkGetPhysicalDeviceQueueFamilyProperties(a_physicalDevice, &queueFamilyCount, NULL);
+
+  // Retrieve all queue families.
+  std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+  vkGetPhysicalDeviceQueueFamilyProperties(a_physicalDevice, &queueFamilyCount, queueFamilies.data());
+
+  // Now find a family that supports compute.
+  uint32_t i = 0;
+  for (; i < queueFamilies.size(); ++i)
+  {
+    VkQueueFamilyProperties props = queueFamilies[i];
+
+    if (props.queueCount > 0 && (props.queueFlags & a_bits) && i != oldIdx)  // found a queue with compute. We're done!
+      break;
+  }
+
+  if (i == queueFamilies.size())
+    RUN_TIME_ERROR(" vk_utils::GetComputeQueueFamilyIndex: could not find a queue family that supports operations");
+
+  return i;
+}
 
 VkDevice vk_utils::CreateLogicalDevice(VkPhysicalDevice physicalDevice, const std::vector<const char *>& a_enabledLayers,
         std::vector<const char *> a_extensions, VkPhysicalDeviceFeatures a_deviceFeatures, queueFamilyIndices &a_queueIDXs,
@@ -391,7 +416,6 @@ VkDevice vk_utils::CreateLogicalDevice2(VkPhysicalDevice physicalDevice, const s
   // Graphics queue
   if (requestedQueueTypes & VK_QUEUE_GRAPHICS_BIT)
   {
-    a_queueIDXs.graphics = GetQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT);
     VkDeviceQueueCreateInfo queueInfo{};
     queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     queueInfo.queueFamilyIndex = a_queueIDXs.graphics;
@@ -407,7 +431,6 @@ VkDevice vk_utils::CreateLogicalDevice2(VkPhysicalDevice physicalDevice, const s
   // Dedicated compute queue
   if (requestedQueueTypes & VK_QUEUE_COMPUTE_BIT)
   {
-    a_queueIDXs.compute = GetQueueFamilyIndex(physicalDevice, VK_QUEUE_COMPUTE_BIT);
     if (a_queueIDXs.compute != a_queueIDXs.graphics || queueCreateInfos.size() == 0)
     {
       VkDeviceQueueCreateInfo queueInfo{};
@@ -426,7 +449,7 @@ VkDevice vk_utils::CreateLogicalDevice2(VkPhysicalDevice physicalDevice, const s
   // Dedicated transfer queue
   if (requestedQueueTypes & VK_QUEUE_TRANSFER_BIT)
   {
-    a_queueIDXs.transfer = GetQueueFamilyIndex(physicalDevice, VK_QUEUE_COMPUTE_BIT);
+//    a_queueIDXs.transfer = GetQueueFamilyIndex(physicalDevice, VK_QUEUE_COMPUTE_BIT);
     if ((a_queueIDXs.transfer != a_queueIDXs.graphics) && (a_queueIDXs.transfer != a_queueIDXs.compute) || queueCreateInfos.size() == 0)
     {
       VkDeviceQueueCreateInfo queueInfo{};
@@ -562,6 +585,20 @@ VkCommandPool vk_utils::CreateCommandPool(VkDevice a_device, VkPhysicalDevice a_
   poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
   poolInfo.flags            = a_poolFlags;
   poolInfo.queueFamilyIndex = vk_utils::GetQueueFamilyIndex(a_physDevice, a_queueFlags);
+
+  VkCommandPool commandPool;
+  if (vkCreateCommandPool(a_device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
+    throw std::runtime_error("[CreateCommandPool]: failed to create command pool!");
+
+  return commandPool;
+}
+
+VkCommandPool vk_utils::CreateCommandPool2(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t queueFID, VkCommandPoolCreateFlagBits a_poolFlags)
+{
+  VkCommandPoolCreateInfo poolInfo = {};
+  poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+  poolInfo.flags            = a_poolFlags;
+  poolInfo.queueFamilyIndex = queueFID;
 
   VkCommandPool commandPool;
   if (vkCreateCommandPool(a_device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)

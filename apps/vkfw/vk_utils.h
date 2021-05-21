@@ -53,6 +53,7 @@ namespace vk_utils
   VkPhysicalDevice FindPhysicalDevice(VkInstance a_instance, bool a_printInfo, int a_preferredDeviceId, std::vector<const char *> a_deviceExt = {});
 
   uint32_t GetQueueFamilyIndex(VkPhysicalDevice a_physicalDevice, int a_bits);
+  uint32_t GetDifferentQueueFamilyIndex(VkPhysicalDevice a_physicalDevice, int a_bits, uint32_t oldIdx);
   uint32_t GetComputeQueueFamilyIndex(VkPhysicalDevice a_physicalDevice);
   VkDevice CreateLogicalDevice(VkPhysicalDevice physicalDevice, const std::vector<const char *>& a_enabledLayers,
                                std::vector<const char *> a_extensions, VkPhysicalDeviceFeatures a_deviceFeatures,
@@ -115,8 +116,8 @@ namespace vk_utils
   /**
   \brief TBD
   */
-  VkCommandPool                CreateCommandPool(VkDevice a_device, VkPhysicalDevice a_physDevice, VkQueueFlagBits a_queueFlags, VkCommandPoolCreateFlagBits a_poolFlags);
-  
+  VkCommandPool CreateCommandPool(VkDevice a_device, VkPhysicalDevice a_physDevice, VkQueueFlagBits a_queueFlags, VkCommandPoolCreateFlagBits a_poolFlags);
+  VkCommandPool CreateCommandPool2(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t queueFID, VkCommandPoolCreateFlagBits a_poolFlags);
   /**
   \brief TBD
   */
