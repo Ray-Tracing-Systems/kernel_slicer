@@ -1,5 +1,4 @@
 # kernel_slicer: CPU to GPU (Vulkan) translator
-[![Codacy Security Scan](https://github.com/Ray-Tracing-Systems/kernel_slicer/actions/workflows/codacy-analysis.yml/badge.svg?branch=master)](https://github.com/Ray-Tracing-Systems/kernel_slicer/actions/workflows/codacy-analysis.yml)
 
 <p align = "center"><img src="images/logo.png" width = "600"></p>
 <p align = "center">Fig. 1. Our translator has many heads due to many existing programming patterns.</p><BR>
