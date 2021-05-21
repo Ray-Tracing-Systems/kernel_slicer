@@ -285,6 +285,10 @@ void kslicer::FunctionRewriter::MarkRewritten(const clang::Stmt* expr) { kslicer
 
 bool kslicer::FunctionRewriter::WasNotRewrittenYet(const clang::Stmt* expr)
 {
-  auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+  if(expr == nullptr)
+    return true;
+  if(clang::isa<clang::NullStmt>(expr))
+    return true;
+  const auto exprHash  = kslicer::GetHashOfSourceRange(expr->getSourceRange());
   return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
 }

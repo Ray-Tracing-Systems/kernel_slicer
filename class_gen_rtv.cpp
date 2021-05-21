@@ -503,6 +503,8 @@ private:
 
   std::string RecursiveRewrite(const clang::Stmt* expr) override
   {
+    if(expr == nullptr)
+      return "";
     MemberRewriter rvCopy = *this;
     rvCopy.isCopy = true;
     rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));

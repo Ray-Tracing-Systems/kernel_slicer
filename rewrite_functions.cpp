@@ -112,6 +112,8 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
 
 std::string kslicer::FunctionRewriter::RecursiveRewrite(const Stmt* expr)
 {
+  if(expr == nullptr)
+    return "";
   FunctionRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
   return m_rewriter.getRewrittenText(expr->getSourceRange());

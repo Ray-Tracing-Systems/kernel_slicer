@@ -149,12 +149,13 @@ public:
 protected:
   
   bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl) override;
-  bool VisitCallExpr_Impl(clang::CallExpr* f) override;
+  bool VisitCallExpr_Impl(clang::CallExpr* f)             override;
+  bool VisitVarDecl_Impl(clang::VarDecl* decl)            override;
 
   std::unordered_map<std::string, std::string> m_vecReplacements;
   std::unordered_map<std::string, std::string> m_funReplacements;
 
-
+  bool        NeedsVectorTypeRewrite(const std::string& a_str);
   std::string RewriteVectorTypeStr(const std::string& a_str);
   std::string RewriteFuncDecl(clang::FunctionDecl* fDecl);
 
@@ -164,6 +165,8 @@ protected:
 
 std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
+  if(expr == nullptr)
+    return "";
   GLSLFunctionRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
   return m_rewriter.getRewrittenText(expr->getSourceRange());
@@ -171,16 +174,41 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
 
 std::string GLSLFunctionRewriter::RewriteVectorTypeStr(const std::string& a_str)
 {
+  const bool isConst = (a_str.find("const ") != std::string::npos);
+  std::string resStr;
   std::string typeStr = a_str;
   ReplaceFirst(typeStr, "LiteMath::", "");
   ReplaceFirst(typeStr, "glm::",      "");
   ReplaceFirst(typeStr, "struct ",    "");
+  ReplaceFirst(typeStr, "const ",    "");
   
   auto p = m_vecReplacements.find(typeStr);
   if(p == m_vecReplacements.end())
-    return typeStr;
-  
-  return p->second;
+    resStr = typeStr;
+  else
+    resStr = p->second;
+
+  if(isConst)
+    resStr = std::string("const ") + resStr;
+
+  return resStr;
+}
+
+bool GLSLFunctionRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // TODO: make this implementation more smart, bad implementation actually!
+{
+  if(a_str.find("glm::") != std::string::npos)
+    return true;
+  std::string name2 = std::string("LiteMath::") + a_str;
+  bool need = false;
+  for(auto p = m_vecReplacements.begin(); p != m_vecReplacements.end(); ++p)
+  {
+    if(name2.find(p->first) != std::string::npos)
+    {
+      need = true;
+      break;
+    }
+  }
+  return need;
 }
 
 std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
@@ -274,6 +302,31 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   }
 
   return true; 
+}
+
+bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl) 
+{
+  if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
+    return true;
+
+  const auto qt     = decl->getType();
+  const auto pValue = decl->getAnyInitializer();
+      
+  //const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
+  const std::string varType   = qt.getAsString();
+  if(NeedsVectorTypeRewrite(varType) && WasNotRewrittenYet(pValue))
+  {
+    const std::string varType2 = RewriteVectorTypeStr(varType);
+    const std::string varName  = decl->getNameAsString();
+    const std::string varValue = RecursiveRewrite(pValue);
+    
+    if(varValue == "")
+      m_rewriter.ReplaceText(decl->getSourceRange(), varType2 + " " + varName);
+    else
+      m_rewriter.ReplaceText(decl->getSourceRange(), varType2 + " " + varName + " = " + varValue);
+    MarkRewritten(pValue);
+  }
+  return true;
 }
 
 
