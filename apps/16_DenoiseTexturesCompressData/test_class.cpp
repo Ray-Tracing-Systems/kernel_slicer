@@ -357,5 +357,4 @@ void Denoise_cpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
                     (const float4*)a_inDepth, a_windowRadius, a_blockRadius, a_noiseLevel);
   
   SaveBMP(a_outName, ldrData.data(), w, h);
-  return;
 }
