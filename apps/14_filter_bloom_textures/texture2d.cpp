@@ -20,7 +20,7 @@ template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_u
   switch (a_sampler.m_filter)
   {
   case Sampler::Filter::MIN_MAG_MIP_POINT:
-    return read_pixel(pitch(baseTexel.x, baseTexel.y, stride));
+    return m_data[pitch(baseTexel.x, baseTexel.y, stride)];
   case Sampler::Filter::MIN_MAG_LINEAR_MIP_POINT:
   {
     const int2 cornerTexel  = make_int2(baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
@@ -65,7 +65,7 @@ template<> float4 Texture2D<uchar4>::sample(const Sampler& a_sampler, float2 a_u
   switch (a_sampler.m_filter)
   {
   case Sampler::Filter::MIN_MAG_MIP_POINT:
-    return (float4)read_pixel(pitch(baseTexel.x, baseTexel.y, stride)) / 255.0F;
+    return (float4)(m_data[pitch(baseTexel.x, baseTexel.y, stride)]) / 255.0F;
   case Sampler::Filter::MIN_MAG_LINEAR_MIP_POINT:
   {
     const int2 cornerTexel  = make_int2(baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,

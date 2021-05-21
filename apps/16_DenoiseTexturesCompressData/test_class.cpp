@@ -1,5 +1,5 @@
 #include "test_class.h"
-#include "Bitmap.h"
+#include "../14_filter_bloom_textures/Bitmap.h"
 #include <cassert>
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -11,6 +11,17 @@ static inline int Clampi(const int x, const int a, const int b)
   if      (x < a) return a;
   else if (x > b) return b;
   else            return x;
+}
+
+struct PixelLdr { unsigned char r, g, b; };
+
+PixelLdr DecodeRGBToPixelUchar(const int32_t& pxData)
+{
+  PixelLdr pix;
+  pix.r = (pxData & 0x000000FF);
+  pix.g = (pxData & 0x0000FF00) >> 8;
+  pix.b = (pxData & 0x00FF0000) >> 16;
+  return pix;
 }
 
 static void SimpleCompressColor(float4* color)
@@ -74,8 +85,6 @@ static inline float NLMWeight(const Sampler& a_sampler, __global const Texture2D
       const int x3      = Clampi(x + offsX, 0, w - 1);
       const int y3      = Clampi(y + offsY, 0, h - 1);
   
-      // const float4 c2   = in_buff[y2 * w + x2];
-      // const float4 c3   = in_buff[y3 * w + x3];
       const float2 uv2  = get_uv(x2, y2, w, h);
       const float2 uv3  = get_uv(x3, y3, w, h);
       const float4 c2   = a_texture.sample(a_sampler, uv2);
@@ -109,8 +118,6 @@ static inline float NLMWeightUchar4(const Sampler& a_sampler, __global const Tex
       const int x3      = Clampi(x + offsX, 0, w - 1);
       const int y3      = Clampi(y + offsY, 0, h - 1);
   
-      // const float4 c2   = in_buff[y2 * w + x2];
-      // const float4 c3   = in_buff[y3 * w + x3];
       const float2 uv2  = get_uv(x2, y2, w, h);
       const float2 uv3  = get_uv(x3, y3, w, h);
       const float4 c2   = a_texture.sample(a_sampler, uv2);
@@ -167,44 +174,44 @@ void Denoise::kernel1D_PrepareData(const int32_t* a_inTexColor, const int32_t* a
                                    const float4* a_inImage, Texture2D<float4>& a_texture)
 {
 #pragma omp parallel for
-  for (size_t i = 0; i < m_sizeImg; ++i)  
+  for (size_t y = 0; y < m_height; ++y)    
   { 
-    // beauty pass
+    for (size_t x = 0; x < m_width; ++x)    
+    {
+      const uint2 posPix(x, y);
+      const uint linearPosPix = y * m_width + x;
 
-    a_texture.write_pixel(i, a_inImage[i]);
+      // beauty pass
 
-    // color/albedo pass
+      a_texture[posPix] = a_inImage[linearPosPix];
 
-    int pxData = a_inTexColor[i];
-    int r      = (pxData & 0x00FF0000) >> 16;
-    int g      = (pxData & 0x0000FF00) >> 8;
-    int b      = (pxData & 0x000000FF);
-
-    uchar4 color;    
-    color.x    = Clampi((int)(pow((float)r / 255.0F, m_gamma) * 255.0F), 0, 255);
-    color.y    = Clampi((int)(pow((float)g / 255.0F, m_gamma) * 255.0F), 0, 255);
-    color.z    = Clampi((int)(pow((float)b / 255.0F, m_gamma) * 255.0F), 0, 255);
-    color.w    = 0;
-
-    m_texColor.write_pixel(i, color);
-    
-    // normal pass
-
-    float3 normal;
-    pxData     = a_inNormal[i];
-    r          = (pxData & 0x00FF0000) >> 16;
-    g          = (pxData & 0x0000FF00) >> 8;
-    b          = (pxData & 0x000000FF);
-    
-    normal.x   = clamp(pow((float)r / 255.0F, m_gamma), -1.0F, 1.0F);
-    normal.y   = clamp(pow((float)g / 255.0F, m_gamma), -1.0F, 1.0F);
-    normal.z   = clamp(pow((float)b / 255.0F, m_gamma), -1.0F, 1.0F);
+      // color/albedo pass
       
-    m_normal.write_pixel(i, encodeNormal(normal));    
+      PixelLdr ldrColor = DecodeRGBToPixelUchar(a_inTexColor[linearPosPix]);
 
-    // depth pass
+      uchar4 color;    
+      color.x    = Clampi((int)(pow((float)ldrColor.r / 255.0F, m_gamma) * 255.0F), 0, 255);
+      color.y    = Clampi((int)(pow((float)ldrColor.g / 255.0F, m_gamma) * 255.0F), 0, 255);
+      color.z    = Clampi((int)(pow((float)ldrColor.b / 255.0F, m_gamma) * 255.0F), 0, 255);
+      color.w    = 0;
 
-    m_depth.write_pixel(i, (ushort)(clamp(a_inDepth[i].x, 0.0F, 1.0F) * (float)(std::numeric_limits<ushort>::max())));
+      m_texColor[posPix] = color;
+      
+      // normal pass
+      
+      ldrColor   = DecodeRGBToPixelUchar(a_inNormal[linearPosPix]);
+
+      float3 normal;
+      normal.x   = (float)ldrColor.r / 255.0F * 2.0F - 1.0F;
+      normal.y   = (float)ldrColor.g / 255.0F * 2.0F - 1.0F;
+      normal.z   = (float)ldrColor.b / 255.0F * 2.0F - 1.0F;
+        
+      m_normal[posPix] = encodeNormal(normal);    
+
+      // depth pass
+
+      m_depth[posPix] = (ushort)(clamp(a_inDepth[linearPosPix].x, 0.0F, 1.0F) * (float)(std::numeric_limits<ushort>::max()));
+    }
   }
 }
 
@@ -229,13 +236,12 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
       const int minY        = Clampi(y - a_windowRadius, 0, a_height - 1);
       const int maxY        = Clampi(y + a_windowRadius, 0, a_height - 1);
       
-      //const float4 c0       = a_inImage  [y * a_width + x];
-      //const float4 n0       = m_normDepth[y * a_width + x];
       const float2 uv0      = get_uv(x, y, a_width, a_height);
-      const float4 c0       = a_texture.sample(a_sampler, uv0);  
-      const uint   posPixel = pitch(x, y, a_width);    
-      const float3 normal   = decodeNormal(m_normal.read_pixel(posPixel));
-      const float  depth    = m_depth.read_pixel(posPixel) / (float)(std::numeric_limits<ushort>::max());      
+      const float4 c0       = a_texture.sample(a_sampler, uv0);        
+
+      const float3 normal   = decodeNormal(m_normal[uint2(x ,y)]);
+      const float  depth    = m_depth[uint2(x ,y)] / (float)(std::numeric_limits<ushort>::max());
+
       const float4 n0       = make_float4(normal.x, normal.y, normal.z, depth);
       //const float4 t0       = in_texc[y*w + x];
 
@@ -252,14 +258,12 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
       {
         for (int x1 = minX; x1 <= maxX; ++x1)
         {
-          //const float4 c1     = a_inImage  [y1 * a_width + x1];
-          //const float4 n1     = m_normDepth[y1 * a_width + x1];
           const float2 uv1      = get_uv(x1, y1, a_width, a_height);
           const float4 c1       = a_texture.sample(a_sampler, uv1);
-          //const float4 n1     = m_normDepth.sample(a_sampler, uv1);
-          const uint   posPixel = pitch(x1, y1, a_width);
-          const float3 normal   = decodeNormal(m_normal.read_pixel(posPixel));
-          const float  depth    = m_depth.read_pixel(posPixel) / (float)(std::numeric_limits<ushort>::max());
+
+          const float3 normal   = decodeNormal(m_normal[uint2(x1 ,y1)]);
+          const float  depth    = m_depth[uint2(x1 ,y1)] / (float)(std::numeric_limits<ushort>::max());
+
           const float4 n1       = make_float4(normal.x, normal.y, normal.z, depth);
 
           //const float4 t1 = in_texc[y1*w + x1];

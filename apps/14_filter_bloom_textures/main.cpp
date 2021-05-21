@@ -6,7 +6,7 @@
 
 
 void tone_mapping_cpu(int w, int h, const float* a_hdrData, const char* a_outName);
-void tone_mapping_gpu(int w, int h, const float* a_hdrData, const char* a_outName);
+//void tone_mapping_gpu(int w, int h, const float* a_hdrData, const char* a_outName);
 
 bool LoadHDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<float>& a_data); // defined in imageutils.cpp
 

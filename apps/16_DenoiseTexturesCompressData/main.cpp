@@ -15,6 +15,7 @@ void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
 bool LoadHDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<float>& a_data);   // defined in imageutils.cpp
 bool LoadLDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<int32_t>& a_data); // defined in imageutils.cpp
 
+void SaveBMP(const char* fname, const unsigned int* pixels, int w, int h);
 
 
 int main(int argc, const char** argv)
@@ -87,6 +88,7 @@ int main(int argc, const char** argv)
 
   Denoise_cpu(w, h, hdrData.data(), texColor.data(), normal.data(), depth.data(), windowRadius, blockRadius, noiseLevel, "zout_cpu.bmp");
   //Denoise_gpu(w, h, hdrData.data(), texColor.data(), normal.data(), depth.data(), windowRadius, blockRadius, noiseLevel, "zout_gpu.bmp");  
-              
+
+
   return 0;
 }

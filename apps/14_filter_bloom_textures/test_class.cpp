@@ -142,17 +142,18 @@ void ToneMapping::kernel2D_ExtractBrightPixels(const int a_width, const int a_he
   for(int y = 0; y < a_height; y++)
   {
     for(int x = 0; x < a_width; x++)
-    {      
-      //float4 pixel         = inData4f[pitch(x, y, a_width)];
-      const uint   pos_pixel = pitch(x, y, a_width);
-      float4       color     = a_inData4f[pos_pixel];
+    {       
+      const uint  linearCoord = pitch(x, y, a_width);
+      const uint2 coord(x, y);
 
-      a_texture2d.write_pixel(pos_pixel, color);
+      float4 color            = a_inData4f[linearCoord];
+
+      a_texture2d[coord]      = color;
       
       if(color.x < 1.0f || color.y < 1.0f || color.z < 1.0f)
         color = make_float4(0.0f, 0.0f, 0.0f, 0.0f);      
         
-      a_brightPixels.write_pixel(pos_pixel, color);
+      a_brightPixels[coord] = color;
     }
   }
 }
@@ -178,7 +179,8 @@ void ToneMapping::kernel2D_DownSample4x(const int a_width, const int a_height, c
         }
       }
 
-      a_dataSmallRes.write_pixel(pitch(i, j, a_width), average*(1.0f/16.0f));      
+      const uint2 coord(i, j);
+      a_dataSmallRes[coord] = average * (1.0f/16.0f);      
     }
   }
 }
@@ -215,7 +217,8 @@ void ToneMapping::kernel2D_BlurX(const int a_width, const int a_height, const Sa
       }
     
       //a_dataOut[pitch(tidX, tidY, a_width)] = summ;
-      a_dataOut.write_pixel(pitch(tidX, tidY, a_width), summ);
+      const uint2 coord(tidX, tidY);
+      a_dataOut[coord] = summ;
     }
   }
 }
@@ -252,7 +255,8 @@ void ToneMapping::kernel2D_BlurY(const int a_width, const int a_height, const Sa
       }
     
       //a_dataOut[pitch(tidX, tidY, a_width)] = summ;
-      a_dataOut.write_pixel(pitch(tidX, tidY, a_width), summ);
+      const uint2 coord(tidX, tidY);
+      a_dataOut[coord] = summ;
     }
   }
 }

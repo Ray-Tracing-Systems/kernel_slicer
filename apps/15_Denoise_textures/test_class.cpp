@@ -1,5 +1,5 @@
 #include "test_class.h"
-#include "Bitmap.h"
+#include "../14_filter_bloom_textures/Bitmap.h"
 #include <cassert>
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -11,6 +11,18 @@ static inline int Clampi(const int x, const int a, const int b)
   if      (x < a) return a;
   else if (x > b) return b;
   else            return x;
+}
+
+struct PixelLdr { unsigned char r, g, b; };
+
+PixelLdr DecodeIntToInt3(const int32_t& pxData)
+{
+  PixelLdr pix;
+  pix.r = (pxData & 0x000000FF);
+  pix.g = (pxData & 0x0000FF00) >> 8;
+  pix.b = (pxData & 0x00FF0000) >> 16;
+    
+  return pix;
 }
 
 static void SimpleCompressColor(float4* color)
@@ -74,8 +86,6 @@ static inline float NLMWeight(const Sampler& a_sampler, __global const Texture2D
       const int x3      = Clampi(x + offsX, 0, w - 1);
       const int y3      = Clampi(y + offsY, 0, h - 1);
   
-      // const float4 c2   = in_buff[y2 * w + x2];
-      // const float4 c3   = in_buff[y3 * w + x3];
       const float2 uv2  = get_uv(x2, y2, w, h);
       const float2 uv3  = get_uv(x3, y3, w, h);
       const float4 c2   = a_texture.sample(a_sampler, uv2);
@@ -130,34 +140,40 @@ void Denoise::kernel1D_PrepareData(const int32_t* a_inTexColor, const int32_t* a
                                    const float4* a_inImage, Texture2D<float4>& a_texture)
 {
 #pragma omp parallel for
-  for (size_t i = 0; i < m_sizeImg; ++i)  
+  for (size_t y = 0; y < m_height; ++y)  
   { 
-    a_texture.write_pixel(i, a_inImage[i]);
+    for (size_t x = 0; x < m_width; ++x)
+    {      
+      const uint2 coord(x, y);
+      const uint linearCoord = pitch(x, y, m_width);
 
-    int pxData      = a_inTexColor[i];
-    int r           = (pxData & 0x00FF0000) >> 16;
-    int g           = (pxData & 0x0000FF00) >> 8;
-    int b           = (pxData & 0x000000FF);
+      // beauty pass
 
-    float4 color;    
-    color.x = pow((float)r / 255.0F, m_gamma);
-    color.y = pow((float)g / 255.0F, m_gamma);
-    color.z = pow((float)b / 255.0F, m_gamma);
-    color.w = 0.0F;
+      a_texture[coord] = a_inImage[linearCoord];
 
-    m_texColor.write_pixel(i, color);
+      // color/albedo pass
+
+      PixelLdr ldrColor = DecodeIntToInt3(a_inTexColor[linearCoord]);
+
+      float4 color;    
+      color.x = pow((float)ldrColor.r / 255.0F, m_gamma);
+      color.y = pow((float)ldrColor.g / 255.0F, m_gamma);
+      color.z = pow((float)ldrColor.b / 255.0F, m_gamma);
+      color.w = 0.0F;
+
+      m_texColor[coord] = color;
+
+      // Normal and depth pass    
+      
+      ldrColor = DecodeIntToInt3(a_inNormal[linearCoord]);
+
+      color.x = pow((float)ldrColor.r / 255.0F, m_gamma) * 2.0F - 1.0F;
+      color.y = pow((float)ldrColor.g / 255.0F, m_gamma) * 2.0F - 1.0F;
+      color.z = pow((float)ldrColor.b / 255.0F, m_gamma) * 2.0F - 1.0F;
+      color.w = a_inDepth[linearCoord].x;      
     
-    pxData          = a_inNormal[i];
-    r               = (pxData & 0x00FF0000) >> 16;
-    g               = (pxData & 0x0000FF00) >> 8;
-    b               = (pxData & 0x000000FF);
-    
-    color.x = pow((float)r / 255.0F, m_gamma);
-    color.y = pow((float)g / 255.0F, m_gamma);
-    color.z = pow((float)b / 255.0F, m_gamma);
-    color.w = a_inDepth[i].x;      
-  
-    m_normDepth.write_pixel(i, color);
+      m_normDepth[coord] = color;
+    }
   }
 }
 
@@ -182,8 +198,6 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
       const int minY      = Clampi(y - a_windowRadius, 0, a_height - 1);
       const int maxY      = Clampi(y + a_windowRadius, 0, a_height - 1);
 
-      //const float4 c0     = a_inImage  [y * a_width + x];
-      //const float4 n0     = m_normDepth[y * a_width + x];
       const float2 uv0     = get_uv(x, y, a_width, a_height);
       const float4 c0     = a_texture.sample(a_sampler, uv0);
       const float4 n0     = m_normDepth.sample(a_sampler, uv0);
@@ -202,8 +216,6 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
       {
         for (int x1 = minX; x1 <= maxX; ++x1)
         {
-          //const float4 c1   = a_inImage  [y1 * a_width + x1];
-          //const float4 n1   = m_normDepth[y1 * a_width + x1];
           const float2 uv1  = get_uv(x1, y1, a_width, a_height);
           const float4 c1   = a_texture.sample(a_sampler, uv1);
           const float4 n1   = m_normDepth.sample(a_sampler, uv1);
@@ -297,6 +309,5 @@ void Denoise_cpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
   filter.NLM_denoise(w, h, (const float4*)a_hdrData, sampler, texture, ldrData.data(), a_inTexColor, a_inNormal, 
                     (const float4*)a_inDepth, a_windowRadius, a_blockRadius, a_noiseLevel);
   
-  SaveBMP(a_outName, ldrData.data(), w, h);
-  return;
+  SaveBMP(a_outName, ldrData.data(), w, h);  
 }

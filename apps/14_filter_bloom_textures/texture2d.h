@@ -20,16 +20,20 @@ struct Texture2D
   }
   
   void   resize(unsigned int width, unsigned int height) { m_width = width; m_height = height; m_data.resize(width*height); }
-  float2 process_coord(const Sampler::AddressMode mode, const float2 coord, bool* use_border_color) const;   
   float4 sample(const Sampler& a_sampler, float2 a_uv) const;    
 
-  void   write_pixel(const uint posPixel, const Type color) { m_data[posPixel] = color; }
-  Type   read_pixel(const uint posPixel) const { return m_data[posPixel]; }
+  //void   write_pixel(const uint posPixel, const Type color) { m_data[posPixel] = color; }
+  //Type   read_pixel(const uint posPixel) const { return m_data[posPixel]; }
+  
+  Type&  operator[](const uint2 coord)       { return m_data[coord.y * m_width + coord.x]; }
+  Type   operator[](const uint2 coord) const { return m_data[coord.y * m_width + coord.x]; }
 
 protected:
+  float2 process_coord(const Sampler::AddressMode mode, const float2 coord, bool* use_border_color) const;   
+
   unsigned int m_width;
   unsigned int m_height;
-  std::vector<Type> m_data;
+  std::vector<Type> m_data;  
 };
 
 
