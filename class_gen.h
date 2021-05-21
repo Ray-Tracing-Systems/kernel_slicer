@@ -73,68 +73,6 @@ namespace kslicer
   };
 
   std::vector<InOutVarInfo> ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node);
-  void MarkRewrittenRecursive(const clang::Stmt* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes);
-  void MarkRewrittenRecursive(const clang::Decl* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes);
-
-  class KernelRewriter : public RecursiveASTVisitor<KernelRewriter> // replace all expressions with class variables to kgen_data buffer access
-  {
-  public:
-    
-    KernelRewriter(Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, 
-                  const std::string& a_fakeOffsetExpr, const bool a_infoPass) : 
-                   m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_mainClassName(a_codeInfo->mainClassName), 
-                   m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_kernelIsBoolTyped(a_kernel.isBoolTyped), m_kernelIsMaker(a_kernel.isMaker), m_currKernel(a_kernel), m_infoPass(a_infoPass)
-    { 
-      const auto& a_variables = a_codeInfo->dataMembers;
-      m_variables.reserve(a_variables.size());
-      for(const auto& var : a_variables) 
-        m_variables[var.name] = var;
-    }
-
-    bool VisitMemberExpr(MemberExpr* expr);
-    bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
-    bool VisitCallExpr(CallExpr* f);
-    bool VisitCXXConstructExpr(CXXConstructExpr* call);
-    bool VisitReturnStmt(ReturnStmt* ret);
-                                                                    // to detect reduction inside IPV programming template
-    bool VisitUnaryOperator(UnaryOperator* expr);                   // ++, --, (*var) =  ...
-    bool VisitCompoundAssignOperator(CompoundAssignOperator* expr); // +=, *=, -=; to detect reduction
-    bool VisitCXXOperatorCallExpr(CXXOperatorCallExpr* expr);       // +=, *=, -=; to detect reduction for custom data types (float3/float4 for example)
-    bool VisitBinaryOperator(BinaryOperator* expr);                 // m_var = f(m_var, expr)
-
-  private:
-
-    bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
-    void ProcessReductionOp(const std::string& op, const Expr* lhs, const Expr* rhs, const Expr* expr);
-
-    Rewriter&                                                m_rewriter;
-    const clang::CompilerInstance&                           m_compiler;
-    MainClassInfo*                                           m_codeInfo;
-    std::string                                              m_mainClassName;
-    std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
-    const std::vector<kslicer::KernelInfo::Arg>&             m_args;
-    const std::string&                                       m_fakeOffsetExp;
-    bool                                                     m_kernelIsBoolTyped;
-    bool                                                     m_kernelIsMaker;
-    kslicer::KernelInfo&                                     m_currKernel;
-    bool                                                     m_infoPass;
-    std::unordered_set<uint64_t>                             m_rewrittenNodes;
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    std::string FunctionCallRewrite(const CallExpr* call);
-    std::string FunctionCallRewrite(const CXXConstructExpr* call);
-    std::string RecursiveRewrite   (const Stmt* expr); // double/multiple pass rewrite purpose
-
-    inline bool WasNotRewrittenYet(const clang::Stmt* expr)
-    {
-      auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
-      return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
-    }
-
-    inline void MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
-  };
-  
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////  NodesMarker  //////////////////////////////////////////////////////////

@@ -12,9 +12,10 @@ layout(local_size_x = {{Kernel.WGSizeX}}, local_size_y = {{Kernel.WGSizeY}}, loc
 
 ## for Arg in Kernel.Args
 {% if not Arg.IsUBO %} 
-layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}} { {{Arg.Type}} {{Arg.Name}}[]; }; //
+layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}}   { {{Arg.Type}} {{Arg.Name}}[]; }; //
 {% endif %}
 ## endfor
+layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassName}}_UBO_Data ubo };
 
 layout( push_constant ) uniform kernelIntArgs
 {

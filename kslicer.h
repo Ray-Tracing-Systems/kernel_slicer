@@ -281,6 +281,8 @@ namespace kslicer
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   
   class MainClassInfo;
+  void MarkRewrittenRecursive(const clang::Stmt* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes);
+  void MarkRewrittenRecursive(const clang::Decl* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes);
 
   /**
   \brief process local functions (data["LocalFunctions"]), float3 --> make_float3, std::max --> fmax and e.t.c.
@@ -339,6 +341,56 @@ namespace kslicer
     virtual bool VisitCallExpr_Impl(clang::CallExpr* f);
   };
 
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////  KernelRewriter  //////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  class KernelRewriter : public clang::RecursiveASTVisitor<KernelRewriter> // replace all expressions with class variables to kgen_data buffer access
+  {
+  public:
+    
+    KernelRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr, const bool a_infoPass);
+    virtual ~KernelRewriter() {}
+
+    bool VisitMemberExpr(clang::MemberExpr* expr);
+    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f);
+    bool VisitCallExpr(clang::CallExpr* f);
+    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call);
+    bool VisitReturnStmt(clang::ReturnStmt* ret);
+                                                                           // to detect reduction inside IPV programming template
+    bool VisitUnaryOperator(clang::UnaryOperator* expr);                   // ++, --, (*var) =  ...
+    bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr); // +=, *=, -=; to detect reduction
+    bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr* expr);       // +=, *=, -=; to detect reduction for custom data types (float3/float4 for example)
+    bool VisitBinaryOperator(clang::BinaryOperator* expr);                 // m_var = f(m_var, expr)
+
+  private:
+
+    bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
+    void ProcessReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
+
+    clang::Rewriter&                                         m_rewriter;
+    const clang::CompilerInstance&                           m_compiler;
+    MainClassInfo*                                           m_codeInfo;
+    std::string                                              m_mainClassName;
+    std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
+    const std::vector<kslicer::KernelInfo::Arg>&             m_args;
+    const std::string&                                       m_fakeOffsetExp;
+    bool                                                     m_kernelIsBoolTyped;
+    bool                                                     m_kernelIsMaker;
+    kslicer::KernelInfo&                                     m_currKernel;
+    bool                                                     m_infoPass;
+    std::unordered_set<uint64_t>                             m_rewrittenNodes;
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    std::string FunctionCallRewrite(const clang::CallExpr* call);
+    std::string FunctionCallRewrite(const clang::CXXConstructExpr* call);
+    std::string RecursiveRewrite   (const clang::Stmt* expr); // double/multiple pass rewrite purpose
+
+    bool WasNotRewrittenYet(const clang::Stmt* expr);
+    void MarkRewritten(const clang::Stmt* expr);
+  };
+
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -367,6 +419,8 @@ namespace kslicer
     virtual void        GetThreadSizeNames(std::string a_strs[3]) const = 0;
 
     virtual std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) = 0;
+    virtual std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
+                                                                        kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass) = 0;
   };
 
   struct ClspvCompiler : IShaderCompiler
@@ -389,7 +443,9 @@ namespace kslicer
     void        GetThreadSizeNames(std::string a_strs[3])                                             const override;
     
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) override;
- 
+    std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
+                                                                kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass) override;
+
   private:
     std::string BuildCommand() const;
 
@@ -411,7 +467,9 @@ namespace kslicer
     void        GetThreadSizeNames(std::string a_strs[3])               const override;
 
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) override;
-  
+    std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
+                                                                kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass) override;
+
   private:
   };
 
