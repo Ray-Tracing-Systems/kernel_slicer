@@ -313,6 +313,7 @@ namespace kslicer
     bool VisitUnaryOperator(clang::UnaryOperator* op)        { return VisitUnaryOperator_Impl(op);    }
 
     const std::unordered_set<uint64_t>& GetProcessedNodes() const { return m_rewrittenNodes; }
+    void SetProcessedNodes(const std::unordered_set<uint64_t>& a_rhs) { m_rewrittenNodes = a_rhs; }
 
   protected:
 
@@ -354,6 +355,8 @@ namespace kslicer
     KernelRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr, const bool a_infoPass);
     virtual ~KernelRewriter() {}
     
+    bool VisitVarDecl(clang::VarDecl* decl)                    { return VisitVarDecl_Impl(decl);        }
+
     bool VisitMemberExpr(clang::MemberExpr* expr)              { return VisitMemberExpr_Impl(expr); }
     bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f)   { return VisitCXXMemberCallExpr_Impl(f); }
     bool VisitCallExpr(clang::CallExpr* f)                     { return VisitCallExpr_Impl(f); }
@@ -409,6 +412,8 @@ namespace kslicer
     virtual bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr); // +=, *=, -=; to detect reduction
     virtual bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr);       // +=, *=, -=; to detect reduction for custom data types (float3/float4 for example)
     virtual bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr);                 // m_var = f(m_var, expr)
+
+    virtual bool VisitVarDecl_Impl(clang::VarDecl* decl) { return true; } // override this in Derived class
   };
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

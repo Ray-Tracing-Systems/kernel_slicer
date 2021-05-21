@@ -352,8 +352,17 @@ public:
   }
 
   bool VisitCallExpr_Impl(clang::CallExpr* f) override;
+  bool VisitVarDecl_Impl(clang::VarDecl* decl) override;
 
 protected: 
+
+  void sync()
+  {
+    auto done = m_glslRW.GetProcessedNodes();
+    m_rewrittenNodes.insert(done.begin(), done.end()); // make sure they contain same data
+    m_glslRW.SetProcessedNodes(m_rewrittenNodes);      // make sure they contain same data
+  }
+
   GLSLFunctionRewriter m_glslRW;
 
 };
@@ -364,9 +373,18 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* f)
     return true; 
 
   m_glslRW.VisitCallExpr_Impl(f);
-  auto done = m_glslRW.GetProcessedNodes();
-  m_rewrittenNodes.insert(done.begin(), done.end());
-  //kslicer::KernelRewriter::VisitCallExpr_Impl(f);
+  sync();
+  //kslicer::KernelRewriter::VisitCallExpr_Impl(f); // TODO: move same logic to m_glslRW
+  return true;
+}
+
+bool GLSLKernelRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
+{
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return true; 
+
+  m_glslRW.VisitVarDecl_Impl(decl);
+  sync();
   return true;
 }
 
