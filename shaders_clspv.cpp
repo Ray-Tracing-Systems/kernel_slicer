@@ -2,17 +2,30 @@
 #include "template_rendering.h"
 #include <iostream>
 
+bool kslicer::IsVectorContructorNeedsReplacement(const std::string& a_typeName)
+{
+  static std::unordered_set<std::string> m_ctorReplacement;
+  static bool first = true;
+  if(first)
+  {
+    m_ctorReplacement.insert("float2");
+    m_ctorReplacement.insert("float3");
+    m_ctorReplacement.insert("float4");
+    m_ctorReplacement.insert("int2");
+    m_ctorReplacement.insert("int3");
+    m_ctorReplacement.insert("int4");
+    m_ctorReplacement.insert("uint2");
+    m_ctorReplacement.insert("uint3");
+    m_ctorReplacement.insert("uint4");
+    first = false;
+  }
+
+  return m_ctorReplacement.find(a_typeName) != m_ctorReplacement.end();
+}
+
 kslicer::ClspvCompiler::ClspvCompiler(bool a_useCPP) : m_useCpp(a_useCPP)
 {
-  m_ctorReplacement["float2"] = "make_float2";
-  m_ctorReplacement["float3"] = "make_float3";
-  m_ctorReplacement["float4"] = "make_float4";
-  m_ctorReplacement["int2"]   = "make_int2";
-  m_ctorReplacement["int3"]   = "make_int3";
-  m_ctorReplacement["int4"]   = "make_int4";
-  m_ctorReplacement["uint2"]  = "make_uint2";
-  m_ctorReplacement["uint3"]  = "make_uint3";
-  m_ctorReplacement["uint4"]  = "make_uint4";
+
 }
 
 
@@ -91,19 +104,6 @@ std::string kslicer::ClspvCompiler::ReplaceCallFromStdNamespace(const std::strin
   }
   ReplaceFirst(call, "std::", "");
   return call;
-}
-
-bool kslicer::ClspvCompiler::IsVectorTypeNeedsContructorReplacement(const std::string& a_typeName) const 
-{
-  return (m_ctorReplacement.find(a_typeName) != m_ctorReplacement.end());
-}
-
-std::string kslicer::ClspvCompiler::VectorTypeContructorReplace(const std::string& a_typeName, const std::string& a_call) const  
-{ 
-  std::string call = a_call;
-  auto p = m_ctorReplacement.find(a_typeName);
-  ReplaceFirst(call, p->first + "(", p->second + "(");
-  return call; 
 }
 
 std::shared_ptr<kslicer::FunctionRewriter> kslicer::ClspvCompiler::MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo)

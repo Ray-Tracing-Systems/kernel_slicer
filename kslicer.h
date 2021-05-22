@@ -283,6 +283,8 @@ namespace kslicer
   class MainClassInfo;
   void MarkRewrittenRecursive(const clang::Stmt* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes);
   void MarkRewrittenRecursive(const clang::Decl* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes);
+  bool IsVectorContructorNeedsReplacement(const std::string& a_typeName);
+  
 
   /**
   \brief process local functions (data["LocalFunctions"]), float3 --> make_float3, std::max --> fmax and e.t.c.
@@ -330,6 +332,8 @@ namespace kslicer
   
     std::string FunctionCallRewrite(const clang::CallExpr* call);
     std::string FunctionCallRewrite(const clang::CXXConstructExpr* call);
+    std::string FunctionCallRewriteNoName(const clang::CXXConstructExpr* call);
+    virtual std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText);
     
     virtual bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)       { return true; } // override this in Derived class
     virtual bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl)     { return true; } // override this in Derived class
@@ -374,6 +378,8 @@ namespace kslicer
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
     void ProcessReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
 
+    virtual std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText);
+
     clang::Rewriter&                                         m_rewriter;
     const clang::CompilerInstance&                           m_compiler;
     MainClassInfo*                                           m_codeInfo;
@@ -392,6 +398,7 @@ namespace kslicer
 
     std::string FunctionCallRewrite(const clang::CallExpr* call);
     std::string FunctionCallRewrite(const clang::CXXConstructExpr* call);
+    std::string FunctionCallRewriteNoName(const clang::CXXConstructExpr* call);
     std::string RecursiveRewrite   (const clang::Stmt* expr); // double/multiple pass rewrite purpose
 
     bool WasNotRewrittenYet(const clang::Stmt* expr);
@@ -436,8 +443,6 @@ namespace kslicer
     virtual std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const = 0;
 
     virtual std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const { return a_call; }
-    virtual bool        IsVectorTypeNeedsContructorReplacement(const std::string& a_typeName) const { return false; }
-    virtual std::string VectorTypeContructorReplace(const std::string& a_typeName, const std::string& a_call) const { return a_call; }
 
     virtual bool        UseSeparateUBOForArguments() const { return false; }
     virtual bool        UseSpecConstForWgSize() const { return false; }
@@ -463,8 +468,6 @@ namespace kslicer
     
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3])                               const override;
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
-    bool        IsVectorTypeNeedsContructorReplacement(const std::string& a_typeName)                 const override;
-    std::string VectorTypeContructorReplace(const std::string& a_typeName, const std::string& a_call) const override;
     void        GetThreadSizeNames(std::string a_strs[3])                                             const override;
     
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) override;
@@ -473,8 +476,6 @@ namespace kslicer
 
   private:
     std::string BuildCommand() const;
-
-    std::unordered_map<std::string, std::string> m_ctorReplacement;
     bool m_useCpp;
   };
 

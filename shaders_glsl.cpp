@@ -109,7 +109,6 @@ std::string kslicer::GLSLCompiler::ProcessBufferType(const std::string& a_typeNa
   return type; 
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////  GLSLFunctionRewriter  ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
@@ -149,6 +148,9 @@ public:
   bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl) override;
   bool VisitCallExpr_Impl(clang::CallExpr* f)             override;
   bool VisitVarDecl_Impl(clang::VarDecl* decl)            override;
+  //bool VisitCXXConstructExpr_Impl(CXXConstructExpr* call) override;
+
+  std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
 
 protected:
 
@@ -158,6 +160,7 @@ protected:
   bool        NeedsVectorTypeRewrite(const std::string& a_str);
   std::string RewriteVectorTypeStr(const std::string& a_str);
   std::string RewriteFuncDecl(clang::FunctionDecl* fDecl);
+  std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
 
   std::string RecursiveRewrite(const clang::Stmt* expr) override;
 };
@@ -192,6 +195,11 @@ std::string GLSLFunctionRewriter::RewriteVectorTypeStr(const std::string& a_str)
     resStr = std::string("const ") + resStr;
 
   return resStr;
+}
+
+std::string GLSLFunctionRewriter::VectorTypeContructorReplace(const std::string& fname, const std::string& callText)
+{
+  return m_vecReplacements[fname] + callText;
 }
 
 bool GLSLFunctionRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // TODO: make this implementation more smart, bad implementation actually!
@@ -247,9 +255,27 @@ bool GLSLFunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)
   return true; 
 }
 
+std::string GLSLFunctionRewriter::CompleteFunctionCallRewrite(clang::CallExpr* call)
+{
+  std::string rewrittenRes = "";
+  for(int i=0;i<call->getNumArgs(); i++)
+  {
+    rewrittenRes += RecursiveRewrite(call->getArg(i));
+    if(i!=call->getNumArgs()-1)
+      rewrittenRes += ", ";
+  }
+  rewrittenRes += ")";
+  return rewrittenRes;
+}
+
+//bool GLSLFunctionRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
+//{
+//
+//}
+
 bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
 {
-  if(clang::isa<clang::CXXMemberCallExpr>(call)) // process CXXMemberCallExpr else-where
+  if(clang::isa<clang::CXXMemberCallExpr>(call) || clang::isa<clang::CXXConstructExpr>(call)) // process CXXMemberCallExpr else-where
     return true;
 
   clang::FunctionDecl* fDecl = call->getDirectCallee();
@@ -272,6 +298,12 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       
     MarkRewritten(call);
   }
+  else if(fname == "to_float4" && WasNotRewrittenYet(call) )
+  {
+    std::string rewrittenRes = "vec4(" + CompleteFunctionCallRewrite(call);
+    m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
+    MarkRewritten(call);
+  }
   else if( (fname == "fmin" || fname == "fmax" || fname == "fminf" || fname == "fmaxf") && call->getNumArgs() == 2 && WasNotRewrittenYet(call))
   {
     const std::string A = RecursiveRewrite(call->getArg(0));
@@ -282,14 +314,7 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   }
   else if(makeSmth != "" && call->getNumArgs() !=0 && WasNotRewrittenYet(call) )
   {
-    std::string rewrittenRes = m_vecReplacements[makeSmth] + "(";
-    for(int i=0;i<call->getNumArgs(); i++)
-    {
-      rewrittenRes += RecursiveRewrite(call->getArg(i));
-      if(i!=call->getNumArgs()-1)
-        rewrittenRes += ", ";
-    }
-    rewrittenRes += ")";
+    std::string rewrittenRes = m_vecReplacements[makeSmth] + "(" + CompleteFunctionCallRewrite(call);
     m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
     MarkRewritten(call);
   }
@@ -348,11 +373,14 @@ public:
   GLSLKernelRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr, const bool a_infoPass) : 
                      kslicer::KernelRewriter(R, a_compiler, a_codeInfo, a_kernel, a_fakeOffsetExpr, a_infoPass), m_glslRW(R, a_compiler, a_codeInfo)
   {
-
+  
   }
 
   bool VisitCallExpr_Impl(clang::CallExpr* f) override;
   bool VisitVarDecl_Impl(clang::VarDecl* decl) override;
+  bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override;
+  
+  std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override { return m_glslRW.VectorTypeContructorReplace(fname, callText); }
 
 protected: 
 
@@ -366,6 +394,7 @@ protected:
   GLSLFunctionRewriter m_glslRW;
 
 };
+
 
 bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* f)
 {
@@ -386,6 +415,14 @@ bool GLSLKernelRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   m_glslRW.VisitVarDecl_Impl(decl);
   sync();
   return true;
+}
+
+bool GLSLKernelRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call)
+{
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return true; 
+
+  return kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(call);
 }
 
 
