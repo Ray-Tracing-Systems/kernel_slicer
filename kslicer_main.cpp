@@ -623,7 +623,7 @@ int main(int argc, const char **argv)
   std::cout << "(4) Extract functions, constants and structs from 'MainClass' " << std::endl; 
   std::cout << "{" << std::endl;
   std::vector<kslicer::FuncData> usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
-  std::vector<kslicer::DeclInClass> usedDecls = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
+  std::vector<kslicer::DeclInClass> usedDecls           = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 

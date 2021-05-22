@@ -378,6 +378,8 @@ namespace kslicer
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
     void ProcessReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
 
+    virtual bool IsGLSL() const { return false; }
+
     virtual std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText);
 
     clang::Rewriter&                                         m_rewriter;

@@ -57,14 +57,19 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* 
   if(!record->hasDefinition() || record->isImplicit() || record->isLiteral())
     return true;
 
-  const auto pType  = record->getTypeForDecl(); 
-  const QualType qt = pType->getLocallyUnqualifiedSingleStepDesugaredType();
-  const std::string typeName = qt.getAsString();
+  const auto pType    = record->getTypeForDecl(); 
+  const QualType qt   = pType->getLocallyUnqualifiedSingleStepDesugaredType();
+  const auto typeName = qt.getAsString();
 
   if(typeName == std::string("class ") + MAIN_CLASS_NAME || typeName == std::string("struct ") + MAIN_CLASS_NAME)
     m_mainClassASTNode = record;
   else if(!record->isPOD())
-    m_classList.push_back(record);
+    m_classList.push_back(record); // rememer for futher processing of complex classes
+  else
+  {
+    int a = 2;
+  }
+  
 
   return true;
 }

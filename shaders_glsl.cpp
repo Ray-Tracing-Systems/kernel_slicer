@@ -398,6 +398,8 @@ protected:
   std::string RecursiveRewrite(const clang::Stmt* expr) override;
   std::string RecursiveRewriteImpl(const clang::Stmt* expr) override { return GLSLKernelRewriter::RecursiveRewrite(expr); }
   
+  bool IsGLSL() const override { return true; }
+
   GLSLFunctionRewriter m_glslRW;
   void sync()
   {
