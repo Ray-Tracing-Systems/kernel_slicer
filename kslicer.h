@@ -399,7 +399,7 @@ namespace kslicer
     std::string FunctionCallRewrite(const clang::CallExpr* call);
     std::string FunctionCallRewrite(const clang::CXXConstructExpr* call);
     std::string FunctionCallRewriteNoName(const clang::CXXConstructExpr* call);
-    std::string RecursiveRewrite   (const clang::Stmt* expr); // double/multiple pass rewrite purpose
+    virtual std::string RecursiveRewrite (const clang::Stmt* expr); // double/multiple pass rewrite purpose
 
     bool WasNotRewrittenYet(const clang::Stmt* expr);
     void MarkRewritten(const clang::Stmt* expr);

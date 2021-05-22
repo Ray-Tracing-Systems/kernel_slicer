@@ -113,6 +113,11 @@ std::string kslicer::GLSLCompiler::ProcessBufferType(const std::string& a_typeNa
 ////////////////////////////////////////  GLSLFunctionRewriter  ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
 
+struct IRecursiveRewriteOverride
+{
+  virtual std::string RecursiveRewriteImpl(const clang::Stmt* expr) = 0;
+};
+
 /**
 \brief process local functions
 */
@@ -151,6 +156,7 @@ public:
   //bool VisitCXXConstructExpr_Impl(CXXConstructExpr* call) override;
 
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
+  IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
 
 protected:
 
@@ -170,9 +176,14 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
     return "";
-  GLSLFunctionRewriter rvCopy = *this;
-  rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
-  return m_rewriter.getRewrittenText(expr->getSourceRange());
+  if(m_pKernelRewriter != nullptr) // we actually do kernel rewrite
+    return m_pKernelRewriter->RecursiveRewriteImpl(expr);
+  else
+  {
+    GLSLFunctionRewriter rvCopy = *this;
+    rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
+    return m_rewriter.getRewrittenText(expr->getSourceRange());
+  }
 }
 
 std::string GLSLFunctionRewriter::RewriteVectorTypeStr(const std::string& a_str)
@@ -366,14 +377,14 @@ std::shared_ptr<kslicer::FunctionRewriter> kslicer::GLSLCompiler::MakeFuncRewrit
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-class GLSLKernelRewriter : public kslicer::KernelRewriter
+class GLSLKernelRewriter : public kslicer::KernelRewriter, IRecursiveRewriteOverride
 {
 public:
   
   GLSLKernelRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr, const bool a_infoPass) : 
                      kslicer::KernelRewriter(R, a_compiler, a_codeInfo, a_kernel, a_fakeOffsetExpr, a_infoPass), m_glslRW(R, a_compiler, a_codeInfo)
   {
-  
+    m_glslRW.m_pKernelRewriter = this;
   }
 
   bool VisitCallExpr_Impl(clang::CallExpr* f) override;
@@ -384,6 +395,10 @@ public:
 
 protected: 
 
+  std::string RecursiveRewrite(const clang::Stmt* expr) override;
+  std::string RecursiveRewriteImpl(const clang::Stmt* expr) override { return GLSLKernelRewriter::RecursiveRewrite(expr); }
+  
+  GLSLFunctionRewriter m_glslRW;
   void sync()
   {
     auto done = m_glslRW.GetProcessedNodes();
@@ -391,9 +406,16 @@ protected:
     m_glslRW.SetProcessedNodes(m_rewrittenNodes);      // make sure they contain same data
   }
 
-  GLSLFunctionRewriter m_glslRW;
-
 };
+
+std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
+{
+  if(expr == nullptr)
+    return "";
+  GLSLKernelRewriter rvCopy = *this;
+  rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
+  return m_rewriter.getRewrittenText(expr->getSourceRange());
+}
 
 
 bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* f)
