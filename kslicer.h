@@ -453,6 +453,8 @@ namespace kslicer
     virtual std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) = 0;
     virtual std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
                                                                         kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass) = 0;
+
+    virtual std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler) = 0;
   };
 
   struct ClspvCompiler : IShaderCompiler
@@ -475,7 +477,8 @@ namespace kslicer
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) override;
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
                                                                 kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass) override;
-
+    
+    std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler) override;
   private:
     std::string BuildCommand() const;
     bool m_useCpp;
@@ -497,7 +500,8 @@ namespace kslicer
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) override;
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
                                                                 kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass) override;
-
+    
+    std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler) override;
   private:
   };
 

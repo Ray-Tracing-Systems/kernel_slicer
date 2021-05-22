@@ -486,7 +486,7 @@ int main(int argc, const char **argv)
 
   // Parse code, initial pass
   //
-  kslicer::InitialPassASTConsumer firstPassData(mainFunctNames, mainClassName, compiler.getASTContext(), compiler.getSourceManager(), inputCodeInfo); 
+  kslicer::InitialPassASTConsumer firstPassData(mainFunctNames, mainClassName, compiler, inputCodeInfo); 
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
   compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
   
@@ -496,6 +496,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.m_mainClassASTNode;
   
+  std::vector<kslicer::DeclInClass> generalDecls = firstPassData.rv.GetExtractedDecls();
   if(inputCodeInfo.mainClassASTNode == nullptr)
   {
     std::cout << "[main]: ERROR, main class " << mainClassName.c_str() << " not found" << std::endl;
@@ -720,11 +721,6 @@ int main(int argc, const char **argv)
       kernel.wgSize[0] = (*it)[0];
       kernel.wgSize[1] = (*it)[1];
       kernel.wgSize[2] = (*it)[2];
-    }
-    else if(kernelDim == 2)
-    {
-      kernel.wgSize[0] = 32;
-      kernel.wgSize[1] = 8;
       kernel.wgSize[2] = 1;
     }
     else
@@ -764,7 +760,8 @@ int main(int argc, const char **argv)
 
   // finally generate kernels
   //
-  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, usedDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
+  generalDecls.insert( generalDecls.end(), usedDecls.begin(), usedDecls.end());
+  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
   inputCodeInfo.pShaderCC->GenerateShaders(json, inputCodeInfo.mainClassFileName, inputCodeInfo.includeToShadersFolders);
 
   std::cout << "}" << std::endl;

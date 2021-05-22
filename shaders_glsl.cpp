@@ -365,6 +365,28 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   return true;
 }
 
+std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler)
+{
+  std::string typeInCL = a_decl.type;
+  std::string result = "";  
+  std::string nameWithoutStruct = typeInCL;
+  ReplaceFirst(nameWithoutStruct, "struct ", "");
+  switch(a_decl.kind)
+  {
+    case kslicer::DECL_IN_CLASS::DECL_STRUCT:
+    result = kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    break;
+    case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
+    result = typeInCL + " " + a_decl.name + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    break;
+    case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
+    result = "#define " + a_decl.name + " " + nameWithoutStruct;
+    break;
+    default:
+    break;
+  };
+  return result;
+}
 
 std::shared_ptr<kslicer::FunctionRewriter> kslicer::GLSLCompiler::MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo)
 {

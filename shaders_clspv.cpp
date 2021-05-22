@@ -106,6 +106,28 @@ std::string kslicer::ClspvCompiler::ReplaceCallFromStdNamespace(const std::strin
   return call;
 }
 
+std::string kslicer::ClspvCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler)
+{
+  std::string typeInCL = a_decl.type;
+  ReplaceFirst(typeInCL, "const", "__constant static");
+  std::string result = "";  
+  switch(a_decl.kind)
+  {
+    case kslicer::DECL_IN_CLASS::DECL_STRUCT:
+    result = kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    break;
+    case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
+    result = typeInCL + " " + a_decl.name + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    break;
+    case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
+    result = "typedef " + typeInCL + " " + a_decl.name + ";";
+    break;
+    default:
+    break;
+  };
+  return result;
+}
+
 std::shared_ptr<kslicer::FunctionRewriter> kslicer::ClspvCompiler::MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo)
 {
   return std::make_shared<kslicer::FunctionRewriter>(R, a_compiler, a_codeInfo);

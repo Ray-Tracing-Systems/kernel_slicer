@@ -716,28 +716,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     if(!decl.extracted)
       continue;
 
-    std::string typeInCL = decl.type;
-    ReplaceFirst(typeInCL, "const", "__constant static");
-    
-    switch(decl.kind)
-    {
-      case kslicer::DECL_IN_CLASS::DECL_STRUCT:
-      data["ClassDecls"].push_back( kslicer::GetRangeSourceCode(decl.srcRange, compiler) + ";" );
-      break;
-
-      case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
-      //data["ClassDecls"].push_back( std::string("#define ") + decl.name + " ((" + decl.type + ")" + kslicer::GetRangeSourceCode(decl.srcRange, compiler) + ")" );
-      data["ClassDecls"].push_back( typeInCL + " " + decl.name + " = " + kslicer::GetRangeSourceCode(decl.srcRange, compiler) + ";");
-      break;
-
-      case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
-      data["ClassDecls"].push_back("typedef " + typeInCL + " " + decl.name + ";");
-      break;
-
-      default:
-      break;
-    };
-    //std::cout << kslicer::GetRangeSourceCode(decl.srcRange, compiler) << std::endl;
+    data["ClassDecls"].push_back(a_classInfo.pShaderCC->PrintHeaderDecl(decl,compiler));
   }
 
   // (3) local functions
