@@ -25,12 +25,18 @@ VkBuffer vkfw::CreateBuffer(VkDevice a_dev, VkDeviceSize a_size, VkBufferUsageFl
 
 VkBuffer vkfw::CreateBuffer(VkDevice a_dev, VkDeviceSize a_size, VkBufferUsageFlags a_usageFlags, VkSharingMode mode)
 {
+  uint32_t qFIDS[3] = {0, 1, 2}; //NVIDIA
   VkBuffer buf = VK_NULL_HANDLE;
   VkBufferCreateInfo bufferCreateInfo = {};
   bufferCreateInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   bufferCreateInfo.size        = a_size;
   bufferCreateInfo.usage       = a_usageFlags;
   bufferCreateInfo.sharingMode = mode;
+  if(mode == VK_SHARING_MODE_CONCURRENT)
+  {
+    bufferCreateInfo.queueFamilyIndexCount = 3;
+    bufferCreateInfo.pQueueFamilyIndices = qFIDS;
+  }
   VK_CHECK_RESULT(vkCreateBuffer(a_dev, &bufferCreateInfo, VK_NULL_HANDLE, &buf));
   return buf;
 }
@@ -45,6 +51,29 @@ VkMemoryRequirements vkfw::CreateBuffer(VkDevice a_dev, VkDeviceSize a_size, VkB
   bufferCreateInfo.size        = a_size;
   bufferCreateInfo.usage       = a_usageFlags;
   bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  VK_CHECK_RESULT(vkCreateBuffer(a_dev, &bufferCreateInfo, VK_NULL_HANDLE, &a_buf));
+  VkMemoryRequirements result;
+  vkGetBufferMemoryRequirements(a_dev, a_buf, &result);
+  return result;
+}
+
+VkMemoryRequirements vkfw::CreateBuffer(VkDevice a_dev, VkDeviceSize a_size, VkBufferUsageFlags a_usageFlags,
+                                        VkBuffer &a_buf, VkSharingMode mode)
+{
+  assert(a_dev != VK_NULL_HANDLE);
+  if (a_buf != VK_NULL_HANDLE)
+    vkDestroyBuffer(a_dev, a_buf, VK_NULL_HANDLE);
+  VkBufferCreateInfo bufferCreateInfo = {};
+  bufferCreateInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  bufferCreateInfo.size        = a_size;
+  bufferCreateInfo.usage       = a_usageFlags;
+  bufferCreateInfo.sharingMode = mode;
+  uint32_t qFIDS[3] = {0, 1, 2}; //NVIDIA
+  if(mode == VK_SHARING_MODE_CONCURRENT)
+  {
+    bufferCreateInfo.queueFamilyIndexCount = 3;
+    bufferCreateInfo.pQueueFamilyIndices = qFIDS;
+  }
   VK_CHECK_RESULT(vkCreateBuffer(a_dev, &bufferCreateInfo, VK_NULL_HANDLE, &a_buf));
   VkMemoryRequirements result;
   vkGetBufferMemoryRequirements(a_dev, a_buf, &result);

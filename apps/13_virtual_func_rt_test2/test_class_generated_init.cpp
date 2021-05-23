@@ -744,7 +744,8 @@ void TestClass_Generated::InitBuffers(size_t a_maxThreadsCount)
   CastSingleRay_local.rayPosAndNearBuffer = vkfw::CreateBuffer(device, sizeof(struct LiteMath::float4)*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
   allBuffers.push_back(CastSingleRay_local.rayPosAndNearBuffer);
 
-  m_classDataBuffer = vkfw::CreateBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | GetAdditionalFlagsForUBO());
+  m_classDataBuffer = vkfw::CreateBuffer(device, sizeof(m_uboData),
+                                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | GetAdditionalFlagsForUBO());
   allBuffers.push_back(m_classDataBuffer);
   m_IMaterialObjPtrBuffer = vkfw::CreateBuffer(device, 2*sizeof(uint32_t)*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
   allBuffers.push_back(m_IMaterialObjPtrBuffer);

@@ -674,12 +674,35 @@ VkFence vk_utils::SubmitCommandBuffer(VkCommandBuffer a_cmdBuff, VkQueue a_queue
   return fence;
 }
 
+VkFence vk_utils::SubmitCommandBuffers(std::vector<VkCommandBuffer> a_cmdBuffers, VkQueue a_queue, VkDevice a_device)
+{
+  // Now we shall finally submit the recorded command bufferStaging to a queue.
+  //
+  VkSubmitInfo submitInfo       = {};
+  submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.commandBufferCount = a_cmdBuffers.size();
+  submitInfo.pCommandBuffers    = a_cmdBuffers.data();
+
+  VkFence fence;
+  VkFenceCreateInfo fenceCreateInfo = {};
+  fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  fenceCreateInfo.flags = 0;
+  VK_CHECK_RESULT(vkCreateFence(a_device, &fenceCreateInfo, NULL, &fence));
+
+  // We submit the command bufferStaging on the queue, at the same time giving a fence.
+  //
+  VK_CHECK_RESULT(vkQueueSubmit(a_queue, 1, &submitInfo, fence));
+
+  return fence;
+}
+
 void vk_utils::ExecuteCommandBuffersNow(std::vector<VkCommandBuffer> a_cmdBuffers, VkQueue a_queue, VkDevice a_device)
 {
   VkSubmitInfo submitInfo = {};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = a_cmdBuffers.size();
   submitInfo.pCommandBuffers = a_cmdBuffers.data();
+
   VkFence fence;
   VkFenceCreateInfo fenceCreateInfo = {};
   fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;

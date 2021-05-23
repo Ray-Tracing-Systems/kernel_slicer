@@ -51,10 +51,14 @@ namespace vk_rt_utils
   void createAccelerationStructure(AccelStructure& accel, VkAccelerationStructureTypeKHR type,
     VkAccelerationStructureBuildSizesInfoKHR buildSizeInfo, VkDevice a_device, VkPhysicalDevice a_physicalDevice)
   {
+    uint32_t qFIDs[3] = {0, 1, 2}; //NVIDIA
     VkBufferCreateInfo bufferCreateInfo{};
     bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferCreateInfo.size = buildSizeInfo.accelerationStructureSize;
     bufferCreateInfo.usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+    bufferCreateInfo.queueFamilyIndexCount = 3;
+    bufferCreateInfo.pQueueFamilyIndices = qFIDs;
     VK_CHECK_RESULT(vkCreateBuffer(a_device, &bufferCreateInfo, nullptr, &accel.buffer));
 
     VkMemoryRequirements memoryRequirements{};

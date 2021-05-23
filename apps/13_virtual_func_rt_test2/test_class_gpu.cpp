@@ -126,7 +126,7 @@ public:
     vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (1 + blockSizeZ - 1) / blockSizeZ);
   
     VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
-    vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
+    vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
   }
 
   int LoadScene(const char* bvhPath, const char* meshPath, bool a_needReorder, bool a_initMgr) override
@@ -516,7 +516,7 @@ void test_class_gpu_V2()
   physicalDevice       = vk_utils::FindPhysicalDevice(instance, true, 1);
   auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT);
   auto queueComputeFID2 = vk_utils::GetDifferentQueueFamilyIndex(physicalDevice, VK_QUEUE_COMPUTE_BIT, queueComputeFID);
-  auto queueTransferFID = 2u;//vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT);
+  auto queueTransferFID = 1u;//vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT);
   // query features for RTX
   //
   RTXDeviceFeatures rtxFeatures = SetupRTXFeatures(physicalDevice);
@@ -712,6 +712,7 @@ void test_class_gpu_V2()
 
         VK_CHECK_RESULT(vkWaitForFences(device, 1, &fence1, VK_TRUE, vk_utils::FENCE_TIMEOUT));
 
+//        {
 //          using debugT = float2;
 //          std::vector<debugT> debugData(perTile);
 //          if ((j + w) % nComputeQs == 0)
@@ -727,6 +728,7 @@ void test_class_gpu_V2()
 //            out << hit.x << " " << hit.y /*<< " " << hit.instId << " " << hit.t */<< "\n";
 //          }
 //          out.close();
+//      }
         vkDestroyFence(device, fence1, NULL);
 
         VK_CHECK_RESULT(vkWaitForFences(device, 1, &fence2, VK_TRUE, vk_utils::FENCE_TIMEOUT));
@@ -740,8 +742,6 @@ void test_class_gpu_V2()
 
     tileStart = 0;
     tileEnd   = tileStart + perTile;
-//    tileStart = perTile * 2;
-//    tileEnd   = tileStart + perTile;
 
     std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
     pCopyHelper->ReadBuffer(colorBuffer1, 0, pixelData.data(), pixelData.size()*sizeof(uint32_t));
@@ -788,24 +788,32 @@ void test_class_gpu_V2()
       auto start = std::chrono::high_resolution_clock::now();
 
       auto work = [device](VkQueue q, std::vector<VkCommandBuffer> &cmds){
-//          for(auto idx = 0; idx < cmds.size(); ++idx)
+          VkFence fence;
+          VkFenceCreateInfo fenceCreateInfo = {};
+          fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+          fenceCreateInfo.flags = 0;
+          VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, NULL, &fence));
+          for (int i = 0; i < NUM_PASSES; i++)
           {
-//            auto cmd = cmds[idx];
-            for (int i = 0; i < NUM_PASSES; i++)
-            {
-//              vk_utils::ExecuteCommandBufferNow(cmd, q, device);
-              vk_utils::ExecuteCommandBuffersNow(cmds, q, device);
+            VkSubmitInfo submitInfo = {};
+            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            submitInfo.commandBufferCount = cmds.size();
+            submitInfo.pCommandBuffers = cmds.data();
 
-              if (i % 100 == 0)
-              {
-                std::stringstream ss;
-                ss << "[tid:" << std::this_thread::get_id() << "] " << "progress (gpu) = "
-                   << 100.0f * float(i) / float(NUM_PASSES) << "% \r";
-                std::cout << ss.str();
-                std::cout.flush();
-              }
+            VK_CHECK_RESULT(vkQueueSubmit(q, 1, &submitInfo, fence));
+            VK_CHECK_RESULT(vkWaitForFences(device, 1, &fence, VK_TRUE, vk_utils::FENCE_TIMEOUT));
+            VK_CHECK_RESULT(vkResetFences(device, 1, &fence));
+
+            if (i % 100 == 0)
+            {
+              std::stringstream ss;
+              ss << "[tid:" << std::this_thread::get_id() << "] " << "progress (gpu) = "
+                 << 100.0f * float(i) / float(NUM_PASSES) << "% \r";
+              std::cout << ss.str();
+              std::cout.flush();
             }
           }
+          vkDestroyFence(device, fence, NULL);
       };
 
       workers[0] = std::move(std::thread(work, computeQueues[0], std::ref(pathCmds1)));
@@ -824,17 +832,17 @@ void test_class_gpu_V2()
 
     // ***** Execute *****
 //    {
-//      std::vector<VkFence> fences(nTiles);
+//      std::vector<VkFence> fences(2);
 //      auto start = std::chrono::high_resolution_clock::now();
 //      for (int i = 0; i < NUM_PASSES; i++)
 //      {
+//        fences[0] = vk_utils::SubmitCommandBuffers(pathCmds1, computeQueues[0], device);
+//        fences[1] = vk_utils::SubmitCommandBuffers(pathCmds2, computeQueues[1], device);
+//
+//        vkWaitForFences(device, 2, fences.data(), VK_TRUE, vk_utils::FENCE_TIMEOUT);
 //        for (uint j = 0; j < 2; ++j)
 //        {
-//          fences[j] = vk_utils::SubmitCommandBuffer(pathCmds[j], computeQueues[j % nComputeQs], device);
-//        }
-//        for (uint j = 0; j < 2; ++j)
-//        {
-//          VK_CHECK_RESULT(vkWaitForFences(device, 1, &fences[j], VK_TRUE, vk_utils::FENCE_TIMEOUT));
+////          VK_CHECK_RESULT(vkWaitForFences(device, 1, &fences[j], VK_TRUE, vk_utils::FENCE_TIMEOUT));
 //          vkDestroyFence(device, fences[j], NULL);
 //        }
 //        if (i % 100 == 0)

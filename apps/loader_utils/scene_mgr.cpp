@@ -205,10 +205,10 @@ void SceneManager::LoadGeoDataOnGPU()
   }
 
   const VkBufferUsageFlags vertFlags = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | flags;
-  auto vertMemReq = vkfw::CreateBuffer(m_device, vertexBufSize, vertFlags, m_geoVertBuf);
+  auto vertMemReq = vkfw::CreateBuffer(m_device, vertexBufSize, vertFlags, m_geoVertBuf, VK_SHARING_MODE_CONCURRENT);
 
   const VkBufferUsageFlags idxFlags = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | flags;
-  auto idxMemReq = vkfw::CreateBuffer(m_device, indexBufSize, idxFlags, m_geoIdxBuf);
+  auto idxMemReq = vkfw::CreateBuffer(m_device, indexBufSize, idxFlags, m_geoIdxBuf, VK_SHARING_MODE_CONCURRENT);
 
   size_t pad = vk_utils::Padding(vertMemReq.size, idxMemReq.alignment);
 

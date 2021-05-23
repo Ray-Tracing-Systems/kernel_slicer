@@ -132,7 +132,7 @@ void TestClass_Generated::NextBounceCmd(uint tid, const Lite_Hit* in_hit, const 
   vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (1 + blockSizeZ - 1) / blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
-  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
+  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 }
 
 void TestClass_Generated::InitEyeRayCmd(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar, uint tileOffset)
@@ -189,7 +189,7 @@ void TestClass_Generated::InitEyeRay2Cmd(uint tid, const uint* packedXY, float4*
   vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (1 + blockSizeZ - 1) / blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
-  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
+  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 }
 
 void TestClass_Generated::RayTraceCmd(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
@@ -218,7 +218,7 @@ void TestClass_Generated::RayTraceCmd(uint tid, const float4* rayPosAndNear, flo
   vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (1 + blockSizeZ - 1) / blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
-  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
+  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 }
 
 void TestClass_Generated::MakeMaterialCmd(uint tid, const Lite_Hit* in_hit, uint tileOffset)
@@ -246,7 +246,7 @@ void TestClass_Generated::MakeMaterialCmd(uint tid, const Lite_Hit* in_hit, uint
   vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (1 + blockSizeZ - 1) / blockSizeZ);
 
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
-  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
+  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 }
 
 void TestClass_Generated::PackXYCmd(uint tidX, uint tidY, uint* out_pakedXY)
@@ -383,7 +383,7 @@ void TestClass_Generated::NaivePathTraceCmd(VkCommandBuffer a_commandBuffer, uin
   const uint32_t outOfForFlagsD = KGEN_FLAG_RETURN | KGEN_FLAG_DONT_SET_EXIT;
   const uint32_t inForFlagsD    = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK | KGEN_FLAG_DONT_SET_EXIT;
   vkCmdFillBuffer(a_commandBuffer, NaivePathTrace_local.threadFlagsBuffer, 0, VK_WHOLE_SIZE, 0); // zero thread flags, mark all threads to be active
-  VkBufferMemoryBarrier fillBarrier = BarrierForClearFlags(NaivePathTrace_local.threadFlagsBuffer); 
+  VkBufferMemoryBarrier fillBarrier = BarrierForClearFlags(NaivePathTrace_local.threadFlagsBuffer);
   vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                        VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 1, &fillBarrier, 0, nullptr);
 
@@ -393,21 +393,21 @@ void TestClass_Generated::NaivePathTraceCmd(VkCommandBuffer a_commandBuffer, uin
   m_currThreadFlags = outOfForFlags;
   InitEyeRay2Cmd(nThreads, in_pakedXY, &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, tileStart);
 
-  Lite_Hit hit; 
-  float2   baricentrics; 
+  Lite_Hit hit;
+  float2   baricentrics;
 
-  for(int depth = 0; depth < a_maxDepth; depth++) 
+  for(int depth = 0; depth < a_maxDepth; depth++)
   {
     Lite_Hit hit;
     vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, RayTraceLayout, 0, 1, &m_allGeneratedDS[1], 0, nullptr);
     m_currThreadFlags = inForFlagsN;
     RayTraceCmd(nThreads, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, tileStart);
-
+//
     IMaterial* pMaterial = nullptr;
     vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, MakeMaterialLayout, 0, 1, &m_allGeneratedDS[2], 0, nullptr);
     m_currThreadFlags = outOfForFlags;
     MakeMaterialCmd(nThreads, &hit, tileStart);
-//
+////
     vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, NextBounceLayout, 0, 1, &m_allGeneratedDS[3], 0, nullptr);
     m_currThreadFlags = inForFlags;
     NextBounceCmd(nThreads, &hit, &baricentrics,

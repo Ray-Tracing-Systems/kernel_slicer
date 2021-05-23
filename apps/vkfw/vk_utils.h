@@ -113,6 +113,7 @@ namespace vk_utils
   void ExecuteCommandBuffersNow(std::vector<VkCommandBuffer> a_cmdBuffers, VkQueue a_queue, VkDevice a_device);
 
   VkFence SubmitCommandBuffer(VkCommandBuffer a_cmdBuff, VkQueue a_queue, VkDevice a_device);
+  VkFence SubmitCommandBuffers(std::vector<VkCommandBuffer> a_cmdBuffers, VkQueue a_queue, VkDevice a_device);
   /**
   \brief TBD
   */
