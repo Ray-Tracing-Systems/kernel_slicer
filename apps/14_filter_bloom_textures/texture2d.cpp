@@ -103,8 +103,12 @@ float2 Texture2D<Type>::process_coord(const Sampler::AddressMode mode, const flo
       //res = coord;            
       break;
     case Sampler::AddressMode::WRAP:  
-      res = make_float2(std::fmod(coord.x, 1.0), std::fmod(coord.y, 1.0));      
+    {
+      res = make_float2(std::fmod(coord.x, 1.0), std::fmod(coord.y, 1.0));            
+      if (res.x < 0.0F) res.x += 1.0F;
+      if (res.y < 0.0F) res.y += 1.0F;      
       break;
+    }
     case Sampler::AddressMode::MIRROR:
     {
       const float u = static_cast<int>(coord.x) % 2 ? 1.0f - std::fmod(coord.x, 1.0f) : std::fmod(coord.x, 1.0f);
