@@ -21,6 +21,9 @@
 #include "vulkan_basics.h"
 #include "test_class_generated.h"
 
+//#define SINGLE  // don't split into tiles
+#define BATCH_SUBMIT //submit all path tracing cmds at once
+
 using LiteMath::uint4;
 
 class TestClass_GPU : public TestClass_Generated
@@ -93,7 +96,7 @@ public:
     vkDestroyShaderModule(a_device, shaderModule, nullptr);
   }
   
-  void RayTraceCmd(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar, Lite_Hit* out_hit, float2* out_bars, uint tileOffset) override
+  void RayTraceCmd(uint32_t tid, const float4* rayPosAndNear, float4* rayDirAndFar, Lite_Hit* out_hit, float2* out_bars, uint32_t tileOffset) override
   {
     if(!m_enableHWAccel)
     {
@@ -241,7 +244,7 @@ void test_class_gpu()
 
   fIDs.compute = queueComputeFID;
 
-  constexpr uint nComputeQs = 2;
+  constexpr uint32_t nComputeQs = 2;
 
   device       = vk_utils::CreateLogicalDevice2(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures,
                                                fIDs, nComputeQs,
@@ -312,13 +315,11 @@ void test_class_gpu()
     vkEndCommandBuffer(commandBuffer);  
     vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueues[0], device);
 
-    constexpr uint totalWork = WIN_WIDTH*WIN_HEIGHT;
-    constexpr uint nTiles = 4;
-    constexpr uint perTile = totalWork / nTiles;
-    uint tileStart = 0;
-    uint tileEnd   = tileStart + perTile;
-//    uint tileStart = perTile * 2;
-//    uint tileEnd   = tileStart + perTile;
+    constexpr uint32_t totalWork = WIN_WIDTH*WIN_HEIGHT;
+    constexpr uint32_t nTiles = 4;
+    constexpr uint32_t perTile = totalWork / nTiles;
+    uint32_t tileStart = 0;
+    uint32_t tileEnd   = tileStart + perTile;
 
     std::vector<VkCommandBuffer> singleRayCmds = vk_utils::CreateCommandBuffers(device, commandPool, nTiles);
     VkCommandBufferBeginInfo tileBeginCmdInfo = {};
@@ -326,7 +327,7 @@ void test_class_gpu()
     tileBeginCmdInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
     // ***** Record *****
-    for(uint j = 0; j < nTiles; ++j)
+    for(auto j = 0; j < nTiles; ++j)
     {
       tileStart = perTile * j;
       tileEnd   = tileStart + perTile;
@@ -341,11 +342,11 @@ void test_class_gpu()
     {
       auto start = std::chrono::high_resolution_clock::now();
       std::vector<VkFence> fences(nTiles);
-      for (uint j = 0; j < nTiles; ++j)
+      for (auto j = 0; j < nTiles; ++j)
       {
         fences[j] = vk_utils::SubmitCommandBuffer(singleRayCmds[j], computeQueues[j % nComputeQs], device);
       }
-      for (uint j = 0; j < nTiles; ++j)
+      for (auto j = 0; j < nTiles; ++j)
       {
         VK_CHECK_RESULT(vkWaitForFences(device, 1, &fences[j], VK_TRUE, vk_utils::FENCE_TIMEOUT));
         vkDestroyFence(device, fences[j], NULL);
@@ -372,7 +373,7 @@ void test_class_gpu()
 //    pathBeginCmdInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     constexpr int NUM_PASSES = 1000;
     // ***** Record *****
-    for(uint j = 0; j < nTiles; ++j)
+    for(auto j = 0; j < nTiles; ++j)
     {
       tileStart = perTile * j;
       tileEnd   = tileStart + perTile;
@@ -420,7 +421,7 @@ void test_class_gpu()
       std::vector<std::thread> workers(nTiles);
 
       auto start = std::chrono::high_resolution_clock::now();
-      for (uint j = 0; j < nTiles; ++j)
+      for (auto j = 0; j < nTiles; ++j)
       {
         auto q = computeQueues[j % nComputeQs];
 //        std::cout << q << std::endl;
@@ -442,7 +443,7 @@ void test_class_gpu()
         }));
       }
       std::cout << std::endl;
-      for (uint j = 0; j < nTiles; ++j)
+      for (auto j = 0; j < nTiles; ++j)
       {
         workers[j].join();
       }
@@ -555,7 +556,7 @@ void test_class_gpu_V2()
   // // Required by VK_KHR_spirv_1_4
   // m_deviceExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
 
-  constexpr uint nComputeQs = 2;
+  constexpr uint32_t nComputeQs = 2;
 
   device       = vk_utils::CreateLogicalDevice2(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures,
                                                 fIDs, nComputeQs,
@@ -583,9 +584,15 @@ void test_class_gpu_V2()
   auto pGPUImpl1    = std::make_shared<TestClass_GPU>(pScnMgr);
   auto pGPUImpl2    = std::make_shared<TestClass_GPU>(pScnMgr);
 
-  constexpr uint totalWork = WIN_WIDTH*WIN_HEIGHT;
-  constexpr uint perTile = 256 * 256;
-  constexpr uint nTiles = totalWork / perTile;
+  constexpr uint32_t totalWork = WIN_WIDTH*WIN_HEIGHT;
+
+#ifdef SINGLE
+  constexpr uint32_t nTiles = 1;
+  constexpr uint32_t perTile = totalWork;
+#else
+  constexpr uint32_t perTile = 256 * 256;
+  constexpr uint32_t nTiles = totalWork / perTile;
+#endif
 
 
   pGPUImpl1->InitVulkanObjects(device, physicalDevice, perTile);
@@ -608,13 +615,21 @@ void test_class_gpu_V2()
   //
   const size_t bufferSize1 = WIN_WIDTH*WIN_HEIGHT*sizeof(uint32_t);
   const size_t bufferSize2 = WIN_WIDTH*WIN_HEIGHT*sizeof(float)*4;
+#ifdef SINGLE
+  VkBuffer xyBuffer        = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                                VK_SHARING_MODE_EXCLUSIVE);
+  VkBuffer colorBuffer1    = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                                VK_SHARING_MODE_EXCLUSIVE);
+  VkBuffer colorBuffer2    = vkfw::CreateBuffer(device, bufferSize2,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                                VK_SHARING_MODE_EXCLUSIVE);
+#else
   VkBuffer xyBuffer        = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                                                 VK_SHARING_MODE_CONCURRENT);
   VkBuffer colorBuffer1    = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                                                 VK_SHARING_MODE_CONCURRENT);
   VkBuffer colorBuffer2    = vkfw::CreateBuffer(device, bufferSize2,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                                                 VK_SHARING_MODE_CONCURRENT);
-
+#endif
   VkDeviceMemory colorMem  = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {xyBuffer, colorBuffer1, colorBuffer2});
 
   pGPUImpl1->SetVulkanInOutFor_PackXY(xyBuffer, 0);            // !!! USING GENERATED CODE !!!
@@ -650,6 +665,7 @@ void test_class_gpu_V2()
       vkEndCommandBuffer(commandBuffer);
       vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueues[0], device);
     }
+#ifndef SINGLE
     {
       VkCommandBuffer commandBuffer = vk_utils::CreateCommandBuffers(device, commandPool2, 1)[0];
       VkCommandBufferBeginInfo beginCommandBufferInfo = {};
@@ -662,34 +678,38 @@ void test_class_gpu_V2()
       vkEndCommandBuffer(commandBuffer);
       vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueues[1], device);
     }
+#endif
 
+    uint32_t tileStart = 0;
+    uint32_t tileEnd   = tileStart + perTile;
 
-    uint tileStart = 0;
-    uint tileEnd   = tileStart + perTile;
-//    uint tileStart = perTile * 2;
-//    uint tileEnd   = tileStart + perTile;
-
+#ifdef SINGLE
+    std::vector<VkCommandBuffer> singleRayCmds1 = vk_utils::CreateCommandBuffers(device, commandPool1, 1);
+#else
     std::vector<VkCommandBuffer> singleRayCmds1 = vk_utils::CreateCommandBuffers(device, commandPool1, nTiles / 2);
     std::vector<VkCommandBuffer> singleRayCmds2 = vk_utils::CreateCommandBuffers(device, commandPool2, nTiles / 2);
-
+#endif
     VkCommandBufferBeginInfo tileBeginCmdInfo = {};
     tileBeginCmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     tileBeginCmdInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
     // ***** Record *****
-    uint idx = 0;
-    for(uint j = 0; j < nTiles; ++j)
+    uint32_t idx = 0;
+    for(auto j = 0; j < nTiles; ++j)
     {
       tileStart = perTile * j;
       tileEnd   = tileStart + perTile;
 
+#ifndef SINGLE
       if(j % 2 == 0)
+#endif
       {
         vkBeginCommandBuffer(singleRayCmds1[idx], &tileBeginCmdInfo);
         pGPUImpl1->CastSingleRayCmd(singleRayCmds1[idx], totalWork, nullptr, nullptr, tileStart,
                                     tileEnd);  // !!! USING GENERATED CODE !!!
         vkEndCommandBuffer(singleRayCmds1[idx]);
       }
+#ifndef SINGLE
       else
       {
         vkBeginCommandBuffer(singleRayCmds2[idx], &tileBeginCmdInfo);
@@ -699,16 +719,19 @@ void test_class_gpu_V2()
 
         ++idx;
       }
+#endif
     }
 
     // ***** Execute *****
     {
       auto start = std::chrono::high_resolution_clock::now();
       assert(singleRayCmds1.size() == singleRayCmds2.size());
-      for (uint idx = 0; idx < singleRayCmds1.size(); ++idx)
+      for (auto idx = 0; idx < singleRayCmds1.size(); ++idx)
       {
         VkFence fence1 = vk_utils::SubmitCommandBuffer(singleRayCmds1[idx], computeQueues[0], device);
+#ifndef SINGLE
         VkFence fence2 = vk_utils::SubmitCommandBuffer(singleRayCmds2[idx], computeQueues[1], device);
+#endif
 
         VK_CHECK_RESULT(vkWaitForFences(device, 1, &fence1, VK_TRUE, vk_utils::FENCE_TIMEOUT));
 
@@ -731,8 +754,10 @@ void test_class_gpu_V2()
 //      }
         vkDestroyFence(device, fence1, NULL);
 
+#ifndef SINGLE
         VK_CHECK_RESULT(vkWaitForFences(device, 1, &fence2, VK_TRUE, vk_utils::FENCE_TIMEOUT));
         vkDestroyFence(device, fence2, NULL);
+#endif
 
       }
       auto stop = std::chrono::high_resolution_clock::now();
@@ -749,27 +774,35 @@ void test_class_gpu_V2()
 
     std::cout << "begin path tracing passes ... " << std::endl;
 
+#ifdef SINGLE
+    std::vector<VkCommandBuffer> pathCmds1 = vk_utils::CreateCommandBuffers(device, commandPool1, 1);
+#else
     std::vector<VkCommandBuffer> pathCmds1 = vk_utils::CreateCommandBuffers(device, commandPool1, nTiles / 2);
     std::vector<VkCommandBuffer> pathCmds2 = vk_utils::CreateCommandBuffers(device, commandPool2, nTiles / 2);
+#endif
 
     VkCommandBufferBeginInfo pathBeginCmdInfo = {};
     pathBeginCmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    pathBeginCmdInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
-    constexpr int NUM_PASSES = 1000;
+    constexpr int NUM_PASSES = 256;
     // ***** Record *****
     idx = 0;
-    for(uint j = 0; j < nTiles; ++j)
+    for(auto j = 0; j < nTiles; ++j)
     {
       tileStart = perTile * j;
       tileEnd   = tileStart + perTile;
 
+#ifndef SINGLE
       if(j % 2 == 0)
+#endif
       {
         vkBeginCommandBuffer(pathCmds1[idx], &pathBeginCmdInfo);
         pGPUImpl1->NaivePathTraceCmd(pathCmds1[idx], totalWork, 6, nullptr, nullptr, tileStart,
                                      tileEnd);  // !!! USING GENERATED CODE !!!
         vkEndCommandBuffer(pathCmds1[idx]);
       }
+#ifndef SINGLE
       else
       {
         vkBeginCommandBuffer(pathCmds2[idx], &pathBeginCmdInfo);
@@ -778,7 +811,7 @@ void test_class_gpu_V2()
         vkEndCommandBuffer(pathCmds2[idx]);
         ++idx;
       }
-
+#endif
     }
 
     // ***** Execute (multithreaded submission)*****
@@ -793,6 +826,21 @@ void test_class_gpu_V2()
           fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
           fenceCreateInfo.flags = 0;
           VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, NULL, &fence));
+#ifdef BATCH_SUBMIT
+          std::vector<VkSubmitInfo> submits(NUM_PASSES);
+          for (int i = 0; i < NUM_PASSES; i++)
+          {
+            VkSubmitInfo submitInfo = {};
+            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            submitInfo.commandBufferCount = cmds.size();
+            submitInfo.pCommandBuffers = cmds.data();
+            submits[i] = submitInfo;
+          }
+
+          VK_CHECK_RESULT(vkQueueSubmit(q, submits.size(), submits.data(), fence));
+          VK_CHECK_RESULT(vkWaitForFences(device, 1, &fence, VK_TRUE, vk_utils::FENCE_TIMEOUT));
+          VK_CHECK_RESULT(vkResetFences(device, 1, &fence));
+#else
           for (int i = 0; i < NUM_PASSES; i++)
           {
             VkSubmitInfo submitInfo = {};
@@ -803,23 +851,17 @@ void test_class_gpu_V2()
             VK_CHECK_RESULT(vkQueueSubmit(q, 1, &submitInfo, fence));
             VK_CHECK_RESULT(vkWaitForFences(device, 1, &fence, VK_TRUE, vk_utils::FENCE_TIMEOUT));
             VK_CHECK_RESULT(vkResetFences(device, 1, &fence));
-
-            if (i % 100 == 0)
-            {
-              std::stringstream ss;
-              ss << "[tid:" << std::this_thread::get_id() << "] " << "progress (gpu) = "
-                 << 100.0f * float(i) / float(NUM_PASSES) << "% \r";
-              std::cout << ss.str();
-              std::cout.flush();
-            }
           }
+#endif
           vkDestroyFence(device, fence, NULL);
       };
 
       workers[0] = std::move(std::thread(work, computeQueues[0], std::ref(pathCmds1)));
+#ifndef SINGLE
       workers[1] = std::move(std::thread(work, computeQueues[1], std::ref(pathCmds2)));
+#endif
 
-      for (uint j = 0; j < workers.size(); ++j)
+      for (auto j = 0; j < workers.size(); ++j)
       {
         if(workers[j].joinable())
           workers[j].join();

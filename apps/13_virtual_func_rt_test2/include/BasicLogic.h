@@ -101,8 +101,8 @@ static inline uint RealColorToUint32(float4 real_color)
   return red | (green << 8) | (blue << 16) | (alpha << 24);
 }
 
-#define WIN_WIDTH  512
-#define WIN_HEIGHT 512
+#define WIN_WIDTH  2048
+#define WIN_HEIGHT 2048
 
 static uint pitchOffset(uint x, uint y) { return y*WIN_WIDTH + x; } 
 
