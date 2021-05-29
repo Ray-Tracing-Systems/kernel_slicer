@@ -29,7 +29,8 @@
 #pragma comment(lib,"glfw3.lib")
 #endif
 
-#define TILE_SIZE 256
+#define TILE_SIZE_X 256
+#define TILE_SIZE_Y 256
 //#define SINGLE       // don't split into tiles
 //#define BATCH_SUBMIT // submit all path tracing cmds at once
 
@@ -300,7 +301,7 @@ void test_class_gpu_V2()
   constexpr uint32_t nTiles = 1;
   constexpr uint32_t perTile = totalWork;
 #else
-  constexpr uint32_t perTile = TILE_SIZE * TILE_SIZE;
+  constexpr uint32_t perTile = TILE_SIZE_X * TILE_SIZE_Y;
   constexpr uint32_t nTiles = totalWork / perTile;
 #endif
 
@@ -759,8 +760,8 @@ void test_class_gpu_single_queue()
   constexpr uint32_t nTiles = 1;
   constexpr uint32_t perTile = totalWork;
 #else
-  constexpr uint32_t perTile = 256 * 512;
-  constexpr uint32_t nTiles = totalWork / perTile;
+  constexpr uint32_t perTile = TILE_SIZE_X * TILE_SIZE_Y;
+  constexpr uint32_t nTiles  = totalWork / perTile;
 #endif
 
 
