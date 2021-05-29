@@ -32,6 +32,8 @@
 #define TILE_SIZE 256
 //#define SINGLE       // don't split into tiles
 #define BATCH_SUBMIT // submit all path tracing cmds at once
+constexpr int NUM_PASSES  = 8;
+constexpr int TOTAL_ITERS = 10;
 
 using LiteMath::uint4;
 
@@ -486,7 +488,6 @@ void test_class_gpu_V2()
     pathBeginCmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     pathBeginCmdInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
-    constexpr int NUM_PASSES = 16;
     // ***** Record *****
     idx = 0;
     for(auto j = 0; j < nTiles; ++j)
@@ -604,7 +605,7 @@ void test_class_gpu_V2()
 //
 //    }
 
-    if(totalRuns < 5)
+    if(totalRuns < TOTAL_ITERS)
     {
       totalRuns++;
       goto BEGIN_PATH_TRACING_AGAIN;
