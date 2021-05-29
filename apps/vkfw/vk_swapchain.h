@@ -43,7 +43,7 @@ public:
   VulkanAttachment GetAttachment(uint32_t i) const { assert(i < m_imageCount); return m_attachments[i]; }
 
   //LiteMath::float4x4 GetSurfaceMatrix() const {return m_surfaceMatrix; }
-
+  VkSwapchainKHR GetVulkanSwapChain() { return m_swapChain; }
 private:
 
   //LiteMath::float4x4 m_surfaceMatrix;

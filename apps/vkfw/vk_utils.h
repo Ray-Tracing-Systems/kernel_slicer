@@ -77,7 +77,7 @@ namespace vk_utils
   {
     VkSurfaceKHR               surface;
     std::vector<VkFramebuffer> framebuffers;
-    VulkanSwapChain swapchain;
+    VulkanSwapChain            swapchain;
 
     // screen depthbuffer
     //
@@ -88,9 +88,8 @@ namespace vk_utils
     VkSurfaceTransformFlagsKHR preTransform; // android crap
   };
 
-  void CreateSwapChain(VkPhysicalDevice a_physDevice, VkDevice a_device, int a_width, int a_height, ScreenBufferResources* pScreen, bool vsync = false);
-
-  void CreateScreenImageViews(VkDevice a_device, ScreenBufferResources* pScreen);
+  //void CreateSwapChain(VkPhysicalDevice a_physDevice, VkDevice a_device, int a_width, int a_height, ScreenBufferResources* pScreen, bool vsync = false);
+  //void CreateScreenImageViews(VkDevice a_device, ScreenBufferResources* pScreen);
 
   void CreateScreenFrameBuffers(VkDevice a_device, VkRenderPass a_renderPass, VkImageView a_depthView, ScreenBufferResources* pScreen);
 

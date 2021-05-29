@@ -19,11 +19,13 @@ endif()
 
 find_package(OpenMP)
 find_package(Vulkan)
+find_package(glfw3 REQUIRED)
 include_directories(${Vulkan_INCLUDE_DIR})
 include_directories("../vkfw" 
                     "../volk"
                     "../loader_utils"
-                    "../geo_utils")
+                    "../geo_utils"
+                    ${GLFW_INCLUDE_DIRS})
                     
 link_directories("../volk")
 
@@ -33,6 +35,7 @@ link_directories("../volk")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -fPIC")
 
 add_executable(testapp main.cpp 
+                       hello_tri.cpp
                        test_class.cpp
                        test_class_scene.cpp 
                        test_class_gpu.cpp
@@ -49,9 +52,10 @@ add_executable(testapp main.cpp
                        ../vkfw/vk_rt_utils.cpp
                        ../vkfw/rt_funcs.cpp
                        ../vkfw/vk_mesh.cpp
+                       ../vkfw/vk_swapchain.cpp
                        ../loader_utils/pugixml.cpp
                        ../loader_utils/hydraxml.cpp
                        ../loader_utils/scene_mgr.cpp)
 
 set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
-target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} OpenMP::OpenMP_CXX volk dl)
+target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} ${GLFW_LIBRARIES} glfw OpenMP::OpenMP_CXX volk dl)

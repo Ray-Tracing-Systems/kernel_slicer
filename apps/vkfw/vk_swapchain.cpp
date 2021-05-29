@@ -200,15 +200,15 @@ void VulkanSwapChain::Create(uint32_t &width, uint32_t &height, bool vsync, VkSu
 
   if (preTransform & VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR)
   {
-    m_surfaceMatrix = LiteMath::rotate4x4Z(90.0f * LiteMath::DEG_TO_RAD);
+    //m_surfaceMatrix = LiteMath::rotate4x4Z(90.0f * LiteMath::DEG_TO_RAD);
   }
   else if (preTransform & VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR)
   {
-    m_surfaceMatrix = LiteMath::rotate4x4Z(270.0f * LiteMath::DEG_TO_RAD);
+    //m_surfaceMatrix = LiteMath::rotate4x4Z(270.0f * LiteMath::DEG_TO_RAD);
   }
   else if (preTransform & VK_SURFACE_TRANSFORM_ROTATE_180_BIT_KHR)
   {
-    m_surfaceMatrix = LiteMath::rotate4x4Z(180.0f * LiteMath::DEG_TO_RAD);
+    //m_surfaceMatrix = LiteMath::rotate4x4Z(180.0f * LiteMath::DEG_TO_RAD);
   }
 
   VkCompositeAlphaFlagBitsKHR compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;

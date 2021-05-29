@@ -154,7 +154,8 @@ VkInstance vk_utils::CreateInstance(bool &a_enableValidationLayers, std::vector<
   createInfo.ppEnabledExtensionNames = enabledExtensions.data();
 
   VkInstance instance;
-  VK_CHECK_RESULT(vkCreateInstance(&createInfo, NULL, &instance));
+  auto createResult = vkCreateInstance(&createInfo, NULL, &instance); 
+  VK_CHECK_RESULT(createResult);
 
   return instance;
 }
@@ -904,7 +905,7 @@ void vk_utils::CreateScreenFrameBuffers(VkDevice a_device, VkRenderPass a_render
     VkFramebufferCreateInfo framebufferInfo = {};
     framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     framebufferInfo.renderPass      = a_renderPass;
-    framebufferInfo.attachmentCount = 2;
+    framebufferInfo.attachmentCount = (a_depthView == nullptr) ? 1 : 2;
     framebufferInfo.pAttachments    = attachments;
     framebufferInfo.width           = pScreen->swapchain.GetExtent().width;
     framebufferInfo.height          = pScreen->swapchain.GetExtent().height;
