@@ -30,7 +30,7 @@
 #endif
 
 #define TILE_SIZE 256
-#define SINGLE       // don't split into tiles
+//#define SINGLE       // don't split into tiles
 #define BATCH_SUBMIT // submit all path tracing cmds at once
 
 using LiteMath::uint4;
@@ -359,6 +359,8 @@ void test_class_gpu_V2()
   pGPUImpl2->UpdateAll(pCopyHelper);                          // !!! USING GENERATED CODE !!!
 
   pWindowDummy->Init(instance, physicalDevice, device);
+  
+  int totalRuns = 0;
 
   // now compute some thing useful
   //
@@ -433,7 +435,8 @@ void test_class_gpu_V2()
       }
 #endif
     }
-
+    
+ 
     // ***** Execute *****
     {
       auto start = std::chrono::high_resolution_clock::now();
@@ -447,24 +450,6 @@ void test_class_gpu_V2()
 
         VK_CHECK_RESULT(vkWaitForFences(device, 1, &fence1, VK_TRUE, vk_utils::FENCE_TIMEOUT));
         pWindowDummy->DoFrame();
-
-//        {
-//          using debugT = float2;
-//          std::vector<debugT> debugData(perTile);
-//          if ((j + w) % nComputeQs == 0)
-//            pCopyHelper->ReadBuffer(pGPUImpl1->CastSingleRay_local.baricentricsBuffer, 0, debugData.data(),
-//                                    debugData.size() * sizeof(debugT));
-//          else
-//            pCopyHelper->ReadBuffer(pGPUImpl2->CastSingleRay_local.baricentricsBuffer, 0, debugData.data(),
-//                                    debugData.size() * sizeof(debugT));
-//
-//          std::ofstream out("/home/vs/hit_" + std::to_string(j + w) + ".txt");
-//          for (const auto &hit : debugData)
-//          {
-//            out << hit.x << " " << hit.y /*<< " " << hit.instId << " " << hit.t */<< "\n";
-//          }
-//          out.close();
-//      }
         vkDestroyFence(device, fence1, NULL);
 
 #ifndef SINGLE
@@ -477,6 +462,9 @@ void test_class_gpu_V2()
       float ms = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count() / 1000.f;
       std::cout << "CastSingleRay, all tiles: " << ms << " ms for full command buffer execution " << std::endl;
     }
+
+    totalRuns = 0;
+    BEGIN_PATH_TRACING_AGAIN: 
 
     tileStart = 0;
     tileEnd   = tileStart + perTile;
@@ -615,6 +603,12 @@ void test_class_gpu_V2()
 //                << " times of command buffer execution " << std::endl;
 //
 //    }
+
+    if(totalRuns < 5)
+    {
+      totalRuns++;
+      goto BEGIN_PATH_TRACING_AGAIN;
+    }
 
     std::vector<float4> pixelsf(WIN_WIDTH*WIN_HEIGHT);
     pCopyHelper->ReadBuffer(colorBuffer2, 0, pixelsf.data(), pixelsf.size()*sizeof(float4));
