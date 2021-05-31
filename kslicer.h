@@ -316,6 +316,26 @@ namespace kslicer
 
     const std::unordered_set<uint64_t>& GetProcessedNodes() const { return m_rewrittenNodes; }
     void SetProcessedNodes(const std::unordered_set<uint64_t>& a_rhs) { m_rewrittenNodes = a_rhs; }
+    
+    virtual std::string RewriteVectorTypeStr(const std::string& a_str)
+    {
+      
+      const bool isConst = (a_str.find("const ") != std::string::npos);
+      std::string resStr;
+      std::string typeStr = a_str;
+      ReplaceFirst(typeStr, "LiteMath::", "");
+      
+      //auto p = m_vecReplacements.find(typeStr);
+      //if(p == m_vecReplacements.end())
+      //  resStr = typeStr;
+      //else
+      //  resStr = p->second;
+    
+      if(isConst)
+        resStr = std::string("const ") + resStr;
+    
+      return resStr;
+    }
 
   protected:
 

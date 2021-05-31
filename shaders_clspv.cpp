@@ -85,6 +85,7 @@ void kslicer::ClspvCompiler::GetThreadSizeNames(std::string a_strs[3]) const
   a_strs[2] = "kgen_iNumElementsZ";
 }
 
+
 std::string kslicer::ClspvCompiler::ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const
 {
   std::string call = a_call;

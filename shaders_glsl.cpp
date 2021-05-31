@@ -51,10 +51,10 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     currKerneJson["Kernel"] = kernel.value();
     
     std::string kernelName  = std::string(kernel.value()["Name"]);
-    std::string outFileName = kernelName + ".glsl";
+    std::string outFileName = kernelName + ".comp";
     std::string outFilePath = shaderPath + "/" + outFileName;
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
-    buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -e " << kernelName.c_str() << " -DGLSL -I.. ";
+    buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
     for(auto folder : includeToShadersFolders)
      buildSH << "-I" << folder.c_str() << " ";
     buildSH << std::endl;
@@ -106,6 +106,10 @@ std::string kslicer::GLSLCompiler::ProcessBufferType(const std::string& a_typeNa
   std::string type = a_typeName;
   ReplaceFirst(type, "*", "");
   ReplaceFirst(type, "const", "");
+
+  if(type[type.size()-1] == ' ')
+    type = type.substr(0, type.size()-1);
+
   return type; 
 };
 
@@ -158,13 +162,14 @@ public:
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
   IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
 
+  std::string RewriteVectorTypeStr(const std::string& a_str) override;
+
 protected:
 
   std::unordered_map<std::string, std::string> m_vecReplacements;
   std::unordered_map<std::string, std::string> m_funReplacements;
 
   bool        NeedsVectorTypeRewrite(const std::string& a_str);
-  std::string RewriteVectorTypeStr(const std::string& a_str);
   std::string RewriteFuncDecl(clang::FunctionDecl* fDecl);
   std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
 
@@ -195,6 +200,7 @@ std::string GLSLFunctionRewriter::RewriteVectorTypeStr(const std::string& a_str)
   ReplaceFirst(typeStr, "glm::",      "");
   ReplaceFirst(typeStr, "struct ",    "");
   ReplaceFirst(typeStr, "const ",    "");
+  ReplaceFirst(typeStr, "unsigned int ", "uint ");
   
   auto p = m_vecReplacements.find(typeStr);
   if(p == m_vecReplacements.end())

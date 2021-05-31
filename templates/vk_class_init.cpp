@@ -228,10 +228,10 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {
     uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, "{{Kernel.OriginalName}}");
+    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}");
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %});
   {% endif %}
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
   {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, 128); // at least 128 bytes for push constants

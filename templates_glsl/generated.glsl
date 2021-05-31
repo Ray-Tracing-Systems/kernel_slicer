@@ -15,7 +15,7 @@ layout(local_size_x = {{Kernel.WGSizeX}}, local_size_y = {{Kernel.WGSizeY}}, loc
 layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}}   { {{Arg.Type}} {{Arg.Name}}[]; }; //
 {% endif %}
 ## endfor
-layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassName}}_UBO_Data ubo };
+layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassName}}_UBO_Data ubo; };
 
 layout( push_constant ) uniform kernelIntArgs
 {
@@ -28,7 +28,7 @@ layout( push_constant ) uniform kernelIntArgs
   uint tFlagsMask;    
 } kgenArgs;
 
-void {{Kernel.Name}}()
+void main()
 {
   ///////////////////////////////////////////////////////////////// prolog
   {% if Kernel.InitKPass %}
@@ -65,6 +65,3 @@ void {{Kernel.Name}}()
 
   {% endif %} {# /* END of 'if Kernel.HasEpilog'  */ #}
 }
-
-
-
