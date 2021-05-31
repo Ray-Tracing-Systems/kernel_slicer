@@ -396,6 +396,8 @@ namespace kslicer
     bool VisitCXXOperatorCallExpr   (clang::CXXOperatorCallExpr* expr)    { return VisitCXXOperatorCallExpr_Impl(expr); }
     bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)                 { return VisitCStyleCastExpr_Impl(cast); }
 
+    bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { return VisitDeclRefExpr_Impl(expr); }
+
   protected:
 
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
@@ -447,6 +449,7 @@ namespace kslicer
 
     virtual bool VisitVarDecl_Impl(clang::VarDecl* decl)               { return true; } // override this in Derived class
     virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) { return true; } // override this in Derived class
+    virtual bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)       { return true; } // override this in Derived class
   };
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -738,7 +741,7 @@ namespace kslicer
   \brief select local variables of main class that can be placed in auxilary buffer
   */
   std::vector<DataMemberInfo> MakeClassDataListAndCalcOffsets(std::unordered_map<std::string, DataMemberInfo>& vars);
-
+  std::vector<kslicer::KernelInfo::Arg> GetUserKernelArgs(const std::vector<kslicer::KernelInfo::Arg>& a_allArgs);
 
   void ReplaceOpenCLBuiltInTypes(std::string& a_typeName);
   std::vector<std::string> GetAllPredefinedThreadIdNamesRTV();

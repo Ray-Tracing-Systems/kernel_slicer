@@ -63,7 +63,7 @@ std::string GetDSArgName(const std::string& a_mainFuncName, const std::string& a
     return a_mainFuncName + "_local." + a_dsVarName; 
 }
 
-std::vector<kslicer::KernelInfo::Arg> GetUserKernelArgs(const std::vector<kslicer::KernelInfo::Arg>& a_allArgs)
+std::vector<kslicer::KernelInfo::Arg> kslicer::GetUserKernelArgs(const std::vector<kslicer::KernelInfo::Arg>& a_allArgs)
 {
   std::vector<kslicer::KernelInfo::Arg> result;
   result.reserve(a_allArgs.size());

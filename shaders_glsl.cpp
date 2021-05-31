@@ -436,11 +436,15 @@ public:
                      kslicer::KernelRewriter(R, a_compiler, a_codeInfo, a_kernel, a_fakeOffsetExpr, a_infoPass), m_glslRW(R, a_compiler, a_codeInfo)
   {
     m_glslRW.m_pKernelRewriter = this;
+    auto userArgs = kslicer::GetUserKernelArgs(a_kernel.args);
+    for(auto arg : userArgs)
+      m_userArgs.insert(arg.name);
   }
 
   bool VisitCallExpr_Impl(clang::CallExpr* f) override;
   bool VisitVarDecl_Impl(clang::VarDecl* decl) override;
   bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override;
+  bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) override;
   
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override { return m_glslRW.VectorTypeContructorReplace(fname, callText); }
 
@@ -460,6 +464,8 @@ protected:
   }
 
   bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
+
+  std::unordered_set<std::string> m_userArgs;
 
 };
 
@@ -511,6 +517,20 @@ bool GLSLKernelRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* cal
   return kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(call);
 }
 
+bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
+{
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return true; 
+
+  std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  if(m_userArgs.find(text) != m_userArgs.end() && WasNotRewrittenYet(expr))
+  {
+    m_rewriter.ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + text);
+    MarkRewritten(expr);
+  }
+
+  return true;
+} 
 
 std::shared_ptr<kslicer::KernelRewriter> kslicer::GLSLCompiler::MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
                                                                                  kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass)
