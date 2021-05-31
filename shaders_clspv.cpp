@@ -2,6 +2,28 @@
 #include "template_rendering.h"
 #include <iostream>
 
+std::string kslicer::FunctionRewriter::RewriteVectorTypeStr(const std::string& a_str)
+{      
+  const bool isConst = (a_str.find("const ") != std::string::npos);
+  std::string typeStr = a_str;
+  ReplaceFirst(typeStr, "LiteMath::", "");
+  ReplaceFirst(typeStr, "const ",    "");
+  ReplaceFirst(typeStr, m_codeInfo->mainClassName + "::", "");
+  std::string resStr = typeStr;
+  
+  //auto p = m_vecReplacements.find(typeStr);
+  //if(p == m_vecReplacements.end())
+  //  resStr = typeStr;
+  //else
+  //  resStr = p->second;
+
+  if(isConst)
+    resStr = std::string("const ") + resStr;
+
+  return resStr;
+}
+
+
 bool kslicer::IsVectorContructorNeedsReplacement(const std::string& a_typeName)
 {
   static std::unordered_set<std::string> m_ctorReplacement;

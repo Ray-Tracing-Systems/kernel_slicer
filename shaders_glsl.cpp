@@ -201,6 +201,7 @@ std::string GLSLFunctionRewriter::RewriteVectorTypeStr(const std::string& a_str)
   ReplaceFirst(typeStr, "struct ",    "");
   ReplaceFirst(typeStr, "const ",    "");
   ReplaceFirst(typeStr, "unsigned int ", "uint ");
+  ReplaceFirst(typeStr, m_codeInfo->mainClassName + "::", "");
   
   if(typeStr.size() > 0 && typeStr[typeStr.size()-1] == ' ')
     typeStr = typeStr.substr(0, typeStr.size()-1);

@@ -616,6 +616,8 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::ve
   uint32_t dummyCounter = 0;
   data["MainClassName"]   = a_classInfo.mainClassName;
   data["UBOStructFields"] = std::vector<std::string>();
+  data["ShaderGLSL"]      = !a_classInfo.pShaderCC->IsSingleSource();
+
   for(auto member : podMembers)
   {
     std::string typeStr = member.type;
@@ -836,7 +838,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       if(member.isArray || member.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD) // read large data structures directly inside kernel code, don't read them at the beggining of kernel.
         continue;
 
-      if(k.subjectedToReduction.find(member.name) != k.subjectedToReduction.end())         // exclude this opt for members which subjected to reduction
+      if(k.subjectedToReduction.find(member.name) != k.subjectedToReduction.end())  // exclude this opt for members which subjected to reduction
         continue;
 
       json memberData;

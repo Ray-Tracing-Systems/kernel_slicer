@@ -1,6 +1,7 @@
 #ifndef {{MainClassName}}_UBO_H
 #define {{MainClassName}}_UBO_H
 
+{% if ShaderGLSL %}
 #ifndef GLSL
 #include "OpenCLMath.h"
 typedef LiteMath::float4x4 mat4;
@@ -8,11 +9,10 @@ typedef LiteMath::float3   vec3;
 typedef LiteMath::float4   vec4;
 #else
 #define MAXFLOAT 1e37f
-//#define float4x4 mat4
-//#define float3   vec3
-//#define float4   vec4
-//#define uint32_t uint
 #endif
+{% else %}
+#include "OpenCLMath.h"
+{% endif %}
 
 struct {{MainClassName}}_UBO_Data
 {
