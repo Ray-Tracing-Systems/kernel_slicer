@@ -157,7 +157,7 @@ public:
   bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl) override;
   bool VisitCallExpr_Impl(clang::CallExpr* f)             override;
   bool VisitVarDecl_Impl(clang::VarDecl* decl)            override;
-  //bool VisitCXXConstructExpr_Impl(CXXConstructExpr* call) override;
+  bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
 
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
   IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
@@ -202,6 +202,12 @@ std::string GLSLFunctionRewriter::RewriteVectorTypeStr(const std::string& a_str)
   ReplaceFirst(typeStr, "const ",    "");
   ReplaceFirst(typeStr, "unsigned int ", "uint ");
   
+  if(typeStr.size() > 0 && typeStr[typeStr.size()-1] == ' ')
+    typeStr = typeStr.substr(0, typeStr.size()-1);
+
+  if(typeStr.size() > 0 && typeStr[0] == ' ')
+    typeStr = typeStr.substr(1, typeStr.size()-1);
+
   auto p = m_vecReplacements.find(typeStr);
   if(p == m_vecReplacements.end())
     resStr = typeStr;
@@ -371,6 +377,23 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   return true;
 }
 
+bool GLSLFunctionRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
+{
+  clang::QualType qt   = cast->getTypeAsWritten();
+  clang::Expr* 	  next = cast->getSubExpr();
+  std::string typeCast = qt.getAsString();
+
+  if(WasNotRewrittenYet(next))
+  {
+    const std::string exprText = RecursiveRewrite(next);
+    m_rewriter.ReplaceText(cast->getSourceRange(), typeCast + "(" + exprText + ")");
+    MarkRewritten(next);
+  }
+
+  return true;
+}
+
+
 std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler)
 {
   std::string typeInCL = a_decl.type;
@@ -436,6 +459,8 @@ protected:
     m_glslRW.SetProcessedNodes(m_rewrittenNodes);      // make sure they contain same data
   }
 
+  bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
+
 };
 
 std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
@@ -469,11 +494,20 @@ bool GLSLKernelRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   return true;
 }
 
-bool GLSLKernelRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call)
+bool GLSLKernelRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
 
+  m_glslRW.VisitCStyleCastExpr_Impl(cast);
+  sync();
+  return true;
+}
+
+bool GLSLKernelRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call)
+{
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return true; 
   return kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(call);
 }
 

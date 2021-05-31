@@ -216,7 +216,7 @@ VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForObjCounters(VkBuffe
 void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_filePath)
 {
   {% if MultipleSourceShaders %}
-  std::string shaderPath = "{{ShaderFolder}}/{{Kernel.OriginalName}}.cpp.spv"; 
+  std::string shaderPath = "{{ShaderFolder}}/{{Kernel.OriginalName}}.comp.spv"; 
   {% else %}
   std::string shaderPath = a_filePath; 
   {% endif %}

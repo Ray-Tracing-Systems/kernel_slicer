@@ -313,6 +313,7 @@ namespace kslicer
     bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f) { return VisitCXXMemberCallExpr_Impl(f); }
     bool VisitFieldDecl(clang::FieldDecl* decl)              { return VisitFieldDecl_Impl(decl);      }
     bool VisitUnaryOperator(clang::UnaryOperator* op)        { return VisitUnaryOperator_Impl(op);    }
+    bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)    { return VisitCStyleCastExpr_Impl(cast); }
 
     const std::unordered_set<uint64_t>& GetProcessedNodes() const { return m_rewrittenNodes; }
     void SetProcessedNodes(const std::unordered_set<uint64_t>& a_rhs) { m_rewrittenNodes = a_rhs; }
@@ -364,6 +365,7 @@ namespace kslicer
     virtual bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) { return true; } // override this in Derived class
     virtual bool VisitFieldDecl_Impl(clang::FieldDecl* decl)              { return true; } // override this in Derived class
     virtual bool VisitUnaryOperator_Impl(clang::UnaryOperator* op)        { return true; } // override this in Derived class
+    virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)    { return true; } // override this in Derived class
 
     virtual bool VisitCallExpr_Impl(clang::CallExpr* f);
   };
@@ -392,6 +394,7 @@ namespace kslicer
 
     bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr) { return VisitCompoundAssignOperator_Impl(expr); } 
     bool VisitCXXOperatorCallExpr   (clang::CXXOperatorCallExpr* expr)    { return VisitCXXOperatorCallExpr_Impl(expr); }
+    bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)                 { return VisitCStyleCastExpr_Impl(cast); }
 
   protected:
 
@@ -442,7 +445,8 @@ namespace kslicer
     virtual bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr);       // +=, *=, -=; to detect reduction for custom data types (float3/float4 for example)
     virtual bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr);                 // m_var = f(m_var, expr)
 
-    virtual bool VisitVarDecl_Impl(clang::VarDecl* decl) { return true; } // override this in Derived class
+    virtual bool VisitVarDecl_Impl(clang::VarDecl* decl)               { return true; } // override this in Derived class
+    virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) { return true; } // override this in Derived class
   };
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

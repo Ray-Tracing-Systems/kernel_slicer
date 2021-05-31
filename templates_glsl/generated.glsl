@@ -20,7 +20,7 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 layout( push_constant ) uniform kernelIntArgs
 {
   {% for UserArg in Kernel.UserArgs %} 
-  {{UserArg.Type}} {{UserArg.Name}},
+  {{UserArg.Type}} {{UserArg.Name}};
   {% endfor %}
   uint iNumElementsX; 
   uint iNumElementsY; 

@@ -3,6 +3,9 @@
 
 #ifndef GLSL
 #include "OpenCLMath.h"
+typedef LiteMath::float4x4 mat4;
+typedef LiteMath::float3   vec3;
+typedef LiteMath::float4   vec4;
 #else
 #define MAXFLOAT 1e37f
 //#define float4x4 mat4
