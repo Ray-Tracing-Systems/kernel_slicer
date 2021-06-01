@@ -117,6 +117,24 @@ std::string kslicer::GLSLCompiler::ProcessBufferType(const std::string& a_typeNa
 ////////////////////////////////////////  GLSLFunctionRewriter  ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
 
+std::unordered_map<std::string, std::string> ListGLSLVectorReplacements()
+{
+  std::unordered_map<std::string, std::string> m_vecReplacements;
+  m_vecReplacements["float2"] = "vec2";
+  m_vecReplacements["float3"] = "vec3";
+  m_vecReplacements["float4"] = "vec4";
+  m_vecReplacements["int2"]   = "ivec2";
+  m_vecReplacements["int3"]   = "ivec3";
+  m_vecReplacements["int4"]   = "ivec4";
+  m_vecReplacements["uint2"]  = "uvec2";
+  m_vecReplacements["uint3"]  = "uvec3";
+  m_vecReplacements["uint4"]  = "uvec4";
+  m_vecReplacements["float4x4"] = "mat4";
+  m_vecReplacements["_Bool"] = "bool";
+  m_vecReplacements["unsigned int"] = "uint";
+  return m_vecReplacements;
+}
+
 struct IRecursiveRewriteOverride
 {
   virtual std::string RecursiveRewriteImpl(const clang::Stmt* expr) = 0;
@@ -131,23 +149,16 @@ public:
   
   GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo) : FunctionRewriter(R,a_compiler,a_codeInfo)
   { 
-    m_vecReplacements["float2"] = "vec2";
-    m_vecReplacements["float3"] = "vec3";
-    m_vecReplacements["float4"] = "vec4";
-    m_vecReplacements["int2"]   = "ivec2";
-    m_vecReplacements["int3"]   = "ivec3";
-    m_vecReplacements["int4"]   = "ivec4";
-    m_vecReplacements["uint2"]  = "uvec2";
-    m_vecReplacements["uint3"]  = "uvec3";
-    m_vecReplacements["uint4"]  = "uvec4";
-    m_vecReplacements["float4x4"] = "mat4";
-
+    m_vecReplacements = ListGLSLVectorReplacements();
+   
     m_funReplacements["fmin"]  = "min";
     m_funReplacements["fmax"]  = "max";
     m_funReplacements["fminf"] = "min";
     m_funReplacements["fmaxf"] = "max";
     m_funReplacements["fsqrt"] = "sqrt";
     m_funReplacements["sqrtf"] = "sqrt";
+    m_funReplacements["fabs"]  = "abs";
+    m_funReplacements["to_float4"] = "vec4";
   }
 
   ~GLSLFunctionRewriter()
@@ -158,17 +169,18 @@ public:
   bool VisitCallExpr_Impl(clang::CallExpr* f)             override;
   bool VisitVarDecl_Impl(clang::VarDecl* decl)            override;
   bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
+  bool VisitMemberExpr_Impl(clang::MemberExpr* expr)         override;
+  bool VisitUnaryOperator_Impl(clang::UnaryOperator* expr)   override;
 
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
   IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
 
   std::string RewriteVectorTypeStr(const std::string& a_str) override;
 
-protected:
-
   std::unordered_map<std::string, std::string> m_vecReplacements;
   std::unordered_map<std::string, std::string> m_funReplacements;
 
+protected:
   bool        NeedsVectorTypeRewrite(const std::string& a_str);
   std::string RewriteFuncDecl(clang::FunctionDecl* fDecl);
   std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
@@ -187,7 +199,12 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
   {
     GLSLFunctionRewriter rvCopy = *this;
     rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
-    return m_rewriter.getRewrittenText(expr->getSourceRange());
+
+    std::string text = m_rewriter.getRewrittenText(expr->getSourceRange());
+    if(text == "")                                                            // try to repair from the errors
+      return kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // which reason is unknown ... 
+    else
+      return text;
   }
 }
 
@@ -253,7 +270,21 @@ std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
   {
     const clang::ParmVarDecl* pParam  = fDecl->getParamDecl(i);
     const clang::QualType typeOfParam =	pParam->getType();
-    result += RewriteVectorTypeStr(typeOfParam.getAsString()) + " " + pParam->getNameAsString();
+    std::string typeStr = typeOfParam.getAsString();
+    if(typeOfParam->isPointerType())
+    {
+      ReplaceFirst(typeStr, "*", "");
+      if(typeOfParam->getPointeeType().isConstQualified())
+      {
+        ReplaceFirst(typeStr, "const ", "");
+        result += std::string("in ") + RewriteVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+      }
+      else
+        result += std::string("inout ") + RewriteVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+    }
+    else
+      result += RewriteVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+
     if(i!=fDecl->getNumParams()-1)
       result += ", ";
   }
@@ -277,6 +308,34 @@ bool GLSLFunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)
   }
 
   return true; 
+}
+
+bool GLSLFunctionRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
+{
+  if(expr->isArrow() && WasNotRewrittenYet(expr->getBase()) )
+  {
+    const auto exprText     = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    const std::string lText = exprText.substr(exprText.find("->")+2);
+    const std::string rText = RecursiveRewrite(expr->getBase());
+    m_rewriter.ReplaceText(expr->getSourceRange(), rText + "." + lText);
+    MarkRewritten(expr->getBase()); 
+  }
+
+  return true;
+}
+
+bool GLSLFunctionRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
+{
+  const auto op = expr->getOpcodeStr(expr->getOpcode());
+  if((op == "*" || op == "&") && WasNotRewrittenYet(expr->getSubExpr()) )
+  {
+    auto subExpr      = expr->getSubExpr();
+    std::string text  = RecursiveRewrite(expr->getSubExpr());
+    m_rewriter.ReplaceText(expr->getSourceRange(), text);
+    MarkRewritten(expr->getSubExpr()); 
+  }
+
+  return true;
 }
 
 std::string GLSLFunctionRewriter::CompleteFunctionCallRewrite(clang::CallExpr* call)
@@ -311,31 +370,38 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   if(fname.substr(0, 5) == "make_")
     makeSmth = fname.substr(5);
 
+  auto pFoundSmth = m_funReplacements.find(fname);
+
   if(fname == "to_float3" && call->getNumArgs() == 1 && WasNotRewrittenYet(call) )
   {
-    const std::string exprText = RecursiveRewrite(call->getArg(0));
-    
-    if(clang::isa<clang::CXXConstructExpr>(call->getArg(0)))                                 // TODO: add other similar node types process here
-      m_rewriter.ReplaceText(call->getSourceRange(), exprText + ".xyz");                     // to_float3(f4Data) ==> f4Data.xyz
-    else
-      m_rewriter.ReplaceText(call->getSourceRange(), std::string("(") + exprText + ").xyz"); // to_float3(a+b)    ==> (a+b).xyz
+    const auto qt = call->getArg(0)->getType();
+    const std::string typeName = qt.getAsString();
+    if(typeName.find("float4") != std::string::npos)
+    {
+      const std::string exprText = RecursiveRewrite(call->getArg(0));
       
-    MarkRewritten(call);
+      if(clang::isa<clang::CXXConstructExpr>(call->getArg(0)))                                 // TODO: add other similar node types process here
+        m_rewriter.ReplaceText(call->getSourceRange(), exprText + ".xyz");                     // to_float3(f4Data) ==> f4Data.xyz
+      else
+        m_rewriter.ReplaceText(call->getSourceRange(), std::string("(") + exprText + ").xyz"); // to_float3(a+b)    ==> (a+b).xyz
+        
+      MarkRewritten(call);
+    }
   }
-  else if(fname == "to_float4" && WasNotRewrittenYet(call) )
-  {
-    std::string rewrittenRes = "vec4(" + CompleteFunctionCallRewrite(call);
-    m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
-    MarkRewritten(call);
-  }
-  else if( (fname == "fmin" || fname == "fmax" || fname == "fminf" || fname == "fmaxf") && call->getNumArgs() == 2 && WasNotRewrittenYet(call))
-  {
-    const std::string A = RecursiveRewrite(call->getArg(0));
-    const std::string B = RecursiveRewrite(call->getArg(1));
-    const std::string nameRewr = m_funReplacements[fname];
-    m_rewriter.ReplaceText(call->getSourceRange(), nameRewr + "(" + A + "," + B + ")");
-    MarkRewritten(call);
-  }
+  //else if(fname == "to_float4" && WasNotRewrittenYet(call) )
+  //{
+  //  std::string rewrittenRes = "vec4(" + CompleteFunctionCallRewrite(call);
+  //  m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
+  //  MarkRewritten(call);
+  //}
+  //else if( (fname == "fmin" || fname == "fmax" || fname == "fminf" || fname == "fmaxf") && call->getNumArgs() == 2 && WasNotRewrittenYet(call))
+  //{
+  //  const std::string A = RecursiveRewrite(call->getArg(0));
+  //  const std::string B = RecursiveRewrite(call->getArg(1));
+  //  const std::string nameRewr = m_funReplacements[fname];
+  //  m_rewriter.ReplaceText(call->getSourceRange(), nameRewr + "(" + A + "," + B + ")");
+  //  MarkRewritten(call);
+  //}
   else if(makeSmth != "" && call->getNumArgs() !=0 && WasNotRewrittenYet(call) )
   {
     std::string rewrittenRes = m_vecReplacements[makeSmth] + "(" + CompleteFunctionCallRewrite(call);
@@ -347,6 +413,16 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     const std::string A = RecursiveRewrite(call->getArg(0));
     const std::string B = RecursiveRewrite(call->getArg(1));
     m_rewriter.ReplaceText(call->getSourceRange(), "(" + A + "*" + B + ")");
+    MarkRewritten(call);
+  }
+  else if(pFoundSmth != m_funReplacements.end() && WasNotRewrittenYet(call))
+  {
+    //if(fname == "fmax")
+    //{
+    //  const std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+    //  int a = 2;
+    //}
+    m_rewriter.ReplaceText(call->getSourceRange(), pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call));
     MarkRewritten(call);
   }
 
@@ -394,6 +470,17 @@ bool GLSLFunctionRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
   return true;
 }
 
+void kslicer::GLSLCompiler::ProcessVectorTypesString(std::string& a_str)
+{
+  auto vecReplacements = ListGLSLVectorReplacements();
+  for(auto p = vecReplacements.begin(); p != vecReplacements.end(); ++p)
+  {
+    std::string strToSearch = p->first + " ";
+    while(a_str.find(strToSearch) != std::string::npos) // replace all of them
+      ReplaceFirst(a_str, p->first, p->second);
+  }
+}
+
 
 std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler)
 {
@@ -405,6 +492,7 @@ std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
   {
     case kslicer::DECL_IN_CLASS::DECL_STRUCT:
     result = kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    ProcessVectorTypesString(result);
     break;
     case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
     result = typeInCL + " " + a_decl.name + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
