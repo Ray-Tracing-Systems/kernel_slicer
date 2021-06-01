@@ -9,6 +9,10 @@ typedef LiteMath::float3   vec3;
 typedef LiteMath::float4   vec4;
 #else
 #define MAXFLOAT 1e37f
+#define M_PI          3.14159265358979323846f
+#define M_TWOPI       6.28318530717958647692f
+#define INV_PI        0.31830988618379067154f
+#define INV_TWOPI     0.15915494309189533577f
 #endif
 {% else %}
 #include "OpenCLMath.h"

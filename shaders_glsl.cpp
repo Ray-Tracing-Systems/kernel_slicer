@@ -444,8 +444,13 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
     const std::string varType2 = RewriteVectorTypeStr(varType);
     const std::string varName  = decl->getNameAsString();
     const std::string varValue = RecursiveRewrite(pValue);
-    
-    if(varValue == "")
+
+    if(varName == "ny" || varName == "nx" || varName == "nz" || varName == "deviation")
+    {
+      //decl->dump();
+    }
+
+    if(varValue == "" || varValue == varName) // 'float3 deviation;' for some reason !decl->hasInit() does not works 
       m_rewriter.ReplaceText(decl->getSourceRange(), varType2 + " " + varName);
     else
       m_rewriter.ReplaceText(decl->getSourceRange(), varType2 + " " + varName + " = " + varValue);

@@ -143,6 +143,35 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
   return true;
 }
 
+bool kslicer::InitialPassRecursiveASTVisitor::VisitVarDecl(VarDecl* pTargetVar)
+{
+  const FileEntry* Entry = m_sourceManager.getFileEntryForID(m_sourceManager.getFileID(pTargetVar->getLocation()));
+  std::string FileName   = Entry->getName().str();
+  if(!NeedToProcessDeclInFile(FileName))
+    return true;
+
+  kslicer::DeclInClass decl;
+
+  if(pTargetVar->isConstexpr())
+  {
+    decl.name      = pTargetVar->getNameAsString();
+    decl.type      = pTargetVar->getType().getAsString(); 
+    auto posOfDD = decl.type.find("::");
+    if(posOfDD != std::string::npos)
+      decl.type = decl.type.substr(posOfDD+2);
+
+    decl.srcRange  = pTargetVar->getInit()->getSourceRange();                    
+    decl.srcHash   = kslicer::GetHashOfSourceRange(decl.srcRange);  
+    decl.order     = m_currId;
+    decl.kind      = kslicer::DECL_IN_CLASS::DECL_CONSTANT;
+    decl.extracted = true;
+    m_transferredDecl[decl.name] = decl;
+    m_currId++;
+  }
+
+  return true;
+}
+
 std::vector<kslicer::DeclInClass> kslicer::InitialPassRecursiveASTVisitor::GetExtractedDecls()
 {
   std::vector<kslicer::DeclInClass> generalDecls; 

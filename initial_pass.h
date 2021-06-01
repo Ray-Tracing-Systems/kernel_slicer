@@ -36,6 +36,7 @@ namespace kslicer
 
     bool VisitCXXRecordDecl(CXXRecordDecl* record);
     bool VisitTypeDecl     (TypeDecl* record);
+    bool VisitVarDecl      (VarDecl* pTargetVar);
   
     std::unordered_map<std::string, KernelInfo>           functions;
     std::unordered_map<std::string, DataMemberInfo>       dataMembers;
