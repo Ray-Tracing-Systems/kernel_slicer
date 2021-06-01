@@ -322,13 +322,12 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
 ## for Kernel in Kernels
   InitKernel_{{Kernel.Name}}(a_filePath);
 ## endfor
-
+  {% if UseServiceMemCopy %}
   {% if MultipleSourceShaders %}
   std::string servPath = "{{ShaderFolder}}/serv_kernels.cpp.spv"; 
   {% else %}
   std::string servPath = a_filePath;
   {% endif %}
-  
   {% if UseSpecConstWgSize %}
   {
     uint32_t specializationData[3] = { 256, 1, 1 };
@@ -344,7 +343,7 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectBufferUpdateResources(a_filePath);
   {% endif %}
-
+  {% endif %} {# /* UseServiceMemCopy */ #}
 }
 
 void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)

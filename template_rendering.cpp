@@ -177,6 +177,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["ShaderGLSL"]         = !a_classInfo.pShaderCC->IsSingleSource();
   data["UseSeparateUBO"]     = a_classInfo.pShaderCC->UseSeparateUBOForArguments();
   data["UseSpecConstWgSize"] = a_classInfo.pShaderCC->UseSpecConstForWgSize();
+  data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
 
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";

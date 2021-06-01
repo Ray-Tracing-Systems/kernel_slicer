@@ -526,9 +526,10 @@ namespace kslicer
   */
   struct MainClassInfo
   {
-    std::unordered_map<std::string, KernelInfo>     allKernels;      ///<! list of all kernels; used only on the second pass to identify Control Functions; it is not recommended to use it anywhere else
-    std::unordered_map<std::string, KernelInfo>     allOtherKernels; ///<! kernels from other classes. we probably need them if they are used.
-    std::unordered_map<std::string, DataMemberInfo> allDataMembers;  ///<! list of all class data members;
+    std::unordered_map<std::string, KernelInfo>     allKernels;       ///<! list of all kernels; used only on the second pass to identify Control Functions; it is not recommended to use it anywhere else
+    std::unordered_map<std::string, KernelInfo>     allOtherKernels;  ///<! kernels from other classes. we probably need them if they are used.
+    std::unordered_map<std::string, DataMemberInfo> allDataMembers;   ///<! list of all class data members;
+    std::unordered_set<std::string>                 usedServiceCalls; ///<! memcpy, memset and e.t.c.
 
     std::unordered_map<std::string, KernelInfo> kernels;         ///<! only those kernels which are called from 'Main'/'Control' functions
     std::vector<std::string>                    indirectKernels; ///<! list of all kernel names which require indirect dispatch; The order is essential because it is used for indirect buffer offsets 

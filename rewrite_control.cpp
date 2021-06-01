@@ -190,6 +190,7 @@ bool kslicer::MainFunctionRewriter::VisitCallExpr(CallExpr* call)
   
   if(fname == "memcpy")
   {
+    m_pCodeInfo->usedServiceCalls.insert("memcpy");
     std::string testStr = MakeServiceKernelCallCmdString(call);
     m_rewriter.ReplaceText(call->getSourceRange(), testStr);
   }
