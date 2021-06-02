@@ -389,20 +389,6 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       MarkRewritten(call);
     }
   }
-  //else if(fname == "to_float4" && WasNotRewrittenYet(call) )
-  //{
-  //  std::string rewrittenRes = "vec4(" + CompleteFunctionCallRewrite(call);
-  //  m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
-  //  MarkRewritten(call);
-  //}
-  //else if( (fname == "fmin" || fname == "fmax" || fname == "fminf" || fname == "fmaxf") && call->getNumArgs() == 2 && WasNotRewrittenYet(call))
-  //{
-  //  const std::string A = RecursiveRewrite(call->getArg(0));
-  //  const std::string B = RecursiveRewrite(call->getArg(1));
-  //  const std::string nameRewr = m_funReplacements[fname];
-  //  m_rewriter.ReplaceText(call->getSourceRange(), nameRewr + "(" + A + "," + B + ")");
-  //  MarkRewritten(call);
-  //}
   else if(makeSmth != "" && call->getNumArgs() !=0 && WasNotRewrittenYet(call) )
   {
     std::string rewrittenRes = m_vecReplacements[makeSmth] + "(" + CompleteFunctionCallRewrite(call);
@@ -418,11 +404,6 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   }
   else if(pFoundSmth != m_funReplacements.end() && WasNotRewrittenYet(call))
   {
-    //if(fname == "fmax")
-    //{
-    //  const std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
-    //  int a = 2;
-    //}
     m_rewriter.ReplaceText(call->getSourceRange(), pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call));
     MarkRewritten(call);
   }
@@ -506,7 +487,7 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
     const std::string varName  = decl->getNameAsString();
     const std::string varValue = RecursiveRewrite(pValue);
 
-    //if(varName == "ny" || varName == "nx" || varName == "nz" || varName == "deviation")
+    //if(varName == "red")
     //{
     //  int a = 2;
     //}
@@ -525,10 +506,13 @@ bool GLSLFunctionRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
   clang::QualType qt   = cast->getTypeAsWritten();
   clang::Expr* 	  next = cast->getSubExpr();
   std::string typeCast = qt.getAsString();
-
+  //const std::string debugText = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
   if(WasNotRewrittenYet(next))
   {
+    typeCast = RewriteVectorTypeStr(typeCast);
     const std::string exprText = RecursiveRewrite(next);
+    if(exprText == ")") // strange bug for casts inside 'DeclStmt' 
+      return true;
     m_rewriter.ReplaceText(cast->getSourceRange(), typeCast + "(" + exprText + ")");
     MarkRewritten(next);
   }
@@ -600,6 +584,7 @@ public:
   bool VisitVarDecl_Impl(clang::VarDecl* decl) override;
   bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override;
   bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) override;
+  bool VisitUnaryOperator_Impl(clang::UnaryOperator* expr) override;
   
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override { return m_glslRW.VectorTypeContructorReplace(fname, callText); }
 
@@ -664,6 +649,35 @@ bool GLSLKernelRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
   sync();
   return true;
 }
+
+bool GLSLKernelRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
+{
+  if(m_infoPass)
+    return kslicer::KernelRewriter::VisitUnaryOperator_Impl(expr);
+  
+  const auto op = expr->getOpcodeStr(expr->getOpcode());
+  if(op == "*")
+  {
+    auto subExpr           = expr->getSubExpr();
+    std::string exprInside = RecursiveRewrite(subExpr);
+    const bool needOffset  = CheckIfExprHasArgumentThatNeedFakeOffset(exprInside);
+    if(needOffset)
+      return kslicer::KernelRewriter::VisitUnaryOperator_Impl(expr);
+    else
+    {
+      m_glslRW.VisitUnaryOperator_Impl(expr);
+      sync();
+    }
+  } 
+  else
+  {
+    m_glslRW.VisitUnaryOperator_Impl(expr);
+    sync();
+  }
+  
+  return true;
+}
+
 
 bool GLSLKernelRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call)
 {
