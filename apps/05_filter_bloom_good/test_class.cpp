@@ -4,7 +4,7 @@
 
 inline uint pitch(uint x, uint y, uint pitch) { return y*pitch + x; }  
 
-inline float4 sample(__global const float4* data, int w, int h, float a_texCoordX, float a_texCoordY)
+inline float4 BilinearSample(__global const float4* data, int w, int h, float a_texCoordX, float a_texCoordY)
 {
   const float fw = (float)(w);
   const float fh = (float)(h);
@@ -163,7 +163,7 @@ void ToneMapping::kernel2D_MixAndToneMap(int width, int height, const float4* in
     {
       const float texCoordX = (float)(tidX) / (float) (m_width);
       const float texCoordY = (float)(tidY) / (float) (m_height);
-      float4 sampledColor = sample(inBrightPixels, m_widthSmall, m_heightSmall, texCoordX, texCoordY);
+      float4 sampledColor = BilinearSample(inBrightPixels, m_widthSmall, m_heightSmall, texCoordX, texCoordY);
       float4 colorSumm    = clamp(sampledColor + inData4f[pitch(tidX, tidY, m_width)], 0.0f, 1.0f);
     
       colorSumm.x = pow(colorSumm.x, m_gammaInv);
