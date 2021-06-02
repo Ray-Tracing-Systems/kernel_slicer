@@ -16,7 +16,7 @@
   #define __global 
 #endif
 
-// (2) put you general logoc math code that will be same for CPU and GPU
+// (2) put you general logic math code that will be same for CPU and GPU
 //
 #ifndef M_PI
 #define M_PI          3.14159265358979323846f

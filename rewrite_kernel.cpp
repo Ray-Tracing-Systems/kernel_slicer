@@ -300,7 +300,7 @@ bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
   if(!m_infoPass && WasNotRewrittenYet(ret) && m_kernelIsBoolTyped)
   {
     std::string retExprText = RecursiveRewrite(retExpr);
-    m_rewriter.ReplaceText(ret->getSourceRange(), std::string("kgenExitCond = ") + retExprText + "; goto KGEN_EPILOG");
+    m_rewriter.ReplaceText(ret->getSourceRange(), std::string("kgenExitCond = ") + retExprText + ";"); // "; goto KGEN_EPILOG"); !!! GLSL DOE NOT SUPPPRT GOTOs!!!
     MarkRewritten(ret);
     return true;
   }

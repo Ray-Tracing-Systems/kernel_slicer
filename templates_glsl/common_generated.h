@@ -2,13 +2,13 @@
 /////////////  Required  Shader Features ////////////////////////////
 /////////////////////////////////////////////////////////////////////
 {% if GlobalUseInt8 %} 
-#extension GL_EXT_shader_8bit_storage: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int8: require
 {% endif %}
 {% if GlobalUseInt16 %} 
-#extension GL_EXT_shader_16bit_storage: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16: require
 {% endif %}
 {% if GlobalUseInt64 %} 
-#extension GL_EXT_shader_64bit_storage: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64: require
 {% endif %}
 
 /////////////////////////////////////////////////////////////////////
