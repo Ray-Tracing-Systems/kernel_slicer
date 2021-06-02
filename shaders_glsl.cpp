@@ -181,6 +181,9 @@ public:
   std::unordered_map<std::string, std::string> m_vecReplacements;
   std::unordered_map<std::string, std::string> m_funReplacements;
 
+  kslicer::ShaderFeatures sFeatures;
+  kslicer::ShaderFeatures GetShaderFeatures() const override { return sFeatures; }
+
 protected:
   bool        NeedsVectorTypeRewrite(const std::string& a_str);
   std::string RewriteFuncDecl(clang::FunctionDecl* fDecl);
@@ -211,7 +214,18 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
 
 std::string GLSLFunctionRewriter::RewriteVectorTypeStr(const std::string& a_str)
 {
-  const bool isConst = (a_str.find("const ") != std::string::npos);
+  const bool isConst  = (a_str.find("const ") != std::string::npos);
+  const bool isUshort = (a_str.find("short ") != std::string::npos)    || (a_str.find("ushort ") != std::string::npos) || 
+                        (a_str.find("uint16_t ") != std::string::npos) || (a_str.find("int16_t ") != std::string::npos);
+  const bool isByte   = (a_str.find("char ") != std::string::npos)    || (a_str.find("uchar ") != std::string::npos) || 
+                        (a_str.find("uint8_t ") != std::string::npos) || (a_str.find("int8_t ") != std::string::npos);
+  const bool isInt64  = (a_str.find("long long int ") != std::string::npos) ||
+                        (a_str.find("uint64_t ") != std::string::npos) || (a_str.find("int64_t ") != std::string::npos);
+ 
+  sFeatures.useByteType  = sFeatures.useByteType  || isByte;
+  sFeatures.useShortType = sFeatures.useShortType || isUshort;
+  sFeatures.useInt64Type = sFeatures.useInt64Type || isInt64;
+
   std::string resStr;
   std::string typeStr = a_str;
   ReplaceFirst(typeStr, "LiteMath::", "");
@@ -219,6 +233,12 @@ std::string GLSLFunctionRewriter::RewriteVectorTypeStr(const std::string& a_str)
   ReplaceFirst(typeStr, "struct ",    "");
   ReplaceFirst(typeStr, "const ",    "");
   ReplaceFirst(typeStr, "unsigned int ", "uint ");
+  ReplaceFirst(typeStr, "unsigned short ", "uint16_t ");
+  ReplaceFirst(typeStr, "unsigned char  ", "uint8_t ");
+  ReplaceFirst(typeStr, "ushort ", "uint16_t ");
+  ReplaceFirst(typeStr, "uchar  ", "uint8_t ");
+  ReplaceFirst(typeStr, "short ", "int16_t ");
+  ReplaceFirst(typeStr, "char  ", "int8_t ");
   ReplaceFirst(typeStr, m_codeInfo->mainClassName + "::", "");
   
   if(typeStr.size() > 0 && typeStr[typeStr.size()-1] == ' ')

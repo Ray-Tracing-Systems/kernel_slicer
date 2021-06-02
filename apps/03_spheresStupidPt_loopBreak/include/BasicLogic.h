@@ -88,8 +88,8 @@ static inline uint RealColorToUint32(float4 real_color)
   return red | (green << 8) | (blue << 16) | (alpha << 24);
 }
 
-#define WIN_WIDTH  512
-#define WIN_HEIGHT 512
+constexpr uint WIN_WIDTH  = 512;
+constexpr uint WIN_HEIGHT = 512;
 
 static uint pitchOffset(uint x, uint y) { return y*WIN_WIDTH + x; } 
 
@@ -125,8 +125,8 @@ static inline void CoordinateSystem(float3 v1, float3* v2, float3* v3)
 #define INV_PI        0.31830988618379067154f
 #endif
 
-#define GEPSILON      5e-6f
-#define DEPSILON      1e-20f
+constexpr float GEPSILON = 5e-6f ;
+constexpr float DEPSILON = 1e-20f;
 
 //enum THREAD_FLAGS { THREAD_IS_DEAD = 2147483648};
 

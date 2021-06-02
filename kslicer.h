@@ -23,8 +23,22 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
 namespace kslicer
 {
   struct IShaderCompiler;
-
   enum VKERNEL_IMPL_TYPE { VKERNEL_SWITCH = 0, VKERNEL_INDIRECT_DISPATCH=2 };
+
+  struct ShaderFeatures
+  {
+    ShaderFeatures operator||(const ShaderFeatures& rhs)
+    {
+      useByteType  = useByteType  || rhs.useByteType;
+      useShortType = useShortType || rhs.useShortType;
+      useInt64Type = useInt64Type || rhs.useInt64Type;
+      return *this;
+    }
+
+    bool useByteType  = false; 
+    bool useShortType = false;
+    bool useInt64Type = false;
+  };
 
   /**
   \brief for each method MainClass::kernel_XXX
@@ -124,6 +138,8 @@ namespace kslicer
     bool      isIndirect = false;                ///<! IPV pattern; if loop size is defined by class member variable or vector size, we interpret it as indirect dispatching
     uint32_t  indirectBlockOffset = 0;           ///<! IPV pattern; for such kernels we have to know some offset in indirect buffer for thread blocks number (use int4 data for each kernel)
     uint32_t  indirectMakerOffset = 0;           ///<! RTV pattern; kernel-makers have to update size in the indirect buffer  
+
+    ShaderFeatures shaderFeatures;
   };
 
   enum class DATA_USAGE{ USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
@@ -320,6 +336,8 @@ namespace kslicer
     void SetProcessedNodes(const std::unordered_set<uint64_t>& a_rhs) { m_rewrittenNodes = a_rhs; }
     
     virtual std::string RewriteVectorTypeStr(const std::string& a_str);
+
+    virtual ShaderFeatures GetShaderFeatures() const { return ShaderFeatures(); }
 
   protected:
 

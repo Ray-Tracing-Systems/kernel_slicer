@@ -733,6 +733,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (3) local functions
   //
+  ShaderFeatures shaderFeatures;
   data["LocalFunctions"] = std::vector<std::string>();
   {
     clang::Rewriter rewrite2;
@@ -748,10 +749,15 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       //  f.astNode->dump();   
       pVisitor->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
       data["LocalFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
+      shaderFeatures = shaderFeatures || pVisitor->GetShaderFeatures();
     }
   }
   data["LocalFunctions"].push_back("uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }                                      // for 2D threading");
   //data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");
+
+  data["GlobalUseInt8"]  = shaderFeatures.useByteType;
+  data["GlobalUseInt16"] = shaderFeatures.useShortType;
+  data["GlobalUseInt64"] = shaderFeatures.useInt64Type;
 
   auto dhierarchies   = a_classInfo.GetDispatchingHierarchies();
   data["Hierarchies"] = PutHierarchiesDataToJson(dhierarchies, compiler);
