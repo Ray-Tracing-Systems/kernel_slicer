@@ -743,8 +743,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     { 
       if(a_classInfo.IsExcludedLocalFunction(f.name)) // check exclude list here, don't put such functions in cl file
         continue;
-
-      //f.astNode->dump();   
+      
+      //if(f.name == "MapSampleToCosineDistribution")
+      //  f.astNode->dump();   
       pVisitor->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
       data["LocalFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
     }

@@ -171,6 +171,7 @@ public:
   bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
   bool VisitMemberExpr_Impl(clang::MemberExpr* expr)         override;
   bool VisitUnaryOperator_Impl(clang::UnaryOperator* expr)   override;
+  bool VisitDeclStmt_Impl(clang::DeclStmt* decl)             override;
 
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
   IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
@@ -429,13 +430,73 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   return true; 
 }
 
+bool GLSLFunctionRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special case for process multiple decls in line, like 'int i,j,k=2'
+{
+  if(!decl->isSingleDecl())
+  {
+    //const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
+    std::string varType = "";
+    std::string resExpr = "";
+    for(auto it = decl->decl_begin(); it != decl->decl_end(); ++it)
+    {
+      clang::Decl* cdecl = (*it);
+      if(!clang::isa<clang::VarDecl>(cdecl))
+        continue;
+      
+      clang::VarDecl* vdecl = clang::dyn_cast<clang::VarDecl>(cdecl);
+      const auto qt         = vdecl->getType();
+      const auto pValue     = vdecl->getAnyInitializer();
+      const std::string varName  = vdecl->getNameAsString();
+      const std::string varValue = RecursiveRewrite(pValue);
+
+      if(varType == "") // first element
+      {
+        varType = qt.getAsString();
+        if(!NeedsVectorTypeRewrite(varType)) // immediately ignore DeclStmt like 'int i,j,k=2' if we dont need to rewrite the type 
+          return true;
+        varType = RewriteVectorTypeStr(varType);
+        
+        if(varValue == "" || varValue == varName) 
+          resExpr = varType + " " + varName;
+        else
+          resExpr = varType + " " + varName + " = " + varValue;
+      }
+      else              // second or other
+      {
+        if(varValue == "" || varValue == varName) 
+          resExpr += (" " + varName);
+        else
+          resExpr += (varName + " = " + varValue);
+      }
+      
+      auto next = it; ++next;
+      if(next != decl->decl_end())
+        resExpr += ", ";
+      else
+        resExpr += ";";
+
+      MarkRewritten(pValue);
+    }
+
+    if(WasNotRewrittenYet(decl)) 
+    {
+      m_rewriter.ReplaceText(decl->getSourceRange(), resExpr);
+      MarkRewritten(decl);
+    }
+  }
+
+  return true;
+}
+
 bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl) 
 {
   if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
     return true;
 
-  const auto qt     = decl->getType();
-  const auto pValue = decl->getAnyInitializer();
+  //bool isFirstInList = decl->isFirstDecl();
+
+  const auto qt      = decl->getType();
+  const auto pValue  = decl->getAnyInitializer();
       
   //const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
   const std::string varType   = qt.getAsString();
@@ -445,10 +506,10 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
     const std::string varName  = decl->getNameAsString();
     const std::string varValue = RecursiveRewrite(pValue);
 
-    if(varName == "ny" || varName == "nx" || varName == "nz" || varName == "deviation")
-    {
-      //decl->dump();
-    }
+    //if(varName == "ny" || varName == "nx" || varName == "nz" || varName == "deviation")
+    //{
+    //  int a = 2;
+    //}
 
     if(varValue == "" || varValue == varName) // 'float3 deviation;' for some reason !decl->hasInit() does not works 
       m_rewriter.ReplaceText(decl->getSourceRange(), varType2 + " " + varName);

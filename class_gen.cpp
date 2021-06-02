@@ -282,6 +282,7 @@ void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_k
 }
 
 void kslicer::FunctionRewriter::MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
+//void kslicer::FunctionRewriter::MarkRewritten(const clang::Decl* decl) { kslicer::MarkRewrittenRecursive(decl, m_rewrittenNodes); }
 
 bool kslicer::FunctionRewriter::WasNotRewrittenYet(const clang::Stmt* expr)
 {
@@ -292,3 +293,11 @@ bool kslicer::FunctionRewriter::WasNotRewrittenYet(const clang::Stmt* expr)
   const auto exprHash  = kslicer::GetHashOfSourceRange(expr->getSourceRange());
   return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
 }
+
+//bool kslicer::FunctionRewriter::WasNotRewrittenYet(const clang::Decl* decl)
+//{
+//  if(decl == nullptr)
+//    return true;
+//  const auto exprHash  = kslicer::GetHashOfSourceRange(decl->getSourceRange());
+//  return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
+//}
