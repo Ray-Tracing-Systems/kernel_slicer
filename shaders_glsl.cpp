@@ -131,8 +131,24 @@ std::unordered_map<std::string, std::string> ListGLSLVectorReplacements()
   m_vecReplacements["uint4"]  = "uvec4";
   m_vecReplacements["float4x4"] = "mat4";
   m_vecReplacements["_Bool"] = "bool";
-  m_vecReplacements["unsigned int"] = "uint";
+  m_vecReplacements["unsigned int"]   = "uint";
+  m_vecReplacements["unsigned char"]  = "uint8_t";
+  m_vecReplacements["unsigned short"] = "uint16_t";
+  m_vecReplacements["char"]           = "int8_t";
+  m_vecReplacements["short"]          = "int16_t";
+  m_vecReplacements["uchar"]          = "uint8_t";
+  m_vecReplacements["ushort"]         = "uint16_t";
   return m_vecReplacements;
+}
+
+std::vector<std::pair<std::string, std::string> > SortByKeysByLen(const std::unordered_map<std::string, std::string>& a_map)
+{
+  std::vector<std::pair<std::string, std::string> > res;
+  res.reserve(a_map.size());
+  for(auto p : a_map)
+    res.push_back(p);
+  std::sort(res.begin(), res.end(), [](auto& a, auto& b) { return a.first.size() > b.first.size(); });
+  return res;
 }
 
 struct IRecursiveRewriteOverride
@@ -149,7 +165,8 @@ public:
   
   GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo) : FunctionRewriter(R,a_compiler,a_codeInfo)
   { 
-    m_vecReplacements = ListGLSLVectorReplacements();
+    m_vecReplacements  = ListGLSLVectorReplacements();
+    m_vecReplacements2 = SortByKeysByLen(m_vecReplacements);
    
     m_funReplacements["fmin"]  = "min";
     m_funReplacements["fmax"]  = "max";
@@ -180,6 +197,7 @@ public:
 
   std::unordered_map<std::string, std::string> m_vecReplacements;
   std::unordered_map<std::string, std::string> m_funReplacements;
+  std::vector<std::pair<std::string, std::string> > m_vecReplacements2;
 
   kslicer::ShaderFeatures sFeatures;
   kslicer::ShaderFeatures GetShaderFeatures() const override { return sFeatures; }
@@ -214,13 +232,13 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
 
 std::string GLSLFunctionRewriter::RewriteVectorTypeStr(const std::string& a_str)
 {
-  const bool isConst  = (a_str.find("const ") != std::string::npos);
-  const bool isUshort = (a_str.find("short ") != std::string::npos)    || (a_str.find("ushort ") != std::string::npos) || 
-                        (a_str.find("uint16_t ") != std::string::npos) || (a_str.find("int16_t ") != std::string::npos);
-  const bool isByte   = (a_str.find("char ") != std::string::npos)    || (a_str.find("uchar ") != std::string::npos) || 
-                        (a_str.find("uint8_t ") != std::string::npos) || (a_str.find("int8_t ") != std::string::npos);
-  const bool isInt64  = (a_str.find("long long int ") != std::string::npos) ||
-                        (a_str.find("uint64_t ") != std::string::npos) || (a_str.find("int64_t ") != std::string::npos);
+  const bool isConst  = (a_str.find("const") != std::string::npos);
+  const bool isUshort = (a_str.find("short") != std::string::npos)    || (a_str.find("ushort") != std::string::npos) || 
+                        (a_str.find("uint16_t") != std::string::npos) || (a_str.find("int16_t") != std::string::npos);
+  const bool isByte   = (a_str.find("char") != std::string::npos)    || (a_str.find("uchar") != std::string::npos) || 
+                        (a_str.find("uint8_t") != std::string::npos) || (a_str.find("int8_t") != std::string::npos);
+  const bool isInt64  = (a_str.find("long long int") != std::string::npos) ||
+                        (a_str.find("uint64_t") != std::string::npos) || (a_str.find("int64_t") != std::string::npos);
  
   sFeatures.useByteType  = sFeatures.useByteType  || isByte;
   sFeatures.useShortType = sFeatures.useShortType || isUshort;
@@ -231,14 +249,7 @@ std::string GLSLFunctionRewriter::RewriteVectorTypeStr(const std::string& a_str)
   ReplaceFirst(typeStr, "LiteMath::", "");
   ReplaceFirst(typeStr, "glm::",      "");
   ReplaceFirst(typeStr, "struct ",    "");
-  ReplaceFirst(typeStr, "const ",    "");
-  ReplaceFirst(typeStr, "unsigned int ", "uint ");
-  ReplaceFirst(typeStr, "unsigned short ", "uint16_t ");
-  ReplaceFirst(typeStr, "unsigned char  ", "uint8_t ");
-  ReplaceFirst(typeStr, "ushort ", "uint16_t ");
-  ReplaceFirst(typeStr, "uchar  ", "uint8_t ");
-  ReplaceFirst(typeStr, "short ", "int16_t ");
-  ReplaceFirst(typeStr, "char  ", "int8_t ");
+  ReplaceFirst(typeStr, "const ",     "");
   ReplaceFirst(typeStr, m_codeInfo->mainClassName + "::", "");
   
   if(typeStr.size() > 0 && typeStr[typeStr.size()-1] == ' ')
@@ -270,9 +281,9 @@ bool GLSLFunctionRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // T
     return true;
   std::string name2 = std::string("LiteMath::") + a_str;
   bool need = false;
-  for(auto p = m_vecReplacements.begin(); p != m_vecReplacements.end(); ++p)
+  for(auto p = m_vecReplacements2.begin(); p != m_vecReplacements2.end(); ++p)
   {
-    if(name2.find(p->first) != std::string::npos)
+    if(name2.find(p->first) != std::string::npos || a_str.find(p->first) != std::string::npos)
     {
       need = true;
       break;
@@ -435,7 +446,7 @@ bool GLSLFunctionRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special 
 {
   if(!decl->isSingleDecl())
   {
-    //const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
+    const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
     std::string varType = "";
     std::string resExpr = "";
     for(auto it = decl->decl_begin(); it != decl->decl_end(); ++it)
@@ -453,6 +464,10 @@ bool GLSLFunctionRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special 
       if(varType == "") // first element
       {
         varType = qt.getAsString();
+        if(varType.find("unsigned char") != std::string::npos)
+        {
+          int a = 2;
+        }
         if(!NeedsVectorTypeRewrite(varType)) // immediately ignore DeclStmt like 'int i,j,k=2' if we dont need to rewrite the type 
           return true;
         varType = RewriteVectorTypeStr(varType);
@@ -499,18 +514,23 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   const auto qt      = decl->getType();
   const auto pValue  = decl->getAnyInitializer();
       
-  //const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
+  const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
   const std::string varType   = qt.getAsString();
+
+  if(varType.find("unsigned char") != std::string::npos)
+  {
+    int a = 2;
+  }
+
   if(NeedsVectorTypeRewrite(varType) && WasNotRewrittenYet(pValue))
   {
-    const std::string varType2 = RewriteVectorTypeStr(varType);
     const std::string varName  = decl->getNameAsString();
-    const std::string varValue = RecursiveRewrite(pValue);
-
     //if(varName == "red")
     //{
     //  int a = 2;
     //}
+    const std::string varValue = RecursiveRewrite(pValue);
+    const std::string varType2 = RewriteVectorTypeStr(varType);
 
     if(varValue == "" || varValue == varName) // 'float3 deviation;' for some reason !decl->hasInit() does not works 
       m_rewriter.ReplaceText(decl->getSourceRange(), varType2 + " " + varName);
@@ -529,6 +549,10 @@ bool GLSLFunctionRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
   //const std::string debugText = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
   if(WasNotRewrittenYet(next))
   {
+    if(typeCast.find("unsigned char") != std::string::npos)
+    {
+      int a = 2;
+    }
     typeCast = RewriteVectorTypeStr(typeCast);
     const std::string exprText = RecursiveRewrite(next);
     if(exprText == ")") // strange bug for casts inside 'DeclStmt' 
@@ -542,12 +566,12 @@ bool GLSLFunctionRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
 
 void kslicer::GLSLCompiler::ProcessVectorTypesString(std::string& a_str)
 {
-  auto vecReplacements = ListGLSLVectorReplacements();
-  for(auto p = vecReplacements.begin(); p != vecReplacements.end(); ++p)
+  static auto vecReplacements = SortByKeysByLen(ListGLSLVectorReplacements());
+  for(auto p : vecReplacements)
   {
-    std::string strToSearch = p->first + " ";
+    std::string strToSearch = p.first + " ";
     while(a_str.find(strToSearch) != std::string::npos) // replace all of them
-      ReplaceFirst(a_str, p->first, p->second);
+      ReplaceFirst(a_str, p.first, p.second);
   }
 }
 
