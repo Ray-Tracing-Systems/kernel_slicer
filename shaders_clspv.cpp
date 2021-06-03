@@ -6,23 +6,16 @@ std::string kslicer::FunctionRewriter::RewriteVectorTypeStr(const std::string& a
 {      
   const bool isConst = (a_str.find("const ") != std::string::npos);
   std::string typeStr = a_str;
+  ReplaceFirst(typeStr, "struct LiteMath::", "");
   ReplaceFirst(typeStr, "LiteMath::", "");
   ReplaceFirst(typeStr, "const ",    "");
   ReplaceFirst(typeStr, m_codeInfo->mainClassName + "::", "");
   ReplaceFirst(typeStr, "struct float4x4", "float4x4");       // small inconvinience in math library
 
-  std::string resStr = typeStr;
-  
-  //auto p = m_vecReplacements.find(typeStr);
-  //if(p == m_vecReplacements.end())
-  //  resStr = typeStr;
-  //else
-  //  resStr = p->second;
-
   if(isConst)
-    resStr = std::string("const ") + resStr;
+    typeStr = std::string("const ") + typeStr;
 
-  return resStr;
+  return typeStr;
 }
 
 

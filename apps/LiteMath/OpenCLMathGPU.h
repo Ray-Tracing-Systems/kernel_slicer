@@ -51,4 +51,6 @@ static inline float4 to_float4(float3 v, float w)
   return res;
 }
 
+#define constexpr __constant static
+
 #endif

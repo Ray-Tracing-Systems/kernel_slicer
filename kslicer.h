@@ -470,6 +470,7 @@ namespace kslicer
     virtual bool        IsSingleSource()   const = 0;
     virtual std::string ShaderSingleFile() const = 0;
     virtual std::string ShaderFolder()     const = 0;
+    virtual bool        IsGLSL()           const { return !IsSingleSource(); }
 
     virtual void        GenerateShaders(nlohmann::json& a_kernelsJson, const std::string& mainClassFileName, const std::vector<std::string>& includeToShadersFolders) = 0;
 

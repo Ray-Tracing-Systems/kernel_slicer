@@ -782,7 +782,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       json argj;
       std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(commonArg.typeName);
-      std::string buffType2 = pShaderRewriter->RewriteVectorTypeStr(buffType1);
+      std::string buffType2 = pShaderRewriter->RewriteVectorTypeStr(buffType1); 
       argj["Type"]  = buffType2;
       argj["Name"]  = commonArg.argName;
       argj["IsUBO"] = commonArg.isUBO;
@@ -814,10 +814,13 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       assert(pVecMember->second.isContainer);
       assert(pVecSizeMember->second.isContainerInfo);
 
-      std::string buffType = pVecMember->second.containerDataType + "*";
-
+      std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(pVecMember->second.containerDataType);
+      std::string buffType2 = pShaderRewriter->RewriteVectorTypeStr(buffType1);
+      if(!a_classInfo.pShaderCC->IsGLSL())
+        buffType2 += "*";
+      
       json argj;
-      argj["Type"]       = pShaderRewriter->RewriteVectorTypeStr(a_classInfo.pShaderCC->ProcessBufferType(buffType));
+      argj["Type"]       = buffType2;
       argj["Name"]       = pVecMember->second.name;
       argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
       argj["IsUBO"]      = false;
