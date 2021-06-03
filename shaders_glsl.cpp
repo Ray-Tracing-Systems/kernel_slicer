@@ -13,8 +13,11 @@
 std::string GetFolderPath(const std::string& a_filePath);
 
 
-void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const std::string& mainClassFileName, const std::vector<std::string>& includeToShadersFolders)
+void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo)
 {
+  const auto& mainClassFileName       = a_codeInfo->mainClassFileName;
+  const auto& includeToShadersFolders = a_codeInfo->includeToShadersFolders;
+
   std::string folderPath = GetFolderPath(mainClassFileName);
   std::string shaderPath = folderPath + "/" + this->ShaderFolder();
   #ifdef WIN32
@@ -62,10 +65,13 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     //glslangValidator -e myEntryPoint // is needed for auxilary kernels!
   }
     
-  //nlohmann::json emptyJson;
-  //std::string outFileServ = shaderPath + "/" + "serv_kernels.cpp";
-  //kslicer::ApplyJsonToTemplate("templates/ser_circle.cxx", outFileServ, emptyJson);
-  //buildSH << "../../circle -shader -c -emit-spirv " << outFileServ.c_str() << " -o " << outFileServ.c_str() << ".spv" << " -DUSE_CIRCLE_CC -I.. " << std::endl;
+  if(a_codeInfo->usedServiceCalls.find("memcpy") != a_codeInfo->usedServiceCalls.end())
+  {
+    nlohmann::json dummy;
+    kslicer::ApplyJsonToTemplate("templates_glsl/z_memcpy.glsl", shaderPath + "/z_memcpy.comp", dummy); // just file copy actually
+    buildSH << "glslangValidator -V z_memcpy.comp -o z_memcpy.comp.spv";
+    buildSH << std::endl;
+  }
   
   buildSH.close();
 }

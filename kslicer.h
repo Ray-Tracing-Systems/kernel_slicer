@@ -472,7 +472,7 @@ namespace kslicer
     virtual std::string ShaderFolder()     const = 0;
     virtual bool        IsGLSL()           const { return !IsSingleSource(); }
 
-    virtual void        GenerateShaders(nlohmann::json& a_kernelsJson, const std::string& mainClassFileName, const std::vector<std::string>& includeToShadersFolders) = 0;
+    virtual void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) = 0;
 
     virtual std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const = 0;
 
@@ -497,7 +497,7 @@ namespace kslicer
     std::string ShaderFolder()     const override { return "clspv_shaders_aux"; }
     std::string ShaderSingleFile() const override { return "z_generated.cl"; }
 
-    void        GenerateShaders(nlohmann::json& a_kernelsJson, const std::string& mainClassFileName, const std::vector<std::string>& includeToShadersFolders) override;
+    void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
 
     bool        UseSeparateUBOForArguments() const override { return m_useCpp; }
     bool        UseSpecConstForWgSize()      const override { return m_useCpp; }
@@ -523,7 +523,7 @@ namespace kslicer
     std::string ShaderFolder()                       const override { return "shaders_generated"; }
     std::string ShaderSingleFile()                   const override { return ""; }
    
-    void GenerateShaders(nlohmann::json& a_kernelsJson, const std::string& mainClassFileName, const std::vector<std::string>& includeToShadersFolders) override;
+    void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
 
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
     std::string ProcessBufferType(const std::string& a_typeName)        const override;

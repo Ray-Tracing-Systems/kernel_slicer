@@ -174,7 +174,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UBOIncl"]            = uboIncludeName;
   data["MainClassName"]      = a_classInfo.mainClassName;
   data["ShaderSingleFile"]   = a_classInfo.pShaderCC->ShaderSingleFile();
-  data["ShaderGLSL"]         = !a_classInfo.pShaderCC->IsSingleSource();
+  data["ShaderGLSL"]         = a_classInfo.pShaderCC->IsGLSL();
   data["UseSeparateUBO"]     = a_classInfo.pShaderCC->UseSeparateUBOForArguments();
   data["UseSpecConstWgSize"] = a_classInfo.pShaderCC->UseSpecConstForWgSize();
   data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
@@ -697,6 +697,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   json data;
   data["MainClassName"]      = a_classInfo.mainClassName;
   data["UseSpecConstWgSize"] = a_classInfo.pShaderCC->UseSpecConstForWgSize();
+  data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
 
   // (1) put includes
   //

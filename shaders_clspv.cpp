@@ -56,8 +56,11 @@ std::string kslicer::ClspvCompiler::BuildCommand() const
 
 std::string GetFolderPath(const std::string& a_filePath);
 
-void kslicer::ClspvCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const std::string& mainClassFileName, const std::vector<std::string>& includeToShadersFolders) 
+void kslicer::ClspvCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) 
 {
+  const auto& mainClassFileName       = a_codeInfo->mainClassFileName;
+  const auto& includeToShadersFolders = a_codeInfo->includeToShadersFolders;
+
   const std::string templatePath = "templates/generated.cl";
   const std::string outFileName  = GetFolderPath(mainClassFileName) + "/z_generated.cl";
   kslicer::ApplyJsonToTemplate(templatePath, outFileName, a_kernelsJson);  

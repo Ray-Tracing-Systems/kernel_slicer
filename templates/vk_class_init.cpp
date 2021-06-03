@@ -324,7 +324,7 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
 ## endfor
   {% if UseServiceMemCopy %}
   {% if MultipleSourceShaders %}
-  std::string servPath = "{{ShaderFolder}}/serv_kernels.cpp.spv"; 
+  std::string servPath = {% if ShaderGLSL %}"{{ShaderFolder}}/z_memcpy.comp.spv"{% else %}"{{ShaderFolder}}/serv_kernels.cpp.spv"{% endif %}; 
   {% else %}
   std::string servPath = a_filePath;
   {% endif %}
@@ -332,10 +332,10 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
   {
     uint32_t specializationData[3] = { 256, 1, 1 };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, servPath.c_str(), &m_specsForWGSize, "copyKernelFloat");
+    m_pMaker->CreateShader(device, servPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"copyKernelFloat"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, servPath.c_str(), nullptr, "copyKernelFloat");
+  m_pMaker->CreateShader(device, servPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"copyKernelFloat"{% endif %});
   {% endif %}
   copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
   copyKernelFloatLayout   = m_pMaker->MakeLayout(device, copyKernelFloatDSLayout, 128); // at least 128 bytes for push constants

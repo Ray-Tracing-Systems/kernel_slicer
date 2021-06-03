@@ -29,6 +29,15 @@
             "problemMatcher": [
                 "$gcc"
             ]
+        },
+        {
+            "label": "Build Kernels (GLSL)",
+            "type": "shell",
+            "command": "cd shaders_generated && bash build.sh",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
 }
