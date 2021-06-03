@@ -24,6 +24,11 @@
 //#define SINGLE  // don't split into tiles
 //#define BATCH_SUBMIT //submit all path tracing cmds at once
 
+#define TILE_X 512
+#define TILE_Y 512
+
+constexpr int NUM_PASSES = 8;
+
 using LiteMath::uint4;
 
 class TestClass_GPU : public TestClass_Generated
@@ -275,7 +280,7 @@ void test_class_gpu_V2()
   constexpr uint32_t nTiles = 1;
   constexpr uint32_t perTile = totalWork;
 #else
-  constexpr uint32_t perTile = 256 * 256;
+  constexpr uint32_t perTile = TILE_X * TILE_Y;
   constexpr uint32_t nTiles = totalWork / perTile;
 #endif
 
@@ -451,7 +456,6 @@ void test_class_gpu_V2()
     pathBeginCmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     pathBeginCmdInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
-    constexpr int NUM_PASSES = 64;
     // ***** Record *****
     idx = 0;
     for(auto j = 0; j < nTiles; ++j)
@@ -481,6 +485,7 @@ void test_class_gpu_V2()
     }
 
     // ***** Execute (multithreaded submission)*****
+    for(int i = 0; i < 10; ++i)
     {
       std::vector<std::thread> workers(nComputeQs);
 
@@ -700,7 +705,7 @@ void test_class_gpu_single_queue()
   constexpr uint32_t nTiles = 1;
   constexpr uint32_t perTile = totalWork;
 #else
-  constexpr uint32_t perTile = 256 * 512;
+  constexpr uint32_t perTile = TILE_X * TILE_Y;
   constexpr uint32_t nTiles = totalWork / perTile;
 #endif
 
@@ -812,7 +817,6 @@ void test_class_gpu_single_queue()
     pathBeginCmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     pathBeginCmdInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
-    constexpr int NUM_PASSES = 64;
     // ***** Record *****
     for(auto j = 0; j < nTiles; ++j)
     {
@@ -825,10 +829,9 @@ void test_class_gpu_single_queue()
       vkEndCommandBuffer(pathCmds1[j]);
     }
 
-    // ***** Execute (multithreaded submission)*****
+    // ***** Execute
+    for(int i = 0; i < 10; ++i)
     {
-      std::vector<std::thread> workers(nComputeQs);
-
       auto start = std::chrono::high_resolution_clock::now();
 
       VkFence fence;
