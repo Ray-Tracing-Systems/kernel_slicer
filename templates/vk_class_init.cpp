@@ -340,10 +340,10 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
   copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
   copyKernelFloatLayout   = m_pMaker->MakeLayout(device, copyKernelFloatDSLayout, 128); // at least 128 bytes for push constants
   copyKernelFloatPipeline = m_pMaker->MakePipeline(device);
+  {% endif %} {# /* UseServiceMemCopy */ #}
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectBufferUpdateResources(a_filePath);
   {% endif %}
-  {% endif %} {# /* UseServiceMemCopy */ #}
 }
 
 void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
