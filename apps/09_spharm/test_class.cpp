@@ -3,6 +3,7 @@
 #include <cassert>
 #include <algorithm>
 #include <array>
+#include <chrono>
 
 using namespace LiteMath;
 
@@ -26,6 +27,7 @@ void SphHarm::kernel2D_IntegrateSphHarm(uint32_t* a_data, uint32_t a_width, uint
   coefs[8] = float3(0,0,0); 
 
   //Iterate over height
+  //#pragma omp parallel for
   for (uint32_t i = 0; i < a_height; ++i) {
     //Iterate over width
     for (uint32_t j = 0; j < a_width; ++j) {
@@ -85,7 +87,15 @@ std::array<LiteMath::float3, 9> process_image_cpu(std::vector<uint32_t>& a_inPix
 {
   SphHarm integrator;
   std::array<LiteMath::float3, 9> resCoeffs;
+  
+  for(int i=0;i<10;i++) {
+  auto start = std::chrono::high_resolution_clock::now();
   integrator.ProcessPixels(a_inPixels.data(), a_width, a_height);
+  
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+  std::cout << ms << " ms for 'ProcessPixels' " << std::endl;
+  }
   integrator.GetCoefficients(resCoeffs.data());
   return resCoeffs;
 }

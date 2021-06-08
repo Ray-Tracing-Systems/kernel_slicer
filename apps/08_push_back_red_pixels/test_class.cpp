@@ -2,6 +2,7 @@
 #include "Bitmap.h"
 #include <cassert>
 #include <algorithm>
+#include <chrono>
 
 inline bool PixelIsRed(uint32_t a_pixelValue)
 {
@@ -31,28 +32,12 @@ void RedPixels::SetMaxDataSize(size_t a_size)
 
 void RedPixels::kernel1D_CountRedPixels(const uint32_t* a_data, size_t a_dataSize)
 {
-  m_redPixelsNum     = 0;
-  m_otherPixelsNum   = 0;
-  m_testPixelsAmount = 0.0f;
-  m_testMin          = +100000000.0f;
-  m_testMax          = -100000000.0f;
-
-  for(uint32_t i = 0; i<a_dataSize; i++)
+  m_redPixelsNum = 0;
+  #pragma omp parallel for reduction(+:m_redPixelsNum)
+  for(int i = 0; i<a_dataSize; i++)
   {
     if(PixelIsRed(a_data[i]))
-    {
       m_redPixelsNum++;
-      m_testPixelsAmount -= 0.5f; // for example some function which define how pixel is red more precicely
-    }
-    else
-    {
-      float strangeVal = ((float)a_data[i])*((float)i);
-      if(i == 1000)
-        strangeVal = -10.0f;
-      m_testMin = std::min(m_testMin, strangeVal);
-      m_testMax = std::max(m_testMax, strangeVal);
-      m_otherPixelsNum++;
-    }
   }
 }
 
@@ -105,12 +90,8 @@ Cont filter(const Cont &container, Pred predicate)
 void RedPixels::ProcessPixels(uint32_t* a_data, size_t a_dataSize)
 {
   kernel1D_CountRedPixels(a_data, a_dataSize);
-  kernel1D_FindRedPixels (a_data, a_dataSize);
-  
-  //kernel1D_CopyPixels(a_data, a_dataSize, m_pixelsCopy.data());
-  //m_foundPixels = filter(m_pixelsCopy, [](const auto& pixel) { return PixelIsRed(pixel.value); } );
-
-  kernel1D_PaintRedPixelsToYellow(a_data);
+  //kernel1D_FindRedPixels (a_data, a_dataSize);
+  //kernel1D_PaintRedPixelsToYellow(a_data);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -123,8 +104,18 @@ void process_image_cpu(std::vector<uint32_t>& a_inPixels)
   RedPixels filter;
 
   filter.SetMaxDataSize(a_inPixels.size());
-  filter.ProcessPixels(a_inPixels.data(), a_inPixels.size());
+
+  for(int i=0;i<10;i++)
+  {
+    auto start = std::chrono::high_resolution_clock::now();
   
+    filter.ProcessPixels(a_inPixels.data(), a_inPixels.size());
+    
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+    std::cout << ms << " ms for 'ProcessPixels' " << std::endl;
+  }
+
   //a_outPixels = filter.GetFoundPixels();
   //assert(a_outPixels.size() == filter.GetRedPixelsAmount());
 
