@@ -1,7 +1,7 @@
 #include "test_class.h"
 #include "include/crandom.h"
 
-#include <chrono>
+//#include <chrono>
 
 void TestClass::InitRandomGens(int a_maxThreads)
 {
@@ -256,18 +256,10 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, floa
 
     IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
     
-    auto start = std::chrono::high_resolution_clock::now();
     pMaterial->kernel_NextBounce(tid, &hit, &baricentrics, 
                                  m_indicesReordered.data(), m_vPos4f.data(), m_vNorm4f.data(), 
                                  &rayPosAndNear, &rayDirAndFar, m_randomGens.data(), 
                                  &accumColor, &accumThoroughput);
-
-    
-  
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-    m_clockSumm += ms;
-    break;
   }
 
   kernel_ContributeToImage(tid, &accumColor, in_pakedXY, 
@@ -311,22 +303,19 @@ void test_class_cpu()
   // now test path tracing
   //
   
-  auto start = std::chrono::high_resolution_clock::now();
+  //auto start = std::chrono::high_resolution_clock::now();
 
-  const int PASS_NUMBER           = 1;
-  const int ITERS_PER_PASS_NUMBER = 1;
+  const int PASS_NUMBER           = 100;
+  const int ITERS_PER_PASS_NUMBER = 4;
   for(int passId = 0; passId < PASS_NUMBER; passId++)
   {
-    test.m_clockSumm = 0;
-
-    //#pragma omp parallel for default(shared)
+    #pragma omp parallel for default(shared)
     for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
     {
       for(int j=0;j<ITERS_PER_PASS_NUMBER;j++)
         test.NaivePathTrace(i, 6, packedXY.data(), realColor.data());
     }
 
-    std::cout << test.m_clockSumm << " ms for materials " << std::endl;
     if(passId%10 == 0)
     {
       const float progress = 100.0f*float(passId)/float(PASS_NUMBER);
@@ -335,10 +324,10 @@ void test_class_cpu()
     }
   }
   
-  auto stop = std::chrono::high_resolution_clock::now();
-  auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-  std::cout << ms << " ms for " << PASS_NUMBER*ITERS_PER_PASS_NUMBER << " passes " << std::endl;
-  std::cout << std::endl;
+  //auto stop = std::chrono::high_resolution_clock::now();
+  //auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+  //std::cout << ms << " ms for " << PASS_NUMBER*ITERS_PER_PASS_NUMBER << " passes " << std::endl;
+  //std::cout << std::endl;
 
   const float normConst = 1.0f/float(PASS_NUMBER*ITERS_PER_PASS_NUMBER);
   const float invGamma  = 1.0f / 2.2f;

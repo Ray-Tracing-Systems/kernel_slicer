@@ -7,7 +7,6 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include <chrono>
 
 #include "include/bvh.h"
 
@@ -75,7 +74,6 @@ public:
     const float4x4 proj = perspectiveMatrix(45.0f, 1.0f, 0.01f, 100.0f);
     m_worldViewProjInv  = inverse4x4(proj);
     InitRandomGens(a_maxThreads);
-    m_clockSumm = 0;
   }
 
   void InitRandomGens(int a_maxThreads);
@@ -108,8 +106,6 @@ public:
 
   static constexpr uint HIT_TRIANGLE_GEOM = 0;
   static constexpr uint HIT_LIGHT_GEOM    = 1;
-  
-  double    m_clockSumm;
 
 protected:
   float3 camPos = float3(0.0f, 0.85f, 4.5f);

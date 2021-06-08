@@ -15,10 +15,9 @@ inline float errFloat4(const float4& a, const float4& b)
 int main(int argc, const char** argv)
 {
   const uint32_t SEED       = 42;
-  const uint32_t ITERATIONS = 1;
-  //auto out_cpu = n_body_cpu(SEED, ITERATIONS);
+  const uint32_t ITERATIONS = 10;
+  auto out_cpu = n_body_cpu(SEED, ITERATIONS);
   auto out_gpu = n_body_gpu(SEED, ITERATIONS);
-  auto out_cpu = out_gpu; 
   bool failed = false;
 
   std::vector<uint32_t> badId; badId.reserve(10);

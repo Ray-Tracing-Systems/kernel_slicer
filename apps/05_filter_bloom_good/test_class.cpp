@@ -1,7 +1,6 @@
 #include "test_class.h"
 #include "Bitmap.h"
 #include <cassert>
-#include <chrono>
 
 inline uint pitch(uint x, uint y, uint pitch) { return y*pitch + x; }  
 
@@ -74,8 +73,7 @@ void ToneMapping::SetMaxImageSize(int w, int h)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void ToneMapping::kernel2D_ExtractBrightPixels(int width, int height, const float4* inData4f, float4* a_brightPixels)
-{ 
-  #pragma omp parallel for 
+{  
   for(int y=0;y<height;y++)
   {
     for(int x=0;x<width;x++)
@@ -91,7 +89,6 @@ void ToneMapping::kernel2D_ExtractBrightPixels(int width, int height, const floa
 
 void ToneMapping::kernel2D_DownSample4x(int width, int height, const float4* a_dataFullRes, float4* a_dataSmallRes)
 {
-  #pragma omp parallel for
   for(int j=0;j<height;j++)
   {
     for(int i=0;i<width;i++)
@@ -108,7 +105,6 @@ void ToneMapping::kernel2D_DownSample4x(int width, int height, const float4* a_d
 
 void ToneMapping::kernel2D_BlurX(int width, int height, const float4* a_dataIn, float4* a_dataOut)
 {
-  #pragma omp parallel for
   for(int tidY=0;tidY<height;tidY++)
   {
     for(int tidX=0;tidX<width;tidX++)
@@ -135,7 +131,6 @@ void ToneMapping::kernel2D_BlurX(int width, int height, const float4* a_dataIn, 
 
 void ToneMapping::kernel2D_BlurY(int width, int height, const float4* a_dataIn, float4* a_dataOut)
 {
-  #pragma omp parallel for
   for(int tidY=0;tidY<height;tidY++)
   {
     for(int tidX=0;tidX<width;tidX++)
@@ -162,7 +157,6 @@ void ToneMapping::kernel2D_BlurY(int width, int height, const float4* a_dataIn, 
 
 void ToneMapping::kernel2D_MixAndToneMap(int width, int height, const float4* inData4f, const float4* inBrightPixels, unsigned int* outData1ui)
 {
-  #pragma omp parallel for
   for(int tidY=0;tidY<height;tidY++)
   {
     for(int tidX=0;tidX<width;tidX++)
@@ -224,16 +218,7 @@ void tone_mapping_cpu(int w, int h, float* a_hdrData, const char* a_outName)
   ToneMapping filter;
   std::vector<uint>  ldrData(w*h);
   filter.SetMaxImageSize(w,h);
-
-  for(int i=0;i<10;i++)
-  {
-    auto start = std::chrono::high_resolution_clock::now();
-    filter.Bloom(w,h, (const float4*)a_hdrData, ldrData.data());
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-    std::cout << ms << " ms for 'Bloom' " << std::endl;
-  }
-
+  filter.Bloom(w,h, (const float4*)a_hdrData, ldrData.data());
   SaveBMP(a_outName, ldrData.data(), w, h);
   return;
 }

@@ -13,7 +13,7 @@ void process_image_gpu(std::vector<uint32_t>& a_inPixels);
 int main(int argc, const char** argv)
 {
   int w, h;
-  std::vector<uint32_t> inputImageData = LoadBMP("input.bmp", &w, &h);
+  std::vector<uint32_t> inputImageData = LoadBMP("../01_intersectSphere/zout_cpu.bmp", &w, &h);
   
   std::vector<uint32_t> resCPU = inputImageData; 
   std::vector<uint32_t> resGPU = inputImageData;
@@ -22,8 +22,8 @@ int main(int argc, const char** argv)
 
   //std::cout << "found " << resCPU.size() << " red pixels" << std::endl;
   
-  //SaveBMP("z_out_cpu.bmp", resCPU.data(), w, h);
-  //SaveBMP("z_out_gpu.bmp", resGPU.data(), w, h);
+  SaveBMP("z_out_cpu.bmp", resCPU.data(), w, h);
+  SaveBMP("z_out_gpu.bmp", resGPU.data(), w, h);
   
   return 0;
 }
