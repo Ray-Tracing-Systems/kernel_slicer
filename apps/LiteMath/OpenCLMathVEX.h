@@ -238,6 +238,7 @@ namespace LiteMath
   static inline float4 dot3v(const float4& a, const float4& b) { return cvex::dot3v(a.v, b.v); }
   static inline float  dot4f(const float4& a, const float4& b) { return cvex::dot4f(a.v, b.v); }
   static inline float4 dot4v(const float4& a, const float4& b) { return cvex::dot4v(a.v, b.v); }
+  static inline float  dot  (const float4& a, const float4& b) { return cvex::dot4f(a.v, b.v); }
   static inline float4 cross3(const float4& a, const float4& b){ return cvex::cross3(a.v, b.v);}
   static inline float4 cross (const float4& a, const float4& b){ return cvex::cross3(a.v, b.v);} 
 

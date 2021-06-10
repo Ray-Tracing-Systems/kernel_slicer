@@ -83,7 +83,7 @@ static inline float NLMWeight(__global const float4* in_buff, int w, int h, int 
 
       const float4 dist = c2 - c3;
 
-      w1               += dot(dist, dist);
+      w1               += dot(to_float3(dist), to_float3(dist));
     }
   }
 
@@ -242,7 +242,8 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
     #pragma omp critical       
     {
       m_linesDone++;
-      std::cout << "NLM Denoiser: " << (int)(100.0F * (float)(m_linesDone) / (float)(a_height)) << std::endl;
+      std::cout << "NLM Denoiser: " << (int)(100.0F * (float)(m_linesDone) / (float)(a_height)) << " \r";
+      std::cout.flush();
     }        
   }
 }

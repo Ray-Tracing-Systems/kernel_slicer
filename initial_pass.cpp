@@ -54,10 +54,13 @@ void kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDe
 
 bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* record)
 {
-  if(!record->hasDefinition() || record->isImplicit() || record->isLiteral())
+  if(!record->hasDefinition())
     return true;
 
-  const auto pType    = record->getTypeForDecl(); 
+  const auto pType = record->getTypeForDecl(); 
+  if(pType == nullptr)
+    return true;
+
   const QualType qt   = pType->getLocallyUnqualifiedSingleStepDesugaredType();
   const auto typeName = qt.getAsString();
 
