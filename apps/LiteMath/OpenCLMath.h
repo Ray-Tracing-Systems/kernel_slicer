@@ -7,12 +7,16 @@
 #ifdef __OPENCL_VERSION__
   #include "OpenCLMathGPU.h" // include some additional math or code you need to be applied in OpenCL kernels
 #else
-  #include "OpenCLMathCPU.h"   // implementation of _same_ functions on the CPU
+  #ifdef KERNEL_SLICER
+  #include "OpenCLMathCPU.h" // pure implementation of _same_ functions on the CPU without vector extensions (you may use it for CPU also for the case)
+  #else
+  #include "OpenCLMathVEX.h" // pure implementation of _same_ functions on the CPU with    vector extensions
+  #endif
   using namespace LiteMath;
   #define __global 
 #endif
 
-// (2) put you general logoc math code that will be same for CPU and GPU
+// (2) put you general logic math code that will be same for CPU and GPU
 //
 #ifndef M_PI
 #define M_PI          3.14159265358979323846f
@@ -43,49 +47,11 @@ static inline float2 make_float2(float a, float b)
   return res;
 }
 
-static inline float3 make_float3(float a, float b, float c)
-{
-  float3 res;
-  res.x = a;
-  res.y = b;
-  res.z = c;
-  return res;
-}
-
-static inline float4 make_float4(float a, float b, float c, float d)
-{
-  float4 res;
-  res.x = a;
-  res.y = b;
-  res.z = c;
-  res.w = d;
-  return res;
-}
-
 static inline float2 to_float2(float4 f4)
 {
   float2 res;
   res.x = f4.x;
   res.y = f4.y;
-  return res;
-}
-
-static inline float3 to_float3(float4 f4)
-{
-  float3 res;
-  res.x = f4.x;
-  res.y = f4.y;
-  res.z = f4.z;
-  return res;
-}
-
-static inline float4 to_float4(float3 v, float w)
-{
-  float4 res;
-  res.x = v.x;
-  res.y = v.y;
-  res.z = v.z;
-  res.w = w;
   return res;
 }
 

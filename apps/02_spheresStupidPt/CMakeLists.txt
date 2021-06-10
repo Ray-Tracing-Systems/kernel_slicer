@@ -20,7 +20,9 @@ endif()
 find_package(OpenMP)
 find_package(Vulkan)
 include_directories(${Vulkan_INCLUDE_DIR})
-include_directories("../vkfw" "../volk")
+include_directories("../vkfw" 
+                    "../volk"
+                    "../LiteMath")
 
 link_directories("../volk")
 

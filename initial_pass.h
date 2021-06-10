@@ -23,9 +23,8 @@ namespace kslicer
     std::string MAIN_CLASS_NAME;
     std::string MAIN_FILE_INCLUDE;
   
-    InitialPassRecursiveASTVisitor(std::vector<std::string>& a_mainFunctionNames, std::string main_class, 
-                                   const ASTContext& a_astContext, clang::SourceManager& a_sm, const MainClassInfo& a_codeInfo) : 
-                                   MAIN_CLASS_NAME(main_class), m_astContext(a_astContext), m_sourceManager(a_sm), m_codeInfo(a_codeInfo)  
+    InitialPassRecursiveASTVisitor(std::vector<std::string>& a_mainFunctionNames, std::string main_class, CompilerInstance& a_compiler, const MainClassInfo& a_codeInfo) : 
+                                   MAIN_CLASS_NAME(main_class), m_compiler(a_compiler), m_astContext(a_compiler.getASTContext()), m_sourceManager(a_compiler.getSourceManager()), m_codeInfo(a_codeInfo)  
     {
       m_mainFuncts.reserve(a_mainFunctionNames.size());
       for(const auto& name : a_mainFunctionNames)
@@ -33,8 +32,11 @@ namespace kslicer
     }
     
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
-    bool VisitCXXRecordDecl(CXXRecordDecl* record);
     bool VisitFieldDecl    (FieldDecl* var);
+
+    bool VisitCXXRecordDecl(CXXRecordDecl* record);
+    bool VisitTypeDecl     (TypeDecl* record);
+    bool VisitVarDecl      (VarDecl* pTargetVar);
   
     std::unordered_map<std::string, KernelInfo>           functions;
     std::unordered_map<std::string, DataMemberInfo>       dataMembers;
@@ -44,23 +46,29 @@ namespace kslicer
 
     const CXXRecordDecl* m_mainClassASTNode = nullptr;
     std::vector<const clang::CXXRecordDecl*> m_classList;
+    std::vector<kslicer::DeclInClass> GetExtractedDecls();
 
   private:
     void ProcessKernelDef(const CXXMethodDecl *f,  std::unordered_map<std::string, KernelInfo>& a_funcList, const std::string& a_className);
-  
+    bool NeedToProcessDeclInFile(std::string a_fileName);
+
     const ASTContext&     m_astContext;
     clang::SourceManager& m_sourceManager;
+    CompilerInstance&     m_compiler;
 
     std::unordered_set<std::string> m_mainFuncts;
     const MainClassInfo&            m_codeInfo;
+
+    uint32_t m_currId = 0;
+    std::unordered_map<std::string, kslicer::DeclInClass> m_transferredDecl;
   };
   
   class InitialPassASTConsumer : public ASTConsumer
   {
    public:
   
-    InitialPassASTConsumer (std::vector<std::string>& a_mainFunctionNames, std::string main_class, const ASTContext& a_astContext, clang::SourceManager& a_sm, const MainClassInfo& a_codeInfo) : 
-                            rv(a_mainFunctionNames, main_class, a_astContext, a_sm, a_codeInfo) { }
+    InitialPassASTConsumer (std::vector<std::string>& a_mainFunctionNames, std::string main_class, CompilerInstance& a_compiler, const MainClassInfo& a_codeInfo) : 
+                            rv(a_mainFunctionNames, main_class, a_compiler, a_codeInfo) { }
     bool HandleTopLevelDecl(DeclGroupRef d) override;
     InitialPassRecursiveASTVisitor rv;
   };

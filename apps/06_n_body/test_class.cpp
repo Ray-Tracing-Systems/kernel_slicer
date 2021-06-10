@@ -1,6 +1,5 @@
 #include "test_class.h"
 #include "include/crandom.h"
-#include "include/OpenCLMath.h"
 
 static uint32_t nextRandValue(const uint32_t value) {
   return value * 22695477 + 1; // Borland C random

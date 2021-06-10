@@ -20,7 +20,7 @@ __kernel void {{Kernel.Name}}_Reduction({% include "inc_args.cl" %})
   {% endif %}
   {% endfor %}
   {% endfor %}
-  SYNCTHREADS;
+  barrier(CLK_LOCAL_MEM_FENCE);
   {% for offset in Kernel.RedLoop1 %} 
   if (localId < {{offset}}) 
   {
@@ -45,7 +45,7 @@ __kernel void {{Kernel.Name}}_Reduction({% include "inc_args.cl" %})
     {% endfor %}
     {% endfor %}
   }
-  SYNCTHREADS;
+  barrier(CLK_LOCAL_MEM_FENCE);
   {% endfor %}
   {% for offset in Kernel.RedLoop2 %} 
   if (localId < {{offset}}) 

@@ -59,10 +59,18 @@ std::array<LiteMath::float3, 9> process_image_gpu(std::vector<uint32_t>& a_inPix
   VkPhysicalDeviceShaderFloat16Int8Features features = {};
   features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
   features.shaderInt8 = VK_TRUE;
+
+  // query for VariablePointers
+  //
+  VkPhysicalDeviceVariablePointersFeatures varPointers = {};
+  varPointers.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES;
+  varPointers.pNext = &features;
+  varPointers.variablePointers              = VK_TRUE;
+  varPointers.variablePointersStorageBuffer = VK_TRUE;
   
   VkPhysicalDeviceFeatures2 physDevFeatures2 = {};
   physDevFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-  physDevFeatures2.pNext = &features;
+  physDevFeatures2.pNext = &varPointers;
 
   std::vector<const char*> validationLayers, deviceExtensions;
   VkPhysicalDeviceFeatures enabledDeviceFeatures = {};

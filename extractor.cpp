@@ -27,8 +27,11 @@ public:
       return true;
 
     std::string fileName = std::string(m_sm.getFilename(f->getSourceRange().getBegin())); // check that we are in test_class.cpp or test_class.h or sms like that;                                                                             
-    if(fileName.find("include/") != std::string::npos)                       // definitely exclude everything from 'include/' folder
-      return true;
+    for(auto f : m_patternImpl.includeToShadersFolders)                                   // exclude everything from "shader" folders
+    {
+      if(fileName.find(f) != std::string::npos)
+       return true;
+    }
 
     if(fileName.find(".h") == std::string::npos && fileName.find(".cpp") == std::string::npos && fileName.find(".cxx") == std::string::npos)
       return true;
@@ -245,6 +248,8 @@ std::vector<kslicer::DeclInClass> kslicer::ExtractTCFromClass(const std::string&
   usedDecls.reserve(typeAndConstantsHandler.foundDecl.size());
   for(const auto decl : typeAndConstantsHandler.foundDecl)
     usedDecls.push_back(decl.second);
+
+  //if(pShaderCC->isGLSL()) // need to extract also struct and constant from "ShaderExcluded" headers
 
   std::sort(usedDecls.begin(), usedDecls.end(), [](const auto& a, const auto& b) { return a.order < b.order; } );
   return kslicer::ExtractUsedTC(usedDecls, classAstNode, compiler);

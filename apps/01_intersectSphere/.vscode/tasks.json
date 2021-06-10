@@ -7,7 +7,10 @@
             "label": "BuildRelease",
             "type": "shell",
             "command": "cd cmake-build-release && make -j 4",
-            "group": "build"
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
         },
         {
             "label": "BuildDebug",
@@ -22,6 +25,15 @@
             "label": "Build Kernels",
             "type": "shell",
             "command": "bash z_build.sh",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build Kernels (GLSL)",
+            "type": "shell",
+            "command": "cd shaders_generated && bash build.sh",
             "group": "build",
             "problemMatcher": [
                 "$gcc"

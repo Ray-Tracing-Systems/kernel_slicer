@@ -9,7 +9,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool kslicer::KernelRewriter::VisitMemberExpr(MemberExpr* expr)
+bool kslicer::KernelRewriter::VisitMemberExpr_Impl(MemberExpr* expr)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
@@ -113,28 +113,30 @@ std::string kslicer::KernelRewriter::FunctionCallRewrite(const CallExpr* call)
   return textRes;
 }
 
-std::string kslicer::KernelRewriter::FunctionCallRewrite(const CXXConstructExpr* call)
+std::string kslicer::KernelRewriter::FunctionCallRewriteNoName(const clang::CXXConstructExpr* call)
 {
-  std::string textRes = call->getConstructor()->getNameInfo().getName().getAsString();
-      
-  textRes += "(";
+  std::string textRes = "(";
   for(int i=0;i<call->getNumArgs();i++)
   {
     textRes += RecursiveRewrite(call->getArg(i));
     if(i < call->getNumArgs()-1)
       textRes += ",";
   }
-  textRes += ")";
-
-  return textRes;
+  return textRes + ")";
 }
 
-bool kslicer::KernelRewriter::VisitCallExpr(CallExpr* call)
+std::string kslicer::KernelRewriter::FunctionCallRewrite(const CXXConstructExpr* call)
+{
+  std::string textRes = call->getConstructor()->getNameInfo().getName().getAsString();
+  return textRes + FunctionCallRewriteNoName(call);
+}
+
+bool kslicer::KernelRewriter::VisitCallExpr_Impl(CallExpr* call)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
 
-  if(isa<CXXMemberCallExpr>(call)) // process in VisitCXXMemberCallExpr
+  if(isa<CXXMemberCallExpr>(call) || isa<CXXConstructExpr>(call)) // process else-where
     return true;
 
   const FunctionDecl* fDecl = call->getDirectCallee();  
@@ -168,7 +170,12 @@ bool kslicer::KernelRewriter::VisitCallExpr(CallExpr* call)
   return true;
 }
 
-bool kslicer::KernelRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
+std::string kslicer::KernelRewriter::VectorTypeContructorReplace(const std::string& fname, const std::string& callText)
+{
+  return std::string("make_") + fname + callText;
+}
+
+bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
@@ -182,11 +189,14 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
 
-  if(m_codeInfo->pShaderCC->IsVectorTypeNeedsContructorReplacement(fname) && WasNotRewrittenYet(call) && call->getNumArgs() > 1)
+  bool needReplacement = kslicer::IsVectorContructorNeedsReplacement(fname);
+  bool wasNotDone      = WasNotRewrittenYet(call);
+
+  if(needReplacement && wasNotDone && call->getNumArgs() > 1)
   {
     const std::string textOrig = GetRangeSourceCode(call->getSourceRange(), m_compiler);
-    const std::string text     = FunctionCallRewrite(call);
-    const std::string textRes  = m_codeInfo->pShaderCC->VectorTypeContructorReplace(fname, text);
+    const std::string text     = FunctionCallRewriteNoName(call);
+    const std::string textRes  = VectorTypeContructorReplace(fname, text);
 
     if(isa<CXXTemporaryObjectExpr>(call))
     {
@@ -194,8 +204,15 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
     }
     else
     {
-      const std::string varName = textOrig.substr(0,  textOrig.find_first_of("("));
-      m_rewriter.ReplaceText(call->getSourceRange(), varName + " = " + textRes);
+      auto pos1 = textOrig.find_first_of("{");
+      auto pos2 = textOrig.find_first_of("(");
+      auto pos  = std::min(pos1, pos2);
+      const std::string varName = textOrig.substr(0, pos);
+
+      if(IsGLSL())
+        m_rewriter.ReplaceText(call->getSourceRange(), textRes);
+      else
+        m_rewriter.ReplaceText(call->getSourceRange(), varName + " = " + textRes);
     }
     
     MarkRewritten(call);
@@ -205,7 +222,7 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
 }
 
 
-bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
+bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
@@ -274,7 +291,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
   return true;
 }
 
-bool kslicer::KernelRewriter::VisitReturnStmt(ReturnStmt* ret)
+bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
 {
   Expr* retExpr = ret->getRetValue();
   if (!retExpr)
@@ -283,7 +300,7 @@ bool kslicer::KernelRewriter::VisitReturnStmt(ReturnStmt* ret)
   if(!m_infoPass && WasNotRewrittenYet(ret) && m_kernelIsBoolTyped)
   {
     std::string retExprText = RecursiveRewrite(retExpr);
-    m_rewriter.ReplaceText(ret->getSourceRange(), std::string("kgenExitCond = ") + retExprText + "; goto KGEN_EPILOG");
+    m_rewriter.ReplaceText(ret->getSourceRange(), std::string("kgenExitCond = ") + retExprText + ";"); // "; goto KGEN_EPILOG"); !!! GLSL DOE NOT SUPPPRT GOTOs!!!
     MarkRewritten(ret);
     return true;
   }
@@ -357,7 +374,7 @@ bool kslicer::KernelRewriter::CheckIfExprHasArgumentThatNeedFakeOffset(const std
   return needOffset;
 }
 
-bool kslicer::KernelRewriter::VisitUnaryOperator(UnaryOperator* expr)
+bool kslicer::KernelRewriter::VisitUnaryOperator_Impl(UnaryOperator* expr)
 {
   const auto op = expr->getOpcodeStr(expr->getOpcode());
   //const auto opCheck = std::string(op);
@@ -506,7 +523,7 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
 }
 
 
-bool kslicer::KernelRewriter::VisitCompoundAssignOperator(CompoundAssignOperator* expr)
+bool kslicer::KernelRewriter::VisitCompoundAssignOperator_Impl(CompoundAssignOperator* expr)
 {
   auto opRange = expr->getSourceRange();
   if(opRange.getEnd()   <= m_currKernel.loopInsides.getBegin() || 
@@ -522,7 +539,7 @@ bool kslicer::KernelRewriter::VisitCompoundAssignOperator(CompoundAssignOperator
   return true;
 }
 
-bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr(CXXOperatorCallExpr* expr)
+bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(CXXOperatorCallExpr* expr)
 {
   auto opRange = expr->getSourceRange();
   if(opRange.getEnd()   <= m_currKernel.loopInsides.getBegin() || 
@@ -553,7 +570,7 @@ bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr(CXXOperatorCallExpr* expr
   return true;
 }
 
-bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detect reduction like m_var = F(m_var,expr)
+bool kslicer::KernelRewriter::VisitBinaryOperator_Impl(BinaryOperator* expr) // detect reduction like m_var = F(m_var,expr)
 {
   auto opRange = expr->getSourceRange();
   if(opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
@@ -651,6 +668,8 @@ bool kslicer::KernelRewriter::VisitBinaryOperator(BinaryOperator* expr) // detec
 
 std::string kslicer::KernelRewriter::RecursiveRewrite(const Stmt* expr)
 {
+  if(expr == nullptr)
+    return "";
   //std::string debugMeIn = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
   KernelRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));

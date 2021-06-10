@@ -216,7 +216,7 @@ VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForObjCounters(VkBuffe
 void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_filePath)
 {
   {% if MultipleSourceShaders %}
-  std::string shaderPath = "{{ShaderFolder}}/{{Kernel.OriginalName}}.cpp.spv"; 
+  std::string shaderPath = "{{ShaderFolder}}/{{Kernel.OriginalName}}.comp.spv"; 
   {% else %}
   std::string shaderPath = a_filePath; 
   {% endif %}
@@ -228,10 +228,10 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {
     uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, "{{Kernel.OriginalName}}");
+    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}");
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %});
   {% endif %}
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
   {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, 128); // at least 128 bytes for push constants
@@ -322,29 +322,28 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
 ## for Kernel in Kernels
   InitKernel_{{Kernel.Name}}(a_filePath);
 ## endfor
-
+  {% if UseServiceMemCopy %}
   {% if MultipleSourceShaders %}
-  std::string servPath = "{{ShaderFolder}}/serv_kernels.cpp.spv"; 
+  std::string servPath = {% if ShaderGLSL %}"{{ShaderFolder}}/z_memcpy.comp.spv"{% else %}"{{ShaderFolder}}/serv_kernels.cpp.spv"{% endif %}; 
   {% else %}
   std::string servPath = a_filePath;
   {% endif %}
-  
   {% if UseSpecConstWgSize %}
   {
     uint32_t specializationData[3] = { 256, 1, 1 };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, servPath.c_str(), &m_specsForWGSize, "copyKernelFloat");
+    m_pMaker->CreateShader(device, servPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"copyKernelFloat"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, servPath.c_str(), nullptr, "copyKernelFloat");
+  m_pMaker->CreateShader(device, servPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"copyKernelFloat"{% endif %});
   {% endif %}
   copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
   copyKernelFloatLayout   = m_pMaker->MakeLayout(device, copyKernelFloatDSLayout, 128); // at least 128 bytes for push constants
   copyKernelFloatPipeline = m_pMaker->MakePipeline(device);
+  {% endif %} {# /* UseServiceMemCopy */ #}
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectBufferUpdateResources(a_filePath);
   {% endif %}
-
 }
 
 void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)

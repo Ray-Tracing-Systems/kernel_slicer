@@ -197,14 +197,16 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
 {
   const CXXMethodDecl* a_node = a_funcInfo.astNode;
   //a_node->dump();
-
-  std::string fakeOffsetExpr = kslicer::GetFakeOffsetExpression(a_funcInfo, GetKernelTIDArgs(a_funcInfo));
+  
+  std::string names[3];
+  pShaderCC->GetThreadSizeNames(names);
+  std::string fakeOffsetExpr = kslicer::GetFakeOffsetExpression(a_funcInfo, GetKernelTIDArgs(a_funcInfo), names);
 
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-
-  kslicer::KernelRewriter rv(rewrite2, compiler, this, a_funcInfo, fakeOffsetExpr, false);
-  rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
+  
+  auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, fakeOffsetExpr, false);
+  pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
   
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
@@ -278,3 +280,24 @@ void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_k
       ReplaceFirst(k.second.RetType,"bool ", "void ");
   }
 }
+
+void kslicer::FunctionRewriter::MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
+//void kslicer::FunctionRewriter::MarkRewritten(const clang::Decl* decl) { kslicer::MarkRewrittenRecursive(decl, m_rewrittenNodes); }
+
+bool kslicer::FunctionRewriter::WasNotRewrittenYet(const clang::Stmt* expr)
+{
+  if(expr == nullptr)
+    return true;
+  if(clang::isa<clang::NullStmt>(expr))
+    return true;
+  const auto exprHash  = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+  return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
+}
+
+//bool kslicer::FunctionRewriter::WasNotRewrittenYet(const clang::Decl* decl)
+//{
+//  if(decl == nullptr)
+//    return true;
+//  const auto exprHash  = kslicer::GetHashOfSourceRange(decl->getSourceRange());
+//  return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
+//}

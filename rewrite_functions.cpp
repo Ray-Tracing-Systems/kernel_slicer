@@ -40,23 +40,25 @@ std::string kslicer::FunctionRewriter::FunctionCallRewrite(const CallExpr* call)
   return textRes;
 }
 
-std::string kslicer::FunctionRewriter::FunctionCallRewrite(const CXXConstructExpr* call)
+std::string kslicer::FunctionRewriter::FunctionCallRewriteNoName(const CXXConstructExpr* call)
 {
-  std::string textRes = call->getConstructor()->getNameInfo().getName().getAsString();
-      
-  textRes += "(";
+  std::string textRes = "(";
   for(int i=0;i<call->getNumArgs();i++)
   {
     textRes += RecursiveRewrite(call->getArg(i));
     if(i < call->getNumArgs()-1)
       textRes += ",";
   }
-  textRes += ")";
-
-  return textRes;
+  return textRes + ")";
 }
 
-bool kslicer::FunctionRewriter::VisitCallExpr(CallExpr* call)
+std::string kslicer::FunctionRewriter::FunctionCallRewrite(const CXXConstructExpr* call)
+{
+  std::string textRes = call->getConstructor()->getNameInfo().getName().getAsString();
+  return textRes + FunctionCallRewriteNoName(call);
+}
+
+bool kslicer::FunctionRewriter::VisitCallExpr_Impl(CallExpr* call)
 {
   if(isa<CXXMemberCallExpr>(call)) // process in VisitCXXMemberCallExpr
     return true;
@@ -92,6 +94,11 @@ bool kslicer::FunctionRewriter::VisitCallExpr(CallExpr* call)
   return true;
 }
 
+std::string kslicer::FunctionRewriter::VectorTypeContructorReplace(const std::string& fname, const std::string& callText)
+{
+  return std::string("make_") + fname + callText;
+}
+
 bool kslicer::FunctionRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
 {
   CXXConstructorDecl* ctorDecl = call->getConstructor();
@@ -99,10 +106,10 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
   
   const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
 
-  if(m_codeInfo->pShaderCC->IsVectorTypeNeedsContructorReplacement(fname) && WasNotRewrittenYet(call) && call->getNumArgs() > 1)
+  if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && call->getNumArgs() > 1)
   {
-    const std::string text    = FunctionCallRewrite(call);
-    const std::string textRes = m_codeInfo->pShaderCC->VectorTypeContructorReplace(fname, text);
+    const std::string text    = FunctionCallRewriteNoName(call);
+    const std::string textRes = VectorTypeContructorReplace(fname, text); 
     m_rewriter.ReplaceText(call->getSourceRange(), textRes);
     MarkRewritten(call);
   }
@@ -112,6 +119,8 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
 
 std::string kslicer::FunctionRewriter::RecursiveRewrite(const Stmt* expr)
 {
+  if(expr == nullptr)
+    return "";
   FunctionRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
   return m_rewriter.getRewrittenText(expr->getSourceRange());

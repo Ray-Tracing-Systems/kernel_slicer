@@ -57,16 +57,129 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* 
   if(!record->hasDefinition() || record->isImplicit() || record->isLiteral())
     return true;
 
-  const auto pType  = record->getTypeForDecl(); 
-  const QualType qt = pType->getLocallyUnqualifiedSingleStepDesugaredType();
-  const std::string typeName = qt.getAsString();
+  const auto pType    = record->getTypeForDecl(); 
+  const QualType qt   = pType->getLocallyUnqualifiedSingleStepDesugaredType();
+  const auto typeName = qt.getAsString();
 
   if(typeName == std::string("class ") + MAIN_CLASS_NAME || typeName == std::string("struct ") + MAIN_CLASS_NAME)
     m_mainClassASTNode = record;
   else if(!record->isPOD())
-    m_classList.push_back(record);
+    m_classList.push_back(record); // rememer for futher processing of complex classes
+  
+  return true;
+}
+
+bool kslicer::InitialPassRecursiveASTVisitor::NeedToProcessDeclInFile(std::string a_fileName)
+{
+  bool needInsertToKernels = false;                     // do we have to process this declaration to further insert it to GLSL/CL ?
+  for(auto folder : m_codeInfo.includeCPPFolders)       //
+  {
+    if(a_fileName.find(folder) != std::string::npos)
+    {
+      needInsertToKernels = true;
+      break;
+    }
+  }
+  return needInsertToKernels;
+}
+
+bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
+{
+  const FileEntry* Entry = m_sourceManager.getFileEntryForID(m_sourceManager.getFileID(type->getLocation()));
+  std::string FileName   = Entry->getName().str();
+  if(!NeedToProcessDeclInFile(FileName))
+    return true;
+
+  kslicer::DeclInClass decl;
+
+  if(isa<RecordDecl>(type))
+  {
+    RecordDecl* pRecord = dyn_cast<RecordDecl>(type);
+    decl.name      = pRecord->getNameAsString();
+    decl.type      = pRecord->getNameAsString();
+    decl.srcRange  = pRecord->getSourceRange ();                    
+    decl.srcHash   = kslicer::GetHashOfSourceRange(decl.srcRange);  
+    decl.order     = m_currId;
+    decl.kind      = kslicer::DECL_IN_CLASS::DECL_STRUCT;
+    decl.extracted = true;
+    m_transferredDecl[decl.name] = decl;
+    m_currId++;
+  }
+  else if(isa<TypedefDecl>(type))
+  {
+    TypedefDecl* pTargetTpdf = dyn_cast<TypedefDecl>(type);
+    const auto qt  = pTargetTpdf->getUnderlyingType();
+    decl.name      = pTargetTpdf->getNameAsString();
+    decl.type      = qt.getAsString();
+    decl.srcRange  = pTargetTpdf->getSourceRange();                
+    decl.srcHash   = kslicer::GetHashOfSourceRange(decl.srcRange);
+    decl.order     = m_currId;
+    decl.kind      = kslicer::DECL_IN_CLASS::DECL_TYPEDEF;
+    decl.extracted = true;
+    m_transferredDecl[decl.name] = decl;
+    m_currId++;
+  }
+  else if(isa<EnumDecl>(type))
+  {
+    EnumDecl* pEnumDecl = dyn_cast<EnumDecl>(type);
+
+    for(auto it = pEnumDecl->enumerator_begin(); it != pEnumDecl->enumerator_end(); ++it)
+    {
+      EnumConstantDecl* pConstntDecl = (*it);
+      decl.name      = pConstntDecl->getNameAsString();
+      decl.type      = "const uint"; 
+      decl.srcRange  = pConstntDecl->getInitExpr()->getSourceRange();                    
+      decl.srcHash   = kslicer::GetHashOfSourceRange(decl.srcRange);  
+      decl.order     = m_currId;
+      decl.kind      = kslicer::DECL_IN_CLASS::DECL_CONSTANT;
+      decl.extracted = true;
+      m_transferredDecl[decl.name] = decl;
+      m_currId++;
+    }
+ 
+  }
+
+  //std::string text = GetRangeSourceCode(type->getSourceRange(), m_compiler);     
+  return true;
+}
+
+bool kslicer::InitialPassRecursiveASTVisitor::VisitVarDecl(VarDecl* pTargetVar)
+{
+  const FileEntry* Entry = m_sourceManager.getFileEntryForID(m_sourceManager.getFileID(pTargetVar->getLocation()));
+  std::string FileName   = Entry->getName().str();
+  if(!NeedToProcessDeclInFile(FileName))
+    return true;
+
+  kslicer::DeclInClass decl;
+
+  if(pTargetVar->isConstexpr())
+  {
+    decl.name      = pTargetVar->getNameAsString();
+    decl.type      = pTargetVar->getType().getAsString(); 
+    auto posOfDD = decl.type.find("::");
+    if(posOfDD != std::string::npos)
+      decl.type = decl.type.substr(posOfDD+2);
+
+    decl.srcRange  = pTargetVar->getInit()->getSourceRange();                    
+    decl.srcHash   = kslicer::GetHashOfSourceRange(decl.srcRange);  
+    decl.order     = m_currId;
+    decl.kind      = kslicer::DECL_IN_CLASS::DECL_CONSTANT;
+    decl.extracted = true;
+    m_transferredDecl[decl.name] = decl;
+    m_currId++;
+  }
 
   return true;
+}
+
+std::vector<kslicer::DeclInClass> kslicer::InitialPassRecursiveASTVisitor::GetExtractedDecls()
+{
+  std::vector<kslicer::DeclInClass> generalDecls; 
+  generalDecls.reserve(m_transferredDecl.size());
+  for(const auto decl : m_transferredDecl)
+    generalDecls.push_back(decl.second);
+  std::sort(generalDecls.begin(), generalDecls.end(), [](const auto& a, const auto& b) { return a.order < b.order; } );
+  return generalDecls;
 }
 
 bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f) 

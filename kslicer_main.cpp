@@ -1,5 +1,3 @@
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <stdio.h>
 #include <vector>
 #include <system_error>
@@ -46,7 +44,7 @@
 using namespace clang;
 #include "template_rendering.h"
 
-#ifdef _WIN32
+#ifdef WIN32
   #include <direct.h>     // for windows mkdir
 #else
   #include <sys/stat.h>   // for linux mkdir
@@ -152,7 +150,11 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
   for(int i=0; i<argc; i++)
   {
     std::string key(argv[i]);
-    if(key.size() > 0 && key[0]=='-')
+    
+    const bool isDefine = key.size() > 1 && key.substr(0,2) == "-D";
+    const bool isKey    = key.size() > 0 && key[0] == '-';
+    
+    if(key != "-v" && !isDefine && isKey) // exclude special "-IfoldePath" form, exclude "-v"
     {
       if(i != argc-1) // not last argument
       {
@@ -166,6 +168,23 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
       fileName = key;
   }
   return cmdLineParams;
+}
+
+std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params)
+{
+  std::unordered_set<std::string> values;
+  for(auto p : params) 
+    values.insert(p.second);
+
+  std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
+  argsForClang.reserve(argc);
+  for(int i=1;i<argc;i++)
+  {
+    if(params.find(argv[i]) == params.end() && values.find(argv[i]) == values.end()) 
+      argsForClang.push_back(argv[i]);
+  }
+
+  return argsForClang;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -308,16 +327,21 @@ int main(int argc, const char **argv)
       defaultVkernelType = kslicer::VKERNEL_SWITCH;
     else if(params["-vkernel_t="] == "indirect_dispatch")
       defaultVkernelType = kslicer::VKERNEL_INDIRECT_DISPATCH;
-  }  
+  } 
 
-  std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
-  argsForClang.reserve(argc);
-  for(int i=1;i<argc;i++)
+  std::unordered_set<std::string> values;
+  std::vector<std::string> includeFolderList;
+  std::vector<std::string> includeFolderList2;
+  for(auto p : params) 
   {
-    auto p = params.find(argv[i]);
-    if(p == params.end()) 
-      argsForClang.push_back(argv[i]);
+    values.insert(p.second);
+    if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I' && p.second == "IncludeToShaders")
+      includeFolderList.push_back(p.first.substr(2));
+    else if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I' && p.second == "ExcludeFromShaders")
+      includeFolderList2.push_back(p.first.substr(2));
   }
+
+  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params);  
   llvm::ArrayRef<const char*> args(argsForClang.data(), argsForClang.data() + argsForClang.size());
 
   // Make sure it exists
@@ -340,10 +364,19 @@ int main(int argc, const char **argv)
     exit(0);
   }
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
-  if(shaderCCName == "circle" || shaderCCName == "Circle")
-    inputCodeInfo.pShaderCC = std::make_shared<kslicer::CircleCompiler>();
+  inputCodeInfo.includeToShadersFolders = includeFolderList;  // set shader folders
+  inputCodeInfo.includeCPPFolders       = includeFolderList2; // set common C/C++ folders
+
+  if(shaderCCName == "glsl" || shaderCCName == "GLSL")
+  {
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::GLSLCompiler>();
+    inputCodeInfo.includeCPPFolders.push_back("include/");
+  }
   else
+  {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>(useCppInKernels);
+    inputCodeInfo.includeToShadersFolders.push_back("include/");
+  }
 
   inputCodeInfo.defaultVkernelType = defaultVkernelType;
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -368,7 +401,7 @@ int main(int argc, const char **argv)
 
   {
     compiler.getLangOpts().GNUMode = 1; 
-    //compiler.getLangOpts().CXXExceptions = 1; 
+    compiler.getLangOpts().CXXExceptions = 1; 
     compiler.getLangOpts().RTTI        = 1; 
     compiler.getLangOpts().Bool        = 1; 
     compiler.getLangOpts().CPlusPlus   = 1; 
@@ -383,9 +416,20 @@ int main(int argc, const char **argv)
   //
   HeaderSearchOptions &headerSearchOptions = compiler.getHeaderSearchOpts();  
   headerSearchOptions.AddPath(stdlibFolder.c_str(), clang::frontend::Angled, false, false);
+  for(auto p : params)
+  {
+    if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I')
+    {
+      std::string includePath = p.first.substr(2);
+      //std::cout << "[main]: add include folder: " << includePath.c_str() << std::endl;
+      headerSearchOptions.AddPath(includePath.c_str(), clang::frontend::Angled, false, false);
+    }
+  }
+  //headerSearchOptions.Verbose = 1;
 
   compiler.createPreprocessor(clang::TU_Complete);
-  compiler.getPreprocessorOpts().UsePredefines = false;
+  compiler.getPreprocessorOpts().UsePredefines = true;
+  //compiler.getPreprocessorOpts().addMacroDef("KERNEL_SLICER"); // IT DOES NOT WORKS FOR SOME REASON!!! 
   compiler.createASTContext();
 
   const FileEntry *pFile = compiler.getFileManager().getFile(fileName).get();
@@ -400,11 +444,21 @@ int main(int argc, const char **argv)
     
   // init clang tooling
   //
-  const char* argv2[] = {argv[0], argv[1], "--"};
-  int argc2 = sizeof(argv2)/sizeof(argv2[0]);
-  
+  std::vector<const char*> argv2 = {argv[0], argv[1]};
+  std::vector<std::string> extraArgs; extraArgs.reserve(32);
+  for(auto p : params)
+  {
+    if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I')  // add include folders to the Tool
+    {
+      extraArgs.push_back(std::string("-extra-arg=") + p.first);
+      argv2.push_back(extraArgs.back().c_str());
+    }
+  }
+  argv2.push_back("--");
+  int argSize = argv2.size();
+
   llvm::cl::OptionCategory GDOpts("global-detect options");
-  clang::tooling::CommonOptionsParser OptionsParser(argc2, argv2, GDOpts);
+  clang::tooling::CommonOptionsParser OptionsParser(argSize, argv2.data(), GDOpts);
   clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
   // (0) find all "Main" functions, a functions which call kernels. Kernels are also listed for each mainFunc;
@@ -432,7 +486,7 @@ int main(int argc, const char **argv)
 
   // Parse code, initial pass
   //
-  kslicer::InitialPassASTConsumer firstPassData(mainFunctNames, mainClassName, compiler.getASTContext(), compiler.getSourceManager(), inputCodeInfo); 
+  kslicer::InitialPassASTConsumer firstPassData(mainFunctNames, mainClassName, compiler, inputCodeInfo); 
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
   compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
   
@@ -442,6 +496,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.m_mainClassASTNode;
   
+  std::vector<kslicer::DeclInClass> generalDecls = firstPassData.rv.GetExtractedDecls();
   if(inputCodeInfo.mainClassASTNode == nullptr)
   {
     std::cout << "[main]: ERROR, main class " << mainClassName.c_str() << " not found" << std::endl;
@@ -569,7 +624,7 @@ int main(int argc, const char **argv)
   std::cout << "(4) Extract functions, constants and structs from 'MainClass' " << std::endl; 
   std::cout << "{" << std::endl;
   std::vector<kslicer::FuncData> usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
-  std::vector<kslicer::DeclInClass> usedDecls = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
+  std::vector<kslicer::DeclInClass> usedDecls           = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
@@ -666,11 +721,6 @@ int main(int argc, const char **argv)
       kernel.wgSize[0] = (*it)[0];
       kernel.wgSize[1] = (*it)[1];
       kernel.wgSize[2] = (*it)[2];
-    }
-    else if(kernelDim == 2)
-    {
-      kernel.wgSize[0] = 32;
-      kernel.wgSize[1] = 8;
       kernel.wgSize[2] = 1;
     }
     else
@@ -689,15 +739,11 @@ int main(int argc, const char **argv)
 
     std::string rawname = kslicer::CutOffFileExt(inputCodeInfo.mainClassFileName);
     auto json = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, rawname + "_generated.h", threadsOrder, uboIncludeName, jsonUBO); 
-    
-    //std::ofstream fout("z_test.json");
-    //fout << json.dump(2) << std::endl;
-    //fout.close();
 
     kslicer::ApplyJsonToTemplate("templates/vk_class.h",        rawname + "_generated.h", json); 
     kslicer::ApplyJsonToTemplate("templates/vk_class.cpp",      rawname + "_generated.cpp", json);
     kslicer::ApplyJsonToTemplate("templates/vk_class_ds.cpp",   rawname + "_generated_ds.cpp", json);
-    kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + "_generated_init.cpp", json);
+    kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + "_generated_init.cpp", json);    
   }
   std::cout << "}" << std::endl;
   std::cout << std::endl;
@@ -710,107 +756,9 @@ int main(int argc, const char **argv)
 
   // finally generate kernels
   //
-  const std::string templatePath = inputCodeInfo.pShaderCC->TemplatePath();
-  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, usedDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
-  
-  if(inputCodeInfo.pShaderCC->IsSingleSource())
-  {
-    const std::string outFileName  = GetFolderPath(inputCodeInfo.mainClassFileName) + "/" + inputCodeInfo.pShaderCC->ShaderSingleFile();
-    kslicer::ApplyJsonToTemplate(templatePath, outFileName, json);
-
-    std::ofstream buildSH(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_build.sh");
-    buildSH << "#!/bin/sh" << std::endl;
-    std::string build = inputCodeInfo.pShaderCC->BuildCommand();
-    buildSH << build.c_str() << std::endl;
-
-    // // clspv unfortunately force use to use this hacky way to set desired destcripror set (see -distinct-kernel-descriptor-sets option of clspv).
-    // // we create for each kernel with indirect dispatch seperate file with first dummy kernel (which will be bound to zero-th descriptor set)
-    // // and our XXX_IndirectUpdate kerner which in that way will be bound to the first descriptor set.  
-    // //
-    // if(inputCodeInfo.m_indirectBufferSize != 0) 
-    // {
-    //   nlohmann::json copy, kernels;
-    //   for (auto& el : json.items())
-    //   {
-    //     //std::cout << el.key() << std::endl;
-    //     if(std::string(el.key()) == "Kernels")
-    //       kernels = json[el.key()];
-    //     else
-    //       copy[el.key()] = json[el.key()];
-    //   }
-    // 
-    //   std::string folderPath = GetFolderPath(inputCodeInfo.mainClassFileName);
-    //   std::string shaderPath = folderPath + "/" + inputCodeInfo.pShaderCC->ShaderFolder();
-    //   #ifdef WIN32
-    //   mkdir(shaderPath.c_str());
-    //   #else
-    //   mkdir(shaderPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    //   #endif
-    // 
-    //   //for(auto& kernel : kernels.items())
-    //   //{
-    //   //  if(kernel.value()["IsIndirect"])
-    //   //  {
-    //   //    nlohmann::json currKerneJson = copy;
-    //   //    currKerneJson["Kernels"] = std::vector<std::string>();
-    //   //    currKerneJson["Kernels"].push_back(kernel.value());
-    //   //
-    //   //    std::string outFileName = std::string(kernel.value()["Name"]) + "_UpdateIndirect" + ".cl";
-    //   //    std::string outFilePath = shaderPath + "/" + outFileName;
-    //   // 
-    //   //    std::ofstream file("debug.json");
-    //   //    file << currKerneJson.dump(2);
-    //   //
-    //   //    kslicer::ApplyJsonToTemplate("templates/indirect.cl", outFilePath, currKerneJson);
-    //   //    buildSH << "../clspv " << outFilePath.c_str() << " -o " << outFilePath.c_str() << ".spv -pod-pushconstant -distinct-kernel-descriptor-sets -I." << std::endl;
-    //   //  }
-    //   //}
-    // 
-    // }
-
-    buildSH.close();
-  }
-  else // if need to compile each kernel inside separate file
-  { 
-    nlohmann::json copy, kernels;
-    for (auto& el : json.items())
-    {
-      //std::cout << el.key() << std::endl;
-      if(std::string(el.key()) == "Kernels")
-        kernels = json[el.key()];
-      else
-        copy[el.key()] = json[el.key()];
-    }
-    
-    std::string folderPath = GetFolderPath(inputCodeInfo.mainClassFileName);
-    std::string shaderPath = folderPath + "/" + inputCodeInfo.pShaderCC->ShaderFolder();
-    #ifdef WIN32
-    mkdir(shaderPath.c_str());
-    #else
-    mkdir(shaderPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    #endif
-    
-    std::ofstream buildSH(shaderPath + "/build.sh");
-    buildSH << "#!/bin/sh" << std::endl;
-    for(auto& kernel : kernels.items())
-    {
-      nlohmann::json currKerneJson = copy;
-      currKerneJson["Kernels"] = std::vector<std::string>();
-      currKerneJson["Kernels"].push_back(kernel.value());
-      
-      std::string outFileName = std::string(kernel.value()["Name"]) + ".cpp";
-      std::string outFilePath = shaderPath + "/" + outFileName;
-      kslicer::ApplyJsonToTemplate("templates/gen_circle.cxx", outFilePath, currKerneJson);
-      buildSH << "../../circle -shader -c -emit-spirv " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DUSE_CIRCLE_CC -I.. " << std::endl;
-    }
-    
-    nlohmann::json emptyJson;
-    std::string outFileServ = shaderPath + "/" + "serv_kernels.cpp";
-    kslicer::ApplyJsonToTemplate("templates/ser_circle.cxx", outFileServ, emptyJson);
-    buildSH << "../../circle -shader -c -emit-spirv " << outFileServ.c_str() << " -o " << outFileServ.c_str() << ".spv" << " -DUSE_CIRCLE_CC -I.. " << std::endl;
-
-    buildSH.close();
-  }
+  generalDecls.insert( generalDecls.end(), usedDecls.begin(), usedDecls.end());
+  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
+  inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo);
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;

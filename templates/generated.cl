@@ -1,7 +1,7 @@
 /////////////////////////////////////////////////////////////////////
 /////////////////// include files ///////////////////////////////////
 /////////////////////////////////////////////////////////////////////
-#include "include/OpenCLMath.h"
+#include "OpenCLMath.h"
 ## for Incl in Includes  
 #include "{{Incl}}"
 ## endfor
@@ -155,7 +155,7 @@ __kernel void {{Kernel.Name}}({% include "inc_args.cl" %})
 {% endif %} {# /* end if 'Kernel.IsMaker' */ #}
 
 ## endfor
-
+{% if UseServiceMemCopy %}
 {% if not UseSpecConstWgSize %}
 __attribute__((reqd_work_group_size(256, 1, 1)))
 {% endif %}
@@ -169,3 +169,4 @@ __kernel void copyKernelFloat(
     return;
   out_data[i] = in_data[i];
 }
+{% endif %} {# /* UseServiceMemCopy */ #}

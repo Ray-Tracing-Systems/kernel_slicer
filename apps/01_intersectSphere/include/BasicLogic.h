@@ -86,8 +86,8 @@ static inline Lite_Hit RayTraceImpl(float3 rayPos, float3 rayDir)
   return res;
 }
 
-#define WIN_WIDTH  512
-#define WIN_HEIGHT 512
+enum WINDOW_SIZE{WIN_WIDTH = 512, WIN_HEIGHT = 512};
+
 
 static uint pitchOffset(uint x, uint y) { return y*WIN_WIDTH + x; } 
 

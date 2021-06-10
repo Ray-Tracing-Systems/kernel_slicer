@@ -14,7 +14,7 @@ endif()
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "arm" )
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpu=neon")
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx ")
 endif()
 
 find_package(OpenMP)
@@ -22,6 +22,7 @@ find_package(Vulkan)
 include_directories(${Vulkan_INCLUDE_DIR})
 include_directories("../vkfw" 
                     "../volk"
+                    "../LiteMath"
                     "../loader_utils"
                     "../geo_utils")
                     

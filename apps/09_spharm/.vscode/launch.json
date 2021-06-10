@@ -17,7 +17,7 @@
       "request": "launch",
       "program": "${workspaceFolder}/cmake-build-release/testapp",
       "args": [
-        "aaa",
+        "skybox",
         "bbb"
       ],
       "stopAtEntry": false,

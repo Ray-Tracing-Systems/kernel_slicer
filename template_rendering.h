@@ -23,7 +23,7 @@ namespace kslicer
                                        const uint32_t    threadsOrder[3],
                                        const std::string& uboIncludeName, const nlohmann::json& uboJson);
 
-  nlohmann::json PrepareUBOJson(const MainClassInfo& a_classInfo, 
+  nlohmann::json PrepareUBOJson(MainClassInfo& a_classInfo, 
                                 const std::vector<kslicer::DataMemberInfo>& a_dataMembers,
                                 const clang::CompilerInstance& compiler);
 

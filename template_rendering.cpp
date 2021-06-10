@@ -63,7 +63,7 @@ std::string GetDSArgName(const std::string& a_mainFuncName, const std::string& a
     return a_mainFuncName + "_local." + a_dsVarName; 
 }
 
-std::vector<kslicer::KernelInfo::Arg> GetUserKernelArgs(const std::vector<kslicer::KernelInfo::Arg>& a_allArgs)
+std::vector<kslicer::KernelInfo::Arg> kslicer::GetUserKernelArgs(const std::vector<kslicer::KernelInfo::Arg>& a_allArgs)
 {
   std::vector<kslicer::KernelInfo::Arg> result;
   result.reserve(a_allArgs.size());
@@ -174,8 +174,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UBOIncl"]            = uboIncludeName;
   data["MainClassName"]      = a_classInfo.mainClassName;
   data["ShaderSingleFile"]   = a_classInfo.pShaderCC->ShaderSingleFile();
+  data["ShaderGLSL"]         = a_classInfo.pShaderCC->IsGLSL();
   data["UseSeparateUBO"]     = a_classInfo.pShaderCC->UseSeparateUBOForArguments();
   data["UseSpecConstWgSize"] = a_classInfo.pShaderCC->UseSpecConstForWgSize();
+  data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
 
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";
@@ -596,25 +598,33 @@ void kslicer::ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, con
 
 namespace kslicer
 {
-  std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds);
+  std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, 
+                                      const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds,
+                                      const std::string a_names[3]);
 };
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 
 
-nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const std::vector<kslicer::DataMemberInfo>& a_dataMembers, const clang::CompilerInstance& compiler)
+nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::vector<kslicer::DataMemberInfo>& a_dataMembers, const clang::CompilerInstance& compiler)
 {
   nlohmann::json data;
   
+  clang::Rewriter rewrite2;
+  rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+  auto pShaderRewriter = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
+
   auto podMembers = filter(a_classInfo.dataMembers, [](auto& memb) { return !memb.isContainer; });
   uint32_t dummyCounter = 0;
   data["MainClassName"]   = a_classInfo.mainClassName;
   data["UBOStructFields"] = std::vector<std::string>();
+  data["ShaderGLSL"]      = !a_classInfo.pShaderCC->IsSingleSource();
+
   for(auto member : podMembers)
   {
     std::string typeStr = member.type;
     if(member.isArray)
       typeStr = typeStr.substr(0, typeStr.find("["));
-    typeStr = a_classInfo.RemoveTypeNamespaces(typeStr);
+    typeStr = pShaderRewriter->RewriteVectorTypeStr(typeStr); //a_classInfo.RemoveTypeNamespaces(typeStr);
 
     size_t sizeO = member.sizeInBytes;
     size_t sizeA = member.alignedSizeInBytes;
@@ -632,7 +642,7 @@ nlohmann::json kslicer::PrepareUBOJson(const MainClassInfo& a_classInfo, const s
       strOut << "dummy" << dummyCounter;
       dummyCounter++;
       sizeO += sizeof(uint32_t);
-      uboField["Type"] = "unsigned int";
+      uboField["Type"] = "uint";
       uboField["Name"] = strOut.str();
       data["UBOStructFields"].push_back(uboField);
     }
@@ -675,6 +685,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
                                     const uint32_t  threadsOrder[3],
                                     const std::string& uboIncludeName, const nlohmann::json& uboJson)
 {
+  clang::Rewriter rewrite2;
+  rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+  auto pShaderRewriter = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
+
   std::unordered_map<std::string, DataMemberInfo> dataMembersCached;
   dataMembersCached.reserve(a_classInfo.dataMembers.size());
   for(const auto& member : a_classInfo.dataMembers)
@@ -683,13 +697,23 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   json data;
   data["MainClassName"]      = a_classInfo.mainClassName;
   data["UseSpecConstWgSize"] = a_classInfo.pShaderCC->UseSpecConstForWgSize();
+  data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
 
   // (1) put includes
   //
   data["Includes"] = std::vector<std::string>();
   for(auto keyVal : a_classInfo.allIncludeFiles) // we will search for only used include files among all of them (quoted, angled were excluded earlier)
-  {
-    if(keyVal.first.find("include/") == std::string::npos) // inlude in OpenCL kernels only those code which is in 'include' folder
+  { 
+    bool found = false;
+    for(auto f : a_classInfo.includeToShadersFolders)  // exclude everything from "shader" folders
+    {
+      if(keyVal.first.find(f) != std::string::npos)
+      {
+        found = true;
+        break;
+      }
+    }
+    if(!found)
       continue;
    
     if(a_classInfo.mainClassFileInclude.find(keyVal.first) == std::string::npos)
@@ -705,48 +729,36 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     if(!decl.extracted)
       continue;
 
-    std::string typeInCL = decl.type;
-    ReplaceFirst(typeInCL, "const", "__constant static");
-    
-    switch(decl.kind)
-    {
-      case kslicer::DECL_IN_CLASS::DECL_STRUCT:
-      data["ClassDecls"].push_back( kslicer::GetRangeSourceCode(decl.srcRange, compiler) + ";" );
-      break;
-
-      case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
-      //data["ClassDecls"].push_back( std::string("#define ") + decl.name + " ((" + decl.type + ")" + kslicer::GetRangeSourceCode(decl.srcRange, compiler) + ")" );
-      data["ClassDecls"].push_back( typeInCL + " " + decl.name + " = " + kslicer::GetRangeSourceCode(decl.srcRange, compiler) + ";");
-      break;
-
-      case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
-      data["ClassDecls"].push_back("typedef " + typeInCL + " " + decl.name + ";");
-      break;
-
-      default:
-      break;
-    };
-    //std::cout << kslicer::GetRangeSourceCode(decl.srcRange, compiler) << std::endl;
+    data["ClassDecls"].push_back(a_classInfo.pShaderCC->PrintHeaderDecl(decl,compiler));
   }
 
   // (3) local functions
   //
+  ShaderFeatures shaderFeatures;
   data["LocalFunctions"] = std::vector<std::string>();
   {
     clang::Rewriter rewrite2;
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-    kslicer::FunctionRewriter rv(rewrite2, compiler, &a_classInfo);
+    auto pVisitor = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
 
     for (const auto& f : usedFunctions) 
     { 
       if(a_classInfo.IsExcludedLocalFunction(f.name)) // check exclude list here, don't put such functions in cl file
-        continue; 
-      rv.TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
+        continue;
+      
+      //if(f.name == "RealColorToUint32_f3")
+      //  f.astNode->dump();   
+      pVisitor->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
       data["LocalFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
+      shaderFeatures = shaderFeatures || pVisitor->GetShaderFeatures();
     }
   }
   data["LocalFunctions"].push_back("uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }                                      // for 2D threading");
   //data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");
+
+  data["GlobalUseInt8"]  = shaderFeatures.useByteType;
+  data["GlobalUseInt16"] = shaderFeatures.useShortType;
+  data["GlobalUseInt64"] = shaderFeatures.useInt64Type;
 
   auto dhierarchies   = a_classInfo.GetDispatchingHierarchies();
   data["Hierarchies"] = PutHierarchiesDataToJson(dhierarchies, compiler);
@@ -770,7 +782,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     for(auto commonArg : commonArgs)
     {
       json argj;
-      argj["Type"]  = a_classInfo.pShaderCC->ProcessBufferType(commonArg.typeName);
+      std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(commonArg.typeName);
+      std::string buffType2 = pShaderRewriter->RewriteVectorTypeStr(buffType1); 
+      argj["Type"]  = buffType2;
       argj["Name"]  = commonArg.argName;
       argj["IsUBO"] = commonArg.isUBO;
       args.push_back(argj);
@@ -801,10 +815,13 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       assert(pVecMember->second.isContainer);
       assert(pVecSizeMember->second.isContainerInfo);
 
-      std::string buffType = a_classInfo.RemoveTypeNamespaces(pVecMember->second.containerDataType) + "*";
-
+      std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(pVecMember->second.containerDataType);
+      std::string buffType2 = pShaderRewriter->RewriteVectorTypeStr(buffType1);
+      if(!a_classInfo.pShaderCC->IsGLSL())
+        buffType2 += "*";
+      
       json argj;
-      argj["Type"]       = a_classInfo.pShaderCC->ProcessBufferType(buffType);
+      argj["Type"]       = buffType2;
       argj["Name"]       = pVecMember->second.name;
       argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
       argj["IsUBO"]      = false;
@@ -833,11 +850,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       if(member.isArray || member.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD) // read large data structures directly inside kernel code, don't read them at the beggining of kernel.
         continue;
 
-      if(k.subjectedToReduction.find(member.name) != k.subjectedToReduction.end())         // exclude this opt for members which subjected to reduction
+      if(k.subjectedToReduction.find(member.name) != k.subjectedToReduction.end())  // exclude this opt for members which subjected to reduction
         continue;
 
       json memberData;
-      memberData["Type"]   = a_classInfo.RemoveTypeNamespaces(member.type);
+      memberData["Type"]   = pShaderRewriter->RewriteVectorTypeStr(member.type);
       memberData["Name"]   = member.name;
       memberData["Offset"] = member.offsetInTargetBuffer / sizeof(uint32_t);
       members.push_back(memberData);
@@ -848,7 +865,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     for(const auto& arg : userArgsArr)
     {
       json argj;
-      argj["Type"]  = a_classInfo.RemoveTypeNamespaces(arg.type);
+      argj["Type"]  = pShaderRewriter->RewriteVectorTypeStr(arg.type);
       argj["Name"]  = arg.name;
       argj["IsUBO"] = false;
       userArgs.push_back(argj);
@@ -952,10 +969,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["WGSizeZ"]       = k.wgSize[2]; // 
 
     //////////////////////////////////////////////////////////////////////////////////////////
- 
+    std::string names[3];
+    a_classInfo.pShaderCC->GetThreadSizeNames(names);
+
     kernelJson["shouldCheckExitFlag"] = k.checkThreadFlags;
     kernelJson["checkFlagsExpr"]      = "//xxx//";
-    kernelJson["ThreadOffset"]        = kslicer::GetFakeOffsetExpression(k, a_classInfo.GetKernelTIDArgs(k));
+    kernelJson["ThreadOffset"]        = kslicer::GetFakeOffsetExpression(k, a_classInfo.GetKernelTIDArgs(k), names);
     kernelJson["InitKPass"]           = false;
     kernelJson["IsIndirect"]          = k.isIndirect;
     if(k.isIndirect)

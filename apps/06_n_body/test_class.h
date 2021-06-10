@@ -3,7 +3,7 @@
 #include <vector>
 #include <fstream>
 
-#include "include/OpenCLMath.h"
+#include "OpenCLMath.h"
 
 class nBody
 {

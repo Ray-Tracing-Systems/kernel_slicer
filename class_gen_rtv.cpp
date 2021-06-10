@@ -19,14 +19,14 @@
 
 //// tid, fakeOffset(tidX,tidY,kgen_iNumElementsX) or fakeOffset2(tidX,tidY,tidX,kgen_iNumElementsX, kgen_iNumElementsY)
 //
-std::string kslicer::GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds) 
-{
+std::string kslicer::GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds, const std::string names[3]) 
+{ 
   if(threadIds.size() == 1)
     return threadIds[0].argName;
   else if(threadIds.size() == 2)
-    return std::string("fakeOffset(") + threadIds[0].argName + "," + threadIds[1].argName + ",kgen_iNumElementsX)";
+    return std::string("fakeOffset(") + threadIds[0].argName + "," + threadIds[1].argName + "," + names[0] + ")";
   else if(threadIds.size() == 3)
-    return std::string("fakeOffset(") + threadIds[0].argName + "," + threadIds[1].argName + "," + threadIds[2].argName + ",kgen_iNumElementsX,kgen_iNumElementsY)";
+    return std::string("fakeOffset2(") + threadIds[0].argName + "," + threadIds[1].argName + "," + threadIds[2].argName + "," + names[0] + "," + names[1] + ")";
   else
     return "tid";
 }
@@ -257,8 +257,9 @@ void kslicer::RTV_Pattern::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clan
   //a_funcInfo.astNode->dump();
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-  kslicer::KernelRewriter rv(rewrite2, compiler, this, a_funcInfo, "", true); /// --> last parameter is true which means informational pass for KernelRewriter !!!
-  rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
+  
+  auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "", true);
+  pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
 }
 
 
@@ -503,6 +504,8 @@ private:
 
   std::string RecursiveRewrite(const clang::Stmt* expr) override
   {
+    if(expr == nullptr)
+      return "";
     MemberRewriter rvCopy = *this;
     rvCopy.isCopy = true;
     rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
