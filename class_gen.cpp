@@ -95,6 +95,28 @@ bool kslicer::MainClassInfo::IsIndirect(const KernelInfo& a_kernel) const
   return isIndirect;
 } 
 
+static std::string GetControlFuncDeclText(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler)
+{
+  std::string text = fDecl->getNameInfo().getName().getAsString() + "Cmd(VkCommandBuffer a_commandBuffer";
+  if(fDecl->getNumParams()!= 0)
+    text += ", ";
+  for(int i=0;i<fDecl->getNumParams();i++)
+  {
+    auto pParam = fDecl->getParamDecl(i);
+    const clang::QualType typeOfParam =	pParam->getType();
+    std::string typeStr = typeOfParam.getAsString();
+    //if(!typeOfParam->isPointerType())
+    //{
+      text += kslicer::GetRangeSourceCode(pParam->getSourceRange(), compiler);
+      if(i!=fDecl->getNumParams()-1)
+        text += ", ";
+    //}
+  }
+
+  return text + ")";
+}
+
+
 std::string kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
   const std::string&   a_mainClassName = this->mainClassName;
@@ -111,27 +133,15 @@ std::string kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc,
 
   kslicer::MainFunctionRewriter rv(rewrite2, compiler, a_mainFunc, inOutParamList, this); // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
   rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
-
-  clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
+  
+  const auto funcBody = a_node->getBody();
+  clang::SourceLocation b(funcBody->getBeginLoc()), _e(funcBody->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
   
-  std::string sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
-  
-  // (1) TestClass::MainFuncCmd --> TestClass_Generated::MainFuncCmd and add input command Buffer as first argument
+  // (1) TestClass::MainFuncCmd --> TestClass_Generated::MainFuncCmd
   // 
-  const std::string replaceFrom = a_mainClassName + "::" + rv.mainFuncCmdName;
-  const std::string replaceTo   = a_mainClassName + "_Generated" + "::" + rv.mainFuncCmdName;
-
-  assert(ReplaceFirst(sourceCode, replaceFrom, replaceTo));
-
-  if(a_mainFunc.Node->getNumParams() != 0)
-  {
-    assert(ReplaceFirst(sourceCode, "(", "(VkCommandBuffer a_commandBuffer, "));
-  }
-  else
-  {
-    assert(ReplaceFirst(sourceCode, "(", "(VkCommandBuffer a_commandBuffer"));
-  }
+  std::string funcDecl   = a_node->getReturnType().getAsString() + " " + a_mainClassName + "_Generated" + "::" + GetControlFuncDeclText(a_node, compiler);
+  std::string sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
 
   // (3) set m_currCmdBuffer with input command bufer and add other prolog to MainFunCmd
   //
@@ -160,8 +170,7 @@ std::string kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc,
 
   size_t bracePos = sourceCode.find("{");
   sourceCode = (sourceCode.substr(0, bracePos) + strOut.str() + sourceCode.substr(bracePos+2));
-
-  return sourceCode;
+  return funcDecl + sourceCode;
 }
 
 std::string kslicer::MainClassInfo::GetCFDeclFromSource(const std::string& sourceCode)
