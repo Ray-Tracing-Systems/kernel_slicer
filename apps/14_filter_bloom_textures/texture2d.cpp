@@ -6,10 +6,10 @@ template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_u
 {
   bool useBorderColor = false;
 
-  a_uv = process_coord(a_sampler.m_addressU, a_uv, &useBorderColor);
+  a_uv = process_coord(a_sampler.addressU, a_uv, &useBorderColor);
     
   if (useBorderColor) {
-    return a_sampler.m_borderColor;
+    return a_sampler.borderColor;
   }
 
   const float2 textureSize = make_float2(m_width, m_height);
@@ -17,7 +17,7 @@ template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_u
   const int2   baseTexel   = make_int2(scaledUV.x, scaledUV.y);
   const int    stride      = m_width;
 
-  switch (a_sampler.m_filter)
+  switch (a_sampler.filter)
   {
   case Sampler::Filter::MIN_MAG_MIP_POINT:
     return m_data[pitch(baseTexel.x, baseTexel.y, stride)];
@@ -51,10 +51,10 @@ template<> float4 Texture2D<uchar4>::sample(const Sampler& a_sampler, float2 a_u
 {
   bool useBorderColor = false;
 
-  a_uv = process_coord(a_sampler.m_addressU, a_uv, &useBorderColor);
+  a_uv = process_coord(a_sampler.addressU, a_uv, &useBorderColor);
     
   if (useBorderColor) {
-    return a_sampler.m_borderColor;
+    return a_sampler.borderColor;
   }
 
   const float2 textureSize = make_float2(m_width, m_height);
@@ -62,7 +62,7 @@ template<> float4 Texture2D<uchar4>::sample(const Sampler& a_sampler, float2 a_u
   const int2   baseTexel   = make_int2(scaledUV.x, scaledUV.y);
   const int    stride      = m_width;
 
-  switch (a_sampler.m_filter)
+  switch (a_sampler.filter)
   {
   case Sampler::Filter::MIN_MAG_MIP_POINT:
     return (float4)(m_data[pitch(baseTexel.x, baseTexel.y, stride)]) / 255.0F;
@@ -126,11 +126,8 @@ float2 Texture2D<Type>::process_coord(const Sampler::AddressMode mode, const flo
       break;
   }
 
-  return res = clamp(res, 0.0f, 1.0F);
-
-  throw std::string("Uknown address mode.");
+  return clamp(res, 0.0f, 1.0F);
 } 
-
 
 
 float2 get_uv(const int x, const int y, const uint width, const uint height)

@@ -13,7 +13,6 @@ struct Sampler {
     MIRROR_ONCE
   };
 
-
   enum class Filter {
     MIN_MAG_MIP_POINT,
     MIN_MAG_POINT_MIP_LINEAR,
@@ -68,16 +67,15 @@ struct Sampler {
 
   //State structure from DX11
   // sampler state
-  AddressMode m_addressU      = AddressMode::WRAP;
-  AddressMode m_addressV      = AddressMode::WRAP;
-  AddressMode m_addressW      = AddressMode::WRAP;
-  float4      m_borderColor   = float4(0.0f, 0.0f, 0.0f, 0.0f);
-  Filter      m_filter        = Filter::MIN_MAG_MIP_POINT;
-  uint8_t     m_maxAnisotropy = 1;
-  float       m_maxLOD        = std::numeric_limits<float>::max();
-  float       m_minLOD        = 0;
-  float       m_mipLODBias    = 0;
-
+  AddressMode addressU      = AddressMode::WRAP;
+  AddressMode addressV      = AddressMode::WRAP;
+  AddressMode addressW      = AddressMode::WRAP;
+  float4      borderColor   = float4(0.0f, 0.0f, 0.0f, 0.0f);
+  Filter      filter        = Filter::MIN_MAG_MIP_POINT;
+  uint32_t    maxAnisotropy = 1;
+  uint32_t    maxLOD        = 32;
+  uint32_t    minLOD        = 0;
+  uint32_t    mipLODBias    = 0;
 
   // sampler-comparison state
   ComparisonFunc m_comparisonFunc = ComparisonFunc::NEVER;
