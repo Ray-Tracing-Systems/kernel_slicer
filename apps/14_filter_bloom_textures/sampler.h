@@ -1,7 +1,7 @@
 #ifndef SAMPLER_H
 #define SAMPLER_H
 
-#include "include/OpenCLMath.h"
+#include "OpenCLMath.h"
 #include <iostream>
 
 struct Sampler {

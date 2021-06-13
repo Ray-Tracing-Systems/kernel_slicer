@@ -14,7 +14,7 @@ template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_u
 
   const float2 textureSize = make_float2(m_width, m_height);
   const float2 scaledUV    = textureSize * a_uv;
-  const int2   baseTexel   = make_int2(scaledUV.x, scaledUV.y);
+  const int2   baseTexel   = int2(scaledUV.x, scaledUV.y);
   const int    stride      = m_width;
 
   switch (a_sampler.filter)
@@ -23,8 +23,8 @@ template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_u
     return m_data[pitch(baseTexel.x, baseTexel.y, stride)];
   case Sampler::Filter::MIN_MAG_LINEAR_MIP_POINT:
   {
-    const int2 cornerTexel  = make_int2(baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
-                                        baseTexel.y < m_height - 1 ? baseTexel.y + 1 : baseTexel.y);
+    const int2 cornerTexel  = int2(baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
+                                   baseTexel.y < m_height - 1 ? baseTexel.y + 1 : baseTexel.y);
 
     const int offset0       = pitch(baseTexel.x  , baseTexel.y  , stride);
     const int offset1       = pitch(cornerTexel.x, baseTexel.y  , stride);
@@ -32,10 +32,10 @@ template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_u
     const int offset3       = pitch(cornerTexel.x, cornerTexel.y, stride);
 
     const float2 lerpCoefs  = scaledUV - float2(baseTexel.x, baseTexel.y);
-    const float4 line1Color = lerpFloat4(m_data[offset0], m_data[offset1], lerpCoefs.x);
-    const float4 line2Color = lerpFloat4(m_data[offset2], m_data[offset3], lerpCoefs.x);
+    const float4 line1Color = lerp(m_data[offset0], m_data[offset1], lerpCoefs.x);
+    const float4 line2Color = lerp(m_data[offset2], m_data[offset3], lerpCoefs.x);
 
-    return lerpFloat4(line1Color, line2Color, lerpCoefs.y);
+    return lerp(line1Color, line2Color, lerpCoefs.y);
   }     
   default:
     fprintf(stderr, "Unsupported filter is used.");
@@ -44,8 +44,6 @@ template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_u
 
   return make_float4(0.0F, 0.0F, 0.0F, 0.0F);
 }
-
-
 
 template<> float4 Texture2D<uchar4>::sample(const Sampler& a_sampler, float2 a_uv) const
 {
@@ -65,7 +63,10 @@ template<> float4 Texture2D<uchar4>::sample(const Sampler& a_sampler, float2 a_u
   switch (a_sampler.filter)
   {
   case Sampler::Filter::MIN_MAG_MIP_POINT:
-    return (float4)(m_data[pitch(baseTexel.x, baseTexel.y, stride)]) / 255.0F;
+  {
+    const uchar4 uData = m_data[pitch(baseTexel.x, baseTexel.y, stride)];
+    return (1.0f/255.0f)*float4(uData.x, uData.y, uData.z, uData.w);
+  }
   case Sampler::Filter::MIN_MAG_LINEAR_MIP_POINT:
   {
     const int2 cornerTexel  = make_int2(baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
@@ -77,10 +78,12 @@ template<> float4 Texture2D<uchar4>::sample(const Sampler& a_sampler, float2 a_u
     const int offset3       = pitch(cornerTexel.x, cornerTexel.y, stride);
 
     const float2 lerpCoefs  = scaledUV - float2(baseTexel.x, baseTexel.y);
-    const float4 line1Color = (float4)(lerpUchar4(m_data[offset0], m_data[offset1], lerpCoefs.x)) / 255.0F;
-    const float4 line2Color = (float4)(lerpUchar4(m_data[offset2], m_data[offset3], lerpCoefs.x)) / 255.0F;
+    const uchar4 uData1     = lerp(m_data[offset0], m_data[offset1], lerpCoefs.x);
+    const uchar4 uData2     = lerp(m_data[offset2], m_data[offset3], lerpCoefs.x);
+    const float4 line1Color = (1.0f/255.0f)*float4(uData1.x, uData1.y, uData1.z, uData1.w);
+    const float4 line2Color = (1.0f/255.0f)*float4(uData2.x, uData2.y, uData2.z, uData2.w);
 
-    return lerpFloat4(line1Color, line2Color, lerpCoefs.y);
+    return lerp(line1Color, line2Color, lerpCoefs.y);
   }     
   default:
     fprintf(stderr, "Unsupported filter is used.");

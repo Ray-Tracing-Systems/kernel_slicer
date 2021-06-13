@@ -109,4 +109,14 @@ static inline uint2 make_uint2(uint a, uint b)
   return res;
 }
 
+static inline int2 make_int2(int a, int b)
+{
+  int2 res;
+  res.x = a;
+  res.y = b;
+  return res;
+}
+
+
+
 #endif

@@ -415,6 +415,43 @@ namespace LiteMath
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  struct uchar4
+  {
+    inline uchar4() : x(0), y(0), z(0), w(0) {}
+    inline uchar4(unsigned char a, unsigned char b, unsigned char c, unsigned char d) : x(a), y(b), z(c), w(d) {}
+    inline explicit uchar4(unsigned char a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
+    
+    inline float& operator[](uint i)       { return M[i]; }
+    inline float  operator[](uint i) const { return M[i]; }
+    
+    union
+    {
+      struct {unsigned char x, y, z, w; };
+      float  M[4];
+    };
+  };
+
+  static inline uchar4 operator * (const uchar4 & u, float v) { return uchar4(u.x * v, u.y * v, u.z * v, u.w * v); }
+  static inline uchar4 operator / (const uchar4 & u, float v) { return uchar4(u.x / v, u.y / v, u.z / v, u.w / v); }
+  static inline uchar4 operator + (const uchar4 & u, float v) { return uchar4(u.x + v, u.y + v, u.z + v, u.w + v); }
+  static inline uchar4 operator - (const uchar4 & u, float v) { return uchar4(u.x - v, u.y - v, u.z - v, u.w - v); }
+  static inline uchar4 operator * (float v, const uchar4 & u) { return uchar4(v * u.x, v * u.y, v * u.z, v * u.w); }
+  static inline uchar4 operator / (float v, const uchar4 & u) { return uchar4(v / u.x, v / u.y, v / u.z, v / u.w); }
+  static inline uchar4 operator + (float v, const uchar4 & u) { return uchar4(u.x + v, u.y + v, u.z + v, u.w + v); }
+  static inline uchar4 operator - (float v, const uchar4 & u) { return uchar4(u.x - v, u.y - v, u.z - v, u.w - v); }
+
+  static inline uchar4 operator + (const uchar4 & u, const uchar4 & v) { return uchar4(u.x + v.x, u.y + v.y, u.z + v.z, u.w + v.w); }
+  static inline uchar4 operator - (const uchar4 & u, const uchar4 & v) { return uchar4(u.x - v.x, u.y - v.y, u.z - v.z, u.w - v.w); }
+  static inline uchar4 operator * (const uchar4 & u, const uchar4 & v) { return uchar4(u.x * v.x, u.y * v.y, u.z * v.z, u.w * v.w); }
+  static inline uchar4 operator / (const uchar4 & u, const uchar4 & v) { return uchar4(u.x / v.x, u.y / v.y, u.z / v.z, u.w / v.w); }
+
+  static inline uchar4 lerp(const uchar4 & u, const uchar4 & v, float t) { return u + t * (v - u); }
+
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   /**
   \brief this class use colmajor memory layout for effitient vector-matrix operations
