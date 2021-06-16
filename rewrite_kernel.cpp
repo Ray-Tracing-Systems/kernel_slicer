@@ -225,7 +225,10 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
 bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
+  {
+    DetectTextureAccess(f);
     return true; 
+  }
 
   // Get name of function
   //
@@ -541,7 +544,7 @@ bool kslicer::KernelRewriter::VisitCompoundAssignOperator_Impl(CompoundAssignOpe
 
 void kslicer::KernelRewriter::ProcessReadWriteTexture(clang::CXXOperatorCallExpr* expr, bool write)
 {
-  const auto currAccess = write ? kslicer::TEX_ACCESS_WRITE : kslicer::TEX_ACCESS_READ;
+  const auto currAccess = write ? kslicer::TEX_ACCESS::TEX_ACCESS_WRITE : kslicer::TEX_ACCESS::TEX_ACCESS_READ;
   const auto hash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
   if(m_visitedTexAccessNodes.find(hash) != m_visitedTexAccessNodes.end())
     return;
@@ -571,9 +574,46 @@ void kslicer::KernelRewriter::ProcessReadWriteTexture(clang::CXXOperatorCallExpr
   m_visitedTexAccessNodes.insert(hash);
 }
 
+void kslicer::KernelRewriter::DetectTextureAccess(clang::CXXMemberCallExpr* call)
+{
+  clang::CXXMethodDecl* fDecl = call->getMethodDecl();  
+  if(fDecl == nullptr)  
+    return;
+
+  //std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+  std::string fname     = fDecl->getNameInfo().getName().getAsString();
+  clang::Expr* pTexName =	call->getImplicitObjectArgument(); 
+  std::string objName   = GetRangeSourceCode(pTexName->getSourceRange(), m_compiler);     
+
+  if(fname == "sample" || fname == "Sample")
+  {
+    // (1) process if member access
+    //
+    auto pMember = m_codeInfo->allDataMembers.find(objName);
+    if(pMember != m_codeInfo->allDataMembers.end())
+      pMember->second.tmask = kslicer::TEX_ACCESS( int(pMember->second.tmask) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
+    
+    // (2) process if kernel argument access
+    //
+    for(const auto& arg : m_currKernel.args)
+    {
+      if(arg.name == objName)
+      {
+        auto p = m_currKernel.texAccessInArgs.find(objName);
+        if(p != m_currKernel.texAccessInArgs.end())
+          p->second = kslicer::TEX_ACCESS( int(p->second) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
+        else
+          m_currKernel.texAccessInArgs[objName] = kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE;
+      }
+    }
+  }
+
+}
+
 void kslicer::KernelRewriter::DetectTextureAccess(CXXOperatorCallExpr* expr)
 {
-  std::string op = GetRangeSourceCode(SourceRange(expr->getOperatorLoc()), m_compiler);    
+  std::string op = GetRangeSourceCode(SourceRange(expr->getOperatorLoc()), m_compiler); 
+  //std::string debugText = GetRangeSourceCode(expr->getSourceRange(), m_compiler);     
   if(expr->isAssignmentOp()) // detect a_brightPixels[coord] = color;
   {
     clang::Expr* left = expr->getArg(0); 
@@ -582,7 +622,7 @@ void kslicer::KernelRewriter::DetectTextureAccess(CXXOperatorCallExpr* expr)
       clang::CXXOperatorCallExpr* leftOp = clang::dyn_cast<clang::CXXOperatorCallExpr>(left);
       std::string op2 = GetRangeSourceCode(SourceRange(leftOp->getOperatorLoc()), m_compiler);  
       if(op2 == "]" || op2 == "[" || op2 == "[]")
-        ProcessReadWriteTexture(expr, true);
+        ProcessReadWriteTexture(leftOp, true);
     }
   }
   else if(op == "]" || op == "[" || op == "[]")

@@ -41,7 +41,7 @@ namespace kslicer
   };
 
   enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
-  enum       TEX_ACCESS { TEX_ACCESS_NOTHING = 0, TEX_ACCESS_READ = 1, TEX_ACCESS_WRITE = 2, TEX_ACCESS_SAMPLE = 4 };
+  enum class TEX_ACCESS { TEX_ACCESS_NOTHING = 0, TEX_ACCESS_READ = 1, TEX_ACCESS_WRITE = 2, TEX_ACCESS_SAMPLE = 4 };
 
   /**
   \brief for each method MainClass::kernel_XXX
@@ -414,6 +414,7 @@ namespace kslicer
 
     virtual std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText);
     void DetectTextureAccess(clang::CXXOperatorCallExpr* expr);
+    void DetectTextureAccess(clang::CXXMemberCallExpr*   call);
     void ProcessReadWriteTexture(clang::CXXOperatorCallExpr* expr, bool write);
 
     clang::Rewriter&                                         m_rewriter;

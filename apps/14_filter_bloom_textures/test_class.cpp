@@ -46,7 +46,7 @@ ToneMapping::ToneMapping(const int w, const int h): m_width(w), m_height(h), m_w
 
 void ToneMapping::Bloom(const int a_width, const int a_height, const Texture2D<float4>& a_texture2d, unsigned int* outData1ui)
 {
-  // (1) ExtractBrightPixels (inData4f => m_brightPixels (w,h))
+  // (1) ExtractBrightPixels (a_texture2d => m_brightPixels (w,h))
   //
   kernel2D_ExtractBrightPixels(a_width, a_height, a_texture2d, m_brightPixels);
 
@@ -59,7 +59,7 @@ void ToneMapping::Bloom(const int a_width, const int a_height, const Texture2D<f
   kernel2D_BlurX(m_widthSmall, m_heightSmall, m_downsampledImage, m_tempImage); // m_downsampledImage => m_tempImage
   kernel2D_BlurY(m_widthSmall, m_heightSmall, m_tempImage, m_downsampledImage); // m_tempImage => m_downsampledImage
 
-  // (4) MixAndToneMap(inData4f, m_downsampledImage) => outData1ui
+  // (4) MixAndToneMap(a_texture2d, m_downsampledImage) => outData1ui
   //
   kernel2D_MixAndToneMap(a_width, a_height, a_texture2d, outData1ui);
 }
