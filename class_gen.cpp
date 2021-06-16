@@ -290,6 +290,29 @@ void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_k
   }
 }
 
+
+void kslicer::MainClassInfo::ProcessCallArs_KF(const KernelCallInfo& a_call)
+{
+  auto pKernel = kernels.find(a_call.originKernelName);
+  if(pKernel == kernels.end())
+    return;
+
+  for(size_t argId = 0; argId < a_call.descriptorSetsInfo.size(); argId++)
+  {
+    const auto& currArg = a_call.descriptorSetsInfo[argId];
+    const auto& kernArg = pKernel->second.args[argId];
+
+    auto pDataMember = allDataMembers.find(currArg.varName);
+    auto pMask       = pKernel->second.texAccessInArgs.find(kernArg.name);
+        
+    if(pDataMember == allDataMembers.end() || pMask == pKernel->second.texAccessInArgs.end())
+      continue;
+      
+    pDataMember->second.tmask = kslicer::TEX_ACCESS( int(pDataMember->second.tmask) | int(pMask->second) );
+  }
+}
+
+
 void kslicer::FunctionRewriter::MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
 //void kslicer::FunctionRewriter::MarkRewritten(const clang::Decl* decl) { kslicer::MarkRewrittenRecursive(decl, m_rewrittenNodes); }
 

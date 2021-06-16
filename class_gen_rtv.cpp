@@ -238,8 +238,15 @@ kslicer::RTV_Pattern::MHandlerKFPtr kslicer::RTV_Pattern::MatcherHandler_KF(Kern
   return std::move(std::make_unique<kslicer::UsedCodeFilter>(std::cout, *this, &kernel, a_compiler));
 }
 
+
 void kslicer::RTV_Pattern::ProcessCallArs_KF(const KernelCallInfo& a_call)
 {
+  // (1) call from base class
+  //
+  MainClassInfo::ProcessCallArs_KF(a_call); 
+
+  // (2) add ray tracing specific
+  //
   auto pFoundKernel = kernels.find(a_call.originKernelName);
   if(pFoundKernel != kernels.end()) 
   {

@@ -623,7 +623,7 @@ namespace kslicer
                                              std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode);
     virtual void          VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) { } // additional informational pass, does not rewrite the code! 
 
-    virtual void ProcessCallArs_KF(const KernelCallInfo& a_call) { };
+    virtual void ProcessCallArs_KF(const KernelCallInfo& a_call);
     virtual bool IsExcludedLocalFunction(const std::string& a_name) const { return false; }
 
     //// These methods used for final template text rendering
