@@ -539,8 +539,59 @@ bool kslicer::KernelRewriter::VisitCompoundAssignOperator_Impl(CompoundAssignOpe
   return true;
 }
 
+void kslicer::KernelRewriter::ProcessReadWriteTexture(clang::CXXOperatorCallExpr* expr, bool write)
+{
+  const auto currAccess = write ? kslicer::TEX_ACCESS_WRITE : kslicer::TEX_ACCESS_READ;
+  const auto hash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+  if(m_visitedTexAccessNodes.find(hash) != m_visitedTexAccessNodes.end())
+    return;
+
+  std::string objName = GetRangeSourceCode(SourceRange(expr->getExprLoc()), m_compiler);
+  
+  // (1) process if member access
+  //
+  auto pMember = m_codeInfo->allDataMembers.find(objName);
+  if(pMember != m_codeInfo->allDataMembers.end())
+    pMember->second.tmask = kslicer::TEX_ACCESS(int(pMember->second.tmask) | int(currAccess));
+
+  // (2) process if kernel argument access
+  //
+  for(const auto& arg : m_currKernel.args)
+  {
+    if(arg.name == objName)
+    {
+      auto p = m_currKernel.texAccessInArgs.find(objName);
+      if(p != m_currKernel.texAccessInArgs.end())
+        p->second = kslicer::TEX_ACCESS( int(p->second) | int(currAccess));
+      else
+        m_currKernel.texAccessInArgs[objName] = currAccess;
+    }
+  }
+
+  m_visitedTexAccessNodes.insert(hash);
+}
+
+void kslicer::KernelRewriter::DetectTextureAccess(CXXOperatorCallExpr* expr)
+{
+  std::string op = GetRangeSourceCode(SourceRange(expr->getOperatorLoc()), m_compiler);    
+  if(expr->isAssignmentOp()) // detect a_brightPixels[coord] = color;
+  {
+    clang::Expr* left = expr->getArg(0); 
+    if(clang::isa<clang::CXXOperatorCallExpr>(left))
+    {
+      clang::CXXOperatorCallExpr* leftOp = clang::dyn_cast<clang::CXXOperatorCallExpr>(left);
+      std::string op2 = GetRangeSourceCode(SourceRange(leftOp->getOperatorLoc()), m_compiler);  
+      if(op2 == "]" || op2 == "[" || op2 == "[]")
+        ProcessReadWriteTexture(expr, true);
+    }
+  }
+  else if(op == "]" || op == "[" || op == "[]")
+    ProcessReadWriteTexture(expr, false);
+}
+
 bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(CXXOperatorCallExpr* expr)
 {
+  DetectTextureAccess(expr);
   auto opRange = expr->getSourceRange();
   if(opRange.getEnd()   <= m_currKernel.loopInsides.getBegin() || 
      opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop

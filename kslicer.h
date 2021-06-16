@@ -24,7 +24,7 @@ namespace kslicer
 {
   struct IShaderCompiler;
   enum VKERNEL_IMPL_TYPE { VKERNEL_SWITCH = 0, VKERNEL_INDIRECT_DISPATCH=2 };
-
+ 
   struct ShaderFeatures
   {
     ShaderFeatures operator||(const ShaderFeatures& rhs)
@@ -39,6 +39,9 @@ namespace kslicer
     bool useShortType = false;
     bool useInt64Type = false;
   };
+
+  enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
+  enum       TEX_ACCESS { TEX_ACCESS_NOTHING = 0, TEX_ACCESS_READ = 1, TEX_ACCESS_WRITE = 2, TEX_ACCESS_SAMPLE = 4 };
 
   /**
   \brief for each method MainClass::kernel_XXX
@@ -127,6 +130,8 @@ namespace kslicer
     std::unordered_set<std::string> usedVectors; ///<! list of all std::vector<T> member names which is referenced inside kernel
     std::unordered_set<std::string> usedMembers; ///<! list of all other variables used inside kernel
     std::unordered_map<std::string, ReductionAccess> subjectedToReduction; ///<! if member is used in reduction expression
+    std::unordered_map<std::string, TEX_ACCESS>      texAccessInArgs;
+
 
     std::string rewrittenText;                   ///<! rewritten source code of a kernel
     std::string rewrittenInit;                   ///<! rewritten loop initialization code for kernel
@@ -141,8 +146,6 @@ namespace kslicer
 
     ShaderFeatures shaderFeatures;
   };
-
-  enum class DATA_USAGE{ USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
 
   /**
   \brief for each data member of MainClass
@@ -161,7 +164,8 @@ namespace kslicer
     bool usedInKernel      = false; ///<! if any kernel use the member --> true; if no one uses --> false;
     bool usedInMainFn      = false; ///<! if std::vector is used in MainFunction like vector.data();
     
-    DATA_USAGE  usage = DATA_USAGE::USAGE_USER; ///<! if this is service and 'implicit' data which was agged by generator, not by user;
+    DATA_USAGE usage = DATA_USAGE::USAGE_USER;         ///<! if this is service and 'implicit' data which was agged by generator, not by user;
+    TEX_ACCESS tmask = TEX_ACCESS::TEX_ACCESS_NOTHING; ///<! store texture access flags if this data member is a texture
 
     size_t      arraySize = 0;     ///<! 'N' if data is declared as 'array[N]';
     std::string containerType;     ///<! std::vector usually
@@ -300,7 +304,6 @@ namespace kslicer
   void MarkRewrittenRecursive(const clang::Stmt* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes);
   void MarkRewrittenRecursive(const clang::Decl* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes);
   bool IsVectorContructorNeedsReplacement(const std::string& a_typeName);
-  
 
   /**
   \brief process local functions (data["LocalFunctions"]), float3 --> make_float3, std::max --> fmax and e.t.c.
@@ -410,6 +413,8 @@ namespace kslicer
     virtual bool IsGLSL() const { return false; }
 
     virtual std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText);
+    void DetectTextureAccess(clang::CXXOperatorCallExpr* expr);
+    void ProcessReadWriteTexture(clang::CXXOperatorCallExpr* expr, bool write);
 
     clang::Rewriter&                                         m_rewriter;
     const clang::CompilerInstance&                           m_compiler;
@@ -423,6 +428,7 @@ namespace kslicer
     kslicer::KernelInfo&                                     m_currKernel;
     bool                                                     m_infoPass;
     std::unordered_set<uint64_t>                             m_rewrittenNodes;
+    std::unordered_set<uint64_t>                             m_visitedTexAccessNodes;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////

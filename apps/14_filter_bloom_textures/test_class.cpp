@@ -61,7 +61,7 @@ void ToneMapping::Bloom(const int a_width, const int a_height, const Texture2D<f
 
   // (4) MixAndToneMap(inData4f, m_downsampledImage) => outData1ui
   //
-  kernel2D_MixAndToneMap(a_width, a_height, a_texture2d, m_downsampledImage, outData1ui);
+  kernel2D_MixAndToneMap(a_width, a_height, a_texture2d, outData1ui);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -180,8 +180,7 @@ void ToneMapping::kernel2D_BlurY(const int a_width, const int a_height,
 
 
 
-void ToneMapping::kernel2D_MixAndToneMap(const int a_width, const int a_height, 
-                                         const Texture2D<float4>& a_texture2d, const Texture2D<float4>& inBrightPixels,
+void ToneMapping::kernel2D_MixAndToneMap(const int a_width, const int a_height, const Texture2D<float4>& a_texture2d,
                                          unsigned int* outData1ui)
 {
   #pragma omp parallel for
@@ -190,7 +189,7 @@ void ToneMapping::kernel2D_MixAndToneMap(const int a_width, const int a_height,
     for(int tidX = 0; tidX < a_width; tidX++)
     {
       const float2 uv         = get_uv(tidX, tidY, a_width, a_height);
-      const float4 bloomColor = inBrightPixels.sample(m_sampler, uv);
+      const float4 bloomColor = m_downsampledImage.sample(m_sampler, uv);
       float4       colorSumm  = bloomColor + a_texture2d.sample(m_sampler, uv);
       
       SimpleCompressColor(&colorSumm);

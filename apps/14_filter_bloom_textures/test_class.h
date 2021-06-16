@@ -51,7 +51,7 @@ protected:
   void kernel2D_DownSample4x       (const int a_width, const int a_height, const Texture2D<float4>& a_texture2dFullRes, Texture2D<float4>& a_dataSmallRes);
   void kernel2D_BlurX              (const int a_width, const int a_height, const Texture2D<float4>& a_texture2d,        Texture2D<float4>& a_dataOut);
   void kernel2D_BlurY              (const int a_width, const int a_height, const Texture2D<float4>& a_texture2d,        Texture2D<float4>& a_dataOut);
-  void kernel2D_MixAndToneMap      (const int a_width, const int a_height, const Texture2D<float4>& a_texture2d,  const Texture2D<float4>& inBrightPixels, unsigned int* outData1ui);
+  void kernel2D_MixAndToneMap      (const int a_width, const int a_height, const Texture2D<float4>& a_texture2d, unsigned int* outData1ui);
 
   std::vector<float>  m_filterWeights;
   Texture2D<float4>   m_brightPixels;
