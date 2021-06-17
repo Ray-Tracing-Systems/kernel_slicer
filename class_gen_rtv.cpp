@@ -357,7 +357,7 @@ public:
   std::string RewriteMemberDecl(clang::CXXMethodDecl* fDecl, const std::string& classTypeName)
   {
     std::string fname  = fDecl->getNameInfo().getName().getAsString();
-    std::string result = m_codeInfo->RemoveTypeNamespaces(fDecl->getReturnType().getAsString()) + " " + classTypeName + "_" + fname + "(\n  __global const " + classTypeName + "* self";
+    std::string result = m_codeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString()) + " " + classTypeName + "_" + fname + "(\n  __global const " + classTypeName + "* self";
     if(fDecl->getNumParams() != 0)
       result += ", \n  ";
 

@@ -608,10 +608,7 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
 nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::vector<kslicer::DataMemberInfo>& a_dataMembers, const clang::CompilerInstance& compiler)
 {
   nlohmann::json data;
-  
-  clang::Rewriter rewrite2;
-  rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-  auto pShaderRewriter = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
+  auto pShaderRewriter = a_classInfo.pShaderFuncRewriter;
 
   auto podMembers = filter(a_classInfo.dataMembers, [](auto& memb) { return !memb.isContainer; });
   uint32_t dummyCounter = 0;
@@ -624,7 +621,7 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::ve
     std::string typeStr = member.type;
     if(member.isArray)
       typeStr = typeStr.substr(0, typeStr.find("["));
-    typeStr = pShaderRewriter->RewriteVectorTypeStr(typeStr); //a_classInfo.RemoveTypeNamespaces(typeStr);
+    typeStr = pShaderRewriter->RewriteStdVectorTypeStr(typeStr); 
 
     size_t sizeO = member.sizeInBytes;
     size_t sizeA = member.alignedSizeInBytes;
@@ -685,9 +682,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
                                     const uint32_t  threadsOrder[3],
                                     const std::string& uboIncludeName, const nlohmann::json& uboJson)
 {
-  clang::Rewriter rewrite2;
-  rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-  auto pShaderRewriter = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
+  auto pShaderRewriter = a_classInfo.pShaderFuncRewriter;
 
   std::unordered_map<std::string, DataMemberInfo> dataMembersCached;
   dataMembersCached.reserve(a_classInfo.dataMembers.size());
@@ -783,7 +778,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       json argj;
       std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(commonArg.typeName);
-      std::string buffType2 = pShaderRewriter->RewriteVectorTypeStr(buffType1); 
+      std::string buffType2 = pShaderRewriter->RewriteStdVectorTypeStr(buffType1); 
       argj["Type"]  = buffType2;
       argj["Name"]  = commonArg.argName;
       argj["IsUBO"] = commonArg.isUBO;
@@ -816,7 +811,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       assert(pVecSizeMember->second.isContainerInfo);
 
       std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(pVecMember->second.containerDataType);
-      std::string buffType2 = pShaderRewriter->RewriteVectorTypeStr(buffType1);
+      std::string buffType2 = pShaderRewriter->RewriteStdVectorTypeStr(buffType1);
       if(!a_classInfo.pShaderCC->IsGLSL())
         buffType2 += "*";
       
@@ -854,7 +849,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         continue;
 
       json memberData;
-      memberData["Type"]   = pShaderRewriter->RewriteVectorTypeStr(member.type);
+      memberData["Type"]   = pShaderRewriter->RewriteStdVectorTypeStr(member.type);
       memberData["Name"]   = member.name;
       memberData["Offset"] = member.offsetInTargetBuffer / sizeof(uint32_t);
       members.push_back(memberData);
@@ -865,7 +860,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     for(const auto& arg : userArgsArr)
     {
       json argj;
-      argj["Type"]  = pShaderRewriter->RewriteVectorTypeStr(arg.type);
+      argj["Type"]  = pShaderRewriter->RewriteStdVectorTypeStr(arg.type);
       argj["Name"]  = arg.name;
       argj["IsUBO"] = false;
       userArgs.push_back(argj);

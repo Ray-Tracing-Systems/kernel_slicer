@@ -447,6 +447,7 @@ bool kslicer::KernelRewriter::VisitUnaryOperator_Impl(UnaryOperator* expr)
 
 void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Expr* lhs, const Expr* rhs, const Expr* expr)
 {
+  auto pShaderRewriter = m_codeInfo->pShaderFuncRewriter;
   std::string leftVar = GetRangeSourceCode(lhs->getSourceRange().getBegin(), m_compiler);
   std::string leftStr = GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
   auto p = m_currKernel.usedMembers.find(leftVar);
@@ -458,7 +459,7 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
     access.leftExpr  = leftStr;
     access.dataType  = rhs->getType().getAsString();
     ReplaceFirst(access.dataType, "const ", "");
-    access.dataType = m_codeInfo->RemoveTypeNamespaces(access.dataType);
+    access.dataType = pShaderRewriter->RewriteStdVectorTypeStr(access.dataType); 
    
     if(leftVar != leftStr && isa<ArraySubscriptExpr>(lhs))
     {

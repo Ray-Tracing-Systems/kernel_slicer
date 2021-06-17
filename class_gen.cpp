@@ -233,7 +233,7 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
       ArgTypeAndNamePair arg2;
       arg2.argName  = arg.name;
       arg2.sizeName = arg.name;
-      arg2.typeName = RemoveTypeNamespaces(arg.type);
+      arg2.typeName = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
       arg2.id       = 0;
       args.push_back(arg2);
     }
@@ -253,7 +253,7 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
     { 
       ArgTypeAndNamePair arg2;
       arg2.argName  = arg.name;
-      arg2.typeName = RemoveTypeNamespaces(arg.type);
+      arg2.typeName = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
       arg2.isUBO    = (arg.type.find(std::string("class ")  + mainClassName) != std::string::npos || 
                        arg.type.find(std::string("struct ") + mainClassName) != std::string::npos);
       arg2.isThreadFlags = arg.isThreadFlags;

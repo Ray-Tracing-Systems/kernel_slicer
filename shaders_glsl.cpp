@@ -199,7 +199,7 @@ public:
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
   IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
 
-  std::string RewriteVectorTypeStr(const std::string& a_str) override;
+  std::string RewriteStdVectorTypeStr(const std::string& a_str) override;
 
   std::unordered_map<std::string, std::string> m_vecReplacements;
   std::unordered_map<std::string, std::string> m_funReplacements;
@@ -236,7 +236,7 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
   }
 }
 
-std::string GLSLFunctionRewriter::RewriteVectorTypeStr(const std::string& a_str)
+std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_str)
 {
   const bool isConst  = (a_str.find("const") != std::string::npos);
   const bool isUshort = (a_str.find("short") != std::string::npos)    || (a_str.find("ushort") != std::string::npos) || 
@@ -300,7 +300,7 @@ bool GLSLFunctionRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // T
 
 std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
 {
-  std::string retT   = RewriteVectorTypeStr(fDecl->getReturnType().getAsString()); 
+  std::string retT   = RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString()); 
   std::string fname  = fDecl->getNameInfo().getName().getAsString();
   std::string result = retT + " " + fname + "(";
 
@@ -315,13 +315,13 @@ std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
       if(typeOfParam->getPointeeType().isConstQualified())
       {
         ReplaceFirst(typeStr, "const ", "");
-        result += std::string("in ") + RewriteVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+        result += std::string("in ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
       }
       else
-        result += std::string("inout ") + RewriteVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+        result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
     }
     else
-      result += RewriteVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+      result += RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
 
     if(i!=fDecl->getNumParams()-1)
       result += ", ";
@@ -476,7 +476,7 @@ bool GLSLFunctionRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special 
         }
         if(!NeedsVectorTypeRewrite(varType)) // immediately ignore DeclStmt like 'int i,j,k=2' if we dont need to rewrite the type 
           return true;
-        varType = RewriteVectorTypeStr(varType);
+        varType = RewriteStdVectorTypeStr(varType);
         
         if(varValue == "" || varValue == varName) 
           resExpr = varType + " " + varName;
@@ -536,7 +536,7 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
     //  int a = 2;
     //}
     const std::string varValue = RecursiveRewrite(pValue);
-    const std::string varType2 = RewriteVectorTypeStr(varType);
+    const std::string varType2 = RewriteStdVectorTypeStr(varType);
 
     if(varValue == "" || varValue == varName) // 'float3 deviation;' for some reason !decl->hasInit() does not works 
       m_rewriter.ReplaceText(decl->getSourceRange(), varType2 + " " + varName);
@@ -559,7 +559,7 @@ bool GLSLFunctionRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
     {
       int a = 2;
     }
-    typeCast = RewriteVectorTypeStr(typeCast);
+    typeCast = RewriteStdVectorTypeStr(typeCast);
     const std::string exprText = RecursiveRewrite(next);
     if(exprText == ")") // strange bug for casts inside 'DeclStmt' 
       return true;

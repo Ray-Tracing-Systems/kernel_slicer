@@ -132,13 +132,6 @@ void kslicer::ReplaceOpenCLBuiltInTypes(std::string& a_typeName)
     a_typeName.replace(found2, lm.length(), "");
 }
 
-std::string kslicer::MainClassInfo::RemoveTypeNamespaces(const std::string& a_str) const
-{
-  std::string typeName = a_str;
-  ReplaceOpenCLBuiltInTypes(typeName);
-  ReplaceFirst(typeName, mainClassName + "::", "");
-  return typeName;
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -378,6 +371,7 @@ int main(int argc, const char **argv)
     inputCodeInfo.includeToShadersFolders.push_back("include/");
   }
 
+
   inputCodeInfo.defaultVkernelType = defaultVkernelType;
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -461,6 +455,7 @@ int main(int argc, const char **argv)
   clang::tooling::CommonOptionsParser OptionsParser(argSize, argv2.data(), GDOpts);
   clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
+
   // (0) find all "Main" functions, a functions which call kernels. Kernels are also listed for each mainFunc;
   //
   std::vector<std::string> mainFunctNames; 
@@ -480,6 +475,13 @@ int main(int argc, const char **argv)
   inputCodeInfo.mainFunc.resize(mainFuncList.size());
   inputCodeInfo.mainClassName     = mainClassName;
   inputCodeInfo.mainClassFileName = fileName;
+  
+  // create default Shader Rewriter
+  {
+    clang::Rewriter rewrite2;
+    rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+    inputCodeInfo.pShaderFuncRewriter = inputCodeInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &inputCodeInfo);
+  }
 
   std::cout << "(1) Processing class " << mainClassName.c_str() << " with initial pass" << std::endl; 
   std::cout << "{" << std::endl;

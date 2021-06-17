@@ -338,7 +338,7 @@ namespace kslicer
     const std::unordered_set<uint64_t>& GetProcessedNodes() const { return m_rewrittenNodes; }
     void SetProcessedNodes(const std::unordered_set<uint64_t>& a_rhs) { m_rewrittenNodes = a_rhs; }
     
-    virtual std::string RewriteVectorTypeStr(const std::string& a_str);
+    virtual std::string RewriteStdVectorTypeStr(const std::string& a_str);
 
     virtual ShaderFeatures GetShaderFeatures() const { return ShaderFeatures(); }
 
@@ -581,7 +581,8 @@ namespace kslicer
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
 
-    std::shared_ptr<IShaderCompiler>      pShaderCC = nullptr;
+    std::shared_ptr<IShaderCompiler>           pShaderCC           = nullptr;
+    std::shared_ptr<kslicer::FunctionRewriter> pShaderFuncRewriter = nullptr;
     
     uint32_t                              m_indirectBufferSize = 0; ///<! size of indirect buffer
 
@@ -647,8 +648,6 @@ namespace kslicer
     virtual std::string GetCFDeclFromSource(const std::string& sourceCode);
 
     virtual bool NeedThreadFlags() const { return false; }
-    virtual std::string RemoveTypeNamespaces(const std::string& a_str) const;
-
     virtual void AddTempBufferToKernel(const std::string a_buffName, const std::string a_elemTypeName, KernelInfo& a_kernel); ///<! if kernel need some additional buffers (for reduction for example) use this function 
     
     struct DImplFunc
