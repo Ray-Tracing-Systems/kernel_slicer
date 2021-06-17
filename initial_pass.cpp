@@ -1,19 +1,43 @@
 #include "initial_pass.h"
 #include <iostream>
 
+void SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType)
+{
+  a_containerType = specDecl->getNameAsString();      
+  const auto& templateArgs = specDecl->getTemplateArgs();
+        
+  if(templateArgs.size() > 0)
+    a_containerDataType = templateArgs[0].getAsType().getAsString();
+  else
+    a_containerDataType = "unknown";
+}
+
+
 static kslicer::KernelInfo::Arg ProcessParameter(clang::ParmVarDecl *p) 
 {
   clang::QualType q = p->getType();
-  const clang::Type *typ = q.getTypePtr();
+
   kslicer::KernelInfo::Arg arg;
   arg.name = p->getNameAsString();
   arg.type = clang::QualType::getAsString(q.split(), clang::PrintingPolicy{ {} });
   arg.size = 1;
-  if (typ->isPointerType()) {
+  if (q->isPointerType()) {
     arg.size      = 1; // Because C always pass reference
     arg.isPointer = true;
   }
-  
+  else if(q->isReferenceType()) {
+    arg.isReference = true;
+    auto dataType = q.getNonReferenceType(); 
+    auto typeDecl = dataType->getAsRecordDecl();
+      
+    if(typeDecl != nullptr && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl))
+    {
+      arg.isContainer = true;
+      auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);   
+      SplitContainerTypes(specDecl, arg.containerType, arg.containerDataType);
+    }
+  }
+
   return arg;
 }
 
@@ -273,18 +297,9 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
     }  
     else if (typeDecl != nullptr && isa<ClassTemplateSpecializationDecl>(typeDecl)) 
     {
+      member.isContainer = true;
       auto specDecl = dyn_cast<ClassTemplateSpecializationDecl>(typeDecl); 
-      assert(specDecl != nullptr);
-      
-      member.isContainer   = true;
-      member.containerType = specDecl->getNameAsString();      
-      const auto& templateArgs = specDecl->getTemplateArgs();
-      
-      if(templateArgs.size() > 0)
-        member.containerDataType = templateArgs[0].getAsType().getAsString();
-      else
-        member.containerDataType = "unknown";
-
+      SplitContainerTypes(specDecl, member.containerType, member.containerDataType);
       std::cout << "  found container of type " << member.containerType.c_str() << ", which data type is " <<  member.containerDataType.c_str() << std::endl;
     }
     else

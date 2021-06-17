@@ -59,6 +59,11 @@ namespace kslicer
       bool isLoopSize     = false; ///<! used by IPV-like patterns where loop is defined inside kernel
       bool isPointer      = false;
       bool isThreadFlags  = false; 
+      bool isReference    = false;
+      bool isContainer    = false;
+
+      std::string containerType;
+      std::string containerDataType;
 
       bool IsUser() const { return !isThreadID && !isLoopSize && !needFakeOffset && !isPointer; }
     };
@@ -636,7 +641,7 @@ namespace kslicer
       std::string typeName;
       std::string argName;
       std::string sizeName;
-      uint32_t    id;       ///<! used to preserve or change loops order
+      uint32_t    id;   ///<! used to preserve or change loops order
       bool        isUBO         = false;
       bool        isThreadFlags = false;
     };
