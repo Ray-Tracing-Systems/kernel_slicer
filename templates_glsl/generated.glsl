@@ -25,9 +25,9 @@ layout( push_constant ) uniform kernelIntArgs
   {% for UserArg in Kernel.UserArgs %} 
   {{UserArg.Type}} {{UserArg.Name}};
   {% endfor %}
-  uint iNumElementsX; 
-  uint iNumElementsY; 
-  uint iNumElementsZ; 
+  uint {{Kernel.threadIdName1}}; 
+  uint {{Kernel.threadIdName2}}; 
+  uint {{Kernel.threadIdName3}}; 
   uint tFlagsMask;    
 } kgenArgs;
 
@@ -45,7 +45,7 @@ void main()
   {% include "inc_exit_cond.glsl" %}
   {# /*------------------------------------------------------------- END. CHECK EXIT COND ------------------------------------------------------------- */ #}
   {% for Member in Kernel.Members %}
-  const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
+  const {{Member.Type}} {{Member.Name}} = ubo.{{Member.Name}};
   {% endfor %}
   {% if Kernel.IsBoolean %}
   bool kgenExitCond = false;

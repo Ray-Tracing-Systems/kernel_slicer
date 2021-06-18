@@ -18,10 +18,10 @@ uint RealColorToUint32(float4 a_realColor, const float a_gamma)
   float  b = pow(clamp(a_realColor.z, 0.0F, 1.0F), a_gamma) * 255.0f;
   float  a =     clamp(a_realColor.w, 0.0F, 1.0F)           * 255.0f;
 
-  unsigned char red   = (unsigned char)r;
-  unsigned char green = (unsigned char)g;
-  unsigned char blue  = (unsigned char)b;
-  unsigned char alpha = (unsigned char)a;
+  uint red   = (uint)r;
+  uint green = (uint)g;
+  uint blue  = (uint)b;
+  uint alpha = (uint)a;
 
   return red | (green << 8) | (blue << 16) | (alpha << 24);
 }

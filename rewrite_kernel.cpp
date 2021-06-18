@@ -80,11 +80,11 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(MemberExpr* expr)
   // (2) put ubo->var instead of var, leave containers as they are
   // process arrays and large data structures because small can be read once in the beggining of kernel
   //
-  const bool isInLoopInitPart = expr->getSourceRange().getBegin() <= m_currKernel.loopOutsidesInit.getEnd();
+  //const std::string debugMe = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  const bool isInLoopInitPart = expr->getSourceRange().getEnd() <= m_currKernel.loopOutsidesInit.getEnd();
   const bool hasLargeSize     = (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);
   if(!pMember->second.isContainer && (isInLoopInitPart || pMember->second.isArray || hasLargeSize) && WasNotRewrittenYet(expr) && !m_infoPass) 
   {
-    //const std::string debugMe = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
     std::string rewrittenName = m_codeInfo->pShaderCC->UBOAccess(pMember->second.name);
     m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenName);
     MarkRewritten(expr);
@@ -650,7 +650,7 @@ bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(CXXOperatorCallExpr*
 
     ProcessReductionOp(op, lhs, rhs, expr);
   }
-  
+
   return true;
 }
 
