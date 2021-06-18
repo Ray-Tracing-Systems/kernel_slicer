@@ -131,11 +131,3 @@ float2 Texture2D<Type>::process_coord(const Sampler::AddressMode mode, const flo
 
   return clamp(res, 0.0f, 1.0F);
 } 
-
-
-float2 get_uv(const int x, const int y, const uint width, const uint height)
-{
-  const float u = (float)(x) / (float)(width);
-  const float v = (float)(y) / (float)(height);
-  return make_float2(u, v);
-}

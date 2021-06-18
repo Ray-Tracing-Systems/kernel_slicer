@@ -476,12 +476,11 @@ int main(int argc, const char **argv)
   inputCodeInfo.mainClassName     = mainClassName;
   inputCodeInfo.mainClassFileName = fileName;
   
-  // create default Shader Rewriter
-  {
-    clang::Rewriter rewrite2;
-    rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-    inputCodeInfo.pShaderFuncRewriter = inputCodeInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &inputCodeInfo);
-  }
+  // create default Shader Rewriter, don't delete it please!
+  //
+  clang::Rewriter rewrite2;
+  rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+  inputCodeInfo.pShaderFuncRewriter = inputCodeInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &inputCodeInfo);
 
   std::cout << "(1) Processing class " << mainClassName.c_str() << " with initial pass" << std::endl; 
   std::cout << "{" << std::endl;

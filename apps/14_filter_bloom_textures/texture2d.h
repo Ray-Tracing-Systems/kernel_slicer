@@ -33,8 +33,13 @@ protected:
   std::vector<Type> m_data;  
 };
 
+static inline float2 get_uv(const int x, const int y, const uint width, const uint height)
+{
+  const float u = (float)(x) / (float)(width);
+  const float v = (float)(y) / (float)(height);
+  return make_float2(u, v);
+}
 
-float2 get_uv(const int x, const int y, const uint width, const uint height);
 
 static inline unsigned int encodeNormal(float3 n)
 {
