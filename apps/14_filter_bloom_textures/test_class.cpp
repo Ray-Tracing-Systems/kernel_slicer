@@ -106,8 +106,7 @@ void ToneMapping::kernel2D_DownSample4x(const int a_width, const int a_height,
           average += a_texture2dFullRes[uint2(i*4 + x, j*4 + y)];
       }
 
-      const uint2 coord(i, j);
-      a_dataSmallRes[coord] = average * (1.0f/16.0f);      
+      a_dataSmallRes[uint2(i, j)] = average * (1.0f/16.0f);      
     }
   }
 }

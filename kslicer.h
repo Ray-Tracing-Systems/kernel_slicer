@@ -65,7 +65,7 @@ namespace kslicer
       std::string containerType;
       std::string containerDataType;
 
-      bool IsUser() const { return !isThreadID && !isLoopSize && !needFakeOffset && !isPointer; }
+      bool IsUser() const { return !isThreadID && !isLoopSize && !needFakeOffset && !isPointer && !isContainer; }
     };
 
     struct LoopIter 
@@ -343,7 +343,8 @@ namespace kslicer
     const std::unordered_set<uint64_t>& GetProcessedNodes() const { return m_rewrittenNodes; }
     void SetProcessedNodes(const std::unordered_set<uint64_t>& a_rhs) { m_rewrittenNodes = a_rhs; }
     
-    virtual std::string RewriteStdVectorTypeStr(const std::string& a_str);
+    virtual std::string RewriteStdVectorTypeStr(const std::string& a_str) const;
+    virtual std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, TEX_ACCESS a_accessType, std::string& outImageFormat) const { return "readonly image2D"; }
 
     virtual ShaderFeatures GetShaderFeatures() const { return ShaderFeatures(); }
 
@@ -599,6 +600,7 @@ namespace kslicer
     virtual bool        IsKernel(const std::string& a_funcName) const;                                 ///<! return true if function is a kernel
     virtual void        ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const { }   ///<!  
     virtual bool        IsIndirect(const KernelInfo& a_kernel) const; 
+    virtual bool        IsTextureContainer(const std::string& a_typeName) const;                       ///<! return for all types of textures
    
     //// Processing Control Functions (CF)
     // 
@@ -641,9 +643,12 @@ namespace kslicer
       std::string typeName;
       std::string argName;
       std::string sizeName;
+      std::string imageType;
+      std::string imageFormat;
       uint32_t    id;   ///<! used to preserve or change loops order
       bool        isUBO         = false;
       bool        isThreadFlags = false;
+      bool        isImage       = false;
     };
    
     virtual std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const; 

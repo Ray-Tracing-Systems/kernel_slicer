@@ -2,7 +2,7 @@
 #include "template_rendering.h"
 #include <iostream>
 
-std::string kslicer::FunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_str)
+std::string kslicer::FunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_str) const
 {      
   const bool isConst = (a_str.find("const ") != std::string::npos);
   std::string typeStr = a_str;

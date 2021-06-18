@@ -44,6 +44,23 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
   return true;
 }
 
+bool CheckTextureAccessFlags(kslicer::TEX_ACCESS a_flags, const std::string& argName, const std::string& a_kernName)
+{
+  if(a_flags == kslicer::TEX_ACCESS::TEX_ACCESS_READ   || 
+     a_flags == kslicer::TEX_ACCESS::TEX_ACCESS_WRITE  || 
+     a_flags == kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE || 
+     a_flags == kslicer::TEX_ACCESS::TEX_ACCESS_NOTHING)
+    return true;
+
+  //if(int(a_flags) == (int(kslicer::TEX_ACCESS::TEX_ACCESS_READ) | int(kslicer::TEX_ACCESS::TEX_ACCESS_WRITE)))
+  //  return true;
+
+  std::cout << "  ERROR: bad ACCESS(Read,Write,Sample) flags: " << int(a_flags) << std::endl;
+  std::cout << "  ERROR: texture " << argName.c_str() << ", in kernel " << a_kernName.c_str() << std::endl;
+
+  return false;
+}
+
 std::string kslicer::MainClassInfo::RemoveKernelPrefix(const std::string& a_funcName) const
 {
   std::string name = a_funcName;
@@ -58,6 +75,20 @@ bool kslicer::MainClassInfo::IsKernel(const std::string& a_funcName) const
   auto pos = a_funcName.find("kernel_");
   return (pos != std::string::npos);
 }
+
+bool kslicer::MainClassInfo::IsTextureContainer(const std::string& a_typeName) const
+{
+  if(a_typeName == "Texture1D" || a_typeName == "Image1D")
+    return true;
+  if(a_typeName == "Texture2D" || a_typeName == "Image2D")
+    return true;
+  if(a_typeName == "Texture3D" || a_typeName == "Image3D")
+    return true;
+  if(a_typeName == "TextureCube" || a_typeName == "ImageCube")
+    return true;
+
+  return false;
+} 
 
 bool kslicer::MainClassInfo::IsIndirect(const KernelInfo& a_kernel) const
 {
@@ -253,10 +284,21 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
     { 
       ArgTypeAndNamePair arg2;
       arg2.argName  = arg.name;
-      arg2.typeName = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
-      arg2.isUBO    = (arg.type.find(std::string("class ")  + mainClassName) != std::string::npos || 
-                       arg.type.find(std::string("struct ") + mainClassName) != std::string::npos);
-      arg2.isThreadFlags = arg.isThreadFlags;
+      
+      if(arg.isContainer && IsTextureContainer(arg.containerType))
+      {
+        auto pAccessFlags = a_kernel.texAccessInArgs.find(arg.name);
+        CheckTextureAccessFlags(pAccessFlags->second, arg.name, a_kernel.name);
+        arg2.isImage   = true;
+        arg2.imageType = pShaderFuncRewriter->RewriteImageType(arg.containerType, arg.containerDataType, pAccessFlags->second, arg2.imageFormat);
+      }
+      else
+      {
+        arg2.typeName = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
+        arg2.isUBO    = (arg.type.find(std::string("class ")  + mainClassName) != std::string::npos || 
+                         arg.type.find(std::string("struct ") + mainClassName) != std::string::npos);
+        arg2.isThreadFlags = arg.isThreadFlags;
+      }
       args.push_back(arg2);
     }
   }

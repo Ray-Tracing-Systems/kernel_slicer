@@ -199,13 +199,14 @@ public:
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
   IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
 
-  std::string RewriteStdVectorTypeStr(const std::string& a_str) override;
+  std::string RewriteStdVectorTypeStr(const std::string& a_str) const override;
+  std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, kslicer::TEX_ACCESS a_accessType, std::string& outImageFormat) const override;
 
   std::unordered_map<std::string, std::string> m_vecReplacements;
   std::unordered_map<std::string, std::string> m_funReplacements;
   std::vector<std::pair<std::string, std::string> > m_vecReplacements2;
 
-  kslicer::ShaderFeatures sFeatures;
+  mutable kslicer::ShaderFeatures sFeatures;
   kslicer::ShaderFeatures GetShaderFeatures() const override { return sFeatures; }
 
 protected:
@@ -236,7 +237,7 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
   }
 }
 
-std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_str)
+std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_str) const
 {
   const bool isConst  = (a_str.find("const") != std::string::npos);
   const bool isUshort = (a_str.find("short") != std::string::npos)    || (a_str.find("ushort") != std::string::npos) || 
@@ -274,6 +275,78 @@ std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_s
     resStr = std::string("const ") + resStr;
 
   return resStr;
+}
+
+std::string GLSLFunctionRewriter::RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, kslicer::TEX_ACCESS a_accessType, std::string& outImageFormat) const 
+{
+  std::string result = "";
+  if(a_accessType == kslicer::TEX_ACCESS::TEX_ACCESS_READ)
+    result = "readonly ";
+  else if(a_accessType == kslicer::TEX_ACCESS::TEX_ACCESS_WRITE) 
+    result = "writeonly ";
+  
+  if(a_accessType != kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE)
+  {
+    const std::string dataTypeRewritten = RewriteStdVectorTypeStr(a_containerDataType);
+    if(dataTypeRewritten == "uint" || dataTypeRewritten == "uvec2" || dataTypeRewritten == "uvec4")
+      result += "u";
+    if(dataTypeRewritten == "int" || dataTypeRewritten == "ivec2" || dataTypeRewritten == "ivec4")
+      result += "i";
+  
+    if(a_containerType == "Texture1D" || a_containerType == "Image1D")
+    {
+      result += "image1D";
+    }
+    else if(a_containerType == "Texture2D" || a_containerType == "Image2D")
+    {
+      result += "image2D";
+    }
+    else if(a_containerType == "Texture3D" || a_containerType == "Image3D")
+    {
+      result += "image3D";
+    }
+    
+    // image Format qualifiers, post it to govnokod.ru
+    //
+    if(dataTypeRewritten == "float" || dataTypeRewritten == "int" || dataTypeRewritten == "uint" || 
+       dataTypeRewritten == "uint8_t" || dataTypeRewritten == "uint16_t")
+    {
+      outImageFormat = "r";
+    }
+    else if(dataTypeRewritten == "vec2" || dataTypeRewritten == "uvec2" || dataTypeRewritten == "ivec2")
+    {
+      outImageFormat = "rg";
+    }
+
+    else if(dataTypeRewritten == "vec4" || dataTypeRewritten == "uvec4" || dataTypeRewritten == "ivec4")
+    {
+      outImageFormat = "rgba";
+    }
+
+    if(dataTypeRewritten == "float" || dataTypeRewritten == "vec2" || dataTypeRewritten == "vec4")
+      outImageFormat += "32f"; // TODO: 16f ???
+    else if(dataTypeRewritten == "int" || dataTypeRewritten == "uint" || 
+            dataTypeRewritten == "uvec2" || dataTypeRewritten == "ivec2" || 
+            dataTypeRewritten == "uvec4" || dataTypeRewritten == "ivec4")
+      outImageFormat += "32i"; // TODO: 16i ???
+  }
+  else
+  {
+    if(a_containerType == "Texture1D" || a_containerType == "Image1D")
+    {
+      result += "sampler1D";
+    }
+    else if(a_containerType == "Texture2D" || a_containerType == "Image2D")
+    {
+      result += "sampler2D";
+    }
+    else if(a_containerType == "Texture3D" || a_containerType == "Image3D")
+    {
+      result += "sampler3D";
+    }
+  }
+
+  return result;
 }
 
 std::string GLSLFunctionRewriter::VectorTypeContructorReplace(const std::string& fname, const std::string& callText)

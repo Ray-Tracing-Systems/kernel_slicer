@@ -38,6 +38,8 @@ static kslicer::KernelInfo::Arg ProcessParameter(clang::ParmVarDecl *p)
     }
   }
 
+  //TODO: q->isConstantArrayType() --> isArray
+
   return arg;
 }
 
