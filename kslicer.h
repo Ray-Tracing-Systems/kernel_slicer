@@ -136,7 +136,7 @@ namespace kslicer
     std::unordered_set<std::string> usedMembers; ///<! list of all other variables used inside kernel
     std::unordered_map<std::string, ReductionAccess> subjectedToReduction; ///<! if member is used in reduction expression
     std::unordered_map<std::string, TEX_ACCESS>      texAccessInArgs;
-
+    std::unordered_map<std::string, TEX_ACCESS>      texAccessInMemb;
 
     std::string rewrittenText;                   ///<! rewritten source code of a kernel
     std::string rewrittenInit;                   ///<! rewritten loop initialization code for kernel
@@ -339,6 +339,7 @@ namespace kslicer
     bool VisitFieldDecl(clang::FieldDecl* decl)              { return VisitFieldDecl_Impl(decl);      }
     bool VisitUnaryOperator(clang::UnaryOperator* op)        { return VisitUnaryOperator_Impl(op);    }
     bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)    { return VisitCStyleCastExpr_Impl(cast); }
+    bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast){ return VisitImplicitCastExpr_Impl(cast); }
 
     const std::unordered_set<uint64_t>& GetProcessedNodes() const { return m_rewrittenNodes; }
     void SetProcessedNodes(const std::unordered_set<uint64_t>& a_rhs) { m_rewrittenNodes = a_rhs; }
@@ -379,6 +380,7 @@ namespace kslicer
     virtual bool VisitFieldDecl_Impl(clang::FieldDecl* decl)              { return true; } // override this in Derived class
     virtual bool VisitUnaryOperator_Impl(clang::UnaryOperator* op)        { return true; } // override this in Derived class
     virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)    { return true; } // override this in Derived class
+    virtual bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast){ return true; } // override this in Derived class
 
     virtual bool VisitCallExpr_Impl(clang::CallExpr* f);
   };

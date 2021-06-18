@@ -556,8 +556,15 @@ void kslicer::KernelRewriter::ProcessReadWriteTexture(clang::CXXOperatorCallExpr
   //
   auto pMember = m_codeInfo->allDataMembers.find(objName);
   if(pMember != m_codeInfo->allDataMembers.end())
+  {
     pMember->second.tmask = kslicer::TEX_ACCESS(int(pMember->second.tmask) | int(currAccess));
-
+    auto p = m_currKernel.texAccessInMemb.find(objName);
+    if(p != m_currKernel.texAccessInMemb.end())
+      p->second = kslicer::TEX_ACCESS( int(p->second) | int(currAccess));
+    else
+      m_currKernel.texAccessInMemb[objName] = currAccess;
+  }
+  
   // (2) process if kernel argument access
   //
   for(const auto& arg : m_currKernel.args)
@@ -592,7 +599,14 @@ void kslicer::KernelRewriter::DetectTextureAccess(clang::CXXMemberCallExpr* call
     //
     auto pMember = m_codeInfo->allDataMembers.find(objName);
     if(pMember != m_codeInfo->allDataMembers.end())
+    {
       pMember->second.tmask = kslicer::TEX_ACCESS( int(pMember->second.tmask) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
+      auto p = m_currKernel.texAccessInMemb.find(objName);
+      if(p != m_currKernel.texAccessInMemb.end())
+        p->second = kslicer::TEX_ACCESS( int(p->second) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
+      else
+        m_currKernel.texAccessInMemb[objName] = kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE;
+    }
     
     // (2) process if kernel argument access
     //

@@ -849,7 +849,7 @@ void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, 
   //
   if(shouldRewrite)
   {
-    std::string indexText = RecursiveRewrite(expr->getArg(1));
+    std::string indexText =  std::string("ivec2(") + RecursiveRewrite(expr->getArg(1)) + ")";
     if(a_assignOp != nullptr) // write 
     {
       std::string assignExprText = RecursiveRewrite(a_assignOp->getArg(1));
@@ -935,13 +935,23 @@ bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
+  
+  const clang::ValueDecl* pDecl = expr->getDecl();
+  if(!clang::isa<clang::ParmVarDecl>(pDecl))
+    return true; 
 
-  std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-  if(m_userArgs.find(text) != m_userArgs.end() && WasNotRewrittenYet(expr))
+  clang::QualType qt = pDecl->getType();
+  if(qt->isPointerType() || qt->isReferenceType()) // we can't put references to push constants
+    return true;
+
+  //m_userArgs.find(text) != m_userArgs.end()
+  if(WasNotRewrittenYet(expr))
   {
+    std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
     m_rewriter.ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + text);
     MarkRewritten(expr);
   }
+  sync();
 
   return true;
 } 

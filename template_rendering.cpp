@@ -825,6 +825,17 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
       argj["IsUBO"]      = false;
       argj["IsImage"]    = false;
+      if(pVecMember->second.isContainer && a_classInfo.IsTextureContainer(pVecMember->second.containerType))
+      {
+        std::string imageFormat;
+        auto pMemberAccess = k.texAccessInMemb.find(pVecMember->second.name); 
+        assert(pMemberAccess != k.texAccessInMemb.end());
+        auto accessFlags = pMemberAccess->second; //pVecMember->second.tmask; 
+        argj["IsImage"]  = true;
+        argj["Type"]     = a_classInfo.pShaderFuncRewriter->RewriteImageType(pVecMember->second.containerType, pVecMember->second.containerDataType, accessFlags, imageFormat);
+        argj["NeedFmt"]  = (accessFlags != kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE);
+        argj["ImFormat"] = imageFormat;
+      }
       args.push_back(argj);
       vecs.push_back(argj);
     }
