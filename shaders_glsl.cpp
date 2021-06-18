@@ -596,10 +596,10 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
   const std::string varType   = qt.getAsString();
 
-  if(varType.find("unsigned char") != std::string::npos)
-  {
-    int a = 2;
-  }
+  //if(varType.find("unsigned char") != std::string::npos)
+  //{
+  //  int a = 2;
+  //}
 
   if(NeedsVectorTypeRewrite(varType) && WasNotRewrittenYet(pValue))
   {
@@ -707,6 +707,7 @@ public:
   bool VisitVarDecl_Impl(clang::VarDecl* decl) override;
   bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override;
   bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
+  bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) override;
   bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) override;
   bool VisitUnaryOperator_Impl(clang::UnaryOperator* expr) override;
   
@@ -848,10 +849,6 @@ void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, 
   //
   if(shouldRewrite)
   {
-    //const clang::Expr* arg0 =	expr->getArg(0);
-    //const clang::Expr* arg1 =	expr->getArg(1);
-    //std::string arg0Text = kslicer::GetRangeSourceCode(arg0->getSourceRange(), m_compiler); // objName
-    //std::string arg1Text = kslicer::GetRangeSourceCode(arg1->getSourceRange(), m_compiler);
     std::string indexText = RecursiveRewrite(expr->getArg(1));
     if(a_assignOp != nullptr) // write 
     {
@@ -864,9 +861,7 @@ void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, 
       m_rewriter.ReplaceText(expr->getSourceRange(), std::string("imageLoad") + "(" + objName + ", " + indexText + ")");
       MarkRewritten(expr); 
     }
-    
   }
-
 }
 
 bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr)
@@ -894,6 +889,46 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
   sync();
 
   return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr);
+}
+
+bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* call)
+{
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(call);
+ 
+  clang::CXXMethodDecl* fDecl = call->getMethodDecl();  
+  if(fDecl != nullptr && WasNotRewrittenYet(call))  
+  {
+    //std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+    std::string fname     = fDecl->getNameInfo().getName().getAsString();
+    clang::Expr* pTexName =	call->getImplicitObjectArgument(); 
+    std::string objName   = kslicer::GetRangeSourceCode(pTexName->getSourceRange(), m_compiler);     
+  
+    if(fname == "sample" || fname == "Sample")
+    {
+      bool needRewrite = true;
+      const clang::QualType leftType = pTexName->getType(); 
+      if(leftType->isPointerType()) // buffer ? --> ignore
+        needRewrite = false;
+      const std::string leftTypeName = leftType.getAsString();
+      if(leftTypeName.find("Texture") == std::string::npos && leftTypeName.find("Image") == std::string::npos) // not an image ? --> ignore
+        needRewrite = false;
+      
+      if(needRewrite)
+      {
+        //clang::Expr* samplerExpr = call->getArg(0); // TODO: process sampler? use separate sampler and image?
+        //clang::Expr* txCoordExpr = call->getArg(1);
+        //std::string text1 = kslicer::GetRangeSourceCode(samplerExpr->getSourceRange(), m_compiler); 
+        //std::string text2 = kslicer::GetRangeSourceCode(txCoordExpr->getSourceRange(), m_compiler); 
+        std::string texCoord = RecursiveRewrite(call->getArg(1));
+        m_rewriter.ReplaceText(call->getSourceRange(), std::string("texture") + "(" + objName + ", " + texCoord + ")");
+        MarkRewritten(call); 
+        sync();
+      }
+    }
+  }
+
+  return kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(call);
 }
 
 bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
