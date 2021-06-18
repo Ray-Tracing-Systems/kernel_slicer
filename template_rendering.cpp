@@ -779,9 +779,13 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       json argj;
       std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(commonArg.typeName);
       std::string buffType2 = pShaderRewriter->RewriteStdVectorTypeStr(buffType1); 
-      argj["Type"]  = buffType2;
-      argj["Name"]  = commonArg.argName;
-      argj["IsUBO"] = commonArg.isUBO;
+      argj["Type"]     = commonArg.isImage ? commonArg.imageType : buffType2;
+      argj["Name"]     = commonArg.argName;
+      argj["IsUBO"]    = commonArg.isUBO;
+      argj["IsImage"]  = commonArg.isImage;
+      argj["NeedFmt"]  = !commonArg.isSampler;
+      argj["ImFormat"] = commonArg.imageFormat;
+
       args.push_back(argj);
       if(!commonArg.isThreadFlags)
         VArgsSize++;
@@ -820,6 +824,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Name"]       = pVecMember->second.name;
       argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
       argj["IsUBO"]      = false;
+      argj["IsImage"]    = false;
       args.push_back(argj);
       vecs.push_back(argj);
     }

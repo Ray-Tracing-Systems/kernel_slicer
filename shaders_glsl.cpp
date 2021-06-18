@@ -281,7 +281,7 @@ std::string GLSLFunctionRewriter::RewriteImageType(const std::string& a_containe
 {
   std::string result = "";
   if(a_accessType == kslicer::TEX_ACCESS::TEX_ACCESS_READ)
-    result = "readonly ";
+    result = "readonly  ";
   else if(a_accessType == kslicer::TEX_ACCESS::TEX_ACCESS_WRITE) 
     result = "writeonly ";
   

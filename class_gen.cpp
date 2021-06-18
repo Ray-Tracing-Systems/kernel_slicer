@@ -290,6 +290,7 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
         auto pAccessFlags = a_kernel.texAccessInArgs.find(arg.name);
         CheckTextureAccessFlags(pAccessFlags->second, arg.name, a_kernel.name);
         arg2.isImage   = true;
+        arg2.isSampler = (pAccessFlags->second == kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE);
         arg2.imageType = pShaderFuncRewriter->RewriteImageType(arg.containerType, arg.containerDataType, pAccessFlags->second, arg2.imageFormat);
       }
       else

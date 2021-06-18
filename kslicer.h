@@ -649,6 +649,7 @@ namespace kslicer
       bool        isUBO         = false;
       bool        isThreadFlags = false;
       bool        isImage       = false;
+      bool        isSampler     = false;
     };
    
     virtual std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const; 
