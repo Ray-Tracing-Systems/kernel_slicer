@@ -410,7 +410,7 @@ namespace kslicer
     bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr) { return VisitCompoundAssignOperator_Impl(expr); } 
     bool VisitCXXOperatorCallExpr   (clang::CXXOperatorCallExpr* expr)    { return VisitCXXOperatorCallExpr_Impl(expr); }
     bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)                 { return VisitCStyleCastExpr_Impl(cast); }
-
+    bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast)             { return VisitImplicitCastExpr_Impl(cast); }
     bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { return VisitDeclRefExpr_Impl(expr); }
 
   protected:
@@ -466,9 +466,10 @@ namespace kslicer
     virtual bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr);       // +=, *=, -=; to detect reduction for custom data types (float3/float4 for example)
     virtual bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr);                 // m_var = f(m_var, expr)
 
-    virtual bool VisitVarDecl_Impl(clang::VarDecl* decl)               { return true; } // override this in Derived class
-    virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) { return true; } // override this in Derived class
-    virtual bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)       { return true; } // override this in Derived class
+    virtual bool VisitVarDecl_Impl(clang::VarDecl* decl)                   { return true; } // override this in Derived class
+    virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)     { return true; } // override this in Derived class
+    virtual bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) { return true; } // override this in Derived class
+    virtual bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)           { return true; } // override this in Derived class
   };
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
