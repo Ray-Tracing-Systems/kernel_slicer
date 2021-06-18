@@ -829,32 +829,6 @@ bool GLSLKernelRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
   return true;
 }
 
-bool GLSLKernelRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast)
-{
-  if(m_infoPass)
-    return true;
- 
-  //std::string dbgTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
-  //auto kind          = cast->getCastKind();
-  //
-  ////https://code.woboq.org/llvm/clang/include/clang/AST/OperationKinds.def.html
-  //if(kind != clang::CK_IntegralCast && kind != clang::CK_IntegralToFloating && kind != clang::CK_FloatingToIntegral) // in GLSL we don't have implicit casts
-  //  return true;
-  //
-  //clang::Expr* next  = cast->getSubExpr(); 
-  //clang::QualType qt = next->getType();
-  //std::string castTo = qt.getAsString();
-  //
-  //if(WasNotRewrittenYet(next))
-  //{
-  //  const std::string exprText = RecursiveRewrite(next);
-  //  m_rewriter.ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");
-  //  MarkRewritten(next);
-  //}
-  //
-  //sync();
-  return true;
-}
 
 bool GLSLKernelRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call)
 {
@@ -998,7 +972,7 @@ bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
   //m_userArgs.find(text) != m_userArgs.end()
   if(WasNotRewrittenYet(expr))
   {
-    std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // std::string text = RecursiveRewrite(expr);
     m_rewriter.ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + text);
     MarkRewritten(expr);
   }
@@ -1006,6 +980,42 @@ bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
 
   return true;
 } 
+
+bool GLSLKernelRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast)
+{
+  if(m_infoPass)
+    return true;
+  
+  if(cast->isPartOfExplicitCast())
+    return true;
+
+  auto kind = cast->getCastKind();
+
+  clang::Expr* preNext = cast->getSubExpr(); 
+  if(!clang::isa<clang::ImplicitCastExpr>(preNext))
+    return true;
+  
+  clang::Expr* next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr(); 
+  //std::string dbgTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
+  
+  //CK_LValueToRValue, CK_IntegralCast, CK_IntegralToFloating, CK_FloatingToIntegral
+  //https://code.woboq.org/llvm/clang/include/clang/AST/OperationKinds.def.html
+  if(kind != clang::CK_IntegralCast) // in GLSL we don't have implicit casts
+    return true;
+  
+  clang::QualType qt = cast->getType();
+  std::string castTo = m_glslRW.RewriteStdVectorTypeStr(qt.getAsString());
+  
+  if(WasNotRewrittenYet(next))
+  {
+    const std::string exprText = RecursiveRewrite(next);
+    m_rewriter.ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");
+    MarkRewritten(next);
+  }
+  
+  sync();
+  return true;
+}
 
 std::shared_ptr<kslicer::KernelRewriter> kslicer::GLSLCompiler::MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
                                                                                  kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass)
