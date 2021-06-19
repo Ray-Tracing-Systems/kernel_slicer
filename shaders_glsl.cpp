@@ -755,18 +755,22 @@ protected:
   }
 
   bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
-
   std::unordered_set<std::string> m_userArgs;
-
 };
 
 std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
     return "";
-  GLSLKernelRewriter rvCopy = *this;
-  rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
-  return m_rewriter.getRewrittenText(expr->getSourceRange());
+
+  if(!clang::isa<clang::DeclRefExpr>(expr))
+  {
+    GLSLKernelRewriter rvCopy = *this;
+    rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
+    return m_rewriter.getRewrittenText(expr->getSourceRange());
+  }
+  else
+    return std::string("kgenArgs.") + kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 }
 
 
@@ -972,7 +976,7 @@ bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
   //m_userArgs.find(text) != m_userArgs.end()
   if(WasNotRewrittenYet(expr))
   {
-    std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // std::string text = RecursiveRewrite(expr);
+    std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
     m_rewriter.ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + text);
     MarkRewritten(expr);
   }
