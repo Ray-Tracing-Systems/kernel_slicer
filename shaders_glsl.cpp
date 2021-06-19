@@ -773,6 +773,7 @@ public:
   bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) override;
   bool VisitUnaryOperator_Impl(clang::UnaryOperator* expr) override;
   bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) override;
+  bool VisitMemberExpr_Impl(clang::MemberExpr* expr) override;
   
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override { return m_glslRW.VectorTypeContructorReplace(fname, callText); }
 
@@ -834,7 +835,6 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* f)
 
   m_glslRW.VisitCallExpr_Impl(f);
   sync();
-  //kslicer::KernelRewriter::VisitCallExpr_Impl(f); // TODO: move same logic to m_glslRW
   return true;
 }
 
@@ -1043,6 +1043,15 @@ bool GLSLKernelRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cas
   if(m_infoPass)
     return true;
   m_glslRW.VisitImplicitCastExpr_Impl(cast);
+  sync();
+  return true;
+}
+
+bool GLSLKernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
+{
+  if(m_infoPass)
+    return true;
+  KernelRewriter::VisitMemberExpr_Impl(expr); 
   sync();
   return true;
 }
