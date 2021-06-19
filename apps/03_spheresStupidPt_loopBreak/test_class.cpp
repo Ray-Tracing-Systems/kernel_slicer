@@ -76,7 +76,7 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   res.geomId = -1;
   res.t      = MAXFLOAT;
   
-  for(int sphereId=0;sphereId<spheresPosRadius.size();sphereId++)
+  for(uint sphereId=0;sphereId<spheresPosRadius.size();sphereId++)
   {
     const float2 tNearAndFar = RaySphereHit(rayPos, rayDir, spheresPosRadius[sphereId]);
   
