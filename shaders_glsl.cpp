@@ -225,7 +225,10 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
   if(expr == nullptr)
     return "";
   if(m_pKernelRewriter != nullptr) // we actually do kernel rewrite
-    return m_pKernelRewriter->RecursiveRewriteImpl(expr);
+  {
+    std::string result = m_pKernelRewriter->RecursiveRewriteImpl(expr);
+    return result;
+  }
   else
   {
     GLSLFunctionRewriter rvCopy = *this;
@@ -480,7 +483,7 @@ std::string GLSLFunctionRewriter::CompleteFunctionCallRewrite(clang::CallExpr* c
     }
     else
       rewrittenRes += RecursiveRewrite(call->getArg(i));
-
+    
     if(i!=call->getNumArgs()-1)
       rewrittenRes += ", ";
   }
@@ -543,11 +546,11 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     m_rewriter.ReplaceText(call->getSourceRange(), pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call));
     MarkRewritten(call);
   }
-  else if(!clang::isa<clang::CXXMemberCallExpr>(call) && !clang::isa<clang::CXXOperatorCallExpr>(call) && call->getNumArgs() > 0 && WasNotRewrittenYet(call)) // because we need to make all implicit casts explicit on function calls
-  {
-    m_rewriter.ReplaceText(call->getSourceRange(), fname + "(" + CompleteFunctionCallRewrite(call));
-    MarkRewritten(call);
-  }
+  //else if(!clang::isa<clang::CXXMemberCallExpr>(call) && !clang::isa<clang::CXXOperatorCallExpr>(call) && call->getNumArgs() > 0 && WasNotRewrittenYet(call)) // because we need to make all implicit casts explicit on function calls
+  //{
+  //  m_rewriter.ReplaceText(call->getSourceRange(), fname + "(" + CompleteFunctionCallRewrite(call));
+  //  MarkRewritten(call);
+  //}
 
   return true; 
 }

@@ -87,6 +87,7 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(MemberExpr* expr)
   {
     std::string rewrittenName = m_codeInfo->pShaderCC->UBOAccess(pMember->second.name);
     m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenName);
+    //std::string testText = m_rewriter.getRewrittenText(expr->getSourceRange());
     MarkRewritten(expr);
   }
   
