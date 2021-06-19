@@ -666,8 +666,8 @@ bool GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* c
   if(WasNotRewrittenYet(next))
   {
     const std::string exprText = RecursiveRewrite(next);
-    m_rewriter.ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");
-    MarkRewritten(next);
+    m_rewriter.ReplaceText(cast->getSourceRange(), castTo + "(" + exprText + ")");
+    std::string test = m_rewriter.getRewrittenText(cast->getSourceRange());
     MarkRewritten(cast);
   }
   return true;
@@ -916,7 +916,7 @@ void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, 
     else                      // read
     {
       m_rewriter.ReplaceText(expr->getSourceRange(), std::string("imageLoad") + "(" + objName + ", " + indexText + ")");
-      MarkRewritten(expr); 
+      MarkRewritten(expr);
     }
   }
 }
@@ -936,7 +936,7 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
     {
       clang::CXXOperatorCallExpr* leftOp = clang::dyn_cast<clang::CXXOperatorCallExpr>(left);
       std::string op2 = kslicer::GetRangeSourceCode(clang::SourceRange(leftOp->getOperatorLoc()), m_compiler);  
-      if(op2 == "]" || op2 == "[" || op2 == "[]")
+      if((op2 == "]" || op2 == "[" || op2 == "[]") && WasNotRewrittenYet(expr))
       {
         RewriteTextureAccess(leftOp, expr);
         sync();
