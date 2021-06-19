@@ -663,12 +663,12 @@ bool GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* c
   clang::QualType qt = cast->getType();
   std::string castTo = RewriteStdVectorTypeStr(qt.getAsString());
   
-  if(WasNotRewrittenYet(next))
+  if(WasNotRewrittenYet(next) && castTo != "size_t")
   {
     const std::string exprText = RecursiveRewrite(next);
-    m_rewriter.ReplaceText(cast->getSourceRange(), castTo + "(" + exprText + ")");
-    std::string test = m_rewriter.getRewrittenText(cast->getSourceRange());
-    MarkRewritten(cast);
+    m_rewriter.ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");
+    //std::string test = m_rewriter.getRewrittenText(cast->getSourceRange());
+    MarkRewritten(next);
   }
   return true;
 }
@@ -905,7 +905,7 @@ void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, 
   //
   if(shouldRewrite)
   {
-    std::string indexText =  std::string("ivec2(") + RecursiveRewrite(expr->getArg(1)) + ")";
+    std::string indexText = RecursiveRewrite(expr->getArg(1));
     if(a_assignOp != nullptr) // write 
     {
       std::string assignExprText = RecursiveRewrite(a_assignOp->getArg(1));

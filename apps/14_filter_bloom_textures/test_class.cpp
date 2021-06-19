@@ -78,7 +78,7 @@ void ToneMapping::kernel2D_ExtractBrightPixels(const int a_width, const int a_he
     for(int x = 0; x < a_width; x++)
     {       
       const uint  linearCoord = pitch(x, y, a_width);
-      const uint2 coord(x, y);
+      const int2 coord(x, y);
 
       float4 color = a_texture2d[coord];
       if(color.x < 1.0f || color.y < 1.0f || color.z < 1.0f)
@@ -103,10 +103,10 @@ void ToneMapping::kernel2D_DownSample4x(const int a_width, const int a_height,
       for(int y = 0; y < 4; y++)
       {
         for(int x = 0; x < 4; x++)
-          average += a_texture2dFullRes[uint2(i*4 + x, j*4 + y)];
+          average += a_texture2dFullRes[int2(i*4 + x, j*4 + y)];
       }
 
-      a_dataSmallRes[uint2(i, j)] = average * (1.0f/16.0f);      
+      a_dataSmallRes[int2(i, j)] = average * (1.0f/16.0f);      
     }
   }
 }
@@ -129,7 +129,7 @@ void ToneMapping::kernel2D_BlurX(const int a_width, const int a_height,
         int right = tidX + wid;
     
         if (left  < 0)      left  = 0;
-        if (right >= a_width) right = a_width - 1;
+        if (right >= a_width) right = int(a_width) - 1;
     
         const float2 uv2 = get_uv(left,  tidY, a_width, a_height);
         const float2 uv3 = get_uv(right, tidY, a_width, a_height);
@@ -139,7 +139,7 @@ void ToneMapping::kernel2D_BlurX(const int a_width, const int a_height,
         summ += (p0 + p1);
       }
     
-      a_dataOut[uint2(tidX, tidY)] = summ;
+      a_dataOut[int2(tidX, tidY)] = summ;
     }
   }
 }
@@ -172,7 +172,7 @@ void ToneMapping::kernel2D_BlurY(const int a_width, const int a_height,
         summ += (p0 + p1);
       }
     
-      a_dataOut[uint2(tidX, tidY)] = summ;
+      a_dataOut[int2(tidX, tidY)] = summ;
     }
   }
 }
