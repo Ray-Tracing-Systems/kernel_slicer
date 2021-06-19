@@ -320,7 +320,7 @@ namespace kslicer
     FunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) : 
                      m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo)
     { 
-      
+      m_pRewrittenNodes = std::make_shared< std::unordered_set<uint64_t> >();
     }
 
     virtual ~FunctionRewriter(){}
@@ -340,15 +340,13 @@ namespace kslicer
     bool VisitUnaryOperator(clang::UnaryOperator* op)        { return VisitUnaryOperator_Impl(op);    }
     bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)    { return VisitCStyleCastExpr_Impl(cast); }
     bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast){ return VisitImplicitCastExpr_Impl(cast); }
-
-    const std::unordered_set<uint64_t>& GetProcessedNodes() const { return m_rewrittenNodes; }
-    void SetProcessedNodes(const std::unordered_set<uint64_t>& a_rhs) { m_rewrittenNodes = a_rhs; }
     
     virtual std::string RewriteStdVectorTypeStr(const std::string& a_str) const;
     virtual std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, TEX_ACCESS a_accessType, std::string& outImageFormat) const { return "readonly image2D"; }
 
     virtual ShaderFeatures GetShaderFeatures() const { return ShaderFeatures(); }
-
+    
+    std::shared_ptr< std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
   protected:
 
     clang::Rewriter&               m_rewriter;
@@ -356,7 +354,6 @@ namespace kslicer
     MainClassInfo*                 m_codeInfo;
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     
-    std::unordered_set<uint64_t> m_rewrittenNodes;
     void MarkRewritten(const clang::Stmt* expr);
     //void MarkRewritten(const clang::Decl* expr);
     virtual std::string RecursiveRewrite(const clang::Stmt* expr); // double/multiple pass rewrite purpose
@@ -413,6 +410,8 @@ namespace kslicer
     bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast)             { return VisitImplicitCastExpr_Impl(cast); }
     bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { return VisitDeclRefExpr_Impl(expr); }
 
+    std::shared_ptr<std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
+
   protected:
 
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
@@ -436,7 +435,7 @@ namespace kslicer
     bool                                                     m_kernelIsMaker;
     kslicer::KernelInfo&                                     m_currKernel;
     bool                                                     m_infoPass;
-    std::unordered_set<uint64_t>                             m_rewrittenNodes;
+
     std::unordered_set<uint64_t>                             m_visitedTexAccessNodes;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

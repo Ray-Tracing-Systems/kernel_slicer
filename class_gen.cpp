@@ -356,8 +356,7 @@ void kslicer::MainClassInfo::ProcessCallArs_KF(const KernelCallInfo& a_call)
 }
 
 
-void kslicer::FunctionRewriter::MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); }
-//void kslicer::FunctionRewriter::MarkRewritten(const clang::Decl* decl) { kslicer::MarkRewrittenRecursive(decl, m_rewrittenNodes); }
+void kslicer::FunctionRewriter::MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, *m_pRewrittenNodes); }
 
 bool kslicer::FunctionRewriter::WasNotRewrittenYet(const clang::Stmt* expr)
 {
@@ -365,14 +364,6 @@ bool kslicer::FunctionRewriter::WasNotRewrittenYet(const clang::Stmt* expr)
     return true;
   if(clang::isa<clang::NullStmt>(expr))
     return true;
-  const auto exprHash  = kslicer::GetHashOfSourceRange(expr->getSourceRange());
-  return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
+  const auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+  return (m_pRewrittenNodes->find(exprHash) == m_pRewrittenNodes->end());
 }
-
-//bool kslicer::FunctionRewriter::WasNotRewrittenYet(const clang::Decl* decl)
-//{
-//  if(decl == nullptr)
-//    return true;
-//  const auto exprHash  = kslicer::GetHashOfSourceRange(decl->getSourceRange());
-//  return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
-//}

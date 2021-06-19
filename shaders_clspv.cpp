@@ -171,6 +171,7 @@ kslicer::KernelRewriter::KernelRewriter(clang::Rewriter &R, const clang::Compile
                                         m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_kernelIsBoolTyped(a_kernel.isBoolTyped), 
                                         m_kernelIsMaker(a_kernel.isMaker), m_currKernel(a_kernel), m_infoPass(a_infoPass)
 { 
+  m_pRewrittenNodes = std::make_shared< std::unordered_set<uint64_t> >();
   const auto& a_variables = a_codeInfo->dataMembers;
   m_variables.reserve(a_variables.size());
   for(const auto& var : a_variables) 
@@ -182,13 +183,15 @@ bool kslicer::KernelRewriter::WasNotRewrittenYet(const clang::Stmt* expr)
 {
   if(expr == nullptr)
     return true;
+  if(clang::isa<clang::NullStmt>(expr))
+    return true;
   auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
-  return (m_rewrittenNodes.find(exprHash) == m_rewrittenNodes.end());
+  return (m_pRewrittenNodes->find(exprHash) == m_pRewrittenNodes->end());
 }
 
 void kslicer::KernelRewriter::MarkRewritten(const clang::Stmt* expr) 
 { 
-  kslicer::MarkRewrittenRecursive(expr, m_rewrittenNodes); 
+  kslicer::MarkRewrittenRecursive(expr, *m_pRewrittenNodes); 
 }
 
 

@@ -588,26 +588,15 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
     return true;
 
-  //bool isFirstInList = decl->isFirstDecl();
-
   const auto qt      = decl->getType();
   const auto pValue  = decl->getAnyInitializer();
       
   const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
   const std::string varType   = qt.getAsString();
 
-  //if(varType.find("unsigned char") != std::string::npos)
-  //{
-  //  int a = 2;
-  //}
-
   if(NeedsVectorTypeRewrite(varType) && WasNotRewrittenYet(pValue))
   {
     const std::string varName  = decl->getNameAsString();
-    //if(varName == "red")
-    //{
-    //  int a = 2;
-    //}
     const std::string varValue = RecursiveRewrite(pValue);
     const std::string varType2 = RewriteStdVectorTypeStr(varType);
 
@@ -628,10 +617,6 @@ bool GLSLFunctionRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
   //const std::string debugText = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
   if(WasNotRewrittenYet(next))
   {
-    //if(typeCast.find("unsigned char") != std::string::npos)
-    //{
-    //  int a = 2;
-    //}
     typeCast = RewriteStdVectorTypeStr(typeCast);
     const std::string exprText = RecursiveRewrite(next);
     if(exprText == ")") // strange bug for casts inside 'DeclStmt' 
@@ -652,8 +637,7 @@ bool GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* c
   clang::Expr* preNext = cast->getSubExpr(); 
   if(!clang::isa<clang::ImplicitCastExpr>(preNext))
     return true;
-  //if(cast->getType().getAsString() == preNext->getType().getAsString())
-  //  return true;  
+
   clang::Expr* next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr(); 
   //std::string dbgTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
   
@@ -729,9 +713,12 @@ public:
                      kslicer::KernelRewriter(R, a_compiler, a_codeInfo, a_kernel, a_fakeOffsetExpr, a_infoPass), m_glslRW(R, a_compiler, a_codeInfo)
   {
     m_glslRW.m_pKernelRewriter = this;
-    auto userArgs = kslicer::GetUserKernelArgs(a_kernel.args);
-    for(auto arg : userArgs)
-      m_userArgs.insert(arg.name);
+    m_glslRW.m_pRewrittenNodes = this->m_pRewrittenNodes;
+    for(auto arg : a_kernel.args)
+    {
+      if(arg.isLoopSize || arg.IsUser())
+        m_userArgs.insert(arg.name);
+    }
   }
 
   bool VisitCallExpr_Impl(clang::CallExpr* f) override;
@@ -752,20 +739,13 @@ public:
 
 protected: 
 
+  GLSLFunctionRewriter m_glslRW;
+
   std::string RecursiveRewrite(const clang::Stmt* expr) override;
   std::string RecursiveRewriteImpl(const clang::Stmt* expr) override { return GLSLKernelRewriter::RecursiveRewrite(expr); }
   bool IsGLSL() const override { return true; }
 
   void RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, clang::CXXOperatorCallExpr* a_assignOp);
-
-  GLSLFunctionRewriter m_glslRW;
-  void sync()
-  {
-    auto done = m_glslRW.GetProcessedNodes();
-    m_rewrittenNodes.insert(done.begin(), done.end()); // make sure they contain same data
-    m_glslRW.SetProcessedNodes(m_rewrittenNodes);      // make sure they contain same data
-  }
-
   std::unordered_set<std::string> m_userArgs;
 };
 
@@ -807,7 +787,6 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* f)
     return true; 
 
   m_glslRW.VisitCallExpr_Impl(f);
-  sync();
   return true;
 }
 
@@ -817,7 +796,6 @@ bool GLSLKernelRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
     return true; 
 
   m_glslRW.VisitVarDecl_Impl(decl);
-  sync();
   return true;
 }
 
@@ -827,7 +805,6 @@ bool GLSLKernelRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
     return true; 
 
   m_glslRW.VisitCStyleCastExpr_Impl(cast);
-  sync();
   return true;
 }
 
@@ -845,16 +822,10 @@ bool GLSLKernelRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
     if(needOffset)
       return kslicer::KernelRewriter::VisitUnaryOperator_Impl(expr);
     else
-    {
       m_glslRW.VisitUnaryOperator_Impl(expr);
-      sync();
-    }
   } 
   else
-  {
     m_glslRW.VisitUnaryOperator_Impl(expr);
-    sync();
-  }
   
   return true;
 }
@@ -941,14 +912,12 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
       if((op2 == "]" || op2 == "[" || op2 == "[]") && WasNotRewrittenYet(expr))
       {
         RewriteTextureAccess(leftOp, expr);
-        sync();
       }
     }
   }
   else if(op == "]" || op == "[" || op == "[]")
   {
     RewriteTextureAccess(expr, nullptr);
-    sync();
   }
   else
     return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr);
@@ -988,7 +957,6 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
         std::string texCoord = RecursiveRewrite(call->getArg(1));
         m_rewriter.ReplaceText(call->getSourceRange(), std::string("texture") + "(" + objName + ", " + texCoord + ")");
         MarkRewritten(call); 
-        sync();
       }
     }
   }
@@ -1015,7 +983,6 @@ bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
     m_rewriter.ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + text);
     MarkRewritten(expr);
   }
-  sync();
 
   return true;
 } 
@@ -1024,8 +991,7 @@ bool GLSLKernelRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cas
 {
   if(m_infoPass)
     return true;
-  //m_glslRW.VisitImplicitCastExpr_Impl(cast);
-  //sync();
+  m_glslRW.VisitImplicitCastExpr_Impl(cast);
   return true;
 }
 
@@ -1034,7 +1000,6 @@ bool GLSLKernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
   if(m_infoPass)
     return true;
   KernelRewriter::VisitMemberExpr_Impl(expr); 
-  sync();
   return true;
 }
 
@@ -1043,7 +1008,6 @@ bool GLSLKernelRewriter::VisitReturnStmt_Impl(clang::ReturnStmt* ret)
   if(m_infoPass)
     return true;
   KernelRewriter::VisitReturnStmt_Impl(ret); 
-  sync();
   return true;
 }
 
@@ -1052,7 +1016,6 @@ bool GLSLKernelRewriter::VisitCompoundAssignOperator_Impl(clang::CompoundAssignO
   if(m_infoPass)
     return true;
   KernelRewriter::VisitCompoundAssignOperator_Impl(expr); 
-  sync();
   return true;
 }  
 
@@ -1061,129 +1024,8 @@ bool GLSLKernelRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr)
   if(m_infoPass)
     return true;
   KernelRewriter::VisitBinaryOperator_Impl(expr); 
-  sync();
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/*
-
-class GLSLKernelRewriter2 : public kslicer::KernelRewriter, IRecursiveRewriteOverride
-{
-public:
-  
-  GLSLKernelRewriter2(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr, const bool a_infoPass) : 
-                     kslicer::KernelRewriter(R, a_compiler, a_codeInfo, a_kernel, a_fakeOffsetExpr, a_infoPass), m_glslRW(R, a_compiler, a_codeInfo)
-  {
-    m_glslRW.m_pKernelRewriter = this;
-    auto userArgs = kslicer::GetUserKernelArgs(a_kernel.args);
-    for(auto arg : userArgs)
-      m_userArgs.insert(arg.name);
-  }
-
-  std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override { return m_glslRW.VectorTypeContructorReplace(fname, callText); }
-
-  bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) override;
-  bool VisitCallExpr_Impl(clang::CallExpr* f) override;
-
-protected: 
-
-  std::string RecursiveRewrite(const clang::Stmt* expr) override;
-  std::string RecursiveRewriteImpl(const clang::Stmt* expr) override { return GLSLKernelRewriter2::RecursiveRewrite(expr); }
-  bool IsGLSL() const override { return true; }
-
-  GLSLFunctionRewriter m_glslRW;
-  void sync()
-  {
-    auto done = m_glslRW.GetProcessedNodes();
-    m_rewrittenNodes.insert(done.begin(), done.end()); // make sure they contain same data
-    m_glslRW.SetProcessedNodes(m_rewrittenNodes);      // make sure they contain same data
-  }
-
-  std::unordered_set<std::string> m_userArgs;
-};
-
-std::string GLSLKernelRewriter2::RecursiveRewrite(const clang::Stmt* expr)
-{
-  if(expr == nullptr)
-    return "";
-
-  while(clang::isa<clang::ImplicitCastExpr>(expr))
-    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->getSubExpr();
-
-  if(!clang::isa<clang::DeclRefExpr>(expr))
-  {
-    GLSLKernelRewriter2 rvCopy = *this;
-    rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
-    return m_rewriter.getRewrittenText(expr->getSourceRange());
-  }
-  else
-  {
-    const auto pRef = clang::dyn_cast<clang::DeclRefExpr>(expr);
-
-    const clang::ValueDecl* pDecl = pRef->getDecl();
-    if(!clang::isa<clang::ParmVarDecl>(pDecl))
-      return kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); 
-  
-    clang::QualType qt = pDecl->getType();
-    if(qt->isPointerType() || qt->isReferenceType()) // we can't put references to push constants
-      return  kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-
-    return std::string("kgenArgs.") + kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-  }
-}
-
-bool GLSLKernelRewriter2::VisitCallExpr_Impl(clang::CallExpr* f)
-{
-  if(m_infoPass) // don't have to rewrite during infoPass
-    return true; 
-
-  m_glslRW.VisitCallExpr_Impl(f);
-  sync();
-  return true;
-}
-
-bool GLSLKernelRewriter2::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast)
-{
-  if(cast->isPartOfExplicitCast())
-    return true;
-  auto kind = cast->getCastKind();
-  
-  clang::Expr* preNext = cast->getSubExpr(); 
-  if(!clang::isa<clang::ImplicitCastExpr>(preNext))
-    return true;
-
-  clang::Expr* next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr(); 
-  //std::string dbgTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
-  
-  //https://code.woboq.org/llvm/clang/include/clang/AST/OperationKinds.def.html
-  if(kind != clang::CK_IntegralCast && kind != clang::CK_IntegralToFloating && kind != clang::CK_FloatingToIntegral) // in GLSL we don't have implicit casts
-    return true;
-  
-  clang::QualType qt = cast->getType();
-  std::string castTo = m_glslRW.RewriteStdVectorTypeStr(qt.getAsString());
-  
-  if(WasNotRewrittenYet(next))
-  {
-    const std::string exprText = RecursiveRewrite(next);
-    m_rewriter.ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");
-    MarkRewritten(next);
-  }
-  return true;
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
 
 std::shared_ptr<kslicer::KernelRewriter> kslicer::GLSLCompiler::MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
                                                                                  kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass)
