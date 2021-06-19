@@ -770,7 +770,18 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
     return m_rewriter.getRewrittenText(expr->getSourceRange());
   }
   else
+  {
+    const auto pRef = clang::dyn_cast<clang::DeclRefExpr>(expr);
+    const clang::ValueDecl* pDecl = pRef->getDecl();
+    if(!clang::isa<clang::ParmVarDecl>(pDecl))
+      return kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); 
+  
+    clang::QualType qt = pDecl->getType();
+    if(qt->isPointerType() || qt->isReferenceType()) // we can't put references to push constants
+      return  kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+
     return std::string("kgenArgs.") + kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  }
 }
 
 
@@ -972,8 +983,8 @@ bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
   clang::QualType qt = pDecl->getType();
   if(qt->isPointerType() || qt->isReferenceType()) // we can't put references to push constants
     return true;
-
-  //m_userArgs.find(text) != m_userArgs.end()
+  
+  //m_userArgs.find(text) != m_userArgs.end() 
   if(WasNotRewrittenYet(expr))
   {
     std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
@@ -1002,9 +1013,8 @@ bool GLSLKernelRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cas
   clang::Expr* next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr(); 
   //std::string dbgTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
   
-  //CK_LValueToRValue, CK_IntegralCast, CK_IntegralToFloating, CK_FloatingToIntegral
   //https://code.woboq.org/llvm/clang/include/clang/AST/OperationKinds.def.html
-  if(kind != clang::CK_IntegralCast) // in GLSL we don't have implicit casts
+  if(kind != clang::CK_IntegralCast && kind != clang::CK_IntegralToFloating && kind != clang::CK_FloatingToIntegral) // in GLSL we don't have implicit casts
     return true;
   
   clang::QualType qt = cast->getType();
