@@ -543,12 +543,11 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     m_rewriter.ReplaceText(call->getSourceRange(), pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call));
     MarkRewritten(call);
   }
-  else if(!clang::isa<clang::CXXMemberCallExpr>(call) && !clang::isa<clang::CXXOperatorCallExpr>(call) && call->getNumArgs() > 0) // because we need to make all implicit casts explicit on function calls
+  else if(!clang::isa<clang::CXXMemberCallExpr>(call) && !clang::isa<clang::CXXOperatorCallExpr>(call) && call->getNumArgs() > 0 && WasNotRewrittenYet(call)) // because we need to make all implicit casts explicit on function calls
   {
     m_rewriter.ReplaceText(call->getSourceRange(), fname + "(" + CompleteFunctionCallRewrite(call));
     MarkRewritten(call);
   }
-  
 
   return true; 
 }
@@ -774,7 +773,11 @@ public:
   bool VisitUnaryOperator_Impl(clang::UnaryOperator* expr) override;
   bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) override;
   bool VisitMemberExpr_Impl(clang::MemberExpr* expr) override;
-  
+  bool VisitReturnStmt_Impl(clang::ReturnStmt* ret) override;
+  bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) override;
+  bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr) override;
+  bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
+
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override { return m_glslRW.VectorTypeContructorReplace(fname, callText); }
 
 protected: 
@@ -793,7 +796,6 @@ protected:
     m_glslRW.SetProcessedNodes(m_rewrittenNodes);      // make sure they contain same data
   }
 
-  bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
   std::unordered_set<std::string> m_userArgs;
 };
 
@@ -1052,6 +1054,33 @@ bool GLSLKernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
   if(m_infoPass)
     return true;
   KernelRewriter::VisitMemberExpr_Impl(expr); 
+  sync();
+  return true;
+}
+
+bool GLSLKernelRewriter::VisitReturnStmt_Impl(clang::ReturnStmt* ret)
+{
+  if(m_infoPass)
+    return true;
+  KernelRewriter::VisitReturnStmt_Impl(ret); 
+  sync();
+  return true;
+}
+
+bool GLSLKernelRewriter::VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr)
+{
+  if(m_infoPass)
+    return true;
+  KernelRewriter::VisitCompoundAssignOperator_Impl(expr); 
+  sync();
+  return true;
+}  
+
+bool GLSLKernelRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr)
+{
+  if(m_infoPass)
+    return true;
+  KernelRewriter::VisitBinaryOperator_Impl(expr); 
   sync();
   return true;
 }
