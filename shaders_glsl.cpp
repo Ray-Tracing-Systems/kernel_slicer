@@ -101,9 +101,9 @@ std::string kslicer::GLSLCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_
 
 void kslicer::GLSLCompiler::GetThreadSizeNames(std::string a_strs[3]) const
 {
-  a_strs[0] = "kgenArgs.iNumElementsX";
-  a_strs[1] = "kgenArgs.iNumElementsY";
-  a_strs[2] = "kgenArgs.iNumElementsZ";
+  a_strs[0] = "kgenArgs.iNumElementsX"; // TODO: FIX(!!!)
+  a_strs[1] = "kgenArgs.iNumElementsY"; // TODO: FIX(!!!)
+  a_strs[2] = "kgenArgs.iNumElementsZ"; // TODO: FIX(!!!)
 }
 
 
@@ -262,6 +262,7 @@ std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_s
   ReplaceFirst(typeStr, "struct ",    "");
   ReplaceFirst(typeStr, "const ",     "");
   ReplaceFirst(typeStr, m_codeInfo->mainClassName + "::", "");
+  ReplaceFirst(typeStr, "unsigned long", "uint");
   
   if(typeStr.size() > 0 && typeStr[typeStr.size()-1] == ' ')
     typeStr = typeStr.substr(0, typeStr.size()-1);
@@ -784,17 +785,18 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
   }
   else
   {
+    std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
     const auto pRef = clang::dyn_cast<clang::DeclRefExpr>(expr);
 
     const clang::ValueDecl* pDecl = pRef->getDecl();
     if(!clang::isa<clang::ParmVarDecl>(pDecl))
-      return kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); 
-  
+      return text; 
     clang::QualType qt = pDecl->getType();
     if(qt->isPointerType() || qt->isReferenceType()) // we can't put references to push constants
-      return  kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-
-    return std::string("kgenArgs.") + kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+      return text;
+    if(m_userArgs.find(text) == m_userArgs.end())
+      return text;
+    return std::string("kgenArgs.") + text;
   }
 }
 
@@ -1007,10 +1009,9 @@ bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
   if(qt->isPointerType() || qt->isReferenceType()) // we can't put references to push constants
     return true;
   
-  //m_userArgs.find(text) != m_userArgs.end() 
-  if(WasNotRewrittenYet(expr))
+  std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
+  if(m_userArgs.find(text) != m_userArgs.end() && WasNotRewrittenYet(expr))
   {
-    std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
     m_rewriter.ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + text);
     MarkRewritten(expr);
   }
@@ -1023,8 +1024,8 @@ bool GLSLKernelRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cas
 {
   if(m_infoPass)
     return true;
-  m_glslRW.VisitImplicitCastExpr_Impl(cast);
-  sync();
+  //m_glslRW.VisitImplicitCastExpr_Impl(cast);
+  //sync();
   return true;
 }
 
