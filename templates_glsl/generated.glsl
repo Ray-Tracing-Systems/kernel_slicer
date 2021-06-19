@@ -38,8 +38,8 @@ void main()
   if(get_global_id(0)!=0)
     return;
   {% else %}
-  {% for name in Kernel.threadNames %}
-  const uint {{name}} = gl_GlobalInvocationID[{{ loop.index }}]; 
+  {% for TID in Kernel.ThreadIds %}
+  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(gl_GlobalInvocationID[{{ loop.index }}]); 
   {% endfor %}
   {# /*------------------------------------------------------------- BEG. CHECK EXIT COND ------------------------------------------------------------- */ #}
   {% include "inc_exit_cond.glsl" %}

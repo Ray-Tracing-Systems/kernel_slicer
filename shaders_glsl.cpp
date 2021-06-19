@@ -214,6 +214,7 @@ protected:
   bool        NeedsVectorTypeRewrite(const std::string& a_str);
   std::string RewriteFuncDecl(clang::FunctionDecl* fDecl);
   std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
+  std::string ConvertImplicitCastToExplicit(clang::ImplicitCastExpr* cast, clang::QualType qt);
 
   std::string RecursiveRewrite(const clang::Stmt* expr) override;
 };
@@ -450,12 +451,36 @@ bool GLSLFunctionRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
   return true;
 }
 
+std::string GLSLFunctionRewriter::ConvertImplicitCastToExplicit(clang::ImplicitCastExpr* cast, clang::QualType qt)
+{
+  auto kind = cast->getCastKind(); 
+  if(kind != clang::CK_IntegralCast && kind != clang::CK_IntegralToFloating && kind != clang::CK_FloatingToIntegral) // in GLSL we don't have implicit casts
+    return RecursiveRewrite(cast);
+
+  clang::Expr* preNext = cast->getSubExpr(); 
+  if(!clang::isa<clang::ImplicitCastExpr>(preNext))
+    return RecursiveRewrite(cast); 
+
+  clang::Expr* next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr(); 
+  qt.removeLocalFastQualifiers();
+  return RewriteStdVectorTypeStr(qt.getAsString()) + "(" + RecursiveRewrite(next) + ")";
+}
+
+
 std::string GLSLFunctionRewriter::CompleteFunctionCallRewrite(clang::CallExpr* call)
 {
   std::string rewrittenRes = "";
   for(int i=0;i<call->getNumArgs(); i++)
   {
-    rewrittenRes += RecursiveRewrite(call->getArg(i));
+    if(clang::isa<clang::ImplicitCastExpr>(call->getArg(i))) // due to GLSL don't have implicit casts for function arguments, we have to make them explicit
+    {
+      auto fnDecl = call->getDirectCallee();
+      auto prDecl = fnDecl->getParamDecl(i);
+      rewrittenRes += ConvertImplicitCastToExplicit(clang::dyn_cast<clang::ImplicitCastExpr>(call->getArg(i)), prDecl->getType());
+    }
+    else
+      rewrittenRes += RecursiveRewrite(call->getArg(i));
+
     if(i!=call->getNumArgs()-1)
       rewrittenRes += ", ";
   }
@@ -518,6 +543,12 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     m_rewriter.ReplaceText(call->getSourceRange(), pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call));
     MarkRewritten(call);
   }
+  else if(!clang::isa<clang::CXXMemberCallExpr>(call) && !clang::isa<clang::CXXOperatorCallExpr>(call) && call->getNumArgs() > 0) // because we need to make all implicit casts explicit on function calls
+  {
+    m_rewriter.ReplaceText(call->getSourceRange(), fname + "(" + CompleteFunctionCallRewrite(call));
+    MarkRewritten(call);
+  }
+  
 
   return true; 
 }
@@ -646,16 +677,24 @@ bool GLSLFunctionRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
 
 bool GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast)
 {
-  //std::string dbgTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
-  //auto kind          = cast->getCastKind();
+  //if(cast->isPartOfExplicitCast())
+  //  return true;
+  //auto kind = cast->getCastKind();
+  //
+  //clang::Expr* preNext = cast->getSubExpr(); 
+  //if(!clang::isa<clang::ImplicitCastExpr>(preNext))
+  //  return true;
+  ////if(cast->getType().getAsString() == preNext->getType().getAsString())
+  ////  return true;  
+  //clang::Expr* next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr(); 
+  ////std::string dbgTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
   //
   ////https://code.woboq.org/llvm/clang/include/clang/AST/OperationKinds.def.html
   //if(kind != clang::CK_IntegralCast && kind != clang::CK_IntegralToFloating && kind != clang::CK_FloatingToIntegral) // in GLSL we don't have implicit casts
   //  return true;
   //
-  //clang::Expr* next  = cast->getSubExpr(); 
-  //clang::QualType qt = next->getType();
-  //std::string castTo = qt.getAsString();
+  //clang::QualType qt = cast->getType();
+  //std::string castTo = RewriteStdVectorTypeStr(qt.getAsString());
   //
   //if(WasNotRewrittenYet(next))
   //{
@@ -663,7 +702,6 @@ bool GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* c
   //  m_rewriter.ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");
   //  MarkRewritten(next);
   //}
-
   return true;
 }
 
@@ -763,6 +801,9 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
   if(expr == nullptr)
     return "";
 
+  while(clang::isa<clang::ImplicitCastExpr>(expr))
+    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->getSubExpr();
+
   if(!clang::isa<clang::DeclRefExpr>(expr))
   {
     GLSLKernelRewriter rvCopy = *this;
@@ -772,6 +813,7 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
   else
   {
     const auto pRef = clang::dyn_cast<clang::DeclRefExpr>(expr);
+
     const clang::ValueDecl* pDecl = pRef->getDecl();
     if(!clang::isa<clang::ParmVarDecl>(pDecl))
       return kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); 
@@ -1000,33 +1042,7 @@ bool GLSLKernelRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cas
 {
   if(m_infoPass)
     return true;
-  
-  if(cast->isPartOfExplicitCast())
-    return true;
-
-  auto kind = cast->getCastKind();
-
-  clang::Expr* preNext = cast->getSubExpr(); 
-  if(!clang::isa<clang::ImplicitCastExpr>(preNext))
-    return true;
-  
-  clang::Expr* next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr(); 
-  //std::string dbgTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
-  
-  //https://code.woboq.org/llvm/clang/include/clang/AST/OperationKinds.def.html
-  if(kind != clang::CK_IntegralCast && kind != clang::CK_IntegralToFloating && kind != clang::CK_FloatingToIntegral) // in GLSL we don't have implicit casts
-    return true;
-  
-  clang::QualType qt = cast->getType();
-  std::string castTo = m_glslRW.RewriteStdVectorTypeStr(qt.getAsString());
-  
-  if(WasNotRewrittenYet(next))
-  {
-    const std::string exprText = RecursiveRewrite(next);
-    m_rewriter.ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");
-    MarkRewritten(next);
-  }
-  
+  m_glslRW.VisitImplicitCastExpr_Impl(cast);
   sync();
   return true;
 }

@@ -793,13 +793,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     assert(tidArgs.size() <= 3);
 
-    std::vector<std::string> threadIdNames(tidArgs.size());
-    for(size_t i=0;i<tidArgs.size();i++)
-    {
-      uint32_t tid = std::min<uint32_t>(threadsOrder[i], tidArgs.size()-1);
-      threadIdNames[i] = tidArgs[tid].argName;
-    }
-
     // now add all std::vector members
     //
     json vecs = std::vector<std::string>();
@@ -950,15 +943,31 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
     
     //////////////////////////////////////////////////////////////////////////////////////////
+  
+    {
+      kernelJson["ThreadIds"] = std::vector<std::string>();
 
-    kernelJson["threadDim"]   = threadIdNames.size();
-    kernelJson["threadNames"] = threadIdNames;
-    if(threadIdNames.size() >= 1)
-      kernelJson["threadName1"] = threadIdNames[0];
-    if(threadIdNames.size() >= 2)
-      kernelJson["threadName2"] = threadIdNames[1];
-    if(threadIdNames.size() == 3)
-      kernelJson["threadName3"] = threadIdNames[2];
+      std::vector<std::string> threadIdNames(tidArgs.size());
+      for(size_t i=0;i<tidArgs.size();i++)
+      {
+        uint32_t tid = std::min<uint32_t>(threadsOrder[i], tidArgs.size()-1);
+        threadIdNames[i] = tidArgs[tid].argName;
+
+        json threadId;
+        threadId["Name"] = tidArgs[tid].argName;
+        threadId["Type"] = tidArgs[tid].typeName;
+        kernelJson["ThreadIds"].push_back(threadId);
+      }
+
+      kernelJson["threadDim"]   = tidArgs.size();
+      kernelJson["threadNames"] = threadIdNames;
+      if(threadIdNames.size() >= 1)
+        kernelJson["threadName1"] = threadIdNames[0];
+      if(threadIdNames.size() >= 2)
+        kernelJson["threadName2"] = threadIdNames[1];
+      if(threadIdNames.size() == 3)
+        kernelJson["threadName3"] = threadIdNames[2];
+    }
 
     std::string tidNames[3] = {"kgen_iNumElementsX", "kgen_iNumElementsY", "kgen_iNumElementsZ"};
  
