@@ -91,6 +91,11 @@ protected:
   virtual void UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
 
+  virtual void AllocMemoryForInternalBuffers(const std::vector<VkBuffer>& a_buffers);
+  virtual void AllocMemoryForMemberBuffers(const std::vector<VkBuffer>& a_buffers);
+  virtual void FreeMemoryForInternalBuffers();
+  virtual void FreeMemoryForMemberBuffers();
+
   {{PlainMembersUpdateFunctions}}
   {{VectorMembersUpdateFunctions}}
 

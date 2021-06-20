@@ -61,11 +61,8 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
   vkDestroyBuffer(device, m_{{Hierarchy.Name}}ObjPtrBuffer, nullptr);
   {% endfor %}
 
-  if(m_allMem != VK_NULL_HANDLE)
-    vkFreeMemory(device, m_allMem, nullptr);
-  
-  if(m_vdata.m_vecMem != VK_NULL_HANDLE)
-    vkFreeMemory(device, m_vdata.m_vecMem, nullptr);
+  FreeMemoryForMemberBuffers();
+  FreeMemoryForInternalBuffers();
 }
 
 void {{MainClassName}}_Generated::InitHelpers()
@@ -379,9 +376,8 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
   m_{{Hierarchy.Name}}ObjPtrBuffer = vkfw::CreateBuffer(device, 2*sizeof(uint32_t)*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
   allBuffers.push_back(m_{{Hierarchy.Name}}ObjPtrBuffer);
   {% endfor %}
-
-  if(allBuffers.size() > 0)
-    m_allMem = vkfw::AllocateAndBindWithPadding(device, physicalDevice, allBuffers);
+  
+  AllocMemoryForInternalBuffers(allBuffers);
 }
 
 void {{MainClassName}}_Generated::InitMemberBuffers()
@@ -396,8 +392,7 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
   m_indirectBuffer = vkfw::CreateBuffer(device, {{IndirectBufferSize}}*sizeof(uint32_t)*4, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
   memberVectors.push_back(m_indirectBuffer);
   {% endif %}
-  if(memberVectors.size() > 0)
-    m_vdata.m_vecMem = vkfw::AllocateAndBindWithPadding(device, physicalDevice, memberVectors);
+  AllocMemoryForMemberBuffers(memberVectors);
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectDescriptorSets();
   {% endif %}
@@ -501,3 +496,33 @@ VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForArgsUBO(size_t a_si
   return bar;
 }
 {% endif %}
+
+void {{MainClassName}}_Generated::AllocMemoryForInternalBuffers(const std::vector<VkBuffer>& a_buffers)
+{
+  if(a_buffers.size() > 0)
+    m_allMem = vkfw::AllocateAndBindWithPadding(device, physicalDevice, a_buffers);
+  else
+    m_allMem = VK_NULL_HANDLE;
+}
+
+void {{MainClassName}}_Generated::AllocMemoryForMemberBuffers(const std::vector<VkBuffer>& a_buffers)
+{
+  if(a_buffers.size() > 0)
+    m_vdata.m_vecMem = vkfw::AllocateAndBindWithPadding(device, physicalDevice, a_buffers);
+  else
+    m_vdata.m_vecMem = VK_NULL_HANDLE;
+}
+
+void {{MainClassName}}_Generated::FreeMemoryForInternalBuffers()
+{
+  if(m_allMem != VK_NULL_HANDLE)
+    vkFreeMemory(device, m_allMem, nullptr);
+  m_allMem = VK_NULL_HANDLE;
+}
+
+void {{MainClassName}}_Generated::FreeMemoryForMemberBuffers()
+{
+  if(m_vdata.m_vecMem != VK_NULL_HANDLE)
+    vkFreeMemory(device, m_vdata.m_vecMem, nullptr);
+  m_vdata.m_vecMem = VK_NULL_HANDLE;
+}
