@@ -81,7 +81,7 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(MemberExpr* expr)
   // process arrays and large data structures because small can be read once in the beggining of kernel
   //
   //const std::string debugMe = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-  const bool isInLoopInitPart = expr->getSourceRange().getEnd() <= m_currKernel.loopOutsidesInit.getEnd();
+  const bool isInLoopInitPart = m_currKernel.hasInitPass && (expr->getSourceRange().getEnd() <= m_currKernel.loopOutsidesInit.getEnd());
   const bool hasLargeSize     = (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);
   if(!pMember->second.isContainer && (isInLoopInitPart || pMember->second.isArray || hasLargeSize) && WasNotRewrittenYet(expr) && !m_infoPass) 
   {

@@ -44,9 +44,12 @@ void main()
   {# /*------------------------------------------------------------- BEG. CHECK EXIT COND ------------------------------------------------------------- */ #}
   {% include "inc_exit_cond.glsl" %}
   {# /*------------------------------------------------------------- END. CHECK EXIT COND ------------------------------------------------------------- */ #}
+  {% if length(Kernel.Members) > 0 %}
+
   {% for Member in Kernel.Members %}
   const {{Member.Type}} {{Member.Name}} = ubo.{{Member.Name}};
-  {% endfor %}
+  {% endfor %} 
+  {% endif %} {# /* length(Kernel.Members) > 0 */ #}
   {% if Kernel.IsBoolean %}
   bool kgenExitCond = false;
   {% endif %}
