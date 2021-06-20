@@ -44,12 +44,24 @@ public:
     func.isMember = clang::isa<clang::CXXMethodDecl>(func.astNode);
     func.isKernel = m_patternImpl.IsKernel(func.name);
     func.depthUse = 0;
-    usedFunctions[func.srcHash] = func;
 
     if(func.isKernel)
     {
-      kslicer::PrintError(std::string("Calling kernel from a kernel is not allowed currently, ") + currProcessedFuncName, func.srcRange, m_sm);
+      kslicer::PrintError(std::string("Calling kernel + '" + func.name + "' from a kernel is not allowed currently, ") + currProcessedFuncName, func.srcRange, m_sm);
+      return true;
     }
+    
+    if(func.isMember) // currently we support export for members of current class only
+    {
+      clang::CXXRecordDecl* recordDecl = clang::dyn_cast<clang::CXXMemberCallExpr>(call)->getRecordDecl();
+      const auto pType    = recordDecl->getTypeForDecl();     
+      const auto qt       = pType->getLocallyUnqualifiedSingleStepDesugaredType();
+      const auto typeName = qt.getAsString();
+      if(typeName != std::string("class ") + m_patternImpl.mainClassName && typeName != std::string("struct ") + m_patternImpl.mainClassName)
+        return true;
+    }
+
+    usedFunctions[func.srcHash] = func;
 
     return true;
   }
