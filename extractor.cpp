@@ -260,9 +260,7 @@ std::vector<kslicer::DeclInClass> kslicer::ExtractTCFromClass(const std::string&
   usedDecls.reserve(typeAndConstantsHandler.foundDecl.size());
   for(const auto decl : typeAndConstantsHandler.foundDecl)
     usedDecls.push_back(decl.second);
-
-  //if(pShaderCC->isGLSL()) // need to extract also struct and constant from "ShaderExcluded" headers
-
+  
   std::sort(usedDecls.begin(), usedDecls.end(), [](const auto& a, const auto& b) { return a.order < b.order; } );
   return kslicer::ExtractUsedTC(usedDecls, classAstNode, compiler);
 }
