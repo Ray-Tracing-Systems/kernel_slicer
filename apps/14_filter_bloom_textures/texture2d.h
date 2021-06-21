@@ -24,7 +24,9 @@ struct Texture2D
   
   Type&  operator[](const int2 coord)       { return m_data[coord.y * m_width + coord.x]; }
   Type   operator[](const int2 coord) const { return m_data[coord.y * m_width + coord.x]; }
-  
+
+  unsigned int width() const { return m_width; }
+  unsigned int height() const { return m_height; }  
 
 protected:
   float2 process_coord(const Sampler::AddressMode mode, const float2 coord, bool* use_border_color) const;   

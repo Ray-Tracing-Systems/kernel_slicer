@@ -248,7 +248,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(v.IsUsedTexture())
     {
       json local;
-      local["Name"]           = v.name;
+      local["Name"]   = v.name;
+      local["Format"] = "VK_FORMAT_R32G32B32A32_SFLOAT";                                                             // TODO: inference format from data type
+      local["Usage"]  = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT"; // TODO: inference usage (!!!)
       data["ClassTextureVars"].push_back(local);     
     }
     else

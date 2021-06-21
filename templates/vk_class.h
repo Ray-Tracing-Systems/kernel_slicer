@@ -133,6 +133,10 @@ protected:
     {% endfor %}
   } m_vdata;
 
+  {% if length(TextureMembers) > 0 %}
+  VkImage   CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage);
+  VkSampler CreateSampler(const Sampler& a_sampler);
+  {% endif %} {# /* length(TextureMembers) > 0 */ #}
   {% if length(DispatchHierarchies) > 0 %}
   {% for Hierarchy in DispatchHierarchies %}
   // Auxilary data and kernels for 'VirtualKernels'; Dispatch hierarchy of '{{Hierarchy.Name}}'

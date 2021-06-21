@@ -46,6 +46,12 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
   {% for Buffer in ClassVectorVars %}
   vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
   {% endfor %}
+  {% for Var in ClassTextureVars %}
+  vkDestroyImage(device, m_vdata.{{Var.Name}}Texture, nullptr);
+  {% endfor %}
+  {% for Sam in SamplerMembers %}
+  vkDestroySampler(device, m_vdata.{{Sam}}, nullptr);
+  {% endfor %}
   {% for Buffer in RedVectorVars %}
   vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
   {% endfor %}
@@ -391,10 +397,13 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
   {% endfor %}
 
   {% for Var in ClassTextureVars %}
-  m_vdata.{{Var.Name}}Texture = VK_NULL_HANDLE;
+  m_vdata.{{Var.Name}}Texture = CreateTexture2D({{Var.Name}}.width(), {{Var.Name}}.height(), {{Var.Format}}, {{Var.Usage}});
   memberTextures.push_back(m_vdata.{{Var.Name}}Texture);
   {% endfor %}
-  
+  {% for Sam in SamplerMembers %}
+  m_vdata.{{Sam}} = CreateSampler({{Sam}});
+  {% endfor %}
+
   {% if length(IndirectDispatches) > 0 %}
   m_indirectBuffer = vkfw::CreateBuffer(device, {{IndirectBufferSize}}*sizeof(uint32_t)*4, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
   memberVectors.push_back(m_indirectBuffer);
@@ -503,6 +512,54 @@ VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForArgsUBO(size_t a_si
   return bar;
 }
 {% endif %}
+
+{% if length(TextureMembers) > 0 %}
+VkImage {{MainClassName}}_Generated::CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage)
+{
+  VkImage result = VK_NULL_HANDLE;
+  VkImageCreateInfo imgCreateInfo = {};
+  imgCreateInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  imgCreateInfo.pNext         = nullptr;
+  imgCreateInfo.flags         = 0; // not sure about this ...
+  imgCreateInfo.imageType     = VK_IMAGE_TYPE_2D;
+  imgCreateInfo.format        = a_format;
+  imgCreateInfo.extent        = VkExtent3D{uint32_t(a_width), uint32_t(a_height), 1};
+  imgCreateInfo.mipLevels     = 1;
+  imgCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+  imgCreateInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+  imgCreateInfo.usage         = a_usage; 
+  imgCreateInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+  imgCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  imgCreateInfo.arrayLayers   = 1;
+  VK_CHECK_RESULT(vkCreateImage(device, &imgCreateInfo, nullptr, &result));
+  return result;
+}
+
+VkSampler {{MainClassName}}_Generated::CreateSampler(const Sampler& a_sampler) // TODO: implement this function correctly
+{
+  VkSampler result = VK_NULL_HANDLE;
+  VkSamplerCreateInfo samplerInfo = {};
+  samplerInfo.sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+  samplerInfo.pNext        = nullptr;
+  samplerInfo.flags        = 0;
+  samplerInfo.magFilter    = VK_FILTER_LINEAR;
+  samplerInfo.minFilter    = VK_FILTER_LINEAR;
+  samplerInfo.mipmapMode   = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+  samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  samplerInfo.mipLodBias   = 0.0f;
+  samplerInfo.compareOp    = VK_COMPARE_OP_NEVER;
+  samplerInfo.minLod           = 0;
+  samplerInfo.maxLod           = 0;
+  samplerInfo.maxAnisotropy    = 1.0;
+  samplerInfo.anisotropyEnable = VK_FALSE;
+  samplerInfo.borderColor      = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+  samplerInfo.unnormalizedCoordinates = VK_FALSE;
+  VK_CHECK_RESULT(vkCreateSampler(device, &samplerInfo, nullptr, &result));
+  return result;
+}
+{% endif %} {# /* length(TextureMembers) > 0 */ #}
 
 void {{MainClassName}}_Generated::AllocMemoryForInternalBuffers(const std::vector<VkBuffer>& a_buffers)
 {
