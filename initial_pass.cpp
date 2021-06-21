@@ -1,7 +1,7 @@
 #include "initial_pass.h"
 #include <iostream>
 
-void SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType)
+void kslicer::SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType)
 {
   a_containerType = specDecl->getNameAsString();      
   const auto& templateArgs = specDecl->getTemplateArgs();
@@ -34,7 +34,7 @@ static kslicer::KernelInfo::Arg ProcessParameter(clang::ParmVarDecl *p)
     {
       arg.isContainer = true;
       auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);   
-      SplitContainerTypes(specDecl, arg.containerType, arg.containerDataType);
+      kslicer::SplitContainerTypes(specDecl, arg.containerType, arg.containerDataType);
     }
   }
 

@@ -849,8 +849,8 @@ void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, 
   const clang::QualType leftType = expr->getArg(0)->getType(); 
   if(leftType->isPointerType()) // buffer ? --> ignore
     return;
-  const std::string leftTypeName = leftType.getAsString();
-  if(leftTypeName.find("Texture") == std::string::npos && leftTypeName.find("Image") == std::string::npos) // not an image ? --> ignore
+  
+  if(!kslicer::IsTexture(leftType))
     return;
 
   std::string objName = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getExprLoc()), m_compiler);
@@ -944,8 +944,7 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
       const clang::QualType leftType = pTexName->getType(); 
       if(leftType->isPointerType()) // buffer ? --> ignore
         needRewrite = false;
-      const std::string leftTypeName = leftType.getAsString();
-      if(leftTypeName.find("Texture") == std::string::npos && leftTypeName.find("Image") == std::string::npos) // not an image ? --> ignore
+      if(!kslicer::IsTexture(leftType))
         needRewrite = false;
       
       if(needRewrite)

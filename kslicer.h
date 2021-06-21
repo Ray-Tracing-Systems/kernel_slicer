@@ -42,7 +42,7 @@ namespace kslicer
 
   enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
   enum class TEX_ACCESS { TEX_ACCESS_NOTHING = 0, TEX_ACCESS_READ = 1, TEX_ACCESS_WRITE = 2, TEX_ACCESS_SAMPLE = 4 };
-
+   
   /**
   \brief for each method MainClass::kernel_XXX
   */
@@ -152,6 +152,8 @@ namespace kslicer
     ShaderFeatures shaderFeatures;
   };
 
+  bool  IsTextureContainer(const std::string& a_typeName); ///<! return for all types of textures
+
   /**
   \brief for each data member of MainClass
   */
@@ -175,6 +177,8 @@ namespace kslicer
     size_t      arraySize = 0;     ///<! 'N' if data is declared as 'array[N]';
     std::string containerType;     ///<! std::vector usually
     std::string containerDataType; ///<! data type 'T' inside of std::vector<T>
+
+    bool IsUsedTexture() const { return isContainer && IsTextureContainer(containerType); }  // && isContainer && kslicer::IsTexture(containerType); }
   };
 
   /**
@@ -602,7 +606,6 @@ namespace kslicer
     virtual bool        IsKernel(const std::string& a_funcName) const;                                 ///<! return true if function is a kernel
     virtual void        ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const { }   ///<!  
     virtual bool        IsIndirect(const KernelInfo& a_kernel) const; 
-    virtual bool        IsTextureContainer(const std::string& a_typeName) const;                       ///<! return for all types of textures
    
     //// Processing Control Functions (CF)
     // 
@@ -786,6 +789,10 @@ namespace kslicer
 
   void PrintError(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm);
   //const clang::SourceManager&
+
+
+  bool IsTexture(clang::QualType a_qt);
+  void SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType);
 
 };
 

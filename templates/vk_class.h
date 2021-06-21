@@ -92,9 +92,10 @@ protected:
   virtual void UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
 
   virtual void AllocMemoryForInternalBuffers(const std::vector<VkBuffer>& a_buffers);
-  virtual void AllocMemoryForMemberBuffers(const std::vector<VkBuffer>& a_buffers);
+  virtual void AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_image);
+  
   virtual void FreeMemoryForInternalBuffers();
-  virtual void FreeMemoryForMemberBuffers();
+  virtual void FreeMemoryForMemberBuffersAndImages();
 
   {{PlainMembersUpdateFunctions}}
   {{VectorMembersUpdateFunctions}}
@@ -116,13 +117,17 @@ protected:
 
 ## endfor
 
-  struct StdVectorMembersGPUData
+  struct MembersDataGPU
   {
     {% for Vector in VectorMembers %}
     VkBuffer {{Vector}}Buffer = VK_NULL_HANDLE;
     size_t   {{Vector}}Offset = 0;
     {% endfor %}
+    {% for Tex in TextureMembers %}
+    VkImage  {{Tex}}Texture = VK_NULL_HANDLE;
+    {% endfor %}
     VkDeviceMemory m_vecMem = VK_NULL_HANDLE;
+    VkDeviceMemory m_texMem = VK_NULL_HANDLE;
   } m_vdata;
 
   size_t m_maxThreadCount = 0;

@@ -184,10 +184,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["KernelsDecl"]                  = strOut2.str();   
   data["TotalDSNumber"]                = a_classInfo.allDescriptorSetsInfo.size();
 
-  data["VectorMembers"] = std::vector<std::string>();
+  data["VectorMembers"]  = std::vector<std::string>();
+  data["TextureMembers"] = std::vector<std::string>();
   for(const auto var : a_classInfo.dataMembers)
   {
-    if(var.isContainer)
+    if(var.IsUsedTexture())
+      data["TextureMembers"].push_back(var.name);
+    else if(var.isContainer)
       data["VectorMembers"].push_back(var.name);
   }
 
@@ -228,27 +231,36 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["ClassVars"].push_back(local);
   }
 
-  data["ClassVectorVars"] = std::vector<std::string>();
+  data["ClassVectorVars"]  = std::vector<std::string>();
+  data["ClassTextureVars"] = std::vector<std::string>();
   for(const auto& v : a_classInfo.dataMembers)
   {
     if(!v.isContainer || v.usage != kslicer::DATA_USAGE::USAGE_USER)
       continue;
     
-    std::string sizeName     = v.name + "_size";
-    std::string capacityName = v.name + "_capacity";
-
-    auto p1 = containersInfo.find(sizeName);
-    auto p2 = containersInfo.find(capacityName);
-
-    assert(p1 != containersInfo.end() && p2 != containersInfo.end());
-
-    json local;
-    local["Name"]           = v.name;
-    local["SizeOffset"]     = p1->second.offsetInTargetBuffer;
-    local["CapacityOffset"] = p2->second.offsetInTargetBuffer;
-    local["TypeOfData"]     = v.containerDataType;
-
-    data["ClassVectorVars"].push_back(local);
+    if(v.IsUsedTexture())
+    {
+      json local;
+      local["Name"]           = v.name;
+      data["ClassTextureVars"].push_back(local);     
+    }
+    else
+    {
+      std::string sizeName     = v.name + "_size";
+      std::string capacityName = v.name + "_capacity";
+  
+      auto p1 = containersInfo.find(sizeName);
+      auto p2 = containersInfo.find(capacityName);
+  
+      assert(p1 != containersInfo.end() && p2 != containersInfo.end());
+  
+      json local;
+      local["Name"]           = v.name;
+      local["SizeOffset"]     = p1->second.offsetInTargetBuffer;
+      local["CapacityOffset"] = p2->second.offsetInTargetBuffer;
+      local["TypeOfData"]     = v.containerDataType;
+      data["ClassVectorVars"].push_back(local);     
+    }
   }
 
   data["RedVectorVars"] = std::vector<std::string>();
@@ -818,7 +830,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
       argj["IsUBO"]      = false;
       argj["IsImage"]    = false;
-      if(pVecMember->second.isContainer && a_classInfo.IsTextureContainer(pVecMember->second.containerType))
+      if(pVecMember->second.isContainer && kslicer::IsTextureContainer(pVecMember->second.containerType))
       {
         std::string imageFormat;
         auto pMemberAccess = k.texAccessInMemb.find(pVecMember->second.name); 
@@ -844,8 +856,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     
     std::vector<kslicer::DataMemberInfo> membersToRead;
     for(const auto& name : k.usedMembers)
-      membersToRead.push_back(dataMembersCached[name]);
-    
+    {
+      auto pCachedMember = dataMembersCached.find(name);
+      if(pCachedMember != dataMembersCached.end())
+        membersToRead.push_back(pCachedMember->second);
+    }
+
     std::sort(membersToRead.begin(), membersToRead.end(), [](const auto& a, const auto& b) { return a.offsetInTargetBuffer < b.offsetInTargetBuffer; });
 
     json members = std::vector<std::string>();

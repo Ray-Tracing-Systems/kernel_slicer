@@ -61,7 +61,7 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
   vkDestroyBuffer(device, m_{{Hierarchy.Name}}ObjPtrBuffer, nullptr);
   {% endfor %}
 
-  FreeMemoryForMemberBuffers();
+  FreeMemoryForMemberBuffersAndImages();
   FreeMemoryForInternalBuffers();
 }
 
@@ -383,16 +383,23 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
 void {{MainClassName}}_Generated::InitMemberBuffers()
 {
   std::vector<VkBuffer> memberVectors;
-## for Var in ClassVectorVars
+  std::vector<VkImage>  memberTextures;
+
+  {% for Var in ClassVectorVars %}
   m_vdata.{{Var.Name}}Buffer = vkfw::CreateBuffer(device, {{Var.Name}}.capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
-## endfor
+  {% endfor %}
+
+  {% for Var in ClassTextureVars %}
+  m_vdata.{{Var.Name}}Texture = VK_NULL_HANDLE;
+  memberTextures.push_back(m_vdata.{{Var.Name}}Texture);
+  {% endfor %}
   
   {% if length(IndirectDispatches) > 0 %}
   m_indirectBuffer = vkfw::CreateBuffer(device, {{IndirectBufferSize}}*sizeof(uint32_t)*4, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
   memberVectors.push_back(m_indirectBuffer);
   {% endif %}
-  AllocMemoryForMemberBuffers(memberVectors);
+  AllocMemoryForMemberBuffersAndImages(memberVectors, memberTextures);
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectDescriptorSets();
   {% endif %}
@@ -505,12 +512,14 @@ void {{MainClassName}}_Generated::AllocMemoryForInternalBuffers(const std::vecto
     m_allMem = VK_NULL_HANDLE;
 }
 
-void {{MainClassName}}_Generated::AllocMemoryForMemberBuffers(const std::vector<VkBuffer>& a_buffers)
+void {{MainClassName}}_Generated::AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_images)
 {
   if(a_buffers.size() > 0)
     m_vdata.m_vecMem = vkfw::AllocateAndBindWithPadding(device, physicalDevice, a_buffers);
   else
     m_vdata.m_vecMem = VK_NULL_HANDLE;
+
+  m_vdata.m_texMem = VK_NULL_HANDLE;
 }
 
 void {{MainClassName}}_Generated::FreeMemoryForInternalBuffers()
@@ -520,9 +529,12 @@ void {{MainClassName}}_Generated::FreeMemoryForInternalBuffers()
   m_allMem = VK_NULL_HANDLE;
 }
 
-void {{MainClassName}}_Generated::FreeMemoryForMemberBuffers()
+void {{MainClassName}}_Generated::FreeMemoryForMemberBuffersAndImages()
 {
   if(m_vdata.m_vecMem != VK_NULL_HANDLE)
     vkFreeMemory(device, m_vdata.m_vecMem, nullptr);
   m_vdata.m_vecMem = VK_NULL_HANDLE;
+  if(m_vdata.m_texMem != VK_NULL_HANDLE)
+    vkFreeMemory(device, m_vdata.m_texMem, nullptr);
+  m_vdata.m_texMem = VK_NULL_HANDLE;
 }

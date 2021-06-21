@@ -227,6 +227,19 @@ bool kslicer::MainFunctionRewriter::VisitIfStmt(IfStmt* ifExpr)
   return true;
 }
 
+bool kslicer::IsTexture(clang::QualType a_qt)
+{
+  if(a_qt->isReferenceType())
+    a_qt = a_qt.getNonReferenceType();
+
+  auto typeDecl = a_qt->getAsRecordDecl();
+  if(typeDecl == nullptr || !clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl))
+    return false;
+
+  const std::string typeName = a_qt.getAsString();
+  return (typeName.find("Texture") != std::string::npos || typeName.find("Image") != std::string::npos);
+}
+
 std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractArgumentsOfAKernelCall(CallExpr* f)
 {
   std::vector<kslicer::ArgReferenceOnCall> args; 
@@ -237,7 +250,8 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
   for(size_t i=0;i<f->getNumArgs();i++)
   {
     const Expr* currArgExpr = f->getArgs()[i];
-    assert(currArgExpr != nullptr);
+    const clang::QualType q = currArgExpr->getType();
+
     auto sourceRange = currArgExpr->getSourceRange();
     std::string text = GetRangeSourceCode(sourceRange, m_compiler);
   
@@ -251,7 +265,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
       if(pClassVar != m_allClassMembers.end())
         arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_POD;
     }
-    else if(text.find(".data()") != std::string::npos) 
+    else if(text.find(".data()") != std::string::npos) // TODO: add check for reference, fo the case if we want to pas vectors by reference
     {
       std::string varName = text.substr(0, text.find(".data()"));
       auto pClassVar = m_allClassMembers.find(varName);
@@ -261,6 +275,17 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
         pClassVar->second.usedInMainFn = true;
 
       arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR;
+    }
+    else if(kslicer::IsTexture(q))
+    {
+      auto pClassVar = m_allClassMembers.find(text);
+      if(pClassVar == m_allClassMembers.end()) // probably this is argument of controil function. Not an error.
+      {
+        //std::cout << "[KernelCallError]: Texture variable '" << text.c_str() << "' was not found in class!" << std::endl; 
+        int a = 2;
+      }
+      else
+        pClassVar->second.usedInMainFn = true;
     }
 
     auto elementId = std::find(predefinedNames.begin(), predefinedNames.end(), text); // exclude predefined names from arguments

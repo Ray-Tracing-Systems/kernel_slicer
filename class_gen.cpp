@@ -76,7 +76,7 @@ bool kslicer::MainClassInfo::IsKernel(const std::string& a_funcName) const
   return (pos != std::string::npos);
 }
 
-bool kslicer::MainClassInfo::IsTextureContainer(const std::string& a_typeName) const
+bool kslicer::IsTextureContainer(const std::string& a_typeName)
 {
   if(a_typeName == "Texture1D" || a_typeName == "Image1D")
     return true;
@@ -285,7 +285,7 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
       ArgTypeAndNamePair arg2;
       arg2.argName  = arg.name;
       
-      if(arg.isContainer && IsTextureContainer(arg.containerType))
+      if(arg.isContainer && kslicer::IsTextureContainer(arg.containerType))
       {
         auto pAccessFlags = a_kernel.texAccessInArgs.find(arg.name);
         CheckTextureAccessFlags(pAccessFlags->second, arg.name, a_kernel.name);
