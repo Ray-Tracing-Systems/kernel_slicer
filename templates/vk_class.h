@@ -128,10 +128,12 @@ protected:
     {% endfor %}
     VkDeviceMemory m_vecMem = VK_NULL_HANDLE;
     VkDeviceMemory m_texMem = VK_NULL_HANDLE;
+    {% for Sam in SamplerMembers %}
+    VkSampler      {{Sam}} = VK_NULL_HANDLE;
+    {% endfor %}
   } m_vdata;
 
-  size_t m_maxThreadCount = 0;
-
+  {% if length(DispatchHierarchies) > 0 %}
   {% for Hierarchy in DispatchHierarchies %}
   // Auxilary data and kernels for 'VirtualKernels'; Dispatch hierarchy of '{{Hierarchy.Name}}'
   //
@@ -143,10 +145,8 @@ protected:
   void             {{Hierarchy.Name}}ZeroObjCountersCmd();
   {% endif %} 
   {% endfor %}
-  {% if length(DispatchHierarchies) > 0 %}
   VkBufferMemoryBarrier BarrierForObjCounters(VkBuffer a_buffer);
-  {% endif %} 
-
+  {% endif %} {# /* length(DispatchHierarchies) > 0 */ #}
   {% if length(IndirectDispatches) > 0 %}
   void InitIndirectBufferUpdateResources(const char* a_filePath);
   void InitIndirectDescriptorSets();
@@ -158,8 +158,8 @@ protected:
   {% for Dispatch in IndirectDispatches %}
   VkPipeline            m_indirectUpdate{{Dispatch.KernelName}}Pipeline = VK_NULL_HANDLE; 
   {% endfor %}
-  {% endif %}
-
+  {% endif %} {# /* length(IndirectDispatches) > 0 */ #}
+  size_t m_maxThreadCount = 0;
   VkBuffer m_classDataBuffer = VK_NULL_HANDLE;
   {% if UseSeparateUBO %}
   VkBuffer m_uboArgsBuffer = VK_NULL_HANDLE;
