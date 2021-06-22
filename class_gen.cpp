@@ -179,6 +179,7 @@ std::string kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc,
   std::stringstream strOut;
   strOut << "{" << std::endl;
   strOut << "  m_currCmdBuffer = a_commandBuffer;" << std::endl;
+  strOut << "  VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT }; " << std::endl;
 
   if(this->NeedThreadFlags())
   {

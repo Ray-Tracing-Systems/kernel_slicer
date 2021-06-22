@@ -93,7 +93,8 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
     if(m_pCodeInfo->NeedThreadFlags())
       strOut << "  m_currThreadFlags = " << flagsVariableName.c_str() << ";" << std::endl;
-    strOut << "  " << kernName.c_str() << "Cmd" << textOfArgs.c_str();
+    strOut << "  " << kernName.c_str() << "Cmd" << textOfArgs.c_str() << ";" << std::endl;
+    strOut << "  " << "vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr)";
   }
   
   return strOut.str();
@@ -136,7 +137,8 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
   std::stringstream strOut;
   strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
   strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
-  strOut << "  " << kernName.c_str() << "Cmd(" << memCpyArgs[2].varName << " / sizeof(float))";
+  strOut << "  " << kernName.c_str() << "Cmd(" << memCpyArgs[2].varName << " / sizeof(float));" << std::endl;
+  strOut << "  " << "vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr)";
 
   return strOut.str();
 }
