@@ -748,8 +748,9 @@ int main(int argc, const char **argv)
   }
   std::cout << "}" << std::endl;
   std::cout << std::endl;
-
-  std::cout << "(8) Generate OpenCL kernels" << std::endl; 
+  
+  std::string shaderCCName2 = inputCodeInfo.pShaderCC->Name();
+  std::cout << "(8) Generate " << shaderCCName2.c_str() << " kernels" << std::endl; 
   std::cout << "{" << std::endl;
 
   for(auto& k : inputCodeInfo.kernels)

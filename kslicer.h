@@ -506,6 +506,7 @@ namespace kslicer
                                                                         kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass) = 0;
 
     virtual std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler) = 0;
+    virtual std::string Name() const { return "unknown shader compiler"; }
   };
 
   struct ClspvCompiler : IShaderCompiler
@@ -530,6 +531,7 @@ namespace kslicer
                                                                 kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass) override;
     
     std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler) override;
+    std::string Name() const override { return "OpenCL"; }
   private:
     std::string BuildCommand() const;
     bool m_useCpp;
@@ -553,6 +555,7 @@ namespace kslicer
                                                                 kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass) override;
     
     std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler) override;
+    std::string Name() const override { return "GLSL"; }
   private:
 
     void ProcessVectorTypesString(std::string& a_str);

@@ -124,7 +124,8 @@ protected:
     size_t   {{Vector}}Offset = 0;
     {% endfor %}
     {% for Tex in TextureMembers %}
-    VkImage  {{Tex}}Texture = VK_NULL_HANDLE;
+    VkImage     {{Tex}}Texture = VK_NULL_HANDLE;
+    VkImageView {{Tex}}View    = VK_NULL_HANDLE;
     {% endfor %}
     VkDeviceMemory m_vecMem = VK_NULL_HANDLE;
     VkDeviceMemory m_texMem = VK_NULL_HANDLE;
@@ -134,7 +135,7 @@ protected:
   } m_vdata;
 
   {% if length(TextureMembers) > 0 %}
-  VkImage   CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage);
+  VkImage   CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage, VkImageView* a_pView = nullptr);
   VkSampler CreateSampler(const Sampler& a_sampler);
   {% endif %} {# /* length(TextureMembers) > 0 */ #}
   {% if length(DispatchHierarchies) > 0 %}
