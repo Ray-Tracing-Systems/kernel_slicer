@@ -86,7 +86,7 @@ std::string GetDSVulkanAccessLayout(kslicer::TEX_ACCESS a_accessMask)
 
     case kslicer::TEX_ACCESS::TEX_ACCESS_WRITE:
     return "VK_IMAGE_LAYOUT_GENERAL";
-    
+
     default:
     return "VK_IMAGE_LAYOUT_GENERAL";
   }
@@ -576,20 +576,29 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         {
           std::string argNameInKernel = pFoundKernel->second.args[j].name;
           const auto pAccessFlags     = pFoundKernel->second.texAccessInArgs.find(argNameInKernel);
+          const auto pSampler         = pFoundKernel->second.texAccessSampler.find(argNameInKernel); 
           if(pAccessFlags != pFoundKernel->second.texAccessInArgs.end())
           {
             arg["AccessLayout"] = GetDSVulkanAccessLayout(pAccessFlags->second);
-            arg["AccessDSType"] = (pAccessFlags->second == kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE) ? "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER" : "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+            arg["AccessDSType"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+            arg["SamplerName"]  = "VK_NULL_HANDLE";
+            if(pAccessFlags->second == kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE)
+            {
+              arg["AccessDSType"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+              arg["SamplerName"]  = (pSampler == pFoundKernel->second.texAccessSampler.end()) ? "VK_NULL_HANDLE" : std::string("m_vdata.") + pSampler->second;
+            }
           }
           else if(dsArgs.descriptorSetsInfo[j].isConst)
           {
             arg["AccessLayout"] = GetDSVulkanAccessLayout(kslicer::TEX_ACCESS::TEX_ACCESS_READ);
             arg["AccessDSType"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+            arg["SamplerName"]  = "VK_NULL_HANDLE";
           }
           else
           {
             arg["AccessLayout"] = GetDSVulkanAccessLayout(kslicer::TEX_ACCESS::TEX_ACCESS_WRITE); // TODO: and read ?
             arg["AccessDSType"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+            arg["SamplerName"]  = "VK_NULL_HANDLE";
           }
         }
         local["Args"].push_back(arg);

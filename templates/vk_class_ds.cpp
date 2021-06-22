@@ -67,7 +67,7 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     {% if Arg.IsTexture %}
     descriptorImageInfo[{{Arg.Id}}].imageView   = {{Arg.Name}}View;
     descriptorImageInfo[{{Arg.Id}}].imageLayout = {{Arg.AccessLayout}};
-    descriptorImageInfo[{{Arg.Id}}].sampler     = VK_NULL_HANDLE;
+    descriptorImageInfo[{{Arg.Id}}].sampler     = {{Arg.SamplerName}};
     {% else %}
     descriptorBufferInfo[{{Arg.Id}}]        = VkDescriptorBufferInfo{};
     descriptorBufferInfo[{{Arg.Id}}].buffer = {{Arg.Name}}Buffer;

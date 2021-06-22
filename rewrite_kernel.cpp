@@ -596,13 +596,14 @@ void kslicer::KernelRewriter::DetectTextureAccess(clang::CXXMemberCallExpr* call
 
   if(fname == "sample" || fname == "Sample")
   {
+    auto samplerArg         = call->getArg(0);
+    std::string samplerName = GetRangeSourceCode(samplerArg->getSourceRange(), m_compiler); 
+
     // (1) process if member access
     //
     auto pMember = m_codeInfo->allDataMembers.find(objName);
     if(pMember != m_codeInfo->allDataMembers.end())
     {
-      auto samplerArg         = call->getArg(0);
-      std::string samplerName = GetRangeSourceCode(samplerArg->getSourceRange(), m_compiler); 
       pMember->second.tmask   = kslicer::TEX_ACCESS( int(pMember->second.tmask) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
       auto p = m_currKernel.texAccessInMemb.find(objName);
       if(p != m_currKernel.texAccessInMemb.end())
@@ -625,9 +626,15 @@ void kslicer::KernelRewriter::DetectTextureAccess(clang::CXXMemberCallExpr* call
       {
         auto p = m_currKernel.texAccessInArgs.find(objName);
         if(p != m_currKernel.texAccessInArgs.end())
+        {
           p->second = kslicer::TEX_ACCESS( int(p->second) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
+          m_currKernel.texAccessSampler[objName] = samplerName;
+        }
         else
-          m_currKernel.texAccessInArgs[objName] = kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE;
+        {
+          m_currKernel.texAccessInArgs[objName]  = kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE;
+          m_currKernel.texAccessSampler[objName] = samplerName;
+        }
       }
     }
   }
