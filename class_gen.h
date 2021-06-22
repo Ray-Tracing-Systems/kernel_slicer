@@ -24,7 +24,7 @@ namespace kslicer
   /**\brief put all args together with comma or ',' to gave unique key for any concrete argument sequence.
       \return unique strig key which you can pass in std::unordered_map for example 
   */
-  std::string MakeKernellCallSignature(const std::string& a_mainFuncName, const std::vector<ArgReferenceOnCall>& a_args, const std::unordered_set<std::string>& a_usedVectors);
+  std::string MakeKernellCallSignature(const std::string& a_mainFuncName, const std::vector<ArgReferenceOnCall>& a_args, const std::unordered_map<std::string, UsedContainerInfo>& a_usedContainers);
 
   class MainFunctionRewriter : public RecursiveASTVisitor<MainFunctionRewriter>
   {

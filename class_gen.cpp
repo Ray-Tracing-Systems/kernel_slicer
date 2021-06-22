@@ -24,9 +24,14 @@ void kslicer::MainClassInfo::AddTempBufferToKernel(const std::string buffName, c
     pFoundMember = allDataMembers.insert({buffName, vecMemberTmp}).first;
   }
 
-  // (2) append vector to a_kernel.usedVectors 
+  // (2) append vector to a_kernel.usedContainers 
   //
-  a_kernel.usedVectors.insert(buffName);
+  kslicer::UsedContainerInfo container;
+  container.type              = std::string("std::vector<") + a_elemTypeName + ">";
+  container.name              = buffName; 
+  container.isTexture         = false;
+  container.isConst           = false;
+  a_kernel.usedContainers[container.name] = container;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -42,7 +42,18 @@ namespace kslicer
 
   enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
   enum class TEX_ACCESS { TEX_ACCESS_NOTHING = 0, TEX_ACCESS_READ = 1, TEX_ACCESS_WRITE = 2, TEX_ACCESS_SAMPLE = 4 };
-   
+  
+  /**
+  \brief for each kernel we collect list of containes accesed by this kernel
+  */
+  struct UsedContainerInfo
+  {
+    std::string type;
+    std::string name;
+    bool isTexture = false;
+    bool isConst = false;
+  };
+
   /**
   \brief for each method MainClass::kernel_XXX
   */
@@ -132,12 +143,12 @@ namespace kslicer
 
     std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
-    std::unordered_set<std::string> usedVectors; ///<! list of all std::vector<T> member names which is referenced inside kernel
-    std::unordered_set<std::string> usedMembers; ///<! list of all other variables used inside kernel
-    std::unordered_map<std::string, ReductionAccess> subjectedToReduction; ///<! if member is used in reduction expression
-    std::unordered_map<std::string, TEX_ACCESS>      texAccessInArgs;
-    std::unordered_map<std::string, TEX_ACCESS>      texAccessInMemb;
-    std::unordered_map<std::string, std::string>     texAccessSampler;
+    std::unordered_map<std::string, UsedContainerInfo> usedContainers; ///<! list of all std::vector<T> member names which is referenced inside kernel
+    std::unordered_set<std::string>                    usedMembers; ///<! list of all other variables used inside kernel
+    std::unordered_map<std::string, ReductionAccess>   subjectedToReduction; ///<! if member is used in reduction expression
+    std::unordered_map<std::string, TEX_ACCESS>        texAccessInArgs;
+    std::unordered_map<std::string, TEX_ACCESS>        texAccessInMemb;
+    std::unordered_map<std::string, std::string>       texAccessSampler;
 
     std::string rewrittenText;                   ///<! rewritten source code of a kernel
     std::string rewrittenInit;                   ///<! rewritten loop initialization code for kernel

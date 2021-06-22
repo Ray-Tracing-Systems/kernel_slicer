@@ -397,11 +397,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       actualSize++;
     }
 
-    for(const auto& name : k.usedVectors)
+    for(const auto& container : k.usedContainers) // TODO: add support fo textures (!!!)
     {
       json argData;
       argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
-      argData["Name"]  = name;
+      argData["Name"]  = container.second.name;
       argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
       argData["Id"]    = actualSize;
       kernelJson["Args"].push_back(argData);
@@ -608,14 +608,14 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       
       if(pFoundKernel != a_classInfo.kernels.end())
       {
-        for(const auto& vecName : pFoundKernel->second.usedVectors) // add all class-member vectors bindings
+        for(const auto& container : pFoundKernel->second.usedContainers) // add all class-member vectors bindings
         {
           json arg;
           arg["Id"]        = realId;
-          arg["Name"]      = "m_vdata." + vecName;
+          arg["Name"]      = "m_vdata." + container.second.name;
           arg["IsTexture"] = false;
           local["Args"].push_back(arg);
-          local["ArgNames"].push_back(vecName);
+          local["ArgNames"].push_back(container.second.name);
           realId++;
         }
 
@@ -882,10 +882,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     // now add all std::vector members
     //
     json vecs = std::vector<std::string>();
-    for(const auto& name : k.usedVectors)
+    for(const auto& container : k.usedContainers)
     {
-      auto pVecMember     = dataMembersCached.find(name);
-      auto pVecSizeMember = dataMembersCached.find(name + "_size");
+      auto pVecMember     = dataMembersCached.find(container.second.name);
+      auto pVecSizeMember = dataMembersCached.find(container.second.name + "_size");
 
       assert(pVecMember     != dataMembersCached.end());
       assert(pVecSizeMember != dataMembersCached.end());

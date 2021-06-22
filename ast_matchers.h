@@ -281,7 +281,20 @@ namespace kslicer
 
           pDataMember->second.usedInKernel = true;
           if(pDataMember->second.isContainer)
-            currKernel->usedVectors.insert(pDataMember->first);
+          {
+            const clang::QualType qt = var->getType();
+            kslicer::UsedContainerInfo container;
+            container.type = qt.getAsString();
+            container.name = pDataMember->first;
+            //if(clang::isa<clang::ClassTemplateSpecializationDecl>(var)) // don't work for FieldDecl, this seems to be diferent type branch in clang
+            //{
+            //  auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(var);   
+            //  kslicer::SplitContainerTypes(specDecl, container.containerType, container.containerDataType);
+            //}
+            container.isTexture = kslicer::IsTexture(qt);
+            container.isConst   = qt.isConstQualified();
+            currKernel->usedContainers[container.name] = container;
+          }
           else
             currKernel->usedMembers.insert(pDataMember->first);
         }

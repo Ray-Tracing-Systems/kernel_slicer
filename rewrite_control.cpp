@@ -37,7 +37,7 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
   //std::stringstream strOut1;
   //strOut1 << "_" << m_dsTagId;                                                    
   const auto args     = ExtractArgumentsOfAKernelCall(f);                                          
-  const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, pKernelInfo->second.usedVectors); // + strOut1.str();
+  const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, pKernelInfo->second.usedContainers); // + strOut1.str();
   auto p2 = dsIdBySignature.find(callSign);
   if(p2 == dsIdBySignature.end())
   {
@@ -118,7 +118,7 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
     args[1].varName = memCpyArgs[1].varName;
   }
 
-  const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, std::unordered_set<std::string>()); // + strOut1.str();
+  const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, std::unordered_map<std::string, kslicer::UsedContainerInfo>()); // + strOut1.str();
   auto p2 = dsIdBySignature.find(callSign);
   if(p2 == dsIdBySignature.end())
   {
@@ -322,7 +322,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
   return args;
 }
 
-std::string kslicer::MakeKernellCallSignature(const std::string& a_mainFuncName, const std::vector<ArgReferenceOnCall>& a_args, const std::unordered_set<std::string>& a_usedVectors)
+std::string kslicer::MakeKernellCallSignature(const std::string& a_mainFuncName, const std::vector<ArgReferenceOnCall>& a_args, const std::unordered_map<std::string, UsedContainerInfo>& a_usedContainers)
 {
   std::stringstream strOut;
   for(const auto& arg : a_args)
@@ -357,8 +357,8 @@ std::string kslicer::MakeKernellCallSignature(const std::string& a_mainFuncName,
     strOut << arg.varName.c_str();
   }
 
-  for(const auto& vecName : a_usedVectors)
-    strOut << "[MV][" << vecName.c_str() << "]";
+  for(const auto& vecName : a_usedContainers)
+    strOut << "[MV][" << vecName.second.name.c_str() << "]";
 
   return strOut.str();
 }
