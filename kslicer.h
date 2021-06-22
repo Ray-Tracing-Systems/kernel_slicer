@@ -137,6 +137,7 @@ namespace kslicer
     std::unordered_map<std::string, ReductionAccess> subjectedToReduction; ///<! if member is used in reduction expression
     std::unordered_map<std::string, TEX_ACCESS>      texAccessInArgs;
     std::unordered_map<std::string, TEX_ACCESS>      texAccessInMemb;
+    std::unordered_map<std::string, std::string>     texAccessSampler;
 
     std::string rewrittenText;                   ///<! rewritten source code of a kernel
     std::string rewrittenInit;                   ///<! rewritten loop initialization code for kernel

@@ -601,12 +601,20 @@ void kslicer::KernelRewriter::DetectTextureAccess(clang::CXXMemberCallExpr* call
     auto pMember = m_codeInfo->allDataMembers.find(objName);
     if(pMember != m_codeInfo->allDataMembers.end())
     {
-      pMember->second.tmask = kslicer::TEX_ACCESS( int(pMember->second.tmask) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
+      auto samplerArg         = call->getArg(0);
+      std::string samplerName = GetRangeSourceCode(samplerArg->getSourceRange(), m_compiler); 
+      pMember->second.tmask   = kslicer::TEX_ACCESS( int(pMember->second.tmask) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
       auto p = m_currKernel.texAccessInMemb.find(objName);
       if(p != m_currKernel.texAccessInMemb.end())
+      {
         p->second = kslicer::TEX_ACCESS( int(p->second) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
+        m_currKernel.texAccessSampler[objName] = samplerName;
+      }
       else
-        m_currKernel.texAccessInMemb[objName] = kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE;
+      {
+        m_currKernel.texAccessInMemb [objName] = kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE;
+        m_currKernel.texAccessSampler[objName] = samplerName;
+      }
     }
     
     // (2) process if kernel argument access
