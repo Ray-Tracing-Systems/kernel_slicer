@@ -60,6 +60,7 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     {% endif %}
 
     std::array<VkDescriptorBufferInfo, {{DescriptorSet.ArgNumber}} + additionalSize> descriptorBufferInfo;
+    std::array<VkDescriptorImageInfo,  {{DescriptorSet.ArgNumber}} + additionalSize> descriptorImageInfo;
     std::array<VkWriteDescriptorSet,   {{DescriptorSet.ArgNumber}} + additionalSize> writeDescriptorSet;
 
 ## for Arg in DescriptorSet.Args

@@ -32,15 +32,23 @@ public:
 
 ## for MainFunc in MainFunctions
   virtual void SetVulkanInOutFor_{{MainFunc.Name}}(
-## for BufferName in MainFunc.InOutVars
-    VkBuffer a_{{BufferName}}Buffer,
-    size_t   a_{{BufferName}}Offset,
+## for Arg in MainFunc.InOutVars
+    {% if Arg.IsTexture %}
+    VkImageView {{Arg.Name}}View,
+    {% else %}
+    VkBuffer {{Arg.Name}}Buffer,
+    size_t   {{Arg.Name}}Offset,
+    {% endif %}
 ## endfor
     uint32_t dummyArgument = 0)
   {
-## for BufferName in MainFunc.InOutVars
-    {{MainFunc.Name}}_local.{{BufferName}}Buffer = a_{{BufferName}}Buffer;
-    {{MainFunc.Name}}_local.{{BufferName}}Offset = a_{{BufferName}}Offset;
+## for Arg in MainFunc.InOutVars
+    {% if Arg.IsTexture %}
+    {{MainFunc.Name}}_local.{{Arg.Name}}View   = {{Arg.Name}}View;
+    {% else %}
+    {{MainFunc.Name}}_local.{{Arg.Name}}Buffer = {{Arg.Name}}Buffer;
+    {{MainFunc.Name}}_local.{{Arg.Name}}Offset = {{Arg.Name}}Offset;
+    {% endif %}
 ## endfor
     InitAllGeneratedDescriptorSets_{{MainFunc.Name}}();
   }
@@ -108,10 +116,13 @@ protected:
     size_t   {{Buffer.Name}}Offset = 0;
 
 ## endfor
-## for BufferName in MainFunc.InOutVars
-    VkBuffer {{BufferName}}Buffer = VK_NULL_HANDLE;
-    size_t   {{BufferName}}Offset = 0;
-
+## for Arg in MainFunc.InOutVars
+    {% if Arg.IsTexture %}
+    VkImageView {{Arg.Name}}View = VK_NULL_HANDLE;
+    {% else %}
+    VkBuffer {{Arg.Name}}Buffer = VK_NULL_HANDLE;
+    size_t   {{Arg.Name}}Offset = 0;
+    {% endif %}
 ## endfor
   } {{MainFunc.Name}}_local;
 

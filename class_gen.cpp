@@ -218,17 +218,24 @@ std::vector<kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CX
   for(int i=0;i<a_node->getNumParams();i++)
   {
     const ParmVarDecl* currParam = a_node->getParamDecl(i);
+    const clang::QualType qt     = currParam->getType();
     
-    const clang::QualType qt = currParam->getType();
-    const auto typePtr = qt.getTypePtr(); 
-    assert(typePtr != nullptr);
-    
-    if(!typePtr->isPointerType())
-      continue;
-    
-    InOutVarInfo var;
-    var.name = currParam->getNameAsString();
-    params.push_back(var);
+    if(qt->isPointerType())
+    {
+      InOutVarInfo var;
+      var.name      = currParam->getNameAsString();
+      var.isTexture = false;
+      var.isConst   = qt.isConstQualified();
+      params.push_back(var);
+    }
+    else if(qt->isReferenceType() && kslicer::IsTexture(qt))
+    {
+      InOutVarInfo var;
+      var.name      = currParam->getNameAsString();
+      var.isTexture = true;
+      var.isConst   = qt.isConstQualified();
+      params.push_back(var);
+    }
   }
 
   return params;

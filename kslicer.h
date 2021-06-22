@@ -203,6 +203,8 @@ namespace kslicer
   struct InOutVarInfo 
   {
     std::string name;
+    bool isTexture = false;
+    bool isConst   = false;
   };
 
   // assume there could be only 4 form of kernel arg when kernel is called
