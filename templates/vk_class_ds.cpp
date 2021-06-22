@@ -64,20 +64,33 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     std::array<VkWriteDescriptorSet,   {{DescriptorSet.ArgNumber}} + additionalSize> writeDescriptorSet;
 
 ## for Arg in DescriptorSet.Args
+    {% if Arg.IsTexture %}
+    descriptorImageInfo[{{Arg.Id}}].imageView   = {{Arg.Name}}View;
+    descriptorImageInfo[{{Arg.Id}}].imageLayout = {{Arg.AccessLayout}};
+    descriptorImageInfo[{{Arg.Id}}].sampler     = VK_NULL_HANDLE;
+    {% else %}
     descriptorBufferInfo[{{Arg.Id}}]        = VkDescriptorBufferInfo{};
     descriptorBufferInfo[{{Arg.Id}}].buffer = {{Arg.Name}}Buffer;
     descriptorBufferInfo[{{Arg.Id}}].offset = {{Arg.Name}}Offset;
     descriptorBufferInfo[{{Arg.Id}}].range  = VK_WHOLE_SIZE;  
+    {% endif %}
 
     writeDescriptorSet[{{Arg.Id}}]                  = VkWriteDescriptorSet{};
     writeDescriptorSet[{{Arg.Id}}].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writeDescriptorSet[{{Arg.Id}}].dstSet           = m_allGeneratedDS[{{DescriptorSet.Id}}];
     writeDescriptorSet[{{Arg.Id}}].dstBinding       = {{Arg.Id}};
     writeDescriptorSet[{{Arg.Id}}].descriptorCount  = 1;
+    {% if Arg.IsTexture %}
+    writeDescriptorSet[{{Arg.Id}}].descriptorType   = {{Arg.AccessDSType}};
+    writeDescriptorSet[{{Arg.Id}}].pBufferInfo      = nullptr;
+    writeDescriptorSet[{{Arg.Id}}].pImageInfo       = &descriptorImageInfo[{{Arg.Id}}];
+    writeDescriptorSet[{{Arg.Id}}].pTexelBufferView = nullptr; 
+    {% else %}
     writeDescriptorSet[{{Arg.Id}}].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     writeDescriptorSet[{{Arg.Id}}].pBufferInfo      = &descriptorBufferInfo[{{Arg.Id}}];
     writeDescriptorSet[{{Arg.Id}}].pImageInfo       = nullptr;
     writeDescriptorSet[{{Arg.Id}}].pTexelBufferView = nullptr; 
+    {% endif %}
 
 ## endfor
     {% if not DescriptorSet.IsServiceCall %}

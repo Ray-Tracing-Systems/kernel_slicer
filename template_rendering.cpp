@@ -54,13 +54,42 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
   return kernelDeclByName;
 }
 
-std::string GetDSArgName(const std::string& a_mainFuncName, const std::string& a_dsVarName)
+std::string GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg)
 {
-  auto posOfData = a_dsVarName.find(".data()");
-  if(posOfData != std::string::npos)
-    return std::string("m_vdata.") + a_dsVarName.substr(0, posOfData);
-  else
-    return a_mainFuncName + "_local." + a_dsVarName; 
+  switch(a_arg.argType)
+  {
+    case  kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG:
+    return a_mainFuncName + "_local." + a_arg.varName; 
+
+    case  kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL:
+    case  kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR:
+    {
+      auto posOfData = a_arg.varName.find(".data()");
+      if(posOfData != std::string::npos)
+        return std::string("m_vdata.") + a_arg.varName.substr(0, posOfData);
+      else
+        return a_mainFuncName + "_local." + a_arg.varName; 
+    }
+    
+    default:
+    return std::string("m_vdata.") + a_arg.varName;
+  };
+}
+
+std::string GetDSVulkanAccessLayout(kslicer::TEX_ACCESS a_accessMask)
+{
+  switch(a_accessMask)
+  {
+    case kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE:
+    case kslicer::TEX_ACCESS::TEX_ACCESS_READ:
+    return "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
+
+    case kslicer::TEX_ACCESS::TEX_ACCESS_WRITE:
+    return "VK_IMAGE_LAYOUT_GENERAL";
+    
+    default:
+    return "VK_IMAGE_LAYOUT_GENERAL";
+  }
 }
 
 std::vector<kslicer::KernelInfo::Arg> kslicer::GetUserKernelArgs(const std::vector<kslicer::KernelInfo::Arg>& a_allArgs)
@@ -537,11 +566,32 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
                                 dsArgs.descriptorSetsInfo[j].varName == "this")) // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
           continue;
 
-        const std::string dsArgName = GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j].varName);
+        const std::string dsArgName = GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j]);
 
         json arg;
-        arg["Id"]   = realId;
-        arg["Name"] = dsArgName;
+        arg["Id"]        = realId;
+        arg["Name"]      = dsArgName;
+        arg["IsTexture"] = dsArgs.descriptorSetsInfo[j].isTexture;
+        if(dsArgs.descriptorSetsInfo[j].isTexture)
+        {
+          std::string argNameInKernel = pFoundKernel->second.args[j].name;
+          const auto pAccessFlags     = pFoundKernel->second.texAccessInArgs.find(argNameInKernel);
+          if(pAccessFlags != pFoundKernel->second.texAccessInArgs.end())
+          {
+            arg["AccessLayout"] = GetDSVulkanAccessLayout(pAccessFlags->second);
+            arg["AccessDSType"] = (pAccessFlags->second == kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE) ? "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER" : "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+          }
+          else if(dsArgs.descriptorSetsInfo[j].isConst)
+          {
+            arg["AccessLayout"] = GetDSVulkanAccessLayout(kslicer::TEX_ACCESS::TEX_ACCESS_READ);
+            arg["AccessDSType"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+          }
+          else
+          {
+            arg["AccessLayout"] = GetDSVulkanAccessLayout(kslicer::TEX_ACCESS::TEX_ACCESS_WRITE); // TODO: and read ?
+            arg["AccessDSType"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+          }
+        }
         local["Args"].push_back(arg);
         local["ArgNames"].push_back(dsArgs.descriptorSetsInfo[j].varName);
         realId++;
@@ -552,8 +602,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         for(const auto& vecName : pFoundKernel->second.usedVectors) // add all class-member vectors bindings
         {
           json arg;
-          arg["Id"]   = realId;
-          arg["Name"] = "m_vdata." + vecName;
+          arg["Id"]        = realId;
+          arg["Name"]      = "m_vdata." + vecName;
+          arg["IsTexture"] = false;
           local["Args"].push_back(arg);
           local["ArgNames"].push_back(vecName);
           realId++;
@@ -564,8 +615,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           auto hierarchy = dhierarchies[pFoundKernel->second.interfaceName];
 
           json arg;
-          arg["Id"]   = realId;
-          arg["Name"] = std::string("m_") + hierarchy.interfaceName + "ObjPtr";
+          arg["Id"]        = realId;
+          arg["Name"]      = std::string("m_") + hierarchy.interfaceName + "ObjPtr";
+          arg["IsTexture"] = false;
           local["Args"].push_back(arg);
           local["ArgNames"].push_back(hierarchy.interfaceName + "ObjPtrData");
           realId++;          

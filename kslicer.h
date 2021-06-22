@@ -211,7 +211,7 @@ namespace kslicer
   //
   enum class KERN_CALL_ARG_TYPE{
     ARG_REFERENCE_LOCAL         = 0, // Passing the address of a local variable or local array by pointer (for example "& rayPosAndNear" or just randsArray);
-    ARG_REFERENCE_ARG           = 1, // Passing the pointer that was supplied to the argument of MainFunc (for example, just "out_color") 
+    ARG_REFERENCE_ARG           = 1, // Passing the pointer (or texture) that was supplied to the argument of MainFunc (for example, just "out_color") 
     ARG_REFERENCE_CLASS_VECTOR  = 2, // Passing a pointer to a class member of type std::vector<T>::data() (for example m_materials.data())
     ARG_REFERENCE_CLASS_POD     = 3, // Passing a pointer to a member of the class of type plain old data. For example, "&m_worldViewProjInv"
     ARG_REFERENCE_THREAD_ID     = 4, // Passing tidX, tidY or tidZ
@@ -222,6 +222,9 @@ namespace kslicer
   {
     KERN_CALL_ARG_TYPE argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_UNKNOWN_TYPE;
     std::string        varName = "";
+    std::string        varType = "";
+    bool isTexture             = false;
+    bool isConst               = false;
     bool umpersanned           = false; // just signal that '&' was applied to this argument, and thus it is likely to be (ARG_REFERENCE_LOCAL or ARG_REFERENCE_CLASS_POD)
   };
 

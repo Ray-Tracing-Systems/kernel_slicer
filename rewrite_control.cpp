@@ -257,17 +257,18 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
     auto sourceRange = currArgExpr->getSourceRange();
     std::string text = GetRangeSourceCode(sourceRange, m_compiler);
   
-    ArgReferenceOnCall arg;    
+    ArgReferenceOnCall arg; 
+    arg.varType   = q.getAsString();
+    arg.isConst   = q.isConstQualified();
     if(text[0] == '&')
     {
       arg.umpersanned = true;
       text = text.substr(1);
-
       auto pClassVar = m_allClassMembers.find(text);
       if(pClassVar != m_allClassMembers.end())
         arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_POD;
     }
-    else if(text.find(".data()") != std::string::npos) // TODO: add check for reference, fo the case if we want to pas vectors by reference
+    else if(q->isPointerType() && text.find(".data()") != std::string::npos) // TODO: add check for reference, fo the case if we want to pas vectors by reference
     {
       std::string varName = text.substr(0, text.find(".data()"));
       auto pClassVar = m_allClassMembers.find(varName);
@@ -281,13 +282,9 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
     else if(kslicer::IsTexture(q))
     {
       auto pClassVar = m_allClassMembers.find(text);
-      if(pClassVar == m_allClassMembers.end()) // probably this is argument of controil function. Not an error.
-      {
-        //std::cout << "[KernelCallError]: Texture variable '" << text.c_str() << "' was not found in class!" << std::endl; 
-        int a = 2;
-      }
-      else
+      if(pClassVar != m_allClassMembers.end()) // if not found, probably this is an argument of control function. Not an error. Process in later.
         pClassVar->second.usedInMainFn = true;
+      arg.isTexture = true;
     }
 
     auto elementId = std::find(predefinedNames.begin(), predefinedNames.end(), text); // exclude predefined names from arguments
