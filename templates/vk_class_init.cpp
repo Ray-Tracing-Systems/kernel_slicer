@@ -613,15 +613,15 @@ void {{MainClassName}}_Generated::TrackTextureAccess(const std::vector<TexAccess
       bar.dstAccessMask = a_pairs[i].access;
       a_currImageFlags[imageHandle] = a_pairs[i].access;
       bar.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
-      bar.newLayout     = (bar.dstAccessMask == VK_ACCESS_SHADER_READ_BIT) VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ? : VK_IMAGE_LAYOUT_GENERAL;
+      bar.newLayout     = (bar.dstAccessMask == VK_ACCESS_SHADER_READ_BIT) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
     }
     else
     {
       bar.srcAccessMask = pState->second;
       bar.dstAccessMask = a_pairs[i].access;
       pState->second    = a_pairs[i].access;
-      bar.oldLayout     = (bar.srcAccessMask == VK_ACCESS_SHADER_READ_BIT) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ? : VK_IMAGE_LAYOUT_GENERAL;
-      bar.newLayout     = (bar.dstAccessMask == VK_ACCESS_SHADER_READ_BIT) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ? : VK_IMAGE_LAYOUT_GENERAL;
+      bar.oldLayout     = (bar.srcAccessMask == VK_ACCESS_SHADER_READ_BIT) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+      bar.newLayout     = (bar.dstAccessMask == VK_ACCESS_SHADER_READ_BIT) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
     }
   }
 

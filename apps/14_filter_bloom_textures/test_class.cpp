@@ -35,14 +35,16 @@ ToneMapping::ToneMapping(const int w, const int h): m_width(w), m_height(h), m_w
   //
   m_blurRadius    = 100;
   m_filterWeights = createGaussKernelWeights1D_HDRImage(m_blurRadius*2 + 1, 1.25f);
-        
+  SetSize(w,h);
+}
+
+void ToneMapping::SetSize(const int w, const int h)
+{
   m_brightPixels.resize(w, h);
   m_downsampledImage.resize(m_widthSmall, m_heightSmall);
   m_tempImage.resize(m_widthSmall, m_heightSmall);
-
   m_sampler.filter = Sampler::Filter::MIN_MAG_LINEAR_MIP_POINT; 
 }
-
 
 void ToneMapping::Bloom(const int a_width, const int a_height, const Texture2D<float4>& a_texture2d, unsigned int* outData1ui)
 {

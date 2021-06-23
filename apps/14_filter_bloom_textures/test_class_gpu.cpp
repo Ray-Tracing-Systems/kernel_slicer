@@ -1,4 +1,3 @@
-#include "include/BasicLogic.h" 
 #include "Bitmap.h"
 
 #include <vector>
@@ -95,7 +94,7 @@ void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
   auto pGPUImpl = std::make_shared<ToneMapping_Generated>(); // !!! USING GENERATED CODE !!! 
   pGPUImpl->InitVulkanObjects(device, physicalDevice, w*h);  // !!! USING GENERATED CODE !!!
 
-  pGPUImpl->SetMaxImageSize(w, h);                           // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
+  pGPUImpl->SetSize(w, h);                                   // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
   pGPUImpl->InitMemberBuffers();                             // !!! USING GENERATED CODE !!!
   pGPUImpl->UpdateAll(pCopyHelper);                          // !!! USING GENERATED CODE !!!
 
@@ -108,8 +107,8 @@ void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
 
   VkDeviceMemory colorMem    = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {colorBufferLDR, colorBufferHDR});
 
-  pGPUImpl->SetVulkanInOutFor_Bloom(colorBufferHDR, 0,  // ==> 
-                                    colorBufferLDR, 0); // <==
+  //pGPUImpl->SetVulkanInOutFor_Bloom(colorBufferHDR, 0,  // ==> 
+  //                                  colorBufferLDR, 0); // <==
 
   pCopyHelper->UpdateBuffer(colorBufferHDR, 0, a_hdrData, w*h*sizeof(float)*4);
   
@@ -123,7 +122,8 @@ void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName)
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
     //vkCmdFillBuffer(commandBuffer, colorBufferLDR, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
-    pGPUImpl->BloomCmd(commandBuffer, w, h, nullptr, nullptr);         // !!! USING GENERATED CODE !!! 
+    //pGPUImpl->BloomCmd(commandBuffer, w, h, nullptr, nullptr);         // !!! USING GENERATED CODE !!! 
+   
     vkEndCommandBuffer(commandBuffer);  
     
     auto start = std::chrono::high_resolution_clock::now();

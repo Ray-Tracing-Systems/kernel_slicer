@@ -39,8 +39,10 @@ static std::vector<float> createGaussKernelWeights1D_HDRImage(int size, float a_
 class ToneMapping 
 {
 public:
-
+  
+  ToneMapping(){}
   ToneMapping(const int w, const int h);  
+  void SetSize(const int w, const int h);
 
   void Bloom (const int a_width, const int a_height, const Texture2D<float4>& a_texture2d, 
               unsigned int* outData1ui);
