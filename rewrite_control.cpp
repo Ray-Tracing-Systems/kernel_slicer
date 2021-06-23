@@ -21,6 +21,43 @@ bool kslicer::MainFunctionRewriter::VisitCXXMethodDecl(CXXMethodDecl* f)
   return true; // returning false aborts the traversal
 }
 
+struct NameFlagsPair
+{
+  std::string         name;
+  kslicer::TEX_ACCESS flags;
+};
+
+std::vector<NameFlagsPair> ListAccessedTextures(const std::vector<kslicer::ArgReferenceOnCall>& args, const kslicer::KernelInfo& kernel)
+{
+  std::vector<NameFlagsPair> accesedTextures;
+  accesedTextures.reserve(16);
+  for(size_t i=0;i<args.size();i++)
+  {
+    if(args[i].isTexture)
+    {
+      std::string argNameInKernel = kernel.args[i].name;
+      auto pFlags = kernel.texAccessInArgs.find(argNameInKernel);
+      NameFlagsPair tex;
+      tex.name  = args[i].varName;
+      tex.flags = pFlags->second;
+      accesedTextures.push_back(tex);
+    }
+  }
+  for(const auto& container : kernel.usedContainers)
+  {
+    if(container.second.isTexture)
+    {
+      auto pFlags = kernel.texAccessInMemb.find(container.second.name);
+      NameFlagsPair tex; 
+      tex.name  = container.second.name;
+      tex.flags = pFlags->second;
+      accesedTextures.push_back(tex);
+    }
+  }
+  return accesedTextures;
+}
+
+
 std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCallExpr* f)
 {
   const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
@@ -85,10 +122,27 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
         flagsVariableName += "N";
     }
     
+    auto accesedTextures = ListAccessedTextures(args, pKernelInfo->second);
+
     if(pKernel->second.isMaker)
       strOut << "nullptr;" << std::endl << "  ";
     if(pKernel->second.isIndirect)
       strOut << kernName.c_str() << "_UpdateIndirect();" << std::endl << "  ";
+    
+    if(accesedTextures.size() != 0)
+    {
+      strOut << "// TrackTextureAccess({";
+      for(size_t i=0;i < accesedTextures.size();i++)
+      {
+        strOut << "{" << accesedTextures[i].name << "," << "ACCESS" << "}";
+        if(i != accesedTextures.size()-1)
+          strOut << ", ";
+        else
+          strOut << "});";
+      }
+      strOut << std::endl << "  ";
+    }
+    
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
     if(m_pCodeInfo->NeedThreadFlags())
