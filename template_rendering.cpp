@@ -173,6 +173,67 @@ static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslic
   return data;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct DSTextureAccess
+{
+  std::string accessLayout;
+  std::string accessDSType;
+  std::string SamplerName;
+};
+
+typedef typename std::unordered_map<std::string, kslicer::TEX_ACCESS>::const_iterator FlagsPointerType;
+typedef typename std::unordered_map<std::string, std::string>::const_iterator         SamplerPointerType;
+
+DSTextureAccess ObtainDSTextureAccess(const kslicer::KernelInfo& kernel, FlagsPointerType pAccessFlags, SamplerPointerType pSampler, bool isConstAccess)
+{
+  DSTextureAccess result;
+  if(pAccessFlags != kernel.texAccessInArgs.end())
+  {
+    result.accessLayout = GetDSVulkanAccessLayout(pAccessFlags->second);
+    result.accessDSType = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+    result.SamplerName  = "VK_NULL_HANDLE";
+    if(pAccessFlags->second == kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE)
+    {
+      result.accessDSType = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+      result.SamplerName  = (pSampler == kernel.texAccessSampler.end()) ? "VK_NULL_HANDLE" : std::string("m_vdata.") + pSampler->second;
+    }
+  }
+  else if(isConstAccess)
+  {
+    result.accessLayout = GetDSVulkanAccessLayout(kslicer::TEX_ACCESS::TEX_ACCESS_READ);
+    result.accessDSType = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+    result.SamplerName  = "VK_NULL_HANDLE";
+  }
+  else
+  {
+    result.accessLayout = GetDSVulkanAccessLayout(kslicer::TEX_ACCESS::TEX_ACCESS_WRITE); // TODO: and read ?
+    result.accessDSType = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+    result.SamplerName  = "VK_NULL_HANDLE";
+  }
+
+  return result;
+}
+
+DSTextureAccess ObtainDSTextureAccessArg(const kslicer::KernelInfo& kernel, int argId, bool isConstAccess)
+{
+  std::string argNameInKernel = kernel.args[argId].name;
+  const auto pAccessFlags     = kernel.texAccessInArgs.find(argNameInKernel);
+  const auto pSampler         = kernel.texAccessSampler.find(argNameInKernel); 
+  return ObtainDSTextureAccess(kernel, pAccessFlags, pSampler, isConstAccess);
+}
+
+DSTextureAccess ObtainDSTextureAccessMemb(const kslicer::KernelInfo& kernel, const std::string& varName, bool isConstAccess)
+{
+  const auto pAccessFlags     = kernel.texAccessInMemb.find(varName);
+  const auto pSampler         = kernel.texAccessSampler.find(varName); 
+  return ObtainDSTextureAccess(kernel, pAccessFlags, pSampler, isConstAccess);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, const clang::CompilerInstance& compiler,
                                              const std::vector<MainFuncInfo>& a_methodsToGenerate, 
                                              const std::string& a_genIncude,
@@ -574,32 +635,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         arg["IsTexture"] = dsArgs.descriptorSetsInfo[j].isTexture;
         if(dsArgs.descriptorSetsInfo[j].isTexture)
         {
-          std::string argNameInKernel = pFoundKernel->second.args[j].name;
-          const auto pAccessFlags     = pFoundKernel->second.texAccessInArgs.find(argNameInKernel);
-          const auto pSampler         = pFoundKernel->second.texAccessSampler.find(argNameInKernel); 
-          if(pAccessFlags != pFoundKernel->second.texAccessInArgs.end())
-          {
-            arg["AccessLayout"] = GetDSVulkanAccessLayout(pAccessFlags->second);
-            arg["AccessDSType"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
-            arg["SamplerName"]  = "VK_NULL_HANDLE";
-            if(pAccessFlags->second == kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE)
-            {
-              arg["AccessDSType"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
-              arg["SamplerName"]  = (pSampler == pFoundKernel->second.texAccessSampler.end()) ? "VK_NULL_HANDLE" : std::string("m_vdata.") + pSampler->second;
-            }
-          }
-          else if(dsArgs.descriptorSetsInfo[j].isConst)
-          {
-            arg["AccessLayout"] = GetDSVulkanAccessLayout(kslicer::TEX_ACCESS::TEX_ACCESS_READ);
-            arg["AccessDSType"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
-            arg["SamplerName"]  = "VK_NULL_HANDLE";
-          }
-          else
-          {
-            arg["AccessLayout"] = GetDSVulkanAccessLayout(kslicer::TEX_ACCESS::TEX_ACCESS_WRITE); // TODO: and read ?
-            arg["AccessDSType"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
-            arg["SamplerName"]  = "VK_NULL_HANDLE";
-          }
+          auto texDSInfo = ObtainDSTextureAccessArg(pFoundKernel->second, j, dsArgs.descriptorSetsInfo[j].isConst);
+          arg["AccessLayout"] = texDSInfo.accessLayout;
+          arg["AccessDSType"] = texDSInfo.accessDSType;
+          arg["SamplerName"]  = texDSInfo.SamplerName;
         }
         local["Args"].push_back(arg);
         local["ArgNames"].push_back(dsArgs.descriptorSetsInfo[j].varName);
@@ -613,7 +652,15 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           json arg;
           arg["Id"]        = realId;
           arg["Name"]      = "m_vdata." + container.second.name;
-          arg["IsTexture"] = false;
+          arg["IsTexture"] = container.second.isTexture;
+          if(container.second.isTexture)
+          {
+            auto texDSInfo = ObtainDSTextureAccessMemb(pFoundKernel->second, container.second.name, container.second.isConst);
+            arg["AccessLayout"] = texDSInfo.accessLayout;
+            arg["AccessDSType"] = texDSInfo.accessDSType;
+            arg["SamplerName"]  = texDSInfo.SamplerName;
+          }
+
           local["Args"].push_back(arg);
           local["ArgNames"].push_back(container.second.name);
           realId++;
