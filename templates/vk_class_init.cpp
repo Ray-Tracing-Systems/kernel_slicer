@@ -581,6 +581,52 @@ VkSampler {{MainClassName}}_Generated::CreateSampler(const Sampler& a_sampler) /
   VK_CHECK_RESULT(vkCreateSampler(device, &samplerInfo, nullptr, &result));
   return result;
 }
+
+void {{MainClassName}}_Generated::TrackTextureAccess(const std::vector<TexAccessPair>& a_pairs, std::unordered_map<uint64_t, VkAccessFlags>& a_currImageFlags)
+{
+  if(a_pairs.size() == 0)
+    return;
+  
+  VkImageSubresourceRange rangeWholeImage = {};
+  rangeWholeImage.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+  rangeWholeImage.baseMipLevel   = 0;
+  rangeWholeImage.levelCount     = 1;
+  rangeWholeImage.baseArrayLayer = 0;
+  rangeWholeImage.layerCount     = 1;
+
+  std::vector<VkImageMemoryBarrier> barriers(a_pairs.size());
+  for(size_t i=0;i<a_pairs.size();i++)
+  {
+    VkImageMemoryBarrier& bar = barriers[i];
+    bar.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    bar.pNext               = nullptr;
+    bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    bar.image               = a_pairs[i].image;
+    bar.subresourceRange    = rangeWholeImage;
+
+    uint64_t imageHandle = uint64_t(a_pairs[i].image);
+    auto pState = a_currImageFlags.find(imageHandle);
+    if(pState == a_currImageFlags.end())
+    {
+      bar.srcAccessMask = 0;
+      bar.dstAccessMask = a_pairs[i].access;
+      a_currImageFlags[imageHandle] = a_pairs[i].access;
+      bar.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
+      bar.newLayout     = (bar.dstAccessMask == VK_ACCESS_SHADER_READ_BIT) VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ? : VK_IMAGE_LAYOUT_GENERAL;
+    }
+    else
+    {
+      bar.srcAccessMask = pState->second;
+      bar.dstAccessMask = a_pairs[i].access;
+      pState->second    = a_pairs[i].access;
+      bar.oldLayout     = (bar.srcAccessMask == VK_ACCESS_SHADER_READ_BIT) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ? : VK_IMAGE_LAYOUT_GENERAL;
+      bar.newLayout     = (bar.dstAccessMask == VK_ACCESS_SHADER_READ_BIT) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ? : VK_IMAGE_LAYOUT_GENERAL;
+    }
+  }
+
+  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,nullptr, 0,nullptr, uint32_t(barriers.size()),barriers.data());
+}
 {% endif %} {# /* length(TextureMembers) > 0 */ #}
 
 void {{MainClassName}}_Generated::AllocMemoryForInternalBuffers(const std::vector<VkBuffer>& a_buffers)

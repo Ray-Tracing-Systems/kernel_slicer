@@ -34,6 +34,7 @@ public:
   virtual void SetVulkanInOutFor_{{MainFunc.Name}}(
 ## for Arg in MainFunc.InOutVars
     {% if Arg.IsTexture %}
+    VkImage     {{Arg.Name}}Text,
     VkImageView {{Arg.Name}}View,
     {% else %}
     VkBuffer {{Arg.Name}}Buffer,
@@ -44,6 +45,7 @@ public:
   {
 ## for Arg in MainFunc.InOutVars
     {% if Arg.IsTexture %}
+    {{MainFunc.Name}}_local.{{Arg.Name}}Text   = {{Arg.Name}}Text;
     {{MainFunc.Name}}_local.{{Arg.Name}}View   = {{Arg.Name}}View;
     {% else %}
     {{MainFunc.Name}}_local.{{Arg.Name}}Buffer = {{Arg.Name}}Buffer;
@@ -118,6 +120,7 @@ protected:
 ## endfor
 ## for Arg in MainFunc.InOutVars
     {% if Arg.IsTexture %}
+    VkImage     {{Arg.Name}}Text = VK_NULL_HANDLE;
     VkImageView {{Arg.Name}}View = VK_NULL_HANDLE;
     {% else %}
     VkBuffer {{Arg.Name}}Buffer = VK_NULL_HANDLE;
@@ -148,6 +151,14 @@ protected:
   {% if length(TextureMembers) > 0 %}
   VkImage   CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage, VkImageView* a_pView = nullptr);
   VkSampler CreateSampler(const Sampler& a_sampler);
+  struct TexAccessPair
+  {
+    TexAccessPair() : image(VK_NULL_HANDLE), access(0) {}
+    TexAccessPair(VkImage a_image, VkAccessFlags a_access) : image(a_image), access(a_access) {}
+    VkImage image;
+    VkAccessFlags access;  
+  };
+  void TrackTextureAccess(const std::vector<TexAccessPair>& a_pairs, std::unordered_map<uint64_t, VkAccessFlags>& a_currImageFlags);
   {% endif %} {# /* length(TextureMembers) > 0 */ #}
   {% if length(DispatchHierarchies) > 0 %}
   {% for Hierarchy in DispatchHierarchies %}

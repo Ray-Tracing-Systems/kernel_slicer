@@ -813,7 +813,9 @@ namespace kslicer
 
   bool IsTexture(clang::QualType a_qt);
   void SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType);
-
+  std::string GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg);
+  std::string GetDSVulkanAccessLayout(TEX_ACCESS a_accessMask);
+  std::string GetDSVulkanAccessMask(TEX_ACCESS a_accessMask);
 };
 
 template <typename Cont, typename Pred>

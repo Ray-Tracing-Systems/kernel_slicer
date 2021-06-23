@@ -25,13 +25,15 @@ struct NameFlagsPair
 {
   std::string         name;
   kslicer::TEX_ACCESS flags;
+  uint32_t            argId = 0;
+  bool                isArg = false;
 };
 
 std::vector<NameFlagsPair> ListAccessedTextures(const std::vector<kslicer::ArgReferenceOnCall>& args, const kslicer::KernelInfo& kernel)
 {
   std::vector<NameFlagsPair> accesedTextures;
   accesedTextures.reserve(16);
-  for(size_t i=0;i<args.size();i++)
+  for(uint32_t i=0;i<uint32_t(args.size());i++)
   {
     if(args[i].isTexture)
     {
@@ -40,6 +42,8 @@ std::vector<NameFlagsPair> ListAccessedTextures(const std::vector<kslicer::ArgRe
       NameFlagsPair tex;
       tex.name  = args[i].varName;
       tex.flags = pFlags->second;
+      tex.isArg = true;
+      tex.argId = i;
       accesedTextures.push_back(tex);
     }
   }
@@ -51,6 +55,7 @@ std::vector<NameFlagsPair> ListAccessedTextures(const std::vector<kslicer::ArgRe
       NameFlagsPair tex; 
       tex.name  = container.second.name;
       tex.flags = pFlags->second;
+      tex.isArg = false;
       accesedTextures.push_back(tex);
     }
   }
@@ -131,14 +136,34 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
     
     if(accesedTextures.size() != 0)
     {
-      strOut << "// TrackTextureAccess({";
-      for(size_t i=0;i < accesedTextures.size();i++)
+      strOut << "TrackTextureAccess({";
+      for(size_t i=0; i < accesedTextures.size();i++)
       {
-        strOut << "{" << accesedTextures[i].name << "," << "ACCESS" << "}";
+        std::string texObjName, accessFlags;
+        auto pFlagsMemb = pKernel->second.texAccessInMemb.find(accesedTextures[i].name); 
+        if(pFlagsMemb == pKernel->second.texAccessInMemb.end() && accesedTextures[i].isArg)
+        {
+          auto pData = m_pCodeInfo->allDataMembers.find(accesedTextures[i].name);
+          if(pData != m_pCodeInfo->allDataMembers.end())
+            texObjName  = "m_vdata." + accesedTextures[i].name + "Texture"; 
+          else
+            texObjName  = m_mainFuncName + "_local." + accesedTextures[i].name + "Text"; 
+
+          auto argName = pKernel->second.args[accesedTextures[i].argId].name;
+          auto pFlags  = pKernel->second.texAccessInArgs.find(argName); 
+          accessFlags  = kslicer::GetDSVulkanAccessMask(pFlags->second);
+        }
+        else
+        {
+          texObjName  = "m_vdata." + accesedTextures[i].name + "Texture"; 
+          accessFlags = kslicer::GetDSVulkanAccessMask(pFlagsMemb->second);
+        }
+
+        strOut << "{" << texObjName.c_str() << "," << accessFlags.c_str() << "}";
         if(i != accesedTextures.size()-1)
           strOut << ", ";
         else
-          strOut << "});";
+          strOut << "}, texAccessInfo);";
       }
       strOut << std::endl << "  ";
     }

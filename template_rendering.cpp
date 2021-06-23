@@ -54,7 +54,7 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
   return kernelDeclByName;
 }
 
-std::string GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg)
+std::string kslicer::GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg)
 {
   switch(a_arg.argType)
   {
@@ -76,7 +76,7 @@ std::string GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgRe
   };
 }
 
-std::string GetDSVulkanAccessLayout(kslicer::TEX_ACCESS a_accessMask)
+std::string kslicer::GetDSVulkanAccessLayout(kslicer::TEX_ACCESS a_accessMask)
 {
   switch(a_accessMask)
   {
@@ -89,6 +89,22 @@ std::string GetDSVulkanAccessLayout(kslicer::TEX_ACCESS a_accessMask)
 
     default:
     return "VK_IMAGE_LAYOUT_GENERAL";
+  }
+}
+
+std::string kslicer::GetDSVulkanAccessMask(kslicer::TEX_ACCESS a_accessMask)
+{
+  switch(a_accessMask)
+  {
+    case kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE:
+    case kslicer::TEX_ACCESS::TEX_ACCESS_READ:
+    return "VK_ACCESS_SHADER_READ_BIT";
+
+    case kslicer::TEX_ACCESS::TEX_ACCESS_WRITE:
+    return "VK_ACCESS_SHADER_WRITE_BIT";
+
+    default:
+    return "VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT";
   }
 }
 
@@ -191,7 +207,7 @@ DSTextureAccess ObtainDSTextureAccess(const kslicer::KernelInfo& kernel, FlagsPo
   DSTextureAccess result;
   if(pAccessFlags != kernel.texAccessInArgs.end())
   {
-    result.accessLayout = GetDSVulkanAccessLayout(pAccessFlags->second);
+    result.accessLayout = kslicer::GetDSVulkanAccessLayout(pAccessFlags->second);
     result.accessDSType = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
     result.SamplerName  = "VK_NULL_HANDLE";
     if(pAccessFlags->second == kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE)
@@ -202,13 +218,13 @@ DSTextureAccess ObtainDSTextureAccess(const kslicer::KernelInfo& kernel, FlagsPo
   }
   else if(isConstAccess)
   {
-    result.accessLayout = GetDSVulkanAccessLayout(kslicer::TEX_ACCESS::TEX_ACCESS_READ);
+    result.accessLayout = kslicer::GetDSVulkanAccessLayout(kslicer::TEX_ACCESS::TEX_ACCESS_READ);
     result.accessDSType = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
     result.SamplerName  = "VK_NULL_HANDLE";
   }
   else
   {
-    result.accessLayout = GetDSVulkanAccessLayout(kslicer::TEX_ACCESS::TEX_ACCESS_WRITE); // TODO: and read ?
+    result.accessLayout = kslicer::GetDSVulkanAccessLayout(kslicer::TEX_ACCESS::TEX_ACCESS_WRITE); // TODO: and read ?
     result.accessDSType = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
     result.SamplerName  = "VK_NULL_HANDLE";
   }
@@ -627,7 +643,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
                                 dsArgs.descriptorSetsInfo[j].varName == "this")) // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
           continue;
 
-        const std::string dsArgName = GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j]);
+        const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j]);
 
         json arg;
         arg["Id"]        = realId;
