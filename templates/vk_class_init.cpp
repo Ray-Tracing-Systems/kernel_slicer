@@ -645,8 +645,51 @@ void {{MainClassName}}_Generated::AllocMemoryForMemberBuffersAndImages(const std
     m_vdata.m_vecMem = vkfw::AllocateAndBindWithPadding(device, physicalDevice, a_buffers);
   else
     m_vdata.m_vecMem = VK_NULL_HANDLE;
+  
+  {% if length(ClassTextureVars) > 0 %}
+  std::vector<VkMemoryRequirements> reqs;     reqs.reserve({{length(ClassTextureVars)}});
+  std::vector<VkFormat>             formats;  formats.reserve({{length(ClassTextureVars)}});
+  std::vector<VkImageView*>         views;    views.reserve({{length(ClassTextureVars)}});
+  std::vector<VkImage>              textures; textures.reserve({{length(ClassTextureVars)}});
+  VkMemoryRequirements memoryRequirements;
 
+  {% for Var in ClassTextureVars %}
+  vkGetImageMemoryRequirements(device, m_vdata.{{Var.Name}}Texture, &memoryRequirements);
+  reqs.push_back(memoryRequirements);
+  formats.push_back({{Var.Format}});
+  views.push_back(&m_vdata.{{Var.Name}}View);
+  textures.push_back(m_vdata.{{Var.Name}}Texture);
+  
+  {% endfor %}
+  auto offsets  = vkfw::AssignMemOffsetsWithPadding(reqs);
+  auto memTotal = offsets[offsets.size() - 1];
+  VkDeviceMemory res;
+  VkMemoryAllocateInfo allocateInfo = {};
+  allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  allocateInfo.pNext           = nullptr;
+  allocateInfo.allocationSize  = memTotal;
+  allocateInfo.memoryTypeIndex = vk_utils::FindMemoryType(reqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice);
+  VK_CHECK_RESULT(vkAllocateMemory(device, &allocateInfo, NULL, &m_vdata.m_texMem));
+  for(size_t i=0;i<offsets.size();i++)
+  {
+    VK_CHECK_RESULT(vkBindImageMemory(device, textures[i], m_vdata.m_texMem, offsets[i]));
+    VkImageViewCreateInfo imageViewInfo = {};
+    imageViewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    imageViewInfo.flags                           = 0;
+    imageViewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+    imageViewInfo.format                          = formats[i];
+    imageViewInfo.components                      = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
+    imageViewInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageViewInfo.subresourceRange.baseMipLevel   = 0;
+    imageViewInfo.subresourceRange.baseArrayLayer = 0;
+    imageViewInfo.subresourceRange.layerCount     = 1;
+    imageViewInfo.subresourceRange.levelCount     = 1;
+    imageViewInfo.image                           = textures[i];     // The view will be based on the texture's image
+    VK_CHECK_RESULT(vkCreateImageView(device, &imageViewInfo, nullptr, views[i]));
+  }
+  {% else %}
   m_vdata.m_texMem = VK_NULL_HANDLE;
+  {% endif %}
 }
 
 void {{MainClassName}}_Generated::FreeMemoryForInternalBuffers()
