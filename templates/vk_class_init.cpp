@@ -581,7 +581,7 @@ VkSampler {{MainClassName}}_Generated::CreateSampler(const Sampler& a_sampler) /
   VK_CHECK_RESULT(vkCreateSampler(device, &samplerInfo, nullptr, &result));
   return result;
 }
-
+{% if 0 %}
 void {{MainClassName}}_Generated::TrackTextureAccess(const std::vector<TexAccessPair>& a_pairs, std::unordered_map<uint64_t, VkAccessFlags>& a_currImageFlags)
 {
   if(a_pairs.size() == 0)
@@ -627,6 +627,8 @@ void {{MainClassName}}_Generated::TrackTextureAccess(const std::vector<TexAccess
 
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0,nullptr, 0,nullptr, uint32_t(barriers.size()),barriers.data());
 }
+{% endif %} {# /* 0 */ #}
+
 {% endif %} {# /* length(TextureMembers) > 0 */ #}
 
 void {{MainClassName}}_Generated::AllocMemoryForInternalBuffers(const std::vector<VkBuffer>& a_buffers)

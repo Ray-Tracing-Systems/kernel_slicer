@@ -134,39 +134,39 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
     if(pKernel->second.isIndirect)
       strOut << kernName.c_str() << "_UpdateIndirect();" << std::endl << "  ";
     
-    if(accesedTextures.size() != 0)
-    {
-      strOut << "TrackTextureAccess({";
-      for(size_t i=0; i < accesedTextures.size();i++)
-      {
-        std::string texObjName, accessFlags;
-        auto pFlagsMemb = pKernel->second.texAccessInMemb.find(accesedTextures[i].name); 
-        if(pFlagsMemb == pKernel->second.texAccessInMemb.end() && accesedTextures[i].isArg)
-        {
-          auto pData = m_pCodeInfo->allDataMembers.find(accesedTextures[i].name);
-          if(pData != m_pCodeInfo->allDataMembers.end())
-            texObjName  = "m_vdata." + accesedTextures[i].name + "Texture"; 
-          else
-            texObjName  = m_mainFuncName + "_local." + accesedTextures[i].name + "Text"; 
-
-          auto argName = pKernel->second.args[accesedTextures[i].argId].name;
-          auto pFlags  = pKernel->second.texAccessInArgs.find(argName); 
-          accessFlags  = kslicer::GetDSVulkanAccessMask(pFlags->second);
-        }
-        else
-        {
-          texObjName  = "m_vdata." + accesedTextures[i].name + "Texture"; 
-          accessFlags = kslicer::GetDSVulkanAccessMask(pFlagsMemb->second);
-        }
-
-        strOut << "{" << texObjName.c_str() << "," << accessFlags.c_str() << "}";
-        if(i != accesedTextures.size()-1)
-          strOut << ", ";
-        else
-          strOut << "}, texAccessInfo);";
-      }
-      strOut << std::endl << "  ";
-    }
+    //if(accesedTextures.size() != 0)
+    //{
+    //  strOut << "TrackTextureAccess({";
+    //  for(size_t i=0; i < accesedTextures.size();i++)
+    //  {
+    //    std::string texObjName, accessFlags;
+    //    auto pFlagsMemb = pKernel->second.texAccessInMemb.find(accesedTextures[i].name); 
+    //    if(pFlagsMemb == pKernel->second.texAccessInMemb.end() && accesedTextures[i].isArg)
+    //    {
+    //      auto pData = m_pCodeInfo->allDataMembers.find(accesedTextures[i].name);
+    //      if(pData != m_pCodeInfo->allDataMembers.end())
+    //        texObjName  = "m_vdata." + accesedTextures[i].name + "Texture"; 
+    //      else
+    //        texObjName  = m_mainFuncName + "_local." + accesedTextures[i].name + "Text"; 
+    //
+    //      auto argName = pKernel->second.args[accesedTextures[i].argId].name;
+    //      auto pFlags  = pKernel->second.texAccessInArgs.find(argName); 
+    //      accessFlags  = kslicer::GetDSVulkanAccessMask(pFlags->second);
+    //    }
+    //    else
+    //    {
+    //      texObjName  = "m_vdata." + accesedTextures[i].name + "Texture"; 
+    //      accessFlags = kslicer::GetDSVulkanAccessMask(pFlagsMemb->second);
+    //    }
+    //
+    //    strOut << "{" << texObjName.c_str() << "," << accessFlags.c_str() << "}";
+    //    if(i != accesedTextures.size()-1)
+    //      strOut << ", ";
+    //    else
+    //      strOut << "}, texAccessInfo);";
+    //  }
+    //  strOut << std::endl << "  ";
+    //}
     
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
