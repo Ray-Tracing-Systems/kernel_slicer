@@ -19,9 +19,9 @@ template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_u
 
   switch (a_sampler.filter)
   {
-  case Sampler::Filter::MIN_MAG_MIP_POINT:
+  case Sampler::Filter::NEAREST:
     return m_data[pitch(baseTexel.x, baseTexel.y, stride)];
-  case Sampler::Filter::MIN_MAG_LINEAR_MIP_POINT:
+  case Sampler::Filter::LINEAR:
   {
     const int2 cornerTexel  = int2(baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
                                    baseTexel.y < m_height - 1 ? baseTexel.y + 1 : baseTexel.y);
@@ -62,12 +62,12 @@ template<> float4 Texture2D<uchar4>::sample(const Sampler& a_sampler, float2 a_u
 
   switch (a_sampler.filter)
   {
-  case Sampler::Filter::MIN_MAG_MIP_POINT:
+  case Sampler::Filter::NEAREST:
   {
     const uchar4 uData = m_data[pitch(baseTexel.x, baseTexel.y, stride)];
     return (1.0f/255.0f)*float4(uData.x, uData.y, uData.z, uData.w);
   }
-  case Sampler::Filter::MIN_MAG_LINEAR_MIP_POINT:
+  case Sampler::Filter::LINEAR:
   {
     const int2 cornerTexel  = make_int2(baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
                                         baseTexel.y < m_height - 1 ? baseTexel.y + 1 : baseTexel.y);
