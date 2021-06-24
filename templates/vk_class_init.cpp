@@ -398,7 +398,7 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
   {% endfor %}
 
   {% for Var in ClassTextureVars %}
-  m_vdata.{{Var.Name}}Texture = CreateTexture2D({{Var.Name}}.width(), {{Var.Name}}.height(), {{Var.Format}}, {{Var.Usage}}, &m_vdata.{{Var.Name}}View);
+  m_vdata.{{Var.Name}}Texture = CreateTexture2D({{Var.Name}}.width(), {{Var.Name}}.height(), {{Var.Format}}, {{Var.Usage}});
   memberTextures.push_back(m_vdata.{{Var.Name}}Texture);
   {% endfor %}
   {% for Sam in SamplerMembers %}
@@ -515,7 +515,7 @@ VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForArgsUBO(size_t a_si
 {% endif %}
 
 {% if length(TextureMembers) > 0 %}
-VkImage {{MainClassName}}_Generated::CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage, VkImageView* a_pView)
+VkImage {{MainClassName}}_Generated::CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage)
 {
   VkImage result = VK_NULL_HANDLE;
   VkImageCreateInfo imgCreateInfo = {};
@@ -533,27 +533,6 @@ VkImage {{MainClassName}}_Generated::CreateTexture2D(const int a_width, const in
   imgCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   imgCreateInfo.arrayLayers   = 1;
   VK_CHECK_RESULT(vkCreateImage(device, &imgCreateInfo, nullptr, &result));
-  
-  if(a_pView == nullptr)
-    return result;
-  
-  VkImageViewCreateInfo imageViewInfo = {};
-  imageViewInfo.sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-  imageViewInfo.flags      = 0;
-  imageViewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
-  imageViewInfo.format     = a_format;
-  imageViewInfo.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
-  // The subresource range describes the set of mip levels (and array layers) that can be accessed through this image view
-  // It's possible to create multiple image views for a single image referring to different (and/or overlapping) ranges of the image
-  imageViewInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-  imageViewInfo.subresourceRange.baseMipLevel   = 0;
-  imageViewInfo.subresourceRange.baseArrayLayer = 0;
-  imageViewInfo.subresourceRange.layerCount     = 1;
-  imageViewInfo.subresourceRange.levelCount     = 1;
-  // The view will be based on the texture's image
-  imageViewInfo.image = result;
-  VK_CHECK_RESULT(vkCreateImageView(device, &imageViewInfo, nullptr, a_pView));
-
   return result;
 }
 
@@ -670,7 +649,7 @@ void {{MainClassName}}_Generated::AllocMemoryForMemberBuffersAndImages(const std
   allocateInfo.allocationSize  = memTotal;
   allocateInfo.memoryTypeIndex = vk_utils::FindMemoryType(reqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice);
   VK_CHECK_RESULT(vkAllocateMemory(device, &allocateInfo, NULL, &m_vdata.m_texMem));
-  for(size_t i=0;i<offsets.size();i++)
+  for(size_t i=0;i<textures.size();i++)
   {
     VK_CHECK_RESULT(vkBindImageMemory(device, textures[i], m_vdata.m_texMem, offsets[i]));
     VkImageViewCreateInfo imageViewInfo = {};

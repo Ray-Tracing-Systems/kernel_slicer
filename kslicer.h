@@ -54,6 +54,8 @@ namespace kslicer
     bool isConst = false;
   };
 
+  bool  IsTextureContainer(const std::string& a_typeName); ///<! return true for all types of textures
+
   /**
   \brief for each method MainClass::kernel_XXX
   */
@@ -77,6 +79,7 @@ namespace kslicer
       std::string containerDataType;
 
       bool IsUser() const { return !isThreadID && !isLoopSize && !needFakeOffset && !isPointer && !isContainer; }
+      bool IsTexture() const { return isContainer && IsTextureContainer(containerType); }
     };
 
     struct LoopIter 
@@ -163,8 +166,6 @@ namespace kslicer
 
     ShaderFeatures shaderFeatures;
   };
-
-  bool  IsTextureContainer(const std::string& a_typeName); ///<! return for all types of textures
 
   /**
   \brief for each data member of MainClass

@@ -29,17 +29,20 @@ uint RealColorToUint32(float4 a_realColor, const float a_gamma)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-ToneMapping::ToneMapping(const int w, const int h): m_width(w), m_height(h), m_widthSmall(w/4), m_heightSmall(h/4)
+ToneMapping::ToneMapping(const int w, const int h): m_width(w), m_height(h)
 {
   // init weights for gaussian blur
   //
-  m_blurRadius    = 100;
-  m_filterWeights = createGaussKernelWeights1D_HDRImage(m_blurRadius*2 + 1, 1.25f);
   SetSize(w,h);
 }
 
 void ToneMapping::SetSize(const int w, const int h)
 {
+  m_blurRadius    = 100;
+  m_filterWeights = createGaussKernelWeights1D_HDRImage(m_blurRadius*2 + 1, 1.25f);
+  m_widthSmall    = w/4;
+  m_heightSmall   = h/4;
+
   m_brightPixels.resize(w, h);
   m_downsampledImage.resize(m_widthSmall, m_heightSmall);
   m_tempImage.resize(m_widthSmall, m_heightSmall);

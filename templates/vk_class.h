@@ -149,7 +149,7 @@ protected:
   } m_vdata;
 
   {% if length(TextureMembers) > 0 %}
-  VkImage   CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage, VkImageView* a_pView = nullptr);
+  VkImage   CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage);
   VkSampler CreateSampler(const Sampler& a_sampler);
   struct TexAccessPair
   {

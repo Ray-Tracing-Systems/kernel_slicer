@@ -466,7 +466,17 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         continue;
       
       json argData;
-      argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+      if(arg.IsTexture())
+      {
+        auto pAccessFlags = k.texAccessInArgs.find(arg.name);
+        if(pAccessFlags->second == TEX_ACCESS::TEX_ACCESS_SAMPLE)
+          argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+        else
+          argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+      }
+      else
+        argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+
       argData["Name"]  = arg.name;
       argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
       argData["Id"]    = actualSize;
@@ -477,7 +487,18 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(const auto& container : k.usedContainers) // TODO: add support fo textures (!!!)
     {
       json argData;
-      argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+
+      if(container.second.isTexture)
+      {
+        auto pAccessFlags = k.texAccessInMemb.find(container.second.name);
+        if(pAccessFlags->second == TEX_ACCESS::TEX_ACCESS_SAMPLE)
+          argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+        else
+          argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+      }
+      else
+        argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+
       argData["Name"]  = container.second.name;
       argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
       argData["Id"]    = actualSize;
