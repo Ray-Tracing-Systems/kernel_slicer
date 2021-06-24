@@ -42,7 +42,7 @@ add_executable(testapp
                       test_class_generated.cpp 
                       test_class_generated_ds.cpp 
                       test_class_generated_init.cpp                      
-                      texture2d.cpp                       
+                      ../LiteMath/texture2d.cpp                       
                       ../vkfw/vk_utils.cpp
                       ../vkfw/vk_copy.cpp
                       ../vkfw/vk_buffer.cpp

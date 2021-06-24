@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <memory>
-#include "../14_filter_bloom_textures/sampler.h"
+#include "sampler.h"
 
 ///////////////////////////////////////////////////////////////////////
 
@@ -39,37 +39,29 @@ protected:
   std::vector<Type> m_data;  
 };
 
-static inline float2 get_uv(const int x, const int y, const uint width, const uint height)
-{
-  const float u = (float)(x) / (float)(width);
-  const float v = (float)(y) / (float)(height);
-  return make_float2(u, v);
-}
-
-
-static inline unsigned int encodeNormal(float3 n)
-{
-  const int x = (int)(n.x*32767.0f);
-  const int y = (int)(n.y*32767.0f);
-
-  const unsigned int sign = (n.z >= 0) ? 0 : 1;
-  const unsigned int sx   = ((unsigned int)(x & 0xfffe) | sign);
-  const unsigned int sy   = ((unsigned int)(y & 0xffff) << 16);
-
-  return (sx | sy);
-}
-
-static inline float3 decodeNormal(unsigned int a_data)
-{  
-  const unsigned int a_enc_x = (a_data  & 0x0000FFFF);
-  const unsigned int a_enc_y = ((a_data & 0xFFFF0000) >> 16);
-  const float sign           = (a_enc_x & 0x0001) ? -1.0f : 1.0f;
-
-  const float x = ((short)(a_enc_x & 0xfffe))*(1.0f / 32767.0f);
-  const float y = ((short)(a_enc_y & 0xffff))*(1.0f / 32767.0f);
-  const float z = sign*sqrt(fmax(1.0f - x*x - y*y, 0.0f));
-
-  return make_float3(x, y, z);
-}
+//static inline unsigned int encodeNormal(float3 n)
+//{
+//  const int x = (int)(n.x*32767.0f);
+//  const int y = (int)(n.y*32767.0f);
+//
+//  const unsigned int sign = (n.z >= 0) ? 0 : 1;
+//  const unsigned int sx   = ((unsigned int)(x & 0xfffe) | sign);
+//  const unsigned int sy   = ((unsigned int)(y & 0xffff) << 16);
+//
+//  return (sx | sy);
+//}
+//
+//static inline float3 decodeNormal(unsigned int a_data)
+//{  
+//  const unsigned int a_enc_x = (a_data  & 0x0000FFFF);
+//  const unsigned int a_enc_y = ((a_data & 0xFFFF0000) >> 16);
+//  const float sign           = (a_enc_x & 0x0001) ? -1.0f : 1.0f;
+//
+//  const float x = ((short)(a_enc_x & 0xfffe))*(1.0f / 32767.0f);
+//  const float y = ((short)(a_enc_y & 0xffff))*(1.0f / 32767.0f);
+//  const float z = sign*sqrt(fmax(1.0f - x*x - y*y, 0.0f));
+//
+//  return make_float3(x, y, z);
+//}
 
 #endif

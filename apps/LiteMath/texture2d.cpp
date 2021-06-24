@@ -1,5 +1,8 @@
 #include "texture2d.h"
 
+
+inline uint pitch(uint x, uint y, uint pitch) { return y * pitch + x; }  
+
 ///////////////////////////////////////////////////////////////////////
 
 template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_uv) const

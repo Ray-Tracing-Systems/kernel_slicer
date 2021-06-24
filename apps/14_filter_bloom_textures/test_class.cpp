@@ -4,14 +4,23 @@
 #include "sampler.h"
 #include <cassert>
 
-void SimpleCompressColor(float4* color)
+inline uint pitch(uint x, uint y, uint pitch) { return y * pitch + x; } 
+
+inline float2 get_uv(const int x, const int y, const uint width, const uint height)
+{
+  const float u = (float)(x) / (float)(width);
+  const float v = (float)(y) / (float)(height);
+  return make_float2(u, v);
+}
+
+inline void SimpleCompressColor(float4* color)
 {
   color->x /= (1.0F + color->x);
   color->y /= (1.0F + color->y);
   color->z /= (1.0F + color->z);
 }
 
-uint RealColorToUint32(float4 a_realColor, const float a_gamma)
+inline uint RealColorToUint32(float4 a_realColor, const float a_gamma)
 {
   float  r = pow(clamp(a_realColor.x, 0.0F, 1.0F), a_gamma) * 255.0f;
   float  g = pow(clamp(a_realColor.y, 0.0F, 1.0F), a_gamma) * 255.0f;
@@ -73,7 +82,6 @@ void ToneMapping::Bloom(const int a_width, const int a_height, const Texture2D<f
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 void ToneMapping::kernel2D_ExtractBrightPixels(const int a_width, const int a_height, const Texture2D<float4>& a_texture2d, Texture2D<float4>& a_brightPixels)
 {  

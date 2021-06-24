@@ -33,6 +33,4 @@ struct Sampler {
 
 };
 
-inline uint pitch(uint x, uint y, uint pitch) { return y * pitch + x; }  
-
 #endif
