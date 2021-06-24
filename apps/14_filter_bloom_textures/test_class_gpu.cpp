@@ -169,11 +169,16 @@ void tone_mapping_gpu(int w, int h, const float* a_hdrData, const char* a_outNam
    
     vkEndCommandBuffer(commandBuffer);  
     
-    auto start = std::chrono::high_resolution_clock::now();
-    vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-    std::cout << ms << " ms for command buffer execution " << std::endl;
+    float minTime = 1.0e20f;
+    for(int i=0;i<10;i++)
+    {
+      auto start = std::chrono::high_resolution_clock::now();
+      vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
+      auto stop = std::chrono::high_resolution_clock::now();
+      auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+      minTime   = std::min(minTime, ms);
+    }
+    std::cout << minTime << " ms for command buffer execution " << std::endl;
 
     std::vector<unsigned int> pixels(w*h);
     pCopyHelper->ReadBuffer(colorBufferLDR, 0, pixels.data(), pixels.size()*sizeof(unsigned int));

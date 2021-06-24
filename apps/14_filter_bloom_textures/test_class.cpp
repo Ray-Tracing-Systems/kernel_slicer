@@ -124,9 +124,8 @@ void ToneMapping::kernel2D_BlurX(const int a_width, const int a_height,
   for(int tidY = 0; tidY < a_height; tidY++)
   {
     for(int tidX = 0; tidX < a_width; tidX++)
-    {
-      const float2 uv1  = get_uv(tidX, tidY, a_width, a_height);      
-      float4       summ = m_filterWeights[m_blurRadius] * a_texture2d.sample(m_sampler, uv1);
+    {    
+      float4 summ = m_filterWeights[m_blurRadius] * a_texture2d[int2(tidX,tidY)];
      
       for (int wid = 1; wid < m_blurRadius; wid++) //  <--- * --->
       {
@@ -136,10 +135,8 @@ void ToneMapping::kernel2D_BlurX(const int a_width, const int a_height,
         if (left  < 0)      left  = 0;
         if (right >= a_width) right = int(a_width) - 1;
     
-        const float2 uv2 = get_uv(left,  tidY, a_width, a_height);
-        const float2 uv3 = get_uv(right, tidY, a_width, a_height);
-        float4 p0 = m_filterWeights[wid + m_blurRadius] * a_texture2d.sample(m_sampler, uv2);
-        float4 p1 = m_filterWeights[wid + m_blurRadius] * a_texture2d.sample(m_sampler, uv3);
+        float4 p0 = m_filterWeights[wid + m_blurRadius] * a_texture2d[int2(left, tidY)]; 
+        float4 p1 = m_filterWeights[wid + m_blurRadius] * a_texture2d[int2(right, tidY)]; 
 
         summ += (p0 + p1);
       }
@@ -159,8 +156,7 @@ void ToneMapping::kernel2D_BlurY(const int a_width, const int a_height,
   {
     for(int tidX = 0; tidX < a_width; tidX++)
     {
-      const float2 uv1 = get_uv(tidX, tidY, a_width, a_height);
-      float4 summ      = m_filterWeights[m_blurRadius]*a_texture2d.sample(m_sampler, uv1);
+      float4 summ = m_filterWeights[m_blurRadius]*a_texture2d[int2(tidX,tidY)];
      
       for (int wid = 1; wid < m_blurRadius; wid++) //  <--- * --->
       {
@@ -172,8 +168,8 @@ void ToneMapping::kernel2D_BlurY(const int a_width, const int a_height,
     
         const float2 uv2 = get_uv(tidX, left,  a_width, a_height);
         const float2 uv3 = get_uv(tidX, right, a_width, a_height);
-        float4 p0 = m_filterWeights[wid + m_blurRadius] * a_texture2d.sample(m_sampler, uv2);
-        float4 p1 = m_filterWeights[wid + m_blurRadius] * a_texture2d.sample(m_sampler, uv3);
+        float4 p0 = m_filterWeights[wid + m_blurRadius] * a_texture2d[int2(tidX, left)]; 
+        float4 p1 = m_filterWeights[wid + m_blurRadius] * a_texture2d[int2(tidX, right)]; 
         summ += (p0 + p1);
       }
     
@@ -194,7 +190,7 @@ void ToneMapping::kernel2D_MixAndToneMap(const int a_width, const int a_height, 
     {
       const float2 uv         = get_uv(tidX, tidY, a_width, a_height);
       const float4 bloomColor = m_downsampledImage.sample(m_sampler, uv);
-      float4       colorSumm  = bloomColor + a_texture2d.sample(m_sampler, uv);
+      float4       colorSumm  = bloomColor + a_texture2d[int2(tidX, tidY)];
       
       SimpleCompressColor(&colorSumm);
     
