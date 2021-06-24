@@ -144,7 +144,6 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     {% endif %} {#/*  DescriptorSet.IsVirtual */#}
     {% endif %} {#/* not DescriptorSet.IsServiceCall */#}
     {% if UseSeparateUBO %} 
-    
     const size_t uboId = descriptorBufferInfo.size()-1;
     descriptorBufferInfo[uboId]        = VkDescriptorBufferInfo{};
     descriptorBufferInfo[uboId].buffer = m_uboArgsBuffer;
@@ -160,8 +159,8 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     writeDescriptorSet[uboId].pBufferInfo      = &descriptorBufferInfo[uboId];
     writeDescriptorSet[uboId].pImageInfo       = nullptr;
     writeDescriptorSet[uboId].pTexelBufferView = nullptr;
+    
     {% endif %}
-   
     vkUpdateDescriptorSets(device, uint32_t(writeDescriptorSet.size()), writeDescriptorSet.data(), 0, NULL);
   }
 ## endfor

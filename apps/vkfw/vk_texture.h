@@ -21,6 +21,7 @@ namespace vkfw
     bool     filterable;
     bool     renderable;
     bool     transferable;
+    bool     loadstore = false;
   };
 
   ImageParameters SimpleTextureParameters(VkFormat a_format, uint32_t a_width, uint32_t a_height);

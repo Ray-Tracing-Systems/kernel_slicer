@@ -76,21 +76,6 @@ std::string kslicer::GetDSArgName(const std::string& a_mainFuncName, const kslic
   };
 }
 
-std::string kslicer::GetDSVulkanAccessLayout(kslicer::TEX_ACCESS a_accessMask)
-{
-  switch(a_accessMask)
-  {
-    case kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE:
-    case kslicer::TEX_ACCESS::TEX_ACCESS_READ:
-    return "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
-
-    case kslicer::TEX_ACCESS::TEX_ACCESS_WRITE:
-    return "VK_IMAGE_LAYOUT_GENERAL";
-
-    default:
-    return "VK_IMAGE_LAYOUT_GENERAL";
-  }
-}
 
 std::string kslicer::GetDSVulkanAccessMask(kslicer::TEX_ACCESS a_accessMask)
 {
@@ -207,7 +192,7 @@ DSTextureAccess ObtainDSTextureAccess(const kslicer::KernelInfo& kernel, FlagsPo
   DSTextureAccess result;
   if(pAccessFlags != kernel.texAccessInArgs.end())
   {
-    result.accessLayout = kslicer::GetDSVulkanAccessLayout(pAccessFlags->second);
+    result.accessLayout = "VK_IMAGE_LAYOUT_GENERAL";
     result.accessDSType = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
     result.SamplerName  = "VK_NULL_HANDLE";
     if(pAccessFlags->second == kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE)
@@ -218,13 +203,13 @@ DSTextureAccess ObtainDSTextureAccess(const kslicer::KernelInfo& kernel, FlagsPo
   }
   else if(isConstAccess)
   {
-    result.accessLayout = kslicer::GetDSVulkanAccessLayout(kslicer::TEX_ACCESS::TEX_ACCESS_READ);
+    result.accessLayout = "VK_IMAGE_LAYOUT_GENERAL";
     result.accessDSType = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
     result.SamplerName  = "VK_NULL_HANDLE";
   }
   else
   {
-    result.accessLayout = kslicer::GetDSVulkanAccessLayout(kslicer::TEX_ACCESS::TEX_ACCESS_WRITE); // TODO: and read ?
+    result.accessLayout = "VK_IMAGE_LAYOUT_GENERAL";
     result.accessDSType = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
     result.SamplerName  = "VK_NULL_HANDLE";
   }

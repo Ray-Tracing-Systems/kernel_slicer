@@ -117,6 +117,7 @@ void tone_mapping_gpu(int w, int h, const float* a_hdrData, const char* a_outNam
   parameters.filterable   = true;
   parameters.renderable   = false;
   parameters.transferable = true;
+  parameters.loadstore    = true;
   auto inputTex  = std::make_shared<vkfw::SimpleTexture2D>();
   auto memReqTex = inputTex->CreateImage(device, parameters);
 
@@ -144,7 +145,7 @@ void tone_mapping_gpu(int w, int h, const float* a_hdrData, const char* a_outNam
     if (vkBeginCommandBuffer(cmdBuff, &beginInfo) != VK_SUCCESS)
       throw std::runtime_error("[mip gen]: failed to begin command buffer!");
 
-    inputTex->ChangeLayoutCmd(cmdBuff, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);  // --> put inputTex in shader_read layout
+    inputTex->ChangeLayoutCmd(cmdBuff, VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);  // --> put inputTex in shader_read layout
     
     vkEndCommandBuffer(cmdBuff);
     vk_utils::ExecuteCommandBufferNow(cmdBuff, transferQueue, device);
@@ -152,12 +153,7 @@ void tone_mapping_gpu(int w, int h, const float* a_hdrData, const char* a_outNam
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////// \\\ end of create input texture
 
-  //pGPUImpl->SetVulkanInOutFor_Bloom(colorBufferHDR, 0,  // ==> 
-  //                                  colorBufferLDR, 0); // <==
-
-  
-  //  pCopyHelper->UpdateBuffer(colorBufferHDR, 0, a_hdrData, w*h*sizeof(float)*4);
-
+  pGPUImpl->SetVulkanInOutFor_Bloom(inputTex->Image(), inputTex->View(), colorBufferLDR, 0);
   
   // now compute some thing useful
   //
@@ -169,7 +165,7 @@ void tone_mapping_gpu(int w, int h, const float* a_hdrData, const char* a_outNam
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
     //vkCmdFillBuffer(commandBuffer, colorBufferLDR, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
-    //pGPUImpl->BloomCmd(commandBuffer, w, h, nullptr, nullptr);         // !!! USING GENERATED CODE !!! 
+    pGPUImpl->BloomCmd(commandBuffer, w, h, Texture2D<float4>(), nullptr);         // !!! USING GENERATED CODE !!! 
    
     vkEndCommandBuffer(commandBuffer);  
     
@@ -179,30 +175,9 @@ void tone_mapping_gpu(int w, int h, const float* a_hdrData, const char* a_outNam
     auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
     std::cout << ms << " ms for command buffer execution " << std::endl;
 
-    //std::vector<unsigned int> pixels(w*h);
-    //pCopyHelper->ReadBuffer(colorBufferLDR, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
-    //SaveBMP(a_outName, pixels.data(), w, h);
-
-
-    //// transfer texture to transfer src layout
-    //{
-    //  VkCommandBuffer cmdBuff = pCopyHelper->CmdBuffer();
-    //  vkResetCommandBuffer(cmdBuff, 0);
-    //  VkCommandBufferBeginInfo beginInfo = {};
-    //  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    //  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-    //  if (vkBeginCommandBuffer(cmdBuff, &beginInfo) != VK_SUCCESS)
-    //    throw std::runtime_error("[mip gen]: failed to begin command buffer!");
-    //
-    //  inputTex->ChangeLayoutCmd(cmdBuff, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT);  // --> put inputTex in shader_read layout
-    //  
-    //  vkEndCommandBuffer(cmdBuff);
-    //  vk_utils::ExecuteCommandBufferNow(cmdBuff, transferQueue, device);
-    //
-    //  std::vector<float4> testDataCPU(2*h);
-    //  pCopyHelper->ReadImage();
-    //  SaveTestImage(testDataCPU.data(), w, h);
-    //}
+    std::vector<unsigned int> pixels(w*h);
+    pCopyHelper->ReadBuffer(colorBufferLDR, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
+    SaveBMP(a_outName, pixels.data(), w, h);
 
     std::cout << std::endl;
   }

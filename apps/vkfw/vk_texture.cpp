@@ -36,6 +36,8 @@ static VkImageUsageFlags GetTextureUsage(const vkfw::ImageParameters& a_params)
     const auto attachmentFlags = isDepthTexture ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     usage |= attachmentFlags;
   }
+  if(a_params.loadstore)
+    usage |= VK_IMAGE_USAGE_STORAGE_BIT;
   return usage;
 }
 
