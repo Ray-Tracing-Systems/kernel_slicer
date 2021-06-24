@@ -355,7 +355,32 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     {
       json local;
       local["Name"]   = v.name;
-      local["Format"] = "VK_FORMAT_R32G32B32A32_SFLOAT";                                                             // TODO: inference format from data type
+      local["Format"] = "VK_FORMAT_R32G32B32A32_SFLOAT"; // TODO: inference format from data type
+      local["Usage"]      = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT";
+      local["NeedUpdate"] = false;
+
+      if(v.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE)
+      {
+        local["Usage"]      = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT";
+        local["NeedUpdate"] = true;
+      }
+      else if(v.tmask == TEX_ACCESS::TEX_ACCESS_READ)
+      {
+        local["Usage"]      = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT";
+        local["NeedUpdate"] = true;
+      }
+      else if( int(v.tmask) == (int(TEX_ACCESS::TEX_ACCESS_READ) | int(TEX_ACCESS::TEX_ACCESS_SAMPLE)))
+      {
+        local["Usage"]      = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT";
+        local["NeedUpdate"] = true;
+      }
+      else if( int(v.tmask) == (int(TEX_ACCESS::TEX_ACCESS_READ)   | int(TEX_ACCESS::TEX_ACCESS_WRITE)) || 
+               int(v.tmask) == (int(TEX_ACCESS::TEX_ACCESS_SAMPLE) | int(TEX_ACCESS::TEX_ACCESS_WRITE)))
+      {
+        local["Usage"]      = "VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT";
+        local["NeedUpdate"] = false;
+      }
+
       local["Usage"]  = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT"; // TODO: inference usage (!!!)
       data["ClassTextureVars"].push_back(local);     
     }

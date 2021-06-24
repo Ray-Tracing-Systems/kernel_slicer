@@ -21,6 +21,9 @@ namespace vkfw
     virtual void ReadBuffer  (VkBuffer a_src, size_t a_srcOffset,       void* a_dst, size_t a_size) {};      // optional
     virtual void UpdateImage (VkImage a_image, const void* a_src, int a_width, int a_height, int a_bpp) {};  // mandatory if ICopyEngine devivative object used for textures
 
+    virtual VkQueue         TransferQueue() const { return VK_NULL_HANDLE; }
+    virtual VkCommandBuffer CmdBuffer()     const { return VK_NULL_HANDLE; }
+
   protected:
     ICopyEngine(const ICopyEngine& rhs) {}
     ICopyEngine& operator=(const ICopyEngine& rhs) { return *this; }    
@@ -42,7 +45,8 @@ namespace vkfw
     virtual void UpdateImage (VkImage a_image, const void* a_src, int a_width, int a_height, int a_bpp);
     //virtual void ReadImage (VkImage a_image, const void* a_src, int a_width, int a_height, int a_bpp); // TODO: implement this in future
 
-    VkCommandBuffer CmdBuffer() { return cmdBuff; }
+    VkQueue  TransferQueue() const override { return queue; }
+    VkCommandBuffer CmdBuffer() const override { return cmdBuff; }
 
   protected:
 
@@ -67,6 +71,10 @@ namespace vkfw
     ~PinPongCopyHelper();
 
     void UpdateBuffer(VkBuffer a_dst, size_t a_dstOffset, const void* a_src, size_t a_size) override;
+    
+    VkQueue  TransferQueue() const override { return queue; }
+    VkCommandBuffer CmdBuffer() const override { return cmdBuff; }
+
 
   protected:
 
@@ -89,6 +97,9 @@ namespace vkfw
     ~ComputeCopyHelper();
 
     void ReadBuffer(VkBuffer a_src, size_t a_srcOffset, void* a_dst, size_t a_size) override;
+    
+    VkQueue  TransferQueue() const override { return queue; }
+    VkCommandBuffer CmdBuffer() const override { return cmdBuff; }
 
   private:
     

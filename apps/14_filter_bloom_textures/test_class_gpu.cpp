@@ -95,7 +95,7 @@ void tone_mapping_gpu(int w, int h, const float* a_hdrData, const char* a_outNam
 
   auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 64*1024*1024);
 
-  auto pGPUImpl = std::make_shared<ToneMapping_Generated>();   // !!! USING GENERATED CODE !!! 
+  auto pGPUImpl = std::make_shared<ToneMapping_Generated>(); // !!! USING GENERATED CODE !!! 
   pGPUImpl->InitVulkanObjects(device, physicalDevice, w*h);  // !!! USING GENERATED CODE !!!
   pGPUImpl->SetSize(w, h);                                   // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
   pGPUImpl->InitMemberBuffers();                             // !!! USING GENERATED CODE !!!

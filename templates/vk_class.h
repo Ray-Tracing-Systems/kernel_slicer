@@ -64,6 +64,7 @@ public:
   {
     UpdatePlainMembers(a_pCopyEngine);
     UpdateVectorMembers(a_pCopyEngine);
+    UpdateTextureMembers(a_pCopyEngine);
   }
 
 ## for MainFunc in MainFunctions  
@@ -100,6 +101,7 @@ protected:
 
   virtual void UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
+  virtual void UpdateTextureMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
 
   virtual void AllocMemoryForInternalBuffers(const std::vector<VkBuffer>& a_buffers);
   virtual void AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_image);

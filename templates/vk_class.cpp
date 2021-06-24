@@ -50,6 +50,56 @@ void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vkfw::ICop
 ## endfor
 }
 
+void {{MainClassName}}_Generated::UpdateTextureMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
+{ 
+  {% if length(ClassTextureVars) > 0 %}
+  {% for Var in ClassTextureVars %}
+  {% if Var.NeedUpdate %}
+  a_pCopyEngine->UpdateImage(m_vdata.{{Var.Name}}Texture, {{Var.Name}}.getRawData(), {{Var.Name}}.width(), {{Var.Name}}.height(), {{Var.Name}}.bpp()); 
+  {% endif %}
+  {% endfor %}
+  
+  std::array<VkImageMemoryBarrier, {{length(ClassTextureVars)}}> barriers;
+
+  {% for Var in ClassTextureVars %}
+  barriers[{{loop.index}}].sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  barriers[{{loop.index}}].pNext               = nullptr;
+  barriers[{{loop.index}}].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barriers[{{loop.index}}].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barriers[{{loop.index}}].srcAccessMask       = 0;                                        
+  barriers[{{loop.index}}].dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;       
+  barriers[{{loop.index}}].image               = m_vdata.{{Var.Name}}Texture;
+  barriers[{{loop.index}}].subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+  barriers[{{loop.index}}].subresourceRange.baseMipLevel   = 0;
+  barriers[{{loop.index}}].subresourceRange.levelCount     = 1;
+  barriers[{{loop.index}}].subresourceRange.baseArrayLayer = 0;
+  barriers[{{loop.index}}].subresourceRange.layerCount     = 1;
+  {% if Var.NeedUpdate %}
+  barriers[{{loop.index}}].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  barriers[{{loop.index}}].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  {% else %}
+  barriers[{{loop.index}}].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  barriers[{{loop.index}}].newLayout = VK_IMAGE_LAYOUT_GENERAL;
+  {% endif %}
+
+  {% endfor %}
+  
+  VkCommandBuffer cmdBuff       = a_pCopyEngine->CmdBuffer();
+  VkQueue         transferQueue = a_pCopyEngine->TransferQueue();
+
+  vkResetCommandBuffer(cmdBuff, 0);
+  VkCommandBufferBeginInfo beginInfo = {};
+  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+  if (vkBeginCommandBuffer(cmdBuff, &beginInfo) != VK_SUCCESS)
+    throw std::runtime_error("{{MainClassName}}_Generated::UpdateTextureMembers: failed to begin command buffer!");
+  vkCmdPipelineBarrier(cmdBuff,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,0,nullptr,0,nullptr,uint32_t(barriers.size()),barriers.data());
+  vkEndCommandBuffer(cmdBuff);
+  
+  vk_utils::ExecuteCommandBufferNow(cmdBuff, transferQueue, device);
+  {% endif %}
+}
+
 ## for Kernel in Kernels
 {% if Kernel.IsIndirect %}
 void {{MainClassName}}_Generated::{{Kernel.Name}}_UpdateIndirect()
