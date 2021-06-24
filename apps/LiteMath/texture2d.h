@@ -3,10 +3,8 @@
 
 #include <vector>
 #include <memory>
+#include "aligned_alloc.h"
 #include "sampler.h"
-
-///////////////////////////////////////////////////////////////////////
-
 
 template<typename Type>
 struct Texture2D
@@ -36,7 +34,7 @@ protected:
 
   unsigned int m_width;
   unsigned int m_height;
-  std::vector<Type> m_data;  
+  cvex::vector<Type> m_data;  
 };
 
 //static inline unsigned int encodeNormal(float3 n)

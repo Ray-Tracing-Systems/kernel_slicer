@@ -1,6 +1,5 @@
 #include "texture2d.h"
 
-
 inline uint pitch(uint x, uint y, uint pitch) { return y * pitch + x; }  
 
 ///////////////////////////////////////////////////////////////////////
@@ -22,8 +21,6 @@ template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_u
 
   switch (a_sampler.filter)
   {
-  case Sampler::Filter::NEAREST:
-    return m_data[pitch(baseTexel.x, baseTexel.y, stride)];
   case Sampler::Filter::LINEAR:
   {
     const int2 cornerTexel  = int2(baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
@@ -40,9 +37,12 @@ template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_u
 
     return lerp(line1Color, line2Color, lerpCoefs.y);
   }     
+  case Sampler::Filter::NEAREST:
   default:
-    fprintf(stderr, "Unsupported filter is used.");
-    break;
+  return m_data[pitch(baseTexel.x, baseTexel.y, stride)];
+  //default:
+  //  fprintf(stderr, "Unsupported filter is used.");
+  //  break;
   }
 
   return make_float4(0.0F, 0.0F, 0.0F, 0.0F);
@@ -65,11 +65,7 @@ template<> float4 Texture2D<uchar4>::sample(const Sampler& a_sampler, float2 a_u
 
   switch (a_sampler.filter)
   {
-  case Sampler::Filter::NEAREST:
-  {
-    const uchar4 uData = m_data[pitch(baseTexel.x, baseTexel.y, stride)];
-    return (1.0f/255.0f)*float4(uData.x, uData.y, uData.z, uData.w);
-  }
+  
   case Sampler::Filter::LINEAR:
   {
     const int2 cornerTexel  = make_int2(baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
@@ -88,15 +84,20 @@ template<> float4 Texture2D<uchar4>::sample(const Sampler& a_sampler, float2 a_u
 
     return lerp(line1Color, line2Color, lerpCoefs.y);
   }     
+  case Sampler::Filter::NEAREST:
   default:
-    fprintf(stderr, "Unsupported filter is used.");
-    break;
+  {
+    const uchar4 uData = m_data[pitch(baseTexel.x, baseTexel.y, stride)];
+    return (1.0f/255.0f)*float4(uData.x, uData.y, uData.z, uData.w);
+  }
+
+  //default:
+  //  fprintf(stderr, "Unsupported filter is used.");
+  //  break;
   }
 
   return make_float4(0.0F, 0.0F, 0.0F, 0.0F);
 }
-
-
 
 template<typename Type>
 float2 Texture2D<Type>::process_coord(const Sampler::AddressMode mode, const float2 coord, bool* use_border_color) const
