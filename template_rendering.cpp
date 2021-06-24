@@ -232,6 +232,96 @@ DSTextureAccess ObtainDSTextureAccessMemb(const kslicer::KernelInfo& kernel, con
   return ObtainDSTextureAccess(kernel, pAccessFlags, pSampler, isConstAccess);
 }
 
+
+std::string kslicer::InferenceVulkanTextureFormatFromTypeName(const std::string& a_typeName, bool a_useHalFloat) // TODO: OMG, please make this with hash tables
+{
+  if(a_typeName == "uint" || a_typeName == "unsigned int" || a_typeName == "uint32_t")
+    return "VK_FORMAT_R32_UINT";
+  else if(a_typeName == "ushort " || a_typeName == "unsigned short" || a_typeName == "uint16_t")
+    return "VK_FORMAT_R16_UNORM"; // assume sample floats in [0,1]
+  else if(a_typeName == "uchar " || a_typeName == "unsigned char" || a_typeName == "uint8_t")
+    return "VK_FORMAT_R8_UNORM";  // assume sample floats in [0,1]
+  else if(a_typeName == "int" || a_typeName == "int" || a_typeName == "int32_t")
+    return "VK_FORMAT_R32_SINT";
+  else if(a_typeName == "short"|| a_typeName == "int16_t")
+    return "VK_FORMAT_R16_SNORM"; // assume sample floats in [-1,1]
+  else if(a_typeName == "char " || a_typeName == "int8_t")
+    return "VK_FORMAT_R8_SNORM";  // assume sample floats in [-1,1]
+  
+  else if(a_typeName == "uint2" || a_typeName == "uvec2")
+    return "VK_FORMAT_R32G32_UINT";
+  else if(a_typeName == "ushort2")
+    return "VK_FORMAT_R16G16_UNORM";
+  else if(a_typeName == "uchar2")
+    return "VK_FORMAT_R8G8_UNORM";
+  else if(a_typeName == "int2" || a_typeName == "ivec2")
+    return "VK_FORMAT_R32G32_SINT";
+  else if(a_typeName == "short2")
+    return "VK_FORMAT_R16G16_SNORM";
+  else if(a_typeName == "char2")
+    return "VK_FORMAT_R8G8_SNORM";
+  
+  else if(a_typeName == "uint3" || a_typeName == "uvec3")
+    return "VK_FORMAT_R32G32B32_UINT";
+  else if(a_typeName == "ushort3")
+    return "VK_FORMAT_R16G16B16_UNORM";
+  else if(a_typeName == "uchar3")
+    return "VK_FORMAT_R8G8B8_UNORM";
+  else if(a_typeName == "int3" || a_typeName == "ivec3")
+    return "VK_FORMAT_R32G32B32_SINT";
+  else if(a_typeName == "short3")
+    return "VK_FORMAT_R16G16B16_SNORM";
+  else if(a_typeName == "char3")
+    return "VK_FORMAT_R8G8B8_SNORM";
+  
+  else if(a_typeName == "uint4" || a_typeName == "uvec4")
+    return "VK_FORMAT_R32G32B32A32_UINT";
+  else if(a_typeName == "ushort4")
+    return "VK_FORMAT_R16G16B16A16_UNORM";
+  else if(a_typeName == "uchar4")
+    return "VK_FORMAT_R8G8B8A8_UNORM";
+  else if(a_typeName == "int4" || a_typeName == "ivec4")
+    return "VK_FORMAT_R32G32B32A32_SINT";
+  else if(a_typeName == "short4")
+    return "VK_FORMAT_R16G16B16A16_SNORM";
+  else if(a_typeName == "char4")
+    return "VK_FORMAT_R8G8B8A8_SNORM";
+
+  if(a_useHalFloat)
+  {
+    if(a_typeName == "float4" || a_typeName == "vec4" || a_typeName == "half4")
+      return "VK_FORMAT_R16G16B16A16_SFLOAT";
+    else if(a_typeName == "float3" || a_typeName == "vec3" || a_typeName == "half3")
+      return "VK_FORMAT_R16G16B16_SFLOAT";
+    else if(a_typeName == "float2" || a_typeName == "vec2" || a_typeName == "half2")
+      return "VK_FORMAT_R16G16_SFLOAT";
+    else if(a_typeName == "float" || a_typeName == "half")
+      return "VK_FORMAT_R16_SFLOAT";
+  }
+  else
+  {
+    if(a_typeName == "float4" || a_typeName == "vec4")
+      return "VK_FORMAT_R32G32B32A32_SFLOAT";
+    else if(a_typeName == "float3" || a_typeName == "vec3")
+      return "VK_FORMAT_R32G32B32_SFLOAT";
+    else if(a_typeName == "float2" || a_typeName == "vec2")
+      return "VK_FORMAT_R32G32_SFLOAT";
+    else if(a_typeName == "float")
+      return "VK_FORMAT_R32_SFLOAT";
+
+    else if(a_typeName == "half4")
+      return "VK_FORMAT_R16G16B16A16_SFLOAT";
+    else if(a_typeName == "half3")
+      return "VK_FORMAT_R16G16B16_SFLOAT";
+    else if(a_typeName == "half2")
+      return "VK_FORMAT_R16G16_SFLOAT";
+    else if(a_typeName == "half")
+      return "VK_FORMAT_R16_SFLOAT";
+  }
+
+  return "VK_FORMAT_R32G32B32A32_SFLOAT";
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -339,8 +429,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(v.IsUsedTexture())
     {
       json local;
-      local["Name"]   = v.name;
-      local["Format"] = "VK_FORMAT_R32G32B32A32_SFLOAT"; // TODO: inference format from data type
+      local["Name"]       = v.name;
+      local["Format"]     = kslicer::InferenceVulkanTextureFormatFromTypeName(a_classInfo.pShaderFuncRewriter->RewriteStdVectorTypeStr(v.containerDataType), a_classInfo.halfFloatTextures);
       local["Usage"]      = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT";
       local["NeedUpdate"] = false;
 

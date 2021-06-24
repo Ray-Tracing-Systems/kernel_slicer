@@ -721,6 +721,7 @@ namespace kslicer
     };
     
     kslicer::VKERNEL_IMPL_TYPE defaultVkernelType = kslicer::VKERNEL_SWITCH;
+    bool halfFloatTextures = false;
 
     std::unordered_map<std::string, DHierarchy> m_vhierarchy;
     virtual const std::unordered_map<std::string, DHierarchy>& GetDispatchingHierarchies() const { return m_vhierarchy; }
@@ -817,6 +818,8 @@ namespace kslicer
   std::string GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg);
   std::string GetDSVulkanAccessLayout(TEX_ACCESS a_accessMask);
   std::string GetDSVulkanAccessMask(TEX_ACCESS a_accessMask);
+
+  std::string InferenceVulkanTextureFormatFromTypeName(const std::string& a_typeName, bool a_useHalFloat);
 };
 
 template <typename Cont, typename Pred>

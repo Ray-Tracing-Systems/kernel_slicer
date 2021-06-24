@@ -283,6 +283,7 @@ int main(int argc, const char **argv)
   uint32_t    threadsOrder[3] = {0,1,2};
   uint32_t    warpSize        = 32;
   bool        useCppInKernels = false;
+  bool        halfFloatTextures = false;
   auto        defaultVkernelType = kslicer::VKERNEL_SWITCH;
   
   if(params.find("-mainClass") != params.end())
@@ -308,6 +309,9 @@ int main(int argc, const char **argv)
 
   if(params.find("-warpSize") != params.end())
     warpSize = atoi(params["-warpSize"].c_str());
+  
+  if(params.find("-halfTex") != params.end())
+    halfFloatTextures = (params["-halfTex"] == "1") || (params["-halfTex"] == "true");
 
   if(params.find("-cl-std=") != params.end())
     useCppInKernels = params["-cl-std="].find("++") != std::string::npos;
@@ -371,8 +375,9 @@ int main(int argc, const char **argv)
     inputCodeInfo.includeToShadersFolders.push_back("include/");
   }
 
-
   inputCodeInfo.defaultVkernelType = defaultVkernelType;
+  inputCodeInfo.halfFloatTextures  = halfFloatTextures;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   
@@ -701,15 +706,23 @@ int main(int argc, const char **argv)
   // if user set custom work group size for kernels via hint file we should apply it befor generating kernels
   //
   nlohmann::json wgszJson;
-  uint32_t defaultWgSize[3] = {256,1,1};
+  uint32_t defaultWgSize[3][3] = {{256, 1, 1},
+                                  {32,  8, 1},
+                                  {8,   8, 8}};
   if(hintFile != "")
   {
     std::ifstream ifs(hintFile);
     nlohmann::json hintJson = nlohmann::json::parse(ifs);
     wgszJson         = hintJson["WorkGroupSize"];
-    defaultWgSize[0] = wgszJson["default"][0];
-    defaultWgSize[1] = wgszJson["default"][1];
-    defaultWgSize[2] = wgszJson["default"][2];
+    defaultWgSize[0][0] = wgszJson["default"][0];
+    defaultWgSize[0][1] = wgszJson["default"][1];
+    defaultWgSize[0][2] = wgszJson["default"][2];
+    defaultWgSize[1][0] = wgszJson["default2D"][0];
+    defaultWgSize[1][1] = wgszJson["default2D"][1];
+    defaultWgSize[1][2] = wgszJson["default2D"][2];
+    defaultWgSize[2][0] = wgszJson["default3D"][0];
+    defaultWgSize[2][1] = wgszJson["default3D"][1];
+    defaultWgSize[2][2] = wgszJson["default3D"][2];
   }
 
   for(auto& nk : inputCodeInfo.kernels)
@@ -726,9 +739,9 @@ int main(int argc, const char **argv)
     }
     else
     {
-      kernel.wgSize[0] = defaultWgSize[0];
-      kernel.wgSize[1] = defaultWgSize[1];
-      kernel.wgSize[2] = defaultWgSize[2];
+      kernel.wgSize[0] = defaultWgSize[kernelDim-1][0];
+      kernel.wgSize[1] = defaultWgSize[kernelDim-1][1];
+      kernel.wgSize[2] = defaultWgSize[kernelDim-1][2];
     }
     kernel.warpSize = warpSize;
   }

@@ -468,6 +468,7 @@
                         "-reorderLoops", "YX",
                         "-I${workspaceFolder}/apps/LiteMath", "IncludeToShaders", 
                         "-shaderCC", "glsl",
+                        "-halfTex", "1",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry"    : false,
