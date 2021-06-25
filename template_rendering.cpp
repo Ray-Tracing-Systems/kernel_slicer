@@ -997,35 +997,29 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     data["ClassDecls"].push_back(a_classInfo.pShaderCC->PrintHeaderDecl(decl,compiler));
   }
 
-  // (3) local and member functions
+  // (3) local functions
   //
   ShaderFeatures shaderFeatures;
   data["LocalFunctions"] = std::vector<std::string>();
-  data["MemberFunctions"] = std::vector<std::string>();
+  std::vector<kslicer::FuncData> funcMembers;
   {
     clang::Rewriter rewrite2;
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
     auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
-    //auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, );
 
     for (const auto& f : usedFunctions) 
     { 
       if(a_classInfo.IsExcludedLocalFunction(f.name)) // check exclude list here, don't put such functions in cl file
         continue;
-      
-      if(f.isMember)
-      {
-        auto funcNode = const_cast<clang::FunctionDecl*>(f.astNode);
-        const std::string funcDeclText = pVisitorF->RewriteFuncDecl(funcNode);
-        const std::string funcBodyText = pVisitorF->RecursiveRewrite(funcNode->getBody());
-        data["MemberFunctions"].push_back(funcDeclText + funcBodyText);
-      }
-      else
+
+      if(!f.isMember)
       {
         pVisitorF->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
         data["LocalFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
+        shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();
       }
-      shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();
+      else
+        funcMembers.push_back(f);
     }
   }
 
@@ -1359,6 +1353,23 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["IsConstObj"] = false;
     }
 
+    kernelJson["MemberFunctions"] = std::vector<std::string>();
+    if(funcMembers.size() > 0)
+    {
+      clang::Rewriter rewrite2;
+      rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+      auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
+      auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "", false);
+    
+      for(auto& f : funcMembers)
+      {
+        auto funcNode = const_cast<clang::FunctionDecl*>(f.astNode);
+        const std::string funcDeclText = pVisitorF->RewriteFuncDecl(funcNode);
+        const std::string funcBodyText = pVisitorK->RecursiveRewrite(funcNode->getBody());
+        kernelJson["MemberFunctions"].push_back(funcDeclText + funcBodyText);
+      }
+    }
+
     auto original = kernelJson;
     
     // if we have additional init statements we should add additional init kernel before our kernel
@@ -1392,6 +1403,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["WGSizeZ"]   = 1;
       data["Kernels"].push_back(kernelJson);
     }
+  
   }
 
   return data;

@@ -433,6 +433,7 @@ namespace kslicer
     bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { return VisitDeclRefExpr_Impl(expr); }
 
     std::shared_ptr<std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
+    virtual std::string RecursiveRewrite (const clang::Stmt* expr); 
 
   protected:
 
@@ -466,7 +467,6 @@ namespace kslicer
     std::string FunctionCallRewrite(const clang::CallExpr* call);
     std::string FunctionCallRewrite(const clang::CXXConstructExpr* call);
     std::string FunctionCallRewriteNoName(const clang::CXXConstructExpr* call);
-    virtual std::string RecursiveRewrite (const clang::Stmt* expr); // double/multiple pass rewrite purpose
 
     bool WasNotRewrittenYet(const clang::Stmt* expr);
     void MarkRewritten(const clang::Stmt* expr);

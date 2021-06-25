@@ -769,12 +769,12 @@ public:
   bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
 
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override { return m_glslRW.VectorTypeContructorReplace(fname, callText); }
+  
+  std::string RecursiveRewrite(const clang::Stmt* expr) override;
 
 protected: 
 
   GLSLFunctionRewriter m_glslRW;
-
-  std::string RecursiveRewrite(const clang::Stmt* expr) override;
   std::string RecursiveRewriteImpl(const clang::Stmt* expr) override { return GLSLKernelRewriter::RecursiveRewrite(expr); }
   bool IsGLSL() const override { return true; }
 
