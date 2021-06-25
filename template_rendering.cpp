@@ -1005,7 +1005,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   {
     clang::Rewriter rewrite2;
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-    auto pVisitor = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
+    auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
+    //auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, );
 
     for (const auto& f : usedFunctions) 
     { 
@@ -1014,15 +1015,17 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       
       if(f.isMember)
       {
-        pVisitor->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
-        data["MemberFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
+        auto funcNode = const_cast<clang::FunctionDecl*>(f.astNode);
+        const std::string funcDeclText = pVisitorF->RewriteFuncDecl(funcNode);
+        const std::string funcBodyText = pVisitorF->RecursiveRewrite(funcNode->getBody());
+        data["MemberFunctions"].push_back(funcDeclText + funcBodyText);
       }
       else
       {
-        pVisitor->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
+        pVisitorF->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
         data["LocalFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
       }
-      shaderFeatures = shaderFeatures || pVisitor->GetShaderFeatures();
+      shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();
     }
   }
 

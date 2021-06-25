@@ -23,7 +23,7 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 
 layout(local_size_x = {{Kernel.WGSizeX}}, local_size_y = {{Kernel.WGSizeY}}, local_size_z = {{Kernel.WGSizeZ}}) in;
 
-layout( push_constant ) uniform kernelIntArgs
+layout( push_constant ) uniform kernelArgs
 {
   {% for UserArg in Kernel.UserArgs %} 
   {{UserArg.Type}} {{UserArg.Name}};

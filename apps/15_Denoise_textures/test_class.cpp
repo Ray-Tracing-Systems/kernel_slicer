@@ -154,7 +154,6 @@ void Denoise::PrepareInput(int w, int h, const float4* in_color, const int32_t* 
 float Denoise::NLMWeight(const Texture2D<float4>& a_texture, int w, int h, int x, int y, int x1, int y1, int a_blockRadius)
 {
   float w1        = 0.0f;  // this is what NLM differs from KNN (bilateral)
-
   const int minX1 = Clampi(x1 - a_blockRadius, 0, w - 1);
   const int maxX1 = Clampi(x1 + a_blockRadius, 0, w - 1);
   const int minY1 = Clampi(y1 - a_blockRadius, 0, h - 1);

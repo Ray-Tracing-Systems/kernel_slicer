@@ -213,12 +213,13 @@ public:
   mutable kslicer::ShaderFeatures sFeatures;
   kslicer::ShaderFeatures GetShaderFeatures() const override { return sFeatures; }
 
+  std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
+  std::string RecursiveRewrite(const clang::Stmt* expr) override;
+
 protected:
   bool        NeedsVectorTypeRewrite(const std::string& a_str);
-  std::string RewriteFuncDecl(clang::FunctionDecl* fDecl);
   std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
 
-  std::string RecursiveRewrite(const clang::Stmt* expr) override;
 };
 
 
@@ -397,6 +398,35 @@ std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
       {
         ReplaceFirst(typeStr, "const ", "");
         result += std::string("in ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+      }
+      else
+        result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+    }
+    else if(typeOfParam->isReferenceType())
+    {
+      if(typeOfParam->getPointeeType().isConstQualified())
+      {
+        if(typeStr.find("Texture") != std::string::npos || typeStr.find("Image") != std::string::npos)
+        {
+          auto dataType = typeOfParam.getNonReferenceType(); 
+          auto typeDecl = dataType->getAsRecordDecl();
+          if(typeDecl != nullptr && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl))
+          {
+            std::string containerType, containerDataType;
+            auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);   
+            kslicer::SplitContainerTypes(specDecl, containerType, containerDataType);
+            ReplaceFirst(containerType, "Texture", "Sampler");
+            ReplaceFirst(containerType, "Image",   "Sampler");
+            result += std::string("in ") + containerType + " " + pParam->getNameAsString();
+          }
+          else
+            result += std::string("in ") + dataType.getAsString() + " " + pParam->getNameAsString();
+        }
+        else
+        {
+          ReplaceFirst(typeStr, "const ", "");
+          result += std::string("in ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+        }
       }
       else
         result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();

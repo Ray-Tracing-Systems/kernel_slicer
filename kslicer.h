@@ -367,8 +367,11 @@ namespace kslicer
     virtual std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, TEX_ACCESS a_accessType, std::string& outImageFormat) const { return "readonly image2D"; }
 
     virtual ShaderFeatures GetShaderFeatures() const { return ShaderFeatures(); }
-    
     std::shared_ptr< std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
+
+    virtual std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) { return ""; } // TODO: chengr for OpenCL? or not?
+    virtual std::string RecursiveRewrite(const clang::Stmt* expr); 
+
   protected:
 
     clang::Rewriter&               m_rewriter;
@@ -377,11 +380,8 @@ namespace kslicer
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     
     void MarkRewritten(const clang::Stmt* expr);
-    //void MarkRewritten(const clang::Decl* expr);
-    virtual std::string RecursiveRewrite(const clang::Stmt* expr); // double/multiple pass rewrite purpose
-
     bool WasNotRewrittenYet(const clang::Stmt* expr);
-    //bool WasNotRewrittenYet(const clang::Decl* expr);
+
   
     std::string FunctionCallRewrite(const clang::CallExpr* call);
     std::string FunctionCallRewrite(const clang::CXXConstructExpr* call);
