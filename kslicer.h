@@ -685,6 +685,7 @@ namespace kslicer
     virtual std::string GetCFDeclFromSource(const std::string& sourceCode);
 
     virtual bool NeedThreadFlags() const { return false; }
+    virtual bool NeedFakeOffset() const { return false; }
     virtual void AddTempBufferToKernel(const std::string a_buffName, const std::string a_elemTypeName, KernelInfo& a_kernel); ///<! if kernel need some additional buffers (for reduction for example) use this function 
     
     struct DImplFunc
@@ -757,6 +758,7 @@ namespace kslicer
     void          ExtractHierarchiesConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool) override;
 
     bool NeedThreadFlags() const override { return true; } 
+    bool NeedFakeOffset () const override { return true; } 
     bool IsExcludedLocalFunction(const std::string& a_name) const override 
     { 
       return (a_name == "MakeObjPtr"); 

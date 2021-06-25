@@ -1001,6 +1001,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   //
   ShaderFeatures shaderFeatures;
   data["LocalFunctions"] = std::vector<std::string>();
+  data["MemberFunctions"] = std::vector<std::string>();
   {
     clang::Rewriter rewrite2;
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
@@ -1011,15 +1012,25 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       if(a_classInfo.IsExcludedLocalFunction(f.name)) // check exclude list here, don't put such functions in cl file
         continue;
       
-      //if(f.name == "RealColorToUint32_f3")
-      //  f.astNode->dump();   
-      pVisitor->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
-      data["LocalFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
+      if(f.isMember)
+      {
+        pVisitor->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
+        data["MemberFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
+      }
+      else
+      {
+        pVisitor->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
+        data["LocalFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
+      }
       shaderFeatures = shaderFeatures || pVisitor->GetShaderFeatures();
     }
   }
-  data["LocalFunctions"].push_back("uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }                                      // for 2D threading");
-  //data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");
+
+  if(a_classInfo.NeedFakeOffset())
+  {
+    data["LocalFunctions"].push_back("uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }  // RTV pattern, for 2D threading"); // todo: ckeck if RTV pattern is used here!
+    //data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");
+  }
 
   data["GlobalUseInt8"]  = shaderFeatures.useByteType;
   data["GlobalUseInt16"] = shaderFeatures.useShortType;

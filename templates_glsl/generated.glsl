@@ -3,12 +3,6 @@
 
 #include "common_generated.h"
 
-/////////////////////////////////////////////////////////////////////
-/////////////////// kernel  /////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////
-
-layout(local_size_x = {{Kernel.WGSizeX}}, local_size_y = {{Kernel.WGSizeY}}, local_size_z = {{Kernel.WGSizeZ}}) in;
-
 ## for Arg in Kernel.Args
 {% if not Arg.IsUBO %} 
 {% if Arg.IsImage %}
@@ -19,6 +13,15 @@ layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}} { {{Arg.Type
 {% endif %} {# /* not Arg.IsUBO */ #}
 ## endfor
 layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassName}}_UBO_Data ubo; };
+
+## for MembFunc in MemberFunctions  
+{{MembFunc}}
+
+## endfor
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+layout(local_size_x = {{Kernel.WGSizeX}}, local_size_y = {{Kernel.WGSizeY}}, local_size_z = {{Kernel.WGSizeZ}}) in;
 
 layout( push_constant ) uniform kernelIntArgs
 {
