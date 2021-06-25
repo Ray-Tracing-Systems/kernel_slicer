@@ -28,9 +28,9 @@ layout( push_constant ) uniform kernelArgs
   {% for UserArg in Kernel.UserArgs %} 
   {{UserArg.Type}} {{UserArg.Name}};
   {% endfor %}
-  uint {{Kernel.threadIdName1}}; 
-  uint {{Kernel.threadIdName2}}; 
-  uint {{Kernel.threadIdName3}}; 
+  {{Kernel.threadSZType1}} {{Kernel.threadSZName1}}; 
+  {{Kernel.threadSZType2}} {{Kernel.threadSZName2}}; 
+  {{Kernel.threadSZType3}} {{Kernel.threadSZName3}}; 
   uint tFlagsMask;    
 } kgenArgs;
 

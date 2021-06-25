@@ -9,14 +9,14 @@ __kernel void {{Kernel.Name}}_Reduction({% include "inc_args.cl" %})
   {% for redvar in Kernel.SubjToRed %}
   {% if not redvar.SupportAtomic %}
   __local {{redvar.Type}} {{redvar.Name}}Shared[256]; 
-  {{redvar.Name}}Shared[localId] = (globalId < {{Kernel.threadIdName1}}) ?  {{ redvar.OutTempName }}[{{Kernel.threadIdName2}} + globalId]  :  {{redvar.Init}}; // use {{Kernel.threadIdName2}} for 'InputOffset'
+  {{redvar.Name}}Shared[localId] = (globalId < {{Kernel.threadSZName1}}) ?  {{ redvar.OutTempName }}[{{Kernel.threadSZName2}} + globalId]  :  {{redvar.Init}}; // use {{Kernel.threadSZName2}} for 'InputOffset'
   {% endif %}
   {% endfor %}
   {% for redvar in Kernel.ArrsToRed %}
   __local {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][256]; 
   {% for outName in redvar.OutTempNameA %}
   {% if not redvar.SupportAtomic %}
-  {{redvar.Name}}Shared[{{loop.index}}][localId] = (globalId < {{Kernel.threadIdName1}}) ? {{ outName }}[{{Kernel.threadIdName2}} + globalId] : {{redvar.Init}}; // use {{Kernel.threadIdName2}} for 'InputOffset'
+  {{redvar.Name}}Shared[{{loop.index}}][localId] = (globalId < {{Kernel.threadSZName1}}) ? {{ outName }}[{{Kernel.threadSZName2}} + globalId] : {{redvar.Init}}; // use {{Kernel.threadSZName2}} for 'InputOffset'
   {% endif %}
   {% endfor %}
   {% endfor %}
@@ -109,13 +109,13 @@ __kernel void {{Kernel.Name}}_Reduction({% include "inc_args.cl" %})
     {
       {% for redvar in Kernel.SubjToRed %}
       {% if not redvar.SupportAtomic %}
-      {{ redvar.OutTempName }}[{{Kernel.threadIdName3}} + get_group_id(0)] = {{redvar.Name}}Shared[0]; // use {{Kernel.threadIdName3}} for 'OutputOffset'
+      {{ redvar.OutTempName }}[{{Kernel.threadSZName3}} + get_group_id(0)] = {{redvar.Name}}Shared[0]; // use {{Kernel.threadSZName3}} for 'OutputOffset'
       {% endif %}
       {% endfor %}
       {% for redvar in Kernel.ArrsToRed %}
       {% for outName in redvar.OutTempNameA %}
       {% if not redvar.SupportAtomic %}
-      {{ outName }}[{{Kernel.threadIdName3}} + get_group_id(0)] = {{redvar.Name}}Shared[{{loop.index}}][0]; // use {{Kernel.threadIdName3}} for 'OutputOffset'
+      {{ outName }}[{{Kernel.threadSZName3}} + get_group_id(0)] = {{redvar.Name}}Shared[{{loop.index}}][0]; // use {{Kernel.threadSZName3}} for 'OutputOffset'
       {% endif %}
       {% endfor %}
       {% endfor %}

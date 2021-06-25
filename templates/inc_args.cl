@@ -8,7 +8,7 @@
   {{UserArg.Type}} {{UserArg.Name}},
 ## endfor
   __global struct {{MainClassName}}_UBO_Data* ubo,
-  const uint {{Kernel.threadIdName1}}, 
-  const uint {{Kernel.threadIdName2}},
-  const uint {{Kernel.threadIdName3}},
+  const uint {{Kernel.threadSZName1}}, 
+  const uint {{Kernel.threadSZName2}},
+  const uint {{Kernel.threadSZName3}},
   const uint kgen_tFlagsMask

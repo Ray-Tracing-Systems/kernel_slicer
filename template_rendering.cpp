@@ -1149,8 +1149,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     json userArgs = std::vector<std::string>();
     for(const auto& arg : userArgsArr)
     {
+      std::string typeName = pShaderRewriter->RewriteStdVectorTypeStr(arg.type);
+      ReplaceFirst(typeName, "const ", "");
       json argj;
-      argj["Type"]  = pShaderRewriter->RewriteStdVectorTypeStr(arg.type);
+      argj["Type"]  = typeName;
       argj["Name"]  = arg.name;
       argj["IsUBO"] = false;
       userArgs.push_back(argj);
@@ -1251,6 +1253,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
 
     std::string tidNames[3] = {"kgen_iNumElementsX", "kgen_iNumElementsY", "kgen_iNumElementsZ"};
+    std::string tidTypes[3] = {"uint", "uint", "uint"};
  
     if(k.loopIters.size() != 0) 
     {
@@ -1258,12 +1261,17 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       {
         uint32_t loopIdReorderd  = threadsOrder[iter.loopNesting];
         tidNames[loopIdReorderd] = iter.sizeExpr;                   // #TODO: assert that this expression does not contain .size(); if it does
+        tidTypes[loopIdReorderd] = iter.type;
       }                                                             // we must change it to 'vec_size2' for example 
     }
 
-    kernelJson["threadIdName1"] = tidNames[0]; 
-    kernelJson["threadIdName2"] = tidNames[1]; 
-    kernelJson["threadIdName3"] = tidNames[2]; 
+    kernelJson["threadSZName1"] = tidNames[0]; 
+    kernelJson["threadSZName2"] = tidNames[1]; 
+    kernelJson["threadSZName3"] = tidNames[2]; 
+
+    kernelJson["threadSZType1"] = tidTypes[0]; 
+    kernelJson["threadSZType2"] = tidTypes[1]; 
+    kernelJson["threadSZType3"] = tidTypes[2]; 
 
     kernelJson["WGSizeX"]       = k.wgSize[0]; //
     kernelJson["WGSizeY"]       = k.wgSize[1]; // 
@@ -1303,9 +1311,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       }
 
       kernelJson["IndirectOffset"] = k.indirectBlockOffset; 
-      kernelJson["threadIdName1"]  = "kgen_iNumElementsX";
-      kernelJson["threadIdName2"]  = "kgen_iNumElementsY";
-      kernelJson["threadIdName3"]  = "kgen_iNumElementsZ";
+      kernelJson["threadSZName1"]  = "kgen_iNumElementsX";
+      kernelJson["threadSZName2"]  = "kgen_iNumElementsY";
+      kernelJson["threadSZName3"]  = "kgen_iNumElementsZ";
     }
     else
     {
