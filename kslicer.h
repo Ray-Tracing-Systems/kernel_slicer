@@ -435,6 +435,8 @@ namespace kslicer
     std::shared_ptr<std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
     virtual std::string RecursiveRewrite (const clang::Stmt* expr); 
 
+    virtual void ClearUserArgs() { }
+
   protected:
 
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);

@@ -769,8 +769,10 @@ public:
   bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
 
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override { return m_glslRW.VectorTypeContructorReplace(fname, callText); }
-  
+
   std::string RecursiveRewrite(const clang::Stmt* expr) override;
+
+  void ClearUserArgs() override { m_userArgs.clear(); }
 
 protected: 
 

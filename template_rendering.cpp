@@ -1360,6 +1360,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
       auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
       auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "", false);
+      pVisitorK->ClearUserArgs();
     
       for(auto& f : funcMembers)
       {
