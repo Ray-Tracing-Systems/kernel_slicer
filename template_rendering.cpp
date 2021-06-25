@@ -997,7 +997,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     data["ClassDecls"].push_back(a_classInfo.pShaderCC->PrintHeaderDecl(decl,compiler));
   }
 
-  // (3) local functions
+  // (3) local and member functions
   //
   ShaderFeatures shaderFeatures;
   data["LocalFunctions"] = std::vector<std::string>();

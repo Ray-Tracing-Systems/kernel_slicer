@@ -415,8 +415,8 @@ std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
             std::string containerType, containerDataType;
             auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);   
             kslicer::SplitContainerTypes(specDecl, containerType, containerDataType);
-            ReplaceFirst(containerType, "Texture", "Sampler");
-            ReplaceFirst(containerType, "Image",   "Sampler");
+            ReplaceFirst(containerType, "Texture", "sampler");
+            ReplaceFirst(containerType, "Image",   "sampler");
             result += std::string("in ") + containerType + " " + pParam->getNameAsString();
           }
           else
