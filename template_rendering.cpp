@@ -1072,10 +1072,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       auto pVecSizeMember = dataMembersCached.find(container.second.name + "_size");
 
       assert(pVecMember     != dataMembersCached.end());
-      assert(pVecSizeMember != dataMembersCached.end());
-
       assert(pVecMember->second.isContainer);
-      assert(pVecSizeMember->second.isContainerInfo);
 
       std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(pVecMember->second.containerDataType);
       std::string buffType2 = pShaderRewriter->RewriteStdVectorTypeStr(buffType1);
@@ -1085,7 +1082,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       json argj;
       argj["Type"]       = buffType2;
       argj["Name"]       = pVecMember->second.name;
-      argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
       argj["IsUBO"]      = false;
       argj["IsImage"]    = false;
       if(pVecMember->second.isContainer && kslicer::IsTextureContainer(pVecMember->second.containerType))
@@ -1097,7 +1093,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         argj["Type"]     = a_classInfo.pShaderFuncRewriter->RewriteImageType(pVecMember->second.containerType, pVecMember->second.containerDataType, accessFlags, imageFormat);
         argj["NeedFmt"]  = (accessFlags != kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE);
         argj["ImFormat"] = imageFormat;
+        argj["SizeOffset"] = 0;
       }
+      else
+        argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
+      
       args.push_back(argj);
       vecs.push_back(argj);
     }

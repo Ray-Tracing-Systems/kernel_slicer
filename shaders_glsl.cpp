@@ -20,10 +20,13 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
 
   std::string folderPath = GetFolderPath(mainClassFileName);
   std::string shaderPath = folderPath + "/" + this->ShaderFolder();
+  std::string incUBOPath = folderPath + "/include";
   #ifdef WIN32
   mkdir(shaderPath.c_str());
+  mkdir(incUBOPath.c_str());
   #else
   mkdir(shaderPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+  mkdir(incUBOPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
   #endif
   
   // generate header for all used functions in GLSL code

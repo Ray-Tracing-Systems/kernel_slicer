@@ -33,11 +33,8 @@ layout( push_constant ) uniform kernelIntArgs
 
 void main()
 {
+  {% if not Kernel.InitKPass %}
   ///////////////////////////////////////////////////////////////// prolog
-  {% if Kernel.InitKPass %}
-  if(get_global_id(0)!=0)
-    return;
-  {% else %}
   {% for TID in Kernel.ThreadIds %}
   const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(gl_GlobalInvocationID[{{ loop.index }}]); 
   {% endfor %}
@@ -53,9 +50,8 @@ void main()
   {% if Kernel.IsBoolean %}
   bool kgenExitCond = false;
   {% endif %}
-  {% endif %}
-  
   ///////////////////////////////////////////////////////////////// prolog
+  {% endif %}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {{Kernel.Source}}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
