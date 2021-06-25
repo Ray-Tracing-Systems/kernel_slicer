@@ -591,7 +591,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       if(container.second.isTexture)
       {
         auto pAccessFlags = k.texAccessInMemb.find(container.second.name);
-        if(pAccessFlags->second == TEX_ACCESS::TEX_ACCESS_SAMPLE)
+        if(pAccessFlags == k.texAccessInMemb.end() || pAccessFlags->second == TEX_ACCESS::TEX_ACCESS_SAMPLE)
           argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
         else
           argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
@@ -1092,8 +1092,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       {
         std::string imageFormat;
         auto pMemberAccess = k.texAccessInMemb.find(pVecMember->second.name); 
-        assert(pMemberAccess != k.texAccessInMemb.end());
-        auto accessFlags = pMemberAccess->second; //pVecMember->second.tmask; 
+        auto accessFlags   = (pMemberAccess == k.texAccessInMemb.end()) ? kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE : pMemberAccess->second; //pVecMember->second.tmask; 
         argj["IsImage"]  = true;
         argj["Type"]     = a_classInfo.pShaderFuncRewriter->RewriteImageType(pVecMember->second.containerType, pVecMember->second.containerDataType, accessFlags, imageFormat);
         argj["NeedFmt"]  = (accessFlags != kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE);

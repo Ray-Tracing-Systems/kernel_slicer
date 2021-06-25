@@ -166,9 +166,6 @@ float Denoise::NLMWeight(const Texture2D<float4>& a_texture, int w, int h, int x
     {
       const int offsX   = x2 - x1;
       const int offsY   = y2 - y1;
-  
-      //const int x3      = Clampi(x + offsX, 0, w - 1);
-      //const int y3      = Clampi(y + offsY, 0, h - 1);
       const int x3      = x + offsX;
       const int y3      = y + offsY;
   
@@ -178,7 +175,6 @@ float Denoise::NLMWeight(const Texture2D<float4>& a_texture, int w, int h, int x
       const float4 c3   = a_texture.sample(m_sampler, uv3);
 
       const float4 dist = c2 - c3;
-
       w1               += dot(dist, dist);
     }
   }
@@ -199,21 +195,17 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
     {
       const int minX      = Clampi(x - a_windowRadius, 0, a_width - 1);
       const int maxX      = Clampi(x + a_windowRadius, 0, a_width - 1);
-     
       const int minY      = Clampi(y - a_windowRadius, 0, a_height - 1);
       const int maxY      = Clampi(y + a_windowRadius, 0, a_height - 1);
 
       const float2 uv0    = get_uv(x, y, a_width, a_height);
       const float4 c0     = m_hdrColor.sample(m_sampler, uv0);
       const float4 n0     = m_normDepth.sample(m_sampler, uv0);
-      //const float4 t0   = in_texc[y*w + x];
 
       const float ppSize  = 1.0F * (float)(a_windowRadius) * ProjectedPixelSize(n0.w, m_fov, (float)(a_width), (float)(a_height));
-
       int counterPass     = 0;
-
       float fSum          = 0.0F;
-      float4 result       = make_float4(0.0F, 0.0F, 0.0F, 0.0F);
+      float4 result       = float4(0.0F, 0.0F, 0.0F, 0.0F);
 
       // do window
       //

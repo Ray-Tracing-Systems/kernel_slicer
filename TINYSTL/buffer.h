@@ -136,7 +136,7 @@ namespace tinystl {
 	template<typename T, typename Alloc>
 	static inline void buffer_destroy(buffer<T, Alloc>* b) {
 		buffer_destroy_range(b->first, b->last);
-		Alloc::static_deallocate(b->first, (size_t)((char*)b->capacity - (char*)b->first));
+		//Alloc::static_deallocate(b->first, (size_t)((char*)b->capacity - (char*)b->first)); // NOTE(!!!) THIS CHANGE BROKE IMPLEMENTATION IN TINYSTL
 	}
 
 	template<typename T, typename Alloc>
@@ -146,13 +146,13 @@ namespace tinystl {
 
 		typedef T* pointer;
 		const size_t size = (size_t)(b->last - b->first);
-		pointer newfirst = (pointer)Alloc::static_allocate(sizeof(T) * capacity);
-		buffer_move_urange(newfirst, b->first, b->last);
-		Alloc::static_deallocate(b->first, sizeof(T) * capacity);
+		//pointer newfirst = (pointer)Alloc::static_allocate(sizeof(T) * capacity);            // NOTE(!!!) THIS CHANGE BROKE IMPLEMENTATION IN TINYSTL
+		//buffer_move_urange(newfirst, b->first, b->last);                                     // NOTE(!!!) THIS CHANGE BROKE IMPLEMENTATION IN TINYSTL
+		//Alloc::static_deallocate(b->first, sizeof(T) * capacity);                            // NOTE(!!!) THIS CHANGE BROKE IMPLEMENTATION IN TINYSTL
 
-		b->first = newfirst;
-		b->last = newfirst + size;
-		b->capacity = newfirst + capacity;
+		//b->first = newfirst;                                                                 // NOTE(!!!) THIS CHANGE BROKE IMPLEMENTATION IN TINYSTL
+		//b->last = newfirst + size;                                                           // NOTE(!!!) THIS CHANGE BROKE IMPLEMENTATION IN TINYSTL
+		//b->capacity = newfirst + capacity;                                                   // NOTE(!!!) THIS CHANGE BROKE IMPLEMENTATION IN TINYSTL
 	}
 
 	template<typename T, typename Alloc>

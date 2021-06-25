@@ -2,10 +2,11 @@
 
 #ifndef WIN32
   #include <stdlib.h>
+#else
+  #include <malloc.h>
 #endif // WIN32
 
 #include <vector>
-#include <malloc.h>
 
 namespace cvex
 {
