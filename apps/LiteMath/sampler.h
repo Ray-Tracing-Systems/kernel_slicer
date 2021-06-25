@@ -19,8 +19,8 @@ struct Sampler {
     LINEAR  = 1,
   };
 
-  //State structure from DX11
   // sampler state
+  //
   AddressMode addressU      = AddressMode::WRAP;
   AddressMode addressV      = AddressMode::WRAP;
   AddressMode addressW      = AddressMode::WRAP;

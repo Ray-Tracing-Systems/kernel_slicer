@@ -25,7 +25,7 @@ find_package(Vulkan)
 find_package(FreeImage REQUIRED)
 include_directories(${Vulkan_INCLUDE_DIR})
 include_directories(${FREEIMAGE_INCLUDE_DIRS})
-include_directories("../vkfw" "../volk")
+include_directories("../vkfw" "../volk" "../LiteMath")
 link_directories("../volk")
 
 #uncomment this to detect broken memory problems via gcc sanitizers
@@ -41,7 +41,7 @@ add_executable(testapp main.cpp
                       #  test_class_generated_init.cpp
                        ../14_filter_bloom_textures/Bitmap.cpp
                        ../14_filter_bloom_textures/imageutils.cpp 
-                       ../14_filter_bloom_textures/texture2d.cpp
+                       ../LiteMath/texture2d.cpp
                        ../vkfw/vk_utils.cpp
                        ../vkfw/vk_copy.cpp
                        ../vkfw/vk_buffer.cpp

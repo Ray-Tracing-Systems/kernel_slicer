@@ -82,7 +82,7 @@ int main(int argc, const char** argv)
   assert(addressToCkeck % 16 == 0); // check if address is aligned!!!
   
   const int   windowRadius = 7;
-  const int   blockRadius  = 3;
+  const int   blockRadius  = 1;
   const float noiseLevel   = 0.1F;
 
   Denoise_cpu(w, h, hdrData.data(), texColor.data(), normal.data(), depth.data(), windowRadius, blockRadius, noiseLevel, "zout_cpu.bmp");
