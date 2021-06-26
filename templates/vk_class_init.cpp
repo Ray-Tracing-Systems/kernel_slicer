@@ -243,6 +243,9 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {% endif %} {# /* not Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch */ #}
   {% if Kernel.FinishRed %}
   
+  {% if ShaderGLSL %}
+  shaderPath = "{{ShaderFolder}}/{{Kernel.OriginalName}}_Reduction.comp.spv";
+  {% endif %}
   {% if UseSpecConstWgSize %}
   {
     uint32_t specializationData[3] = { 256, 1, 1 };
@@ -256,10 +259,16 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {% endif %} 
   {% if Kernel.HasLoopInit %}
   
+  {% if ShaderGLSL %}
+  shaderPath = "{{ShaderFolder}}/{{Kernel.OriginalName}}_Init.comp.spv";
+  {% endif %}
   m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Init"{% endif %}); 
   {{Kernel.Name}}InitPipeline = m_pMaker->MakePipeline(device);
   {% if Kernel.HasLoopFinish %}
   
+  {% if ShaderGLSL %}
+  shaderPath = "{{ShaderFolder}}/{{Kernel.OriginalName}}_Finish.comp.spv";
+  {% endif %}
   m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Finish"{% endif %});
   {{Kernel.Name}}FinishPipeline = m_pMaker->MakePipeline(device);
   {% endif %}
