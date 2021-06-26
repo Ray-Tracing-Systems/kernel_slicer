@@ -256,11 +256,11 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {% endif %} 
   {% if Kernel.HasLoopInit %}
   
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_Init"); 
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Init"{% endif %}); 
   {{Kernel.Name}}InitPipeline = m_pMaker->MakePipeline(device);
   {% if Kernel.HasLoopFinish %}
   
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_Finish");
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Finish"{% endif %});
   {{Kernel.Name}}FinishPipeline = m_pMaker->MakePipeline(device);
   {% endif %}
   {% endif %} 
@@ -270,10 +270,10 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {
     uint32_t specializationData[3] = { 32, 1, 1 };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_ZeroObjCounters");
+    m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_ZeroObjCounters"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_ZeroObjCounters");
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_ZeroObjCounters"{% endif %});
   {% endif %}
   {{Kernel.Name}}ZeroObjCounters    = m_pMaker->MakePipeline(device);
   
@@ -281,10 +281,10 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {
     uint32_t specializationData[3] = { 32, 1, 1 };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_CountTypeIntervals");
+    m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_CountTypeIntervals"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_CountTypeIntervals");
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_CountTypeIntervals"{% endif %});
   {% endif %}
   {{Kernel.Name}}CountTypeIntervals = m_pMaker->MakePipeline(device);
   
@@ -292,10 +292,10 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {
     uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, "{{Kernel.OriginalName}}_Sorter");
+    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Sorter"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_Sorter");
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Sorter"{% endif %});
   {% endif %}
   {{Kernel.Name}}Sorter             = m_pMaker->MakePipeline(device);
   {% else if Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch %} {# /* if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch */ #} 
@@ -305,10 +305,10 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {
     uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, "{{Kernel.OriginalName}}_{{Impl.ClassName}}");
+    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_{{Impl.ClassName}}"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_{{Impl.ClassName}}");
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_{{Impl.ClassName}}"{% endif %});
   {% endif %}
   {% if loop.index == 0 %}
   {{Kernel.Name}}Layout = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, 128); // at least 128 bytes for push constants

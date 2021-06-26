@@ -545,6 +545,14 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     m_rewriter.ReplaceText(call->getSourceRange(), "(" + A + "*" + B + ")");
     MarkRewritten(call);
   }
+  else if(fname == "lerp" && call->getNumArgs() == 3 && WasNotRewrittenYet(call))
+  {
+    const std::string A = RecursiveRewrite(call->getArg(0));
+    const std::string B = RecursiveRewrite(call->getArg(1));
+    const std::string C = RecursiveRewrite(call->getArg(2));
+    m_rewriter.ReplaceText(call->getSourceRange(), "mix(" + A + ", " + B + ", " + C + ")");
+    MarkRewritten(call);
+  }
   else if(pFoundSmth != m_funReplacements.end() && WasNotRewrittenYet(call))
   {
     m_rewriter.ReplaceText(call->getSourceRange(), pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call));

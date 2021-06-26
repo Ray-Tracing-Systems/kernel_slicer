@@ -1,4 +1,3 @@
-#include "include/BasicLogic.h" 
 #include "Bitmap.h"
 
 #include <vector>
@@ -73,39 +72,23 @@ void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
     vkGetDeviceQueue(device, queueComputeFID, 0, &computeQueue);
     vkGetDeviceQueue(device, queueComputeFID, 0, &transferQueue);
   }
-
-  auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
-
-  auto pGPUImpl = std::make_shared<Denoise_Generated>();     // !!! USING GENERATED CODE !!! 
+  
+  // (3) Create object of generated class
+  //
+  auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 128*1024*1024);
+  auto pGPUImpl    = std::make_shared<Denoise_Generated>();  // !!! USING GENERATED CODE !!! 
   pGPUImpl->InitVulkanObjects(device, physicalDevice, w*h);  // !!! USING GENERATED CODE !!!
 
-  pGPUImpl->Resize(w, h);                                    // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
+  pGPUImpl->PrepareInput(w, h, (const float4*)a_hdrData, a_inTexColor, a_inNormal, (const float4*)a_inDepth); // Before InitMemberBuffers and UpdateAll
   pGPUImpl->InitMemberBuffers();                             // !!! USING GENERATED CODE !!!
   pGPUImpl->UpdateAll(pCopyHelper);                          // !!! USING GENERATED CODE !!!
 
-  // (3) Create buffers
+  // (4) Create buffers
   //
   const size_t bufferSize1 = w*h*sizeof(uint32_t);
-  const size_t bufferSize4 = w*h*sizeof(float)*4;
-
-  VkBuffer buff_hdrData    = vkfw::CreateBuffer(device, bufferSize4,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-  VkBuffer buff_inTexColor = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-  VkBuffer buff_inNormal   = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-  VkBuffer buff_inDepth    = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   VkBuffer buff_outColor   = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-
-  VkDeviceMemory colorMem  = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {buff_hdrData, buff_inTexColor, buff_inNormal, buff_inDepth, buff_outColor});
-
-  pCopyHelper->UpdateBuffer(buff_hdrData   , 0, a_hdrData,    bufferSize4);
-  pCopyHelper->UpdateBuffer(buff_inTexColor, 0, a_inTexColor, bufferSize1);
-  pCopyHelper->UpdateBuffer(buff_inNormal  , 0, a_inNormal,   bufferSize1);
-  pCopyHelper->UpdateBuffer(buff_inDepth   , 0, a_inDepth,    bufferSize1);
-
-  pGPUImpl->SetVulkanInOutFor_NLM_denoise(buff_hdrData,    0,
-                                          buff_outColor,   0,
-                                          buff_inTexColor, 0,
-                                          buff_inNormal,   0,
-                                          buff_inDepth,    0);
+  VkDeviceMemory colorMem  = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {buff_outColor});
+  pGPUImpl->SetVulkanInOutFor_NLM_denoise(buff_outColor, 0);
   
   // now compute some thing useful
   //
@@ -117,7 +100,7 @@ void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
     //vkCmdFillBuffer(commandBuffer, colorBufferLDR, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
-    pGPUImpl->NLM_denoiseCmd(commandBuffer, w, h, nullptr, nullptr, nullptr, nullptr, nullptr,  a_windowRadius, a_blockRadius, a_noiseLevel);
+    pGPUImpl->NLM_denoiseCmd(commandBuffer, w, h, nullptr,  a_windowRadius, a_blockRadius, a_noiseLevel);
     vkEndCommandBuffer(commandBuffer);  
     
     auto start = std::chrono::high_resolution_clock::now();
@@ -130,8 +113,6 @@ void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
     pCopyHelper->ReadBuffer(buff_outColor, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
     SaveBMP(a_outName, pixels.data(), w, h);
 
-    //pGPUImpl->SaveTestImageNow("z_test.bmp", pCopyHelper);
-
     std::cout << std::endl;
   }
   
@@ -140,10 +121,6 @@ void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
   pCopyHelper = nullptr;
   pGPUImpl = nullptr;                                                       // !!! USING GENERATED CODE !!! 
 
-  vkDestroyBuffer(device, buff_hdrData, nullptr);
-  vkDestroyBuffer(device, buff_inTexColor, nullptr);
-  vkDestroyBuffer(device, buff_inNormal, nullptr);
-  vkDestroyBuffer(device, buff_inDepth, nullptr);
   vkDestroyBuffer(device, buff_outColor, nullptr);
   vkFreeMemory(device, colorMem, nullptr);
 

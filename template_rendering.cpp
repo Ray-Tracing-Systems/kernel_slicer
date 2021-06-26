@@ -190,28 +190,30 @@ typedef typename std::unordered_map<std::string, std::string>::const_iterator   
 DSTextureAccess ObtainDSTextureAccess(const kslicer::KernelInfo& kernel, FlagsPointerType pAccessFlags, SamplerPointerType pSampler, bool isConstAccess)
 {
   DSTextureAccess result;
+  std::string samplerName = (pSampler == kernel.texAccessSampler.end()) ? "VK_NULL_HANDLE" : std::string("m_vdata.") + pSampler->second;
   if(pAccessFlags != kernel.texAccessInArgs.end())
   {
     result.accessLayout = "VK_IMAGE_LAYOUT_GENERAL";
     result.accessDSType = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
-    result.SamplerName  = "VK_NULL_HANDLE";
+    result.SamplerName  = samplerName;
     if(pAccessFlags->second == kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE)
     {
+      result.accessLayout = isConstAccess ? "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL" : "VK_IMAGE_LAYOUT_GENERAL";
       result.accessDSType = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
-      result.SamplerName  = (pSampler == kernel.texAccessSampler.end()) ? "VK_NULL_HANDLE" : std::string("m_vdata.") + pSampler->second;
+      result.SamplerName  = samplerName;
     }
   }
   else if(isConstAccess)
   {
-    result.accessLayout = "VK_IMAGE_LAYOUT_GENERAL";
-    result.accessDSType = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
-    result.SamplerName  = "VK_NULL_HANDLE";
+    result.accessLayout = "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
+    result.accessDSType = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+    result.SamplerName  = samplerName;
   }
   else
   {
     result.accessLayout = "VK_IMAGE_LAYOUT_GENERAL";
     result.accessDSType = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
-    result.SamplerName  = "VK_NULL_HANDLE";
+    result.SamplerName  = samplerName;
   }
 
   return result;
@@ -434,14 +436,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["Usage"]      = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT";
       local["NeedUpdate"] = false;
 
-      if(v.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE)
+      if(v.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE || 
+         v.tmask == TEX_ACCESS::TEX_ACCESS_READ   || 
+         v.tmask == TEX_ACCESS::TEX_ACCESS_NOTHING) // TEX_ACCESS_NOTHING arises due to passing textures to functions
       {
         local["Usage"]      = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT";
-        local["NeedUpdate"] = true;
-      }
-      else if(v.tmask == TEX_ACCESS::TEX_ACCESS_READ)
-      {
-        local["Usage"]      = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT";
         local["NeedUpdate"] = true;
       }
       else if( int(v.tmask) == (int(TEX_ACCESS::TEX_ACCESS_READ) | int(TEX_ACCESS::TEX_ACCESS_SAMPLE)))
@@ -449,14 +448,17 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         local["Usage"]      = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT";
         local["NeedUpdate"] = true;
       }
-      else if( int(v.tmask) == (int(TEX_ACCESS::TEX_ACCESS_READ)   | int(TEX_ACCESS::TEX_ACCESS_WRITE)) || 
-               int(v.tmask) == (int(TEX_ACCESS::TEX_ACCESS_SAMPLE) | int(TEX_ACCESS::TEX_ACCESS_WRITE)))
+      else if( int(v.tmask) == (int(TEX_ACCESS::TEX_ACCESS_READ)   | int(TEX_ACCESS::TEX_ACCESS_WRITE)) )
+      {
+        local["Usage"]      = "VK_IMAGE_USAGE_STORAGE_BIT";
+        local["NeedUpdate"] = false;
+      }
+      else if( int(v.tmask) == (int(TEX_ACCESS::TEX_ACCESS_SAMPLE) | int(TEX_ACCESS::TEX_ACCESS_WRITE)))
       {
         local["Usage"]      = "VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT";
         local["NeedUpdate"] = false;
       }
 
-      local["Usage"]  = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT"; // TODO: inference usage (!!!)
       data["ClassTextureVars"].push_back(local);     
     }
     else
@@ -772,7 +774,14 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         arg["IsTexture"] = dsArgs.descriptorSetsInfo[j].isTexture;
         if(dsArgs.descriptorSetsInfo[j].isTexture)
         {
-          auto texDSInfo = ObtainDSTextureAccessArg(pFoundKernel->second, j, dsArgs.descriptorSetsInfo[j].isConst);
+          bool isConst = dsArgs.descriptorSetsInfo[j].isConst;
+          auto pMember = a_classInfo.allDataMembers.find(dsArgName);
+          if(pMember != a_classInfo.allDataMembers.end() && pMember->second.IsUsedTexture())
+            isConst = (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE) || 
+                      (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_READ)   ||  
+                      (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_NOTHING);
+
+          auto texDSInfo = ObtainDSTextureAccessArg(pFoundKernel->second, j, isConst);
           arg["AccessLayout"] = texDSInfo.accessLayout;
           arg["AccessDSType"] = texDSInfo.accessDSType;
           arg["SamplerName"]  = texDSInfo.SamplerName;
@@ -792,7 +801,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           arg["IsTexture"] = container.second.isTexture;
           if(container.second.isTexture)
           {
-            auto texDSInfo = ObtainDSTextureAccessMemb(pFoundKernel->second, container.second.name, container.second.isConst);
+            auto pMember = a_classInfo.allDataMembers.find(container.second.name);
+            bool isConst = (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE) || 
+                           (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_READ)   ||  
+                           (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_NOTHING);
+            auto texDSInfo = ObtainDSTextureAccessMemb(pFoundKernel->second, container.second.name, isConst);
             arg["AccessLayout"] = texDSInfo.accessLayout;
             arg["AccessDSType"] = texDSInfo.accessDSType;
             arg["SamplerName"]  = texDSInfo.SamplerName;
