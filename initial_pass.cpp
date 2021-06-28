@@ -255,6 +255,55 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
   return true; // returning false aborts the traversal
 }
 
+kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const clang::ASTContext& astContext)
+{
+  const clang::QualType qt = fd->getType();
+
+  kslicer::DataMemberInfo member;
+  member.name        = fd->getName().str();
+  member.type        = qt.getAsString();
+  member.sizeInBytes = 0; 
+  member.offsetInTargetBuffer = 0;
+
+  // now we should check werther this field is std::vector<XXX> or just XXX; 
+  //
+  const clang::Type* fieldTypePtr = qt.getTypePtr(); 
+  assert(fieldTypePtr != nullptr);
+  if(fieldTypePtr->isPointerType()) // we ignore pointers due to we can't pass them to GPU correctly
+  {
+    member.isPointer = true;
+    return member;
+  }
+
+  auto typeDecl = fieldTypePtr->getAsRecordDecl();  
+  if(fieldTypePtr->isConstantArrayType())
+  {
+    auto arrayType = clang::dyn_cast<clang::ConstantArrayType>(fieldTypePtr); 
+    assert(arrayType != nullptr);
+    clang::QualType qtOfElem = arrayType->getElementType(); 
+    member.containerDataType = qtOfElem.getAsString(); 
+    member.arraySize         = arrayType->getSize().getLimitedValue();      
+    auto typeInfo      = astContext.getTypeInfo(qt);
+    member.sizeInBytes = typeInfo.Width / 8; 
+    member.isArray     = true;
+  }  
+  else if (typeDecl != nullptr && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl)) 
+  {
+    member.isContainer = true;
+    auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl); 
+    kslicer::SplitContainerTypes(specDecl, member.containerType, member.containerDataType);
+    //std::cout << "  found container of type " << member.containerType.c_str() << ", which data type is " <<  member.containerDataType.c_str() << std::endl;
+  }
+  else
+  {
+    auto typeInfo      = astContext.getTypeInfo(qt);
+    member.sizeInBytes = typeInfo.Width / 8; 
+  }
+
+  return member;
+}
+
+
 bool kslicer::InitialPassRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
 {
   const clang::RecordDecl* rd = fd->getParent();
@@ -270,45 +319,9 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
     auto fileName        = m_sourceManager.getFilename(funcSourceRange.getBegin());
     this->MAIN_FILE_INCLUDE = fileName;
 
-    DataMemberInfo member;
-    member.name        = fd->getName().str();
-    member.type        = qt.getAsString();
-    member.sizeInBytes = 0; 
-    member.offsetInTargetBuffer = 0;
-
-    // now we should check werther this field is std::vector<XXX> or just XXX; 
-    //
-    const Type* fieldTypePtr = qt.getTypePtr(); 
-    assert(fieldTypePtr != nullptr);
-
-    if(fieldTypePtr->isPointerType()) // we ignore pointers due to we can't pass them to GPU correctly
+    DataMemberInfo member = ExtractMemberInfo(fd, m_astContext);
+    if(member.isPointer) // we ignore pointers due to we can't pass them to GPU correctly
       return true;
-
-    auto typeDecl = fieldTypePtr->getAsRecordDecl();  
-
-    if(fieldTypePtr->isConstantArrayType())
-    {
-      auto arrayType = dyn_cast<ConstantArrayType>(fieldTypePtr); 
-      assert(arrayType != nullptr);
-      QualType 	qtOfElem       = arrayType->getElementType(); 
-      member.containerDataType = qtOfElem.getAsString(); 
-      member.arraySize         = arrayType->getSize().getLimitedValue();      
-      auto typeInfo      = m_astContext.getTypeInfo(qt);
-      member.sizeInBytes = typeInfo.Width / 8; 
-      member.isArray     = true;
-    }  
-    else if (typeDecl != nullptr && isa<ClassTemplateSpecializationDecl>(typeDecl)) 
-    {
-      member.isContainer = true;
-      auto specDecl = dyn_cast<ClassTemplateSpecializationDecl>(typeDecl); 
-      SplitContainerTypes(specDecl, member.containerType, member.containerDataType);
-      std::cout << "  found container of type " << member.containerType.c_str() << ", which data type is " <<  member.containerDataType.c_str() << std::endl;
-    }
-    else
-    {
-      auto typeInfo      = m_astContext.getTypeInfo(qt);
-      member.sizeInBytes = typeInfo.Width / 8; 
-    }
 
     dataMembers[member.name] = member;
   }

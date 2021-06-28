@@ -14,8 +14,8 @@ public:
   { 
     
   }
-  
-  std::string currProcessedFuncName;
+
+  kslicer::FuncData* pCurrProcessedFunc = nullptr; 
 
   bool VisitCallExpr(clang::CallExpr* call)
   {
@@ -45,9 +45,12 @@ public:
     func.isKernel = m_patternImpl.IsKernel(func.name);
     func.depthUse = 0;
 
+    //pCurrProcessedFunc->calledMembers.insert(func.name);
+
     if(func.isKernel)
     {
-      kslicer::PrintError(std::string("Calling kernel + '" + func.name + "' from a kernel is not allowed currently, ") + currProcessedFuncName, func.srcRange, m_sm);
+      assert(pCurrProcessedFunc != nullptr);
+      kslicer::PrintError(std::string("Calling kernel + '" + func.name + "' from a kernel is not allowed currently, ") + pCurrProcessedFunc->name, func.srcRange, m_sm);
       return true;
     }
     
@@ -94,28 +97,27 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
   }
 
   std::unordered_map<uint64_t, FuncData> usedFunctions;
-  std::unordered_map<uint64_t, FuncData> usedMembers;
   usedFunctions.reserve(functionsToProcess.size()*10);
-  usedMembers.reserve(functionsToProcess.size()*2);
   
-  FuncExtractor visitor(a_compiler, a_codeInfo); // first traverse kernels to get first level of used functions
+  FuncExtractor visitor(a_compiler, a_codeInfo); // first traverse kernels to used functions, then repeat this recursivelly in a breadth first manner ... 
   while(!functionsToProcess.empty())
   {
     auto currFunc = functionsToProcess.front(); functionsToProcess.pop();
-    if(!currFunc.isKernel && !currFunc.isMember)
-      usedFunctions[currFunc.srcHash] = currFunc;
-    else if(!currFunc.isKernel && currFunc.isMember)
-      usedMembers[currFunc.srcHash] = currFunc; 
     
-    visitor.currProcessedFuncName = currFunc.name;
+    visitor.pCurrProcessedFunc = &currFunc;
     visitor.TraverseDecl(const_cast<clang::FunctionDecl*>(currFunc.astNode));
 
     for(auto& f : visitor.usedFunctions)
     {
       auto nextFunc     = f.second;
       nextFunc.depthUse = currFunc.depthUse + 1;
-      functionsToProcess.push(nextFunc);      
+      functionsToProcess.push(nextFunc);
+      if(f.second.isMember)
+        currFunc.calledMembers.insert(f.second.name);      
     }
+
+    if(!currFunc.isKernel)
+      usedFunctions[currFunc.srcHash] = currFunc;
     
     for(auto foundCall : visitor.usedFunctions)
     {
@@ -134,7 +136,106 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
     result.push_back(f.second);
   
   std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.depthUse > b.depthUse; });
- 
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class DataExtractor : public clang::RecursiveASTVisitor<DataExtractor>
+{
+public:
+  
+  DataExtractor(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo, std::unordered_map<std::string, kslicer::DataMemberInfo>& a_members) : 
+                m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_patternImpl(a_codeInfo), m_usedMembers(a_members)
+  { 
+    
+  }
+  
+  bool VisitMemberExpr(clang::MemberExpr* expr) 
+  {
+    const std::string debugText1 = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    if(false) // TODO: check if this is texture.sample, save texture name 
+    {
+      // clang::CXXMethodDecl* fDecl = call->getMethodDecl();  
+      // if(fDecl == nullptr)  
+      //   return;
+      // 
+      // //std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+      // std::string fname     = fDecl->getNameInfo().getName().getAsString();
+      // clang::Expr* pTexName =	call->getImplicitObjectArgument(); 
+      // std::string objName   = GetRangeSourceCode(pTexName->getSourceRange(), m_compiler);     
+      // 
+      // if(fname == "sample" || fname == "Sample")
+    }
+
+    clang::ValueDecl* pValueDecl = expr->getMemberDecl();
+    if(!clang::isa<clang::FieldDecl>(pValueDecl))
+      return true;
+
+    clang::FieldDecl* pFieldDecl  = clang::dyn_cast<clang::FieldDecl>(pValueDecl);
+    clang::RecordDecl* pRecodDecl = pFieldDecl->getParent();
+
+    const std::string thisTypeName = pRecodDecl->getNameAsString();
+    if(thisTypeName != m_patternImpl.mainClassName)
+      return true;
+
+    // process access to arguments payload->xxx
+    //
+    clang::Expr* baseExpr = expr->getBase(); 
+    assert(baseExpr != nullptr);
+
+    auto baseName = kslicer::GetRangeSourceCode(baseExpr->getSourceRange(), m_compiler);
+    auto member   = kslicer::ExtractMemberInfo(pFieldDecl, m_compiler.getASTContext());
+    m_usedMembers[member.name] = member;
+
+    return true;
+  }
+
+private:
+  const clang::SourceManager&    m_sm;
+  const clang::CompilerInstance& m_compiler;
+  kslicer::MainClassInfo&        m_patternImpl;
+  std::unordered_map<std::string, kslicer::DataMemberInfo>& m_usedMembers; 
+
+};
+
+std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMemberData(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMembers,
+                                                                                        MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
+{
+  std::unordered_map<std::string, kslicer::DataMemberInfo> result;
+  std::unordered_map<std::string, kslicer::FuncData>       allMembers;
+
+  for(auto f : a_otherMembers)
+    allMembers[f.name] = f;
+  
+  //process a_funcData.astNode to get all accesed data, then recursivelly process calledMembers
+  //
+  std::queue<FuncData> functionsToProcess; 
+  functionsToProcess.push(a_funcData);
+
+  DataExtractor visitor(a_compiler, a_codeInfo, result);
+
+  while(!functionsToProcess.empty())
+  {
+    auto currFunc = functionsToProcess.front(); functionsToProcess.pop();
+    
+    // (1) process curr function to get all accesed data
+    //
+    visitor.TraverseDecl(const_cast<clang::FunctionDecl*>(currFunc.astNode));
+
+    // (2) then recursivelly process calledMembers
+    //
+    for(auto nextFuncName : currFunc.calledMembers)
+    {
+      auto pNext = allMembers.find(nextFuncName);
+      if(pNext != allMembers.end())
+        functionsToProcess.push(pNext->second);
+    }
+  }
+
+
   return result;
 }
 

@@ -20,6 +20,9 @@ namespace kslicer
   std::vector<kslicer::DeclInClass> ExtractTCFromClass(const std::string& a_className, const clang::CXXRecordDecl* classAstNode,  
                                                        const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool);
 
+  std::unordered_map<std::string, kslicer::DataMemberInfo> ExtractUsedMemberData(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMambers,
+                                                                                 MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);
+
 };
 
 

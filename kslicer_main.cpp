@@ -633,11 +633,73 @@ int main(int argc, const char **argv)
   std::vector<kslicer::DeclInClass> usedDecls           = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
   std::cout << "}" << std::endl;
   std::cout << std::endl;
+  
+  inputCodeInfo.AddSpecVars_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
 
+  bool hasMembers = false;
+  for(const auto& f : usedByKernelsFunctions) {
+    if(f.isMember) {
+      hasMembers = true;
+      break;
+    }
+  }
+
+  if(hasMembers)
+  {
+    std::cout << "(4.1) Process Member function calls, extract data accesed in member functions " << std::endl; 
+    std::cout << "{" << std::endl;
+    for(auto& k : inputCodeInfo.kernels)
+    {
+      for(const auto& f : usedByKernelsFunctions)
+      {
+        if(f.isMember) // and if is called from this kernel.It it is called, list all input parameters for each call!
+        {
+          //auto bindedParams = ... // list all input parameters for each call of member function inside kernel; in this way we know which textures, vectors and samplers were actually used
+          auto usedMembers = kslicer::ExtractUsedMemberData(&k.second, f, usedByKernelsFunctions, inputCodeInfo, compiler);
+          
+          // TODO: process bindedParams correctly
+          //
+          std::vector<kslicer::DataMemberInfo> samplerMembers;
+          for(auto x : usedMembers)
+          {
+            if(x.second.type == "struct Sampler" || x.second.type == "struct sampler")
+              samplerMembers.push_back(x.second);
+          }
+          
+          for(const auto& member : usedMembers)
+          {
+            k.second.usedMembers.insert(member.first);
+            if(member.second.type == "struct Sampler" || member.second.type == "struct sampler")
+            {
+              
+            }
+            else if(member.second.isContainer)
+            {
+              //UsedContainerInfo info;
+              //info.type
+              //info.name
+              //info.isTexture
+              //info.isConst
+              //k.second.usedContainers    // pair<containerName, containerInfo>
+            }
+            else 
+            {
+              auto p = inputCodeInfo.allDataMembers.find(member.first);
+              if(p != inputCodeInfo.allDataMembers.end())
+                p->second.usedInKernel = true;
+              else
+                inputCodeInfo.allDataMembers[member.first] = member.second;
+            }
+          }
+        }
+      }
+    }
+    std::cout << "}" << std::endl;
+    std::cout << std::endl;
+  }
+  
   std::cout << "(5) Process control functions to generate all 'MainCmd' functions" << std::endl; 
   std::cout << "{" << std::endl;
-
-  inputCodeInfo.AddSpecVars_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
 
   // (5) genarate cpp code with Vulkan calls
   //

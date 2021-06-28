@@ -183,6 +183,7 @@ namespace kslicer
     bool isArray           = false; ///<! if is array, element type stored incontainerDataType;
     bool usedInKernel      = false; ///<! if any kernel use the member --> true; if no one uses --> false;
     bool usedInMainFn      = false; ///<! if std::vector is used in MainFunction like vector.data();
+    bool isPointer         = false;
     
     DATA_USAGE usage = DATA_USAGE::USAGE_USER;         ///<! if this is service and 'implicit' data which was agged by generator, not by user;
     TEX_ACCESS tmask = TEX_ACCESS::TEX_ACCESS_NOTHING; ///<! store texture access flags if this data member is a texture
@@ -305,6 +306,8 @@ namespace kslicer
     bool               isKernel = false;
     int                depthUse = 0;    ///!< depth Of Usage; 0 -- for kernels; 1 -- for functions called from kernel; 2 -- for functions called from functions called from kernels
                                         ///!< please note that if function is called under different depth, maximum depth should be stored in this variable;
+
+    std::unordered_set<std::string> calledMembers;
   };
   
   enum class DECL_IN_CLASS{ DECL_STRUCT, DECL_TYPEDEF, DECL_CONSTANT, DECL_UNKNOWN};
@@ -823,6 +826,7 @@ namespace kslicer
   std::string GetDSVulkanAccessLayout(TEX_ACCESS a_accessMask);
   std::string GetDSVulkanAccessMask(TEX_ACCESS a_accessMask);
 
+  DataMemberInfo ExtractMemberInfo(clang::FieldDecl* fd, const clang::ASTContext& astContext);
   std::string InferenceVulkanTextureFormatFromTypeName(const std::string& a_typeName, bool a_useHalFloat);
 };
 
