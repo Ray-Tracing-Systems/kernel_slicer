@@ -666,21 +666,23 @@ int main(int argc, const char **argv)
               samplerMembers.push_back(x.second);
           }
           
-          for(const auto& member : usedMembers)
+          for(auto& member : usedMembers)
           {
             k.second.usedMembers.insert(member.first);
+            member.second.usedInKernel = true;
+
             if(member.second.type == "struct Sampler" || member.second.type == "struct sampler")
             {
               
             }
             else if(member.second.isContainer)
             {
-              //UsedContainerInfo info;
-              //info.type
-              //info.name
-              //info.isTexture
-              //info.isConst
-              //k.second.usedContainers    // pair<containerName, containerInfo>
+              kslicer::UsedContainerInfo info;
+              info.type      = member.second.type;
+              info.name      = member.second.name;
+              info.isTexture = member.second.IsUsedTexture();
+              info.isConst   = info.isTexture;
+              k.second.usedContainers[info.name] = info;
             }
             else 
             {
@@ -691,6 +693,8 @@ int main(int argc, const char **argv)
                 inputCodeInfo.allDataMembers[member.first] = member.second;
             }
           }
+
+          
         }
       }
     }
