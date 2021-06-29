@@ -241,6 +241,80 @@ std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMem
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class ArgMatcher : public clang::RecursiveASTVisitor<ArgMatcher>
+{
+public:
+  
+  ArgMatcher(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo, std::vector< std::unordered_map<std::string, std::string> >& a_match, std::string a_funcName) : 
+             m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_patternImpl(a_codeInfo), m_argMatch(a_match), m_currFuncName(a_funcName)
+  { 
+        
+  }
+
+  bool VisitCallExpr(clang::CallExpr* call)
+  {
+    const clang::FunctionDecl* fDecl = call->getDirectCallee();  
+    if(fDecl == nullptr)             // definitely can't process nullpointer 
+      return true;
+    
+    std::string fname = fDecl->getNameInfo().getName().getAsString();
+    if(fname != m_currFuncName)
+      return true;
+    
+    std::unordered_map<std::string, std::string> agrMap;
+    for(size_t i=0;i<call->getNumArgs();i++)
+    {
+      const clang::ParmVarDecl* formalArg = fDecl->getParamDecl(i);
+      const clang::Expr*        actualArg = call->getArg(i);
+      const clang::QualType     qtFormal  = formalArg->getType();
+      const clang::QualType     qtActual  = actualArg->getType();
+      std::string formalTypeName          = qtFormal.getAsString();
+
+      bool supportedContainerType = (formalTypeName.find("Texture") != std::string::npos) || 
+                                    (formalTypeName.find("Image") != std::string::npos)   || 
+                                    (formalTypeName.find("vector") != std::string::npos)  || 
+                                    (formalTypeName.find("Sampler") != std::string::npos) || 
+                                    (formalTypeName.find("sampler") != std::string::npos);
+
+      if(qtFormal->isPointerType() || (qtFormal->isReferenceType() && supportedContainerType))
+      {
+        std::string formalName = formalArg->getNameAsString();
+        std::string actualText = kslicer::GetRangeSourceCode(actualArg->getSourceRange(), m_compiler);
+        if(actualText.find(".data()") != std::string::npos) 
+          actualText = actualText.substr(0, actualText.find(".data()"));
+        //TODO: for pointers we should support pointrer arithmatic here ... or not?
+        agrMap[formalName] = actualText;
+      }
+    }
+    
+    if(!agrMap.empty())
+      m_argMatch.push_back(agrMap);
+
+    return true;
+  }
+
+private:
+  const clang::SourceManager&    m_sm;
+  const clang::CompilerInstance& m_compiler;
+  kslicer::MainClassInfo&        m_patternImpl;
+  std::vector< std::unordered_map<std::string, std::string> >& m_argMatch; 
+  std::string                    m_currFuncName;
+
+};
+
+
+std::vector< std::unordered_map<std::string, std::string> > kslicer::ArgMatchTraversal(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMambers,
+                                                                                       MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
+{
+  std::vector< std::unordered_map<std::string, std::string> > result;
+  ArgMatcher visitor(a_compiler, a_codeInfo, result, a_funcData.name);
+  visitor.TraverseDecl(const_cast<clang::CXXMethodDecl*>(pKernel->astNode));
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

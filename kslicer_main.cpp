@@ -644,7 +644,7 @@ int main(int argc, const char **argv)
     }
   }
 
-  if(hasMembers)
+  if(hasMembers && inputCodeInfo.pShaderCC->IsGLSL()) // We don't implement this for OpenCL kernels yet ... or at all.
   {
     std::cout << "(4.1) Process Member function calls, extract data accesed in member functions " << std::endl; 
     std::cout << "{" << std::endl;
@@ -654,8 +654,10 @@ int main(int argc, const char **argv)
       {
         if(f.isMember) // and if is called from this kernel.It it is called, list all input parameters for each call!
         {
-          //auto bindedParams = ... // list all input parameters for each call of member function inside kernel; in this way we know which textures, vectors and samplers were actually used
-          auto usedMembers = kslicer::ExtractUsedMemberData(&k.second, f, usedByKernelsFunctions, inputCodeInfo, compiler);
+          // list all input parameters for each call of member function inside kernel; in this way we know which textures, vectors and samplers were actually used by these functions
+          //
+          auto machedParams = kslicer::ArgMatchTraversal    (&k.second, f, usedByKernelsFunctions, inputCodeInfo, compiler); 
+          auto usedMembers  = kslicer::ExtractUsedMemberData(&k.second, f, usedByKernelsFunctions, inputCodeInfo, compiler);
           
           // TODO: process bindedParams correctly
           //
@@ -671,9 +673,19 @@ int main(int argc, const char **argv)
             k.second.usedMembers.insert(member.first);
             member.second.usedInKernel = true;
 
-            if(member.second.type == "struct Sampler" || member.second.type == "struct sampler")
+            if(member.second.type == "struct Sampler" || member.second.type == "struct sampler") // actually this is not correct!!!
             {
-              
+              for(auto sampler : samplerMembers)
+              {
+                for(auto map : machedParams)
+                {
+                  for(auto par : map)
+                  {
+                    std::string actualTextureName = par.second;
+                    k.second.texAccessSampler[actualTextureName] = sampler.name;
+                  }
+                }
+              }
             }
             else if(member.second.isContainer)
             {
