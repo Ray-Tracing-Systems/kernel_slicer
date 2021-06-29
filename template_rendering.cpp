@@ -972,6 +972,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   for(const auto& member : a_classInfo.dataMembers)
     dataMembersCached[member.name] = member;
 
+  std::unordered_map<std::string, kslicer::ShittyFunction> shittyFunctions;
+  if(a_classInfo.pShaderCC->IsGLSL())
+  {
+    for(const auto& k : a_classInfo.kernels)
+    {
+      for(auto f : k.second.shittyFunctions)
+        shittyFunctions[f.originalName] = f;
+    }
+  }
+
   json data;
   data["MainClassName"]      = a_classInfo.mainClassName;
   data["UseSpecConstWgSize"] = a_classInfo.pShaderCC->UseSpecConstForWgSize();
@@ -1015,6 +1025,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   ShaderFeatures shaderFeatures;
   data["LocalFunctions"] = std::vector<std::string>();
   std::vector<kslicer::FuncData> funcMembers;
+  std::unordered_map<std::string, kslicer::FuncData> cachedFunc;
   {
     clang::Rewriter rewrite2;
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
@@ -1023,6 +1034,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     for (const auto& f : usedFunctions) 
     { 
       if(a_classInfo.IsExcludedLocalFunction(f.name)) // check exclude list here, don't put such functions in cl file
+        continue;
+      
+      cachedFunc[f.name] = f;
+      auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions frol 'LocalFunctions'
+      if(pShit != shittyFunctions.end())
         continue;
 
       if(!f.isMember)
@@ -1391,6 +1407,31 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         kernelJson["MemberFunctions"].push_back(funcDeclText + funcBodyText);
       }
     }
+    
+    clang::Rewriter rewrite2;
+    rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+    kernelJson["ShityFunctions"] = std::vector<std::string>();
+    
+    std::unordered_map<std::string, kslicer::ShittyFunction> shitByName;
+    for(auto shit : k.shittyFunctions)
+      shitByName[shit.ShittyName()] = shit;
+
+    for(auto shit : shitByName)
+    {
+      auto pFunc = cachedFunc.find(shit.second.originalName);
+      if(pFunc == cachedFunc.end())
+        continue;
+
+      auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
+      auto funcNode  = const_cast<clang::FunctionDecl*>(pFunc->second.astNode);
+
+      const std::string funcDeclText = pVisitorF->RewriteFuncDecl(funcNode);
+      const std::string funcBodyText = pVisitorF->RecursiveRewrite(funcNode->getBody());
+
+      kernelJson["ShityFunctions"].push_back(std::string("//") + shit.second.ShittyName());
+      //kernelJson["ShityFunctions"].push_back(funcDeclText + funcBodyText);
+    }
+    
 
     auto original = kernelJson;
     
