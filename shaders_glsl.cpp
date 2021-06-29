@@ -172,7 +172,7 @@ class GLSLFunctionRewriter : public kslicer::FunctionRewriter //
 {
 public:
   
-  GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo) : FunctionRewriter(R,a_compiler,a_codeInfo)
+  GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) : FunctionRewriter(R,a_compiler,a_codeInfo)
   { 
     m_vecReplacements  = ListGLSLVectorReplacements();
     m_vecReplacements2 = SortByKeysByLen(m_vecReplacements);
@@ -185,6 +185,8 @@ public:
     m_funReplacements["sqrtf"] = "sqrt";
     m_funReplacements["fabs"]  = "abs";
     m_funReplacements["to_float4"] = "vec4";
+
+    m_shit = a_shit;
   }
 
   ~GLSLFunctionRewriter()
@@ -199,6 +201,7 @@ public:
   bool VisitMemberExpr_Impl(clang::MemberExpr* expr)         override;
   bool VisitUnaryOperator_Impl(clang::UnaryOperator* expr)   override;
   bool VisitDeclStmt_Impl(clang::DeclStmt* decl)             override;
+  bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)  override;
 
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
   IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
@@ -219,6 +222,8 @@ public:
 protected:
   bool        NeedsVectorTypeRewrite(const std::string& a_str);
   std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
+
+  kslicer::ShittyFunction m_shit;
 
 };
 
@@ -380,11 +385,39 @@ bool GLSLFunctionRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // T
   return need;
 }
 
+bool GLSLFunctionRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) 
+{
+  if(m_shit.originalName == "")
+    return true;
+  
+  clang::Expr* left  = arrayExpr->getLHS();
+  clang::Expr* right = arrayExpr->getRHS();
+  
+  const std::string leftText  = kslicer::GetRangeSourceCode(left->getSourceRange(), m_compiler);
+  //const std::string rightText = kslicer::GetRangeSourceCode(right->getSourceRange(), m_compiler);
+  for(auto globalPointer : m_shit.pointers)
+  {
+    if(globalPointer.formal == leftText && WasNotRewrittenYet(arrayExpr))
+    {
+      const std::string rightText = RecursiveRewrite(right);
+      m_rewriter.ReplaceText(arrayExpr->getSourceRange(), globalPointer.actual + "[" + rightText + " + " + leftText + "Offset]"); // process shitty global pointers
+      MarkRewritten(arrayExpr);
+      break;
+    }
+  }
+
+  return true;
+}
+
 std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
 {
   std::string retT   = RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString()); 
   std::string fname  = fDecl->getNameInfo().getName().getAsString();
   std::string result = retT + " " + fname + "(";
+
+  const bool shitHappends = (fname == m_shit.originalName);
+  if(shitHappends)
+    result = retT + " " + m_shit.ShittyName() + "(";
 
   for(uint32_t i=0; i < fDecl->getNumParams(); i++)
   {
@@ -393,14 +426,32 @@ std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
     std::string typeStr = typeOfParam.getAsString();
     if(typeOfParam->isPointerType())
     {
-      ReplaceFirst(typeStr, "*", "");
-      if(typeOfParam->getPointeeType().isConstQualified())
+      bool pointerToGlobalMemory = false;
+      if(shitHappends)
       {
-        ReplaceFirst(typeStr, "const ", "");
-        result += std::string("in ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+        for(auto p : m_shit.pointers)
+        {
+          if(p.formal == pParam->getNameAsString() )
+          {
+            pointerToGlobalMemory = true;
+            break;
+          }
+        }
       }
+
+      if(pointerToGlobalMemory)
+        result += std::string("uint ") + pParam->getNameAsString() + "Offset";
       else
-        result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+      {
+        ReplaceFirst(typeStr, "*", "");
+        if(typeOfParam->getPointeeType().isConstQualified())
+        {
+          ReplaceFirst(typeStr, "const ", "");
+          result += std::string("in ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+        }
+        else
+          result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+      }
     }
     else if(typeOfParam->isReferenceType())
     {
@@ -735,9 +786,9 @@ std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
   return result;
 }
 
-std::shared_ptr<kslicer::FunctionRewriter> kslicer::GLSLCompiler::MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo)
+std::shared_ptr<kslicer::FunctionRewriter> kslicer::GLSLCompiler::MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit)
 {
-  return std::make_shared<GLSLFunctionRewriter>(R, a_compiler, a_codeInfo);
+  return std::make_shared<GLSLFunctionRewriter>(R, a_compiler, a_codeInfo, a_shit);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -751,7 +802,7 @@ class GLSLKernelRewriter : public kslicer::KernelRewriter, IRecursiveRewriteOver
 public:
   
   GLSLKernelRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr, const bool a_infoPass) : 
-                     kslicer::KernelRewriter(R, a_compiler, a_codeInfo, a_kernel, a_fakeOffsetExpr, a_infoPass), m_glslRW(R, a_compiler, a_codeInfo)
+                     kslicer::KernelRewriter(R, a_compiler, a_codeInfo, a_kernel, a_fakeOffsetExpr, a_infoPass), m_glslRW(R, a_compiler, a_codeInfo, kslicer::ShittyFunction())
   {
     m_glslRW.m_pKernelRewriter = this;
     m_glslRW.m_pRewrittenNodes = this->m_pRewrittenNodes;

@@ -1411,7 +1411,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     clang::Rewriter rewrite2;
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
     kernelJson["ShityFunctions"] = std::vector<std::string>();
-    
     std::unordered_map<std::string, kslicer::ShittyFunction> shitByName;
     for(auto shit : k.shittyFunctions)
       shitByName[shit.ShittyName()] = shit;
@@ -1422,14 +1421,13 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       if(pFunc == cachedFunc.end())
         continue;
 
-      auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
+      auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo, shit.second);
       auto funcNode  = const_cast<clang::FunctionDecl*>(pFunc->second.astNode);
-
+  
       const std::string funcDeclText = pVisitorF->RewriteFuncDecl(funcNode);
       const std::string funcBodyText = pVisitorF->RecursiveRewrite(funcNode->getBody());
 
-      kernelJson["ShityFunctions"].push_back(std::string("//") + shit.second.ShittyName());
-      //kernelJson["ShityFunctions"].push_back(funcDeclText + funcBodyText);
+      kernelJson["ShityFunctions"].push_back(funcDeclText + funcBodyText);
     }
     
 

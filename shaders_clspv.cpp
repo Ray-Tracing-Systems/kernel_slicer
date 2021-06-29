@@ -149,7 +149,7 @@ std::string kslicer::ClspvCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
   return result;
 }
 
-std::shared_ptr<kslicer::FunctionRewriter> kslicer::ClspvCompiler::MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo)
+std::shared_ptr<kslicer::FunctionRewriter> kslicer::ClspvCompiler::MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit)
 {
   return std::make_shared<kslicer::FunctionRewriter>(R, a_compiler, a_codeInfo);
 }

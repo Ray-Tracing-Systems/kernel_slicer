@@ -390,6 +390,8 @@ namespace kslicer
     bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)    { return VisitCStyleCastExpr_Impl(cast); }
     bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast){ return VisitImplicitCastExpr_Impl(cast); }
     
+    bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* arrayExpr) { return VisitArraySubscriptExpr_Impl(arrayExpr); }
+
     virtual std::string RewriteStdVectorTypeStr(const std::string& a_str) const;
     virtual std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, TEX_ACCESS a_accessType, std::string& outImageFormat) const { return "readonly image2D"; }
 
@@ -427,6 +429,8 @@ namespace kslicer
     virtual bool VisitUnaryOperator_Impl(clang::UnaryOperator* op)        { return true; } // override this in Derived class
     virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)    { return true; } // override this in Derived class
     virtual bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast){ return true; } // override this in Derived class
+
+    virtual bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) { return true; } 
 
     virtual bool VisitCallExpr_Impl(clang::CallExpr* f);
   };
@@ -548,7 +552,8 @@ namespace kslicer
     virtual bool        UseSpecConstForWgSize() const { return false; }
     virtual void        GetThreadSizeNames(std::string a_strs[3]) const = 0;
 
-    virtual std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) = 0;
+    virtual std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
+                                                                        kslicer::ShittyFunction a_shit = kslicer::ShittyFunction()) = 0;
     virtual std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
                                                                         kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass) = 0;
 
@@ -573,7 +578,7 @@ namespace kslicer
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
     void        GetThreadSizeNames(std::string a_strs[3])                                             const override;
     
-    std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) override;
+    std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
                                                                 kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass) override;
     
@@ -597,7 +602,7 @@ namespace kslicer
     std::string ProcessBufferType(const std::string& a_typeName)        const override;
     void        GetThreadSizeNames(std::string a_strs[3])               const override;
 
-    std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) override;
+    std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
                                                                 kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass) override;
     
