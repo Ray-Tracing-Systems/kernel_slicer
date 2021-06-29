@@ -241,6 +241,60 @@ std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMem
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+std::vector<kslicer::ArgMatch> kslicer::MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler)
+{
+  std::vector<kslicer::ArgMatch> result;
+  const clang::FunctionDecl* fDecl = call->getDirectCallee();  
+  if(fDecl == nullptr || clang::isa<clang::CXXOperatorCallExpr>(call)) 
+    return result;
+  
+  std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), a_compiler);
+
+  for(size_t i=0;i<call->getNumArgs();i++)
+  {
+    const clang::ParmVarDecl* formalArg = fDecl->getParamDecl(i);
+    const clang::Expr*        actualArg = call->getArg(i);
+    const clang::QualType     qtFormal  = formalArg->getType();
+    const clang::QualType     qtActual  = actualArg->getType();
+    std::string formalTypeName          = qtFormal.getAsString();
+
+    std::string formalName = formalArg->getNameAsString();
+    std::string actualText = kslicer::GetRangeSourceCode(actualArg->getSourceRange(), a_compiler);
+    if(actualText.find(".data()") != std::string::npos) 
+      actualText = actualText.substr(0, actualText.find(".data()"));
+    
+    for(const auto& argOfCurrKernel : k.args)
+    {
+      if(argOfCurrKernel.name == actualText)
+      {
+        ArgMatch arg;
+        arg.formal    = formalName;
+        arg.actual    = actualText;
+        arg.type      = formalTypeName;
+        arg.argId     = i;
+        arg.isPointer = (qtFormal->isPointerType());
+        result.push_back(arg);
+      }
+    }
+    
+    for(const auto& container : k.usedContainers)
+    {
+      if(container.second.name == actualText)
+      {
+        ArgMatch arg;
+        arg.formal    = formalName;
+        arg.actual    = actualText;
+        arg.type      = formalTypeName;
+        arg.argId     = i;
+        arg.isPointer = (qtFormal->isPointerType());
+        result.push_back(arg);
+      }
+    }
+  }
+  
+  return result;
+}
+
 
 class ArgMatcher : public clang::RecursiveASTVisitor<ArgMatcher>
 {

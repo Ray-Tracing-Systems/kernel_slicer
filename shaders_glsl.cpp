@@ -824,12 +824,59 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
 }
 
 
-bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* f)
+bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
+  
+  // (#1) check if buffer/pointer to global memory is passed to a function 
+  //
+  std::vector<kslicer::ArgMatch> usedArgMatches = kslicer::MatchCallArgsForKernel(call, m_currKernel, m_compiler);
+  std::vector<kslicer::ArgMatch> shittyPointers; shittyPointers.reserve(usedArgMatches.size());
+  for(const auto& x : usedArgMatches) {
+    if(x.isPointer)
+      shittyPointers.push_back(x);
+  }
+  
+  const clang::FunctionDecl* fDecl = call->getDirectCallee();  
+  if(shittyPointers.size() > 0 && fDecl != nullptr)
+  {
+    std::string fname = fDecl->getNameInfo().getName().getAsString();
 
-  m_glslRW.VisitCallExpr_Impl(f);
+    kslicer::ShittyFunction func;
+    func.pointers     = shittyPointers;
+    func.originalName = fname;
+    m_currKernel.shittyFunctions.push_back(func);
+
+    std::string rewrittenRes = func.ShittyName() + "(";
+    for(int i=0;i<call->getNumArgs(); i++)
+    {
+      size_t found = size_t(-1);
+      for(size_t j=0;j<shittyPointers.size();j++)
+      {
+        if(shittyPointers[j].argId == i)
+        {
+          found = j;
+          break;
+        }
+      }
+
+      if(found != size_t(-1))
+        rewrittenRes += "0";
+      else
+        rewrittenRes += RecursiveRewrite(call->getArg(i));
+      
+      if(i!=call->getNumArgs()-1)
+        rewrittenRes += ", ";
+    }
+    rewrittenRes += ")"; 
+
+    m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes); 
+    MarkRewritten(call);
+  }
+  else
+    m_glslRW.VisitCallExpr_Impl(call);
+
   return true;
 }
 

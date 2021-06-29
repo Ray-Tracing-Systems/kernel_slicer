@@ -56,6 +56,29 @@ namespace kslicer
 
   bool  IsTextureContainer(const std::string& a_typeName); ///<! return true for all types of textures
 
+
+  struct ArgMatch
+  {
+    std::string formal;
+    std::string actual;
+    std::string type;
+    uint32_t    argId;
+    bool        isPointer = false;
+  };
+
+  struct ShittyFunction
+  {
+    std::vector<ArgMatch> pointers;
+    std::string           originalName;
+    std::string           ShittyName() const
+    {
+      std::string result = originalName;
+      for(auto x : pointers)
+        result += std::string("_") + x.actual;
+      return result;
+    }
+  };
+
   /**
   \brief for each method MainClass::kernel_XXX
   */
@@ -152,6 +175,7 @@ namespace kslicer
     std::unordered_map<std::string, TEX_ACCESS>        texAccessInArgs;
     std::unordered_map<std::string, TEX_ACCESS>        texAccessInMemb;
     std::unordered_map<std::string, std::string>       texAccessSampler;
+    std::vector<ShittyFunction>                        shittyFunctions;     ///<! functions with input pointers accesed global memory, they should be rewritten for GLSL    
 
     std::string rewrittenText;                   ///<! rewritten source code of a kernel
     std::string rewrittenInit;                   ///<! rewritten loop initialization code for kernel
@@ -828,6 +852,11 @@ namespace kslicer
 
   DataMemberInfo ExtractMemberInfo(clang::FieldDecl* fd, const clang::ASTContext& astContext);
   std::string InferenceVulkanTextureFormatFromTypeName(const std::string& a_typeName, bool a_useHalFloat);
+
+ 
+  std::vector<kslicer::ArgMatch> MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler);
+  
+
 };
 
 template <typename Cont, typename Pred>
