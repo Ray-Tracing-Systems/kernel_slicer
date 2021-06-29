@@ -163,6 +163,7 @@ std::vector<std::pair<std::string, std::string> > SortByKeysByLen(const std::uno
 struct IRecursiveRewriteOverride
 {
   virtual std::string RecursiveRewriteImpl(const clang::Stmt* expr) = 0;
+  virtual kslicer::ShaderFeatures GetShaderFeatures() const { return kslicer::ShaderFeatures(); }
 };
 
 /**
@@ -214,7 +215,10 @@ public:
   std::vector<std::pair<std::string, std::string> > m_vecReplacements2;
 
   mutable kslicer::ShaderFeatures sFeatures;
-  kslicer::ShaderFeatures GetShaderFeatures() const override { return sFeatures; }
+  kslicer::ShaderFeatures GetShaderFeatures() const override 
+  { 
+    return sFeatures; 
+  }
 
   std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
   std::string RecursiveRewrite(const clang::Stmt* expr) override;
@@ -235,12 +239,14 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
   if(m_pKernelRewriter != nullptr) // we actually do kernel rewrite
   {
     std::string result = m_pKernelRewriter->RecursiveRewriteImpl(expr);
+    sFeatures = sFeatures || m_pKernelRewriter->GetShaderFeatures();
     return result;
   }
   else
   {
     GLSLFunctionRewriter rvCopy = *this;
     rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
+    sFeatures = sFeatures || rvCopy.sFeatures;
 
     std::string text = m_rewriter.getRewrittenText(expr->getSourceRange());
     if(text == "")                                                            // try to repair from the errors
@@ -255,7 +261,7 @@ std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_s
   const bool isConst  = (a_str.find("const") != std::string::npos);
   const bool isUshort = (a_str.find("short") != std::string::npos)    || (a_str.find("ushort") != std::string::npos) || 
                         (a_str.find("uint16_t") != std::string::npos) || (a_str.find("int16_t") != std::string::npos);
-  const bool isByte   = (a_str.find("char") != std::string::npos)    || (a_str.find("uchar") != std::string::npos) || 
+  const bool isByte   = (a_str.find("char") != std::string::npos)    || (a_str.find("uchar") != std::string::npos) || (a_str.find("unsigned char") != std::string::npos) ||
                         (a_str.find("uint8_t") != std::string::npos) || (a_str.find("int8_t") != std::string::npos);
   const bool isInt64  = (a_str.find("long long int") != std::string::npos) ||
                         (a_str.find("uint64_t") != std::string::npos) || (a_str.find("int64_t") != std::string::npos);
@@ -272,6 +278,7 @@ std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_s
   ReplaceFirst(typeStr, "const ",     "");
   ReplaceFirst(typeStr, m_codeInfo->mainClassName + "::", "");
   ReplaceFirst(typeStr, "unsigned long", "uint");
+  ReplaceFirst(typeStr, "unsigned char", "uint8_t");
   
   if(typeStr.size() > 0 && typeStr[typeStr.size()-1] == ' ')
     typeStr = typeStr.substr(0, typeStr.size()-1);
@@ -832,6 +839,11 @@ public:
   std::string RecursiveRewrite(const clang::Stmt* expr) override;
 
   void ClearUserArgs() override { m_userArgs.clear(); }
+
+  kslicer::ShaderFeatures GetShaderFeatures() const override 
+  { 
+    return m_glslRW.GetShaderFeatures(); 
+  }
 
 protected: 
 
