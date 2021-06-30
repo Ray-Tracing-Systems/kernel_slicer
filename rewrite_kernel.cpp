@@ -781,7 +781,7 @@ std::string kslicer::KernelRewriter::RecursiveRewrite(const Stmt* expr)
 {
   if(expr == nullptr)
     return "";
-  //std::string debugMeIn = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+
   KernelRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
   return m_rewriter.getRewrittenText(expr->getSourceRange());

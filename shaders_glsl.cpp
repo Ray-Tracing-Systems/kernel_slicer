@@ -611,8 +611,9 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   if(fname.substr(0, 5) == "make_")
     makeSmth = fname.substr(5);
 
-  auto pFoundSmth = m_funReplacements.find(fname);
+  const std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
 
+  auto pFoundSmth = m_funReplacements.find(fname);
   if(fname == "to_float3" && call->getNumArgs() == 1 && WasNotRewrittenYet(call) )
   {
     const auto qt = call->getArg(0)->getType();
@@ -653,6 +654,11 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   else if(pFoundSmth != m_funReplacements.end() && WasNotRewrittenYet(call))
   {
     m_rewriter.ReplaceText(call->getSourceRange(), pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call));
+    MarkRewritten(call);
+  }
+  else if(fDecl->isInStdNamespace() && WasNotRewrittenYet(call)) // remove "std::"
+  {
+    m_rewriter.ReplaceText(call->getSourceRange(), fname + "(" + CompleteFunctionCallRewrite(call));
     MarkRewritten(call);
   }
 
@@ -1093,9 +1099,13 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
     return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr);
   
   std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler); 
-  std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);   
+  //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);   
 
-  if(expr->isAssignmentOp()) // detect a_brightPixels[coord] = color;
+  if(op == "+=" || op == "-=" || op == "*=")
+  {
+    return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr); // process reduction access in KernelRewriter
+  }
+  else if(expr->isAssignmentOp()) // detect a_brightPixels[coord] = color;
   {
     clang::Expr* left = expr->getArg(0); 
     if(clang::isa<clang::CXXOperatorCallExpr>(left))
