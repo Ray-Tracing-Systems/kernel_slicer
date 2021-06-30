@@ -791,7 +791,7 @@ int main(int argc, const char **argv)
   {
     std::ifstream ifs(hintFile);
     nlohmann::json hintJson = nlohmann::json::parse(ifs);
-    wgszJson         = hintJson["WorkGroupSize"];
+    wgszJson            = hintJson["WorkGroupSize"];
     defaultWgSize[0][0] = wgszJson["default"][0];
     defaultWgSize[0][1] = wgszJson["default"][1];
     defaultWgSize[0][2] = wgszJson["default"][2];

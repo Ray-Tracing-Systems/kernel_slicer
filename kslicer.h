@@ -150,7 +150,18 @@ namespace kslicer
     std::vector<Arg>      args;                 ///<! all arguments of a kernel
     std::vector<LoopIter> loopIters;            ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
     
-    uint32_t GetDim() const { return uint32_t(loopIters.size());}
+    uint32_t GetDim() const 
+    {
+      if(loopIters.size() != 0)
+        return uint32_t(loopIters.size());
+
+      uint32_t size = 0;
+      for(auto arg : args) {
+        if(arg.isThreadID)
+          size++;
+      }
+      return size;
+    }
 
     clang::SourceRange    loopInsides;          ///<! used by IPV pattern to extract loops insides and make them kernel source
     clang::SourceRange    loopOutsidesInit;     ///<! used by IPV pattern to extract code before loops and then make additional initialization kernel
