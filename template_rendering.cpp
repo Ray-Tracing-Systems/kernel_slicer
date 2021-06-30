@@ -1393,7 +1393,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["MemberFunctions"] = std::vector<std::string>();
     if(funcMembers.size() > 0)
     {
-      clang::Rewriter rewrite2;
+      clang::Rewriter rewrite2; 
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
       auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
       auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "", false);
@@ -1408,8 +1408,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       }
     }
     
-    clang::Rewriter rewrite2;
-    rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
     kernelJson["ShityFunctions"] = std::vector<std::string>();
     std::unordered_map<std::string, kslicer::ShittyFunction> shitByName;
     for(auto shit : k.shittyFunctions)
@@ -1420,7 +1418,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       auto pFunc = cachedFunc.find(shit.second.originalName);
       if(pFunc == cachedFunc.end())
         continue;
-
+      
+      clang::Rewriter rewrite2;                                                    // It is important to have clear rewriter for each function because here we access same node several times!!!
+      rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());  //
       auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo, shit.second);
       auto funcNode  = const_cast<clang::FunctionDecl*>(pFunc->second.astNode);
   

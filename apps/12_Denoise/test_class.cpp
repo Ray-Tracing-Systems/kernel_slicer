@@ -130,7 +130,7 @@ void Denoise::Resize(int w, int h)
 void Denoise::kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth)
 {
   #pragma omp parallel for
-  for (size_t i = 0; i < m_sizeImg; ++i)  
+  for (int i = 0; i < m_sizeImg; ++i)  
   {      
     int pxData      = a_inTexColor[i];
     int r           = (pxData & 0x00FF0000) >> 16;

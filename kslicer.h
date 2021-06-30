@@ -467,6 +467,7 @@ namespace kslicer
     virtual std::string RecursiveRewrite (const clang::Stmt* expr); 
 
     virtual void ClearUserArgs() { }
+    virtual ShaderFeatures GetKernelShaderFeatures() const { return ShaderFeatures(); }
 
   protected:
 

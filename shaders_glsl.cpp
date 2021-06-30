@@ -37,6 +37,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   // now generate all glsl shaders
   //
   const std::string templatePath = "templates_glsl/generated.glsl";
+  const std::string templatePathUpdInd = "templates_glsl/update_indirect.glsl";
   
   nlohmann::json copy, kernels;
   for (auto& el : a_kernelsJson.items())
@@ -64,8 +65,17 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     for(auto folder : includeToShadersFolders)
      buildSH << "-I" << folder.c_str() << " ";
     buildSH << std::endl;
-
-    //glslangValidator -e myEntryPoint // is needed for auxilary kernels!
+    
+    if(kernel.value()["IsIndirect"])
+    {
+      outFileName = kernelName + "_UpdateIndirect.comp";
+      outFilePath = shaderPath + "/" + outFileName;
+      kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
+      buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
+      for(auto folder : includeToShadersFolders)
+       buildSH << "-I" << folder.c_str() << " ";
+      buildSH << std::endl;
+    }
   }
     
   if(a_codeInfo->usedServiceCalls.find("memcpy") != a_codeInfo->usedServiceCalls.end())
@@ -147,6 +157,10 @@ std::unordered_map<std::string, std::string> ListGLSLVectorReplacements()
   m_vecReplacements["short"]          = "int16_t";
   m_vecReplacements["uchar"]          = "uint8_t";
   m_vecReplacements["ushort"]         = "uint16_t";
+  m_vecReplacements["int32_t"]        = "int";
+  m_vecReplacements["uint32_t"]       = "uint";
+  m_vecReplacements["size_t"]         = "uint64_t";
+
   return m_vecReplacements;
 }
 
@@ -404,11 +418,12 @@ bool GLSLFunctionRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExp
   //const std::string rightText = kslicer::GetRangeSourceCode(right->getSourceRange(), m_compiler);
   for(auto globalPointer : m_shit.pointers)
   {
-    if(globalPointer.formal == leftText && WasNotRewrittenYet(arrayExpr))
+    if(globalPointer.formal == leftText && WasNotRewrittenYet(right))
     {
+      //right->dump();
       const std::string rightText = RecursiveRewrite(right);
       m_rewriter.ReplaceText(arrayExpr->getSourceRange(), globalPointer.actual + "[" + rightText + " + " + leftText + "Offset]"); // process shitty global pointers
-      MarkRewritten(arrayExpr);
+      MarkRewritten(right);
       break;
     }
   }
@@ -747,7 +762,7 @@ bool GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* c
   clang::QualType qt = cast->getType(); qt.removeLocalFastQualifiers();
   std::string castTo = RewriteStdVectorTypeStr(qt.getAsString());
   
-  if(WasNotRewrittenYet(next) && castTo != "size_t")
+  if(WasNotRewrittenYet(next) && qt.getAsString() != "size_t")
   {
     const std::string exprText = RecursiveRewrite(next);
     m_rewriter.ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");
@@ -840,10 +855,8 @@ public:
 
   void ClearUserArgs() override { m_userArgs.clear(); }
 
-  kslicer::ShaderFeatures GetShaderFeatures() const override 
-  { 
-    return m_glslRW.GetShaderFeatures(); 
-  }
+  kslicer::ShaderFeatures GetShaderFeatures()       const override { return m_glslRW.GetShaderFeatures(); }
+  kslicer::ShaderFeatures GetKernelShaderFeatures() const override { return m_glslRW.GetShaderFeatures(); }
 
 protected: 
 
@@ -1032,14 +1045,14 @@ void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, 
   if(shouldRewrite)
   {
     std::string indexText = RecursiveRewrite(expr->getArg(1));
-    if(a_assignOp != nullptr) // write 
+    if(a_assignOp != nullptr && WasNotRewrittenYet(a_assignOp)) // write 
     {
       std::string assignExprText = RecursiveRewrite(a_assignOp->getArg(1));
       std::string result         = std::string("imageStore") + "(" + objName + ", " + indexText + ", " + assignExprText + ")";
       m_rewriter.ReplaceText(a_assignOp->getSourceRange(), result);
       MarkRewritten(a_assignOp);
     }
-    else                      // read
+    else if(WasNotRewrittenYet(expr))                           // read
     {
       m_rewriter.ReplaceText(expr->getSourceRange(), std::string("imageLoad") + "(" + objName + ", " + indexText + ")");
       MarkRewritten(expr);
