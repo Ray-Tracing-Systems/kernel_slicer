@@ -985,7 +985,7 @@ bool GLSLKernelRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
     auto subExpr           = expr->getSubExpr();
     std::string exprInside = RecursiveRewrite(subExpr);
     const bool needOffset  = CheckIfExprHasArgumentThatNeedFakeOffset(exprInside);
-    if(needOffset)
+    if(needOffset || op == "++" || op == "--") // process reduction for ++ and  --
       return kslicer::KernelRewriter::VisitUnaryOperator_Impl(expr);
     else
       m_glslRW.VisitUnaryOperator_Impl(expr);
@@ -1178,16 +1178,12 @@ bool GLSLKernelRewriter::VisitReturnStmt_Impl(clang::ReturnStmt* ret)
 
 bool GLSLKernelRewriter::VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr)
 {
-  if(m_infoPass)
-    return true;
   KernelRewriter::VisitCompoundAssignOperator_Impl(expr); 
   return true;
 }  
 
 bool GLSLKernelRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr)
 {
-  if(m_infoPass)
-    return true;
   KernelRewriter::VisitBinaryOperator_Impl(expr); 
   return true;
 }

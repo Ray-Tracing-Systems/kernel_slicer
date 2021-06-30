@@ -122,39 +122,68 @@ bool kslicer::KernelInfo::ReductionAccess::SupportAtomicLastStep() const
   return false;
 }
 
-std::string kslicer::KernelInfo::ReductionAccess::GetAtomicImplCode() const
+std::string kslicer::KernelInfo::ReductionAccess::GetAtomicImplCode(bool isGLSL) const
 {
-  std::string res = "atomic_unknown";  
-  switch(type)
+  std::string res = "atomic_unknown"; 
+
+  if(isGLSL)
   {
-    case REDUCTION_TYPE::ADD_ONE:
-    case REDUCTION_TYPE::ADD:
-    res = "atomic_add";
-    break;
-
-    case REDUCTION_TYPE::SUB:
-    case REDUCTION_TYPE::SUB_ONE:
-    res = "atomic_sub";
-    break;
-
-    case REDUCTION_TYPE::FUNC:
+    switch(type)
     {
-      if(funcName == "min" || funcName == "std::min") res = "atomic_min";
-      if(funcName == "max" || funcName == "std::max") res = "atomic_max";
-    }
-    break;
-
-    default:
-    break;
-  };
-
-  auto lastSymb  = dataType[dataType.size()-1];
-  auto firstSimb = dataType[0]; // 'u' or 'i'
-  if(isdigit(lastSymb))
+      case REDUCTION_TYPE::ADD_ONE:
+      case REDUCTION_TYPE::ADD:
+      res = "atomicAdd";
+      break;
+  
+      case REDUCTION_TYPE::SUB:
+      case REDUCTION_TYPE::SUB_ONE:
+      res = "atomicSub";
+      break;
+  
+      case REDUCTION_TYPE::FUNC:
+      {
+        if(funcName == "min" || funcName == "std::min") res = "atomicMin";
+        if(funcName == "max" || funcName == "std::max") res = "atomicMax";
+      }
+      break;
+  
+      default:
+      break;
+    };
+  }
+  else
   {
-    res.push_back(lastSymb);  
-    if(firstSimb == 'u')
-      res.push_back(firstSimb);  
+    switch(type)
+    {
+      case REDUCTION_TYPE::ADD_ONE:
+      case REDUCTION_TYPE::ADD:
+      res = "atomic_add";
+      break;
+  
+      case REDUCTION_TYPE::SUB:
+      case REDUCTION_TYPE::SUB_ONE:
+      res = "atomic_sub";
+      break;
+  
+      case REDUCTION_TYPE::FUNC:
+      {
+        if(funcName == "min" || funcName == "std::min") res = "atomic_min";
+        if(funcName == "max" || funcName == "std::max") res = "atomic_max";
+      }
+      break;
+  
+      default:
+      break;
+    };
+
+    auto lastSymb  = dataType[dataType.size()-1];
+    auto firstSimb = dataType[0]; // 'u' or 'i'
+    if(isdigit(lastSymb))
+    {
+      res.push_back(lastSymb);  
+      if(firstSimb == 'u')
+        res.push_back(firstSimb);  
+    }
   }
 
   return res;

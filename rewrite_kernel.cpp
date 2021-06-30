@@ -380,14 +380,11 @@ bool kslicer::KernelRewriter::CheckIfExprHasArgumentThatNeedFakeOffset(const std
 
 bool kslicer::KernelRewriter::VisitUnaryOperator_Impl(UnaryOperator* expr)
 {
-  const auto op = expr->getOpcodeStr(expr->getOpcode());
-  //const auto opCheck = std::string(op);
-  //std::string opCheck2 = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-
   Expr* subExpr =	expr->getSubExpr();
   if(subExpr == nullptr)
     return true;
-
+    
+  const auto op = expr->getOpcodeStr(expr->getOpcode());
   if(op == "++" || op == "--") // detect ++ and -- for reduction
   {
     auto opRange = expr->getSourceRange();

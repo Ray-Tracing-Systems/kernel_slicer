@@ -38,6 +38,13 @@ layout( push_constant ) uniform kernelArgs
   uint tFlagsMask;    
 } kgenArgs;
 
+{% for redvar in Kernel.SubjToRed %} 
+shared {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}}]; 
+{% endfor %}
+{% for redvar in Kernel.ArrsToRed %} 
+shared {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][{{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}}]; 
+{% endfor %}
+
 void main()
 {
   {% if not Kernel.InitKPass %}
@@ -45,9 +52,12 @@ void main()
   {% for TID in Kernel.ThreadIds %}
   const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(gl_GlobalInvocationID[{{ loop.index }}]); 
   {% endfor %}
-  {# /*------------------------------------------------------------- BEG. CHECK EXIT COND ------------------------------------------------------------- */ #}
+  {# /*------------------------------------------------------------- BEG. INIT ------------------------------------------------------------- */ #}
   {% include "inc_exit_cond.glsl" %}
-  {# /*------------------------------------------------------------- END. CHECK EXIT COND ------------------------------------------------------------- */ #}
+  {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                        
+  {% include "inc_reduction_init.glsl" %}
+  {% endif %} 
+  {# /*------------------------------------------------------------- END. INIT ------------------------------------------------------------- */ #}
   {% if length(Kernel.Members) > 0 %}
 
   {% for Member in Kernel.Members %}
@@ -71,6 +81,11 @@ void main()
       kgen_threadFlags[tid] = ((kgenArgs.tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
   };
   {% endif %}
-
+  {# /*------------------------------------------------------------- BEG. REDUCTION PASS ------------------------------------------------------------- */ #}
+  {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                      
+  {% include "inc_reduction_inkernel.glsl" %}
+  
+  {% endif %}
+  {# /*------------------------------------------------------------- END. REDUCTION PASS ------------------------------------------------------------- */ #}
   {% endif %} {# /* END of 'if Kernel.HasEpilog'  */ #}
 }

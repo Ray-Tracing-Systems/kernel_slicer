@@ -137,9 +137,9 @@ namespace kslicer
       std::string    GetInitialValue()  const;
       std::string    GetOp(std::shared_ptr<IShaderCompiler> pShaderCC) const;
 
-      bool           SupportAtomicLastStep() const;
-      std::string    GetAtomicImplCode()     const;
-      size_t         GetSizeOfDataType()     const;
+      bool           SupportAtomicLastStep()        const;
+      std::string    GetAtomicImplCode(bool isGLSL) const;
+      size_t         GetSizeOfDataType()            const;
     };
     
     std::string           return_type;          ///<! func. return type
