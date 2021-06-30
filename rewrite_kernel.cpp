@@ -277,8 +277,8 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
       std::string newElemValue = kslicer::GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler);
 
       std::string memberNameB  = memberNameA + "_size";
-      m_rewriter.ReplaceText(f->getSourceRange(), std::string("{ uint offset = atomic_inc(&") + m_codeInfo->pShaderCC->UBOAccess(memberNameB) + "); " + 
-                                                                 memberNameA + "[offset] = " + newElemValue + ";}");
+      std::string resulingText = m_codeInfo->pShaderCC->RewritePushBack(memberNameA, memberNameB, newElemValue);
+      m_rewriter.ReplaceText(f->getSourceRange(), resulingText);
       MarkRewritten(f);
     }
     else if(fname == "data")
@@ -383,7 +383,7 @@ bool kslicer::KernelRewriter::VisitUnaryOperator_Impl(UnaryOperator* expr)
   Expr* subExpr =	expr->getSubExpr();
   if(subExpr == nullptr)
     return true;
-    
+
   const auto op = expr->getOpcodeStr(expr->getOpcode());
   if(op == "++" || op == "--") // detect ++ and -- for reduction
   {

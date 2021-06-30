@@ -149,6 +149,11 @@ std::string kslicer::ClspvCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
   return result;
 }
 
+std::string kslicer::ClspvCompiler::RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const 
+{
+  return std::string("{ uint offset = atomic_inc(&") + UBOAccess(memberNameB) + "); " + memberNameA + "[offset] = " + newElemValue + ";}";
+}
+
 std::shared_ptr<kslicer::FunctionRewriter> kslicer::ClspvCompiler::MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit)
 {
   return std::make_shared<kslicer::FunctionRewriter>(R, a_compiler, a_codeInfo);

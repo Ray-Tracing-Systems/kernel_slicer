@@ -1,6 +1,6 @@
   {
     {% if Kernel.threadDim == 1 %}
-    const uint localId = gl_LocalInvocationID[{{ loop.index }}];
+    const uint localId = gl_LocalInvocationID[0];
     {% else %}
     const uint localId = gl_LocalInvocationID[0] + uint({{Kernel.WGSizeX}})*gl_LocalInvocationID[1]; 
     {% endif %}

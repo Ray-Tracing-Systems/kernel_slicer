@@ -250,10 +250,10 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {
     uint32_t specializationData[3] = { 256, 1, 1 };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, "{{Kernel.OriginalName}}_Reduction");
+    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Reduction"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, "{{Kernel.OriginalName}}_Reduction");
+  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Reduction"{% endif %});
   {% endif %}
   {{Kernel.Name}}ReductionPipeline = m_pMaker->MakePipeline(device);
   {% endif %} 
@@ -490,6 +490,7 @@ void {{MainClassName}}_Generated::InitIndirectBufferUpdateResources(const char* 
   }
   {% endfor %}
   {% else %}
+  VkShaderModule tempShaderModule = VK_NULL_HANDLE;
   std::vector<uint32_t> code = vk_utils::ReadFile(a_filePath);
   VkShaderModuleCreateInfo createInfo = {};
   createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

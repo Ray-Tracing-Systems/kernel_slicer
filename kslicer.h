@@ -560,6 +560,8 @@ namespace kslicer
 
     virtual std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler) = 0;
     virtual std::string Name() const { return "unknown shader compiler"; }
+
+    virtual std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const = 0;
   };
 
   struct ClspvCompiler : IShaderCompiler
@@ -585,6 +587,9 @@ namespace kslicer
     
     std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler) override;
     std::string Name() const override { return "OpenCL"; }
+    
+    std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
+
   private:
     std::string BuildCommand() const;
     bool m_useCpp;
@@ -600,6 +605,7 @@ namespace kslicer
     void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
 
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
+    std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
     std::string ProcessBufferType(const std::string& a_typeName)        const override;
     void        GetThreadSizeNames(std::string a_strs[3])               const override;
 
@@ -609,6 +615,8 @@ namespace kslicer
     
     std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler) override;
     std::string Name() const override { return "GLSL"; }
+
+    std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
   private:
 
     void ProcessVectorTypesString(std::string& a_str);

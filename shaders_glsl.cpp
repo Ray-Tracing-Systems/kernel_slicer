@@ -36,8 +36,9 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   
   // now generate all glsl shaders
   //
-  const std::string templatePath = "templates_glsl/generated.glsl";
+  const std::string templatePath       = "templates_glsl/generated.glsl";
   const std::string templatePathUpdInd = "templates_glsl/update_indirect.glsl";
+  const std::string templatePathRedFin = "templates_glsl/reduction_finish.glsl";
   
   nlohmann::json copy, kernels;
   for (auto& el : a_kernelsJson.items())
@@ -71,6 +72,17 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
       outFileName = kernelName + "_UpdateIndirect.comp";
       outFilePath = shaderPath + "/" + outFileName;
       kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
+      buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
+      for(auto folder : includeToShadersFolders)
+       buildSH << "-I" << folder.c_str() << " ";
+      buildSH << std::endl;
+    }
+
+    if(kernel.value()["FinishRed"])
+    {
+      outFileName = kernelName + "_Reduction.comp";
+      outFilePath = shaderPath + "/" + outFileName;
+      kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
       buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
       for(auto folder : includeToShadersFolders)
        buildSH << "-I" << folder.c_str() << " ";
@@ -112,6 +124,13 @@ std::string kslicer::GLSLCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_
   }
 }
 
+std::string kslicer::GLSLCompiler::ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const 
+{
+  std::string text = a_call;
+  ReplaceFirst(text, "std::", "");
+  return text;
+}
+
 void kslicer::GLSLCompiler::GetThreadSizeNames(std::string a_strs[3]) const
 {
   a_strs[0] = "kgenArgs.iNumElementsX"; // TODO: FIX(!!!)
@@ -131,6 +150,11 @@ std::string kslicer::GLSLCompiler::ProcessBufferType(const std::string& a_typeNa
 
   return type; 
 };
+
+std::string kslicer::GLSLCompiler::RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const 
+{
+  return std::string("{ uint offset = atomicAdd(") + UBOAccess(memberNameB) + ", 1); " + memberNameA + "[offset] = " + newElemValue + ";}";
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////  GLSLFunctionRewriter  ////////////////////////////////////////////////////
@@ -980,16 +1004,19 @@ bool GLSLKernelRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
     return kslicer::KernelRewriter::VisitUnaryOperator_Impl(expr);
   
   const auto op = expr->getOpcodeStr(expr->getOpcode());
+  std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
   if(op == "*")
   {
     auto subExpr           = expr->getSubExpr();
     std::string exprInside = RecursiveRewrite(subExpr);
     const bool needOffset  = CheckIfExprHasArgumentThatNeedFakeOffset(exprInside);
-    if(needOffset || op == "++" || op == "--") // process reduction for ++ and  --
+    if(needOffset) // process reduction for ++ and  --
       return kslicer::KernelRewriter::VisitUnaryOperator_Impl(expr);
     else
       m_glslRW.VisitUnaryOperator_Impl(expr);
   } 
+  else if(op == "++" || op == "--") // process reduction for ++ and  --
+    return kslicer::KernelRewriter::VisitUnaryOperator_Impl(expr);
   else
     m_glslRW.VisitUnaryOperator_Impl(expr);
   
