@@ -940,7 +940,7 @@ static json ReductionAccessFill(const kslicer::KernelInfo::ReductionAccess& seco
   json varJ;
   varJ["Type"]          = second.dataType;
   varJ["Name"]          = second.leftExpr;
-  varJ["Init"]          = second.GetInitialValue();
+  varJ["Init"]          = second.GetInitialValue(pShaderCC->IsGLSL());
   varJ["Op"]            = second.GetOp(pShaderCC);
   varJ["NegLastStep"]   = (second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB || second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB_ONE);
   varJ["BinFuncForm"]   = (second.type == kslicer::KernelInfo::REDUCTION_TYPE::FUNC);

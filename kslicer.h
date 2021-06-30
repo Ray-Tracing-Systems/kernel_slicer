@@ -134,7 +134,7 @@ namespace kslicer
       std::string    funcName;
       std::string    dataType   = "UnknownType";
       std::string    tmpVarName = "UnknownReductionOutput";
-      std::string    GetInitialValue()  const;
+      std::string    GetInitialValue(bool isGLSL)  const;
       std::string    GetOp(std::shared_ptr<IShaderCompiler> pShaderCC) const;
 
       bool           SupportAtomicLastStep()        const;

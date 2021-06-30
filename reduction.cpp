@@ -29,8 +29,61 @@ std::string kslicer::KernelInfo::ReductionAccess::GetOp(std::shared_ptr<IShaderC
 
 }
 
-std::string kslicer::KernelInfo::ReductionAccess::GetInitialValue() const // best in nomination shitty code
+std::string kslicer::KernelInfo::ReductionAccess::GetInitialValue(bool isGLSL) const // best in nomination shitty code
 {
+  if(isGLSL)
+  {
+    switch(type)
+    {
+      case REDUCTION_TYPE::ADD_ONE:
+      case REDUCTION_TYPE::ADD:
+      case REDUCTION_TYPE::SUB:
+      case REDUCTION_TYPE::SUB_ONE:
+      {
+        if(dataType == "ivec2")  return "ivec2(0,0)";
+        if(dataType == "uvec2")  return "uvec2(0,0)";
+        if(dataType == "vec2")   return "vec2(0,0)";
+        
+        if(dataType == "ivec3")  return "ivec3(0,0,0)";
+        if(dataType == "uvec3")  return "uvec3(0,0,0)";
+        if(dataType == "vec3")   return "vec3(0,0,0)";
+  
+        if(dataType == "int4")   return "ivec4(0,0,0,0)";
+        if(dataType == "uint4")  return "uvec4(0,0,0,0)";
+        if(dataType == "vec4")   return "vec4(0,0,0,0)";
+        return "0";
+      }
+      break;
+      case REDUCTION_TYPE::MUL:
+        if(dataType == "ivec2")  return "ivec2(1,1)";
+        if(dataType == "uvec2")  return "uvec2(1,1)";
+        if(dataType == "vec2")   return "vec2(1,1)";
+        
+        if(dataType == "ivec3")  return "ivec3(1,1,1)";
+        if(dataType == "uvec3")  return "uvec3(1,1,1)";
+        if(dataType == "vec3")   return "vec3(1,1,1)";
+  
+        if(dataType == "int4")   return "ivec4(1,1,1,1)";
+        if(dataType == "uint4")  return "uvec4(1,1,1,1)";
+        if(dataType == "vec4")   return "vec4(1,1,1,1)";
+        return "1";
+      break;
+      case REDUCTION_TYPE::FUNC:
+      {
+        if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return "MAXFLOAT";
+        if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return "-MAXFLOAT";
+        return "0";
+      }
+      break;
+  
+      default:
+      break;
+    };
+  
+    return "0";
+  }
+
+
   switch(type)
   {
     case REDUCTION_TYPE::ADD_ONE:
