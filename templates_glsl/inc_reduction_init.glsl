@@ -13,5 +13,5 @@
     {% endfor %}
     {% endfor %}
   }
-  barrier();
+  // barrier(); we don't need it actually on init
   

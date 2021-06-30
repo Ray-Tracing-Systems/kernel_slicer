@@ -47,6 +47,7 @@
       {% endfor %}
       {% endfor %}
     }
+    barrier();
     {% if Kernel.threadDim > 1 %}
     barrier();
     {% endif %}
