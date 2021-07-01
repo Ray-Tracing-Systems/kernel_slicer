@@ -61,10 +61,10 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 # Concept and general workflow
 
-Now let us discuss general workflow of using kernel_slicer to port you code to GPU (Fig. 2):
+Now let us discuss general workflow of using kernel_slicer to port you code to GPU (Fig. 3):
 
 <p align = "center"><img src="images/concept.jpg" width = "858"></p>
-<p align = "center">Fig. 2. Sceme of our translator usage.</p><BR>
+<p align = "center">Fig. 3. Sceme of our translator usage.</p><BR>
 
 * To the first, suppose your logic on the CPU is implemented in some class (called *MyClass*) inside *MyClass.h* and *MyClass.cpp* files; 
 
