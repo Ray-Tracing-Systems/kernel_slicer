@@ -64,7 +64,7 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 Now let us discuss general workflow of using kernel_slicer to port you code to GPU (Fig. 3):
 
 <p align = "center"><img src="images/concept.jpg" width = "858"></p>
-<p align = "center">Fig. 3. Sceme of our translator usage.</p><BR>
+<p align = "center">Fig. 3. Sceme of our translator usage. We can generated both GLSL shaders (for different GLSL compilers) and OpenCL shaders for clspv</p><BR>
 
 * To the first, suppose your logic on the CPU is implemented in some class (called *MyClass*) inside *MyClass.h* and *MyClass.cpp* files; 
 
@@ -78,13 +78,11 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
 
   * MyClass_Generated.cpp contain generated Vulkan calls (and in fact can be split to multiple files because Vulkan despriptor set initialization code is quite huge);
 
-  * generated.cl ('z_generated.cl' for clspv or GLSL shaders in 'shaders_generated' directory) contain generated kernels;
+  * generated.cl ('z_generated.cl' for clspv or GLSL shaders in 'shaders_generated' directory) contain generated kernels (or compile GLSL shaders in folder 'shaders_generated');
   
 * The generated C++ implementation in *MyClass_Generated.cpp* assume that you will compile *z_generated.cl* manually with [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") to get *z_generated.cl.spv*;
 
 * Now you should plug generated implementation in to your application by creating *my_logic_cpu.cpp* which will use interface provided by *MyClass_Generated.h*.
-
-* Please note that the code which is implemented in *include/MyFunctions.h* assumed to be portable and should works as it is both for CPU compiler and clspv. It is your responsibility to follow clspv restrictions (well, at least for a while). 
 
 ## runing examples
 
@@ -203,6 +201,10 @@ The kernel_slicer does pretty simple and stupid work. Therefore, not much things
 3. If you don't see some functions in generated code which are supposed to be there, you don't follow the pattern and kernel_slicer just ignore such code;
 
 4. If you have some error messages from clspv, analyze them and understand what happened; Since our technology uses clspv, you have to follow its restrictions: add "__global" qualificator to pointers which assumed to access GPU global memory, don't compare/check pointers to zero, and other.   
+
+5. If you use GLSL and have some error messages from GLSL compiler, just play around with your code, split complex expressions to several lines for example. Usually it is easy to make generated GLSL works withing сosmetic changes for input code. Well, currently there are several complex cases for "C++ to GLSL" translator wich didn't yet implemented properly. We are working on that.  
+
+Anyway you are welcome to report bugs.
 
 # Patterns
 
