@@ -13,7 +13,7 @@ This means cross platform for C++ developers providing them at the same time abi
 We did this by accelerating/simplifying software development in Vulkan. Our conept is to provide quick transition from HW-agnostic C++ to GPU version of the same algorithm which can be automated for more than 90% (Fig. 2). The remaining 10% are written by hand and can use any desire HW extensions which, for example, are not supported by kernel_slicer yet.
 
 <p align = "center"><img src="images/concept_why.jpg" width = "1081"></p>
-<p align = "center">Fig. 2. Purpose and place of our tool among other GPU pgogramming technologies.</p><BR>
+<p align = "center">Fig. 2. Purpose and place of our tool among other GPU programming technologies.</p><BR>
 
 Vulkan is great! But it is time consuming technology, which mean significant increase for cost and time of software developemnt. Our goal is to create complex algorithms in Vulkan fast. And our goal is to preserve 100% cross-platform ability be keeping the input source code in form of common C++ without **any** language extensions.
 
