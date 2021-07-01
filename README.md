@@ -3,10 +3,23 @@
 <p align = "center"><img src="images/logo.png" width = "600"></p>
 <p align = "center">Fig. 1. Our translator has many heads due to many existing programming patterns.</p><BR>
 This project is based on clang (fig. 1.). We sincerely thank the clang front-end developers for the great structure and documentation of their project!
+We heavily used clang front-end infrastructure to transform input C++ source code and generate GPU implementation of the algorithm in Vulkan. 
+
+
+# Project goal
+
+The goal of this project is to increase developer productivity when porting CPU code to Vulkan which is time consuming work in general.
+This means cross platform for C++ developers providing them at the same time ability to use any existing and any perspective HW featues of GPUs.
+We did this by accelerating/simplifying software development in Vulkan. Our conept is to provide quick transition from HW-agnostic C++ to GPU version of the same algorithm which can be automated for more than 90% (Fig. 2). The remaining 10% are written by hand and can use any desire HW extensions which, for example, are not supported by kernel_slicer yet.
+
+<p align = "center"><img src="images/concept_why.jpg" width = "1081"></p>
+<p align = "center">Fig. 2. Purpose and place of our tool among other GPU pgogramming technologies.</p><BR>
+
+Vulkan is great! But it is time consuming technology, which mean significant increase for cost and time of software developemnt. Our goal is to create complex algorithms in Vulkan fast. And our goal is to preserve 100% cross-platform ability be keeping the input source code in form of common C++ without **any** language extensions.
 
 # Project overview
 
-kernel_slicer is prototype auto-programming tool which takes C++ code as input and port this code to GPU by generating optimized Vulkan implemantation automaticly using source-to-source transtation and domain specific knowlege. The current goal of this project is to increase developer productivity when porting CPU code to Vulkan which is time consuming work in general. Please read several short remarks about our project.
+kernel_slicer is prototype auto-programming tool which takes C++ code as input and port this code to GPU by generating optimized Vulkan implemantation automaticly using source-to-source transtation and domain specific knowlege. Please read several short remarks about our project.
 
 * We generate C++ source code in Vulkan. We don't (and don't plan currently) to support any other back-ends (like CUDA or OpenCL) since we see no need for this. Nevertheless, if you see such a need for your project and you like our concept, please contact us;
 
@@ -16,11 +29,11 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 * Patterns are specific cases of algorithms/software which has known efficient implemantation for GPUs. Because we have additional knowllege about algorithm during translation, we can embede specific optimisation to our translator and leave program logic code clean of these optimisations; 
 
-* Currently we support 2 patterns: Image Processing Vectorization (IPV) and Ray Tracing Vectorization (RTV). We recommend you to start with IPV because it is simple and straitforward pattern for extraction parallel for; The RTV pattern is differs and assume that in normal CPU code parallel for loops are placed out of kernels and control functions;
+* Currently we support 2 architectural patterns: Image Processing Vectorization (IPV) and Ray Tracing Vectorization (RTV). Architectural pattern is a template/pattern which tells compiler how you software looks in general, ath the high level. We recommend you to start with IPV because it is straitforward pattern for extraction of "parallel for"; The RTV pattern is differs and assume that in normal CPU code parallel for loops are placed out of both kernels and control functions;
 
-* Our tool is not classic compiler. It generate kernels source code for [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") and C++ code for Vulkan calls to run kernels correcly. 
+* Inside architectural patterns more granularly algorithmic pattern can occur. Currently we support several of them: parallel reduction, indirect dispatching, parallel buffer append, texture read/write/sample, virtual function call (this last one is in prototype stage). 
 
-* We also has experimental support for [Circle shader compiler](https://github.com/seanbaxter/shaders "writing shaders in C++ with Circle compiler") which we are going to use in future as one of our main back-ends (use via further command line argument: "-shaderCC circle"); 
+* Our tool is not classic compiler. It generate  GLSL kernels or kernel source code for [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") and then henerates C++ code for Vulkan calls to run kernels correcly. 
 
 * Let's summarize again: you have to bind generated code to your program yourself, thus you can't  escape Vulkan experience. You can directly use generated class. You can also override some functions if you want to change behaviour of some parts of generated code (see [Example of glue code](doc/README_glue.md));
 
@@ -40,14 +53,15 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 5. you may also use provided VS Code config to build and run test cases (tasks.json and launch.json)
 
-6. You will need also to build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders").
+6. (optional) Probably you will need to build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders").
 
 7. Build volk with cmake and leave 'libvolk.a' in 'apps/volk'
+
+8. Install Vulkan SDK (https://vulkan.lunarg.com/sdk/home)
 
 # Concept and general workflow
 
 Now let us discuss general workflow of using kernel_slicer to port you code to GPU (Fig. 2):
-
 
 <p align = "center"><img src="images/concept.jpg" width = "858"></p>
 <p align = "center">Fig. 2. Sceme of our translator usage.</p><BR>
@@ -64,7 +78,7 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
 
   * MyClass_Generated.cpp contain generated Vulkan calls (and in fact can be split to multiple files because Vulkan despriptor set initialization code is quite huge);
 
-  * generated.cl (z_generated.cl currently) contain generated kernels;
+  * generated.cl ('z_generated.cl' for clspv or GLSL shaders in 'shaders_generated' directory) contain generated kernels;
   
 * The generated C++ implementation in *MyClass_Generated.cpp* assume that you will compile *z_generated.cl* manually with [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") to get *z_generated.cl.spv*;
 
@@ -76,26 +90,34 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
 
 1. Clone kernel_slicer and build it;
 
-2. build clspv;
+2. (optional) build clspv;
 
 3. Select one of examples from app folder. We use the simple example of image processing in this tutorial: "apps/05_filter_bloom_good".
 
 4. (optional) Understand CPU code. You may comment all Vulkan includes and generated files from CMakeLists.txt (test_class_generated.cpp and test_class_generated_ds.cpp) to build and run only cpu code. And please comment "tone_mapping_gpu()" call in main.cpp; You may fix CMake and includes back later.
 
 5. Run kernel kslicer with the folowing command line (examples are stored in ".vscode/launch.json") from the project folder (i.e. the folder where this README.md is located): 
-
+* if use clspv:
 ```
-./kslicer "apps/05_filter_bloom_good/test_class.cpp" -pattern "ipv" -mainClass "ToneMapping" -stdlibfolder "TINYSTL" -reorderLoops "YX" -v
+./kslicer apps/05_filter_bloom_good/test_class.cpp -mainClass ToneMapping -stdlibfolder TINYSTL -pattern ipv -reorderLoops YX -Iapps/LiteMath IncludeToShaders -DKERNEL_SLICER -v
+```
+* if use GLSL:
+```
+./kslicer "apps/05_filter_bloom_good/test_class.cpp"  -mainClass ToneMapping -stdlibfolder TINYSTL -pattern ipv -reorderLoops YX -Iapps/LiteMath IncludeToShaders -shaderCC GLSL -DKERNEL_SLICER -v
 ```
 Now generated files should apper in  "apps/05_filter_bloom_good" folder.
 
-6. Put clspv to "apps" folder and then run futher command from concrete folder sample:
- 
+6. Compile generated shaders.
+* if use clspv: put clspv to "apps" folder and then run futher command from concrete folder sample (In VS Code config this process is called "Build Kernels"):
 ```
 bash z_build.sh
 ```
- 
-If you got z_generated.cl.spv file, kernels were compiled succesfully. In VS Code config this process is called "Build Kernels".
+  * You should obtain "z_generated.cl.spv" in "apps/05_filter_bloom_good" folder:
+* if use GLSL: go to "apps/05_filter_bloom_good/shaders_generated" and run (In VS Code config this process is called "Build Kernels (GLSL)"):
+ ```
+bash build.sh
+```
+  * You should obtain many different SPIR_V files in "apps/05_filter_bloom_good/shaders_generated"
  
 7. Now you can bind generated code to some your Vulkan code. We provide simple example in *test_class_gpu.cpp*.
 
@@ -154,13 +176,19 @@ class TestClass // main class
 };
 ```
 
-(+) can call virtual kernels (**see samples 10 and 12 in 'apps'**);
+(+) (GLSL only) can use class methods inside kernels 
 
-(-) can't **yet** use class methods inside kernels (**not implemented**);
+(+) (GLGL only) can use textures (see 14 and 15 samples);
+
+(+) can and should use pointers for arguments of "kernel" and "control" functions (see further what are "kernel" and "control");
+
+(+) (better with clspv) can pass pointers from kernel argument or member vector.data() to functions. For GLSL case we have very restricted support for these type of pointers currently;
+
+(+) (clspv only) can call virtual kernels (**see samples 10, 12 and 14 in 'apps'**);
 
 (-) can't **yet** inherit your class from some other class (**not implemented**);
 
-(-) can't use pointer members inside kernels (**forbidden**). The translator will ignore pointer members because it can't know size of your data which is mandatory. However you still may use pointers for normal CPU code in your class, but please don't expect we can port their data to GPU;
+(-) can't use pointer members inside kernels (**not implemented yet**). The translator will ignore pointer members because it can't know size of your data which is mandatory. However we will could transform each such pointer to VkBuffer in future. But this means in generated code you should set those buffers yourself.
 
 (-) can't print to std output or files inside kernels (**not planned for implementation**). Although this functionality can be implemented, we see no critical need in it because it is supposed that you will debug your code on the CPU and then just comment out all file/streams output inside kernel code;
 
