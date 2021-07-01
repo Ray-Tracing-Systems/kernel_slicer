@@ -255,6 +255,12 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
   
   std::string names[3];
   pShaderCC->GetThreadSizeNames(names);
+  if(pShaderCC->IsGLSL())
+  {
+    names[0] = std::string("kgenArgs.") + names[0];
+    names[1] = std::string("kgenArgs.") + names[1];
+    names[2] = std::string("kgenArgs.") + names[2];
+  }
   std::string fakeOffsetExpr = kslicer::GetFakeOffsetExpression(a_funcInfo, GetKernelTIDArgs(a_funcInfo), names);
 
   Rewriter rewrite2;

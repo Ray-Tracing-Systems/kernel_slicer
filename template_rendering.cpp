@@ -1280,10 +1280,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       if(threadIdNames.size() == 3)
         kernelJson["threadName3"] = threadIdNames[2];
     }
-
-    std::string tidNames[3] = {"kgen_iNumElementsX", "kgen_iNumElementsY", "kgen_iNumElementsZ"};
+    
+    //////////////////////////////////////////////////////////////////////////////////  TODO: refactor this code
+    std::string tidNames[3];
     std::string tidTypes[3] = {"uint", "uint", "uint"};
- 
+    a_classInfo.pShaderCC->GetThreadSizeNames(tidNames);  
+
     if(k.loopIters.size() != 0) 
     {
       for(const auto& iter : k.loopIters)
@@ -1293,6 +1295,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         tidTypes[loopIdReorderd] = iter.type;
       }                                                             // we must change it to 'vec_size2' for example 
     }
+    //////////////////////////////////////////////////////////////////////////////////  TODO: refactor this code
 
     kernelJson["threadSZName1"] = tidNames[0]; 
     kernelJson["threadSZName2"] = tidNames[1]; 
@@ -1309,6 +1312,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     //////////////////////////////////////////////////////////////////////////////////////////
     std::string names[3];
     a_classInfo.pShaderCC->GetThreadSizeNames(names);
+    if(a_classInfo.pShaderCC->IsGLSL())
+    {
+      names[0] = std::string("kgenArgs.") + names[0];
+      names[1] = std::string("kgenArgs.") + names[1];
+      names[2] = std::string("kgenArgs.") + names[2];
+    }
 
     kernelJson["shouldCheckExitFlag"] = k.checkThreadFlags;
     kernelJson["checkFlagsExpr"]      = "//xxx//";

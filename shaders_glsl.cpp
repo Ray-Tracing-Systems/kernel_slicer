@@ -133,9 +133,9 @@ std::string kslicer::GLSLCompiler::ReplaceCallFromStdNamespace(const std::string
 
 void kslicer::GLSLCompiler::GetThreadSizeNames(std::string a_strs[3]) const
 {
-  a_strs[0] = "kgenArgs.iNumElementsX"; // TODO: FIX(!!!)
-  a_strs[1] = "kgenArgs.iNumElementsY"; // TODO: FIX(!!!)
-  a_strs[2] = "kgenArgs.iNumElementsZ"; // TODO: FIX(!!!)
+  a_strs[0] = "iNumElementsX"; 
+  a_strs[1] = "iNumElementsY"; 
+  a_strs[2] = "iNumElementsZ"; 
 }
 
 
