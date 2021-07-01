@@ -199,4 +199,16 @@ void kslicer::KernelRewriter::MarkRewritten(const clang::Stmt* expr)
   kslicer::MarkRewrittenRecursive(expr, *m_pRewrittenNodes); 
 }
 
+void kslicer::DisplayVisitedNodes(const std::unordered_set<uint64_t>& a_nodes)
+{
+  std::vector<uint64_t> allNodes;
+  allNodes.reserve(a_nodes.size());
+  for(auto p : a_nodes)
+    allNodes.push_back(p);
+
+  std::sort(allNodes.begin(), allNodes.end());
+  for(size_t i=0; i<allNodes.size(); i++)
+    std::cout << i << "\t" << allNodes[i] << std::endl;
+}
+
 

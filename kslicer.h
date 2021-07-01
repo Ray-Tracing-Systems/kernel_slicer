@@ -449,6 +449,8 @@ namespace kslicer
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////  KernelRewriter  //////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  void DisplayVisitedNodes(const std::unordered_set<uint64_t>& a_nodes);
 
   class KernelRewriter : public clang::RecursiveASTVisitor<KernelRewriter> // replace all expressions with class variables to kgen_data buffer access
   {
@@ -459,20 +461,20 @@ namespace kslicer
     
     bool VisitVarDecl(clang::VarDecl* decl)                    { return VisitVarDecl_Impl(decl);        }
 
-    bool VisitMemberExpr(clang::MemberExpr* expr)              { return VisitMemberExpr_Impl(expr); }
-    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f)   { return VisitCXXMemberCallExpr_Impl(f); }
-    bool VisitCallExpr(clang::CallExpr* f)                     { return VisitCallExpr_Impl(f); }
-    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call)  { return VisitCXXConstructExpr_Impl(call); }
-    bool VisitReturnStmt(clang::ReturnStmt* ret)               { return VisitReturnStmt_Impl(ret); }
+    bool VisitMemberExpr(clang::MemberExpr* expr)              { if(WasRewritten(expr)) return true; else return VisitMemberExpr_Impl(expr); }
+    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f)   { if(WasRewritten(f)) return true; else return VisitCXXMemberCallExpr_Impl(f); }
+    bool VisitCallExpr(clang::CallExpr* f)                     { if(WasRewritten(f)) return true; else return VisitCallExpr_Impl(f); }
+    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call)  { if(WasRewritten(call)) return true; else return VisitCXXConstructExpr_Impl(call); }
+    bool VisitReturnStmt(clang::ReturnStmt* ret)               { if(WasRewritten(ret)) return true; else return VisitReturnStmt_Impl(ret); }
                                                                            
-    bool VisitUnaryOperator(clang::UnaryOperator* expr)        { return VisitUnaryOperator_Impl(expr);  }                       
-    bool VisitBinaryOperator(clang::BinaryOperator* expr)      { return VisitBinaryOperator_Impl(expr); }    
+    bool VisitUnaryOperator(clang::UnaryOperator* expr)        { if(WasRewritten(expr)) return true; else return VisitUnaryOperator_Impl(expr);  }                       
+    bool VisitBinaryOperator(clang::BinaryOperator* expr)      { if(WasRewritten(expr)) return true; else return VisitBinaryOperator_Impl(expr); }    
 
-    bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr) { return VisitCompoundAssignOperator_Impl(expr); } 
-    bool VisitCXXOperatorCallExpr   (clang::CXXOperatorCallExpr* expr)    { return VisitCXXOperatorCallExpr_Impl(expr); }
-    bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)                 { return VisitCStyleCastExpr_Impl(cast); }
-    bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast)             { return VisitImplicitCastExpr_Impl(cast); }
-    bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { return VisitDeclRefExpr_Impl(expr); }
+    bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr) { if(WasRewritten(expr)) return true; else return VisitCompoundAssignOperator_Impl(expr); } 
+    bool VisitCXXOperatorCallExpr   (clang::CXXOperatorCallExpr* expr)    { if(WasRewritten(expr)) return true; else return VisitCXXOperatorCallExpr_Impl(expr); }
+    bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)                 { if(WasRewritten(cast)) return true; else return VisitCStyleCastExpr_Impl(cast); }
+    bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast)             { if(WasRewritten(cast)) return true; else return VisitImplicitCastExpr_Impl(cast); }
+    bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { if(WasRewritten(expr)) return true; else return VisitDeclRefExpr_Impl(expr); }
 
     std::shared_ptr<std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
     virtual std::string RecursiveRewrite (const clang::Stmt* expr); 
@@ -514,6 +516,7 @@ namespace kslicer
     std::string FunctionCallRewriteNoName(const clang::CXXConstructExpr* call);
 
     bool WasNotRewrittenYet(const clang::Stmt* expr);
+    bool WasRewritten(const clang::Stmt* expr) { return !WasNotRewrittenYet(expr); }
     void MarkRewritten(const clang::Stmt* expr);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -202,6 +202,7 @@ struct IRecursiveRewriteOverride
 {
   virtual std::string RecursiveRewriteImpl(const clang::Stmt* expr) = 0;
   virtual kslicer::ShaderFeatures GetShaderFeatures() const { return kslicer::ShaderFeatures(); }
+  virtual std::unordered_set<uint64_t> GetVisitedNodes() const = 0;
 };
 
 /**
@@ -276,8 +277,26 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
     return "";
   if(m_pKernelRewriter != nullptr) // we actually do kernel rewrite
   {
+    //auto nodesFuncBefore = *m_pRewrittenNodes;
+    //auto nodesKernBefore = m_pKernelRewriter->GetVisitedNodes();
+    
     std::string result = m_pKernelRewriter->RecursiveRewriteImpl(expr);
     sFeatures = sFeatures || m_pKernelRewriter->GetShaderFeatures();
+    MarkRewritten(expr);
+    //auto nodesFuncAfter = *m_pRewrittenNodes;
+    auto nodesKernAfter = m_pKernelRewriter->GetVisitedNodes();
+    //for(auto node : nodesKernAfter)
+    //  m_pRewrittenNodes->insert(node);
+
+    //std::cout << "*****************************" << std::endl;
+    //kslicer::DisplayVisitedNodes(nodesFuncBefore); std::cout << std::endl;
+    //std::cout << "-----------------------------" << std::endl;
+    //kslicer::DisplayVisitedNodes(nodesFuncBefore); std::cout << std::endl;
+    //std::cout << "=============================" << std::endl;
+    //kslicer::DisplayVisitedNodes(nodesFuncAfter); std::cout << std::endl;
+    //std::cout << "-----------------------------" << std::endl;
+    //kslicer::DisplayVisitedNodes(nodesFuncAfter); std::cout << std::endl;
+
     return result;
   }
   else
@@ -285,6 +304,8 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
     GLSLFunctionRewriter rvCopy = *this;
     rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
     sFeatures = sFeatures || rvCopy.sFeatures;
+    //for(auto node : *(rvCopy.m_pRewrittenNodes))
+    //  m_pRewrittenNodes->insert(node);
 
     std::string text = m_rewriter.getRewrittenText(expr->getSourceRange());
     if(text == "")                                                            // try to repair from the errors
@@ -656,11 +677,11 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     m_rewriter.ReplaceText(call->getSourceRange(), pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call));
     MarkRewritten(call);
   }
-  else if(fDecl->isInStdNamespace() && WasNotRewrittenYet(call)) // remove "std::"
-  {
-    m_rewriter.ReplaceText(call->getSourceRange(), fname + "(" + CompleteFunctionCallRewrite(call));
-    MarkRewritten(call);
-  }
+  //else if(fDecl->isInStdNamespace() && WasNotRewrittenYet(call)) // remove "std::"
+  //{
+  //  m_rewriter.ReplaceText(call->getSourceRange(), fname + "(" + CompleteFunctionCallRewrite(call));
+  //  MarkRewritten(call);
+  //}
 
   return true; 
 }
@@ -891,7 +912,9 @@ public:
 protected: 
 
   GLSLFunctionRewriter m_glslRW;
-  std::string RecursiveRewriteImpl(const clang::Stmt* expr) override { return GLSLKernelRewriter::RecursiveRewrite(expr); }
+  std::string RecursiveRewriteImpl(const clang::Stmt* expr) override { return RecursiveRewrite(expr); }
+  std::unordered_set<uint64_t> GetVisitedNodes() const override { return *m_pRewrittenNodes; }
+
   bool IsGLSL() const override { return true; }
 
   void RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, clang::CXXOperatorCallExpr* a_assignOp);
@@ -909,7 +932,17 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
   if(!clang::isa<clang::DeclRefExpr>(expr))
   {
     GLSLKernelRewriter rvCopy = *this;
+    //auto nodesBefore = *rvCopy.m_pRewrittenNodes;
     rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
+    //auto nodesAfter = *rvCopy.m_pRewrittenNodes;
+    //auto nodesInFun = *m_glslRW.m_pRewrittenNodes;
+    //std::cout << std::endl;
+    //std::cout << "========================================" << std::endl;
+    //kslicer::DisplayVisitedNodes(nodesBefore); std::cout << std::endl;
+    //std::cout << "----------------------------------------" << std::endl;
+    //kslicer::DisplayVisitedNodes(nodesAfter); std::cout << std::endl;
+    //std::cout << "----------------------------------------" << std::endl;
+    //kslicer::DisplayVisitedNodes(nodesInFun); std::cout << std::endl;
     return m_rewriter.getRewrittenText(expr->getSourceRange());
   }
   else
@@ -1193,36 +1226,34 @@ bool GLSLKernelRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cas
 {
   if(m_infoPass)
     return true;
-  m_glslRW.VisitImplicitCastExpr_Impl(cast);
-  return true;
+  
+  return m_glslRW.VisitImplicitCastExpr_Impl(cast);
 }
 
 bool GLSLKernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 {
   if(m_infoPass)
     return true;
-  KernelRewriter::VisitMemberExpr_Impl(expr); 
-  return true;
+  
+  return KernelRewriter::VisitMemberExpr_Impl(expr); 
 }
 
 bool GLSLKernelRewriter::VisitReturnStmt_Impl(clang::ReturnStmt* ret)
 {
   if(m_infoPass)
     return true;
-  KernelRewriter::VisitReturnStmt_Impl(ret); 
-  return true;
+  
+  return KernelRewriter::VisitReturnStmt_Impl(ret); 
 }
 
 bool GLSLKernelRewriter::VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr)
 {
-  KernelRewriter::VisitCompoundAssignOperator_Impl(expr); 
-  return true;
+  return KernelRewriter::VisitCompoundAssignOperator_Impl(expr); 
 }  
 
 bool GLSLKernelRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr)
 {
-  KernelRewriter::VisitBinaryOperator_Impl(expr); 
-  return true;
+  return KernelRewriter::VisitBinaryOperator_Impl(expr); 
 }
 
 std::shared_ptr<kslicer::KernelRewriter> kslicer::GLSLCompiler::MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 

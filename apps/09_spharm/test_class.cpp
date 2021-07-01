@@ -13,6 +13,11 @@ using namespace LiteMath;
 
 inline float sqr(float x) { return x * x; }
 
+using std::acos;
+using std::sin;
+using std::cos;
+using std::sqrt;
+
 void SphHarm::kernel2D_IntegrateSphHarm(uint32_t* a_data, uint32_t a_width, uint32_t a_height)
 {
   coefs[0] = float3(0,0,0); 
@@ -31,8 +36,8 @@ void SphHarm::kernel2D_IntegrateSphHarm(uint32_t* a_data, uint32_t a_width, uint
     for (uint32_t j = 0; j < a_width; ++j) {
       //Create a direction to texel
       const float phi = (i + 0.5f) / a_height * PI * 2.0f;
-      const float theta = 2.0f * std::acos(std::sqrt(1.0f - (j + 0.5f) / a_width));
-      const float3 direction = float3(std::cos(phi) * std::sin(theta), std::sin(phi) * std::sin(theta), std::cos(theta));
+      const float theta = 2.0f * acos(sqrt(1.0f - (j + 0.5f) / a_width));
+      const float3 direction = float3(cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta));
       //Extract color
       const uint32_t texelIdx = i * a_width + j;
       const uint32_t texelData = a_data[texelIdx];
@@ -54,15 +59,15 @@ void SphHarm::kernel2D_IntegrateSphHarm(uint32_t* a_data, uint32_t a_width, uint
   //
   const float normConst = 4.0f * PI/(float)(a_height * a_width);
 
-  coefs[0] *= normConst*0.5f / std::sqrt(PI);
-  coefs[1] *= normConst*-0.5f * std::sqrt(3.0f / PI);
-  coefs[2] *= normConst*0.5f * std::sqrt(3.0f / PI);
-  coefs[3] *= normConst*-0.5f * std::sqrt(3.0f / PI);
-  coefs[4] *= normConst*0.5f * std::sqrt(15.0f / PI);
-  coefs[5] *= normConst*-0.5f * std::sqrt(15.0f / PI);
-  coefs[6] *= normConst*0.25f * std::sqrt(5.0f / PI);
-  coefs[7] *= normConst*-0.5f * std::sqrt(15.0f / PI);
-  coefs[8] *= normConst*0.25f * std::sqrt(15.0f / PI);
+  coefs[0] *= normConst*0.5f /  sqrt(PI);
+  coefs[1] *= normConst*-0.5f * sqrt(3.0f / PI);
+  coefs[2] *= normConst*0.5f *  sqrt(3.0f / PI);
+  coefs[3] *= normConst*-0.5f * sqrt(3.0f / PI);
+  coefs[4] *= normConst*0.5f *  sqrt(15.0f / PI);
+  coefs[5] *= normConst*-0.5f * sqrt(15.0f / PI);
+  coefs[6] *= normConst*0.25f * sqrt(5.0f / PI);
+  coefs[7] *= normConst*-0.5f * sqrt(15.0f / PI);
+  coefs[8] *= normConst*0.25f * sqrt(15.0f / PI);
 }
 
 
