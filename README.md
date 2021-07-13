@@ -78,9 +78,9 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
 
   * MyClass_Generated.cpp contain generated Vulkan calls (and in fact can be split to multiple files because Vulkan despriptor set initialization code is quite huge);
 
-  * generated.cl ('z_generated.cl' for clspv or GLSL shaders in 'shaders_generated' directory) contain generated kernels (or compile GLSL shaders in folder 'shaders_generated');
+  * generated.cl ('z_generated.cl' for clspv or GLSL shaders in 'shaders_generated' directory) contain generated kernels;
   
-* The generated C++ implementation in *MyClass_Generated.cpp* assume that you will compile *z_generated.cl* manually with [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") to get *z_generated.cl.spv*;
+* The generated C++ implementation in *MyClass_Generated.cpp* assume that you will compile *z_generated.cl* manually with [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") to get *z_generated.cl.spv* (or compiled GLSL shaders in folder 'shaders_generated');
 
 * Now you should plug generated implementation in to your application by creating *my_logic_cpu.cpp* which will use interface provided by *MyClass_Generated.h*.
 
