@@ -1,6 +1,9 @@
 #include <iostream>
 #include <iomanip>      // std::setfill, std::setw
 
+#include <vector>
+#include <string>  
+
 #include <inja.hpp>
 
 //#ifdef WIN32
@@ -29,16 +32,16 @@ int main(int argc, const char** argv)
   nlohmann::json test;
   
   test["Number"] = 101;
-  test["Name"]   = "base_arith";
   test["Type"]   = "float4";
   test["TypeS"]  = "float";
   test["VecLen"]  = 4;
-  test["ValuesA"] = "1.0f, 2.0f, -3.0f, 4.0f";
-  test["ValuesB"] = "5.0f, -5.0f, 6.0f, 7.0f";
+  test["ValuesA"] = std::vector<float>({1.0f, 2.0f, -3.0f, 4.0f});
+  test["ValuesB"] = std::vector<float>({5.0f, -5.0f, 6.0f, 7.0f});
   test["IsFloat"] = (test["TypeS"] == "float") || (test["TypeS"] == "double");  
 
   nlohmann::json data;
-  data["Test"] = test;
+  data["Tests"] = std::vector<std::string>();
+  data["Tests"].push_back(test);
 
   //#ifdef WIN32
   //mkdir("generated");
