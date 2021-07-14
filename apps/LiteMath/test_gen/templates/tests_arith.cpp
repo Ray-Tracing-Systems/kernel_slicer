@@ -73,10 +73,10 @@ bool test{{Test.Number+1}}_basek_{{Test.Type}}()
   const {{Test.Type}} Cx5 = {{Test.TypeS}}(3) - Cx2/(Cx2 - Cx1);
   const {{Test.Type}} Cx6 = (Cx2 + Cx1)/Cx2 + {{Test.TypeS}}(5)/Cx1;
 
-  CVEX_ALIGNED(16) {{Test.TypeS}} result1[{{Test.VecLen}}];
-  CVEX_ALIGNED(16) {{Test.TypeS}} result2[{{Test.VecLen}}];
-  CVEX_ALIGNED(16) {{Test.TypeS}} result3[{{Test.VecLen}}];
-  CVEX_ALIGNED(16) {{Test.TypeS}} result4[{{Test.VecLen}}];
+  CVEX_ALIGNED(16) {{Test.TypeS}} result1[4]; 
+  CVEX_ALIGNED(16) {{Test.TypeS}} result2[4];
+  CVEX_ALIGNED(16) {{Test.TypeS}} result3[4];
+  CVEX_ALIGNED(16) {{Test.TypeS}} result4[4];
 
   store(result1, Cx3);
   store(result2, Cx4);
@@ -101,5 +101,124 @@ bool test{{Test.Number+1}}_basek_{{Test.Type}}()
 
   return passed;
 }
+
+bool test{{Test.Number+2}}_unaryv_{{Test.Type}}()
+{
+  const {{Test.Type}} Cx1({% for Val in Test.ValuesA %} {{Test.TypeS}}({{Val}}){% if loop.index1 != Test.VecLen %}, {% endif %} {% endfor %});
+  const {{Test.Type}} Cx2({% for Val in Test.ValuesB %} {{Test.TypeS}}({{Val}}){% if loop.index1 != Test.VecLen %}, {% endif %} {% endfor %});
+
+  auto Cx3 = Cx1;
+  auto Cx4 = Cx1;
+  auto Cx5 = Cx1;
+  auto Cx6 = Cx1;
+
+  Cx3 += Cx2;
+  Cx4 -= Cx2;
+  Cx5 *= Cx2;
+  Cx6 /= Cx2;
+
+  {{Test.TypeS}} result1[{{Test.VecLen}}];
+  {{Test.TypeS}} result2[{{Test.VecLen}}];
+  {{Test.TypeS}} result3[{{Test.VecLen}}];
+  {{Test.TypeS}} result4[{{Test.VecLen}}];
+
+  store_u(result1, Cx3);
+  store_u(result2, Cx4);
+  store_u(result3, Cx5);
+  store_u(result4, Cx6);
+  
+  float expr1[{{Test.VecLen}}], expr2[{{Test.VecLen}}], expr3[{{Test.VecLen}}], expr4[{{Test.VecLen}}];
+  bool passed = true;
+  for(int i=0;i<{{Test.VecLen}};i++)
+  {
+    expr1[i] = Cx1[i] + Cx2[i];
+    expr2[i] = Cx1[i] - Cx2[i];
+    expr3[i] = Cx1[i] * Cx2[i];
+    expr4[i] = Cx1[i] / Cx2[i];
+    
+    {% if Test.IsFloat %}
+    if(fabs(result1[i] - expr1[i]) > 1e-6f || fabs(result2[i] - expr2[i]) > 1e-6f || fabs(result3[i] - expr3[i]) > 1e-6f) 
+    {% else %}
+    if(result1[i] != expr1[i] || result2[i] != expr2[i] || result3[i] != expr3[i]) 
+    {% endif %}
+      passed = false;
+  }
+
+  if(!passed)
+  {
+    PrintRR("exp1_res", "exp2_res", result1, expr1, {{Test.VecLen}});
+    PrintRR("exp2_res", "exp2_res", result2, expr2, {{Test.VecLen}}); 
+    PrintRR("exp3_res", "exp3_res", result3, expr3, {{Test.VecLen}});
+    PrintRR("exp4_res", "exp4_res", result4, expr4, {{Test.VecLen}});
+  }
+  
+  return passed;
+}
+
+bool test{{Test.Number+2}}_unaryk_{{Test.Type}}()
+{
+  const {{Test.Type}} Cx1({% for Val in Test.ValuesA %} {{Test.TypeS}}({{Val}}){% if loop.index1 != Test.VecLen %}, {% endif %} {% endfor %});
+  const {{Test.TypeS}} Cx2 = {% for Val in Test.ValuesB %}{% if loop.index == 0 %}{{Test.TypeS}}({{Val}}){% endif %}{% endfor %};
+
+  auto Cx3 = Cx1;
+  auto Cx4 = Cx1;
+  auto Cx5 = Cx1;
+  auto Cx6 = Cx1;
+
+  Cx3 += Cx2;
+  Cx4 -= Cx2;
+  Cx5 *= Cx2;
+  Cx6 /= Cx2;
+
+  {{Test.TypeS}} result1[{{Test.VecLen}}];
+  {{Test.TypeS}} result2[{{Test.VecLen}}];
+  {{Test.TypeS}} result3[{{Test.VecLen}}];
+  {{Test.TypeS}} result4[{{Test.VecLen}}];
+
+  store_u(result1, Cx3);
+  store_u(result2, Cx4);
+  store_u(result3, Cx5);
+  store_u(result4, Cx6);
+  
+  float expr1[{{Test.VecLen}}], expr2[{{Test.VecLen}}], expr3[{{Test.VecLen}}], expr4[{{Test.VecLen}}];
+  bool passed = true;
+  for(int i=0;i<{{Test.VecLen}};i++)
+  {
+    expr1[i] = Cx1[i] + Cx2;
+    expr2[i] = Cx1[i] - Cx2;
+    expr3[i] = Cx1[i] * Cx2;
+    expr4[i] = Cx1[i] / Cx2;
+    
+    {% if Test.IsFloat %}
+    if(fabs(result1[i] - expr1[i]) > 1e-6f || fabs(result2[i] - expr2[i]) > 1e-6f || fabs(result3[i] - expr3[i]) > 1e-6f) 
+    {% else %}
+    if(result1[i] != expr1[i] || result2[i] != expr2[i] || result3[i] != expr3[i]) 
+    {% endif %}
+      passed = false;
+  }
+
+  if(!passed)
+  {
+    PrintRR("exp1_res", "exp2_res", result1, expr1, {{Test.VecLen}});
+    PrintRR("exp2_res", "exp2_res", result2, expr2, {{Test.VecLen}}); 
+    PrintRR("exp3_res", "exp3_res", result3, expr3, {{Test.VecLen}});
+    PrintRR("exp4_res", "exp4_res", result4, expr4, {{Test.VecLen}});
+  }
+  
+  return passed;
+}
+
+
+
+{% if Test.IsFloat %}
+
+//bool test{{Test.Number+3}}_funcv_{{Test.Type}}()
+//{
+//  
+//}
+
+{% else %}
+
+{% endif %}
 
 ## endfor

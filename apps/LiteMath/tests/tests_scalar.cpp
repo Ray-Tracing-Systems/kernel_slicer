@@ -43,6 +43,7 @@ bool test000_scalar_functions_f()
   float y23 = sqrt(x);
   float y24 = mad(x, y01, y02); // fused multyply-add
   float y25 = fma(x, y01, y02); // fused multyply-add
+  float y26 = inversesqrt(x);   // 1.0f / sqrt(x)
   
   // check 
   //
@@ -57,7 +58,7 @@ bool test000_scalar_functions_f()
   passed = passed && (y16 == -1.25f) && (y17 == 3.75f);
   passed = passed && (y18 == 3.0f) && (y19 == 3.0f);
   passed = passed && (y20 > 0.0f) && (y20 < 1.0f) && (y21 > 0.0f) && (y21 < 1.0f) && (y22 > 0.0f) && (y22 < 1.0f);
-  passed = passed && abs(y23*y23 - x) < 1e-6f;
+  passed = passed && abs(y23*y23 - x) < 1e-6f && abs((1.0f/y26)*(1.0f/y26) - x) < 1e-5f;
   passed = passed && (y24 == y25) && (y24 == x*y01 + y02);
 
   return passed;
