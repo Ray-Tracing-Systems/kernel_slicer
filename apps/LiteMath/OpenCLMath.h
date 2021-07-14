@@ -47,6 +47,22 @@ static inline float2 make_float2(float a, float b)
   return res;
 }
 
+static inline uint2 make_uint2(uint a, uint b)
+{
+  uint2 res;
+  res.x = a;
+  res.y = b;
+  return res;
+}
+
+static inline int2 make_int2(int a, int b)
+{
+  int2 res;
+  res.x = a;
+  res.y = b;
+  return res;
+}
+
 static inline float2 to_float2(float4 f4)
 {
   float2 res;
@@ -98,22 +114,6 @@ static inline float4 mul4x4x4(float4x4 m, float4 v)
   res.y = v.x * m.m_col[0].y + v.y * m.m_col[1].y + v.z * m.m_col[2].y + v.w * m.m_col[3].y;
   res.z = v.x * m.m_col[0].z + v.y * m.m_col[1].z + v.z * m.m_col[2].z + v.w * m.m_col[3].z;
   res.w = v.x * m.m_col[0].w + v.y * m.m_col[1].w + v.z * m.m_col[2].w + v.w * m.m_col[3].w;
-  return res;
-}
-
-static inline uint2 make_uint2(uint a, uint b)
-{
-  uint2 res;
-  res.x = a;
-  res.y = b;
-  return res;
-}
-
-static inline int2 make_int2(int a, int b)
-{
-  int2 res;
-  res.x = a;
-  res.y = b;
   return res;
 }
 

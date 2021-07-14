@@ -233,14 +233,13 @@ namespace LiteMath
   static inline float4 clamp(const float4& x, const float4& minVal, const float4& maxVal) { return cvex::clamp(x.v, minVal.v, maxVal.v); }
   static inline float4 clamp(const float4 & u, float a, float b)                          { return float4(clamp(u.x, a, b), clamp(u.y, a, b), clamp(u.z, a, b), clamp(u.w, a, b)); }
   static inline float4 lerp (const float4& u, const float4& v, const float t)             { return cvex::lerp(u.v, v.v, t); }
-
+  
+  static inline float4 cross(const float4& a, const float4& b) { return cvex::cross3(a.v, b.v);} 
+  static inline float  dot  (const float4& a, const float4& b) { return cvex::dot4f(a.v, b.v); }
   static inline float  dot3f(const float4& a, const float4& b) { return cvex::dot3f(a.v, b.v); }
   static inline float4 dot3v(const float4& a, const float4& b) { return cvex::dot3v(a.v, b.v); }
   static inline float  dot4f(const float4& a, const float4& b) { return cvex::dot4f(a.v, b.v); }
   static inline float4 dot4v(const float4& a, const float4& b) { return cvex::dot4v(a.v, b.v); }
-  static inline float  dot  (const float4& a, const float4& b) { return cvex::dot4f(a.v, b.v); }
-  static inline float4 cross3(const float4& a, const float4& b){ return cvex::cross3(a.v, b.v);}
-  static inline float4 cross (const float4& a, const float4& b){ return cvex::cross3(a.v, b.v);} 
 
   static inline float  length3f(const float4& a) { return cvex::length3f(a.v); }
   static inline float  length4f(const float4& a) { return cvex::length4f(a.v); }
@@ -386,8 +385,7 @@ namespace LiteMath
 
   static inline float3 splat_0(const float3& v)      { return cvex::splat_0(v.v); }
   static inline float3 splat_1(const float3& v)      { return cvex::splat_1(v.v); }
-  static inline float3 splat_2(const float3& v)      { return cvex::splat_2(v.v); }
-  static inline float3 splat_3(const float3& v)      { return cvex::splat_3(v.v); }   
+  static inline float3 splat_2(const float3& v)      { return cvex::splat_2(v.v); }  
  
   static inline float hmin(const float3 a_val) { return cvex::hmin3(a_val.v); }
   static inline float hmax(const float3 a_val) { return cvex::hmax3(a_val.v); }
@@ -699,9 +697,9 @@ namespace LiteMath
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  static inline int max  (int a, int b)        { return a > b ? a : b; }                                    
-  static inline int min  (int a, int b)        { return a < b ? a : b; }                                    
-  static inline int clamp(int u, int a, int b) { const int   r = (a > u) ? a : u; return (r < b) ? r : b; } 
+  //static inline int max  (int a, int b)        { return a > b ? a : b; }                                    
+  //static inline int min  (int a, int b)        { return a < b ? a : b; }                                    
+  //static inline int clamp(int u, int a, int b) { const int   r = (a > u) ? a : u; return (r < b) ? r : b; } 
 
   inline float rnd(float s, float e)
   {
@@ -752,7 +750,8 @@ namespace LiteMath
   static inline float  length(const float2 & u)    { return sqrtf(SQR(u.x) + SQR(u.y)); }
   static inline float2 normalize(const float2 & u) { return u / length(u); }
   static inline float2 floor(float2 v) { return float2(floorf(v.x), floorf(v.y)); }
-  static inline float  lerp(float u, float v, float t) { return u + t * (v - u); }
+  static inline float  lerp(float u, float v, float t) { return u + t * (v - u);  } 
+  static inline float  mix (float u, float v, float t) { return u + t * (v - u);  } 
 
   static inline float smoothstep(float edge0, float edge1, float x)
   {
@@ -761,15 +760,10 @@ namespace LiteMath
     return t * t * (3.0f - 2.0f * t);
   }
 
-  static inline float mix(float x, float y, float a)
-  {
-   return x*(1.0f - a) + y*a;
-  }
-
   static inline float3 operator*(const float4x4& m, const float3& v)
   {
     float4 v2 = float4{v.x, v.y, v.z, 1.0f}; //cvex::to_float4(v, 1.0f);
-    float3 res; // yes we know sizeof(float3) == sizeof(float4)
+    float3 res;                              // yes we know sizeof(float3) == sizeof(float4)
     cvex::mat4_colmajor_mul_vec4((float*)&res, (const float*)&m, (const float*)&v2);
     return res;
   }
@@ -1139,13 +1133,9 @@ namespace LiteMath
 
   static inline float4 rotateAroundAxis(float4 vector, float4 axis, float angle)
   {
-    float4 res;
     axis = normalize(axis);
-    res  = vector * cosf(angle) +
-           cross3(axis, vector) * sinf (angle) +
-           axis * dot3f(axis, vector) * (1 - cosf(angle));
+    float4 res  = vector * cosf(angle) + cross(axis, vector) * sinf (angle) + axis * dot3f(axis, vector) * (1 - cosf(angle));
     res.w = 1.0f;
-
     return res;
   }
 

@@ -1,8 +1,8 @@
 #include <iostream>
 #include <iomanip>      // std::setfill, std::setw
 
-//select impl with define or include concrete header
-#include "OpenCLMath.h"
+#include "LiteMath.h"
+#include "tests/tests.h"
 
 bool f4_test001_arith()
 {
@@ -66,22 +66,24 @@ struct TestRun
 int main(int argc, const char** argv)
 {
  
-  TestRun tests[] = { f4_test001_arith, "f4_test001_arith",
-                      };
-  
-  const auto arraySize = sizeof(tests)/sizeof(TestRun);
+  test001_scalar_functions_f();
 
-  for(int i=0;i<int(arraySize);i++)
-  {
-    const bool res = tests[i].pTest();
-    std::cout << "test\t" << std::setfill('0') << std::setw(3) << i+1 << "\t" << tests[i].pTestName << "\t";
-    if(res)
-      std::cout << "PASSED!";
-    else 
-      std::cout << "FAILED!\tFAILED!";
-    std::cout << std::endl;
-    std::cout.flush();
-  }
+  //TestRun tests[] = { f4_test001_arith, "f4_test001_arith",
+  //                    };
+  //
+  //const auto arraySize = sizeof(tests)/sizeof(TestRun);
+  //
+  //for(int i=0;i<int(arraySize);i++)
+  //{
+  //  const bool res = tests[i].pTest();
+  //  std::cout << "test\t" << std::setfill('0') << std::setw(3) << i+1 << "\t" << tests[i].pTestName << "\t";
+  //  if(res)
+  //    std::cout << "PASSED!";
+  //  else 
+  //    std::cout << "FAILED!\tFAILED!";
+  //  std::cout << std::endl;
+  //  std::cout.flush();
+  //}
   
   return 0;
 }
