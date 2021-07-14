@@ -36,7 +36,7 @@ int main(int argc, const char** argv)
   test["TypeS"]  = "float";
   test["VecLen"]  = 4;
   test["ValuesA"] = std::vector<float>({1.0f, 2.0f, -3.0f, 4.0f});
-  test["ValuesB"] = std::vector<float>({5.0f, -5.0f, 6.0f, 7.0f});
+  test["ValuesB"] = std::vector<float>({5.0f, -5.0f, 6.0f, 4.0f});
   test["IsFloat"] = (test["TypeS"] == "float") || (test["TypeS"] == "double");  
 
   nlohmann::json data;
