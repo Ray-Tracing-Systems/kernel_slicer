@@ -66,7 +66,9 @@ struct TestRun
 int main(int argc, const char** argv)
 {
  
-  test001_scalar_functions_f();
+  test000_scalar_functions_f();
+  
+  test101_base_arith_float4();
 
   //TestRun tests[] = { f4_test001_arith, "f4_test001_arith",
   //                    };
