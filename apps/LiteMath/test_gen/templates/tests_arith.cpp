@@ -278,10 +278,14 @@ bool test{{Test.Number+3}}_cmpv_{{Test.Type}}()
 bool test{{Test.Number+4}}_shuffle_{{Test.Type}}()
 { 
   const {{Test.Type}} Cx1({% for Val in Test.ValuesA %} {{Test.TypeS}}({{Val}}){% if loop.index1 != Test.VecLen %}, {% endif %} {% endfor %});
+
   {% if Test.VecLen == 4 %}
   const {{Test.Type}} Cr1 = shuffle_zyxw(Cx1);
-  const {{Test.Type}} Cr2 = shuffle_yzxw(Cx1);
   const {{Test.Type}} Cr3 = shuffle_zxyw(Cx1);
+  const {{Test.Type}} Cr2 = shuffle_yzxw(Cx1);
+  const {{Test.Type}} Cr6 = shuffle_yxzw(Cx1);
+  const {{Test.Type}} Cr7 = shuffle_xzyw(Cx1);
+  
   const {{Test.Type}} Cr4 = shuffle_xyxy(Cx1);
   const {{Test.Type}} Cr5 = shuffle_zwzw(Cx1);
 
@@ -290,19 +294,27 @@ bool test{{Test.Number+4}}_shuffle_{{Test.Type}}()
   CVEX_ALIGNED(16) {{Test.TypeS}} result3[4];
   CVEX_ALIGNED(16) {{Test.TypeS}} result4[4];
   CVEX_ALIGNED(16) {{Test.TypeS}} result5[4];
+  CVEX_ALIGNED(16) {{Test.TypeS}} result6[4];
+  CVEX_ALIGNED(16) {{Test.TypeS}} result7[4];
+
   store(result1, Cr1);
   store(result2, Cr2);
   store(result3, Cr3);
   store(result4, Cr4);
   store(result5, Cr5);
+  store(result6, Cr6);
+  store(result7, Cr7);
 
-  const bool b1 = (result1[0] == {{Test.TypeS}}(3) ) && (result1[1] == {{Test.TypeS}}(2) ) && (result1[2] == {{Test.TypeS}}(1) ) && (result1[3] == {{Test.TypeS}}(4) );
-  const bool b2 = (result2[0] == {{Test.TypeS}}(2) ) && (result2[1] == {{Test.TypeS}}(3) ) && (result2[2] == {{Test.TypeS}}(1) ) && (result2[3] == {{Test.TypeS}}(4) );
-  const bool b3 = (result3[0] == {{Test.TypeS}}(3) ) && (result3[1] == {{Test.TypeS}}(1) ) && (result3[2] == {{Test.TypeS}}(2) ) && (result3[3] == {{Test.TypeS}}(4) );
-  const bool b4 = (result4[0] == {{Test.TypeS}}(1) ) && (result4[1] == {{Test.TypeS}}(2) ) && (result4[2] == {{Test.TypeS}}(1) ) && (result4[3] == {{Test.TypeS}}(2) );
-  const bool b5 = (result5[0] == {{Test.TypeS}}(3) ) && (result5[1] == {{Test.TypeS}}(4) ) && (result5[2] == {{Test.TypeS}}(3) ) && (result5[3] == {{Test.TypeS}}(4) );
+  const bool b1 = (result1[0] == Cx1[2]) && (result1[1] == Cx1[1]) && (result1[2] == Cx1[0]) && (result1[3] == Cx1[3]);
+  const bool b2 = (result2[0] == Cx1[2]) && (result2[1] == Cx1[0]) && (result2[2] == Cx1[1]) && (result2[3] == Cx1[3]);
+  const bool b3 = (result3[0] == Cx1[1]) && (result3[1] == Cx1[2]) && (result3[2] == Cx1[1]) && (result3[3] == Cx1[3]);
+  const bool b6 = (result4[0] == Cx1[1]) && (result4[1] == Cx1[0]) && (result4[2] == Cx1[2]) && (result4[3] == Cx1[3]);
+  const bool b7 = (result4[0] == Cx1[0]) && (result4[1] == Cx1[2]) && (result4[2] == Cx1[1]) && (result4[3] == Cx1[3]);
+  
+  const bool b4 = (result6[0] == Cx1[0]) && (result6[1] == Cx1[1]) && (result6[2] == Cx1[0]) && (result6[3] == Cx1[1]);
+  const bool b5 = (result5[0] == Cx1[2]) && (result5[1] == Cx1[3]) && (result5[2] == Cx1[2]) && (result5[3] == Cx1[3]);
  
-  const bool passed = (b1 && b2 && b3 && b4 && b5);
+  const bool passed = (b1 && b2 && b3 && b4 && b5 && b6 && b7);
 
   if(!passed)
   {
@@ -311,33 +323,45 @@ bool test{{Test.Number+4}}_shuffle_{{Test.Type}}()
     std::cout << result3[0] << " " << result3[1] << " " << result3[2] << " " << result3[3] << std::endl;
     std::cout << result4[0] << " " << result4[1] << " " << result4[2] << " " << result4[3] << std::endl;
     std::cout << result5[0] << " " << result5[1] << " " << result5[2] << " " << result5[3] << std::endl;
+    std::cout << result6[0] << " " << result6[1] << " " << result6[2] << " " << result6[3] << std::endl;
+    std::cout << result7[0] << " " << result7[1] << " " << result7[2] << " " << result7[3] << std::endl;
   }
 
   return passed;
 
   {% else if Test.VecLen == 3 %}
   const {{Test.Type}} Cr1 = shuffle_zyx(Cx1);
-  const {{Test.Type}} Cr2 = shuffle_yzx(Cx1);
   const {{Test.Type}} Cr3 = shuffle_zxy(Cx1);
+  const {{Test.Type}} Cr2 = shuffle_yzx(Cx1);
+  const {{Test.Type}} Cr4 = shuffle_yxz(Cx1);
+  const {{Test.Type}} Cr5 = shuffle_xzy(Cx1);
 
   CVEX_ALIGNED(16) {{Test.TypeS}} result1[4];
   CVEX_ALIGNED(16) {{Test.TypeS}} result2[4];
   CVEX_ALIGNED(16) {{Test.TypeS}} result3[4];
+  CVEX_ALIGNED(16) {{Test.TypeS}} result4[4];
+  CVEX_ALIGNED(16) {{Test.TypeS}} result5[4];
 
   store(result1, Cr1);
   store(result2, Cr2);
   store(result3, Cr3);
+  store(result4, Cr4);
+  store(result5, Cr5);
 
-  const bool b1 = (result1[0] == {{Test.TypeS}}(3) ) && (result1[1] == {{Test.TypeS}}(2) ) && (result1[2] == {{Test.TypeS}}(1) ) && (result1[3] == {{Test.TypeS}}(4) );
-  const bool b2 = (result2[0] == {{Test.TypeS}}(2) ) && (result2[1] == {{Test.TypeS}}(3) ) && (result2[2] == {{Test.TypeS}}(1) ) && (result2[3] == {{Test.TypeS}}(4) );
-  const bool b3 = (result3[0] == {{Test.TypeS}}(3) ) && (result3[1] == {{Test.TypeS}}(1) ) && (result3[2] == {{Test.TypeS}}(2) ) && (result3[3] == {{Test.TypeS}}(4) );
+  const bool b1 = (result1[0] == Cx1[2]) && (result1[1] == Cx1[1]) && (result1[2] == Cx1[0]));
+  const bool b2 = (result2[0] == Cx1[2]) && (result2[1] == Cx1[0]) && (result2[2] == Cx1[1]));
+  const bool b3 = (result3[0] == Cx1[1]) && (result3[1] == Cx1[2]) && (result3[2] == Cx1[0]));
+  const bool b4 = (result3[0] == Cx1[1]) && (result3[1] == Cx1[0]) && (result3[2] == Cx1[2]));
+  const bool b5 = (result3[0] == Cx1[0]) && (result3[1] == Cx1[2]) && (result3[2] == Cx1[1]));
   
-  const bool passed = (b1 && b2 && b3);
+  const bool passed = (b1 && b2 && b3 && b4 && b5);
   if(!passed)
   {
-    std::cout << result1[0] << " " << result1[1] << " " << result1[2] << " " << result1[3] << std::endl;
-    std::cout << result2[0] << " " << result2[1] << " " << result2[2] << " " << result2[3] << std::endl;
-    std::cout << result3[0] << " " << result3[1] << " " << result3[2] << " " << result3[3] << std::endl;
+    std::cout << result1[0] << " " << result1[1] << " " << result1[2] << std::endl;
+    std::cout << result2[0] << " " << result2[1] << " " << result2[2] << std::endl;
+    std::cout << result3[0] << " " << result3[1] << " " << result3[2] << std::endl;
+    std::cout << result4[0] << " " << result4[1] << " " << result4[2] << std::endl;
+    std::cout << result5[0] << " " << result5[1] << " " << result5[2] << std::endl;
   }
   return passed;
   {% else %}
@@ -413,7 +437,7 @@ bool test{{Test.Number+7}}_funcv_{{Test.Type}}()
       passed = false;
     if(Cx4[i] != abs(Cx1[i]))
       passed = false;
-    if(Cx5[i] != clamp(Cx1[i], {{Test.TypeS}}(2), {{Test.TypeS}}(3) );)
+    if(Cx5[i] != clamp(Cx1[i], {{Test.TypeS}}(2), {{Test.TypeS}}(3) ))
       passed = false;
     if(Cx6[i] != min(Cx1[i], Cx2[i]))
       passed = false;
@@ -444,7 +468,7 @@ bool test{{Test.Number+8}}_funcfv_{{Test.Type}}()
   const {{Test.Type}} Cx2({% for Val in Test.ValuesB %} {{Test.TypeS}}({{Val}}){% if loop.index1 != Test.VecLen %}, {% endif %} {% endfor %});
   
   auto Cx3 = mod(Cx1, Cx2);
-  auto Cx4 = frac(Cx1);
+  auto Cx4 = fract(Cx1);
   auto Cx5 = ceil(Cx1);
   auto Cx6 = floor(Cx1);
   auto Cx7 = sign(Cx1);
@@ -489,7 +513,7 @@ bool test{{Test.Number+8}}_funcfv_{{Test.Type}}()
   for(int i=0;i<{{Test.VecLen}};i++)
   {
     ref[3][i] = mod(Cx1[i], Cx2[i]);
-    ref[4][i] = frac(Cx1[i]);
+    ref[4][i] = fract(Cx1[i]);
     ref[5][i] = ceil(Cx1[i]);
     ref[6][i] = floor(Cx1[i]);
     ref[7][i] = sign(Cx1[i]);

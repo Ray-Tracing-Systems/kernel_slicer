@@ -91,7 +91,7 @@ namespace cvex
   static inline vint4   as_int32  (const vfloat4 a_val) { return vreinterpretq_s32_f32(a_val); }
   static inline vuint4  as_uint32 (const vfloat4 a_val) { return vreinterpretq_u32_f32(a_val); }
 
-  static inline vfloat4 rcp_e(vfloat4 a)                { return vrecpeq_f32(a); }
+  static inline vfloat4 rcp(vfloat4 a)                  { return vrecpeq_f32(a); }
 
   static inline vfloat4 blend(const vfloat4 a, const vfloat4 b, const vint4 mask) { return vbslq_f32((uint32x4_t)mask.data, a.data, b.data); }
   static inline vint4   blend(const vint4 a,   const vint4 b,   const vint4 mask) { return vbslq_s32((uint32x4_t)mask.data, a.data, b.data); }

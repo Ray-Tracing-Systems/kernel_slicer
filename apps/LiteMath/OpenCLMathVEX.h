@@ -44,12 +44,10 @@ namespace LiteMath
   typedef unsigned int    uint;
   typedef cvex::vuint4    uint4; // #TODO: create convinient interface if needed
 
-
   static inline uint4 load  (const uint* p)       { return cvex::load(p);    }
   static inline uint4 load_u(const uint* p)       { return cvex::load_u(p);  }
   static inline void  store  (uint* p, uint4 a_val) { cvex::store  (p, a_val); }
   static inline void  store_u(uint* p, uint4 a_val) { cvex::store_u(p, a_val); }
-
 
   static inline int as_int(float x) 
   {
@@ -146,6 +144,11 @@ namespace LiteMath
   static inline int4 min(const int4& a, const int4& b) { return cvex::min(a.v, b.v); }
   static inline int4 max(const int4& a, const int4& b) { return cvex::max(a.v, b.v); }
   static inline int4 clamp(const int4& a_x, const int4& a_min, const int4& a_max) { return cvex::clamp(a_x.v, a_min.v, a_max.v); }
+
+  static inline bool any_of (const int4 a)  { return cvex::any_of(a.v); }
+  static inline bool all_of (const int4 a)  { return cvex::all_of(a.v); }
+  static inline bool any_of (const uint4 a) { return cvex::any_of(a); }
+  static inline bool all_of (const uint4 a) { return cvex::all_of(a); }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -244,8 +247,11 @@ namespace LiteMath
   static inline float4 max  (const float4& a, const float4& b)                            { return cvex::max(a.v, b.v); }
   static inline float4 clamp(const float4& x, const float4& minVal, const float4& maxVal) { return cvex::clamp(x.v, minVal.v, maxVal.v); }
   static inline float4 clamp(const float4 & u, float a, float b)                          { return float4(clamp(u.x, a, b), clamp(u.y, a, b), clamp(u.z, a, b), clamp(u.w, a, b)); }
-  static inline float4 lerp (const float4& u, const float4& v, const float t)             { return cvex::lerp(u.v, v.v, t); }
-  
+  static inline float4 lerp (const float4& u, const float4& v, const float t)             { return cvex::lerp(u.v, v.v, t);  }
+  static inline float4 mix  (const float4& u, const float4& v, const float t)             { return cvex::lerp(u.v, v.v, t);  }
+  static inline float4 mad  (const float4& a, const float4& b, const float4& c)           { return cvex::fma(a.v, b.v, c.v); }
+  static inline float4 fma  (const float4& a, const float4& b, const float4& c)           { return cvex::fma(a.v, b.v, c.v); }
+
   static inline float4 cross(const float4& a, const float4& b) { return cvex::cross3(a.v, b.v);} 
   static inline float  dot  (const float4& a, const float4& b) { return cvex::dot4f(a.v, b.v); }
   static inline float  dot3f(const float4& a, const float4& b) { return cvex::dot3f(a.v, b.v); }
@@ -261,8 +267,13 @@ namespace LiteMath
 
   static inline float4 floor(const float4& a_val) { return cvex::floor(a_val.v); }
   static inline float4 ceil (const float4& a_val) { return cvex::ceil(a_val.v);  }
-  static inline float4 fabs (const float4& a)     { return cvex::fabs (a.v);     } 
-  static inline float4 rcp_e(const float4& a)     { return cvex::rcp_e(a.v);     }
+  static inline float4 abs (const float4& a)      { return cvex::fabs(a.v);      } 
+  static inline float4 sign(const float4& a)      { return cvex::sign(a.v);      }
+  static inline float4 rcp(const float4& a)       { return cvex::rcp(a.v);       }
+  static inline float4 mod(float4 x, float4 y)    { return x.v - y.v * cvex::floor(x.v/y.v); }
+  static inline float4 fract(float4 x)            { return x.v - cvex::floor(x.v); }
+  static inline float4 sqrt(float4 x)             { return cvex::sqrt(x.v); }
+  static inline float4 inversesqrt(float4 x)      { return cvex::inversesqrt(x.v); }
 
   static inline unsigned int color_pack_rgba(const float4 rel_col) { return cvex::color_pack_rgba(rel_col.v); }
   static inline unsigned int color_pack_bgra(const float4 rel_col) { return cvex::color_pack_bgra(rel_col.v); }
@@ -293,6 +304,14 @@ namespace LiteMath
   static inline float hmax(const float4 a_val) { return cvex::hmax(a_val.v); }
 
   static inline float4 blend(const float4 a, const float4 b, const uint4 mask) { return cvex::blend(a.v, b.v, mask); }
+  
+  static inline float4 shuffle_xzyw(float4 a_src) { return cvex::shuffle_xzyw(a_src.v); }
+  static inline float4 shuffle_yxzw(float4 a_src) { return cvex::shuffle_yxzw(a_src.v); }
+  static inline float4 shuffle_yzxw(float4 a_src) { return cvex::shuffle_yzxw(a_src.v); }
+  static inline float4 shuffle_zxyw(float4 a_src) { return cvex::shuffle_zxyw(a_src.v); }
+  static inline float4 shuffle_zyxw(float4 a_src) { return cvex::shuffle_zyxw(a_src.v); }
+  static inline float4 shuffle_xyxy(float4 a_src) { return cvex::shuffle_xyxy(a_src.v); }
+  static inline float4 shuffle_zwzw(float4 a_src) { return cvex::shuffle_zwzw(a_src.v); }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -390,7 +409,7 @@ namespace LiteMath
   static inline float3 floor(const float3& a_val) { return cvex::floor(a_val.v); }
   static inline float3 ceil (const float3& a_val) { return cvex::ceil(a_val.v);  }
   static inline float3 fabs (const float3& a)     { return cvex::fabs (a.v);} 
-  static inline float3 rcp_e(const float3& a)     { return cvex::rcp_e(a.v);     }
+  static inline float3 rcp  (const float3& a)     { return cvex::rcp(a.v);     }
 
   static inline unsigned int color_pack_rgba(const float3 rel_col) { return cvex::color_pack_rgba(rel_col.v); }
   static inline unsigned int color_pack_bgra(const float3 rel_col) { return cvex::color_pack_bgra(rel_col.v); }
@@ -406,6 +425,12 @@ namespace LiteMath
  
   static inline float hmin(const float3 a_val) { return cvex::hmin3(a_val.v); }
   static inline float hmax(const float3 a_val) { return cvex::hmax3(a_val.v); }
+  
+  static inline float3 shuffle_xzy(float3 a_src) { return cvex::shuffle_xzyw(a_src.v); }
+  static inline float3 shuffle_yxz(float3 a_src) { return cvex::shuffle_yxzw(a_src.v); }
+  static inline float3 shuffle_yzx(float3 a_src) { return cvex::shuffle_yzxw(a_src.v); }
+  static inline float3 shuffle_zxy(float3 a_src) { return cvex::shuffle_zxyw(a_src.v); }
+  static inline float3 shuffle_zyx(float3 a_src) { return cvex::shuffle_zyxw(a_src.v); }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

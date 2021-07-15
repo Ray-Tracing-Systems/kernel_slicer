@@ -34,8 +34,6 @@ namespace cvex
   typedef int       _vint4u   __attribute__((vector_size(16), aligned(1)));
   typedef float     _vfloat4u __attribute__((vector_size(16), aligned(1)));
 
-  // load/store, splat ... 
-  //
   static inline vuint4  load_u(const _uint32_t* p) { return *((_vuint4u*)p);  }
   static inline vint4   load_u(const int* p)       { return *((_vint4u*)p);   }
   static inline vfloat4 load_u(const float* p)     { return *((_vfloat4u*)p); }
@@ -56,7 +54,6 @@ namespace cvex
   static inline vuint4  splat(_uint32_t x) { return vuint4 {x,x,x,x}; }
   static inline vfloat4 splat(float x)     { return vfloat4{x,x,x,x}; }
 
-  
   static inline vfloat4 to_float32(const vint4 a)    { return vfloat4{(float)a[0], (float)a[1], (float)a[2], (float)a[3]}; }
   static inline vfloat4 to_float32(const vuint4 a)   { return vfloat4{(float)a[0], (float)a[1], (float)a[2], (float)a[3]}; }
   
@@ -67,11 +64,6 @@ namespace cvex
 
   // math; all basic operators should be implemented by gcc, so we don't define them here
   //
-  #ifdef __x86_64
-  static inline vfloat4 rcp_e(vfloat4 a)       { return _mm_rcp_ps(a); }
-  #else
-  static inline vfloat4 rcp_e(vfloat4 a)       { return 1.0f/a; }
-  #endif
 
   static inline vfloat4 min  (const vfloat4 a, const vfloat4 b) { return a < b ? a : b; }
   static inline vfloat4 max  (const vfloat4 a, const vfloat4 b) { return a > b ? a : b; }
@@ -85,6 +77,7 @@ namespace cvex
   static inline vuint4 min  (const vuint4 a, const vuint4 b) { return a < b ? a : b; }
   static inline vuint4 max  (const vuint4 a, const vuint4 b) { return a > b ? a : b; }
   static inline vuint4 clamp(const vuint4 x, const vuint4 minVal, const vuint4 maxVal) { return max(min(x, maxVal), minVal); }
+  static inline vfloat4 fma (const vfloat4 a, const vfloat4 b, const vfloat4 c) { return a*b+c; } 
 
   // convert and cast
   //
@@ -135,12 +128,14 @@ namespace cvex
 
   static inline void prefetch(const float* ptr) {  __builtin_prefetch(ptr); }
   static inline void prefetch(const int* ptr)   {  __builtin_prefetch(ptr); }
-
-  static inline vfloat4 shuffle_zyxw(vfloat4 a_src) { return __builtin_shuffle(a_src, vint4{2,1,0,3}); }
+ 
+  static inline vfloat4 shuffle_xzyw(vfloat4 a_src) { return __builtin_shuffle(a_src, vint4{0,2,1,3}); }
+  static inline vfloat4 shuffle_yxzw(vfloat4 a_src) { return __builtin_shuffle(a_src, vint4{1,0,2,3}); }
   static inline vfloat4 shuffle_yzxw(vfloat4 a_src) { return __builtin_shuffle(a_src, vint4{1,2,0,3}); }
   static inline vfloat4 shuffle_zxyw(vfloat4 a_src) { return __builtin_shuffle(a_src, vint4{2,0,1,3}); }
+  static inline vfloat4 shuffle_zyxw(vfloat4 a_src) { return __builtin_shuffle(a_src, vint4{2,1,0,3}); }
 
-  static inline vfloat4 shuffle_xyxy(vfloat4 a_src) { return __builtin_shuffle(a_src, vint4{0,1,0,1});  }
+  static inline vfloat4 shuffle_xyxy(vfloat4 a_src) { return __builtin_shuffle(a_src, vint4{0,1,0,1}); }
   static inline vfloat4 shuffle_zwzw(vfloat4 a_src) { return __builtin_shuffle(a_src, vint4{2,3,2,3}); }
 
   static inline vfloat4 cross3(const vfloat4 a, const vfloat4 b) 
@@ -187,7 +182,11 @@ namespace cvex
   static inline float hmin(const vfloat4 a_val) { return std::min(std::min(a_val[0], a_val[1]), std::min(a_val[2], a_val[3])); }
 
   #ifdef __x86_64
-
+  
+  static inline vfloat4 rcp(vfloat4 a)  { return _mm_rcp_ps(a); }
+  static inline vfloat4 sqrt(vfloat4 a) { return _mm_sqrt_ps(a); }
+  static inline vfloat4 inversesqrt(vfloat4 a) { return _mm_rsqrt_ps(a); }
+  
   static inline __m128i as_m128i(const vfloat4& a) { return reinterpret_cast<__m128i>(a);  } 
 
   static inline float   dot3f(const vfloat4 a, const vfloat4 b) { return _mm_cvtss_f32(_mm_dp_ps(a, b, 0x7f)); }
@@ -206,6 +205,14 @@ namespace cvex
   {
     const __m128 absmask = _mm_castsi128_ps(_mm_set1_epi32((1<<31)));
     return _mm_andnot_ps(absmask, a_val);
+  }
+
+  static inline vfloat4 sign(vfloat4 x)
+  {
+    const __m128 zero     = _mm_setzero_ps();
+    const __m128 positive = _mm_and_ps(_mm_cmpgt_ps(x, zero), _mm_set1_ps(1.0f));
+    const __m128 negative = _mm_and_ps(_mm_cmplt_ps(x, zero), _mm_set1_ps(-1.0f));
+    return _mm_or_ps(positive, negative);
   }
 
   static inline bool any_of (const vint4 a)  { return _mm_movemask_ps(as_float32(a)) != 0; }
@@ -249,6 +256,8 @@ namespace cvex
   static inline vint4 gather(const int* a_data, const vint4 offset) { return (vint4)_mm_i32gather_epi32(a_data, (__m128i)offset, 4); }
 
   #else
+
+  static inline vfloat4 rcp(vfloat4 a)  { return 1.0f/a; }
 
   static inline float   dot3f(const vfloat4 a, const vfloat4 b) 
   {
@@ -295,19 +304,40 @@ namespace cvex
 
   static inline vfloat4 ceil(const vfloat4 a)
   {
-    const vfloat4 res = {::ceilf(a[0]), ::ceilf(a[1]), ::ceilf(a[2]), ::ceilf(a[3])};
+    const vfloat4 res = {std::ceil(a[0]), std::ceil(a[1]), std::ceil(a[2]), std::ceil(a[3])};
     return res;
   }
 
   static inline vfloat4 floor(const vfloat4 a)
   {
-    const vfloat4 res = {::floorf(a[0]), ::floorf(a[1]), ::floorf(a[2]), ::floorf(a[3])};
+    const vfloat4 res = {std::floor(a[0]), std::floor(a[1]), std::floor(a[2]), std::floor(a[3])};
     return res;
   }
 
   static inline vfloat4 fabs(const vfloat4 a)
   {
-    const vfloat4 res = {::fabsf(a[0]), ::fabsf(a[1]), ::fabsf(a[2]), ::fabsf(a[3])};
+    const vfloat4 res = {std::abs(a[0]), std::abs(a[1]), std::abs(a[2]), std::abs(a[3])};
+    return res;
+  }
+
+  static inline vfloat4 sign(vfloat4 x)
+  {
+    const vfloat4 res{ x[0] < 0.0f ? -1.0f : 1.0f, 
+                       x[1] < 0.0f ? -1.0f : 1.0f, 
+                       x[2] < 0.0f ? -1.0f : 1.0f, 
+                       x[3] < 0.0f ? -1.0f : 1.0f };  
+    return res;
+  }
+
+  static inline vfloat4 sqrt(vfloat4 a) 
+  { 
+    const vfloat4 res = {std::sqrt(a[0]), std::sqrt(a[1]), std::sqrt(a[2]), std::sqrt(a[3])};
+    return res;
+  }
+
+  static inline vfloat4 inversesqrt(vfloat4 a)
+  {
+    const vfloat4 res = splat(1.0f)/{std::sqrt(a[0]), std::sqrt(a[1]), std::sqrt(a[2]), std::sqrt(a[3])};
     return res;
   }
 

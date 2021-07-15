@@ -138,7 +138,7 @@ namespace cvex
   static inline vfloat4 min(const vfloat4 a, const vfloat4 b) {return _mm_min_ps(a, b);}
   static inline vfloat4 max(const vfloat4 a, const vfloat4 b) {return _mm_max_ps(a, b);}
   static inline vfloat4 clamp(const vfloat4 x, const vfloat4 minVal, const vfloat4 maxVal) { return _mm_max_ps(_mm_min_ps(x, maxVal), minVal); }
-  static inline vfloat4 rcp_e(const vfloat4 a) { return _mm_rcp_ps(a); }
+  static inline vfloat4 rcp(const vfloat4 a) { return _mm_rcp_ps(a); }
 
   static inline vint4 min(const vint4 a, const vint4 b) { return _mm_min_epi32(a, b); }
   static inline vint4 max(const vint4 a, const vint4 b) { return _mm_max_epi32(a, b); }
@@ -288,8 +288,10 @@ namespace cvex
   static inline float hmax(const vfloat4 a_val) { return std::max(std::max(extract_0(a_val), extract_1(a_val)), std::max(extract_2(a_val), extract_3(a_val))); }
   static inline float hmin(const vfloat4 a_val) { return std::min(std::min(extract_0(a_val), extract_1(a_val)), std::min(extract_2(a_val), extract_3(a_val))); }
 
-  static inline vfloat4 shuffle_zyxw(vfloat4 a_src) { return _mm_shuffle_ps(a_src, a_src, _MM_SHUFFLE(3, 0, 1, 2)); }
+  static inline vfloat4 shuffle_xzyw(vfloat4 a_src) { return _mm_shuffle_ps(a_src, a_src, _MM_SHUFFLE(3, 1, 2, 0)); }
+  static inline vfloat4 shuffle_yxzw(vfloat4 a_src) { return _mm_shuffle_ps(a_src, a_src, _MM_SHUFFLE(3, 2, 0, 1)); }
   static inline vfloat4 shuffle_yzxw(vfloat4 a_src) { return _mm_shuffle_ps(a_src, a_src, _MM_SHUFFLE(3, 0, 2, 1)); }
+  static inline vfloat4 shuffle_zyxw(vfloat4 a_src) { return _mm_shuffle_ps(a_src, a_src, _MM_SHUFFLE(3, 0, 1, 2)); }
   static inline vfloat4 shuffle_zxyw(vfloat4 a_src) { return _mm_shuffle_ps(a_src, a_src, _MM_SHUFFLE(3, 1, 0, 2)); }
 
   static inline vfloat4 shuffle_xyxy(vfloat4 a_src) { return _mm_shuffle_ps(a_src, a_src, _MM_SHUFFLE(1, 0, 1, 0)); }
