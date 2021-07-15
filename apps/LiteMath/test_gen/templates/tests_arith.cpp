@@ -311,7 +311,7 @@ bool test{{Test.Number+4}}_blendv_{{Test.Type}}()
 {% endif %}
 
 
-{% if Test.VecLen == 4 %}
+{% if 0 %}
 bool test{{Test.Number+10}}_shuffle4_{{Test.Type}}()
 {
   const {{Test.Type}} Cx1({% for Val in Test.ValuesA %} {{Test.TypeS}}({{Val}}){% if loop.index1 != Test.VecLen %}, {% endif %} {% endfor %});

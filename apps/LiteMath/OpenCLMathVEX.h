@@ -1,19 +1,21 @@
 #ifndef VFLOAT4_ALL_H
 #define VFLOAT4_ALL_H
 
-#ifdef WIN32
-  #include "vfloat4_x64.h"
-#else
-  #if defined(__arm__) or defined(__aarch64__)
-    #include "vfloat4_arm.h"
-  #elif defined(__clang__)
-    #include "vfloat4_x64.h"
-  #elif defined(__GNUC__)
-    #include "vfloat4_gcc.h"
-  #else
-    #include "vfloat4_x64.h"
-  #endif  
-#endif
+#include "vfloat4_gcc.h"
+
+//#ifdef WIN32
+//  #include "vfloat4_x64.h"
+//#else
+//  #if defined(__arm__) or defined(__aarch64__)
+//    #include "vfloat4_arm.h"
+//  #elif defined(__clang__)
+//    #include "vfloat4_x64.h"
+//  #elif defined(__GNUC__)
+//    #include "vfloat4_gcc.h"
+//  #else
+//    #include "vfloat4_x64.h"
+//  #endif  
+//#endif
 
 // This is just and example. 
 // In practise you may take any of these files that you prefer for your platform.  
@@ -41,6 +43,14 @@ namespace LiteMath
 
   typedef unsigned int    uint;
   typedef cvex::vuint4    uint4; // #TODO: create convinient interface if needed
+
+
+  static inline uint4 load  (const uint* p)       { return cvex::load(p);    }
+  static inline uint4 load_u(const uint* p)       { return cvex::load_u(p);  }
+  static inline void  store  (uint* p, uint4 a_val) { cvex::store  (p, a_val); }
+  static inline void  store_u(uint* p, uint4 a_val) { cvex::store_u(p, a_val); }
+
+
 
   static inline int as_int(float x) 
   {
@@ -165,12 +175,12 @@ namespace LiteMath
     inline float4 operator*(const float rhs) const { return v * rhs; }
     inline float4 operator/(const float rhs) const { return v / rhs; }
 
-    inline cvex::vint4 operator> (const float4& b) const { return (v > b.v); }
-    inline cvex::vint4 operator< (const float4& b) const { return (v < b.v); }
-    inline cvex::vint4 operator>=(const float4& b) const { return (v >= b.v); }
-    inline cvex::vint4 operator<=(const float4& b) const { return (v <= b.v); }
-    inline cvex::vint4 operator==(const float4& b) const { return (v == b.v); }
-    inline cvex::vint4 operator!=(const float4& b) const { return (v != b.v); }
+    inline uint4 operator> (const float4& b) const { return (v > b.v); }
+    inline uint4 operator< (const float4& b) const { return (v < b.v); }
+    inline uint4 operator>=(const float4& b) const { return (v >= b.v); }
+    inline uint4 operator<=(const float4& b) const { return (v <= b.v); }
+    inline uint4 operator==(const float4& b) const { return (v == b.v); }
+    inline uint4 operator!=(const float4& b) const { return (v != b.v); }
 
     inline void operator*=(const float rhs) { v = v * rhs; }
     inline void operator*=(const float4& b) { v = v * b.v; }
@@ -179,7 +189,10 @@ namespace LiteMath
     inline void operator/=(const float4& b) { v = v / b.v; }
 
     inline void operator+=(const float4& b) { v = v + b.v; }
+    inline void operator+=(const float b  ) { v = v + b;   }
+
     inline void operator-=(const float4& b) { v = v - b.v; }
+    inline void operator-=(const float   b) { v = v - b;   }
 
     union
     {
@@ -249,7 +262,7 @@ namespace LiteMath
 
   static inline float4 floor(const float4& a_val) { return cvex::floor(a_val.v); }
   static inline float4 ceil (const float4& a_val) { return cvex::ceil(a_val.v);  }
-  static inline float4 fabs (const float4& a)     { return cvex::fabs (a.v);} 
+  static inline float4 fabs (const float4& a)     { return cvex::fabs (a.v);     } 
   static inline float4 rcp_e(const float4& a)     { return cvex::rcp_e(a.v);     }
 
   static inline unsigned int color_pack_rgba(const float4 rel_col) { return cvex::color_pack_rgba(rel_col.v); }
@@ -279,6 +292,8 @@ namespace LiteMath
 
   static inline float hmin(const float4 a_val) { return cvex::hmin(a_val.v); }
   static inline float hmax(const float4 a_val) { return cvex::hmax(a_val.v); }
+
+  static inline float4 blend(const float4 a, const float4 b, const uint4 mask) { return cvex::blend(a.v, b.v, mask); }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -347,6 +362,9 @@ namespace LiteMath
     const cvex::vfloat4 res = (a / b.v);
     return float3(res); 
   }
+
+  static inline void store  (float* p, float3 a_val) { cvex::store(p, a_val.v); }
+  static inline void store_u(float* p, float3 a_val) { memcpy(p, &a_val, sizeof(float)*3); }
 
   //static inline int4   to_int32  (const float4& a) { return cvex::to_int32(a.v); }
   //static inline uint4  to_uint32 (const float4& a) { return cvex::to_uint32(a.v); }
