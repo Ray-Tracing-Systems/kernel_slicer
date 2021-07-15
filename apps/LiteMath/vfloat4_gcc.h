@@ -208,8 +208,10 @@ namespace cvex
     return _mm_andnot_ps(absmask, a_val);
   }
 
-  static inline bool any_of (const vint4 a) { return _mm_movemask_ps(as_float32(a)) != 0; }
-  static inline bool all_of (const vint4 a) { return _mm_movemask_ps(as_float32(a)) == 15; }
+  static inline bool any_of (const vint4 a)  { return _mm_movemask_ps(as_float32(a)) != 0; }
+  static inline bool all_of (const vint4 a)  { return _mm_movemask_ps(as_float32(a)) == 15; }
+  static inline bool any_of (const vuint4 a) { return _mm_movemask_ps(as_float32(a)) != 0; }
+  static inline bool all_of (const vuint4 a) { return _mm_movemask_ps(as_float32(a)) == 15; }
 
   inline static unsigned int color_pack_rgba(const vfloat4 rel_col)
   {
@@ -309,9 +311,10 @@ namespace cvex
     return res;
   }
 
-  static inline bool any_of (const vint4 a) { return (a[0] != 0) || (a[1] != 0) || (a[2] != 0) || (a[3] != 0); }
-  static inline bool all_of (const vint4 a) { return (a[0] != 0) && (a[1] != 0) && (a[2] != 0) && (a[3] != 0); }
-
+  static inline bool any_of (const vint4 a)  { return (a[0] != 0) || (a[1] != 0) || (a[2] != 0) || (a[3] != 0); }
+  static inline bool all_of (const vint4 a)  { return (a[0] != 0) && (a[1] != 0) && (a[2] != 0) && (a[3] != 0); }
+  static inline bool any_of (const vuint4 a) { return (a[0] != 0) || (a[1] != 0) || (a[2] != 0) || (a[3] != 0); }
+  static inline bool all_of (const vuint4 a) { return (a[0] != 0) && (a[1] != 0) && (a[2] != 0) && (a[3] != 0); }
 
   inline static unsigned int color_pack_rgba(const vfloat4 rel_col)
   {

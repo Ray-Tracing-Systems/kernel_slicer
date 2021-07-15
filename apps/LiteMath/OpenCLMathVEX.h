@@ -51,7 +51,6 @@ namespace LiteMath
   static inline void  store_u(uint* p, uint4 a_val) { cvex::store_u(p, a_val); }
 
 
-
   static inline int as_int(float x) 
   {
     int res; 
@@ -366,15 +365,15 @@ namespace LiteMath
   static inline void store  (float* p, float3 a_val) { cvex::store(p, a_val.v); }
   static inline void store_u(float* p, float3 a_val) { memcpy(p, &a_val, sizeof(float)*3); }
 
-  //static inline int4   to_int32  (const float4& a) { return cvex::to_int32(a.v); }
-  //static inline uint4  to_uint32 (const float4& a) { return cvex::to_uint32(a.v); }
-  //static inline float4 to_float32(const  int4& a)  { return cvex::to_float32(a.v); }
-  //static inline float4 to_float32(const uint4& a)  { return cvex::to_float32(a); }
+  //static inline int3   to_int32  (const float3& a) { return cvex::to_int32(a.v); }
+  //static inline uint3  to_uint32 (const float3& a) { return cvex::to_uint32(a.v); }
+  //static inline float3 to_float32(const  int3& a)  { return cvex::to_float32(a.v); }
+  //static inline float3 to_float32(const uint3& a)  { return cvex::to_float32(a); }
   //
-  //static inline float4 as_float32(const int4 a_val)   { return cvex::as_float32(a_val.v); }
-  //static inline float4 as_float32(const uint4 a_val)  { return cvex::as_float32(a_val); }
-  //static inline int4   as_int32  (const float4 a_val) { return cvex::as_int32  (a_val.v); }
-  //static inline uint4  as_uint32 (const float4 a_val) { return cvex::as_uint32 (a_val.v); }
+  //static inline float3 as_float32(const int3 a_val)   { return cvex::as_float32(a_val.v); }
+  //static inline float3 as_float32(const uint3 a_val)  { return cvex::as_float32(a_val); }
+  //static inline int3   as_int32  (const float3 a_val) { return cvex::as_int32  (a_val.v); }
+  //static inline uint3  as_uint32 (const float3 a_val) { return cvex::as_uint32 (a_val.v); }
 
   static inline float3 min  (const float3& a, const float3& b)                            { return cvex::min(a.v, b.v); }
   static inline float3 max  (const float3& a, const float3& b)                            { return cvex::max(a.v, b.v); }

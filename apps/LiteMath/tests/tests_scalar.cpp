@@ -44,7 +44,8 @@ bool test000_scalar_functions_f()
   float y24 = mad(x, y01, y02); // fused multyply-add
   float y25 = fma(x, y01, y02); // fused multyply-add
   float y26 = inversesqrt(x);   // 1.0f / sqrt(x)
-  
+  float y27 = rcp(x);           // fast reciprocal
+
   // check 
   //
   bool passed = true;
@@ -60,6 +61,7 @@ bool test000_scalar_functions_f()
   passed = passed && (y20 > 0.0f) && (y20 < 1.0f) && (y21 > 0.0f) && (y21 < 1.0f) && (y22 > 0.0f) && (y22 < 1.0f);
   passed = passed && abs(y23*y23 - x) < 1e-6f && abs((1.0f/y26)*(1.0f/y26) - x) < 1e-5f;
   passed = passed && (y24 == y25) && (y24 == x*y01 + y02);
+  passed = passed && fabs(1.0f/y27 - x) < 1e-4f; 
 
   return passed;
 }
@@ -162,4 +164,52 @@ bool test003_length_f4()
                   fabs(result2[3] - ref_dp4) < 1e-6f;
                   
   return (b1 && b2 && b3 && b4);
+}
+
+bool test004_colpack()
+{
+  const float4 Cx1 = { 0.25f, 0.5f, 0.0, 1.0f };
+
+  const unsigned int packed_rgba = color_pack_rgba(Cx1);
+  const unsigned int packed_bgra = color_pack_bgra(Cx1);
+
+  const bool passed = ((packed_bgra == 0xFF408000) || (packed_bgra == 0xFF3f7f00)) && 
+                      ((packed_rgba == 0xFF008040) || (packed_rgba == 0xFF007f3f));
+
+  if(!passed)
+  {
+    std::cout << std::hex << "bgra_res: " << packed_bgra << std::endl;
+    std::cout << std::hex << "bgra_ref: " << 0xFF408000  << std::endl;
+
+    std::cout << std::hex << "rgba_res: " << packed_rgba << std::endl;
+    std::cout << std::hex << "rgba_ref: " << 0xFF008040  << std::endl;
+  }
+
+  return passed;
+}
+
+bool test005_matrix_elements()
+{
+  float4x4 m;
+  m(1,2) = 3.0f;
+  m(3,1) = 4.0f; 
+  return (m[1][2] == 3.0f) && (m[3][1] == 4.0f) && (m[0][0] == 1.0f) && (m[1][1] == 1.0f) && (m[0][3] == 0.0f);
+}
+
+bool test006_any_all()
+{
+  const float4 Cx1 = { 1.0f, 2.0f, 7.0f, 2.0f };
+  const float4 Cx2 = { 5.0f, 6.0f, 7.0f, 4.0f };
+  const float4 Cx3 = { 5.0f, 6.0f, 8.0f, -4.0f };
+
+  const auto cmp1 = (Cx1 > Cx2);
+  const auto cmp2 = (Cx1 <= Cx3);
+
+  const bool b1 = any_of(cmp1);
+  const bool b2 = all_of(cmp1);
+
+  const bool b3 = any_of(cmp2);
+  const bool b4 = all_of(cmp2);
+
+  return (!b1 && !b2 && b3 && !b4);
 }
