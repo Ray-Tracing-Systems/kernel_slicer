@@ -348,11 +348,11 @@ bool test{{Test.Number+4}}_shuffle_{{Test.Type}}()
   store(result4, Cr4);
   store(result5, Cr5);
 
-  const bool b1 = (result1[0] == Cx1[2]) && (result1[1] == Cx1[1]) && (result1[2] == Cx1[0]));
-  const bool b2 = (result2[0] == Cx1[2]) && (result2[1] == Cx1[0]) && (result2[2] == Cx1[1]));
-  const bool b3 = (result3[0] == Cx1[1]) && (result3[1] == Cx1[2]) && (result3[2] == Cx1[0]));
-  const bool b4 = (result3[0] == Cx1[1]) && (result3[1] == Cx1[0]) && (result3[2] == Cx1[2]));
-  const bool b5 = (result3[0] == Cx1[0]) && (result3[1] == Cx1[2]) && (result3[2] == Cx1[1]));
+  const bool b1 = (result1[0] == Cx1[2]) && (result1[1] == Cx1[1]) && (result1[2] == Cx1[0]);
+  const bool b2 = (result2[0] == Cx1[2]) && (result2[1] == Cx1[0]) && (result2[2] == Cx1[1]);
+  const bool b3 = (result3[0] == Cx1[1]) && (result3[1] == Cx1[2]) && (result3[2] == Cx1[0]);
+  const bool b4 = (result3[0] == Cx1[1]) && (result3[1] == Cx1[0]) && (result3[2] == Cx1[2]);
+  const bool b5 = (result3[0] == Cx1[0]) && (result3[1] == Cx1[2]) && (result3[2] == Cx1[1]);
   
   const bool passed = (b1 && b2 && b3 && b4 && b5);
   if(!passed)
@@ -434,11 +434,13 @@ bool test{{Test.Number+7}}_funcv_{{Test.Type}}()
   {
     horMinRef = std::min(horMinRef, Cx1[i]);
     horMaxRef = std::max(horMaxRef, Cx1[i]);
+    {% if Test.VecLen == 4 %}
     if(i<3)
     {
       horMinRef3 = std::min(horMinRef3, Cx1[i]);
       horMaxRef3 = std::max(horMaxRef3, Cx1[i]);
     }
+    {% endif %}
   }
 
   bool passed = true;
@@ -495,8 +497,6 @@ bool test{{Test.Number+8}}_funcfv_{{Test.Type}}()
   auto Cx14 = sqrt(Cx8); 
   auto Cx15 = inversesqrt(Cx8);
 
-  auto Cx16 = mad(Cx1, Cx2, Cx7);
-  auto Cx17 = fma(Cx1, Cx2, Cx7);
   auto Cx18 = rcp(Cx1);
 
   {{Test.TypeS}} ref[19][{{Test.VecLen}}];
@@ -517,8 +517,6 @@ bool test{{Test.Number+8}}_funcfv_{{Test.Type}}()
   store_u(res[13], Cx13);
   store_u(res[14], Cx14);
   store_u(res[15], Cx15);
-  store_u(res[16], Cx16);
-  store_u(res[17], Cx17);
   store_u(res[18], Cx18);
 
   for(int i=0;i<{{Test.VecLen}};i++)
@@ -539,9 +537,6 @@ bool test{{Test.Number+8}}_funcfv_{{Test.Type}}()
 
     ref[14][i] = sqrt(Cx8[i]);
     ref[15][i] = inversesqrt(Cx8[i]);
-
-    ref[16][i] = mad(Cx1[i], Cx2[i], Cx7[i]);
-    ref[17][i] = fma(Cx1[i], Cx2[i], Cx7[i]);
     ref[18][i] = rcp(Cx1[i]);
   }
   

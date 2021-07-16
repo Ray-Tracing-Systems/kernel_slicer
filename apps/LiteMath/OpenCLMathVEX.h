@@ -177,13 +177,6 @@ namespace LiteMath
     inline float4 operator*(const float rhs) const { return v * rhs; }
     inline float4 operator/(const float rhs) const { return v / rhs; }
 
-    inline uint4 operator> (const float4& b) const { return (v > b.v); }
-    inline uint4 operator< (const float4& b) const { return (v < b.v); }
-    inline uint4 operator>=(const float4& b) const { return (v >= b.v); }
-    inline uint4 operator<=(const float4& b) const { return (v <= b.v); }
-    inline uint4 operator==(const float4& b) const { return (v == b.v); }
-    inline uint4 operator!=(const float4& b) const { return (v != b.v); }
-
     inline void operator*=(const float rhs) { v = v * rhs; }
     inline void operator*=(const float4& b) { v = v * b.v; }
 
@@ -195,6 +188,13 @@ namespace LiteMath
 
     inline void operator-=(const float4& b) { v = v - b.v; }
     inline void operator-=(const float   b) { v = v - b;   }
+
+    inline uint4 operator> (const float4& b) const { return (v > b.v); }
+    inline uint4 operator< (const float4& b) const { return (v < b.v); }
+    inline uint4 operator>=(const float4& b) const { return (v >= b.v); }
+    inline uint4 operator<=(const float4& b) const { return (v <= b.v); }
+    inline uint4 operator==(const float4& b) const { return (v == b.v); }
+    inline uint4 operator!=(const float4& b) const { return (v != b.v); }
 
     union
     {
@@ -349,7 +349,17 @@ namespace LiteMath
     inline void operator/=(const float3& b) { v = v / b.v; }
 
     inline void operator+=(const float3& b) { v = v + b.v; }
+    inline void operator+=(const float b  ) { v = v + b;   }
+
     inline void operator-=(const float3& b) { v = v - b.v; }
+    inline void operator-=(const float   b) { v = v - b;   }
+
+    inline uint4 operator> (const float3& b) const { return (v > b.v); }
+    inline uint4 operator< (const float3& b) const { return (v < b.v); }
+    inline uint4 operator>=(const float3& b) const { return (v >= b.v); }
+    inline uint4 operator<=(const float3& b) const { return (v <= b.v); }
+    inline uint4 operator==(const float3& b) const { return (v == b.v); }
+    inline uint4 operator!=(const float3& b) const { return (v != b.v); }
 
     union
     {
@@ -401,6 +411,7 @@ namespace LiteMath
   static inline float3 clamp(const float3& x, const float3& minVal, const float3& maxVal) { return cvex::clamp(x.v, minVal.v, maxVal.v); }
   static inline float3 clamp(const float3& u, float a, float b)                           { return float3(clamp(u.x, a, b), clamp(u.y, a, b), clamp(u.z, a, b)); }
   static inline float3 lerp (const float3& u, const float3& v, const float t)             { return cvex::lerp(u.v, v.v, t); }
+  static inline float3 mix  (const float3& u, const float3& v, const float t)             { return cvex::lerp(u.v, v.v, t); }
 
   static inline float  dot  (const float3& a, const float3& b) { return cvex::dot3f(a.v, b.v); }
   static inline float3 cross(const float3& a, const float3& b){ return cvex::cross3(a.v, b.v);} 
@@ -410,8 +421,13 @@ namespace LiteMath
 
   static inline float3 floor(const float3& a_val) { return cvex::floor(a_val.v); }
   static inline float3 ceil (const float3& a_val) { return cvex::ceil(a_val.v);  }
-  static inline float3 fabs (const float3& a)     { return cvex::fabs (a.v);} 
-  static inline float3 rcp  (const float3& a)     { return cvex::rcp(a.v);     }
+  static inline float3 abs (const float3& a)      { return cvex::fabs(a.v);      } 
+  static inline float3 sign(const float3& a)      { return cvex::sign(a.v);      }
+  static inline float3 rcp(const float3& a)       { return cvex::rcp(a.v);       }
+  static inline float3 mod(float3 x, float3 y)    { return x.v - y.v * cvex::floor(x.v/y.v); }
+  static inline float3 fract(float3 x)            { return x.v - cvex::floor(x.v); }
+  static inline float3 sqrt(float3 x)             { return cvex::sqrt(x.v); }
+  static inline float3 inversesqrt(float3 x)      { return cvex::inversesqrt(x.v); }
 
   static inline unsigned int color_pack_rgba(const float3 rel_col) { return cvex::color_pack_rgba(rel_col.v); }
   static inline unsigned int color_pack_bgra(const float3 rel_col) { return cvex::color_pack_bgra(rel_col.v); }
@@ -427,6 +443,8 @@ namespace LiteMath
  
   static inline float hmin(const float3 a_val) { return cvex::hmin3(a_val.v); }
   static inline float hmax(const float3 a_val) { return cvex::hmax3(a_val.v); }
+
+  static inline float3 blend(const float3 a, const float3 b, const uint4 mask) { return cvex::blend(a.v, b.v, mask); }
   
   static inline float3 shuffle_xzy(float3 a_src) { return cvex::shuffle_xzyw(a_src.v); }
   static inline float3 shuffle_yxz(float3 a_src) { return cvex::shuffle_yxzw(a_src.v); }

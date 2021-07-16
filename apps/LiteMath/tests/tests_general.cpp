@@ -41,8 +41,7 @@ bool test000_scalar_funcs()
   float y22 = smoothstep(2.0f, 4.0f, 3.75f);
 
   float y23 = sqrt(x);
-  float y24 = mad(x, y01, y02); // fused multyply-add
-  float y25 = fma(x, y01, y02); // fused multyply-add
+
   float y26 = inversesqrt(x);   // 1.0f / sqrt(x)
   float y27 = rcp(x);           // fast reciprocal
 
@@ -60,7 +59,6 @@ bool test000_scalar_funcs()
   passed = passed && (y18 == 3.0f) && (y19 == 3.0f);
   passed = passed && (y20 > 0.0f) && (y20 < 1.0f) && (y21 > 0.0f) && (y21 < 1.0f) && (y22 > 0.0f) && (y22 < 1.0f);
   passed = passed && abs(y23*y23 - x) < 1e-6f && abs((1.0f/y26)*(1.0f/y26) - x) < 1e-5f;
-  passed = passed && (y24 == y25) && (y24 == x*y01 + y02);
   passed = passed && fabs(1.0f/y27 - x) < 1e-4f; 
 
   return passed;
