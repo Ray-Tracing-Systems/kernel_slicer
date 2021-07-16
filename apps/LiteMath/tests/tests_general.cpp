@@ -3,7 +3,7 @@
 
 #include "LiteMath.h"
 
-bool test000_scalar_functions_f()
+bool test000_scalar_funcs()
 {
   volatile float x = 3.75f;
   volatile float z = -1.25f;
@@ -134,7 +134,7 @@ bool test002_dot_cross_f3()
   return b1 && b5;
 }
 
-bool test003_length_f4()
+bool test003_length_float4()
 {
   const float4 Cx1 = { 1.0f, 2.0f, 3.0f, 4.0f };
 
@@ -166,7 +166,7 @@ bool test003_length_f4()
   return (b1 && b2 && b3 && b4);
 }
 
-bool test004_colpack()
+bool test004_colpack_f4x4()
 {
   const float4 Cx1 = { 0.25f, 0.5f, 0.0, 1.0f };
 
@@ -188,7 +188,7 @@ bool test004_colpack()
   return passed;
 }
 
-bool test005_matrix_elements()
+bool test005_matrix_elems()
 {
   float4x4 m;
   m(1,2) = 3.0f;
@@ -237,7 +237,7 @@ bool test007_reflect()
   const float cos21 = dot(dir4, n4);
   const float cos22 = dot(r4, n4);
 
-  return fabs(cos41-cos42) < 1e-6f && fabs(cos31-cos32) < 1e-6f && fabs(cos21-cos22) < 1e-6f;
+  return abs(cos41+cos42) < 1e-6f && abs(cos31+cos32) < 1e-6f && abs(cos21+cos22) < 1e-6f;
 }
 
 bool test008_normalize()
@@ -250,18 +250,22 @@ bool test008_normalize()
   const float3 n3  = normalize(dir3);
   const float2 n2  = normalize(dir2);
 
-  bool ok4 = abs(length3f(n4) - 1.0f) < 1e-6f && abs( dot(n4, dir4/length3f(dir4)) - 1.0f) < 1e-6f;
-  bool ok3 = abs(length(n3)   - 1.0f) < 1e-6f && abs( dot(n3, dir3/length(dir3))   - 1.0f) < 1e-6f;
-  bool ok2 = abs(length(n2)   - 1.0f) < 1e-6f && abs( dot(n2, dir2/length(dir2))   - 1.0f) < 1e-6f;
+  bool ok4 = abs(length3f(n4) - 1.0f) < 1e-6f && abs( dot3f(n4, dir4/length3f(dir4)) - 1.0f) < 1e-6f;
+  bool ok3 = abs(length(n3)   - 1.0f) < 1e-6f && abs( dot  (n3, dir3/length(dir3))   - 1.0f) < 1e-6f;
+  bool ok2 = abs(length(n2)   - 1.0f) < 1e-6f && abs( dot  (n2, dir2/length(dir2))   - 1.0f) < 1e-6f;
 
   return ok4 && ok3 && ok2;
 }
 
 bool test009_refract()
 {
-  const float4 dir4 = { 1.0f, -1.0f, 0.0f, 0.0f };
-  const float3 dir3 = { 1.0f, -1.0f, 0.0f, 0.0f };
-  const float2 dir2 = { 1.0f, -1.0f };
+  float4 dir4 = { 10.0f, -1.0f, 0.0f, 0.0f };
+  float3 dir3 = { 10.0f, -1.0f, 0.0f, 0.0f };
+  float2 dir2 = { 10.0f, -1.0f };
+
+  dir4 = normalize(dir4);
+  dir3 = normalize(dir3);
+  dir2 = normalize(dir2);
 
   const float4 n4  = { 0.0f, 1.0f, 0.0f, 0.0f };
   const float3 n3  = { 0.0f, 1.0f, 0.0f };
@@ -271,9 +275,9 @@ bool test009_refract()
   auto  r31 = refract(dir3, n3, 1.0f);
   auto  r21 = refract(dir2, n2, 1.0f);
   
-  auto  r42 = refract(dir4, n4, 0.1f);
-  auto  r32 = refract(dir3, n3, 0.1f);
-  auto  r22 = refract(dir2, n2, 0.1f);
+  auto  r42 = refract(dir4, n4, 10.0f);
+  auto  r32 = refract(dir3, n3, 10.0f);
+  auto  r22 = refract(dir2, n2, 10.0f);
 
   bool ok4 = length3f(r41-dir4) < 1e-6f && length3f(r42) == 0.0f;
   bool ok3 = length  (r31-dir3) < 1e-6f && length  (r32) == 0.0f;

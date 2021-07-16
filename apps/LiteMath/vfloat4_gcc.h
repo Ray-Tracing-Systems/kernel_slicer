@@ -84,8 +84,8 @@ namespace cvex
   static inline vint4   to_int32(const vfloat4 a)  { return vint4  { (int)a[0], (int)a[1], (int)a[2], (int)a[3]}; }
   static inline vint4   to_int32(const vuint4  a)  { return (vint4)a; }
 
-  static inline vuint4  to_uint32(const vint4   a)     { return (vuint4)a; }
-  static inline vuint4  to_uint32(const vfloat4 a_val) { return (vuint4)(max(to_int32(a_val),vint4{0,0,0,0})); }
+  static inline vuint4  to_uint32(const vint4   a) { return (vuint4)a; }
+  static inline vuint4  to_uint32(const vfloat4 a) { return vuint4{(unsigned int)(a[0]), (unsigned int)(a[1]), (unsigned int)(a[2]), (unsigned int)(a[3])}; }
 
   // shuffle operations ...
   //

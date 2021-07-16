@@ -86,7 +86,7 @@ bool test{{Test.Number+1}}_basek_{{Test.Type}}()
   bool passed = true;
   for(int i=0;i<4;i++)
   {
-    const {{Test.TypeS}} expr1 = Cx2*(Cx2 - Cx1[i]) - {{Test.TypeS}}(2);
+    const {{Test.TypeS}} expr1 = Cx2*(Cx2 + Cx1[i]) - {{Test.TypeS}}(2);
     const {{Test.TypeS}} expr2 = {{Test.TypeS}}(1) + (Cx1[i] + Cx2)*Cx2;
     const {{Test.TypeS}} expr3 = {{Test.TypeS}}(3) - Cx2/(Cx2 - Cx1[i]);
     const {{Test.TypeS}} expr4 = (Cx2 + Cx1[i])/Cx2 + {{Test.TypeS}}(5)/Cx1[i];
@@ -281,8 +281,8 @@ bool test{{Test.Number+4}}_shuffle_{{Test.Type}}()
 
   {% if Test.VecLen == 4 %}
   const {{Test.Type}} Cr1 = shuffle_zyxw(Cx1);
-  const {{Test.Type}} Cr3 = shuffle_zxyw(Cx1);
-  const {{Test.Type}} Cr2 = shuffle_yzxw(Cx1);
+  const {{Test.Type}} Cr2 = shuffle_zxyw(Cx1);
+  const {{Test.Type}} Cr3 = shuffle_yzxw(Cx1);
   const {{Test.Type}} Cr6 = shuffle_yxzw(Cx1);
   const {{Test.Type}} Cr7 = shuffle_xzyw(Cx1);
   
@@ -307,11 +307,11 @@ bool test{{Test.Number+4}}_shuffle_{{Test.Type}}()
 
   const bool b1 = (result1[0] == Cx1[2]) && (result1[1] == Cx1[1]) && (result1[2] == Cx1[0]) && (result1[3] == Cx1[3]);
   const bool b2 = (result2[0] == Cx1[2]) && (result2[1] == Cx1[0]) && (result2[2] == Cx1[1]) && (result2[3] == Cx1[3]);
-  const bool b3 = (result3[0] == Cx1[1]) && (result3[1] == Cx1[2]) && (result3[2] == Cx1[1]) && (result3[3] == Cx1[3]);
-  const bool b6 = (result4[0] == Cx1[1]) && (result4[1] == Cx1[0]) && (result4[2] == Cx1[2]) && (result4[3] == Cx1[3]);
-  const bool b7 = (result4[0] == Cx1[0]) && (result4[1] == Cx1[2]) && (result4[2] == Cx1[1]) && (result4[3] == Cx1[3]);
+  const bool b3 = (result3[0] == Cx1[1]) && (result3[1] == Cx1[2]) && (result3[2] == Cx1[0]) && (result3[3] == Cx1[3]);
+  const bool b6 = (result6[0] == Cx1[1]) && (result6[1] == Cx1[0]) && (result6[2] == Cx1[2]) && (result6[3] == Cx1[3]);
+  const bool b7 = (result7[0] == Cx1[0]) && (result7[1] == Cx1[2]) && (result7[2] == Cx1[1]) && (result7[3] == Cx1[3]);
   
-  const bool b4 = (result6[0] == Cx1[0]) && (result6[1] == Cx1[1]) && (result6[2] == Cx1[0]) && (result6[3] == Cx1[1]);
+  const bool b4 = (result4[0] == Cx1[0]) && (result4[1] == Cx1[1]) && (result4[2] == Cx1[0]) && (result4[3] == Cx1[1]);
   const bool b5 = (result5[0] == Cx1[2]) && (result5[1] == Cx1[3]) && (result5[2] == Cx1[2]) && (result5[3] == Cx1[3]);
  
   const bool passed = (b1 && b2 && b3 && b4 && b5 && b6 && b7);
@@ -369,7 +369,7 @@ bool test{{Test.Number+4}}_shuffle_{{Test.Type}}()
   {% endif %}
 }
 
-bool test{{Test.Number+5}}_extract_splat_{{Test.Type}}()
+bool test{{Test.Number+5}}_exsplat_{{Test.Type}}()
 {
   const {{Test.Type}} Cx1({% for Val in Test.ValuesA %} {{Test.TypeS}}({{Val}}){% if loop.index1 != Test.VecLen %}, {% endif %} {% endfor %});
   
@@ -394,7 +394,7 @@ bool test{{Test.Number+5}}_extract_splat_{{Test.Type}}()
   for (int i = 0; i<{{Test.VecLen}}; i++)
   {
     {% for i in range(Test.VecLen) %}
-    if((result{{loop.index}}[i] == Cx1[{{loop.index}}]))
+    if((result{{loop.index}}[i] != Cx1[{{loop.index}}]))
       passed = false;
     {% endfor %}
   }
@@ -430,6 +430,17 @@ bool test{{Test.Number+7}}_funcv_{{Test.Type}}()
   {{Test.TypeS}} horMaxRef3 = Cx1[0];
   {% endif %}
   
+  for(int i=0;i<{{Test.VecLen}};i++)
+  {
+    horMinRef = std::min(horMinRef, Cx1[i]);
+    horMaxRef = std::max(horMaxRef, Cx1[i]);
+    if(i<3)
+    {
+      horMinRef3 = std::min(horMinRef3, Cx1[i]);
+      horMaxRef3 = std::max(horMaxRef3, Cx1[i]);
+    }
+  }
+
   bool passed = true;
   for(int i=0;i<{{Test.VecLen}};i++)
   {
@@ -488,10 +499,10 @@ bool test{{Test.Number+8}}_funcfv_{{Test.Type}}()
   auto Cx17 = fma(Cx1, Cx2, Cx7);
   auto Cx18 = rcp(Cx1);
 
-  {{Test.TypeS}} ref[18][{{Test.VecLen}}];
-  {{Test.TypeS}} res[18][{{Test.VecLen}}];
-  memset(ref, 0, 18*sizeof({{Test.TypeS}})*{{Test.VecLen}});
-  memset(res, 0, 18*sizeof({{Test.TypeS}})*{{Test.VecLen}});
+  {{Test.TypeS}} ref[19][{{Test.VecLen}}];
+  {{Test.TypeS}} res[19][{{Test.VecLen}}];
+  memset(ref, 0, 19*sizeof({{Test.TypeS}})*{{Test.VecLen}});
+  memset(res, 0, 19*sizeof({{Test.TypeS}})*{{Test.VecLen}});
 
   store_u(res[3],  Cx3);
   store_u(res[4],  Cx4);
@@ -539,12 +550,15 @@ bool test{{Test.Number+8}}_funcfv_{{Test.Type}}()
   {
     for(int j=3;j<=18;j++)
     {
-      if( fabs( res[j][i]-ref[j][i]) > 1e-6f)
+      if(abs( res[j][i]-ref[j][i]) > 1e-6f)
       {
-        if((j == 15 || j == 18) && fabs( res[j][i]-ref[j][i]) > 1e-4f )
+        if(j == 15 || j == 18)
         {
-          passed = false;
-          break;
+          if(abs(res[j][i]-ref[j][i]) > 5e-4f)
+          {
+            passed = false;
+            break;
+          }
         }
         else
         {
@@ -558,7 +572,7 @@ bool test{{Test.Number+8}}_funcfv_{{Test.Type}}()
   return passed;
 }
 
-bool test{{Test.Number+9}}_cast_convert_{{Test.Type}}()
+bool test{{Test.Number+9}}_cstcnv_{{Test.Type}}()
 {
   const {{Test.Type}} Cx1({% for Val in Test.ValuesA %} {{Test.TypeS}}({{Val}}){% if loop.index1 != Test.VecLen %}, {% endif %} {% endfor %});
   
@@ -642,7 +656,7 @@ bool test{{Test.Number+8}}_logicv_{{Test.Type}}()
   return passed;
 }
 
-bool test{{Test.Number+9}}_cast_convert_{{Test.Type}}()
+bool test{{Test.Number+9}}_cstcnv_{{Test.Type}}()
 {
   const {{Test.Type}} Cx1({% for Val in Test.ValuesA %} {{Test.TypeS}}({{Val}}){% if loop.index1 != Test.VecLen %}, {% endif %} {% endfor %});
   
@@ -672,7 +686,7 @@ bool test{{Test.Number+9}}_cast_convert_{{Test.Type}}()
 
 {% endif %}
 
-bool test{{Test.Number+10}}_other_functions_{{Test.Type}}() // dummy test
+bool test{{Test.Number+10}}_other_{{Test.Type}}() // dummy test
 {
   return true;
 }
