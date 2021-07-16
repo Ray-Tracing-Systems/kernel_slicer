@@ -281,3 +281,24 @@ bool test009_refract()
 
   return ok4 && ok3 && ok2;
 }
+
+bool test010_faceforward()
+{
+  const float4 dir4 = { 1.0f, -1.0f, 0.0f, 0.0f };
+  const float3 dir3 = { 1.0f, -1.0f, 0.0f, 0.0f };
+  const float2 dir2 = { 1.0f, -1.0f };
+
+  const float4 n4  = { 0.0f, -1.0f, 0.0f, 0.0f };
+  const float3 n3  = { 0.0f, -1.0f, 0.0f };
+  const float2 n2  = { 0.0f, -1.0f };
+
+  auto  r41 = faceforward(n4, dir4, n4);
+  auto  r31 = faceforward(n3, dir3, n3);
+  auto  r21 = faceforward(n2, dir2, n2);
+  
+  bool ok4 = abs(dot3f(r41, n4) + 1.0f) < 1e-6f;
+  bool ok3 = abs(dot  (r31, n3) + 1.0f) < 1e-6f;
+  bool ok2 = abs(dot  (r21, n2) + 1.0f) < 1e-6f;
+
+  return ok4 && ok3 && ok2;
+}
