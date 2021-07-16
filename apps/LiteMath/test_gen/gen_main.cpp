@@ -29,28 +29,33 @@ void ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, const std::s
 
 int main(int argc, const char** argv)
 {
-  nlohmann::json test;
-  
-  test["Number"] = 100;
-  test["Type"]   = "float4";
-  test["TypeS"]  = "float";
-  test["VecLen"]  = 4;
-  test["ValuesA"] = std::vector<int>({1, 2, -3, 4});
-  test["ValuesB"] = std::vector<int>({5, -5, 6, 4});
-  test["ValuesC"] = std::vector<uint32_t>({0xFFFFFFFF, 0xFFFFFFFF, 0xF0F00000, 0x00000000});
-  test["IsFloat"] = (test["TypeS"] == "float") || (test["TypeS"] == "double");  
-
   nlohmann::json data;
-  data["Tests"] = std::vector<std::string>();
-  data["Tests"].push_back(test);
+  data["AllTests"] = std::vector<std::string>();
+  int currNumber   = 100;
+  
+  {
+    nlohmann::json dataLocal;
+    dataLocal["Tests"] = std::vector<std::string>();
 
-  //#ifdef WIN32
-  //mkdir("generated");
-  //#else
-  //mkdir("generated", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-  //#endif
+    nlohmann::json test;
+    test["Number"] = currNumber;
+    test["Type"]   = "float4";
+    test["TypeS"]  = "float";
+    test["VecLen"]  = 4;
+    test["ValuesA"] = std::vector<int>({1, 2, -3, 4});
+    test["ValuesB"] = std::vector<int>({5, -5, 6, 4});
+    test["ValuesC"] = std::vector<uint32_t>({0xFFFFFFFF, 0xFFFFFFFF, 0xF0F00000, 0x00000000});
+    test["IsFloat"] = (test["TypeS"] == "float") || (test["TypeS"] == "double");  
+  
+    dataLocal["Tests"].push_back(test);
+    ApplyJsonToTemplate("templates/tests_arith.cpp", "../tests/tests_float4.cpp", dataLocal);
+    currNumber += 10;
 
-  ApplyJsonToTemplate("templates/tests_arith.cpp", "../tests/tests_float4.cpp", data);
+    data["AllTests"].push_back(dataLocal);
+  }
+
+  ApplyJsonToTemplate("templates/tests.h",        "../tests/tests.h", data);
+  ApplyJsonToTemplate("templates/tests_main.cpp", "../tests/tests_main.cpp", data);
 
   return 0;
 }

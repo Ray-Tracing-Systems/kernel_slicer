@@ -19,7 +19,7 @@ endif()
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize-address-use-after-scope -fno-omit-frame-pointer -fsanitize=leak -fsanitize=undefined -fsanitize=bounds-strict")
 
 add_executable(math_tests tests/tests_main.cpp
-                          tests/tests_scalar.cpp
+                          tests/tests_general.cpp
                           tests/tests_float4.cpp)
 
 set_target_properties(math_tests PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
