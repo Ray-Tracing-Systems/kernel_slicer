@@ -69,6 +69,7 @@ namespace cvex
   static inline vfloat4 max  (const vfloat4 a, const vfloat4 b) { return a > b ? a : b; }
   static inline vfloat4 clamp(const vfloat4 x, const vfloat4 minVal, const vfloat4 maxVal) { return max(min(x, maxVal), minVal); }
   static inline vfloat4 lerp (const vfloat4 u, const vfloat4 v, const float t) { return u + t * (v - u); }
+  static inline vfloat4 fma  (const vfloat4 a, const vfloat4 b, const vfloat4 c) { return a*b+c; } 
 
   static inline vint4 min  (const vint4 a, const vint4 b) { return a < b ? a : b; }
   static inline vint4 max  (const vint4 a, const vint4 b) { return a > b ? a : b; }
@@ -77,7 +78,6 @@ namespace cvex
   static inline vuint4 min  (const vuint4 a, const vuint4 b) { return a < b ? a : b; }
   static inline vuint4 max  (const vuint4 a, const vuint4 b) { return a > b ? a : b; }
   static inline vuint4 clamp(const vuint4 x, const vuint4 minVal, const vuint4 maxVal) { return max(min(x, maxVal), minVal); }
-  static inline vfloat4 fma (const vfloat4 a, const vfloat4 b, const vfloat4 c) { return a*b+c; } 
 
   // convert and cast
   //
@@ -391,6 +391,11 @@ namespace cvex
   }
 
   #endif
+
+  static inline vfloat4 reflect(vfloat4 dir, vfloat4 normal) 
+  { 
+    return normal * dot3v(dir, normal) * (-2.0f) + dir;      // #TODO: may try to use fma on some architectures ...
+  }
 
   static inline void mat4_rowmajor_mul_mat4(float* __restrict M, const float* __restrict A, const float* __restrict B) // modern gcc compiler succesfuly vectorize such implementation!
   {

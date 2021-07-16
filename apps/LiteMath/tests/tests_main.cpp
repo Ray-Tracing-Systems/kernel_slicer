@@ -68,7 +68,7 @@ int main(int argc, const char** argv)
  
   test000_scalar_functions_f();
   
-  test101_basev_float4();
+  test100_basev_float4();
 
   //TestRun tests[] = { f4_test001_arith, "f4_test001_arith",
   //                    };

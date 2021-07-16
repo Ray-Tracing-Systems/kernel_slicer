@@ -597,6 +597,7 @@ bool test{{Test.Number+9}}_cast_convert_{{Test.Type}}()
   return passed;
 }
 
+
 {% else %}
 
 bool test{{Test.Number+8}}_logicv_{{Test.Type}}()
@@ -669,8 +670,11 @@ bool test{{Test.Number+9}}_cast_convert_{{Test.Type}}()
   return passed;
 }
 
-
 {% endif %}
 
+bool test{{Test.Number+10}}_other_functions_{{Test.Type}}() // dummy test
+{
+  return true;
+}
 
 ## endfor

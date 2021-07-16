@@ -31,7 +31,7 @@ int main(int argc, const char** argv)
 {
   nlohmann::json test;
   
-  test["Number"] = 101;
+  test["Number"] = 100;
   test["Type"]   = "float4";
   test["TypeS"]  = "float";
   test["VecLen"]  = 4;

@@ -213,3 +213,71 @@ bool test006_any_all()
 
   return (!b1 && !b2 && b3 && !b4);
 }
+
+bool test007_reflect()
+{
+  const float4 dir4 = { 1.0f, -1.0f, 0.0f, 0.0f };
+  const float3 dir3 = { 1.0f, -1.0f, 0.0f, 0.0f };
+  const float2 dir2 = { 1.0f, -1.0f };
+
+  const float4 n4  = { 0.0f, 1.0f, 0.0f, 0.0f };
+  const float3 n3  = { 0.0f, 1.0f, 0.0f };
+  const float2 n2  = { 0.0f, 1.0f };
+
+  auto  r4 = reflect(dir4, n4);
+  auto  r3 = reflect(dir3, n3);
+  auto  r2 = reflect(dir2, n2);
+
+  const float cos41 = dot3f(dir4, n4);
+  const float cos42 = dot3f(r4, n4);
+
+  const float cos31 = dot(dir4, n4);
+  const float cos32 = dot(r4, n4);
+
+  const float cos21 = dot(dir4, n4);
+  const float cos22 = dot(r4, n4);
+
+  return fabs(cos41-cos42) < 1e-6f && fabs(cos31-cos32) < 1e-6f && fabs(cos21-cos22) < 1e-6f;
+}
+
+bool test008_normalize()
+{
+  const float4 dir4 = { 1.0f, 2.0f, 3.0f, 4.0f };
+  const float3 dir3 = { 1.0f, 2.0f, 3.0f, 0.0f };
+  const float2 dir2 = { 1.0f, 2.0f };
+
+  const float4 n4  = normalize(dir4);
+  const float3 n3  = normalize(dir3);
+  const float2 n2  = normalize(dir2);
+
+  bool ok4 = abs(length3f(n4) - 1.0f) < 1e-6f && abs( dot(n4, dir4/length3f(dir4)) - 1.0f) < 1e-6f;
+  bool ok3 = abs(length(n3)   - 1.0f) < 1e-6f && abs( dot(n3, dir3/length(dir3))   - 1.0f) < 1e-6f;
+  bool ok2 = abs(length(n2)   - 1.0f) < 1e-6f && abs( dot(n2, dir2/length(dir2))   - 1.0f) < 1e-6f;
+
+  return ok4 && ok3 && ok2;
+}
+
+bool test009_refract()
+{
+  const float4 dir4 = { 1.0f, -1.0f, 0.0f, 0.0f };
+  const float3 dir3 = { 1.0f, -1.0f, 0.0f, 0.0f };
+  const float2 dir2 = { 1.0f, -1.0f };
+
+  const float4 n4  = { 0.0f, 1.0f, 0.0f, 0.0f };
+  const float3 n3  = { 0.0f, 1.0f, 0.0f };
+  const float2 n2  = { 0.0f, 1.0f };
+  
+  auto  r41 = refract(dir4, n4, 1.0f);
+  auto  r31 = refract(dir3, n3, 1.0f);
+  auto  r21 = refract(dir2, n2, 1.0f);
+  
+  auto  r42 = refract(dir4, n4, 0.1f);
+  auto  r32 = refract(dir3, n3, 0.1f);
+  auto  r22 = refract(dir2, n2, 0.1f);
+
+  bool ok4 = length3f(r41-dir4) < 1e-6f && length3f(r42) == 0.0f;
+  bool ok3 = length  (r31-dir3) < 1e-6f && length  (r32) == 0.0f;
+  bool ok2 = length  (r21-dir2) < 1e-6f && length  (r22) == 0.0f;
+
+  return ok4 && ok3 && ok2;
+}
