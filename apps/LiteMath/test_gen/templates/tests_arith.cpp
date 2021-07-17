@@ -331,8 +331,8 @@ bool test{{Test.Number+4}}_shuffle_{{Test.Type}}()
 
   {% else if Test.VecLen == 3 %}
   const {{Test.Type}} Cr1 = shuffle_zyx(Cx1);
-  const {{Test.Type}} Cr3 = shuffle_zxy(Cx1);
-  const {{Test.Type}} Cr2 = shuffle_yzx(Cx1);
+  const {{Test.Type}} Cr2 = shuffle_zxy(Cx1);
+  const {{Test.Type}} Cr3 = shuffle_yzx(Cx1);
   const {{Test.Type}} Cr4 = shuffle_yxz(Cx1);
   const {{Test.Type}} Cr5 = shuffle_xzy(Cx1);
 
@@ -351,8 +351,8 @@ bool test{{Test.Number+4}}_shuffle_{{Test.Type}}()
   const bool b1 = (result1[0] == Cx1[2]) && (result1[1] == Cx1[1]) && (result1[2] == Cx1[0]);
   const bool b2 = (result2[0] == Cx1[2]) && (result2[1] == Cx1[0]) && (result2[2] == Cx1[1]);
   const bool b3 = (result3[0] == Cx1[1]) && (result3[1] == Cx1[2]) && (result3[2] == Cx1[0]);
-  const bool b4 = (result3[0] == Cx1[1]) && (result3[1] == Cx1[0]) && (result3[2] == Cx1[2]);
-  const bool b5 = (result3[0] == Cx1[0]) && (result3[1] == Cx1[2]) && (result3[2] == Cx1[1]);
+  const bool b4 = (result4[0] == Cx1[1]) && (result4[1] == Cx1[0]) && (result4[2] == Cx1[2]);
+  const bool b5 = (result5[0] == Cx1[0]) && (result5[1] == Cx1[2]) && (result5[2] == Cx1[1]);
   
   const bool passed = (b1 && b2 && b3 && b4 && b5);
   if(!passed)
