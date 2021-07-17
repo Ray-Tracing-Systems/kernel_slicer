@@ -94,7 +94,7 @@ bool test{{Test.Number+1}}_basek_{{Test.Type}}()
     {% if Test.IsFloat %}
     if(fabs(result1[i] - expr1) > 1e-6f || fabs(result2[i] - expr2) > 1e-6f || fabs(result3[i] - expr3) > 1e-6f || fabs(result4[i] - expr4) > 1e-6f )
     {% else %}
-    if(result1[i] != expr1[i] || result2[i] != expr2[i] || result3[i] != expr3[i] || result4[i] != expr4[i]) 
+    if(result1[i] != expr1 || result2[i] != expr2 || result3[i] != expr3 || result4[i] != expr4) 
     {% endif %}
       passed = false;
   }
@@ -412,8 +412,10 @@ bool test{{Test.Number+7}}_funcv_{{Test.Type}}()
   const {{Test.Type}} Cx1({% for Val in Test.ValuesA %} {{Test.TypeS}}({{Val}}){% if loop.index1 != Test.VecLen %}, {% endif %} {% endfor %});
   const {{Test.Type}} Cx2({% for Val in Test.ValuesB %} {{Test.TypeS}}({{Val}}){% if loop.index1 != Test.VecLen %}, {% endif %} {% endfor %});
 
+  {% if Test.IsSigned %}  
   auto Cx3 = sign(Cx1);
   auto Cx4 = abs(Cx1);
+  {% endif %}
   auto Cx5 = clamp(Cx1, {{Test.TypeS}}(2), {{Test.TypeS}}(3) );
   auto Cx6 = min(Cx1, Cx2);
   auto Cx7 = max(Cx1, Cx2);
@@ -446,10 +448,12 @@ bool test{{Test.Number+7}}_funcv_{{Test.Type}}()
   bool passed = true;
   for(int i=0;i<{{Test.VecLen}};i++)
   {
+    {% if Test.IsSigned %}  
     if(Cx3[i] != sign(Cx1[i]))
       passed = false;
     if(Cx4[i] != abs(Cx1[i]))
       passed = false;
+    {% endif %}
     if(Cx5[i] != clamp(Cx1[i], {{Test.TypeS}}(2), {{Test.TypeS}}(3) ))
       passed = false;
     if(Cx6[i] != min(Cx1[i], Cx2[i]))
@@ -622,8 +626,8 @@ bool test{{Test.Number+8}}_logicv_{{Test.Type}}()
   const auto Cr4 = (Cx1 << 8) | (Cx2 >> 17); 
   const auto Cr5 = (Cx3 << 9) | (Cx3 >> 4); 
 
-  {{Test.TypeS}} ref[5][{{Test.VecLen}}];
-  {{Test.TypeS}} res[5][{{Test.VecLen}}];
+  {{Test.TypeS}} ref[6][{{Test.VecLen}}];
+  {{Test.TypeS}} res[6][{{Test.VecLen}}];
   store_u(res[0],  Cr0);
   store_u(res[1],  Cr1);
   store_u(res[2],  Cr2);
@@ -665,12 +669,12 @@ bool test{{Test.Number+9}}_cstcnv_{{Test.Type}}()
 
   float ref1[4] = { float(Cx1[0]), float(Cx1[1]), float(Cx1[2]), float(Cx1[3]) };
   float ref2[4];
-  memcpy(ref2, &Cr2, sizeof(float{{Test.VecLen}}));
+  memcpy(ref2, &Cx1, sizeof(float{{Test.VecLen}}));
   
   bool passed = true;
   for (int i=0; i<4; i++)
   {
-    if (result1[i] != ref1[i] || result2[i] != ref2[i] || result3[i] != ref3[i] || result4[i] != ref4[i])
+    if (result1[i] != ref1[i] || memcmp(result2, ref2, sizeof({{Test.TypeS}})*4) != 0)
     {
       passed = false;
       break;

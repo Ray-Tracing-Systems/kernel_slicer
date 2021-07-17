@@ -134,9 +134,24 @@ namespace cvex
   static inline vfloat4 shuffle_yzxw(vfloat4 a_src) { return __builtin_shuffle(a_src, vint4{1,2,0,3}); }
   static inline vfloat4 shuffle_zxyw(vfloat4 a_src) { return __builtin_shuffle(a_src, vint4{2,0,1,3}); }
   static inline vfloat4 shuffle_zyxw(vfloat4 a_src) { return __builtin_shuffle(a_src, vint4{2,1,0,3}); }
-
   static inline vfloat4 shuffle_xyxy(vfloat4 a_src) { return __builtin_shuffle(a_src, vint4{0,1,0,1}); }
   static inline vfloat4 shuffle_zwzw(vfloat4 a_src) { return __builtin_shuffle(a_src, vint4{2,3,2,3}); }
+
+  static inline vuint4 shuffle_xzyw(vuint4 a_src)   { return __builtin_shuffle(a_src, vint4{0,2,1,3}); }
+  static inline vuint4 shuffle_yxzw(vuint4 a_src)   { return __builtin_shuffle(a_src, vint4{1,0,2,3}); }
+  static inline vuint4 shuffle_yzxw(vuint4 a_src)   { return __builtin_shuffle(a_src, vint4{1,2,0,3}); }
+  static inline vuint4 shuffle_zxyw(vuint4 a_src)   { return __builtin_shuffle(a_src, vint4{2,0,1,3}); }
+  static inline vuint4 shuffle_zyxw(vuint4 a_src)   { return __builtin_shuffle(a_src, vint4{2,1,0,3}); }
+  static inline vuint4 shuffle_xyxy(vuint4 a_src)   { return __builtin_shuffle(a_src, vint4{0,1,0,1}); }
+  static inline vuint4 shuffle_zwzw(vuint4 a_src)   { return __builtin_shuffle(a_src, vint4{2,3,2,3}); }
+
+  static inline vint4 shuffle_xzyw(vint4 a_src)     { return __builtin_shuffle(a_src, vint4{0,2,1,3}); }
+  static inline vint4 shuffle_yxzw(vint4 a_src)     { return __builtin_shuffle(a_src, vint4{1,0,2,3}); }
+  static inline vint4 shuffle_yzxw(vint4 a_src)     { return __builtin_shuffle(a_src, vint4{1,2,0,3}); }
+  static inline vint4 shuffle_zxyw(vint4 a_src)     { return __builtin_shuffle(a_src, vint4{2,0,1,3}); }
+  static inline vint4 shuffle_zyxw(vint4 a_src)     { return __builtin_shuffle(a_src, vint4{2,1,0,3}); }
+  static inline vint4 shuffle_xyxy(vint4 a_src)     { return __builtin_shuffle(a_src, vint4{0,1,0,1}); }
+  static inline vint4 shuffle_zwzw(vint4 a_src)     { return __builtin_shuffle(a_src, vint4{2,3,2,3}); }
 
   static inline vfloat4 cross3(const vfloat4 a, const vfloat4 b) 
   {
@@ -177,9 +192,24 @@ namespace cvex
   
   static inline float hmax3(const vfloat4 a_val) { return std::max(std::max(a_val[0], a_val[1]), a_val[2]); }
   static inline float hmin3(const vfloat4 a_val) { return std::min(std::min(a_val[0], a_val[1]), a_val[2]); }
-
   static inline float hmax(const vfloat4 a_val) { return std::max(std::max(a_val[0], a_val[1]), std::max(a_val[2], a_val[3])); }
   static inline float hmin(const vfloat4 a_val) { return std::min(std::min(a_val[0], a_val[1]), std::min(a_val[2], a_val[3])); }
+
+  static inline uint hmax3(const vuint4 a_val) { return std::max(std::max(a_val[0], a_val[1]), a_val[2]); }
+  static inline uint hmin3(const vuint4 a_val) { return std::min(std::min(a_val[0], a_val[1]), a_val[2]); }
+  static inline uint hmax (const vuint4 a_val) { return std::max(std::max(a_val[0], a_val[1]), std::max(a_val[2], a_val[3])); }
+  static inline uint hmin (const vuint4 a_val) { return std::min(std::min(a_val[0], a_val[1]), std::min(a_val[2], a_val[3])); }
+
+  static inline int hmax3(const vint4 a_val) { return std::max(std::max(a_val[0], a_val[1]), a_val[2]); }
+  static inline int hmin3(const vint4 a_val) { return std::min(std::min(a_val[0], a_val[1]), a_val[2]); }
+  static inline int hmax (const vint4 a_val) { return std::max(std::max(a_val[0], a_val[1]), std::max(a_val[2], a_val[3])); }
+  static inline int hmin (const vint4 a_val) { return std::min(std::min(a_val[0], a_val[1]), std::min(a_val[2], a_val[3])); }
+
+  static inline vint4  abs(vint4 a_val)   { return vint4{std::abs(a_val[0]), std::abs(a_val[1]), std::abs(a_val[2]), std::abs(a_val[3])};  }
+  static inline vint4  sign(vint4 x)      { return vint4{x[0] < 0 ? -1 : 1,
+                                                         x[1] < 0 ? -1 : 1,
+                                                         x[2] < 0 ? -1 : 1,
+                                                         x[3] < 0 ? -1 : 1}; }
 
   #ifdef __x86_64
   
