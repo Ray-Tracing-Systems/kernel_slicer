@@ -63,17 +63,29 @@ int main(int argc, const char** argv)
                       {test129_cstcnv_int4,        "test129_cstcnv_int4"},
                       {test130_other_int4,        "test130_other_int4"},
 
-                      {test130_basev_float3,         "test130_basev_float3"},
-                      {test131_basek_float3,         "test131_basek_float3"},
-                      {test132_unaryv_float3,        "test132_unaryv_float3"},
-                      {test132_unaryk_float3,        "test132_unaryk_float3"}, 
-                      {test133_cmpv_float3,          "test133_cmpv_float3"}, 
-                      {test134_shuffle_float3,       "test134_shuffle_float3"},
-                      {test135_exsplat_float3,       "test135_exsplat_float3"},
-                      {test137_funcv_float3,         "test137_funcv_float3"},
-                      {test138_funcfv_float3,        "test138_funcfv_float3"},
-                      {test139_cstcnv_float3,        "test139_cstcnv_float3"},
-                      {test140_other_float3,        "test140_other_float3"},
+                      {test130_basev_uint3,         "test130_basev_uint3"},
+                      {test131_basek_uint3,         "test131_basek_uint3"},
+                      {test132_unaryv_uint3,        "test132_unaryv_uint3"},
+                      {test132_unaryk_uint3,        "test132_unaryk_uint3"}, 
+                      {test133_cmpv_uint3,          "test133_cmpv_uint3"}, 
+                      {test134_shuffle_uint3,       "test134_shuffle_uint3"},
+                      {test135_exsplat_uint3,       "test135_exsplat_uint3"},
+                      {test137_funcv_uint3,         "test137_funcv_uint3"},
+                      {test138_logicv_uint3,        "test138_logicv_uint3"},
+                      {test139_cstcnv_uint3,        "test139_cstcnv_uint3"},
+                      {test140_other_uint3,        "test140_other_uint3"},
+
+                      {test140_basev_float3,         "test140_basev_float3"},
+                      {test141_basek_float3,         "test141_basek_float3"},
+                      {test142_unaryv_float3,        "test142_unaryv_float3"},
+                      {test142_unaryk_float3,        "test142_unaryk_float3"}, 
+                      {test143_cmpv_float3,          "test143_cmpv_float3"}, 
+                      {test144_shuffle_float3,       "test144_shuffle_float3"},
+                      {test145_exsplat_float3,       "test145_exsplat_float3"},
+                      {test147_funcv_float3,         "test147_funcv_float3"},
+                      {test148_funcfv_float3,        "test148_funcfv_float3"},
+                      {test149_cstcnv_float3,        "test149_cstcnv_float3"},
+                      {test150_other_float3,        "test150_other_float3"},
 
                       };
   
@@ -86,7 +98,7 @@ int main(int argc, const char** argv)
     if(res)
       std::cout << "PASSED!";
     else 
-      std::cout << "FAILED!";
+      std::cout << "FAILED!" << "\t(!!!)";
     std::cout << std::endl;
     std::cout.flush();
   }

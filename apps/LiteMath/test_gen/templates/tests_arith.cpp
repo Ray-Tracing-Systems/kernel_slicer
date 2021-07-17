@@ -667,14 +667,16 @@ bool test{{Test.Number+9}}_cstcnv_{{Test.Type}}()
   store_u(result1, Cr1);
   store_u(result2, Cr2);
 
-  float ref1[4] = { float(Cx1[0]), float(Cx1[1]), float(Cx1[2]), float(Cx1[3]) };
-  float ref2[4];
+  float ref1[{{Test.VecLen}}];
+  for(int i=0;i<{{Test.VecLen}};i++)
+    ref1[i] = Cx1[i];
+  float ref2[{{Test.VecLen}}];
   memcpy(ref2, &Cx1, sizeof(float{{Test.VecLen}}));
   
   bool passed = true;
-  for (int i=0; i<4; i++)
+  for (int i=0; i<{{Test.VecLen}}; i++)
   {
-    if (result1[i] != ref1[i] || memcmp(result2, ref2, sizeof({{Test.TypeS}})*4) != 0)
+    if (result1[i] != ref1[i] || memcmp(result2, ref2, sizeof({{Test.TypeS}})*{{Test.VecLen}}) != 0)
     {
       passed = false;
       break;

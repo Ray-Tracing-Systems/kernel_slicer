@@ -36,13 +36,12 @@
 
 namespace LiteMath
 { 
+  typedef unsigned int uint;
+
   constexpr float EPSILON      = 1e-6f;
   constexpr float DEG_TO_RAD   = float(3.14159265358979323846f) / 180.0f;
   constexpr float INF_POSITIVE = +std::numeric_limits<float>::infinity();
   constexpr float INF_NEGATIVE = -std::numeric_limits<float>::infinity();
-
-  typedef unsigned int uint;
-
 
   static inline int as_int(float x) 
   {
@@ -67,15 +66,33 @@ namespace LiteMath
 
   static inline float clamp(float u, float a, float b) { return std::min(std::max(a, u), b); }
 
+  inline float rnd(float s, float e)
+  {
+    const float t = (float)(rand()) / (float)RAND_MAX;
+    return s + t*(e - s);
+  }
+  
+  template<typename T> inline T SQR(T x) { return x * x; }
+
+  static inline float  lerp(float u, float v, float t) { return u + t * (v - u);  } 
+  static inline float  mix (float u, float v, float t) { return u + t * (v - u);  } 
+
+  static inline float smoothstep(float edge0, float edge1, float x)
+  {
+    float  tVal = (x - edge0) / (edge1 - edge0);
+    float  t    = fmin(fmax(tVal, 0.0f), 1.0f); 
+    return t * t * (3.0f - 2.0f * t);
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   struct uint4
   {
-    inline uint4()                           : x(0), y(0), z(0), w(0) {}
+    inline uint4()                               : x(0), y(0), z(0), w(0) {}
     inline uint4(uint a, uint b, uint c, uint d) : x(a), y(b), z(c), w(d) {}
-    inline explicit uint4(uint a[4])          : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
+    inline explicit uint4(uint a[4])             : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
 
     inline uint4(const std::initializer_list<uint> a_v) { v = cvex::load_u(a_v.begin()); }
     inline uint4(cvex::vuint4 rhs) { v = rhs; }
@@ -187,6 +204,96 @@ namespace LiteMath
   static inline uint  hmax3(const uint4 a_val) { return cvex::hmax3(a_val.v); } 
   static inline uint  hmin (const uint4 a_val) { return cvex::hmin(a_val.v); }
   static inline uint  hmax (const uint4 a_val) { return cvex::hmax(a_val.v); }
+  
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  struct uint3
+  {
+    inline uint3()                       : x(0), y(0), z(0) {}
+    inline uint3(uint a, uint b, uint c) : x(a), y(b), z(c) {}
+    inline explicit uint3(uint a[3])     : x(a[0]), y(a[1]), z(a[2]) {}
+
+    inline uint3(const std::initializer_list<uint> a_v) { v = cvex::load_u(a_v.begin()); }
+    inline uint3(cvex::vuint4 rhs) { v = rhs; }
+    inline uint3 operator=(cvex::vuint4 rhs) { v = rhs; return *this; }
+
+    inline uint& operator[](int i)       { return M[i]; }
+    inline uint  operator[](int i) const { return M[i]; }
+
+    inline uint3 operator+(const uint3& b) const { return v + b.v; }
+    inline uint3 operator-(const uint3& b) const { return v - b.v; }
+    inline uint3 operator*(const uint3& b) const { return v * b.v; }
+    inline uint3 operator/(const uint3& b) const { return v / b.v; }
+
+    inline uint3 operator+(const uint rhs) const { return v + rhs; }
+    inline uint3 operator-(const uint rhs) const { return v - rhs; }
+    inline uint3 operator*(const uint rhs) const { return v * rhs; }
+    inline uint3 operator/(const uint rhs) const { return v / rhs; }
+
+    inline void operator*=(const uint rhs) { v = v * rhs; }
+    inline void operator*=(const uint3& b) { v = v * b.v; }
+    inline void operator/=(const uint rhs) { v = v / rhs; }
+    inline void operator/=(const uint3& b) { v = v / b.v; }
+    inline void operator+=(const uint b  ) { v = v + b;   }
+    inline void operator+=(const uint3& b) { v = v + b.v; }
+    inline void operator-=(const uint   b) { v = v - b;   }
+    inline void operator-=(const uint3& b) { v = v - b.v; }
+
+    inline uint3 operator> (const uint3& b) const { return (v > b.v); }
+    inline uint3 operator< (const uint3& b) const { return (v < b.v); }
+    inline uint3 operator>=(const uint3& b) const { return (v >= b.v); }
+    inline uint3 operator<=(const uint3& b) const { return (v <= b.v); }
+    inline uint3 operator==(const uint3& b) const { return (v == b.v); }
+    inline uint3 operator!=(const uint3& b) const { return (v != b.v); }
+
+    union
+    {
+      struct { uint x, y, z; };
+      uint M[3];
+      cvex::vuint4 v;
+    };
+  };
+
+  static inline uint3 operator+(const uint a, const uint3 b) { return uint3(a + b.v); }
+  static inline uint3 operator-(const uint a, const uint3 b) { return uint3(a - b.v); }
+  static inline uint3 operator*(const uint a, const uint3 b) { return uint3(a * b.v); }
+  static inline uint3 operator/(const uint a, const uint3 b) { return uint3(a / b.v); }
+
+  static inline void  store  (uint* p, uint3 a_val) { cvex::store(p, a_val.v); }
+  static inline void  store_u(uint* p, uint3 a_val) { memcpy(p, &a_val, sizeof(uint)*3); }
+
+  static inline uint3 operator& (const uint3 a, const uint3 b) { return uint3(a.v & b.v); }
+  static inline uint3 operator| (const uint3 a, const uint3 b) { return uint3(a.v | b.v); }
+  static inline uint3 operator~ (const uint3 a)                { return uint3(~a.v); }
+  static inline uint3 operator>>(const uint3 a, const uint b)  { return uint3(a.v >> b); }
+  static inline uint3 operator<<(const uint3 a, const uint b)  { return uint3(a.v << b); }
+  
+  static inline uint3 min  (const uint3& a,   const uint3& b) { return cvex::min(a.v, b.v); }
+  static inline uint3 max  (const uint3& a,   const uint3& b) { return cvex::max(a.v, b.v); }
+  static inline uint3 clamp(const uint3& a_x, const uint3& a_min, const uint3& a_max) { return cvex::clamp(a_x.v, a_min.v, a_max.v); }
+  static inline uint3 clamp(const uint3& u, uint a, uint b)                           { return cvex::clamp(u.v, cvex::splat(a), cvex::splat(b)); }
+
+  static inline bool any_of (const uint3 a)  { return cvex::any_of(a.v); }
+  static inline bool all_of (const uint3 a)  { return cvex::all_of(a.v); }
+
+  static inline uint3 blend(const uint3 a, const uint3 b, const uint3 mask) { return cvex::blend(a.v, b.v, mask.v); }
+
+  static inline uint3 shuffle_xzy(uint3 a_src) { return cvex::shuffle_xzyw(a_src.v); }
+  static inline uint3 shuffle_yxz(uint3 a_src) { return cvex::shuffle_yxzw(a_src.v); }
+  static inline uint3 shuffle_yzx(uint3 a_src) { return cvex::shuffle_yzxw(a_src.v); }
+  static inline uint3 shuffle_zxy(uint3 a_src) { return cvex::shuffle_zxyw(a_src.v); }
+  static inline uint3 shuffle_zyx(uint3 a_src) { return cvex::shuffle_zyxw(a_src.v); }
+
+  static inline uint extract_0(const uint3& a_val) { return cvex::extract_0(a_val.v); }
+  static inline uint extract_1(const uint3& a_val) { return cvex::extract_1(a_val.v); }
+  static inline uint extract_2(const uint3& a_val) { return cvex::extract_2(a_val.v); }
+
+  static inline uint3 splat_0(const uint3& v)   { return cvex::splat_0(v.v); }
+  static inline uint3 splat_1(const uint3& v)   { return cvex::splat_1(v.v); }
+  static inline uint3 splat_2(const uint3& v)   { return cvex::splat_2(v.v); }  
+
+  static inline uint  hmin(const uint3 a_val) { return cvex::hmin(a_val.v); } // #TODO: THIS IMPLEMENTATION IS INCORRECT !!!
+  static inline uint  hmax(const uint3 a_val) { return cvex::hmax(a_val.v); } // #TODO: THIS IMPLEMENTATION IS INCORRECT !!!
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -311,7 +418,6 @@ namespace LiteMath
   static inline int  hmin (const int4 a_val) { return cvex::hmin(a_val.v); }
   static inline int  hmax (const int4 a_val) { return cvex::hmax(a_val.v); }
   
-
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -341,13 +447,10 @@ namespace LiteMath
 
     inline void operator*=(const float rhs) { v = v * rhs; }
     inline void operator*=(const float4& b) { v = v * b.v; }
-
     inline void operator/=(const float rhs) { v = v / rhs; }
     inline void operator/=(const float4& b) { v = v / b.v; }
-
     inline void operator+=(const float4& b) { v = v + b.v; }
     inline void operator+=(const float b  ) { v = v + b;   }
-
     inline void operator-=(const float4& b) { v = v - b.v; }
     inline void operator-=(const float   b) { v = v - b;   }
 
@@ -366,29 +469,10 @@ namespace LiteMath
     };
   };
 
-  static inline float4 operator+(const float a, const float4 b) 
-  { 
-    const cvex::vfloat4 res = (a + b.v);
-    return float4(res); 
-  }
-
-  static inline float4 operator-(const float a, const float4 b) 
-  { 
-    const cvex::vfloat4 res = (a - b.v);
-    return float4(res); 
-  }
-
-  static inline float4 operator*(const float a, const float4 b) 
-  { 
-    const cvex::vfloat4 res = (a * b.v);
-    return float4(res); 
-  }
-
-  static inline float4 operator/(const float a, const float4 b) 
-  { 
-    const cvex::vfloat4 res = (a / b.v);
-    return float4(res); 
-  }
+  static inline float4 operator+(const float a, const float4 b) { return float4(a + b.v); }
+  static inline float4 operator-(const float a, const float4 b) { return float4(a - b.v); }
+  static inline float4 operator*(const float a, const float4 b) { return float4(a * b.v); }
+  static inline float4 operator/(const float a, const float4 b) { return float4(a / b.v); }
 
   static inline float4 load   (const float* p)         { return cvex::load(p);      }
   static inline float4 load_u (const float* p)         { return cvex::load_u(p);    }
@@ -521,29 +605,10 @@ namespace LiteMath
     };
   };
 
-  static inline float3 operator+(const float a, const float3 b) 
-  { 
-    const cvex::vfloat4 res = (a + b.v);
-    return float3(res); 
-  }
-
-  static inline float3 operator-(const float a, const float3 b) 
-  { 
-    const cvex::vfloat4 res = (a - b.v);
-    return float3(res); 
-  }
-
-  static inline float3 operator*(const float a, const float3 b) 
-  { 
-    const cvex::vfloat4 res = (a * b.v);
-    return float3(res); 
-  }
-
-  static inline float3 operator/(const float a, const float3 b) 
-  { 
-    const cvex::vfloat4 res = (a / b.v);
-    return float3(res); 
-  }
+  static inline float3 operator+(const float a, const float3 b) { return float3(a + b.v); }
+  static inline float3 operator-(const float a, const float3 b) { return float3(a - b.v); }
+  static inline float3 operator*(const float a, const float3 b) { return float3(a * b.v); }
+  static inline float3 operator/(const float a, const float3 b) { return float3(a / b.v); }
 
   static inline void store  (float* p, float3 a_val) { cvex::store(p, a_val.v); }
   static inline void store_u(float* p, float3 a_val) { memcpy(p, &a_val, sizeof(float)*3); }
@@ -615,6 +680,36 @@ namespace LiteMath
       float M[2];
     };
   };
+
+  static inline float2 operator * (const float2 & u, float v) { return float2{u.x * v, u.y * v}; }
+  static inline float2 operator / (const float2 & u, float v) { return float2{u.x / v, u.y / v}; }
+  static inline float2 operator * (float v, const float2 & u) { return float2{v * u.x, v * u.y}; }
+  static inline float2 operator / (float v, const float2 & u) { return float2{v / u.x, v / u.y}; }
+
+  static inline float2 operator + (const float2 & u, const float2 & v) { return float2{u.x + v.x, u.y + v.y}; }
+  static inline float2 operator - (const float2 & u, const float2 & v) { return float2{u.x - v.x, u.y - v.y}; }
+  static inline float2 operator * (const float2 & u, const float2 & v) { return float2{u.x * v.x, u.y * v.y}; }
+  static inline float2 operator / (const float2 & u, const float2 & v) { return float2{u.x / v.x, u.y / v.y}; }
+  static inline float2 operator - (const float2 & v) { return {-v.x, -v.y}; }
+
+  static inline float2 & operator += (float2 & u, const float2 & v) { u.x += v.x; u.y += v.y; return u; }
+  static inline float2 & operator -= (float2 & u, const float2 & v) { u.x -= v.x; u.y -= v.y; return u; }
+  static inline float2 & operator *= (float2 & u, const float2 & v) { u.x *= v.x; u.y *= v.y; return u; }
+  static inline float2 & operator /= (float2 & u, const float2 & v) { u.x /= v.x; u.y /= v.y; return u; }
+
+  static inline float2 & operator += (float2 & u, float v) { u.x += v; u.y += v; return u; }
+  static inline float2 & operator -= (float2 & u, float v) { u.x -= v; u.y -= v; return u; }
+  static inline float2 & operator *= (float2 & u, float v) { u.x *= v; u.y *= v; return u; }
+  static inline float2 & operator /= (float2 & u, float v) { u.x /= v; u.y /= v; return u; }
+  static inline bool     operator == (const float2 & u, const float2 & v) { return (::fabs(u.x - v.x) < EPSILON) && (::fabs(u.y - v.y) < EPSILON); }
+
+  static inline float2 lerp(const float2 & u, const float2 & v, float t) { return u + t * (v - u); }
+  static inline float  dot(const float2 & u, const float2 & v)   { return (u.x*v.x + u.y*v.y); }
+  static inline float2 clamp(const float2 & u, float a, float b) { return float2{clamp(u.x, a, b), clamp(u.y, a, b)}; }
+
+  static inline float  length(const float2 & u)    { return sqrtf(SQR(u.x) + SQR(u.y)); }
+  static inline float2 normalize(const float2 & u) { return u / length(u); }
+  static inline float2 floor(float2 v) { return float2(floorf(v.x), floorf(v.y)); }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -866,68 +961,9 @@ namespace LiteMath
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  //static inline int max  (int a, int b)        { return a > b ? a : b; }                                    
-  //static inline int min  (int a, int b)        { return a < b ? a : b; }                                    
-  //static inline int clamp(int u, int a, int b) { const int   r = (a > u) ? a : u; return (r < b) ? r : b; } 
-
-  inline float rnd(float s, float e)
-  {
-    const float t = (float)(rand()) / (float)RAND_MAX;
-    return s + t*(e - s);
-  }
-
-  template<typename T> inline T SQR(T x) { return x * x; }
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   static inline float  lengthSquare(const float3& u) { return dot(u,u); }
-  static inline float  maxcomp     (const float3& u) { return fmax(u.x, fmax(u.y, u.z)); }
-  static inline float  mincomp     (const float3& u) { return fmin(u.x, fmin(u.y, u.z)); }
-
-  //**********************************************************************************
-  // float2 operators and functions
-  //**********************************************************************************
-
-  static inline float2 operator * (const float2 & u, float v) { return float2{u.x * v, u.y * v}; }
-  static inline float2 operator / (const float2 & u, float v) { return float2{u.x / v, u.y / v}; }
-  static inline float2 operator * (float v, const float2 & u) { return float2{v * u.x, v * u.y}; }
-  static inline float2 operator / (float v, const float2 & u) { return float2{v / u.x, v / u.y}; }
-
-  static inline float2 operator + (const float2 & u, const float2 & v) { return float2{u.x + v.x, u.y + v.y}; }
-  static inline float2 operator - (const float2 & u, const float2 & v) { return float2{u.x - v.x, u.y - v.y}; }
-  static inline float2 operator * (const float2 & u, const float2 & v) { return float2{u.x * v.x, u.y * v.y}; }
-  static inline float2 operator / (const float2 & u, const float2 & v) { return float2{u.x / v.x, u.y / v.y}; }
-  static inline float2 operator - (const float2 & v) { return {-v.x, -v.y}; }
-
-  static inline float2 & operator += (float2 & u, const float2 & v) { u.x += v.x; u.y += v.y; return u; }
-  static inline float2 & operator -= (float2 & u, const float2 & v) { u.x -= v.x; u.y -= v.y; return u; }
-  static inline float2 & operator *= (float2 & u, const float2 & v) { u.x *= v.x; u.y *= v.y; return u; }
-  static inline float2 & operator /= (float2 & u, const float2 & v) { u.x /= v.x; u.y /= v.y; return u; }
-
-  static inline float2 & operator += (float2 & u, float v) { u.x += v; u.y += v; return u; }
-  static inline float2 & operator -= (float2 & u, float v) { u.x -= v; u.y -= v; return u; }
-  static inline float2 & operator *= (float2 & u, float v) { u.x *= v; u.y *= v; return u; }
-  static inline float2 & operator /= (float2 & u, float v) { u.x /= v; u.y /= v; return u; }
-  static inline bool     operator == (const float2 & u, const float2 & v) { return (::fabs(u.x - v.x) < EPSILON) && (::fabs(u.y - v.y) < EPSILON); }
-
-  static inline float2 lerp(const float2 & u, const float2 & v, float t) { return u + t * (v - u); }
-  static inline float  dot(const float2 & u, const float2 & v)   { return (u.x*v.x + u.y*v.y); }
-  static inline float2 clamp(const float2 & u, float a, float b) { return float2{clamp(u.x, a, b), clamp(u.y, a, b)}; }
-
-  static inline float  length(const float2 & u)    { return sqrtf(SQR(u.x) + SQR(u.y)); }
-  static inline float2 normalize(const float2 & u) { return u / length(u); }
-  static inline float2 floor(float2 v) { return float2(floorf(v.x), floorf(v.y)); }
-  static inline float  lerp(float u, float v, float t) { return u + t * (v - u);  } 
-  static inline float  mix (float u, float v, float t) { return u + t * (v - u);  } 
-
-  static inline float smoothstep(float edge0, float edge1, float x)
-  {
-    float  tVal = (x - edge0) / (edge1 - edge0);
-    float  t    = fmin(fmax(tVal, 0.0f), 1.0f); 
-    return t * t * (3.0f - 2.0f * t);
-  }
+  static inline float  maxcomp     (const float3& u) { return std::max(u.x, std::max(u.y, u.z)); }
+  static inline float  mincomp     (const float3& u) { return std::min(u.x, std::min(u.y, u.z)); }
 
   static inline float3 operator*(const float4x4& m, const float3& v)
   {
@@ -936,7 +972,6 @@ namespace LiteMath
     cvex::mat4_colmajor_mul_vec4((float*)&res, (const float*)&m, (const float*)&v2);
     return res;
   }
-
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -957,18 +992,6 @@ namespace LiteMath
 
   static inline int3 operator ^ (const int3 & u, const int3 & v) { return int3{u.x ^ v.x, u.y ^ v.y, u.z ^ v.z}; }
   static inline int3 & operator ^= (int3 & u, const int3 & v) { u.x ^= v.x; u.y ^= v.y; u.z ^= v.z; return u; }
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  struct uint3
-  {
-    uint3() :x(0), y(0), z(0) {}
-    uint3(unsigned int a, unsigned int b, unsigned int c) : x(a), y(b), z(c) {}
-
-    unsigned int x, y, z;
-  };
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1029,14 +1052,14 @@ namespace LiteMath
   static inline uint4  as_uint32 (const float4 a_val) { return cvex::as_uint32 (a_val.v); }
 
   //static inline int3   to_int32  (const float3& a) { return cvex::to_int32(a.v); }
-  //static inline uint3  to_uint32 (const float3& a) { return cvex::to_uint32(a.v); }
+  static inline uint3  to_uint32 (const float3& a) { return cvex::to_uint32(a.v); }
   //static inline float3 to_float32(const  int3& a)  { return cvex::to_float32(a.v); }
-  //static inline float3 to_float32(const uint3& a)  { return cvex::to_float32(a); }
+  static inline float3 to_float32(const uint3& a) { return cvex::to_float32(a.v); }
   
   //static inline float3 as_float32(const int3 a_val)   { return cvex::as_float32(a_val.v); }
-  //static inline float3 as_float32(const uint3 a_val)  { return cvex::as_float32(a_val); }
+  static inline float3 as_float32(const uint3 a_val)  { return cvex::as_float32(a_val.v); }
   //static inline int3   as_int32  (const float3 a_val) { return cvex::as_int32  (a_val.v); }
-  //static inline uint3  as_uint32 (const float3 a_val) { return cvex::as_uint32 (a_val.v); }
+  static inline uint3  as_uint32 (const float3 a_val) { return cvex::as_uint32 (a_val.v); }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -59,7 +59,7 @@ int main(int argc, const char** argv)
     if(res)
       std::cout << "PASSED!";
     else 
-      std::cout << "FAILED!";
+      std::cout << "FAILED!" << "\t(!!!)";
     std::cout << std::endl;
     std::cout.flush();
   }
