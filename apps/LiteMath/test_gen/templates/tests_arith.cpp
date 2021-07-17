@@ -590,8 +590,14 @@ bool test{{Test.Number+9}}_cstcnv_{{Test.Type}}()
   store_u(result3, Cr3);
   store_u(result4, Cr4);
 
-  int          ref1[{{Test.VecLen}}] = { int(Cx1[0]), int(Cx1[1]), int(Cx1[2]), int(Cx1[3]) };
-  unsigned int ref2[{{Test.VecLen}}] = { (unsigned int)(Cx1[0]),  (unsigned int)(Cx1[1]),  (unsigned int)(Cx1[2]),  (unsigned int)(Cx1[3]) };
+  int          ref1[{{Test.VecLen}}];
+  unsigned int ref2[{{Test.VecLen}}];
+  for(int i=0;i<{{Test.VecLen}};i++)
+  {
+    ref1[i] = int(Cx1[i]);
+    ref2[i] = (unsigned int)(Cx1[i]); 
+  }
+
   int          ref3[{{Test.VecLen}}];
   unsigned int ref4[{{Test.VecLen}}];
 

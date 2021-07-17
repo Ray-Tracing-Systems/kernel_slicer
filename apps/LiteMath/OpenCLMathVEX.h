@@ -205,7 +205,7 @@ namespace LiteMath
   static inline uint  hmin (const uint4 a_val) { return cvex::hmin(a_val.v); }
   static inline uint  hmax (const uint4 a_val) { return cvex::hmax(a_val.v); }
   
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   struct uint3
   {
@@ -292,8 +292,8 @@ namespace LiteMath
   static inline uint3 splat_1(const uint3& v)   { return cvex::splat_1(v.v); }
   static inline uint3 splat_2(const uint3& v)   { return cvex::splat_2(v.v); }  
 
-  static inline uint  hmin(const uint3 a_val) { return cvex::hmin(a_val.v); } // #TODO: THIS IMPLEMENTATION IS INCORRECT !!!
-  static inline uint  hmax(const uint3 a_val) { return cvex::hmax(a_val.v); } // #TODO: THIS IMPLEMENTATION IS INCORRECT !!!
+  static inline uint  hmin(const uint3 a_val) { return cvex::hmin3(a_val.v); } 
+  static inline uint  hmax(const uint3 a_val) { return cvex::hmax3(a_val.v); } 
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -417,6 +417,95 @@ namespace LiteMath
   static inline int  hmax3(const int4 a_val) { return cvex::hmax3(a_val.v); } 
   static inline int  hmin (const int4 a_val) { return cvex::hmin(a_val.v); }
   static inline int  hmax (const int4 a_val) { return cvex::hmax(a_val.v); }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  struct int3
+  {
+    inline int3()                    : x(0), y(0), z(0) {}
+    inline int3(int a, int b, int c) : x(a), y(b), z(c) {}
+    inline explicit int3(int a[3])   : x(a[0]), y(a[1]), z(a[2]) {}
+
+    inline int3(const std::initializer_list<int> a_v) { v = cvex::load_u(a_v.begin()); }
+    inline int3(cvex::vint4 rhs) { v = rhs; }
+    inline int3 operator=(cvex::vint4 rhs) { v = rhs; return *this; }
+
+    inline int& operator[](int i)       { return M[i]; }
+    inline int  operator[](int i) const { return M[i]; }
+
+    inline int3 operator+(const int3& b) const { return v + b.v; }
+    inline int3 operator-(const int3& b) const { return v - b.v; }
+    inline int3 operator*(const int3& b) const { return v * b.v; }
+    inline int3 operator/(const int3& b) const { return v / b.v; }
+
+    inline int3 operator+(const int rhs) const { return v + rhs; }
+    inline int3 operator-(const int rhs) const { return v - rhs; }
+    inline int3 operator*(const int rhs) const { return v * rhs; }
+    inline int3 operator/(const int rhs) const { return v / rhs; }
+
+    inline void operator*=(const int rhs) { v = v * rhs; }
+    inline void operator*=(const int3& b) { v = v * b.v; }
+    inline void operator/=(const int rhs) { v = v / rhs; }
+    inline void operator/=(const int3& b) { v = v / b.v; }
+    inline void operator+=(const int b  ) { v = v + b;   }
+    inline void operator+=(const int3& b) { v = v + b.v; }
+    inline void operator-=(const int   b) { v = v - b;   }
+    inline void operator-=(const int3& b) { v = v - b.v; }
+
+    inline uint3 operator> (const int3& b) const { return (v > b.v); }
+    inline uint3 operator< (const int3& b) const { return (v < b.v); }
+    inline uint3 operator>=(const int3& b) const { return (v >= b.v); }
+    inline uint3 operator<=(const int3& b) const { return (v <= b.v); }
+    inline uint3 operator==(const int3& b) const { return (v == b.v); }
+    inline uint3 operator!=(const int3& b) const { return (v != b.v); }
+
+    union
+    {
+      struct { int x, y, z; };
+      int M[3];
+      cvex::vint4 v;
+    };
+  };
+
+  static inline int3 operator+(const int a, const int3 b) { return int3(a + b.v); }
+  static inline int3 operator-(const int a, const int3 b) { return int3(a - b.v); }
+  static inline int3 operator*(const int a, const int3 b) { return int3(a * b.v); }
+  static inline int3 operator/(const int a, const int3 b) { return int3(a / b.v); }
+
+  static inline void  store  (int* p, int3 a_val) { cvex::store(p, a_val.v); }
+  static inline void  store_u(int* p, int3 a_val) { memcpy(p, &a_val, sizeof(int)*3); }
+
+  static inline int3 operator& (const int3 a, const int3 b) { return int3(a.v & b.v); }
+  static inline int3 operator| (const int3 a, const int3 b) { return int3(a.v | b.v); }
+  static inline int3 operator~ (const int3 a)               { return int3(~a.v); }
+  static inline int3 operator>>(const int3 a, const int b)  { return int3(a.v >> b); }
+  static inline int3 operator<<(const int3 a, const int b)  { return int3(a.v << b); }
+  
+  static inline int3 min  (const int3& a,   const int3& b) { return cvex::min(a.v, b.v); }
+  static inline int3 max  (const int3& a,   const int3& b) { return cvex::max(a.v, b.v); }
+  static inline int3 clamp(const int3& a_x, const int3& a_min, const int3& a_max) { return cvex::clamp(a_x.v, a_min.v, a_max.v); }
+  static inline int3 clamp(const int3& u, int a, int b)                           { return cvex::clamp(u.v, cvex::splat(a), cvex::splat(b)); }
+  static inline int3 abs  (const int3& a)                                         { return cvex::abs(a.v);  } 
+  static inline int3 sign (const int3& a)                                         { return cvex::sign(a.v); }
+
+  static inline int3 blend(const int3 a, const int3 b, const uint3 mask) { return cvex::blend(a.v, b.v, mask.v); }
+
+  static inline int3 shuffle_xzy(int3 a_src) { return cvex::shuffle_xzyw(a_src.v); }
+  static inline int3 shuffle_yxz(int3 a_src) { return cvex::shuffle_yxzw(a_src.v); }
+  static inline int3 shuffle_yzx(int3 a_src) { return cvex::shuffle_yzxw(a_src.v); }
+  static inline int3 shuffle_zxy(int3 a_src) { return cvex::shuffle_zxyw(a_src.v); }
+  static inline int3 shuffle_zyx(int3 a_src) { return cvex::shuffle_zyxw(a_src.v); }
+
+  static inline int extract_0(const int3& a_val) { return cvex::extract_0(a_val.v); }
+  static inline int extract_1(const int3& a_val) { return cvex::extract_1(a_val.v); }
+  static inline int extract_2(const int3& a_val) { return cvex::extract_2(a_val.v); }
+
+  static inline int3 splat_0(const int3& v)   { return cvex::splat_0(v.v); }
+  static inline int3 splat_1(const int3& v)   { return cvex::splat_1(v.v); }
+  static inline int3 splat_2(const int3& v)   { return cvex::splat_2(v.v); }  
+
+  static inline int  hmin(const int3 a_val) { return cvex::hmin3(a_val.v); } 
+  static inline int  hmax(const int3 a_val) { return cvex::hmax3(a_val.v); } 
   
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -972,26 +1061,6 @@ namespace LiteMath
     cvex::mat4_colmajor_mul_vec4((float*)&res, (const float*)&m, (const float*)&v2);
     return res;
   }
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  struct int3
-  {
-    int3() :x(0), y(0), z(0) {}
-    int3(int a, int b, int c) : x(a), y(b), z(c) {}
-    inline int& operator[](int i)       { return M[i]; }
-    inline int  operator[](int i) const { return M[i]; }
-
-    union
-    {
-        struct {int x, y, z; };
-        int M[3];
-    };
-  };
-
-  static inline int3 operator ^ (const int3 & u, const int3 & v) { return int3{u.x ^ v.x, u.y ^ v.y, u.z ^ v.z}; }
-  static inline int3 & operator ^= (int3 & u, const int3 & v) { u.x ^= v.x; u.y ^= v.y; u.z ^= v.z; return u; }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1051,14 +1120,14 @@ namespace LiteMath
   static inline int4   as_int32  (const float4 a_val) { return cvex::as_int32  (a_val.v); }
   static inline uint4  as_uint32 (const float4 a_val) { return cvex::as_uint32 (a_val.v); }
 
-  //static inline int3   to_int32  (const float3& a) { return cvex::to_int32(a.v); }
+  static inline int3   to_int32  (const float3& a) { return cvex::to_int32(a.v); }
   static inline uint3  to_uint32 (const float3& a) { return cvex::to_uint32(a.v); }
-  //static inline float3 to_float32(const  int3& a)  { return cvex::to_float32(a.v); }
+  static inline float3 to_float32(const  int3& a)  { return cvex::to_float32(a.v); }
   static inline float3 to_float32(const uint3& a) { return cvex::to_float32(a.v); }
   
-  //static inline float3 as_float32(const int3 a_val)   { return cvex::as_float32(a_val.v); }
+  static inline float3 as_float32(const int3 a_val)   { return cvex::as_float32(a_val.v); }
   static inline float3 as_float32(const uint3 a_val)  { return cvex::as_float32(a_val.v); }
-  //static inline int3   as_int32  (const float3 a_val) { return cvex::as_int32  (a_val.v); }
+  static inline int3   as_int32  (const float3 a_val) { return cvex::as_int32  (a_val.v); }
   static inline uint3  as_uint32 (const float3 a_val) { return cvex::as_uint32 (a_val.v); }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

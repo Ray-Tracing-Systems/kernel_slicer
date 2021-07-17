@@ -121,6 +121,27 @@ int main(int argc, const char** argv)
     data["AllTests"].push_back(dataLocal);
   }
 
+  {
+    nlohmann::json dataLocal;
+    dataLocal["Tests"] = std::vector<std::string>();
+
+    nlohmann::json test;
+    test["Number"]  = currNumber;
+    test["Type"]    = "int3";
+    test["TypeS"]   = "int";
+    test["VecLen"]  = 3;
+    test["ValuesA"] = std::vector<int>({1, 2, -3});
+    test["ValuesB"] = std::vector<int>({5, -5, 6});
+    test["ValuesC"] = std::vector<uint32_t>({0xFFFFFFFF, 0xFFFFFFFF, 0xF0F00000});
+    test["IsFloat"]  = false;
+    test["IsSigned"] = true;  
+  
+    dataLocal["Tests"].push_back(test);
+    ApplyJsonToTemplate("templates/tests_arith.cpp", "../tests/tests_int3.cpp", dataLocal);
+    currNumber += 10;
+
+    data["AllTests"].push_back(dataLocal);
+  } 
 
   {
     nlohmann::json dataLocal;
