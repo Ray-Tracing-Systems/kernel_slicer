@@ -96,13 +96,10 @@ namespace LiteMath
 
     inline void operator*=(const uint rhs) { v = v * rhs; }
     inline void operator*=(const uint4& b) { v = v * b.v; }
-
     inline void operator/=(const uint rhs) { v = v / rhs; }
     inline void operator/=(const uint4& b) { v = v / b.v; }
-
     inline void operator+=(const uint b  ) { v = v + b;   }
     inline void operator+=(const uint4& b) { v = v + b.v; }
-
     inline void operator-=(const uint   b) { v = v - b;   }
     inline void operator-=(const uint4& b) { v = v - b.v; }
 
@@ -188,8 +185,8 @@ namespace LiteMath
 
   static inline uint  hmin3(const uint4 a_val) { return cvex::hmin3(a_val.v); }
   static inline uint  hmax3(const uint4 a_val) { return cvex::hmax3(a_val.v); } 
-  static inline uint  hmin(const uint4 a_val)  { return cvex::hmin(a_val.v); }
-  static inline uint  hmax(const uint4 a_val)  { return cvex::hmax(a_val.v); }
+  static inline uint  hmin (const uint4 a_val) { return cvex::hmin(a_val.v); }
+  static inline uint  hmax (const uint4 a_val) { return cvex::hmax(a_val.v); }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -217,6 +214,22 @@ namespace LiteMath
     inline int4 operator-(const int rhs) const { return v - rhs; }
     inline int4 operator*(const int rhs) const { return v * rhs; }
     inline int4 operator/(const int rhs) const { return v / rhs; }
+
+    inline void operator*=(const int rhs) { v = v * rhs; }
+    inline void operator*=(const int4& b) { v = v * b.v; }
+    inline void operator/=(const int rhs) { v = v / rhs; }
+    inline void operator/=(const int4& b) { v = v / b.v; }
+    inline void operator+=(const int b  ) { v = v + b;   }
+    inline void operator+=(const int4& b) { v = v + b.v; }
+    inline void operator-=(const int   b) { v = v - b;   }
+    inline void operator-=(const int4& b) { v = v - b.v; }
+
+    inline uint4 operator> (const int4& b) const { return (v > b.v); }
+    inline uint4 operator< (const int4& b) const { return (v < b.v); }
+    inline uint4 operator>=(const int4& b) const { return (v >= b.v); }
+    inline uint4 operator<=(const int4& b) const { return (v <= b.v); }
+    inline uint4 operator==(const int4& b) const { return (v == b.v); }
+    inline uint4 operator!=(const int4& b) const { return (v != b.v); }
 
     union
     {
@@ -266,9 +279,38 @@ namespace LiteMath
   static inline int4 max  (const int4& a,   const int4& b)                        { return int4( cvex::max(a.v, b.v) ); }
   static inline int4 clamp(const int4& a_x, const int4& a_min, const int4& a_max) { return cvex::clamp(a_x.v, a_min.v, a_max.v); }
   static inline int4 clamp(const int4& a_x, const int a_min, const int a_max)     { return cvex::clamp(a_x.v, cvex::splat(a_min), cvex::splat(a_max)); }
+  static inline int4 abs  (const int4& a)                                         { return cvex::abs(a.v);  } 
+  static inline int4 sign (const int4& a)                                         { return cvex::sign(a.v); }
 
   static inline bool any_of (const int4 a) { return cvex::any_of(a.v); }
   static inline bool all_of (const int4 a) { return cvex::all_of(a.v); }
+
+  static inline int4 blend(const int4 a, const int4 b, const uint4 mask) { return cvex::blend(a.v, b.v, mask.v); }
+
+  static inline int4 shuffle_xzyw(int4 a_src) { return cvex::shuffle_xzyw(a_src.v); }
+  static inline int4 shuffle_yxzw(int4 a_src) { return cvex::shuffle_yxzw(a_src.v); }
+  static inline int4 shuffle_yzxw(int4 a_src) { return cvex::shuffle_yzxw(a_src.v); }
+  static inline int4 shuffle_zxyw(int4 a_src) { return cvex::shuffle_zxyw(a_src.v); }
+  static inline int4 shuffle_zyxw(int4 a_src) { return cvex::shuffle_zyxw(a_src.v); }
+  static inline int4 shuffle_xyxy(int4 a_src) { return cvex::shuffle_xyxy(a_src.v); }
+  static inline int4 shuffle_zwzw(int4 a_src) { return cvex::shuffle_zwzw(a_src.v); }
+
+  static inline int extract_0(const int4& a_val) { return cvex::extract_0(a_val.v); }
+  static inline int extract_1(const int4& a_val) { return cvex::extract_1(a_val.v); }
+  static inline int extract_2(const int4& a_val) { return cvex::extract_2(a_val.v); }
+  static inline int extract_3(const int4& a_val) { return cvex::extract_3(a_val.v); }
+
+  static inline int4 splat_0(const int4& v)   { return cvex::splat_0(v.v); }
+  static inline int4 splat_1(const int4& v)   { return cvex::splat_1(v.v); }
+  static inline int4 splat_2(const int4& v)   { return cvex::splat_2(v.v); }
+  static inline int4 splat_3(const int4& v)   { return cvex::splat_3(v.v); }  
+  static inline int4 splat  (const int s)     { return cvex::splat(s); }  
+
+  static inline int  hmin3(const int4 a_val) { return cvex::hmin3(a_val.v); }
+  static inline int  hmax3(const int4 a_val) { return cvex::hmax3(a_val.v); } 
+  static inline int  hmin (const int4 a_val) { return cvex::hmin(a_val.v); }
+  static inline int  hmax (const int4 a_val) { return cvex::hmax(a_val.v); }
+  
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -580,26 +580,26 @@ bool test{{Test.Number+9}}_cstcnv_{{Test.Type}}()
   const int{{Test.VecLen}}  Cr3 = as_int32(Cx1);
   const uint{{Test.VecLen}} Cr4 = as_uint32(Cx1);
 
-  int          result1[4];
-  unsigned int result2[4];
-  int          result3[4];
-  unsigned int result4[4];
+  int          result1[{{Test.VecLen}}];
+  unsigned int result2[{{Test.VecLen}}];
+  int          result3[{{Test.VecLen}}];
+  unsigned int result4[{{Test.VecLen}}];
 
   store_u(result1, Cr1);
   store_u(result2, Cr2);
   store_u(result3, Cr3);
   store_u(result4, Cr4);
 
-  int          ref1[4] = { int(Cx1[0]), int(Cx1[1]), int(Cx1[2]), int(Cx1[3]) };
-  unsigned int ref2[4] = { (unsigned int)(Cx1[0]),  (unsigned int)(Cx1[1]),  (unsigned int)(Cx1[2]),  (unsigned int)(Cx1[3]) };
-  int          ref3[4];
-  unsigned int ref4[4];
+  int          ref1[{{Test.VecLen}}] = { int(Cx1[0]), int(Cx1[1]), int(Cx1[2]), int(Cx1[3]) };
+  unsigned int ref2[{{Test.VecLen}}] = { (unsigned int)(Cx1[0]),  (unsigned int)(Cx1[1]),  (unsigned int)(Cx1[2]),  (unsigned int)(Cx1[3]) };
+  int          ref3[{{Test.VecLen}}];
+  unsigned int ref4[{{Test.VecLen}}];
 
   memcpy(ref3, &Cr3, sizeof(int{{Test.VecLen}}));
   memcpy(ref4, &Cr4, sizeof(uint{{Test.VecLen}}));
   
   bool passed = true;
-  for (int i=0; i<4; i++)
+  for (int i=0; i<{{Test.VecLen}}; i++)
   {
     if (result1[i] != ref1[i] || result2[i] != ref2[i] || result3[i] != ref3[i] || result4[i] != ref4[i])
     {

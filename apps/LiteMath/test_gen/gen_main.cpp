@@ -45,8 +45,8 @@ int main(int argc, const char** argv)
     test["ValuesA"] = std::vector<int>({1, 2, -3, 4});
     test["ValuesB"] = std::vector<int>({5, -5, 6, 4});
     test["ValuesC"] = std::vector<uint32_t>({0xFFFFFFFF, 0xFFFFFFFF, 0xF0F00000, 0x00000000});
-    test["IsFloat"]  = (test["TypeS"] == "float") || (test["TypeS"] == "double");
-    test["IsSigned"] = (test["TypeS"] != "uint");  
+    test["IsFloat"]  = true;
+    test["IsSigned"] = true;  
   
     dataLocal["Tests"].push_back(test);
     ApplyJsonToTemplate("templates/tests_arith.cpp", "../tests/tests_float4.cpp", dataLocal);
@@ -67,8 +67,8 @@ int main(int argc, const char** argv)
     test["ValuesA"] = std::vector<uint32_t>({1, 2, uint32_t(-3), 4});
     test["ValuesB"] = std::vector<uint32_t>({5, uint32_t(-5), 6, 4});
     test["ValuesC"] = std::vector<uint32_t>({0xFFFFFFFF, 0xFFFFFFFF, 0xF0F00000, 0x00000000});
-    test["IsFloat"]  = (test["TypeS"] == "float") || (test["TypeS"] == "double");
-    test["IsSigned"] = (test["TypeS"] != "uint");  
+    test["IsFloat"]  = false;
+    test["IsSigned"] = false;  
   
     dataLocal["Tests"].push_back(test);
     ApplyJsonToTemplate("templates/tests_arith.cpp", "../tests/tests_uint4.cpp", dataLocal);
@@ -82,6 +82,29 @@ int main(int argc, const char** argv)
     dataLocal["Tests"] = std::vector<std::string>();
 
     nlohmann::json test;
+    test["Number"]  = currNumber;
+    test["Type"]    = "int4";
+    test["TypeS"]   = "int";
+    test["VecLen"]  = 4;
+    test["ValuesA"] = std::vector<int>({1, 2, -3, 4});
+    test["ValuesB"] = std::vector<int>({5, -5, 6, 4});
+    test["ValuesC"] = std::vector<uint32_t>({0xFFFFFFFF, 0xFFFFFFFF, 0xF0F00000, 0x00000000});
+    test["IsFloat"]  = false;
+    test["IsSigned"] = true;  
+  
+    dataLocal["Tests"].push_back(test);
+    ApplyJsonToTemplate("templates/tests_arith.cpp", "../tests/tests_int4.cpp", dataLocal);
+    currNumber += 10;
+
+    data["AllTests"].push_back(dataLocal);
+  }
+
+
+  {
+    nlohmann::json dataLocal;
+    dataLocal["Tests"] = std::vector<std::string>();
+
+    nlohmann::json test;
     test["Number"] = currNumber;
     test["Type"]   = "float3";
     test["TypeS"]  = "float";
@@ -89,8 +112,8 @@ int main(int argc, const char** argv)
     test["ValuesA"] = std::vector<int>({-1, 2, -3});
     test["ValuesB"] = std::vector<int>({3, -4, 4});
     test["ValuesC"] = std::vector<uint32_t>({0xFFFFFFFF, 0xFFFFFFFF, 0xF0F00000});
-    test["IsFloat"]  = (test["TypeS"] == "float") || (test["TypeS"] == "double");
-    test["IsSigned"] = (test["TypeS"] != "uint");  
+    test["IsFloat"]  = true;
+    test["IsSigned"] = true;  
   
     dataLocal["Tests"].push_back(test);
     ApplyJsonToTemplate("templates/tests_arith.cpp", "../tests/tests_float3.cpp", dataLocal);

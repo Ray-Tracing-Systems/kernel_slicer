@@ -89,7 +89,7 @@ namespace cvex
 
   // shuffle operations ...
   //
-  static inline vint4   blend(const vint4 a,  const vint4 b,  const vint4  mask) { return ((mask & a) | (~mask & b)); }
+  static inline vint4   blend(const vint4 a,  const vint4 b,  const vuint4 mask) { return (vint4)((mask & (vuint4)a) | (~mask & (vuint4)b)); }
   static inline vuint4  blend(const vuint4 a, const vuint4 b, const vuint4 mask) { return ((mask & a) | (~mask & b)); }
   static inline vint4   blend(const vuint4 a, const vint4 b,  const vint4  mask) { return ((mask & (vint4)a) | (~mask & b)); }
 
