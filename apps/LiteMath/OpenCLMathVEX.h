@@ -73,6 +73,8 @@ namespace LiteMath
   }
 
   static inline float clamp(float u, float a, float b) { return std::min(std::max(a, u), b); }
+  static inline uint  clamp(uint u,  uint a,  uint b)  { return std::min(std::max(a, u), b); }
+  static inline int   clamp(int u,   int a,   int b)   { return std::min(std::max(a, u), b); }
 
   inline float rnd(float s, float e)
   {
@@ -108,6 +110,13 @@ namespace LiteMath
   
   static inline float inversesqrt(float x) { return 1.0f/std::sqrt(x); }
   static inline float rcp(float x)         { return 1.0f/x; }
+
+  static inline int sign(int x) // TODO: on some architectures we can try to effitiently check sign bit       
+  { 
+    if(x == 0)     return 0;
+    else if(x < 0) return -1;
+    else           return +1;
+  } 
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -324,16 +333,81 @@ namespace LiteMath
 
   struct uint2
   {
-    uint2() : x(0), y(0) {}
-    uint2(unsigned int a, unsigned int b) : x(a), y(b) {}
+    inline uint2() : x(0), y(0) {}
+    inline uint2(unsigned int a, unsigned int b) : x(a), y(b) {}
+    inline explicit uint2(uint a[2]) : x(a[0]), y(a[1]) {}
+    
+    inline uint& operator[](int i)       { return M[i]; }
+    inline uint  operator[](int i) const { return M[i]; }
 
-    //bool operator==(const uint2 &other) const { return (x == other.x && y == other.y) || (x == other.y && y == other.x); }
-
-    unsigned int x, y;
+    union
+    {
+      struct {uint x, y; };
+      uint M[2];
+    };
   };
+
+  static inline uint2 operator * (const uint2& u, uint v) { return uint2{u.x * v, u.y * v}; }
+  static inline uint2 operator / (const uint2& u, uint v) { return uint2{u.x / v, u.y / v}; }
+  static inline uint2 operator * (uint v, const uint2& u) { return uint2{v * u.x, v * u.y}; }
+  static inline uint2 operator / (uint v, const uint2& u) { return uint2{v / u.x, v / u.y}; }
+
+  static inline uint2 operator + (const uint2& u, uint v) { return uint2{u.x + v, u.y + v}; }
+  static inline uint2 operator - (const uint2& u, uint v) { return uint2{u.x - v, u.y - v}; }
+  static inline uint2 operator + (uint v, const uint2& u) { return uint2{v + u.x, v + u.y}; }
+  static inline uint2 operator - (uint v, const uint2& u) { return uint2{v - u.x, v - u.y}; }
+
+  static inline uint2 operator + (const uint2& u, const uint2& v) { return uint2{u.x + v.x, u.y + v.y}; }
+  static inline uint2 operator - (const uint2& u, const uint2& v) { return uint2{u.x - v.x, u.y - v.y}; }
+  static inline uint2 operator * (const uint2& u, const uint2& v) { return uint2{u.x * v.x, u.y * v.y}; }
+  static inline uint2 operator / (const uint2& u, const uint2& v) { return uint2{u.x / v.x, u.y / v.y}; }
+  static inline uint2 operator - (const uint2& v) { return {-v.x, -v.y}; }
+
+  static inline uint2& operator += (uint2& u, const uint2& v) { u.x += v.x; u.y += v.y; return u; }
+  static inline uint2& operator -= (uint2& u, const uint2& v) { u.x -= v.x; u.y -= v.y; return u; }
+  static inline uint2& operator *= (uint2& u, const uint2& v) { u.x *= v.x; u.y *= v.y; return u; }
+  static inline uint2& operator /= (uint2& u, const uint2& v) { u.x /= v.x; u.y /= v.y; return u; }
+
+  static inline uint2& operator += (uint2& u, uint v) { u.x += v; u.y += v; return u; }
+  static inline uint2& operator -= (uint2& u, uint v) { u.x -= v; u.y -= v; return u; }
+  static inline uint2& operator *= (uint2& u, uint v) { u.x *= v; u.y *= v; return u; }
+  static inline uint2& operator /= (uint2& u, uint v) { u.x /= v; u.y /= v; return u; }
+  
+  static inline uint2 operator> (const uint2& a, const uint2& b) { return uint2{a[0] > b[0]  ? 0xFFFFFFFF : 0, a[1] > b[1]  ? 0xFFFFFFFF : 0}; }
+  static inline uint2 operator< (const uint2& a, const uint2& b) { return uint2{a[0] < b[0]  ? 0xFFFFFFFF : 0, a[1] < b[1]  ? 0xFFFFFFFF : 0}; }
+  static inline uint2 operator>=(const uint2& a, const uint2& b) { return uint2{a[0] >= b[0] ? 0xFFFFFFFF : 0, a[1] >= b[1] ? 0xFFFFFFFF : 0}; }
+  static inline uint2 operator<=(const uint2& a, const uint2& b) { return uint2{a[0] <= b[0] ? 0xFFFFFFFF : 0, a[1] <= b[1] ? 0xFFFFFFFF : 0}; }
+  static inline uint2 operator==(const uint2& a, const uint2& b) { return uint2{a[0] == b[0] ? 0xFFFFFFFF : 0, a[1] == b[1] ? 0xFFFFFFFF : 0}; }
+  static inline uint2 operator!=(const uint2& a, const uint2& b) { return uint2{a[0] != b[0] ? 0xFFFFFFFF : 0, a[1] != b[1] ? 0xFFFFFFFF : 0}; }
+  
+  static inline uint2 operator& (const uint2 a, const uint2 b) { return uint2{a.x & b.x, a.y & b.y}; }
+  static inline uint2 operator| (const uint2 a, const uint2 b) { return uint2{a.x | b.x, a.y | b.y}; }
+  static inline uint2 operator~ (const uint2 a)                { return uint2{~a.x     , ~a.y     }; }
+  static inline uint2 operator>>(const uint2 a, const uint b)  { return uint2{a.x >> b , a.y >> b }; }
+  static inline uint2 operator<<(const uint2 a, const uint b)  { return uint2{a.x << b , a.y << b }; }
 
   static inline void store  (uint* p, uint2 a_val) { memcpy(p, &a_val, sizeof(uint)*2); }
   static inline void store_u(uint* p, uint2 a_val) { memcpy(p, &a_val, sizeof(uint)*2); }  
+  
+  static inline uint dot(const uint2& u, const uint2& v)  { return (u.x*v.x + u.y*v.y); }
+  
+  static inline uint2 min  (const uint2& a, const uint2& b)   { return uint2{ std::min(a[0], b[0]), std::min(a[1], b[1])}; }
+  static inline uint2 max  (const uint2& a, const uint2& b)   { return uint2{ std::max(a[0], b[0]), std::max(a[1], b[1])}; }
+  static inline uint2 clamp(const uint2& u, uint a, uint b)  { return uint2{ clamp(u.x, a, b),     clamp(u.y, a, b)};     }
+  
+  //static inline uint2 abs (const uint2& a)     { return uint2{std::abs(a.M[0]),   std::abs(a.M[1])};   } 
+  //static inline uint2 sign(const uint2& a)     { return uint2{sign(a.M[0]),       sign(a.M[1])};       }
+  
+  static inline uint extract_0(const uint2& a) { return a.M[0]; }
+  static inline uint extract_1(const uint2& a) { return a.M[1]; }
+
+  static inline uint2 splat_0(const uint2& a)  { return uint2{ a.M[0], a.M[0] }; }
+  static inline uint2 splat_1(const uint2& a)  { return uint2{ a.M[1], a.M[1] }; }
+
+  static inline uint hmin    (const uint2& a) { return std::min(a.M[0], a.M[1]); }
+  static inline uint hmax    (const uint2& a) { return std::max(a.M[0], a.M[1]); }
+ 
+  static inline uint2 blend(const uint2 a, const uint2 b, const uint2 mask) { return uint2{(mask.x == 0) ? b.x : a.x, (mask.y == 0) ? b.y : a.y}; }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -547,6 +621,84 @@ namespace LiteMath
   static inline int  hmin(const int3 a_val) { return cvex::hmin3(a_val.v); } 
   static inline int  hmax(const int3 a_val) { return cvex::hmax3(a_val.v); } 
   
+  struct int2
+  {
+    inline int2() : x(0), y(0) {}
+    inline int2(int a, int b) : x(a), y(b) {}
+    inline explicit int2(uint a[2]) : x(a[0]), y(a[1]) {}
+    
+    inline int& operator[](int i)       { return M[i]; }
+    inline int  operator[](int i) const { return M[i]; }
+
+    union
+    {
+      struct {int x, y; };
+      int M[2];
+    };
+  };
+
+  static inline int2 operator * (const int2& u, int v) { return int2{u.x * v, u.y * v}; }
+  static inline int2 operator / (const int2& u, int v) { return int2{u.x / v, u.y / v}; }
+  static inline int2 operator * (int v, const int2& u) { return int2{v * u.x, v * u.y}; }
+  static inline int2 operator / (int v, const int2& u) { return int2{v / u.x, v / u.y}; }
+
+  static inline int2 operator + (const int2& u, int v) { return int2{u.x + v, u.y + v}; }
+  static inline int2 operator - (const int2& u, int v) { return int2{u.x - v, u.y - v}; }
+  static inline int2 operator + (int v, const int2& u) { return int2{v + u.x, v + u.y}; }
+  static inline int2 operator - (int v, const int2& u) { return int2{v - u.x, v - u.y}; }
+
+  static inline int2 operator + (const int2& u, const int2& v) { return int2{u.x + v.x, u.y + v.y}; }
+  static inline int2 operator - (const int2& u, const int2& v) { return int2{u.x - v.x, u.y - v.y}; }
+  static inline int2 operator * (const int2& u, const int2& v) { return int2{u.x * v.x, u.y * v.y}; }
+  static inline int2 operator / (const int2& u, const int2& v) { return int2{u.x / v.x, u.y / v.y}; }
+  static inline int2 operator - (const int2& v) { return {-v.x, -v.y}; }
+
+  static inline int2& operator += (int2& u, const int2& v) { u.x += v.x; u.y += v.y; return u; }
+  static inline int2& operator -= (int2& u, const int2& v) { u.x -= v.x; u.y -= v.y; return u; }
+  static inline int2& operator *= (int2& u, const int2& v) { u.x *= v.x; u.y *= v.y; return u; }
+  static inline int2& operator /= (int2& u, const int2& v) { u.x /= v.x; u.y /= v.y; return u; }
+
+  static inline int2& operator += (int2& u, int v) { u.x += v; u.y += v; return u; }
+  static inline int2& operator -= (int2& u, int v) { u.x -= v; u.y -= v; return u; }
+  static inline int2& operator *= (int2& u, int v) { u.x *= v; u.y *= v; return u; }
+  static inline int2& operator /= (int2& u, int v) { u.x /= v; u.y /= v; return u; }
+  
+  static inline uint2 operator> (const int2& a, const int2& b) { return uint2{a[0] > b[0]  ? 0xFFFFFFFF : 0, a[1] > b[1]  ? 0xFFFFFFFF : 0}; }
+  static inline uint2 operator< (const int2& a, const int2& b) { return uint2{a[0] < b[0]  ? 0xFFFFFFFF : 0, a[1] < b[1]  ? 0xFFFFFFFF : 0}; }
+  static inline uint2 operator>=(const int2& a, const int2& b) { return uint2{a[0] >= b[0] ? 0xFFFFFFFF : 0, a[1] >= b[1] ? 0xFFFFFFFF : 0}; }
+  static inline uint2 operator<=(const int2& a, const int2& b) { return uint2{a[0] <= b[0] ? 0xFFFFFFFF : 0, a[1] <= b[1] ? 0xFFFFFFFF : 0}; }
+  static inline uint2 operator==(const int2& a, const int2& b) { return uint2{a[0] == b[0] ? 0xFFFFFFFF : 0, a[1] == b[1] ? 0xFFFFFFFF : 0}; }
+  static inline uint2 operator!=(const int2& a, const int2& b) { return uint2{a[0] != b[0] ? 0xFFFFFFFF : 0, a[1] != b[1] ? 0xFFFFFFFF : 0}; }
+  
+  static inline int2 operator& (const int2 a, const int2 b) { return int2{a.x & b.x, a.y & b.y}; }
+  static inline int2 operator| (const int2 a, const int2 b) { return int2{a.x | b.x, a.y | b.y}; }
+  static inline int2 operator~ (const int2 a)               { return int2{~a.x     , ~a.y     }; }
+  static inline int2 operator>>(const int2 a, const int b)  { return int2{a.x >> b , a.y >> b }; }
+  static inline int2 operator<<(const int2 a, const int b)  { return int2{a.x << b , a.y << b }; }
+
+  static inline void store  (int* p, int2 a_val) { memcpy(p, &a_val, sizeof(int)*2); }
+  static inline void store_u(int* p, int2 a_val) { memcpy(p, &a_val, sizeof(int)*2); }  
+  
+  static inline int dot(const int2& u, const int2& v)  { return (u.x*v.x + u.y*v.y); }
+  
+  static inline int2 min  (const int2& a, const int2& b)   { return int2{ std::min(a[0], b[0]), std::min(a[1], b[1])}; }
+  static inline int2 max  (const int2& a, const int2& b)   { return int2{ std::max(a[0], b[0]), std::max(a[1], b[1])}; }
+  static inline int2 clamp(const int2 & u, int a, int b)   { return int2{ clamp(u.x, a, b),     clamp(u.y, a, b)};     }
+  
+  static inline int2 abs (const int2& a)       { return int2{std::abs(a.M[0]),   std::abs(a.M[1])};   } 
+  static inline int2 sign(const int2& a)       { return int2{sign(a.M[0]),       sign(a.M[1])};       }
+  
+  static inline int extract_0(const int2& a) { return a.M[0]; }
+  static inline int extract_1(const int2& a) { return a.M[1]; }
+
+  static inline int2 splat_0(const int2& a)  { return int2{ a.M[0], a.M[0] }; }
+  static inline int2 splat_1(const int2& a)  { return int2{ a.M[1], a.M[1] }; }
+
+  static inline int hmin    (const int2& a) { return std::min(a.M[0], a.M[1]); }
+  static inline int hmax    (const int2& a) { return std::max(a.M[0], a.M[1]); }
+ 
+  static inline int2 blend(const int2 a, const int2 b, const uint2 mask) { return int2{(mask.x == 0) ? b.x : a.x, (mask.y == 0) ? b.y : a.y}; }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1146,39 +1298,22 @@ namespace LiteMath
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-  struct int2
-  {
-    int2() : x(0), y(0) {}
-    int2(int a, int b) : x(a), y(b) {}
-
-    int x, y;
-  };
-
-
-  struct ushort2
-  {
-    ushort2() : x(0), y(0) {}
-    ushort2(unsigned short a, unsigned short b) : x(a), y(b) {}
-
-    unsigned short x, y;
-  };
-
-  struct ushort4
-  {
-    ushort4() :x(0), y(0), z(0), w(0) {}
-    ushort4(unsigned short a, unsigned short b, unsigned short c, unsigned short d) : x(a), y(b), z(c), w(d) {}
-
-    unsigned short x, y, z, w;
-  };  
-
-
   static inline float4 make_float4(float a, float b, float c, float d) { return float4{a,b,c,d}; }
   static inline float3 make_float3(float a, float b, float c)          { return float3{a,b,c};   }
   static inline float2 make_float2(float a, float b)                   { return float2{a,b};   }
+  static inline uint4  make_uint4(uint a, uint b, uint c, uint d)      { return uint4{a,b,c,d}; }
+  static inline uint3  make_uint3(uint a, uint b, uint c)              { return uint3{a,b,c};   }
+  static inline uint2  make_uint2(uint a, uint b)                      { return uint2{a,b};   }
+  static inline int4   make_uint4(int a, int b, int c, int d)          { return int4{a,b,c,d}; }
+  static inline int3   make_uint3(int a, int b, int c)                 { return int3{a,b,c};   }
+  static inline int2   make_uint2(int a, int b)                        { return int2{a,b};     }
   
-  static inline float3 to_float3(float4 f4)                            { return float3(f4.v); }
+  static inline float3 to_float3(float4 f4)         { return float3(f4.v); }
   static inline float4 to_float4(float3 v, float w) { return cvex::blend(v.v, cvex::splat(w), cvex::vuint4{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0 }); }
+  static inline uint3  to_uint3(uint4 f4)           { return uint3(f4.v); }
+  static inline uint4  to_uint4(uint3 v, uint w)    { return cvex::blend(v.v, cvex::splat(w), cvex::vuint4{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0 }); }
+  static inline int3   to_uint3(int4 f4)            { return int3(f4.v); }
+  static inline int4   to_uint4(int3 v, int w)      { return cvex::blend(v.v, cvex::splat(w), cvex::vuint4{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0 }); }
 
   static inline int4   to_int32  (const float4& a) { return cvex::to_int32(a.v);  }
   static inline int4   to_int32  (const uint4& a)  { return cvex::to_int32(a.v); }
@@ -1203,10 +1338,36 @@ namespace LiteMath
   static inline int3   as_int32  (const float3 a_val) { return cvex::as_int32  (a_val.v); }
   static inline uint3  as_uint32 (const float3 a_val) { return cvex::as_uint32 (a_val.v); }
 
+  static inline int2   to_int32  (const float2& a) { return int2  {int(a.x),   int(a.y)}; }
+  static inline uint2  to_uint32 (const float2& a) { return uint2 {uint(a.x),  uint(a.y)}; }
+  static inline float2 to_float32(const  int2& a)  { return float2{float(a.x), float(a.y)}; }
+  static inline float2 to_float32(const uint2& a)  { return float2{float(a.x), float(a.y)}; }
+  
+  static inline float2 as_float32(const int2   a_val) { float2 res; memcpy(&res, &a_val, sizeof(float)*2); return res; }
+  static inline float2 as_float32(const uint2  a_val) { float2 res; memcpy(&res, &a_val, sizeof(float)*2); return res; }
+  static inline int2   as_int32  (const float2 a_val) { int2 res;   memcpy(&res, &a_val, sizeof(int)*2);   return res; }
+  static inline uint2  as_uint32 (const float2 a_val) { uint2 res;  memcpy(&res, &a_val, sizeof(uint)*2);  return res; }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   
+  struct ushort4
+  {
+    ushort4() :x(0), y(0), z(0), w(0) {}
+    ushort4(unsigned short a, unsigned short b, unsigned short c, unsigned short d) : x(a), y(b), z(c), w(d) {}
+
+    unsigned short x, y, z, w;
+  };  
+
+  struct ushort2
+  {
+    ushort2() : x(0), y(0) {}
+    ushort2(unsigned short a, unsigned short b) : x(a), y(b) {}
+
+    unsigned short x, y;
+  };
+
   struct uchar4
   {
     inline uchar4() : x(0), y(0), z(0), w(0) {}

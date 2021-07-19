@@ -24,9 +24,11 @@ add_executable(math_tests tests/tests_main.cpp
                           tests/tests_float3.cpp
                           tests/tests_float2.cpp
                           tests/tests_uint4.cpp
-                          tests/tests_int4.cpp
                           tests/tests_uint3.cpp
-                          tests/tests_int3.cpp)
+                          tests/tests_uint2.cpp
+                          tests/tests_int4.cpp
+                          tests/tests_int3.cpp
+                          tests/tests_int2.cpp)
 
 set_target_properties(math_tests PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
