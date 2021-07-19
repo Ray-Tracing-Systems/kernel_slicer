@@ -27,6 +27,8 @@ int main(int argc, const char** argv)
                       {test009_refract,         "test009_refract"},
                       {test010_faceforward,     "test010_faceforward"},
                       
+
+
                       {test100_basev_float4,         "test100_basev_float4"},
                       {test101_basek_float4,         "test101_basek_float4"},
                       {test102_unaryv_float4,        "test102_unaryv_float4"},
@@ -35,9 +37,14 @@ int main(int argc, const char** argv)
                       {test104_shuffle_float4,       "test104_shuffle_float4"},
                       {test105_exsplat_float4,       "test105_exsplat_float4"},
                       {test107_funcv_float4,         "test107_funcv_float4"},
+
                       {test108_funcfv_float4,        "test108_funcfv_float4"},
                       {test109_cstcnv_float4,        "test109_cstcnv_float4"},
+
                       {test110_other_float4,        "test110_other_float4"},
+
+
+
 
                       {test110_basev_uint4,         "test110_basev_uint4"},
                       {test111_basek_uint4,         "test111_basek_uint4"},
@@ -47,9 +54,14 @@ int main(int argc, const char** argv)
                       {test114_shuffle_uint4,       "test114_shuffle_uint4"},
                       {test115_exsplat_uint4,       "test115_exsplat_uint4"},
                       {test117_funcv_uint4,         "test117_funcv_uint4"},
+
                       {test118_logicv_uint4,        "test118_logicv_uint4"},
                       {test119_cstcnv_uint4,        "test119_cstcnv_uint4"},
+
                       {test120_other_uint4,        "test120_other_uint4"},
+
+
+
 
                       {test120_basev_int4,         "test120_basev_int4"},
                       {test121_basek_int4,         "test121_basek_int4"},
@@ -59,33 +71,48 @@ int main(int argc, const char** argv)
                       {test124_shuffle_int4,       "test124_shuffle_int4"},
                       {test125_exsplat_int4,       "test125_exsplat_int4"},
                       {test127_funcv_int4,         "test127_funcv_int4"},
+
                       {test128_logicv_int4,        "test128_logicv_int4"},
                       {test129_cstcnv_int4,        "test129_cstcnv_int4"},
+
                       {test130_other_int4,        "test130_other_int4"},
 
-                      {test130_basev_uint3,         "test130_basev_uint3"},
-                      {test131_basek_uint3,         "test131_basek_uint3"},
-                      {test132_unaryv_uint3,        "test132_unaryv_uint3"},
-                      {test132_unaryk_uint3,        "test132_unaryk_uint3"}, 
-                      {test133_cmpv_uint3,          "test133_cmpv_uint3"}, 
-                      {test134_shuffle_uint3,       "test134_shuffle_uint3"},
-                      {test135_exsplat_uint3,       "test135_exsplat_uint3"},
-                      {test137_funcv_uint3,         "test137_funcv_uint3"},
-                      {test138_logicv_uint3,        "test138_logicv_uint3"},
-                      {test139_cstcnv_uint3,        "test139_cstcnv_uint3"},
-                      {test140_other_uint3,        "test140_other_uint3"},
 
-                      {test140_basev_uint2,         "test140_basev_uint2"},
-                      {test141_basek_uint2,         "test141_basek_uint2"},
-                      {test142_unaryv_uint2,        "test142_unaryv_uint2"},
-                      {test142_unaryk_uint2,        "test142_unaryk_uint2"}, 
-                      {test143_cmpv_uint2,          "test143_cmpv_uint2"}, 
-                      {test144_shuffle_uint2,       "test144_shuffle_uint2"},
-                      {test145_exsplat_uint2,       "test145_exsplat_uint2"},
-                      {test147_funcv_uint2,         "test147_funcv_uint2"},
-                      {test148_logicv_uint2,        "test148_logicv_uint2"},
-                      {test149_cstcnv_uint2,        "test149_cstcnv_uint2"},
-                      {test150_other_uint2,        "test150_other_uint2"},
+
+
+                      {test130_basev_float3,         "test130_basev_float3"},
+                      {test131_basek_float3,         "test131_basek_float3"},
+                      {test132_unaryv_float3,        "test132_unaryv_float3"},
+                      {test132_unaryk_float3,        "test132_unaryk_float3"}, 
+                      {test133_cmpv_float3,          "test133_cmpv_float3"}, 
+                      {test134_shuffle_float3,       "test134_shuffle_float3"},
+                      {test135_exsplat_float3,       "test135_exsplat_float3"},
+                      {test137_funcv_float3,         "test137_funcv_float3"},
+
+                      {test138_funcfv_float3,        "test138_funcfv_float3"},
+                      {test139_cstcnv_float3,        "test139_cstcnv_float3"},
+
+                      {test140_other_float3,        "test140_other_float3"},
+
+
+
+
+                      {test140_basev_uint3,         "test140_basev_uint3"},
+                      {test141_basek_uint3,         "test141_basek_uint3"},
+                      {test142_unaryv_uint3,        "test142_unaryv_uint3"},
+                      {test142_unaryk_uint3,        "test142_unaryk_uint3"}, 
+                      {test143_cmpv_uint3,          "test143_cmpv_uint3"}, 
+                      {test144_shuffle_uint3,       "test144_shuffle_uint3"},
+                      {test145_exsplat_uint3,       "test145_exsplat_uint3"},
+                      {test147_funcv_uint3,         "test147_funcv_uint3"},
+
+                      {test148_logicv_uint3,        "test148_logicv_uint3"},
+                      {test149_cstcnv_uint3,        "test149_cstcnv_uint3"},
+
+                      {test150_other_uint3,        "test150_other_uint3"},
+
+
+
 
                       {test150_basev_int3,         "test150_basev_int3"},
                       {test151_basek_int3,         "test151_basek_int3"},
@@ -95,33 +122,48 @@ int main(int argc, const char** argv)
                       {test154_shuffle_int3,       "test154_shuffle_int3"},
                       {test155_exsplat_int3,       "test155_exsplat_int3"},
                       {test157_funcv_int3,         "test157_funcv_int3"},
+
                       {test158_logicv_int3,        "test158_logicv_int3"},
                       {test159_cstcnv_int3,        "test159_cstcnv_int3"},
+
                       {test160_other_int3,        "test160_other_int3"},
 
-                      {test160_basev_int2,         "test160_basev_int2"},
-                      {test161_basek_int2,         "test161_basek_int2"},
-                      {test162_unaryv_int2,        "test162_unaryv_int2"},
-                      {test162_unaryk_int2,        "test162_unaryk_int2"}, 
-                      {test163_cmpv_int2,          "test163_cmpv_int2"}, 
-                      {test164_shuffle_int2,       "test164_shuffle_int2"},
-                      {test165_exsplat_int2,       "test165_exsplat_int2"},
-                      {test167_funcv_int2,         "test167_funcv_int2"},
-                      {test168_logicv_int2,        "test168_logicv_int2"},
-                      {test169_cstcnv_int2,        "test169_cstcnv_int2"},
-                      {test170_other_int2,        "test170_other_int2"},
 
-                      {test170_basev_float3,         "test170_basev_float3"},
-                      {test171_basek_float3,         "test171_basek_float3"},
-                      {test172_unaryv_float3,        "test172_unaryv_float3"},
-                      {test172_unaryk_float3,        "test172_unaryk_float3"}, 
-                      {test173_cmpv_float3,          "test173_cmpv_float3"}, 
-                      {test174_shuffle_float3,       "test174_shuffle_float3"},
-                      {test175_exsplat_float3,       "test175_exsplat_float3"},
-                      {test177_funcv_float3,         "test177_funcv_float3"},
-                      {test178_funcfv_float3,        "test178_funcfv_float3"},
-                      {test179_cstcnv_float3,        "test179_cstcnv_float3"},
-                      {test180_other_float3,        "test180_other_float3"},
+
+
+                      {test160_basev_uint2,         "test160_basev_uint2"},
+                      {test161_basek_uint2,         "test161_basek_uint2"},
+                      {test162_unaryv_uint2,        "test162_unaryv_uint2"},
+                      {test162_unaryk_uint2,        "test162_unaryk_uint2"}, 
+                      {test163_cmpv_uint2,          "test163_cmpv_uint2"}, 
+                      {test164_shuffle_uint2,       "test164_shuffle_uint2"},
+                      {test165_exsplat_uint2,       "test165_exsplat_uint2"},
+                      {test167_funcv_uint2,         "test167_funcv_uint2"},
+
+                      {test168_logicv_uint2,        "test168_logicv_uint2"},
+                      {test169_cstcnv_uint2,        "test169_cstcnv_uint2"},
+
+                      {test170_other_uint2,        "test170_other_uint2"},
+
+
+
+
+                      {test170_basev_int2,         "test170_basev_int2"},
+                      {test171_basek_int2,         "test171_basek_int2"},
+                      {test172_unaryv_int2,        "test172_unaryv_int2"},
+                      {test172_unaryk_int2,        "test172_unaryk_int2"}, 
+                      {test173_cmpv_int2,          "test173_cmpv_int2"}, 
+                      {test174_shuffle_int2,       "test174_shuffle_int2"},
+                      {test175_exsplat_int2,       "test175_exsplat_int2"},
+                      {test177_funcv_int2,         "test177_funcv_int2"},
+
+                      {test178_logicv_int2,        "test178_logicv_int2"},
+                      {test179_cstcnv_int2,        "test179_cstcnv_int2"},
+
+                      {test180_other_int2,        "test180_other_int2"},
+
+
+
 
                       {test180_basev_float2,         "test180_basev_float2"},
                       {test181_basek_float2,         "test181_basek_float2"},
@@ -131,9 +173,13 @@ int main(int argc, const char** argv)
                       {test184_shuffle_float2,       "test184_shuffle_float2"},
                       {test185_exsplat_float2,       "test185_exsplat_float2"},
                       {test187_funcv_float2,         "test187_funcv_float2"},
+
                       {test188_funcfv_float2,        "test188_funcfv_float2"},
                       {test189_cstcnv_float2,        "test189_cstcnv_float2"},
+
                       {test190_other_float2,        "test190_other_float2"},
+
+
 
                       };
   
