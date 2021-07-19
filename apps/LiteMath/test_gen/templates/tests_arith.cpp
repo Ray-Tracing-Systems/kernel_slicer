@@ -84,7 +84,7 @@ bool test{{Test.Number+1}}_basek_{{Test.Type}}()
   store(result4, Cx6);
   
   bool passed = true;
-  for(int i=0;i<4;i++)
+  for(int i=0;i<{{Test.VecLen}};i++)
   {
     const {{Test.TypeS}} expr1 = Cx2*(Cx2 + Cx1[i]) - {{Test.TypeS}}(2);
     const {{Test.TypeS}} expr2 = {{Test.TypeS}}(1) + (Cx1[i] + Cx2)*Cx2;

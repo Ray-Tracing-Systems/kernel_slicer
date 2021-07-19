@@ -99,6 +99,18 @@ int main(int argc, const char** argv)
                       {test159_cstcnv_float3,        "test159_cstcnv_float3"},
                       {test160_other_float3,        "test160_other_float3"},
 
+                      {test160_basev_float2,         "test160_basev_float2"},
+                      {test161_basek_float2,         "test161_basek_float2"},
+                      {test162_unaryv_float2,        "test162_unaryv_float2"},
+                      {test162_unaryk_float2,        "test162_unaryk_float2"}, 
+                      {test163_cmpv_float2,          "test163_cmpv_float2"}, 
+                      {test164_shuffle_float2,       "test164_shuffle_float2"},
+                      {test165_exsplat_float2,       "test165_exsplat_float2"},
+                      {test167_funcv_float2,         "test167_funcv_float2"},
+                      {test168_funcfv_float2,        "test168_funcfv_float2"},
+                      {test169_cstcnv_float2,        "test169_cstcnv_float2"},
+                      {test170_other_float2,        "test170_other_float2"},
+
                       };
   
   const auto arraySize = sizeof(tests)/sizeof(TestRun);
