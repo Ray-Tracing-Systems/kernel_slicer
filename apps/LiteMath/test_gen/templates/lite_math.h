@@ -167,15 +167,45 @@ namespace LiteMath
   static inline {{Test.Type}} mix ({{Test.TypeC}} a, {{Test.TypeC}} b, {{Test.TypeS}} t) { return a + t * (b - a); }
 
   static inline  {{Test.TypeS}} dot({{Test.TypeC}} a, {{Test.TypeC}} b)  { return {% for Coord in Test.XYZW %}a.{{Coord}}*b.{{Coord}}{% if loop.index1 != Test.VecLen %} + {% endif %}{% endfor %}; }
+  {% if Test.VecLen == 4 %}
+  static inline  {{Test.TypeS}} dot3({{Test.TypeC}} a, {{Test.TypeC}} b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
+  {% endif %}
 
   static inline {{Test.Type}} min  ({{Test.TypeC}} a, {{Test.TypeC}} b) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}std::min(a.{{Coord}}, b.{{Coord}}){% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
   static inline {{Test.Type}} max  ({{Test.TypeC}} a, {{Test.TypeC}} b) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}std::max(a.{{Coord}}, b.{{Coord}}){% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
   static inline {{Test.Type}} clamp({{Test.TypeC}} u, {{Test.TypeC}} a, {{Test.TypeC}} b) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}clamp(u.{{Coord}}, a.{{Coord}}, b.{{Coord}}){% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
   static inline {{Test.Type}} clamp({{Test.TypeC}} u, {{Test.TypeS}} a, {{Test.TypeS}} b) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}clamp(u.{{Coord}}, a, b){% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
+  {% if Test.IsSigned %}
+  static inline {{Test.Type}} abs ({{Test.TypeC}} a) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}std::abs(a.{{Coord}}){% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; } 
+  static inline {{Test.Type}} sign({{Test.TypeC}} a) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}sign(a.{{Coord}}){% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
+  {% endif %}{% if Test.IsFloat %}
+  static inline {{Test.Type}} floor({{Test.TypeC}} a)                { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}std::floor(a.{{Coord}}){% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
+  static inline {{Test.Type}} ceil({{Test.TypeC}} a)                 { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}std::ceil(a.{{Coord}}){% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
+  static inline {{Test.Type}} rcp ({{Test.TypeC}} a)                 { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}1.0f/a.{{Coord}}{% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
+  static inline {{Test.Type}} mod ({{Test.TypeC}} x, {{Test.TypeC}} y) { return x - y * floor(x/y); }
+  static inline {{Test.Type}} fract({{Test.TypeC}} x)                { return x - floor(x); }
+  static inline {{Test.Type}} sqrt({{Test.TypeC}} a)                 { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}std::sqrt(a.{{Coord}}){% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
+  static inline {{Test.Type}} inversesqrt({{Test.TypeC}} a)          { return 1.0f/sqrt(a); }
+  {% endif %}  
+  static inline {{Test.Type}} blend({{Test.TypeC}} a, {{Test.TypeC}} b, const uint{{Test.VecLen}} mask) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}(mask.{{Coord}} == 0) ? b.{{Coord}} : a.{{Coord}}{% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
+  {% for Coord in Test.XYZW %}
+  static inline {{Test.TypeS}} extract_{{loop.index}}({{Test.TypeC}} a) { return a.{{Coord}}; } {% endfor %}
+  {% for Coord2 in Test.XYZW %}
+  static inline {{Test.Type}} splat_{{loop.index}}({{Test.TypeC}} a) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}a.{{Coord2}}{% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; } {% endfor %}
+  {% if Test.VecLen == 4 %}
+  static inline {{Test.TypeS}} hmin({{Test.TypeC}} a)  { return std::min(std::min(a.x, a.y), std::min(a.z, a.w) ); }
+  static inline {{Test.TypeS}} hmax({{Test.TypeC}} a)  { return std::max(std::max(a.x, a.y), std::max(a.z, a.w) ); }
+  static inline {{Test.TypeS}} hmin3({{Test.TypeC}} a) { return std::min(a.x, std::min(a.y, a.z) ); }
+  static inline {{Test.TypeS}} hmax3({{Test.TypeC}} a) { return std::max(a.x, std::max(a.y, a.z) ); }
+  {% else if Test.VecLen == 3 %}
+  static inline {{Test.TypeS}} hmin({{Test.TypeC}} a) { return std::min(a.x, std::min(a.y, a.z) ); }
+  static inline {{Test.TypeS}} hmax({{Test.TypeC}} a) { return std::max(a.x, std::max(a.y, a.z) ); }
+  {% else if Test.VecLen == 2 %}
+  static inline {{Test.TypeS}} hmin({{Test.TypeC}} a) { return std::min(a.x, a.y); }
+  static inline {{Test.TypeS}} hmax({{Test.TypeC}} a) { return std::max(a.x, a.y); }
+  {% endif %} 
+## endfor
+## endfor
   
-
-## endfor
-## endfor
-
 
 };
