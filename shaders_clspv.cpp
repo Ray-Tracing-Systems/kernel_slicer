@@ -2,6 +2,13 @@
 #include "template_rendering.h"
 #include <iostream>
 
+#ifdef WIN32
+  #include <direct.h>     // for windows mkdir
+#else
+  #include <sys/stat.h>   // for linux mkdir
+  #include <sys/types.h>
+#endif
+
 std::string kslicer::FunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_str) const
 {      
   const bool isConst = (a_str.find("const ") != std::string::npos);
@@ -45,7 +52,6 @@ kslicer::ClspvCompiler::ClspvCompiler(bool a_useCPP) : m_useCpp(a_useCPP)
 
 }
 
-
 std::string kslicer::ClspvCompiler::BuildCommand() const 
 {
   if(m_useCpp) 
@@ -60,6 +66,13 @@ void kslicer::ClspvCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
 {
   const auto& mainClassFileName       = a_codeInfo->mainClassFileName;
   const auto& includeToShadersFolders = a_codeInfo->includeToShadersFolders;
+
+  std::string incUBOPath = GetFolderPath(mainClassFileName) + "/include";
+  #ifdef WIN32
+  mkdir(incUBOPath.c_str());
+  #else
+  mkdir(incUBOPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+  #endif
 
   const std::string templatePath = "templates/generated.cl";
   const std::string outFileName  = GetFolderPath(mainClassFileName) + "/z_generated.cl";

@@ -770,14 +770,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.dataMembers  = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
   auto jsonUBO               = kslicer::PrepareUBOJson(inputCodeInfo, inputCodeInfo.dataMembers, compiler);
   std::string uboIncludeName = inputCodeInfo.mainClassName + "_ubo.h";
-
   std::cout << "  placed classVariables num = " << inputCodeInfo.dataMembers.size() << std::endl;
-  {
-    std::string rawname        = GetFolderPath(inputCodeInfo.mainClassFileName);
-    std::string outName        = rawname + "/include/" + uboIncludeName;
-    kslicer::ApplyJsonToTemplate("templates/ubo_def.h",  outName, jsonUBO);
-  }
-
   std::cout << "}" << std::endl;
   std::cout << std::endl;
   
@@ -852,6 +845,13 @@ int main(int argc, const char **argv)
   generalDecls.insert( generalDecls.end(), usedDecls.begin(), usedDecls.end());
   auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
   inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo);
+
+  {
+    std::string rawname        = GetFolderPath(inputCodeInfo.mainClassFileName);
+    std::string outName        = rawname + "/include/" + uboIncludeName;
+    kslicer::ApplyJsonToTemplate("templates/ubo_def.h",  outName, jsonUBO);
+  }
+
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
