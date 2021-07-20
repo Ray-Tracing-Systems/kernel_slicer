@@ -86,7 +86,12 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
 
 ## runing examples
 
-1. Clone kernel_slicer and build it;
+1. Clone kernel_slicer and build it **in Debug (Release don't work yet)**;
+
+    * git clone --recurse-submodules https://github.com/Ray-Tracing-Systems/kernel_slicer
+    * cd kernel_slicer
+    * cmake . 
+    * make -j 10
 
 2. (optional) build clspv;
 
@@ -120,6 +125,11 @@ bash build.sh
 7. Now you can bind generated code to some your Vulkan code. We provide simple example in *test_class_gpu.cpp*.
 
 8. Build and run application (don't forget to get back "tone_mapping_gpu()" call in main.cpp if you previously comment it) from the sample folder "apps/05_filter_bloom_good". Now you should have 2 identical images in the sample forder: the first from the CPU code path and the second from the GPU one.  
+
+  * cd apps/05_filter_bloom_good
+  * cmake -DCMAKE_BUILD_TYPE=Release .
+  * make -j 8
+  * ./testapp
 
 ## Feature list: what you can do and what you should avoid
 
