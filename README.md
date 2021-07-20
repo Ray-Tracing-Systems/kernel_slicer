@@ -97,7 +97,7 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
 
 3. Select one of examples from app folder. We use the simple example of image processing in this tutorial: "apps/05_filter_bloom_good".
 
-4. (optional) Understand CPU code. You may comment all Vulkan includes and generated files from CMakeLists.txt (test_class_generated.cpp and test_class_generated_ds.cpp) to build and run only cpu code. And please comment "tone_mapping_gpu()" call in main.cpp; You may fix CMake and includes back later.
+4. (optional) Understand CPU code. You may comment all Vulkan includes and generated files from CMakeLists.txt (any "*_generated.cpp" file) to build and run only cpu code. And please comment "tone_mapping_gpu()" call in main.cpp; You may fix CMake and includes back later.
 
 5. Run kernel kslicer with the folowing command line (examples are stored in ".vscode/launch.json") from the project folder (i.e. the folder where this README.md is located): 
 * if use clspv:
