@@ -100,14 +100,19 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
     * cd kernel_slicer
     * cmake . 
     * make -j 10
+ 
+2. Don't forget to build volk
+    * cd apps/volk
+    * cmake .
+    * make
 
-2. (optional) build clspv;
+3. (optional) build clspv and put it in "apps" folder;
 
-3. Select one of examples from app folder. We use the simple example of image processing in this tutorial: "apps/05_filter_bloom_good".
+4. Select one of examples from app folder. We use the simple example of image processing in this tutorial: "apps/05_filter_bloom_good".
 
-4. (optional) Understand CPU code. You may comment all Vulkan includes and generated files from CMakeLists.txt (any "*_generated.cpp" file) to build and run only cpu code. And please comment "tone_mapping_gpu()" call in main.cpp; You may fix CMake and includes back later.
+5. (optional) Understand CPU code. You may comment all Vulkan includes and generated files from CMakeLists.txt (any "*_generated.cpp" file) to build and run only cpu code. And please comment "tone_mapping_gpu()" call in main.cpp; You may fix CMake and includes back later.
 
-5. Run kernel kslicer with the folowing command line (examples are stored in ".vscode/launch.json") from the project folder (i.e. the folder where this README.md is located): 
+6. Run kernel kslicer with the folowing command line (examples are stored in ".vscode/launch.json") from the project folder (i.e. the folder where this README.md is located): 
 * if use clspv:
 ```
 ./kslicer apps/05_filter_bloom_good/test_class.cpp -mainClass ToneMapping -stdlibfolder TINYSTL -pattern ipv -reorderLoops YX -Iapps/LiteMath IncludeToShaders -DKERNEL_SLICER -v
@@ -118,21 +123,23 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
 ```
 Now generated files should apper in  "apps/05_filter_bloom_good" folder.
 
-6. Compile generated shaders.
+7. Compile generated shaders.
 * if use clspv: put clspv to "apps" folder and then run futher command from concrete folder sample (In VS Code config this process is called "Build Kernels"):
 ```
 bash z_build.sh
 ```
   * You should obtain "z_generated.cl.spv" in "apps/05_filter_bloom_good" folder:
-* if use GLSL: go to "apps/05_filter_bloom_good/shaders_generated" and run (In VS Code config this process is called "Build Kernels (GLSL)"):
- ```
+  * if use GLSL: go to "apps/05_filter_bloom_good/shaders_generated" and run (In VS Code config this process is called "Build Kernels (GLSL)"):
+  * Sometimes kslicer can't create 'include' directory inside sample folder. Create it please and than run kslicer again.
+```
 bash build.sh
 ```
   * You should obtain many different SPIR_V files in "apps/05_filter_bloom_good/shaders_generated"
+  * Sometimes kslicer can't create 'include' directory inside sample folder. Create it please and than run kslicer again.
  
-7. Now you can bind generated code to some your Vulkan code. We provide simple example in *test_class_gpu.cpp*.
+8. Now you can bind generated code to some your Vulkan code. We provide simple example in *test_class_gpu.cpp*.
 
-8. Build and run application (don't forget to get back "tone_mapping_gpu()" call in main.cpp if you previously comment it) from the sample folder "apps/05_filter_bloom_good". Now you should have 2 identical images in the sample forder: the first from the CPU code path and the second from the GPU one.  
+9. Build and run application (don't forget to get back "tone_mapping_gpu()" call in main.cpp if you previously comment it) from the sample folder "apps/05_filter_bloom_good". Now you should have 2 identical images in the sample forder: the first from the CPU code path and the second from the GPU one.  
 
   * cd apps/05_filter_bloom_good
   * cmake -DCMAKE_BUILD_TYPE=Release .
@@ -212,6 +219,8 @@ class TestClass // main class
 
 The kernel_slicer does pretty simple and stupid work. Therefore, not much things can go wrong:
 
+0. Sometimes kslicer can't create 'include' directory inside sample folder. Create it please and than run kslicer again.
+ 
 1. If you got error message from *kslicer* application on the translation stage please read and understand it. Currently, the most common problem on this stage is absence of some functions from the STL. Just define these functions in *TINYSTL* directory. Note that you don't have to implement them, just define required interface to clang AST parser got them!
 
 2. If your generated code can not be not compiled, seems you dont follow the pattern or there is some-thing which is not supported by our translator yet;
