@@ -130,7 +130,6 @@ bash z_build.sh
 ```
   * You should obtain "z_generated.cl.spv" in "apps/05_filter_bloom_good" folder:
   * if use GLSL: go to "apps/05_filter_bloom_good/shaders_generated" and run (In VS Code config this process is called "Build Kernels (GLSL)"):
-  * Sometimes kslicer can't create 'include' directory inside sample folder. Create it please and than run kslicer again.
 ```
 bash build.sh
 ```
