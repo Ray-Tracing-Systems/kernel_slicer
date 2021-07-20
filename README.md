@@ -51,9 +51,13 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 4. use Cmake and make
 
+  * cd kernel_slicer
+  * cmake . 
+  * make -j 10
+
 5. you may also use provided VS Code config to build and run test cases (tasks.json and launch.json)
 
-6. (optional) Probably you will need to build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders").
+6. (optional) build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") if you want OpenCL shaders
 
 7. Build volk with cmake and leave 'libvolk.a' in 'apps/volk'
 
