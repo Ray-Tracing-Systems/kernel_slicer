@@ -57,6 +57,10 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 7. Build volk with cmake and leave 'libvolk.a' in 'apps/volk'
 
+  * cd apps/volk
+  * cmake .
+  * make
+
 8. Install Vulkan SDK (https://vulkan.lunarg.com/sdk/home)
 
 # Concept and general workflow
