@@ -130,12 +130,12 @@ bash z_build.sh
 ```
   * You should obtain "z_generated.cl.spv" in "apps/05_filter_bloom_good" folder:
   * if use GLSL: go to "apps/05_filter_bloom_good/shaders_generated" and run (In VS Code config this process is called "Build Kernels (GLSL)"):
-  * if 'TestClass_ubo.h' is not found inside 'include' folder, just run kslicer twice.
+  * Sometimes kslicer can't create 'include' directory inside sample folder. Create it please and than run kslicer again.
 ```
 bash build.sh
 ```
   * You should obtain many different SPIR_V files in "apps/05_filter_bloom_good/shaders_generated"
-  * if 'TestClass_ubo.h' is not found inside 'include' folder, just run kslicer twice.
+  * Sometimes kslicer can't create 'include' directory inside sample folder. Create it please and than run kslicer again.
  
 8. Now you can bind generated code to some your Vulkan code. We provide simple example in *test_class_gpu.cpp*.
 
@@ -219,7 +219,7 @@ class TestClass // main class
 
 The kernel_slicer does pretty simple and stupid work. Therefore, not much things can go wrong:
 
-0. Sometimes 'TestClass_ubo.h' cannot be crated within first run in folder 'include'. Just run kslicer twice.
+0. Sometimes kslicer can't create 'include' directory inside sample folder. Create it please and than run kslicer again.
  
 1. If you got error message from *kslicer* application on the translation stage please read and understand it. Currently, the most common problem on this stage is absence of some functions from the STL. Just define these functions in *TINYSTL* directory. Note that you don't have to implement them, just define required interface to clang AST parser got them!
 
