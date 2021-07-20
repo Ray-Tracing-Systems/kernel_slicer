@@ -106,7 +106,7 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
     * cmake .
     * make
 
-3. (optional) build clspv;
+3. (optional) build clspv and put it in "apps" folder;
 
 4. Select one of examples from app folder. We use the simple example of image processing in this tutorial: "apps/05_filter_bloom_good".
 
