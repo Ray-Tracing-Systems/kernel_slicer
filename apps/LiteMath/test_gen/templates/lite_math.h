@@ -27,7 +27,9 @@
 
 namespace LiteMath
 { 
-  typedef unsigned int uint;
+  typedef unsigned int   uint;
+  typedef unsigned short ushort;
+  typedef unsigned char  uchar;
 
   constexpr float EPSILON      = 1e-6f;
   constexpr float INF_POSITIVE = +std::numeric_limits<float>::infinity();
@@ -64,6 +66,10 @@ namespace LiteMath
     memcpy(&res, &x, sizeof(float)); // modern C++ allow only this way, speed ik ok, check assembly with godbolt
     return res; 
   }
+
+  static inline int   as_int32(float x)  { return as_int(x);    }
+  static inline uint  as_uint32(float x) { return as_uint32(x); }
+  static inline float as_float32(int x)  { return as_float(x);  }
 
   static inline float clamp(float u, float a, float b) { return std::min(std::max(a, u), b); }
   static inline uint  clamp(uint u,  uint a,  uint b)  { return std::min(std::max(a, u), b); }
@@ -104,8 +110,7 @@ namespace LiteMath
     if(x == 0)     return 0;
     else if(x < 0) return -1;
     else           return +1;
-  } 
-
+  }
 
 ## for Tests in AllTests
 ## for Test  in Tests.Tests
@@ -174,9 +179,7 @@ namespace LiteMath
   {% endif %}
   static inline void store  ({{Test.TypeS}}* p, {{Test.TypeC}} a_val) { memcpy(p, &a_val, sizeof({{Test.TypeS}})*{{Test.VecLen}}); }
   static inline void store_u({{Test.TypeS}}* p, {{Test.TypeC}} a_val) { memcpy(p, &a_val, sizeof({{Test.TypeS}})*{{Test.VecLen}}); }  
-  
-  static inline {{Test.Type}} lerp({{Test.TypeC}} a, {{Test.TypeC}} b, {{Test.TypeS}} t) { return a + t * (b - a); }
-  static inline {{Test.Type}} mix ({{Test.TypeC}} a, {{Test.TypeC}} b, {{Test.TypeS}} t) { return a + t * (b - a); }
+
 
   static inline {{Test.Type}} min  ({{Test.TypeC}} a, {{Test.TypeC}} b) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}std::min(a.{{Coord}}, b.{{Coord}}){% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
   static inline {{Test.Type}} max  ({{Test.TypeC}} a, {{Test.TypeC}} b) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}std::max(a.{{Coord}}, b.{{Coord}}){% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
@@ -186,6 +189,8 @@ namespace LiteMath
   static inline {{Test.Type}} abs ({{Test.TypeC}} a) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}std::abs(a.{{Coord}}){% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; } 
   static inline {{Test.Type}} sign({{Test.TypeC}} a) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}sign(a.{{Coord}}){% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
   {% endif %}{% if Test.IsFloat %}
+  static inline {{Test.Type}} lerp({{Test.TypeC}} a, {{Test.TypeC}} b, {{Test.TypeS}} t) { return a + t * (b - a); }
+  static inline {{Test.Type}} mix ({{Test.TypeC}} a, {{Test.TypeC}} b, {{Test.TypeS}} t) { return a + t * (b - a); }
   static inline {{Test.Type}} floor({{Test.TypeC}} a)                { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}std::floor(a.{{Coord}}){% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
   static inline {{Test.Type}} ceil({{Test.TypeC}} a)                 { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}std::ceil(a.{{Coord}}){% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
   static inline {{Test.Type}} rcp ({{Test.TypeC}} a)                 { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}1.0f/a.{{Coord}}{% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
@@ -303,6 +308,65 @@ namespace LiteMath
   static inline int3   to_int3  (int4 f4)           { return int3(f4.x, f4.y, f4.z);   }
   static inline int4   to_int4  (int3 v, int w)     { return int4(v.x, v.y, v.z, w);   }
 
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  struct ushort4
+  {
+    inline ushort4() : x(0), y(0), z(0), w(0) {}
+    inline ushort4(ushort a_x, ushort a_y, ushort a_z, ushort a_w) : x(a_x), y(a_y), z(a_z), w(a_w) {}
+    inline explicit ushort4(ushort a_val) : x(a_val), y(a_val), z(a_val), w(a_val) {}
+    inline explicit ushort4(const ushort a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
+
+    inline ushort& operator[](int i)       { return M[i]; }
+    inline ushort  operator[](int i) const { return M[i]; }
+
+    union
+    {
+      struct { ushort x, y, z, w; };
+      ushort   M[4];
+    };
+  };
+
+  struct ushort2
+  {
+    inline ushort2() : x(0), y(0) {}
+    inline ushort2(ushort a_x, ushort a_y) : x(a_x), y(a_y) {}
+    inline explicit ushort2(ushort a_val) : x(a_val), y(a_val){}
+    inline explicit ushort2(const ushort a[2]) : x(a[0]), y(a[1]) {}
+
+    inline ushort& operator[](int i)       { return M[i]; }
+    inline ushort  operator[](int i) const { return M[i]; }
+
+    union
+    {
+      struct { ushort x, y; };
+      ushort   M[2];
+      uint64_t u64;
+    };
+  };
+
+  struct uchar4
+  {
+    inline uchar4() : x(0), y(0), z(0), w(0) {}
+    inline uchar4(uchar a_x, uchar a_y, uchar a_z, uchar a_w) : x(a_x), y(a_y), z(a_z), w(a_w) {}
+    inline explicit uchar4(uchar a_val) : x(a_val), y(a_val), z(a_val), w(a_val) {}
+    inline explicit uchar4(const uchar a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
+
+    inline uchar& operator[](int i)       { return M[i]; }
+    inline uchar  operator[](int i) const { return M[i]; }
+
+    union
+    {
+      struct { uchar x, y, z, w; };
+      uchar M[4];
+      uint32_t u32;
+    };
+  };
+
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -415,7 +479,6 @@ namespace LiteMath
       return row;
     }
 
-  //private:
     float4 m_col[4];
   };
 
@@ -510,6 +573,21 @@ namespace LiteMath
     res.set_col(2, column3);
     res.set_col(3, column4);
 
+    return res;
+  }
+
+  static inline float4x4 operator*(float4x4 m1, float4x4 m2)
+  {
+    const float4 column1 = mul(m1, m2.col(0));
+    const float4 column2 = mul(m1, m2.col(1));
+    const float4 column3 = mul(m1, m2.col(2));
+    const float4 column4 = mul(m1, m2.col(3));
+
+    float4x4 res;
+    res.set_col(0, column1);
+    res.set_col(1, column2);
+    res.set_col(2, column3);
+    res.set_col(3, column4);
     return res;
   }
   
@@ -678,7 +756,7 @@ namespace LiteMath
   /////////////// Boxes stuff /////////////
   /////////////////////////////////////////
   
-  struct CVEX_ALIGNED(16) Box4f 
+  struct Box4f 
   { 
     inline Box4f()
     {
@@ -722,17 +800,17 @@ namespace LiteMath
       return abc[0]*abc[1]*abc[2];       // #TODO: hmul3
     }
   
-    inline void SetStart(uint i) { boxMin = packUIntW(boxMin, uint(i)); }
-    inline void SetCount(uint i) { boxMax = packUIntW(boxMax, uint(i)); }
-    inline uint GetStart() const { return extractUIntW(boxMin); }
-    inline uint GetCount() const { return extractUIntW(boxMax); }
-    inline bool AxisAligned(int axis, float split) const { return (boxMin[axis] == boxMax[axis]) && (boxMin[axis]==split); }
+    inline void setStart(uint i) { boxMin = packUIntW(boxMin, uint(i)); }
+    inline void setCount(uint i) { boxMax = packUIntW(boxMax, uint(i)); }
+    inline uint getStart() const { return extractUIntW(boxMin); }
+    inline uint getCount() const { return extractUIntW(boxMax); }
+    inline bool isAxisAligned(int axis, float split) const { return (boxMin[axis] == boxMax[axis]) && (boxMin[axis]==split); }
   
     float4 boxMin; // as_int(boxMin4f.w) may store index of the object inside the box (or start index of the object sequence)
     float4 boxMax; // as_int(boxMax4f.w) may store size (count) of objects inside the box
   };
   
-  struct CVEX_ALIGNED(16) Ray4f 
+  struct Ray4f 
   {
     inline Ray4f(){}
     inline Ray4f(const float4& pos, const float4& dir) : posAndNear(pos), dirAndFar(dir) { }
@@ -744,8 +822,11 @@ namespace LiteMath
   
     inline Ray4f(const float3& pos, const float3& dir, float tNear, float tFar) : posAndNear(to_float4(pos,tNear)), dirAndFar(to_float4(dir, tFar)) { }
   
-    inline float GetNear() const { return extract_3(posAndNear); }
-    inline float GetFar()  const { return extract_3(dirAndFar); }
+    inline float getNear() const { return extract_3(posAndNear); }
+    inline float getFar()  const { return extract_3(dirAndFar); }
+
+    inline void  setNear(float a_val) { posAndNear.w = a_val; } 
+    inline void  setFar (float a_val) { dirAndFar.w  = a_val; } 
   
     float4 posAndNear;
     float4 dirAndFar;
@@ -767,12 +848,9 @@ namespace LiteMath
   {
     const float4 lo   = rayDirInv*(boxMin - rayPos);
     const float4 hi   = rayDirInv*(boxMax - rayPos);
-  
-    const float4 vmin = LiteMath::min(lo, hi);
-    const float4 vmax = LiteMath::max(lo, hi);
+    const float4 vmin = min(lo, hi);
+    const float4 vmax = max(lo, hi);
     return float2(hmax3(vmin), hmin3(vmax));
-    //return float2(std::max(std::max(vmin[0], vmin[1]), vmin[2]), 
-    //              std::min(std::min(vmax[0], vmax[1]), vmax[2]));
   }
     
   /**
@@ -793,8 +871,8 @@ namespace LiteMath
   
     pos = a_mProjInv*pos;
     pos = pos/pos.w;
-    pos.y *= (-1.0f); // TODO: remove this (???)
-    pos = normalize(pos);
+    pos.y *= (-1.0f);      // TODO: do we need remove this (???)
+    pos = normalize3(pos);
     pos.w = INF_POSITIVE;
     return pos;
   }

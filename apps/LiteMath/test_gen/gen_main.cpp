@@ -255,6 +255,79 @@ int main(int argc, const char** argv)
 
     data["AllTests"].push_back(dataLocal);
   }
+   
+  /*
+  { 
+    nlohmann::json dataLocal;
+    dataLocal["Tests"] = std::vector<std::string>();
+
+    nlohmann::json test;
+    test["Number"]  = currNumber;
+    test["Type"]    = "ushort4";
+    test["TypeS"]   = "ushort";
+    test["TypeC"]   = ByConstRefOrValue(test["Type"]);
+    test["VecLen"]  = 4;
+    test["XYZW"]    = XYZW4;
+    test["ValuesA"] = std::vector<unsigned short>({1, 2, (unsigned short)(-3), 4});
+    test["ValuesB"] = std::vector<unsigned short>({5, (unsigned short)(-5), 6, 4});
+    test["ValuesC"] = std::vector<unsigned short>({0xFFFF, 0xFFFF, 0xF0F0, 0x0000});
+    test["IsFloat"]  = false;
+    test["IsSigned"] = false;  
+  
+    dataLocal["Tests"].push_back(test);
+    ApplyJsonToTemplate("templates/tests_arith.cpp", "../tests/tests_ushort4.cpp", dataLocal);
+    currNumber += 10;
+
+    data["AllTests"].push_back(dataLocal);
+  }
+  
+  {
+    nlohmann::json dataLocal;
+    dataLocal["Tests"] = std::vector<std::string>();
+
+    nlohmann::json test;
+    test["Number"]  = currNumber;
+    test["Type"]    = "ushort2";
+    test["TypeS"]   = "ushort";
+    test["TypeC"]   = ByConstRefOrValue(test["Type"]);
+    test["VecLen"]  = 2;
+    test["XYZW"]    = XYZW2;
+    test["ValuesA"] = std::vector<unsigned short>({1, 2});
+    test["ValuesB"] = std::vector<unsigned short>({5, (unsigned short)(-5) });
+    test["ValuesC"] = std::vector<unsigned short>({0x0000FFFF, 0x0000FFFF});
+    test["IsFloat"]  = false;
+    test["IsSigned"] = false;  
+  
+    dataLocal["Tests"].push_back(test);
+    ApplyJsonToTemplate("templates/tests_arith.cpp", "../tests/tests_ushort2.cpp", dataLocal);
+    currNumber += 10;
+
+    data["AllTests"].push_back(dataLocal);
+  }
+
+  {
+    nlohmann::json dataLocal;
+    dataLocal["Tests"] = std::vector<std::string>();
+
+    nlohmann::json test;
+    test["Number"]  = currNumber;
+    test["Type"]    = "uchar4";
+    test["TypeS"]   = "uchar";
+    test["TypeC"]   = ByConstRefOrValue(test["Type"]);
+    test["VecLen"]  = 4;
+    test["XYZW"]    = XYZW4;
+    test["ValuesA"] = std::vector<unsigned char>({1, 2, (unsigned char)(-3), 4});
+    test["ValuesB"] = std::vector<unsigned char>({5, (unsigned char)(-5), 6, 4});
+    test["ValuesC"] = std::vector<unsigned char>({0x000000FF, 0x000000FF, 0x000000F0, 0});
+    test["IsFloat"]  = false;
+    test["IsSigned"] = false;  
+  
+    dataLocal["Tests"].push_back(test);
+    ApplyJsonToTemplate("templates/tests_arith.cpp", "../tests/tests_uchar4.cpp", dataLocal);
+    currNumber += 10;
+
+    data["AllTests"].push_back(dataLocal);
+  }*/
 
   data["OPN"]      = openExpr;
   data["CLS"]      = closeExpr;
