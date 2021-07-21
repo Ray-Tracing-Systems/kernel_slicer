@@ -825,8 +825,8 @@ namespace LiteMath
     inline float getNear() const { return extract_3(posAndNear); }
     inline float getFar()  const { return extract_3(dirAndFar); }
 
-    inline void  setNear(float a_val) { posAndNear.w = a_val; } 
-    inline void  setFar (float a_val) { dirAndFar.w  = a_val; } 
+    inline void  setNear(float tNear) { posAndNear = packFloatW(posAndNear, tNear); } 
+    inline void  setFar (float tFar)  { dirAndFar  = packFloatW(dirAndFar,  tFar); } 
   
     float4 posAndNear;
     float4 dirAndFar;
