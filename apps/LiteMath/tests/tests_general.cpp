@@ -2,6 +2,7 @@
 #include <iomanip>      // std::setfill, std::setw
 
 #include "LiteMath.h"
+using namespace LiteMath;
 
 bool test000_scalar_funcs()
 {
@@ -69,11 +70,12 @@ bool test001_dot_cross_f4()
   const float4 Cx1 = { 1.0f, 2.0f, 3.0f, 4.0f };
   const float4 Cx2 = { 5.0f, 6.0f, 7.0f, 8.0f };
 
-  const float   dot1 = dot3f(Cx1, Cx2);
-  const float4 dot2  = dot3v(Cx1, Cx2);
-  const float   dot3 = dot4f(Cx1, Cx2);
-  const float4 dot4  = dot4v(Cx1, Cx2);
-  const float4 crs3  = cross(Cx1, Cx2);
+  const float  dot1 = dot3f(Cx1, Cx2);
+  const float4 dot2 = dot3v(Cx1, Cx2);
+  const float  dot3 = dot4f(Cx1, Cx2);
+  const float4 dot4 = dot4v(Cx1, Cx2);
+  const float  dot5 = dot  (Cx1, Cx2);
+  const float4 crs3 = cross(Cx1, Cx2);
 
   CVEX_ALIGNED(16) float result1[4];
   CVEX_ALIGNED(16) float result2[4];
@@ -105,13 +107,15 @@ bool test001_dot_cross_f4()
                   fabs(result3[1] - crs_ref[1]) < 1e-6f &&
                   fabs(result3[2] - crs_ref[2]) < 1e-6f;
 
-  return b1 && b2 && b3 && b4 && b5;
+  const bool b6 = fabs(dot5 - dot3) < 1e-10f;
+
+  return b1 && b2 && b3 && b4 && b5 && b6;
 }
 
 bool test002_dot_cross_f3()
 {
-  const float3 Cx1 = { 1.0f, 2.0f, 3.0f };
-  const float3 Cx2 = { 5.0f, 6.0f, 7.0f };
+  const float3 Cx1(1.0f, 2.0f, 3.0f);
+  const float3 Cx2(5.0f, 6.0f, 7.0f);
 
   const float   dot1 = dot(Cx1, Cx2);
   const float3  crs3 = cross(Cx1, Cx2);
@@ -214,13 +218,13 @@ bool test006_any_all()
 
 bool test007_reflect()
 {
-  const float4 dir4 = { 1.0f, -1.0f, 0.0f, 0.0f };
-  const float3 dir3 = { 1.0f, -1.0f, 0.0f, 0.0f };
-  const float2 dir2 = { 1.0f, -1.0f };
+  const float4 dir4(1.0f, -1.0f, 0.0f, 0.0f);
+  const float3 dir3(1.0f, -1.0f, 0.0f);
+  const float2 dir2(1.0f, -1.0f);
 
-  const float4 n4  = { 0.0f, 1.0f, 0.0f, 0.0f };
-  const float3 n3  = { 0.0f, 1.0f, 0.0f };
-  const float2 n2  = { 0.0f, 1.0f };
+  const float4 n4(0.0f, 1.0f, 0.0f, 0.0f);
+  const float3 n3(0.0f, 1.0f, 0.0f);
+  const float2 n2(0.0f, 1.0f);
 
   auto  r4 = reflect(dir4, n4);
   auto  r3 = reflect(dir3, n3);
@@ -241,7 +245,7 @@ bool test007_reflect()
 bool test008_normalize()
 {
   const float4 dir4 = { 1.0f, 2.0f, 3.0f, 4.0f };
-  const float3 dir3 = { 1.0f, 2.0f, 3.0f, 0.0f };
+  const float3 dir3 = { 1.0f, 2.0f, 3.0f};
   const float2 dir2 = { 1.0f, 2.0f };
 
   const float4 n4  = normalize(dir4);
@@ -258,7 +262,7 @@ bool test008_normalize()
 bool test009_refract()
 {
   float4 dir4 = { 10.0f, -1.0f, 0.0f, 0.0f };
-  float3 dir3 = { 10.0f, -1.0f, 0.0f, 0.0f };
+  float3 dir3 = { 10.0f, -1.0f, 0.0f};
   float2 dir2 = { 10.0f, -1.0f };
 
   dir4 = normalize(dir4);
@@ -287,7 +291,7 @@ bool test009_refract()
 bool test010_faceforward()
 {
   const float4 dir4 = { 1.0f, -1.0f, 0.0f, 0.0f };
-  const float3 dir3 = { 1.0f, -1.0f, 0.0f, 0.0f };
+  const float3 dir3(1.0f, -1.0f, 0.0f);
   const float2 dir2 = { 1.0f, -1.0f };
 
   const float4 n4  = { 0.0f, -1.0f, 0.0f, 0.0f };

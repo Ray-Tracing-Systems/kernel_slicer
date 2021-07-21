@@ -372,38 +372,25 @@ bool test{{Test.Number+4}}_shuffle_{{Test.Type}}()
 bool test{{Test.Number+5}}_exsplat_{{Test.Type}}()
 {
   const {{Test.Type}} Cx1({% for Val in Test.ValuesA %} {{Test.TypeS}}({{Val}}){% if loop.index1 != Test.VecLen %}, {% endif %} {% endfor %});
+  {% for i in range(Test.VecLen) %}
+  const {{Test.Type}} Cr{{loop.index}} = splat_{{loop.index}}(Cx1);{% endfor %}
+  {% for i in range(Test.VecLen) %}
+  const {{Test.TypeS}} s{{loop.index}} = extract_{{loop.index}}(Cx1);{% endfor %}
+  {% for i in range(Test.VecLen) %}
+  {{Test.TypeS}} result{{loop.index}}[{{Test.VecLen}}];{% endfor %}
+  {% for i in range(Test.VecLen) %}
+  store_u(result{{loop.index}}, Cr{{loop.index}});{% endfor %}
   
-  {% for i in range(Test.VecLen) %}
-  const {{Test.Type}} Cr{{loop.index}} = splat_{{loop.index}}(Cx1);
-  {% endfor %}
-
-  {% for i in range(Test.VecLen) %}
-  const {{Test.TypeS}} s{{loop.index}} = extract_{{loop.index}}(Cx1);
-  {% endfor %}
-
-  {% for i in range(Test.VecLen) %}
-  {{Test.TypeS}} result{{loop.index}}[{{Test.VecLen}}];
-  {% endfor %}
-
-  {% for i in range(Test.VecLen) %}
-  store_u(result{{loop.index}}, Cr{{loop.index}});
-  {% endfor %}
-
   bool passed = true;
-
   for (int i = 0; i<{{Test.VecLen}}; i++)
   {
     {% for i in range(Test.VecLen) %}
     if((result{{loop.index}}[i] != Cx1[{{loop.index}}]))
-      passed = false;
-    {% endfor %}
+      passed = false;{% endfor %}
   }
-
   {% for i in range(Test.VecLen) %}
   if(s{{loop.index}} != Cx1[{{loop.index}}])
-    passed = false;
-  {% endfor %}
-
+    passed = false;{% endfor %}
   return passed;
 }
 

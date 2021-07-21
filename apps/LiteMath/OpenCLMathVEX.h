@@ -1312,8 +1312,8 @@ namespace LiteMath
   static inline float4 to_float4(float3 v, float w) { return cvex::blend(v.v, cvex::splat(w), cvex::vuint4{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0 }); }
   static inline uint3  to_uint3(uint4 f4)           { return uint3(f4.v); }
   static inline uint4  to_uint4(uint3 v, uint w)    { return cvex::blend(v.v, cvex::splat(w), cvex::vuint4{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0 }); }
-  static inline int3   to_uint3(int4 f4)            { return int3(f4.v); }
-  static inline int4   to_uint4(int3 v, int w)      { return cvex::blend(v.v, cvex::splat(w), cvex::vuint4{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0 }); }
+  static inline int3   to_int3(int4 f4)             { return int3(f4.v); }
+  static inline int4   to_int4(int3 v, int w)       { return cvex::blend(v.v, cvex::splat(w), cvex::vuint4{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0 }); }
 
   static inline int4   to_int32  (const float4& a) { return cvex::to_int32(a.v);  }
   static inline int4   to_int32  (const uint4& a)  { return cvex::to_int32(a.v); }
