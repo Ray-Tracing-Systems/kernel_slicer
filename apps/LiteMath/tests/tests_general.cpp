@@ -247,16 +247,18 @@ bool test008_normalize()
   const float4 dir4 = { 1.0f, 2.0f, 3.0f, 4.0f };
   const float3 dir3 = { 1.0f, 2.0f, 3.0f};
   const float2 dir2 = { 1.0f, 2.0f };
-
-  const float4 n4  = normalize(dir4);
+  
+  const float4 n5  = normalize(dir4);
+  const float4 n4  = normalize3(dir4);
   const float3 n3  = normalize(dir3);
   const float2 n2  = normalize(dir2);
 
+  bool ok5 = length3(n5-n4) > 0.15f;
   bool ok4 = abs(length3f(n4) - 1.0f) < 1e-6f && abs( dot3f(n4, dir4/length3f(dir4)) - 1.0f) < 1e-6f;
   bool ok3 = abs(length(n3)   - 1.0f) < 1e-6f && abs( dot  (n3, dir3/length(dir3))   - 1.0f) < 1e-6f;
   bool ok2 = abs(length(n2)   - 1.0f) < 1e-6f && abs( dot  (n2, dir2/length(dir2))   - 1.0f) < 1e-6f;
 
-  return ok4 && ok3 && ok2;
+  return ok5 && ok4 && ok3 && ok2;
 }
 
 bool test009_refract()

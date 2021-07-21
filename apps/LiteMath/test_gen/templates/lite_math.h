@@ -158,7 +158,7 @@ namespace LiteMath
   static inline uint{{Test.VecLen}} operator> ({{Test.TypeC}} a, {{Test.TypeC}} b) { return uint{{Test.VecLen}}{{OPN}}{% for Coord in Test.XYZW %}a.{{Coord}} >  b.{{Coord}} ? 0xFFFFFFFF : 0{% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
   static inline uint{{Test.VecLen}} operator< ({{Test.TypeC}} a, {{Test.TypeC}} b) { return uint{{Test.VecLen}}{{OPN}}{% for Coord in Test.XYZW %}a.{{Coord}} <  b.{{Coord}} ? 0xFFFFFFFF : 0{% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
   static inline uint{{Test.VecLen}} operator>=({{Test.TypeC}} a, {{Test.TypeC}} b) { return uint{{Test.VecLen}}{{OPN}}{% for Coord in Test.XYZW %}a.{{Coord}} >= b.{{Coord}} ? 0xFFFFFFFF : 0{% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
-  static inline uint{{Test.VecLen}} operator<=({{Test.TypeC}} a, {{Test.TypeC}} b) { return uint{{Test.VecLen}}{{OPN}}{% for Coord in Test.XYZW %}a.{{Coord}} >= b.{{Coord}} ? 0xFFFFFFFF : 0{% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
+  static inline uint{{Test.VecLen}} operator<=({{Test.TypeC}} a, {{Test.TypeC}} b) { return uint{{Test.VecLen}}{{OPN}}{% for Coord in Test.XYZW %}a.{{Coord}} <= b.{{Coord}} ? 0xFFFFFFFF : 0{% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
   static inline uint{{Test.VecLen}} operator==({{Test.TypeC}} a, {{Test.TypeC}} b) { return uint{{Test.VecLen}}{{OPN}}{% for Coord in Test.XYZW %}a.{{Coord}} == b.{{Coord}} ? 0xFFFFFFFF : 0{% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
   static inline uint{{Test.VecLen}} operator!=({{Test.TypeC}} a, {{Test.TypeC}} b) { return uint{{Test.VecLen}}{{OPN}}{% for Coord in Test.XYZW %}a.{{Coord}} != b.{{Coord}} ? 0xFFFFFFFF : 0{% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
   {% if not Test.IsFloat %} 
@@ -168,8 +168,8 @@ namespace LiteMath
   static inline {{Test.Type}} operator>>({{Test.TypeC}} a, {{Test.TypeS}} b) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}a.{{Coord}} >> b{% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
   static inline {{Test.Type}} operator<<({{Test.TypeC}} a, {{Test.TypeS}} b) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}a.{{Coord}} << b{% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
  
-  static inline bool any_of({{Test.TypeC}} a) { return ({% for Coord in Test.XYZW %}a.{{Coord}} != 0{% if loop.index1 != Test.VecLen %} && {% endif %}{% endfor %}); } 
-  static inline bool all_of({{Test.TypeC}} a) { return ({% for Coord in Test.XYZW %}a.{{Coord}} != 0{% if loop.index1 != Test.VecLen %} || {% endif %}{% endfor %}); } 
+  static inline bool all_of({{Test.TypeC}} a) { return ({% for Coord in Test.XYZW %}a.{{Coord}} != 0{% if loop.index1 != Test.VecLen %} && {% endif %}{% endfor %}); } 
+  static inline bool any_of({{Test.TypeC}} a) { return ({% for Coord in Test.XYZW %}a.{{Coord}} != 0{% if loop.index1 != Test.VecLen %} || {% endif %}{% endfor %}); } 
  
   {% endif %}
   static inline void store  ({{Test.TypeS}}* p, {{Test.TypeC}} a_val) { memcpy(p, &a_val, sizeof({{Test.TypeS}})*{{Test.VecLen}}); }
@@ -211,6 +211,7 @@ namespace LiteMath
   static inline {{Test.TypeS}} length4f({{Test.TypeC}} a) { return std::sqrt(dot4(a,a)); }
   static inline {{Test.Type}} length3v({{Test.TypeC}} a) { {{Test.TypeS}} res = std::sqrt(dot3(a,a)); return {{Test.Type}}(res); }
   static inline {{Test.Type}} length4v({{Test.TypeC}} a) { {{Test.TypeS}} res = std::sqrt(dot4(a,a)); return {{Test.Type}}(res); }
+  static inline {{Test.Type}} normalize3({{Test.TypeC}} a) { {{Test.TypeS}} lenInv = {{Test.TypeS}}(1)/length3(a); return a*lenInv; }
   {% endif %} {% endif %}
   static inline {{Test.Type}} blend({{Test.TypeC}} a, {{Test.TypeC}} b, const uint{{Test.VecLen}} mask) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}(mask.{{Coord}} == 0) ? b.{{Coord}} : a.{{Coord}}{% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
   {% for Coord in Test.XYZW %}
