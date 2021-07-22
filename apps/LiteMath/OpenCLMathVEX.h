@@ -2,20 +2,21 @@
 #define VFLOAT4_ALL_H
 
 //#include "vfloat4_gcc.h"
+#include "vfloat4_x64.h"
 
-#ifdef WIN32
-  #include "vfloat4_x64.h"
-#else
-  #if defined(__arm__) or defined(__aarch64__)
-    #include "vfloat4_arm.h"
-  #elif defined(__GNUC__)
-    #include "vfloat4_gcc.h"
-  #elif defined(__clang__)
-    #include "vfloat4_x64.h"
-  #else
-    #include "vfloat4_x64.h"
-  #endif  
-#endif
+//#ifdef WIN32
+//  #include "vfloat4_x64.h"
+//#else
+//  #if defined(__arm__) or defined(__aarch64__)
+//    #include "vfloat4_arm.h"
+//  #elif defined(__GNUC__)
+//    #include "vfloat4_gcc.h"
+//  #elif defined(__clang__)
+//    #include "vfloat4_x64.h"
+//  #else
+//    #include "vfloat4_x64.h"
+//  #endif  
+//#endif
 
 // This is just and example. 
 // In practise you may take any of these files that you prefer for your platform.  
@@ -202,8 +203,8 @@ namespace LiteMath
   static inline uint4 operator|(const uint4 a, const uint4 b) { return uint4(a.v | b.v); }
   static inline uint4 operator~(const uint4 a)                { return uint4(~a.v); }
 
-  static inline uint4 operator>>(const uint4 a, const uint b) { return uint4(a.v >> b); }
-  static inline uint4 operator<<(const uint4 a, const uint b) { return uint4(a.v << b); }
+  static inline uint4 operator>>(const uint4 a, const uint b) { return uint4(a.v >> int(b)); }
+  static inline uint4 operator<<(const uint4 a, const uint b) { return uint4(a.v << int(b)); }
   
   static inline uint4 min  (const uint4& a,   const uint4& b) { return cvex::min(a.v, b.v); }
   static inline uint4 max  (const uint4& a,   const uint4& b) { return cvex::max(a.v, b.v); }
@@ -299,8 +300,8 @@ namespace LiteMath
   static inline uint3 operator& (const uint3 a, const uint3 b) { return uint3(a.v & b.v); }
   static inline uint3 operator| (const uint3 a, const uint3 b) { return uint3(a.v | b.v); }
   static inline uint3 operator~ (const uint3 a)                { return uint3(~a.v); }
-  static inline uint3 operator>>(const uint3 a, const uint b)  { return uint3(a.v >> b); }
-  static inline uint3 operator<<(const uint3 a, const uint b)  { return uint3(a.v << b); }
+  static inline uint3 operator>>(const uint3 a, const uint b)  { return uint3(a.v >> int(b)); }
+  static inline uint3 operator<<(const uint3 a, const uint b)  { return uint3(a.v << int(b)); }
   
   static inline uint3 min  (const uint3& a,   const uint3& b) { return cvex::min(a.v, b.v); }
   static inline uint3 max  (const uint3& a,   const uint3& b) { return cvex::max(a.v, b.v); }
@@ -500,8 +501,9 @@ namespace LiteMath
   static inline int4 max  (const int4& a,   const int4& b)                        { return int4( cvex::max(a.v, b.v) ); }
   static inline int4 clamp(const int4& a_x, const int4& a_min, const int4& a_max) { return cvex::clamp(a_x.v, a_min.v, a_max.v); }
   static inline int4 clamp(const int4& a_x, const int a_min, const int a_max)     { return cvex::clamp(a_x.v, cvex::splat(a_min), cvex::splat(a_max)); }
-  static inline int4 abs  (const int4& a)                                         { return cvex::abs(a.v);  } 
-  static inline int4 sign (const int4& a)                                         { return cvex::sign(a.v); }
+  static inline int4 abs (const int4 a)                                           { return int4{std::abs(a.x), std::abs(a.y), std::abs(a.z), std::abs(a.w)}; } 
+  static inline int4 sign(const int4 a)                                           { return int4{sign(a.x), sign(a.y), sign(a.z), sign(a.w)}; }
+  
 
   static inline bool any_of (const int4 a) { return cvex::any_of(a.v); }
   static inline bool all_of (const int4 a) { return cvex::all_of(a.v); }
@@ -595,13 +597,13 @@ namespace LiteMath
   static inline int3 operator>>(const int3 a, const int b)  { return int3(a.v >> b); }
   static inline int3 operator<<(const int3 a, const int b)  { return int3(a.v << b); }
   
-  static inline int3 min  (const int3& a,   const int3& b) { return cvex::min(a.v, b.v); }
-  static inline int3 max  (const int3& a,   const int3& b) { return cvex::max(a.v, b.v); }
-  static inline int3 clamp(const int3& a_x, const int3& a_min, const int3& a_max) { return cvex::clamp(a_x.v, a_min.v, a_max.v); }
-  static inline int3 clamp(const int3& u, int a, int b)                           { return cvex::clamp(u.v, cvex::splat(a), cvex::splat(b)); }
-  static inline int3 abs  (const int3& a)                                         { return cvex::abs(a.v);  } 
-  static inline int3 sign (const int3& a)                                         { return cvex::sign(a.v); }
-
+  static inline int3 min  (const int3 a,   const int3 b) { return cvex::min(a.v, b.v); }
+  static inline int3 max  (const int3 a,   const int3 b) { return cvex::max(a.v, b.v); }
+  static inline int3 clamp(const int3 a_x, const int3 a_min, const int3& a_max) { return cvex::clamp(a_x.v, a_min.v, a_max.v); }
+  static inline int3 clamp(const int3 u, int a, int b)                          { return cvex::clamp(u.v, cvex::splat(a), cvex::splat(b)); }
+  static inline int3 abs  (const int3 a)                                        { return int3(std::abs(a.x), std::abs(a.y), std::abs(a.z)); } 
+  static inline int3 sign (const int3 a)                                        { return int3(sign(a.x), sign(a.y), sign(a.z)); }
+  
   static inline int3 blend(const int3 a, const int3 b, const uint3 mask) { return cvex::blend(a.v, b.v, mask.v); }
 
   static inline int3 shuffle_xzy(int3 a_src) { return cvex::shuffle_xzyw(a_src.v); }
@@ -766,21 +768,24 @@ namespace LiteMath
   static inline float4 clamp(const float4& u, float a, float b)                           { return cvex::clamp(u.v, cvex::splat(a), cvex::splat(b));  }
   static inline float4 lerp (const float4& u, const float4& v, const float t)             { return cvex::lerp(u.v, v.v, t);  }
   static inline float4 mix  (const float4& u, const float4& v, const float t)             { return cvex::lerp(u.v, v.v, t);  }
-  static inline float4 mad  (const float4& a, const float4& b, const float4& c)           { return cvex::fma(a.v, b.v, c.v); }
-  static inline float4 fma  (const float4& a, const float4& b, const float4& c)           { return cvex::fma(a.v, b.v, c.v); }
 
-  static inline float4 cross(const float4& a, const float4& b) { return cvex::cross3(a.v, b.v);} 
-  static inline float  dot  (const float4& a, const float4& b) { return cvex::dot4f(a.v, b.v); }
-  static inline float  dot3f(const float4& a, const float4& b) { return cvex::dot3f(a.v, b.v); }
-  static inline float4 dot3v(const float4& a, const float4& b) { return cvex::dot3v(a.v, b.v); }
-  static inline float  dot4f(const float4& a, const float4& b) { return cvex::dot4f(a.v, b.v); }
-  static inline float4 dot4v(const float4& a, const float4& b) { return cvex::dot4v(a.v, b.v); }
-
+  static inline float4 cross(const float4& a, const float4& b) { return cvex::cross3(a.v, b.v); } 
+  static inline float  dot  (const float4& a, const float4& b) { return cvex::dot4f(a.v, b.v);  }
+  static inline float  dot3f(const float4& a, const float4& b) { return cvex::dot3f(a.v, b.v);  }
+  static inline float4 dot3v(const float4& a, const float4& b) { return cvex::dot3v(a.v, b.v);  }
+  static inline float  dot4f(const float4& a, const float4& b) { return cvex::dot4f(a.v, b.v);  }
+  static inline float4 dot4v(const float4& a, const float4& b) { return cvex::dot4v(a.v, b.v);  }
+  static inline float  dot4 (const float4& a, const float4& b) { return cvex::dot3f(a.v, b.v);  }
+  static inline float  dot3 (const float4& a, const float4& b) { return cvex::dot4f(a.v, b.v);  }
+  
+  static inline float  length3(const float4& a)  { return cvex::length3f(a.v); }
+  static inline float  length4(const float4& a)  { return cvex::length4f(a.v); }
   static inline float  length3f(const float4& a) { return cvex::length3f(a.v); }
   static inline float  length4f(const float4& a) { return cvex::length4f(a.v); }
   static inline float4 length3v(const float4& a) { return cvex::length3v(a.v); }
   static inline float4 length4v(const float4& a) { return cvex::length4v(a.v); }
-  static inline float4 normalize(const float4& u) { return u / length3f(u); }
+  static inline float4 normalize (const float4& u) { return u / length4f(u); }
+  static inline float4 normalize3(const float4& u) { return u / length3f(u); }
 
   static inline float4 floor(const float4& a_val) { return cvex::floor(a_val.v); }
   static inline float4 ceil (const float4& a_val) { return cvex::ceil(a_val.v);  }

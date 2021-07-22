@@ -92,6 +92,7 @@ namespace cvex
 
   static inline vfloat4 load_u(const float *data)   { return _mm_loadu_ps(data); }
   static inline vint4   load_u(const int *data)     { return _mm_castps_si128(_mm_loadu_ps((float*)data)); }
+  static inline vuint4  load_u(const uint *data)    { return _mm_castps_si128(_mm_loadu_ps((float*)data)); }
   static inline vfloat4 load_s(const float *data)   { return _mm_load_ss(data);  }
 
   //static inline void stream(void *data, vint4 a_val) { _mm_stream_si128((vint4 *) data, a_val); }
@@ -156,19 +157,13 @@ namespace cvex
     return _mm_andnot_ps(absmask, a_val);
   }
 
-  static inline vfloat4 blend(const vfloat4 a, const vfloat4 b, const vint4 mask)
-  {
-    return _mm_or_ps(_mm_and_ps(as_float32(mask), a),
-                     _mm_andnot_ps(as_float32(mask), b));
-  }
-
   static inline vfloat4 blend(const vfloat4 a, const vfloat4 b, const vuint4 mask)
   {
     return _mm_or_ps(_mm_and_ps(as_float32(mask), a),
                      _mm_andnot_ps(as_float32(mask), b));
   }
 
-  static inline vint4 blend(const vint4 a, const vint4 b, const vint4 mask)
+  static inline vint4 blend(const vint4 a, const vint4 b, const vuint4 mask)
   {
     return as_int32(_mm_or_ps(_mm_and_ps   (as_float32(mask), as_float32(a)),
                               _mm_andnot_ps(as_float32(mask), as_float32(b))));
@@ -252,6 +247,26 @@ namespace cvex
   static inline vfloat4 length3v(const vfloat4 a) { return _mm_sqrt_ps(dot3v(a, a)); }
   static inline vfloat4 length4v(const vfloat4 a) { return _mm_sqrt_ps(dot4v(a, a)); }
 
+  static inline vfloat4 sqrt(const vfloat4 a)        { return _mm_sqrt_ps(a);  }
+  static inline vfloat4 inversesqrt(const vfloat4 a) { return _mm_rsqrt_ps(a); }
+
+  static inline __m128 abs_mask(void)
+  {
+    // with clang, this turns into a 16B load,
+    // with every calling function getting its own copy of the mask
+    __m128i minus1 = _mm_set1_epi32(-1);
+    return _mm_castsi128_ps(_mm_srli_epi32(minus1, 1));
+  }
+
+  static inline vfloat4 abs(const vfloat4 a) { return _mm_and_ps(abs_mask(), a); }
+  static inline vfloat4 sign(vfloat4 x)
+  {
+    const __m128 zero     = _mm_setzero_ps();
+    const __m128 positive = _mm_and_ps(_mm_cmpgt_ps(x, zero), _mm_set1_ps(1.0f));
+    const __m128 negative = _mm_and_ps(_mm_cmplt_ps(x, zero), _mm_set1_ps(-1.0f));
+    return _mm_or_ps(positive, negative);
+  }
+
   static inline vfloat4 splat_0(const vfloat4 v) { return _mm_shuffle_ps(v, v, _MM_SHUFFLE(0, 0, 0, 0)); }
   static inline vfloat4 splat_1(const vfloat4 v) { return _mm_shuffle_ps(v, v, _MM_SHUFFLE(1, 1, 1, 1)); }
   static inline vfloat4 splat_2(const vfloat4 v) { return _mm_shuffle_ps(v, v, _MM_SHUFFLE(2, 2, 2, 2)); }
@@ -284,18 +299,41 @@ namespace cvex
 
   static inline float hmax3(const vfloat4 a_val) { return std::max(std::max(extract_0(a_val), extract_1(a_val)), extract_2(a_val) ); }
   static inline float hmin3(const vfloat4 a_val) { return std::min(std::min(extract_0(a_val), extract_1(a_val)), extract_2(a_val) ); }
+  static inline uint  hmax3(const vuint4  a_val) { return std::max(std::max(extract_0(a_val), extract_1(a_val)), extract_2(a_val) ); }
+  static inline uint  hmin3(const vuint4  a_val) { return std::min(std::min(extract_0(a_val), extract_1(a_val)), extract_2(a_val) ); }
+  static inline  int  hmax3(const vint4   a_val) { return std::max(std::max(extract_0(a_val), extract_1(a_val)), extract_2(a_val) ); }
+  static inline  int  hmin3(const vint4   a_val) { return std::min(std::min(extract_0(a_val), extract_1(a_val)), extract_2(a_val) ); }
 
   static inline float hmax(const vfloat4 a_val) { return std::max(std::max(extract_0(a_val), extract_1(a_val)), std::max(extract_2(a_val), extract_3(a_val))); }
   static inline float hmin(const vfloat4 a_val) { return std::min(std::min(extract_0(a_val), extract_1(a_val)), std::min(extract_2(a_val), extract_3(a_val))); }
+  static inline uint  hmax(const vuint4 a_val)  { return std::max(std::max(extract_0(a_val), extract_1(a_val)), std::max(extract_2(a_val), extract_3(a_val))); }
+  static inline uint  hmin(const vuint4 a_val)  { return std::min(std::min(extract_0(a_val), extract_1(a_val)), std::min(extract_2(a_val), extract_3(a_val))); }
+  static inline  int  hmax(const vint4 a_val)   { return std::max(std::max(extract_0(a_val), extract_1(a_val)), std::max(extract_2(a_val), extract_3(a_val))); }
+  static inline  int  hmin(const vint4 a_val)   { return std::min(std::min(extract_0(a_val), extract_1(a_val)), std::min(extract_2(a_val), extract_3(a_val))); }
 
   static inline vfloat4 shuffle_xzyw(vfloat4 a_src) { return _mm_shuffle_ps(a_src, a_src, _MM_SHUFFLE(3, 1, 2, 0)); }
   static inline vfloat4 shuffle_yxzw(vfloat4 a_src) { return _mm_shuffle_ps(a_src, a_src, _MM_SHUFFLE(3, 2, 0, 1)); }
   static inline vfloat4 shuffle_yzxw(vfloat4 a_src) { return _mm_shuffle_ps(a_src, a_src, _MM_SHUFFLE(3, 0, 2, 1)); }
   static inline vfloat4 shuffle_zyxw(vfloat4 a_src) { return _mm_shuffle_ps(a_src, a_src, _MM_SHUFFLE(3, 0, 1, 2)); }
   static inline vfloat4 shuffle_zxyw(vfloat4 a_src) { return _mm_shuffle_ps(a_src, a_src, _MM_SHUFFLE(3, 1, 0, 2)); }
-
   static inline vfloat4 shuffle_xyxy(vfloat4 a_src) { return _mm_shuffle_ps(a_src, a_src, _MM_SHUFFLE(1, 0, 1, 0)); }
   static inline vfloat4 shuffle_zwzw(vfloat4 a_src) { return _mm_shuffle_ps(a_src, a_src, _MM_SHUFFLE(3, 2, 3, 2)); }
+
+  static inline vuint4 shuffle_xzyw(vuint4 a_src)   { return _mm_castps_si128( _mm_shuffle_ps(_mm_castsi128_ps(a_src), _mm_castsi128_ps(a_src), _MM_SHUFFLE(3, 1, 2, 0)) ); }
+  static inline vuint4 shuffle_yxzw(vuint4 a_src)   { return _mm_castps_si128( _mm_shuffle_ps(_mm_castsi128_ps(a_src), _mm_castsi128_ps(a_src), _MM_SHUFFLE(3, 2, 0, 1)) ); }
+  static inline vuint4 shuffle_yzxw(vuint4 a_src)   { return _mm_castps_si128( _mm_shuffle_ps(_mm_castsi128_ps(a_src), _mm_castsi128_ps(a_src), _MM_SHUFFLE(3, 0, 2, 1)) ); }
+  static inline vuint4 shuffle_zyxw(vuint4 a_src)   { return _mm_castps_si128( _mm_shuffle_ps(_mm_castsi128_ps(a_src), _mm_castsi128_ps(a_src), _MM_SHUFFLE(3, 0, 1, 2)) ); }
+  static inline vuint4 shuffle_zxyw(vuint4 a_src)   { return _mm_castps_si128( _mm_shuffle_ps(_mm_castsi128_ps(a_src), _mm_castsi128_ps(a_src), _MM_SHUFFLE(3, 1, 0, 2)) ); }
+  static inline vuint4 shuffle_xyxy(vuint4 a_src)   { return _mm_castps_si128( _mm_shuffle_ps(_mm_castsi128_ps(a_src), _mm_castsi128_ps(a_src), _MM_SHUFFLE(1, 0, 1, 0)) ); }
+  static inline vuint4 shuffle_zwzw(vuint4 a_src)   { return _mm_castps_si128( _mm_shuffle_ps(_mm_castsi128_ps(a_src), _mm_castsi128_ps(a_src), _MM_SHUFFLE(3, 2, 3, 2)) ); }
+  
+  static inline vint4  shuffle_xzyw(vint4 a_src)    { return _mm_castps_si128( _mm_shuffle_ps(_mm_castsi128_ps(a_src), _mm_castsi128_ps(a_src), _MM_SHUFFLE(3, 1, 2, 0)) ); }
+  static inline vint4  shuffle_yxzw(vint4 a_src)    { return _mm_castps_si128( _mm_shuffle_ps(_mm_castsi128_ps(a_src), _mm_castsi128_ps(a_src), _MM_SHUFFLE(3, 2, 0, 1)) ); }
+  static inline vint4  shuffle_yzxw(vint4 a_src)    { return _mm_castps_si128( _mm_shuffle_ps(_mm_castsi128_ps(a_src), _mm_castsi128_ps(a_src), _MM_SHUFFLE(3, 0, 2, 1)) ); }
+  static inline vint4  shuffle_zyxw(vint4 a_src)    { return _mm_castps_si128( _mm_shuffle_ps(_mm_castsi128_ps(a_src), _mm_castsi128_ps(a_src), _MM_SHUFFLE(3, 0, 1, 2)) ); }
+  static inline vint4  shuffle_zxyw(vint4 a_src)    { return _mm_castps_si128( _mm_shuffle_ps(_mm_castsi128_ps(a_src), _mm_castsi128_ps(a_src), _MM_SHUFFLE(3, 1, 0, 2)) ); }
+  static inline vint4  shuffle_xyxy(vint4 a_src)    { return _mm_castps_si128( _mm_shuffle_ps(_mm_castsi128_ps(a_src), _mm_castsi128_ps(a_src), _MM_SHUFFLE(1, 0, 1, 0)) ); }
+  static inline vint4  shuffle_zwzw(vint4 a_src)    { return _mm_castps_si128( _mm_shuffle_ps(_mm_castsi128_ps(a_src), _mm_castsi128_ps(a_src), _MM_SHUFFLE(3, 2, 3, 2)) ); }
 
   static inline vfloat4 cross3(const vfloat4 a, const vfloat4 b) 
   { 
@@ -318,8 +356,10 @@ namespace cvex
 
   inline static unsigned int color_pack_bgra(const vfloat4 rel_col) { return color_pack_rgba(cvex::shuffle_zyxw(rel_col)); }
 
-  static inline bool any_of (const vint4 a) { return _mm_movemask_ps(as_float32(a)) != 0; }
-  static inline bool all_of (const vint4 a) { return _mm_movemask_ps(as_float32(a)) == 15; }
+  static inline bool any_of (const vint4 a)  { return _mm_movemask_ps(as_float32(a)) != 0; }
+  static inline bool all_of (const vint4 a)  { return _mm_movemask_ps(as_float32(a)) == 15; }
+  static inline bool any_of (const vuint4 a) { return _mm_movemask_ps(as_float32(a)) != 0; }
+  static inline bool all_of (const vuint4 a) { return _mm_movemask_ps(as_float32(a)) == 15; }
 
   static inline void prefetch(const float* ptr) {  _mm_prefetch((const char*)ptr, _MM_HINT_T0); }
   static inline void prefetch(const int* ptr)   {  _mm_prefetch((const char*)ptr, _MM_HINT_T0); }
@@ -402,12 +442,17 @@ static inline cvex::vint4 operator/(const int a, const cvex::vint4 b)
   return { a / temp_b[0], a / temp_b[1], a / temp_b[2], a / temp_b[3] };
 }
 
-static inline cvex::vint4 operator<<(const cvex::vint4 a, const int val) { return _mm_slli_epi32(a, val); }
-static inline cvex::vint4 operator>>(const cvex::vint4 a, const int val) { return _mm_srai_epi32(a, val); }
-
+static inline cvex::vint4 operator<<(const cvex::vint4 a, const int val)      { return _mm_slli_epi32(a, val); }
+static inline cvex::vint4 operator>>(const cvex::vint4 a, const int val)      { return _mm_srai_epi32(a, val); }
 static inline cvex::vint4 operator|(const cvex::vint4 a, const cvex::vint4 b) { return _mm_or_si128(a,b); }
 static inline cvex::vint4 operator&(const cvex::vint4 a, const cvex::vint4 b) { return _mm_and_si128(a, b); }
 static inline cvex::vint4 operator~(const cvex::vint4 a)                      { return _mm_andnot_si128(a, _mm_set1_epi32(0xFFFFFFFF)); }
+
+static inline cvex::vuint4 operator<<(const cvex::vuint4 a, const int val)        { return _mm_slli_epi32(a, val); }
+static inline cvex::vuint4 operator>>(const cvex::vuint4 a, const int val)        { return _mm_srai_epi32(a, val); }
+static inline cvex::vuint4 operator| (const cvex::vuint4 a, const cvex::vuint4 b) { return _mm_or_si128(a,b); }
+static inline cvex::vuint4 operator& (const cvex::vuint4 a, const cvex::vuint4 b) { return _mm_and_si128(a, b); }
+static inline cvex::vuint4 operator~ (const cvex::vuint4 a)                       { return _mm_andnot_si128(a, _mm_set1_epi32(0xFFFFFFFF)); }
 
 static inline cvex::vuint4 operator> (const cvex::vfloat4 a, const cvex::vfloat4 b) { return cvex::as_uint32(_mm_cmpgt_ps(a, b)); }
 static inline cvex::vuint4 operator< (const cvex::vfloat4 a, const cvex::vfloat4 b) { return cvex::as_uint32(_mm_cmplt_ps(a, b)); }
@@ -415,6 +460,20 @@ static inline cvex::vuint4 operator>=(const cvex::vfloat4 a, const cvex::vfloat4
 static inline cvex::vuint4 operator<=(const cvex::vfloat4 a, const cvex::vfloat4 b) { return cvex::as_uint32(_mm_cmple_ps(a, b)); }
 static inline cvex::vuint4 operator==(const cvex::vfloat4 a, const cvex::vfloat4 b) { return cvex::as_uint32(_mm_cmpeq_ps(a, b)); }
 static inline cvex::vuint4 operator!=(const cvex::vfloat4 a, const cvex::vfloat4 b) { return cvex::as_uint32(_mm_cmpneq_ps(a, b)); }
+
+static inline cvex::vuint4 operator> (const cvex::vuint4 a, const cvex::vuint4 b)   { return _mm_cmpgt_epi32(a, b); }
+static inline cvex::vuint4 operator< (const cvex::vuint4 a, const cvex::vuint4 b)   { return _mm_cmplt_epi32(a, b); }
+static inline cvex::vuint4 operator>=(const cvex::vuint4 a, const cvex::vuint4 b)   { return ~(a < b); }
+static inline cvex::vuint4 operator<=(const cvex::vuint4 a, const cvex::vuint4 b)   { return ~(a > b); }
+static inline cvex::vuint4 operator==(const cvex::vuint4 a, const cvex::vuint4 b)   { return _mm_cmpeq_epi32(a, b); }
+static inline cvex::vuint4 operator!=(const cvex::vuint4 a, const cvex::vuint4 b)   { return ~(a == b); }
+
+static inline cvex::vuint4 operator> (const cvex::vint4 a, const cvex::vint4 b)     { return _mm_cmpgt_epi32(a, b); }
+static inline cvex::vuint4 operator< (const cvex::vint4 a, const cvex::vint4 b)     { return _mm_cmplt_epi32(a, b); }
+static inline cvex::vuint4 operator>=(const cvex::vint4 a, const cvex::vint4 b)     { return ~(a < b); }
+static inline cvex::vuint4 operator<=(const cvex::vint4 a, const cvex::vint4 b)     { return ~(a > b); }
+static inline cvex::vuint4 operator==(const cvex::vint4 a, const cvex::vint4 b)     { return _mm_cmpeq_epi32(a, b); }
+static inline cvex::vuint4 operator!=(const cvex::vint4 a, const cvex::vint4 b)     { return ~(a == b); }
 
 static inline cvex::vuint4 operator+(const cvex::vuint4 a, const cvex::vuint4 b) { return _mm_add_epi32(a, b); }
 static inline cvex::vuint4 operator-(const cvex::vuint4 a, const cvex::vuint4 b) { return _mm_sub_epi32(a, b); }
@@ -448,12 +507,9 @@ static inline cvex::vuint4 operator/(const unsigned int a, const cvex::vuint4 b)
   return { a / temp_b[0], a / temp_b[1], a / temp_b[2], a / temp_b[3] };
 }
 
-static inline cvex::vuint4 operator<<(const cvex::vuint4 a, const int val) { return _mm_slli_epi32(a, val); }
-static inline cvex::vuint4 operator>>(const cvex::vuint4 a, const int val) { return _mm_srli_epi32(a, val); }
 
-static inline cvex::vuint4 operator|(const cvex::vuint4 a, const cvex::vuint4 b) { return _mm_or_si128(a, b); }
-static inline cvex::vuint4 operator&(const cvex::vuint4 a, const cvex::vuint4 b) { return _mm_and_si128(a, b); }
-static inline cvex::vuint4 operator~(const cvex::vuint4 a)                       { return _mm_andnot_si128(a, _mm_set1_epi32(0xFFFFFFFF)); }
+static inline vfloat4 reflect(const vfloat4 dir, const vfloat4 normal) { return normal * dot3v(dir, normal) * (-2.0f) + dir; }
+
 
 
 };
