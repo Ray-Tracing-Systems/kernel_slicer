@@ -664,7 +664,7 @@ bool test{{Test.Number+9}}_cstcnv_{{Test.Type}}()
   for(int i=0;i<{{Test.VecLen}};i++)
     ref1[i] = Cx1[i];
   float ref2[{{Test.VecLen}}];
-  memcpy(ref2, &Cx1, sizeof(float{{Test.VecLen}}));
+  memcpy(ref2, &Cx1, sizeof(float)*{{Test.VecLen}});
   
   bool passed = true;
   for (int i=0; i<{{Test.VecLen}}; i++)

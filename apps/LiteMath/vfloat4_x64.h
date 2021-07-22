@@ -340,7 +340,7 @@ namespace cvex
     const __m128 a_yzx = shuffle_yzxw(a);
     const __m128 b_yzx = shuffle_yzxw(b);
     const __m128 c     = _mm_sub_ps(_mm_mul_ps(a, b_yzx), _mm_mul_ps(a_yzx, b));
-    return shuffle_yzxw(c);
+    return shuffle_yzxw(vfloat4(c));
   }
 
   inline static unsigned int color_pack_rgba(const vfloat4 rel_col)
@@ -460,13 +460,6 @@ static inline cvex::vuint4 operator>=(const cvex::vfloat4 a, const cvex::vfloat4
 static inline cvex::vuint4 operator<=(const cvex::vfloat4 a, const cvex::vfloat4 b) { return cvex::as_uint32(_mm_cmple_ps(a, b)); }
 static inline cvex::vuint4 operator==(const cvex::vfloat4 a, const cvex::vfloat4 b) { return cvex::as_uint32(_mm_cmpeq_ps(a, b)); }
 static inline cvex::vuint4 operator!=(const cvex::vfloat4 a, const cvex::vfloat4 b) { return cvex::as_uint32(_mm_cmpneq_ps(a, b)); }
-
-static inline cvex::vuint4 operator> (const cvex::vuint4 a, const cvex::vuint4 b)   { return _mm_cmpgt_epi32(a, b); }
-static inline cvex::vuint4 operator< (const cvex::vuint4 a, const cvex::vuint4 b)   { return _mm_cmplt_epi32(a, b); }
-static inline cvex::vuint4 operator>=(const cvex::vuint4 a, const cvex::vuint4 b)   { return ~(a < b); }
-static inline cvex::vuint4 operator<=(const cvex::vuint4 a, const cvex::vuint4 b)   { return ~(a > b); }
-static inline cvex::vuint4 operator==(const cvex::vuint4 a, const cvex::vuint4 b)   { return _mm_cmpeq_epi32(a, b); }
-static inline cvex::vuint4 operator!=(const cvex::vuint4 a, const cvex::vuint4 b)   { return ~(a == b); }
 
 static inline cvex::vuint4 operator> (const cvex::vint4 a, const cvex::vint4 b)     { return _mm_cmpgt_epi32(a, b); }
 static inline cvex::vuint4 operator< (const cvex::vint4 a, const cvex::vint4 b)     { return _mm_cmplt_epi32(a, b); }

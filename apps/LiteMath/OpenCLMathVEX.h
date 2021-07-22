@@ -2,21 +2,22 @@
 #define VFLOAT4_ALL_H
 
 //#include "vfloat4_gcc.h"
-#include "vfloat4_x64.h"
+//#include "vfloat4_x64.h"
+//#include "vfloat4_arm.h"
 
-//#ifdef WIN32
-//  #include "vfloat4_x64.h"
-//#else
-//  #if defined(__arm__) or defined(__aarch64__)
-//    #include "vfloat4_arm.h"
-//  #elif defined(__GNUC__)
-//    #include "vfloat4_gcc.h"
-//  #elif defined(__clang__)
-//    #include "vfloat4_x64.h"
-//  #else
-//    #include "vfloat4_x64.h"
-//  #endif  
-//#endif
+#ifdef WIN32
+  #include "vfloat4_x64.h"
+#else
+  #if defined(__arm__) or defined(__aarch64__)
+    #include "vfloat4_arm.h"
+  #elif defined(__clang__)
+    #include "vfloat4_x64.h"
+  #elif defined(__GNUC__)
+    #include "vfloat4_gcc.h"
+  #else
+    #include "vfloat4_x64.h"
+  #endif  
+#endif
 
 // This is just and example. 
 // In practise you may take any of these files that you prefer for your platform.  
@@ -155,13 +156,6 @@ namespace LiteMath
     inline void operator-=(const uint   b) { v = v - b;   }
     inline void operator-=(const uint4& b) { v = v - b.v; }
 
-    inline uint4 operator> (const uint4& b) const { return (v > b.v); }
-    inline uint4 operator< (const uint4& b) const { return (v < b.v); }
-    inline uint4 operator>=(const uint4& b) const { return (v >= b.v); }
-    inline uint4 operator<=(const uint4& b) const { return (v <= b.v); }
-    inline uint4 operator==(const uint4& b) const { return (v == b.v); }
-    inline uint4 operator!=(const uint4& b) const { return (v != b.v); }
-
     union
     {
       struct { uint x, y, z, w; };
@@ -199,12 +193,18 @@ namespace LiteMath
   static inline void  store  (uint* p, uint4 a_val) { cvex::store  (p, a_val.v); }
   static inline void  store_u(uint* p, uint4 a_val) { cvex::store_u(p, a_val.v); }
 
+  static inline uint4 operator> (const uint4 a, const uint4 b) { return uint4{a.x >  b.x ? 0xFFFFFFFF : 0, a.y >  b.y ? 0xFFFFFFFF : 0, a.z >  b.z ? 0xFFFFFFFF : 0, a.w >  b.w ? 0xFFFFFFFF : 0}; }
+  static inline uint4 operator< (const uint4 a, const uint4 b) { return uint4{a.x <  b.x ? 0xFFFFFFFF : 0, a.y <  b.y ? 0xFFFFFFFF : 0, a.z <  b.z ? 0xFFFFFFFF : 0, a.w <  b.w ? 0xFFFFFFFF : 0}; }
+  static inline uint4 operator>=(const uint4 a, const uint4 b) { return uint4{a.x >= b.x ? 0xFFFFFFFF : 0, a.y >= b.y ? 0xFFFFFFFF : 0, a.z >= b.z ? 0xFFFFFFFF : 0, a.w >= b.w ? 0xFFFFFFFF : 0}; }
+  static inline uint4 operator<=(const uint4 a, const uint4 b) { return uint4{a.x <= b.x ? 0xFFFFFFFF : 0, a.y <= b.y ? 0xFFFFFFFF : 0, a.z <= b.z ? 0xFFFFFFFF : 0, a.w <= b.w ? 0xFFFFFFFF : 0}; }
+  static inline uint4 operator==(const uint4 a, const uint4 b) { return uint4{a.x == b.x ? 0xFFFFFFFF : 0, a.y == b.y ? 0xFFFFFFFF : 0, a.z == b.z ? 0xFFFFFFFF : 0, a.w == b.w ? 0xFFFFFFFF : 0}; }
+  static inline uint4 operator!=(const uint4 a, const uint4 b) { return uint4{a.x != b.x ? 0xFFFFFFFF : 0, a.y != b.y ? 0xFFFFFFFF : 0, a.z != b.z ? 0xFFFFFFFF : 0, a.w != b.w ? 0xFFFFFFFF : 0}; }
+
   static inline uint4 operator&(const uint4 a, const uint4 b) { return uint4(a.v & b.v); }
   static inline uint4 operator|(const uint4 a, const uint4 b) { return uint4(a.v | b.v); }
   static inline uint4 operator~(const uint4 a)                { return uint4(~a.v); }
-
-  static inline uint4 operator>>(const uint4 a, const uint b) { return uint4(a.v >> int(b)); }
-  static inline uint4 operator<<(const uint4 a, const uint b) { return uint4(a.v << int(b)); }
+  static inline uint4 operator>>(const uint4 a, uint b)       { return uint4{a.x >> b, a.y >> b, a.z >> b, a.w >> b}; }
+  static inline uint4 operator<<(const uint4 a, uint b)       { return uint4{a.x << b, a.y << b, a.z << b, a.w << b}; }
   
   static inline uint4 min  (const uint4& a,   const uint4& b) { return cvex::min(a.v, b.v); }
   static inline uint4 max  (const uint4& a,   const uint4& b) { return cvex::max(a.v, b.v); }
@@ -274,13 +274,6 @@ namespace LiteMath
     inline void operator-=(const uint   b) { v = v - b;   }
     inline void operator-=(const uint3& b) { v = v - b.v; }
 
-    inline uint3 operator> (const uint3& b) const { return (v > b.v); }
-    inline uint3 operator< (const uint3& b) const { return (v < b.v); }
-    inline uint3 operator>=(const uint3& b) const { return (v >= b.v); }
-    inline uint3 operator<=(const uint3& b) const { return (v <= b.v); }
-    inline uint3 operator==(const uint3& b) const { return (v == b.v); }
-    inline uint3 operator!=(const uint3& b) const { return (v != b.v); }
-
     union
     {
       struct { uint x, y, z; };
@@ -297,11 +290,18 @@ namespace LiteMath
   static inline void  store  (uint* p, uint3 a_val) { cvex::store(p, a_val.v); }
   static inline void  store_u(uint* p, uint3 a_val) { memcpy(p, &a_val, sizeof(uint)*3); }
 
+  static inline uint3 operator> (const uint3 a, const uint3 b) { return uint3(a.x >  b.x ? 0xFFFFFFFF : 0, a.y >  b.y ? 0xFFFFFFFF : 0, a.z >  b.z ? 0xFFFFFFFF : 0); }
+  static inline uint3 operator< (const uint3 a, const uint3 b) { return uint3(a.x <  b.x ? 0xFFFFFFFF : 0, a.y <  b.y ? 0xFFFFFFFF : 0, a.z <  b.z ? 0xFFFFFFFF : 0); }
+  static inline uint3 operator>=(const uint3 a, const uint3 b) { return uint3(a.x >= b.x ? 0xFFFFFFFF : 0, a.y >= b.y ? 0xFFFFFFFF : 0, a.z >= b.z ? 0xFFFFFFFF : 0); }
+  static inline uint3 operator<=(const uint3 a, const uint3 b) { return uint3(a.x <= b.x ? 0xFFFFFFFF : 0, a.y <= b.y ? 0xFFFFFFFF : 0, a.z <= b.z ? 0xFFFFFFFF : 0); }
+  static inline uint3 operator==(const uint3 a, const uint3 b) { return uint3(a.x == b.x ? 0xFFFFFFFF : 0, a.y == b.y ? 0xFFFFFFFF : 0, a.z == b.z ? 0xFFFFFFFF : 0); }
+  static inline uint3 operator!=(const uint3 a, const uint3 b) { return uint3(a.x != b.x ? 0xFFFFFFFF : 0, a.y != b.y ? 0xFFFFFFFF : 0, a.z != b.z ? 0xFFFFFFFF : 0); }
+
   static inline uint3 operator& (const uint3 a, const uint3 b) { return uint3(a.v & b.v); }
   static inline uint3 operator| (const uint3 a, const uint3 b) { return uint3(a.v | b.v); }
   static inline uint3 operator~ (const uint3 a)                { return uint3(~a.v); }
-  static inline uint3 operator>>(const uint3 a, const uint b)  { return uint3(a.v >> int(b)); }
-  static inline uint3 operator<<(const uint3 a, const uint b)  { return uint3(a.v << int(b)); }
+  static inline uint3 operator>>(const uint3 a, uint b)        { return uint3(a.x >> b, a.y >> b, a.z >> b); }
+  static inline uint3 operator<<(const uint3 a, uint b)        { return uint3(a.x << b, a.y << b, a.z << b); }
   
   static inline uint3 min  (const uint3& a,   const uint3& b) { return cvex::min(a.v, b.v); }
   static inline uint3 max  (const uint3& a,   const uint3& b) { return cvex::max(a.v, b.v); }
