@@ -126,7 +126,7 @@ namespace cvex
   {
     CVEX_ALIGNED(16) float temp_a[4];
     cvex::store(temp_a, a_val);
-    return { _uint32_t(temp_a[0]), _uint32_t(temp_a[1]), _uint32_t(temp_a[2]), _uint32_t(temp_a[3]) };
+    return vuint4{ _uint32_t(temp_a[0]), _uint32_t(temp_a[1]), _uint32_t(temp_a[2]), _uint32_t(temp_a[3]) };
   }
 
   static inline vuint4 to_uint32(const vint4  a_val)

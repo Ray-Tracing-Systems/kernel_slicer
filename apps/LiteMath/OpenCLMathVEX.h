@@ -4,6 +4,9 @@
 //#include "vfloat4_gcc.h"
 //#include "vfloat4_x64.h"
 //#include "vfloat4_arm.h"
+// TODO: __riscv__
+// TODO: __mips__
+// TODO: __ppc__ 
 
 #ifdef WIN32
   #include "vfloat4_x64.h"
@@ -18,17 +21,6 @@
     #include "vfloat4_x64.h"
   #endif  
 #endif
-
-// This is just and example. 
-// In practise you may take any of these files that you prefer for your platform.  
-// Or may use one of them or make yourself impl
-
-//#include "vfloat4_gcc.h"
-//#include "vfloat4_x64.h"
-//#include "vfloat4_arm.h"
-
-// __mips__
-// __ppc__ 
 
 #include <cmath>
 #include <initializer_list>
@@ -1354,10 +1346,10 @@ namespace LiteMath
   static inline int3   to_int3(int4 f4)             { return int3(f4.v); }
   static inline int4   to_int4(int3 v, int w)       { return cvex::blend(v.v, cvex::splat(w), cvex::vuint4{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0 }); }
 
-  static inline int4   to_int32  (const float4& a) { return cvex::to_int32(a.v);  }
-  static inline int4   to_int32  (const uint4& a)  { return cvex::to_int32(a.v); }
-  static inline uint4  to_uint32 (const float4& a) { return cvex::to_uint32(a.v); }
-  static inline uint4  to_uint32 (const int4& a)   { return cvex::to_uint32(a.v); }
+  static inline int4   to_int32  (const float4 a) { return cvex::to_int32(a.v);  }
+  static inline int4   to_int32  (const uint4 a)  { return cvex::to_int32(a.v); }
+  static inline uint4  to_uint32 (const float4 a) { return cvex::to_uint32(a.v); }
+  static inline uint4  to_uint32 (const int4 a)   { return cvex::to_uint32(a.v); }
 
   static inline float4 to_float32(const  int4& a)  { return cvex::to_float32(a.v); }
   static inline float4 to_float32(const uint4& a)  { return cvex::to_float32(a.v); }
@@ -1367,20 +1359,20 @@ namespace LiteMath
   static inline int4   as_int32  (const float4 a_val) { return cvex::as_int32  (a_val.v); }
   static inline uint4  as_uint32 (const float4 a_val) { return cvex::as_uint32 (a_val.v); }
 
-  static inline int3   to_int32  (const float3& a) { return cvex::to_int32(a.v);  }
-  static inline uint3  to_uint32 (const float3& a) { return cvex::to_uint32(a.v); }
-  static inline float3 to_float32(const  int3& a)  { return cvex::to_float32(a.v); }
-  static inline float3 to_float32(const uint3& a)  { return cvex::to_float32(a.v); }
+  static inline int3   to_int32  (const float3 a) { return cvex::to_int32(a.v);  }
+  static inline uint3  to_uint32 (const float3 a) { return cvex::to_uint32(a.v); }
+  static inline float3 to_float32(const  int3 a)  { return cvex::to_float32(a.v); }
+  static inline float3 to_float32(const uint3 a)  { return cvex::to_float32(a.v); }
   
   static inline float3 as_float32(const int3 a_val)   { return cvex::as_float32(a_val.v); }
   static inline float3 as_float32(const uint3 a_val)  { return cvex::as_float32(a_val.v); }
   static inline int3   as_int32  (const float3 a_val) { return cvex::as_int32  (a_val.v); }
   static inline uint3  as_uint32 (const float3 a_val) { return cvex::as_uint32 (a_val.v); }
 
-  static inline int2   to_int32  (const float2& a) { return int2  {int(a.x),   int(a.y)}; }
-  static inline uint2  to_uint32 (const float2& a) { return uint2 {uint(a.x),  uint(a.y)}; }
-  static inline float2 to_float32(const  int2& a)  { return float2{float(a.x), float(a.y)}; }
-  static inline float2 to_float32(const uint2& a)  { return float2{float(a.x), float(a.y)}; }
+  static inline int2   to_int32  (const float2 a) { return int2  {int(a.x),   int(a.y)}; }
+  static inline uint2  to_uint32 (const float2 a) { return uint2 {uint(a.x),  uint(a.y)}; }
+  static inline float2 to_float32(const  int2 a)  { return float2{float(a.x), float(a.y)}; }
+  static inline float2 to_float32(const uint2 a)  { return float2{float(a.x), float(a.y)}; }
   
   static inline float2 as_float32(const int2   a_val) { float2 res; memcpy(&res, &a_val, sizeof(float)*2); return res; }
   static inline float2 as_float32(const uint2  a_val) { float2 res; memcpy(&res, &a_val, sizeof(float)*2); return res; }
