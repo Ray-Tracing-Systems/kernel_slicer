@@ -662,7 +662,7 @@ bool test{{Test.Number+9}}_cstcnv_{{Test.Type}}()
 
   float ref1[{{Test.VecLen}}];
   for(int i=0;i<{{Test.VecLen}};i++)
-    ref1[i] = Cx1[i];
+    ref1[i] = {{Test.TypeS}}(Cx1[i]);
   float ref2[{{Test.VecLen}}];
   memcpy(ref2, &Cx1, sizeof(float)*{{Test.VecLen}});
   

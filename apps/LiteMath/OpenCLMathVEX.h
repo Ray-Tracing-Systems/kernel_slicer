@@ -354,7 +354,6 @@ namespace LiteMath
   static inline uint2 operator - (const uint2& u, const uint2& v) { return uint2{u.x - v.x, u.y - v.y}; }
   static inline uint2 operator * (const uint2& u, const uint2& v) { return uint2{u.x * v.x, u.y * v.y}; }
   static inline uint2 operator / (const uint2& u, const uint2& v) { return uint2{u.x / v.x, u.y / v.y}; }
-  static inline uint2 operator - (const uint2& v) { return {-v.x, -v.y}; }
 
   static inline uint2& operator += (uint2& u, const uint2& v) { u.x += v.x; u.y += v.y; return u; }
   static inline uint2& operator -= (uint2& u, const uint2& v) { u.x -= v.x; u.y -= v.y; return u; }
@@ -881,12 +880,12 @@ namespace LiteMath
     inline void operator-=(const float3& b) { v = v - b.v; }
     inline void operator-=(const float   b) { v = v - b;   }
 
-    inline uint4 operator> (const float3& b) const { return (v > b.v); }
-    inline uint4 operator< (const float3& b) const { return (v < b.v); }
-    inline uint4 operator>=(const float3& b) const { return (v >= b.v); }
-    inline uint4 operator<=(const float3& b) const { return (v <= b.v); }
-    inline uint4 operator==(const float3& b) const { return (v == b.v); }
-    inline uint4 operator!=(const float3& b) const { return (v != b.v); }
+    inline uint3 operator> (const float3& b) const { return (v > b.v); }
+    inline uint3 operator< (const float3& b) const { return (v < b.v); }
+    inline uint3 operator>=(const float3& b) const { return (v >= b.v); }
+    inline uint3 operator<=(const float3& b) const { return (v <= b.v); }
+    inline uint3 operator==(const float3& b) const { return (v == b.v); }
+    inline uint3 operator!=(const float3& b) const { return (v != b.v); }
 
     union
     {
@@ -939,7 +938,7 @@ namespace LiteMath
   static inline float hmin(const float3 a_val) { return cvex::hmin3(a_val.v); }
   static inline float hmax(const float3 a_val) { return cvex::hmax3(a_val.v); }
 
-  static inline float3 blend(const float3 a, const float3 b, const uint4 mask) { return cvex::blend(a.v, b.v, mask.v); }
+  static inline float3 blend(const float3 a, const float3 b, const uint3 mask) { return cvex::blend(a.v, b.v, mask.v); }
   
   static inline float3 shuffle_xzy(float3 a_src) { return cvex::shuffle_xzyw(a_src.v); }
   static inline float3 shuffle_yxz(float3 a_src) { return cvex::shuffle_yxzw(a_src.v); }
@@ -1405,31 +1404,15 @@ namespace LiteMath
     inline uchar4(unsigned char a, unsigned char b, unsigned char c, unsigned char d) : x(a), y(b), z(c), w(d) {}
     inline explicit uchar4(unsigned char a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
     
-    inline float& operator[](uint i)       { return M[i]; }
-    inline float  operator[](uint i) const { return M[i]; }
+    inline unsigned char& operator[](uint i)       { return M[i]; }
+    inline unsigned char  operator[](uint i) const { return M[i]; }
     
     union
     {
       struct {unsigned char x, y, z, w; };
-      float  M[4];
+      unsigned char  M[4];
     };
   };
-
-  static inline uchar4 operator * (const uchar4 & u, float v) { return uchar4(u.x * v, u.y * v, u.z * v, u.w * v); }
-  static inline uchar4 operator / (const uchar4 & u, float v) { return uchar4(u.x / v, u.y / v, u.z / v, u.w / v); }
-  static inline uchar4 operator + (const uchar4 & u, float v) { return uchar4(u.x + v, u.y + v, u.z + v, u.w + v); }
-  static inline uchar4 operator - (const uchar4 & u, float v) { return uchar4(u.x - v, u.y - v, u.z - v, u.w - v); }
-  static inline uchar4 operator * (float v, const uchar4 & u) { return uchar4(v * u.x, v * u.y, v * u.z, v * u.w); }
-  static inline uchar4 operator / (float v, const uchar4 & u) { return uchar4(v / u.x, v / u.y, v / u.z, v / u.w); }
-  static inline uchar4 operator + (float v, const uchar4 & u) { return uchar4(u.x + v, u.y + v, u.z + v, u.w + v); }
-  static inline uchar4 operator - (float v, const uchar4 & u) { return uchar4(u.x - v, u.y - v, u.z - v, u.w - v); }
-
-  static inline uchar4 operator + (const uchar4 & u, const uchar4 & v) { return uchar4(u.x + v.x, u.y + v.y, u.z + v.z, u.w + v.w); }
-  static inline uchar4 operator - (const uchar4 & u, const uchar4 & v) { return uchar4(u.x - v.x, u.y - v.y, u.z - v.z, u.w - v.w); }
-  static inline uchar4 operator * (const uchar4 & u, const uchar4 & v) { return uchar4(u.x * v.x, u.y * v.y, u.z * v.z, u.w * v.w); }
-  static inline uchar4 operator / (const uchar4 & u, const uchar4 & v) { return uchar4(u.x / v.x, u.y / v.y, u.z / v.z, u.w / v.w); }
-
-  //static inline uchar4 lerp(const uchar4 & u, const uchar4 & v, float t) { return u + t * (v - u); } // seems to be wrong?
 
 };
 

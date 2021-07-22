@@ -92,7 +92,7 @@ namespace cvex
 
   static inline vfloat4 load_u(const float *data)   { return _mm_loadu_ps(data); }
   static inline vint4   load_u(const int *data)     { return _mm_castps_si128(_mm_loadu_ps((float*)data)); }
-  static inline vuint4  load_u(const uint *data)    { return _mm_castps_si128(_mm_loadu_ps((float*)data)); }
+  static inline vuint4  load_u(const _uint32_t*data){ return _mm_castps_si128(_mm_loadu_ps((float*)data)); }
   static inline vfloat4 load_s(const float *data)   { return _mm_load_ss(data);  }
 
   //static inline void stream(void *data, vint4 a_val) { _mm_stream_si128((vint4 *) data, a_val); }
@@ -299,15 +299,15 @@ namespace cvex
 
   static inline float hmax3(const vfloat4 a_val) { return std::max(std::max(extract_0(a_val), extract_1(a_val)), extract_2(a_val) ); }
   static inline float hmin3(const vfloat4 a_val) { return std::min(std::min(extract_0(a_val), extract_1(a_val)), extract_2(a_val) ); }
-  static inline uint  hmax3(const vuint4  a_val) { return std::max(std::max(extract_0(a_val), extract_1(a_val)), extract_2(a_val) ); }
-  static inline uint  hmin3(const vuint4  a_val) { return std::min(std::min(extract_0(a_val), extract_1(a_val)), extract_2(a_val) ); }
+  static inline _uint32_t  hmax3(const vuint4  a_val) { return std::max(std::max(extract_0(a_val), extract_1(a_val)), extract_2(a_val) ); }
+  static inline _uint32_t  hmin3(const vuint4  a_val) { return std::min(std::min(extract_0(a_val), extract_1(a_val)), extract_2(a_val) ); }
   static inline  int  hmax3(const vint4   a_val) { return std::max(std::max(extract_0(a_val), extract_1(a_val)), extract_2(a_val) ); }
   static inline  int  hmin3(const vint4   a_val) { return std::min(std::min(extract_0(a_val), extract_1(a_val)), extract_2(a_val) ); }
 
   static inline float hmax(const vfloat4 a_val) { return std::max(std::max(extract_0(a_val), extract_1(a_val)), std::max(extract_2(a_val), extract_3(a_val))); }
   static inline float hmin(const vfloat4 a_val) { return std::min(std::min(extract_0(a_val), extract_1(a_val)), std::min(extract_2(a_val), extract_3(a_val))); }
-  static inline uint  hmax(const vuint4 a_val)  { return std::max(std::max(extract_0(a_val), extract_1(a_val)), std::max(extract_2(a_val), extract_3(a_val))); }
-  static inline uint  hmin(const vuint4 a_val)  { return std::min(std::min(extract_0(a_val), extract_1(a_val)), std::min(extract_2(a_val), extract_3(a_val))); }
+  static inline _uint32_t  hmax(const vuint4 a_val)  { return std::max(std::max(extract_0(a_val), extract_1(a_val)), std::max(extract_2(a_val), extract_3(a_val))); }
+  static inline _uint32_t  hmin(const vuint4 a_val)  { return std::min(std::min(extract_0(a_val), extract_1(a_val)), std::min(extract_2(a_val), extract_3(a_val))); }
   static inline  int  hmax(const vint4 a_val)   { return std::max(std::max(extract_0(a_val), extract_1(a_val)), std::max(extract_2(a_val), extract_3(a_val))); }
   static inline  int  hmin(const vint4 a_val)   { return std::min(std::min(extract_0(a_val), extract_1(a_val)), std::min(extract_2(a_val), extract_3(a_val))); }
 
