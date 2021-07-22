@@ -124,7 +124,7 @@ namespace LiteMath
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  struct uint4
+  struct CVEX_ALIGNED(16) uint4
   {
     inline uint4()                               : x(0), y(0), z(0), w(0) {}
     inline uint4(uint a, uint b, uint c, uint d) : x(a), y(b), z(c), w(d) {}
@@ -242,7 +242,7 @@ namespace LiteMath
   
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  struct uint3
+  struct CVEX_ALIGNED(16) uint3
   {
     inline uint3()                       : x(0), y(0), z(0) {}
     inline uint3(uint a, uint b, uint c) : x(a), y(b), z(c) {}
@@ -414,7 +414,7 @@ namespace LiteMath
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  struct int4
+  struct CVEX_ALIGNED(16) int4
   {
     inline int4()                           : x(0), y(0), z(0), w(0) {}
     inline int4(int a, int b, int c, int d) : x(a), y(b), z(c), w(d) {}
@@ -536,7 +536,7 @@ namespace LiteMath
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  struct int3
+  struct CVEX_ALIGNED(16) int3
   {
     inline int3()                    : x(0), y(0), z(0) {}
     inline int3(int a, int b, int c) : x(a), y(b), z(c) {}
@@ -705,11 +705,12 @@ namespace LiteMath
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  struct float4
+  struct CVEX_ALIGNED(16) float4
   {
     inline float4() : x(0), y(0), z(0), w(0) {}
     inline float4(float a, float b, float c, float d) : x(a), y(b), z(c), w(d) {}
     inline explicit float4(float a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
+    inline explicit float4(float a) { v = cvex::splat(a); }
 
     inline float4(const std::initializer_list<float> a_v) { v = cvex::load_u(a_v.begin()); }
     inline float4          (cvex::vfloat4 rhs)            { v = rhs; }
@@ -836,6 +837,17 @@ namespace LiteMath
   static inline float4 shuffle_zwzw(float4 a_src) { return cvex::shuffle_zwzw(a_src.v); }
 
   static inline float4 reflect(float4 dir, float4 normal) { return cvex::reflect(dir.v, normal.v); }
+  static inline float4 refract(const float4 incidentVec, const float4 normal, float eta)
+  {
+    float N_dot_I = dot(normal, incidentVec);
+    float k = float(1.f) - eta * eta * (float(1.f) - N_dot_I * N_dot_I);
+    if (k < float(0.f))
+      return float4(0.f);
+    else
+      return eta * incidentVec - (eta * N_dot_I + std::sqrt(k)) * normal;
+  }
+   // A floating-point, surface normal vector that is facing the view direction
+  static inline float4 faceforward(const float4 N, const float4 I, const float4 Ng) { return dot(I, Ng) < float(0) ? N : float(-1)*N; }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -846,6 +858,7 @@ namespace LiteMath
     inline float3() : x(0), y(0), z(0) {}
     inline float3(float a, float b, float c) : x(a), y(b), z(c) {}
     inline explicit float3(float a[3]) : x(a[0]), y(a[1]), z(a[2]) {}
+    inline explicit float3(float a) { v = cvex::splat(a); }
 
     inline float3(const std::initializer_list<float> a_v) { v = cvex::load_u(a_v.begin()); }
     inline float3          (cvex::vfloat4 rhs)            { v = rhs; }
@@ -922,9 +935,6 @@ namespace LiteMath
   static inline float3 sqrt(float3 x)             { return cvex::sqrt(x.v); }
   static inline float3 inversesqrt(float3 x)      { return cvex::inversesqrt(x.v); }
 
-  static inline unsigned int color_pack_rgba(const float3 rel_col) { return cvex::color_pack_rgba(rel_col.v); }
-  static inline unsigned int color_pack_bgra(const float3 rel_col) { return cvex::color_pack_bgra(rel_col.v); }
-
   static inline float extract_0(const float3& a_val) { return cvex::extract_0(a_val.v); }
   static inline float extract_1(const float3& a_val) { return cvex::extract_1(a_val.v); }
   static inline float extract_2(const float3& a_val) { return cvex::extract_2(a_val.v); }
@@ -946,6 +956,17 @@ namespace LiteMath
   static inline float3 shuffle_zyx(float3 a_src) { return cvex::shuffle_zyxw(a_src.v); }
   
   static inline float3 reflect(float3 dir, float3 normal) { return cvex::reflect(dir.v, normal.v); }
+  static inline float3 refract(const float3 incidentVec, const float3 normal, float eta)
+  {
+    float N_dot_I = dot(normal, incidentVec);
+    float k = float(1.f) - eta * eta * (float(1.f) - N_dot_I * N_dot_I);
+    if (k < float(0.f))
+      return float3(0.f);
+    else
+      return eta * incidentVec - (eta * N_dot_I + std::sqrt(k)) * normal;
+  }
+  // A floating-point, surface normal vector that is facing the view direction
+  static inline float3 faceforward(const float3 N, const float3 I, const float3 Ng) { return dot(I, Ng) < float(0) ? N : float(-1)*N; }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -957,6 +978,7 @@ namespace LiteMath
     inline float2(float a, float b) : x(a), y(b) {}
     //inline float2(const std::initializer_list<float> a_v) { M[0] = a_v.begin()[0]; M[1] = a_v.begin()[1]; }
     inline explicit float2(float a[2]) : x(a[0]), y(a[1]) {}
+    inline explicit float2(float a)    : x(a), y(a) {}
    
     inline float& operator[](int i)       { return M[i]; }
     inline float  operator[](int i) const { return M[i]; }
@@ -1036,6 +1058,18 @@ namespace LiteMath
   static inline float hmax    (const float2& a) { return std::max(a.M[0], a.M[1]); }
  
   static inline float2 blend(const float2 a, const float2 b, const uint2 mask) { return float2{(mask.x == 0) ? b.x : a.x, (mask.y == 0) ? b.y : a.y}; }
+  static inline float2 reflect(const float2 dir, const float2 normal) { return normal * dot(dir, normal) * (-2.0f) + dir; }
+  static inline float2 refract(const float2 incidentVec, const float2 normal, float eta)
+  {
+    float N_dot_I = dot(normal, incidentVec);
+    float k = float(1.f) - eta * eta * (float(1.f) - N_dot_I * N_dot_I);
+    if (k < float(0.f))
+      return float2(0.f);
+    else
+      return eta * incidentVec - (eta * N_dot_I + std::sqrt(k)) * normal;
+  }
+  // A floating-point, surface normal vector that is facing the view direction
+  static inline float2 faceforward(const float2 N, const float2 I, const float2 Ng) { return dot(I, Ng) < float(0) ? N : float(-1)*N; }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

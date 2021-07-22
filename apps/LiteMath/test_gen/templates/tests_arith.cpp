@@ -588,8 +588,8 @@ bool test{{Test.Number+9}}_cstcnv_{{Test.Type}}()
   int          ref3[{{Test.VecLen}}];
   unsigned int ref4[{{Test.VecLen}}];
 
-  memcpy(ref3, &Cr3, sizeof(int{{Test.VecLen}}));
-  memcpy(ref4, &Cr4, sizeof(uint{{Test.VecLen}}));
+  memcpy(ref3, &Cr3, sizeof(int)*{{Test.VecLen}});
+  memcpy(ref4, &Cr4, sizeof(uint)*{{Test.VecLen}});
   
   bool passed = true;
   for (int i=0; i<{{Test.VecLen}}; i++)
