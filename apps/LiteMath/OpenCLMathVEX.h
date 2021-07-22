@@ -244,9 +244,9 @@ namespace LiteMath
 
   struct CVEX_ALIGNED(16) uint3
   {
-    inline uint3()                       : x(0), y(0), z(0) {}
-    inline uint3(uint a, uint b, uint c) : x(a), y(b), z(c) {}
-    inline explicit uint3(uint a[3])     : x(a[0]), y(a[1]), z(a[2]) {}
+    inline uint3()                       { }
+    inline uint3(uint a, uint b, uint c) { CVEX_ALIGNED(16) uint data[4] = {a,b,c,1};          v = cvex::load(data); }
+    inline explicit uint3(uint a[3])     { CVEX_ALIGNED(16) uint data[4] = {a[0],a[1],a[2],1}; v = cvex::load(data); }
 
     inline uint3(const std::initializer_list<uint> a_v) { v = cvex::load_u(a_v.begin()); }
     inline uint3(cvex::vuint4 rhs) { v = rhs; }
@@ -538,9 +538,9 @@ namespace LiteMath
 
   struct CVEX_ALIGNED(16) int3
   {
-    inline int3()                    : x(0), y(0), z(0) {}
-    inline int3(int a, int b, int c) : x(a), y(b), z(c) {}
-    inline explicit int3(int a[3])   : x(a[0]), y(a[1]), z(a[2]) {}
+    inline int3() { }
+    inline int3(int a, int b, int c) { CVEX_ALIGNED(16) int data[4] = {a,b,c,1};          v = cvex::load(data); }
+    inline explicit int3(int a[3])   { CVEX_ALIGNED(16) int data[4] = {a[0],a[1],a[2],1}; v = cvex::load(data); }
 
     inline int3(const std::initializer_list<int> a_v) { v = cvex::load_u(a_v.begin()); }
     inline int3(cvex::vint4 rhs) { v = rhs; }
@@ -855,10 +855,10 @@ namespace LiteMath
   
   struct float3
   {
-    inline float3() : x(0), y(0), z(0) {}
-    inline float3(float a, float b, float c) : x(a), y(b), z(c) {}
-    inline explicit float3(float a[3]) : x(a[0]), y(a[1]), z(a[2]) {}
-    inline explicit float3(float a) { v = cvex::splat(a); }
+    inline float3() {}
+    inline float3(float a, float b, float c) { CVEX_ALIGNED(16) float data[4] = {a,b,c,1.0f};           v = cvex::load(data); }
+    inline explicit float3(float a[3])       { CVEX_ALIGNED(16) float data[4] = {a[0],a[1],a[2],11.0f}; v = cvex::load(data); }
+    inline explicit float3(float a)          { v = cvex::splat(a); }
 
     inline float3(const std::initializer_list<float> a_v) { v = cvex::load_u(a_v.begin()); }
     inline float3          (cvex::vfloat4 rhs)            { v = rhs; }

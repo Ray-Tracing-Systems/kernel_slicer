@@ -17,14 +17,6 @@
 #include <algorithm>        // for std::min/std::max 
 #include <initializer_list> //
 
-#if defined(_MSC_VER)
-#define CVEX_ALIGNED(x) __declspec(align(x))
-#else
-#if defined(__GNUC__)
-#define CVEX_ALIGNED(x) __attribute__ ((aligned(x)))
-#endif
-#endif
-
 /*
 namespace LiteMath
 { 

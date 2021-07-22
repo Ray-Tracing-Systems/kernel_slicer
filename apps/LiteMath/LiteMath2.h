@@ -1082,15 +1082,12 @@ namespace LiteMath
   // A floating-point, surface normal vector that is facing the view direction
   static inline float4 faceforward(const float4 N, const float4 I, const float4 Ng) { return dot(I, Ng) < float(0) ? N : float(-1)*N; }
  
-
   static inline float3 to_float32(const uint3 a) { return float3 {float(a.x), float(a.y), float(a.z)}; }
   static inline float3 as_float32(const uint3 a) { float3 res; memcpy(&res, &a, sizeof(uint)*3); return res; }
- 
 
   static inline float3 to_float32(const int3 a) { return float3 {float(a.x), float(a.y), float(a.z)}; }
   static inline float3 as_float32(const int3 a) { float3 res; memcpy(&res, &a, sizeof(uint)*3); return res; }
  
-
   static inline int3  to_int32 (const float3 a) { return int3 {int (a.x), int (a.y), int (a.z)}; }
   static inline uint3 to_uint32(const float3 a) { return uint3{uint(a.x), uint(a.y), uint(a.z)}; }
   static inline int3  as_int32 (const float3 a) { int3  res; memcpy(&res, &a, sizeof(int)*3);  return res; }
