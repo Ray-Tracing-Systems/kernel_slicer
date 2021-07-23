@@ -11,6 +11,7 @@ bool test007_reflect();
 bool test008_normalize();
 bool test009_refract();
 bool test010_faceforward();
+bool test011_mattranspose();
 
 ## for Tests in AllTests
 ## for Test  in Tests.Tests

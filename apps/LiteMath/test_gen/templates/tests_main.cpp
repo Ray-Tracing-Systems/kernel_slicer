@@ -15,18 +15,18 @@ struct TestRun
 int main(int argc, const char** argv)
 {
  
-  TestRun tests[] = { {test000_scalar_funcs,    "test000_scalar_funcs"},
-                      {test001_dot_cross_f4,    "test001_dot_cross_f4"},
-                      {test002_dot_cross_f3,    "test002_dot_cross_f3"},
-                      {test003_length_float4,   "test003_length_float4"},
-                      {test004_colpack_f4x4,    "test004_colpack_f4x4"},
-                      {test005_matrix_elems,    "test005_matrix_elems"},
-                      {test006_any_all,         "test006_any_all"},
-                      {test007_reflect,         "test007_reflect"},
-                      {test008_normalize,       "test008_normalize"},
-                      {test009_refract,         "test009_refract"},
-                      {test010_faceforward,     "test010_faceforward"},
-                      
+  TestRun tests[] = { {test000_scalar_funcs,  "test000_scalar_funcs"},
+                      {test001_dot_cross_f4,  "test001_dot_cross_f4"},
+                      {test002_dot_cross_f3,  "test002_dot_cross_f3"},
+                      {test003_length_float4, "test003_length_float4"},
+                      {test004_colpack_f4x4,  "test004_colpack_f4x4"},
+                      {test005_matrix_elems,  "test005_matrix_elems"},
+                      {test006_any_all,       "test006_any_all"},
+                      {test007_reflect,       "test007_reflect"},
+                      {test008_normalize,     "test008_normalize"},
+                      {test009_refract,       "test009_refract"},
+                      {test010_faceforward,   "test010_faceforward"},
+                      {test011_mattranspose,  "test011_mattranspose"},
                       {% for Tests in AllTests %}
                       {% for Test  in Tests.Tests %}
                       {test{{Test.Number}}_basev_{{Test.Type}},         "test{{Test.Number}}_basev_{{Test.Type}}"},
@@ -45,7 +45,6 @@ int main(int argc, const char** argv)
                       {test{{Test.Number+9}}_cstcnv_{{Test.Type}},        "test{{Test.Number+9}}_cstcnv_{{Test.Type}}"},
                       {% endif %}
                       {test{{Test.Number+10}}_other_{{Test.Type}},        "test{{Test.Number+10}}_other_{{Test.Type}}"},
-
                       {% endfor %}
                       {% endfor %}
                       };

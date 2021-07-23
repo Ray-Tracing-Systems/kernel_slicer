@@ -310,3 +310,22 @@ bool test010_faceforward()
 
   return ok4 && ok3 && ok2;
 }
+
+bool test011_mattranspose()
+{
+  float4x4 m(1.0f,2.0f,3.0f,4.0f,
+             5.0f,6.0f,7.0f,8.0f,
+             9.0f,10.0f,11.0f,12.0f,
+             13.0f,14.0f,15.0f,16.0f);
+
+  float4x4 m2 = transpose(m);
+  
+  double error = 0.0;
+  for(int i=0;i<4;i++)
+  {
+    for(int j=0;j<4;j++)
+      error += fabs( m(i,j) - m2(j,i));
+  }
+  
+  return error < 1e-20f;
+}

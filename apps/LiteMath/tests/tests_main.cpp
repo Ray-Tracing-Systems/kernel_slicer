@@ -15,18 +15,18 @@ struct TestRun
 int main(int argc, const char** argv)
 {
  
-  TestRun tests[] = { {test000_scalar_funcs,    "test000_scalar_funcs"},
-                      {test001_dot_cross_f4,    "test001_dot_cross_f4"},
-                      {test002_dot_cross_f3,    "test002_dot_cross_f3"},
-                      {test003_length_float4,   "test003_length_float4"},
-                      {test004_colpack_f4x4,    "test004_colpack_f4x4"},
-                      {test005_matrix_elems,    "test005_matrix_elems"},
-                      {test006_any_all,         "test006_any_all"},
-                      {test007_reflect,         "test007_reflect"},
-                      {test008_normalize,       "test008_normalize"},
-                      {test009_refract,         "test009_refract"},
-                      {test010_faceforward,     "test010_faceforward"},
-                      
+  TestRun tests[] = { {test000_scalar_funcs,  "test000_scalar_funcs"},
+                      {test001_dot_cross_f4,  "test001_dot_cross_f4"},
+                      {test002_dot_cross_f3,  "test002_dot_cross_f3"},
+                      {test003_length_float4, "test003_length_float4"},
+                      {test004_colpack_f4x4,  "test004_colpack_f4x4"},
+                      {test005_matrix_elems,  "test005_matrix_elems"},
+                      {test006_any_all,       "test006_any_all"},
+                      {test007_reflect,       "test007_reflect"},
+                      {test008_normalize,     "test008_normalize"},
+                      {test009_refract,       "test009_refract"},
+                      {test010_faceforward,   "test010_faceforward"},
+                      {test011_mattranspose,  "test011_mattranspose"},
 
 
                       {test100_basev_uint4,         "test100_basev_uint4"},
@@ -42,7 +42,6 @@ int main(int argc, const char** argv)
                       {test109_cstcnv_uint4,        "test109_cstcnv_uint4"},
 
                       {test110_other_uint4,        "test110_other_uint4"},
-
 
 
 
@@ -62,7 +61,6 @@ int main(int argc, const char** argv)
 
 
 
-
                       {test120_basev_float4,         "test120_basev_float4"},
                       {test121_basek_float4,         "test121_basek_float4"},
                       {test122_unaryv_float4,        "test122_unaryv_float4"},
@@ -76,7 +74,6 @@ int main(int argc, const char** argv)
                       {test129_cstcnv_float4,        "test129_cstcnv_float4"},
 
                       {test130_other_float4,        "test130_other_float4"},
-
 
 
 
@@ -96,7 +93,6 @@ int main(int argc, const char** argv)
 
 
 
-
                       {test140_basev_int3,         "test140_basev_int3"},
                       {test141_basek_int3,         "test141_basek_int3"},
                       {test142_unaryv_int3,        "test142_unaryv_int3"},
@@ -110,7 +106,6 @@ int main(int argc, const char** argv)
                       {test149_cstcnv_int3,        "test149_cstcnv_int3"},
 
                       {test150_other_int3,        "test150_other_int3"},
-
 
 
 
@@ -130,7 +125,6 @@ int main(int argc, const char** argv)
 
 
 
-
                       {test160_basev_uint2,         "test160_basev_uint2"},
                       {test161_basek_uint2,         "test161_basek_uint2"},
                       {test162_unaryv_uint2,        "test162_unaryv_uint2"},
@@ -144,7 +138,6 @@ int main(int argc, const char** argv)
                       {test169_cstcnv_uint2,        "test169_cstcnv_uint2"},
 
                       {test170_other_uint2,        "test170_other_uint2"},
-
 
 
 
@@ -164,7 +157,6 @@ int main(int argc, const char** argv)
 
 
 
-
                       {test180_basev_float2,         "test180_basev_float2"},
                       {test181_basek_float2,         "test181_basek_float2"},
                       {test182_unaryv_float2,        "test182_unaryv_float2"},
@@ -178,7 +170,6 @@ int main(int argc, const char** argv)
                       {test189_cstcnv_float2,        "test189_cstcnv_float2"},
 
                       {test190_other_float2,        "test190_other_float2"},
-
 
 
                       };
