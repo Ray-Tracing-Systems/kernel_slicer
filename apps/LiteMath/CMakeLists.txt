@@ -32,3 +32,18 @@ add_executable(math_tests tests/tests_main.cpp
 
 set_target_properties(math_tests PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
+#uncomment this to add code coverage
+if(CMAKE_COMPILER_IS_GNUCXX)
+  LIST(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
+  include(CodeCoverage)
+  APPEND_COVERAGE_COMPILER_FLAGS()
+  target_link_libraries(math_tests gcov)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
+  #set(COVERAGE_EXCLUDES "dir1/*")
+  setup_target_for_coverage_gcovr_html(
+           NAME            coverage
+           EXECUTABLE      math_tests
+           BASE_DIRECTORY  "${PROJECT_SOURCE_DIR}"
+           EXCLUDE         "${PROJECT_SOURCE_DIR}/tests/*")
+  
+endif()
