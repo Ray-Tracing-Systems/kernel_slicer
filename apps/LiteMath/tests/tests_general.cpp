@@ -46,6 +46,19 @@ bool test000_scalar_funcs()
   float y26 = inversesqrt(x);   // 1.0f / sqrt(x)
   float y27 = rcp(x);           // fast reciprocal
 
+  int32_t  y28  = as_int(x);
+  int32_t  y29  = as_int32(x);
+  uint32_t y30  = as_uint(x);
+  uint32_t y31  = as_uint32(x);
+  float    y32  = as_float(y28); 
+  float    y33  = as_float(y29); 
+  float    y34  = as_float32(y30); 
+  float    y35  = as_float32(y31); 
+  
+  float randoms[100];
+  for(int i=0;i<100;i++)
+    randoms[i] = rnd(2.0f, 4.0f);
+
   // check 
   //
   bool passed = true;
@@ -61,6 +74,19 @@ bool test000_scalar_funcs()
   passed = passed && (y20 > 0.0f) && (y20 < 1.0f) && (y21 > 0.0f) && (y21 < 1.0f) && (y22 > 0.0f) && (y22 < 1.0f);
   passed = passed && abs(y23*y23 - x) < 1e-6f && abs((1.0f/y26)*(1.0f/y26) - x) < 1e-5f;
   passed = passed && fabs(1.0f/y27 - x) < 1e-4f; 
+  passed = passed && (y32 == x) && (y33 == x) && (y34 == x) && (y35 == x);
+  
+  for(int i=0;i<100;i++)
+    passed = passed && (randoms[i] >= 2.0f && randoms[i] <= 4.0f);
+
+  for(int i=0;i<100;i++)
+  {
+    for(int j=i+1;j<100;j++)
+    {
+      if(i!=j)
+        passed = passed && (randoms[i] != randoms[j]);
+    }
+  }
 
   return passed;
 }

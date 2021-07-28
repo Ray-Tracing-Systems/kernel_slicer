@@ -682,7 +682,32 @@ bool test{{Test.Number+9}}_cstcnv_{{Test.Type}}()
 
 bool test{{Test.Number+10}}_other_{{Test.Type}}() // dummy test
 {
-  return true;
+  const {{Test.TypeS}} CxData[{{Test.VecLen}}] = { {% for Val in Test.ValuesA %} {{Test.TypeS}}({{Val}}){% if loop.index1 != Test.VecLen %}, {% endif %} {% endfor %}};
+  const {{Test.Type}}  Cx1(CxData);
+  const {{Test.Type}}  Cx2({{Test.Type}}(1));
+ 
+  const {{Test.Type}}  Cx3 = Cx1 + Cx2;
+  {{Test.TypeS}} result1[{{Test.VecLen}}];
+  {{Test.TypeS}} result2[{{Test.VecLen}}];
+  {{Test.TypeS}} result3[{{Test.VecLen}}];
+  store_u(result1, Cx1);
+  store_u(result2, Cx2);
+  store_u(result3, Cx3);
+
+  bool passed = true;
+  for (int i=0; i<{{Test.VecLen}}; i++)
+  {
+    {% if Test.IsFloat %}
+    if (fabs(result1[i] + {{Test.TypeS}}(1) - result3[i]) > 1e-10f || fabs(result2[i] - {{Test.TypeS}}(1) > 1e-10f) )
+    {% else %}
+    if (result1[i] + {{Test.TypeS}}(1) != result3[i] || result2[i] != {{Test.TypeS}}(1))
+    {% endif %}
+    {
+      passed = false;
+      break;
+    }
+  }
+  return passed;
 }
 
 ## endfor

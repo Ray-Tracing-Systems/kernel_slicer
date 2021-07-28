@@ -521,6 +521,12 @@ function(setup_target_for_coverage_gcovr_html)
         -o ${Coverage_NAME}/index.html
     )
 
+    set(GCOVR_CMD_FROL
+        ${GCOVR_PATH} --xml -r ${BASEDIR} ${GCOVR_ADDITIONAL_ARGS}
+        ${GCOVR_EXCLUDE_ARGS} --object-directory=${PROJECT_BINARY_DIR} 
+        -o ${Coverage_NAME}/coverage.xml
+    )
+
     if(CODE_COVERAGE_VERBOSE)
         message(STATUS "Executed command report")
 
@@ -541,6 +547,7 @@ function(setup_target_for_coverage_gcovr_html)
         COMMAND ${GCOVR_HTML_EXEC_TESTS_CMD}
         COMMAND ${GCOVR_HTML_FOLDER_CMD}
         COMMAND ${GCOVR_HTML_CMD}
+        COMMAND ${GCOVR_CMD_FROL}
 
         BYPRODUCTS ${PROJECT_BINARY_DIR}/${Coverage_NAME}/index.html  # report directory
         WORKING_DIRECTORY ${PROJECT_BINARY_DIR}

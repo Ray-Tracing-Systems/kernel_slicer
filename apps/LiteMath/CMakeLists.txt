@@ -32,20 +32,42 @@ add_executable(math_tests tests/tests_main.cpp
 
 set_target_properties(math_tests PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
+option(CODE_COVERAGE "Enable coverage reporting" OFF)
+option(BUILD_TESTING "Build the testing tree." OFF)
+
+#if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+#  message("CODE_COVERAGE is ENABLED")
+#  # Add required flags (GCC & LLVM/Clang)
+#  target_compile_options(math_tests INTERFACE
+#    -O0        # no optimization
+#    -g         # generate debug info
+#    --coverage # sets all required flags
+#  )
+#  if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
+#    target_link_options(math_tests INTERFACE --coverage)
+#  else()
+#    target_link_libraries(math_tests INTERFACE --coverage)
+#  endif()
+#endif(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug" AND BUILD_TESTING)
+  message("CTEST is ENABLED")
+  enable_testing()
+  add_test(AllTests math_tests)
+  set_tests_properties(AllTests PROPERTIES
+                       FAIL_REGULAR_EXPRESSION "FAILED!")
+endif()
+
 #uncomment this to add code coverage
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-if (CMAKE_COMPILER_IS_GNUCXX)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug" AND CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)
   LIST(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
   include(CodeCoverage)
   APPEND_COVERAGE_COMPILER_FLAGS()
   target_link_libraries(math_tests gcov)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -fkeep-inline-functions -fno-inline -fno-inline-small-functions -fno-default-inline")
   #set(COVERAGE_EXCLUDES "dir1/*")
-  setup_target_for_coverage_gcovr_html(
-           NAME            coverage
-           EXECUTABLE      math_tests
-           BASE_DIRECTORY  "${PROJECT_SOURCE_DIR}"
-           EXCLUDE         "${PROJECT_SOURCE_DIR}/tests/*")
-  
-endif()
+  setup_target_for_coverage_gcovr_html(NAME            coverage
+                                       EXECUTABLE      math_tests
+                                       BASE_DIRECTORY  "${PROJECT_SOURCE_DIR}"
+                                       EXCLUDE         "${PROJECT_SOURCE_DIR}/tests/*")  
 endif()

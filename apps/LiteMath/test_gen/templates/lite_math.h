@@ -68,7 +68,7 @@ namespace LiteMath
   }
 
   static inline int   as_int32(float x)  { return as_int(x);    }
-  static inline uint  as_uint32(float x) { return as_uint32(x); }
+  static inline uint  as_uint32(float x) { return as_uint(x); }
   static inline float as_float32(int x)  { return as_float(x);  }
 
   static inline float clamp(float u, float a, float b) { return std::min(std::max(a, u), b); }
@@ -89,7 +89,7 @@ namespace LiteMath
   static inline float smoothstep(float edge0, float edge1, float x)
   {
     float  tVal = (x - edge0) / (edge1 - edge0);
-    float  t    = fmin(fmax(tVal, 0.0f), 1.0f); 
+    float  t    = std::min(std::max(tVal, 0.0f), 1.0f); 
     return t * t * (3.0f - 2.0f * t);
   }
 
