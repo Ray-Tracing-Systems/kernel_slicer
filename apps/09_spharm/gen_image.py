@@ -1,4 +1,6 @@
 import numpy as np
+import numba as nb
+import time
 import struct
 import imageio
 import math
@@ -11,22 +13,27 @@ with open("out.bin", "rb") as fin:
   for i in range(COEFS_COUNT):
     coefs[i] = np.array([*struct.unpack("fff", fin.read(12))])
 
-plot = np.zeros((512, 512, 3))
-for i in range(512):
-  for j in range(512):
-    y = -(i - 256) / 256
-    x = (j - 256) / 256
-    if x * x + y * y > 1:
-      continue
-    z = (1 - x * x - y * y) ** 0.5
-    plot[i, j] += coefs[0]
-    plot[i, j] += coefs[1] * y
-    plot[i, j] += coefs[2] * z
-    plot[i, j] += coefs[3] * x
-    plot[i, j] += coefs[4] * x * y
-    plot[i, j] += coefs[5] * y * z
-    plot[i, j] += coefs[6] * (2 * z ** 2 - x ** 2 - y ** 2)
-    plot[i, j] += coefs[7] * x * z
-    plot[i, j] += coefs[8] * x ** 2 - y ** 2
+@nb.njit
+def get_plot():
+  plot = np.zeros((512, 512, 3))
+  for i in range(512):
+    for j in range(512):
+      y = -(i - 256) / 256
+      x = (j - 256) / 256
+      if x * x + y * y > 1:
+        continue
+      z = (1 - x * x - y * y) ** 0.5
+      plot[i, j] += coefs[0]
+      plot[i, j] += coefs[1] * y
+      plot[i, j] += coefs[2] * z
+      plot[i, j] += coefs[3] * x
+      plot[i, j] += coefs[4] * x * y
+      plot[i, j] += coefs[5] * y * z
+      plot[i, j] += coefs[6] * (2 * z ** 2 - x ** 2 - y ** 2)
+      plot[i, j] += coefs[7] * x * z
+      plot[i, j] += coefs[8] * x ** 2 - y ** 2
+  return plot
 
-imageio.imwrite(sys.argv[1] + '_res.png', plot)
+start = time.time()
+imageio.imwrite(sys.argv[1] + '_res.png', get_plot())
+print("time(gen_image) = {0:.2f} s".format(time.time() - start))
