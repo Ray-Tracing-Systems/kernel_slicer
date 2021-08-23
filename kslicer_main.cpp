@@ -863,6 +863,6 @@ int main(int argc, const char **argv)
   //std::ofstream file(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_kernels.json");
   //file << std::setw(2) << json; //
   //file.close();
-
+  // test commit
   return 0;
 }
