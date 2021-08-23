@@ -707,6 +707,53 @@ bool test{{Test.Number+10}}_other_{{Test.Type}}() // dummy test
       break;
     }
   }
+
+  {% if Test.VecLen == 4 %}
+  const {{Test.TypeS}}  dat3 = dot3(Cx1, Cx2);
+  const {{Test.TypeS}}  dat4 = dot4(Cx1, Cx2);
+  const {{Test.Type}}   crs4 = cross3(Cx1, Cx2);
+  {% endif %}
+  const {{Test.TypeS}}  dat5 = dot  (Cx1, Cx2);
+  {% if Test.VecLen >= 3 %}
+  const {{Test.Type}}   crs3 = cross(Cx1, Cx2);
+  const {{Test.TypeS}} crs_ref[3] = { Cx1[1]*Cx2[2] - Cx1[2]*Cx2[1], 
+                                      Cx1[2]*Cx2[0] - Cx1[0]*Cx2[2], 
+                                      Cx1[0]*Cx2[1] - Cx1[1]*Cx2[0] };
+  {% endif %}
+  {% if Test.IsFloat %}
+  {% if Test.VecLen == 4 %}
+  passed = passed && (std::abs(dat3 - (Cx1.x*Cx2.x + Cx1.y*Cx2.y + Cx1.z*Cx2.z)) < 1e-6f);
+  passed = passed && (std::abs(dat4 - (Cx1.x*Cx2.x + Cx1.y*Cx2.y + Cx1.z*Cx2.z + Cx1.w*Cx2.w)) < 1e-6f);
+  passed = passed && (std::abs(dot(crs4-crs3, crs4-crs3)) < 1e-6f);
+  {% endif %}
+  {
+    {{Test.TypeS}} sum = {{Test.TypeS}}(0);
+    for(int i=0;i<{{Test.VecLen}};i++)
+      sum += Cx1[i]*Cx2[i];
+    passed = passed && (std::abs(sum - dat5) < 1e-6f);
+    {% if Test.VecLen >= 3 %}
+    for(int i=0;i<3;i++)
+      passed = passed && (std::abs(crs3[i] - crs_ref[i]) < 1e-6f);
+    {% endif %}
+  }
+  {% else %}
+  {% if Test.VecLen == 4 %}
+  passed = passed && (dat3 == Cx1.x*Cx2.x + Cx1.y*Cx2.y + Cx1.z*Cx2.z);
+  passed = passed && (dat4 == Cx1.x*Cx2.x + Cx1.y*Cx2.y + Cx1.z*Cx2.z + Cx1.w*Cx2.w);
+  passed = passed && (dot(crs4-crs3, crs4-crs3) == 0);
+  {% endif %}
+  {
+    {{Test.TypeS}} sum = {{Test.TypeS}}(0);
+    for(int i=0;i<{{Test.VecLen}};i++)
+      sum += Cx1[i]*Cx2[i];
+    passed = passed && (sum == dat5);
+    {% if Test.VecLen >= 3 %}
+    for(int i=0;i<3;i++)
+      passed = passed && (crs3[i] == crs_ref[i]);
+    {% endif %}
+  }
+  {% endif %}
+
   return passed;
 }
 

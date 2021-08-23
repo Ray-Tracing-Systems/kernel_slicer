@@ -51,6 +51,16 @@ static inline float4 to_float4(float3 v, float w)
   return res;
 }
 
+static inline float4 mul4x4x4(float4x4 m, float4 v)
+{
+  float4 res;
+  res.x = v.x * m.m_col[0].x + v.y * m.m_col[1].x + v.z * m.m_col[2].x + v.w * m.m_col[3].x;
+  res.y = v.x * m.m_col[0].y + v.y * m.m_col[1].y + v.z * m.m_col[2].y + v.w * m.m_col[3].y;
+  res.z = v.x * m.m_col[0].z + v.y * m.m_col[1].z + v.z * m.m_col[2].z + v.w * m.m_col[3].z;
+  res.w = v.x * m.m_col[0].w + v.y * m.m_col[1].w + v.z * m.m_col[2].w + v.w * m.m_col[3].w;
+  return res;
+}
+
 #define constexpr __constant static
 
 #endif

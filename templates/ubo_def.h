@@ -3,7 +3,7 @@
 
 {% if ShaderGLSL %}
 #ifndef GLSL
-#include "OpenCLMath.h"
+#include "LiteMath.h"
 typedef LiteMath::float4x4 mat4;
 typedef LiteMath::float3   vec3;
 typedef LiteMath::float4   vec4;
@@ -15,7 +15,7 @@ typedef LiteMath::float4   vec4;
 #define INV_TWOPI     0.15915494309189533577f
 #endif
 {% else %}
-#include "OpenCLMath.h"
+#include "LiteMath.h"
 {% endif %}
 
 struct {{MainClassName}}_UBO_Data

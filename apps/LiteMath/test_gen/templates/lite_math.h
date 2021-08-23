@@ -200,8 +200,10 @@ namespace LiteMath
   static inline {{Test.Type}} inversesqrt({{Test.TypeC}} a)          { return 1.0f/sqrt(a); }
   {% endif %}  
   static inline  {{Test.TypeS}} dot({{Test.TypeC}} a, {{Test.TypeC}} b)  { return {% for Coord in Test.XYZW %}a.{{Coord}}*b.{{Coord}}{% if loop.index1 != Test.VecLen %} + {% endif %}{% endfor %}; }
+  {% if Test.IsFloat %}
   static inline  {{Test.TypeS}} length({{Test.TypeC}} a) { return std::sqrt(dot(a,a)); }
   static inline  {{Test.Type}} normalize({{Test.TypeC}} a) { {{Test.TypeS}} lenInv = {{Test.TypeS}}(1)/length(a); return a*lenInv; }
+  {% endif %}
   {% if Test.VecLen == 4 %}
   static inline {{Test.TypeS}}  dot3({{Test.TypeC}} a, {{Test.TypeC}} b)  { return a.x*b.x + a.y*b.y + a.z*b.z; }
   static inline {{Test.TypeS}}  dot4({{Test.TypeC}} a, {{Test.TypeC}} b)  { return dot(a,b); } {% if Test.IsFloat %}
@@ -209,7 +211,7 @@ namespace LiteMath
   static inline {{Test.TypeS}}  dot4f({{Test.TypeC}} a, {{Test.TypeC}} b) { return dot(a,b); }
   static inline {{Test.Type}} dot3v({{Test.TypeC}} a, {{Test.TypeC}} b) { {{Test.TypeS}} res = dot3(a,b); return {{Test.Type}}(res); }
   static inline {{Test.Type}} dot4v({{Test.TypeC}} a, {{Test.TypeC}} b) { {{Test.TypeS}} res = dot(a,b);  return {{Test.Type}}(res); }
-
+  {% if Test.IsFloat %}
   static inline {{Test.TypeS}} length3({{Test.TypeC}} a)  { return std::sqrt(dot3(a,a)); }
   static inline {{Test.TypeS}} length3f({{Test.TypeC}} a) { return std::sqrt(dot3(a,a)); }
   static inline {{Test.TypeS}} length4({{Test.TypeC}} a)  { return std::sqrt(dot4(a,a)); }
@@ -217,7 +219,7 @@ namespace LiteMath
   static inline {{Test.Type}} length3v({{Test.TypeC}} a) { {{Test.TypeS}} res = std::sqrt(dot3(a,a)); return {{Test.Type}}(res); }
   static inline {{Test.Type}} length4v({{Test.TypeC}} a) { {{Test.TypeS}} res = std::sqrt(dot4(a,a)); return {{Test.Type}}(res); }
   static inline {{Test.Type}} normalize3({{Test.TypeC}} a) { {{Test.TypeS}} lenInv = {{Test.TypeS}}(1)/length3(a); return a*lenInv; }
-  {% endif %} {% endif %}
+  {% endif %} {% endif %} {% endif %}
   static inline {{Test.Type}} blend({{Test.TypeC}} a, {{Test.TypeC}} b, const uint{{Test.VecLen}} mask) { return {{Test.Type}}{{OPN}}{% for Coord in Test.XYZW %}(mask.{{Coord}} == 0) ? b.{{Coord}} : a.{{Coord}}{% if loop.index1 != Test.VecLen %}, {% endif %}{% endfor %}{{CLS}}; }
   {% for Coord in Test.XYZW %}
   static inline {{Test.TypeS}} extract_{{loop.index}}({{Test.TypeC}} a) { return a.{{Coord}}; } {% endfor %}
@@ -447,15 +449,6 @@ namespace LiteMath
       m_col[3] = float4{ 0.0f, 0.0f, 0.0f, 1.0f };
     }
 
-    inline float4x4 operator*(const float4x4& rhs)
-    {
-      // transpose will change multiplication order (due to we use column major uactually!)
-      //
-      float4x4 res;
-      mat4_rowmajor_mul_mat4((float*)res.m_col, (const float*)rhs.m_col, (const float*)m_col); 
-      return res;
-    }
-
     inline float4 get_col(int i) const                { return m_col[i]; }
     inline void   set_col(int i, const float4& a_col) { m_col[i] = a_col; }
 
@@ -500,7 +493,22 @@ namespace LiteMath
     return res;
   }
 
+  static inline float4 mul(const float4x4& m, const float4& v)
+  {
+    float4 res;
+    mat4_colmajor_mul_vec4((float*)&res, (const float*)&m, (const float*)&v);
+    return res;
+  }
+
   static inline float3 operator*(const float4x4& m, const float3& v)
+  {
+    float4 v2 = float4{v.x, v.y, v.z, 1.0f}; 
+    float4 res;                             
+    mat4_colmajor_mul_vec4((float*)&res, (const float*)&m, (const float*)&v2);
+    return to_float3(res);
+  }
+
+  static inline float3 mul(const float4x4& m, const float3& v)
   {
     float4 v2 = float4{v.x, v.y, v.z, 1.0f}; 
     float4 res;                             
@@ -561,17 +569,7 @@ namespace LiteMath
     res.set_col(3, float4{     0.0f,     0.0f, 0.0f, 1.0f  });
     return res;
   }
-
-  static inline float4 mul(float4x4 m, float4 v)
-  {
-    float4 res;
-    res.x = m.get_row(0).x*v.x + m.get_row(0).y*v.y + m.get_row(0).z*v.z + m.get_row(0).w*v.w;
-    res.y = m.get_row(1).x*v.x + m.get_row(1).y*v.y + m.get_row(1).z*v.z + m.get_row(1).w*v.w;
-    res.z = m.get_row(2).x*v.x + m.get_row(2).y*v.y + m.get_row(2).z*v.z + m.get_row(2).w*v.w;
-    res.w = m.get_row(3).x*v.x + m.get_row(3).y*v.y + m.get_row(3).z*v.z + m.get_row(3).w*v.w;
-    return res;
-  }
-
+  
   static inline float4x4 mul(float4x4 m1, float4x4 m2)
   {
     const float4 column1 = mul(m1, m2.col(0));

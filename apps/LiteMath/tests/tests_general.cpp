@@ -345,13 +345,32 @@ bool test011_mattranspose()
              13.0f,14.0f,15.0f,16.0f);
 
   float4x4 m2 = transpose(m);
+
+  float4x4 mrotX = rotate4x4X(M_PI*0.5f);
+  float4x4 mrotY = rotate4x4Y(M_PI*0.5f);
+  float4x4 mrotZ = rotate4x4Z(M_PI*0.5f);
+
+  float4x4 mrotI = inverse4x4(mrotX);
+  float4x4 check = mrotI*mrotX;
+  float4x4 identity;
   
+  float3 p1(0,1,0);
+  float3 p2 = mrotX*p1;
+  float3 p3 = mrotZ*p1;
+  float3 p4 = mul(mrotY, mrotX*p1);
+ 
   double error = 0.0;
   for(int i=0;i<4;i++)
-  {
     for(int j=0;j<4;j++)
       error += fabs( m(i,j) - m2(j,i));
-  }
   
-  return error < 1e-20f;
+  for(int i=0;i<4;i++)
+    for(int j=0;j<4;j++)
+      error += fabs( check[i][j] - identity[i][j]);
+  
+  error += length(p2 - float3(0,0,1));
+  error += length(p3 - float3(-1,0,0));
+  error += length(p4 - float3(1,0,0));
+
+  return error < 1e-6f;
 }

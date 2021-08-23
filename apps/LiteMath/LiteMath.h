@@ -1,6 +1,15 @@
+#ifndef LITE_MATH_G
+#define LITE_MATH_G
+#ifdef __OPENCL_VERSION__
+  #include "LiteMathGPU.h"  // if this file is included in OpenCL shaders 
+#else
+
+#include <cstdint>
 #include <cmath>
 #include <limits>           // for std::numeric_limits
 #include <cstring>          // for memcpy
+#include <algorithm>        // for std::min/std::max 
+#include <initializer_list> //
 
 #ifdef M_PI
 #undef M_PI // same if we have such macro some-where else ...
@@ -14,15 +23,12 @@
 #undef min // if we on windows, need thid due to macro definitions in windows.h; same if we have such macro some-where else.
 #endif
 
-#include <algorithm>        // for std::min/std::max 
-#include <initializer_list> //
-
 #if defined(_MSC_VER)
 #define CVEX_ALIGNED(x) __declspec(align(x))
 #else
-#if defined(__GNUC__)
+//#if defined(__GNUC__)
 #define CVEX_ALIGNED(x) __attribute__ ((aligned(x)))
-#endif
+//#endif
 #endif
 
 namespace LiteMath
@@ -185,8 +191,7 @@ namespace LiteMath
   static inline uint4 clamp(const uint4 u, uint a, uint b) { return uint4{clamp(u.x, a, b), clamp(u.y, a, b), clamp(u.z, a, b), clamp(u.w, a, b)}; }
   
   static inline  uint dot(const uint4 a, const uint4 b)  { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w; }
-  static inline  uint length(const uint4 a) { return std::sqrt(dot(a,a)); }
-  static inline  uint4 normalize(const uint4 a) { uint lenInv = uint(1)/length(a); return a*lenInv; }
+
 
   static inline uint  dot3(const uint4 a, const uint4 b)  { return a.x*b.x + a.y*b.y + a.z*b.z; }
   static inline uint  dot4(const uint4 a, const uint4 b)  { return dot(a,b); } 
@@ -299,8 +304,7 @@ namespace LiteMath
   static inline int4 sign(const int4 a) { return int4{sign(a.x), sign(a.y), sign(a.z), sign(a.w)}; }
   
   static inline  int dot(const int4 a, const int4 b)  { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w; }
-  static inline  int length(const int4 a) { return std::sqrt(dot(a,a)); }
-  static inline  int4 normalize(const int4 a) { int lenInv = int(1)/length(a); return a*lenInv; }
+
 
   static inline int  dot3(const int4 a, const int4 b)  { return a.x*b.x + a.y*b.y + a.z*b.z; }
   static inline int  dot4(const int4 a, const int4 b)  { return dot(a,b); } 
@@ -413,8 +417,10 @@ namespace LiteMath
   static inline float4 inversesqrt(const float4 a)          { return 1.0f/sqrt(a); }
   
   static inline  float dot(const float4 a, const float4 b)  { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w; }
+
   static inline  float length(const float4 a) { return std::sqrt(dot(a,a)); }
   static inline  float4 normalize(const float4 a) { float lenInv = float(1)/length(a); return a*lenInv; }
+
 
   static inline float  dot3(const float4 a, const float4 b)  { return a.x*b.x + a.y*b.y + a.z*b.z; }
   static inline float  dot4(const float4 a, const float4 b)  { return dot(a,b); } 
@@ -537,8 +543,7 @@ namespace LiteMath
   static inline uint3 clamp(const uint3 u, uint a, uint b) { return uint3{clamp(u.x, a, b), clamp(u.y, a, b), clamp(u.z, a, b)}; }
   
   static inline  uint dot(const uint3 a, const uint3 b)  { return a.x*b.x + a.y*b.y + a.z*b.z; }
-  static inline  uint length(const uint3 a) { return std::sqrt(dot(a,a)); }
-  static inline  uint3 normalize(const uint3 a) { uint lenInv = uint(1)/length(a); return a*lenInv; }
+
 
   static inline uint3 blend(const uint3 a, const uint3 b, const uint3 mask) { return uint3{(mask.x == 0) ? b.x : a.x, (mask.y == 0) ? b.y : a.y, (mask.z == 0) ? b.z : a.z}; }
 
@@ -642,8 +647,7 @@ namespace LiteMath
   static inline int3 sign(const int3 a) { return int3{sign(a.x), sign(a.y), sign(a.z)}; }
   
   static inline  int dot(const int3 a, const int3 b)  { return a.x*b.x + a.y*b.y + a.z*b.z; }
-  static inline  int length(const int3 a) { return std::sqrt(dot(a,a)); }
-  static inline  int3 normalize(const int3 a) { int lenInv = int(1)/length(a); return a*lenInv; }
+
 
   static inline int3 blend(const int3 a, const int3 b, const uint3 mask) { return int3{(mask.x == 0) ? b.x : a.x, (mask.y == 0) ? b.y : a.y, (mask.z == 0) ? b.z : a.z}; }
 
@@ -747,8 +751,10 @@ namespace LiteMath
   static inline float3 inversesqrt(const float3 a)          { return 1.0f/sqrt(a); }
   
   static inline  float dot(const float3 a, const float3 b)  { return a.x*b.x + a.y*b.y + a.z*b.z; }
+
   static inline  float length(const float3 a) { return std::sqrt(dot(a,a)); }
   static inline  float3 normalize(const float3 a) { float lenInv = float(1)/length(a); return a*lenInv; }
+
 
   static inline float3 blend(const float3 a, const float3 b, const uint3 mask) { return float3{(mask.x == 0) ? b.x : a.x, (mask.y == 0) ? b.y : a.y, (mask.z == 0) ? b.z : a.z}; }
 
@@ -849,8 +855,7 @@ namespace LiteMath
   static inline uint2 clamp(const uint2 u, uint a, uint b) { return uint2{clamp(u.x, a, b), clamp(u.y, a, b)}; }
   
   static inline  uint dot(const uint2 a, const uint2 b)  { return a.x*b.x + a.y*b.y; }
-  static inline  uint length(const uint2 a) { return std::sqrt(dot(a,a)); }
-  static inline  uint2 normalize(const uint2 a) { uint lenInv = uint(1)/length(a); return a*lenInv; }
+
 
   static inline uint2 blend(const uint2 a, const uint2 b, const uint2 mask) { return uint2{(mask.x == 0) ? b.x : a.x, (mask.y == 0) ? b.y : a.y}; }
 
@@ -942,8 +947,7 @@ namespace LiteMath
   static inline int2 sign(const int2 a) { return int2{sign(a.x), sign(a.y)}; }
   
   static inline  int dot(const int2 a, const int2 b)  { return a.x*b.x + a.y*b.y; }
-  static inline  int length(const int2 a) { return std::sqrt(dot(a,a)); }
-  static inline  int2 normalize(const int2 a) { int lenInv = int(1)/length(a); return a*lenInv; }
+
 
   static inline int2 blend(const int2 a, const int2 b, const uint2 mask) { return int2{(mask.x == 0) ? b.x : a.x, (mask.y == 0) ? b.y : a.y}; }
 
@@ -1035,8 +1039,10 @@ namespace LiteMath
   static inline float2 inversesqrt(const float2 a)          { return 1.0f/sqrt(a); }
   
   static inline  float dot(const float2 a, const float2 b)  { return a.x*b.x + a.y*b.y; }
+
   static inline  float length(const float2 a) { return std::sqrt(dot(a,a)); }
   static inline  float2 normalize(const float2 a) { float lenInv = float(1)/length(a); return a*lenInv; }
+
 
   static inline float2 blend(const float2 a, const float2 b, const uint2 mask) { return float2{(mask.x == 0) ? b.x : a.x, (mask.y == 0) ? b.y : a.y}; }
 
@@ -1291,15 +1297,6 @@ namespace LiteMath
       m_col[3] = float4{ 0.0f, 0.0f, 0.0f, 1.0f };
     }
 
-    inline float4x4 operator*(const float4x4& rhs)
-    {
-      // transpose will change multiplication order (due to we use column major uactually!)
-      //
-      float4x4 res;
-      mat4_rowmajor_mul_mat4((float*)res.m_col, (const float*)rhs.m_col, (const float*)m_col); 
-      return res;
-    }
-
     inline float4 get_col(int i) const                { return m_col[i]; }
     inline void   set_col(int i, const float4& a_col) { m_col[i] = a_col; }
 
@@ -1344,7 +1341,31 @@ namespace LiteMath
     return res;
   }
 
+  static inline float4 mul(const float4x4& m, const float4& v)
+  {
+    float4 res;
+    mat4_colmajor_mul_vec4((float*)&res, (const float*)&m, (const float*)&v);
+    return res;
+  }
+
+
+  static inline float4 mul4x4x4(const float4x4& m, const float4& v)
+  {
+    float4 res;
+    mat4_colmajor_mul_vec4((float*)&res, (const float*)&m, (const float*)&v);
+    return res;
+  }
+  
+
   static inline float3 operator*(const float4x4& m, const float3& v)
+  {
+    float4 v2 = float4{v.x, v.y, v.z, 1.0f}; 
+    float4 res;                             
+    mat4_colmajor_mul_vec4((float*)&res, (const float*)&m, (const float*)&v2);
+    return to_float3(res);
+  }
+
+  static inline float3 mul(const float4x4& m, const float3& v)
   {
     float4 v2 = float4{v.x, v.y, v.z, 1.0f}; 
     float4 res;                             
@@ -1405,17 +1426,7 @@ namespace LiteMath
     res.set_col(3, float4{     0.0f,     0.0f, 0.0f, 1.0f  });
     return res;
   }
-
-  static inline float4 mul(float4x4 m, float4 v)
-  {
-    float4 res;
-    res.x = m.get_row(0).x*v.x + m.get_row(0).y*v.y + m.get_row(0).z*v.z + m.get_row(0).w*v.w;
-    res.y = m.get_row(1).x*v.x + m.get_row(1).y*v.y + m.get_row(1).z*v.z + m.get_row(1).w*v.w;
-    res.z = m.get_row(2).x*v.x + m.get_row(2).y*v.y + m.get_row(2).z*v.z + m.get_row(2).w*v.w;
-    res.w = m.get_row(3).x*v.x + m.get_row(3).y*v.y + m.get_row(3).z*v.z + m.get_row(3).w*v.w;
-    return res;
-  }
-
+  
   static inline float4x4 mul(float4x4 m1, float4x4 m2)
   {
     const float4 column1 = mul(m1, m2.col(0));
@@ -1769,3 +1780,5 @@ namespace LiteMath
 
 };
 
+#endif
+#endif
