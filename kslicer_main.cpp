@@ -535,7 +535,7 @@ int main(int argc, const char **argv)
 
       clang::ast_matchers::MatchFinder finder;
       for(auto& matcher : allMatchers)
-        finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource,matcher), pMatcherPrc.get());
+        finder.addMatcher(clang::ast_matchers::traverse(clang::TK_IgnoreUnlessSpelledInSource,matcher), pMatcherPrc.get());
       
       std::cout << "  process control function: " << mainFuncName.c_str() << "(...)" << std::endl;
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
@@ -594,7 +594,7 @@ int main(int argc, const char **argv)
 
     clang::ast_matchers::MatchFinder finder;
     for(auto& matcher : kernelMatchers)
-      finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, matcher), pFilter.get());
+      finder.addMatcher(clang::ast_matchers::traverse(clang::TK_IgnoreUnlessSpelledInSource, matcher), pFilter.get());
 
     auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
     std::cout << "  process " << kernel.name.c_str() << ":\t" << GetClangToolingErrorCodeMessage(res) << std::endl;

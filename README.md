@@ -43,11 +43,11 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 0. git clone --recurse-submodules https://github.com/Ray-Tracing-Systems/kernel_slicer
 
-1. sudo apt-get install llvm-11-dev
+1. sudo apt-get install llvm-12-dev
 
-2. sudo touch /usr/lib/llvm-11/bin/yaml-bench 
+2. sudo touch /usr/lib/llvm-12/bin/yaml-bench 
 
-3. sudo apt-get install libclang-11-dev 
+3. sudo apt-get install libclang-12-dev 
 
 4. use Cmake and make
 

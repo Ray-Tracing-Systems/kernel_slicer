@@ -2,7 +2,9 @@
 #include "ast_matchers.h"
 
 #include "clang/AST/RecursiveASTVisitor.h"
-#include "clang/AST/Decl.h"
+#include "clang/AST/ASTConsumer.h"
+#include "clang/AST/ASTTypeTraits.h"
+#include "clang/AST/DeclTemplate.h"
 
 #include <queue>
 
@@ -478,9 +480,9 @@ std::vector<kslicer::DeclInClass> kslicer::ExtractTCFromClass(const std::string&
     
   clang::ast_matchers::MatchFinder finder;
   kslicer::TC_Extractor typeAndConstantsHandler(compiler);
-  finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, structMatcher), &typeAndConstantsHandler);
-  finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, varMatcher),    &typeAndConstantsHandler);
-  finder.addMatcher(clang::ast_matchers::traverse(clang::ast_type_traits::TK_IgnoreUnlessSpelledInSource, tpdefMatcher),  &typeAndConstantsHandler);
+  finder.addMatcher(clang::ast_matchers::traverse(clang::TK_IgnoreUnlessSpelledInSource, structMatcher), &typeAndConstantsHandler);
+  finder.addMatcher(clang::ast_matchers::traverse(clang::TK_IgnoreUnlessSpelledInSource, varMatcher),    &typeAndConstantsHandler);
+  finder.addMatcher(clang::ast_matchers::traverse(clang::TK_IgnoreUnlessSpelledInSource, tpdefMatcher),  &typeAndConstantsHandler);
 
   auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
   std::cout << "  [TC_Extractor]: end process constants and structs:\t" << GetClangToolingErrorCodeMessage(res) << std::endl;
