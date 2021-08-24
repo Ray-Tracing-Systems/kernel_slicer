@@ -3,7 +3,8 @@
 #include <vector>
 #include <fstream>
 
-#include "OpenCLMath.h"
+#include "LiteMath.h"
+using namespace LiteMath;
 
 class nBody
 {

@@ -50,7 +50,7 @@ void process_image_gpu(std::vector<uint32_t>& a_inPixels)
   instance = vk_utils::CreateInstance(enableValidationLayers, enabledLayers, extensions);
   volkLoadInstance(instance);
 
-  physicalDevice       = vk_utils::FindPhysicalDevice(instance, true, 1);
+  physicalDevice       = vk_utils::FindPhysicalDevice(instance, true, 0);
   auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
   
   VkPhysicalDeviceVariablePointersFeatures varPointers = {};

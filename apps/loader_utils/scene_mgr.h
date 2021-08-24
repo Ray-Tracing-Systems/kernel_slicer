@@ -8,7 +8,6 @@
 
 #include "vk_copy.h"
 #include "vk_rt_utils.h"
-#include "OpenCLMath.h"
 
 
 struct InstanceInfo

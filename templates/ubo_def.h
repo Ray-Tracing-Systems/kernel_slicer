@@ -15,7 +15,15 @@ typedef LiteMath::float4   vec4;
 #define INV_TWOPI     0.15915494309189533577f
 #endif
 {% else %}
+#ifndef GLSL
 #include "LiteMath.h"
+#else
+#define float4x4 mat4
+#define float3   vec3
+#define float4   vec4
+#define uint32_t uint
+#define int32_t  int
+#endif
 {% endif %}
 
 struct {{MainClassName}}_UBO_Data

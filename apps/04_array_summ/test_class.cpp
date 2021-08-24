@@ -1,34 +1,7 @@
 #include "test_class.h"
+#include <cstdint>
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/*
-class Numbers
-{
-public:
- 
-  void CalcArraySumm(const int* a_data, uint a_dataSize)
-  {
-    kernel1D_ArraySumm(a_data, a_dataSize);
-  }
-  
-  void kernel1D_ArraySumm(const int* a_data, size_t a_dataSize)
-  {
-    m_summ = 0;
-    for(uint i=0; i<a_dataSize; i++)
-    {
-      int number = a_data[i];
-      if(number > 0)
-        m_summ += number;
-    }
-  }
-
-  int m_summ;
-};*/
-
-
-void Numbers::CalcArraySumm(const int* a_data, uint a_dataSize)
+void Numbers::CalcArraySumm(const int* a_data, unsigned int a_dataSize)
 {
   kernel1D_ArraySumm(a_data, a_dataSize);
 }
@@ -36,7 +9,7 @@ void Numbers::CalcArraySumm(const int* a_data, uint a_dataSize)
 void Numbers::kernel1D_ArraySumm(const int* a_data, size_t a_dataSize)
 {
   m_summ = 0;
-  for(uint i=0; i<a_dataSize; i++)
+  for(int i=0; i<a_dataSize; i++)
   {
     int number = a_data[i];
     if(number > 0)

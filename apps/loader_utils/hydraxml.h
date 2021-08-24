@@ -2,7 +2,9 @@
 #define HYDRAXML_H
 
 #include "pugixml.hpp"
-#include "OpenCLMath.h" 
+#include "LiteMath.h"
+using namespace LiteMath;
+
 #include <vector>
 #include <set>
 #include <unordered_map>

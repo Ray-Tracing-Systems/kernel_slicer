@@ -1,7 +1,10 @@
 #ifndef BASIC_PROJ_LOGIC_H
 #define BASIC_PROJ_LOGIC_H
 
-#include "OpenCLMath.h"
+#include "LiteMath.h"
+#ifndef __OPENCL_VERSION__
+using namespace LiteMath;
+#endif
 
 static inline uint RealColorToUint32_f3(float3 real_color)
 {
