@@ -1,7 +1,12 @@
 #ifndef RTC_RANDOM
 #define RTC_RANDOM
 
-#include "BasicLogic.h"
+#define LAYOUT_STD140
+#include "LiteMath.h"
+#ifndef __OPENCL_VERSION__
+using namespace LiteMath;
+#endif
+
 
 typedef struct RandomGenT
 {

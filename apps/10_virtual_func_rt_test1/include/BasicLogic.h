@@ -1,7 +1,11 @@
 #ifndef BASIC_PROJ_LOGIC_H
 #define BASIC_PROJ_LOGIC_H
 
-#include "OpenCLMath.h"
+#define LAYOUT_STD140
+#include "LiteMath.h"
+#ifndef __OPENCL_VERSION__
+using namespace LiteMath;
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -13,7 +17,6 @@ typedef struct Lite_HitT
   int   instId;
   int   geomId;
 } Lite_Hit;
-
 
 typedef struct SurfaceHitT
 {
@@ -233,13 +236,6 @@ static inline float3 EvalSurfaceNormal(float3 a_rayDir, uint a_primId, float2 uv
 
   const float flipNorm = dot(a_rayDir, norm) > 0.001f ? -1.0f : 1.0f;
   return flipNorm*norm;
-}
-
-static inline float3 reflect(float3 dir, float3 normal) 
-{ 
-  // Do not use this function for "wo" and "wh" microfacets terms. 
-  // They need the formula: 2.0f * dot(wo, wh) * wh - wo;
-  return normalize((normal * dot(dir, normal) * (-2.0f)) + dir); 
 }
 
 static inline float3 SphericalDirectionPBRT(const float sintheta, const float costheta, const float phi) 

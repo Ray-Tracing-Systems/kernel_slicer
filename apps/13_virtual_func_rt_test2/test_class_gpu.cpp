@@ -193,7 +193,7 @@ void test_class_gpu()
   instance = vk_utils::CreateInstance(enableValidationLayers, enabledLayers, extensions);
   volkLoadInstance(instance);
 
-  physicalDevice       = vk_utils::FindPhysicalDevice(instance, true, 1);
+  physicalDevice       = vk_utils::FindPhysicalDevice(instance, true, 0);
   auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
   
   // query features for RTX

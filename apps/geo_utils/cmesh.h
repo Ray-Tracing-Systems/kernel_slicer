@@ -7,7 +7,8 @@
 #include <memory>
 #include <cassert>
 
-#include "OpenCLMath.h"
+#include "LiteMath.h"
+using namespace LiteMath;
 
 namespace cmesh
 {

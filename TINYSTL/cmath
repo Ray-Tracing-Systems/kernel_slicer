@@ -39,6 +39,7 @@ float expf(float x);
 float copysign(float eps, float val);
 
 float floor(float x);
+float ceil(float x);
 float floorf(float x);
 
 static const unsigned int RAND_MAX = 65535;
@@ -65,6 +66,9 @@ namespace std
   template<typename T> T acos  (T x) { return x; }
   template<typename T> T atan  (T y_over_x) { return y_over_x; }
   template<typename T> T atan2 (T y, T x) { return y; }
+
+  template<typename T> T floor(T x);
+  template<typename T> T ceil(T x);
 };
 
 #include <cstdint>

@@ -6,7 +6,10 @@ namespace std
   template<class T> 
   struct numeric_limits
   {
-    static T infinity() { return T(1e38f); }
+    static constexpr T infinity() { return T(1e38f); }
+    static constexpr T max     () { return T(1e38f); }
+    static constexpr T min     () { return -T(1e37f); }
+    static constexpr T epsilon () { return -T(1e6f); }
   };
 
   

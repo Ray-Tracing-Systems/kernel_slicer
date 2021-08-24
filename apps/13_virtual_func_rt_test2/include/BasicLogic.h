@@ -1,7 +1,11 @@
 #ifndef BASIC_PROJ_LOGIC_H
 #define BASIC_PROJ_LOGIC_H
 
-#include "OpenCLMath.h"
+#define LAYOUT_STD140
+#include "LiteMath.h"
+#ifndef __OPENCL_VERSION__
+using namespace LiteMath;
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -126,18 +130,6 @@ static inline void CoordinateSystem(float3 v1, float3* v2, float3* v3)
   (*v3) = cross(v1, (*v2));
 }
 
-#ifndef M_PI
-#define M_PI          3.14159265358979323846f
-#endif
-
-#ifndef M_TWOPI
-#define M_TWOPI       6.28318530717958647692f
-#endif
-
-#ifndef INV_PI
-#define INV_PI        0.31830988618379067154f
-#endif
-
 #define GEPSILON      5e-6f
 #define DEPSILON      1e-20f
 
@@ -235,13 +227,6 @@ static inline float3 EvalSurfaceNormal(float3 a_rayDir, uint a_primId, float2 uv
   return flipNorm*norm;
 }
 
-static inline float3 reflect(float3 dir, float3 normal) 
-{ 
-  // Do not use this function for "wo" and "wh" microfacets terms. 
-  // They need the formula: 2.0f * dot(wo, wh) * wh - wo;
-  return normalize((normal * dot(dir, normal) * (-2.0f)) + dir); 
-}
-
 static inline float3 SphericalDirectionPBRT(const float sintheta, const float costheta, const float phi) 
 { 
   return make_float3(sintheta * cos(phi), sintheta * sin(phi), costheta); 
@@ -275,11 +260,6 @@ static inline float GGX_GeomShadMask(const float cosThetaN, const float alpha)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static inline float2 fract2(float2 v)
-{
-  return v - floor(v);
-}
-
-static inline float fract(float v)
 {
   return v - floor(v);
 }

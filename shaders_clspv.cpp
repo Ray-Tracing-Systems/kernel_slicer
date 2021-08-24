@@ -66,8 +66,9 @@ void kslicer::ClspvCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
 {
   const auto& mainClassFileName       = a_codeInfo->mainClassFileName;
   const auto& includeToShadersFolders = a_codeInfo->includeToShadersFolders;
-
-  std::string incUBOPath = GetFolderPath(mainClassFileName) + "/include";
+  
+  std::string folderPath = GetFolderPath(mainClassFileName);
+  std::string incUBOPath = folderPath + "/include";
   #ifdef WIN32
   mkdir(incUBOPath.c_str());
   #else
