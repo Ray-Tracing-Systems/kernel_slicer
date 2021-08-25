@@ -67,6 +67,8 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 8. Install Vulkan SDK (https://vulkan.lunarg.com/sdk/home)
 
+9. For **Arch Linux** and probably some other systems you might want to [build it as a part of llvm](doc/README_build_with_llvm.md) due to problems with standart library for prebuild version of clang 
+
 # Concept and general workflow
 
 Now let us discuss general workflow of using kernel_slicer to port you code to GPU (Fig. 3):
