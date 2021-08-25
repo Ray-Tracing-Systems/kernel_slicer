@@ -22,6 +22,6 @@
 7) Rename "CMakeLists.txt" to "CMakeLists2.txt" (please don't commit)
 8) Rename "CMakeLists1.txt" to "CMakeLists.txt" (please rename back before commiting!)
 9) ninja (**from build folder of clang**)
-10) the new executable will be build in the "llvm-project/build/bin" folder
+10) executable will be build in the "llvm-project/build/bin" folder; copy it to "clang-tools-extra/kernel_slicer" and run samples
 
  
