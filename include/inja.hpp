@@ -553,7 +553,8 @@ nssv_DISABLE_MSVC_WARNINGS(4455 26481 26472)
       assert(pos < size());
 #else
       if (pos >= size()) {
-        throw std::out_of_range("nonstd::string_view::at()");
+        //throw std::out_of_range("nonstd::string_view::at()");  // exceptions are disabled when build llvm from source code!
+        std::cout << "out_of_range, nonstd::string_view::at()" << pos << " >= " << size() << std::endl;
       }
 #endif
       return data_at(pos);
@@ -590,7 +591,8 @@ nssv_DISABLE_MSVC_WARNINGS(4455 26481 26472)
       assert(pos <= size());
 #else
       if (pos > size()) {
-        throw std::out_of_range("nonstd::string_view::copy()");
+        //throw std::out_of_range("nonstd::string_view::copy()");
+        std::cout << "out_of_range, nonstd::string_view::copy()" << pos << " >= " << size() << std::endl;
       }
 #endif
       const size_type rlen = (std::min)(n, size() - pos);
@@ -605,7 +607,8 @@ nssv_DISABLE_MSVC_WARNINGS(4455 26481 26472)
       assert(pos <= size());
 #else
       if (pos > size()) {
-        throw std::out_of_range("nonstd::string_view::substr()");
+        //throw std::out_of_range("nonstd::string_view::substr()");
+        std::cout << "out_of_range, nonstd::string_view::substr()" << pos << " >= " << size() << std::endl;
       }
 #endif
       return basic_string_view(data() + pos, (std::min)(n, size() - pos));
@@ -1825,6 +1828,7 @@ struct Token {
 #include <fstream>
 #include <string>
 #include <utility>
+#include <iostream>
 
 // #include "exceptions.hpp"
 
@@ -1835,11 +1839,13 @@ namespace inja {
 
 inline void open_file_or_throw(const std::string &path, std::ifstream &file) {
   file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-  try {
-    file.open(path);
-  } catch (const std::ios_base::failure & /*e*/) {
-    throw FileError("failed accessing file at '" + path + "'");
-  }
+  //try {                                                         // exceptions are disabled when build llvm from source code!
+    file.open(path);                                              // exceptions are disabled when build llvm from source code!
+    if(!file.is_open())
+      std::cout << "inja can't open " << path.c_str() << std::endl;
+  //} catch (const std::ios_base::failure & /*e*/) {              // exceptions are disabled when build llvm from source code!
+  //  throw FileError("failed accessing file at '" + path + "'"); // exceptions are disabled when build llvm from source code!
+  //}                                                             // exceptions are disabled when build llvm from source code!
 }
 
 namespace string_view {
@@ -2778,7 +2784,8 @@ class Parser {
   std::stack<ForStatementNode*> for_statement_stack;
 
   void throw_parser_error(const std::string &message) {
-    throw ParserError(message, lexer.current_position());
+    //throw ParserError(message, lexer.current_position());
+    std::cout << message.c_str() << lexer.current_position().line << ":" << lexer.current_position().column << std::endl;
   }
 
   void get_next_token() {
@@ -3407,7 +3414,8 @@ class Renderer : public NodeVisitor  {
 
   void throw_renderer_error(const std::string &message, const AstNode& node) {
     SourceLocation loc = get_source_location(current_template->content, node.pos);
-    throw RenderError(message, loc);
+    //throw RenderError(message, loc); // exceptions are disabled when build llvm from source code!
+    std::cout << "inja RenderError: " << message.c_str() << loc.line << ":" << loc.column << std::endl;
   }
 
   template<size_t N, bool throw_not_found=true>
