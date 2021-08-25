@@ -22,6 +22,8 @@
 7) Rename "CMakeLists.txt" to "CMakeLists2.txt" (please don't commit)
 8) Rename "CMakeLists1.txt" to "CMakeLists.txt" (please rename back before commiting!)
 9) ninja (**from build folder of clang**)
-10) executable will be build in the "llvm-project/build/bin" folder; copy it to "clang-tools-extra/kernel_slicer" and run samples
+10) executable will be build in the "llvm-project/build/bin" folder
+11) goto "llvm-project/clang-tools-extra/kernel_slicer" directory
+12) ../../build/bin/kslicer "apps/05_filter_bloom_good/test_class.cpp" -mainClass ToneMapping -stdlibfolder TINYSTL -pattern ipv -reorderLoops YX -Iapps/LiteMath IncludeToShaders -shaderCC GLSL -DKERNEL_SLICER -v
 
  

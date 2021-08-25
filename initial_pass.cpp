@@ -213,6 +213,9 @@ std::vector<kslicer::DeclInClass> kslicer::InitialPassRecursiveASTVisitor::GetEx
 
 bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f) 
 {
+  if(f->isStatic())
+    return true;
+
   if (f->hasBody())
   {
     // Get name of function
@@ -250,7 +253,6 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
       //std::cout << "  --> found member func " <<  thisTypeName.c_str() << "::" << fname.c_str() << std::endl;
     }
   }
-  
 
   return true; // returning false aborts the traversal
 }

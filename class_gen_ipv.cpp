@@ -227,11 +227,14 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
   
   a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures(); // TODO: dont work !!!
+  
+  if(a_funcInfo.loopOutsidesInit.isValid())
+    a_outLoopInitCode   = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit)   + ";";
 
-  a_outLoopInitCode   = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit)   + ";";
-  a_outLoopFinishCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesFinish) + ";";
-  //std::cout << a_outLoopFinishCode.c_str() << std::endl;
-  return                rewrite2.getRewrittenText(a_funcInfo.loopInsides)        + ";";
+  if(a_funcInfo.loopOutsidesFinish.isValid())  
+    a_outLoopFinishCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesFinish) + ";";
+
+  return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";";
 }
 
 void kslicer::IPV_Pattern::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
