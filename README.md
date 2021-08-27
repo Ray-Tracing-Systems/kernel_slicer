@@ -67,7 +67,7 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 8. Install Vulkan SDK (https://vulkan.lunarg.com/sdk/home)
 
-9. For **Arch Linux** and probably some other systems you might want to [build it as a part of llvm](doc/README_build_with_llvm.md) due to problems with standart library for prebuild version of clang 
+9. If you want to [build it as a part of llvm](doc/README_build_with_llvm.md)
 
 # Concept and general workflow
 
@@ -124,6 +124,17 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
 ./kslicer "apps/05_filter_bloom_good/test_class.cpp"  -mainClass ToneMapping -stdlibfolder TINYSTL -pattern ipv -reorderLoops YX -Iapps/LiteMath IncludeToShaders -shaderCC GLSL -DKERNEL_SLICER -v
 ```
 Now generated files should apper in  "apps/05_filter_bloom_good" folder.
+
+If kslicer **can not find "stddef.h"** inside gcc folders:
+
+  * This mean it can't find clang standart library and than start search it in system directories. You should prevent this by copying clang standart library in to appropriate folder.
+  * This happends on ArchLinux and for building kslicer as a part of llvm due to different build options of llvm dev packages for different systems.
+  * clang searches for "../lib/clang/12.0.0/include" (put your version of llvm), so just copy appropriate libraries in this way
+
+```    
+  cd kernel_slicer
+  mkdir ../lib && cp -r /usr/lib/clang/ ../lib
+```
 
 7. Compile generated shaders.
 * if use clspv: put clspv to "apps" folder and then run futher command from concrete folder sample (In VS Code config this process is called "Build Kernels"):
