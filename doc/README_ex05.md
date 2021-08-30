@@ -90,7 +90,9 @@ You should now pay attention to a number of points, some of which are important 
 
 * (IPV specific) Kernel Functions contain thread loops inside. A prefix in the kernel name will define how many nested loops should be eliminated from kernels source code to transform it to GPU kernel;
 
-* (IPV specific) For current implementation it is important to pass loop size via arguments of KF (we plan to remove this restriction).
+* (IPV specific) For current implementation it is important to pass loop size via arguments of KF.
+
+* (IPV specific) you also can use class-member variables as loop size; In this case kernel call would be indirect.
 
 Now let us see what happends with KF source code. Here is the input example:
 
