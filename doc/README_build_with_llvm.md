@@ -15,7 +15,7 @@
 
 4) go to 'llvm-project/clang-tools-extra'
 
-5) git clone https://github.com/Ray-Tracing-Systems/kernel_slicer.git
+5) git clone --recurse-submodules https://github.com/Ray-Tracing-Systems/kernel_slicer.git
    i.e. put folder on this project project in to "llvm-project/clang-tools-extra" to form "llvm-project/clang-tools-extra/kernel_slicer"
    
 6) put "add_subdirectory(kernel_slicer)" to CMakeLists.txt in "clang-tools-extra" folder
