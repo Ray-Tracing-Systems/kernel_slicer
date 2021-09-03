@@ -44,75 +44,6 @@ void TestClass::kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPo
   *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
 }
 
-static float2 RayBoxIntersectionLite(const float3 ray_pos, const float3 ray_dir_inv, const float boxMin[3], const float boxMax[3])
-{
-  const float lo = ray_dir_inv.x*(boxMin[0] - ray_pos.x);
-  const float hi = ray_dir_inv.x*(boxMax[0] - ray_pos.x);
-
-  float tmin = std::min(lo, hi);
-  float tmax = std::max(lo, hi);
-
-  const float lo1 = ray_dir_inv.y*(boxMin[1] - ray_pos.y);
-  const float hi1 = ray_dir_inv.y*(boxMax[1] - ray_pos.y);
-
-  tmin = std::max(tmin, std::min(lo1, hi1));
-  tmax = std::min(tmax, std::max(lo1, hi1));
-
-  const float lo2 = ray_dir_inv.z*(boxMin[2] - ray_pos.z);
-  const float hi2 = ray_dir_inv.z*(boxMax[2] - ray_pos.z);
-
-  tmin = std::max(tmin, std::min(lo2, hi2));
-  tmax = std::min(tmax, std::max(lo2, hi2));
-
-  return make_float2(tmin, tmax); //(tmin <= tmax) && (tmax > 0.f);
-}
-
-static void IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float4 rayDirAndFar,
-                                         __global const uint* a_indices, uint a_start, uint a_count, __global const float4* a_vert,
-                                         Lite_Hit* pHit, float2* pBars)
-{
-  const uint triAddressEnd = a_start + a_count;
-  for (uint triAddress = a_start; triAddress < triAddressEnd; triAddress = triAddress + 3u)
-  {
-    const uint A = a_indices[triAddress + 0];
-    const uint B = a_indices[triAddress + 1];
-    const uint C = a_indices[triAddress + 2];
-
-    const float4 A_pos = a_vert[A];
-    const float4 B_pos = a_vert[B];
-    const float4 C_pos = a_vert[C];
-
-    const float4 edge1 = B_pos - A_pos;
-    const float4 edge2 = C_pos - A_pos;
-    const float4 pvec  = cross(rayDirAndFar, edge2);
-    const float4 tvec  = rayPosAndNear - A_pos;
-    const float4 qvec  = cross(tvec, edge1);
-    const float dotTmp = dot(to_float3(edge1), to_float3(pvec));
-    const float invDet = 1.0f / (dotTmp > 1e-6f ? dotTmp : 1e-6f);
-
-    const float v = dot(to_float3(tvec), to_float3(pvec))*invDet;
-    const float u = dot(to_float3(qvec), to_float3(rayDirAndFar))*invDet;
-    const float t = dot(to_float3(edge2), to_float3(qvec))*invDet;
-
-    if (v > -1e-6f && u > -1e-6f && (u + v < 1.0f + 1e-6f) && t > rayPosAndNear.w && t < pHit->t)
-    {
-      pHit->t      = t;
-      pHit->primId = triAddress/3;
-      (*pBars)     = make_float2(u,v);
-    }
-  }
-
-}
-
-static inline float3 SafeInverse_4to3(float4 d)
-{
-  const float ooeps = 1.0e-36f; // Avoid div by zero.
-  float3 res;
-  res.x = 1.0f / (fabs(d.x) > ooeps ? d.x : copysign(ooeps, d.x));
-  res.y = 1.0f / (fabs(d.y) > ooeps ? d.y : copysign(ooeps, d.y));
-  res.z = 1.0f / (fabs(d.z) > ooeps ? d.z : copysign(ooeps, d.z));
-  return res;
-}
 
 bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                                 Lite_Hit* out_hit, float2* out_bars)
@@ -149,56 +80,6 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
     else
       res.geomId = HIT_TRIANGLE_GEOM;
   }
-
-  /*
-  const float3 rayDirInv = SafeInverse_4to3(rayDir);
-
-  Lite_Hit res;
-  res.primId = -1;
-  res.instId = -1;
-  res.geomId = -1;
-  res.t      = rayDir.w;
-
-  float2 baricentrics = float2(0,0);
-
-  uint nodeIdx = 0;
-  while(nodeIdx < 0xFFFFFFFE)
-  {
-    const struct BVHNode currNode = m_nodes[nodeIdx];
-    const float2 boxHit           = RayBoxIntersectionLite(to_float3(rayPos), rayDirInv, currNode.boxMin, currNode.boxMax);
-    const bool   intersects       = (boxHit.x <= boxHit.y) && (boxHit.y > rayPos.w) && (boxHit.x < res.t); // (tmin <= tmax) && (tmax > 0.f) && (tmin < curr_t)
-
-    if(intersects && currNode.leftOffset == 0xFFFFFFFF) //leaf
-    {
-      struct Interval startCount = m_intervals[nodeIdx];
-      IntersectAllPrimitivesInLeaf(rayPos, rayDir, m_indicesReordered.data(), startCount.start*3, startCount.count*3, m_vPos4f.data(), 
-                                   &res, &baricentrics);
-    }
-
-    nodeIdx = (currNode.leftOffset == 0xFFFFFFFF || !intersects) ? currNode.escapeIndex : currNode.leftOffset;
-    nodeIdx = (nodeIdx == 0) ? 0xFFFFFFFE : nodeIdx;
-  }
-  
-  // intersect flat light under roof
-  {
-    const float tLightHit  = (m_lightGeom.boxMax.y - rayPos.y)*rayDirInv.y;
-    const float4 hit_point = rayPos + tLightHit*rayDir;
-    
-    bool is_hit = (hit_point.x > m_lightGeom.boxMin.x) && (hit_point.x < m_lightGeom.boxMax.x) &&
-                  (hit_point.z > m_lightGeom.boxMin.z) && (hit_point.z < m_lightGeom.boxMax.z) &&
-                  (tLightHit < res.t);
-  
-    if(is_hit)
-    {
-      res.primId = 0;
-      res.instId = -1;
-      res.geomId = HIT_FLAT_LIGHT_GEOM;
-      res.t      = tLightHit;
-    }
-    else
-      res.geomId = HIT_TRIANGLE_GEOM;
-  }
-  */
  
   *out_hit  = res;
   *out_bars = baricentrics;
@@ -362,7 +243,7 @@ void test_class_cpu()
 
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
-  /*
+  
   // now test path tracing
   //
   const int PASS_NUMBER           = 100;
@@ -399,6 +280,5 @@ void test_class_cpu()
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }
   SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-  */
 
 }

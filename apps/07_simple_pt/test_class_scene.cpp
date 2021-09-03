@@ -139,30 +139,10 @@ int TestClass::LoadScene(const char* bvhPath, const char* meshPath)
   m_vPos4f      = m_mesh.vPos4f;
   m_vNorm4f     = m_mesh.vNorm4f;
   
-  std::cout << "[LoadScene]: fixing material indices back ... " << std::endl;
-
-  m_materialIds.resize(m_mesh.matIndices.size());   
-  //m_materialIds = m_mesh.matIndices; // // NO!!! Need to reorder them accordimg to reorderedIndices!!!
-  #pragma omp parallel for
-  for(uint32_t triIdNew = 0; triIdNew < m_mesh.TrianglesNum(); triIdNew++)
-  {
-    const uint32_t A = m_indicesReordered[triIdNew*3+0];
-    const uint32_t B = m_indicesReordered[triIdNew*3+1];
-    const uint32_t C = m_indicesReordered[triIdNew*3+2];
-
-    for(uint32_t triIdOld = 0; triIdOld < m_mesh.TrianglesNum(); triIdOld++)
-    {
-      const uint32_t AOld = m_mesh.indices[triIdOld*3+0];
-      const uint32_t BOld = m_mesh.indices[triIdOld*3+1];
-      const uint32_t COld = m_mesh.indices[triIdOld*3+2];
-
-      if(A == AOld && B == BOld && C == COld)
-      {
-        m_materialIds[triIdNew] = m_mesh.matIndices[triIdOld];
-        break;
-      } 
-    }
-  }
+  std::cout << "[LoadScene]: create accel struct " << std::endl;
+  
+  m_materialIds      = m_mesh.matIndices;
+  m_indicesReordered = m_mesh.indices;
 
   InitSceneMaterials(10);
 
@@ -171,7 +151,7 @@ int TestClass::LoadScene(const char* bvhPath, const char* meshPath)
   std::cout << "MateriaIdNum = " << m_mesh.matIndices.size() << std::endl;
 
   m_pAccelStruct->ClearGeom();
-  auto geomId = m_pAccelStruct->AddGeom_Triangles4f(m_vPos4f.data(), m_vPos4f.size(), m_mesh.indices.data(), m_mesh.indices.size());
+  auto geomId = m_pAccelStruct->AddGeom_Triangles4f(m_vPos4f.data(), m_vPos4f.size(), m_indicesReordered.data(), m_indicesReordered.size());
   
   m_pAccelStruct->BeginScene();
   float4x4 identitiMatrix;
