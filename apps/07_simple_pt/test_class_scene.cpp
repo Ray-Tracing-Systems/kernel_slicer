@@ -70,7 +70,7 @@ void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
 
 }
 
-int TestClass::LoadScene(const char* bvhPath, const char* meshPath)
+int TestClass::LoadScene(const char* bvhPath, const char* meshPath, bool a_needReorder)
 {
   std::fstream input_file;
   input_file.open(bvhPath, std::ios::binary | std::ios::in);

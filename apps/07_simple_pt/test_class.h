@@ -55,7 +55,7 @@ public:
   }
 
   void InitRandomGens(int a_maxThreads);
-  int LoadScene(const char* bvhPath, const char* meshPath);
+  virtual int LoadScene(const char* bvhPath, const char* meshPath, bool a_needReorder);
 
   void PackXY(uint tidX, uint tidY, uint* out_pakedXY);
   void CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color);

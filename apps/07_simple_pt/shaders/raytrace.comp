@@ -1,0 +1,101 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_ray_query : require
+
+#include "../shaders_generated/common_generated.h"
+
+layout(binding = 0, set = 0) buffer data0 { vec4 rayPosAndNear[]; }; //
+layout(binding = 1, set = 0) buffer data1 { vec4 rayDirAndFar[]; }; //
+layout(binding = 2, set = 0) buffer data2 { Lite_Hit out_hit[]; }; //
+layout(binding = 3, set = 0) buffer data3 { vec2 out_bars[]; }; //
+layout(binding = 4, set = 0) buffer data4 { uint kgen_threadFlags[]; }; //
+layout(binding = 5, set = 0) buffer dataUBO { TestClass_UBO_Data ubo; };
+
+layout(binding = 0, set = 1) uniform accelerationStructureEXT topLevelAS;
+//layout(binding = 1, set = 1) buffer Color { uint test_color[]; };
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout( push_constant ) uniform kernelArgs
+{
+  uint iNumElementsX; 
+  uint iNumElementsY; 
+  uint iNumElementsZ; 
+  uint tFlagsMask;    
+} kgenArgs;
+
+
+void main()
+{
+  ///////////////////////////////////////////////////////////////// prolog
+  const uint tid = uint(gl_GlobalInvocationID[0]); 
+  if(tid >= kgenArgs.iNumElementsX)
+    return;
+  if((kgen_threadFlags[tid] & kgenArgs.tFlagsMask) != 0) 
+    return;
+    bool kgenExitCond = false;
+  ///////////////////////////////////////////////////////////////// prolog
+  
+  const vec4 rayPos = rayPosAndNear[tid];
+  const vec4 rayDir = rayDirAndFar[tid] ;
+
+  Lite_Hit res;
+  res.primId = -1;
+  res.instId = -1;
+  res.geomId = -1;
+  res.t      = rayDir.w;
+  vec2 baricentrics = vec2(0,0);
+
+  rayQueryEXT rayQuery;
+  rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsOpaqueEXT, 0xff, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w);
+
+  vec3 pixelColor = vec3(0.0f, 0.0f, 1.0f);
+
+  while(rayQueryProceedEXT(rayQuery)) { }
+
+  if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT)
+  {    
+	  res.primId    = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
+	  res.geomId    = int(HIT_TRIANGLE_GEOM);
+	  res.t         = rayQueryGetIntersectionTEXT(rayQuery, true);
+    
+	  vec3 barycentricCoords = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, true));
+    barycentricCoords.x    = 1.0 - barycentricCoords.y - barycentricCoords.z;
+    baricentrics  = barycentricCoords.zy;
+  }
+
+  // intersect flat light under roof
+  {
+    const float tLightHit  = (ubo.m_lightGeom.boxMax.y - rayPos.y)/max(rayDir.y, 1e-6f);
+    const vec4 hit_point = rayPos + tLightHit*rayDir;
+    
+    bool is_hit = (hit_point.x > ubo.m_lightGeom.boxMin.x) && (hit_point.x < ubo.m_lightGeom.boxMax.x) &&
+                  (hit_point.z > ubo.m_lightGeom.boxMin.z) && (hit_point.z < ubo.m_lightGeom.boxMax.z) &&
+                  (tLightHit < res.t);
+  
+    if(is_hit)
+    {
+      res.primId = 0;
+      res.instId = -1;
+      res.geomId = int(HIT_FLAT_LIGHT_GEOM);
+      res.t      = tLightHit;
+    }
+    else
+      res.geomId = int(HIT_TRIANGLE_GEOM);
+  }
+ 
+  out_hit[tid]  = res;
+  out_bars[tid] = baricentrics;
+  kgenExitCond = (res.primId != -1) && (res.t < rayDir.w);;
+
+  //KGEN_EPILOG:
+  {
+    const bool exitHappened = (kgenArgs.tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0 ? !kgenExitCond : kgenExitCond;
+    if((kgenArgs.tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)
+      kgen_threadFlags[tid] = ((kgenArgs.tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
+  };
+}
+

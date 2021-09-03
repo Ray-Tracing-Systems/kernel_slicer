@@ -235,7 +235,7 @@ void test_class_cpu()
   }
 
   //test.LoadScene("lucy.bvh", "lucy.vsgf");
-  test.LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.bvh", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf");
+  test.LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.bvh", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf", false);
 
   // test simple ray casting
   //
@@ -245,7 +245,7 @@ void test_class_cpu()
 
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
-  
+  /*
   // now test path tracing
   //
   const int PASS_NUMBER           = 100;
@@ -282,5 +282,5 @@ void test_class_cpu()
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }
   SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-
+  */
 }

@@ -20,7 +20,12 @@ endif()
 find_package(OpenMP)
 find_package(Vulkan)
 include_directories(${Vulkan_INCLUDE_DIR})
-include_directories("../vkfw" "../volk" "../LiteMath")
+include_directories("../vkfw" 
+                    "../volk" 
+                    "../LiteMath" 
+                    "../loader_utils"
+                    "../geo_utils")
+                    
 link_directories("../volk")
 link_directories("./lib")
 
@@ -34,16 +39,22 @@ add_executable(testapp main.cpp
                        test_class_scene.cpp 
                        Bitmap.cpp
                        EmbreeRT.cpp
-                       #test_class_gpu.cpp
-                       #test_class_generated.cpp
-                       #test_class_generated_init.cpp 
-                       #test_class_generated_ds.cpp 
-                       #../vkfw/vk_utils.cpp
-                       #../vkfw/vk_copy.cpp
-                       #../vkfw/vk_buffer.cpp
-                       #../vkfw/vk_compute_pipeline.cpp
-                       #../vkfw/vk_program.cpp
-                       )
+                       test_class_gpu.cpp
+                       test_class_generated.cpp
+                       test_class_generated_init.cpp 
+                       test_class_generated_ds.cpp 
+                       ../geo_utils/cmesh.cpp
+                       ../vkfw/vk_utils.cpp
+                       ../vkfw/vk_copy.cpp
+                       ../vkfw/vk_buffer.cpp
+                       ../vkfw/vk_compute_pipeline.cpp
+                       ../vkfw/vk_program.cpp
+                       ../vkfw/vk_rt_utils.cpp
+                       ../vkfw/rt_funcs.cpp
+                       ../vkfw/vk_mesh.cpp
+                       ../loader_utils/pugixml.cpp
+                       ../loader_utils/hydraxml.cpp
+                       ../loader_utils/scene_mgr.cpp)
 
 set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} OpenMP::OpenMP_CXX volk dl 
