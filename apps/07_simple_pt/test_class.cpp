@@ -1,6 +1,9 @@
 #include "test_class.h"
 #include "include/crandom.h"
 
+using std::max;
+using std::min;
+
 void TestClass::InitRandomGens(int a_maxThreads)
 {
   m_randomGens.resize(a_maxThreads);
@@ -19,7 +22,7 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   const uint x = (XY & 0x0000FFFF);
   const uint y = (XY & 0xFFFF0000) >> 16;
 
-  const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
+  const float3 rayDir = EyeRayDir(x, y, WIN_WIDTH, WIN_HEIGHT, m_worldViewProjInv); 
   const float3 rayPos = m_camPos;
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
@@ -37,7 +40,7 @@ void TestClass::kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPo
   const uint x = (XY & 0x0000FFFF);
   const uint y = (XY & 0xFFFF0000) >> 16;
 
-  const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
+  const float3 rayDir = EyeRayDir(x, y, WIN_WIDTH, WIN_HEIGHT, m_worldViewProjInv); 
   const float3 rayPos = m_camPos;
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
@@ -63,7 +66,7 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
 
   // intersect flat light under roof
   {
-    const float tLightHit  = (m_lightGeom.boxMax.y - rayPos.y)/std::max(rayDir.y, 1e-6f);
+    const float tLightHit  = (m_lightGeom.boxMax.y - rayPos.y)/max(rayDir.y, 1e-6f);
     const float4 hit_point = rayPos + tLightHit*rayDir;
     
     bool is_hit = (hit_point.x > m_lightGeom.boxMin.x) && (hit_point.x < m_lightGeom.boxMax.x) &&
@@ -119,7 +122,6 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
   if(in_hit->geomId == HIT_FLAT_LIGHT_GEOM)
   {
     const float lightIntensity = m_materials[m_emissiveMaterialId].w;
-
     if(dot(to_float3(*rayDirAndFar), float3(0,-1,0)) < 0.0f)
       *accumColor = (*accumThoroughput)*lightIntensity;
     else
@@ -146,7 +148,7 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
   const uint32_t mtId = m_materialIds[in_hit->primId];
   const float4 mdata  = m_materials[mtId];
 
-  const float pdfVal   = cosTheta * INV_PI;
+  const float  pdfVal  = cosTheta * INV_PI;
   const float3 brdfVal = (cosTheta > 1e-5f) ? to_float3(mdata) * INV_PI : float3(0,0,0);
   const float3 bxdfVal = brdfVal * (1.0f / fmax(pdfVal, 1e-10f));
   

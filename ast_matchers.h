@@ -275,7 +275,15 @@ namespace kslicer
         const RecordDecl* parentClass = var->getParent(); 
         if(parentClass != nullptr && parentClass->getNameAsString() == m_allInfo.mainClassName)
         {
-          auto pDataMember = m_allInfo.allDataMembers.find(var->getNameAsString());
+          auto varName     = var->getNameAsString();
+          auto pDataMember = m_allInfo.allDataMembers.find(varName);
+
+          if(pDataMember == m_allInfo.allDataMembers.end())
+          {
+            std::cout << "[ERROR]: accessed member " << varName.c_str() << " was not found in allDataMembers (pouinter?)" << std::endl;
+            return;
+          }
+
           assert(pDataMember != m_allInfo.allDataMembers.end());
           assert(currKernel  != nullptr);
 
