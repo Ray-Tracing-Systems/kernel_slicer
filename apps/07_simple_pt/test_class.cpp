@@ -119,7 +119,38 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
 {
   const float4 rayPos = *rayPosAndNear;
   const float4 rayDir = *rayDirAndFar ;
+  
+  CRT_Hit hit = m_pAccelStruct->RayQuery(rayPos, rayDir);
+  
+  Lite_Hit res;
+  res.primId = hit.primId;
+  res.instId = hit.instId;
+  res.geomId = hit.geomId;
+  res.t      = hit.t;
 
+  float2 baricentrics = float2(hit.coords[0], hit.coords[1]);
+
+  // intersect flat light under roof
+  {
+    const float tLightHit  = (m_lightGeom.boxMax.y - rayPos.y)/std::max(rayDir.y, 1e-6f);
+    const float4 hit_point = rayPos + tLightHit*rayDir;
+    
+    bool is_hit = (hit_point.x > m_lightGeom.boxMin.x) && (hit_point.x < m_lightGeom.boxMax.x) &&
+                  (hit_point.z > m_lightGeom.boxMin.z) && (hit_point.z < m_lightGeom.boxMax.z) &&
+                  (tLightHit < res.t);
+  
+    if(is_hit)
+    {
+      res.primId = 0;
+      res.instId = -1;
+      res.geomId = HIT_FLAT_LIGHT_GEOM;
+      res.t      = tLightHit;
+    }
+    else
+      res.geomId = HIT_TRIANGLE_GEOM;
+  }
+
+  /*
   const float3 rayDirInv = SafeInverse_4to3(rayDir);
 
   Lite_Hit res;
@@ -167,10 +198,12 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
     else
       res.geomId = HIT_TRIANGLE_GEOM;
   }
-  
+  */
+ 
   *out_hit  = res;
   *out_bars = baricentrics;
-  return (res.primId != -1);
+  return (res.primId != -1) && (res.t < rayDir.w);
+  
 }
 
 void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
@@ -323,13 +356,13 @@ void test_class_cpu()
 
   // test simple ray casting
   //
-  #pragma omp parallel for default(shared)
+  //#pragma omp parallel for default(shared)
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
     test.CastSingleRay(i, packedXY.data(), pixelData.data());
 
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
-  
+  /*
   // now test path tracing
   //
   const int PASS_NUMBER           = 100;
@@ -366,6 +399,6 @@ void test_class_cpu()
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }
   SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+  */
 
-  return;
 }

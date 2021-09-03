@@ -10,6 +10,8 @@
 
 #include "include/bvh.h"
 
+#include "CrossRT.h"
+
 static inline float4x4 perspectiveMatrix(float fovy, float aspect, float zNear, float zFar)
 {
   const float ymax = zNear * tanf(fovy * 3.14159265358979323846f / 360.0f);
@@ -42,6 +44,14 @@ public:
     const float4x4 proj = perspectiveMatrix(45.0f, 1.0f, 0.01f, 100.0f);
     m_worldViewProjInv  = inverse4x4(proj);
     InitRandomGens(a_maxThreads);
+
+    m_pAccelStruct = CreateSceneRT(""); 
+  }
+
+  ~TestClass()
+  {
+    DeleteSceneRT(m_pAccelStruct); 
+    m_pAccelStruct = nullptr;
   }
 
   void InitRandomGens(int a_maxThreads);
@@ -98,6 +108,8 @@ protected:
 
   float4x4                     m_worldViewProjInv;
   std::vector<RandomGen>       m_randomGens;
+
+  ISceneObject* m_pAccelStruct = nullptr;
 };
 
 #endif

@@ -170,6 +170,15 @@ int TestClass::LoadScene(const char* bvhPath, const char* meshPath)
   std::cout << "TrianglesNum = " << m_mesh.TrianglesNum() << std::endl;
   std::cout << "MateriaIdNum = " << m_mesh.matIndices.size() << std::endl;
 
+  float4x4 identitiMatrix;
+
+  m_pAccelStruct->ClearGeom();
+  auto geomId = m_pAccelStruct->AddGeom_Triangles4f(m_vPos4f.data(), m_vPos4f.size(), m_mesh.indices.data(), m_mesh.indices.size());
+  
+  m_pAccelStruct->BeginScene();
+  auto instId = m_pAccelStruct->InstanceGeom(geomId, (const float*)&identitiMatrix);
+  m_pAccelStruct->EndScene();
+
   return 0;
 
 }
