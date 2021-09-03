@@ -119,7 +119,7 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
 {
   const float4 rayPos = *rayPosAndNear;
   const float4 rayDir = *rayDirAndFar ;
-  
+
   CRT_Hit hit = m_pAccelStruct->RayQuery(rayPos, rayDir);
   
   Lite_Hit res;

@@ -100,6 +100,9 @@ uint32_t EmbreeRT::AddGeom_Triangles4f(const LiteMath::float4* a_vpos4f, size_t 
   float* vertices   = (float*)    rtcSetNewGeometryBuffer(geom, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3, 4*sizeof(float),    a_vertNumber);
   unsigned* indices = (unsigned*) rtcSetNewGeometryBuffer(geom, RTC_BUFFER_TYPE_INDEX,  0,  RTC_FORMAT_UINT3, 3*sizeof(unsigned), a_indNumber/3);
 
+  memcpy(vertices, a_vpos4f, a_vertNumber*4*sizeof(float));
+  memcpy(indices,  a_triIndices, a_indNumber*sizeof(unsigned));
+
   rtcCommitGeometry(geom);
 
   // In rtcAttachGeometry(...), the scene takes ownership of the geom by increasing its reference count. This means that we don't have
