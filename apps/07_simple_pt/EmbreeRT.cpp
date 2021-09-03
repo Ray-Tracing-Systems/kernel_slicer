@@ -177,12 +177,22 @@ CRT_Hit  EmbreeRT::RayQuery(LiteMath::float4 posAndNear, LiteMath::float4 dirAnd
   rtcIntersect1(m_scene, &context, &rayhit);
   
   CRT_Hit result;
-  result.t      = rayhit.ray.tfar;
-  result.geomId = rayhit.hit.geomID;
-  result.instId = rayhit.hit.instID[0];
-  result.primId = rayhit.hit.primID;
-  result.coords[0] = rayhit.hit.u;
-  result.coords[1] = rayhit.hit.v;
+  if(rayhit.hit.geomID != RTC_INVALID_GEOMETRY_ID)
+  {
+    result.t      = rayhit.ray.tfar;
+    result.geomId = rayhit.hit.geomID;
+    result.instId = rayhit.hit.instID[0];
+    result.primId = rayhit.hit.primID;
+    result.coords[0] = rayhit.hit.u;
+    result.coords[1] = rayhit.hit.v;
+  }
+  else
+  {
+    result.t      = rayhit.ray.tfar;
+    result.geomId = uint32_t(-1);
+    result.instId = uint32_t(-1);
+    result.primId = uint32_t(-1);
+  }
   return result;
 }
 
