@@ -3,7 +3,7 @@
 #include <cassert>
 
 #include "CrossRT.h"
-#include "include/embree3/rtcore.h"
+#include "embree3/rtcore.h"
 
 class EmbreeRT : public ISceneObject
 {
