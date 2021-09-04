@@ -3,6 +3,7 @@
 
 {% if ShaderGLSL %}
 #ifndef GLSL
+#define LAYOUT_STD140
 #include "LiteMath.h"
 typedef LiteMath::float4x4 mat4;
 typedef LiteMath::float3   vec3;
@@ -29,7 +30,12 @@ typedef LiteMath::float4   vec4;
 struct {{MainClassName}}_UBO_Data
 {
 ## for Field in UBOStructFields  
-  {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %};
+  {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %}; 
+  {% if Field.IsVec3 %} 
+  #ifdef GLSL 
+  uint {{Field.Name}}Dummy; 
+  #endif 
+  {% endif %}
 ## endfor
   uint dummy_last;
 {% for hierarchy in Hierarchies %}

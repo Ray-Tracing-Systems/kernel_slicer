@@ -324,7 +324,7 @@ void test_class_gpu()
     pGPUImpl->NaivePathTraceCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, 6, nullptr, nullptr);  // !!! USING GENERATED CODE !!! 
     vkEndCommandBuffer(commandBuffer);  
     
-    /*
+    
     start = std::chrono::high_resolution_clock::now();
     const int NUM_PASSES = 1000.0f;
     for(int i=0;i<NUM_PASSES;i++)
@@ -358,7 +358,7 @@ void test_class_gpu()
     }
     SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
     std::cout << std::endl;
-    */
+    
   }
   
   // (6) destroy and free resources before exit

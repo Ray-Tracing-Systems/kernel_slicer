@@ -897,7 +897,7 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::ve
   uint32_t dummyCounter = 0;
   data["MainClassName"]   = a_classInfo.mainClassName;
   data["UBOStructFields"] = std::vector<std::string>();
-  data["ShaderGLSL"]      = !a_classInfo.pShaderCC->IsSingleSource();
+  data["ShaderGLSL"]      = a_classInfo.pShaderCC->IsGLSL();
 
   for(auto member : podMembers)
   {
@@ -914,9 +914,10 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::ve
     uboField["Name"]      = member.name;
     uboField["IsArray"]   = member.isArray;
     uboField["ArraySize"] = member.arraySize;
+    uboField["IsVec3"]    = ((typeStr == "vec3") || (typeStr == "ivec3") || (typeStr == "uvec3")) && a_classInfo.pShaderCC->IsGLSL();
     data["UBOStructFields"].push_back(uboField);
     
-    while(sizeO < sizeA)
+    while(sizeO < sizeA) // TODO: make this more effitient
     {
       std::stringstream strOut;
       strOut << "dummy" << dummyCounter;
