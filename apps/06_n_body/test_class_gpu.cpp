@@ -8,7 +8,6 @@
 #include "vk_copy.h"
 #include "vk_buffers.h"
 
-#include "vulkan_basics.h"
 #include "test_class_generated.h"
 
 std::vector<nBody::BodyState> n_body_gpu(uint32_t seed, uint32_t iterations)
@@ -79,7 +78,8 @@ std::vector<nBody::BodyState> n_body_gpu(uint32_t seed, uint32_t iterations)
   // (3) Create buffer
   //
   VkBuffer outBuffer = vk_utils::createBuffer(device, nBody::BODIES_COUNT * sizeof(nBody::BodyState),
-                                              VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+                                              VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                              VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   VkDeviceMemory bufferMem    = vk_utils::allocateAndBindWithPadding(device, physicalDevice, {outBuffer});
   pGPUImpl->SetVulkanInOutFor_perform(outBuffer, 0);
 

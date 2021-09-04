@@ -28,6 +28,9 @@ link_directories("../volk")
 
 include_directories(../vkutils)
 
+find_package(glfw3 REQUIRED)
+include_directories(${GLFW_INCLUDE_DIRS})
+
 #uncomment this to detect broken memory problems via gcc sanitizers
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize-address-use-after-scope -fno-omit-frame-pointer -fsanitize=leak -fsanitize=undefined -fsanitize=bounds-strict")
 
@@ -43,6 +46,12 @@ set(VKUTILS_NEW_SRC ../vkutils/vk_copy.cpp
                     ../vkutils/geom/vk_mesh.cpp
                     ../vkutils/geom/cmesh.cpp)
 
+set(NBODY_VIS render/create_render.cpp
+              render/points_render.cpp
+              render/points_render_compute.cpp
+              generated_userfix.cpp
+              glfw_window.cpp)
+
 #set(VKFW_OLD_SRC ../vkfw/vk_utils.cpp
 #                 ../vkfw/vk_copy.cpp
 #                 ../vkfw/vk_buffer.cpp
@@ -55,9 +64,10 @@ add_executable(testapp main.cpp
                        test_class_generated.cpp
                        test_class_generated_ds.cpp
                        test_class_generated_init.cpp
+                       ${NBODY_VIS}
                        ${VKUTILS_NEW_SRC}
 #                       ${VKFW_OLD_SRC}
         )
 
 set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
-target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} OpenMP::OpenMP_CXX volk dl)
+target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} OpenMP::OpenMP_CXX volk dl glfw)

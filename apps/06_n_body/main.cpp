@@ -1,5 +1,7 @@
 #include <iostream>
 #include <test_class.h>
+#include "render/points_render.h"
+#include "glfw_window.h"
 
 std::vector<nBody::BodyState> n_body_cpu(uint32_t seed, uint32_t iterations);
 std::vector<nBody::BodyState> n_body_gpu(uint32_t seed, uint32_t iterations);
@@ -12,7 +14,7 @@ inline float errFloat4(const float4& a, const float4& b)
                   std::max(std::abs(a.z - b.z), std::abs(a.w - b.w)));
 }
 
-int main(int argc, const char** argv)
+int compute_main()
 {
   const uint32_t SEED       = 42;
   const uint32_t ITERATIONS = 10;
@@ -26,11 +28,11 @@ int main(int argc, const char** argv)
   float maxErr   = 0.0f;
   float avgError = 0.0f;
 
-  for (uint32_t i = 0; i < out_cpu.size(); ++i) 
+  for (uint32_t i = 0; i < out_cpu.size(); ++i)
   {
     float errPos = errFloat4(out_cpu[i].pos_weight, out_gpu[i].pos_weight);
     float errVel = errFloat4(out_cpu[i].vel_charge, out_gpu[i].vel_charge);
-   
+
     if (errPos > EPS)
     {
       if(badId.size() + 1 < badId.capacity())
@@ -65,11 +67,34 @@ int main(int argc, const char** argv)
     std::cout << "CPU value: " << out_cpu[i].vel_charge.x << "\t" << out_cpu[i].vel_charge.y << "\t" << out_cpu[i].vel_charge.z << "\t" << out_cpu[i].vel_charge.w << std::endl;
     std::cout << "GPU value: " << out_gpu[i].vel_charge.x << "\t" << out_gpu[i].vel_charge.y << "\t" << out_gpu[i].vel_charge.z << "\t" << out_gpu[i].vel_charge.w << std::endl;
   }
-    
+
   if (failed) {
     std::cout << "FAIL" << std::endl;
   } else {
     std::cout << "OK" << std::endl;
   }
   return 0;
+}
+
+int graphics_main()
+{
+  std::shared_ptr<IRender> app = CreateRender(1024, 1024, RenderEngineType::POINTS_RENDER);
+  if(app == nullptr)
+  {
+    std::cout << "Can't create render of specified type\n";
+    return 1;
+  }
+  auto* window = Init(app, 0);
+
+  app->LoadScene("", true);
+
+  MainLoop(app, window);
+  return 0;
+}
+
+
+int main(int argc, const char** argv)
+{
+  graphics_main();
+//  compute_main();
 }
