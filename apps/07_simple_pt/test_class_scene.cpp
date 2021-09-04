@@ -72,32 +72,6 @@ void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
 
 int TestClass::LoadScene(const char* bvhPath, const char* meshPath, bool a_needReorder)
 {
-  std::fstream input_file;
-  input_file.open(bvhPath, std::ios::binary | std::ios::in);
-  if (!input_file.is_open())
-  {
-    std::cout << "BVH file error <" << bvhPath << ">\n";
-    return 1;
-  }
-  struct BVHDataHeader
-  {
-    uint64_t node_length;
-    uint64_t indices_length;
-    uint64_t depth_length;
-    uint64_t geom_id;
-  };
-  BVHDataHeader header;
-  input_file.read((char *) &header, sizeof(BVHDataHeader));
-
-  m_nodes.resize(header.node_length);
-  m_intervals.resize(header.node_length);
-  m_indicesReordered.resize(header.indices_length);
-
-  input_file.read((char *) m_nodes.data(), sizeof(BVHNode) * header.node_length);
-  input_file.read((char *) m_intervals.data(), sizeof(Interval) * header.node_length);
-  input_file.read((char *) m_indicesReordered.data(), sizeof(uint) * header.indices_length);
-  //input_file.read((char *) m_bvhTree.depthRanges.data(), sizeof(Interval) * header.depth_length);
-
   std::fstream input_file_mesh;
   input_file_mesh.open(meshPath, std::ios::binary | std::ios::in);
   if (!input_file_mesh.is_open())

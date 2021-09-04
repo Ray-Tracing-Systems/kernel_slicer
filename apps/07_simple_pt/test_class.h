@@ -8,8 +8,6 @@
 #include <iostream>
 #include <fstream>
 
-#include "include/bvh.h"
-
 #include "CrossRT.h"
 
 static inline float4x4 perspectiveMatrix(float fovy, float aspect, float zNear, float zFar)
@@ -95,15 +93,10 @@ protected:
   float3 m_camPos = float3(0.0f, 0.85f, 4.5f);
   void InitSceneMaterials(int a_numSpheres, int a_seed = 0);
 
-  //  BVHTree                  m_bvhTree;
-  //
-  std::vector<struct BVHNode>  m_nodes;
-  std::vector<struct Interval> m_intervals;
   std::vector<uint32_t>        m_indicesReordered;
   std::vector<uint32_t>        m_materialIds;
   std::vector<float4>          m_vPos4f;      // copy from m_mesh
   std::vector<float4>          m_vNorm4f;     // copy from m_mesh
-
   std::vector<float4>          m_materials;
 
   float4x4                     m_worldViewProjInv;
