@@ -245,7 +245,7 @@ void test_class_cpu()
 
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
-  /*
+
   // now test path tracing
   //
   const int PASS_NUMBER           = 100;
@@ -282,5 +282,5 @@ void test_class_cpu()
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }
   SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-  */
+  
 }

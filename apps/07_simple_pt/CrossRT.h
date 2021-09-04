@@ -69,7 +69,7 @@ struct ISceneObject
   \param a_rowMajor   - flag that allow to change matrix layout from column-major to row-major
 
   */
-  virtual uint32_t InstanceGeom(uint32_t a_geomId, const float a_matrixData[16], bool a_rowMajor = false) = 0;
+  virtual uint32_t AddInstance(uint32_t a_geomId, const float a_matrixData[16], bool a_rowMajor = false) = 0;
   
   /**
   \brief Add instance to scene

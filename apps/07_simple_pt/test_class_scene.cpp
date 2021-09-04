@@ -155,7 +155,7 @@ int TestClass::LoadScene(const char* bvhPath, const char* meshPath, bool a_needR
   
   m_pAccelStruct->BeginScene();
   float4x4 identitiMatrix;
-  auto instId = m_pAccelStruct->InstanceGeom(geomId, (const float*)&identitiMatrix);
+  auto instId = m_pAccelStruct->AddInstance(geomId, (const float*)&identitiMatrix);
   m_pAccelStruct->EndScene();
 
   return 0;
