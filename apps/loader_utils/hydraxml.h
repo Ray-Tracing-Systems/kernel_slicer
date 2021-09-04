@@ -20,21 +20,34 @@ namespace hydra_xml
   std::string  ws2s(const std::wstring& wstr);
   LiteMath::float4x4 float4x4FromString(const std::wstring &matrix_str);
   
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  struct Instance
+  {
+    uint32_t           geomId = uint32_t(-1); ///< geom id
+    uint32_t           rmapId = uint32_t(-1); ///< remap list id, todo: add function to ger real remp list
+    LiteMath::float4x4 matrix; ///< trannform matrix
+  };
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
   // Range-based for loop support
-	template <typename It> 
+  template <typename It> 
   class range_obj
-	{
-	public:
-		typedef It const_iterator;
-		typedef It iterator;
-
-		range_obj(It b, It e): _begin(b), _end(e){}
-		It begin() { return _begin; }
-		It end() { return _end; }
-
-	private:
-		It _begin, _end;
-	};
+  {
+  public:
+  	typedef It const_iterator;
+  	typedef It iterator;  
+  	range_obj(It b, It e): _begin(b), _end(e){}
+  	It begin() { return _begin; }
+  	It end() { return _end; }  
+  private:
+  	It _begin, _end;
+  };
 
   class LocIterator 
   {
@@ -53,13 +66,6 @@ namespace hydra_xml
    private:
      pugi::xml_node      m_currNode;
      const std::string&  m_libraryRootDir;
-  };
-
-  struct Instance
-  {
-    uint32_t           geomId = uint32_t(-1); ///< geom id
-    uint32_t           rmapId = uint32_t(-1); ///< remap list id, todo: add function to ger real remp list
-    LiteMath::float4x4 matrix; ///< trannform matrix
   };
 
   class InstanceIterator 
@@ -108,9 +114,9 @@ namespace hydra_xml
     pugi::xml_object_range<pugi::xml_node_iterator> MaterialNodes() { return m_materialsLib.children(); } // #TODO: skip unused materials
     pugi::xml_object_range<pugi::xml_node_iterator> LightNodes()    { return m_lightsLib.children();    } // #TODO: skip unused lights
 
-    range_obj<LocIterator>             MeshFiles()     { return range_obj(LocIterator(m_geometryLib.child(L"mesh"), m_libraryRootDir), LocIterator(pugi::xml_node(), m_libraryRootDir)); }
-    range_obj<LocIterator>             TextureFiles()  { return range_obj(LocIterator(m_texturesLib.first_child(),  m_libraryRootDir), LocIterator(pugi::xml_node(), m_libraryRootDir)); }
-    range_obj<InstanceIterator>        InstancesGeom() { return range_obj(InstanceIterator(m_sceneNode.child(L"instance")), InstanceIterator(pugi::xml_node()));}
+    range_obj<LocIterator>      MeshFiles()     { return range_obj(LocIterator(m_geometryLib.child(L"mesh"), m_libraryRootDir), LocIterator(pugi::xml_node(), m_libraryRootDir)); }
+    range_obj<LocIterator>      TextureFiles()  { return range_obj(LocIterator(m_texturesLib.first_child(),  m_libraryRootDir), LocIterator(pugi::xml_node(), m_libraryRootDir)); }
+    range_obj<InstanceIterator> InstancesGeom() { return range_obj(InstanceIterator(m_sceneNode.child(L"instance")), InstanceIterator(pugi::xml_node()));}
     
   private:
     void parseInstancedMeshes(pugi::xml_node a_scenelib, pugi::xml_node a_geomlib);

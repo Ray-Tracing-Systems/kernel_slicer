@@ -6,24 +6,23 @@ using cmesh::SimpleMesh;
 
 #include "hydraxml.h"
 
-void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
-{ 
-  ///// create simple materials
-  //
-  m_materials.resize(10);
-  m_materials[0] = float4(0.5f, 0.5f, 0.5f, 0.0f);
-  m_materials[1] = float4(0.6f, 0.0235294f, 0.0235294f, 0.0f);
-  m_materials[2] = float4(0.0235294f, 0.6f, 0.0235294f, 0.0f);
-  m_materials[3] = float4(0.6f, 0.6f, 0.1f, 0.0f);
-  m_materials[4] = float4(0.0847059, 0.144706,0.265882, 0.0f);
-  m_materials[5] = float4(0.5f, 0.5f, 0.75f, 0.0f);
-  m_materials[6] = float4(0.25f, 0.0f, 0.5f, 0.0f);
-  m_materials[7] = m_materials[5];
-  m_materials[8] = m_materials[5];
-  m_materials[9] = float4(0.0, 0.0f, 0.0f, 20.0f); // emissive material
-  m_emissiveMaterialId = 9;
-
-}
+//void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
+//{ 
+//  ///// create simple materials
+//  //
+//  m_materials.resize(10);
+//  m_materials[0] = float4(0.5f, 0.5f, 0.5f, 0.0f);
+//  m_materials[1] = float4(0.6f, 0.0235294f, 0.0235294f, 0.0f);
+//  m_materials[2] = float4(0.0235294f, 0.6f, 0.0235294f, 0.0f);
+//  m_materials[3] = float4(0.6f, 0.6f, 0.1f, 0.0f);
+//  m_materials[4] = float4(0.0847059, 0.144706,0.265882, 0.0f);
+//  m_materials[5] = float4(0.5f, 0.5f, 0.75f, 0.0f);
+//  m_materials[6] = float4(0.25f, 0.0f, 0.5f, 0.0f);
+//  m_materials[7] = m_materials[5];
+//  m_materials[8] = m_materials[5];
+//  m_materials[9] = float4(0.0, 0.0f, 0.0f, 20.0f); // emissive material
+//  m_emissiveMaterialId = 9;
+//}
 
 int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_needReorder)
 {   
@@ -48,19 +47,15 @@ int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_nee
   //// (2) load meshes
   //
   m_pAccelStruct->ClearGeom();
-  //std::vector<uint32_t> geomIds;
-  //geomIds.reserve(256);
-
   SimpleMesh m_mesh;
   for(const auto& meshPath : scene.MeshFiles())
   {
     std::cout << meshPath.c_str() << std::endl;
     m_mesh      = cmesh::LoadMeshFromVSGF(meshPath.c_str());
     auto geomId = m_pAccelStruct->AddGeom_Triangles4f(m_mesh.vPos4f.data(), m_mesh.vPos4f.size(), m_mesh.indices.data(), m_mesh.indices.size());
-    //geomIds.push_back(geomId); // usually geomId[i] == i ... :)
   }
 
-  //// (2.1) we actually forgot to build table to get material id by meshid and primitive id ... :)
+  //// (2.1) we actually forgot to build table to get material id by (mesh_id,prim_id) pair
   //
   
   //// (3) make instances of created meshes
