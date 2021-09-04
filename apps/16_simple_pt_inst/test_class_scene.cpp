@@ -4,6 +4,8 @@
 #include "cmesh.h"
 using cmesh::SimpleMesh;
 
+#include "hydraxml.h"
+
 void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
 { 
   ///// create simple materials
@@ -23,8 +25,55 @@ void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
 
 }
 
-int TestClass::LoadScene(const char* bvhPath, const char* meshPath, bool a_needReorder)
-{ 
+int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_needReorder)
+{   
+  hydra_xml::HydraScene scene;
+  
+  scene.LoadState(scehePath);
+  
+  //// (1) load materials
+  //
+  m_materials.resize(0);
+  m_materials.reserve(100);
+  for(auto materialNode : scene.MaterialNodes())
+  {
+    float4 color(0.5f, 0.5f, 0.75f, 0.0f);
+    auto node = materialNode.child(L"diffuse").child(L"color");
+    if(node != nullptr)
+      color = to_float4(hydra_xml::read3f(node.attribute(L"val")), 0.0f);
+    
+    m_materials.push_back(color);
+  }
+  
+  //// (2) load meshes
+  //
+  m_pAccelStruct->ClearGeom();
+  //std::vector<uint32_t> geomIds;
+  //geomIds.reserve(256);
+
+  SimpleMesh m_mesh;
+  for(const auto& meshPath : scene.MeshFiles())
+  {
+    std::cout << meshPath.c_str() << std::endl;
+    m_mesh      = cmesh::LoadMeshFromVSGF(meshPath.c_str());
+    auto geomId = m_pAccelStruct->AddGeom_Triangles4f(m_mesh.vPos4f.data(), m_mesh.vPos4f.size(), m_mesh.indices.data(), m_mesh.indices.size());
+    //geomIds.push_back(geomId); // usually geomId[i] == i ... :)
+  }
+
+  //// (2.1) we actually forgot to build table to get material id by meshid and primitive id ... :)
+  //
+  
+  //// (3) make instances of created meshes
+  //
+  m_pAccelStruct->BeginScene();
+  for(const auto& inst : scene.InstancesGeom())
+    m_pAccelStruct->AddInstance(inst.geomId, inst.matrix);
+  m_pAccelStruct->EndScene();
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  /*
   SimpleMesh m_mesh = cmesh::LoadMeshFromVSGF(meshPath);
 
   m_vPos4f  = m_mesh.vPos4f;
@@ -48,7 +97,7 @@ int TestClass::LoadScene(const char* bvhPath, const char* meshPath, bool a_needR
   float4x4 identitiMatrix;
   auto instId = m_pAccelStruct->AddInstance(geomId, (const float*)&identitiMatrix);
   m_pAccelStruct->EndScene();
+  */
 
   return 0;
-
 }

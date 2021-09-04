@@ -18,8 +18,8 @@ public:
   void BeginScene() override; 
   void EndScene  () override; 
   
-  uint32_t AddInstance(uint32_t a_geomId, const float a_matrixData[16], bool a_rowMajor = false) override;
-  void     UpdateInstance(uint32_t a_instanceId, uint32_t a_geomId, const float* a_matrixData, bool a_rowMajor = false) override;
+  uint32_t AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_matrix) override;
+  void     UpdateInstance(uint32_t a_instanceId, uint32_t a_geomId, const LiteMath::float4x4& a_matrix) override;
 
   CRT_Hit  RayQuery(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) override;
 
@@ -133,12 +133,12 @@ void EmbreeRT::EndScene()
   rtcCommitScene(m_scene);
 }  
 
-uint32_t EmbreeRT::AddInstance(uint32_t a_geomId, const float a_matrixData[16], bool a_rowMajor)
+uint32_t EmbreeRT::AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_matrix)
 {
   return 0;
 }
 
-void     EmbreeRT::UpdateInstance(uint32_t a_instanceId, uint32_t a_geomId, const float* a_matrixData, bool a_rowMajor)
+void     EmbreeRT::UpdateInstance(uint32_t a_instanceId, uint32_t a_geomId, const LiteMath::float4x4& a_matrix)
 {
 
 }

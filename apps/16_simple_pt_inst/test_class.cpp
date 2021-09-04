@@ -234,7 +234,7 @@ void test_class_cpu()
       test.PackXY(x, y, packedXY.data());
   }
 
-  test.LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.bvh", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf", false);
+  test.LoadScene("/home/frol/PROG/HydraRepos/HydraAPI-tests/3dsMaxTests/003_geosphere_smooth_normals/statex_00001.xml", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf", false);
   
   // test simple ray casting
   //
