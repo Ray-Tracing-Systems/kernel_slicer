@@ -13,9 +13,17 @@
 #include <iostream>
 #include <generated_userfix.h>
 
+enum class RENDER_MODE
+{
+  POINTS,
+  SPRITES
+};
+
+
 class PointsRender : public IRender
 {
 public:
+  static constexpr RENDER_MODE DISPLAY_MODE = RENDER_MODE::SPRITES;
   PointsRender(uint32_t a_width, uint32_t a_height);
 
   ~PointsRender()
@@ -94,6 +102,8 @@ private:
     LiteMath::float4x4 projView;
     LiteMath::float4x4 model;
   } pushConst2M;
+
+  vk_utils::VulkanImageMem m_sprite;
 
 //  UniformParams m_uniforms{};
 //  VkBuffer m_ubo = VK_NULL_HANDLE;

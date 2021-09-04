@@ -11,7 +11,7 @@ void nBody_GeneratedFix::performCmd(VkCommandBuffer a_commandBuffer, BodyState *
   {
     vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, GenerateBodiesLayout, 0, 1, &m_allGeneratedDS[0], 0, nullptr);
     GenerateBodiesCmd(BODIES_COUNT);
-    needInit = false;
+//    needInit = false;
   }
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
   for (uint32_t i = 0; i < m_iters; ++i) {

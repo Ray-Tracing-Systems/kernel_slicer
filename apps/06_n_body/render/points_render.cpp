@@ -4,7 +4,6 @@
 #include <geom/vk_mesh.h>
 #include <vk_pipeline.h>
 #include <vk_buffers.h>
-#include <ray_tracing/vk_rt_funcs.h>
 #include <vk_copy.h>
 
 PointsRender::PointsRender(uint32_t a_width, uint32_t a_height) : m_width(a_width), m_height(a_height)
@@ -19,6 +18,9 @@ PointsRender::PointsRender(uint32_t a_width, uint32_t a_height) : m_width(a_widt
 void PointsRender::SetupDeviceFeatures()
 {
    m_enabledDeviceFeatures.fillModeNonSolid = VK_TRUE;
+
+   if(DISPLAY_MODE == RENDER_MODE::SPRITES)
+     m_enabledDeviceFeatures.geometryShader = VK_TRUE;
 }
 
 void PointsRender::SetupDeviceExtensions()
@@ -180,14 +182,23 @@ void PointsRender::SetupPointsPipeline()
   vk_utils::GraphicsPipelineMaker maker;
 
   std::unordered_map<VkShaderStageFlagBits, std::string> shader_paths;
-  shader_paths[VK_SHADER_STAGE_FRAGMENT_BIT] = "shaders/points.frag.spv";
   shader_paths[VK_SHADER_STAGE_VERTEX_BIT] = "shaders/points.vert.spv";
+  if(DISPLAY_MODE == RENDER_MODE::POINTS)
+  {
+    shader_paths[VK_SHADER_STAGE_FRAGMENT_BIT] = "shaders/points.frag.spv";
+  }
+  else if(DISPLAY_MODE == RENDER_MODE::SPRITES)
+  {
+    shader_paths[VK_SHADER_STAGE_GEOMETRY_BIT] = "shaders/points.geom.spv";
+    shader_paths[VK_SHADER_STAGE_FRAGMENT_BIT] = "shaders/sprites.frag.spv";
+  }
 
   maker.LoadShaders(m_device, shader_paths);
 
   m_pointsPipeline.layout = maker.MakeLayout(m_device, {}, sizeof(pushConst2M));
   maker.SetDefaultState(m_width, m_height);
-  maker.rasterizer.polygonMode = VK_POLYGON_MODE_POINT;
+  if(DISPLAY_MODE == RENDER_MODE::POINTS)
+    maker.rasterizer.polygonMode = VK_POLYGON_MODE_POINT;
   m_pointsPipeline.pipeline = maker.MakePipeline(m_device, m_pointsData.inputStateInfo,
                                                  m_screenRenderPass,
                                                  {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR},
@@ -258,6 +269,9 @@ void PointsRender::BuildCommandBufferPoints(VkCommandBuffer a_cmdBuff, VkFramebu
     vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, a_pipeline);
 
     VkShaderStageFlags stageFlags = (VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    if(DISPLAY_MODE == RENDER_MODE::SPRITES)
+      stageFlags |= VK_SHADER_STAGE_GEOMETRY_BIT;
 
     VkDeviceSize zero_offset = 0u;
     VkBuffer vertexBuf = m_pointsData.pointsBuf;

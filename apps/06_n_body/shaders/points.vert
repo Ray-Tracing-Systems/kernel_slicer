@@ -10,7 +10,6 @@ layout(push_constant) uniform params_t
     mat4 mModel;
 } params;
 
-
 layout (location = 0 ) out VS_OUT
 {
     vec3 wPos;
