@@ -115,10 +115,12 @@ uint32_t EmbreeRT::AddGeom_Triangles4f(const LiteMath::float4* a_vpos4f, size_t 
 
   rtcCommitGeometry(geom);
 
+  // attach 'geom' to 'meshScene' and then remember 'meshScene' in 'm_blas'
+  //
   auto meshScene = rtcNewScene(m_device);
   rtcSetSceneBuildQuality(meshScene, RTC_BUILD_QUALITY_HIGH);
-
-  uint32_t geomId = rtcAttachGeometry(meshScene, geom);
+  
+  uint32_t geomId = rtcAttachGeometry(meshScene, geom); 
   rtcReleaseGeometry(geom);
   m_blas.push_back(meshScene);
 
@@ -148,11 +150,13 @@ uint32_t EmbreeRT::AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_ma
     return uint32_t(-1);
 
   RTCGeometry instanceGeom = rtcNewGeometry(m_device, RTC_GEOMETRY_TYPE_INSTANCE);
-  rtcSetGeometryInstancedScene(instanceGeom, m_blas[a_geomId]); 
-  //rtcSetGeometryTimeStepCount(instanceGeom, 1);                     
-  rtcAttachGeometry(m_scene,instanceGeom);           
+  rtcSetGeometryInstancedScene(instanceGeom, m_blas[a_geomId]);                   // say that 'instanceGeom' is an instance of 'm_blas[a_geomId]'
+  //rtcSetGeometryTimeStepCount(instanceGeom, 1);                                 // don't know wtf is that
+  rtcAttachGeometry(m_scene,instanceGeom);                                        // attach our instance to global scene 
   rtcReleaseGeometry(instanceGeom);
-
+  
+  // update instance matrix
+  //
   rtcSetGeometryTransform(instanceGeom, 0, RTC_FORMAT_FLOAT4X4_COLUMN_MAJOR, (const float*)&a_matrix);
   rtcCommitGeometry(instanceGeom);
   
