@@ -23,7 +23,7 @@ static uint32_t ComputeReductionSteps(uint32_t whole_size, uint32_t wg_size)
   return steps;
 }
 
-void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
+void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
   const size_t maxAllowedSize = std::numeric_limits<uint32_t>::max();
 
@@ -42,7 +42,7 @@ void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vkfw::ICopy
   a_pCopyEngine->UpdateBuffer(m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
 }
 
-void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
+void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
 ## for Var in ClassVectorVars
   if({{Var.Name}}.size() > 0)
@@ -50,7 +50,7 @@ void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vkfw::ICop
 ## endfor
 }
 
-void {{MainClassName}}_Generated::UpdateTextureMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
+void {{MainClassName}}_Generated::UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 { 
   {% if length(ClassTextureVars) > 0 %}
   {% for Var in ClassTextureVars %}

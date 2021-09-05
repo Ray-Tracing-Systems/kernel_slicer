@@ -75,7 +75,7 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
 void {{MainClassName}}_Generated::InitHelpers()
 {
   vkGetPhysicalDeviceProperties(physicalDevice, &m_devProps);
-  m_pMaker = std::make_unique<vkfw::ComputePipelineMaker>();
+  m_pMaker = std::make_unique<vk_utils::ComputePipelineMaker>();
   {% if UseSpecConstWgSize %}
   {
     m_specializationEntriesWgSize[0].constantID = 0;
@@ -232,13 +232,13 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {
     uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %});
+    m_pMaker->LoadShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %});
+  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %});
   {% endif %}
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
-  {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, 128); // at least 128 bytes for push constants
+  {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, { {{Kernel.Name}}DSLayout }, 128); // at least 128 bytes for push constants
   {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);  
   {% endif %} {# /* not Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch */ #}
   {% if Kernel.FinishRed %}
@@ -250,10 +250,10 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {
     uint32_t specializationData[3] = { 256, 1, 1 };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Reduction"{% endif %});
+    m_pMaker->LoadShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Reduction"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Reduction"{% endif %});
+  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Reduction"{% endif %});
   {% endif %}
   {{Kernel.Name}}ReductionPipeline = m_pMaker->MakePipeline(device);
   {% endif %} 
@@ -262,14 +262,14 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {% if ShaderGLSL %}
   shaderPath = "{{ShaderFolder}}/{{Kernel.OriginalName}}_Init.comp.spv";
   {% endif %}
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Init"{% endif %}); 
+  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Init"{% endif %}); 
   {{Kernel.Name}}InitPipeline = m_pMaker->MakePipeline(device);
   {% if Kernel.HasLoopFinish %}
   
   {% if ShaderGLSL %}
   shaderPath = "{{ShaderFolder}}/{{Kernel.OriginalName}}_Finish.comp.spv";
   {% endif %}
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Finish"{% endif %});
+  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Finish"{% endif %});
   {{Kernel.Name}}FinishPipeline = m_pMaker->MakePipeline(device);
   {% endif %}
   {% endif %} 
@@ -279,10 +279,10 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {
     uint32_t specializationData[3] = { 32, 1, 1 };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_ZeroObjCounters"{% endif %});
+    m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_ZeroObjCounters"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_ZeroObjCounters"{% endif %});
+  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_ZeroObjCounters"{% endif %});
   {% endif %}
   {{Kernel.Name}}ZeroObjCounters    = m_pMaker->MakePipeline(device);
   
@@ -290,10 +290,10 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {
     uint32_t specializationData[3] = { 32, 1, 1 };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_CountTypeIntervals"{% endif %});
+    m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_CountTypeIntervals"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_CountTypeIntervals"{% endif %});
+  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_CountTypeIntervals"{% endif %});
   {% endif %}
   {{Kernel.Name}}CountTypeIntervals = m_pMaker->MakePipeline(device);
   
@@ -301,10 +301,10 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {
     uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Sorter"{% endif %});
+    m_pMaker->LoadShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Sorter"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Sorter"{% endif %});
+  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Sorter"{% endif %});
   {% endif %}
   {{Kernel.Name}}Sorter             = m_pMaker->MakePipeline(device);
   {% else if Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch %} {# /* if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch */ #} 
@@ -314,13 +314,13 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {
     uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_{{Impl.ClassName}}"{% endif %});
+    m_pMaker->LoadShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_{{Impl.ClassName}}"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_{{Impl.ClassName}}"{% endif %});
+  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_{{Impl.ClassName}}"{% endif %});
   {% endif %}
   {% if loop.index == 0 %}
-  {{Kernel.Name}}Layout = m_pMaker->MakeLayout(device, {{Kernel.Name}}DSLayout, 128); // at least 128 bytes for push constants
+  {{Kernel.Name}}Layout = m_pMaker->MakeLayout(device, { {{Kernel.Name}}DSLayout }, 128); // at least 128 bytes for push constants
   {% endif %}
   {{Kernel.Name}}PipelineArray[{{loop.index}}] = m_pMaker->MakePipeline(device);  
   {% endfor %}
@@ -345,13 +345,13 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
   {
     uint32_t specializationData[3] = { 256, 1, 1 };
     m_specsForWGSize.pData         = specializationData;
-    m_pMaker->CreateShader(device, servPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"copyKernelFloat"{% endif %});
+    m_pMaker->LoadShader(device, servPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"copyKernelFloat"{% endif %});
   }
   {% else %}
-  m_pMaker->CreateShader(device, servPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"copyKernelFloat"{% endif %});
+  m_pMaker->LoadShader(device, servPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"copyKernelFloat"{% endif %});
   {% endif %}
   copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
-  copyKernelFloatLayout   = m_pMaker->MakeLayout(device, copyKernelFloatDSLayout, 128); // at least 128 bytes for push constants
+  copyKernelFloatLayout   = m_pMaker->MakeLayout(device, {copyKernelFloatDSLayout}, 128); // at least 128 bytes for push constants
   copyKernelFloatPipeline = m_pMaker->MakePipeline(device);
   {% endif %} {# /* UseServiceMemCopy */ #}
   {% if length(IndirectDispatches) > 0 %}
@@ -367,29 +367,29 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
 ## for MainFunc in MainFunctions  
 ## for Buffer in MainFunc.LocalVarsBuffersDecl
   {% if Buffer.TransferDST %}
-  {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer = vkfw::CreateBuffer(device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer = vk_utils::createBuffer(device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   {% else %}
-  {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer = vkfw::CreateBuffer(device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer = vk_utils::createBuffer(device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
   {% endif %}
   allBuffers.push_back({{MainFunc.Name}}_local.{{Buffer.Name}}Buffer);
 ## endfor
 ## endfor
 
-  m_classDataBuffer = vkfw::CreateBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | GetAdditionalFlagsForUBO());
+  m_classDataBuffer = vk_utils::createBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | GetAdditionalFlagsForUBO());
   allBuffers.push_back(m_classDataBuffer);
   {% if UseSeparateUBO %}
-  m_uboArgsBuffer = vkfw::CreateBuffer(device, 256, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  m_uboArgsBuffer = vk_utils::createBuffer(device, 256, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   allBuffers.push_back(m_uboArgsBuffer);
   {% endif %}
   {% for Buffer in RedVectorVars %}
   {
     const size_t sizeOfBuffer = ComputeReductionAuxBufferElements(a_maxThreadsCount, REDUCTION_BLOCK_SIZE)*sizeof({{Buffer.Type}});
-    m_vdata.{{Buffer.Name}}Buffer = vkfw::CreateBuffer(device, sizeOfBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_vdata.{{Buffer.Name}}Buffer = vk_utils::createBuffer(device, sizeOfBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     allBuffers.push_back(m_vdata.{{Buffer.Name}}Buffer);
   }
   {% endfor %}
   {% for Hierarchy in DispatchHierarchies %}
-  m_{{Hierarchy.Name}}ObjPtrBuffer = vkfw::CreateBuffer(device, 2*sizeof(uint32_t)*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  m_{{Hierarchy.Name}}ObjPtrBuffer = vk_utils::createBuffer(device, 2*sizeof(uint32_t)*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
   allBuffers.push_back(m_{{Hierarchy.Name}}ObjPtrBuffer);
   {% endfor %}
   
@@ -402,7 +402,7 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
   std::vector<VkImage>  memberTextures;
 
   {% for Var in ClassVectorVars %}
-  m_vdata.{{Var.Name}}Buffer = vkfw::CreateBuffer(device, {{Var.Name}}.capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}.capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
   {% endfor %}
 
@@ -415,7 +415,7 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
   {% endfor %}
 
   {% if length(IndirectDispatches) > 0 %}
-  m_indirectBuffer = vkfw::CreateBuffer(device, {{IndirectBufferSize}}*sizeof(uint32_t)*4, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
+  m_indirectBuffer = vk_utils::createBuffer(device, {{IndirectBufferSize}}*sizeof(uint32_t)*4, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
   memberVectors.push_back(m_indirectBuffer);
   {% endif %}
   AllocMemoryForMemberBuffersAndImages(memberVectors, memberTextures);
@@ -652,7 +652,7 @@ void {{MainClassName}}_Generated::TrackTextureAccess(const std::vector<TexAccess
 void {{MainClassName}}_Generated::AllocMemoryForInternalBuffers(const std::vector<VkBuffer>& a_buffers)
 {
   if(a_buffers.size() > 0)
-    m_allMem = vkfw::AllocateAndBindWithPadding(device, physicalDevice, a_buffers);
+    m_allMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, a_buffers);
   else
     m_allMem = VK_NULL_HANDLE;
 }
@@ -660,7 +660,7 @@ void {{MainClassName}}_Generated::AllocMemoryForInternalBuffers(const std::vecto
 void {{MainClassName}}_Generated::AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_images)
 {
   if(a_buffers.size() > 0)
-    m_vdata.m_vecMem = vkfw::AllocateAndBindWithPadding(device, physicalDevice, a_buffers);
+    m_vdata.m_vecMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, a_buffers);
   else
     m_vdata.m_vecMem = VK_NULL_HANDLE;
   
@@ -679,7 +679,7 @@ void {{MainClassName}}_Generated::AllocMemoryForMemberBuffersAndImages(const std
   textures.push_back(m_vdata.{{Var.Name}}Texture);
   
   {% endfor %}
-  auto offsets  = vkfw::AssignMemOffsetsWithPadding(reqs);
+  auto offsets  = vk_utils::assignMemOffsetsWithPadding(reqs);
   auto memTotal = offsets[offsets.size() - 1];
   VkDeviceMemory res;
   VkMemoryAllocateInfo allocateInfo = {};

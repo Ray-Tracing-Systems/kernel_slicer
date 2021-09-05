@@ -104,7 +104,7 @@ VkCommandBuffer PointsRender::BuildCommandBufferSimulation()
   beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
   vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
 
-  m_pNBodySimGenerated->performCmd(commandBuffer, m_pointsData.outBodies.data());
+  m_pNBodySimGenerated->performCmd(commandBuffer, nullptr);
   vkEndCommandBuffer(commandBuffer);
 
   return commandBuffer;

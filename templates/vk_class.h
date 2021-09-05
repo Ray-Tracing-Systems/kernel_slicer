@@ -7,8 +7,9 @@
 #include <unordered_map>
 
 #include "vulkan_basics.h"
-#include "vk_compute_pipeline.h"
-#include "vk_buffer.h"
+
+#include "vk_pipeline.h"
+#include "vk_buffers.h"
 #include "vk_utils.h"
 
 {{Includes}}
@@ -60,7 +61,7 @@ public:
 
   virtual void InitMemberBuffers();
 
-  virtual void UpdateAll(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
+  virtual void UpdateAll(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
   {
     UpdatePlainMembers(a_pCopyEngine);
     UpdateVectorMembers(a_pCopyEngine);
@@ -83,7 +84,7 @@ protected:
   VkCommandBuffer  m_currCmdBuffer   = VK_NULL_HANDLE;
   uint32_t         m_currThreadFlags = 0;
 
-  std::unique_ptr<vkfw::ComputePipelineMaker> m_pMaker = nullptr;
+  std::unique_ptr<vk_utils::ComputePipelineMaker> m_pMaker = nullptr;
   VkPhysicalDeviceProperties m_devProps;
 
   VkBufferMemoryBarrier BarrierForClearFlags(VkBuffer a_buffer);
@@ -99,9 +100,9 @@ protected:
   virtual void InitAllGeneratedDescriptorSets_{{MainFunc.Name}}();
 ## endfor
 
-  virtual void UpdatePlainMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
-  virtual void UpdateVectorMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
-  virtual void UpdateTextureMembers(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine);
+  virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
+  virtual void UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
+  virtual void UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
 
   virtual void AllocMemoryForInternalBuffers(const std::vector<VkBuffer>& a_buffers);
   virtual void AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_image);

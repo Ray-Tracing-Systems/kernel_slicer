@@ -22,7 +22,7 @@ void nBody::perform(BodyState *out_bodies) {
 void nBody::kernel1D_GenerateBodies(uint32_t bodies_count) {
   
   for (uint32_t i = 0; i < bodies_count; ++i) {
-    m_bodies[i].pos_weight = randFloat4(make_float4(-1, -1, -1, 10), make_float4(1, 1, 1, 10), i);
+    m_bodies[i].pos_weight = randFloat4(make_float4(-1, -1, -1, 5), make_float4(1, 1, 1, 5), i);
     m_bodies[i].vel_charge = randFloat4(make_float4(-1, -1, -1, -1), make_float4(1, 1, 1, 1), i*i + i*7 + 1);
   }
 }
