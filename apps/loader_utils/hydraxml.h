@@ -52,20 +52,32 @@ namespace hydra_xml
   class LocIterator 
   {
    public:
-     LocIterator(pugi::xml_node start, const std::string& a_libPath) : m_currNode(start), m_libraryRootDir(a_libPath) {}  
+     LocIterator(pugi::xml_node start, const std::string& a_libPath) : m_currNode(start), m_libraryRootDir(a_libPath) { m_isNull = (m_currNode == nullptr);  }  
      LocIterator(LocIterator& a_iter) : m_currNode(a_iter.m_currNode), m_libraryRootDir(a_iter.m_libraryRootDir) {}
 
      std::string operator*() const 
      { 
-       auto meshLoc = ws2s(std::wstring(m_currNode.attribute(L"loc").as_string()));
+       auto attr = m_currNode.attribute(L"loc");
+       if(attr == nullptr)
+         return "";
+       auto meshLoc = ws2s(std::wstring(attr.as_string()));
        return m_libraryRootDir + "/" + meshLoc;
      }
-     const LocIterator& operator++() { m_currNode = m_currNode.next_sibling(); return *this; }
-     bool operator !=(const LocIterator &other) const { return m_currNode != other.m_currNode; }  
+     
+     const LocIterator& operator++() 
+     { 
+       m_currNode = m_currNode.next_sibling(); 
+       m_isNull = (m_currNode == nullptr); 
+       return *this; 
+     }
+
+     bool operator !=(const LocIterator &other) const { return (m_currNode != other.m_currNode) || (m_isNull != other.m_isNull); }
+     bool operator ==(const LocIterator &other) const { return (m_currNode == other.m_currNode) && (m_isNull == other.m_isNull); }  
      
    private:
      pugi::xml_node      m_currNode;
      const std::string&  m_libraryRootDir;
+     bool                m_isNull = false;
   };
 
   class InstanceIterator 
