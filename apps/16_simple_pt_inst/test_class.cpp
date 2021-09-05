@@ -63,31 +63,10 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   res.t      = hit.t;
 
   float2 baricentrics = float2(hit.coords[0], hit.coords[1]);
-
-  // intersect flat light under roof
-  {
-    const float tLightHit  = (m_lightGeom.boxMax.y - rayPos.y)/max(rayDir.y, 1e-6f);
-    const float4 hit_point = rayPos + tLightHit*rayDir;
-    
-    bool is_hit = (hit_point.x > m_lightGeom.boxMin.x) && (hit_point.x < m_lightGeom.boxMax.x) &&
-                  (hit_point.z > m_lightGeom.boxMin.z) && (hit_point.z < m_lightGeom.boxMax.z) &&
-                  (tLightHit < res.t);
-  
-    if(is_hit)
-    {
-      res.primId = 0;
-      res.instId = -1;
-      res.geomId = HIT_FLAT_LIGHT_GEOM;
-      res.t      = tLightHit;
-    }
-    else
-      res.geomId = HIT_TRIANGLE_GEOM;
-  }
  
   *out_hit  = res;
   *out_bars = baricentrics;
-  return (res.primId != -1) && (res.t < rayDir.w);
-  
+  return (res.primId != -1);
 }
 
 void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
@@ -101,17 +80,26 @@ void TestClass::kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* o
 }
 
 void TestClass::kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, uint* out_color)
-{
-  if(in_hit->geomId == HIT_FLAT_LIGHT_GEOM)
-  {
-    out_color[tid] = RealColorToUint32_f3(float3(1,1,1));
-  }
-  else
-  {
-    const uint32_t mtId = m_materialIds[in_hit->primId];
-    const float4 mdata  = m_materials[mtId];
-    out_color[tid]      = RealColorToUint32_f3(to_float3(mdata)); 
-  }
+{ 
+  Lite_Hit lhit = *in_hit;
+  uint select = lhit.primId%8;
+  
+  if(select == 0)
+    out_color[tid] = 0xFFFFFFFF;
+  else if(select == 1)
+    out_color[tid] = 0xFF0000FF;
+  else if(select == 2)
+    out_color[tid] = 0xFF00FF00;
+  else if(select == 3)
+    out_color[tid] = 0xFFFF0000;
+  else if(select == 4)
+    out_color[tid] = 0xFFFFFF00;
+  else if(select == 5)
+    out_color[tid] = 0xFF00FFFF;
+  else if(select == 6)
+    out_color[tid] = 0xFFFF00FF;
+  else if(select == 7)
+    out_color[tid] = 0x70707070;
 }
 
 void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
@@ -234,18 +222,16 @@ void test_class_cpu()
       test.PackXY(x, y, packedXY.data());
   }
 
-  //test.LoadScene("lucy.bvh", "lucy.vsgf");
-  test.LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.bvh", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf", false);
-
+  test.LoadScene("/home/frol/PROG/HydraRepos/HydraAPI-tests/3dsMaxTests/003_geosphere_smooth_normals/statex_00001.xml", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf", false);
+  
   // test simple ray casting
   //
-  //#pragma omp parallel for default(shared)
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
     test.CastSingleRay(i, packedXY.data(), pixelData.data());
 
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
-  
+  /*
   // now test path tracing
   //
   const int PASS_NUMBER           = 100;
@@ -282,5 +268,6 @@ void test_class_cpu()
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }
   SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-  
+  */
+
 }

@@ -8,7 +8,7 @@
 #include <cassert>
 
 #include "LiteMath.h"
-using namespace LiteMath;
+//using namespace LiteMath;
 
 namespace cmesh
 {
@@ -56,12 +56,12 @@ namespace cmesh
 
     void ApplyMatrix(const LiteMath::float4x4& m);
 
-    std::vector<LiteMath::float4> vPos4f;      //
-    std::vector<LiteMath::float4> vNorm4f;     //
-    std::vector<LiteMath::float4> vTang4f;     //
-    std::vector<float2>                       vTexCoord2f; //
-    std::vector<unsigned int>                 indices;     // size = 3*TrianglesNum() for triangle mesh, 4*TrianglesNum() for quad mesh
-    std::vector<unsigned int>                 matIndices;  // size = 1*TrianglesNum()
+    std::vector<LiteMath::float4> vPos4f;      // #TODO: put aligned allocator here
+    std::vector<LiteMath::float4> vNorm4f;     // #TODO: put aligned allocator here
+    std::vector<LiteMath::float4> vTang4f;     // #TODO: put aligned allocator here
+    std::vector<float2>           vTexCoord2f; // 
+    std::vector<unsigned int>     indices;     // size = 3*TrianglesNum() for triangle mesh, 4*TrianglesNum() for quad mesh
+    std::vector<unsigned int>     matIndices;  // size = 1*TrianglesNum()
   };
 
 #if defined(__ANDROID__)

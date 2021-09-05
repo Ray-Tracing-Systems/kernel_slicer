@@ -65,20 +65,18 @@ struct ISceneObject
   /**
   \brief Add instance to scene
   \param a_geomId     - input if of geometry that is supposed to be instanced
-  \param a_matrixData - float4x4 matrix, the default layout is column-major
-  \param a_rowMajor   - flag that allow to change matrix layout from column-major to row-major
+  \param a_matrixData - float4x4 matrix, default layout is column-major
 
   */
-  virtual uint32_t AddInstance(uint32_t a_geomId, const float a_matrixData[16], bool a_rowMajor = false) = 0;
+  virtual uint32_t AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_matrix) = 0;
   
   /**
   \brief Add instance to scene
   \param a_instanceId
   \param a_geomId     - input if of geometry that is supposed to be instanced
-  \param a_matrixData - float4x4 matrix, the default layout is column-major
-  \param a_rowMajor   - flag that allow to change matrix layout from column-major to row-major
+  \param a_matrixData - float4x4 matrix, the layout is column-major
   */
-  virtual void     UpdateInstance(uint32_t a_instanceId, uint32_t a_geomId, const float* a_matrixData, bool a_rowMajor = false) = 0; 
+  virtual void     UpdateInstance(uint32_t a_instanceId, uint32_t a_geomId, const LiteMath::float4x4& a_matrix) = 0; 
  
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

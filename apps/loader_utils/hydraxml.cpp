@@ -15,7 +15,6 @@ namespace hydra_xml
   {
     using convert_typeX = std::codecvt_utf8<wchar_t>;
     std::wstring_convert<convert_typeX, wchar_t> converterX;
-
     return converterX.from_bytes(str);
   }
 
@@ -23,7 +22,6 @@ namespace hydra_xml
   {
     using convert_typeX = std::codecvt_utf8<wchar_t>;
     std::wstring_convert<convert_typeX, wchar_t> converterX;
-
     return converterX.to_bytes(wstr);
   }
 
@@ -107,24 +105,23 @@ namespace hydra_xml
     auto pos = path.find_last_of(L'/');
     m_libraryRootDir = path.substr(0, pos);
 
-    auto texturesLib  = xmlDoc.child(L"textures_lib");
-    auto materialsLib = xmlDoc.child(L"materials_lib");
-    auto geometryLib  = xmlDoc.child(L"geometry_lib");
-    auto lightsLib    = xmlDoc.child(L"lights_lib");
+    m_texturesLib  = xmlDoc.child(L"textures_lib");
+    m_materialsLib = xmlDoc.child(L"materials_lib");
+    m_geometryLib  = xmlDoc.child(L"geometry_lib");
+    m_lightsLib    = xmlDoc.child(L"lights_lib");
 
-    auto cameraLib    = xmlDoc.child(L"cam_lib");
-    auto settingsNode = xmlDoc.child(L"render_lib");
-    auto sceneNode    = xmlDoc.child(L"scenes");
+    m_cameraLib    = xmlDoc.child(L"cam_lib");
+    m_settingsNode = xmlDoc.child(L"render_lib");
+    m_sceneNode    = xmlDoc.child(L"scenes");
 
-    if (texturesLib == nullptr || materialsLib == nullptr || lightsLib == nullptr || cameraLib == nullptr ||
-        geometryLib == nullptr || settingsNode == nullptr || sceneNode == nullptr)
+    if (m_texturesLib == nullptr || m_materialsLib == nullptr || m_lightsLib == nullptr || m_cameraLib == nullptr || m_geometryLib == nullptr || m_settingsNode == nullptr || m_sceneNode == nullptr)
     {
       std::string errMsg = "Loaded state (" +  path + ") doesn't have one of (textures_lib, materials_lib, lights_lib, cam_lib, geometry_lib, render_lib, scenes";
       LogError(errMsg);
       return -1;
     }
 
-    parseInstancedMeshes(sceneNode, geometryLib);
+    parseInstancedMeshes(m_sceneNode, m_geometryLib);
 
     return 0;
   }
@@ -200,17 +197,18 @@ namespace hydra_xml
     return result;
   }
 
-//  LiteMath::float4x4 float4x4FromString(const std::wstring &matrix_str)
-//  {
-//    LiteMath::float4x4 result;
-//    std::wstringstream inputStream(matrix_str);
-//
-//    inputStream >> result.col(0).x  >> result.col(1).x  >> result.col(2).x  >> result.col(3).x
-//                >> result.col(0).y  >> result.col(1).y  >> result.col(2).y  >> result.col(3).y
-//                >> result.col(0).z  >> result.col(1).z  >> result.col(2).z  >> result.col(3).z
-//                >> result.col(0).w  >> result.col(1).w  >> result.col(2).w  >> result.col(3).w;
-//
-//    return result;
-//  }
+  LiteMath::float3 read3f(pugi::xml_attribute a_attr)
+  {
+    LiteMath::float3 res(0, 0, 0);
+    const wchar_t* camPosStr = a_attr.as_string();
+    if (camPosStr != nullptr)
+    {
+      std::wstringstream inputStream(camPosStr);
+      inputStream >> res.x >> res.y >> res.z;
+    }
+    return res;
+  }
+
+
 }
 

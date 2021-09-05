@@ -3,7 +3,7 @@
 #include <cassert>
 
 #include "CrossRT.h"
-#include "include/embree3/rtcore.h"
+#include "embree3/rtcore.h"
 
 class EmbreeRT : public ISceneObject
 {
@@ -18,17 +18,18 @@ public:
   void BeginScene() override; 
   void EndScene  () override; 
   
-  uint32_t AddInstance(uint32_t a_geomId, const float a_matrixData[16], bool a_rowMajor = false) override;
-  void     UpdateInstance(uint32_t a_instanceId, uint32_t a_geomId, const float* a_matrixData, bool a_rowMajor = false) override;
+  uint32_t AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_matrix) override;
+  void     UpdateInstance(uint32_t a_instanceId, uint32_t a_geomId, const LiteMath::float4x4& a_matrix) override;
 
   CRT_Hit  RayQuery(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) override;
 
 protected:
   RTCDevice m_device = nullptr;
   RTCScene  m_scene  = nullptr;
+
+  std::vector<RTCScene>    m_blas;
+  std::vector<RTCGeometry> m_inst;
   
-  uint32_t  m_currGeomTop = 0;
-  //std::vector<RTCGeometry> m_geoms;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -63,9 +64,11 @@ void error_handler(void* userPtr, const RTCError code, const char* str)
 EmbreeRT::EmbreeRT()
 {
   m_device = rtcNewDevice("isa=avx512");
-  m_scene  = rtcNewScene(m_device);
+  m_scene  = nullptr;
+  
   rtcSetDeviceErrorFunction(m_device, error_handler, nullptr);
-  //m_geoms.reserve(1000);
+  m_blas.reserve(1024);
+  m_inst.reserve(2048);
 }
 
 EmbreeRT::~EmbreeRT()
@@ -76,9 +79,16 @@ EmbreeRT::~EmbreeRT()
 
 void EmbreeRT::ClearGeom()
 {
-  rtcReleaseScene(m_scene);
+  for(auto& scn : m_blas)
+    rtcReleaseScene(scn);
+  
+  if(m_scene != nullptr)
+    rtcReleaseScene(m_scene);
   m_scene = rtcNewScene(m_device);
-  m_currGeomTop = 0;
+  rtcSetSceneBuildQuality(m_scene, RTC_BUILD_QUALITY_HIGH);
+
+  m_blas.resize(0);
+  m_inst.resize(0);
 }
   
 uint32_t EmbreeRT::AddGeom_Triangles4f(const LiteMath::float4* a_vpos4f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber)
@@ -105,17 +115,19 @@ uint32_t EmbreeRT::AddGeom_Triangles4f(const LiteMath::float4* a_vpos4f, size_t 
 
   rtcCommitGeometry(geom);
 
-  // In rtcAttachGeometry(...), the scene takes ownership of the geom by increasing its reference count. This means that we don't have
-  // to hold on to the geom handle, and may release it. The geom object will be released automatically when the scene is destroyed.//
-  // rtcAttachGeometry() returns a geometry ID. We could use this to identify intersected objects later on.
+  // attach 'geom' to 'meshScene' and then remember 'meshScene' in 'm_blas'
   //
-  uint32_t geomId = rtcAttachGeometry(m_scene, geom);
-  rtcReleaseGeometry(geom);
-
-  assert(geomId == m_currGeomTop);
+  auto meshScene = rtcNewScene(m_device);
+  rtcSetSceneBuildQuality(meshScene, RTC_BUILD_QUALITY_HIGH);
   
-  m_currGeomTop++;
-  return m_currGeomTop-1;
+  uint32_t geomId = rtcAttachGeometry(meshScene, geom); 
+  rtcReleaseGeometry(geom);
+  m_blas.push_back(meshScene);
+
+  rtcCommitScene(meshScene);
+
+  //assert(geomId == m_blas.size()-1);  
+  return uint32_t(m_blas.size()-1);
 }
 
 void EmbreeRT::UpdateGeom_Triangles4f(uint32_t a_geomId, const LiteMath::float4* a_vpos4f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber)
@@ -125,22 +137,46 @@ void EmbreeRT::UpdateGeom_Triangles4f(uint32_t a_geomId, const LiteMath::float4*
 
 void EmbreeRT::BeginScene()
 {
-
+  m_inst.resize(0);
+  if(m_scene != nullptr)
+    rtcReleaseScene(m_scene);
+  m_scene = rtcNewScene(m_device);
+  rtcSetSceneBuildQuality(m_scene, RTC_BUILD_QUALITY_HIGH);
 } 
+
+uint32_t EmbreeRT::AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_matrix)
+{
+  if(a_geomId >= m_blas.size())
+    return uint32_t(-1);
+
+  RTCGeometry instanceGeom = rtcNewGeometry(m_device, RTC_GEOMETRY_TYPE_INSTANCE);
+  rtcSetGeometryInstancedScene(instanceGeom, m_blas[a_geomId]);                   // say that 'instanceGeom' is an instance of 'm_blas[a_geomId]'
+  //rtcSetGeometryTimeStepCount(instanceGeom, 1);                                 // don't know wtf is that
+  rtcAttachGeometry(m_scene,instanceGeom);                                        // attach our instance to global scene 
+  rtcReleaseGeometry(instanceGeom);
+  
+  // update instance matrix
+  //
+  rtcSetGeometryTransform(instanceGeom, 0, RTC_FORMAT_FLOAT4X4_COLUMN_MAJOR, (const float*)&a_matrix);
+  rtcCommitGeometry(instanceGeom);
+  
+  m_inst.push_back(instanceGeom);
+  return uint32_t(m_inst.size()-1);
+}
 
 void EmbreeRT::EndScene()
 {
   rtcCommitScene(m_scene);
 }  
 
-uint32_t EmbreeRT::AddInstance(uint32_t a_geomId, const float a_matrixData[16], bool a_rowMajor)
-{
-  return 0;
-}
 
-void     EmbreeRT::UpdateInstance(uint32_t a_instanceId, uint32_t a_geomId, const float* a_matrixData, bool a_rowMajor)
+void  EmbreeRT::UpdateInstance(uint32_t a_instanceId, uint32_t a_geomId, const LiteMath::float4x4& a_matrix)
 {
+  if(a_instanceId >= m_inst.size())
+    return;
 
+  rtcSetGeometryTransform(m_inst[a_instanceId], 0, RTC_FORMAT_FLOAT4X4_COLUMN_MAJOR, (const float*)&a_matrix);
+  rtcCommitGeometry(m_inst[a_instanceId]);
 }
 
 CRT_Hit  EmbreeRT::RayQuery(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar)
@@ -169,13 +205,14 @@ CRT_Hit  EmbreeRT::RayQuery(LiteMath::float4 posAndNear, LiteMath::float4 dirAnd
   
   rayhit.ray.mask   = -1;
   rayhit.ray.flags  = 0;
-  rayhit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
+  rayhit.hit.geomID    = RTC_INVALID_GEOMETRY_ID;
   rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
 
   // There are multiple variants of rtcIntersect. This one intersects a single ray with the scene.
   // 
-  rtcIntersect1(m_scene, &context, &rayhit);
-  
+  rtcIntersect1(m_blas[0], &context, &rayhit);
+  //rtcIntersect1(m_scene, &context, &rayhit);
+
   CRT_Hit result;
   if(rayhit.hit.geomID != RTC_INVALID_GEOMETRY_ID)
   {
