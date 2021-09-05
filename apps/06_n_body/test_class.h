@@ -14,7 +14,7 @@ public:
     float4 vel_charge;
   };
 protected:
-  static constexpr float dt = 1e-3f;
+  static constexpr float dt = 5e-5f;
   uint32_t m_seed;
   uint32_t m_iters;
 

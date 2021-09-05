@@ -12,18 +12,14 @@
 #include <string>
 #include <iostream>
 #include <generated_userfix.h>
-
-enum class RENDER_MODE
-{
-  POINTS,
-  SPRITES
-};
+#include "render_config.h"
+#include "shaders/shader_common.h"
 
 
 class PointsRender : public IRender
 {
 public:
-  static constexpr RENDER_MODE DISPLAY_MODE = RENDER_MODE::SPRITES;
+
   PointsRender(uint32_t a_width, uint32_t a_height);
 
   ~PointsRender()
@@ -97,13 +93,8 @@ private:
   std::vector<VkFence> m_frameFences;
   std::vector<VkCommandBuffer> m_cmdBuffersDrawMain;
 
-  struct
-  {
-    LiteMath::float4x4 projView;
-    LiteMath::float4x4 model;
-  } pushConst2M;
-
   vk_utils::VulkanImageMem m_sprite;
+  VkSampler m_spriteSampler;
 
 //  UniformParams m_uniforms{};
 //  VkBuffer m_ubo = VK_NULL_HANDLE;
@@ -122,6 +113,12 @@ private:
     uint32_t pointsCount = nBody::BODIES_COUNT;
     std::vector<nBody::BodyState> outBodies;
   } m_pointsData;
+
+  struct
+  {
+    LiteMath::float4x4 projView;
+    LiteMath::float4   cameraPos;
+  } m_pushConsts;
 
   struct pipeline_data_t
   {
@@ -159,9 +156,11 @@ private:
   void DrawFrameSimple();
   void CreateInstance();
   void CreateDevice(uint32_t a_deviceId);
-  void BuildCommandBufferPoints(VkCommandBuffer cmdBuff, VkFramebuffer frameBuff, VkPipeline a_pipeline);
+  void BuildDrawCommandBuffer(VkCommandBuffer a_cmdBuff, VkFramebuffer a_frameBuff, VkPipeline a_pipeline);
   VkCommandBuffer BuildCommandBufferSimulation();
+  void SetupPointsVertexBindings();
   void SetupPointsPipeline();
+  void SetupSpritesPipeline();
   void CleanupPipelineAndSwapchain();
   void RecreateSwapChain();
   void CreateUniformBuffer();

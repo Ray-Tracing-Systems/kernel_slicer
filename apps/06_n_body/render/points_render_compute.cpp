@@ -12,19 +12,15 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-bool loadImage(const std::string &filename, uint32_t &w, uint32_t &h, unsigned char *pixels)
+unsigned char* loadImage(const std::string &a_filename, int &w, int &h, int &channels)
 {
-  int texWidth, texHeight, texChannels;
-  pixels = stbi_load(filename.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+  unsigned char* pixels = stbi_load(a_filename.c_str(), &w, &h, &channels, STBI_rgb_alpha);
 
-  if(texWidth <= 0 || texHeight <= 0 || !pixels)
+  if(w <= 0 || h <= 0 || !pixels)
   {
-    return false;
+    return nullptr;
   }
-
-  w = texWidth;
-  h = texHeight;
-  return true;
+  return pixels;
 }
 
 void PointsRender::LoadScene(const char *path, bool transpose_inst_matrices)
@@ -49,28 +45,53 @@ void PointsRender::LoadScene(const char *path, bool transpose_inst_matrices)
 
   if(DISPLAY_MODE == RENDER_MODE::SPRITES)
   {
-    uint32_t w, h;
-    unsigned char *pixels;
-    auto loaded = loadImage("textures/4.png", w, h, pixels);
-    if(!loaded)
+    int w, h, channels;
+    unsigned char *pixels = loadImage(SPRITE_TEXTURE_PATH, w, h, channels);
+    if(!pixels)
     {
-      std::cout << "[Point render] Failed to load texture\n !";
+      vk_utils::logWarning("[PointsRender::LoadScene] Failed to load sprite texture!");
     }
     else
     {
-      vk_utils::createImgAllocAndBind(m_device, m_physicalDevice, w, h, VK_FORMAT_R8G8B8A8_UNORM,
-                                      VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                                      &m_sprite);
-      //...
-    }
+      auto mipLevels = 1;//vk_utils::calcMipLevelsCount(w, h);
+      m_sprite = vk_utils::allocateColorTextureFromDataLDR(m_device, m_physicalDevice, pixels, w, h, mipLevels,
+                                                           VK_FORMAT_R8G8B8A8_UNORM, m_pCopy);
 
+      m_spriteSampler = vk_utils::createSampler(m_device, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK);
+      auto imgCmdBuf = vk_utils::createCommandBuffer(m_device, m_commandPoolGraphics);
+
+      VkCommandBufferBeginInfo beginInfo = {};
+      beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+      vkBeginCommandBuffer(imgCmdBuf, &beginInfo);
+      {
+        VkImageSubresourceRange subresourceRange = {};
+        subresourceRange.aspectMask = m_sprite.aspectMask;
+        subresourceRange.levelCount = mipLevels;
+        subresourceRange.layerCount = 1;
+        vk_utils::setImageLayout(
+            imgCmdBuf,
+            m_sprite.image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            subresourceRange);
+      }
+      vkEndCommandBuffer(imgCmdBuf);
+      vk_utils::executeCommandBufferNow(imgCmdBuf, m_graphicsQueue, m_device);
+//      recordMipChainGenerationCmdBuf(m_device, mipCmdBuf, m_sprite, w, h, mipLevels,  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+      stbi_image_free(pixels);
+    }
+    SetupSpritesPipeline();
   }
-  SetupPointsPipeline();
+  else
+  {
+    SetupPointsPipeline();
+  }
   UpdateView();
 
   for (size_t i = 0; i < m_framesInFlight; ++i)
   {
-    BuildCommandBufferPoints(m_cmdBuffersDrawMain[i], m_frameBuffers[i], m_pointsPipeline.pipeline);
+    BuildDrawCommandBuffer(m_cmdBuffersDrawMain[i], m_frameBuffers[i], m_pointsPipeline.pipeline);
   }
 }
 

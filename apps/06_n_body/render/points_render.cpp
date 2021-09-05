@@ -52,8 +52,8 @@ PointsRender::InitVulkan(const char **a_instanceExtensions, uint32_t a_instanceE
   CreateDevice(a_deviceId);
   volkLoadDevice(m_device);
 
-  m_pCopy = std::make_shared<vk_utils::PingPongCopyHelper>(m_physicalDevice, m_device, m_transferQueue, m_queueFamilyIDXs.transfer,
-                                                                8*1024*1024);
+  m_pCopy = std::make_shared<vk_utils::SimpleCopyHelper>(m_physicalDevice, m_device, m_transferQueue, m_queueFamilyIDXs.transfer,
+                                                         8*1024*1024);
 
   m_commandPoolGraphics = vk_utils::createCommandPool(m_device, m_queueFamilyIDXs.graphics,
                                                       VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
@@ -144,18 +144,64 @@ void PointsRender::CreateDevice(uint32_t a_deviceId)
   vkGetDeviceQueue(m_device, m_queueFamilyIDXs.compute, 0, &m_computeQueue);
 }
 
+void PointsRender::SetupPointsVertexBindings()
+{
+  m_pointsData.inputBinding.binding = 0;
+  m_pointsData.inputBinding.stride = sizeof(float) * 8;
+  m_pointsData.inputBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+  m_pointsData.inputAttributes[0].binding = 0;
+  m_pointsData.inputAttributes[0].location = 0;
+  m_pointsData.inputAttributes[0].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+  m_pointsData.inputAttributes[0].offset = 0;
+
+  m_pointsData.inputAttributes[1].binding = 0;
+  m_pointsData.inputAttributes[1].location = 1;
+  m_pointsData.inputAttributes[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+  m_pointsData.inputAttributes[1].offset = sizeof(float) * 4;
+
+  m_pointsData.inputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+  m_pointsData.inputStateInfo.vertexBindingDescriptionCount = 1;
+  m_pointsData.inputStateInfo.vertexAttributeDescriptionCount =
+      sizeof(m_pointsData.inputAttributes) / sizeof(m_pointsData.inputAttributes[0]);
+  m_pointsData.inputStateInfo.pVertexBindingDescriptions = &m_pointsData.inputBinding;
+  m_pointsData.inputStateInfo.pVertexAttributeDescriptions = m_pointsData.inputAttributes;
+}
 
 void PointsRender::SetupPointsPipeline()
 {
-  //  std::vector<std::pair<VkDescriptorType, uint32_t> > dtypes = {
-  //      {VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1},
-  //      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,             1}
-  //  };
-  //  m_pBindings = std::make_shared<vk_utils::DescriptorMaker>(m_device, dtypes, 1);
-  //
-  //  m_pBindings->BindBegin(VK_SHADER_STAGE_FRAGMENT_BIT);
-  //  m_pBindings->BindBuffer(0, m_ubo, VK_NULL_HANDLE, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-  //  m_pBindings->BindEnd(&m_dSet, &m_dSetLayout);
+  SetupPointsVertexBindings();
+
+  vk_utils::GraphicsPipelineMaker maker;
+
+  std::unordered_map<VkShaderStageFlagBits, std::string> shader_paths;
+  shader_paths[VK_SHADER_STAGE_VERTEX_BIT] = "shaders/points.vert.spv";
+  shader_paths[VK_SHADER_STAGE_FRAGMENT_BIT] = "shaders/points.frag.spv";
+
+
+  maker.LoadShaders(m_device, shader_paths);
+
+  m_pointsPipeline.layout = maker.MakeLayout(m_device, {}, sizeof(m_pushConsts));
+  maker.SetDefaultState(m_width, m_height);
+  maker.rasterizer.polygonMode = VK_POLYGON_MODE_POINT;
+  m_pointsPipeline.pipeline = maker.MakePipeline(m_device, m_pointsData.inputStateInfo,
+                                                 m_screenRenderPass,
+                                                 {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR},
+                                                 vk_utils::IA_PList());
+}
+
+void PointsRender::SetupSpritesPipeline()
+{
+  SetupPointsVertexBindings();
+
+    std::vector<std::pair<VkDescriptorType, uint32_t> > dtypes = {
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1}
+    };
+    m_pBindings = std::make_shared<vk_utils::DescriptorMaker>(m_device, dtypes, 1);
+
+    m_pBindings->BindBegin(VK_SHADER_STAGE_FRAGMENT_BIT);
+    m_pBindings->BindImage(0, m_sprite.view, m_spriteSampler, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    m_pBindings->BindEnd(&m_dSet, &m_dSetLayout);
 
 
   m_pointsData.inputBinding.binding = 0;
@@ -195,10 +241,18 @@ void PointsRender::SetupPointsPipeline()
 
   maker.LoadShaders(m_device, shader_paths);
 
-  m_pointsPipeline.layout = maker.MakeLayout(m_device, {}, sizeof(pushConst2M));
+  m_pointsPipeline.layout = maker.MakeLayout(m_device, {m_dSetLayout}, sizeof(m_pushConsts));
   maker.SetDefaultState(m_width, m_height);
-  if(DISPLAY_MODE == RENDER_MODE::POINTS)
-    maker.rasterizer.polygonMode = VK_POLYGON_MODE_POINT;
+
+  maker.colorBlendAttachment.blendEnable = VK_TRUE;
+  maker.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+  maker.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+  maker.colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+  maker.colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+  maker.colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+  maker.colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+  maker.colorBlendAttachment.colorWriteMask = vk_utils::ALL_COLOR_COMPONENTS;
+  maker.depthStencilTest.depthWriteEnable = VK_FALSE;
   m_pointsPipeline.pipeline = maker.MakePipeline(m_device, m_pointsData.inputStateInfo,
                                                  m_screenRenderPass,
                                                  {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR},
@@ -238,7 +292,7 @@ void PointsRender::UpdateUniformBuffer(float a_time)
 //  memcpy(m_uboMappedMem, &m_uniforms, sizeof(m_uniforms));
 }
 
-void PointsRender::BuildCommandBufferPoints(VkCommandBuffer a_cmdBuff, VkFramebuffer a_frameBuff, VkPipeline a_pipeline)
+void PointsRender::BuildDrawCommandBuffer(VkCommandBuffer a_cmdBuff, VkFramebuffer a_frameBuff, VkPipeline a_pipeline)
 {
   vkResetCommandBuffer(a_cmdBuff, 0);
 
@@ -271,15 +325,18 @@ void PointsRender::BuildCommandBufferPoints(VkCommandBuffer a_cmdBuff, VkFramebu
     VkShaderStageFlags stageFlags = (VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
     if(DISPLAY_MODE == RENDER_MODE::SPRITES)
+    {
       stageFlags |= VK_SHADER_STAGE_GEOMETRY_BIT;
+      vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pointsPipeline.layout, 0, 1,
+                              &m_dSet, 0, VK_NULL_HANDLE);
+    }
 
     VkDeviceSize zero_offset = 0u;
     VkBuffer vertexBuf = m_pointsData.pointsBuf;
 
     vkCmdBindVertexBuffers(a_cmdBuff, 0, 1, &vertexBuf, &zero_offset);
-    pushConst2M.model = LiteMath::float4x4();
     vkCmdPushConstants(a_cmdBuff, m_pointsPipeline.layout, stageFlags, 0,
-                       sizeof(pushConst2M), &pushConst2M);
+                       sizeof(m_pushConsts), &m_pushConsts);
 
     vkCmdDraw(a_cmdBuff, m_pointsData.pointsCount, 1, 0, 0);
 
@@ -349,7 +406,7 @@ void PointsRender::RecreateSwapChain()
   m_cmdBuffersDrawMain = vk_utils::createCommandBuffers(m_device, m_commandPoolGraphics, m_framesInFlight);
   for (size_t i = 0; i < m_swapchain.GetImageCount(); ++i)
   {
-    BuildCommandBufferPoints(m_cmdBuffersDrawMain[i], m_frameBuffers[i], m_pointsPipeline.pipeline);
+    BuildDrawCommandBuffer(m_cmdBuffersDrawMain[i], m_frameBuffers[i], m_pointsPipeline.pipeline);
   }
 }
 
@@ -403,7 +460,8 @@ void PointsRender::UpdateView()
   auto mProj = projectionMatrix(m_cam.fov, aspect, 0.1f, 1000.0f);
   auto mLookAt = LiteMath::lookAt(m_cam.pos, m_cam.lookAt, m_cam.up);
   auto mWorldViewProj = mProjFix * mProj * mLookAt;
-  pushConst2M.projView = mWorldViewProj;
+  m_pushConsts.projView = mWorldViewProj;
+  m_pushConsts.cameraPos = LiteMath::float4(m_cam.pos.x, m_cam.pos.y, m_cam.pos.z, 1.0f);
 }
 
 void PointsRender::DrawFrameSimple()
@@ -419,7 +477,7 @@ void PointsRender::DrawFrameSimple()
   VkSemaphore waitSemaphores[] = {m_presentationResources.imageAvailable};
   VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
-  BuildCommandBufferPoints(currentCmdBuf, m_frameBuffers[imageIdx], m_pointsPipeline.pipeline);
+  BuildDrawCommandBuffer(currentCmdBuf, m_frameBuffers[imageIdx], m_pointsPipeline.pipeline);
 
   auto simCmdBuf = BuildCommandBufferSimulation();
 
@@ -434,17 +492,6 @@ void PointsRender::DrawFrameSimple()
   simSubmit.pSignalSemaphores = &m_simFinishedSem;
 
   VK_CHECK_RESULT(vkQueueSubmit(m_computeQueue, 1, &simSubmit, VK_NULL_HANDLE));
-
-  //auto start = std::chrono::high_resolution_clock::now();
-  //vk_utils::executeCommandBufferNow(commandBuffer, m_computeQueue, m_device);
-  //auto stop = std::chrono::high_resolution_clock::now();
-  //auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-  //std::cout << ms << " ms for nbody sim execution " << std::endl;
-  //
-  //m_pCopy->ReadBuffer(m_pointsData.pointsBuf, 0, m_pointsData.outBodies.data(),
-  //                    m_pointsData.outBodies.size() * sizeof(m_pointsData.outBodies[0]));
-  //
-  //std::cout << std::endl;
 
   VkPipelineStageFlags drawWaitStages[] = {VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT};
 
