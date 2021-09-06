@@ -96,7 +96,7 @@ void {{MainClassName}}_Generated::UpdateTextureMembers(std::shared_ptr<vk_utils:
   vkCmdPipelineBarrier(cmdBuff,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,0,nullptr,0,nullptr,uint32_t(barriers.size()),barriers.data());
   vkEndCommandBuffer(cmdBuff);
   
-  vk_utils::ExecuteCommandBufferNow(cmdBuff, transferQueue, device);
+  vk_utils::executeCommandBufferNow(cmdBuff, transferQueue, device);
   {% endif %}
 }
 
