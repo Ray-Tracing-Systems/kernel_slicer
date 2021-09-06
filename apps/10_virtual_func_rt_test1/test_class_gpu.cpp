@@ -7,9 +7,9 @@
 #include <chrono>
 
 #include "vk_utils.h"
-#include "vk_program.h"
+#include "vk_descriptor_sets.h"
 #include "vk_copy.h"
-#include "vk_buffer.h"
+#include "vk_buffers.h"
 
 #include "vulkan_basics.h"
 #include "test_class_generated.h"
@@ -21,12 +21,12 @@ class TestClass_GPU : public TestClass_Generated
 public:
   //VkBufferUsageFlags GetAdditionalFlagsForUBO() const override { return VK_BUFFER_USAGE_TRANSFER_SRC_BIT; }
 
-  void ReadClassData(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine, TestClass_UBO_Data* pData)
+  void ReadClassData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine, TestClass_UBO_Data* pData)
   {
     a_pCopyEngine->ReadBuffer(m_classDataBuffer, 0, pData, sizeof(TestClass_UBO_Data));
   }
 
-  std::vector<uint2> GetObjPtrArray(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
+  std::vector<uint2> GetObjPtrArray(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
   {
     std::vector<uint2> result(m_maxThreadCount);
     a_pCopyEngine->ReadBuffer(m_IMaterialObjPtrBuffer, 0, result.data(), result.size()*sizeof(uint2));
@@ -62,42 +62,38 @@ void test_class_gpu()
   enabledLayers.push_back("VK_LAYER_LUNARG_standard_validation");
   
   VK_CHECK_RESULT(volkInitialize());
-  instance = vk_utils::CreateInstance(enableValidationLayers, enabledLayers, extensions);
+  instance = vk_utils::createInstance(enableValidationLayers, enabledLayers, extensions);
   volkLoadInstance(instance);
 
-  physicalDevice       = vk_utils::FindPhysicalDevice(instance, true, 0);
-  auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
+  physicalDevice       = vk_utils::findPhysicalDevice(instance, true, 0);
+  auto queueComputeFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
   
   // query for shaderInt8
   //
   VkPhysicalDeviceShaderFloat16Int8Features features = {};
   features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
   features.shaderInt8 = VK_TRUE;
-  
-  VkPhysicalDeviceFeatures2 physDevFeatures2 = {};
-  physDevFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-  physDevFeatures2.pNext = &features;
 
   std::vector<const char*> validationLayers, deviceExtensions;
   VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
-  vk_utils::queueFamilyIndices fIDs = {};
+  vk_utils::QueueFID_T fIDs = {};
   enabledDeviceFeatures.shaderInt64 = VK_TRUE;
 
   deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
   deviceExtensions.push_back("VK_KHR_shader_float16_int8"); 
 
   fIDs.compute = queueComputeFID;
-  device       = vk_utils::CreateLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures, 
-                                               fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, physDevFeatures2);
+  device       = vk_utils::createLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures,
+                                               fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, &features);
   volkLoadDevice(device);
 
-  commandPool  = vk_utils::CreateCommandPool(device, physicalDevice, VK_QUEUE_COMPUTE_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+  commandPool  = vk_utils::createCommandPool(device, fIDs.compute, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
   // (2) initialize vulkan helpers
   //  
   VkQueue computeQueue, transferQueue;
   {
-    auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT);
+    auto queueComputeFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT);
     vkGetDeviceQueue(device, queueComputeFID, 0, &computeQueue);
     vkGetDeviceQueue(device, queueComputeFID, 0, &transferQueue);
   }
@@ -110,7 +106,7 @@ void test_class_gpu()
   ctx.computeQueue   = computeQueue;
   ctx.transferQueue  = transferQueue;
 
-  auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
+  auto pCopyHelper = std::make_shared<vk_utils::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
   auto pGPUImpl    = std::make_shared<TestClass_GPU>();                      // !!! USING GENERATED CODE !!! 
   pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT); // !!! USING GENERATED CODE !!!                        
   pGPUImpl->LoadScene("cornell_collapsed.bvh", "cornell_collapsed.vsgf");
@@ -124,11 +120,11 @@ void test_class_gpu()
   //
   const size_t bufferSize1 = WIN_WIDTH*WIN_HEIGHT*sizeof(uint32_t);
   const size_t bufferSize2 = WIN_WIDTH*WIN_HEIGHT*sizeof(float)*4;
-  VkBuffer xyBuffer        = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  VkBuffer colorBuffer1    = vkfw::CreateBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  VkBuffer colorBuffer2    = vkfw::CreateBuffer(device, bufferSize2,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  VkBuffer xyBuffer        = vk_utils::createBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  VkBuffer colorBuffer1    = vk_utils::createBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  VkBuffer colorBuffer2    = vk_utils::createBuffer(device, bufferSize2,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   
-  VkDeviceMemory colorMem  = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {xyBuffer, colorBuffer1, colorBuffer2});
+  VkDeviceMemory colorMem  = vk_utils::allocateAndBindWithPadding(device, physicalDevice, {xyBuffer, colorBuffer1, colorBuffer2});
   
   pGPUImpl->SetVulkanInOutFor_PackXY(xyBuffer, 0);            // !!! USING GENERATED CODE !!! 
 
@@ -143,7 +139,7 @@ void test_class_gpu()
   // now compute some thing useful
   //
   {
-    VkCommandBuffer commandBuffer = vk_utils::CreateCommandBuffers(device, commandPool, 1)[0];
+    VkCommandBuffer commandBuffer = vk_utils::createCommandBuffer(device, commandPool);
     
     VkCommandBufferBeginInfo beginCommandBufferInfo = {};
     beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -153,7 +149,7 @@ void test_class_gpu()
     pGPUImpl->PackXYCmd(commandBuffer, WIN_WIDTH, WIN_HEIGHT, nullptr);       // !!! USING GENERATED CODE !!! 
     vkCmdFillBuffer(commandBuffer, colorBuffer2, 0, VK_WHOLE_SIZE, 0);        // clear accumulated color
     vkEndCommandBuffer(commandBuffer);  
-    vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
+    vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
 
     vkResetCommandBuffer(commandBuffer, 0);
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
@@ -161,7 +157,7 @@ void test_class_gpu()
     vkEndCommandBuffer(commandBuffer);  
    
     auto start = std::chrono::high_resolution_clock::now();
-    vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
+    vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
     auto stop = std::chrono::high_resolution_clock::now();
     float ms  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
     std::cout << ms << " ms for full command buffer execution " << std::endl;
@@ -207,7 +203,7 @@ void test_class_gpu()
     const int NUM_PASSES = 1000.0f;
     for(int i=0;i<NUM_PASSES;i++)
     {
-      vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
+      vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
       if(i % 100 == 0)
       {
         std::cout << "progress (gpu) = " << 100.0f*float(i)/float(NUM_PASSES) << "% \r";
