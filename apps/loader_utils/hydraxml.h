@@ -8,6 +8,7 @@ using namespace LiteMath;
 #include <vector>
 #include <set>
 #include <unordered_map>
+//#include <iostream>
 
 #if defined(__ANDROID__)
 #include <android/asset_manager.h>
@@ -34,72 +35,62 @@ namespace hydra_xml
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  
-  // Range-based for loop support
-  template <typename It> 
-  class range_obj
-  {
-  public:
-  	typedef It const_iterator;
-  	typedef It iterator;  
-  	range_obj(It b, It e): _begin(b), _end(e){}
-  	It begin() { return _begin; }
-  	It end() { return _end; }  
-  private:
-  	It _begin, _end;
-  };
 
-  class LocIterator 
-  {
-   public:
-     LocIterator(pugi::xml_node start, const std::string& a_libPath) : m_currNode(start), m_libraryRootDir(a_libPath) { m_isNull = (m_currNode == nullptr);  }  
-     LocIterator(LocIterator& a_iter) : m_currNode(a_iter.m_currNode), m_libraryRootDir(a_iter.m_libraryRootDir) {}
+  //class InstanceIterator 
+  //{
+  // public:
+  //  InstanceIterator(InstanceIterator& a_iter) : m_currNode(a_iter.m_currNode){}
+  //  InstanceIterator(pugi::xml_node start) : m_currNode(start) { }
+  //
+  //  Instance  operator*() const 
+  //  { 
+  //    Instance result;
+  //    result.geomId = m_currNode.attribute(L"mesh_id").as_uint();
+  //    result.rmapId = m_currNode.attribute(L"rmap_id").as_uint();
+  //    result.matrix = float4x4FromString(m_currNode.attribute(L"matrix").as_string());
+  //    return result; 
+  //  }
+  //  const InstanceIterator& operator++() { m_currNode = m_currNode.next_sibling(L"instance"); return *this; }
+  //  bool operator !=(const InstanceIterator &other) const { return m_currNode != other.m_currNode; }  
+  //    
+  // private:
+  //   pugi::xml_node m_currNode;
+  //};
 
-     std::string operator*() const 
-     { 
-       auto attr = m_currNode.attribute(L"loc");
-       if(attr == nullptr)
-         return "";
-       auto meshLoc = ws2s(std::wstring(attr.as_string()));
-       return m_libraryRootDir + "/" + meshLoc;
-     }
-     
-     const LocIterator& operator++() 
-     { 
-       m_currNode = m_currNode.next_sibling(); 
-       m_isNull = (m_currNode == nullptr); 
-       return *this; 
-     }
+  //
+  //
+	class LocIterator
+	{
+		friend class pugi::xml_node;
+    friend class pugi::xml_node_iterator;
 
-     bool operator !=(const LocIterator &other) const { return (m_currNode != other.m_currNode) || (m_isNull != other.m_isNull); }
-     bool operator ==(const LocIterator &other) const { return (m_currNode == other.m_currNode) && (m_isNull == other.m_isNull); }  
-     
-   private:
-     pugi::xml_node      m_currNode;
-     const std::string&  m_libraryRootDir;
-     bool                m_isNull = false;
-  };
+	public:
 
-  class InstanceIterator 
-  {
-   public:
-    InstanceIterator(InstanceIterator& a_iter) : m_currNode(a_iter.m_currNode){}
-    InstanceIterator(pugi::xml_node start) : m_currNode(start) { }
+		// Default constructor
+		LocIterator() : m_libraryRootDir("") {}
+		LocIterator(const pugi::xml_node_iterator& a_iter, const std::string& a_str) : m_iter(a_iter), m_libraryRootDir(a_str) {}
 
-    Instance  operator*() const 
+		// Iterator operators
+		bool operator==(const LocIterator& rhs) const { return m_iter == rhs.m_iter;}
+		bool operator!=(const LocIterator& rhs) const { return (m_iter != rhs.m_iter); }
+
+    std::string operator*() const 
     { 
-      Instance result;
-      result.geomId = m_currNode.attribute(L"mesh_id").as_uint();
-      result.rmapId = m_currNode.attribute(L"rmap_id").as_uint();
-      result.matrix = float4x4FromString(m_currNode.attribute(L"matrix").as_string());
-      return result; 
+      auto attr    = m_iter->attribute(L"loc");
+      auto meshLoc = ws2s(std::wstring(attr.as_string()));
+      return m_libraryRootDir + "/" + meshLoc;
     }
-    const InstanceIterator& operator++() { m_currNode = m_currNode.next_sibling(L"instance"); return *this; }
-    bool operator !=(const InstanceIterator &other) const { return m_currNode != other.m_currNode; }  
-      
-   private:
-     pugi::xml_node m_currNode;
-  };
+
+		const LocIterator& operator++() { ++m_iter; return *this; }
+		LocIterator operator++(int)     { m_iter++; return *this; }
+
+		const LocIterator& operator--() { --m_iter; return *this; }
+		LocIterator operator--(int)     { m_iter--; return *this; }
+
+  private:
+    pugi::xml_node_iterator m_iter;
+    std::string m_libraryRootDir;
+	};
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -123,14 +114,20 @@ namespace hydra_xml
     
     //// use this functions with C++11 range for 
     //
-    pugi::xml_object_range<pugi::xml_node_iterator> MaterialNodes() { return m_materialsLib.children(); } // #TODO: skip unused materials
+    //pugi::xml_object_range<MyIterator> MaterialNodes() { return pugi::xml_object_range<MyIterator>(m_materialsLib.begin(), m_materialsLib.end()); } //m_materialsLib.children(); } // #TODO: skip unused materials
+    pugi::xml_object_range<pugi::xml_node_iterator> MaterialNodes() { return m_materialsLib.children(); }
     pugi::xml_object_range<pugi::xml_node_iterator> LightNodes()    { return m_lightsLib.children();    } // #TODO: skip unused lights
 
-    range_obj<LocIterator>      MeshFiles()     { return range_obj(LocIterator(m_geometryLib.child(L"mesh"), m_libraryRootDir), LocIterator(pugi::xml_node(), m_libraryRootDir)); }
-    range_obj<LocIterator>      TextureFiles()  { return range_obj(LocIterator(m_texturesLib.first_child(),  m_libraryRootDir), LocIterator(pugi::xml_node(), m_libraryRootDir)); }
-    range_obj<InstanceIterator> InstancesGeom() { return range_obj(InstanceIterator(m_sceneNode.child(L"instance")), InstanceIterator(pugi::xml_node()));}
+    pugi::xml_object_range<LocIterator>        MeshFiles()     { return pugi::xml_object_range(LocIterator(m_geometryLib.begin(), m_libraryRootDir), 
+                                                                                               LocIterator(m_geometryLib.end(), "")); }
+
+    //pugi::xml_object_range<MyIterator>        MeshFiles()     { return pugi::xml_object_range(MyIterator(m_geometryLib.begin(), m_libraryRootDir), 
+    //                                                                                          MyIterator(m_geometryLib.end(), "")); }
+
+    //range_obj<LocIterator>      TextureFiles()  { return range_obj(LocIterator(m_texturesLib.first_child(),  m_libraryRootDir), LocIterator(m_texturesLib.end())); }
+    //range_obj<InstanceIterator> InstancesGeom() { return range_obj(InstanceIterator(m_sceneNode.child(L"instance")), InstanceIterator(pugi::xml_node()));}
     
-  private:
+  //private:
     void parseInstancedMeshes(pugi::xml_node a_scenelib, pugi::xml_node a_geomlib);
     void LogError(const std::string &msg);  
     

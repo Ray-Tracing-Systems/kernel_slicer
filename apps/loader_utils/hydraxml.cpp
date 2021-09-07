@@ -1,7 +1,9 @@
 #include "hydraxml.h"
+
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <locale>
 #include <codecvt>
 
 #if defined(__ANDROID__)

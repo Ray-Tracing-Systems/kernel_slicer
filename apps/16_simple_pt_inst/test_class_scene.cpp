@@ -34,7 +34,8 @@ int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_nee
   //
   m_materials.resize(0);
   m_materials.reserve(100);
-  for(auto materialNode : scene.MaterialNodes())
+  //for(auto materialNode : scene.MaterialNodes())
+  for(auto materialNode = scene.m_materialsLib.first_child(); materialNode != nullptr; materialNode = materialNode.next_sibling())
   {
     float4 color(0.5f, 0.5f, 0.75f, 0.0f);
     auto node = materialNode.child(L"diffuse").child(L"color");
@@ -48,8 +49,11 @@ int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_nee
   //
   m_pAccelStruct->ClearGeom();
   SimpleMesh m_mesh;
-  for(const auto& meshPath : scene.MeshFiles())
+  for(auto meshPath : scene.MeshFiles())
   {
+    //auto attr       = meshPath2.attribute(L"loc");
+    //auto meshPath   = hydra_xml::ws2s(std::wstring(attr.as_string()));
+
     std::cout << meshPath.c_str() << std::endl;
     m_mesh      = cmesh::LoadMeshFromVSGF(meshPath.c_str());
     auto geomId = m_pAccelStruct->AddGeom_Triangles4f(m_mesh.vPos4f.data(), m_mesh.vPos4f.size(), m_mesh.indices.data(), m_mesh.indices.size());
@@ -60,10 +64,10 @@ int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_nee
   
   //// (3) make instances of created meshes
   //
-  m_pAccelStruct->BeginScene();
-  for(const auto& inst : scene.InstancesGeom())
-    m_pAccelStruct->AddInstance(inst.geomId, inst.matrix);
-  m_pAccelStruct->EndScene();
+  //m_pAccelStruct->BeginScene();
+  //for(const auto& inst : scene.InstancesGeom())
+  //  m_pAccelStruct->AddInstance(inst.geomId, inst.matrix);
+  //m_pAccelStruct->EndScene();
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////////////////////////

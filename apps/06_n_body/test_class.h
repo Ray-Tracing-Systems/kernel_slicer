@@ -23,7 +23,7 @@ protected:
   void kernel1D_UpdatePosition(uint32_t bodies_count);
   void kernel1D_ReadData(BodyState *out_bodies, uint32_t bodies_count);
 public:
-  static constexpr uint32_t BODIES_COUNT = 1024;
+  static constexpr uint32_t BODIES_COUNT = 4096;
 
   nBody() {
     m_bodies.resize(BODIES_COUNT);
