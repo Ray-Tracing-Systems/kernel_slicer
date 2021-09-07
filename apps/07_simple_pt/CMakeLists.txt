@@ -20,7 +20,7 @@ endif()
 find_package(OpenMP)
 find_package(Vulkan)
 include_directories(${Vulkan_INCLUDE_DIR})
-include_directories("../vkfw" 
+include_directories("../vkutils"
                     "../volk" 
                     "../LiteMath" 
                     "../loader_utils"
@@ -29,7 +29,7 @@ include_directories("../vkfw"
                     
 link_directories("../volk")
 link_directories("../RayTracing/lib")
-
+#find_package(embree 3.0 REQUIRED)
 #uncomment this to detect broken memory problems via gcc sanitizers
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize-address-use-after-scope -fno-omit-frame-pointer -fsanitize=leak -fsanitize=undefined -fsanitize=bounds-strict")
 
@@ -42,16 +42,16 @@ add_executable(testapp main.cpp
                        test_class_gpu.cpp
                        test_class_generated.cpp
                        test_class_generated_init.cpp 
-                       test_class_generated_ds.cpp 
-                       ../geo_utils/cmesh.cpp
-                       ../vkfw/vk_utils.cpp
-                       ../vkfw/vk_copy.cpp
-                       ../vkfw/vk_buffer.cpp
-                       ../vkfw/vk_compute_pipeline.cpp
-                       ../vkfw/vk_program.cpp
-                       ../vkfw/vk_rt_utils.cpp
-                       ../vkfw/rt_funcs.cpp
-                       ../vkfw/vk_mesh.cpp
+                       test_class_generated_ds.cpp
+                       ../vkutils/geom/cmesh.cpp
+                       ../vkutils/vk_utils.cpp
+                       ../vkutils/vk_copy.cpp
+                       ../vkutils/vk_buffers.cpp
+                       ../vkutils/vk_pipeline.cpp
+                       ../vkutils/vk_descriptor_sets.cpp
+                       ../vkutils/ray_tracing/vk_rt_utils.cpp
+                       ../vkutils/ray_tracing/vk_rt_funcs.cpp
+                       ../vkutils/geom/vk_mesh.cpp
                        ../loader_utils/pugixml.cpp
                        ../loader_utils/hydraxml.cpp
                        ../loader_utils/scene_mgr.cpp

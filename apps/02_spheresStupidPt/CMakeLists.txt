@@ -20,7 +20,7 @@ endif()
 find_package(OpenMP)
 find_package(Vulkan)
 include_directories(${Vulkan_INCLUDE_DIR})
-include_directories("../vkfw" 
+include_directories("../vkutils"
                     "../volk"
                     "../LiteMath")
 
@@ -38,11 +38,11 @@ add_executable(testapp main.cpp
                        test_class_generated_ds.cpp
                        test_class_generated_init.cpp 
                        Bitmap.cpp
-                       ../vkfw/vk_utils.cpp
-                       ../vkfw/vk_copy.cpp
-                       ../vkfw/vk_buffer.cpp
-                       ../vkfw/vk_compute_pipeline.cpp
-                       ../vkfw/vk_program.cpp)
+                       ../vkutils/vk_utils.cpp
+                       ../vkutils/vk_copy.cpp
+                       ../vkutils/vk_buffers.cpp
+                       ../vkutils/vk_pipeline.cpp
+                       ../vkutils/vk_descriptor_sets.cpp)
 
 set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} OpenMP::OpenMP_CXX volk dl)

@@ -25,7 +25,7 @@ find_package(Vulkan)
 find_package(FreeImage REQUIRED)
 include_directories(${Vulkan_INCLUDE_DIR})
 include_directories(${FREEIMAGE_INCLUDE_DIRS})
-include_directories("../vkfw" "../volk" "../LiteMath")
+include_directories("../vkutils" "../volk" "../LiteMath")
 link_directories("../volk")
 
 #uncomment this to detect broken memory problems via gcc sanitizers
@@ -43,12 +43,12 @@ add_executable(testapp
                       test_class_generated_ds.cpp 
                       test_class_generated_init.cpp                      
                       ../LiteMath/texture2d.cpp                       
-                      ../vkfw/vk_utils.cpp
-                      ../vkfw/vk_copy.cpp
-                      ../vkfw/vk_buffer.cpp
-                      ../vkfw/vk_texture.cpp
-                      ../vkfw/vk_compute_pipeline.cpp
-                      ../vkfw/vk_program.cpp)
+                      ../vkutils/vk_utils.cpp
+                      ../vkutils/vk_copy.cpp
+                      ../vkutils/vk_buffers.cpp
+                      ../vkutils/vk_images.cpp
+                      ../vkutils/vk_pipeline.cpp
+                      ../vkutils/vk_descriptor_sets.cpp)
 
 set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} ${FREEIMAGE_LIBRARIES} OpenMP::OpenMP_CXX volk dl)

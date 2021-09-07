@@ -27,6 +27,12 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
 ## for Kernel in Kernels
   vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
+
+  vkDestroyPipeline(device, {{Kernel.Name}}Pipeline, nullptr);
+  vkDestroyPipelineLayout(device, {{Kernel.Name}}Layout, nullptr);
+
+  {{Kernel.Name}}Layout   = VK_NULL_HANDLE;
+  {{Kernel.Name}}Pipeline = VK_NULL_HANDLE;
 ## endfor
   vkDestroyDescriptorSetLayout(device, copyKernelFloatDSLayout, nullptr);
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
@@ -466,7 +472,7 @@ void {{MainClassName}}_Generated::InitIndirectBufferUpdateResources(const char* 
   //
   {
     VkShaderModule tempShaderModule = VK_NULL_HANDLE;
-    std::vector<uint32_t> code      = vk_utils::ReadFile("{{ShaderFolder}}/{{Dispatch.OriginalName}}_UpdateIndirect.comp.spv");
+    std::vector<uint32_t> code      = vk_utils::readSPVFile("{{ShaderFolder}}/{{Dispatch.OriginalName}}_UpdateIndirect.comp.spv");
     
     VkShaderModuleCreateInfo createInfo = {};
     createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -491,7 +497,7 @@ void {{MainClassName}}_Generated::InitIndirectBufferUpdateResources(const char* 
   {% endfor %}
   {% else %}
   VkShaderModule tempShaderModule = VK_NULL_HANDLE;
-  std::vector<uint32_t> code = vk_utils::ReadFile(a_filePath);
+  std::vector<uint32_t> code = vk_utils::readSPVFile(a_filePath);
   VkShaderModuleCreateInfo createInfo = {};
   createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
   createInfo.pCode    = code.data();
@@ -679,14 +685,14 @@ void {{MainClassName}}_Generated::AllocMemoryForMemberBuffersAndImages(const std
   textures.push_back(m_vdata.{{Var.Name}}Texture);
   
   {% endfor %}
-  auto offsets  = vk_utils::assignMemOffsetsWithPadding(reqs);
+  auto offsets  = vk_utils::calculateMemOffsets(reqs);
   auto memTotal = offsets[offsets.size() - 1];
   VkDeviceMemory res;
   VkMemoryAllocateInfo allocateInfo = {};
   allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
   allocateInfo.pNext           = nullptr;
   allocateInfo.allocationSize  = memTotal;
-  allocateInfo.memoryTypeIndex = vk_utils::FindMemoryType(reqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice);
+  allocateInfo.memoryTypeIndex = vk_utils::findMemoryType(reqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice);
   VK_CHECK_RESULT(vkAllocateMemory(device, &allocateInfo, NULL, &m_vdata.m_texMem));
   for(size_t i=0;i<textures.size();i++)
   {

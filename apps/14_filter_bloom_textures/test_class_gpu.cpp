@@ -6,10 +6,10 @@
 #include <chrono>
 
 #include "vk_utils.h"
-#include "vk_program.h"
+#include "vk_descriptor_sets.h"
 #include "vk_copy.h"
-#include "vk_buffer.h"
-#include "vk_texture.h"
+#include "vk_buffers.h"
+#include "vk_images.h"
 
 #include "vulkan_basics.h"
 #include "test_class_generated.h"
@@ -36,45 +36,41 @@ void tone_mapping_gpu(int w, int h, const float* a_hdrData, const char* a_outNam
   enabledLayers.push_back("VK_LAYER_KHRONOS_validation");
   enabledLayers.push_back("VK_LAYER_LUNARG_standard_validation");
   VK_CHECK_RESULT(volkInitialize());
-  instance = vk_utils::CreateInstance(enableValidationLayers, enabledLayers, extensions);
+  instance = vk_utils::createInstance(enableValidationLayers, enabledLayers, extensions);
   volkLoadInstance(instance);
 
-  physicalDevice       = vk_utils::FindPhysicalDevice(instance, true, 0);
-  auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
+  physicalDevice       = vk_utils::findPhysicalDevice(instance, true, 0);
+  auto queueComputeFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
   
   // query for shaderInt8
   //
   VkPhysicalDeviceShaderFloat16Int8Features features = {};
   features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
   features.shaderInt8 = VK_TRUE;
-  
-  VkPhysicalDeviceFeatures2 physDevFeatures2 = {};
-  physDevFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-  physDevFeatures2.pNext = &features;
 
   std::vector<const char*> validationLayers, deviceExtensions;
   VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
-  vk_utils::queueFamilyIndices fIDs = {};
+  vk_utils::QueueFID_T fIDs = {};
 
   deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
   deviceExtensions.push_back("VK_KHR_shader_float16_int8"); 
 
   fIDs.compute = queueComputeFID;
-  device       = vk_utils::CreateLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures, 
-                                               fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, physDevFeatures2);
+  device       = vk_utils::createLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures,
+                                               fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, &features);
   volkLoadDevice(device);                                            
-  commandPool  = vk_utils::CreateCommandPool(device, physicalDevice, VK_QUEUE_COMPUTE_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+  commandPool  = vk_utils::createCommandPool(device, fIDs.compute, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
   // (2) initialize vulkan helpers
   //  
   VkQueue computeQueue, transferQueue;
   {
-    auto queueComputeFID = vk_utils::GetQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT);
+    auto queueComputeFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT);
     vkGetDeviceQueue(device, queueComputeFID, 0, &computeQueue);
     vkGetDeviceQueue(device, queueComputeFID, 0, &transferQueue);
   }
 
-  auto pCopyHelper = std::make_shared<vkfw::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 64*1024*1024);
+  auto pCopyHelper = std::make_shared<vk_utils::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 64*1024*1024);
 
   auto pGPUImpl = std::make_shared<ToneMapping_Generated>(); // !!! USING GENERATED CODE !!! 
   pGPUImpl->InitVulkanObjects(device, physicalDevice, w*h);  // !!! USING GENERATED CODE !!!
@@ -85,61 +81,60 @@ void tone_mapping_gpu(int w, int h, const float* a_hdrData, const char* a_outNam
   // (3) Create buffer
   //
   const size_t bufferSizeLDR = w*h*sizeof(uint32_t);
-  VkBuffer colorBufferLDR    = vkfw::CreateBuffer(device, bufferSizeLDR,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  VkBuffer colorBufferLDR    = vk_utils::createBuffer(device, bufferSizeLDR,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
-  VkDeviceMemory colorMem    = vkfw::AllocateAndBindWithPadding(device, physicalDevice, {colorBufferLDR});
+  VkDeviceMemory colorMem    = vk_utils::allocateAndBindWithPadding(device, physicalDevice, {colorBufferLDR});
   
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////// create input texture
-  vkfw::ImageParameters parameters;
-  parameters.format       = VK_FORMAT_R32G32B32A32_SFLOAT;
-  parameters.width        = w;
-  parameters.height       = h;
-  parameters.mipLevels    = 1;
-  parameters.filterable   = true;
-  parameters.renderable   = false;
-  parameters.transferable = true;
-  parameters.loadstore    = true;
-  auto inputTex  = std::make_shared<vkfw::SimpleTexture2D>();
-  auto memReqTex = inputTex->CreateImage(device, parameters);
+  vk_utils::VulkanImageMem imgMem = {};
 
-  // memory for all read-only textures
-  VkDeviceMemory memInputTex = VK_NULL_HANDLE;
+  imgMem = vk_utils::createImg(device, w, h, VK_FORMAT_R32G32B32A32_SFLOAT,
+                               VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                               VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+  imgMem.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
   {
     VkMemoryAllocateInfo allocateInfo = {};
     allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocateInfo.pNext           = nullptr;
-    allocateInfo.allocationSize  = memReqTex.size;
-    allocateInfo.memoryTypeIndex = vk_utils::FindMemoryType(memReqTex.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice);
-    VK_CHECK_RESULT(vkAllocateMemory(device, &allocateInfo, NULL, &memInputTex));
+    allocateInfo.allocationSize  = imgMem.memReq.size;
+    allocateInfo.memoryTypeIndex = vk_utils::findMemoryType(imgMem.memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice);
+    VK_CHECK_RESULT(vkAllocateMemory(device, &allocateInfo, NULL, &imgMem.mem));
   }
-  
-  inputTex->BindMemory(memInputTex, 0);
-  inputTex->Update(a_hdrData, w, h, sizeof(float)*4, pCopyHelper.get()); // --> put inputTex in transfer_dst layout
 
-  // transfer texture to shader_read layout
+  vk_utils::createImageViewAndBindMem(device, &imgMem);
+  pCopyHelper->UpdateImage(imgMem.image, a_hdrData, w, h, sizeof(float) * 4);
+
   {
-    VkCommandBuffer cmdBuff = pCopyHelper->CmdBuffer();
-    vkResetCommandBuffer(cmdBuff, 0);
+    auto imgCmdBuf = vk_utils::createCommandBuffer(device, commandPool);
     VkCommandBufferBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-    if (vkBeginCommandBuffer(cmdBuff, &beginInfo) != VK_SUCCESS)
-      throw std::runtime_error("[mip gen]: failed to begin command buffer!");
-
-    inputTex->ChangeLayoutCmd(cmdBuff, VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);  // --> put inputTex in shader_read layout
-    
-    vkEndCommandBuffer(cmdBuff);
-    vk_utils::ExecuteCommandBufferNow(cmdBuff, transferQueue, device);
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(imgCmdBuf, &beginInfo);
+    {
+      VkImageSubresourceRange subresourceRange = {};
+      subresourceRange.aspectMask = imgMem.aspectMask;
+      subresourceRange.levelCount = 1;
+      subresourceRange.layerCount = 1;
+      vk_utils::setImageLayout(
+          imgCmdBuf,
+          imgMem.image,
+          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+          VK_IMAGE_LAYOUT_GENERAL,
+          subresourceRange);
+    }
+    vkEndCommandBuffer(imgCmdBuf);
+    vk_utils::executeCommandBufferNow(imgCmdBuf, transferQueue, device);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////// \\\ end of create input texture
 
-  pGPUImpl->SetVulkanInOutFor_Bloom(inputTex->Image(), inputTex->View(), colorBufferLDR, 0);
+  pGPUImpl->SetVulkanInOutFor_Bloom(imgMem.image, imgMem.view, colorBufferLDR, 0);
   
   // now compute some thing useful
   //
   {
-    VkCommandBuffer commandBuffer = vk_utils::CreateCommandBuffers(device, commandPool, 1)[0];
+    VkCommandBuffer commandBuffer = vk_utils::createCommandBuffer(device, commandPool);
     
     VkCommandBufferBeginInfo beginCommandBufferInfo = {};
     beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -154,7 +149,7 @@ void tone_mapping_gpu(int w, int h, const float* a_hdrData, const char* a_outNam
     for(int i=0;i<10;i++)
     {
       auto start = std::chrono::high_resolution_clock::now();
-      vk_utils::ExecuteCommandBufferNow(commandBuffer, computeQueue, device);
+      vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
       auto stop = std::chrono::high_resolution_clock::now();
       auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
       minTime   = std::min(minTime, ms);
@@ -172,11 +167,14 @@ void tone_mapping_gpu(int w, int h, const float* a_hdrData, const char* a_outNam
   //
   pCopyHelper = nullptr;
   pGPUImpl = nullptr;                                                       // !!! USING GENERATED CODE !!! 
-  inputTex = nullptr;
+//  inputTex = nullptr;
 
   vkDestroyBuffer(device, colorBufferLDR, nullptr);
   vkFreeMemory(device, colorMem, nullptr);
-  vkFreeMemory(device, memInputTex, nullptr);
+
+  vkDestroyImageView(device, imgMem.view, nullptr);
+  vkDestroyImage(device, imgMem.image, nullptr);
+  vkFreeMemory(device, imgMem.mem, nullptr);
 
   vkDestroyCommandPool(device, commandPool, nullptr);
 
