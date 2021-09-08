@@ -211,6 +211,18 @@ namespace hydra_xml
     return res;
   }
 
+  LiteMath::float3 read3f(pugi::xml_node a_node)
+  {
+    LiteMath::float3 res(0,0,0);
+    const wchar_t* camPosStr = a_node.text().as_string();
+    if (camPosStr != nullptr)
+    {
+      std::wstringstream inputStream(camPosStr);
+      inputStream >> res.x >> res.y >> res.z;
+    }
+    return res;
+  }
+
   std::vector<std::string> HydraScene::MeshFiles()
   {
     std::vector<std::string> result;
@@ -251,7 +263,8 @@ namespace hydra_xml
     Instance inst;
     for(auto instNode = sceneNode.child(L"instance"); instNode != nullptr; instNode = instNode.next_sibling())
     {
-      if(instNode.name() != L"instance")
+      std::wstring nameStr = instNode.name();
+      if(nameStr != L"instance")
         continue;
       inst.geomId = instNode.attribute(L"mesh_id").as_uint();
       inst.rmapId = instNode.attribute(L"rmap_id").as_uint();
@@ -283,7 +296,8 @@ namespace hydra_xml
     LightInstance inst;
     for(auto instNode = sceneNode.child(L"instance_light"); instNode != nullptr; instNode = instNode.next_sibling())
     {
-      if(instNode.name() != L"instance_light")
+      std::wstring nameStr = instNode.name();
+      if(nameStr != L"instance_light")
         continue;
       inst.instNode  = instNode;
       inst.instId    = instNode.attribute(L"id").as_uint();

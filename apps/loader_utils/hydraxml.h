@@ -140,6 +140,7 @@ namespace hydra_xml
   };
 
   LiteMath::float3 read3f(pugi::xml_attribute a_attr);
+  LiteMath::float3 read3f(pugi::xml_node a_node);
 }
 
 #endif //HYDRAXML_H

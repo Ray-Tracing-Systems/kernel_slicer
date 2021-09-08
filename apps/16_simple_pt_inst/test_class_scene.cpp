@@ -27,7 +27,6 @@ using cmesh::SimpleMesh;
 int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_needReorder)
 {   
   hydra_xml::HydraScene scene;
-  
   scene.LoadState(scehePath);
   
   //// (1) load materials
@@ -43,12 +42,45 @@ int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_nee
     
     m_materials.push_back(color);
   }
+
+  auto meshes    = scene.MeshFiles();     // need to get them before use because embree crap break memory
+  auto instances = scene.InstancesGeom(); // --//-- (same)
   
+  // load first camera and update matrix
+  //
+  struct Camera
+  {
+    float fov;
+    float nearPlane;
+    float farPlane;
+    float3 pos;
+    float3 lookAt;
+    float3 up;
+  }cam;
+
+  for(auto camNode : scene.CameraNodes())
+  {
+    cam.fov       = camNode.child(L"fov").text().as_float(); 
+    cam.nearPlane = camNode.child(L"nearClipPlane").text().as_float();
+    cam.farPlane  = camNode.child(L"farClipPlane").text().as_float();  
+    cam.pos       = hydra_xml::read3f(camNode.child(L"position"));
+    cam.lookAt    = hydra_xml::read3f(camNode.child(L"look_at"));
+    cam.up        = hydra_xml::read3f(camNode.child(L"up"));
+    break;
+  }
+  
+  {
+    float aspect   = 1.0f;
+    auto proj      = perspectiveMatrix(cam.fov, aspect, cam.nearPlane, cam.farPlane);
+    auto worldView = lookAt(cam.pos, cam.lookAt, cam.up);
+    m_worldViewProjInv = inverse4x4(proj*worldView);
+  }
+
   //// (2) load meshes
   //
   m_pAccelStruct->ClearGeom();
   SimpleMesh m_mesh;
-  for(const auto& meshPath : scene.MeshFiles())
+  for(const auto& meshPath : meshes)
   {
     std::cout << meshPath.c_str() << std::endl;
     m_mesh      = cmesh::LoadMeshFromVSGF(meshPath.c_str());
@@ -61,9 +93,12 @@ int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_nee
   //// (3) make instances of created meshes
   //
   m_pAccelStruct->BeginScene();
-  for(const auto& inst : scene.InstancesGeom())
+  for(const auto& inst : instances)
     m_pAccelStruct->AddInstance(inst.geomId, inst.matrix);
   m_pAccelStruct->EndScene();
+
+
+  //m_worldViewProjInv
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////////////////////////
