@@ -163,7 +163,7 @@ namespace hydra_xml
         if(unique_meshes.find(meshLoc) == unique_meshes.end())
         {
           unique_meshes.emplace(meshLoc);
-          m_meshloc.push_back(meshLoc);
+          //m_meshloc.push_back(meshLoc);
         }
 
 
@@ -209,6 +209,88 @@ namespace hydra_xml
       inputStream >> res.x >> res.y >> res.z;
     }
     return res;
+  }
+
+  std::vector<std::string> HydraScene::MeshFiles()
+  {
+    std::vector<std::string> result;
+    result.reserve(256);
+    for(auto node : m_geometryLib.children())
+    {
+      auto meshLoc = ws2s(std::wstring(node.attribute(L"loc").as_string()));
+      result.push_back(m_libraryRootDir + "/" + meshLoc);
+    }
+    return result;
+  }
+
+  std::vector<std::string> HydraScene::TextureFiles()
+  {
+    std::vector<std::string> result;
+    result.reserve(256);
+    for(auto node : m_texturesLib.children())
+    {
+      auto meshLoc = ws2s(std::wstring(node.attribute(L"loc").as_string()));
+      result.push_back(m_libraryRootDir + "/" + meshLoc);
+    }
+    return result;
+  }
+
+  std::vector<Instance> HydraScene::InstancesGeom(uint32_t a_sceneId)
+  {
+    auto sceneNode = m_sceneNode.child(L"scene");
+    if(a_sceneId != 0)
+    {
+      std::wstringstream temp;
+      temp << a_sceneId;
+      std::wstring tempStr = temp.str();
+      sceneNode = m_sceneNode.find_child_by_attribute(L"id", tempStr.c_str());
+    }
+
+    std::vector<Instance> result;
+    result.reserve(256);
+    Instance inst;
+    for(auto instNode = sceneNode.child(L"instance"); instNode != nullptr; instNode = instNode.next_sibling())
+    {
+      if(instNode.name() != L"instance")
+        continue;
+      inst.geomId = instNode.attribute(L"mesh_id").as_uint();
+      inst.rmapId = instNode.attribute(L"rmap_id").as_uint();
+      inst.matrix = float4x4FromString(instNode.attribute(L"matrix").as_string());
+      result.push_back(inst);
+    }
+    return result;
+  }
+
+  std::vector<LightInstance> HydraScene::InstancesLights(uint32_t a_sceneId) 
+  {
+    auto sceneNode = m_sceneNode.child(L"scene");
+    if(a_sceneId != 0)
+    {
+      std::wstringstream temp;
+      temp << a_sceneId;
+      std::wstring tempStr = temp.str();
+      sceneNode = m_sceneNode.find_child_by_attribute(L"id", tempStr.c_str());
+    }
+
+    std::vector<pugi::xml_node> lights; 
+    lights.reserve(256);
+    for(auto lightNode : m_lightsLib.children())
+      lights.push_back(lightNode);
+
+    std::vector<LightInstance> result;
+    result.reserve(256);
+
+    LightInstance inst;
+    for(auto instNode = sceneNode.child(L"instance_light"); instNode != nullptr; instNode = instNode.next_sibling())
+    {
+      if(instNode.name() != L"instance_light")
+        continue;
+      inst.instNode  = instNode;
+      inst.instId    = instNode.attribute(L"id").as_uint();
+      inst.lightId   = instNode.attribute(L"light_id").as_uint(); 
+      inst.lightNode = lights[inst.lightId];
+    }
+    return result;
   }
 
 

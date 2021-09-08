@@ -60,13 +60,13 @@ bool SceneManager::LoadSceneXML(const std::string &scenePath, bool transpose)
   {
     RUN_TIME_ERROR("LoadSceneXML error");
     return false;
-  }
-
-  for (size_t i = 0; i < hscene_main->m_meshloc.size(); ++i)
+  } 
+  
+  for(auto meshloc : hscene_main->MeshFiles())
   {
-    auto meshId = AddMeshFromFile(hscene_main->m_meshloc[i]);
+    auto meshId    = AddMeshFromFile(meshloc);
+    auto instances = hscene_main->GetAllInstancesOfMeshLoc(meshloc);
 
-    auto instances = hscene_main->m_instancesPerMeshLoc[hscene_main->m_meshloc[i]];
     for (size_t j = 0; j < instances.size(); ++j)
     {
       if (transpose)
