@@ -158,6 +158,7 @@ uint32_t EmbreeRT::AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_ma
   // update instance matrix
   //
   rtcSetGeometryTransform(instanceGeom, 0, RTC_FORMAT_FLOAT4X4_COLUMN_MAJOR, (const float*)&a_matrix);
+  //rtcSetGeometryTransform(instanceGeom, 0, RTC_FORMAT_FLOAT3X4_ROW_MAJOR, (const float*)&a_matrix);
   rtcCommitGeometry(instanceGeom);
   
   m_inst.push_back(instanceGeom);

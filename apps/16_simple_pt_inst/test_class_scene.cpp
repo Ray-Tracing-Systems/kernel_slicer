@@ -66,16 +66,16 @@ int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_nee
     cam.pos       = hydra_xml::read3f(camNode.child(L"position"));
     cam.lookAt    = hydra_xml::read3f(camNode.child(L"look_at"));
     cam.up        = hydra_xml::read3f(camNode.child(L"up"));
+
+    float aspect       = 1.0f;
+    auto proj          = perspectiveMatrix(cam.fov, aspect, cam.nearPlane, cam.farPlane);
+    auto worldView     = lookAt(cam.pos, cam.lookAt, cam.up);
+    
+    m_projInv          = inverse4x4(proj);
+    m_worldViewInv     = inverse4x4(worldView);
     break;
   }
   
-  {
-    float aspect   = 1.0f;
-    auto proj      = perspectiveMatrix(cam.fov, aspect, cam.nearPlane, cam.farPlane);
-    auto worldView = lookAt(cam.pos, cam.lookAt, cam.up);
-    m_worldViewProjInv = inverse4x4(proj*worldView);
-  }
-
   //// (2) load meshes
   //
   m_pAccelStruct->ClearGeom();
@@ -97,8 +97,6 @@ int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_nee
     m_pAccelStruct->AddInstance(inst.geomId, inst.matrix);
   m_pAccelStruct->EndScene();
 
-
-  //m_worldViewProjInv
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////////////////////////

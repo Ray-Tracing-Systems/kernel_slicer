@@ -39,8 +39,8 @@ public:
 
   TestClass(int a_maxThreads = 1)
   {
-    const float4x4 proj = perspectiveMatrix(45.0f, 1.0f, 0.01f, 100.0f);
-    m_worldViewProjInv  = inverse4x4(proj);
+    //const float4x4 proj = perspectiveMatrix(45.0f, 1.0f, 0.01f, 100.0f);
+    //m_worldViewProjInv  = inverse4x4(proj);
     InitRandomGens(a_maxThreads);
 
     m_pAccelStruct = CreateSceneRT(""); 
@@ -99,7 +99,8 @@ protected:
   std::vector<float4>          m_vNorm4f;     // copy from m_mesh
   std::vector<float4>          m_materials;
 
-  float4x4                     m_worldViewProjInv;
+  float4x4                     m_projInv;
+  float4x4                     m_worldViewInv;
   std::vector<RandomGen>       m_randomGens;
 
   ISceneObject* m_pAccelStruct = nullptr;

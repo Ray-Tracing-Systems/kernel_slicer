@@ -15,6 +15,23 @@ void TestClass::InitRandomGens(int a_maxThreads)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#ifndef __private
+#define __private
+#endif
+
+static inline void transform_ray3f(float4x4 a_mWorldViewInv, 
+                                   __private float3* ray_pos, __private float3* ray_dir) 
+{
+  float3 pos  = mul(a_mWorldViewInv, (*ray_pos));
+  float3 pos2 = mul(a_mWorldViewInv, ((*ray_pos) + 100.0f*(*ray_dir)));
+
+  float3 diff = pos2 - pos;
+
+  (*ray_pos)  = pos;
+  (*ray_dir)  = normalize(diff);
+}
+
+
 void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 {
   const uint XY = packedXY[tid];
@@ -22,8 +39,11 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   const uint x = (XY & 0x0000FFFF);
   const uint y = (XY & 0xFFFF0000) >> 16;
 
-  const float3 rayDir = EyeRayDir(x, y, WIN_WIDTH, WIN_HEIGHT, m_worldViewProjInv); 
-  const float3 rayPos = m_camPos;
+  float3 rayDir = EyeRayDir(x, y, WIN_WIDTH, WIN_HEIGHT, m_projInv); 
+  float3 rayPos = float3(0,0,0);
+
+  transform_ray3f(m_worldViewInv, 
+                  &rayPos, &rayDir);
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
   *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
@@ -40,8 +60,11 @@ void TestClass::kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPo
   const uint x = (XY & 0x0000FFFF);
   const uint y = (XY & 0xFFFF0000) >> 16;
 
-  const float3 rayDir = EyeRayDir(x, y, WIN_WIDTH, WIN_HEIGHT, m_worldViewProjInv); 
-  const float3 rayPos = m_camPos;
+  float3 rayDir = EyeRayDir(x, y, WIN_WIDTH, WIN_HEIGHT, m_projInv); 
+  float3 rayPos = float3(0,0,0);
+
+  transform_ray3f(m_worldViewInv, 
+                  &rayPos, &rayDir);
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
   *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
@@ -221,8 +244,10 @@ void test_class_cpu()
     for(int x=0;x<WIN_WIDTH;x++)
       test.PackXY(x, y, packedXY.data());
   }
-
-  test.LoadScene("/home/frol/PROG/HydraRepos/HydraAPI-tests/3dsMaxTests/003_geosphere_smooth_normals/statex_00001.xml", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf", false);
+  
+  ///home/frol/PROG/HydraRepos/HydraCore/hydra_app/tests/test_42
+  test.LoadScene("/home/frol/PROG/HydraRepos/HydraCore/hydra_app/tests/test_42/statex_00001.xml", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf", false);
+  //test.LoadScene("/home/frol/PROG/HydraRepos/HydraAPI-tests/3dsMaxTests/003_geosphere_smooth_normals/statex_00001.xml", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf", false);
   
   // test simple ray casting
   //
