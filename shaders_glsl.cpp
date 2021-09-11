@@ -185,6 +185,28 @@ std::unordered_map<std::string, std::string> ListGLSLVectorReplacements()
   m_vecReplacements["uint32_t"]       = "uint";
   m_vecReplacements["size_t"]         = "uint64_t";
 
+  m_vecReplacements["const float2"] = "const vec2";
+  m_vecReplacements["const float3"] = "const vec3";
+  m_vecReplacements["const float4"] = "const vec4";
+  m_vecReplacements["const int2"]   = "const ivec2";
+  m_vecReplacements["const int3"]   = "const ivec3";
+  m_vecReplacements["const int4"]   = "const ivec4";
+  m_vecReplacements["const uint2"]  = "const uvec2";
+  m_vecReplacements["const uint3"]  = "const uvec3";
+  m_vecReplacements["const uint4"]  = "const uvec4";
+  m_vecReplacements["const float4x4"] = "const mat4";
+  m_vecReplacements["const _Bool"] = "const bool";
+  m_vecReplacements["const unsigned int"]   = "const uint";
+  m_vecReplacements["const unsigned char"]  = "const uint8_t";
+  m_vecReplacements["const unsigned short"] = "const uint16_t";
+  m_vecReplacements["const char"]           = "const int8_t";
+  m_vecReplacements["const short"]          = "const int16_t";
+  m_vecReplacements["const uchar"]          = "const uint8_t";
+  m_vecReplacements["const ushort"]         = "const uint16_t";
+  m_vecReplacements["const int32_t"]        = "const int";
+  m_vecReplacements["const uint32_t"]       = "const uint";
+  m_vecReplacements["const size_t"]         = "const uint64_t";
+
   return m_vecReplacements;
 }
 
@@ -849,6 +871,7 @@ std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
     break;
     case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
     result = typeInCL + " " + a_decl.name + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    ProcessVectorTypesString(result);
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
     result = "#define " + a_decl.name + " " + nameWithoutStruct;
