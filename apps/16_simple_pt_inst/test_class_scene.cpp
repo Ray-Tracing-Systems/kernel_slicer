@@ -33,20 +33,18 @@ int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_nee
     m_materials.push_back(color);
   }
 
-  auto meshes    = scene.MeshFiles();     // need to get them before use because embree crap break memory
-  auto instances = scene.InstancesGeom(); // --//-- (same)
-  auto cams      = scene.Cameras();
-
   // load first camera and update matrix
   //
-  assert(cams.size() > 0);
-  auto cam       = cams[0];
-  float aspect   = 1.0f;
-  auto proj      = perspectiveMatrix(cam.fov, aspect, cam.nearPlane, cam.farPlane);
-  auto worldView = lookAt(float3(cam.pos), float3(cam.lookAt), float3(cam.up));
-    
-  m_projInv      = inverse4x4(proj);
-  m_worldViewInv = inverse4x4(worldView);
+  for(auto cam : scene.Cameras())
+  {
+    float aspect   = 1.0f;
+    auto proj      = perspectiveMatrix(cam.fov, aspect, cam.nearPlane, cam.farPlane);
+    auto worldView = lookAt(float3(cam.pos), float3(cam.lookAt), float3(cam.up));
+      
+    m_projInv      = inverse4x4(proj);
+    m_worldViewInv = inverse4x4(worldView);
+    break; // take first cam
+  }
 
   //// (2) load meshes
   //
@@ -54,7 +52,7 @@ int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_nee
   m_matIdByPrimId.reserve(128000);
 
   m_pAccelStruct->ClearGeom();
-  for(const auto& meshPath : meshes)
+  for(const auto& meshPath : scene.MeshFiles())
   {
     std::cout << meshPath.c_str() << std::endl;
     auto currMesh = cmesh::LoadMeshFromVSGF(meshPath.c_str());
@@ -67,7 +65,7 @@ int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_nee
   //// (3) make instances of created meshes
   //
   m_pAccelStruct->ClearScene();
-  for(const auto& inst : instances)
+  for(const auto& inst : scene.InstancesGeom())
     m_pAccelStruct->AddInstance(inst.geomId, inst.matrix);
   m_pAccelStruct->CommitScene();
 

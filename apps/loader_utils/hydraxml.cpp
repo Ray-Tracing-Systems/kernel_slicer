@@ -231,57 +231,6 @@ namespace hydra_xml
     return color;
   }
 
-  std::vector<std::string> HydraScene::MeshFiles()
-  {
-    std::vector<std::string> result;
-    result.reserve(256);
-    for(auto node : m_geometryLib.children())
-    {
-      auto meshLoc = ws2s(std::wstring(node.attribute(L"loc").as_string()));
-      result.push_back(m_libraryRootDir + "/" + meshLoc);
-    }
-    return result;
-  }
-
-  std::vector<std::string> HydraScene::TextureFiles()
-  {
-    std::vector<std::string> result;
-    result.reserve(256);
-    for(auto node : m_texturesLib.children())
-    {
-      auto meshLoc = ws2s(std::wstring(node.attribute(L"loc").as_string()));
-      result.push_back(m_libraryRootDir + "/" + meshLoc);
-    }
-    return result;
-  }
-
-  std::vector<Instance> HydraScene::InstancesGeom(uint32_t a_sceneId)
-  {
-    auto sceneNode = m_sceneNode.child(L"scene");
-    if(a_sceneId != 0)
-    {
-      std::wstringstream temp;
-      temp << a_sceneId;
-      std::wstring tempStr = temp.str();
-      sceneNode = m_sceneNode.find_child_by_attribute(L"id", tempStr.c_str());
-    }
-
-    std::vector<Instance> result;
-    result.reserve(256);
-    Instance inst;
-    for(auto instNode = sceneNode.child(L"instance"); instNode != nullptr; instNode = instNode.next_sibling())
-    {
-      std::wstring nameStr = instNode.name();
-      if(nameStr != L"instance")
-        continue;
-      inst.geomId = instNode.attribute(L"mesh_id").as_uint();
-      inst.rmapId = instNode.attribute(L"rmap_id").as_uint();
-      inst.matrix = float4x4FromString(instNode.attribute(L"matrix").as_string());
-      result.push_back(inst);
-    }
-    return result;
-  }
-
   std::vector<LightInstance> HydraScene::InstancesLights(uint32_t a_sceneId) 
   {
     auto sceneNode = m_sceneNode.child(L"scene");
@@ -314,34 +263,6 @@ namespace hydra_xml
     }
     return result;
   }
-  
-  std::vector<Camera> HydraScene::Cameras()
-  {
-    std::vector<Camera> allCams; 
-    allCams.reserve(16);
-
-    for(auto camNode : CameraNodes())
-    {
-      Camera cam;
-      cam.fov       = camNode.child(L"fov").text().as_float(); 
-      cam.nearPlane = camNode.child(L"nearClipPlane").text().as_float();
-      cam.farPlane  = camNode.child(L"farClipPlane").text().as_float();  
-      
-      LiteMath::float3 pos    = hydra_xml::read3f(camNode.child(L"position"));
-      LiteMath::float3 lookAt = hydra_xml::read3f(camNode.child(L"look_at"));
-      LiteMath::float3 up     = hydra_xml::read3f(camNode.child(L"up"));
-      for(int i=0;i<3;i++)
-      {
-        cam.pos   [i] = pos[i];
-        cam.lookAt[i] = lookAt[i];
-        cam.up    [i] = up[i];
-      }
-      allCams.push_back(cam);
-    }
-
-    return allCams;
-  }
-
 
 }
 
