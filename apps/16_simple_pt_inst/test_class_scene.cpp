@@ -7,7 +7,7 @@ using cmesh::SimpleMesh;
 #define LAYOUT_STD140 // !!! PLEASE BE CAREFUL WITH THIS !!!
 #include "hydraxml.h"
 
-int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_needReorder)
+int TestClass::LoadScene(const char* scehePath)
 {   
   hydra_xml::HydraScene scene;
   scene.LoadState(scehePath);
@@ -49,10 +49,12 @@ int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_nee
   //// (2) load meshes
   //
   m_matIdOffsets.reserve(1024);
+  m_vertOffset.reserve(1024);
   m_matIdByPrimId.reserve(128000);
+  m_triIndices.reserve(128000*3);
 
   m_pAccelStruct->ClearGeom();
-  for(const auto& meshPath : scene.MeshFiles())
+  for(auto meshPath : scene.MeshFiles())
   {
     std::cout << meshPath.c_str() << std::endl;
     auto currMesh = cmesh::LoadMeshFromVSGF(meshPath.c_str());
@@ -60,13 +62,25 @@ int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_nee
     
     m_matIdOffsets.push_back(m_matIdByPrimId.size());
     m_matIdByPrimId.insert(m_matIdByPrimId.end(), currMesh.matIndices.begin(), currMesh.matIndices.end() );
+    m_triIndices.insert(m_triIndices.end(), currMesh.indices.begin(), currMesh.indices.end());
+
+    m_vertOffset.push_back(currMesh.VerticesNum());
+    m_vPos4f.insert(m_vPos4f.end(),   currMesh.vPos4f.begin(),  currMesh.vPos4f.end());
+    m_vNorm4f.insert(m_vNorm4f.end(), currMesh.vNorm4f.begin(), currMesh.vNorm4f.end());
   }
   
   //// (3) make instances of created meshes
   //
+  m_instMatrices.clear();
+  m_normMatrices.clear();
+
   m_pAccelStruct->ClearScene();
-  for(const auto& inst : scene.InstancesGeom())
+  for(auto inst : scene.InstancesGeom())
+  {
     m_pAccelStruct->AddInstance(inst.geomId, inst.matrix);
+    m_instMatrices.push_back(inst.matrix);
+    m_normMatrices.push_back(transpose(inverse4x4(inst.matrix)));
+  }
   m_pAccelStruct->CommitScene();
 
   return 0;

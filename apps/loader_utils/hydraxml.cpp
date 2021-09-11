@@ -260,6 +260,7 @@ namespace hydra_xml
       inst.instId    = instNode.attribute(L"id").as_uint();
       inst.lightId   = instNode.attribute(L"light_id").as_uint(); 
       inst.lightNode = lights[inst.lightId];
+      inst.node      = instNode;
     }
     return result;
   }

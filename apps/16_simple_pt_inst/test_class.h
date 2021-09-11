@@ -50,7 +50,7 @@ public:
   }
 
   void InitRandomGens(int a_maxThreads);
-  virtual int LoadScene(const char* bvhPath, const char* meshPath, bool a_needReorder);
+  virtual int LoadScene(const char* bvhPath);
 
   void PackXY(uint tidX, uint tidY, uint* out_pakedXY);
   void CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color);
@@ -84,18 +84,21 @@ protected:
   float3 m_camPos = float3(0.0f, 0.85f, 4.5f);
   void InitSceneMaterials(int a_numSpheres, int a_seed = 0);
 
-  std::vector<uint32_t>        m_indicesReordered;
-  std::vector<uint32_t>        m_materialIds;
-  std::vector<float4>          m_vPos4f;      // copy from m_mesh
-  std::vector<float4>          m_vNorm4f;     // copy from m_mesh
-
   std::vector<float4>          m_materials;
   std::vector<uint32_t>        m_matIdOffsets;  ///< offset = m_matIdOffsets[geomId]
   std::vector<uint32_t>        m_matIdByPrimId; ///< matId  = m_matIdByPrimId[offset + primId]
+  std::vector<uint32_t>        m_triIndices;    ///< (A,B,C) = m_triIndices[(offset + primId)*3 + 0/1/2]
+
+  std::vector<uint32_t>        m_vertOffset;    ///< vertOffs = m_vertOffset[geomId]
+  std::vector<float4>          m_vPos4f;        ///< vertPos  = m_vPos4f [vertOffs + vertId]
+  std::vector<float4>          m_vNorm4f;       ///< vertNorm = m_vNorm4f[vertOffs + vertId]
 
   float4x4                     m_projInv;
   float4x4                     m_worldViewInv;
   std::vector<RandomGen>       m_randomGens;
+
+  std::vector<float4x4>        m_instMatrices; ///< per instance matrix, local to world
+  std::vector<float4x4>        m_normMatrices; ///< per instance normal matrix
 
   ISceneObject* m_pAccelStruct = nullptr;
 };
