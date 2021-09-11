@@ -72,14 +72,12 @@ int TestClass::LoadScene(const char* scehePath)
   
   //// (3) make instances of created meshes
   //
-  m_instMatrices.clear();
   m_normMatrices.clear();
 
   m_pAccelStruct->ClearScene();
   for(auto inst : scene.InstancesGeom())
   {
     m_pAccelStruct->AddInstance(inst.geomId, inst.matrix);
-    m_instMatrices.push_back(inst.matrix);
     m_normMatrices.push_back(transpose(inverse4x4(inst.matrix)));
   }
   m_pAccelStruct->CommitScene();

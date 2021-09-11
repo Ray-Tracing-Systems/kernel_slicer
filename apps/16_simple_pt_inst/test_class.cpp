@@ -267,7 +267,6 @@ void test_class_cpu()
 
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
-  
   // now test path tracing
   //
   const int PASS_NUMBER           = 100;

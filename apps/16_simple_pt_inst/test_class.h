@@ -96,9 +96,7 @@ protected:
   float4x4                     m_projInv;
   float4x4                     m_worldViewInv;
   std::vector<RandomGen>       m_randomGens;
-
-  std::vector<float4x4>        m_instMatrices; ///< per instance matrix, local to world
-  std::vector<float4x4>        m_normMatrices; ///< per instance normal matrix
+  std::vector<float4x4>        m_normMatrices; ///< per instance normal matrix, local to world
 
   ISceneObject* m_pAccelStruct = nullptr;
 };

@@ -44,10 +44,10 @@ int TestClass::LoadScene(const char* bvhPath, const char* meshPath, bool a_needR
   m_pAccelStruct->ClearGeom();
   auto geomId = m_pAccelStruct->AddGeom_Triangles4f(m_vPos4f.data(), m_vPos4f.size(), m_indicesReordered.data(), m_indicesReordered.size());
   
-  m_pAccelStruct->BeginScene();
+  m_pAccelStruct->ClearScene();
   float4x4 identitiMatrix;
   auto instId = m_pAccelStruct->AddInstance(geomId, identitiMatrix);
-  m_pAccelStruct->EndScene();
+  m_pAccelStruct->CommitScene();
 
   return 0;
 
