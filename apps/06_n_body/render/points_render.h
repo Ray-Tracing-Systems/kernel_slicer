@@ -13,7 +13,6 @@
 #include <iostream>
 #include <generated_userfix.h>
 #include "render_config.h"
-#include "shaders/shader_common.h"
 
 
 class PointsRender : public IRender
@@ -96,6 +95,9 @@ private:
   vk_utils::VulkanImageMem m_sprite;
   VkSampler m_spriteSampler;
 
+  vk_utils::VulkanImageMem m_colormap;
+  VkSampler m_colormapSampler;
+
 //  UniformParams m_uniforms{};
 //  VkBuffer m_ubo = VK_NULL_HANDLE;
 //  VkDeviceMemory m_uboAlloc = VK_NULL_HANDLE;
@@ -152,6 +154,8 @@ private:
 
   bool m_enableValidation;
   std::vector<const char *> m_validationLayers;
+
+  void CreateColormapTexture();
 
   void DrawFrameSimple();
   void CreateInstance();

@@ -14,9 +14,10 @@ layout (location = 0 ) in VS_OUT
 } point;
 
 layout(binding = 0) uniform sampler2D spriteTex;
+layout(binding = 1) uniform sampler1D colormapTex;
 
 void main()
 {
     out_fragColor =  texture(spriteTex, point.wTexCoord);
-    out_fragColor.rgb *= abs(point.wVel * velocityColorScale);
+    out_fragColor.rgb *= colorMap(point.wVel, colormapTex);//abs(point.wVel * velocityColorScale);
 }

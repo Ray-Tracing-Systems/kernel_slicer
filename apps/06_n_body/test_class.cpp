@@ -20,9 +20,9 @@ void nBody::perform(BodyState *out_bodies) {
 }
 
 void nBody::kernel1D_GenerateBodies(uint32_t bodies_count) {
-  
+
   for (uint32_t i = 0; i < bodies_count; ++i) {
-    m_bodies[i].pos_weight = randFloat4(make_float4(-1, -1, -1, 5), make_float4(1, 1, 1, 5), i);
+    m_bodies[i].pos_weight = randFloat4(make_float4(-1, -1, -1, MASS), make_float4(1, 1, 1, MASS), i);
     m_bodies[i].vel_charge = randFloat4(make_float4(-1, -1, -1, -1), make_float4(1, 1, 1, 1), i*i + i*7 + 1);
   }
 }
@@ -46,8 +46,11 @@ void nBody::kernel1D_UpdateVelocity(uint32_t bodies_count) {
       if (i == j) {
         continue;
       }
-      float3 bodyToBody = xyz(m_bodies[j].pos_weight - m_bodies[i].pos_weight); // * sgn(m_bodies[i].pos_weight.w);
-      acceleration += bodyToBody * m_bodies[j].pos_weight.w / (pow3(length(bodyToBody)) + 1e-5f);
+      float3 distance = xyz(m_bodies[j].pos_weight - m_bodies[i].pos_weight); // * sgn(m_bodies[i].pos_weight.w);
+      float distSqr = dot(distance, distance) + SOFTENING_CONST;
+      float invDistCube = 1.0f/sqrtf(pow3(distSqr));
+      acceleration += distance * m_bodies[j].pos_weight.w * invDistCube;
+//      acceleration += distance * m_bodies[j].pos_weight.w / (sqrtf(pow3(dot(distance, distance))) + 1e-5f);
     }
     acceleration *= dt;
     m_bodies[i].vel_charge.x += acceleration.x;

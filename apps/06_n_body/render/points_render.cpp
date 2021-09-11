@@ -172,6 +172,15 @@ void PointsRender::SetupPointsPipeline()
 {
   SetupPointsVertexBindings();
 
+  std::vector<std::pair<VkDescriptorType, uint32_t> > dtypes = {
+      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1}
+  };
+  m_pBindings = std::make_shared<vk_utils::DescriptorMaker>(m_device, dtypes, 1);
+
+  m_pBindings->BindBegin(VK_SHADER_STAGE_FRAGMENT_BIT);
+  m_pBindings->BindImage(0, m_colormap.view, m_colormapSampler, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+  m_pBindings->BindEnd(&m_dSet, &m_dSetLayout);
+
   vk_utils::GraphicsPipelineMaker maker;
 
   std::unordered_map<VkShaderStageFlagBits, std::string> shader_paths;
@@ -181,7 +190,7 @@ void PointsRender::SetupPointsPipeline()
 
   maker.LoadShaders(m_device, shader_paths);
 
-  m_pointsPipeline.layout = maker.MakeLayout(m_device, {}, sizeof(m_pushConsts));
+  m_pointsPipeline.layout = maker.MakeLayout(m_device, {m_dSetLayout}, sizeof(m_pushConsts));
   maker.SetDefaultState(m_width, m_height);
   maker.rasterizer.polygonMode = VK_POLYGON_MODE_POINT;
   m_pointsPipeline.pipeline = maker.MakePipeline(m_device, m_pointsData.inputStateInfo,
@@ -194,50 +203,22 @@ void PointsRender::SetupSpritesPipeline()
 {
   SetupPointsVertexBindings();
 
-    std::vector<std::pair<VkDescriptorType, uint32_t> > dtypes = {
-        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1}
-    };
-    m_pBindings = std::make_shared<vk_utils::DescriptorMaker>(m_device, dtypes, 1);
+  std::vector<std::pair<VkDescriptorType, uint32_t> > dtypes = {
+      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2}
+  };
+  m_pBindings = std::make_shared<vk_utils::DescriptorMaker>(m_device, dtypes, 1);
 
-    m_pBindings->BindBegin(VK_SHADER_STAGE_FRAGMENT_BIT);
-    m_pBindings->BindImage(0, m_sprite.view, m_spriteSampler, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    m_pBindings->BindEnd(&m_dSet, &m_dSetLayout);
-
-
-  m_pointsData.inputBinding.binding = 0;
-  m_pointsData.inputBinding.stride = sizeof(float) * 8;
-  m_pointsData.inputBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-  m_pointsData.inputAttributes[0].binding = 0;
-  m_pointsData.inputAttributes[0].location = 0;
-  m_pointsData.inputAttributes[0].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-  m_pointsData.inputAttributes[0].offset = 0;
-
-  m_pointsData.inputAttributes[1].binding = 0;
-  m_pointsData.inputAttributes[1].location = 1;
-  m_pointsData.inputAttributes[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-  m_pointsData.inputAttributes[1].offset = sizeof(float) * 4;
-
-  m_pointsData.inputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-  m_pointsData.inputStateInfo.vertexBindingDescriptionCount = 1;
-  m_pointsData.inputStateInfo.vertexAttributeDescriptionCount =
-      sizeof(m_pointsData.inputAttributes) / sizeof(m_pointsData.inputAttributes[0]);
-  m_pointsData.inputStateInfo.pVertexBindingDescriptions = &m_pointsData.inputBinding;
-  m_pointsData.inputStateInfo.pVertexAttributeDescriptions = m_pointsData.inputAttributes;
+  m_pBindings->BindBegin(VK_SHADER_STAGE_FRAGMENT_BIT);
+  m_pBindings->BindImage(0, m_sprite.view, m_spriteSampler, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+  m_pBindings->BindImage(1, m_colormap.view, m_colormapSampler, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+  m_pBindings->BindEnd(&m_dSet, &m_dSetLayout);
 
   vk_utils::GraphicsPipelineMaker maker;
 
   std::unordered_map<VkShaderStageFlagBits, std::string> shader_paths;
   shader_paths[VK_SHADER_STAGE_VERTEX_BIT] = "shaders/points.vert.spv";
-  if(DISPLAY_MODE == RENDER_MODE::POINTS)
-  {
-    shader_paths[VK_SHADER_STAGE_FRAGMENT_BIT] = "shaders/points.frag.spv";
-  }
-  else if(DISPLAY_MODE == RENDER_MODE::SPRITES)
-  {
-    shader_paths[VK_SHADER_STAGE_GEOMETRY_BIT] = "shaders/points.geom.spv";
-    shader_paths[VK_SHADER_STAGE_FRAGMENT_BIT] = "shaders/sprites.frag.spv";
-  }
+  shader_paths[VK_SHADER_STAGE_GEOMETRY_BIT] = "shaders/points.geom.spv";
+  shader_paths[VK_SHADER_STAGE_FRAGMENT_BIT] = "shaders/sprites.frag.spv";
 
   maker.LoadShaders(m_device, shader_paths);
 
@@ -327,9 +308,9 @@ void PointsRender::BuildDrawCommandBuffer(VkCommandBuffer a_cmdBuff, VkFramebuff
     if(DISPLAY_MODE == RENDER_MODE::SPRITES)
     {
       stageFlags |= VK_SHADER_STAGE_GEOMETRY_BIT;
-      vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pointsPipeline.layout, 0, 1,
-                              &m_dSet, 0, VK_NULL_HANDLE);
     }
+    vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pointsPipeline.layout, 0, 1,
+                            &m_dSet, 0, VK_NULL_HANDLE);
 
     VkDeviceSize zero_offset = 0u;
     VkBuffer vertexBuf = m_pointsData.pointsBuf;

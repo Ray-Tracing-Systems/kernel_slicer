@@ -24,6 +24,8 @@ protected:
   void kernel1D_ReadData(BodyState *out_bodies, uint32_t bodies_count);
 public:
   static constexpr uint32_t BODIES_COUNT = 4096;
+  static constexpr float SOFTENING_CONST = 1e-5f;
+  static constexpr float MASS = 5;
 
   nBody() {
     m_bodies.resize(BODIES_COUNT);
