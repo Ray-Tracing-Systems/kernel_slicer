@@ -12,7 +12,9 @@ layout (location = 0 ) in VS_OUT
     vec3 wVel;
 } point;
 
+layout(binding = 0) uniform sampler1D colormapTex;
+
 void main()
 {
-    out_fragColor = vec4(abs(point.wVel * velocityColorScale), 1.0f);
+    out_fragColor = vec4(colorMap(point.wVel, colormapTex), 1.0f);
 }

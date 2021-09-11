@@ -20,10 +20,15 @@ void nBody::perform(BodyState *out_bodies) {
 }
 
 void nBody::kernel1D_GenerateBodies(uint32_t bodies_count) {
-  
+
   for (uint32_t i = 0; i < bodies_count; ++i) {
-    m_bodies[i].pos_weight = randFloat4(make_float4(-1, -1, -1, 5), make_float4(1, 1, 1, 5), i);
-    m_bodies[i].vel_charge = randFloat4(make_float4(-1, -1, -1, -1), make_float4(1, 1, 1, 1), i*i + i*7 + 1);
+    m_bodies[i].pos_weight = randFloat4(make_float4(-1, -1, -1, MASS), make_float4(1, 1, 1, MASS), i);
+    m_bodies[i].vel_charge = randFloat4(make_float4(-1, -1, -1, 10), make_float4(1, 1, 1, 100), i*i + i*7 + 1);
+
+    if(i % 2 == 0)
+      m_bodies[i].vel_charge.w = ELECTRON_CHARGE * CHARGE_MULT;
+    else
+      m_bodies[i].vel_charge.w = -ELECTRON_CHARGE * CHARGE_MULT;
   }
 }
 
@@ -46,8 +51,24 @@ void nBody::kernel1D_UpdateVelocity(uint32_t bodies_count) {
       if (i == j) {
         continue;
       }
-      float3 bodyToBody = xyz(m_bodies[j].pos_weight - m_bodies[i].pos_weight); // * sgn(m_bodies[i].pos_weight.w);
-      acceleration += bodyToBody * m_bodies[j].pos_weight.w / (pow3(length(bodyToBody)) + 1e-5f);
+      float3 distance = xyz(m_bodies[j].pos_weight - m_bodies[i].pos_weight); // * sgn(m_bodies[i].pos_weight.w);
+      float distSqr = dot(distance, distance) + SOFTENING_CONST;
+      float invDistCube = 1.0f/sqrtf(pow3(distSqr));
+      float3 gravitational = distance * m_bodies[j].pos_weight.w * invDistCube;
+
+      float coeff = m_bodies[i].vel_charge.w / (4 * M_PI * PERMETTIVITY);
+      float3 electrostatic = coeff * m_bodies[j].vel_charge.w * (distance / distSqr);
+
+      if(MODE == 1)
+      {
+        acceleration += electrostatic;
+      }
+      else if(MODE == 0)
+      {
+        acceleration += gravitational;
+      }
+      else
+        acceleration += gravitational + electrostatic;
     }
     acceleration *= dt;
     m_bodies[i].vel_charge.x += acceleration.x;
@@ -61,6 +82,17 @@ void nBody::kernel1D_UpdatePosition(uint32_t bodies_count) {
     m_bodies[i].pos_weight.x += m_bodies[i].vel_charge.x * dt;
     m_bodies[i].pos_weight.y += m_bodies[i].vel_charge.y * dt;
     m_bodies[i].pos_weight.z += m_bodies[i].vel_charge.z * dt;
+
+    if(PERIODIC_BOUNDARY_CONDITIONS)
+    {
+      m_bodies[i].pos_weight.x = m_bodies[i].pos_weight.x > BOUNDARY ? m_bodies[i].pos_weight.x - 2 * BOUNDARY : m_bodies[i].pos_weight.x;
+      m_bodies[i].pos_weight.y = m_bodies[i].pos_weight.y > BOUNDARY ? m_bodies[i].pos_weight.y - 2 * BOUNDARY : m_bodies[i].pos_weight.y;
+      m_bodies[i].pos_weight.z = m_bodies[i].pos_weight.z > BOUNDARY ? m_bodies[i].pos_weight.z - 2 * BOUNDARY : m_bodies[i].pos_weight.z;
+
+      m_bodies[i].pos_weight.x = m_bodies[i].pos_weight.x < -BOUNDARY ? 2 * BOUNDARY + m_bodies[i].pos_weight.x : m_bodies[i].pos_weight.x;
+      m_bodies[i].pos_weight.y = m_bodies[i].pos_weight.y < -BOUNDARY ? 2 * BOUNDARY + m_bodies[i].pos_weight.y : m_bodies[i].pos_weight.y;
+      m_bodies[i].pos_weight.z = m_bodies[i].pos_weight.z < -BOUNDARY ? 2 * BOUNDARY + m_bodies[i].pos_weight.z : m_bodies[i].pos_weight.z;
+    }
   }
 }
 

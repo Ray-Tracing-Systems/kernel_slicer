@@ -6,6 +6,25 @@
 #include "LiteMath.h"
 using namespace LiteMath;
 
+//enum class SIM_MODES
+//{
+//  GRAVITATIONAL,
+//  ELECTROSTATIC
+//};
+//
+//constexpr float getSimDT(SIM_MODES mode)
+//{
+//  switch(mode)
+//  {
+//    case SIM_MODES::ELECTROSTATIC:
+//      return 1e-5f;
+//    case SIM_MODES::GRAVITATIONAL:
+//      return 5e-6f;
+//    default:
+//      return 1e-5f;
+//  }
+//}
+
 class nBody
 {
 public:
@@ -13,8 +32,10 @@ public:
     float4 pos_weight;
     float4 vel_charge;
   };
+
+  static constexpr int MODE = 1; //0 - gravitational, 1 - electrostatic
 protected:
-  static constexpr float dt = 5e-6f;
+  static constexpr float dt = (MODE == 1) ? 1e-5f : 5e-6f;
   uint32_t m_seed;
   uint32_t m_iters;
 
@@ -23,7 +44,14 @@ protected:
   void kernel1D_UpdatePosition(uint32_t bodies_count);
   void kernel1D_ReadData(BodyState *out_bodies, uint32_t bodies_count);
 public:
+  static constexpr bool PERIODIC_BOUNDARY_CONDITIONS = true;
   static constexpr uint32_t BODIES_COUNT = 4096;
+  static constexpr float SOFTENING_CONST = 1e-5f;
+  static constexpr float BOUNDARY = 15.0f;
+  static constexpr float MASS = 5;
+  static constexpr float CHARGE_MULT = 1e14;
+  static constexpr float ELECTRON_CHARGE = 1.60218e-19;
+  static constexpr float PERMETTIVITY = 8.85418782e-12;
 
   nBody() {
     m_bodies.resize(BODIES_COUNT);
