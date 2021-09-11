@@ -96,7 +96,10 @@ int TestClass::LoadScene(const char* scehePath, const char* meshPath, bool a_nee
   for(const auto& inst : instances)
     m_pAccelStruct->AddInstance(inst.geomId, inst.matrix);
   m_pAccelStruct->EndScene();
-
+  
+  //for(size_t i=0;i<instances.size();i++)
+  //  m_pAccelStruct->UpdateInstance(i, instances[i].geomId, instances[i].matrix);
+  //m_pAccelStruct->EndScene();
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////////////////////////

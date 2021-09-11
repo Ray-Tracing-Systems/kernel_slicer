@@ -151,7 +151,8 @@ uint32_t EmbreeRT::AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_ma
 
   RTCGeometry instanceGeom = rtcNewGeometry(m_device, RTC_GEOMETRY_TYPE_INSTANCE);
   rtcSetGeometryInstancedScene(instanceGeom, m_blas[a_geomId]);                   // say that 'instanceGeom' is an instance of 'm_blas[a_geomId]'
-  //rtcSetGeometryTimeStepCount(instanceGeom, 1);                                 // don't know wtf is that
+  rtcSetGeometryTimeStepCount(instanceGeom, 1);                                   // don't know wtf is that
+  
   rtcAttachGeometry(m_scene,instanceGeom);                                        // attach our instance to global scene 
   rtcReleaseGeometry(instanceGeom);
   
@@ -211,8 +212,8 @@ CRT_Hit  EmbreeRT::RayQuery(LiteMath::float4 posAndNear, LiteMath::float4 dirAnd
 
   // There are multiple variants of rtcIntersect. This one intersects a single ray with the scene.
   // 
-  rtcIntersect1(m_blas[0], &context, &rayhit);
-  //rtcIntersect1(m_scene, &context, &rayhit);
+  //rtcIntersect1(m_blas[0], &context, &rayhit);
+  rtcIntersect1(m_scene, &context, &rayhit);
 
   CRT_Hit result;
   if(rayhit.hit.geomID != RTC_INVALID_GEOMETRY_ID)
