@@ -77,7 +77,7 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   const float4 rayPos = *rayPosAndNear;
   const float4 rayDir = *rayDirAndFar ;
 
-  CRT_Hit hit = m_pAccelStruct->RayQuery(rayPos, rayDir);
+  CRT_Hit hit = m_pAccelStruct->RayQuery_NearestHit(rayPos, rayDir);
   
   Lite_Hit res;
   res.primId = hit.primId;
@@ -104,30 +104,23 @@ void TestClass::kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* o
 
 void TestClass::kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, uint* out_color)
 { 
-  Lite_Hit lhit = *in_hit;
-  uint select = lhit.primId%8;
-  
-  if(select == 0)
-    out_color[tid] = 0xFFFFFFFF;
-  else if(select == 1)
-    out_color[tid] = 0xFF0000FF;
-  else if(select == 2)
-    out_color[tid] = 0xFF00FF00;
-  else if(select == 3)
-    out_color[tid] = 0xFFFF0000;
-  else if(select == 4)
-    out_color[tid] = 0xFFFFFF00;
-  else if(select == 5)
-    out_color[tid] = 0xFF00FFFF;
-  else if(select == 6)
-    out_color[tid] = 0xFFFF00FF;
-  else if(select == 7)
-    out_color[tid] = 0x70707070;
+  const Lite_Hit lhit = *in_hit;
+  if(lhit.geomId == -1)
+  {
+    out_color[tid] = 0;
+    return;
+  }
+
+  const uint32_t matId = m_matIdByPrimId[m_matIdOffsets[lhit.geomId] + lhit.primId];
+  const float4 mdata   = m_materials[matId];
+  const float3 color = mdata.w > 0.0f ? clamp(float3(mdata.w,mdata.w,mdata.w), 0.0f, 1.0f) : to_float3(mdata);
+  out_color[tid] = RealColorToUint32_f3(color); 
 }
 
 void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
                                   float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput)
 {
+  /*
   // process light hit case
   //
   if(in_hit->geomId == HIT_FLAT_LIGHT_GEOM)
@@ -166,6 +159,8 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
   *rayPosAndNear    = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
   *rayDirAndFar     = to_float4(newDir, MAXFLOAT);
   *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f);
+  
+  */
 }
 
 

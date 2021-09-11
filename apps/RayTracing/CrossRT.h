@@ -53,14 +53,14 @@ struct ISceneObject
   virtual void UpdateGeom_Triangles4f(uint32_t a_geomId, const LiteMath::float4* a_vpos4f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber) = 0;
   
   /**
-  \brief Vlear all instances, but don't touch geometry
+  \brief Clear all instances, but don't touch geometry
   */
-  virtual void BeginScene() = 0; ///< 
+  virtual void ClearScene() = 0; ///< 
 
   /**
   \brief Vinish instancing and build top accaleration structure
   */
-  virtual void EndScene  () = 0; ///< 
+  virtual void CommitScene() = 0; ///< 
   
   /**
   \brief Add instance to scene
@@ -73,17 +73,21 @@ struct ISceneObject
   /**
   \brief Add instance to scene
   \param a_instanceId
-  \param a_geomId     - input if of geometry that is supposed to be instanced
   \param a_matrixData - float4x4 matrix, the layout is column-major
   */
-  virtual void     UpdateInstance(uint32_t a_instanceId, uint32_t a_geomId, const LiteMath::float4x4& a_matrix) = 0; 
+  virtual void     UpdateInstance(uint32_t a_instanceId, const LiteMath::float4x4& a_matrix) = 0; 
  
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  virtual CRT_Hit RayQuery(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) = 0;
+  
+  /**
+  \brief Find nearest intersection of ray and scene geometry
+  \param posAndNear   - ray origin (x,y,z) and t_near (w)
+  \param dirAndFar    - ray direction (x,y,z) and t_far (w)
+  */
+  virtual CRT_Hit RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) = 0;
 
 };
 

@@ -24,11 +24,6 @@ typedef struct SurfaceHitT
   float3 norm;
 }SurfaceHit;
 
-typedef struct LightGeomT
-{
-  float3 boxMin;
-  float3 boxMax;
-} LightGeom;
 
 static inline float3 EyeRayDir(float x, float y, float w, float h, float4x4 a_mViewProjInv) // g_mViewProjInv
 {
@@ -45,40 +40,6 @@ static inline float3 EyeRayDir(float x, float y, float w, float h, float4x4 a_mV
   return normalize(to_float3(pos));
 }
 
-static inline float2 RaySphereHit(float3 orig, float3 dir, float4 sphere) // see Ray Tracing Gems Book
-{
-  const float3 center = to_float3(sphere);
-  const float  radius = sphere.w;
-
-  // Hearn and Baker equation 10-72 for when radius^2 << distance between origin and center
-	// Also at https://www.cg.tuwien.ac.at/courses/EinfVisComp/Slides/SS16/EVC-11%20Ray-Tracing%20Slides.pdf
-	// Assumes ray direction is normalized
-	//dir = normalize(dir);
-	const float3 deltap   = center - orig;
-	const float ddp       = dot(dir, deltap);
-	const float deltapdot = dot(deltap, deltap);
-
-	// old way, "standard", though it seems to be worse than the methods above
-	//float discriminant = ddp * ddp - deltapdot + radius * radius;
-	float3 remedyTerm  = deltap - ddp * dir;
-	float discriminant = radius * radius - dot(remedyTerm, remedyTerm);
-
-  float2 result = {0,0};
-	if (discriminant >= 0.0f)
-	{
-		const float sqrtVal = sqrt(discriminant);
-		// include Press, William H., Saul A. Teukolsky, William T. Vetterling, and Brian P. Flannery, 
-		// "Numerical Recipes in C," Cambridge University Press, 1992.
-		const float q = (ddp >= 0) ? (ddp + sqrtVal) : (ddp - sqrtVal);
-		// we don't bother testing for division by zero
-		const float t1 = q;
-		const float t2 = (deltapdot - radius * radius) / q;
-    result.x = fmin(t1,t2);
-    result.y = fmax(t1,t2);
-  }
-  
-  return result;
-}
 
 static inline uint RealColorToUint32_f3(float3 real_color)
 {
@@ -261,6 +222,5 @@ static inline float GGX_GeomShadMask(const float cosThetaN, const float alpha)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 #endif

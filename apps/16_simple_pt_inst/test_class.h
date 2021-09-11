@@ -39,10 +39,7 @@ public:
 
   TestClass(int a_maxThreads = 1)
   {
-    //const float4x4 proj = perspectiveMatrix(45.0f, 1.0f, 0.01f, 100.0f);
-    //m_worldViewProjInv  = inverse4x4(proj);
     InitRandomGens(a_maxThreads);
-
     m_pAccelStruct = CreateSceneRT(""); 
   }
 
@@ -79,12 +76,6 @@ public:
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  float3    testColor = float3(0, 1, 1);
-  uint32_t  m_emissiveMaterialId = 0;
-  LightGeom m_lightGeom = {float3(-0.3f, 2.0f, -0.3f), 
-                           float3(+0.3f, 2.0f, +0.3f)   
-                           };
-
   static constexpr uint HIT_TRIANGLE_GEOM   = 0;
   static constexpr uint HIT_FLAT_LIGHT_GEOM = 1;
 
@@ -97,7 +88,10 @@ protected:
   std::vector<uint32_t>        m_materialIds;
   std::vector<float4>          m_vPos4f;      // copy from m_mesh
   std::vector<float4>          m_vNorm4f;     // copy from m_mesh
+
   std::vector<float4>          m_materials;
+  std::vector<uint32_t>        m_matIdOffsets;  ///< offset = m_matIdOffsets[geomId]
+  std::vector<uint32_t>        m_matIdByPrimId; ///< matId  = m_matIdByPrimId[offset + primId]
 
   float4x4                     m_projInv;
   float4x4                     m_worldViewInv;

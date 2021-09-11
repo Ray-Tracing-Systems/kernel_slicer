@@ -30,7 +30,7 @@ namespace hydra_xml
   {
     uint32_t           geomId = uint32_t(-1); ///< geom id
     uint32_t           rmapId = uint32_t(-1); ///< remap list id, todo: add function to get real remap list by id
-    LiteMath::float4x4 matrix; ///< trannform matrix
+    LiteMath::float4x4 matrix;                ///< transform matrix
   };
 
   struct LightInstance
@@ -42,12 +42,22 @@ namespace hydra_xml
     LiteMath::float4x4 matrix;
   };
 
+  struct Camera
+  {
+    float pos[3];
+    float lookAt[3];
+    float up[3];
+    float fov;
+    float nearPlane;
+    float farPlane;
+  };
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   // //
   // //
-	// class LocIterator // (!!!) does not works, mem issues
+	// class LocIterator // (!!!) does not works, mem issues with pugixml (see satitaizers checks)
 	// {
 	// 	 friend class pugi::xml_node;
   //   friend class pugi::xml_node_iterator;
@@ -105,12 +115,13 @@ namespace hydra_xml
     pugi::xml_object_range<pugi::xml_node_iterator> LightNodes()    { return m_lightsLib.children();    }
     pugi::xml_object_range<pugi::xml_node_iterator> CameraNodes()   { return m_cameraLib.children();    }
     
-    //// please also use this functions with C++11 range for 
+    //// please also use this functions with C++11 range for, we don't use iterators here due to pugixml bug with memory 
     //
     std::vector<std::string>   MeshFiles();
     std::vector<std::string>   TextureFiles();
     std::vector<Instance>      InstancesGeom(uint32_t a_sceneId = 0);
     std::vector<LightInstance> InstancesLights(uint32_t a_sceneId = 0);
+    std::vector<Camera>        Cameras();
 
     std::vector<LiteMath::float4x4> GetAllInstancesOfMeshLoc(const std::string& a_loc) const 
     { 
@@ -135,12 +146,14 @@ namespace hydra_xml
     pugi::xml_node m_cameraLib   ; 
     pugi::xml_node m_settingsNode; 
     pugi::xml_node m_sceneNode   ; 
+    pugi::xml_document m_xmlDoc;
 
     std::unordered_map<std::string, std::vector<LiteMath::float4x4> > m_instancesPerMeshLoc;
   };
 
   LiteMath::float3 read3f(pugi::xml_attribute a_attr);
   LiteMath::float3 read3f(pugi::xml_node a_node);
+  LiteMath::float3 readval3f(pugi::xml_node a_node);
 }
 
 #endif //HYDRAXML_H

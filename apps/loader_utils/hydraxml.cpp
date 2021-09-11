@@ -89,9 +89,7 @@ namespace hydra_xml
 #else
   int HydraScene::LoadState(const std::string &path)
   {
-    pugi::xml_document xmlDoc;
-
-    auto loaded = xmlDoc.load_file(path.c_str());
+    auto loaded = m_xmlDoc.load_file(path.c_str());
 
     if(!loaded)
     {
@@ -107,14 +105,14 @@ namespace hydra_xml
     auto pos = path.find_last_of(L'/');
     m_libraryRootDir = path.substr(0, pos);
 
-    m_texturesLib  = xmlDoc.child(L"textures_lib");
-    m_materialsLib = xmlDoc.child(L"materials_lib");
-    m_geometryLib  = xmlDoc.child(L"geometry_lib");
-    m_lightsLib    = xmlDoc.child(L"lights_lib");
+    m_texturesLib  = m_xmlDoc.child(L"textures_lib");
+    m_materialsLib = m_xmlDoc.child(L"materials_lib");
+    m_geometryLib  = m_xmlDoc.child(L"geometry_lib");
+    m_lightsLib    = m_xmlDoc.child(L"lights_lib");
 
-    m_cameraLib    = xmlDoc.child(L"cam_lib");
-    m_settingsNode = xmlDoc.child(L"render_lib");
-    m_sceneNode    = xmlDoc.child(L"scenes");
+    m_cameraLib    = m_xmlDoc.child(L"cam_lib");
+    m_settingsNode = m_xmlDoc.child(L"render_lib");
+    m_sceneNode    = m_xmlDoc.child(L"scenes");
 
     if (m_texturesLib == nullptr || m_materialsLib == nullptr || m_lightsLib == nullptr || m_cameraLib == nullptr || m_geometryLib == nullptr || m_settingsNode == nullptr || m_sceneNode == nullptr)
     {
@@ -223,6 +221,16 @@ namespace hydra_xml
     return res;
   }
 
+  LiteMath::float3 readval3f(pugi::xml_node a_node)
+  {
+    float3 color;
+    if(a_node.attribute(L"val") != nullptr)
+      color = hydra_xml::read3f(a_node.attribute(L"val"));
+    else
+      color = hydra_xml::read3f(a_node);
+    return color;
+  }
+
   std::vector<std::string> HydraScene::MeshFiles()
   {
     std::vector<std::string> result;
@@ -305,6 +313,33 @@ namespace hydra_xml
       inst.lightNode = lights[inst.lightId];
     }
     return result;
+  }
+  
+  std::vector<Camera> HydraScene::Cameras()
+  {
+    std::vector<Camera> allCams; 
+    allCams.reserve(16);
+
+    for(auto camNode : CameraNodes())
+    {
+      Camera cam;
+      cam.fov       = camNode.child(L"fov").text().as_float(); 
+      cam.nearPlane = camNode.child(L"nearClipPlane").text().as_float();
+      cam.farPlane  = camNode.child(L"farClipPlane").text().as_float();  
+      
+      LiteMath::float3 pos    = hydra_xml::read3f(camNode.child(L"position"));
+      LiteMath::float3 lookAt = hydra_xml::read3f(camNode.child(L"look_at"));
+      LiteMath::float3 up     = hydra_xml::read3f(camNode.child(L"up"));
+      for(int i=0;i<3;i++)
+      {
+        cam.pos   [i] = pos[i];
+        cam.lookAt[i] = lookAt[i];
+        cam.up    [i] = up[i];
+      }
+      allCams.push_back(cam);
+    }
+
+    return allCams;
   }
 
 
