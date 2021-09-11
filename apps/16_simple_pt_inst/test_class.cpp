@@ -31,6 +31,15 @@ static inline void transform_ray3f(float4x4 a_mWorldViewInv,
   (*ray_dir)  = normalize(diff);
 }
 
+static inline float3 mul3x3(float4x4 m, float3 v)
+{
+  float3 res;
+  res.x = v.x * m.m_col[0].x + v.y * m.m_col[1].x + v.z * m.m_col[2].x;
+  res.y = v.x * m.m_col[0].y + v.y * m.m_col[1].y + v.z * m.m_col[2].y;
+  res.z = v.x * m.m_col[0].z + v.y * m.m_col[1].z + v.z * m.m_col[2].z;
+  return res;
+}
+
 
 void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 {
@@ -120,12 +129,18 @@ void TestClass::kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, uint* out_c
 void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
                                   float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput)
 {
-  /*
+  const Lite_Hit lhit = *in_hit;
+  if(lhit.geomId == -1)
+    *accumColor = float4(0,0,0,0);
+
+  const uint32_t matId = m_matIdByPrimId[m_matIdOffsets[lhit.geomId] + lhit.primId];
+  const float4 mdata   = m_materials[matId];
+
   // process light hit case
   //
-  if(in_hit->geomId == HIT_FLAT_LIGHT_GEOM)
+  if(mdata.w > 0.0f)
   {
-    const float lightIntensity = m_materials[m_emissiveMaterialId].w;
+    const float lightIntensity = mdata.w;
     if(dot(to_float3(*rayDirAndFar), float3(0,-1,0)) < 0.0f)
       *accumColor = (*accumThoroughput)*lightIntensity;
     else
@@ -135,12 +150,13 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
   
   // process surcase hit case
   //
-  const Lite_Hit lHit  = *in_hit;
   const float3 ray_dir = to_float3(*rayDirAndFar);
   
   SurfaceHit hit;
-  hit.pos  = to_float3(*rayPosAndNear) + lHit.t*ray_dir;
-  hit.norm = EvalSurfaceNormal(ray_dir, lHit.primId, *in_bars, m_indicesReordered.data(), m_vNorm4f.data());
+  hit.pos  = to_float3(*rayPosAndNear) + lhit.t*ray_dir;
+  hit.norm = EvalSurfaceNormal(ray_dir, lhit.primId, lhit.geomId, *in_bars, m_vertOffset.data(), m_matIdOffsets.data(), m_triIndices.data(), m_vNorm4f.data());
+  hit.norm = mul3x3(m_normMatrices[lhit.instId], hit.norm);
+
 
   RandomGen gen     = m_randomGens[tid];
   const float2 uv   = rndFloat2_Pseudo(&gen);
@@ -149,8 +165,6 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
   const float3 newDir   = MapSampleToCosineDistribution(uv.x, uv.y, hit.norm, hit.norm, 1.0f);
   const float  cosTheta = dot(newDir, hit.norm);
 
-  const uint32_t mtId = m_materialIds[in_hit->primId];
-  const float4 mdata  = m_materials[mtId];
 
   const float  pdfVal  = cosTheta * INV_PI;
   const float3 brdfVal = (cosTheta > 1e-5f) ? to_float3(mdata) * INV_PI : float3(0,0,0);
@@ -158,9 +172,7 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
   
   *rayPosAndNear    = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
   *rayDirAndFar     = to_float4(newDir, MAXFLOAT);
-  *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f);
-  
-  */
+  *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f); 
 }
 
 
@@ -241,8 +253,7 @@ void test_class_cpu()
   }
   
   ///home/frol/PROG/HydraRepos/HydraCore/hydra_app/tests/test_42
-  test.LoadScene("/home/frol/PROG/HydraRepos/HydraCore/hydra_app/tests/test_42/statex_00001.xml", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf", false);
-  //test.LoadScene("/home/frol/PROG/HydraRepos/HydraAPI-tests/3dsMaxTests/003_geosphere_smooth_normals/statex_00001.xml", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf", false);
+  test.LoadScene("/home/frol/PROG/HydraRepos/HydraCore/hydra_app/tests/test_42/statex_00001.xml");
   
   // test simple ray casting
   //
@@ -251,7 +262,7 @@ void test_class_cpu()
 
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
-  /*
+  
   // now test path tracing
   //
   const int PASS_NUMBER           = 100;
@@ -288,6 +299,6 @@ void test_class_cpu()
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }
   SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-  */
+  
 
 }

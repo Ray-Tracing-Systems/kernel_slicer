@@ -34,6 +34,7 @@ namespace hydra_xml
     uint32_t           geomId = uint32_t(-1); ///< geom id
     uint32_t           rmapId = uint32_t(-1); ///< remap list id, todo: add function to get real remap list by id
     LiteMath::float4x4 matrix;                ///< transform matrix
+    pugi::xml_node     node;
   };
 
   struct LightInstance
@@ -43,6 +44,7 @@ namespace hydra_xml
     pugi::xml_node     instNode;
     pugi::xml_node     lightNode;
     LiteMath::float4x4 matrix;
+    pugi::xml_node     node;
   };
 
   struct Camera
@@ -53,6 +55,7 @@ namespace hydra_xml
     float fov;
     float nearPlane;
     float farPlane;
+    pugi::xml_node     node;
   };
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -112,6 +115,7 @@ namespace hydra_xml
       inst.geomId = m_iter->attribute(L"mesh_id").as_uint();
       inst.rmapId = m_iter->attribute(L"rmap_id").as_uint();
       inst.matrix = float4x4FromString(m_iter->attribute(L"matrix").as_string());
+      inst.node   = (*m_iter);
       return inst;
     }
   
@@ -157,6 +161,7 @@ namespace hydra_xml
         cam.lookAt[i] = lookAt[i];
         cam.up    [i] = up[i];
       }
+      cam.node = (*m_iter);
       return cam;
     }
   

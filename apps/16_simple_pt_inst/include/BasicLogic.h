@@ -155,35 +155,19 @@ static inline float3 OffsRayPos(const float3 a_hitPos, const float3 a_surfaceNor
   return a_hitPos + signOfNormal2*offsetEps*a_surfaceNorm;
 }
 
-//static inline SurfaceHit EvalSurfaceHit(uint a_primId, float2 uv, __global uint* in_indices, __global const float4* in_vpos, __global const float4* in_vnorm)
-//{  
-//  const uint A = in_indices[a_primId*3 + 0];
-//  const uint B = in_indices[a_primId*3 + 1];
-//  const uint C = in_indices[a_primId*3 + 2];
-//  
-//  const float3 A_pos = to_float3(in_vpos[A]);
-//  const float3 B_pos = to_float3(in_vpos[B]);
-//  const float3 C_pos = to_float3(in_vpos[C]);
-//
-//  const float3 A_norm = to_float3(in_vnorm[A]);
-//  const float3 B_norm = to_float3(in_vnorm[B]);
-//  const float3 C_norm = to_float3(in_vnorm[C]);
-// 
-//  SurfaceHit hit;
-//  hit.pos  = (1.0f - uv.x - uv.y)*A_pos  + uv.y*B_pos  + uv.x*C_pos;
-//  hit.norm = (1.0f - uv.x - uv.y)*A_norm + uv.y*B_norm + uv.x*C_norm;
-//  return hit;
-//}
+static inline float3 EvalSurfaceNormal(float3 a_rayDir, uint a_primId, uint a_geomId, float2 uv, 
+                                       __global const uint* in_indOffs, __global const uint* in_vertOffs, __global const uint* in_indices, __global const float4* in_vnorm)
+{ 
+  const uint triOffset  = in_indOffs [a_geomId];
+  const uint vertOffset = in_vertOffs[a_geomId];
 
-static inline float3 EvalSurfaceNormal(float3 a_rayDir, uint a_primId, float2 uv, __global const uint* in_indices, __global const float4* in_vnorm)
-{  
-  const uint A = in_indices[a_primId*3 + 0];
-  const uint B = in_indices[a_primId*3 + 1];
-  const uint C = in_indices[a_primId*3 + 2];
+  const uint A = in_indices[(triOffset+a_primId)*3 + 0];
+  const uint B = in_indices[(triOffset+a_primId)*3 + 1];
+  const uint C = in_indices[(triOffset+a_primId)*3 + 2];
 
-  const float3 A_norm = to_float3(in_vnorm[A]);
-  const float3 B_norm = to_float3(in_vnorm[B]);
-  const float3 C_norm = to_float3(in_vnorm[C]);
+  const float3 A_norm = to_float3(vertOffset + in_vnorm[A]);
+  const float3 B_norm = to_float3(vertOffset + in_vnorm[B]);
+  const float3 C_norm = to_float3(vertOffset + in_vnorm[C]);
  
   const float3 norm   = (1.0f - uv.x - uv.y)*A_norm + uv.y*B_norm + uv.x*C_norm;
 
