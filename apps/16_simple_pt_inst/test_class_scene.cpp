@@ -56,15 +56,16 @@ int TestClass::LoadScene(const char* scehePath)
   m_pAccelStruct->ClearGeom();
   for(auto meshPath : scene.MeshFiles())
   {
-    std::cout << meshPath.c_str() << std::endl;
+    std::cout << "[LoadScene]: mesh = " << meshPath.c_str() << std::endl;
     auto currMesh = cmesh::LoadMeshFromVSGF(meshPath.c_str());
     auto geomId   = m_pAccelStruct->AddGeom_Triangles4f(currMesh.vPos4f.data(), currMesh.vPos4f.size(), currMesh.indices.data(), currMesh.indices.size());
     
     m_matIdOffsets.push_back(m_matIdByPrimId.size());
+    m_vertOffset.push_back(m_vPos4f.size());
+
     m_matIdByPrimId.insert(m_matIdByPrimId.end(), currMesh.matIndices.begin(), currMesh.matIndices.end() );
     m_triIndices.insert(m_triIndices.end(), currMesh.indices.begin(), currMesh.indices.end());
 
-    m_vertOffset.push_back(currMesh.VerticesNum());
     m_vPos4f.insert(m_vPos4f.end(),   currMesh.vPos4f.begin(),  currMesh.vPos4f.end());
     m_vNorm4f.insert(m_vNorm4f.end(), currMesh.vNorm4f.begin(), currMesh.vNorm4f.end());
   }

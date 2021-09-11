@@ -154,9 +154,16 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
   
   SurfaceHit hit;
   hit.pos  = to_float3(*rayPosAndNear) + lhit.t*ray_dir;
-  hit.norm = EvalSurfaceNormal(ray_dir, lhit.primId, lhit.geomId, *in_bars, m_vertOffset.data(), m_matIdOffsets.data(), m_triIndices.data(), m_vNorm4f.data());
-  hit.norm = mul3x3(m_normMatrices[lhit.instId], hit.norm);
-
+  hit.norm = EvalSurfaceNormal(lhit.primId, lhit.geomId, *in_bars, m_matIdOffsets.data(), m_vertOffset.data(), m_triIndices.data(), m_vNorm4f.data());
+  
+  // transform surface point with matrix
+  {
+    //hit.norm = mul3x3(m_normMatrices[lhit.instId], hit.norm);
+    //const float flipNorm = dot(ray_dir,  hit.norm) > 0.001f ? -1.0f : 1.0f;
+    //hit.norm = flipNorm*hit.norm;
+  }
+  
+  //*accumColor    = to_float4(hit.norm, 0.0f);
 
   RandomGen gen     = m_randomGens[tid];
   const float2 uv   = rndFloat2_Pseudo(&gen);
@@ -173,6 +180,7 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
   *rayPosAndNear    = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
   *rayDirAndFar     = to_float4(newDir, MAXFLOAT);
   *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f); 
+  
 }
 
 
