@@ -25,7 +25,7 @@ unsigned char* loadImage(const std::string &a_filename, int &w, int &h, int &cha
 
 void PointsRender::CreateColormapTexture()
 {
-  std::vector<uchar4> infernoColorMap = {uchar4(0, 0, 4, 1),
+  std::vector<uchar4> infernoColorMap = {uchar4(20, 6, 42, 1),
                                          uchar4(40, 11, 84, 1),
                                          uchar4(101, 21, 110, 1),
                                          uchar4(159, 42, 99, 1),

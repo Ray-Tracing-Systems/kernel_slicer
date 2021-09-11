@@ -5,6 +5,7 @@
 const float pointSize = 4.0f;
 const float spriteSize = 0.025f;
 const float velocityColorScale = 5e-3f;
+//const float velocityColorScale = 1.0f;
 
 vec3 colorMap(vec3 velocity, sampler1D colorMapTexture)
 {
