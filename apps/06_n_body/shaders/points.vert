@@ -15,15 +15,15 @@ layout(push_constant) uniform params_t
 
 layout (location = 0 ) out VS_OUT
 {
-    vec3 wPos;
-    vec3 wVel;
+    vec4 wPosWeight;
+    vec4 wVelCharge;
 } vOut;
 
 out gl_PerVertex { vec4 gl_Position; float gl_PointSize;};
 void main(void)
 {
-    vOut.wPos   = vec4(vPos.xyz, 1.0f).xyz;
-    vOut.wVel   = vVel.xyz;
-    gl_Position = params.mProjView * vec4(vOut.wPos, 1.0);
+    vOut.wPosWeight = vPos;
+    vOut.wVelCharge = vVel;
+    gl_Position = params.mProjView * vec4(vOut.wPosWeight.xyz, 1.0);
     gl_PointSize = 2.0f;
 }

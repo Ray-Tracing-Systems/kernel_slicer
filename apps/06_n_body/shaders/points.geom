@@ -16,27 +16,27 @@ layout(push_constant) uniform params_t
 
 layout (location = 0 ) in GS_IN
 {
-    vec3 wPos;
-    vec3 wVel;
+    vec4 wPosWeight;
+    vec4 wVelCharge;
 } point[];
 
 layout (location = 0 ) out GS_OUT
 {
-    vec3 wPos;
-    vec3 wVel;
+    vec4 wPosWeight;
+    vec4 wVelCharge;
     vec2 wTexCoord;
 } vOut;
 
 void gen_quad(float size)
 {
-    vec3 pos = point[0].wPos;
+    vec3 pos = point[0].wPosWeight.xyz;
     vec3 toCam = normalize(params.mCamPos.xyz - pos);
     vec3 up = vec3(0.0f, 1.0f, 0.0f);
     vec3 right = cross(toCam, up);
 
     // bottom left
-    vOut.wPos = point[0].wPos;
-    vOut.wVel = point[0].wVel;
+    vOut.wPosWeight = point[0].wPosWeight;
+    vOut.wVelCharge = point[0].wVelCharge;
     vOut.wTexCoord = vec2(0.0f, 1.0f);
     pos.y -= size;
     pos -= size * right;
@@ -44,16 +44,16 @@ void gen_quad(float size)
     EmitVertex();
 
     // upper left
-    vOut.wPos = point[0].wPos;
-    vOut.wVel = point[0].wVel;
+    vOut.wPosWeight = point[0].wPosWeight;
+    vOut.wVelCharge = point[0].wVelCharge;
     vOut.wTexCoord = vec2(0.0f, 0.0f);
     pos.y += 2 * size;
     gl_Position = params.mProjView * vec4(pos, 1.0);
     EmitVertex();
 
     // bottom right
-    vOut.wPos = point[0].wPos;
-    vOut.wVel = point[0].wVel;
+    vOut.wPosWeight = point[0].wPosWeight;
+    vOut.wVelCharge = point[0].wVelCharge;
     vOut.wTexCoord = vec2(1.0f, 1.0f);
     pos.y -= 2 * size;
     pos += 2 * size * right;
@@ -61,8 +61,8 @@ void gen_quad(float size)
     EmitVertex();
 
     // top right
-    vOut.wPos = point[0].wPos;
-    vOut.wVel = point[0].wVel;
+    vOut.wPosWeight = point[0].wPosWeight;
+    vOut.wVelCharge = point[0].wVelCharge;
     vOut.wTexCoord = vec2(1.0f, 0.0f);
     pos.y += 2 * size;
     gl_Position = params.mProjView * vec4(pos, 1.0);
@@ -73,7 +73,7 @@ void gen_quad(float size)
 
 void gen_line(float size)
 {
-    vec3 pos = vOut.wPos.xyz;
+    vec3 pos = vOut.wPosWeight.xyz;
     gl_Position = params.mProjView * vec4(pos, 1.0);
     EmitVertex();
     gl_Position = params.mProjView * vec4(pos + vec3(0, +size, 0), 1.0);
@@ -83,5 +83,8 @@ void gen_line(float size)
 
 void main ()
 {
-    gen_quad(spriteSize);
+    if(point[0].wPosWeight.w > weightThres)
+        gen_quad(spriteSize * 2.f);
+    else
+        gen_quad(spriteSize);
 }

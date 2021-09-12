@@ -35,7 +35,7 @@ public:
 
   static constexpr int MODE = 1; //0 - gravitational, 1 - electrostatic
 protected:
-  static constexpr float dt = (MODE == 1) ? 1e-5f : 5e-6f;
+  static constexpr float dt = 1e-4f; //(MODE == 1) ? 1e-4f : 1e-5f;
   uint32_t m_seed;
   uint32_t m_iters;
 
@@ -45,13 +45,16 @@ protected:
   void kernel1D_ReadData(BodyState *out_bodies, uint32_t bodies_count);
 public:
   static constexpr bool PERIODIC_BOUNDARY_CONDITIONS = true;
-  static constexpr uint32_t BODIES_COUNT = 4096;
+  static constexpr float LATTICE_STEP = 5.f;
+  static constexpr uint32_t LATTICE_RES = 10;
+  static constexpr uint32_t BODIES_COUNT = 4096; //LATTICE_RES * LATTICE_RES * LATTICE_RES + 100;
   static constexpr float SOFTENING_CONST = 1e-5f;
-  static constexpr float BOUNDARY = 15.0f;
+  static constexpr float BOUNDARY = 60.0f;
   static constexpr float MASS = 5;
-  static constexpr float CHARGE_MULT = 1e14;
+  static constexpr float CHARGE_MULT = 5e13;
   static constexpr float ELECTRON_CHARGE = 1.60218e-19;
   static constexpr float PERMETTIVITY = 8.85418782e-12;
+
 
   nBody() {
     m_bodies.resize(BODIES_COUNT);

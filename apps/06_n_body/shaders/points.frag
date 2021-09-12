@@ -8,13 +8,14 @@ layout(location = 0) out vec4 out_fragColor;
 
 layout (location = 0 ) in VS_OUT
 {
-    vec3 wPos;
-    vec3 wVel;
+    vec4 wPosWeight;
+    vec4 wVelCharge;
 } point;
 
 layout(binding = 0) uniform sampler1D colormapTex;
 
 void main()
 {
-    out_fragColor = vec4(colorMap(point.wVel, colormapTex), 1.0f);
+//    out_fragColor = vec4(colorMap(point.wVel, colormapTex), 1.0f);
+    out_fragColor = vec4(colorMapWeight(point.wPosWeight.w, colormapTex), 1.0f);
 }

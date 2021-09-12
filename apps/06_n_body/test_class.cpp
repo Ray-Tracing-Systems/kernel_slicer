@@ -20,17 +20,47 @@ void nBody::perform(BodyState *out_bodies) {
 }
 
 void nBody::kernel1D_GenerateBodies(uint32_t bodies_count) {
-
   for (uint32_t i = 0; i < bodies_count; ++i) {
-    m_bodies[i].pos_weight = randFloat4(make_float4(-1, -1, -1, MASS), make_float4(1, 1, 1, MASS), i);
-    m_bodies[i].vel_charge = randFloat4(make_float4(-1, -1, -1, 10), make_float4(1, 1, 1, 100), i*i + i*7 + 1);
+    m_bodies[i].pos_weight = randFloat4(make_float4(-BOUNDARY * 0.1f, -BOUNDARY* 0.1f, -BOUNDARY* 0.1f, MASS),
+                                        make_float4(BOUNDARY* 0.1f, BOUNDARY* 0.1f, BOUNDARY* 0.1f, MASS), i);
+//    m_bodies[i].vel_charge = randFloat4(make_float4(-1, -1, -1, -ELECTRON_CHARGE * CHARGE_MULT),
+//                                        make_float4(1, 1, 1, -ELECTRON_CHARGE * CHARGE_MULT), i*i + i*7 + 1);
+
 
     if(i % 2 == 0)
-      m_bodies[i].vel_charge.w = ELECTRON_CHARGE * CHARGE_MULT;
+      m_bodies[i].vel_charge = make_float4(0, 0, 0, ELECTRON_CHARGE * CHARGE_MULT);
     else
-      m_bodies[i].vel_charge.w = -ELECTRON_CHARGE * CHARGE_MULT;
+      m_bodies[i].vel_charge = make_float4(0, 0, 0, -ELECTRON_CHARGE * CHARGE_MULT);
   }
 }
+
+//void nBody::kernel1D_GenerateBodies(uint32_t bodies_count)
+//{
+//
+//  for (uint32_t i = 0; i < bodies_count; ++i) {
+//    if(i >= LATTICE_RES * LATTICE_RES * LATTICE_RES)
+//    {
+//      m_bodies[i].pos_weight = randFloat4(make_float4(-BOUNDARY * 0.25f, -BOUNDARY* 0.25f, -BOUNDARY* 0.25f, MASS),
+//                                          make_float4(BOUNDARY* 0.25f, BOUNDARY* 0.25f, BOUNDARY* 0.25f, MASS), i);
+//      m_bodies[i].vel_charge = randFloat4(make_float4(-1, -1, -1, -ELECTRON_CHARGE * CHARGE_MULT),
+//                                          make_float4(1, 1, 1, -ELECTRON_CHARGE * CHARGE_MULT), i*i + i*7 + 1);
+//      m_bodies[i].vel_charge.w = -ELECTRON_CHARGE * CHARGE_MULT;
+//    }
+//    else
+//    {
+//      float3 coord = make_float3(-BOUNDARY* 0.25f, -BOUNDARY* 0.25f, -BOUNDARY* 0.25f);
+//      uint32_t x = i % LATTICE_RES;
+//      uint32_t y = i / LATTICE_RES / LATTICE_RES;
+//      uint32_t z = (i / LATTICE_RES) % LATTICE_RES;
+//      //    m_bodies[i].pos_weight = randFloat4(make_float4(-1, -1, -1, MASS), make_float4(1, 1, 1, MASS), i);
+//      m_bodies[i].pos_weight = make_float4(coord.x + x * LATTICE_STEP,
+//                                           coord.y + y * LATTICE_STEP,
+//                                           coord.z + z * LATTICE_STEP,
+//                                           MASS * 10 * 1e4);
+//      m_bodies[i].vel_charge = make_float4(0, 0, 0, ELECTRON_CHARGE * CHARGE_MULT);
+//    }
+//  }
+//}
 
 static float3 xyz(const float4 vec) {
   return make_float3(vec.x, vec.y, vec.z);
@@ -48,6 +78,8 @@ void nBody::kernel1D_UpdateVelocity(uint32_t bodies_count) {
   for (uint32_t i = 0; i < bodies_count; ++i) {
     float3 acceleration = make_float3(0, 0, 0);
     for (uint32_t j = 0; j < m_bodies.size(); ++j) {
+//      if(m_bodies[i].pos_weight.w > MASS)
+//        continue;
       if (i == j) {
         continue;
       }
@@ -57,7 +89,7 @@ void nBody::kernel1D_UpdateVelocity(uint32_t bodies_count) {
       float3 gravitational = distance * m_bodies[j].pos_weight.w * invDistCube;
 
       float coeff = m_bodies[i].vel_charge.w / (4 * M_PI * PERMETTIVITY);
-      float3 electrostatic = coeff * m_bodies[j].vel_charge.w * (distance / distSqr);
+      float3 electrostatic = coeff * m_bodies[j].vel_charge.w * (+1.f * distance / distSqr);
 
       if(MODE == 1)
       {
@@ -71,6 +103,7 @@ void nBody::kernel1D_UpdateVelocity(uint32_t bodies_count) {
         acceleration += gravitational + electrostatic;
     }
     acceleration *= dt;
+    acceleration /= m_bodies[i].pos_weight.w;
     m_bodies[i].vel_charge.x += acceleration.x;
     m_bodies[i].vel_charge.y += acceleration.y;
     m_bodies[i].vel_charge.z += acceleration.z;
