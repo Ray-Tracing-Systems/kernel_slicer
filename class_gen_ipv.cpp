@@ -63,6 +63,9 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::IPV_Pattern::Ge
     arg2.sizeText   = arg.sizeExpr;
     arg2.startText  = arg.startExpr;
     arg2.strideText = arg.strideExpr;
+    arg2.sizeNode   = arg.sizeNode;
+    arg2.startNode  = arg.startNode;
+    arg2.strideNode = arg.strideNode;
     arg2.typeName   = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
     arg2.id         = i;
     args.push_back(arg2);
@@ -182,9 +185,15 @@ public:
           kslicer::KernelInfo::LoopIter tidArg;
           tidArg.name        = initVar->getNameAsString();
           tidArg.type        = qt.getAsString();
+          
           tidArg.sizeExpr    = kslicer::GetRangeSourceCode(loopSZ->getSourceRange(), m_compiler);
           tidArg.startExpr   = kslicer::GetRangeSourceCode(initVar->getAnyInitializer()->getSourceRange(), m_compiler); 
           tidArg.strideExpr  = GetStrideText(forLoop->getInc()); //kslicer::GetRangeSourceCode(forLoop->getInc()->getSourceRange(), m_compiler);
+          
+          tidArg.startNode   = initVar->getAnyInitializer();
+          tidArg.sizeNode    = loopSZ;
+          tidArg.strideNode  = forLoop->getInc();
+
           tidArg.loopNesting = uint32_t(currKernel->loopIters.size());
           currKernel->loopIters.push_back(tidArg);
           currKernel->loopInsides = forLoop->getBody()->getSourceRange();

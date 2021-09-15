@@ -1258,6 +1258,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     
     //////////////////////////////////////////////////////////////////////////////////////////
     {
+      //clang::Rewriter rewrite2; 
+      //rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+      //auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "", false);
+      //pVisitorK->ClearUserArgs();
+
       kernelJson["ThreadIds"] = std::vector<std::string>();
 
       std::vector<std::string> threadIdNames(tidArgs.size());
@@ -1269,8 +1274,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         std::string loopSize   = tidArgs[tid].sizeText;   // #TODO: process these as normal node rewrite (!!!)
         std::string loopStart  = tidArgs[tid].startText;  // #TODO: process these as normal node rewrite (!!!)
         std::string loopStride = tidArgs[tid].strideText; // #TODO: process these as normal node rewrite (!!!)
-
+        
         json threadId;
+        if(tidArgs[tid].startNode != nullptr)
+        {
+          //loopSize   = pVisitorK->RecursiveRewrite(tidArgs[tid].sizeNode);
+          //loopStart  = pVisitorK->RecursiveRewrite(tidArgs[tid].startNode);
+          //loopStride = pVisitorK->RecursiveRewrite(tidArgs[tid].strideNode);
+          threadId["Simple"] = 0;
+        }
+        else
+          threadId["Simple"] = 1;
+
         threadId["Name"]   = tidArgs[tid].argName;
         threadId["Type"]   = tidArgs[tid].typeName;
         threadId["Size"]   = loopSize;

@@ -112,6 +112,11 @@ namespace kslicer
       std::string sizeExpr;
       std::string startExpr;
       std::string strideExpr;
+      
+      const clang::Stmt* startNode   = nullptr;
+      const clang::Expr* sizeNode    = nullptr;
+      const clang::Expr* strideNode  = nullptr;
+
       uint32_t    loopNesting = 0;
     };
     
@@ -722,9 +727,14 @@ namespace kslicer
     {
       std::string typeName;
       std::string argName;
+      
       std::string sizeText;
       std::string startText;
       std::string strideText;
+      
+      const clang::Stmt* startNode   = nullptr;
+      const clang::Expr* sizeNode    = nullptr;
+      const clang::Expr* strideNode  = nullptr;
 
       std::string imageType;
       std::string imageFormat;

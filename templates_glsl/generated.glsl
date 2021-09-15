@@ -50,7 +50,11 @@ void main()
   {% if not Kernel.InitKPass %}
   ///////////////////////////////////////////////////////////////// prolog
   {% for TID in Kernel.ThreadIds %}
+  {% if TID.Simple %}
+  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(gl_GlobalInvocationID[{{ loop.index }}]); 
+  {% else %}
   const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + {{TID.Type}}(gl_GlobalInvocationID[{{ loop.index }}]); 
+  {% endif %}
   {% endfor %}
   {# /*------------------------------------------------------------- BEG. INIT ------------------------------------------------------------- */ #}
   {% include "inc_exit_cond.glsl" %}
