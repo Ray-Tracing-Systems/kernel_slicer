@@ -1290,12 +1290,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     if(k.loopIters.size() != 0) 
     {
+      std::unordered_set<std::string> usedVars;
       for(const auto& iter : k.loopIters)
       {
         uint32_t loopIdReorderd  = threadsOrder[iter.loopNesting];
-        tidNames[loopIdReorderd] = iter.sizeExpr;                   // #TODO: assert that this expression does not contain .size(); if it does
-        tidTypes[loopIdReorderd] = iter.type;
-      }                                                             // we must change it to 'vec_size2' for example 
+        auto pFound = usedVars.find(iter.sizeExpr);
+        if(pFound == usedVars.end())
+        {
+          tidNames[loopIdReorderd] = iter.sizeExpr;                   // #TODO: assert that this expression does not contain .size(); if it does
+          tidTypes[loopIdReorderd] = iter.type;
+          usedVars.insert(iter.sizeExpr);
+        }
+      }                                                                // we must change it to 'vec_size2' for example 
     }
     //////////////////////////////////////////////////////////////////////////////////  TODO: refactor this code
 
