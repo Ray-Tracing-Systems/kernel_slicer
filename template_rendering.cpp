@@ -884,7 +884,8 @@ namespace kslicer
   std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, 
                                       const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds,
                                       const std::string a_names[3]);
-};
+}
+
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 
 
@@ -1068,7 +1069,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (4) put kernels
   //
-  clang::SourceManager& sm = compiler.getSourceManager();
+  //clang::SourceManager& sm = compiler.getSourceManager();
   data["Kernels"] = std::vector<std::string>();
   
   for (const auto& nk : a_classInfo.kernels)  

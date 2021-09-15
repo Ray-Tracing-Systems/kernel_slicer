@@ -149,7 +149,7 @@ std::string kslicer::GLSLCompiler::ProcessBufferType(const std::string& a_typeNa
     type = type.substr(0, type.size()-1);
 
   return type; 
-};
+}
 
 std::string kslicer::GLSLCompiler::RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const 
 {
@@ -618,7 +618,6 @@ bool GLSLFunctionRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
   const auto op = expr->getOpcodeStr(expr->getOpcode());
   if((op == "*" || op == "&") && WasNotRewrittenYet(expr->getSubExpr()) )
   {
-    auto subExpr      = expr->getSubExpr();
     std::string text  = RecursiveRewrite(expr->getSubExpr());
     m_rewriter.ReplaceText(expr->getSourceRange(), text);
     MarkRewritten(expr->getSubExpr()); 
@@ -630,7 +629,7 @@ bool GLSLFunctionRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
 std::string GLSLFunctionRewriter::CompleteFunctionCallRewrite(clang::CallExpr* call)
 {
   std::string rewrittenRes = "";
-  for(int i=0;i<call->getNumArgs(); i++)
+  for(unsigned i=0;i<call->getNumArgs(); i++)
   {
     rewrittenRes += RecursiveRewrite(call->getArg(i));
     if(i!=call->getNumArgs()-1)
@@ -730,10 +729,6 @@ bool GLSLFunctionRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special 
       if(varType == "") // first element
       {
         varType = qt.getAsString();
-        if(varType.find("unsigned char") != std::string::npos)
-        {
-          int a = 2;
-        }
         if(!NeedsVectorTypeRewrite(varType)) // immediately ignore DeclStmt like 'int i,j,k=2' if we dont need to rewrite the type 
           return true;
         varType = RewriteStdVectorTypeStr(varType);
@@ -1011,7 +1006,7 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     m_currKernel.shittyFunctions.push_back(func);
 
     std::string rewrittenRes = func.ShittyName() + "(";
-    for(int i=0;i<call->getNumArgs(); i++)
+    for(unsigned i=0;i<call->getNumArgs(); i++)
     {
       size_t found = size_t(-1);
       for(size_t j=0;j<shittyPointers.size();j++)

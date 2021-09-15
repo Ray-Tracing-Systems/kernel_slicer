@@ -136,7 +136,7 @@ static std::string GetControlFuncDeclText(const clang::FunctionDecl* fDecl, clan
   std::string text = fDecl->getNameInfo().getName().getAsString() + "Cmd(VkCommandBuffer a_commandBuffer";
   if(fDecl->getNumParams()!= 0)
     text += ", ";
-  for(int i=0;i<fDecl->getNumParams();i++)
+  for(unsigned i=0;i<fDecl->getNumParams();i++)
   {
     auto pParam = fDecl->getParamDecl(i);
     const clang::QualType typeOfParam =	pParam->getType();
@@ -157,8 +157,8 @@ std::string kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc,
 {
   const std::string&   a_mainClassName = this->mainClassName;
   const CXXMethodDecl* a_node          = a_mainFunc.Node;
-  const std::string&   a_mainFuncName  = a_mainFunc.Name;
-  std::string&         a_outFuncDecl   = a_mainFunc.GeneratedDecl;
+  //const std::string&   a_mainFuncName  = a_mainFunc.Name;
+  //std::string&         a_outFuncDecl   = a_mainFunc.GeneratedDecl;
 
   const auto  inOutParamList = kslicer::ListPointerParamsOfMainFunc(a_node);
 
@@ -222,7 +222,7 @@ std::string kslicer::MainClassInfo::GetCFDeclFromSource(const std::string& sourc
 std::vector<kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node)
 {
   std::vector<InOutVarInfo> params;
-  for(int i=0;i<a_node->getNumParams();i++)
+  for(unsigned i=0;i<a_node->getNumParams();i++)
   {
     const ParmVarDecl* currParam = a_node->getParamDecl(i);
     const clang::QualType qt     = currParam->getType();
@@ -340,7 +340,7 @@ void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_k
     std::string kernelSourceCode = GetRangeSourceCode(sourceRange, compiler);
     
     auto posBeg      = kernelSourceCode.find(funcName);
-    auto posEnd      = posBeg + funcName.size();
+    //auto posEnd      = posBeg + funcName.size();
     auto posEndBrace = kernelSourceCode.find(")");
 
     std::string kernelCmdDecl = kernelSourceCode.substr(posBeg, posEndBrace+1-posBeg);   

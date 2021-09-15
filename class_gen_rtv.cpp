@@ -43,14 +43,14 @@ uint32_t kslicer::RTV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel)
 
 std::string kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
-  const std::string&   a_mainClassName = this->mainClassName;
-  const CXXMethodDecl* a_node          = a_mainFunc.Node;
-  const std::string&   a_mainFuncName  = a_mainFunc.Name;
-  std::string&         a_outFuncDecl   = a_mainFunc.GeneratedDecl;
+  //const std::string&   a_mainClassName = this->mainClassName;
+  //const CXXMethodDecl* a_node          = a_mainFunc.Node;
+  //const std::string&   a_mainFuncName  = a_mainFunc.Name;
+  //std::string&         a_outFuncDecl   = a_mainFunc.GeneratedDecl;
 
-  std::string sourceCode = GetCFSourceCodeCmd(a_mainFunc, compiler); // ==> write this->allDescriptorSetsInfo
-  a_outFuncDecl          = GetCFDeclFromSource(sourceCode); 
-  a_mainFunc.endDSNumber = allDescriptorSetsInfo.size();
+  std::string sourceCode   = GetCFSourceCodeCmd(a_mainFunc, compiler); // ==> write this->allDescriptorSetsInfo
+  a_mainFunc.GeneratedDecl = GetCFDeclFromSource(sourceCode); 
+  a_mainFunc.endDSNumber   = allDescriptorSetsInfo.size();
 
   return sourceCode;
 }
@@ -295,7 +295,8 @@ class MemberRewriter : public kslicer::FunctionRewriter
 public:
   
   MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::MainClassInfo::DImplClass& dImpl) : 
-                 m_processed(dImpl.memberFunctions), m_fields(dImpl.fields), m_className(dImpl.name), m_mainClassName(a_codeInfo->mainClassName), FunctionRewriter(R, a_compiler, a_codeInfo), m_codeInfo(a_codeInfo)
+                FunctionRewriter(R, a_compiler, a_codeInfo), 
+                m_processed(dImpl.memberFunctions), m_fields(dImpl.fields), m_className(dImpl.name), m_mainClassName(a_codeInfo->mainClassName)
   { 
     
   }
@@ -467,7 +468,7 @@ public:
       textRes += "(self";
       if(call->getNumArgs() > 0)
         textRes += ",";
-      for(int i=0;i<call->getNumArgs();i++)
+      for(unsigned i=0;i<call->getNumArgs();i++)
       {
         textRes += RecursiveRewrite(call->getArg(i));
         if(i < call->getNumArgs()-1)
@@ -497,7 +498,6 @@ private:
   std::vector<std::string>&                       m_fields;
   const std::string&                              m_className;
   const std::string&                              m_mainClassName;
-  kslicer::MainClassInfo*                         m_codeInfo = nullptr;
 
   bool isCopy = false;
   std::unordered_set<std::string> m_fakeOffsArgs;
@@ -678,9 +678,9 @@ public:
   }
 
 private:
-
-  const clang::SourceManager&    m_sm;
+  
   const clang::CompilerInstance& m_compiler;
+  const clang::SourceManager&    m_sm;
   std::vector<kslicer::DeclInClass>& m_knownConstants;
   std::unordered_map<std::string, std::string>& m_tagByClassName; 
 };

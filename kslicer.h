@@ -413,7 +413,7 @@ namespace kslicer
     virtual std::string RecursiveRewrite(const clang::Stmt* expr); 
 
   protected:
-
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     clang::Rewriter&               m_rewriter;
     const clang::CompilerInstance& m_compiler;
     MainClassInfo*                 m_codeInfo;
@@ -808,7 +808,7 @@ namespace kslicer
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
     void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override;   
     
-    bool          SupportVirtualKernels() const { return true; }
+    bool          SupportVirtualKernels() const override { return true; }
     void          AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) override;  ///<! for Virtual Kernels 
     void          AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) override; ///<! for Virtual Kernels 
     void          ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler) override;
@@ -823,7 +823,6 @@ namespace kslicer
 
   private:
     std::vector< std::pair< std::string, std::string> > m_vkernelPairs;
-
   };
 
   struct IPV_Pattern : public MainClassInfo
@@ -884,8 +883,7 @@ namespace kslicer
  
   std::vector<kslicer::ArgMatch> MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler);
   
-
-};
+}
 
 template <typename Cont, typename Pred>
 Cont filter(const Cont &container, Pred predicate) 

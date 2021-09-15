@@ -103,7 +103,7 @@ std::string kslicer::KernelRewriter::FunctionCallRewrite(const CallExpr* call)
   std::string textRes = fDecl->getNameInfo().getName().getAsString(); //m_codeInfo->pShaderCC->ReplaceCallFromStdNamespace(fname, argsType);
       
   textRes += "(";
-  for(int i=0;i<call->getNumArgs();i++)
+  for(unsigned i=0;i<call->getNumArgs();i++)
   {
     textRes += RecursiveRewrite(call->getArg(i));
     if(i < call->getNumArgs()-1)
@@ -117,7 +117,7 @@ std::string kslicer::KernelRewriter::FunctionCallRewrite(const CallExpr* call)
 std::string kslicer::KernelRewriter::FunctionCallRewriteNoName(const clang::CXXConstructExpr* call)
 {
   std::string textRes = "(";
-  for(int i=0;i<call->getNumArgs();i++)
+  for(unsigned i=0;i<call->getNumArgs();i++)
   {
     textRes += RecursiveRewrite(call->getArg(i));
     if(i < call->getNumArgs()-1)
@@ -244,7 +244,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
   CXXRecordDecl* typeDecl  = f->getRecordDecl(); 
 
   const bool isVector = (typeDecl != nullptr && isa<ClassTemplateSpecializationDecl>(typeDecl)) && thisTypeName.find("vector<") != std::string::npos; 
-  const auto exprHash = kslicer::GetHashOfSourceRange(f->getSourceRange());
+  //const auto exprHash = kslicer::GetHashOfSourceRange(f->getSourceRange());
 
   if(isVector && WasNotRewrittenYet(f))
   {
@@ -748,7 +748,7 @@ bool kslicer::KernelRewriter::VisitBinaryOperator_Impl(BinaryOperator* expr) // 
   access.leftExpr  = leftStr;
   access.dataType  = lhs->getType().getAsString();
 
-  auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+  //auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
 
   if(m_infoPass)
   {

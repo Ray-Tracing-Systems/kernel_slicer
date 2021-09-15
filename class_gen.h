@@ -34,8 +34,8 @@ namespace kslicer
                          const std::vector<InOutVarInfo>& a_args, MainClassInfo* a_pCodeInfo) : 
                          m_rewriter(R), m_compiler(a_compiler), m_sm(R.getSourceMgr()), 
                          m_dsTagId(0), m_mainFuncName(a_mainFunc.Name), m_mainFuncLocals(a_mainFunc.Locals),
-                         m_pCodeInfo(a_pCodeInfo), m_allClassMembers(a_pCodeInfo->allDataMembers), m_mainFunc(a_mainFunc), allDescriptorSetsInfo(a_pCodeInfo->allDescriptorSetsInfo),
-                         m_kernels(a_pCodeInfo->kernels) 
+                         m_pCodeInfo(a_pCodeInfo), m_allClassMembers(a_pCodeInfo->allDataMembers), allDescriptorSetsInfo(a_pCodeInfo->allDescriptorSetsInfo),
+                         m_kernels(a_pCodeInfo->kernels), m_mainFunc(a_mainFunc) 
     { 
       for(const auto& arg : a_args) 
         m_argsOfMainFunc[arg.name] = arg;
@@ -48,9 +48,6 @@ namespace kslicer
   
     std::string                                              mainFuncCmdName;
     std::unordered_map<std::string, uint32_t>                dsIdBySignature;
-    std::vector< KernelCallInfo >&                           allDescriptorSetsInfo;
-    std::unordered_map<std::string, DataMemberInfo>&         m_allClassMembers;
-    const std::unordered_map<std::string, DataLocalVarInfo>& m_mainFuncLocals;
 
   private:
 
@@ -59,17 +56,26 @@ namespace kslicer
     std::string MakeServiceKernelCallCmdString(CallExpr* call);
 
     Rewriter&                      m_rewriter;
-    const clang::SourceManager&    m_sm;
     const clang::CompilerInstance& m_compiler;
+    const clang::SourceManager&    m_sm;
     uint32_t m_dsTagId;
+
+  public:
+
+    std::string                                              m_mainFuncName;
+    const std::unordered_map<std::string, DataLocalVarInfo>& m_mainFuncLocals;
+    MainClassInfo*                                           m_pCodeInfo = nullptr;
+    std::unordered_map<std::string, DataMemberInfo>&         m_allClassMembers;
+    std::vector< KernelCallInfo >&                           allDescriptorSetsInfo;
+
+  private:
     
-    std::string m_mainFuncName;
-    std::unordered_map<std::string, InOutVarInfo>      m_argsOfMainFunc;
     const std::unordered_map<std::string, KernelInfo>& m_kernels;
+    std::unordered_map<std::string, InOutVarInfo>      m_argsOfMainFunc;
     MainFuncInfo& m_mainFunc;
 
     std::unordered_set<uint64_t> m_alreadyProcessedCalls;
-    MainClassInfo* m_pCodeInfo = nullptr;
+
   };
 
   std::vector<InOutVarInfo> ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node);

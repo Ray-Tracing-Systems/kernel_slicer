@@ -255,8 +255,6 @@ namespace kslicer
     
     }
 
-    kslicer::KernelInfo* currKernel = nullptr;
-
     void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
     {
       using namespace clang;
@@ -268,7 +266,7 @@ namespace kslicer
       CallExpr const * funcCall = result.Nodes.getNodeAs<CallExpr>("functionCall");
       FunctionDecl const * func = result.Nodes.getNodeAs<FunctionDecl>("fdecl");
 
-      clang::SourceManager& srcMgr(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
+      //clang::SourceManager& srcMgr(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
 
       if(func_decl && l_var && var)
       {
@@ -326,10 +324,13 @@ namespace kslicer
     
     std::ostream&  m_out;
     MainClassInfo& m_allInfo;
-    std::string    m_mainClassName;
+    kslicer::KernelInfo* currKernel = nullptr;
+
+    const clang::CompilerInstance& m_compiler;
     const clang::SourceManager&    m_sourceManager;
     const clang::ASTContext&       m_astContext;
-    const clang::CompilerInstance& m_compiler;
+
+    std::string    m_mainClassName;
   };  // class UsedCodeFilter
 
 
@@ -428,9 +429,9 @@ namespace kslicer
     }  // run
     
     //MainClassInfo&                 m_allInfo;
+    const clang::CompilerInstance& m_compiler;
     const clang::SourceManager&    m_sourceManager;
     const clang::ASTContext&       m_astContext;
-    const clang::CompilerInstance& m_compiler;
     int m_currId = 0;
 
     std::unordered_map<std::string, kslicer::DeclInClass> foundDecl;

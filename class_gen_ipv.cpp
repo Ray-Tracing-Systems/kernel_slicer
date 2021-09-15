@@ -143,7 +143,7 @@ public:
     const ForStmt*      forLoop   = result.Nodes.getNodeAs<ForStmt>("loop");
     const CompoundStmt* loopOutsidesInit  = result.Nodes.getNodeAs<CompoundStmt>("loopInitCode");
 
-    clang::SourceManager& srcMgr(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
+    //clang::SourceManager& srcMgr(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
 
     if(forLoop && func_decl)
     {

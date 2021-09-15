@@ -28,6 +28,6 @@ namespace kslicer
                                 const clang::CompilerInstance& compiler);
 
   void ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, const std::string& a_suffix, const nlohmann::json& a_data); 
-};
+}
 
 #endif

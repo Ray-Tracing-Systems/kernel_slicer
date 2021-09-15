@@ -29,7 +29,7 @@ std::string kslicer::FunctionRewriter::FunctionCallRewrite(const CallExpr* call)
   //std::string textRes = fDecl->getNameInfo().getName().getAsString();
 
   textRes += "(";
-  for(int i=0;i<call->getNumArgs();i++)
+  for(unsigned i=0;i<call->getNumArgs();i++)
   {
     textRes += RecursiveRewrite(call->getArg(i));
     if(i < call->getNumArgs()-1)
@@ -43,7 +43,7 @@ std::string kslicer::FunctionRewriter::FunctionCallRewrite(const CallExpr* call)
 std::string kslicer::FunctionRewriter::FunctionCallRewriteNoName(const CXXConstructExpr* call)
 {
   std::string textRes = "(";
-  for(int i=0;i<call->getNumArgs();i++)
+  for(unsigned i=0;i<call->getNumArgs();i++)
   {
     textRes += RecursiveRewrite(call->getArg(i));
     if(i < call->getNumArgs()-1)

@@ -74,8 +74,8 @@ public:
   std::unordered_map<uint64_t, kslicer::FuncData> usedFunctions;
 
 private:
-  const clang::SourceManager&    m_sm;
   const clang::CompilerInstance& m_compiler;
+  const clang::SourceManager&    m_sm;
   kslicer::MainClassInfo&        m_patternImpl;
 
 };
@@ -196,8 +196,8 @@ public:
   }
 
 private:
-  const clang::SourceManager&    m_sm;
   const clang::CompilerInstance& m_compiler;
+  const clang::SourceManager&    m_sm;
   kslicer::MainClassInfo&        m_patternImpl;
   std::unordered_map<std::string, kslicer::DataMemberInfo>& m_usedMembers; 
 
@@ -257,7 +257,7 @@ std::vector<kslicer::ArgMatch> kslicer::MatchCallArgsForKernel(clang::CallExpr* 
     const clang::ParmVarDecl* formalArg = fDecl->getParamDecl(i);
     const clang::Expr*        actualArg = call->getArg(i);
     const clang::QualType     qtFormal  = formalArg->getType();
-    const clang::QualType     qtActual  = actualArg->getType();
+    //const clang::QualType     qtActual  = actualArg->getType();
     std::string formalTypeName          = qtFormal.getAsString();
 
     std::string formalName = formalArg->getNameAsString();
@@ -324,7 +324,7 @@ public:
       const clang::ParmVarDecl* formalArg = fDecl->getParamDecl(i);
       const clang::Expr*        actualArg = call->getArg(i);
       const clang::QualType     qtFormal  = formalArg->getType();
-      const clang::QualType     qtActual  = actualArg->getType();
+      //const clang::QualType     qtActual  = actualArg->getType();
       std::string formalTypeName          = qtFormal.getAsString();
 
       bool supportedContainerType = (formalTypeName.find("Texture") != std::string::npos) || 
@@ -351,12 +351,11 @@ public:
   }
 
 private:
-  const clang::SourceManager&    m_sm;
   const clang::CompilerInstance& m_compiler;
+  const clang::SourceManager&    m_sm;
   kslicer::MainClassInfo&        m_patternImpl;
   std::vector< std::unordered_map<std::string, std::string> >& m_argMatch; 
   std::string                    m_currFuncName;
-
 };
 
 
@@ -450,10 +449,8 @@ public:
   }
 
 private:
-
-  const clang::SourceManager&    m_sm;
   const clang::CompilerInstance& m_compiler;
-
+  const clang::SourceManager&    m_sm;
 };
 
 
