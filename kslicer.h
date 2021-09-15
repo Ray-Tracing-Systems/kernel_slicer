@@ -110,12 +110,9 @@ namespace kslicer
       std::string type;
       std::string name;
       std::string sizeExpr;
+      std::string startExpr;
+      std::string strideExpr;
       uint32_t    loopNesting = 0;
-    };
-
-    struct LoopInitStatement
-    {
-      clang::SourceRange srcRange;
     };
     
     enum class REDUCTION_TYPE {ADD_ONE = 1, ADD = 2, MUL = 3, FUNC = 4, SUB = 5, SUB_ONE,  UNKNOWN = 255};
@@ -725,7 +722,10 @@ namespace kslicer
     {
       std::string typeName;
       std::string argName;
-      std::string sizeName;
+      std::string sizeText;
+      std::string startText;
+      std::string strideText;
+
       std::string imageType;
       std::string imageFormat;
       uint32_t    id;   ///<! used to preserve or change loops order

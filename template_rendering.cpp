@@ -652,7 +652,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(size_t i=0;i<tidArgs.size();i++)
     {
       uint32_t tid = std::min<uint32_t>(threadsOrder[i], tidArgs.size()-1);
-      threadIdNamesList[i] = tidArgs[tid].sizeName;
+      threadIdNamesList[i] = tidArgs[tid].sizeText;
     }
 
     if(threadIdNamesList.size() > 0)
@@ -1257,7 +1257,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
     
     //////////////////////////////////////////////////////////////////////////////////////////
-  
     {
       kernelJson["ThreadIds"] = std::vector<std::string>();
 
@@ -1266,10 +1265,17 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       {
         uint32_t tid = std::min<uint32_t>(threadsOrder[i], tidArgs.size()-1);
         threadIdNames[i] = tidArgs[tid].argName;
+        
+        std::string loopSize   = tidArgs[tid].sizeText;   // #TODO: process these as normal node rewrite (!!!)
+        std::string loopStart  = tidArgs[tid].startText;  // #TODO: process these as normal node rewrite (!!!)
+        std::string loopStride = tidArgs[tid].strideText; // #TODO: process these as normal node rewrite (!!!)
 
         json threadId;
-        threadId["Name"] = tidArgs[tid].argName;
-        threadId["Type"] = tidArgs[tid].typeName;
+        threadId["Name"]   = tidArgs[tid].argName;
+        threadId["Type"]   = tidArgs[tid].typeName;
+        threadId["Size"]   = loopSize;
+        threadId["Start"]  = loopStart;
+        threadId["Stride"] = loopStride;
         kernelJson["ThreadIds"].push_back(threadId);
       }
 

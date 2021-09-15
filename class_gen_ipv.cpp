@@ -59,10 +59,12 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::IPV_Pattern::Ge
   {    
     const auto& arg = a_kernel.loopIters[i];
     ArgTypeAndNamePair arg2;
-    arg2.argName  = arg.name;
-    arg2.sizeName = arg.sizeExpr;
-    arg2.typeName = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
-    arg2.id       = i;
+    arg2.argName    = arg.name;
+    arg2.sizeText   = arg.sizeExpr;
+    arg2.startText  = arg.startExpr;
+    arg2.strideText = arg.strideExpr;
+    arg2.typeName   = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
+    arg2.id         = i;
     args.push_back(arg2);
   }
 
@@ -136,6 +138,24 @@ public:
     a_currKernel->loopIters.clear(); 
   } 
 
+  std::string GetStrideText(const clang::Expr* a_expr)
+  {
+    //a_expr->dump();
+    if(clang::isa<clang::UnaryOperator>(a_expr))
+    {  
+      auto uop = clang::dyn_cast<clang::UnaryOperator>(a_expr);
+      std::string opStr = std::string(uop->getOpcodeStr(uop->getOpcode()));
+      if(opStr == "--")
+        return "(-1)";
+      else
+        return "1";
+    }
+
+    //#TODO: process += and -= expressinons, but first we must fix ast matchers for that 
+
+    return "1";
+  }
+
   void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
   {
     using namespace clang;
@@ -163,6 +183,8 @@ public:
           tidArg.name        = initVar->getNameAsString();
           tidArg.type        = qt.getAsString();
           tidArg.sizeExpr    = kslicer::GetRangeSourceCode(loopSZ->getSourceRange(), m_compiler);
+          tidArg.startExpr   = kslicer::GetRangeSourceCode(initVar->getAnyInitializer()->getSourceRange(), m_compiler); 
+          tidArg.strideExpr  = GetStrideText(forLoop->getInc()); //kslicer::GetRangeSourceCode(forLoop->getInc()->getSourceRange(), m_compiler);
           tidArg.loopNesting = uint32_t(currKernel->loopIters.size());
           currKernel->loopIters.push_back(tidArg);
           currKernel->loopInsides = forLoop->getBody()->getSourceRange();
