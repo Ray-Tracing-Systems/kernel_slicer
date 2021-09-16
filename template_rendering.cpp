@@ -660,19 +660,37 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     }
 
     if(threadIdNamesList.size() > 0)
+    {
       kernelJson["tidX"] = threadIdNamesList[0];
+      kernelJson["begX"] = tidArgs[0].startText;  
+    }
     else
+    {
       kernelJson["tidX"] = 1;
+      kernelJson["begX"] = 0;
+    }
 
     if(threadIdNamesList.size() > 1)
+    {
       kernelJson["tidY"] = threadIdNamesList[1];
+      kernelJson["begY"] = tidArgs[1].startText;  
+    }
     else
+    {
       kernelJson["tidY"] = 1;
+      kernelJson["begY"] = 0;
+    }
 
     if(threadIdNamesList.size() > 2)
+    {
       kernelJson["tidZ"] = threadIdNamesList[2];
+      kernelJson["begZ"] = tidArgs[2].startText;  
+    }
     else
+    {
       kernelJson["tidZ"] = 1;
+      kernelJson["begZ"] = 0;
+    }
 
     // put auxArgs to push constants
     //
@@ -1275,17 +1293,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         uint32_t tid = std::min<uint32_t>(threadsOrder[i], tidArgs.size()-1);
         threadIdNames[i] = tidArgs[tid].argName;
         
-        std::string loopSize   = tidArgs[tid].sizeText;   // #TODO: process these as normal node rewrite (!!!)
-        std::string loopStart  = tidArgs[tid].startText;  // #TODO: process these as normal node rewrite (!!!)
-        std::string loopStride = tidArgs[tid].strideText; // #TODO: process these as normal node rewrite (!!!)
+        std::string loopSize   = tidArgs[tid].sizeText;   
+        std::string loopStart  = tidArgs[tid].startText;  
+        std::string loopStride = tidArgs[tid].strideText; 
         
         json threadId;
         if(tidArgs[tid].startNode != nullptr)
         {
           loopSize   = pVisitorK->RecursiveRewrite(tidArgs[tid].sizeNode);
           loopStart  = pVisitorK->RecursiveRewrite(tidArgs[tid].startNode);
-          loopStride = pVisitorK->RecursiveRewrite(tidArgs[tid].strideNode);
-          //loopStart = kslicer::GetRangeSourceCode(tidArgs[tid].startRange, compiler); !!! works, source range is valid!!!
+          //loopStride = pVisitorK->RecursiveRewrite(tidArgs[tid].strideNode);
           threadId["Simple"] = 0;
         }
         else

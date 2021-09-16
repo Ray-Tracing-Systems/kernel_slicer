@@ -53,7 +53,7 @@ void main()
   {% if TID.Simple %}
   const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(gl_GlobalInvocationID[{{ loop.index }}]); 
   {% else %}
-  const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + {{TID.Type}}(gl_GlobalInvocationID[{{ loop.index }}]); 
+  const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + {{TID.Type}}(gl_GlobalInvocationID[{{ loop.index }}])*{{TID.Stride}}; 
   {% endif %}
   {% endfor %}
   {# /*------------------------------------------------------------- BEG. INIT ------------------------------------------------------------- */ #}

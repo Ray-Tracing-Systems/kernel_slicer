@@ -114,8 +114,15 @@ __kernel void {{Kernel.Name}}({% include "inc_args.cl" %})
   {% include "inc_reduction_init.h" %}
   {% endif %} 
   {# /*------------------------------------------------------------- END. REDUCTION INIT ------------------------------------------------------------- */ #}
-  {% for name in Kernel.threadNames %}
-  const uint {{name}} = get_global_id({{ loop.index }}); 
+  {# {% for name in Kernel.threadNames %} #}
+  {# const uint {{name}} = get_global_id({{ loop.index }}); #}
+  {# {% endfor %} #}
+  {% for TID in Kernel.ThreadIds %}
+  {% if TID.Simple %}
+  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(get_global_id({{ loop.index }})); 
+  {% else %}
+  const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + ({{TID.Type}})(get_global_id({{ loop.index }}))*{{TID.Stride}}; 
+  {% endif %}
   {% endfor %}
   {# /*------------------------------------------------------------- BEG. CHECK EXIT COND ------------------------------------------------------------- */ #}
   {% include "inc_exit_cond.cl" %}

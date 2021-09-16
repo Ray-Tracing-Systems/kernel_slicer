@@ -118,7 +118,7 @@ clang::ast_matchers::StatementMatcher kslicer::MakeMatch_ForLoopInsideFunction(s
           hasLoopInit(declStmt(hasSingleDecl(varDecl().bind("initVar")))),
           hasCondition(binaryOperator(hasLHS(ignoringParenImpCasts(declRefExpr(to(varDecl().bind("condVar"))))),
                                       hasRHS(ArrayBoundMatcher))),
-          hasIncrement(unaryOperator(hasUnaryOperand(declRefExpr(to(varDecl().bind("incVar"))))))
+          hasIncrement(unaryOperator(hasUnaryOperand(declRefExpr(to(varDecl().bind("incVar")))))) // 
   ).bind("loop");
 }
 
