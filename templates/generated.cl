@@ -119,7 +119,7 @@ __kernel void {{Kernel.Name}}({% include "inc_args.cl" %})
   {# {% endfor %} #}
   {% for TID in Kernel.ThreadIds %}
   {% if TID.Simple %}
-  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(get_global_id({{ loop.index }})); 
+  const {{TID.Type}} {{TID.Name}} = ({{TID.Type}})(get_global_id({{ loop.index }})); 
   {% else %}
   const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + ({{TID.Type}})(get_global_id({{ loop.index }}))*{{TID.Stride}}; 
   {% endif %}
