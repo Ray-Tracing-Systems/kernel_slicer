@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <string>
-#include <inja.hpp>
 
 #include "kslicer.h"
 

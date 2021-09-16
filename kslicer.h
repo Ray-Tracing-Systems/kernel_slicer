@@ -7,7 +7,11 @@
 #include <unordered_set>
 #include <algorithm>
 #include <sstream>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsuggest-override"
 #include <inja.hpp>
+#pragma GCC diagnostic pop
 
 #include "clang/AST/DeclCXX.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -109,13 +113,20 @@ namespace kslicer
     {
       std::string type;
       std::string name;
-      std::string sizeExpr;
-      std::string startExpr;
-      std::string strideExpr;
+      std::string startText;
+      std::string sizeText;
+      std::string strideText;
       
+      std::string condTextOriginal;
+      std::string iterTextOriginal;
+      //clang::SourceRange startRange;
+      //clang::SourceRange sizeRange;
+      //clang::SourceRange strideRange;
+
       const clang::Stmt* startNode   = nullptr;
       const clang::Expr* sizeNode    = nullptr;
       const clang::Expr* strideNode  = nullptr;
+      const clang::Stmt* bodyNode    = nullptr;
 
       uint32_t    loopNesting = 0;
     };
@@ -478,6 +489,8 @@ namespace kslicer
     bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast)             { if(WasRewritten(cast)) return true; else return VisitImplicitCastExpr_Impl(cast); }
     bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { if(WasRewritten(expr)) return true; else return VisitDeclRefExpr_Impl(expr); }
 
+    bool VisitForStmt(clang::ForStmt* forLoop); ///< to find nodes by their known source range and remember them
+
     std::shared_ptr<std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
     virtual std::string RecursiveRewrite (const clang::Stmt* expr); 
 
@@ -732,6 +745,10 @@ namespace kslicer
       std::string startText;
       std::string strideText;
       
+      //clang::SourceRange startRange;
+      //clang::SourceRange sizeRange;
+      //clang::SourceRange strideRange;
+
       const clang::Stmt* startNode   = nullptr;
       const clang::Expr* sizeNode    = nullptr;
       const clang::Expr* strideNode  = nullptr;

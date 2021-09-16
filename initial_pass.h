@@ -52,9 +52,9 @@ namespace kslicer
     void ProcessKernelDef(const CXXMethodDecl *f,  std::unordered_map<std::string, KernelInfo>& a_funcList, const std::string& a_className);
     bool NeedToProcessDeclInFile(std::string a_fileName);
 
+    CompilerInstance&     m_compiler;
     const ASTContext&     m_astContext;
     clang::SourceManager& m_sourceManager;
-    CompilerInstance&     m_compiler;
 
     std::unordered_set<std::string> m_mainFuncts;
     const MainClassInfo&            m_codeInfo;
@@ -72,7 +72,6 @@ namespace kslicer
     bool HandleTopLevelDecl(DeclGroupRef d) override;
     InitialPassRecursiveASTVisitor rv;
   };
-
-};
+}
 
 #endif

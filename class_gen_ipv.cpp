@@ -48,7 +48,7 @@ uint32_t kslicer::IPV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel)
 void kslicer::IPV_Pattern::ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const 
 {
   auto found = std::find_if(a_kernel.loopIters.begin(), a_kernel.loopIters.end(), 
-                           [&](const auto& val){ return arg.name == val.sizeExpr; });
+                           [&](const auto& val){ return arg.name == val.sizeText; });
   arg.isLoopSize = (found != a_kernel.loopIters.end());
 }
 
@@ -60,9 +60,10 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::IPV_Pattern::Ge
     const auto& arg = a_kernel.loopIters[i];
     ArgTypeAndNamePair arg2;
     arg2.argName    = arg.name;
-    arg2.sizeText   = arg.sizeExpr;
-    arg2.startText  = arg.startExpr;
-    arg2.strideText = arg.strideExpr;
+    arg2.sizeText   = arg.sizeText;
+    arg2.startText  = arg.startText;
+    arg2.strideText = arg.strideText;
+    //arg2.startRange = arg.startRange;
     arg2.sizeNode   = arg.sizeNode;
     arg2.startNode  = arg.startNode;
     arg2.strideNode = arg.strideNode;
@@ -186,13 +187,17 @@ public:
           tidArg.name        = initVar->getNameAsString();
           tidArg.type        = qt.getAsString();
           
-          tidArg.sizeExpr    = kslicer::GetRangeSourceCode(loopSZ->getSourceRange(), m_compiler);
-          tidArg.startExpr   = kslicer::GetRangeSourceCode(initVar->getAnyInitializer()->getSourceRange(), m_compiler); 
-          tidArg.strideExpr  = GetStrideText(forLoop->getInc()); //kslicer::GetRangeSourceCode(forLoop->getInc()->getSourceRange(), m_compiler);
-          
-          tidArg.startNode   = initVar->getAnyInitializer();
-          tidArg.sizeNode    = loopSZ;
-          tidArg.strideNode  = forLoop->getInc();
+          tidArg.sizeText    = kslicer::GetRangeSourceCode(loopSZ->getSourceRange(), m_compiler);
+          tidArg.startText   = kslicer::GetRangeSourceCode(initVar->getAnyInitializer()->getSourceRange(), m_compiler); 
+          tidArg.strideText  = GetStrideText(forLoop->getInc()); //kslicer::GetRangeSourceCode(forLoop->getInc()->getSourceRange(), m_compiler);
+          tidArg.condTextOriginal = kslicer::GetRangeSourceCode(forLoop->getCond()->getSourceRange(), m_compiler);
+          tidArg.iterTextOriginal = kslicer::GetRangeSourceCode(forLoop->getInc()->getSourceRange(), m_compiler);
+          //tidArg.startRange  = initVar->getAnyInitializer()->getSourceRange();
+          //tidArg.sizeRange   = loopSZ->getSourceRange();
+          //tidArg.strideRange = forLoop->getInc()->getSourceRange();
+          //tidArg.startNode   = initVar->getAnyInitializer();
+          //tidArg.sizeNode    = loopSZ;
+          //tidArg.strideNode  = forLoop->getInc();
 
           tidArg.loopNesting = uint32_t(currKernel->loopIters.size());
           currKernel->loopIters.push_back(tidArg);

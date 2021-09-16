@@ -5,7 +5,11 @@
 #include "clang/Rewrite/Frontend/Rewriters.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsuggest-override"
 #include <inja.hpp>
+#pragma GCC diagnostic pop
+
 #include <algorithm>
 
 // Just for convenience
@@ -1258,9 +1262,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     
     //////////////////////////////////////////////////////////////////////////////////////////
     {
-      //clang::Rewriter rewrite2; 
-      //rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-      //auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "", false);
+      clang::Rewriter rewrite2; 
+      rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+      auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "", false);
       //pVisitorK->ClearUserArgs();
 
       kernelJson["ThreadIds"] = std::vector<std::string>();
@@ -1278,9 +1282,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         json threadId;
         if(tidArgs[tid].startNode != nullptr)
         {
-          //loopSize   = pVisitorK->RecursiveRewrite(tidArgs[tid].sizeNode);
-          //loopStart  = pVisitorK->RecursiveRewrite(tidArgs[tid].startNode);
-          //loopStride = pVisitorK->RecursiveRewrite(tidArgs[tid].strideNode);
+          loopSize   = pVisitorK->RecursiveRewrite(tidArgs[tid].sizeNode);
+          loopStart  = pVisitorK->RecursiveRewrite(tidArgs[tid].startNode);
+          loopStride = pVisitorK->RecursiveRewrite(tidArgs[tid].strideNode);
+          //loopStart = kslicer::GetRangeSourceCode(tidArgs[tid].startRange, compiler); !!! works, source range is valid!!!
           threadId["Simple"] = 0;
         }
         else
@@ -1315,12 +1320,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       for(const auto& iter : k.loopIters)
       {
         uint32_t loopIdReorderd  = threadsOrder[iter.loopNesting];
-        auto pFound = usedVars.find(iter.sizeExpr);
+        auto pFound = usedVars.find(iter.sizeText);
         if(pFound == usedVars.end())
         {
-          tidNames[loopIdReorderd] = iter.sizeExpr;                   // #TODO: assert that this expression does not contain .size(); if it does
+          tidNames[loopIdReorderd] = iter.sizeText;                   // #TODO: assert that this expression does not contain .size(); if it does
           tidTypes[loopIdReorderd] = iter.type;
-          usedVars.insert(iter.sizeExpr);
+          usedVars.insert(iter.sizeText);
         }
       }                                                                // we must change it to 'vec_size2' for example 
     }
@@ -1361,19 +1366,19 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       
       if(k.loopIters.size() > 0)
       {
-        std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[0].sizeExpr);
+        std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[0].sizeText);
         kernelJson["IndirectSizeX"] = a_classInfo.pShaderCC->UBOAccess(exprContent); 
       }
 
       if(k.loopIters.size() > 1)
       {
-        std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[1].sizeExpr);
+        std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[1].sizeText);
         kernelJson["IndirectSizeY"] = a_classInfo.pShaderCC->UBOAccess(exprContent); 
       }
 
       if(k.loopIters.size() > 2)
       {
-        std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[2].sizeExpr);
+        std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[2].sizeText);
         kernelJson["IndirectSizeZ"] = a_classInfo.pShaderCC->UBOAccess(exprContent); 
       }
 

@@ -9,6 +9,45 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+bool kslicer::KernelRewriter::VisitForStmt(clang::ForStmt* forLoop)
+{
+  if(!m_infoPass) // we find nodes only during info pass
+    return true;
+  
+  const clang::Stmt* loopStart  = forLoop->getInit();
+  const clang::Expr* loopStride =	forLoop->getInc();
+  const clang::Expr* loopSize   = forLoop->getCond(); 
+  const clang::Stmt* loopBody   = forLoop->getBody();
+  
+  if(!clang::isa<clang::DeclStmt>(loopStart))
+    return true;
+  const clang::DeclStmt* initVarDS = clang::dyn_cast<clang::DeclStmt>(loopStart);
+  const clang::Decl*     initVarD  = initVarDS->getSingleDecl();
+  if(!clang::isa<clang::VarDecl>(initVarD))
+    return true;  
+  const clang::VarDecl* initVar = clang::dyn_cast<clang::VarDecl>(initVarD);
+  
+  const clang::SourceRange startRange  = initVar->getAnyInitializer()->getSourceRange();
+  const clang::SourceRange sizeRange   = loopSize->getSourceRange();
+  const clang::SourceRange strideRange = loopStride->getSourceRange();
+
+  const std::string startText  = kslicer::GetRangeSourceCode(startRange, m_compiler);
+  const std::string sizeText   = kslicer::GetRangeSourceCode(sizeRange, m_compiler);
+  const std::string strideText = kslicer::GetRangeSourceCode(strideRange, m_compiler);
+
+  for(auto& loop : m_currKernel.loopIters)
+  {
+    if(loop.startText != startText || loop.condTextOriginal != sizeText || loop.iterTextOriginal != strideText)
+      continue;
+    loop.startNode  = initVar->getAnyInitializer();
+    loop.sizeNode   = loopSize;
+    loop.strideNode = loopStride;
+    loop.bodyNode   = loopBody;
+  }
+
+  return true;
+}
+
 bool kslicer::KernelRewriter::VisitMemberExpr_Impl(MemberExpr* expr)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
@@ -75,7 +114,7 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(MemberExpr* expr)
   if(pMember == m_variables.end())
     return true;
 
-  auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+  //auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
 
   // (2) put ubo->var instead of var, leave containers as they are
   // process arrays and large data structures because small can be read once in the beggining of kernel
@@ -504,7 +543,7 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
     else if(op == "-=")
       access.type    = KernelInfo::REDUCTION_TYPE::SUB;
     
-    auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+    //auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
 
     if(m_infoPass)
     {

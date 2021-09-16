@@ -100,28 +100,28 @@ bool kslicer::MainClassInfo::IsIndirect(const KernelInfo& a_kernel) const
   bool isIndirect = false;
   for(auto& arg : a_kernel.loopIters)
   {
-    bool foundSize = (arg.sizeExpr.find(".size()") != std::string::npos);
-    bool foundCap  = (arg.sizeExpr.find(".capacity()") != std::string::npos);
-    bool isMember  = (allDataMembers.find(arg.sizeExpr) != allDataMembers.end());
+    bool foundSize = (arg.sizeText.find(".size()") != std::string::npos);
+    bool foundCap  = (arg.sizeText.find(".capacity()") != std::string::npos);
+    bool isMember  = (allDataMembers.find(arg.sizeText) != allDataMembers.end());
 
     if(foundSize)
     {
-      auto pos        = arg.sizeExpr.find(".size()");
-      auto memberName = arg.sizeExpr.substr(0, pos);
+      auto pos        = arg.sizeText.find(".size()");
+      auto memberName = arg.sizeText.substr(0, pos);
       if(allDataMembers.find(memberName) == allDataMembers.end())
       {
-        std::cout << "[ERROR]: Use non-member .size() expression '" << arg.sizeExpr.c_str() << "' as loop boundary for kernel " <<  a_kernel.name << std::endl;
+        std::cout << "[ERROR]: Use non-member .size() expression '" << arg.sizeText.c_str() << "' as loop boundary for kernel " <<  a_kernel.name << std::endl;
         std::cout << "[ERROR]: Only class members and member vectors.size() are allowed." << std::endl;
       }
     }
 
     if(foundCap)
     {
-      auto pos        = arg.sizeExpr.find(".capacity()");
-      auto memberName = arg.sizeExpr.substr(0, pos);
+      auto pos        = arg.sizeText.find(".capacity()");
+      auto memberName = arg.sizeText.substr(0, pos);
       if(allDataMembers.find(memberName) == allDataMembers.end())
       {
-        std::cout << "[ERROR]: Use non-member .capacity() expression '" << arg.sizeExpr.c_str() << "' as loop boundary for kernel " <<  a_kernel.name << std::endl;
+        std::cout << "[ERROR]: Use non-member .capacity() expression '" << arg.sizeText.c_str() << "' as loop boundary for kernel " <<  a_kernel.name << std::endl;
         std::cout << "[ERROR]: Only class members and member vectors.capacity() are allowed." << std::endl;
       }
     }
