@@ -30,9 +30,35 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
 
   vkDestroyPipeline(device, {{Kernel.Name}}Pipeline, nullptr);
   vkDestroyPipelineLayout(device, {{Kernel.Name}}Layout, nullptr);
-
   {{Kernel.Name}}Layout   = VK_NULL_HANDLE;
   {{Kernel.Name}}Pipeline = VK_NULL_HANDLE;
+  {% if Kernel.HasLoopInit %}
+  vkDestroyPipeline(device, {{Kernel.Name}}InitPipeline, nullptr);
+  {{Kernel.Name}}InitPipeline = VK_NULL_HANDLE;
+  {% endif %} 
+  {% if Kernel.HasLoopFinish %}
+  vkDestroyPipeline(device, {{Kernel.Name}}FinishPipeline, nullptr);
+  {{Kernel.Name}}FinishPipeline = VK_NULL_HANDLE;
+  {% endif %} 
+  {% if Kernel.FinishRed %}
+  vkDestroyPipeline(device, {{Kernel.Name}}ReductionPipeline, nullptr);
+  {{Kernel.Name}}ReductionPipeline = VK_NULL_HANDLE;
+  {% endif %} 
+  {% if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch %}
+  vkDestroyPipeline(device, {{Kernel.Name}}ZeroObjCounters, nullptr);
+  vkDestroyPipeline(device, {{Kernel.Name}}CountTypeIntervals, nullptr);
+  vkDestroyPipeline(device, {{Kernel.Name}}Sorter, nullptr);
+  {{Kernel.Name}}ZeroObjCounters    = VK_NULL_HANDLE;
+  {{Kernel.Name}}CountTypeIntervals = VK_NULL_HANDLE;
+  {{Kernel.Name}}Sorter             = VK_NULL_HANDLE; 
+  {% endif %}     
+  {% if Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch %}
+  for(int i=0;i<{{length(Kernel.Hierarchy.Implementations)}};i++)
+  {
+    vkDestroyPipeline(device, {{Kernel.Name}}PipelineArray[i], nullptr);
+    {{Kernel.Name}}PipelineArray[i] = nullptr;
+  }
+  {% endif %}  
 ## endfor
   vkDestroyDescriptorSetLayout(device, copyKernelFloatDSLayout, nullptr);
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
