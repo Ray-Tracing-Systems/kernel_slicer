@@ -12,7 +12,7 @@
 #include "vk_buffers.h"
 
 #include "ray_tracing/vk_rt_utils.h"
-#include "ray_tracing/vk_rt_funcs.h"
+//#include "ray_tracing/vk_rt_funcs.h"
 
 #include "scene_mgr.h"
 
@@ -240,7 +240,7 @@ void test_class_gpu()
   device       = vk_utils::createLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures, 
                                                fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, &features);
   volkLoadDevice(device);
-  vk_rt_utils::LoadRayTracingFunctions(device);
+  //vk_rt_utils::LoadRayTracingFunctions(device);
 
   commandPool  = vk_utils::createCommandPool(device, VK_QUEUE_COMPUTE_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
