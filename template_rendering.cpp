@@ -1300,8 +1300,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         json threadId;
         if(tidArgs[tid].startNode != nullptr)
         {
-          loopSize   = pVisitorK->RecursiveRewrite(tidArgs[tid].sizeNode);
           loopStart  = pVisitorK->RecursiveRewrite(tidArgs[tid].startNode);
+          //loopSize   = pVisitorK->RecursiveRewrite(tidArgs[tid].sizeNode);
           //loopStride = pVisitorK->RecursiveRewrite(tidArgs[tid].strideNode);
           threadId["Simple"] = 0;
         }
@@ -1310,7 +1310,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
         threadId["Name"]   = tidArgs[tid].argName;
         threadId["Type"]   = tidArgs[tid].typeName;
-        threadId["Size"]   = loopSize;
+        //threadId["Size"]   = loopSize;
         threadId["Start"]  = loopStart;
         threadId["Stride"] = loopStride;
         kernelJson["ThreadIds"].push_back(threadId);
@@ -1380,23 +1380,29 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["IndirectSizeX"]  = "0";
       kernelJson["IndirectSizeY"]  = "0";
       kernelJson["IndirectSizeZ"]  = "0";
+      kernelJson["IndirectStartX"] = "0";
+      kernelJson["IndirectStartY"] = "0";
+      kernelJson["IndirectStartZ"] = "0";
       
       if(k.loopIters.size() > 0)
       {
-        std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[0].sizeText);
-        kernelJson["IndirectSizeX"] = a_classInfo.pShaderCC->UBOAccess(exprContent); 
+        std::string exprContent      = kslicer::ReplaceSizeCapacityExpr(k.loopIters[0].sizeText);
+        kernelJson["IndirectSizeX"]  = a_classInfo.pShaderCC->UBOAccess(exprContent); 
+        kernelJson["IndirectStartX"] = kernelJson["ThreadIds"][0]["Start"];
       }
 
       if(k.loopIters.size() > 1)
       {
         std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[1].sizeText);
         kernelJson["IndirectSizeY"] = a_classInfo.pShaderCC->UBOAccess(exprContent); 
+        kernelJson["IndirectStartY"] = kernelJson["ThreadIds"][1]["Start"];
       }
 
       if(k.loopIters.size() > 2)
       {
         std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[2].sizeText);
-        kernelJson["IndirectSizeZ"] = a_classInfo.pShaderCC->UBOAccess(exprContent); 
+        kernelJson["IndirectSizeZ"] = a_classInfo.pShaderCC->UBOAccess(exprContent);
+        kernelJson["IndirectStartZ"] = kernelJson["ThreadIds"][2]["Start"]; 
       }
 
       kernelJson["IndirectOffset"] = k.indirectBlockOffset; 
