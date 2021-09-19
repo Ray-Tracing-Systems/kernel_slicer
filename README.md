@@ -107,6 +107,8 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
     * make -j 10
  
 2. Don't forget to build volk
+    * git submodule init (if you have forgotten to fetch submodules when clone repo) 
+    * git submodule update (if you have forgotten to fetch submodules when clone repo) 
     * cd apps/volk
     * cmake .
     * make
