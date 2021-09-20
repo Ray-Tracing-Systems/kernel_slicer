@@ -1,0 +1,62 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 29
+
+    defaultConfig {
+        applicationId 'com.slicer.nbody'
+        minSdkVersion    28
+        targetSdkVersion 29
+        versionCode 1
+        versionName "0.0.1"
+        ndk {
+            abiFilters 'arm64-v8a', 'x86_64'
+        }
+        // Shader compilation directives, put glsl shaders to app/src/main/shaders
+        // android studio will pick them up and compile them into APK/assets/shaders
+        shaders {
+            glslcArgs.addAll(['-c', '-g'])
+        }
+        externalNativeBuild {
+            cmake {
+                abiFilters 'arm64-v8a', 'x86_64'
+                arguments '-DANDROID_TOOLCHAIN=clang', '-DANDROID_STL=c++_shared',  '-DANDROID_ARM_NEON=ON'
+            }
+        }
+
+    }
+   externalNativeBuild {
+        cmake {
+            path 'CMakeLists.txt'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled = false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+
+task copyTask {
+
+    copy {
+        from '../../06_n_body/shaders'
+        into "src/main/shaders"
+        include '*.glsl'
+    }
+
+    copy {
+        from '../../06_n_body/shaders_generated'
+        into "src/main/shaders"
+        include '*.glsl'
+    }
+}
+
+preBuild.dependsOn copyTask
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+}

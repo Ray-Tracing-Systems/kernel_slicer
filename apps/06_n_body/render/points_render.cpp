@@ -1,4 +1,5 @@
 #include "points_render.h"
+
 //#include "../utils/input_definitions.h"
 
 #include <geom/vk_mesh.h>
@@ -17,7 +18,6 @@ PointsRender::PointsRender(uint32_t a_width, uint32_t a_height) : m_width(a_widt
 
 void PointsRender::SetupDeviceFeatures()
 {
-   m_enabledDeviceFeatures.fillModeNonSolid = VK_TRUE;
 
    if(DISPLAY_MODE == RENDER_MODE::SPRITES)
      m_enabledDeviceFeatures.geometryShader = VK_TRUE;
@@ -26,8 +26,8 @@ void PointsRender::SetupDeviceFeatures()
 void PointsRender::SetupDeviceExtensions()
 {
   m_deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-  m_deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
-  m_deviceExtensions.push_back("VK_KHR_shader_float16_int8");
+//  m_deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
+//  m_deviceExtensions.push_back("VK_KHR_shader_float16_int8");
 }
 
 void PointsRender::SetupValidationLayers()
@@ -104,6 +104,7 @@ void PointsRender::InitPresentation(VkSurfaceKHR &a_surface)
   m_depthBuffer = vk_utils::createDepthTexture(m_device, m_physicalDevice, m_width, m_height, m_depthBuffer.format);
   m_frameBuffers = vk_utils::createFrameBuffers(m_device, m_swapchain, m_screenRenderPass, m_depthBuffer.view);
 
+  m_bVulkanReady = true;
 }
 
 void PointsRender::CreateInstance()
@@ -130,14 +131,14 @@ void PointsRender::CreateDevice(uint32_t a_deviceId)
 
   SetupDeviceFeatures();
 
-  VkPhysicalDeviceShaderFloat16Int8Features features = {};
-  features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
-  features.shaderInt8 = VK_TRUE;
+//  VkPhysicalDeviceFloat16Int8FeaturesKHR features = {};
+//  features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR;
+//  features.shaderInt8 = VK_TRUE;
 
   m_device = vk_utils::createLogicalDevice(m_physicalDevice, m_validationLayers, m_deviceExtensions,
                                            m_enabledDeviceFeatures, m_queueFamilyIDXs,
                                            VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT,
-                                           &features);
+                                           nullptr);
 
   vkGetDeviceQueue(m_device, m_queueFamilyIDXs.graphics, 0, &m_graphicsQueue);
   vkGetDeviceQueue(m_device, m_queueFamilyIDXs.transfer, 0, &m_transferQueue);

@@ -14,6 +14,19 @@
 #include <generated_userfix.h>
 #include "render_config.h"
 
+#if defined(__ANDROID__)
+#include <android_native_app_glue.h>
+#include <android/log.h>
+
+// Android log function wrappers
+static const char* tag_app = "NBodySample";
+#define LOGI(...) \
+  ((void)__android_log_print(ANDROID_LOG_INFO, tag_app, __VA_ARGS__))
+#define LOGW(...) \
+  ((void)__android_log_print(ANDROID_LOG_WARN, tag_app, __VA_ARGS__))
+#define LOGE(...) \
+  ((void)__android_log_print(ANDROID_LOG_ERROR, tag_app, __VA_ARGS__))
+#endif
 
 class PointsRender : public IRender
 {
@@ -32,6 +45,8 @@ public:
 
   inline VkInstance GetVkInstance() const override
   { return m_instance; }
+
+  bool IsReady() const override { return m_bVulkanReady; }
 
   void InitVulkan(const char **a_instanceExtensions, uint32_t a_instanceExtensionsCount, uint32_t a_deviceId) override;
 
@@ -61,12 +76,19 @@ public:
       const char *pMessage,
       void *pUserData)
   {
-    std::cout << pLayerPrefix << ": " << pMessage << std::endl;
+#if defined(__ANDROID__)
+    std::string str(pMessage);
+    LOGE("%s", str.c_str());
     return VK_FALSE;
+#else
+    std::cout << pLayerPrefix << " " << pMessage << std::endl;
+    return VK_FALSE;
+#endif
   }
 
   VkDebugReportCallbackEXT m_debugReportCallback = nullptr;
 private:
+  bool m_bVulkanReady = false;
 
   VkInstance m_instance = VK_NULL_HANDLE;
   VkCommandPool m_commandPoolGraphics = VK_NULL_HANDLE;
