@@ -89,7 +89,7 @@ void nBody::kernel1D_UpdateVelocity(uint32_t bodies_count) {
       float3 gravitational = distance * m_bodies[j].pos_weight.w * invDistCube;
 
       float coeff = m_bodies[i].vel_charge.w / (4 * M_PI * PERMETTIVITY);
-      float3 electrostatic = coeff * m_bodies[j].vel_charge.w * (+1.f * distance / distSqr);
+      float3 electrostatic = coeff * m_bodies[j].vel_charge.w * (-1.f * distance / distSqr);
 
       if(MODE == 1)
       {

@@ -65,6 +65,17 @@ PointsRender::InitVulkan(const char **a_instanceExtensions, uint32_t a_instanceE
 
   VkSemaphoreCreateInfo semaphoreInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
   VK_CHECK_RESULT(vkCreateSemaphore(m_device, &semaphoreInfo, nullptr, &m_simFinishedSem));
+}
+
+void PointsRender::InitPresentation(VkSurfaceKHR &a_surface)
+{
+  m_surface = a_surface;
+
+  m_presentationResources.queue = m_swapchain.CreateSwapChain(m_physicalDevice, m_device, m_surface,
+                                                              m_width, m_height, m_framesInFlight, m_vsync);
+  m_presentationResources.currentFrame = 0;
+
+  m_framesInFlight = m_swapchain.GetImageCount();
 
   m_cmdBuffersDrawMain.reserve(m_framesInFlight);
   m_cmdBuffersDrawMain = vk_utils::createCommandBuffers(m_device, m_commandPoolGraphics, m_framesInFlight);
@@ -77,15 +88,6 @@ PointsRender::InitVulkan(const char **a_instanceExtensions, uint32_t a_instanceE
   {
     VK_CHECK_RESULT(vkCreateFence(m_device, &fenceInfo, nullptr, &m_frameFences[i]));
   }
-}
-
-void PointsRender::InitPresentation(VkSurfaceKHR &a_surface)
-{
-  m_surface = a_surface;
-
-  m_presentationResources.queue = m_swapchain.CreateSwapChain(m_physicalDevice, m_device, m_surface,
-                                                              m_width, m_height, m_vsync);
-  m_presentationResources.currentFrame = 0;
 
   VkSemaphoreCreateInfo semaphoreInfo = {};
   semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -442,7 +444,8 @@ void PointsRender::UpdateView()
   auto mProj = projectionMatrix(m_cam.fov, aspect, 0.1f, 1000.0f);
   auto mLookAt = LiteMath::lookAt(m_cam.pos, m_cam.lookAt, m_cam.up);
   auto mWorldViewProj = mProjFix * mProj * mLookAt;
-  m_pushConsts.projView = mWorldViewProj;
+
+  m_pushConsts.projView = LiteMath::float4x4(m_swapchain.GetSurfaceMatrixPtr()) * mWorldViewProj;
   m_pushConsts.cameraPos = LiteMath::float4(m_cam.pos.x, m_cam.pos.y, m_cam.pos.z, 1.0f);
 }
 

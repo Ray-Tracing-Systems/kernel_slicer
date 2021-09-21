@@ -10,4 +10,5 @@ enum class RENDER_MODE
 static constexpr RENDER_MODE DISPLAY_MODE  = RENDER_MODE::SPRITES;
 static const char* SPRITE_TEXTURE_PATH     = "textures/sphere.png";
 
+
 #endif //TEST_RENDER_CONFIG_H

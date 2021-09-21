@@ -5,18 +5,18 @@ android {
 
     defaultConfig {
         applicationId 'com.slicer.nbody'
-        minSdkVersion    28
+        minSdkVersion    29
         targetSdkVersion 29
         versionCode 1
         versionName "0.0.1"
         ndk {
             abiFilters 'arm64-v8a', 'x86_64'
         }
-        // Shader compilation directives, put glsl shaders to app/src/main/shaders
-        // android studio will pick them up and compile them into APK/assets/shaders
-        shaders {
-            glslcArgs.addAll(['-c', '-g'])
-        }
+//        // Shader compilation directives, put glsl shaders to app/src/main/shaders
+//        // android studio will pick them up and compile them into APK/assets/shaders
+//        shaders {
+//            glslcArgs.addAll(['-c', '-g'])
+//        }
         externalNativeBuild {
             cmake {
                 abiFilters 'arm64-v8a', 'x86_64'
@@ -41,17 +41,28 @@ android {
 
 
 task copyTask {
+    copy {
+        from '../../validation'
+        into "src/main/jniLibs/arm64-v8a"
+        include 'libVkLayer*'
+    }
+
+    copy {
+        from '../../06_n_body/textures'
+        into "src/main/assets/textures"
+        include '*.png'
+    }
 
     copy {
         from '../../06_n_body/shaders'
-        into "src/main/shaders"
-        include '*.glsl'
+        into "src/main/assets/shaders"
+        include '*.spv'
     }
 
     copy {
         from '../../06_n_body/shaders_generated'
-        into "src/main/shaders"
-        include '*.glsl'
+        into "src/main/assets/shaders_generated"
+        include '*.spv'
     }
 }
 

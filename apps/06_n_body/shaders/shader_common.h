@@ -4,7 +4,7 @@
 
 const float pointSize = 4.0f;
 const float spriteSize = 0.05f;
-const float velocityColorScale = 1e-3f;
+const float velocityColorScale = 5e-2f;
 const float weightColorScale = 0.1f;
 //const float velocityColorScale = 1.0f;
 const float weightThres = 6.0f;

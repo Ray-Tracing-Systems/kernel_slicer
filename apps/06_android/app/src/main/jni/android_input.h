@@ -11,7 +11,6 @@ namespace vk_android
   const int32_t TAP_TIMEOUT = 180 * 1000000;
   const int32_t DOUBLE_TAP_SLOP = 100;
   const int32_t TAP_SLOP = 8;
-  static int32_t screenDensity;
 }
 
 #endif //CBVH_STF_ANDROID_INPUT_H

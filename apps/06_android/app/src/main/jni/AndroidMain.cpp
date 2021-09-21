@@ -13,6 +13,12 @@ const bool g_enableValidationLayers = true;
 
 extern AppInput g_appInput;
 
+namespace vk_android
+{
+  extern AAssetManager *g_pMgr;
+  extern int32_t screenDensity;
+}
+
 void InitSurface(android_app* app,  IRender* vk_render)
 {
   std::vector<const char*> instanceExtensions = {"VK_KHR_surface", VK_KHR_ANDROID_SURFACE_EXTENSION_NAME};
@@ -69,6 +75,7 @@ void android_main(struct android_app* app)
     AConfiguration* config = AConfiguration_new();
     AConfiguration_fromAssetManager(config, app->activity->assetManager);
     vk_android::screenDensity = AConfiguration_getDensity(config);
+    vk_android::g_pMgr = app->activity->assetManager;
     AConfiguration_delete(config);
 
     app->onAppCmd = handle_cmd;

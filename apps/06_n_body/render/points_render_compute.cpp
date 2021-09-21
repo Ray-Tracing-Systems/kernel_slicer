@@ -12,6 +12,42 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#ifdef __ANDROID__
+#include "lodepng.h"
+namespace vk_android
+{
+  extern AAssetManager *g_pMgr;
+}
+
+std::vector<unsigned char> loadPNG(const char* a_filename, int& w, int& h)
+{
+  AAsset* file = AAssetManager_open(vk_android::g_pMgr, a_filename, AASSET_MODE_BUFFER);
+  size_t fileLength = AAsset_getLength(file);
+
+  std::vector<unsigned char> png(fileLength, 0);
+
+  auto read_bytes = AAsset_read(file, png.data(), fileLength);
+  if(!read_bytes)
+    RUN_TIME_ERROR("[loadPNG]: AAsset_read error");
+  AAsset_close(file);
+
+  std::vector<unsigned char> image; //the raw pixels
+  unsigned width, height;
+
+  unsigned error = lodepng::decode(image, width, height, png);
+  //if there's an error, display it
+  if(error)
+  {
+    std::stringstream ss;
+    ss << "decoder error " << error << ": " << lodepng_error_text(error) << std::endl;
+    RUN_TIME_ERROR(ss.str().c_str());
+  }
+  w = static_cast<int>(width);
+  h = static_cast<int>(height);
+
+  return image;
+}
+#else
 unsigned char* loadImage(const std::string &a_filename, int &w, int &h, int &channels)
 {
   unsigned char* pixels = stbi_load(a_filename.c_str(), &w, &h, &channels, STBI_rgb_alpha);
@@ -22,6 +58,7 @@ unsigned char* loadImage(const std::string &a_filename, int &w, int &h, int &cha
   }
   return pixels;
 }
+#endif
 
 void PointsRender::CreateColormapTexture()
 {
@@ -107,8 +144,26 @@ void PointsRender::LoadScene(const char *path, bool transpose_inst_matrices)
 
   if(DISPLAY_MODE == RENDER_MODE::SPRITES)
   {
-    int w, h, channels;
+    int w, h;
+#ifdef __ANDROID__
+    std::vector<unsigned char> pixels = loadPNG(SPRITE_TEXTURE_PATH, w, h);
+
+    if(pixels.empty())
+    {
+      vk_utils::logWarning("[PointsRender::LoadScene] Failed to load sprite texture!");
+    }
+    else
+    {
+      m_sprite = vk_utils::allocateColorTextureFromDataLDR(m_device, m_physicalDevice,  pixels.data(), w, h, 1,
+                                                           VK_FORMAT_R8G8B8A8_UNORM, m_pCopy);
+
+      m_spriteSampler = vk_utils::createSampler(m_device, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                                                VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK);
+
+    }
+#else
     unsigned char *pixels = loadImage(SPRITE_TEXTURE_PATH, w, h, channels);
+
     if(!pixels)
     {
       vk_utils::logWarning("[PointsRender::LoadScene] Failed to load sprite texture!");
@@ -123,6 +178,7 @@ void PointsRender::LoadScene(const char *path, bool transpose_inst_matrices)
 
       stbi_image_free(pixels);
     }
+#endif
   }
 
   auto imgCmdBuf = vk_utils::createCommandBuffer(m_device, m_commandPoolGraphics);

@@ -10,6 +10,7 @@ add_library(cpufeatures STATIC ${ANDROID_NDK}/sources/android/cpufeatures/cpu-fe
 set(VKUTILS_DIR    ../../vkutils)
 set(MAIN_APP_DIR   ../../06_n_body)
 set(MATH_DIR       ../../LiteMath)
+set(SRC_DIR src/main/jni)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -DVK_USE_PLATFORM_ANDROID_KHR")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
@@ -17,17 +18,15 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_o
 set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_ANDROID_KHR)
 add_subdirectory(../../volk ../../volk)
 
+
+
 include_directories(../../volk)
 link_directories(../../volk)
 include_directories(${APP_GLUE_DIR})
 include_directories(${VKUTILS_DIR})
 include_directories(${MAIN_APP_DIR})
 include_directories(${MATH_DIR})
-
-set(VK_BASE_SAMPLE_DIR ../../vk_base)
-set(SAMPLE_SRC_DIR ../../loadSceneFromXML)
-
-set(SRC_DIR src/main/jni)
+include_directories(${SRC_DIR})
 
 set(VKUTILS_NEW_SRC ${VKUTILS_DIR}/vk_copy.cpp
                     ${VKUTILS_DIR}/vk_utils.cpp
@@ -55,7 +54,8 @@ add_library(NBodySample SHARED
                 ${NBODY_VIS}
                 ${APP_SRC}
                 ${SRC_DIR}/AndroidMain.cpp
-                ${SRC_DIR}/android_input.cpp)
+                ${SRC_DIR}/android_input.cpp
+                ${SRC_DIR}/lodepng.cpp)
 
 #MESSAGE(WARNING "Android ABI is ${ANDROID_ABI}")
 

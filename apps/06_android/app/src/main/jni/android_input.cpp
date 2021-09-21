@@ -6,6 +6,10 @@ AppInput g_appInput;
 constexpr float camera_sensitivity = 0.25f;
 constexpr float camMoveSpeed       = 1.0f;
 
+namespace vk_android
+{
+  int32_t screenDensity = 0;
+}
 
 int32_t vk_base_android_input_handler(struct android_app* app, AInputEvent* event)
 {
