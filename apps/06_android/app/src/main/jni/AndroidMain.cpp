@@ -65,6 +65,7 @@ void android_main(struct android_app* app)
   std::shared_ptr<IRender> vk_app = CreateRender(1280 * 2, 720 * 2, RenderEngineType::POINTS_RENDER);
   app->userData = vk_app.get();
 
+  g_appInput.cams[0].pos = LiteMath::make_float3(0.0f, 0.0f, 15.0f);
 //  if (!vk_android::InitVulkan()) // load vulkan shared library and functions
 //  {
 //    LOGW("Vulkan is unavailable");

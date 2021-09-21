@@ -1,5 +1,47 @@
 #include "test_class.h"
 #include "include/crandom.h"
+#include "include/noise.h"
+
+float octave(float3 pos, int octaves, float persistence, float frequency, float lacunarity)
+{
+  float total = 0.0f;
+  float amplitude = 1.0f;
+  float maxValue = 0.0f;
+
+  for (int i = 0; i < octaves; i++)
+  {
+    total += cnoise(pos * frequency) * amplitude;
+
+    maxValue += amplitude;
+
+    amplitude *= persistence;
+    frequency *= lacunarity;
+  }
+
+  return total / maxValue;
+}
+
+float noise_musgrave_fBm(float3 p, float H, float lacunarity, float octaves)
+{
+  float rmd;
+  float value = 0.0;
+  float pwr = 1.0;
+  float pwHL = pow(lacunarity, -H);
+  int i;
+
+  for (i = 0; i < (int)octaves; i++)
+  {
+    value += cnoise(p) * pwr;
+    pwr *= pwHL;
+    p *= lacunarity;
+  }
+
+  rmd = octaves - floor(octaves);
+  if (rmd != 0.0)
+    value += rmd * cnoise(p) * pwr;
+
+  return value;
+}
 
 static uint32_t nextRandValue(const uint32_t value) {
   return value * 22695477 + 1; // Borland C random
@@ -77,30 +119,45 @@ static float pow3(float value) {
 void nBody::kernel1D_UpdateVelocity(uint32_t bodies_count) {
   for (uint32_t i = 0; i < bodies_count; ++i) {
     float3 acceleration = make_float3(0, 0, 0);
-    for (uint32_t j = 0; j < m_bodies.size(); ++j) {
-//      if(m_bodies[i].pos_weight.w > MASS)
-//        continue;
-      if (i == j) {
-        continue;
-      }
-      float3 distance = xyz(m_bodies[j].pos_weight - m_bodies[i].pos_weight); // * sgn(m_bodies[i].pos_weight.w);
-      float distSqr = dot(distance, distance) + SOFTENING_CONST;
-      float invDistCube = 1.0f/sqrtf(pow3(distSqr));
-      float3 gravitational = distance * m_bodies[j].pos_weight.w * invDistCube;
+//    float3 axis = make_float3(-1.0f, 1.0f, 0.5f);
+    float3 axis = make_float3(0.0f, 0.0f, 1.0f);
+    if(MODE != -1)
+    {
+      for (uint32_t j = 0; j < m_bodies.size(); ++j) {
+        //      if(m_bodies[i].pos_weight.w > MASS)
+        //        continue;
+        if (i == j) {
+          continue;
+        }
+        float3 distance = xyz(m_bodies[j].pos_weight - m_bodies[i].pos_weight); // * sgn(m_bodies[i].pos_weight.w);
+        float distSqr = dot(distance, distance) + SOFTENING_CONST;
+        float invDistCube = 1.0f/sqrtf(pow3(distSqr));
+        float3 gravitational = distance * m_bodies[j].pos_weight.w * invDistCube;
 
-      float coeff = m_bodies[i].vel_charge.w / (4 * M_PI * PERMETTIVITY);
-      float3 electrostatic = coeff * m_bodies[j].vel_charge.w * (-1.f * distance / distSqr);
+        float coeff = m_bodies[i].vel_charge.w / (4 * M_PI * PERMETTIVITY);
+        float3 electrostatic = coeff * m_bodies[j].vel_charge.w * (-1.f * distance / distSqr);
 
-      if(MODE == 1)
-      {
-        acceleration += electrostatic;
+        if(MODE == 1)
+        {
+          acceleration += electrostatic;
+        }
+        else if(MODE == 0)
+        {
+          acceleration += gravitational;
+        }
+        else
+        {
+          acceleration += gravitational + electrostatic;
+        }
       }
-      else if(MODE == 0)
-      {
-        acceleration += gravitational;
-      }
-      else
-        acceleration += gravitational + electrostatic;
+    }
+
+    if(ANGULAR == 1)
+    {
+      auto v = xyz(m_bodies[i].pos_weight) - make_float3(1.0f, 1.0f, 0.0f);
+      float dist = max(dot(v, axis), SOFTENING_CONST);
+      auto angular = (ANG_AMPLITUDE * sqrtf(dist)) * ((cross(acceleration, axis))- dist * axis); // - dist * axis
+      acceleration += angular;
     }
     acceleration *= dt;
     acceleration /= m_bodies[i].pos_weight.w;
