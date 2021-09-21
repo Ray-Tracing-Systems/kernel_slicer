@@ -428,6 +428,14 @@ void PointsRender::ProcessInput(const AppInput &input)
   // camera movement is processed separately
   //  if(input.keyPressed[GLFW_KEY_SPACE])
   //
+
+#ifdef __ANDROID__
+  if(input.keyPressed[0])
+  {
+    m_bRestartSimulation = true;
+  }
+  UpdateCamera(input.cams, 2);
+#endif
 }
 
 void PointsRender::UpdateCamera(const Camera *cams, uint32_t a_camsCount)

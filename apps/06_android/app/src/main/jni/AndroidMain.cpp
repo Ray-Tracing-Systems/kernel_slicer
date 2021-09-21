@@ -90,6 +90,7 @@ void android_main(struct android_app* app)
         {
           source->process(app, source);
           vk_app->ProcessInput(g_appInput);
+          g_appInput.clearKeys();
         }
       }
 

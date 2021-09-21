@@ -162,6 +162,7 @@ void PointsRender::LoadScene(const char *path, bool transpose_inst_matrices)
 
     }
 #else
+    int channels;
     unsigned char *pixels = loadImage(SPRITE_TEXTURE_PATH, w, h, channels);
 
     if(!pixels)
@@ -232,7 +233,7 @@ VkCommandBuffer PointsRender::BuildCommandBufferSimulation()
   beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
   vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
 
-  m_pNBodySimGenerated->performCmd(commandBuffer, nullptr);
+  m_pNBodySimGenerated->performCmdCustom(m_bRestartSimulation, commandBuffer, nullptr);
   vkEndCommandBuffer(commandBuffer);
 
   return commandBuffer;

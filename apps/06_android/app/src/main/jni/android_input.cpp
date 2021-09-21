@@ -39,7 +39,7 @@ int32_t vk_base_android_input_handler(struct android_app* app, AInputEvent* even
               if ((x * x + y * y) < deadZone)
               {
                 g_appInput.keyPressed[0] = true;
-                g_appInput.cams[0].offsetPosition(g_appInput.cams[0].forward() * camMoveSpeed);
+//                g_appInput.cams[0].offsetPosition(g_appInput.cams[0].forward() * camMoveSpeed);
               }
             };
 

@@ -89,6 +89,7 @@ public:
   VkDebugReportCallbackEXT m_debugReportCallback = nullptr;
 private:
   bool m_bVulkanReady = false;
+  bool m_bRestartSimulation = true;
 
   VkInstance m_instance = VK_NULL_HANDLE;
   VkCommandPool m_commandPoolGraphics = VK_NULL_HANDLE;
