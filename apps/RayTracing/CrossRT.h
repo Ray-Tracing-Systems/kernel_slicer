@@ -32,7 +32,7 @@ struct ISceneObject
   virtual void ClearGeom() = 0; 
   
   /**
-  \brief Add geometry opf type 'Triangles' to 'internal geometry library' of scene object and return geometry id
+  \brief Add geometry of type 'Triangles' to 'internal geometry library' of scene object and return geometry id
   \param a_vpos4f     - input vertex data; each vertex should be of 4 floats, the fourth coordinate is not used
   \param a_vertNumber - vertices number. The total size of 'a_vpos4f' array is assumed to be qual to 4*a_vertNumber
   \param a_triIndices - triangle indices (standart index buffer)
@@ -58,7 +58,7 @@ struct ISceneObject
   virtual void ClearScene() = 0; ///< 
 
   /**
-  \brief Vinish instancing and build top accaleration structure
+  \brief Finish instancing and build top level acceleration structure
   */
   virtual void CommitScene() = 0; ///< 
   
@@ -90,6 +90,9 @@ struct ISceneObject
   virtual CRT_Hit RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) = 0;
 
 };
+
+ISceneObject* CreateEmbreeRT();
+ISceneObject* CreateVulkanRTX();
 
 ISceneObject* CreateSceneRT(const char* a_impleName); 
 void          DeleteSceneRT(ISceneObject* a_pScene);

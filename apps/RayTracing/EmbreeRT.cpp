@@ -64,7 +64,7 @@ void error_handler(void* userPtr, const RTCError code, const char* str)
 
 EmbreeRT::EmbreeRT()
 {
-  m_device = rtcNewDevice("isa=avx512");
+  m_device = rtcNewDevice("isa=avx2");
   m_scene  = nullptr;
   
   rtcSetDeviceErrorFunction(m_device, error_handler, nullptr);
@@ -238,5 +238,14 @@ CRT_Hit  EmbreeRT::RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::fl
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-ISceneObject* CreateSceneRT(const char* a_impleName) { return new EmbreeRT; }
-void          DeleteSceneRT(ISceneObject* a_pScene)  { delete a_pScene; }
+ISceneObject* CreateEmbreeRT() { return new EmbreeRT; }
+
+ISceneObject* CreateSceneRT(const char* a_impleName) 
+{ 
+  if(std::string(a_impleName) == "VulkanRTX")
+    return CreateVulkanRTX();
+  else
+    return CreateEmbreeRT();
+}
+
+void DeleteSceneRT(ISceneObject* a_pScene)  { delete a_pScene; }

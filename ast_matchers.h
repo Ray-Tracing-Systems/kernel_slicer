@@ -278,7 +278,7 @@ namespace kslicer
 
           if(pDataMember == m_allInfo.allDataMembers.end())
           {
-            std::cout << "[ERROR]: accessed member " << varName.c_str() << " was not found in allDataMembers (pouinter?)" << std::endl;
+            std::cout << "[ERROR]: accessed member " << varName.c_str() << " was not found in allDataMembers (pointer member?)" << std::endl;
             return;
           }
 

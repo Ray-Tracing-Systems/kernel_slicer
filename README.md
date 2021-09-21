@@ -60,11 +60,14 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 6. (optional) build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") if you want OpenCL shaders
 
 7. Build volk with cmake and leave 'libvolk.a' in 'apps/volk'
-
+  * git submodule init (if you have forgotten to fetch submodules when clone repo) 
+  * git submodule update (if you have forgotten to fetch submodules when clone repo) 
   * cd apps/volk
   * cmake .
   * make
 
+ 
+ 
 8. Install Vulkan SDK (https://vulkan.lunarg.com/sdk/home)
 
 9. If you want to [build it as a part of llvm](doc/README_build_with_llvm.md)
@@ -104,6 +107,8 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
     * make -j 10
  
 2. Don't forget to build volk
+    * git submodule init (if you have forgotten to fetch submodules when clone repo) 
+    * git submodule update (if you have forgotten to fetch submodules when clone repo) 
     * cd apps/volk
     * cmake .
     * make
