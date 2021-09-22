@@ -469,7 +469,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
       data["ClassTextureVars"].push_back(local);     
     }
-    else
+    else if(v.isContainer && v.containerType == "vector")
     {
       std::string sizeName     = v.name + "_size";
       std::string capacityName = v.name + "_capacity";
@@ -486,6 +486,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["TypeOfData"]     = v.containerDataType;
       data["ClassVectorVars"].push_back(local);     
     }
+    // TODO: add processing for Scene/Acceleration structures
+
   }
 
   data["RedVectorVars"] = std::vector<std::string>();

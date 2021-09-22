@@ -56,7 +56,9 @@ uint32_t VulkanRTX::AddGeom_Triangles4f(const LiteMath::float4* a_vpos4f, size_t
   cmesh::SimpleMesh meshData(a_vertNumber, a_indNumber);
   memcpy(meshData.vPos4f.data(), a_vpos4f, a_vertNumber*sizeof(LiteMath::float4));
   memcpy(meshData.indices.data(), a_triIndices, a_indNumber*sizeof(uint32_t));
-  return m_pScnMgr->AddMeshFromData(meshData);
+  auto mesh_id = m_pScnMgr->AddMeshFromData(meshData);
+  m_pScnMgr->AddBLAS(mesh_id);
+  return meshId;
 }
 
 void VulkanRTX::UpdateGeom_Triangles4f(uint32_t a_geomId, const LiteMath::float4* a_vpos4f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber)
