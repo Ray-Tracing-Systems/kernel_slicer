@@ -124,10 +124,10 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
     // currently we don't put polimorphic C++ classes to shaders, in far future we need to process them in special way probably
     //
     CXXRecordDecl* pCXXDecl = dyn_cast<CXXRecordDecl>(type);
-    if(!pCXXDecl->isCLike())
-      return true;
-    //if(pCXXDecl->isPolymorphic() || pCXXDecl->isAbstract())
-    //  return true;   
+    //if(!pCXXDecl->isCLike())
+    //  return true;
+    if(pCXXDecl->isPolymorphic() || pCXXDecl->isAbstract())
+      return true;   
   }
 
   kslicer::DeclInClass decl;

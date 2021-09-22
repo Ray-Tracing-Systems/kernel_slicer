@@ -359,7 +359,7 @@
                         "-pattern", "rtv",
                         "-shaderCC", "glsl",
                         "-I${workspaceFolder}/apps/LiteMath",   "IncludeToShaders",
-                        "-I${workspaceFolder}/apps/RayTracing", "IncludeToShaders",
+                        "-I${workspaceFolder}/apps/RayTracing", "ExcludeFromShaders",
                         //"-cl-std=", "C++",
                         "-DKERNEL_SLICER",
                         "-v"],
@@ -704,6 +704,35 @@
                 {
                     "description"   : "Enable pretty-printing for gdb",
                     "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (app_16/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/16_simple_pt_inst/test_class.cpp",
+                        "-mainClass", "TestClass", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/apps/LiteMath",   "IncludeToShaders",
+                        "-I${workspaceFolder}/apps/RayTracing", "ExcludeFromShaders",
+                        //"-cl-std=", "C++",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
             ]

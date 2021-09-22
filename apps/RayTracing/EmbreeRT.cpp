@@ -242,10 +242,7 @@ ISceneObject* CreateEmbreeRT() { return new EmbreeRT; }
 
 ISceneObject* CreateSceneRT(const char* a_impleName) 
 { 
-  if(std::string(a_impleName) == "VulkanRTX")
-    return CreateVulkanRTX();
-  else
-    return CreateEmbreeRT();
+  return CreateEmbreeRT();
 }
 
 void DeleteSceneRT(ISceneObject* a_pScene)  { delete a_pScene; }

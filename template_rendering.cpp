@@ -373,12 +373,16 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   data["VectorMembers"]  = std::vector<std::string>();
   data["TextureMembers"] = std::vector<std::string>();
+  data["SceneMembers"]   = std::vector<std::string>(); // ray tracing specific objects
   for(const auto var : a_classInfo.dataMembers)
   {
     if(var.IsUsedTexture())
       data["TextureMembers"].push_back(var.name);
-    else if(var.isContainer)
+    else if(var.isContainer && var.containerType == "vector")
       data["VectorMembers"].push_back(var.name);
+    else if(var.isContainer && (var.containerType == "shared_ptr" || var.containerType == "unique_ptr") && 
+                               (var.containerDataType == "struct ISceneObject") || (var.containerDataType == "class ISceneObject"))
+      data["SceneMembers"].push_back(var.name);
   }
 
   data["SamplerMembers"] = std::vector<std::string>();
