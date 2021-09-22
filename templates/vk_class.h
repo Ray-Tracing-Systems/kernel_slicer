@@ -20,16 +20,7 @@ class {{MainClassName}}_Generated : public {{MainClassName}}
 public:
 
   {{MainClassName}}_Generated() {}
-
-  virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount) 
-  {
-    physicalDevice = a_physicalDevice;
-    device         = a_device;
-    InitHelpers();
-    InitBuffers(a_maxThreadsCount);
-    InitKernels("{{ShaderSingleFile}}.spv");
-    AllocateAllDescriptorSets();
-  }
+  virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount);
 
 ## for MainFunc in MainFunctions
   virtual void SetVulkanInOutFor_{{MainFunc.Name}}(

@@ -10,7 +10,7 @@
 class VulkanRTX : public ISceneObject
 {
 public:
-  VulkanRTX();
+  VulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_transferQId, uint32_t a_graphicsQId);
   ~VulkanRTX();
   void ClearGeom() override;
   
@@ -34,10 +34,11 @@ protected:
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-VulkanRTX::VulkanRTX()
+ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_transferQId, uint32_t a_graphicsQId) { return new VulkanRTX(a_device, a_physDevice, a_transferQId, a_graphicsQId); }
+
+VulkanRTX::VulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_transferQId, uint32_t a_graphicsQId)
 {
-  m_pScnMgr = nullptr; //#TODO: get vulkan objects here in some way
-  //m_pScnMgr = std::make_shared<SceneManager>(device, physicalDevice, queueComputeFID, queueComputeFID, true); 
+  m_pScnMgr = std::make_shared<SceneManager>(a_device, a_physDevice, a_transferQId, a_graphicsQId, true); 
 }
 
 VulkanRTX::~VulkanRTX()
@@ -93,5 +94,3 @@ CRT_Hit VulkanRTX::RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::fl
   result.primId = uint32_t(-1);
   return result;
 }
-
-ISceneObject* CreateVulkanRTX() { return new VulkanRTX(); }

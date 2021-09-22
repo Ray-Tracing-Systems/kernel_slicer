@@ -7,6 +7,11 @@
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
 
+{% if length(SceneMembers) > 0 %}
+#include "CrossRT.h"
+ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_transferQId, uint32_t a_graphicsQId);
+{% endif %}
+
 VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO() const
 {
   return 0;
@@ -21,6 +26,24 @@ static uint32_t ComputeReductionSteps(uint32_t whole_size, uint32_t wg_size)
     whole_size = (whole_size + wg_size - 1) / wg_size;
   }
   return steps;
+}
+
+void {{MainClassName}}_Generated::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount) 
+{
+  physicalDevice = a_physicalDevice;
+  device         = a_device;
+  InitHelpers();
+  InitBuffers(a_maxThreadsCount);
+  InitKernels("{{ShaderSingleFile}}.spv");
+  AllocateAllDescriptorSets();
+
+  {% if length(SceneMembers) > 0 %}
+  auto queueAllFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
+  {% endif %}
+  {% for ScnObj in SceneMembers %}
+  DeleteSceneRT({{ScnObj}});
+  {{ScnObj}} = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physDevice, queueAllFID, queueAllFID), [](ISceneObject *p) { DeleteSceneRT(p); } ); 
+  {% endfor %}
 }
 
 void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)

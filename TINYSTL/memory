@@ -1,0 +1,37 @@
+namespace std
+{
+  template<class T> class shared_ptr 
+  { 
+  public:
+    
+    shared_ptr() : data(nullptr) {}
+    shared_ptr(const T* a_data) : data(nullptr) {}
+    template<class D> shared_ptr(const T* a_data, D deleter) : data(nullptr) {}
+
+    T* get() { return data; }
+    const T* get() const { return data; }
+
+    T* operator->() { return data; }
+    const T* operator->() const { return data; }
+
+  protected:
+    T* data; 
+  };
+  
+  template<class T> class unique_ptr 
+  { 
+  public:
+    unique_ptr() : data(nullptr) {}
+    unique_ptr(const T* a_data) : data(nullptr) {}
+    template<class D> unique_ptr(const T* a_data, D deleter) : data(nullptr) {}
+
+    T* operator->() { return data; }
+    const T* operator->() const { return data; }
+
+    T* get() { return data; }
+    const T* get() const { return data; }
+
+  protected:
+    T* data; 
+  };
+}

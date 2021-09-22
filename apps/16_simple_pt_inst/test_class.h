@@ -7,6 +7,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <memory>
 
 #include "CrossRT.h"
 
@@ -40,12 +41,11 @@ public:
   TestClass(int a_maxThreads = 1)
   {
     InitRandomGens(a_maxThreads);
-    m_pAccelStruct = CreateSceneRT(""); 
+    m_pAccelStruct = std::shared_ptr<ISceneObject>(CreateSceneRT(""), [](ISceneObject *p) { DeleteSceneRT(p); } ); 
   }
 
   ~TestClass()
   {
-    DeleteSceneRT(m_pAccelStruct); 
     m_pAccelStruct = nullptr;
   }
 
@@ -98,7 +98,7 @@ protected:
   std::vector<RandomGen>       m_randomGens;
   std::vector<float4x4>        m_normMatrices; ///< per instance normal matrix, local to world
 
-  ISceneObject* m_pAccelStruct = nullptr;
+  std::shared_ptr<ISceneObject> m_pAccelStruct = nullptr;
 };
 
 #endif
