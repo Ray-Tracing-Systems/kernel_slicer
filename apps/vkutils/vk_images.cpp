@@ -37,6 +37,21 @@ namespace vk_utils
     return result;
   }
 
+  void deleteImg(VkDevice a_device, VulkanImageMem *a_pImgMem)
+  {
+    if(a_pImgMem->view != VK_NULL_HANDLE)
+    {
+      vkDestroyImageView(a_device, a_pImgMem->view, nullptr);
+      a_pImgMem->view = VK_NULL_HANDLE;
+    }
+
+    if(a_pImgMem->image != VK_NULL_HANDLE)
+    {
+      vkDestroyImage(a_device, a_pImgMem->image, nullptr);
+      a_pImgMem->image = VK_NULL_HANDLE;
+    }
+  }
+
   VkImageView createImageViewAndBindMem(VkDevice a_device, VulkanImageMem *a_pImgMem, const VkImageViewCreateInfo *a_pViewCreateInfo)
   {
     VK_CHECK_RESULT(vkBindImageMemory(a_device, a_pImgMem->image, a_pImgMem->mem, a_pImgMem->mem_offset));

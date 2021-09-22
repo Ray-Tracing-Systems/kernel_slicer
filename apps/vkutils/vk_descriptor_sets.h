@@ -26,7 +26,10 @@ namespace vk_utils
 
     void BindBegin(VkShaderStageFlags a_shaderStage);
     void BindBuffer(uint32_t a_loc, VkBuffer a_buffer, VkBufferView a_buffView = VK_NULL_HANDLE, VkDescriptorType a_bindType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+
+#ifndef __ANDROID__
     void BindAccelStruct(uint32_t a_loc, VkAccelerationStructureKHR a_accStruct, VkDescriptorType a_bindType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+#endif
     void BindImage(uint32_t a_loc, VkImageView a_imageView, VkSampler a_sampler = VK_NULL_HANDLE, VkDescriptorType a_bindType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VkImageLayout a_imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     void BindImageArray(uint32_t a_loc, const std::vector<VkImageView> &a_imageView, const std::vector<VkSampler> &a_sampler, VkDescriptorType a_bindType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VkImageLayout a_imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     void BindEnd(VkDescriptorSet *a_pSet = nullptr, VkDescriptorSetLayout *a_pLayout = nullptr);

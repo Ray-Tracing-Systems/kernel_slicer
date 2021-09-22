@@ -40,10 +40,10 @@ namespace vk_utils
     SimpleCopyHelper(VkPhysicalDevice a_physicalDevice, VkDevice a_device, VkQueue a_transferQueue, uint32_t a_transferQueueIDX, size_t a_stagingBuffSize);
     virtual ~SimpleCopyHelper();
 
-    virtual void UpdateBuffer(VkBuffer a_dst, size_t a_dstOffset, const void* a_src, size_t a_size);
-    virtual void ReadBuffer  (VkBuffer a_src, size_t a_srcOffset, void* a_dst, size_t a_size);
-    virtual void UpdateImage (VkImage a_image, const void* a_src, int a_width, int a_height, int a_bpp);
-    //virtual void ReadImage (VkImage a_image, const void* a_src, int a_width, int a_height, int a_bpp); // TODO: implement this in future
+    void UpdateBuffer(VkBuffer a_dst, size_t a_dstOffset, const void* a_src, size_t a_size) override;
+    void ReadBuffer  (VkBuffer a_src, size_t a_srcOffset, void* a_dst, size_t a_size) override;
+    void UpdateImage (VkImage a_image, const void* a_src, int a_width, int a_height, int a_bpp) override;
+    //void ReadImage (VkImage a_image, const void* a_src, int a_width, int a_height, int a_bpp) override; // TODO: implement this in future
 
     VkQueue  TransferQueue() const override { return queue; }
     VkCommandBuffer CmdBuffer() const override { return cmdBuff; }

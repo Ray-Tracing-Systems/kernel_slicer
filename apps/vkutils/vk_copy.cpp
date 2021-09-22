@@ -13,8 +13,14 @@
 #ifdef WIN32
 #undef min
 #undef max
-#endif 
+#endif
 
+#ifdef __ANDROID__
+namespace vk_android
+{
+  extern AAssetManager *g_pMgr;
+}
+#endif
 
 vk_utils::SimpleCopyHelper::SimpleCopyHelper()
 {
@@ -462,8 +468,12 @@ vk_utils::ComputeCopyHelper::ComputeCopyHelper(VkPhysicalDevice a_physicalDevice
   { 
     copyPipeline       = VK_NULL_HANDLE;
     copyPipelineLayout = VK_NULL_HANDLE;
-  
+
+#ifdef __ANDROID__
+    std::vector<uint32_t> code = vk_utils::readSPVFile(vk_android::g_pMgr, a_csCopyPath);
+#else
     std::vector<uint32_t> code = vk_utils::readSPVFile(a_csCopyPath);
+#endif
     assert(!code.empty());
   
     VkShaderModuleCreateInfo createInfo = {};

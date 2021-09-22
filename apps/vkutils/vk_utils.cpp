@@ -7,6 +7,15 @@
 #include <cmath>
 #include <array>
 
+#ifdef __ANDROID__
+#include "android_native_app_glue.h"
+
+namespace vk_android
+{
+  AAssetManager *g_pMgr = nullptr;
+}
+#endif
+
 namespace vk_utils {
 
   static const char *g_debugReportExtName = VK_EXT_DEBUG_REPORT_EXTENSION_NAME;
@@ -60,14 +69,31 @@ namespace vk_utils {
 
   void runTimeError(const char* file, int line, const char* msg)
   {
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_ERROR, "vk_utils", "Runtime error at %s, line %d : %s", file, line, msg);
+#else
     fprintf(log, "Runtime error at %s, line %d : %s", file, line, msg);
     fflush(log);
+#endif
     exit(99);
   }
 
   void logWarning(const std::string& msg)
   {
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_WARN, "vk_utils", "Warning : %s", msg.c_str());
+#else
     fprintf(log, "Warning : %s", msg.c_str());
+#endif
+  }
+
+  void logInfo(const std::string& msg)
+  {
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "vk_utils", "%s", msg.c_str());
+#else
+    fprintf(log, "Info : %s", msg.c_str());
+#endif
   }
 
   bool checkDeviceExtensionSupport(VkPhysicalDevice device, std::vector<const char *> &requestedExtensions)
@@ -188,6 +214,7 @@ namespace vk_utils {
       createInfo.enabledLayerCount = uint32_t(layer_names.size());
       createInfo.ppEnabledLayerNames = layer_names.data();
 
+#ifndef __ANDROID__
       VkValidationFeaturesEXT validationFeatures = {};
       validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
       validationFeatures.enabledValidationFeatureCount = 1;
@@ -196,6 +223,7 @@ namespace vk_utils {
 
 //      validationFeatures.pNext = createInfo.pNext;
       createInfo.pNext = &validationFeatures;
+#endif
     }
     else
     {
@@ -488,7 +516,25 @@ namespace vk_utils {
 
     vkDestroyFence(a_device, fence, NULL);
   }
+#ifdef __ANDROID__
+  std::vector<uint32_t> readSPVFile(AAssetManager* mgr, const char* filename)
+  {
+    // Read the file
+    assert(mgr);
+    AAsset* file = AAssetManager_open(mgr, filename, AASSET_MODE_BUFFER);
+    size_t fileLength = AAsset_getLength(file);
+    auto filesize_padded = getPaddedSize(fileLength, sizeof(uint32_t));
 
+    std::vector<uint32_t> resData(filesize_padded / sizeof(uint32_t), 0);
+
+    auto read_bytes = AAsset_read(file, resData.data(), fileLength);
+    if(!read_bytes)
+      RUN_TIME_ERROR("[vk_utils::readSPVFile]: AAsset_read error");
+    AAsset_close(file);
+
+    return resData;
+  }
+#else
   std::vector<uint32_t> readSPVFile(const char *filename)
   {
     FILE *fp = fopen(filename, "rb");
@@ -514,6 +560,7 @@ namespace vk_utils {
 
     return resData;
   }
+#endif
 
   VkShaderModule createShaderModule(VkDevice a_device, const std::vector<uint32_t> &code)
   {
@@ -535,7 +582,11 @@ namespace vk_utils {
     shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     shaderStage.stage = stage;
 
+#ifdef __ANDROID__
+    shaderStage.module = createShaderModule(a_device, readSPVFile(vk_android::g_pMgr, fileName.c_str()));
+#else
     shaderStage.module = createShaderModule(a_device, readSPVFile(fileName.c_str()));
+#endif
     shaderStage.pName = "main";
     assert(shaderStage.module != VK_NULL_HANDLE);
     modules.push_back(shaderStage.module);

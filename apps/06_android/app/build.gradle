@@ -1,12 +1,12 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 29
+    compileSdkVersion 28
 
     defaultConfig {
         applicationId 'com.slicer.nbody'
-        minSdkVersion    29
-        targetSdkVersion 29
+        minSdkVersion    28
+        targetSdkVersion 28
         versionCode 1
         versionName "0.0.1"
         ndk {

@@ -52,7 +52,7 @@ PointsRender::InitVulkan(const char **a_instanceExtensions, uint32_t a_instanceE
   CreateDevice(a_deviceId);
   volkLoadDevice(m_device);
 
-  m_pCopy = std::make_shared<vk_utils::SimpleCopyHelper>(m_physicalDevice, m_device, m_transferQueue, m_queueFamilyIDXs.transfer,
+  m_pCopy = std::make_shared<vk_utils::SimpleCopyHelper>(m_physicalDevice, m_device, m_transferQueue, m_queueFamilyIDXs.graphics,
                                                          8*1024*1024);
 
   m_commandPoolGraphics = vk_utils::createCommandPool(m_device, m_queueFamilyIDXs.graphics,
@@ -139,7 +139,7 @@ void PointsRender::CreateDevice(uint32_t a_deviceId)
 
   m_device = vk_utils::createLogicalDevice(m_physicalDevice, m_validationLayers, m_deviceExtensions,
                                            m_enabledDeviceFeatures, m_queueFamilyIDXs,
-                                           VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT,
+                                           VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT,
                                            nullptr);
 
   vkGetDeviceQueue(m_device, m_queueFamilyIDXs.graphics, 0, &m_graphicsQueue);

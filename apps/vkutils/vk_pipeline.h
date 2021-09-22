@@ -64,6 +64,7 @@ namespace vk_utils
   private:
     VkPipeline       m_pipeline  = VK_NULL_HANDLE;
     VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
+    std::string      m_mainName;
   };
 }
 

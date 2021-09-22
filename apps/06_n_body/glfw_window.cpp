@@ -183,6 +183,8 @@ void MainLoop(std::shared_ptr<IRender> &app, GLFWwindow* window)
   int avgCounter = 0;
   int currCam    = 0;
 
+  g_appInput.cams[currCam].pos = float3(0,0,15);
+
   double lastTime = glfwGetTime();
   while (!glfwWindowShouldClose(window))
   {

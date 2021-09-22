@@ -23,16 +23,24 @@ namespace vk_utils
     VkBuffer buffer = VK_NULL_HANDLE;
     std::vector <VkImageView> imageView;
     std::vector <VkSampler> imageSampler;
+#ifndef __ANDROID__
     VkAccelerationStructureKHR accelStruct = VK_NULL_HANDLE;
+#endif
 
     VkDescriptorType type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
     VkImageLayout imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     bool operator==(const DescriptorHandles &rhs) const
     {
+#ifndef __ANDROID__
       return std::tie(type, buffer, buffView, accelStruct, imageLayout, imageView, imageSampler) ==
              std::tie(rhs.type, rhs.buffer, rhs.buffView, rhs.accelStruct, rhs.imageLayout, rhs.imageView,
                       rhs.imageSampler);
+#else
+      return std::tie(type, buffer, buffView, imageLayout, imageView, imageSampler) ==
+             std::tie(rhs.type, rhs.buffer, rhs.buffView, rhs.imageLayout, rhs.imageView,
+                      rhs.imageSampler);
+#endif
     }
   };
 
@@ -86,7 +94,9 @@ namespace vk_utils
         for (const auto &view : handle.imageSampler)
           hash_combine(currHash, view);
         hash_combine(currHash, handle.imageLayout);
+#ifndef __ANDROID__
         hash_combine(currHash, handle.accelStruct);
+#endif
         hash_combine(currHash, handle.buffView);
         hash_combine(currHash, handle.buffer);
       }

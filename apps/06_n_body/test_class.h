@@ -36,7 +36,7 @@ public:
   static constexpr int MODE = 2; //-1 - nothing, 0 - gravitational, 1 - electrostatic
   static constexpr int ANGULAR = 1;
 protected:
-  static constexpr float dt = 1e-3f; //(MODE == 1) ? 1e-4f : 1e-5f;
+  static constexpr float dt = 5e-4f; //(MODE == 1) ? 1e-4f : 1e-5f;
   uint32_t m_seed;
   uint32_t m_iters;
 
@@ -48,7 +48,7 @@ public:
   static constexpr bool PERIODIC_BOUNDARY_CONDITIONS = true;
   static constexpr float LATTICE_STEP = 5.f;
   static constexpr uint32_t LATTICE_RES = 10;
-  static constexpr uint32_t BODIES_COUNT = 1024; //LATTICE_RES * LATTICE_RES * LATTICE_RES + 100;
+  static constexpr uint32_t BODIES_COUNT = 4096; //LATTICE_RES * LATTICE_RES * LATTICE_RES + 100;
   static constexpr float SOFTENING_CONST = 1e-5f;
   static constexpr float BOUNDARY = 60.0f;
   static constexpr float ANG_AMPLITUDE = 0.05f;
