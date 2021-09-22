@@ -41,7 +41,7 @@ void {{MainClassName}}_Generated::InitVulkanObjects(VkDevice a_device, VkPhysica
   auto queueAllFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
   {% endif %}
   {% for ScnObj in SceneMembers %}
-  {{ScnObj}} = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physDevice, queueAllFID, queueAllFID), [](ISceneObject *p) { DeleteSceneRT(p); } ); 
+  {{ScnObj}} = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, queueAllFID), [](ISceneObject *p) { DeleteSceneRT(p); } ); 
   {% endfor %}
 }
 
@@ -68,9 +68,6 @@ void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vk_utils::
   {% for Var in ClassVectorVars %}
   if({{Var.Name}}.size() > 0)
     a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}.data(), {{Var.Name}}.size()*sizeof({{Var.TypeOfData}}) );
-  {% endfor %}
-  {% for ScnObj in SceneMembers %}
-  {{ScnObj}}->LoadGeoDataOnGPU();
   {% endfor %}
 }
 
