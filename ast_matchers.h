@@ -297,8 +297,9 @@ namespace kslicer
             //  auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(var);   
             //  kslicer::SplitContainerTypes(specDecl, container.containerType, container.containerDataType);
             //}
-            container.isTexture = kslicer::IsTexture(qt);
-            container.isConst   = qt.isConstQualified();
+            container.isTexture     = kslicer::IsTexture(qt);
+            container.isConst       = qt.isConstQualified();
+            container.isAccelStruct = kslicer::IsAccelStruct(qt);
             currKernel->usedContainers[container.name] = container;
           }
           else
