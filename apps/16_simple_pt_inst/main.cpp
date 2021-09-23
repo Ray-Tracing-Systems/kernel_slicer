@@ -10,7 +10,7 @@ int main(int argc, const char** argv)
   //  std::cout << i << " ";
   //std::cout << std::endl;
 
-  test_class_cpu();
-  //test_class_gpu();
+  //test_class_cpu();
+  test_class_gpu();
   return 0;
 }

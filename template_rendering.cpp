@@ -586,6 +586,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         else
           argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
       }
+      else if(arg.isContainer && arg.containerDataType == "struct ISceneObject")
+      {
+        argData["Type"] = "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR";
+      }
       else
         argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
 
@@ -607,6 +611,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
         else
           argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+      }
+      else if(container.second.isAccelStruct)
+      {
+        argData["Type"] = "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR";
       }
       else
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
