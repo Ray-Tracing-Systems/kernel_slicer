@@ -19,25 +19,26 @@ void TestClass::InitRandomGens(int a_maxThreads)
 #define __private
 #endif
 
+static inline float3 mul3x3(float4x4 m, float3 v)
+{ 
+  return to_float3(m*to_float4(v, 0.0f));
+}
+
+static inline float3 mul4x3(float4x4 m, float3 v)
+{
+  return to_float3(m*to_float4(v, 1.0f));
+}
+
 static inline void transform_ray3f(float4x4 a_mWorldViewInv, 
                                    __private float3* ray_pos, __private float3* ray_dir) 
 {
-  float3 pos  = mul(a_mWorldViewInv, (*ray_pos));
-  float3 pos2 = mul(a_mWorldViewInv, ((*ray_pos) + 100.0f*(*ray_dir)));
+  float3 pos  = mul4x3(a_mWorldViewInv, (*ray_pos));
+  float3 pos2 = mul4x3(a_mWorldViewInv, ((*ray_pos) + 100.0f*(*ray_dir)));
 
   float3 diff = pos2 - pos;
 
   (*ray_pos)  = pos;
   (*ray_dir)  = normalize(diff);
-}
-
-static inline float3 mul3x3(float4x4 m, float3 v)
-{
-  float3 res;
-  res.x = v.x * m.m_col[0].x + v.y * m.m_col[1].x + v.z * m.m_col[2].x;
-  res.y = v.x * m.m_col[0].y + v.y * m.m_col[1].y + v.z * m.m_col[2].y;
-  res.z = v.x * m.m_col[0].z + v.y * m.m_col[1].z + v.z * m.m_col[2].z;
-  return res;
 }
 
 

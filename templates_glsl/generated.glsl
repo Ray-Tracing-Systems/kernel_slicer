@@ -1,5 +1,8 @@
 #version 460
 #extension GL_GOOGLE_include_directive : require
+{% if length(Kernel.RTXNames) > 0 %}
+#extension GL_EXT_ray_query : require
+{% endif %}
 
 #include "common_generated.h"
 
@@ -7,6 +10,8 @@
 {% if not Arg.IsUBO %} 
 {% if Arg.IsImage %}
 layout(binding = {{loop.index}}, set = 0{% if Arg.NeedFmt%}, {{Arg.ImFormat}}{% endif %}) uniform {{Arg.Type}} {{Arg.Name}}; //
+{% else if Arg.IsAccelStruct %}
+layout(binding = {{loop.index}}, set = 0) uniform accelerationStructureEXT {{Arg.Name}};
 {% else %}
 layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}} { {{Arg.Type}} {{Arg.Name}}[]; }; //
 {% endif %} {# /* Arg.IsImage */ #}
@@ -22,6 +27,40 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 {{ShitFunc}}
 
 ## endfor
+{% for RTName in Kernel.RTXNames %}
+// RayScene intersection for '{{RTName}}'
+//
+CRT_Hit {{RTName}}_RayQuery_NearestHit(const vec4 rayPos, const vec4 rayDir)
+{
+  rayQueryEXT rayQuery;
+  rayQueryInitializeEXT(rayQuery, {{RTName}}, gl_RayFlagsOpaqueEXT, 0xff, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w);
+  
+  while(rayQueryProceedEXT(rayQuery)) { }
+ 
+  CRT_Hit res;
+  res.primId = -1;
+  res.instId = -1;
+  res.geomId = -1;
+  res.t      = rayDir.w;
+
+  if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT)
+  {    
+	  res.primId    = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
+	  res.geomId    = rayQueryGetIntersectionGeometryIndexEXT (rayQuery, true);
+    res.instId    = rayQueryGetIntersectionInstanceIdEXT    (rayQuery, true);
+	  res.t         = rayQueryGetIntersectionTEXT(rayQuery, true);
+    
+	  vec3 barycentricCoords = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, true));
+    barycentricCoords.x    = 1.0 - barycentricCoords.y - barycentricCoords.z;
+    res.coords[0] = barycentricCoords.z;
+    res.coords[1] = barycentricCoords.y;
+    res.coords[2] = barycentricCoords.x;
+  }
+
+  return res;
+}
+
+{% endfor %}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -1137,6 +1137,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Name"]     = commonArg.argName;
       argj["IsUBO"]    = commonArg.isUBO;
       argj["IsImage"]  = commonArg.isImage;
+      argj["IsAccelStruct"] = false; 
       argj["NeedFmt"]  = !commonArg.isSampler;
       argj["ImFormat"] = commonArg.imageFormat;
 
@@ -1149,6 +1150,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     // now add all std::vector members
     //
+    json rtxNames = std::vector<std::string>();
     json vecs = std::vector<std::string>();
     for(const auto& container : k.usedContainers)
     {
@@ -1168,6 +1170,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Name"]       = pVecMember->second.name;
       argj["IsUBO"]      = false;
       argj["IsImage"]    = false;
+      argj["IsAccelStruct"] = false; 
       if(pVecMember->second.isContainer && kslicer::IsTextureContainer(pVecMember->second.containerType))
       {
         std::string imageFormat;
@@ -1178,6 +1181,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         argj["NeedFmt"]  = (accessFlags != kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE);
         argj["ImFormat"] = imageFormat;
         argj["SizeOffset"] = 0;
+      }
+      else if(container.second.isAccelStruct)
+      {
+        argj["IsAccelStruct"] = true;
+        rtxNames.push_back(container.second.name);
       }
       else
         argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
@@ -1286,6 +1294,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["LastArgNF"]  = VArgsSize; // Last Argument No Flags
     kernelJson["Args"]       = args;
     kernelJson["Vecs"]       = vecs;
+    kernelJson["RTXNames"]   = rtxNames;
     kernelJson["UserArgs"]   = userArgs;
     kernelJson["Members"]    = members;
     kernelJson["Name"]       = k.name;
