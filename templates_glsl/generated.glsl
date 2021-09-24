@@ -46,7 +46,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(const vec4 rayPos, const vec4 rayDir)
   if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT)
   {    
 	  res.primId    = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
-	  res.geomId    = rayQueryGetIntersectionGeometryIndexEXT (rayQuery, true);
+	  res.geomId    = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, true);
     res.instId    = rayQueryGetIntersectionInstanceIdEXT    (rayQuery, true);
 	  res.t         = rayQueryGetIntersectionTEXT(rayQuery, true);
     

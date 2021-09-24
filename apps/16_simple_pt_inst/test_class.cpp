@@ -121,6 +121,24 @@ void TestClass::kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, uint* out_c
     return;
   }
 
+  //int selector = lhit.geomId;
+  //if(selector % 8 == 0)
+  //  out_color[tid] = 0x00A0A0A0;
+  //else if(selector % 8 == 1)
+  //  out_color[tid] = 0x00A00000;
+  //else if(selector % 8 == 2)
+  //  out_color[tid] = 0x0000A000;
+  //else if(selector % 8 == 3)
+  //  out_color[tid] = 0x000000A0;
+  //else if(selector % 8 == 4)
+  //  out_color[tid] = 0x00A0A000;
+  //else if(selector % 8 == 5)
+  //  out_color[tid] = 0x00A000A0;
+  //else if(selector % 8 == 6)
+  //  out_color[tid] = 0x0000A0A0;
+  //else if(selector % 8 == 7)
+  //  out_color[tid] = 0x00070707;
+
   const uint32_t matId = m_matIdByPrimId[m_matIdOffsets[lhit.geomId] + lhit.primId];
   const float4 mdata   = m_materials[matId];
   const float3 color = mdata.w > 0.0f ? clamp(float3(mdata.w,mdata.w,mdata.w), 0.0f, 1.0f) : to_float3(mdata);
@@ -266,7 +284,8 @@ void test_class_cpu()
     test.CastSingleRay(i, packedXY.data(), pixelData.data());
 
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-  
+  //return;
+
   // now test path tracing
   //
   const int PASS_NUMBER           = 100;

@@ -317,7 +317,6 @@ void test_class_gpu()
     std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
     pCopyHelper->ReadBuffer(colorBuffer1, 0, pixelData.data(), pixelData.size()*sizeof(uint32_t));
     SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-   
     //return;
     
     std::cout << "begin path tracing passes ... " << std::endl;

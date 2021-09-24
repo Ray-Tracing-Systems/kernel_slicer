@@ -220,6 +220,8 @@ void test_class_gpu()
   // Required by VK_KHR_RAY_QUERY
   deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
   deviceExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+  deviceExtensions.push_back("VK_KHR_spirv_1_4");
+  deviceExtensions.push_back("VK_KHR_shader_float_controls");  
 
   // Required by VK_KHR_acceleration_structure
   deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);

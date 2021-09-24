@@ -23,7 +23,7 @@ uint32_t VulkanRTX::AddGeom_Triangles4f(const LiteMath::float4* a_vpos4f, size_t
   memcpy(meshData.vPos4f.data(), a_vpos4f, a_vertNumber*sizeof(LiteMath::float4));
   memcpy(meshData.indices.data(), a_triIndices, a_indNumber*sizeof(uint32_t));
   auto meshId = m_pScnMgr->AddMeshFromData(meshData);
-  m_meshTop   = meshId;
+  m_meshTop   = meshId+1;
   return meshId;
 }
 
