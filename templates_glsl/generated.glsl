@@ -28,7 +28,7 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 
 ## endfor
 {% for RTName in Kernel.RTXNames %}
-// RayScene intersection for '{{RTName}}'
+// RayScene intersection with '{{RTName}}'
 //
 CRT_Hit {{RTName}}_RayQuery_NearestHit(const vec4 rayPos, const vec4 rayDir)
 {

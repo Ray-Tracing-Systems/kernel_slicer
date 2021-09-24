@@ -29,7 +29,7 @@ public:
   {
   
   }
-
+  
   ~TestClass_GPU()
   {
     if(m_rtPipelineLayout) vkDestroyPipelineLayout(device, m_rtPipelineLayout, nullptr);
