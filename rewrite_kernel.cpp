@@ -335,8 +335,17 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
     const std::string exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
     const auto posOfPoint         = exprContent.find("->");
     const std::string memberNameA = exprContent.substr(0, posOfPoint);
-    const std::string tail        = exprContent.substr(posOfPoint+2);
-    m_rewriter.ReplaceText(f->getSourceRange(), memberNameA + "_" + tail);
+    //const std::string tail        = exprContent.substr(posOfPoint+2);
+    std::string resCallText = memberNameA + "_" + fname + "(";
+    for(unsigned i=0;i<f->getNumArgs(); i++)
+    {
+      resCallText += RecursiveRewrite(f->getArg(i));
+      if(i!=f->getNumArgs()-1)
+        resCallText += ", ";
+    }
+    resCallText += ")";
+    //m_rewriter.ReplaceText(f->getSourceRange(), memberNameA + "_" + tail);
+    m_rewriter.ReplaceText(f->getSourceRange(), resCallText);
     MarkRewritten(f);
   }
 
