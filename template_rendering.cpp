@@ -378,10 +378,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   {
     if(var.IsUsedTexture())
       data["TextureMembers"].push_back(var.name);
-    else if(var.isContainer && var.containerType == "vector")
+    else if(var.isContainer && kslicer::IsVectorContainer(var.containerType))
       data["VectorMembers"].push_back(var.name);
-    else if(var.isContainer && (var.containerType == "shared_ptr" || var.containerType == "unique_ptr") && 
-                               ((var.containerDataType == "struct ISceneObject") || (var.containerDataType == "class ISceneObject")))
+    else if(var.isContainer && kslicer::IsPointerContainer(var.containerType) && 
+                               ((var.containerDataType == "struct ISceneObject") || 
+                                (var.containerDataType == "class ISceneObject")))
       data["SceneMembers"].push_back(var.name);
   }
 
@@ -469,7 +470,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
       data["ClassTextureVars"].push_back(local);     
     }
-    else if(v.isContainer && v.containerType == "vector")
+    else if(v.isContainer && kslicer::IsVectorContainer(v.containerType))
     {
       std::string sizeName     = v.name + "_size";
       std::string capacityName = v.name + "_capacity";

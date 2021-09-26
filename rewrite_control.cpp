@@ -335,6 +335,18 @@ bool kslicer::IsAccelStruct(const std::string& a_typeName)
          (a_typeName == "const std::shared_ptr<ISceneObject>") || (a_typeName == "const std::unique_ptr<ISceneObject>");
 }
 
+bool kslicer::IsVectorContainer(const std::string& a_typeName)
+{
+  return (a_typeName == "vector") || (a_typeName == "std::vector") || (a_typeName == "cvex::vector");  
+}
+
+bool kslicer::IsPointerContainer(const std::string& a_typeName)
+{
+  return (a_typeName == "shared_ptr") || (a_typeName == "unique_ptr") || 
+         (a_typeName == "std::shared_ptr") || (a_typeName == "std::unique_ptr");
+}
+
+
 std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractArgumentsOfAKernelCall(CallExpr* f)
 {
   std::vector<kslicer::ArgReferenceOnCall> args; 

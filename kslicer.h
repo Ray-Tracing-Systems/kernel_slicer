@@ -903,7 +903,9 @@ namespace kslicer
   bool IsTexture(clang::QualType a_qt);
   bool IsAccelStruct(clang::QualType a_qt);
   bool IsAccelStruct(const std::string& a_typeName);
-  
+  bool IsVectorContainer(const std::string& a_typeName);
+  bool IsPointerContainer(const std::string& a_typeName);
+
   void SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType);
   std::string GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg);
   std::string GetDSVulkanAccessLayout(TEX_ACCESS a_accessMask);
