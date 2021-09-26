@@ -84,13 +84,11 @@ struct SceneManager
   { return m_tlas; }
 
   void BuildAllBLAS();
-
   void BuildTLAS();
 
-private:
   void LoadGeoDataOnGPU();
-
   void AddBLAS(uint32_t meshIdx);
+private:
 
   std::vector<MeshInfo> m_meshInfos = {};
   std::shared_ptr<IMeshData> m_pMeshData = nullptr;

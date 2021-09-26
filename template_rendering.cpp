@@ -381,7 +381,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     else if(var.isContainer && var.containerType == "vector")
       data["VectorMembers"].push_back(var.name);
     else if(var.isContainer && (var.containerType == "shared_ptr" || var.containerType == "unique_ptr") && 
-                               (var.containerDataType == "struct ISceneObject") || (var.containerDataType == "class ISceneObject"))
+                               ((var.containerDataType == "struct ISceneObject") || (var.containerDataType == "class ISceneObject")))
       data["SceneMembers"].push_back(var.name);
   }
 
@@ -469,7 +469,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
       data["ClassTextureVars"].push_back(local);     
     }
-    else
+    else if(v.isContainer && v.containerType == "vector")
     {
       std::string sizeName     = v.name + "_size";
       std::string capacityName = v.name + "_capacity";
@@ -486,6 +486,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["TypeOfData"]     = v.containerDataType;
       data["ClassVectorVars"].push_back(local);     
     }
+    // TODO: add processing for Scene/Acceleration structures
+
   }
 
   data["RedVectorVars"] = std::vector<std::string>();
@@ -584,6 +586,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         else
           argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
       }
+      else if(arg.isContainer && arg.containerDataType == "struct ISceneObject")
+      {
+        argData["Type"] = "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR";
+      }
       else
         argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
 
@@ -605,6 +611,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
         else
           argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+      }
+      else if(container.second.isAccelStruct)
+      {
+        argData["Type"] = "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR";
       }
       else
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
@@ -738,7 +748,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+  data["HasRTXAccelStruct"] = false;
   data["MainFunctions"] = std::vector<std::string>();
   for(const auto& mainFunc : a_methodsToGenerate)
   {
@@ -775,7 +785,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       auto& dsArgs               = a_classInfo.allDescriptorSetsInfo[i];
       const auto pFoundKernel    = a_classInfo.kernels.find(dsArgs.originKernelName);
       const bool handMadeKernels = (pFoundKernel == a_classInfo.kernels.end());
-
+      
       json local;
       local["Id"]         = i;
       local["KernelName"] = dsArgs.kernelName;
@@ -795,9 +805,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j]);
 
         json arg;
-        arg["Id"]        = realId;
-        arg["Name"]      = dsArgName;
-        arg["IsTexture"] = dsArgs.descriptorSetsInfo[j].isTexture;
+        arg["Id"]            = realId;
+        arg["Name"]          = dsArgName;
+        arg["IsTexture"]     = dsArgs.descriptorSetsInfo[j].isTexture;
+        arg["IsAccelStruct"] = dsArgs.descriptorSetsInfo[j].isAccelStruct;
+
         if(dsArgs.descriptorSetsInfo[j].isTexture)
         {
           bool isConst = dsArgs.descriptorSetsInfo[j].isConst;
@@ -812,6 +824,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           arg["AccessDSType"] = texDSInfo.accessDSType;
           arg["SamplerName"]  = texDSInfo.SamplerName;
         }
+        else if(dsArgs.descriptorSetsInfo[j].isAccelStruct)
+        {
+          std::cout << "[kslicer error]: passing acceleration structures to kernel arguments is not yet implemented" << std::endl; 
+          data["HasRTXAccelStruct"] = true;
+        } 
+
         local["Args"].push_back(arg);
         local["ArgNames"].push_back(dsArgs.descriptorSetsInfo[j].varName);
         realId++;
@@ -822,9 +840,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         for(const auto& container : pFoundKernel->second.usedContainers) // add all class-member vectors bindings
         {
           json arg;
-          arg["Id"]        = realId;
-          arg["Name"]      = "m_vdata." + container.second.name;
-          arg["IsTexture"] = container.second.isTexture;
+          arg["Id"]            = realId;
+          arg["Name"]          = "m_vdata." + container.second.name;
+          arg["IsTexture"]     = container.second.isTexture;
+          arg["IsAccelStruct"] = container.second.isAccelStruct;
+
           if(container.second.isTexture)
           {
             auto pMember = a_classInfo.allDataMembers.find(container.second.name);
@@ -835,6 +855,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
             arg["AccessLayout"] = texDSInfo.accessLayout;
             arg["AccessDSType"] = texDSInfo.accessDSType;
             arg["SamplerName"]  = texDSInfo.SamplerName;
+          }
+          else if(container.second.isAccelStruct)
+          {
+            data["HasRTXAccelStruct"] = true;
+            arg["Name"] = container.second.name; // remove m_vdata."
           }
 
           local["Args"].push_back(arg);
@@ -850,6 +875,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           arg["Id"]        = realId;
           arg["Name"]      = std::string("m_") + hierarchy.interfaceName + "ObjPtr";
           arg["IsTexture"] = false;
+          arg["IsAccelStruct"] = false;
+
           local["Args"].push_back(arg);
           local["ArgNames"].push_back(hierarchy.interfaceName + "ObjPtrData");
           realId++;          
@@ -1118,6 +1145,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Name"]     = commonArg.argName;
       argj["IsUBO"]    = commonArg.isUBO;
       argj["IsImage"]  = commonArg.isImage;
+      argj["IsAccelStruct"] = false; 
       argj["NeedFmt"]  = !commonArg.isSampler;
       argj["ImFormat"] = commonArg.imageFormat;
 
@@ -1130,6 +1158,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     // now add all std::vector members
     //
+    json rtxNames = std::vector<std::string>();
     json vecs = std::vector<std::string>();
     for(const auto& container : k.usedContainers)
     {
@@ -1149,6 +1178,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Name"]       = pVecMember->second.name;
       argj["IsUBO"]      = false;
       argj["IsImage"]    = false;
+      argj["IsAccelStruct"] = false; 
       if(pVecMember->second.isContainer && kslicer::IsTextureContainer(pVecMember->second.containerType))
       {
         std::string imageFormat;
@@ -1159,6 +1189,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         argj["NeedFmt"]  = (accessFlags != kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE);
         argj["ImFormat"] = imageFormat;
         argj["SizeOffset"] = 0;
+      }
+      else if(container.second.isAccelStruct)
+      {
+        argj["IsAccelStruct"] = true;
+        rtxNames.push_back(container.second.name);
       }
       else
         argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
@@ -1267,6 +1302,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["LastArgNF"]  = VArgsSize; // Last Argument No Flags
     kernelJson["Args"]       = args;
     kernelJson["Vecs"]       = vecs;
+    kernelJson["RTXNames"]   = rtxNames;
     kernelJson["UserArgs"]   = userArgs;
     kernelJson["Members"]    = members;
     kernelJson["Name"]       = k.name;

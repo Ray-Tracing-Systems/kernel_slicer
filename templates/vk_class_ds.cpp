@@ -8,6 +8,10 @@
 #include "vulkan_basics.h"
 #include "{{IncludeClassDecl}}"
 
+{% if HasRTXAccelStruct %}
+#include "VulkanRTX.h"
+{% endif %}
+
 void {{MainClassName}}_Generated::AllocateAllDescriptorSets()
 {
   // allocate pool
@@ -61,6 +65,10 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
 
     std::array<VkDescriptorBufferInfo, {{DescriptorSet.ArgNumber}} + additionalSize> descriptorBufferInfo;
     std::array<VkDescriptorImageInfo,  {{DescriptorSet.ArgNumber}} + additionalSize> descriptorImageInfo;
+    {% if HasRTXAccelStruct %}
+    std::array<VkAccelerationStructureKHR,  {{DescriptorSet.ArgNumber}} + additionalSize> accelStructs;
+    std::array<VkWriteDescriptorSetAccelerationStructureKHR,  {{DescriptorSet.ArgNumber}} + additionalSize> descriptorAccelInfo;
+    {% endif %}
     std::array<VkWriteDescriptorSet,   {{DescriptorSet.ArgNumber}} + additionalSize> writeDescriptorSet;
 
 ## for Arg in DescriptorSet.Args
@@ -68,6 +76,14 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     descriptorImageInfo[{{Arg.Id}}].imageView   = {{Arg.Name}}View;
     descriptorImageInfo[{{Arg.Id}}].imageLayout = {{Arg.AccessLayout}};
     descriptorImageInfo[{{Arg.Id}}].sampler     = {{Arg.SamplerName}};
+    {% else if Arg.IsAccelStruct %}
+    {
+      VulkanRTX* pScene = dynamic_cast<VulkanRTX*>({{Arg.Name}}.get());
+      if(pScene == nullptr)
+        std::cout << "[{{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name}}]: fatal error, wrong accel struct type" << std::endl;
+      accelStructs       [{{Arg.Id}}] = pScene->GetSceneAccelStruct();
+      descriptorAccelInfo[{{Arg.Id}}] = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,VK_NULL_HANDLE,1,&accelStructs[{{Arg.Id}}]};
+    }
     {% else %}
     descriptorBufferInfo[{{Arg.Id}}]        = VkDescriptorBufferInfo{};
     descriptorBufferInfo[{{Arg.Id}}].buffer = {{Arg.Name}}Buffer;
@@ -85,6 +101,9 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     writeDescriptorSet[{{Arg.Id}}].pBufferInfo      = nullptr;
     writeDescriptorSet[{{Arg.Id}}].pImageInfo       = &descriptorImageInfo[{{Arg.Id}}];
     writeDescriptorSet[{{Arg.Id}}].pTexelBufferView = nullptr; 
+    {% else if Arg.IsAccelStruct %}
+    writeDescriptorSet[{{Arg.Id}}].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+    writeDescriptorSet[{{Arg.Id}}].pNext          = &descriptorAccelInfo[{{Arg.Id}}];
     {% else %}
     writeDescriptorSet[{{Arg.Id}}].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     writeDescriptorSet[{{Arg.Id}}].pBufferInfo      = &descriptorBufferInfo[{{Arg.Id}}];

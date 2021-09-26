@@ -694,10 +694,11 @@ int main(int argc, const char **argv)
             else if(member.second.isContainer)
             {
               kslicer::UsedContainerInfo info;
-              info.type      = member.second.type;
-              info.name      = member.second.name;
-              info.isTexture = member.second.IsUsedTexture();
-              info.isConst   = info.isTexture;
+              info.type          = member.second.type;
+              info.name          = member.second.name;
+              info.isTexture     = member.second.IsUsedTexture();
+              info.isConst       = info.isTexture;
+              info.isAccelStruct = kslicer::IsAccelStruct(info.type); 
               k.second.usedContainers[info.name] = info;
             }
             else 

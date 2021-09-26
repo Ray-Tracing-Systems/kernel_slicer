@@ -7,6 +7,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <memory>
 
 #include "CrossRT.h"
 
@@ -43,12 +44,11 @@ public:
     m_worldViewProjInv  = inverse4x4(proj);
     InitRandomGens(a_maxThreads);
 
-    m_pAccelStruct = CreateSceneRT(""); 
+    m_pAccelStruct = std::shared_ptr<ISceneObject>(CreateSceneRT("")); 
   }
 
   ~TestClass()
   {
-    DeleteSceneRT(m_pAccelStruct); 
     m_pAccelStruct = nullptr;
   }
 
@@ -102,7 +102,7 @@ protected:
   float4x4                     m_worldViewProjInv;
   std::vector<RandomGen>       m_randomGens;
 
-  ISceneObject* m_pAccelStruct = nullptr;
+  std::shared_ptr<ISceneObject> m_pAccelStruct = nullptr;
 };
 
 #endif

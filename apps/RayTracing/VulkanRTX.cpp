@@ -1,38 +1,4 @@
-#include <iostream>
-#include <vector>
-#include <unordered_map>
-#include <cassert>
-#include <limits>
-
-#include "CrossRT.h"
-#include "scene_mgr.h" // RTX implementation of acceleration structures
-
-class VulkanRTX : public ISceneObject
-{
-public:
-  VulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_transferQId, uint32_t a_graphicsQId);
-  ~VulkanRTX();
-  void ClearGeom() override;
-  
-  uint32_t AddGeom_Triangles4f(const LiteMath::float4* a_vpos4f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber) override;
-  void     UpdateGeom_Triangles4f(uint32_t a_geomId, const LiteMath::float4* a_vpos4f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber) override;
-
-  void ClearScene() override; 
-  void CommitScene  () override; 
-  
-  uint32_t AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_matrix) override;
-  void     UpdateInstance(uint32_t a_instanceId, const LiteMath::float4x4& a_matrix) override;
-
-  CRT_Hit  RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) override;
-
-protected:
-  std::shared_ptr<SceneManager> m_pScnMgr;
-};
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#include "VulkanRTX.h"
 
 ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_transferQId, uint32_t a_graphicsQId) { return new VulkanRTX(a_device, a_physDevice, a_transferQId, a_graphicsQId); }
 
@@ -56,7 +22,9 @@ uint32_t VulkanRTX::AddGeom_Triangles4f(const LiteMath::float4* a_vpos4f, size_t
   cmesh::SimpleMesh meshData(a_vertNumber, a_indNumber);
   memcpy(meshData.vPos4f.data(), a_vpos4f, a_vertNumber*sizeof(LiteMath::float4));
   memcpy(meshData.indices.data(), a_triIndices, a_indNumber*sizeof(uint32_t));
-  return m_pScnMgr->AddMeshFromData(meshData);
+  auto meshId = m_pScnMgr->AddMeshFromData(meshData);
+  m_meshTop   = meshId+1;
+  return meshId;
 }
 
 void VulkanRTX::UpdateGeom_Triangles4f(uint32_t a_geomId, const LiteMath::float4* a_vpos4f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber)
@@ -76,6 +44,9 @@ uint32_t VulkanRTX::AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_m
 
 void VulkanRTX::CommitScene()
 {
+  m_pScnMgr->LoadGeoDataOnGPU();
+  for(uint32_t i=0;i<m_meshTop;i++)
+    m_pScnMgr->AddBLAS(i);
   m_pScnMgr->BuildAllBLAS(); // why can't we just build BVH tree for single mesh in thsi API, this seems impractical
   m_pScnMgr->BuildTLAS();
 }  

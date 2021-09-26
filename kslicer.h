@@ -54,8 +54,9 @@ namespace kslicer
   {
     std::string type;
     std::string name;
-    bool isTexture = false;
-    bool isConst = false;
+    bool isTexture     = false;
+    bool isConst       = false;
+    bool isAccelStruct = false;
   };
 
   bool  IsTextureContainer(const std::string& a_typeName); ///<! return true for all types of textures
@@ -287,6 +288,7 @@ namespace kslicer
     bool isTexture             = false;
     bool isConst               = false;
     bool umpersanned           = false; // just signal that '&' was applied to this argument, and thus it is likely to be (ARG_REFERENCE_LOCAL or ARG_REFERENCE_CLASS_POD)
+    bool isAccelStruct         = false;
   };
 
   struct KernelCallInfo
@@ -899,6 +901,9 @@ namespace kslicer
 
 
   bool IsTexture(clang::QualType a_qt);
+  bool IsAccelStruct(clang::QualType a_qt);
+  bool IsAccelStruct(const std::string& a_typeName);
+  
   void SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType);
   std::string GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg);
   std::string GetDSVulkanAccessLayout(TEX_ACCESS a_accessMask);
