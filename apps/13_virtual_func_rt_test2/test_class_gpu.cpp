@@ -12,7 +12,7 @@
 #include "vk_buffers.h"
 
 #include "ray_tracing/vk_rt_utils.h"
-//#include "ray_tracing/vk_rt_funcs.h"
+#include "ray_tracing/vk_rt_funcs.h"
 
 #include "scene_mgr.h"
 
@@ -21,13 +21,15 @@
 
 using LiteMath::uint4;
 
+const bool USE_RTX = false;
+
 class TestClass_GPU : public TestClass_Generated
 {
 
 public:
   TestClass_GPU(std::shared_ptr<SceneManager> a_pMgr) : m_pScnMgr(a_pMgr) 
   {
-    m_enableHWAccel = true;
+    m_enableHWAccel = USE_RTX;
   }
 
   ~TestClass_GPU()
@@ -46,6 +48,9 @@ public:
 
   void SetupRTPipeline(VkDevice a_device)
   {
+    if(!m_enableHWAccel)
+      return;
+
     // first DS is from generated code, second is ours
     //
     std::vector<std::pair<VkDescriptorType, uint32_t> > dtypes = {
@@ -100,6 +105,7 @@ public:
       TestClass_Generated::RayTraceCmd(tid, rayPosAndNear, rayDirAndFar, out_hit, out_bars);
       return;
     }
+
     uint32_t blockSizeX = 256;
     uint32_t blockSizeY = 1;
     uint32_t blockSizeZ = 1;
@@ -135,11 +141,13 @@ public:
       return 1; 
 
     // make scene from single mesh
-    //  
-    m_pScnMgr->LoadSingleMesh(meshPath);
-    m_pScnMgr->BuildAllBLAS();
-    m_pScnMgr->BuildTLAS();
-    
+    //
+    if(m_enableHWAccel)
+    {  
+      m_pScnMgr->LoadSingleMesh(meshPath);
+      m_pScnMgr->BuildAllBLAS();
+      m_pScnMgr->BuildTLAS();
+    }
     return 0;
   }
 
@@ -207,11 +215,11 @@ void test_class_gpu()
   VkPhysicalDeviceShaderFloat16Int8Features features = {};
   features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
   features.shaderInt8 = VK_TRUE;
-  features.pNext      = &rtxFeatures.m_enabledAccelStructFeatures;
+  features.pNext      = nullptr; // &rtxFeatures.m_enabledAccelStructFeatures;
   
-  //VkPhysicalDeviceFeatures2 physDevFeatures2 = {};
-  //physDevFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-  //physDevFeatures2.pNext = &features;
+  VkPhysicalDeviceFeatures2 physDevFeatures2 = {};
+  physDevFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+  physDevFeatures2.pNext = USE_RTX ? &features : nullptr;
 
   std::vector<const char*> validationLayers, deviceExtensions;
   VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
@@ -222,27 +230,31 @@ void test_class_gpu()
   deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
   deviceExtensions.push_back("VK_KHR_shader_float16_int8"); 
   
-  // Required by VK_KHR_RAY_QUERY
-  deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
-  deviceExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+  // // Required by VK_KHR_RAY_QUERY
+  if(USE_RTX)
+  {
+    deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+    // 
+    // Required by VK_KHR_acceleration_structure
+    deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
 
-  // Required by VK_KHR_acceleration_structure
-  deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
-  deviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
-  deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
-
-  // // Required by VK_KHR_ray_tracing_pipeline
-  // m_deviceExtensions.push_back(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
-  // // Required by VK_KHR_spirv_1_4
-  // m_deviceExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
+    // // Required by VK_KHR_ray_tracing_pipeline
+    deviceExtensions.push_back(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
+    // Required by VK_KHR_spirv_1_4
+    deviceExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
+  }
 
   fIDs.compute = queueComputeFID;
   device       = vk_utils::createLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures, 
                                                fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, &features);
   volkLoadDevice(device);
-  //vk_rt_utils::LoadRayTracingFunctions(device);
+  if(USE_RTX)
+    vk_rt_utils::LoadRayTracingFunctions(device);
 
-  commandPool  = vk_utils::createCommandPool(device, VK_QUEUE_COMPUTE_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+  commandPool  = vk_utils::createCommandPool(device, fIDs.compute, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
   // (2) initialize vulkan helpers
   //  
@@ -303,6 +315,7 @@ void test_class_gpu()
 
     vkResetCommandBuffer(commandBuffer, 0);
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
+    vkCmdFillBuffer(commandBuffer, colorBuffer1, 0, VK_WHOLE_SIZE, 0);
     pGPUImpl->CastSingleRayCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, nullptr, nullptr);  // !!! USING GENERATED CODE !!! 
     vkEndCommandBuffer(commandBuffer);  
    
@@ -326,11 +339,11 @@ void test_class_gpu()
     vkEndCommandBuffer(commandBuffer);  
     
     start = std::chrono::high_resolution_clock::now();
-    const int NUM_PASSES = 1000.0f;
+    const int NUM_PASSES = 100;
     for(int i=0;i<NUM_PASSES;i++)
     {
       vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
-      if(i % 100 == 0)
+      if(i % 10 == 0)
       {
         std::cout << "progress (gpu) = " << 100.0f*float(i)/float(NUM_PASSES) << "% \r";
         std::cout.flush();

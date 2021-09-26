@@ -48,7 +48,7 @@ add_executable(testapp main.cpp
                        ../vkutils/vk_pipeline.cpp
                        ../vkutils/vk_descriptor_sets.cpp
                        ../vkutils/ray_tracing/vk_rt_utils.cpp
-                       #../vkutils/ray_tracing/vk_rt_funcs.cpp
+                       ../vkutils/ray_tracing/vk_rt_funcs.cpp
                        ../vkutils/geom/vk_mesh.cpp
                        ../loader_utils/pugixml.cpp
                        ../loader_utils/hydraxml.cpp

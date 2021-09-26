@@ -306,7 +306,7 @@ void test_class_cpu()
   //auto start = std::chrono::high_resolution_clock::now();
 
   const int PASS_NUMBER           = 100;
-  const int ITERS_PER_PASS_NUMBER = 4;
+  const int ITERS_PER_PASS_NUMBER = 1;
   for(int passId = 0; passId < PASS_NUMBER; passId++)
   {
     #pragma omp parallel for default(shared)
