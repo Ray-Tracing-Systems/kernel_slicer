@@ -276,7 +276,7 @@ void test_class_cpu()
       test.PackXY(x, y, packedXY.data());
   }
   
-  test.LoadScene("/home/frol/PROG/HydraRepos/HydraCore/hydra_app/tests/test_42/statex_00001.xml");
+  test.LoadScene("/home/vs/repos/hydra/HydraCore/hydra_app/tests/test_42/statex_00001.xml");
   
   // test simple ray casting
   //

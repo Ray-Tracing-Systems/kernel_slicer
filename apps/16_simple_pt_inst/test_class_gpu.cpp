@@ -261,7 +261,7 @@ void test_class_gpu()
   auto pGPUImpl    = std::make_shared<TestClass_GPU>();                      // !!! USING GENERATED CODE !!! 
   
   pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT); // !!! USING GENERATED CODE !!!                        
-  pGPUImpl->LoadScene("/home/frol/PROG/HydraRepos/HydraCore/hydra_app/tests/test_42/statex_00001.xml");
+  pGPUImpl->LoadScene("/home/vs/repos/hydra/HydraCore/hydra_app/tests/test_42/statex_00001.xml");
 
   // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
   //
