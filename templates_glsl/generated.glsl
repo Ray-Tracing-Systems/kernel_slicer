@@ -35,7 +35,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(const vec4 rayPos, const vec4 rayDir)
   rayQueryEXT rayQuery;
   rayQueryInitializeEXT(rayQuery, {{RTName}}, gl_RayFlagsOpaqueEXT, 0xff, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w);
   
-  while(rayQueryProceedEXT(rayQuery)) { }
+  while(rayQueryProceedEXT(rayQuery)) { } // actually may omit 'while' when 'gl_RayFlagsOpaqueEXT' is used
  
   CRT_Hit res;
   res.primId = -1;
@@ -49,15 +49,22 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(const vec4 rayPos, const vec4 rayDir)
 	  res.geomId    = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, true);
     res.instId    = rayQueryGetIntersectionInstanceIdEXT    (rayQuery, true);
 	  res.t         = rayQueryGetIntersectionTEXT(rayQuery, true);
+    vec2 bars     = rayQueryGetIntersectionBarycentricsEXT(rayQuery, true);
     
-	  vec3 barycentricCoords = vec3(0.0, rayQueryGetIntersectionBarycentricsEXT(rayQuery, true));
-    barycentricCoords.x    = 1.0 - barycentricCoords.y - barycentricCoords.z;
-    res.coords[0] = barycentricCoords.z;
-    res.coords[1] = barycentricCoords.y;
-    res.coords[2] = barycentricCoords.x;
+    res.coords[0] = bars.y;
+    res.coords[1] = bars.x;
+    res.coords[2] = 1.0f - bars.y - bars.x;
   }
 
   return res;
+}
+
+bool {{RTName}}_RayQuery_AnyHit(const vec4 rayPos, const vec4 rayDir)
+{
+  rayQueryEXT rayQuery;
+  rayQueryInitializeEXT(rayQuery, {{RTName}}, gl_RayFlagsTerminateOnFirstHitEXT, 0xff, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w);
+  rayQueryProceedEXT(rayQuery);
+  return (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 }
 
 {% endfor %}

@@ -42,6 +42,7 @@ public:
   {
     InitRandomGens(a_maxThreads);
     m_pAccelStruct = std::shared_ptr<ISceneObject>(CreateSceneRT(""), [](ISceneObject *p) { DeleteSceneRT(p); } ); 
+    m_light.norm = float3(0,-1,0);
   }
 
   ~TestClass()
@@ -112,7 +113,7 @@ protected:
     float3 pos;
     float2 size;
     float3 intensity;
-    float3 norm = float3(0,-1,0);
+    float3 norm;
   } m_light;
 
   uint m_intergatorType = INTEGRATOR_STUPID_PT;

@@ -6,6 +6,7 @@
 #define LAYOUT_STD140
 #include "LiteMath.h"
 typedef LiteMath::float4x4 mat4;
+typedef LiteMath::float2   vec2;
 typedef LiteMath::float3   vec3;
 typedef LiteMath::float4   vec4;
 #else
@@ -20,6 +21,7 @@ typedef LiteMath::float4   vec4;
 #include "LiteMath.h"
 #else
 #define float4x4 mat4
+#define float2   vec2
 #define float3   vec3
 #define float4   vec4
 #define uint32_t uint

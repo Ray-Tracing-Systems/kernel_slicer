@@ -286,7 +286,10 @@ void test_class_gpu()
   pGPUImpl->SetVulkanInOutFor_NaivePathTrace(xyBuffer,   0,   // !!! USING GENERATED CODE !!!
                                              colorBuffer2,0); // !!! USING GENERATED CODE !!!
 
-  pGPUImpl->UpdateAll(pCopyHelper);                           // !!! USING GENERATED CODE !!!
+  pGPUImpl->SetVulkanInOutFor_ShadowPathTrace(xyBuffer,   0,   // !!! USING GENERATED CODE !!!
+                                              colorBuffer2,0); // !!! USING GENERATED CODE !!!
+
+  pGPUImpl->UpdateAll(pCopyHelper);                            // !!! USING GENERATED CODE !!!
   
   // now compute some thing useful
   //
@@ -323,6 +326,7 @@ void test_class_gpu()
     
     vkResetCommandBuffer(commandBuffer, 0);
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
+    vkCmdFillBuffer(commandBuffer, colorBuffer2, 0, VK_WHOLE_SIZE, 0);        // clear accumulated color
     pGPUImpl->NaivePathTraceCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, 6, nullptr, nullptr);  // !!! USING GENERATED CODE !!! 
     vkEndCommandBuffer(commandBuffer);  
     
@@ -358,6 +362,40 @@ void test_class_gpu()
       pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
     }
     SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    std::cout << std::endl;
+
+    vkResetCommandBuffer(commandBuffer, 0);
+    vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
+    vkCmdFillBuffer(commandBuffer, colorBuffer2, 0, VK_WHOLE_SIZE, 0);        // clear accumulated color
+    pGPUImpl->ShadowPathTraceCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, 6, nullptr, nullptr);  // !!! USING GENERATED CODE !!! 
+    vkEndCommandBuffer(commandBuffer);  
+    
+    start = std::chrono::high_resolution_clock::now();
+    for(int i=0;i<NUM_PASSES;i++)
+    {
+      vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
+      if(i % 100 == 0)
+      {
+        std::cout << "progress (gpu) = " << 100.0f*float(i)/float(NUM_PASSES) << "% \r";
+        std::cout.flush();
+      }
+    }
+    std::cout << std::endl;
+    stop = std::chrono::high_resolution_clock::now();
+    ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+    std::cout << ms << " ms for " << NUM_PASSES << " times of command buffer execution " << std::endl;
+
+    pCopyHelper->ReadBuffer(colorBuffer2, 0, pixelsf.data(), pixelsf.size()*sizeof(float4));  
+    for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
+    {
+      float4 color = pixelsf[i]*normConst;
+      color.x      = powf(color.x, invGamma);
+      color.y      = powf(color.y, invGamma);
+      color.z      = powf(color.z, invGamma);
+      color.w      = 1.0f;
+      pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
+    }
+    SaveBMP("zout_gpu3.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
     std::cout << std::endl;
     
   }
