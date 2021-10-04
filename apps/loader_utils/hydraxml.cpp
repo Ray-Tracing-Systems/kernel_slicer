@@ -261,6 +261,8 @@ namespace hydra_xml
       inst.lightId   = instNode.attribute(L"light_id").as_uint(); 
       inst.lightNode = lights[inst.lightId];
       inst.node      = instNode;
+      inst.matrix    = float4x4FromString(instNode.attribute(L"matrix").as_string());
+      result.push_back(inst);
     }
     return result;
   }
