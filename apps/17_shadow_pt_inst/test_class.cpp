@@ -186,15 +186,18 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
     const float pdfA    = 1.0f / (m_light.size.x*m_light.size.y);
     const float cosVal  = max(dot(shadowRayDir, (-1.0f)*m_light.norm), 0.0f);
     const float pdfW    = PdfAtoW(pdfA, hitDist, cosVal);
-    const float3 samCol = m_light.intensity/max(pdfW, 1e-6f);
+    const float3 samCol = M_PI*m_light.intensity/max(pdfW, 1e-6f);
     
     const uint32_t matId = m_matIdByPrimId[m_matIdOffsets[lhit.geomId] + lhit.primId];
     const float4 mdata   = m_materials[matId];
-    
+
+    const float3 brdfVal    = to_float3(mdata)*INV_PI;
+    const float cosThetaOut = max(dot(shadowRayDir, hit.norm), 0.0f);
+
     if(cosVal <= 0.0f)
       *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
     else
-      *out_shadeColor = to_float4(samCol*to_float3(mdata)* INV_PI, 0.0f);
+      *out_shadeColor = to_float4(samCol*brdfVal*cosThetaOut, 0.0f);
   }
   else
     *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
