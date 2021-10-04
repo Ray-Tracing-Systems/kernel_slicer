@@ -10,7 +10,14 @@
    * cd build
    * cmake -G Ninja ../llvm -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" 
    * ninja 
-   * if it fail, **try to run "ninja" again several times** untill you finally build everithing. It might happen due to huge resource usage during linking.
+   * if it fail, **try to run "ninja" again several times** untill you finally build everithing. It might happen due to huge resource usage during linking. Consider:
+   ```
+   while :
+   do
+   ninja -j 1
+   done
+   # instead of ninja
+   ```
    * if some parts of llvm are still can not be build, that's not a problem in general
 
 4) go to 'llvm-project/clang-tools-extra'
