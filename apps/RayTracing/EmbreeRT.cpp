@@ -223,8 +223,9 @@ CRT_Hit  EmbreeRT::RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::fl
     result.geomId = m_geomIdByInstId[rayhit.hit.instID[0]];
     result.instId = rayhit.hit.instID[0];
     result.primId = rayhit.hit.primID;
-    result.coords[0] = rayhit.hit.u;
-    result.coords[1] = rayhit.hit.v;
+    result.coords[1] = rayhit.hit.u;
+    result.coords[0] = rayhit.hit.v;
+    result.coords[2] = 1.0f - rayhit.hit.v - rayhit.hit.u;
   }
   else
   {

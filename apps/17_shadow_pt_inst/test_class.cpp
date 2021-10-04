@@ -402,8 +402,7 @@ void test_class_cpu()
   const float normConst = 1.0f/float(PASS_NUMBER*ITERS_PER_PASS_NUMBER);
   const float invGamma  = 1.0f / 2.2f;
 
-  
-  /*
+
   memset(realColor.data(), 0, sizeof(float)*4*realColor.size());
   test.SetIntegratorType(TestClass::INTEGRATOR_STUPID_PT);
   for(int passId = 0; passId < PASS_NUMBER; passId++)
@@ -435,7 +434,6 @@ void test_class_cpu()
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }
   SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-  */
   
   memset(realColor.data(), 0, sizeof(float)*4*realColor.size());
   test.SetIntegratorType(TestClass::INTEGRATOR_SHADOW_PT);
