@@ -55,6 +55,7 @@ public:
   void PackXY(uint tidX, uint tidY, uint* out_pakedXY);
   void CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color);
   void NaivePathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color);
+  void ShadowPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color);
 
   void kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY);
 
@@ -66,13 +67,24 @@ public:
 
   void kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, uint* out_color);
 
-  void kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
+  void kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, const float4* in_shadeColor,
                          float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput);
   
+  void kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar,
+                                const Lite_Hit* in_hit, const float2* in_bars, float4* out_shadeColor);
+
   void kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* out_color);
 
   void kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, 
                                 float4* out_color);
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  static constexpr uint INTEGRATOR_STUPID_PT = 0;
+  static constexpr uint INTEGRATOR_SHADOW_PT = 1;
+  static constexpr uint INTEGRATOR_MIS_PT    = 2;
+
+  void SetIntegratorType(const uint a_type) { m_intergatorType = a_type; }
 
 protected:
 
@@ -94,6 +106,15 @@ protected:
   std::vector<float4x4>        m_normMatrices; ///< per instance normal matrix, local to world
 
   std::shared_ptr<ISceneObject> m_pAccelStruct = nullptr;
+
+  struct RectLightSource
+  {
+    float3 pos;
+    float2 size;
+    float3 intensity;
+  } m_light;
+
+  uint m_intergatorType = INTEGRATOR_STUPID_PT;
 };
 
 #endif
