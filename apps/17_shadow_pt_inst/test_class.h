@@ -112,6 +112,7 @@ protected:
     float3 pos;
     float2 size;
     float3 intensity;
+    float3 norm = float3(0,-1,0);
   } m_light;
 
   uint m_intergatorType = INTEGRATOR_STUPID_PT;

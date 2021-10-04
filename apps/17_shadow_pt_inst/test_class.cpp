@@ -177,17 +177,24 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
   const float  hitDist   = sqrt(dot(hit.pos - samplePos, hit.pos - samplePos));
 
   const float3 shadowRayDir = normalize(samplePos - hit.pos); // explicitSam.direction;
-  const float3 shadowRayPos = hit.pos + shadowRayDir*max(maxcomp(hit.pos), 1.0f)*5e-6f;
+  const float3 shadowRayPos = hit.pos + hit.norm*max(maxcomp(hit.pos), 1.0f)*5e-6f;
 
   const bool inShadow = m_pAccelStruct->RayQuery_AnyHit(to_float4(shadowRayPos, 0.0f), to_float4(shadowRayDir, hitDist*0.9995f));
   
-  if(!inShadow)
+  if(!inShadow && dot(shadowRayDir, m_light.norm) < 0.0f)
   {
     const float pdfA    = 1.0f / (m_light.size.x*m_light.size.y);
-    const float cosVal  = max(dot(ray_dir, float3(0.0f,1.0f,0.0f)), 0.0f);
+    const float cosVal  = max(dot(shadowRayDir, (-1.0f)*m_light.norm), 0.0f);
     const float pdfW    = PdfAtoW(pdfA, hitDist, cosVal);
     const float3 samCol = m_light.intensity/max(pdfW, 1e-6f);
-    *out_shadeColor = to_float4(samCol, 0.0f);
+    
+    const uint32_t matId = m_matIdByPrimId[m_matIdOffsets[lhit.geomId] + lhit.primId];
+    const float4 mdata   = m_materials[matId];
+    
+    if(cosVal <= 0.0f)
+      *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    else
+      *out_shadeColor = to_float4(samCol*to_float3(mdata)* INV_PI, 0.0f);
   }
   else
     *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -389,7 +396,12 @@ void test_class_cpu()
   //
   const int PASS_NUMBER           = 100;
   const int ITERS_PER_PASS_NUMBER = 4;
+  const float normConst = 1.0f/float(PASS_NUMBER*ITERS_PER_PASS_NUMBER);
+  const float invGamma  = 1.0f / 2.2f;
 
+  
+  /*
+  memset(realColor.data(), 0, sizeof(float)*4*realColor.size());
   test.SetIntegratorType(TestClass::INTEGRATOR_STUPID_PT);
   for(int passId = 0; passId < PASS_NUMBER; passId++)
   {
@@ -410,9 +422,6 @@ void test_class_cpu()
   
   //std::cout << std::endl;
 
-  const float normConst = 1.0f/float(PASS_NUMBER*ITERS_PER_PASS_NUMBER);
-  const float invGamma  = 1.0f / 2.2f;
-
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
   {
     float4 color = realColor[i]*normConst;
@@ -423,8 +432,9 @@ void test_class_cpu()
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }
   SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+  */
   
-
+  memset(realColor.data(), 0, sizeof(float)*4*realColor.size());
   test.SetIntegratorType(TestClass::INTEGRATOR_SHADOW_PT);
   for(int passId = 0; passId < PASS_NUMBER; passId++)
   {
