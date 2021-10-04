@@ -65,3 +65,8 @@ CRT_Hit VulkanRTX::RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::fl
   result.primId = uint32_t(-1);
   return result;
 }
+
+bool VulkanRTX::RayQuery_AnyHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar)
+{
+  return false;
+}

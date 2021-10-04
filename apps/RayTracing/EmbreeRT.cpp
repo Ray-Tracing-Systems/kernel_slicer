@@ -23,6 +23,7 @@ public:
   void     UpdateInstance(uint32_t a_instanceId, const LiteMath::float4x4& a_matrix) override;
 
   CRT_Hit  RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) override;
+  bool     RayQuery_AnyHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) override;
 
 protected:
   RTCDevice m_device = nullptr;
@@ -234,6 +235,35 @@ CRT_Hit  EmbreeRT::RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::fl
   }
 
   return result;
+}
+
+bool EmbreeRT::RayQuery_AnyHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar)
+{
+  // The intersect context can be used to set intersection
+  // filters or flags, and it also contains the instance ID stack
+  // used in multi-level instancing.
+  // 
+  struct RTCIntersectContext context;
+  rtcInitIntersectContext(&context);
+
+  // The ray hit structure holds both the ray and the hit.
+  // The user must initialize it properly -- see API documentation
+  // for rtcIntersect1() for details.
+  //  
+  struct RTCRay ray;
+  ray.org_x = posAndNear.x;
+  ray.org_y = posAndNear.y;
+  ray.org_z = posAndNear.z;
+  ray.tnear = posAndNear.w;
+
+  ray.dir_x = dirAndFar.x;
+  ray.dir_y = dirAndFar.y;
+  ray.dir_z = dirAndFar.z;
+  ray.tfar  = dirAndFar.w; // std::numeric_limits<float>::infinity();
+
+  rtcOccluded1(m_scene, &context, &ray);  
+
+  return (ray.tfar >= 0.0f);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
