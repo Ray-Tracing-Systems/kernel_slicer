@@ -288,7 +288,8 @@ void test_class_gpu()
 
   pGPUImpl->SetVulkanInOutFor_ShadowPathTrace(xyBuffer,   0,   // !!! USING GENERATED CODE !!!
                                               colorBuffer2,0); // !!! USING GENERATED CODE !!!
-
+  
+  pGPUImpl->SetIntegratorType(TestClass::INTEGRATOR_STUPID_PT);
   pGPUImpl->UpdateAll(pCopyHelper);                            // !!! USING GENERATED CODE !!!
   
   // now compute some thing useful
@@ -363,7 +364,10 @@ void test_class_gpu()
     }
     SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
     std::cout << std::endl;
-
+    
+    /*
+    pGPUImpl->SetIntegratorType(TestClass::INTEGRATOR_SHADOW_PT);
+    pGPUImpl->UpdatePlainMembers(pCopyHelper);                            // !!! USING GENERATED CODE !!!
     vkResetCommandBuffer(commandBuffer, 0);
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
     vkCmdFillBuffer(commandBuffer, colorBuffer2, 0, VK_WHOLE_SIZE, 0);        // clear accumulated color
@@ -397,6 +401,7 @@ void test_class_gpu()
     }
     SaveBMP("zout_gpu3.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
     std::cout << std::endl;
+    */
     
   }
   

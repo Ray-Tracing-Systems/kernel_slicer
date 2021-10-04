@@ -108,14 +108,7 @@ protected:
 
   std::shared_ptr<ISceneObject> m_pAccelStruct = nullptr;
 
-  struct RectLightSource
-  {
-    float3 pos;
-    float2 size;
-    float3 intensity;
-    float3 norm;
-  } m_light;
-
+  RectLightSource m_light;
   uint m_intergatorType = INTEGRATOR_STUPID_PT;
 };
 
