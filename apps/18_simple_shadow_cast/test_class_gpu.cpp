@@ -147,7 +147,7 @@ void test_class_gpu()
   auto pGPUImpl    = std::make_shared<TestClass_GPU>();               // !!! USING GENERATED CODE !!! 
   
   pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT); // !!! USING GENERATED CODE !!!                        
-  pGPUImpl->LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.bvh", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf", false);
+  pGPUImpl->LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.vsgf");
 
   // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'
   //
@@ -160,19 +160,14 @@ void test_class_gpu()
   const size_t bufferSize2 = WIN_WIDTH*WIN_HEIGHT*sizeof(float)*4;
   VkBuffer xyBuffer        = vk_utils::createBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   VkBuffer colorBuffer1    = vk_utils::createBuffer(device, bufferSize1,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  VkBuffer colorBuffer2    = vk_utils::createBuffer(device, bufferSize2,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   
-  VkDeviceMemory colorMem  = vk_utils::allocateAndBindWithPadding(device, physicalDevice, {xyBuffer, colorBuffer1, colorBuffer2});
+  VkDeviceMemory colorMem  = vk_utils::allocateAndBindWithPadding(device, physicalDevice, {xyBuffer, colorBuffer1});
   
   pGPUImpl->SetVulkanInOutFor_PackXY(xyBuffer, 0);            // !!! USING GENERATED CODE !!! 
 
   pGPUImpl->SetVulkanInOutFor_CastSingleRay(xyBuffer,     0,  // !!! USING GENERATED CODE !!!
                                             colorBuffer1, 0); // !!! USING GENERATED CODE !!!
 
-  pGPUImpl->SetVulkanInOutFor_NaivePathTrace(xyBuffer,   0,   // !!! USING GENERATED CODE !!!
-                                             colorBuffer2,0); // !!! USING GENERATED CODE !!!
-
-  //pGPUImpl->SetupRTPipeline(device);                          // !!! WRITE BY HAND        !!!
   pGPUImpl->UpdateAll(pCopyHelper);                           // !!! USING GENERATED CODE !!!
   
   // now compute some thing useful
@@ -186,7 +181,6 @@ void test_class_gpu()
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
     //vkCmdFillBuffer(commandBuffer, xyBuffer, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
     pGPUImpl->PackXYCmd(commandBuffer, WIN_WIDTH, WIN_HEIGHT, nullptr);       // !!! USING GENERATED CODE !!! 
-    vkCmdFillBuffer(commandBuffer, colorBuffer2, 0, VK_WHOLE_SIZE, 0);        // clear accumulated color
     vkEndCommandBuffer(commandBuffer);  
     vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
 
@@ -203,52 +197,7 @@ void test_class_gpu()
 
     std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
     pCopyHelper->ReadBuffer(colorBuffer1, 0, pixelData.data(), pixelData.size()*sizeof(uint32_t));
-    SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-   
-    //return;
-    
-    std::cout << "begin path tracing passes ... " << std::endl;
-    
-    vkResetCommandBuffer(commandBuffer, 0);
-    vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    pGPUImpl->NaivePathTraceCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, 6, nullptr, nullptr);  // !!! USING GENERATED CODE !!! 
-    vkEndCommandBuffer(commandBuffer);  
-    
-    
-    start = std::chrono::high_resolution_clock::now();
-    const int NUM_PASSES = 1000.0f;
-    for(int i=0;i<NUM_PASSES;i++)
-    {
-      vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
-      if(i % 100 == 0)
-      {
-        std::cout << "progress (gpu) = " << 100.0f*float(i)/float(NUM_PASSES) << "% \r";
-        std::cout.flush();
-      }
-    }
-    std::cout << std::endl;
-    stop = std::chrono::high_resolution_clock::now();
-    ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-    std::cout << ms << " ms for " << NUM_PASSES << " times of command buffer execution " << std::endl;
-
-    std::vector<float4> pixelsf(WIN_WIDTH*WIN_HEIGHT);
-    pCopyHelper->ReadBuffer(colorBuffer2, 0, pixelsf.data(), pixelsf.size()*sizeof(float4));
-       
-    const float normConst = 1.0f/float(NUM_PASSES);
-    const float invGamma  = 1.0f / 2.2f;
-    
-    for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
-    {
-      float4 color = pixelsf[i]*normConst;
-      color.x      = powf(color.x, invGamma);
-      color.y      = powf(color.y, invGamma);
-      color.z      = powf(color.z, invGamma);
-      color.w      = 1.0f;
-      pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
-    }
-    SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-    std::cout << std::endl;
-    
+    SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);    
   }
   
   // (6) destroy and free resources before exit
@@ -258,7 +207,6 @@ void test_class_gpu()
 
   vkDestroyBuffer(device, xyBuffer, nullptr);
   vkDestroyBuffer(device, colorBuffer1, nullptr);
-  vkDestroyBuffer(device, colorBuffer2, nullptr);
   vkFreeMemory(device, colorMem, nullptr);
 
   vkDestroyCommandPool(device, commandPool, nullptr);
