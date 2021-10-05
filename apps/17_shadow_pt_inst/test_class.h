@@ -42,7 +42,7 @@ public:
   {
     InitRandomGens(a_maxThreads);
     m_pAccelStruct = std::shared_ptr<ISceneObject>(CreateSceneRT(""), [](ISceneObject *p) { DeleteSceneRT(p); } ); 
-    m_light.norm = float3(0,-1,0);
+    m_light.norm = float4(0,-1,0,0);
   }
 
   ~TestClass()

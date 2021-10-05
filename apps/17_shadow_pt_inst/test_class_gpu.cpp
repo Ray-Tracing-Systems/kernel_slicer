@@ -188,7 +188,9 @@ void test_class_gpu()
     beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    //vkCmdFillBuffer(commandBuffer, xyBuffer, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
+    vkCmdFillBuffer(commandBuffer, xyBuffer, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
+    vkCmdFillBuffer(commandBuffer, colorBuffer1, 0, VK_WHOLE_SIZE, 0);        // clear accumulated color
+    vkCmdFillBuffer(commandBuffer, colorBuffer2, 0, VK_WHOLE_SIZE, 0);        // clear accumulated color
     pGPUImpl->PackXYCmd(commandBuffer, WIN_WIDTH, WIN_HEIGHT, nullptr);       // !!! USING GENERATED CODE !!! 
     vkCmdFillBuffer(commandBuffer, colorBuffer2, 0, VK_WHOLE_SIZE, 0);        // clear accumulated color
     vkEndCommandBuffer(commandBuffer);  
@@ -216,16 +218,19 @@ void test_class_gpu()
       int a = 2;
     }
     
+    const int NUM_PASSES  = 1000;
+    const float normConst = 1.0f/float(NUM_PASSES);
+    const float invGamma  = 1.0f / 2.2f;
+    std::vector<float4> pixelsf(WIN_WIDTH*WIN_HEIGHT);
+
     std::cout << "begin path tracing passes ... " << std::endl;
     
     vkResetCommandBuffer(commandBuffer, 0);
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    vkCmdFillBuffer(commandBuffer, colorBuffer2, 0, VK_WHOLE_SIZE, 0);        // clear accumulated color
     pGPUImpl->NaivePathTraceCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, 6, nullptr, nullptr);  // !!! USING GENERATED CODE !!! 
     vkEndCommandBuffer(commandBuffer);  
     
     start = std::chrono::high_resolution_clock::now();
-    const int NUM_PASSES = 1000.0f;
     for(int i=0;i<NUM_PASSES;i++)
     {
       vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
@@ -239,12 +244,7 @@ void test_class_gpu()
     stop = std::chrono::high_resolution_clock::now();
     ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
     std::cout << ms << " ms for " << NUM_PASSES << " times of command buffer execution " << std::endl;
-
-    std::vector<float4> pixelsf(WIN_WIDTH*WIN_HEIGHT);
     pCopyHelper->ReadBuffer(colorBuffer2, 0, pixelsf.data(), pixelsf.size()*sizeof(float4));
-       
-    const float normConst = 1.0f/float(NUM_PASSES);
-    const float invGamma  = 1.0f / 2.2f;
     
     for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
     {
@@ -258,12 +258,19 @@ void test_class_gpu()
     SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
     std::cout << std::endl;
     
-    /*
+    // clear frame buffer color
+    //
+    vkResetCommandBuffer(commandBuffer, 0);
+    vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
+    vkCmdFillBuffer(commandBuffer, colorBuffer2, 0, VK_WHOLE_SIZE, 0);        // clear accumulated color
+    vkEndCommandBuffer(commandBuffer);  
+    vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
+    
+
     pGPUImpl->SetIntegratorType(TestClass::INTEGRATOR_SHADOW_PT);
     pGPUImpl->UpdateMembers(pCopyHelper);                            // !!! USING GENERATED CODE !!!
     vkResetCommandBuffer(commandBuffer, 0);
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    vkCmdFillBuffer(commandBuffer, colorBuffer2, 0, VK_WHOLE_SIZE, 0);        // clear accumulated color
     pGPUImpl->ShadowPathTraceCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, 6, nullptr, nullptr);  // !!! USING GENERATED CODE !!! 
     vkEndCommandBuffer(commandBuffer);  
     
@@ -294,8 +301,6 @@ void test_class_gpu()
     }
     SaveBMP("zout_gpu3.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
     std::cout << std::endl;
-    */
-    
   }
   
   // (6) destroy and free resources before exit

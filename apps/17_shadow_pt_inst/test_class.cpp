@@ -173,7 +173,7 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
   m_randomGens[tid] = gen;  
   
   const float2 sampleOff = 2.0f*(float2(-0.5,-0.5) + uv)*m_light.size;
-  const float3 samplePos = m_light.pos + float3(sampleOff.x, -1e-5f, sampleOff.y);
+  const float3 samplePos = to_float3(m_light.pos) + float3(sampleOff.x, -1e-5f, sampleOff.y);
   const float  hitDist   = sqrt(dot(hit.pos - samplePos, hit.pos - samplePos));
 
   const float3 shadowRayDir = normalize(samplePos - hit.pos); // explicitSam.direction;
@@ -181,12 +181,12 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
 
   const bool inShadow = m_pAccelStruct->RayQuery_AnyHit(to_float4(shadowRayPos, 0.0f), to_float4(shadowRayDir, hitDist*0.9995f));
   
-  if(!inShadow && dot(shadowRayDir, m_light.norm) < 0.0f)
+  if(!inShadow && dot(shadowRayDir, to_float3(m_light.norm)) < 0.0f)
   {
     const float pdfA    = 1.0f / (m_light.size.x*m_light.size.y);
-    const float cosVal  = max(dot(shadowRayDir, (-1.0f)*m_light.norm), 0.0f);
+    const float cosVal  = max(dot(shadowRayDir, (-1.0f)*to_float3(m_light.norm)), 0.0f);
     const float pdfW    = PdfAtoW(pdfA, hitDist, cosVal);
-    const float3 samCol = M_PI*m_light.intensity/max(pdfW, 1e-6f);
+    const float3 samCol = M_PI*to_float3(m_light.intensity)/max(pdfW, 1e-6f);
     
     const uint32_t matId = m_matIdByPrimId[m_matIdOffsets[lhit.geomId] + lhit.primId];
     const float4 mdata   = m_materials[matId];
@@ -208,7 +208,7 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
 {
   const Lite_Hit lhit = *in_hit;
   if(lhit.geomId == -1)
-    *accumColor = float4(0,0,0,0);
+    return;
 
   const uint32_t matId = m_matIdByPrimId[m_matIdOffsets[lhit.geomId] + lhit.primId];
   const float4 mdata   = m_materials[matId];
@@ -227,11 +227,11 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
     }
     else if(m_intergatorType == INTEGRATOR_SHADOW_PT)
     {
-      *accumColor = float4(0,0,0,0);
+      
     }
     else if(m_intergatorType == INTEGRATOR_MIS_PT) // #TODO: implement MIS weights
     {
-      *accumColor = float4(0,0,0,0);
+      
     }
 
     return;
@@ -280,8 +280,8 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
 
   }
 
-  *rayPosAndNear    = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
-  *rayDirAndFar     = to_float4(newDir, MAXFLOAT);
+  *rayPosAndNear = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
+  *rayDirAndFar  = to_float4(newDir, MAXFLOAT);
 }
 
 

@@ -26,12 +26,12 @@ typedef struct SurfaceHitT
 
 struct RectLightSource
 {
-  float3 pos;
-  float3 intensity;
-  float3 norm;
+  float4 pos;
+  float4 intensity;
+  float4 norm;
   float2 size;
+  float2 dummy;
 };
-
 
 static inline float3 EyeRayDir(float x, float y, float w, float h, float4x4 a_mViewProjInv) // g_mViewProjInv
 {

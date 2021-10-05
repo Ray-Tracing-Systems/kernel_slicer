@@ -62,9 +62,9 @@ int TestClass::LoadScene(const char* scehePath)
       continue;
     }
     
-    m_light.pos       = lightInst.matrix*float3(0,0,0);
+    m_light.pos       = lightInst.matrix*float4(0,0,0,1);
     m_light.size      = float2(sizeX, sizeZ);
-    m_light.intensity = float3(power,power,power);
+    m_light.intensity = float4(power,power,power,0);
     break;
   }
 
