@@ -23,125 +23,17 @@ using LiteMath::uint4;
 
 class TestClass_GPU : public TestClass_Generated
 {
-
 public:
-  TestClass_GPU(std::shared_ptr<SceneManager> a_pMgr) : m_pScnMgr(a_pMgr) 
+  TestClass_GPU() 
   {
   
   }
   
   ~TestClass_GPU()
   {
-    if(m_rtPipelineLayout) vkDestroyPipelineLayout(device, m_rtPipelineLayout, nullptr);
-    if(m_rtPipeline)       vkDestroyPipeline      (device, m_rtPipeline,       nullptr);
+    
   }
   
-  VkDescriptorSet       m_rtDS       = nullptr;
-  VkDescriptorSetLayout m_rtDSLayout = nullptr;
-  std::shared_ptr<vk_utils::DescriptorMaker> m_pBindings = nullptr;
-  VkPipelineLayout      m_rtPipelineLayout = VK_NULL_HANDLE; 
-  VkPipeline            m_rtPipeline       = VK_NULL_HANDLE; 
-
-  void SetupRTPipeline(VkDevice a_device)
-  {
-    // first DS is from generated code, second is ours
-    //
-    vk_utils::DescriptorTypesVec dtypes = {{VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1},
-                                           {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1}};
-
-    m_pBindings = std::make_shared<vk_utils::DescriptorMaker>(a_device, dtypes, 1);
-    
-    m_pBindings->BindBegin(VK_SHADER_STAGE_COMPUTE_BIT);
-    m_pBindings->BindAccelStruct(0, m_pScnMgr->getTLAS().handle);
-    //m_pBindings->BindBuffer     (1, CastSingleRay_local.out_colorBuffer, CastSingleRay_local.out_colorOffset);
-    m_pBindings->BindEnd(&m_rtDS, &m_rtDSLayout);
-    
-    VkDescriptorSetLayout inputSets[2] = {RayTraceDSLayout , m_rtDSLayout};
-
-    VkPushConstantRange  pcRange;
-    pcRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-    pcRange.offset     = 0;
-    pcRange.size       = 4*sizeof(uint32_t);
-
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-    pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.pushConstantRangeCount = 1;
-    pipelineLayoutInfo.pPushConstantRanges    = &pcRange;
-    pipelineLayoutInfo.pSetLayouts            = inputSets;
-    pipelineLayoutInfo.setLayoutCount         = 2;
-    VK_CHECK_RESULT(vkCreatePipelineLayout(a_device, &pipelineLayoutInfo, nullptr, &m_rtPipelineLayout));
-    
-    // load shader and create compute pipeline for RTX accelerated ray tracing via GLSL
-    //
-    auto shaderCode = vk_utils::readSPVFile("shaders/raytrace.comp.spv");
-    if(shaderCode.size() == 0)
-      RUN_TIME_ERROR("[TestClass_GPU::SetupRTPipeline]: can not load shaders");
-    VkShaderModule shaderModule = vk_utils::createShaderModule(a_device, shaderCode);
-    
-    VkComputePipelineCreateInfo pipelineCreateInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
-    pipelineCreateInfo.stage.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    pipelineCreateInfo.stage.stage  = VK_SHADER_STAGE_COMPUTE_BIT;
-    pipelineCreateInfo.stage.module = shaderModule;
-    pipelineCreateInfo.stage.pName  = "main";
-    pipelineCreateInfo.layout       = m_rtPipelineLayout;
-    
-    VK_CHECK_RESULT(vkCreateComputePipelines(a_device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_rtPipeline));
-
-    vkDestroyShaderModule(a_device, shaderModule, nullptr);
-  }
-  
-  bool isPathTrace = false;
-  void RayTraceCmd(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar, Lite_Hit* out_hit, float2* out_bars) override
-  {
-    uint32_t blockSizeX = 256;
-    uint32_t blockSizeY = 1;
-    uint32_t blockSizeZ = 1;
-  
-    struct KernelArgsPC
-    {
-      uint32_t m_sizeX;
-      uint32_t m_sizeY;
-      uint32_t m_sizeZ;
-      uint32_t m_tFlags;
-    } pcData;
-    
-    pcData.m_sizeX  = tid;
-    pcData.m_sizeY  = 1;
-    pcData.m_sizeZ  = 1;
-    pcData.m_tFlags = m_currThreadFlags;
-    
-    vkCmdPushConstants(m_currCmdBuffer, m_rtPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
-    
-    
-    VkDescriptorSet dsets[2] = {m_allGeneratedDS[5], m_rtDS};   // for RT, see generated code 
-    if(isPathTrace)
-      dsets[0] = m_allGeneratedDS[1];                           // for PT, see generated code
-    //VkDescriptorSet dsets[2] = {m_allGeneratedDS[1], m_rtDS}; // for PT, see generated code
-    
-    vkCmdBindDescriptorSets(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_rtPipelineLayout, 0, 2, dsets, 0, nullptr);
-
-    vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_rtPipeline);
-    vkCmdDispatch    (m_currCmdBuffer, (pcData.m_sizeX + blockSizeX - 1) / blockSizeX, (pcData.m_sizeY + blockSizeY - 1) / blockSizeY, (pcData.m_sizeZ + blockSizeZ - 1) / blockSizeZ);
-  
-    VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
-    vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);  
-  }
-
-  int LoadScene(const char* bvhPath, const char* meshPath, bool a_needReorder) override
-  {
-    if(TestClass_Generated::LoadScene(bvhPath, meshPath, false) != 0 ) // may not load bvh actually!
-      return 1; 
-
-    // make scene from single mesh
-    //  
-    m_pScnMgr->LoadSingleMesh(meshPath);
-    m_pScnMgr->BuildAllBLAS();
-    m_pScnMgr->BuildTLAS();
-    
-    return 0;
-  }
-
-  std::shared_ptr<SceneManager> m_pScnMgr;
 };
 
 struct RTXDeviceFeatures
@@ -251,8 +143,8 @@ void test_class_gpu()
   }
 
   auto pCopyHelper = std::make_shared<vk_utils::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);\
-  auto pScnMgr     = std::make_shared<SceneManager>(device, physicalDevice, queueComputeFID, queueComputeFID, true);
-  auto pGPUImpl    = std::make_shared<TestClass_GPU>(pScnMgr);               // !!! USING GENERATED CODE !!! 
+  //auto pScnMgr     = std::make_shared<SceneManager>(device, physicalDevice, queueComputeFID, queueComputeFID, true);
+  auto pGPUImpl    = std::make_shared<TestClass_GPU>();               // !!! USING GENERATED CODE !!! 
   
   pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT); // !!! USING GENERATED CODE !!!                        
   pGPUImpl->LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.bvh", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf", false);
@@ -280,7 +172,7 @@ void test_class_gpu()
   pGPUImpl->SetVulkanInOutFor_NaivePathTrace(xyBuffer,   0,   // !!! USING GENERATED CODE !!!
                                              colorBuffer2,0); // !!! USING GENERATED CODE !!!
 
-  pGPUImpl->SetupRTPipeline(device);                          // !!! WRITE BY HAND        !!!
+  //pGPUImpl->SetupRTPipeline(device);                          // !!! WRITE BY HAND        !!!
   pGPUImpl->UpdateAll(pCopyHelper);                           // !!! USING GENERATED CODE !!!
   
   // now compute some thing useful
@@ -300,7 +192,6 @@ void test_class_gpu()
 
     vkResetCommandBuffer(commandBuffer, 0);
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    pGPUImpl->isPathTrace = false;
     pGPUImpl->CastSingleRayCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, nullptr, nullptr);  // !!! USING GENERATED CODE !!! 
     vkEndCommandBuffer(commandBuffer);  
    
@@ -320,7 +211,6 @@ void test_class_gpu()
     
     vkResetCommandBuffer(commandBuffer, 0);
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    pGPUImpl->isPathTrace = true;
     pGPUImpl->NaivePathTraceCmd(commandBuffer, WIN_WIDTH*WIN_HEIGHT, 6, nullptr, nullptr);  // !!! USING GENERATED CODE !!! 
     vkEndCommandBuffer(commandBuffer);  
     
@@ -364,7 +254,6 @@ void test_class_gpu()
   // (6) destroy and free resources before exit
   //
   pGPUImpl    = nullptr;     
-  pScnMgr     = nullptr;
   pCopyHelper = nullptr;
 
   vkDestroyBuffer(device, xyBuffer, nullptr);
