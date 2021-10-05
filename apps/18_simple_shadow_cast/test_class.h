@@ -65,7 +65,7 @@ public:
 
   void kernel_CalcShadow(uint tid, const float4* in_pos, float* out_shadow);
 
-  void kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, const float* in_shadow, uint* out_color);
+  void kernel_GetTestColor(uint tid, const Lite_Hit* in_hit, const float* in_shadow, uint* out_color);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -83,10 +83,7 @@ protected:
   float3 m_camPos = float3(0.0f, 0.85f, 4.5f);
   void InitSceneMaterials(int a_numSpheres, int a_seed = 0);
 
-  std::vector<uint32_t>        m_indicesReordered;
   std::vector<uint32_t>        m_materialIds;
-  std::vector<float4>          m_vPos4f;      // copy from m_mesh
-  std::vector<float4>          m_vNorm4f;     // copy from m_mesh
   std::vector<float4>          m_materials;
 
   float4x4                     m_worldViewProjInv;

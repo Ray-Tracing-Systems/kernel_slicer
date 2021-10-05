@@ -67,14 +67,13 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
  
   *out_hit  = res;
   
-  // dirty hack to offset shadow ray
+  // dirty hack to offset shadow ray in next kernel
   //
   const float3 hitPos    = to_float3(rayPos) + res.t*0.99995f*to_float3(rayDir);
   const float3 boxCenter = 0.5f*(m_lightGeom.boxMin + m_lightGeom.boxMax);
-  (*out_surfPos) = to_float4(hitPos + 1e-6f*normalize(boxCenter - hitPos), 0.0f);
+  (*out_surfPos)         = to_float4(hitPos + 1e-6f*normalize(boxCenter - hitPos), 0.0f);
 
   return (res.primId != -1) && (res.t < rayDir.w);
-  
 }
 
 void TestClass::kernel_CalcShadow(uint tid, const float4* in_pos, float* out_shadow)
@@ -107,7 +106,7 @@ void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
   out_pakedXY[pitchOffset(tidX,tidY)] = ((tidY << 16) & 0xFFFF0000) | (tidX & 0x0000FFFF);
 }
 
-void TestClass::kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, const float* in_shadow, uint* out_color)
+void TestClass::kernel_GetTestColor(uint tid, const Lite_Hit* in_hit, const float* in_shadow, uint* out_color)
 {
   if(in_hit->geomId == HIT_FLAT_LIGHT_GEOM)
   {
@@ -143,7 +142,7 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
   float shadow;
   kernel_CalcShadow(tid, &surfPos, &shadow);
 
-  kernel_GetRayColor(tid, &hit, &shadow, out_color);
+  kernel_GetTestColor(tid, &hit, &shadow, out_color);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -173,11 +172,9 @@ void test_class_cpu()
 
   // test simple ray casting
   //
-  //#pragma omp parallel for default(shared)
+  #pragma omp parallel for default(shared)
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
     test.CastSingleRay(i, packedXY.data(), pixelData.data());
 
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-  
-
 }

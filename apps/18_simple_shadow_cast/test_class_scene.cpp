@@ -25,15 +25,10 @@ void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
 int TestClass::LoadScene(const char* meshPath)
 { 
   SimpleMesh m_mesh = cmesh::LoadMeshFromVSGF(meshPath);
-
-  m_vPos4f  = m_mesh.vPos4f;
-  m_vNorm4f = m_mesh.vNorm4f;
   
   std::cout << "[LoadScene]: create accel struct " << std::endl;
   
-  m_materialIds      = m_mesh.matIndices;
-  m_indicesReordered = m_mesh.indices;
-
+  m_materialIds = m_mesh.matIndices;
   InitSceneMaterials(10);
 
   std::cout << "IndicesNum   = " << m_mesh.indices.size() << std::endl;
@@ -41,7 +36,7 @@ int TestClass::LoadScene(const char* meshPath)
   std::cout << "MateriaIdNum = " << m_mesh.matIndices.size() << std::endl;
 
   m_pAccelStruct->ClearGeom();
-  auto geomId = m_pAccelStruct->AddGeom_Triangles4f(m_vPos4f.data(), m_vPos4f.size(), m_indicesReordered.data(), m_indicesReordered.size());
+  auto geomId = m_pAccelStruct->AddGeom_Triangles4f(m_mesh.vPos4f.data(), m_mesh.vPos4f.size(), m_mesh.indices.data(), m_mesh.indices.size());
   
   m_pAccelStruct->ClearScene();
   float4x4 identitiMatrix;
