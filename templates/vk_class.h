@@ -83,7 +83,7 @@ protected:
   void BarriersForSeveralBuffers(VkBuffer* a_inBuffers, VkBufferMemoryBarrier* a_outBarriers, uint32_t a_buffersNum);
 
   virtual void InitHelpers();
-  virtual void InitBuffers(size_t a_maxThreadsCount);
+  virtual void InitBuffers(size_t a_maxThreadsCount, bool a_tempBuffersOverlay = true);
   virtual void InitKernels(const char* a_filePath);
   virtual void AllocateAllDescriptorSets();
 
@@ -96,6 +96,8 @@ protected:
   virtual void UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
 
   virtual void AllocMemoryForInternalBuffers(const std::vector<VkBuffer>& a_buffers);
+  virtual void AssignBuffersToMemory(const std::vector<VkBuffer>& a_buffers, VkDeviceMemory a_mem);
+
   virtual void AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_image);
   
   virtual void FreeMemoryForInternalBuffers();

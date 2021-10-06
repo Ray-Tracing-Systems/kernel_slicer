@@ -33,7 +33,7 @@ void {{MainClassName}}_Generated::InitVulkanObjects(VkDevice a_device, VkPhysica
   physicalDevice = a_physicalDevice;
   device         = a_device;
   InitHelpers();
-  InitBuffers(a_maxThreadsCount);
+  InitBuffers(a_maxThreadsCount, true);
   InitKernels("{{ShaderSingleFile}}.spv");
   AllocateAllDescriptorSets();
 

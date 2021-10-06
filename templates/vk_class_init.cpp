@@ -391,41 +391,92 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
   {% endif %}
 }
 
-void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount)
+void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount, bool a_tempBuffersOverlay)
 {
   m_maxThreadCount = a_maxThreadsCount;
   std::vector<VkBuffer> allBuffers;
+  allBuffers.reserve(64);
+
+  struct BufferReqPair
+  {
+    BufferReqPair() {  }
+    BufferReqPair(VkBuffer a_buff, VkDevice a_dev) : buf(a_buff) { vkGetBufferMemoryRequirements(a_dev, a_buff, &req); }
+    VkBuffer             buf = VK_NULL_HANDLE;
+    VkMemoryRequirements req = {};
+  };
+
+  struct LocalBuffers
+  {
+    std::vector<BufferReqPair> bufs;
+    size_t                     size = 0;
+    std::vector<VkBuffer>      bufsClean;
+  };
+
+  std::vector<LocalBuffers> groups;
+  groups.reserve(16);
 
 ## for MainFunc in MainFunctions  
-## for Buffer in MainFunc.LocalVarsBuffersDecl
+  LocalBuffers localBuffers{{MainFunc.Name}};
+  localBuffers{{MainFunc.Name}}.bufs.reserve(32);
+  {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
   {% if Buffer.TransferDST %}
   {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer = vk_utils::createBuffer(device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   {% else %}
   {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer = vk_utils::createBuffer(device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
   {% endif %}
-  allBuffers.push_back({{MainFunc.Name}}_local.{{Buffer.Name}}Buffer);
-## endfor
+  localBuffers{{MainFunc.Name}}.bufs.push_back(BufferReqPair({{MainFunc.Name}}_local.{{Buffer.Name}}Buffer, device));
+  {% endfor %}
+  for(const auto& pair : localBuffers{{MainFunc.Name}}.bufs)
+  {
+    allBuffers.push_back(pair.buf);
+    localBuffers{{MainFunc.Name}}.size += pair.req.size;
+  }
+  groups.push_back(localBuffers{{MainFunc.Name}});
+
 ## endfor
 
+  size_t largestIndex = 0;
+  size_t largestSize  = 0;
+  for(size_t i=0;i<groups.size();i++)
+  {
+    if(groups[i].size > largestSize)
+    {
+      largestIndex = i;
+      largestSize  = groups[i].size;
+    }
+    groups[i].bufsClean.resize(groups[i].bufs.size());
+    for(size_t j=0;j<groups[i].bufsClean.size();j++)
+      groups[i].bufsClean[j] = groups[i].bufs[j].buf;
+  }
+
+  auto& allBuffersRef = a_tempBuffersOverlay ? groups[largestIndex].bufsClean : allBuffers;
+
   m_classDataBuffer = vk_utils::createBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | GetAdditionalFlagsForUBO());
-  allBuffers.push_back(m_classDataBuffer);
+  allBuffersRef.push_back(m_classDataBuffer);
   {% if UseSeparateUBO %}
   m_uboArgsBuffer = vk_utils::createBuffer(device, 256, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-  allBuffers.push_back(m_uboArgsBuffer);
+  allBuffersRef.push_back(m_uboArgsBuffer);
   {% endif %}
   {% for Buffer in RedVectorVars %}
   {
     const size_t sizeOfBuffer = ComputeReductionAuxBufferElements(a_maxThreadsCount, REDUCTION_BLOCK_SIZE)*sizeof({{Buffer.Type}});
     m_vdata.{{Buffer.Name}}Buffer = vk_utils::createBuffer(device, sizeOfBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    allBuffers.push_back(m_vdata.{{Buffer.Name}}Buffer);
+    allBuffersRef.push_back(m_vdata.{{Buffer.Name}}Buffer);
   }
   {% endfor %}
   {% for Hierarchy in DispatchHierarchies %}
   m_{{Hierarchy.Name}}ObjPtrBuffer = vk_utils::createBuffer(device, 2*sizeof(uint32_t)*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-  allBuffers.push_back(m_{{Hierarchy.Name}}ObjPtrBuffer);
+  allBuffersRef.push_back(m_{{Hierarchy.Name}}ObjPtrBuffer);
   {% endfor %}
   
-  AllocMemoryForInternalBuffers(allBuffers);
+  AllocMemoryForInternalBuffers(allBuffersRef);
+
+  if(a_tempBuffersOverlay)
+  {
+    for(size_t i=0;i<groups.size();i++)
+      if(i != largestIndex)
+        AssignBuffersToMemory(groups[i].bufsClean, m_allMem);
+  }
 }
 
 void {{MainClassName}}_Generated::InitMemberBuffers()
@@ -687,6 +738,40 @@ void {{MainClassName}}_Generated::AllocMemoryForInternalBuffers(const std::vecto
     m_allMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, a_buffers);
   else
     m_allMem = VK_NULL_HANDLE;
+}
+
+void {{MainClassName}}_Generated::AssignBuffersToMemory(const std::vector<VkBuffer>& a_buffers, VkDeviceMemory a_mem)
+{
+  if(a_buffers.size() == 0 || a_mem == VK_NULL_HANDLE)
+    return;
+
+  std::vector<VkMemoryRequirements> memInfos(a_buffers.size());
+  for(size_t i=0;i<memInfos.size();i++)
+  {
+    if(a_buffers[i] != VK_NULL_HANDLE)
+      vkGetBufferMemoryRequirements(device, a_buffers[i], &memInfos[i]);
+    else
+    {
+      memInfos[i] = memInfos[0];
+      memInfos[i].size = 0;
+    }
+  }
+  
+  for(size_t i=1;i<memInfos.size();i++)
+  {
+    if(memInfos[i].memoryTypeBits != memInfos[0].memoryTypeBits)
+    {
+      std::cout << "[{{MainClassName}}_Generated::AssignBuffersToMemory]: error, input buffers has different 'memReq.memoryTypeBits'" << std::endl;
+      return;
+    }
+  }
+
+  auto offsets = vk_utils::calculateMemOffsets(memInfos);
+  for (size_t i = 0; i < memInfos.size(); i++)
+  {
+    if(a_buffers[i] != VK_NULL_HANDLE)
+      vkBindBufferMemory(device, a_buffers[i], a_mem, offsets[i]);
+  }
 }
 
 void {{MainClassName}}_Generated::AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_images)
