@@ -106,21 +106,21 @@ void kernel2D_filter(image* in, image_float* filter, image* out)
       fpix3 acc = { {0.0f, 0.0f, 0.0f} };
       for(int k = -half; k <= half; ++k)
         for(int l = -half; l <= half; ++l)
-        {
-          float filter_val = filter->data[(k + half) * filter->w + (l + half)];
-          int offset_x = get_boundary_index(i + k, in->h);
-          int offset_y = get_boundary_index(j + l, in->w);
+        {                                                                        ///<! Issue (#4):
+          float filter_val = filter->data[(k + half) * filter->w + (l + half)];  ///<! explicit indexing will not work for GPU images in this way
+          int offset_x = get_boundary_index(i + k, in->h);                       ///<! think we don't have to do this for GPU images also
+          int offset_y = get_boundary_index(j + l, in->w);                       ///<! think we don't have to do this for GPU images also
 
           int idx = offset_x * in->w + offset_y;
-          pix3 x = { {in->data[idx * 3 + 0],
-                      in->data[idx * 3 + 1],
-                      in->data[idx * 3 + 2]} };
+          pix3 x = { {in->data[idx * 3 + 0],             ///<! explicit indexing will not work for GPU images in this way
+                      in->data[idx * 3 + 1],             ///<! explicit indexing will not work for GPU images in this way
+                      in->data[idx * 3 + 2]} };          ///<! explicit indexing will not work for GPU images in this way
 
           madd_pixels(&acc, filter_val, &x);
-        }
-      out->data[(i * in->w + j) * 3 + 0] = acc.color[0];
-      out->data[(i * in->w + j) * 3 + 1] = acc.color[1];
-      out->data[(i * in->w + j) * 3 + 2] = acc.color[2];
+        }                                                ///<! ///<! Issue (#5):
+      out->data[(i * in->w + j) * 3 + 0] = acc.color[0]; ///<! explicit indexing will not work for GPU images in this way
+      out->data[(i * in->w + j) * 3 + 1] = acc.color[1]; ///<! explicit indexing will not work for GPU images in this way
+      out->data[(i * in->w + j) * 3 + 2] = acc.color[2]; ///<! explicit indexing will not work for GPU images in this way
     }
   }
 }
@@ -164,27 +164,27 @@ int load_filter(const char* path, image_float* filter)
   return 0;
 }
 
-int apply_filter(const char* in_img_path, const char* in_filter_path, const char* out_path)
+int apply_filter(const char* in_img_path, const char* in_filter_path, const char* out_path) ///<! Q: is this a 'control' function analogue?
 {
   image in     = {};
   image out    = {};
   image_float filter = {};
-  load_image(in_img_path, &in);
-  out = create_image(in.w, in.h, in.channels);
+  load_image(in_img_path, &in);                ///<! Issue (#1) allocate memory, load from file
+  out = create_image(in.w, in.h, in.channels); ///<! Issue (#2) allocate memory. How do we translate these to Vulkan?
   if (load_filter(in_filter_path, &filter))
   {
     fprintf(stderr, "Failed loading filter from file: %s\n", in_filter_path);
     return 1;
   }
 
-  kernel2D_filter(&in, &filter, &out);
+  kernel2D_filter(&in, &filter, &out);         ///<! Q: do we suppose automatic data transfer before first and after last kernels?
 
-  save_image(out_path, &out);
+  save_image(out_path, &out);                  ///<! Issue (#3) copy data back .... 
   fprintf(stdout, "Written output image: %s\n", out_path);
 
-  stbi_image_free(in.data);
-  free(out.data);
-  free(filter.data);
+  stbi_image_free(in.data); ///<! Issue (#4) WTF?
+  free(out.data);           ///<! how should we distinguish 
+  free(filter.data);        ///<! these 2 cases?
 
   return 0;
 }
