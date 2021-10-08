@@ -99,7 +99,7 @@ Now let us discuss general workflow of using kernel_slicer to port you code to G
 
 ## runing examples
 
-1. Clone kernel_slicer and build it **in Debug (Release don't work yet)**;
+1. Clone kernel_slicer and build it;
 
     * git clone --recurse-submodules https://github.com/Ray-Tracing-Systems/kernel_slicer
     * cd kernel_slicer

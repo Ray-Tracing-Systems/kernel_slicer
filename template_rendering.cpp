@@ -756,9 +756,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     json data2;
     data2["Name"]                 = mainFunc.Name;
     data2["DescriptorSets"]       = std::vector<std::string>();
-    
-    // for decl
-    //
     data2["Decl"]                 = mainFunc.GeneratedDecl;
     data2["LocalVarsBuffersDecl"] = std::vector<std::string>();
     for(const auto& v : mainFunc.Locals)

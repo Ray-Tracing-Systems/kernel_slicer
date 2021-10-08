@@ -157,10 +157,8 @@ std::string kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc,
 {
   const std::string&   a_mainClassName = this->mainClassName;
   const CXXMethodDecl* a_node          = a_mainFunc.Node;
-  //const std::string&   a_mainFuncName  = a_mainFunc.Name;
-  //std::string&         a_outFuncDecl   = a_mainFunc.GeneratedDecl;
-
-  const auto  inOutParamList = kslicer::ListPointerParamsOfMainFunc(a_node);
+  a_mainFunc.GeneratedDecl  = GetCFDeclFromSource(kslicer::GetRangeSourceCode(a_node->getCanonicalDecl()->getSourceRange(), compiler));
+  const auto inOutParamList = kslicer::ListPointerParamsOfMainFunc(a_node);
 
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
@@ -214,9 +212,10 @@ std::string kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc,
 
 std::string kslicer::MainClassInfo::GetCFDeclFromSource(const std::string& sourceCode)
 {
-  std::string mainFuncDecl = sourceCode.substr(0, sourceCode.find(")")+1) + ";";
-  assert(ReplaceFirst(mainFuncDecl, mainClassName + "_Generated" + "::", ""));
-  return "virtual " + mainFuncDecl;
+  const auto  posOfBracket     = sourceCode.find("(");
+  std::string mainFuncDeclHead = sourceCode.substr(0, posOfBracket);
+  std::string mainFuncDeclTail = sourceCode.substr(posOfBracket+1);
+  return std::string("virtual ") + mainFuncDeclHead + "Cmd(VkCommandBuffer a_commandBuffer, " + mainFuncDeclTail + ";";
 }
 
 std::vector<kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node)
@@ -346,7 +345,7 @@ void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_k
     std::string kernelCmdDecl = kernelSourceCode.substr(posBeg, posEndBrace+1-posBeg);   
     kernelCmdDecl = a_codeInfo.RemoveKernelPrefix(kernelCmdDecl);
 
-    assert(ReplaceFirst(kernelCmdDecl,"(", "Cmd("));
+    ReplaceFirst(kernelCmdDecl,"(", "Cmd(");
     k.second.DeclCmd = kernelCmdDecl;
     k.second.RetType = kernelSourceCode.substr(0, posBeg);
     ReplaceFirst(k.second.RetType, a_mainClassName + "::", "");
