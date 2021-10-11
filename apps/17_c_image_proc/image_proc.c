@@ -226,32 +226,9 @@ void do_computations(image* in, int filter_num, image_float filters[filter_num],
   }
 
   kernel2D_filter(current_in, &filters[filter_num - 1], out);
-}
 
-//int apply_filter(const char* in_img_path, const char* in_filter_path, const char* out_path)
-//{
-//  image in     = {};
-//  image out    = {};
-//  image_float filter = {};
-//  load_image(in_img_path, &in);
-//  out = create_image(in.w, in.h, in.channels);
-//  if (load_filter(in_filter_path, &filter))
-//  {
-//    fprintf(stderr, "Failed loading filter from file: %s\n", in_filter_path);
-//    return 1;
-//  }
-//
-//  do_computations(&in, &filter, 1, &out);
-//
-//  save_image(out_path, &out);
-//  fprintf(stdout, "Written output image: %s\n", out_path);
-//
-//  stbi_image_free(in.data);
-//  free(out.data);
-//  free(filter.data);
-//
-//  return 0;
-//}
+  free(temp.data);
+}
 
 void set_path_prefix(const char* out_path)
 {
