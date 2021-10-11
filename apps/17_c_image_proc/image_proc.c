@@ -44,7 +44,7 @@ typedef float (*TexelFetchF1)(image_float*, int, int, WrapMode);
 typedef void (*ImageStoreUC3)(image*, int, int, pix3 color);
 
 
-float texel_fetch_float1(image_float *img, int u, int v, WrapMode mode)
+float texel_fetch_float1(const image_float *img, int u, int v, WrapMode mode)
 {
   int x = mode(u, img->w);
   int y = mode(v, img->h);
@@ -54,7 +54,7 @@ float texel_fetch_float1(image_float *img, int u, int v, WrapMode mode)
   return img->data[idx];
 }
 
-pix3 texel_fetch_uc(image *img, int u, int v, WrapMode mode)
+pix3 texel_fetch_uc(const image *img, int u, int v, WrapMode mode)
 {
   int x = mode(u, img->w);
   int y = mode(v, img->h);
@@ -107,6 +107,8 @@ image create_image(int w, int h, int channels)
   return res;
 }
 
+void free_image(image* a_image) { free(a_image->data); a_image->data = 0; }
+
 image_float create_image_float(int w, int h, int channels)
 {
   image_float res = {.w = w, .h = h, .channels = channels, .data = NULL};
@@ -132,7 +134,7 @@ void madd_pixels(fpix3* sum, float mult, pix3* add)
   sum->color[2] += mult * add->color[2];
 }
 
-void kernel2D_filter(image* in, image_float* filter, image* out)
+void kernel2D_filter(const image* in, const image_float* filter, image* out)
 {
   assert(in->data && out->data);
   assert(in->w == out->w && in->h == out->h);
@@ -201,34 +203,123 @@ int load_filter(const char* path, image_float* filter)
   return 0;
 }
 
-
 // ping pong filter chain
-void do_computations(image* in, int filter_num, image_float filters[filter_num], image* out, bool save_intermediate)
+//
+void do_computations(image* in, int filter_num, const image_float filters[filter_num], image* out, bool save_intermediate)
 {
-  char path_buf[PATH_BUF * 2] = {};
+  char path_buf[PATH_BUF * 2] = {};                                          ///< propose just ignore
   image temp = create_image(in->w, in->h, in->channels);
 
-  image* current_in  = in;
-  image* current_out = &temp;
-  for(int i = 0; i < filter_num - 1; ++i)
+  image* current_in  = in;                                                   ///< why pointers are used? If image is "abstract C type", 
+  image* current_out = &temp;                                                ///< we cant use "image temp = create_image", it should be "image* pTemp = create_image" 
+  for(int i = 0; i < filter_num - 1; ++i)                                    ///< if image is not abstract type, "image current_in = in" is cheap enough 
   {
     kernel2D_filter(current_in, &filters[i], current_out);
 
-    if(save_intermediate)
-    {
-      snprintf(path_buf, PATH_BUF * 2, "%s/step_%d.png", g_pathPrefix, i);
-      save_image(path_buf, current_out);
-    }
+    if(save_intermediate)                                                    ///< ** propose to ignore ** 
+    {                                                                        ///< you don't realy need save data on disk during filter chain
+      snprintf(path_buf, PATH_BUF * 2, "%s/step_%d.png", g_pathPrefix, i);   ///< if you need this for debug purpose, it can be solved in different way: 
+      save_image(path_buf, current_out);                                     ///< break command buffer, execute, copy data and restart command buffer in debug (changed version of generated code)
+    }                                                                        ///< ** propose to ignore **
 
-    image *p = current_in;
-    current_in = current_out;
+    image *p    = current_in;                                                ///< think this will make a butthurt for Vulkan  
+    current_in  = current_out;                                               ///< because we can't change bindings in dynamic    
     current_out = p;
   }
 
   kernel2D_filter(current_in, &filters[filter_num - 1], out);
 
-  free(temp.data);
+  free(temp.data); ///< propose "free_image(temp)"; in this way we do not disclose the implementation details of the type 
 }
+
+// ping pong filter chain v2
+//
+void do_computations2(image* in, int filter_num, const image_float filters[filter_num], image* out)
+{                                       
+  image temp = create_image(in->w, in->h, in->channels);
+                                              
+  for(int i = 0; i < filter_num - 1; ++i)                                    
+  {
+    if(i%2 == 0)
+      kernel2D_filter(in, &filters[i], &temp);
+    else
+      kernel2D_filter(&temp, &filters[i], in);           
+  }
+
+  kernel2D_filter(&temp, &filters[filter_num - 1], out);
+
+  free_image(&temp); 
+}
+
+// ping pong filter chain command buffer write
+//
+//void do_computationsCmd(VkCommandBuffer cmdBuff, VkDescriptorSet* allDescriptorSets, image* in, int filter_num, const image_float filters[filter_num], image* out)
+//{                                       
+//  image temp = create_image(in->w, in->h, in->channels); ///< Eliminate this code 
+//                                              
+//  for(int i = 0; i < filter_num - 1; ++i)                                    
+//  {
+//    if(i%2 == 0)
+//    {
+//      vkCmdBindDescriptorSets(cmdBuff, ... allDescriptorSets[0], ...);
+//      filterCmd(cmdBuff, in, &filters[i], &temp);
+//    }
+//    else
+//    {
+//      vkCmdBindDescriptorSets(cmdBuff, ... allDescriptorSets[1], ...);
+//      filterCmd(cmdBuff, &temp, &filters[i], in);    
+//    }       
+//  }
+//
+//  vkCmdBindDescriptorSets(cmdBuff, ... allDescriptorSets[3], ...);
+//  kernel2D_filter(&temp, &filters[filter_num - 1], out);
+//
+//  free_image(&temp); 
+//}
+
+
+// ping pong filter chain generated
+//
+// void do_computationsGPU(image in, int filter_num, const image_float filters[filter_num], image out)
+// {
+//   //(#1) create  
+//   //                                        
+//   VkImage arg_in = vk_utils::createImage(in, ...)   ///!< (1) detect and process first argument 
+//   VkImage arg_filters[filter_num] = {};             ///!< (2) detect and process second argument as array
+//   for(int i=0;i<filter_num;i++)                     ///!< (2) detect and process second argument as array
+//      filters[i] = vk_utils::createImage(in, ...)    ///!< (2) detect and process second argument as array
+//   VkImage arg_out = vk_utils::createImage(out, ...) ///!< (3) detect and process third argument as array
+//
+//   VkImage local_temp = vk_utils::createImage(in.w, in.h, in.channels) or "vk_utils::createImage(temp, ...)", need to process spetial case
+//
+//   //(#2) alloc  
+//   //    
+//   VkDeviceMemory allMem = vl_utils::allocAndBind({arg_in, arg_filters[0], arg_filters[1], ..., arg_out, local_temp}); 
+//
+//   //(#3) update  
+//   //    
+//   pCopyHelper->UpdateImage(arg_in,in);                   
+//   for(int i=0;i<filter_num;i++) 
+//     pCopyHelper->UpdateImage(arg_filters[i], filters[i]);
+//   //#NOTE(!) don't have to update "arg_out" if we detect that "out" is never read inside kernels 
+//
+//   //(#4) create all descriptor 
+//   //  
+//   VkDescriptorSet allDescriptorSets[10]; 
+//   allDescriptorSets[0] = fuck ... we have to execute loop to create descriptor sets actually (!!!!!!!!! PROBLEM !!!!!!!!!!!!)
+//    
+//   //(#5) fill and immediately run command buffer  
+//   //  
+//   VkCommandBuffer cmdBuff = ...
+//   do_computationsCmd(cmdBuff, allDescriptorSets, in, filters, out)  
+//   vk_utils::executeCommadnBufferNow(cmdBuff);
+//
+//   //(#6) get data back to CPU  
+//   //  
+//   pCopyHelper->ReadImage(arg_in,in); 
+//   pCopyHelper->ReadImage(arg_out,out);                
+// }
+
 
 void set_path_prefix(const char* out_path)
 {
@@ -265,7 +356,7 @@ int apply_filters(const char* in_img_path, const char* out_path, const char** fi
   if(save_intermediate)
     set_path_prefix(out_path);
 
-  do_computations(&in, filters_num, filters, &out, save_intermediate);
+  do_computations2(&in, filters_num, filters, &out);
 
   save_image(out_path, &out);
   fprintf(stdout, "Written output image: %s\n", out_path);
