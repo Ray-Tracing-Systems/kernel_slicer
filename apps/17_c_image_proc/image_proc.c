@@ -4,8 +4,10 @@
 #include "stb_image.h"
 #include "stb_image_write.h"
 #include "image_proc.h"
-#include "stdio.h"
-#include "stdlib.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
 
 typedef struct pix3
 {
@@ -21,6 +23,56 @@ typedef struct fpix3
 {
   float color[3];
 } fpix3;
+
+char g_pathPrefix[PATH_BUF] = {};
+
+int tex_clamp(int idx, int upper_thres)
+{
+  if(idx < 0)
+    return 0;
+
+  if(idx >= upper_thres)
+    return upper_thres - 1;
+
+  return idx;
+}
+
+typedef int (*WrapMode)(int, int);
+typedef pix3 (*TextureSampleUC3)(image*, float, float, WrapMode);
+typedef pix3 (*TexelFetchUC3)(image*, int, int, WrapMode);
+typedef float (*TexelFetchF1)(image_float*, int, int, WrapMode);
+typedef void (*ImageStoreUC3)(image*, int, int, pix3 color);
+
+
+float texel_fetch_float1(image_float *img, int u, int v, WrapMode mode)
+{
+  int x = mode(u, img->w);
+  int y = mode(v, img->h);
+
+  int idx = y * img->w + x;
+
+  return img->data[idx];
+}
+
+pix3 texel_fetch_uc(image *img, int u, int v, WrapMode mode)
+{
+  int x = mode(u, img->w);
+  int y = mode(v, img->h);
+
+  int idx = y * img->w + x;
+  pix3 res = {{img->data[idx * 3 + 0],
+               img->data[idx * 3 + 1],
+               img->data[idx * 3 + 2]} };
+
+  return res;
+}
+
+void image_store_uc(image* img, int x, int y, pix3 color)
+{
+  img->data[(y * img->w + x) * 3 + 0] = color.color[0];
+  img->data[(y * img->w + x) * 3 + 1] = color.color[1];
+  img->data[(y * img->w + x) * 3 + 2] = color.color[2];
+}
 
 // only LDR for now
 int load_image(const char* a_path, image* out)
@@ -80,17 +132,6 @@ void madd_pixels(fpix3* sum, float mult, pix3* add)
   sum->color[2] += mult * add->color[2];
 }
 
-int get_boundary_index(int idx, int upper_thres)
-{
-  if(idx < 0)
-    return 0;
-
-  if(idx >= upper_thres)
-    return upper_thres - 1;
-
-  return idx;
-}
-
 void kernel2D_filter(image* in, image_float* filter, image* out)
 {
   assert(in->data && out->data);
@@ -105,22 +146,18 @@ void kernel2D_filter(image* in, image_float* filter, image* out)
     {
       fpix3 acc = { {0.0f, 0.0f, 0.0f} };
       for(int k = -half; k <= half; ++k)
-        for(int l = -half; l <= half; ++l)
-        {                                                                        ///<! Issue (#4):
-          float filter_val = filter->data[(k + half) * filter->w + (l + half)];  ///<! explicit indexing will not work for GPU images in this way
-          int offset_x = get_boundary_index(i + k, in->h);                       ///<! think we don't have to do this for GPU images also
-          int offset_y = get_boundary_index(j + l, in->w);                       ///<! think we don't have to do this for GPU images also
+      {
+        for (int l = -half; l <= half; ++l)
+        {
+          float filter_val = texel_fetch_float1(filter, k + half, l + half, tex_clamp);
 
-          int idx = offset_x * in->w + offset_y;
-          pix3 x = { {in->data[idx * 3 + 0],             ///<! explicit indexing will not work for GPU images in this way
-                      in->data[idx * 3 + 1],             ///<! explicit indexing will not work for GPU images in this way
-                      in->data[idx * 3 + 2]} };          ///<! explicit indexing will not work for GPU images in this way
+          pix3 x = texel_fetch_uc(in, j + l, i + k, tex_clamp);
 
           madd_pixels(&acc, filter_val, &x);
-        }                                                ///<! ///<! Issue (#5):
-      out->data[(i * in->w + j) * 3 + 0] = acc.color[0]; ///<! explicit indexing will not work for GPU images in this way
-      out->data[(i * in->w + j) * 3 + 1] = acc.color[1]; ///<! explicit indexing will not work for GPU images in this way
-      out->data[(i * in->w + j) * 3 + 2] = acc.color[2]; ///<! explicit indexing will not work for GPU images in this way
+        }
+      }
+      pix3 res_color = {{acc.color[0], acc.color[1], acc.color[2]}};
+      image_store_uc(out, j, i, res_color);
     }
   }
 }
@@ -164,27 +201,105 @@ int load_filter(const char* path, image_float* filter)
   return 0;
 }
 
-int apply_filter(const char* in_img_path, const char* in_filter_path, const char* out_path) ///<! Q: is this a 'control' function analogue?
+
+// ping pong filter chain
+void do_computations(image* in, int filter_num, image_float filters[filter_num], image* out, bool save_intermediate)
+{
+  char path_buf[PATH_BUF * 2] = {};
+  image temp = create_image(in->w, in->h, in->channels);
+
+  image* current_in  = in;
+  image* current_out = &temp;
+  for(int i = 0; i < filter_num - 1; ++i)
+  {
+    kernel2D_filter(current_in, &filters[i], current_out);
+
+    if(save_intermediate)
+    {
+      snprintf(path_buf, PATH_BUF * 2, "%s/step_%d.png", g_pathPrefix, i);
+      save_image(path_buf, current_out);
+    }
+
+    image *p = current_in;
+    current_in = current_out;
+    current_out = p;
+  }
+
+  kernel2D_filter(current_in, &filters[filter_num - 1], out);
+}
+
+//int apply_filter(const char* in_img_path, const char* in_filter_path, const char* out_path)
+//{
+//  image in     = {};
+//  image out    = {};
+//  image_float filter = {};
+//  load_image(in_img_path, &in);
+//  out = create_image(in.w, in.h, in.channels);
+//  if (load_filter(in_filter_path, &filter))
+//  {
+//    fprintf(stderr, "Failed loading filter from file: %s\n", in_filter_path);
+//    return 1;
+//  }
+//
+//  do_computations(&in, &filter, 1, &out);
+//
+//  save_image(out_path, &out);
+//  fprintf(stdout, "Written output image: %s\n", out_path);
+//
+//  stbi_image_free(in.data);
+//  free(out.data);
+//  free(filter.data);
+//
+//  return 0;
+//}
+
+void set_path_prefix(const char* out_path)
+{
+  char* pLastSlash = strrchr(out_path, '/');
+  if(pLastSlash != NULL)
+  {
+    strncpy(g_pathPrefix, out_path, strlen(out_path) - strlen(pLastSlash));
+  }
+  else
+  {
+    g_pathPrefix[0] = '.';
+  }
+}
+
+int apply_filters(const char* in_img_path, const char* out_path, const char** filter_paths, int filters_num,
+                  bool save_intermediate)
 {
   image in     = {};
   image out    = {};
-  image_float filter = {};
-  load_image(in_img_path, &in);                ///<! Issue (#1) allocate memory, load from file
-  out = create_image(in.w, in.h, in.channels); ///<! Issue (#2) allocate memory. How do we translate these to Vulkan?
-  if (load_filter(in_filter_path, &filter))
+  image_float filters[filters_num];
+
+  load_image(in_img_path, &in);
+  out = create_image(in.w, in.h, in.channels);
+
+  for(int i = 0; i < filters_num; ++i)
   {
-    fprintf(stderr, "Failed loading filter from file: %s\n", in_filter_path);
-    return 1;
+    if (load_filter(filter_paths[i], &filters[i]))
+    {
+      fprintf(stderr, "Failed loading filter from file: %s\n", filter_paths[i]);
+      return 1;
+    }
   }
 
-  kernel2D_filter(&in, &filter, &out);         ///<! Q: do we suppose automatic data transfer before first and after last kernels?
+  if(save_intermediate)
+    set_path_prefix(out_path);
 
-  save_image(out_path, &out);                  ///<! Issue (#3) copy data back .... 
+  do_computations(&in, filters_num, filters, &out, save_intermediate);
+
+  save_image(out_path, &out);
   fprintf(stdout, "Written output image: %s\n", out_path);
 
-  stbi_image_free(in.data); ///<! Issue (#4) WTF?
-  free(out.data);           ///<! how should we distinguish 
-  free(filter.data);        ///<! these 2 cases?
+  stbi_image_free(in.data);
+  free(out.data);
+
+  for(int i = 0; i < filters_num; ++i)
+  {
+    free(filters[i].data);
+  }
 
   return 0;
 }
