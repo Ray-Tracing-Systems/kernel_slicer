@@ -261,17 +261,17 @@ void do_computations2(image* in, int filter_num, const image_float filters[filte
 //  {
 //    if(i%2 == 0)
 //    {
-//      vkCmdBindDescriptorSets(cmdBuff, ... allDescriptorSets[0], ...);
+//      vkCmdBindDescriptorSets(cmdBuff, ... allDescriptorSets[LookUpIndexFor(in, &filters[i], &temp)], ...);
 //      filterCmd(cmdBuff, in, &filters[i], &temp);
 //    }
 //    else
 //    {
-//      vkCmdBindDescriptorSets(cmdBuff, ... allDescriptorSets[1], ...);
+//      vkCmdBindDescriptorSets(cmdBuff, ... allDescriptorSets[LookUpIndexFor(&temp, &filters[i], in)], ...);
 //      filterCmd(cmdBuff, &temp, &filters[i], in);    
 //    }       
 //  }
 //
-//  vkCmdBindDescriptorSets(cmdBuff, ... allDescriptorSets[3], ...);
+//  vkCmdBindDescriptorSets(cmdBuff, ... allDescriptorSets[LookUpIndexFor(&temp, &filters[filter_num - 1], out)], ...);
 //  kernel2D_filter(&temp, &filters[filter_num - 1], out);
 //
 //  free_image(&temp); 
