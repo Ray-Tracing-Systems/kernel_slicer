@@ -150,7 +150,7 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
 {
   const Lite_Hit lhit = *in_hit;
   if(lhit.geomId == -1)
-    *accumColor = float4(0,0,0,0);
+    *accumColor = (*accumThoroughput)*float4(0,0,0,0); // background color
 
   const uint32_t matId = m_matIdByPrimId[m_matIdOffsets[lhit.geomId] + lhit.primId];
   const float4 mdata   = m_materials[matId];
@@ -259,7 +259,7 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, floa
 
 #include "Bitmap.h"
 
-void test_class_cpu()
+void test_class_cpu(const char* a_scenePath)
 {
   TestClass test(WIN_WIDTH*WIN_HEIGHT);
 
@@ -275,7 +275,7 @@ void test_class_cpu()
       test.PackXY(x, y, packedXY.data());
   }
   
-  test.LoadScene("/home/frol/PROG/HydraRepos/HydraCore/hydra_app/tests/test_42/statex_00001.xml");
+  test.LoadScene(a_scenePath);
   
   // test simple ray casting
   //

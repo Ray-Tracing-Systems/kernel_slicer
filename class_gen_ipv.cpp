@@ -59,7 +59,7 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::IPV_Pattern::Ge
   {    
     const auto& arg = a_kernel.loopIters[i];
     ArgTypeAndNamePair arg2;
-    arg2.argName    = arg.name;
+    arg2.name    = arg.name;
     arg2.sizeText   = arg.sizeText;
     arg2.startText  = arg.startText;
     arg2.strideText = arg.strideText;
@@ -67,7 +67,7 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::IPV_Pattern::Ge
     arg2.sizeNode   = arg.sizeNode;
     arg2.startNode  = arg.startNode;
     arg2.strideNode = arg.strideNode;
-    arg2.typeName   = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
+    arg2.type   = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
     arg2.id         = i;
     args.push_back(arg2);
   }

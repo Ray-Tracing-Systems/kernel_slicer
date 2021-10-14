@@ -7,8 +7,8 @@
    * download source code from https://github.com/llvm/llvm-project/releases/tag/llvmorg-12.0.0
    * cd llvm-project 
    * mkdir build 
-   * cd build
-   * cmake -G Ninja ../llvm -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" 
+   * cd build 
+   * cmake -G Ninja -DLLVM_PARALLEL_LINK_JOBS=1 ../llvm -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" 
    * ninja 
    * if it fail, **try to run "ninja" again several times** untill you finally build everithing. It might happen due to huge resource usage during linking. Consider:
    ```

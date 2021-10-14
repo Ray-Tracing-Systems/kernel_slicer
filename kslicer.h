@@ -28,7 +28,10 @@ namespace kslicer
 {
   struct IShaderCompiler;
   enum VKERNEL_IMPL_TYPE { VKERNEL_SWITCH = 0, VKERNEL_INDIRECT_DISPATCH=2 };
- 
+  
+  /**
+  \brief for each kernel we collect list of used shader features. These features should be enabled in GLSL later.
+  */
   struct ShaderFeatures
   {
     ShaderFeatures operator||(const ShaderFeatures& rhs)
@@ -70,7 +73,13 @@ namespace kslicer
     uint32_t    argId;
     bool        isPointer = false;
   };
+  
+  /**
+  \brief functions with input pointers which access global memory; they should be rewritten for GLSL.
 
+         GLSL don't support pointers or passing buffers inside functions, so ... we have to insert all actual arguments inside function source code
+         This greately complicate kslicer work and we support only for 1 level of recursion currently, but we don't really have a choice here.   
+  */
   struct ShittyFunction
   {
     std::vector<ArgMatch> pointers;
@@ -120,9 +129,6 @@ namespace kslicer
       
       std::string condTextOriginal;
       std::string iterTextOriginal;
-      //clang::SourceRange startRange;
-      //clang::SourceRange sizeRange;
-      //clang::SourceRange strideRange;
 
       const clang::Stmt* startNode   = nullptr;
       const clang::Expr* sizeNode    = nullptr;
@@ -740,17 +746,13 @@ namespace kslicer
 
     struct ArgTypeAndNamePair
     {
-      std::string typeName;
-      std::string argName;
+      std::string type;
+      std::string name;
       
       std::string sizeText;
       std::string startText;
       std::string strideText;
       
-      //clang::SourceRange startRange;
-      //clang::SourceRange sizeRange;
-      //clang::SourceRange strideRange;
-
       const clang::Stmt* startNode   = nullptr;
       const clang::Expr* sizeNode    = nullptr;
       const clang::Expr* strideNode  = nullptr;

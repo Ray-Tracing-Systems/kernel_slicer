@@ -283,15 +283,15 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
     if(arg.isThreadID)
     { 
       ArgTypeAndNamePair arg2;
-      arg2.argName  = arg.name;
+      arg2.name  = arg.name;
       arg2.sizeText = arg.name;
-      arg2.typeName = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
+      arg2.type = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
       arg2.id       = 0;
       args.push_back(arg2);
     }
   }
 
-  std::sort(args.begin(), args.end(), [](const auto& a, const auto & b) { return a.argName < b.argName; });
+  std::sort(args.begin(), args.end(), [](const auto& a, const auto & b) { return a.name < b.name; });
 
   return args;
 }
@@ -304,7 +304,7 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
     if(!arg.isThreadID && !arg.isLoopSize && !arg.IsUser())
     { 
       ArgTypeAndNamePair arg2;
-      arg2.argName  = arg.name;
+      arg2.name  = arg.name;
       
       if(arg.isContainer && kslicer::IsTextureContainer(arg.containerType))
       {
@@ -316,7 +316,7 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
       }
       else
       {
-        arg2.typeName = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
+        arg2.type = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
         arg2.isUBO    = (arg.type.find(std::string("class ")  + mainClassName) != std::string::npos || 
                          arg.type.find(std::string("struct ") + mainClassName) != std::string::npos);
         arg2.isThreadFlags = arg.isThreadFlags;
