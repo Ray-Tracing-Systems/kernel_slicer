@@ -29,6 +29,7 @@ void kslicer::MainClassInfo::AddTempBufferToKernel(const std::string buffName, c
   kslicer::UsedContainerInfo container;
   container.type              = std::string("std::vector<") + a_elemTypeName + ">";
   container.name              = buffName; 
+  container.kind              = DATA_KIND::KIND_VECTOR;
   container.isTexture         = false;
   container.isConst           = false;
   a_kernel.usedContainers[container.name] = container;

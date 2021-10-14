@@ -29,27 +29,10 @@ namespace kslicer
   struct IShaderCompiler;
   enum VKERNEL_IMPL_TYPE { VKERNEL_SWITCH = 0, VKERNEL_INDIRECT_DISPATCH=2 };
   
-  /**
-  \brief for each kernel we collect list of used shader features. These features should be enabled in GLSL later.
-  */
-  struct ShaderFeatures
-  {
-    ShaderFeatures operator||(const ShaderFeatures& rhs)
-    {
-      useByteType  = useByteType  || rhs.useByteType;
-      useShortType = useShortType || rhs.useShortType;
-      useInt64Type = useInt64Type || rhs.useInt64Type;
-      return *this;
-    }
-
-    bool useByteType  = false; 
-    bool useShortType = false;
-    bool useInt64Type = false;
-  };
-
+  enum class DATA_KIND  { KIND_UNKNOWN = 0, KIND_POD = 1, KIND_VECTOR = 2, KIND_TEXTURE = 3, KIND_ACCEL_STRUCT=4, KIND_HASH_TABLE=5 };
   enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
   enum class TEX_ACCESS { TEX_ACCESS_NOTHING = 0, TEX_ACCESS_READ = 1, TEX_ACCESS_WRITE = 2, TEX_ACCESS_SAMPLE = 4 };
-  
+
   /**
   \brief for each kernel we collect list of containes accesed by this kernel
   */
@@ -57,13 +40,13 @@ namespace kslicer
   {
     std::string type;
     std::string name;
+    DATA_KIND   kind   = DATA_KIND::KIND_UNKNOWN;
     bool isTexture     = false;
     bool isConst       = false;
     bool isAccelStruct = false;
   };
 
   bool  IsTextureContainer(const std::string& a_typeName); ///<! return true for all types of textures
-
 
   struct ArgMatch
   {
@@ -91,6 +74,24 @@ namespace kslicer
         result += std::string("_") + x.actual;
       return result;
     }
+  };
+
+  /**
+  \brief for each kernel we collect list of used shader features. These features should be enabled in GLSL later.
+  */
+  struct ShaderFeatures
+  {
+    ShaderFeatures operator||(const ShaderFeatures& rhs)
+    {
+      useByteType  = useByteType  || rhs.useByteType;
+      useShortType = useShortType || rhs.useShortType;
+      useInt64Type = useInt64Type || rhs.useInt64Type;
+      return *this;
+    }
+
+    bool useByteType  = false; 
+    bool useShortType = false;
+    bool useInt64Type = false;
   };
 
   /**
@@ -285,7 +286,7 @@ namespace kslicer
   };
 
   /**
-  \brief for arguments of MainFunc which are pointers
+  \brief for arguments of ControlFunc which are pointers
   */
   struct InOutVarInfo 
   {
