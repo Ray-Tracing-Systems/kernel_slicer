@@ -1140,10 +1140,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     for(auto commonArg : commonArgs)
     {
       json argj;
-      std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(commonArg.typeName);
+      std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(commonArg.type);
       std::string buffType2 = pShaderRewriter->RewriteStdVectorTypeStr(buffType1); 
       argj["Type"]     = commonArg.isImage ? commonArg.imageType : buffType2;
-      argj["Name"]     = commonArg.argName;
+      argj["Name"]     = commonArg.name;
       argj["IsUBO"]    = commonArg.isUBO;
       argj["IsImage"]  = commonArg.isImage;
       argj["IsAccelStruct"] = false; 
@@ -1332,7 +1332,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       for(size_t i=0;i<tidArgs.size();i++)
       {
         uint32_t tid = std::min<uint32_t>(threadsOrder[i], tidArgs.size()-1);
-        threadIdNames[i] = tidArgs[tid].argName;
+        threadIdNames[i] = tidArgs[tid].name;
         
         std::string loopSize   = tidArgs[tid].sizeText;   
         std::string loopStart  = tidArgs[tid].startText;  
@@ -1349,8 +1349,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         else
           threadId["Simple"] = 1;
 
-        threadId["Name"]   = tidArgs[tid].argName;
-        threadId["Type"]   = tidArgs[tid].typeName;
+        threadId["Name"]   = tidArgs[tid].name;
+        threadId["Type"]   = tidArgs[tid].type;
         //threadId["Size"]   = loopSize;
         threadId["Start"]  = loopStart;
         threadId["Stride"] = loopStride;

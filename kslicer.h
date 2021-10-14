@@ -746,17 +746,13 @@ namespace kslicer
 
     struct ArgTypeAndNamePair
     {
-      std::string typeName;
-      std::string argName;
+      std::string type;
+      std::string name;
       
       std::string sizeText;
       std::string startText;
       std::string strideText;
       
-      //clang::SourceRange startRange;
-      //clang::SourceRange sizeRange;
-      //clang::SourceRange strideRange;
-
       const clang::Stmt* startNode   = nullptr;
       const clang::Expr* sizeNode    = nullptr;
       const clang::Expr* strideNode  = nullptr;
