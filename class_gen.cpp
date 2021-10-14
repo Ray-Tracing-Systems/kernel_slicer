@@ -287,10 +287,10 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
     if(arg.isThreadID)
     { 
       ArgTypeAndNamePair arg2;
-      arg2.name  = arg.name;
-      arg2.sizeText = arg.name;
       arg2.type = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
-      arg2.id       = 0;
+      arg2.name = arg.name;
+      arg2.loopIter.sizeText = arg.name;
+      arg2.loopIter.id       = 0;
       args.push_back(arg2);
     }
   }
@@ -320,10 +320,9 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
       }
       else
       {
-        arg2.type = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
-        arg2.isUBO    = (arg.type.find(std::string("class ")  + mainClassName) != std::string::npos || 
-                         arg.type.find(std::string("struct ") + mainClassName) != std::string::npos);
-        arg2.isThreadFlags = arg.isThreadFlags;
+        arg2.type             = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
+        arg2.isDefinedInClass = (arg.type.find(std::string("class ")  + mainClassName) != std::string::npos || arg.type.find(std::string("struct ") + mainClassName) != std::string::npos);
+        arg2.isThreadFlags    = arg.isThreadFlags;
       }
       args.push_back(arg2);
     }

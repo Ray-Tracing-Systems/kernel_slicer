@@ -135,7 +135,8 @@ namespace kslicer
       const clang::Expr* strideNode  = nullptr;
       const clang::Stmt* bodyNode    = nullptr;
 
-      uint32_t    loopNesting = 0;
+      uint32_t    loopNesting = 0;       ///<! 
+      uint32_t    id;                    ///<! used to preserve or change loops order
     };
     
     enum class REDUCTION_TYPE {ADD_ONE = 1, ADD = 2, MUL = 3, FUNC = 4, SUB = 5, SUB_ONE,  UNKNOWN = 255};
@@ -697,7 +698,7 @@ namespace kslicer
     std::shared_ptr<IShaderCompiler>           pShaderCC           = nullptr;
     std::shared_ptr<kslicer::FunctionRewriter> pShaderFuncRewriter = nullptr;
     
-    uint32_t                              m_indirectBufferSize = 0; ///<! size of indirect buffer
+    uint32_t m_indirectBufferSize = 0; ///<! size of indirect buffer
 
     typedef std::vector<clang::ast_matchers::StatementMatcher>               MList;
     typedef std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> MHandlerCFPtr;
@@ -749,21 +750,15 @@ namespace kslicer
       std::string type;
       std::string name;
       
-      std::string sizeText;
-      std::string startText;
-      std::string strideText;
-      
-      const clang::Stmt* startNode   = nullptr;
-      const clang::Expr* sizeNode    = nullptr;
-      const clang::Expr* strideNode  = nullptr;
+      KernelInfo::LoopIter loopIter;     ///<! used if thiscariable is a loopIter
 
       std::string imageType;
       std::string imageFormat;
-      uint32_t    id;   ///<! used to preserve or change loops order
-      bool        isUBO         = false;
-      bool        isThreadFlags = false;
-      bool        isImage       = false;
-      bool        isSampler     = false;
+
+      bool        isDefinedInClass = false;
+      bool        isThreadFlags    = false;
+      bool        isImage          = false;
+      bool        isSampler        = false;
     };
    
     virtual std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const; 

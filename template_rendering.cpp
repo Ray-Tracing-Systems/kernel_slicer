@@ -671,13 +671,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(size_t i=0;i<tidArgs.size();i++)
     {
       uint32_t tid = std::min<uint32_t>(threadsOrder[i], tidArgs.size()-1);
-      threadIdNamesList[i] = tidArgs[tid].sizeText;
+      threadIdNamesList[i] = tidArgs[tid].loopIter.sizeText;
     }
 
     if(threadIdNamesList.size() > 0)
     {
       kernelJson["tidX"] = threadIdNamesList[0];
-      kernelJson["begX"] = tidArgs[0].startText;  
+      kernelJson["begX"] = tidArgs[0].loopIter.startText;  
     }
     else
     {
@@ -688,7 +688,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(threadIdNamesList.size() > 1)
     {
       kernelJson["tidY"] = threadIdNamesList[1];
-      kernelJson["begY"] = tidArgs[1].startText;  
+      kernelJson["begY"] = tidArgs[1].loopIter.startText;  
     }
     else
     {
@@ -699,7 +699,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(threadIdNamesList.size() > 2)
     {
       kernelJson["tidZ"] = threadIdNamesList[2];
-      kernelJson["begZ"] = tidArgs[2].startText;  
+      kernelJson["begZ"] = tidArgs[2].loopIter.startText;  
     }
     else
     {
@@ -1141,7 +1141,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       std::string buffType2 = pShaderRewriter->RewriteStdVectorTypeStr(buffType1); 
       argj["Type"]     = commonArg.isImage ? commonArg.imageType : buffType2;
       argj["Name"]     = commonArg.name;
-      argj["IsUBO"]    = commonArg.isUBO;
+      argj["IsUBO"]    = commonArg.isDefinedInClass;
       argj["IsImage"]  = commonArg.isImage;
       argj["IsAccelStruct"] = false; 
       argj["NeedFmt"]  = !commonArg.isSampler;
@@ -1331,14 +1331,14 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         uint32_t tid = std::min<uint32_t>(threadsOrder[i], tidArgs.size()-1);
         threadIdNames[i] = tidArgs[tid].name;
         
-        std::string loopSize   = tidArgs[tid].sizeText;   
-        std::string loopStart  = tidArgs[tid].startText;  
-        std::string loopStride = tidArgs[tid].strideText; 
+        std::string loopSize   = tidArgs[tid].loopIter.sizeText;   
+        std::string loopStart  = tidArgs[tid].loopIter.startText;  
+        std::string loopStride = tidArgs[tid].loopIter.strideText; 
         
         json threadId;
-        if(tidArgs[tid].startNode != nullptr)
+        if(tidArgs[tid].loopIter.startNode != nullptr)
         {
-          loopStart  = pVisitorK->RecursiveRewrite(tidArgs[tid].startNode);
+          loopStart  = pVisitorK->RecursiveRewrite(tidArgs[tid].loopIter.startNode);
           //loopSize   = pVisitorK->RecursiveRewrite(tidArgs[tid].sizeNode);
           //loopStride = pVisitorK->RecursiveRewrite(tidArgs[tid].strideNode);
           threadId["Simple"] = 0;
