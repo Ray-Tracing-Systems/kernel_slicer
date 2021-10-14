@@ -215,6 +215,10 @@ std::string kslicer::MainClassInfo::GetCFDeclFromSource(const std::string& sourc
   const auto  posOfBracket     = sourceCode.find("(");
   std::string mainFuncDeclHead = sourceCode.substr(0, posOfBracket);
   std::string mainFuncDeclTail = sourceCode.substr(posOfBracket+1);
+
+  while(mainFuncDeclHead[mainFuncDeclHead.size()-1] == ' ')
+    mainFuncDeclHead = mainFuncDeclHead.substr(0, mainFuncDeclHead.size()-1);
+
   return std::string("virtual ") + mainFuncDeclHead + "Cmd(VkCommandBuffer a_commandBuffer, " + mainFuncDeclTail + ";";
 }
 
