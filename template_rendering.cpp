@@ -97,9 +97,9 @@ std::string kslicer::GetDSVulkanAccessMask(kslicer::TEX_ACCESS a_accessMask)
   }
 }
 
-std::vector<kslicer::KernelInfo::Arg> kslicer::GetUserKernelArgs(const std::vector<kslicer::KernelInfo::Arg>& a_allArgs)
+std::vector<kslicer::KernelInfo::ArgInfo> kslicer::GetUserKernelArgs(const std::vector<kslicer::KernelInfo::ArgInfo>& a_allArgs)
 {
-  std::vector<kslicer::KernelInfo::Arg> result;
+  std::vector<kslicer::KernelInfo::ArgInfo> result;
   result.reserve(a_allArgs.size());
 
   for(const auto& arg : a_allArgs)
@@ -933,7 +933,7 @@ void kslicer::ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, con
 namespace kslicer
 {
   std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, 
-                                      const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds,
+                                      const std::vector<kslicer::ArgFinal>& threadIds,
                                       const std::string a_names[3]);
 }
 

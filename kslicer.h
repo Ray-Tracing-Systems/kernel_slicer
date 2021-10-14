@@ -98,7 +98,8 @@ namespace kslicer
   */
   struct KernelInfo 
   {
-    struct Arg 
+
+    struct ArgInfo 
     {
       std::string type;
       std::string name;
@@ -168,7 +169,7 @@ namespace kslicer
     std::string           name;                 ///<! func. name
     std::string           className;            ///<! Class::kernel_XXX --> 'Class'
     std::string           interfaceName;        ///<! Name of the interface if the kernel is virtual
-    std::vector<Arg>      args;                 ///<! all arguments of a kernel
+    std::vector<ArgInfo>      args;                 ///<! all arguments of a kernel
     std::vector<LoopIter> loopIters;            ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
     
     uint32_t GetDim() const 
@@ -221,6 +222,23 @@ namespace kslicer
     uint32_t  indirectMakerOffset = 0;           ///<! RTV pattern; kernel-makers have to update size in the indirect buffer  
 
     ShaderFeatures shaderFeatures;
+  };
+
+  /**
+  \brief Arguments of Kernels (And CF?) which are finilazed for the last stage of templated text rendering
+  */
+  struct ArgFinal
+  {
+    std::string type;
+    std::string name;
+    
+    KernelInfo::LoopIter loopIter;     ///<! used if thiscariable is a loopIter
+    std::string imageType;
+    std::string imageFormat;
+    bool        isDefinedInClass = false;
+    bool        isThreadFlags    = false;
+    bool        isImage          = false;
+    bool        isSampler        = false;
   };
 
   /**
@@ -523,7 +541,7 @@ namespace kslicer
     MainClassInfo*                                           m_codeInfo;
     std::string                                              m_mainClassName;
     std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
-    const std::vector<kslicer::KernelInfo::Arg>&             m_args;
+    const std::vector<kslicer::KernelInfo::ArgInfo>&             m_args;
     const std::string&                                       m_fakeOffsetExp;
     bool                                                     m_kernelIsBoolTyped;
     bool                                                     m_kernelIsMaker;
@@ -706,7 +724,7 @@ namespace kslicer
 
     virtual std::string RemoveKernelPrefix(const std::string& a_funcName) const;                       ///<! "kernel_XXX" --> "XXX"; 
     virtual bool        IsKernel(const std::string& a_funcName) const;                                 ///<! return true if function is a kernel
-    virtual void        ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const { }   ///<!  
+    virtual void        ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const { }   ///<!  
     virtual bool        IsIndirect(const KernelInfo& a_kernel) const; 
    
     //// Processing Control Functions (CF)
@@ -744,25 +762,9 @@ namespace kslicer
     //// These methods used for final template text rendering
     //
     virtual uint32_t GetKernelDim(const KernelInfo& a_kernel) const = 0; 
-
-    struct ArgTypeAndNamePair
-    {
-      std::string type;
-      std::string name;
-      
-      KernelInfo::LoopIter loopIter;     ///<! used if thiscariable is a loopIter
-
-      std::string imageType;
-      std::string imageFormat;
-
-      bool        isDefinedInClass = false;
-      bool        isThreadFlags    = false;
-      bool        isImage          = false;
-      bool        isSampler        = false;
-    };
    
-    virtual std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const; 
-    virtual std::vector<ArgTypeAndNamePair> GetKernelCommonArgs(const KernelInfo& a_kernel) const;
+    virtual std::vector<ArgFinal> GetKernelTIDArgs(const KernelInfo& a_kernel) const; 
+    virtual std::vector<ArgFinal> GetKernelCommonArgs(const KernelInfo& a_kernel) const;
 
     virtual std::string GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler);
     virtual std::string GetCFDeclFromSource(const std::string& sourceCode);
@@ -832,7 +834,7 @@ namespace kslicer
     void          VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) override; 
 
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
-    void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override;   
+    void          ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const override;   
     
     bool          SupportVirtualKernels() const override { return true; }
     void          AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) override;  ///<! for Virtual Kernels 
@@ -867,9 +869,9 @@ namespace kslicer
     void          VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) override;
 
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
-    void          ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const override; 
+    void          ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const override; 
 
-    std::vector<ArgTypeAndNamePair> GetKernelTIDArgs(const KernelInfo& a_kernel) const override; 
+    std::vector<ArgFinal> GetKernelTIDArgs(const KernelInfo& a_kernel) const override; 
     bool NeedThreadFlags() const override { return false; }                   
   };
 
@@ -878,7 +880,7 @@ namespace kslicer
   \brief select local variables of main class that can be placed in auxilary buffer
   */
   std::vector<DataMemberInfo> MakeClassDataListAndCalcOffsets(std::unordered_map<std::string, DataMemberInfo>& vars);
-  std::vector<kslicer::KernelInfo::Arg> GetUserKernelArgs(const std::vector<kslicer::KernelInfo::Arg>& a_allArgs);
+  std::vector<kslicer::KernelInfo::ArgInfo> GetUserKernelArgs(const std::vector<kslicer::KernelInfo::ArgInfo>& a_allArgs);
 
   void ReplaceOpenCLBuiltInTypes(std::string& a_typeName);
   std::vector<std::string> GetAllPredefinedThreadIdNamesRTV();

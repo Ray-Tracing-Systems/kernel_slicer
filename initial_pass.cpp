@@ -13,11 +13,11 @@ void kslicer::SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* 
 }
 
 
-static kslicer::KernelInfo::Arg ProcessParameter(clang::ParmVarDecl *p) 
+static kslicer::KernelInfo::ArgInfo ProcessParameter(clang::ParmVarDecl *p) 
 {
   clang::QualType q = p->getType();
 
-  kslicer::KernelInfo::Arg arg;
+  kslicer::KernelInfo::ArgInfo arg;
   arg.name = p->getNameAsString();
   arg.type = clang::QualType::getAsString(q.split(), clang::PrintingPolicy{ {} });
   arg.size = 1;

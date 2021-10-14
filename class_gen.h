@@ -96,7 +96,7 @@ namespace kslicer
 
   void ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo);
   std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, 
-                                      const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds,
+                                      const std::vector<kslicer::ArgFinal>& threadIds,
                                       const std::string a_names[3]);
 }
 

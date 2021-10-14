@@ -45,20 +45,20 @@ uint32_t kslicer::IPV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel)
     return 0;
 } 
 
-void kslicer::IPV_Pattern::ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const 
+void kslicer::IPV_Pattern::ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const 
 {
   auto found = std::find_if(a_kernel.loopIters.begin(), a_kernel.loopIters.end(), 
                            [&](const auto& val){ return arg.name == val.sizeText; });
   arg.isLoopSize = (found != a_kernel.loopIters.end());
 }
 
-std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::IPV_Pattern::GetKernelTIDArgs(const KernelInfo& a_kernel) const 
+std::vector<kslicer::ArgFinal> kslicer::IPV_Pattern::GetKernelTIDArgs(const KernelInfo& a_kernel) const 
 {
-  std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> args;
+  std::vector<kslicer::ArgFinal> args;
   for (uint32_t i = 0; i < a_kernel.loopIters.size(); i++) 
   {    
     const auto& arg = a_kernel.loopIters[i];
-    ArgTypeAndNamePair arg2;
+    ArgFinal arg2;
     arg2.name        = arg.name;
     arg2.type        = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
     arg2.loopIter    = arg;

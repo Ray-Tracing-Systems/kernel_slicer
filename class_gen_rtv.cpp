@@ -19,7 +19,7 @@
 
 //// tid, fakeOffset(tidX,tidY,kgen_iNumElementsX) or fakeOffset2(tidX,tidY,tidX,kgen_iNumElementsX, kgen_iNumElementsY)
 //
-std::string kslicer::GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair>& threadIds, const std::string names[3]) 
+std::string kslicer::GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds, const std::string names[3]) 
 { 
   if(threadIds.size() == 1)
     return threadIds[0].name;
@@ -116,7 +116,7 @@ void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncL
   // (3) finally add actual variables to MainFunc, arguments to kernels and reference to kernel call 
   //
   DataLocalVarInfo   tFlagsLocalVar;
-  KernelInfo::Arg    tFlagsArg;
+  KernelInfo::ArgInfo    tFlagsArg;
 
   tFlagsLocalVar.name = "threadFlags";
   tFlagsLocalVar.type = "uint";
@@ -267,7 +267,7 @@ void kslicer::RTV_Pattern::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clan
 }
 
 
-void kslicer::RTV_Pattern::ProcessKernelArg(KernelInfo::Arg& arg, const KernelInfo& a_kernel) const 
+void kslicer::RTV_Pattern::ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const 
 {
   auto pdef = GetAllPredefinedThreadIdNamesRTV();
   auto id   = std::find(pdef.begin(), pdef.end(), arg.name);

@@ -279,14 +279,14 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
   return rewrite2.getRewrittenText(clang::SourceRange(b,e));
 }
 
-std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::GetKernelTIDArgs(const KernelInfo& a_kernel) const
+std::vector<kslicer::ArgFinal> kslicer::MainClassInfo::GetKernelTIDArgs(const KernelInfo& a_kernel) const
 {
-  std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> args;
+  std::vector<kslicer::ArgFinal> args;
   for (const auto& arg : a_kernel.args) 
   {   
     if(arg.isThreadID)
     { 
-      ArgTypeAndNamePair arg2;
+      ArgFinal arg2;
       arg2.type = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
       arg2.name = arg.name;
       arg2.loopIter.sizeText = arg.name;
@@ -300,17 +300,17 @@ std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::
   return args;
 }
 
-std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> kslicer::MainClassInfo::GetKernelCommonArgs(const KernelInfo& a_kernel) const
+std::vector<kslicer::ArgFinal> kslicer::MainClassInfo::GetKernelCommonArgs(const KernelInfo& a_kernel) const
 {
-  std::vector<kslicer::MainClassInfo::ArgTypeAndNamePair> args;
+  std::vector<kslicer::ArgFinal> args;
   for (const auto& arg : a_kernel.args) 
   { 
     if(!arg.isThreadID && !arg.isLoopSize && !arg.IsUser())
     { 
-      ArgTypeAndNamePair arg2;
+      ArgFinal arg2;
       arg2.name  = arg.name;
       
-      if(arg.isContainer && kslicer::IsTextureContainer(arg.containerType))
+      if(arg.IsTexture())
       {
         auto pAccessFlags = a_kernel.texAccessInArgs.find(arg.name);
         CheckTextureAccessFlags(pAccessFlags->second, arg.name, a_kernel.name);
