@@ -292,14 +292,14 @@ namespace kslicer
             kslicer::UsedContainerInfo container;
             container.type = qt.getAsString();
             container.name = pDataMember->first;
-            //if(clang::isa<clang::ClassTemplateSpecializationDecl>(var)) // don't work for FieldDecl, this seems to be diferent type branch in clang
-            //{
-            //  auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(var);   
-            //  kslicer::SplitContainerTypes(specDecl, container.containerType, container.containerDataType);
-            //}
-            container.isTexture     = kslicer::IsTexture(qt);
-            container.isConst       = qt.isConstQualified();
-            container.isAccelStruct = kslicer::IsAccelStruct(qt);
+            if(kslicer::IsTexture(qt))           // TODO: detect other cases
+              container.kind = kslicer::DATA_KIND::KIND_TEXTURE;
+            else if(kslicer::IsAccelStruct(qt))
+              container.kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
+            else 
+              container.kind = kslicer::DATA_KIND::KIND_VECTOR; 
+            
+            container.isConst = qt.isConstQualified();
             currKernel->usedContainers[container.name] = container;
           }
           else

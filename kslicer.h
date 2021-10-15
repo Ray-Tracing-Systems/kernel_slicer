@@ -41,9 +41,10 @@ namespace kslicer
     std::string type;
     std::string name;
     DATA_KIND   kind   = DATA_KIND::KIND_UNKNOWN;
-    bool isTexture     = false;
+    
     bool isConst       = false;
-    bool isAccelStruct = false;
+    bool isTexture()     const { return (kind == DATA_KIND::KIND_TEXTURE); }
+    bool isAccelStruct() const { return (kind == DATA_KIND::KIND_ACCEL_STRUCT); } 
   };
 
   bool  IsTextureContainer(const std::string& a_typeName); ///<! return true for all types of textures

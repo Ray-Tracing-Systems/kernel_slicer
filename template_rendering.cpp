@@ -605,7 +605,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     {
       json argData;
 
-      if(container.second.isTexture)
+      if(container.second.isTexture())
       {
         auto pAccessFlags = k.texAccessInMemb.find(container.second.name);
         if(pAccessFlags == k.texAccessInMemb.end() || pAccessFlags->second == TEX_ACCESS::TEX_ACCESS_SAMPLE)
@@ -613,7 +613,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         else
           argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
       }
-      else if(container.second.isAccelStruct)
+      else if(container.second.isAccelStruct())
       {
         argData["Type"] = "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR";
       }
@@ -840,10 +840,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           json arg;
           arg["Id"]            = realId;
           arg["Name"]          = "m_vdata." + container.second.name;
-          arg["IsTexture"]     = container.second.isTexture;
-          arg["IsAccelStruct"] = container.second.isAccelStruct;
+          arg["IsTexture"]     = container.second.isTexture();
+          arg["IsAccelStruct"] = container.second.isAccelStruct();
 
-          if(container.second.isTexture)
+          if(container.second.isTexture())
           {
             auto pMember = a_classInfo.allDataMembers.find(container.second.name);
             bool isConst = (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE) || 
@@ -854,7 +854,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
             arg["AccessDSType"] = texDSInfo.accessDSType;
             arg["SamplerName"]  = texDSInfo.SamplerName;
           }
-          else if(container.second.isAccelStruct)
+          else if(container.second.isAccelStruct())
           {
             data["HasRTXAccelStruct"] = true;
             arg["Name"] = container.second.name; // remove m_vdata."
@@ -1188,7 +1188,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         argj["ImFormat"] = imageFormat;
         argj["SizeOffset"] = 0;
       }
-      else if(container.second.isAccelStruct)
+      else if(container.second.isAccelStruct())
       {
         argj["IsAccelStruct"] = true;
         rtxNames.push_back(container.second.name);

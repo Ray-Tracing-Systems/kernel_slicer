@@ -49,7 +49,7 @@ std::vector<NameFlagsPair> ListAccessedTextures(const std::vector<kslicer::ArgRe
   }
   for(const auto& container : kernel.usedContainers)
   {
-    if(container.second.isTexture)
+    if(container.second.isTexture())
     {
       auto pFlags = kernel.texAccessInMemb.find(container.second.name);
       NameFlagsPair tex; 
