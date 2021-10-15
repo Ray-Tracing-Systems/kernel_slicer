@@ -27,9 +27,9 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
 namespace kslicer
 {
   struct IShaderCompiler;
-  enum VKERNEL_IMPL_TYPE { VKERNEL_SWITCH = 0, VKERNEL_INDIRECT_DISPATCH=2 };
+  enum class VKERNEL_IMPL_TYPE { VKERNEL_SWITCH = 0, VKERNEL_INDIRECT_DISPATCH=2 };
   
-  enum class DATA_KIND  { KIND_UNKNOWN = 0, KIND_POD = 1, KIND_VECTOR = 2, KIND_TEXTURE = 3, KIND_ACCEL_STRUCT=4, KIND_HASH_TABLE=5 };
+  enum class DATA_KIND  { KIND_UNKNOWN = 0, KIND_POD = 1, KIND_POINTER = 2, KIND_VECTOR = 3, KIND_TEXTURE = 4, KIND_ACCEL_STRUCT=5, KIND_HASH_TABLE=6 };
   enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
   enum class TEX_ACCESS { TEX_ACCESS_NOTHING = 0, TEX_ACCESS_READ = 1, TEX_ACCESS_WRITE = 2, TEX_ACCESS_SAMPLE = 4 };
 
@@ -62,7 +62,7 @@ namespace kslicer
   \brief functions with input pointers which access global memory; they should be rewritten for GLSL.
 
          GLSL don't support pointers or passing buffers inside functions, so ... we have to insert all actual arguments inside function source code
-         This greately complicate kslicer work and we support only for 1 level of recursion currently, but we don't really have a choice here.   
+         This greately complicate kslicer work and we support it only for 1 level of recursion currently, but we don't really have a choice.   
   */
   struct ShittyFunction
   {
@@ -292,8 +292,9 @@ namespace kslicer
   struct InOutVarInfo 
   {
     std::string name;
-    bool isTexture = false;
-    bool isConst   = false;
+    DATA_KIND   kind = DATA_KIND::KIND_UNKNOWN;
+    bool isConst     = false;
+    bool isTexture() const { return (kind == DATA_KIND::KIND_TEXTURE); };
   };
 
   // assume there could be only 4 form of kernel arg when kernel is called
@@ -310,12 +311,15 @@ namespace kslicer
   struct ArgReferenceOnCall
   {
     KERN_CALL_ARG_TYPE argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_UNKNOWN_TYPE;
-    std::string        varName = "";
-    std::string        varType = "";
-    bool isTexture             = false;
+    std::string        name = "";
+    std::string        type = "";
+    DATA_KIND          kind = DATA_KIND::KIND_UNKNOWN;
+    
     bool isConst               = false;
     bool umpersanned           = false; // just signal that '&' was applied to this argument, and thus it is likely to be (ARG_REFERENCE_LOCAL or ARG_REFERENCE_CLASS_POD)
-    bool isAccelStruct         = false;
+    
+    bool isTexture    () const { return (kind == DATA_KIND::KIND_TEXTURE); }
+    bool isAccelStruct() const { return (kind == DATA_KIND::KIND_ACCEL_STRUCT); }
   };
 
   struct KernelCallInfo
@@ -804,11 +808,11 @@ namespace kslicer
       std::vector<kslicer::DeclInClass>            usedDecls;
       std::unordered_map<std::string, std::string> tagByClassName; 
 
-      VKERNEL_IMPL_TYPE dispatchType = VKERNEL_SWITCH; ///<! simple variant by default
+      VKERNEL_IMPL_TYPE dispatchType = VKERNEL_IMPL_TYPE::VKERNEL_SWITCH; ///<! simple variant by default
       uint32_t indirectBlockOffset   = 0;
     };
     
-    kslicer::VKERNEL_IMPL_TYPE defaultVkernelType = kslicer::VKERNEL_SWITCH;
+    kslicer::VKERNEL_IMPL_TYPE defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
     bool halfFloatTextures = false;
 
     std::unordered_map<std::string, DHierarchy> m_vhierarchy;

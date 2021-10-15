@@ -234,7 +234,7 @@ std::vector<kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CX
     {
       InOutVarInfo var;
       var.name      = currParam->getNameAsString();
-      var.isTexture = false;
+      var.kind      = DATA_KIND::KIND_POINTER;
       var.isConst   = qt.isConstQualified();
       params.push_back(var);
     }
@@ -242,7 +242,7 @@ std::vector<kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CX
     {
       InOutVarInfo var;
       var.name      = currParam->getNameAsString();
-      var.isTexture = true;
+      var.kind      = DATA_KIND::KIND_TEXTURE;
       var.isConst   = qt.isConstQualified();
       params.push_back(var);
     }
@@ -369,7 +369,7 @@ void kslicer::MainClassInfo::ProcessCallArs_KF(const KernelCallInfo& a_call)
     const auto& currArg = a_call.descriptorSetsInfo[argId];
     const auto& kernArg = pKernel->second.args[argId];
 
-    auto pDataMember = allDataMembers.find(currArg.varName);
+    auto pDataMember = allDataMembers.find(currArg.name);
     auto pMask       = pKernel->second.texAccessInArgs.find(kernArg.name);
         
     if(pDataMember == allDataMembers.end() || pMask == pKernel->second.texAccessInArgs.end())

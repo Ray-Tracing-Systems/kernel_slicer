@@ -288,7 +288,7 @@ int main(int argc, const char **argv)
   uint32_t    warpSize        = 32;
   bool        useCppInKernels = false;
   bool        halfFloatTextures = false;
-  auto        defaultVkernelType = kslicer::VKERNEL_SWITCH;
+  auto        defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
   
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
@@ -325,9 +325,9 @@ int main(int argc, const char **argv)
   if(params.find("-vkernel_t=") != params.end())
   {
     if(params["-vkernel_t="] == "switch")
-      defaultVkernelType = kslicer::VKERNEL_SWITCH;
+      defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
     else if(params["-vkernel_t="] == "indirect_dispatch")
-      defaultVkernelType = kslicer::VKERNEL_INDIRECT_DISPATCH;
+      defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_INDIRECT_DISPATCH;
   } 
 
   std::unordered_set<std::string> values;

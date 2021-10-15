@@ -63,20 +63,20 @@ std::string kslicer::GetDSArgName(const std::string& a_mainFuncName, const kslic
   switch(a_arg.argType)
   {
     case  kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG:
-    return a_mainFuncName + "_local." + a_arg.varName; 
+    return a_mainFuncName + "_local." + a_arg.name; 
 
     case  kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL:
     case  kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR:
     {
-      auto posOfData = a_arg.varName.find(".data()");
+      auto posOfData = a_arg.name.find(".data()");
       if(posOfData != std::string::npos)
-        return std::string("m_vdata.") + a_arg.varName.substr(0, posOfData);
+        return std::string("m_vdata.") + a_arg.name.substr(0, posOfData);
       else
-        return a_mainFuncName + "_local." + a_arg.varName; 
+        return a_mainFuncName + "_local." + a_arg.name; 
     }
     
     default:
-    return std::string("m_vdata.") + a_arg.varName;
+    return std::string("m_vdata.") + a_arg.name;
   };
 }
 
@@ -123,7 +123,7 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
 {
   json hierarchy;
   hierarchy["Name"]             = h.interfaceName;
-  hierarchy["IndirectDispatch"] = (h.dispatchType == kslicer::VKERNEL_INDIRECT_DISPATCH);
+  hierarchy["IndirectDispatch"] = (h.dispatchType == kslicer::VKERNEL_IMPL_TYPE::VKERNEL_INDIRECT_DISPATCH);
   hierarchy["IndirectOffset"]   = h.indirectBlockOffset;
   
   hierarchy["Constants"]        = std::vector<std::string>();
@@ -545,7 +545,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     else if(k.isMaker)
     {
       auto p = a_classInfo.m_vhierarchy.find(k.interfaceName);
-      if(p != a_classInfo.m_vhierarchy.end() && p->second.dispatchType == kslicer::VKERNEL_INDIRECT_DISPATCH)
+      if(p != a_classInfo.m_vhierarchy.end() && p->second.dispatchType == kslicer::VKERNEL_IMPL_TYPE::VKERNEL_INDIRECT_DISPATCH)
       {
         json indirectJson;
         indirectJson["KernelName"]   = kernName;
@@ -772,7 +772,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     {
       json controlArg;
       controlArg["Name"]      = v.name;
-      controlArg["IsTexture"] = v.isTexture;
+      controlArg["IsTexture"] = v.isTexture();
       data2["InOutVars"].push_back(controlArg);
     }
 
@@ -797,7 +797,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
         if(!handMadeKernels && (pFoundKernel->second.args[j].isThreadID || pFoundKernel->second.args[j].isLoopSize || pFoundKernel->second.args[j].IsUser() ||
-                                dsArgs.descriptorSetsInfo[j].varName == "this")) // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
+                                dsArgs.descriptorSetsInfo[j].name == "this")) // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
           continue;
 
         const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j]);
@@ -805,10 +805,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         json arg;
         arg["Id"]            = realId;
         arg["Name"]          = dsArgName;
-        arg["IsTexture"]     = dsArgs.descriptorSetsInfo[j].isTexture;
-        arg["IsAccelStruct"] = dsArgs.descriptorSetsInfo[j].isAccelStruct;
+        arg["IsTexture"]     = dsArgs.descriptorSetsInfo[j].isTexture();
+        arg["IsAccelStruct"] = dsArgs.descriptorSetsInfo[j].isAccelStruct();
 
-        if(dsArgs.descriptorSetsInfo[j].isTexture)
+        if(dsArgs.descriptorSetsInfo[j].isTexture())
         {
           bool isConst = dsArgs.descriptorSetsInfo[j].isConst;
           auto pMember = a_classInfo.allDataMembers.find(dsArgName);
@@ -822,14 +822,14 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           arg["AccessDSType"] = texDSInfo.accessDSType;
           arg["SamplerName"]  = texDSInfo.SamplerName;
         }
-        else if(dsArgs.descriptorSetsInfo[j].isAccelStruct)
+        else if(dsArgs.descriptorSetsInfo[j].isAccelStruct())
         {
           std::cout << "[kslicer error]: passing acceleration structures to kernel arguments is not yet implemented" << std::endl; 
           data["HasRTXAccelStruct"] = true;
         } 
 
         local["Args"].push_back(arg);
-        local["ArgNames"].push_back(dsArgs.descriptorSetsInfo[j].varName);
+        local["ArgNames"].push_back(dsArgs.descriptorSetsInfo[j].name);
         realId++;
       }
       

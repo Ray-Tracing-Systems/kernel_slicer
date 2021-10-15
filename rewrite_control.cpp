@@ -35,12 +35,12 @@ std::vector<NameFlagsPair> ListAccessedTextures(const std::vector<kslicer::ArgRe
   accesedTextures.reserve(16);
   for(uint32_t i=0;i<uint32_t(args.size());i++)
   {
-    if(args[i].isTexture)
+    if(args[i].isTexture())
     {
       std::string argNameInKernel = kernel.args[i].name;
       auto pFlags = kernel.texAccessInArgs.find(argNameInKernel);
       NameFlagsPair tex;
-      tex.name  = args[i].varName;
+      tex.name  = args[i].name;
       tex.flags = pFlags->second;
       tex.isArg = true;
       tex.argId = i;
@@ -194,10 +194,12 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
   std::vector<ArgReferenceOnCall> args(2); // TODO: extract corretc arguments from memcpy (CallExpr* call)
   {
     args[0].argType = memCpyArgs[0].argType;
-    args[0].varName = memCpyArgs[0].varName;
+    args[0].name    = memCpyArgs[0].name;
+    args[0].kind    = DATA_KIND::KIND_POINTER;
 
     args[1].argType = memCpyArgs[1].argType;
-    args[1].varName = memCpyArgs[1].varName;
+    args[1].name    = memCpyArgs[1].name;
+    args[1].kind    = DATA_KIND::KIND_POINTER;
   }
 
   const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, std::unordered_map<std::string, kslicer::UsedContainerInfo>()); // + strOut1.str();
@@ -219,7 +221,7 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
   std::stringstream strOut;
   strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
   strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
-  strOut << "  " << kernName.c_str() << "Cmd(" << memCpyArgs[2].varName << " / sizeof(float));" << std::endl;
+  strOut << "  " << kernName.c_str() << "Cmd(" << memCpyArgs[2].name << " / sizeof(float));" << std::endl;
   strOut << "  " << "vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr)";
 
   return strOut.str();
@@ -363,15 +365,19 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
     std::string text = GetRangeSourceCode(sourceRange, m_compiler);
   
     ArgReferenceOnCall arg; 
-    arg.varType   = q.getAsString();
-    arg.isConst   = q.isConstQualified();
+    arg.type    = q.getAsString();
+    arg.isConst = q.isConstQualified();
     if(text[0] == '&')
     {
       arg.umpersanned = true;
       text = text.substr(1);
       auto pClassVar = m_allClassMembers.find(text);
       if(pClassVar != m_allClassMembers.end())
+      {
         arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_POD;
+        arg.kind    = DATA_KIND::KIND_POD;
+      }
+      
     }
     else if(q->isPointerType() && text.find(".data()") != std::string::npos) // TODO: add check for reference, fo the case if we want to pas vectors by reference
     {
@@ -381,22 +387,26 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
         std::cout << "[KernelCallError]: vector<...> variable '" << varName.c_str() << "' was not found in class!" << std::endl; 
       else
         pClassVar->second.usedInMainFn = true;
-
+      
       arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR;
+      arg.kind    = DATA_KIND::KIND_VECTOR;
     }
     else if(kslicer::IsTexture(q))
     {
       auto pClassVar = m_allClassMembers.find(text);
       if(pClassVar != m_allClassMembers.end()) // if not found, probably this is an argument of control function. Not an error. Process in later.
         pClassVar->second.usedInMainFn = true;
-      arg.isTexture = true;
+      arg.kind      = DATA_KIND::KIND_TEXTURE;
     }
 
     auto elementId = std::find(predefinedNames.begin(), predefinedNames.end(), text); // exclude predefined names from arguments
     if(elementId != predefinedNames.end())
+    {
       arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_THREAD_ID;
+      arg.kind    = DATA_KIND::KIND_POD;
+    }
 
-    arg.varName = text;
+    arg.name = text;
     args.push_back(arg); 
   }
 
@@ -405,11 +415,11 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
     if(arg.argType != KERN_CALL_ARG_TYPE::ARG_REFERENCE_UNKNOWN_TYPE)
       continue;
     
-    auto p2 = m_argsOfMainFunc.find(arg.varName);
+    auto p2 = m_argsOfMainFunc.find(arg.name);
     if(p2 != m_argsOfMainFunc.end())
       arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG;
 
-    auto p3 = m_mainFuncLocals.find(arg.varName);
+    auto p3 = m_mainFuncLocals.find(arg.name);
     if(p3 != m_mainFuncLocals.end())
       arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL;
   }
@@ -459,7 +469,7 @@ std::string kslicer::MakeKernellCallSignature(const std::string& a_mainFuncName,
       break;
     };
 
-    strOut << arg.varName.c_str();
+    strOut << arg.name.c_str();
   }
 
   for(const auto& vecName : a_usedContainers)
