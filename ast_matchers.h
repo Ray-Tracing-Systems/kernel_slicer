@@ -42,7 +42,7 @@ namespace kslicer
   clang::ast_matchers::DeclarationMatcher MakeMatch_VarDeclInsideClass(std::string const& className);
   clang::ast_matchers::DeclarationMatcher MakeMatch_TypedefInsideClass(std::string const& className);
 
-  std::unordered_map<std::string, MainFuncNameInfo> ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
+  std::unordered_map<std::string, CFNameInfo> ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
                                                                            const std::string& a_mainClassName, 
                                                                            const clang::ASTContext& a_astContext,
                                                                            const MainClassInfo& a_codeInfo);

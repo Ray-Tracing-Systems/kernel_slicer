@@ -193,7 +193,7 @@ public:
         auto p = m_mainFunctions.find(func_decl->getNameAsString());
         if(p == m_mainFunctions.end())
         {
-          kslicer::MainFuncNameInfo info;
+          kslicer::CFNameInfo info;
           info.name = func_decl->getNameAsString();
           info.kernelNames.push_back(kern->getNameAsString());
           m_mainFunctions[func_decl->getNameAsString()] = info;
@@ -221,10 +221,10 @@ public:
   const std::string&            m_mainClassName;
   const clang::ASTContext&      m_astContext;
   const kslicer::MainClassInfo& m_codeInfo;
-  std::unordered_map<std::string, kslicer::MainFuncNameInfo> m_mainFunctions;
+  std::unordered_map<std::string, kslicer::CFNameInfo> m_mainFunctions;
 }; 
 
-std::unordered_map<std::string, kslicer::MainFuncNameInfo> kslicer::ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
+std::unordered_map<std::string, kslicer::CFNameInfo> kslicer::ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
                                                                                            const std::string& a_mainClassName, 
                                                                                            const clang::ASTContext& a_astContext,
                                                                                            const MainClassInfo& a_codeInfo)

@@ -467,21 +467,21 @@ int main(int argc, const char **argv)
 
   // (0) find all "Main" functions, a functions which call kernels. Kernels are also listed for each mainFunc;
   //
-  std::vector<std::string> mainFunctNames; 
-  mainFunctNames.reserve(20);
+  std::vector<std::string> cfNames; 
+  cfNames.reserve(20);
   
   std::cout << "(0) Listing main functions of " << mainClassName.c_str() << std::endl; 
-  auto mainFuncList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, compiler.getASTContext(), inputCodeInfo);
+  auto cfList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, compiler.getASTContext(), inputCodeInfo);
   std::cout << "{" << std::endl;
-  for(const auto& f : mainFuncList)
+  for(const auto& f : cfList)
   {
     std::cout << "  found " << f.first.c_str() << std::endl;
-    mainFunctNames.push_back(f.first);
+    cfNames.push_back(f.first);
   }
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  inputCodeInfo.mainFunc.resize(mainFuncList.size());
+  inputCodeInfo.mainFunc.resize(cfList.size());
   inputCodeInfo.mainClassName     = mainClassName;
   inputCodeInfo.mainClassFileName = fileName;
   
@@ -496,7 +496,7 @@ int main(int argc, const char **argv)
 
   // Parse code, initial pass
   //
-  kslicer::InitialPassASTConsumer firstPassData(mainFunctNames, mainClassName, compiler, inputCodeInfo); 
+  kslicer::InitialPassASTConsumer firstPassData(cfNames, mainClassName, compiler, inputCodeInfo); 
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
   compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
   
@@ -520,7 +520,7 @@ int main(int argc, const char **argv)
   std::cout << "{" << std::endl;
 
   size_t mainFuncId = 0;
-  for(const auto f : mainFuncList)
+  for(const auto f : cfList)
   {
     const std::string& mainFuncName = f.first;
     auto& mainFuncRef = inputCodeInfo.mainFunc[mainFuncId];

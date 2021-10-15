@@ -331,7 +331,7 @@ namespace kslicer
     bool isService = false; ///<! indicate that this call is added by the slicer itself. It is not user kernel.
   };
 
-  struct MainFuncNameInfo
+  struct CFNameInfo
   {
     std::string              name;
     std::vector<std::string> kernelNames;

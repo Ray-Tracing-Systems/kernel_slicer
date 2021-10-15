@@ -18,7 +18,7 @@ The bad news is that this is ideal world is different in reality. For example:
 
 ## Passes
 
-0. Pass **\#0: The very first pass.** On the very first pass kernel slicer apply AST matchers to extract kernel and control function **names**. This pass is single stage and uses AST matchers.The control function is a fuction which call kernels:
+0. Pass **\#0: The very first pass.** On the very first pass kernel slicer apply AST matchers to extract kernel and control function **names**. This pass is single stage and uses AST matchers. The control function is a fuction which call kernels:
 
 ```
 void SomeControlFunction(float* a_data, int a_dataSize)
@@ -29,7 +29,30 @@ void SomeControlFunction(float* a_data, int a_dataSize)
 }
 ```
 
-1. Pass **\#1: Initial Pass.** On this pass kernel slicer will find **class-member data** (via resursive AST Visitor called "InitialPassASTConsumer"). This pass is single stage. 
+  * kslicer::MakeMatch_MethodCallFromMethod() matcher is used to detect candidate kernels
+
+  * MainFuncSeeker::run callback is used to check that candidate is actual kernel and fill resulting std::unordered_map. 
+
+
+Therefore, after rhe very first pass we know all CF names and for each CF name we know all kernel names which are called inside this CF.
+
+```
+struct CFNameInfo
+{
+  std::string              name;
+  std::vector<std::string> kernelNames;
+};
+```
+
+1. Pass **\#1: Initial Pass.** On this pass kernel slicer will find **class-members** (via resursive AST Visitor called "InitialPassASTConsumer"). This pass is single stage. 
+   It takes CF names obtained on the pass #0 just for single purpose: extract AST nodes for each CF, which does not works via AST matchers. Therefore pass #0 and pass #1 are paired.
+   However the pass #1 extract AST nodes and fill other information. At least for:
+
+   * inputCodeInfo.allKernels        // all kernels from our class
+   * inputCodeInfo.allDataMembers    // all class data members
+   * inputCodeInfo.allOtherKernels   // all kernels from other classes (which are used inside *TBD*)
+
+   The implementation is located in in InitialPassRecursiveASTVisitor(InitialPassASTConsumer -> InitialPassRecursiveASTVisitor).
 
 2. Pass **\#2: Control Function (CF) Process.** On this pass kernel slicer will find **local variables of control functions** via AST matchers. Also specific known types of calls like memcpy, memset, std::sort, std::fill and other should be processed on this stahe. This pass is single stage currently, but not at all. It's second stage became **pass #5**. 
 
@@ -47,9 +70,9 @@ void SomeControlFunction(float* a_data, int a_dataSize)
 
 ## Patterns and Main Source Code Info
 
-We divide these patterns into micro and macro ones. Micro patterns could be used within (or pariculary inside) the macro one. So, the macro patterns define general generator behaviour when processing target class and the micro pattern is some-thing general which could be used inside patterns. For example, vector.push_back is the micro pattern which can be found in both IPV and RTV macro patterns.
+We divide these patterns into algorithmic and architectural ones. Algorithmic patterns could be used within (or pariculary inside) the architectural one. So, the architectural patterns define general generator behaviour when processing target class and the algorithmic pattern is some-thing general which could be used inside architectural patterns. For example, vector.push_back is the algorithmic pattern which can be found in both IPV and RTV architectural patterns.
 
-### Micro Patterns
+### Algorithmic patterns
 
 1. data compaction via vector.push_back;
 
@@ -59,12 +82,12 @@ We divide these patterns into micro and macro ones. Micro patterns could be used
 
 4. Generalized NBody is micro pattern because it is applied to single kernel; 
 
-### Macro Patterns 
+### Architectural patterns 
 
 1. IPV pattern: Parallel for. Loops are defined inside kernels.
 
 2. RTV pattern: Parallel for. Loops are assumed to be outside of control functions.
 
-Class "MainClassInfo" represent generalized abstract interface which may have different implementation for different macro patterns.  
+Class "MainClassInfo" represent generalized abstract interface which may have different implementation for different architectural patterns.  
 
-<p align = "center"><img src="images/patterns.jpg" align = "center"></p><p align = "center">Fig. 2. Class hierarchy for macro patterns </p><BR>
+<p align = "center"><img src="images/patterns.jpg" align = "center"></p><p align = "center">Fig. 2. Class hierarchy for architectural patterns </p><BR>
