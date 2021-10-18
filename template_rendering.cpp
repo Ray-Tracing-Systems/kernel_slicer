@@ -1120,18 +1120,26 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (4) put kernels
   //
-  //clang::SourceManager& sm = compiler.getSourceManager();
+  std::unordered_map<std::string, KernelInfo> kernels; // #TODO: Put this to virtual function and override it for RTV
+  {
+    if(a_classInfo.megakernelRTV)
+    {
+      for(const auto& cf : a_classInfo.mainFunc)
+        kernels[cf.megakernel.name] = cf.megakernel;
+    }
+    else
+      kernels = a_classInfo.kernels;
+  }
+
   data["Kernels"] = std::vector<std::string>();
-  
-  for (const auto& nk : a_classInfo.kernels)  
+  for (const auto& nk : kernels)  
   {
     const auto& k = nk.second;
     std::cout << "  processing " << k.name << std::endl;
     
     auto commonArgs = a_classInfo.GetKernelCommonArgs(k);
     auto tidArgs    = a_classInfo.GetKernelTIDArgs(k);
-    
-    uint VArgsSize = 0;
+    uint VArgsSize  = 0;
 
     json args = std::vector<std::string>();
     for(auto commonArg : commonArgs)

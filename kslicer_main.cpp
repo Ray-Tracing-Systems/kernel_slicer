@@ -385,6 +385,7 @@ int main(int argc, const char **argv)
 
   inputCodeInfo.defaultVkernelType = defaultVkernelType;
   inputCodeInfo.halfFloatTextures  = halfFloatTextures;
+  inputCodeInfo.megakernelRTV      = useMegakernel;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -837,7 +838,7 @@ int main(int argc, const char **argv)
     kernel.warpSize = warpSize;
   }
 
-  if(useMegakernel) // join all kernels in one for each CF
+  if(inputCodeInfo.megakernelRTV) // join all kernels in one for each CF
   {
     for(auto& cf : inputCodeInfo.mainFunc)
     { 
@@ -866,8 +867,16 @@ int main(int argc, const char **argv)
   std::cout << "(8) Generate " << shaderCCName2.c_str() << " kernels" << std::endl; 
   std::cout << "{" << std::endl;
 
-  for(auto& k : inputCodeInfo.kernels)
-    k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
+  if(inputCodeInfo.megakernelRTV)
+  {
+    for(auto& cf : inputCodeInfo.mainFunc)
+      cf.megakernel.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(cf.megakernel, compiler, cf.megakernel.rewrittenInit, cf.megakernel.rewrittenFinish);
+  }
+  else
+  {
+    for(auto& k : inputCodeInfo.kernels)
+      k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
+  }
 
   // finally generate kernels
   //
@@ -880,7 +889,6 @@ int main(int argc, const char **argv)
     std::string outName        = rawname + "/include/" + uboIncludeName;
     kslicer::ApplyJsonToTemplate("templates/ubo_def.h",  outName, jsonUBO);
   }
-
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;

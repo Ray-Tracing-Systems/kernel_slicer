@@ -712,9 +712,12 @@ kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo
   KernelInfo res;
   if(a_kernels.size() == 0)
     return res;
-
+  
+  // (0) basic kernel info
+  //
   res.name      = cf.Name + "Mega";
   res.className = a_kernels[0]->className;
+  res.astNode   = cf.Node; 
   
   // (1) Add CF arguments as megakernel arguments
   //

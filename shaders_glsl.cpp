@@ -31,12 +31,11 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   
   // generate header for all used functions in GLSL code
   //
-  const std::string outFileNameH  = GetFolderPath(mainClassFileName) + "/z_generated.cl";
   kslicer::ApplyJsonToTemplate("templates_glsl/common_generated.h", shaderPath + "/common_generated.h", a_kernelsJson);  
   
   // now generate all glsl shaders
   //
-  const std::string templatePath       = "templates_glsl/generated.glsl";
+  const std::string templatePath       = a_codeInfo->megakernelRTV ? "templates_glsl/generated_mega.glsl" : "templates_glsl/generated.glsl";
   const std::string templatePathUpdInd = "templates_glsl/update_indirect.glsl";
   const std::string templatePathRedFin = "templates_glsl/reduction_finish.glsl";
   

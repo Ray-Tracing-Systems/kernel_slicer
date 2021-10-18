@@ -819,6 +819,7 @@ namespace kslicer
     
     kslicer::VKERNEL_IMPL_TYPE defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
     bool halfFloatTextures = false;
+    bool megakernelRTV     = false;
 
     std::unordered_map<std::string, DHierarchy> m_vhierarchy;
     virtual const std::unordered_map<std::string, DHierarchy>& GetDispatchingHierarchies() const { return m_vhierarchy; }
