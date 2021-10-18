@@ -1127,7 +1127,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     if(a_classInfo.megakernelRTV)
     {
       for(const auto& cf : a_classInfo.mainFunc)
+      {
         kernels[cf.megakernel.name] = cf.megakernel;
+        kernels[cf.megakernel.name].subkernels = cf.subkernels;
+      }
     }
     else
       kernels = a_classInfo.kernels;
@@ -1325,7 +1328,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
-    
+
     //////////////////////////////////////////////////////////////////////////////////////////
     {
       clang::Rewriter rewrite2; 
@@ -1543,7 +1546,22 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       kernelJson["ShityFunctions"].push_back(funcDeclText + funcBodyText);
     }
-    
+
+    kernelJson["Subkernels"]  = std::vector<std::string>();
+    if(a_classInfo.megakernelRTV)
+    {
+      for(auto pSubkernel : k.subkernels)
+      {
+        auto& subkernel = (*pSubkernel);
+        json subJson;
+        subJson["Name"] = subkernel.name;
+        subJson["RetT"] = subkernel.isBoolTyped ? "bool" : "void";
+        std::string sourceCodeCut = subkernel.rewrittenText.substr(subkernel.rewrittenText.find_first_of('{')+1);
+        subJson["Source"] = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
+
+        kernelJson["Subkernels"].push_back(subJson);
+      }
+    }
 
     auto original = kernelJson;
     

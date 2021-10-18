@@ -84,11 +84,15 @@ layout( push_constant ) uniform kernelArgs
   uint tFlagsMask;    
 } kgenArgs;
 
-
 ///////////////////////////////////////////////////////////////// subkernels here
+{% for sub in Kernel.Subkernels %}
+{{sub.RetT}} {{sub.Name}}(...) // todo: add args
+{
+  {{sub.Source}}
+}
 
+{% endfor %}
 ///////////////////////////////////////////////////////////////// subkernels here
-
 
 void main()
 {

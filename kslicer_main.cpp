@@ -866,16 +866,14 @@ int main(int argc, const char **argv)
   std::string shaderCCName2 = inputCodeInfo.pShaderCC->Name();
   std::cout << "(8) Generate " << shaderCCName2.c_str() << " kernels" << std::endl; 
   std::cout << "{" << std::endl;
-
+ 
+  for(auto& k : inputCodeInfo.kernels)
+    k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
+  
   if(inputCodeInfo.megakernelRTV)
   {
     for(auto& cf : inputCodeInfo.mainFunc)
       cf.megakernel.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(cf.megakernel, compiler, cf.megakernel.rewrittenInit, cf.megakernel.rewrittenFinish);
-  }
-  else
-  {
-    for(auto& k : inputCodeInfo.kernels)
-      k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
   }
 
   // finally generate kernels

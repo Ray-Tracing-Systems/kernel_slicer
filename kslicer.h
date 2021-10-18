@@ -213,6 +213,7 @@ namespace kslicer
     std::unordered_map<std::string, TEX_ACCESS>        texAccessInMemb;
     std::unordered_map<std::string, std::string>       texAccessSampler;
     std::vector<ShittyFunction>                        shittyFunctions;     ///<! functions with input pointers accesed global memory, they should be rewritten for GLSL    
+    std::vector<const KernelInfo*>                     subkernels;          ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
 
     std::string rewrittenText;                   ///<! rewritten source code of a kernel
     std::string rewrittenInit;                   ///<! rewritten loop initialization code for kernel
