@@ -86,7 +86,7 @@ layout( push_constant ) uniform kernelArgs
 
 ///////////////////////////////////////////////////////////////// subkernels here
 {% for sub in Kernel.Subkernels %}
-{{sub.RetT}} {{sub.Name}}(...) // todo: add args
+{{sub.Decl}}
 {
   {{sub.Source}}
 }
