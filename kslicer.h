@@ -372,6 +372,7 @@ namespace kslicer
     std::unordered_map<uint64_t, KernelStatementInfo> CallsInsideFor;
 
     bool   needToAddThreadFlags = false;
+    KernelInfo megakernel; ///<! for RTV pattern only, when joing everything to mega-kernel
   };
   
   /**
@@ -488,8 +489,8 @@ namespace kslicer
     virtual bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast){ return true; } // override this in Derived class
 
     virtual bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) { return true; } 
-
     virtual bool VisitCallExpr_Impl(clang::CallExpr* f);
+
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -922,6 +923,8 @@ namespace kslicer
  
   std::vector<kslicer::ArgMatch> MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler);
   
+  std::vector<const KernelInfo*> extractUsedKernelsByName(const std::unordered_set<std::string>& a_usedNames, const std::unordered_map<std::string, KernelInfo>& a_kernels);
+  KernelInfo                     joinToMegaKernel(std::vector<const KernelInfo*>, const MainFuncInfo& cf);
 }
 
 template <typename Cont, typename Pred>

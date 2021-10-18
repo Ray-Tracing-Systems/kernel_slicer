@@ -287,7 +287,8 @@ int main(int argc, const char **argv)
   uint32_t    threadsOrder[3] = {0,1,2};
   uint32_t    warpSize        = 32;
   bool        useCppInKernels = false;
-  bool        halfFloatTextures = false;
+  bool        halfFloatTextures  = false;
+  bool        useMegakernel      = false;
   auto        defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
   
   if(params.find("-mainClass") != params.end())
@@ -315,7 +316,10 @@ int main(int argc, const char **argv)
     warpSize = atoi(params["-warpSize"].c_str());
   
   if(params.find("-halfTex") != params.end())
-    halfFloatTextures = (params["-halfTex"] == "1") || (params["-halfTex"] == "true");
+    halfFloatTextures = (params["-halfTex"] == "1");
+
+  if(params.find("-megakernel") != params.end())
+    useMegakernel = (params["-megakernel"] == "1");
 
   if(params.find("-cl-std=") != params.end())
     useCppInKernels = params["-cl-std="].find("++") != std::string::npos;
@@ -831,6 +835,15 @@ int main(int argc, const char **argv)
       kernel.wgSize[2] = defaultWgSize[kernelDim-1][2];
     }
     kernel.warpSize = warpSize;
+  }
+
+  if(useMegakernel) // join all kernels in one for each CF
+  {
+    for(auto& cf : inputCodeInfo.mainFunc)
+    { 
+      auto usedKernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
+      cf.megakernel    = kslicer::joinToMegaKernel(usedKernels, cf);
+    }
   }
 
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
