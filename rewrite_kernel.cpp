@@ -97,7 +97,10 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(MemberExpr* expr)
 
     if(needOffset && WasNotRewrittenYet(expr))
     {
-      m_rewriter.ReplaceText(expr->getSourceRange(), baseName + "[" + m_fakeOffsetExp + "]." + memberName);
+      if(m_codeInfo->megakernelRTV)
+        m_rewriter.ReplaceText(expr->getSourceRange(), baseName + "." + memberName);
+      else
+        m_rewriter.ReplaceText(expr->getSourceRange(), baseName + "[" + m_fakeOffsetExp + "]." + memberName);
       MarkRewritten(expr);
     }
 
@@ -358,7 +361,7 @@ bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
   if (!retExpr)
     return true;
   
-  if(!m_infoPass && WasNotRewrittenYet(ret) && m_kernelIsBoolTyped)
+  if(!m_infoPass && WasNotRewrittenYet(ret) && m_kernelIsBoolTyped && !m_codeInfo->megakernelRTV)
   {
     std::string retExprText = RecursiveRewrite(retExpr);
     m_rewriter.ReplaceText(ret->getSourceRange(), std::string("kgenExitCond = ") + retExprText + ";"); // "; goto KGEN_EPILOG"); !!! GLSL DOE NOT SUPPPRT GOTOs!!!
@@ -404,7 +407,7 @@ bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
       }
     }
   }
-  else if(WasNotRewrittenYet(ret) && m_kernelIsMaker)
+  else if(WasNotRewrittenYet(ret) && m_kernelIsMaker && !m_codeInfo->megakernelRTV)
   { 
     // change 'return MakeObjPtr(objPtr, ObjData) to 'kgen_objPtr = objPtr'
     //
@@ -493,7 +496,10 @@ bool kslicer::KernelRewriter::VisitUnaryOperator_Impl(UnaryOperator* expr)
   const bool needOffset = CheckIfExprHasArgumentThatNeedFakeOffset(exprInside);
   if(needOffset && WasNotRewrittenYet(expr))
   {
-    m_rewriter.ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
+    if(m_codeInfo->megakernelRTV)
+      m_rewriter.ReplaceText(expr->getSourceRange(), exprInside);
+    else
+      m_rewriter.ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
     MarkRewritten(expr);
   }
 

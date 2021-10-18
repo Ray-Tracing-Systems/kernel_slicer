@@ -339,8 +339,10 @@ public:
 
     if(WasNotRewrittenYet(subExpr))
     {
-      m_rewriter.ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
-      //MarkRewritten(subExpr); // BUG? For some strange reason marking sub expression disable visiting class fields 
+      if(m_codeInfo->megakernelRTV)
+        m_rewriter.ReplaceText(expr->getSourceRange(), exprInside);
+      else
+        m_rewriter.ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
     }
 
     return true; 
