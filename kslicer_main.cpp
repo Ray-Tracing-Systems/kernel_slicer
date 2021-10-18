@@ -870,6 +870,15 @@ int main(int argc, const char **argv)
   for(auto& k : inputCodeInfo.kernels)
     k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
   
+  if(inputCodeInfo.megakernelRTV) // join all kernels in one for each CF, WE MUST REPEAT THIS HERE BECAUSE OF SHITTY FUNCTIONS ARE PROCESSED DURING 'VisitAndRewrite_KF' for kernels !!!
+  {
+    for(auto& cf : inputCodeInfo.mainFunc)
+    { 
+      cf.subkernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
+      cf.megakernel = kslicer::joinToMegaKernel(cf.subkernels, cf);
+    }
+  }
+
   if(inputCodeInfo.megakernelRTV)
   {
     for(auto& cf : inputCodeInfo.mainFunc)

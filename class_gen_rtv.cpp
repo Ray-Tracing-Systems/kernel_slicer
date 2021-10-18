@@ -743,6 +743,9 @@ kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo
 
     for(const auto& kv : a_kernels[i]->usedContainers)
       res.usedContainers.insert(kv);
+
+    for(const auto& f : a_kernels[i]->shittyFunctions)
+      res.shittyFunctions.push_back(f);
   }
 
   // (3) join shader features
