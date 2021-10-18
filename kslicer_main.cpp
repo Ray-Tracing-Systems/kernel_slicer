@@ -841,8 +841,8 @@ int main(int argc, const char **argv)
   {
     for(auto& cf : inputCodeInfo.mainFunc)
     { 
-      auto usedKernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
-      cf.megakernel    = kslicer::joinToMegaKernel(usedKernels, cf);
+      cf.subkernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
+      cf.megakernel = kslicer::joinToMegaKernel(cf.subkernels, cf);
     }
   }
 

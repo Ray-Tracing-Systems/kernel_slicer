@@ -234,6 +234,7 @@ std::vector<kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CX
     {
       InOutVarInfo var;
       var.name      = currParam->getNameAsString();
+      var.type      = qt.getAsString();
       var.kind      = DATA_KIND::KIND_POINTER;
       var.isConst   = qt.isConstQualified();
       params.push_back(var);
@@ -242,6 +243,7 @@ std::vector<kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CX
     {
       InOutVarInfo var;
       var.name      = currParam->getNameAsString();
+      var.type      = qt.getAsString();
       var.kind      = DATA_KIND::KIND_TEXTURE;
       var.isConst   = qt.isConstQualified();
       params.push_back(var);

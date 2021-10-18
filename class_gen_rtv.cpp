@@ -707,9 +707,42 @@ void kslicer::RTV_Pattern::ExtractHierarchiesConstants(const clang::CompilerInst
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-kslicer::KernelInfo kslicer::joinToMegaKernel(std::vector<const KernelInfo*>, const MainFuncInfo& cf)
+kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo*>& a_kernels, const MainFuncInfo& cf)
 {
   KernelInfo res;
+  if(a_kernels.size() == 0)
+    return res;
+
+  res.name      = cf.Name + "Mega";
+  res.className = a_kernels[0]->className;
+  
+  // (1) Add CF arguments as megakernel arguments
+  //
+  res.args.resize(0);
+  for(const auto& var : cf.InOuts)
+  {
+    KernelInfo::ArgInfo argInfo;
+    argInfo.name = var.name;
+    argInfo.type = var.type;
+    argInfo.kind = var.kind;
+    res.args.push_back(argInfo);
+  }
+  
+  // (2) join all used members, containers and e.t.c.
+  //
+  for(size_t i=0;i<a_kernels.size();i++)
+  {
+    for(const auto& kv : a_kernels[i]->usedMembers)
+      res.usedMembers.insert(kv);
+
+    for(const auto& kv : a_kernels[i]->usedContainers)
+      res.usedContainers.insert(kv);
+  }
+
+  // (3) join shader features
+  //
+  for(size_t i=0;i<a_kernels.size();i++)
+    res.shaderFeatures = res.shaderFeatures || a_kernels[i]->shaderFeatures;
 
   return res;
 }

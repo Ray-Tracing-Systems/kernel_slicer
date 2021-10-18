@@ -106,11 +106,12 @@ namespace kslicer
       std::string type;
       std::string name;
       int         size;
+      DATA_KIND   kind = DATA_KIND::KIND_UNKNOWN;
 
       bool needFakeOffset = false;
       bool isThreadID     = false; ///<! used by RTV-like patterns where loop is defined out of kernel
       bool isLoopSize     = false; ///<! used by IPV-like patterns where loop is defined inside kernel
-      bool isPointer      = false;
+
       bool isThreadFlags  = false; 
       bool isReference    = false;
       bool isContainer    = false;
@@ -118,8 +119,9 @@ namespace kslicer
       std::string containerType;
       std::string containerDataType;
 
-      bool IsUser() const { return !isThreadID && !isLoopSize && !needFakeOffset && !isPointer && !isContainer; }
       bool IsTexture() const { return isContainer && IsTextureContainer(containerType); }
+      bool IsPointer() const { return (kind == DATA_KIND::KIND_POINTER); }
+      bool IsUser()    const { return !isThreadID && !isLoopSize && !needFakeOffset && !IsPointer() && !isContainer; }
     };
 
     struct LoopIter 
@@ -291,7 +293,8 @@ namespace kslicer
   */
   struct InOutVarInfo 
   {
-    std::string name;
+    std::string name = "";
+    std::string type = "";
     DATA_KIND   kind = DATA_KIND::KIND_UNKNOWN;
     bool isConst     = false;
     bool isTexture() const { return (kind == DATA_KIND::KIND_TEXTURE); };
@@ -372,7 +375,8 @@ namespace kslicer
     std::unordered_map<uint64_t, KernelStatementInfo> CallsInsideFor;
 
     bool   needToAddThreadFlags = false;
-    KernelInfo megakernel; ///<! for RTV pattern only, when joing everything to mega-kernel
+    KernelInfo                     megakernel; ///<! for RTV pattern only, when joing everything to mega-kernel
+    std::vector<const KernelInfo*> subkernels; ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
   };
   
   /**
@@ -924,7 +928,7 @@ namespace kslicer
   std::vector<kslicer::ArgMatch> MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler);
   
   std::vector<const KernelInfo*> extractUsedKernelsByName(const std::unordered_set<std::string>& a_usedNames, const std::unordered_map<std::string, KernelInfo>& a_kernels);
-  KernelInfo                     joinToMegaKernel(std::vector<const KernelInfo*>, const MainFuncInfo& cf);
+  KernelInfo                     joinToMegaKernel        (const std::vector<const KernelInfo*>& a_kernels, const MainFuncInfo& cf);
 }
 
 template <typename Cont, typename Pred>
