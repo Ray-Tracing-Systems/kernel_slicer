@@ -740,7 +740,7 @@ int main(int argc, const char **argv)
     std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
 
     mainFunc.CodeGenerated = inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);
-    mainFunc.InOuts        = kslicer::ListPointerParamsOfMainFunc(mainFunc.Node);
+    mainFunc.InOuts        = kslicer::ListParamsOfMainFunc(mainFunc.Node);
   }
 
   inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, // ==>

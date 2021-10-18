@@ -93,6 +93,9 @@ layout( push_constant ) uniform kernelArgs
 void main()
 {
   ///////////////////////////////////////////////////////////////// prolog
+  {% for TID in Kernel.ThreadIds %}
+  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(gl_GlobalInvocationID[{{ loop.index }}]); 
+  {% endfor %}
   {% if length(Kernel.Members) > 0 %}
   {% for Member in Kernel.Members %}
   const {{Member.Type}} {{Member.Name}} = ubo.{{Member.Name}};

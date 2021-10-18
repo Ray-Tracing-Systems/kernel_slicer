@@ -728,6 +728,7 @@ kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo
     argInfo.name = var.name;
     argInfo.type = var.type;
     argInfo.kind = var.kind;
+    argInfo.isThreadID = var.isThreadId;
     res.args.push_back(argInfo);
   }
   

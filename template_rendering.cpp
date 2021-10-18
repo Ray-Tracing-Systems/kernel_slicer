@@ -770,6 +770,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["InOutVars"] = std::vector<std::string>();
     for(const auto& v : mainFunc.InOuts)
     {
+      if(v.isThreadId)
+        continue;
       json controlArg;
       controlArg["Name"]      = v.name;
       controlArg["IsTexture"] = v.isTexture();

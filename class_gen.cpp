@@ -158,7 +158,7 @@ std::string kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc,
   const std::string&   a_mainClassName = this->mainClassName;
   const CXXMethodDecl* a_node          = a_mainFunc.Node;
   a_mainFunc.GeneratedDecl  = GetCFDeclFromSource(kslicer::GetRangeSourceCode(a_node->getCanonicalDecl()->getSourceRange(), compiler));
-  const auto inOutParamList = kslicer::ListPointerParamsOfMainFunc(a_node);
+  const auto inOutParamList = kslicer::ListParamsOfMainFunc(a_node);
 
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
@@ -222,32 +222,39 @@ std::string kslicer::MainClassInfo::GetCFDeclFromSource(const std::string& sourc
   return std::string("virtual ") + mainFuncDeclHead + "Cmd(VkCommandBuffer a_commandBuffer, " + mainFuncDeclTail + ";";
 }
 
-std::vector<kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node)
+std::vector<kslicer::InOutVarInfo> kslicer::ListParamsOfMainFunc(const CXXMethodDecl* a_node)
 {
+  auto tidNames = GetAllPredefinedThreadIdNamesRTV();
+
   std::vector<InOutVarInfo> params;
   for(unsigned i=0;i<a_node->getNumParams();i++)
   {
     const ParmVarDecl* currParam = a_node->getParamDecl(i);
     const clang::QualType qt     = currParam->getType();
     
+    InOutVarInfo var;
+    var.name      = currParam->getNameAsString();
+    var.type      = qt.getAsString();
+    auto id       = std::find(tidNames.begin(), tidNames.end(), var.name);
+
     if(qt->isPointerType())
     {
-      InOutVarInfo var;
-      var.name      = currParam->getNameAsString();
-      var.type      = qt.getAsString();
       var.kind      = DATA_KIND::KIND_POINTER;
       var.isConst   = qt.isConstQualified();
-      params.push_back(var);
     }
     else if(qt->isReferenceType() && kslicer::IsTexture(qt))
     {
-      InOutVarInfo var;
-      var.name      = currParam->getNameAsString();
-      var.type      = qt.getAsString();
       var.kind      = DATA_KIND::KIND_TEXTURE;
       var.isConst   = qt.isConstQualified();
-      params.push_back(var);
     }
+    else if(id != tidNames.end())
+    {
+      var.kind      = DATA_KIND::KIND_POD;
+      var.isConst   = qt.isConstQualified();
+      var.isThreadId= true;
+    }
+
+    params.push_back(var);
   }
 
   return params;

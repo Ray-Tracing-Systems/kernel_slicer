@@ -173,7 +173,7 @@ namespace kslicer
     std::string           name;                 ///<! func. name
     std::string           className;            ///<! Class::kernel_XXX --> 'Class'
     std::string           interfaceName;        ///<! Name of the interface if the kernel is virtual
-    std::vector<ArgInfo>      args;                 ///<! all arguments of a kernel
+    std::vector<ArgInfo>  args;                 ///<! all arguments of a kernel
     std::vector<LoopIter> loopIters;            ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
     
     uint32_t GetDim() const 
@@ -297,6 +297,7 @@ namespace kslicer
     std::string type = "";
     DATA_KIND   kind = DATA_KIND::KIND_UNKNOWN;
     bool isConst     = false;
+    bool isThreadId  = false;
     bool isTexture() const { return (kind == DATA_KIND::KIND_TEXTURE); };
   };
 
