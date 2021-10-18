@@ -223,7 +223,7 @@ namespace kslicer
     uint32_t  indirectBlockOffset = 0;           ///<! IPV pattern; for such kernels we have to know some offset in indirect buffer for thread blocks number (use int4 data for each kernel)
     uint32_t  indirectMakerOffset = 0;           ///<! RTV pattern; kernel-makers have to update size in the indirect buffer  
 
-    ShaderFeatures shaderFeatures;
+    ShaderFeatures shaderFeatures;               ///<! Shader features which are required by this kernel
   };
 
   /**
@@ -547,7 +547,7 @@ namespace kslicer
     MainClassInfo*                                           m_codeInfo;
     std::string                                              m_mainClassName;
     std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
-    const std::vector<kslicer::KernelInfo::ArgInfo>&             m_args;
+    const std::vector<kslicer::KernelInfo::ArgInfo>&         m_args;
     const std::string&                                       m_fakeOffsetExp;
     bool                                                     m_kernelIsBoolTyped;
     bool                                                     m_kernelIsMaker;
