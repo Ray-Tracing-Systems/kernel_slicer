@@ -1553,14 +1553,19 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       for(auto pSubkernel : k.subkernels)
       {
         auto& subkernel = (*pSubkernel);
-        
-        //std::string originalName = std::string("kernel_") + k.name.substr(0, k.name.find_last_of("Mega")-4+1);
-        //auto pShit = std::find_if(k.shittyFunctions.begin(), k.shittyFunctions.end(), [&](const auto& x){ return (x.originalName == originalName); });
          
         std::string funcDeclText = "...";
-        //if(pShit != k.shittyFunctions.end())
         {
-          kslicer::ShittyFunction shit;     
+          kslicer::ShittyFunction shit;  
+          for(const auto& candidate : k.shittyFunctions)
+          {
+            if(candidate.originalName == subkernel.name)
+            {
+              shit = candidate;
+              break;
+            }
+          }
+
           clang::Rewriter rewrite2;                                                    // It is important to have clear rewriter for each function because here we access same node several times!!!
           rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());  //
           auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo, shit);
