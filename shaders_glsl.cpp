@@ -298,22 +298,13 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
     return "";
   if(m_pKernelRewriter != nullptr) // we actually do kernel rewrite
   {
-    //auto nodesFuncBefore = *m_pRewrittenNodes;
-    //auto nodesKernBefore = m_pKernelRewriter->GetVisitedNodes();
+    
     
     std::string result = m_pKernelRewriter->RecursiveRewriteImpl(expr);
     sFeatures = sFeatures || m_pKernelRewriter->GetShaderFeatures();
     MarkRewritten(expr);
-    
-    auto nodesKernAfter = m_pKernelRewriter->GetVisitedNodes();
-    m_pRewrittenNodes->insert(nodesKernAfter.begin(), nodesKernAfter.end());
-    
-    //auto nodesFuncAfter = *m_pRewrittenNodes;
-    //std::cout << "*****************************" << std::endl;
-    //kslicer::DisplayVisitedNodes(nodesFuncBefore); std::cout << std::endl;
-    //std::cout << "=============================" << std::endl;
-    //kslicer::DisplayVisitedNodes(nodesFuncAfter); std::cout << std::endl;
-
+    //auto nodesKernAfter = m_pKernelRewriter->GetVisitedNodes();
+    //m_pRewrittenNodes->insert(nodesKernAfter.begin(), nodesKernAfter.end());
     return result;
   }
   else
@@ -899,6 +890,7 @@ public:
 
   bool VisitCallExpr_Impl(clang::CallExpr* f) override;
   bool VisitVarDecl_Impl(clang::VarDecl* decl) override;
+  bool VisitDeclStmt_Impl(clang::DeclStmt* stmt) override;
   bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override;
   bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
   bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) override;
@@ -910,6 +902,8 @@ public:
   bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) override;
   bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr) override;
   bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
+  
+
 
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override { return m_glslRW.VectorTypeContructorReplace(fname, callText); }
 
@@ -1034,8 +1028,15 @@ bool GLSLKernelRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
-
   m_glslRW.VisitVarDecl_Impl(decl);
+  return true;
+}
+
+bool GLSLKernelRewriter::VisitDeclStmt_Impl(clang::DeclStmt* stmt)
+{
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return true; 
+  m_glslRW.VisitDeclStmt_Impl(stmt);
   return true;
 }
 
