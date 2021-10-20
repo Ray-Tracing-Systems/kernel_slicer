@@ -876,7 +876,7 @@ class GLSLKernelRewriter : public kslicer::KernelRewriter, IRecursiveRewriteOver
 public:
   
   GLSLKernelRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr, const bool a_infoPass) : 
-                     kslicer::KernelRewriter(R, a_compiler, a_codeInfo, a_kernel, a_fakeOffsetExpr, a_infoPass), m_glslRW(R, a_compiler, a_codeInfo, kslicer::ShittyFunction()) // 
+                     kslicer::KernelRewriter(R, a_compiler, a_codeInfo, a_kernel, a_fakeOffsetExpr, a_infoPass), m_glslRW(R, a_compiler, a_codeInfo, a_kernel.currentShit) // 
   {
     m_glslRW.m_pKernelRewriter = this;
     m_glslRW.m_pRewrittenNodes = this->m_pRewrittenNodes;
@@ -901,7 +901,7 @@ public:
   bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) override;
   bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr) override;
   bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
-  
+  bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) override;
 
 
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override { return m_glslRW.VectorTypeContructorReplace(fname, callText); }
@@ -1043,8 +1043,15 @@ bool GLSLKernelRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
-
   m_glslRW.VisitCStyleCastExpr_Impl(cast);
+  return true;
+}
+
+bool GLSLKernelRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)
+{
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return true; 
+  m_glslRW.VisitArraySubscriptExpr_Impl(arrayExpr);
   return true;
 }
 

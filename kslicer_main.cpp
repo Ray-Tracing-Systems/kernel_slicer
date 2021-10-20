@@ -879,7 +879,7 @@ int main(int argc, const char **argv)
       cf.megakernel.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(cf.megakernel, compiler, cf.megakernel.rewrittenInit, cf.megakernel.rewrittenFinish);
 
       // only here we know the full list of shitty functions (with subkernels)
-      // so we should update subkernels and apply "VisitArraySubscriptExpr_Impl" to kernels in the same way we did for functions 
+      // so we should update subkernels and apply transform inside "VisitArraySubscriptExpr_Impl" to kernels in the same way we did for functions 
       //
       auto oldKernels = cf.subkernels;
       std::unordered_set<std::string> processed;
@@ -892,16 +892,21 @@ int main(int argc, const char **argv)
             continue;
 
           auto kernel          = inputCodeInfo.kernels[name];
+          kernel.currentShit   = shit; // just pass shit inside GLSLKernelRewriter via 'kernel.currentShit'; don't want to break VisitAndRewrite_KF API 
           kernel.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(kernel, compiler, kernel.rewrittenInit, kernel.rewrittenFinish);
           cf.subkernelsData.push_back(kernel);
           processed.insert(name);
         }
       }
       
+      // get subkernels were processed and rewritten with "shitty" transforms
+      //
       cf.subkernels.clear();
       for(const auto& data : cf.subkernelsData)
         cf.subkernels.push_back(&data);
-
+      
+      // get back subkernels which were not processed
+      //
       for(const auto& oldKernelP : oldKernels)
       {
         if(processed.find(oldKernelP->name) == processed.end())

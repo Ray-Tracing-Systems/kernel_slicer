@@ -214,6 +214,7 @@ namespace kslicer
     std::unordered_map<std::string, std::string>       texAccessSampler;
     std::vector<ShittyFunction>                        shittyFunctions;     ///<! functions with input pointers accesed global memory, they should be rewritten for GLSL    
     std::vector<const KernelInfo*>                     subkernels;          ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
+    ShittyFunction                                     currentShit;         ///<!
 
     std::string rewrittenText;                   ///<! rewritten source code of a kernel
     std::string rewrittenInit;                   ///<! rewritten loop initialization code for kernel
@@ -530,6 +531,7 @@ namespace kslicer
     bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast)             { if(WasRewritten(cast)) return true; else return VisitImplicitCastExpr_Impl(cast); }
     bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { if(WasRewritten(expr)) return true; else return VisitDeclRefExpr_Impl(expr); }
     bool VisitDeclStmt(clang::DeclStmt* stmt)                             { if(WasRewritten(stmt)) return true; else return VisitDeclStmt_Impl(stmt); }
+    bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* arrayExpr)    { if(WasRewritten(arrayExpr)) return true; else return VisitArraySubscriptExpr_Impl(arrayExpr);  }
 
     bool VisitForStmt(clang::ForStmt* forLoop); ///< to find nodes by their known source range and remember them
 
@@ -597,6 +599,7 @@ namespace kslicer
     virtual bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) { return true; } // override this in Derived class
     virtual bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)           { return true; } // override this in Derived class
     virtual bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                 { return true; } // override this in Derived class
+    virtual bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)  { return true; } // override this in Derived class
   };
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
