@@ -241,7 +241,7 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
     const std::string text     = FunctionCallRewriteNoName(call);
     const std::string textRes  = VectorTypeContructorReplace(fname, text);
 
-    if(isa<CXXTemporaryObjectExpr>(call))
+    if(isa<CXXTemporaryObjectExpr>(call) || IsGLSL())
     {
       m_rewriter.ReplaceText(call->getSourceRange(), textRes);
     }
@@ -251,11 +251,7 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
       auto pos2 = textOrig.find_first_of("(");
       auto pos  = std::min(pos1, pos2);
       const std::string varName = textOrig.substr(0, pos);
-
-      if(IsGLSL())
-        m_rewriter.ReplaceText(call->getSourceRange(), textRes);
-      else
-        m_rewriter.ReplaceText(call->getSourceRange(), varName + " = " + textRes);
+      m_rewriter.ReplaceText(call->getSourceRange(), varName + " = " + textRes);
     }
     
     MarkRewritten(call);

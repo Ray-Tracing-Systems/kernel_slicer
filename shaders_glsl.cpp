@@ -304,18 +304,14 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
     std::string result = m_pKernelRewriter->RecursiveRewriteImpl(expr);
     sFeatures = sFeatures || m_pKernelRewriter->GetShaderFeatures();
     MarkRewritten(expr);
-    //auto nodesFuncAfter = *m_pRewrittenNodes;
+    
     auto nodesKernAfter = m_pKernelRewriter->GetVisitedNodes();
-    //for(auto node : nodesKernAfter)
-    //  m_pRewrittenNodes->insert(node);
-
+    m_pRewrittenNodes->insert(nodesKernAfter.begin(), nodesKernAfter.end());
+    
+    //auto nodesFuncAfter = *m_pRewrittenNodes;
     //std::cout << "*****************************" << std::endl;
     //kslicer::DisplayVisitedNodes(nodesFuncBefore); std::cout << std::endl;
-    //std::cout << "-----------------------------" << std::endl;
-    //kslicer::DisplayVisitedNodes(nodesFuncBefore); std::cout << std::endl;
     //std::cout << "=============================" << std::endl;
-    //kslicer::DisplayVisitedNodes(nodesFuncAfter); std::cout << std::endl;
-    //std::cout << "-----------------------------" << std::endl;
     //kslicer::DisplayVisitedNodes(nodesFuncAfter); std::cout << std::endl;
 
     return result;
@@ -325,9 +321,7 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
     GLSLFunctionRewriter rvCopy = *this;
     rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
     sFeatures = sFeatures || rvCopy.sFeatures;
-    //for(auto node : *(rvCopy.m_pRewrittenNodes))
-    //  m_pRewrittenNodes->insert(node);
-
+  
     std::string text = m_rewriter.getRewrittenText(expr->getSourceRange());
     if(text == "")                                                            // try to repair from the errors
       return kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // which reason is unknown ... 

@@ -247,6 +247,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
                                                      std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode)
 {
   //a_funcInfo.astNode->dump();
+  
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
   
