@@ -866,23 +866,54 @@ int main(int argc, const char **argv)
   std::string shaderCCName2 = inputCodeInfo.pShaderCC->Name();
   std::cout << "(8) Generate " << shaderCCName2.c_str() << " kernels" << std::endl; 
   std::cout << "{" << std::endl;
- 
-  for(auto& k : inputCodeInfo.kernels)
-    k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
   
   if(inputCodeInfo.megakernelRTV) // join all kernels in one for each CF, WE MUST REPEAT THIS HERE BECAUSE OF SHITTY FUNCTIONS ARE PROCESSED DURING 'VisitAndRewrite_KF' for kernels !!!
   {
+    for(auto& k : inputCodeInfo.kernels)
+      k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
+
     for(auto& cf : inputCodeInfo.mainFunc)
     { 
       cf.subkernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
       cf.megakernel = kslicer::joinToMegaKernel(cf.subkernels, cf);
+      cf.megakernel.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(cf.megakernel, compiler, cf.megakernel.rewrittenInit, cf.megakernel.rewrittenFinish);
+
+      // only here we know the full list of shitty functions (with subkernels)
+      // so we should update subkernels and apply "VisitArraySubscriptExpr_Impl" to kernels in the same way we did for functions 
+      //
+      auto oldKernels = cf.subkernels;
+      std::unordered_set<std::string> processed;
+      cf.subkernelsData.clear();
+      for(const auto& name : cf.UsedKernels)
+      {
+        for(const auto& shit : cf.megakernel.shittyFunctions)
+        {
+          if(shit.originalName != name)
+            continue;
+
+          auto kernel          = inputCodeInfo.kernels[name];
+          kernel.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(kernel, compiler, kernel.rewrittenInit, kernel.rewrittenFinish);
+          cf.subkernelsData.push_back(kernel);
+          processed.insert(name);
+        }
+      }
+      
+      cf.subkernels.clear();
+      for(const auto& data : cf.subkernelsData)
+        cf.subkernels.push_back(&data);
+
+      for(const auto& oldKernelP : oldKernels)
+      {
+        if(processed.find(oldKernelP->name) == processed.end())
+          cf.subkernels.push_back(oldKernelP);
+      }
+
     }
   }
-
-  if(inputCodeInfo.megakernelRTV)
+  else
   {
-    for(auto& cf : inputCodeInfo.mainFunc)
-      cf.megakernel.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(cf.megakernel, compiler, cf.megakernel.rewrittenInit, cf.megakernel.rewrittenFinish);
+    for(auto& k : inputCodeInfo.kernels)
+      k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
   }
 
   // finally generate kernels

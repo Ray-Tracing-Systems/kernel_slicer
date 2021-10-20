@@ -283,7 +283,6 @@ public:
   std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
   std::string RecursiveRewrite(const clang::Stmt* expr) override;
 
-protected:
   bool        NeedsVectorTypeRewrite(const std::string& a_str);
   std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
 
@@ -877,7 +876,7 @@ class GLSLKernelRewriter : public kslicer::KernelRewriter, IRecursiveRewriteOver
 public:
   
   GLSLKernelRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr, const bool a_infoPass) : 
-                     kslicer::KernelRewriter(R, a_compiler, a_codeInfo, a_kernel, a_fakeOffsetExpr, a_infoPass), m_glslRW(R, a_compiler, a_codeInfo, kslicer::ShittyFunction())
+                     kslicer::KernelRewriter(R, a_compiler, a_codeInfo, a_kernel, a_fakeOffsetExpr, a_infoPass), m_glslRW(R, a_compiler, a_codeInfo, kslicer::ShittyFunction()) // 
   {
     m_glslRW.m_pKernelRewriter = this;
     m_glslRW.m_pRewrittenNodes = this->m_pRewrittenNodes;
