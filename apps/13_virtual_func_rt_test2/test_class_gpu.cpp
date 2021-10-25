@@ -27,7 +27,7 @@ class TestClass_GPU : public TestClass_Generated
 public:
   TestClass_GPU(std::shared_ptr<SceneManager> a_pMgr) : m_pScnMgr(a_pMgr) 
   {
-    m_enableHWAccel = true;
+    m_enableHWAccel = false;
   }
 
   ~TestClass_GPU()
@@ -136,10 +136,12 @@ public:
 
     // make scene from single mesh
     //  
-    m_pScnMgr->LoadSingleMesh(meshPath);
-    m_pScnMgr->BuildAllBLAS();
-    m_pScnMgr->BuildTLAS();
-    
+    if(m_enableHWAccel)
+    {
+      m_pScnMgr->LoadSingleMesh(meshPath);
+      m_pScnMgr->BuildAllBLAS();
+      m_pScnMgr->BuildTLAS();
+    }
     return 0;
   }
 
@@ -200,14 +202,14 @@ void test_class_gpu()
   
   // query features for RTX
   //
-  RTXDeviceFeatures rtxFeatures = SetupRTXFeatures(physicalDevice);
+  //RTXDeviceFeatures rtxFeatures = SetupRTXFeatures(physicalDevice);
 
   // query features for shaderInt8
   //
   VkPhysicalDeviceShaderFloat16Int8Features features = {};
   features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
   features.shaderInt8 = VK_TRUE;
-  features.pNext      = &rtxFeatures.m_enabledAccelStructFeatures;
+  features.pNext      = nullptr; //&rtxFeatures.m_enabledAccelStructFeatures;
   
   //VkPhysicalDeviceFeatures2 physDevFeatures2 = {};
   //physDevFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -223,13 +225,13 @@ void test_class_gpu()
   deviceExtensions.push_back("VK_KHR_shader_float16_int8"); 
   
   // Required by VK_KHR_RAY_QUERY
-  deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
-  deviceExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
-
-  // Required by VK_KHR_acceleration_structure
-  deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
-  deviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
-  deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+  //deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+  //deviceExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+  //
+  //// Required by VK_KHR_acceleration_structure
+  //deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+  //deviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+  //deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
 
   // // Required by VK_KHR_ray_tracing_pipeline
   // m_deviceExtensions.push_back(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
@@ -242,7 +244,7 @@ void test_class_gpu()
   volkLoadDevice(device);
   //vk_rt_utils::LoadRayTracingFunctions(device);
 
-  commandPool  = vk_utils::createCommandPool(device, VK_QUEUE_COMPUTE_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+  commandPool  = vk_utils::createCommandPool(device, queueComputeFID, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT); 
 
   // (2) initialize vulkan helpers
   //  
@@ -254,7 +256,7 @@ void test_class_gpu()
   }
 
   auto pCopyHelper = std::make_shared<vk_utils::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
-  auto pScnMgr     = std::make_shared<SceneManager>(device, physicalDevice, queueComputeFID, queueComputeFID, true); // todo: pass pCopyHelper
+  auto pScnMgr     = std::make_shared<SceneManager>(device, physicalDevice, queueComputeFID, queueComputeFID, false); // todo: pass pCopyHelper
   auto pGPUImpl    = std::make_shared<TestClass_GPU>(pScnMgr);               // !!! USING GENERATED CODE !!! 
   
   pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT); // !!! USING GENERATED CODE !!!                        
@@ -283,7 +285,7 @@ void test_class_gpu()
   pGPUImpl->SetVulkanInOutFor_NaivePathTrace(xyBuffer,   0,   // !!! USING GENERATED CODE !!!
                                              colorBuffer2,0); // !!! USING GENERATED CODE !!!
 
-  pGPUImpl->SetupRTPipeline(device);                          // !!! WRITE BY HAND        !!!
+  //pGPUImpl->SetupRTPipeline(device);                          // !!! WRITE BY HAND        !!!
   pGPUImpl->UpdateAll(pCopyHelper);                           // !!! USING GENERATED CODE !!!
   
   // now compute some thing useful
@@ -317,7 +319,6 @@ void test_class_gpu()
     SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
    
     //return;
-
     std::cout << "begin path tracing passes ... " << std::endl;
     
     vkResetCommandBuffer(commandBuffer, 0);
