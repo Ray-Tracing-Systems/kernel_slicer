@@ -352,9 +352,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   std::stringstream strOut;
   strOut << "#include \"" << mainInclude.c_str() << "\"" << std::endl;
 
-  std::stringstream strOut2;
-  for(const auto& k : a_classInfo.kernels)
-    strOut2 << "virtual void " << k.second.DeclCmd.c_str() << ";\n"; // << k.second.RetType.c_str()
 
   json data;
   data["Includes"]           = strOut.str();
@@ -368,7 +365,18 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";
-  data["KernelsDecl"]                  = strOut2.str();   
+  data["KernelsDecls"]                 = std::vector<std::string>();
+  if(a_classInfo.megakernelRTV)
+  {
+    for(const auto& cf: a_classInfo.mainFunc)
+      data["KernelsDecls"].push_back("virtual void " + cf.megakernel.DeclCmd + ";");
+  }
+  else
+  {
+    for(const auto& k : a_classInfo.kernels)
+      data["KernelsDecls"].push_back("virtual void " + k.second.DeclCmd + ";");
+  } 
+
   data["TotalDSNumber"]                = a_classInfo.allDescriptorSetsInfo.size();
 
   data["VectorMembers"]  = std::vector<std::string>();
@@ -506,11 +514,22 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  std::vector<kslicer::KernelInfo> currKernels;
+  if(a_classInfo.megakernelRTV)
+  {
+    for(auto& cf : a_classInfo.mainFunc)
+      currKernels.push_back(cf.megakernel);
+  }
+  else
+  {
+    for(const auto& nk : a_classInfo.kernels)
+      currKernels.push_back(nk.second);
+  }
 
   std::vector<std::string> kernelsCallCmdDecl; 
   kernelsCallCmdDecl.reserve(a_classInfo.kernels.size());
-  for(const auto& k : a_classInfo.kernels)
-    kernelsCallCmdDecl.push_back(k.second.DeclCmd);  
+  for(const auto& k : currKernels)
+    kernelsCallCmdDecl.push_back(k.DeclCmd);  
 
   auto kernelDeclByName = MakeMapForKernelsDeclByName(kernelsCallCmdDecl);
 
@@ -524,9 +543,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["IndirectDispatches"] = std::vector<std::string>();
   data["Kernels"]            = std::vector<std::string>();  
 
-  for(const auto& nk : a_classInfo.kernels)
-  {
-    const auto& k        = nk.second;
+  for(const auto& k : currKernels)
+  {    
     std::string kernName = a_classInfo.RemoveKernelPrefix(k.name);
     const auto auxArgs   = GetUserKernelArgs(k.args);
     

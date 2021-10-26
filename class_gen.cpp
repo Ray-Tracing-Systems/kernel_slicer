@@ -351,13 +351,15 @@ void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_k
     std::string kernelSourceCode = GetRangeSourceCode(sourceRange, compiler);
     
     auto posBeg      = kernelSourceCode.find(funcName);
-    //auto posEnd      = posBeg + funcName.size();
     auto posEndBrace = kernelSourceCode.find(")");
 
     std::string kernelCmdDecl = kernelSourceCode.substr(posBeg, posEndBrace+1-posBeg);   
     kernelCmdDecl = a_codeInfo.RemoveKernelPrefix(kernelCmdDecl);
-
-    ReplaceFirst(kernelCmdDecl,"(", "Cmd(");
+    
+    if(k.second.isMega)
+      ReplaceFirst(kernelCmdDecl,"(", "MegaCmd(");
+    else
+      ReplaceFirst(kernelCmdDecl,"(", "Cmd(");
     k.second.DeclCmd = kernelCmdDecl;
     k.second.RetType = kernelSourceCode.substr(0, posBeg);
     ReplaceFirst(k.second.RetType, a_mainClassName + "::", "");

@@ -837,14 +837,21 @@ int main(int argc, const char **argv)
     }
     kernel.warpSize = warpSize;
   }
-
+ 
+  std::unordered_map<std::string, KernelInfo> megakernelsByName;
   if(inputCodeInfo.megakernelRTV) // join all kernels in one for each CF
   {
     for(auto& cf : inputCodeInfo.mainFunc)
     { 
       cf.subkernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
       cf.megakernel = kslicer::joinToMegaKernel(cf.subkernels, cf);
+      cf.megakernel.isMega = true;
+      megakernelsByName[cf.megakernel.name] = cf.megakernel;
     }
+  
+    ObtainKernelsDecl(megakernelsByName, compiler, inputCodeInfo.mainClassName, inputCodeInfo);
+    for(auto& cf : inputCodeInfo.mainFunc)
+      cf.megakernel.DeclCmd = megakernelsByName[cf.megakernel.name].DeclCmd;
   }
 
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
@@ -871,7 +878,7 @@ int main(int argc, const char **argv)
   {
     for(auto& k : inputCodeInfo.kernels)
       k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
-
+  
     for(auto& cf : inputCodeInfo.mainFunc)
     { 
       cf.subkernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
@@ -911,8 +918,7 @@ int main(int argc, const char **argv)
       {
         if(processed.find(oldKernelP->name) == processed.end())
           cf.subkernels.push_back(oldKernelP);
-      }
-
+      } 
     }
   }
   else

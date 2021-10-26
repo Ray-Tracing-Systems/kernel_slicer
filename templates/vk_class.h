@@ -59,14 +59,15 @@ public:
     UpdateTextureMembers(a_pCopyEngine);
   }
 
-## for MainFunc in MainFunctions  
+  {% for MainFunc in MainFunctions %}  
   {{MainFunc.Decl}}
-## endfor
+  {% endfor %}
 
   virtual void copyKernelFloatCmd(uint32_t length);
   
-  {{KernelsDecl}}
-
+  {% for KernelDecl in KernelsDecls %}
+  {{KernelDecl}}
+  {% endfor %}
 protected:
   
   VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;

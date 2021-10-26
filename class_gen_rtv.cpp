@@ -752,7 +752,8 @@ kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo
   //
   for(size_t i=0;i<a_kernels.size();i++)
     res.shaderFeatures = res.shaderFeatures || a_kernels[i]->shaderFeatures;
-
+  
+  res.isMega = true;
   return res;
 }
 
