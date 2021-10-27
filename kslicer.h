@@ -366,6 +366,7 @@ namespace kslicer
     std::unordered_set<std::string>                   ExcludeList;
     std::unordered_set<std::string>                   UsedKernels;
     
+    std::string ReturnType;
     std::string GeneratedDecl;
     std::string CodeGenerated;
 
@@ -746,12 +747,13 @@ namespace kslicer
     virtual bool        IsKernel(const std::string& a_funcName) const;                                 ///<! return true if function is a kernel
     virtual void        ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const { }   ///<!  
     virtual bool        IsIndirect(const KernelInfo& a_kernel) const; 
-   
+    virtual bool        IsRTV() const { return false; }
+
     //// Processing Control Functions (CF)
     // 
     virtual MList         ListMatchers_CF(const std::string& mainFuncName) = 0;
     virtual MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) = 0;
-    virtual std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) = 0;
+    virtual void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) = 0;
 
     virtual void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList) {}
 
@@ -786,7 +788,7 @@ namespace kslicer
     virtual std::vector<ArgFinal> GetKernelTIDArgs(const KernelInfo& a_kernel) const; 
     virtual std::vector<ArgFinal> GetKernelCommonArgs(const KernelInfo& a_kernel) const;
 
-    virtual std::string GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler);
+    virtual void        GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler);
     virtual std::string GetCFDeclFromSource(const std::string& sourceCode);
 
     virtual bool NeedThreadFlags() const { return false; }
@@ -841,7 +843,7 @@ namespace kslicer
   {
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
-    std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;
+    void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;
 
     void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>&  a_kernelList) override;
 
@@ -870,6 +872,8 @@ namespace kslicer
       return (a_name == "MakeObjPtr"); 
     }                 
 
+    bool IsRTV() const override { return true; }
+
   private:
     std::vector< std::pair< std::string, std::string> > m_vkernelPairs;
   };
@@ -881,7 +885,7 @@ namespace kslicer
 
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
-    std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override; 
+    void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override; 
 
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override; 

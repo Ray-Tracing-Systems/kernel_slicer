@@ -695,7 +695,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(threadIdNamesList.size() > 0)
     {
       kernelJson["tidX"] = threadIdNamesList[0];
-      kernelJson["begX"] = tidArgs[0].loopIter.startText;  
+      kernelJson["begX"] = tidArgs[0].loopIter.startText == "" ? "0" : tidArgs[0].loopIter.startText;  
     }
     else
     {
@@ -909,14 +909,15 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       }
       
       local["ArgNumber"] = realId;
-
       data2["DescriptorSets"].push_back(local);
     }
 
-    // for impl, other
-    //
-    data2["MainFuncCmd"] = mainFunc.CodeGenerated;
-
+    data2["MainFuncDeclCmd"]      = mainFunc.GeneratedDecl;
+    data2["MainFuncTextCmd"]      = mainFunc.CodeGenerated;
+    data2["ReturnType"]           = mainFunc.ReturnType;
+    data2["IsRTV"]                = a_classInfo.IsRTV();
+    data2["NeedThreadFlags"]      = a_classInfo.NeedThreadFlags();
+    data2["NeedToAddThreadFlags"] = mainFunc.needToAddThreadFlags;
     data["MainFunctions"].push_back(data2);
   }
 

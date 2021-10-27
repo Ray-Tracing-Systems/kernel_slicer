@@ -41,15 +41,15 @@ uint32_t kslicer::RTV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel)
   return uint32_t(GetKernelTIDArgs(a_kernel).size());
 } 
 
-std::string kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
+void kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
   //const std::string&   a_mainClassName = this->mainClassName;
   //const CXXMethodDecl* a_node          = a_mainFunc.Node;
   //const std::string&   a_mainFuncName  = a_mainFunc.Name;
   //std::string&         a_outFuncDecl   = a_mainFunc.GeneratedDecl;
-  std::string sourceCode   = GetCFSourceCodeCmd(a_mainFunc, compiler); // ==> write this->allDescriptorSetsInfo
+  GetCFSourceCodeCmd(a_mainFunc, compiler); // ==> write this->allDescriptorSetsInfo
   a_mainFunc.endDSNumber   = allDescriptorSetsInfo.size();
-  return sourceCode;
+  a_mainFunc.InOuts        = kslicer::ListParamsOfMainFunc(a_mainFunc.Node);
 }
 
 
