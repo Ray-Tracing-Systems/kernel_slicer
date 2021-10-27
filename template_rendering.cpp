@@ -58,7 +58,7 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
   return kernelDeclByName;
 }
 
-std::string kslicer::GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg)
+std::string kslicer::GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg, bool a_megakernel)
 {
   switch(a_arg.argType)
   {
@@ -71,6 +71,10 @@ std::string kslicer::GetDSArgName(const std::string& a_mainFuncName, const kslic
       auto posOfData = a_arg.name.find(".data()");
       if(posOfData != std::string::npos)
         return std::string("m_vdata.") + a_arg.name.substr(0, posOfData);
+      else if(a_arg.kind == DATA_KIND::KIND_ACCEL_STRUCT)
+        return a_arg.name;
+      else if(a_megakernel)
+        return std::string("m_vdata.") + a_arg.name;
       else
         return a_mainFuncName + "_local." + a_arg.name; 
     }
@@ -820,7 +824,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
                                 dsArgs.descriptorSetsInfo[j].name == "this")) // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
           continue;
 
-        const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j]);
+        const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j], a_classInfo.megakernelRTV);
 
         json arg;
         arg["Id"]            = realId;

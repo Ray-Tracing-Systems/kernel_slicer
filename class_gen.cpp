@@ -155,7 +155,7 @@ static std::string GetControlFuncDeclText(const clang::FunctionDecl* fDecl, clan
 
 void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler, bool a_megakernelRTV)
 {
-  const std::string&   a_mainClassName = this->mainClassName;
+  //const std::string&   a_mainClassName = this->mainClassName;
   const CXXMethodDecl* a_node          = a_mainFunc.Node;
   a_mainFunc.GeneratedDecl  = GetCFDeclFromSource(kslicer::GetRangeSourceCode(a_node->getCanonicalDecl()->getSourceRange(), compiler));
   const auto inOutParamList = kslicer::ListParamsOfMainFunc(a_node);

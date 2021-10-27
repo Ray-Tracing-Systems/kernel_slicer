@@ -931,7 +931,7 @@ namespace kslicer
   bool IsPointerContainer(const std::string& a_typeName);
 
   void SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType);
-  std::string GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg);
+  std::string GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg, bool a_megakernel);
   std::string GetDSVulkanAccessLayout(TEX_ACCESS a_accessMask);
   std::string GetDSVulkanAccessMask(TEX_ACCESS a_accessMask);
 
