@@ -920,8 +920,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["MainFuncTextCmd"]      = mainFunc.CodeGenerated;
     data2["ReturnType"]           = mainFunc.ReturnType;
     data2["IsRTV"]                = a_classInfo.IsRTV();
+    data2["IsMega"]               = a_classInfo.megakernelRTV;
     data2["NeedThreadFlags"]      = a_classInfo.NeedThreadFlags();
     data2["NeedToAddThreadFlags"] = mainFunc.needToAddThreadFlags;
+    data2["DSId"]                 = mainFunc.startDSNumber;
     data["MainFunctions"].push_back(data2);
   }
 
