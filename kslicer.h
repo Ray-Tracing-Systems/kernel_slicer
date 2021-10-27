@@ -788,7 +788,7 @@ namespace kslicer
     virtual std::vector<ArgFinal> GetKernelTIDArgs(const KernelInfo& a_kernel) const; 
     virtual std::vector<ArgFinal> GetKernelCommonArgs(const KernelInfo& a_kernel) const;
 
-    virtual void        GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler);
+    virtual void        GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler, bool a_megakernelRTV);
     virtual std::string GetCFDeclFromSource(const std::string& sourceCode);
 
     virtual bool NeedThreadFlags() const { return false; }

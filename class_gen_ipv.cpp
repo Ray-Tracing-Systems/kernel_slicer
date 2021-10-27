@@ -76,7 +76,7 @@ void kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::C
   //const std::string&   a_mainClassName = this->mainClassName;
   //const CXXMethodDecl* a_node          = a_mainFunc.Node;
   //const std::string&   a_mainFuncName  = a_mainFunc.Name;
-  GetCFSourceCodeCmd(a_mainFunc, compiler); // ==> write this->allDescriptorSetsInfo, a_mainFunc // TODO: may simplify impl for image processing 
+  GetCFSourceCodeCmd(a_mainFunc, compiler, false); // ==> write this->allDescriptorSetsInfo, a_mainFunc // TODO: may simplify impl for image processing 
   a_mainFunc.endDSNumber   = allDescriptorSetsInfo.size();
   a_mainFunc.InOuts        = kslicer::ListParamsOfMainFunc(a_mainFunc.Node);
 }

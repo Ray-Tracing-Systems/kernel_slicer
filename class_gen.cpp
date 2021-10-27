@@ -153,35 +153,49 @@ static std::string GetControlFuncDeclText(const clang::FunctionDecl* fDecl, clan
 }
 
 
-void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
+void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler, bool a_megakernelRTV)
 {
   const std::string&   a_mainClassName = this->mainClassName;
   const CXXMethodDecl* a_node          = a_mainFunc.Node;
   a_mainFunc.GeneratedDecl  = GetCFDeclFromSource(kslicer::GetRangeSourceCode(a_node->getCanonicalDecl()->getSourceRange(), compiler));
   const auto inOutParamList = kslicer::ListParamsOfMainFunc(a_node);
 
-  Rewriter rewrite2;
-  rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-
-  a_mainFunc.startDSNumber = allDescriptorSetsInfo.size();
-
-  kslicer::MainFunctionRewriter rv(rewrite2, compiler, a_mainFunc, inOutParamList, this); // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
-  rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
-  
   const auto funcBody = a_node->getBody();
   clang::SourceLocation b(funcBody->getBeginLoc()), _e(funcBody->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
-  
-  // (1) TestClass::MainFuncCmd --> TestClass_Generated::MainFuncCmd
-  // 
   std::string funcDecl   = GetControlFuncDeclText(a_node, compiler);
-  std::string sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
-  size_t bracePos  = sourceCode.find("{");
-  std::string src2 = sourceCode.substr(bracePos+2);
 
   a_mainFunc.ReturnType    = a_node->getReturnType().getAsString();
   a_mainFunc.GeneratedDecl = funcDecl;
-  a_mainFunc.CodeGenerated = src2.substr(0, src2.find_last_of("}"));
+  a_mainFunc.startDSNumber = allDescriptorSetsInfo.size();
+  
+  if(a_megakernelRTV)
+  {
+    // (1) just add allDescriptorSetsInfo for current megakernel 
+    //
+    a_mainFunc.CodeGenerated = "";
+    KernelCallInfo dsInfo;
+    dsInfo.callerName = a_mainFunc.Name;
+    dsInfo.isService  = false;
+    dsInfo.kernelName       = a_mainFunc.Name + "Mega";
+    dsInfo.originKernelName = a_mainFunc.Name + "Mega"; // postpone "descriptorSetsInfo" process untill megakernels will be formed at the end
+    allDescriptorSetsInfo.push_back(dsInfo);
+  }
+  else
+  {
+    // (1) TestClass::MainFunc --> TestClass_Generated::MainFuncCmd
+    //
+    Rewriter rewrite2;
+    rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+  
+    kslicer::MainFunctionRewriter rv(rewrite2, compiler, a_mainFunc, inOutParamList, this); // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
+    rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
+    
+    std::string sourceCode   = rewrite2.getRewrittenText(clang::SourceRange(b,e));
+    size_t bracePos          = sourceCode.find("{");
+    std::string src2         = sourceCode.substr(bracePos+2);
+    a_mainFunc.CodeGenerated = src2.substr(0, src2.find_last_of("}"));
+  }
 }
 
 std::string kslicer::MainClassInfo::GetCFDeclFromSource(const std::string& sourceCode)

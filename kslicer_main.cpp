@@ -850,6 +850,52 @@ int main(int argc, const char **argv)
     ObtainKernelsDecl(megakernelsByName, compiler, inputCodeInfo.mainClassName, inputCodeInfo);
     for(auto& cf : inputCodeInfo.mainFunc)
       cf.megakernel.DeclCmd = megakernelsByName[cf.megakernel.name].DeclCmd;
+
+    // fix megakernels descriptor sets
+    //
+    for(auto& dsInfo : inputCodeInfo.allDescriptorSetsInfo)
+    {
+      auto pKernelInfo = megakernelsByName.find(dsInfo.originKernelName);
+      if(pKernelInfo == megakernelsByName.end())
+        continue;
+      
+      kslicer::MainFuncInfo* pCF = nullptr;
+      std::string cfName = dsInfo.originKernelName.substr(0, dsInfo.originKernelName.size()-4); // cut of "Mega"
+      for(size_t i=0; i<inputCodeInfo.mainFunc.size(); i++)
+      {
+        if(inputCodeInfo.mainFunc[i].Name == cfName)
+          pCF = &inputCodeInfo.mainFunc[i];
+      }
+      if(pCF == nullptr)
+        continue;
+      
+      for(const auto& inout : pCF->InOuts)
+      {
+        kslicer::ArgReferenceOnCall arg;
+        if(inout.kind != kslicer::DATA_KIND::KIND_UNKNOWN)
+        {
+          arg.name = inout.name;
+          arg.type = inout.type;
+          arg.kind = inout.kind;
+          arg.isConst = inout.isConst;
+          arg.argType = kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG;
+          arg.umpersanned = false;
+          dsInfo.descriptorSetsInfo.push_back(arg);
+        }
+      }
+
+      for(const auto& c : pKernelInfo->second.usedContainers)
+      {
+        kslicer::ArgReferenceOnCall arg;
+        arg.name = c.second.name;
+        arg.type = c.second.type;
+        arg.kind = c.second.kind;
+        arg.isConst = c.second.isConst;
+        arg.argType = kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR;
+        arg.umpersanned = false;
+        dsInfo.descriptorSetsInfo.push_back(arg);
+      }
+    }
   }
 
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
