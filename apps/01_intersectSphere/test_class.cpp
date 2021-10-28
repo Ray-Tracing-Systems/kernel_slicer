@@ -10,8 +10,11 @@
 
 void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 {
-  float3 rayPos = float3(0,0,0);
-  float3 rayDir(0,0,1);
+  //float3 rayPos = float3(0,0,0);
+  //float3 rayDir(0,0,1);
+
+  float3 rayPos(0,0,0), rayDir(0,0,1);
+
   rayDir = EyeRayDir((float)tidX, (float)tidY, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
   rayPos = make_float3(m_data2[0], m_data2[1], m_data2[2]);
   

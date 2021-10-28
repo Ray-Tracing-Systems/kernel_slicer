@@ -95,11 +95,11 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(MemberExpr* expr)
 
     const std::string memberName = exprContent.substr(pos+2);
 
-    if(needOffset && WasNotRewrittenYet(expr))
+    if(WasNotRewrittenYet(expr))
     {
-      if(m_codeInfo->megakernelRTV)
+      if(m_codeInfo->megakernelRTV && m_codeInfo->pShaderCC->IsGLSL()) 
         m_rewriter.ReplaceText(expr->getSourceRange(), baseName + "." + memberName);
-      else
+      else if(needOffset)
         m_rewriter.ReplaceText(expr->getSourceRange(), baseName + "[" + m_fakeOffsetExp + "]." + memberName);
       MarkRewritten(expr);
     }
@@ -125,7 +125,8 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(MemberExpr* expr)
   //const std::string debugMe = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
   const bool isInLoopInitPart = m_currKernel.hasInitPass && (expr->getSourceRange().getEnd() <= m_currKernel.loopOutsidesInit.getEnd());
   const bool hasLargeSize     = (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);
-  if(!pMember->second.isContainer && (isInLoopInitPart || pMember->second.isArray || hasLargeSize) && WasNotRewrittenYet(expr) && !m_infoPass) 
+  const bool inMegaKernel     = m_codeInfo->megakernelRTV;
+  if(!pMember->second.isContainer && (isInLoopInitPart || pMember->second.isArray || hasLargeSize || inMegaKernel) && WasNotRewrittenYet(expr) && !m_infoPass) 
   {
     std::string rewrittenName = m_codeInfo->pShaderCC->UBOAccess(pMember->second.name);
     m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenName);

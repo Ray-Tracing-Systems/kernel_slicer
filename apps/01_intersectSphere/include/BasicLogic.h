@@ -63,7 +63,8 @@ static inline float2 RaySphereHit(float3 orig, float3 dir, float4 sphere) // see
     result.x = fmin(t1,t2);
     result.y = fmax(t1,t2);
   }
-  
+
+  float2 test1(1,1), test2(2,2);
   return result;
 }
 

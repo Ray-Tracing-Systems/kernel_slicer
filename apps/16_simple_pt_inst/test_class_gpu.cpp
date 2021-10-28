@@ -208,7 +208,7 @@ void test_class_gpu(const char* a_scenePath)
     vkEndCommandBuffer(commandBuffer);  
     
     start = std::chrono::high_resolution_clock::now();
-    const int NUM_PASSES = 1000.0f;
+    const int NUM_PASSES = 1000;
     for(int i=0;i<NUM_PASSES;i++)
     {
       vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
