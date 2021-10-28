@@ -4,6 +4,8 @@
 using std::max;
 using std::min;
 
+//#include <chrono>
+
 void TestClass::InitRandomGens(int a_maxThreads)
 {
   m_randomGens.resize(a_maxThreads);
@@ -397,8 +399,8 @@ void test_class_cpu()
 
   // now test path tracing
   //
-  const int PASS_NUMBER           = 100;
-  const int ITERS_PER_PASS_NUMBER = 4;
+  const int PASS_NUMBER           = 100; // 1000
+  const int ITERS_PER_PASS_NUMBER = 10;
   const float normConst = 1.0f/float(PASS_NUMBER*ITERS_PER_PASS_NUMBER);
   const float invGamma  = 1.0f / 2.2f;
 
@@ -421,8 +423,6 @@ void test_class_cpu()
       std::cout.flush();
     }
   }
-  
-  //std::cout << std::endl;
 
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
   {
@@ -435,7 +435,10 @@ void test_class_cpu()
   }
   SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
+
   memset(realColor.data(), 0, sizeof(float)*4*realColor.size());
+  
+  //auto start = std::chrono::high_resolution_clock::now();
   test.SetIntegratorType(TestClass::INTEGRATOR_SHADOW_PT);
   for(int passId = 0; passId < PASS_NUMBER; passId++)
   {
@@ -453,6 +456,10 @@ void test_class_cpu()
       std::cout.flush();
     }
   }
+
+  //auto stop = std::chrono::high_resolution_clock::now();
+  //auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+  //std::cout << ms << " ms for " << PASS_NUMBER*ITERS_PER_PASS_NUMBER << " times of command buffer execution " << std::endl;
 
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
   {

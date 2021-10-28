@@ -287,7 +287,8 @@ int main(int argc, const char **argv)
   uint32_t    threadsOrder[3] = {0,1,2};
   uint32_t    warpSize        = 32;
   bool        useCppInKernels = false;
-  bool        halfFloatTextures = false;
+  bool        halfFloatTextures  = false;
+  bool        useMegakernel      = false;
   auto        defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
   
   if(params.find("-mainClass") != params.end())
@@ -315,7 +316,10 @@ int main(int argc, const char **argv)
     warpSize = atoi(params["-warpSize"].c_str());
   
   if(params.find("-halfTex") != params.end())
-    halfFloatTextures = (params["-halfTex"] == "1") || (params["-halfTex"] == "true");
+    halfFloatTextures = (params["-halfTex"] == "1");
+
+  if(params.find("-megakernel") != params.end())
+    useMegakernel = (params["-megakernel"] == "1");
 
   if(params.find("-cl-std=") != params.end())
     useCppInKernels = params["-cl-std="].find("++") != std::string::npos;
@@ -381,6 +385,7 @@ int main(int argc, const char **argv)
 
   inputCodeInfo.defaultVkernelType = defaultVkernelType;
   inputCodeInfo.halfFloatTextures  = halfFloatTextures;
+  inputCodeInfo.megakernelRTV      = useMegakernel;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -733,9 +738,7 @@ int main(int argc, const char **argv)
   for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
     std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
-
-    mainFunc.CodeGenerated = inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);
-    mainFunc.InOuts        = kslicer::ListPointerParamsOfMainFunc(mainFunc.Node);
+    inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc
   }
 
   inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, // ==>
@@ -832,6 +835,71 @@ int main(int argc, const char **argv)
     }
     kernel.warpSize = warpSize;
   }
+ 
+  std::unordered_map<std::string, KernelInfo> megakernelsByName;
+  if(inputCodeInfo.megakernelRTV) // join all kernels in one for each CF
+  {
+    for(auto& cf : inputCodeInfo.mainFunc)
+    { 
+      cf.subkernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
+      cf.megakernel = kslicer::joinToMegaKernel(cf.subkernels, cf);
+      cf.megakernel.isMega = true;
+      cf.MegaKernelCall    = kslicer::GetCFMegaKernelCall(cf);
+      megakernelsByName[cf.megakernel.name] = cf.megakernel;
+    }
+  
+    ObtainKernelsDecl(megakernelsByName, compiler, inputCodeInfo.mainClassName, inputCodeInfo);
+    for(auto& cf : inputCodeInfo.mainFunc)
+      cf.megakernel.DeclCmd = megakernelsByName[cf.megakernel.name].DeclCmd;
+
+    // fix megakernels descriptor sets
+    //
+    for(auto& dsInfo : inputCodeInfo.allDescriptorSetsInfo)
+    {
+      auto pKernelInfo = megakernelsByName.find(dsInfo.originKernelName);
+      if(pKernelInfo == megakernelsByName.end())
+        continue;
+      
+      kslicer::MainFuncInfo* pCF = nullptr;
+      std::string cfName = dsInfo.originKernelName.substr(0, dsInfo.originKernelName.size()-4); // cut of "Mega"
+      for(size_t i=0; i<inputCodeInfo.mainFunc.size(); i++)
+      {
+        if(inputCodeInfo.mainFunc[i].Name == cfName)
+          pCF = &inputCodeInfo.mainFunc[i];
+      }
+      if(pCF == nullptr)
+        continue;
+      
+      for(const auto& inout : pCF->InOuts)
+      {
+        kslicer::ArgReferenceOnCall arg;
+        if(inout.kind == kslicer::DATA_KIND::KIND_POINTER || 
+           inout.kind == kslicer::DATA_KIND::KIND_VECTOR  || 
+           inout.kind == kslicer::DATA_KIND::KIND_TEXTURE) 
+        {
+          arg.name = inout.name;
+          arg.type = inout.type;
+          arg.kind = inout.kind;
+          arg.isConst = inout.isConst;
+          arg.argType = kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG;
+          arg.umpersanned = false;
+          dsInfo.descriptorSetsInfo.push_back(arg);
+        }
+      }
+
+      for(const auto& c : pKernelInfo->second.usedContainers)
+      {
+        kslicer::ArgReferenceOnCall arg;
+        arg.name = c.second.name;
+        arg.type = c.second.type;
+        arg.kind = c.second.kind;
+        arg.isConst = c.second.isConst;
+        arg.argType = kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR;
+        arg.umpersanned = false;
+        dsInfo.descriptorSetsInfo.push_back(arg);
+      }
+    }
+  }
 
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
   std::cout << "{" << std::endl;
@@ -852,9 +920,59 @@ int main(int argc, const char **argv)
   std::string shaderCCName2 = inputCodeInfo.pShaderCC->Name();
   std::cout << "(8) Generate " << shaderCCName2.c_str() << " kernels" << std::endl; 
   std::cout << "{" << std::endl;
+  
+  if(inputCodeInfo.megakernelRTV) // join all kernels in one for each CF, WE MUST REPEAT THIS HERE BECAUSE OF SHITTY FUNCTIONS ARE PROCESSED DURING 'VisitAndRewrite_KF' for kernels !!!
+  {
+    for(auto& k : inputCodeInfo.kernels)
+      k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
+  
+    for(auto& cf : inputCodeInfo.mainFunc)
+    { 
+      cf.subkernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
+      cf.megakernel = kslicer::joinToMegaKernel(cf.subkernels, cf);
+      cf.megakernel.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(cf.megakernel, compiler, cf.megakernel.rewrittenInit, cf.megakernel.rewrittenFinish);
 
-  for(auto& k : inputCodeInfo.kernels)
-    k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
+      // only here we know the full list of shitty functions (with subkernels)
+      // so we should update subkernels and apply transform inside "VisitArraySubscriptExpr_Impl" to kernels in the same way we did for functions 
+      //
+      auto oldKernels = cf.subkernels;
+      std::unordered_set<std::string> processed;
+      cf.subkernelsData.clear();
+      for(const auto& name : cf.UsedKernels)
+      {
+        for(const auto& shit : cf.megakernel.shittyFunctions)
+        {
+          if(shit.originalName != name)
+            continue;
+
+          auto kernel          = inputCodeInfo.kernels[name];
+          kernel.currentShit   = shit; // just pass shit inside GLSLKernelRewriter via 'kernel.currentShit'; don't want to break VisitAndRewrite_KF API 
+          kernel.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(kernel, compiler, kernel.rewrittenInit, kernel.rewrittenFinish);
+          cf.subkernelsData.push_back(kernel);
+          processed.insert(name);
+        }
+      }
+      
+      // get subkernels were processed and rewritten with "shitty" transforms
+      //
+      cf.subkernels.clear();
+      for(const auto& data : cf.subkernelsData)
+        cf.subkernels.push_back(&data);
+      
+      // get back subkernels which were not processed
+      //
+      for(const auto& oldKernelP : oldKernels)
+      {
+        if(processed.find(oldKernelP->name) == processed.end())
+          cf.subkernels.push_back(oldKernelP);
+      } 
+    }
+  }
+  else
+  {
+    for(auto& k : inputCodeInfo.kernels)
+      k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
+  }
 
   // finally generate kernels
   //
@@ -867,7 +985,6 @@ int main(int argc, const char **argv)
     std::string outName        = rawname + "/include/" + uboIncludeName;
     kslicer::ApplyJsonToTemplate("templates/ubo_def.h",  outName, jsonUBO);
   }
-
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;

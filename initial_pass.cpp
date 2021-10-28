@@ -23,7 +23,7 @@ static kslicer::KernelInfo::ArgInfo ProcessParameter(clang::ParmVarDecl *p)
   arg.size = 1;
   if (q->isPointerType()) {
     arg.size      = 1; // Because C always pass reference
-    arg.isPointer = true;
+    arg.kind      = kslicer::DATA_KIND::KIND_POINTER;
   }
   else if(q->isReferenceType()) {
     arg.isReference = true;
@@ -35,6 +35,15 @@ static kslicer::KernelInfo::ArgInfo ProcessParameter(clang::ParmVarDecl *p)
       arg.isContainer = true;
       auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);   
       kslicer::SplitContainerTypes(specDecl, arg.containerType, arg.containerDataType);
+
+      if(arg.containerType == "Texture2D" || arg.containerType == "Image2D")
+        arg.kind = kslicer::DATA_KIND::KIND_TEXTURE;
+      else if(arg.containerType == "vector" || arg.containerType == "std::vector")
+        arg.kind = kslicer::DATA_KIND::KIND_VECTOR;
+      else if(arg.containerType == "unordered_map" || arg.containerType == "std::unordered_map")
+        arg.kind = kslicer::DATA_KIND::KIND_HASH_TABLE;
+      else if((arg.containerType == "shared_ptr" || arg.containerType == "std::shared_ptr") && arg.containerDataType == "ISceneObject")
+        arg.kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
     }
   }
 

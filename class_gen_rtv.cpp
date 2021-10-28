@@ -41,15 +41,15 @@ uint32_t kslicer::RTV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel)
   return uint32_t(GetKernelTIDArgs(a_kernel).size());
 } 
 
-std::string kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
+void kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
   //const std::string&   a_mainClassName = this->mainClassName;
   //const CXXMethodDecl* a_node          = a_mainFunc.Node;
   //const std::string&   a_mainFuncName  = a_mainFunc.Name;
   //std::string&         a_outFuncDecl   = a_mainFunc.GeneratedDecl;
-  std::string sourceCode   = GetCFSourceCodeCmd(a_mainFunc, compiler); // ==> write this->allDescriptorSetsInfo
+  GetCFSourceCodeCmd(a_mainFunc, compiler, this->megakernelRTV); // ==> write this->allDescriptorSetsInfo, a_mainFunc
   a_mainFunc.endDSNumber   = allDescriptorSetsInfo.size();
-  return sourceCode;
+  a_mainFunc.InOuts        = kslicer::ListParamsOfMainFunc(a_mainFunc.Node);
 }
 
 
@@ -339,8 +339,10 @@ public:
 
     if(WasNotRewrittenYet(subExpr))
     {
-      m_rewriter.ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
-      //MarkRewritten(subExpr); // BUG? For some strange reason marking sub expression disable visiting class fields 
+      if(m_codeInfo->megakernelRTV)
+        m_rewriter.ReplaceText(expr->getSourceRange(), exprInside);
+      else
+        m_rewriter.ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
     }
 
     return true; 
@@ -700,4 +702,79 @@ void kslicer::RTV_Pattern::ExtractHierarchiesConstants(const clang::CompilerInst
       visitor.TraverseDecl(const_cast<clang::CXXRecordDecl*>(impl.decl));
   }
 
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo*>& a_kernels, const MainFuncInfo& cf)
+{
+  KernelInfo res;
+  if(a_kernels.size() == 0)
+    return res;
+  
+  // (0) basic kernel info
+  //
+  res.name      = cf.Name + "Mega";
+  res.className = a_kernels[0]->className;
+  res.astNode   = cf.Node; 
+  
+  // (1) Add CF arguments as megakernel arguments
+  //
+  res.args.resize(0);
+  for(const auto& var : cf.InOuts)
+  {
+    KernelInfo::ArgInfo argInfo;
+    argInfo.name = var.name;
+    argInfo.type = var.type;
+    argInfo.kind = var.kind;
+    argInfo.isThreadID = var.isThreadId;
+    res.args.push_back(argInfo);
+  }
+  
+  // (2) join all used members, containers and e.t.c.
+  //
+  for(size_t i=0;i<a_kernels.size();i++)
+  {
+    for(const auto& kv : a_kernels[i]->usedMembers)
+      res.usedMembers.insert(kv);
+
+    for(const auto& kv : a_kernels[i]->usedContainers)
+      res.usedContainers.insert(kv);
+
+    for(const auto& f : a_kernels[i]->shittyFunctions)
+      res.shittyFunctions.push_back(f);
+  }
+
+  // (3) join shader features
+  //
+  for(size_t i=0;i<a_kernels.size();i++)
+    res.shaderFeatures = res.shaderFeatures || a_kernels[i]->shaderFeatures;
+  
+  res.isMega = true;
+  return res;
+}
+
+std::string kslicer::GetCFMegaKernelCall(const MainFuncInfo& a_mainFunc)
+{
+  const clang::CXXMethodDecl* node = a_mainFunc.Node;
+  
+  std::string fName = node->getNameInfo().getName().getAsString() + "MegaCmd(";
+  for(unsigned i=0;i<node->getNumParams();i++)
+  {
+    auto pParam = node->getParamDecl(i);
+    fName += pParam->getNameAsString();
+
+    if(i == node->getNumParams()-1)
+      fName += ")";
+    else
+      fName += ", ";
+  }
+
+  if(node->getNumParams() == 0)
+    fName += "()";
+
+  return fName + ";";
 }

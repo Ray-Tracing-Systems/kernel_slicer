@@ -106,11 +106,12 @@ namespace kslicer
       std::string type;
       std::string name;
       int         size;
+      DATA_KIND   kind = DATA_KIND::KIND_UNKNOWN;
 
       bool needFakeOffset = false;
       bool isThreadID     = false; ///<! used by RTV-like patterns where loop is defined out of kernel
       bool isLoopSize     = false; ///<! used by IPV-like patterns where loop is defined inside kernel
-      bool isPointer      = false;
+
       bool isThreadFlags  = false; 
       bool isReference    = false;
       bool isContainer    = false;
@@ -118,8 +119,9 @@ namespace kslicer
       std::string containerType;
       std::string containerDataType;
 
-      bool IsUser() const { return !isThreadID && !isLoopSize && !needFakeOffset && !isPointer && !isContainer; }
       bool IsTexture() const { return isContainer && IsTextureContainer(containerType); }
+      bool IsPointer() const { return (kind == DATA_KIND::KIND_POINTER); }
+      bool IsUser()    const { return !isThreadID && !isLoopSize && !needFakeOffset && !IsPointer() && !isContainer; }
     };
 
     struct LoopIter 
@@ -171,7 +173,7 @@ namespace kslicer
     std::string           name;                 ///<! func. name
     std::string           className;            ///<! Class::kernel_XXX --> 'Class'
     std::string           interfaceName;        ///<! Name of the interface if the kernel is virtual
-    std::vector<ArgInfo>      args;                 ///<! all arguments of a kernel
+    std::vector<ArgInfo>  args;                 ///<! all arguments of a kernel
     std::vector<LoopIter> loopIters;            ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
     
     uint32_t GetDim() const 
@@ -201,6 +203,7 @@ namespace kslicer
     bool checkThreadFlags = false;              ///<! used by RTV pattern; if Kernel.shouldCheckExitFlag --> insert check flags code in kernel
     bool isVirtual      = false;                ///<! used by RTV pattern; if kernel is a 'Virtual Kernel'
     bool isMaker        = false;                ///<! used by RTV pattern; if kernel is an object Maker
+    bool isMega         = false;
 
     std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
@@ -211,6 +214,8 @@ namespace kslicer
     std::unordered_map<std::string, TEX_ACCESS>        texAccessInMemb;
     std::unordered_map<std::string, std::string>       texAccessSampler;
     std::vector<ShittyFunction>                        shittyFunctions;     ///<! functions with input pointers accesed global memory, they should be rewritten for GLSL    
+    std::vector<const KernelInfo*>                     subkernels;          ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
+    ShittyFunction                                     currentShit;         ///<!
 
     std::string rewrittenText;                   ///<! rewritten source code of a kernel
     std::string rewrittenInit;                   ///<! rewritten loop initialization code for kernel
@@ -291,9 +296,11 @@ namespace kslicer
   */
   struct InOutVarInfo 
   {
-    std::string name;
+    std::string name = "";
+    std::string type = "";
     DATA_KIND   kind = DATA_KIND::KIND_UNKNOWN;
     bool isConst     = false;
+    bool isThreadId  = false;
     bool isTexture() const { return (kind == DATA_KIND::KIND_TEXTURE); };
   };
 
@@ -359,8 +366,10 @@ namespace kslicer
     std::unordered_set<std::string>                   ExcludeList;
     std::unordered_set<std::string>                   UsedKernels;
     
+    std::string ReturnType;
     std::string GeneratedDecl;
     std::string CodeGenerated;
+    std::string MegaKernelCall;
 
     size_t startDSNumber = 0;
     size_t endDSNumber   = 0;
@@ -372,6 +381,9 @@ namespace kslicer
     std::unordered_map<uint64_t, KernelStatementInfo> CallsInsideFor;
 
     bool   needToAddThreadFlags = false;
+    KernelInfo                     megakernel;     ///<! for RTV pattern only, when joing everything to mega-kernel
+    std::vector<const KernelInfo*> subkernels;     ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
+    std::vector<KernelInfo>        subkernelsData; ///<! for RTV pattern only
   };
   
   /**
@@ -479,7 +491,7 @@ namespace kslicer
 
     virtual bool VisitVarDecl_Impl(clang::VarDecl* decl)                  { return true; } // override this in Derived class
     virtual bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                { return true; } // override this in Derived class
-
+    
     virtual bool VisitMemberExpr_Impl(clang::MemberExpr* expr)            { return true; } // override this in Derived class
     virtual bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) { return true; } // override this in Derived class
     virtual bool VisitFieldDecl_Impl(clang::FieldDecl* decl)              { return true; } // override this in Derived class
@@ -488,8 +500,8 @@ namespace kslicer
     virtual bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast){ return true; } // override this in Derived class
 
     virtual bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) { return true; } 
-
     virtual bool VisitCallExpr_Impl(clang::CallExpr* f);
+
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -521,6 +533,8 @@ namespace kslicer
     bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)                 { if(WasRewritten(cast)) return true; else return VisitCStyleCastExpr_Impl(cast); }
     bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast)             { if(WasRewritten(cast)) return true; else return VisitImplicitCastExpr_Impl(cast); }
     bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { if(WasRewritten(expr)) return true; else return VisitDeclRefExpr_Impl(expr); }
+    bool VisitDeclStmt(clang::DeclStmt* stmt)                             { if(WasRewritten(stmt)) return true; else return VisitDeclStmt_Impl(stmt); }
+    bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* arrayExpr)    { if(WasRewritten(arrayExpr)) return true; else return VisitArraySubscriptExpr_Impl(arrayExpr);  }
 
     bool VisitForStmt(clang::ForStmt* forLoop); ///< to find nodes by their known source range and remember them
 
@@ -587,6 +601,8 @@ namespace kslicer
     virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)     { return true; } // override this in Derived class
     virtual bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) { return true; } // override this in Derived class
     virtual bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)           { return true; } // override this in Derived class
+    virtual bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                 { return true; } // override this in Derived class
+    virtual bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)  { return true; } // override this in Derived class
   };
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -732,12 +748,13 @@ namespace kslicer
     virtual bool        IsKernel(const std::string& a_funcName) const;                                 ///<! return true if function is a kernel
     virtual void        ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const { }   ///<!  
     virtual bool        IsIndirect(const KernelInfo& a_kernel) const; 
-   
+    virtual bool        IsRTV() const { return false; }
+
     //// Processing Control Functions (CF)
     // 
     virtual MList         ListMatchers_CF(const std::string& mainFuncName) = 0;
     virtual MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) = 0;
-    virtual std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) = 0;
+    virtual void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) = 0;
 
     virtual void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList) {}
 
@@ -772,7 +789,7 @@ namespace kslicer
     virtual std::vector<ArgFinal> GetKernelTIDArgs(const KernelInfo& a_kernel) const; 
     virtual std::vector<ArgFinal> GetKernelCommonArgs(const KernelInfo& a_kernel) const;
 
-    virtual std::string GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler);
+    virtual void        GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler, bool a_megakernelRTV);
     virtual std::string GetCFDeclFromSource(const std::string& sourceCode);
 
     virtual bool NeedThreadFlags() const { return false; }
@@ -814,6 +831,7 @@ namespace kslicer
     
     kslicer::VKERNEL_IMPL_TYPE defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
     bool halfFloatTextures = false;
+    bool megakernelRTV     = false;
 
     std::unordered_map<std::string, DHierarchy> m_vhierarchy;
     virtual const std::unordered_map<std::string, DHierarchy>& GetDispatchingHierarchies() const { return m_vhierarchy; }
@@ -826,7 +844,7 @@ namespace kslicer
   {
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
-    std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;
+    void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;
 
     void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>&  a_kernelList) override;
 
@@ -855,6 +873,8 @@ namespace kslicer
       return (a_name == "MakeObjPtr"); 
     }                 
 
+    bool IsRTV() const override { return true; }
+
   private:
     std::vector< std::pair< std::string, std::string> > m_vkernelPairs;
   };
@@ -866,7 +886,7 @@ namespace kslicer
 
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
-    std::string   VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override; 
+    void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override; 
 
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override; 
@@ -912,16 +932,19 @@ namespace kslicer
   bool IsPointerContainer(const std::string& a_typeName);
 
   void SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType);
-  std::string GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg);
+  std::string GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg, bool a_megakernel);
   std::string GetDSVulkanAccessLayout(TEX_ACCESS a_accessMask);
   std::string GetDSVulkanAccessMask(TEX_ACCESS a_accessMask);
 
   DataMemberInfo ExtractMemberInfo(clang::FieldDecl* fd, const clang::ASTContext& astContext);
   std::string InferenceVulkanTextureFormatFromTypeName(const std::string& a_typeName, bool a_useHalFloat);
-
  
   std::vector<kslicer::ArgMatch> MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler);
-  
+
+  std::vector<const KernelInfo*> extractUsedKernelsByName(const std::unordered_set<std::string>& a_usedNames, const std::unordered_map<std::string, KernelInfo>& a_kernels);
+  KernelInfo                     joinToMegaKernel        (const std::vector<const KernelInfo*>& a_kernels, const MainFuncInfo& cf);
+  std::string                    GetCFMegaKernelCall     (const MainFuncInfo& a_mainFunc); 
+
 }
 
 template <typename Cont, typename Pred>

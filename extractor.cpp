@@ -492,3 +492,20 @@ std::vector<kslicer::DeclInClass> kslicer::ExtractTCFromClass(const std::string&
   std::sort(usedDecls.begin(), usedDecls.end(), [](const auto& a, const auto& b) { return a.order < b.order; } );
   return kslicer::ExtractUsedTC(usedDecls, classAstNode, compiler);
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+std::vector<const kslicer::KernelInfo*> kslicer::extractUsedKernelsByName(const std::unordered_set<std::string>& a_usedNames, const std::unordered_map<std::string, KernelInfo>& a_kernels)
+{
+  std::vector<const kslicer::KernelInfo*> result;
+  result.reserve(16);
+  for(const auto& name : a_usedNames)
+  {
+    auto p = a_kernels.find(name);
+    if(p != a_kernels.end())
+      result.push_back(&p->second);
+  }
+  return result;
+}

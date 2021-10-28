@@ -1,6 +1,8 @@
 #include "test_class.h"
 #include "include/crandom.h"
 
+#include <chrono>
+
 using std::max;
 using std::min;
 
@@ -284,11 +286,13 @@ void test_class_cpu(const char* a_scenePath)
 
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   //return;
-
+  
+  auto start = std::chrono::high_resolution_clock::now();
+  
   // now test path tracing
   //
-  const int PASS_NUMBER           = 100;
-  const int ITERS_PER_PASS_NUMBER = 4;
+  const int PASS_NUMBER           = 100; // 1000 rays per pixel
+  const int ITERS_PER_PASS_NUMBER = 10;  // 1000 rays per pixel
   for(int passId = 0; passId < PASS_NUMBER; passId++)
   {
     #pragma omp parallel for default(shared)
@@ -305,6 +309,9 @@ void test_class_cpu(const char* a_scenePath)
       std::cout.flush();
     }
   }
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+  std::cout << ms << " ms for " << PASS_NUMBER*ITERS_PER_PASS_NUMBER << " times of command buffer execution " << std::endl;
   
   //std::cout << std::endl;
 

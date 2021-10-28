@@ -153,61 +153,49 @@ static std::string GetControlFuncDeclText(const clang::FunctionDecl* fDecl, clan
 }
 
 
-std::string kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
+void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler, bool a_megakernelRTV)
 {
-  const std::string&   a_mainClassName = this->mainClassName;
+  //const std::string&   a_mainClassName = this->mainClassName;
   const CXXMethodDecl* a_node          = a_mainFunc.Node;
   a_mainFunc.GeneratedDecl  = GetCFDeclFromSource(kslicer::GetRangeSourceCode(a_node->getCanonicalDecl()->getSourceRange(), compiler));
-  const auto inOutParamList = kslicer::ListPointerParamsOfMainFunc(a_node);
+  const auto inOutParamList = kslicer::ListParamsOfMainFunc(a_node);
 
-  Rewriter rewrite2;
-  rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-
-  a_mainFunc.startDSNumber = allDescriptorSetsInfo.size();
-
-  kslicer::MainFunctionRewriter rv(rewrite2, compiler, a_mainFunc, inOutParamList, this); // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
-  rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
-  
   const auto funcBody = a_node->getBody();
   clang::SourceLocation b(funcBody->getBeginLoc()), _e(funcBody->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
+  std::string funcDecl   = GetControlFuncDeclText(a_node, compiler);
+
+  a_mainFunc.ReturnType    = a_node->getReturnType().getAsString();
+  a_mainFunc.GeneratedDecl = funcDecl;
+  a_mainFunc.startDSNumber = allDescriptorSetsInfo.size();
   
-  // (1) TestClass::MainFuncCmd --> TestClass_Generated::MainFuncCmd
-  // 
-  std::string funcDecl   = a_node->getReturnType().getAsString() + " " + a_mainClassName + "_Generated" + "::" + GetControlFuncDeclText(a_node, compiler);
-  std::string sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
-
-  // (3) set m_currCmdBuffer with input command bufer and add other prolog to MainFunCmd
-  //
-  std::stringstream strOut;
-  strOut << "{" << std::endl;
-  strOut << "  m_currCmdBuffer = a_commandBuffer;" << std::endl;
-  strOut << "  VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT }; " << std::endl;
-  //strOut << "  std::unordered_map<uint64_t, VkAccessFlags> texAccessInfo; " << std::endl;
-  strOut << std::endl;
-
-  if(this->NeedThreadFlags())
+  if(a_megakernelRTV)
   {
-    strOut << "  const uint32_t outOfForFlags  = KGEN_FLAG_RETURN;" << std::endl;
-    strOut << "  const uint32_t inForFlags     = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK;" << std::endl;
-    if(a_mainFunc.needToAddThreadFlags)
-    {
-      const std::string buffName = a_mainFunc.Name + "_local.threadFlagsBuffer";
-
-      strOut << "  const uint32_t outOfForFlagsN = KGEN_FLAG_RETURN | KGEN_FLAG_SET_EXIT_NEGATIVE;" << std::endl;
-      strOut << "  const uint32_t inForFlagsN    = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK | KGEN_FLAG_SET_EXIT_NEGATIVE;" << std::endl;
-      strOut << "  const uint32_t outOfForFlagsD = KGEN_FLAG_RETURN | KGEN_FLAG_DONT_SET_EXIT;" << std::endl;
-      strOut << "  const uint32_t inForFlagsD    = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK | KGEN_FLAG_DONT_SET_EXIT;" << std::endl;
-      strOut << "  vkCmdFillBuffer(a_commandBuffer, " << buffName.c_str() << ", 0, VK_WHOLE_SIZE, 0); // zero thread flags, mark all threads to be active" << std::endl;
-      strOut << "  VkBufferMemoryBarrier fillBarrier = BarrierForClearFlags(" << buffName.c_str() << "); " << std::endl;
-      strOut << "  vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 1, &fillBarrier, 0, nullptr); " << std::endl;
-    }
-    strOut << std::endl; 
+    // (1) just add allDescriptorSetsInfo for current megakernel 
+    //
+    a_mainFunc.CodeGenerated = "";
+    KernelCallInfo dsInfo;
+    dsInfo.callerName = a_mainFunc.Name;
+    dsInfo.isService  = false;
+    dsInfo.kernelName       = a_mainFunc.Name + "Mega";
+    dsInfo.originKernelName = a_mainFunc.Name + "Mega"; // postpone "descriptorSetsInfo" process untill megakernels will be formed at the end
+    allDescriptorSetsInfo.push_back(dsInfo);
   }
-
-  size_t bracePos = sourceCode.find("{");
-  sourceCode = (sourceCode.substr(0, bracePos) + strOut.str() + sourceCode.substr(bracePos+2));
-  return funcDecl + sourceCode;
+  else
+  {
+    // (1) TestClass::MainFunc --> TestClass_Generated::MainFuncCmd
+    //
+    Rewriter rewrite2;
+    rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+  
+    kslicer::MainFunctionRewriter rv(rewrite2, compiler, a_mainFunc, inOutParamList, this); // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
+    rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
+    
+    std::string sourceCode   = rewrite2.getRewrittenText(clang::SourceRange(b,e));
+    size_t bracePos          = sourceCode.find("{");
+    std::string src2         = sourceCode.substr(bracePos+2);
+    a_mainFunc.CodeGenerated = src2.substr(0, src2.find_last_of("}"));
+  }
 }
 
 std::string kslicer::MainClassInfo::GetCFDeclFromSource(const std::string& sourceCode)
@@ -222,30 +210,39 @@ std::string kslicer::MainClassInfo::GetCFDeclFromSource(const std::string& sourc
   return std::string("virtual ") + mainFuncDeclHead + "Cmd(VkCommandBuffer a_commandBuffer, " + mainFuncDeclTail + ";";
 }
 
-std::vector<kslicer::InOutVarInfo> kslicer::ListPointerParamsOfMainFunc(const CXXMethodDecl* a_node)
+std::vector<kslicer::InOutVarInfo> kslicer::ListParamsOfMainFunc(const CXXMethodDecl* a_node)
 {
+  auto tidNames = GetAllPredefinedThreadIdNamesRTV();
+
   std::vector<InOutVarInfo> params;
   for(unsigned i=0;i<a_node->getNumParams();i++)
   {
     const ParmVarDecl* currParam = a_node->getParamDecl(i);
     const clang::QualType qt     = currParam->getType();
     
+    InOutVarInfo var;
+    var.name      = currParam->getNameAsString();
+    var.type      = qt.getAsString();
+    auto id       = std::find(tidNames.begin(), tidNames.end(), var.name);
+
     if(qt->isPointerType())
     {
-      InOutVarInfo var;
-      var.name      = currParam->getNameAsString();
       var.kind      = DATA_KIND::KIND_POINTER;
       var.isConst   = qt.isConstQualified();
-      params.push_back(var);
     }
     else if(qt->isReferenceType() && kslicer::IsTexture(qt))
     {
-      InOutVarInfo var;
-      var.name      = currParam->getNameAsString();
       var.kind      = DATA_KIND::KIND_TEXTURE;
       var.isConst   = qt.isConstQualified();
-      params.push_back(var);
     }
+    else if(id != tidNames.end())
+    {
+      var.kind      = DATA_KIND::KIND_POD;
+      var.isConst   = qt.isConstQualified();
+      var.isThreadId= true;
+    }
+
+    params.push_back(var);
   }
 
   return params;
@@ -342,13 +339,15 @@ void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_k
     std::string kernelSourceCode = GetRangeSourceCode(sourceRange, compiler);
     
     auto posBeg      = kernelSourceCode.find(funcName);
-    //auto posEnd      = posBeg + funcName.size();
     auto posEndBrace = kernelSourceCode.find(")");
 
     std::string kernelCmdDecl = kernelSourceCode.substr(posBeg, posEndBrace+1-posBeg);   
     kernelCmdDecl = a_codeInfo.RemoveKernelPrefix(kernelCmdDecl);
-
-    ReplaceFirst(kernelCmdDecl,"(", "Cmd(");
+    
+    if(k.second.isMega)
+      ReplaceFirst(kernelCmdDecl,"(", "MegaCmd(");
+    else
+      ReplaceFirst(kernelCmdDecl,"(", "Cmd(");
     k.second.DeclCmd = kernelCmdDecl;
     k.second.RetType = kernelSourceCode.substr(0, posBeg);
     ReplaceFirst(k.second.RetType, a_mainClassName + "::", "");

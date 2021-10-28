@@ -95,9 +95,12 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(MemberExpr* expr)
 
     const std::string memberName = exprContent.substr(pos+2);
 
-    if(needOffset && WasNotRewrittenYet(expr))
+    if(WasNotRewrittenYet(expr))
     {
-      m_rewriter.ReplaceText(expr->getSourceRange(), baseName + "[" + m_fakeOffsetExp + "]." + memberName);
+      if(m_codeInfo->megakernelRTV && m_codeInfo->pShaderCC->IsGLSL()) 
+        m_rewriter.ReplaceText(expr->getSourceRange(), baseName + "." + memberName);
+      else if(needOffset)
+        m_rewriter.ReplaceText(expr->getSourceRange(), baseName + "[" + m_fakeOffsetExp + "]." + memberName);
       MarkRewritten(expr);
     }
 
@@ -122,7 +125,8 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(MemberExpr* expr)
   //const std::string debugMe = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
   const bool isInLoopInitPart = m_currKernel.hasInitPass && (expr->getSourceRange().getEnd() <= m_currKernel.loopOutsidesInit.getEnd());
   const bool hasLargeSize     = (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);
-  if(!pMember->second.isContainer && (isInLoopInitPart || pMember->second.isArray || hasLargeSize) && WasNotRewrittenYet(expr) && !m_infoPass) 
+  const bool inMegaKernel     = m_codeInfo->megakernelRTV;
+  if(!pMember->second.isContainer && (isInLoopInitPart || pMember->second.isArray || hasLargeSize || inMegaKernel) && WasNotRewrittenYet(expr) && !m_infoPass) 
   {
     std::string rewrittenName = m_codeInfo->pShaderCC->UBOAccess(pMember->second.name);
     m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenName);
@@ -238,7 +242,7 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
     const std::string text     = FunctionCallRewriteNoName(call);
     const std::string textRes  = VectorTypeContructorReplace(fname, text);
 
-    if(isa<CXXTemporaryObjectExpr>(call))
+    if(isa<CXXTemporaryObjectExpr>(call) || IsGLSL())
     {
       m_rewriter.ReplaceText(call->getSourceRange(), textRes);
     }
@@ -248,11 +252,7 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
       auto pos2 = textOrig.find_first_of("(");
       auto pos  = std::min(pos1, pos2);
       const std::string varName = textOrig.substr(0, pos);
-
-      if(IsGLSL())
-        m_rewriter.ReplaceText(call->getSourceRange(), textRes);
-      else
-        m_rewriter.ReplaceText(call->getSourceRange(), varName + " = " + textRes);
+      m_rewriter.ReplaceText(call->getSourceRange(), varName + " = " + textRes);
     }
     
     MarkRewritten(call);
@@ -358,7 +358,7 @@ bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
   if (!retExpr)
     return true;
   
-  if(!m_infoPass && WasNotRewrittenYet(ret) && m_kernelIsBoolTyped)
+  if(!m_infoPass && WasNotRewrittenYet(ret) && m_kernelIsBoolTyped && !m_codeInfo->megakernelRTV)
   {
     std::string retExprText = RecursiveRewrite(retExpr);
     m_rewriter.ReplaceText(ret->getSourceRange(), std::string("kgenExitCond = ") + retExprText + ";"); // "; goto KGEN_EPILOG"); !!! GLSL DOE NOT SUPPPRT GOTOs!!!
@@ -404,7 +404,7 @@ bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
       }
     }
   }
-  else if(WasNotRewrittenYet(ret) && m_kernelIsMaker)
+  else if(WasNotRewrittenYet(ret) && m_kernelIsMaker && !m_codeInfo->megakernelRTV)
   { 
     // change 'return MakeObjPtr(objPtr, ObjData) to 'kgen_objPtr = objPtr'
     //
@@ -493,7 +493,10 @@ bool kslicer::KernelRewriter::VisitUnaryOperator_Impl(UnaryOperator* expr)
   const bool needOffset = CheckIfExprHasArgumentThatNeedFakeOffset(exprInside);
   if(needOffset && WasNotRewrittenYet(expr))
   {
-    m_rewriter.ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
+    if(m_codeInfo->megakernelRTV)
+      m_rewriter.ReplaceText(expr->getSourceRange(), exprInside);
+    else
+      m_rewriter.ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
     MarkRewritten(expr);
   }
 

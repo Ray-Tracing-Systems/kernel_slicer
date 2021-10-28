@@ -58,7 +58,7 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
   return kernelDeclByName;
 }
 
-std::string kslicer::GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg)
+std::string kslicer::GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg, bool a_megakernel)
 {
   switch(a_arg.argType)
   {
@@ -71,6 +71,10 @@ std::string kslicer::GetDSArgName(const std::string& a_mainFuncName, const kslic
       auto posOfData = a_arg.name.find(".data()");
       if(posOfData != std::string::npos)
         return std::string("m_vdata.") + a_arg.name.substr(0, posOfData);
+      else if(a_arg.kind == DATA_KIND::KIND_ACCEL_STRUCT)
+        return a_arg.name;
+      else if(a_megakernel)
+        return std::string("m_vdata.") + a_arg.name;
       else
         return a_mainFuncName + "_local." + a_arg.name; 
     }
@@ -352,9 +356,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   std::stringstream strOut;
   strOut << "#include \"" << mainInclude.c_str() << "\"" << std::endl;
 
-  std::stringstream strOut2;
-  for(const auto& k : a_classInfo.kernels)
-    strOut2 << "virtual void " << k.second.DeclCmd.c_str() << ";\n"; // << k.second.RetType.c_str()
 
   json data;
   data["Includes"]           = strOut.str();
@@ -368,7 +369,18 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";
-  data["KernelsDecl"]                  = strOut2.str();   
+  data["KernelsDecls"]                 = std::vector<std::string>();
+  if(a_classInfo.megakernelRTV)
+  {
+    for(const auto& cf: a_classInfo.mainFunc)
+      data["KernelsDecls"].push_back("virtual void " + cf.megakernel.DeclCmd + ";");
+  }
+  else
+  {
+    for(const auto& k : a_classInfo.kernels)
+      data["KernelsDecls"].push_back("virtual void " + k.second.DeclCmd + ";");
+  } 
+
   data["TotalDSNumber"]                = a_classInfo.allDescriptorSetsInfo.size();
 
   data["VectorMembers"]  = std::vector<std::string>();
@@ -506,11 +518,22 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  std::vector<kslicer::KernelInfo> currKernels;
+  if(a_classInfo.megakernelRTV)
+  {
+    for(auto& cf : a_classInfo.mainFunc)
+      currKernels.push_back(cf.megakernel);
+  }
+  else
+  {
+    for(const auto& nk : a_classInfo.kernels)
+      currKernels.push_back(nk.second);
+  }
 
   std::vector<std::string> kernelsCallCmdDecl; 
   kernelsCallCmdDecl.reserve(a_classInfo.kernels.size());
-  for(const auto& k : a_classInfo.kernels)
-    kernelsCallCmdDecl.push_back(k.second.DeclCmd);  
+  for(const auto& k : currKernels)
+    kernelsCallCmdDecl.push_back(k.DeclCmd);  
 
   auto kernelDeclByName = MakeMapForKernelsDeclByName(kernelsCallCmdDecl);
 
@@ -524,9 +547,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["IndirectDispatches"] = std::vector<std::string>();
   data["Kernels"]            = std::vector<std::string>();  
 
-  for(const auto& nk : a_classInfo.kernels)
-  {
-    const auto& k        = nk.second;
+  for(const auto& k : currKernels)
+  {    
     std::string kernName = a_classInfo.RemoveKernelPrefix(k.name);
     const auto auxArgs   = GetUserKernelArgs(k.args);
     
@@ -677,7 +699,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(threadIdNamesList.size() > 0)
     {
       kernelJson["tidX"] = threadIdNamesList[0];
-      kernelJson["begX"] = tidArgs[0].loopIter.startText;  
+      kernelJson["begX"] = tidArgs[0].loopIter.startText == "" ? "0" : tidArgs[0].loopIter.startText;  
     }
     else
     {
@@ -770,6 +792,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["InOutVars"] = std::vector<std::string>();
     for(const auto& v : mainFunc.InOuts)
     {
+      if(v.isThreadId || v.kind == DATA_KIND::KIND_POD || v.kind == DATA_KIND::KIND_UNKNOWN)
+        continue;
       json controlArg;
       controlArg["Name"]      = v.name;
       controlArg["IsTexture"] = v.isTexture();
@@ -800,7 +824,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
                                 dsArgs.descriptorSetsInfo[j].name == "this")) // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
           continue;
 
-        const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j]);
+        const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j], a_classInfo.megakernelRTV);
 
         json arg;
         arg["Id"]            = realId;
@@ -889,14 +913,18 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       }
       
       local["ArgNumber"] = realId;
-
       data2["DescriptorSets"].push_back(local);
     }
 
-    // for impl, other
-    //
-    data2["MainFuncCmd"] = mainFunc.CodeGenerated;
-
+    data2["MainFuncDeclCmd"]      = mainFunc.GeneratedDecl;
+    data2["MainFuncTextCmd"]      = mainFunc.CodeGenerated;
+    data2["ReturnType"]           = mainFunc.ReturnType;
+    data2["IsRTV"]                = a_classInfo.IsRTV();
+    data2["IsMega"]               = a_classInfo.megakernelRTV;
+    data2["NeedThreadFlags"]      = a_classInfo.NeedThreadFlags();
+    data2["NeedToAddThreadFlags"] = mainFunc.needToAddThreadFlags;
+    data2["DSId"]                 = mainFunc.startDSNumber;
+    data2["MegaKernelCall"]       = mainFunc.MegaKernelCall;
     data["MainFunctions"].push_back(data2);
   }
 
@@ -1120,18 +1148,29 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (4) put kernels
   //
-  //clang::SourceManager& sm = compiler.getSourceManager();
+  std::unordered_map<std::string, KernelInfo> kernels; // #TODO: Put this to virtual function and override it for RTV
+  {
+    if(a_classInfo.megakernelRTV)
+    {
+      for(const auto& cf : a_classInfo.mainFunc)
+      {
+        kernels[cf.megakernel.name] = cf.megakernel;
+        kernels[cf.megakernel.name].subkernels = cf.subkernels;
+      }
+    }
+    else
+      kernels = a_classInfo.kernels;
+  }
+
   data["Kernels"] = std::vector<std::string>();
-  
-  for (const auto& nk : a_classInfo.kernels)  
+  for (const auto& nk : kernels)  
   {
     const auto& k = nk.second;
     std::cout << "  processing " << k.name << std::endl;
     
     auto commonArgs = a_classInfo.GetKernelCommonArgs(k);
     auto tidArgs    = a_classInfo.GetKernelTIDArgs(k);
-    
-    uint VArgsSize = 0;
+    uint VArgsSize  = 0;
 
     json args = std::vector<std::string>();
     for(auto commonArg : commonArgs)
@@ -1315,7 +1354,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
-    
+
     //////////////////////////////////////////////////////////////////////////////////////////
     {
       clang::Rewriter rewrite2; 
@@ -1533,7 +1572,43 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       kernelJson["ShityFunctions"].push_back(funcDeclText + funcBodyText);
     }
-    
+
+    kernelJson["Subkernels"]  = std::vector<std::string>();
+    if(a_classInfo.megakernelRTV)
+    {
+      for(auto pSubkernel : k.subkernels)
+      {
+        auto& subkernel = (*pSubkernel);
+         
+        std::string funcDeclText = "...";
+        {
+          kslicer::ShittyFunction shit;  
+          for(const auto& candidate : k.shittyFunctions)
+          {
+            if(candidate.originalName == subkernel.name)
+            {
+              shit = candidate;
+              break;
+            }
+          }
+
+          clang::Rewriter rewrite2;                                                    // It is important to have clear rewriter for each function because here we access same node several times!!!
+          rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());  //
+          auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo, shit);
+          auto funcNode  = const_cast<clang::CXXMethodDecl*>(subkernel.astNode);
+          funcDeclText   = pVisitorF->RewriteFuncDecl(funcNode);
+        }
+
+        json subJson;
+        subJson["Name"] = subkernel.name;
+        subJson["RetT"] = subkernel.isBoolTyped ? "bool" : "void";
+        subJson["Decl"] = funcDeclText;
+        std::string sourceCodeCut = subkernel.rewrittenText.substr(subkernel.rewrittenText.find_first_of('{')+1);
+        subJson["Source"] = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
+
+        kernelJson["Subkernels"].push_back(subJson);
+      }
+    }
 
     auto original = kernelJson;
     

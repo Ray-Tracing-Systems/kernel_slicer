@@ -31,12 +31,11 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   
   // generate header for all used functions in GLSL code
   //
-  const std::string outFileNameH  = GetFolderPath(mainClassFileName) + "/z_generated.cl";
   kslicer::ApplyJsonToTemplate("templates_glsl/common_generated.h", shaderPath + "/common_generated.h", a_kernelsJson);  
   
   // now generate all glsl shaders
   //
-  const std::string templatePath       = "templates_glsl/generated.glsl";
+  const std::string templatePath       = a_codeInfo->megakernelRTV ? "templates_glsl/generated_mega.glsl" : "templates_glsl/generated.glsl";
   const std::string templatePathUpdInd = "templates_glsl/update_indirect.glsl";
   const std::string templatePathRedFin = "templates_glsl/reduction_finish.glsl";
   
@@ -284,7 +283,6 @@ public:
   std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
   std::string RecursiveRewrite(const clang::Stmt* expr) override;
 
-protected:
   bool        NeedsVectorTypeRewrite(const std::string& a_str);
   std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
 
@@ -299,26 +297,13 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
     return "";
   if(m_pKernelRewriter != nullptr) // we actually do kernel rewrite
   {
-    //auto nodesFuncBefore = *m_pRewrittenNodes;
-    //auto nodesKernBefore = m_pKernelRewriter->GetVisitedNodes();
+    
     
     std::string result = m_pKernelRewriter->RecursiveRewriteImpl(expr);
     sFeatures = sFeatures || m_pKernelRewriter->GetShaderFeatures();
     MarkRewritten(expr);
-    //auto nodesFuncAfter = *m_pRewrittenNodes;
-    auto nodesKernAfter = m_pKernelRewriter->GetVisitedNodes();
-    //for(auto node : nodesKernAfter)
-    //  m_pRewrittenNodes->insert(node);
-
-    //std::cout << "*****************************" << std::endl;
-    //kslicer::DisplayVisitedNodes(nodesFuncBefore); std::cout << std::endl;
-    //std::cout << "-----------------------------" << std::endl;
-    //kslicer::DisplayVisitedNodes(nodesFuncBefore); std::cout << std::endl;
-    //std::cout << "=============================" << std::endl;
-    //kslicer::DisplayVisitedNodes(nodesFuncAfter); std::cout << std::endl;
-    //std::cout << "-----------------------------" << std::endl;
-    //kslicer::DisplayVisitedNodes(nodesFuncAfter); std::cout << std::endl;
-
+    //auto nodesKernAfter = m_pKernelRewriter->GetVisitedNodes();
+    //m_pRewrittenNodes->insert(nodesKernAfter.begin(), nodesKernAfter.end());
     return result;
   }
   else
@@ -326,9 +311,7 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
     GLSLFunctionRewriter rvCopy = *this;
     rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
     sFeatures = sFeatures || rvCopy.sFeatures;
-    //for(auto node : *(rvCopy.m_pRewrittenNodes))
-    //  m_pRewrittenNodes->insert(node);
-
+  
     std::string text = m_rewriter.getRewrittenText(expr->getSourceRange());
     if(text == "")                                                            // try to repair from the errors
       return kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // which reason is unknown ... 
@@ -893,7 +876,7 @@ class GLSLKernelRewriter : public kslicer::KernelRewriter, IRecursiveRewriteOver
 public:
   
   GLSLKernelRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr, const bool a_infoPass) : 
-                     kslicer::KernelRewriter(R, a_compiler, a_codeInfo, a_kernel, a_fakeOffsetExpr, a_infoPass), m_glslRW(R, a_compiler, a_codeInfo, kslicer::ShittyFunction())
+                     kslicer::KernelRewriter(R, a_compiler, a_codeInfo, a_kernel, a_fakeOffsetExpr, a_infoPass), m_glslRW(R, a_compiler, a_codeInfo, a_kernel.currentShit) // 
   {
     m_glslRW.m_pKernelRewriter = this;
     m_glslRW.m_pRewrittenNodes = this->m_pRewrittenNodes;
@@ -906,6 +889,7 @@ public:
 
   bool VisitCallExpr_Impl(clang::CallExpr* f) override;
   bool VisitVarDecl_Impl(clang::VarDecl* decl) override;
+  bool VisitDeclStmt_Impl(clang::DeclStmt* stmt) override;
   bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override;
   bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
   bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) override;
@@ -917,6 +901,8 @@ public:
   bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) override;
   bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr) override;
   bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
+  bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) override;
+
 
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override { return m_glslRW.VectorTypeContructorReplace(fname, callText); }
 
@@ -1041,8 +1027,15 @@ bool GLSLKernelRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
-
   m_glslRW.VisitVarDecl_Impl(decl);
+  return true;
+}
+
+bool GLSLKernelRewriter::VisitDeclStmt_Impl(clang::DeclStmt* stmt)
+{
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return true; 
+  m_glslRW.VisitDeclStmt_Impl(stmt);
   return true;
 }
 
@@ -1050,8 +1043,15 @@ bool GLSLKernelRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
-
   m_glslRW.VisitCStyleCastExpr_Impl(cast);
+  return true;
+}
+
+bool GLSLKernelRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)
+{
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return true; 
+  m_glslRW.VisitArraySubscriptExpr_Impl(arrayExpr);
   return true;
 }
 

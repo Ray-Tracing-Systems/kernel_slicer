@@ -71,14 +71,14 @@ std::vector<kslicer::ArgFinal> kslicer::IPV_Pattern::GetKernelTIDArgs(const Kern
   return args;
 }
 
-std::string kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
+void kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
   //const std::string&   a_mainClassName = this->mainClassName;
   //const CXXMethodDecl* a_node          = a_mainFunc.Node;
   //const std::string&   a_mainFuncName  = a_mainFunc.Name;
-  std::string sourceCode   = GetCFSourceCodeCmd(a_mainFunc, compiler); // ==> write this->allDescriptorSetsInfo // TODO: may simplify impl for image processing 
+  GetCFSourceCodeCmd(a_mainFunc, compiler, false); // ==> write this->allDescriptorSetsInfo, a_mainFunc // TODO: may simplify impl for image processing 
   a_mainFunc.endDSNumber   = allDescriptorSetsInfo.size();
-  return sourceCode;
+  a_mainFunc.InOuts        = kslicer::ListParamsOfMainFunc(a_mainFunc.Node);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -247,6 +247,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
                                                      std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode)
 {
   //a_funcInfo.astNode->dump();
+  
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
   
