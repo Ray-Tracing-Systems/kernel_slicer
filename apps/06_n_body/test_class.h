@@ -33,7 +33,7 @@ public:
     float4 vel_charge;
   };
 
-  static constexpr int MODE = 1; //0 - gravitational, 1 - electrostatic
+  static constexpr int MODE = 0; //0 - gravitational, 1 - electrostatic
 protected:
   static constexpr float dt = 1e-4f; //(MODE == 1) ? 1e-4f : 1e-5f;
   uint32_t m_seed;

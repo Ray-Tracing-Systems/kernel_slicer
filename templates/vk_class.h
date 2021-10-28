@@ -60,7 +60,7 @@ public:
   }
 
   {% for MainFunc in MainFunctions %}  
-  {{MainFunc.ReturnType}} {{MainFunc.Decl}};
+  virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}};
   {% endfor %}
 
   virtual void copyKernelFloatCmd(uint32_t length);
