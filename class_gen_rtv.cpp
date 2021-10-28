@@ -757,4 +757,24 @@ kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo
   return res;
 }
 
+std::string kslicer::GetCFMegaKernelCall(const MainFuncInfo& a_mainFunc)
+{
+  const clang::CXXMethodDecl* node = a_mainFunc.Node;
+  
+  std::string fName = node->getNameInfo().getName().getAsString() + "MegaCmd(";
+  for(unsigned i=0;i<node->getNumParams();i++)
+  {
+    auto pParam = node->getParamDecl(i);
+    fName += pParam->getNameAsString();
 
+    if(i == node->getNumParams()-1)
+      fName += ")";
+    else
+      fName += ", ";
+  }
+
+  if(node->getNumParams() == 0)
+    fName += "()";
+
+  return fName + ";";
+}

@@ -369,6 +369,7 @@ namespace kslicer
     std::string ReturnType;
     std::string GeneratedDecl;
     std::string CodeGenerated;
+    std::string MegaKernelCall;
 
     size_t startDSNumber = 0;
     size_t endDSNumber   = 0;
@@ -937,12 +938,13 @@ namespace kslicer
 
   DataMemberInfo ExtractMemberInfo(clang::FieldDecl* fd, const clang::ASTContext& astContext);
   std::string InferenceVulkanTextureFormatFromTypeName(const std::string& a_typeName, bool a_useHalFloat);
-
  
   std::vector<kslicer::ArgMatch> MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler);
-  
+
   std::vector<const KernelInfo*> extractUsedKernelsByName(const std::unordered_set<std::string>& a_usedNames, const std::unordered_map<std::string, KernelInfo>& a_kernels);
   KernelInfo                     joinToMegaKernel        (const std::vector<const KernelInfo*>& a_kernels, const MainFuncInfo& cf);
+  std::string                    GetCFMegaKernelCall     (const MainFuncInfo& a_mainFunc); 
+
 }
 
 template <typename Cont, typename Pred>

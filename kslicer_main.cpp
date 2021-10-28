@@ -844,6 +844,7 @@ int main(int argc, const char **argv)
       cf.subkernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
       cf.megakernel = kslicer::joinToMegaKernel(cf.subkernels, cf);
       cf.megakernel.isMega = true;
+      cf.MegaKernelCall    = kslicer::GetCFMegaKernelCall(cf);
       megakernelsByName[cf.megakernel.name] = cf.megakernel;
     }
   

@@ -924,6 +924,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["NeedThreadFlags"]      = a_classInfo.NeedThreadFlags();
     data2["NeedToAddThreadFlags"] = mainFunc.needToAddThreadFlags;
     data2["DSId"]                 = mainFunc.startDSNumber;
+    data2["MegaKernelCall"]       = mainFunc.MegaKernelCall;
     data["MainFunctions"].push_back(data2);
   }
 
