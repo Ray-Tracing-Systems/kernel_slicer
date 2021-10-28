@@ -873,7 +873,9 @@ int main(int argc, const char **argv)
       for(const auto& inout : pCF->InOuts)
       {
         kslicer::ArgReferenceOnCall arg;
-        if(inout.kind == kslicer::DATA_KIND::KIND_VECTOR || inout.kind == kslicer::DATA_KIND::KIND_TEXTURE) 
+        if(inout.kind == kslicer::DATA_KIND::KIND_POINTER || 
+           inout.kind == kslicer::DATA_KIND::KIND_VECTOR  || 
+           inout.kind == kslicer::DATA_KIND::KIND_TEXTURE) 
         {
           arg.name = inout.name;
           arg.type = inout.type;

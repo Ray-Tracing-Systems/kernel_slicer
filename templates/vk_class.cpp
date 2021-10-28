@@ -327,6 +327,11 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
 {
   m_currCmdBuffer = a_commandBuffer;
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT }; 
+  {% if MainFunc.IsMega %}
+  vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{MainFunc.Name}}MegaLayout, 0, 1, &m_allGeneratedDS[{{MainFunc.DSId}}], 0, nullptr);
+  {{MainFunc.MegaKernelCall}}
+  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr); 
+  {% else %}
   {% if MainFunc.IsRTV %}
   {% if MainFunc.NeedThreadFlags %}
   const uint32_t outOfForFlags  = KGEN_FLAG_RETURN;
@@ -343,6 +348,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   {% endif %}
   {% endif %}
   {{MainFunc.MainFuncTextCmd}}
+  {% endif %} {# /* end of else branch */ #}
 }
 ## endfor
 
