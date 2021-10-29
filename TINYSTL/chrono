@@ -1,0 +1,32 @@
+namespace std
+{
+
+namespace chrono
+{
+  typedef int duration;
+  typedef int time_point;
+  typedef int nanoseconds;
+  typedef int microseconds;
+  typedef int miliseconds;
+  typedef int seconds;
+
+  struct system_clock
+  {
+    typedef chrono::nanoseconds duration;
+    static chrono::time_point now();
+  };
+
+  typedef system_clock high_resolution_clock;
+  
+  template<typename castType>
+  struct duration_cast_temp
+  {
+    float count() const { return 0.0f; }
+  };
+  
+  template<typename castType>
+  duration_cast_temp<castType> duration_cast(duration dur) { return duration_cast_temp<castType>(); }
+
+}
+
+}
