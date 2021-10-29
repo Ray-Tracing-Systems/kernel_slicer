@@ -509,3 +509,21 @@ std::vector<const kslicer::KernelInfo*> kslicer::extractUsedKernelsByName(const 
   }
   return result;
 }
+
+kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt, bool isContainer)
+{
+  DATA_KIND kind = DATA_KIND::KIND_UNKNOWN;
+  if(kslicer::IsTexture(qt))           // TODO: detect other cases
+    kind = kslicer::DATA_KIND::KIND_TEXTURE;
+  else if(kslicer::IsAccelStruct(qt))
+    kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
+  else if(qt->isPointerType())
+    kind = kslicer::DATA_KIND::KIND_POINTER;
+  //else if(qt->isPODType())
+  //  kind = kslicer::DATA_KIND::KIND_POD;
+  else if(isContainer)
+    kind = kslicer::DATA_KIND::KIND_VECTOR; 
+  else 
+    kind = kslicer::DATA_KIND::KIND_POD; 
+  return kind;
+}

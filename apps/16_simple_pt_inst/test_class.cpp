@@ -1,7 +1,7 @@
 #include "test_class.h"
 #include "include/crandom.h"
 
-#include <chrono>
+//#include <chrono>
 
 using std::max;
 using std::min;
@@ -287,7 +287,7 @@ void test_class_cpu(const char* a_scenePath)
   SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   //return;
   
-  auto start = std::chrono::high_resolution_clock::now();
+  //auto start = std::chrono::high_resolution_clock::now();
   
   // now test path tracing
   //
@@ -309,9 +309,10 @@ void test_class_cpu(const char* a_scenePath)
       std::cout.flush();
     }
   }
-  auto stop = std::chrono::high_resolution_clock::now();
-  auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-  std::cout << ms << " ms for " << PASS_NUMBER*ITERS_PER_PASS_NUMBER << " times of command buffer execution " << std::endl;
+  
+  //auto stop = std::chrono::high_resolution_clock::now();
+  //auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+  //std::cout << ms << " ms for " << PASS_NUMBER*ITERS_PER_PASS_NUMBER << " times of command buffer execution " << std::endl;
   
   //std::cout << std::endl;
 

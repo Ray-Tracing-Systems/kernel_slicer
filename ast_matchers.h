@@ -88,6 +88,8 @@ namespace kslicer
       //
       const Expr   * l_var = result.Nodes.getNodeAs<Expr>   ("localReference");
       const VarDecl* var   = result.Nodes.getNodeAs<VarDecl>("locVarName");
+      const MemberExpr* l_var2 = result.Nodes.getNodeAs<MemberExpr>("memberReference");
+      const FieldDecl * var2   = result.Nodes.getNodeAs<FieldDecl>("memberName");
 
       // for for expression inside MainFunc
       //
@@ -134,6 +136,37 @@ namespace kslicer
           }
           
           CurrMainFunc().UsedKernels.insert(kName); // add  this kernel to list of used kernels by MainFunc 
+        }
+      }
+      else if(func_decl && l_var2 && var2)
+      {
+        const RecordDecl* parentClass = var2->getParent(); 
+        if(parentClass != nullptr && parentClass->getNameAsString() == m_allInfo.mainClassName)
+        {
+          auto varName     = var2->getNameAsString();
+          auto pDataMember = m_allInfo.allDataMembers.find(varName);
+
+          if(pDataMember == m_allInfo.allDataMembers.end())
+          {
+            std::cout << "[ERROR]: accessed member " << varName.c_str() << " was not found in allDataMembers (pointer member?)" << std::endl;
+            return;
+          }
+
+          assert(pDataMember != m_allInfo.allDataMembers.end());
+
+          pDataMember->second.usedInKernel = true;
+          if(pDataMember->second.isContainer)
+          {
+            const clang::QualType qt = var2->getType();
+            kslicer::UsedContainerInfo container;
+            container.type    = qt.getAsString();
+            container.name    = pDataMember->first;
+            container.kind    = kslicer::GetKindOfType(qt, true);
+            container.isConst = qt.isConstQualified();
+            CurrMainFunc().usedContainers[container.name] = container;
+          }
+          else
+            CurrMainFunc().usedMembers.insert(pDataMember->first);
         }
       }
       else if(func_decl && l_var && var) // found local variable in MainFunc
@@ -290,15 +323,9 @@ namespace kslicer
           {
             const clang::QualType qt = var->getType();
             kslicer::UsedContainerInfo container;
-            container.type = qt.getAsString();
-            container.name = pDataMember->first;
-            if(kslicer::IsTexture(qt))           // TODO: detect other cases
-              container.kind = kslicer::DATA_KIND::KIND_TEXTURE;
-            else if(kslicer::IsAccelStruct(qt))
-              container.kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
-            else 
-              container.kind = kslicer::DATA_KIND::KIND_VECTOR; 
-            
+            container.type    = qt.getAsString();
+            container.name    = pDataMember->first;            
+            container.kind    = kslicer::GetKindOfType(qt, true);
             container.isConst = qt.isConstQualified();
             currKernel->usedContainers[container.name] = container;
           }

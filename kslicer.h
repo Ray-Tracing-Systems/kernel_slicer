@@ -208,7 +208,7 @@ namespace kslicer
     std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
     std::unordered_map<std::string, UsedContainerInfo> usedContainers; ///<! list of all std::vector<T> member names which is referenced inside kernel
-    std::unordered_set<std::string>                    usedMembers; ///<! list of all other variables used inside kernel
+    std::unordered_set<std::string>                    usedMembers;    ///<! list of all other variables used inside kernel
     std::unordered_map<std::string, ReductionAccess>   subjectedToReduction; ///<! if member is used in reduction expression
     std::unordered_map<std::string, TEX_ACCESS>        texAccessInArgs;
     std::unordered_map<std::string, TEX_ACCESS>        texAccessInMemb;
@@ -365,6 +365,9 @@ namespace kslicer
     std::vector<InOutVarInfo>                         InOuts;
     std::unordered_set<std::string>                   ExcludeList;
     std::unordered_set<std::string>                   UsedKernels;
+
+    std::unordered_map<std::string, UsedContainerInfo> usedContainers; ///<! list of all std::vector<T> member names which is referenced inside ControlFunc
+    std::unordered_set<std::string>                    usedMembers;    ///<! list of all other variables used inside ControlFunc
     
     std::string ReturnType;
     std::string GeneratedDecl;
@@ -944,7 +947,8 @@ namespace kslicer
   std::vector<const KernelInfo*> extractUsedKernelsByName(const std::unordered_set<std::string>& a_usedNames, const std::unordered_map<std::string, KernelInfo>& a_kernels);
   KernelInfo                     joinToMegaKernel        (const std::vector<const KernelInfo*>& a_kernels, const MainFuncInfo& cf);
   std::string                    GetCFMegaKernelCall     (const MainFuncInfo& a_mainFunc); 
-
+  
+  DATA_KIND GetKindOfType(const clang::QualType qt, bool isContainer);
 }
 
 template <typename Cont, typename Pred>

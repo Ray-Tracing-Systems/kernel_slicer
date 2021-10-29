@@ -204,6 +204,7 @@ kslicer::RTV_Pattern::MList kslicer::RTV_Pattern::ListMatchers_CF(const std::str
 {
   std::vector<clang::ast_matchers::StatementMatcher> list;
   list.push_back(kslicer::MakeMatch_LocalVarOfMethod(mainFuncName));
+  list.push_back(kslicer::MakeMatch_MemberVarOfMethod(mainFuncName));
   list.push_back(kslicer::MakeMatch_MethodCallFromMethod(mainFuncName));
   list.push_back(kslicer::MakeMatch_SingleForLoopInsideFunction(mainFuncName));
   list.push_back(kslicer::MakeMatch_IfInsideForLoopInsideFunction(mainFuncName));
@@ -753,6 +754,15 @@ kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo
   for(size_t i=0;i<a_kernels.size();i++)
     res.shaderFeatures = res.shaderFeatures || a_kernels[i]->shaderFeatures;
   
+  // (4) add used members by CF itself
+  //
+  {
+    for(auto member : cf.usedMembers)
+      res.usedMembers.insert(member);
+    for(auto cont : cf.usedContainers)
+      res.usedContainers.insert(cont);
+  }
+
   res.isMega = true;
   return res;
 }

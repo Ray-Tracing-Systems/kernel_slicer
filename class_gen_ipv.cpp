@@ -88,6 +88,7 @@ kslicer::IPV_Pattern::MList kslicer::IPV_Pattern::ListMatchers_CF(const std::str
 {
   std::vector<clang::ast_matchers::StatementMatcher> list;
   list.push_back(kslicer::MakeMatch_LocalVarOfMethod(mainFuncName));
+  list.push_back(kslicer::MakeMatch_MemberVarOfMethod(mainFuncName));
   list.push_back(kslicer::MakeMatch_MethodCallFromMethod(mainFuncName));
   list.push_back(kslicer::MakeMatch_SingleForLoopInsideFunction(mainFuncName));
   list.push_back(kslicer::MakeMatch_IfInsideForLoopInsideFunction(mainFuncName));
