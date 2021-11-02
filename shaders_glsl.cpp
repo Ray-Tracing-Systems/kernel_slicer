@@ -756,15 +756,16 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   const auto qt      = decl->getType();
   const auto pValue  = decl->getAnyInitializer();
       
-  const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
+  //const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
+  //const std::string debugTextVal = kslicer::GetRangeSourceCode(pValue->getSourceRange(), m_compiler); 
   const std::string varType   = qt.getAsString();
 
-  if(NeedsVectorTypeRewrite(varType) && WasNotRewrittenYet(pValue))
+  if(pValue != nullptr && NeedsVectorTypeRewrite(varType) && WasNotRewrittenYet(pValue))
   {
     const std::string varName  = decl->getNameAsString();
     const std::string varValue = RecursiveRewrite(pValue);
     const std::string varType2 = RewriteStdVectorTypeStr(varType);
-
+    
     if(varValue == "" || varValue == varName) // 'float3 deviation;' for some reason !decl->hasInit() does not works 
       m_rewriter.ReplaceText(decl->getSourceRange(), varType2 + " " + varName);
     else
@@ -804,7 +805,7 @@ bool GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* c
     return true;
 
   clang::Expr* next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr(); 
-  //std::string dbgTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
+  std::string dbgTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
   
   //https://code.woboq.org/llvm/clang/include/clang/AST/OperationKinds.def.html
   if(kind != clang::CK_IntegralCast && kind != clang::CK_IntegralToFloating && kind != clang::CK_FloatingToIntegral) // in GLSL we don't have implicit casts
@@ -1085,7 +1086,7 @@ bool GLSLKernelRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* cal
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
-  return kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(call);
+  return m_glslRW.VisitCXXConstructExpr(call);
 }
 
 void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, clang::CXXOperatorCallExpr* a_assignOp)

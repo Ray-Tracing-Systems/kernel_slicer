@@ -1124,6 +1124,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       if(!f.isMember)
       {
+        //f.astNode->dump();
         pVisitorF->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
         data["LocalFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
         shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();

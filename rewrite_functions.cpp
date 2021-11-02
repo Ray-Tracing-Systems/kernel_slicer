@@ -104,9 +104,10 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
   CXXConstructorDecl* ctorDecl = call->getConstructor();
   assert(ctorDecl != nullptr);
   
+  const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);   
   const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
 
-  if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && call->getNumArgs() > 1)
+  if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0 ) //
   {
     const std::string text    = FunctionCallRewriteNoName(call);
     const std::string textRes = VectorTypeContructorReplace(fname, text); 

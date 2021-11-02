@@ -219,7 +219,7 @@ std::string kslicer::KernelRewriter::VectorTypeContructorReplace(const std::stri
   return std::string("make_") + fname + callText;
 }
 
-bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
+bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call) // #TODO: seems it forks only for clspv, refactor this function please
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
@@ -236,7 +236,7 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
   bool needReplacement = kslicer::IsVectorContructorNeedsReplacement(fname);
   bool wasNotDone      = WasNotRewrittenYet(call);
 
-  if(needReplacement && wasNotDone && call->getNumArgs() > 1)
+  if(needReplacement && wasNotDone && !ctorDecl->isCopyOrMoveConstructor()) // 
   {
     const std::string textOrig = GetRangeSourceCode(call->getSourceRange(), m_compiler);
     const std::string text     = FunctionCallRewriteNoName(call);
