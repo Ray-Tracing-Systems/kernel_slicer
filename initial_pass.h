@@ -41,6 +41,7 @@ namespace kslicer
     std::unordered_map<std::string, KernelInfo>           functions;
     std::unordered_map<std::string, DataMemberInfo>       dataMembers;
     std::unordered_map<std::string, const CXXMethodDecl*> m_mainFuncNodes;
+    std::unordered_map<std::string, const CXXMethodDecl*> m_setters;
   
     std::unordered_map<std::string, KernelInfo>           otherFunctions;
 

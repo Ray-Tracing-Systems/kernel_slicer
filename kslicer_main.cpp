@@ -449,7 +449,7 @@ int main(int argc, const char **argv)
     auto pHeaderLister = std::make_unique<HeaderLister>(&inputCodeInfo);
     compiler.getPreprocessor().addPPCallbacks(std::move(pHeaderLister));
   }
-    
+
   // init clang tooling
   //
   std::vector<const char*> argv2 = {argv[0], argv[1]};
@@ -510,6 +510,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.allDataMembers       = firstPassData.rv.dataMembers;   
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.m_mainClassASTNode;
+  auto setters                       = firstPassData.rv.m_setters;
   
   std::vector<kslicer::DeclInClass> generalDecls = firstPassData.rv.GetExtractedDecls();
   if(inputCodeInfo.mainClassASTNode == nullptr)

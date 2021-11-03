@@ -33,6 +33,8 @@ namespace kslicer
   enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
   enum class TEX_ACCESS { TEX_ACCESS_NOTHING = 0, TEX_ACCESS_READ = 1, TEX_ACCESS_WRITE = 2, TEX_ACCESS_SAMPLE = 4 };
 
+  enum class CPP11_ATTR { ATTR_UNKNOWN = 0, ATTR_KERNEL = 1, ATTR_SETTER = 2  };
+
   /**
   \brief for each kernel we collect list of containes accesed by this kernel
   */
@@ -949,6 +951,7 @@ namespace kslicer
   std::string                    GetCFMegaKernelCall     (const MainFuncInfo& a_mainFunc); 
   
   DATA_KIND GetKindOfType(const clang::QualType qt, bool isContainer);
+  CPP11_ATTR GetMethodAttr(const clang::CXXMethodDecl* f, clang::CompilerInstance& a_compiler);
 }
 
 template <typename Cont, typename Pred>
