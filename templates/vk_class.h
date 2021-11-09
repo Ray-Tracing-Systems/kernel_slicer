@@ -15,6 +15,10 @@
 {{Includes}}
 #include "include/{{UBOIncl}}"
 
+{% for SetterDecl in SettersDecl %}  
+{{SetterDecl}}
+
+{% endfor %}
 class {{MainClassName}}_Generated : public {{MainClassName}}
 {
 public:

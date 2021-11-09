@@ -30,6 +30,7 @@ add_executable(kslicer
                rewrite_functions.cpp
                rewrite_kernel.cpp
                rewrite_control.cpp
+               setter_process.cpp
                reduction.cpp
                shaders_clspv.cpp
                shaders_glsl.cpp

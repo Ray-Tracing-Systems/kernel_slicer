@@ -717,10 +717,11 @@ namespace kslicer
     std::string               type;
     std::string               name;
     clang::CXXRecordDecl*     node = nullptr;
-    std::vector<InOutVarInfo> elems;
+    std::vector<InOutVarInfo> elems;  
   };
 
-  std::unordered_map<std::string, SetterStruct> ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler);
+  std::unordered_map<std::string, SetterStruct> ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler, 
+                                                                  std::vector<std::string>& a_rewrittenDecls);
 
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -862,7 +863,7 @@ namespace kslicer
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     std::unordered_map<std::string, SetterStruct> m_settersStructs; ///<! if some setter-structs are shared between different setters by name this is ok in general
-
+    std::vector<std::string>                      m_setterStructDecls;
   };
 
 
