@@ -25,4 +25,6 @@ public:
   int m_minVal;
   int m_maxVal;
   MyInOut m_out;
+
+  std::vector<float> testData;
 };
