@@ -10,6 +10,30 @@
 
 #include "kslicer.h"
 
+
+class SetterVisitor : public clang::RecursiveASTVisitor<SetterVisitor>
+{
+public:
+  
+  SetterVisitor(const clang::CompilerInstance& a_compiler, clang::Rewriter &R) : m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_rewriter(R)
+  { 
+    
+  }
+
+  bool VisitMemberExpr(clang::MemberExpr* expr) 
+  {
+
+    return true;
+  }
+
+private:
+  const clang::CompilerInstance& m_compiler;
+  const clang::SourceManager&    m_sm;
+  clang::Rewriter&               m_rewriter;
+
+};
+
+
 std::unordered_map<std::string, const clang::CXXRecordDecl*> ListStructParamTypes(const clang::CXXMethodDecl* node)
 {
   std::unordered_map<std::string, const clang::CXXRecordDecl*> structTypeNames; 
@@ -63,14 +87,18 @@ std::unordered_map<std::string, kslicer::SetterStruct> kslicer::ProcessAllSetter
       }
       strOut << "};" << std::endl;
       a_rewrittenDecls.push_back(strOut.str());
-      
-      //SetterStruct ss;
-      //res[]
     }
 
     // (2) traverse setter function node, rename all structure members and parameters of any type of 'structTypeNames' 
     //
+    clang::Rewriter rewrite;
+    rewrite.setSourceMgr(a_compiler.getSourceManager(), a_compiler.getLangOpts());
 
+    SetterVisitor visitor(a_compiler, rewrite);
+    visitor.TraverseDecl(const_cast<clang::CXXMethodDecl*>(node));
+
+    std::string rewrittenFunc = rewrite.getRewrittenText(node->getSourceRange());
+    int a = 2;
   }
  
   return res;
