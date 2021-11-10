@@ -63,12 +63,11 @@ std::unordered_map<std::string, const clang::CXXRecordDecl*> ListStructParamType
   return structTypeNames;
 }
 
-std::unordered_map<std::string, kslicer::SetterStruct> kslicer::ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler,
-                                                                                  std::vector<std::string>& a_rewrittenDecls,
-                                                                                  std::vector<std::string>& a_rewrittenFuncs,
-                                                                                  std::unordered_map<std::string, std::string>& a_variables)
+void kslicer::MainClassInfo::ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler)
 {
-  std::unordered_map<std::string, kslicer::SetterStruct> res;
+  auto& a_rewrittenDecls = m_setterStructDecls;
+  auto& a_rewrittenFuncs = m_setterFuncDecls;
+  auto& a_variables      = m_setterVars;
 
   a_rewrittenDecls.clear();
   a_rewrittenFuncs.clear();
@@ -145,5 +144,12 @@ std::unordered_map<std::string, kslicer::SetterStruct> kslicer::ProcessAllSetter
       a_variables[kv.first] = kv.second;
   }
  
-  return res;
+  //// (3) exclude all setter structs from allDataMembers
+  //
+  for(auto var : a_variables)
+  {
+    auto p = allDataMembers.find(var.first);
+    if(p != allDataMembers.end())
+      allDataMembers.erase(p);
+  } 
 }

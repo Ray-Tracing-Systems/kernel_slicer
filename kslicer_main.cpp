@@ -510,9 +510,8 @@ int main(int argc, const char **argv)
   inputCodeInfo.allDataMembers       = firstPassData.rv.dataMembers;   
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.m_mainClassASTNode;
-  inputCodeInfo.m_settersStructs     = kslicer::ProcessAllSetters(firstPassData.rv.m_setters, compiler, 
-                                                                  inputCodeInfo.m_setterStructDecls, inputCodeInfo.m_setterFuncDecls, inputCodeInfo.m_setterVars);
-  
+  inputCodeInfo.ProcessAllSetters(firstPassData.rv.m_setters, compiler);
+
   std::vector<kslicer::DeclInClass> generalDecls = firstPassData.rv.GetExtractedDecls();
   if(inputCodeInfo.mainClassASTNode == nullptr)
   {
