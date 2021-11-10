@@ -145,28 +145,35 @@ namespace kslicer
         {
           auto varName     = var2->getNameAsString();
           auto pDataMember = m_allInfo.allDataMembers.find(varName);
+          auto pSetterMemb = m_allInfo.m_setterVars.find(varName);
+          
+          if(pDataMember != m_allInfo.allDataMembers.end())
+          {
+            pDataMember->second.usedInKernel = true;
+            if(pDataMember->second.isContainer)
+            {
+              const clang::QualType qt = var2->getType();
+              kslicer::UsedContainerInfo container;
+              container.type    = qt.getAsString();
+              container.name    = pDataMember->first;
+              container.kind    = kslicer::GetKindOfType(qt, true);
+              container.isConst = qt.isConstQualified();
+              CurrMainFunc().usedContainers[container.name] = container;
+            }
+            else
+              CurrMainFunc().usedMembers.insert(pDataMember->first);
+          }
+          else if(pSetterMemb != m_allInfo.m_setterVars.end())
+          {
+            // #TODO: setter
+            std::cout << "[TODO]: implement setter access processing '" << varName.c_str() << "'" << std::endl;
+          }
 
-          if(pDataMember == m_allInfo.allDataMembers.end())
+          if(pDataMember == m_allInfo.allDataMembers.end() && pSetterMemb == m_allInfo.m_setterVars.end())
           {
             std::cout << "[ERROR]: accessed member " << varName.c_str() << " was not found in allDataMembers (pointer member?)" << std::endl;
             return;
           }
-
-          assert(pDataMember != m_allInfo.allDataMembers.end());
-
-          pDataMember->second.usedInKernel = true;
-          if(pDataMember->second.isContainer)
-          {
-            const clang::QualType qt = var2->getType();
-            kslicer::UsedContainerInfo container;
-            container.type    = qt.getAsString();
-            container.name    = pDataMember->first;
-            container.kind    = kslicer::GetKindOfType(qt, true);
-            container.isConst = qt.isConstQualified();
-            CurrMainFunc().usedContainers[container.name] = container;
-          }
-          else
-            CurrMainFunc().usedMembers.insert(pDataMember->first);
         }
       }
       else if(func_decl && l_var && var) // found local variable in MainFunc
@@ -308,29 +315,37 @@ namespace kslicer
         {
           auto varName     = var->getNameAsString();
           auto pDataMember = m_allInfo.allDataMembers.find(varName);
+          auto pSetterMemb = m_allInfo.m_setterVars.find(varName);
 
-          if(pDataMember == m_allInfo.allDataMembers.end())
+          if(pDataMember != m_allInfo.allDataMembers.end())
+          {
+            assert(pDataMember != m_allInfo.allDataMembers.end());
+            assert(currKernel  != nullptr);
+  
+            pDataMember->second.usedInKernel = true;
+            if(pDataMember->second.isContainer)
+            {
+              const clang::QualType qt = var->getType();
+              kslicer::UsedContainerInfo container;
+              container.type    = qt.getAsString();
+              container.name    = pDataMember->first;            
+              container.kind    = kslicer::GetKindOfType(qt, true);
+              container.isConst = qt.isConstQualified();
+              currKernel->usedContainers[container.name] = container;
+            }
+            else
+              currKernel->usedMembers.insert(pDataMember->first);
+          }
+          else if(pSetterMemb != m_allInfo.m_setterVars.end())
+          {
+            std::cout << "[TODO]: implement setter access processing '" << pSetterMemb->first.c_str() << "' for " << currKernel->name.c_str() << std::endl; 
+          }
+
+          if(pDataMember == m_allInfo.allDataMembers.end() && pSetterMemb == m_allInfo.m_setterVars.end())
           {
             std::cout << "[ERROR]: accessed member " << varName.c_str() << " was not found in allDataMembers (pointer member?)" << std::endl;
             return;
           }
-
-          assert(pDataMember != m_allInfo.allDataMembers.end());
-          assert(currKernel  != nullptr);
-
-          pDataMember->second.usedInKernel = true;
-          if(pDataMember->second.isContainer)
-          {
-            const clang::QualType qt = var->getType();
-            kslicer::UsedContainerInfo container;
-            container.type    = qt.getAsString();
-            container.name    = pDataMember->first;            
-            container.kind    = kslicer::GetKindOfType(qt, true);
-            container.isConst = qt.isConstQualified();
-            currKernel->usedContainers[container.name] = container;
-          }
-          else
-            currKernel->usedMembers.insert(pDataMember->first);
         }
       }
       else if(func_decl && funcCall && func)
