@@ -941,9 +941,26 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["DescriptorSetsAll"].push_back(local);
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   data["SettersDecl"] = std::vector<std::string>();
+  data["SetterFuncs"] = std::vector<std::string>();
+  data["SetterVars"]  = std::vector<std::string>();
+
   for(const auto& s : a_classInfo.m_setterStructDecls)
     data["SettersDecl"].push_back(s);
+
+  for(const auto& s : a_classInfo.m_setterFuncDecls)
+    data["SetterFuncs"].push_back(s);
+
+  for(const auto& kv : a_classInfo.m_setterVars)
+  { 
+    json local;
+    local["Type"] = kv.second;
+    local["Name"] = kv.first;
+    data["SetterVars"].push_back(local);
+  }
 
   return data;
 }

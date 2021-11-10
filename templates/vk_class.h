@@ -54,6 +54,10 @@ public:
 ## endfor
   virtual ~{{MainClassName}}_Generated();
 
+  {% for SetterFunc in SetterFuncs %}  
+  {{SetterFunc}}
+  {% endfor %}
+
   virtual void InitMemberBuffers();
 
   virtual void UpdateAll(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
@@ -131,6 +135,10 @@ protected:
   } {{MainFunc.Name}}_local;
 
 ## endfor
+
+  {% for var in SetterVars %}  
+  {{var.Type}}Vulkan {{var.Name}}Vulkan;
+  {% endfor %}
 
   struct MembersDataGPU
   {
