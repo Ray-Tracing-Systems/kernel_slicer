@@ -8,8 +8,13 @@ set(LLVM_LINK_COMPONENTS support)
 include_directories("include")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
 
+#file(GLOB_RECURSE SRC_DIR "include/*.h" "include/nlohmann/*.h" )
+#set_source_files_properties(${SRC_DIR} 
+#                            PROPERTIES COMPILE_FLAGS "-w")
+
 add_clang_executable(kslicer 
                kslicer_main.cpp
+               attributes.cpp
                ast_matchers.cpp
                class_gen.cpp
                class_gen_ipv.cpp
@@ -22,6 +27,7 @@ add_clang_executable(kslicer
                rewrite_kernel.cpp
                rewrite_control.cpp
                reduction.cpp
+               setter_process.cpp
                shaders_clspv.cpp
                shaders_glsl.cpp
                )

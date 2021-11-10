@@ -232,6 +232,9 @@ std::vector<kslicer::DeclInClass> kslicer::InitialPassRecursiveASTVisitor::GetEx
 
 kslicer::CPP11_ATTR kslicer::GetMethodAttr(const clang::CXXMethodDecl* f, clang::CompilerInstance& a_compiler)
 {
+  if(!f->hasAttrs())
+    return CPP11_ATTR::ATTR_UNKNOWN;
+
   auto attrs = f->getAttrs();
   for(const auto& attr : attrs)
   {
