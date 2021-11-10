@@ -155,10 +155,7 @@ bool kslicer::KernelInfo::ReductionAccess::SupportAtomicLastStep() const
 
   if(type == REDUCTION_TYPE::FUNC)
   {
-    if(funcName != "min" && funcName == "std::min")
-      return false;
-
-    if(funcName != "max" && funcName != "std::max")
+    if(funcName != "min" && funcName == "std::min" && funcName != "max" && funcName != "std::max")
       return false;
   }
 
