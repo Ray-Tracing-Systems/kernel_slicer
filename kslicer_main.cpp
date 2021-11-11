@@ -719,12 +719,11 @@ int main(int argc, const char **argv)
               else
                 inputCodeInfo.allDataMembers[member.first] = member.second;
             }
-          }
+          } // end for(auto& member : usedMembers)
+        } // end if(f.isMember)
+      } // end for(const auto& f : usedByKernelsFunctions)
+    } // end for(auto& k : inputCodeInfo.kernels)
 
-          
-        }
-      }
-    }
     std::cout << "}" << std::endl;
     std::cout << std::endl;
   }

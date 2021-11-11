@@ -45,6 +45,7 @@ namespace kslicer
     DATA_KIND   kind   = DATA_KIND::KIND_UNKNOWN;
     
     bool isConst       = false;
+    bool isSetter      = false; 
     bool isTexture()     const { return (kind == DATA_KIND::KIND_TEXTURE); }
     bool isAccelStruct() const { return (kind == DATA_KIND::KIND_ACCEL_STRUCT); } 
   };
@@ -257,13 +258,13 @@ namespace kslicer
   {
     std::string name;
     std::string type;
-    size_t      sizeInBytes;              ///<! may be not needed due to using sizeof in generated code, but it is useful for sorting members by size and making apropriate aligment
+    size_t      sizeInBytes          = 0; ///<! may be not needed due to using sizeof in generated code, but it is useful for sorting members by size and making apropriate aligment
     size_t      alignedSizeInBytes   = 0; ///<! aligned size will be known when data will be placed to a buffer
     size_t      offsetInTargetBuffer = 0; ///<! offset in bytes in terget buffer that stores all data members
     
     bool isContainerInfo   = false; ///<! auto generated std::vector<T>::size() or capacity() or some analogue
     bool isContainer       = false; ///<! if std::vector<...>
-    bool isArray           = false; ///<! if is array, element type stored incontainerDataType;
+    bool isArray           = false; ///<! if is array, element type stored in containerDataType;
     bool usedInKernel      = false; ///<! if any kernel use the member --> true; if no one uses --> false;
     bool usedInMainFn      = false; ///<! if std::vector is used in MainFunction like vector.data();
     bool isPointer         = false;
@@ -562,6 +563,7 @@ namespace kslicer
     void DetectTextureAccess(clang::CXXOperatorCallExpr* expr);
     void DetectTextureAccess(clang::CXXMemberCallExpr*   call);
     void ProcessReadWriteTexture(clang::CXXOperatorCallExpr* expr, bool write);
+    bool CheckSettersAccess(const clang::MemberExpr* expr, std::string* setterS = nullptr, std::string* setterM = nullptr);
 
     clang::Rewriter&                                         m_rewriter;
     const clang::CompilerInstance&                           m_compiler;
@@ -712,19 +714,6 @@ namespace kslicer
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  //struct SetterStruct
-  //{
-  //  std::string               type;
-  //  std::string               name;
-  //  clang::CXXRecordDecl*     node = nullptr;
-  //  std::vector<InOutVarInfo> elems;  
-  //};
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
   class UsedCodeFilter;
 
   /**
@@ -858,10 +847,9 @@ namespace kslicer
     
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //std::unordered_map<std::string, SetterStruct> m_settersStructs; ///<! if some setter-structs are shared between different setters by name this is ok in general
-    std::vector<std::string>                      m_setterStructDecls;
-    std::vector<std::string>                      m_setterFuncDecls;
-    std::unordered_map<std::string, std::string>  m_setterVars;
+    std::vector<std::string>                           m_setterStructDecls;
+    std::vector<std::string>                           m_setterFuncDecls;
+    std::unordered_map<std::string, std::string>       m_setterVars;
 
     void ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler);
   };

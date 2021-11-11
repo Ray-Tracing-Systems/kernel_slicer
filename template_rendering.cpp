@@ -1224,6 +1224,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       auto pVecMember     = dataMembersCached.find(container.second.name);
       auto pVecSizeMember = dataMembersCached.find(container.second.name + "_size");
 
+      if(container.second.isSetter)
+      {
+        std::cout << "kslicer::PrepareJsonForKernel, setter: " << container.second.name << std::endl;
+        continue; 
+      }
+
       assert(pVecMember     != dataMembersCached.end());
       assert(pVecMember->second.isContainer);
 

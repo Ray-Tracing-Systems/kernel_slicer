@@ -48,10 +48,67 @@ bool kslicer::KernelRewriter::VisitForStmt(clang::ForStmt* forLoop)
   return true;
 }
 
-bool kslicer::KernelRewriter::VisitMemberExpr_Impl(MemberExpr* expr)
+
+bool kslicer::KernelRewriter::CheckSettersAccess(const clang::MemberExpr* expr, std::string* setterS, std::string* setterM)
+{
+  const clang::Expr* baseExpr1 = expr->getBase(); 
+
+  if(!clang::isa<clang::MemberExpr>(baseExpr1))
+     return false;
+
+  const clang::MemberExpr* baseExpr = clang::dyn_cast<const clang::MemberExpr>(baseExpr1);
+
+  clang::ValueDecl* pValueDecl1 = expr->getMemberDecl();
+  clang::ValueDecl* pValueDecl2 = baseExpr->getMemberDecl();
+  
+  if(!clang::isa<clang::FieldDecl>(pValueDecl1) || !clang::isa<clang::FieldDecl>(pValueDecl2))
+    return false;
+
+  clang::FieldDecl* pFieldDecl1  = clang::dyn_cast<clang::FieldDecl>(pValueDecl1);
+  clang::FieldDecl* pFieldDecl2  = clang::dyn_cast<clang::FieldDecl>(pValueDecl2);
+
+  clang::RecordDecl* pRecodDecl1 = pFieldDecl1->getParent();
+  clang::RecordDecl* pRecodDecl2 = pFieldDecl2->getParent();
+
+  const std::string typeName1 = pRecodDecl1->getNameAsString(); // MyInOut
+  const std::string typeName2 = pRecodDecl2->getNameAsString(); // Main class name
+
+  const std::string debugText1 = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);     // m_out.summ
+  const std::string debugText2 = kslicer::GetRangeSourceCode(baseExpr->getSourceRange(), m_compiler); // m_out
+  
+  if(typeName2 != m_mainClassName)
+    return false;
+  auto p = m_codeInfo->m_setterVars.find(debugText2);
+  if(p == m_codeInfo->m_setterVars.end())
+    return false;
+  //if(typeName1 != p->second && std::string("struct ") + typeName1 != p->second && std::string("class ") + typeName1 != p->second)
+  //  return false;
+  if(setterS != nullptr)
+    (*setterS) = debugText2;
+  if(setterM != nullptr)
+    (*setterM) = debugText1.substr(debugText1.find(".")+1, debugText1.size());
+  return true;
+}
+
+bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
+  {
+    std::string setter, containerName;
+    if(CheckSettersAccess(expr, &setter, &containerName))
+    {
+      clang::QualType qt = expr->getType(); // 
+      kslicer::UsedContainerInfo container;
+      container.type     = qt.getAsString();
+      container.name     = setter + "_" + containerName;            
+      container.kind     = kslicer::GetKindOfType(qt, false);
+      container.isConst  = qt.isConstQualified();
+      container.isSetter = true;
+      m_currKernel.usedContainers[container.name] = container;
+      //m_codeInfo->m_setterCont   [container.name] = container;
+    }
     return true; 
+  }
 
   ValueDecl* pValueDecl = expr->getMemberDecl();
   if(!isa<FieldDecl>(pValueDecl))

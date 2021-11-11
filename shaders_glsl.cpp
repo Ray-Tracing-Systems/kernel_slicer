@@ -1252,9 +1252,6 @@ bool GLSLKernelRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cas
 
 bool GLSLKernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 {
-  if(m_infoPass)
-    return true;
-  
   return KernelRewriter::VisitMemberExpr_Impl(expr); 
 }
 

@@ -165,8 +165,7 @@ namespace kslicer
           }
           else if(pSetterMemb != m_allInfo.m_setterVars.end())
           {
-            // #TODO: setter
-            std::cout << "[TODO]: implement setter access processing '" << varName.c_str() << "'" << std::endl;
+            //std::cout << "[TODO]: implement setter access processing '" << varName.c_str() << "'" << std::endl;
           }
 
           if(pDataMember == m_allInfo.allDataMembers.end() && pSetterMemb == m_allInfo.m_setterVars.end())
@@ -338,7 +337,9 @@ namespace kslicer
           }
           else if(pSetterMemb != m_allInfo.m_setterVars.end())
           {
-            std::cout << "[TODO]: implement setter access processing '" << pSetterMemb->first.c_str() << "' for " << currKernel->name.c_str() << std::endl; 
+            //std::cout << "[TODO]: implement setter access processing '" << pSetterMemb->first.c_str() << "' for " << currKernel->name.c_str() << std::endl; 
+            //l_var->dump();
+            //int a = 2;
           }
 
           if(pDataMember == m_allInfo.allDataMembers.end() && pSetterMemb == m_allInfo.m_setterVars.end())
