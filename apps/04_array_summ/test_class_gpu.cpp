@@ -49,32 +49,16 @@ int32_t array_summ_gpu(const std::vector<int32_t>& inArrayCPU)
 
   physicalDevice       = vk_utils::findPhysicalDevice(instance, true, 0);
   auto queueComputeFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
-  
-  VkPhysicalDeviceVariablePointersFeatures varPointers = {};
-  varPointers.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES;
-  varPointers.pNext = nullptr;
-  varPointers.variablePointers              = VK_TRUE;
-  varPointers.variablePointersStorageBuffer = VK_TRUE;
-
-  // query for shaderInt8
-  //
-  VkPhysicalDeviceShaderFloat16Int8Features features = {};
-  features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
-  features.pNext      = &varPointers;
-  features.shaderInt8 = VK_TRUE;
 
   std::vector<const char*> validationLayers, deviceExtensions;
   VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
-  enabledDeviceFeatures.shaderInt64 = VK_TRUE;
+//  enabledDeviceFeatures.shaderInt64 = VK_TRUE;
   vk_utils::QueueFID_T fIDs = {};
 
-  deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
-  deviceExtensions.push_back("VK_KHR_shader_float16_int8"); 
-  deviceExtensions.push_back(VK_KHR_VARIABLE_POINTERS_EXTENSION_NAME); // some validation layer says we need this 
 
   fIDs.compute = queueComputeFID;
   device       = vk_utils::createLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures,
-                                               fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, &features);
+                                               fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, nullptr);
   volkLoadDevice(device);
 
   commandPool  = vk_utils::createCommandPool(device, fIDs.compute, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);

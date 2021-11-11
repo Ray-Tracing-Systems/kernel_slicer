@@ -39,20 +39,20 @@ std::vector<nBody::BodyState> n_body_gpu(uint32_t seed, uint32_t iterations)
   physicalDevice       = vk_utils::findPhysicalDevice(instance, true, 0);
   // query for shaderInt8
   //
-  VkPhysicalDeviceShaderFloat16Int8Features features = {};
-  features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
-  features.shaderInt8 = VK_TRUE;
+//  VkPhysicalDeviceShaderFloat16Int8Features features = {};
+//  features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
+//  features.shaderInt8 = VK_TRUE;
 
   std::vector<const char*> validationLayers, deviceExtensions;
   VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
   vk_utils::QueueFID_T fIDs = {};
 
-  deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
-  deviceExtensions.push_back("VK_KHR_shader_float16_int8");
+//  deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
+//  deviceExtensions.push_back("VK_KHR_shader_float16_int8");
 
   device       = vk_utils::createLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures,
                                                fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT,
-                                               &features);
+                                               nullptr);
   volkLoadDevice(device);
 
   commandPool  = vk_utils::createCommandPool(device, fIDs.compute, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);

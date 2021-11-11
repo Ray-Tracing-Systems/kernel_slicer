@@ -23,6 +23,10 @@ void Numbers::kernel1D_ArraySumm(const int* a_data, size_t a_dataSize)
 int32_t array_summ_cpu(const std::vector<int32_t>& array)
 {
   Numbers filter;
+  auto start = std::chrono::high_resolution_clock::now();
   filter.CalcArraySumm(array.data(), uint32_t(array.size()));
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+  std::cout << "[cpu]: " << ms << " ms for CalcArraySumm " << std::endl;
   return filter.m_summ;
 }
