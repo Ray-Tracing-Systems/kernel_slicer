@@ -73,11 +73,15 @@ void kslicer::MainClassInfo::ProcessAllSetters(const std::unordered_map<std::str
   a_rewrittenFuncs.clear();
   a_variables.clear();
 
+  std::unordered_map<std::string, const clang::CXXRecordDecl*> allStructTypes;
+
   for(const auto kv : a_setterFunc)
   {
     const clang::CXXMethodDecl* node = kv.second;
     auto structTypeNames    = ListStructParamTypes(node);
     const std::string fname = node->getNameInfo().getName().getAsString();
+
+    allStructTypes.insert(structTypeNames.begin(), structTypeNames.end());
 
     // (1) traverse type decl, rewrite (pointer, texture, accel_struct) members 
     //
@@ -152,4 +156,41 @@ void kslicer::MainClassInfo::ProcessAllSetters(const std::unordered_map<std::str
     if(p != allDataMembers.end())
       allDataMembers.erase(p);
   } 
+
+  //// (4) add pointers (and other) for all setters to m_setterData
+  //
+  for(auto var : a_variables)
+  {
+    auto ssName = var.first;
+    auto ssType = var.second;
+    auto pFound = allStructTypes.find(ssType);
+    if(pFound == allStructTypes.end())
+      continue;
+    
+    const clang::CXXRecordDecl* pDecl = pFound->second;
+    for(const auto field : pDecl->fields()) //  clang::FieldDecl
+    {
+      const std::string varName = field->getNameAsString();
+      const clang::QualType qt  = field->getType();
+
+      if(qt->isPointerType())
+      {
+        auto qtOfData = qt->getPointeeType();
+        kslicer::DataMemberInfo data;
+        data.name              = ssName + "_" + field->getNameAsString();
+        data.type              = qt.getAsString();
+        data.kind              = kslicer::DATA_KIND::KIND_POINTER;
+        data.isContainer       = true;
+        data.containerType     = "vector";               ///<! std::vector usually
+        data.containerDataType = qtOfData.getAsString(); ///<! data type 'T' inside of std::vector<T>
+        m_setterData[data.name] = data;
+      }
+      else if(qt->isReferenceType() && kslicer::IsTexture(qt))
+      {
+        // #TODO: implement it
+      }
+
+    }
+  }
+
 }

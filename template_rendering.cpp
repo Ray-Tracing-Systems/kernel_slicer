@@ -1224,13 +1224,20 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       auto pVecMember     = dataMembersCached.find(container.second.name);
       auto pVecSizeMember = dataMembersCached.find(container.second.name + "_size");
 
+      size_t bufferSizeOffset = 0;
+
       if(container.second.isSetter)
       {
-        std::cout << "kslicer::PrepareJsonForKernel, setter: " << container.second.name << std::endl;
-        continue; 
+        //std::cout << "kslicer::PrepareJsonForKernel, setter: " << container.second.name << std::endl;
+        //continue;
+        pVecMember = a_classInfo.m_setterData.find(container.second.name);
       }
-
-      assert(pVecMember     != dataMembersCached.end());
+      else
+      {
+        bufferSizeOffset = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
+      }
+      
+      assert(pVecMember != dataMembersCached.end());
       assert(pVecMember->second.isContainer);
 
       std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(pVecMember->second.containerDataType);
@@ -1261,7 +1268,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         rtxNames.push_back(container.second.name);
       }
       else
-        argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
+        argj["SizeOffset"] = bufferSizeOffset; // pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
       
       args.push_back(argj);
       vecs.push_back(argj);

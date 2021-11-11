@@ -53,6 +53,7 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
       size.name         = keyval.second.name + "_size";
       size.usedInKernel = true;
       size.isContainerInfo = true;
+      size.kind         = kslicer::DATA_KIND::KIND_POD;
       kslicer::DataMemberInfo capacity = size;
       capacity.name     = keyval.second.name + "_capacity";
 

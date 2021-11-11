@@ -20,7 +20,8 @@ void kslicer::MainClassInfo::AddTempBufferToKernel(const std::string buffName, c
     vecMemberTmp.usedInKernel  = true;
     vecMemberTmp.containerType = "std::vector";
     vecMemberTmp.containerDataType = a_elemTypeName;
-    vecMemberTmp.usage  = kslicer::DATA_USAGE::USAGE_SLICER_REDUCTION; // we dont have to generate code for update of vector or vector size for such vectors
+    vecMemberTmp.usage = kslicer::DATA_USAGE::USAGE_SLICER_REDUCTION; // we dont have to generate code for update of vector or vector size for such vectors
+    vecMemberTmp.kind  = kslicer::DATA_KIND::KIND_VECTOR;
     pFoundMember = allDataMembers.insert({buffName, vecMemberTmp}).first;
   }
 

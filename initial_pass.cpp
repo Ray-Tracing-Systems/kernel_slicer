@@ -315,6 +315,7 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
   if(fieldTypePtr->isPointerType()) // we ignore pointers due to we can't pass them to GPU correctly
   {
     member.isPointer = true;
+    member.kind      = kslicer::DATA_KIND::KIND_POINTER;
     return member;
   }
 
@@ -329,6 +330,7 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
     auto typeInfo      = astContext.getTypeInfo(qt);
     member.sizeInBytes = typeInfo.Width / 8; 
     member.isArray     = true;
+    member.kind        = kslicer::DATA_KIND::KIND_POD;
   }  
   else if (typeDecl != nullptr && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl)) 
   {
@@ -336,11 +338,13 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
     auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl); 
     kslicer::SplitContainerTypes(specDecl, member.containerType, member.containerDataType);
     //std::cout << "  found container of type " << member.containerType.c_str() << ", which data type is " <<  member.containerDataType.c_str() << std::endl;
+    member.kind = kslicer::DATA_KIND::KIND_VECTOR;  // #TODO: probably texture or acceleration structure, check and refactor this!
   }
   else
   {
     auto typeInfo      = astContext.getTypeInfo(qt);
     member.sizeInBytes = typeInfo.Width / 8; 
+    member.kind        = kslicer::DATA_KIND::KIND_POD;
   }
 
   return member;

@@ -29,7 +29,7 @@ namespace kslicer
   struct IShaderCompiler;
   enum class VKERNEL_IMPL_TYPE { VKERNEL_SWITCH = 0, VKERNEL_INDIRECT_DISPATCH=2 };
   
-  enum class DATA_KIND  { KIND_UNKNOWN = 0, KIND_POD = 1, KIND_POINTER = 2, KIND_VECTOR = 3, KIND_TEXTURE = 4, KIND_ACCEL_STRUCT=5, KIND_HASH_TABLE=6 };
+  enum class DATA_KIND  { KIND_UNKNOWN = 0, KIND_POD = 1, KIND_POINTER = 2, KIND_VECTOR = 3, KIND_TEXTURE = 4, KIND_ACCEL_STRUCT=5, KIND_HASH_TABLE=6, KIND_SAMPLER=7 };
   enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
   enum class TEX_ACCESS { TEX_ACCESS_NOTHING = 0, TEX_ACCESS_READ = 1, TEX_ACCESS_WRITE = 2, TEX_ACCESS_SAMPLE = 4 };
 
@@ -258,6 +258,8 @@ namespace kslicer
   {
     std::string name;
     std::string type;
+    DATA_KIND   kind = DATA_KIND::KIND_UNKNOWN;
+
     size_t      sizeInBytes          = 0; ///<! may be not needed due to using sizeof in generated code, but it is useful for sorting members by size and making apropriate aligment
     size_t      alignedSizeInBytes   = 0; ///<! aligned size will be known when data will be placed to a buffer
     size_t      offsetInTargetBuffer = 0; ///<! offset in bytes in terget buffer that stores all data members
@@ -850,6 +852,7 @@ namespace kslicer
     std::vector<std::string>                           m_setterStructDecls;
     std::vector<std::string>                           m_setterFuncDecls;
     std::unordered_map<std::string, std::string>       m_setterVars;
+    std::unordered_map<std::string, DataMemberInfo>    m_setterData;
 
     void ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler);
   };

@@ -675,7 +675,11 @@ int main(int argc, const char **argv)
           for(auto x : usedMembers)
           {
             if(x.second.type == "struct Sampler" || x.second.type == "struct sampler")
-              samplerMembers.push_back(x.second);
+            {
+              auto y = x.second; 
+              y.kind = kslicer::DATA_KIND::KIND_SAMPLER;
+              samplerMembers.push_back(y);
+            }
           }
           
           for(auto& member : usedMembers)
