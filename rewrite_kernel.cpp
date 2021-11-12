@@ -104,6 +104,8 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
       container.kind     = kslicer::GetKindOfType(qt, false);
       container.isConst  = qt.isConstQualified();
       container.isSetter = true;
+      container.setterPrefix = setter;
+      container.setterSuffix = containerName;
       m_currKernel.usedContainers[container.name] = container;
     }
     return true; 

@@ -829,6 +829,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         json arg;
         arg["Id"]            = realId;
         arg["Name"]          = dsArgName;
+        arg["Offset"]        = 0;
         arg["IsTexture"]     = dsArgs.descriptorSetsInfo[j].isTexture();
         arg["IsAccelStruct"] = dsArgs.descriptorSetsInfo[j].isAccelStruct();
 
@@ -882,6 +883,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           {
             data["HasRTXAccelStruct"] = true;
             arg["Name"] = container.second.name; // remove m_vdata."
+          }
+          else // buffer
+          {
+            if(container.second.isSetter)
+            {
+              arg["Name"]   = container.second.setterPrefix + "Vulkan." + container.second.setterSuffix;
+            }
           }
 
           local["Args"].push_back(arg);
@@ -1299,10 +1307,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       if(member.isArray || member.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD) // read large data structures directly inside kernel code, don't read them at the beggining of kernel.
         continue;
       
-      // #TODO: test if this is OK
+      // #TODO: test if remove this is, it works
       if(k.subjectedToReduction.find(member.name) != k.subjectedToReduction.end())  // exclude this opt for members which subjected to reduction
         continue;
-      // #TODO: test if this is OK
+      // #TODO: test if remove this is, it works
 
       json memberData;
       memberData["Type"]   = pShaderRewriter->RewriteStdVectorTypeStr(member.type);

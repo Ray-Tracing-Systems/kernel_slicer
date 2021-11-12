@@ -48,6 +48,9 @@ namespace kslicer
     bool isSetter      = false; 
     bool isTexture()     const { return (kind == DATA_KIND::KIND_TEXTURE); }
     bool isAccelStruct() const { return (kind == DATA_KIND::KIND_ACCEL_STRUCT); } 
+
+    std::string setterPrefix;
+    std::string setterSuffix;
   };
 
   bool  IsTextureContainer(const std::string& a_typeName); ///<! return true for all types of textures
