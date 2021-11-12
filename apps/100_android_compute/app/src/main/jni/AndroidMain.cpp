@@ -22,11 +22,13 @@ const bool g_enableValidationLayers = true;
 #include <cassert>
 
 #include "LiteMath.h"
+#include "Bitmap.h"
 #include "06_n_body/test_class.h"
 
 #define ARRAY_SUM_SAMPLE 1
 #define NBODY_SAMPLE 2
-#define SAMPLE_NUMBER NBODY_SAMPLE
+#define SPHARM_SAMPLE 3
+#define SAMPLE_NUMBER SPHARM_SAMPLE
 
 
 static const char* tag_app = "com.slicer.compute";
@@ -93,6 +95,8 @@ int32_t array_summ_cpu(const std::vector<int32_t>& array);
 int32_t array_summ_gpu(const std::vector<int32_t>& array);
 std::vector<nBody::BodyState> n_body_cpu(uint32_t seed, uint32_t iterations);
 std::vector<nBody::BodyState> n_body_gpu(uint32_t seed, uint32_t iterations);
+std::vector<LiteMath::float3> process_image_cpu(std::vector<uint32_t>& a_inPixels, uint32_t a_width, uint32_t a_height);
+std::vector<LiteMath::float3> process_image_gpu(std::vector<uint32_t>& a_inPixels, uint32_t a_width, uint32_t a_height);
 
 const float EPS = 1e-3f;
 
@@ -119,6 +123,10 @@ public:
       case NBODY_SAMPLE:
         std::cout << "RUNNING NBODY_SAMPLE...\n";
         NBody();
+        break;
+      case SPHARM_SAMPLE:
+        std::cout << "RUNNING SPHARM_SAMPLE...\n";
+        Spharm();
         break;
       default:
         break;
@@ -204,6 +212,50 @@ private:
       std::cout << "FAIL" << std::endl;
     } else {
       std::cout << "OK" << std::endl;
+    }
+  }
+
+  void Spharm()
+  {
+    std::string filename = "skybox.bmp";
+    int w, h;
+    std::vector<uint32_t> inputImageData = LoadBMPAndroid(filename.c_str(), &w, &h);
+
+    std::cout << "compute ... " << std::endl;
+    auto result  = process_image_cpu(inputImageData, w, h);
+    auto result2 = process_image_gpu(inputImageData, w, h);
+
+    std::string app_dir = androidApp->activity->externalDataPath;
+    std::cout << "save to file in " << androidApp->activity->externalDataPath << std::endl;
+    {
+      std::ofstream out(app_dir + "/spharm_output_cpu.bin", std::ios::binary);
+      if(!out.is_open())
+        std::cout << "spharm_output_cpu not open!" << std::endl;
+      for (size_t i = 0; i < result.size(); ++i) {
+//        out << result[i].x << result[i].y << result[i].z;
+        out.write(reinterpret_cast<char*>(&result[i].x), sizeof(float));
+        out.write(reinterpret_cast<char*>(&result[i].y), sizeof(float));
+        out.write(reinterpret_cast<char*>(&result[i].z), sizeof(float));
+      }
+      out.close();
+
+      std::ofstream out2(app_dir + "/spharm_output_gpu.bin", std::ios::binary);
+      if(!out.is_open())
+        std::cout << "spharm_output_gpu not open!" << std::endl;
+      for (size_t i = 0; i < result2.size(); ++i) {
+//        out << result2[i].x << result2[i].y << result2[i].z;
+        out2.write(reinterpret_cast<char*>(&result2[i].x), sizeof(float));
+        out2.write(reinterpret_cast<char*>(&result2[i].y), sizeof(float));
+        out2.write(reinterpret_cast<char*>(&result2[i].z), sizeof(float));
+      }
+      out2.close();
+    }
+//
+    std::cout << "output: " << std::endl;
+    for(size_t i=0;i<result2.size();i++)
+    {
+      std::cout << "cpu: " << result[i].x  << " " << result[i].y  << " " << result[i].z  << "\n"
+                << "gpu: " << result2[i].x << " " << result2[i].y << " " << result2[i].z << " " << std::endl << std::endl;
     }
   }
 };

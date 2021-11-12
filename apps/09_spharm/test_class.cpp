@@ -86,10 +86,12 @@ void SphHarm::ProcessPixels(uint32_t* a_data, uint32_t a_width, uint32_t a_heigh
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::array<LiteMath::float3, 9> process_image_cpu(std::vector<uint32_t>& a_inPixels, uint32_t a_width, uint32_t a_height)
+
+std::vector<LiteMath::float3> process_image_cpu(std::vector<uint32_t>& a_inPixels, uint32_t a_width, uint32_t a_height)
 {
   SphHarm integrator;
-  std::array<LiteMath::float3, 9> resCoeffs;
+  std::vector<LiteMath::float3> resCoeffs;
+  resCoeffs.resize(9);
   integrator.ProcessPixels(a_inPixels.data(), a_width, a_height);
   integrator.GetCoefficients(resCoeffs.data());
   return resCoeffs;

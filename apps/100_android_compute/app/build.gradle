@@ -64,6 +64,18 @@ task copyTask {
         into "src/main/assets/shaders_generated"
         include '*.spv'
     }
+
+    copy {
+        from '../../09_spharm/shaders_generated'
+        into "src/main/assets/shaders_generated"
+        include '*.spv'
+    }
+
+    copy {
+        from '../../09_spharm'
+        into "src/main/assets"
+        include 'skybox.bmp'
+    }
 }
 
 preBuild.dependsOn copyTask

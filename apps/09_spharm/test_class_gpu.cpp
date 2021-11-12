@@ -4,6 +4,7 @@
 #include <iostream>
 #include <memory>
 #include <chrono>
+#include <array>
 
 #include "vk_utils.h"
 #include "vk_descriptor_sets.h"
@@ -25,9 +26,10 @@ public:
   VkBuffer           GiveMeTempBuffer() { return m_vdata.tmpred012Buffer; }
 };
 
-std::array<LiteMath::float3, 9> process_image_gpu(std::vector<uint32_t>& a_inPixels, uint32_t a_width, uint32_t a_height)
+std::vector<LiteMath::float3> process_image_gpu(std::vector<uint32_t>& a_inPixels, uint32_t a_width, uint32_t a_height)
 {
-  std::array<LiteMath::float3, 9> result;
+  std::vector<LiteMath::float3> result;
+  result.resize(9);
 
   // (1) init vulkan
   //
@@ -53,32 +55,14 @@ std::array<LiteMath::float3, 9> process_image_gpu(std::vector<uint32_t>& a_inPix
 
   physicalDevice       = vk_utils::findPhysicalDevice(instance, true, 0);
   auto queueComputeFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
-  
-  // query for shaderInt8
-  //
-  VkPhysicalDeviceShaderFloat16Int8Features features = {};
-  features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
-  features.shaderInt8 = VK_TRUE;
-
-  // query for VariablePointers
-  //
-  VkPhysicalDeviceVariablePointersFeatures varPointers = {};
-  varPointers.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES;
-  varPointers.pNext = &features;
-  varPointers.variablePointers              = VK_TRUE;
-  varPointers.variablePointersStorageBuffer = VK_TRUE;
 
   std::vector<const char*> validationLayers, deviceExtensions;
   VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
-  enabledDeviceFeatures.shaderInt64 = VK_TRUE;
   vk_utils::QueueFID_T fIDs = {};
-
-  deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
-  deviceExtensions.push_back("VK_KHR_shader_float16_int8"); 
 
   fIDs.compute = queueComputeFID;
   device       = vk_utils::createLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures,
-                                               fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, &varPointers);
+                                               fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, nullptr);
   volkLoadDevice(device);
                                               
   commandPool  = vk_utils::createCommandPool(device, fIDs.compute, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
