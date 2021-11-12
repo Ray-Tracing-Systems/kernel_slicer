@@ -11,12 +11,12 @@
 #include "vulkan_basics.h"
 #include "test_class_generated.h"
 
-#include "include/Numbers_ubo.h"
+#include "include/ArrayProcess_ubo.h"
 
-class Numbers_GPU : public Numbers_Generated
+class ArrayProcess_GPU : public ArrayProcess_Generated
 {
 public:
-  Numbers_GPU(){}
+  ArrayProcess_GPU(){}
 
   VkBufferUsageFlags GetAdditionalFlagsForUBO() const override { return VK_BUFFER_USAGE_TRANSFER_SRC_BIT; }
   VkBuffer GiveMeUBO() { return m_classDataBuffer; }
@@ -89,21 +89,30 @@ int32_t array_summ_gpu(const std::vector<int32_t>& inArrayCPU)
   }
 
   auto pCopyHelper = std::make_shared<vk_utils::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
-
-  auto pGPUImpl = std::make_shared<Numbers_GPU>();                        // !!! USING GENERATED CODE !!! 
+  auto pGPUImpl    = std::make_shared<ArrayProcess_GPU>();                // !!! USING GENERATED CODE !!!
+  pGPUImpl->ReserveTestData(inArrayCPU.size());                           // !!! USING GENERATED CODE !!!
   pGPUImpl->InitVulkanObjects(device, physicalDevice, inArrayCPU.size()); // !!! USING GENERATED CODE !!!
   pGPUImpl->InitMemberBuffers();                                          // !!! USING GENERATED CODE !!! 
 
   // (3) Create buffer
   //
-  const size_t bufferSizeLDR = inArrayCPU.size()*sizeof(uint32_t);
-  VkBuffer colorBufferLDR    = vk_utils::createBuffer(device, bufferSizeLDR,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  VkDeviceMemory colorMem    = vk_utils::allocateAndBindWithPadding(device, physicalDevice, {colorBufferLDR});
-
-  pGPUImpl->SetVulkanInOutFor_CalcArraySumm(colorBufferLDR, 0); // <==
-  pGPUImpl->UpdateAll(pCopyHelper);                             // !!! USING GENERATED CODE !!!
+  const size_t bufferSize = inArrayCPU.size()*sizeof(uint32_t);
+  VkBuffer numbersBuffer  = vk_utils::createBuffer(device, bufferSize,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  VkBuffer summBuffer     = vk_utils::createBuffer(device, bufferSize,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  VkBuffer prodBuffer     = vk_utils::createBuffer(device, bufferSize,  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  VkBuffer reductBuffer   = vk_utils::createBuffer(device, 3*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   
-  pCopyHelper->UpdateBuffer(colorBufferLDR, 0, inArrayCPU.data(), bufferSizeLDR);
+  VkDeviceMemory colorMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, {numbersBuffer, summBuffer, prodBuffer, reductBuffer});
+
+  MyInOutVulkan userOut;
+  userOut.summBuffer      = summBuffer;
+  userOut.productBuffer   = prodBuffer;
+  userOut.reductionBuffer = reductBuffer;
+  pGPUImpl->SetOutputVulkan(userOut);                                            // !!! USING GENERATED CODE !!!
+  pGPUImpl->SetVulkanInOutFor_ProcessArrays(numbersBuffer, 0, numbersBuffer, 0); // !!! USING GENERATED CODE !!!
+  pGPUImpl->UpdateAll(pCopyHelper);                                              // !!! USING GENERATED CODE !!!
+  
+  pCopyHelper->UpdateBuffer(numbersBuffer, 0, inArrayCPU.data(), bufferSize);
 
   // now compute some thing useful
   //
@@ -114,7 +123,7 @@ int32_t array_summ_gpu(const std::vector<int32_t>& inArrayCPU)
     beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    pGPUImpl->CalcArraySummCmd(commandBuffer, nullptr, inArrayCPU.size()); // !!! USING GENERATED CODE !!! 
+    pGPUImpl->ProcessArraysCmd(commandBuffer, nullptr, nullptr, inArrayCPU.size()); // !!! USING GENERATED CODE !!! 
     vkEndCommandBuffer(commandBuffer);  
     
     auto start = std::chrono::high_resolution_clock::now();
@@ -122,9 +131,15 @@ int32_t array_summ_gpu(const std::vector<int32_t>& inArrayCPU)
     auto stop = std::chrono::high_resolution_clock::now();
     auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
     std::cout << ms << " ms for command buffer execution " << std::endl;
+    
+    std::vector<int32_t> summRes(inArrayCPU.size()), prodRes(inArrayCPU.size()), reductionRes(3);
+    
+    pCopyHelper->ReadBuffer(summBuffer, 0, summRes.data(), summRes.size()*sizeof(int32_t));
+    pCopyHelper->ReadBuffer(prodBuffer, 0, prodRes.data(), prodRes.size()*sizeof(int32_t));
+    pCopyHelper->ReadBuffer(reductBuffer, 0, reductionRes.data(), reductionRes.size()*sizeof(int32_t));
 
-    Numbers_UBO_Data uboData;
-    pCopyHelper->ReadBuffer(pGPUImpl->GiveMeUBO(), 0, &uboData, sizeof(Numbers_UBO_Data));
+    ArrayProcess_UBO_Data uboData;
+    pCopyHelper->ReadBuffer(pGPUImpl->GiveMeUBO(), 0, &uboData, sizeof(ArrayProcess_UBO_Data));
     resSumm = uboData.m_summ;
   }
   
@@ -133,7 +148,10 @@ int32_t array_summ_gpu(const std::vector<int32_t>& inArrayCPU)
   pCopyHelper = nullptr;
   pGPUImpl    = nullptr;    // !!! USING GENERATED CODE !!! 
 
-  vkDestroyBuffer(device, colorBufferLDR, nullptr);
+  vkDestroyBuffer(device, numbersBuffer, nullptr);
+  vkDestroyBuffer(device, summBuffer, nullptr);
+  vkDestroyBuffer(device, prodBuffer, nullptr);
+  vkDestroyBuffer(device, reductBuffer, nullptr);
   vkFreeMemory(device, colorMem, nullptr);
 
   vkDestroyCommandPool(device, commandPool, nullptr);

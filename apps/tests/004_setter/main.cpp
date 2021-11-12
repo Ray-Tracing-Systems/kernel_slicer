@@ -4,6 +4,7 @@
 #include <cstdint>
 
 int32_t array_summ_cpu(const std::vector<int32_t>& array);
+int32_t array_summ_gpu(const std::vector<int32_t>& array);
 
 int main(int argc, const char** argv)
 {
@@ -17,6 +18,7 @@ int main(int argc, const char** argv)
   }
 
   array_summ_cpu(array);
+  array_summ_gpu(array);
   
   return 0;
 }

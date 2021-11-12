@@ -161,6 +161,9 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   {% for Arg in Kernel.AuxArgs %}
   pcData.m_{{Arg.Name}} = {{Arg.Name}}; 
   {% endfor %}
+  {% if Kernel.HasLoopFinish %}
+  KernelArgsPC oldPCData = pcData;
+  {% endif %}
 
   {% if UseSeparateUBO %}
   {
@@ -229,10 +232,6 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   vkCmdDispatch    (m_currCmdBuffer, (sizeX + blockSizeX - 1) / blockSizeX, (sizeY + blockSizeY - 1) / blockSizeY, (sizeZ + blockSizeZ - 1) / blockSizeZ);
   {% if Kernel.FinishRed %}
-  
-  {% if Kernel.HasLoopFinish %}
-  KernelArgsPC oldPCData = pcData;
-  {% endif %}
   {% include "inc_reduction_vulkan.cpp" %}
   {% endif %} {# /* Kernel.FinishRed      */ #}
   {% endif %} {# /* NOT INDIRECT DISPATCH */ #}
