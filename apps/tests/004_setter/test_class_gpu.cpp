@@ -108,6 +108,7 @@ int32_t array_summ_gpu(const std::vector<int32_t>& inArrayCPU)
   userOut.summBuffer      = summBuffer;
   userOut.productBuffer   = prodBuffer;
   userOut.reductionBuffer = reductBuffer;
+  userOut.someSize        = inArrayCPU.size();
   pGPUImpl->SetOutputVulkan(userOut);                                            // !!! USING GENERATED CODE !!!
   pGPUImpl->SetVulkanInOutFor_ProcessArrays(numbersBuffer, 0, numbersBuffer, 0); // !!! USING GENERATED CODE !!!
   pGPUImpl->UpdateAll(pCopyHelper);                                              // !!! USING GENERATED CODE !!!
@@ -138,9 +139,29 @@ int32_t array_summ_gpu(const std::vector<int32_t>& inArrayCPU)
     pCopyHelper->ReadBuffer(prodBuffer, 0, prodRes.data(), prodRes.size()*sizeof(int32_t));
     pCopyHelper->ReadBuffer(reductBuffer, 0, reductionRes.data(), reductionRes.size()*sizeof(int32_t));
 
-    ArrayProcess_UBO_Data uboData;
-    pCopyHelper->ReadBuffer(pGPUImpl->GiveMeUBO(), 0, &uboData, sizeof(ArrayProcess_UBO_Data));
-    resSumm = uboData.m_summ;
+    bool failed = false;
+    for(size_t i=0;i<summRes.size();i++)
+    {
+      if(summRes[i] != inArrayCPU[i] + inArrayCPU[i] || 
+         prodRes[i] != inArrayCPU[i] * inArrayCPU[i])
+      {
+        failed = true;
+        break;
+      }
+    }
+
+    if(failed)
+      std::cout << "test FAILED!" << std::endl;
+    else
+      std::cout << "test PASSED!" << std::endl;
+    
+    std::cout << "summGPU = " << reductionRes[0] << std::endl;
+    std::cout << "minvGPU = " << reductionRes[1] << std::endl;
+    std::cout << "maxvGPU = " << reductionRes[2] << std::endl;
+
+    //ArrayProcess_UBO_Data uboData;
+    //pCopyHelper->ReadBuffer(pGPUImpl->GiveMeUBO(), 0, &uboData, sizeof(ArrayProcess_UBO_Data));
+    //resSumm = uboData.m_summ;
   }
   
   // (6) destroy and free resources before exit
