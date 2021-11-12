@@ -1240,7 +1240,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         //continue;
         pVecMember = a_classInfo.m_setterData.find(container.second.name);
       }
-      else
+      else if(pVecSizeMember != dataMembersCached.end())
       {
         bufferSizeOffset = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
       }
