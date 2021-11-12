@@ -105,7 +105,6 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
       container.isConst  = qt.isConstQualified();
       container.isSetter = true;
       m_currKernel.usedContainers[container.name] = container;
-      //m_codeInfo->m_setterCont   [container.name] = container;
     }
     return true; 
   }
@@ -120,10 +119,15 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
   assert(pRecodDecl != nullptr);
 
   const std::string thisTypeName = pRecodDecl->getNameAsString();
-  if(thisTypeName != m_mainClassName)
+
+  std::string setter, containerName;
+  if(WasNotRewrittenYet(expr) && CheckSettersAccess(expr, &setter, &containerName)) // process setter access
   {
-    // process access to arguments payload->xxx
-    //
+    m_rewriter.ReplaceText(expr->getSourceRange(), setter + "_" + containerName);
+    MarkRewritten(expr);
+  }
+  else if(WasNotRewrittenYet(expr) && thisTypeName != m_mainClassName) // RTV, process access to arguments payload->xxx
+  {
     Expr* baseExpr = expr->getBase(); 
     assert(baseExpr != nullptr);
 
@@ -360,7 +364,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
       {
         assert(f->getNumArgs() == 1);
         const Expr* currArgExpr  = f->getArgs()[0];
-        std::string newSizeValue = kslicer::GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler); 
+        std::string newSizeValue = RecursiveRewrite(currArgExpr); 
         std::string memberNameB  = memberNameA + "_size = " + newSizeValue;
         m_rewriter.ReplaceText(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
         MarkRewritten(f);
@@ -370,7 +374,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
     {
       assert(f->getNumArgs() == 1);
       const Expr* currArgExpr  = f->getArgs()[0];
-      std::string newElemValue = kslicer::GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler);
+      std::string newElemValue = RecursiveRewrite(currArgExpr);
 
       std::string memberNameB  = memberNameA + "_size";
       std::string resulingText = m_codeInfo->pShaderCC->RewritePushBack(memberNameA, memberNameB, newElemValue);

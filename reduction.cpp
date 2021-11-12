@@ -70,8 +70,25 @@ std::string kslicer::KernelInfo::ReductionAccess::GetInitialValue(bool isGLSL) c
       break;
       case REDUCTION_TYPE::FUNC:
       {
-        if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return "MAXFLOAT";
-        if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return "-MAXFLOAT";
+        if(funcName == "fmin") return "MAXFLOAT";
+        if(funcName == "fmax") return "-MAXFLOAT";
+        
+        if(dataType == "float" || dataType == "vec4" || dataType == "vec3" || dataType == "vec2")
+        {
+          if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return "MAXFLOAT";
+          if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return "-MAXFLOAT";
+        }
+        else if(dataType == "int" || dataType == "ivec4" || dataType == "ivec3" || dataType == "ivec2")
+        {
+          if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return "2147483647";
+          if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return "-2147483648";
+        }
+        else if(dataType == "uint" || dataType == "uvec4" || dataType == "uvec3" || dataType == "uvec2")
+        {
+          if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return "4294967295";
+          if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return "0";
+        }
+        
         return "0";
       }
       break;

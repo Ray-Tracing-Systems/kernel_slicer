@@ -1298,9 +1298,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       if(member.isArray || member.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD) // read large data structures directly inside kernel code, don't read them at the beggining of kernel.
         continue;
-
+      
+      // #TODO: test if this is OK
       if(k.subjectedToReduction.find(member.name) != k.subjectedToReduction.end())  // exclude this opt for members which subjected to reduction
         continue;
+      // #TODO: test if this is OK
 
       json memberData;
       memberData["Type"]   = pShaderRewriter->RewriteStdVectorTypeStr(member.type);
@@ -1452,8 +1454,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         auto pFound = usedVars.find(iter.sizeText);
         if(pFound == usedVars.end())
         {
+          std::string typeName = pShaderRewriter->RewriteStdVectorTypeStr(iter.type);
+          ReplaceFirst(typeName, "const ", "");
+
           tidNames[loopIdReorderd] = iter.sizeText;                   // #TODO: assert that this expression does not contain .size(); if it does
-          tidTypes[loopIdReorderd] = iter.type;
+          tidTypes[loopIdReorderd] = typeName;
           usedVars.insert(iter.sizeText);
         }
       }                                                                // we must change it to 'vec_size2' for example 
@@ -1653,7 +1658,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {      
       kernelJson["Name"]      = k.name + "_Init";
       kernelJson["Source"]    = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1);
-      kernelJson["Members"]   = std::vector<json>();
+      kernelJson["Members"]   = members;
       kernelJson["HasEpilog"] = false;
       kernelJson["FinishRed"] = false;
       kernelJson["InitKPass"] = true;
@@ -1669,7 +1674,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       kernelJson["Name"]      = k.name + "_Finish";
       kernelJson["Source"]    = k.rewrittenFinish;
-      kernelJson["Members"]   = std::vector<json>();
+      kernelJson["Members"]   = members;
       kernelJson["HasEpilog"] = false;
       kernelJson["FinishRed"] = false;
       kernelJson["InitKPass"] = true;
