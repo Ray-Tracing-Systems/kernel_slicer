@@ -24,6 +24,14 @@ struct AppInput
   bool   keyPressed[MAXKEYS]{};
   bool   keyReleased[MAXKEYS]{};
   void clearKeys() { memset(keyPressed, 0, MAXKEYS*sizeof(bool)); memset(keyReleased, 0, MAXKEYS*sizeof(bool)); }
+
+#if defined(__ANDROID__)
+  int32_t touch_pos_x;
+  int32_t touch_pos_y;
+  bool touchDown = false;
+  double touchTimer = 0.0;
+  int64_t lastTapTime = 0;
+#endif
 };
 
 struct pipeline_data_t
@@ -46,7 +54,7 @@ public:
   virtual void UpdateCamera(const Camera* cams, uint32_t a_camsCount) = 0;
   virtual void LoadScene(const char* path, bool transpose_inst_matrices) = 0;
   virtual void DrawFrame(float a_time) = 0;
-
+  virtual bool IsReady() const = 0;
   virtual ~IRender() = default;
 
 };

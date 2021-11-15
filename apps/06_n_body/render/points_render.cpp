@@ -104,6 +104,8 @@ void PointsRender::InitPresentation(VkSurfaceKHR &a_surface)
   m_depthBuffer = vk_utils::createDepthTexture(m_device, m_physicalDevice, m_width, m_height, m_depthBuffer.format);
   m_frameBuffers = vk_utils::createFrameBuffers(m_device, m_swapchain, m_screenRenderPass, m_depthBuffer.view);
 
+
+  m_bVulkanReady = true;
 }
 
 void PointsRender::CreateInstance()
@@ -130,14 +132,14 @@ void PointsRender::CreateDevice(uint32_t a_deviceId)
 
   SetupDeviceFeatures();
 
-  VkPhysicalDeviceShaderFloat16Int8Features features = {};
-  features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
-  features.shaderInt8 = VK_TRUE;
+//  VkPhysicalDeviceShaderFloat16Int8Features features = {};
+//  features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
+//  features.shaderInt8 = VK_TRUE;
 
   m_device = vk_utils::createLogicalDevice(m_physicalDevice, m_validationLayers, m_deviceExtensions,
                                            m_enabledDeviceFeatures, m_queueFamilyIDXs,
                                            VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT,
-                                           &features);
+                                           nullptr);
 
   vkGetDeviceQueue(m_device, m_queueFamilyIDXs.graphics, 0, &m_graphicsQueue);
   vkGetDeviceQueue(m_device, m_queueFamilyIDXs.transfer, 0, &m_transferQueue);

@@ -33,6 +33,8 @@ public:
   inline VkInstance GetVkInstance() const override
   { return m_instance; }
 
+  bool IsReady() const override { return m_bVulkanReady; }
+
   void InitVulkan(const char **a_instanceExtensions, uint32_t a_instanceExtensionsCount, uint32_t a_deviceId) override;
 
   void InitPresentation(VkSurfaceKHR &a_surface) override;
@@ -67,6 +69,8 @@ public:
 
   VkDebugReportCallbackEXT m_debugReportCallback = nullptr;
 private:
+
+  bool m_bVulkanReady = false;
 
   VkInstance m_instance = VK_NULL_HANDLE;
   VkCommandPool m_commandPoolGraphics = VK_NULL_HANDLE;
