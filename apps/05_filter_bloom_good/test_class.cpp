@@ -1,5 +1,5 @@
 #include "test_class.h"
-#include "Bitmap.h"
+//#include "Bitmap.h"
 #include <cassert>
 
 inline uint pitch(uint x, uint y, uint pitch) { return y*pitch + x; }  
@@ -43,13 +43,13 @@ inline float4 BilinearSample(__global const float4* data, int w, int h, float a_
   return resultY0 + resultY1;
 }
 
-void SaveTestImage(const float4* data, int w, int h)
-{
-  std::vector<uint> ldrData(w*h);
-  for(size_t i=0;i<w*h;i++)
-    ldrData[i] = RealColorToUint32( clamp(data[i], 0.0f, 1.0f));
-  SaveBMP("ztest.bmp", ldrData.data(), w, h);
-}
+//void SaveTestImage(const float4* data, int w, int h)
+//{
+//  std::vector<uint> ldrData(w*h);
+//  for(size_t i=0;i<w*h;i++)
+//    ldrData[i] = RealColorToUint32( clamp(data[i], 0.0f, 1.0f));
+//  SaveBMP("ztest.bmp", ldrData.data(), w, h);
+//}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -213,12 +213,12 @@ void ToneMapping::Bloom(int w, int h, const float4* inData4f,
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void tone_mapping_cpu(int w, int h, float* a_hdrData, const char* a_outName)
+std::vector<uint> tone_mapping_cpu(int w, int h, float* a_hdrData)
 {
   ToneMapping filter;
   std::vector<uint>  ldrData(w*h);
   filter.SetMaxImageSize(w,h);
   filter.Bloom(w,h, (const float4*)a_hdrData, ldrData.data());
-  SaveBMP(a_outName, ldrData.data(), w, h);
-  return;
+//  SaveBMP(a_outName, ldrData.data(), w, h);
+  return ldrData;
 }

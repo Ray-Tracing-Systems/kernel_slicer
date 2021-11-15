@@ -22,13 +22,14 @@ const bool g_enableValidationLayers = true;
 #include <cassert>
 
 #include "LiteMath.h"
-#include "Bitmap.h"
+#include "ImageLoader.h"
 #include "06_n_body/test_class.h"
 
 #define ARRAY_SUM_SAMPLE 1
 #define NBODY_SAMPLE 2
 #define SPHARM_SAMPLE 3
-#define SAMPLE_NUMBER SPHARM_SAMPLE
+#define BLOOM_SAMPLE 4
+#define SAMPLE_NUMBER BLOOM_SAMPLE
 
 
 static const char* tag_app = "com.slicer.compute";
@@ -97,6 +98,8 @@ std::vector<nBody::BodyState> n_body_cpu(uint32_t seed, uint32_t iterations);
 std::vector<nBody::BodyState> n_body_gpu(uint32_t seed, uint32_t iterations);
 std::vector<LiteMath::float3> process_image_cpu(std::vector<uint32_t>& a_inPixels, uint32_t a_width, uint32_t a_height);
 std::vector<LiteMath::float3> process_image_gpu(std::vector<uint32_t>& a_inPixels, uint32_t a_width, uint32_t a_height);
+std::vector<uint> tone_mapping_cpu(int w, int h, float* a_hdrData);
+std::vector<uint> tone_mapping_gpu(int w, int h, float* a_hdrData);
 
 const float EPS = 1e-3f;
 
@@ -113,7 +116,8 @@ public:
   void run(android_app* a_androidAppCtx)
   {
     androidApp = a_androidAppCtx;
-
+    app_dir = androidApp->activity->externalDataPath;
+    std::cout << "DIRECTORY WITH SAVED FILES: " << app_dir << std::endl;
     switch(SAMPLE_NUMBER)
     {
       case ARRAY_SUM_SAMPLE:
@@ -128,6 +132,10 @@ public:
         std::cout << "RUNNING SPHARM_SAMPLE...\n";
         Spharm();
         break;
+      case BLOOM_SAMPLE:
+        std::cout << "RUNNING BLOOM_SAMPLE...\n";
+        Bloom();
+        break;
       default:
         break;
     }
@@ -136,6 +144,7 @@ public:
 private:
 
   android_app* androidApp;
+  std::string app_dir;
 
   void ArraySum()
   {
@@ -225,7 +234,6 @@ private:
     auto result  = process_image_cpu(inputImageData, w, h);
     auto result2 = process_image_gpu(inputImageData, w, h);
 
-    std::string app_dir = androidApp->activity->externalDataPath;
     std::cout << "save to file in " << androidApp->activity->externalDataPath << std::endl;
     {
       std::ofstream out(app_dir + "/spharm_output_cpu.bin", std::ios::binary);
@@ -258,6 +266,29 @@ private:
                 << "gpu: " << result2[i].x << " " << result2[i].y << " " << result2[i].z << " " << std::endl << std::endl;
     }
   }
+
+  void Bloom()
+  {
+    std::vector<float> hdrData;
+    int w,h;
+    if(!LoadEXRImageFromFile("nancy_church_2.exr", &w, &h, hdrData))
+    {
+      std::cout << "can't open input file 'nancy_church_2.exr' " << std::endl;
+      return;
+    }
+
+    auto addressToCheck = reinterpret_cast<uint64_t>(hdrData.data());
+    assert(addressToCheck % 16 == 0); // check if address is aligned!!!
+
+    std::string cpu_out_name = app_dir + "/zout_cpu.bmp";
+    auto cpu_out = tone_mapping_cpu(w, h, hdrData.data());
+    SaveBMPAndroid(cpu_out_name.c_str(), cpu_out.data(), w, h);
+
+    std::string gpu_out_name = app_dir + "/zout_gpu.bmp";
+    auto gpu_out = tone_mapping_gpu(w, h, hdrData.data());
+    SaveBMPAndroid(gpu_out_name.c_str(), gpu_out.data(), w, h);
+  }
+
 };
 
 

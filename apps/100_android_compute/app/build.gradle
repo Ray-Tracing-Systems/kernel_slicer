@@ -72,10 +72,23 @@ task copyTask {
     }
 
     copy {
+        from '../../05_filter_bloom_good/shaders_generated'
+        into "src/main/assets/shaders_generated"
+        include '*.spv'
+    }
+
+    copy {
         from '../../09_spharm'
         into "src/main/assets"
         include 'skybox.bmp'
     }
+
+    copy {
+        from '../../images'
+        into "src/main/assets"
+        include 'nancy_church_2.exr'
+    }
+
 }
 
 preBuild.dependsOn copyTask

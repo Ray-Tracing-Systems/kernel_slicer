@@ -14,6 +14,7 @@ set(ALL_APPS_DIR    ../../)
 set(MAIN_APP_DIR_1  ../../04_array_summ)
 set(MAIN_APP_DIR_2  ../../06_n_body)
 set(MAIN_APP_DIR_3  ../../09_spharm)
+set(MAIN_APP_DIR_4  ../../05_filter_bloom_good)
 
 set(SRC_DIR src/main/jni)
 
@@ -35,6 +36,7 @@ include_directories(${ALL_APPS_DIR})
 include_directories(${MAIN_APP_DIR_1})
 include_directories(${MAIN_APP_DIR_2})
 include_directories(${MAIN_APP_DIR_3})
+include_directories(${MAIN_APP_DIR_4})
 
 set(VKUTILS_NEW_SRC ${VKUTILS_DIR}/vk_copy.cpp
                     ${VKUTILS_DIR}/vk_utils.cpp
@@ -65,14 +67,23 @@ set(APP_SRC_3 ${MAIN_APP_DIR_3}/test_class.cpp
               ${MAIN_APP_DIR_3}/test_class_generated_ds.cpp
               ${MAIN_APP_DIR_3}/test_class_generated_init.cpp)
 
+set(APP_SRC_4 ${MAIN_APP_DIR_4}/test_class.cpp
+              ${MAIN_APP_DIR_4}/test_class_gpu.cpp
+              ${MAIN_APP_DIR_4}/test_class_generated.cpp
+              ${MAIN_APP_DIR_4}/test_class_generated_ds.cpp
+              ${MAIN_APP_DIR_4}/test_class_generated_init.cpp)
+
 add_library(VkCompute SHARED
                 ${VKUTILS_NEW_SRC}
                 ${APP_SRC_1}
                 ${APP_SRC_2}
                 ${APP_SRC_3}
+                ${APP_SRC_4}
                 ${SRC_DIR}/AndroidMain.cpp
                 ${SRC_DIR}/lodepng.cpp
-                ${SRC_DIR}/Bitmap.cpp)
+                ${SRC_DIR}/ImageLoader.cpp
+                ${SRC_DIR}/miniz.c
+        )
 
 #MESSAGE(WARNING "Android ABI is ${ANDROID_ABI}")
 
