@@ -174,6 +174,7 @@ std::unordered_map<std::string, std::string> ListGLSLVectorReplacements()
   m_vecReplacements["float4x4"] = "mat4";
   m_vecReplacements["_Bool"] = "bool";
   m_vecReplacements["unsigned int"]   = "uint";
+  m_vecReplacements["unsigned"]       = "uint";
   m_vecReplacements["unsigned char"]  = "uint8_t";
   m_vecReplacements["unsigned short"] = "uint16_t";
   m_vecReplacements["char"]           = "int8_t";
@@ -1252,9 +1253,6 @@ bool GLSLKernelRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cas
 
 bool GLSLKernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 {
-  if(m_infoPass)
-    return true;
-  
   return KernelRewriter::VisitMemberExpr_Impl(expr); 
 }
 

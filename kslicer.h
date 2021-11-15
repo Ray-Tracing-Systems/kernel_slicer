@@ -29,9 +29,11 @@ namespace kslicer
   struct IShaderCompiler;
   enum class VKERNEL_IMPL_TYPE { VKERNEL_SWITCH = 0, VKERNEL_INDIRECT_DISPATCH=2 };
   
-  enum class DATA_KIND  { KIND_UNKNOWN = 0, KIND_POD = 1, KIND_POINTER = 2, KIND_VECTOR = 3, KIND_TEXTURE = 4, KIND_ACCEL_STRUCT=5, KIND_HASH_TABLE=6 };
+  enum class DATA_KIND  { KIND_UNKNOWN = 0, KIND_POD = 1, KIND_POINTER = 2, KIND_VECTOR = 3, KIND_TEXTURE = 4, KIND_ACCEL_STRUCT=5, KIND_HASH_TABLE=6, KIND_SAMPLER=7 };
   enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
   enum class TEX_ACCESS { TEX_ACCESS_NOTHING = 0, TEX_ACCESS_READ = 1, TEX_ACCESS_WRITE = 2, TEX_ACCESS_SAMPLE = 4 };
+
+  enum class CPP11_ATTR { ATTR_UNKNOWN = 0, ATTR_KERNEL = 1, ATTR_SETTER = 2  };
 
   /**
   \brief for each kernel we collect list of containes accesed by this kernel
@@ -43,8 +45,12 @@ namespace kslicer
     DATA_KIND   kind   = DATA_KIND::KIND_UNKNOWN;
     
     bool isConst       = false;
+    bool isSetter      = false; 
     bool isTexture()     const { return (kind == DATA_KIND::KIND_TEXTURE); }
     bool isAccelStruct() const { return (kind == DATA_KIND::KIND_ACCEL_STRUCT); } 
+
+    std::string setterPrefix;
+    std::string setterSuffix;
   };
 
   bool  IsTextureContainer(const std::string& a_typeName); ///<! return true for all types of textures
@@ -255,13 +261,15 @@ namespace kslicer
   {
     std::string name;
     std::string type;
-    size_t      sizeInBytes;              ///<! may be not needed due to using sizeof in generated code, but it is useful for sorting members by size and making apropriate aligment
+    DATA_KIND   kind = DATA_KIND::KIND_UNKNOWN;
+
+    size_t      sizeInBytes          = 0; ///<! may be not needed due to using sizeof in generated code, but it is useful for sorting members by size and making apropriate aligment
     size_t      alignedSizeInBytes   = 0; ///<! aligned size will be known when data will be placed to a buffer
     size_t      offsetInTargetBuffer = 0; ///<! offset in bytes in terget buffer that stores all data members
     
     bool isContainerInfo   = false; ///<! auto generated std::vector<T>::size() or capacity() or some analogue
     bool isContainer       = false; ///<! if std::vector<...>
-    bool isArray           = false; ///<! if is array, element type stored incontainerDataType;
+    bool isArray           = false; ///<! if is array, element type stored in containerDataType;
     bool usedInKernel      = false; ///<! if any kernel use the member --> true; if no one uses --> false;
     bool usedInMainFn      = false; ///<! if std::vector is used in MainFunction like vector.data();
     bool isPointer         = false;
@@ -303,6 +311,8 @@ namespace kslicer
     bool isThreadId  = false;
     bool isTexture() const { return (kind == DATA_KIND::KIND_TEXTURE); };
   };
+
+  InOutVarInfo GetParamInfo(const clang::ParmVarDecl* currParam);
 
   // assume there could be only 4 form of kernel arg when kernel is called
   //
@@ -558,6 +568,7 @@ namespace kslicer
     void DetectTextureAccess(clang::CXXOperatorCallExpr* expr);
     void DetectTextureAccess(clang::CXXMemberCallExpr*   call);
     void ProcessReadWriteTexture(clang::CXXOperatorCallExpr* expr, bool write);
+    bool CheckSettersAccess(const clang::MemberExpr* expr, std::string* setterS = nullptr, std::string* setterM = nullptr);
 
     clang::Rewriter&                                         m_rewriter;
     const clang::CompilerInstance&                           m_compiler;
@@ -708,7 +719,6 @@ namespace kslicer
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
   class UsedCodeFilter;
 
   /**
@@ -840,6 +850,14 @@ namespace kslicer
     virtual const std::unordered_map<std::string, DHierarchy>& GetDispatchingHierarchies() const { return m_vhierarchy; }
     virtual std::unordered_map<std::string, DHierarchy>&       GetDispatchingHierarchies()       { return m_vhierarchy; }
     
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    std::vector<std::string>                           m_setterStructDecls;
+    std::vector<std::string>                           m_setterFuncDecls;
+    std::unordered_map<std::string, std::string>       m_setterVars;
+    std::unordered_map<std::string, DataMemberInfo>    m_setterData;
+
+    void ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler);
   };
 
 
@@ -949,6 +967,7 @@ namespace kslicer
   std::string                    GetCFMegaKernelCall     (const MainFuncInfo& a_mainFunc); 
   
   DATA_KIND GetKindOfType(const clang::QualType qt, bool isContainer);
+  CPP11_ATTR GetMethodAttr(const clang::CXXMethodDecl* f, clang::CompilerInstance& a_compiler);
 }
 
 template <typename Cont, typename Pred>

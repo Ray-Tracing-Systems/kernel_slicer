@@ -20,7 +20,8 @@ void kslicer::MainClassInfo::AddTempBufferToKernel(const std::string buffName, c
     vecMemberTmp.usedInKernel  = true;
     vecMemberTmp.containerType = "std::vector";
     vecMemberTmp.containerDataType = a_elemTypeName;
-    vecMemberTmp.usage  = kslicer::DATA_USAGE::USAGE_SLICER_REDUCTION; // we dont have to generate code for update of vector or vector size for such vectors
+    vecMemberTmp.usage = kslicer::DATA_USAGE::USAGE_SLICER_REDUCTION; // we dont have to generate code for update of vector or vector size for such vectors
+    vecMemberTmp.kind  = kslicer::DATA_KIND::KIND_VECTOR;
     pFoundMember = allDataMembers.insert({buffName, vecMemberTmp}).first;
   }
 
@@ -210,38 +211,41 @@ std::string kslicer::MainClassInfo::GetCFDeclFromSource(const std::string& sourc
   return std::string("virtual ") + mainFuncDeclHead + "Cmd(VkCommandBuffer a_commandBuffer, " + mainFuncDeclTail + ";";
 }
 
-std::vector<kslicer::InOutVarInfo> kslicer::ListParamsOfMainFunc(const CXXMethodDecl* a_node)
+kslicer::InOutVarInfo kslicer::GetParamInfo(const clang::ParmVarDecl* currParam)
 {
   auto tidNames = GetAllPredefinedThreadIdNamesRTV();
+  const clang::QualType qt = currParam->getType();
+  
+  InOutVarInfo var;
+  var.name      = currParam->getNameAsString();
+  var.type      = qt.getAsString();
+  auto id       = std::find(tidNames.begin(), tidNames.end(), var.name);
+  if(qt->isPointerType())
+  {
+    var.kind    = DATA_KIND::KIND_POINTER;
+    var.isConst = qt.isConstQualified();
+  }
+  else if(qt->isReferenceType() && kslicer::IsTexture(qt))
+  {
+    var.kind    = DATA_KIND::KIND_TEXTURE;
+    var.isConst = qt.isConstQualified();
+  }
+  else if(id != tidNames.end())
+  {
+    var.kind       = DATA_KIND::KIND_POD;
+    var.isConst    = qt.isConstQualified();
+    var.isThreadId = true;
+  }
 
+  return var;
+}
+
+std::vector<kslicer::InOutVarInfo> kslicer::ListParamsOfMainFunc(const CXXMethodDecl* a_node)
+{
   std::vector<InOutVarInfo> params;
   for(unsigned i=0;i<a_node->getNumParams();i++)
   {
-    const ParmVarDecl* currParam = a_node->getParamDecl(i);
-    const clang::QualType qt     = currParam->getType();
-    
-    InOutVarInfo var;
-    var.name      = currParam->getNameAsString();
-    var.type      = qt.getAsString();
-    auto id       = std::find(tidNames.begin(), tidNames.end(), var.name);
-
-    if(qt->isPointerType())
-    {
-      var.kind      = DATA_KIND::KIND_POINTER;
-      var.isConst   = qt.isConstQualified();
-    }
-    else if(qt->isReferenceType() && kslicer::IsTexture(qt))
-    {
-      var.kind      = DATA_KIND::KIND_TEXTURE;
-      var.isConst   = qt.isConstQualified();
-    }
-    else if(id != tidNames.end())
-    {
-      var.kind      = DATA_KIND::KIND_POD;
-      var.isConst   = qt.isConstQualified();
-      var.isThreadId= true;
-    }
-
+    auto var = GetParamInfo(a_node->getParamDecl(i));
     params.push_back(var);
   }
 

@@ -449,7 +449,7 @@ int main(int argc, const char **argv)
     auto pHeaderLister = std::make_unique<HeaderLister>(&inputCodeInfo);
     compiler.getPreprocessor().addPPCallbacks(std::move(pHeaderLister));
   }
-    
+
   // init clang tooling
   //
   std::vector<const char*> argv2 = {argv[0], argv[1]};
@@ -510,7 +510,8 @@ int main(int argc, const char **argv)
   inputCodeInfo.allDataMembers       = firstPassData.rv.dataMembers;   
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.m_mainClassASTNode;
-  
+  inputCodeInfo.ProcessAllSetters(firstPassData.rv.m_setters, compiler);
+
   std::vector<kslicer::DeclInClass> generalDecls = firstPassData.rv.GetExtractedDecls();
   if(inputCodeInfo.mainClassASTNode == nullptr)
   {
@@ -674,7 +675,11 @@ int main(int argc, const char **argv)
           for(auto x : usedMembers)
           {
             if(x.second.type == "struct Sampler" || x.second.type == "struct sampler")
-              samplerMembers.push_back(x.second);
+            {
+              auto y = x.second; 
+              y.kind = kslicer::DATA_KIND::KIND_SAMPLER;
+              samplerMembers.push_back(y);
+            }
           }
           
           for(auto& member : usedMembers)
@@ -718,12 +723,11 @@ int main(int argc, const char **argv)
               else
                 inputCodeInfo.allDataMembers[member.first] = member.second;
             }
-          }
+          } // end for(auto& member : usedMembers)
+        } // end if(f.isMember)
+      } // end for(const auto& f : usedByKernelsFunctions)
+    } // end for(auto& k : inputCodeInfo.kernels)
 
-          
-        }
-      }
-    }
     std::cout << "}" << std::endl;
     std::cout << std::endl;
   }

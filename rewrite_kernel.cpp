@@ -48,10 +48,68 @@ bool kslicer::KernelRewriter::VisitForStmt(clang::ForStmt* forLoop)
   return true;
 }
 
-bool kslicer::KernelRewriter::VisitMemberExpr_Impl(MemberExpr* expr)
+
+bool kslicer::KernelRewriter::CheckSettersAccess(const clang::MemberExpr* expr, std::string* setterS, std::string* setterM)
+{
+  const clang::Expr* baseExpr1 = expr->getBase(); 
+
+  if(!clang::isa<clang::MemberExpr>(baseExpr1))
+     return false;
+
+  const clang::MemberExpr* baseExpr = clang::dyn_cast<const clang::MemberExpr>(baseExpr1);
+
+  clang::ValueDecl* pValueDecl1 = expr->getMemberDecl();
+  clang::ValueDecl* pValueDecl2 = baseExpr->getMemberDecl();
+  
+  if(!clang::isa<clang::FieldDecl>(pValueDecl1) || !clang::isa<clang::FieldDecl>(pValueDecl2))
+    return false;
+
+  clang::FieldDecl* pFieldDecl1  = clang::dyn_cast<clang::FieldDecl>(pValueDecl1);
+  clang::FieldDecl* pFieldDecl2  = clang::dyn_cast<clang::FieldDecl>(pValueDecl2);
+
+  clang::RecordDecl* pRecodDecl1 = pFieldDecl1->getParent();
+  clang::RecordDecl* pRecodDecl2 = pFieldDecl2->getParent();
+
+  const std::string typeName1 = pRecodDecl1->getNameAsString(); // MyInOut
+  const std::string typeName2 = pRecodDecl2->getNameAsString(); // Main class name
+
+  const std::string debugText1 = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);     // m_out.summ
+  const std::string debugText2 = kslicer::GetRangeSourceCode(baseExpr->getSourceRange(), m_compiler); // m_out
+  
+  if(typeName2 != m_mainClassName)
+    return false;
+  auto p = m_codeInfo->m_setterVars.find(debugText2);
+  if(p == m_codeInfo->m_setterVars.end())
+    return false;
+  //if(typeName1 != p->second && std::string("struct ") + typeName1 != p->second && std::string("class ") + typeName1 != p->second)
+  //  return false;
+  if(setterS != nullptr)
+    (*setterS) = debugText2;
+  if(setterM != nullptr)
+    (*setterM) = debugText1.substr(debugText1.find(".")+1, debugText1.size());
+  return true;
+}
+
+bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
+  {
+    std::string setter, containerName;
+    if(CheckSettersAccess(expr, &setter, &containerName))
+    {
+      clang::QualType qt = expr->getType(); // 
+      kslicer::UsedContainerInfo container;
+      container.type     = qt.getAsString();
+      container.name     = setter + "_" + containerName;            
+      container.kind     = kslicer::GetKindOfType(qt, false);
+      container.isConst  = qt.isConstQualified();
+      container.isSetter = true;
+      container.setterPrefix = setter;
+      container.setterSuffix = containerName;
+      m_currKernel.usedContainers[container.name] = container;
+    }
     return true; 
+  }
 
   ValueDecl* pValueDecl = expr->getMemberDecl();
   if(!isa<FieldDecl>(pValueDecl))
@@ -63,10 +121,15 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(MemberExpr* expr)
   assert(pRecodDecl != nullptr);
 
   const std::string thisTypeName = pRecodDecl->getNameAsString();
-  if(thisTypeName != m_mainClassName)
+
+  std::string setter, containerName;
+  if(WasNotRewrittenYet(expr) && CheckSettersAccess(expr, &setter, &containerName)) // process setter access
   {
-    // process access to arguments payload->xxx
-    //
+    m_rewriter.ReplaceText(expr->getSourceRange(), setter + "_" + containerName);
+    MarkRewritten(expr);
+  }
+  else if(WasNotRewrittenYet(expr) && thisTypeName != m_mainClassName) // RTV, process access to arguments payload->xxx
+  {
     Expr* baseExpr = expr->getBase(); 
     assert(baseExpr != nullptr);
 
@@ -303,7 +366,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
       {
         assert(f->getNumArgs() == 1);
         const Expr* currArgExpr  = f->getArgs()[0];
-        std::string newSizeValue = kslicer::GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler); 
+        std::string newSizeValue = RecursiveRewrite(currArgExpr); 
         std::string memberNameB  = memberNameA + "_size = " + newSizeValue;
         m_rewriter.ReplaceText(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
         MarkRewritten(f);
@@ -313,7 +376,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
     {
       assert(f->getNumArgs() == 1);
       const Expr* currArgExpr  = f->getArgs()[0];
-      std::string newElemValue = kslicer::GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler);
+      std::string newElemValue = RecursiveRewrite(currArgExpr);
 
       std::string memberNameB  = memberNameA + "_size";
       std::string resulingText = m_codeInfo->pShaderCC->RewritePushBack(memberNameA, memberNameB, newElemValue);

@@ -15,6 +15,10 @@
 {{Includes}}
 #include "include/{{UBOIncl}}"
 
+{% for SetterDecl in SettersDecl %}  
+{{SetterDecl}}
+
+{% endfor %}
 class {{MainClassName}}_Generated : public {{MainClassName}}
 {
 public:
@@ -49,6 +53,10 @@ public:
 
 ## endfor
   virtual ~{{MainClassName}}_Generated();
+
+  {% for SetterFunc in SetterFuncs %}  
+  {{SetterFunc}}
+  {% endfor %}
 
   virtual void InitMemberBuffers();
 
@@ -127,6 +135,10 @@ protected:
   } {{MainFunc.Name}}_local;
 
 ## endfor
+
+  {% for var in SetterVars %}  
+  {{var.Type}}Vulkan {{var.Name}}Vulkan;
+  {% endfor %}
 
   struct MembersDataGPU
   {

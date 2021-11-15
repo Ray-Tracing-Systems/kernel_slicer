@@ -157,7 +157,7 @@ public:
   
   bool VisitMemberExpr(clang::MemberExpr* expr) 
   {
-    const std::string debugText1 = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    //const std::string debugText1 = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
     if(false) // TODO: check if this is texture.sample, save texture name 
     {
       // clang::CXXMethodDecl* fDecl = call->getMethodDecl();  

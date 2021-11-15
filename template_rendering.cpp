@@ -829,6 +829,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         json arg;
         arg["Id"]            = realId;
         arg["Name"]          = dsArgName;
+        arg["Offset"]        = 0;
         arg["IsTexture"]     = dsArgs.descriptorSetsInfo[j].isTexture();
         arg["IsAccelStruct"] = dsArgs.descriptorSetsInfo[j].isAccelStruct();
 
@@ -883,6 +884,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
             data["HasRTXAccelStruct"] = true;
             arg["Name"] = container.second.name; // remove m_vdata."
           }
+          else // buffer
+          {
+            if(container.second.isSetter)
+            {
+              arg["Name"]   = container.second.setterPrefix + "Vulkan." + container.second.setterSuffix;
+            }
+          }
 
           local["Args"].push_back(arg);
           local["ArgNames"].push_back(container.second.name);
@@ -928,6 +936,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["MainFunctions"].push_back(data2);
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   data["DescriptorSetsAll"] = std::vector<std::string>();
   for(size_t i=0; i< a_classInfo.allDescriptorSetsInfo.size();i++)
   {
@@ -940,6 +951,24 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  data["SettersDecl"] = std::vector<std::string>();
+  data["SetterFuncs"] = std::vector<std::string>();
+  data["SetterVars"]  = std::vector<std::string>();
+
+  for(const auto& s : a_classInfo.m_setterStructDecls)
+    data["SettersDecl"].push_back(s);
+
+  for(const auto& s : a_classInfo.m_setterFuncDecls)
+    data["SetterFuncs"].push_back(s);
+
+  for(const auto& kv : a_classInfo.m_setterVars)
+  { 
+    json local;
+    local["Type"] = kv.second;
+    local["Name"] = kv.first;
+    data["SetterVars"].push_back(local);
+  }
 
   return data;
 }
@@ -1203,7 +1232,20 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       auto pVecMember     = dataMembersCached.find(container.second.name);
       auto pVecSizeMember = dataMembersCached.find(container.second.name + "_size");
 
-      assert(pVecMember     != dataMembersCached.end());
+      size_t bufferSizeOffset = 0;
+
+      if(container.second.isSetter)
+      {
+        //std::cout << "kslicer::PrepareJsonForKernel, setter: " << container.second.name << std::endl;
+        //continue;
+        pVecMember = a_classInfo.m_setterData.find(container.second.name);
+      }
+      else if(pVecSizeMember != dataMembersCached.end())
+      {
+        bufferSizeOffset = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
+      }
+      
+      assert(pVecMember != dataMembersCached.end());
       assert(pVecMember->second.isContainer);
 
       std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(pVecMember->second.containerDataType);
@@ -1234,7 +1276,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         rtxNames.push_back(container.second.name);
       }
       else
-        argj["SizeOffset"] = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
+        argj["SizeOffset"] = bufferSizeOffset; // pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
       
       args.push_back(argj);
       vecs.push_back(argj);
@@ -1264,9 +1306,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       if(member.isArray || member.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD) // read large data structures directly inside kernel code, don't read them at the beggining of kernel.
         continue;
-
+      
+      // #TODO: test if remove this is, it works
       if(k.subjectedToReduction.find(member.name) != k.subjectedToReduction.end())  // exclude this opt for members which subjected to reduction
         continue;
+      // #TODO: test if remove this is, it works
 
       json memberData;
       memberData["Type"]   = pShaderRewriter->RewriteStdVectorTypeStr(member.type);
@@ -1418,8 +1462,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         auto pFound = usedVars.find(iter.sizeText);
         if(pFound == usedVars.end())
         {
+          std::string typeName = pShaderRewriter->RewriteStdVectorTypeStr(iter.type);
+          ReplaceFirst(typeName, "const ", "");
+
           tidNames[loopIdReorderd] = iter.sizeText;                   // #TODO: assert that this expression does not contain .size(); if it does
-          tidTypes[loopIdReorderd] = iter.type;
+          tidTypes[loopIdReorderd] = typeName;
           usedVars.insert(iter.sizeText);
         }
       }                                                                // we must change it to 'vec_size2' for example 
@@ -1619,7 +1666,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {      
       kernelJson["Name"]      = k.name + "_Init";
       kernelJson["Source"]    = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1);
-      kernelJson["Members"]   = std::vector<json>();
+      kernelJson["Members"]   = members;
       kernelJson["HasEpilog"] = false;
       kernelJson["FinishRed"] = false;
       kernelJson["InitKPass"] = true;
@@ -1635,7 +1682,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       kernelJson["Name"]      = k.name + "_Finish";
       kernelJson["Source"]    = k.rewrittenFinish;
-      kernelJson["Members"]   = std::vector<json>();
+      kernelJson["Members"]   = members;
       kernelJson["HasEpilog"] = false;
       kernelJson["FinishRed"] = false;
       kernelJson["InitKPass"] = true;

@@ -21,11 +21,13 @@ static kslicer::KernelInfo::ArgInfo ProcessParameter(clang::ParmVarDecl *p)
   arg.name = p->getNameAsString();
   arg.type = clang::QualType::getAsString(q.split(), clang::PrintingPolicy{ {} });
   arg.size = 1;
-  if (q->isPointerType()) {
+  if (q->isPointerType()) 
+  {
     arg.size      = 1; // Because C always pass reference
     arg.kind      = kslicer::DATA_KIND::KIND_POINTER;
   }
-  else if(q->isReferenceType()) {
+  else if(q->isReferenceType()) 
+  {
     arg.isReference = true;
     auto dataType = q.getNonReferenceType(); 
     auto typeDecl = dataType->getAsRecordDecl();
@@ -46,8 +48,6 @@ static kslicer::KernelInfo::ArgInfo ProcessParameter(clang::ParmVarDecl *p)
         arg.kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
     }
   }
-
-  //TODO: q->isConstantArrayType() --> isArray
 
   return arg;
 }
@@ -230,6 +230,23 @@ std::vector<kslicer::DeclInClass> kslicer::InitialPassRecursiveASTVisitor::GetEx
   return generalDecls;
 }
 
+kslicer::CPP11_ATTR kslicer::GetMethodAttr(const clang::CXXMethodDecl* f, clang::CompilerInstance& a_compiler)
+{
+  if(!f->hasAttrs())
+    return CPP11_ATTR::ATTR_UNKNOWN;
+
+  auto attrs = f->getAttrs();
+  for(const auto& attr : attrs)
+  {
+    const std::string text = kslicer::GetRangeSourceCode(attr->getRange(), a_compiler);
+    if(text == "kslicer::setter")
+      return CPP11_ATTR::ATTR_SETTER;
+    if(text == "kslicer::kernel" || text == "kslicer::kernel1D" || text == "kslicer::kernel2D" || text == "kslicer::kernel3D")
+      return CPP11_ATTR::ATTR_KERNEL;
+  }
+  return CPP11_ATTR::ATTR_UNKNOWN;
+}
+
 bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f) 
 {
   if(f->isStatic())
@@ -246,7 +263,9 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
     const QualType classType = qThisType.getTypePtr()->getPointeeType();
     std::string thisTypeName = classType.getAsString();
 
-    if(m_codeInfo.IsKernel(fname))
+    auto attr = kslicer::GetMethodAttr(f, m_compiler);
+
+    if(m_codeInfo.IsKernel(fname)) // || attr == CPP11_ATTR::ATTR_KERNEL // TODO: fix this
     {
       if(thisTypeName == std::string("class ") + MAIN_CLASS_NAME || thisTypeName == std::string("struct ") + MAIN_CLASS_NAME)
       {
@@ -259,13 +278,16 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
         ProcessKernelDef(f, otherFunctions, thisTypeName); // thisTypeName::f ==> otherFunctions
         std::cout << "  found other kernel " << thisTypeName.c_str() << "::" << fname.c_str() << std::endl;
       }
-      
     }
     else if(m_mainFuncts.find(fname) != m_mainFuncts.end())
     {
       m_mainFuncNodes[fname] = f;
       //std::cout << "main function has found:\t" << fname.c_str() << std::endl;
       //f->dump();
+    }
+    else if(attr == CPP11_ATTR::ATTR_SETTER)
+    {
+      m_setters[fname] = f;
     }
     else
     {
@@ -293,6 +315,7 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
   if(fieldTypePtr->isPointerType()) // we ignore pointers due to we can't pass them to GPU correctly
   {
     member.isPointer = true;
+    member.kind      = kslicer::DATA_KIND::KIND_POINTER;
     return member;
   }
 
@@ -307,6 +330,7 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
     auto typeInfo      = astContext.getTypeInfo(qt);
     member.sizeInBytes = typeInfo.Width / 8; 
     member.isArray     = true;
+    member.kind        = kslicer::DATA_KIND::KIND_POD;
   }  
   else if (typeDecl != nullptr && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl)) 
   {
@@ -314,11 +338,13 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
     auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl); 
     kslicer::SplitContainerTypes(specDecl, member.containerType, member.containerDataType);
     //std::cout << "  found container of type " << member.containerType.c_str() << ", which data type is " <<  member.containerDataType.c_str() << std::endl;
+    member.kind = kslicer::DATA_KIND::KIND_VECTOR;  // #TODO: probably texture or acceleration structure, check and refactor this!
   }
   else
   {
     auto typeInfo      = astContext.getTypeInfo(qt);
     member.sizeInBytes = typeInfo.Width / 8; 
+    member.kind        = kslicer::DATA_KIND::KIND_POD;
   }
 
   return member;
