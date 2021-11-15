@@ -14,7 +14,7 @@
 #include "vulkan_basics.h"
 #include "test_class_generated.h"
 
-void test_class_gpu()
+std::vector<uint32_t> test_class_gpu()
 {
   // (1) init vulkan
   //
@@ -108,7 +108,8 @@ void test_class_gpu()
   pGPUImpl->SetVulkanInOutFor_StupidPathTrace(xyBuffer, 0,      // !!! USING GENERATED CODE !!!
                                               colorBuffer2, 0); // !!! USING GENERATED CODE !!!
   pGPUImpl->UpdateAll(pCopyHelper);                             // !!! USING GENERATED CODE !!!
-  
+
+  std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
   // now compute some thing useful
   //
   {
@@ -135,9 +136,9 @@ void test_class_gpu()
     float ms  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
     std::cout << ms << " ms for full command buffer execution " << std::endl;
 
-    std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
+
     pCopyHelper->ReadBuffer(colorBuffer1, 0, pixelData.data(), pixelData.size()*sizeof(uint32_t));
-    SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+//    SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
 
     std::cout << "begin path tracing passes ... " << std::endl;
 
@@ -178,7 +179,7 @@ void test_class_gpu()
       color.w      = 1.0f;
       pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
     }
-    SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+//    SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
 
     std::cout << std::endl;
   }
@@ -197,4 +198,6 @@ void test_class_gpu()
 
   vkDestroyDevice(device, nullptr);
   vkDestroyInstance(instance, nullptr);
+
+  return pixelData;
 }

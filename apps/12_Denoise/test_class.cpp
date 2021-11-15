@@ -1,5 +1,5 @@
 #include "test_class.h"
-#include "Bitmap.h"
+//#include "Bitmap.h"
 #include <cassert>
 //#include <chrono>
 
@@ -92,17 +92,17 @@ static inline float NLMWeight(__global const float4* in_buff, int w, int h, int 
 }
 
 
-static void SaveTestImage(const float4* data, int w, int h)
-{
-  size_t sizeImg = w * h;
-  std::vector<uint> ldrData(sizeImg);
-
-  #pragma omp parallel for
-  for(size_t i = 0; i < sizeImg; ++i)
-    ldrData[i] = RealColorToUint32(data[i], 1.0F / 2.2F);
-
-  SaveBMP("ztest.bmp", ldrData.data(), w, h);
-}
+//static void SaveTestImage(const float4* data, int w, int h)
+//{
+//  size_t sizeImg = w * h;
+//  std::vector<uint> ldrData(sizeImg);
+//
+//  #pragma omp parallel for
+//  for(size_t i = 0; i < sizeImg; ++i)
+//    ldrData[i] = RealColorToUint32(data[i], 1.0F / 2.2F);
+//
+//  SaveBMP("ztest.bmp", ldrData.data(), w, h);
+//}
 
 
 Denoise::Denoise(const int w, const int h)
@@ -243,8 +243,8 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
     #pragma omp critical       
     {
       m_linesDone++;
-      std::cout << "NLM Denoiser: " << (int)(100.0F * (float)(m_linesDone) / (float)(a_height)) << " \r";
-      std::cout.flush();
+//      std::cout << "NLM Denoiser: " << (int)(100.0F * (float)(m_linesDone) / (float)(a_height)) << " \r";
+//      std::cout.flush();
     }        
   }
 }
@@ -268,8 +268,8 @@ const int32_t* a_inNormal, const float4* a_inDepth,  const int a_windowRadius, c
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-void Denoise_cpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
-                 const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel, const char* a_outName)
+std::vector<uint> Denoise_cpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth,
+                 const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel)
 {
   Denoise filter(w, h);
   std::vector<uint> ldrData(w*h);
@@ -283,6 +283,6 @@ void Denoise_cpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
   //auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
   //std::cout << ms << " ms for NLM filter on CPU" << std::endl;
 
-  SaveBMP(a_outName, ldrData.data(), w, h);
-  return;
+//  SaveBMP(a_outName, ldrData.data(), w, h);
+  return ldrData;
 }

@@ -1,5 +1,5 @@
-#include "include/BasicLogic.h" 
-#include "Bitmap.h"
+//#include "include/BasicLogic.h"
+//#include "Bitmap.h"
 
 #include <vector>
 #include <iostream>
@@ -14,8 +14,8 @@
 #include "vulkan_basics.h"
 #include "test_class_generated.h"
 
-void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
-                 const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel, const char* a_outName)
+std::vector<uint> Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth,
+                 const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel)
 {
   // (1) init vulkan
   //
@@ -40,19 +40,15 @@ void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
 
   physicalDevice       = vk_utils::findPhysicalDevice(instance, true, 0);
   auto queueComputeFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
-  
-  // query for shaderInt8
-  //
-  VkPhysicalDeviceShaderFloat16Int8Features features = {};
-  features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
+
+  VkPhysicalDeviceShaderFloat16Int8FeaturesKHR features = {};
+  features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES_KHR;
   features.shaderInt8 = VK_TRUE;
 
   std::vector<const char*> validationLayers, deviceExtensions;
   VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
   vk_utils::QueueFID_T fIDs = {};
-
-  deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
-  deviceExtensions.push_back("VK_KHR_shader_float16_int8"); 
+  deviceExtensions.push_back("VK_KHR_shader_float16_int8");
 
   fIDs.compute = queueComputeFID;
   device       = vk_utils::createLogicalDevice(physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures,
@@ -102,7 +98,8 @@ void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
                                           buff_inTexColor, 0,
                                           buff_inNormal,   0,
                                           buff_inDepth,    0);
-  
+
+  std::vector<unsigned int> pixels(w*h);
   // now compute some thing useful
   //
   {
@@ -122,9 +119,8 @@ void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
     auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
     std::cout << ms << " ms for command buffer execution " << std::endl;
 
-    std::vector<unsigned int> pixels(w*h);
     pCopyHelper->ReadBuffer(buff_outColor, 0, pixels.data(), pixels.size()*sizeof(unsigned int));
-    SaveBMP(a_outName, pixels.data(), w, h);
+//    SaveBMP(a_outName, pixels.data(), w, h);
 
     //pGPUImpl->SaveTestImageNow("z_test.bmp", pCopyHelper);
 
@@ -147,4 +143,6 @@ void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
 
   vkDestroyDevice(device, nullptr);
   vkDestroyInstance(instance, nullptr);
+
+  return pixels;
 }

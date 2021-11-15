@@ -12,9 +12,12 @@ set(MATH_DIR       ../../LiteMath)
 
 set(ALL_APPS_DIR    ../../)
 set(MAIN_APP_DIR_1  ../../04_array_summ)
+set(MAIN_APP_DIR_1_2  ../../04_array_summ_float)
 set(MAIN_APP_DIR_2  ../../06_n_body)
 set(MAIN_APP_DIR_3  ../../09_spharm)
 set(MAIN_APP_DIR_4  ../../05_filter_bloom_good)
+set(MAIN_APP_DIR_5  ../../12_Denoise)
+set(MAIN_APP_DIR_6  ../../07_simple_pt)
 
 set(SRC_DIR src/main/jni)
 
@@ -34,9 +37,12 @@ include_directories(${SRC_DIR})
 include_directories(${ALL_APPS_DIR})
 
 include_directories(${MAIN_APP_DIR_1})
+include_directories(${MAIN_APP_DIR_1_2})
 include_directories(${MAIN_APP_DIR_2})
 include_directories(${MAIN_APP_DIR_3})
 include_directories(${MAIN_APP_DIR_4})
+include_directories(${MAIN_APP_DIR_5})
+include_directories(${MAIN_APP_DIR_6})
 
 set(VKUTILS_NEW_SRC ${VKUTILS_DIR}/vk_copy.cpp
                     ${VKUTILS_DIR}/vk_utils.cpp
@@ -54,6 +60,12 @@ set(APP_SRC_1 ${MAIN_APP_DIR_1}/test_class.cpp
               ${MAIN_APP_DIR_1}/test_class_generated.cpp
               ${MAIN_APP_DIR_1}/test_class_generated_ds.cpp
               ${MAIN_APP_DIR_1}/test_class_generated_init.cpp)
+
+set(APP_SRC_1_2 ${MAIN_APP_DIR_1_2}/test_class.cpp
+                ${MAIN_APP_DIR_1_2}/test_class_gpu.cpp
+                ${MAIN_APP_DIR_1_2}/test_class_generated.cpp
+                ${MAIN_APP_DIR_1_2}/test_class_generated_ds.cpp
+                ${MAIN_APP_DIR_1_2}/test_class_generated_init.cpp)
 
 set(APP_SRC_2 ${MAIN_APP_DIR_2}/test_class.cpp
               ${MAIN_APP_DIR_2}/test_class_gpu.cpp
@@ -73,12 +85,27 @@ set(APP_SRC_4 ${MAIN_APP_DIR_4}/test_class.cpp
               ${MAIN_APP_DIR_4}/test_class_generated_ds.cpp
               ${MAIN_APP_DIR_4}/test_class_generated_init.cpp)
 
+set(APP_SRC_5 ${MAIN_APP_DIR_5}/test_class.cpp
+              ${MAIN_APP_DIR_5}/test_class_gpu.cpp
+              ${MAIN_APP_DIR_5}/test_class_generated.cpp
+              ${MAIN_APP_DIR_5}/test_class_generated_ds.cpp
+              ${MAIN_APP_DIR_5}/test_class_generated_init.cpp)
+
+set(APP_SRC_6 ${MAIN_APP_DIR_6}/test_class.cpp
+              ${MAIN_APP_DIR_6}/test_class_gpu.cpp
+              ${MAIN_APP_DIR_6}/test_class_generated.cpp
+              ${MAIN_APP_DIR_6}/test_class_generated_ds.cpp
+              ${MAIN_APP_DIR_6}/test_class_generated_init.cpp)
+
 add_library(VkCompute SHARED
                 ${VKUTILS_NEW_SRC}
                 ${APP_SRC_1}
+                ${APP_SRC_1_2}
                 ${APP_SRC_2}
                 ${APP_SRC_3}
                 ${APP_SRC_4}
+                ${APP_SRC_5}
+#                ${APP_SRC_6}
                 ${SRC_DIR}/AndroidMain.cpp
                 ${SRC_DIR}/lodepng.cpp
                 ${SRC_DIR}/ImageLoader.cpp

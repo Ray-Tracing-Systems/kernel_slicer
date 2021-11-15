@@ -27,4 +27,6 @@ std::vector<unsigned int> LoadBMPAndroid(const char* fname, int* pW, int* pH);
 
 bool LoadEXRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<float>& a_data);
 
+bool LoadLDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<int32_t>& a_data);
+
 #endif

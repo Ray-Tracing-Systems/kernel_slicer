@@ -25,11 +25,14 @@ const bool g_enableValidationLayers = true;
 #include "ImageLoader.h"
 #include "06_n_body/test_class.h"
 
-#define ARRAY_SUM_SAMPLE 1
+#define ARRAY_SUM_INT_SAMPLE 0
+#define ARRAY_SUM_FLOAT_SAMPLE 1
 #define NBODY_SAMPLE 2
 #define SPHARM_SAMPLE 3
 #define BLOOM_SAMPLE 4
-#define SAMPLE_NUMBER BLOOM_SAMPLE
+#define NLM_SAMPLE 5
+#define PT_SAMPLE 6
+#define SAMPLE_NUMBER SPHARM_SAMPLE
 
 
 static const char* tag_app = "com.slicer.compute";
@@ -94,12 +97,20 @@ private:
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int32_t array_summ_cpu(const std::vector<int32_t>& array);
 int32_t array_summ_gpu(const std::vector<int32_t>& array);
+float array_summ_float_cpu(const std::vector<float>& array);
+float array_summ_float_gpu(const std::vector<float>& array);
 std::vector<nBody::BodyState> n_body_cpu(uint32_t seed, uint32_t iterations);
 std::vector<nBody::BodyState> n_body_gpu(uint32_t seed, uint32_t iterations);
 std::vector<LiteMath::float3> process_image_cpu(std::vector<uint32_t>& a_inPixels, uint32_t a_width, uint32_t a_height);
 std::vector<LiteMath::float3> process_image_gpu(std::vector<uint32_t>& a_inPixels, uint32_t a_width, uint32_t a_height);
 std::vector<uint> tone_mapping_cpu(int w, int h, float* a_hdrData);
 std::vector<uint> tone_mapping_gpu(int w, int h, float* a_hdrData);
+std::vector<uint>  Denoise_cpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth,
+                               const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
+std::vector<uint>  Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth,
+                               const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
+
+std::vector<uint32_t> test_class_gpu(); //pt
 
 const float EPS = 1e-3f;
 
@@ -120,9 +131,13 @@ public:
     std::cout << "DIRECTORY WITH SAVED FILES: " << app_dir << std::endl;
     switch(SAMPLE_NUMBER)
     {
-      case ARRAY_SUM_SAMPLE:
-        std::cout << "RUNNING ARRAY_SUM_SAMPLE...\n";
-        ArraySum();
+      case ARRAY_SUM_INT_SAMPLE:
+        std::cout << "RUNNING ARRAY_SUM_INT_SAMPLE...\n";
+        ArraySumInt();
+        break;
+      case ARRAY_SUM_FLOAT_SAMPLE:
+        std::cout << "RUNNING ARRAY_SUM_FLOAT_SAMPLE...\n";
+        ArraySumFloat();
         break;
       case NBODY_SAMPLE:
         std::cout << "RUNNING NBODY_SAMPLE...\n";
@@ -136,6 +151,14 @@ public:
         std::cout << "RUNNING BLOOM_SAMPLE...\n";
         Bloom();
         break;
+      case NLM_SAMPLE:
+        std::cout << "RUNNING NLM_SAMPLE...\n";
+        Denoise();
+        break;
+      case PT_SAMPLE:
+        std::cout << "RUNNING PT_SAMPLE...\n";
+        PathTrace();
+        break;
       default:
         break;
     }
@@ -146,7 +169,7 @@ private:
   android_app* androidApp;
   std::string app_dir;
 
-  void ArraySum()
+  void ArraySumInt()
   {
     std::vector<int32_t> array(1024 * 1024);
     for(size_t i=0;i<array.size();i++)
@@ -159,6 +182,23 @@ private:
 
     auto cpu_summ = array_summ_cpu(array);
     auto gpu_summ = array_summ_gpu(array);
+    std::cout << "[cpu]: array summ  = " << cpu_summ << std::endl;
+    std::cout << "[gpu]: array summ  = " << gpu_summ << std::endl;
+  }
+
+  void ArraySumFloat()
+  {
+    std::vector<float> array(1024 * 1024);
+    for(size_t i=0;i<array.size();i++)
+    {
+      if(i % 3 == 0)
+        array[i] = i * 3.14f;
+      else
+        array[i] = -i * 2.72f;
+    }
+
+    auto cpu_summ = array_summ_float_cpu(array);
+    auto gpu_summ = array_summ_float_gpu(array);
     std::cout << "[cpu]: array summ  = " << cpu_summ << std::endl;
     std::cout << "[gpu]: array summ  = " << gpu_summ << std::endl;
   }
@@ -289,6 +329,89 @@ private:
     SaveBMPAndroid(gpu_out_name.c_str(), gpu_out.data(), w, h);
   }
 
+  void Denoise()
+  {
+    std::vector<float>   hdrData;
+    std::vector<int32_t> texColor;
+    std::vector<int32_t> normal;
+    std::vector<float>   depth;
+
+    int w, h, w2, h2, w3, h3, w4, h4;
+
+    bool hasError = false;
+
+    if(!LoadEXRImageFromFile("WasteWhite_1024sample.exr", &w, &h, hdrData))
+    {
+      std::cout << "can't open input file 'WasteWhite_1024sample.exr' " << std::endl;
+      hasError = true;
+    }
+
+    if(!LoadEXRImageFromFile("WasteWhite_depth.exr", &w2, &h2, depth))
+    {
+      std::cout << "can't open input file 'WasteWhite_depth.exr' " << std::endl;
+      hasError = true;
+    }
+
+    if(!LoadLDRImageFromFile("WasteWhite_diffcolor.png", &w3, &h3, texColor))
+    {
+      std::cout << "can't open input file 'WasteWhite_diffcolor.png' " << std::endl;
+      hasError = true;
+    }
+
+    if(!LoadLDRImageFromFile("WasteWhite_normals.png", &w4, &h4, normal))
+    {
+      std::cout << "can't open input file 'WasteWhite_normals.png' " << std::endl;
+      hasError = true;
+    }
+
+
+    if(w != w2 || h != h2)
+    {
+      std::cout << "size source image and depth pass not equal.' " << std::endl;
+      hasError = true;
+    }
+
+    if(w != w3 || h != h3)
+    {
+      std::cout << "size source image and color pass not equal.' " << std::endl;
+      hasError = true;
+    }
+
+    if(w != w4 || h != h4)
+    {
+      std::cout << "size source image and normal pass not equal.' " << std::endl;
+      hasError = true;
+    }
+
+    if (hasError)
+      return;
+
+
+    uint64_t addressToCheck = reinterpret_cast<uint64_t>(hdrData.data());
+    assert(addressToCheck % 16 == 0); // check if address is aligned!!!
+
+    addressToCheck = reinterpret_cast<uint64_t>(depth.data());
+    assert(addressToCheck % 16 == 0); // check if address is aligned!!!
+//
+    const int   windowRadius = 7;
+    const int   blockRadius  = 3;
+    const float noiseLevel   = 0.1F;
+
+//    auto res_cpu = Denoise_cpu(w, h, hdrData.data(), texColor.data(), normal.data(), depth.data(), windowRadius, blockRadius, noiseLevel);
+    auto res_gpu = Denoise_gpu(w, h, hdrData.data(), texColor.data(), normal.data(), depth.data(), windowRadius, blockRadius, noiseLevel);
+//    std::string cpu_out_name = app_dir + "/denoise_cpu.bmp";
+//    SaveBMPAndroid(cpu_out_name.c_str(), res_cpu.data(), w, h);
+
+    std::string gpu_out_name = app_dir + "/denoise_gpu.bmp";
+    SaveBMPAndroid(gpu_out_name.c_str(), res_gpu.data(), w, h);
+  }
+
+  void PathTrace()
+  {
+    auto gpu_res = test_class_gpu();
+
+    return;
+  }
 };
 
 

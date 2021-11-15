@@ -1,5 +1,5 @@
-#ifndef BASIC_PROJ_LOGIC_H
-#define BASIC_PROJ_LOGIC_H
+#ifndef BASIC_PROJ_LOGIC_DENOISE_H
+#define BASIC_PROJ_LOGIC_DENOISE_H
 
 #include "LiteMath.h"
 #ifndef __OPENCL_VERSION__

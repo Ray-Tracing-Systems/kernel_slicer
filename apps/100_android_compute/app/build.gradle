@@ -60,6 +60,13 @@ task copyTask {
     }
 
     copy {
+        from '../../04_array_summ_float/shaders_generated'
+        into "src/main/assets/shaders_generated"
+        include '*.spv'
+    }
+
+
+    copy {
         from '../../06_n_body/shaders_generated'
         into "src/main/assets/shaders_generated"
         include '*.spv'
@@ -78,6 +85,18 @@ task copyTask {
     }
 
     copy {
+        from '../../12_Denoise/shaders_generated'
+        into "src/main/assets/shaders_generated"
+        include '*.spv'
+    }
+
+    copy {
+        from '../../07_simple_pt/shaders_generated'
+        into "src/main/assets/shaders_generated"
+        include '*.spv'
+    }
+
+    copy {
         from '../../09_spharm'
         into "src/main/assets"
         include 'skybox.bmp'
@@ -87,6 +106,18 @@ task copyTask {
         from '../../images'
         into "src/main/assets"
         include 'nancy_church_2.exr'
+    }
+
+    copy {
+        from '../../images'
+        into "src/main/assets"
+        include 'WasteWhite*.exr'
+    }
+
+    copy {
+        from '../../images'
+        into "src/main/assets"
+        include 'WasteWhite*.png'
     }
 
 }

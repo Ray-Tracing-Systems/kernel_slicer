@@ -6,6 +6,7 @@
 
 #define TINYEXR_IMPLEMENTATION
 #include "tinyexr.h"
+#include "lodepng.h"
 
 namespace vk_android
 {
@@ -214,6 +215,46 @@ bool LoadEXRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<
   }
 
   FreeEXRImage(&image);
+
+  return true;
+}
+
+bool LoadLDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<int32_t>& a_data)
+{
+  AAsset* file = AAssetManager_open(vk_android::g_pMgr, a_fileName, AASSET_MODE_BUFFER);
+  size_t fileLength = AAsset_getLength(file);
+
+  std::vector<unsigned char> png(fileLength, 0);
+
+  auto read_bytes = AAsset_read(file, png.data(), fileLength);
+  if(!read_bytes)
+    RUN_TIME_ERROR("[loadPNG]: AAsset_read error");
+  AAsset_close(file);
+
+  std::vector<unsigned char> image; //the raw pixels
+  unsigned width, height;
+
+  unsigned error = lodepng::decode(image, width, height, png);
+  //if there's an error, display it
+  if(error)
+  {
+    std::stringstream ss;
+    ss << "decoder error " << error << ": " << lodepng_error_text(error) << std::endl;
+    RUN_TIME_ERROR(ss.str().c_str());
+  }
+
+  a_data.resize(width*height);
+  for(size_t i = 0; i < a_data.size(); ++i)
+  {
+    auto red   = image[i * 4 + 0];
+    auto green = image[i * 4 + 1];
+    auto blue  = image[i * 4 + 2];
+    auto alpha = image[i * 4 + 3];
+    a_data[i] = red | (green << 8) | (blue << 16) | alpha;
+  }
+
+  *pW = static_cast<int>(width);
+  *pH = static_cast<int>(height);
 
   return true;
 }
