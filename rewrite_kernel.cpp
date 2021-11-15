@@ -111,6 +111,8 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
     return true; 
   }
 
+  const std::string debugMe = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+
   ValueDecl* pValueDecl = expr->getMemberDecl();
   if(!isa<FieldDecl>(pValueDecl))
     return true;
@@ -184,16 +186,27 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 
   // (2) put ubo->var instead of var, leave containers as they are
   // process arrays and large data structures because small can be read once in the beggining of kernel
-  //
-  //const std::string debugMe = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-  const bool isInLoopInitPart = m_currKernel.hasInitPass && (expr->getSourceRange().getEnd() <= m_currKernel.loopOutsidesInit.getEnd());
+  // // m_currKernel.hasInitPass &&
+  const bool isInLoopInitPart   = !m_codeInfo->IsRTV() && (expr->getSourceRange().getEnd()   < m_currKernel.loopInsides.getBegin());
+  const bool isInLoopFinishPart = !m_codeInfo->IsRTV() && (expr->getSourceRange().getBegin() > m_currKernel.loopInsides.getEnd());
   const bool hasLargeSize     = (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);
   const bool inMegaKernel     = m_codeInfo->megakernelRTV;
-  if(!pMember->second.isContainer && (isInLoopInitPart || pMember->second.isArray || hasLargeSize || inMegaKernel) && WasNotRewrittenYet(expr) && !m_infoPass) 
+  const bool subjectedToRed   = m_currKernel.subjectedToReduction.find(fieldName) != m_currKernel.subjectedToReduction.end();
+  if(!pMember->second.isContainer && WasNotRewrittenYet(expr) && !m_infoPass && 
+      (isInLoopInitPart || isInLoopFinishPart || !subjectedToRed) && 
+      (isInLoopInitPart || isInLoopFinishPart || pMember->second.isArray || hasLargeSize || inMegaKernel)) 
   {
     std::string rewrittenName = m_codeInfo->pShaderCC->UBOAccess(pMember->second.name);
-    m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenName);
-    //std::string testText = m_rewriter.getRewrittenText(expr->getSourceRange());
+
+    clang::SourceRange thisRng = expr->getSourceRange();
+    clang::SourceRange endkRng = m_currKernel.loopOutsidesFinish;
+
+    if(thisRng.getEnd() == endkRng.getEnd()) // fixing stnrange bug
+    {
+      kslicer::PrintError("possible end-of-loop bug", thisRng, m_compiler.getSourceManager());
+    }
+    
+    m_rewriter.ReplaceText(thisRng, rewrittenName);
     MarkRewritten(expr);
   }
   
