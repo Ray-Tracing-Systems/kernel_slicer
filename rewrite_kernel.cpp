@@ -49,7 +49,8 @@ bool kslicer::KernelRewriter::VisitForStmt(clang::ForStmt* forLoop)
 }
 
 
-bool kslicer::KernelRewriter::CheckSettersAccess(const clang::MemberExpr* expr, std::string* setterS, std::string* setterM)
+bool kslicer::CheckSettersAccess(const clang::MemberExpr* expr, const MainClassInfo* a_codeInfo, const clang::CompilerInstance& a_compiler,
+                                 std::string* setterS, std::string* setterM)
 {
   const clang::Expr* baseExpr1 = expr->getBase(); 
 
@@ -73,13 +74,13 @@ bool kslicer::KernelRewriter::CheckSettersAccess(const clang::MemberExpr* expr, 
   const std::string typeName1 = pRecodDecl1->getNameAsString(); // MyInOut
   const std::string typeName2 = pRecodDecl2->getNameAsString(); // Main class name
 
-  const std::string debugText1 = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);     // m_out.summ
-  const std::string debugText2 = kslicer::GetRangeSourceCode(baseExpr->getSourceRange(), m_compiler); // m_out
+  const std::string debugText1 = kslicer::GetRangeSourceCode(expr->getSourceRange(), a_compiler);     // m_out.summ
+  const std::string debugText2 = kslicer::GetRangeSourceCode(baseExpr->getSourceRange(), a_compiler); // m_out
   
-  if(typeName2 != m_mainClassName)
+  if(typeName2 != a_codeInfo->mainClassName)
     return false;
-  auto p = m_codeInfo->m_setterVars.find(debugText2);
-  if(p == m_codeInfo->m_setterVars.end())
+  auto p = a_codeInfo->m_setterVars.find(debugText2);
+  if(p == a_codeInfo->m_setterVars.end())
     return false;
   //if(typeName1 != p->second && std::string("struct ") + typeName1 != p->second && std::string("class ") + typeName1 != p->second)
   //  return false;
@@ -95,7 +96,7 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
   if(m_infoPass) // don't have to rewrite during infoPass
   {
     std::string setter, containerName;
-    if(CheckSettersAccess(expr, &setter, &containerName))
+    if(CheckSettersAccess(expr, m_codeInfo, m_compiler, &setter, &containerName))
     {
       clang::QualType qt = expr->getType(); // 
       kslicer::UsedContainerInfo container;
@@ -125,7 +126,7 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
   const std::string thisTypeName = pRecodDecl->getNameAsString();
 
   std::string setter, containerName;
-  if(WasNotRewrittenYet(expr) && CheckSettersAccess(expr, &setter, &containerName)) // process setter access
+  if(WasNotRewrittenYet(expr) && CheckSettersAccess(expr, m_codeInfo, m_compiler, &setter, &containerName)) // process setter access
   {
     m_rewriter.ReplaceText(expr->getSourceRange(), setter + "_" + containerName);
     MarkRewritten(expr);

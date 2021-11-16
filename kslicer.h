@@ -522,6 +522,8 @@ namespace kslicer
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   
   void DisplayVisitedNodes(const std::unordered_set<uint64_t>& a_nodes);
+  bool CheckSettersAccess(const clang::MemberExpr* expr, const MainClassInfo* a_codeInfo, const clang::CompilerInstance& a_compiler,
+                          std::string* setterS, std::string* setterM);
 
   class KernelRewriter : public clang::RecursiveASTVisitor<KernelRewriter> // replace all expressions with class variables to kgen_data buffer access
   {
@@ -568,7 +570,6 @@ namespace kslicer
     void DetectTextureAccess(clang::CXXOperatorCallExpr* expr);
     void DetectTextureAccess(clang::CXXMemberCallExpr*   call);
     void ProcessReadWriteTexture(clang::CXXOperatorCallExpr* expr, bool write);
-    bool CheckSettersAccess(const clang::MemberExpr* expr, std::string* setterS = nullptr, std::string* setterM = nullptr);
 
     clang::Rewriter&                                         m_rewriter;
     const clang::CompilerInstance&                           m_compiler;

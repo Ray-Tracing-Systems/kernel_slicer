@@ -666,8 +666,9 @@ int main(int argc, const char **argv)
         {
           // list all input parameters for each call of member function inside kernel; in this way we know which textures, vectors and samplers were actually used by these functions
           //
-          auto machedParams = kslicer::ArgMatchTraversal    (&k.second, f, usedByKernelsFunctions, inputCodeInfo, compiler); 
-          auto usedMembers  = kslicer::ExtractUsedMemberData(&k.second, f, usedByKernelsFunctions, inputCodeInfo, compiler);
+          std::unordered_map<std::string, kslicer::UsedContainerInfo> auxContainers; 
+          auto machedParams = kslicer::ArgMatchTraversal    (&k.second, f, usedByKernelsFunctions,                inputCodeInfo, compiler); 
+          auto usedMembers  = kslicer::ExtractUsedMemberData(&k.second, f, usedByKernelsFunctions, auxContainers, inputCodeInfo, compiler);
           
           // TODO: process bindedParams correctly
           //
@@ -717,13 +718,18 @@ int main(int argc, const char **argv)
             }
             else 
             {
-              auto p = inputCodeInfo.allDataMembers.find(member.first);
-              if(p != inputCodeInfo.allDataMembers.end())
-                p->second.usedInKernel = true;
-              else
+              auto p1 = inputCodeInfo.allDataMembers.find(member.first);
+              auto p2 = inputCodeInfo.m_setterVars.find(member.first);
+              if(p1 != inputCodeInfo.allDataMembers.end())
+                p1->second.usedInKernel = true;
+              else if(p2 ==  inputCodeInfo.m_setterVars.end()) // don't add setters
                 inputCodeInfo.allDataMembers[member.first] = member.second;
             }
           } // end for(auto& member : usedMembers)
+
+          for(const auto& c : auxContainers)
+            k.second.usedContainers[c.first] = c.second;
+
         } // end if(f.isMember)
       } // end for(const auto& f : usedByKernelsFunctions)
     } // end for(auto& k : inputCodeInfo.kernels)

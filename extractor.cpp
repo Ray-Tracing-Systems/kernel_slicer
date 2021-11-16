@@ -149,8 +149,9 @@ class DataExtractor : public clang::RecursiveASTVisitor<DataExtractor>
 {
 public:
   
-  DataExtractor(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo, std::unordered_map<std::string, kslicer::DataMemberInfo>& a_members) : 
-                m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_patternImpl(a_codeInfo), m_usedMembers(a_members)
+  DataExtractor(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo, 
+                std::unordered_map<std::string, kslicer::DataMemberInfo>& a_members, std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers) : 
+                m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_patternImpl(a_codeInfo), m_usedMembers(a_members), m_auxContainers(a_auxContainers)
   { 
     
   }
@@ -170,6 +171,22 @@ public:
       // std::string objName   = GetRangeSourceCode(pTexName->getSourceRange(), m_compiler);     
       // 
       // if(fname == "sample" || fname == "Sample")
+    }
+
+    std::string setter, containerName;
+    if(kslicer::CheckSettersAccess(expr, &m_patternImpl, m_compiler, &setter, &containerName))
+    {
+      clang::QualType qt = expr->getType(); // 
+      kslicer::UsedContainerInfo container;
+      container.type     = qt.getAsString();
+      container.name     = setter + "_" + containerName;            
+      container.kind     = kslicer::GetKindOfType(qt, false);
+      container.isConst  = qt.isConstQualified();
+      container.isSetter = true;
+      container.setterPrefix = setter;
+      container.setterSuffix = containerName;
+      m_auxContainers[container.name] = container;
+      return true;
     }
 
     clang::ValueDecl* pValueDecl = expr->getMemberDecl();
@@ -200,11 +217,12 @@ private:
   const clang::SourceManager&    m_sm;
   kslicer::MainClassInfo&        m_patternImpl;
   std::unordered_map<std::string, kslicer::DataMemberInfo>& m_usedMembers; 
+  std::unordered_map<std::string, kslicer::UsedContainerInfo>& m_auxContainers;
 
 };
 
 std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMemberData(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMembers,
-                                                                                        MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
+                                                                                        std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers, MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
 {
   std::unordered_map<std::string, kslicer::DataMemberInfo> result;
   std::unordered_map<std::string, kslicer::FuncData>       allMembers;
@@ -217,7 +235,7 @@ std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMem
   std::queue<FuncData> functionsToProcess; 
   functionsToProcess.push(a_funcData);
 
-  DataExtractor visitor(a_compiler, a_codeInfo, result);
+  DataExtractor visitor(a_compiler, a_codeInfo, result, a_auxContainers);
 
   while(!functionsToProcess.empty())
   {
@@ -236,8 +254,7 @@ std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMem
         functionsToProcess.push(pNext->second);
     }
   }
-
-
+  
   return result;
 }
 
