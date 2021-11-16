@@ -236,18 +236,13 @@ bool kslicer::MainFunctionRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
 
-  if(m_pCodeInfo->IsKernel(fname))
+  if(m_pCodeInfo->IsKernel(fname) && WasNotRewrittenYet(f))
   {
     auto pKernel = m_kernels.find(fname);
     if(pKernel != m_kernels.end())
     {
       std::string callStr = MakeKernelCallCmdString(f);
-  
-      auto p2 = m_alreadyProcessedCalls.find(kslicer::GetHashOfSourceRange(f->getSourceRange()));
-      if(p2 == m_alreadyProcessedCalls.end())
-      {
-        m_rewriter.ReplaceText(f->getSourceRange(), callStr); // getExprLoc
-      }
+      m_rewriter.ReplaceText(f->getSourceRange(), callStr); // getExprLoc
     }
     else
     {
@@ -299,14 +294,14 @@ bool kslicer::MainFunctionRewriter::VisitIfStmt(IfStmt* ifExpr)
     
     // Get name of function
     const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
-    const DeclarationName dn      = dni.getName();
-    const std::string fname       = dn.getAsString();
+    const DeclarationName     dn  = dni.getName();
+    const std::string      fname  = dn.getAsString();
   
-    if(m_pCodeInfo->IsKernel(fname))
+    if(m_pCodeInfo->IsKernel(fname) && WasNotRewrittenYet(ifExpr))
     {
       std::string callStr = MakeKernelCallCmdString(f);
       m_rewriter.ReplaceText(ifExpr->getSourceRange(), callStr);
-      m_alreadyProcessedCalls.insert( kslicer::GetHashOfSourceRange(f->getSourceRange()) );
+      MarkRewritten(ifExpr);
     }
   }
 

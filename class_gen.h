@@ -39,6 +39,8 @@ namespace kslicer
     { 
       for(const auto& arg : a_args) 
         m_argsOfMainFunc[arg.name] = arg;
+
+      m_pRewrittenNodes = std::make_shared< std::unordered_set<uint64_t> > ();
     }
     
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
@@ -74,7 +76,19 @@ namespace kslicer
     std::unordered_map<std::string, InOutVarInfo>      m_argsOfMainFunc;
     MainFuncInfo& m_mainFunc;
 
-    std::unordered_set<uint64_t> m_alreadyProcessedCalls;
+    std::shared_ptr< std::unordered_set<uint64_t> > m_pRewrittenNodes;
+
+    bool WasNotRewrittenYet(const clang::Stmt* expr) const
+    {
+      if(expr == nullptr)
+        return true;
+      if(clang::isa<clang::NullStmt>(expr))
+        return true;
+      const auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+      return (m_pRewrittenNodes->find(exprHash) == m_pRewrittenNodes->end());
+    }
+
+    void MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, *m_pRewrittenNodes); }
 
   };
 
