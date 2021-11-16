@@ -47,6 +47,7 @@ namespace kslicer
     bool VisitCXXMemberCallExpr(CXXMemberCallExpr* f);
     bool VisitCallExpr(CallExpr* f);
     bool VisitIfStmt(IfStmt* ifExpr);
+    bool VisitMemberExpr(MemberExpr* expr);
   
     std::string                                              mainFuncCmdName;
     std::unordered_map<std::string, uint32_t>                dsIdBySignature;
@@ -89,6 +90,15 @@ namespace kslicer
     }
 
     void MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, *m_pRewrittenNodes); }
+
+    std::string RecursiveRewrite(const clang::Stmt* expr)
+    {
+      if(expr == nullptr)
+        return "";
+      MainFunctionRewriter rvCopy = *this;
+      rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
+      return m_rewriter.getRewrittenText(expr->getSourceRange());
+    }
 
   };
 

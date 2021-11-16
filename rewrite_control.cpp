@@ -13,9 +13,14 @@ bool kslicer::MainFunctionRewriter::VisitCXXMethodDecl(CXXMethodDecl* f)
     const DeclarationNameInfo dni = f->getNameInfo();
     const DeclarationName dn      = dni.getName();
     const std::string fname       = dn.getAsString();
-
-    mainFuncCmdName = fname + "Cmd";
-    m_rewriter.ReplaceText(dni.getSourceRange(), mainFuncCmdName);
+    
+    const auto exprHash = kslicer::GetHashOfSourceRange(dni.getSourceRange());
+    if(m_pRewrittenNodes->find(exprHash) == m_pRewrittenNodes->end())
+    {
+      mainFuncCmdName = fname + "Cmd";
+      m_rewriter.ReplaceText(dni.getSourceRange(), mainFuncCmdName);
+      m_pRewrittenNodes->insert(exprHash);
+    }
   }
 
   return true; // returning false aborts the traversal
@@ -97,8 +102,23 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
   }
   m_dsTagId++;
 
-  std::string textOfCall = GetRangeSourceCode(f->getSourceRange(), m_compiler);
-  std::string textOfArgs = textOfCall.substr( textOfCall.find("("));
+  //std::string textOfCall = GetRangeSourceCode(f->getSourceRange(), m_compiler);
+  //std::string textOfArgs = textOfCall.substr( textOfCall.find("("));
+  
+  std::stringstream argsOut;
+  argsOut << "(";
+  for(size_t i=0;i<f->getNumArgs();i++)
+  {
+    const Expr* currArgExpr = f->getArgs()[i];
+    //std::string text = GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler);
+    std::string text = RecursiveRewrite(currArgExpr);
+    argsOut << text.c_str();
+    if(i < f->getNumArgs()-1)
+      argsOut << ", ";
+  }
+  argsOut << ")";
+
+  std::string textOfArgs = argsOut.str();
 
   std::stringstream strOut;
   {
@@ -308,6 +328,26 @@ bool kslicer::MainFunctionRewriter::VisitIfStmt(IfStmt* ifExpr)
   return true;
 }
 
+bool kslicer::MainFunctionRewriter::VisitMemberExpr(MemberExpr* expr)
+{
+  if(!WasNotRewrittenYet(expr))
+    return true;
+
+  std::string setter, containerName;
+  if(CheckSettersAccess(expr, m_pCodeInfo, m_compiler, &setter, &containerName))
+  {
+    std::string name = setter + "Vulkan." + containerName;            
+    m_rewriter.ReplaceText(expr->getSourceRange(), name);
+    MarkRewritten(expr);
+  }
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 bool kslicer::IsTexture(clang::QualType a_qt)
 {
   if(a_qt->isReferenceType())
@@ -372,7 +412,6 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
         arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_POD;
         arg.kind    = DATA_KIND::KIND_POD;
       }
-      
     }
     else if(q->isPointerType() && text.find(".data()") != std::string::npos) // TODO: add check for reference, fo the case if we want to pas vectors by reference
     {

@@ -138,9 +138,8 @@ void kslicer::MainClassInfo::ProcessAllSetters(const std::unordered_map<std::str
 
       if(paramId < node->getNumParams()-1)
         strOutFD << ", ";
-      else
-        strOutFD << ")";   
     }
+    strOutFD << ")";
     
     std::string finalFuncText = strOutFD.str() + rewrittenBody;
     a_rewrittenFuncs.push_back(finalFuncText);
