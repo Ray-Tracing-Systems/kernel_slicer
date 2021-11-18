@@ -186,8 +186,10 @@ public:
     if(func_decl && kern_call && kern) 
     {
       const auto pClass = func_decl->getParent();
+      std::string kName = kern->getNameAsString();
       assert(pClass != nullptr);
-      if(pClass->getName().str() == m_mainClassName && m_codeInfo.IsKernel(kern->getNameAsString()))
+      //std::cout << "MainFuncSeeker: " << kName.c_str() << "\t class name = " << m_mainClassName.c_str() << " | " << pClass->getName().str() << std::endl;
+      if(pClass->getName().str() == m_mainClassName && m_codeInfo.IsKernel(kName))
       {
         //std::cout << func_decl->getNameAsString() << " --> " << kern->getNameAsString() << std::endl;
         auto p = m_mainFunctions.find(func_decl->getNameAsString());

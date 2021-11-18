@@ -850,7 +850,14 @@ std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
     ProcessVectorTypesString(result);
     break;
     case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
-    result = typeInCL + " " + a_decl.name + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    if(a_decl.isArray)
+    {
+      std::stringstream sizeStr;
+      sizeStr << "[" << a_decl.arraySize << "]";
+      result = typeInCL + " " + a_decl.name + sizeStr.str() + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    }
+    else
+      result = typeInCL + " " + a_decl.name + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
     ProcessVectorTypesString(result);
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:

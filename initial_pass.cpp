@@ -139,6 +139,8 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
       return true;   
   }
 
+  //const clang::QualType qt = 
+
   kslicer::DeclInClass decl;
   if(isa<RecordDecl>(type))
   {
@@ -150,6 +152,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
     decl.order     = m_currId;
     decl.kind      = kslicer::DECL_IN_CLASS::DECL_STRUCT;
     decl.extracted = true;
+    
     if(decl.name != m_codeInfo.mainClassName && 
        decl.name != std::string("class ") + m_codeInfo.mainClassName && 
        decl.name != std::string("struct ") + m_codeInfo.mainClassName)
@@ -203,12 +206,13 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitVarDecl(VarDecl* pTargetVar)
   if(!NeedToProcessDeclInFile(FileName))
     return true;
 
-  kslicer::DeclInClass decl;
+  const clang::QualType qt = pTargetVar->getType();
 
+  kslicer::DeclInClass decl;
   if(pTargetVar->isConstexpr())
   {
     decl.name      = pTargetVar->getNameAsString();
-    decl.type      = pTargetVar->getType().getAsString(); 
+    decl.type      = qt.getAsString(); 
     auto posOfDD = decl.type.find("::");
     if(posOfDD != std::string::npos)
       decl.type = decl.type.substr(posOfDD+2);
@@ -218,6 +222,19 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitVarDecl(VarDecl* pTargetVar)
     decl.order     = m_currId;
     decl.kind      = kslicer::DECL_IN_CLASS::DECL_CONSTANT;
     decl.extracted = true;
+
+    if(qt->isConstantArrayType())
+    {
+      auto arrayType = dyn_cast<ConstantArrayType>(qt.getTypePtr()); 
+      assert(arrayType != nullptr);
+      QualType qtOfElem = arrayType->getElementType(); 
+      decl.isArray   = true;
+      decl.arraySize = arrayType->getSize().getLimitedValue();      
+      decl.type      = qtOfElem.getAsString();
+      //auto typeInfo2 = m_astContext.getTypeInfo(qtOfElem);
+      //varInfo.sizeInBytesOfArrayElement = typeInfo2.Width / 8;
+    }
+
     m_transferredDecl[decl.name] = decl;
     m_currId++;
   }

@@ -993,7 +993,7 @@ int main(int argc, const char **argv)
       bool found = false;
       for(const auto& currDecl : generalDecls)
       {
-        if(currDecl.name == usedDecl.name && currDecl.type == usedDecl.type)
+        if(currDecl.name == usedDecl.name)
         {
           found = true;
           break;
@@ -1007,9 +1007,9 @@ int main(int argc, const char **argv)
   auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
   inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo);
 
-  std::ofstream file(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_ubo.json");
-  file << std::setw(2) << json; //
-  file.close();
+  //std::ofstream file(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_ubo.json");
+  //file << std::setw(2) << json; //
+  //file.close();
 
   {
     std::string rawname        = GetFolderPath(inputCodeInfo.mainClassFileName);
