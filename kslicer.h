@@ -430,6 +430,8 @@ namespace kslicer
     uint32_t           order = 0; ///<! to sort them before put in generated kernels source code
     DECL_IN_CLASS      kind  = DECL_IN_CLASS::DECL_UNKNOWN;
     bool               extracted = false;
+    bool               isArray   = false;
+    uint32_t           arraySize = 0;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
