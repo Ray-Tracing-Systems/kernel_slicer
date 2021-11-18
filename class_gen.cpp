@@ -322,7 +322,9 @@ std::vector<kslicer::ArgFinal> kslicer::MainClassInfo::GetKernelCommonArgs(const
       else
       {
         arg2.type             = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
-        arg2.isDefinedInClass = (arg.type.find(std::string("class ")  + mainClassName) != std::string::npos || arg.type.find(std::string("struct ") + mainClassName) != std::string::npos);
+        arg2.isDefinedInClass = (arg.type.find(std::string("class ")  + mainClassName) != std::string::npos || 
+                                 arg.type.find(std::string("struct ") + mainClassName) != std::string::npos || 
+                                 arg.type.find(mainClassName) != std::string::npos);
         arg2.isThreadFlags    = arg.isThreadFlags;
       }
       args.push_back(arg2);

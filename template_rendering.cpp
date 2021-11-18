@@ -174,11 +174,9 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
 static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies, 
                                      const clang::CompilerInstance& compiler)
 {
-  json data;
-  data = std::vector<std::string>();
+  json data = std::vector<std::string>();
   for(const auto& p : hierarchies)
     data.push_back(PutHierarchyToJson(p.second, compiler));
-
   return data;
 }
 
@@ -596,8 +594,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     {
       const auto pos1 = arg.type.find(std::string("class ")  + a_classInfo.mainClassName);
       const auto pos2 = arg.type.find(std::string("struct ") + a_classInfo.mainClassName);
-      if(arg.isThreadID || arg.isLoopSize || arg.IsUser() ||     // exclude TID and loopSize args bindings
-         pos1 != std::string::npos || pos2 != std::string::npos) // exclude special case of passing MainClass to virtual kernels
+      const auto pos3 = arg.type.find(a_classInfo.mainClassName);
+      if(arg.isThreadID || arg.isLoopSize || arg.IsUser() ||                                  // exclude TID and loopSize args bindings
+         pos1 != std::string::npos || pos2 != std::string::npos || pos3 != std::string::npos) // exclude special case of passing MainClass to virtual kernels
         continue;
       
       json argData;
@@ -1007,6 +1006,7 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::ve
   data["MainClassName"]   = a_classInfo.mainClassName;
   data["UBOStructFields"] = std::vector<std::string>();
   data["ShaderGLSL"]      = a_classInfo.pShaderCC->IsGLSL();
+  data["Hierarchies"]     = PutHierarchiesDataToJson(a_classInfo.GetDispatchingHierarchies(), compiler);
 
   for(auto member : podMembers)
   {
@@ -1038,9 +1038,8 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::ve
     }
 
     assert(sizeO == sizeA);
-   
-   data["Hierarchies"] = PutHierarchiesDataToJson(a_classInfo.GetDispatchingHierarchies(), compiler);
   }
+
 
   return data;
 }

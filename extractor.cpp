@@ -62,7 +62,9 @@ public:
       const auto pType    = recordDecl->getTypeForDecl();     
       const auto qt       = pType->getLocallyUnqualifiedSingleStepDesugaredType();
       const auto typeName = qt.getAsString();
-      if(typeName != std::string("class ") + m_patternImpl.mainClassName && typeName != std::string("struct ") + m_patternImpl.mainClassName)
+      if(typeName != std::string("class ") + m_patternImpl.mainClassName && 
+         typeName != std::string("struct ") + m_patternImpl.mainClassName && 
+         typeName != m_patternImpl.mainClassName)
         return true;
     }
 

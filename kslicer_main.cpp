@@ -986,9 +986,30 @@ int main(int argc, const char **argv)
 
   // finally generate kernels
   //
-  generalDecls.insert( generalDecls.end(), usedDecls.begin(), usedDecls.end());
+  // generalDecls.insert( generalDecls.end(), usedDecls.begin(), usedDecls.end());
+  {
+    for(const auto& usedDecl : usedDecls)
+    {
+      bool found = false;
+      for(const auto& currDecl : generalDecls)
+      {
+        if(currDecl.name == usedDecl.name && currDecl.type == usedDecl.type)
+        {
+          found = true;
+          break;
+        }
+      }
+      if(!found)
+        generalDecls.push_back(usedDecl);
+    }
+  }
+  
   auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
   inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo);
+
+  std::ofstream file(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_ubo.json");
+  file << std::setw(2) << json; //
+  file.close();
 
   {
     std::string rawname        = GetFolderPath(inputCodeInfo.mainClassFileName);
@@ -1001,8 +1022,5 @@ int main(int argc, const char **argv)
   
   kslicer::ApplyJsonToTemplate("templates/ubo_def.h",  uboOutName, jsonUBO); // need to call it after "GenerateShaders"
 
-  //std::ofstream file(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_kernels.json");
-  //file << std::setw(2) << json; //
-  //file.close();
   return 0;
 }

@@ -82,8 +82,7 @@ bool kslicer::CheckSettersAccess(const clang::MemberExpr* expr, const MainClassI
   auto p = a_codeInfo->m_setterVars.find(debugText2);
   if(p == a_codeInfo->m_setterVars.end())
     return false;
-  //if(typeName1 != p->second && std::string("struct ") + typeName1 != p->second && std::string("class ") + typeName1 != p->second)
-  //  return false;
+
   if(setterS != nullptr)
     (*setterS) = debugText2;
   if(setterM != nullptr)

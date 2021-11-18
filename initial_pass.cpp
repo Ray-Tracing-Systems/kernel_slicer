@@ -150,8 +150,13 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
     decl.order     = m_currId;
     decl.kind      = kslicer::DECL_IN_CLASS::DECL_STRUCT;
     decl.extracted = true;
-    m_transferredDecl[decl.name] = decl;
-    m_currId++;
+    if(decl.name != m_codeInfo.mainClassName && 
+       decl.name != std::string("class ") + m_codeInfo.mainClassName && 
+       decl.name != std::string("struct ") + m_codeInfo.mainClassName)
+    {
+      m_transferredDecl[decl.name] = decl;
+      m_currId++;
+    }
   }
   else if(isa<TypedefDecl>(type))
   {
