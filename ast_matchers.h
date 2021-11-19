@@ -436,6 +436,19 @@ namespace kslicer
             decl.srcHash  = kslicer::GetHashOfSourceRange(decl.srcRange); // (!!!) DON'T WORK (!!!) // NEED SECOND PASS !!!
             decl.order    = m_currId;
             decl.kind     = kslicer::DECL_IN_CLASS::DECL_CONSTANT;
+            
+            if(typePtr->isConstantArrayType())
+            {
+              auto arrayType = dyn_cast<ConstantArrayType>(typePtr); 
+              assert(arrayType != nullptr);
+              QualType qtOfElem = arrayType->getElementType(); 
+              decl.isArray   = true;
+              decl.arraySize = arrayType->getSize().getLimitedValue();      
+              decl.type      = qtOfElem.getAsString();
+              //auto typeInfo2 = m_astContext.getTypeInfo(qtOfElem);
+              //varInfo.sizeInBytesOfArrayElement = typeInfo2.Width / 8;
+            }
+
             if(foundDecl.find(decl.name) == foundDecl.end())
             {
               foundDecl[decl.name] = decl;
