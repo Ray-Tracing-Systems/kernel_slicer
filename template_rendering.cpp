@@ -403,6 +403,36 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       data["SamplerMembers"].push_back(member.second.name);
   }
 
+  data["Cconstructors"] = std::vector<std::string>();
+  for(auto ctor : a_classInfo.ctors)
+  {
+    std::string fNameGented = ctor->getNameInfo().getName().getAsString() + "_Generated(";
+    std::string fNameOrigin = ctor->getNameInfo().getName().getAsString() + "(";
+
+    for(unsigned i=0;i<ctor->getNumParams();i++)
+    {
+      auto pParam = ctor->getParamDecl(i);
+      auto qt     = pParam->getType();
+      
+      fNameGented += qt.getAsString() + " " + pParam->getNameAsString();
+      fNameOrigin += pParam->getNameAsString();
+    
+      if(i < ctor->getNumParams()-1)
+      {
+        fNameOrigin += ", ";
+        fNameGented += ", ";
+      }
+    }
+ 
+    fNameOrigin += ")";
+    fNameGented += ")";
+    
+    if(ctor->getNumParams() == 0)
+      data["Constructors"].push_back(fNameGented + " {}");
+    else
+      data["Constructors"].push_back(fNameGented + " : " + fNameOrigin + "{}");
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

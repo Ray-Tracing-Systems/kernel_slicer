@@ -23,7 +23,9 @@ class {{MainClassName}}_Generated : public {{MainClassName}}
 {
 public:
 
-  {{MainClassName}}_Generated() {}
+  {% for ctorDecl in Constructors %}
+  {{ctorDecl}}
+  {% endfor %}
   virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount);
 
 ## for MainFunc in MainFunctions
@@ -66,6 +68,10 @@ public:
     UpdateVectorMembers(a_pCopyEngine);
     UpdateTextureMembers(a_pCopyEngine);
   }
+  
+  virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
+  virtual void UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
+  virtual void UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
 
   {% for MainFunc in MainFunctions %}  
   virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}};
@@ -100,10 +106,6 @@ protected:
   virtual void InitAllGeneratedDescriptorSets_{{MainFunc.Name}}();
 ## endfor
 
-  virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
-  virtual void UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
-  virtual void UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
-
   virtual void AllocMemoryForInternalBuffers(const std::vector<VkBuffer>& a_buffers);
   virtual void AssignBuffersToMemory(const std::vector<VkBuffer>& a_buffers, VkDeviceMemory a_mem);
 
@@ -111,6 +113,7 @@ protected:
   
   virtual void FreeMemoryForInternalBuffers();
   virtual void FreeMemoryForMemberBuffersAndImages();
+  virtual std::string AlterShaderPath(const char* in_shaderPath) { return std::string(in_shaderPath); }
 
   {{PlainMembersUpdateFunctions}}
   {{VectorMembersUpdateFunctions}}

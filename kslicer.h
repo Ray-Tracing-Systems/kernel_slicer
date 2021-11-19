@@ -743,6 +743,7 @@ namespace kslicer
     std::string mainClassFileName;
     std::string mainClassFileInclude;
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
+    std::vector<const clang::CXXConstructorDecl* > ctors;
 
     std::vector<std::string> includeToShadersFolders;
     std::vector<std::string> includeCPPFolders;  

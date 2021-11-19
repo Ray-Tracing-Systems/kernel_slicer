@@ -287,12 +287,21 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
 
     auto attr = kslicer::GetMethodAttr(f, m_compiler);
 
-    if(m_codeInfo.IsKernel(fname)) // || attr == CPP11_ATTR::ATTR_KERNEL // TODO: fix this
+    if(m_codeInfo.IsKernel(fname)) // 
     {
-      if(thisTypeName == std::string("class ") + MAIN_CLASS_NAME || thisTypeName == std::string("struct ") + MAIN_CLASS_NAME)
+      if(thisTypeName == std::string("class ") + MAIN_CLASS_NAME || thisTypeName == std::string("struct ") + MAIN_CLASS_NAME || thisTypeName == MAIN_CLASS_NAME)
       {
         ProcessKernelDef(f, functions, MAIN_CLASS_NAME); // MAIN_CLASS_NAME::f ==> functions
         std::cout << "  found member kernel " << MAIN_CLASS_NAME.c_str() << "::" << fname.c_str() << std::endl;
+        if(ctors.size() == 0)
+        {
+          clang::CXXRecordDecl* pClasDecl =	f->getParent();
+          for(auto ctor : pClasDecl->ctors()) 
+          {
+            if(!ctor->isCopyOrMoveConstructor())
+              ctors.push_back(ctor);
+          }
+        }
       }
       else // extract other kernels and classes
       {
