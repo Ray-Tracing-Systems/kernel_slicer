@@ -350,11 +350,15 @@ int main(int argc, const char **argv)
   llvm::ArrayRef<const char*> args(argsForClang.data(), argsForClang.data() + argsForClang.size());
 
   // Make sure it exists
+  #ifndef WIN32
   if (stat(fileName.c_str(), &sb) == -1)
   {
     std::cout << "[main]: error, input file " << fileName.c_str() << " not found!" << std::endl;
     return 0;
   }
+  #else
+  // TODO: implement for windows
+  #endif
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -466,8 +470,10 @@ int main(int argc, const char **argv)
   int argSize = argv2.size();
 
   llvm::cl::OptionCategory GDOpts("global-detect options");
-  clang::tooling::CommonOptionsParser OptionsParser(argSize, argv2.data(), GDOpts);
-  clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
+  //clang::tooling::CommonOptionsParser OptionsParser(argSize, argv2.data(), GDOpts);
+  //clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
+  auto OptionsParser = clang::tooling::CommonOptionsParser::create(argSize, argv2.data(), GDOpts);
+  clang::tooling::ClangTool Tool(OptionsParser->getCompilations(), OptionsParser->getSourcePathList());
 
 
   // (0) find all "Main" functions, a functions which call kernels. Kernels are also listed for each mainFunc;

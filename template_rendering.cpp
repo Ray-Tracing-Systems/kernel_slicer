@@ -12,6 +12,10 @@
 
 #include <algorithm>
 
+#ifdef WIN32
+typedef unsigned int uint;
+#endif
+
 // Just for convenience
 using namespace inja;
 using json = nlohmann::json;
