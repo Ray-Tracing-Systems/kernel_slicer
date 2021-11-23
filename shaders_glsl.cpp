@@ -264,6 +264,7 @@ public:
   bool VisitUnaryOperator_Impl(clang::UnaryOperator* expr)   override;
   bool VisitDeclStmt_Impl(clang::DeclStmt* decl)             override;
   bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)  override;
+  bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
 
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
   IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
@@ -477,6 +478,29 @@ bool GLSLFunctionRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExp
       MarkRewritten(right);
       break;
     }
+  }
+
+  return true;
+}
+
+bool GLSLFunctionRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr)
+{
+  if(!clang::isa<clang::UnaryExprOrTypeTraitExpr>(szOfExpr))
+    return true;
+  const clang::UnaryExprOrTypeTraitExpr* SizeOf = clang::dyn_cast<clang::UnaryExprOrTypeTraitExpr>(szOfExpr);
+  if(SizeOf->getKind() != clang::UETT_SizeOf)
+    return true;
+
+  clang::QualType qt = SizeOf->getTypeOfArgument();
+  auto typeInfo      = m_compiler.getASTContext().getTypeInfo(qt);
+  auto sizeInBytes   = typeInfo.Width / 8;
+  
+  if(WasNotRewrittenYet(szOfExpr))
+  {
+    std::stringstream str;
+    str << sizeInBytes;
+    m_rewriter.ReplaceText(szOfExpr->getSourceRange(), str.str()); 
+    MarkRewritten(szOfExpr);
   }
 
   return true;
@@ -915,7 +939,7 @@ public:
   bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr) override;
   bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
   bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) override;
-
+  bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
 
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override { return m_glslRW.VectorTypeContructorReplace(fname, callText); }
 
@@ -1065,6 +1089,14 @@ bool GLSLKernelRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr*
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
   m_glslRW.VisitArraySubscriptExpr_Impl(arrayExpr);
+  return true;
+}
+
+bool GLSLKernelRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) 
+{
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return true; 
+  m_glslRW.VisitUnaryExprOrTypeTraitExpr_Impl(szOfExpr);
   return true;
 }
 
