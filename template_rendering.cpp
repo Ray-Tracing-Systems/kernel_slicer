@@ -403,7 +403,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       data["SamplerMembers"].push_back(member.second.name);
   }
 
-  data["Cconstructors"] = std::vector<std::string>();
+  data["Constructors"] = std::vector<std::string>();
   for(auto ctor : a_classInfo.ctors)
   {
     std::string fNameGented = ctor->getNameInfo().getName().getAsString() + "_Generated(";
