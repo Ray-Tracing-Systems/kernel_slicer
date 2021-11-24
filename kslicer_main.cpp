@@ -874,7 +874,7 @@ int main(int argc, const char **argv)
     kernel.warpSize = warpSize;
   }
  
-  std::unordered_map<std::string, KernelInfo> megakernelsByName;
+  auto& megakernelsByName = inputCodeInfo.megakernelsByName;
   if(inputCodeInfo.megakernelRTV) // join all kernels in one for each CF
   {
     for(auto& cf : inputCodeInfo.mainFunc)

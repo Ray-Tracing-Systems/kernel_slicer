@@ -84,3 +84,32 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
 
   return resVars;
 }
+
+
+std::unordered_map<std::string, kslicer::KernelInfo>::iterator kslicer::MainClassInfo::FindKernelByName(const std::string& a_name)
+{
+  const auto pFoundKernel = kernels.find(a_name);
+  if(pFoundKernel != kernels.end())
+    return pFoundKernel;
+  
+  const auto pFoundKernel2 = megakernelsByName.find(a_name);
+  if(pFoundKernel2 != megakernelsByName.end())
+    return pFoundKernel2;
+  
+  std::cout << "[FindKernelByName]: kernel " << a_name.c_str() << " is not found" << std::endl;
+  return pFoundKernel2;
+}
+
+std::unordered_map<std::string, kslicer::KernelInfo>::const_iterator kslicer::MainClassInfo::FindKernelByName(const std::string& a_name) const
+{
+  const auto pFoundKernel = kernels.find(a_name);
+  if(pFoundKernel != kernels.end())
+    return pFoundKernel;
+  
+  const auto pFoundKernel2 = megakernelsByName.find(a_name);
+  if(pFoundKernel2 != megakernelsByName.end())
+    return pFoundKernel2;
+  
+  std::cout << "[FindKernelByName]: kernel " << a_name.c_str() << " is not found" << std::endl;
+  return pFoundKernel2;
+}

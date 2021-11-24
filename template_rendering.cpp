@@ -850,7 +850,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(size_t i=mainFunc.startDSNumber; i<mainFunc.endDSNumber; i++)
     {
       auto& dsArgs               = a_classInfo.allDescriptorSetsInfo[i];
-      const auto pFoundKernel    = a_classInfo.kernels.find(dsArgs.originKernelName);
+      const auto pFoundKernel    = a_classInfo.FindKernelByName(dsArgs.originKernelName);
       const bool handMadeKernels = (pFoundKernel == a_classInfo.kernels.end());
       
       json local;
