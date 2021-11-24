@@ -202,7 +202,7 @@ public:
                           const clang::Module *Imported,
                           clang::SrcMgr::CharacteristicKind FileType) override
   {
-    if(!IsAngled)
+    if(!IsAngled && File != nullptr)
     {
       assert(File != nullptr);
       std::string filename = std::string(RelativePath.begin(), RelativePath.end()); 

@@ -24,6 +24,11 @@
 #ifndef uint32_t
 #define uint32_t uint
 #endif
+#define MAXFLOAT 1e37f
+#define MINFLOAT 1e37f
+#define FLT_MAX 1e37f
+#define FLT_MIN -1e37f
+#define FLT_EPSILON 1e-6f;
 ## for Decl in ClassDecls  
 {{Decl}}
 ## endfor

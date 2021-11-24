@@ -1,0 +1,4 @@
+#ifdef CFLOAT_GUARDIAN
+#define CFLOAT_GUARDIAN
+#include "float.h"
+#endif
