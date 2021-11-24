@@ -24,16 +24,8 @@ using LiteMath::uint4;
 class TestClass_GPU : public TestClass_Generated
 {
 public:
-  TestClass_GPU() 
-  {
-  
-  }
-  
-  ~TestClass_GPU()
-  {
-    
-  }
-  
+
+  TestClass_GPU(int a_maxThreads) : TestClass_Generated(a_maxThreads){} 
 };
 
 struct RTXDeviceFeatures
@@ -144,7 +136,7 @@ void test_class_gpu()
 
   auto pCopyHelper = std::make_shared<vk_utils::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);\
   //auto pScnMgr     = std::make_shared<SceneManager>(device, physicalDevice, queueComputeFID, queueComputeFID, true);
-  auto pGPUImpl    = std::make_shared<TestClass_GPU>();               // !!! USING GENERATED CODE !!! 
+  auto pGPUImpl    = std::make_shared<TestClass_GPU>(WIN_WIDTH*WIN_HEIGHT);  // !!! USING GENERATED CODE !!! 
   
   pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT); // !!! USING GENERATED CODE !!!                        
   pGPUImpl->LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.vsgf");

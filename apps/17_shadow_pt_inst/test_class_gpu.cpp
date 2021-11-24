@@ -25,6 +25,7 @@ using LiteMath::uint4;
 class TestClass_GPU : public TestClass_Generated
 {
 public:
+   TestClass_GPU(int a_maxThreads) : TestClass_Generated(a_maxThreads){}
 
    VkBufferUsageFlags GetAdditionalFlagsForUBO() const override 
    {
@@ -145,7 +146,7 @@ void test_class_gpu()
 
   auto pCopyHelper = std::make_shared<vk_utils::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);\
   //auto pScnMgr     = std::make_shared<SceneManager>(device, physicalDevice, queueComputeFID, queueComputeFID, true);
-  auto pGPUImpl    = std::make_shared<TestClass_GPU>();                      // !!! USING GENERATED CODE !!! 
+  auto pGPUImpl    = std::make_shared<TestClass_GPU>(WIN_WIDTH*WIN_HEIGHT);  // !!! USING GENERATED CODE !!! 
   
   pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT); // !!! USING GENERATED CODE !!!                        
   pGPUImpl->LoadScene("/home/frol/PROG/HydraRepos/HydraCore/hydra_app/tests/test_42/statex_00001.xml");

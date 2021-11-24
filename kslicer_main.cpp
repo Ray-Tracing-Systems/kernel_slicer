@@ -49,6 +49,7 @@ using namespace clang;
   #include <direct.h>     // for windows mkdir
 #else
   #include <sys/stat.h>   // for linux mkdir
+  #include <unistd.h>     // for getcwd
 #endif
 
 using kslicer::KernelInfo;
@@ -491,11 +492,10 @@ int main(int argc, const char **argv)
   int argSize = argv2.size();
 
   llvm::cl::OptionCategory GDOpts("global-detect options");
-  //clang::tooling::CommonOptionsParser OptionsParser(argSize, argv2.data(), GDOpts);
-  //clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
-  auto OptionsParser = clang::tooling::CommonOptionsParser::create(argSize, argv2.data(), GDOpts);
-  clang::tooling::ClangTool Tool(OptionsParser->getCompilations(), OptionsParser->getSourcePathList());
-
+  clang::tooling::CommonOptionsParser OptionsParser(argSize, argv2.data(), GDOpts);                         // clang 12
+  clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());       // clang 12
+  //auto OptionsParser = clang::tooling::CommonOptionsParser::create(argSize, argv2.data(), GDOpts);        // clang 14
+  //clang::tooling::ClangTool Tool(OptionsParser->getCompilations(), OptionsParser->getSourcePathList());   // clang 14
 
   // (0) find all "Main" functions, a functions which call kernels. Kernels are also listed for each mainFunc;
   //
