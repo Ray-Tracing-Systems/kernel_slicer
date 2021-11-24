@@ -967,6 +967,7 @@ protected:
   bool IsGLSL() const override { return true; }
 
   void RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, clang::CXXOperatorCallExpr* a_assignOp);
+  void RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, clang::BinaryOperator* a_assignOp); 
   std::unordered_set<std::string> m_userArgs;
 };
 
@@ -1197,6 +1198,62 @@ void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, 
   }
 }
 
+void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, clang::BinaryOperator* a_assignOp)
+{
+  if(!WasNotRewrittenYet(expr))
+    return;
+
+  if(a_assignOp != nullptr && !WasNotRewrittenYet(expr))
+    return;
+
+  const clang::QualType leftType = expr->getArg(0)->getType(); 
+  if(leftType->isPointerType()) // buffer ? --> ignore
+    return;
+  
+  if(!kslicer::IsTexture(leftType))
+    return;
+
+  std::string objName = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getExprLoc()), m_compiler);
+
+  // (1) process if member access
+  //
+  bool shouldRewrite = false;
+
+  auto pMember = m_codeInfo->allDataMembers.find(objName);
+  if(pMember != m_codeInfo->allDataMembers.end())
+    shouldRewrite = true;
+
+  // (2) process if kernel argument access
+  //
+  for(const auto& arg : m_currKernel.args)
+  {
+    if(arg.name == objName)
+    {
+      shouldRewrite = true;
+      break;
+    }
+  }
+
+  // (3) rewrite if do needed
+  //
+  if(shouldRewrite)
+  {
+    std::string indexText = RecursiveRewrite(expr->getArg(1));
+    if(a_assignOp != nullptr && WasNotRewrittenYet(a_assignOp)) // write 
+    {
+      std::string assignExprText = RecursiveRewrite(a_assignOp->getRHS());
+      std::string result         = std::string("imageStore") + "(" + objName + ", " + indexText + ", " + assignExprText + ")";
+      m_rewriter.ReplaceText(a_assignOp->getSourceRange(), result);
+      MarkRewritten(a_assignOp);
+    }
+    else if(WasNotRewrittenYet(expr))                           // read
+    {
+      m_rewriter.ReplaceText(expr->getSourceRange(), std::string("imageLoad") + "(" + objName + ", " + indexText + ")");
+      MarkRewritten(expr);
+    }
+  }
+}
+
 bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
@@ -1224,7 +1281,7 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
   }
   else if(op == "]" || op == "[" || op == "[]")
   {
-    RewriteTextureAccess(expr, nullptr);
+    RewriteTextureAccess(expr, (clang::CXXOperatorCallExpr*)nullptr);
   }
   else
     return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr);
@@ -1322,6 +1379,28 @@ bool GLSLKernelRewriter::VisitCompoundAssignOperator_Impl(clang::CompoundAssignO
 
 bool GLSLKernelRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr)
 {
+  if(m_infoPass) // don't have to rewrite during infoPass  
+    return KernelRewriter::VisitBinaryOperator_Impl(expr); 
+  
+  std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler); 
+
+  if(expr->isAssignmentOp())
+  {
+    clang::Expr* left = expr->getLHS(); 
+    if(clang::isa<clang::CXXOperatorCallExpr>(left))
+    {
+      clang::CXXOperatorCallExpr* leftOp = clang::dyn_cast<clang::CXXOperatorCallExpr>(left);
+      std::string op2 = kslicer::GetRangeSourceCode(clang::SourceRange(leftOp->getOperatorLoc()), m_compiler);  
+      if((op2 == "]" || op2 == "[" || op2 == "[]") && WasNotRewrittenYet(expr))
+        RewriteTextureAccess(leftOp, expr);
+    }
+    return true;
+  }
+  //else if(op == "]" || op == "[" || op == "[]")
+  //{
+  //  RewriteTextureAccess(expr, (clang::BinaryOperator*)nullptr);
+  //}
+  
   return KernelRewriter::VisitBinaryOperator_Impl(expr); 
 }
 
