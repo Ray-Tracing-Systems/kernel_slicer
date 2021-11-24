@@ -22,7 +22,13 @@ using json = nlohmann::json;
 
 std::string GetFolderPath(const std::string& a_filePath)
 {
-  size_t lastindex = a_filePath.find_last_of("/"); 
+  #ifdef WIN32
+  const std::string slash = "\\";
+  #else
+  const std::string slash = "/";
+  #endif
+
+  size_t lastindex = a_filePath.find_last_of(slash); 
   assert(lastindex != std::string::npos);   
   return a_filePath.substr(0, lastindex); 
 }
@@ -35,6 +41,12 @@ void MakeAbsolutePathRelativeTo(std::string& a_filePath, const std::string& a_fo
 
 void kslicer::PrintVulkanBasicsFile(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo)
 {
+  #ifdef WIN32
+  const std::string slash = "\\";
+  #else
+  const std::string slash = "/";
+  #endif
+
   json data;
   inja::Environment env;
   inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());
@@ -42,7 +54,7 @@ void kslicer::PrintVulkanBasicsFile(const std::string& a_declTemplateFilePath, c
   
   std::string folderPath = GetFolderPath(a_classInfo.mainClassFileName);
 
-  std::ofstream fout(folderPath + "/vulkan_basics.h");
+  std::ofstream fout(folderPath + slash + "vulkan_basics.h");
   fout << result.c_str() << std::endl;
   fout.close();
 }

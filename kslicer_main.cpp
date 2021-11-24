@@ -45,6 +45,7 @@ using namespace clang;
 #include "template_rendering.h"
 
 #ifdef WIN32
+  #include <windows.h>    // for GetCurrentDirectoryW
   #include <direct.h>     // for windows mkdir
 #else
   #include <sys/stat.h>   // for linux mkdir
@@ -260,6 +261,18 @@ void ReadThreadsOrderFromStr(const std::string& threadsOrderStr, uint32_t  threa
 
 int main(int argc, const char **argv)
 {
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  #ifdef WIN32
+  wchar_t NPath[512];
+  GetCurrentDirectoryW(512, NPath);
+  std::wcout << L"[main]: curr_dir = " << NPath << std::endl;
+  #else
+  char cwd[1024];
+  if (getcwd(cwd, sizeof(cwd)) != nullptr)
+    std::cout << "[main]: curr_dir = " << cwd << std::endl;
+  #endif
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   struct stat sb;
 
   if (argc < 2)
@@ -357,7 +370,15 @@ int main(int argc, const char **argv)
     return 0;
   }
   #else
-  // TODO: implement for windows
+  {
+    std::ifstream fin(fileName.c_str());
+    if(!fin.is_open())
+    {
+      std::cout << "[main]: error, input file " << fileName.c_str() << " not found!" << std::endl;
+      return 0;
+    }
+    fin.close();
+  }
   #endif
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

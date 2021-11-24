@@ -17,10 +17,18 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
 {
   const auto& mainClassFileName       = a_codeInfo->mainClassFileName;
   const auto& includeToShadersFolders = a_codeInfo->includeToShadersFolders;
+  
+  #ifdef WIN32
+  const std::string slash = "\\";
+  const std::string scriptName = "build.bat";
+  #else
+  const std::string slash = "/";
+  const std::string scriptName = "build.sh";
+  #endif
 
   std::string folderPath = GetFolderPath(mainClassFileName);
-  std::string shaderPath = folderPath + "/" + this->ShaderFolder();
-  std::string incUBOPath = folderPath + "/include";
+  std::string shaderPath = folderPath + slash + this->ShaderFolder();
+  std::string incUBOPath = folderPath + slash + "include";
   #ifdef WIN32
   mkdir(shaderPath.c_str());
   mkdir(incUBOPath.c_str());
@@ -31,13 +39,13 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   
   // generate header for all used functions in GLSL code
   //
-  kslicer::ApplyJsonToTemplate("templates_glsl/common_generated.h", shaderPath + "/common_generated.h", a_kernelsJson);  
+  kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "common_generated.h", shaderPath + slash + "common_generated.h", a_kernelsJson);  
   
   // now generate all glsl shaders
   //
-  const std::string templatePath       = a_codeInfo->megakernelRTV ? "templates_glsl/generated_mega.glsl" : "templates_glsl/generated.glsl";
-  const std::string templatePathUpdInd = "templates_glsl/update_indirect.glsl";
-  const std::string templatePathRedFin = "templates_glsl/reduction_finish.glsl";
+  const std::string templatePath       = a_codeInfo->megakernelRTV ? "templates_glsl" + slash + "generated_mega.glsl" : "templates_glsl" + slash + "generated.glsl";
+  const std::string templatePathUpdInd = "templates_glsl" + slash + "update_indirect.glsl";
+  const std::string templatePathRedFin = "templates_glsl" + slash + "reduction_finish.glsl";
   
   nlohmann::json copy, kernels;
   for (auto& el : a_kernelsJson.items())
@@ -49,8 +57,9 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
       copy[el.key()] = a_kernelsJson[el.key()];
   }
   
+  //std::cout << "shaderPath = " << shaderPath.c_str() << std::endl;
     
-  std::ofstream buildSH(shaderPath + "/build.sh");
+  std::ofstream buildSH(shaderPath + slash + scriptName);
   buildSH << "#!/bin/sh" << std::endl;
   for(auto& kernel : kernels.items())
   {
@@ -59,17 +68,17 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     
     std::string kernelName  = std::string(kernel.value()["Name"]);
     std::string outFileName = kernelName + ".comp";
-    std::string outFilePath = shaderPath + "/" + outFileName;
+    std::string outFilePath = shaderPath + slash + outFileName;
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
     buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
     for(auto folder : includeToShadersFolders)
      buildSH << "-I" << folder.c_str() << " ";
     buildSH << std::endl;
-    
+
     if(kernel.value()["IsIndirect"])
     {
       outFileName = kernelName + "_UpdateIndirect.comp";
-      outFilePath = shaderPath + "/" + outFileName;
+      outFilePath = shaderPath + slash + outFileName;
       kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
       buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
       for(auto folder : includeToShadersFolders)
@@ -80,7 +89,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     if(kernel.value()["FinishRed"])
     {
       outFileName = kernelName + "_Reduction.comp";
-      outFilePath = shaderPath + "/" + outFileName;
+      outFilePath = shaderPath + slash + outFileName;
       kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
       buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
       for(auto folder : includeToShadersFolders)
@@ -88,15 +97,14 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
       buildSH << std::endl;
     }
   }
-    
+
   if(a_codeInfo->usedServiceCalls.find("memcpy") != a_codeInfo->usedServiceCalls.end())
   {
     nlohmann::json dummy;
-    kslicer::ApplyJsonToTemplate("templates_glsl/z_memcpy.glsl", shaderPath + "/z_memcpy.comp", dummy); // just file copy actually
+    kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_memcpy.glsl", shaderPath + slash + "z_memcpy.comp", dummy); // just file copy actually
     buildSH << "glslangValidator -V z_memcpy.comp -o z_memcpy.comp.spv";
     buildSH << std::endl;
   }
-  
   buildSH.close();
 }
 
