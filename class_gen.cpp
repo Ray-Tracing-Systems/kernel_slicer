@@ -236,7 +236,8 @@ kslicer::InOutVarInfo kslicer::GetParamInfo(const clang::ParmVarDecl* currParam)
     var.isConst    = qt.isConstQualified();
     var.isThreadId = true;
   }
-
+  
+  var.paramNode = currParam;
   return var;
 }
 

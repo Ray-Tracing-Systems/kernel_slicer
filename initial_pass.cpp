@@ -13,7 +13,7 @@ void kslicer::SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* 
 }
 
 
-static kslicer::KernelInfo::ArgInfo ProcessParameter(clang::ParmVarDecl *p) 
+kslicer::KernelInfo::ArgInfo kslicer::ProcessParameter(const clang::ParmVarDecl *p) 
 {
   clang::QualType q = p->getType();
 
@@ -77,7 +77,7 @@ void kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDe
   }
 
   for (unsigned int i = 0; i < f->getNumParams(); ++i) {
-    info.args.push_back(ProcessParameter(f->parameters()[i]));
+    info.args.push_back(kslicer::ProcessParameter(f->parameters()[i]));
   }
 
   if(a_className == MAIN_CLASS_NAME)

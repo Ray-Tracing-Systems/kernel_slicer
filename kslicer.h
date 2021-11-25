@@ -125,9 +125,9 @@ namespace kslicer
       std::string containerType;
       std::string containerDataType;
 
-      bool IsTexture() const { return isContainer && IsTextureContainer(containerType); }
+      bool IsTexture() const { return (kind == DATA_KIND::KIND_TEXTURE) || (isContainer && IsTextureContainer(containerType)); }
       bool IsPointer() const { return (kind == DATA_KIND::KIND_POINTER); }
-      bool IsUser()    const { return !isThreadID && !isLoopSize && !needFakeOffset && !IsPointer() && !isContainer; }
+      bool IsUser()    const { return !isThreadID && !isLoopSize && !needFakeOffset && !IsPointer() && !IsTexture() && !isContainer; }
     };
 
     struct LoopIter 
@@ -310,6 +310,8 @@ namespace kslicer
     bool isConst     = false;
     bool isThreadId  = false;
     bool isTexture() const { return (kind == DATA_KIND::KIND_TEXTURE); };
+
+    const clang::ParmVarDecl* paramNode = nullptr;
   };
 
   InOutVarInfo GetParamInfo(const clang::ParmVarDecl* currParam);
@@ -983,6 +985,8 @@ namespace kslicer
   
   DATA_KIND GetKindOfType(const clang::QualType qt, bool isContainer);
   CPP11_ATTR GetMethodAttr(const clang::CXXMethodDecl* f, clang::CompilerInstance& a_compiler);
+
+  KernelInfo::ArgInfo ProcessParameter(const clang::ParmVarDecl *p); 
 }
 
 template <typename Cont, typename Pred>

@@ -727,7 +727,7 @@ kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo
   res.args.resize(0);
   for(const auto& var : cf.InOuts)
   {
-    KernelInfo::ArgInfo argInfo;
+    KernelInfo::ArgInfo argInfo = kslicer::ProcessParameter(var.paramNode);
     argInfo.name = var.name;
     argInfo.type = var.type;
     argInfo.kind = var.kind;
@@ -741,12 +741,17 @@ kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo
   {
     for(const auto& kv : a_kernels[i]->usedMembers)
       res.usedMembers.insert(kv);
-
     for(const auto& kv : a_kernels[i]->usedContainers)
       res.usedContainers.insert(kv);
-
     for(const auto& f : a_kernels[i]->shittyFunctions)
       res.shittyFunctions.push_back(f);
+
+    for(const auto& x : a_kernels[i]->texAccessInArgs)
+      res.texAccessInArgs.insert(x);
+    for(const auto& x : a_kernels[i]->texAccessInMemb)
+      res.texAccessInMemb.insert(x);
+    for(const auto& x : a_kernels[i]->texAccessSampler)
+      res.texAccessSampler.insert(x);
   }
 
   // (3) join shader features
