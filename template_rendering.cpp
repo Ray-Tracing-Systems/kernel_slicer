@@ -865,10 +865,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
+        //#TODO: need to refactor this piece of this
+        //
         if(!handMadeKernels && (pFoundKernel->second.args[j].isThreadID || pFoundKernel->second.args[j].isLoopSize || pFoundKernel->second.args[j].IsUser() ||
                                 dsArgs.descriptorSetsInfo[j].name == "this")) // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
           continue;
-
+      
         const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j], a_classInfo.megakernelRTV);
 
         json arg;
