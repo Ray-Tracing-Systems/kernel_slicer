@@ -852,6 +852,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       auto& dsArgs               = a_classInfo.allDescriptorSetsInfo[i];
       const auto pFoundKernel    = a_classInfo.FindKernelByName(dsArgs.originKernelName);
       const bool handMadeKernels = (pFoundKernel == a_classInfo.kernels.end());
+      const bool isMegaKernel    = pFoundKernel->second.isMega;
       
       json local;
       local["Id"]         = i;
@@ -867,8 +868,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       {
         //#TODO: need to refactor this piece of this
         //
-        if(!handMadeKernels && (pFoundKernel->second.args[j].isThreadID || pFoundKernel->second.args[j].isLoopSize || pFoundKernel->second.args[j].IsUser() ||
-                                dsArgs.descriptorSetsInfo[j].name == "this")) // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
+        const bool ignoreArg = (pFoundKernel->second.args[j].isThreadID || pFoundKernel->second.args[j].isLoopSize || pFoundKernel->second.args[j].IsUser() || dsArgs.descriptorSetsInfo[j].name == "this");
+        if(!handMadeKernels && !isMegaKernel && ignoreArg) // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
           continue;
       
         const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j], a_classInfo.megakernelRTV);
@@ -905,7 +906,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         realId++;
       }
       
-      if(pFoundKernel != a_classInfo.kernels.end())
+      if(pFoundKernel != a_classInfo.kernels.end() && !isMegaKernel)
       {
         for(const auto& container : pFoundKernel->second.usedContainers) // add all class-member vectors bindings
         {

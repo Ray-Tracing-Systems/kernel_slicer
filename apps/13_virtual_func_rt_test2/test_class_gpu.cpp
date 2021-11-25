@@ -25,7 +25,7 @@ class TestClass_GPU : public TestClass_Generated
 {
 
 public:
-  TestClass_GPU(std::shared_ptr<SceneManager> a_pMgr) : m_pScnMgr(a_pMgr) 
+  TestClass_GPU(std::shared_ptr<SceneManager> a_pMgr, int a_maxThreads) : TestClass_Generated(a_maxThreads), m_pScnMgr(a_pMgr) 
   {
     m_enableHWAccel = false;
   }
@@ -257,7 +257,7 @@ void test_class_gpu()
 
   auto pCopyHelper = std::make_shared<vk_utils::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
   auto pScnMgr     = std::make_shared<SceneManager>(device, physicalDevice, queueComputeFID, queueComputeFID, false); // todo: pass pCopyHelper
-  auto pGPUImpl    = std::make_shared<TestClass_GPU>(pScnMgr);               // !!! USING GENERATED CODE !!! 
+  auto pGPUImpl    = std::make_shared<TestClass_GPU>(pScnMgr, WIN_WIDTH*WIN_HEIGHT);  // !!! USING GENERATED CODE !!! 
   
   pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT); // !!! USING GENERATED CODE !!!                        
   pGPUImpl->LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.bvh", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf", true);
