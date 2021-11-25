@@ -574,6 +574,7 @@ namespace kslicer
     virtual std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText);
     void DetectTextureAccess(clang::CXXOperatorCallExpr* expr);
     void DetectTextureAccess(clang::CXXMemberCallExpr*   call);
+    void DetectTextureAccess(clang::BinaryOperator* expr);
     void ProcessReadWriteTexture(clang::CXXOperatorCallExpr* expr, bool write);
 
     clang::Rewriter&                                         m_rewriter;

@@ -418,12 +418,12 @@ std::string GLSLFunctionRewriter::RewriteImageType(const std::string& a_containe
       outImageFormat = "rgba";
     }
 
-    if(dataTypeRewritten == "float" || dataTypeRewritten == "vec2" || dataTypeRewritten == "vec4")
+    if(dataTypeRewritten == "float" || dataTypeRewritten == "vec2" || dataTypeRewritten == "vec3" || dataTypeRewritten == "vec4")
       outImageFormat += "32f"; // TODO: 16f ???
-    else if(dataTypeRewritten == "int" || dataTypeRewritten == "uint" || 
-            dataTypeRewritten == "uvec2" || dataTypeRewritten == "ivec2" || 
-            dataTypeRewritten == "uvec4" || dataTypeRewritten == "ivec4")
+    else if(dataTypeRewritten == "int" || dataTypeRewritten == "ivec2" || dataTypeRewritten == "ivec3" || dataTypeRewritten == "ivec4")
       outImageFormat += "32i"; // TODO: 16i ???
+    else if(dataTypeRewritten == "uint" || dataTypeRewritten == "uvec2" || dataTypeRewritten == "uvec3" || dataTypeRewritten == "uvec4")
+      outImageFormat += "32ui"; // TODO: 16ui ???
   }
   else
   {
@@ -1168,14 +1168,22 @@ void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, 
 
   // (2) process if kernel argument access
   //
+  std::string dataType = "";
   for(const auto& arg : m_currKernel.args)
   {
     if(arg.name == objName)
     {
       shouldRewrite = true;
+      dataType = arg.containerDataType;
       break;
     }
   }
+
+  std::string convertedType = "vec4";
+  if(dataType == "unsigned int" || dataType == "unsigned" || dataType == "uint" || dataType == "uint2" || dataType == "uint3" || dataType == "uint4")
+    convertedType = "uvec4";
+  else if(dataType == "int" || dataType == "int2" || dataType == "int3" || dataType == "int4")
+    convertedType = "ivec4";
 
   // (3) rewrite if do needed
   //
@@ -1184,7 +1192,7 @@ void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, 
     std::string indexText = RecursiveRewrite(expr->getArg(1));
     if(a_assignOp != nullptr && WasNotRewrittenYet(a_assignOp)) // write 
     {
-      std::string result         = std::string("imageStore") + "(" + objName + ", " + indexText + ", " + rhsText + ")";
+      std::string result         = std::string("imageStore") + "(" + objName + ", " + indexText + ", " + convertedType + "(" + rhsText + "))";
       m_rewriter.ReplaceText(a_assignOp->getSourceRange(), result);
       MarkRewritten(a_assignOp);
     }

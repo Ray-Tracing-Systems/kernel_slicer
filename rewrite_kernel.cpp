@@ -817,16 +817,36 @@ bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(CXXOperatorCallExpr*
   return true;
 }
 
+void kslicer::KernelRewriter::DetectTextureAccess(clang::BinaryOperator* expr)
+{
+  std::string op = GetRangeSourceCode(SourceRange(expr->getOperatorLoc()), m_compiler); 
+  //std::string debugText = GetRangeSourceCode(expr->getSourceRange(), m_compiler);     
+  if(expr->isAssignmentOp()) // detect a_brightPixels[coord] = color;
+  {
+    clang::Expr* left = expr->getLHS(); 
+    if(clang::isa<clang::CXXOperatorCallExpr>(left))
+    {
+      clang::CXXOperatorCallExpr* leftOp = clang::dyn_cast<clang::CXXOperatorCallExpr>(left);
+      std::string op2 = GetRangeSourceCode(SourceRange(leftOp->getOperatorLoc()), m_compiler);  
+      if(op2 == "]" || op2 == "[" || op2 == "[]")
+        ProcessReadWriteTexture(leftOp, true);
+    }
+  }
+  //else if(op == "]" || op == "[" || op == "[]")
+  //  ProcessReadWriteTexture(expr, false);
+}
+
 bool kslicer::KernelRewriter::VisitBinaryOperator_Impl(BinaryOperator* expr) // detect reduction like m_var = F(m_var,expr)
 {
   auto opRange = expr->getSourceRange();
-  if(opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
+  if(!m_codeInfo->IsRTV() && (opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd())) // not inside loop
     return true;  
 
   const auto op = expr->getOpcodeStr();
   if(op != "=")
     return true;
   
+  DetectTextureAccess(expr);
   const Expr* lhs = expr->getLHS();
   const Expr* rhs = expr->getRHS();
 
