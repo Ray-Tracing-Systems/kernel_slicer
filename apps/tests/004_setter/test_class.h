@@ -28,5 +28,7 @@ public:
   int m_maxVal;
   MyInOut m_out;
 
+  float m_testArray[4];
+
   std::vector<float> testData;
 };

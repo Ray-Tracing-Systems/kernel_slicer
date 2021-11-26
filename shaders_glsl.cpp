@@ -1347,14 +1347,10 @@ bool GLSLKernelRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr)
       {
         std::string assignExprText = RecursiveRewrite(expr->getRHS());
         RewriteTextureAccess(leftOp, expr, assignExprText);
+        return true;
       }
     }
-    return true;
   }
-  //else if(op == "]" || op == "[" || op == "[]")
-  //{
-  //  RewriteTextureAccess(expr, (clang::BinaryOperator*)nullptr);
-  //}
   
   return KernelRewriter::VisitBinaryOperator_Impl(expr); 
 }

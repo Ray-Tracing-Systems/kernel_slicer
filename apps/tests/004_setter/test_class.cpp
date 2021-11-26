@@ -18,7 +18,7 @@ void ArrayProcess::ProcessArrays(const int* a_data1, const int* a_data2, unsigne
 void ArrayProcess::kernel1D_ArrayProc(const int* a_data1, const int* a_data2, unsigned a_dataSize)
 { 
   m_summ    = 0;
-  m_minVal  = 10000000;
+  m_minVal  = 10000000*sizeof(m_testArray)/sizeof(m_testArray[0]);
   m_maxVal  = -10000000;
 
   for(unsigned i=0; i<a_dataSize; i++)
