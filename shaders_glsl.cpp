@@ -585,7 +585,15 @@ std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
         }
       }
       else
-        result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+      {
+        std::string typeStr2 = typeOfParam->getPointeeType().getAsString();
+        if(m_codeInfo->megakernelRTV && (typeStr.find("Texture") != std::string::npos || typeStr.find("Image") != std::string::npos))
+        {
+          result += std::string("uint a_dummyOf") + pParam->getNameAsString();
+        }
+        else
+          result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr2) + " " + pParam->getNameAsString();
+      }
     }
     else
       result += RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
@@ -1249,7 +1257,7 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
   clang::CXXMethodDecl* fDecl = call->getMethodDecl();  
   if(fDecl != nullptr && WasNotRewrittenYet(call))  
   {
-    //std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+    std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
     std::string fname     = fDecl->getNameInfo().getName().getAsString();
     clang::Expr* pTexName =	call->getImplicitObjectArgument(); 
     std::string objName   = kslicer::GetRangeSourceCode(pTexName->getSourceRange(), m_compiler);     
@@ -1274,6 +1282,43 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
         MarkRewritten(call); 
       }
     }
+    else if(m_codeInfo->megakernelRTV && m_codeInfo->IsKernel(fname) && WasNotRewrittenYet(call)) // replace 'Texture2D<...>&' arguments to '0' if this is not sampler
+    {
+      bool foundAtLeastOneTexReference = false;
+      for(unsigned i=0;i<call->getNumArgs();i++)
+      {
+        const clang::QualType argT = call->getArg(i)->getType();
+        if(!argT.isConstQualified() && kslicer::IsTexture(argT))
+        {
+          foundAtLeastOneTexReference = true;
+          break;
+        }
+      }
+
+      if(foundAtLeastOneTexReference)
+      {
+        std::stringstream callOut;
+        callOut << fname.c_str() << "(";
+        for(unsigned i=0;i<call->getNumArgs();i++)
+        {
+          const clang::QualType argT = call->getArg(i)->getType();          
+          std::string argText = "";
+          if(!argT.isConstQualified() && kslicer::IsTexture(argT))
+            argText = "0";
+          else
+            argText = RecursiveRewrite(call->getArg(i));
+          
+          callOut << argText;
+          if(i < call->getNumArgs()-1)
+            callOut << ", ";
+        }
+        callOut << ")";
+        //std::string resText = callOut.str();
+        m_rewriter.ReplaceText(call->getSourceRange(), callOut.str());
+        MarkRewritten(call); 
+      }
+    }
+
   }
 
   return kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(call);

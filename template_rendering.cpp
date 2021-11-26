@@ -897,7 +897,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         }
         else if(dsArgs.descriptorSetsInfo[j].isAccelStruct())
         {
-          std::cout << "[kslicer error]: passing acceleration structures to kernel arguments is not yet implemented" << std::endl; 
+          //std::cout << "[kslicer error]: passing acceleration structures to kernel arguments is not yet implemented" << std::endl; 
           data["HasRTXAccelStruct"] = true;
         } 
 
