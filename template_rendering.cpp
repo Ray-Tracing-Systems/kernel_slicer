@@ -852,7 +852,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       auto& dsArgs               = a_classInfo.allDescriptorSetsInfo[i];
       const auto pFoundKernel    = a_classInfo.FindKernelByName(dsArgs.originKernelName);
       const bool handMadeKernels = (pFoundKernel == a_classInfo.kernels.end());
-      const bool isMegaKernel    = pFoundKernel->second.isMega;
+      const bool isMegaKernel    = handMadeKernels ? false : pFoundKernel->second.isMega;
       
       json local;
       local["Id"]         = i;
@@ -868,7 +868,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       {
         //#TODO: need to refactor this piece of this
         //
-        const bool ignoreArg = (pFoundKernel->second.args[j].isThreadID || pFoundKernel->second.args[j].isLoopSize || pFoundKernel->second.args[j].IsUser() || dsArgs.descriptorSetsInfo[j].name == "this");
+        const bool ignoreArg = handMadeKernels ? false : (pFoundKernel->second.args[j].isThreadID || pFoundKernel->second.args[j].isLoopSize || pFoundKernel->second.args[j].IsUser() || dsArgs.descriptorSetsInfo[j].name == "this");
         if(!handMadeKernels && !isMegaKernel && ignoreArg) // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
           continue;
       
