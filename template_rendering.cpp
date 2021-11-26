@@ -1081,8 +1081,9 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::ve
       strOut << "dummy" << dummyCounter;
       dummyCounter++;
       sizeO += sizeof(uint32_t);
-      uboField["Type"] = "uint";
-      uboField["Name"] = strOut.str();
+      uboField["Type"]   = "uint";
+      uboField["Name"]   = strOut.str();
+      uboField["IsVec3"] = false;
       data["UBOStructFields"].push_back(uboField);
     }
 
