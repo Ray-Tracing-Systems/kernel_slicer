@@ -1146,7 +1146,7 @@ bool GLSLKernelRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* cal
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true; 
-  return m_glslRW.VisitCXXConstructExpr(call);
+  return m_glslRW.VisitCXXConstructExpr_Impl(call);
 }
 
 void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, clang::Expr* a_assignOp, const std::string& rhsText)

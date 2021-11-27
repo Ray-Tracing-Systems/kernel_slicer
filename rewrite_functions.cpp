@@ -99,7 +99,7 @@ std::string kslicer::FunctionRewriter::VectorTypeContructorReplace(const std::st
   return std::string("make_") + fname + callText;
 }
 
-bool kslicer::FunctionRewriter::VisitCXXConstructExpr(CXXConstructExpr* call)
+bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
 {
   CXXConstructorDecl* ctorDecl = call->getConstructor();
   assert(ctorDecl != nullptr);
