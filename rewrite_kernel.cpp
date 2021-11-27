@@ -90,7 +90,7 @@ bool kslicer::CheckSettersAccess(const clang::MemberExpr* expr, const MainClassI
   return true;
 }
 
-bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(clang::MemberExpr* expr, std::string& out_text)
+bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text)
 {
   if(m_infoPass)
     return false;

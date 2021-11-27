@@ -636,7 +636,7 @@ namespace kslicer
     virtual bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)  { return true; } // override this in Derived class
     virtual bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { return true; }
 
-    virtual bool NeedToRewriteMemberExpr(clang::MemberExpr* expr, std::string& out_text);
+    virtual bool NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text);
 
   };
 

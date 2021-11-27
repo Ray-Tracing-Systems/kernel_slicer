@@ -982,6 +982,7 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
   while(clang::isa<clang::ImplicitCastExpr>(expr))
     expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->getSubExpr();
 
+  //expr->dump();
   if(clang::isa<clang::DeclRefExpr>(expr)) // bugfix for recurive rewrite of single node, function args access
   {
     std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
@@ -997,13 +998,33 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
       return text;
     return std::string("kgenArgs.") + text;
   }
-  else
+  
+  //// check CXXConstructExpr->ImplicitCastExpr->MemberExpr and NeedToRewriteMemberExpr(MemberExpr)
+  //
+  if(clang::isa<clang::CXXConstructExpr>(expr)) // bugfix for recurive rewrite of single node, MemberExpr access in kernel
   {
-    GLSLKernelRewriter rvCopy = *this;
-    rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
-    return m_rewriter.getRewrittenText(expr->getSourceRange());
+    const clang::CXXConstructExpr* pConstruct = clang::dyn_cast<clang::CXXConstructExpr>(expr);
+    const clang::CXXConstructorDecl* ctorDecl = pConstruct->getConstructor();
+    //const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);   
+    //const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
+    if(ctorDecl->isCopyOrMoveConstructor()) // || call->getNumArgs() == 0
+    {
+      const clang::Expr* pExprInsideConstructor =	pConstruct->getArg(0);
+      if(clang::isa<clang::ImplicitCastExpr>(pExprInsideConstructor))
+        expr = clang::dyn_cast<clang::ImplicitCastExpr>(pExprInsideConstructor)->getSubExpr();
+    }
   }
-
+  if(clang::isa<clang::MemberExpr>(expr)) // same bugfix for recurive rewrite of single node, MemberExpr access in kernel
+  {
+    const clang::MemberExpr* pMemberExpr = clang::dyn_cast<const clang::MemberExpr>(expr);
+    std::string rewrittenText;
+    if(NeedToRewriteMemberExpr(pMemberExpr, rewrittenText))
+      return rewrittenText;
+  }
+  
+  GLSLKernelRewriter rvCopy = *this;
+  rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
+  return m_rewriter.getRewrittenText(expr->getSourceRange());
 }
 
 
