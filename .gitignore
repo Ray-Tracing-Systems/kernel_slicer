@@ -1,5 +1,8 @@
+build/
 cmake-build-debug/
 cmake-build-release/
 *_generated*
 
 apps/clspv
+
+.idea/
