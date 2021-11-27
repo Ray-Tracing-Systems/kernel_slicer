@@ -19,8 +19,7 @@ using LiteMath::uint4;
 class TestClass_GPU : public TestClass_Generated
 {
 public:
-  //VkBufferUsageFlags GetAdditionalFlagsForUBO() const override { return VK_BUFFER_USAGE_TRANSFER_SRC_BIT; }
-
+  TestClass_GPU(int a_maxThreads) : TestClass_Generated(a_maxThreads){}
   void ReadClassData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine, TestClass_UBO_Data* pData)
   {
     a_pCopyEngine->ReadBuffer(m_classDataBuffer, 0, pData, sizeof(TestClass_UBO_Data));
@@ -32,7 +31,8 @@ public:
     a_pCopyEngine->ReadBuffer(m_IMaterialObjPtrBuffer, 0, result.data(), result.size()*sizeof(uint2));
     return result;
   }
-
+  
+  //VkBufferUsageFlags GetAdditionalFlagsForUBO() const override { return VK_BUFFER_USAGE_TRANSFER_SRC_BIT; }
   //std::vector<uint4> GetIndirectBufferData(std::shared_ptr<vkfw::ICopyEngine> a_pCopyEngine)
   //{
   //  std::vector<uint4> result(5);
@@ -107,7 +107,7 @@ void test_class_gpu()
   ctx.transferQueue  = transferQueue;
 
   auto pCopyHelper = std::make_shared<vk_utils::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
-  auto pGPUImpl    = std::make_shared<TestClass_GPU>();                      // !!! USING GENERATED CODE !!! 
+  auto pGPUImpl    = std::make_shared<TestClass_GPU>(WIN_WIDTH*WIN_HEIGHT);  // !!! USING GENERATED CODE !!! 
   pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT); // !!! USING GENERATED CODE !!!                        
   pGPUImpl->LoadScene("cornell_collapsed.bvh", "cornell_collapsed.vsgf");
 

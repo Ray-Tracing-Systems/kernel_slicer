@@ -92,7 +92,7 @@
                         "-pattern", "rtv", 
                         "-I${workspaceFolder}/apps/LiteMath", "IncludeToShaders", 
                         "-shaderCC", "glsl",
-                        "-megakernel", "0",
+                        "-megakernel", "1",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry"    : false,

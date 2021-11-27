@@ -102,20 +102,21 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
   clang::RecordDecl* pRecodDecl  = pFieldDecl->getParent();
   const std::string thisTypeName = pRecodDecl->getNameAsString();
   
+  if(!WasNotRewrittenYet(expr))
+    return false;
+
   // (1) setter access
   //
   std::string setter, containerName;
-  if(WasNotRewrittenYet(expr) && CheckSettersAccess(expr, m_codeInfo, m_compiler, &setter, &containerName)) // process setter access
+  if(CheckSettersAccess(expr, m_codeInfo, m_compiler, &setter, &containerName)) // process setter access
   {
     out_text = setter + "_" + containerName;
     return true; 
   }
 
-  if(thisTypeName != m_mainClassName || !WasNotRewrittenYet(expr))
-    return false;
-
   // (2) *payload ==>  payload[fakeOffset],  RTV, process access to arguments payload->xxx
   //
+  if(thisTypeName != m_mainClassName)
   {
     Expr* baseExpr = expr->getBase(); 
     assert(baseExpr != nullptr);
@@ -155,6 +156,9 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
       }
     }
   }
+  
+  //if(thisTypeName != m_mainClassName)
+  //  return false;
 
   // (3) member ==> ubo.member
   //
