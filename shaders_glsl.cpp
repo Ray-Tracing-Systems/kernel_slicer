@@ -306,14 +306,10 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
   if(expr == nullptr)
     return "";
   if(m_pKernelRewriter != nullptr) // we actually do kernel rewrite
-  {
-    
-    
+  { 
     std::string result = m_pKernelRewriter->RecursiveRewriteImpl(expr);
     sFeatures = sFeatures || m_pKernelRewriter->GetShaderFeatures();
     MarkRewritten(expr);
-    //auto nodesKernAfter = m_pKernelRewriter->GetVisitedNodes();
-    //m_pRewrittenNodes->insert(nodesKernAfter.begin(), nodesKernAfter.end());
     return result;
   }
   else
@@ -986,26 +982,10 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
   while(clang::isa<clang::ImplicitCastExpr>(expr))
     expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->getSubExpr();
 
-  if(!clang::isa<clang::DeclRefExpr>(expr))
-  {
-    GLSLKernelRewriter rvCopy = *this;
-    //auto nodesBefore = *rvCopy.m_pRewrittenNodes;
-    rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
-    //auto nodesAfter = *rvCopy.m_pRewrittenNodes;
-    //auto nodesInFun = *m_glslRW.m_pRewrittenNodes;
-    //std::cout << std::endl;
-    //std::cout << "========================================" << std::endl;
-    //kslicer::DisplayVisitedNodes(nodesBefore); std::cout << std::endl;
-    //std::cout << "----------------------------------------" << std::endl;
-    //kslicer::DisplayVisitedNodes(nodesAfter); std::cout << std::endl;
-    //std::cout << "----------------------------------------" << std::endl;
-    //kslicer::DisplayVisitedNodes(nodesInFun); std::cout << std::endl;
-    return m_rewriter.getRewrittenText(expr->getSourceRange());
-  }
-  else
+  if(clang::isa<clang::DeclRefExpr>(expr)) // bugfix for recurive rewrite of single node, function args access
   {
     std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
-    const auto pRef = clang::dyn_cast<clang::DeclRefExpr>(expr);
+    const auto pRef  = clang::dyn_cast<clang::DeclRefExpr>(expr);
 
     const clang::ValueDecl* pDecl = pRef->getDecl();
     if(!clang::isa<clang::ParmVarDecl>(pDecl))
@@ -1017,6 +997,13 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
       return text;
     return std::string("kgenArgs.") + text;
   }
+  else
+  {
+    GLSLKernelRewriter rvCopy = *this;
+    rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
+    return m_rewriter.getRewrittenText(expr->getSourceRange());
+  }
+
 }
 
 

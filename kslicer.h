@@ -461,7 +461,10 @@ namespace kslicer
     virtual ~FunctionRewriter(){}
 
     bool VisitCallExpr(clang::CallExpr* f)                    { return VisitCallExpr_Impl(f); }
-    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call) { return VisitCXXConstructExpr_Impl(call);}
+    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call) 
+    { 
+      return VisitCXXConstructExpr_Impl(call);
+    }
 
     bool VisitFunctionDecl(clang::FunctionDecl* fDecl)       { return VisitFunctionDecl_Impl(fDecl); }
     bool VisitCXXMethodDecl(clang::CXXMethodDecl* fDecl)     { return VisitCXXMethodDecl_Impl(fDecl); }
@@ -545,7 +548,10 @@ namespace kslicer
     bool VisitMemberExpr(clang::MemberExpr* expr)              { if(WasRewritten(expr)) return true; else return VisitMemberExpr_Impl(expr); }
     bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f)   { if(WasRewritten(f)) return true; else return VisitCXXMemberCallExpr_Impl(f); }
     bool VisitCallExpr(clang::CallExpr* f)                     { if(WasRewritten(f)) return true; else return VisitCallExpr_Impl(f); }
-    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call)  { if(WasRewritten(call)) return true; else return VisitCXXConstructExpr_Impl(call); }
+    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call)  
+    { 
+      return VisitCXXConstructExpr_Impl(call); 
+    }
     bool VisitReturnStmt(clang::ReturnStmt* ret)               { if(WasRewritten(ret)) return true; else return VisitReturnStmt_Impl(ret); }
                                                                            
     bool VisitUnaryOperator(clang::UnaryOperator* expr)        { if(WasRewritten(expr)) return true; else return VisitUnaryOperator_Impl(expr);  }                       
@@ -629,6 +635,8 @@ namespace kslicer
     virtual bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                 { return true; } // override this in Derived class
     virtual bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)  { return true; } // override this in Derived class
     virtual bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { return true; }
+
+    virtual bool NeedToRewriteMemberExpr(clang::MemberExpr* expr, std::string& out_text);
 
   };
 
