@@ -773,6 +773,34 @@
                 }
             ]
         },
+
+        {
+            "name"   : "Launch (app_19_2dsolver/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/19_simple_2d_cfd_solver/test_class.cpp",
+                        "-mainClass", "Solver", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/apps/LiteMath",   "IncludeToShaders",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
         {
             "name"   : "Launch (test_004/clspv)",
             "type"   : "cppdbg",
@@ -881,6 +909,5 @@
                 }
             ]
         },
-
     ]
 }
