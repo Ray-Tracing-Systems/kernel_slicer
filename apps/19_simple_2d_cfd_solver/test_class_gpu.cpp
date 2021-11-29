@@ -113,29 +113,48 @@ std::vector<float> solve_gpu(int N, const std::vector<float>& density, const std
                                                 VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
     VkDeviceMemory bufferMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, {outBuffer});
     pGPUImpl->SetVulkanInOutFor_perform(outBuffer, 0);
+   
+    VkCommandBuffer commandBuffer = vk_utils::createCommandBuffer(device, commandPool);
+    
+    // all iterations at once
+    //
+    //VkCommandBufferBeginInfo beginCommandBufferInfo = {};
+    //beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    //beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+    //vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
+    //for (int i = 0; i < N; ++i)
+    //   pGPUImpl->performCmd(commandBuffer, nullptr);
+    //vkEndCommandBuffer(commandBuffer);
+    //
+    //auto start = std::chrono::high_resolution_clock::now();
+    //vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
+    //auto stop = std::chrono::high_resolution_clock::now();
+    //auto ms = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count() / 1000.f;
+    //
+    //std::cout << ms << " ms for command buffer execution " << std::endl;
+    //pCopyHelper->ReadBuffer(outBuffer, 0, outDens.data(), outDens.size() * sizeof(float));
 
-    // now compute something useful
+    //// iter by iter 
     //
     for (int i = 0; i < N; ++i) {
         VkCommandBuffer commandBuffer = vk_utils::createCommandBuffer(device, commandPool);
-
+    
         VkCommandBufferBeginInfo beginCommandBufferInfo = {};
         beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
         vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
         // vkCmdFillBuffer(commandBuffer, outBuffer, 0, VK_WHOLE_SIZE, 0x0000FFFF); // fill with yellow color
-        pGPUImpl->performCmd(commandBuffer, outDens.data());         // !!! USING GENERATED CODE !!!
+        pGPUImpl->performCmd(commandBuffer, nullptr);         // !!! USING GENERATED CODE !!!
         vkEndCommandBuffer(commandBuffer);
-
+    
         auto start = std::chrono::high_resolution_clock::now();
         vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
         auto stop = std::chrono::high_resolution_clock::now();
         auto ms = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count() / 1000.f;
         std::cout << ms << " ms for command buffer execution " << std::endl;
-
+    
         pCopyHelper->ReadBuffer(outBuffer, 0, outDens.data(), outDens.size() * sizeof(float));
         save_image("images_gpu/" + std::to_string(i) + ".jpeg", outDens);
-
         std::cout << std::endl;
     }
 
