@@ -296,6 +296,7 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {% endif %}
   m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Init"{% endif %}); 
   {{Kernel.Name}}InitPipeline = m_pMaker->MakePipeline(device);
+  {% endif %} {# /* if Kernel.HasLoopInit */ #} 
   {% if Kernel.HasLoopFinish %}
   
   {% if ShaderGLSL %}
@@ -303,8 +304,7 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
   {% endif %}
   m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Finish"{% endif %});
   {{Kernel.Name}}FinishPipeline = m_pMaker->MakePipeline(device);
-  {% endif %}
-  {% endif %} 
+  {% endif %} {# /* if Kernel.HasLoopFinish */ #} 
   {% if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch %}
   
   {% if UseSpecConstWgSize %}

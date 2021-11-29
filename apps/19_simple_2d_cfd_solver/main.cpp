@@ -14,8 +14,22 @@
 #include "test_class.h"
 #include "test_class_generated.h"
 
-std::vector<float> solve_cpu(int N) {
+std::vector<float> solve_cpu(int N, const std::vector<float>& density, const std::vector<float>& vx, const std::vector<float>& vy) {
+    Solver s = Solver();
+    s.setParameters(N, density, vx, vy, 0.033, 0.001, 0.00001);
+   
     std::vector<float> out(N * N);
+    for (int i = 0; i < 50; ++ i) {
+        s.perform(out.data());
+        save_image("images/" + std::to_string(i) + ".jpeg", out);
+    }
+    return out;
+}
+
+std::vector<float> solve_gpu(int N, const std::vector<float>& density, const std::vector<float>& vx, const std::vector<float>& vy);
+
+int main(int argc, const char** argv) {
+    const int N = 50;
     std::vector<float> density(N * N);
     std::vector<float> vx(N*N);
     std::vector<float> vy(N*N);
@@ -29,21 +43,11 @@ std::vector<float> solve_cpu(int N) {
     for (int i = 0; i < N * N; ++i) 
       vy[i] = randfrom(-5, 5);
 
-    Solver s = Solver();
-    s.setParameters(N, density, vx, vy, 0.033, 0.001, 0.00001);
-    
-    for (int i = 0; i < 50; ++ i) {
-        s.perform(out.data());
-        save_image("images/" + std::to_string(i) + ".jpeg", out);
-    }
-    return out;
-}
-
-std::vector<float> solve_gpu(int N);
-
-int main() {
-    //auto x = solve_gpu();
-    auto cpu_res = solve_cpu(50);
+    auto cpu_res = solve_cpu(N, density, vx, vy);
     save_image("z_out_cpu.jpg", cpu_res);
+
+    auto gpu_res = solve_gpu(N, density, vx, vy);
+    save_image("z_out_gpu.jpg", gpu_res);
+
     return 0;
 }

@@ -17,14 +17,6 @@ void Solver::kernel1D_set_bounds(int N, int b, float *x) {
     x[N - 1 + (N - 1) * N] = 0.5 * (x[N - 2 + (N - 1) * N] + x[N - 1 + (N - 2) * N]);
 }
 
-template<class T>
-void swap(T &a, T &b) {
-    T c;
-    c = a;
-    a = b;
-    b = c;
-}
-
 void Solver::perform(float *out_density) {
     //velocity_step
     kernel1D_AddSources(size * size, dt, vx.data(), vx0.data());
@@ -173,7 +165,7 @@ void Solver::kernel2D_Project_3(int h, int w, float *u, float *v, float *p, floa
     }
 }
 
-void Solver::setParameters(int size, vector<float> &density, vector<float> &vx, vector<float> &vy, float dt, float visc,
+void Solver::setParameters(int size, const vector<float> &density, const vector<float> &vx, const vector<float> &vy, float dt, float visc,
                            float diff) {
     this->size = size;
     this->density = density;

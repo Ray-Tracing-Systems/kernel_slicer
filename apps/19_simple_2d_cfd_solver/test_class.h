@@ -26,7 +26,7 @@ public:
 
     Solver();
 
-    void setParameters(int size, vector<float> &density, vector<float> &vx, vector<float> &vy, float dt, float visc, float diff);
+    void setParameters(int size, const vector<float> &density, const vector<float> &vx, const vector<float> &vy, float dt, float visc, float diff);
 
     void perform(float *out_density);
 

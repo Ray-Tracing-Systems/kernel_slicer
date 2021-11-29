@@ -49,7 +49,7 @@ void save_image(const std::string &image_name, std::vector<float> density) {
     stbi_write_jpg(image_name.c_str(), N * grid_size, N * grid_size, 4, &image[0], 100);
 }
 
-std::vector<float> solve_gpu() {
+std::vector<float> solve_gpu(int N, const std::vector<float>& density, const std::vector<float>& vx, const std::vector<float>& vy) {
     std::vector<float> outDens(N * N);
 
     // (1) init vulkan
@@ -76,7 +76,6 @@ std::vector<float> solve_gpu() {
     // query for shaderInt8
     //
 
-
     std::vector<const char *> validationLayers, deviceExtensions;
     VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
     vk_utils::QueueFID_T fIDs = {};
@@ -94,22 +93,6 @@ std::vector<float> solve_gpu() {
     {
         vkGetDeviceQueue(device, fIDs.compute, 0, &computeQueue);
         vkGetDeviceQueue(device, fIDs.transfer, 0, &transferQueue);
-    }
-
-    std::vector<float> density;
-    density.resize(N * N);
-    for (int i = 0; i < N * N; ++i) {
-        density[i] = randfrom(0, 1);
-    }
-    std::vector<float> vx;
-    vx.resize(N * N);
-    for (int i = 0; i < N * N; ++i) {
-        vx[i] = randfrom(-5, 5);
-    }
-    std::vector<float> vy;
-    vy.resize(N * N);
-    for (int i = 0; i < N * N; ++i) {
-        vy[i] = randfrom(-5, 5);
     }
 
     auto pCopyHelper = std::make_shared<vk_utils::SimpleCopyHelper>(physicalDevice, device, transferQueue,
@@ -133,7 +116,7 @@ std::vector<float> solve_gpu() {
 
     // now compute something useful
     //
-    for (int i = 0; i < 50; ++i) {
+    for (int i = 0; i < N; ++i) {
         VkCommandBuffer commandBuffer = vk_utils::createCommandBuffer(device, commandPool);
 
         VkCommandBufferBeginInfo beginCommandBufferInfo = {};
@@ -151,7 +134,7 @@ std::vector<float> solve_gpu() {
         std::cout << ms << " ms for command buffer execution " << std::endl;
 
         pCopyHelper->ReadBuffer(outBuffer, 0, outDens.data(), outDens.size() * sizeof(float));
-        save_image("images/" + std::to_string(i) + ".jpeg", outDens);
+        save_image("images_gpu/" + std::to_string(i) + ".jpeg", outDens);
 
         std::cout << std::endl;
     }
