@@ -23,7 +23,10 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
 {{MainClassName}}_Generated::~{{MainClassName}}_Generated()
 {
   m_pMaker = nullptr;
-
+  {% if UseServiceMemCopy %}
+  vkDestroyPipeline(device, copyKernelFloatPipeline, nullptr);
+  vkDestroyPipelineLayout(device, copyKernelFloatLayout, nullptr);
+  {% endif %} {# /* UseServiceMemCopy */ #}
 ## for Kernel in Kernels
   vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
