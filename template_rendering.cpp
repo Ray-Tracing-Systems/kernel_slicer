@@ -1339,34 +1339,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsUBO"]      = false;
       args.push_back(argj);
     }
-    
-    std::vector<kslicer::DataMemberInfo> membersToRead;
-    for(const auto& name : k.usedMembers)
-    {
-      auto pCachedMember = dataMembersCached.find(name);
-      if(pCachedMember != dataMembersCached.end())
-        membersToRead.push_back(pCachedMember->second);
-    }
-
-    std::sort(membersToRead.begin(), membersToRead.end(), [](const auto& a, const auto& b) { return a.offsetInTargetBuffer < b.offsetInTargetBuffer; });
-
-    json members = std::vector<std::string>();
-    for(const auto member : membersToRead)
-    {
-      if(member.isArray || member.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD) // read large data structures directly inside kernel code, don't read them at the beggining of kernel.
-        continue;
-      
-      // #TODO: test if remove this is, it works
-      if(k.subjectedToReduction.find(member.name) != k.subjectedToReduction.end())  // exclude this opt for members which subjected to reduction
-        continue;
-      // #TODO: test if remove this is, it works
-
-      json memberData;
-      memberData["Type"]   = pShaderRewriter->RewriteStdVectorTypeStr(member.type);
-      memberData["Name"]   = member.name;
-      memberData["Offset"] = member.offsetInTargetBuffer / sizeof(uint32_t);
-      members.push_back(memberData);
-    }
 
     const auto userArgsArr = GetUserKernelArgs(k.args);
     json userArgs = std::vector<std::string>();
@@ -1435,7 +1407,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["Vecs"]       = vecs;
     kernelJson["RTXNames"]   = rtxNames;
     kernelJson["UserArgs"]   = userArgs;
-    kernelJson["Members"]    = members;
     kernelJson["Name"]       = k.name;
     kernelJson["UBOBinding"] = args.size(); // for circle
     kernelJson["HasEpilog"]  = k.isBoolTyped || reductionVars.size() != 0 || reductionArrs.size() != 0 || k.isMaker;
@@ -1715,7 +1686,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {      
       kernelJson["Name"]      = k.name + "_Init";
       kernelJson["Source"]    = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1);
-      kernelJson["Members"]   = members;
       kernelJson["HasEpilog"] = false;
       kernelJson["FinishRed"] = false;
       kernelJson["InitKPass"] = true;
@@ -1731,7 +1701,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       kernelJson["Name"]      = k.name + "_Finish";
       kernelJson["Source"]    = k.rewrittenFinish;
-      kernelJson["Members"]   = members;
       kernelJson["HasEpilog"] = false;
       kernelJson["FinishRed"] = false;
       kernelJson["InitKPass"] = true;

@@ -20,9 +20,6 @@ __kernel void {{Kernel.Name}}({% include "inc_args.cl" %})
   const uint {{name}} = get_global_id({{ loop.index }}); 
   {% endfor %}
   uint kgen_objPtr = 0;
-  {% for Member in Kernel.Members %}
-  const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
-  {% endfor %}
   ///////////////////////////////////////////////////////////////// prolog
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {{Kernel.Source}}
@@ -107,9 +104,6 @@ __kernel void {{Kernel.Name}}_Sorter({% include "inc_args.cl" %})
   const uint {{name}} = get_global_id({{ loop.index }}); 
   {% endfor %}
   uint kgen_objPtr = 0;
-  {% for Member in Kernel.Members %}
-  const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
-  {% endfor %}
   ///////////////////////////////////////////////////////////////// prolog
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {{Kernel.Source}}

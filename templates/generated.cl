@@ -127,9 +127,6 @@ __kernel void {{Kernel.Name}}({% include "inc_args.cl" %})
   {# /*------------------------------------------------------------- BEG. CHECK EXIT COND ------------------------------------------------------------- */ #}
   {% include "inc_exit_cond.cl" %}
   {# /*------------------------------------------------------------- END. CHECK EXIT COND ------------------------------------------------------------- */ #}
-  {% for Member in Kernel.Members %}
-  const {{Member.Type}} {{Member.Name}} = ubo->{{Member.Name}};
-  {% endfor %}
   {% if Kernel.IsBoolean %}
   bool kgenExitCond = false;
   {% endif %}

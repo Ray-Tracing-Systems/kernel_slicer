@@ -108,12 +108,6 @@ void main()
   {% include "inc_reduction_init.glsl" %}
   {% endif %} 
   {# /*------------------------------------------------------------- END. INIT ------------------------------------------------------------- */ #}
-  {% if length(Kernel.Members) > 0 %}
-
-  {% for Member in Kernel.Members %}
-  const {{Member.Type}} {{Member.Name}} = ubo.{{Member.Name}};
-  {% endfor %} 
-  {% endif %} {# /* length(Kernel.Members) > 0 */ #}
   {% if Kernel.IsBoolean %}
   bool kgenExitCond = false;
   {% endif %}

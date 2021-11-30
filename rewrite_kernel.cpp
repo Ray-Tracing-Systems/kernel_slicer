@@ -174,7 +174,7 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
   // // m_currKernel.hasInitPass &&
   const bool isInLoopInitPart   = !m_codeInfo->IsRTV() && (expr->getSourceRange().getEnd()   < m_currKernel.loopInsides.getBegin());
   const bool isInLoopFinishPart = !m_codeInfo->IsRTV() && (expr->getSourceRange().getBegin() > m_currKernel.loopInsides.getEnd());
-  const bool hasLargeSize     = (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);
+  const bool hasLargeSize     = true; // (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);
   const bool inMegaKernel     = m_codeInfo->megakernelRTV;
   const bool subjectedToRed   = m_currKernel.subjectedToReduction.find(fieldName) != m_currKernel.subjectedToReduction.end();
   if(!pMember->second.isContainer && WasNotRewrittenYet(expr) && !m_infoPass && (isInLoopInitPart || isInLoopFinishPart || !subjectedToRed) && 

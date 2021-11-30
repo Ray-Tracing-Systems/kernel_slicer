@@ -100,11 +100,6 @@ void main()
   {% for TID in Kernel.ThreadIds %}
   const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(gl_GlobalInvocationID[{{ loop.index }}]); 
   {% endfor %}
-  {% if length(Kernel.Members) > 0 %}
-  {% for Member in Kernel.Members %}
-  const {{Member.Type}} {{Member.Name}} = ubo.{{Member.Name}};
-  {% endfor %} 
-  {% endif %} {# /* length(Kernel.Members) > 0 */ #}
   ///////////////////////////////////////////////////////////////// prolog
 
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
