@@ -9,8 +9,6 @@ inline static uint pitch(uint x, uint y, uint pitch) { return y*pitch + x; }
 
 inline static float4 Lerp4f(const float4 u, const float4 v, float t) { return u + t * (v - u); }
 
-static inline float Sqrf(const float x) { return x*x; }
-
 static inline int Clampi(const int x, const int a, const int b)
 {  
   if      (x < a) return a;
@@ -88,7 +86,7 @@ static inline float NLMWeight(__global const float4* in_buff, int w, int h, int 
     }
   }
 
-  return w1 / Sqrf(2.0F * (float)a_blockRadius + 1.0F);
+  return w1 / std::sqrt(2.0F * (float)a_blockRadius + 1.0F);
 }
 
 
@@ -160,7 +158,7 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
                                                  const float a_noiseLevel)
 {     
   m_noiseLevel  = 1.0f / (a_noiseLevel * a_noiseLevel);    
-  m_windowArea  = Sqrf(2.0f * (float)(a_windowRadius) + 1.0f);
+  m_windowArea  = std::sqrt(2.0f * (float)(a_windowRadius) + 1.0f);
 
 
   #pragma omp parallel for

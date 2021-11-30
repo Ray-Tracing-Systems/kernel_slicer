@@ -3,9 +3,6 @@
 
 //#include <chrono>
 
-using std::max;
-using std::min;
-
 void TestClass::InitRandomGens(int a_maxThreads)
 {
   m_randomGens.resize(a_maxThreads);
@@ -194,7 +191,7 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
 
   const float  pdfVal  = cosTheta * INV_PI;
   const float3 brdfVal = (cosTheta > 1e-5f) ? to_float3(mdata) * INV_PI : float3(0,0,0);
-  const float3 bxdfVal = brdfVal * (1.0f / fmax(pdfVal, 1e-10f));
+  const float3 bxdfVal = brdfVal * (1.0f / std::max(pdfVal, 1e-10f));
   
   *rayPosAndNear    = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
   *rayDirAndFar     = to_float4(newDir, MAXFLOAT);

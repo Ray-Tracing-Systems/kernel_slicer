@@ -1,9 +1,5 @@
 #include "test_class.h"
 #include "include/crandom.h"
-
-using std::max;
-using std::min;
-
 //#include <chrono>
 
 void TestClass::InitRandomGens(int a_maxThreads)
@@ -40,10 +36,10 @@ static inline void transform_ray3f(float4x4 a_mWorldViewInv, float3* ray_pos, fl
 
 static inline float PdfAtoW(const float aPdfA, const float aDist, const float aCosThere)
 {
-  return (aPdfA*aDist*aDist) / max(aCosThere, 1e-30f);
+  return (aPdfA*aDist*aDist) / std::max(aCosThere, 1e-30f);
 }
 
-static inline float maxcomp(float3 v) { return max(v.x, max(v.y, v.z)); }
+static inline float maxcomp(float3 v) { return std::max(v.x, std::max(v.y, v.z)); }
 
 void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 {
@@ -179,22 +175,22 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
   const float  hitDist   = sqrt(dot(hit.pos - samplePos, hit.pos - samplePos));
 
   const float3 shadowRayDir = normalize(samplePos - hit.pos); // explicitSam.direction;
-  const float3 shadowRayPos = hit.pos + hit.norm*max(maxcomp(hit.pos), 1.0f)*5e-6f;
+  const float3 shadowRayPos = hit.pos + hit.norm*std::max(maxcomp(hit.pos), 1.0f)*5e-6f;
 
   const bool inShadow = m_pAccelStruct->RayQuery_AnyHit(to_float4(shadowRayPos, 0.0f), to_float4(shadowRayDir, hitDist*0.9995f));
   
   if(!inShadow && dot(shadowRayDir, to_float3(m_light.norm)) < 0.0f)
   {
     const float pdfA    = 1.0f / (m_light.size.x*m_light.size.y);
-    const float cosVal  = max(dot(shadowRayDir, (-1.0f)*to_float3(m_light.norm)), 0.0f);
+    const float cosVal  = std::max(dot(shadowRayDir, (-1.0f)*to_float3(m_light.norm)), 0.0f);
     const float pdfW    = PdfAtoW(pdfA, hitDist, cosVal);
-    const float3 samCol = M_PI*to_float3(m_light.intensity)/max(pdfW, 1e-6f);
+    const float3 samCol = M_PI*to_float3(m_light.intensity)/std::max(pdfW, 1e-6f);
     
     const uint32_t matId = m_matIdByPrimId[m_matIdOffsets[lhit.geomId] + lhit.primId];
     const float4 mdata   = m_materials[matId];
 
     const float3 brdfVal    = to_float3(mdata)*INV_PI;
-    const float cosThetaOut = max(dot(shadowRayDir, hit.norm), 0.0f);
+    const float cosThetaOut = std::max(dot(shadowRayDir, hit.norm), 0.0f);
 
     if(cosVal <= 0.0f)
       *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -263,7 +259,7 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
 
   const float  pdfVal  = cosTheta * INV_PI;
   const float3 brdfVal = (cosTheta > 1e-5f) ? to_float3(mdata) * INV_PI : float3(0,0,0);
-  const float3 bxdfVal = brdfVal * (1.0f / fmax(pdfVal, 1e-10f));
+  const float3 bxdfVal = brdfVal * (1.0f / std::max(pdfVal, 1e-10f));
   
   if(m_intergatorType == INTEGRATOR_STUPID_PT)
   {
