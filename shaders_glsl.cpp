@@ -718,11 +718,11 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     m_rewriter.ReplaceText(call->getSourceRange(), pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call));
     MarkRewritten(call);
   }
-  //else if(fDecl->isInStdNamespace() && WasNotRewrittenYet(call)) // remove "std::"
-  //{
-  //  m_rewriter.ReplaceText(call->getSourceRange(), fname + "(" + CompleteFunctionCallRewrite(call));
-  //  MarkRewritten(call);
-  //}
+  else if(fDecl->isInStdNamespace() && WasNotRewrittenYet(call)) // remove "std::"
+  {
+    m_rewriter.ReplaceText(call->getSourceRange(), fname + "(" + CompleteFunctionCallRewrite(call));
+    MarkRewritten(call);
+  }
 
   return true; 
 }

@@ -1,10 +1,6 @@
 #include "test_class.h"
 #include "include/crandom.h"
 
-using std::min;
-using std::max;
-using std::sqrt;
-
 static uint32_t nextRandValue(const uint32_t value) {
   return value * 22695477 + 1; // Borland C random
 }
@@ -89,7 +85,7 @@ void nBody::kernel1D_UpdateVelocity(uint32_t bodies_count) {
       }
       float3 distance = xyz(m_bodies[j].pos_weight - m_bodies[i].pos_weight); // * sgn(m_bodies[i].pos_weight.w);
       float distSqr = dot(distance, distance) + SOFTENING_CONST;
-      float invDistCube = 1.0f/sqrt(pow3(distSqr));
+      float invDistCube = 1.0f/std::sqrt(pow3(distSqr));
       float3 gravitational = distance * m_bodies[j].pos_weight.w * invDistCube;
 
       float coeff = m_bodies[i].vel_charge.w / (4 * M_PI * PERMETTIVITY);
