@@ -52,7 +52,8 @@ public:
   
   void SetMaxImageSize(int w, int h);
 
-  void Bloom(int w, int h, const float4* inData4f, unsigned int* outData1ui);
+  void Bloom(int w, int h, [[kslicer::size(w,h)]] const float4* inData4f, 
+                           [[kslicer::size(w,h)]] unsigned int* outData1ui);
 
 protected:
 
