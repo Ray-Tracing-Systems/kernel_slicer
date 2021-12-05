@@ -150,10 +150,22 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
     uint32_t m_tFlags;
   } pcData;
   
+  {% if Kernel.SmplX %}
+  uint32_t sizeX  = uint32_t({{Kernel.tidX}});
+  {% else %}
   uint32_t sizeX  = uint32_t(std::abs(int32_t({{Kernel.tidX}}) - int32_t({{Kernel.begX}})));
+  {% endif %}
+  {% if Kernel.SmplY %}
+  uint32_t sizeY  = uint32_t({{Kernel.tidY}});
+  {% else %}
   uint32_t sizeY  = uint32_t(std::abs(int32_t({{Kernel.tidY}}) - int32_t({{Kernel.begY}})));
+  {% endif %}
+  {% if Kernel.SmplZ %}
+  uint32_t sizeZ  = uint32_t({{Kernel.tidZ}});
+  {% else %}
   uint32_t sizeZ  = uint32_t(std::abs(int32_t({{Kernel.tidZ}}) - int32_t({{Kernel.begZ}})));
-
+  {% endif %}
+  
   pcData.m_sizeX  = {{Kernel.tidX}};
   pcData.m_sizeY  = {{Kernel.tidY}};
   pcData.m_sizeZ  = {{Kernel.tidZ}};

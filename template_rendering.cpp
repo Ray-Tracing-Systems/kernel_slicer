@@ -346,6 +346,17 @@ std::string kslicer::InferenceVulkanTextureFormatFromTypeName(const std::string&
   return "VK_FORMAT_R32G32B32A32_SFLOAT";
 }
 
+
+static bool IsZeroStartLoopStatement(const clang::Stmt* a_stmt, const clang::CompilerInstance& compiler)
+{
+  if(a_stmt == nullptr)
+    return true;
+
+  auto text = kslicer::GetRangeSourceCode(a_stmt->getSourceRange(), compiler);
+  return (text == "0");
+}
+
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -738,40 +749,49 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(size_t i=0;i<tidArgs.size();i++)
     {
       uint32_t tid = std::min<uint32_t>(threadsOrder[i], tidArgs.size()-1);
-      threadIdNamesList[i] = tidArgs[tid].loopIter.sizeText;
+      if(tidArgs[tid].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL)
+        threadIdNamesList[i] = tidArgs[tid].loopIter.sizeText + "+1";
+      else
+        threadIdNamesList[i] = tidArgs[tid].loopIter.sizeText;
     }
 
     if(threadIdNamesList.size() > 0)
     {
       kernelJson["tidX"] = threadIdNamesList[0];
       kernelJson["begX"] = tidArgs[0].loopIter.startText == "" ? "0" : tidArgs[0].loopIter.startText;  
+      kernelJson["SmplX"] = IsZeroStartLoopStatement(tidArgs[0].loopIter.startNode, compiler);
     }
     else
     {
       kernelJson["tidX"] = 1;
       kernelJson["begX"] = 0;
+      kernelJson["SmplX"] = true;
     }
 
     if(threadIdNamesList.size() > 1)
     {
       kernelJson["tidY"] = threadIdNamesList[1];
       kernelJson["begY"] = tidArgs[1].loopIter.startText;  
+      kernelJson["SmplY"] = IsZeroStartLoopStatement(tidArgs[1].loopIter.startNode, compiler);
     }
     else
     {
       kernelJson["tidY"] = 1;
       kernelJson["begY"] = 0;
+      kernelJson["SmplY"] = true;
     }
 
     if(threadIdNamesList.size() > 2)
     {
       kernelJson["tidZ"] = threadIdNamesList[2];
       kernelJson["begZ"] = tidArgs[2].loopIter.startText;  
+      kernelJson["SmplZ"] = IsZeroStartLoopStatement(tidArgs[2].loopIter.startNode, compiler);
     }
     else
     {
       kernelJson["tidZ"] = 1;
       kernelJson["begZ"] = 0;
+      kernelJson["SmplZ"] = true;
     }
 
     // put auxArgs to push constants
@@ -1455,17 +1475,30 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         //threadId["Size"]   = loopSize;
         threadId["Start"]  = loopStart;
         threadId["Stride"] = loopStride;
+        //if(tidArgs[tid].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL)  
+        //  threadId["CondLE"] = 1;
+        //else
+        //  threadId["CondLE"] = 0;
         kernelJson["ThreadIds"].push_back(threadId);
       }
 
       kernelJson["threadDim"]   = tidArgs.size();
       kernelJson["threadNames"] = threadIdNames;
       if(threadIdNames.size() >= 1)
+      {
         kernelJson["threadName1"] = threadIdNames[0];
+        kernelJson["CondLE1"]     = (tidArgs[0].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
+      }
       if(threadIdNames.size() >= 2)
+      {
         kernelJson["threadName2"] = threadIdNames[1];
+        kernelJson["CondLE2"]     = (tidArgs[1].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
+      }
       if(threadIdNames.size() == 3)
+      {
         kernelJson["threadName3"] = threadIdNames[2];
+        kernelJson["CondLE3"]     = (tidArgs[2].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
+      }
     }
     
     //////////////////////////////////////////////////////////////////////////////////  TODO: refactor this code
