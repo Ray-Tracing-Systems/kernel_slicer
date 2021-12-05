@@ -118,8 +118,7 @@ struct SizeAttrInfo : public ParsedAttrInfo {
       D->addAttr(AnnotateAttr::Create(S.Context, "size", ArgsBuf.data(), ArgsBuf.size(), Attr.getRange()));
     } else {
       // Attach an annotate attribute to the Decl.
-      D->addAttr(AnnotateAttr::Create(S.Context, "size", nullptr, 0,
-                                      Attr.getRange()));
+      D->addAttr(AnnotateAttr::Create(S.Context, "size", nullptr, 0, Attr.getRange()));
     }
     return AttributeApplied;
   }
