@@ -315,9 +315,10 @@ namespace kslicer
     bool isTexture() const { return (kind == DATA_KIND::KIND_TEXTURE); };
 
     const clang::ParmVarDecl* paramNode = nullptr;
+    std::vector<std::string> sizeUserAttr;
   };
 
-  InOutVarInfo GetParamInfo(const clang::ParmVarDecl* currParam);
+  InOutVarInfo GetParamInfo(const clang::ParmVarDecl* currParam, const clang::CompilerInstance& compiler);
 
   // assume there could be only 4 form of kernel arg when kernel is called
   //

@@ -59,12 +59,11 @@ struct SetterAttrInfo : public ParsedAttrInfo {
 
 struct SizeAttrInfo : public ParsedAttrInfo {
   SizeAttrInfo() {
-    // Can take up to 15 optional arguments
-    OptArgs = 15;
+    // Can take up to 3 optional arguments
+    OptArgs = 3;
     // GNU-style __attribute__(("example")) and C++-style [[example]] and
     // [[plugin::example]] supported.
     static constexpr Spelling S[] = {{ParsedAttr::AS_GNU,   "size"},
-                                     {ParsedAttr::AS_CXX11, "size"},
                                      {ParsedAttr::AS_CXX11, "kslicer::size"}};
     Spellings = S;
   }
@@ -102,26 +101,23 @@ struct SizeAttrInfo : public ParsedAttrInfo {
     }
 
     // If there are arguments, the first argument should be a string literal.
-    if (argNum > 0) {
-      auto *Arg0 = Attr.getArgAsExpr(0);
-      StringLiteral *Literal =
-          dyn_cast<StringLiteral>(Arg0->IgnoreParenCasts());
-      if (!Literal) {
-        unsigned ID = S.getDiagnostics().getCustomDiagID(
-            DiagnosticsEngine::Error, "first argument to the 'size' "
-                                      "attribute must be a string literal");
-        S.Diag(Attr.getLoc(), ID);
-        return AttributeNotApplied;
-      }
+    if (argNum > 0) 
+    {
+      //auto *Arg0 = Attr.getArgAsExpr(0);
+      //StringLiteral *Literal = dyn_cast<StringLiteral>(Arg0->IgnoreParenCasts());
+      //if (!Literal) {
+      //  unsigned ID = S.getDiagnostics().getCustomDiagID(DiagnosticsEngine::Error, "first argument to the 'size' " "attribute must be a string literal");
+      //  S.Diag(Attr.getLoc(), ID);
+      //  return AttributeNotApplied;
+      //}
+      //std::string data = Literal->getString().str();
       SmallVector<Expr *, 16> ArgsBuf;
       for (unsigned i = 0; i < Attr.getNumArgs(); i++) {
         ArgsBuf.push_back(Attr.getArgAsExpr(i));
+        D->addAttr(AnnotateAttr::Create(S.Context, "size", ArgsBuf.data(), ArgsBuf.size(), Attr.getRange()));
       }
-      D->addAttr(AnnotateAttr::Create(S.Context, "size", ArgsBuf.data(), ArgsBuf.size(), Attr.getRange()));
-    } else {
-      // Attach an annotate attribute to the Decl.
-      D->addAttr(AnnotateAttr::Create(S.Context, "size", nullptr, 0, Attr.getRange()));
-    }
+    } 
+
     return AttributeApplied;
   }
 };

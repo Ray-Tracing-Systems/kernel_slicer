@@ -49,7 +49,7 @@ void kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::C
   //std::string&         a_outFuncDecl   = a_mainFunc.GeneratedDecl;
   GetCFSourceCodeCmd(a_mainFunc, compiler, this->megakernelRTV); // ==> write this->allDescriptorSetsInfo, a_mainFunc
   a_mainFunc.endDSNumber   = allDescriptorSetsInfo.size();
-  a_mainFunc.InOuts        = kslicer::ListParamsOfMainFunc(a_mainFunc.Node);
+  a_mainFunc.InOuts        = kslicer::ListParamsOfMainFunc(a_mainFunc.Node, compiler);
 }
 
 
