@@ -130,6 +130,8 @@ namespace kslicer
       bool IsUser()    const { return !isThreadID && !isLoopSize && !needFakeOffset && !IsPointer() && !IsTexture() && !isContainer; }
     };
 
+    enum class IPV_LOOP_KIND  { LOOP_KIND_LESS = 0, LOOP_KIND_LESS_EQUAL = 1};
+
     struct LoopIter 
     {
       std::string type;
@@ -148,6 +150,7 @@ namespace kslicer
 
       uint32_t    loopNesting = 0;       ///<! 
       uint32_t    id;                    ///<! used to preserve or change loops order
+      IPV_LOOP_KIND condKind = IPV_LOOP_KIND::LOOP_KIND_LESS;
     };
     
     enum class REDUCTION_TYPE {ADD_ONE = 1, ADD = 2, MUL = 3, FUNC = 4, SUB = 5, SUB_ONE,  UNKNOWN = 255};

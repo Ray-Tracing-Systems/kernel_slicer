@@ -25,8 +25,7 @@ bool kslicer::KernelRewriter::VisitForStmt(clang::ForStmt* forLoop)
   const clang::Decl*     initVarD  = initVarDS->getSingleDecl();
   if(!clang::isa<clang::VarDecl>(initVarD))
     return true;  
-  const clang::VarDecl* initVar = clang::dyn_cast<clang::VarDecl>(initVarD);
-  
+  const clang::VarDecl* initVar        = clang::dyn_cast<clang::VarDecl>(initVarD);
   const clang::SourceRange startRange  = initVar->getAnyInitializer()->getSourceRange();
   const clang::SourceRange sizeRange   = loopSize->getSourceRange();
   const clang::SourceRange strideRange = loopStride->getSourceRange();
@@ -34,6 +33,13 @@ bool kslicer::KernelRewriter::VisitForStmt(clang::ForStmt* forLoop)
   const std::string startText  = kslicer::GetRangeSourceCode(startRange, m_compiler);
   const std::string sizeText   = kslicer::GetRangeSourceCode(sizeRange, m_compiler);
   const std::string strideText = kslicer::GetRangeSourceCode(strideRange, m_compiler);
+
+  std::string opCodeStr = "<";
+  if(clang::isa<clang::BinaryOperator>(loopSize))
+  {
+    const clang::BinaryOperator* opCompare = clang::dyn_cast<const clang::BinaryOperator>(loopSize);
+    opCodeStr = opCompare->getOpcodeStr();
+  }
 
   for(auto& loop : m_currKernel.loopIters)
   {
@@ -43,6 +49,10 @@ bool kslicer::KernelRewriter::VisitForStmt(clang::ForStmt* forLoop)
     loop.sizeNode   = loopSize;
     loop.strideNode = loopStride;
     loop.bodyNode   = loopBody;
+    if(opCodeStr == "<=")
+      loop.condKind = kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL;
+    else
+      loop.condKind = kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS;
   }
 
   return true;
