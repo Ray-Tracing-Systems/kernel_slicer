@@ -356,6 +356,27 @@ static bool IsZeroStartLoopStatement(const clang::Stmt* a_stmt, const clang::Com
   return (text == "0");
 }
 
+static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func)
+{
+  assert(a_func.Node != nullptr);
+  if(!a_func.Node->isVirtual())
+    return false;
+  
+  for(const auto& var : a_func.InOuts)
+  {
+    if(var.kind == kslicer::DATA_KIND::KIND_POINTER)
+    {
+      if(var.sizeUserAttr.size() == 0) {
+        std::cout << "[kslicer]: warning, unknown data size for param " << var.name.c_str() << " of control func " << a_func.Name.c_str() << std::endl;
+        std::cout << "[kslicer]: the control function is declared virual, but kslicer can't generate implementation due to unknown data size of a pointer " << std::endl;
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -844,6 +865,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["Name"]                 = mainFunc.Name;
     data2["DescriptorSets"]       = std::vector<std::string>();
     data2["Decl"]                 = mainFunc.GeneratedDecl;
+    data2["DeclOrig"]             = mainFunc.OriginalDecl;
+    data2["OverrideMe"]           = HaveToBeOverriden(mainFunc); 
     data2["LocalVarsBuffersDecl"] = std::vector<std::string>();
     for(const auto& v : mainFunc.Locals)
     {

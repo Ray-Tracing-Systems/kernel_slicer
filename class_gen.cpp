@@ -140,35 +140,45 @@ static std::string GetControlFuncDeclText(const clang::FunctionDecl* fDecl, clan
   for(unsigned i=0;i<fDecl->getNumParams();i++)
   {
     auto pParam = fDecl->getParamDecl(i);
-    const clang::QualType typeOfParam =	pParam->getType();
-    std::string typeStr = typeOfParam.getAsString();
-    //if(!typeOfParam->isPointerType())
-    //{
-      text += kslicer::GetRangeSourceCode(pParam->getSourceRange(), compiler);
-      if(i!=fDecl->getNumParams()-1)
-        text += ", ";
-    //}
+    //const clang::QualType typeOfParam =	pParam->getType();
+    //std::string typeStr = typeOfParam.getAsString();
+    text += kslicer::GetRangeSourceCode(pParam->getSourceRange(), compiler);
+    if(i!=fDecl->getNumParams()-1)
+      text += ", ";
   }
 
   return text + ")";
 }
 
+static std::string GetOriginalDeclText(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler)
+{
+  std::string text = fDecl->getNameInfo().getName().getAsString() + "(";
+  for(unsigned i=0;i<fDecl->getNumParams();i++)
+  {
+    auto pParam = fDecl->getParamDecl(i);
+    //const clang::QualType typeOfParam =	pParam->getType();
+    //std::string typeStr = typeOfParam.getAsString();
+    text += kslicer::GetRangeSourceCode(pParam->getSourceRange(), compiler);
+    if(i!=fDecl->getNumParams()-1)
+      text += ", ";
+  }
+  return text + ")";
+}
 
 void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler, bool a_megakernelRTV)
 {
   //const std::string&   a_mainClassName = this->mainClassName;
-  const CXXMethodDecl* a_node          = a_mainFunc.Node;
-  a_mainFunc.GeneratedDecl  = GetCFDeclFromSource(kslicer::GetRangeSourceCode(a_node->getCanonicalDecl()->getSourceRange(), compiler));
-  const auto inOutParamList = kslicer::ListParamsOfMainFunc(a_node, compiler);
+  const CXXMethodDecl* a_node = a_mainFunc.Node;
+  const auto inOutParamList   = kslicer::ListParamsOfMainFunc(a_node, compiler);
 
   const auto funcBody = a_node->getBody();
   clang::SourceLocation b(funcBody->getBeginLoc()), _e(funcBody->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
-  std::string funcDecl   = GetControlFuncDeclText(a_node, compiler);
 
   a_mainFunc.ReturnType    = a_node->getReturnType().getAsString();
-  a_mainFunc.GeneratedDecl = funcDecl;
+  a_mainFunc.GeneratedDecl = GetControlFuncDeclText(a_node, compiler);
   a_mainFunc.startDSNumber = allDescriptorSetsInfo.size();
+  a_mainFunc.OriginalDecl  = GetOriginalDeclText(a_node, compiler);
   
   if(a_megakernelRTV)
   {

@@ -388,6 +388,7 @@ namespace kslicer
     std::string ReturnType;
     std::string GeneratedDecl;
     std::string CodeGenerated;
+    std::string OriginalDecl;
     std::string MegaKernelCall;
 
     size_t startDSNumber = 0;

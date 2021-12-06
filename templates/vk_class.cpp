@@ -361,5 +361,12 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   {{MainFunc.MainFuncTextCmd}}
   {% endif %} {# /* end of else branch */ #}
 }
+{% if MainFunc.OverrideMe %}
+
+{{MainFunc.ReturnType}} {{MainClassName}}_Generated::{{MainFunc.DeclOrig}}
+{
+  
+}
+{% endif %}
 ## endfor
 

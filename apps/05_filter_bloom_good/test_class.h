@@ -52,8 +52,8 @@ public:
   
   void SetMaxImageSize(int w, int h);
 
-  void Bloom(int w, int h, const float4* inData4f   __attribute__((size("w", "h"))) , 
-                           unsigned int* outData1ui __attribute__((size("w", "h"))) );
+  virtual void Bloom(int w, int h, const float4* inData4f   __attribute__((size("w", "h"))) , 
+                                   unsigned int* outData1ui __attribute__((size("w", "h"))) );
 
 protected:
 

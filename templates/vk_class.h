@@ -75,6 +75,9 @@ public:
 
   {% for MainFunc in MainFunctions %}  
   virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}};
+  {% if MainFunc.OverrideMe %}
+  {{MainFunc.ReturnType}} {{MainFunc.DeclOrig}} override;
+  {% endif %}
   {% endfor %}
 
   virtual void copyKernelFloatCmd(uint32_t length);
