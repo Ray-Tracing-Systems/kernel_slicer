@@ -313,7 +313,9 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
     else if(m_mainFuncts.find(fname) != m_mainFuncts.end())
     {
       m_mainFuncNodes[fname] = f;
-      //std::cout << "main function has found:\t" << fname.c_str() << std::endl;
+      //std::cout << "control function has found:\t" << fname.c_str() << std::endl;
+      //std::string text = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler); 
+      //std::cout << "found src = " << text.c_str() << std::endl;
       //f->dump();
     }
     else if(attr == CPP11_ATTR::ATTR_SETTER)
