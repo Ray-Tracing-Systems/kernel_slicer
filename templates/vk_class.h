@@ -23,7 +23,11 @@ class {{MainClassName}}_Generated : public {{MainClassName}}
 public:
 
   {% for ctorDecl in Constructors %}
-  {{ctorDecl}}
+  {% if ctorDecl.NumParams == 0 %}
+  {{ctorDecl.ClassName}}_Generated() {}
+  {% else %}
+  {{ctorDecl.ClassName}}_Generated({{ctorDecl.Params}}) : {{ctorDecl.ClassName}}({{ctorDecl.PrevCall}}) {}
+  {% endif %}
   {% endfor %}
   virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount);
 

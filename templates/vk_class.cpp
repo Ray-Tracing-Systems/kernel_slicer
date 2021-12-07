@@ -11,6 +11,13 @@
 #include "CrossRT.h"
 ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_transferQId, uint32_t a_graphicsQId);
 {% endif %}
+{% for ctorDecl in Constructors %}
+{% if ctorDecl.NumParams == 0 %}
+std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}_Generated() { return std::make_shared<{{MainClassName}}_Generated>(); }
+{% else %}
+std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}_Generated({{ctorDecl.Params}}) { return std::make_shared<{{MainClassName}}_Generated> ({{ctorDecl.PrevCall}}); }
+{% endif %}
+{% endfor %}
 
 VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO() const
 {

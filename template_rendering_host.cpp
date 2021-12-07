@@ -434,8 +434,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["Constructors"] = std::vector<std::string>();
   for(auto ctor : a_classInfo.ctors)
   {
-    std::string fNameGented = ctor->getNameInfo().getName().getAsString() + "_Generated(";
-    std::string fNameOrigin = ctor->getNameInfo().getName().getAsString() + "(";
+    std::string fNameGented = ""; 
+    std::string fNameOrigin = "";
 
     for(unsigned i=0;i<ctor->getNumParams();i++)
     {
@@ -451,14 +451,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         fNameGented += ", ";
       }
     }
- 
-    fNameOrigin += ")";
-    fNameGented += ")";
-    
-    if(ctor->getNumParams() == 0)
-      data["Constructors"].push_back(fNameGented + " {}");
-    else
-      data["Constructors"].push_back(fNameGented + " : " + fNameOrigin + "{}");
+
+    json local;
+    local["ClassName"] = ctor->getNameInfo().getName().getAsString();
+    local["NumParams"] = ctor->getNumParams();
+    local["Params"]    = fNameGented;
+    local["PrevCall"]  = fNameOrigin;      
+    data["Constructors"].push_back(local);
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
