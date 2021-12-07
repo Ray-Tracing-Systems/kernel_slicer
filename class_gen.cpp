@@ -254,7 +254,7 @@ kslicer::InOutVarInfo kslicer::GetParamInfo(const clang::ParmVarDecl* currParam,
   if(qt->isPointerType())
   {
     var.kind    = DATA_KIND::KIND_POINTER;
-    var.isConst = qt.isConstQualified();
+    var.isConst = qt->getPointeeType().isConstQualified();
   }
   else if(qt->isReferenceType() && kslicer::IsTexture(qt))
   {

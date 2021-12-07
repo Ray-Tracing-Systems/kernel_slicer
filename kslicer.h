@@ -313,6 +313,7 @@ namespace kslicer
     bool isConst     = false;
     bool isThreadId  = false;
     bool isTexture() const { return (kind == DATA_KIND::KIND_TEXTURE); };
+    bool isPointer() const { return (kind == DATA_KIND::KIND_POINTER); };
 
     const clang::ParmVarDecl* paramNode = nullptr;
     std::vector<std::string> sizeUserAttr;

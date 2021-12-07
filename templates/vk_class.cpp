@@ -365,7 +365,87 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
 
 {{MainFunc.ReturnType}} {{MainClassName}}_Generated::{{MainFunc.DeclOrig}}
 {
+  // (1) init global Vulkan context if needed
+  //
   
+  // (2) get global Vulkan context objects
+  //
+  VkInstance       instance       = VK_NULL_HANDLE;
+  VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+  VkDevice         device         = VK_NULL_HANDLE;
+  VkCommandPool    commandPool    = VK_NULL_HANDLE; 
+  std::shared_ptr<vk_utils::ICopyEngine> pCopyHelper = nullptr;
+
+  std::vector<VkBuffer> buffers;
+  std::vector<VkImage>  images;
+
+  // (3) create GPU objects
+  //
+  {% for var in MainFunc.FullImpl.InputData %}
+  {% if var.IsTexture %}
+  //make image object
+  //images.push_back({{var.Name}}GPU);
+  {% else %}
+  VkBuffer {{var.Name}}GPU = vk_utils::createBuffer(device, {{var.DataSize}}*sizeof({{var.DataType}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  buffers.push_back({{var.Name}}GPU);
+  {% endif %}
+  {% endfor %}
+  {% for var in MainFunc.FullImpl.OutputData %}
+  {% if var.IsTexture %}
+  //make image object
+  //images.push_back({{var.Name}}GPU);
+  {% else %}
+  VkBuffer {{var.Name}}GPU = vk_utils::createBuffer(device, {{var.DataSize}}*sizeof({{var.DataType}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  buffers.push_back({{var.Name}}GPU);
+  {% endif %}
+  {% endfor %}
+
+  VkDeviceMemory buffersMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, buffers);
+  ///VkDeviceMemory textureMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, images); // TODO: implement this
+
+  // (4) copy input data to GPU
+  //
+  {% for var in MainFunc.FullImpl.InputData %}
+  {% if var.IsTexture %}
+  //pCopyHelper->UpdateImage(...)
+  {% else %}
+  pCopyHelper->UpdateBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
+  {% endif %}
+  {% endfor %}
+
+  // (?) copy OUTPUT data to CPU
+  //
+  {% for var in MainFunc.FullImpl.OutputData %}
+  {% if var.IsTexture %}
+  //pCopyHelper->ReadImage(...)
+  {% else %}
+  pCopyHelper->ReadBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
+  {% endif %}
+  {% endfor %}
+  
+  // (free resources) copy OUTPUT data to CPU
+  //
+  {% for var in MainFunc.FullImpl.InputData %}
+  {% if var.IsTexture %}
+  // vkDestroyImageView(device, {{var.Name}}GPU.view, nullptr);
+  // vkDestroyImage    (device, {{var.Name}}GPU.image, nullptr);
+  {% else %}
+  vkDestroyBuffer(device, {{var.Name}}GPU, nullptr);
+  {% endif %}
+  {% endfor %}
+  {% for var in MainFunc.FullImpl.OutputData %}
+  {% if var.IsTexture %}
+  // vkDestroyImageView(device, {{var.Name}}GPU.view, nullptr);
+  // vkDestroyImage    (device, {{var.Name}}GPU.image, nullptr);
+  {% else %}
+  vkDestroyBuffer(device, {{var.Name}}GPU, nullptr);
+  {% endif %}
+  {% endfor %}
+ 
+  if(buffersMem != VK_NULL_HANDLE)
+    vkFreeMemory(device, buffersMem, nullptr);
+  //if(textureMem ! = VK_NULL_HANDLE)
+  //  vkFreeMemory(device, textureMem, nullptr);
 }
 {% endif %}
 ## endfor
