@@ -426,7 +426,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
 
   this->InitVulkanObjects(device, physicalDevice, ... );
   this->InitMemberBuffers();
-  this->SetVulkanInOutFor_{{MainFunc.Name}}(...); 
+  this->SetVulkanInOutFor_{{MainFunc.Name}}({{MainFunc.FullImpl.ArgsOnSetInOut}}); 
 
   // (4) copy input data to GPU
   //

@@ -345,14 +345,24 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
   // BloomCmd(commandBuffer, ...);
   //
   std::stringstream callsOut;
+  std::stringstream commandInOut;
   for(uint32_t i=0; i < a_func.Node->getNumParams(); i++)
   {
     const clang::ParmVarDecl* pParam = a_func.Node->getParamDecl(i);
+    const clang::QualType paramType = pParam->getType();
     callsOut << pParam->getNameAsString();
     if(i!=a_func.Node->getNumParams()-1)
       callsOut << ", ";
+
+    if(paramType->isPointerType())                                       //#TODO: implement for textures also
+    {
+      commandInOut << pParam->getNameAsString() << "GPU, 0";
+      if(i!=a_func.Node->getNumParams()-1)
+        commandInOut << ", ";
+    }
   }
-  res["ArgsOnCall"] = callsOut.str();
+  res["ArgsOnCall"]     = callsOut.str();
+  res["ArgsOnSetInOut"] = commandInOut.str();
 
   return res;
 }
