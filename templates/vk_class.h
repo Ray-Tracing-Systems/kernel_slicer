@@ -26,7 +26,8 @@ public:
   {% for ctorDecl in Constructors %}
   {{ctorDecl}}
   {% endfor %}
-  virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount);
+  virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount,
+                                 std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
 
 ## for MainFunc in MainFunctions
   virtual void SetVulkanInOutFor_{{MainFunc.Name}}(

@@ -9,7 +9,9 @@
 
 {% if length(SceneMembers) > 0 %}
 #include "CrossRT.h"
-ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_transferQId, uint32_t a_graphicsQId);
+ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_graphicsQId, std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper,
+                              uint32_t a_maxMeshes, uint32_t a_maxTotalVertices, uint32_t a_maxTotalPrimitives, uint32_t a_maxPrimitivesPerMesh,
+                              bool build_as_add);
 {% endif %}
 
 VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO() const
@@ -28,7 +30,8 @@ static uint32_t ComputeReductionSteps(uint32_t whole_size, uint32_t wg_size)
   return steps;
 }
 
-void {{MainClassName}}_Generated::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount) 
+void {{MainClassName}}_Generated::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount,
+                                                    std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
   physicalDevice = a_physicalDevice;
   device         = a_device;
@@ -41,7 +44,14 @@ void {{MainClassName}}_Generated::InitVulkanObjects(VkDevice a_device, VkPhysica
   auto queueAllFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
   {% endif %}
   {% for ScnObj in SceneMembers %}
-  {{ScnObj}} = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, queueAllFID), [](ISceneObject *p) { DeleteSceneRT(p); } ); 
+  //@TODO: calculate these somehow?
+  uint32_t maxMeshes = 1024;
+  uint32_t maxTotalVertices = 1'000'000;
+  uint32_t maxTotalPrimitives = 1'000'000;
+  uint32_t maxPrimitivesPerMesh = 200'000;
+  {{ScnObj}} = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, a_pCopyEngine,
+                                                             maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true),
+                                                            [](ISceneObject *p) { DeleteSceneRT(p); } );
   {% endfor %}
 }
 

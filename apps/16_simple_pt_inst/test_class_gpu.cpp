@@ -142,7 +142,7 @@ void test_class_gpu(const char* a_scenePath)
   //auto pScnMgr     = std::make_shared<SceneManager>(device, physicalDevice, queueComputeFID, queueComputeFID, true);
   auto pGPUImpl    = std::make_shared<TestClass_GPU>(WIN_WIDTH*WIN_HEIGHT);  // !!! USING GENERATED CODE !!! 
   
-  pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT); // !!! USING GENERATED CODE !!!                        
+  pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT, pCopyHelper); // !!! USING GENERATED CODE !!!
   pGPUImpl->LoadScene(a_scenePath);
 
   // must initialize all vector members with correct capacity before call 'InitMemberBuffers()'

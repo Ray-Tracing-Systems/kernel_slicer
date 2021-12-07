@@ -7,6 +7,10 @@
 #include <ray_tracing/vk_rt_utils.h>
 #include "LiteMath.h"
 #include <vk_copy.h>
+#include <vk_images.h>
+
+#include "../loader_utils/hydraxml.h"
+
 
 struct InstanceInfo
 {
@@ -16,79 +20,110 @@ struct InstanceInfo
   bool renderMark = false;
 };
 
+enum class BVH_BUILDER_TYPE
+{
+  RTX,
+  // CPU,
+  // ...
+};
+
+enum class MATERIAL_FORMAT
+{
+  METALLIC_ROUGHNESS,
+  // HYDRA_CLASSIC
+  // PRINCIPLED
+  // etc.
+};
+
+enum class MATERIAL_LOAD_MODE
+{
+  NONE,
+  MATERIALS_ONLY,
+  MATERIALS_AND_TEXTURES
+};
+
+enum class MESH_FORMATS
+{
+  MESH_4F,
+  MESH_8F,
+};
+
+struct LoaderConfig
+{
+  bool load_geometry = true;
+  MATERIAL_LOAD_MODE load_materials = MATERIAL_LOAD_MODE::NONE;
+  bool build_acc_structs = false;
+  bool build_acc_structs_while_loading_scene = false;
+  bool instance_matrix_as_vertex_attribute = false;
+  bool debug_output = false;
+  BVH_BUILDER_TYPE builder_type = BVH_BUILDER_TYPE::RTX;
+  MATERIAL_FORMAT material_format = MATERIAL_FORMAT::METALLIC_ROUGHNESS;
+  MESH_FORMATS mesh_format = MESH_FORMATS::MESH_8F;
+};
+
 struct SceneManager
 {
-  SceneManager(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_transferQId, uint32_t a_graphicsQId,
-               bool useRTX = false,
-               bool debug = false);
+  SceneManager(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_graphicsQId,
+    std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper, LoaderConfig a_config = {});
+  ~SceneManager();
 
-  ~SceneManager()
-  { DestroyScene(); }
-
-  bool LoadSingleMesh(const std::string &meshPath);
   bool LoadSceneXML(const std::string &scenePath, bool transpose = true);
+  bool LoadScene(const std::string &scenePath); // guess scene type by extension
+//  void LoadSingleTriangle(); // TODO: rework
 
-  void LoadSingleTriangle();
+  bool InitEmptyScene(uint32_t maxMeshes, uint32_t maxTotalVertices, uint32_t maxTotalPrimitives, uint32_t maxPrimitivesPerMesh);
 
-  uint32_t AddMeshFromFile(const std::string &meshPath);
-
+  uint32_t AddMeshFromFile(const std::string& meshPath);
   uint32_t AddMeshFromData(cmesh::SimpleMesh &meshData);
+  uint32_t AddMeshFromDataAndQueueBuildAS(cmesh::SimpleMesh &meshData);
 
   uint32_t InstanceMesh(uint32_t meshId, const LiteMath::float4x4 &matrix, bool markForRender = true);
 
   void MarkInstance(uint32_t instId);
-
   void UnmarkInstance(uint32_t instId);
 
   void DrawMarkedInstances();
 
   void DestroyScene();
 
-  VkPipelineVertexInputStateCreateInfo GetPipelineVertexInputStateCreateInfo()
-  { return m_pMeshData->VertexInputLayout(); }
+  VkPipelineVertexInputStateCreateInfo GetPipelineVertexInputStateCreateInfo();
 
-  VkBuffer GetVertexBuffer() const
-  { return m_geoVertBuf; }
+  VkBuffer GetVertexBuffer()       const { return m_geoVertBuf; }
+  VkBuffer GetIndexBuffer()        const { return m_geoIdxBuf; }
+  VkBuffer GetMeshInfoBuffer()     const { return m_meshInfoBuf; }
+  VkBuffer GetInstanceMatBuffer()  const { return m_instMatricesBuf; }
+  VkBuffer GetMaterialsBuffer()    const { return m_materialBuf; }
+  VkBuffer GetMaterialIDsBuffer()  const { return m_matIdsBuf; }
 
-  VkBuffer GetIndexBuffer() const
-  { return m_geoIdxBuf; }
+  std::vector<VkSampler> GetTextureSamplers() const { return m_samplers; }
+  std::vector<VkImageView>  GetTextureViews() const { return m_textureViews; }
 
-  VkBuffer GetMeshInfoBuffer() const
-  { return m_meshInfoBuf; }
+  uint32_t MeshesNum()    const {return m_meshInfos.size();}
+  uint32_t InstancesNum() const {return m_instanceInfos.size();}
 
-  uint32_t MeshesNum() const
-  { return m_meshInfos.size(); }
+  hydra_xml::Camera GetCamera(uint32_t camId) const;
+  MeshInfo GetMeshInfo(uint32_t meshId) const {assert(meshId < m_meshInfos.size()); return m_meshInfos[meshId];}
+  InstanceInfo GetInstanceInfo(uint32_t instId) const {assert(instId < m_instanceInfos.size()); return m_instanceInfos[instId];}
+  LiteMath::float4x4 GetInstanceMatrix(uint32_t instId) const {assert(instId < m_instanceMatrices.size()); return m_instanceMatrices[instId];}
 
-  uint32_t InstancesNum() const
-  { return m_instanceInfos.size(); }
+//  void DestroyAS();
 
-  MeshInfo GetMeshInfo(uint32_t meshId) const
-  {
-    assert(meshId < m_meshInfos.size());
-    return m_meshInfos[meshId];
-  }
-
-  InstanceInfo GetInstanceInfo(uint32_t instId) const
-  {
-    assert(instId < m_instanceInfos.size());
-    return m_instanceInfos[instId];
-  }
-
-  LiteMath::float4x4 GetInstanceMatrix(uint32_t instId) const
-  {
-    assert(instId < m_instanceMatrices.size());
-    return m_instanceMatrices[instId];
-  }
-
-  vk_rt_utils::AccelStructure getTLAS() const
-  { return m_tlas; }
-
+  VkAccelerationStructureKHR GetTLAS() const { return m_pBuilderV2->GetTLAS(); }
   void BuildAllBLAS();
   void BuildTLAS();
 
-  void LoadGeoDataOnGPU();
-  void AddBLAS(uint32_t meshIdx);
 private:
+  const std::string missingTextureImgPath = "../resources/data/missing_texture.png";
+  LoaderConfig m_config;
+
+  vk_utils::VulkanImageMem LoadSpecialTexture();
+  void InitGeoBuffersGPU(uint32_t a_meshNum, uint32_t a_totalVertNum, uint32_t a_totalIndicesNum);
+  void LoadOneMeshOnGPU(uint32_t meshIdx);
+  void LoadCommonGeoDataOnGPU();
+  void LoadInstanceDataOnGPU();
+  void LoadMaterialDataOnGPU();
+  void InitMeshCPU(MESH_FORMATS format);
+  void AddBLAS(uint32_t meshIdx);
 
   std::vector<MeshInfo> m_meshInfos = {};
   std::shared_ptr<IMeshData> m_pMeshData = nullptr;
@@ -96,39 +131,48 @@ private:
   std::vector<InstanceInfo> m_instanceInfos = {};
   std::vector<LiteMath::float4x4> m_instanceMatrices = {};
 
-  uint32_t m_totalVertices = 0u;
-  uint32_t m_totalIndices = 0u;
+  std::vector<hydra_xml::Camera> m_sceneCameras = {};
 
-  VkBuffer m_geoVertBuf = VK_NULL_HANDLE;
-  VkBuffer m_geoIdxBuf = VK_NULL_HANDLE;
-  VkBuffer m_meshInfoBuf = VK_NULL_HANDLE;
-  VkBuffer m_instanceMatricesBuffer = VK_NULL_HANDLE;
+  uint32_t m_totalVertices = 0u;
+  uint32_t m_totalIndices  = 0u;
+
+  VkBuffer m_geoVertBuf        = VK_NULL_HANDLE;
+  VkBuffer m_geoIdxBuf         = VK_NULL_HANDLE;
+  VkBuffer m_meshInfoBuf       = VK_NULL_HANDLE;
+  VkBuffer m_matIdsBuf         = VK_NULL_HANDLE;
   VkDeviceMemory m_geoMemAlloc = VK_NULL_HANDLE;
+
+  VkBuffer m_instMatricesBuf    = VK_NULL_HANDLE;
+  VkDeviceMemory m_instMemAlloc = VK_NULL_HANDLE;
+
+  VkDeviceSize m_loadedVertices = 0;
+  VkDeviceSize m_loadedIndices  = 0;
+
+  std::vector<uint32_t> m_matIDs;
+
+  VkBuffer m_materialBuf  = VK_NULL_HANDLE;
+  VkDeviceMemory m_matMemAlloc = VK_NULL_HANDLE;
+  std::vector<vk_utils::VulkanImageMem> m_textures;
+  std::unordered_map<uint32_t, vk_utils::VulkanImageMem&> m_texturesById;
+  VkDeviceMemory m_texturesMemAlloc = VK_NULL_HANDLE;
+  std::vector<VkSampler> m_samplers;
+  std::vector<VkImageView> m_textureViews;
 
   VkDevice m_device = VK_NULL_HANDLE;
   VkPhysicalDevice m_physDevice = VK_NULL_HANDLE;
-  uint32_t m_transferQId = UINT32_MAX;
-  VkQueue m_transferQ = VK_NULL_HANDLE;
+  VkCommandPool m_pool = VK_NULL_HANDLE;
 
   uint32_t m_graphicsQId = UINT32_MAX;
-  VkQueue m_graphicsQ = VK_NULL_HANDLE;
-  std::unique_ptr<vk_utils::ICopyEngine> m_pCopyHelper;
+  VkQueue  m_graphicsQ   = VK_NULL_HANDLE;
+  std::shared_ptr<vk_utils::ICopyEngine> m_pCopyHelper;
 
-  vk_rt_utils::RTScratchBuffer m_rtScratchBuf{};
+  std::unique_ptr<vk_rt_utils::AccelStructureBuilder> m_pBuilder;
 
-  std::vector<VkAccelerationStructureGeometryKHR> m_blasGeom;
-  std::vector<VkAccelerationStructureBuildRangeInfoKHR> m_blasOffsetInfo;
-  std::vector<vk_rt_utils::AccelStructure> m_blas;
+  std::unique_ptr<vk_rt_utils::AccelStructureBuilderV2> m_pBuilderV2;
 
-  vk_rt_utils::AccelStructure m_tlas{};
+  std::vector<vk_rt_utils::BLASBuildInput> m_blasData;
 
   bool m_useRTX = false;
-  bool m_debug = false;
-  // for debugging
-  struct Vertex
-  {
-    float pos[3];
-  };
 };
 
 #endif//CHIMERA_SCENE_MGR_H
