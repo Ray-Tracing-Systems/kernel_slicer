@@ -606,3 +606,85 @@ void vk_utils::ComputeCopyHelper::ReadBuffer(VkBuffer a_src, size_t a_srcOffset,
   memcpy(a_dst, mappedMemory, a_size);
   vkUnmapMemory(dev, stagingBuffMemory);
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+vk_utils::VulkanContext g_ctx;
+
+bool vk_utils::globalContextIsInitialized(const std::vector<const char*>& requiredExtensions)
+{
+  // todo: if initialized check that requiredExtensions were actually initialized
+  // if context is initialized but device featurea are wrong, print error and exit
+  return (g_ctx.instance != VK_NULL_HANDLE) && (g_ctx.physicalDevice != VK_NULL_HANDLE) && (g_ctx.device != VK_NULL_HANDLE);
+}
+
+vk_utils::VulkanContext vk_utils::globalContextGet(bool enableValidationLayers)
+{
+  if(globalContextIsInitialized())
+    return g_ctx;
+  else
+    return globalContextInit(std::vector<const char*>(), enableValidationLayers);
+}
+
+vk_utils::VulkanContext vk_utils::globalContextInit(const std::vector<const char*>& requiredExtensions, bool enableValidationLayers)
+{
+  if(globalContextIsInitialized(requiredExtensions))
+    return g_ctx;
+
+  std::vector<const char*> enabledLayers;
+  std::vector<const char*> extensions;
+  enabledLayers.push_back("VK_LAYER_KHRONOS_validation");
+  enabledLayers.push_back("VK_LAYER_LUNARG_standard_validation");
+  VK_CHECK_RESULT(volkInitialize());
+  g_ctx.instance = vk_utils::createInstance(enableValidationLayers, enabledLayers, extensions);
+  volkLoadInstance(g_ctx.instance);
+
+  g_ctx.physicalDevice = vk_utils::findPhysicalDevice(g_ctx.instance, true, 0);
+  auto queueComputeFID = vk_utils::getQueueFamilyIndex(g_ctx.physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
+  
+  // query for shaderInt8
+  //
+  VkPhysicalDeviceShaderFloat16Int8Features features = {};
+  features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
+  features.shaderInt8 = VK_TRUE;
+
+  std::vector<const char*> validationLayers, deviceExtensions;
+  VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
+  vk_utils::QueueFID_T fIDs = {};
+  
+  if(requiredExtensions.size() == 0) // TODO: remove this or work around
+  {
+    deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
+    deviceExtensions.push_back("VK_KHR_shader_float16_int8"); 
+  }
+
+  fIDs.compute = queueComputeFID;
+  g_ctx.device = vk_utils::createLogicalDevice(g_ctx.physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures,
+                                               fIDs, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT, &features);
+  volkLoadDevice(g_ctx.device);                                            
+  g_ctx.commandPool = vk_utils::createCommandPool(g_ctx.device, fIDs.compute, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+
+  // (2) initialize vulkan helpers
+  //  
+  {
+    auto queueComputeFID = vk_utils::getQueueFamilyIndex(g_ctx.physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT);
+    vkGetDeviceQueue(g_ctx.device, queueComputeFID, 0, &g_ctx.computeQueue);
+    vkGetDeviceQueue(g_ctx.device, queueComputeFID, 0, &g_ctx.transferQueue);
+  }
+
+  g_ctx.pCopyHelper = std::make_shared<vk_utils::SimpleCopyHelper>(g_ctx.physicalDevice, g_ctx.device, g_ctx.transferQueue, queueComputeFID, 64*1024*1024); // TODO, select PinPong Helper by default!
+  return g_ctx;
+}
+
+void vk_utils::globalContextDestroy()
+{
+  if(g_ctx.device == VK_NULL_HANDLE)
+    return;
+  vkDestroyCommandPool(g_ctx.device, g_ctx.commandPool, nullptr);
+  vkDestroyDevice(g_ctx.device, nullptr);
+  vkDestroyInstance(g_ctx.instance, nullptr);
+  g_ctx.device         = VK_NULL_HANDLE;
+  g_ctx.physicalDevice = VK_NULL_HANDLE;
+  g_ctx.instance       = VK_NULL_HANDLE;
+}

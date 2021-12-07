@@ -341,6 +341,18 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
     else 
       res["OutputData"].push_back(varData);
   }
+  
+  // BloomCmd(commandBuffer, ...);
+  //
+  std::stringstream callsOut;
+  for(uint32_t i=0; i < a_func.Node->getNumParams(); i++)
+  {
+    const clang::ParmVarDecl* pParam = a_func.Node->getParamDecl(i);
+    callsOut << pParam->getNameAsString();
+    if(i!=a_func.Node->getNumParams()-1)
+      callsOut << ", ";
+  }
+  res["ArgsOnCall"] = callsOut.str();
 
   return res;
 }

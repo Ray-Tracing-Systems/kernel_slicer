@@ -945,8 +945,6 @@ int main(int argc, const char **argv)
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
   std::cout << "{" << std::endl;
   {
-    kslicer::PrintVulkanBasicsFile("templates/vulkan_basics.h", inputCodeInfo);
-
     std::string rawname = kslicer::CutOffFileExt(inputCodeInfo.mainClassFileName);
     auto json = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, rawname + "_generated.h", threadsOrder, uboIncludeName, jsonUBO); 
 

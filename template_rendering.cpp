@@ -39,25 +39,6 @@ void MakeAbsolutePathRelativeTo(std::string& a_filePath, const std::string& a_fo
     a_filePath = a_filePath.substr(a_folderPath.size() + 1);
 }
 
-void kslicer::PrintVulkanBasicsFile(const std::string& a_declTemplateFilePath, const MainClassInfo& a_classInfo)
-{
-  #ifdef WIN32
-  const std::string slash = "\\";
-  #else
-  const std::string slash = "/";
-  #endif
-
-  json data;
-  inja::Environment env;
-  inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());
-  std::string result  = env.render(temp, data);
-  
-  std::string folderPath = GetFolderPath(a_classInfo.mainClassFileName);
-
-  std::ofstream fout(folderPath + slash + "vulkan_basics.h");
-  fout << result.c_str() << std::endl;
-  fout.close();
-}
 
 static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(const std::vector<std::string>& kernelsCallCmdDecl)
 {

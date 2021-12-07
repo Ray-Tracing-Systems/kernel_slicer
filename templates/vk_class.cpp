@@ -2,8 +2,8 @@
 #include <memory>
 #include <limits>
 #include <cassert>
+#include <chrono>
 
-#include "vulkan_basics.h"
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
 
@@ -344,6 +344,11 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr); 
   {% else %}
   {% if MainFunc.IsRTV %}
+  constexpr uint32_t KGEN_FLAG_RETURN            = 1;
+  constexpr uint32_t KGEN_FLAG_BREAK             = 2;
+  constexpr uint32_t KGEN_FLAG_DONT_SET_EXIT     = 4;
+  constexpr uint32_t KGEN_FLAG_SET_EXIT_NEGATIVE = 8;
+  constexpr uint32_t KGEN_REDUCTION_LAST_STEP    = 16;
   {% if MainFunc.NeedThreadFlags %}
   const uint32_t outOfForFlags  = KGEN_FLAG_RETURN;
   const uint32_t inForFlags     = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK;
@@ -367,14 +372,21 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
 {
   // (1) init global Vulkan context if needed
   //
-  
+  #ifndef NDEBUG
+  bool enableValidationLayers = true;
+  #else
+  bool enableValidationLayers = false;
+  #endif
+  auto vulkanCtx = vk_utils::globalContextGet(enableValidationLayers);
+
   // (2) get global Vulkan context objects
   //
-  VkInstance       instance       = VK_NULL_HANDLE;
-  VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-  VkDevice         device         = VK_NULL_HANDLE;
-  VkCommandPool    commandPool    = VK_NULL_HANDLE; 
-  std::shared_ptr<vk_utils::ICopyEngine> pCopyHelper = nullptr;
+  VkInstance       instance       = vulkanCtx.instance;
+  VkPhysicalDevice physicalDevice = vulkanCtx.physicalDevice;
+  VkDevice         device         = vulkanCtx.device;
+  VkCommandPool    commandPool    = vulkanCtx.commandPool; 
+  VkQueue          computeQueue   = vulkanCtx.computeQueue; 
+  auto             pCopyHelper    = vulkanCtx.pCopyHelper;
 
   std::vector<VkBuffer> buffers;
   std::vector<VkImage>  images;
@@ -405,6 +417,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
 
   // (4) copy input data to GPU
   //
+  auto beforeCopy = std::chrono::high_resolution_clock::now();
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
   //pCopyHelper->UpdateImage(...)
@@ -412,9 +425,31 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   pCopyHelper->UpdateBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endif %}
   {% endfor %}
+  auto afterCopy = std::chrono::high_resolution_clock::now();
+  auto msCopyTo  = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy - beforeCopy).count()/1000.f;
+  auto msExecute = msCopyTo;
 
-  // (?) copy OUTPUT data to CPU
+  // (5) now compute some thing useful
   //
+  {
+    VkCommandBuffer commandBuffer = vk_utils::createCommandBuffer(device, commandPool);
+    
+    VkCommandBufferBeginInfo beginCommandBufferInfo = {};
+    beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+    vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
+    {{MainFunc.Name}}Cmd(commandBuffer, {{MainFunc.FullImpl.ArgsOnCall}});      
+    vkEndCommandBuffer(commandBuffer);  
+    
+    auto start = std::chrono::high_resolution_clock::now();
+    vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
+    auto stop = std::chrono::high_resolution_clock::now();
+    msCopyTo  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+  }
+  
+  // (7) copy OUTPUT data to CPU
+  //
+  auto beforeCopy2 = std::chrono::high_resolution_clock::now();
   {% for var in MainFunc.FullImpl.OutputData %}
   {% if var.IsTexture %}
   //pCopyHelper->ReadImage(...)
@@ -422,8 +457,10 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   pCopyHelper->ReadBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endif %}
   {% endfor %}
-  
-  // (free resources) copy OUTPUT data to CPU
+  auto afterCopy2 = std::chrono::high_resolution_clock::now();
+  auto msCopyFrom = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy2 - beforeCopy2).count()/1000.f;
+
+  // (7) free resources 
   //
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
@@ -441,7 +478,6 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   vkDestroyBuffer(device, {{var.Name}}GPU, nullptr);
   {% endif %}
   {% endfor %}
- 
   if(buffersMem != VK_NULL_HANDLE)
     vkFreeMemory(device, buffersMem, nullptr);
   //if(textureMem ! = VK_NULL_HANDLE)

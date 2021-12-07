@@ -6,11 +6,10 @@
 #include <string>
 #include <unordered_map>
 
-#include "vulkan_basics.h"
-
 #include "vk_pipeline.h"
 #include "vk_buffers.h"
 #include "vk_utils.h"
+#include "vk_copy.h"
 
 {{Includes}}
 #include "include/{{UBOIncl}}"
