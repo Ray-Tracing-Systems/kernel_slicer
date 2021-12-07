@@ -370,7 +370,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
 
 {{MainFunc.ReturnType}} {{MainClassName}}_Generated::{{MainFunc.DeclOrig}}
 {
-  m_{{MainFunc.Name}}ExTime = {};
+  m_exTime{{MainFunc.Name}} = {};
 
   // (1) init global Vulkan context if needed
   //
@@ -417,6 +417,10 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   VkDeviceMemory buffersMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, buffers);
   ///VkDeviceMemory textureMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, images); // TODO: implement this
 
+  this->InitVulkanObjects(device, physicalDevice, ... );
+  this->InitMemberBuffers();
+  this->SetVulkanInOutFor_{{MainFunc.Name}}(...); 
+
   // (4) copy input data to GPU
   //
   auto beforeCopy = std::chrono::high_resolution_clock::now();
@@ -427,8 +431,9 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   pCopyHelper->UpdateBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endif %}
   {% endfor %}
+  this->UpdateAll(pCopyHelper); 
   auto afterCopy = std::chrono::high_resolution_clock::now();
-  m_{{MainFunc.Name}}ExTime.msCopyToGPU = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy - beforeCopy).count()/1000.f;
+  m_exTime{{MainFunc.Name}}.msCopyToGPU = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy - beforeCopy).count()/1000.f;
 
   // (5) now compute some thing useful
   //
@@ -445,7 +450,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
     auto start = std::chrono::high_resolution_clock::now();
     vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
     auto stop = std::chrono::high_resolution_clock::now();
-    m_{{MainFunc.Name}}ExTime.msExecuteOnGPU  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+    m_exTime{{MainFunc.Name}}.msExecuteOnGPU  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
   }
   
   // (7) copy OUTPUT data to CPU
@@ -458,8 +463,9 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   pCopyHelper->ReadBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endif %}
   {% endfor %}
+  //this->ReadClassDataBuffer(pCopyHelper); // TODO: implement me
   auto afterCopy2 = std::chrono::high_resolution_clock::now();
-  m_{{MainFunc.Name}}ExTime.msCopyFromGPU = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy2 - beforeCopy2).count()/1000.f;
+  m_exTime{{MainFunc.Name}}.msCopyFromGPU = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy2 - beforeCopy2).count()/1000.f;
 
   // (7) free resources 
   //
