@@ -399,9 +399,10 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
 
   std::vector<VkBuffer> buffers;
   std::vector<VkImage>  images;
-
+   
   // (3) create GPU objects
   //
+  size_t maxSize = 0;
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
   //make image object
@@ -410,6 +411,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   VkBuffer {{var.Name}}GPU = vk_utils::createBuffer(device, {{var.DataSize}}*sizeof({{var.DataType}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   buffers.push_back({{var.Name}}GPU);
   {% endif %}
+  maxSize = std::max<size_t>(maxSize, {{var.DataSize}});
   {% endfor %}
   {% for var in MainFunc.FullImpl.OutputData %}
   {% if var.IsTexture %}
@@ -419,12 +421,13 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   VkBuffer {{var.Name}}GPU = vk_utils::createBuffer(device, {{var.DataSize}}*sizeof({{var.DataType}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   buffers.push_back({{var.Name}}GPU);
   {% endif %}
+  maxSize = std::max<size_t>(maxSize, {{var.DataSize}});
   {% endfor %}
 
   VkDeviceMemory buffersMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, buffers);
   ///VkDeviceMemory textureMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, images); // TODO: implement this
 
-  this->InitVulkanObjects(device, physicalDevice, ... );
+  this->InitVulkanObjects(device, physicalDevice, maxSize);
   this->InitMemberBuffers();
   this->SetVulkanInOutFor_{{MainFunc.Name}}({{MainFunc.FullImpl.ArgsOnSetInOut}}); 
 
