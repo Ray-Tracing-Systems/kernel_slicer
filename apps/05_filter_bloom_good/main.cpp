@@ -8,8 +8,10 @@
 #include "test_class.h"
 #include "Bitmap.h"
 
-void tone_mapping_cpu(int w, int h, float* a_hdrData, const char* a_outName);
-void tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName);
+//#define MEASURE_TIME
+#ifdef MEASURE_TIME
+#include "test_class_generated.h"
+#endif
 
 bool LoadHDRImageFromFile(const char* a_fileName, 
                           int* pW, int* pH, std::vector<float>& a_data); // defined in imageutils.cpp
@@ -45,7 +47,16 @@ int main(int argc, const char** argv)
     SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
   else
     SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
-
+  
+  #ifdef MEASURE_TIME
+  ToneMapping_Generated* pGPUImpl = dynamic_cast<ToneMapping_Generated*>(pImpl.get());
+  if(pGPUImpl != nullptr)
+  {
+    auto timings = pGPUImpl->GetBloomExecutionTime();
+    std::cout << "Bloom(exec) = " << timings.msExecuteOnGPU                      << " ms " << std::endl;
+    std::cout << "Bloom(copy) = " << timings.msCopyToGPU + timings.msCopyFromGPU << " ms " << std::endl;
+  }
+  #endif
   pImpl = nullptr;  
   return 0;
 }
