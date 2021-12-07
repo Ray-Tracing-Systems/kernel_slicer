@@ -76,6 +76,8 @@ public:
   virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}};
   {% if MainFunc.OverrideMe %}
   {{MainFunc.ReturnType}} {{MainFunc.DeclOrig}} override;
+  inline vk_utils::ExecTime Get{{MainFunc.Name}}ExecutionTime() const { return m_{{MainFunc.Name}}ExTime; }
+  vk_utils::ExecTime m_{{MainFunc.Name}}ExTime;
   {% endif %}
   {% endfor %}
 

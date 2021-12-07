@@ -127,6 +127,13 @@ namespace vk_utils
   VulkanContext globalContextInit(const std::vector<const char*>& requiredExtensions = std::vector<const char*>(), bool enableValidationLayers = false);
   VulkanContext globalContextGet(bool enableValidationLayers = false);
   void          globalContextDestroy();
+
+  struct ExecTime
+  {
+    float msCopyToGPU;
+    float msCopyFromGPU;
+    float msExecuteOnGPU;
+  };
 };
 
 #endif
