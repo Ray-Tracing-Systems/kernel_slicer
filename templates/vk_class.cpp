@@ -30,6 +30,12 @@ static uint32_t ComputeReductionSteps(uint32_t whole_size, uint32_t wg_size)
   return steps;
 }
 
+constexpr uint32_t KGEN_FLAG_RETURN            = 1;
+constexpr uint32_t KGEN_FLAG_BREAK             = 2;
+constexpr uint32_t KGEN_FLAG_DONT_SET_EXIT     = 4;
+constexpr uint32_t KGEN_FLAG_SET_EXIT_NEGATIVE = 8;
+constexpr uint32_t KGEN_REDUCTION_LAST_STEP    = 16;
+
 void {{MainClassName}}_Generated::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount) 
 {
   physicalDevice = a_physicalDevice;
@@ -363,11 +369,6 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr); 
   {% else %}
   {% if MainFunc.IsRTV %}
-  constexpr uint32_t KGEN_FLAG_RETURN            = 1;
-  constexpr uint32_t KGEN_FLAG_BREAK             = 2;
-  constexpr uint32_t KGEN_FLAG_DONT_SET_EXIT     = 4;
-  constexpr uint32_t KGEN_FLAG_SET_EXIT_NEGATIVE = 8;
-  constexpr uint32_t KGEN_REDUCTION_LAST_STEP    = 16;
   {% if MainFunc.NeedThreadFlags %}
   const uint32_t outOfForFlags  = KGEN_FLAG_RETURN;
   const uint32_t inForFlags     = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK;

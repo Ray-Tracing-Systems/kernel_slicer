@@ -2,6 +2,8 @@
 #include "Bitmap.h"
 #include <cassert>
 #include <algorithm>
+#include <memory>
+#include <cstring>
 
 inline bool PixelIsRed(uint32_t a_pixelValue)
 {
@@ -10,11 +12,6 @@ inline bool PixelIsRed(uint32_t a_pixelValue)
   const uint32_t blue  = (a_pixelValue & 0x00FF0000) >> 16;
   return (red >= 250) && (green < 5) && (blue < 5);
 }
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void RedPixels::SetMaxDataSize(size_t a_size)
 {
@@ -102,38 +99,10 @@ Cont filter(const Cont &container, Pred predicate)
   return result;
 }
 
-void RedPixels::ProcessPixels(uint32_t* a_data, size_t a_dataSize)
+void RedPixels::ProcessPixels(const uint32_t* a_inData, uint32_t* a_outData, size_t a_dataSize)
 {
-  kernel1D_CountRedPixels(a_data, a_dataSize);
-  kernel1D_FindRedPixels (a_data, a_dataSize);
-  
-  //kernel1D_CopyPixels(a_data, a_dataSize, m_pixelsCopy.data());
-  //m_foundPixels = filter(m_pixelsCopy, [](const auto& pixel) { return PixelIsRed(pixel.value); } );
-
-  kernel1D_PaintRedPixelsToYellow(a_data);
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void process_image_cpu(std::vector<uint32_t>& a_inPixels)
-{
-  RedPixels filter;
-
-  filter.SetMaxDataSize(a_inPixels.size());
-  filter.ProcessPixels(a_inPixels.data(), a_inPixels.size());
-  
-  //a_outPixels = filter.GetFoundPixels();
-  //assert(a_outPixels.size() == filter.GetRedPixelsAmount());
-
-  std::cout << "[cpu]: m_redPixelsNum     = " << filter.m_redPixelsNum << std::endl;
-  std::cout << "[cpu]: m_otherPixelsNum   = " << filter.m_otherPixelsNum << std::endl;
-  std::cout << "[cpu]: m_testPixelsAmount = " << filter.m_testPixelsAmount << std::endl;
-  std::cout << "[cpu]: m_foundPixels_size = " << filter.m_foundPixels.size() << std::endl;
-  std::cout << "[cpu]: m_testMin(float)   = " << filter.m_testMin << std::endl;
-  std::cout << "[cpu]: m_testMax(float)   = " << filter.m_testMax << std::endl;
-
-  return;
+  kernel1D_CountRedPixels(a_inData, a_dataSize);
+  kernel1D_FindRedPixels (a_inData, a_dataSize);
+  memcpy(a_outData, a_inData, a_dataSize*sizeof(uint32_t));
+  kernel1D_PaintRedPixelsToYellow(a_outData);
 }
