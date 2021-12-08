@@ -18,7 +18,7 @@ using std::sin;
 using std::cos;
 using std::sqrt;
 
-void SphHarm::kernel2D_IntegrateSphHarm(uint32_t* a_data, uint32_t a_width, uint32_t a_height)
+void SphHarm::kernel2D_IntegrateSphHarm(const uint32_t* a_data, uint32_t a_width, uint32_t a_height)
 {
   coefs[0] = float3(0,0,0); 
   coefs[1] = float3(0,0,0); 
@@ -76,7 +76,7 @@ void SphHarm::kernel2D_IntegrateSphHarm(uint32_t* a_data, uint32_t a_width, uint
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void SphHarm::ProcessPixels(uint32_t* a_data, uint32_t a_width, uint32_t a_height)
+void SphHarm::ProcessPixels(const uint32_t* a_data, uint32_t a_width, uint32_t a_height)
 {
   kernel2D_IntegrateSphHarm(a_data, a_width, a_height);
 }

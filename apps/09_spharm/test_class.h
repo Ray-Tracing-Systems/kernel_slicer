@@ -20,11 +20,12 @@ class SphHarm
   static constexpr float    SQRT_PI     = 1.772453851f;
 
 public:
-  void ProcessPixels(uint32_t* a_data, uint32_t a_width, uint32_t a_height);
+  SphHarm(){}
 
+  virtual void ProcessPixels(const uint32_t* a_data __attribute__((size("a_width", "a_height"))), uint32_t a_width, uint32_t a_height);
+  void kernel2D_IntegrateSphHarm(const uint32_t* a_data, uint32_t a_width, uint32_t a_height);
+  
   void GetCoefficients(LiteMath::float3 out_coeff[COEFS_COUNT]) const { memcpy(out_coeff, coefs, sizeof(LiteMath::float3)*COEFS_COUNT); }
-
-  void kernel2D_IntegrateSphHarm(uint32_t* a_data, uint32_t a_width, uint32_t a_height);
 
   uint32_t m_width, m_height;
   LiteMath::float3 coefs[COEFS_COUNT];
