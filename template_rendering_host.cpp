@@ -283,15 +283,26 @@ static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func)
 {
   assert(a_func.Node != nullptr);
   if(!a_func.Node->isVirtual())
+  {
+    for(const auto& var : a_func.InOuts)
+    {
+      if(var.sizeUserAttr.size() != 0)
+      {
+        std::cout << "[kslicer]: attribute size(...) is specified for argument '" << var.name.c_str() << "', but Control Function " << a_func.Name.c_str() << " is not virtual" << std::endl;  
+        std::cout << "[kslicer]: the Control Function which is supposed to be overriden must be virtual " << std::endl;
+      }
+    }
+
     return false;
-  
+  }
+
   for(const auto& var : a_func.InOuts)
   {
     if(var.kind == kslicer::DATA_KIND::KIND_POINTER)
     {
       if(var.sizeUserAttr.size() == 0) {
         std::cout << "[kslicer]: warning, unknown data size for param " << var.name.c_str() << " of control func " << a_func.Name.c_str() << std::endl;
-        std::cout << "[kslicer]: the control function is declared virual, but kslicer can't generate implementation due to unknown data size of a pointer " << std::endl;
+        std::cout << "[kslicer]: the Control Function is declared virual, but kslicer can't generate implementation due to unknown data size of a pointer " << std::endl;
         return false;
       }
     }
@@ -346,6 +357,7 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
   //
   std::stringstream callsOut;
   std::stringstream commandInOut;
+  bool unclosedComma = false;
   for(uint32_t i=0; i < a_func.Node->getNumParams(); i++)
   {
     const clang::ParmVarDecl* pParam = a_func.Node->getParamDecl(i);
@@ -358,9 +370,16 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
     {
       commandInOut << pParam->getNameAsString() << "GPU, 0";
       if(i!=a_func.Node->getNumParams()-1)
+      {
         commandInOut << ", ";
+        unclosedComma = true;
+      }
+      else
+        unclosedComma = false;
     }
   }
+  if(unclosedComma)
+    commandInOut << "0";
   res["ArgsOnCall"]     = callsOut.str();
   res["ArgsOnSetInOut"] = commandInOut.str();
 
@@ -848,6 +867,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   data["HasRTXAccelStruct"] = false;
   data["MainFunctions"] = std::vector<std::string>();
+  bool atLeastOneFullOverride = false;
   for(const auto& mainFunc : a_methodsToGenerate)
   {
     json data2;
@@ -860,7 +880,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     bool HasCPUOverride = HaveToBeOverriden(mainFunc); 
     data2["OverrideMe"] = HasCPUOverride;
     if(HasCPUOverride)
-       data2["FullImpl"] = GetJsonForFullCFImpl(mainFunc, a_classInfo, compiler);
+    {
+      data2["FullImpl"] = GetJsonForFullCFImpl(mainFunc, a_classInfo, compiler);
+      atLeastOneFullOverride = true;
+    }
 
     for(const auto& v : mainFunc.Locals)
     {
@@ -1019,6 +1042,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["DSId"]                 = mainFunc.startDSNumber;
     data2["MegaKernelCall"]       = mainFunc.MegaKernelCall;
     data["MainFunctions"].push_back(data2);
+  }
+  
+  data["HasFullImpl"] = atLeastOneFullOverride;
+  if(atLeastOneFullOverride && a_classInfo.ctors.size() == 0)
+  {
+    std::cout << "[kslicer warning]: " << "class '" << a_classInfo.mainClassName << "' has Control Functions to override, but does not have any declared constructots" << std::endl;
+    std::cout << "[kslicer warning]: " << "at least one constructor should be declared to succsesfully generate factory function for generated class" << std::endl;
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

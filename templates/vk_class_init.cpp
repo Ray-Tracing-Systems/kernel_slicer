@@ -20,6 +20,15 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
   return sizeTotal;
 }
 
+VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO() const
+{
+  {% if HasFullImpl %}
+  return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  {% else %}
+  return 0;
+  {% endif %}
+}
+
 {{MainClassName}}_Generated::~{{MainClassName}}_Generated()
 {
   m_pMaker = nullptr;

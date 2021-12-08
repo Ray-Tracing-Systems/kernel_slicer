@@ -1,10 +1,13 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <memory>
 #include <cstdint>
 
-int32_t array_summ_cpu(const std::vector<int32_t>& array);
-int32_t array_summ_gpu(const std::vector<int32_t>& array);
+
+#include "test_class.h"
+
+std::shared_ptr<Numbers> CreateNumbers_Generated();
 
 int main(int argc, const char** argv)
 {
@@ -16,9 +19,20 @@ int main(int argc, const char** argv)
     else
       array[i] = -i;
   }
+  
+  bool isGPU = true;
+  std::shared_ptr<Numbers> pImpl = nullptr;
+  if(isGPU)
+    pImpl = CreateNumbers_Generated();
+  else
+    pImpl = std::make_shared<Numbers>();
 
-  std::cout << "[cpu]: array summ  = " << array_summ_cpu(array) << std::endl;
-  std::cout << "[gpu]: array summ  = " << array_summ_gpu(array) << std::endl;
+  pImpl->CalcArraySumm(array.data(), unsigned(array.size()));
+
+  if(isGPU)
+    std::cout << "[gpu]: array summ  = " << pImpl->m_summ << std::endl;
+  else
+    std::cout << "[cpu]: array summ  = " << pImpl->m_summ << std::endl;
   
   return 0;
 }

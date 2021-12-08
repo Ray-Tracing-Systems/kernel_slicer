@@ -75,6 +75,9 @@ public:
   virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
+  {% if HasFullImpl %}
+  virtual void ReadPlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
+  {% endif %}
 
   {% for MainFunc in MainFunctions %}  
   virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}};

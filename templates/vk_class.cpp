@@ -19,11 +19,6 @@ std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}_Generated({{ctor
 {% endif %}
 {% endfor %}
 
-VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO() const
-{
-  return 0;
-}
-
 static uint32_t ComputeReductionSteps(uint32_t whole_size, uint32_t wg_size)
 {
   uint32_t steps = 0;
@@ -69,6 +64,23 @@ void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vk_utils::I
 ## endfor
   a_pCopyEngine->UpdateBuffer(m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
 }
+
+{% if HasFullImpl %}
+void {{MainClassName}}_Generated::ReadPlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
+{
+  a_pCopyEngine->ReadBuffer(m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
+  {% for Var in ClassVars %}
+  {% if Var.IsArray %}
+  memcpy({{Var.Name}}, m_uboData.{{Var.Name}}, sizeof({{Var.Name}}));
+  {% else %}
+  {{Var.Name}} = m_uboData.{{Var.Name}};
+  {% endif %}
+  {% endfor %}
+  {% for Var in ClassVectorVars %}
+  {{Var.Name}}.resize(m_uboData.{{Var.Name}}_size);
+  {% endfor %}
+}
+{% endif %}
 
 void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
@@ -473,11 +485,11 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   pCopyHelper->ReadBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endif %}
   {% endfor %}
-  //this->ReadClassDataBuffer(pCopyHelper); // TODO: implement me
+  this->ReadPlainMembers(pCopyHelper);
   auto afterCopy2 = std::chrono::high_resolution_clock::now();
   m_exTime{{MainFunc.Name}}.msCopyFromGPU = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy2 - beforeCopy2).count()/1000.f;
 
-  // (7) free resources 
+  // (8) free resources 
   //
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
