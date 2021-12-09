@@ -90,7 +90,7 @@ int main(int argc, const char** argv)
 
   bool onGPU = true;
 
-#ifdef MEASURE_TIME // to exclude vulkan initialisation time from sample execution
+#ifdef MEASURE_TIME // to exclude vulkan initialiяation time from sample execution
   if(onGPU)
   {
     #ifndef NDEBUG

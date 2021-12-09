@@ -22,7 +22,7 @@ public:
   void SetMaxImageSize(int w, int h);
 
   // Base on IPT color space by Ebner and Fairchild (1998).
-  void IPTcompress(int w, int h, const float4* inData4f, unsigned int* outData1ui);
+  virtual void IPTcompress(int w, int h, const float4* inData4f __attribute__((size("w", "h"))), unsigned int* outData1ui __attribute__((size("w", "h"))));
 
 protected:
 

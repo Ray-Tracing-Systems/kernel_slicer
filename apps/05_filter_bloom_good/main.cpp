@@ -8,7 +8,7 @@
 #include "test_class.h"
 #include "Bitmap.h"
 
-//#define MEASURE_TIME
+#define MEASURE_TIME
 #ifdef MEASURE_TIME
 #include "test_class_generated.h"
 #endif
