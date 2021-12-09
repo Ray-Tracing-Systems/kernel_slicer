@@ -150,9 +150,12 @@ static std::string GetControlFuncDeclText(const clang::FunctionDecl* fDecl, clan
   return text + ")";
 }
 
-static std::string GetOriginalDeclText(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler)
+static std::string GetOriginalDeclText(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler, bool isRTV)
 {
-  std::string text = fDecl->getNameInfo().getName().getAsString() + "(";
+  std::string text = fDecl->getNameInfo().getName().getAsString();
+  if(isRTV)
+    text += "Block";
+  text += "(";
   for(unsigned i=0;i<fDecl->getNumParams();i++)
   {
     auto pParam = fDecl->getParamDecl(i);
@@ -161,6 +164,13 @@ static std::string GetOriginalDeclText(const clang::FunctionDecl* fDecl, clang::
     text += kslicer::GetRangeSourceCode(pParam->getSourceRange(), compiler);
     if(i!=fDecl->getNumParams()-1)
       text += ", ";
+  }
+  
+  if(isRTV)
+  {
+    if(fDecl->getNumParams() != 0)
+      text += ", ";
+    text += "uint32_t a_numPasses";
   }
   return text + ")";
 }
@@ -178,7 +188,7 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
   a_mainFunc.ReturnType    = a_node->getReturnType().getAsString();
   a_mainFunc.GeneratedDecl = GetControlFuncDeclText(a_node, compiler);
   a_mainFunc.startDSNumber = allDescriptorSetsInfo.size();
-  a_mainFunc.OriginalDecl  = GetOriginalDeclText(a_node, compiler);
+  a_mainFunc.OriginalDecl  = GetOriginalDeclText(a_node, compiler, IsRTV());
   
   if(a_megakernelRTV)
   {

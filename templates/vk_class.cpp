@@ -557,7 +557,13 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
     {{MainFunc.Name}}Cmd(commandBuffer, {{MainFunc.FullImpl.ArgsOnCall}});      
     vkEndCommandBuffer(commandBuffer);  
     auto start = std::chrono::high_resolution_clock::now();
+    {% if MainFunc.IsRTV %} 
+    for(uint32_t pass = 0; pass < a_numPasses; pass++)
+      vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
+    {% else %}
     vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
+    {% endif %}
+    
     auto stop = std::chrono::high_resolution_clock::now();
     m_exTime{{MainFunc.Name}}.msExecuteOnGPU  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
   }

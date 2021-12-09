@@ -279,14 +279,14 @@ static bool IsZeroStartLoopStatement(const clang::Stmt* a_stmt, const clang::Com
   return (text == "0");
 }
 
-static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func)
+static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func, bool isRTV)
 {
   assert(a_func.Node != nullptr);
   if(!a_func.Node->isVirtual())
   {
     for(const auto& var : a_func.InOuts)
     {
-      if(var.sizeUserAttr.size() != 0)
+      if(var.sizeUserAttr.size() != 0 && !isRTV)
       {
         std::cout << "[kslicer]: attribute size(...) is specified for argument '" << var.name.c_str() << "', but Control Function " << a_func.Name.c_str() << " is not virtual" << std::endl;  
         std::cout << "[kslicer]: the Control Function which is supposed to be overriden must be virtual " << std::endl;
@@ -896,13 +896,14 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["DeclOrig"]             = mainFunc.OriginalDecl;
     data2["LocalVarsBuffersDecl"] = std::vector<std::string>();
 
-    bool HasCPUOverride = HaveToBeOverriden(mainFunc); 
+    bool HasCPUOverride = HaveToBeOverriden(mainFunc, a_classInfo.IsRTV()); 
     data2["OverrideMe"] = HasCPUOverride;
     if(HasCPUOverride)
     {
       data2["FullImpl"] = GetJsonForFullCFImpl(mainFunc, a_classInfo, compiler);
       atLeastOneFullOverride = true;
     }
+    data2["IsRTV"] = a_classInfo.IsRTV();
 
     for(const auto& v : mainFunc.Locals)
     {

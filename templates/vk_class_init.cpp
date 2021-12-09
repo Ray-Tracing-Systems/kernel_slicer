@@ -4,8 +4,6 @@
 #include <limits>
 
 #include <cassert>
-
-#include "vulkan_basics.h"
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
 
