@@ -1,21 +1,24 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <memory>
 #include <cstdint>
 #include <cassert>
 #include <cmath>
 
+#include "test_class.h"
+#include "Bitmap.h"
 
-void Denoise_cpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
-                 const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel, const char* a_outName);
-
-void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
-                 const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel, const char* a_outName);
+//void Denoise_cpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
+//                 const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel, const char* a_outName);
+//
+//void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
+//                 const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel, const char* a_outName);
 
 bool LoadHDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<float>& a_data);   // defined in imageutils.cpp
 bool LoadLDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<int32_t>& a_data); // defined in imageutils.cpp
 
-
+std::shared_ptr<Denoise> CreateDenoise_Generated();
 
 int main(int argc, const char** argv)
 {
@@ -52,7 +55,6 @@ int main(int argc, const char** argv)
     hasError = true;
   }
 
-
   if(w != w2 || h != h2)
   {
     std::cout << "size source image and depth pass not equal.' " << std::endl;
@@ -74,19 +76,33 @@ int main(int argc, const char** argv)
   if (hasError)
     return 0;
 
-
   uint64_t addressToCkeck = reinterpret_cast<uint64_t>(hdrData.data());
   assert(addressToCkeck % 16 == 0); // check if address is aligned!!!
 
   addressToCkeck = reinterpret_cast<uint64_t>(depth.data());
   assert(addressToCkeck % 16 == 0); // check if address is aligned!!!
   
+  //
+  //
+  std::vector<uint32_t> ldrData(hdrData.size());
   const int   windowRadius = 7;
   const int   blockRadius  = 3;
-  const float noiseLevel   = 0.1F;
+  const float noiseLevel   = 0.1F;  
 
-  //Denoise_cpu(w, h, hdrData.data(), texColor.data(), normal.data(), depth.data(), windowRadius, blockRadius, noiseLevel, "zout_cpu.bmp");
-  Denoise_gpu(w, h, hdrData.data(), texColor.data(), normal.data(), depth.data(), windowRadius, blockRadius, noiseLevel, "zout_gpu.bmp");  
+  bool onGPU = true;
+  std::shared_ptr<Denoise> pImpl = nullptr;
+  if(onGPU)
+    pImpl = CreateDenoise_Generated();
+  else
+    pImpl = std::make_shared<Denoise>();
+
+  pImpl->PrepareInput(w, h, (const float4*)hdrData.data(), texColor.data(), normal.data(), (const float4*)depth.data());
+  pImpl->NLM_denoise (w, h, ldrData.data(), windowRadius, blockRadius, noiseLevel);
+
+  if(onGPU)
+    SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);  
+  else
+    SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);  
               
   return 0;
 }
