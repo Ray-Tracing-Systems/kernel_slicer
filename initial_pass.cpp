@@ -273,23 +273,26 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
 {
   if(f->isStatic())
     return true;
+  
+  // Get name of function
+  const DeclarationNameInfo dni = f->getNameInfo();
+  const DeclarationName dn      = dni.getName();
+  const std::string fname       = dn.getAsString();
+  
+  const QualType qThisType = f->getThisType();   
+  const QualType classType = qThisType.getTypePtr()->getPointeeType();
+  std::string thisTypeName = classType.getAsString();
 
+  bool isMainClassMember = (thisTypeName == std::string("class ") + MAIN_CLASS_NAME || thisTypeName == std::string("struct ") + MAIN_CLASS_NAME || thisTypeName == MAIN_CLASS_NAME);
+  allMemberFunctions[fname] = f; // just save this for further process in templated text rendering_host.cpp (virtual functions override for RTV pattern, so called "FullImpl" override)
+  
   if (f->hasBody())
   {
-    // Get name of function
-    const DeclarationNameInfo dni = f->getNameInfo();
-    const DeclarationName dn      = dni.getName();
-    const std::string fname       = dn.getAsString();
-    
-    const QualType qThisType = f->getThisType();   
-    const QualType classType = qThisType.getTypePtr()->getPointeeType();
-    std::string thisTypeName = classType.getAsString();
-
     auto attr = kslicer::GetMethodAttr(f, m_compiler);
 
     if(m_codeInfo.IsKernel(fname)) // 
     {
-      if(thisTypeName == std::string("class ") + MAIN_CLASS_NAME || thisTypeName == std::string("struct ") + MAIN_CLASS_NAME || thisTypeName == MAIN_CLASS_NAME)
+      if(isMainClassMember)
       {
         ProcessKernelDef(f, functions, MAIN_CLASS_NAME); // MAIN_CLASS_NAME::f ==> functions
         std::cout << "  found member kernel " << MAIN_CLASS_NAME.c_str() << "::" << fname.c_str() << std::endl;

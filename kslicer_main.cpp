@@ -541,6 +541,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.m_mainClassASTNode;
   inputCodeInfo.ctors                = firstPassData.rv.ctors;
+  inputCodeInfo.allMemberFunctions   = firstPassData.rv.allMemberFunctions;
   inputCodeInfo.ProcessAllSetters(firstPassData.rv.m_setters, compiler);
 
   std::vector<kslicer::DeclInClass> generalDecls = firstPassData.rv.GetExtractedDecls();

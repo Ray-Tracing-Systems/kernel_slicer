@@ -759,6 +759,9 @@ namespace kslicer
     std::unordered_map<std::string, KernelInfo>     allOtherKernels;  ///<! kernels from other classes. we probably need them if they are used.
     std::unordered_map<std::string, DataMemberInfo> allDataMembers;   ///<! list of all class data members;
     std::unordered_set<std::string>                 usedServiceCalls; ///<! memcpy, memset and e.t.c.
+    
+    std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFunctions; ///<! in fact this is used for a specific case, RTV pattern, full impl function, check for user define 'XXXBlock' function for control function 'XXX'
+                                                                                     ///<! and we do not support overloading here ...
 
     std::unordered_map<std::string, KernelInfo> kernels;            ///<! only those kernels which are called from 'Main'/'Control' functions
     std::unordered_map<std::string, KernelInfo> megakernelsByName;  ///<! megakernels for RTV pattern

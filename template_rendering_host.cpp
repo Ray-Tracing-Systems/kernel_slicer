@@ -279,10 +279,10 @@ static bool IsZeroStartLoopStatement(const clang::Stmt* a_stmt, const clang::Com
   return (text == "0");
 }
 
-static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func, bool isRTV)
+static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func, const kslicer::MainClassInfo& a_classInfo)
 {
   assert(a_func.Node != nullptr);
-  if(!a_func.Node->isVirtual() && !isRTV)
+  if(!a_func.Node->isVirtual() && !a_classInfo.IsRTV())
   {
     for(const auto& var : a_func.InOuts)
     {
@@ -305,6 +305,40 @@ static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func, bool isRTV)
         std::cout << "[kslicer]: the Control Function is declared virual, but kslicer can't generate implementation due to unknown data size of a pointer " << std::endl;
         return false;
       }
+    }
+  }
+
+  if(a_classInfo.IsRTV())
+  {
+    auto p = a_classInfo.allMemberFunctions.find(a_func.Name + "Block");
+    if(p == a_classInfo.allMemberFunctions.end()) 
+    {
+      std::stringstream strOut;
+      strOut << "virtual " << a_func.ReturnType << " " << a_func.Name << "Block(";
+      for(uint32_t i=0; i < a_func.Node->getNumParams(); i++)
+      {
+        const clang::ParmVarDecl* pParam = a_func.Node->getParamDecl(i);
+        const clang::QualType paramType = pParam->getType();
+        strOut << paramType.getAsString() << " " << pParam->getNameAsString();
+        if(i != a_func.Node->getNumParams()-1)
+          strOut << ", ";
+      }
+      if(a_func.Node->getNumParams() != 0)
+        strOut << ", ";
+      strOut << "uint32_t a_numPasses = 1)";
+
+      std::cout << "[kslicer]: warning, can't find virtual fuction '" << a_func.Name << "Block' in main class '" << a_classInfo.mainClassName.c_str() << "'" << std::endl;
+      std::cout << "[kslicer]: When RTV pattern is used, for each Control Function 'XXX' you should define 'XXXBlock' virtual function with additional parameter for passes num. " << std::endl;
+      std::cout << "[kslicer]: In your case it should be: '" << strOut.str() << "'" << std::endl;
+      std::cout << "[kslicer]: This function will be overriden in the generated class. " << std::endl;
+    }
+    
+    if(p != a_classInfo.allMemberFunctions.end()) 
+    {
+      if(!p->second->isVirtual())
+        std::cout << "[kslicer]: warning, function '" << a_func.Name << "Block' should be virtual" << std::endl;
+      
+      //#TODO: check function prototype
     }
   }
 
@@ -896,7 +930,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["DeclOrig"]             = mainFunc.OriginalDecl;
     data2["LocalVarsBuffersDecl"] = std::vector<std::string>();
 
-    bool HasCPUOverride = HaveToBeOverriden(mainFunc, a_classInfo.IsRTV()); 
+    bool HasCPUOverride = HaveToBeOverriden(mainFunc, a_classInfo); 
     data2["OverrideMe"] = HasCPUOverride;
     if(HasCPUOverride)
     {

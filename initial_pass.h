@@ -38,10 +38,11 @@ namespace kslicer
     bool VisitTypeDecl     (TypeDecl* record);
     bool VisitVarDecl      (VarDecl* pTargetVar);
   
-    std::unordered_map<std::string, KernelInfo>           functions;
-    std::unordered_map<std::string, DataMemberInfo>       dataMembers;
+    std::unordered_map<std::string, KernelInfo>                  functions;
+    std::unordered_map<std::string, DataMemberInfo>              dataMembers;
     std::unordered_map<std::string, const clang::CXXMethodDecl*> m_mainFuncNodes;
     std::unordered_map<std::string, const clang::CXXMethodDecl*> m_setters;
+    std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFunctions;
   
     std::unordered_map<std::string, KernelInfo>           otherFunctions;
     std::vector<const clang::CXXConstructorDecl* >        ctors;
