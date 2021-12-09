@@ -1,8 +1,17 @@
 import sys
 import os
+import io
 from colorama import Fore, Style
 from enum import Enum
 import utils
+
+
+def print_to_string(*args):
+    output = io.StringIO()
+    print(*args, file=output, end="")
+    contents = output.getvalue()
+    output.close()
+    return contents
 
 
 class Singleton(type):
@@ -39,7 +48,7 @@ class Log(metaclass=Singleton):
             print(e, file=sys.stderr)
             exit(-1)
 
-    def info(self, *args, status=Status.OK):
+    def status_info(self, *args, status=Status.OK):
         status_color = {
             Status.OK: Fore.GREEN,
             Status.FAILED: Fore.RED
@@ -48,6 +57,11 @@ class Log(metaclass=Singleton):
         print("["+status_color[status]+status.name+Style.RESET_ALL+"] ", end="", file=sys.stdout)
         print("["+status.name+"] ", end="", file=self.log_file)
         self.print(*args)
+
+    def info(self, *args):
+        text = print_to_string(*args)
+        print(Fore.MAGENTA+text+Style.RESET_ALL, file=sys.stdout)
+        print(text, file=self.log_file)
 
     def print(self, *args):
         print(*args, file=sys.stdout)
