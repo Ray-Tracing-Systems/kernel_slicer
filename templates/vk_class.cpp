@@ -467,6 +467,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   m_exTime{{MainFunc.Name}}.msAPIOverhead = std::chrono::duration_cast<std::chrono::microseconds>(afterCreateObjects - beforeCreateObjects).count()/1000.f;
   
   auto afterCopy2 = std::chrono::high_resolution_clock::now(); // just declare it here, replace value later
+  
   if(buffersMem != VK_NULL_HANDLE) {
   this->InitVulkanObjects(device, physicalDevice, maxSize);
   this->InitMemberBuffers();

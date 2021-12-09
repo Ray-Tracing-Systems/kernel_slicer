@@ -20,8 +20,13 @@ public:
   void Resize(int w, int h); 
 
   // Non local mean denoise.
-  void NLM_denoise(const int a_width, const int a_height, const float4* a_inImage, unsigned int* a_outData1ui, const int32_t* a_inTexColor, 
-const int32_t* a_inNormal, const float4* a_inDepth, const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
+  virtual void NLM_denoise(const int a_width, const int a_height, 
+                           const float4* a_inImage     __attribute__((size("a_width", "a_height"))), 
+                           unsigned int* a_outData1ui  __attribute__((size("a_width", "a_height"))), 
+                           const int32_t* a_inTexColor __attribute__((size("a_width", "a_height"))), 
+                           const int32_t* a_inNormal   __attribute__((size("a_width", "a_height"))), 
+                           const float4* a_inDepth     __attribute__((size("a_width", "a_height"))), 
+                           const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
 
 protected:
 

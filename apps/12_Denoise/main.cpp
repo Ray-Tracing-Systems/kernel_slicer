@@ -4,7 +4,10 @@
 #include <cstdint>
 #include <cassert>
 #include <cmath>
+#include <memory>
 
+#include "test_class.h"
+#include "Bitmap.h"
 
 void Denoise_cpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
                  const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel, const char* a_outName);
@@ -15,7 +18,7 @@ void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_in
 bool LoadHDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<float>& a_data);   // defined in imageutils.cpp
 bool LoadLDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<int32_t>& a_data); // defined in imageutils.cpp
 
-
+std::shared_ptr<Denoise> CreateDenoise_Generated(const int w, const int h);
 
 int main(int argc, const char** argv)
 {
@@ -25,7 +28,6 @@ int main(int argc, const char** argv)
   std::vector<float>   depth;
 
   int w, h, w2, h2, w3, h3, w4, h4;
-  
   bool hasError = false;
 
   if(!LoadHDRImageFromFile("../images/WasteWhite_1024sample.hdr", &w, &h, hdrData))
@@ -51,7 +53,6 @@ int main(int argc, const char** argv)
     std::cout << "can't open input file 'WasteWhite_normals.png' " << std::endl;
     hasError = true;
   }
-
 
   if(w != w2 || h != h2)
   {
@@ -84,9 +85,21 @@ int main(int argc, const char** argv)
   const int   windowRadius = 7;
   const int   blockRadius  = 3;
   const float noiseLevel   = 0.1F;
+  
+  bool onGPU = true;
+  std::shared_ptr<Denoise> pImpl = nullptr;
+  if(onGPU)
+    pImpl = CreateDenoise_Generated(w, h);
+  else
+    pImpl = std::make_shared<Denoise>(w,h);
 
-  Denoise_cpu(w, h, hdrData.data(), texColor.data(), normal.data(), depth.data(), windowRadius, blockRadius, noiseLevel, "zout_cpu.bmp");
-  Denoise_gpu(w, h, hdrData.data(), texColor.data(), normal.data(), depth.data(), windowRadius, blockRadius, noiseLevel, "zout_gpu.bmp");  
+  std::vector<uint> ldrData(w*h);
+  pImpl->NLM_denoise(w, h, (const float4*)hdrData.data(), ldrData.data(), texColor.data(), normal.data(), (const float4*)depth.data(), windowRadius, blockRadius, noiseLevel);
+
+  if(onGPU)
+    SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
+  else 
+    SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
               
   return 0;
 }
