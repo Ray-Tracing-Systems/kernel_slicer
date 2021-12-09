@@ -59,8 +59,14 @@ class Log(metaclass=Singleton):
         self.print(*args)
 
     def info(self, *args):
+        self.print_colored_text(*args, color=Fore.MAGENTA)
+
+    def error(self, *args):
+        self.print_colored_text(*args, color=Fore.RED)
+
+    def print_colored_text(self, *args, color=Fore.WHITE):
         text = print_to_string(*args)
-        print(Fore.MAGENTA+text+Style.RESET_ALL, file=sys.stdout)
+        print(color + text + Style.RESET_ALL, file=sys.stdout)
         print(text, file=self.log_file)
 
     def print(self, *args):

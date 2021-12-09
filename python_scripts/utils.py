@@ -3,6 +3,22 @@ import os
 import shutil
 import commentjson
 import subprocess
+from skimage.io import imread
+from skimage import img_as_float
+
+
+def mse(img1, img2):
+    return ((img1 - img2)**2).mean()
+
+
+def load_and_calc_mse(img_name1, img_name2):
+    img1 = img_as_float(imread(img_name1))
+    img2 = img_as_float(imread(img_name2))
+    return mse(img1, img2)
+
+
+def get_files(dir_path):
+    return [f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))]
 
 
 def clear_dir(dir_path):

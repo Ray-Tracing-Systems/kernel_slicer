@@ -73,25 +73,83 @@ def extract_shader_lang(args):
     return lang
 
 
-def run_test(name, args):
+def find_image_pairs():
+    filenames = utils.get_files(os.getcwd())
+    image_filenames = [f for f in filenames if f.startswith("zout_")]
+    if len(image_filenames) % 2 != 0:
+        Log().error("Odd count of generated images: it's impossible to match pairs")
+        return None
+
+    image_pairs = []
+    for i in range(0, len(image_filenames), 2):
+        image_pairs.append((image_filenames[i], image_filenames[i+1]))
+
+    return image_pairs
+
+
+def compare_images(img_name1, img_name2):
+    mse_res = utils.load_and_calc_mse(img_name1, img_name2)
+    threshold = 1e-4
+    status = Status.OK if mse_res < threshold else Status.FAILED
+
+    Log().status_info("{0}, {1} | mse = {2}".format(img_name1, img_name2, mse_res), status=status)
+    return 0 if mse_res < threshold else 1
+
+
+def check_generated_images(test_name):
+    Log().info("Comparing images")
+    image_pairs = find_image_pairs()
+    if image_pairs is None:
+        return -1
+
+    res = 0
+    for img1, img2 in image_pairs:
+        res += compare_images(img1, img2)
+
+    return 0 if res == 0 else -1
+
+
+def run_sample(test_name):
+    Log().info("Running sample: {}".format(test_name))
+
+    res = subprocess.run(["./build/testapp"],
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if res.returncode != 0:
+        Log().status_info("{}: launch".format(test_name), status=Status.FAILED)
+        Log().save_std_output(test_name, res.stdout.decode(), res.stderr.decode())
+        return -1
+
+    return 0
+
+
+def run_test(test_name, args):
     args = fix_paths_in_args(args)
-    Log().info("Running test: {}".format(name))
+    Log().info("Running test: {}".format(test_name))
     Log().info("Generating files by kernel_slicer for class {}".format(get_main_class(args)))
+    workdir = os.getcwd()
 
     res = subprocess.run(["./cmake-build-release/kslicer", *args],
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if res.returncode != 0:
-        Log().status_info("{}: kernel_slicer files generation".format(name), status=Status.FAILED)
-        Log().save_std_output(name, res.stdout.decode(), res.stderr.decode())
+        Log().status_info("{}: kernel_slicer files generation".format(test_name), status=Status.FAILED)
+        Log().save_std_output(test_name, res.stdout.decode(), res.stderr.decode())
+        os.chdir(workdir)
         return -1
 
-    workdir = os.getcwd()
-    return_code = compile_sample(name, extract_sample_root(args), extract_shader_lang(args))
+    return_code = compile_sample(test_name, extract_sample_root(args), extract_shader_lang(args))
     if return_code != 0:
+        os.chdir(workdir)
         return -1
+
+    return_code = run_sample(test_name)
+    if return_code != 0:
+        os.chdir(workdir)
+        return -1
+
+    return_code = check_generated_images(test_name)
 
     os.chdir(workdir)
-    Log().status_info("\"{}\" finished".format(name), status=Status.OK)
+    Log().status_info("\"{}\" finished".format(test_name), status=Status.OK)
 
 
 def tests():
