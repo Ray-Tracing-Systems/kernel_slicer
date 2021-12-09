@@ -9,16 +9,15 @@
 #include "test_class.h"
 #include "Bitmap.h"
 
-//void Denoise_cpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
-//                 const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel, const char* a_outName);
-//
-//void Denoise_gpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
-//                 const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel, const char* a_outName);
-
 bool LoadHDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<float>& a_data);   // defined in imageutils.cpp
 bool LoadLDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<int32_t>& a_data); // defined in imageutils.cpp
 
 std::shared_ptr<Denoise> CreateDenoise_Generated();
+
+#define MEASURE_TIME
+#ifdef MEASURE_TIME
+#include "test_class_generated.h"
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -90,6 +89,18 @@ int main(int argc, const char** argv)
   const float noiseLevel   = 0.1F;  
 
   bool onGPU = true;
+
+#ifdef MEASURE_TIME // to exclude vulkan initialisation time from sample execution
+  if(onGPU)
+  {
+    #ifndef NDEBUG
+    vk_utils::globalContextInit(std::vector<const char*>(), true);
+    #else
+    vk_utils::globalContextInit(std::vector<const char*>(), false);
+    #endif
+  }
+#endif
+
   std::shared_ptr<Denoise> pImpl = nullptr;
   if(onGPU)
     pImpl = CreateDenoise_Generated();
@@ -103,6 +114,17 @@ int main(int argc, const char** argv)
     SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);  
   else
     SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);  
-              
+
+  #ifdef MEASURE_TIME
+  Denoise_Generated* pGPUImpl = dynamic_cast<Denoise_Generated*>(pImpl.get());
+  if(pGPUImpl != nullptr)
+  {
+    auto timings = pGPUImpl->GetNLM_denoiseExecutionTime();
+    std::cout << "NLM_denoise(exec) = " << timings.msExecuteOnGPU                      << " ms " << std::endl;
+    std::cout << "NLM_denoise(copy) = " << timings.msCopyToGPU + timings.msCopyFromGPU << " ms " << std::endl;
+    std::cout << "NLM_denoise(ovrh) = " << timings.msVulkanInit + timings.msAPIOverhead + timings.msLayoutChange << " ms " << std::endl;
+  }
+  #endif             
+
   return 0;
 }

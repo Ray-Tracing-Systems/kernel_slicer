@@ -392,8 +392,8 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
 
 {{MainFunc.ReturnType}} {{MainClassName}}_Generated::{{MainFunc.DeclOrig}}
 {
+  auto theVeryFirstTimePoint = std::chrono::high_resolution_clock::now();
   m_exTime{{MainFunc.Name}} = {};
-
   // (1) init global Vulkan context if needed
   //
   #ifndef NDEBUG
@@ -402,6 +402,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   bool enableValidationLayers = false;
   #endif
   auto vulkanCtx = vk_utils::globalContextGet(enableValidationLayers);
+  m_exTime{{MainFunc.Name}}.msVulkanInit = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - theVeryFirstTimePoint).count()/1000.f;
 
   // (2) get global Vulkan context objects
   //
@@ -418,6 +419,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
    
   // (3) create GPU objects
   //
+  auto beforeCreateObjects = std::chrono::high_resolution_clock::now();
   size_t maxSize = 0;
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
@@ -461,10 +463,15 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   {{var.Name}}Img = images[{{var.Name}}ImgId];
   {% endif %}
   {% endfor %}
-
+  auto afterCreateObjects = std::chrono::high_resolution_clock::now();
+  m_exTime{{MainFunc.Name}}.msAPIOverhead = std::chrono::duration_cast<std::chrono::microseconds>(afterCreateObjects - beforeCreateObjects).count()/1000.f;
+  
+  auto afterCopy2 = std::chrono::high_resolution_clock::now(); // just declare it here, replace value later
   if(buffersMem != VK_NULL_HANDLE) {
   this->InitVulkanObjects(device, physicalDevice, maxSize);
   this->InitMemberBuffers();
+  auto afterInitBuffers = std::chrono::high_resolution_clock::now();
+  m_exTime{{MainFunc.Name}}.msAPIOverhead += std::chrono::duration_cast<std::chrono::microseconds>(afterInitBuffers - afterCreateObjects).count()/1000.f;
   {% if MainFunc.FullImpl.HasImages %}
   { // move textures to initial (transfer for input and general for output) layouts
     auto imgCmdBuf = vk_utils::createCommandBuffer(device, commandPool);
@@ -491,13 +498,18 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
     }
     vkEndCommandBuffer(imgCmdBuf);
     vk_utils::executeCommandBufferNow(imgCmdBuf, transferQueue, device);
+    auto afterLayoutChange = std::chrono::high_resolution_clock::now();
+    m_exTime{{MainFunc.Name}}.msLayoutChange = std::chrono::duration_cast<std::chrono::microseconds>(afterLayoutChange - afterInitBuffers).count()/1000.f;
   }
   {% endif %}
+  
+  auto beforeSetInOut = std::chrono::high_resolution_clock::now();
   this->SetVulkanInOutFor_{{MainFunc.Name}}({{MainFunc.FullImpl.ArgsOnSetInOut}}); 
 
   // (4) copy input data to GPU
   //
   auto beforeCopy = std::chrono::high_resolution_clock::now();
+  m_exTime{{MainFunc.Name}}.msAPIOverhead += std::chrono::duration_cast<std::chrono::microseconds>(beforeCopy - beforeSetInOut).count()/1000.f;
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
   pCopyHelper->UpdateImage({{var.Name}}Img.image, {{var.Name}}.getRawData(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp());
@@ -506,6 +518,8 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   {% endif %}
   {% endfor %}
   this->UpdateAll(pCopyHelper); 
+  auto afterCopy = std::chrono::high_resolution_clock::now();
+  m_exTime{{MainFunc.Name}}.msCopyToGPU = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy - beforeCopy).count()/1000.f;
   {% if MainFunc.FullImpl.HasImages %}
   { // move textures to normal layouts
     auto imgCmdBuf = vk_utils::createCommandBuffer(device, commandPool);
@@ -526,30 +540,28 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
     }
     vkEndCommandBuffer(imgCmdBuf);
     vk_utils::executeCommandBufferNow(imgCmdBuf, transferQueue, device);
+    auto afterLayoutChange = std::chrono::high_resolution_clock::now();
+    m_exTime{{MainFunc.Name}}.msLayoutChange += std::chrono::duration_cast<std::chrono::microseconds>(afterLayoutChange - afterCopy).count()/1000.f;
   }
   {% endif %}
-  auto afterCopy = std::chrono::high_resolution_clock::now();
-  m_exTime{{MainFunc.Name}}.msCopyToGPU = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy - beforeCopy).count()/1000.f;
 
-  // (5) now compute some thing useful
+  // (5) now execute algorithm on GPU
   //
   {
     VkCommandBuffer commandBuffer = vk_utils::createCommandBuffer(device, commandPool);
-    
     VkCommandBufferBeginInfo beginCommandBufferInfo = {};
     beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
     {{MainFunc.Name}}Cmd(commandBuffer, {{MainFunc.FullImpl.ArgsOnCall}});      
     vkEndCommandBuffer(commandBuffer);  
-    
     auto start = std::chrono::high_resolution_clock::now();
     vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
     auto stop = std::chrono::high_resolution_clock::now();
     m_exTime{{MainFunc.Name}}.msExecuteOnGPU  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
   }
   
-  // (7) copy OUTPUT data to CPU
+  // (7) copy output data to CPU
   //
   auto beforeCopy2 = std::chrono::high_resolution_clock::now();
   {% for var in MainFunc.FullImpl.OutputData %}
@@ -561,7 +573,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   {% endif %}
   {% endfor %}
   this->ReadPlainMembers(pCopyHelper);
-  auto afterCopy2 = std::chrono::high_resolution_clock::now();
+  afterCopy2 = std::chrono::high_resolution_clock::now();
   m_exTime{{MainFunc.Name}}.msCopyFromGPU = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy2 - beforeCopy2).count()/1000.f;
   }
   else // of (buffersMem != VK_NULL_HANDLE)
@@ -589,6 +601,8 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
     vkFreeMemory(device, buffersMem, nullptr);
   if(imagesMem != VK_NULL_HANDLE)
     vkFreeMemory(device, imagesMem, nullptr);
+  
+  m_exTime{{MainFunc.Name}}.msAPIOverhead += std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - afterCopy2).count()/1000.f;
 }
 {% endif %}
 ## endfor
