@@ -17,7 +17,7 @@ namespace vk_utils
 
   VkDeviceMemory allocateAndBindWithPadding(VkDevice a_dev, VkPhysicalDevice a_physDev, const std::vector<VkBuffer> &a_buffers,
                                             VkMemoryAllocateFlags flags = {});
-  std::vector<size_t> calculateMemOffsets(const std::vector<VkMemoryRequirements> &a_memReqs);
+  std::vector<size_t> calculateMemOffsets(const std::vector<VkMemoryRequirements> &a_memReqs, size_t a_buffImageGranularity = 0);
 }
 
 #endif //VK_UTILS_VK_BUFFERS_H

@@ -4,6 +4,8 @@
 #include <cassert>
 #include <chrono>
 
+#include "vk_images.h"
+
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
 
@@ -408,40 +410,89 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   VkDevice         device         = vulkanCtx.device;
   VkCommandPool    commandPool    = vulkanCtx.commandPool; 
   VkQueue          computeQueue   = vulkanCtx.computeQueue; 
+  VkQueue          transferQueue  = vulkanCtx.transferQueue;
   auto             pCopyHelper    = vulkanCtx.pCopyHelper;
 
   std::vector<VkBuffer> buffers;
-  std::vector<VkImage>  images;
+  std::vector<vk_utils::VulkanImageMem> images;
    
   // (3) create GPU objects
   //
   size_t maxSize = 0;
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
-  //make image object
-  //images.push_back({{var.Name}}GPU);
+  auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+  size_t {{var.Name}}ImgId = images.size();
+  images.push_back({{var.Name}}Img);
+  maxSize = std::max<size_t>(maxSize, {{var.Name}}.width()*{{var.Name}}.height());
   {% else %}
   VkBuffer {{var.Name}}GPU = vk_utils::createBuffer(device, {{var.DataSize}}*sizeof({{var.DataType}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   buffers.push_back({{var.Name}}GPU);
-  {% endif %}
   maxSize = std::max<size_t>(maxSize, {{var.DataSize}});
+  {% endif %}
   {% endfor %}
   {% for var in MainFunc.FullImpl.OutputData %}
   {% if var.IsTexture %}
-  //make image object
-  //images.push_back({{var.Name}}GPU);
+  auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
+  size_t {{var.Name}}ImgId = images.size();
+  images.push_back({{var.Name}}Img);
+  maxSize = std::max<size_t>(maxSize, {{var.Name}}.width()*{{var.Name}}.height());
   {% else %}
   VkBuffer {{var.Name}}GPU = vk_utils::createBuffer(device, {{var.DataSize}}*sizeof({{var.DataType}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   buffers.push_back({{var.Name}}GPU);
-  {% endif %}
   maxSize = std::max<size_t>(maxSize, {{var.DataSize}});
+  {% endif %}
   {% endfor %}
 
-  VkDeviceMemory buffersMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, buffers);
-  ///VkDeviceMemory textureMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, images); // TODO: implement this
+  VkDeviceMemory buffersMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, buffers, images);
+  VkDeviceMemory imagesMem  = VK_NULL_HANDLE;
+  if(buffersMem == VK_NULL_HANDLE)
+  {
+    buffersMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, buffers);
+    imagesMem  = vk_utils::allocateAndBindWithPadding(device, physicalDevice, std::vector<VkBuffer>(), images);
+  }
+  {% for var in MainFunc.FullImpl.InputData %}
+  {% if var.IsTexture %}
+  {{var.Name}}Img = images[{{var.Name}}ImgId];
+  {% endif %}
+  {% endfor %}
+  {% for var in MainFunc.FullImpl.OutputData %}
+  {% if var.IsTexture %}
+  {{var.Name}}Img = images[{{var.Name}}ImgId];
+  {% endif %}
+  {% endfor %}
 
+  if(buffersMem != VK_NULL_HANDLE) {
   this->InitVulkanObjects(device, physicalDevice, maxSize);
   this->InitMemberBuffers();
+  {% if MainFunc.FullImpl.HasImages %}
+  { // move textures to initial (transfer for input and general for output) layouts
+    auto imgCmdBuf = vk_utils::createCommandBuffer(device, commandPool);
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(imgCmdBuf, &beginInfo);
+    {
+      VkImageSubresourceRange subresourceRange = {};
+      subresourceRange.levelCount = 1;
+      subresourceRange.layerCount = 1;
+      {% for var in MainFunc.FullImpl.InputData %}
+      {% if var.IsTexture %}
+      subresourceRange.aspectMask = {{var.Name}}Img.aspectMask;
+      vk_utils::setImageLayout(imgCmdBuf, {{var.Name}}Img.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subresourceRange);
+      {% endif %}
+      {% endfor %}
+      {% for var in MainFunc.FullImpl.OutputData %}
+      {% if var.IsTexture %}
+      subresourceRange.aspectMask = {{var.Name}}Img.aspectMask;
+      vk_utils::setImageLayout(imgCmdBuf, {{var.Name}}Img.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, subresourceRange);
+      {% endif %}
+      {% endfor %}
+    }
+    vkEndCommandBuffer(imgCmdBuf);
+    vk_utils::executeCommandBufferNow(imgCmdBuf, transferQueue, device);
+  }
+  {% endif %}
   this->SetVulkanInOutFor_{{MainFunc.Name}}({{MainFunc.FullImpl.ArgsOnSetInOut}}); 
 
   // (4) copy input data to GPU
@@ -449,12 +500,34 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   auto beforeCopy = std::chrono::high_resolution_clock::now();
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
-  //pCopyHelper->UpdateImage(...)
+  pCopyHelper->UpdateImage({{var.Name}}Img.image, {{var.Name}}.getRawData(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp());
   {% else %}
   pCopyHelper->UpdateBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endif %}
   {% endfor %}
   this->UpdateAll(pCopyHelper); 
+  {% if MainFunc.FullImpl.HasImages %}
+  { // move textures to normal layouts
+    auto imgCmdBuf = vk_utils::createCommandBuffer(device, commandPool);
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(imgCmdBuf, &beginInfo);
+    {
+      VkImageSubresourceRange subresourceRange = {};
+      subresourceRange.levelCount = 1;
+      subresourceRange.layerCount = 1;
+      {% for var in MainFunc.FullImpl.InputData %}
+      {% if var.IsTexture %}
+      subresourceRange.aspectMask = {{var.Name}}Img.aspectMask;
+      vk_utils::setImageLayout(imgCmdBuf, {{var.Name}}Img.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, subresourceRange);
+      {% endif %}
+      {% endfor %}
+    }
+    vkEndCommandBuffer(imgCmdBuf);
+    vk_utils::executeCommandBufferNow(imgCmdBuf, transferQueue, device);
+  }
+  {% endif %}
   auto afterCopy = std::chrono::high_resolution_clock::now();
   m_exTime{{MainFunc.Name}}.msCopyToGPU = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy - beforeCopy).count()/1000.f;
 
@@ -481,7 +554,8 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   auto beforeCopy2 = std::chrono::high_resolution_clock::now();
   {% for var in MainFunc.FullImpl.OutputData %}
   {% if var.IsTexture %}
-  //pCopyHelper->ReadImage(...)
+  //todo: change image layout before transfer?
+  pCopyHelper->ReadImage({{var.Name}}Img.image, {{var.Name}}.getRawData(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp());
   {% else %}
   pCopyHelper->ReadBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endif %}
@@ -489,29 +563,32 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   this->ReadPlainMembers(pCopyHelper);
   auto afterCopy2 = std::chrono::high_resolution_clock::now();
   m_exTime{{MainFunc.Name}}.msCopyFromGPU = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy2 - beforeCopy2).count()/1000.f;
+  }
+  else // of (buffersMem != VK_NULL_HANDLE)
+    std::cout << "{{MainClassName}}_Generated::{{MainFunc.Name}}: can't allocate GPU memory inside 'allocateAndBindWithPadding'" << std::endl;
 
   // (8) free resources 
   //
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
-  // vkDestroyImageView(device, {{var.Name}}GPU.view, nullptr);
-  // vkDestroyImage    (device, {{var.Name}}GPU.image, nullptr);
+  vkDestroyImageView(device, {{var.Name}}Img.view, nullptr);
+  vkDestroyImage    (device, {{var.Name}}Img.image, nullptr);
   {% else %}
   vkDestroyBuffer(device, {{var.Name}}GPU, nullptr);
   {% endif %}
   {% endfor %}
   {% for var in MainFunc.FullImpl.OutputData %}
   {% if var.IsTexture %}
-  // vkDestroyImageView(device, {{var.Name}}GPU.view, nullptr);
-  // vkDestroyImage    (device, {{var.Name}}GPU.image, nullptr);
+  vkDestroyImageView(device, {{var.Name}}Img.view, nullptr);
+  vkDestroyImage    (device, {{var.Name}}Img.image, nullptr);
   {% else %}
   vkDestroyBuffer(device, {{var.Name}}GPU, nullptr);
   {% endif %}
   {% endfor %}
   if(buffersMem != VK_NULL_HANDLE)
     vkFreeMemory(device, buffersMem, nullptr);
-  //if(textureMem ! = VK_NULL_HANDLE)
-  //  vkFreeMemory(device, textureMem, nullptr);
+  if(imagesMem != VK_NULL_HANDLE)
+    vkFreeMemory(device, imagesMem, nullptr);
 }
 {% endif %}
 ## endfor

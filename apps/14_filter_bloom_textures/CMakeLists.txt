@@ -31,14 +31,13 @@ link_directories("../volk")
 #uncomment this to detect broken memory problems via gcc sanitizers
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize-address-use-after-scope -fno-omit-frame-pointer -fsanitize=leak -fsanitize=undefined -fsanitize=bounds-strict")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -fopenmp -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -fopenmp -fPIC -Wno-attributes")
 
 add_executable(testapp 
                       Bitmap.cpp
                       imageutils.cpp
                       main.cpp                       
                       test_class.cpp
-                      test_class_gpu.cpp
                       test_class_generated.cpp 
                       test_class_generated_ds.cpp 
                       test_class_generated_init.cpp                      

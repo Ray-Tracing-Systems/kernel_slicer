@@ -331,6 +331,8 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
 
   res["InputData"]  = std::vector<std::string>();
   res["OutputData"] = std::vector<std::string>();
+
+  bool hasImages = false;
   
   for(const auto& var : a_func.InOuts)
   {
@@ -343,6 +345,11 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
     std::string type = var.type;
     if(var.isPointer())
       type.erase(std::remove(type.begin(), type.end(), '*'), type.end());
+    else if(var.isTexture())
+    {
+      varData["Format"] = kslicer::InferenceVulkanTextureFormatFromTypeName(a_classInfo.pShaderFuncRewriter->RewriteStdVectorTypeStr(var.containerDataType), false);
+      hasImages = true;
+    }
   
     varData["DataType"] = type; // TODO: if texture, get data type
     varData["DataSize"] = GetSizeExpression(var.sizeUserAttr);
@@ -377,11 +384,23 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
       else
         unclosedComma = false;
     }
+    else if(a_func.InOuts[i].isTexture())
+    {
+      commandInOut << pParam->getNameAsString() << "Img.image, " << pParam->getNameAsString() << "Img.view";
+      if(i!=a_func.Node->getNumParams()-1)
+      {
+        commandInOut << ", ";
+        unclosedComma = true;
+      }
+      else
+        unclosedComma = false;
+    }
   }
   if(unclosedComma)
     commandInOut << "0";
   res["ArgsOnCall"]     = callsOut.str();
   res["ArgsOnSetInOut"] = commandInOut.str();
+  res["HasImages"]      = hasImages;
 
   return res;
 }

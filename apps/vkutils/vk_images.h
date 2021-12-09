@@ -16,12 +16,12 @@ namespace vk_utils
   struct VulkanImageMem
   {
     VkFormat format;
-    VkImageAspectFlags aspectMask;
-    VkImage image;
-    VkImageView view;
+    VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    VkImage     image = VK_NULL_HANDLE;
+    VkImageView view  = VK_NULL_HANDLE;
 
-    VkDeviceMemory mem;
-    VkDeviceSize mem_offset;
+    VkDeviceMemory mem = VK_NULL_HANDLE;
+    VkDeviceSize   mem_offset = 0;
     VkMemoryRequirements memReq;
 
     VkImageLayout currentLayout;
@@ -94,6 +94,9 @@ namespace vk_utils
       VkPipelineStageFlags dstStageMask,
       VkImageSubresourceRange subresourceRange);
   // ****************
+
+
+  VkDeviceMemory allocateAndBindWithPadding(VkDevice a_dev, VkPhysicalDevice a_physDev, const std::vector<VkBuffer> &a_buffers, std::vector<VulkanImageMem>& a_images, VkMemoryAllocateFlags flags = {});
 }
 
 

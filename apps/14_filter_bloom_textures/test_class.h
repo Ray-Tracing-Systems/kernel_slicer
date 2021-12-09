@@ -44,8 +44,8 @@ public:
   ToneMapping(const int w, const int h);  
   void SetSize(const int w, const int h);
 
-  void Bloom (const int a_width, const int a_height, const Texture2D<float4>& a_texture2d, 
-              unsigned int* outData1ui);
+  virtual void Bloom (const int a_width, const int a_height, const Texture2D<float4>& a_texture2d, 
+                      unsigned int* outData1ui __attribute__((size("a_width", "a_height"))) );
 
 protected:
 

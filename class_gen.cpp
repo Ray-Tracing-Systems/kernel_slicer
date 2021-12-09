@@ -247,6 +247,8 @@ kslicer::InOutVarInfo kslicer::GetParamInfo(const clang::ParmVarDecl* currParam,
   auto tidNames = GetAllPredefinedThreadIdNamesRTV();
   const clang::QualType qt = currParam->getType();
   
+  auto argInfo = kslicer::ProcessParameter(currParam); 
+
   InOutVarInfo var;
   var.name      = currParam->getNameAsString();
   var.type      = qt.getAsString();
@@ -258,8 +260,11 @@ kslicer::InOutVarInfo kslicer::GetParamInfo(const clang::ParmVarDecl* currParam,
   }
   else if(qt->isReferenceType() && kslicer::IsTexture(qt))
   {
-    var.kind    = DATA_KIND::KIND_TEXTURE;
-    var.isConst = qt.isConstQualified();
+    auto objType          = qt.getNonReferenceType(); 
+    var.kind              = DATA_KIND::KIND_TEXTURE;
+    var.isConst           = objType.isConstQualified();
+    var.containerType     = argInfo.containerType;
+    var.containerDataType = argInfo.containerDataType;
   }
   else if(id != tidNames.end())
   {

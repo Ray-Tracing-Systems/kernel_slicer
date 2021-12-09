@@ -317,6 +317,8 @@ namespace kslicer
 
     const clang::ParmVarDecl* paramNode = nullptr;
     std::vector<std::string> sizeUserAttr;
+    std::string containerType;
+    std::string containerDataType;
   };
 
   InOutVarInfo GetParamInfo(const clang::ParmVarDecl* currParam, const clang::CompilerInstance& compiler);
