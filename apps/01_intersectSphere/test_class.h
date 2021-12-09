@@ -47,7 +47,7 @@ public:
     m_data2[2] = 0.5f;
   }
   
-  virtual void MainFunc(uint tidX, uint tidY, uint* out_color __attribute__((size("tidX", "tidY"))));
+  void MainFunc(uint tidX, uint tidY, uint* out_color __attribute__((size("tidX", "tidY"))));
 
   virtual void MainFuncBlock(uint tidX, uint tidY, uint* out_color, uint32_t a_numPasses = 0);
 
