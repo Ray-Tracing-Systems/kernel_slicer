@@ -4,6 +4,9 @@
 #include <limits>
 
 #include <cassert>
+#include "vk_copy.h"
+#include "vk_context.h"
+
 #include "{{IncludeClassDecl}}"
 
 {% if HasRTXAccelStruct %}

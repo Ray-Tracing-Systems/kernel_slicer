@@ -4,9 +4,9 @@
 #include <cassert>
 #include <chrono>
 
-#include "vk_images.h"
 #include "vk_copy.h"
-//#include "vk_context.h"
+#include "vk_context.h"
+#include "vk_images.h"
 
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"

@@ -38,6 +38,7 @@ add_executable(testapp main.cpp
                        Bitmap.cpp
                        ../vkutils/vk_utils.cpp
                        ../vkutils/vk_copy.cpp
+                       ../vkutils/vk_context.cpp
                        ../vkutils/vk_buffers.cpp
                        ../vkutils/vk_images.cpp
                        ../vkutils/vk_pipeline.cpp

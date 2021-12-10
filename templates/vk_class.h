@@ -10,6 +10,7 @@
 #include "vk_buffers.h"
 #include "vk_utils.h"
 #include "vk_copy.h"
+#include "vk_context.h"
 
 {{Includes}}
 #include "include/{{UBOIncl}}"

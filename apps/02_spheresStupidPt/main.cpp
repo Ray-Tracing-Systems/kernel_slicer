@@ -6,10 +6,22 @@
 #include "test_class.h"
 #include "Bitmap.h"
 
-std::shared_ptr<TestClass> CreateTestClass_Generated(int a_maxThreads);
+#include "vk_context.h"
+std::shared_ptr<TestClass> CreateTestClass_Generated(int a_maxThreads, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+
+#define MEASURE_TIME
+#ifdef MEASURE_TIME
+#include "test_class_generated.h"
+#endif
 
 int main(int argc, const char** argv)
 {
+  #ifndef NDEBUG
+  bool enableValidationLayers = true;
+  #else
+  bool enableValidationLayers = false;
+  #endif
+  
   std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
   std::vector<uint32_t> packedXY(WIN_WIDTH*WIN_HEIGHT);
   std::vector<float4>   realColor(WIN_WIDTH*WIN_HEIGHT);
@@ -17,9 +29,14 @@ int main(int argc, const char** argv)
   std::shared_ptr<TestClass> pImpl = nullptr;
   bool onGPU = true;
   if(onGPU)
-    pImpl = CreateTestClass_Generated(WIN_WIDTH*WIN_HEIGHT);
+  {
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers);
+    pImpl = CreateTestClass_Generated( WIN_WIDTH*WIN_HEIGHT, ctx, WIN_WIDTH*WIN_HEIGHT);
+  }
   else
     pImpl = std::make_shared<TestClass>(WIN_WIDTH*WIN_HEIGHT);
+  
+  pImpl->CommitDeviceData();
 
   // remember pitch-linear (x,y) for each thread to make our threading 1D
   //
@@ -56,6 +73,16 @@ int main(int argc, const char** argv)
     SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
     SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-
+  
+  #ifdef MEASURE_TIME
+  auto pGPUImpl = dynamic_cast<TestClass_Generated*>(pImpl.get());
+  if(pGPUImpl != nullptr)
+  {
+    auto timings = pGPUImpl->GetStupidPathTraceExecutionTime();
+    std::cout << "StupidPathTrace(exec) = " << timings.msExecuteOnGPU                      << " ms " << std::endl;
+    std::cout << "StupidPathTrace(copy) = " << timings.msCopyToGPU + timings.msCopyFromGPU << " ms " << std::endl;
+    std::cout << "StupidPathTrace(ovrh) = " << timings.msAPIOverhead                       << " ms " << std::endl;
+  }
+  #endif
   return 0;
 }
