@@ -133,8 +133,6 @@ namespace vk_utils
     float msCopyToGPU    = 0.0f;
     float msCopyFromGPU  = 0.0f;
     float msExecuteOnGPU = 0.0f;
-
-    float msVulkanInit   = 0.0f;
     float msAPIOverhead  = 0.0f;
     float msLayoutChange = 0.0f;
   };

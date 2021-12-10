@@ -6,23 +6,31 @@
 #include "test_class.h"
 #include "Bitmap.h"
 
-void test_class_cpu();
-void test_class_gpu();
+#include "vk_copy.h"
 
-int main(int argc, const char** argv)
-{
-  test_class_cpu();
-  test_class_gpu();
-  return 0;
-}
+//void test_class_cpu();
+//void test_class_gpu();
+//
+//int main(int argc, const char** argv)
+//{
+//  test_class_cpu();
+//  test_class_gpu();
+//  return 0;
+//}
 
 // the problem in this sample is that LoadScene should be called after InitVulkanObjects ... need to think.
 
-/*
-std::shared_ptr<TestClass> CreateTestClass_Generated(int a_maxThreads);
+
+std::shared_ptr<TestClass> CreateTestClass_Generated(int a_maxThreads, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
 
 int main(int argc, const char** argv)
 {
+  #ifndef NDEBUG
+  bool enableValidationLayers = true;
+  #else
+  bool enableValidationLayers = false;
+  #endif
+
   std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
   std::vector<uint32_t> packedXY(WIN_WIDTH*WIN_HEIGHT);
   std::vector<float4>   realColor(WIN_WIDTH*WIN_HEIGHT);
@@ -30,11 +38,15 @@ int main(int argc, const char** argv)
   std::shared_ptr<TestClass> pImpl = nullptr;
   bool onGPU = true;
   if(onGPU)
-    pImpl = CreateTestClass_Generated(WIN_WIDTH*WIN_HEIGHT);
+  {
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers);
+    pImpl    = CreateTestClass_Generated(WIN_WIDTH*WIN_HEIGHT, ctx, WIN_WIDTH*WIN_HEIGHT);
+  }
   else
     pImpl = std::make_shared<TestClass>(WIN_WIDTH*WIN_HEIGHT);
 
   pImpl->LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.bvh", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf", false);
+  pImpl->CommitDeviceData(); // create internal GPU resources and copy data there
 
   // remember pitch-linear (x,y) for each thread to make our threading 1D
   //
@@ -74,4 +86,3 @@ int main(int argc, const char** argv)
 
   return 0;
 }
-*/

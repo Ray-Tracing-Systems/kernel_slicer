@@ -30,6 +30,7 @@ public:
   {% endif %}
   {% endfor %}
   virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount);
+  virtual void SetVulkanContext(vk_utils::VulkanContext a_ctx) { m_ctx = a_ctx; }
 
 ## for MainFunc in MainFunctions
   virtual void SetVulkanInOutFor_{{MainFunc.Name}}(
@@ -71,6 +72,12 @@ public:
     UpdateVectorMembers(a_pCopyEngine);
     UpdateTextureMembers(a_pCopyEngine);
   }
+
+  void CommitDeviceData() override // you have to define this virtual function in the oroginal imput class
+  {
+    InitMemberBuffers();
+    UpdateAll(m_ctx.pCopyHelper);
+  }
   
   virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
@@ -95,11 +102,12 @@ public:
   {% endfor %}
 protected:
   
-  VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-  VkDevice         device         = VK_NULL_HANDLE;
+  VkPhysicalDevice        physicalDevice = VK_NULL_HANDLE;
+  VkDevice                device         = VK_NULL_HANDLE;
+  vk_utils::VulkanContext m_ctx          = {};
 
-  VkCommandBuffer  m_currCmdBuffer   = VK_NULL_HANDLE;
-  uint32_t         m_currThreadFlags = 0;
+  VkCommandBuffer         m_currCmdBuffer   = VK_NULL_HANDLE;
+  uint32_t                m_currThreadFlags = 0;
 
   std::unique_ptr<vk_utils::ComputePipelineMaker> m_pMaker = nullptr;
   VkPhysicalDeviceProperties m_devProps;

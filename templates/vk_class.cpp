@@ -5,6 +5,8 @@
 #include <chrono>
 
 #include "vk_images.h"
+#include "vk_copy.h"
+//#include "vk_context.h"
 
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
@@ -13,11 +15,24 @@
 #include "CrossRT.h"
 ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_transferQId, uint32_t a_graphicsQId);
 {% endif %}
+
 {% for ctorDecl in Constructors %}
 {% if ctorDecl.NumParams == 0 %}
-std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}_Generated() { return std::make_shared<{{MainClassName}}_Generated>(); }
+std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated) 
+{ 
+  auto pObj = std::make_shared<{{MainClassName}}_Generated>(); 
+  pObj->InitVulkanObjects(a_ctx.device, a_ctx.physicalDevice, a_maxThreadsGenerated); 
+  pObj->SetVulkanContext(a_ctx);
+  return pObj;
+}
 {% else %}
-std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}_Generated({{ctorDecl.Params}}) { return std::make_shared<{{MainClassName}}_Generated> ({{ctorDecl.PrevCall}}); }
+std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}_Generated({{ctorDecl.Params}}, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated) 
+{ 
+  auto pObj = std::make_shared<{{MainClassName}}_Generated>({{ctorDecl.PrevCall}}); 
+  pObj->InitVulkanObjects(a_ctx.device, a_ctx.physicalDevice, a_maxThreadsGenerated); 
+  pObj->SetVulkanContext(a_ctx);
+  return pObj;
+}
 {% endif %}
 {% endfor %}
 
@@ -32,10 +47,12 @@ static uint32_t ComputeReductionSteps(uint32_t whole_size, uint32_t wg_size)
   return steps;
 }
 
+{% if IsRTV %}
 constexpr uint32_t KGEN_FLAG_RETURN            = 1;
 constexpr uint32_t KGEN_FLAG_BREAK             = 2;
 constexpr uint32_t KGEN_FLAG_DONT_SET_EXIT     = 4;
 constexpr uint32_t KGEN_FLAG_SET_EXIT_NEGATIVE = 8;
+{% endif %}
 constexpr uint32_t KGEN_REDUCTION_LAST_STEP    = 16;
 
 void {{MainClassName}}_Generated::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount) 
@@ -395,45 +412,30 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
 
 {{MainFunc.ReturnType}} {{MainClassName}}_Generated::{{MainFunc.DeclOrig}}
 {
-  auto theVeryFirstTimePoint = std::chrono::high_resolution_clock::now();
-  m_exTime{{MainFunc.Name}} = {};
-  // (1) init global Vulkan context if needed
+  // (1) get global Vulkan context objects
   //
-  #ifndef NDEBUG
-  bool enableValidationLayers = true;
-  #else
-  bool enableValidationLayers = false;
-  #endif
-  auto vulkanCtx = vk_utils::globalContextGet(enableValidationLayers);
-  m_exTime{{MainFunc.Name}}.msVulkanInit = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - theVeryFirstTimePoint).count()/1000.f;
-
-  // (2) get global Vulkan context objects
-  //
-  VkInstance       instance       = vulkanCtx.instance;
-  VkPhysicalDevice physicalDevice = vulkanCtx.physicalDevice;
-  VkDevice         device         = vulkanCtx.device;
-  VkCommandPool    commandPool    = vulkanCtx.commandPool; 
-  VkQueue          computeQueue   = vulkanCtx.computeQueue; 
-  VkQueue          transferQueue  = vulkanCtx.transferQueue;
-  auto             pCopyHelper    = vulkanCtx.pCopyHelper;
+  VkInstance       instance       = m_ctx.instance;
+  VkPhysicalDevice physicalDevice = m_ctx.physicalDevice;
+  VkDevice         device         = m_ctx.device;
+  VkCommandPool    commandPool    = m_ctx.commandPool; 
+  VkQueue          computeQueue   = m_ctx.computeQueue; 
+  VkQueue          transferQueue  = m_ctx.transferQueue;
+  auto             pCopyHelper    = m_ctx.pCopyHelper;
 
   std::vector<VkBuffer> buffers;
   std::vector<vk_utils::VulkanImageMem> images;
    
-  // (3) create GPU objects
+  // (2) create GPU objects
   //
   auto beforeCreateObjects = std::chrono::high_resolution_clock::now();
-  size_t maxSize = 0;
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
   auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
   size_t {{var.Name}}ImgId = images.size();
   images.push_back({{var.Name}}Img);
-  maxSize = std::max<size_t>(maxSize, {{var.Name}}.width()*{{var.Name}}.height());
   {% else %}
   VkBuffer {{var.Name}}GPU = vk_utils::createBuffer(device, {{var.DataSize}}*sizeof({{var.DataType}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   buffers.push_back({{var.Name}}GPU);
-  maxSize = std::max<size_t>(maxSize, {{var.DataSize}});
   {% endif %}
   {% endfor %}
   {% for var in MainFunc.FullImpl.OutputData %}
@@ -441,11 +443,9 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
   size_t {{var.Name}}ImgId = images.size();
   images.push_back({{var.Name}}Img);
-  maxSize = std::max<size_t>(maxSize, {{var.Name}}.width()*{{var.Name}}.height());
   {% else %}
   VkBuffer {{var.Name}}GPU = vk_utils::createBuffer(device, {{var.DataSize}}*sizeof({{var.DataType}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   buffers.push_back({{var.Name}}GPU);
-  maxSize = std::max<size_t>(maxSize, {{var.DataSize}});
   {% endif %}
   {% endfor %}
 
@@ -472,8 +472,6 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   auto afterCopy2 = std::chrono::high_resolution_clock::now(); // just declare it here, replace value later
   
   if(buffersMem != VK_NULL_HANDLE) {
-  this->InitVulkanObjects(device, physicalDevice, maxSize);
-  this->InitMemberBuffers();
   auto afterInitBuffers = std::chrono::high_resolution_clock::now();
   m_exTime{{MainFunc.Name}}.msAPIOverhead += std::chrono::duration_cast<std::chrono::microseconds>(afterInitBuffers - afterCreateObjects).count()/1000.f;
   {% if MainFunc.FullImpl.HasImages %}
@@ -510,7 +508,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   auto beforeSetInOut = std::chrono::high_resolution_clock::now();
   this->SetVulkanInOutFor_{{MainFunc.Name}}({{MainFunc.FullImpl.ArgsOnSetInOut}}); 
 
-  // (4) copy input data to GPU
+  // (3) copy input data to GPU
   //
   auto beforeCopy = std::chrono::high_resolution_clock::now();
   m_exTime{{MainFunc.Name}}.msAPIOverhead += std::chrono::duration_cast<std::chrono::microseconds>(beforeCopy - beforeSetInOut).count()/1000.f;
@@ -521,7 +519,6 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   pCopyHelper->UpdateBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endif %}
   {% endfor %}
-  this->UpdateAll(pCopyHelper); 
   auto afterCopy = std::chrono::high_resolution_clock::now();
   m_exTime{{MainFunc.Name}}.msCopyToGPU = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy - beforeCopy).count()/1000.f;
   {% if MainFunc.FullImpl.HasImages %}
@@ -549,7 +546,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   }
   {% endif %}
 
-  // (5) now execute algorithm on GPU
+  // (4) now execute algorithm on GPU
   //
   {
     VkCommandBuffer commandBuffer = vk_utils::createCommandBuffer(device, commandPool);
@@ -570,7 +567,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
     m_exTime{{MainFunc.Name}}.msExecuteOnGPU  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
   }
   
-  // (7) copy output data to CPU
+  // (5) copy output data to CPU
   //
   auto beforeCopy2 = std::chrono::high_resolution_clock::now();
   {% for var in MainFunc.FullImpl.OutputData %}
@@ -588,7 +585,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   else // of (buffersMem != VK_NULL_HANDLE)
     std::cout << "{{MainClassName}}_Generated::{{MainFunc.Name}}: can't allocate GPU memory inside 'allocateAndBindWithPadding'" << std::endl;
 
-  // (8) free resources 
+  // (6) free resources 
   //
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
