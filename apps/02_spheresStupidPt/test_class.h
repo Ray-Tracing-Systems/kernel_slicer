@@ -45,9 +45,18 @@ public:
 
   void InitRandomGens(int a_maxThreads);
 
-  void PackXY(uint tidX, uint tidY, uint* out_pakedXY);
-  void CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color);
-  void StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color);
+  void PackXY(uint tidX, uint tidY, uint* out_pakedXY __attribute__((size("tidX", "tidY"))));
+  void CastSingleRay(uint tid, const uint* in_pakedXY __attribute__((size("tid"))), 
+                               uint* out_color        __attribute__((size("tid"))));
+  void StupidPathTrace(uint tid, uint a_maxDepth, 
+                       const uint* in_pakedXY __attribute__((size("tid"))), 
+                       float4* out_color      __attribute__((size("tid"))));
+
+  virtual void PackXYBlock(uint tidX, uint tidY, uint* out_pakedXY, uint a_passesNum);
+  virtual void CastSingleRayBlock(uint tid, const uint* in_pakedXY, uint* out_color, uint a_passesNum);
+  virtual void StupidPathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passesNum);
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   void kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY);
 
