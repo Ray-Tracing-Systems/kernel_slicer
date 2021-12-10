@@ -172,7 +172,7 @@ void TestClass::PackXY(uint tidX, uint tidY, uint* out_pakedXY)
   kernel_PackXY(tidX, tidY, out_pakedXY);
 }
 
-void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
+void TestClass::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color)
 {
   float4 rayPosAndNear, rayDirAndFar;
   kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
@@ -185,7 +185,7 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
   kernel_GetMaterialColor(tid, &hit, out_color);
 }
 
-void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color)
+void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color)
 {
   float4 accumColor, accumThoroughput;
   kernel_InitAccumData(tid, &accumColor, &accumThoroughput);
@@ -205,6 +205,32 @@ void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, flo
 
   kernel_ContributeToImage(tid, &accumColor, in_pakedXY, 
                            out_color);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TestClass::PackXYBlock(uint tidX, uint tidY, uint* out_pakedXY, uint a_passesNum)
+{
+  #pragma omp parallel for default(shared)
+  for(int y=0;y<tidY;y++)
+    for(int x=0;x<tidX;x++)
+      PackXY(x, y, out_pakedXY);
+}
+
+void TestClass::CastSingleRayBlock(uint tid, const uint* in_pakedXY, uint* out_color, uint a_passesNum)
+{
+  #pragma omp parallel for default(shared)
+  for(uint i=0;i<tid;i++)
+    CastSingleRay(i, in_pakedXY, out_color);
+}
+
+void TestClass::StupidPathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passesNum)
+{
+  #pragma omp parallel for default(shared)
+  for(uint i=0;i<tid;i++)
+    for(int j=0;j<a_passesNum;j++)
+      StupidPathTrace(i, 6, in_pakedXY, out_color);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

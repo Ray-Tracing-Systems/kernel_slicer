@@ -6,9 +6,6 @@
 #include "test_class.h"
 #include "Bitmap.h"
 
-//void test_class_cpu();
-//void test_class_gpu();
-
 std::shared_ptr<TestClass> CreateTestClass_Generated(int a_maxThreads);
 
 int main(int argc, const char** argv)
