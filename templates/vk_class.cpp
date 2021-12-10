@@ -566,7 +566,6 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
     {% else %}
     vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
     {% endif %}
-    
     auto stop = std::chrono::high_resolution_clock::now();
     m_exTime{{MainFunc.Name}}.msExecuteOnGPU  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
   }

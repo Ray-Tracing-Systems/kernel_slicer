@@ -627,6 +627,31 @@ vk_utils::VulkanContext vk_utils::globalContextGet(bool enableValidationLayers)
     return globalContextInit(std::vector<const char*>(), enableValidationLayers);
 }
 
+struct RTXDeviceFeatures
+{
+  VkPhysicalDeviceAccelerationStructureFeaturesKHR m_enabledAccelStructFeatures{};
+  VkPhysicalDeviceBufferDeviceAddressFeatures      m_enabledDeviceAddressFeatures{};
+  VkPhysicalDeviceRayQueryFeaturesKHR              m_enabledRayQueryFeatures;
+};
+
+static RTXDeviceFeatures SetupRTXFeatures(VkPhysicalDevice a_physDev)
+{
+  static RTXDeviceFeatures g_rtFeatures;
+
+  g_rtFeatures.m_enabledRayQueryFeatures.sType    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+  g_rtFeatures.m_enabledRayQueryFeatures.rayQuery = VK_TRUE;
+
+  g_rtFeatures.m_enabledDeviceAddressFeatures.sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+  g_rtFeatures.m_enabledDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
+  g_rtFeatures.m_enabledDeviceAddressFeatures.pNext               = &g_rtFeatures.m_enabledRayQueryFeatures;
+
+  g_rtFeatures.m_enabledAccelStructFeatures.sType                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+  g_rtFeatures.m_enabledAccelStructFeatures.accelerationStructure = VK_TRUE;
+  g_rtFeatures.m_enabledAccelStructFeatures.pNext                 = &g_rtFeatures.m_enabledDeviceAddressFeatures;
+
+  return g_rtFeatures;
+}
+
 vk_utils::VulkanContext vk_utils::globalContextInit(const std::vector<const char*>& requiredExtensions, bool enableValidationLayers)
 {
   if(globalContextIsInitialized(requiredExtensions))
@@ -643,11 +668,21 @@ vk_utils::VulkanContext vk_utils::globalContextInit(const std::vector<const char
   g_ctx.physicalDevice = vk_utils::findPhysicalDevice(g_ctx.instance, true, 0);
   auto queueComputeFID = vk_utils::getQueueFamilyIndex(g_ctx.physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
   
-  // query for shaderInt8
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // query features for RTX
+  //
+  RTXDeviceFeatures rtxFeatures = SetupRTXFeatures(g_ctx.physicalDevice);
+
+  // query features for shaderInt8
   //
   VkPhysicalDeviceShaderFloat16Int8Features features = {};
   features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
   features.shaderInt8 = VK_TRUE;
+  features.pNext      = &rtxFeatures.m_enabledAccelStructFeatures;
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   std::vector<const char*> validationLayers, deviceExtensions;
   VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
@@ -657,7 +692,26 @@ vk_utils::VulkanContext vk_utils::globalContextInit(const std::vector<const char
   {
     deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
     deviceExtensions.push_back("VK_KHR_shader_float16_int8"); 
+
+    // Required by VK_KHR_RAY_QUERY
+    deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+    deviceExtensions.push_back("VK_KHR_spirv_1_4");
+    deviceExtensions.push_back("VK_KHR_shader_float_controls");  
+  
+    // Required by VK_KHR_acceleration_structure
+    deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+  
+    // // Required by VK_KHR_ray_tracing_pipeline
+    // m_deviceExtensions.push_back(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
+    // // Required by VK_KHR_spirv_1_4
+    // m_deviceExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   fIDs.compute = queueComputeFID;
   g_ctx.device = vk_utils::createLogicalDevice(g_ctx.physicalDevice, validationLayers, deviceExtensions, enabledDeviceFeatures,

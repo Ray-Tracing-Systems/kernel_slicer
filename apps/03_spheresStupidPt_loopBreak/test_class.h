@@ -50,7 +50,7 @@ public:
                                      uint* out_color  __attribute__((size("tid"))));
   void StupidPathTrace(uint tid, const uint a_maxDepth, const uint* in_pakedXY __attribute__((size("tid"))), 
                                                             float4* out_color  __attribute__((size("tid"))));
-
+  
   virtual void PackXYBlock(uint tidX, uint tidY, uint* out_pakedXY, uint a_passesNum);
   virtual void CastSingleRayBlock(uint tid, const uint* in_pakedXY, uint* out_color, uint a_passesNum);
   virtual void StupidPathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passesNum);

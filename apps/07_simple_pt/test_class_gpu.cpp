@@ -15,8 +15,6 @@
 #include "ray_tracing/vk_rt_funcs.h"
 
 #include "scene_mgr.h"
-
-#include "vulkan_basics.h"
 #include "test_class_generated.h"
 
 using LiteMath::uint4;
