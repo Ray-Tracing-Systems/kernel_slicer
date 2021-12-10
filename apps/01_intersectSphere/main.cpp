@@ -9,11 +9,6 @@
 #include "vk_context.h"
 std::shared_ptr<TestClass> CreateTestClass_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 
-#define MEASURE_TIME
-#ifdef MEASURE_TIME
-#include "test_class_generated.h"
-#endif
-
 int main(int argc, const char** argv)
 {
   #ifndef NDEBUG
@@ -41,17 +36,13 @@ int main(int argc, const char** argv)
     SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
     SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+
+  float timings[4] = {0,0,0,0};
+  pImpl->GetExecutionTime("MainFunc", timings);
+  std::cout << "MainFunc(exec) = " << timings[0]              << " ms " << std::endl;
+  std::cout << "MainFunc(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
+  std::cout << "MainFunc(ovrh) = " << timings[3]              << " ms " << std::endl;
   
-  #ifdef MEASURE_TIME
-  auto pGPUImpl = dynamic_cast<TestClass_Generated*>(pImpl.get());
-  if(pGPUImpl != nullptr)
-  {
-    auto timings = pGPUImpl->GetMainFuncExecutionTime();
-    std::cout << "MainFunc(exec) = " << timings.msExecuteOnGPU                      << " ms " << std::endl;
-    std::cout << "MainFunc(copy) = " << timings.msCopyToGPU + timings.msCopyFromGPU << " ms " << std::endl;
-    std::cout << "MainFunc(ovrh) = " << timings.msAPIOverhead << " ms " << std::endl;
-  }
-  #endif
   pImpl = nullptr;
   return 0;
 }

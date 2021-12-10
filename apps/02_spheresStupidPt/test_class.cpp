@@ -1,6 +1,7 @@
 #include "test_class.h"
 #include "include/crandom.h"
 
+#include <chrono>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -225,6 +226,8 @@ void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, const uint* in_pakedX
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// please note that further code is not processed by kslicer, it is just CPU code \\
+
 void TestClass::PackXYBlock(uint tidX, uint tidY, uint* out_pakedXY, uint a_passesNum)
 {
   #pragma omp parallel for default(shared)
@@ -242,8 +245,17 @@ void TestClass::CastSingleRayBlock(uint tid, const uint* in_pakedXY, uint* out_c
 
 void TestClass::StupidPathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passesNum)
 {
+  auto start = std::chrono::high_resolution_clock::now();
   #pragma omp parallel for default(shared)
   for(uint i=0;i<tid;i++)
     for(int j=0;j<a_passesNum;j++)
       StupidPathTrace(i, 6, in_pakedXY, out_color);
+  m_executionTimePT = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
+}
+
+
+void TestClass::GetExecutionTime(const char* a_funcName, float a_out[4])
+{
+  if(std::string(a_funcName) == "StupidPathTrace" || std::string(a_funcName) == "StupidPathTraceBlock")
+    a_out[0] = m_executionTimePT;
 }

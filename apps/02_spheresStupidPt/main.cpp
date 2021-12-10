@@ -9,11 +9,6 @@
 #include "vk_context.h"
 std::shared_ptr<TestClass> CreateTestClass_Generated(int a_maxThreads, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 
-#define MEASURE_TIME
-#ifdef MEASURE_TIME
-#include "test_class_generated.h"
-#endif
-
 int main(int argc, const char** argv)
 {
   #ifndef NDEBUG
@@ -74,15 +69,10 @@ int main(int argc, const char** argv)
   else
     SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
-  #ifdef MEASURE_TIME
-  auto pGPUImpl = dynamic_cast<TestClass_Generated*>(pImpl.get());
-  if(pGPUImpl != nullptr)
-  {
-    auto timings = pGPUImpl->GetStupidPathTraceExecutionTime();
-    std::cout << "StupidPathTrace(exec) = " << timings.msExecuteOnGPU                      << " ms " << std::endl;
-    std::cout << "StupidPathTrace(copy) = " << timings.msCopyToGPU + timings.msCopyFromGPU << " ms " << std::endl;
-    std::cout << "StupidPathTrace(ovrh) = " << timings.msAPIOverhead                       << " ms " << std::endl;
-  }
-  #endif
+  float timings[4] = {0,0,0,0};
+  pImpl->GetExecutionTime("StupidPathTraceBlock", timings);
+  std::cout << "StupidPathTraceBlock(exec) = " << timings[0]              << " ms " << std::endl;
+  std::cout << "StupidPathTraceBlock(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
+  std::cout << "StupidPathTraceBlock(ovrh) = " << timings[3]              << " ms " << std::endl;
   return 0;
 }

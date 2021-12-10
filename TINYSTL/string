@@ -1,0 +1,23 @@
+#ifndef STD_STRING_HEADER
+#define STD_STRING_HEADER
+
+namespace std
+{
+  class string
+  {
+  public:
+    string(){}
+    string(const char* a_data){}
+
+    bool operator==(const std::string& a_rhs) { return false; }
+    bool operator==(const char* a_rhs) { return false; }
+    bool operator!=(const std::string& a_rhs) { return false; }
+    bool operator!=(const char* a_rhs) { return false; }
+
+    string operator+(const std::string& rhs) { return rhs; }
+  };
+
+
+};
+	
+#endif

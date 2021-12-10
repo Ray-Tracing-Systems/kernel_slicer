@@ -612,4 +612,20 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
 }
 {% endif %}
 ## endfor
+{% if HasGetTimeFunc %}
 
+void {{MainClassName}}_Generated::GetExecutionTime(const char* a_funcName, float a_out[4])
+{
+  vk_utils::ExecTime res = {};
+  {% for MainFunc in MainFunctions %}
+  {% if MainFunc.OverrideMe %}
+  if(std::string(a_funcName) == "{{MainFunc.Name}}" || std::string(a_funcName) == "{{MainFunc.Name}}Block")
+    res = m_exTime{{MainFunc.Name}};
+  {% endif %}
+  {% endfor %}
+  a_out[0] = res.msExecuteOnGPU;
+  a_out[1] = res.msCopyToGPU;
+  a_out[2] = res.msCopyFromGPU;
+  a_out[3] = res.msAPIOverhead;             
+}
+{% endif %}

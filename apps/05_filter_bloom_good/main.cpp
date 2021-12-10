@@ -8,18 +8,20 @@
 #include "test_class.h"
 #include "Bitmap.h"
 
-#define MEASURE_TIME
-#ifdef MEASURE_TIME
-#include "test_class_generated.h"
-#endif
+#include "vk_context.h"
+std::shared_ptr<ToneMapping> CreateToneMapping_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
 
 bool LoadHDRImageFromFile(const char* a_fileName, 
                           int* pW, int* pH, std::vector<float>& a_data); // defined in imageutils.cpp
 
-std::shared_ptr<ToneMapping> CreateToneMapping_Generated();
-
 int main(int argc, const char** argv)
 {
+  #ifndef NDEBUG
+  bool enableValidationLayers = true;
+  #else
+  bool enableValidationLayers = false;
+  #endif
+
   std::vector<float> hdrData;
   int w,h;
   if(!LoadHDRImageFromFile("../images/nancy_church_2.hdr", &w, &h, hdrData))
@@ -36,11 +38,16 @@ int main(int argc, const char** argv)
   bool onGPU = true;
   
   if(onGPU)
-    pImpl = CreateToneMapping_Generated();
+  {
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers);
+    pImpl = CreateToneMapping_Generated(ctx, w*h);
+  }
   else
     pImpl = std::make_shared<ToneMapping>();
 
   pImpl->SetMaxImageSize(w,h);
+  pImpl->CommitDeviceData();
+
   pImpl->Bloom(w, h, (const LiteMath::float4*)hdrData.data(), ldrData.data());
 
   if(onGPU)
@@ -48,15 +55,11 @@ int main(int argc, const char** argv)
   else
     SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
   
-  #ifdef MEASURE_TIME
-  ToneMapping_Generated* pGPUImpl = dynamic_cast<ToneMapping_Generated*>(pImpl.get());
-  if(pGPUImpl != nullptr)
-  {
-    auto timings = pGPUImpl->GetBloomExecutionTime();
-    std::cout << "Bloom(exec) = " << timings.msExecuteOnGPU                      << " ms " << std::endl;
-    std::cout << "Bloom(copy) = " << timings.msCopyToGPU + timings.msCopyFromGPU << " ms " << std::endl;
-  }
-  #endif
+  float timings[4] = {0,0,0,0};
+  pImpl->GetExecutionTime("Bloom", timings);
+  std::cout << "Bloom(exec) = " << timings[0]              << " ms " << std::endl;
+  std::cout << "Bloom(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
+  std::cout << "Bloom(ovrh) = " << timings[3]              << " ms " << std::endl;
   pImpl = nullptr;  
   return 0;
 }

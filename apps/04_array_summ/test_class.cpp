@@ -1,5 +1,5 @@
 #include "test_class.h"
-#include <cstdint>
+#include <string>
 
 void Numbers::CalcArraySumm(const int* a_data, unsigned int a_dataSize)
 {

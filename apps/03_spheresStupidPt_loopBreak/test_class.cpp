@@ -1,7 +1,7 @@
 #include "test_class.h"
 #include "include/crandom.h"
 
-//#include <chrono>
+#include <chrono>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -210,6 +210,8 @@ void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, const uint* in_pakedX
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// please note that further code is not processed by kslicer, it is just CPU code \\
+
 void TestClass::PackXYBlock(uint tidX, uint tidY, uint* out_pakedXY, uint a_passesNum)
 {
   #pragma omp parallel for default(shared)
@@ -227,83 +229,16 @@ void TestClass::CastSingleRayBlock(uint tid, const uint* in_pakedXY, uint* out_c
 
 void TestClass::StupidPathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passesNum)
 {
+  auto start = std::chrono::high_resolution_clock::now();
   #pragma omp parallel for default(shared)
   for(uint i=0;i<tid;i++)
     for(int j=0;j<a_passesNum;j++)
       StupidPathTrace(i, 6, in_pakedXY, out_color);
+  m_executionTimePT = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#include "Bitmap.h"
-
-void test_class_cpu()
+void TestClass::GetExecutionTime(const char* a_funcName, float a_out[4])
 {
-  TestClass test(WIN_WIDTH*WIN_HEIGHT);
-
-  std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
-  std::vector<uint32_t> packedXY(WIN_WIDTH*WIN_HEIGHT);
-  std::vector<float4>   realColor(WIN_WIDTH*WIN_HEIGHT);
-  
-  // remember pitch-linear (x,y) for each thread to make our threading 1D
-  //
-  for(int y=0;y<WIN_HEIGHT;y++)
-  {
-    for(int x=0;x<WIN_WIDTH;x++)
-      test.PackXY(x, y, packedXY.data());
-  }
-  
-  // test simple ray casting
-  //
-  for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
-    test.CastSingleRay(i, packedXY.data(), pixelData.data());
-
-  SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-  //return;
-
-  //auto start = std::chrono::high_resolution_clock::now();
-  
-  // now test path tracing
-  //
-  const int PASS_NUMBER           = 100;
-  const int ITERS_PER_PASS_NUMBER = 10;
-  for(int passId = 0; passId < PASS_NUMBER; passId++)
-  {
-    #pragma omp parallel for default(shared)
-    for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
-    {
-      for(int j=0;j<ITERS_PER_PASS_NUMBER;j++)
-        test.StupidPathTrace(i, 6, packedXY.data(), realColor.data());
-    }
-
-    if(passId%10 == 0)
-    {
-      const float progress = 100.0f*float(passId)/float(PASS_NUMBER);
-      std::cout << "progress = " << progress << "%   \r";
-      std::cout.flush();
-    }
-  }
-  
-  //auto stop = std::chrono::high_resolution_clock::now();
-  //auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-  //std::cout << ms << " ms for " << PASS_NUMBER*ITERS_PER_PASS_NUMBER << " times of command buffer execution " << std::endl;
-
-  const float normConst = 1.0f/float(PASS_NUMBER*ITERS_PER_PASS_NUMBER);
-  const float invGamma  = 1.0f / 2.2f;
-
-  for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
-  {
-    float4 color = realColor[i]*normConst;
-    color.x      = powf(color.x, invGamma);
-    color.y      = powf(color.y, invGamma);
-    color.z      = powf(color.z, invGamma);
-    color.w      = 1.0f;
-    pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
-  }
-  SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-
-  return;
+  if(std::string(a_funcName) == "StupidPathTrace" || std::string(a_funcName) == "StupidPathTraceBlock")
+    a_out[0] = m_executionTimePT;
 }

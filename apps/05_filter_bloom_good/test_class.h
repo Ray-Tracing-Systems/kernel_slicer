@@ -55,6 +55,9 @@ public:
   virtual void Bloom(int w, int h, const float4* inData4f   __attribute__((size("w", "h"))) , 
                                    unsigned int* outData1ui __attribute__((size("w", "h"))) );
 
+  virtual void CommitDeviceData() {}                                       // will be overriden in generated class
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class                                   
+
 protected:
 
   void kernel2D_ExtractBrightPixels(int tidX, int tidY, const float4* inData4f, float4* a_brightPixels);

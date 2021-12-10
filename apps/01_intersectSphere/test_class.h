@@ -50,7 +50,8 @@ public:
   void MainFunc(uint tidX, uint tidY, uint* out_color __attribute__((size("tidX", "tidY"))));
   virtual void MainFuncBlock(uint tidX, uint tidY, uint* out_color, uint32_t a_numPasses = 1);
 
-  virtual void CommitDeviceData() {} // will be overriden in generated class
+  virtual void CommitDeviceData() {}                                       // will be overriden in generated class
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class
 
   void kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY);        // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 

@@ -66,6 +66,7 @@ public:
   virtual void NaivePathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passesNum);
   
   virtual void CommitDeviceData() {} // will be overriden in generated class
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]); 
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -113,6 +114,7 @@ protected:
   std::vector<RandomGen>       m_randomGens;
 
   std::shared_ptr<ISceneObject> m_pAccelStruct = nullptr;
+  float m_executionTime = 0.0f;
 };
 
 #endif

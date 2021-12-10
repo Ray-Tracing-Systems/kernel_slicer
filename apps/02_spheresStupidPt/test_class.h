@@ -55,8 +55,9 @@ public:
   virtual void PackXYBlock(uint tidX, uint tidY, uint* out_pakedXY, uint a_passesNum);
   virtual void CastSingleRayBlock(uint tid, const uint* in_pakedXY, uint* out_color, uint a_passesNum);
   virtual void StupidPathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passesNum);
-
-  virtual void CommitDeviceData() {}
+ 
+  virtual void CommitDeviceData() {}                                     // will be overriden in generated class
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]); // will be overriden in generated class
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -89,6 +90,8 @@ protected:
   std::vector<SphereMaterial>  spheresMaterials;
   std::vector<RandomGen>       m_randomGens;
   std::vector<float>           m_unusedVector;
+
+  float m_executionTimePT = 0.0f;
 };
 
 #endif

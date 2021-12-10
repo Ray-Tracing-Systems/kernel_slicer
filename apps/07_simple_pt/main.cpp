@@ -20,8 +20,8 @@
 
 // the problem in this sample is that LoadScene should be called after InitVulkanObjects ... need to think.
 
-
-std::shared_ptr<TestClass> CreateTestClass_Generated(int a_maxThreads, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+#include "vk_context.h"
+std::shared_ptr<TestClass> CreateTestClass_Generated(int a_maxThreads, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 
 int main(int argc, const char** argv)
 {
@@ -83,6 +83,11 @@ int main(int argc, const char** argv)
     SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
     SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-
+  
+  float timings[4] = {0,0,0,0};
+  pImpl->GetExecutionTime("NaivePathTraceBlock", timings);
+  std::cout << "NaivePathTraceBlock(exec) = " << timings[0]              << " ms " << std::endl;
+  std::cout << "NaivePathTraceBlock(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
+  std::cout << "NaivePathTraceBlock(ovrh) = " << timings[3]              << " ms " << std::endl;
   return 0;
 }

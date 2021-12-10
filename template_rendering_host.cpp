@@ -336,8 +336,7 @@ static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func, const kslicer
     if(p != a_classInfo.allMemberFunctions.end()) 
     {
       if(!p->second->isVirtual())
-        std::cout << "[kslicer]: warning, function '" << a_func.Name << "Block' should be virtual" << std::endl;
-      
+        std::cout << "[kslicer]: warning, function '" << a_func.Name << "Block' should be virtual" << std::endl;  
       //#TODO: check function prototype
     }
   }
@@ -919,6 +918,32 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  // check for CommitDeviceData and GetExecutionTime
+  { 
+    auto pCommit  = a_classInfo.allMemberFunctions.find("CommitDeviceData");
+    auto pGetTime = a_classInfo.allMemberFunctions.find("GetExecutionTime");
+    
+    if(pCommit == a_classInfo.allMemberFunctions.end())
+      std::cout << "[kslicer]: warning, can't find fuction 'CommitDeviceData', you should define it: 'virtual void CommitDeviceData(){}'" << std::endl; 
+    else
+    {
+      if(!pCommit->second->isVirtual())
+        std::cout << "[kslicer]: warning, function 'CommitDeviceData' should be virtual" << std::endl;  
+    }
+  
+    if(pGetTime == a_classInfo.allMemberFunctions.end())
+      std::cout << "[kslicer]: warning, can't find fuction 'GetExecutionTime', you should define it: 'virtual void GetExecutionTime(const char* a_funcName, float a_out[4]){}'" << std::endl; 
+    else
+    {
+      if(!pGetTime->second->isVirtual())
+        std::cout << "[kslicer]: warning, function 'GetExecutionTime' should be virtual" << std::endl;  
+    }
+
+    data["HasCommitDeviceFunc"] = (pCommit != a_classInfo.allMemberFunctions.end());
+    data["HasGetTimeFunc"]      = (pGetTime != a_classInfo.allMemberFunctions.end());
+  }
+
   data["HasRTXAccelStruct"] = false;
   data["MainFunctions"] = std::vector<std::string>();
   bool atLeastOneFullOverride = false;

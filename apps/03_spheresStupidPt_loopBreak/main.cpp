@@ -68,6 +68,11 @@ int main(int argc, const char** argv)
     SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
     SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-
+  
+  float timings[4] = {0,0,0,0};
+  pImpl->GetExecutionTime("StupidPathTraceBlock", timings);
+  std::cout << "StupidPathTraceBlock(exec) = " << timings[0]              << " ms " << std::endl;
+  std::cout << "StupidPathTraceBlock(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
+  std::cout << "StupidPathTraceBlock(ovrh) = " << timings[3]              << " ms " << std::endl;
   return 0;
 }

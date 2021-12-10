@@ -73,12 +73,17 @@ public:
     UpdateVectorMembers(a_pCopyEngine);
     UpdateTextureMembers(a_pCopyEngine);
   }
-
+  
+  {% if HasCommitDeviceFunc %}
   void CommitDeviceData() override // you have to define this virtual function in the oroginal imput class
   {
     InitMemberBuffers();
     UpdateAll(m_ctx.pCopyHelper);
-  }
+  }  // you have to define this virtual function in the oroginal imput class
+  {% endif %}
+  {% if HasGetTimeFunc %}
+  void GetExecutionTime(const char* a_funcName, float a_out[4]) override; 
+  {% endif %}
   
   virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
