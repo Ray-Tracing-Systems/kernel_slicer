@@ -20,23 +20,25 @@ def fix_paths_in_args(args):
     return [arg.replace("${workspaceFolder}", os.getcwd()) for arg in args]
 
 
-def get_main_class(args):
-    for i in range(len(args)):
-        if args[i] == "-mainClass":
-            return args[i+1]
-
-    raise RuntimeError("Can't find main class in args: {}".format(args))
+# def get_main_class(args):
+#     for i in range(len(args)):
+#         if args[i] == "-mainClass":
+#             return args[i+1]
+#
+#     raise RuntimeError("Can't find main class in args: {}".format(args))
 
 
 def compile_shaders(shader_lang):
     Log().info("Compiling {} shaders".format(shader_lang.name))
-    script_name = {
-        ShaderLang.OPEN_CL: "z_build.sh",
-        ShaderLang.GLSL: "build.sh"
-    }
+    if shader_lang == ShaderLang.OPEN_CL:
+        res = subprocess.run(["bash", "z_build.sh"],
+                              stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    elif shader_lang == ShaderLang.GLSL:
+        os.chdir("shaders_generated")
+        res = subprocess.run(["bash", "build.sh"],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        os.chdir("..")
 
-    res = subprocess.run(["bash", script_name[shader_lang]],
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return res
 
 
@@ -89,7 +91,7 @@ def find_image_pairs():
 
 def compare_images(img_name1, img_name2):
     mse_res = utils.load_and_calc_mse(img_name1, img_name2)
-    threshold = 1e-4
+    threshold = 1e-3
     status = Status.OK if mse_res < threshold else Status.FAILED
 
     Log().status_info("{0}, {1} | mse = {2}".format(img_name1, img_name2, mse_res), status=status)
@@ -125,7 +127,7 @@ def run_sample(test_name):
 def run_test(test_name, args):
     args = fix_paths_in_args(args)
     Log().info("Running test: {}".format(test_name))
-    Log().info("Generating files by kernel_slicer for class {}".format(get_main_class(args)))
+    Log().info("Generating files by kernel_slicer for {}".format(args[0]))
     workdir = os.getcwd()
 
     res = subprocess.run(["./cmake-build-release/kslicer", *args],
@@ -148,8 +150,9 @@ def run_test(test_name, args):
 
     return_code = check_generated_images(test_name)
 
+    final_status = Status.OK if return_code == 0 else Status.FAILED
     os.chdir(workdir)
-    Log().status_info("\"{}\" finished".format(test_name), status=Status.OK)
+    Log().status_info("\"{}\" finished".format(test_name), status=final_status)
 
 
 def tests():
@@ -159,8 +162,8 @@ def tests():
     for config in configurations:
         if config["name"] in config_black_list:
             continue
-        if config["name"] != "Launch (app_05)": # @TODO: should be removed later
-            continue
+        # if config["name"] != "Launch (app_05)": # @TODO: should be removed later
+        #     continue
         run_test(config["name"], config["args"])
 
 

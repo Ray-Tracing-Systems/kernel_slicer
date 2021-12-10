@@ -73,7 +73,12 @@ class Log(metaclass=Singleton):
         print(*args, file=sys.stdout)
         print(*args, file=self.log_file)
 
+    @staticmethod
+    def __convert_to_path(name):
+        return name.replace("/","_")
+
     def save_std_output(self, proc_name, stdout, stderr):
+        proc_name = self.__convert_to_path(proc_name)
         out_f_name = proc_name+"__stdout.txt"
         out_f = open(os.path.join(self.log_dir, out_f_name), "w")
         print(stdout, file=out_f)
