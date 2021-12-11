@@ -14,9 +14,15 @@ struct MyInOut
 class ArrayProcess
 {
 public:
+  ArrayProcess(){}
   
   [[kslicer::setter]] void SetOutput(MyInOut a_out);
-  void ProcessArrays(const int* a_data1, const int* a_data2, unsigned a_dataSize);
+
+  virtual void ProcessArrays(const int* a_data1 __attribute__((size("a_dataSize"))), 
+                             const int* a_data2 __attribute__((size("a_dataSize"))), unsigned a_dataSize);
+
+  virtual void CommitDeviceData() {}                                       // will be overriden in generated class
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class
 
   void ReserveTestData(size_t n) { testData.reserve(n); }
 
