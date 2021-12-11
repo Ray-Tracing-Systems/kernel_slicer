@@ -75,14 +75,23 @@ public:
   }
   
   {% if HasCommitDeviceFunc %}
-  void CommitDeviceData() override // you have to define this virtual function in the oroginal imput class
+  void CommitDeviceData() override // you have to define this virtual function in the original imput class
   {
     InitMemberBuffers();
     UpdateAll(m_ctx.pCopyHelper);
-  }  // you have to define this virtual function in the oroginal imput class
+  }  
   {% endif %}
   {% if HasGetTimeFunc %}
   void GetExecutionTime(const char* a_funcName, float a_out[4]) override; 
+  {% endif %}
+  {% if UpdateMembersPlainData %}
+  void UpdateMembersPlainData() override { UpdatePlainMembers(m_ctx.pCopyHelper); } 
+  {% endif %}
+  {% if UpdateMembersVectorData %}
+  void UpdateMembersVectorData() override { UpdateVectorMembers(m_ctx.pCopyHelper); }
+  {% endif %}
+  {% if UpdateMembersTextureData %}
+  void UpdateMembersTexureData() override { UpdateTextureMembers(m_ctx.pCopyHelper); }
   {% endif %}
   
   virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
@@ -96,7 +105,7 @@ public:
   virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}};
   {% endfor %}
   {% if HasFullImpl %}
-  
+
   {% for MainFunc in MainFunctions %}  
   {% if MainFunc.OverrideMe %}
   {{MainFunc.ReturnType}} {{MainFunc.DeclOrig}} override;

@@ -923,6 +923,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   { 
     auto pCommit  = a_classInfo.allMemberFunctions.find("CommitDeviceData");
     auto pGetTime = a_classInfo.allMemberFunctions.find("GetExecutionTime");
+    auto pUpdPOD  = a_classInfo.allMemberFunctions.find("UpdateMembersPlainData");
+    auto pUpdVec  = a_classInfo.allMemberFunctions.find("UpdateMembersVectorData");
+    auto pUpdTex  = a_classInfo.allMemberFunctions.find("UpdateMembersTexureData");
     
     if(pCommit == a_classInfo.allMemberFunctions.end())
       std::cout << "[kslicer]: warning, can't find fuction 'CommitDeviceData', you should define it: 'virtual void CommitDeviceData(){}'" << std::endl; 
@@ -940,8 +943,30 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         std::cout << "[kslicer]: warning, function 'GetExecutionTime' should be virtual" << std::endl;  
     }
 
-    data["HasCommitDeviceFunc"] = (pCommit != a_classInfo.allMemberFunctions.end());
-    data["HasGetTimeFunc"]      = (pGetTime != a_classInfo.allMemberFunctions.end());
+    if(pUpdPOD != a_classInfo.allMemberFunctions.end())
+    {
+      if(!pUpdPOD->second->isVirtual())
+        std::cout << "[kslicer]: warning, function 'UpdateMembersPlainData' should be virtual" << std::endl;  
+    }
+
+    if(pUpdVec != a_classInfo.allMemberFunctions.end())
+    {
+      if(!pUpdVec->second->isVirtual())
+        std::cout << "[kslicer]: warning, function 'UpdateMembersVectorData' should be virtual" << std::endl;  
+    }
+
+    if(pUpdTex != a_classInfo.allMemberFunctions.end())
+    {
+      if(!pUpdTex->second->isVirtual())
+        std::cout << "[kslicer]: warning, function 'UpdateMembersTexureData' should be virtual" << std::endl;  
+    }
+
+    data["HasCommitDeviceFunc"]    = (pCommit  != a_classInfo.allMemberFunctions.end());
+    data["HasGetTimeFunc"]         = (pGetTime != a_classInfo.allMemberFunctions.end());
+
+    data["UpdateMembersPlainData"]   = (pUpdPOD  != a_classInfo.allMemberFunctions.end());
+    data["UpdateMembersVectorData"]  = (pUpdVec  != a_classInfo.allMemberFunctions.end());
+    data["UpdateMembersTextureData"] = (pUpdTex  != a_classInfo.allMemberFunctions.end());
   }
 
   data["HasRTXAccelStruct"] = false;
