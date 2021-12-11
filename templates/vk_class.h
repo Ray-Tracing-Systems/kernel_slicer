@@ -91,15 +91,30 @@ public:
   {% if HasFullImpl %}
   virtual void ReadPlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   {% endif %}
-
+  
   {% for MainFunc in MainFunctions %}  
   virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}};
+  {% endfor %}
+  {% if HasFullImpl %}
+  
+  {% for MainFunc in MainFunctions %}  
   {% if MainFunc.OverrideMe %}
   {{MainFunc.ReturnType}} {{MainFunc.DeclOrig}} override;
+  {% endif %}
+  {% endfor %}
+
+  {% for MainFunc in MainFunctions %}  
+  {% if MainFunc.OverrideMe %}
   inline vk_utils::ExecTime Get{{MainFunc.Name}}ExecutionTime() const { return m_exTime{{MainFunc.Name}}; }
+  {% endif %}
+  {% endfor %}
+
+  {% for MainFunc in MainFunctions %}  
+  {% if MainFunc.OverrideMe %}
   vk_utils::ExecTime m_exTime{{MainFunc.Name}};
   {% endif %}
   {% endfor %}
+  {% endif %} {# /* end if HasFullImpl */ #}
 
   virtual void copyKernelFloatCmd(uint32_t length);
   

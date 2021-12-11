@@ -28,6 +28,9 @@ public:
                            const float4* a_inDepth     __attribute__((size("a_width", "a_height"))), 
                            const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
 
+  virtual void CommitDeviceData() {}                                       // will be overriden in generated class
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class    
+
 protected:
 
   void kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth);

@@ -20,6 +20,9 @@ public:
 
   virtual void NLM_denoise(const int a_width, const int a_height, unsigned int* a_outData1ui __attribute__((size("a_width", "a_height"))), const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
 
+  virtual void CommitDeviceData() {}                                       // will be overriden in generated class
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class
+
 protected:
 
   void kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_height, unsigned int* a_outData1ui, 

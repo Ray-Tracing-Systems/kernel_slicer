@@ -1,9 +1,6 @@
 #include <iostream>
 #include <fstream>
 
-//void test_class_cpu();
-//void test_class_gpu();
-
 #include "test_class.h"
 #include "Bitmap.h"
 

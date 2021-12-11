@@ -7,14 +7,19 @@
 #include "test_class.h"
 #include "Bitmap.h"
 
-//void tone_mapping_cpu(int w, int h, const float* a_hdrData, const char* a_outName);
-//void tone_mapping_gpu(int w, int h, const float* a_hdrData, const char* a_outName);
+#include "vk_context.h"
+std::shared_ptr<ToneMapping> CreateToneMapping_Generated(const int w, const int h, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 
 bool LoadHDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<float>& a_data); // defined in imageutils.cpp
-std::shared_ptr<ToneMapping> CreateToneMapping_Generated(const int w, const int h);
 
 int main(int argc, const char** argv)
 {
+  #ifndef NDEBUG
+  bool enableValidationLayers = true;
+  #else
+  bool enableValidationLayers = false;
+  #endif
+  
   std::vector<float> hdrData;
   int w =0, h = 0;
 
@@ -26,17 +31,19 @@ int main(int argc, const char** argv)
 
   uint64_t addressToCkeck = reinterpret_cast<uint64_t>(hdrData.data());
   assert(addressToCkeck % 16 == 0); // check if address is aligned!!!
-
-  //tone_mapping_cpu(w, h, hdrData.data(), "zout_cpu.bmp");
-  //tone_mapping_gpu(w, h, hdrData.data(), "zout_gpu.bmp");
   
   bool onGPU = true;
   std::shared_ptr<ToneMapping> pImpl = nullptr;
   if(onGPU)
-    pImpl = CreateToneMapping_Generated(w,h);
+  {
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers);
+    pImpl = CreateToneMapping_Generated(w,h,ctx,w*h);
+  }
   else
     pImpl = std::make_shared<ToneMapping>(w,h);
   
+  pImpl->CommitDeviceData();
+
   // put data to texture because our class works with textures
   //
   Texture2D<float4> texture(w, h, (const float4*)hdrData.data());
@@ -49,5 +56,10 @@ int main(int argc, const char** argv)
   else
     SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);  
 
+  float timings[4] = {0,0,0,0};
+  pImpl->GetExecutionTime("Bloom", timings);
+  std::cout << "Bloom(exec) = " << timings[0]              << " ms " << std::endl;
+  std::cout << "Bloom(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
+  std::cout << "Bloom(ovrh) = " << timings[3]              << " ms " << std::endl;
   return 0;
 }

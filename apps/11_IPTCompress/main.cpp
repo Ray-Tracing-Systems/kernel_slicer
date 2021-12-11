@@ -8,14 +8,19 @@
 #include "test_class.h"
 #include "Bitmap.h"
 
-void Tone_mapping_cpu(int w, int h, float* a_hdrData, const char* a_outName);
-void Tone_mapping_gpu(int w, int h, float* a_hdrData, const char* a_outName);
 bool LoadHDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<float>& a_data); // defined in imageutils.cpp
 
-std::shared_ptr<ToneMapping> CreateToneMapping_Generated();
+#include "vk_context.h"
+std::shared_ptr<ToneMapping> CreateToneMapping_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
 
 int main(int argc, const char** argv)
 {
+  #ifndef NDEBUG
+  bool enableValidationLayers = true;
+  #else
+  bool enableValidationLayers = false;
+  #endif
+
   std::vector<float> hdrData;
   int w,h;
   
@@ -31,18 +36,28 @@ int main(int argc, const char** argv)
   bool onGPU = true;
   std::shared_ptr<ToneMapping> pImpl = nullptr;
   if(onGPU)
-    pImpl = CreateToneMapping_Generated();
+  {
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers);
+    pImpl    = CreateToneMapping_Generated(ctx, w*h);
+  }
   else
     pImpl = std::make_shared<ToneMapping>();
 
   std::vector<uint> ldrData(w*h);
   pImpl->SetMaxImageSize(w,h);
+  pImpl->CommitDeviceData();
+
   pImpl->IPTcompress(w,h, (const float4*)hdrData.data(), ldrData.data());
   
   if(onGPU)
     SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
   else
     SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
-
+  
+  float timings[4] = {0,0,0,0};
+  pImpl->GetExecutionTime("IPTcompress", timings);
+  std::cout << "IPTcompress(exec) = " << timings[0]              << " ms " << std::endl;
+  std::cout << "IPTcompress(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
+  std::cout << "IPTcompress(ovrh) = " << timings[3]              << " ms " << std::endl; 
   return 0;
 }

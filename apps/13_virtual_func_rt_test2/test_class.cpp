@@ -1,7 +1,8 @@
 #include "test_class.h"
 #include "include/crandom.h"
 
-//#include <chrono>
+#include <chrono>
+#include <string>
 
 void TestClass::InitRandomGens(int a_maxThreads)
 {
@@ -215,7 +216,7 @@ void TestClass::PackXY(uint tidX, uint tidY, uint* out_pakedXY)
   kernel_PackXY(tidX, tidY, out_pakedXY);
 }
 
-void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
+void TestClass::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color)
 {
   float4 rayPosAndNear, rayDirAndFar;
   kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
@@ -239,7 +240,7 @@ void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, c
   out_color[y*WIN_WIDTH+x] += *a_accumColor;
 }
 
-void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color)
+void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color)
 {
   float4 accumColor, accumThoroughput;
   float4 rayPosAndNear, rayDirAndFar;
@@ -264,6 +265,40 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, floa
 
   kernel_ContributeToImage(tid, &accumColor, in_pakedXY, 
                            out_color);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TestClass::PackXYBlock(uint tidX, uint tidY, uint* out_pakedXY, uint a_passNum)
+{
+  #pragma omp parallel for default(shared)
+  for(int y=0;y<tidY;y++)
+    for(int x=0;x<tidX;x++)
+      PackXY(x, y, out_pakedXY);
+}
+
+void TestClass::CastSingleRayBlock(uint tid, const uint* in_pakedXY, uint* out_color, uint a_passNum)
+{
+  #pragma omp parallel for default(shared)
+  for(uint i=0;i<tid;i++)
+    CastSingleRay(i, in_pakedXY, out_color);
+}
+
+void TestClass::NaivePathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passNum)
+{
+  auto start = std::chrono::high_resolution_clock::now();
+  #pragma omp parallel for default(shared)
+  for(uint i=0;i<tid;i++)
+    for(int j=0;j<a_passNum;j++)
+      NaivePathTrace(i, 6, in_pakedXY, out_color);
+  m_executionTimePT = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
+}
+
+void TestClass::GetExecutionTime(const char* a_funcName, float a_out[4])
+{
+  if(std::string(a_funcName) == "NaivePathTrace" || std::string(a_funcName) == "NaivePathTraceBlock")
+    a_out[0] = m_executionTimePT;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

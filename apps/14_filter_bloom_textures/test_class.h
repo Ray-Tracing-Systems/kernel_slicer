@@ -47,6 +47,9 @@ public:
   virtual void Bloom (const int a_width, const int a_height, const Texture2D<float4>& a_texture2d, 
                       unsigned int* outData1ui __attribute__((size("a_width", "a_height"))) );
 
+  virtual void CommitDeviceData() {}                                       // will be overriden in generated class
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class    
+
 protected:
 
   void kernel2D_ExtractBrightPixels(const int a_width, const int a_height, const Texture2D<float4>& a_texture2d,        Texture2D<float4>& a_brightPixels);

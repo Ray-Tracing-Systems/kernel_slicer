@@ -31,7 +31,7 @@ link_directories("../volk")
 #uncomment this to detect broken memory problems via gcc sanitizers
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize-address-use-after-scope -fno-omit-frame-pointer -fsanitize=leak -fsanitize=undefined -fsanitize=bounds-strict")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -fPIC -Wno-attributes")
 
 add_executable(testapp main.cpp 
                        test_class.cpp
@@ -45,6 +45,8 @@ add_executable(testapp main.cpp
                        ../vkutils/vk_utils.cpp
                        ../vkutils/vk_copy.cpp
                        ../vkutils/vk_buffers.cpp
+                       ../vkutils/vk_images.cpp
+                       ../vkutils/vk_context.cpp
                        ../vkutils/vk_pipeline.cpp
                        ../vkutils/vk_descriptor_sets.cpp
                        ../vkutils/ray_tracing/vk_rt_utils.cpp

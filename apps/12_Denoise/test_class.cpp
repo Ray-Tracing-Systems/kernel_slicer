@@ -247,40 +247,14 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
   }
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
 
 void Denoise::NLM_denoise(const int a_width, const int a_height, const float4* a_inImage, unsigned int* a_outData1ui, const int32_t* a_inTexColor, 
-const int32_t* a_inNormal, const float4* a_inDepth,  const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel)
+                          const int32_t* a_inNormal, const float4* a_inDepth,  const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel)
 {  
 
   kernel1D_int32toFloat4(a_inTexColor, a_inNormal, a_inDepth);
 
   kernel2D_GuidedTexNormDepthDenoise(a_width, a_height, a_inImage, a_outData1ui, a_windowRadius, a_blockRadius, a_noiseLevel); 
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-void Denoise_cpu(const int w, const int h, const float* a_hdrData, int32_t* a_inTexColor, const int32_t* a_inNormal, const float* a_inDepth, 
-                 const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel, const char* a_outName)
-{
-  Denoise filter(w, h);
-  std::vector<uint> ldrData(w*h);
-  
-  //auto start = std::chrono::high_resolution_clock::now();
-
-  filter.NLM_denoise(w, h, (const float4*)a_hdrData, ldrData.data(), a_inTexColor, a_inNormal, (const float4*)a_inDepth, a_windowRadius,
-                     a_blockRadius, a_noiseLevel);
-  
-  //auto stop = std::chrono::high_resolution_clock::now();
-  //auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-  //std::cout << ms << " ms for NLM filter on CPU" << std::endl;
-
-  SaveBMP(a_outName, ldrData.data(), w, h);
-  return;
 }
