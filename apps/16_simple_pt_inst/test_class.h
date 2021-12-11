@@ -44,17 +44,25 @@ public:
     m_pAccelStruct = std::shared_ptr<ISceneObject>(CreateSceneRT(""), [](ISceneObject *p) { DeleteSceneRT(p); } ); 
   }
 
-  ~TestClass()
-  {
-    m_pAccelStruct = nullptr;
-  }
+  ~TestClass() {m_pAccelStruct = nullptr; }
 
   void InitRandomGens(int a_maxThreads);
   virtual int LoadScene(const char* bvhPath);
 
-  void PackXY(uint tidX, uint tidY, uint* out_pakedXY);
-  void CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color);
-  void NaivePathTrace(uint tid, uint a_maxDepth, uint* in_pakedXY, float4* out_color);
+  void PackXY(uint tidX, uint tidY, uint* out_pakedXY  __attribute__((size("tidX", "tidY"))) );
+  void CastSingleRay (uint tid, const uint* in_pakedXY __attribute__((size("tid"))), 
+                                      uint* out_color  __attribute__((size("tid"))) );
+  void NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY __attribute__((size("tid"))), 
+                                                     float4* out_color  __attribute__((size("tid"))) );
+
+  virtual void PackXYBlock(uint tidX, uint tidY, uint* out_pakedXY, uint a_passNum);
+  virtual void CastSingleRayBlock(uint tid, const uint* in_pakedXY, uint* out_color, uint a_passNum);
+  virtual void NaivePathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passNum);
+
+  virtual void CommitDeviceData() {}                                     // will be overriden in generated class
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]); // will be overriden in generated class
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   void kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY);
 
@@ -94,6 +102,7 @@ protected:
   std::vector<float4x4>        m_normMatrices; ///< per instance normal matrix, local to world
 
   std::shared_ptr<ISceneObject> m_pAccelStruct = nullptr;
+  float m_executionTimePT = 0.0f;
 };
 
 #endif
