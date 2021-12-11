@@ -1,6 +1,9 @@
 #include "test_class.h"
 #include "include/crandom.h"
 
+#include <chrono>
+#include <string>
+
 using std::max;
 using std::min;
 
@@ -129,7 +132,7 @@ void TestClass::PackXY(uint tidX, uint tidY, uint* out_pakedXY)
   kernel_PackXY(tidX, tidY, out_pakedXY);
 }
 
-void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
+void TestClass::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color)
 {
   float4 rayPosAndNear, rayDirAndFar;
   kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
@@ -143,6 +146,32 @@ void TestClass::CastSingleRay(uint tid, uint* in_pakedXY, uint* out_color)
   kernel_CalcShadow(tid, &surfPos, &shadow);
 
   kernel_GetTestColor(tid, &hit, &shadow, out_color);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TestClass::PackXYBlock(uint tidX, uint tidY, uint* out_pakedXY, uint a_passNum)
+{
+  #pragma omp parallel for default(shared)
+  for(int y=0;y<tidY;y++)
+    for(int x=0;x<tidX;x++)
+      PackXY(x, y, out_pakedXY);
+}
+
+void TestClass::CastSingleRayBlock(uint tid, const uint* in_pakedXY, uint* out_color, uint a_passNum)
+{
+  auto start = std::chrono::high_resolution_clock::now();
+  #pragma omp parallel for default(shared)
+  for(uint i=0;i<tid;i++)
+    CastSingleRay(i, in_pakedXY, out_color);
+  m_executionTimeCast = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
+}
+
+void TestClass::GetExecutionTime(const char* a_funcName, float a_out[4])
+{
+  if(std::string(a_funcName) == "CastSingleRay" || std::string(a_funcName) == "CastSingleRayBlock")
+    a_out[0] = m_executionTimeCast;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
