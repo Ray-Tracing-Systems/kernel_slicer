@@ -22,6 +22,9 @@ class SphHarm
 public:
   SphHarm(){}
 
+  virtual void CommitDeviceData() {}                                       // will be overriden in generated class
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class
+
   virtual void ProcessPixels(const uint32_t* a_data __attribute__((size("a_width", "a_height"))), uint32_t a_width, uint32_t a_height);
   void kernel2D_IntegrateSphHarm(const uint32_t* a_data, uint32_t a_width, uint32_t a_height);
   

@@ -29,6 +29,9 @@ public:
   const std::vector<PixelInfo>& GetFoundPixels() const { return m_foundPixels; }
   const uint32_t                GetRedPixelsAmount() const { return m_redPixelsNum; }
 
+  virtual void CommitDeviceData() {}                                       // will be overriden in generated class
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class
+
 //protected:
   
   void kernel1D_CountRedPixels(const uint32_t* a_data, size_t a_dataSize);
