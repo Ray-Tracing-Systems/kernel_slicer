@@ -110,7 +110,7 @@ namespace vk_utils
     {
       if(memInfos[i].memoryTypeBits != memInfos[0].memoryTypeBits)
       {
-        logWarning("[allocateAndBindWithPadding]: input buffers has different memReq.memoryTypeBits");
+        logWarning("[allocateAndBindWithPadding]: input buffers have different memReq.memoryTypeBits");
         return VK_NULL_HANDLE;
       }
     }

@@ -64,8 +64,8 @@ namespace vk_utils
 
   protected:
 
-    FSQuad(const FSQuad& a_rhs) { }
-    FSQuad& operator=(const FSQuad& a_rhs) { return *this; }
+    FSQuad(const FSQuad& a_rhs) { (void)a_rhs; }
+    FSQuad& operator=(const FSQuad& a_rhs) { (void)a_rhs; return *this; }
 
     VkDevice         m_device = {};
     VkPipeline       m_pipeline;
@@ -86,7 +86,12 @@ namespace vk_utils
   class QuadRenderer : public IQuad
   {
   public:
-    QuadRenderer() : m_pipeline(nullptr), m_layout(nullptr), m_renderPass(nullptr), m_fbTarget(nullptr), m_dlayout(nullptr) {}
+    QuadRenderer(int32_t a_startX, int32_t a_startY, uint32_t a_sizeX, uint32_t a_sizeY) : m_pipeline(nullptr),
+                m_layout(nullptr), m_renderPass(nullptr), m_fbTarget(nullptr), m_dlayout(nullptr)
+    {
+      rect.offset = VkOffset2D{a_startX, a_startY};
+      rect.extent = VkExtent2D{a_sizeX, a_sizeY};
+    }
     ~QuadRenderer();
 
     void Create(VkDevice a_device, const char* a_vspath, const char* a_fspath, RenderTargetInfo2D a_rtInfo) override;

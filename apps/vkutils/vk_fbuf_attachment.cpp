@@ -253,7 +253,7 @@ namespace vk_utils
     renderPassInfo.framebuffer = m_framebuffers[a_fbufIdx];
     renderPassInfo.renderArea.offset = a_renderOffset;
     renderPassInfo.renderArea.extent = m_resolution;
-    renderPassInfo.clearValueCount = a_clearValues.size();
+    renderPassInfo.clearValueCount = (uint32_t)a_clearValues.size();
     renderPassInfo.pClearValues = a_clearValues.data();
 
     return renderPassInfo;

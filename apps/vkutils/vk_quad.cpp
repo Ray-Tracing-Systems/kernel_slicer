@@ -7,48 +7,6 @@
 #include <sstream>
 #include <memory>
 
-void vk_utils::CreateRenderPass(VkDevice a_device, vk_utils::RenderTargetInfo2D a_rtInfo, VkRenderPass* a_pRenderPass)
-{
-  VkAttachmentDescription colorAttachment = {};
-  colorAttachment.format         = a_rtInfo.format;
-  colorAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
-  colorAttachment.loadOp         = a_rtInfo.loadOp;
-  colorAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
-  colorAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-  colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  colorAttachment.initialLayout  = a_rtInfo.initialLayout;           //  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL/VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL ? 
-  colorAttachment.finalLayout    = a_rtInfo.finalLayout;
-
-  VkAttachmentReference colorAttachmentRef = {};
-  colorAttachmentRef.attachment = 0;
-  colorAttachmentRef.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; 
-
-  VkSubpassDescription subpass = {};
-  subpass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
-  subpass.colorAttachmentCount = 1;
-  subpass.pColorAttachments    = &colorAttachmentRef;
-
-  VkSubpassDependency dependency = {};
-  dependency.srcSubpass    = VK_SUBPASS_EXTERNAL;
-  dependency.dstSubpass    = 0;
-  dependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-  dependency.srcAccessMask = 0;
-  dependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-  dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-  VkRenderPassCreateInfo renderPassInfo = {};
-  renderPassInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-  renderPassInfo.attachmentCount = 1;
-  renderPassInfo.pAttachments    = &colorAttachment;
-  renderPassInfo.subpassCount    = 1;
-  renderPassInfo.pSubpasses      = &subpass;
-  renderPassInfo.dependencyCount = 1;
-  renderPassInfo.pDependencies   = &dependency;
-
-  if (vkCreateRenderPass(a_device, &renderPassInfo, nullptr, a_pRenderPass) != VK_SUCCESS)
-    throw std::runtime_error("[CreateRenderPass]: failed to create render pass!");
-}
-
 
 vk_utils::FSQuad::~FSQuad()
 {
@@ -188,10 +146,9 @@ void vk_utils::FSQuad::Create(VkDevice a_device, const char* a_vspath, const cha
   pipelineLayoutInfo.pSetLayouts            = &m_dlayout;
   pipelineLayoutInfo.setLayoutCount         = 1;
 
-  if (vkCreatePipelineLayout(a_device, &pipelineLayoutInfo, nullptr, &m_layout) != VK_SUCCESS)
-    throw std::runtime_error("[FSQuad::Create]: failed to create pipeline layout!");
-  
-  vk_utils::CreateRenderPass(m_device, a_rtInfo, &m_renderPass);
+  VK_CHECK_RESULT(vkCreatePipelineLayout(a_device, &pipelineLayoutInfo, nullptr, &m_layout));
+
+  m_renderPass = vk_utils::createRenderPass(m_device, a_rtInfo);
   
   // finally create graphics pipeline
   //
@@ -210,8 +167,7 @@ void vk_utils::FSQuad::Create(VkDevice a_device, const char* a_vspath, const cha
   pipelineInfo.subpass             = 0;
   pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;  
   
-  if (vkCreateGraphicsPipelines(a_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_pipeline) != VK_SUCCESS)
-    throw std::runtime_error("[FSQuad::Create]: failed to create graphics pipeline!");
+  VK_CHECK_RESULT(vkCreateGraphicsPipelines(a_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_pipeline));
 
   vkDestroyShaderModule(m_device, fragShaderModule, nullptr);
   vkDestroyShaderModule(m_device, vertShaderModule, nullptr);
@@ -235,8 +191,7 @@ void vk_utils::FSQuad::SetRenderTarget(VkImageView a_imageView)
   framebufferInfo.height          = m_rtCreateInfo.size.height;
   framebufferInfo.layers          = 1;  
 
-  if (vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, &m_fbTarget) != VK_SUCCESS)
-    throw std::runtime_error("[FSQuad]: failed to create framebuffer!");
+  VK_CHECK_RESULT(vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, &m_fbTarget));
 
   m_targetView = a_imageView; 
 }
@@ -336,33 +291,32 @@ void QuadRenderer::Create(VkDevice a_device, const char* a_vspath, const char* a
   inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
   inputAssembly.primitiveRestartEnable = VK_FALSE;
   
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  VkRect2D scissor; // #TODO: FIX THIS !!!, THIS IS DEBUG CODE
-  {
-    scissor.offset = VkOffset2D{0,0};
-    scissor.extent = VkExtent2D{256,256};
-  }
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  // VkRect2D scissor; // #TODO: FIX THIS !!!, THIS IS DEBUG CODE
+  // {
+  //   scissor.offset = VkOffset2D{0,0};
+  //   scissor.extent = VkExtent2D{512,512};
+  // }
+  // rect = scissor;
+  // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   VkViewport viewport = {};
   viewport.x        = 0.0f;
   viewport.y        = 0.0f;
-  viewport.width    = (float)scissor.extent.width;
-  viewport.height   = (float)scissor.extent.height;
+  viewport.width    = (float)rect.extent.width;
+  viewport.height   = (float)rect.extent.height;
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
-
-  rect = scissor;
 
   VkPipelineViewportStateCreateInfo viewportState = {};
   viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
   viewportState.viewportCount = 1;
-  viewportState.pViewports = &viewport;
-  viewportState.scissorCount = 1;
-  viewportState.pScissors = &scissor;
+  viewportState.pViewports    = &viewport;
+  viewportState.scissorCount  = 1;
+  viewportState.pScissors     = &rect;
 
   VkPipelineRasterizationStateCreateInfo rasterizer = {};
   rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -427,10 +381,9 @@ void QuadRenderer::Create(VkDevice a_device, const char* a_vspath, const char* a
   pipelineLayoutInfo.pSetLayouts = &m_dlayout;
   pipelineLayoutInfo.setLayoutCount = 1;
 
-  if (vkCreatePipelineLayout(a_device, &pipelineLayoutInfo, nullptr, &m_layout) != VK_SUCCESS)
-    throw std::runtime_error("[FSQuad::Create]: failed to create pipeline layout!");
+  VK_CHECK_RESULT(vkCreatePipelineLayout(a_device, &pipelineLayoutInfo, nullptr, &m_layout));
 
-  vk_utils::CreateRenderPass(m_device, a_rtInfo, &m_renderPass);
+  m_renderPass = vk_utils::createRenderPass(m_device, a_rtInfo);
 
   // finally create graphics pipeline
   //
@@ -449,8 +402,7 @@ void QuadRenderer::Create(VkDevice a_device, const char* a_vspath, const char* a
   pipelineInfo.subpass = 0;
   pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-  if (vkCreateGraphicsPipelines(a_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_pipeline) != VK_SUCCESS)
-    throw std::runtime_error("[FSQuad::Create]: failed to create graphics pipeline!");
+  VK_CHECK_RESULT(vkCreateGraphicsPipelines(a_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_pipeline));
 
   vkDestroyShaderModule(m_device, fragShaderModule, nullptr);
   vkDestroyShaderModule(m_device, vertShaderModule, nullptr);
@@ -474,14 +426,14 @@ void QuadRenderer::SetRenderTarget(VkImageView a_imageView)
   framebufferInfo.height = m_rtCreateInfo.size.height;
   framebufferInfo.layers = 1;
 
-  if (vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, &m_fbTarget) != VK_SUCCESS)
-    throw std::runtime_error("[FSQuad]: failed to create framebuffer!");
+  VK_CHECK_RESULT(vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, &m_fbTarget));
 
   m_targetView = a_imageView;
 }
 
 void QuadRenderer::DrawCmd(VkCommandBuffer a_cmdBuff, VkDescriptorSet a_inTexDescriptor, float a_offsAndScale[4])
 {
+  (void)a_offsAndScale;
   VkRenderPassBeginInfo renderPassInfo = {};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   renderPassInfo.renderPass = m_renderPass;
@@ -493,9 +445,14 @@ void QuadRenderer::DrawCmd(VkCommandBuffer a_cmdBuff, VkDescriptorSet a_inTexDes
   clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
   renderPassInfo.clearValueCount = 1;
   renderPassInfo.pClearValues = &clearValues[0];
+   
+  //VkRect2D scissor{};
+  //scissor.offset = {0, 0};
+  //scissor.extent = {1024, 1024};
+  //vkCmdSetScissor(a_cmdBuff, 0, 1, &scissor); // this should be enabled for pipeline, can't require that ("when the graphics pipeline is created with VK_DYNAMIC_STATE_SCISSOR")
 
   vkCmdBeginRenderPass(a_cmdBuff, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
+   
   vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
   vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_layout, 0, 1, &a_inTexDescriptor, 0, NULL);
 

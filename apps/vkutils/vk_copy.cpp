@@ -1,26 +1,18 @@
 #include "vk_copy.h"
 #include "vk_utils.h"
 #include "vk_buffers.h"
+#include "vk_images.h"
 
 #include <cstring>
 #include <cassert>
-#include <iostream>
-
 #include <cmath>
-#include <cassert>
 
 #include <algorithm>
 #ifdef WIN32
 #undef min
 #undef max
-#endif
+#endif 
 
-#ifdef __ANDROID__
-namespace vk_android
-{
-  extern AAssetManager *g_pMgr;
-}
-#endif
 
 vk_utils::SimpleCopyHelper::SimpleCopyHelper()
 {
@@ -146,70 +138,137 @@ void vk_utils::SimpleCopyHelper::ReadBuffer(VkBuffer a_src, size_t a_srcOffset, 
   }
 }
 
-void vk_utils::SimpleCopyHelper::UpdateImage(VkImage a_image, const void* a_src, int a_width, int a_height, int a_bpp)
+void vk_utils::SimpleCopyHelper::ReadImage(VkImage a_image, void* a_dst, int a_width, int a_height, int a_bpp, VkImageLayout a_finalLayout)
 {
-  size_t a_size = a_width * a_height * a_bpp;
-
-  void* mappedMemory = nullptr;
-  vkMapMemory(dev, stagingBuffMemory, 0, a_size, 0, &mappedMemory);
-  memcpy(mappedMemory, a_src, a_size);
-  vkUnmapMemory(dev, stagingBuffMemory);
-
+  const size_t lineSize  = a_width * a_bpp;
+  const size_t n_lines   = a_height;
+  const size_t linesPerStage = stagingSize / lineSize;
 
   VkCommandBufferBeginInfo beginInfo = {};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  for(size_t currLine = 0; currLine < n_lines; currLine += linesPerStage)
+  {
+    size_t numLinesToCopy = std::min(n_lines - currLine, linesPerStage);
+    vkResetCommandBuffer(cmdBuff, 0);
+    vkBeginCommandBuffer(cmdBuff, &beginInfo);
+    if(currLine == 0)
+    {
+      VkImageSubresourceRange range = {};
+      range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      range.baseMipLevel   = 0;
+      range.levelCount     = 1;
+      range.baseArrayLayer = 0;
+      range.layerCount     = 1;
+      vk_utils::setImageLayout(cmdBuff, a_image, VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, range,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    }
+
+    VkImageSubresourceLayers subresourceLayers = {};
+    subresourceLayers.aspectMask               = VK_IMAGE_ASPECT_COLOR_BIT;
+    subresourceLayers.mipLevel                 = 0;
+    subresourceLayers.baseArrayLayer           = 0;
+    subresourceLayers.layerCount               = 1;
+
+    VkBufferImageCopy copyRegion = {};
+    copyRegion.bufferOffset      = 0;
+    copyRegion.bufferRowLength   = uint32_t(a_width);
+    copyRegion.bufferImageHeight = uint32_t(a_height);
+    copyRegion.imageExtent       = VkExtent3D{ uint32_t(a_width), uint32_t(numLinesToCopy), 1 };
+    copyRegion.imageOffset       = VkOffset3D{ 0, int32_t(currLine), 0 };
+    copyRegion.imageSubresource  = subresourceLayers;
+
+    vkCmdCopyImageToBuffer(cmdBuff, a_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, stagingBuff, 1, &copyRegion);
+
+    vkEndCommandBuffer(cmdBuff);
+
+    vk_utils::executeCommandBufferNow(cmdBuff, queue, dev);
+
+    void* mappedMemory = nullptr;
+    vkMapMemory(dev, stagingBuffMemory, 0, numLinesToCopy * lineSize, 0, &mappedMemory);
+    memcpy((char*)(a_dst) + currLine * lineSize, mappedMemory, numLinesToCopy * lineSize);
+    vkUnmapMemory(dev, stagingBuffMemory);
+  }
 
   vkResetCommandBuffer(cmdBuff, 0);
   vkBeginCommandBuffer(cmdBuff, &beginInfo);
-
-  VkImageMemoryBarrier imgBar = {};
-  {
-    imgBar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imgBar.pNext = nullptr;
-    imgBar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imgBar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-    imgBar.srcAccessMask = 0;
-    imgBar.dstAccessMask = 0;
-    imgBar.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
-    imgBar.newLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    imgBar.image         = a_image;
-
-    imgBar.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    imgBar.subresourceRange.baseMipLevel   = 0;
-    imgBar.subresourceRange.levelCount     = 1;
-    imgBar.subresourceRange.baseArrayLayer = 0;
-    imgBar.subresourceRange.layerCount     = 1;
-  };
-
-  vkCmdPipelineBarrier(cmdBuff,
-                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                       0,
-                       0, nullptr,
-                       0, nullptr,
-                       1, &imgBar);
-
-
-  VkImageSubresourceLayers shittylayers = {};
-  shittylayers.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-  shittylayers.mipLevel       = 0;
-  shittylayers.baseArrayLayer = 0;
-  shittylayers.layerCount     = 1;
-
-  VkBufferImageCopy wholeRegion = {};
-  wholeRegion.bufferOffset      = 0;
-  wholeRegion.bufferRowLength   = uint32_t(a_width);
-  wholeRegion.bufferImageHeight = uint32_t(a_height);
-  wholeRegion.imageExtent       = VkExtent3D{ uint32_t(a_width), uint32_t(a_height), 1 };
-  wholeRegion.imageOffset       = VkOffset3D{ 0,0,0 };
-  wholeRegion.imageSubresource  = shittylayers;
-
-  vkCmdCopyBufferToImage(cmdBuff, stagingBuff, a_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &wholeRegion);
+  VkImageSubresourceRange range = {};
+  range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  range.baseMipLevel = 0;
+  range.levelCount = 1;
+  range.baseArrayLayer = 0;
+  range.layerCount = 1;
+  vk_utils::setImageLayout(cmdBuff, a_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, a_finalLayout, range, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
   vkEndCommandBuffer(cmdBuff);
-
   vk_utils::executeCommandBufferNow(cmdBuff, queue, dev);
+}
+
+void vk_utils::SimpleCopyHelper::UpdateImage(VkImage a_image, const void* a_src, int a_width, int a_height, int a_bpp, VkImageLayout a_finalLayout)
+{
+  const size_t lineSize  = a_width * a_bpp;
+  const size_t n_lines   = a_height;
+  const size_t linesPerStage = stagingSize / lineSize;
+
+  VkCommandBufferBeginInfo beginInfo = {};
+  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  for(size_t currLine = 0; currLine < n_lines; currLine += linesPerStage)
+  {
+    size_t numLinesToCopy = std::min(n_lines - currLine, linesPerStage);
+    vkResetCommandBuffer(cmdBuff, 0);
+    vkBeginCommandBuffer(cmdBuff, &beginInfo);
+    if(currLine == 0)
+    {
+      VkImageSubresourceRange range = {};
+      range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      range.baseMipLevel = 0;
+      range.levelCount = 1;
+      range.baseArrayLayer = 0;
+      range.layerCount = 1;
+      vk_utils::setImageLayout(cmdBuff, a_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, range,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    }
+
+    void* mappedMemory = nullptr;
+    vkMapMemory(dev, stagingBuffMemory, 0, numLinesToCopy * lineSize, 0, &mappedMemory);
+    memcpy(mappedMemory, (char*)(a_src) + currLine * lineSize, numLinesToCopy * lineSize);
+    vkUnmapMemory(dev, stagingBuffMemory);
+
+    VkImageSubresourceLayers subresourceLayers = {};
+    subresourceLayers.aspectMask               = VK_IMAGE_ASPECT_COLOR_BIT;
+    subresourceLayers.mipLevel                 = 0;
+    subresourceLayers.baseArrayLayer           = 0;
+    subresourceLayers.layerCount               = 1;
+
+    VkBufferImageCopy copyRegion = {};
+    copyRegion.bufferOffset      = 0;
+    copyRegion.bufferRowLength   = uint32_t(a_width);
+    copyRegion.bufferImageHeight = uint32_t(a_height);
+    copyRegion.imageExtent       = VkExtent3D{ uint32_t(a_width), uint32_t(numLinesToCopy), 1 };
+    copyRegion.imageOffset       = VkOffset3D{ 0, int32_t(currLine), 0 };
+    copyRegion.imageSubresource  = subresourceLayers;
+
+    vkCmdCopyBufferToImage(cmdBuff, stagingBuff, a_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+
+    vkEndCommandBuffer(cmdBuff);
+
+    vk_utils::executeCommandBufferNow(cmdBuff, queue, dev);
+  }
+
+  vkResetCommandBuffer(cmdBuff, 0);
+  vkBeginCommandBuffer(cmdBuff, &beginInfo);
+  VkImageSubresourceRange range = {};
+  range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  range.baseMipLevel = 0;
+  range.levelCount = 1;
+  range.baseArrayLayer = 0;
+  range.layerCount = 1;
+  vk_utils::setImageLayout(cmdBuff, a_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, a_finalLayout, range,
+    VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+  vkEndCommandBuffer(cmdBuff);
+  vk_utils::executeCommandBufferNow(cmdBuff, queue, dev);
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -313,6 +372,9 @@ void vk_utils::PingPongCopyHelper::UpdateBuffer(VkBuffer a_dst, size_t a_dstOffs
 {
   assert(a_dstOffset % 4 == 0);
   assert(a_size      % 4 == 0);
+
+  VkMemoryRequirements memInfo = {};
+  vkGetBufferMemoryRequirements(dev, a_dst, &memInfo);
 
   if (a_size <= SMALL_BUFF)
   {
@@ -468,12 +530,8 @@ vk_utils::ComputeCopyHelper::ComputeCopyHelper(VkPhysicalDevice a_physicalDevice
   { 
     copyPipeline       = VK_NULL_HANDLE;
     copyPipelineLayout = VK_NULL_HANDLE;
-
-#ifdef __ANDROID__
-    std::vector<uint32_t> code = vk_utils::readSPVFile(vk_android::g_pMgr, a_csCopyPath);
-#else
+  
     std::vector<uint32_t> code = vk_utils::readSPVFile(a_csCopyPath);
-#endif
     assert(!code.empty());
   
     VkShaderModuleCreateInfo createInfo = {};

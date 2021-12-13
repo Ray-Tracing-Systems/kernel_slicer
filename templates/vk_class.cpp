@@ -523,37 +523,37 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   m_exTime{{MainFunc.Name}}.msAPIOverhead += std::chrono::duration_cast<std::chrono::microseconds>(beforeCopy - beforeSetInOut).count()/1000.f;
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
-  pCopyHelper->UpdateImage({{var.Name}}Img.image, {{var.Name}}.getRawData(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp());
+  pCopyHelper->UpdateImage({{var.Name}}Img.image, {{var.Name}}.getRawData(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp(), VK_IMAGE_LAYOUT_GENERAL);
   {% else %}
   pCopyHelper->UpdateBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endif %}
   {% endfor %}
   auto afterCopy = std::chrono::high_resolution_clock::now();
   m_exTime{{MainFunc.Name}}.msCopyToGPU = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy - beforeCopy).count()/1000.f;
-  {% if MainFunc.FullImpl.HasImages %}
-  { // move textures to normal layouts
-    auto imgCmdBuf = vk_utils::createCommandBuffer(device, commandPool);
-    VkCommandBufferBeginInfo beginInfo = {};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(imgCmdBuf, &beginInfo);
-    {
-      VkImageSubresourceRange subresourceRange = {};
-      subresourceRange.levelCount = 1;
-      subresourceRange.layerCount = 1;
-      {% for var in MainFunc.FullImpl.InputData %}
-      {% if var.IsTexture %}
-      subresourceRange.aspectMask = {{var.Name}}Img.aspectMask;
-      vk_utils::setImageLayout(imgCmdBuf, {{var.Name}}Img.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, subresourceRange);
-      {% endif %}
-      {% endfor %}
-    }
-    vkEndCommandBuffer(imgCmdBuf);
-    vk_utils::executeCommandBufferNow(imgCmdBuf, transferQueue, device);
-    auto afterLayoutChange = std::chrono::high_resolution_clock::now();
-    m_exTime{{MainFunc.Name}}.msLayoutChange += std::chrono::duration_cast<std::chrono::microseconds>(afterLayoutChange - afterCopy).count()/1000.f;
-  }
-  {% endif %}
+  //{% if MainFunc.FullImpl.HasImages %}
+  //{ // move textures to normal layouts
+  //  auto imgCmdBuf = vk_utils::createCommandBuffer(device, commandPool);
+  //  VkCommandBufferBeginInfo beginInfo = {};
+  //  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  //  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+  //  vkBeginCommandBuffer(imgCmdBuf, &beginInfo);
+  //  {
+  //    VkImageSubresourceRange subresourceRange = {};
+  //    subresourceRange.levelCount = 1;
+  //    subresourceRange.layerCount = 1;
+  //    {% for var in MainFunc.FullImpl.InputData %}
+  //    {% if var.IsTexture %}
+  //    subresourceRange.aspectMask = {{var.Name}}Img.aspectMask;
+  //    vk_utils::setImageLayout(imgCmdBuf, {{var.Name}}Img.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, subresourceRange);
+  //    {% endif %}
+  //    {% endfor %}
+  //  }
+  //  vkEndCommandBuffer(imgCmdBuf);
+  //  vk_utils::executeCommandBufferNow(imgCmdBuf, transferQueue, device);
+  //  auto afterLayoutChange = std::chrono::high_resolution_clock::now();
+  //  m_exTime{{MainFunc.Name}}.msLayoutChange += std::chrono::duration_cast<std::chrono::microseconds>(afterLayoutChange - afterCopy).count()/1000.f;
+  //}
+  //{% endif %}
 
   // (4) now execute algorithm on GPU
   //

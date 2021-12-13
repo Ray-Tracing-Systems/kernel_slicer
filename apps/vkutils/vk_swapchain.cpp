@@ -5,7 +5,7 @@ std::vector<VkFramebuffer> vk_utils::createFrameBuffers(VkDevice a_device, const
   VkRenderPass a_renderPass, VkImageView a_depthView)
 {
   std::vector<VkFramebuffer> result(a_swapchain.GetImageCount());
-  for (size_t i = 0; i < result.size(); i++)
+  for (uint32_t i = 0; i < result.size(); i++)
   {
     std::vector<VkImageView> attachments;
     attachments.push_back(a_swapchain.GetAttachment(i).view);
@@ -17,7 +17,7 @@ std::vector<VkFramebuffer> vk_utils::createFrameBuffers(VkDevice a_device, const
     VkFramebufferCreateInfo framebufferInfo = {};
     framebufferInfo.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     framebufferInfo.renderPass              = a_renderPass;
-    framebufferInfo.attachmentCount         = attachments.size();
+    framebufferInfo.attachmentCount         = (uint32_t)attachments.size();
     framebufferInfo.pAttachments            = attachments.data();
     framebufferInfo.width                   = a_swapchain.GetExtent().width;
     framebufferInfo.height                  = a_swapchain.GetExtent().height;

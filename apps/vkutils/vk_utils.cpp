@@ -7,15 +7,6 @@
 #include <cmath>
 #include <array>
 
-#ifdef __ANDROID__
-#include "android_native_app_glue.h"
-
-namespace vk_android
-{
-  AAssetManager *g_pMgr = nullptr;
-}
-#endif
-
 namespace vk_utils {
 
   static const char *g_debugReportExtName = VK_EXT_DEBUG_REPORT_EXTENSION_NAME;
@@ -69,31 +60,14 @@ namespace vk_utils {
 
   void runTimeError(const char* file, int line, const char* msg)
   {
-#ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_ERROR, "vk_utils", "Runtime error at %s, line %d : %s", file, line, msg);
-#else
     fprintf(log, "Runtime error at %s, line %d : %s", file, line, msg);
     fflush(log);
-#endif
     exit(99);
   }
 
   void logWarning(const std::string& msg)
   {
-#ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_WARN, "vk_utils", "Warning : %s", msg.c_str());
-#else
-    fprintf(log, "Warning : %s", msg.c_str());
-#endif
-  }
-
-  void logInfo(const std::string& msg)
-  {
-#ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_INFO, "vk_utils", "%s", msg.c_str());
-#else
-    fprintf(log, "Info : %s", msg.c_str());
-#endif
+    fprintf(log, "Warning : %s\n", msg.c_str());
   }
 
   bool checkDeviceExtensionSupport(VkPhysicalDevice device, std::vector<const char *> &requestedExtensions)
@@ -206,6 +180,9 @@ namespace vk_utils {
     createInfo.pApplicationInfo = &applicationInfo;
 
     std::vector<const char *> layer_names;
+    VkValidationFeaturesEXT validationFeatures = {};
+    VkValidationFeatureEnableEXT enabledValidationFeatures[1] = { VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT };
+
     if (a_enableValidationLayers && !supportedLayers.empty())
     {
       for (const auto &layer : supportedLayers)
@@ -214,16 +191,11 @@ namespace vk_utils {
       createInfo.enabledLayerCount = uint32_t(layer_names.size());
       createInfo.ppEnabledLayerNames = layer_names.data();
 
-#ifndef __ANDROID__
-      VkValidationFeaturesEXT validationFeatures = {};
       validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
       validationFeatures.enabledValidationFeatureCount = 1;
-      VkValidationFeatureEnableEXT enabledValidationFeatures[1] = { VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT };
       validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
-
-//      validationFeatures.pNext = createInfo.pNext;
+      //validationFeatures.pNext = createInfo.pNext;
       createInfo.pNext = &validationFeatures;
-#endif
     }
     else
     {
@@ -235,7 +207,7 @@ namespace vk_utils {
     createInfo.enabledExtensionCount = uint32_t(enabledExtensions.size());
     createInfo.ppEnabledExtensionNames = enabledExtensions.data();
 
-    VkInstance instance;
+    VkInstance instance = VK_NULL_HANDLE;
     VK_CHECK_RESULT(vkCreateInstance(&createInfo, nullptr, &instance));
 
     return instance;
@@ -249,11 +221,11 @@ namespace vk_utils {
     createInfo.flags = VK_DEBUG_REPORT_INFORMATION_BIT_EXT | VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
     createInfo.pfnCallback = a_callback;
 
-    auto vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(a_instance, "vkCreateDebugReportCallbackEXT");
-    if (vkCreateDebugReportCallbackEXT == nullptr)
+    auto local_vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(a_instance, "vkCreateDebugReportCallbackEXT");
+    if (local_vkCreateDebugReportCallbackEXT == nullptr)
       RUN_TIME_ERROR("Could not load vkCreateDebugReportCallbackEXT");
 
-    VK_CHECK_RESULT(vkCreateDebugReportCallbackEXT(a_instance, &createInfo, nullptr, a_debugReportCallback));
+    VK_CHECK_RESULT(local_vkCreateDebugReportCallbackEXT(a_instance, &createInfo, nullptr, a_debugReportCallback));
   }
 
   VkPhysicalDevice findPhysicalDevice(VkInstance a_instance, bool a_printInfo, unsigned a_preferredDeviceId, std::vector<const char *> a_deviceExt)
@@ -413,10 +385,11 @@ namespace vk_utils {
     VkDeviceCreateInfo deviceCreateInfo = {};
     deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
-    deviceCreateInfo.queueCreateInfoCount = queueCreateInfos.size();
+    deviceCreateInfo.queueCreateInfoCount = (uint32_t)queueCreateInfos.size();
     deviceCreateInfo.pEnabledFeatures = &a_deviceFeatures;
     deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(a_extensions.size());
     deviceCreateInfo.ppEnabledExtensionNames = a_extensions.data();
+    deviceCreateInfo.pNext = nullptr;
 
     // deprecated and ignored since Vulkan 1.2
     // https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#extendingvulkan-layers-devicelayerdeprecation
@@ -501,7 +474,7 @@ namespace vk_utils {
   {
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = a_cmdBuffers.size();
+    submitInfo.commandBufferCount = (uint32_t)a_cmdBuffers.size();
     submitInfo.pCommandBuffers = a_cmdBuffers.data();
 
     VkFence fence;
@@ -516,25 +489,7 @@ namespace vk_utils {
 
     vkDestroyFence(a_device, fence, NULL);
   }
-#ifdef __ANDROID__
-  std::vector<uint32_t> readSPVFile(AAssetManager* mgr, const char* filename)
-  {
-    // Read the file
-    assert(mgr);
-    AAsset* file = AAssetManager_open(mgr, filename, AASSET_MODE_BUFFER);
-    size_t fileLength = AAsset_getLength(file);
-    auto filesize_padded = getPaddedSize(fileLength, sizeof(uint32_t));
 
-    std::vector<uint32_t> resData(filesize_padded / sizeof(uint32_t), 0);
-
-    auto read_bytes = AAsset_read(file, resData.data(), fileLength);
-    if(!read_bytes)
-      RUN_TIME_ERROR("[vk_utils::readSPVFile]: AAsset_read error");
-    AAsset_close(file);
-
-    return resData;
-  }
-#else
   std::vector<uint32_t> readSPVFile(const char *filename)
   {
     FILE *fp = fopen(filename, "rb");
@@ -560,7 +515,6 @@ namespace vk_utils {
 
     return resData;
   }
-#endif
 
   VkShaderModule createShaderModule(VkDevice a_device, const std::vector<uint32_t> &code)
   {
@@ -582,11 +536,7 @@ namespace vk_utils {
     shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     shaderStage.stage = stage;
 
-#ifdef __ANDROID__
-    shaderStage.module = createShaderModule(a_device, readSPVFile(vk_android::g_pMgr, fileName.c_str()));
-#else
     shaderStage.module = createShaderModule(a_device, readSPVFile(fileName.c_str()));
-#endif
     shaderStage.pName = "main";
     assert(shaderStage.module != VK_NULL_HANDLE);
     modules.push_back(shaderStage.module);
@@ -635,7 +585,7 @@ namespace vk_utils {
     return commandBuffers;
   }
 
-  VkRenderPass createDefaultRenderPass(VkDevice a_device, VkFormat a_imageFormat)
+  VkRenderPass createDefaultRenderPass(VkDevice a_device, VkFormat a_imageFormat, VkImageLayout a_colorFinalLayout)
   {
     VkAttachmentDescription colorAttachment = {};
     colorAttachment.format = a_imageFormat;
@@ -645,7 +595,7 @@ namespace vk_utils {
     colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    colorAttachment.finalLayout = a_colorFinalLayout;
 
     VkAttachmentReference colorAttachmentRef = {};
     colorAttachmentRef.attachment = 0;
@@ -670,23 +620,28 @@ namespace vk_utils {
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentRef;
     subpass.pDepthStencilAttachment = &depthAttachmentRef;
+    subpass.inputAttachmentCount = 0;
+    subpass.pInputAttachments = nullptr;
+    subpass.preserveAttachmentCount = 0;
+    subpass.pPreserveAttachments = nullptr;
+    subpass.pResolveAttachments = nullptr;
 
     std::array<VkSubpassDependency, 2> dependencies{};
 
     dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
     dependencies[0].dstSubpass = 0;
-    dependencies[0].srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
     dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    dependencies[0].srcAccessMask = 0;
+    dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
     dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
     dependencies[1].srcSubpass = 0;
     dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    dependencies[1].srcAccessMask = 0;
-    dependencies[1].dstAccessMask = 0;
+    dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
     dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
     VkAttachmentDescription attachments[2] = { colorAttachment, depthAttachment };
@@ -696,7 +651,7 @@ namespace vk_utils {
     renderPassInfo.pAttachments = &attachments[0];
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpass;
-    renderPassInfo.dependencyCount = dependencies.size();
+    renderPassInfo.dependencyCount = (uint32_t)dependencies.size();
     renderPassInfo.pDependencies = dependencies.data();
 
     VkRenderPass res;
@@ -772,4 +727,3 @@ namespace vk_utils {
   }
 
 }
-

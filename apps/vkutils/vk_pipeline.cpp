@@ -1,13 +1,6 @@
 #include "vk_pipeline.h"
 #include "vk_utils.h"
 
-#ifdef __ANDROID__
-namespace vk_android
-{
-  extern AAssetManager *g_pMgr;
-}
-#endif
-
 VkPipelineInputAssemblyStateCreateInfo vk_utils::IA_TList()
 {
   VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
@@ -44,6 +37,20 @@ VkPipelineInputAssemblyStateCreateInfo vk_utils::IA_LSList()
   return inputAssembly;
 }
 
+void vk_utils::destroyPipelineIfExists(VkDevice a_device, VkPipeline &a_pipeline, VkPipelineLayout &a_layout)
+{
+  if(a_layout != VK_NULL_HANDLE)
+  {
+    vkDestroyPipelineLayout(a_device, a_layout, nullptr);
+    a_layout= VK_NULL_HANDLE;
+  }
+  if(a_pipeline != VK_NULL_HANDLE)
+  {
+    vkDestroyPipeline(a_device, a_pipeline, nullptr);
+    a_pipeline = VK_NULL_HANDLE;
+  }
+}
+
 void vk_utils::GraphicsPipelineMaker::LoadShaders(VkDevice a_device, const std::unordered_map<VkShaderStageFlagBits, std::string> &shader_paths)
 {
   int top = 0;
@@ -53,11 +60,7 @@ void vk_utils::GraphicsPipelineMaker::LoadShaders(VkDevice a_device, const std::
     stage_info.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     stage_info.stage  = stage;
 
-#ifdef __ANDROID__
-    auto shaderCode = vk_utils::readSPVFile(vk_android::g_pMgr, path.c_str());
-#else
-    auto shaderCode = vk_utils::readSPVFile(path.c_str());
-#endif
+    auto shaderCode             = vk_utils::readSPVFile(path.c_str());
     VkShaderModule shaderModule = vk_utils::createShaderModule(a_device, shaderCode);
     shaderModules[top]          = shaderModule;
 
@@ -90,7 +93,7 @@ VkPipelineLayout vk_utils::GraphicsPipelineMaker::MakeLayout(VkDevice a_device, 
   if(!a_dslayouts.empty())
   {
     pipelineLayoutInfo.pSetLayouts            = a_dslayouts.data();
-    pipelineLayoutInfo.setLayoutCount         = a_dslayouts.size();
+    pipelineLayoutInfo.setLayoutCount         = (uint32_t)a_dslayouts.size();
   }
   else
   {
@@ -103,7 +106,7 @@ VkPipelineLayout vk_utils::GraphicsPipelineMaker::MakeLayout(VkDevice a_device, 
   return m_pipelineLayout;
 }
 
-void vk_utils::GraphicsPipelineMaker::SetDefaultState(uint32_t a_width, uint32_t a_height)
+void vk_utils::GraphicsPipelineMaker::SetDefaultState(uint32_t a_width, uint32_t a_height, uint32_t rt_count)
 {
   VkExtent2D a_screenExtent{ a_width, a_height };
 
@@ -136,14 +139,18 @@ void vk_utils::GraphicsPipelineMaker::SetDefaultState(uint32_t a_width, uint32_t
   multisampling.sampleShadingEnable  = VK_FALSE;
   multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-  colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-  colorBlendAttachment.blendEnable    = VK_FALSE;
+  colorBlendAttachments.resize(rt_count);
+  for (auto &colorBlendAttachment: colorBlendAttachments) {
+    colorBlendAttachment = {};
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable    = VK_FALSE;
+  }
 
   colorBlending.sType             = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
   colorBlending.logicOpEnable     = VK_FALSE;
   colorBlending.logicOp           = VK_LOGIC_OP_CLEAR;
-  colorBlending.attachmentCount   = 1;
-  colorBlending.pAttachments      = &colorBlendAttachment;
+  colorBlending.attachmentCount   = (uint32_t)colorBlendAttachments.size();
+  colorBlending.pAttachments      = colorBlendAttachments.data();
   colorBlending.blendConstants[0] = 0.0f;
   colorBlending.blendConstants[1] = 0.0f;
   colorBlending.blendConstants[2] = 0.0f;
@@ -163,13 +170,14 @@ void vk_utils::GraphicsPipelineMaker::SetDefaultState(uint32_t a_width, uint32_t
 VkPipeline vk_utils::GraphicsPipelineMaker::MakePipeline(VkDevice a_device, VkPipelineVertexInputStateCreateInfo a_vertexLayout,
                                                          VkRenderPass a_renderPass,
                                                          std::vector<VkDynamicState> a_dynamicStates,
-                                                         VkPipelineInputAssemblyStateCreateInfo a_inputAssembly)
+                                                         VkPipelineInputAssemblyStateCreateInfo a_inputAssembly,
+                                                         uint32_t subpass)
 {
   inputAssembly = a_inputAssembly;
 
   VkPipelineDynamicStateCreateInfo dynamicState = {};
   dynamicState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-  dynamicState.dynamicStateCount = a_dynamicStates.size();
+  dynamicState.dynamicStateCount = (uint32_t)a_dynamicStates.size();
   dynamicState.pDynamicStates    = a_dynamicStates.data();
 
   pipelineInfo = {};
@@ -185,7 +193,7 @@ VkPipeline vk_utils::GraphicsPipelineMaker::MakePipeline(VkDevice a_device, VkPi
   pipelineInfo.pColorBlendState    = &colorBlending;
   pipelineInfo.layout              = m_pipelineLayout;
   pipelineInfo.renderPass          = a_renderPass;
-  pipelineInfo.subpass             = 0;
+  pipelineInfo.subpass             = subpass;
   pipelineInfo.pDynamicState       = &dynamicState;
   pipelineInfo.basePipelineHandle  = VK_NULL_HANDLE;
   pipelineInfo.pDepthStencilState  = &depthStencilTest;
@@ -211,17 +219,14 @@ VkPipeline vk_utils::GraphicsPipelineMaker::MakePipeline(VkDevice a_device, VkPi
 void vk_utils::ComputePipelineMaker::LoadShader(VkDevice a_device, const std::string& a_shaderPath,
                                                 const VkSpecializationInfo *a_specInfo, const char* a_mainName)
 {
+  (void)a_specInfo;
   m_mainName = a_mainName;
 
   shaderStageInfo = {};
   shaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   shaderStageInfo.stage  = VK_SHADER_STAGE_COMPUTE_BIT;
 
-#ifdef __ANDROID__
-  auto shaderCode = vk_utils::readSPVFile(vk_android::g_pMgr, a_shaderPath.c_str());
-#else
   auto shaderCode = vk_utils::readSPVFile(a_shaderPath.c_str());
-#endif
   shaderModule    = vk_utils::createShaderModule(a_device, shaderCode);
 
   shaderStageInfo.module = shaderModule;
@@ -249,7 +254,7 @@ VkPipelineLayout vk_utils::ComputePipelineMaker::MakeLayout(VkDevice a_device, s
   if (!a_dslayouts.empty())
   {
     pipelineLayoutInfo.pSetLayouts    = a_dslayouts.data();
-    pipelineLayoutInfo.setLayoutCount = a_dslayouts.size();
+    pipelineLayoutInfo.setLayoutCount = (uint32_t)a_dslayouts.size();
   }
   else
   {

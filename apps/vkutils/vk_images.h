@@ -10,18 +10,26 @@
 #include <memory>
 #include <cmath>
 
+#ifdef WIN32
+#include <algorithm>
+  #undef min
+  #undef max
+#endif
+
 namespace vk_utils
 {
   struct VulkanImageMem
   {
-    VkFormat format;
-    VkImageAspectFlags aspectMask;
-    VkImage image;
-    VkImageView view;
+    VkFormat format = VK_FORMAT_UNDEFINED;
+    VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM;
+    VkImage image = VK_NULL_HANDLE;
+    VkImageView view = VK_NULL_HANDLE;
 
-    VkDeviceMemory mem;
-    VkDeviceSize mem_offset;
-    VkMemoryRequirements memReq;
+    VkDeviceMemory mem = VK_NULL_HANDLE;
+    VkDeviceSize mem_offset = 0;
+    VkMemoryRequirements memReq = {};
+
+    uint32_t mipLvls = 0;
   };
 
   VkBool32 getSupportedDepthFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat> &depthFormats, VkFormat *depthFormat);
@@ -29,11 +37,13 @@ namespace vk_utils
   bool isStencilFormat(VkFormat a_format);
   bool isDepthOrStencil(VkFormat a_format);
 
-  VulkanImageMem createImg(VkDevice a_device, uint32_t a_width, uint32_t a_height, VkFormat a_format, VkImageUsageFlags a_usage);
+  VulkanImageMem createImg(VkDevice a_device, uint32_t a_width, uint32_t a_height, VkFormat a_format, VkImageUsageFlags a_usage,
+    VkImageAspectFlags a_aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT, uint32_t a_mipLvls = 1);
   VulkanImageMem createDepthTexture(VkDevice a_device, VkPhysicalDevice a_physDevice,
     const uint32_t a_width, const uint32_t a_height, VkFormat a_format);
   void deleteImg(VkDevice a_device, VulkanImageMem *a_pImgMem);
 
+  VkDeviceMemory allocateImgsBindCreateView(VkDevice a_device, VkPhysicalDevice a_physDevice, std::vector<VulkanImageMem> &a_images);
 
   VkImageView createImageViewAndBindMem(VkDevice a_device, VulkanImageMem *a_pImgMem, const VkImageViewCreateInfo *a_pViewCreateInfo = nullptr);
 
@@ -58,8 +68,9 @@ namespace vk_utils
     return static_cast<uint32_t>(floor(log2(std::max(w, h))) + 1);
   }
 
-  void recordMipChainGenerationCmdBuf(VkDevice a_device, VkCommandBuffer a_cmdBuf, const VulkanImageMem& imageMem,
-                                      uint32_t a_width, uint32_t a_height, uint32_t a_mipLevels, VkImageLayout a_targetLayout);
+  void generateMipChainCmd(VkCommandBuffer a_cmdBuf, const VulkanImageMem& imageMem,
+    uint32_t a_width, uint32_t a_height, uint32_t a_mipLevels,
+    VkImageLayout a_targetLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
   // *** layout transitions and image barriers ***
   // taken from https://github.com/SaschaWillems/Vulkan
