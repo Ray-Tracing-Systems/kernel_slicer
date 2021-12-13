@@ -1,8 +1,6 @@
 #ifndef CHIMERA_VK_FBUF_ATTACHMENT_H
 #define CHIMERA_VK_FBUF_ATTACHMENT_H
 
-#define USE_VOLK
-
 #include "vk_include.h"
 #include "vk_swapchain.h"
 #include <vector>

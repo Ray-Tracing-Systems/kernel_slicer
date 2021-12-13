@@ -100,8 +100,13 @@ namespace vk_utils
   {
     assert(m_device != VK_NULL_HANDLE);
 
-    //    for (auto& l : m_dsLayouts)
-    //      vkDestroyDescriptorSetLayout(m_device, l.second.layout, NULL);
+    for (auto& l : m_layoutDict)
+    {
+      if(l.second != VK_NULL_HANDLE)
+      {
+        vkDestroyDescriptorSetLayout(m_device, l.second, nullptr);
+      }
+    }
 
     vkDestroyDescriptorPool(m_device, m_pool, nullptr);
   }
@@ -157,6 +162,7 @@ namespace vk_utils
     m_bindings[a_loc] = h;
   }
 
+#ifndef __ANDROID__
   void DescriptorMaker::BindAccelStruct(uint32_t a_loc, VkAccelerationStructureKHR a_accStruct, VkDescriptorType a_bindType)
   {
     DescriptorHandles h{};
@@ -168,6 +174,7 @@ namespace vk_utils
 
     m_bindings[a_loc] = h;
   }
+#endif
 
   void DescriptorMaker::BindEnd(VkDescriptorSet *a_pSet, VkDescriptorSetLayout *a_pLayout)
   {
@@ -205,9 +212,11 @@ namespace vk_utils
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
         totalBufferInfos++;
         break;
+#ifndef __ANDROID__
       case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
         totalAccStructsInfos++;
         break;
+#endif
       //case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV:
       //case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: //TODO
       default:
@@ -266,7 +275,9 @@ namespace vk_utils
     std::vector<VkWriteDescriptorSet> writeSets(descriptorsInSet);
     std::vector<VkDescriptorBufferInfo> dBufferInfos(totalBufferInfos);
     std::vector<VkDescriptorImageInfo> dImageInfos(totalImageInfos);
+#ifndef __ANDROID__
     std::vector<VkWriteDescriptorSetAccelerationStructureKHR> dAccStructInfos(totalAccStructsInfos);
+#endif
 
     size_t imgInfoIdx = 0;
     size_t bufInfoIdx = 0;
@@ -314,12 +325,14 @@ namespace vk_utils
         writeDescriptorSet.pBufferInfo = &dBufferInfos[bufInfoIdx];
         bufInfoIdx++;
         break;
+#ifndef __ANDROID__
       case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
         dAccStructInfos[accStructInfoIdx] = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
           VK_NULL_HANDLE,1,&m_bindings[i].accelStruct}; //TODO: support accStruct arrays
         writeDescriptorSet.pNext = &dAccStructInfos[accStructInfoIdx];
         accStructInfoIdx++;
         break;
+#endif
       case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
         logWarning("[DescriptorMaker::BindEnd] VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT not yet supported");
         break;

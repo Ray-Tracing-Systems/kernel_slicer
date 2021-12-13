@@ -1,8 +1,6 @@
 #include "vk_buffers.h"
 #include "vk_utils.h"
 
-#include <algorithm>
-
 namespace vk_utils
 {
   VkBuffer createBuffer(VkDevice a_dev, VkDeviceSize a_size, VkBufferUsageFlags a_usageFlags, VkMemoryRequirements* a_pMemReq)
@@ -65,6 +63,29 @@ namespace vk_utils
     return (value + alignment - 1) & ~(alignment - 1);
   }
 
+
+  std::vector<size_t> assignMemOffsetsWithPadding(const std::vector<VkMemoryRequirements> &a_memInfos)
+  {
+    assert(!a_memInfos.empty());
+
+    std::vector<VkDeviceSize> mem_offsets;
+    size_t currOffset = 0;
+    for (size_t i = 0; i < a_memInfos.size() - 1; i++)
+    {
+      mem_offsets.push_back(currOffset);
+      currOffset += vk_utils::getPaddedSize(a_memInfos[i].size, a_memInfos[i + 1].alignment);
+    }
+
+    auto last = a_memInfos.size() - 1;
+    mem_offsets.push_back(currOffset);
+    currOffset += vk_utils::getPaddedSize(a_memInfos[last].size, a_memInfos[last].alignment);
+
+    // put total mem amount in last vector element
+    mem_offsets.push_back(currOffset);
+
+    return mem_offsets;
+  }
+
   VkDeviceMemory allocateAndBindWithPadding(VkDevice a_dev, VkPhysicalDevice a_physDev, const std::vector<VkBuffer> &a_buffers,
                                             VkMemoryAllocateFlags flags)
   {
@@ -94,7 +115,7 @@ namespace vk_utils
       }
     }
 
-    auto offsets  = vk_utils::calculateMemOffsets(memInfos);
+    auto offsets  = assignMemOffsetsWithPadding(memInfos);
     auto memTotal = offsets[offsets.size() - 1];
 
     VkDeviceMemory res;
@@ -133,7 +154,7 @@ namespace vk_utils
     for (size_t i = 0; i < a_memReqs.size() - 1; i++)
     {
       mem_offsets.push_back(currOffset);
-      currOffset += getPaddedSize(a_memReqs[i].size, std::max<size_t>(a_memReqs[i + 1].alignment, a_buffImageGranularity));
+      currOffset += getPaddedSize(a_memReqs[i].size, std::max<size_t>(a_memReqs[i + 1].alignment, a_buffImageGranularity) );
     }
 
     // put mem offset for last element of 'a_memInfos'

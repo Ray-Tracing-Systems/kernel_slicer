@@ -1,7 +1,6 @@
 #ifndef VK_SWAPCHAIN_H
 #define VK_SWAPCHAIN_H
 
-#define USE_VOLK
 #include "vk_include.h"
 
 #include <vector>
@@ -57,8 +56,8 @@ private:
 
   VkSurfaceTransformFlagsKHR m_surfaceTransformFlags = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
   VkFormat m_colorFormat;
-  uint32_t m_imageCount;
-  uint32_t m_minImageCount;
+  uint32_t m_imageCount = 0;
+  uint32_t m_minImageCount = 0;
   VkExtent2D m_swapchainExtent {};
   VkColorSpaceKHR m_colorSpace;
 

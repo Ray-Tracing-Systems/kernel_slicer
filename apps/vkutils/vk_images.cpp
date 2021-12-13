@@ -1,10 +1,9 @@
 #include "vk_images.h"
-#include "vk_buffers.h"
 #include "vk_utils.h"
+#include "vk_buffers.h"
 
 #include <array>
 #include <algorithm>
-
 
 namespace vk_utils
 {
@@ -38,6 +37,21 @@ namespace vk_utils
     return result;
   }
 
+  void deleteImg(VkDevice a_device, VulkanImageMem *a_pImgMem)
+  {
+    if(a_pImgMem->view != VK_NULL_HANDLE)
+    {
+      vkDestroyImageView(a_device, a_pImgMem->view, nullptr);
+      a_pImgMem->view = VK_NULL_HANDLE;
+    }
+
+    if(a_pImgMem->image != VK_NULL_HANDLE)
+    {
+      vkDestroyImage(a_device, a_pImgMem->image, nullptr);
+      a_pImgMem->image = VK_NULL_HANDLE;
+    }
+  }
+
   VkImageView createImageViewAndBindMem(VkDevice a_device, VulkanImageMem *a_pImgMem, const VkImageViewCreateInfo *a_pViewCreateInfo)
   {
     VK_CHECK_RESULT(vkBindImageMemory(a_device, a_pImgMem->image, a_pImgMem->mem, a_pImgMem->mem_offset));
@@ -63,90 +77,6 @@ namespace vk_utils
 
     VK_CHECK_RESULT(vkCreateImageView(a_device, &imageView, nullptr, &a_pImgMem->view));
     return a_pImgMem->view;
-  }
-
-  VkDeviceMemory allocateAndBindWithPadding(VkDevice a_dev, VkPhysicalDevice a_physDev, const std::vector<VkBuffer> &a_buffers, std::vector<VulkanImageMem>& a_images, VkMemoryAllocateFlags flags)
-  {
-    if(a_buffers.empty() && a_images.empty())
-    {
-      logWarning("[allocateAndBindWithPadding]: both buffers and images vector is empty");
-      return VK_NULL_HANDLE;
-    }
-
-    VkPhysicalDeviceProperties props;
-    vkGetPhysicalDeviceProperties(a_physDev, &props);
-
-    std::vector<VkMemoryRequirements> memInfos(a_buffers.size() + a_images.size());
-
-    for(size_t i = 0; i < a_buffers.size(); ++i)
-    {
-      if(a_buffers[i] != VK_NULL_HANDLE)
-        vkGetBufferMemoryRequirements(a_dev, a_buffers[i], &memInfos[i]);
-      else
-      {
-        memInfos[i] = memInfos[0];
-        memInfos[i].size = 0;
-      }
-    }
-
-    for(size_t i = 0; i < a_images.size(); ++i)
-    {
-      size_t j = a_buffers.size() + i;
-      if(a_images[i].image != VK_NULL_HANDLE)
-        memInfos[j] = a_images[i].memReq;
-      else
-      {
-        memInfos[j] = memInfos[0];
-        memInfos[j].size = 0;
-      }
-    }
-
-    for(size_t i=1;i<memInfos.size();i++)
-    {
-      if(memInfos[i].memoryTypeBits != memInfos[0].memoryTypeBits)
-      {
-        //logWarning("[allocateAndBindWithPadding]: input objects(buffer or texture) has different memReq.memoryTypeBits");
-        return VK_NULL_HANDLE;
-      }
-    }
-
-    auto offsets  = calculateMemOffsets(memInfos, props.limits.bufferImageGranularity);
-    auto memTotal = offsets[offsets.size() - 1];
-
-    VkDeviceMemory res;
-    VkMemoryAllocateInfo allocateInfo = {};
-    allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocateInfo.pNext           = nullptr;
-    allocateInfo.allocationSize  = memTotal;
-    allocateInfo.memoryTypeIndex = vk_utils::findMemoryType(memInfos[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, a_physDev);
-
-    VkMemoryAllocateFlagsInfo memoryAllocateFlagsInfo{};
-    if(flags)
-    {
-      memoryAllocateFlagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
-      memoryAllocateFlagsInfo.flags = flags;
-
-      allocateInfo.pNext = &memoryAllocateFlagsInfo;
-    }
-
-    VK_CHECK_RESULT(vkAllocateMemory(a_dev, &allocateInfo, NULL, &res));
-
-    for (size_t i = 0; i < a_buffers.size(); i++)
-    {
-      if(a_buffers[i] != VK_NULL_HANDLE)
-        vkBindBufferMemory(a_dev, a_buffers[i], res, offsets[i]);
-    }
-
-    for(size_t i = 0; i < a_images.size(); ++i)
-    {
-      size_t j = a_buffers.size() + i;
-      a_images[i].mem        = res;
-      a_images[i].mem_offset = offsets[j];
-      a_images[i].memReq     = memInfos[j];
-      vk_utils::createImageViewAndBindMem(a_dev, &a_images[i]);
-    }
-
-    return res;
   }
 
   VulkanImageMem allocateColorTextureFromDataLDR(VkDevice a_device, VkPhysicalDevice a_physDevice, const unsigned char *pixels,
@@ -598,5 +528,89 @@ namespace vk_utils
         subresourceRange);
 
     vkEndCommandBuffer(a_cmdBuf);
+  }
+
+  VkDeviceMemory allocateAndBindWithPadding(VkDevice a_dev, VkPhysicalDevice a_physDev, const std::vector<VkBuffer> &a_buffers, std::vector<VulkanImageMem>& a_images, VkMemoryAllocateFlags flags)
+  {
+    if(a_buffers.empty() && a_images.empty())
+    {
+      logWarning("[allocateAndBindWithPadding]: both buffers and images vector is empty");
+      return VK_NULL_HANDLE;
+    }
+
+    VkPhysicalDeviceProperties props;
+    vkGetPhysicalDeviceProperties(a_physDev, &props);
+
+    std::vector<VkMemoryRequirements> memInfos(a_buffers.size() + a_images.size());
+
+    for(size_t i = 0; i < a_buffers.size(); ++i)
+    {
+      if(a_buffers[i] != VK_NULL_HANDLE)
+        vkGetBufferMemoryRequirements(a_dev, a_buffers[i], &memInfos[i]);
+      else
+      {
+        memInfos[i] = memInfos[0];
+        memInfos[i].size = 0;
+      }
+    }
+
+    for(size_t i = 0; i < a_images.size(); ++i)
+    {
+      size_t j = a_buffers.size() + i;
+      if(a_images[i].image != VK_NULL_HANDLE)
+        memInfos[j] = a_images[i].memReq;
+      else
+      {
+        memInfos[j] = memInfos[0];
+        memInfos[j].size = 0;
+      }
+    }
+
+    for(size_t i=1;i<memInfos.size();i++)
+    {
+      if(memInfos[i].memoryTypeBits != memInfos[0].memoryTypeBits)
+      {
+        //logWarning("[allocateAndBindWithPadding]: input objects(buffer or texture) has different memReq.memoryTypeBits");
+        return VK_NULL_HANDLE;
+      }
+    }
+
+    auto offsets  = calculateMemOffsets(memInfos, props.limits.bufferImageGranularity);
+    auto memTotal = offsets[offsets.size() - 1];
+
+    VkDeviceMemory res;
+    VkMemoryAllocateInfo allocateInfo = {};
+    allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocateInfo.pNext           = nullptr;
+    allocateInfo.allocationSize  = memTotal;
+    allocateInfo.memoryTypeIndex = vk_utils::findMemoryType(memInfos[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, a_physDev);
+
+    VkMemoryAllocateFlagsInfo memoryAllocateFlagsInfo{};
+    if(flags)
+    {
+      memoryAllocateFlagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+      memoryAllocateFlagsInfo.flags = flags;
+
+      allocateInfo.pNext = &memoryAllocateFlagsInfo;
+    }
+
+    VK_CHECK_RESULT(vkAllocateMemory(a_dev, &allocateInfo, NULL, &res));
+
+    for (size_t i = 0; i < a_buffers.size(); i++)
+    {
+      if(a_buffers[i] != VK_NULL_HANDLE)
+        vkBindBufferMemory(a_dev, a_buffers[i], res, offsets[i]);
+    }
+
+    for(size_t i = 0; i < a_images.size(); ++i)
+    {
+      size_t j = a_buffers.size() + i;
+      a_images[i].mem        = res;
+      a_images[i].mem_offset = offsets[j];
+      a_images[i].memReq     = memInfos[j];
+      vk_utils::createImageViewAndBindMem(a_dev, &a_images[i]);
+    }
+
+    return res;
   }
 }

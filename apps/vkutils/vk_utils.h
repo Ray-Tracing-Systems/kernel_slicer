@@ -1,9 +1,13 @@
 #ifndef VK_UTILS_H
 #define VK_UTILS_H
 
-#define USE_VOLK
-#include "vk_include.h"
+#if defined(__ANDROID__)
+#include <android_native_app_glue.h>
+#include <android/log.h>
 
+#endif
+
+#include "vk_include.h"
 #include <string>
 #include <iostream>
 #include <vector>
@@ -41,7 +45,11 @@ namespace vk_utils
   size_t getPaddedSize(size_t a_size, size_t a_alignment);
   uint32_t getSBTAlignedSize(uint32_t value, uint32_t alignment);
 
+#ifdef __ANDROID__
+  std::vector<uint32_t> readSPVFile(AAssetManager* mgr, const char* filename);
+#else
   std::vector<uint32_t> readSPVFile(const char* filename);
+#endif
   VkShaderModule createShaderModule(VkDevice a_device, const std::vector<uint32_t>& code);
   VkPipelineShaderStageCreateInfo loadShader(VkDevice a_device, const std::string& fileName, VkShaderStageFlagBits stage,
                                              std::vector<VkShaderModule> &modules);
@@ -81,6 +89,7 @@ namespace vk_utils
   void setLogToFile(const std::string &path);
   void runTimeError(const char* file, int line, const char* msg);
   void logWarning(const std::string& msg);
+  void logInfo(const std::string& msg);
   std::string errorString(VkResult errorCode);
 
   typedef VkBool32 (VKAPI_PTR *DebugReportCallbackFuncType)(VkDebugReportFlagsEXT      flags,
@@ -96,6 +105,22 @@ namespace vk_utils
   // ****************
 }
 
+
+#ifdef __ANDROID__
+#define VK_CHECK_RESULT(f) 													           \
+{																										           \
+    VkResult __vk_check_result = (f);													 \
+    if (__vk_check_result != VK_SUCCESS)											 \
+    {																								           \
+        __android_log_print(ANDROID_LOG_ERROR, "vk_utils", "Fatal : VkResult is %s in %s at line %d\n",    \
+                vk_utils::errorString(__vk_check_result).c_str(),  __FILE__, __LINE__); \
+        assert(__vk_check_result == VK_SUCCESS);							 \
+    }																								           \
+}
+
+
+#else
+
 #define VK_CHECK_RESULT(f) 													           \
 {																										           \
     VkResult __vk_check_result = (f);													 \
@@ -106,6 +131,8 @@ namespace vk_utils
         assert(__vk_check_result == VK_SUCCESS);							 \
     }																								           \
 }
+
+#endif
 
 #undef  RUN_TIME_ERROR
 #undef  RUN_TIME_ERROR_AT
