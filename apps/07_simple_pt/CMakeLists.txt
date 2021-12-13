@@ -33,6 +33,8 @@ link_directories("../RayTracing/lib")
 #uncomment this to detect broken memory problems via gcc sanitizers
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize-address-use-after-scope -fno-omit-frame-pointer -fsanitize=leak -fsanitize=undefined -fsanitize=bounds-strict")
 
+add_compile_definitions(USE_VOLK)
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -fopenmp -fPIC -Wno-attributes")
 
 add_executable(testapp main.cpp 

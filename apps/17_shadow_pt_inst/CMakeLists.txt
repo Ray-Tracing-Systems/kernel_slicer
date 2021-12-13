@@ -30,6 +30,8 @@ include_directories("../vkutils"
 link_directories("../volk")
 link_directories("../RayTracing/lib")
 
+add_compile_definitions(USE_VOLK)
+
 #uncomment this to detect broken memory problems via gcc sanitizers
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize-address-use-after-scope -fno-omit-frame-pointer -fsanitize=leak -fsanitize=undefined -fsanitize=bounds-strict")
 
