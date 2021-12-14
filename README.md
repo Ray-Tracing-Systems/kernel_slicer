@@ -275,3 +275,6 @@ In practical applications of Ray Tracing there is a problem with effitiency of c
 
 The documentation for general concepts of how it works is located [here](doc/README_internal.md)
 
+# Acknowlegments
+This project is supported by the Russian Science Foundation (RSF) under grant #21-71-00037.
+ 
