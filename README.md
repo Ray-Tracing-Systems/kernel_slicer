@@ -216,7 +216,8 @@ class TestClass // main class
   float m_data2[3];                                   // ok
   std::vector<unsigned int>        m_someBufferData1; // ok
   std::vector<MyTestStruct>        m_someBufferData2; // also ok
-  std::vector<MyNestedTestStruct>  m_someBufferData3; // ILLEGAL! NOT YET SUPPORTED!
+  MyNestedTestStruct               m_someBufferData3; // ILLEGAL! NOT YET SUPPORTED!
+  std::vector<MyNestedTestStruct>  m_someBufferData4; // ILLEGAL! NOT YET SUPPORTED!
 };
 ```
 
