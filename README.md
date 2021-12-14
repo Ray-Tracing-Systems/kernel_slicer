@@ -1,5 +1,9 @@
 # kernel_slicer: CPU to GPU (Vulkan) translator
 
+<hr>
+This project is carried out at the Institute of Applied Mathematics Russian Academy of Science (KIAM RAS) and supported by the Russian Science Foundation (RSF) under grant #21-71-00037.
+<hr>
+
 <p align = "center"><img src="images/logo.png" width = "600"></p>
 <p align = "center">Fig. 1. Our translator has many heads due to many existing programming patterns.</p><BR>
 This project is based on clang (fig. 1.). We sincerely thank the clang front-end developers for the great structure and documentation of their project!
