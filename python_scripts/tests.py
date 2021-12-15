@@ -111,10 +111,11 @@ def check_generated_images(test_name):
     return 0 if res == 0 else -1
 
 
-def run_sample(test_name):
-    Log().info("Running sample: {}".format(test_name))
-
-    res = subprocess.run(["./build/testapp"],
+def run_sample(test_name, on_gpu=False):
+    Log().info("Running sample: {0}, gpu={1}".format(test_name, on_gpu))
+    
+    args = ["./build/testapp", "--gpu"] if on_gpu else ["./build/testapp"]
+    res = subprocess.run(args,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if res.returncode != 0:
         Log().status_info("{}: launch".format(test_name), status=Status.FAILED)
@@ -143,7 +144,11 @@ def run_test(test_name, args):
         os.chdir(workdir)
         return -1
 
-    return_code = run_sample(test_name)
+    return_code = run_sample(test_name, on_gpu=False)
+    if return_code != 0:
+        os.chdir(workdir)
+        return -1
+    return_code = run_sample(test_name, on_gpu=True)
     if return_code != 0:
         os.chdir(workdir)
         return -1
@@ -162,8 +167,8 @@ def tests():
     for config in configurations:
         if config["name"] in config_black_list:
             continue
-        # if config["name"] != "Launch (app_05)": # @TODO: should be removed later
-        #     continue
+        if config["name"] != "Launch (app_01/GLSL)": # @TODO: should be removed later
+            continue
         run_test(config["name"], config["args"])
 
 

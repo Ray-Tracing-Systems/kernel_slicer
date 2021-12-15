@@ -16,8 +16,11 @@ int main(int argc, const char** argv)
   #else
   bool enableValidationLayers = false;
   #endif
-  
-  bool onGPU = true;
+
+  bool onGPU = false;
+  if(argc > 1)
+    onGPU = std::string(argv[1]) == "--gpu";
+
   std::shared_ptr<TestClass> pImpl = nullptr;
   if(onGPU)
   {
