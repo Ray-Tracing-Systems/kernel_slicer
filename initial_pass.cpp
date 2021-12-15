@@ -124,6 +124,8 @@ bool kslicer::InitialPassRecursiveASTVisitor::NeedToProcessDeclInFile(std::strin
 bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
 {
   const FileEntry* Entry = m_sourceManager.getFileEntryForID(m_sourceManager.getFileID(type->getLocation()));
+  if(Entry == nullptr)
+    return true;
   std::string FileName   = Entry->getName().str();
   if(!NeedToProcessDeclInFile(FileName))
     return true;
@@ -184,7 +186,8 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
       EnumConstantDecl* pConstntDecl = (*it);
       decl.name      = pConstntDecl->getNameAsString();
       decl.type      = "const uint"; 
-      decl.srcRange  = pConstntDecl->getInitExpr()->getSourceRange();                    
+      if(pConstntDecl->getInitExpr() != nullptr)
+        decl.srcRange  = pConstntDecl->getInitExpr()->getSourceRange();                    
       decl.srcHash   = kslicer::GetHashOfSourceRange(decl.srcRange);  
       decl.order     = m_currId;
       decl.kind      = kslicer::DECL_IN_CLASS::DECL_CONSTANT;

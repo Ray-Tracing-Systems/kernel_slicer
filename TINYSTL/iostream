@@ -1,5 +1,8 @@
 #pragma once
 
+#include "FILE.h"
+#include "stdio.h"
+
 namespace std
 {
   struct coutT 
