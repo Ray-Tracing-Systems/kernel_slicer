@@ -6,3 +6,6 @@ cmake-build-release/
 apps/clspv
 
 .idea/
+
+LOG_DIR/
+*.pyc
