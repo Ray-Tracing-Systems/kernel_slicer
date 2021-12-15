@@ -225,14 +225,14 @@ void PointsRender::SetupSpritesPipeline()
   m_pointsPipeline.layout = maker.MakeLayout(m_device, {m_dSetLayout}, sizeof(m_pushConsts));
   maker.SetDefaultState(m_width, m_height);
 
-  maker.colorBlendAttachment.blendEnable = VK_TRUE;
-  maker.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-  maker.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-  maker.colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-  maker.colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-  maker.colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-  maker.colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-  maker.colorBlendAttachment.colorWriteMask = vk_utils::ALL_COLOR_COMPONENTS;
+  maker.colorBlendAttachments[0].blendEnable = VK_TRUE;
+  maker.colorBlendAttachments[0].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+  maker.colorBlendAttachments[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+  maker.colorBlendAttachments[0].colorBlendOp = VK_BLEND_OP_ADD;
+  maker.colorBlendAttachments[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+  maker.colorBlendAttachments[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+  maker.colorBlendAttachments[0].alphaBlendOp = VK_BLEND_OP_ADD;
+  maker.colorBlendAttachments[0].colorWriteMask = vk_utils::ALL_COLOR_COMPONENTS;
   maker.depthStencilTest.depthWriteEnable = VK_FALSE;
   m_pointsPipeline.pipeline = maker.MakePipeline(m_device, m_pointsData.inputStateInfo,
                                                  m_screenRenderPass,

@@ -74,7 +74,7 @@ void PointsRender::CreateColormapTexture()
 
   createImageViewAndBindMem(m_device, &m_colormap, &imageView);
 
-  m_pCopy->UpdateImage(m_colormap.image, infernoColorMap.data(), infernoColorMap.size(), 1, 4);
+  m_pCopy->UpdateImage(m_colormap.image, infernoColorMap.data(), infernoColorMap.size(), 1, 4, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 //  m_colormap = vk_utils::allocateColorTextureFromDataLDR(m_device, m_physicalDevice, infernoColorMap.data(),
 //                                                         infernoColorMap.size(), 1, 1,
