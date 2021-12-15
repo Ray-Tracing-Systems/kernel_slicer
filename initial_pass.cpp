@@ -137,6 +137,8 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
     CXXRecordDecl* pCXXDecl = dyn_cast<CXXRecordDecl>(type);
     //if(!pCXXDecl->isCLike())
     //  return true;
+    if(!pCXXDecl->hasDefinition())
+      return true;
     if(pCXXDecl->isPolymorphic() || pCXXDecl->isAbstract())
       return true;   
   }
@@ -205,6 +207,9 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
 bool kslicer::InitialPassRecursiveASTVisitor::VisitVarDecl(VarDecl* pTargetVar)
 {
   const FileEntry* Entry = m_sourceManager.getFileEntryForID(m_sourceManager.getFileID(pTargetVar->getLocation()));
+  if(Entry == nullptr)
+    return true;
+    
   std::string FileName   = Entry->getName().str();
   if(!NeedToProcessDeclInFile(FileName))
     return true;
