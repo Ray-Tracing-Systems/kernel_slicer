@@ -21,10 +21,12 @@ public:
 
   bool VisitCallExpr(clang::CallExpr* call)
   {
+    std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
     clang::FunctionDecl* f = call->getDirectCallee();
     if(f == nullptr)
       return true;
-
+    
+    //std::string debugName = f->getNameAsString();
     if(f->isOverloadedOperator())
       return true;
 
@@ -108,6 +110,7 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
   {
     auto currFunc = functionsToProcess.front(); functionsToProcess.pop();
     
+    //currFunc.astNode->dump();
     visitor.pCurrProcessedFunc = &currFunc;
     visitor.TraverseDecl(const_cast<clang::FunctionDecl*>(currFunc.astNode));
 

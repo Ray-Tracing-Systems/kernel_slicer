@@ -104,7 +104,7 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* cal
   CXXConstructorDecl* ctorDecl = call->getConstructor();
   assert(ctorDecl != nullptr);
   
-  const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);   
+  //const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);   
   const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
   
   //call->dump();
