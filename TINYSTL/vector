@@ -30,7 +30,7 @@
 #include <allocator>
 #include <buffer.h>
 #include <new>
-#include <stddef.h>
+#include <cstddef>
 
 using tinystl::buffer;
 
