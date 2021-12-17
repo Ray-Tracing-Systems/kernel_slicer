@@ -26,9 +26,14 @@ public:
     if(f == nullptr)
       return true;
     
-    //std::string debugName = f->getNameAsString();
+    std::string debugName = f->getNameAsString();
     if(f->isOverloadedOperator())
       return true;
+    
+    if(debugName.find("Shade") != std::string::npos)
+    {
+      int a = 2;
+    }
 
     std::string fileName = std::string(m_sm.getFilename(f->getSourceRange().getBegin())); // check that we are in test_class.cpp or test_class.h or sms like that;                                                                             
     for(auto f : m_patternImpl.includeToShadersFolders)                                   // exclude everything from "shader" folders
