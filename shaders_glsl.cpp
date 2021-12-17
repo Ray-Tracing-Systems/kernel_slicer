@@ -851,7 +851,13 @@ bool GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* c
   clang::QualType qt = cast->getType(); qt.removeLocalFastQualifiers();
   std::string castTo = RewriteStdVectorTypeStr(qt.getAsString());
   
-  if(WasNotRewrittenYet(next) && qt.getAsString() != "size_t")
+  //if(castTo == "std::size_t")
+  //{
+  //  std::string debugText = qt.getAsString();
+  //  int a = 2;
+  //}
+
+  if(WasNotRewrittenYet(next) && qt.getAsString() != "size_t" && qt.getAsString() != "std::size_t")
   {
     const std::string exprText = RecursiveRewrite(next);
     m_rewriter.ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");

@@ -126,7 +126,14 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
   const FileEntry* Entry = m_sourceManager.getFileEntryForID(m_sourceManager.getFileID(type->getLocation()));
   if(Entry == nullptr)
     return true;
-  std::string FileName   = Entry->getName().str();
+  //std::string debugName = type->getNameAsString();
+  std::string FileName  = Entry->getName().str();
+
+  //if(debugName.find("LightInfo") != std::string::npos)
+  //{
+  //  int a = 2;
+  //}
+
   if(!NeedToProcessDeclInFile(FileName))
     return true;
 
