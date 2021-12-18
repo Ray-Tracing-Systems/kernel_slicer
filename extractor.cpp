@@ -22,7 +22,7 @@ public:
   bool VisitCallExpr(clang::CallExpr* call)
   {
     std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
-    clang::FunctionDecl* f = call->getDirectCallee();
+    const clang::FunctionDecl* f = call->getDirectCallee();
     if(f == nullptr)
       return true;
     
@@ -30,10 +30,10 @@ public:
     if(f->isOverloadedOperator())
       return true;
     
-    if(debugName.find("Shade") != std::string::npos)
-    {
-      int a = 2;
-    }
+    //if(debugName.find("Shade") != std::string::npos)
+    //{
+    //  int a = 2;
+    //}
 
     std::string fileName = std::string(m_sm.getFilename(f->getSourceRange().getBegin())); // check that we are in test_class.cpp or test_class.h or sms like that;                                                                             
     for(auto f : m_patternImpl.includeToShadersFolders)                                   // exclude everything from "shader" folders
@@ -44,9 +44,18 @@ public:
 
     if(fileName.find(".h") == std::string::npos && fileName.find(".cpp") == std::string::npos && fileName.find(".cxx") == std::string::npos)
       return true;
-
+    
     kslicer::FuncData func;
-    func.name     = f->getNameAsString();
+    func.name = f->getNameAsString();
+
+    const std::string fsrc = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
+    if(fsrc.find("{") == std::string::npos) // if don't have full source code in this node, just decl, need to obtain correct node
+    {
+      auto pNodeByDecl = m_patternImpl.allMemberFunctions.find(func.name);
+      if(pNodeByDecl != m_patternImpl.allMemberFunctions.end())
+        f = pNodeByDecl->second;
+    }
+
     func.astNode  = f;
     func.srcRange = f->getSourceRange(); 
     func.srcHash  = kslicer::GetHashOfSourceRange(func.srcRange);
@@ -54,7 +63,7 @@ public:
     func.isKernel = m_patternImpl.IsKernel(func.name);
     func.depthUse = 0;
 
-    //pCurrProcessedFunc->calledMembers.insert(func.name);
+     //pCurrProcessedFunc->calledMembers.insert(func.name);
 
     if(func.isKernel)
     {
@@ -115,7 +124,13 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
   {
     auto currFunc = functionsToProcess.front(); functionsToProcess.pop();
     
-    //currFunc.astNode->dump();
+    //if(currFunc.name == "CookTorrance")
+    //{
+    //  std::string text = kslicer::GetRangeSourceCode(currFunc.astNode->getSourceRange(), a_compiler);
+    //  std::cout << text.c_str() << std::endl;
+    //  currFunc.astNode->dump();
+    //}
+
     visitor.pCurrProcessedFunc = &currFunc;
     visitor.TraverseDecl(const_cast<clang::FunctionDecl*>(currFunc.astNode));
 
@@ -137,7 +152,7 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
       if(p == usedFunctions.end())
         usedFunctions[foundCall.first] = foundCall.second;
       else
-        p->second.depthUse++;
+        p->second.depthUse = std::max(p->second.depthUse, currFunc.depthUse + 1); // if we found func call at 2-nd and 3-td levels, take 3-rd one.
     }
 
     visitor.usedFunctions.clear();

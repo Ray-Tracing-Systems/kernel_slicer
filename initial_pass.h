@@ -43,6 +43,7 @@ namespace kslicer
     std::unordered_map<std::string, const clang::CXXMethodDecl*> m_mainFuncNodes;
     std::unordered_map<std::string, const clang::CXXMethodDecl*> m_setters;
     std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFunctions;
+    //std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFuncByDecl;
   
     std::unordered_map<std::string, KernelInfo>           otherFunctions;
     std::vector<const clang::CXXConstructorDecl* >        ctors;

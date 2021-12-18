@@ -293,14 +293,27 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
   const DeclarationNameInfo dni = f->getNameInfo();
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
+  const std::string fsrcfull    = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
+  const std::string fdecl       = fsrcfull.substr(0, fsrcfull.find(")")+1);
   
   const QualType qThisType = f->getThisType();   
   const QualType classType = qThisType.getTypePtr()->getPointeeType();
   std::string thisTypeName = classType.getAsString();
 
   bool isMainClassMember = (thisTypeName == std::string("class ") + MAIN_CLASS_NAME || thisTypeName == std::string("struct ") + MAIN_CLASS_NAME || thisTypeName == MAIN_CLASS_NAME);
-  allMemberFunctions[fname] = f; // just save this for further process in templated text rendering_host.cpp (virtual functions override for RTV pattern, so called "FullImpl" override)
-  
+  if(isMainClassMember && fsrcfull != fdecl) // we need to store MethodDec with full source code, not hust decls
+  {
+    allMemberFunctions [fname] = f; // just save this for further process in templated text rendering_host.cpp (virtual functions override for RTV pattern, so called "FullImpl" override)
+    //allMemberFuncByDecl[fdecl] = f;
+    //auto pos = fdecl.find(MAIN_CLASS_NAME + "::"); // remove 'TestClass::' from decl to be able to find another form too
+    //if(pos != std::string::npos)
+    //{
+    //  std::string beginText = fdecl.substr(0, pos);
+    //  std::string EndText   = fdecl.substr(pos + MAIN_CLASS_NAME.size() + 2);
+    //  allMemberFuncByDecl[beginText + EndText] = f;
+    //}
+  }
+
   if (f->hasBody())
   {
     auto attr = kslicer::GetMethodAttr(f, m_compiler);
