@@ -197,6 +197,8 @@ public:
       // 
       // if(fname == "sample" || fname == "Sample")
     }
+    
+    std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 
     std::string setter, containerName;
     if(kslicer::CheckSettersAccess(expr, &m_patternImpl, m_compiler, &setter, &containerName))

@@ -769,6 +769,16 @@ int main(int argc, const char **argv)
       } // end for(const auto& f : usedByKernelsFunctions)
     } // end for(auto& k : inputCodeInfo.kernels)
 
+    for(const auto& k : inputCodeInfo.kernels) // fix this flag for members that were used in member functions but not in kernels directly
+    {
+      for(const auto& c : k.second.usedContainers)
+      {
+        auto pFound = inputCodeInfo.allDataMembers.find(c.second.name);
+        if(pFound != inputCodeInfo.allDataMembers.end())
+          pFound->second.usedInKernel = true;
+      }
+    }
+
     std::cout << "}" << std::endl;
     std::cout << std::endl;
   }
