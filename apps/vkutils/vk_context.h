@@ -26,8 +26,8 @@ namespace vk_utils
   };
 
   bool          globalContextIsInitialized(const std::vector<const char*>& requiredExtensions = std::vector<const char*>());
-  VulkanContext globalContextInit(const std::vector<const char*>& requiredExtensions = std::vector<const char*>(), bool enableValidationLayers = false);
-  VulkanContext globalContextGet(bool enableValidationLayers = false);
+  VulkanContext globalContextInit(const std::vector<const char*>& requiredExtensions = std::vector<const char*>(), bool enableValidationLayers = false, unsigned int a_preferredDeviceId = 0);
+  VulkanContext globalContextGet(bool enableValidationLayers = false, unsigned int a_preferredDeviceId = 0);
   void          globalContextDestroy();
 
   struct ExecTime

@@ -24,12 +24,12 @@ bool vk_utils::globalContextIsInitialized(const std::vector<const char*>& requir
   return (g_ctx.instance != VK_NULL_HANDLE) && (g_ctx.physicalDevice != VK_NULL_HANDLE) && (g_ctx.device != VK_NULL_HANDLE);
 }
 
-vk_utils::VulkanContext vk_utils::globalContextGet(bool enableValidationLayers)
+vk_utils::VulkanContext vk_utils::globalContextGet(bool enableValidationLayers, unsigned int a_preferredDeviceId)
 {
   if(globalContextIsInitialized())
     return g_ctx;
   else
-    return globalContextInit(std::vector<const char*>(), enableValidationLayers);
+    return globalContextInit(std::vector<const char*>(), enableValidationLayers, a_preferredDeviceId);
 }
 
 struct RTXDeviceFeatures
@@ -57,7 +57,7 @@ static RTXDeviceFeatures SetupRTXFeatures(VkPhysicalDevice a_physDev)
   return g_rtFeatures;
 }
 
-vk_utils::VulkanContext vk_utils::globalContextInit(const std::vector<const char*>& requiredExtensions, bool enableValidationLayers)
+vk_utils::VulkanContext vk_utils::globalContextInit(const std::vector<const char*>& requiredExtensions, bool enableValidationLayers, unsigned int a_preferredDeviceId)
 {
   if(globalContextIsInitialized(requiredExtensions))
     return g_ctx;
@@ -70,7 +70,7 @@ vk_utils::VulkanContext vk_utils::globalContextInit(const std::vector<const char
   g_ctx.instance = vk_utils::createInstance(enableValidationLayers, enabledLayers, extensions);
   volkLoadInstance(g_ctx.instance);
 
-  g_ctx.physicalDevice = vk_utils::findPhysicalDevice(g_ctx.instance, true, 0);
+  g_ctx.physicalDevice = vk_utils::findPhysicalDevice(g_ctx.instance, true, a_preferredDeviceId);
   auto queueComputeFID = vk_utils::getQueueFamilyIndex(g_ctx.physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
   
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
