@@ -6,6 +6,7 @@
 
 #include "test_class.h"
 #include "Bitmap.h"
+#include "ArgParser.h"
 
 #include "vk_context.h"
 std::shared_ptr<ToneMapping> CreateToneMapping_Generated(const int w, const int h, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
@@ -32,11 +33,14 @@ int main(int argc, const char** argv)
   uint64_t addressToCkeck = reinterpret_cast<uint64_t>(hdrData.data());
   assert(addressToCkeck % 16 == 0); // check if address is aligned!!!
   
-  bool onGPU = true;
+  ArgParser args(argc, argv);
+
+  bool onGPU = args.hasOption("--gpu");
   std::shared_ptr<ToneMapping> pImpl = nullptr;
   if(onGPU)
   {
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers);
+    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateToneMapping_Generated(w,h,ctx,w*h);
   }
   else

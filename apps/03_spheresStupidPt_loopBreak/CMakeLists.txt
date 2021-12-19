@@ -22,7 +22,8 @@ find_package(Vulkan)
 include_directories(${Vulkan_INCLUDE_DIR})
 include_directories("../vkutils"
                     "../volk"
-                    "../LiteMath")
+                    "../LiteMath"
+                    "../utils")
 
 link_directories("../volk")
 

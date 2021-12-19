@@ -25,7 +25,8 @@ include_directories("../vkutils"
                     "../LiteMath" 
                     "../loader_utils"
                     "../geo_utils"
-                    "../RayTracing")
+                    "../RayTracing"
+                    "../utils")
                     
 link_directories("../volk")
 link_directories("../RayTracing/lib")

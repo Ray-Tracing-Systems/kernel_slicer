@@ -8,6 +8,7 @@
 
 #include "test_class.h"
 #include "Bitmap.h"
+#include "ArgParser.h"
 
 bool LoadHDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<float>& a_data);   // defined in imageutils.cpp
 bool LoadLDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<int32_t>& a_data); // defined in imageutils.cpp
@@ -90,7 +91,9 @@ int main(int argc, const char** argv)
   const int   blockRadius  = 3;
   const float noiseLevel   = 0.1F;  
 
-  bool onGPU = true;
+  ArgParser args(argc, argv);
+
+  bool onGPU = args.hasOption("--gpu");
 
 #ifdef MEASURE_TIME // to exclude vulkan initialiяation time from sample execution
   if(onGPU)
@@ -106,7 +109,8 @@ int main(int argc, const char** argv)
   std::shared_ptr<Denoise> pImpl = nullptr;
   if(onGPU)
   {
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers);
+    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateDenoise_Generated(ctx, w*h);
   }
   else

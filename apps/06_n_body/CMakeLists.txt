@@ -23,7 +23,7 @@ message(STATUS ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(OpenMP)
 find_package(Vulkan)
 include_directories(${Vulkan_INCLUDE_DIR})
-include_directories("../volk" "../LiteMath")
+include_directories("../volk" "../LiteMath" "../utils")
 link_directories("../volk")
 
 include_directories(../vkutils)

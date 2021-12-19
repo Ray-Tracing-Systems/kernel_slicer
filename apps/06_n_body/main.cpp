@@ -2,6 +2,7 @@
 #include <test_class.h>
 #include "render/points_render.h"
 #include "glfw_window.h"
+#include "ArgParser.h"
 
 std::vector<nBody::BodyState> n_body_cpu(uint32_t seed, uint32_t iterations);
 std::vector<nBody::BodyState> n_body_gpu(uint32_t seed, uint32_t iterations);

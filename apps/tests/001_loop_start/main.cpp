@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "test_class.h"
+#include "ArgParser.h"
 
 #include "vk_context.h"
 std::shared_ptr<Numbers> CreateNumbers_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
@@ -30,11 +31,14 @@ int main(int argc, const char** argv)
   }
 
   std::shared_ptr<Numbers> pImpl = nullptr;
-  bool onGPU = true;
+  ArgParser args(argc, argv);
+
+  bool onGPU = args.hasOption("--gpu");
   
   if(onGPU)
   {
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers);
+    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateNumbers_Generated(ctx, array.size());
   }
   else

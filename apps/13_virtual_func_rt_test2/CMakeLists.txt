@@ -24,7 +24,8 @@ include_directories("../vkutils"
                     "../volk"
                     "../LiteMath"
                     "../loader_utils"
-                    "../geo_utils")
+                    "../geo_utils"
+                    "../utils")
                     
 link_directories("../volk")
 

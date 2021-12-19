@@ -5,6 +5,7 @@
 
 #include "test_class.h"
 #include "Bitmap.h"
+#include "ArgParser.h"
 
 #include "vk_copy.h"
 
@@ -36,10 +37,13 @@ int main(int argc, const char** argv)
   std::vector<float4>   realColor(WIN_WIDTH*WIN_HEIGHT);
 
   std::shared_ptr<TestClass> pImpl = nullptr;
-  bool onGPU = true;
+  ArgParser args(argc, argv);
+
+  bool onGPU = args.hasOption("--gpu");
   if(onGPU)
   {
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers);
+    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl    = CreateTestClass_Generated(WIN_WIDTH*WIN_HEIGHT, ctx, WIN_WIDTH*WIN_HEIGHT);
   }
   else
