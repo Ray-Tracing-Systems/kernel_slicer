@@ -22,7 +22,7 @@ public:
   VkBuffer GiveMeUBO() { return m_classDataBuffer; }
 };
 
-int32_t array_summ_gpu(const std::vector<int32_t>& inArrayCPU)
+int32_t array_summ_gpu(const std::vector<int32_t>& inArrayCPU, unsigned int a_preferredDeviceId)
 {
   int32_t resSumm = 0;
   // (1) init vulkan
@@ -47,7 +47,7 @@ int32_t array_summ_gpu(const std::vector<int32_t>& inArrayCPU)
   instance = vk_utils::createInstance(enableValidationLayers, enabledLayers, extensions);
   volkLoadInstance(instance);
 
-  physicalDevice       = vk_utils::findPhysicalDevice(instance, true, 0);
+  physicalDevice       = vk_utils::findPhysicalDevice(instance, true, a_preferredDeviceId);
   auto queueComputeFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
   
   VkPhysicalDeviceVariablePointersFeatures varPointers = {};

@@ -171,7 +171,7 @@ def tests(num_threads=1, gpu_id=0):
     for config in configurations:
         if config["name"] in config_black_list:
             continue
-        if config["name"] != "Launch (app_01)": # @TODO: should be removed later
+        if config["name"] != "Launch (test_004/clspv)": # @TODO: should be removed later
             continue
         run_test(config["name"], config["args"], num_threads, gpu_id)
 

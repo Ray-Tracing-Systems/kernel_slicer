@@ -2,9 +2,10 @@
 #include <fstream>
 #include <vector>
 #include <cstdint>
+#include "ArgParser.h"
 
 int32_t array_summ_cpu(const int32_t* array, const size_t arraySize);
-int32_t array_summ_gpu(const int32_t* array, const size_t arraySize);
+int32_t array_summ_gpu(const int32_t* array, const size_t arraySize, unsigned int a_preferredDeviceId = 0);
 
 int main(int argc, const char** argv)
 {
@@ -18,9 +19,11 @@ int main(int argc, const char** argv)
   }
 
   array[1024] = 1000;
+  ArgParser args(argc, argv);
+  unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
 
   auto summ1 = array_summ_cpu(array.data(), 1024);
-  auto summ2 = array_summ_gpu(array.data(), 1024);
+  auto summ2 = array_summ_gpu(array.data(), 1024, a_preferredDeviceId);
 
   std::cout << "[cpu]: array summ  = " << summ1 << std::endl;
   std::cout << "[gpu]: array summ  = " << summ2 << std::endl;
