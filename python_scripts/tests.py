@@ -113,12 +113,14 @@ def check_generated_images(test_name):
     return 0 if res == 0 else -1
 
 
-def run_sample(test_name, on_gpu=False):
+def run_sample(test_name, on_gpu=False, gpu_id=0):
     Log().info("Running sample: {0}, gpu={1}".format(test_name, on_gpu))
     
-    args = ["./build/testapp", "--gpu"] if on_gpu else ["./build/testapp"]
-    res = subprocess.run(args,
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    args = ["./build/testapp"]
+    if on_gpu:
+        args = args + ["--gpu", "--gpu_id", str(gpu_id)]
+
+    res = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if res.returncode != 0:
         Log().status_info("{}: launch".format(test_name), status=Status.FAILED)
         Log().save_std_output(test_name, res.stdout.decode(), res.stderr.decode())
@@ -150,7 +152,7 @@ def run_test(test_name, args, num_threads=1, gpu_id=0):
     if return_code != 0:
         os.chdir(workdir)
         return -1
-    return_code = run_sample(test_name, on_gpu=True)
+    return_code = run_sample(test_name, on_gpu=True, gpu_id=gpu_id)
     if return_code != 0:
         os.chdir(workdir)
         return -1
@@ -169,7 +171,7 @@ def tests(num_threads=1, gpu_id=0):
     for config in configurations:
         if config["name"] in config_black_list:
             continue
-        if config["name"] != "Launch (test_001/clspv)": # @TODO: should be removed later
+        if config["name"] != "Launch (app_01)": # @TODO: should be removed later
             continue
         run_test(config["name"], config["args"], num_threads, gpu_id)
 
@@ -233,7 +235,7 @@ def main():
     Log().print("Running in root: ", workdir)
     create_clspv_symlink("apps/clspv", "apps/tests/clspv")
     build_kernel_slicer(args.num_threads)
-    tests()
+    tests(num_threads=args.num_threads, gpu_id=args.gpu_id)
     Log().close()
 
 

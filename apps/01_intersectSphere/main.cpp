@@ -5,6 +5,7 @@
 
 #include "test_class.h"
 #include "Bitmap.h"
+#include "ArgParser.h"
 
 #include "vk_context.h"
 std::shared_ptr<TestClass> CreateTestClass_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
@@ -17,14 +18,15 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
 
-  bool onGPU = false;
-  if(argc > 1)
-    onGPU = std::string(argv[1]) == "--gpu";
+  ArgParser args(argc, argv);
+
+  bool onGPU = args.hasOption("--gpu");
 
   std::shared_ptr<TestClass> pImpl = nullptr;
   if(onGPU)
   {
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers);
+    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateTestClass_Generated(ctx, WIN_WIDTH*WIN_HEIGHT);
   }
   else
