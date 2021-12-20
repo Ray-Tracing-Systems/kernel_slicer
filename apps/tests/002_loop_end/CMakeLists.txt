@@ -44,7 +44,8 @@ add_executable(testapp main.cpp
                        ../../vkutils/vk_copy.cpp
                        ../../vkutils/vk_buffers.cpp
                        ../../vkutils/vk_pipeline.cpp
-                       ../../vkutils/vk_descriptor_sets.cpp)
+                       ../../vkutils/vk_descriptor_sets.cpp
+                       ../../vkutils/vk_images.cpp)
 
 set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} OpenMP::OpenMP_CXX volk dl)

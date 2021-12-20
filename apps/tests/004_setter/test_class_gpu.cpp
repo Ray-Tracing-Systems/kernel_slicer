@@ -8,7 +8,6 @@
 #include "vk_copy.h"
 #include "vk_buffers.h"
 
-#include "vulkan_basics.h"
 #include "test_class_generated.h"
 
 #include "include/ArrayProcess_ubo.h"
