@@ -1,0 +1,17 @@
+#pragma once
+
+//#include <type_traits>
+#include <initializer_list>
+
+namespace std
+{
+  template<typename _T1, typename _T2>
+  struct pair
+  {
+    typedef _T1 first_type;    ///< The type of the `first` member
+    typedef _T2 second_type;   ///< The type of the `second` member
+
+    _T1 first;                 ///< The first member
+    _T2 second;                ///< The second member
+  };
+}

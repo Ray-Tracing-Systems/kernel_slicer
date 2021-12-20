@@ -35,6 +35,8 @@ float powf(float x, float power);
 
 float exp(float x);
 float expf(float x);
+float log2(float x);
+float log(float x, float power);
 
 float copysign(float eps, float val);
 
@@ -61,6 +63,8 @@ namespace std
   
   template<typename T> T pow(T x, T power) { return x; }
   template<typename T> T exp(T x)          { return x; }
+  template<typename T> T log2(T x);
+  template<typename T, typename U> T log(T x, U power);
 
   template<typename T> T asin  (T x) { return x; }
   template<typename T> T acos  (T x) { return x; }

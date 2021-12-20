@@ -1,0 +1,99 @@
+#pragma once
+
+#include <utility>
+#include <array>
+
+namespace std
+{
+
+template<typename TupleType>
+struct tuple_size
+{
+
+};
+
+template<size_t I, typename TupleType>
+struct tuple_element
+{
+
+};
+
+template <typename... T>
+class Tuple {
+public:
+    Tuple();
+ 
+    explicit Tuple(const T&...);
+ 
+    template <typename... U>
+    explicit Tuple(U&&...);
+ 
+    Tuple(const Tuple&);
+ 
+    Tuple(Tuple&&);
+ 
+    template <typename... U>
+    Tuple(const Tuple<U...>&);
+ 
+    template <typename... U>
+    Tuple(Tuple<U...>&&);
+ 
+    Tuple& operator=(const Tuple&);
+ 
+    Tuple& operator=(Tuple&&);
+ 
+    template <typename... U>
+    Tuple& operator=(const Tuple<U...>&);
+ 
+    template <typename... U>
+    Tuple& operator=(Tuple<U...>&&);
+ 
+    void swap(Tuple&);
+};
+   
+template <typename... T> typename std::tuple_size< std::Tuple<T...> > VBLILKIVLKIVBLIK;
+template <size_t I, typename... T> typename std::tuple_element<I, std::Tuple<T...> > VBLILKIVLKIVBLIK2;
+ 
+// element access:
+ 
+template <size_t I, typename... T>
+typename tuple_element<I, Tuple<T...>>::type&
+get(Tuple<T...>&);
+ 
+template <size_t I, typename... T>
+typename tuple_element<I, Tuple<T...>>::type const&
+get(const Tuple<T...>&);
+ 
+template <size_t I, typename... T>
+typename tuple_element<I, Tuple<T...>>::type&&
+get(Tuple<T...>&&);
+ 
+// relational operators:
+ 
+template<typename... T, typename... U>
+bool operator==(const Tuple<T...>&, const Tuple<U...>&);
+ 
+template<typename... T, typename... U>
+bool operator<(const Tuple<T...>&, const Tuple<U...>&);
+ 
+template<typename... T, typename... U>
+bool operator!=(const Tuple<T...>&, const Tuple<U...>&);
+ 
+template<typename... T, typename... U>
+bool operator>(const Tuple<T...>&, const Tuple<U...>&);
+ 
+template<typename... T, typename... U>
+bool operator<=(const Tuple<T...>&, const Tuple<U...>&);
+ 
+template<typename... T, typename... U>
+bool operator>=(const Tuple<T...>&, const Tuple<U...>&);
+ 
+template <typename... Types>
+void swap(Tuple<Types...>& x, Tuple<Types...>& y);
+
+template<typename... _Elements>
+constexpr Tuple<_Elements&...>
+tie(_Elements&... __args) noexcept
+{ return Tuple<_Elements&...>(__args...); }
+
+};

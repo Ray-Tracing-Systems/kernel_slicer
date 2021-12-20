@@ -535,6 +535,8 @@ int main(int argc, const char **argv)
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
   compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
   
+  //#TODO: remove this copy, just pass pointer to 'inputCodeInfo' inside 'firstPassData.rv' and thats all
+  //
   inputCodeInfo.allKernels           = firstPassData.rv.functions; 
   inputCodeInfo.allOtherKernels      = firstPassData.rv.otherFunctions;
   inputCodeInfo.allDataMembers       = firstPassData.rv.dataMembers;   
@@ -542,6 +544,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.m_mainClassASTNode;
   inputCodeInfo.ctors                = firstPassData.rv.ctors;
   inputCodeInfo.allMemberFunctions   = firstPassData.rv.allMemberFunctions;
+  //inputCodeInfo.allMemberFuncByDecl  = firstPassData.rv.allMemberFuncByDecl;
   inputCodeInfo.ProcessAllSetters(firstPassData.rv.m_setters, compiler);
 
   std::vector<kslicer::DeclInClass> generalDecls = firstPassData.rv.GetExtractedDecls();
@@ -765,6 +768,16 @@ int main(int argc, const char **argv)
         } // end if(f.isMember)
       } // end for(const auto& f : usedByKernelsFunctions)
     } // end for(auto& k : inputCodeInfo.kernels)
+
+    for(const auto& k : inputCodeInfo.kernels) // fix this flag for members that were used in member functions but not in kernels directly
+    {
+      for(const auto& c : k.second.usedContainers)
+      {
+        auto pFound = inputCodeInfo.allDataMembers.find(c.second.name);
+        if(pFound != inputCodeInfo.allDataMembers.end())
+          pFound->second.usedInKernel = true;
+      }
+    }
 
     std::cout << "}" << std::endl;
     std::cout << std::endl;

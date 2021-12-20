@@ -27,6 +27,8 @@
 #ifndef TINYSTL_ARRAY_H
 #define TINYSTL_ARRAY_H
 
+#include <utility>
+#include <cstddef>
 
 namespace std 
 {
@@ -34,6 +36,9 @@ namespace std
   class array
   {
   public:
+    array(){}
+    array(std::initializer_list<T> l) {}
+
     T* data() { return m_data; }
     const T* data() const { return m_data; }
    

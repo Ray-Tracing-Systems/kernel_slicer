@@ -284,12 +284,15 @@ kslicer::InOutVarInfo kslicer::GetParamInfo(const clang::ParmVarDecl* currParam,
   }
   
   var.paramNode = currParam;
-  auto attrs    = currParam->getAttrs();
-  for(const auto& attr : attrs)
+  if(currParam->hasAttrs())
   {
-    const std::string text = kslicer::GetRangeSourceCode(attr->getRange(), compiler);
-    if(text.find("size(") != std::string::npos)
-      var.sizeUserAttr = ParseSizeAttributeText(text);
+    auto attrs = currParam->getAttrs();
+    for(const auto& attr : attrs)
+    {
+      const std::string text = kslicer::GetRangeSourceCode(attr->getRange(), compiler);
+      if(text.find("size(") != std::string::npos)
+        var.sizeUserAttr = ParseSizeAttributeText(text);
+    }
   }
   return var;
 }

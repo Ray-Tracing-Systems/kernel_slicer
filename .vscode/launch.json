@@ -1012,5 +1012,35 @@
                 }
             ]
         },
+
+        {
+            "name"   : "Launch (msu/vk_graphics_rt2)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["/home/frol/PROG/kate_renderer/vk_graphics_rt/src/samples/raytracing/raytracing.cpp",
+                        "-mainClass", "RayTracer", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/apps/LiteMath",   "IncludeToShaders",
+                        "-I${workspaceFolder}/apps/RayTracing", "ExcludeFromShaders",
+                        "-I/home/frol/PROG/kate_renderer/vk_graphics_rt/src", "ExcludeFromShaders",
+                        "-megakernel", "1",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
     ]
 }

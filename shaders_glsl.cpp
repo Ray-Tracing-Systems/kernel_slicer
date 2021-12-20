@@ -713,6 +713,36 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     m_rewriter.ReplaceText(call->getSourceRange(), "mix(" + A + ", " + B + ", " + C + ")");
     MarkRewritten(call);
   }
+  else if(fname == "as_int32" && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
+  {
+    const std::string text = RecursiveRewrite(call->getArg(0));
+    m_rewriter.ReplaceText(call->getSourceRange(), "floatBitsToInt(" + text + ")");
+    MarkRewritten(call);
+  }
+  else if(fname == "as_uint32" && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
+  {
+    const std::string text = RecursiveRewrite(call->getArg(0));
+    m_rewriter.ReplaceText(call->getSourceRange(), "floatBitsToUint(" + text + ")");
+    MarkRewritten(call);
+  }
+  else if((fname == "as_float" || fname == "as_float32")  && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
+  {
+    const std::string text = RecursiveRewrite(call->getArg(0));
+    const auto qtOfArg     = call->getArg(0)->getType();
+    
+    if(std::string(qtOfArg.getAsString()) == "uint"     || std::string(qtOfArg.getAsString()) == "const uint" || 
+       std::string(qtOfArg.getAsString()) == "uint32_t" || std::string(qtOfArg.getAsString()) == "const uint32_t")
+      m_rewriter.ReplaceText(call->getSourceRange(), "uintBitsToFloat(" + text + ")");
+    else
+      m_rewriter.ReplaceText(call->getSourceRange(), "intBitsToFloat(" + text + ")");
+    MarkRewritten(call);
+  }
+  else if((fname == "inverse4x4" || fname == "inverse3x3" || fname == "inverse2x2") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
+  {
+    const std::string text = RecursiveRewrite(call->getArg(0));
+    m_rewriter.ReplaceText(call->getSourceRange(), "inverse(" + text + ")");
+    MarkRewritten(call);
+  }
   else if(pFoundSmth != m_funReplacements.end() && WasNotRewrittenYet(call))
   {
     m_rewriter.ReplaceText(call->getSourceRange(), pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call));
@@ -851,7 +881,13 @@ bool GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* c
   clang::QualType qt = cast->getType(); qt.removeLocalFastQualifiers();
   std::string castTo = RewriteStdVectorTypeStr(qt.getAsString());
   
-  if(WasNotRewrittenYet(next) && qt.getAsString() != "size_t")
+  //if(castTo == "std::size_t")
+  //{
+  //  std::string debugText = qt.getAsString();
+  //  int a = 2;
+  //}
+
+  if(WasNotRewrittenYet(next) && qt.getAsString() != "size_t" && qt.getAsString() != "std::size_t")
   {
     const std::string exprText = RecursiveRewrite(next);
     m_rewriter.ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");

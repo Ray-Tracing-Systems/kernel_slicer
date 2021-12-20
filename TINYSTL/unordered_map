@@ -1,0 +1,21 @@
+#pragma once
+
+#include <cstddef>
+
+namespace std
+{
+
+  template<typename T> 
+  struct hash
+  { 
+    template<typename Key>
+    inline unsigned operator()(Key key) { return 0; }
+  };
+
+  template<typename _Key, typename _Tp, typename _Hash = hash<_Key> >
+  class unordered_map
+  { 
+  public:
+    inline size_t size() const { return 0; }
+  };
+};

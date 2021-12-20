@@ -2,6 +2,20 @@
 #define STD_CSTRING_H
 
 void* memcpy( void* dest, const void* src, unsigned long long int count);
-void *memset (void *__s, int __c, unsigned long long int __n);
-	
+void *memset(void *__s, int __c, unsigned long long int __n);
+int   memcmp(const void *__s1, const void *__s2, unsigned long long int __n);
+
+void *memchr (void *__s, int __c, unsigned long long int __n);
+void *memmove(void *__dest, const void *__src, unsigned long long int __n);
+
+char *strcpy (char *__restrict __dest, const char *__restrict __src);
+char *strncpy (char *__restrict __dest,const char *__restrict __src, unsigned long long int __n);
+char *strcat (char *__restrict __dest, const char *__restrict __src);
+char *strncat (char *__restrict __dest, const char *__restrict __src, unsigned long long int __n);
+int strcmp (const char *__s1, const char *__s2);
+int strncmp (const char *__s1, const char *__s2, unsigned long long int __n);
+
+int strcoll (const char *__s1, const char *__s2);
+unsigned long long int strxfrm(char *__restrict __dest, const char *__restrict __src, unsigned long long int __n);
+
 #endif
