@@ -55,7 +55,7 @@ public:
 
     m_pBindings = std::make_shared<vk_utils::DescriptorMaker>(a_device, dtypes, 2);
     m_pBindings->BindBegin(VK_SHADER_STAGE_COMPUTE_BIT);
-    m_pBindings->BindAccelStruct(0, m_pScnMgr->getTLAS().handle);
+    m_pBindings->BindAccelStruct(0, m_pScnMgr->GetTLAS());
     //m_pBindings->BindBuffer     (1, CastSingleRay_local.out_colorBuffer, CastSingleRay_local.out_colorOffset);
     m_pBindings->BindEnd(&m_rtDS, &m_rtDSLayout);
     
@@ -256,7 +256,8 @@ void test_class_gpu()
   }
 
   auto pCopyHelper = std::make_shared<vk_utils::SimpleCopyHelper>(physicalDevice, device, transferQueue, queueComputeFID, 8*1024*1024);
-  auto pScnMgr     = std::make_shared<SceneManager>(device, physicalDevice, queueComputeFID, queueComputeFID, false); // todo: pass pCopyHelper
+  LoaderConfig config;
+  auto pScnMgr     = std::make_shared<SceneManager>(device, physicalDevice, queueComputeFID, pCopyHelper, config); 
   auto pGPUImpl    = std::make_shared<TestClass_GPU>(pScnMgr, WIN_WIDTH*WIN_HEIGHT);  // !!! USING GENERATED CODE !!! 
   
   pGPUImpl->InitVulkanObjects(device, physicalDevice, WIN_WIDTH*WIN_HEIGHT); // !!! USING GENERATED CODE !!!                        

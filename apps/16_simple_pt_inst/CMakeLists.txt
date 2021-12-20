@@ -44,7 +44,7 @@ add_executable(testapp main.cpp
                        test_class_generated.cpp
                        test_class_generated_init.cpp
                        test_class_generated_ds.cpp
-                        ../vkutils/geom/cmesh.cpp
+                       ../vkutils/geom/cmesh.cpp
                        ../vkutils/vk_utils.cpp
                        ../vkutils/vk_copy.cpp
                        ../vkutils/vk_images.cpp
