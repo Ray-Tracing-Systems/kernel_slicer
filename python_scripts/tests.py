@@ -9,7 +9,8 @@ from logger import Log, Status
 from enum import Enum
 
 config_black_list = {
-    "Launch (msu/vk_graphics_rt)"
+    "Launch (msu/vk_graphics_rt)",
+    "Launch (msu/vk_graphics_rt2)"
 }
 
 
@@ -171,8 +172,8 @@ def tests(num_threads=1, gpu_id=0):
     for config in configurations:
         if config["name"] in config_black_list:
             continue
-        if config["name"] != "Launch (test_004/clspv)": # @TODO: should be removed later
-            continue
+        # if config["name"] != "Launch (test_004/clspv)": # @TODO: should be removed later
+        #     continue
         run_test(config["name"], config["args"], num_threads, gpu_id)
 
 
