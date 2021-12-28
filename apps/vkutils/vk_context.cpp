@@ -8,6 +8,8 @@
 
 #include <cmath>
 #include <cassert>
+#include <string>
+#include <set>
 
 #include <algorithm>
 #ifdef WIN32
@@ -16,6 +18,18 @@
 #endif 
 
 vk_utils::VulkanContext g_ctx;
+
+std::set<std::string> get_supported_extensions(VkPhysicalDevice a_physDev) 
+{
+  uint32_t count;
+  vkEnumerateDeviceExtensionProperties(a_physDev, nullptr, &count, nullptr); //get number of extensions
+  std::vector<VkExtensionProperties> extensions(count);
+  vkEnumerateDeviceExtensionProperties(a_physDev, nullptr, &count, extensions.data()); //populate buffer
+  std::set<std::string> results;
+  for (const auto& extension : extensions)
+    results.insert(extension.extensionName);
+  return results;
+}
 
 bool vk_utils::globalContextIsInitialized(const std::vector<const char*>& requiredExtensions)
 {
@@ -72,50 +86,71 @@ vk_utils::VulkanContext vk_utils::globalContextInit(const std::vector<const char
 
   g_ctx.physicalDevice = vk_utils::findPhysicalDevice(g_ctx.instance, true, a_preferredDeviceId);
   auto queueComputeFID = vk_utils::getQueueFamilyIndex(g_ctx.physicalDevice, VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
+
+  const std::set<std::string> supportedExtensions = get_supported_extensions(g_ctx.physicalDevice);
+  //std::cout << "extensions num = " << supportedExtensions.size() << std::endl;
+
+  const bool supportRayQuery = (supportedExtensions.find("VK_KHR_acceleration_structure") != supportedExtensions.end()) && 
+                               (supportedExtensions.find("VK_KHR_ray_query")              != supportedExtensions.end());
   
+  VkPhysicalDeviceVariablePointersFeatures varPointersQuestion = {};
+  varPointersQuestion.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES;
+
+  VkPhysicalDeviceFeatures2 deviceFeaturesQuestion = {};
+  deviceFeaturesQuestion.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+  deviceFeaturesQuestion.pNext = &varPointersQuestion;
+  vkGetPhysicalDeviceFeatures2(g_ctx.physicalDevice, &deviceFeaturesQuestion);
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // query features for RTX
   //
-  RTXDeviceFeatures rtxFeatures = SetupRTXFeatures(g_ctx.physicalDevice);
+  RTXDeviceFeatures rtxFeatures;
+  if(supportRayQuery)
+    rtxFeatures = SetupRTXFeatures(g_ctx.physicalDevice);
+
+  VkPhysicalDeviceVariablePointersFeatures varPointers = {};
+  varPointers.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES;
+  varPointers.pNext = supportRayQuery ? &rtxFeatures.m_enabledAccelStructFeatures : nullptr;
+  varPointers.variablePointers              = varPointersQuestion.variablePointers;
+  varPointers.variablePointersStorageBuffer = varPointersQuestion.variablePointersStorageBuffer;
 
   // query features for shaderInt8
   //
   VkPhysicalDeviceShaderFloat16Int8Features features = {};
   features.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
-  features.shaderInt8 = VK_TRUE;
-  features.pNext      = &rtxFeatures.m_enabledAccelStructFeatures;
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  features.shaderInt8 = deviceFeaturesQuestion.features.shaderInt16;
+  features.pNext      = &varPointers;
 
   std::vector<const char*> validationLayers, deviceExtensions;
   VkPhysicalDeviceFeatures enabledDeviceFeatures = {};
-  enabledDeviceFeatures.shaderInt64 = VK_TRUE;
+  enabledDeviceFeatures.shaderInt64 = deviceFeaturesQuestion.features.shaderInt64;
   
   vk_utils::QueueFID_T fIDs = {};
   
-  if(requiredExtensions.size() == 0) // TODO: remove this or work around
+  if(requiredExtensions.size() == 0 && supportRayQuery) // TODO: remove this or work around
   {
-    deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
-    deviceExtensions.push_back("VK_KHR_shader_float16_int8"); 
-
     // Required by VK_KHR_RAY_QUERY
     deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
     deviceExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
     deviceExtensions.push_back("VK_KHR_spirv_1_4");
     deviceExtensions.push_back("VK_KHR_shader_float_controls");  
-  
     // Required by VK_KHR_acceleration_structure
     deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
     deviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
     deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
-  
     // // Required by VK_KHR_ray_tracing_pipeline
     // m_deviceExtensions.push_back(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
     // // Required by VK_KHR_spirv_1_4
     // m_deviceExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
   }
+  
+  if(supportedExtensions.find("VK_KHR_shader_non_semantic_info") != supportedExtensions.end())
+    deviceExtensions.push_back("VK_KHR_shader_non_semantic_info");
+  if(supportedExtensions.find("VK_KHR_shader_float16_int8") != supportedExtensions.end())
+    deviceExtensions.push_back("VK_KHR_shader_float16_int8");
+  if(supportedExtensions.find("VK_KHR_variable_pointers") != supportedExtensions.end())  
+    deviceExtensions.push_back("VK_KHR_variable_pointers");
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
