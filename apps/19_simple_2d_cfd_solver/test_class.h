@@ -19,6 +19,9 @@ public:
     vector<float> density_prev;
 
     vector<float> vx;
+    vector<float> extra_vec;
+    vector<float> transfer_vec;
+
     vector<float> vy;
 
     vector<float> vx0;
@@ -30,20 +33,19 @@ public:
 
     void perform(float *out_density);
 
-    void kernel1D_set_bounds(int N, int b, float *x);
+    void kernel1D_set_bounds(int N, int b,float *dst, float *x);
 
     void kernel1D_AddSources(int N, float dt_, float *v, const float *v0);
 
-    void kernel2D_Diffuse(int h, int w, int b, float *x, const float *x0, float diffuse);
+    void kernel2D_diffuse(int h, int w, int b, float *src, float *x, const float *x0, float diffuse);
 
     void kernel2D_Advect(int h, int w, float dt_, int b, float *d, const float *d0, const float *u, const float *v);
 
     void kernel2D_Project_1(int h, int w, float *u, float *v, float *p, float *div);
 
-    void kernel2D_Project_2(int h, int w, float *u, float *v, float *p, float *div);
+    void kernel2D_Project_2(int h, int w, float *src, float *p, float *div);
 
     void kernel2D_Project_3(int h, int w, float *u, float *v, float *p, float *div);
-
 };
 
 
