@@ -121,7 +121,7 @@ std::vector<float> solve_gpu(int N, const std::vector<float>& density, const std
     beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
-    for (int i = 0; i < N; ++i)
+    for (int i = 0; i < 50; ++i)
        pGPUImpl->performCmd(commandBuffer, nullptr);
     vkEndCommandBuffer(commandBuffer);
     
@@ -136,7 +136,7 @@ std::vector<float> solve_gpu(int N, const std::vector<float>& density, const std
     //// iter by iter 
     //
     /*
-    for (int i = 0; i < 200; ++i) {
+    for (int i = 0; i < 50; ++i) {
         VkCommandBuffer commandBuffer = vk_utils::createCommandBuffer(device, commandPool);
     
         VkCommandBufferBeginInfo beginCommandBufferInfo = {};

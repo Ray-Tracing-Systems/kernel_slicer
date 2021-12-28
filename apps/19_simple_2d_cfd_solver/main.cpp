@@ -14,7 +14,7 @@
 
 std::vector<float> solve_cpu(int N, const std::vector<float>& density, const std::vector<float>& vx, const std::vector<float>& vy) {
     Solver s = Solver();
-    s.setParameters(N, density, vx, vy, 0.5, 0, 0.0001);
+    s.setParameters(N, density, vx, vy, 0.033, 0, 0);
 
     std::vector<float> out(N * N);
     for (int i = 0; i < 50; ++ i) {
