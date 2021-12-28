@@ -31,7 +31,7 @@ void ArrayProcess::kernel1D_ArrayProc(const int* a_data1, const int* a_data2, un
     m_minVal = min(m_minVal, a_data2[i]);
     m_maxVal = max(m_maxVal, max(a_data1[i], a_data2[i]));
 
-    testData.push_back(float(m_out.summ[i]));
+    testData.push_back((float)(m_out.summ[i]));
   }
 
   m_out.reduction[0] = m_summ;
