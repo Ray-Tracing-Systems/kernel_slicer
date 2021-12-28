@@ -215,7 +215,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('workdir', type=str, default=".", help="test script working dir path")
     parser.add_argument("--gpu_id", type=int, default=0, help="GPU id for sample execution")
-    parser.add_argument("--num_threads", type=int, default=1, help="Number of threads for cmake build")
+    parser.add_argument("--num_threads", type=int, default=8, help="Number of threads for cmake build")
 
     args = parser.parse_args()
 
