@@ -130,14 +130,28 @@ public:
   {% for KernelDecl in KernelsDecls %}
   {{KernelDecl}}
   {% endfor %}
-protected:
   
+  struct MemLoc
+  {
+    VkDeviceMemory memObject = VK_NULL_HANDLE;
+    size_t         memOffset = 0;
+    size_t         allocId   = 0;
+  };
+
+  virtual MemLoc AllocAndBind(const std::vector<VkBuffer>& a_buffers); ///< replace this function to apply custom allocator
+  virtual MemLoc AllocAndBind(const std::vector<VkImage>& a_image);    ///< replace this function to apply custom allocator
+  virtual void   FreeAllAllocations(std::vector<MemLoc>& a_memLoc);    ///< replace this function to apply custom allocator
+
+protected:
+
   VkPhysicalDevice        physicalDevice = VK_NULL_HANDLE;
   VkDevice                device         = VK_NULL_HANDLE;
   vk_utils::VulkanContext m_ctx          = {};
 
   VkCommandBuffer         m_currCmdBuffer   = VK_NULL_HANDLE;
   uint32_t                m_currThreadFlags = 0;
+
+  std::vector<MemLoc>     m_allMems;
 
   std::unique_ptr<vk_utils::ComputePipelineMaker> m_pMaker = nullptr;
   VkPhysicalDeviceProperties m_devProps;
@@ -155,13 +169,9 @@ protected:
   virtual void InitAllGeneratedDescriptorSets_{{MainFunc.Name}}();
 ## endfor
 
-  virtual void AllocMemoryForInternalBuffers(const std::vector<VkBuffer>& a_buffers);
   virtual void AssignBuffersToMemory(const std::vector<VkBuffer>& a_buffers, VkDeviceMemory a_mem);
 
   virtual void AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_image);
-  
-  virtual void FreeMemoryForInternalBuffers();
-  virtual void FreeMemoryForMemberBuffersAndImages();
   virtual std::string AlterShaderPath(const char* in_shaderPath) { return std::string(in_shaderPath); }
 
   {{PlainMembersUpdateFunctions}}
@@ -202,8 +212,6 @@ protected:
     VkImage     {{Tex}}Texture = VK_NULL_HANDLE;
     VkImageView {{Tex}}View    = VK_NULL_HANDLE;
     {% endfor %}
-    VkDeviceMemory m_vecMem = VK_NULL_HANDLE;
-    VkDeviceMemory m_texMem = VK_NULL_HANDLE;
     {% for Sam in SamplerMembers %}
     VkSampler      {{Sam}} = VK_NULL_HANDLE;
     {% endfor %}
@@ -253,7 +261,6 @@ protected:
   VkBuffer m_uboArgsBuffer = VK_NULL_HANDLE;
   VkBufferMemoryBarrier BarrierForArgsUBO(size_t a_size);
   {% endif %}
-  VkDeviceMemory m_allMem    = VK_NULL_HANDLE;
 
   {% for Kernel in Kernels %}
   VkPipelineLayout      {{Kernel.Name}}Layout   = VK_NULL_HANDLE;

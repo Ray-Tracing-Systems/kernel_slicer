@@ -113,8 +113,7 @@ VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO() const
   vkDestroyBuffer(device, m_{{Hierarchy.Name}}ObjPtrBuffer, nullptr);
   {% endfor %}
 
-  FreeMemoryForMemberBuffersAndImages();
-  FreeMemoryForInternalBuffers();
+  FreeAllAllocations(m_allMems);
 }
 
 void {{MainClassName}}_Generated::InitHelpers()
@@ -482,13 +481,12 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount, bool a_t
   allBuffersRef.push_back(m_{{Hierarchy.Name}}ObjPtrBuffer);
   {% endfor %}
   
-  AllocMemoryForInternalBuffers(allBuffersRef);
-
+  auto internalBuffersMem = AllocAndBind(allBuffersRef);
   if(a_tempBuffersOverlay)
   {
     for(size_t i=0;i<groups.size();i++)
       if(i != largestIndex)
-        AssignBuffersToMemory(groups[i].bufsClean, m_allMem);
+        AssignBuffersToMemory(groups[i].bufsClean, internalBuffersMem.memObject);
   }
 }
 
@@ -745,14 +743,6 @@ void {{MainClassName}}_Generated::TrackTextureAccess(const std::vector<TexAccess
 
 {% endif %} {# /* length(TextureMembers) > 0 */ #}
 
-void {{MainClassName}}_Generated::AllocMemoryForInternalBuffers(const std::vector<VkBuffer>& a_buffers)
-{
-  if(a_buffers.size() > 0)
-    m_allMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, a_buffers);
-  else
-    m_allMem = VK_NULL_HANDLE;
-}
-
 void {{MainClassName}}_Generated::AssignBuffersToMemory(const std::vector<VkBuffer>& a_buffers, VkDeviceMemory a_mem)
 {
   if(a_buffers.size() == 0 || a_mem == VK_NULL_HANDLE)
@@ -787,40 +777,83 @@ void {{MainClassName}}_Generated::AssignBuffersToMemory(const std::vector<VkBuff
   }
 }
 
+{{MainClassName}}_Generated::MemLoc {{MainClassName}}_Generated::AllocAndBind(const std::vector<VkBuffer>& a_buffers)
+{
+  MemLoc currLoc;
+  if(a_buffers.size() > 0)
+  {
+    currLoc.memObject = vk_utils::allocateAndBindWithPadding(device, physicalDevice, a_buffers);
+    currLoc.allocId   = m_allMems.size();
+    m_allMems.push_back(currLoc);
+  }
+  return currLoc;
+}
+
+{{MainClassName}}_Generated::MemLoc {{MainClassName}}_Generated::AllocAndBind(const std::vector<VkImage>& a_images)
+{
+  MemLoc currLoc;
+  if(a_images.size() > 0)
+  {
+    std::vector<VkMemoryRequirements> reqs(a_images.size()); 
+    for(size_t i=0; i<reqs.size(); i++)
+      vkGetImageMemoryRequirements(device, a_images[i], &reqs[i]);
+
+    for(size_t i=0; i<reqs.size(); i++)
+    {
+      if(reqs[i].memoryTypeBits != reqs[0].memoryTypeBits)
+      {
+        std::cout << "{{MainClassName}}_Generated::AllocAndBind(textures): memoryTypeBits warning, need to split mem allocation (override me)" << std::endl;
+        break;
+      }
+    } 
+
+    auto offsets  = vk_utils::calculateMemOffsets(reqs);
+    auto memTotal = offsets[offsets.size() - 1];
+
+    VkMemoryAllocateInfo allocateInfo = {};
+    allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocateInfo.pNext           = nullptr;
+    allocateInfo.allocationSize  = memTotal;
+    allocateInfo.memoryTypeIndex = vk_utils::findMemoryType(reqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice);
+    VK_CHECK_RESULT(vkAllocateMemory(device, &allocateInfo, NULL, &currLoc.memObject));
+    
+    for(size_t i=0;i<a_images.size();i++) {
+      VK_CHECK_RESULT(vkBindImageMemory(device, a_images[i], currLoc.memObject, offsets[i]));
+    }
+
+    currLoc.allocId = m_allMems.size();
+    m_allMems.push_back(currLoc);
+  }
+  return currLoc;
+}
+
+void {{MainClassName}}_Generated::FreeAllAllocations(std::vector<MemLoc>& a_memLoc)
+{
+  // in general you may check 'mem.allocId' for unique to be sure you dont free mem twice
+  // for default implementation this is not needed
+  for(auto mem : a_memLoc)
+    vkFreeMemory(device, mem.memObject, nullptr);
+  a_memLoc.resize(0);
+}     
+
 void {{MainClassName}}_Generated::AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_images)
 {
-  if(a_buffers.size() > 0)
-    m_vdata.m_vecMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, a_buffers);
-  else
-    m_vdata.m_vecMem = VK_NULL_HANDLE;
-  
+  AllocAndBind(a_buffers);
   {% if length(ClassTextureVars) > 0 %}
-  std::vector<VkMemoryRequirements> reqs;     reqs.reserve({{length(ClassTextureVars)}});
   std::vector<VkFormat>             formats;  formats.reserve({{length(ClassTextureVars)}});
   std::vector<VkImageView*>         views;    views.reserve({{length(ClassTextureVars)}});
   std::vector<VkImage>              textures; textures.reserve({{length(ClassTextureVars)}});
   VkMemoryRequirements memoryRequirements;
 
   {% for Var in ClassTextureVars %}
-  vkGetImageMemoryRequirements(device, m_vdata.{{Var.Name}}Texture, &memoryRequirements);
-  reqs.push_back(memoryRequirements);
   formats.push_back({{Var.Format}});
   views.push_back(&m_vdata.{{Var.Name}}View);
   textures.push_back(m_vdata.{{Var.Name}}Texture);
-  
   {% endfor %}
-  auto offsets  = vk_utils::calculateMemOffsets(reqs);
-  auto memTotal = offsets[offsets.size() - 1];
-  VkDeviceMemory res;
-  VkMemoryAllocateInfo allocateInfo = {};
-  allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-  allocateInfo.pNext           = nullptr;
-  allocateInfo.allocationSize  = memTotal;
-  allocateInfo.memoryTypeIndex = vk_utils::findMemoryType(reqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice);
-  VK_CHECK_RESULT(vkAllocateMemory(device, &allocateInfo, NULL, &m_vdata.m_texMem));
+
+  AllocAndBind(textures);
   for(size_t i=0;i<textures.size();i++)
   {
-    VK_CHECK_RESULT(vkBindImageMemory(device, textures[i], m_vdata.m_texMem, offsets[i]));
     VkImageViewCreateInfo imageViewInfo = {};
     imageViewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     imageViewInfo.flags                           = 0;
@@ -835,24 +868,5 @@ void {{MainClassName}}_Generated::AllocMemoryForMemberBuffersAndImages(const std
     imageViewInfo.image                           = textures[i];     // The view will be based on the texture's image
     VK_CHECK_RESULT(vkCreateImageView(device, &imageViewInfo, nullptr, views[i]));
   }
-  {% else %}
-  m_vdata.m_texMem = VK_NULL_HANDLE;
   {% endif %}
-}
-
-void {{MainClassName}}_Generated::FreeMemoryForInternalBuffers()
-{
-  if(m_allMem != VK_NULL_HANDLE)
-    vkFreeMemory(device, m_allMem, nullptr);
-  m_allMem = VK_NULL_HANDLE;
-}
-
-void {{MainClassName}}_Generated::FreeMemoryForMemberBuffersAndImages()
-{
-  if(m_vdata.m_vecMem != VK_NULL_HANDLE)
-    vkFreeMemory(device, m_vdata.m_vecMem, nullptr);
-  m_vdata.m_vecMem = VK_NULL_HANDLE;
-  if(m_vdata.m_texMem != VK_NULL_HANDLE)
-    vkFreeMemory(device, m_vdata.m_texMem, nullptr);
-  m_vdata.m_texMem = VK_NULL_HANDLE;
 }
