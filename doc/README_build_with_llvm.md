@@ -2,7 +2,7 @@
 
 1) sudo apt-get install cmake (install cmake)
 2) sudo apt-get install ninja-build (install ninja)
-3) download build llvm**12** from source code:
+3) download build llvm**12** or llvm**14** from source code:
    
    * download source code from https://github.com/llvm/llvm-project/releases/tag/llvmorg-12.0.0
    * cd llvm-project 
@@ -12,6 +12,7 @@
    * ninja 
    * if it fail, **try to run "ninja" again several times** untill you finally build everithing. 
    * if some parts of llvm are still can not be build, that's not a problem in general
+   * for llvm 14 you will need to fix 2 lines in kslicer_main.cpp, around line 500 
 
 4) go to 'llvm-project/clang-tools-extra'
 
