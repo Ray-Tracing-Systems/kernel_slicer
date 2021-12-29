@@ -45,7 +45,7 @@ void save_image(int N, const std::string &image_name, std::vector<float> density
 
     }
 
-    stbi_write_jpg(image_name.c_str(), N * grid_size, N * grid_size, 4, &image[0], 100);
+    stbi_write_bmp(image_name.c_str(), N * grid_size, N * grid_size, 4, &image[0]);
 }
 
 std::vector<float> solve_gpu(int N, const std::vector<float>& density, const std::vector<float>& vx, const std::vector<float>& vy) {
