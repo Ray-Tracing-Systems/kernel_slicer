@@ -77,7 +77,7 @@ VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO() const
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
 
 ## for MainFunc in MainFunctions
-  {% if MainFunc.IsRTV %} 
+  {% if MainFunc.IsRTV and not MainFunc.IsMega %} 
   {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
   vkDestroyBuffer(device, {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer, nullptr);
   {% endfor %}
@@ -429,7 +429,7 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount, bool a_t
   groups.reserve(16);
 
 ## for MainFunc in MainFunctions 
-  {% if MainFunc.IsRTV %} 
+  {% if MainFunc.IsRTV and not MainFunc.IsMega %} 
   LocalBuffers localBuffers{{MainFunc.Name}};
   localBuffers{{MainFunc.Name}}.bufs.reserve(32);
   {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
@@ -463,7 +463,7 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount, bool a_t
       groups[i].bufsClean[j] = groups[i].bufs[j].buf;
   }
   
-  {% if IsRTV %}
+  {% if IsRTV and not IsMega %}
   auto& allBuffersRef = a_tempBuffersOverlay ? groups[largestIndex].bufsClean : allBuffers;
   {% else %}
   auto& allBuffersRef = allBuffers;

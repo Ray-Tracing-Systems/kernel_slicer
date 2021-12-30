@@ -180,7 +180,7 @@ protected:
 ## for MainFunc in MainFunctions  
   struct {{MainFunc.Name}}_Data
   {
-    {% if MainFunc.IsRTV %}
+    {% if MainFunc.IsRTV and not MainFunc.IsMega %}
     {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
     VkBuffer {{Buffer.Name}}Buffer = VK_NULL_HANDLE;
     size_t   {{Buffer.Name}}Offset = 0;
