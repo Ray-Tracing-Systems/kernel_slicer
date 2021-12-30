@@ -4,19 +4,18 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "NinjaBuild (debug)",
+            "label": "BuildRelease",
             "type": "shell",
-            "command": "cd ../../build && ninja -j 8",
+            "command": "cd cmake-build-release && make -j 8",
             "group": "build",
             "problemMatcher": [
                 "$gcc"
             ]
         },
-
         {
-            "label": "NinjaBuild (release)",
+            "label": "BuildDebug",
             "type": "shell",
-            "command": "cd ../../build-release && ninja -j 8",
+            "command": "cd cmake-build-debug && make -j 8",
             "group": "build",
             "problemMatcher": [
                 "$gcc"

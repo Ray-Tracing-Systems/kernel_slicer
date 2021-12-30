@@ -180,12 +180,13 @@ protected:
 ## for MainFunc in MainFunctions  
   struct {{MainFunc.Name}}_Data
   {
-## for Buffer in MainFunc.LocalVarsBuffersDecl
+    {% if MainFunc.IsRTV %}
+    {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
     VkBuffer {{Buffer.Name}}Buffer = VK_NULL_HANDLE;
     size_t   {{Buffer.Name}}Offset = 0;
-
-## endfor
-## for Arg in MainFunc.InOutVars
+    {% endfor %}
+    {% endif %}
+    {% for Arg in MainFunc.InOutVars %}
     {% if Arg.IsTexture %}
     VkImage     {{Arg.Name}}Text = VK_NULL_HANDLE;
     VkImageView {{Arg.Name}}View = VK_NULL_HANDLE;
@@ -193,7 +194,7 @@ protected:
     VkBuffer {{Arg.Name}}Buffer = VK_NULL_HANDLE;
     size_t   {{Arg.Name}}Offset = 0;
     {% endif %}
-## endfor
+    {% endfor %}
   } {{MainFunc.Name}}_local;
 
 ## endfor

@@ -1,18 +1,22 @@
 cmake_minimum_required (VERSION 3.8)
 project (kernel_slicer)
+set (CMAKE_CXX_STANDARD 17)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-set(LLVM_LINK_COMPONENTS support)
+find_package(LLVM 12 REQUIRED CONFIG)
+
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 include_directories("include")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
+include_directories(${LLVM_INCLUDE_DIRS})
+link_directories(${LLVM_INCLUDE_DIRS}/../lib)
+add_definitions(${LLVM_DEFINITIONS})
 
-#file(GLOB_RECURSE SRC_DIR "include/*.h" "include/nlohmann/*.h" )
-#set_source_files_properties(${SRC_DIR} 
-#                            PROPERTIES COMPILE_FLAGS "-w")
+message("${LLVM_INCLUDE_DIRS}")
 
-add_clang_executable(kslicer 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+
+add_executable(kslicer 
                kslicer_main.cpp
                attributes.cpp
                ast_matchers.cpp
@@ -27,18 +31,16 @@ add_clang_executable(kslicer
                rewrite_functions.cpp
                rewrite_kernel.cpp
                rewrite_control.cpp
-               reduction.cpp
                setter_process.cpp
+               reduction.cpp
                shaders_clspv.cpp
                shaders_glsl.cpp
                )
 
-target_link_libraries(kslicer PRIVATE 
-                      clang
-                      clangTooling
-                      clangBasic
-                      clangASTMatchers
-) 
-
-
-                     
+target_link_libraries(kslicer PRIVATE -lclang -lLLVM-12 
+                     -lclangAST -lclangTooling -lclangBasic -lclangASTMatchers 
+                     -lclangFrontendTool -lclangFrontend -lclangDriver -lclangSerialization 
+                     -lclangCodeGen -lclangParse -lclangSema -lclangStaticAnalyzerFrontend 
+                     -lclangStaticAnalyzerCheckers -lclangStaticAnalyzerCore -lclangAnalysis
+                     -lclangIndex -lclangARCMigrate -lclangRewrite -lclangAST -lclangLex -lclangEdit
+                     ) 
