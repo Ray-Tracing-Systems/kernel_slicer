@@ -1040,8 +1040,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         if(!handMadeKernels)
         {
           if(j >= pFoundKernel->second.args.size())
+          {
             std::cout << "[kslicer]: strange warning on DS binding for kernel " << dsArgs.originKernelName.c_str() << " arg " << j << " exceed size which is " << pFoundKernel->second.args.size() << std::endl;
-          break;
+            break;
+          }
         }
         const bool ignoreArg = handMadeKernels ? false : (pFoundKernel->second.args[j].isThreadID || pFoundKernel->second.args[j].isLoopSize || pFoundKernel->second.args[j].IsUser() || dsArgs.descriptorSetsInfo[j].name == "this");
         if(!handMadeKernels && !isMegaKernel && ignoreArg) // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
