@@ -438,6 +438,21 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
   return res;
 }
 
+static bool IgnoreArgForDS(const std::string& argName, const std::vector<kslicer::KernelInfo::ArgInfo>& args)
+{
+  if(argName == "this") // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
+    return true;
+  bool ignoreArg = false;    
+  for(size_t k=0;k<args.size();k++)
+  {
+    if(argName == args[k].name)
+    {
+      ignoreArg = (args[k].isThreadID || args[k].isLoopSize || args[k].IsUser());
+      break;
+    }
+  }
+  return ignoreArg;      
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1013,6 +1028,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
     // for impl, ds bindings
     //
+    //std::ofstream debug("z_problems.txt", std::ios::app);
     for(size_t i=mainFunc.startDSNumber; i<mainFunc.endDSNumber; i++)
     {
       auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
@@ -1034,19 +1050,25 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
-        //#TODO: need to refactor this piece of this
-        //
-        //std::cout << "[ds bindings] j = " << j << std::endl;
         //if(!handMadeKernels)
         //{
         //  if(j >= pFoundKernel->second.args.size())
         //  {
         //    std::cout << "[kslicer]: strange warning on DS binding for kernel " << dsArgs.originKernelName.c_str() << " arg " << j << " exceed size which is " << pFoundKernel->second.args.size() << std::endl;
-        //    break;
+        //    
+        //    debug << dsArgs.kernelName.c_str() << ": "<< std::endl;
+        //    for(size_t k=0;k<pFoundKernel->second.args.size();k++)
+        //      debug << k << "\t" << pFoundKernel->second.args[k].name << std::endl;
+        //    debug << "-----------------------------------" << std::endl;
+        //    for(size_t k=0;k<dsArgs.descriptorSetsInfo.size();k++)
+        //      debug << k << "\t" << dsArgs.descriptorSetsInfo[k].name << std::endl;
+        //    debug << "===================================" << std::endl;
+        //    debug << std::endl;
         //  }
         //}
-        const bool ignoreArg = handMadeKernels ? false : (pFoundKernel->second.args[j].isThreadID || pFoundKernel->second.args[j].isLoopSize || pFoundKernel->second.args[j].IsUser() || dsArgs.descriptorSetsInfo[j].name == "this");
-        if(!handMadeKernels && !isMegaKernel && ignoreArg) // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
+        
+        const bool ignoreArg = IgnoreArgForDS(dsArgs.descriptorSetsInfo[j].name, pFoundKernel->second.args); 
+        if(!handMadeKernels && !isMegaKernel && ignoreArg) 
           continue;
       
         const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j], a_classInfo.megakernelRTV);
@@ -1148,6 +1170,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["ArgNumber"] = realId;
       data2["DescriptorSets"].push_back(local);
     }
+    //debug.close();
 
     data2["MainFuncDeclCmd"]      = mainFunc.GeneratedDecl;
     data2["MainFuncTextCmd"]      = mainFunc.CodeGenerated;
