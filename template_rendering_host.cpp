@@ -438,32 +438,33 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
   return res;
 }
 
-//static bool IgnoreArgForDS(size_t j, const std::vector<kslicer::ArgReferenceOnCall>& argsOnCall, const std::vector<kslicer::KernelInfo::ArgInfo>& args, const std::string& kernelName)
-//{
-//  if(argsOnCall[j].name == "this") // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
-//    return true;
-//  bool ignoreArg = false; 
-//  bool found     = false;   
-//  
-//  size_t foundId = size_t(-1);
-//  for(size_t k=0;k<args.size();k++)
-//  {
-//    if(argsOnCall[j].name == args[k].name)
-//    {
-//      foundId = k;
-//      break;
-//    }
-//  }
-//  
-//  if(foundId != size_t(-1))
-//    ignoreArg = (args[foundId].isThreadID || args[foundId].isLoopSize || args[foundId].IsUser());
-//  else if(j < args.size())
-//    ignoreArg = (args[j].isThreadID || args[j].isLoopSize || args[j].IsUser());
-//  //else
-//  //  std::cout << "  [kslicer, RTV, IgnoreArgForDS]: warning, arg name '" << argsOnCall[j].name << "' is not found for '" << kernelName.c_str() << "'" << std::endl;
-//  
-//  return ignoreArg;      
-//}
+static bool IgnoreArgForDS(size_t j, const std::vector<kslicer::ArgReferenceOnCall>& argsOnCall, const std::vector<kslicer::KernelInfo::ArgInfo>& args, const std::string& kernelName, bool isRTV)
+{
+  if(argsOnCall[j].name == "this") // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
+    return true;
+  bool ignoreArg = false; 
+  
+  if(isRTV)
+  {
+    bool found     = false;   
+    size_t foundId = size_t(-1);
+    for(size_t k=0;k<args.size();k++)
+    {
+      if(argsOnCall[j].name == args[k].name)
+      {
+        foundId = k;
+        break;
+      }
+    }
+    
+    if(foundId != size_t(-1))
+      ignoreArg = (args[foundId].isThreadID || args[foundId].isLoopSize || args[foundId].IsUser());
+  }
+  else if(j < args.size())
+    ignoreArg = (args[j].isThreadID || args[j].isLoopSize || args[j].IsUser());
+  
+  return ignoreArg;      
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1078,13 +1079,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         //  }
         //}
         
-        //bool ignoreArg = false;
-        //if(!internalKernel && a_classInfo.IsRTV())
-        //  ignoreArg = IgnoreArgForDS(j, dsArgs.descriptorSetsInfo, pFoundKernel->second.args, pFoundKernel->second.name); 
+        if(!internalKernel)
+        {
+          const bool ignoreArg = IgnoreArgForDS(j, dsArgs.descriptorSetsInfo, pFoundKernel->second.args, pFoundKernel->second.name, a_classInfo.IsRTV()); 
+          if(ignoreArg && !isMegaKernel) 
+            continue;
+        }
         
-        if(!internalKernel && !isMegaKernel) 
-          continue;
-      
         const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j], a_classInfo.megakernelRTV);
 
         json arg;
