@@ -1016,7 +1016,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(size_t i=mainFunc.startDSNumber; i<mainFunc.endDSNumber; i++)
     {
       auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
-     // std::cout << "[ds bindings] kname = " << dsArgs.originKernelName.c_str() << std::endl;
+      //std::cout << "[ds bindings] kname = " << dsArgs.originKernelName.c_str() << std::endl;
 
       const auto pFoundKernel    = a_classInfo.FindKernelByName(dsArgs.originKernelName);
       const bool handMadeKernels = (pFoundKernel == a_classInfo.kernels.end());
@@ -1037,14 +1037,14 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         //#TODO: need to refactor this piece of this
         //
         //std::cout << "[ds bindings] j = " << j << std::endl;
-        if(!handMadeKernels)
-        {
-          if(j >= pFoundKernel->second.args.size())
-          {
-            std::cout << "[kslicer]: strange warning on DS binding for kernel " << dsArgs.originKernelName.c_str() << " arg " << j << " exceed size which is " << pFoundKernel->second.args.size() << std::endl;
-            break;
-          }
-        }
+        //if(!handMadeKernels)
+        //{
+        //  if(j >= pFoundKernel->second.args.size())
+        //  {
+        //    std::cout << "[kslicer]: strange warning on DS binding for kernel " << dsArgs.originKernelName.c_str() << " arg " << j << " exceed size which is " << pFoundKernel->second.args.size() << std::endl;
+        //    break;
+        //  }
+        //}
         const bool ignoreArg = handMadeKernels ? false : (pFoundKernel->second.args[j].isThreadID || pFoundKernel->second.args[j].isLoopSize || pFoundKernel->second.args[j].IsUser() || dsArgs.descriptorSetsInfo[j].name == "this");
         if(!handMadeKernels && !isMegaKernel && ignoreArg) // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
           continue;
