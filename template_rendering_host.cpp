@@ -438,19 +438,31 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
   return res;
 }
 
-static bool IgnoreArgForDS(const std::string& argName, const std::vector<kslicer::KernelInfo::ArgInfo>& args)
+static bool IgnoreArgForDS(size_t j, const std::string& argName, const std::vector<kslicer::KernelInfo::ArgInfo>& args, const std::string& kernelName)
 {
   if(argName == "this") // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
     return true;
-  bool ignoreArg = false;    
-  for(size_t k=0;k<args.size();k++)
+  bool ignoreArg = false; 
+  bool found     = false;   
+  
+  //// this may be correct for RTV but completely wrong in general
+  //
+  //for(size_t k=0;k<args.size();k++)
+  //{
+  //  if(argName == args[k].name)
+  //  {
+  //    ignoreArg = (args[k].isThreadID || args[k].isLoopSize || args[k].IsUser());
+  //    found     = true;
+  //    break;
+  //  }
+  //}
+  
+  if(!found && j < args.size())
   {
-    if(argName == args[k].name)
-    {
-      ignoreArg = (args[k].isThreadID || args[k].isLoopSize || args[k].IsUser());
-      break;
-    }
+    //std::cout << "  [kslicer]: warning, arg '" << argName.c_str() << "' of '" << kernelName.c_str() << "' has different name in function decl. and impl." << std::endl;
+    ignoreArg = (args[j].isThreadID || args[j].isLoopSize || args[j].IsUser());
   }
+
   return ignoreArg;      
 }
 
@@ -1034,9 +1046,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
       //std::cout << "[ds bindings] kname = " << dsArgs.originKernelName.c_str() << std::endl;
 
-      const auto pFoundKernel    = a_classInfo.FindKernelByName(dsArgs.originKernelName);
-      const bool handMadeKernels = (pFoundKernel == a_classInfo.kernels.end());
-      const bool isMegaKernel    = handMadeKernels ? false : pFoundKernel->second.isMega;
+      const auto pFoundKernel   = a_classInfo.FindKernelByName(dsArgs.originKernelName);
+      const bool internalKernel = (pFoundKernel == a_classInfo.kernels.end());
+      const bool isMegaKernel   = internalKernel ? false : pFoundKernel->second.isMega;
       
       json local;
       local["Id"]         = i;
@@ -1050,7 +1062,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
-        //if(!handMadeKernels)
+        //if(!internalKernel)
         //{
         //  if(j >= pFoundKernel->second.args.size())
         //  {
@@ -1067,8 +1079,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         //  }
         //}
         
-        const bool ignoreArg = IgnoreArgForDS(dsArgs.descriptorSetsInfo[j].name, pFoundKernel->second.args); 
-        if(!handMadeKernels && !isMegaKernel && ignoreArg) 
+        bool ignoreArg = false;
+        if(!internalKernel)
+          ignoreArg = IgnoreArgForDS(j, dsArgs.descriptorSetsInfo[j].name, pFoundKernel->second.args, pFoundKernel->second.name); 
+        
+        if(!internalKernel && !isMegaKernel && ignoreArg) 
           continue;
       
         const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j], a_classInfo.megakernelRTV);
