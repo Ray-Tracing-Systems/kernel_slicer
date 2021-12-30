@@ -438,33 +438,32 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
   return res;
 }
 
-static bool IgnoreArgForDS(size_t j, const std::string& argName, const std::vector<kslicer::KernelInfo::ArgInfo>& args, const std::string& kernelName)
-{
-  if(argName == "this") // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
-    return true;
-  bool ignoreArg = false; 
-  bool found     = false;   
-  
-  //// this may be correct for RTV but completely wrong in general
-  //
-  //for(size_t k=0;k<args.size();k++)
-  //{
-  //  if(argName == args[k].name)
-  //  {
-  //    ignoreArg = (args[k].isThreadID || args[k].isLoopSize || args[k].IsUser());
-  //    found     = true;
-  //    break;
-  //  }
-  //}
-  
-  if(!found && j < args.size())
-  {
-    //std::cout << "  [kslicer]: warning, arg '" << argName.c_str() << "' of '" << kernelName.c_str() << "' has different name in function decl. and impl." << std::endl;
-    ignoreArg = (args[j].isThreadID || args[j].isLoopSize || args[j].IsUser());
-  }
-
-  return ignoreArg;      
-}
+//static bool IgnoreArgForDS(size_t j, const std::vector<kslicer::ArgReferenceOnCall>& argsOnCall, const std::vector<kslicer::KernelInfo::ArgInfo>& args, const std::string& kernelName)
+//{
+//  if(argsOnCall[j].name == "this") // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
+//    return true;
+//  bool ignoreArg = false; 
+//  bool found     = false;   
+//  
+//  size_t foundId = size_t(-1);
+//  for(size_t k=0;k<args.size();k++)
+//  {
+//    if(argsOnCall[j].name == args[k].name)
+//    {
+//      foundId = k;
+//      break;
+//    }
+//  }
+//  
+//  if(foundId != size_t(-1))
+//    ignoreArg = (args[foundId].isThreadID || args[foundId].isLoopSize || args[foundId].IsUser());
+//  else if(j < args.size())
+//    ignoreArg = (args[j].isThreadID || args[j].isLoopSize || args[j].IsUser());
+//  //else
+//  //  std::cout << "  [kslicer, RTV, IgnoreArgForDS]: warning, arg name '" << argsOnCall[j].name << "' is not found for '" << kernelName.c_str() << "'" << std::endl;
+//  
+//  return ignoreArg;      
+//}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1079,11 +1078,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         //  }
         //}
         
-        bool ignoreArg = false;
-        if(!internalKernel)
-          ignoreArg = IgnoreArgForDS(j, dsArgs.descriptorSetsInfo[j].name, pFoundKernel->second.args, pFoundKernel->second.name); 
+        //bool ignoreArg = false;
+        //if(!internalKernel && a_classInfo.IsRTV())
+        //  ignoreArg = IgnoreArgForDS(j, dsArgs.descriptorSetsInfo, pFoundKernel->second.args, pFoundKernel->second.name); 
         
-        if(!internalKernel && !isMegaKernel && ignoreArg) 
+        if(!internalKernel && !isMegaKernel) 
           continue;
       
         const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j], a_classInfo.megakernelRTV);
