@@ -399,9 +399,24 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
     auto sourceRange = currArgExpr->getSourceRange();
     std::string text = GetRangeSourceCode(sourceRange, m_compiler);
   
+    // check if this is conbst variable which is declared inside control func
+    //
+    //bool isConstFound = false;
+    //for(size_t i=0; i<m_pCodeInfo->mainFunc.size();i++) 
+    //{
+    //  if(m_pCodeInfo->mainFunc[i].Name == m_mainFuncName)
+    //  {
+    //    auto& localVars = m_pCodeInfo->mainFunc[i].Locals;
+    //    auto p          = localVars.find(text);
+    //    if(p != localVars.end())
+    //      isConstFound = p->second.isConst;
+    //    break;
+    //  }
+    //}
+
     ArgReferenceOnCall arg; 
     arg.type    = q.getAsString();
-    arg.isConst = q.isConstQualified();
+    arg.isConst = q.isConstQualified(); // || isConstFound;
     if(text[0] == '&')
     {
       arg.umpersanned = true;

@@ -297,6 +297,7 @@ namespace kslicer
     size_t      sizeInBytes;
 
     bool        isArray   = false;
+    bool        isConst   = false;
     size_t      arraySize = 0;
     std::string typeOfArrayElement;
     size_t      sizeInBytesOfArrayElement = 0;

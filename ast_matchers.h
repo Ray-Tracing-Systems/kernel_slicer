@@ -192,9 +192,9 @@ namespace kslicer
         varInfo.name        = var->getNameAsString();
         varInfo.type        = qt.getAsString();
         varInfo.sizeInBytes = typeInfo.Width / 8;
-        
-        varInfo.isArray   = false;
-        varInfo.arraySize = 0;
+        varInfo.isArray     = false;
+        varInfo.isConst     = qt.isConstQualified();
+        varInfo.arraySize   = 0;
         varInfo.typeOfArrayElement = ""; 
         
         if(typePtr->isConstantArrayType())
