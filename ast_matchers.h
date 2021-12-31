@@ -212,10 +212,9 @@ namespace kslicer
         }
 
         if(var->isLocalVarDecl() && !var->isConstexpr() && !qt.isConstQualified()) // list only local variables, exclude function arguments and all constants 
-        {
-          // can also check isCXXForRangeDecl() and check for index ... in some way ...
-          CurrMainFunc().Locals[varInfo.name] = varInfo;
-        }
+          CurrMainFunc().Locals[varInfo.name] = varInfo;                           // can also check isCXXForRangeDecl() and check for index ... in some way ...
+        else if(var->isLocalVarDecl())
+          CurrMainFunc().LocalConst[varInfo.name] = varInfo;
       }
       else if(func_decl && forLoop && forIter) // found for expression inside MainFunc
       {

@@ -446,6 +446,9 @@ static bool IgnoreArgForDS(size_t j, const std::vector<kslicer::ArgReferenceOnCa
   
   if(isRTV)
   {
+    if(argsOnCall[j].argType == kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_CONST_OR_LITERAL)
+      return true;
+    
     bool found     = false;   
     size_t foundId = size_t(-1);
     for(size_t k=0;k<args.size();k++)
