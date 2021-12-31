@@ -96,7 +96,7 @@ def find_image_pairs():
 
 def compare_images(img_name1, img_name2):
     mse_res = utils.load_and_calc_mse(img_name1, img_name2)
-    threshold = 1e-5
+    threshold = 1e-4
     status = Status.OK if mse_res < threshold else Status.FAILED
 
     Log().status_info("{0}, {1} | mse = {2}".format(img_name1, img_name2, mse_res), status=status)
