@@ -96,6 +96,19 @@ int graphics_main()
 
 int main(int argc, const char** argv)
 {
-  graphics_main();
-//  compute_main();
+  bool runCmdLineMode = false;
+
+  for(int i=1;i<argc;i++)
+  {
+    if(std::string(argv[i]) == "--test")
+    {
+      runCmdLineMode = true;
+      break;
+    }
+  }
+  
+  if(runCmdLineMode)
+    compute_main();
+  else
+    graphics_main();
 }

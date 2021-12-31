@@ -51,7 +51,7 @@ int main(int argc, const char** argv)
 
    // now test path tracing
   //
-  const int PASS_NUMBER = 100;
+  const int PASS_NUMBER = 1000;
   pImpl->NaivePathTraceBlock(WIN_HEIGHT*WIN_HEIGHT, 6, packedXY.data(), realColor.data(), PASS_NUMBER);
   
   const float normConst = 1.0f/float(PASS_NUMBER);
