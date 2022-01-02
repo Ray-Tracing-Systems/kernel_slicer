@@ -40,7 +40,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -fPIC -Wno-attributes")
 add_executable(testapp main.cpp 
                        test_class.cpp
                        test_class_scene.cpp 
-                       test_class_gpu.cpp
                        test_class_generated.cpp
                        test_class_generated_init.cpp 
                        test_class_generated_ds.cpp 
