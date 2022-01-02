@@ -45,36 +45,29 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 # Build:
 
-0. git clone --recurse-submodules https://github.com/Ray-Tracing-Systems/kernel_slicer
+1. git clone https://github.com/Ray-Tracing-Systems/kernel_slicer
 
-1. sudo apt-get install llvm-12-dev
+2. bash fetch_sources.bat 
 
-2. sudo touch /usr/lib/llvm-12/bin/yaml-bench 
+3. sudo apt-get install llvm-12-dev
 
-3. sudo apt-get install libclang-12-dev 
+4. sudo touch /usr/lib/llvm-12/bin/yaml-bench 
 
-4. use Cmake and make
+5. sudo apt-get install libclang-12-dev 
+
+6. use Cmake and make
 
   * cd kernel_slicer
   * cmake . 
   * make -j 10
 
-5. you may also use provided VS Code config to build and run test cases (tasks.json and launch.json)
+7. you may also use provided VS Code config to build and run test cases (tasks.json and launch.json)
 
-6. (optional) build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") if you want OpenCL shaders
-
-7. Build volk with cmake and leave 'libvolk.a' in 'apps/volk'
-  * git submodule init (if you have forgotten to fetch submodules when clone repo) 
-  * git submodule update (if you have forgotten to fetch submodules when clone repo) 
-  * cd apps/volk
-  * cmake .
-  * make
-
- 
- 
 8. Install Vulkan SDK (https://vulkan.lunarg.com/sdk/home)
 
-9. If you want to [build it as a part of llvm](doc/README_build_with_llvm.md)
+9. (optional) build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") if you want OpenCL shaders
+
+10. (optional) If you want to [build it as a part of llvm](doc/README_build_with_llvm.md)
 
 # Concept and general workflow
 
