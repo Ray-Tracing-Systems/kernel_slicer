@@ -430,8 +430,10 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   VkQueue          computeQueue   = m_ctx.computeQueue; 
   VkQueue          transferQueue  = m_ctx.transferQueue;
   auto             pCopyHelper    = m_ctx.pCopyHelper;
+  auto             pAllocatorSpec = m_ctx.pAllocatorSpecial;
 
   std::vector<VkBuffer> buffers;
+  std::vector<VkImage>  images2;
   std::vector<vk_utils::VulkanImageMem> images;
    
   // (2) create GPU objects
@@ -442,6 +444,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
   size_t {{var.Name}}ImgId = images.size();
   images.push_back({{var.Name}}Img);
+  images2.push_back({{var.Name}}Img.image);
   {% else %}
   VkBuffer {{var.Name}}GPU = vk_utils::createBuffer(device, {{var.DataSize}}*sizeof({{var.DataType}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   buffers.push_back({{var.Name}}GPU);
@@ -452,19 +455,23 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
   size_t {{var.Name}}ImgId = images.size();
   images.push_back({{var.Name}}Img);
+  images2.push_back({{var.Name}}Img.image);
   {% else %}
   VkBuffer {{var.Name}}GPU = vk_utils::createBuffer(device, {{var.DataSize}}*sizeof({{var.DataType}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
   buffers.push_back({{var.Name}}GPU);
   {% endif %}
   {% endfor %}
 
-  VkDeviceMemory buffersMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, buffers, images);
-  VkDeviceMemory imagesMem  = VK_NULL_HANDLE;
-  if(buffersMem == VK_NULL_HANDLE)
-  {
-    buffersMem = vk_utils::allocateAndBindWithPadding(device, physicalDevice, buffers);
-    imagesMem  = vk_utils::allocateAndBindWithPadding(device, physicalDevice, std::vector<VkBuffer>(), images);
-  }
+  VkDeviceMemory buffersMem = VK_NULL_HANDLE; //vk_utils::allocateAndBindWithPadding(device, physicalDevice, buffers);
+  VkDeviceMemory imagesMem  = VK_NULL_HANDLE; //vk_utils::allocateAndBindWithPadding(device, physicalDevice, std::vector<VkBuffer>(), images);
+  
+  vk_utils::MemAllocInfo tempMemoryAllocInfo;
+  tempMemoryAllocInfo.memProps = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT; // TODO, selecty depending on device and sample/application (???)
+  if(buffers.size() != 0)
+    pAllocatorSpec->Allocate(tempMemoryAllocInfo, buffers);
+  if(images.size() != 0)
+    pAllocatorSpec->Allocate(tempMemoryAllocInfo, images2);
+
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
   {{var.Name}}Img = images[{{var.Name}}ImgId];
@@ -480,7 +487,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   
   auto afterCopy2 = std::chrono::high_resolution_clock::now(); // just declare it here, replace value later
   
-  if(buffersMem != VK_NULL_HANDLE) {
+
   auto afterInitBuffers = std::chrono::high_resolution_clock::now();
   m_exTime{{MainFunc.Name}}.msAPIOverhead += std::chrono::duration_cast<std::chrono::microseconds>(afterInitBuffers - afterCreateObjects).count()/1000.f;
   {% if MainFunc.FullImpl.HasImages %}
@@ -590,9 +597,6 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   this->ReadPlainMembers(pCopyHelper);
   afterCopy2 = std::chrono::high_resolution_clock::now();
   m_exTime{{MainFunc.Name}}.msCopyFromGPU = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy2 - beforeCopy2).count()/1000.f;
-  }
-  else // of (buffersMem != VK_NULL_HANDLE)
-    std::cout << "{{MainClassName}}_Generated::{{MainFunc.Name}}: can't allocate GPU memory inside 'allocateAndBindWithPadding'" << std::endl;
 
   // (6) free resources 
   //
