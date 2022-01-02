@@ -44,6 +44,3 @@ target_link_libraries(kslicer PRIVATE -lclang -lLLVM-12
                      -lclangStaticAnalyzerCheckers -lclangStaticAnalyzerCore -lclangAnalysis
                      -lclangIndex -lclangARCMigrate -lclangRewrite -lclangAST -lclangLex -lclangEdit
                      ) 
-
-
-                     

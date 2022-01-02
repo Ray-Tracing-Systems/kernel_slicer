@@ -48,12 +48,6 @@ set(VKUTILS_NEW_SRC ../vkutils/vk_copy.cpp
         ../vkutils/geom/vk_mesh.cpp
         ../vkutils/geom/cmesh.cpp)
 
-#set(NBODY_VIS render/create_render.cpp
-#        render/points_render.cpp
-#        render/points_render_compute.cpp
-#        generated_userfix.cpp
-#        glfw_window.cpp)
-
 add_executable(testapp
         main.cpp
         test_class.cpp
@@ -61,8 +55,6 @@ add_executable(testapp
         test_class_generated_ds.cpp
         stb_image_write.h
         test_class_generated_init.cpp
-#        ${NBODY_VIS}
-#        test_vector.cpp
         test_class_gpu.cpp
         ${VKUTILS_NEW_SRC}
         )

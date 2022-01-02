@@ -80,21 +80,23 @@ def extract_shader_lang(args):
 
 def find_image_pairs():
     filenames = utils.get_files(os.getcwd())
-    image_filenames = [f for f in filenames if f.startswith("zout_")]
+    image_filenames = sorted([f for f in filenames if f.startswith("zout_")])
     if len(image_filenames) % 2 != 0:
         Log().error("Odd count of generated images: it's impossible to match pairs")
         return None
-
+    step = int(len(image_filenames)/2)
+    #print("step = ", step)
+    #print(image_filenames)
     image_pairs = []
-    for i in range(0, len(image_filenames), 2):
-        image_pairs.append((image_filenames[i], image_filenames[i+1]))
+    for i in range(0, step):
+        image_pairs.append((image_filenames[i], image_filenames[i+step]))
 
     return image_pairs
 
 
 def compare_images(img_name1, img_name2):
     mse_res = utils.load_and_calc_mse(img_name1, img_name2)
-    threshold = 1e-3
+    threshold = 1e-4
     status = Status.OK if mse_res < threshold else Status.FAILED
 
     Log().status_info("{0}, {1} | mse = {2}".format(img_name1, img_name2, mse_res), status=status)
@@ -117,7 +119,7 @@ def check_generated_images(test_name):
 def run_sample(test_name, on_gpu=False, gpu_id=0):
     Log().info("Running sample: {0}, gpu={1}".format(test_name, on_gpu))
     
-    args = ["./build/testapp"]
+    args = ["./build/testapp", "--test"]
     if on_gpu:
         args = args + ["--gpu", "--gpu_id", str(gpu_id)]
 

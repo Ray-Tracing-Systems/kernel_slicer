@@ -77,10 +77,11 @@ VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO() const
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
 
 ## for MainFunc in MainFunctions
+  {% if MainFunc.IsRTV and not MainFunc.IsMega %} 
   {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
   vkDestroyBuffer(device, {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer, nullptr);
   {% endfor %}
-
+  {% endif %}
 ## endfor
  
   vkDestroyBuffer(device, m_classDataBuffer, nullptr);
@@ -427,7 +428,8 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount, bool a_t
   std::vector<LocalBuffers> groups;
   groups.reserve(16);
 
-## for MainFunc in MainFunctions  
+## for MainFunc in MainFunctions 
+  {% if MainFunc.IsRTV and not MainFunc.IsMega %} 
   LocalBuffers localBuffers{{MainFunc.Name}};
   localBuffers{{MainFunc.Name}}.bufs.reserve(32);
   {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
@@ -444,7 +446,7 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount, bool a_t
     localBuffers{{MainFunc.Name}}.size += pair.req.size;
   }
   groups.push_back(localBuffers{{MainFunc.Name}});
-
+  {% endif %}
 ## endfor
 
   size_t largestIndex = 0;
@@ -460,8 +462,12 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount, bool a_t
     for(size_t j=0;j<groups[i].bufsClean.size();j++)
       groups[i].bufsClean[j] = groups[i].bufs[j].buf;
   }
-
+  
+  {% if IsRTV and not IsMega %}
   auto& allBuffersRef = a_tempBuffersOverlay ? groups[largestIndex].bufsClean : allBuffers;
+  {% else %}
+  auto& allBuffersRef = allBuffers;
+  {% endif %}
 
   m_classDataBuffer = vk_utils::createBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | GetAdditionalFlagsForUBO());
   allBuffersRef.push_back(m_classDataBuffer);
