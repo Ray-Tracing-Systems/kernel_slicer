@@ -47,7 +47,9 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 1. git clone https://github.com/Ray-Tracing-Systems/kernel_slicer
 
-2. bash fetch_sources.bat 
+2. Download dependencies 
+ * cd kernel_slicer
+ * bash fetch_sources.bat 
 
 3. sudo apt-get install llvm-12-dev
 
