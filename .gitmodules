@@ -1,3 +1,6 @@
 [submodule "apps/volk"]
 	path = apps/volk
 	url = https://github.com/zeux/volk
+[submodule "apps/vkutils"]
+	path = apps/vkutils
+	url = https://gitlab.com/vsan/vkutils.git
