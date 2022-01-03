@@ -40,7 +40,7 @@ int main(int argc, const char** argv)
   // remember pitch-linear (x,y) for each thread to make our threading 1D
   //
   pImpl->PackXYBlock(WIN_WIDTH, WIN_HEIGHT, packedXY.data(), 1);
-  
+
   // test simple ray casting
   //
   pImpl->CastSingleRayBlock(WIN_HEIGHT*WIN_HEIGHT, packedXY.data(), pixelData.data(), 1);
