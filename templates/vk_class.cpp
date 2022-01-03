@@ -416,6 +416,23 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
 }
 
 ## endfor
+
+//static std::vector<size_t> AssingBufferOffsets(const std::vector<size_t> a_sizes)
+//{
+//  std::vector<size_t> mem_offsets;
+//  size_t currOffset = 0;
+//  for (size_t i = 0; i < a_sizes.size() - 1; i++)
+//  {
+//    mem_offsets.push_back(currOffset);
+//    currOffset += vk_utils::getPaddedSize(a_sizes[i], 1024);
+//  }
+//  auto last = a_sizes.size() - 1;
+//  mem_offsets.push_back(currOffset);
+//  currOffset += vk_utils::getPaddedSize(a_sizes[last], 1024);
+//  mem_offsets.push_back(currOffset);  // put total mem amount in last vector element
+//  return mem_offsets;
+//}
+
 ## for MainFunc in MainFunctions
 {% if MainFunc.OverrideMe %}
 
@@ -439,6 +456,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   // (2) create GPU objects
   //
   auto beforeCreateObjects = std::chrono::high_resolution_clock::now();
+  {# /**
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
   auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
@@ -461,17 +479,32 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   buffers.push_back({{var.Name}}GPU);
   {% endif %}
   {% endfor %}
-
-  VkDeviceMemory buffersMem = VK_NULL_HANDLE; //vk_utils::allocateAndBindWithPadding(device, physicalDevice, buffers);
-  VkDeviceMemory imagesMem  = VK_NULL_HANDLE; //vk_utils::allocateAndBindWithPadding(device, physicalDevice, std::vector<VkBuffer>(), images);
+  **/ #}
   
-  vk_utils::MemAllocInfo tempMemoryAllocInfo;
-  tempMemoryAllocInfo.memProps = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT; // TODO, selecty depending on device and sample/application (???)
-  if(buffers.size() != 0)
-    pAllocatorSpec->Allocate(tempMemoryAllocInfo, buffers);
-  if(images.size() != 0)
-    pAllocatorSpec->Allocate(tempMemoryAllocInfo, images2);
+  VkBuffer tempBuffer = pAllocatorSpec->GetBufferBlock(0);
 
+  size_t currOffset = 0;
+  {% for var in MainFunc.FullImpl.InputData %}
+  size_t {{var.Name}}Offset = currOffset;
+  size_t {{var.Name}}Size   = {{var.DataSize}}*sizeof({{var.DataType}});
+  currOffset += vk_utils::getPaddedSize({{var.Name}}Size, 1024);
+  {% endfor %}
+  {% for var in MainFunc.FullImpl.OutputData %}
+  size_t {{var.Name}}Offset = currOffset;
+  size_t {{var.Name}}Size   = {{var.DataSize}}*sizeof({{var.DataType}});
+  currOffset += vk_utils::getPaddedSize({{var.Name}}Size, 1024);
+  {% endfor %}
+
+  VkDeviceMemory buffersMem = VK_NULL_HANDLE; // vk_utils::allocateAndBindWithPadding(device, physicalDevice, buffers);
+  VkDeviceMemory imagesMem  = VK_NULL_HANDLE; // vk_utils::allocateAndBindWithPadding(device, physicalDevice, std::vector<VkBuffer>(), images);
+  
+  //vk_utils::MemAllocInfo tempMemoryAllocInfo;
+  //tempMemoryAllocInfo.memProps = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT; // TODO, selecty depending on device and sample/application (???)
+  //if(buffers.size() != 0)
+  //  pAllocatorSpec->Allocate(tempMemoryAllocInfo, buffers);
+  //if(images.size() != 0)
+  //  pAllocatorSpec->Allocate(tempMemoryAllocInfo, images2);
+  
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
   {{var.Name}}Img = images[{{var.Name}}ImgId];
@@ -487,7 +520,6 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   
   auto afterCopy2 = std::chrono::high_resolution_clock::now(); // just declare it here, replace value later
   
-
   auto afterInitBuffers = std::chrono::high_resolution_clock::now();
   m_exTime{{MainFunc.Name}}.msAPIOverhead += std::chrono::duration_cast<std::chrono::microseconds>(afterInitBuffers - afterCreateObjects).count()/1000.f;
   {% if MainFunc.FullImpl.HasImages %}
@@ -532,7 +564,8 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   {% if var.IsTexture %}
   pCopyHelper->UpdateImage({{var.Name}}Img.image, {{var.Name}}.getRawData(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp(), VK_IMAGE_LAYOUT_GENERAL);
   {% else %}
-  pCopyHelper->UpdateBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
+  {# /* pCopyHelper->UpdateBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}})); */ #}
+  pCopyHelper->UpdateBuffer(tempBuffer, {{var.Name}}Offset, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endif %}
   {% endfor %}
   auto afterCopy = std::chrono::high_resolution_clock::now();
@@ -591,7 +624,8 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   //todo: change image layout before transfer?
   pCopyHelper->ReadImage({{var.Name}}Img.image, {{var.Name}}.getRawData(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp());
   {% else %}
-  pCopyHelper->ReadBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
+  {# /* pCopyHelper->ReadBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}})); */ #}
+  pCopyHelper->ReadBuffer(tempBuffer, {{var.Name}}Offset, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endif %}
   {% endfor %}
   this->ReadPlainMembers(pCopyHelper);
@@ -605,7 +639,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   vkDestroyImageView(device, {{var.Name}}Img.view, nullptr);
   vkDestroyImage    (device, {{var.Name}}Img.image, nullptr);
   {% else %}
-  vkDestroyBuffer(device, {{var.Name}}GPU, nullptr);
+  //vkDestroyBuffer(device, {{var.Name}}GPU, nullptr);
   {% endif %}
   {% endfor %}
   {% for var in MainFunc.FullImpl.OutputData %}
@@ -613,7 +647,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   vkDestroyImageView(device, {{var.Name}}Img.view, nullptr);
   vkDestroyImage    (device, {{var.Name}}Img.image, nullptr);
   {% else %}
-  vkDestroyBuffer(device, {{var.Name}}GPU, nullptr);
+  //vkDestroyBuffer(device, {{var.Name}}GPU, nullptr);
   {% endif %}
   {% endfor %}
   if(buffersMem != VK_NULL_HANDLE)

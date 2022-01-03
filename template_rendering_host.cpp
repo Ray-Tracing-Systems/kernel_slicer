@@ -393,11 +393,13 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
       res["OutputData"].push_back(varData);
   }
   
-  // BloomCmd(commandBuffer, ...);
+  // both SetVulkanInOutFor_ControlFunc(...) and ControlFuncCmd;
   //
+  bool useBufferOffsets = true;
   std::stringstream callsOut;
   std::stringstream commandInOut;
   bool unclosedComma = false;
+
   for(uint32_t i=0; i < a_func.Node->getNumParams(); i++)
   {
     const clang::ParmVarDecl* pParam = a_func.Node->getParamDecl(i);
@@ -408,7 +410,11 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
 
     if(paramType->isPointerType())                                       //#TODO: implement for textures also
     {
-      commandInOut << pParam->getNameAsString() << "GPU, 0";
+      if(useBufferOffsets)
+        commandInOut << "tempBuffer, " << pParam->getNameAsString() << "Offset";
+      else
+        commandInOut << pParam->getNameAsString() << "GPU, 0";
+      
       if(i!=a_func.Node->getNumParams()-1)
       {
         commandInOut << ", ";
@@ -429,8 +435,10 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
         unclosedComma = false;
     }
   }
+  
+
   if(unclosedComma)
-    commandInOut << "0";
+    commandInOut << "0"; 
   res["ArgsOnCall"]     = callsOut.str();
   res["ArgsOnSetInOut"] = commandInOut.str();
   res["HasImages"]      = hasImages;
