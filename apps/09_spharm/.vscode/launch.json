@@ -39,7 +39,7 @@
       "request": "launch",
       "program": "${workspaceFolder}/cmake-build-debug/testapp",
       "args": [
-        "skybox"
+        "skybox", "--gpu"
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",

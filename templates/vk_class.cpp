@@ -456,13 +456,13 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
     outFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
   std::vector<VkBuffer> buffers;
   std::vector<VkImage>  images2;
-  std::vector<vk_utils::VulkanImageMem> images;
+  std::vector<vk_utils::VulkanImageMem*> images;
   auto beforeCreateObjects = std::chrono::high_resolution_clock::now();
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
   auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
   size_t {{var.Name}}ImgId = images.size();
-  images.push_back({{var.Name}}Img);
+  images.push_back(&{{var.Name}}Img);
   images2.push_back({{var.Name}}Img.image);
   {% else %}
   VkBuffer {{var.Name}}GPU = vk_utils::createBuffer(device, {{var.DataSize}}*sizeof({{var.DataType}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
@@ -473,7 +473,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   {% if var.IsTexture %}
   auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, outFlags);
   size_t {{var.Name}}ImgId = images.size();
-  images.push_back({{var.Name}}Img);
+  images.push_back(&{{var.Name}}Img);
   images2.push_back({{var.Name}}Img.image);
   {% else %}
   VkBuffer {{var.Name}}GPU = vk_utils::createBuffer(device, {{var.DataSize}}*sizeof({{var.DataType}}), outFlags);
@@ -504,18 +504,25 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   if(buffers.size() != 0)
     pAllocatorSpec->Allocate(tempMemoryAllocInfo, buffers);
   if(images.size() != 0)
+  {
     pAllocatorSpec->Allocate(tempMemoryAllocInfo, images2);
+    for(auto imgMem : images)
+    {
+      VkImageViewCreateInfo imageView{};
+      imageView.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+      imageView.viewType = VK_IMAGE_VIEW_TYPE_2D;
+      imageView.image    = imgMem->image;
+      imageView.format   = imgMem->format;
+      imageView.subresourceRange = {};
+      imageView.subresourceRange.aspectMask     = imgMem->aspectMask;
+      imageView.subresourceRange.baseMipLevel   = 0;
+      imageView.subresourceRange.levelCount     = imgMem->mipLvls;
+      imageView.subresourceRange.baseArrayLayer = 0;
+      imageView.subresourceRange.layerCount     = 1;
+      VK_CHECK_RESULT(vkCreateImageView(device, &imageView, nullptr, &imgMem->view));
+    }
+  }
   
-  {% for var in MainFunc.FullImpl.InputData %}
-  {% if var.IsTexture %}
-  {{var.Name}}Img = images[{{var.Name}}ImgId];
-  {% endif %}
-  {% endfor %}
-  {% for var in MainFunc.FullImpl.OutputData %}
-  {% if var.IsTexture %}
-  {{var.Name}}Img = images[{{var.Name}}ImgId];
-  {% endif %}
-  {% endfor %}
   auto afterCreateObjects = std::chrono::high_resolution_clock::now();
   m_exTime{{MainFunc.Name}}.msAPIOverhead = std::chrono::duration_cast<std::chrono::microseconds>(afterCreateObjects - beforeCreateObjects).count()/1000.f;
   
