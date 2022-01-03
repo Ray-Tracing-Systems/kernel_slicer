@@ -195,6 +195,7 @@ protected:
     size_t   {{Arg.Name}}Offset = 0;
     {% endif %}
     {% endfor %}
+    bool needToClearOutput = {% if MainFunc.IsRTV %}true{% else %}false{% endif %};
   } {{MainFunc.Name}}_local;
 
 ## endfor

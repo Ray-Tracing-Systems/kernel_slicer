@@ -395,7 +395,7 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
   
   // both SetVulkanInOutFor_ControlFunc(...) and ControlFuncCmd;
   //
-  bool useBufferOffsets = true;
+  bool useBufferOffsets = false;
   std::stringstream callsOut;
   std::stringstream commandInOut;
   bool unclosedComma = false;

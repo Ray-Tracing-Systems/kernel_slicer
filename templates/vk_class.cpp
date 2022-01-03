@@ -449,14 +449,15 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   auto             pCopyHelper    = m_ctx.pCopyHelper;
   auto             pAllocatorSpec = m_ctx.pAllocatorSpecial;
 
+  // (2) create GPU objects
+  //
+  auto outFlags = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  if({{MainFunc.Name}}_local.needToClearOutput)
+    outFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
   std::vector<VkBuffer> buffers;
   std::vector<VkImage>  images2;
   std::vector<vk_utils::VulkanImageMem> images;
-   
-  // (2) create GPU objects
-  //
   auto beforeCreateObjects = std::chrono::high_resolution_clock::now();
-  {# /**
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
   auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
@@ -470,19 +471,18 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   {% endfor %}
   {% for var in MainFunc.FullImpl.OutputData %}
   {% if var.IsTexture %}
-  auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
+  auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, outFlags);
   size_t {{var.Name}}ImgId = images.size();
   images.push_back({{var.Name}}Img);
   images2.push_back({{var.Name}}Img.image);
   {% else %}
-  VkBuffer {{var.Name}}GPU = vk_utils::createBuffer(device, {{var.DataSize}}*sizeof({{var.DataType}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  VkBuffer {{var.Name}}GPU = vk_utils::createBuffer(device, {{var.DataSize}}*sizeof({{var.DataType}}), outFlags);
   buffers.push_back({{var.Name}}GPU);
   {% endif %}
   {% endfor %}
-  **/ #}
   
+  {# /**
   VkBuffer tempBuffer = pAllocatorSpec->GetBufferBlock(0);
-
   size_t currOffset = 0;
   {% for var in MainFunc.FullImpl.InputData %}
   size_t {{var.Name}}Offset = currOffset;
@@ -494,16 +494,17 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   size_t {{var.Name}}Size   = {{var.DataSize}}*sizeof({{var.DataType}});
   currOffset += vk_utils::getPaddedSize({{var.Name}}Size, 1024);
   {% endfor %}
+  **/ #}
 
   VkDeviceMemory buffersMem = VK_NULL_HANDLE; // vk_utils::allocateAndBindWithPadding(device, physicalDevice, buffers);
   VkDeviceMemory imagesMem  = VK_NULL_HANDLE; // vk_utils::allocateAndBindWithPadding(device, physicalDevice, std::vector<VkBuffer>(), images);
   
-  //vk_utils::MemAllocInfo tempMemoryAllocInfo;
-  //tempMemoryAllocInfo.memProps = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT; // TODO, selecty depending on device and sample/application (???)
-  //if(buffers.size() != 0)
-  //  pAllocatorSpec->Allocate(tempMemoryAllocInfo, buffers);
-  //if(images.size() != 0)
-  //  pAllocatorSpec->Allocate(tempMemoryAllocInfo, images2);
+  vk_utils::MemAllocInfo tempMemoryAllocInfo;
+  tempMemoryAllocInfo.memProps = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT; // TODO, selecty depending on device and sample/application (???)
+  if(buffers.size() != 0)
+    pAllocatorSpec->Allocate(tempMemoryAllocInfo, buffers);
+  if(images.size() != 0)
+    pAllocatorSpec->Allocate(tempMemoryAllocInfo, images2);
   
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
@@ -564,8 +565,8 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   {% if var.IsTexture %}
   pCopyHelper->UpdateImage({{var.Name}}Img.image, {{var.Name}}.getRawData(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp(), VK_IMAGE_LAYOUT_GENERAL);
   {% else %}
-  {# /* pCopyHelper->UpdateBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}})); */ #}
-  pCopyHelper->UpdateBuffer(tempBuffer, {{var.Name}}Offset, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
+  pCopyHelper->UpdateBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}})); 
+  {# /* pCopyHelper->UpdateBuffer(tempBuffer, {{var.Name}}Offset, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}})); */ #}
   {% endif %}
   {% endfor %}
   auto afterCopy = std::chrono::high_resolution_clock::now();
@@ -594,6 +595,30 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   //  m_exTime{{MainFunc.Name}}.msLayoutChange += std::chrono::duration_cast<std::chrono::microseconds>(afterLayoutChange - afterCopy).count()/1000.f;
   //}
   //{% endif %}
+  
+  m_exTime{{MainFunc.Name}}.msExecuteOnGPU = 0;
+  {% if MainFunc.IsRTV %}
+  //// (3.1) clear all outputs if we are in RTV pattern
+  //
+  if({{MainFunc.Name}}_local.needToClearOutput)
+  {
+    VkCommandBuffer commandBuffer = vk_utils::createCommandBuffer(device, commandPool);
+    VkCommandBufferBeginInfo beginCommandBufferInfo = {};
+    beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+    vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
+    {% for var in MainFunc.FullImpl.OutputData %}
+    {% if not var.IsTexture %}
+    vkCmdFillBuffer(commandBuffer, {{var.Name}}GPU, 0, VK_WHOLE_SIZE, 0); // zero output buffer {{var.Name}}GPU
+    {% endif %}
+    {% endfor %}
+    vkEndCommandBuffer(commandBuffer);  
+    auto start = std::chrono::high_resolution_clock::now();
+    vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
+    auto stop = std::chrono::high_resolution_clock::now();
+    m_exTime{{MainFunc.Name}}.msExecuteOnGPU  += std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+  }
+  {% endif %}
 
   // (4) now execute algorithm on GPU
   //
@@ -613,7 +638,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
     vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
     {% endif %}
     auto stop = std::chrono::high_resolution_clock::now();
-    m_exTime{{MainFunc.Name}}.msExecuteOnGPU  = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
+    m_exTime{{MainFunc.Name}}.msExecuteOnGPU += std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
   }
   
   // (5) copy output data to CPU
@@ -624,8 +649,8 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   //todo: change image layout before transfer?
   pCopyHelper->ReadImage({{var.Name}}Img.image, {{var.Name}}.getRawData(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp());
   {% else %}
-  {# /* pCopyHelper->ReadBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}})); */ #}
-  pCopyHelper->ReadBuffer(tempBuffer, {{var.Name}}Offset, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
+  pCopyHelper->ReadBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
+  {# /* pCopyHelper->ReadBuffer(tempBuffer, {{var.Name}}Offset, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}})); */ #}
   {% endif %}
   {% endfor %}
   this->ReadPlainMembers(pCopyHelper);

@@ -159,12 +159,9 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit,
 void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, float4* out_color)
 {
   const uint XY = in_pakedXY[tid];
-  //const uint x  = (XY & 0x0000FFFF);
-  //const uint y  = (XY & 0xFFFF0000) >> 16;
+  const uint x  = (XY & 0x0000FFFF);
+  const uint y  = (XY & 0xFFFF0000) >> 16;
  
-  const uint y = tid/WIN_WIDTH;
-  const uint x = tid - y*WIN_WIDTH;
-
   out_color[y*WIN_WIDTH+x] += *a_accumColor;
 }
 
