@@ -55,6 +55,7 @@ namespace kslicer
   private:
     void ProcessKernelDef(const CXXMethodDecl *f,  std::unordered_map<std::string, KernelInfo>& a_funcList, const std::string& a_className);
     bool NeedToProcessDeclInFile(std::string a_fileName);
+    bool IsMainClassName(const std::string& a_typeName);
 
     CompilerInstance&     m_compiler;
     const ASTContext&     m_astContext;

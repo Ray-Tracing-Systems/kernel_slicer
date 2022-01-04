@@ -70,11 +70,12 @@ void {{MainClassName}}_Generated::InitVulkanObjects(VkDevice a_device, VkPhysica
   auto queueAllFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
   {% endif %}
   {% for ScnObj in SceneMembers %}
-  //@TODO: calculate these somehow?
-  uint32_t maxMeshes = 1024;
-  uint32_t maxTotalVertices = 1'000'000;
-  uint32_t maxTotalPrimitives = 1'000'000;
-  uint32_t maxPrimitivesPerMesh = 200'000;
+  uint32_t userRestrictions[4];
+  this->SceneRestrictions(userRestrictions);
+  uint32_t maxMeshes            = userRestrictions[0];
+  uint32_t maxTotalVertices     = userRestrictions[1];
+  uint32_t maxTotalPrimitives   = userRestrictions[2];
+  uint32_t maxPrimitivesPerMesh = userRestrictions[3];
   {{ScnObj}} = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, m_ctx.pCopyHelper,
                                                              maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true),
                                                             [](ISceneObject *p) { DeleteSceneRT(p); } );

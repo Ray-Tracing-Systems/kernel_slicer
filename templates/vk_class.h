@@ -311,6 +311,21 @@ protected:
   
   constexpr static uint32_t MEMCPY_BLOCK_SIZE = 256;
   constexpr static uint32_t REDUCTION_BLOCK_SIZE = 256;
+
+  {% if GenerateSceneRestrictions %}
+  virtual void SceneRestrictions(uint32_t a_restrictions[4]) const
+  {
+    uint32_t maxMeshes            = 1024;
+    uint32_t maxTotalVertices     = 1'000'000;
+    uint32_t maxTotalPrimitives   = 1'000'000;
+    uint32_t maxPrimitivesPerMesh = 200'000;
+
+    a_restrictions[0] = maxMeshes;
+    a_restrictions[1] = maxTotalVertices;
+    a_restrictions[2] = maxTotalPrimitives;
+    a_restrictions[3] = maxPrimitivesPerMesh;
+  }
+  {% endif %}
 };
 
 #endif

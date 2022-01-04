@@ -285,3 +285,4 @@ void TestClass::GetExecutionTime(const char* a_funcName, float a_out[4])
   if(std::string(a_funcName) == "NaivePathTrace" || std::string(a_funcName) == "NaivePathTraceBlock")
     a_out[0] = m_executionTimePT;
 }
+

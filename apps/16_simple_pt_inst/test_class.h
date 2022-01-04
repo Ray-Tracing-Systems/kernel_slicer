@@ -61,6 +61,18 @@ public:
 
   virtual void CommitDeviceData() {}                                     // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]); // will be overriden in generated class
+  virtual void SceneRestrictions(uint32_t a_restrictions[4]) const       // will be used by RTX code
+  {
+    uint32_t maxMeshes            = 1024;
+    uint32_t maxTotalVertices     = 4'000'000;
+    uint32_t maxTotalPrimitives   = 4'000'000;
+    uint32_t maxPrimitivesPerMesh = 1'000'000;
+
+    a_restrictions[0] = maxMeshes;
+    a_restrictions[1] = maxTotalVertices;
+    a_restrictions[2] = maxTotalPrimitives;
+    a_restrictions[3] = maxPrimitivesPerMesh;
+  }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
