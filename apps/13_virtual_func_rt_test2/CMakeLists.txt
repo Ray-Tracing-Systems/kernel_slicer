@@ -25,7 +25,8 @@ include_directories("../vkutils"
                     "../LiteMath"
                     "../loader_utils"
                     "../geo_utils"
-                    "../utils")
+                    "../utils"
+                    "../RayTracing")
                     
 link_directories("../volk")
 
@@ -40,7 +41,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -fPIC -Wno-attributes")
 add_executable(testapp main.cpp 
                        test_class.cpp
                        test_class_scene.cpp 
-                       test_class_gpu.cpp
                        test_class_generated.cpp
                        test_class_generated_init.cpp 
                        test_class_generated_ds.cpp 
@@ -58,7 +58,8 @@ add_executable(testapp main.cpp
                        ../vkutils/geom/vk_mesh.cpp
                        ../loader_utils/pugixml.cpp
                        ../loader_utils/hydraxml.cpp
-                       ../loader_utils/scene_mgr.cpp)
+                       ../loader_utils/scene_mgr.cpp
+                       ../RayTracing/VulkanRTX.cpp)
 
 set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} OpenMP::OpenMP_CXX volk dl)
