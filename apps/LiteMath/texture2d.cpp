@@ -4,7 +4,8 @@ inline uint pitch(uint x, uint y, uint pitch) { return y * pitch + x; }
 
 ///////////////////////////////////////////////////////////////////////
 
-template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_uv) const
+template<> 
+float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_uv) const
 {
   bool useBorderColor = false;
 
@@ -48,7 +49,8 @@ template<> float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_u
   return make_float4(0.0F, 0.0F, 0.0F, 0.0F);
 }
 
-template<> float4 Texture2D<uchar4>::sample(const Sampler& a_sampler, float2 a_uv) const
+template<> 
+float4 Texture2D<uchar4>::sample(const Sampler& a_sampler, float2 a_uv) const
 {
   bool useBorderColor = false;
 
@@ -99,6 +101,61 @@ template<> float4 Texture2D<uchar4>::sample(const Sampler& a_sampler, float2 a_u
   return make_float4(0.0F, 0.0F, 0.0F, 0.0F);
 }
 
+
+template<> 
+float4 Texture2D<uint32_t>::sample(const Sampler& a_sampler, float2 a_uv) const
+{
+  bool useBorderColor = false;
+  a_uv = process_coord(a_sampler.addressU, a_uv, &useBorderColor);
+    
+  if (useBorderColor) {
+    return a_sampler.borderColor;
+  }
+
+  const float2 textureSize = make_float2(m_width, m_height);
+  const float2 scaledUV    = textureSize * a_uv;
+  const int2   baseTexel   = make_int2(scaledUV.x, scaledUV.y);
+  const int    stride      = m_width;
+
+  const uchar4* data2      = (const uchar4*)m_data.data();
+
+  switch (a_sampler.filter)
+  {
+  
+  case Sampler::Filter::LINEAR:
+  {
+    const int2 cornerTexel  = make_int2(baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
+                                        baseTexel.y < m_height - 1 ? baseTexel.y + 1 : baseTexel.y);
+
+    const int offset0       = pitch(baseTexel.x  , baseTexel.y  , stride);
+    const int offset1       = pitch(cornerTexel.x, baseTexel.y  , stride);
+    const int offset2       = pitch(baseTexel.x  , cornerTexel.y, stride);
+    const int offset3       = pitch(cornerTexel.x, cornerTexel.y, stride);
+
+    const float2 lerpCoefs  = scaledUV - float2(baseTexel.x, baseTexel.y);
+    const uchar4 uData1     = lerp(data2[offset0], data2[offset1], lerpCoefs.x);
+    const uchar4 uData2     = lerp(data2[offset2], data2[offset3], lerpCoefs.x);
+    const float4 line1Color = (1.0f/255.0f)*float4(uData1.x, uData1.y, uData1.z, uData1.w);
+    const float4 line2Color = (1.0f/255.0f)*float4(uData2.x, uData2.y, uData2.z, uData2.w);
+
+    return lerp(line1Color, line2Color, lerpCoefs.y);
+  }     
+  case Sampler::Filter::NEAREST:
+  default:
+  {
+    const uchar4 uData = data2[pitch(baseTexel.x, baseTexel.y, stride)];
+    return (1.0f/255.0f)*float4(uData.x, uData.y, uData.z, uData.w);
+  }
+
+  //default:
+  //  fprintf(stderr, "Unsupported filter is used.");
+  //  break;
+  }
+
+  return make_float4(0.0F, 0.0F, 0.0F, 0.0F);
+}
+
+
 template<typename Type>
 float2 Texture2D<Type>::process_coord(const Sampler::AddressMode mode, const float2 coord, bool* use_border_color) const
 { 
@@ -135,3 +192,4 @@ float2 Texture2D<Type>::process_coord(const Sampler::AddressMode mode, const flo
 
   return clamp(res, 0.0f, 1.0F);
 } 
+

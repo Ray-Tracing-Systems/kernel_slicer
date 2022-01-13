@@ -51,7 +51,33 @@ struct ITexture2DCombined
   virtual Sampler      getSampler()        const = 0;
 };
 
+/**
+  \brief Can have specific effitient implementations for various textures and samplers
+*/
 template<typename Type>
-std::shared_ptr<ITexture2DCombined> MakeCombinedTexture2D(std::shared_ptr<Texture2D<Type> > a_texture, Sampler a_sampler);
+std::shared_ptr<ITexture2DCombined> MakeCombinedTexture2D(std::shared_ptr<Texture2D<Type> > a_texture, Sampler a_sampler) 
+{ 
+  // general implementation
+  //
+  struct CobminedImageSampler : public ITexture2DCombined
+  {
+    float4 sample(float2 a_uv) const override { return m_pTexture->sample(m_sampler, a_uv); }  
+  
+    unsigned int width()             const override { return m_pTexture->width();  }
+    unsigned int height()            const override { return m_pTexture->height(); }
+    unsigned int bpp()               const override { return m_pTexture->bpp();    }
+    unsigned int format()            const override { return 0;                    } // TODO: implement this 
+    Sampler      getSampler()        const override { return m_sampler; }
+
+    std::shared_ptr<Texture2D<Type> > m_pTexture;
+    Sampler                           m_sampler;
+  };
+
+  std::shared_ptr<CobminedImageSampler> pObj = std::make_shared<CobminedImageSampler>();
+  pObj->m_pTexture = a_texture;
+  pObj->m_sampler  = a_sampler;
+  return pObj;
+}
+
 
 #endif
