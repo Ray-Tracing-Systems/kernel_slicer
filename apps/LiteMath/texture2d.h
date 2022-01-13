@@ -37,29 +37,21 @@ protected:
   cvex::vector<Type> m_data;  
 };
 
-//static inline unsigned int encodeNormal(float3 n)
-//{
-//  const int x = (int)(n.x*32767.0f);
-//  const int y = (int)(n.y*32767.0f);
-//
-//  const unsigned int sign = (n.z >= 0) ? 0 : 1;
-//  const unsigned int sx   = ((unsigned int)(x & 0xfffe) | sign);
-//  const unsigned int sy   = ((unsigned int)(y & 0xffff) << 16);
-//
-//  return (sx | sy);
-//}
-//
-//static inline float3 decodeNormal(unsigned int a_data)
-//{  
-//  const unsigned int a_enc_x = (a_data  & 0x0000FFFF);
-//  const unsigned int a_enc_y = ((a_data & 0xFFFF0000) >> 16);
-//  const float sign           = (a_enc_x & 0x0001) ? -1.0f : 1.0f;
-//
-//  const float x = ((short)(a_enc_x & 0xfffe))*(1.0f / 32767.0f);
-//  const float y = ((short)(a_enc_y & 0xffff))*(1.0f / 32767.0f);
-//  const float z = sign*sqrt(fmax(1.0f - x*x - y*y, 0.0f));
-//
-//  return make_float3(x, y, z);
-//}
+/**
+  \brief combined image of unknown type (could be any) and sampler
+*/
+struct ITexture2DCombined 
+{
+  virtual float4       sample(float2 a_uv) const = 0;  
+  
+  virtual unsigned int width()             const = 0;
+  virtual unsigned int height()            const = 0;
+  virtual unsigned int bpp()               const = 0;
+  virtual unsigned int format()            const = 0; ///<! return uint(VkFormat) value 
+  virtual Sampler      getSampler()        const = 0;
+};
+
+template<typename Type>
+std::shared_ptr<ITexture2DCombined> MakeCombinedTexture2D(std::shared_ptr<Texture2D<Type> > a_texture, Sampler a_sampler);
 
 #endif
