@@ -418,22 +418,6 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
 
 ## endfor
 
-//static std::vector<size_t> AssingBufferOffsets(const std::vector<size_t> a_sizes)
-//{
-//  std::vector<size_t> mem_offsets;
-//  size_t currOffset = 0;
-//  for (size_t i = 0; i < a_sizes.size() - 1; i++)
-//  {
-//    mem_offsets.push_back(currOffset);
-//    currOffset += vk_utils::getPaddedSize(a_sizes[i], 1024);
-//  }
-//  auto last = a_sizes.size() - 1;
-//  mem_offsets.push_back(currOffset);
-//  currOffset += vk_utils::getPaddedSize(a_sizes[last], 1024);
-//  mem_offsets.push_back(currOffset);  // put total mem amount in last vector element
-//  return mem_offsets;
-//}
-
 ## for MainFunc in MainFunctions
 {% if MainFunc.OverrideMe %}
 

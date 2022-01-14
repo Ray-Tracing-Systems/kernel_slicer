@@ -10,14 +10,15 @@ template<typename Type>
 struct Texture2D
 {
   Texture2D() : m_width(0), m_height(0) {}
-  Texture2D(unsigned int w, unsigned int h) : m_width(w), m_height(h) { m_data.resize(w*h); }
+  Texture2D(unsigned int w, unsigned int h) : m_width(w), m_height(h) { m_data.resize(w*h); m_fw = float(w); m_fh = float(h); }
   Texture2D(unsigned int w, unsigned int h, const Type* a_data) : m_width(w), m_height(h) 
   {
     m_data.resize(w*h);
     memcpy(m_data.data(), a_data, w*h*sizeof(Type));
+    m_fw = float(w); m_fh = float(h);
   }
   
-  void   resize(unsigned int width, unsigned int height) { m_width = width; m_height = height; m_data.resize(width*height); }
+  void   resize(unsigned int width, unsigned int height) { m_width = width; m_height = height; m_data.resize(width*height); m_fw = float(width); m_fh = float(height); }
   float4 sample(const Sampler& a_sampler, float2 a_uv) const;    
   
   Type&  operator[](const int2 coord)       { return m_data[coord.y * m_width + coord.x]; }
@@ -35,6 +36,8 @@ protected:
   unsigned int m_width;
   unsigned int m_height;
   cvex::vector<Type> m_data;  
+  float m_fw;
+  float m_fh;
 };
 
 /**

@@ -41,7 +41,9 @@ TestCombinedImage::TestCombinedImage()
 
   std::shared_ptr< Texture2D<uint32_t> > pTexture = std::make_shared< Texture2D<uint32_t> >(3, 3, red_black_white.data());
   Sampler sampler;
-  sampler.filter = Sampler::Filter::LINEAR; 
+  sampler.filter   = Sampler::Filter::LINEAR; 
+  sampler.addressU = Sampler::AddressMode::CLAMP;
+  sampler.addressV = Sampler::AddressMode::CLAMP;
 
   m_pCombinedImage = MakeCombinedTexture2D(pTexture, sampler);
 }
