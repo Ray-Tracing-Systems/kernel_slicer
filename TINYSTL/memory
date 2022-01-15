@@ -16,6 +16,8 @@ namespace std
     T* operator->() { return data; }
     const T* operator->() const { return data; }
 
+    template<class Base> operator shared_ptr<Base>() { return nullptr; } 
+
   protected:
     T* data; 
   };
@@ -36,4 +38,8 @@ namespace std
   protected:
     T* data; 
   };
+
+
+  template<class T, class ... Args> shared_ptr<T> make_shared(Args && ... args) { return nullptr; }
+  template<class T, class ... Args> unique_ptr<T> make_unique(Args && ... args) { return nullptr; }
 }

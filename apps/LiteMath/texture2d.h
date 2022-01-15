@@ -35,9 +35,9 @@ protected:
 
   unsigned int m_width;
   unsigned int m_height;
-  cvex::vector<Type> m_data;  
   float m_fw;
   float m_fh;
+  cvex::vector<Type> m_data;  
 };
 
 /**
@@ -51,8 +51,12 @@ struct ITexture2DCombined
   virtual unsigned int height()            const = 0;
   virtual unsigned int bpp()               const = 0;
   virtual unsigned int format()            const = 0; ///<! return uint(VkFormat) value 
+  
   virtual Sampler      getSampler()        const = 0;
+  virtual const void*  getRawData()        const = 0;
 };
+
+template<typename T> uint32_t GetVulkanFormat();
 
 /**
   \brief Can have specific effitient implementations for various textures and samplers
@@ -69,8 +73,9 @@ std::shared_ptr<ITexture2DCombined> MakeCombinedTexture2D(std::shared_ptr<Textur
     unsigned int width()             const override { return m_pTexture->width();  }
     unsigned int height()            const override { return m_pTexture->height(); }
     unsigned int bpp()               const override { return m_pTexture->bpp();    }
-    unsigned int format()            const override { return 0;                    } // TODO: implement this 
-    Sampler      getSampler()        const override { return m_sampler; }
+    unsigned int format()            const override { return GetVulkanFormat<Type>();  } 
+    Sampler      getSampler()        const override { return m_sampler;                }
+    const void*  getRawData()        const override { return m_pTexture->getRawData(); }
 
     std::shared_ptr<Texture2D<Type> > m_pTexture;
     Sampler                           m_sampler;

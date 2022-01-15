@@ -31,6 +31,7 @@
 #include <buffer.h>
 #include <new>
 #include <cstddef>
+#include <initializer_list>
 
 using tinystl::buffer;
 
@@ -44,6 +45,7 @@ namespace std {
 		vector(size_t size);
 		vector(size_t size, const T& value);
 		vector(const T* first, const T* last);
+		vector(initializer_list<T> l);
 		~vector();
 
 		vector& operator=(const vector& other);
