@@ -557,24 +557,48 @@ std::vector<const kslicer::KernelInfo*> kslicer::extractUsedKernelsByName(const 
 kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
 {
   bool isContainer = false;
+  std::string containerType, containerDataType;
+ 
   const clang::Type* fieldTypePtr = qt.getTypePtr(); 
   if(fieldTypePtr != nullptr)
   {
     auto typeDecl = fieldTypePtr->getAsRecordDecl();  
     isContainer = (typeDecl != nullptr) && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl);
+    if(isContainer)
+    {
+      auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl); 
+      kslicer::SplitContainerTypes(specDecl, containerType, containerDataType);
+    }
   }
 
   DATA_KIND kind = DATA_KIND::KIND_UNKNOWN;
-  if(kslicer::IsTexture(qt))           // TODO: detect other cases
-    kind = kslicer::DATA_KIND::KIND_TEXTURE;
-  else if(kslicer::IsAccelStruct(qt))
-    kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
-  else if(qt->isPointerType())
+  if(qt->isPointerType())
     kind = kslicer::DATA_KIND::KIND_POINTER;
-  //else if(qt->isPODType())
-  //  kind = kslicer::DATA_KIND::KIND_POD;
   else if(isContainer)
-    kind = kslicer::DATA_KIND::KIND_VECTOR; 
+  {
+    ReplaceFirst(containerType,     "const ",  ""); // remove 'const '
+    ReplaceFirst(containerDataType, "struct ", ""); // remove 'struct '
+
+    if(kslicer::IsTextureContainer(containerType))
+    {
+      kind = kslicer::DATA_KIND::KIND_TEXTURE;
+    }
+    else if(containerType == "shared_ptr" || containerType == "unique_ptr")
+    {
+      if(containerDataType == "ISceneObject")
+        kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
+      else if(containerDataType == "ITexture2DCombined" || containerDataType == "ITexture3DCombined" || containerDataType == "ITextureCubeCombined")
+        kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED;
+    }
+    else if(containerType.find("vector") != std::string::npos)
+    {
+      // check if this is array of combined texture + samplers
+      //
+      kind = kslicer::DATA_KIND::KIND_VECTOR; 
+    }
+    else
+      kind = kslicer::DATA_KIND::KIND_VECTOR;  
+  }
   else 
     kind = kslicer::DATA_KIND::KIND_POD; 
   return kind;

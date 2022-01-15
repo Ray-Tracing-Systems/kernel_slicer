@@ -1310,18 +1310,30 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
     {
       bool needRewrite = true;
       const clang::QualType leftType = pTexName->getType(); 
+      std::string typeName = leftType.getAsString();
+      int texCoordId = 1;                                        ///<! texture.sample(m_sampler, texCoord)
       if(leftType->isPointerType()) // buffer ? --> ignore
+      {
+        const auto qt2        = leftType->getPointeeType();
+        std::string typeName2 = qt2.getAsString();
+        ReplaceFirst(typeName2, "const ",  ""); // remove 'const '
+        ReplaceFirst(typeName2, "struct ", ""); // remove 'struct '
+        ReplaceFirst(objName, "->",  "");       // remove '->'
+        needRewrite = (typeName2 == "ITexture2DCombined") || (typeName2 == "ITexture3DCombined") || (typeName2 == "ITextureCubeCombined");
+        texCoordId  = 0;                                         ///<! combinedObject->sample(texCoord)
+      }
+      else if(!kslicer::IsTexture(leftType))
+      {
         needRewrite = false;
-      if(!kslicer::IsTexture(leftType))
-        needRewrite = false;
-      
+      }
+
       if(needRewrite)
       {
         //clang::Expr* samplerExpr = call->getArg(0); // TODO: process sampler? use separate sampler and image?
         //clang::Expr* txCoordExpr = call->getArg(1);
         //std::string text1 = kslicer::GetRangeSourceCode(samplerExpr->getSourceRange(), m_compiler); 
         //std::string text2 = kslicer::GetRangeSourceCode(txCoordExpr->getSourceRange(), m_compiler); 
-        std::string texCoord = RecursiveRewrite(call->getArg(1));
+        std::string texCoord = RecursiveRewrite(call->getArg(texCoordId));
         m_rewriter.ReplaceText(call->getSourceRange(), std::string("texture") + "(" + objName + ", " + texCoord + ")");
         MarkRewritten(call); 
       }

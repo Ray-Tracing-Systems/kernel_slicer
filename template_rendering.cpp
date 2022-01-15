@@ -417,7 +417,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsUBO"]      = false;
       argj["IsImage"]    = false;
       argj["IsAccelStruct"] = false; 
-      if(pVecMember->second.isContainer && kslicer::IsTextureContainer(pVecMember->second.containerType))
+
+      if(pVecMember->second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
+      {
+        argj["IsImage"]  = true;
+        argj["Type"]     = "sampler2D";
+        argj["NeedFmt"]  = false;
+        argj["ImFormat"] = "";
+        argj["SizeOffset"] = 0;
+      }
+      else if(pVecMember->second.isContainer && kslicer::IsTextureContainer(pVecMember->second.containerType))
       {
         std::string imageFormat;
         auto pMemberAccess = k.texAccessInMemb.find(pVecMember->second.name); 

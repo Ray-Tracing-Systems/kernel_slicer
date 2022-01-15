@@ -742,13 +742,8 @@ int main(int argc, const char **argv)
               kslicer::UsedContainerInfo info;
               info.type          = member.second.type;
               info.name          = member.second.name;
+              info.kind          = member.second.kind;;
               info.isConst       = member.second.IsUsedTexture();      // strange thing ... 
-              if(member.second.IsUsedTexture())                        // TODO: detect other cases
-                info.kind = kslicer::DATA_KIND::KIND_TEXTURE;
-              else if(kslicer::IsAccelStruct(info.type))
-                info.kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
-              else 
-                info.kind = kslicer::DATA_KIND::KIND_VECTOR; 
               k.second.usedContainers[info.name] = info;
             }
             else 
