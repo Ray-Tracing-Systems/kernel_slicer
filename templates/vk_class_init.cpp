@@ -95,6 +95,8 @@ VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO() const
   {% for Var in ClassTextureVars %}
   vkDestroyImage    (device, m_vdata.{{Var.Name}}Texture, nullptr);
   vkDestroyImageView(device, m_vdata.{{Var.Name}}View, nullptr);
+  if(m_vdata.{{Var.Name}}Sampler != VK_NULL_HANDLE)
+     vkDestroySampler(device, m_vdata.{{Var.Name}}Sampler, nullptr);
   {% endfor %}
   {% for Sam in SamplerMembers %}
   vkDestroySampler(device, m_vdata.{{Sam}}, nullptr);
@@ -507,7 +509,10 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
   {% endfor %}
 
   {% for Var in ClassTextureVars %}
-  m_vdata.{{Var.Name}}Texture = CreateTexture2D({{Var.Name}}.width(), {{Var.Name}}.height(), {{Var.Format}}, {{Var.Usage}});
+  m_vdata.{{Var.Name}}Texture = CreateTexture2D({{Var.Name}}{{Var.AccessSymb}}width(), {{Var.Name}}{{Var.AccessSymb}}height(), {{Var.Format}}, {{Var.Usage}});
+  {% if Var.NeedSampler %}
+  m_vdata.{{Var.Name}}Sampler = CreateSampler({{Var.Name}}->getSampler());
+  {% endif %}
   memberTextures.push_back(m_vdata.{{Var.Name}}Texture);
   {% endfor %}
   {% for Sam in SamplerMembers %}

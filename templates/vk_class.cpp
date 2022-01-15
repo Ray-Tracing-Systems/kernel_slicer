@@ -130,7 +130,7 @@ void {{MainClassName}}_Generated::UpdateTextureMembers(std::shared_ptr<vk_utils:
   {% if length(ClassTextureVars) > 0 %}
   {% for Var in ClassTextureVars %}
   {% if Var.NeedUpdate %}
-  a_pCopyEngine->UpdateImage(m_vdata.{{Var.Name}}Texture, {{Var.Name}}.getRawData(), {{Var.Name}}.width(), {{Var.Name}}.height(), {{Var.Name}}.bpp(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL); 
+  a_pCopyEngine->UpdateImage(m_vdata.{{Var.Name}}Texture, {{Var.Name}}{{Var.AccessSymb}}getRawData(), {{Var.Name}}{{Var.AccessSymb}}width(), {{Var.Name}}{{Var.AccessSymb}}height(), {{Var.Name}}{{Var.AccessSymb}}bpp(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL); 
   {% endif %}
   {% endfor %}
   

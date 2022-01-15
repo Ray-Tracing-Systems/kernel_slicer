@@ -213,6 +213,7 @@ protected:
     {% for Tex in TextureMembers %}
     VkImage     {{Tex}}Texture = VK_NULL_HANDLE;
     VkImageView {{Tex}}View    = VK_NULL_HANDLE;
+    VkSampler   {{Tex}}Sampler = VK_NULL_HANDLE; ///<! auxilarry sampler, may not be used
     {% endfor %}
     {% for Sam in SamplerMembers %}
     VkSampler      {{Sam}} = VK_NULL_HANDLE;

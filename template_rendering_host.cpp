@@ -535,7 +535,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["SceneMembers"]   = std::vector<std::string>(); // ray tracing specific objects
   for(const auto var : a_classInfo.dataMembers)
   {
-    if(var.IsUsedTexture())
+    if(var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED || var.IsUsedTexture())
       data["TextureMembers"].push_back(var.name);
     else if(var.isContainer && kslicer::IsVectorContainer(var.containerType))
       data["VectorMembers"].push_back(var.name);
@@ -625,13 +625,26 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(!v.isContainer || v.usage != kslicer::DATA_USAGE::USAGE_USER)
       continue;
     
-    if(v.IsUsedTexture())
+    if(v.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
+    {
+      json local;
+      local["Name"] = v.name; 
+      local["Usage"]       = "VK_IMAGE_USAGE_SAMPLED_BIT";
+      local["NeedUpdate"]  = true; 
+      local["Format"]      = v.name + "->format()";
+      local["AccessSymb"]  = "->";
+      local["NeedSampler"] = true;
+      data["ClassTextureVars"].push_back(local);  
+    }
+    else if(v.IsUsedTexture())
     {
       json local;
       local["Name"]       = v.name;
       local["Format"]     = kslicer::InferenceVulkanTextureFormatFromTypeName(a_classInfo.pShaderFuncRewriter->RewriteStdVectorTypeStr(v.containerDataType), a_classInfo.halfFloatTextures);
       local["Usage"]      = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT";
       local["NeedUpdate"] = false;
+      local["NeedSampler"] = false;
+      local["AccessSymb"] = ".";
 
       if(v.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE || 
          v.tmask == TEX_ACCESS::TEX_ACCESS_READ   || 
@@ -673,6 +686,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["SizeOffset"]     = p1->second.offsetInTargetBuffer;
       local["CapacityOffset"] = p2->second.offsetInTargetBuffer;
       local["TypeOfData"]     = v.containerDataType;
+      local["AccessSymb"]     = ".";
+      local["NeedSampler"]    = false;
       data["ClassVectorVars"].push_back(local);     
     }
     // TODO: add processing for Scene/Acceleration structures
@@ -803,8 +818,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(const auto& container : k.usedContainers) // TODO: add support fo textures (!!!)
     {
       json argData;
-
-      if(container.second.isTexture())
+      if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
+      {
+        argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+      }
+      else if(container.second.isTexture())
       {
         auto pAccessFlags = k.texAccessInMemb.find(container.second.name);
         if(pAccessFlags == k.texAccessInMemb.end() || pAccessFlags->second == TEX_ACCESS::TEX_ACCESS_SAMPLE)
@@ -1148,8 +1166,16 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           arg["Name"]          = "m_vdata." + container.second.name;
           arg["IsTexture"]     = container.second.isTexture();
           arg["IsAccelStruct"] = container.second.isAccelStruct();
-
-          if(container.second.isTexture())
+          
+          if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
+          {
+            arg["IsTexture"]     = true;
+            arg["IsAccelStruct"] = false;
+            arg["AccessLayout"]  = "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
+            arg["AccessDSType"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+            arg["SamplerName"]   = std::string("m_vdata.") + container.second.name + "Sampler";
+          }
+          else if(container.second.isTexture())
           {
             auto pMember = a_classInfo.allDataMembers.find(container.second.name);
             bool isConst = (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE) || 
