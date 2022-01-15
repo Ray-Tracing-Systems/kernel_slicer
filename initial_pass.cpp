@@ -419,6 +419,8 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
     member.kind        = kslicer::DATA_KIND::KIND_POD;
   }
 
+  member.kind = kslicer::GetKindOfType(qt, member.isContainer);
+
   return member;
 }
 
