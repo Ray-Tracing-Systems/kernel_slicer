@@ -29,7 +29,18 @@ namespace kslicer
   struct IShaderCompiler;
   enum class VKERNEL_IMPL_TYPE { VKERNEL_SWITCH = 0, VKERNEL_INDIRECT_DISPATCH=2 };
   
-  enum class DATA_KIND  { KIND_UNKNOWN = 0, KIND_POD = 1, KIND_POINTER = 2, KIND_VECTOR = 3, KIND_TEXTURE = 4, KIND_ACCEL_STRUCT=5, KIND_HASH_TABLE=6, KIND_SAMPLER=7 };
+  enum class DATA_KIND  { KIND_UNKNOWN = 0, 
+                          KIND_POD,                             ///<! Any Plain Old Data
+                          KIND_POINTER,                         ///<! float*
+                          KIND_VECTOR,                          ///<! std::vector<float>
+                          KIND_TEXTURE,                         ///<! Texture2D<uchar4>
+                          KIND_TEXTURE_SAMPLER_COMBINED,        ///<! std::shared_ptr<ITexture2DCombined>
+                          KIND_TEXTURE_SAMPLER_COMBINED_ARRAY,  ///<! std::vector< std::shared_ptr<ITexture2DCombined> >
+                          KIND_ACCEL_STRUCT,                    ///<! std::shared_ptr<ISceneObject>
+                          KIND_HASH_TABLE,                      ///<! std::unordered_map<uint32_t,uint32_t> 
+                          KIND_SAMPLER                          ///<! Sampler
+                          };                       
+  
   enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
   enum class TEX_ACCESS { TEX_ACCESS_NOTHING = 0, TEX_ACCESS_READ = 1, TEX_ACCESS_WRITE = 2, TEX_ACCESS_SAMPLE = 4 };
 
@@ -1008,7 +1019,7 @@ namespace kslicer
   KernelInfo                     joinToMegaKernel        (const std::vector<const KernelInfo*>& a_kernels, const MainFuncInfo& cf);
   std::string                    GetCFMegaKernelCall     (const MainFuncInfo& a_mainFunc); 
   
-  DATA_KIND GetKindOfType(const clang::QualType qt, bool isContainer);
+  DATA_KIND GetKindOfType(const clang::QualType qt);
   CPP11_ATTR GetMethodAttr(const clang::CXXMethodDecl* f, clang::CompilerInstance& a_compiler);
 
   KernelInfo::ArgInfo ProcessParameter(const clang::ParmVarDecl *p); 

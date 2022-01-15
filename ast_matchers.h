@@ -325,9 +325,9 @@ namespace kslicer
             {
               const clang::QualType qt = var->getType();
               kslicer::UsedContainerInfo container;
-              container.type    = qt.getAsString();
-              container.name    = pDataMember->first;            
-              container.kind    = kslicer::GetKindOfType(qt, true);
+              container.name    = pDataMember->first; 
+              container.type    = pDataMember->second.type;           
+              container.kind    = pDataMember->second.kind;
               container.isConst = qt.isConstQualified();
               currKernel->usedContainers[container.name] = container;
             }

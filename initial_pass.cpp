@@ -409,8 +409,6 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
     member.isContainer = true;
     auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl); 
     kslicer::SplitContainerTypes(specDecl, member.containerType, member.containerDataType);
-    //std::cout << "  found container of type " << member.containerType.c_str() << ", which data type is " <<  member.containerDataType.c_str() << std::endl;
-    member.kind = kslicer::DATA_KIND::KIND_VECTOR;  // #TODO: probably texture or acceleration structure, check and refactor this!
   }
   else
   {
@@ -419,7 +417,7 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
     member.kind        = kslicer::DATA_KIND::KIND_POD;
   }
 
-  member.kind = kslicer::GetKindOfType(qt, member.isContainer);
+  member.kind = kslicer::GetKindOfType(qt);
 
   return member;
 }

@@ -207,7 +207,7 @@ public:
       kslicer::UsedContainerInfo container;
       container.type     = qt.getAsString();
       container.name     = setter + "_" + containerName;            
-      container.kind     = kslicer::GetKindOfType(qt, false);
+      container.kind     = kslicer::GetKindOfType(qt);
       container.isConst  = qt.isConstQualified();
       container.isSetter = true;
       container.setterPrefix = setter;
@@ -554,8 +554,16 @@ std::vector<const kslicer::KernelInfo*> kslicer::extractUsedKernelsByName(const 
   return result;
 }
 
-kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt, bool isContainer)
+kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
 {
+  bool isContainer = false;
+  const clang::Type* fieldTypePtr = qt.getTypePtr(); 
+  if(fieldTypePtr != nullptr)
+  {
+    auto typeDecl = fieldTypePtr->getAsRecordDecl();  
+    isContainer = (typeDecl != nullptr) && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl);
+  }
+
   DATA_KIND kind = DATA_KIND::KIND_UNKNOWN;
   if(kslicer::IsTexture(qt))           // TODO: detect other cases
     kind = kslicer::DATA_KIND::KIND_TEXTURE;

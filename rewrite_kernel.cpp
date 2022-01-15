@@ -213,7 +213,7 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
       kslicer::UsedContainerInfo container;
       container.type     = qt.getAsString();
       container.name     = setter + "_" + containerName;            
-      container.kind     = kslicer::GetKindOfType(qt, false);
+      container.kind     = kslicer::GetKindOfType(qt);
       container.isConst  = qt.isConstQualified();
       container.isSetter = true;
       container.setterPrefix = setter;
