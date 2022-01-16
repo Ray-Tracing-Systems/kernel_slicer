@@ -528,7 +528,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       data["KernelsDecls"].push_back("virtual void " + k.second.DeclCmd + ";");
   } 
 
-  data["TotalDSNumber"]                = a_classInfo.allDescriptorSetsInfo.size();
+  data["TotalDSNumber"]  = a_classInfo.allDescriptorSetsInfo.size();
 
   data["VectorMembers"]  = std::vector<std::string>();
   data["TextureMembers"] = std::vector<std::string>();

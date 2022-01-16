@@ -359,6 +359,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     auto commonArgs = a_classInfo.GetKernelCommonArgs(k);
     auto tidArgs    = a_classInfo.GetKernelTIDArgs(k);
     uint VArgsSize  = 0;
+    bool isTextureArrayUsedInThisKernel = false;
 
     json args = std::vector<std::string>();
     for(auto commonArg : commonArgs)
@@ -425,6 +426,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         argj["NeedFmt"]  = false;
         argj["ImFormat"] = "";
         argj["SizeOffset"] = 0;
+      }
+      else if(pVecMember->second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
+      {
+        argj["Name"]     = pVecMember->second.name + "[]";
+        argj["IsImage"]  = true;
+        argj["Type"]     = "sampler2D";
+        argj["NeedFmt"]  = false;
+        argj["ImFormat"] = "";
+        argj["SizeOffset"] = 0;
+        isTextureArrayUsedInThisKernel = true;
       }
       else if(pVecMember->second.isContainer && kslicer::IsTextureContainer(pVecMember->second.containerType))
       {
@@ -534,6 +545,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["SubjToRed"]  = reductionVars;
     kernelJson["ArrsToRed"]  = reductionArrs;
     kernelJson["FinishRed"]  = needFinishReductionPass;
+    kernelJson["NeedTexArray"] = isTextureArrayUsedInThisKernel;
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));

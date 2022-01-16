@@ -80,10 +80,9 @@ void TestCombinedImage::kernel2D_Run(const int a_width, const int a_height, unsi
     for (int x = 0; x < a_width; ++x)
     {  
       const float2 uv = get_uv(x, y, a_width, a_height);
-      int n = 0.0;
       float2 c = float2(-.445, 0.0) + (uv - float2(0.5)) * (2.0f + 1.7f * 0.2f);
       float2 z = float2(0.0);
-    
+      int    n = 0;
       for (int i = 0; i < FRACTAL_ITERATIONS; i++)
       {
         z = float2(z.x * z.x - z.y * z.y, 2.0f * z.x * z.y) + c;

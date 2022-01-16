@@ -578,6 +578,7 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
   {
     ReplaceFirst(containerType,     "const ",  ""); // remove 'const '
     ReplaceFirst(containerDataType, "struct ", ""); // remove 'struct '
+    ReplaceFirst(containerDataType, "class ", "");  // remove 'class '
 
     if(kslicer::IsTextureContainer(containerType))
     {
@@ -592,9 +593,30 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
     }
     else if(containerType.find("vector") != std::string::npos)
     {
-      // check if this is array of combined texture + samplers
-      //
-      kind = kslicer::DATA_KIND::KIND_VECTOR; 
+      auto typeDecl     = fieldTypePtr->getAsRecordDecl(); 
+      auto specDecl     = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl); 
+      auto typeOfData   = specDecl->getTemplateArgs()[0].getAsType();
+      auto typePtr2     = typeOfData.getTypePtr(); 
+      
+      if(typePtr2 != nullptr)
+      {
+        auto typeDecl2    = typePtr2->getAsRecordDecl();  
+        bool isContainer2 = (typeDecl2 != nullptr) && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl2);
+        if(isContainer2)
+        {
+          auto specDecl2 = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl2); 
+          kslicer::SplitContainerTypes(specDecl2, containerType, containerDataType);
+          ReplaceFirst(containerDataType, "const ",  ""); // remove 'const '
+          ReplaceFirst(containerDataType, "struct ", ""); // remove 'struct '
+          ReplaceFirst(containerDataType, "class ", "");  // remove 'class '
+          if(containerDataType == "ITexture2DCombined" || containerDataType == "ITexture3DCombined" || containerDataType == "ITextureCubeCombined")
+            kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY;
+          else
+            kind = kslicer::DATA_KIND::KIND_VECTOR; 
+        }
+      }
+      else
+        kind = kslicer::DATA_KIND::KIND_VECTOR; 
     }
     else
       kind = kslicer::DATA_KIND::KIND_VECTOR;  

@@ -3,6 +3,9 @@
 {% if length(Kernel.RTXNames) > 0 %}
 #extension GL_EXT_ray_query : require
 {% endif %}
+{% if Kernel.NeedTexArray %}
+#extension GL_EXT_nonuniform_qualifier : require
+{% endif %}
 
 #include "common_generated.h"
 
