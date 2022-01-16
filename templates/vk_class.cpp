@@ -127,11 +127,15 @@ void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vk_utils::
 
 void {{MainClassName}}_Generated::UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 { 
-  {% if length(ClassTextureVars) > 0 %}
+  {% if length(ClassTextureVars) > 0 or length(ClassTexArrayVars) > 0 %}
   {% for Var in ClassTextureVars %}
   {% if Var.NeedUpdate %}
   a_pCopyEngine->UpdateImage(m_vdata.{{Var.Name}}Texture, {{Var.Name}}{{Var.AccessSymb}}getRawData(), {{Var.Name}}{{Var.AccessSymb}}width(), {{Var.Name}}{{Var.AccessSymb}}height(), {{Var.Name}}{{Var.AccessSymb}}bpp(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL); 
   {% endif %}
+  {% endfor %}
+  {% for Var in ClassTexArrayVars %}
+  for(int i=0;i<m_vdata.{{Var.Name}}ArrayTexture.size();i++)
+    a_pCopyEngine->UpdateImage(m_vdata.{{Var.Name}}ArrayTexture[i], {{Var.Name}}[i]->getRawData(), {{Var.Name}}[i]->width(), {{Var.Name}}[i]->height(), {{Var.Name}}[i]->bpp(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL); 
   {% endfor %}
   
   std::array<VkImageMemoryBarrier, {{length(ClassTextureVars)}}> barriers;
@@ -156,7 +160,6 @@ void {{MainClassName}}_Generated::UpdateTextureMembers(std::shared_ptr<vk_utils:
   barriers[{{loop.index}}].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   barriers[{{loop.index}}].newLayout = VK_IMAGE_LAYOUT_GENERAL;
   {% endif %}
-
   {% endfor %}
   
   VkCommandBuffer cmdBuff       = a_pCopyEngine->CmdBuffer();
