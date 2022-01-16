@@ -213,14 +213,19 @@ protected:
     {% for Tex in TextureMembers %}
     VkImage     {{Tex}}Texture = VK_NULL_HANDLE;
     VkImageView {{Tex}}View    = VK_NULL_HANDLE;
-    VkSampler   {{Tex}}Sampler = VK_NULL_HANDLE; ///<! auxilarry sampler, may not be used
+    VkSampler   {{Tex}}Sampler = VK_NULL_HANDLE; ///<! aux sampler, may not be used
+    {% endfor %}
+    {% for Tex in TexArrayMembers %}
+    std::vector<VkImage>     {{Tex}}ArrayTexture;
+    std::vector<VkImageView> {{Tex}}ArrayView   ;
+    std::vector<VkSampler>   {{Tex}}ArraySampler; ///<! samplers for texture arrays are always used
     {% endfor %}
     {% for Sam in SamplerMembers %}
     VkSampler      {{Sam}} = VK_NULL_HANDLE;
     {% endfor %}
   } m_vdata;
 
-  {% if length(TextureMembers) > 0 %}
+  {% if length(TextureMembers) > 0 or length(ClassTexArrayVars) > 0 %}
   VkImage   CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage);
   VkSampler CreateSampler(const Sampler& a_sampler);
   struct TexAccessPair

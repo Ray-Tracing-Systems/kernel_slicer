@@ -98,6 +98,14 @@ VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO() const
   if(m_vdata.{{Var.Name}}Sampler != VK_NULL_HANDLE)
      vkDestroySampler(device, m_vdata.{{Var.Name}}Sampler, nullptr);
   {% endfor %}
+  {% for Var in ClassTexArrayVars %}
+  for(auto obj : m_vdata.{{Var.Name}}ArrayTexture)
+    vkDestroyImage(device, obj, nullptr);
+  for(auto obj : m_vdata.{{Var.Name}}ArrayView)
+    vkDestroyImageView(device, obj, nullptr);
+  for(auto obj : m_vdata.{{Var.Name}}ArraySampler)
+  vkDestroySampler(device, obj, nullptr);
+  {% endfor %}
   {% for Sam in SamplerMembers %}
   vkDestroySampler(device, m_vdata.{{Sam}}, nullptr);
   {% endfor %}
@@ -515,6 +523,23 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
   {% endif %}
   memberTextures.push_back(m_vdata.{{Var.Name}}Texture);
   {% endfor %}
+  {% for Var in ClassTexArrayVars %}
+  m_vdata.{{Var.Name}}ArrayTexture.resize(0);
+  m_vdata.{{Var.Name}}ArrayView.resize(0);
+  m_vdata.{{Var.Name}}ArraySampler.resize(0);
+  m_vdata.{{Var.Name}}ArrayTexture.reserve(64);
+  m_vdata.{{Var.Name}}ArrayView.reserve(64);
+  m_vdata.{{Var.Name}}ArraySampler.reserve(64);
+  for(auto imageObj : {{Var.Name}}) 
+  {
+    auto tex = CreateTexture2D(imageObj->width(), imageObj->height(), VkFormat(imageObj->format()), {{Var.Usage}});
+    auto sam = CreateSampler(imageObj->getSampler());
+    m_vdata.{{Var.Name}}ArrayTexture.push_back(tex);
+    m_vdata.{{Var.Name}}ArrayView.push_back(VK_NULL_HANDLE);
+    m_vdata.{{Var.Name}}ArraySampler.push_back(sam);
+    memberTextures.push_back(tex);
+  }
+  {% endfor %}
   {% for Sam in SamplerMembers %}
   m_vdata.{{Sam}} = CreateSampler({{Sam}});
   {% endfor %}
@@ -658,7 +683,7 @@ VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForArgsUBO(size_t a_si
 }
 {% endif %}
 
-{% if length(TextureMembers) > 0 %}
+{% if length(TextureMembers) > 0 or length(ClassTexArrayVars) > 0 %}
 VkImage {{MainClassName}}_Generated::CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage)
 {
   VkImage result = VK_NULL_HANDLE;
@@ -850,7 +875,7 @@ void {{MainClassName}}_Generated::FreeAllAllocations(std::vector<MemLoc>& a_memL
 void {{MainClassName}}_Generated::AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_images)
 {
   AllocAndBind(a_buffers);
-  {% if length(ClassTextureVars) > 0 %}
+  {% if length(ClassTextureVars) > 0 or length(ClassTexArrayVars) > 0 %}
   std::vector<VkFormat>             formats;  formats.reserve({{length(ClassTextureVars)}});
   std::vector<VkImageView*>         views;    views.reserve({{length(ClassTextureVars)}});
   std::vector<VkImage>              textures; textures.reserve({{length(ClassTextureVars)}});
@@ -860,6 +885,14 @@ void {{MainClassName}}_Generated::AllocMemoryForMemberBuffersAndImages(const std
   formats.push_back(VkFormat({{Var.Format}}));
   views.push_back(&m_vdata.{{Var.Name}}View);
   textures.push_back(m_vdata.{{Var.Name}}Texture);
+  {% endfor %}
+  {% for Var in ClassTexArrayVars %}
+  for(size_t i=0;i< m_vdata.{{Var.Name}}ArrayTexture.size(); i++) 
+  {
+    formats.push_back (VkFormat({{Var.Name}}[i]->format()));
+    views.push_back   (&m_vdata.{{Var.Name}}ArrayView[i]);
+    textures.push_back(m_vdata.{{Var.Name}}ArrayTexture[i]);
+  }
   {% endfor %}
 
   AllocAndBind(textures);

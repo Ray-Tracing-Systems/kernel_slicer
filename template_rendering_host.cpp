@@ -374,6 +374,7 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
     nlohmann::json varData;
     varData["Name"]      = var.name;
     varData["IsTexture"] = var.isTexture();
+    varData["IsTextureArray"] = (var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY);
     
     std::string type = var.type;
     if(var.isPointer())
@@ -528,15 +529,17 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       data["KernelsDecls"].push_back("virtual void " + k.second.DeclCmd + ";");
   } 
 
-  data["TotalDSNumber"]  = a_classInfo.allDescriptorSetsInfo.size();
-
-  data["VectorMembers"]  = std::vector<std::string>();
-  data["TextureMembers"] = std::vector<std::string>();
-  data["SceneMembers"]   = std::vector<std::string>(); // ray tracing specific objects
+  data["TotalDSNumber"]   = a_classInfo.allDescriptorSetsInfo.size();
+  data["VectorMembers"]   = std::vector<std::string>();
+  data["TextureMembers"]  = std::vector<std::string>();
+  data["TexArrayMembers"] = std::vector<std::string>();
+  data["SceneMembers"]    = std::vector<std::string>(); // ray tracing specific objects
   for(const auto var : a_classInfo.dataMembers)
   {
     if(var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED || var.IsUsedTexture())
       data["TextureMembers"].push_back(var.name);
+    else if(var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
+      data["TexArrayMembers"].push_back(var.name);
     else if(var.isContainer && kslicer::IsVectorContainer(var.containerType))
       data["VectorMembers"].push_back(var.name);
     else if(var.isContainer && kslicer::IsPointerContainer(var.containerType) && 
@@ -618,8 +621,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["ClassVars"].push_back(local);
   }
 
-  data["ClassVectorVars"]  = std::vector<std::string>();
-  data["ClassTextureVars"] = std::vector<std::string>();
+  data["ClassVectorVars"]   = std::vector<std::string>();
+  data["ClassTextureVars"]  = std::vector<std::string>();
+  data["ClassTexArrayVars"] = std::vector<std::string>();
   for(const auto& v : a_classInfo.dataMembers)
   {
     if(!v.isContainer || v.usage != kslicer::DATA_USAGE::USAGE_USER)
@@ -635,6 +639,17 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["AccessSymb"]  = "->";
       local["NeedSampler"] = true;
       data["ClassTextureVars"].push_back(local);  
+    }
+    else if(v.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
+    {
+      json local;
+      local["Name"] = v.name; 
+      local["Usage"]       = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT";
+      local["NeedUpdate"]  = true; 
+      local["Format"]      = v.name + "->format()";
+      local["AccessSymb"]  = "->";
+      local["NeedSampler"] = true;
+      data["ClassTexArrayVars"].push_back(local); 
     }
     else if(v.IsUsedTexture())
     {
@@ -818,7 +833,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(const auto& container : k.usedContainers) // TODO: add support fo textures (!!!)
     {
       json argData;
-      if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
+      if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED || container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
       {
         argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
       }
@@ -1131,6 +1146,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         arg["Offset"]        = 0;
         arg["IsTexture"]     = dsArgs.descriptorSetsInfo[j].isTexture();
         arg["IsAccelStruct"] = dsArgs.descriptorSetsInfo[j].isAccelStruct();
+        arg["IsTextureArray"]= (dsArgs.descriptorSetsInfo[j].kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY);
 
         if(dsArgs.descriptorSetsInfo[j].isTexture())
         {
@@ -1164,8 +1180,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           json arg;
           arg["Id"]            = realId;
           arg["Name"]          = "m_vdata." + container.second.name;
+          arg["NameOriginal"]  = container.second.name;
           arg["IsTexture"]     = container.second.isTexture();
           arg["IsAccelStruct"] = container.second.isAccelStruct();
+          arg["IsTextureArray"]= false;
           
           if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
           {
@@ -1174,6 +1192,15 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
             arg["AccessLayout"]  = "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
             arg["AccessDSType"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
             arg["SamplerName"]   = std::string("m_vdata.") + container.second.name + "Sampler";
+          }
+          else if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
+          {
+            arg["IsTexture"]     = false;
+            arg["IsTextureArray"]= true;
+            arg["IsAccelStruct"] = false;
+            arg["AccessLayout"]  = "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
+            arg["AccessDSType"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+            arg["SamplerName"]   = std::string("m_vdata.") + container.second.name + "ArraySampler";
           }
           else if(container.second.isTexture())
           {
@@ -1212,6 +1239,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           arg["Id"]        = realId;
           arg["Name"]      = std::string("m_") + hierarchy.interfaceName + "ObjPtr";
           arg["IsTexture"] = false;
+          arg["IsTextureArray"]= false;
           arg["IsAccelStruct"] = false;
 
           local["Args"].push_back(arg);

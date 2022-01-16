@@ -77,6 +77,14 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     descriptorImageInfo[{{Arg.Id}}].imageView   = {{Arg.Name}}View;
     descriptorImageInfo[{{Arg.Id}}].imageLayout = {{Arg.AccessLayout}};
     descriptorImageInfo[{{Arg.Id}}].sampler     = {{Arg.SamplerName}};
+    {% else if Arg.IsTextureArray %}
+    std::vector<VkDescriptorImageInfo> {{Arg.NameOriginal}}Info({{Arg.NameOriginal}}.size());
+    for(size_t i=0;i<{{Arg.NameOriginal}}.size();i++)
+    {
+      {{Arg.NameOriginal}}Info[i].sampler     = m_vdata.{{Arg.NameOriginal}}ArraySampler[i];
+      {{Arg.NameOriginal}}Info[i].imageView   = m_vdata.{{Arg.NameOriginal}}ArrayView   [i];
+      {{Arg.NameOriginal}}Info[i].imageLayout = {{Arg.AccessLayout}};
+    }
     {% else if Arg.IsAccelStruct %}
     {
       VulkanRTX* pScene = dynamic_cast<VulkanRTX*>({{Arg.Name}}.get());
@@ -91,7 +99,6 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     descriptorBufferInfo[{{Arg.Id}}].offset = {{Arg.Name}}Offset;
     descriptorBufferInfo[{{Arg.Id}}].range  = VK_WHOLE_SIZE;  
     {% endif %}
-
     writeDescriptorSet[{{Arg.Id}}]                  = VkWriteDescriptorSet{};
     writeDescriptorSet[{{Arg.Id}}].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writeDescriptorSet[{{Arg.Id}}].dstSet           = m_allGeneratedDS[{{DescriptorSet.Id}}];
@@ -101,6 +108,12 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     writeDescriptorSet[{{Arg.Id}}].descriptorType   = {{Arg.AccessDSType}};
     writeDescriptorSet[{{Arg.Id}}].pBufferInfo      = nullptr;
     writeDescriptorSet[{{Arg.Id}}].pImageInfo       = &descriptorImageInfo[{{Arg.Id}}];
+    writeDescriptorSet[{{Arg.Id}}].pTexelBufferView = nullptr; 
+    {% else if Arg.IsTextureArray %}
+    writeDescriptorSet[{{Arg.Id}}].descriptorCount  = {{Arg.NameOriginal}}Info.size();
+    writeDescriptorSet[{{Arg.Id}}].descriptorType   = {{Arg.AccessDSType}};
+    writeDescriptorSet[{{Arg.Id}}].pBufferInfo      = nullptr;
+    writeDescriptorSet[{{Arg.Id}}].pImageInfo       = {{Arg.NameOriginal}}Info.data();
     writeDescriptorSet[{{Arg.Id}}].pTexelBufferView = nullptr; 
     {% else if Arg.IsAccelStruct %}
     writeDescriptorSet[{{Arg.Id}}].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
