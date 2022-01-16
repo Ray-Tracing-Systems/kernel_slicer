@@ -509,7 +509,7 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
   {% endfor %}
 
   {% for Var in ClassTextureVars %}
-  m_vdata.{{Var.Name}}Texture = CreateTexture2D({{Var.Name}}{{Var.AccessSymb}}width(), {{Var.Name}}{{Var.AccessSymb}}height(), {{Var.Format}}, {{Var.Usage}});
+  m_vdata.{{Var.Name}}Texture = CreateTexture2D({{Var.Name}}{{Var.AccessSymb}}width(), {{Var.Name}}{{Var.AccessSymb}}height(), VkFormat({{Var.Format}}), {{Var.Usage}});
   {% if Var.NeedSampler %}
   m_vdata.{{Var.Name}}Sampler = CreateSampler({{Var.Name}}->getSampler());
   {% endif %}
@@ -857,7 +857,7 @@ void {{MainClassName}}_Generated::AllocMemoryForMemberBuffersAndImages(const std
   VkMemoryRequirements memoryRequirements;
 
   {% for Var in ClassTextureVars %}
-  formats.push_back({{Var.Format}});
+  formats.push_back(VkFormat({{Var.Format}}));
   views.push_back(&m_vdata.{{Var.Name}}View);
   textures.push_back(m_vdata.{{Var.Name}}Texture);
   {% endfor %}

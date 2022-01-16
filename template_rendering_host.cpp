@@ -629,7 +629,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     {
       json local;
       local["Name"] = v.name; 
-      local["Usage"]       = "VK_IMAGE_USAGE_SAMPLED_BIT";
+      local["Usage"]       = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT";
       local["NeedUpdate"]  = true; 
       local["Format"]      = v.name + "->format()";
       local["AccessSymb"]  = "->";
