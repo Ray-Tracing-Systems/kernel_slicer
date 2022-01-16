@@ -78,20 +78,22 @@ def extract_shader_lang(args):
     return lang
 
 
+def is_out_img(img_name: str):
+    return img_name.startswith("zout_") and utils.has_image_ext(img_name)
+
+
 def find_image_pairs():
     filenames = utils.get_files(os.getcwd())
-    image_filenames = sorted([f for f in filenames if f.startswith("zout_")])
-    if len(image_filenames) % 2 != 0:
-        Log().error("Odd count of generated images: it's impossible to match pairs")
+    image_filenames = sorted([f for f in filenames if is_out_img(f)])
+    cpu_images = [img for img in image_filenames if img.find("cpu") >= 0]
+    gpu_images = [img for img in image_filenames if img.find("gpu") >= 0]
+    if len(cpu_images) != len(gpu_images):
+        Log().error("Non equal image count for different code versions: cpu={0}, gpu={1}".format(
+            len(cpu_images), len(gpu_images)
+        ))
         return None
-    step = int(len(image_filenames)/2)
-    #print("step = ", step)
-    #print(image_filenames)
-    image_pairs = []
-    for i in range(0, step):
-        image_pairs.append((image_filenames[i], image_filenames[i+step]))
 
-    return image_pairs
+    return list(zip(cpu_images, gpu_images))
 
 
 def compare_images(img_name1, img_name2):

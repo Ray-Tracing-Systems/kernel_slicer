@@ -17,6 +17,22 @@ def load_and_calc_mse(img_name1, img_name2):
     return mse(img1, img2)
 
 
+def has_image_ext(img_name: str):
+    extensions = [
+        ".jpg", ".jpeg", ".jfif", ".pjpeg", ".pjp",  # JPEG
+        ".png",
+        ".svg",
+        ".bmp",
+        ".tif", ".tiff"
+    ]
+
+    for ext in extensions:
+        if img_name.endswith(ext):
+            return True
+
+    return False
+
+
 def get_files(dir_path):
     return [f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))]
 
