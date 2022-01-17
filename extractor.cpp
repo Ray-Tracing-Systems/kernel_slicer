@@ -556,6 +556,8 @@ std::vector<const kslicer::KernelInfo*> kslicer::extractUsedKernelsByName(const 
 
 kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
 {
+  std::string typeName = qt.getAsString();
+
   bool isContainer = false;
   std::string containerType, containerDataType;
  
@@ -573,7 +575,20 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
 
   DATA_KIND kind = DATA_KIND::KIND_UNKNOWN;
   if(qt->isPointerType())
+  {
+    //auto dataType     = qt->getPointeeType();
+    //containerDataType = dataType.getAsString();
+    //ReplaceFirst(containerType,     "const ",  ""); // remove 'const '
+    //ReplaceFirst(containerDataType, "struct ", ""); // remove 'struct '
+    //ReplaceFirst(containerDataType, "class ", "");  // remove 'class '
+    //
+    //if(containerDataType == "ISceneObject")
+    //  kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
+    //else if(containerDataType == "ITexture2DCombined" || containerDataType == "ITexture3DCombined" || containerDataType == "ITextureCubeCombined")
+    //  kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED;
+    //else
     kind = kslicer::DATA_KIND::KIND_POINTER;
+  }
   else if(isContainer)
   {
     ReplaceFirst(containerType,     "const ",  ""); // remove 'const '
@@ -607,6 +622,18 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
           auto specDecl2 = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl2); 
           kslicer::SplitContainerTypes(specDecl2, containerType, containerDataType);
           ReplaceFirst(containerDataType, "const ",  ""); // remove 'const '
+          ReplaceFirst(containerDataType, "struct ", ""); // remove 'struct '
+          ReplaceFirst(containerDataType, "class ", "");  // remove 'class '
+          if(containerDataType == "ITexture2DCombined" || containerDataType == "ITexture3DCombined" || containerDataType == "ITextureCubeCombined")
+            kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY;
+          else
+            kind = kslicer::DATA_KIND::KIND_VECTOR; 
+        }
+        else if(typeOfData->isPointerType())
+        {
+          auto dataType2 = typeOfData->getPointeeType();
+          containerDataType = dataType2.getAsString();
+          ReplaceFirst(containerType,     "const ",  ""); // remove 'const '
           ReplaceFirst(containerDataType, "struct ", ""); // remove 'struct '
           ReplaceFirst(containerDataType, "class ", "");  // remove 'class '
           if(containerDataType == "ITexture2DCombined" || containerDataType == "ITexture3DCombined" || containerDataType == "ITextureCubeCombined")

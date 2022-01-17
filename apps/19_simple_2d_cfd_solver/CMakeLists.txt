@@ -27,8 +27,6 @@ include_directories("../volk" "../LiteMath")
 link_directories("../volk")
 
 include_directories(../vkutils)
-
-find_package(glfw3 REQUIRED)
 include_directories(${GLFW_INCLUDE_DIRS})
 
 add_compile_definitions(USE_VOLK)

@@ -808,7 +808,17 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         continue;
       
       json argData;
-      if(arg.IsTexture())
+      argData["Name"]  = arg.name;
+      argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
+      argData["Count"] = "1";
+      argData["Id"]    = actualSize;
+
+      if(arg.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
+      {
+        argData["Count"] = arg.name + ".size()";
+        argData["Type"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+      }
+      else if(arg.IsTexture())
       {
         auto pAccessFlags = k.texAccessInArgs.find(arg.name);
         if(pAccessFlags->second == TEX_ACCESS::TEX_ACCESS_SAMPLE)
@@ -823,9 +833,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       else
         argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
 
-      argData["Name"]  = arg.name;
-      argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
-      argData["Id"]    = actualSize;
       kernelJson["Args"].push_back(argData);
       actualSize++;
     }
@@ -833,7 +840,17 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(const auto& container : k.usedContainers) // TODO: add support fo textures (!!!)
     {
       json argData;
-      if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED || container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
+      argData["Name"]  = container.second.name;
+      argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
+      argData["Id"]    = actualSize;
+      argData["Count"] = "1";
+      
+      if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
+      {
+        argData["Type"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+        argData["Count"] = container.second.name + ".size()";
+      }
+      else if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
       {
         argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
       }
@@ -852,9 +869,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       else
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
 
-      argData["Name"]  = container.second.name;
-      argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
-      argData["Id"]    = actualSize;
+      
       kernelJson["Args"].push_back(argData);
       actualSize++;
     }
@@ -866,6 +881,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       argData["Name"]  = "SomeInterfaceObjPointerData";
       argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
       argData["Id"]    = actualSize;
+      argData["Count"] = "1";
       kernelJson["Args"].push_back(argData);
       actualSize++;
 

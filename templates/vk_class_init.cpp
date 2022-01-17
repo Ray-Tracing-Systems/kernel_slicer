@@ -168,7 +168,7 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout
   // binding for {{KernelARG.Name}}
   dsBindings[{{KernelARG.Id}}].binding            = {{KernelARG.Id}};
   dsBindings[{{KernelARG.Id}}].descriptorType     = {{KernelARG.Type}};
-  dsBindings[{{KernelARG.Id}}].descriptorCount    = 1;
+  dsBindings[{{KernelARG.Id}}].descriptorCount    = {{KernelARG.Count}};
   dsBindings[{{KernelARG.Id}}].stageFlags         = {{KernelARG.Flags}};
   dsBindings[{{KernelARG.Id}}].pImmutableSamplers = nullptr;
 

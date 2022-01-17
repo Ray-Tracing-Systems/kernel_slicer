@@ -39,13 +39,19 @@ TestCombinedImage::TestCombinedImage()
                                            BLACK, WHITE, RED,
                                            WHITE, RED, BLACK };
 
-  std::shared_ptr< Texture2D<uint32_t> > pTexture = std::make_shared< Texture2D<uint32_t> >(3, 3, red_black_white.data());
+  std::vector<uint32_t> green_white = {GREEN, YELLOW, YELLOW, GREEN };                                         
+
+  std::shared_ptr< Texture2D<uint32_t> > pTexture  = std::make_shared< Texture2D<uint32_t> >(3, 3, red_black_white.data());
+  std::shared_ptr< Texture2D<uint32_t> > pTexture2 = std::make_shared< Texture2D<uint32_t> >(2, 2, green_white.data());
+
   Sampler sampler;
-  sampler.filter   = Sampler::Filter::LINEAR; 
+  sampler.filter   = Sampler::Filter::NEAREST; 
   sampler.addressU = Sampler::AddressMode::CLAMP;
   sampler.addressV = Sampler::AddressMode::CLAMP;
 
-  m_pCombinedImage = MakeCombinedTexture2D(pTexture, sampler);
+  m_pCombinedImage         = MakeCombinedTexture2D(pTexture, sampler);
+  m_pCombinedImage2Storage = MakeCombinedTexture2D(pTexture2, sampler);
+  m_pCombinedImage2        = m_pCombinedImage2Storage.get();
 }
 
 void TestCombinedImage::Run(const int a_width, const int a_height, unsigned int* outData1ui)
@@ -61,7 +67,13 @@ void TestCombinedImage::kernel2D_Run(const int a_width, const int a_height, unsi
     for (int x = 0; x < a_width; ++x)
     {  
       const float2 uv    = get_uv(x, y, a_width, a_height);
-      const float4 color = m_pCombinedImage->sample(uv*1.0f);
+
+      float4 color;
+
+      if(uv.x < 0.75f)
+        color = m_pCombinedImage->sample(uv*1.0f);
+      else
+        color = m_pCombinedImage2Storage->sample(uv*1.0f);
       outData1ui[y*a_width + x] = RealColorToUint32(color, 2.2f);
     }
   }

@@ -29,6 +29,9 @@ protected:
 
   std::shared_ptr<ITexture2DCombined> m_pCombinedImage = nullptr;
 
+  std::shared_ptr<ITexture2DCombined> m_pCombinedImage2Storage = nullptr; // don't used on GPU
+  ITexture2DCombined*                 m_pCombinedImage2        = nullptr; // test common pointer, used on GPU
+
   int                 m_blurRadius;                  
   int                 m_width;
   int                 m_height;                

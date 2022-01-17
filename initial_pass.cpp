@@ -377,6 +377,7 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
   kslicer::DataMemberInfo member;
   member.name        = fd->getName().str();
   member.type        = qt.getAsString();
+  member.kind        = kslicer::GetKindOfType(qt);
   member.sizeInBytes = 0; 
   member.offsetInTargetBuffer = 0;
 
@@ -384,12 +385,6 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
   //
   const clang::Type* fieldTypePtr = qt.getTypePtr(); 
   assert(fieldTypePtr != nullptr);
-  if(fieldTypePtr->isPointerType()) // we ignore pointers due to we can't pass them to GPU correctly
-  {
-    member.isPointer = true;
-    member.kind      = kslicer::DATA_KIND::KIND_POINTER;
-    return member;
-  }
 
   auto typeDecl = fieldTypePtr->getAsRecordDecl();  
   if(fieldTypePtr->isConstantArrayType())
@@ -414,10 +409,7 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
   {
     auto typeInfo      = astContext.getTypeInfo(qt);
     member.sizeInBytes = typeInfo.Width / 8; 
-    member.kind        = kslicer::DATA_KIND::KIND_POD;
   }
-
-  member.kind = kslicer::GetKindOfType(qt);
 
   return member;
 }
