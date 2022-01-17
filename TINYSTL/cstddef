@@ -1,12 +1,12 @@
 #ifndef TINYSTL_STDDEF_H
 #define TINYSTL_STDDEF_H
 #define NULL nullptr
-typedef unsigned long size_t;
-typedef unsigned long ptrdiff_t;
+typedef unsigned long long size_t;
+typedef unsigned long long ptrdiff_t;
 
 namespace std
 {
-  typedef unsigned long size_t;
-  typedef unsigned long ptrdiff_t;
+  typedef unsigned long long size_t;
+  typedef unsigned long long ptrdiff_t;
 };
 #endif
