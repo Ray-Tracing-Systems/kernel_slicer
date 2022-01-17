@@ -576,18 +576,18 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
   DATA_KIND kind = DATA_KIND::KIND_UNKNOWN;
   if(qt->isPointerType())
   {
-    //auto dataType     = qt->getPointeeType();
-    //containerDataType = dataType.getAsString();
-    //ReplaceFirst(containerType,     "const ",  ""); // remove 'const '
-    //ReplaceFirst(containerDataType, "struct ", ""); // remove 'struct '
-    //ReplaceFirst(containerDataType, "class ", "");  // remove 'class '
-    //
-    //if(containerDataType == "ISceneObject")
-    //  kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
-    //else if(containerDataType == "ITexture2DCombined" || containerDataType == "ITexture3DCombined" || containerDataType == "ITextureCubeCombined")
-    //  kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED;
-    //else
-    kind = kslicer::DATA_KIND::KIND_POINTER;
+    auto dataType     = qt->getPointeeType();
+    containerDataType = dataType.getAsString();
+    ReplaceFirst(containerDataType, "const ",  ""); // remove 'const '
+    ReplaceFirst(containerDataType, "struct ", ""); // remove 'struct '
+    ReplaceFirst(containerDataType, "class ", "");  // remove 'class '
+    
+    if(containerDataType == "ISceneObject")
+      kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
+    else if(containerDataType == "ITexture2DCombined" || containerDataType == "ITexture3DCombined" || containerDataType == "ITextureCubeCombined")
+      kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED;
+    else
+      kind = kslicer::DATA_KIND::KIND_POINTER;
   }
   else if(isContainer)
   {
@@ -633,7 +633,7 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
         {
           auto dataType2 = typeOfData->getPointeeType();
           containerDataType = dataType2.getAsString();
-          ReplaceFirst(containerType,     "const ",  ""); // remove 'const '
+          ReplaceFirst(containerDataType, "const ",  ""); // remove 'const '
           ReplaceFirst(containerDataType, "struct ", ""); // remove 'struct '
           ReplaceFirst(containerDataType, "class ", "");  // remove 'class '
           if(containerDataType == "ITexture2DCombined" || containerDataType == "ITexture3DCombined" || containerDataType == "ITextureCubeCombined")

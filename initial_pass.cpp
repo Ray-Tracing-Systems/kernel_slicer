@@ -410,6 +410,15 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
     auto typeInfo      = astContext.getTypeInfo(qt);
     member.sizeInBytes = typeInfo.Width / 8; 
   }
+ 
+  if(member.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED || 
+     member.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY || 
+     member.kind == kslicer::DATA_KIND::KIND_ACCEL_STRUCT)
+  {
+    member.isContainer = true; // for plain pointer members of special objects
+    // #TODO: get correct container type ... probably we need it ))
+  }
+
 
   return member;
 }

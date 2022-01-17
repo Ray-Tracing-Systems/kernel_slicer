@@ -65,6 +65,12 @@ TestCombinedImage::TestCombinedImage()
   m_textures.push_back(MakeCombinedTexture2D(pTexture2, sampler));
   m_textures.push_back(MakeCombinedTexture2D(pTexture3, sampler));
   m_textures.push_back(MakeCombinedTexture2D(pTexture4, sampler));
+
+  m_textures2.resize(4);
+  m_textures2[0] = m_textures[1].get();
+  m_textures2[1] = m_textures[2].get();
+  m_textures2[2] = m_textures[3].get();
+  m_textures2[3] = m_textures[0].get();
 }
 
 void TestCombinedImage::Run(const int a_width, const int a_height, unsigned int* outData1ui)
@@ -90,8 +96,12 @@ void TestCombinedImage::kernel2D_Run(const int a_width, const int a_height, unsi
           break;
         n++;
       }
-    
-      const float4 color = m_textures[n%4]->sample(uv); 
+      
+      float4 color;
+      if(uv.x < 0.75f)
+        color = m_textures[n%4]->sample(uv); 
+      else
+        color = m_textures2[n%4]->sample(uv);
       outData1ui[y*a_width + x] = RealColorToUint32(color, 2.2f);
     }
   }

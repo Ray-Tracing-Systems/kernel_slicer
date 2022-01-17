@@ -73,7 +73,7 @@ void TestCombinedImage::kernel2D_Run(const int a_width, const int a_height, unsi
       if(uv.x < 0.75f)
         color = m_pCombinedImage->sample(uv*1.0f);
       else
-        color = m_pCombinedImage2Storage->sample(uv*1.0f);
+        color = m_pCombinedImage2->sample(uv*1.0f);
       outData1ui[y*a_width + x] = RealColorToUint32(color, 2.2f);
     }
   }

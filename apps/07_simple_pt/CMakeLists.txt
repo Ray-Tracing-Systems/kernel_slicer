@@ -42,7 +42,6 @@ add_executable(testapp main.cpp
                        test_class.cpp
                        test_class_scene.cpp 
                        Bitmap.cpp
-                       test_class_gpu.cpp
                        test_class_generated.cpp
                        test_class_generated_init.cpp 
                        test_class_generated_ds.cpp
@@ -56,7 +55,6 @@ add_executable(testapp main.cpp
                        ../vkutils/vk_pipeline.cpp
                        ../vkutils/vk_descriptor_sets.cpp
                        ../vkutils/ray_tracing/vk_rt_utils.cpp
-                       ../vkutils/ray_tracing/vk_rt_funcs.cpp
                        ../vkutils/geom/vk_mesh.cpp
                        ../loader_utils/pugixml.cpp
                        ../loader_utils/hydraxml.cpp
