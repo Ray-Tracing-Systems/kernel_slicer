@@ -7,6 +7,14 @@ from skimage.io import imread
 from skimage import img_as_float
 
 
+def try_open(filename: str, mode: str):
+    try:
+        f = open(filename, mode)
+    except FileNotFoundError:
+        f = None
+    return f
+
+
 def mse(img1, img2):
     return ((img1 - img2)**2).mean()
 
