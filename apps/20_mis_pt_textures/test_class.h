@@ -58,7 +58,7 @@ public:
                                        uint* out_color  __attribute__((size("tid"))) );
   void NaivePathTrace (uint tid, uint a_maxDepth, const uint* in_pakedXY __attribute__((size("tid"))), 
                                                       float4* out_color  __attribute__((size("tid"))) );
-  void ShadowPathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY __attribute__((size("tid"))), 
+  void PathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY __attribute__((size("tid"))), 
                                                        float4* out_color __attribute__((size("tid"))) );
 
   virtual void PackXYBlock(uint tidX, uint tidY, uint* out_pakedXY, uint a_passNum);

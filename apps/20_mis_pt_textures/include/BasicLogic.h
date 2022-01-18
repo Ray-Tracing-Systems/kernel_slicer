@@ -207,6 +207,44 @@ static inline float GGX_GeomShadMask(const float cosThetaN, const float alpha)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static inline float3 mul3x3(float4x4 m, float3 v)
+{ 
+  return to_float3(m*to_float4(v, 0.0f));
+}
+
+static inline float3 mul4x3(float4x4 m, float3 v)
+{
+  return to_float3(m*to_float4(v, 1.0f));
+}
+
+static inline void transform_ray3f(float4x4 a_mWorldViewInv, float3* ray_pos, float3* ray_dir) 
+{
+  float3 pos  = mul4x3(a_mWorldViewInv, (*ray_pos));
+  float3 pos2 = mul4x3(a_mWorldViewInv, ((*ray_pos) + 100.0f*(*ray_dir)));
+
+  float3 diff = pos2 - pos;
+
+  (*ray_pos)  = pos;
+  (*ray_dir)  = normalize(diff);
+}
+
+static inline float PdfAtoW(const float aPdfA, const float aDist, const float aCosThere)
+{
+  return (aPdfA*aDist*aDist) / std::max(aCosThere, 1e-30f);
+}
+
+static inline float maxcomp(float3 v) { return std::max(v.x, std::max(v.y, v.z)); }
+
+static inline float misHeuristicPower1(float p) { return std::isfinite(p) ? std::abs(p) : 0.0f; }
+static inline float misWeightHeuristic(float a, float b)
+{
+  const float w = misHeuristicPower1(a) / std::max(misHeuristicPower1(a) + misHeuristicPower1(b), 1e-30f);
+  return std::isfinite(w) ? w : 0.0f;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #endif

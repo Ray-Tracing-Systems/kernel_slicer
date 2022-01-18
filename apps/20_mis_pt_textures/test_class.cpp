@@ -15,33 +15,6 @@ void TestClass::InitRandomGens(int a_maxThreads)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static inline float3 mul3x3(float4x4 m, float3 v)
-{ 
-  return to_float3(m*to_float4(v, 0.0f));
-}
-
-static inline float3 mul4x3(float4x4 m, float3 v)
-{
-  return to_float3(m*to_float4(v, 1.0f));
-}
-
-static inline void transform_ray3f(float4x4 a_mWorldViewInv, float3* ray_pos, float3* ray_dir) 
-{
-  float3 pos  = mul4x3(a_mWorldViewInv, (*ray_pos));
-  float3 pos2 = mul4x3(a_mWorldViewInv, ((*ray_pos) + 100.0f*(*ray_dir)));
-
-  float3 diff = pos2 - pos;
-
-  (*ray_pos)  = pos;
-  (*ray_dir)  = normalize(diff);
-}
-
-static inline float PdfAtoW(const float aPdfA, const float aDist, const float aCosThere)
-{
-  return (aPdfA*aDist*aDist) / std::max(aCosThere, 1e-30f);
-}
-
-static inline float maxcomp(float3 v) { return std::max(v.x, std::max(v.y, v.z)); }
 
 void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 {
@@ -225,13 +198,17 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
       else
         *accumColor = float4(0,0,0,0);
     }
-    else if(m_intergatorType == INTEGRATOR_SHADOW_PT)
-    {
-      
-    }
     else if(m_intergatorType == INTEGRATOR_MIS_PT) // #TODO: implement MIS weights
     {
-      
+      //float lgtPdf    = lightPdfSelectRev(pLight)*lightEvalPDF(...);
+      //float bsdfPdf   = misPrev.matSamplePdf;
+      //float misWeight = misWeightHeuristic(bsdfPdf, lgtPdf);  // (bsdfPdf*bsdfPdf) / (lgtPdf*lgtPdf + bsdfPdf*bsdfPdf);
+      //if (misPrev.isSpecular)
+      //  misWeight = 1.0f;
+      //if(dot(to_float3(*rayDirAndFar), float3(0,-1,0)) < 0.0f)
+      //  *accumColor = (*accumThoroughput)*lightIntensity*misWeight;
+      //else
+      //  *accumColor = float4(0,0,0,0);
     }
 
     return;
@@ -277,7 +254,19 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
   }
   else if(m_intergatorType == INTEGRATOR_MIS_PT) // #TODO: implement MIS weights
   {
-
+    //const auto evalData      = materialEval(pHitMaterial, &sc, (EVAL_FLAG_DEFAULT), /* global data --> */ m_pGlobals, m_texStorage, m_texStorageAux, &ptlCopy);
+    //const float cosThetaOut1 = fmax(+dot(shadowRayDir, surfElem.normal), 0.0f);
+    //const float cosThetaOut2 = fmax(-dot(shadowRayDir, surfElem.normal), 0.0f);
+    //const float3 bxdfVal     = (evalData.brdf*cosThetaOut1 + evalData.btdf*cosThetaOut2);   
+    //const float lgtPdf       = explicitSam.pdf*lightPickProb;
+    //float misWeight = misWeightHeuristic(lgtPdf, evalData.pdfFwd); // (lgtPdf*lgtPdf) / (lgtPdf*lgtPdf + bsdfPdf*bsdfPdf);
+    //if (explicitSam.isPoint)
+    //  misWeight = 1.0f;
+    
+    //const float4 currThoroughput = *accumThoroughput;
+    //const float4 shadeColor      = *in_shadeColor;
+    //*accumColor += currThoroughput*shadeColor;
+    //*accumThoroughput = currThoroughput*cosTheta*to_float4(bxdfVal, 0.0f)*misWeight; 
   }
 
   *rayPosAndNear = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
@@ -339,7 +328,7 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY
                            out_color);
 }
 
-void TestClass::ShadowPathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color)
+void TestClass::PathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color)
 {
   float4 accumColor, accumThoroughput;
   float4 rayPosAndNear, rayDirAndFar;
@@ -399,7 +388,7 @@ void TestClass::ShadowPathTraceBlock(uint tid, uint a_maxDepth, const uint* in_p
   #pragma omp parallel for default(shared)
   for(uint i=0;i<tid;i++)
     for(int j=0;j<a_passNum;j++)
-      ShadowPathTrace(i, 6, in_pakedXY, out_color);
+      PathTrace(i, 6, in_pakedXY, out_color);
   shadowPtTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
 }
 
@@ -407,6 +396,6 @@ void TestClass::GetExecutionTime(const char* a_funcName, float a_out[4])
 {
   if(std::string(a_funcName) == "NaivePathTrace" || std::string(a_funcName) == "NaivePathTraceBlock")
     a_out[0] = naivePtTime;
-  else if(std::string(a_funcName) == "ShadowPathTrace" || std::string(a_funcName) == "ShadowPathTraceBlock")
+  else if(std::string(a_funcName) == "PathTrace" || std::string(a_funcName) == "ShadowPathTraceBlock")
     a_out[0] = shadowPtTime;
 }
