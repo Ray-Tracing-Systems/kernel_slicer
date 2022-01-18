@@ -79,11 +79,11 @@ int main(int argc, const char** argv)
   else
     SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
-  std::cout << "ShadowPathTraceBlock() ... " << std::endl;
+  std::cout << "PathTraceBlock() ... " << std::endl;
   memset(realColor.data(), 0, sizeof(float)*4*realColor.size());
   pImpl->SetIntegratorType(TestClass::INTEGRATOR_SHADOW_PT);
   pImpl->UpdateMembersPlainData();
-  pImpl->ShadowPathTraceBlock(WIN_HEIGHT*WIN_HEIGHT, 6, packedXY.data(), realColor.data(), PASS_NUMBER);
+  pImpl->PathTraceBlock(WIN_HEIGHT*WIN_HEIGHT, 6, packedXY.data(), realColor.data(), PASS_NUMBER);
 
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
   {
@@ -107,10 +107,10 @@ int main(int argc, const char** argv)
   std::cout << "NaivePathTraceBlock(copy)  = " << timings[1] + timings[2] << " ms " << std::endl;
   std::cout << "NaivePathTraceBlock(ovrh)  = " << timings[3]              << " ms " << std::endl;
   std::cout << std::endl;
-  pImpl->GetExecutionTime("ShadowPathTraceBlock", timings);
-  std::cout << "ShadowPathTraceBlock(exec) = " << timings[0]              << " ms " << std::endl;
-  std::cout << "ShadowPathTraceBlock(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
-  std::cout << "ShadowPathTraceBlock(ovrh) = " << timings[3]              << " ms " << std::endl;
+  pImpl->GetExecutionTime("PathTraceBlock", timings);
+  std::cout << "PathTraceBlock(exec) = " << timings[0]              << " ms " << std::endl;
+  std::cout << "PathTraceBlock(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
+  std::cout << "PathTraceBlock(ovrh) = " << timings[3]              << " ms " << std::endl;
   return 0;
 }
 

@@ -15,6 +15,16 @@ void TestClass::InitRandomGens(int a_maxThreads)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+static inline float lambertEvalPDF (const float3 l, const float3 n) { return std::abs(dot(l, n)) * INV_PI; }
+
+static inline float areaDiffuseLightEvalPDF(const RectLightSource* pLight, float3 rayDir, float hitDist)
+{
+  const float pdfA   = 1.0f / (pLight->size.x*pLight->size.y);
+  const float cosVal = std::max(dot(rayDir, -1.0f*to_float3(pLight->norm)), 0.0f);
+  return PdfAtoW(pdfA, hitDist, cosVal);
+}
+
+static inline float lightPdfSelectRev(const RectLightSource* pLight) { return 1.0f; }
 
 void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 {
@@ -159,7 +169,7 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
     const float pdfA    = 1.0f / (m_light.size.x*m_light.size.y);
     const float cosVal  = std::max(dot(shadowRayDir, (-1.0f)*to_float3(m_light.norm)), 0.0f);
     const float pdfW    = PdfAtoW(pdfA, hitDist, cosVal);
-    const float3 samCol = M_PI*to_float3(m_light.intensity)/std::max(pdfW, 1e-6f);
+    const float3 samCol = M_PI*to_float3(m_light.intensity)/std::max(pdfW, 1e-6f); //////////////////////// Apply Pdf here, or outside of here ???
     
     const uint32_t matId = m_matIdByPrimId[m_matIdOffsets[lhit.geomId] + lhit.primId];
     const float4 mdata   = m_materials[matId];
@@ -168,12 +178,12 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
     const float cosThetaOut = std::max(dot(shadowRayDir, hit.norm), 0.0f);
 
     if(cosVal <= 0.0f)
-      *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
+      *out_shadeColor = float4(0.0f, 0.0f, 0.0f, pdfW);
     else
-      *out_shadeColor = to_float4(samCol*brdfVal*cosThetaOut, 0.0f);
+      *out_shadeColor = to_float4(samCol*brdfVal*cosThetaOut, pdfW);
   }
   else
-    *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, const float4* in_shadeColor, 
@@ -185,6 +195,13 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
 
   const uint32_t matId = m_matIdByPrimId[m_matIdOffsets[lhit.geomId] + lhit.primId];
   const float4 mdata   = m_materials[matId];
+
+  // process surcase hit case
+  //
+  const float3 ray_dir = to_float3(*rayDirAndFar);
+  SurfaceHit hit;
+  hit.pos  = to_float3(*rayPosAndNear) + lhit.t*ray_dir;
+  hit.norm = EvalSurfaceNormal(lhit.primId, lhit.geomId, *in_bars, m_matIdOffsets.data(), m_vertOffset.data(), m_triIndices.data(), m_vNorm4f.data());
 
   // process light hit case
   //
@@ -200,7 +217,8 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
     }
     else if(m_intergatorType == INTEGRATOR_MIS_PT) // #TODO: implement MIS weights
     {
-      //float lgtPdf    = lightPdfSelectRev(pLight)*lightEvalPDF(...);
+      //const float hitDist = length(ray_pos -  hit.pos);
+      //float lgtPdf    = lightPdfSelectRev(&m_light)*areaDiffuseLightEvalPDF(&m_light, ray_dir, hitDist);
       //float bsdfPdf   = misPrev.matSamplePdf;
       //float misWeight = misWeightHeuristic(bsdfPdf, lgtPdf);  // (bsdfPdf*bsdfPdf) / (lgtPdf*lgtPdf + bsdfPdf*bsdfPdf);
       //if (misPrev.isSpecular)
@@ -213,14 +231,6 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
 
     return;
   }
-  
-  // process surcase hit case
-  //
-  const float3 ray_dir = to_float3(*rayDirAndFar);
-  
-  SurfaceHit hit;
-  hit.pos  = to_float3(*rayPosAndNear) + lhit.t*ray_dir;
-  hit.norm = EvalSurfaceNormal(lhit.primId, lhit.geomId, *in_bars, m_matIdOffsets.data(), m_vertOffset.data(), m_triIndices.data(), m_vNorm4f.data());
   
   // transform surface point with matrix and flip normal if needed
   {
@@ -254,19 +264,17 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
   }
   else if(m_intergatorType == INTEGRATOR_MIS_PT) // #TODO: implement MIS weights
   {
-    //const auto evalData      = materialEval(pHitMaterial, &sc, (EVAL_FLAG_DEFAULT), /* global data --> */ m_pGlobals, m_texStorage, m_texStorageAux, &ptlCopy);
-    //const float cosThetaOut1 = fmax(+dot(shadowRayDir, surfElem.normal), 0.0f);
-    //const float cosThetaOut2 = fmax(-dot(shadowRayDir, surfElem.normal), 0.0f);
-    //const float3 bxdfVal     = (evalData.brdf*cosThetaOut1 + evalData.btdf*cosThetaOut2);   
-    //const float lgtPdf       = explicitSam.pdf*lightPickProb;
-    //float misWeight = misWeightHeuristic(lgtPdf, evalData.pdfFwd); // (lgtPdf*lgtPdf) / (lgtPdf*lgtPdf + bsdfPdf*bsdfPdf);
-    //if (explicitSam.isPoint)
+    //const float3 shadowRayDir  = normalize(explicitSam.pos - hit.pos);
+    const float4 currThoroughput = *accumThoroughput;
+    const float4 shadeColor      = *in_shadeColor;
+    //const float lgtPdf         = shadeColor.w;
+    //const float bsdfPdf = lambertEvalPDF(hit.norm, shadowRayDir);
+    //float misWeight = misWeightHeuristic(lgtPdf, bsdfPdf); 
+    //if (lgtPdf < 0.0f)
     //  misWeight = 1.0f;
     
-    //const float4 currThoroughput = *accumThoroughput;
-    //const float4 shadeColor      = *in_shadeColor;
-    //*accumColor += currThoroughput*shadeColor;
-    //*accumThoroughput = currThoroughput*cosTheta*to_float4(bxdfVal, 0.0f)*misWeight; 
+    //*accumColor += currThoroughput*shadeColor*misWeight;
+    //*accumThoroughput = currThoroughput*cosTheta*to_float4(bxdfVal, 0.0f); 
   }
 
   *rayPosAndNear = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
@@ -339,14 +347,14 @@ void TestClass::PathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, flo
   {
     Lite_Hit hit;
     float2   baricentrics; 
-    float4   shadeColor;
     if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
       break;
     
+    float4 shadeColorAndPdf; // pack pdf to color.w to save space; if pdf < 0.0, then say we have point light source
     kernel_SampleLightSource(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, &gen, 
-                             &shadeColor);
+                             &shadeColorAndPdf);
 
-    kernel_NextBounce(tid, &hit, &baricentrics, &shadeColor,
+    kernel_NextBounce(tid, &hit, &baricentrics, &shadeColorAndPdf,
                       &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen);
   }
 
@@ -382,7 +390,7 @@ void TestClass::NaivePathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pa
   naivePtTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
 }
 
-void TestClass::ShadowPathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passNum)
+void TestClass::PathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passNum)
 {
   auto start = std::chrono::high_resolution_clock::now();
   #pragma omp parallel for default(shared)
@@ -396,6 +404,6 @@ void TestClass::GetExecutionTime(const char* a_funcName, float a_out[4])
 {
   if(std::string(a_funcName) == "NaivePathTrace" || std::string(a_funcName) == "NaivePathTraceBlock")
     a_out[0] = naivePtTime;
-  else if(std::string(a_funcName) == "PathTrace" || std::string(a_funcName) == "ShadowPathTraceBlock")
+  else if(std::string(a_funcName) == "PathTrace" || std::string(a_funcName) == "PathTraceBlock")
     a_out[0] = shadowPtTime;
 }
