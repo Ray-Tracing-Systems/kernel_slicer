@@ -5,8 +5,8 @@
 #include "Bitmap.h"
 #include "ArgParser.h"
 
-//#include "vk_context.h"
-//std::shared_ptr<TestClass> CreateTestClass_Generated(int a_maxThreads, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+#include "vk_context.h"
+std::shared_ptr<TestClass> CreateTestClass_Generated(int a_maxThreads, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 
 int main(int argc, const char** argv)
 {
@@ -29,9 +29,9 @@ int main(int argc, const char** argv)
   bool onGPU = args.hasOption("--gpu");
   if(onGPU)
   {
-    //unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-    //auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
-    //pImpl = CreateTestClass_Generated( WIN_WIDTH*WIN_HEIGHT, ctx, WIN_WIDTH*WIN_HEIGHT);
+    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+    pImpl = CreateTestClass_Generated( WIN_WIDTH*WIN_HEIGHT, ctx, WIN_WIDTH*WIN_HEIGHT);
   }
   else
     pImpl = std::make_shared<TestClass>(WIN_WIDTH*WIN_HEIGHT);
