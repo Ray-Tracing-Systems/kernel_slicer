@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <string>
 #include <vector>
+#include <array>
 #include <unordered_map>
 
 
@@ -32,6 +33,24 @@ std::string serialize(const std::vector<T> &vec) {
   return result;
 }
 
+template <typename T, std::size_t N>
+std::string serialize(const std::array<T, N> &arr) {
+  std::string result = "[";
+  for (size_t i = 0; i < N; ++i) {
+    result += serialize(arr[i]) + ((i == N-1) ? "]" : ", ");
+  }
+  return result;
+}
+
+template <typename T, std::size_t N>
+std::string serialize(T(&arr)[N]) {
+  std::string result = "[";
+  for (size_t i = 0; i < N; ++i) {
+    result += serialize(arr[i]) + ((i == N-1) ? "]" : ", ");
+  }
+  return result;
+}
+
 
 class JSONLog {
 public:
@@ -40,6 +59,12 @@ public:
   template <typename T>
   static void write(const std::string &name, T data) {
     std::string s_data = serialize(data);
+    std::cout << name << " : " << s_data << std::endl;
+    _json.values[name] = s_data;
+  }
+  template <typename T, std::size_t N>
+  static void write(const std::string &name, T(&arr)[N]) {
+    std::string s_data = serialize(arr);
     std::cout << name << " : " << s_data << std::endl;
     _json.values[name] = s_data;
   }
