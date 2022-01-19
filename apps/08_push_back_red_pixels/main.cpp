@@ -22,9 +22,13 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
 
+  std::string inputImagePath = "../01_intersectSphere/zout_cpu.bmp";
   int w, h;
-  std::vector<uint32_t> inputImageData = LoadBMP("../01_intersectSphere/zout_cpu.bmp", &w, &h);
-  
+  std::vector<uint32_t> inputImageData = LoadBMP(inputImagePath.c_str(), &w, &h);
+  if (inputImageData.empty()) {
+    throw std::runtime_error("Failed to load image from path: "+inputImagePath);
+  }
+
   ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
@@ -39,6 +43,8 @@ int main(int argc, const char** argv)
   }
   else
     pImpl = std::make_shared<RedPixels>();
+  
+  std::string backendName = onGPU ? "gpu" : "cpu";
 
   pImpl->SetMaxDataSize(inputImageData.size());
   pImpl->CommitDeviceData();
@@ -53,16 +59,8 @@ int main(int argc, const char** argv)
   JSONLog::write("m_testMax(float)", pImpl->m_testMax);
   JSONLog::write("found red pixels count", pImpl->m_foundPixels.size());
 
-  if(onGPU)
-  {
-    JSONLog::saveToFile("zout_gpu.json");
-    SaveBMP("z_out_gpu.bmp", inputImageData.data(), w, h);
-  }
-  else
-  {
-    JSONLog::saveToFile("zout_cpu.json");
-    SaveBMP("z_out_cpu.bmp", inputImageData.data(), w, h);
-  }
+  JSONLog::saveToFile("zout_"+backendName+".json");
+  SaveBMP(("zout_"+backendName+".bmp").c_str(), inputImageData.data(), w, h);
   
   std::cout << std::endl;
   
