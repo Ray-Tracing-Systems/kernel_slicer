@@ -275,7 +275,18 @@ void TestClass::kernel_NextBounce(uint tid, uint bounce, const Lite_Hit* in_hit,
     const float4 currThoroughput = *accumThoroughput;
     const float4 shadeColor      = *in_shadeColor;
     const float lgtPdf           = shadeColor.w;
-    //const float bsdfPdf = EvalPDF(materialId, &hit, &explicitSam);
+    
+    //ShadeContext sc;
+    //sc.wp = surfElem.pos;
+    //sc.l  = shadowRayDir;
+    //sc.v  = (-1.0f)*ray_dir;
+    //sc.n  = surfElem.normal;
+    //sc.fn = surfElem.flatNormal;
+    //sc.tg = surfElem.tangent;
+    //sc.bn = surfElem.biTangent;
+    //sc.tc = surfElem.texCoord;
+
+    //const float bsdfPdf = EvalPDF(materialId, &hit, &explicitSam, &sc);
     //float misWeight = misWeightHeuristic(lgtPdf, bsdfPdf); 
     //if (lgtPdf < 0.0f)
     //  misWeight = 1.0f;
