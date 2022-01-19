@@ -85,8 +85,8 @@ public:
 
   void kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, const uint* in_pakedXY, uint* out_color);
 
-  void kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, const float4* in_shadeColor,
-                         float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput, RandomGen* a_gen);
+  void kernel_NextBounce(uint tid, uint bounce, const Lite_Hit* in_hit, const float2* in_bars, const float4* in_shadeColor,
+                         float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput, RandomGen* a_gen, MisData* a_prevMisData);
   
   void kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar,
                                 const Lite_Hit* in_hit, const float2* in_bars, RandomGen* a_gen, float4* out_shadeColor);

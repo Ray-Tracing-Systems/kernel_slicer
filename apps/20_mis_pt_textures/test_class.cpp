@@ -26,6 +26,7 @@ static inline float areaDiffuseLightEvalPDF(const RectLightSource* pLight, float
 
 static inline float lightPdfSelectRev(const RectLightSource* pLight) { return 1.0f; }
 
+
 void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 {
   const uint XY = packedXY[tid];
@@ -186,8 +187,8 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
     *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
-void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, const float4* in_shadeColor, 
-                                  float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput, RandomGen* a_gen)
+void TestClass::kernel_NextBounce(uint tid, uint bounce, const Lite_Hit* in_hit, const float2* in_bars, const float4* in_shadeColor, 
+                                  float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput, RandomGen* a_gen, MisData* misPrev)
 {
   const Lite_Hit lhit = *in_hit;
   if(lhit.geomId == -1)
@@ -217,12 +218,15 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
     }
     else if(m_intergatorType == INTEGRATOR_MIS_PT) // #TODO: implement MIS weights
     {
-      //const float hitDist = length(ray_pos -  hit.pos);
-      //float lgtPdf    = lightPdfSelectRev(&m_light)*areaDiffuseLightEvalPDF(&m_light, ray_dir, hitDist);
-      //float bsdfPdf   = misPrev.matSamplePdf;
-      //float misWeight = misWeightHeuristic(bsdfPdf, lgtPdf);  // (bsdfPdf*bsdfPdf) / (lgtPdf*lgtPdf + bsdfPdf*bsdfPdf);
-      //if (misPrev.isSpecular)
-      //  misWeight = 1.0f;
+      float misWeight = 1.0f;
+      if(bounce > 0)
+      {
+        //const int lightId   = ...
+        //const float lgtPdf  = lightPdfSelectRev(lightId)*lightEvalPDF(lightId, ray_pos, ray_dir, &surfElem);
+        //const float bsdfPdf = misPrev->matSamplePdf;
+        //if (bsdfPdf < 0.0f) // specular bounce
+          //misWeight = 1.0f;
+      }
       //if(dot(to_float3(*rayDirAndFar), float3(0,-1,0)) < 0.0f)
       //  *accumColor = (*accumThoroughput)*lightIntensity*misWeight;
       //else
@@ -250,6 +254,10 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
   const float3 brdfVal = (cosTheta > 1e-5f) ? to_float3(mdata) * INV_PI : float3(0,0,0);
   const float3 bxdfVal = brdfVal * (1.0f / std::max(pdfVal, 1e-10f));
   
+  MisData nextBounceData;               // remember current pdfW for next bounce
+  nextBounceData.matSamplePdf = pdfVal; //
+  *misPrev = nextBounceData;            //
+
   if(m_intergatorType == INTEGRATOR_STUPID_PT)
   {
     *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f); 
@@ -264,21 +272,20 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
   }
   else if(m_intergatorType == INTEGRATOR_MIS_PT) // #TODO: implement MIS weights
   {
-    //const float3 shadowRayDir  = normalize(explicitSam.pos - hit.pos);
     const float4 currThoroughput = *accumThoroughput;
     const float4 shadeColor      = *in_shadeColor;
-    //const float lgtPdf         = shadeColor.w;
-    //const float bsdfPdf = lambertEvalPDF(hit.norm, shadowRayDir);
+    const float lgtPdf           = shadeColor.w;
+    //const float bsdfPdf = EvalPDF(materialId, &hit, &explicitSam);
     //float misWeight = misWeightHeuristic(lgtPdf, bsdfPdf); 
     //if (lgtPdf < 0.0f)
     //  misWeight = 1.0f;
-    
     //*accumColor += currThoroughput*shadeColor*misWeight;
     //*accumThoroughput = currThoroughput*cosTheta*to_float4(bxdfVal, 0.0f); 
   }
 
   *rayPosAndNear = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
   *rayDirAndFar  = to_float4(newDir, MAXFLOAT);
+  
 }
 
 
@@ -318,6 +325,7 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY
   float4 accumColor, accumThoroughput;
   float4 rayPosAndNear, rayDirAndFar;
   RandomGen gen; 
+  MisData   mis;
   kernel_InitEyeRay2(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen);
 
   for(int depth = 0; depth < a_maxDepth; depth++) 
@@ -328,8 +336,8 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY
     if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
       break;
     
-    kernel_NextBounce(tid, &hit, &baricentrics, &shadeColor,
-                      &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen);
+    kernel_NextBounce(tid, depth, &hit, &baricentrics, &shadeColor,
+                      &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &mis);
   }
 
   kernel_ContributeToImage(tid, &accumColor, &gen, in_pakedXY, 
@@ -341,6 +349,7 @@ void TestClass::PathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, flo
   float4 accumColor, accumThoroughput;
   float4 rayPosAndNear, rayDirAndFar;
   RandomGen gen; 
+  MisData   mis;
   kernel_InitEyeRay2(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen);
 
   for(int depth = 0; depth < a_maxDepth; depth++) 
@@ -354,8 +363,8 @@ void TestClass::PathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, flo
     kernel_SampleLightSource(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, &gen, 
                              &shadeColorAndPdf);
 
-    kernel_NextBounce(tid, &hit, &baricentrics, &shadeColorAndPdf,
-                      &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen);
+    kernel_NextBounce(tid, depth, &hit, &baricentrics, &shadeColorAndPdf,
+                      &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &mis);
   }
 
   kernel_ContributeToImage(tid, &accumColor, &gen, in_pakedXY, 
