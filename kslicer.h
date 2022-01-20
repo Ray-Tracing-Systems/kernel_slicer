@@ -356,7 +356,8 @@ namespace kslicer
     
     bool isConst               = false;
     bool umpersanned           = false; // just signal that '&' was applied to this argument, and thus it is likely to be (ARG_REFERENCE_LOCAL or ARG_REFERENCE_CLASS_POD)
-    
+    bool isExcludedRTV         = false;
+
     bool isTexture    () const { return (kind == DATA_KIND::KIND_TEXTURE); }
     bool isAccelStruct() const { return (kind == DATA_KIND::KIND_ACCEL_STRUCT); }
   };

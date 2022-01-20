@@ -458,6 +458,9 @@ static bool IgnoreArgForDS(size_t j, const std::vector<kslicer::ArgReferenceOnCa
     if(argsOnCall[j].argType == kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_CONST_OR_LITERAL)
       return true;
     
+    if(argsOnCall[j].isExcludedRTV)
+      return true;
+
     bool found     = false;   
     size_t foundId = size_t(-1);
     for(size_t k=0;k<args.size();k++)
@@ -1129,24 +1132,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
       uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
-      {
-        //if(!internalKernel)
-        //{
-        //  if(j >= pFoundKernel->second.args.size())
-        //  {
-        //    std::cout << "[kslicer]: strange warning on DS binding for kernel " << dsArgs.originKernelName.c_str() << " arg " << j << " exceed size which is " << pFoundKernel->second.args.size() << std::endl;
-        //    
-        //    debug << dsArgs.kernelName.c_str() << ": "<< std::endl;
-        //    for(size_t k=0;k<pFoundKernel->second.args.size();k++)
-        //      debug << k << "\t" << pFoundKernel->second.args[k].name << std::endl;
-        //    debug << "-----------------------------------" << std::endl;
-        //    for(size_t k=0;k<dsArgs.descriptorSetsInfo.size();k++)
-        //      debug << k << "\t" << dsArgs.descriptorSetsInfo[k].name << std::endl;
-        //    debug << "===================================" << std::endl;
-        //    debug << std::endl;
-        //  }
-        //}
-        
+      {  
         if(!internalKernel)
         {
           const bool ignoreArg = IgnoreArgForDS(j, dsArgs.descriptorSetsInfo, pFoundKernel->second.args, pFoundKernel->second.name, a_classInfo.IsRTV()); 

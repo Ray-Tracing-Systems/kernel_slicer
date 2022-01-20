@@ -84,9 +84,7 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
 
   // extract arguments to form correct descriptor set
   // 
-  //std::stringstream strOut1;
-  //strOut1 << "_" << m_dsTagId;                                                    
-  const auto args     = ExtractArgumentsOfAKernelCall(f);                                          
+  const auto args     = ExtractArgumentsOfAKernelCall(f, m_mainFunc.ExcludeList);                                          
   const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, pKernelInfo->second.usedContainers); // + strOut1.str();
   auto p2 = dsIdBySignature.find(callSign);
   if(p2 == dsIdBySignature.end())
@@ -209,7 +207,7 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
                                             // for example it can be 'MyMemcpy' for 'memcpy' if in host code we have (MyMemcpyLayout, MyMemcpyPipeline, MyMemcpyDSLayout)
                                             // please note that you should init MyMemcpyLayout, MyMemcpyPipeline, MyMemcpyDSLayout yourself in the generated code!                                      
   
-  auto memCpyArgs = ExtractArgumentsOfAKernelCall(call);
+  auto memCpyArgs = ExtractArgumentsOfAKernelCall(call, m_mainFunc.ExcludeList);
 
   std::vector<ArgReferenceOnCall> args(2); // TODO: extract corretc arguments from memcpy (CallExpr* call)
   {
@@ -384,7 +382,7 @@ bool kslicer::IsPointerContainer(const std::string& a_typeName)
 }
 
 
-std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractArgumentsOfAKernelCall(CallExpr* f)
+std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractArgumentsOfAKernelCall(CallExpr* f, const std::unordered_set<std::string>& a_excludeList)
 {
   std::vector<kslicer::ArgReferenceOnCall> args; 
   args.reserve(20);
@@ -427,8 +425,9 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
     }
 
     ArgReferenceOnCall arg; 
-    arg.type    = q.getAsString();
-    arg.isConst = q.isConstQualified() || isConstFound;
+    arg.type          = q.getAsString();
+    arg.isConst       = q.isConstQualified() || isConstFound;
+    arg.isExcludedRTV = (a_excludeList.find(text) != a_excludeList.end());
     if(text[0] == '&')
     {
       arg.umpersanned = true;

@@ -20,11 +20,12 @@ kslicer::KernelInfo::ArgInfo kslicer::ProcessParameter(const clang::ParmVarDecl 
   kslicer::KernelInfo::ArgInfo arg;
   arg.name = p->getNameAsString();
   arg.type = clang::QualType::getAsString(q.split(), clang::PrintingPolicy{ {} });
+  arg.kind = kslicer::GetKindOfType(q);
   arg.size = 1;
   if (q->isPointerType()) 
   {
-    arg.size      = 1; // Because C always pass reference
-    arg.kind      = kslicer::DATA_KIND::KIND_POINTER;
+    arg.size = 1; // Because C always pass reference
+    arg.kind = kslicer::DATA_KIND::KIND_POINTER;
   }
   else if(q->isReferenceType()) 
   {

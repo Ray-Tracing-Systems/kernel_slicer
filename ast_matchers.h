@@ -102,6 +102,7 @@ namespace kslicer
       const BreakStmt * brkExp = result.Nodes.getNodeAs<BreakStmt>("breakLoop");
       const ReturnStmt* extExp = result.Nodes.getNodeAs<ReturnStmt>("exitFunction"); 
 
+
       if(func_decl && kern_call && kern) // found kernel call in MainFunc
       {
         std::string kName = kern->getNameAsString();
