@@ -152,9 +152,7 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
     hit.norm = flipNorm*hit.norm;
   }
 
-  RandomGen gen   = *a_gen;
-  const float2 uv = rndFloat2_Pseudo(&gen);
-  *a_gen          = gen;  
+  const float2 uv = rndFloat2_Pseudo(a_gen);
   
   const float2 sampleOff = 2.0f*(float2(-0.5,-0.5) + uv)*m_light.size;
   const float3 samplePos = to_float3(m_light.pos) + float3(sampleOff.x, -1e-5f, sampleOff.y);
@@ -243,9 +241,7 @@ void TestClass::kernel_NextBounce(uint tid, uint bounce, const Lite_Hit* in_hit,
     hit.norm = flipNorm*hit.norm;
   }
   
-  RandomGen gen   = *a_gen;
-  const float2 uv = rndFloat2_Pseudo(&gen);
-  *a_gen          = gen;
+  const float2 uv = rndFloat2_Pseudo(a_gen);
 
   const float3 newDir   = MapSampleToCosineDistribution(uv.x, uv.y, hit.norm, hit.norm, 1.0f);
   const float  cosTheta = dot(newDir, hit.norm);

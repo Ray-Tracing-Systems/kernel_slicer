@@ -781,18 +781,43 @@ int main(int argc, const char **argv)
   std::cout << "(5) Process control functions to generate all 'MainCmd' functions" << std::endl; 
   std::cout << "{" << std::endl;
 
-  // (5) genarate cpp code with Vulkan calls
+  // (5) Process controll functions and generate some intermediate cpp code with Vulkan calls
   //
   ObtainKernelsDecl(inputCodeInfo.kernels, compiler, inputCodeInfo.mainClassName, inputCodeInfo);
+
   inputCodeInfo.allDescriptorSetsInfo.clear();
+  /////////////////////////////////////////////////////////////////////////////////////////////// fakeOffset flag for local variables
+  if(inputCodeInfo.megakernelRTV)
+  {
+    inputCodeInfo.megakernelRTV = false;
+    auto auxDecriptorSets = inputCodeInfo.allDescriptorSetsInfo;
+    for(auto& mainFunc : inputCodeInfo.mainFunc)
+    {
+      std::cout << " process subkernel " << mainFunc.Name.c_str() << std::endl;
+      inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
+    }
+    inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);        
+    for(const auto& call : inputCodeInfo.allDescriptorSetsInfo)
+      inputCodeInfo.ProcessCallArs_KF(call);
+
+    auxDecriptorSets = inputCodeInfo.allDescriptorSetsInfo;
+    inputCodeInfo.allDescriptorSetsInfo.clear();
+
+    // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg
+    //
+    for(const auto& call : auxDecriptorSets)
+      inputCodeInfo.ProcessCallArs_KF(call);
+    inputCodeInfo.megakernelRTV = true;
+  }
+  /////////////////////////////////////////////////////////////////////////////////////////////// fakeOffset flag for local variables
+
   for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
     std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
-    inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc
+    inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
   }
 
-  inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, // ==>
-                                       inputCodeInfo.allDescriptorSetsInfo);          // <==
+  inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);        
 
   // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg
   //
