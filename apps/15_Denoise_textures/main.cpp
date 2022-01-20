@@ -70,7 +70,7 @@ int main(int argc, const char** argv)
   }
 
   if (hasError)
-    return 0;
+    return -1;
 
   uint64_t addressToCkeck = reinterpret_cast<uint64_t>(hdrData.data());
   assert(addressToCkeck % 16 == 0); // check if address is aligned!!!
