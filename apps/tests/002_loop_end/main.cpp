@@ -28,10 +28,15 @@ int main(int argc, const char** argv)
   std::cout << "[cpu]: array summ  = " << summ1 << std::endl;
   std::cout << "[gpu]: array summ  = " << summ2 << std::endl;
   
+  int returnCode = 0;
+
   if(summ1 == summ2)
     std::cout << "test_002 PASSED!" << std::endl;
-  else 
+  else
+  {
     std::cout << "test_002 FAILED!" << std::endl;
+    returnCode = -1;
+  }
 
-  return 0;
+  return returnCode;
 }

@@ -7,6 +7,14 @@ from skimage.io import imread
 from skimage import img_as_float
 
 
+def try_open(filename: str, mode: str):
+    try:
+        f = open(filename, mode)
+    except FileNotFoundError:
+        f = None
+    return f
+
+
 def mse(img1, img2):
     return ((img1 - img2)**2).mean()
 
@@ -15,6 +23,22 @@ def load_and_calc_mse(img_name1, img_name2):
     img1 = img_as_float(imread(img_name1))
     img2 = img_as_float(imread(img_name2))
     return mse(img1, img2)
+
+
+def has_image_ext(img_name: str):
+    extensions = [
+        ".jpg", ".jpeg", ".jfif", ".pjpeg", ".pjp",  # JPEG
+        ".png",
+        ".svg",
+        ".bmp",
+        ".tif", ".tiff"
+    ]
+
+    for ext in extensions:
+        if img_name.endswith(ext):
+            return True
+
+    return False
 
 
 def get_files(dir_path):

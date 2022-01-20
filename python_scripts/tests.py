@@ -6,6 +6,7 @@ import argparse
 
 import utils
 from logger import Log, Status
+from compare_json import compare_generated_json_files
 from enum import Enum
 
 config_black_list = {
@@ -21,14 +22,6 @@ class ShaderLang(Enum):
 
 def fix_paths_in_args(args):
     return [arg.replace("${workspaceFolder}", os.getcwd()) for arg in args]
-
-
-# def get_main_class(args):
-#     for i in range(len(args)):
-#         if args[i] == "-mainClass":
-#             return args[i+1]
-#
-#     raise RuntimeError("Can't find main class in args: {}".format(args))
 
 
 def compile_shaders(shader_lang):
@@ -78,20 +71,22 @@ def extract_shader_lang(args):
     return lang
 
 
+def is_out_img(img_name: str):
+    return img_name.startswith("zout_") and utils.has_image_ext(img_name)
+
+
 def find_image_pairs():
     filenames = utils.get_files(os.getcwd())
-    image_filenames = sorted([f for f in filenames if f.startswith("zout_")])
-    if len(image_filenames) % 2 != 0:
-        Log().error("Odd count of generated images: it's impossible to match pairs")
+    image_filenames = sorted([f for f in filenames if is_out_img(f)])
+    cpu_images = [img for img in image_filenames if img.find("cpu") >= 0]
+    gpu_images = [img for img in image_filenames if img.find("gpu") >= 0]
+    if len(cpu_images) != len(gpu_images):
+        Log().error("Non equal image count for different code versions: cpu={0}, gpu={1}".format(
+            len(cpu_images), len(gpu_images)
+        ))
         return None
-    step = int(len(image_filenames)/2)
-    #print("step = ", step)
-    #print(image_filenames)
-    image_pairs = []
-    for i in range(0, step):
-        image_pairs.append((image_filenames[i], image_filenames[i+step]))
 
-    return image_pairs
+    return list(zip(cpu_images, gpu_images))
 
 
 def compare_images(img_name1, img_name2):
@@ -103,7 +98,7 @@ def compare_images(img_name1, img_name2):
     return 0 if mse_res < threshold else 1
 
 
-def check_generated_images(test_name):
+def check_generated_images():
     Log().info("Comparing images")
     image_pairs = find_image_pairs()
     if image_pairs is None:
@@ -160,7 +155,9 @@ def run_test(test_name, args, num_threads=1, gpu_id=0):
         os.chdir(workdir)
         return -1
 
-    return_code = check_generated_images(test_name)
+    return_code = check_generated_images()
+    if not compare_generated_json_files():
+        return_code = -1
 
     final_status = Status.OK if return_code == 0 else Status.FAILED
     os.chdir(workdir)
@@ -174,7 +171,7 @@ def tests(num_threads=1, gpu_id=0):
     for config in configurations:
         if config["name"] in config_black_list:
             continue
-        # if config["name"] != "Launch (test_004/clspv)": # @TODO: should be removed later
+        # if config["name"] != "Launch (app_04)": # @TODO: should be removed later
         #     continue
         run_test(config["name"], config["args"], num_threads, gpu_id)
 

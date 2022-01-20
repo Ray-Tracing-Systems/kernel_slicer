@@ -6,6 +6,8 @@
 
 #include "test_class.h"
 #include "ArgParser.h"
+#define JSON_LOG_IMPLEMENTATION
+#include "JSONLog.hpp"
 
 #include "vk_context.h"
 std::shared_ptr<Numbers> CreateNumbers_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
@@ -42,10 +44,11 @@ int main(int argc, const char** argv)
 
   pImpl->CalcArraySumm(array.data(), unsigned(array.size()));
 
+  JSONLog::write("array summ", pImpl->m_summ);
   if(onGPU)
-    std::cout << "[gpu]: array summ  = " << pImpl->m_summ << std::endl;
+    JSONLog::saveToFile("zout_gpu.json");
   else
-    std::cout << "[cpu]: array summ  = " << pImpl->m_summ << std::endl;
+    JSONLog::saveToFile("zout_cpu.json");
   
   float timings[4] = {0,0,0,0};
   pImpl->GetExecutionTime("CalcArraySumm", timings);
