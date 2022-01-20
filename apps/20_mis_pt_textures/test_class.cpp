@@ -90,6 +90,49 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   return (res.primId != -1);
 }
 
+bool TestClass::kernel_RayTrace2(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar,
+                                 float4* out_hit1, float4* out_hit2, uint32_t* out_matId)
+{
+  const float4 rayPos = *rayPosAndNear;
+  const float4 rayDir = *rayDirAndFar ;
+
+  const CRT_Hit hit   = m_pAccelStruct->RayQuery_NearestHit(rayPos, rayDir);
+
+  if(hit.geomId != uint32_t(-1))
+  {
+    const float2 uv       = float2(hit.coords[0], hit.coords[1]);
+    const float3 hitPos   = to_float3(rayPos) + hit.t*to_float3(rayDir);
+
+    const uint triOffset  = m_matIdOffsets[hit.geomId];
+    const uint vertOffset = m_vertOffset  [hit.geomId];
+  
+    const uint A = m_triIndices[(triOffset + hit.primId)*3 + 0];
+    const uint B = m_triIndices[(triOffset + hit.primId)*3 + 1];
+    const uint C = m_triIndices[(triOffset + hit.primId)*3 + 2];
+  
+    const float3 A_norm = to_float3(m_vNorm4f[A + vertOffset]);
+    const float3 B_norm = to_float3(m_vNorm4f[B + vertOffset]);
+    const float3 C_norm = to_float3(m_vNorm4f[C + vertOffset]);
+      
+    float3 hitNorm     = (1.0f - uv.x - uv.y)*A_norm + uv.y*B_norm + uv.x*C_norm;
+    float2 hitTexCoord = float2(0,0); // #TODO: evaluate hitTexCoord
+  
+    // transform surface point with matrix and flip normal if needed
+    //
+    hitNorm = normalize(mul3x3(m_normMatrices[hit.instId], hitNorm));
+    const float flipNorm = dot(to_float3(rayDir), hitNorm) > 0.001f ? -1.0f : 1.0f;
+    hitNorm = flipNorm*hitNorm;
+  
+    *out_matId = m_matIdByPrimId[m_matIdOffsets[hit.geomId] + hit.primId];
+    *out_hit1  = to_float4(hitPos, hitTexCoord.x); 
+    *out_hit2  = to_float4(hitNorm, hitTexCoord.y); 
+  }
+  else
+    *out_matId = uint32_t(-1);
+
+  return (hit.geomId != -1);
+}
+
 void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
 {
   const uint inBlockIdX = tidX % 8; // 8x8 blocks
@@ -132,25 +175,18 @@ void TestClass::kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, const uint*
 
 
 
-void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar, const Lite_Hit* in_hit, const float2* in_bars, 
+void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar, const float4* in_hitPart1, const float4* in_hitPart2, const uint* a_materialId, 
                                          RandomGen* a_gen, float4* out_shadeColor)
 {
-  const Lite_Hit lhit = *in_hit;
-  if(lhit.geomId == -1)
+  const uint32_t matId = *a_materialId;
+  if(matId == uint32_t(-1))
     return;
   
   const float3 ray_dir = to_float3(*rayDirAndFar);
 
   SurfaceHit hit;
-  hit.pos  = to_float3(*rayPosAndNear) + lhit.t*ray_dir;
-  hit.norm = EvalSurfaceNormal(lhit.primId, lhit.geomId, *in_bars, m_matIdOffsets.data(), m_vertOffset.data(), m_triIndices.data(), m_vNorm4f.data());
-  
-  // transform surface point with matrix and flip normal if needed
-  {
-    hit.norm = normalize(mul3x3(m_normMatrices[lhit.instId], hit.norm));
-    const float flipNorm = dot(ray_dir,  hit.norm) > 0.001f ? -1.0f : 1.0f;
-    hit.norm = flipNorm*hit.norm;
-  }
+  hit.pos  = to_float3(*in_hitPart1);
+  hit.norm = to_float3(*in_hitPart2);
 
   const float2 uv = rndFloat2_Pseudo(a_gen);
   
@@ -169,9 +205,8 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
     const float cosVal  = std::max(dot(shadowRayDir, (-1.0f)*to_float3(m_light.norm)), 0.0f);
     const float pdfW    = PdfAtoW(pdfA, hitDist, cosVal);
     const float3 samCol = M_PI*to_float3(m_light.intensity)/std::max(pdfW, 1e-6f); //////////////////////// Apply Pdf here, or outside of here ???
-    
-    const uint32_t matId = m_matIdByPrimId[m_matIdOffsets[lhit.geomId] + lhit.primId];
-    const float4 mdata   = m_materials[matId];
+  
+    const float4 mdata  = m_materials[matId];
 
     const float3 brdfVal    = to_float3(mdata)*INV_PI;
     const float cosThetaOut = std::max(dot(shadowRayDir, hit.norm), 0.0f);
@@ -185,22 +220,21 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
     *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
-void TestClass::kernel_NextBounce(uint tid, uint bounce, const Lite_Hit* in_hit, const float2* in_bars, const float4* in_shadeColor, 
+void TestClass::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPart1, const float4* in_hitPart2, const uint* a_materialId, const float4* in_shadeColor, 
                                   float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput, RandomGen* a_gen, MisData* misPrev)
 {
-  const Lite_Hit lhit = *in_hit;
-  if(lhit.geomId == -1)
+  const uint32_t matId = *a_materialId;
+  if(matId == uint32_t(-1))
     return;
 
-  const uint32_t matId = m_matIdByPrimId[m_matIdOffsets[lhit.geomId] + lhit.primId];
   const float4 mdata   = m_materials[matId];
 
   // process surcase hit case
   //
   const float3 ray_dir = to_float3(*rayDirAndFar);
   SurfaceHit hit;
-  hit.pos  = to_float3(*rayPosAndNear) + lhit.t*ray_dir;
-  hit.norm = EvalSurfaceNormal(lhit.primId, lhit.geomId, *in_bars, m_matIdOffsets.data(), m_vertOffset.data(), m_triIndices.data(), m_vNorm4f.data());
+  hit.pos  = to_float3(*in_hitPart1);
+  hit.norm = to_float3(*in_hitPart2);
 
   // process light hit case
   //
@@ -232,13 +266,6 @@ void TestClass::kernel_NextBounce(uint tid, uint bounce, const Lite_Hit* in_hit,
     }
 
     return;
-  }
-  
-  // transform surface point with matrix and flip normal if needed
-  {
-    hit.norm = normalize(mul3x3(m_normMatrices[lhit.instId], hit.norm));
-    const float flipNorm = dot(ray_dir,  hit.norm) > 0.001f ? -1.0f : 1.0f;
-    hit.norm = flipNorm*hit.norm;
   }
   
   const float2 uv = rndFloat2_Pseudo(a_gen);
@@ -337,13 +364,12 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY
 
   for(int depth = 0; depth < a_maxDepth; depth++) 
   {
-    Lite_Hit hit;
-    float2   baricentrics; 
-    float4   shadeColor;
-    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
+    float4   shadeColor, hitPart1, hitPart2;
+    uint32_t materialId;
+    if(!kernel_RayTrace2(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &materialId))
       break;
     
-    kernel_NextBounce(tid, depth, &hit, &baricentrics, &shadeColor,
+    kernel_NextBounce(tid, depth, &hitPart1, &hitPart2, &materialId, &shadeColor,
                       &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &mis);
   }
 
@@ -361,21 +387,22 @@ void TestClass::PathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, flo
 
   for(int depth = 0; depth < a_maxDepth; depth++) 
   {
-    Lite_Hit hit;
-    float2   baricentrics; 
-    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
+    float4   shadeColor, hitPart1, hitPart2;
+    uint32_t materialId;
+    if(!kernel_RayTrace2(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &materialId))
       break;
     
     float4 shadeColorAndPdf; // pack pdf to color.w to save space; if pdf < 0.0, then say we have point light source
-    kernel_SampleLightSource(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, &gen, 
-                             &shadeColorAndPdf);
+    kernel_SampleLightSource(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &materialId, 
+                             &gen, &shadeColorAndPdf);
 
-    kernel_NextBounce(tid, depth, &hit, &baricentrics, &shadeColorAndPdf,
+    kernel_NextBounce(tid, depth, &hitPart1, &hitPart2, &materialId, &shadeColorAndPdf,
                       &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &mis);
   }
 
   kernel_ContributeToImage(tid, &accumColor, &gen, in_pakedXY, 
                            out_color);
+                           
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

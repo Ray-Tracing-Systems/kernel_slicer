@@ -158,24 +158,6 @@ static inline float3 OffsRayPos(const float3 a_hitPos, const float3 a_surfaceNor
   return a_hitPos + signOfNormal2*offsetEps*a_surfaceNorm;
 }
 
-static inline float3 EvalSurfaceNormal(uint a_primId, uint a_geomId, float2 uv, 
-                                       __global const uint* in_triOffs, __global const uint* in_vertOffs, __global const uint* in_indices, __global const float4* in_vnorm)
-{ 
-  const uint triOffset  = in_triOffs [a_geomId];
-  const uint vertOffset = in_vertOffs[a_geomId];
-
-  const uint A = in_indices[(triOffset+a_primId)*3 + 0];
-  const uint B = in_indices[(triOffset+a_primId)*3 + 1];
-  const uint C = in_indices[(triOffset+a_primId)*3 + 2];
-
-  const float3 A_norm = to_float3(in_vnorm[A + vertOffset]);
-  const float3 B_norm = to_float3(in_vnorm[B + vertOffset]);
-  const float3 C_norm = to_float3(in_vnorm[C + vertOffset]);
- 
-  const float3 norm = (1.0f - uv.x - uv.y)*A_norm + uv.y*B_norm + uv.x*C_norm;
-
-  return norm;
-}
 
 static inline float3 SphericalDirectionPBRT(const float sintheta, const float costheta, const float phi) 
 { 

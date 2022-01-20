@@ -44,6 +44,8 @@ float floor(float x);
 float ceil(float x);
 float floorf(float x);
 
+float isfinite(float x);
+
 static const unsigned int RAND_MAX = 65535;
 static const float        MAXFLOAT = 1e37f;
 
@@ -73,6 +75,8 @@ namespace std
 
   template<typename T> T floor(T x);
   template<typename T> T ceil(T x);
+
+  template<typename T> T isfinite(T x);
 };
 
 #include <cstdint>

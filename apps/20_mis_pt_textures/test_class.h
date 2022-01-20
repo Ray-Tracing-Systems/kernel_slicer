@@ -83,13 +83,16 @@ public:
   bool kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                        Lite_Hit* out_hit, float2* out_bars);
 
+  bool kernel_RayTrace2(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar,
+                        float4* out_hit1, float4* out_hit2, uint* out_matId);
+
   void kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, const uint* in_pakedXY, uint* out_color);
 
-  void kernel_NextBounce(uint tid, uint bounce, const Lite_Hit* in_hit, const float2* in_bars, const float4* in_shadeColor,
+  void kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPart1, const float4* in_hitPart2, const uint32_t* a_materialId, const float4* in_shadeColor,
                          float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput, RandomGen* a_gen, MisData* a_prevMisData);
   
-  void kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar,
-                                const Lite_Hit* in_hit, const float2* in_bars, RandomGen* a_gen, float4* out_shadeColor);
+  void kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar, const float4* in_hitPart1, const float4* in_hitPart2, const uint* a_materialId, 
+                                RandomGen* a_gen, float4* out_shadeColor);
 
   void kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* out_color);
 
