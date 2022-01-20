@@ -512,6 +512,17 @@ bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
   return true;
 }
 
+bool kslicer::KernelRewriter::NameNeedsFakeOffset(const std::string& a_name) const
+{
+   bool exclude = false;
+   for(auto arg : m_currKernel.args)
+   {
+     if(arg.needFakeOffset && arg.name == a_name)
+       exclude = true;
+   }
+   return exclude;
+}
+
 
 bool kslicer::KernelRewriter::CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr)
 {

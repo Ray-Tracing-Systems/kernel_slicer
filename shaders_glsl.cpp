@@ -753,7 +753,7 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     m_rewriter.ReplaceText(call->getSourceRange(), fname + "(" + CompleteFunctionCallRewrite(call));
     MarkRewritten(call);
   }
-
+ 
   return true; 
 }
 
@@ -1074,10 +1074,27 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   std::vector<kslicer::ArgMatch> usedArgMatches = kslicer::MatchCallArgsForKernel(call, m_currKernel, m_compiler);
   std::vector<kslicer::ArgMatch> shittyPointers; shittyPointers.reserve(usedArgMatches.size());
   for(const auto& x : usedArgMatches) {
-    if(x.isPointer)
+    const bool exclude = NameNeedsFakeOffset(x.actual); // #NOTE! seems that formal/actual parameters have to be swaped for the whole code
+    if(x.isPointer && !exclude)
       shittyPointers.push_back(x);
   }
   
+  // check if at leat one argument of a function call require function call rewrite due to fake offset
+  //
+  bool rewriteDueToFakeOffset = false;
+  {
+    rewriteDueToFakeOffset = false;
+    for(unsigned i=0;i<call->getNumArgs(); i++)
+    {
+      const std::string argName = kslicer::GetRangeSourceCode(call->getArg(i)->getSourceRange(), m_compiler);
+      if(NameNeedsFakeOffset(argName))
+      {
+        rewriteDueToFakeOffset = true;
+        break;
+      }
+    }
+  }
+
   const clang::FunctionDecl* fDecl = call->getDirectCallee();  
   if(shittyPointers.size() > 0 && fDecl != nullptr)
   {
@@ -1106,6 +1123,26 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       else
         rewrittenRes += RecursiveRewrite(call->getArg(i));
       
+      if(i!=call->getNumArgs()-1)
+        rewrittenRes += ", ";
+    }
+    rewrittenRes += ")"; 
+
+    m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes); 
+    MarkRewritten(call);
+  }
+  else if (m_codeInfo->IsRTV() && rewriteDueToFakeOffset)
+  {
+    std::string fname        = fDecl->getNameInfo().getName().getAsString();
+    std::string rewrittenRes = fname + "(";
+    for(unsigned i=0;i<call->getNumArgs(); i++)
+    {
+      const std::string argName = kslicer::GetRangeSourceCode(call->getArg(i)->getSourceRange(), m_compiler);
+      if(NameNeedsFakeOffset(argName) && !m_codeInfo->megakernelRTV)
+        rewrittenRes += RecursiveRewrite(call->getArg(i)) + "[" + m_fakeOffsetExp + "]";
+      else
+        rewrittenRes += RecursiveRewrite(call->getArg(i));
+
       if(i!=call->getNumArgs()-1)
         rewrittenRes += ", ";
     }

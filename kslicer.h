@@ -596,6 +596,7 @@ namespace kslicer
 
     virtual void ClearUserArgs() { }
     virtual ShaderFeatures GetKernelShaderFeatures() const { return ShaderFeatures(); }
+    bool NameNeedsFakeOffset(const std::string& a_name) const;
 
   protected:
 
