@@ -1346,6 +1346,7 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::ve
     if(member.isArray)
       typeStr = typeStr.substr(0, typeStr.find("["));
     typeStr = pShaderRewriter->RewriteStdVectorTypeStr(typeStr); 
+    ReplaceFirst(typeStr, "const ", "");
 
     size_t sizeO = member.sizeInBytes;
     size_t sizeA = member.alignedSizeInBytes;
