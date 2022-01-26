@@ -1,6 +1,5 @@
 #include "raymarch.h"
 
-
 static inline float4x4 perspectiveMatrix(float fovy, float aspect, float zNear, float zFar)
 {
   const float ymax = zNear * tanf(fovy * 3.14159265358979323846f / 360.0f);
@@ -41,32 +40,32 @@ static inline float3 Normalize(float3 p, float3 pMin, float3 pMax) {
                 (p.z - pMin.z) / (pMax.z - pMin.z));
 }
 
-bool RayBoxIntersection(const float4 *ray_pos, const float4 *ray_dir,
-                        const float4 *boxMin,  const float4 *boxMax,
+bool RayBoxIntersection(const float4& ray_pos, const float4& ray_dir,
+                        const float4& boxMin,  const float4& boxMax,
                         float &tmin, float &tmax)
 {
-  float4 raydir = *ray_dir;
+  float4 raydir = ray_dir;
   raydir.x = 1.0f / raydir.x;
   raydir.y = 1.0f / raydir.y;
   raydir.z = 1.0f / raydir.z;
 
-  float lo = raydir.x*((*boxMin).x - (*ray_pos).x);
-  float hi = raydir.x*((*boxMax).x - (*ray_pos).x);
+  float lo = raydir.x*((boxMin).x - (ray_pos).x);
+  float hi = raydir.x*((boxMax).x - (ray_pos).x);
 
-  tmin = fminf(lo, hi);
-  tmax = fmaxf(lo, hi);
+  tmin = std::min(lo, hi);
+  tmax = std::max(lo, hi);
 
-  float lo1 = raydir.y*((*boxMin).y - (*ray_pos).y);
-  float hi1 = raydir.y*((*boxMax).y - (*ray_pos).y);
+  float lo1 = raydir.y*((boxMin).y - (ray_pos).y);
+  float hi1 = raydir.y*((boxMax).y - (ray_pos).y);
 
-  tmin = fmaxf(tmin, fminf(lo1, hi1));
-  tmax = fminf(tmax, fmaxf(lo1, hi1));
+  tmin = std::max(tmin, std::min(lo1, hi1));
+  tmax = std::min(tmax, std::max(lo1, hi1));
 
-  float lo2 = raydir.z*((*boxMin).z - (*ray_pos).z);
-  float hi2 = raydir.z*((*boxMax).z - (*ray_pos).z);
+  float lo2 = raydir.z*((boxMin).z - (ray_pos).z);
+  float hi2 = raydir.z*((boxMax).z - (ray_pos).z);
 
-  tmin = fmaxf(tmin, fminf(lo2, hi2));
-  tmax = fminf(tmax, fmaxf(lo2, hi2));
+  tmin = std::max(tmin, std::min(lo2, hi2));
+  tmax = std::min(tmax, std::max(lo2, hi2));
 
   return (tmin <= tmax) && (tmax > 0.f);
 }
@@ -92,15 +91,35 @@ bool RaySphereIntersection(const float4 ray_pos, const float4 ray_dir, float3 ce
   if (D < 0)
     return false;
 
-  float res1 = (sqrtf(D) - B)  / (2 * A);
-  float res2 = (-sqrtf(D) - B) / (2 * A);
+  float res1 = (std::sqrt(D) - B)  / (2 * A);
+  float res2 = (-std::sqrt(D) - B) / (2 * A);
 
-  tmin = fminf(res1, res2);
-  tmax = fmaxf(res1, res2);
+  tmin = std::min(res1, res2);
+  tmax = std::max(res1, res2);
 
   return (tmin <= tmax) && (tmax > 0.f);
 }
 
+float4 EyeRayDir4(float x, float y, float w, float h, float4x4 a_mProjInv) // g_mViewProjInv
+{
+  float4 pos = float4( 2.0f * (x + 0.5f) / w - 1.0f, 
+                      -2.0f * (y + 0.5f) / h + 1.0f, 
+                       0.0f, 
+                       1.0f );
+
+  pos = a_mProjInv*pos;
+  pos = pos/pos.w;
+  pos.y *= (-1.0f);   // TODO: do we need remove this (???)
+  const float lenInv = 1.0f/std::sqrt(pos.x*pos.x + pos.y*pos.y + pos.z*pos.z);
+  pos *= lenInv;
+  pos.w = 1e37f;
+  return pos;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 float3 RayMarcher::RayFunc(float tmin, float tmax, float *alpha, const float4 *ray_pos, const float4 *ray_dir)
 {
@@ -115,7 +134,7 @@ float3 RayMarcher::RayFunc(float tmin, float tmax, float *alpha, const float4 *r
   int n = 0;
   while(t < tmax)
   {
-    if(expf(-*alpha) < .005f)
+    if(std::exp(-*alpha) < .005f)
       break;
     float D = SampleDensity(*ray_pos + t * *ray_dir, true);
     color += float3(D);
@@ -193,7 +212,7 @@ void RayMarcher::Execute(uint32_t tidX, uint32_t tidY, uint32_t* out_color)
 void RayMarcher::kernel_InitEyeRay(uint32_t tidX, uint32_t tidY, float4* rayPosAndNear, float4* rayDirAndFar)
 {
   *rayPosAndNear = m_camPos;
-  *rayDirAndFar  = EyeRayDir4f(float(tidX), float(tidY), float(m_width), float(m_height), m_invProjView);
+  *rayDirAndFar  = EyeRayDir4(float(tidX), float(tidY), float(m_width), float(m_height), m_invProjView);
 }
 
 void RayMarcher::kernel_RayMarch(uint32_t tidX, uint32_t tidY, const float4* rayPosAndNear, const float4* rayDirAndFar, uint32_t* out_color)
@@ -207,7 +226,7 @@ void RayMarcher::kernel_RayMarch(uint32_t tidX, uint32_t tidY, const float4* ray
 //  float3 center(0, 0, 0);
 //  float radius = 1.5f;
 //  if(!RaySphereIntersection(rayPos, rayDir, center, radius, tmin, tmax))
-  if(!RayBoxIntersection(&rayPos, &rayDir, &SCENE_BOX_MIN, &SCENE_BOX_MAX, tmin, tmax))
+  if(!RayBoxIntersection(rayPos, rayDir, SCENE_BOX_MIN, SCENE_BOX_MAX, tmin, tmax))
   {
     out_color[tidY * m_width + tidX] = color_convert(to_float3(BACKGROUND_COLOR));
     return;

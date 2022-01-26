@@ -346,6 +346,7 @@ std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_s
   ReplaceFirst(typeStr, "glm::",      "");
   ReplaceFirst(typeStr, "struct ",    "");
   ReplaceFirst(typeStr, "const ",     "");
+  ReplaceFirst(typeStr, "&",          "");
   ReplaceFirst(typeStr, m_codeInfo->mainClassName + "::", "");
   ReplaceFirst(typeStr, "unsigned long", "uint");
   ReplaceFirst(typeStr, "unsigned char", "uint8_t");
