@@ -1025,6 +1025,7 @@ namespace kslicer
   CPP11_ATTR GetMethodAttr(const clang::CXXMethodDecl* f, clang::CompilerInstance& a_compiler);
 
   KernelInfo::ArgInfo ProcessParameter(const clang::ParmVarDecl *p); 
+  void CheckInterlanIncInExcludedFolders(const std::vector<std::string>& a_folders);
 }
 
 template <typename Cont, typename Pred>

@@ -293,13 +293,14 @@ int main(int argc, const char **argv)
 
   std::string fileName;
   auto params = ReadCommandLineParams(argc, argv, fileName);
-
-  std::string mainClassName = "TestClass";
-  std::string outGenerated  = "data/generated.cl";
-  std::string stdlibFolder  = "";
-  std::string patternName   = "rtv";
-  std::string shaderCCName  = "clspv";
-  std::string hintFile      = "";
+  
+  std::string mainFolderPath  = GetFolderPath(fileName);
+  std::string mainClassName   = "TestClass";
+  std::string outGenerated    = "data/generated.cl";
+  std::string stdlibFolder    = "";
+  std::string patternName     = "rtv";
+  std::string shaderCCName    = "clspv";
+  std::string hintFile        = "";
   uint32_t    threadsOrder[3] = {0,1,2};
   uint32_t    warpSize        = 32;
   bool        useCppInKernels = false;
@@ -360,6 +361,14 @@ int main(int argc, const char **argv)
       includeFolderList.push_back(p.first.substr(2));
     else if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I' && p.second == "ExcludeFromShaders")
       includeFolderList2.push_back(p.first.substr(2));
+  }
+
+  // make specific checks to be sure user don't include these files to hit project as normal files
+  //
+  {
+    auto excludeFolders = includeFolderList2;
+    excludeFolders.push_back(mainFolderPath);
+    kslicer::CheckInterlanIncInExcludedFolders(excludeFolders);
   }
 
   std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params);  

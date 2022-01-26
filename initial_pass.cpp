@@ -1,5 +1,7 @@
 #include "initial_pass.h"
 #include <iostream>
+#include <vector>
+#include <string>
 
 void kslicer::SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType)
 {
@@ -460,4 +462,33 @@ bool kslicer::InitialPassASTConsumer::HandleTopLevelDecl(DeclGroupRef d)
   for (iter b = d.begin(), e = d.end(); b != e; ++b)
     rv.TraverseDecl(*b);
   return true; // keep going
+}
+
+#include <filesystem>
+namespace fs = std::filesystem;
+
+void kslicer::CheckInterlanIncInExcludedFolders(const std::vector<std::string>& a_folders)
+{
+  std::vector<std::string> stopList;
+  stopList.push_back("LiteMath.h");
+  stopList.push_back("LiteMathGPU.h");
+  stopList.push_back("aligned_alloc.h");
+  stopList.push_back("sampler.h");
+  stopList.push_back("texture2d.h");
+
+  for(const auto path : a_folders) {
+    for (const auto& entry : fs::directory_iterator(path)) {
+      if(entry.is_directory())
+        continue;
+      const std::string fileName = entry.path();
+      bool found = false;
+      for(const auto fname : stopList) {
+        if(fileName.find(fname) != std::string::npos) {
+          std::cout << "[kslicer]: ALERT! --> found '" << fname.c_str() << "' in folder '" << path.c_str() << "'" << std::endl;
+          std::cout << "[kslicer]: Please use '" << fname.c_str() << "' from one of the folders in the 'IncludeToShaders' list" << std::endl; 
+          exit(0);
+        }
+      }
+    }
+  }
 }

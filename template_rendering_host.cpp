@@ -288,8 +288,8 @@ static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func, const kslicer
     {
       if(var.sizeUserAttr.size() != 0)
       {
-        std::cout << "[kslicer]: attribute size(...) is specified for argument '" << var.name.c_str() << "', but Control Function " << a_func.Name.c_str() << " is not virtual" << std::endl;  
-        std::cout << "[kslicer]: the Control Function which is supposed to be overriden must be virtual " << std::endl;
+        std::cout << "  [kslicer]: attribute size(...) is specified for argument '" << var.name.c_str() << "', but Control Function " << a_func.Name.c_str() << " is not virtual" << std::endl;  
+        std::cout << "  [kslicer]: the Control Function which is supposed to be overriden must be virtual " << std::endl;
       }
     }
 
@@ -301,8 +301,8 @@ static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func, const kslicer
     if(var.kind == kslicer::DATA_KIND::KIND_POINTER)
     {
       if(var.sizeUserAttr.size() == 0) {
-        std::cout << "[kslicer]: warning, unknown data size for param " << var.name.c_str() << " of Control Function " << a_func.Name.c_str() << std::endl;
-        std::cout << "[kslicer]: the Control Function is declared virual, but kslicer can't generate implementation due to unknown data size of a pointer " << std::endl;
+        std::cout << "  [kslicer]: warning, unknown data size for param " << var.name.c_str() << " of Control Function " << a_func.Name.c_str() << std::endl;
+        std::cout << "  [kslicer]: the Control Function is declared virual, but kslicer can't generate implementation due to unknown data size of a pointer " << std::endl;
         return false;
       }
     }
