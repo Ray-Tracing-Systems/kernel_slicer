@@ -1351,15 +1351,17 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::ve
     size_t sizeO = member.sizeInBytes;
     size_t sizeA = member.alignedSizeInBytes;
 
+    const bool isVec3Member = ((typeStr == "vec3") || (typeStr == "ivec3") || (typeStr == "uvec3")) && a_classInfo.pShaderCC->IsGLSL();
+
     json uboField;
     uboField["Type"]      = typeStr;
     uboField["Name"]      = member.name;
     uboField["IsArray"]   = member.isArray;
     uboField["ArraySize"] = member.arraySize;
-    uboField["IsVec3"]    = ((typeStr == "vec3") || (typeStr == "ivec3") || (typeStr == "uvec3")) && a_classInfo.pShaderCC->IsGLSL();
+    uboField["IsVec3"]    = isVec3Member;
     data["UBOStructFields"].push_back(uboField);
     
-    while(sizeO < sizeA) // TODO: make this more effitient
+    while(sizeO < sizeA && !isVec3Member) // TODO: make this more effitient
     {
       std::stringstream strOut;
       strOut << "dummy" << dummyCounter;
@@ -1371,7 +1373,6 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::ve
       data["UBOStructFields"].push_back(uboField);
     }
 
-    assert(sizeO == sizeA);
   }
 
 
