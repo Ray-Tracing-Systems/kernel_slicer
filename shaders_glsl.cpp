@@ -1035,7 +1035,7 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
     return std::string("kgenArgs.") + text;
   }
   
-  //// check CXXConstructExpr->ImplicitCastExpr->MemberExpr and NeedToRewriteMemberExpr(MemberExpr)
+  //// check CXXConstructExpr->ImplicitCastExpr->MemberExpr, CXXConstructExpr->MemberExpr and NeedToRewriteMemberExpr(MemberExpr)
   //
   if(clang::isa<clang::CXXConstructExpr>(expr)) // bugfix for recurive rewrite of single node, MemberExpr access in kernel
   {
@@ -1046,10 +1046,13 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
     if(ctorDecl->isCopyOrMoveConstructor()) // || call->getNumArgs() == 0
     {
       const clang::Expr* pExprInsideConstructor =	pConstruct->getArg(0);
-      if(clang::isa<clang::ImplicitCastExpr>(pExprInsideConstructor))
-        expr = clang::dyn_cast<clang::ImplicitCastExpr>(pExprInsideConstructor)->getSubExpr();
+      if(clang::isa<clang::ImplicitCastExpr>(pExprInsideConstructor))                          // CXXConstructExpr->ImplicitCastExpr->MemberExpr
+        expr = clang::dyn_cast<clang::ImplicitCastExpr>(pExprInsideConstructor)->getSubExpr(); // CXXConstructExpr->MemberExpr
+      else if(clang::isa<clang::MemberExpr>(pExprInsideConstructor))
+        expr = pExprInsideConstructor;
     }
   }
+
   if(clang::isa<clang::MemberExpr>(expr)) // same bugfix for recurive rewrite of single node, MemberExpr access in kernel
   {
     const clang::MemberExpr* pMemberExpr = clang::dyn_cast<const clang::MemberExpr>(expr);
