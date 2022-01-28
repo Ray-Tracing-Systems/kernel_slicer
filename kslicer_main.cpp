@@ -6,6 +6,7 @@
 
 #include <unordered_map>
 #include <iomanip>
+#include <cctype>
 
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
@@ -357,9 +358,12 @@ int main(int argc, const char **argv)
   for(auto p : params) 
   {
     values.insert(p.second);
-    if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I' && p.second == "IncludeToShaders")
+    std::string folderT = p.second;
+    std::transform(folderT.begin(), folderT.end(), folderT.begin(), [](unsigned char c){ return std::tolower(c); });
+
+    if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I' && folderT == "ignore")
       includeFolderList.push_back(p.first.substr(2));
-    else if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I' && p.second == "ExcludeFromShaders")
+    else if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I' && folderT == "process")
       includeFolderList2.push_back(p.first.substr(2));
   }
 
