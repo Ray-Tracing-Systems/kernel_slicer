@@ -201,6 +201,17 @@ void RayMarcher::InitView()
   m_invProjView = inverse4x4(proj * transpose(inverse4x4(worldView)));
 }
 
+void RayMarcher::ExecuteBlock(uint32_t tidX, uint32_t tidY, uint32_t * out_color, uint32_t a_numPasses)
+{
+  for (int y = 0; y < tidY; ++y)
+  {
+    for (int x = 0; x < tidX; ++x)
+    {
+      Execute(x, y, out_color);
+    }
+  }
+}
+
 void RayMarcher::Execute(uint32_t tidX, uint32_t tidY, uint32_t* out_color)
 {
   float4 rayPosAndNear, rayDirAndFar;

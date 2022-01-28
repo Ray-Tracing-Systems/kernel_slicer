@@ -26,13 +26,24 @@ set (DATA_FILES )
 #${CMAKE_CURRENT_SOURCE_DIR}/camera.dat
 #${CMAKE_CURRENT_SOURCE_DIR}/density_highres.vol
 #${CMAKE_CURRENT_SOURCE_DIR}/density_lowres.vol
-
+link_directories("../volk")
 include_directories("../vkutils"
                     "../volk" 
                     "../LiteMath" 
                     "../loader_utils"
                     "../geo_utils"
                     "../utils")
+add_compile_definitions(USE_VOLK)
+set(UTILS_SRC   ../vkutils/geom/cmesh.cpp
+                ../vkutils/vk_utils.cpp
+                ../vkutils/vk_copy.cpp
+                ../vkutils/vk_images.cpp
+                ../vkutils/vk_buffers.cpp
+                ../vkutils/vk_images.cpp
+                ../vkutils/vk_context.cpp
+                ../vkutils/vk_alloc_simple.cpp
+                ../vkutils/vk_pipeline.cpp
+                ../vkutils/vk_descriptor_sets.cpp)
 
 #add_ispc_example(NAME "raymarch"
 #        ISPC_IA_TARGETS ${ISPC_IA_TARGETS}
@@ -43,6 +54,10 @@ include_directories("../vkutils"
 #        DATA_FILES ${DATA_FILES}
 #        )
 
-add_executable(raymarch_sample main.cpp
+add_executable(raymarch_sample ${UTILS_SRC} main.cpp
                                raymarch.cpp
-                               Bitmap.cpp)
+                               Bitmap.cpp
+                               raymarch_generated.cpp
+                               raymarch_generated_ds.cpp
+                               raymarch_generated_init.cpp)
+target_link_libraries(raymarch_sample LINK_PUBLIC ${Vulkan_LIBRARY} volk dl)

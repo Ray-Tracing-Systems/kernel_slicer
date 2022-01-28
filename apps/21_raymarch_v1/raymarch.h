@@ -12,11 +12,12 @@ public:
   RayMarcher(uint32_t a_width, uint32_t a_height) : m_width(a_width), m_height(a_height) {}
 
   void Init(const std::vector<float> &a_densityField, const int3 &a_gridResolution);
-
-  void Execute(uint32_t tidX, uint32_t tidY, uint32_t* out_color);
+  virtual void CommitDeviceData() {}
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {}
+  void Execute(uint32_t tidX, uint32_t tidY, uint32_t* out_color __attribute__((size("tidX","tidY"))));
   void kernel_InitEyeRay(uint32_t tidX, uint32_t tidY, float4* rayPosAndNear, float4* rayDirAndFar);
   void kernel_RayMarch(uint32_t tidX, uint32_t tidY, const float4* rayPosAndNear, const float4* rayDirAndFar, uint32_t* out_color);
-
+  virtual void ExecuteBlock(uint32_t tidX, uint32_t tidY, uint32_t * out_color, uint32_t a_numPasses = 1);
   float4 GetCamPos() { return m_camPos; }
   float4x4 GetInvProjViewMat() { return m_invProjView; }
 protected:
@@ -38,6 +39,7 @@ protected:
 
   float4   m_camPos;
   float4x4 m_invProjView;
+
 };
 
 

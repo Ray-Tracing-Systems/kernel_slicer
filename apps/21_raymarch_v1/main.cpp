@@ -2,8 +2,10 @@
 #include <chrono>
 #include "Bitmap.h"
 #include "raymarch.h"
+#include "ArgParser.h"
 //#include "raymarch_ispc.h"
 
+#include "vk_context.h"
 
 std::vector<float> voxel_sphere(LiteMath::int3 resolution, float radius)
 {
@@ -24,33 +26,44 @@ std::vector<float> voxel_sphere(LiteMath::int3 resolution, float radius)
 
   return result;
 }
+std::shared_ptr<RayMarcher> CreateRayMarcher_Generated(uint32_t a_width, uint32_t a_height, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 
-
-int main()
+int main(int argc, const char** argv)
 {
+  ArgParser args(argc, argv);
+
   constexpr uint32_t WIDTH = 512;
   constexpr uint32_t HEIGHT = 512;
-  RayMarcher marcher(WIDTH, HEIGHT);
+  bool onGPU = args.hasOption("--gpu");
+  unsigned deviceId = args.getOptionValue<int>("--gpu_id", 0);
+#ifndef NDEBUG
+  bool enableValidationLayers = true;
+#else
+  bool enableValidationLayers = false;
+#endif
+  std::shared_ptr<RayMarcher> pMarcher = nullptr;
 
-  auto grid_res = LiteMath::int3(100, 100, 100);
+  if(onGPU)
+  {
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers, deviceId);
+    pMarcher = CreateRayMarcher_Generated( WIDTH, HEIGHT, ctx, WIDTH*HEIGHT);
+  }
+  else
+    pMarcher = std::make_shared<RayMarcher>(WIDTH, HEIGHT);
+
+
+  auto grid_res = LiteMath::int3(10, 10, 10);
 
 //  std::vector<float> density (grid_res.x * grid_res.y * grid_res. z, 1.0f);
-  auto density = voxel_sphere(grid_res, 25.0f);
-  marcher.Init(density, grid_res);
-
+  auto density = voxel_sphere(grid_res, 4.0f);
+  pMarcher->Init(density, grid_res);
+  pMarcher->CommitDeviceData();
   std::vector<uint32_t> output(HEIGHT * WIDTH, 0);
-
   {
     auto start = std::chrono::steady_clock::now();
-    for (int i = 0; i < HEIGHT; ++i)
-    {
-      for (int j = 0; j < WIDTH; ++j)
-      {
-        marcher.Execute(i, j, output.data());
-      }
-    }
+    pMarcher->ExecuteBlock(WIDTH, HEIGHT, output.data());
     auto end = std::chrono::steady_clock::now();
-    std::cout << "Time (CPU) : " <<  std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+    std::cout << "Time: " <<  std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
               << " microseconds" << std::endl;
   }
 
