@@ -862,36 +862,6 @@
         },
 
         {
-            "name"   : "Launch (app_22/GLSL)",
-            "type"   : "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
-            "args"   : ["${workspaceFolder}/apps/22_raymarch_v2/raymarch.cpp",
-                        "-mainClass", "RayMarcher", 
-                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
-                        "-pattern", "rtv",
-                        "-shaderCC", "glsl",
-                        "-I${workspaceFolder}/apps/LiteMath",   "IncludeToShaders",
-                        "-I${workspaceFolder}/apps/RayTracing", "ExcludeFromShaders",
-                        "-megakernel", "0",
-                        //"-cl-std=", "C++",
-                        "-DKERNEL_SLICER",
-                        "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-
-        {
             "name"   : "Launch (test_001/clspv)",
             "type"   : "cppdbg",
             "request": "launch",

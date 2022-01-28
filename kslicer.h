@@ -287,7 +287,8 @@ namespace kslicer
     bool usedInKernel      = false; ///<! if any kernel use the member --> true; if no one uses --> false;
     bool usedInMainFn      = false; ///<! if std::vector is used in MainFunction like vector.data();
     bool isPointer         = false;
-    
+    bool isConst           = false; ///<! const float4 BACKGROUND_COLOR = ... (they should not be read back)
+
     DATA_USAGE usage = DATA_USAGE::USAGE_USER;         ///<! if this is service and 'implicit' data which was agged by generator, not by user;
     TEX_ACCESS tmask = TEX_ACCESS::TEX_ACCESS_NOTHING; ///<! store texture access flags if this data member is a texture
 

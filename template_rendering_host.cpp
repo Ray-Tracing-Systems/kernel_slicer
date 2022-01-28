@@ -621,6 +621,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     local["Size"]      = v.sizeInBytes;
     local["IsArray"]   = v.isArray;
     local["ArraySize"] = v.arraySize;
+    local["IsConst"]   = v.isConst;
     data["ClassVars"].push_back(local);
   }
 

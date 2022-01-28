@@ -185,7 +185,7 @@ float RayMarcher::SampleDensity(float4 pos, bool trilinear)
 void RayMarcher::Init(const std::vector<float> &a_densityField, const int3 &a_gridResolution)
 {
   m_densityField   = a_densityField;
-  m_gridResolution = a_gridResolution;
+  m_gridResolution = to_int4(a_gridResolution, 0);
 
   InitView();
 }

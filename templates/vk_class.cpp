@@ -105,11 +105,13 @@ void {{MainClassName}}_Generated::ReadPlainMembers(std::shared_ptr<vk_utils::ICo
 {
   a_pCopyEngine->ReadBuffer(m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
   {% for Var in ClassVars %}
+  {% if not Var.IsConst %}
   {% if Var.IsArray %}
   memcpy({{Var.Name}}, m_uboData.{{Var.Name}}, sizeof({{Var.Name}}));
   {% else %}
   {{Var.Name}} = m_uboData.{{Var.Name}};
   {% endif %}
+  {% endif %} {#/* end of if not var.IsConst */#}
   {% endfor %}
   {% for Var in ClassVectorVars %}
   {{Var.Name}}.resize(m_uboData.{{Var.Name}}_size);

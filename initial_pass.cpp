@@ -383,6 +383,7 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
   member.kind        = kslicer::GetKindOfType(qt);
   member.sizeInBytes = 0; 
   member.offsetInTargetBuffer = 0;
+  member.isConst     = qt.isConstQualified();
 
   // now we should check werther this field is std::vector<XXX> or just XXX; 
   //

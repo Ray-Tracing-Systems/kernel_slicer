@@ -66,9 +66,13 @@ int main(int argc, const char** argv)
     std::cout << "Time: " <<  std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
               << " microseconds" << std::endl;
   }
-
-  SaveBMP("test.bmp", output.data(), WIDTH, HEIGHT);
   
+  if(onGPU)
+    SaveBMP("z_test_gpu.bmp", output.data(), WIDTH, HEIGHT);
+  else
+    SaveBMP("z_test_cpu.bmp", output.data(), WIDTH, HEIGHT);
+  
+
   /*
   int grid_resolution[3] = {grid_res.x, grid_res.y, grid_res.z};
   auto cam_pos = marcher.GetCamPos();

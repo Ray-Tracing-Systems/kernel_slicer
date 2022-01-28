@@ -29,13 +29,12 @@ protected:
   uint32_t m_width;
   uint32_t m_height;
 
-//  const float3 BACKGROUND_COLOR = make_float3(0.01f, 0.0f, 0.05f);
   const float4 BACKGROUND_COLOR = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
   const float4 SCENE_BOX_MIN = make_float4(-3, -3, -3, 0.0f);
   const float4 SCENE_BOX_MAX = make_float4(+3, +3, +3, 0.0f);
 
   std::vector<float> m_densityField;
-  int3 m_gridResolution;
+  int4 m_gridResolution;
 
   float4   m_camPos;
   float4x4 m_invProjView;
