@@ -1126,6 +1126,33 @@
         },
 
         {
+            "name"   : "Launch (test_009/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/009_padding_v1/test_class.cpp",
+                        "-mainClass", "Padding", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-I${workspaceFolder}/apps/LiteMath", "ignore", 
+                        "-shaderCC", "glsl",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (msu/vk_graphics_rt)",
             "type"   : "cppdbg",
             "request": "launch",
