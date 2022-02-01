@@ -296,6 +296,8 @@ namespace kslicer
     std::string containerType;     ///<! std::vector usually
     std::string containerDataType; ///<! data type 'T' inside of std::vector<T>
 
+    clang::RecordDecl* pTypeDeclIfRecord = nullptr;
+
     bool IsUsedTexture() const { return isContainer && IsTextureContainer(containerType); }  // && isContainer && kslicer::IsTexture(containerType); }
   };
 
@@ -335,6 +337,7 @@ namespace kslicer
   };
 
   InOutVarInfo GetParamInfo(const clang::ParmVarDecl* currParam, const clang::CompilerInstance& compiler);
+  std::unordered_set<std::string> ListPredefinedMathTypes();
 
   // assume there could be only 4 form of kernel arg when kernel is called
   //
@@ -480,6 +483,7 @@ namespace kslicer
                      m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo)
     { 
       m_pRewrittenNodes = std::make_shared< std::unordered_set<uint64_t> >();
+      m_predefinedTypes = ListPredefinedMathTypes();
     }
 
     virtual ~FunctionRewriter(){}
@@ -522,6 +526,8 @@ namespace kslicer
     MainClassInfo*                 m_codeInfo;
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     
+    std::unordered_set<std::string> m_predefinedTypes;
+
     void MarkRewritten(const clang::Stmt* expr);
     bool WasNotRewrittenYet(const clang::Stmt* expr);
 
@@ -1027,6 +1033,8 @@ namespace kslicer
 
   KernelInfo::ArgInfo ProcessParameter(const clang::ParmVarDecl *p); 
   void CheckInterlanIncInExcludedFolders(const std::vector<std::string>& a_folders);
+
+  std::string CleanTypeName(const std::string& a_str);
 }
 
 template <typename Cont, typename Pred>

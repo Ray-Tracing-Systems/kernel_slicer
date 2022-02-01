@@ -148,10 +148,8 @@ void kslicer::GLSLCompiler::GetThreadSizeNames(std::string a_strs[3]) const
 
 std::string kslicer::GLSLCompiler::ProcessBufferType(const std::string& a_typeName) const 
 { 
-  std::string type = a_typeName;
+  std::string type = kslicer::CleanTypeName(a_typeName);
   ReplaceFirst(type, "*", "");
-  ReplaceFirst(type, "const", "");
-
   if(type[type.size()-1] == ' ')
     type = type.substr(0, type.size()-1);
 
@@ -216,6 +214,44 @@ std::unordered_map<std::string, std::string> ListGLSLVectorReplacements()
   m_vecReplacements["const size_t"]         = "const uint64_t";
 
   return m_vecReplacements;
+}
+
+std::unordered_set<std::string> kslicer::ListPredefinedMathTypes()
+{
+  auto types = ListGLSLVectorReplacements();
+  std::unordered_set<std::string> res;
+  for(auto p : types)
+  {
+    res.insert(p.first);
+    res.insert(p.second);
+  };
+
+  res.insert("short");
+  res.insert("int");
+  res.insert("float");
+  res.insert("double");
+
+  return res;
+}
+
+std::string kslicer::CleanTypeName(const std::string& a_str)
+{
+  std::string typeName = a_str;
+  ReplaceFirst(typeName, "const ",     "");
+  ReplaceFirst(typeName, "const",      ""); // for 'const*'
+  ReplaceFirst(typeName, "struct ",    "");
+  ReplaceFirst(typeName, "class ",     "");
+  ReplaceFirst(typeName, "&",          "");
+  ReplaceFirst(typeName, "*",          "");
+  auto posOfDD = typeName.find("::");
+  if(posOfDD != std::string::npos)
+    typeName = typeName.substr(posOfDD+2);
+  
+  // remove spaces at the end
+  while(typeName[typeName.size()-1] == ' ')
+    typeName = typeName.substr(0, typeName.size()-1);
+
+  return typeName;
 }
 
 std::vector<std::pair<std::string, std::string> > SortByKeysByLen(const std::unordered_map<std::string, std::string>& a_map)
@@ -341,13 +377,7 @@ std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_s
   sFeatures.useInt64Type = sFeatures.useInt64Type || isInt64;
 
   std::string resStr;
-  std::string typeStr = a_str;
-  ReplaceFirst(typeStr, "LiteMath::", "");
-  ReplaceFirst(typeStr, "glm::",      "");
-  ReplaceFirst(typeStr, "struct ",    "");
-  ReplaceFirst(typeStr, "const ",     "");
-  ReplaceFirst(typeStr, "&",          "");
-  ReplaceFirst(typeStr, m_codeInfo->mainClassName + "::", "");
+  std::string typeStr = kslicer::CleanTypeName(a_str);
   ReplaceFirst(typeStr, "unsigned long", "uint");
   ReplaceFirst(typeStr, "unsigned char", "uint8_t");
   

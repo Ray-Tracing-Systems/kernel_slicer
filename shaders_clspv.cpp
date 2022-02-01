@@ -18,10 +18,8 @@ std::string kslicer::FunctionRewriter::RewriteStdVectorTypeStr(const std::string
   ReplaceFirst(typeStr, "const ",    "");
   ReplaceFirst(typeStr, m_codeInfo->mainClassName + "::", "");
   ReplaceFirst(typeStr, "struct float4x4", "float4x4");       // small inconvinience in math library
-
   if(isConst)
     typeStr = std::string("const ") + typeStr;
-
   return typeStr;
 }
 

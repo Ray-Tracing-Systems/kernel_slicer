@@ -974,8 +974,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["AuxArgs"] = std::vector<std::string>();
     for(auto arg : auxArgs)
     {
-      std::string typestr = arg.type;
-      ReplaceFirst(typestr, "const ", "");
+      std::string typestr = kslicer::CleanTypeName(arg.type);
       json argData;
       argData["Name"] = arg.name;
       argData["Type"] = typestr;

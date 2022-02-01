@@ -689,6 +689,22 @@ int main(int argc, const char **argv)
   std::cout << "{" << std::endl;
   std::vector<kslicer::FuncData> usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
   std::vector<kslicer::DeclInClass> usedDecls           = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
+  
+  for(const auto& usedDecl : usedDecls) // merge usedDecls with generalDecls
+  {
+    bool found = false;
+    for(const auto& currDecl : generalDecls)
+    {
+      if(currDecl.name == usedDecl.name)
+      {
+        found = true;
+        break;
+      }
+    }
+    if(!found)
+      generalDecls.push_back(usedDecl);
+  }
+  
   std::cout << "}" << std::endl;
   std::cout << std::endl;
   
@@ -878,6 +894,48 @@ int main(int argc, const char **argv)
     uboOutName          = rawname + "/include/" + uboIncludeName;
   }
 
+  // update generalDecls if we have missed some structure which are actually put inside class ubo 
+  {
+    std::unordered_map<std::string, kslicer::DeclInClass> declsByName;
+    for(const auto& decl : generalDecls)
+      declsByName[decl.name] = decl;
+    
+    auto internalTypes = kslicer::ListPredefinedMathTypes();
+
+    for(const auto& member : inputCodeInfo.dataMembers)
+    {
+      
+      std::string typeName = kslicer::CleanTypeName(member.type);       // TODO: make type clear function 
+      if(member.pTypeDeclIfRecord != nullptr && 
+         declsByName.find(typeName) == declsByName.end() && 
+         internalTypes.find(typeName) == internalTypes.end())
+      {
+        // check that we are in 'test_class.h', otherwise shader compiler took struct definition from included header
+        //
+        clang::SourceManager& srcMgr  = compiler.getSourceManager();
+        const clang::FileEntry* Entry = srcMgr.getFileEntryForID(srcMgr.getFileID(member.pTypeDeclIfRecord->getLocation()));
+        const std::string fileName    = std::string(Entry->getName());        
+        if(fileName != inputCodeInfo.mainClassFileInclude)
+          continue;
+
+        kslicer::DeclInClass tdecl;
+        tdecl.type     = typeName;
+        tdecl.name     = typeName;
+        tdecl.srcRange = member.pTypeDeclIfRecord->getSourceRange();    
+        tdecl.srcHash  = kslicer::GetHashOfSourceRange(tdecl.srcRange); 
+        if(generalDecls.size() != 0)
+          tdecl.order  = generalDecls.back().order+1;
+        else
+          tdecl.order  = 0;
+        tdecl.kind     = kslicer::DECL_IN_CLASS::DECL_STRUCT;
+        tdecl.extracted= true;
+
+        declsByName[tdecl.name] = tdecl;
+        generalDecls.push_back(tdecl);
+      }
+    }
+  }
+
   std::cout << "}" << std::endl;
   std::cout << std::endl;
   
@@ -1058,26 +1116,6 @@ int main(int argc, const char **argv)
   {
     for(auto& k : inputCodeInfo.kernels)
       k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
-  }
-
-  // finally generate kernels
-  //
-  // generalDecls.insert( generalDecls.end(), usedDecls.begin(), usedDecls.end());
-  {
-    for(const auto& usedDecl : usedDecls)
-    {
-      bool found = false;
-      for(const auto& currDecl : generalDecls)
-      {
-        if(currDecl.name == usedDecl.name)
-        {
-          found = true;
-          break;
-        }
-      }
-      if(!found)
-        generalDecls.push_back(usedDecl);
-    }
   }
   
   auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);

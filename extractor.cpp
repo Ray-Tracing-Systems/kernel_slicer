@@ -577,10 +577,7 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
   if(qt->isPointerType())
   {
     auto dataType     = qt->getPointeeType();
-    containerDataType = dataType.getAsString();
-    ReplaceFirst(containerDataType, "const ",  ""); // remove 'const '
-    ReplaceFirst(containerDataType, "struct ", ""); // remove 'struct '
-    ReplaceFirst(containerDataType, "class ", "");  // remove 'class '
+    containerDataType = kslicer::CleanTypeName(dataType.getAsString());
     
     if(containerDataType == "ISceneObject")
       kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
@@ -591,9 +588,8 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
   }
   else if(isContainer)
   {
-    ReplaceFirst(containerType,     "const ",  ""); // remove 'const '
-    ReplaceFirst(containerDataType, "struct ", ""); // remove 'struct '
-    ReplaceFirst(containerDataType, "class ", "");  // remove 'class '
+    containerType     = kslicer::CleanTypeName(containerType);
+    containerDataType = kslicer::CleanTypeName(containerDataType);
 
     if(kslicer::IsTextureContainer(containerType))
     {
@@ -621,9 +617,7 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
         {
           auto specDecl2 = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl2); 
           kslicer::SplitContainerTypes(specDecl2, containerType, containerDataType);
-          ReplaceFirst(containerDataType, "const ",  ""); // remove 'const '
-          ReplaceFirst(containerDataType, "struct ", ""); // remove 'struct '
-          ReplaceFirst(containerDataType, "class ", "");  // remove 'class '
+          containerDataType = kslicer::CleanTypeName(containerDataType);
           if(containerDataType == "ITexture2DCombined" || containerDataType == "ITexture3DCombined" || containerDataType == "ITextureCubeCombined")
             kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY;
           else
@@ -632,10 +626,7 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
         else if(typeOfData->isPointerType())
         {
           auto dataType2 = typeOfData->getPointeeType();
-          containerDataType = dataType2.getAsString();
-          ReplaceFirst(containerDataType, "const ",  ""); // remove 'const '
-          ReplaceFirst(containerDataType, "struct ", ""); // remove 'struct '
-          ReplaceFirst(containerDataType, "class ", "");  // remove 'class '
+          containerDataType = kslicer::CleanTypeName(dataType2.getAsString());
           if(containerDataType == "ITexture2DCombined" || containerDataType == "ITexture3DCombined" || containerDataType == "ITextureCubeCombined")
             kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY;
           else

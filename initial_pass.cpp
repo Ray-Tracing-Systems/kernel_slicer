@@ -422,7 +422,10 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
     member.isContainer = true; // for plain pointer members of special objects
     // #TODO: get correct container type ... probably we need it ))
   }
-
+  
+  auto pRecordType = fieldTypePtr->getAsStructureType();
+  if(pRecordType != nullptr)
+    member.pTypeDeclIfRecord = pRecordType->getDecl();
 
   return member;
 }
