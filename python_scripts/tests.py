@@ -78,8 +78,9 @@ def run_sample(test_name, on_gpu=False, gpu_id=0):
     Log().info("Running sample: {0}, gpu={1}".format(test_name, on_gpu))
     
     args = ["./build/testapp", "--test"]
+    args = args + ["--gpu_id", str(gpu_id)]  # for single launch samples
     if on_gpu:
-        args = args + ["--gpu", "--gpu_id", str(gpu_id)]
+        args = args + ["--gpu"]
 
     try:
         res = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -113,7 +114,7 @@ def run_test(test_name, args, num_threads=1, gpu_id=0):
         os.chdir(workdir)
         return -1
 
-    return_code = run_sample(test_name, on_gpu=False)
+    return_code = run_sample(test_name, on_gpu=False, gpu_id=gpu_id)
     if return_code != 0:
         os.chdir(workdir)
         return -1
