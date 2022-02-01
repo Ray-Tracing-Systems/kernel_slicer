@@ -9,3 +9,4 @@ clspv
 
 LOG_DIR/
 *.pyc
+zout_*
