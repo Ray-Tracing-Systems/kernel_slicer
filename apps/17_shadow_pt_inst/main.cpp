@@ -33,7 +33,7 @@ int main(int argc, const char** argv)
   else
     pImpl = std::make_shared<TestClass>(WIN_WIDTH*WIN_HEIGHT);
   
-  pImpl->LoadScene("/home/frol/PROG/HydraRepos/HydraCore/hydra_app/tests/test_42/statex_00001.xml");
+  pImpl->LoadScene("../resources/HydraCore/hydra_app/tests/test_42/statex_00001.xml");
   pImpl->CommitDeviceData();
 
   // remember pitch-linear (x,y) for each thread to make our threading 1D

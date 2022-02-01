@@ -6,6 +6,7 @@ import argparse
 
 import utils
 from logger import Log, Status
+from download_resources import download_resources
 from compare_images import compare_generated_images
 from compare_json import compare_generated_json_files
 from enum import Enum
@@ -200,6 +201,7 @@ def main():
         exit(1)
     Log().set_workdir(workdir)
     Log().print("Running in root: ", workdir)
+    download_resources()
     create_clspv_symlink("apps/clspv", "apps/tests/clspv")
     build_kernel_slicer(args.num_threads)
     tests(num_threads=args.num_threads, gpu_id=args.gpu_id)

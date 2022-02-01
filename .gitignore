@@ -10,3 +10,4 @@ clspv
 LOG_DIR/
 *.pyc
 zout_*
+apps/resources/*

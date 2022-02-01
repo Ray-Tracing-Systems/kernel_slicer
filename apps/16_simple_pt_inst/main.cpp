@@ -33,7 +33,7 @@ int main(int argc, const char** argv)
   else
     pImpl = std::make_shared<TestClass>(WIN_WIDTH*WIN_HEIGHT);
   
-  pImpl->LoadScene("/home/frol/PROG/msu-graphics-group/scenes/01_simple_scenes/bunny_cornell.xml");
+  pImpl->LoadScene("../resources/msu-graphics-group/scenes/01_simple_scenes/bunny_cornell.xml");
   pImpl->CommitDeviceData();
 
   // remember pitch-linear (x,y) for each thread to make our threading 1D
