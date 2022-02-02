@@ -54,10 +54,10 @@ set(UTILS_SRC   ../vkutils/geom/cmesh.cpp
 #        DATA_FILES ${DATA_FILES}
 #        )
 
-add_executable(raymarch_sample ${UTILS_SRC} main.cpp
+add_executable(testapp ${UTILS_SRC} main.cpp
                                raymarch.cpp
                                Bitmap.cpp
                                raymarch_generated.cpp
                                raymarch_generated_ds.cpp
                                raymarch_generated_init.cpp)
-target_link_libraries(raymarch_sample LINK_PUBLIC ${Vulkan_LIBRARY} volk dl)
+target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} volk dl)
