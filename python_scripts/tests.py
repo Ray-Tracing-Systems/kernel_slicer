@@ -6,6 +6,8 @@ import argparse
 
 import utils
 from logger import Log, Status
+from download_resources import download_resources
+from compare_images import compare_generated_images
 from compare_json import compare_generated_json_files
 from enum import Enum
 
@@ -26,6 +28,7 @@ def fix_paths_in_args(args):
 
 def compile_shaders(shader_lang):
     Log().info("Compiling {} shaders".format(shader_lang.name))
+    res = None
     if shader_lang == ShaderLang.OPEN_CL:
         res = subprocess.run(["bash", "z_build.sh"],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -71,54 +74,19 @@ def extract_shader_lang(args):
     return lang
 
 
-def is_out_img(img_name: str):
-    return img_name.startswith("zout_") and utils.has_image_ext(img_name)
-
-
-def find_image_pairs():
-    filenames = utils.get_files(os.getcwd())
-    image_filenames = sorted([f for f in filenames if is_out_img(f)])
-    cpu_images = [img for img in image_filenames if img.find("cpu") >= 0]
-    gpu_images = [img for img in image_filenames if img.find("gpu") >= 0]
-    if len(cpu_images) != len(gpu_images):
-        Log().error("Non equal image count for different code versions: cpu={0}, gpu={1}".format(
-            len(cpu_images), len(gpu_images)
-        ))
-        return None
-
-    return list(zip(cpu_images, gpu_images))
-
-
-def compare_images(img_name1, img_name2):
-    mse_res = utils.load_and_calc_mse(img_name1, img_name2)
-    threshold = 1e-4
-    status = Status.OK if mse_res < threshold else Status.FAILED
-
-    Log().status_info("{0}, {1} | mse = {2}".format(img_name1, img_name2, mse_res), status=status)
-    return 0 if mse_res < threshold else 1
-
-
-def check_generated_images():
-    Log().info("Comparing images")
-    image_pairs = find_image_pairs()
-    if image_pairs is None:
-        return -1
-
-    res = 0
-    for img1, img2 in image_pairs:
-        res += compare_images(img1, img2)
-
-    return 0 if res == 0 else -1
-
-
 def run_sample(test_name, on_gpu=False, gpu_id=0):
     Log().info("Running sample: {0}, gpu={1}".format(test_name, on_gpu))
     
     args = ["./build/testapp", "--test"]
+    args = args + ["--gpu_id", str(gpu_id)]  # for single launch samples
     if on_gpu:
-        args = args + ["--gpu", "--gpu_id", str(gpu_id)]
+        args = args + ["--gpu"]
 
-    res = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        res = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except Exception as e:
+        Log().status_info("Failed to launch sample {0} : {1}".format(test_name, e), status=Status.FAILED)
+        return -1
     if res.returncode != 0:
         Log().status_info("{}: launch".format(test_name), status=Status.FAILED)
         Log().save_std_output(test_name, res.stdout.decode(), res.stderr.decode())
@@ -146,7 +114,7 @@ def run_test(test_name, args, num_threads=1, gpu_id=0):
         os.chdir(workdir)
         return -1
 
-    return_code = run_sample(test_name, on_gpu=False)
+    return_code = run_sample(test_name, on_gpu=False, gpu_id=gpu_id)
     if return_code != 0:
         os.chdir(workdir)
         return -1
@@ -155,7 +123,8 @@ def run_test(test_name, args, num_threads=1, gpu_id=0):
         os.chdir(workdir)
         return -1
 
-    return_code = check_generated_images()
+    if not compare_generated_images():
+        return_code = -1
     if not compare_generated_json_files():
         return_code = -1
 
@@ -233,6 +202,7 @@ def main():
         exit(1)
     Log().set_workdir(workdir)
     Log().print("Running in root: ", workdir)
+    download_resources()
     create_clspv_symlink("apps/clspv", "apps/tests/clspv")
     build_kernel_slicer(args.num_threads)
     tests(num_threads=args.num_threads, gpu_id=args.gpu_id)
