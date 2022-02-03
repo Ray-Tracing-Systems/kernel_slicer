@@ -57,6 +57,7 @@ int compute_main()
 
   for(const auto i : badId)
   {
+    failed = true;
     std::cout << "Wrong position " << i << std::endl;
     std::cout << "CPU value: " << out_cpu[i].pos_weight.x << "\t" << out_cpu[i].pos_weight.y << "\t" << out_cpu[i].pos_weight.z << "\t" << out_cpu[i].pos_weight.w << std::endl;
     std::cout << "GPU value: " << out_gpu[i].pos_weight.x << "\t" << out_gpu[i].pos_weight.y << "\t" << out_gpu[i].pos_weight.z << "\t" << out_gpu[i].pos_weight.w << std::endl;
@@ -64,6 +65,7 @@ int compute_main()
 
   for(const auto i : badId2)
   {
+    failed = true;
     std::cout << "Wrong velocity " << i << std::endl;
     std::cout << "CPU value: " << out_cpu[i].vel_charge.x << "\t" << out_cpu[i].vel_charge.y << "\t" << out_cpu[i].vel_charge.z << "\t" << out_cpu[i].vel_charge.w << std::endl;
     std::cout << "GPU value: " << out_gpu[i].vel_charge.x << "\t" << out_gpu[i].vel_charge.y << "\t" << out_gpu[i].vel_charge.z << "\t" << out_gpu[i].vel_charge.w << std::endl;
@@ -71,6 +73,7 @@ int compute_main()
 
   if (failed) {
     std::cout << "FAIL" << std::endl;
+    return -1;
   } else {
     std::cout << "OK" << std::endl;
   }
@@ -96,19 +99,13 @@ int graphics_main()
 
 int main(int argc, const char** argv)
 {
-  bool runCmdLineMode = false;
+  ArgParser args(argc, argv);
+  bool runCmdLineMode = args.hasOption("--test");
 
-  for(int i=1;i<argc;i++)
-  {
-    if(std::string(argv[i]) == "--test")
-    {
-      runCmdLineMode = true;
-      break;
-    }
-  }
-  
   if(runCmdLineMode)
-    compute_main();
+    return compute_main();
   else
     graphics_main();
+
+  return 0;
 }
