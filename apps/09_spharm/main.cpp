@@ -9,6 +9,8 @@
 #include "test_class.h"
 #include "Bitmap.h"
 #include "ArgParser.h"
+#define JSON_LOG_IMPLEMENTATION
+#include "JSONLog.hpp"
 
 #include "vk_context.h"
 std::shared_ptr<SphHarm> CreateSphHarm_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
@@ -21,11 +23,14 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
 
-  std::string filename = argv[1];
+  ArgParser args(argc, argv);
+
+  std::string filename = args.hasOption("--test") ? "skybox" : argv[1];
   int w, h;
   std::vector<uint32_t> inputImageData = LoadBMP((filename + ".bmp").c_str(), &w, &h);
+  if(inputImageData.empty())
+    throw std::runtime_error("Failed to load inputImageData from file: " + filename + ".bmp");
   
-  ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
   std::shared_ptr<SphHarm> pImpl = nullptr;
@@ -54,8 +59,21 @@ int main(int argc, const char** argv)
   }
   
   std::cout << std::endl;
-  for(size_t i=0;i<9;i++)
-    std::cout << pImpl->coefs[i].x  << " " << pImpl->coefs[i].y  << " " << pImpl->coefs[i].z  << std::endl;
+  const int coefsCount = 9;
+  std::vector<float> coefs_x(coefsCount);
+  std::vector<float> coefs_y(coefsCount);
+  std::vector<float> coefs_z(coefsCount);
+  for(size_t i=0;i<coefsCount;i++)
+  {
+    coefs_x[i] = pImpl->coefs[i].x;
+    coefs_y[i] = pImpl->coefs[i].y;
+    coefs_z[i] = pImpl->coefs[i].z;
+  }
+  JSONLog::write("coefs_x", coefs_x);
+  JSONLog::write("coefs_y", coefs_y);
+  JSONLog::write("coefs_z", coefs_z);
+  std::string backendName = onGPU ? "gpu" : "cpu";
+  JSONLog::saveToFile("zout_"+backendName+".json");
   
   std::cout << "gen_image ... " << std::endl;
   system(("python3 gen_image.py " + filename).c_str());
