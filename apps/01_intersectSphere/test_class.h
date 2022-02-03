@@ -27,11 +27,11 @@ static inline float4x4 perspectiveMatrix(float fovy, float aspect, float zNear, 
   return res;
 }
 
-template<class T> struct MyTestVector
-{
-  T _data[6];
-  T* data() { return &_data[0]; }
-};
+//template<class T> struct MyTestVector
+//{
+//  T _data[6];
+//  T* data() { return &_data[0]; }
+//};
 
 class TestClass // : public DataClass
 {
@@ -66,7 +66,7 @@ protected:
   unsigned int m_data1;
   float m_data2[3];
   std::vector<unsigned int>  m_someBufferData;
-  MyTestVector<unsigned int> m_someBufferData2;
+  //MyTestVector<unsigned int> m_someBufferData2;
 };
 
 #endif

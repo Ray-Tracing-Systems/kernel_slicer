@@ -279,12 +279,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (2) declarations of struct, constants and typedefs inside class
   //
+  
+  std::unordered_set<std::string> excludedNames;
+  for(auto pair : a_classInfo.m_setterVars)
+    excludedNames.insert(kslicer::CleanTypeName(pair.second));
+
   data["ClassDecls"] = std::vector<std::string>();
   for(const auto decl : usedDecl)
   {
     if(!decl.extracted)
       continue;
-
+    if(excludedNames.find(decl.type) != excludedNames.end())
+      continue;
     data["ClassDecls"].push_back(a_classInfo.pShaderCC->PrintHeaderDecl(decl,compiler));
   }
 

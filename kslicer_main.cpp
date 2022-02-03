@@ -422,8 +422,7 @@ int main(int argc, const char **argv)
   else
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>(useCppInKernels);
-    inputCodeInfo.includeToShadersFolders.push_back(mainFolderPath + "/");
-    inputCodeInfo.includeToShadersFolders.push_back(mainFolderPath + "/include/");
+    inputCodeInfo.includeToShadersFolders.push_back("include/");
   }
 
   inputCodeInfo.defaultVkernelType = defaultVkernelType;
