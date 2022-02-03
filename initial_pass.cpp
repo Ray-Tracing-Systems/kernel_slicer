@@ -112,6 +112,8 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* 
 
 bool kslicer::InitialPassRecursiveASTVisitor::NeedToProcessDeclInFile(std::string a_fileName)
 {
+  //if(a_fileName == m_codeInfo.mainClassFileInclude)   // we don't yet know neither m_codeInfo.mainClassFileInclude, nor MAIN_FILE_INCLUDE
+  //  return true;
   bool needInsertToKernels = false;                     // do we have to process this declaration to further insert it to GLSL/CL ?
   for(auto folder : m_codeInfo.includeCPPFolders)       //
   {
@@ -129,10 +131,10 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
   const FileEntry* Entry = m_sourceManager.getFileEntryForID(m_sourceManager.getFileID(type->getLocation()));
   if(Entry == nullptr)
     return true;
-  //std::string debugName = type->getNameAsString();
-  std::string FileName  = Entry->getName().str();
 
-  //if(debugName.find("LightInfo") != std::string::npos)
+  std::string FileName  = Entry->getName().str();
+  //std::string debugName = type->getNameAsString();
+  //if(debugName == "MyFloat3" || debugName == "MyType")
   //{
   //  int a = 2;
   //}

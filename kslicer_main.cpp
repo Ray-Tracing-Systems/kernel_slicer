@@ -416,12 +416,14 @@ int main(int argc, const char **argv)
   if(shaderCCName == "glsl" || shaderCCName == "GLSL")
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::GLSLCompiler>();
-    inputCodeInfo.includeCPPFolders.push_back("include/");
+    inputCodeInfo.includeCPPFolders.push_back(mainFolderPath + "/");
+    inputCodeInfo.includeCPPFolders.push_back(mainFolderPath + "/include/");
   }
   else
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>(useCppInKernels);
-    inputCodeInfo.includeToShadersFolders.push_back("include/");
+    inputCodeInfo.includeToShadersFolders.push_back(mainFolderPath + "/");
+    inputCodeInfo.includeToShadersFolders.push_back(mainFolderPath + "/include/");
   }
 
   inputCodeInfo.defaultVkernelType = defaultVkernelType;
@@ -557,7 +559,6 @@ int main(int argc, const char **argv)
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.m_mainClassASTNode;
   inputCodeInfo.ctors                = firstPassData.rv.ctors;
   inputCodeInfo.allMemberFunctions   = firstPassData.rv.allMemberFunctions;
-  //inputCodeInfo.allMemberFuncByDecl  = firstPassData.rv.allMemberFuncByDecl;
   inputCodeInfo.ProcessAllSetters(firstPassData.rv.m_setters, compiler);
 
   std::vector<kslicer::DeclInClass> generalDecls = firstPassData.rv.GetExtractedDecls();
@@ -895,7 +896,7 @@ int main(int argc, const char **argv)
   }
 
   // update generalDecls if we have missed some structure which are actually put inside class ubo 
-  {
+  /*{
     std::unordered_map<std::string, kslicer::DeclInClass> declsByName;
     for(const auto& decl : generalDecls)
       declsByName[decl.name] = decl;
@@ -904,7 +905,6 @@ int main(int argc, const char **argv)
 
     for(const auto& member : inputCodeInfo.dataMembers)
     {
-      
       std::string typeName = kslicer::CleanTypeName(member.type);       // TODO: make type clear function 
       if(member.pTypeDeclIfRecord != nullptr && 
          declsByName.find(typeName) == declsByName.end() && 
@@ -934,7 +934,7 @@ int main(int argc, const char **argv)
         generalDecls.push_back(tdecl);
       }
     }
-  }
+  }*/
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
