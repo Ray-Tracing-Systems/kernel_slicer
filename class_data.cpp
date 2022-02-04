@@ -28,9 +28,11 @@ struct less_than_key
 
 static inline size_t AlignedSize(const size_t a_size)
 {
-  size_t currSize = 4;
-  while(a_size > currSize)
-    currSize = currSize*2;
+  if(a_size == 4 || a_size == 8)
+    return a_size;
+  size_t currSize = a_size;
+  while(currSize % 16 != 0)
+    currSize += 4;
   return currSize;
 }
 
