@@ -133,15 +133,25 @@ def run_test(test_name, args, num_threads=1, gpu_id=0):
     Log().status_info("\"{}\" finished".format(test_name), status=final_status)
 
 
-def tests(num_threads=1, gpu_id=0):
+def get_sample_names(path, configurations):
+    if path:
+        sample_names_file = open(path, "r")
+        sample_names_json = commentjson.load(sample_names_file)
+        return set(sample_names_json["names"])
+    else:
+        return {config["name"] for config in configurations}
+
+
+def tests(num_threads=1, gpu_id=0, sample_names_path=""):
     json_file = open(".vscode/launch.json", "r")
     launch_json = commentjson.load(json_file)
     configurations = launch_json["configurations"]
+    required_samples_names = get_sample_names(sample_names_path, configurations)
     for config in configurations:
         if config["name"] in config_black_list:
             continue
-        # if config["name"] != "Launch (app_04)": # @TODO: should be removed later
-        #     continue
+        if config["name"] not in required_samples_names:
+            continue
         run_test(config["name"], config["args"], num_threads, gpu_id)
 
 
@@ -184,6 +194,8 @@ def parse_args():
     parser.add_argument('workdir', type=str, default=".", help="test script working dir path")
     parser.add_argument("--gpu_id", type=int, default=0, help="GPU id for sample execution")
     parser.add_argument("--num_threads", type=int, default=8, help="Number of threads for cmake build")
+    parser.add_argument("--sample_names", type=str, default="",
+                        help="path to json file with sample names which are desired to be tested")
 
     args = parser.parse_args()
 
@@ -205,7 +217,7 @@ def main():
     download_resources()
     create_clspv_symlink("apps/clspv", "apps/tests/clspv")
     build_kernel_slicer(args.num_threads)
-    tests(num_threads=args.num_threads, gpu_id=args.gpu_id)
+    tests(num_threads=args.num_threads, gpu_id=args.gpu_id, sample_names_path=args.sample_names)
     Log().close()
 
 
