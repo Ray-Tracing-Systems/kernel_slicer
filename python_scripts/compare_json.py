@@ -61,7 +61,15 @@ def compare_generated_json_files():
         Log().error("Gpu json out file is missing")
         return False
 
-    cpu_json = commentjson.load(cpu_json_file)
-    gpu_json = commentjson.load(gpu_json_file)
+    try:
+        cpu_json = commentjson.load(cpu_json_file)
+    except Exception as e:
+        Log().error("Failed to load cpu_json : {}".format(e))
+        return False
+    try:
+        gpu_json = commentjson.load(gpu_json_file)
+    except Exception as e:
+        Log().error("Failed to load gpu_json : {}".format(e))
+        return False
 
     return compare_json_files(cpu_json, gpu_json)
