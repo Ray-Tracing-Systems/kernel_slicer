@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <iomanip>
 #include <cctype>
+#include <queue>
 
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
@@ -410,19 +411,18 @@ int main(int argc, const char **argv)
     exit(0);
   }
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
-  inputCodeInfo.includeToShadersFolders = includeFolderList;  // set shader folders
+  inputCodeInfo.ignoreFolders = includeFolderList;  // set shader folders
   inputCodeInfo.includeCPPFolders       = includeFolderList2; // set common C/C++ folders
 
   if(shaderCCName == "glsl" || shaderCCName == "GLSL")
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::GLSLCompiler>();
-    inputCodeInfo.includeCPPFolders.push_back(mainFolderPath + "/");
-    inputCodeInfo.includeCPPFolders.push_back(mainFolderPath + "/include/");
+    inputCodeInfo.includeCPPFolders.push_back("include/");
   }
   else
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>(useCppInKernels);
-    inputCodeInfo.includeToShadersFolders.push_back("include/");
+    inputCodeInfo.ignoreFolders.push_back("include/");
   }
 
   inputCodeInfo.defaultVkernelType = defaultVkernelType;
@@ -894,47 +894,9 @@ int main(int argc, const char **argv)
     uboOutName          = rawname + "/include/" + uboIncludeName;
   }
 
-  // update generalDecls if we have missed some structure which are actually put inside class ubo 
-  /*{
-    std::unordered_map<std::string, kslicer::DeclInClass> declsByName;
-    for(const auto& decl : generalDecls)
-      declsByName[decl.name] = decl;
-    
-    auto internalTypes = kslicer::ListPredefinedMathTypes();
-
-    for(const auto& member : inputCodeInfo.dataMembers)
-    {
-      std::string typeName = kslicer::CleanTypeName(member.type);       // TODO: make type clear function 
-      if(member.pTypeDeclIfRecord != nullptr && 
-         declsByName.find(typeName) == declsByName.end() && 
-         internalTypes.find(typeName) == internalTypes.end())
-      {
-        // check that we are in 'test_class.h', otherwise shader compiler took struct definition from included header
-        //
-        clang::SourceManager& srcMgr  = compiler.getSourceManager();
-        const clang::FileEntry* Entry = srcMgr.getFileEntryForID(srcMgr.getFileID(member.pTypeDeclIfRecord->getLocation()));
-        const std::string fileName    = std::string(Entry->getName());        
-        if(fileName != inputCodeInfo.mainClassFileInclude)
-          continue;
-
-        kslicer::DeclInClass tdecl;
-        tdecl.type     = typeName;
-        tdecl.name     = typeName;
-        tdecl.srcRange = member.pTypeDeclIfRecord->getSourceRange();    
-        tdecl.srcHash  = kslicer::GetHashOfSourceRange(tdecl.srcRange); 
-        if(generalDecls.size() != 0)
-          tdecl.order  = generalDecls.back().order+1;
-        else
-          tdecl.order  = 0;
-        tdecl.kind     = kslicer::DECL_IN_CLASS::DECL_STRUCT;
-        tdecl.extracted= true;
-
-        declsByName[tdecl.name] = tdecl;
-        generalDecls.push_back(tdecl);
-      }
-    }
-  }*/
-
+  kslicer::ProcessMemberTypes(inputCodeInfo.dataMembers, firstPassData.rv.GetOtherTypeDecls(), 
+                              compiler.getSourceManager(), inputCodeInfo.ignoreFolders,
+                              generalDecls); // ==> generalDecls
   std::cout << "}" << std::endl;
   std::cout << std::endl;
   

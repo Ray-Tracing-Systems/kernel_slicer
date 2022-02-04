@@ -52,6 +52,8 @@ namespace kslicer
     std::vector<const clang::CXXRecordDecl*> m_classList;
     std::vector<kslicer::DeclInClass> GetExtractedDecls();
 
+    const std::unordered_map<std::string, kslicer::DeclInClass>& GetOtherTypeDecls() const { return m_storedDecl;}
+
   private:
     void ProcessKernelDef(const CXXMethodDecl *f,  std::unordered_map<std::string, KernelInfo>& a_funcList, const std::string& a_className);
     bool NeedToProcessDeclInFile(std::string a_fileName);
@@ -66,6 +68,7 @@ namespace kslicer
 
     uint32_t m_currId = 0;
     std::unordered_map<std::string, kslicer::DeclInClass> m_transferredDecl;
+    std::unordered_map<std::string, kslicer::DeclInClass> m_storedDecl;
   };
   
   class InitialPassASTConsumer : public ASTConsumer

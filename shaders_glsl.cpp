@@ -16,7 +16,7 @@ std::string GetFolderPath(const std::string& a_filePath);
 void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo)
 {
   const auto& mainClassFileName       = a_codeInfo->mainClassFileName;
-  const auto& includeToShadersFolders = a_codeInfo->includeToShadersFolders;
+  const auto& ignoreFolders = a_codeInfo->ignoreFolders;
   
   #ifdef WIN32
   const std::string slash = "\\";
@@ -71,7 +71,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     std::string outFilePath = shaderPath + slash + outFileName;
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
     buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
-    for(auto folder : includeToShadersFolders)
+    for(auto folder : ignoreFolders)
      buildSH << "-I" << folder.c_str() << " ";
     buildSH << std::endl;
 
@@ -81,7 +81,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
       outFilePath = shaderPath + slash + outFileName;
       kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
       buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
-      for(auto folder : includeToShadersFolders)
+      for(auto folder : ignoreFolders)
        buildSH << "-I" << folder.c_str() << " ";
       buildSH << std::endl;
     }
@@ -92,7 +92,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
       outFilePath = shaderPath + slash + outFileName;
       kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
       buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
-      for(auto folder : includeToShadersFolders)
+      for(auto folder : ignoreFolders)
        buildSH << "-I" << folder.c_str() << " ";
       buildSH << std::endl;
     }

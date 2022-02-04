@@ -30,7 +30,6 @@ public:
   virtual void Test(float* a_data __attribute__((size("a_size"))), unsigned int a_size);
   void kernel1D_Test(float* a_data, unsigned int a_size);
   
-  float4x4 m_testMat; // identity
   float3 m_data1 = float3(0,1,2);
   float2 m_data2 = float2(3,4);
   float  m_data3 = 5.0f;

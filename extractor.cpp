@@ -36,7 +36,7 @@ public:
     //}
 
     std::string fileName = std::string(m_sm.getFilename(f->getSourceRange().getBegin())); // check that we are in test_class.cpp or test_class.h or sms like that;                                                                             
-    for(auto f : m_patternImpl.includeToShadersFolders)                                   // exclude everything from "shader" folders
+    for(auto f : m_patternImpl.ignoreFolders)                                   // exclude everything from "shader" folders
     {
       if(fileName.find(f) != std::string::npos)
        return true;
@@ -642,4 +642,101 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
   else 
     kind = kslicer::DATA_KIND::KIND_POD; 
   return kind;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool kslicer::IsInExcludedFolder(const std::string& fileName, const std::vector<std::string>& a_excludeFolderList)
+{
+  bool exclude = false;
+  for(auto folder : a_excludeFolderList)       //
+  {
+    if(fileName.find(folder) != std::string::npos)
+    {
+      exclude = true;
+      break;
+    }
+  }
+  return exclude;
+}
+
+void kslicer::ProcessMemberTypes(const std::vector<DataMemberInfo>& a_members, 
+                                 const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls,
+                                 clang::SourceManager& a_srcMgr, const std::vector<std::string>& a_excludeFolderList,
+                                 std::vector<kslicer::DeclInClass>& generalDecls)
+{
+  std::unordered_map<std::string, kslicer::DeclInClass> declsByName;
+    for(const auto& decl : generalDecls)
+      declsByName[decl.name] = decl;
+    
+    auto internalTypes = kslicer::ListPredefinedMathTypes();
+
+    struct TypePair
+    {
+      TypePair(){}
+      TypePair(const std::string& a_name, const clang::TypeDecl* a_node) : typeName(a_name), node(a_node) {}
+      std::string typeName;
+      const clang::TypeDecl*  node;      // todo, change to TypeDecl
+    };
+
+    std::queue<TypePair> typesToProcess;
+
+    for(const auto& member : a_members)
+    {
+      std::string typeName = kslicer::CleanTypeName(member.type);       // TODO: make type clear function 
+      if(member.pTypeDeclIfRecord != nullptr && 
+         declsByName.find(typeName) == declsByName.end() && 
+         internalTypes.find(typeName) == internalTypes.end())
+      {
+        auto pFound = a_otherDecls.find(typeName);
+        if(pFound != a_otherDecls.end())
+          typesToProcess.push(TypePair(typeName, member.pTypeDeclIfRecord));
+      }
+    }
+    
+    size_t lastDeclOrder = generalDecls.size() == 0 ? 0 : generalDecls.back().order+1;
+    std::vector<kslicer::DeclInClass> auxDecls;
+
+    while(!typesToProcess.empty())
+    {
+      TypePair elem = typesToProcess.front(); typesToProcess.pop();
+      if(declsByName.find(elem.typeName) == declsByName.end())
+      {
+        kslicer::DeclInClass tdecl;
+        tdecl.type     = elem.typeName;
+        tdecl.name     = elem.typeName;
+        tdecl.srcRange = elem.node->getSourceRange();    
+        tdecl.srcHash  = kslicer::GetHashOfSourceRange(tdecl.srcRange); 
+        tdecl.order    = lastDeclOrder; lastDeclOrder++;
+        tdecl.kind     = kslicer::DECL_IN_CLASS::DECL_STRUCT;
+        tdecl.extracted= true;
+        declsByName[elem.typeName] = tdecl;
+
+        const clang::FileEntry* Entry = a_srcMgr.getFileEntryForID(a_srcMgr.getFileID(elem.node->getLocation()));
+        const std::string fileName    = std::string(Entry->getName());        
+        const bool        exclude     = IsInExcludedFolder(fileName, a_excludeFolderList); 
+        if(!exclude)
+          auxDecls.push_back(tdecl);
+        
+        // process all field types 
+        //
+        if(clang::isa<clang::RecordDecl>(elem.node))
+        {
+          auto pRecordDecl = clang::dyn_cast<clang::RecordDecl>(elem.node);
+          for(auto field : pRecordDecl->fields())
+          {
+            clang::QualType qt = field->getType();
+            const std::string typeName2 = kslicer::CleanTypeName(qt.getAsString());
+            auto pRecordType = qt->getAsStructureType();
+            if(pRecordType != nullptr && declsByName.find(typeName2) == declsByName.end() && internalTypes.find(typeName2) == internalTypes.end())
+              typesToProcess.push(TypePair(typeName2, pRecordType->getDecl()));
+          }
+        }
+      }
+    }
+
+    std::reverse_copy(auxDecls.begin(), auxDecls.end(), std::back_inserter(generalDecls)); 
 }

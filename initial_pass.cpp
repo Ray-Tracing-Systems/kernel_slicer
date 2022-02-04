@@ -139,8 +139,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
   //  int a = 2;
   //}
 
-  if(!NeedToProcessDeclInFile(FileName))
-    return true;
+  const bool isDefinitelyInsideShaders = NeedToProcessDeclInFile(FileName);
 
   if(isa<CXXRecordDecl>(type)) 
   {
@@ -158,6 +157,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
   //const clang::QualType qt = 
 
   kslicer::DeclInClass decl;
+  
   if(isa<RecordDecl>(type))
   {
     RecordDecl* pRecord = dyn_cast<RecordDecl>(type);
@@ -173,7 +173,10 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
        decl.name != std::string("class ") + m_codeInfo.mainClassName && 
        decl.name != std::string("struct ") + m_codeInfo.mainClassName)
     {
-      m_transferredDecl[decl.name] = decl;
+      if(isDefinitelyInsideShaders)
+        m_transferredDecl[decl.name] = decl;
+      else
+        m_storedDecl     [decl.name] = decl;
       m_currId++;
     }
   }
@@ -188,7 +191,10 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
     decl.order     = m_currId;
     decl.kind      = kslicer::DECL_IN_CLASS::DECL_TYPEDEF;
     decl.extracted = true;
-    m_transferredDecl[decl.name] = decl;
+    if(isDefinitelyInsideShaders)
+      m_transferredDecl[decl.name] = decl;
+    else
+      m_storedDecl     [decl.name] = decl;
     m_currId++;
   }
   else if(isa<EnumDecl>(type))
@@ -206,7 +212,10 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
       decl.order     = m_currId;
       decl.kind      = kslicer::DECL_IN_CLASS::DECL_CONSTANT;
       decl.extracted = true;
-      m_transferredDecl[decl.name] = decl;
+      if(isDefinitelyInsideShaders)
+        m_transferredDecl[decl.name] = decl;
+      else
+        m_storedDecl     [decl.name] = decl;
       m_currId++;
     }
  

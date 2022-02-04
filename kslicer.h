@@ -296,7 +296,7 @@ namespace kslicer
     std::string containerType;     ///<! std::vector usually
     std::string containerDataType; ///<! data type 'T' inside of std::vector<T>
 
-    clang::RecordDecl* pTypeDeclIfRecord = nullptr;
+    clang::TypeDecl* pTypeDeclIfRecord = nullptr;
 
     bool IsUsedTexture() const { return isContainer && IsTextureContainer(containerType); }  // && isContainer && kslicer::IsTexture(containerType); }
   };
@@ -803,7 +803,7 @@ namespace kslicer
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
     std::vector<const clang::CXXConstructorDecl* > ctors;
 
-    std::vector<std::string> includeToShadersFolders;
+    std::vector<std::string> ignoreFolders;
     std::vector<std::string> includeCPPFolders;  
    
 
@@ -1035,6 +1035,13 @@ namespace kslicer
   void CheckInterlanIncInExcludedFolders(const std::vector<std::string>& a_folders);
 
   std::string CleanTypeName(const std::string& a_str);
+  
+  bool IsInExcludedFolder(const std::string& fileName, const std::vector<std::string>& a_excludeFolderList);
+
+  void ProcessMemberTypes(const std::vector<DataMemberInfo>& a_members, 
+                          const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls,
+                          clang::SourceManager& a_srcMgr, const std::vector<std::string>& a_excludeFolderList,
+                          std::vector<kslicer::DeclInClass>& generalDecls);
 }
 
 template <typename Cont, typename Pred>
