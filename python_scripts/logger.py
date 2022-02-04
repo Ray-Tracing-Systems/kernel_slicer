@@ -24,8 +24,13 @@ class Singleton(type):
 
 
 class Status(Enum):
-    OK     = 0
-    FAILED = 1
+    OK      = 0
+    WARNING = 1
+    FAILED  = 2
+
+    @staticmethod
+    def worst_of(status1, status2):
+        return status1 if status1.value > status2.value else status2
 
 
 class Log(metaclass=Singleton):
@@ -51,6 +56,7 @@ class Log(metaclass=Singleton):
     def status_info(self, *args, status=Status.OK):
         status_color = {
             Status.OK: Fore.GREEN,
+            Status.WARNING: Fore.YELLOW,
             Status.FAILED: Fore.RED
         }
 
