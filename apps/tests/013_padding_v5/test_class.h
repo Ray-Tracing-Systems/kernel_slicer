@@ -13,9 +13,9 @@ using LiteMath::float2;
 
 struct RectLightSource
 {
-  float4 pos;
-  float4 intensity;
-  float4 norm;
+  float pos      [4];
+  float3 intensity;
+  float norm     [3];
   float2 size;
 };
 
@@ -30,10 +30,11 @@ public:
   float4x4 matrix;
   float test1 = 15.0f;
   float test2 = 16.0f;
+  float test3 = 17.0f;
    
   const RectLightSource m_badData = {{1.0f,2.0f,3.0f,4.0f},
-                                     {5.0f,6.0f,7.0f,8.0f},
-                                     {9.0f,10.0f,11.0f,12.0f},
+                                     {5.0f,6.0f,7.0f},
+                                     {9.0f,10.0f,11.0f},
                                      {13.0f,14.0f}};
 
   virtual void CommitDeviceData() {}                                       // will be overriden in generated class

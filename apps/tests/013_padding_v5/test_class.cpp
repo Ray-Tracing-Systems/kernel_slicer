@@ -24,18 +24,17 @@ void Padding::kernel1D_Test(float* a_data, unsigned int a_size)
       a_data[7] = m_badData.intensity[0];
       a_data[8] = m_badData.intensity[1];
       a_data[9] = m_badData.intensity[2];
-      a_data[10] = m_badData.intensity[3];
       
-      a_data[11] = m_badData.norm[0];
-      a_data[12] = m_badData.norm[1];
-      a_data[13] = m_badData.norm[2];
-      a_data[14] = m_badData.norm[3];
+      a_data[10] = m_badData.norm[0];
+      a_data[11] = m_badData.norm[1];
+      a_data[12] = m_badData.norm[2];
 
-      a_data[15] = m_badData.size.x;
-      a_data[16] = m_badData.size.y;
+      a_data[13] = m_badData.size[0];
+      a_data[14] = m_badData.size[1];
       
-      a_data[17] = test1;
-      a_data[18] = test2;
+      a_data[15] = test1;
+      a_data[16] = test2;
+      a_data[17] = test3;
     }
   }
 }

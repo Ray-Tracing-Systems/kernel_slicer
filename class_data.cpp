@@ -74,7 +74,6 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
     const size_t alignedSize = AlignedSize(var.sizeInBytes);
     var.offsetInTargetBuffer = offsetInBytes;
     var.alignedSizeInBytes   = alignedSize;
-    assert(var.offsetInTargetBuffer % alignedSize == 0); // this is guaranteed due to we sort variables by their size
     offsetInBytes += alignedSize;
   }
 
