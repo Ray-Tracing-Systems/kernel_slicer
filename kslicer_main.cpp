@@ -260,6 +260,24 @@ void ReadThreadsOrderFromStr(const std::string& threadsOrderStr, uint32_t  threa
   }
 }
 
+struct less_than_key2
+{
+  inline bool operator() (const kslicer::DataMemberInfo& struct1, const kslicer::DataMemberInfo& struct2)
+  {
+    if(struct1.aligmentGLSL != struct2.aligmentGLSL)
+      return (struct1.aligmentGLSL > struct2.aligmentGLSL);
+    else if(struct1.sizeInBytes != struct2.sizeInBytes)
+      return (struct1.sizeInBytes > struct2.sizeInBytes);
+    else if(struct1.isContainerInfo && !struct2.isContainerInfo)
+      return false;
+    else if(!struct1.isContainerInfo && struct2.isContainerInfo)
+      return true;
+    else
+      return struct1.name < struct2.name;
+  }
+};
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -883,7 +901,16 @@ int main(int argc, const char **argv)
   std::cout << "(6) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl; 
   std::cout << "{" << std::endl;
 
-  inputCodeInfo.dataMembers  = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
+  inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
+  
+  kslicer::ProcessMemberTypes(inputCodeInfo.dataMembers, firstPassData.rv.GetOtherTypeDecls(), 
+                              compiler.getSourceManager(), inputCodeInfo.ignoreFolders,
+                              generalDecls); // ==> generalDecls
+
+  kslicer::ProcessMemberTypesAligment(inputCodeInfo.dataMembers); // compiler.getASTContext()
+
+  std::sort(inputCodeInfo.dataMembers.begin(), inputCodeInfo.dataMembers.end(), less_than_key2()); // sort by aligment in GLSL
+
   auto jsonUBO               = kslicer::PrepareUBOJson(inputCodeInfo, inputCodeInfo.dataMembers, compiler);
   std::string uboIncludeName = inputCodeInfo.mainClassName + "_ubo.h";
 
@@ -894,9 +921,6 @@ int main(int argc, const char **argv)
     uboOutName          = rawname + "/include/" + uboIncludeName;
   }
 
-  kslicer::ProcessMemberTypes(inputCodeInfo.dataMembers, firstPassData.rv.GetOtherTypeDecls(), 
-                              compiler.getSourceManager(), inputCodeInfo.ignoreFolders,
-                              generalDecls); // ==> generalDecls
   std::cout << "}" << std::endl;
   std::cout << std::endl;
   

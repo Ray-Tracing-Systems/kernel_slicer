@@ -28,9 +28,11 @@ struct less_than_key
 
 static inline size_t AlignedSize(const size_t a_size)
 {
-  size_t currSize = 4;
-  while(a_size > currSize)
-    currSize = currSize*2;
+  if(a_size == 4 || a_size == 8)
+    return a_size;
+  size_t currSize = a_size;
+  while(currSize % 16 != 0)
+    currSize += 4;
   return currSize;
 }
 
@@ -69,10 +71,9 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
   size_t offsetInBytes = 0;
   for(auto& var : resVars)
   {
-    const size_t alignedSize = AlignedSize(var.sizeInBytes);
+    const size_t alignedSize = var.sizeInBytes; // AlignedSize(var.sizeInBytes);
     var.offsetInTargetBuffer = offsetInBytes;
     var.alignedSizeInBytes   = alignedSize;
-    assert(var.offsetInTargetBuffer % alignedSize == 0); // this is guaranteed due to we sort variables by their size
     offsetInBytes += alignedSize;
   }
 
