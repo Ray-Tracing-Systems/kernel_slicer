@@ -3,15 +3,24 @@
 #include <vector>
 #include <string>
 
-void kslicer::SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType)
+clang::TypeDecl* kslicer::SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType)
 {
   a_containerType = specDecl->getNameAsString();      
   const auto& templateArgs = specDecl->getTemplateArgs();
-        
+
+  clang::TypeDecl* result = nullptr;      
   if(templateArgs.size() > 0)
-    a_containerDataType = templateArgs[0].getAsType().getAsString();
+  {
+    clang::QualType qt  = templateArgs[0].getAsType();
+    a_containerDataType = qt.getAsString();
+    auto pRecordType = qt->getAsStructureType();
+    if(pRecordType != nullptr)
+      result = pRecordType->getDecl();
+  }
   else
     a_containerDataType = "unknown";
+
+  return result;
 }
 
 
@@ -418,7 +427,7 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
   {
     member.isContainer = true;
     auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl); 
-    kslicer::SplitContainerTypes(specDecl, member.containerType, member.containerDataType);
+    member.pContainerDataTypeDeclIfRecord = kslicer::SplitContainerTypes(specDecl, member.containerType, member.containerDataType);
   }
   else
   {

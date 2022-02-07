@@ -673,17 +673,22 @@ struct TypePair
   size_t aligment = sizeof(int);  
 };
 
-void kslicer::ProcessMemberTypes(const std::vector<DataMemberInfo>& a_members, 
-                                 const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls,
-                                 clang::SourceManager& a_srcMgr, const std::vector<std::string>& a_excludeFolderList,
-                                 std::vector<kslicer::DeclInClass>& generalDecls)
+void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls, clang::SourceManager& a_srcMgr, 
+                                                std::vector<kslicer::DeclInClass>& generalDecls)
 {
+  const auto& a_members           = this->dataMembers;
+  const auto  a_additionalTypes   = this->ExtractTypesFromUsedContainers(a_otherDecls);
+  const auto& a_excludeFolderList = this->ignoreFolders;
+  const auto& a_allDataMembers    = this->allDataMembers;     
+
   std::unordered_map<std::string, kslicer::DeclInClass> declsByName;
   for(const auto& decl : generalDecls)
     declsByName[decl.name] = decl;
   
   auto internalTypes = kslicer::ListPredefinedMathTypes();
   std::queue<TypePair> typesToProcess;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////
   for(const auto& member : a_members)
   {
     std::string typeName = kslicer::CleanTypeName(member.type);       // TODO: make type clear function 
@@ -696,7 +701,31 @@ void kslicer::ProcessMemberTypes(const std::vector<DataMemberInfo>& a_members,
         typesToProcess.push(TypePair(typeName, member.pTypeDeclIfRecord));
     }
   }
-    
+
+  for(auto tn : a_additionalTypes)
+  {
+    std::string typeName = kslicer::CleanTypeName(tn);
+    if(declsByName.find(typeName) == declsByName.end() && 
+       internalTypes.find(typeName) == internalTypes.end())
+    {
+      const clang::TypeDecl* node = nullptr;
+      for(auto memb : a_allDataMembers)
+      {
+        if(!memb.second.isContainer)
+          continue;
+        auto memberTypeName = kslicer::CleanTypeName(memb.second.containerDataType);
+        if(memberTypeName == typeName)
+        {
+          node = memb.second.pContainerDataTypeDeclIfRecord;
+          break;
+        }
+      }
+      if(node != nullptr)
+        typesToProcess.push(TypePair(typeName, node)); 
+    }
+  }
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   size_t lastDeclOrder = generalDecls.size() == 0 ? 0 : generalDecls.back().order+1;
   std::vector<kslicer::DeclInClass> auxDecls;
 
@@ -722,7 +751,7 @@ void kslicer::ProcessMemberTypes(const std::vector<DataMemberInfo>& a_members,
       
       // process all field types 
       //
-      if(clang::isa<clang::RecordDecl>(elem.node))
+      if(elem.node != nullptr && clang::isa<clang::RecordDecl>(elem.node))
       {
         auto pRecordDecl = clang::dyn_cast<clang::RecordDecl>(elem.node);
         for(auto field : pRecordDecl->fields())
@@ -737,7 +766,7 @@ void kslicer::ProcessMemberTypes(const std::vector<DataMemberInfo>& a_members,
     }
   }
 
-    std::reverse_copy(auxDecls.begin(), auxDecls.end(), std::back_inserter(generalDecls)); 
+  std::reverse_copy(auxDecls.begin(), auxDecls.end(), std::back_inserter(generalDecls)); 
 }
 
 std::unordered_map<std::string, size_t> ListPredefinedAligmentTypes()
@@ -847,8 +876,11 @@ static inline size_t Padding(size_t a_size, size_t a_alignment)
   }
 }
 
-void kslicer::ProcessMemberTypesAligment(std::vector<DataMemberInfo>& a_members)
+void kslicer::MainClassInfo::ProcessMemberTypesAligment(std::vector<DataMemberInfo>& a_members, const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls)
 {
+  const auto  a_additionalTypes = this->ExtractTypesFromUsedContainers(a_otherDecls);
+  const auto& a_allDataMembers  = this->allDataMembers;
+
   auto internalTypes = kslicer::ListPredefinedMathTypes();
   auto endTypes      = ListPredefinedAligmentTypes();
   for(auto type : endTypes)
@@ -861,9 +893,30 @@ void kslicer::ProcessMemberTypesAligment(std::vector<DataMemberInfo>& a_members)
   std::unordered_map<std::string, TypePair> typesToProcess;
   for(const auto& member : a_members)
   {
-    std::string typeName = kslicer::CleanTypeName(member.type);       // TODO: make type clear function 
+    std::string typeName = kslicer::CleanTypeName(member.type);   
     if(member.pTypeDeclIfRecord != nullptr && internalTypes.find(typeName) == internalTypes.end())
       typesToProcess[typeName] = TypePair(typeName, member.pTypeDeclIfRecord);
+  }
+
+  for(auto tn : a_additionalTypes)
+  {
+    std::string typeName = kslicer::CleanTypeName(tn);
+    if(typesToProcess.find(typeName) == typesToProcess.end() && internalTypes.find(typeName) == internalTypes.end())
+    {
+      const clang::TypeDecl* node = nullptr;
+      for(auto memb : a_allDataMembers)
+      {
+        if(!memb.second.isContainer)
+          continue;
+        auto memberTypeName = kslicer::CleanTypeName(memb.second.containerDataType);
+        if(memberTypeName == typeName)
+        {
+          node = memb.second.pContainerDataTypeDeclIfRecord;
+          break;
+        }
+      } 
+      typesToProcess[typeName] = TypePair(typeName, node);  // #TODO: extract pTypeDeclIfRecord for containers data also  
+    }
   }
 
   for(auto& type : typesToProcess)
@@ -878,9 +931,29 @@ void kslicer::ProcessMemberTypesAligment(std::vector<DataMemberInfo>& a_members)
     auto p = typesToProcess.find(typeName);
     if(p != typesToProcess.end())
     {
-      member.aligmentGLSL    = p->second.aligment;
+      member.aligmentGLSL       = std::max(p->second.aligment, sizeof(int));
       member.alignedSizeInBytes = Padding(member.sizeInBytes, member.aligmentGLSL);
     }
   }
 
+}
+
+std::unordered_set<std::string> kslicer::MainClassInfo::ExtractTypesFromUsedContainers(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls)
+{
+  std::unordered_set<std::string> res;
+  for(const auto& k : this->kernels) // fix this flag for members that were used in member functions but not in kernels directly
+  {
+    for(const auto& c : k.second.usedContainers)
+    {
+      auto pFound = this->allDataMembers.find(c.second.name);
+      if(pFound != this->allDataMembers.end())
+      {
+        std::string typeForSeek = kslicer::CleanTypeName(pFound->second.containerDataType);
+        auto pFoundTypeDecl = a_otherDecls.find(typeForSeek);
+        if(pFoundTypeDecl != a_otherDecls.end() && pFound->second.containerType != "shared_ptr" &&  pFound->second.containerType != "unique_ptr")
+          res.insert(pFound->second.containerDataType);
+      }
+    }
+  }
+  return res;
 }

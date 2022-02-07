@@ -12,9 +12,9 @@ void Padding::kernel1D_Test(float* a_data, unsigned int a_size)
   {
     if(i == 0)
     {
-      a_data[0] = m_data1[0][0] + m_test.data[0];
-      a_data[1] = m_data1[0][1] + m_test.data[1];
-      a_data[2] = m_data1[0][2] + m_test.data[2];
+      a_data[0] = m_data1[0][0];
+      a_data[1] = m_data1[0][1];
+      a_data[2] = m_data1[0][2];
 
       a_data[3] = m_data1[1][0];
       a_data[4] = m_data1[1][1];

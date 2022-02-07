@@ -28,8 +28,6 @@ public:
   std::vector<float3>   m_data1;
   std::vector<MyFloat3> m_data2;
 
-  const MyFloat3 m_test = {{0.0f, 0.0f, 0.0f}};
-
   virtual void CommitDeviceData() {}                                       // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class
 };

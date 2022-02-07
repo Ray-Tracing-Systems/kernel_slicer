@@ -298,6 +298,7 @@ namespace kslicer
     std::string containerDataType; ///<! data type 'T' inside of std::vector<T>
 
     clang::TypeDecl* pTypeDeclIfRecord = nullptr;
+    clang::TypeDecl* pContainerDataTypeDeclIfRecord = nullptr;
 
     bool IsUsedTexture() const { return isContainer && IsTextureContainer(containerType); }  // && isContainer && kslicer::IsTexture(containerType); }
   };
@@ -913,6 +914,11 @@ namespace kslicer
     virtual const std::unordered_map<std::string, DHierarchy>& GetDispatchingHierarchies() const { return m_vhierarchy; }
     virtual std::unordered_map<std::string, DHierarchy>&       GetDispatchingHierarchies()       { return m_vhierarchy; }
     
+    std::unordered_set<std::string> ExtractTypesFromUsedContainers(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls);
+    void ProcessMemberTypes(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls, clang::SourceManager& a_srcMgr,
+                            std::vector<kslicer::DeclInClass>& generalDecls);
+
+    void ProcessMemberTypesAligment(std::vector<DataMemberInfo>& a_members, const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls);
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     std::vector<std::string>                           m_setterStructDecls;
@@ -1015,7 +1021,7 @@ namespace kslicer
   bool IsVectorContainer(const std::string& a_typeName);
   bool IsPointerContainer(const std::string& a_typeName);
 
-  void SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType);
+  clang::TypeDecl* SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType);
   std::string GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg, bool a_megakernel);
   std::string GetDSVulkanAccessLayout(TEX_ACCESS a_accessMask);
   std::string GetDSVulkanAccessMask(TEX_ACCESS a_accessMask);
@@ -1038,13 +1044,6 @@ namespace kslicer
   std::string CleanTypeName(const std::string& a_str);
   
   bool IsInExcludedFolder(const std::string& fileName, const std::vector<std::string>& a_excludeFolderList);
-
-  void ProcessMemberTypes(const std::vector<DataMemberInfo>& a_members, 
-                          const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls,
-                          clang::SourceManager& a_srcMgr, const std::vector<std::string>& a_excludeFolderList,
-                          std::vector<kslicer::DeclInClass>& generalDecls);
-
- void ProcessMemberTypesAligment(std::vector<DataMemberInfo>& a_members);
 }
 
 template <typename Cont, typename Pred>

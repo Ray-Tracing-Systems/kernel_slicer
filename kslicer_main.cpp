@@ -902,12 +902,10 @@ int main(int argc, const char **argv)
   std::cout << "{" << std::endl;
 
   inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
-  
-  kslicer::ProcessMemberTypes(inputCodeInfo.dataMembers, firstPassData.rv.GetOtherTypeDecls(), 
-                              compiler.getSourceManager(), inputCodeInfo.ignoreFolders,
-                              generalDecls); // ==> generalDecls
 
-  kslicer::ProcessMemberTypesAligment(inputCodeInfo.dataMembers); // compiler.getASTContext()
+  inputCodeInfo.ProcessMemberTypes(firstPassData.rv.GetOtherTypeDecls(), compiler.getSourceManager(), 
+                                   generalDecls);                      // ==> generalDecls
+  inputCodeInfo.ProcessMemberTypesAligment(inputCodeInfo.dataMembers, firstPassData.rv.GetOtherTypeDecls()); // ==> inputCodeInfo.dataMembers
 
   std::sort(inputCodeInfo.dataMembers.begin(), inputCodeInfo.dataMembers.end(), less_than_key2()); // sort by aligment in GLSL
 
