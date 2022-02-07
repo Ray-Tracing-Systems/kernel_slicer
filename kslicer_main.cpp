@@ -143,7 +143,7 @@ void kslicer::ReplaceOpenCLBuiltInTypes(std::string& a_typeName)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::string& fileName)
+std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::string& fileName, std::vector<std::string>& allFiles)
 {
   std::unordered_map<std::string, std::string> cmdLineParams;
   for(int i=0; i<argc; i++)
@@ -164,8 +164,53 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
         cmdLineParams[key] = "";
     }
     else if(key.find(".cpp") != std::string::npos)
-      fileName = key;
+      allFiles.push_back(key);
   }
+
+  if(allFiles.size() == 0)
+  {
+    std::cout << "[kslicer]: no input file is specified " << std::endl;
+    exit(0);
+  }
+  else if(allFiles.size() == 1)
+    fileName = allFiles[0];
+  else
+  {
+    fileName = allFiles[0];
+    #ifdef WIN32
+    const std::string slash = "\\";
+    #else
+    const std::string slash = "/";
+    #endif
+
+    size_t posSlash = fileName.find_last_of(slash); 
+    auto   posCPP   = fileName.find(".cpp");
+    
+    assert(posSlash != std::string::npos);   
+    assert(posCPP   != std::string::npos);   
+
+    // merge files to a single temporary file
+    auto folderPath = fileName.substr(0, posSlash);
+    auto fileName2  = fileName.substr(posSlash+1, posCPP-posSlash-1);
+    auto fileNameT  = folderPath + slash + fileName2 + "_temp.cpp";
+    
+    std::cout << "[kslicer]: merging input files to temporary file '" << fileName2 << "_temp.cpp' " << std::endl;
+    std::ofstream fout(fileNameT);
+    for(auto file : allFiles)
+    {
+      fout << "////////////////////////////////////////////////////" << std::endl;
+      fout << "//// input file: " << file << std::endl;
+      fout << "////////////////////////////////////////////////////" << std::endl;
+      std::ifstream fin(file);
+      std::string line;
+      while (std::getline(fin, line))
+        fout << line.c_str() << std::endl;
+    } 
+    fout.close();
+    fileName = fileNameT;
+    std::cout << "[kslicer]: merging finished" << std::endl;
+  }
+
   return cmdLineParams;
 }
 
@@ -311,8 +356,9 @@ int main(int argc, const char **argv)
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  std::vector<std::string> allFiles;
   std::string fileName;
-  auto params = ReadCommandLineParams(argc, argv, fileName);
+  auto params = ReadCommandLineParams(argc, argv, fileName, allFiles);
   
   std::string mainFolderPath  = GetFolderPath(fileName);
   std::string mainClassName   = "TestClass";
@@ -513,7 +559,7 @@ int main(int argc, const char **argv)
 
   // init clang tooling
   //
-  std::vector<const char*> argv2 = {argv[0], argv[1]};
+  std::vector<const char*> argv2 = {argv[0], fileName.c_str()};
   std::vector<std::string> extraArgs; extraArgs.reserve(32);
   for(auto p : params)
   {
@@ -1033,7 +1079,7 @@ int main(int argc, const char **argv)
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
   std::cout << "{" << std::endl;
   {
-    std::string rawname = kslicer::CutOffFileExt(inputCodeInfo.mainClassFileName);
+    std::string rawname = kslicer::CutOffFileExt(allFiles[0]);
     auto json = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, rawname + "_generated.h", threadsOrder, uboIncludeName, jsonUBO); 
 
     kslicer::ApplyJsonToTemplate("templates/vk_class.h",        rawname + "_generated.h", json); 
