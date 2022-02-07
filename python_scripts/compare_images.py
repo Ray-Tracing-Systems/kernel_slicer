@@ -3,7 +3,8 @@ import os
 import utils
 from logger import Log, Status
 
-mse_threshold = 1e-4
+mse_threshold  = 1e-4
+mse_threshold2 = 1e-2
 
 
 def is_out_img(img_name: str):
@@ -26,8 +27,11 @@ def find_image_pairs():
 
 def compare_images(img_name1, img_name2):
     mse_res = utils.load_and_calc_mse(img_name1, img_name2)
-    status = Status.OK if mse_res < mse_threshold else Status.WARNING
-
+    status = Status.OK 
+    if mse_res > mse_threshold2:
+      status = Status.FAILED
+    elif mse_res > mse_threshold:
+      status = Status.WARNING
     Log().status_info("{0}, {1} | mse = {2}".format(img_name1, img_name2, mse_res), status=status)
     return status
 

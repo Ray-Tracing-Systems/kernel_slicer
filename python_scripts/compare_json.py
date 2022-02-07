@@ -3,13 +3,16 @@ import commentjson
 import utils
 from logger import Log, Status
 
-float_err_threshold = 1e-4
+float_err_threshold  = 1e-4
+float_err_threshold2 = 1e-2
 
 
 def float_err_status(var_name, err, err_text=""):
-    if err > float_err_threshold:
-        Log().status_info("\"{0}\": {1} float err = {2} is higher than threshold".format(var_name, err_text, err),
-                          status=Status.WARNING)
+    if err > float_err_threshold2:
+        Log().status_info("\"{0}\": {1} float err = {2} is higher than threshold".format(var_name, err_text, err), status=Status.FAILED)
+        return Status.FAILED
+    elif err > float_err_threshold:
+        Log().status_info("\"{0}\": {1} float err = {2} is higher than threshold".format(var_name, err_text, err), status=Status.WARNING)
         return Status.WARNING
     return Status.OK
 
