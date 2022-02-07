@@ -26,10 +26,10 @@ def find_image_pairs():
 
 def compare_images(img_name1, img_name2):
     mse_res = utils.load_and_calc_mse(img_name1, img_name2)
-    status = Status.OK if mse_res < mse_threshold else Status.FAILED
+    status = Status.OK if mse_res < mse_threshold else Status.WARNING
 
     Log().status_info("{0}, {1} | mse = {2}".format(img_name1, img_name2, mse_res), status=status)
-    return mse_res < mse_threshold
+    return status
 
 
 def compare_generated_images():
@@ -38,9 +38,9 @@ def compare_generated_images():
     if image_pairs is None:
         return -1
 
-    are_same = True
+    status = Status.OK
     for img1, img2 in image_pairs:
-        are_same &= compare_images(img1, img2)
+        status = Status.worst_of(status, compare_images(img1, img2))
 
-    return are_same
+    return status
 

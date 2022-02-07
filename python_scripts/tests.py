@@ -123,14 +123,17 @@ def run_test(test_name, args, num_threads=1, gpu_id=0):
         os.chdir(workdir)
         return -1
 
-    if not compare_generated_images():
-        return_code = -1
-    if not compare_generated_json_files():
-        return_code = -1
-
-    final_status = Status.OK if return_code == 0 else Status.FAILED
+    final_status = Status.worst_of(
+        compare_generated_images(),
+        compare_generated_json_files()
+    )
     os.chdir(workdir)
-    Log().status_info("\"{}\" finished".format(test_name), status=final_status)
+    final_msg = {
+        Status.OK: "\"{}\" finished successfully".format(test_name),
+        Status.WARNING: "\"{}\" finished with warnings".format(test_name),
+        Status.FAILED: "\"{}\" has errors".format(test_name)
+    }
+    Log().status_info(final_msg[final_status], status=final_status)
 
 
 def get_sample_names(path, configurations):
