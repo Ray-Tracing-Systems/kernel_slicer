@@ -7,6 +7,7 @@
 #include "clang/AST/DeclTemplate.h"
 
 #include <queue>
+#include <stack>
 
 class FuncExtractor : public clang::RecursiveASTVisitor<FuncExtractor>
 {
@@ -663,80 +664,223 @@ bool kslicer::IsInExcludedFolder(const std::string& fileName, const std::vector<
   return exclude;
 }
 
+struct TypePair
+{
+  TypePair(){}
+  TypePair(const std::string& a_name, const clang::TypeDecl* a_node) : typeName(a_name), node(a_node) {}
+  std::string typeName;
+  const clang::TypeDecl* node;
+  size_t aligment = sizeof(int);  
+};
+
 void kslicer::ProcessMemberTypes(const std::vector<DataMemberInfo>& a_members, 
                                  const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls,
                                  clang::SourceManager& a_srcMgr, const std::vector<std::string>& a_excludeFolderList,
                                  std::vector<kslicer::DeclInClass>& generalDecls)
 {
   std::unordered_map<std::string, kslicer::DeclInClass> declsByName;
-    for(const auto& decl : generalDecls)
-      declsByName[decl.name] = decl;
-    
-    auto internalTypes = kslicer::ListPredefinedMathTypes();
-
-    struct TypePair
+  for(const auto& decl : generalDecls)
+    declsByName[decl.name] = decl;
+  
+  auto internalTypes = kslicer::ListPredefinedMathTypes();
+  std::queue<TypePair> typesToProcess;
+  for(const auto& member : a_members)
+  {
+    std::string typeName = kslicer::CleanTypeName(member.type);       // TODO: make type clear function 
+    if(member.pTypeDeclIfRecord != nullptr && 
+       declsByName.find(typeName) == declsByName.end() && 
+       internalTypes.find(typeName) == internalTypes.end())
     {
-      TypePair(){}
-      TypePair(const std::string& a_name, const clang::TypeDecl* a_node) : typeName(a_name), node(a_node) {}
-      std::string typeName;
-      const clang::TypeDecl*  node;      // todo, change to TypeDecl
-    };
-
-    std::queue<TypePair> typesToProcess;
-
-    for(const auto& member : a_members)
-    {
-      std::string typeName = kslicer::CleanTypeName(member.type);       // TODO: make type clear function 
-      if(member.pTypeDeclIfRecord != nullptr && 
-         declsByName.find(typeName) == declsByName.end() && 
-         internalTypes.find(typeName) == internalTypes.end())
-      {
-        auto pFound = a_otherDecls.find(typeName);
-        if(pFound != a_otherDecls.end())
-          typesToProcess.push(TypePair(typeName, member.pTypeDeclIfRecord));
-      }
+      auto pFound = a_otherDecls.find(typeName);
+      if(pFound != a_otherDecls.end())
+        typesToProcess.push(TypePair(typeName, member.pTypeDeclIfRecord));
     }
+  }
     
-    size_t lastDeclOrder = generalDecls.size() == 0 ? 0 : generalDecls.back().order+1;
-    std::vector<kslicer::DeclInClass> auxDecls;
+  size_t lastDeclOrder = generalDecls.size() == 0 ? 0 : generalDecls.back().order+1;
+  std::vector<kslicer::DeclInClass> auxDecls;
 
-    while(!typesToProcess.empty())
+  while(!typesToProcess.empty())
+  {
+    TypePair elem = typesToProcess.front(); typesToProcess.pop();
+    if(declsByName.find(elem.typeName) == declsByName.end())
     {
-      TypePair elem = typesToProcess.front(); typesToProcess.pop();
-      if(declsByName.find(elem.typeName) == declsByName.end())
+      kslicer::DeclInClass tdecl;
+      tdecl.type     = elem.typeName;
+      tdecl.name     = elem.typeName;
+      tdecl.srcRange = elem.node->getSourceRange();    
+      tdecl.srcHash  = kslicer::GetHashOfSourceRange(tdecl.srcRange); 
+      tdecl.order    = lastDeclOrder; lastDeclOrder++;
+      tdecl.kind     = kslicer::DECL_IN_CLASS::DECL_STRUCT;
+      tdecl.extracted= true;
+      declsByName[elem.typeName] = tdecl;
+      const clang::FileEntry* Entry = a_srcMgr.getFileEntryForID(a_srcMgr.getFileID(elem.node->getLocation()));
+      const std::string fileName    = std::string(Entry->getName());        
+      const bool        exclude     = IsInExcludedFolder(fileName, a_excludeFolderList); 
+      if(!exclude)
+        auxDecls.push_back(tdecl);
+      
+      // process all field types 
+      //
+      if(clang::isa<clang::RecordDecl>(elem.node))
       {
-        kslicer::DeclInClass tdecl;
-        tdecl.type     = elem.typeName;
-        tdecl.name     = elem.typeName;
-        tdecl.srcRange = elem.node->getSourceRange();    
-        tdecl.srcHash  = kslicer::GetHashOfSourceRange(tdecl.srcRange); 
-        tdecl.order    = lastDeclOrder; lastDeclOrder++;
-        tdecl.kind     = kslicer::DECL_IN_CLASS::DECL_STRUCT;
-        tdecl.extracted= true;
-        declsByName[elem.typeName] = tdecl;
-
-        const clang::FileEntry* Entry = a_srcMgr.getFileEntryForID(a_srcMgr.getFileID(elem.node->getLocation()));
-        const std::string fileName    = std::string(Entry->getName());        
-        const bool        exclude     = IsInExcludedFolder(fileName, a_excludeFolderList); 
-        if(!exclude)
-          auxDecls.push_back(tdecl);
-        
-        // process all field types 
-        //
-        if(clang::isa<clang::RecordDecl>(elem.node))
+        auto pRecordDecl = clang::dyn_cast<clang::RecordDecl>(elem.node);
+        for(auto field : pRecordDecl->fields())
         {
-          auto pRecordDecl = clang::dyn_cast<clang::RecordDecl>(elem.node);
-          for(auto field : pRecordDecl->fields())
-          {
-            clang::QualType qt = field->getType();
-            const std::string typeName2 = kslicer::CleanTypeName(qt.getAsString());
-            auto pRecordType = qt->getAsStructureType();
-            if(pRecordType != nullptr && declsByName.find(typeName2) == declsByName.end() && internalTypes.find(typeName2) == internalTypes.end())
-              typesToProcess.push(TypePair(typeName2, pRecordType->getDecl()));
-          }
+          clang::QualType qt = field->getType();
+          const std::string typeName2 = kslicer::CleanTypeName(qt.getAsString());
+          auto pRecordType = qt->getAsStructureType();
+          if(pRecordType != nullptr && declsByName.find(typeName2) == declsByName.end() && internalTypes.find(typeName2) == internalTypes.end())
+            typesToProcess.push(TypePair(typeName2, pRecordType->getDecl()));
         }
       }
     }
+  }
 
     std::reverse_copy(auxDecls.begin(), auxDecls.end(), std::back_inserter(generalDecls)); 
+}
+
+std::unordered_map<std::string, size_t> ListPredefinedAligmentTypes()
+{
+  std::unordered_map<std::string, size_t> res;
+  res["float2"]   = sizeof(float)*2;
+  res["float3"]   = sizeof(float)*4;
+  res["float4"]   = sizeof(float)*4;
+  res["int2"]     = sizeof(int)*2;
+  res["int3"]     = sizeof(int)*4;
+  res["int4"]     = sizeof(int)*4;
+  res["uint2"]    = sizeof(unsigned)*2;
+  res["uint3"]    = sizeof(unsigned)*4;
+  res["uint4"]    = sizeof(unsigned)*4;
+  res["float4x4"] = sizeof(float)*4;
+  res["float3x3"] = sizeof(float)*4; // UNTESTED !!!
+  res["float2x2"] = sizeof(float)*2; // UNTESTED !!!
+
+  res["vec2"]  = sizeof(float)*2;
+  res["vec3"]  = sizeof(float)*4;
+  res["vec4"]  = sizeof(float)*4;
+  res["ivec2"] = sizeof(int)*2;
+  res["ivec3"] = sizeof(int)*4;
+  res["ivec4"] = sizeof(int)*4;
+  res["uvec2"] = sizeof(unsigned)*2;
+  res["uvec3"] = sizeof(unsigned)*4;
+  res["uvec4"] = sizeof(unsigned)*4;
+  res["mat4"]  = sizeof(float)*4;
+  res["mat3"]  = sizeof(float)*4; // UNTESTED !!!
+  res["mat2"]  = sizeof(float)*2; // UNTESTED !!!
+
+  return res;
+}
+
+std::unordered_map<std::string, size_t> ListForbiddenTypes()
+{
+  std::unordered_map<std::string, size_t> res;
+  res["float3"]   = sizeof(float)*3;
+  res["int3"]     = sizeof(int)*3;
+  res["uint3"]    = sizeof(unsigned)*4;
+  res["float3x3"] = sizeof(float)*3*3; // UNTESTED !!!
+
+  res["vec3"]  = sizeof(float)*4;
+  res["ivec3"] = sizeof(int)*4;
+  res["uvec3"] = sizeof(unsigned)*4;
+  res["mat3"]  = sizeof(float)*3*3; // UNTESTED !!!
+
+  res["char"]    = sizeof(char);
+  res["uchar"]   = sizeof(char);
+  res["int8_t"]  = sizeof(char);
+  res["uint8_t"] = sizeof(char);
+
+  res["short"]    = sizeof(short);
+  res["ushort"]   = sizeof(short);
+  res["int16_t"]  = sizeof(short);
+  res["uint16_t"] = sizeof(short);
+
+  return res;
+}
+
+
+size_t GetBaseAligmentForGLSL(TypePair* pCurrType, 
+                              const std::unordered_map<std::string, TypePair>& a_typeToProcess, 
+                              const std::unordered_map<std::string, size_t>& a_endTypes, int a_level)
+{
+  auto pEndType = a_endTypes.find(pCurrType->typeName);
+  if(pEndType != a_endTypes.end())
+    return pEndType->second;
+  else if(pCurrType->node != nullptr && clang::isa<clang::RecordDecl>(pCurrType->node))
+  {
+    auto badTypes    = ListForbiddenTypes();   
+    auto pRecordDecl = clang::dyn_cast<clang::RecordDecl>(pCurrType->node);
+    size_t maxAligment = 0;
+    for(auto field : pRecordDecl->fields())
+    {
+      clang::QualType qt = field->getType();
+      const std::string typeName2 = kslicer::CleanTypeName(qt.getAsString());
+      
+      auto pForbidden = badTypes.find(typeName2);
+      if(pForbidden != badTypes.end())
+      {
+        const std::string varName = field->getNameAsString();
+        std::cout << "  [PADDING ALERT]: structure '" << pCurrType->typeName << "' has field '" <<  varName << "' of type '" << typeName2 << "' at level " << a_level+1 << std::endl;
+        std::cout << "  [PADDING ALERT]: type '" << typeName2 << "' has different size and aligment in GLSL which is not possible on the host side" << std::endl;
+        std::cout << "  [PADDING ALERT]: we don't allow such types inside structures; please use aligned types inside structures." << std::endl;
+      }
+
+      auto pFoundType = a_typeToProcess.find(typeName2);
+      TypePair fieldPair(typeName2, pFoundType == a_typeToProcess.end() ? nullptr : pFoundType->second.node);
+      size_t fieldAligment = GetBaseAligmentForGLSL(&fieldPair, a_typeToProcess, a_endTypes, a_level+1);
+      maxAligment = std::max(maxAligment, fieldAligment);
+    }
+    return maxAligment;
+  }
+
+  return sizeof(int);
+}
+
+static inline size_t Padding(size_t a_size, size_t a_alignment)
+{
+  if (a_size % a_alignment == 0)
+    return a_size;
+  else
+  {
+    size_t sizeCut = a_size - (a_size % a_alignment);
+    return sizeCut + a_alignment;
+  }
+}
+
+void kslicer::ProcessMemberTypesAligment(std::vector<DataMemberInfo>& a_members)
+{
+  auto internalTypes = kslicer::ListPredefinedMathTypes();
+  auto endTypes      = ListPredefinedAligmentTypes();
+  for(auto type : endTypes)
+  {
+    auto p = internalTypes.find(type.first);
+    if(p != internalTypes.end())
+      internalTypes.erase(p);
+  }
+
+  std::unordered_map<std::string, TypePair> typesToProcess;
+  for(const auto& member : a_members)
+  {
+    std::string typeName = kslicer::CleanTypeName(member.type);       // TODO: make type clear function 
+    if(member.pTypeDeclIfRecord != nullptr && internalTypes.find(typeName) == internalTypes.end())
+      typesToProcess[typeName] = TypePair(typeName, member.pTypeDeclIfRecord);
+  }
+
+  for(auto& type : typesToProcess)
+  {
+    type.second.aligment = GetBaseAligmentForGLSL(&type.second, typesToProcess, endTypes, 0);
+    //std::cout << "  [ProcessMemberTypesAligment]: " << type.first << " aligment = " << type.second.aligment << std::endl;
+  }
+
+  for(auto& member : a_members)
+  {
+    std::string typeName = kslicer::CleanTypeName(member.type);
+    auto p = typesToProcess.find(typeName);
+    if(p != typesToProcess.end())
+    {
+      member.aligmentGLSL    = p->second.aligment;
+      member.alignedSizeInBytes = Padding(member.sizeInBytes, member.aligmentGLSL);
+    }
+  }
+
 }

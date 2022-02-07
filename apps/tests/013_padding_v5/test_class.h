@@ -13,10 +13,10 @@ using LiteMath::float2;
 
 struct RectLightSource
 {
-  float pos      [4];
-  float intensity[4];
+  float4 pos;
+  float4 intensity;
   float4 norm;
-  float size     [2];
+  float2 size;
 };
 
 class Padding

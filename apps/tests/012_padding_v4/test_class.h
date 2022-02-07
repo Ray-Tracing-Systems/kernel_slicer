@@ -13,8 +13,8 @@ using LiteMath::float2;
 
 struct MyType
 {
-  float3 pos;
-  float  data[6];
+  float2 pos;
+  float  data[5];
 };
 
 class Padding
@@ -31,7 +31,7 @@ public:
   float  m_data4 = 6.0f;
   float  m_data5 = 7.0f;
 
-  const MyType m_badData = {{1.0f,2.0f,3.0f}, {-1.0f,-2.0f,-3.0f,-4.0f,-5.0f,-6.0f}};
+  const MyType m_badData = {{1.0f,2.0f}, {-1.0f,-2.0f,-3.0f,-4.0f,-5.0f}};
 
   virtual void CommitDeviceData() {}                                       // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class

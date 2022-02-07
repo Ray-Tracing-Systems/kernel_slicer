@@ -13,7 +13,7 @@ using LiteMath::float2;
 
 struct RectLightSource
 {
-  float3 intensity;
+  float4 intensity;
   float  value;
 };
 
@@ -30,7 +30,7 @@ public:
   float test2 = 6.0f;
   float test3 = 7.0f;
    
-  const RectLightSource m_badData = {{1.0f,2.0f,3.0f}, 4.0f};
+  const RectLightSource m_badData = {{1.0f,2.0f,3.0f,4.0f}, 5.0f};
 
   virtual void CommitDeviceData() {}                                       // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class

@@ -44,11 +44,17 @@ typedef LiteMath::uint4    uvec4;
 struct {{MainClassName}}_UBO_Data
 {
 ## for Field in UBOStructFields  
+  {% if Field.IsDummy %} 
+  #ifndef GLSL 
+  uint {{Field.Name}}; 
+  #endif 
+  {% else %}
   {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %}; 
-  {% if Field.IsVec3 %} 
+  {% if Field.IsVec3 %}
   #ifdef GLSL 
   uint {{Field.Name}}Dummy; 
   #endif 
+  {% endif %}
   {% endif %}
 ## endfor
   uint dummy_last;

@@ -71,7 +71,7 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
   size_t offsetInBytes = 0;
   for(auto& var : resVars)
   {
-    const size_t alignedSize = AlignedSize(var.sizeInBytes);
+    const size_t alignedSize = var.sizeInBytes; // AlignedSize(var.sizeInBytes);
     var.offsetInTargetBuffer = offsetInBytes;
     var.alignedSizeInBytes   = alignedSize;
     offsetInBytes += alignedSize;
