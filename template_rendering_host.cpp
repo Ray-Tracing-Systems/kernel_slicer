@@ -485,7 +485,7 @@ static bool IgnoreArgForDS(size_t j, const std::vector<kslicer::ArgReferenceOnCa
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, const clang::CompilerInstance& compiler,
-                                             const std::vector<MainFuncInfo>& a_methodsToGenerate, 
+                                             const std::vector<MainFuncInfo>& a_methodsToGenerate, const std::vector<kslicer::DeclInClass>& usedDecl,
                                              const std::string& a_genIncude,
                                              const uint32_t    threadsOrder[3],
                                              const std::string& uboIncludeName, const nlohmann::json& uboJson)
@@ -1313,6 +1313,27 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     local["Type"] = kv.second;
     local["Name"] = kv.first;
     data["SetterVars"].push_back(local);
+  }
+
+  // declarations of struct, constants and typedefs inside class
+  //
+  std::unordered_set<std::string> excludedNames;
+  for(auto pair : a_classInfo.m_setterVars)
+    excludedNames.insert(kslicer::CleanTypeName(pair.second));
+
+  data["ClassDecls"] = std::vector<std::string>();
+  for(const auto decl : usedDecl)
+  {
+    if(!decl.extracted)
+      continue;
+    if(excludedNames.find(decl.type) != excludedNames.end())
+      continue;
+
+    json cdecl;
+    cdecl["InClass"] = decl.inClass;
+    cdecl["IsType"]  = (decl.kind == DECL_IN_CLASS::DECL_STRUCT);
+    cdecl["Type"]    = kslicer::CleanTypeName(decl.type);
+    data["ClassDecls"].push_back(cdecl);
   }
 
   return data;

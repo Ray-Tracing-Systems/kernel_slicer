@@ -13,6 +13,13 @@
 #include "vk_context.h"
 
 {{Includes}}
+
+## for Decl in ClassDecls  
+{% if Decl.InClass and Decl.IsType %}
+using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data type to UBO
+{% endif %}
+## endfor
+
 #include "include/{{UBOIncl}}"
 
 {% for SetterDecl in SettersDecl %}  

@@ -279,7 +279,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (2) declarations of struct, constants and typedefs inside class
   //
-  
   std::unordered_set<std::string> excludedNames;
   for(auto pair : a_classInfo.m_setterVars)
     excludedNames.insert(kslicer::CleanTypeName(pair.second));
@@ -291,7 +290,13 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       continue;
     if(excludedNames.find(decl.type) != excludedNames.end())
       continue;
-    data["ClassDecls"].push_back(a_classInfo.pShaderCC->PrintHeaderDecl(decl,compiler));
+
+    json cdecl;
+    cdecl["Text"]    = a_classInfo.pShaderCC->PrintHeaderDecl(decl, compiler);
+    cdecl["InClass"] = decl.inClass;
+    cdecl["IsType"]  = (decl.kind == DECL_IN_CLASS::DECL_STRUCT); // || (decl.kind == DECL_IN_CLASS::DECL_TYPEDEF);
+    cdecl["Type"]    = kslicer::CleanTypeName(decl.type);
+    data["ClassDecls"].push_back(cdecl);
   }
 
   // (3) local functions

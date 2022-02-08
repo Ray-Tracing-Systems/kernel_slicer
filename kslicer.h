@@ -462,6 +462,7 @@ namespace kslicer
     DECL_IN_CLASS      kind  = DECL_IN_CLASS::DECL_UNKNOWN;
     bool               extracted = false;
     bool               isArray   = false;
+    bool               inClass   = false;
     uint32_t           arraySize = 0;
   };
 

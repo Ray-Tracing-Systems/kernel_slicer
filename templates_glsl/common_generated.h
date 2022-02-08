@@ -30,7 +30,7 @@
 #define FLT_MIN -1e37f
 #define FLT_EPSILON 1e-6f;
 ## for Decl in ClassDecls  
-{{Decl}}
+{{Decl.Text}}
 ## endfor
 
 #include "include/{{UBOIncl}}"

@@ -1080,7 +1080,7 @@ int main(int argc, const char **argv)
   std::cout << "{" << std::endl;
   {
     std::string rawname = kslicer::CutOffFileExt(allFiles[0]);
-    auto json = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, rawname + "_generated.h", threadsOrder, uboIncludeName, jsonUBO); 
+    auto json = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls, rawname + "_generated.h", threadsOrder, uboIncludeName, jsonUBO); 
 
     kslicer::ApplyJsonToTemplate("templates/vk_class.h",        rawname + "_generated.h", json); 
     kslicer::ApplyJsonToTemplate("templates/vk_class.cpp",      rawname + "_generated.cpp", json);

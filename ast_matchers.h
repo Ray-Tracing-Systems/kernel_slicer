@@ -410,6 +410,7 @@ namespace kslicer
           decl.srcHash  = kslicer::GetHashOfSourceRange(decl.srcRange);  // (!!!) DON'T WORK (!!!)
           decl.order    = m_currId;
           decl.kind     = kslicer::DECL_IN_CLASS::DECL_STRUCT;
+          decl.inClass  = true;
           if(foundDecl.find(decl.name) == foundDecl.end())
           {
             foundDecl[decl.name] = decl;
@@ -468,6 +469,7 @@ namespace kslicer
         decl.srcHash  = kslicer::GetHashOfSourceRange(decl.srcRange); // (!!!) DON'T WORK (!!!) // NEED SECOND PASS !!!
         decl.order    = m_currId;
         decl.kind     = kslicer::DECL_IN_CLASS::DECL_TYPEDEF;
+        decl.inClass  = true;
         if(foundDecl.find(decl.name) == foundDecl.end())
         {
           foundDecl[decl.name] = decl;
