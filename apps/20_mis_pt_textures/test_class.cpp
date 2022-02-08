@@ -35,11 +35,12 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
 void TestClass::kernel_InitEyeRay2(uint tid, const uint* packedXY, 
                                    float4* rayPosAndNear, float4* rayDirAndFar,
                                    float4* accumColor,    float4* accumuThoroughput,
-                                   RandomGen* gen) // 
+                                   RandomGen* gen, uint* rayFlags) // 
 {
   *accumColor        = make_float4(0,0,0,0);
   *accumuThoroughput = make_float4(1,1,1,0);
   *gen               = m_randomGens[tid];
+  *rayFlags          = 0;
 
   const uint XY = packedXY[tid];
 
@@ -78,8 +79,8 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   return (res.primId != -1);
 }
 
-bool TestClass::kernel_RayTrace2(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar,
-                                 float4* out_hit1, float4* out_hit2, uint32_t* out_matId)
+void TestClass::kernel_RayTrace2(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar,
+                                 float4* out_hit1, float4* out_hit2, uint32_t* out_matId, uint* rayFlags)
 {
   const float4 rayPos = *rayPosAndNear;
   const float4 rayDir = *rayDirAndFar ;
@@ -118,7 +119,7 @@ bool TestClass::kernel_RayTrace2(uint tid, const float4* rayPosAndNear, const fl
   else
     *out_matId = uint32_t(-1);
 
-  return (hit.geomId != -1);
+  *rayFlags = (hit.geomId != -1) ? 0 : 1;
 }
 
 void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
@@ -218,7 +219,7 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
 }
 
 void TestClass::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPart1, const float4* in_hitPart2, const uint* a_materialId, const float4* in_shadeColor, 
-                                  float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput, RandomGen* a_gen, MisData* misPrev)
+                                  float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput, RandomGen* a_gen, MisData* misPrev, uint* rayFlags)
 {
   const uint32_t matId = *a_materialId;
   if(matId == uint32_t(-1))
@@ -243,10 +244,6 @@ void TestClass::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPar
     float misWeight = 1.0f;
     if(m_intergatorType == INTEGRATOR_MIS_PT) 
     {
-      if(bounce == 0)
-      {
-        int a = 2;
-      }
       if(bounce > 0)
       {
         const int lightId   = 0; // #TODO: get light id from material info
@@ -264,12 +261,12 @@ void TestClass::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPar
       *accumColor = (*accumThoroughput)*lightIntensity*misWeight;
     else
       *accumColor = float4(0,0,0,0);
-
+    
+    *rayFlags = 1;
     return;
   }
   
-  const float2 uv = rndFloat2_Pseudo(a_gen);
-
+  const float2 uv       = rndFloat2_Pseudo(a_gen);
   const float3 newDir   = MapSampleToCosineDistribution(uv.x, uv.y, hit.norm, hit.norm, 1.0f);
   const float  cosTheta = dot(newDir, hit.norm);
 

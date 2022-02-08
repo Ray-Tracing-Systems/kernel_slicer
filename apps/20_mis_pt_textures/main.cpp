@@ -58,7 +58,6 @@ int main(int argc, const char** argv)
   const float normConst = 1.0f/float(PASS_NUMBER);
   const float invGamma  = 1.0f/2.2f;
   
-  /*
   // now test path tracing
   //
   std::cout << "NaivePathTraceBlock() ... " << std::endl;
@@ -104,9 +103,9 @@ int main(int argc, const char** argv)
     SaveBMP("zout_gpu3.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
     SaveBMP("zout_cpu3.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-  */
+
   // -------------------------------------------------------------------------------
-  
+
   std::cout << "PathTraceBlock(MIS-PT) ... " << std::endl;
   memset(realColor.data(), 0, sizeof(float)*4*realColor.size());
   pImpl->SetIntegratorType(TestClass::INTEGRATOR_MIS_PT);

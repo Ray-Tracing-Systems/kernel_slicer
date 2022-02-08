@@ -48,17 +48,21 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY
   float4 rayPosAndNear, rayDirAndFar;
   RandomGen gen; 
   MisData   mis;
-  kernel_InitEyeRay2(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen);
+  uint      rayFlags;
+  kernel_InitEyeRay2(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &rayFlags);
 
   for(int depth = 0; depth < a_maxDepth; depth++) 
   {
     float4   shadeColor, hitPart1, hitPart2;
     uint32_t materialId;
-    if(!kernel_RayTrace2(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &materialId))
+    kernel_RayTrace2(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &materialId, &rayFlags);
+    if(rayFlags != 0)
       break;
     
     kernel_NextBounce(tid, depth, &hitPart1, &hitPart2, &materialId, &shadeColor,
-                      &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &mis);
+                      &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &mis, &rayFlags);
+    if(rayFlags != 0)
+      break;
   }
 
   kernel_ContributeToImage(tid, &accumColor, &gen, in_pakedXY, 
@@ -71,20 +75,24 @@ void TestClass::PathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, flo
   float4 rayPosAndNear, rayDirAndFar;
   RandomGen gen; 
   MisData   mis;
-  kernel_InitEyeRay2(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen);
+  uint      rayFlags;
+  kernel_InitEyeRay2(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &rayFlags);
 
   for(int depth = 0; depth < a_maxDepth; depth++) 
   {
     float4   shadeColor, hitPart1, hitPart2;
     uint32_t materialId;
-    if(!kernel_RayTrace2(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &materialId))
+    kernel_RayTrace2(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &materialId, &rayFlags);
+    if(rayFlags != 0)
       break;
     
     kernel_SampleLightSource(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &materialId, 
                              &gen, &shadeColor);
 
     kernel_NextBounce(tid, depth, &hitPart1, &hitPart2, &materialId, &shadeColor,
-                      &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &mis);
+                      &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &mis, &rayFlags);
+    if(rayFlags != 0)
+      break;
   }
 
   kernel_ContributeToImage(tid, &accumColor, &gen, in_pakedXY, 
@@ -123,7 +131,7 @@ void TestClass::NaivePathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pa
 void TestClass::PathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passNum)
 {
   auto start = std::chrono::high_resolution_clock::now();
-  //#pragma omp parallel for default(shared)
+  #pragma omp parallel for default(shared)
   for(uint i=0;i<tid;i++)
     for(int j=0;j<a_passNum;j++)
       PathTrace(i, 6, in_pakedXY, out_color);
