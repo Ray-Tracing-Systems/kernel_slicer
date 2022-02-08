@@ -194,7 +194,7 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
     const float pdfA    = 1.0f / (4.0f*m_light.size.x*m_light.size.y);
     const float cosVal  = std::max(dot(shadowRayDir, (-1.0f)*to_float3(m_light.norm)), 0.0f);
     const float lgtPdfW = PdfAtoW(pdfA, hitDist, cosVal);
-    const float3 samCol = M_PI*to_float3(m_light.intensity)/std::max(lgtPdfW, 1e-6f); //////////////////////// Apply Pdf here, or outside of here ???
+    const float3 samCol = to_float3(m_light.intensity)/std::max(lgtPdfW, 1e-6f); //////////////////////// Apply Pdf here, or outside of here ???
   
     const float4 mdata  = m_materials[matId];
 
@@ -243,11 +243,16 @@ void TestClass::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPar
     float misWeight = 1.0f;
     if(m_intergatorType == INTEGRATOR_MIS_PT) 
     {
+      if(bounce == 0)
+      {
+        int a = 2;
+      }
       if(bounce > 0)
       {
         const int lightId   = 0; // #TODO: get light id from material info
         const float lgtPdf  = LightPdfSelectRev(lightId)*LightEvalPDF(lightId, ray_pos, ray_dir, &hit);
         const float bsdfPdf = misPrev->matSamplePdf;
+        misWeight           = misWeightHeuristic(bsdfPdf, lgtPdf);
         if (bsdfPdf < 0.0f) // specular bounce
           misWeight = 1.0f;
       }

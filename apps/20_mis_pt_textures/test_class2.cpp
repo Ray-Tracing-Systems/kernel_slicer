@@ -123,7 +123,7 @@ void TestClass::NaivePathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pa
 void TestClass::PathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passNum)
 {
   auto start = std::chrono::high_resolution_clock::now();
-  #pragma omp parallel for default(shared)
+  //#pragma omp parallel for default(shared)
   for(uint i=0;i<tid;i++)
     for(int j=0;j<a_passNum;j++)
       PathTrace(i, 6, in_pakedXY, out_color);
