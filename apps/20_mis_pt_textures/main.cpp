@@ -52,9 +52,11 @@ int main(int argc, const char** argv)
   else
     SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
+  // -------------------------------------------------------------------------------
+
   const int PASS_NUMBER = 100;
   const float normConst = 1.0f/float(PASS_NUMBER);
-  const float invGamma  = 1.0f / 2.2f;
+  const float invGamma  = 1.0f/2.2f;
 
   // now test path tracing
   //
@@ -79,7 +81,9 @@ int main(int argc, const char** argv)
   else
     SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
-  std::cout << "PathTraceBlock() ... " << std::endl;
+  // -------------------------------------------------------------------------------
+
+  std::cout << "PathTraceBlock(Shadow-PT) ... " << std::endl;
   memset(realColor.data(), 0, sizeof(float)*4*realColor.size());
   pImpl->SetIntegratorType(TestClass::INTEGRATOR_SHADOW_PT);
   pImpl->UpdateMembersPlainData();
@@ -99,6 +103,31 @@ int main(int argc, const char** argv)
     SaveBMP("zout_gpu3.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
     SaveBMP("zout_cpu3.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+
+  // -------------------------------------------------------------------------------
+
+  std::cout << "PathTraceBlock(MIS-PT) ... " << std::endl;
+  memset(realColor.data(), 0, sizeof(float)*4*realColor.size());
+  pImpl->SetIntegratorType(TestClass::INTEGRATOR_MIS_PT);
+  pImpl->UpdateMembersPlainData();
+  pImpl->PathTraceBlock(WIN_HEIGHT*WIN_HEIGHT, 6, packedXY.data(), realColor.data(), PASS_NUMBER);
+
+  for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
+  {
+    float4 color = realColor[i]*normConst;
+    color.x      = powf(color.x, invGamma);
+    color.y      = powf(color.y, invGamma);
+    color.z      = powf(color.z, invGamma);
+    color.w      = 1.0f;
+    pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
+  }
+
+  if(onGPU)
+    SaveBMP("zout_gpu4.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+  else
+    SaveBMP("zout_cpu4.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+  
+  // -------------------------------------------------------------------------------
 
   std::cout << std::endl;
   float timings[4] = {0,0,0,0};

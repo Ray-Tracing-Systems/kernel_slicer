@@ -4,6 +4,26 @@
 #include <chrono>
 #include <string>
 
+float TestClass::LightPdfSelectRev(int a_lightId) 
+{ 
+  return 1.0f; 
+}
+
+float TestClass::LightEvalPDF(int a_lightId, float3 illuminationPoint, float3 ray_dir, SurfaceHit* pSurfaceHit)
+{
+  const float3 lpos   = pSurfaceHit->pos;
+  const float3 lnorm  = pSurfaceHit->norm;
+  const float hitDist = length(illuminationPoint - lpos);
+  const float pdfA    = 1.0f / (4.0f*m_light.size.x*m_light.size.y);
+  const float cosVal  = std::max(dot(ray_dir, -1.0f*lnorm), 0.0f);
+  return PdfAtoW(pdfA, hitDist, cosVal);
+}
+
+float TestClass::MaterialEvalPDF(int a_materialId, float3 l, float3 v, float3 n) 
+{ 
+  return std::abs(dot(l, n)) * INV_PI; 
+}
+
 void TestClass::PackXY(uint tidX, uint tidY, uint* out_pakedXY)
 {
   kernel_PackXY(tidX, tidY, out_pakedXY);
@@ -60,11 +80,10 @@ void TestClass::PathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, flo
     if(!kernel_RayTrace2(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &materialId))
       break;
     
-    float4 shadeColorAndPdf; // pack pdf to color.w to save space; if pdf < 0.0, then say we have point light source
     kernel_SampleLightSource(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &materialId, 
-                             &gen, &shadeColorAndPdf);
+                             &gen, &shadeColor);
 
-    kernel_NextBounce(tid, depth, &hitPart1, &hitPart2, &materialId, &shadeColorAndPdf,
+    kernel_NextBounce(tid, depth, &hitPart1, &hitPart2, &materialId, &shadeColor,
                       &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &mis);
   }
 

@@ -15,18 +15,6 @@ void TestClass::InitRandomGens(int a_maxThreads)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static inline float lambertEvalPDF (const float3 l, const float3 n) { return std::abs(dot(l, n)) * INV_PI; }
-
-static inline float areaDiffuseLightEvalPDF(const RectLightSource* pLight, float3 rayDir, float hitDist)
-{
-  const float pdfA   = 1.0f / (pLight->size.x*pLight->size.y);
-  const float cosVal = std::max(dot(rayDir, -1.0f*to_float3(pLight->norm)), 0.0f);
-  return PdfAtoW(pdfA, hitDist, cosVal);
-}
-
-static inline float lightPdfSelectRev(const RectLightSource* pLight) { return 1.0f; }
-
-
 void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 {
   const uint XY = packedXY[tid];
@@ -190,7 +178,7 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
 
   const float2 uv = rndFloat2_Pseudo(a_gen);
   
-  const float2 sampleOff = 2.0f*(float2(-0.5,-0.5) + uv)*m_light.size;
+  const float2 sampleOff = 2.0f*(float2(-0.5f,-0.5f) + uv)*m_light.size;
   const float3 samplePos = to_float3(m_light.pos) + float3(sampleOff.x, -1e-5f, sampleOff.y);
   const float  hitDist   = sqrt(dot(hit.pos - samplePos, hit.pos - samplePos));
 
@@ -201,20 +189,29 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
   
   if(!inShadow && dot(shadowRayDir, to_float3(m_light.norm)) < 0.0f)
   {
-    const float pdfA    = 1.0f / (m_light.size.x*m_light.size.y);
+    const float lightPickProb = 1.0f;
+
+    const float pdfA    = 1.0f / (4.0f*m_light.size.x*m_light.size.y);
     const float cosVal  = std::max(dot(shadowRayDir, (-1.0f)*to_float3(m_light.norm)), 0.0f);
-    const float pdfW    = PdfAtoW(pdfA, hitDist, cosVal);
-    const float3 samCol = M_PI*to_float3(m_light.intensity)/std::max(pdfW, 1e-6f); //////////////////////// Apply Pdf here, or outside of here ???
+    const float lgtPdfW = PdfAtoW(pdfA, hitDist, cosVal);
+    const float3 samCol = M_PI*to_float3(m_light.intensity)/std::max(lgtPdfW, 1e-6f); //////////////////////// Apply Pdf here, or outside of here ???
   
     const float4 mdata  = m_materials[matId];
 
     const float3 brdfVal    = to_float3(mdata)*INV_PI;
     const float cosThetaOut = std::max(dot(shadowRayDir, hit.norm), 0.0f);
 
+    float misWeight = 1.0f;
+    if(m_intergatorType == INTEGRATOR_MIS_PT)
+    {
+      const float matPdfW = MaterialEvalPDF(matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm); 
+      misWeight = misWeightHeuristic(lgtPdfW, matPdfW);
+    }
+
     if(cosVal <= 0.0f)
-      *out_shadeColor = float4(0.0f, 0.0f, 0.0f, pdfW);
+      *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
     else
-      *out_shadeColor = to_float4(samCol*brdfVal*cosThetaOut, pdfW);
+      *out_shadeColor = to_float4((1.0f/lightPickProb)*samCol*brdfVal*cosThetaOut*misWeight, 0.0f);
   }
   else
     *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -232,6 +229,8 @@ void TestClass::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPar
   // process surcase hit case
   //
   const float3 ray_dir = to_float3(*rayDirAndFar);
+  const float3 ray_pos = to_float3(*rayPosAndNear);
+
   SurfaceHit hit;
   hit.pos  = to_float3(*in_hitPart1);
   hit.norm = to_float3(*in_hitPart2);
@@ -240,30 +239,26 @@ void TestClass::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPar
   //
   if(mdata.w > 0.0f)
   {
-    if(m_intergatorType == INTEGRATOR_STUPID_PT)
+    const float lightIntensity = mdata.w;
+    float misWeight = 1.0f;
+    if(m_intergatorType == INTEGRATOR_MIS_PT) 
     {
-      const float lightIntensity = mdata.w;
-      if(dot(to_float3(*rayDirAndFar), float3(0,-1,0)) < 0.0f)
-        *accumColor = (*accumThoroughput)*lightIntensity;
-      else
-        *accumColor = float4(0,0,0,0);
-    }
-    else if(m_intergatorType == INTEGRATOR_MIS_PT) // #TODO: implement MIS weights
-    {
-      float misWeight = 1.0f;
       if(bounce > 0)
       {
-        //const int lightId   = ...
-        //const float lgtPdf  = lightPdfSelectRev(lightId)*lightEvalPDF(lightId, ray_pos, ray_dir, &surfElem);
-        //const float bsdfPdf = misPrev->matSamplePdf;
-        //if (bsdfPdf < 0.0f) // specular bounce
-          //misWeight = 1.0f;
+        const int lightId   = 0; // #TODO: get light id from material info
+        const float lgtPdf  = LightPdfSelectRev(lightId)*LightEvalPDF(lightId, ray_pos, ray_dir, &hit);
+        const float bsdfPdf = misPrev->matSamplePdf;
+        if (bsdfPdf < 0.0f) // specular bounce
+          misWeight = 1.0f;
       }
-      //if(dot(to_float3(*rayDirAndFar), float3(0,-1,0)) < 0.0f)
-      //  *accumColor = (*accumThoroughput)*lightIntensity*misWeight;
-      //else
-      //  *accumColor = float4(0,0,0,0);
     }
+    else if(m_intergatorType == INTEGRATOR_SHADOW_PT)
+      misWeight = 0.0f;
+
+    if(dot(to_float3(*rayDirAndFar), float3(0,-1,0)) < 0.0f)
+      *accumColor = (*accumThoroughput)*lightIntensity*misWeight;
+    else
+      *accumColor = float4(0,0,0,0);
 
     return;
   }
@@ -285,7 +280,7 @@ void TestClass::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPar
   {
     *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f); 
   }
-  else if(m_intergatorType == INTEGRATOR_SHADOW_PT)
+  else if(m_intergatorType == INTEGRATOR_SHADOW_PT || m_intergatorType == INTEGRATOR_MIS_PT)
   {
     const float4 currThoroughput = *accumThoroughput;
     const float4 shadeColor      = *in_shadeColor;
@@ -293,33 +288,9 @@ void TestClass::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPar
     *accumColor += currThoroughput*shadeColor;
     *accumThoroughput = currThoroughput*cosTheta*to_float4(bxdfVal, 0.0f); 
   }
-  else if(m_intergatorType == INTEGRATOR_MIS_PT) // #TODO: implement MIS weights
-  {
-    const float4 currThoroughput = *accumThoroughput;
-    const float4 shadeColor      = *in_shadeColor;
-    const float lgtPdf           = shadeColor.w;
-    
-    //ShadeContext sc;
-    //sc.wp = surfElem.pos;
-    //sc.l  = shadowRayDir;
-    //sc.v  = (-1.0f)*ray_dir;
-    //sc.n  = surfElem.normal;
-    //sc.fn = surfElem.flatNormal;
-    //sc.tg = surfElem.tangent;
-    //sc.bn = surfElem.biTangent;
-    //sc.tc = surfElem.texCoord;
-
-    //const float bsdfPdf = EvalPDF(materialId, &hit, &explicitSam, &sc);
-    //float misWeight = misWeightHeuristic(lgtPdf, bsdfPdf); 
-    //if (lgtPdf < 0.0f)
-    //  misWeight = 1.0f;
-    //*accumColor += currThoroughput*shadeColor*misWeight;
-    //*accumThoroughput = currThoroughput*cosTheta*to_float4(bxdfVal, 0.0f); 
-  }
 
   *rayPosAndNear = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
   *rayDirAndFar  = to_float4(newDir, MAXFLOAT);
-  
 }
 
 void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, const RandomGen* gen, const uint* in_pakedXY, float4* out_color)
