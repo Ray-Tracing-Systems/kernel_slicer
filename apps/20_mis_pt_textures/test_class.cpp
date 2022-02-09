@@ -197,17 +197,14 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
     const float lgtPdfW = PdfAtoW(pdfA, hitDist, cosVal);
     const float3 samCol = to_float3(m_light.intensity)/std::max(lgtPdfW, 1e-6f); //////////////////////// Apply Pdf here, or outside of here ???
   
-    const float4 mdata  = m_materials[matId];
+    const float3 brdfVal = MaterialEvalBSDF(matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm);
+    const float  matPdfW = MaterialEvalPDF (matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm); 
 
-    const float3 brdfVal    = to_float3(mdata)*INV_PI;
     const float cosThetaOut = std::max(dot(shadowRayDir, hit.norm), 0.0f);
 
     float misWeight = 1.0f;
     if(m_intergatorType == INTEGRATOR_MIS_PT)
-    {
-      const float matPdfW = MaterialEvalPDF(matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm); 
       misWeight = misWeightHeuristic(lgtPdfW, matPdfW);
-    }
 
     if(cosVal <= 0.0f)
       *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -267,13 +264,12 @@ void TestClass::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPar
   }
   
   const float2 uv       = rndFloat2_Pseudo(a_gen);
-  const float3 newDir   = MapSampleToCosineDistribution(uv.x, uv.y, hit.norm, hit.norm, 1.0f);
+  const float3 newDir   = MaterialSample  (matId, uv,     (-1.0f)*ray_dir, hit.norm);
+  const float3 brdfVal  = MaterialEvalBSDF(matId, newDir, (-1.0f)*ray_dir, hit.norm);
+  const float  pdfVal   = MaterialEvalPDF (matId, newDir, (-1.0f)*ray_dir, hit.norm); // cosTheta * INV_PI; 
+  const float3 bxdfVal  = brdfVal * (1.0f / std::max(pdfVal, 1e-10f));
   const float  cosTheta = dot(newDir, hit.norm);
 
-  const float  pdfVal  = cosTheta * INV_PI;
-  const float3 brdfVal = (cosTheta > 1e-5f) ? to_float3(mdata) * INV_PI : float3(0,0,0);
-  const float3 bxdfVal = brdfVal * (1.0f / std::max(pdfVal, 1e-10f));
-  
   MisData nextBounceData;               // remember current pdfW for next bounce
   nextBounceData.matSamplePdf = pdfVal; //
   *misPrev = nextBounceData;            //

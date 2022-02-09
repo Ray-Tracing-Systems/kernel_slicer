@@ -159,34 +159,6 @@ static inline float3 OffsRayPos(const float3 a_hitPos, const float3 a_surfaceNor
 }
 
 
-static inline float3 SphericalDirectionPBRT(const float sintheta, const float costheta, const float phi) 
-{ 
-  return make_float3(sintheta * cos(phi), sintheta * sin(phi), costheta); 
-}
-
-static inline float GGX_Distribution(const float cosThetaNH, const float alpha)
-{
-  const float alpha2  = alpha * alpha;
-  const float NH_sqr  = clamp(cosThetaNH * cosThetaNH, 0.0f, 1.0f);
-  const float den     = NH_sqr * alpha2 + (1.0f - NH_sqr);
-  return alpha2 / fmax((float)(M_PI) * den * den, 1e-6f);
-}
-
-static inline float GGX_GeomShadMask(const float cosThetaN, const float alpha)
-{
-  // Height - Correlated G.
-  //const float tanNV      = sqrt(1.0f - cosThetaN * cosThetaN) / cosThetaN;
-  //const float a          = 1.0f / (alpha * tanNV);
-  //const float lambda     = (-1.0f + sqrt(1.0f + 1.0f / (a*a))) / 2.0f;
-  //const float G          = 1.0f / (1.0f + lambda);
-
-  // Optimized and equal to the commented-out formulas on top.
-  const float cosTheta_sqr = clamp(cosThetaN*cosThetaN, 0.0f, 1.0f);
-  const float tan2         = (1.0f - cosTheta_sqr) / fmax(cosTheta_sqr, 1e-6f);
-  const float GP           = 2.0f / (1.0f + sqrt(1.0f + alpha * alpha * tan2));
-  return GP;
-}
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -245,6 +217,30 @@ static inline MisData makeInitialMisData()
   MisData data;
   data.matSamplePdf = 1.0f;
   return data;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static inline float4x4 perspectiveMatrix(float fovy, float aspect, float zNear, float zFar)
+{
+  const float ymax = zNear * tanf(fovy * 3.14159265358979323846f / 360.0f);
+  const float xmax = ymax * aspect;
+  const float left = -xmax;
+  const float right = +xmax;
+  const float bottom = -ymax;
+  const float top = +ymax;
+  const float temp = 2.0f * zNear;
+  const float temp2 = right - left;
+  const float temp3 = top - bottom;
+  const float temp4 = zFar - zNear;
+  float4x4 res;
+  res.m_col[0] = float4{ temp / temp2, 0.0f, 0.0f, 0.0f };
+  res.m_col[1] = float4{ 0.0f, temp / temp3, 0.0f, 0.0f };
+  res.m_col[2] = float4{ (right + left) / temp2,  (top + bottom) / temp3, (-zFar - zNear) / temp4, -1.0 };
+  res.m_col[3] = float4{ 0.0f, 0.0f, (-temp * zFar) / temp4, 0.0f };
+  return res;
 }
 
 

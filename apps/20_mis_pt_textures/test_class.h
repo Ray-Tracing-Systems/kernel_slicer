@@ -3,6 +3,7 @@
 
 #include "include/BasicLogic.h" // We assume that all code that should pe passed to kernels will be just included both for CPU and OpenCL
 #include "include/crandom.h"
+#include "include/cmaterial.h"
 
 #include <vector>
 #include <iostream>
@@ -11,25 +12,6 @@
 
 #include "CrossRT.h"
 
-static inline float4x4 perspectiveMatrix(float fovy, float aspect, float zNear, float zFar)
-{
-  const float ymax = zNear * tanf(fovy * 3.14159265358979323846f / 360.0f);
-  const float xmax = ymax * aspect;
-  const float left = -xmax;
-  const float right = +xmax;
-  const float bottom = -ymax;
-  const float top = +ymax;
-  const float temp = 2.0f * zNear;
-  const float temp2 = right - left;
-  const float temp3 = top - bottom;
-  const float temp4 = zFar - zNear;
-  float4x4 res;
-  res.m_col[0] = float4{ temp / temp2, 0.0f, 0.0f, 0.0f };
-  res.m_col[1] = float4{ 0.0f, temp / temp3, 0.0f, 0.0f };
-  res.m_col[2] = float4{ (right + left) / temp2,  (top + bottom) / temp3, (-zFar - zNear) / temp4, -1.0 };
-  res.m_col[3] = float4{ 0.0f, 0.0f, (-temp * zFar) / temp4, 0.0f };
-  return res;
-}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +105,9 @@ protected:
 
   float LightPdfSelectRev(int a_lightId);
   float LightEvalPDF(int a_lightId, float3 ray_pos, float3 ray_dir, const SurfaceHit* pSurfaceHit);
-  float MaterialEvalPDF (int a_materialId, float3 l, float3 v, float3 n);
+  float MaterialEvalPDF  (int a_materialId, float3 l, float3 v, float3 n);
+  float3 MaterialEvalBSDF(int a_materialId, float3 l, float3 v, float3 n);
+  float3 MaterialSample  (int a_materialId, float2 rands, float3 v, float3 n);
 
   float3 m_camPos = float3(0.0f, 0.85f, 4.5f);
   void InitSceneMaterials(int a_numSpheres, int a_seed = 0);
