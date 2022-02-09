@@ -850,7 +850,7 @@ size_t GetBaseAligmentForGLSL(TypePair* pCurrType,
       {
         const std::string varName = field->getNameAsString();
         std::cout << "  [PADDING ALERT]: structure '" << pCurrType->typeName << "' has field '" <<  varName << "' of type '" << typeName2 << "' at level " << a_level+1 << std::endl;
-        std::cout << "  [PADDING ALERT]: type '" << typeName2 << "' has different size and aligment in GLSL which is not possible on the host side" << std::endl;
+        std::cout << "  [PADDING ALERT]: type '" << typeName2 << "' has different 'size' and 'aligned size' in GLSL which is not possible on the host side in C++" << std::endl;
         std::cout << "  [PADDING ALERT]: we don't allow such types inside structures; please use aligned types inside structures." << std::endl;
       }
 
@@ -876,7 +876,9 @@ static inline size_t Padding(size_t a_size, size_t a_alignment)
   }
 }
 
-void kslicer::MainClassInfo::ProcessMemberTypesAligment(std::vector<DataMemberInfo>& a_members, const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls)
+void kslicer::MainClassInfo::ProcessMemberTypesAligment(std::vector<DataMemberInfo>& a_members, 
+                                                        const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls, 
+                                                        const clang::ASTContext& a_astContext)
 {
   const auto  a_additionalTypes = this->ExtractTypesFromUsedContainers(a_otherDecls);
   const auto& a_allDataMembers  = this->allDataMembers;
@@ -922,7 +924,20 @@ void kslicer::MainClassInfo::ProcessMemberTypesAligment(std::vector<DataMemberIn
   for(auto& type : typesToProcess)
   {
     type.second.aligment = GetBaseAligmentForGLSL(&type.second, typesToProcess, endTypes, 0);
-    //std::cout << "  [ProcessMemberTypesAligment]: " << type.first << " aligment = " << type.second.aligment << std::endl;
+    if(type.second.node == nullptr)
+      continue;
+    auto clangType = type.second.node->getTypeForDecl();
+    if(clangType == nullptr)
+      continue;
+
+    auto typeInfo    = a_astContext.getTypeInfo(clangType);
+    auto sizeInBytes = typeInfo.Width / 8;
+    if(sizeInBytes > 0 && sizeInBytes % type.second.aligment != 0)
+    {
+      std::cout << "  [PADDING ALERT]: structure '" << type.second.typeName << "' has align of " << type.second.aligment << " and size of " << sizeInBytes << " bytes!" << std::endl;
+      std::cout << "  [PADDING ALERT]: structure '" << type.second.typeName << "' has different 'size' and 'aligned size' in GLSL which is not possible on the host side in C++" << std::endl;
+      std::cout << "  [PADDING ALERT]: we don't allow such types inside buffers or any other containers; please use aligned types." << std::endl;
+    }
   }
 
   for(auto& member : a_members)
