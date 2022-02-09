@@ -152,7 +152,11 @@ void TestClass::kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, const uint*
   }
 
   const uint32_t matId = m_matIdByPrimId[m_matIdOffsets[lhit.geomId] + lhit.primId];
-  const float4 mdata   = m_materials[matId];
+  const float4 mdata   = float4(m_materials[matId].diffuse[0], 
+                                m_materials[matId].diffuse[1], 
+                                m_materials[matId].diffuse[2], 
+                                m_materials[matId].intensity);
+
   const float3 color   = mdata.w > 0.0f ? clamp(float3(mdata.w,mdata.w,mdata.w), 0.0f, 1.0f) : to_float3(mdata);
 
   const uint XY = in_pakedXY[tid];
@@ -222,7 +226,7 @@ void TestClass::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPar
   if(matId == uint32_t(-1))
     return;
 
-  const float4 mdata   = m_materials[matId];
+  const float matEmission = m_materials[matId].intensity;
 
   // process surcase hit case
   //
@@ -235,9 +239,9 @@ void TestClass::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPar
 
   // process light hit case
   //
-  if(mdata.w > 0.0f)
+  if(matEmission > 0.0f)
   {
-    const float lightIntensity = mdata.w;
+    const float lightIntensity = matEmission;
     float misWeight = 1.0f;
     if(m_intergatorType == INTEGRATOR_MIS_PT) 
     {

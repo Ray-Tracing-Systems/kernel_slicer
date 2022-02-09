@@ -39,8 +39,11 @@ float3 TestClass::MaterialEvalBSDF(int a_materialId, float3 l, float3 v, float3 
   if(std::abs(dot(l, n)) < 1e-5f)
     return float3(0,0,0); 
 
-  const float4 mdata = m_materials[a_materialId];
-  return to_float3(mdata)*INV_PI;
+  const float3 mdata = float3(m_materials[a_materialId].diffuse[0], 
+                              m_materials[a_materialId].diffuse[1], 
+                              m_materials[a_materialId].diffuse[2]); 
+
+  return mdata*INV_PI;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
