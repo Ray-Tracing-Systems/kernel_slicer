@@ -9,7 +9,7 @@ float TestClass::LightPdfSelectRev(int a_lightId)
   return 1.0f; 
 }
 
-float TestClass::LightEvalPDF(int a_lightId, float3 illuminationPoint, float3 ray_dir, SurfaceHit* pSurfaceHit)
+float TestClass::LightEvalPDF(int a_lightId, float3 illuminationPoint, float3 ray_dir, const SurfaceHit* pSurfaceHit)
 {
   const float3 lpos   = pSurfaceHit->pos;
   const float3 lnorm  = pSurfaceHit->norm;

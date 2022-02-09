@@ -144,8 +144,10 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
         break;
       }
     }
+    
+    bool isKernel = m_codeInfo->IsKernel(m_currKernel.name);
 
-    if(foundId != size_t(-1)) // else we didn't found 'payload' in kernela arguments, so just ignore it
+    if(foundId != size_t(-1)) // else we didn't found 'payload' in kernel arguments, so just ignore it
     {
       // now split 'payload->xxx' to 'payload' (baseName) and 'xxx' (memberName); 
       // 
@@ -162,6 +164,17 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
       else if(needOffset)
       {
         out_text = baseName + "[" + m_fakeOffsetExp + "]." + memberName;
+        return true;
+      }
+    }
+    else if(!isKernel && m_codeInfo->pShaderCC->IsGLSL()) // for common member functions
+    {
+      const std::string exprContent = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+      auto pos = exprContent.find("->");
+      if(pos != std::string::npos) 
+      {
+        const std::string memberName = exprContent.substr(pos+2);
+        out_text = baseName + "." + memberName;
         return true;
       }
     }

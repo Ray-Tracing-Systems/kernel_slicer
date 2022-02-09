@@ -122,7 +122,7 @@ protected:
   int m_winHeight;
 
   float LightPdfSelectRev(int a_lightId);
-  float LightEvalPDF(int a_lightId, float3 ray_pos, float3 ray_dir, SurfaceHit* pSurfaceHit);
+  float LightEvalPDF(int a_lightId, float3 ray_pos, float3 ray_dir, const SurfaceHit* pSurfaceHit);
   float MaterialEvalPDF (int a_materialId, float3 l, float3 v, float3 n);
 
   float3 m_camPos = float3(0.0f, 0.85f, 4.5f);
