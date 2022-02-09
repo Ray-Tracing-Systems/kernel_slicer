@@ -26,12 +26,51 @@ float TestClass::LightEvalPDF(int a_lightId, float3 illuminationPoint, float3 ra
 
 float3 TestClass::MaterialSample(int a_materialId, float2 rands, float3 v, float3 n)
 {
-  return MapSampleToCosineDistribution(rands.x, rands.y, n, n, 1.0f);
+  uint type = m_materials[a_materialId].brdfType;
+  if(type == BRDF_TYPE_GGX)
+  {
+    const float  roughness = 1.0f - m_materials[a_materialId].glosiness;
+    const float  roughSqr  = roughness * roughness;
+    
+    float3 nx, ny, nz = n;
+    CoordinateSystem(nz, &nx, &ny);
+    
+    const float3 wo = float3(dot(v, nx), dot(v, ny), dot(v, nz));
+    const float3 wh = GgxVndf(wo, roughSqr, rands.x, rands.y);
+    const float3 wi = 2.0f * dot(wo, wh) * wh - wo;      // Compute incident direction by reflecting about wm  
+
+    return normalize(wi.x * nx + wi.y * ny + wi.z * nz); // back to normal coordinate system
+  }
+  else
+    return MapSampleToCosineDistribution(rands.x, rands.y, n, n, 1.0f);
 }
 
 float TestClass::MaterialEvalPDF(int a_materialId, float3 l, float3 v, float3 n) 
 { 
-  return std::abs(dot(l, n)) * INV_PI; 
+  uint type = m_materials[a_materialId].brdfType;
+  if(type == BRDF_TYPE_GGX)
+  {
+    const float dotNV = dot(n, v);
+    const float dotNL = dot(n, l);
+    if (dotNV < 1e-6f || dotNL < 1e-6f)
+      return 1.0f;
+
+    const float  roughness = 1.0f - m_materials[a_materialId].glosiness;
+    const float  roughSqr  = roughness * roughness;
+    
+    const float3 h    = normalize(v + l); // half vector.
+    const float dotNH = dot(n, h);
+    const float dotHV = dot(h, v);
+    const float G1    = SmithGGXMasking(dotNV, roughSqr);
+    const float G2    = SmithGGXMaskingShadowing(dotNL, dotNV, roughSqr);
+    const float D     = GGX_Distribution(dotNH, roughSqr);
+    const float Dv    = D * G1 * dotHV / std::max(dotNV, 1e-6f);
+    const float jacob = 1.0f / std::max(4.0f * dotHV, 1e-6f);
+    
+    return Dv * jacob;
+  }
+  else
+    return std::abs(dot(l, n)) * INV_PI; 
 }
 
 float3 TestClass::MaterialEvalBSDF(int a_materialId, float3 l, float3 v, float3 n)
@@ -39,11 +78,35 @@ float3 TestClass::MaterialEvalBSDF(int a_materialId, float3 l, float3 v, float3 
   if(std::abs(dot(l, n)) < 1e-5f)
     return float3(0,0,0); 
 
-  const float3 mdata = float3(m_materials[a_materialId].diffuse[0], 
-                              m_materials[a_materialId].diffuse[1], 
-                              m_materials[a_materialId].diffuse[2]); 
+  uint type = m_materials[a_materialId].brdfType;
+  if(type == BRDF_TYPE_GGX)
+  {
+    const float dotNV = dot(n, v);  
+    const float dotNL = dot(n, l);
+    if (dotNV < 1e-6f || dotNL < 1e-6f)
+      return float3(0.0f, 0.0f, 0.0f);
 
-  return mdata*INV_PI;
+    const float  roughness = 1.0f - m_materials[a_materialId].glosiness;
+    const float  roughSqr  = roughness * roughness;
+    const float3 color     = float3(m_materials[a_materialId].reflection[0], 
+                                    m_materials[a_materialId].reflection[1], 
+                                    m_materials[a_materialId].reflection[2]); 
+
+    const float3 h    = normalize(v + l); // half vector.
+    const float dotNH = dot(n, h);
+    const float D     = GGX_Distribution(dotNH, roughSqr);
+    const float G     = SmithGGXMaskingShadowing(dotNL, dotNV, roughSqr);       
+
+    return color*(D * G / std::max(4.0f * dotNV * dotNL, 1e-6f));  // Pass single-scattering
+  }
+  else
+  {
+    const float3 mdata = float3(m_materials[a_materialId].diffuse[0], 
+                                m_materials[a_materialId].diffuse[1], 
+                                m_materials[a_materialId].diffuse[2]); 
+  
+    return mdata*INV_PI;
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

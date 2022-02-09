@@ -32,14 +32,29 @@ int TestClass::LoadScene(const char* scehePath)
     if(node != nullptr)
       color = to_float4(hydra_xml::readval3f(node), 0.0f);
     
+    float3 reflColor = float3(0,0,0);
+    float glosiness  = 1.0f;
+    auto nodeRefl = materialNode.child(L"reflectivity");
+    if(nodeRefl != nullptr)
+    {
+      reflColor = hydra_xml::readval3f(nodeRefl.child(L"color"));
+      glosiness = nodeRefl.child(L"glossiness").text().as_float(); // #TODO: read in different way ... 
+    }
+
     PlainMaterial mat = {};
     mat.brdfType   = BRDF_TYPE_LAMBERT;
     mat.diffuse[0] = color[0];
     mat.diffuse[1] = color[1];
     mat.diffuse[2] = color[2];
+    mat.reflection[0] = reflColor[0];
+    mat.reflection[1] = reflColor[1];
+    mat.reflection[2] = reflColor[2];
+    mat.glosiness     = glosiness;
     mat.intensity  = color[3];
     if(mat.intensity > 1e-5f)
       mat.brdfType = BRDF_TYPE_LAMBERT_LIGHT_SOURCE;
+    else if(length(reflColor) > 1e-5f)
+      mat.brdfType = BRDF_TYPE_GGX;
     m_materials.push_back(mat);
   }
 

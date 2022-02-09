@@ -47,4 +47,44 @@ static inline float GGX_GeomShadMask(const float cosThetaN, const float alpha)
   return GP;
 }
 
+static inline float3 GgxVndf(float3 wo, float roughness, float u1, float u2)
+{
+  // -- Stretch the view vector so we are sampling as though
+  // -- roughness==1
+  const float3 v = normalize(float3(wo.x * roughness, wo.y * roughness, wo.z));
+
+  // -- Build an orthonormal basis with v, t1, and t2
+  const float3 XAxis = float3(1.0f, 0.0f, 0.0f);
+  const float3 ZAxis = float3(0.0f, 0.0f, 1.0f);
+  const float3 t1 = (v.z < 0.999f) ? normalize(cross(v, ZAxis)) : XAxis;
+  const float3 t2 = cross(t1, v);
+
+  // -- Choose a point on a disk with each half of the disk weighted
+  // -- proportionally to its projection onto direction v
+  const float a = 1.0f / (1.0f + v.z);
+  const float r = std::sqrt(u1);
+  const float phi = (u2 < a) ? (u2 / a) * M_PI : M_PI + (u2 - a) / (1.0f - a) * M_PI;
+  const float p1 = r * cos(phi);
+  const float p2 = r * sin(phi) * ((u2 < a) ? 1.0f : v.z);
+
+  // -- Calculate the normal in this stretched tangent space
+  const float3 n = p1 * t1 + p2 * t2 + std::sqrt(std::max(0.0f, 1.0f - p1 * p1 - p2 * p2)) * v;
+
+  // -- unstretch and normalize the normal
+  return normalize(float3(roughness * n.x, roughness * n.y, std::max(0.0f, n.z)));
+}
+
+static inline float SmithGGXMasking(const float dotNV, float roughSqr)
+{
+  const float denomC = sqrt(roughSqr + (1.0f - roughSqr) * dotNV * dotNV) + dotNV;
+  return 2.0f * dotNV / fmax(denomC, 1e-6f);
+}
+
+static inline float SmithGGXMaskingShadowing(const float dotNL, const float dotNV, float roughSqr)
+{
+  const float denomA = dotNV * sqrt(roughSqr + (1.0f - roughSqr) * dotNL * dotNL);
+  const float denomB = dotNL * sqrt(roughSqr + (1.0f - roughSqr) * dotNV * dotNV);
+  return 2.0f * dotNL * dotNV / fmax(denomA + denomB, 1e-6f);
+}
+
 #endif
