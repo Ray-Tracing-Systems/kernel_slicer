@@ -145,7 +145,7 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
       }
     }
     
-    bool isKernel = m_codeInfo->IsKernel(m_currKernel.name);
+    bool isKernel = m_codeInfo->IsKernel(m_currKernel.name) && !processFuncMember;
 
     if(foundId != size_t(-1)) // else we didn't found 'payload' in kernel arguments, so just ignore it
     {
@@ -465,6 +465,9 @@ bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
 {
   Expr* retExpr = ret->getRetValue();
   if (!retExpr)
+    return true;
+  
+  if(processFuncMember) // don't rewrite return statements for function members
     return true;
   
   if(!m_infoPass && WasNotRewrittenYet(ret) && m_kernelIsBoolTyped && !m_codeInfo->megakernelRTV)

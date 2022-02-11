@@ -13,21 +13,18 @@
 #include "CrossRT.h"
 
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class TestClass // : public DataClass
+class Integrator // : public DataClass
 {
 public:
 
-  TestClass(int a_maxThreads = 1)
+  Integrator(int a_maxThreads = 1)
   {
     InitRandomGens(a_maxThreads);
     m_pAccelStruct = std::shared_ptr<ISceneObject>(CreateSceneRT(""), [](ISceneObject *p) { DeleteSceneRT(p); } ); 
     m_light.norm = float4(0,-1,0,0);
   }
 
-  ~TestClass()
+  ~Integrator()
   {
     m_pAccelStruct = nullptr;
   }
@@ -66,14 +63,16 @@ public:
                        Lite_Hit* out_hit, float2* out_bars);
 
   void kernel_RayTrace2(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar,
-                        float4* out_hit1, float4* out_hit2, uint* out_matId, uint* rayFlags);
+                        float4* out_hit1, float4* out_hit2, uint* rayFlags);
 
   void kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, const uint* in_pakedXY, uint* out_color);
 
-  void kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPart1, const float4* in_hitPart2, const uint32_t* a_materialId, const float4* in_shadeColor,
+  void kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPart1, const float4* in_hitPart2, const float4* in_shadeColor,
                          float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput, RandomGen* a_gen, MisData* a_prevMisData, uint* rayFlags);
   
-  void kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar, const float4* in_hitPart1, const float4* in_hitPart2, const uint* a_materialId, 
+  void kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar, 
+                                const float4* in_hitPart1, const float4* in_hitPart2, 
+                                const uint* rayFlags, 
                                 RandomGen* a_gen, float4* out_shadeColor);
 
   void kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* out_color);
@@ -86,6 +85,20 @@ public:
   static constexpr uint INTEGRATOR_STUPID_PT = 0;
   static constexpr uint INTEGRATOR_SHADOW_PT = 1;
   static constexpr uint INTEGRATOR_MIS_PT    = 2;
+
+  static constexpr uint RAY_FLAG_IS_DEAD      = 0x80000000;
+  static constexpr uint RAY_FLAG_OUT_OF_SCENE = 0x40000000;
+  static constexpr uint RAY_FLAG_HIT_LIGHT    = 0x20000000;
+  //static constexpr uint RAY_FLAG_DUMMY        = 0x10000000;
+  //static constexpr uint RAY_FLAG_DUMMY        = 0x08000000;
+  //static constexpr uint RAY_FLAG_DUMMY        = 0x04000000;
+  //static constexpr uint RAY_FLAG_DUMMY        = 0x02000000;
+  //static constexpr uint RAY_FLAG_DUMMY        = 0x01000000;
+
+  static inline bool isDeadRay(uint a_flags)    { return (a_flags & RAY_FLAG_IS_DEAD) != 0; }
+  static inline uint extractMatId(uint a_flags) { return (a_flags & 0x00FFFFFF); }       
+  static inline uint packMatId(uint a_flags, uint a_matId) { return (a_flags & 0xFF000000) | (a_matId & 0x00FFFFFF); }       
+  static inline uint maxMaterials()             { return 0x00FFFFFF+1; }
 
   void SetIntegratorType(const uint a_type) { m_intergatorType = a_type; }
   void SetViewport(int a_xStart, int a_yStart, int a_width, int a_height) 

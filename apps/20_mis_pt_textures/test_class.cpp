@@ -4,7 +4,7 @@
 #include <chrono>
 #include <string>
 
-void TestClass::InitRandomGens(int a_maxThreads)
+void Integrator::InitRandomGens(int a_maxThreads)
 {
   m_randomGens.resize(a_maxThreads);
   #pragma omp parallel for default(shared)
@@ -15,7 +15,7 @@ void TestClass::InitRandomGens(int a_maxThreads)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
+void Integrator::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 {
   const uint XY = packedXY[tid];
 
@@ -32,7 +32,7 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
 }
 
-void TestClass::kernel_InitEyeRay2(uint tid, const uint* packedXY, 
+void Integrator::kernel_InitEyeRay2(uint tid, const uint* packedXY, 
                                    float4* rayPosAndNear, float4* rayDirAndFar,
                                    float4* accumColor,    float4* accumuThoroughput,
                                    RandomGen* gen, uint* rayFlags) // 
@@ -58,7 +58,7 @@ void TestClass::kernel_InitEyeRay2(uint tid, const uint* packedXY,
 }
 
 
-bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
+bool Integrator::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                                 Lite_Hit* out_hit, float2* out_bars)
 {
   const float4 rayPos = *rayPosAndNear;
@@ -79,9 +79,13 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   return (res.primId != -1);
 }
 
-void TestClass::kernel_RayTrace2(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar,
-                                 float4* out_hit1, float4* out_hit2, uint32_t* out_matId, uint* rayFlags)
+void Integrator::kernel_RayTrace2(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar,
+                                 float4* out_hit1, float4* out_hit2, uint* rayFlags)
 {
+  const uint currRayFlags = *rayFlags;
+  if(isDeadRay(currRayFlags))
+    return;
+    
   const float4 rayPos = *rayPosAndNear;
   const float4 rayDir = *rayDirAndFar ;
 
@@ -112,17 +116,15 @@ void TestClass::kernel_RayTrace2(uint tid, const float4* rayPosAndNear, const fl
     const float flipNorm = dot(to_float3(rayDir), hitNorm) > 0.001f ? -1.0f : 1.0f;
     hitNorm = flipNorm*hitNorm;
   
-    *out_matId = m_matIdByPrimId[m_matIdOffsets[hit.geomId] + hit.primId];
-    *out_hit1  = to_float4(hitPos, hitTexCoord.x); 
+    *rayFlags  = packMatId(currRayFlags, m_matIdByPrimId[m_matIdOffsets[hit.geomId] + hit.primId]);
+    *out_hit1  = to_float4(hitPos,  hitTexCoord.x); 
     *out_hit2  = to_float4(hitNorm, hitTexCoord.y); 
   }
   else
-    *out_matId = uint32_t(-1);
-
-  *rayFlags = (hit.geomId != -1) ? 0 : 1;
+    *rayFlags = currRayFlags | (RAY_FLAG_IS_DEAD | RAY_FLAG_OUT_OF_SCENE) ;
 }
 
-void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
+void Integrator::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
 {
   const uint inBlockIdX = tidX % 8; // 8x8 blocks
   const uint inBlockIdY = tidY % 8; // 8x8 blocks
@@ -137,12 +139,12 @@ void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
   out_pakedXY[offset] = ((tidY << 16) & 0xFFFF0000) | (tidX & 0x0000FFFF);
 }
 
-void TestClass::kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* out_color)
+void Integrator::kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* out_color)
 {
   out_color[tid] = RealColorToUint32(*a_accumColor);
 }
 
-void TestClass::kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, const uint* in_pakedXY, uint* out_color)
+void Integrator::kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, const uint* in_pakedXY, uint* out_color)
 { 
   const Lite_Hit lhit = *in_hit;
   if(lhit.geomId == -1)
@@ -168,13 +170,16 @@ void TestClass::kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, const uint*
 
 
 
-void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar, const float4* in_hitPart1, const float4* in_hitPart2, const uint* a_materialId, 
+void Integrator::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar, 
+                                         const float4* in_hitPart1, const float4* in_hitPart2, 
+                                         const uint* rayFlags,  
                                          RandomGen* a_gen, float4* out_shadeColor)
 {
-  const uint32_t matId = *a_materialId;
-  if(matId == uint32_t(-1))
+  const uint currRayFlags = *rayFlags;
+  if(isDeadRay(currRayFlags))
     return;
-  
+    
+  const uint32_t matId = extractMatId(currRayFlags);
   const float3 ray_dir = to_float3(*rayDirAndFar);
 
   SurfaceHit hit;
@@ -219,13 +224,14 @@ void TestClass::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear, 
     *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
-void TestClass::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPart1, const float4* in_hitPart2, const uint* a_materialId, const float4* in_shadeColor, 
+void Integrator::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPart1, const float4* in_hitPart2, const float4* in_shadeColor, 
                                   float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumThoroughput, RandomGen* a_gen, MisData* misPrev, uint* rayFlags)
 {
-  const uint32_t matId = *a_materialId;
-  if(matId == uint32_t(-1))
+  const uint currRayFlags = *rayFlags;
+  if(isDeadRay(currRayFlags))
     return;
-
+    
+  const uint32_t matId    = extractMatId(currRayFlags);
   const float matEmission = m_materials[matId].intensity;
 
   // process surcase hit case
@@ -263,7 +269,7 @@ void TestClass::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPar
     else
       *accumColor = float4(0,0,0,0);
     
-    *rayFlags = 1;
+    *rayFlags = currRayFlags | (RAY_FLAG_IS_DEAD | RAY_FLAG_HIT_LIGHT);
     return;
   }
   
@@ -295,7 +301,7 @@ void TestClass::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPar
   *rayDirAndFar  = to_float4(newDir, MAXFLOAT);
 }
 
-void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, const RandomGen* gen, const uint* in_pakedXY, float4* out_color)
+void Integrator::kernel_ContributeToImage(uint tid, const float4* a_accumColor, const RandomGen* gen, const uint* in_pakedXY, float4* out_color)
 {
   const uint XY = in_pakedXY[tid];
   const uint x  = (XY & 0x0000FFFF);

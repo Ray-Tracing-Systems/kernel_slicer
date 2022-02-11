@@ -73,7 +73,7 @@ public:
       return true;
     }
     
-    if(func.isMember) // currently we support export for members of current class only
+    if(func.isMember && clang::isa<clang::CXXMemberCallExpr>(call)) // currently we support export for members of current class only
     {
       clang::CXXRecordDecl* recordDecl = clang::dyn_cast<clang::CXXMemberCallExpr>(call)->getRecordDecl();
       const auto pType    = recordDecl->getTypeForDecl();     

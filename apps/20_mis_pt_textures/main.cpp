@@ -6,7 +6,7 @@
 #include "ArgParser.h"
 
 #include "vk_context.h"
-std::shared_ptr<TestClass> CreateTestClass_Generated(int a_maxThreads, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+std::shared_ptr<Integrator> CreateIntegrator_Generated(int a_maxThreads, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 
 int main(int argc, const char** argv)
 {
@@ -23,7 +23,7 @@ int main(int argc, const char** argv)
   std::vector<uint32_t> packedXY(WIN_WIDTH*WIN_HEIGHT);
   std::vector<float4>   realColor(WIN_WIDTH*WIN_HEIGHT);
   
-  std::shared_ptr<TestClass> pImpl = nullptr;
+  std::shared_ptr<Integrator> pImpl = nullptr;
   ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
@@ -31,10 +31,10 @@ int main(int argc, const char** argv)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
     auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
-    pImpl = CreateTestClass_Generated( WIN_WIDTH*WIN_HEIGHT, ctx, WIN_WIDTH*WIN_HEIGHT);
+    pImpl = CreateIntegrator_Generated( WIN_WIDTH*WIN_HEIGHT, ctx, WIN_WIDTH*WIN_HEIGHT);
   }
   else
-    pImpl = std::make_shared<TestClass>(WIN_WIDTH*WIN_HEIGHT);
+    pImpl = std::make_shared<Integrator>(WIN_WIDTH*WIN_HEIGHT);
   
   pImpl->SetViewport(0,0,WIN_WIDTH,WIN_HEIGHT);
   
@@ -62,7 +62,7 @@ int main(int argc, const char** argv)
   //
   std::cout << "NaivePathTraceBlock() ... " << std::endl;
   memset(realColor.data(), 0, sizeof(float)*4*realColor.size());
-  pImpl->SetIntegratorType(TestClass::INTEGRATOR_STUPID_PT);
+  pImpl->SetIntegratorType(Integrator::INTEGRATOR_STUPID_PT);
   pImpl->UpdateMembersPlainData();
   pImpl->NaivePathTraceBlock(WIN_HEIGHT*WIN_HEIGHT, 6, packedXY.data(), realColor.data(), PASS_NUMBER);
   
@@ -85,7 +85,7 @@ int main(int argc, const char** argv)
 
   std::cout << "PathTraceBlock(Shadow-PT) ... " << std::endl;
   memset(realColor.data(), 0, sizeof(float)*4*realColor.size());
-  pImpl->SetIntegratorType(TestClass::INTEGRATOR_SHADOW_PT);
+  pImpl->SetIntegratorType(Integrator::INTEGRATOR_SHADOW_PT);
   pImpl->UpdateMembersPlainData();
   pImpl->PathTraceBlock(WIN_HEIGHT*WIN_HEIGHT, 6, packedXY.data(), realColor.data(), PASS_NUMBER);
 
@@ -108,7 +108,7 @@ int main(int argc, const char** argv)
 
   std::cout << "PathTraceBlock(MIS-PT) ... " << std::endl;
   memset(realColor.data(), 0, sizeof(float)*4*realColor.size());
-  pImpl->SetIntegratorType(TestClass::INTEGRATOR_MIS_PT);
+  pImpl->SetIntegratorType(Integrator::INTEGRATOR_MIS_PT);
   pImpl->UpdateMembersPlainData();
   pImpl->PathTraceBlock(WIN_HEIGHT*WIN_HEIGHT, 6, packedXY.data(), realColor.data(), PASS_NUMBER);
 

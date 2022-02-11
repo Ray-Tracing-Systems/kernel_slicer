@@ -4,12 +4,12 @@
 #include <chrono>
 #include <string>
 
-float TestClass::LightPdfSelectRev(int a_lightId) 
+float Integrator::LightPdfSelectRev(int a_lightId) 
 { 
   return 1.0f; 
 }
 
-float TestClass::LightEvalPDF(int a_lightId, float3 illuminationPoint, float3 ray_dir, const SurfaceHit* pSurfaceHit)
+float Integrator::LightEvalPDF(int a_lightId, float3 illuminationPoint, float3 ray_dir, const SurfaceHit* pSurfaceHit)
 {
   const float3 lpos   = pSurfaceHit->pos;
   const float3 lnorm  = pSurfaceHit->norm;
@@ -24,7 +24,7 @@ float TestClass::LightEvalPDF(int a_lightId, float3 illuminationPoint, float3 ra
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-float3 TestClass::MaterialSample(int a_materialId, float2 rands, float3 v, float3 n)
+float3 Integrator::MaterialSample(int a_materialId, float2 rands, float3 v, float3 n)
 {
   uint type = m_materials[a_materialId].brdfType;
   if(type == BRDF_TYPE_GGX)
@@ -45,7 +45,7 @@ float3 TestClass::MaterialSample(int a_materialId, float2 rands, float3 v, float
     return MapSampleToCosineDistribution(rands.x, rands.y, n, n, 1.0f);
 }
 
-float TestClass::MaterialEvalPDF(int a_materialId, float3 l, float3 v, float3 n) 
+float Integrator::MaterialEvalPDF(int a_materialId, float3 l, float3 v, float3 n) 
 { 
   uint type = m_materials[a_materialId].brdfType;
   if(type == BRDF_TYPE_GGX)
@@ -73,7 +73,7 @@ float TestClass::MaterialEvalPDF(int a_materialId, float3 l, float3 v, float3 n)
     return std::abs(dot(l, n)) * INV_PI; 
 }
 
-float3 TestClass::MaterialEvalBSDF(int a_materialId, float3 l, float3 v, float3 n)
+float3 Integrator::MaterialEvalBSDF(int a_materialId, float3 l, float3 v, float3 n)
 {
   if(std::abs(dot(l, n)) < 1e-5f)
     return float3(0,0,0); 
@@ -114,12 +114,12 @@ float3 TestClass::MaterialEvalBSDF(int a_materialId, float3 l, float3 v, float3 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TestClass::PackXY(uint tidX, uint tidY, uint* out_pakedXY)
+void Integrator::PackXY(uint tidX, uint tidY, uint* out_pakedXY)
 {
   kernel_PackXY(tidX, tidY, out_pakedXY);
 }
 
-void TestClass::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color)
+void Integrator::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color)
 {
   float4 rayPosAndNear, rayDirAndFar;
   kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
@@ -132,7 +132,7 @@ void TestClass::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color)
   kernel_GetRayColor(tid, &hit, in_pakedXY, out_color);
 }
 
-void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color)
+void Integrator::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color)
 {
   float4 accumColor, accumThoroughput;
   float4 rayPosAndNear, rayDirAndFar;
@@ -144,14 +144,13 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY
   for(int depth = 0; depth < a_maxDepth; depth++) 
   {
     float4   shadeColor, hitPart1, hitPart2;
-    uint32_t materialId;
-    kernel_RayTrace2(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &materialId, &rayFlags);
-    if(rayFlags != 0)
+    kernel_RayTrace2(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &rayFlags);
+    if(isDeadRay(rayFlags))
       break;
     
-    kernel_NextBounce(tid, depth, &hitPart1, &hitPart2, &materialId, &shadeColor,
+    kernel_NextBounce(tid, depth, &hitPart1, &hitPart2, &shadeColor,
                       &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &mis, &rayFlags);
-    if(rayFlags != 0)
+    if(isDeadRay(rayFlags))
       break;
   }
 
@@ -159,7 +158,7 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY
                            out_color);
 }
 
-void TestClass::PathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color)
+void Integrator::PathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color)
 {
   float4 accumColor, accumThoroughput;
   float4 rayPosAndNear, rayDirAndFar;
@@ -171,17 +170,16 @@ void TestClass::PathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, flo
   for(int depth = 0; depth < a_maxDepth; depth++) 
   {
     float4   shadeColor, hitPart1, hitPart2;
-    uint32_t materialId;
-    kernel_RayTrace2(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &materialId, &rayFlags);
-    if(rayFlags != 0)
+    kernel_RayTrace2(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &rayFlags);
+    if(isDeadRay(rayFlags))
       break;
     
-    kernel_SampleLightSource(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &materialId, 
+    kernel_SampleLightSource(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &rayFlags, 
                              &gen, &shadeColor);
 
-    kernel_NextBounce(tid, depth, &hitPart1, &hitPart2, &materialId, &shadeColor,
+    kernel_NextBounce(tid, depth, &hitPart1, &hitPart2, &shadeColor,
                       &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &mis, &rayFlags);
-    if(rayFlags != 0)
+    if(isDeadRay(rayFlags))
       break;
   }
 
@@ -193,7 +191,7 @@ void TestClass::PathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, flo
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TestClass::PackXYBlock(uint tidX, uint tidY, uint* out_pakedXY, uint a_passNum)
+void Integrator::PackXYBlock(uint tidX, uint tidY, uint* out_pakedXY, uint a_passNum)
 {
   #pragma omp parallel for default(shared)
   for(int y=0;y<tidY;y++)
@@ -201,14 +199,14 @@ void TestClass::PackXYBlock(uint tidX, uint tidY, uint* out_pakedXY, uint a_pass
       PackXY(x, y, out_pakedXY);
 }
 
-void TestClass::CastSingleRayBlock(uint tid, const uint* in_pakedXY, uint* out_color, uint a_passNum)
+void Integrator::CastSingleRayBlock(uint tid, const uint* in_pakedXY, uint* out_color, uint a_passNum)
 {
   #pragma omp parallel for default(shared)
   for(uint i=0;i<tid;i++)
     CastSingleRay(i, in_pakedXY, out_color);
 }
 
-void TestClass::NaivePathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passNum)
+void Integrator::NaivePathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passNum)
 {
   auto start = std::chrono::high_resolution_clock::now();
   #pragma omp parallel for default(shared)
@@ -218,7 +216,7 @@ void TestClass::NaivePathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pa
   naivePtTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
 }
 
-void TestClass::PathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passNum)
+void Integrator::PathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passNum)
 {
   auto start = std::chrono::high_resolution_clock::now();
   #pragma omp parallel for default(shared)
@@ -228,7 +226,7 @@ void TestClass::PathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY
   shadowPtTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
 }
 
-void TestClass::GetExecutionTime(const char* a_funcName, float a_out[4])
+void Integrator::GetExecutionTime(const char* a_funcName, float a_out[4])
 {
   if(std::string(a_funcName) == "NaivePathTrace" || std::string(a_funcName) == "NaivePathTraceBlock")
     a_out[0] = naivePtTime;
