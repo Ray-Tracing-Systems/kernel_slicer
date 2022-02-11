@@ -36,9 +36,18 @@ float3 Integrator::MaterialSample(int a_materialId, float2 rands, float3 v, floa
     CoordinateSystem(nz, &nx, &ny);
     
     const float3 wo = float3(dot(v, nx), dot(v, ny), dot(v, nz));
-    const float3 wh = GgxVndf(wo, roughSqr, rands.x, rands.y);
-    const float3 wi = 2.0f * dot(wo, wh) * wh - wo;      // Compute incident direction by reflecting about wm  
+    float3 wh;
+    if(GGX_VNDF)
+      wh = GgxVndf(wo, roughSqr, rands.x, rands.y);
+    else
+    {
+      const float phi       = rands.x * M_TWOPI;
+      const float cosTheta  = clamp(std::sqrt((1.0f - rands.y) / (1.0f + roughSqr * roughSqr * rands.y - rands.y)), 0.0f, 1.0f);
+      const float sinTheta  = std::sqrt(1.0f - cosTheta * cosTheta);
+      wh = SphericalDirectionPBRT(sinTheta, cosTheta, phi);
+    }
 
+    const float3 wi = 2.0f * dot(wo, wh) * wh - wo;      // Compute incident direction by reflecting about wm  
     return normalize(wi.x * nx + wi.y * ny + wi.z * nz); // back to normal coordinate system
   }
   else
@@ -61,13 +70,16 @@ float Integrator::MaterialEvalPDF(int a_materialId, float3 l, float3 v, float3 n
     const float3 h    = normalize(v + l); // half vector.
     const float dotNH = dot(n, h);
     const float dotHV = dot(h, v);
-    const float G1    = SmithGGXMasking(dotNV, roughSqr);
-    const float G2    = SmithGGXMaskingShadowing(dotNL, dotNV, roughSqr);
     const float D     = GGX_Distribution(dotNH, roughSqr);
-    const float Dv    = D * G1 * dotHV / std::max(dotNV, 1e-6f);
-    const float jacob = 1.0f / std::max(4.0f * dotHV, 1e-6f);
     
-    return Dv * jacob;
+    if(GGX_VNDF)
+    {
+      const float G1 = SmithGGXMasking(dotNV, roughSqr);  
+      return D*G1/std::max(4.0f*dotNV, 1e-6f);
+      //return D*G1*dotHV/std::max(4.0f*dotNV*dotNV, 1e-6f);
+    }
+    else
+      return  D * dotNH / (4.0f * std::max(dotHV,1e-6f));
   }
   else
     return std::abs(dot(l, n)) * INV_PI; 
@@ -95,7 +107,7 @@ float3 Integrator::MaterialEvalBSDF(int a_materialId, float3 l, float3 v, float3
     const float3 h    = normalize(v + l); // half vector.
     const float dotNH = dot(n, h);
     const float D     = GGX_Distribution(dotNH, roughSqr);
-    const float G     = SmithGGXMaskingShadowing(dotNL, dotNV, roughSqr);       
+    const float G     = GGX_GeomShadMask(dotNV, roughSqr)*GGX_GeomShadMask(dotNL, roughSqr);      
 
     return color*(D * G / std::max(4.0f * dotNV * dotNL, 1e-6f));  // Pass single-scattering
   }

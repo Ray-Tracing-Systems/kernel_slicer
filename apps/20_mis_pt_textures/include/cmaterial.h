@@ -29,7 +29,7 @@ static inline float GGX_Distribution(const float cosThetaNH, const float alpha)
   const float alpha2  = alpha * alpha;
   const float NH_sqr  = clamp(cosThetaNH * cosThetaNH, 0.0f, 1.0f);
   const float den     = NH_sqr * alpha2 + (1.0f - NH_sqr);
-  return alpha2 / fmax((float)(M_PI) * den * den, 1e-6f);
+  return alpha2 / std::max((float)(M_PI) * den * den, 1e-6f);
 }
 
 static inline float GGX_GeomShadMask(const float cosThetaN, const float alpha)
@@ -42,7 +42,7 @@ static inline float GGX_GeomShadMask(const float cosThetaN, const float alpha)
 
   // Optimized and equal to the commented-out formulas on top.
   const float cosTheta_sqr = clamp(cosThetaN*cosThetaN, 0.0f, 1.0f);
-  const float tan2         = (1.0f - cosTheta_sqr) / fmax(cosTheta_sqr, 1e-6f);
+  const float tan2         = (1.0f - cosTheta_sqr) / std::max(cosTheta_sqr, 1e-6f);
   const float GP           = 2.0f / (1.0f + sqrt(1.0f + alpha * alpha * tan2));
   return GP;
 }
@@ -54,10 +54,8 @@ static inline float3 GgxVndf(float3 wo, float roughness, float u1, float u2)
   const float3 v = normalize(float3(wo.x * roughness, wo.y * roughness, wo.z));
 
   // -- Build an orthonormal basis with v, t1, and t2
-  const float3 XAxis = float3(1.0f, 0.0f, 0.0f);
-  const float3 ZAxis = float3(0.0f, 0.0f, 1.0f);
-  const float3 t1 = (v.z < 0.999f) ? normalize(cross(v, ZAxis)) : XAxis;
-  const float3 t2 = cross(t1, v);
+  float3 t1,t2;
+  CoordinateSystem(v, &t1, &t2);
 
   // -- Choose a point on a disk with each half of the disk weighted
   // -- proportionally to its projection onto direction v
@@ -77,14 +75,14 @@ static inline float3 GgxVndf(float3 wo, float roughness, float u1, float u2)
 static inline float SmithGGXMasking(const float dotNV, float roughSqr)
 {
   const float denomC = sqrt(roughSqr + (1.0f - roughSqr) * dotNV * dotNV) + dotNV;
-  return 2.0f * dotNV / fmax(denomC, 1e-6f);
+  return 2.0f * dotNV / std::max(denomC, 1e-6f);
 }
 
 static inline float SmithGGXMaskingShadowing(const float dotNL, const float dotNV, float roughSqr)
 {
-  const float denomA = dotNV * sqrt(roughSqr + (1.0f - roughSqr) * dotNL * dotNL);
-  const float denomB = dotNL * sqrt(roughSqr + (1.0f - roughSqr) * dotNV * dotNV);
-  return 2.0f * dotNL * dotNV / fmax(denomA + denomB, 1e-6f);
+  const float denomA = dotNV * std::sqrt(roughSqr + (1.0f - roughSqr) * dotNL * dotNL);
+  const float denomB = dotNL * std::sqrt(roughSqr + (1.0f - roughSqr) * dotNV * dotNV);
+  return 2.0f * dotNL * dotNV / std::max(denomA + denomB, 1e-6f);
 }
 
 #endif

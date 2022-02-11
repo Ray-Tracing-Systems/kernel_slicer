@@ -95,6 +95,8 @@ public:
   //static constexpr uint RAY_FLAG_DUMMY        = 0x02000000;
   //static constexpr uint RAY_FLAG_DUMMY        = 0x01000000;
 
+  static constexpr bool GGX_VNDF = false; // MaterialEvalPDF for GGX in incorrect with VNDF sampling unfortunately
+
   static inline bool isDeadRay(uint a_flags)    { return (a_flags & RAY_FLAG_IS_DEAD) != 0; }
   static inline uint extractMatId(uint a_flags) { return (a_flags & 0x00FFFFFF); }       
   static inline uint packMatId(uint a_flags, uint a_matId) { return (a_flags & 0xFF000000) | (a_matId & 0x00FFFFFF); }       

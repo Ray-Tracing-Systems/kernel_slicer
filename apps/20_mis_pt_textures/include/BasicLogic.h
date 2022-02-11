@@ -79,15 +79,15 @@ static inline void CoordinateSystem(float3 v1, float3* v2, float3* v3)
 {
   float invLen = 1.0f;
 
-  if (fabs(v1.x) > fabs(v1.y))
+  if (std::abs(v1.x) > std::abs(v1.y))
   {
-    invLen = 1.0f / sqrt(v1.x*v1.x + v1.z*v1.z);
-    (*v2)  = make_float3((-1.0f) * v1.z * invLen, 0.0f, v1.x * invLen);
+    invLen = 1.0f / std::sqrt(v1.x*v1.x + v1.z*v1.z);
+    (*v2)  = float3((-1.0f) * v1.z * invLen, 0.0f, v1.x * invLen);
   }
   else
   {
     invLen = 1.0f / sqrt(v1.y * v1.y + v1.z * v1.z);
-    (*v2)  = make_float3(0.0f, v1.z * invLen, (-1.0f) * v1.y * invLen);
+    (*v2)  = float3(0.0f, v1.z * invLen, (-1.0f) * v1.y * invLen);
   }
 
   (*v3) = cross(v1, (*v2));
