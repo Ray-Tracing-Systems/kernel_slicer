@@ -205,20 +205,21 @@ void Integrator::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear,
     const float cosVal  = std::max(dot(shadowRayDir, (-1.0f)*to_float3(m_light.norm)), 0.0f);
     const float lgtPdfW = PdfAtoW(pdfA, hitDist, cosVal);
     const float3 samCol = to_float3(m_light.intensity)/std::max(lgtPdfW, 1e-6f); //////////////////////// Apply Pdf here, or outside of here ???
-  
-    const float3 brdfVal = MaterialEvalBSDF(matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm);
-    const float  matPdfW = MaterialEvalPDF (matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm); 
+    
+    const BsdfEval bsdfV = MaterialEval(matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm);
+    //const float3 brdfVal = MaterialEvalBSDF(matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm);
+    //const float  matPdfW = MaterialEvalPDF (matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm); 
 
     const float cosThetaOut = std::max(dot(shadowRayDir, hit.norm), 0.0f);
 
     float misWeight = 1.0f;
     if(m_intergatorType == INTEGRATOR_MIS_PT)
-      misWeight = misWeightHeuristic(lgtPdfW, matPdfW);
+      misWeight = misWeightHeuristic(lgtPdfW, bsdfV.pdf);
 
     if(cosVal <= 0.0f)
       *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
     else
-      *out_shadeColor = to_float4((1.0f/lightPickProb)*samCol*brdfVal*cosThetaOut*misWeight, 0.0f);
+      *out_shadeColor = to_float4((1.0f/lightPickProb)*samCol*bsdfV.color*cosThetaOut*misWeight, 0.0f);
   }
   else
     *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -273,16 +274,14 @@ void Integrator::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPa
     return;
   }
   
-  const float2 uv       = rndFloat2_Pseudo(a_gen);
-  const float3 newDir   = MaterialSample  (matId, uv,     (-1.0f)*ray_dir, hit.norm);
-  const float3 brdfVal  = MaterialEvalBSDF(matId, newDir, (-1.0f)*ray_dir, hit.norm);
-  const float  pdfVal   = MaterialEvalPDF (matId, newDir, (-1.0f)*ray_dir, hit.norm); // cosTheta * INV_PI; 
-  const float3 bxdfVal  = brdfVal * (1.0f / std::max(pdfVal, 1e-10f));
-  const float  cosTheta = dot(newDir, hit.norm);
+  const float4 uv         = rndFloat4_Pseudo(a_gen);
+  const BsdfSample matSam = MaterialSampleAndEval(matId, uv, (-1.0f)*ray_dir, hit.norm);
+  const float3 bxdfVal    = matSam.color * (1.0f / std::max(matSam.pdf, 1e-10f));
+  const float  cosTheta   = dot(matSam.direction, hit.norm);
 
-  MisData nextBounceData;               // remember current pdfW for next bounce
-  nextBounceData.matSamplePdf = pdfVal; //
-  *misPrev = nextBounceData;            //
+  MisData nextBounceData;                   // remember current pdfW for next bounce
+  nextBounceData.matSamplePdf = matSam.pdf; //
+  *misPrev = nextBounceData;                //
 
   if(m_intergatorType == INTEGRATOR_STUPID_PT)
   {
@@ -297,8 +296,8 @@ void Integrator::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPa
     *accumThoroughput = currThoroughput*cosTheta*to_float4(bxdfVal, 0.0f); 
   }
 
-  *rayPosAndNear = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
-  *rayDirAndFar  = to_float4(newDir, MAXFLOAT);
+  *rayPosAndNear = to_float4(OffsRayPos(hit.pos, hit.norm, matSam.direction), 0.0f);
+  *rayDirAndFar  = to_float4(matSam.direction, MAXFLOAT);
 }
 
 void Integrator::kernel_ContributeToImage(uint tid, const float4* a_accumColor, const RandomGen* gen, const uint* in_pakedXY, float4* out_color)

@@ -24,46 +24,61 @@ float Integrator::LightEvalPDF(int a_lightId, float3 illuminationPoint, float3 r
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-float3 Integrator::MaterialSample(int a_materialId, float2 rands, float3 v, float3 n)
+BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, float3 v, float3 n)
 {
   uint type = m_materials[a_materialId].brdfType;
-  if(type == BRDF_TYPE_GGX)
-    return ggxSample(rands, v, n, 1.0f - m_materials[a_materialId].glosiness);
-  else
-    return lambertSample(rands, v, n);
+  BsdfSample res;
+  switch(type)
+  {
+    case BRDF_TYPE_GGX:
+    {
+      const float3 color    = float3(m_materials[a_materialId].reflection[0], m_materials[a_materialId].reflection[1], m_materials[a_materialId].reflection[2]); 
+      const float roughness = 1.0f - m_materials[a_materialId].glosiness;
+      
+      res.direction = ggxSample(float2(rands.x, rands.y), v, n, roughness);
+      res.color     = ggxEvalBSDF(res.direction, v, n, roughness)*color;
+      res.pdf       = ggxEvalPDF(res.direction, v, n, roughness);
+      break;
+    }
+    case BRDF_TYPE_LAMBERT:
+    default:
+    {
+      const float3 color = float3(m_materials[a_materialId].diffuse[0], m_materials[a_materialId].diffuse[1], m_materials[a_materialId].diffuse[2]); 
+      res.direction = lambertSample(float2(rands.x, rands.y), v, n);
+      res.color     = lambertEvalBSDF(res.direction, v, n)*color;
+      res.pdf       = lambertEvalPDF(res.direction, v, n);
+      break;
+    }
+  }
+
+  return res;
 }
 
-float Integrator::MaterialEvalPDF(int a_materialId, float3 l, float3 v, float3 n) 
-{ 
-  uint type = m_materials[a_materialId].brdfType;
-  if(type == BRDF_TYPE_GGX)
-    return ggxEvalPDF(l, v, n, 1.0f - m_materials[a_materialId].glosiness);
-  else
-    return lambertEvalPDF(l, v, n);
-}
-
-float3 Integrator::MaterialEvalBSDF(int a_materialId, float3 l, float3 v, float3 n)
+BsdfEval Integrator::MaterialEval(int a_materialId, float3 l, float3 v, float3 n)
 {
-  if(std::abs(dot(l, n)) < 1e-5f)
-    return float3(0,0,0); 
-
   uint type = m_materials[a_materialId].brdfType;
-  if(type == BRDF_TYPE_GGX)
+  BsdfEval res;
+  switch(type)
   {
-    const float3 color = float3(m_materials[a_materialId].reflection[0], 
-                                m_materials[a_materialId].reflection[1], 
-                                m_materials[a_materialId].reflection[2]); 
-  
-    return color*ggxEvalBSDF(l, v, n, 1.0f - m_materials[a_materialId].glosiness);
+    case BRDF_TYPE_GGX:
+    {
+      const float3 color    = float3(m_materials[a_materialId].reflection[0], m_materials[a_materialId].reflection[1], m_materials[a_materialId].reflection[2]);
+      const float roughness = 1.0f - m_materials[a_materialId].glosiness;
+
+      res.color = ggxEvalBSDF(l, v, n, roughness)*color;
+      res.pdf   = ggxEvalPDF (l, v, n, roughness);
+      break;
+    }
+    case BRDF_TYPE_LAMBERT:
+    default:
+    {
+      const float3 color = float3(m_materials[a_materialId].diffuse[0], m_materials[a_materialId].diffuse[1], m_materials[a_materialId].diffuse[2]);
+      res.color = lambertEvalBSDF(l, v, n)*color;
+      res.pdf   = lambertEvalPDF (l, v, n);
+      break;
+    }
   }
-  else
-  {
-    const float3 color = float3(m_materials[a_materialId].diffuse[0], 
-                                m_materials[a_materialId].diffuse[1], 
-                                m_materials[a_materialId].diffuse[2]); 
-  
-    return color*lambertEvalBSDF(l, v, n);
-  }
+  return res;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

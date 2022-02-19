@@ -3,6 +3,22 @@
 
 #include "cglobals.h"
 
+struct BsdfSample
+{
+  float3 color;
+  float3 direction;
+  float  pdf; 
+  int    flags;
+};
+
+struct BsdfEval
+{
+  float3 color;
+  float  pdf; 
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 enum BRDF_TYPES { BRDF_TYPE_LAMBERT         = 1, 
                   BRDF_TYPE_GGX             = 2, 
                   BRDF_TYPE_DIELECTRIC      = 3,

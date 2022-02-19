@@ -12,7 +12,6 @@
 
 #include "CrossRT.h"
 
-
 class Integrator // : public DataClass
 {
 public:
@@ -118,9 +117,9 @@ protected:
 
   float LightPdfSelectRev(int a_lightId);
   float LightEvalPDF(int a_lightId, float3 ray_pos, float3 ray_dir, const SurfaceHit* pSurfaceHit);
-  float MaterialEvalPDF  (int a_materialId, float3 l, float3 v, float3 n);
-  float3 MaterialEvalBSDF(int a_materialId, float3 l, float3 v, float3 n);
-  float3 MaterialSample  (int a_materialId, float2 rands, float3 v, float3 n);
+
+  BsdfSample MaterialSampleAndEval(int a_materialId, float4 rands, float3 v, float3 n);
+  BsdfEval   MaterialEval         (int a_materialId, float3 l, float3 v, float3 n);
 
   float3 m_camPos = float3(0.0f, 0.85f, 4.5f);
   void InitSceneMaterials(int a_numSpheres, int a_seed = 0);
