@@ -60,6 +60,7 @@ int main(int argc, const char** argv)
   
   // now test path tracing
   //
+  
   std::cout << "NaivePathTraceBlock() ... " << std::endl;
   memset(realColor.data(), 0, sizeof(float)*4*realColor.size());
   pImpl->SetIntegratorType(Integrator::INTEGRATOR_STUPID_PT);
