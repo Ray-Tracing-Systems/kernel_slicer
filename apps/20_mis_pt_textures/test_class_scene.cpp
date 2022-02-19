@@ -43,9 +43,9 @@ int Integrator::LoadScene(const char* scehePath)
 
     PlainMaterial mat = {};
     mat.brdfType   = BRDF_TYPE_LAMBERT;
-    mat.diffuse[0] = color[0];
-    mat.diffuse[1] = color[1];
-    mat.diffuse[2] = color[2];
+    mat.baseColor[0] = color[0];
+    mat.baseColor[1] = color[1];
+    mat.baseColor[2] = color[2];
     mat.intensity  = color[3];
     mat.reflection[0] = reflColor[0];
     mat.reflection[1] = reflColor[1];

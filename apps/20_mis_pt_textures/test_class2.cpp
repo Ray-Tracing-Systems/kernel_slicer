@@ -38,17 +38,29 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
       res.direction = ggxSample(float2(rands.x, rands.y), v, n, roughness);
       res.color     = ggxEvalBSDF(res.direction, v, n, roughness)*color;
       res.pdf       = ggxEvalPDF(res.direction, v, n, roughness);
-      break;
     }
+    break;
+    case BRDF_TYPE_MIRROR:
+    {
+      const float3 color = float3(m_materials[a_materialId].reflection[0], m_materials[a_materialId].reflection[1], m_materials[a_materialId].reflection[2]);
+      res.direction = reflect(v, n);
+      // BSDF is multiplied (outside) by cosThetaOut.
+      // For mirrors this shouldn't be done, so we pre-divide here instead.
+      //
+      const float cosThetaOut = dot(res.direction, n);
+      res.color     = cosThetaOut*color;
+      res.pdf       = 1.0f;
+    }
+    break;
     case BRDF_TYPE_LAMBERT:
     default:
     {
-      const float3 color = float3(m_materials[a_materialId].diffuse[0], m_materials[a_materialId].diffuse[1], m_materials[a_materialId].diffuse[2]); 
+      const float3 color = float3(m_materials[a_materialId].baseColor[0], m_materials[a_materialId].baseColor[1], m_materials[a_materialId].baseColor[2]); 
       res.direction = lambertSample(float2(rands.x, rands.y), v, n);
       res.color     = lambertEvalBSDF(res.direction, v, n)*color;
       res.pdf       = lambertEvalPDF(res.direction, v, n);
-      break;
     }
+    break;
   }
 
   return res;
@@ -67,16 +79,22 @@ BsdfEval Integrator::MaterialEval(int a_materialId, float3 l, float3 v, float3 n
 
       res.color = ggxEvalBSDF(l, v, n, roughness)*color;
       res.pdf   = ggxEvalPDF (l, v, n, roughness);
-      break;
     }
+    break;
+    case BRDF_TYPE_MIRROR:
+    {
+      res.color = float3(0,0,0);
+      res.pdf   = 0.0f;
+    }
+    break;
     case BRDF_TYPE_LAMBERT:
     default:
     {
-      const float3 color = float3(m_materials[a_materialId].diffuse[0], m_materials[a_materialId].diffuse[1], m_materials[a_materialId].diffuse[2]);
+      const float3 color = float3(m_materials[a_materialId].baseColor[0], m_materials[a_materialId].baseColor[1], m_materials[a_materialId].baseColor[2]);
       res.color = lambertEvalBSDF(l, v, n)*color;
       res.pdf   = lambertEvalPDF (l, v, n);
-      break;
     }
+    break;
   }
   return res;
 }

@@ -32,9 +32,9 @@ enum BRDF_TYPES { BRDF_TYPE_LAMBERT         = 1,
 struct PlainMaterial
 {
   uint  brdfType;      ///<
-  float intensity;     ///< intensity for lights, take coloe from diffuse
-  float alpha;         ///< blend factor between lambert and reflection : alpha*diffuse + (1.0f-alpha)*diffuse
-  float diffuse   [3]; ///< color for both lambert and emissive lights
+  float intensity;     ///< intensity for lights, take color from baseColor
+  float alpha;         ///< blend factor between lambert and reflection : alpha*baseColor + (1.0f-alpha)*baseColor
+  float baseColor [3]; ///< color for both lambert and emissive lights
   float reflection[3]; ///<
   float glosiness;     ///<
   uint  lightId;       ///< identifier of light if this material is light

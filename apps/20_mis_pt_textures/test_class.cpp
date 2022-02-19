@@ -154,9 +154,9 @@ void Integrator::kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, const uint
   }
 
   const uint32_t matId = m_matIdByPrimId[m_matIdOffsets[lhit.geomId] + lhit.primId];
-  const float4 mdata   = float4(m_materials[matId].diffuse[0], 
-                                m_materials[matId].diffuse[1], 
-                                m_materials[matId].diffuse[2], 
+  const float4 mdata   = float4(m_materials[matId].baseColor[0], 
+                                m_materials[matId].baseColor[1], 
+                                m_materials[matId].baseColor[2], 
                                 m_materials[matId].intensity);
 
   const float3 color   = mdata.w > 0.0f ? clamp(float3(mdata.w,mdata.w,mdata.w), 0.0f, 1.0f) : to_float3(mdata);
@@ -258,7 +258,7 @@ void Integrator::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPa
         const float lgtPdf  = LightPdfSelectRev(lightId)*LightEvalPDF(lightId, ray_pos, ray_dir, &hit);
         const float bsdfPdf = misPrev->matSamplePdf;
         misWeight           = misWeightHeuristic(bsdfPdf, lgtPdf);
-        if (bsdfPdf < 0.0f) // specular bounce
+        if (bsdfPdf <= 0.0f) // specular bounce
           misWeight = 1.0f;
       }
     }
