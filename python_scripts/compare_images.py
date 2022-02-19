@@ -44,7 +44,7 @@ def compare_generated_images():
 
     status = Status.OK
     for img1, img2 in image_pairs:
-        status = Status.worst_of(status, compare_images(img1, img2))
+        status = Status.worst_of([status, compare_images(img1, img2)])
 
     return status
 

@@ -2,9 +2,10 @@ import sys
 import os
 import commentjson
 import subprocess
-import argparse
+
 
 import utils
+from tests_config import TestsConfig, Backend
 from logger import Log, Status
 from download_resources import download_resources
 from compare_images import compare_generated_images
@@ -123,10 +124,10 @@ def run_test(test_name, args, num_threads=1, gpu_id=0):
         os.chdir(workdir)
         return -1
 
-    final_status = Status.worst_of(
+    final_status = Status.worst_of([
         compare_generated_images(),
         compare_generated_json_files()
-    )
+    ])
     os.chdir(workdir)
     final_msg = {
         Status.OK: "\"{}\" finished successfully".format(test_name),
@@ -145,17 +146,17 @@ def get_sample_names(path, configurations):
         return {config["name"] for config in configurations}
 
 
-def tests(num_threads=1, gpu_id=0, sample_names_path=""):
+def tests(test_config):
     json_file = open(".vscode/launch.json", "r")
     launch_json = commentjson.load(json_file)
     configurations = launch_json["configurations"]
-    required_samples_names = get_sample_names(sample_names_path, configurations)
+    required_samples_names = get_sample_names(test_config.sample_names_path, configurations)
     for config in configurations:
         if config["name"] in config_black_list:
             continue
         if config["name"] not in required_samples_names:
             continue
-        run_test(config["name"], config["args"], num_threads, gpu_id)
+        run_test(config["name"], config["args"], test_config.num_threads, test_config.gpu_id)
 
 
 def create_clspv_symlink(clspv_path, dest_path):
@@ -192,25 +193,11 @@ def build_kernel_slicer(num_threads):
     return 0
 
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('workdir', type=str, default=".", help="test script working dir path")
-    parser.add_argument("--gpu_id", type=int, default=0, help="GPU id for sample execution")
-    parser.add_argument("--num_threads", type=int, default=8, help="Number of threads for cmake build")
-    parser.add_argument("--sample_names", type=str, default="",
-                        help="path to json file with sample names which are desired to be tested")
-
-    args = parser.parse_args()
-
-    return args
-
-
 def main():
     workdir = os.getcwd()
-    args = parse_args()
-    print(args)
+    test_config = TestsConfig(argv=sys.argv[1:])
     try:
-        workdir = os.path.abspath(args.workdir)
+        workdir = os.path.abspath(test_config.workdir)
         os.chdir(workdir)
     except Exception as e:
         print("Wrong working dictionary path:\n", e, file=sys.stderr)
@@ -219,8 +206,8 @@ def main():
     Log().print("Running in root: ", workdir)
     download_resources()
     create_clspv_symlink("apps/clspv", "apps/tests/clspv")
-    build_kernel_slicer(args.num_threads)
-    tests(num_threads=args.num_threads, gpu_id=args.gpu_id, sample_names_path=args.sample_names)
+    build_kernel_slicer(test_config.num_threads)
+    tests(test_config)
     Log().close()
 
 

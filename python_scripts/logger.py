@@ -29,8 +29,9 @@ class Status(Enum):
     FAILED  = 2
 
     @staticmethod
-    def worst_of(status1, status2):
-        return status1 if status1.value > status2.value else status2
+    def worst_of(status_list):
+        worst_status_val = max([status.value for status in status_list])
+        return Status(worst_status_val)
 
 
 class Log(metaclass=Singleton):
