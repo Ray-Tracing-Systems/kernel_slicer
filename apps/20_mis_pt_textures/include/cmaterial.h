@@ -144,5 +144,30 @@ static inline float ggxEvalBSDF(float3 l, float3 v, float3 n, float roughness)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+static inline float3 gltfConductorFresnel(float3 f0, float VdotH) 
+{
+  const float tmp = (1.0f - std::abs(VdotH));
+  return f0 + (float3(1.0f,1.0f,1.0f) - f0) * (tmp*tmp*tmp*tmp*tmp);
+}
+
+static inline float3 gltfFresnelMix(float3 base, float3 layer, float ior, float VdotH) 
+{
+  const float f1  = (1.0f-ior)/(1+ior);
+  const float f0  = f1*f1;
+  const float tmp = (1.0f - std::abs(VdotH));
+  const float fr = f0 + (1.0f - f0)*(tmp*tmp*tmp*tmp*tmp);
+  return mix(base, layer, fr);
+}
+
+static inline float gltfFresnelMix2(float VdotH) 
+{
+  //const float f1  = (1.0f-ior)/(1+ior);
+  //const float f0  = f1*f1;
+  // Note that the dielectric index of refraction ior = 1.5 is now f0 = 0.0
+  const float f0 = 0.04f;
+  const float tmp = (1.0f - std::abs(VdotH));
+  const float fr = f0 + (1.0f - f0)*(tmp*tmp*tmp*tmp*tmp);
+  return fr;
+}
 
 #endif

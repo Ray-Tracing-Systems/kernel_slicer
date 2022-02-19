@@ -46,7 +46,12 @@ int Integrator::LoadScene(const char* scehePath)
     mat.baseColor[0] = color[0];
     mat.baseColor[1] = color[1];
     mat.baseColor[2] = color[2];
-    if(length(reflColor) > 1e-5f)
+    
+    if(length(reflColor) > 1e-5f && length(to_float3(color)) > 1e-5f)
+    {
+      mat.brdfType = BRDF_TYPE_GLTF;
+    }
+    else if(length(reflColor) > 1e-5f)
     {
       mat.baseColor[0] = reflColor[0];
       mat.baseColor[1] = reflColor[1];
