@@ -19,19 +19,31 @@ class SampleConfig:
         self.name = name
         self.__args = SampleConfig.__fix_paths_in_args(args)
         self.orig_cpp_file = self.__args[0]
-        self.root = SampleConfig.__extract_sample_root(self.__args)
+        self.root = SampleConfig.__extract_sample_root(self.orig_cpp_file)
         self.shader_lang = SampleConfig.__extract_shader_lang(self.__args)
+        self.has_megakernel_key = "-megakernel" in self.__args
+        self.__extract_megakernel_from_args()
 
-    def get_kernel_slicer_args(self):
-        return self.__args
+    def get_kernel_slicer_args(self, megakernel=False):
+        out_args = self.__args
+        if self.has_megakernel_key:
+            out_args = out_args + ["-megakernel", "1" if megakernel else "0"]
+
+        return out_args
+
+    def __extract_megakernel_from_args(self):
+        if self.has_megakernel_key:
+            i = self.__args.index("-megakernel")
+            self.__args.pop(i)  # removes megakernel key
+            self.__args.pop(i)  # removes megakernel value
 
     @staticmethod
     def __fix_paths_in_args(args):
         return [arg.replace("${workspaceFolder}", os.getcwd()) for arg in args]
 
     @staticmethod
-    def __extract_sample_root(args):
-        cpp_pass = os.path.join(os.getcwd(), args[0])
+    def __extract_sample_root(orig_cpp_file: str) -> str:
+        cpp_pass = os.path.join(os.getcwd(), orig_cpp_file)
         return os.path.dirname(cpp_pass)
 
     @staticmethod
