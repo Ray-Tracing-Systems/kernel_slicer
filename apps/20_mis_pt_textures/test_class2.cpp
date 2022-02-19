@@ -26,15 +26,29 @@ float Integrator::LightEvalPDF(int a_lightId, float3 illuminationPoint, float3 r
 
 BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, float3 v, float3 n)
 {
-  uint type = m_materials[a_materialId].brdfType;
+  const uint type       = m_materials[a_materialId].brdfType;
+  const float3 color    = float3(m_materials[a_materialId].baseColor[0], m_materials[a_materialId].baseColor[1], m_materials[a_materialId].baseColor[2]);
+  const float roughness = 1.0f - m_materials[a_materialId].glosiness;
+  
+  // TODO: read color     from texture
+  // TODO: read roughness from texture
+  // TODO: read alpha     from texture
+
   BsdfSample res;
   switch(type)
   {
-    case BRDF_TYPE_GGX:
+    case BRDF_TYPE_GLTF:
     {
-      const float3 color    = float3(m_materials[a_materialId].reflection[0], m_materials[a_materialId].reflection[1], m_materials[a_materialId].reflection[2]); 
-      const float roughness = 1.0f - m_materials[a_materialId].glosiness;
-      
+      // (1) select between metal and dielectric via rands.z
+      //
+
+      // (2) select between specular and diffise via rands.w
+      //
+
+    }
+    break;
+    case BRDF_TYPE_GGX:
+    { 
       res.direction = ggxSample(float2(rands.x, rands.y), v, n, roughness);
       res.color     = ggxEvalBSDF(res.direction, v, n, roughness)*color;
       res.pdf       = ggxEvalPDF(res.direction, v, n, roughness);
@@ -42,7 +56,6 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
     break;
     case BRDF_TYPE_MIRROR:
     {
-      const float3 color = float3(m_materials[a_materialId].reflection[0], m_materials[a_materialId].reflection[1], m_materials[a_materialId].reflection[2]);
       res.direction = reflect(v, n);
       // BSDF is multiplied (outside) by cosThetaOut.
       // For mirrors this shouldn't be done, so we pre-divide here instead.
@@ -55,7 +68,6 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
     case BRDF_TYPE_LAMBERT:
     default:
     {
-      const float3 color = float3(m_materials[a_materialId].baseColor[0], m_materials[a_materialId].baseColor[1], m_materials[a_materialId].baseColor[2]); 
       res.direction = lambertSample(float2(rands.x, rands.y), v, n);
       res.color     = lambertEvalBSDF(res.direction, v, n)*color;
       res.pdf       = lambertEvalPDF(res.direction, v, n);
@@ -68,15 +80,23 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
 
 BsdfEval Integrator::MaterialEval(int a_materialId, float3 l, float3 v, float3 n)
 {
-  uint type = m_materials[a_materialId].brdfType;
+  const uint type       = m_materials[a_materialId].brdfType;
+  const float3 color    = float3(m_materials[a_materialId].baseColor[0], m_materials[a_materialId].baseColor[1], m_materials[a_materialId].baseColor[2]);
+  const float roughness = 1.0f - m_materials[a_materialId].glosiness;
+
   BsdfEval res;
   switch(type)
   {
+    case BRDF_TYPE_GLTF:
+    {
+      // (1) eval metal component
+      // (2) eval dielectric component
+      // (3) eval diffise component
+      // (4) accumulate final color and pdf
+    }
+    break;
     case BRDF_TYPE_GGX:
     {
-      const float3 color    = float3(m_materials[a_materialId].reflection[0], m_materials[a_materialId].reflection[1], m_materials[a_materialId].reflection[2]);
-      const float roughness = 1.0f - m_materials[a_materialId].glosiness;
-
       res.color = ggxEvalBSDF(l, v, n, roughness)*color;
       res.pdf   = ggxEvalPDF (l, v, n, roughness);
     }
@@ -90,7 +110,6 @@ BsdfEval Integrator::MaterialEval(int a_materialId, float3 l, float3 v, float3 n
     case BRDF_TYPE_LAMBERT:
     default:
     {
-      const float3 color = float3(m_materials[a_materialId].baseColor[0], m_materials[a_materialId].baseColor[1], m_materials[a_materialId].baseColor[2]);
       res.color = lambertEvalBSDF(l, v, n)*color;
       res.pdf   = lambertEvalPDF (l, v, n);
     }

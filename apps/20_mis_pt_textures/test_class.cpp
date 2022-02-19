@@ -157,7 +157,7 @@ void Integrator::kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, const uint
   const float4 mdata   = float4(m_materials[matId].baseColor[0], 
                                 m_materials[matId].baseColor[1], 
                                 m_materials[matId].baseColor[2], 
-                                m_materials[matId].intensity);
+                                m_materials[matId].alpha);
 
   const float3 color   = mdata.w > 0.0f ? clamp(float3(mdata.w,mdata.w,mdata.w), 0.0f, 1.0f) : to_float3(mdata);
 
@@ -232,8 +232,7 @@ void Integrator::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPa
   if(isDeadRay(currRayFlags))
     return;
     
-  const uint32_t matId    = extractMatId(currRayFlags);
-  const float matEmission = m_materials[matId].intensity;
+  const uint32_t matId = extractMatId(currRayFlags);
 
   // process surcase hit case
   //
@@ -246,9 +245,9 @@ void Integrator::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPa
 
   // process light hit case
   //
-  if(matEmission > 0.0f)
+  if(m_materials[matId].brdfType == BRDF_TYPE_LAMBERT_LIGHT_SOURCE)
   {
-    const float lightIntensity = matEmission;
+    const float lightIntensity = m_materials[matId].alpha;
     float misWeight = 1.0f;
     if(m_intergatorType == INTEGRATOR_MIS_PT) 
     {

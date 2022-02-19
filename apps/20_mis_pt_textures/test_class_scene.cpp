@@ -41,20 +41,24 @@ int Integrator::LoadScene(const char* scehePath)
       glosiness = nodeRefl.child(L"glossiness").text().as_float(); // #TODO: read in different way ... 
     }
 
-    PlainMaterial mat = {};
-    mat.brdfType   = BRDF_TYPE_LAMBERT;
+    GLTFMaterial mat = {};
+    mat.brdfType     = BRDF_TYPE_LAMBERT;
     mat.baseColor[0] = color[0];
     mat.baseColor[1] = color[1];
     mat.baseColor[2] = color[2];
-    mat.intensity  = color[3];
-    mat.reflection[0] = reflColor[0];
-    mat.reflection[1] = reflColor[1];
-    mat.reflection[2] = reflColor[2];
+    if(length(reflColor) > 1e-5f)
+    {
+      mat.baseColor[0] = reflColor[0];
+      mat.baseColor[1] = reflColor[1];
+      mat.baseColor[2] = reflColor[2];
+      mat.brdfType     = BRDF_TYPE_GGX;
+    }
     mat.glosiness     = glosiness;
-    if(mat.intensity > 1e-5f)
+    if(color[3] > 1e-5f)
+    {
       mat.brdfType = BRDF_TYPE_LAMBERT_LIGHT_SOURCE;
-    else if(length(reflColor) > 1e-5f)
-      mat.brdfType = BRDF_TYPE_GGX;
+      mat.alpha    = color[3];
+    }
     m_materials.push_back(mat);
   }
 

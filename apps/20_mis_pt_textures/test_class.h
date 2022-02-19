@@ -124,7 +124,7 @@ protected:
   float3 m_camPos = float3(0.0f, 0.85f, 4.5f);
   void InitSceneMaterials(int a_numSpheres, int a_seed = 0);
 
-  std::vector<PlainMaterial>   m_materials;
+  std::vector<GLTFMaterial>   m_materials;
   std::vector<uint32_t>        m_matIdOffsets;  ///< offset = m_matIdOffsets[geomId]
   std::vector<uint32_t>        m_matIdByPrimId; ///< matId  = m_matIdByPrimId[offset + primId]
   std::vector<uint32_t>        m_triIndices;    ///< (A,B,C) = m_triIndices[(offset + primId)*3 + 0/1/2]

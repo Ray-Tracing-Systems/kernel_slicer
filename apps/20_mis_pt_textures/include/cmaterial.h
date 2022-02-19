@@ -21,23 +21,21 @@ struct BsdfEval
 
 enum BRDF_TYPES { BRDF_TYPE_LAMBERT         = 1, 
                   BRDF_TYPE_GGX             = 2, 
-                  BRDF_TYPE_DIELECTRIC      = 3,
-                  BRDF_TYPE_METALL          = 4,
                   BRDF_TYPE_GLTF            = 5,
                   BRDF_TYPE_GLASS           = 6,
                   BRDF_TYPE_MIRROR          = 7,
-
                   BRDF_TYPE_LAMBERT_LIGHT_SOURCE = 0xEFFFFFFF };
 
-struct PlainMaterial
+// The BRDF of the metallic-roughness material is a linear interpolation of a metallic BRDF and a dielectric BRDF. 
+// The BRDFs **share** the parameters for roughness and base color.
+
+struct GLTFMaterial
 {
-  uint  brdfType;      ///<
-  float intensity;     ///< intensity for lights, take color from baseColor
-  float alpha;         ///< blend factor between lambert and reflection : alpha*baseColor + (1.0f-alpha)*baseColor
-  float baseColor [3]; ///< color for both lambert and emissive lights
-  float reflection[3]; ///<
-  float glosiness;     ///<
-  uint  lightId;       ///< identifier of light if this material is light
+  uint  brdfType;     ///<
+  uint  lightId;      ///< identifier of light if this material is light  
+  float baseColor[3]; ///< color for both lambert and emissive lights
+  float alpha;        ///< blend factor between lambert and reflection : alpha*baseColor + (1.0f-alpha)*baseColor
+  float glosiness;    ///< material glosiness or intensity for lights, take color from baseColor
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
