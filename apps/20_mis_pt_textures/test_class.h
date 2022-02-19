@@ -1,7 +1,7 @@
 #ifndef TEST_CLASS_H
 #define TEST_CLASS_H
 
-#include "include/BasicLogic.h" // We assume that all code that should pe passed to kernels will be just included both for CPU and OpenCL
+#include "include/cglobals.h" // We assume that all code that should pe passed to kernels will be just included both for CPU and OpenCL
 #include "include/crandom.h"
 #include "include/cmaterial.h"
 
@@ -94,8 +94,6 @@ public:
   //static constexpr uint RAY_FLAG_DUMMY        = 0x04000000;
   //static constexpr uint RAY_FLAG_DUMMY        = 0x02000000;
   //static constexpr uint RAY_FLAG_DUMMY        = 0x01000000;
-
-  static constexpr bool GGX_VNDF = false; // MaterialEvalPDF for GGX in incorrect with VNDF sampling unfortunately
 
   static inline bool isDeadRay(uint a_flags)    { return (a_flags & RAY_FLAG_IS_DEAD) != 0; }
   static inline uint extractMatId(uint a_flags) { return (a_flags & 0x00FFFFFF); }       
