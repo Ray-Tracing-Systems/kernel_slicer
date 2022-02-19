@@ -41,8 +41,8 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
     case BRDF_TYPE_GLTF:
     {
       const float3 ggxDir = ggxSample(float2(rands.x, rands.y), v, n, roughness);
-      const float  ggxPdf = ggxEvalPDF (res.direction, v, n, roughness); 
-      const float  ggxVal = ggxEvalBSDF(res.direction, v, n, roughness);
+      const float  ggxPdf = ggxEvalPDF (ggxDir, v, n, roughness); 
+      const float  ggxVal = ggxEvalBSDF(ggxDir, v, n, roughness);
       
       const float3 lambertDir = lambertSample(float2(rands.x, rands.y), v, n);
       const float  lambertPdf = lambertEvalPDF(lambertDir, v, n);
