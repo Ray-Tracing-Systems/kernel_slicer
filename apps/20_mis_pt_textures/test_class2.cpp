@@ -28,48 +28,18 @@ float3 Integrator::MaterialSample(int a_materialId, float2 rands, float3 v, floa
 {
   uint type = m_materials[a_materialId].brdfType;
   if(type == BRDF_TYPE_GGX)
-  {
-    const float  roughness = 1.0f - m_materials[a_materialId].glosiness;
-    const float  roughSqr  = roughness * roughness;
-    
-    float3 nx, ny, nz = n;
-    CoordinateSystem(nz, &nx, &ny);
-    
-    const float3 wo       = float3(dot(v, nx), dot(v, ny), dot(v, nz));
-    const float phi       = rands.x * M_TWOPI;
-    const float cosTheta  = clamp(std::sqrt((1.0f - rands.y) / (1.0f + roughSqr * roughSqr * rands.y - rands.y)), 0.0f, 1.0f);
-    const float sinTheta  = std::sqrt(1.0f - cosTheta * cosTheta);
-    const float3 wh       = SphericalDirectionPBRT(sinTheta, cosTheta, phi);
-    
-    const float3 wi = 2.0f * dot(wo, wh) * wh - wo;      // Compute incident direction by reflecting about wm  
-    return normalize(wi.x * nx + wi.y * ny + wi.z * nz); // back to normal coordinate system
-  }
+    return ggxSample(rands, v, n, 1.0f - m_materials[a_materialId].glosiness);
   else
-    return MapSampleToCosineDistribution(rands.x, rands.y, n, n, 1.0f);
+    return lambertSample(rands, v, n);
 }
 
 float Integrator::MaterialEvalPDF(int a_materialId, float3 l, float3 v, float3 n) 
 { 
   uint type = m_materials[a_materialId].brdfType;
   if(type == BRDF_TYPE_GGX)
-  {
-    const float dotNV = dot(n, v);
-    const float dotNL = dot(n, l);
-    if (dotNV < 1e-6f || dotNL < 1e-6f)
-      return 1.0f;
-
-    const float  roughness = 1.0f - m_materials[a_materialId].glosiness;
-    const float  roughSqr  = roughness * roughness;
-    
-    const float3 h    = normalize(v + l); // half vector.
-    const float dotNH = dot(n, h);
-    const float dotHV = dot(h, v);
-    const float D     = GGX_Distribution(dotNH, roughSqr);
-  
-    return  D * dotNH / (4.0f * std::max(dotHV,1e-6f));
-  }
+    return ggxEvalPDF(l, v, n, 1.0f - m_materials[a_materialId].glosiness);
   else
-    return std::abs(dot(l, n)) * INV_PI; 
+    return lambertEvalPDF(l, v, n);
 }
 
 float3 Integrator::MaterialEvalBSDF(int a_materialId, float3 l, float3 v, float3 n)
@@ -80,31 +50,19 @@ float3 Integrator::MaterialEvalBSDF(int a_materialId, float3 l, float3 v, float3
   uint type = m_materials[a_materialId].brdfType;
   if(type == BRDF_TYPE_GGX)
   {
-    const float dotNV = dot(n, v);  
-    const float dotNL = dot(n, l);
-    if (dotNV < 1e-6f || dotNL < 1e-6f)
-      return float3(0.0f, 0.0f, 0.0f);
-
-    const float  roughness = 1.0f - m_materials[a_materialId].glosiness;
-    const float  roughSqr  = roughness * roughness;
-    const float3 color     = float3(m_materials[a_materialId].reflection[0], 
-                                    m_materials[a_materialId].reflection[1], 
-                                    m_materials[a_materialId].reflection[2]); 
-
-    const float3 h    = normalize(v + l); // half vector.
-    const float dotNH = dot(n, h);
-    const float D     = GGX_Distribution(dotNH, roughSqr);
-    const float G     = GGX_GeomShadMask(dotNV, roughSqr)*GGX_GeomShadMask(dotNL, roughSqr);      
-
-    return color*(D * G / std::max(4.0f * dotNV * dotNL, 1e-6f));  // Pass single-scattering
+    const float3 color = float3(m_materials[a_materialId].reflection[0], 
+                                m_materials[a_materialId].reflection[1], 
+                                m_materials[a_materialId].reflection[2]); 
+  
+    return color*ggxEvalBSDF(l, v, n, 1.0f - m_materials[a_materialId].glosiness);
   }
   else
   {
-    const float3 mdata = float3(m_materials[a_materialId].diffuse[0], 
+    const float3 color = float3(m_materials[a_materialId].diffuse[0], 
                                 m_materials[a_materialId].diffuse[1], 
                                 m_materials[a_materialId].diffuse[2]); 
   
-    return mdata*INV_PI;
+    return color*lambertEvalBSDF(l, v, n);
   }
 }
 
