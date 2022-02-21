@@ -52,7 +52,7 @@ def compare_json_files(json1, json2):
     for key in json1.keys():
         if key not in json2:
             continue
-        sim_status = Status.worst_of(sim_status, compare_values(key, json1[key], json2[key]))
+        sim_status = Status.worst_of([sim_status, compare_values(key, json1[key], json2[key])])
 
     return sim_status
 

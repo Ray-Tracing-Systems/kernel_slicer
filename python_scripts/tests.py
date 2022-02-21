@@ -1,29 +1,15 @@
 import sys
 import os
-import commentjson
 import subprocess
-import argparse
+
 
 import utils
+from tests_config import TestsConfig, Backend
+from sample_config import read_sample_config_list, SampleConfig, ShaderLang
 from logger import Log, Status
 from download_resources import download_resources
 from compare_images import compare_generated_images
 from compare_json import compare_generated_json_files
-from enum import Enum
-
-config_black_list = {
-    "Launch (msu/vk_graphics_rt)",
-    "Launch (msu/vk_graphics_rt2)"
-}
-
-
-class ShaderLang(Enum):
-    OPEN_CL = 0
-    GLSL    = 1
-
-
-def fix_paths_in_args(args):
-    return [arg.replace("${workspaceFolder}", os.getcwd()) for arg in args]
 
 
 def compile_shaders(shader_lang):
@@ -41,37 +27,22 @@ def compile_shaders(shader_lang):
     return res
 
 
-def compile_sample(name, sample_root, shader_lang=ShaderLang.OPEN_CL, num_threads=1):
-    os.chdir(sample_root)
-    Log().info("Building sample: {}".format(name))
+def compile_sample(sample_config, num_threads=1):
+    os.chdir(sample_config.root)
+    Log().info("Building sample: {}".format(sample_config.name))
     res, msg = utils.cmake_build("build", "Release", return_to_root=True, num_threads=num_threads)
     if res.returncode != 0:
-        Log().status_info("{} release build: ".format(name) + msg, status=Status.FAILED)
-        Log().save_std_output("{}_release_build".format(name), res.stdout.decode(), res.stderr.decode())
+        Log().status_info("{} release build: ".format(sample_config.name) + msg, status=Status.FAILED)
+        Log().save_std_output("{}_release_build".format(sample_config.name), res.stdout.decode(), res.stderr.decode())
         return -1
 
-    res = compile_shaders(shader_lang)
+    res = compile_shaders(sample_config.shader_lang)
     if res.returncode != 0:
-        Log().status_info("{} shaders compilation: ".format(name), status=Status.FAILED)
-        Log().save_std_output("{}_shaders".format(name), res.stdout.decode(), res.stderr.decode())
+        Log().status_info("{} shaders compilation: ".format(sample_config.name), status=Status.FAILED)
+        Log().save_std_output("{}_shaders".format(sample_config.name), res.stdout.decode(), res.stderr.decode())
         return -1
 
     return 0
-
-
-def extract_sample_root(args):
-    cpp_pass = os.path.join(os.getcwd(), args[0])
-    return os.path.dirname(cpp_pass)
-
-
-def extract_shader_lang(args):
-    lang = ShaderLang.OPEN_CL
-
-    for arg in args:
-        if arg.lower() == "glsl":
-            lang = ShaderLang.GLSL
-
-    return lang
 
 
 def run_sample(test_name, on_gpu=False, gpu_id=0):
@@ -95,67 +66,81 @@ def run_sample(test_name, on_gpu=False, gpu_id=0):
     return 0
 
 
-def run_test(test_name, args, num_threads=1, gpu_id=0):
-    args = fix_paths_in_args(args)
-    Log().info("Running test: {}".format(test_name))
-    Log().info("Generating files by kernel_slicer for {}".format(args[0]))
-    workdir = os.getcwd()
+def run_kslicer_and_compile_sample(sample_config: SampleConfig, test_config: TestsConfig, megakernel=False):
+    Log().info("Generating files by kernel_slicer with params: [\n" +
+               "\torig cpp file: {}\n".format(os.path.relpath(sample_config.orig_cpp_file)) +
+               ("\tmegakernel: {}\n".format(megakernel) if sample_config.has_megakernel_key else "") +
+               "]")
 
-    res = subprocess.run(["./cmake-build-release/kslicer", *args],
+    kslicer_args = sample_config.get_kernel_slicer_args(megakernel=megakernel)
+    res = subprocess.run(["./cmake-build-release/kslicer", *kslicer_args],
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if res.returncode != 0:
-        Log().status_info("{}: kernel_slicer files generation".format(test_name), status=Status.FAILED)
-        Log().save_std_output(test_name, res.stdout.decode(), res.stderr.decode())
-        os.chdir(workdir)
+        Log().status_info("{}: kernel_slicer files generation".format(sample_config.name), status=Status.FAILED)
+        Log().save_std_output(sample_config.name, res.stdout.decode(), res.stderr.decode())
         return -1
 
-    return_code = compile_sample(test_name, extract_sample_root(args), extract_shader_lang(args), num_threads)
+    return_code = compile_sample(sample_config, test_config.num_threads)
+    if return_code != 0:
+        return -1
+
+    return 0
+
+
+def run_test(sample_config: SampleConfig, test_config: TestsConfig):
+    Log().info("Running test: {}".format(sample_config.name))
+    workdir = os.getcwd()
+    final_status = Status.OK
+
+    return_code = run_kslicer_and_compile_sample(sample_config, test_config, megakernel=False)
     if return_code != 0:
         os.chdir(workdir)
         return -1
 
-    return_code = run_sample(test_name, on_gpu=False, gpu_id=gpu_id)
-    if return_code != 0:
-        os.chdir(workdir)
-        return -1
-    return_code = run_sample(test_name, on_gpu=True, gpu_id=gpu_id)
-    if return_code != 0:
-        os.chdir(workdir)
-        return -1
+    if Backend.CPU in test_config.backends:
+        return_code = run_sample(sample_config.name, on_gpu=False, gpu_id=test_config.gpu_id)
+        if return_code != 0:
+            os.chdir(workdir)
+            return -1
 
-    final_status = Status.worst_of(
-        compare_generated_images(),
-        compare_generated_json_files()
-    )
-    os.chdir(workdir)
+    if Backend.GPU in test_config.backends:
+        return_code = run_sample(sample_config.name, on_gpu=True, gpu_id=test_config.gpu_id)
+        if return_code != 0:
+            os.chdir(workdir)
+            return -1
+
+        final_status = Status.worst_of([
+            final_status, compare_generated_images(), compare_generated_json_files()
+        ])
+
+        if sample_config.has_megakernel_key:
+            os.chdir(workdir)
+            return_code = run_kslicer_and_compile_sample(sample_config, test_config, megakernel=True)
+            if return_code != 0:
+                os.chdir(workdir)
+                return -1
+            return_code = run_sample(sample_config.name, on_gpu=True, gpu_id=test_config.gpu_id)
+            if return_code != 0:
+                os.chdir(workdir)
+                return -1
+
+            final_status = Status.worst_of([
+                final_status, compare_generated_images(), compare_generated_json_files()
+            ])
+
     final_msg = {
-        Status.OK: "\"{}\" finished successfully".format(test_name),
-        Status.WARNING: "\"{}\" finished with warnings".format(test_name),
-        Status.FAILED: "\"{}\" has errors".format(test_name)
+        Status.OK: "\"{}\" finished successfully".format(sample_config.name),
+        Status.WARNING: "\"{}\" finished with warnings".format(sample_config.name),
+        Status.FAILED: "\"{}\" has errors".format(sample_config.name)
     }
     Log().status_info(final_msg[final_status], status=final_status)
+    os.chdir(workdir)
 
 
-def get_sample_names(path, configurations):
-    if path:
-        sample_names_file = open(path, "r")
-        sample_names_json = commentjson.load(sample_names_file)
-        return set(sample_names_json["names"])
-    else:
-        return {config["name"] for config in configurations}
-
-
-def tests(num_threads=1, gpu_id=0, sample_names_path=""):
-    json_file = open(".vscode/launch.json", "r")
-    launch_json = commentjson.load(json_file)
-    configurations = launch_json["configurations"]
-    required_samples_names = get_sample_names(sample_names_path, configurations)
-    for config in configurations:
-        if config["name"] in config_black_list:
-            continue
-        if config["name"] not in required_samples_names:
-            continue
-        run_test(config["name"], config["args"], num_threads, gpu_id)
+def tests(test_config):
+    sample_configs = read_sample_config_list(test_config.sample_names_path)
+    for config in sample_configs:
+        run_test(config, test_config)
 
 
 def create_clspv_symlink(clspv_path, dest_path):
@@ -192,25 +177,11 @@ def build_kernel_slicer(num_threads):
     return 0
 
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('workdir', type=str, default=".", help="test script working dir path")
-    parser.add_argument("--gpu_id", type=int, default=0, help="GPU id for sample execution")
-    parser.add_argument("--num_threads", type=int, default=8, help="Number of threads for cmake build")
-    parser.add_argument("--sample_names", type=str, default="",
-                        help="path to json file with sample names which are desired to be tested")
-
-    args = parser.parse_args()
-
-    return args
-
-
 def main():
     workdir = os.getcwd()
-    args = parse_args()
-    print(args)
+    test_config = TestsConfig(argv=sys.argv[1:])
     try:
-        workdir = os.path.abspath(args.workdir)
+        workdir = os.path.abspath(test_config.workdir)
         os.chdir(workdir)
     except Exception as e:
         print("Wrong working dictionary path:\n", e, file=sys.stderr)
@@ -219,8 +190,8 @@ def main():
     Log().print("Running in root: ", workdir)
     download_resources()
     create_clspv_symlink("apps/clspv", "apps/tests/clspv")
-    build_kernel_slicer(args.num_threads)
-    tests(num_threads=args.num_threads, gpu_id=args.gpu_id, sample_names_path=args.sample_names)
+    build_kernel_slicer(test_config.num_threads)
+    tests(test_config)
     Log().close()
 
 
