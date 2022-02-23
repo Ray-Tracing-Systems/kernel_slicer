@@ -163,7 +163,7 @@ static inline float gltfFresnelMix2(float VdotH)
 {
   //const float f1  = (1.0f-ior)/(1+ior);
   //const float f0  = f1*f1;
-  // Note that the dielectric index of refraction ior = 1.5 is now f0 = 0.0
+  // Note that the dielectric index of refraction ior = 1.5 is now f0 = 0.04
   const float f0 = 0.04f;
   const float tmp = (1.0f - std::abs(VdotH));
   const float fr = f0 + (1.0f - f0)*(tmp*tmp*tmp*tmp*tmp);

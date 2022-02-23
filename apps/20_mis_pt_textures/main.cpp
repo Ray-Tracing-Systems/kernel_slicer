@@ -54,7 +54,7 @@ int main(int argc, const char** argv)
   
   // -------------------------------------------------------------------------------
 
-  const int PASS_NUMBER = 100;
+  const int PASS_NUMBER = 1000;
   const float normConst = 1.0f/float(PASS_NUMBER);
   const float invGamma  = 1.0f/2.2f;
   

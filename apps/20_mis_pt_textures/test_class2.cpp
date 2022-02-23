@@ -69,20 +69,20 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
         
         // (2) select between specular and diffise via rands.w
         //
-        const float fDielectricInv = gltfFresnelMix2(dot(h,v));
-        if(rands.w < fDielectricInv)           // lambert
+        const float fDielectric = gltfFresnelMix2(dot(h,v));
+        if(rands.w < fDielectric)           // specular
         {
-          pdfSelect *= fDielectricInv;
-          res.direction = lambertDir;
-          res.color     = lambertVal*(1.0f/std::max(pdfSelect, 1e-4f))*color;
-          res.pdf       = lambertPdf;
-        }
-        else
-        {
-          pdfSelect *= (1.0f-fDielectricInv); // specular
+          pdfSelect *= fDielectric;
           res.direction = ggxDir;
           res.color     = ggxVal*(1.0f/std::max(pdfSelect, 1e-4f))*color;
           res.pdf       = ggxPdf;
+        } 
+        else
+        {
+          pdfSelect *= (1.0f-fDielectric); // lambert
+          res.direction = lambertDir;
+          res.color     = lambertVal*(1.0f/std::max(pdfSelect, 1e-4f))*color;
+          res.pdf       = lambertPdf;
         }
       }
     }
@@ -142,12 +142,11 @@ BsdfEval Integrator::MaterialEval(int a_materialId, float3 l, float3 v, float3 n
       
       const float3 h = 0.5f*(v + l);
 
-      const float3 specularColor   = color*ggxVal;     // (1) eval metal and (same) specular component
-      const float3 diffuseColor    = color*lambertVal; // (2) eval diffise component
-      //const float3 dielectricColor = gltfFresnelMix(diffuseColor, specularColor, 1.5f, dot(v,h));  // (3) eval dielectric component
-      const float  fDielectricInv  = gltfFresnelMix2(dot(h,v));
-      const float  dielectricPdf   = fDielectricInv*lambertPdf + (1.0f-fDielectricInv)*ggxPdf;
-      const float  dielectricVal   = fDielectricInv*lambertVal + (1.0f-fDielectricInv)*ggxVal;
+      const float3 specularColor = color*ggxVal;              // (1) eval metal and (same) specular component
+      const float3 diffuseColor  = color*lambertVal;          // (2) eval diffise component
+      const float  fDielectric   = gltfFresnelMix2(dot(h,v)); // (3) eval dielectric component
+      const float  dielectricPdf = (1.0f-fDielectric)*lambertPdf + fDielectric*ggxPdf;
+      const float  dielectricVal = (1.0f-fDielectric)*lambertVal + fDielectric*ggxVal;
 
       res.color = alpha*specularColor + (1.0f - alpha)*dielectricVal*color; // (4) accumulate final color and pdf
       res.pdf   = alpha*ggxPdf        + (1.0f - alpha)*dielectricPdf;       // (4) accumulate final color and pdf
