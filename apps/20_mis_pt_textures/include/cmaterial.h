@@ -161,6 +161,7 @@ static inline float3 gltfFresnelMix(float3 base, float3 layer, float ior, float 
 
 static inline float gltfFresnelMix2(float VdotH) 
 {
+  return 0.5f;
   //const float f1  = (1.0f-ior)/(1+ior);
   //const float f0  = f1*f1;
   // Note that the dielectric index of refraction ior = 1.5 is now f0 = 0.04

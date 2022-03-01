@@ -60,7 +60,7 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
         pdfSelect = alpha;
         const float3 F = gltfConductorFresnel(color, dot(h,v));
         res.direction = ggxDir;
-        res.color     = ggxVal*F*(1.0f/std::max(pdfSelect, 1e-4f));
+        res.color     = ggxVal*F;
         res.pdf       = ggxPdf;
       }
       else                // select dielectric
@@ -74,14 +74,14 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
         {
           pdfSelect *= fDielectric;
           res.direction = ggxDir;
-          res.color     = ggxVal*(1.0f/std::max(pdfSelect, 1e-4f))*color;
+          res.color     = ggxVal*color;
           res.pdf       = ggxPdf;
         } 
         else
         {
           pdfSelect *= (1.0f-fDielectric); // lambert
           res.direction = lambertDir;
-          res.color     = lambertVal*(1.0f/std::max(pdfSelect, 1e-4f))*color;
+          res.color     = lambertVal*color;
           res.pdf       = lambertPdf;
         }
       }
@@ -143,13 +143,12 @@ BsdfEval Integrator::MaterialEval(int a_materialId, float3 l, float3 v, float3 n
       const float3 h = 0.5f*(v + l);
 
       const float3 specularColor = color*ggxVal;              // (1) eval metal and (same) specular component
-      const float3 diffuseColor  = color*lambertVal;          // (2) eval diffise component
-      const float  fDielectric   = gltfFresnelMix2(dot(h,v)); // (3) eval dielectric component
+      const float  fDielectric   = gltfFresnelMix2(dot(h,v)); // (2) eval dielectric component
       const float  dielectricPdf = (1.0f-fDielectric)*lambertPdf + fDielectric*ggxPdf;
       const float  dielectricVal = (1.0f-fDielectric)*lambertVal + fDielectric*ggxVal;
 
-      res.color = alpha*specularColor + (1.0f - alpha)*dielectricVal*color; // (4) accumulate final color and pdf
-      res.pdf   = alpha*ggxPdf        + (1.0f - alpha)*dielectricPdf;       // (4) accumulate final color and pdf
+      res.color = alpha*specularColor + (1.0f - alpha)*dielectricVal*color; // (3) accumulate final color and pdf
+      res.pdf   = alpha*ggxPdf        + (1.0f - alpha)*dielectricPdf;       // (3) accumulate final color and pdf
     }
     break;
     case BRDF_TYPE_GGX:

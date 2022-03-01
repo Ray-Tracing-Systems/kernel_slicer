@@ -206,10 +206,7 @@ void Integrator::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear,
     const float lgtPdfW = PdfAtoW(pdfA, hitDist, cosVal);
     const float3 samCol = to_float3(m_light.intensity)/std::max(lgtPdfW, 1e-6f); //////////////////////// Apply Pdf here, or outside of here ???
     
-    const BsdfEval bsdfV = MaterialEval(matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm);
-    //const float3 brdfVal = MaterialEvalBSDF(matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm);
-    //const float  matPdfW = MaterialEvalPDF (matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm); 
-
+    const BsdfEval bsdfV    = MaterialEval(matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm);
     const float cosThetaOut = std::max(dot(shadowRayDir, hit.norm), 0.0f);
 
     float misWeight = 1.0f;
