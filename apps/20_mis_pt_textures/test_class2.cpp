@@ -48,7 +48,7 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
       const float  lambertPdf = lambertEvalPDF(lambertDir, v, n);
       const float  lambertVal = lambertEvalBSDF(lambertDir, v, n);
 
-      const float3 h = 0.5f*(v - ggxDir); // half vector.
+      const float3 h = normalize(v - ggxDir); // half vector.
       
       // TODO: check if glosiness in 1 (roughness is 0), use spetial case mirror brdf
 
@@ -142,7 +142,7 @@ BsdfEval Integrator::MaterialEval(int a_materialId, float3 l, float3 v, float3 n
       const float lambertVal = lambertEvalBSDF(l, v, n);
       const float lambertPdf = lambertEvalPDF (l, v, n);
       
-      const float3 h = 0.5f*(v + l);
+      const float3 h = normalize(v + l);
       const float3 F = gltfConductorFresnel(color, dot(h,v));
 
       const float3 specularColor = ggxVal*F;                  // (1) eval metal and (same) specular component

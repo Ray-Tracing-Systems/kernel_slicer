@@ -9,7 +9,7 @@
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-release/testapp",
-            "args"   : ["--cpu", "bbb"],
+            "args"   : ["--gpu", "bbb"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],
