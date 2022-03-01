@@ -16,8 +16,8 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
 
-  const int WIN_WIDTH  = 1024;
-  const int WIN_HEIGHT = 1024;
+  const int WIN_WIDTH  = 512;
+  const int WIN_HEIGHT = 512;
 
   std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
   std::vector<uint32_t> packedXY(WIN_WIDTH*WIN_HEIGHT);

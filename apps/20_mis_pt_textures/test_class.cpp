@@ -200,14 +200,11 @@ void Integrator::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear,
   if(!inShadow && dot(shadowRayDir, to_float3(m_light.norm)) < 0.0f)
   {
     const float lightPickProb = 1.0f;
-
-    const float pdfA    = 1.0f / (4.0f*m_light.size.x*m_light.size.y);
-    const float cosVal  = std::max(dot(shadowRayDir, (-1.0f)*to_float3(m_light.norm)), 0.0f);
-    const float lgtPdfW = PdfAtoW(pdfA, hitDist, cosVal);
-    const float3 samCol = to_float3(m_light.intensity)/std::max(lgtPdfW, 1e-30f); //////////////////////// Apply Pdf here, or outside of here ???
-    
-    const BsdfEval bsdfV    = MaterialEval(matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm);
-    const float cosThetaOut = std::max(dot(shadowRayDir, hit.norm), 0.0f);
+    const float pdfA          = 1.0f / (4.0f*m_light.size.x*m_light.size.y);
+    const float cosVal        = std::max(dot(shadowRayDir, (-1.0f)*to_float3(m_light.norm)), 0.0f);
+    const float lgtPdfW       = PdfAtoW(pdfA, hitDist, cosVal);
+    const BsdfEval bsdfV      = MaterialEval(matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm);
+    const float cosThetaOut   = std::max(dot(shadowRayDir, hit.norm), 0.0f);
 
     float misWeight = 1.0f;
     if(m_intergatorType == INTEGRATOR_MIS_PT)
@@ -216,7 +213,7 @@ void Integrator::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear,
     if(cosVal <= 0.0f)
       *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
     else
-      *out_shadeColor = to_float4((1.0f/lightPickProb)*samCol*bsdfV.color*cosThetaOut*misWeight, 0.0f);
+      *out_shadeColor = to_float4((1.0f/lightPickProb)*(to_float3(m_light.intensity)*bsdfV.color/lgtPdfW)*cosThetaOut*misWeight, 0.0f);
   }
   else
     *out_shadeColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
