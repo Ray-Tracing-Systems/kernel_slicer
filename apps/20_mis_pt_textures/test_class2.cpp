@@ -86,7 +86,7 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
         }
       }
       
-      res.color *= 1.0f/std::max(pdfSelect, 1e-4f);
+      res.pdf *= pdfSelect;
     }
     break;
     case BRDF_TYPE_GGX:
