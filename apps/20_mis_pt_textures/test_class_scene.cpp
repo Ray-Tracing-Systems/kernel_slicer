@@ -53,7 +53,6 @@ int Integrator::LoadScene(const char* scehePath)
       mat.brdfType = BRDF_TYPE_GLTF;
     }
     else if(length(reflColor) > 1e-5f)
-    //if(length(reflColor) > 1e-5f)
     {
       mat.brdfType    = BRDF_TYPE_GGX;
     }

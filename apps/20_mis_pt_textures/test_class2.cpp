@@ -57,7 +57,7 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
       float pdfSelect = 1.0f;
       if(rands.z < alpha) // select metall
       {
-        pdfSelect = alpha;
+        pdfSelect *= alpha;
         const float3 F = gltfConductorFresnel(color, dot(h,v));
         res.direction = ggxDir;
         res.color     = ggxVal*F;
@@ -65,26 +65,28 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
       }
       else                // select dielectric
       {
-        pdfSelect = 1.0f - alpha;
+        pdfSelect *= 1.0f - alpha;
         
-        // (2) select between specular and diffise via rands.w
+        // (2) now select between specular and diffise via rands.w
         //
         const float fDielectric = gltfFresnelMix2(dot(h,v));
-        if(rands.w < fDielectric)           // specular
+        if(rands.w < fDielectric) // specular
         {
           pdfSelect *= fDielectric;
           res.direction = ggxDir;
-          res.color     = ggxVal*color;
+          res.color     = ggxVal*color*fDielectric;
           res.pdf       = ggxPdf;
         } 
         else
         {
           pdfSelect *= (1.0f-fDielectric); // lambert
           res.direction = lambertDir;
-          res.color     = lambertVal*color;
+          res.color     = lambertVal*color*(1.0f-fDielectric);
           res.pdf       = lambertPdf;
         }
       }
+      
+      res.color *= 1.0f/std::max(pdfSelect, 1e-4f);
     }
     break;
     case BRDF_TYPE_GGX:
@@ -141,8 +143,9 @@ BsdfEval Integrator::MaterialEval(int a_materialId, float3 l, float3 v, float3 n
       const float lambertPdf = lambertEvalPDF (l, v, n);
       
       const float3 h = 0.5f*(v + l);
+      const float3 F = gltfConductorFresnel(color, dot(h,v));
 
-      const float3 specularColor = color*ggxVal;              // (1) eval metal and (same) specular component
+      const float3 specularColor = ggxVal*F;                  // (1) eval metal and (same) specular component
       const float  fDielectric   = gltfFresnelMix2(dot(h,v)); // (2) eval dielectric component
       const float  dielectricPdf = (1.0f-fDielectric)*lambertPdf + fDielectric*ggxPdf;
       const float  dielectricVal = (1.0f-fDielectric)*lambertVal + fDielectric*ggxVal;
