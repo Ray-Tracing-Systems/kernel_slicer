@@ -32,6 +32,8 @@ enum BRDF_TYPES { BRDF_TYPE_LAMBERT         = 1,
 struct GLTFMaterial
 {
   float4 baseColor;   ///< color for both lambert and emissive lights; baseColor.w store emission
+  float4 metalColor;  ///< in our implementation we allow different color for metals and diffuse
+  float4 coatColor;   ///< in our implementation we allow different color for coating (fresnel) and diffuse
   uint  brdfType;     ///<
   uint  lightId;      ///< identifier of light if this material is light  
   float alpha;        ///< blend factor between lambert and reflection : alpha*baseColor + (1.0f-alpha)*baseColor

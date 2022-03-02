@@ -20,6 +20,8 @@ int Integrator::LoadScene(const char* scehePath)
   m_materials.reserve(100);
   for(auto materialNode : scene.MaterialNodes())
   {
+    // read Hydra or GLTF materials
+    //
     float4 color(0.5f, 0.5f, 0.75f, 0.0f);
     if(materialNode.attribute(L"light_id") != nullptr)
     {
