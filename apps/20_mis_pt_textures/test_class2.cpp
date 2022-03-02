@@ -27,7 +27,7 @@ float Integrator::LightEvalPDF(int a_lightId, float3 illuminationPoint, float3 r
 BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, float3 v, float3 n)
 {
   const uint   type      = m_materials[a_materialId].brdfType;
-  const float3 color     = float3(m_materials[a_materialId].baseColor[0], m_materials[a_materialId].baseColor[1], m_materials[a_materialId].baseColor[2]);
+  const float3 color     = to_float3(m_materials[a_materialId].baseColor);
   const float  roughness = 1.0f - m_materials[a_materialId].glosiness;
   const float  alpha     = m_materials[a_materialId].alpha;
 
@@ -123,7 +123,7 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
 BsdfEval Integrator::MaterialEval(int a_materialId, float3 l, float3 v, float3 n)
 {
   const uint type       = m_materials[a_materialId].brdfType;
-  const float3 color    = float3(m_materials[a_materialId].baseColor[0], m_materials[a_materialId].baseColor[1], m_materials[a_materialId].baseColor[2]);
+  const float3 color    = to_float3(m_materials[a_materialId].baseColor);
   const float roughness = 1.0f - m_materials[a_materialId].glosiness;
   const float  alpha    = m_materials[a_materialId].alpha;
 
