@@ -43,6 +43,9 @@ int Integrator::LoadScene(const char* scehePath)
       glosiness = nodeRefl.child(L"glossiness").text().as_float(); // #TODO: read in different way ... 
     }
 
+    const bool hasFresnel  = (nodeRefl.child(L"fresnel").attribute(L"val").as_int() != 0);
+    const float fresnelIOR = nodeRefl.child(L"fresnel_ior").attribute(L"val").as_float();
+
     GLTFMaterial mat = {};
     mat.brdfType     = BRDF_TYPE_LAMBERT;
     mat.baseColor    = color;
@@ -50,11 +53,19 @@ int Integrator::LoadScene(const char* scehePath)
     
     if(length(reflColor) > 1e-5f && length(to_float3(color)) > 1e-5f)
     {
-      mat.brdfType = BRDF_TYPE_GLTF;
+      mat.brdfType   = BRDF_TYPE_GLTF;
+      mat.baseColor  = color;
+      mat.coatColor  = to_float4(reflColor, 0.0f);
+      mat.metalColor = to_float4(reflColor, 0.0f);
+      if(hasFresnel)
+        mat.alpha = 0.0f;
+      else
+        mat.alpha = length(reflColor)/( length(reflColor) + length3f(color) );
     }
     else if(length(reflColor) > 1e-5f)
     {
       mat.brdfType = BRDF_TYPE_GGX;
+      mat.metalColor = to_float4(reflColor, 0.0f);
     }
     mat.glosiness  = glosiness;
     if(color[3] > 1e-5f)

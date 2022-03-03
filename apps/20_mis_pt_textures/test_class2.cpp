@@ -28,6 +28,8 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
 {
   const uint   type      = m_materials[a_materialId].brdfType;
   const float3 color     = to_float3(m_materials[a_materialId].baseColor);
+  const float3 specular  = to_float3(m_materials[a_materialId].metalColor);
+  const float3 coat      = to_float3(m_materials[a_materialId].coatColor);
   const float  roughness = 1.0f - m_materials[a_materialId].glosiness;
   float  alpha           = m_materials[a_materialId].alpha;
   
@@ -63,9 +65,9 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
       if(rands.z < alpha) // select metall
       {
         pdfSelect *= alpha;
-        const float3 F = gltfConductorFresnel(color, dot(h,v));
+        const float3 F = gltfConductorFresnel(specular, dot(h,v));
         res.direction = ggxDir;
-        res.color     = ggxVal*F;
+        res.color     = ggxVal*F*alpha;
         res.pdf       = ggxPdf;
       }
       else                // select dielectric
@@ -82,14 +84,14 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
         {
           pdfSelect *= fDielectric;
           res.direction = ggxDir;
-          res.color     = ggxVal*color*fDielectric;
+          res.color     = ggxVal*coat*fDielectric*(1.0f - alpha);
           res.pdf       = ggxPdf;
         } 
         else
         {
           pdfSelect *= (1.0f-fDielectric); // lambert
           res.direction = lambertDir;
-          res.color     = lambertVal*color*(1.0f-fDielectric);
+          res.color     = lambertVal*color*(1.0f-fDielectric)*(1.0f - alpha);
           res.pdf       = lambertPdf;
         }
       }
@@ -117,6 +119,8 @@ BsdfEval Integrator::MaterialEval(int a_materialId, float3 l, float3 v, float3 n
 {
   const uint type       = m_materials[a_materialId].brdfType;
   const float3 color    = to_float3(m_materials[a_materialId].baseColor);
+  const float3 specular = to_float3(m_materials[a_materialId].metalColor);
+  const float3 coat     = to_float3(m_materials[a_materialId].coatColor);
   const float roughness = 1.0f - m_materials[a_materialId].glosiness;
         float  alpha    = m_materials[a_materialId].alpha;
 
@@ -142,17 +146,17 @@ BsdfEval Integrator::MaterialEval(int a_materialId, float3 l, float3 v, float3 n
       const float lambertPdf = lambertEvalPDF (l, v, n);
       
       const float3 h = normalize(v + l);
-      const float3 F = gltfConductorFresnel(color, dot(h,v));
+      const float3 F = gltfConductorFresnel(specular, dot(h,v));
 
       const float3 specularColor = ggxVal*F;                  // (1) eval metal and (same) specular component
       float  fDielectric         = gltfFresnelMix2(dot(h,v)); // (2) eval dielectric component
       if(type == BRDF_TYPE_LAMBERT)
         fDielectric = 0.0f;
-      const float  dielectricPdf = (1.0f-fDielectric)*lambertPdf + fDielectric*ggxPdf;
-      const float  dielectricVal = (1.0f-fDielectric)*lambertVal + fDielectric*ggxVal;
+      const float  dielectricPdf = (1.0f-fDielectric)*lambertPdf       + fDielectric*ggxPdf;
+      const float3 dielectricVal = (1.0f-fDielectric)*lambertVal*color + fDielectric*ggxVal*coat;
 
-      res.color = alpha*specularColor + (1.0f - alpha)*dielectricVal*color; // (3) accumulate final color and pdf
-      res.pdf   = alpha*ggxPdf        + (1.0f - alpha)*dielectricPdf;       // (3) accumulate final color and pdf
+      res.color = alpha*specularColor + (1.0f - alpha)*dielectricVal; // (3) accumulate final color and pdf
+      res.pdf   = alpha*ggxPdf        + (1.0f - alpha)*dielectricPdf; // (3) accumulate final color and pdf
     }
     break;
     case BRDF_TYPE_MIRROR:
