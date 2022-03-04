@@ -65,11 +65,18 @@ int main(int argc, const char** argv)
   memset(realColor.data(), 0, sizeof(float)*4*realColor.size());
   pImpl->SetIntegratorType(Integrator::INTEGRATOR_STUPID_PT);
   pImpl->UpdateMembersPlainData();
-  pImpl->NaivePathTraceBlock(WIN_HEIGHT*WIN_HEIGHT, 6, packedXY.data(), realColor.data(), PASS_NUMBER);
+  pImpl->NaivePathTraceBlock(WIN_HEIGHT*WIN_HEIGHT, 6, packedXY.data(), realColor.data(), PASS_NUMBER*10);
   
+  float minValPdf = 1e30f;
+  float maxValPdf = -1e29f;
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
   {
-    float4 color = realColor[i]*normConst;
+    float4 color = realColor[i]*normConst*0.1f;
+    if(std::isfinite(color.w))
+    {
+      minValPdf    = std::min(minValPdf, color.w);
+      maxValPdf    = std::max(maxValPdf, color.w);
+    }
     color.x      = std::pow(color.x, invGamma);
     color.y      = std::pow(color.y, invGamma);
     color.z      = std::pow(color.z, invGamma);
@@ -82,6 +89,25 @@ int main(int argc, const char** argv)
   else
     SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
+  std::cout << "minValPdf = " << minValPdf << std::endl;
+  std::cout << "maxValPdf = " << maxValPdf << std::endl;
+  const float normInv = 1.0f / (maxValPdf - minValPdf);
+  for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
+  {
+    const float pdf = std::isfinite(realColor[i].w) ? (realColor[i].w*normConst*0.1f - minValPdf)*normInv : 0.0f;
+    float4 color;
+    color.x      = pdf;
+    color.y      = std::sqrt(pdf);
+    color.z      = std::sqrt(pdf);
+    color.w      = 1.0f;
+    pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
+  }
+  
+  if(onGPU)
+    SaveBMP("zout_gpu1.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+  else
+    SaveBMP("zout_cpu1.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+
   // -------------------------------------------------------------------------------
 
   std::cout << "PathTraceBlock(Shadow-PT) ... " << std::endl;

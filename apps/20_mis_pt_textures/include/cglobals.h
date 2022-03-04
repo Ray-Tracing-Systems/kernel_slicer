@@ -188,6 +188,11 @@ static inline float PdfAtoW(const float aPdfA, const float aDist, const float aC
   return (aPdfA*aDist*aDist) / std::max(aCosThere, 1e-30f);
 }
 
+static inline float PdfWtoA(const float aPdfW, const float aDist, const float aCosThere)
+{
+  return aPdfW * std::abs(aCosThere) / std::max(aDist*aDist, 1e-30f);
+}
+
 static inline float maxcomp(float3 v) { return std::max(v.x, std::max(v.y, v.z)); }
 
 static inline float misHeuristicPower1(float p) { return std::isfinite(p) ? std::abs(p) : 0.0f; }
@@ -207,7 +212,8 @@ static inline float misWeightHeuristic(float a, float b)
 */
 typedef struct MisDataT
 {
-  float matSamplePdf; ///< previous angle pdf (pdfW) that were used for sampling material. if < 0, then material sample was pure specular  
+  float matSamplePdf; ///< previous angle pdf (pdfW) that were used for sampling material. if < 0, then material sample was pure specular 
+  float cosTheta;     ///< previous dot(matSam.direction, hit.norm)
 } MisData;
 
 static inline bool isSpecular(const MisData* data) { return (data->matSamplePdf < 0.0f); }

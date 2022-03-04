@@ -33,10 +33,13 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
   const float  roughness = 1.0f - m_materials[a_materialId].glosiness;
   float  alpha           = m_materials[a_materialId].alpha;
   
-  // TODO: check if glosiness in 1 (roughness is 0), use special case mirror brdf
   // TODO: read color     from texture
   // TODO: read roughness from texture
   // TODO: read alpha     from texture
+
+  // TODO: check if glosiness in 1 (roughness is 0), use special case mirror brdf
+  //if(roughness == 0.0f && type == BRDF_TYPE_GGX)
+  //  type = BRDF_TYPE_MIRROR;
 
   BsdfSample res;
   switch(type)
@@ -97,6 +100,7 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
       }
       
       res.pdf *= pdfSelect;
+      res.flags = RAY_FLAG_HAS_NON_SPEC;
     }
     break;
     case BRDF_TYPE_MIRROR:
@@ -106,8 +110,9 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
       // For mirrors this shouldn't be done, so we pre-divide here instead.
       //
       const float cosThetaOut = dot(res.direction, n);
-      res.color     = cosThetaOut*color;
+      res.color     = specular*(1.0f/std::max(cosThetaOut, 1e-6f));
       res.pdf       = 1.0f;
+      res.flags     = 0;
     }
     break;
   }
@@ -127,6 +132,11 @@ BsdfEval Integrator::MaterialEval(int a_materialId, float3 l, float3 v, float3 n
   // TODO: read color     from texture
   // TODO: read roughness from texture
   // TODO: read alpha     from texture
+ 
+  // TODO: check if glosiness in 1 (roughness is 0), use special case mirror brdf
+  //if(roughness == 0.0f && type == BRDF_TYPE_GGX)
+  //  type = BRDF_TYPE_MIRROR;
+
 
   BsdfEval res;
   switch(type)
@@ -167,85 +177,6 @@ BsdfEval Integrator::MaterialEval(int a_materialId, float3 l, float3 v, float3 n
     break;
   }
   return res;
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void Integrator::PackXY(uint tidX, uint tidY, uint* out_pakedXY)
-{
-  kernel_PackXY(tidX, tidY, out_pakedXY);
-}
-
-void Integrator::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color)
-{
-  float4 rayPosAndNear, rayDirAndFar;
-  kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
-
-  Lite_Hit hit; 
-  float2   baricentrics; 
-  if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
-    return;
-  
-  kernel_GetRayColor(tid, &hit, in_pakedXY, out_color);
-}
-
-void Integrator::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color)
-{
-  float4 accumColor, accumThoroughput;
-  float4 rayPosAndNear, rayDirAndFar;
-  RandomGen gen; 
-  MisData   mis;
-  uint      rayFlags;
-  kernel_InitEyeRay2(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &rayFlags);
-
-  for(int depth = 0; depth < a_maxDepth; depth++) 
-  {
-    float4   shadeColor, hitPart1, hitPart2;
-    kernel_RayTrace2(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &rayFlags);
-    if(isDeadRay(rayFlags))
-      break;
-    
-    kernel_NextBounce(tid, depth, &hitPart1, &hitPart2, &shadeColor,
-                      &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &mis, &rayFlags);
-    if(isDeadRay(rayFlags))
-      break;
-  }
-
-  kernel_ContributeToImage(tid, &accumColor, &gen, in_pakedXY, 
-                           out_color);
-}
-
-void Integrator::PathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color)
-{
-  float4 accumColor, accumThoroughput;
-  float4 rayPosAndNear, rayDirAndFar;
-  RandomGen gen; 
-  MisData   mis;
-  uint      rayFlags;
-  kernel_InitEyeRay2(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &rayFlags);
-
-  for(int depth = 0; depth < a_maxDepth; depth++) 
-  {
-    float4   shadeColor, hitPart1, hitPart2;
-    kernel_RayTrace2(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &rayFlags);
-    if(isDeadRay(rayFlags))
-      break;
-    
-    kernel_SampleLightSource(tid, &rayPosAndNear, &rayDirAndFar, &hitPart1, &hitPart2, &rayFlags, 
-                             &gen, &shadeColor);
-
-    kernel_NextBounce(tid, depth, &hitPart1, &hitPart2, &shadeColor,
-                      &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput, &gen, &mis, &rayFlags);
-    if(isDeadRay(rayFlags))
-      break;
-  }
-
-  kernel_ContributeToImage(tid, &accumColor, &gen, in_pakedXY, 
-                           out_color);
-                           
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

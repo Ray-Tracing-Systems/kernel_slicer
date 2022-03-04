@@ -61,6 +61,7 @@ int Integrator::LoadScene(const char* scehePath)
         mat.alpha = 0.0f;
       else
         mat.alpha = length(reflColor)/( length(reflColor) + length3f(color) );
+      //mat.alpha = 1.0f;
     }
     else if(length(reflColor) > 1e-5f)
     {
