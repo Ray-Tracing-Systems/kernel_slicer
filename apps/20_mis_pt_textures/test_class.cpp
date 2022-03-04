@@ -259,20 +259,14 @@ void Integrator::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPa
     
     float4 currAccumColor       = *accumColor;
     float4 currAccumThoroughput = *accumThoroughput;
-
-    if(dot(to_float3(*rayDirAndFar), float3(0,-1,0)) < 0.0f)
-    {
-      currAccumColor.x = currAccumThoroughput.x*lightIntensity*misWeight;
-      currAccumColor.y = currAccumThoroughput.y*lightIntensity*misWeight;
-      currAccumColor.z = currAccumThoroughput.z*lightIntensity*misWeight;
-    }
-    else
-    {
-      currAccumColor.x = 0.0f;
-      currAccumColor.y = 0.0f;
-      currAccumColor.z = 0.0f;
-    }
-    currAccumColor.w *= prevPdfA;
+    
+    const float lightDirectionAtten = dot(to_float3(*rayDirAndFar), float3(0,-1,0)) < 0.0f ? 1.0f : 0.0f;
+    
+    currAccumColor.x += currAccumThoroughput.x*lightIntensity*misWeight*lightDirectionAtten;
+    currAccumColor.y += currAccumThoroughput.y*lightIntensity*misWeight*lightDirectionAtten;
+    currAccumColor.z += currAccumThoroughput.z*lightIntensity*misWeight*lightDirectionAtten;
+    if(bounce > 0)
+      currAccumColor.w *= prevPdfA;
     
     *accumColor = currAccumColor;
     *rayFlags   = currRayFlags | (RAY_FLAG_IS_DEAD | RAY_FLAG_HIT_LIGHT);
@@ -297,7 +291,6 @@ void Integrator::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPa
   {
     const float4 currThoroughput = *accumThoroughput;
     const float4 shadeColor      = *in_shadeColor;
-    
     float4 currAccumColor        = *accumColor;
 
     currAccumColor.x += currThoroughput.x * shadeColor.x;
