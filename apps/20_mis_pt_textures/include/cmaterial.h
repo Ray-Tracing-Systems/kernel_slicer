@@ -24,7 +24,7 @@ enum BRDF_TYPES { BRDF_TYPE_LAMBERT         = 1,
                   BRDF_TYPE_GLTF            = 5,
                   BRDF_TYPE_GLASS           = 6,
                   BRDF_TYPE_MIRROR          = 7,
-                  BRDF_TYPE_LAMBERT_LIGHT_SOURCE = 0xEFFFFFFF };
+                  BRDF_TYPE_LIGHT_SOURCE = 0xEFFFFFFF };
 
 // The BRDF of the metallic-roughness material is a linear interpolation of a metallic BRDF and a dielectric BRDF. 
 // The BRDFs **share** the parameters for roughness and base color.

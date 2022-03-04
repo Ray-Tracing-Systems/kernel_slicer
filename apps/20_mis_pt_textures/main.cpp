@@ -26,6 +26,10 @@ int main(int argc, const char** argv)
   std::shared_ptr<Integrator> pImpl = nullptr;
   ArgParser args(argc, argv);
 
+  std::string scenePath = "../resources/HydraCore/hydra_app/tests/test_42/statex_00001.xml";
+  if(args.hasOption("-in"))
+    scenePath = args.getOptionValue<std::string>("-in");
+
   bool onGPU = args.hasOption("--gpu");
   if(onGPU)
   {
@@ -38,7 +42,7 @@ int main(int argc, const char** argv)
   
   pImpl->SetViewport(0,0,WIN_WIDTH,WIN_HEIGHT);
   
-  pImpl->LoadScene("../resources/HydraCore/hydra_app/tests/test_42/statex_00001.xml");
+  pImpl->LoadScene(scenePath.c_str());
   pImpl->CommitDeviceData();
 
   // remember pitch-linear (x,y) for each thread to make our threading 1D

@@ -239,7 +239,7 @@ void Integrator::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPa
 
   // process light hit case
   //
-  if(m_materials[matId].brdfType == BRDF_TYPE_LAMBERT_LIGHT_SOURCE)
+  if(m_materials[matId].brdfType == BRDF_TYPE_LIGHT_SOURCE)
   {
     const float lightIntensity = m_materials[matId].baseColor.w;
     float misWeight = 1.0f;
@@ -296,7 +296,8 @@ void Integrator::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPa
     currAccumColor.x += currThoroughput.x * shadeColor.x;
     currAccumColor.y += currThoroughput.y * shadeColor.y;
     currAccumColor.z += currThoroughput.z * shadeColor.z;
-    currAccumColor.w *= prevPdfA;
+    if(bounce > 0)
+      currAccumColor.w *= prevPdfA;
 
     *accumColor       = currAccumColor;
     *accumThoroughput = currThoroughput*cosTheta*to_float4(bxdfVal, 0.0f); 

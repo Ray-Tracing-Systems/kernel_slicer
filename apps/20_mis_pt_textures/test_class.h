@@ -10,7 +10,10 @@
 #include <fstream>
 #include <memory>
 
-#include "CrossRT.h"
+#include "CrossRT.h"    // special include for ray tracing
+#include "texture2d.h"  // special include for textures
+
+
 
 class Integrator // : public DataClass
 {
@@ -146,6 +149,11 @@ protected:
 
   float naivePtTime  = 0.0f;
   float shadowPtTime = 0.0f; 
+
+  //// textures
+  //
+  std::vector< std::shared_ptr<ITexture2DCombined> > m_textures; ///< all textures, right now represented via combined image/sampler
+
 };
 
 #endif

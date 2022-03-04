@@ -9,10 +9,38 @@ using cmesh::SimpleMesh;
 
 #include <string>
 
+struct TextureInfo
+{
+  std::wstring path;   ///< path to file with texture data
+  uint32_t     width;  ///< assumed texture width
+  uint32_t     height; ///< assumed texture height
+  uint32_t     bpp;    ///< assumed texture bytes per pixel, we support 4 (LDR) or 16 (HDR) during loading; Note that HDR texture could be compressed to 8 bytes (half4) on GPU.
+};
+
 int Integrator::LoadScene(const char* scehePath)
 {   
   hydra_xml::HydraScene scene;
   scene.LoadState(scehePath);
+  
+  std::vector<TextureInfo> texturesInfo;
+  texturesInfo.resize(0);
+  texturesInfo.reserve(100);
+
+  //// (0) load textures info
+  //
+  for(auto texNode : scene.TextureNodes())
+  {
+    TextureInfo tex;
+    tex.path   = texNode.attribute(L"loc").as_string();
+    tex.width  = texNode.attribute(L"width").as_uint();
+    tex.height = texNode.attribute(L"height").as_uint();
+    if(tex.width != 0 && tex.height != 0)
+    {
+      size_t byteSize = texNode.attribute(L"bytesize").as_ullong();
+      tex.bpp    = byteSize / size_t(tex.width*tex.height);
+    }
+    texturesInfo.push_back(tex);
+  }
 
   //// (1) load materials
   //
@@ -49,6 +77,7 @@ int Integrator::LoadScene(const char* scehePath)
     GLTFMaterial mat = {};
     mat.brdfType     = BRDF_TYPE_LAMBERT;
     mat.baseColor    = color;
+    mat.coatColor    = float4(0,0,0,0); 
     mat.alpha        = 0.0f;
     
     if(length(reflColor) > 1e-5f && length(to_float3(color)) > 1e-5f)
@@ -58,20 +87,25 @@ int Integrator::LoadScene(const char* scehePath)
       mat.coatColor  = to_float4(reflColor, 0.0f);
       mat.metalColor = to_float4(reflColor, 0.0f);
       if(hasFresnel)
+      {
         mat.alpha = 0.0f;
+      }
       else
-        mat.alpha = length(reflColor)/( length(reflColor) + length3f(color) );
-      //mat.alpha = 1.0f;
+      {
+        mat.alpha     = length(reflColor)/( length(reflColor) + length3f(color) );
+        mat.coatColor = float4(0,0,0,0);                                            // disable coating for such blend type
+      }
     }
     else if(length(reflColor) > 1e-5f)
     {
-      mat.brdfType = BRDF_TYPE_GGX;
+      mat.brdfType   = BRDF_TYPE_GGX;
       mat.metalColor = to_float4(reflColor, 0.0f);
+      mat.alpha      = 1.0f;
     }
     mat.glosiness  = glosiness;
     if(color[3] > 1e-5f)
     {
-      mat.brdfType = BRDF_TYPE_LAMBERT_LIGHT_SOURCE;
+      mat.brdfType = BRDF_TYPE_LIGHT_SOURCE;
     }
     m_materials.push_back(mat);
   }
