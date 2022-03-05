@@ -8,6 +8,8 @@ using cmesh::SimpleMesh;
 #include "hydraxml.h"
 
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 struct TextureInfo
 {
@@ -16,6 +18,100 @@ struct TextureInfo
   uint32_t     height; ///< assumed texture height
   uint32_t     bpp;    ///< assumed texture bytes per pixel, we support 4 (LDR) or 16 (HDR) during loading; Note that HDR texture could be compressed to 8 bytes (half4) on GPU.
 };
+
+struct HydraSampler
+{
+  float4    row0       = float4(1,0,0,0);
+  float4    row1       = float4(0,1,0,0);
+  float     inputGamma = 2.2f;
+  bool      alphaFromRGB = true;
+  
+  uint32_t  texId = 0;
+  Sampler   sampler;
+
+  bool operator==(const HydraSampler& a_rhs) const
+  {
+    const bool addrAreSame     = (sampler.addressU == a_rhs.sampler.addressU) && (sampler.addressV == a_rhs.sampler.addressV) && (sampler.addressW == a_rhs.sampler.addressW);
+    const bool filtersAreSame  = (sampler.filter == a_rhs.sampler.filter);
+    const bool hasBorderSam    = (sampler.addressU == Sampler::AddressMode::BORDER || sampler.addressV == Sampler::AddressMode::BORDER || sampler.addressW == Sampler::AddressMode::BORDER);
+    const bool sameBorderColor = (length3f(sampler.borderColor - a_rhs.sampler.borderColor) < 1e-5f);
+    const bool sameTexId       = (texId == a_rhs.texId);
+    return (addrAreSame && filtersAreSame) && (!hasBorderSam || sameBorderColor) && sameTexId;
+  }
+};
+
+class HydraSamplerHash 
+{
+public:
+  size_t operator()(const HydraSampler& sam) const
+  {
+    const size_t addressMode1 = size_t(sam.sampler.addressU);
+    const size_t addressMode2 = size_t(sam.sampler.addressV) << 4;
+    const size_t addressMode3 = size_t(sam.sampler.addressW) << 8;
+    const size_t filterMode   = size_t(sam.sampler.filter)   << 12;
+    return addressMode1 | addressMode2 | addressMode3 | filterMode | (size_t(sam.texId) << 16);
+  }
+};
+
+Sampler::AddressMode GetAddrModeFromString(const std::wstring& a_mode)
+{
+  if(a_mode == L"clamp")
+    return Sampler::AddressMode::CLAMP;
+  else if(a_mode == L"wrap")
+    return Sampler::AddressMode::WRAP;
+  else if(a_mode == L"mirror")
+    return Sampler::AddressMode::MIRROR;
+  else if(a_mode == L"border")
+    return Sampler::AddressMode::BORDER;
+  else if(a_mode == L"mirror_once")
+    return Sampler::AddressMode::MIRROR_ONCE;
+  else
+    return Sampler::AddressMode::WRAP;
+}
+
+HydraSampler ReadSamplerFromColorNode(const pugi::xml_node a_colorNodes)
+{
+  HydraSampler res;
+  auto texNode = a_colorNodes.child(L"texture");
+  if(texNode == nullptr)
+    return res;
+  
+  res.texId = texNode.attribute(L"id").as_uint();
+  
+  if(texNode.attribute(L"addressing_mode_u") != nullptr)
+  {
+    std::wstring addModeU = texNode.attribute(L"addressing_mode_u").as_string();
+    res.sampler.addressU  = GetAddrModeFromString(addModeU);
+  } 
+
+  if(texNode.attribute(L"addressing_mode_v") != nullptr)
+  {
+    std::wstring addModeV = texNode.attribute(L"addressing_mode_v").as_string();
+    res.sampler.addressV  = GetAddrModeFromString(addModeV);
+  }
+
+  if(texNode.attribute(L"addressing_mode_w") == nullptr)
+    res.sampler.addressW  = res.sampler.addressV;
+  else
+  {
+    std::wstring addModeW = texNode.attribute(L"addressing_mode_w").as_string();
+    res.sampler.addressW  = GetAddrModeFromString(addModeW);
+  }
+
+  res.sampler.filter = Sampler::Filter::LINEAR;
+
+  if(texNode.attribute(L"input_gamma") != nullptr)
+    res.inputGamma = texNode.attribute(L"input_gamma").as_float();
+
+  const std::wstring inputAlphaMode = texNode.attribute(L"input_alpha").as_string();
+  if(inputAlphaMode == L"alpha")
+    res.alphaFromRGB = false;
+
+  return res;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int Integrator::LoadScene(const char* scehePath)
 {   
@@ -42,6 +138,12 @@ int Integrator::LoadScene(const char* scehePath)
     texturesInfo.push_back(tex);
   }
 
+  std::unordered_map<HydraSampler, uint32_t, HydraSamplerHash> texCache;
+  texCache[HydraSampler()] = 0; // zero white texture
+  uint32_t topTex = 1;
+
+  //TODO: load first combides image sampler
+
   //// (1) load materials
   //
   m_materials.resize(0);
@@ -58,10 +160,21 @@ int Integrator::LoadScene(const char* scehePath)
       color.w = 0.333334f*(color.x + color.y + color.z);
     }
 
-    auto node = materialNode.child(L"diffuse").child(L"color");
-    if(node != nullptr)
-      color = to_float4(hydra_xml::readval3f(node), 0.0f);
-    
+    auto nodeDiff = materialNode.child(L"diffuse").child(L"color");
+    if(nodeDiff != nullptr)
+    {
+      color = to_float4(hydra_xml::readval3f(nodeDiff), 0.0f);
+      HydraSampler diffSampler = ReadSamplerFromColorNode(nodeDiff);
+      auto p = texCache.find(diffSampler);
+      if(p == texCache.end())
+      {
+        //TODO: load topTex combined image sampler
+        texCache[diffSampler] = topTex;
+        topTex++;
+        p = texCache.find(diffSampler);
+      }
+    }
+
     float3 reflColor = float3(0,0,0);
     float glosiness  = 1.0f;
     auto nodeRefl = materialNode.child(L"reflectivity");
