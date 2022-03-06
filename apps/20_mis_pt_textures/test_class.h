@@ -122,8 +122,8 @@ protected:
   float LightPdfSelectRev(int a_lightId);
   float LightEvalPDF(int a_lightId, float3 ray_pos, float3 ray_dir, const SurfaceHit* pSurfaceHit);
 
-  BsdfSample MaterialSampleAndEval(int a_materialId, float4 rands, float3 v, float3 n);
-  BsdfEval   MaterialEval         (int a_materialId, float3 l, float3 v, float3 n);
+  BsdfSample MaterialSampleAndEval(int a_materialId, float4 rands, float3 v, float3 n, float2 tc);
+  BsdfEval   MaterialEval         (int a_materialId, float3 l,     float3 v, float3 n, float2 tc);
 
   float3 m_camPos = float3(0.0f, 0.85f, 4.5f);
   void InitSceneMaterials(int a_numSpheres, int a_seed = 0);
@@ -134,8 +134,8 @@ protected:
   std::vector<uint32_t>        m_triIndices;    ///< (A,B,C) = m_triIndices[(offset + primId)*3 + 0/1/2]
 
   std::vector<uint32_t>        m_vertOffset;    ///< vertOffs = m_vertOffset[geomId]
-  std::vector<float4>          m_vPos4f;        ///< vertPos  = m_vPos4f [vertOffs + vertId]
   std::vector<float4>          m_vNorm4f;       ///< vertNorm = m_vNorm4f[vertOffs + vertId]
+  std::vector<float2>          m_vTexc2f;       ///< vertTexc = m_vTexc2f[vertOffs + vertId]
 
   float4x4                     m_projInv;
   float4x4                     m_worldViewInv;

@@ -1145,12 +1145,30 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         json arg;
         arg["Id"]            = realId;
         arg["Name"]          = dsArgName;
+        arg["NameOriginal"]  = dsArgs.descriptorSetsInfo[j].name;
         arg["Offset"]        = 0;
         arg["IsTexture"]     = dsArgs.descriptorSetsInfo[j].isTexture();
         arg["IsAccelStruct"] = dsArgs.descriptorSetsInfo[j].isAccelStruct();
         arg["IsTextureArray"]= (dsArgs.descriptorSetsInfo[j].kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY);
 
-        if(dsArgs.descriptorSetsInfo[j].isTexture())
+        if(dsArgs.descriptorSetsInfo[j].kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
+        {
+          arg["IsTexture"]     = true;
+          arg["IsAccelStruct"] = false;
+          arg["AccessLayout"]  = "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
+          arg["AccessDSType"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+          arg["SamplerName"]   = std::string("m_vdata.") + dsArgs.descriptorSetsInfo[j].name + "Sampler";
+        }
+        else if(dsArgs.descriptorSetsInfo[j].kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
+        {
+          arg["IsTexture"]     = false;
+          arg["IsTextureArray"]= true;
+          arg["IsAccelStruct"] = false;
+          arg["AccessLayout"]  = "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
+          arg["AccessDSType"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+          arg["SamplerName"]   = std::string("m_vdata.") + dsArgs.descriptorSetsInfo[j].name + "ArraySampler";
+        }
+        else if(dsArgs.descriptorSetsInfo[j].isTexture())
         {
           bool isConst = dsArgs.descriptorSetsInfo[j].isConst;
           auto pMember = a_classInfo.allDataMembers.find(dsArgName);
@@ -1175,7 +1193,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         realId++;
       }
       
-      if(pFoundKernel != a_classInfo.kernels.end() && !isMegaKernel)
+      if(pFoundKernel != a_classInfo.kernels.end() && !isMegaKernel) // seems for MegaKernel these containers are already in 'dsArgs.descriptorSetsInfo' 
       {
         for(const auto& container : pFoundKernel->second.usedContainers) // add all class-member vectors bindings
         {

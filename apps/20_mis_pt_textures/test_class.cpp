@@ -106,9 +106,13 @@ void Integrator::kernel_RayTrace2(uint tid, const float4* rayPosAndNear, const f
     const float3 A_norm = to_float3(m_vNorm4f[A + vertOffset]);
     const float3 B_norm = to_float3(m_vNorm4f[B + vertOffset]);
     const float3 C_norm = to_float3(m_vNorm4f[C + vertOffset]);
+
+    const float2 A_texc = m_vTexc2f[A + vertOffset];
+    const float2 B_texc = m_vTexc2f[B + vertOffset];
+    const float2 C_texc = m_vTexc2f[C + vertOffset];
       
     float3 hitNorm     = (1.0f - uv.x - uv.y)*A_norm + uv.y*B_norm + uv.x*C_norm;
-    float2 hitTexCoord = float2(0,0); // #TODO: evaluate hitTexCoord
+    float2 hitTexCoord = (1.0f - uv.x - uv.y)*A_texc + uv.y*B_texc + uv.x*C_texc;
   
     // transform surface point with matrix and flip normal if needed
     //
@@ -177,10 +181,14 @@ void Integrator::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear,
     
   const uint32_t matId = extractMatId(currRayFlags);
   const float3 ray_dir = to_float3(*rayDirAndFar);
+  
+  const float4 data1 = *in_hitPart1;
+  const float4 data2 = *in_hitPart2;
 
   SurfaceHit hit;
-  hit.pos  = to_float3(*in_hitPart1);
-  hit.norm = to_float3(*in_hitPart2);
+  hit.pos  = to_float3(data1);
+  hit.norm = to_float3(data2);
+  hit.uv   = float2(data1.w, data2.w);
 
   const float2 uv = rndFloat2_Pseudo(a_gen);
   
@@ -199,7 +207,7 @@ void Integrator::kernel_SampleLightSource(uint tid, const float4* rayPosAndNear,
     const float pdfA          = 1.0f / (4.0f*m_light.size.x*m_light.size.y);
     const float cosVal        = std::max(dot(shadowRayDir, (-1.0f)*to_float3(m_light.norm)), 0.0f);
     const float lgtPdfW       = PdfAtoW(pdfA, hitDist, cosVal);
-    const BsdfEval bsdfV      = MaterialEval(matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm);
+    const BsdfEval bsdfV      = MaterialEval(matId, shadowRayDir, (-1.0f)*ray_dir, hit.norm, hit.uv);
     const float cosThetaOut   = std::max(dot(shadowRayDir, hit.norm), 0.0f);
 
     float misWeight = 1.0f;
@@ -228,14 +236,18 @@ void Integrator::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPa
   //
   const float3 ray_dir = to_float3(*rayDirAndFar);
   const float3 ray_pos = to_float3(*rayPosAndNear);
-
+  
+  const float4 data1 = *in_hitPart1;
+  const float4 data2 = *in_hitPart2;
+  
   SurfaceHit hit;
-  hit.pos  = to_float3(*in_hitPart1);
-  hit.norm = to_float3(*in_hitPart2);
+  hit.pos  = to_float3(data1);
+  hit.norm = to_float3(data2);
+  hit.uv   = float2(data1.w, data2.w);
   
   const MisData prevBounce = *misPrev;
-  const float prevPdfW = prevBounce.matSamplePdf;
-  const float prevPdfA = (prevPdfW >= 0.0f) ? PdfWtoA(prevPdfW, length(ray_pos - hit.norm), prevBounce.cosTheta) : 1.0f;
+  const float   prevPdfW   = prevBounce.matSamplePdf;
+  const float   prevPdfA   = (prevPdfW >= 0.0f) ? PdfWtoA(prevPdfW, length(ray_pos - hit.norm), prevBounce.cosTheta) : 1.0f;
 
   // process light hit case
   //
@@ -274,7 +286,7 @@ void Integrator::kernel_NextBounce(uint tid, uint bounce, const float4* in_hitPa
   }
   
   const float4 uv         = rndFloat4_Pseudo(a_gen);
-  const BsdfSample matSam = MaterialSampleAndEval(matId, uv, (-1.0f)*ray_dir, hit.norm);
+  const BsdfSample matSam = MaterialSampleAndEval(matId, uv, (-1.0f)*ray_dir, hit.norm, hit.uv);
   const float3 bxdfVal    = matSam.color * (1.0f / std::max(matSam.pdf, 1e-10f));
   const float  cosTheta   = dot(matSam.direction, hit.norm);
 

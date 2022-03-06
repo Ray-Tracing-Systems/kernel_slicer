@@ -136,6 +136,8 @@ std::shared_ptr<ITexture2DCombined> LoadTextureAndMakeCombined(const TextureInfo
   #else
   std::string   fnameA(a_texInfo.path.begin(), a_texInfo.path.end());
   std::ifstream fin(fnameA.c_str(), std::ios::binary);
+  if(!fin.is_open())
+    std::cout << "[LoadTextureAndMakeCombined]: can't open '" << fnameA << "'" << std::endl;
   #endif
 
   fin.read((char*)wh, sizeof(int)*2);
@@ -174,12 +176,23 @@ int Integrator::LoadScene(const char* scehePath)
   texturesInfo.resize(0);
   texturesInfo.reserve(100);
 
+  std::string scenePathStr(scehePath);
+  #ifdef WIN32
+  size_t endPos = scenePathStr.find_last_of("\\");
+  if(endPos == std::string::npos)
+    endPos = scenePathStr.find_last_of("/");
+  #else
+  size_t endPos = scenePathStr.find_last_of("/");
+  #endif
+
+  std::string sceneFolder = scenePathStr.substr(0, endPos);
+
   //// (0) load textures info
   //
   for(auto texNode : scene.TextureNodes())
   {
     TextureInfo tex;
-    tex.path   = texNode.attribute(L"loc").as_string();
+    tex.path   = std::wstring(sceneFolder.begin(), sceneFolder.end()) + L"/" + texNode.attribute(L"loc").as_string();
     tex.width  = texNode.attribute(L"width").as_uint();
     tex.height = texNode.attribute(L"height").as_uint();
     if(tex.width != 0 && tex.height != 0)
@@ -310,7 +323,10 @@ int Integrator::LoadScene(const char* scehePath)
     const std::wstring shape = lightInst.lightNode.attribute(L"shape").as_string();
     const float sizeX = lightInst.lightNode.child(L"size").attribute(L"half_width").as_float();
     const float sizeZ = lightInst.lightNode.child(L"size").attribute(L"half_length").as_float();
-    const float power = lightInst.lightNode.child(L"intensity").child(L"multiplier").text().as_float();
+    float power = lightInst.lightNode.child(L"intensity").child(L"multiplier").text().as_float();
+    if(power == 0.0f)
+      power = lightInst.lightNode.child(L"intensity").child(L"multiplier").attribute(L"val").as_float();
+
     if(shape != L"rect")
     {
       std::cout << "WARNING: not supported shape of the light object!" << std::endl;
@@ -330,6 +346,9 @@ int Integrator::LoadScene(const char* scehePath)
   m_matIdByPrimId.reserve(128000);
   m_triIndices.reserve(128000*3);
 
+  m_vNorm4f.resize(0);
+  m_vTexc2f.resize(0);
+
   m_pAccelStruct->ClearGeom();
   for(auto meshPath : scene.MeshFiles())
   {
@@ -338,13 +357,19 @@ int Integrator::LoadScene(const char* scehePath)
     auto geomId   = m_pAccelStruct->AddGeom_Triangles4f(currMesh.vPos4f.data(), currMesh.vPos4f.size(), currMesh.indices.data(), currMesh.indices.size());
     
     m_matIdOffsets.push_back(m_matIdByPrimId.size());
-    m_vertOffset.push_back(m_vPos4f.size());
+    m_vertOffset.push_back(m_vNorm4f.size());
 
     m_matIdByPrimId.insert(m_matIdByPrimId.end(), currMesh.matIndices.begin(), currMesh.matIndices.end() );
     m_triIndices.insert(m_triIndices.end(), currMesh.indices.begin(), currMesh.indices.end());
 
-    m_vPos4f.insert(m_vPos4f.end(),   currMesh.vPos4f.begin(),  currMesh.vPos4f.end());
-    m_vNorm4f.insert(m_vNorm4f.end(), currMesh.vNorm4f.begin(), currMesh.vNorm4f.end());
+    //for(size_t i=0;i<currMesh.vPos4f.size();i++) // pack texture coords to fourth components
+    //{
+    //  currMesh.vPos4f [i].w = currMesh.vTexCoord2f[i].x;
+    //  currMesh.vNorm4f[i].w = currMesh.vTexCoord2f[i].y;
+    //}
+
+    m_vNorm4f.insert(m_vNorm4f.end(), currMesh.vNorm4f.begin(),     currMesh.vNorm4f.end());     // #TODO: store compressed normal and tangent together
+    m_vTexc2f.insert(m_vTexc2f.end(), currMesh.vTexCoord2f.begin(), currMesh.vTexCoord2f.end()); // #TODO: store quantized texture coordinates
   }
   
   //// (3) make instances of created meshes

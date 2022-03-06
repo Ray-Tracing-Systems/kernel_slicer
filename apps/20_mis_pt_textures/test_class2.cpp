@@ -24,10 +24,13 @@ float Integrator::LightEvalPDF(int a_lightId, float3 illuminationPoint, float3 r
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, float3 v, float3 n)
+BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, float3 v, float3 n, float2 tc)
 {
+  const float2 texCoordT = mulRows2x4(m_materials[a_materialId].row0[0], m_materials[a_materialId].row1[0], tc);
+  const float3 texColor  = to_float3(m_textures[ m_materials[a_materialId].texId[0] ]->sample(texCoordT));
+
   const uint   type      = m_materials[a_materialId].brdfType;
-  const float3 color     = to_float3(m_materials[a_materialId].baseColor);
+  const float3 color     = to_float3(m_materials[a_materialId].baseColor)*texColor;
   const float3 specular  = to_float3(m_materials[a_materialId].metalColor);
   const float3 coat      = to_float3(m_materials[a_materialId].coatColor);
   const float  roughness = 1.0f - m_materials[a_materialId].glosiness;
@@ -120,10 +123,13 @@ BsdfSample Integrator::MaterialSampleAndEval(int a_materialId, float4 rands, flo
   return res;
 }
 
-BsdfEval Integrator::MaterialEval(int a_materialId, float3 l, float3 v, float3 n)
+BsdfEval Integrator::MaterialEval(int a_materialId, float3 l, float3 v, float3 n, float2 tc)
 {
+  const float2 texCoordT = mulRows2x4(m_materials[a_materialId].row0[0], m_materials[a_materialId].row1[0], tc);
+  const float3 texColor  = to_float3(m_textures[ m_materials[a_materialId].texId[0] ]->sample(texCoordT));
+
   const uint type       = m_materials[a_materialId].brdfType;
-  const float3 color    = to_float3(m_materials[a_materialId].baseColor);
+  const float3 color    = to_float3(m_materials[a_materialId].baseColor)*texColor;
   const float3 specular = to_float3(m_materials[a_materialId].metalColor);
   const float3 coat     = to_float3(m_materials[a_materialId].coatColor);
   const float roughness = 1.0f - m_materials[a_materialId].glosiness;

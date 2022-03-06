@@ -22,6 +22,7 @@ typedef struct SurfaceHitT
 {
   float3 pos;
   float3 norm;
+  float2 uv;
 }SurfaceHit;
 
 struct RectLightSource
@@ -249,5 +250,12 @@ static inline float4x4 perspectiveMatrix(float fovy, float aspect, float zNear, 
   return res;
 }
 
+static inline float2 mulRows2x4(const float4 row0, const float4 row1, float2 v)
+{
+  float2 res;
+  res.x = row0.x*v.x + row0.y*v.y + row0.w;
+  res.y = row1.x*v.x + row1.y*v.y + row1.w;
+  return res;
+}
 
 #endif
