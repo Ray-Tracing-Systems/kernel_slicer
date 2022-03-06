@@ -8,6 +8,7 @@ using cmesh::SimpleMesh;
 #include "hydraxml.h"
 
 #include <string>
+#include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -110,6 +111,57 @@ HydraSampler ReadSamplerFromColorNode(const pugi::xml_node a_colorNodes)
   return res;
 }
 
+//bool LoadHDRImageFromFile(const wchar_t* a_fileName, int* pW, int* pH, std::vector<float>& a_data);
+//bool LoadLDRImageFromFile(const wchar_t* a_fileName, int* pW, int* pH, std::vector<uint32_t>& a_data);
+//bool SaveLDRImageToFile  (const wchar_t* a_fileName, int w, int h, uint32_t* data);
+
+std::shared_ptr<ITexture2DCombined> MakeWhiteDummy()
+{
+  constexpr uint32_t WHITE = 0x00FFFFFF;
+  std::shared_ptr< Texture2D<uint32_t> > pTexture1 = std::make_shared< Texture2D<uint32_t> >(1, 1, &WHITE);
+  Sampler sampler;
+  sampler.filter   = Sampler::Filter::NEAREST; 
+  sampler.addressU = Sampler::AddressMode::CLAMP;
+  sampler.addressV = Sampler::AddressMode::CLAMP;
+  return MakeCombinedTexture2D(pTexture1, sampler);
+}
+
+std::shared_ptr<ITexture2DCombined> LoadTextureAndMakeCombined(const TextureInfo& a_texInfo, const Sampler& a_sampler)
+{
+  std::shared_ptr<ITexture2DCombined> pResult = nullptr;
+  int wh[2] = {0,0};
+  
+  #ifdef WIN32
+  std::ifstream fin(a_texInfo.path.c_str(), std::ios::binary);
+  #else
+  std::string   fnameA(a_texInfo.path.begin(), a_texInfo.path.end());
+  std::ifstream fin(fnameA.c_str(), std::ios::binary);
+  #endif
+
+  fin.read((char*)wh, sizeof(int)*2);
+  if(a_texInfo.bpp == 16)
+  {
+    std::vector<float> data(wh[0]*wh[1]*4);
+    fin.read((char*)data.data(), sizeof(float)*4*data.size());
+    fin.close();
+
+    auto pTexture = std::make_shared< Texture2D<float4> >(wh[0], wh[1], (const float4*)data.data());
+    pResult = MakeCombinedTexture2D(pTexture, a_sampler);
+  }
+  else
+  {
+    std::vector<uint32_t> data(wh[0]*wh[1]);
+    fin.read((char*)data.data(), sizeof(uint32_t)*data.size());
+    fin.close();
+
+    auto pTexture = std::make_shared< Texture2D<uint32_t> >(wh[0], wh[1], data.data());
+    pResult = MakeCombinedTexture2D(pTexture, a_sampler);
+  }
+ 
+  return pResult;
+}
+
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -140,9 +192,10 @@ int Integrator::LoadScene(const char* scehePath)
 
   std::unordered_map<HydraSampler, uint32_t, HydraSamplerHash> texCache;
   texCache[HydraSampler()] = 0; // zero white texture
-  uint32_t topTex = 1;
-
-  //TODO: load first combides image sampler
+  
+  m_textures.resize(0);
+  m_textures.reserve(256);
+  m_textures.push_back(MakeWhiteDummy());
 
   //// (1) load materials
   //
@@ -150,6 +203,12 @@ int Integrator::LoadScene(const char* scehePath)
   m_materials.reserve(100);
   for(auto materialNode : scene.MaterialNodes())
   {
+    GLTFMaterial mat = {};
+    mat.brdfType     = BRDF_TYPE_LAMBERT;
+    mat.alpha        = 0.0f;
+    mat.coatColor    = float4(0,0,0,0); 
+    mat.metalColor   = float4(0,0,0,0); 
+
     // read Hydra or GLTF materials
     //
     float4 color(0.5f, 0.5f, 0.75f, 0.0f);
@@ -158,6 +217,9 @@ int Integrator::LoadScene(const char* scehePath)
       auto node = materialNode.child(L"emission").child(L"color");
       color   = to_float4(hydra_xml::readval3f(node), 0.0f);
       color.w = 0.333334f*(color.x + color.y + color.z);
+
+      //TODO: process emissive texture
+      HydraSampler emissiveSampler = ReadSamplerFromColorNode(materialNode.child(L"emission"));
     }
 
     auto nodeDiff = materialNode.child(L"diffuse").child(L"color");
@@ -168,11 +230,15 @@ int Integrator::LoadScene(const char* scehePath)
       auto p = texCache.find(diffSampler);
       if(p == texCache.end())
       {
-        //TODO: load topTex combined image sampler
-        texCache[diffSampler] = topTex;
-        topTex++;
+        texCache[diffSampler] = uint(m_textures.size());
+        const uint32_t texId  = nodeDiff.child(L"texture").attribute(L"id").as_uint();
+        m_textures.push_back(LoadTextureAndMakeCombined(texturesInfo[texId], diffSampler.sampler));
         p = texCache.find(diffSampler);
       }
+      
+      mat.row0 [0]  = diffSampler.row0;
+      mat.row1 [0]  = diffSampler.row1;
+      mat.texId[0]  = p->second;
     }
 
     float3 reflColor = float3(0,0,0);
@@ -186,12 +252,6 @@ int Integrator::LoadScene(const char* scehePath)
 
     const bool hasFresnel  = (nodeRefl.child(L"fresnel").attribute(L"val").as_int() != 0);
     const float fresnelIOR = nodeRefl.child(L"fresnel_ior").attribute(L"val").as_float();
-
-    GLTFMaterial mat = {};
-    mat.brdfType     = BRDF_TYPE_LAMBERT;
-    mat.baseColor    = color;
-    mat.coatColor    = float4(0,0,0,0); 
-    mat.alpha        = 0.0f;
     
     if(length(reflColor) > 1e-5f && length(to_float3(color)) > 1e-5f)
     {
@@ -215,6 +275,13 @@ int Integrator::LoadScene(const char* scehePath)
       mat.metalColor = to_float4(reflColor, 0.0f);
       mat.alpha      = 1.0f;
     }
+    else if(length(to_float3(color)) > 1e-5f)
+    {
+      mat.brdfType   = BRDF_TYPE_LAMBERT;
+      mat.baseColor  = color;
+      mat.alpha      = 0.0f;
+    }
+
     mat.glosiness  = glosiness;
     if(color[3] > 1e-5f)
     {

@@ -31,6 +31,10 @@ enum BRDF_TYPES { BRDF_TYPE_LAMBERT         = 1,
 
 struct GLTFMaterial
 {
+  float4 row0[1];     ///< texture matrix
+  float4 row1[1];     ///< texture matrix
+  uint   texId[4];    ///< texture id
+
   float4 baseColor;   ///< color for both lambert and emissive lights; baseColor.w store emission
   float4 metalColor;  ///< in our implementation we allow different color for metals and diffuse
   float4 coatColor;   ///< in our implementation we allow different color for coating (fresnel) and diffuse

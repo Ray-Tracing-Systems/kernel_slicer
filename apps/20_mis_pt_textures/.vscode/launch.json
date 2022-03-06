@@ -9,7 +9,7 @@
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-release/testapp",
-            "args"   : ["--cpu", "bbb"],
+            "args"   : ["--cpu", "-in", "/home/frol/PROG/HydraRepos2/HydraAPI-tests/tests_f/test_103/statex_00001.xml"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],
