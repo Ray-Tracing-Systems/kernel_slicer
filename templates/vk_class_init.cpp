@@ -30,6 +30,8 @@ VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO() const
   {% endif %}
 }
 
+uint32_t {{MainClassName}}_Generated::GetDefaultMaxTextures() const { return 256; }
+
 {{MainClassName}}_Generated::~{{MainClassName}}_Generated()
 {
   m_pMaker = nullptr;
@@ -168,7 +170,14 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout
   // binding for {{KernelARG.Name}}
   dsBindings[{{KernelARG.Id}}].binding            = {{KernelARG.Id}};
   dsBindings[{{KernelARG.Id}}].descriptorType     = {{KernelARG.Type}};
+  {% if KernelARG.IsTextureArray %}
+  m_vdata.{{KernelARG.Name}}ArrayMaxSize = {{KernelARG.Count}};
+  if(m_vdata.{{KernelARG.Name}}ArrayMaxSize == 0)
+    m_vdata.{{KernelARG.Name}}ArrayMaxSize = GetDefaultMaxTextures();
+  dsBindings[{{KernelARG.Id}}].descriptorCount    = m_vdata.{{KernelARG.Name}}ArrayMaxSize;
+  {% else %}
   dsBindings[{{KernelARG.Id}}].descriptorCount    = {{KernelARG.Count}};
+  {% endif %}
   dsBindings[{{KernelARG.Id}}].stageFlags         = {{KernelARG.Flags}};
   dsBindings[{{KernelARG.Id}}].pImmutableSamplers = nullptr;
 

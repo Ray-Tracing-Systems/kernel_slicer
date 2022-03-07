@@ -78,12 +78,21 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     descriptorImageInfo[{{Arg.Id}}].imageLayout = {{Arg.AccessLayout}};
     descriptorImageInfo[{{Arg.Id}}].sampler     = {{Arg.SamplerName}};
     {% else if Arg.IsTextureArray %}
-    std::vector<VkDescriptorImageInfo> {{Arg.NameOriginal}}Info({{Arg.NameOriginal}}.size());
-    for(size_t i=0;i<{{Arg.NameOriginal}}.size();i++)
-    {
-      {{Arg.NameOriginal}}Info[i].sampler     = m_vdata.{{Arg.NameOriginal}}ArraySampler[i];
-      {{Arg.NameOriginal}}Info[i].imageView   = m_vdata.{{Arg.NameOriginal}}ArrayView   [i];
-      {{Arg.NameOriginal}}Info[i].imageLayout = {{Arg.AccessLayout}};
+    std::vector<VkDescriptorImageInfo> {{Arg.NameOriginal}}Info(m_vdata.{{Arg.NameOriginal}}ArrayMaxSize);
+    for(size_t i=0; i<m_vdata.{{Arg.NameOriginal}}ArrayMaxSize; i++)
+    { 
+      if(i < {{Arg.NameOriginal}}.size())
+      {
+        {{Arg.NameOriginal}}Info[i].sampler     = m_vdata.{{Arg.NameOriginal}}ArraySampler[i];
+        {{Arg.NameOriginal}}Info[i].imageView   = m_vdata.{{Arg.NameOriginal}}ArrayView   [i];
+        {{Arg.NameOriginal}}Info[i].imageLayout = {{Arg.AccessLayout}};
+      }
+      else
+      {
+        {{Arg.NameOriginal}}Info[i].sampler     = m_vdata.{{Arg.NameOriginal}}ArraySampler[0];
+        {{Arg.NameOriginal}}Info[i].imageView   = m_vdata.{{Arg.NameOriginal}}ArrayView   [0];
+        {{Arg.NameOriginal}}Info[i].imageLayout = {{Arg.AccessLayout}};
+      }
     }
     {% else if Arg.IsAccelStruct %}
     {

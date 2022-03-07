@@ -226,6 +226,7 @@ protected:
     std::vector<VkImage>     {{Tex}}ArrayTexture;
     std::vector<VkImageView> {{Tex}}ArrayView   ;
     std::vector<VkSampler>   {{Tex}}ArraySampler; ///<! samplers for texture arrays are always used
+    size_t                   {{Tex}}ArrayMaxSize; ///<! used when texture array size is not known after constructor of base class is finished
     {% endfor %}
     {% for Sam in SamplerMembers %}
     VkSampler      {{Sam}} = VK_NULL_HANDLE;
@@ -311,6 +312,7 @@ protected:
   {% endif %}
 
   virtual VkBufferUsageFlags GetAdditionalFlagsForUBO() const;
+  virtual uint32_t           GetDefaultMaxTextures() const;
 
   VkPipelineLayout      copyKernelFloatLayout   = VK_NULL_HANDLE;
   VkPipeline            copyKernelFloatPipeline = VK_NULL_HANDLE;

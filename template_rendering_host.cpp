@@ -816,11 +816,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
       argData["Count"] = "1";
       argData["Id"]    = actualSize;
+      argData["IsTextureArray"] = false;
 
       if(arg.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
       {
         argData["Count"] = arg.name + ".size()";
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+        argData["IsTextureArray"] = true;
       }
       else if(arg.IsTexture())
       {
@@ -848,11 +850,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
       argData["Id"]    = actualSize;
       argData["Count"] = "1";
+      argData["IsTextureArray"] = false;
       
       if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
       {
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
         argData["Count"] = container.second.name + ".size()";
+        argData["IsTextureArray"] = true;
       }
       else if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
       {
@@ -872,7 +876,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       }
       else
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
-
       
       kernelJson["Args"].push_back(argData);
       actualSize++;
@@ -886,6 +889,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
       argData["Id"]    = actualSize;
       argData["Count"] = "1";
+      argData["IsTextureArray"] = false;
       kernelJson["Args"].push_back(argData);
       actualSize++;
 
