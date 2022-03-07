@@ -64,18 +64,19 @@ int main(int argc, const char** argv)
   
   // now test path tracing
   //
-  
+  const int NAIVE_PT_REPEAT = 1;
+
   std::cout << "NaivePathTraceBlock() ... " << std::endl;
   memset(realColor.data(), 0, sizeof(float)*4*realColor.size());
   pImpl->SetIntegratorType(Integrator::INTEGRATOR_STUPID_PT);
   pImpl->UpdateMembersPlainData();
-  pImpl->NaivePathTraceBlock(WIN_HEIGHT*WIN_HEIGHT, 6, packedXY.data(), realColor.data(), PASS_NUMBER*10);
+  pImpl->NaivePathTraceBlock(WIN_HEIGHT*WIN_HEIGHT, 6, packedXY.data(), realColor.data(), PASS_NUMBER*NAIVE_PT_REPEAT);
   
   float minValPdf = 1e30f;
   float maxValPdf = -1e29f;
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
   {
-    float4 color = realColor[i]*normConst*0.1f;
+    float4 color = realColor[i]*normConst*(1.0f/float(NAIVE_PT_REPEAT));
     if(std::isfinite(color.w))
     {
       minValPdf    = std::min(minValPdf, color.w);
@@ -98,7 +99,7 @@ int main(int argc, const char** argv)
   const float normInv = 1.0f / (maxValPdf - minValPdf);
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
   {
-    const float pdf = std::isfinite(realColor[i].w) ? (realColor[i].w*normConst*0.1f - minValPdf)*normInv : 0.0f;
+    const float pdf = std::isfinite(realColor[i].w) ? (realColor[i].w*normConst*(1.0f/float(NAIVE_PT_REPEAT)) - minValPdf)*normInv : 0.0f;
     float4 color;
     color.x      = pdf;
     color.y      = std::sqrt(pdf);

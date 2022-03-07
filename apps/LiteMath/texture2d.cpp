@@ -149,6 +149,12 @@ float4 Texture2D<float4>::sample(const Sampler& a_sampler, float2 a_uv) const
   return res;
 }
 
+// https://www.shadertoy.com/view/WlG3zG
+inline float4 exp2m1(float4 v) { return float4(std::exp2(v.x), std::exp2(v.y), std::exp2(v.z), std::exp2(v.w)) - float4(1.0f); }
+inline float4 pow_22(float4 x) { return (exp2m1(0.718151f*x)-0.503456f*x)*7.07342f; }
+
+//inline float4 pow_22(float4 x) { x*x*(float4(0.75f) + 0.25f*x); }
+
 template<> 
 float4 Texture2D<uchar4>::sample(const Sampler& a_sampler, float2 a_uv) const
 {
@@ -226,6 +232,9 @@ float4 Texture2D<uchar4>::sample(const Sampler& a_sampler, float2 a_uv) const
     }
     break;
   };
+
+  if(m_srgb)
+    res = pow_22(res);
   
   return res;
 }
@@ -309,6 +318,9 @@ float4 Texture2D<uint32_t>::sample(const Sampler& a_sampler, float2 a_uv) const
     break;
   };
   
+  if(m_srgb)
+    res = pow_22(res);
+
   return res;
 
   // unfortunately this doesn not works correctly for bilinear sampling .... 
@@ -791,18 +803,18 @@ typedef enum VkFormat {
 
 };
 
-template<> uint32_t GetVulkanFormat<uint32_t>() { return uint32_t(myvulkan::VK_FORMAT_R8G8B8A8_UNORM); }
-template<> uint32_t GetVulkanFormat<uchar4>()   { return uint32_t(myvulkan::VK_FORMAT_R8G8B8A8_UNORM); }
-//template<> uint32_t GetVulkanFormat<char4>()    { return uint32_t(myvulkan::VK_FORMAT_R8G8B8A8_SNORM); }
+template<> uint32_t GetVulkanFormat<uint32_t>(bool a_gamma22) { return a_gamma22 ? uint32_t(myvulkan::VK_FORMAT_R8G8B8A8_SRGB) : uint32_t(myvulkan::VK_FORMAT_R8G8B8A8_UNORM); } // SRGB, UNORM 
+template<> uint32_t GetVulkanFormat<uchar4>(bool a_gamma22)   { return a_gamma22 ? uint32_t(myvulkan::VK_FORMAT_R8G8B8A8_SRGB) : uint32_t(myvulkan::VK_FORMAT_R8G8B8A8_UNORM); }
+//template<> uint32_t GetVulkanFormat<char4>(bool a_gamma22)    { return a_gamma22 ? uint32_t(myvulkan::VK_FORMAT_R8G8B8A8_SNORM) : uint32_t(myvulkan::VK_FORMAT_R8G8B8A8_UNORM); }
 
-template<> uint32_t GetVulkanFormat<uint64_t>() { return uint32_t(myvulkan::VK_FORMAT_R16G16B16A16_UNORM); }
-template<> uint32_t GetVulkanFormat<ushort4>()  { return uint32_t(myvulkan::VK_FORMAT_R16G16B16A16_UNORM); }
-//template<> uint32_t GetVulkanFormat<short4>()   { return uint32_t(myvulkan::VK_FORMAT_R16G16B16A16_SNORM); }
+template<> uint32_t GetVulkanFormat<uint64_t>(bool a_gamma22) { return uint32_t(myvulkan::VK_FORMAT_R16G16B16A16_UNORM); }
+template<> uint32_t GetVulkanFormat<ushort4>(bool a_gamma22)  { return uint32_t(myvulkan::VK_FORMAT_R16G16B16A16_UNORM); }
+//template<> uint32_t GetVulkanFormat<short4>(bool a_gamma22)   { return uint32_t(myvulkan::VK_FORMAT_R16G16B16A16_SNORM); }
 
-template<> uint32_t GetVulkanFormat<uint16_t>() { return uint32_t(myvulkan::VK_FORMAT_R16_UNORM); }
-template<> uint32_t GetVulkanFormat<uint8_t>()  { return uint32_t(myvulkan::VK_FORMAT_R8_UNORM); }
+template<> uint32_t GetVulkanFormat<uint16_t>(bool a_gamma22) { return uint32_t(myvulkan::VK_FORMAT_R16_UNORM); }
+template<> uint32_t GetVulkanFormat<uint8_t>(bool a_gamma22)  { return a_gamma22 ? uint32_t(myvulkan::VK_FORMAT_R8_SRGB) : uint32_t(myvulkan::VK_FORMAT_R8_UNORM); }
 
-template<> uint32_t GetVulkanFormat<float4>() { return uint32_t(myvulkan::VK_FORMAT_R32G32B32A32_SFLOAT); }
-template<> uint32_t GetVulkanFormat<float2>() { return uint32_t(myvulkan::VK_FORMAT_R32G32_SFLOAT); }
-template<> uint32_t GetVulkanFormat<float> () { return uint32_t(myvulkan::VK_FORMAT_R32_SFLOAT); }
+template<> uint32_t GetVulkanFormat<float4>(bool a_gamma22) { return uint32_t(myvulkan::VK_FORMAT_R32G32B32A32_SFLOAT); }
+template<> uint32_t GetVulkanFormat<float2>(bool a_gamma22) { return uint32_t(myvulkan::VK_FORMAT_R32G32_SFLOAT); }
+template<> uint32_t GetVulkanFormat<float> (bool a_gamma22) { return uint32_t(myvulkan::VK_FORMAT_R32_SFLOAT); }
 

@@ -107,7 +107,14 @@ HydraSampler ReadSamplerFromColorNode(const pugi::xml_node a_colorNodes)
   const std::wstring inputAlphaMode = texNode.attribute(L"input_alpha").as_string();
   if(inputAlphaMode == L"alpha")
     res.alphaFromRGB = false;
-
+  
+  // read texture matrix
+  //
+  std::wstringstream inputStream(texNode.attribute(L"matrix").as_string()); // in HydraXML we store matrices by rows
+  for(int i=0;i<4;i++)
+    inputStream >> res.row0[i];
+  for(int i=0;i<4;i++)
+    inputStream >> res.row1[i];
   return res;
 }
 
@@ -157,6 +164,7 @@ std::shared_ptr<ITexture2DCombined> LoadTextureAndMakeCombined(const TextureInfo
     fin.close();
 
     auto pTexture = std::make_shared< Texture2D<uint32_t> >(wh[0], wh[1], data.data());
+    pTexture->setSRGB(true);
     pResult = MakeCombinedTexture2D(pTexture, a_sampler);
   }
  
