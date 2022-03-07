@@ -1,7 +1,6 @@
 #ifndef TEXTURE2D_H
 #define TEXTURE2D_H
 
-#include <type_traits>
 #include <vector>
 #include <memory>
 #include "aligned_alloc.h"
@@ -35,11 +34,7 @@ struct Texture2D
   const Type* getRawData() const { return m_data.data(); }
   unsigned int format()    const { return GetVulkanFormat<Type>(m_srgb); } 
 
-  void setSRGB(bool a_val)
-  {
-    if((std::is_integral<Type>() || std::is_same<Type, LiteMath::uchar4>::value) && (sizeof(Type) == 4 || sizeof(Type) == 1)) // SRGB is valid only for R8G8B8A8 and for R8 textures
-      m_srgb = a_val;
-  }
+  void setSRGB(bool a_val) { m_srgb = a_val; }
 
 protected:
   float2 process_coord(const Sampler::AddressMode mode, const float2 coord, bool* use_border_color) const;   

@@ -46,7 +46,8 @@ std::vector<NameFlagsPair> ListAccessedTextures(const std::vector<kslicer::ArgRe
       auto pFlags = kernel.texAccessInArgs.find(argNameInKernel);
       NameFlagsPair tex;
       tex.name  = args[i].name;
-      tex.flags = pFlags->second;
+      if(pFlags != kernel.texAccessInArgs.end())
+        tex.flags = pFlags->second;
       tex.isArg = true;
       tex.argId = i;
       accesedTextures.push_back(tex);

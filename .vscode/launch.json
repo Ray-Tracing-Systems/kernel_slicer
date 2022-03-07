@@ -814,7 +814,7 @@
                         "-shaderCC", "glsl",
                         "-I${workspaceFolder}/apps/LiteMath",   "Ignore",
                         "-I${workspaceFolder}/apps/RayTracing", "Process",
-                        "-megakernel", "1",
+                        "-megakernel", "0",
                         //"-cl-std=", "C++",
                         "-DKERNEL_SLICER",
                         "-v"],
