@@ -1375,5 +1375,36 @@
                 }
             ]
         },
+
+        {
+            "name"   : "Launch (HydraCore3/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["${workspaceFolder}/apps/HydraCore3/integrator_pt1.cpp",
+                        "${workspaceFolder}/apps/HydraCore3/integrator_pt2.cpp",
+                        "-mainClass", "Integrator", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/apps/LiteMath",   "Ignore",
+                        "-I${workspaceFolder}/apps/RayTracing", "Process",
+                        "-megakernel", "1",
+                        //"-cl-std=", "C++",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
     ]
 }
