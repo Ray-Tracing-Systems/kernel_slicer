@@ -38,15 +38,18 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -fopenmp -fPIC -Wno-attributes"
 add_executable(testapp main.cpp 
                        reinhard.cpp
                        Bitmap.cpp
-                       imageutils.cpp) 
-                       #../vkutils/vk_utils.cpp
-                       #../vkutils/vk_copy.cpp
-                       #../vkutils/vk_buffers.cpp
-                       #../vkutils/vk_images.cpp
-                       #../vkutils/vk_context.cpp
-                       #../vkutils/vk_alloc_simple.cpp
-                       #../vkutils/vk_pipeline.cpp
-                       #../vkutils/vk_descriptor_sets.cpp)
+                       imageutils.cpp
+                       reinhard_generated.cpp
+                       reinhard_generated_init.cpp
+                       reinhard_generated_ds.cpp
+                       ../vkutils/vk_utils.cpp
+                       ../vkutils/vk_copy.cpp
+                       ../vkutils/vk_buffers.cpp
+                       ../vkutils/vk_images.cpp
+                       ../vkutils/vk_context.cpp
+                       ../vkutils/vk_alloc_simple.cpp
+                       ../vkutils/vk_pipeline.cpp
+                       ../vkutils/vk_descriptor_sets.cpp)
 
 set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} ${FREEIMAGE_LIBRARIES} OpenMP::OpenMP_CXX volk dl)

@@ -10,15 +10,18 @@
 bool LoadHDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<float>& a_data); // defined in imageutils.cpp
 void SaveBMP(const char* fname, const unsigned int* pixels, int w, int h);
 
-float reinhard_extended(float v, float max_white)
-{
-  float numerator = v * (1.0f + (v / float(max_white * max_white)));
-  return numerator / (1.0f + v);
-}
-
+#include "vk_context.h"
+std::shared_ptr<ReinhardTM> CreateReinhardTM_Generated(int a_w, int a_h, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated) ;
 
 int main(int argc, const char** argv)
 {
+
+  #ifndef NDEBUG
+  bool enableValidationLayers = true;
+  #else
+  bool enableValidationLayers = false;
+  #endif
+
   std::vector<float> hdrData;
   int w,h;
   
@@ -27,38 +30,37 @@ int main(int argc, const char** argv)
     std::cout << "can't open input file 'kitchen.hdr' " << std::endl;
     return 0;
   }
+  
+  bool onGPU = true;
+
+  std::shared_ptr<ReinhardTM> pImpl = nullptr;
+  
+  if(onGPU)
+  {
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers, 0);
+    pImpl    = CreateReinhardTM_Generated(w,h, ctx,w*h);
+  }
+  else
+    pImpl = std::make_shared<ReinhardTM>(w,h);
 
   std::vector<uint> ldrData(w*h);
 
   // Reinhard tm algorithm
   //
-  float whitePoint = 0.0f;
-
-  for(int i=0;i<w*h;i++)
-  {
-    float maxColor = std::max(hdrData[i*4+0], std::max(hdrData[i*4+1], hdrData[i*4+2]));
-    whitePoint = std::max(whitePoint, maxColor);
-  }
-
-  for(int y=0;y<h;y++)
-  {
-    for(int x=0;x<w;x++)
-    {
-      int offset  = (y*w+x)*4;
-      float red   = reinhard_extended(hdrData[offset+0], whitePoint);
-      float green = reinhard_extended(hdrData[offset+1], whitePoint);
-      float blue  = reinhard_extended(hdrData[offset+2], whitePoint);
-
-      uint32_t r = std::min(red*255.0f,   255.0f);
-      uint32_t g = std::min(green*255.0f, 255.0f);
-      uint32_t b = std::min(blue*255.0f,  255.0f);
-
-      ldrData[y*w+x] = 0xFF000000 | r | (g << 8) | (b << 16);
-    }
-  }
-
+  pImpl->CommitDeviceData();
+  pImpl->Run(w,h, hdrData.data(), ldrData.data());
   
-  SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
+  if(onGPU)
+    SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
+  else
+    SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
+
+
+  float timings[4] = {0,0,0,0};
+  pImpl->GetExecutionTime("Run", timings);
+  std::cout << "Run(exec) = " << timings[0]              << " ms " << std::endl;
+  std::cout << "Run(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
+  std::cout << "Run(ovrh) = " << timings[3]              << " ms " << std::endl; 
   
   return 0;
 }
