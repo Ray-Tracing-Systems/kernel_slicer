@@ -66,13 +66,14 @@ def run_sample(test_name, on_gpu=False, gpu_id=0):
     return 0
 
 
-def run_kslicer_and_compile_sample(sample_config: SampleConfig, test_config: TestsConfig, megakernel=False):
+def run_kslicer_and_compile_sample(sample_config: SampleConfig, test_config: TestsConfig, megakernel=False, subgroups=False):
     Log().info("Generating files by kernel_slicer with params: [\n" +
                "\torig cpp file: {}\n".format(os.path.relpath(sample_config.orig_cpp_file)) +
                ("\tmegakernel: {}\n".format(megakernel) if sample_config.has_megakernel_key else "") +
-               "]")
+               ("\tsubgroups : {}\n".format(subgroups)  if sample_config.has_subgroups_key  else "") + "]")
 
-    kslicer_args = sample_config.get_kernel_slicer_args(megakernel=megakernel)
+    kslicer_args = sample_config.get_kernel_slicer_args(megakernel=megakernel, subgroups=subgroups)
+    #print(kslicer_args)
     res = subprocess.run(["./cmake-build-release/kslicer", *kslicer_args],
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if res.returncode != 0:
@@ -92,7 +93,7 @@ def run_test(sample_config: SampleConfig, test_config: TestsConfig):
     workdir = os.getcwd()
     final_status = Status.OK
 
-    return_code = run_kslicer_and_compile_sample(sample_config, test_config, megakernel=False)
+    return_code = run_kslicer_and_compile_sample(sample_config, test_config, megakernel=False, subgroups=False)
     if return_code != 0:
         os.chdir(workdir)
         return -1
@@ -116,6 +117,21 @@ def run_test(sample_config: SampleConfig, test_config: TestsConfig):
         if sample_config.has_megakernel_key:
             os.chdir(workdir)
             return_code = run_kslicer_and_compile_sample(sample_config, test_config, megakernel=True)
+            if return_code != 0:
+                os.chdir(workdir)
+                return -1
+            return_code = run_sample(sample_config.name, on_gpu=True, gpu_id=test_config.gpu_id)
+            if return_code != 0:
+                os.chdir(workdir)
+                return -1
+
+            final_status = Status.worst_of([
+                final_status, compare_generated_images(), compare_generated_json_files()
+            ])
+
+        if sample_config.has_subgroups_key:
+            os.chdir(workdir)
+            return_code = run_kslicer_and_compile_sample(sample_config, test_config, megakernel=False, subgroups=True)
             if return_code != 0:
                 os.chdir(workdir)
                 return -1

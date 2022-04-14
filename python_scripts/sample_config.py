@@ -22,18 +22,24 @@ class SampleConfig:
         self.root = SampleConfig.__extract_sample_root(self.orig_cpp_file)
         self.shader_lang = SampleConfig.__extract_shader_lang(self.__args)
         self.has_megakernel_key = "-megakernel" in self.__args
+        self.has_subgroups_key  = "-enableSubgroup" in self.__args
         self.__extract_megakernel_from_args()
 
-    def get_kernel_slicer_args(self, megakernel=False):
+    def get_kernel_slicer_args(self, megakernel=False, subgroups=False):
         out_args = self.__args
         if self.has_megakernel_key:
-            out_args = out_args + ["-megakernel", "1" if megakernel else "0"]
-
+          out_args = out_args + ["-megakernel", "1" if megakernel else "0"]
+        if self.has_subgroups_key: 
+          out_args = out_args + ["-enableSubgroup", "1" if subgroups else "0"]
         return out_args
 
     def __extract_megakernel_from_args(self):
         if self.has_megakernel_key:
             i = self.__args.index("-megakernel")
+            self.__args.pop(i)  # removes megakernel key
+            self.__args.pop(i)  # removes megakernel value
+        if self.has_subgroups_key:
+            i = self.__args.index("-enableSubgroup")
             self.__args.pop(i)  # removes megakernel key
             self.__args.pop(i)  # removes megakernel value
 
