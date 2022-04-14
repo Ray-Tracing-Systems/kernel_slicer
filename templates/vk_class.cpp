@@ -80,6 +80,15 @@ void {{MainClassName}}_Generated::InitVulkanObjects(VkDevice a_device, VkPhysica
                                                              maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true),
                                                             [](ISceneObject *p) { DeleteSceneRT(p); } );
   {% endfor %}
+  {% if UseSubGroups %}
+  if((m_ctx.subgroupProps.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) == 0)
+    std::cout << "ALERT! class '{{MainClassName}}_Generated' uses subgroup operations but seems your device does not support them" << std::endl;
+  if(m_ctx.subgroupProps.subgroupSize != {{SubGroupSize}}) {
+    std::cout << "ALERT! class '{{MainClassName}}_Generated' uses subgroup operations with different subgroup size:" << std::endl;
+    std::cout << " --> your device 'subgroupSize' = " << m_ctx.subgroupProps.subgroupSize << std::endl;
+    std::cout << " --> this class  'subgroupSize' = " << {{SubGroupSize}} << std::endl;
+  }
+  {% endif %}
 }
 
 void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)

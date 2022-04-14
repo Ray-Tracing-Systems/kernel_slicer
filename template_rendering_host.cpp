@@ -757,6 +757,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["IndirectDispatches"] = std::vector<std::string>();
   data["Kernels"]            = std::vector<std::string>();  
 
+  bool useSubgroups = false;
+  int subgroupMaxSize = 0;
+
   for(const auto& k : currKernels)
   {    
     std::string kernName = a_classInfo.RemoveKernelPrefix(k.name);
@@ -764,6 +767,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     
     std::string outFileName = k.name + "_UpdateIndirect" + ".cl.spv";
     std::string outFilePath = shaderPath + "/" + outFileName;
+
+    useSubgroups    = useSubgroups || k.enableSubGroups;
+    subgroupMaxSize = std::max(subgroupMaxSize, int(k.warpSize));
 
     if(k.isIndirect)
     {
@@ -1011,6 +1017,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["Kernels"].push_back(kernelJson);
   }
   
+  data["UseSubGroups"] = useSubgroups;
+  data["SubGroupSize"] = subgroupMaxSize;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   

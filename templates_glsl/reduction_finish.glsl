@@ -1,5 +1,8 @@
 #version 460
 #extension GL_GOOGLE_include_directive : require
+{% if Kernel.UseSubGroups %}
+#extension GL_KHR_shader_subgroup_arithmetic: enable
+{% endif %}
 
 #include "common_generated.h"
 
@@ -58,7 +61,6 @@ void main()
   {% endfor %}
   {% endfor %}
   barrier();
-
   {% for offset in Kernel.RedLoop1 %} 
   if (localId < {{offset}}) 
   {
@@ -85,7 +87,31 @@ void main()
   }
   barrier();
   {% endfor %}
-
+  {% if Kernel.UseSubGroups  %}                      {# /* begin put subgroup Kernel.UseSubGroups */ #}
+  if(localId < {{Kernel.WarpSize}})
+  {
+    {% for redvar in Kernel.SubjToRed %}
+    {% if not redvar.SupportAtomic %}
+    {% if redvar.BinFuncForm %}
+    {{redvar.Name}}Shared[0] = {{redvar.SubgroupOp}}({{redvar.Op2}}({{redvar.Name}}Shared[localId], {{redvar.Name}}Shared[localId + {{Kernel.WarpSize}}]) );
+    {% else %}
+    {{redvar.Name}}Shared[0] = {{redvar.SubgroupOp}}({{redvar.Name}}Shared[localId] {{redvar.Op2}} {{redvar.Name}}Shared[localId + {{Kernel.WarpSize}}] );
+    {% endif %}
+    {% endif %}
+    {% endfor %}                                      {# /* end put subgroup here */ #}
+    {% for redvar in Kernel.ArrsToRed %}              {# /* begin put subgroup */ #}
+    {% if not redvar.SupportAtomic %}
+    {% for index in range(redvar.ArraySize) %}        {# /* begin put subgroup */ #}
+    {% if redvar.BinFuncForm %}
+    {{redvar.Name}}Shared[{{loop.index}}][0] = {{redvar.SubgroupOp}}( {{redvar.Op}}({{redvar.Name}}Shared[{{loop.index}}][localId], {{redvar.Name}}Shared[{{loop.index}}][localId + {{offset}}]) );
+    {% else %}
+    {{redvar.Name}}Shared[{{loop.index}}][0] = {{redvar.SubgroupOp}}( {{redvar.Name}}Shared[{{loop.index}}][localId] {{redvar.Op}} {{redvar.Name}}Shared[{{loop.index}}][localId + {{offset}}] );
+    {% endif %}
+    {% endfor %}                                      {# /* end put subgroup here */ #}
+    {% endif %}
+    {% endfor %}                                      {# /* end put subgroup here */ #}
+  }
+  {% else %}
   {% for offset in Kernel.RedLoop2 %} 
   if (localId < {{offset}}) 
   {
@@ -112,6 +138,7 @@ void main()
   }
   barrier();
   {% endfor %}
+  {% endif %}  {# /* else branch of if Kernel.UseSubGroups */ #}
  
   if(localId == 0)
   {
