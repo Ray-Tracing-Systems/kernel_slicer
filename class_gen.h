@@ -56,7 +56,7 @@ namespace kslicer
 
     std::vector<ArgReferenceOnCall> ExtractArgumentsOfAKernelCall(CallExpr* f, const std::unordered_set<std::string>& a_excludeList);
     std::string MakeKernelCallCmdString(CXXMemberCallExpr* f);
-    std::string MakeServiceKernelCallCmdString(CallExpr* call);
+    std::string MakeServiceKernelCallCmdString(CallExpr* call, const std::string& a_name);
 
     Rewriter&                      m_rewriter;
     const clang::CompilerInstance& m_compiler;

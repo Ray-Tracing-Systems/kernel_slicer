@@ -1,44 +1,49 @@
 #include "reinhard.h"
 #include <algorithm>
 
-static inline float reinhard_extended(float v, float max_white)
+float reinhard_extended(float v, float max_white)
 {
-  float numerator = v * (1.0f + (v / float(max_white * max_white)));
+  float numerator = v * (1.0f + (v /(max_white * max_white)));
   return numerator / (1.0f + v);
 }
 
 void ReinhardTM::kernel1D_findMax(int size, const float* inData4f)
 {
-  m_whitePoint = 0.0f;
+  m_whitePoint = 0;  
   for(int i=0;i<size;i++)
   {
-    float maxColor = std::max(inData4f[i*4+0], std::max(inData4f[i*4+1], inData4f[i*4+2]));
-    m_whitePoint = std::max(m_whitePoint, maxColor);
+    float r = inData4f[4*i+0];
+    float g = inData4f[4*i+1];
+    float b = inData4f[4*i+2];
+
+    float maxVal = std::max(r, std::max(g,b));
+    m_whitePoint = std::max(m_whitePoint, maxVal);
   }
+
 }
 
-void ReinhardTM::kernel2D_doToneMapping(int w, int h, const float* inData4f, unsigned int* outData)
+void ReinhardTM::kernel2D_process(int w, int h, const float* inData4f, uint32_t* outData)
 {
   for(int y=0;y<h;y++)
   {
-    for(int x=0;x<w;x++)
-    {
-      int offset  = (y*w+x)*4;
-      float red   = reinhard_extended(inData4f[offset+0], m_whitePoint);
-      float green = reinhard_extended(inData4f[offset+1], m_whitePoint);
-      float blue  = reinhard_extended(inData4f[offset+2], m_whitePoint);
+    for(int x=0;x<w;x++) 
+    { 
+      int   i = y*w+x;
+      float r = reinhard_extended(inData4f[4*i+0], m_whitePoint);
+      float g = reinhard_extended(inData4f[4*i+1], m_whitePoint);
+      float b = reinhard_extended(inData4f[4*i+2], m_whitePoint);
 
-      uint32_t r = uint32_t( std::min(red*255.0f,   255.0f) );
-      uint32_t g = uint32_t( std::min(green*255.0f, 255.0f) );
-      uint32_t b = uint32_t( std::min(blue*255.0f,  255.0f) );
+      uint32_t r1 = (uint32_t)( std::min(r*255.0f, 255.0f)  );
+      uint32_t g1 = (uint32_t)( std::min(g*255.0f, 255.0f)  );
+      uint32_t b1 = (uint32_t)( std::min(b*255.0f, 255.0f)  );
 
-      outData[y*w+x] = 0xFF000000 | r | (g << 8) | (b << 16);
+      outData[y*w+x] = 0xFF000000 | (r1) | (g1 << 8) | (b1 << 16);
     }
   }
 }
 
-void ReinhardTM::Run(int w, int h, const float* inData4f, unsigned int* outData)
+void ReinhardTM::Run(int w, int h, const float* inData4f, uint32_t* outData)
 {
   kernel1D_findMax(w*h, inData4f);
-  kernel2D_doToneMapping(w,h,inData4f, outData);
+  kernel2D_process(w,h, inData4f, outData);  
 }

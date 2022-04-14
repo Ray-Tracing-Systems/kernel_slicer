@@ -1047,6 +1047,7 @@ namespace kslicer
   std::string CleanTypeName(const std::string& a_str);
   
   bool IsInExcludedFolder(const std::string& fileName, const std::vector<std::string>& a_excludeFolderList);
+  std::unordered_set<std::string> GetAllServiceKernels();
 }
 
 template <typename Cont, typename Pred>

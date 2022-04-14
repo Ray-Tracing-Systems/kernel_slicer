@@ -97,7 +97,9 @@ std::unordered_map<std::string, kslicer::KernelInfo>::iterator kslicer::MainClas
   if(pFoundKernel2 != megakernelsByName.end())
     return pFoundKernel2;
   
-  std::cout << "[FindKernelByName]: kernel " << a_name.c_str() << " is not found" << std::endl;
+  auto serviceKernels = kslicer::GetAllServiceKernels();
+  if(serviceKernels.find(a_name) == serviceKernels.end())
+    std::cout << "[FindKernelByName]: kernel " << a_name.c_str() << " is not found" << std::endl;
   return pFoundKernel2;
 }
 
@@ -111,6 +113,8 @@ std::unordered_map<std::string, kslicer::KernelInfo>::const_iterator kslicer::Ma
   if(pFoundKernel2 != megakernelsByName.end())
     return pFoundKernel2;
   
-  std::cout << "[FindKernelByName]: kernel " << a_name.c_str() << " is not found" << std::endl;
+  auto serviceKernels = kslicer::GetAllServiceKernels();
+  if(serviceKernels.find(a_name) == serviceKernels.end())
+    std::cout << "[FindKernelByName]: kernel " << a_name.c_str() << " is not found" << std::endl;
   return pFoundKernel2;
 }

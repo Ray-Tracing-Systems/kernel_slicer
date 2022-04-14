@@ -1,5 +1,6 @@
   ///// complete kernel with reduction passes
   {
+    VkBufferMemoryBarrier barUBO = BarrierForSingleBuffer(m_classDataBuffer);
     VkBufferMemoryBarrier redBars   [{{Kernel.RedVarsFPNum}}]; 
     VkBuffer              redBuffers[{{Kernel.RedVarsFPNum}}+1] = { {% for RedVarName in Kernel.RedVarsFPArr %}m_vdata.{{RedVarName.Name}}Buffer, {% endfor %} VK_NULL_HANDLE};
     size_t                szOfElems [{{Kernel.RedVarsFPNum}}+1] = { {% for RedVarName in Kernel.RedVarsFPArr %}sizeof({{RedVarName.Type}}), {% endfor %} 0};

@@ -201,13 +201,24 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
   return strOut.str();
 }
 
-std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallExpr* call)
+std::unordered_set<std::string> kslicer::GetAllServiceKernels()
+{
+  std::unordered_set<std::string> names;
+  names.insert("copyKernelFloat");
+  return names;
+}
+
+
+std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallExpr* call, const std::string& a_name)
 {
   std::string kernName = "copyKernelFloat"; // extract from 'call' exact name of service function;
                                             // replace it with actual name we are going to used in generated HOST(!!!) code. 
                                             // for example it can be 'MyMemcpy' for 'memcpy' if in host code we have (MyMemcpyLayout, MyMemcpyPipeline, MyMemcpyDSLayout)
                                             // please note that you should init MyMemcpyLayout, MyMemcpyPipeline, MyMemcpyDSLayout yourself in the generated code!                                      
   
+  if(a_name == "memcpy")
+    kernName = "copyKernelFloat";
+
   auto memCpyArgs = ExtractArgumentsOfAKernelCall(call, m_mainFunc.ExcludeList);
 
   std::vector<ArgReferenceOnCall> args(2); // TODO: extract corretc arguments from memcpy (CallExpr* call)
@@ -291,7 +302,7 @@ bool kslicer::MainFunctionRewriter::VisitCallExpr(CallExpr* call)
   if(fname == "memcpy")
   {
     m_pCodeInfo->usedServiceCalls.insert("memcpy");
-    std::string testStr = MakeServiceKernelCallCmdString(call);
+    std::string testStr = MakeServiceKernelCallCmdString(call, fname);
     m_rewriter.ReplaceText(call->getSourceRange(), testStr);
   }
 
