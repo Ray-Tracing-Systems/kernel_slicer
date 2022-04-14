@@ -182,6 +182,7 @@ namespace kslicer
       std::string    tmpVarName = "UnknownReductionOutput";
       std::string    GetInitialValue(bool isGLSL)  const;
       std::string    GetOp(std::shared_ptr<IShaderCompiler> pShaderCC) const;
+      std::string    GetOp2(std::shared_ptr<IShaderCompiler> pShaderCC) const;
 
       bool           SupportAtomicLastStep()        const;
       std::string    GetAtomicImplCode(bool isGLSL) const;

@@ -66,13 +66,18 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     nlohmann::json currKerneJson = copy;
     currKerneJson["Kernel"] = kernel.value();
     
+    const bool vulkan11 = kernel.value()["UseSubGroups"];
+
     std::string kernelName  = std::string(kernel.value()["Name"]);
     std::string outFileName = kernelName + ".comp";
     std::string outFilePath = shaderPath + slash + outFileName;
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
-    buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
+    buildSH << "glslangValidator -V ";
+    if(vulkan11)
+      buildSH << "--target-env vulkan1.1 ";
+    buildSH << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
     for(auto folder : ignoreFolders)
-     buildSH << "-I" << folder.c_str() << " ";
+      buildSH << "-I" << folder.c_str() << " ";
     buildSH << std::endl;
 
     if(kernel.value()["IsIndirect"])
@@ -80,7 +85,10 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
       outFileName = kernelName + "_UpdateIndirect.comp";
       outFilePath = shaderPath + slash + outFileName;
       kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
-      buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
+      buildSH << "glslangValidator -V "; 
+      if(vulkan11)
+        buildSH << "--target-env vulkan1.1 ";
+      buildSH << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
       for(auto folder : ignoreFolders)
        buildSH << "-I" << folder.c_str() << " ";
       buildSH << std::endl;
@@ -91,7 +99,10 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
       outFileName = kernelName + "_Reduction.comp";
       outFilePath = shaderPath + slash + outFileName;
       kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
-      buildSH << "glslangValidator -V " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
+      buildSH << "glslangValidator -V "; 
+      if(vulkan11)
+        buildSH << "--target-env vulkan1.1 ";
+      buildSH << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
       for(auto folder : ignoreFolders)
        buildSH << "-I" << folder.c_str() << " ";
       buildSH << std::endl;
