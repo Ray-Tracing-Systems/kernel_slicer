@@ -255,3 +255,41 @@ std::string kslicer::KernelInfo::ReductionAccess::GetAtomicImplCode(bool isGLSL)
 
   return res;
 }
+
+
+std::string kslicer::KernelInfo::ReductionAccess::GetSubgroupOpCode(bool isGLSL) const
+{
+  std::string res = "atomic_unknown"; 
+
+  if(!isGLSL)
+    return res;
+
+  switch(type)
+  {
+    case REDUCTION_TYPE::ADD_ONE:
+    case REDUCTION_TYPE::ADD:
+    res = "subgroupAdd";
+    break;
+
+    case REDUCTION_TYPE::SUB:
+    case REDUCTION_TYPE::SUB_ONE:
+    res = "subgroupSub";
+    break;
+
+    case REDUCTION_TYPE::FUNC:
+    {
+      if(funcName == "min" || funcName == "std::min") res = "subgroupMin";
+      if(funcName == "max" || funcName == "std::max") res = "subgroupMax";
+    }
+    break;
+
+    case REDUCTION_TYPE::MUL:
+    res = "subgroupMul";
+    break;
+
+    default:
+    break;
+  };
+
+  return res;
+}

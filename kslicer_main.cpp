@@ -373,6 +373,7 @@ int main(int argc, const char **argv)
   bool        halfFloatTextures  = false;
   bool        useMegakernel      = false;
   auto        defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
+  bool        enableSubGroupOps  = false;
   
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
@@ -397,6 +398,9 @@ int main(int argc, const char **argv)
 
   if(params.find("-warpSize") != params.end())
     warpSize = atoi(params["-warpSize"].c_str());
+
+  if(params.find("-enableSubgroup") != params.end())
+    enableSubGroupOps = atoi(params["-enableSubgroup"].c_str());
   
   if(params.find("-halfTex") != params.end())
     halfFloatTextures = (params["-halfTex"] == "1");
@@ -1008,7 +1012,8 @@ int main(int argc, const char **argv)
       kernel.wgSize[1] = defaultWgSize[kernelDim-1][1];
       kernel.wgSize[2] = defaultWgSize[kernelDim-1][2];
     }
-    kernel.warpSize = warpSize;
+    kernel.warpSize        = warpSize;
+    kernel.enableSubGroups = enableSubGroupOps;
   }
  
   auto& megakernelsByName = inputCodeInfo.megakernelsByName;

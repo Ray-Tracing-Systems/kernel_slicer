@@ -215,6 +215,8 @@ static json ReductionAccessFill(const kslicer::KernelInfo::ReductionAccess& seco
   varJ["OutTempName"]   = second.tmpVarName;
   varJ["SupportAtomic"] = second.SupportAtomicLastStep();
   varJ["AtomicOp"]      = second.GetAtomicImplCode(pShaderCC->IsGLSL());
+  varJ["SubgroupOp"]    = second.GetSubgroupOpCode(pShaderCC->IsGLSL()); 
+  //varJ["UseSubgroups"]  = second.useSubGroups;
   varJ["IsArray"]       = second.leftIsArray;
   varJ["ArraySize"]     = second.arraySize;
   if(second.leftIsArray)
@@ -542,20 +544,21 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     for (uint c = k.warpSize; c>0; c/=2)
       kernelJson["RedLoop2"].push_back(c);
     
-    kernelJson["LastArgNF"]  = VArgsSize; // Last Argument No Flags
-    kernelJson["Args"]       = args;
-    kernelJson["Vecs"]       = vecs;
-    kernelJson["RTXNames"]   = rtxNames;
-    kernelJson["UserArgs"]   = userArgs;
-    kernelJson["Name"]       = k.name;
-    kernelJson["UBOBinding"] = args.size(); // for circle
-    kernelJson["HasEpilog"]  = k.isBoolTyped || reductionVars.size() != 0 || reductionArrs.size() != 0 || k.isMaker;
-    kernelJson["IsBoolean"]  = k.isBoolTyped;
-    kernelJson["IsMaker"]    = k.isMaker;
-    kernelJson["IsVirtual"]  = k.isVirtual;
-    kernelJson["SubjToRed"]  = reductionVars;
-    kernelJson["ArrsToRed"]  = reductionArrs;
-    kernelJson["FinishRed"]  = needFinishReductionPass;
+    kernelJson["UseSubGroups"] = k.enableSubGroups;  
+    kernelJson["LastArgNF"]    = VArgsSize; // Last Argument No Flags
+    kernelJson["Args"]         = args;
+    kernelJson["Vecs"]         = vecs;
+    kernelJson["RTXNames"]     = rtxNames;
+    kernelJson["UserArgs"]     = userArgs;
+    kernelJson["Name"]         = k.name;
+    kernelJson["UBOBinding"]   = args.size(); // for circle
+    kernelJson["HasEpilog"]    = k.isBoolTyped || reductionVars.size() != 0 || reductionArrs.size() != 0 || k.isMaker;
+    kernelJson["IsBoolean"]    = k.isBoolTyped;
+    kernelJson["IsMaker"]      = k.isMaker;
+    kernelJson["IsVirtual"]    = k.isVirtual;
+    kernelJson["SubjToRed"]    = reductionVars;
+    kernelJson["ArrsToRed"]    = reductionArrs;
+    kernelJson["FinishRed"]    = needFinishReductionPass;
     kernelJson["NeedTexArray"] = isTextureArrayUsedInThisKernel;
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);

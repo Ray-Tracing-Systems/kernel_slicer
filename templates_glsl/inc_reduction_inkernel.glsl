@@ -27,6 +27,10 @@
     }
     barrier();
     {% endfor %}
+    {% if Kernel.UseSubGroups  %}
+    //put subgroup here
+    //
+    {% else %}
     {% for offset in Kernel.RedLoop2 %} 
     if (localId < {{offset}}) 
     {
@@ -51,7 +55,8 @@
     {% if Kernel.threadDim > 1 %}
     barrier();
     {% endif %}
-    {% endfor %}
+    {% endfor %}  {# /* for offset in Kernel.RedLoop2 */ #}
+    {% endif %} {# /* if Kernel.UseSubGroups */ #}
     if(localId == 0)
     {
       {% if Kernel.threadDim == 1 %}
