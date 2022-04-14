@@ -8,7 +8,6 @@
 {% endif %}
 {% if Kernel.UseSubGroups %}
 #extension GL_KHR_shader_subgroup_arithmetic: enable
-#define subgroupSub(x,y) subgroupAdd((x),-(y))
 {% endif %}
 
 #include "common_generated.h"

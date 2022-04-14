@@ -28,22 +28,25 @@
     barrier();
     {% endfor %}                                      {# /* end of common reduction via shared memory */ #}
     {% if Kernel.UseSubGroups  %}                     {# /* begin put subgroup */ #}
-    {% for redvar in Kernel.SubjToRed %}
-    {% if redvar.BinFuncForm %}
-    {{redvar.Name}}Shared[0] = {{redvar.SubgroupOp}}({{redvar.Op2}}({{redvar.Name}}Shared[localId], {{redvar.Name}}Shared[localId + {{Kernel.WarpSize}}]) );
-    {% else %}
-    {{redvar.Name}}Shared[0] = {{redvar.SubgroupOp}}({{redvar.Name}}Shared[localId] {{redvar.Op2}} {{redvar.Name}}Shared[localId + {{Kernel.WarpSize}}] );
-    {% endif %}
-    {% endfor %}                                      {# /* end put subgroup here */ #}
-    {% for redvar in Kernel.ArrsToRed %}              {# /* begin put subgroup */ #}
-    {% for index in range(redvar.ArraySize) %}        {# /* begin put subgroup */ #}
-    {% if redvar.BinFuncForm %}
-    {{redvar.Name}}Shared[{{loop.index}}][0] = {{redvar.SubgroupOp}}( {{redvar.Op}}({{redvar.Name}}Shared[{{loop.index}}][localId], {{redvar.Name}}Shared[{{loop.index}}][localId + {{offset}}]) );
-    {% else %}
-    {{redvar.Name}}Shared[{{loop.index}}][0] = {{redvar.SubgroupOp}}( {{redvar.Name}}Shared[{{loop.index}}][localId] {{redvar.Op}} {{redvar.Name}}Shared[{{loop.index}}][localId + {{offset}}] );
-    {% endif %}
-    {% endfor %}                                      {# /* end put subgroup here */ #}
-    {% endfor %}                                      {# /* end put subgroup here */ #}
+    if(localId < {{Kernel.WarpSize}})
+    {
+      {% for redvar in Kernel.SubjToRed %}
+      {% if redvar.BinFuncForm %}
+      {{redvar.Name}}Shared[0] = {{redvar.SubgroupOp}}({{redvar.Op2}}({{redvar.Name}}Shared[localId], {{redvar.Name}}Shared[localId + {{Kernel.WarpSize}}]) );
+      {% else %}
+      {{redvar.Name}}Shared[0] = {{redvar.SubgroupOp}}({{redvar.Name}}Shared[localId] {{redvar.Op2}} {{redvar.Name}}Shared[localId + {{Kernel.WarpSize}}] );
+      {% endif %}
+      {% endfor %}                                      {# /* end put subgroup here */ #}
+      {% for redvar in Kernel.ArrsToRed %}              {# /* begin put subgroup */ #}
+      {% for index in range(redvar.ArraySize) %}        {# /* begin put subgroup */ #}
+      {% if redvar.BinFuncForm %}
+      {{redvar.Name}}Shared[{{loop.index}}][0] = {{redvar.SubgroupOp}}( {{redvar.Op}}({{redvar.Name}}Shared[{{loop.index}}][localId], {{redvar.Name}}Shared[{{loop.index}}][localId + {{offset}}]) );
+      {% else %}
+      {{redvar.Name}}Shared[{{loop.index}}][0] = {{redvar.SubgroupOp}}( {{redvar.Name}}Shared[{{loop.index}}][localId] {{redvar.Op}} {{redvar.Name}}Shared[{{loop.index}}][localId + {{offset}}] );
+      {% endif %}
+      {% endfor %}                                      {# /* end put subgroup here */ #}
+      {% endfor %}                                      {# /* end put subgroup here */ #}
+    }
     {% else %}
     {% for offset in Kernel.RedLoop2 %} 
     if (localId < {{offset}}) 

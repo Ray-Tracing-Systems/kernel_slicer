@@ -298,7 +298,7 @@ std::string kslicer::KernelInfo::ReductionAccess::GetSubgroupOpCode(bool isGLSL)
 
     case REDUCTION_TYPE::SUB:
     case REDUCTION_TYPE::SUB_ONE:
-    res = "subgroupSub";
+    res = "subgroupAdd";
     break;
 
     case REDUCTION_TYPE::FUNC:
