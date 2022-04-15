@@ -112,16 +112,16 @@ namespace hydra_xml
 
     m_cameraLib    = m_xmlDoc.child(L"cam_lib");
     m_settingsNode = m_xmlDoc.child(L"render_lib");
-    m_sceneNode    = m_xmlDoc.child(L"scenes");
+    m_scenesNode   = m_xmlDoc.child(L"scenes");
 
-    if (m_texturesLib == nullptr || m_materialsLib == nullptr || m_lightsLib == nullptr || m_cameraLib == nullptr || m_geometryLib == nullptr || m_settingsNode == nullptr || m_sceneNode == nullptr)
+    if (m_texturesLib == nullptr || m_materialsLib == nullptr || m_lightsLib == nullptr || m_cameraLib == nullptr || m_geometryLib == nullptr || m_settingsNode == nullptr || m_scenesNode == nullptr)
     {
       std::string errMsg = "Loaded state (" +  path + ") doesn't have one of (textures_lib, materials_lib, lights_lib, cam_lib, geometry_lib, render_lib, scenes";
       LogError(errMsg);
       return -1;
     }
 
-    parseInstancedMeshes(m_sceneNode, m_geometryLib);
+    parseInstancedMeshes(m_scenesNode, m_geometryLib);
 
     return 0;
   }
@@ -233,13 +233,13 @@ namespace hydra_xml
 
   std::vector<LightInstance> HydraScene::InstancesLights(uint32_t a_sceneId) 
   {
-    auto sceneNode = m_sceneNode.child(L"scene");
+    auto sceneNode = m_scenesNode.child(L"scene");
     if(a_sceneId != 0)
     {
       std::wstringstream temp;
       temp << a_sceneId;
       std::wstring tempStr = temp.str();
-      sceneNode = m_sceneNode.find_child_by_attribute(L"id", tempStr.c_str());
+      sceneNode = m_scenesNode.find_child_by_attribute(L"id", tempStr.c_str());
     }
 
     std::vector<pugi::xml_node> lights; 

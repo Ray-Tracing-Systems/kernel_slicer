@@ -6,6 +6,8 @@
 using namespace LiteMath;
 
 #include <vector>
+#include <string>
+#include <sstream>
 #include <set>
 #include <unordered_map>
 //#include <iostream>
@@ -175,8 +177,42 @@ namespace hydra_xml
     pugi::xml_node_iterator m_iter;
 	};
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  class RemapListIterator //
+	{
+	  friend class pugi::xml_node;
+    friend class pugi::xml_node_iterator;
+  
+	public:
+  
+		// Default constructor
+		RemapListIterator() {}
+		RemapListIterator(const pugi::xml_node_iterator& a_iter) : m_iter(a_iter) {}
+  
+		// Iterator operators
+		bool operator==(const RemapListIterator& rhs) const { return m_iter == rhs.m_iter;}
+		bool operator!=(const RemapListIterator& rhs) const { return (m_iter != rhs.m_iter); }
+  
+    std::vector<int32_t> operator*() const 
+    { 
+      int size = m_iter->attribute(L"size").as_int();
+      std::vector<int32_t> remapList(size); 
+      std::string strData = ws2s(m_iter->attribute(L"val").as_string());
+      std::stringstream strIn(strData.data());
+      for(int i=0;i<size;i++)
+        strIn >> remapList[i]; 
+      return remapList;
+    }
+  
+		const RemapListIterator& operator++() { ++m_iter; return *this; }
+		RemapListIterator operator++(int)     { m_iter++; return *this; }
+  
+		const RemapListIterator& operator--() { --m_iter; return *this; }
+		RemapListIterator operator--(int)     { m_iter--; return *this; }
+  
+  private:
+    pugi::xml_node_iterator m_iter;
+	};
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -210,11 +246,15 @@ namespace hydra_xml
                                                                                        LocIterator(m_texturesLib.end(), m_libraryRootDir)
                                                                                        ); }
 
-    pugi::xml_object_range<InstIterator> InstancesGeom() { return pugi::xml_object_range(InstIterator(m_sceneNode.child(L"scene").child(L"instance"), m_sceneNode.child(L"scene").end()), 
-                                                                                         InstIterator(m_sceneNode.child(L"scene").end(), m_sceneNode.child(L"scene").end())
+    pugi::xml_object_range<InstIterator> InstancesGeom() { return pugi::xml_object_range(InstIterator(m_scenesNode.child(L"scene").child(L"instance"), m_scenesNode.child(L"scene").end()), 
+                                                                                         InstIterator(m_scenesNode.child(L"scene").end(), m_scenesNode.child(L"scene").end())
                                                                                          ); }
     
     std::vector<LightInstance> InstancesLights(uint32_t a_sceneId = 0);
+
+    pugi::xml_object_range<RemapListIterator> RemapLists()  { return pugi::xml_object_range(RemapListIterator(m_scenesNode.child(L"scene").child(L"remap_lists").begin()), 
+                                                                                            RemapListIterator(m_scenesNode.child(L"scene").child(L"remap_lists").end())
+                                                                                            ); }
 
     pugi::xml_object_range<CamIterator> Cameras() { return pugi::xml_object_range(CamIterator(m_cameraLib.begin()), 
                                                                                   CamIterator(m_cameraLib.end())); }
@@ -233,14 +273,14 @@ namespace hydra_xml
     void LogError(const std::string &msg);  
     
     std::set<std::string> unique_meshes;
-    std::string m_libraryRootDir;
-    pugi::xml_node m_texturesLib ; 
-    pugi::xml_node m_materialsLib; 
-    pugi::xml_node m_geometryLib ; 
-    pugi::xml_node m_lightsLib   ;
-    pugi::xml_node m_cameraLib   ; 
-    pugi::xml_node m_settingsNode; 
-    pugi::xml_node m_sceneNode   ; 
+    std::string        m_libraryRootDir;
+    pugi::xml_node     m_texturesLib; 
+    pugi::xml_node     m_materialsLib; 
+    pugi::xml_node     m_geometryLib; 
+    pugi::xml_node     m_lightsLib;
+    pugi::xml_node     m_cameraLib; 
+    pugi::xml_node     m_settingsNode; 
+    pugi::xml_node     m_scenesNode; 
     pugi::xml_document m_xmlDoc;
 
     std::unordered_map<std::string, std::vector<LiteMath::float4x4> > m_instancesPerMeshLoc;
