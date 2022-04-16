@@ -866,34 +866,60 @@
             ]
         },
 
-
         {
-            "name"   : "Launch (app_23/GLSL)",
+            "name"   : "Launch (app_23_2dsolver/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-release/kslicer",
-            "args"   : ["${workspaceFolder}/apps/23_reinhard_tm/reinhard.cpp",
-                        "-mainClass", "ReinhardTM", 
+            "args"   : ["${workspaceFolder}/apps/23_updated_cfd_solver/src/test_class.cpp",
+                        "-mainClass", "Solver", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
-                        "-reorderLoops", "YX", 
-                        "-I${workspaceFolder}/apps/LiteMath", "ignore", 
                         "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
                         "-DKERNEL_SLICER",
                         "-v"],
-            "stopAtEntry"    : false,
-            "cwd"            : "${workspaceFolder}",
-            "environment"    : [],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
             "externalConsole": false,
-            "MIMode"         : "gdb",
-            "setupCommands"  : [
+            "MIMode": "gdb",
+            "setupCommands": [
                 {
-                    "description"   : "Enable pretty-printing for gdb",
-                    "text"          : "-enable-pretty-printing",
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
             ]
         },
+   
+        //{
+        //    "name"   : "Launch (app_23/GLSL)",
+        //    "type"   : "cppdbg",
+        //    "request": "launch",
+        //    "program": "${workspaceFolder}/cmake-build-release/kslicer",
+        //    "args"   : ["${workspaceFolder}/apps/23_reinhard_tm/reinhard.cpp",
+        //                "-mainClass", "ReinhardTM", 
+        //                "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+        //                "-pattern", "ipv",
+        //                "-reorderLoops", "YX", 
+        //                "-I${workspaceFolder}/apps/LiteMath", "ignore", 
+        //                "-shaderCC", "glsl",
+        //                "-DKERNEL_SLICER",
+        //                "-v"],
+        //    "stopAtEntry"    : false,
+        //    "cwd"            : "${workspaceFolder}",
+        //    "environment"    : [],
+        //    "externalConsole": false,
+        //    "MIMode"         : "gdb",
+        //    "setupCommands"  : [
+        //        {
+        //            "description"   : "Enable pretty-printing for gdb",
+        //            "text"          : "-enable-pretty-printing",
+        //            "ignoreFailures": true
+        //        }
+        //    ]
+        //},
 
 
         {

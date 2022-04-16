@@ -401,9 +401,9 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
 ## endfor
   {% if UseServiceMemCopy %}
   {% if MultipleSourceShaders %}
-  std::string servPath = {% if ShaderGLSL %}"{{ShaderFolder}}/z_memcpy.comp.spv"{% else %}"{{ShaderFolder}}/serv_kernels.cpp.spv"{% endif %}; 
+  std::string servPath = AlterShaderPath({% if ShaderGLSL %}"{{ShaderFolder}}/z_memcpy.comp.spv"{% else %}"{{ShaderFolder}}/serv_kernels.cpp.spv"{% endif %}); 
   {% else %}
-  std::string servPath = a_filePath;
+  std::string servPath = AlterShaderPath(a_filePath);
   {% endif %}
   {% if UseSpecConstWgSize %}
   {
