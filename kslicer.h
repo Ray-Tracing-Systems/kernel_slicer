@@ -1018,6 +1018,7 @@ namespace kslicer
   static constexpr size_t READ_BEFORE_USE_THRESHOLD = sizeof(float)*4;
 
   void PrintError(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm);
+  void PrintWarning(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm);
   //const clang::SourceManager&
 
 

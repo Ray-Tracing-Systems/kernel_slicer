@@ -108,6 +108,20 @@ void kslicer::PrintError(const std::string& a_msg, const clang::SourceRange& a_r
   std::cout << "--> " << code.c_str() << std::endl;
 }
 
+void kslicer::PrintWarning(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm)
+{
+  const auto beginLoc  = a_range.getBegin();
+  const auto inFileLoc = a_sm.getPresumedLoc(beginLoc);
+  
+  const auto fileName = std::string(a_sm.getFilename(beginLoc));
+  const auto line     = inFileLoc.getLine();
+  const auto col      = inFileLoc.getColumn();
+
+  std::string code = GetRangeSourceCode(a_range, a_sm);
+
+  std::cout << fileName.c_str() << ":" << line << ":" << col << ": warning: " << a_msg << " --> " << code.c_str() << std::endl;
+}
+
 std::string kslicer::CutOffFileExt(const std::string& a_filePath)
 {
   const size_t lastindex = a_filePath.find_last_of("."); 

@@ -907,7 +907,8 @@ bool kslicer::KernelRewriter::VisitBinaryOperator_Impl(BinaryOperator* expr) // 
   
   if(!isa<CallExpr>(rhs))
   {
-    PrintError("unsupported expression for reduction via assigment inside loop; must be 'a = f(a,b)'", rhs->getSourceRange(), m_compiler.getSourceManager());
+    PrintWarning("unsupported expression for reduction via assigment inside loop; must be 'a = f(a,b)'", rhs->getSourceRange(), m_compiler.getSourceManager());
+    PrintWarning("reduction for variable '" +  leftStr + "' will not be generated, sure this is ok for you?", rhs->getSourceRange(), m_compiler.getSourceManager());
     return true;
   }
   
