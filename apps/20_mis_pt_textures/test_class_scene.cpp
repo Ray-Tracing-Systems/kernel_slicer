@@ -7,6 +7,11 @@ using cmesh::SimpleMesh;
 #define LAYOUT_STD140 // !!! PLEASE BE CAREFUL WITH THIS !!!
 #include "hydraxml.h"
 
+#include "Image2d.h"
+
+using LiteImage::Image2D;
+using LiteImage::Sampler;
+
 #include <string>
 #include <cstdint>
 #include <unordered_map>
@@ -122,10 +127,10 @@ HydraSampler ReadSamplerFromColorNode(const pugi::xml_node a_colorNodes)
 //bool LoadLDRImageFromFile(const wchar_t* a_fileName, int* pW, int* pH, std::vector<uint32_t>& a_data);
 //bool SaveLDRImageToFile  (const wchar_t* a_fileName, int w, int h, uint32_t* data);
 
-std::shared_ptr<ITexture2DCombined> MakeWhiteDummy()
+std::shared_ptr<ICombinedImageSampler> MakeWhiteDummy()
 {
   constexpr uint32_t WHITE = 0x00FFFFFF;
-  std::shared_ptr< Texture2D<uint32_t> > pTexture1 = std::make_shared< Texture2D<uint32_t> >(1, 1, &WHITE);
+  std::shared_ptr< Image2D<uint32_t> > pTexture1 = std::make_shared< Image2D<uint32_t> >(1, 1, &WHITE);
   Sampler sampler;
   sampler.filter   = Sampler::Filter::NEAREST; 
   sampler.addressU = Sampler::AddressMode::CLAMP;
@@ -133,9 +138,9 @@ std::shared_ptr<ITexture2DCombined> MakeWhiteDummy()
   return MakeCombinedTexture2D(pTexture1, sampler);
 }
 
-std::shared_ptr<ITexture2DCombined> LoadTextureAndMakeCombined(const TextureInfo& a_texInfo, const Sampler& a_sampler)
+std::shared_ptr<ICombinedImageSampler> LoadTextureAndMakeCombined(const TextureInfo& a_texInfo, const Sampler& a_sampler)
 {
-  std::shared_ptr<ITexture2DCombined> pResult = nullptr;
+  std::shared_ptr<ICombinedImageSampler> pResult = nullptr;
   int wh[2] = {0,0};
   
   #ifdef WIN32
@@ -154,7 +159,7 @@ std::shared_ptr<ITexture2DCombined> LoadTextureAndMakeCombined(const TextureInfo
     fin.read((char*)data.data(), sizeof(float)*4*data.size());
     fin.close();
 
-    auto pTexture = std::make_shared< Texture2D<float4> >(wh[0], wh[1], (const float4*)data.data());
+    auto pTexture = std::make_shared< Image2D<float4> >(wh[0], wh[1], (const float4*)data.data());
     pResult = MakeCombinedTexture2D(pTexture, a_sampler);
   }
   else
@@ -163,7 +168,7 @@ std::shared_ptr<ITexture2DCombined> LoadTextureAndMakeCombined(const TextureInfo
     fin.read((char*)data.data(), sizeof(uint32_t)*data.size());
     fin.close();
 
-    auto pTexture = std::make_shared< Texture2D<uint32_t> >(wh[0], wh[1], data.data());
+    auto pTexture = std::make_shared< Image2D<uint32_t> >(wh[0], wh[1], data.data());
     pTexture->setSRGB(true);
     pResult = MakeCombinedTexture2D(pTexture, a_sampler);
   }

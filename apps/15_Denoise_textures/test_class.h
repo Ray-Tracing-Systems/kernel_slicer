@@ -5,11 +5,11 @@
 #include <iostream>
 #include <fstream>
 
-#include "sampler.h"
-#include "texture2d.h"
+#include "Image2d.h"
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+using LiteImage::Image2D;
+using LiteImage::Sampler;
+using namespace LiteMath;
 
 class Denoise 
 {
@@ -28,17 +28,17 @@ protected:
   void kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_height, unsigned int* a_outData1ui, 
                                           const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
 
-  float NLMWeight(const Texture2D<float4>& a_texture, int w, int h, int x, int y, int x1, int y1, int a_blockRadius);
+  float NLMWeight(const Image2D<float4>& a_texture, int w, int h, int x, int y, int x1, int y1, int a_blockRadius);
 
   int                    m_width            = 0;
   int                    m_height           = 0;
   int                    m_sizeImg          = 0;
   int                    m_linesDone        = 0;
   
-  Texture2D<float4> m_hdrColor;
-  Texture2D<float4> m_texColor;
-  Texture2D<float4> m_normDepth;
-  Sampler           m_sampler; 
+  Image2D<float4> m_hdrColor;
+  Image2D<float4> m_texColor;
+  Image2D<float4> m_normDepth;
+  Sampler         m_sampler; 
 
   static constexpr float m_gamma            = 2.2F;
 

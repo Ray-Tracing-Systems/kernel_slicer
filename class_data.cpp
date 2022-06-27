@@ -45,7 +45,7 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
   //
   for(const auto& keyval : a_vars)
   {
-    if(!keyval.second.isContainer && keyval.second.usedInKernel && keyval.second.type != "struct Sampler") // exclude texture samplers
+    if(!keyval.second.isContainer && keyval.second.usedInKernel && !IsSamplerTypeName(keyval.second.type)) // exclude texture samplers
       resVars.push_back(keyval.second);
     else if((keyval.second.usedInKernel || keyval.second.usedInMainFn) && keyval.second.isContainer && !keyval.second.IsUsedTexture())
     {

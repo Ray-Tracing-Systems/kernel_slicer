@@ -12,6 +12,13 @@
 #include "vk_copy.h"
 #include "vk_context.h"
 
+{% if length(TextureMembers) > 0 or length(ClassTexArrayVars) > 0 %}
+#include "Image2d.h"
+using LiteImage::Image2D;
+using LiteImage::Sampler;
+using namespace LiteMath;
+{% endif %}
+
 {{Includes}}
 
 ## for Decl in ClassDecls  

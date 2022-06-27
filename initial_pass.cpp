@@ -497,8 +497,7 @@ void kslicer::CheckInterlanIncInExcludedFolders(const std::vector<std::string>& 
   stopList.push_back("LiteMath.h");
   stopList.push_back("LiteMathGPU.h");
   stopList.push_back("aligned_alloc.h");
-  stopList.push_back("sampler.h");
-  stopList.push_back("texture2d.h");
+  stopList.push_back("Image2d.h");
 
   for(const auto path : a_folders) {
     for (const auto& entry : fs::directory_iterator(path)) {

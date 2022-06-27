@@ -7,7 +7,6 @@
 #include <cmath>
 
 #include "test_class.h"
-#include "Bitmap.h"
 #include "ArgParser.h"
 
 bool LoadHDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<float>& a_data);   // defined in imageutils.cpp
@@ -122,9 +121,9 @@ int main(int argc, const char** argv)
   pImpl->NLM_denoise (w, h, ldrData.data(), windowRadius, blockRadius, noiseLevel);
 
   if(onGPU)
-    SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);  
+    LiteImage::SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);  
   else
-    SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);  
+    LiteImage::SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);  
 
   float timings[4] = {0,0,0,0};
   pImpl->GetExecutionTime("NLM_denoise", timings);

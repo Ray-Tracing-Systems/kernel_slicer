@@ -1,7 +1,6 @@
 #include "test_class.h"
-#include "Bitmap.h"
-#include "texture2d.h"
-#include "sampler.h"
+#include "Image2d.h"
+
 #include <cassert>
 
 inline uint pitch(uint x, uint y, uint pitch) { return y * pitch + x; } 
@@ -58,7 +57,7 @@ void ToneMapping::SetSize(const int w, const int h)
   m_sampler.filter = Sampler::Filter::LINEAR; 
 }
 
-void ToneMapping::Bloom(const int a_width, const int a_height, const Texture2D<float4>& a_texture2d, unsigned int* outData1ui)
+void ToneMapping::Bloom(const int a_width, const int a_height, const Image2D<float4>& a_texture2d, unsigned int* outData1ui)
 {
   // (1) ExtractBrightPixels (a_texture2d => m_brightPixels (w,h))
   //
@@ -83,7 +82,7 @@ void ToneMapping::Bloom(const int a_width, const int a_height, const Texture2D<f
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ToneMapping::kernel2D_ExtractBrightPixels(const int a_width, const int a_height, const Texture2D<float4>& a_texture2d, Texture2D<float4>& a_brightPixels)
+void ToneMapping::kernel2D_ExtractBrightPixels(const int a_width, const int a_height, const Image2D<float4>& a_texture2d, Image2D<float4>& a_brightPixels)
 {  
   #pragma omp parallel for
   for(int y = 0; y < a_height; y++)
@@ -104,7 +103,7 @@ void ToneMapping::kernel2D_ExtractBrightPixels(const int a_width, const int a_he
 
 
 void ToneMapping::kernel2D_DownSample4x(const int a_width, const int a_height, 
-                                        const Texture2D<float4>& a_texture2dFullRes, Texture2D<float4>& a_dataSmallRes)
+                                        const Image2D<float4>& a_texture2dFullRes, Image2D<float4>& a_dataSmallRes)
 {
   #pragma omp parallel for
   for(int j = 0; j < a_height; j++)
@@ -126,7 +125,7 @@ void ToneMapping::kernel2D_DownSample4x(const int a_width, const int a_height,
 
 
 void ToneMapping::kernel2D_BlurX(const int a_width, const int a_height, 
-                                 const Texture2D<float4>& a_texture2d, Texture2D<float4>& a_dataOut)
+                                 const Image2D<float4>& a_texture2d, Image2D<float4>& a_dataOut)
 {
   #pragma omp parallel for
   for(int tidY = 0; tidY < a_height; tidY++)
@@ -157,7 +156,7 @@ void ToneMapping::kernel2D_BlurX(const int a_width, const int a_height,
 
 
 void ToneMapping::kernel2D_BlurY(const int a_width, const int a_height, 
-                                 const Texture2D<float4>& a_texture2d, Texture2D<float4>& a_dataOut)
+                                 const Image2D<float4>& a_texture2d, Image2D<float4>& a_dataOut)
 {
   #pragma omp parallel for
   for(int tidY = 0; tidY < a_height; tidY++)
@@ -188,7 +187,7 @@ void ToneMapping::kernel2D_BlurY(const int a_width, const int a_height,
 
 
 
-void ToneMapping::kernel2D_MixAndToneMap(const int a_width, const int a_height, const Texture2D<float4>& a_texture2d,
+void ToneMapping::kernel2D_MixAndToneMap(const int a_width, const int a_height, const Image2D<float4>& a_texture2d,
                                          unsigned int* outData1ui)
 {
   #pragma omp parallel for

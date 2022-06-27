@@ -554,7 +554,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["SamplerMembers"] = std::vector<std::string>();
   for(const auto& member : a_classInfo.allDataMembers)
   {
-    if(member.second.type == "struct Sampler")
+    if(kslicer::IsSamplerTypeName(member.second.type))
       data["SamplerMembers"].push_back(member.second.name);
   }
 

@@ -1401,7 +1401,7 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
         ReplaceFirst(typeName2, "const ",  ""); // remove 'const '
         ReplaceFirst(typeName2, "struct ", ""); // remove 'struct '
         ReplaceFirst(objName, "->",  "");       // remove '->'
-        needRewrite = (typeName2 == "ITexture2DCombined") || (typeName2 == "ITexture3DCombined") || (typeName2 == "ITextureCubeCombined");
+        needRewrite = kslicer::IsCombinedImageSamplerTypeName(typeName2);
         texCoordId  = 0;                                         ///<! combinedObject->sample(texCoord)
       }
       else if(!kslicer::IsTexture(leftType))

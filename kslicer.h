@@ -34,8 +34,8 @@ namespace kslicer
                           KIND_POINTER,                         ///<! float*
                           KIND_VECTOR,                          ///<! std::vector<float>
                           KIND_TEXTURE,                         ///<! Texture2D<uchar4>
-                          KIND_TEXTURE_SAMPLER_COMBINED,        ///<! std::shared_ptr<ITexture2DCombined>
-                          KIND_TEXTURE_SAMPLER_COMBINED_ARRAY,  ///<! std::vector< std::shared_ptr<ITexture2DCombined> >
+                          KIND_TEXTURE_SAMPLER_COMBINED,        ///<! std::shared_ptr<ICombinedImageSampler>
+                          KIND_TEXTURE_SAMPLER_COMBINED_ARRAY,  ///<! std::vector< std::shared_ptr<ICombinedImageSampler> >
                           KIND_ACCEL_STRUCT,                    ///<! std::shared_ptr<ISceneObject>
                           KIND_HASH_TABLE,                      ///<! std::unordered_map<uint32_t,uint32_t> 
                           KIND_SAMPLER                          ///<! Sampler
@@ -65,6 +65,8 @@ namespace kslicer
   };
 
   bool  IsTextureContainer(const std::string& a_typeName); ///<! return true for all types of textures
+  bool  IsSamplerTypeName(const std::string& a_typeName);  ///<! return true for all types of textures
+  bool  IsCombinedImageSamplerTypeName(const std::string& a_typeName);  ///<! return true for all types of image combined samplers
 
   struct ArgMatch
   {

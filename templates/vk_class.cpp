@@ -11,6 +11,7 @@
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
 
+
 {% if length(SceneMembers) > 0 %}
 #include "CrossRT.h"
 ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_graphicsQId, std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper,
@@ -141,12 +142,12 @@ void {{MainClassName}}_Generated::UpdateTextureMembers(std::shared_ptr<vk_utils:
   {% if length(ClassTextureVars) > 0 or length(ClassTexArrayVars) > 0 %}
   {% for Var in ClassTextureVars %}
   {% if Var.NeedUpdate %}
-  a_pCopyEngine->UpdateImage(m_vdata.{{Var.Name}}Texture, {{Var.Name}}{{Var.AccessSymb}}getRawData(), {{Var.Name}}{{Var.AccessSymb}}width(), {{Var.Name}}{{Var.AccessSymb}}height(), {{Var.Name}}{{Var.AccessSymb}}bpp(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL); 
+  a_pCopyEngine->UpdateImage(m_vdata.{{Var.Name}}Texture, {{Var.Name}}{{Var.AccessSymb}}data(), {{Var.Name}}{{Var.AccessSymb}}width(), {{Var.Name}}{{Var.AccessSymb}}height(), {{Var.Name}}{{Var.AccessSymb}}bpp(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL); 
   {% endif %}
   {% endfor %}
   {% for Var in ClassTexArrayVars %}
   for(int i=0;i<m_vdata.{{Var.Name}}ArrayTexture.size();i++)
-    a_pCopyEngine->UpdateImage(m_vdata.{{Var.Name}}ArrayTexture[i], {{Var.Name}}[i]->getRawData(), {{Var.Name}}[i]->width(), {{Var.Name}}[i]->height(), {{Var.Name}}[i]->bpp(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL); 
+    a_pCopyEngine->UpdateImage(m_vdata.{{Var.Name}}ArrayTexture[i], {{Var.Name}}[i]->data(), {{Var.Name}}[i]->width(), {{Var.Name}}[i]->height(), {{Var.Name}}[i]->bpp(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL); 
   {% endfor %}
   
   std::array<VkImageMemoryBarrier, {{length(ClassTextureVars)}}> barriers;
@@ -569,7 +570,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   m_exTime{{MainFunc.Name}}.msAPIOverhead += std::chrono::duration_cast<std::chrono::microseconds>(beforeCopy - beforeSetInOut).count()/1000.f;
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
-  pCopyHelper->UpdateImage({{var.Name}}Img.image, {{var.Name}}.getRawData(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp(), VK_IMAGE_LAYOUT_GENERAL);
+  pCopyHelper->UpdateImage({{var.Name}}Img.image, {{var.Name}}.data(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp(), VK_IMAGE_LAYOUT_GENERAL);
   {% else %}
   pCopyHelper->UpdateBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}})); 
   {# /* pCopyHelper->UpdateBuffer(tempBuffer, {{var.Name}}Offset, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}})); */ #}
@@ -653,7 +654,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   {% for var in MainFunc.FullImpl.OutputData %}
   {% if var.IsTexture %}
   //todo: change image layout before transfer?
-  pCopyHelper->ReadImage({{var.Name}}Img.image, {{var.Name}}.getRawData(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp());
+  pCopyHelper->ReadImage({{var.Name}}Img.image, {{var.Name}}.data(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp());
   {% else %}
   pCopyHelper->ReadBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {# /* pCopyHelper->ReadBuffer(tempBuffer, {{var.Name}}Offset, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}})); */ #}

@@ -821,7 +821,7 @@ int main(int argc, const char **argv)
           std::vector<kslicer::DataMemberInfo> samplerMembers;
           for(auto x : usedMembers)
           {
-            if(x.second.type == "struct Sampler" || x.second.type == "struct sampler")
+            if(kslicer::IsSamplerTypeName(x.second.type))
             {
               auto y = x.second; 
               y.kind = kslicer::DATA_KIND::KIND_SAMPLER;
@@ -834,7 +834,7 @@ int main(int argc, const char **argv)
             k.second.usedMembers.insert(member.first);
             member.second.usedInKernel = true;
 
-            if(member.second.type == "struct Sampler" || member.second.type == "struct sampler") // actually this is not correct!!!
+            if(kslicer::IsSamplerTypeName(member.second.type)) // actually this is not correct!!!
             {
               for(auto sampler : samplerMembers)
               {

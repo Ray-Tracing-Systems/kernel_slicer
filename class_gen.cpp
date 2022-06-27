@@ -96,6 +96,29 @@ bool kslicer::IsTextureContainer(const std::string& a_typeName)
   return false;
 } 
 
+bool kslicer::IsSamplerTypeName(const std::string& a_typeName)
+{
+  if(a_typeName == "struct Sampler")
+    return true;
+  auto posOfXX = a_typeName.find_last_of("::");
+  auto name2   = a_typeName.substr(posOfXX+1);
+  if(name2 == "Sampler" || name2 == "Sampler")
+    return true;
+  return false;
+}
+
+bool kslicer::IsCombinedImageSamplerTypeName(const std::string& a_typeName)
+{
+  if(a_typeName == "struct ICombinedImageSampler")
+    return true;
+  auto posOfXX = a_typeName.find_last_of("::");
+  auto name2   = a_typeName.substr(posOfXX+1);
+  if(name2 == "ICombinedImageSampler" || name2 == "ICombinedImageSampler")
+    return true;
+  return false;
+}
+
+
 bool kslicer::MainClassInfo::IsIndirect(const KernelInfo& a_kernel) const
 {
   bool isIndirect = false;

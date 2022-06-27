@@ -26,8 +26,8 @@ protected:
 
   void kernel2D_Run(const int a_width, const int a_height, unsigned int* outData1ui);
   
-  std::vector< std::shared_ptr<ITexture2DCombined> > m_textures;
-  std::vector< const ITexture2DCombined* >           m_textures2;
+  std::vector< std::shared_ptr<ICombinedImageSampler> > m_textures;
+  std::vector< const ICombinedImageSampler* >           m_textures2;
 
   int                 m_blurRadius;                  
   int                 m_width;

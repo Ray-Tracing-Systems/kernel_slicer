@@ -582,7 +582,7 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
     
     if(containerDataType == "ISceneObject")
       kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
-    else if(containerDataType == "ITexture2DCombined" || containerDataType == "ITexture3DCombined" || containerDataType == "ITextureCubeCombined")
+    else if(kslicer::IsCombinedImageSamplerTypeName(containerDataType))
       kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED;
     else
       kind = kslicer::DATA_KIND::KIND_POINTER;
@@ -600,7 +600,7 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
     {
       if(containerDataType == "ISceneObject")
         kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
-      else if(containerDataType == "ITexture2DCombined" || containerDataType == "ITexture3DCombined" || containerDataType == "ITextureCubeCombined")
+      else if(kslicer::IsCombinedImageSamplerTypeName(containerDataType))
         kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED;
     }
     else if(containerType.find("vector") != std::string::npos)
@@ -619,7 +619,7 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
           auto specDecl2 = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl2); 
           kslicer::SplitContainerTypes(specDecl2, containerType, containerDataType);
           containerDataType = kslicer::CleanTypeName(containerDataType);
-          if(containerDataType == "ITexture2DCombined" || containerDataType == "ITexture3DCombined" || containerDataType == "ITextureCubeCombined")
+          if(kslicer::IsCombinedImageSamplerTypeName(containerDataType))
             kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY;
           else
             kind = kslicer::DATA_KIND::KIND_VECTOR; 
@@ -628,7 +628,7 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
         {
           auto dataType2 = typeOfData->getPointeeType();
           containerDataType = kslicer::CleanTypeName(dataType2.getAsString());
-          if(containerDataType == "ITexture2DCombined" || containerDataType == "ITexture3DCombined" || containerDataType == "ITextureCubeCombined")
+          if(kslicer::IsCombinedImageSamplerTypeName(containerDataType))
             kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY;
           else
             kind = kslicer::DATA_KIND::KIND_VECTOR; 

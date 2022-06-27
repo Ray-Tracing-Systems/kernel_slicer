@@ -31,7 +31,9 @@
 //#endif
 #endif
 
-#define __global 
+#ifndef __APPLE__
+#define __global
+#endif
 
 namespace LiteMath
 { 
@@ -57,21 +59,21 @@ namespace LiteMath
   static inline int as_int(float x) 
   {
     int res; 
-    memcpy(&res, &x, sizeof(float)); // modern C++ allow only this way, speed ik ok, check assembly with godbolt
+    memcpy((void*)&res, (void*)&x, sizeof(float)); // modern C++ allow only this way, speed ik ok, check assembly with godbolt
     return res; 
   }
 
   static inline uint as_uint(float x) 
   {
     uint res; 
-    memcpy(&res, &x, sizeof(float)); // modern C++ allow only this way, speed ik ok, check assembly with godbolt
+    memcpy((void*)&res, (void*)&x, sizeof(float)); // modern C++ allow only this way, speed ik ok, check assembly with godbolt
     return res; 
   }
 
   static inline float as_float(int x)
   {
     float res; 
-    memcpy(&res, &x, sizeof(float)); // modern C++ allow only this way, speed ik ok, check assembly with godbolt
+    memcpy((void*)&res, (void*)&x, sizeof(float)); // modern C++ allow only this way, speed ik ok, check assembly with godbolt
     return res; 
   }
 
@@ -93,6 +95,7 @@ namespace LiteMath
 
   static inline float  lerp(float u, float v, float t) { return u + t * (v - u);  } 
   static inline float  mix (float u, float v, float t) { return u + t * (v - u);  } 
+  static inline float  dot (float a, float b)          { return a*b;  } 
 
   static inline float smoothstep(float edge0, float edge1, float x)
   {
@@ -120,7 +123,16 @@ namespace LiteMath
     else           return +1;
   }
 
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  struct uint4;
+  struct int4;
+  struct float4;
+  struct uint3;
+  struct int3;
+  struct float3;
+  struct uint2;
+  struct int2;
+  struct float2;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -131,6 +143,9 @@ namespace LiteMath
     inline explicit uint4(uint a_val) : x(a_val), y(a_val), z(a_val), w(a_val) {}
     inline explicit uint4(const uint a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
 
+    inline explicit uint4(float4 a); 
+    inline explicit uint4(int4 a); 
+    
     inline uint& operator[](int i)       { return M[i]; }
     inline uint  operator[](int i) const { return M[i]; }
 
@@ -183,8 +198,8 @@ namespace LiteMath
   static inline bool any_of(const uint4 a) { return (a.x != 0 || a.y != 0 || a.z != 0 || a.w != 0); } 
  
 
-  static inline void store  (uint* p, const uint4 a_val) { memcpy(p, &a_val, sizeof(uint)*4); }
-  static inline void store_u(uint* p, const uint4 a_val) { memcpy(p, &a_val, sizeof(uint)*4); }  
+  static inline void store  (uint* p, const uint4 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(uint)*4); }
+  static inline void store_u(uint* p, const uint4 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(uint)*4); }  
 
 
   static inline uint4 min  (const uint4 a, const uint4 b) { return uint4{std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z), std::min(a.w, b.w)}; }
@@ -232,7 +247,6 @@ namespace LiteMath
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   struct int4
   {
@@ -241,6 +255,9 @@ namespace LiteMath
     inline explicit int4(int a_val) : x(a_val), y(a_val), z(a_val), w(a_val) {}
     inline explicit int4(const int a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
 
+    inline explicit int4(float4 a); 
+    inline explicit int4(uint4 a); 
+    
     inline int& operator[](int i)       { return M[i]; }
     inline int  operator[](int i) const { return M[i]; }
 
@@ -293,8 +310,8 @@ namespace LiteMath
   static inline bool any_of(const int4 a) { return (a.x != 0 || a.y != 0 || a.z != 0 || a.w != 0); } 
  
 
-  static inline void store  (int* p, const int4 a_val) { memcpy(p, &a_val, sizeof(int)*4); }
-  static inline void store_u(int* p, const int4 a_val) { memcpy(p, &a_val, sizeof(int)*4); }  
+  static inline void store  (int* p, const int4 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(int)*4); }
+  static inline void store_u(int* p, const int4 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(int)*4); }  
 
 
   static inline int4 min  (const int4 a, const int4 b) { return int4{std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z), std::min(a.w, b.w)}; }
@@ -345,7 +362,6 @@ namespace LiteMath
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   struct float4
   {
@@ -354,6 +370,9 @@ namespace LiteMath
     inline explicit float4(float a_val) : x(a_val), y(a_val), z(a_val), w(a_val) {}
     inline explicit float4(const float a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
 
+    inline explicit float4(int4 a); 
+    inline explicit float4(uint4 a); 
+    
     inline float& operator[](int i)       { return M[i]; }
     inline float  operator[](int i) const { return M[i]; }
 
@@ -396,8 +415,8 @@ namespace LiteMath
   static inline uint4 operator==(const float4 a, const float4 b) { return uint4{a.x == b.x ? 0xFFFFFFFF : 0, a.y == b.y ? 0xFFFFFFFF : 0, a.z == b.z ? 0xFFFFFFFF : 0, a.w == b.w ? 0xFFFFFFFF : 0}; }
   static inline uint4 operator!=(const float4 a, const float4 b) { return uint4{a.x != b.x ? 0xFFFFFFFF : 0, a.y != b.y ? 0xFFFFFFFF : 0, a.z != b.z ? 0xFFFFFFFF : 0, a.w != b.w ? 0xFFFFFFFF : 0}; }
 
-  static inline void store  (float* p, const float4 a_val) { memcpy(p, &a_val, sizeof(float)*4); }
-  static inline void store_u(float* p, const float4 a_val) { memcpy(p, &a_val, sizeof(float)*4); }  
+  static inline void store  (float* p, const float4 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(float)*4); }
+  static inline void store_u(float* p, const float4 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(float)*4); }  
 
 
   static inline float4 min  (const float4 a, const float4 b) { return float4{std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z), std::min(a.w, b.w)}; }
@@ -474,7 +493,6 @@ namespace LiteMath
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   struct uint3
   {
@@ -483,6 +501,9 @@ namespace LiteMath
     inline explicit uint3(uint a_val) : x(a_val), y(a_val), z(a_val) {}
     inline explicit uint3(const uint a[3]) : x(a[0]), y(a[1]), z(a[2]) {}
 
+    inline explicit uint3(float3 a); 
+    inline explicit uint3(int3 a); 
+    
     inline uint& operator[](int i)       { return M[i]; }
     inline uint  operator[](int i) const { return M[i]; }
 
@@ -539,8 +560,8 @@ namespace LiteMath
   static inline bool any_of(const uint3 a) { return (a.x != 0 || a.y != 0 || a.z != 0); } 
  
 
-  static inline void store  (uint* p, const uint3 a_val) { memcpy(p, &a_val, sizeof(uint)*3); }
-  static inline void store_u(uint* p, const uint3 a_val) { memcpy(p, &a_val, sizeof(uint)*3); }  
+  static inline void store  (uint* p, const uint3 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(uint)*3); }
+  static inline void store_u(uint* p, const uint3 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(uint)*3); }  
 
 
   static inline uint3 min  (const uint3 a, const uint3 b) { return uint3{std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z)}; }
@@ -579,7 +600,6 @@ namespace LiteMath
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   struct int3
   {
@@ -588,6 +608,9 @@ namespace LiteMath
     inline explicit int3(int a_val) : x(a_val), y(a_val), z(a_val) {}
     inline explicit int3(const int a[3]) : x(a[0]), y(a[1]), z(a[2]) {}
 
+    inline explicit int3(float3 a); 
+    inline explicit int3(uint3 a); 
+    
     inline int& operator[](int i)       { return M[i]; }
     inline int  operator[](int i) const { return M[i]; }
 
@@ -644,8 +667,8 @@ namespace LiteMath
   static inline bool any_of(const int3 a) { return (a.x != 0 || a.y != 0 || a.z != 0); } 
  
 
-  static inline void store  (int* p, const int3 a_val) { memcpy(p, &a_val, sizeof(int)*3); }
-  static inline void store_u(int* p, const int3 a_val) { memcpy(p, &a_val, sizeof(int)*3); }  
+  static inline void store  (int* p, const int3 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(int)*3); }
+  static inline void store_u(int* p, const int3 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(int)*3); }  
 
 
   static inline int3 min  (const int3 a, const int3 b) { return int3{std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z)}; }
@@ -687,7 +710,6 @@ namespace LiteMath
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   struct float3
   {
@@ -696,6 +718,9 @@ namespace LiteMath
     inline explicit float3(float a_val) : x(a_val), y(a_val), z(a_val) {}
     inline explicit float3(const float a[3]) : x(a[0]), y(a[1]), z(a[2]) {}
 
+    inline explicit float3(int3 a); 
+    inline explicit float3(uint3 a); 
+    
     inline float& operator[](int i)       { return M[i]; }
     inline float  operator[](int i) const { return M[i]; }
 
@@ -742,8 +767,8 @@ namespace LiteMath
   static inline uint3 operator==(const float3 a, const float3 b) { return uint3{a.x == b.x ? 0xFFFFFFFF : 0, a.y == b.y ? 0xFFFFFFFF : 0, a.z == b.z ? 0xFFFFFFFF : 0}; }
   static inline uint3 operator!=(const float3 a, const float3 b) { return uint3{a.x != b.x ? 0xFFFFFFFF : 0, a.y != b.y ? 0xFFFFFFFF : 0, a.z != b.z ? 0xFFFFFFFF : 0}; }
 
-  static inline void store  (float* p, const float3 a_val) { memcpy(p, &a_val, sizeof(float)*3); }
-  static inline void store_u(float* p, const float3 a_val) { memcpy(p, &a_val, sizeof(float)*3); }  
+  static inline void store  (float* p, const float3 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(float)*3); }
+  static inline void store_u(float* p, const float3 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(float)*3); }  
 
 
   static inline float3 min  (const float3 a, const float3 b) { return float3{std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z)}; }
@@ -798,7 +823,6 @@ namespace LiteMath
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   struct uint2
   {
@@ -807,6 +831,9 @@ namespace LiteMath
     inline explicit uint2(uint a_val) : x(a_val), y(a_val) {}
     inline explicit uint2(const uint a[2]) : x(a[0]), y(a[1]) {}
 
+    inline explicit uint2(float2 a); 
+    inline explicit uint2(int2 a); 
+    
     inline uint& operator[](int i)       { return M[i]; }
     inline uint  operator[](int i) const { return M[i]; }
 
@@ -859,8 +886,8 @@ namespace LiteMath
   static inline bool any_of(const uint2 a) { return (a.x != 0 || a.y != 0); } 
  
 
-  static inline void store  (uint* p, const uint2 a_val) { memcpy(p, &a_val, sizeof(uint)*2); }
-  static inline void store_u(uint* p, const uint2 a_val) { memcpy(p, &a_val, sizeof(uint)*2); }  
+  static inline void store  (uint* p, const uint2 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(uint)*2); }
+  static inline void store_u(uint* p, const uint2 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(uint)*2); }  
 
 
   static inline uint2 min  (const uint2 a, const uint2 b) { return uint2{std::min(a.x, b.x), std::min(a.y, b.y)}; }
@@ -887,7 +914,6 @@ namespace LiteMath
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   struct int2
   {
@@ -896,6 +922,9 @@ namespace LiteMath
     inline explicit int2(int a_val) : x(a_val), y(a_val) {}
     inline explicit int2(const int a[2]) : x(a[0]), y(a[1]) {}
 
+    inline explicit int2(float2 a); 
+    inline explicit int2(uint2 a); 
+    
     inline int& operator[](int i)       { return M[i]; }
     inline int  operator[](int i) const { return M[i]; }
 
@@ -948,8 +977,8 @@ namespace LiteMath
   static inline bool any_of(const int2 a) { return (a.x != 0 || a.y != 0); } 
  
 
-  static inline void store  (int* p, const int2 a_val) { memcpy(p, &a_val, sizeof(int)*2); }
-  static inline void store_u(int* p, const int2 a_val) { memcpy(p, &a_val, sizeof(int)*2); }  
+  static inline void store  (int* p, const int2 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(int)*2); }
+  static inline void store_u(int* p, const int2 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(int)*2); }  
 
 
   static inline int2 min  (const int2 a, const int2 b) { return int2{std::min(a.x, b.x), std::min(a.y, b.y)}; }
@@ -979,7 +1008,6 @@ namespace LiteMath
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   struct float2
   {
@@ -988,6 +1016,9 @@ namespace LiteMath
     inline explicit float2(float a_val) : x(a_val), y(a_val) {}
     inline explicit float2(const float a[2]) : x(a[0]), y(a[1]) {}
 
+    inline explicit float2(int2 a); 
+    inline explicit float2(uint2 a); 
+    
     inline float& operator[](int i)       { return M[i]; }
     inline float  operator[](int i) const { return M[i]; }
 
@@ -1030,8 +1061,8 @@ namespace LiteMath
   static inline uint2 operator==(const float2 a, const float2 b) { return uint2{a.x == b.x ? 0xFFFFFFFF : 0, a.y == b.y ? 0xFFFFFFFF : 0}; }
   static inline uint2 operator!=(const float2 a, const float2 b) { return uint2{a.x != b.x ? 0xFFFFFFFF : 0, a.y != b.y ? 0xFFFFFFFF : 0}; }
 
-  static inline void store  (float* p, const float2 a_val) { memcpy(p, &a_val, sizeof(float)*2); }
-  static inline void store_u(float* p, const float2 a_val) { memcpy(p, &a_val, sizeof(float)*2); }  
+  static inline void store  (float* p, const float2 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(float)*2); }
+  static inline void store_u(float* p, const float2 a_val) { memcpy((void*)p, (void*)&a_val, sizeof(float)*2); }  
 
 
   static inline float2 min  (const float2 a, const float2 b) { return float2{std::min(a.x, b.x), std::min(a.y, b.y)}; }
@@ -1076,18 +1107,30 @@ namespace LiteMath
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  inline uint4::uint4(float4 a) : x(uint(a[0])), y(uint(a[1])), z(uint(a[2])), w(uint(a[3])) {} 
+  inline uint4::uint4(int4 a) : x(uint(a[0])), y(uint(a[1])), z(uint(a[2])), w(uint(a[3])) {} 
+  
+
   static inline float4 to_float32(const uint4 a) { return float4 {float(a.x), float(a.y), float(a.z), float(a.w)}; }
-  static inline float4 as_float32(const uint4 a) { float4 res; memcpy(&res, &a, sizeof(uint)*4); return res; }
+  static inline float4 as_float32(const uint4 a) { float4 res; memcpy((void*)&res, (void*)&a, sizeof(uint)*4); return res; }
  
 
+  inline int4::int4(float4 a) : x(int(a[0])), y(int(a[1])), z(int(a[2])), w(int(a[3])) {} 
+  inline int4::int4(uint4 a) : x(int(a[0])), y(int(a[1])), z(int(a[2])), w(int(a[3])) {} 
+  
+
   static inline float4 to_float32(const int4 a) { return float4 {float(a.x), float(a.y), float(a.z), float(a.w)}; }
-  static inline float4 as_float32(const int4 a) { float4 res; memcpy(&res, &a, sizeof(uint)*4); return res; }
+  static inline float4 as_float32(const int4 a) { float4 res; memcpy((void*)&res, (void*)&a, sizeof(uint)*4); return res; }
  
+
+  inline float4::float4(int4 a) : x(float(a[0])), y(float(a[1])), z(float(a[2])), w(float(a[3])) {} 
+  inline float4::float4(uint4 a) : x(float(a[0])), y(float(a[1])), z(float(a[2])), w(float(a[3])) {} 
+  
 
   static inline int4  to_int32 (const float4 a) { return int4 {int (a.x), int (a.y), int (a.z), int (a.w)}; }
   static inline uint4 to_uint32(const float4 a) { return uint4{uint(a.x), uint(a.y), uint(a.z), uint(a.w)}; }
-  static inline int4  as_int32 (const float4 a) { int4  res; memcpy(&res, &a, sizeof(int)*4);  return res; }
-  static inline uint4 as_uint32(const float4 a) { uint4 res; memcpy(&res, &a, sizeof(uint)*4); return res; } 
+  static inline int4  as_int32 (const float4 a) { int4  res; memcpy((void*)&res, (void*)&a, sizeof(int)*4);  return res; }
+  static inline uint4 as_uint32(const float4 a) { uint4 res; memcpy((void*)&res, (void*)&a, sizeof(uint)*4); return res; } 
 
   static inline float4 reflect(const float4 dir, const float4 normal) { return normal * dot(dir, normal) * (-2.0f) + dir; }
   static inline float4 refract(const float4 incidentVec, const float4 normal, float eta)
@@ -1103,18 +1146,30 @@ namespace LiteMath
   static inline float4 faceforward(const float4 N, const float4 I, const float4 Ng) { return dot(I, Ng) < float(0) ? N : float(-1)*N; }
  
 
+  inline uint3::uint3(float3 a) : x(uint(a[0])), y(uint(a[1])), z(uint(a[2])) {} 
+  inline uint3::uint3(int3 a) : x(uint(a[0])), y(uint(a[1])), z(uint(a[2])) {} 
+  
+
   static inline float3 to_float32(const uint3 a) { return float3 {float(a.x), float(a.y), float(a.z)}; }
-  static inline float3 as_float32(const uint3 a) { float3 res; memcpy(&res, &a, sizeof(uint)*3); return res; }
+  static inline float3 as_float32(const uint3 a) { float3 res; memcpy((void*)&res, (void*)&a, sizeof(uint)*3); return res; }
  
 
+  inline int3::int3(float3 a) : x(int(a[0])), y(int(a[1])), z(int(a[2])) {} 
+  inline int3::int3(uint3 a) : x(int(a[0])), y(int(a[1])), z(int(a[2])) {} 
+  
+
   static inline float3 to_float32(const int3 a) { return float3 {float(a.x), float(a.y), float(a.z)}; }
-  static inline float3 as_float32(const int3 a) { float3 res; memcpy(&res, &a, sizeof(uint)*3); return res; }
+  static inline float3 as_float32(const int3 a) { float3 res; memcpy((void*)&res, (void*)&a, sizeof(uint)*3); return res; }
  
+
+  inline float3::float3(int3 a) : x(float(a[0])), y(float(a[1])), z(float(a[2])) {} 
+  inline float3::float3(uint3 a) : x(float(a[0])), y(float(a[1])), z(float(a[2])) {} 
+  
 
   static inline int3  to_int32 (const float3 a) { return int3 {int (a.x), int (a.y), int (a.z)}; }
   static inline uint3 to_uint32(const float3 a) { return uint3{uint(a.x), uint(a.y), uint(a.z)}; }
-  static inline int3  as_int32 (const float3 a) { int3  res; memcpy(&res, &a, sizeof(int)*3);  return res; }
-  static inline uint3 as_uint32(const float3 a) { uint3 res; memcpy(&res, &a, sizeof(uint)*3); return res; } 
+  static inline int3  as_int32 (const float3 a) { int3  res; memcpy((void*)&res, (void*)&a, sizeof(int)*3);  return res; }
+  static inline uint3 as_uint32(const float3 a) { uint3 res; memcpy((void*)&res, (void*)&a, sizeof(uint)*3); return res; } 
 
   static inline float3 reflect(const float3 dir, const float3 normal) { return normal * dot(dir, normal) * (-2.0f) + dir; }
   static inline float3 refract(const float3 incidentVec, const float3 normal, float eta)
@@ -1130,18 +1185,30 @@ namespace LiteMath
   static inline float3 faceforward(const float3 N, const float3 I, const float3 Ng) { return dot(I, Ng) < float(0) ? N : float(-1)*N; }
  
 
+  inline uint2::uint2(float2 a) : x(uint(a[0])), y(uint(a[1])) {} 
+  inline uint2::uint2(int2 a) : x(uint(a[0])), y(uint(a[1])) {} 
+  
+
   static inline float2 to_float32(const uint2 a) { return float2 {float(a.x), float(a.y)}; }
-  static inline float2 as_float32(const uint2 a) { float2 res; memcpy(&res, &a, sizeof(uint)*2); return res; }
+  static inline float2 as_float32(const uint2 a) { float2 res; memcpy((void*)&res, (void*)&a, sizeof(uint)*2); return res; }
  
 
+  inline int2::int2(float2 a) : x(int(a[0])), y(int(a[1])) {} 
+  inline int2::int2(uint2 a) : x(int(a[0])), y(int(a[1])) {} 
+  
+
   static inline float2 to_float32(const int2 a) { return float2 {float(a.x), float(a.y)}; }
-  static inline float2 as_float32(const int2 a) { float2 res; memcpy(&res, &a, sizeof(uint)*2); return res; }
+  static inline float2 as_float32(const int2 a) { float2 res; memcpy((void*)&res, (void*)&a, sizeof(uint)*2); return res; }
  
+
+  inline float2::float2(int2 a) : x(float(a[0])), y(float(a[1])) {} 
+  inline float2::float2(uint2 a) : x(float(a[0])), y(float(a[1])) {} 
+  
 
   static inline int2  to_int32 (const float2 a) { return int2 {int (a.x), int (a.y)}; }
   static inline uint2 to_uint32(const float2 a) { return uint2{uint(a.x), uint(a.y)}; }
-  static inline int2  as_int32 (const float2 a) { int2  res; memcpy(&res, &a, sizeof(int)*2);  return res; }
-  static inline uint2 as_uint32(const float2 a) { uint2 res; memcpy(&res, &a, sizeof(uint)*2); return res; } 
+  static inline int2  as_int32 (const float2 a) { int2  res; memcpy((void*)&res, (void*)&a, sizeof(int)*2);  return res; }
+  static inline uint2 as_uint32(const float2 a) { uint2 res; memcpy((void*)&res, (void*)&a, sizeof(uint)*2); return res; } 
 
   static inline float2 reflect(const float2 dir, const float2 normal) { return normal * dot(dir, normal) * (-2.0f) + dir; }
   static inline float2 refract(const float2 incidentVec, const float2 normal, float eta)
@@ -1245,6 +1312,7 @@ namespace LiteMath
   static inline uchar4 operator / (const uchar4 & u, const uchar4 & v) { return uchar4(u.x / v.x, u.y / v.y, u.z / v.z, u.w / v.w); }
   
   static inline uchar4 lerp(const uchar4 & u, const uchar4 & v, float t) { return u + t * (v - u); }
+  static inline int    dot(uchar4 a, uchar4 b) { return int(a.x)*int(b.x) + int(a.y)*int(b.y) + int(a.z)*int(b.z); }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

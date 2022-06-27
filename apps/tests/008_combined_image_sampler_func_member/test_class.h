@@ -27,8 +27,8 @@ protected:
   float4 ReadSomeTextureColor(float2 a_texCoord) const { return clamp(m_pCombinedImage->sample(a_texCoord), 0.0f, 1.0f); }
   float4 ReadSomeTextureColor2(float2 a_texCoord, int a_id) { return clamp(m_textures[a_id]->sample(a_texCoord), 0.0f, 1.0f); }  
 
-  std::shared_ptr<ITexture2DCombined> m_pCombinedImage = nullptr;
-  std::vector< std::shared_ptr<ITexture2DCombined> > m_textures;
+  std::shared_ptr<ICombinedImageSampler>                m_pCombinedImage = nullptr;
+  std::vector< std::shared_ptr<ICombinedImageSampler> > m_textures;
  
   int                 m_blurRadius;                  
   int                 m_width;

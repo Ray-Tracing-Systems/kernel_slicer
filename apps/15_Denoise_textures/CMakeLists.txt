@@ -36,13 +36,12 @@ add_compile_definitions(USE_VOLK)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -fopenmp -fPIC -Wno-attributes")
 
 add_executable(testapp main.cpp 
-                       Bitmap.cpp
                        test_class.cpp
                        test_class_generated.cpp 
                        test_class_generated_ds.cpp 
                        test_class_generated_init.cpp
                        ../14_filter_bloom_textures/imageutils.cpp 
-                       ../LiteMath/texture2d.cpp
+                       ../LiteMath/Image2d.cpp
                        ../vkutils/vk_utils.cpp
                        ../vkutils/vk_copy.cpp
                        ../vkutils/vk_buffers.cpp

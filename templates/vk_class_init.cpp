@@ -528,7 +528,7 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
   {% for Var in ClassTextureVars %}
   m_vdata.{{Var.Name}}Texture = CreateTexture2D({{Var.Name}}{{Var.AccessSymb}}width(), {{Var.Name}}{{Var.AccessSymb}}height(), VkFormat({{Var.Format}}), {{Var.Usage}});
   {% if Var.NeedSampler %}
-  m_vdata.{{Var.Name}}Sampler = CreateSampler({{Var.Name}}->getSampler());
+  m_vdata.{{Var.Name}}Sampler = CreateSampler({{Var.Name}}->sampler());
   {% endif %}
   memberTextures.push_back(m_vdata.{{Var.Name}}Texture);
   {% endfor %}
@@ -542,7 +542,7 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
   for(auto imageObj : {{Var.Name}}) 
   {
     auto tex = CreateTexture2D(imageObj->width(), imageObj->height(), VkFormat(imageObj->format()), {{Var.Usage}});
-    auto sam = CreateSampler(imageObj->getSampler());
+    auto sam = CreateSampler(imageObj->sampler());
     m_vdata.{{Var.Name}}ArrayTexture.push_back(tex);
     m_vdata.{{Var.Name}}ArrayView.push_back(VK_NULL_HANDLE);
     m_vdata.{{Var.Name}}ArraySampler.push_back(sam);

@@ -5,7 +5,6 @@
 #include <cassert>
 
 #include "test_class.h"
-#include "Bitmap.h"
 #include "ArgParser.h"
 
 #include "vk_context.h"
@@ -50,15 +49,15 @@ int main(int argc, const char** argv)
 
   // put data to texture because our class works with textures
   //
-  Texture2D<float4> texture(w, h, (const float4*)hdrData.data());
+  Image2D<float4> texture(w, h, (const float4*)hdrData.data());
   std::vector<uint> ldrData(w*h);
 
   pImpl->Bloom(w, h, texture, ldrData.data());
   
   if(onGPU)
-    SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
+    LiteImage::SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
   else
-    SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);  
+    LiteImage::SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);  
 
   float timings[4] = {0,0,0,0};
   pImpl->GetExecutionTime("Bloom", timings);

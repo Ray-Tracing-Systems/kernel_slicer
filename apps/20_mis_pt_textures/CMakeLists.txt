@@ -41,9 +41,7 @@ add_executable(testapp main.cpp
                        test_class.cpp
                        test_class2.cpp
                        test_class_scene.cpp
-                       #imageutils.cpp 
-                       Bitmap.cpp
-                       ../LiteMath/texture2d.cpp
+                       ../LiteMath/Image2d.cpp
                        test_class_generated.cpp
                        test_class_generated_init.cpp 
                        test_class_generated_ds.cpp 

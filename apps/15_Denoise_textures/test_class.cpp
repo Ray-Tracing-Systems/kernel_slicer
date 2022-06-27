@@ -1,5 +1,4 @@
 #include "test_class.h"
-#include "../14_filter_bloom_textures/Bitmap.h"
 #include <cassert>
 
 inline uint pitch(uint x, uint y, uint pitch) { return y * pitch + x; } 
@@ -98,7 +97,7 @@ static void SaveTestImage(const float4* data, int w, int h)
   for(size_t i = 0; i < sizeImg; ++i)
     ldrData[i] = RealColorToUint32(data[i], 1.0F / 2.2F);
 
-  SaveBMP("ztest.bmp", ldrData.data(), w, h);
+  LiteImage::SaveBMP("ztest.bmp", ldrData.data(), w, h);
 }
 
 void Denoise::PrepareInput(int w, int h, const float4* in_color, const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth)
@@ -151,7 +150,7 @@ void Denoise::PrepareInput(int w, int h, const float4* in_color, const int32_t* 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-float Denoise::NLMWeight(const Texture2D<float4>& a_texture, int w, int h, int x, int y, int x1, int y1, int a_blockRadius)
+float Denoise::NLMWeight(const Image2D<float4>& a_texture, int w, int h, int x, int y, int x1, int y1, int a_blockRadius)
 {
   float w1        = 0.0f;  // this is what NLM differs from KNN (bilateral)
   const int minX1 = Clampi(x1 - a_blockRadius, 0, w - 1);
