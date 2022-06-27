@@ -5,7 +5,6 @@
 #include <cassert>
 
 #include "test_class.h"
-#include "Bitmap.h"
 #include "ArgParser.h"
 
 #include "vk_context.h"
@@ -41,9 +40,9 @@ int main(int argc, const char** argv)
   pImpl->Run(width, height, color.data());
 
   if(onGPU)
-    SaveBMP("zout_gpu.bmp", color.data(), width, height);  
+    LiteImage::SaveBMP("zout_gpu.bmp", color.data(), width, height);  
   else
-    SaveBMP("zout_cpu.bmp", color.data(), width, height);  
+    LiteImage::SaveBMP("zout_cpu.bmp", color.data(), width, height);  
 
   return 0;
 }

@@ -967,6 +967,7 @@ std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
     {
       if(typeInCL.find("const ") == std::string::npos)
         typeInCL = "const " + typeInCL;
+      ReplaceFirst(typeInCL,"LiteMath::", "");
       if(a_decl.isArray)
       {
         std::stringstream sizeStr;
