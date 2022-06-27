@@ -34,10 +34,9 @@ add_compile_definitions(USE_VOLK)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -fopenmp -fPIC -Wno-attributes")
 
 add_executable(testapp 
-                      Bitmap.cpp
                       main.cpp                       
                       test_class.cpp
-                      ../../LiteMath/texture2d.cpp
+                      ../../LiteMath/Image2d.cpp
                       test_class_generated.cpp 
                       test_class_generated_ds.cpp 
                       test_class_generated_init.cpp                                             

@@ -160,6 +160,7 @@ namespace LiteImage
   */
   struct ICombinedImageSampler 
   {
+    virtual ~ICombinedImageSampler() {}
     virtual float4       sample(float2 a_uv) const = 0;  
     
     virtual unsigned int width()             const = 0;
@@ -182,6 +183,7 @@ namespace LiteImage
     //
     struct CobminedImageSamplerGeneral : public ICombinedImageSampler
     {
+      ~CobminedImageSamplerGeneral(){}
       float4 sample(float2 a_uv) const override { return m_pTexture->sample(m_sampler, a_uv); }  
     
       unsigned int width()       const override { return m_pTexture->width();  }
@@ -189,7 +191,7 @@ namespace LiteImage
       unsigned int depth()       const override { return 1; }
       unsigned int bpp()         const override { return m_pTexture->bpp();    }
       unsigned int format()      const override { return m_pTexture->format();  } 
-      
+
       Sampler      sampler()     const override { return m_sampler; }
       const void*  data()        const override { return m_pTexture->data(); }
   

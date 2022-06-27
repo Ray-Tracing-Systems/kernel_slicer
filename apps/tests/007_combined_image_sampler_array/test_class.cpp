@@ -1,8 +1,12 @@
 #include "test_class.h"
-#include "Bitmap.h"
-#include "texture2d.h"
-#include "sampler.h"
 #include <cassert>
+
+#include "Image2d.h"
+
+using LiteImage::Image2D;
+using LiteImage::Sampler;
+using LiteImage::ICombinedImageSampler;
+using namespace LiteMath;
 
 inline float2 get_uv(const int x, const int y, const uint width, const uint height)
 {
@@ -51,10 +55,10 @@ TestCombinedImage::TestCombinedImage()
                                           YELLOW, BLACK, YELLOW,
                                           BLACK, YELLOW, BLACK };
 
-  std::shared_ptr< Texture2D<uint32_t> > pTexture1 = std::make_shared< Texture2D<uint32_t> >(3, 3, red_black_white.data());
-  std::shared_ptr< Texture2D<uint32_t> > pTexture2 = std::make_shared< Texture2D<uint32_t> >(2, 2, green_white.data());
-  std::shared_ptr< Texture2D<uint32_t> > pTexture3 = std::make_shared< Texture2D<uint32_t> >(6, 6, blue_cross.data());
-  std::shared_ptr< Texture2D<uint32_t> > pTexture4 = std::make_shared< Texture2D<uint32_t> >(3, 3, yellow_diamond.data());
+  std::shared_ptr< Image2D<uint32_t> > pTexture1 = std::make_shared< Image2D<uint32_t> >(3, 3, red_black_white.data());
+  std::shared_ptr< Image2D<uint32_t> > pTexture2 = std::make_shared< Image2D<uint32_t> >(2, 2, green_white.data());
+  std::shared_ptr< Image2D<uint32_t> > pTexture3 = std::make_shared< Image2D<uint32_t> >(6, 6, blue_cross.data());
+  std::shared_ptr< Image2D<uint32_t> > pTexture4 = std::make_shared< Image2D<uint32_t> >(3, 3, yellow_diamond.data());
 
   Sampler sampler;
   sampler.filter   = Sampler::Filter::NEAREST; 
