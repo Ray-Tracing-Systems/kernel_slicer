@@ -36,7 +36,7 @@ int TestClass::LoadScene(const char* meshPath)
   std::cout << "MateriaIdNum = " << m_mesh.matIndices.size() << std::endl;
 
   m_pAccelStruct->ClearGeom();
-  auto geomId = m_pAccelStruct->AddGeom_Triangles4f(m_mesh.vPos4f.data(), m_mesh.vPos4f.size(), m_mesh.indices.data(), m_mesh.indices.size());
+  auto geomId = m_pAccelStruct->AddGeom_Triangles3f((const float*)m_mesh.vPos4f.data(), m_mesh.vPos4f.size(), m_mesh.indices.data(), m_mesh.indices.size(), BUILD_HIGH, sizeof(float)*4);
   
   m_pAccelStruct->ClearScene();
   float4x4 identitiMatrix;

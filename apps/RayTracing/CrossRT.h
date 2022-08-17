@@ -2,9 +2,15 @@
 
 #include <cstdint>
 #include <cstddef>
-
-#define LAYOUT_STD140
 #include "LiteMath.h"
+
+enum BuildQuality
+{
+  BUILD_LOW    = 0,
+  BUILD_MEDIUM = 1,
+  BUILD_HIGH   = 2,
+  BUILD_REFIT  = 3,
+};
 
 /**
 \brief API to ray-scene intersection on CPU
@@ -30,16 +36,18 @@ struct ISceneObject
   \brief clear everything 
   */
   virtual void ClearGeom() = 0; 
-  
+
   /**
   \brief Add geometry of type 'Triangles' to 'internal geometry library' of scene object and return geometry id
-  \param a_vpos4f     - input vertex data; each vertex should be of 4 floats, the fourth coordinate is not used
-  \param a_vertNumber - vertices number. The total size of 'a_vpos4f' array is assumed to be qual to 4*a_vertNumber
-  \param a_triIndices - triangle indices (standart index buffer)
-  \param a_indNumber  - number of indices, shiuld be equal to 3*triaglesNum in your mesh
+  \param a_vpos3f       - input vertex data;
+  \param a_vertNumber   - vertices number. The total size of 'a_vpos4f' array is assumed to be qual to 4*a_vertNumber
+  \param a_triIndices   - triangle indices (standart index buffer)
+  \param a_indNumber    - number of indices, shiuld be equal to 3*triaglesNum in your mesh
+  \param a_qualityLevel - bvh build quality level (low -- fast build, high -- fast traversal) 
+  \param vByteStride    - byte offset from each vertex to the next one; if 0 or sizeof(float)*3 then data is tiny packed
   \return id of added geometry
   */
-  virtual uint32_t AddGeom_Triangles4f(const LiteMath::float4* a_vpos4f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber) = 0;
+  virtual uint32_t AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, BuildQuality a_qualityLevel = BUILD_HIGH, size_t vByteStride = sizeof(float)*3) = 0;
   
   /**
   \brief Update geometry for triangle mesh to 'internal geometry library' of scene object and return geometry id
@@ -47,10 +55,10 @@ struct ISceneObject
   
   Updates geometry. Please note that you can't: 
    * change geometry type with this fuction (from 'Triangles' to 'Spheres' for examples). 
-   * increase geometry size (no 'a_vertNumber', neither 'a_indNumber') with this fuction (but it is allowed to make it smaller than original geometry size which was set by 'AddGeom_Triangles4f')
-  So if you added 'Triangles' and got geom_id == 3, than you will have triangle mesh on geom_id == 3 forever and with the size.
+   * increase geometry size (no 'a_vertNumber', neither 'a_indNumber') with this fuction (but it is allowed to make it smaller than original geometry size which was set by 'AddGeom_Triangles3f')
+     So if you added 'Triangles' and got geom_id == 3, than you will have triangle mesh on geom_id == 3 forever and with the size you have set by 'AddGeom_Triangles3f'.
   */
-  virtual void UpdateGeom_Triangles4f(uint32_t a_geomId, const LiteMath::float4* a_vpos4f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber) = 0;
+  virtual void UpdateGeom_Triangles3f(uint32_t a_geomId, const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, BuildQuality a_qualityLevel = BUILD_HIGH, size_t vByteStride = sizeof(float)*3) = 0;
   
   /**
   \brief Clear all instances, but don't touch geometry
@@ -60,7 +68,7 @@ struct ISceneObject
   /**
   \brief Finish instancing and build top level acceleration structure
   */
-  virtual void CommitScene() = 0; ///< 
+  virtual void CommitScene(BuildQuality a_qualityLevel = BUILD_MEDIUM) = 0; ///< 
   
   /**
   \brief Add instance to scene

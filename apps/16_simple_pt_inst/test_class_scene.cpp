@@ -58,7 +58,7 @@ int TestClass::LoadScene(const char* scehePath)
   {
     std::cout << "[LoadScene]: mesh = " << meshPath.c_str() << std::endl;
     auto currMesh = cmesh::LoadMeshFromVSGF(meshPath.c_str());
-    auto geomId   = m_pAccelStruct->AddGeom_Triangles4f(currMesh.vPos4f.data(), currMesh.vPos4f.size(), currMesh.indices.data(), currMesh.indices.size());
+    auto geomId   = m_pAccelStruct->AddGeom_Triangles3f((const float*)currMesh.vPos4f.data(), currMesh.vPos4f.size(), currMesh.indices.data(), currMesh.indices.size(), BUILD_HIGH, sizeof(float)*4);
     
     m_matIdOffsets.push_back(m_matIdByPrimId.size());
     m_vertOffset.push_back(m_vPos4f.size());
