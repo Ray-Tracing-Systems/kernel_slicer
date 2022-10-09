@@ -695,7 +695,8 @@ namespace kslicer
     virtual bool        IsSingleSource()   const = 0;
     virtual std::string ShaderSingleFile() const = 0;
     virtual std::string ShaderFolder()     const = 0;
-    virtual bool        IsGLSL()           const { return !IsSingleSource(); }
+    virtual bool        IsGLSL()             const { return !IsSingleSource(); }
+    virtual bool        IsInitInSameKernel() const { return false; }
 
     virtual void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) = 0;
 
@@ -754,6 +755,7 @@ namespace kslicer
     ISPCCompiler(bool a_useCPP = false);
     std::string Name() const override { return "ISPC"; }
     void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
+    bool        IsInitInSameKernel() const override { return true; }
   };
 
   struct GLSLCompiler : IShaderCompiler

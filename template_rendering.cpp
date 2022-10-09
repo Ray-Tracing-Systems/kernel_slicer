@@ -562,6 +562,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["FinishRed"]    = needFinishReductionPass;
     kernelJson["NeedTexArray"] = isTextureArrayUsedInThisKernel;
     kernelJson["WarpSize"]     = k.warpSize;
+    kernelJson["InitSource"]   = "";
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
@@ -844,16 +845,24 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     // if we have additional init statements we should add additional init kernel before our kernel
     //
     if(k.hasInitPass)
-    {      
-      kernelJson["Name"]      = k.name + "_Init";
-      kernelJson["Source"]    = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1);
-      kernelJson["HasEpilog"] = false;
-      kernelJson["FinishRed"] = false;
-      kernelJson["InitKPass"] = true;
-      kernelJson["WGSizeX"]   = 1;
-      kernelJson["WGSizeY"]   = 1;
-      kernelJson["WGSizeZ"]   = 1;
-      data["Kernels"].push_back(kernelJson);
+    { 
+      std::string initSourceCode = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1); 
+      if(a_classInfo.pShaderCC->IsInitInSameKernel())
+      {
+        original["InitSource"] = initSourceCode;
+      } 
+      else
+      {    
+        kernelJson["Name"]      = k.name + "_Init";
+        kernelJson["Source"]    = initSourceCode;
+        kernelJson["HasEpilog"] = false;
+        kernelJson["FinishRed"] = false;
+        kernelJson["InitKPass"] = true;
+        kernelJson["WGSizeX"]   = 1;
+        kernelJson["WGSizeY"]   = 1;
+        kernelJson["WGSizeZ"]   = 1;
+        data["Kernels"].push_back(kernelJson);
+      }
     }
 
     data["Kernels"].push_back(original);
