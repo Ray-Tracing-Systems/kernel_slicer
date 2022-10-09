@@ -34,6 +34,7 @@ add_executable(kslicer
                reduction.cpp
                shaders_clspv.cpp
                shaders_glsl.cpp
+               shaders_ispc.cpp
                )
 
 target_link_libraries(kslicer PRIVATE -lclang -lLLVM-12 

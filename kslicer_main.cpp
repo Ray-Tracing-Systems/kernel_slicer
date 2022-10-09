@@ -501,6 +501,11 @@ int main(int argc, const char **argv)
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::GLSLCompiler>();
     inputCodeInfo.includeCPPFolders.push_back("include/");
   }
+  else if(shaderCCName == "ispc" || shaderCCName == "ISPC")
+  {
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::ISPCCompiler>(useCppInKernels);
+    inputCodeInfo.ignoreFolders.push_back("include/");
+  }
   else
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>(useCppInKernels);
