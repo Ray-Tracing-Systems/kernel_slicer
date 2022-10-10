@@ -11,6 +11,7 @@ void Numbers::kernel1D_ArraySumm(const int* a_data, size_t a_dataSize)
   m_summ = 0;
   for(int i=0; i<a_dataSize; i++)
   {
-    m_summ += 1.0f;
+    if(a_data[i] > 0)
+      m_summ += a_data[i];
   }
 }

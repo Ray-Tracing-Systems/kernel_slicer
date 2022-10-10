@@ -586,8 +586,14 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         std::string loopStart  = tidArgs[tid].loopIter.startText;  
         std::string loopStride = tidArgs[tid].loopIter.strideText; 
         
+        if(loopStart == "")
+          loopStart = "0";
+
+        const bool noStride = (loopStride == "1") && ((loopStart == "0") || 
+                                                      a_classInfo.pShaderCC->IsInitInSameKernel());
+
         json threadId;
-        if(tidArgs[tid].loopIter.startNode != nullptr)
+        if(tidArgs[tid].loopIter.startNode != nullptr && !noStride)
         {
           loopStart  = pVisitorK->RecursiveRewrite(tidArgs[tid].loopIter.startNode);
           //loopSize   = pVisitorK->RecursiveRewrite(tidArgs[tid].sizeNode);
@@ -599,7 +605,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
         threadId["Name"]   = tidArgs[tid].name;
         threadId["Type"]   = tidArgs[tid].type;
-        //threadId["Size"]   = loopSize;
+        threadId["Size"]   = loopSize;
         threadId["Start"]  = loopStart;
         threadId["Stride"] = loopStride;
         //if(tidArgs[tid].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL)  
