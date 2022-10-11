@@ -406,6 +406,9 @@ std::vector<kslicer::ArgFinal> kslicer::MainClassInfo::GetKernelCommonArgs(const
                                  arg.type.find(std::string("struct ") + mainClassName) != std::string::npos || 
                                  arg.type.find(mainClassName) != std::string::npos);
         arg2.isThreadFlags    = arg.isThreadFlags;
+        arg2.isPointer        = arg.IsPointer();
+        if(pShaderCC->IsISPC())
+          ReplaceFirst(arg2.type, "*", "");
       }
       args.push_back(arg2);
     }

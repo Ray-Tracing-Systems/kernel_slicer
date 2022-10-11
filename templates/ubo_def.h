@@ -24,7 +24,21 @@ typedef LiteMath::uint4    uvec4;
 #endif
 {% else %}
 #ifndef GLSL
-#include "LiteMath.h"
+  #ifdef ISPC
+  typedef float<2> float2;
+  typedef float<3> float3;
+  typedef float<4> float4;
+
+  typedef int<2>   int2;
+  typedef int<3>   int3;
+  typedef int<4>   int4;
+
+  typedef uint<2>  uint2;
+  typedef uint<3>  uint3;
+  typedef uint<4>  uint4;
+  #else
+  #include "LiteMath.h"
+  #endif
 #else
 #define float4x4 mat4
 #define float2   vec2

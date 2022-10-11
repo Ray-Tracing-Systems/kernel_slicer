@@ -5,6 +5,30 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
 
 std::string kslicer::KernelInfo::ReductionAccess::GetOp(std::shared_ptr<IShaderCompiler> pShaderCC) const
 {
+  if(pShaderCC->IsISPC())
+  {
+    switch(type)
+    {
+      case REDUCTION_TYPE::ADD_ONE:
+      case REDUCTION_TYPE::ADD:
+      case REDUCTION_TYPE::SUB:
+      case REDUCTION_TYPE::SUB_ONE:
+      {
+        return "reduce_add";
+      }
+      break;
+      case REDUCTION_TYPE::MUL:
+        return "reduce_mul";
+      break;
+      //case REDUCTION_TYPE::FUNC: // TODO: implement this !!!
+      //  return pShaderCC->ReplaceCallFromStdNamespace(funcName, dataType);
+      //break;
+      default:
+        return "reduce_add";
+      break;
+    };
+  }
+
   switch(type)
   {
     case REDUCTION_TYPE::ADD_ONE:

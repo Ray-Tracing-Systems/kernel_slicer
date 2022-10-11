@@ -191,6 +191,9 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
     return false;
 
   //auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+  
+  if(m_codeInfo->pShaderCC->IsISPC())
+    return false;
 
   // (2) put ubo->var instead of var, leave containers as they are
   // process arrays and large data structures because small can be read once in the beggining of kernel
@@ -596,6 +599,8 @@ bool kslicer::KernelRewriter::VisitUnaryOperator_Impl(UnaryOperator* expr)
       }
       else
       {
+        if(m_codeInfo->pShaderCC->IsISPC())
+          return true;
         std::string leftStr2   = RecursiveRewrite(expr->getSubExpr()); 
         std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim(), m_currKernel.wgSize);
         m_rewriter.ReplaceText(expr->getSourceRange(), leftStr2 + "Shared[" + localIdStr + "]++");
@@ -696,6 +701,8 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
     }
     else if(WasNotRewrittenYet(expr))
     {
+      if(m_codeInfo->pShaderCC->IsISPC())
+        return;
       std::string rightStr2  = RecursiveRewrite(rhs);
       std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim(), m_currKernel.wgSize);
       if(access.leftIsArray)

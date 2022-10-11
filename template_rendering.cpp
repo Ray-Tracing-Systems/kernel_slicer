@@ -386,8 +386,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsUBO"]    = commonArg.isDefinedInClass;
       argj["IsImage"]  = commonArg.isImage;
       argj["IsAccelStruct"] = false; 
-      argj["NeedFmt"]  = !commonArg.isSampler;
-      argj["ImFormat"] = commonArg.imageFormat;
+      argj["NeedFmt"]       = !commonArg.isSampler;
+      argj["ImFormat"]      = commonArg.imageFormat;
+      argj["IsPointer"]     = commonArg.isPointer;
 
       args.push_back(argj);
       if(!commonArg.isThreadFlags)
@@ -590,7 +591,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
           loopStart = "0";
 
         const bool noStride = (loopStride == "1") && ((loopStart == "0") || 
-                                                      a_classInfo.pShaderCC->IsInitInSameKernel());
+                                                      a_classInfo.pShaderCC->IsISPC());
 
         json threadId;
         if(tidArgs[tid].loopIter.startNode != nullptr && !noStride)
@@ -853,7 +854,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     if(k.hasInitPass)
     { 
       std::string initSourceCode = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1); 
-      if(a_classInfo.pShaderCC->IsInitInSameKernel())
+      if(a_classInfo.pShaderCC->IsISPC())
       {
         original["InitSource"] = initSourceCode;
       } 
