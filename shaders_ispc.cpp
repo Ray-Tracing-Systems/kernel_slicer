@@ -31,7 +31,8 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   const std::string templatePath = "templates_ispc/generated.ispc";
   const std::string outFileName  = mainClassFileName.substr(0, mainClassFileName.find_last_of(".")) + "_kernels.ispc";
   kslicer::ApplyJsonToTemplate(templatePath, outFileName, a_kernelsJson);  
-
+  kslicer::ApplyJsonToTemplate("templates_ispc/ispc_class.cpp", outFileName + "_ispc.cpp", a_kernelsJson);
+  
   //std::ofstream buildSH(GetFolderPath(mainClassFileName) + "/z_build.sh");
   //buildSH << "#!/bin/sh" << std::endl;
   //std::string build = this->BuildCommand();

@@ -3,13 +3,6 @@
 #include <string>
 #include <unordered_map>
 
-{% if length(TextureMembers) > 0 or length(ClassTexArrayVars) > 0 %}
-#include "Image2d.h"
-using LiteImage::Image2D;
-using LiteImage::Sampler;
-using namespace LiteMath;
-{% endif %}
-
 {{Includes}}
 
 ## for Decl in ClassDecls  
@@ -43,15 +36,18 @@ public:
   {% if HasGetTimeFunc %}
   void GetExecutionTime(const char* a_funcName, float a_out[4]) override {} // TODO: implement it 
   {% endif %}
-  
-  {% for KernelDecl in KernelsDecls %}
-  {{KernelDecl}}
-  {% endfor %}
 
 protected:
 
   {% for Kernel in Kernels %}
-  void {{Kernel.Name}}(...) override { {{Kernel.Name}}_ISPC(...); }
+  void {{Kernel.Name}}({% for Arg in Kernel.Args %}
+  {% if not Arg.IsUBO %} 
+  {{Arg.Type}} {{Arg.Name}},
+  {% endif %}
+  {% endfor %}
+  {% for UserArg in Kernel.UserArgs %}
+  const {{UserArg.Type}} {{UserArg.Name}},
+  {% endfor %}) override { {{Kernel.Name}}_ISPC(...); }
   {% endfor %}
 
   {{MainClassName}}_UBO_Data m_uboData;

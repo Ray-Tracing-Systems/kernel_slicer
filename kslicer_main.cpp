@@ -1100,22 +1100,18 @@ int main(int argc, const char **argv)
     }
   }
 
+  std::string rawname = kslicer::CutOffFileExt(allFiles[0]);
+  auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls, rawname + "_generated.h", threadsOrder, uboIncludeName, jsonUBO); 
+
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
   std::cout << "{" << std::endl;
   {
-    std::string rawname = kslicer::CutOffFileExt(allFiles[0]);
-    auto json = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls, rawname + "_generated.h", threadsOrder, uboIncludeName, jsonUBO); 
-    
-    if(inputCodeInfo.pShaderCC->IsISPC())
+    if(!inputCodeInfo.pShaderCC->IsISPC())
     {
-      kslicer::ApplyJsonToTemplate("templates_ispc/ispc_class.cpp", rawname + "_ispc.cpp", json);
-    }
-    else
-    {
-      kslicer::ApplyJsonToTemplate("templates/vk_class.h",        rawname + "_generated.h", json); 
-      kslicer::ApplyJsonToTemplate("templates/vk_class.cpp",      rawname + "_generated.cpp", json);
-      kslicer::ApplyJsonToTemplate("templates/vk_class_ds.cpp",   rawname + "_generated_ds.cpp", json);
-      kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + "_generated_init.cpp", json); 
+      kslicer::ApplyJsonToTemplate("templates/vk_class.h",        rawname + "_generated.h", jsonCPP); 
+      kslicer::ApplyJsonToTemplate("templates/vk_class.cpp",      rawname + "_generated.cpp", jsonCPP);
+      kslicer::ApplyJsonToTemplate("templates/vk_class_ds.cpp",   rawname + "_generated_ds.cpp", jsonCPP);
+      kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + "_generated_init.cpp", jsonCPP); 
     }   
   }
   std::cout << "}" << std::endl;
@@ -1179,6 +1175,11 @@ int main(int argc, const char **argv)
   }
   
   auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
+  if(inputCodeInfo.pShaderCC->IsISPC()) {
+    json["Constructors"]        = jsonCPP["Constructors"];
+    json["HasCommitDeviceFunc"] = jsonCPP["HasCommitDeviceFunc"];
+    json["HasGetTimeFunc"]      = jsonCPP["HasGetTimeFunc"];
+  }
   inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo);
 
   //std::ofstream file(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_ubo.json");
