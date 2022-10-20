@@ -40,9 +40,6 @@ export void {{Kernel.Name}}_ISPC(
   {% for UserArg in Kernel.UserArgs %}
   uniform const {{UserArg.Type}} {{UserArg.Name}},
   {% endfor %}
-  uniform const uint {{Kernel.threadSZName1}}, 
-  uniform const uint {{Kernel.threadSZName2}},
-  uniform const uint {{Kernel.threadSZName3}},
   uniform struct {{MainClassName}}_UBO_Data ubo[1])
 {
   {# /* declare varyings which are subjected to reduction */ #}

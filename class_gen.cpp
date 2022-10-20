@@ -386,7 +386,7 @@ std::vector<kslicer::ArgFinal> kslicer::MainClassInfo::GetKernelCommonArgs(const
   std::vector<kslicer::ArgFinal> args;
   for (const auto& arg : a_kernel.args) 
   { 
-    if(!arg.isThreadID && !arg.isLoopSize && !arg.IsUser())
+    if((!arg.isThreadID && !arg.isLoopSize && !arg.IsUser()) || pShaderCC->IsISPC())
     { 
       ArgFinal arg2;
       arg2.name  = arg.name;
