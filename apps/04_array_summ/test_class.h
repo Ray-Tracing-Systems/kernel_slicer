@@ -8,7 +8,7 @@ class Numbers
 public:
   Numbers(){}
   virtual void CalcArraySumm(const int* a_data __attribute__((size("a_dataSize"))), unsigned int a_dataSize);
-  void kernel1D_ArraySumm(const int* a_data, size_t a_dataSize);
+  virtual void kernel1D_ArraySumm(const int* a_data, size_t a_dataSize);
   int m_summ;
 
   virtual void CommitDeviceData() {}                                       // will be overriden in generated class

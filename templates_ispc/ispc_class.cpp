@@ -34,6 +34,10 @@ public:
   void GetExecutionTime(const char* a_funcName, float a_out[4]) override {} // TODO: implement it 
   {% endif %}
 
+  {% for MainFunc in MainFunctions %}
+  {{MainFunc.ReturnType}} {{MainFunc.DeclOrig}} override;
+  {% endfor %}
+
 protected:
 
   virtual void UpdatePlainMembers();
@@ -78,3 +82,12 @@ void {{MainClassName}}_ISPC::ReadPlainMembers()
   {{Var.Name}}.resize(m_uboData.{{Var.Name}}_size);
   {% endfor %}
 }
+
+{% for MainFunc in MainFunctions %}
+{{MainFunc.ReturnType}} {{MainClassName}}_ISPC::{{MainFunc.DeclOrig}}
+{
+  UpdatePlainMembers();
+  {{MainClassName}}::{{MainFunc.Name}}({% for DS in MainFunc.DescriptorSets %}{% for Arg in DS.Args %}{{Arg.NameOriginal}}{% if loop.index1 != DS.ArgNumber %},{% endif %}{% endfor %}{% endfor %});
+  ReadPlainMembers();
+}
+{% endfor %}

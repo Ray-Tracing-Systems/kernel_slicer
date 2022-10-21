@@ -1146,7 +1146,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       uint32_t realId = 0; 
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {  
-        if(!internalKernel)
+        if(!internalKernel && !a_classInfo.pShaderCC->IsISPC())
         {
           const bool ignoreArg = IgnoreArgForDS(j, dsArgs.descriptorSetsInfo, pFoundKernel->second.args, pFoundKernel->second.name, a_classInfo.IsRTV()); 
           if(ignoreArg && !isMegaKernel) 
