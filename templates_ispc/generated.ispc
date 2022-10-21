@@ -47,20 +47,10 @@ export void {{Kernel.Name}}_ISPC(
   {{Var.Type}} {{Var.Name}};
   {% endfor %}
   {{Kernel.InitSource}}
-  {% for TID in Kernel.ThreadIds %}
-  {% if TID.Simple %}
-  foreach ({{TID.Name}} = {{TID.Start}} ... {{TID.Size}}) {
-  {% else %}
-  const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + ({{TID.Type}})(get_global_id({{ loop.index }}))*{{TID.Stride}};
-  foreach ({{TID.Name}}_L = {{TID.Start}} ... {{TID.Size}}) { 
-  const {{TID.Type}} {{TID.Name}} = {{TID.Name}}_L*{{TID.Stride}};  
-  {% endif %}
-  {% endfor %}
+  foreach ({% for TID in Kernel.ThreadIds %}{{TID.Name}} = {{TID.Start}} ... {{TID.Size}}{% if loop.index1 != Kernel.threadDim %}, {% endif %}{% endfor %}) { 
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {{Kernel.Source}}
-  {% for TID in Kernel.ThreadIds %}
   }
-  {% endfor %}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {% for Var in Kernel.SubjToRed %}
   ubo[0].{{Var.Name}} = {{Var.Op}}({{Var.Name}});

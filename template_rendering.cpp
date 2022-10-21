@@ -433,6 +433,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsUBO"]      = false;
       argj["IsImage"]    = false;
       argj["IsAccelStruct"] = false; 
+      argj["IsPointer"]     = false;
 
       if(pVecMember->second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
       {
@@ -481,6 +482,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Type"]       = "uint2       *";
       argj["Name"]       = "kgen_objPtrData";
       argj["IsUBO"]      = false;
+      argj["IsPointer"]  = false;
       args.push_back(argj);
     }
 
@@ -494,6 +496,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Type"]  = typeName;
       argj["Name"]  = arg.name;
       argj["IsUBO"] = false;
+      argj["IsPointer"] = false;
       userArgs.push_back(argj);
     }
     
@@ -546,6 +549,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     for (uint c = k.warpSize; c>0; c/=2)
       kernelJson["RedLoop2"].push_back(c);
     
+    //std::ofstream file("/home/frol/temp/debug.json", std::ios::app);
+    //file << args;
+    //file.flush();
+
     kernelJson["UseSubGroups"] = k.enableSubGroups;  
     kernelJson["LastArgNF"]    = VArgsSize; // Last Argument No Flags
     kernelJson["Args"]         = args;
