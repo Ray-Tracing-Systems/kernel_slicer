@@ -22,7 +22,7 @@ public:
   {{ctorDecl.ClassName}}_ISPC({{ctorDecl.Params}}) : {{ctorDecl.ClassName}}({{ctorDecl.PrevCall}}) {}
   {% endif %}
   {% endfor %}
-  ~{{MainClassName}}_ISPC();
+  ~{{MainClassName}}_ISPC(){}
 
   {% if HasCommitDeviceFunc %}
   void CommitDeviceData() override 
@@ -45,10 +45,10 @@ protected:
 
   {% for Kernel in Kernels %}
   void {{Kernel.Name}}({% for Arg in Kernel.Args %}{% if not Arg.IsUBO %} {% if Arg.IsPointer %}{{Arg.Type}}* {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %}{% else %}{{Arg.Type}} {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %} {% endif %}{% endif %} {% endfor %}
-  {% for UserArg in Kernel.UserArgs %}const {{UserArg.Type}} {{UserArg.Name}},{% endfor %}) override { {{Kernel.Name}}_ISPC({% for Arg in Kernel.Args %}{{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %},{% endif %}{% endfor %},&m_uboData); }
+  {% for UserArg in Kernel.UserArgs %}const {{UserArg.Type}} {{UserArg.Name}},{% endfor %}) override { ispc::{{Kernel.Name}}_ISPC({% for Arg in Kernel.Args %}{{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %},{% endif %}{% endfor %},&m_uboData); }
   {% endfor %}
 
-  {{MainClassName}}_UBO_Data m_uboData;
+  ispc::{{MainClassName}}_UBO_Data m_uboData;
 };
 
 void {{MainClassName}}_ISPC::UpdatePlainMembers()
