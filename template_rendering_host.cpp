@@ -504,10 +504,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   std::stringstream strOut;
   strOut << "#include \"" << mainInclude.c_str() << "\"" << std::endl;
-
-
+  auto mainIncludeFile = strOut.str();
+  
   json data;
-  data["Includes"]           = strOut.str();
+  data["Includes"]           = mainIncludeFile; //strOut.str();
   data["UBOIncl"]            = uboIncludeName;
   data["MainClassName"]      = a_classInfo.mainClassName;
   data["ShaderSingleFile"]   = a_classInfo.pShaderCC->ShaderSingleFile();

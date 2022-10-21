@@ -50,7 +50,7 @@ kslicer::ClspvCompiler::ClspvCompiler(bool a_useCPP) : m_useCpp(a_useCPP)
 
 }
 
-std::string kslicer::ClspvCompiler::BuildCommand() const 
+std::string kslicer::ClspvCompiler::BuildCommand(const std::string& a_inputFile) const 
 {
   if(m_useCpp) 
     return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-ubo -cl-std=CLC++ -inline-entry-points";  

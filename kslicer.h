@@ -747,8 +747,8 @@ namespace kslicer
     
     std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
 
-  private:
-    std::string BuildCommand() const;
+  protected:
+    virtual std::string BuildCommand(const std::string& a_inputFile = "") const;
     bool m_useCpp;
   };
 
@@ -758,6 +758,7 @@ namespace kslicer
     std::string Name() const override { return "ISPC"; }
     void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
     bool        IsISPC() const override { return true; }
+    std::string BuildCommand(const std::string& a_inputFile) const override;
   };
 
   struct GLSLCompiler : IShaderCompiler

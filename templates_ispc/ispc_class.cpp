@@ -3,12 +3,13 @@
 #include <string>
 #include <unordered_map>
 
+{{MainInclude}}
+#include "{{MainISPCFile}}"
 ## for Decl in ClassDecls  
 {% if Decl.InClass and Decl.IsType %}
 using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data type to UBO
 {% endif %}
 ## endfor
-
 #include "include/{{UBOIncl}}"
 
 class {{MainClassName}}_ISPC : public {{MainClassName}}
@@ -91,3 +92,9 @@ void {{MainClassName}}_ISPC::ReadPlainMembers()
   ReadPlainMembers();
 }
 {% endfor %}
+
+std::shared_ptr<{{MainClassName}}> Create{{MainClassName}}_ISPC() 
+{ 
+  auto pObj = std::make_shared<{{MainClassName}}_ISPC>(); 
+  return pObj;
+}

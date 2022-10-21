@@ -1182,6 +1182,7 @@ int main(int argc, const char **argv)
     json["ClassVars"]           = jsonCPP["ClassVars"];
     json["ClassVectorVars"]     = jsonCPP["ClassVectorVars"];
     json["MainFunctions"]       = jsonCPP["MainFunctions"];
+    json["MainInclude"]         = jsonCPP["Includes"];
   }
   inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo);
 
