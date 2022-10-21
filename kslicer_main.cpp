@@ -1179,6 +1179,8 @@ int main(int argc, const char **argv)
     json["Constructors"]        = jsonCPP["Constructors"];
     json["HasCommitDeviceFunc"] = jsonCPP["HasCommitDeviceFunc"];
     json["HasGetTimeFunc"]      = jsonCPP["HasGetTimeFunc"];
+    json["ClassVars"]           = jsonCPP["ClassVars"];
+    json["ClassVectorVars"]     = jsonCPP["ClassVectorVars"];
   }
   inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo);
 
