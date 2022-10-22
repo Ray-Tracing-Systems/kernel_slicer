@@ -228,6 +228,26 @@ static json ReductionAccessFill(const kslicer::KernelInfo::ReductionAccess& seco
   return varJ;
 }
 
+std::unordered_map<std::string, std::string> ListISPCVectorReplacements();
+
+const std::string ConvertVecTypesToISPC(const std::string& a_typeName,
+                                        const std::string& a_argName)
+
+{
+  static const auto vecTypes = ListISPCVectorReplacements();
+  std::string nameToSearch = a_typeName;
+  ReplaceFirst(nameToSearch, "const ", "");
+  while(ReplaceFirst(nameToSearch, " ", ""))
+    ;
+  if(vecTypes.find(nameToSearch) != vecTypes.end())
+  {
+    if(a_typeName.find("const ") != std::string::npos)
+      return "(const ispc::" + nameToSearch + "*)" + a_argName;
+    else
+      return "(ispc::" + nameToSearch + "*)" + a_argName;
+  }
+  return a_argName;
+}
 
 json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo, 
                                     const std::vector<kslicer::FuncData>& usedFunctions,
@@ -392,6 +412,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsPointer"]     = commonArg.isPointer;
       argj["IsMember"]      = false;
 
+      std::string ispcConverted = argj["Name"];
+      if(argj["IsPointer"])
+        ispcConverted = ConvertVecTypesToISPC(argj["Type"], argj["Name"]);
+      argj["NameISPC"] = ispcConverted;
+
       args.push_back(argj);
       if(!commonArg.isThreadFlags)
         VArgsSize++;
@@ -437,6 +462,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsAccelStruct"] = false; 
       argj["IsPointer"]     = (pVecMember->second.kind == kslicer::DATA_KIND::KIND_VECTOR);
       argj["IsMember"]      = true;
+      std::string ispcConverted = argj["Name"];
+      if(argj["IsPointer"])
+        ispcConverted = ConvertVecTypesToISPC(argj["Type"], argj["Name"]);
+      argj["NameISPC"] = ispcConverted;
       MArgsSize++;
 
       if(pVecMember->second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)

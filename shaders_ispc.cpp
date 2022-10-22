@@ -58,3 +58,20 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   buildSH << std::endl;
   buildSH.close();
 }
+
+std::unordered_map<std::string, std::string> ListISPCVectorReplacements()
+{
+  std::unordered_map<std::string, std::string> m_vecReplacements;
+  m_vecReplacements["float2"] = "float2";
+  m_vecReplacements["float3"] = "float3";
+  m_vecReplacements["float4"] = "float4";
+  m_vecReplacements["int2"]   = "int2";
+  m_vecReplacements["int3"]   = "int3";
+  m_vecReplacements["int4"]   = "int4";
+  m_vecReplacements["uint2"]  = "uint2";
+  m_vecReplacements["uint3"]  = "uint3";
+  m_vecReplacements["uint4"]  = "uint4";
+  //m_vecReplacements["float4x4"] = "mat4";
+  m_vecReplacements["_Bool"] = "bool";
+  return m_vecReplacements;
+}
