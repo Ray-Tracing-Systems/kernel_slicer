@@ -87,7 +87,7 @@ void {{MainClassName}}_ISPC::ReadPlainMembers()
 {{MainFunc.ReturnType}} {{MainClassName}}_ISPC::{{MainFunc.DeclOrig}}
 {
   UpdatePlainMembers();
-  {{MainClassName}}::{{MainFunc.Name}}({% for DS in MainFunc.DescriptorSets %}{% for Arg in DS.Args %}{{Arg.NameOriginal}}{% if loop.index1 != DS.ArgNumber %},{% endif %}{% endfor %}{% endfor %});
+  {{MainClassName}}::{{MainFunc.Name}}({% for Arg in MainFunc.InOutVars %}{{Arg.Name}}{% if loop.index1 != MainFunc.InOutVarsNum %},{% endif %}{% endfor %});
   ReadPlainMembers();
 }
 {% endfor %}

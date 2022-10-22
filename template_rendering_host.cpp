@@ -1110,17 +1110,23 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["TransferDST"] = (v.second.name == "threadFlags"); // rtv thread flags
       data2["LocalVarsBuffersDecl"].push_back(local);
     }
-
+    
+    uint32_t inOutNum = 0;
     data2["InOutVars"] = std::vector<std::string>();
     for(const auto& v : mainFunc.InOuts)
     {
-      if(v.isThreadId || v.kind == DATA_KIND::KIND_POD || v.kind == DATA_KIND::KIND_UNKNOWN)
-        continue;
+      if(!a_classInfo.pShaderCC->IsISPC()) 
+      {
+        if(v.isThreadId || v.kind == DATA_KIND::KIND_POD || v.kind == DATA_KIND::KIND_UNKNOWN)
+          continue;
+      }
       json controlArg;
       controlArg["Name"]      = v.name;
       controlArg["IsTexture"] = v.isTexture();
       data2["InOutVars"].push_back(controlArg);
+      inOutNum++;
     }
+    data2["InOutVarsNum"] = inOutNum;
 
     // for impl, ds bindings
     //
