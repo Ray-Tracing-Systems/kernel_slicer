@@ -373,6 +373,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     auto commonArgs = a_classInfo.GetKernelCommonArgs(k);
     auto tidArgs    = a_classInfo.GetKernelTIDArgs(k);
     uint VArgsSize  = 0;
+    uint MArgsSize  = 0;
     bool isTextureArrayUsedInThisKernel = false;
 
     json args = std::vector<std::string>();
@@ -389,6 +390,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["NeedFmt"]       = !commonArg.isSampler;
       argj["ImFormat"]      = commonArg.imageFormat;
       argj["IsPointer"]     = commonArg.isPointer;
+      argj["IsMember"]      = false;
 
       args.push_back(argj);
       if(!commonArg.isThreadFlags)
@@ -433,7 +435,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsUBO"]      = false;
       argj["IsImage"]    = false;
       argj["IsAccelStruct"] = false; 
-      argj["IsPointer"]     = false;
+      argj["IsPointer"]     = (pVecMember->second.kind == kslicer::DATA_KIND::KIND_VECTOR);
+      argj["IsMember"]      = true;
+      MArgsSize++;
 
       if(pVecMember->second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
       {
@@ -483,6 +487,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Name"]       = "kgen_objPtrData";
       argj["IsUBO"]      = false;
       argj["IsPointer"]  = false;
+      argj["IsMember"]   = false;
       args.push_back(argj);
     }
 
@@ -497,6 +502,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Name"]  = arg.name;
       argj["IsUBO"] = false;
       argj["IsPointer"] = false;
+      argj["IsMember"]  = false;
       userArgs.push_back(argj);
     }
     
@@ -548,12 +554,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["RedLoop1"].push_back(c);
     for (uint c = k.warpSize; c>0; c/=2)
       kernelJson["RedLoop2"].push_back(c);
-    
-    //std::ofstream file("/home/frol/temp/debug.json", std::ios::app);
-    //file << args;
-    //file.flush();
 
-    kernelJson["UseSubGroups"] = k.enableSubGroups;  
+    kernelJson["UseSubGroups"] = k.enableSubGroups; 
+    
+    kernelJson["LastArgNF1"]   = VArgsSize + MArgsSize;
     kernelJson["LastArgNF"]    = VArgsSize; // Last Argument No Flags
     kernelJson["Args"]         = args;
     kernelJson["Vecs"]         = vecs;

@@ -605,6 +605,8 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
     }
     else if(containerType.find("vector") != std::string::npos)
     {
+      kind = kslicer::DATA_KIND::KIND_VECTOR; 
+      
       auto typeDecl     = fieldTypePtr->getAsRecordDecl(); 
       auto specDecl     = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl); 
       auto typeOfData   = specDecl->getTemplateArgs()[0].getAsType();

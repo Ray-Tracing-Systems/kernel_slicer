@@ -37,9 +37,6 @@ export void {{Kernel.Name}}_ISPC(
   {% endif %}
   {% endif %}
   {% endfor %}
-  {% for UserArg in Kernel.UserArgs %}
-  uniform const {{UserArg.Type}} {{UserArg.Name}},
-  {% endfor %}
   uniform struct {{MainClassName}}_UBO_Data ubo[1])
 {
   {# /* declare varyings which are subjected to reduction */ #}

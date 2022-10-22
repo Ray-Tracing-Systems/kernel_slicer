@@ -858,7 +858,7 @@ int main(int argc, const char **argv)
               kslicer::UsedContainerInfo info;
               info.type          = member.second.type;
               info.name          = member.second.name;
-              info.kind          = member.second.kind;;
+              info.kind          = member.second.kind;
               info.isConst       = member.second.IsUsedTexture();      // strange thing ... 
               k.second.usedContainers[info.name] = info;
             }
