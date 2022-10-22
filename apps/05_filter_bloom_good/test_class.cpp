@@ -72,7 +72,7 @@ void ToneMapping::SetMaxImageSize(int w, int h)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ToneMapping::kernel2D_ExtractBrightPixels(int width, int height, const float4* inData4f, float4 testData, float4* a_brightPixels)
+void ToneMapping::kernel2D_ExtractBrightPixels(int width, int height, const float4* inData4f, float4* a_brightPixels)
 {  
   for(int y=0;y<height;y++)
   {
@@ -186,8 +186,7 @@ void ToneMapping::Bloom(int w, int h, const float4* inData4f,
 {
   // (1) ExtractBrightPixels (inData4f => m_brightPixels (w,h))
   //
-  float4 testData;
-  kernel2D_ExtractBrightPixels(w, h, inData4f, testData,
+  kernel2D_ExtractBrightPixels(w, h, inData4f,
                                m_brightPixels.data());
 
   // (2) Downsample (m_brightPixels => m_downsampledImage (w/4, h/4) )

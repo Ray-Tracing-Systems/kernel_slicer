@@ -53,8 +53,8 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   buildSH << "#!/bin/sh" << std::endl;
   std::string build = this->BuildCommand(outFileName) + " -o " + mainClassFileName.substr(0, dotPos) + "_kernels.o -h " + mainClassFileName.substr(0, dotPos) + "_kernels.h";
   buildSH << build.c_str() << " ";
-  //for(auto folder : ignoreFolders)
-  //  buildSH << "-I" << folder.c_str() << " ";
-  //buildSH << std::endl;
+  for(auto folder : ignoreFolders)
+    buildSH << "-I" << folder.c_str() << " ";
+  buildSH << std::endl;
   buildSH.close();
 }

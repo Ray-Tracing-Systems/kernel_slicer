@@ -11,6 +11,7 @@
 
 #include "vk_context.h"
 std::shared_ptr<ToneMapping> CreateToneMapping_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+std::shared_ptr<ToneMapping> CreateToneMapping_ISPC();
 
 bool LoadHDRImageFromFile(const char* a_fileName, 
                           int* pW, int* pH, std::vector<float>& a_data); // defined in imageutils.cpp
@@ -38,7 +39,8 @@ int main(int argc, const char** argv)
   std::shared_ptr<ToneMapping> pImpl = nullptr;
   ArgParser args(argc, argv);
 
-  bool onGPU = args.hasOption("--gpu");
+  bool onGPU  = false; // args.hasOption("--gpu");
+  bool isISPC = true; // args.hasOption("--ispc");
   
   if(onGPU)
   {
@@ -46,6 +48,8 @@ int main(int argc, const char** argv)
     auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateToneMapping_Generated(ctx, w*h);
   }
+  else if(isISPC)
+    pImpl = CreateToneMapping_ISPC();
   else
     pImpl = std::make_shared<ToneMapping>();
 
@@ -56,6 +60,8 @@ int main(int argc, const char** argv)
 
   if(onGPU)
     SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
+  else if(isISPC)
+    SaveBMP("zout_ispc.bmp", ldrData.data(), w, h);
   else
     SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
   
