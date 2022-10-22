@@ -75,3 +75,25 @@ std::unordered_map<std::string, std::string> ListISPCVectorReplacements()
   m_vecReplacements["_Bool"] = "bool";
   return m_vecReplacements;
 }
+
+std::string kslicer::ISPCCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler)
+{
+  std::string typeInCL = a_decl.type;
+  std::string result = "";  
+  switch(a_decl.kind)
+  {
+    case kslicer::DECL_IN_CLASS::DECL_STRUCT:
+    result = kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    break;
+    case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
+    ReplaceFirst(typeInCL, "_Bool", "bool");
+    result = typeInCL + " " + a_decl.name + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    break;
+    case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
+    result = "typedef " + typeInCL + " " + a_decl.name + ";";
+    break;
+    default:
+    break;
+  };
+  return result;
+}

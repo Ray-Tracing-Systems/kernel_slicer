@@ -39,10 +39,10 @@ protected:
   uint32_t m_seed;
   uint32_t m_iters;
 
-  void kernel1D_GenerateBodies(uint32_t bodies_count);
-  void kernel1D_UpdateVelocity(uint32_t bodies_count);
-  void kernel1D_UpdatePosition(uint32_t bodies_count);
-  void kernel1D_ReadData(BodyState *out_bodies, uint32_t bodies_count);
+  virtual void kernel1D_GenerateBodies(uint32_t bodies_count);
+  virtual void kernel1D_UpdateVelocity(uint32_t bodies_count);
+  virtual void kernel1D_UpdatePosition(uint32_t bodies_count);
+  virtual void kernel1D_ReadData(BodyState *out_bodies, uint32_t bodies_count);
 public:
   static constexpr bool PERIODIC_BOUNDARY_CONDITIONS = true;
   static constexpr float LATTICE_STEP = 5.f;
@@ -63,6 +63,6 @@ public:
     m_seed = seed;
     m_iters = iters;
   }
-  void perform(BodyState *out_bodies);
+  virtual void perform(BodyState *out_bodies);
   std::vector<BodyState> m_bodies;
 };

@@ -237,10 +237,12 @@ const std::string ConvertVecTypesToISPC(const std::string& a_typeName,
   static const auto vecTypes = ListISPCVectorReplacements();
   std::string nameToSearch = a_typeName;
   ReplaceFirst(nameToSearch, "const ", "");
-  while(ReplaceFirst(nameToSearch, " ", ""))
-    ;
-  if(vecTypes.find(nameToSearch) != vecTypes.end())
+  
+  if(vecTypes.find(nameToSearch) != vecTypes.end() || nameToSearch.find("struct") != std::string::npos)
   {
+    if (nameToSearch.find("struct") != std::string::npos)
+      ReplaceFirst(nameToSearch, "struct ", "");
+
     if(a_typeName.find("const ") != std::string::npos)
       return "(const ispc::" + nameToSearch + "*)" + a_argName;
     else

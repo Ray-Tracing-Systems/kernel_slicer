@@ -6,6 +6,7 @@
 
 std::vector<nBody::BodyState> n_body_cpu(uint32_t seed, uint32_t iterations);
 std::vector<nBody::BodyState> n_body_gpu(uint32_t seed, uint32_t iterations);
+std::vector<nBody::BodyState> n_body_ispc(uint32_t seed, uint32_t iterations);
 
 const float EPS = 1e-3f;
 
@@ -20,7 +21,8 @@ int compute_main()
   const uint32_t SEED       = 42;
   const uint32_t ITERATIONS = 10;
   auto out_cpu = n_body_cpu(SEED, ITERATIONS);
-  auto out_gpu = n_body_gpu(SEED, ITERATIONS);
+  //auto out_gpu = n_body_gpu(SEED, ITERATIONS);
+  auto out_gpu = n_body_ispc(SEED, ITERATIONS);
   bool failed = false;
 
   std::vector<uint32_t> badId; badId.reserve(10);

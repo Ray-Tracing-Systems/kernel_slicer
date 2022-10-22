@@ -144,6 +144,11 @@ static inline float3 mul3x3x3(float3x3 m, const float3 v)
   return res;
 }
 
-#define constexpr __constant static
+#define constexpr const static
+
+static inline float dot (float4 a, float4 b)  { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w; }
+static inline float dot3(float4 a, float4 b)  { return a.x*b.x + a.y*b.y + a.z*b.z; }
+static inline float dot4(float4 a, float4 b)  { return dot(a,b); } 
+static inline float dot (float3 a, float3 b)  { return a.x*b.x + a.y*b.y + a.z*b.z; }
 
 #endif

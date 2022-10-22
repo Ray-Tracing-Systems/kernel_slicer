@@ -760,6 +760,7 @@ namespace kslicer
     void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
     bool        IsISPC() const override { return true; }
     std::string BuildCommand(const std::string& a_inputFile) const override;
+    std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler) override;
   };
 
   struct GLSLCompiler : IShaderCompiler

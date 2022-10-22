@@ -1,7 +1,16 @@
 #ifndef LITE_MATH_G
 #define LITE_MATH_G
+
+#ifndef ISPC
+#define varying
+#define uniform
+#endif
+
 #ifdef __OPENCL_VERSION__
   #include "LiteMathGPU.h"  // if this file is included in OpenCL shaders 
+#else
+#ifdef ISPC
+   #include "LiteMathISPC.h"
 #else
 
 #include <cstdint>
@@ -1912,4 +1921,4 @@ namespace LiteMath
 
 #endif
 #endif
-
+#endif

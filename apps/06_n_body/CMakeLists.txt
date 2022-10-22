@@ -62,6 +62,8 @@ set(NBODY_VIS render/create_render.cpp
 
 add_executable(testapp main.cpp 
                        test_class.cpp
+                       test_class_ispc.cpp
+                       test_class_kernels.o
                        test_class_gpu.cpp
                        test_class_generated.cpp
                        test_class_generated_ds.cpp

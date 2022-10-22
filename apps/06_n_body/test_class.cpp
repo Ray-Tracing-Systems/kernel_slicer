@@ -1,6 +1,8 @@
 #include "test_class.h"
 #include "include/crandom.h"
 
+#include <memory>
+
 static uint32_t nextRandValue(const uint32_t value) {
   return value * 22695477 + 1; // Borland C random
 }
@@ -140,5 +142,14 @@ std::vector<nBody::BodyState> n_body_cpu(uint32_t seed, uint32_t iterations) {
   std::vector<nBody::BodyState> outBodies(nBody::BODIES_COUNT);
   bodies.setParameters(seed, iterations);
   bodies.perform(outBodies.data());
+  return outBodies;
+}
+
+std::shared_ptr<nBody> CreatenBody_ISPC();
+std::vector<nBody::BodyState> n_body_ispc(uint32_t seed, uint32_t iterations) {
+  auto pImpl = CreatenBody_ISPC();
+  std::vector<nBody::BodyState> outBodies(nBody::BODIES_COUNT);
+  pImpl->setParameters(seed, iterations);
+  pImpl->perform(outBodies.data());
   return outBodies;
 }
