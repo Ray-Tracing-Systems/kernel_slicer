@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <cassert>
+#include <chrono>
 
 {{MainInclude}}
 #include "{{MainISPCFile}}"
@@ -33,7 +34,7 @@ public:
   }  
   {% endif %}
   {% if HasGetTimeFunc %}
-  void GetExecutionTime(const char* a_funcName, float a_out[4]) override {} // TODO: implement it 
+  void GetExecutionTime(const char* a_funcName, float a_out[4]); 
   {% endif %}
 
   {% for MainFunc in MainFunctions %}
@@ -50,6 +51,7 @@ protected:
   {% endfor %}
 
   ispc::{{MainClassName}}_UBO_Data m_uboData;
+  std::unordered_map<std::string, float> m_exTimeISPC;
 };
 
 void {{MainClassName}}_ISPC::UpdatePlainMembers()
@@ -87,11 +89,30 @@ void {{MainClassName}}_ISPC::ReadPlainMembers()
 {% for MainFunc in MainFunctions %}
 {{MainFunc.ReturnType}} {{MainClassName}}_ISPC::{{MainFunc.DeclOrig}}
 {
+  auto before = std::chrono::high_resolution_clock::now();
   UpdatePlainMembers();
   {{MainClassName}}::{{MainFunc.Name}}({% for Arg in MainFunc.InOutVars %}{{Arg.Name}}{% if loop.index1 != MainFunc.InOutVarsNum %},{% endif %}{% endfor %});
   ReadPlainMembers();
+  m_exTimeISPC["{{MainFunc.Name}}"] = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - before).count()/1000.f;
 }
 {% endfor %}
+{% if HasGetTimeFunc %}
+
+void {{MainClassName}}_ISPC::GetExecutionTime(const char* a_funcName, float a_out[4])
+{
+  float res = 0.0f;
+  {% for MainFunc in MainFunctions %}
+  {% if MainFunc.OverrideMe %}
+  if(std::string(a_funcName) == "{{MainFunc.Name}}" || std::string(a_funcName) == "{{MainFunc.Name}}Block")
+    res = m_exTimeISPC["{{MainFunc.Name}}"];
+  {% endif %}
+  {% endfor %}
+  a_out[0] = res;
+  a_out[1] = 0.0f;
+  a_out[2] = 0.0f;
+  a_out[3] = 0.0f;             
+}
+{% endif %}
 
 std::shared_ptr<{{MainClassName}}> Create{{MainClassName}}_ISPC() 
 { 

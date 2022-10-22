@@ -55,8 +55,8 @@ public:
   virtual void Bloom(int w, int h, const float4* inData4f   __attribute__((size("w", "h"))) , 
                                    unsigned int* outData1ui __attribute__((size("w", "h"))) );
 
-  virtual void CommitDeviceData() {}                                       // will be overriden in generated class
-  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class                                   
+  virtual void CommitDeviceData() {}                                                               // will be overriden in generated class
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) { a_out[0] = m_bloomTime;} // will be overriden in generated class                                   
 
 protected:
 
@@ -78,7 +78,7 @@ protected:
   int m_widthSmall;
   int m_heightSmall;
   float m_gammaInv;
-
+  float m_bloomTime = 0.0f;
 };
 
 #endif

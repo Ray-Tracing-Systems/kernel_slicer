@@ -1,6 +1,7 @@
 #include "test_class.h"
 #include "Bitmap.h"
 #include <cassert>
+#include <chrono>
 
 inline uint pitch(uint x, uint y, uint pitch) { return y*pitch + x; }  
 
@@ -184,6 +185,7 @@ void ToneMapping::kernel2D_MixAndToneMap(int width, int height, const float4* in
 void ToneMapping::Bloom(int w, int h, const float4* inData4f, 
                         unsigned int* outData1ui)
 {
+  auto before = std::chrono::high_resolution_clock::now();
   // (1) ExtractBrightPixels (inData4f => m_brightPixels (w,h))
   //
   kernel2D_ExtractBrightPixels(w, h, inData4f,
@@ -206,4 +208,5 @@ void ToneMapping::Bloom(int w, int h, const float4* inData4f,
   //
   kernel2D_MixAndToneMap(w,h, inData4f, m_downsampledImage.data(), 
                          outData1ui);
+  m_bloomTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - before).count()/1000.f;
 }
