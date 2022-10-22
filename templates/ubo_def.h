@@ -36,6 +36,11 @@ typedef LiteMath::uint4    uvec4;
   typedef uint<2>  uint2;
   typedef uint<3>  uint3;
   typedef uint<4>  uint4;
+
+  typedef uint8    uint8_t;
+  typedef uint16   uint16_t;
+  typedef uint32   uint32_t;
+  #define __global 
   #else
   #include "LiteMath.h"
   #endif

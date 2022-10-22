@@ -190,11 +190,6 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
   if(pMember == m_variables.end())
     return false;
 
-  //auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
-  
-  if(m_codeInfo->pShaderCC->IsISPC())
-    return false;
-
   // (2) put ubo->var instead of var, leave containers as they are
   // process arrays and large data structures because small can be read once in the beggining of kernel
   // // m_currKernel.hasInitPass &&
@@ -203,6 +198,10 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
   const bool hasLargeSize     = true; // (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);
   const bool inMegaKernel     = m_codeInfo->megakernelRTV;
   const bool subjectedToRed   = m_currKernel.subjectedToReduction.find(fieldName) != m_currKernel.subjectedToReduction.end();
+  
+  if(m_codeInfo->pShaderCC->IsISPC() && subjectedToRed)
+    return false;
+  
   if(!pMember->second.isContainer && WasNotRewrittenYet(expr) && !m_infoPass && (isInLoopInitPart || isInLoopFinishPart || !subjectedToRed) && 
                                                                  (isInLoopInitPart || isInLoopFinishPart || pMember->second.isArray || hasLargeSize || inMegaKernel)) 
   {

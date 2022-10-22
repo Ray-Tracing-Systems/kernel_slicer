@@ -755,6 +755,7 @@ namespace kslicer
   struct ISPCCompiler : ClspvCompiler
   {
     ISPCCompiler(bool a_useCPP = false);
+    std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo[0].") + a_name; };
     std::string Name() const override { return "ISPC"; }
     void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
     bool        IsISPC() const override { return true; }
