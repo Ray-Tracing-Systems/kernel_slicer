@@ -231,25 +231,7 @@ static json ReductionAccessFill(const kslicer::KernelInfo::ReductionAccess& seco
 std::unordered_map<std::string, std::string> ListISPCVectorReplacements();
 
 const std::string ConvertVecTypesToISPC(const std::string& a_typeName,
-                                        const std::string& a_argName)
-
-{
-  static const auto vecTypes = ListISPCVectorReplacements();
-  std::string nameToSearch = a_typeName;
-  ReplaceFirst(nameToSearch, "const ", "");
-  
-  if(vecTypes.find(nameToSearch) != vecTypes.end() || nameToSearch.find("struct") != std::string::npos)
-  {
-    if (nameToSearch.find("struct") != std::string::npos)
-      ReplaceFirst(nameToSearch, "struct ", "");
-
-    if(a_typeName.find("const ") != std::string::npos)
-      return "(const ispc::" + nameToSearch + "*)" + a_argName;
-    else
-      return "(ispc::" + nameToSearch + "*)" + a_argName;
-  }
-  return a_argName;
-}
+                                        const std::string& a_argName);
 
 json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo, 
                                     const std::vector<kslicer::FuncData>& usedFunctions,
@@ -631,6 +613,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         
         if(loopStart == "")
           loopStart = "0";
+
+        if(a_classInfo.pShaderCC->IsISPC())
+        {
+          if(a_classInfo.allDataMembers.find(loopStart) != a_classInfo.allDataMembers.end())
+            loopStart  = a_classInfo.pShaderCC->UBOAccess(loopStart);
+          if(a_classInfo.allDataMembers.find(loopSize) != a_classInfo.allDataMembers.end())
+            loopSize  = a_classInfo.pShaderCC->UBOAccess(loopSize);
+          if(a_classInfo.allDataMembers.find(loopStride) != a_classInfo.allDataMembers.end())
+            loopStride  = a_classInfo.pShaderCC->UBOAccess(loopStride);
+        }
 
         const bool noStride = (loopStride == "1") && ((loopStart == "0") || 
                                                       a_classInfo.pShaderCC->IsISPC());

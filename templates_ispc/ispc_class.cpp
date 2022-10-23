@@ -114,8 +114,18 @@ void {{MainClassName}}_ISPC::GetExecutionTime(const char* a_funcName, float a_ou
 }
 {% endif %}
 
+{% for ctorDecl in Constructors %}
+{% if ctorDecl.NumParams == 0 %}
 std::shared_ptr<{{MainClassName}}> Create{{MainClassName}}_ISPC() 
 { 
   auto pObj = std::make_shared<{{MainClassName}}_ISPC>(); 
   return pObj;
 }
+{% else %}
+std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}_ISPC({{ctorDecl.Params}}) 
+{ 
+  auto pObj = std::make_shared<{{MainClassName}}_ISPC>({{ctorDecl.PrevCall}}); 
+  return pObj;
+}
+{% endif %}
+{% endfor %}

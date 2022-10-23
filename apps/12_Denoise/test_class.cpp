@@ -1,7 +1,13 @@
 #include "test_class.h"
 #include "Bitmap.h"
 #include <cassert>
-//#include <chrono>
+#include <chrono>
+#include <algorithm>
+#include <cmath>
+
+using std::min;
+using std::max;
+using std::abs;
 
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -16,7 +22,7 @@ static inline int Clampi(const int x, const int a, const int b)
   else            return x;
 }
 
-static void SimpleCompressColor(float4* color)
+static void SimpleCompressColor(varying float4* color)
 {
   color->x /= (1.0F + color->x);
   color->y /= (1.0F + color->y);
@@ -29,7 +35,7 @@ static inline float ProjectedPixelSize(const float dist, const float FOV, const 
   float ppx = (FOV / w)*dist;
   float ppy = (FOV / h)*dist;
 
-  if (dist > 0.0F) return 2.0F * fmax(ppx, ppy);
+  if (dist > 0.0F) return 2.0F * max(ppx, ppy);
   else             return 1000.0F;
 }
 
@@ -48,11 +54,11 @@ static inline float SurfaceSimilarity(const float4 data1, const float4 data2,con
   const float d1 = data1.w;
   const float d2 = data2.w;
 
-  if (fabs(d1 - d2) >= MADXDIFF)
+  if (abs(d1 - d2) >= MADXDIFF)
     return 0.0F;
 
-  const float normalDiff = sqrt(1.0F -         (dist / MANXDIFF));
-  const float depthDiff  = sqrt(1.0F - fabs(d1 - d2) / MADXDIFF);
+  const float normalDiff = sqrt(1.0F - (dist / MANXDIFF));
+  const float depthDiff  = sqrt(1.0F - abs(d1 - d2) / MADXDIFF);
 
   return normalDiff * depthDiff;
 }
@@ -82,7 +88,7 @@ static inline float NLMWeight(__global const float4* in_buff, int w, int h, int 
 
       const float4 dist = c2 - c3;
 
-      w1               += dot(to_float3(dist), to_float3(dist));
+      w1 += dot(to_float3(dist), to_float3(dist));
     }
   }
 
@@ -127,7 +133,7 @@ void Denoise::Resize(int w, int h)
 
 void Denoise::kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth)
 {
-  #pragma omp parallel for
+  //#pragma omp parallel for
   for (int i = 0; i < m_sizeImg; ++i)  
   {      
     int pxData      = a_inTexColor[i];
@@ -161,7 +167,7 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
   m_windowArea  = std::sqrt(2.0f * (float)(a_windowRadius) + 1.0f);
 
 
-  #pragma omp parallel for
+  //#pragma omp parallel for collaplse(2)
   for (int y = 0; y < a_height; ++y)
   {
     for (int x = 0; x < a_width; ++x)
@@ -253,8 +259,8 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
 void Denoise::NLM_denoise(const int a_width, const int a_height, const float4* a_inImage, unsigned int* a_outData1ui, const int32_t* a_inTexColor, 
                           const int32_t* a_inNormal, const float4* a_inDepth,  const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel)
 {  
-
+  auto before = std::chrono::high_resolution_clock::now();
   kernel1D_int32toFloat4(a_inTexColor, a_inNormal, a_inDepth);
-
   kernel2D_GuidedTexNormDepthDenoise(a_width, a_height, a_inImage, a_outData1ui, a_windowRadius, a_blockRadius, a_noiseLevel); 
+  m_denoiseTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - before).count()/1000.f;
 }

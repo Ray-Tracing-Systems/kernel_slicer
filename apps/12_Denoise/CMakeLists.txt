@@ -37,6 +37,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2 -fopenmp -fPIC -Wno-attributes"
 
 add_executable(testapp main.cpp 
                        test_class.cpp
+                       test_class_ispc.cpp
+                       test_class_kernels.o
                        test_class_generated.cpp 
                        test_class_generated_ds.cpp 
                        test_class_generated_init.cpp

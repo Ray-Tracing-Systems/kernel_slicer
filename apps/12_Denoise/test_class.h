@@ -28,14 +28,14 @@ public:
                            const float4* a_inDepth     __attribute__((size("a_width", "a_height"))), 
                            const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
 
-  virtual void CommitDeviceData() {}                                       // will be overriden in generated class
-  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class    
+  virtual void CommitDeviceData() {}                                                                  // will be overriden in generated class
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) { a_out[0] = m_denoiseTime; } // will be overriden in generated class    
 
 protected:
 
-  void kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth);
-  void kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_height, const float4* a_inImage, unsigned int* a_outData1ui,
-                                          const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
+  virtual void kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth);
+  virtual void kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_height, const float4* a_inImage, unsigned int* a_outData1ui,
+                                                  const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
 
   int                    m_width            = 0;
   int                    m_height           = 0;
@@ -55,6 +55,8 @@ protected:
   static constexpr float m_counterThreshold = 0.05F; 
   static constexpr float m_DEG_TO_RAD       = 0.017453292519943295769236907684886F;
   static constexpr float m_fov              = m_DEG_TO_RAD * 90.0F;
+
+  float m_denoiseTime = 0.0f;
 };
 
 #endif

@@ -76,6 +76,28 @@ std::unordered_map<std::string, std::string> ListISPCVectorReplacements()
   return m_vecReplacements;
 }
 
+const std::string ConvertVecTypesToISPC(const std::string& a_typeName,
+                                        const std::string& a_argName)
+
+{
+  static const auto vecTypes = ListISPCVectorReplacements();
+  std::string nameToSearch = a_typeName;
+  ReplaceFirst(nameToSearch, "const ", "");
+  while(nameToSearch[nameToSearch.size()-1] == ' ')
+    nameToSearch = nameToSearch.substr(0, nameToSearch.size()-1);
+  if(vecTypes.find(nameToSearch) != vecTypes.end() || nameToSearch.find("struct") != std::string::npos)
+  {
+    if (nameToSearch.find("struct") != std::string::npos)
+      ReplaceFirst(nameToSearch, "struct ", "");
+
+    if(a_typeName.find("const ") != std::string::npos)
+      return "(const ispc::" + nameToSearch + "*)" + a_argName;
+    else
+      return "(ispc::" + nameToSearch + "*)" + a_argName;
+  }
+  return a_argName;
+}
+
 std::string kslicer::ISPCCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler)
 {
   std::string typeInCL = a_decl.type;
@@ -96,4 +118,11 @@ std::string kslicer::ISPCCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
     break;
   };
   return result;
+}
+
+std::string kslicer::ISPCCompiler::ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const
+{
+  std::string call = a_call;
+  ReplaceFirst(call, "std::", "");
+  return call;
 }

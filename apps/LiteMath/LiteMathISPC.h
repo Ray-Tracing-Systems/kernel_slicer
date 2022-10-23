@@ -1,5 +1,27 @@
-#ifndef OPENCL_MATH_GPU_H
-#define OPENCL_MATH_GPU_H
+#ifndef ISPC_MATH_H
+#define ISPC_MATH_H
+
+typedef float<2> float2;
+typedef float<3> float3;
+typedef float<4> float4;
+
+typedef int<2>   int2;
+typedef int<3>   int3;
+typedef int<4>   int4;
+
+typedef uint<2>  uint2;
+typedef uint<3>  uint3;
+typedef uint<4>  uint4;
+
+typedef uint8    uint8_t;
+typedef uint16   uint16_t;
+typedef uint32   uint32_t;
+
+typedef int8     int8_t;
+typedef int16    int16_t;
+typedef int32    int32_t;
+
+#define __global 
 
 #ifndef MAXFLOAT
 #define MAXFLOAT 1e37f
@@ -150,5 +172,20 @@ static inline float dot (float4 a, float4 b)  { return a.x*b.x + a.y*b.y + a.z*b
 static inline float dot3(float4 a, float4 b)  { return a.x*b.x + a.y*b.y + a.z*b.z; }
 static inline float dot4(float4 a, float4 b)  { return dot(a,b); } 
 static inline float dot (float3 a, float3 b)  { return a.x*b.x + a.y*b.y + a.z*b.z; }
+
+static inline float  length(float3 a) { return sqrt(dot(a,a)); }
+static inline float3 normalize(float3 a) { float lenInv = 1.0f/length(a); return a*lenInv; }
+
+static inline float3 shuffle_xzy(float3 a) { return make_float3(a.x, a.z, a.y); }
+static inline float3 shuffle_yxz(float3 a) { return make_float3(a.y, a.x, a.z); }
+static inline float3 shuffle_yzx(float3 a) { return make_float3(a.y, a.z, a.x); }
+static inline float3 shuffle_zxy(float3 a) { return make_float3(a.z, a.x, a.y); }
+static inline float3 shuffle_zyx(float3 a) { return make_float3(a.z, a.y, a.x); }
+static inline float3 cross(float3 a, float3 b) 
+{
+  const float3 a_yzx = shuffle_yzx(a);
+  const float3 b_yzx = shuffle_yzx(b);
+  return shuffle_yzx(a*b_yzx - a_yzx*b);
+}
 
 #endif
