@@ -600,6 +600,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       //pVisitorK->ClearUserArgs();
 
       kernelJson["ThreadIds"] = std::vector<std::string>();
+      kernelJson["ThreadId0"] = "";
+      kernelJson["ThreadId1"] = "";
+      kernelJson["ThreadId2"] = "";
 
       std::vector<std::string> threadIdNames(tidArgs.size());
       for(size_t i=0;i<tidArgs.size();i++)
@@ -626,7 +629,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
         const bool noStride = (loopStride == "1") && ((loopStart == "0") || 
                                                       a_classInfo.pShaderCC->IsISPC());
-
+        
         json threadId;
         if(tidArgs[tid].loopIter.startNode != nullptr && !noStride)
         {
@@ -643,10 +646,13 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         threadId["Size"]   = loopSize;
         threadId["Start"]  = loopStart;
         threadId["Stride"] = loopStride;
-        //if(tidArgs[tid].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL)  
-        //  threadId["CondLE"] = 1;
-        //else
-        //  threadId["CondLE"] = 0;
+        if(i == 0)
+          kernelJson["ThreadId0"] = threadId;
+        else if(i == 1)
+          kernelJson["ThreadId1"] = threadId;
+        else
+          kernelJson["ThreadId2"] = threadId;
+          
         kernelJson["ThreadIds"].push_back(threadId);
       }
 

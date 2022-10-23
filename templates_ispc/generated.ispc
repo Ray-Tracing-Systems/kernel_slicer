@@ -27,6 +27,40 @@
 /////////////////////////////////////////////////////////////////////
 
 ## for Kernel in Kernels
+task void {{Kernel.Name}}_Task(
+  {% for Arg in Kernel.Args %}
+  {% if not Arg.IsUBO %} 
+  {% if Arg.IsPointer %}
+  uniform {{Arg.Type}} {{Arg.Name}}[], 
+  {% else %}
+  uniform {{Arg.Type}} {{Arg.Name}},
+  {% endif %}
+  {% endif %}
+  {% endfor %}
+  uniform struct {{MainClassName}}_UBO_Data ubo[1],
+  uniform int _start, uniform int _end, uniform int _span)
+{
+  {# /* declare varyings which are subjected to reduction */ #}
+  {% for Var in Kernel.SubjToRed %}
+  {{Var.Type}} {{Var.Name}};
+  {% endfor %}
+  {{Kernel.InitSource}}
+  {% if Kernel.threadDim == 1 %}
+  const uniform int xstart = _start + taskIndex * _span;
+  const uniform int xend   = _start + min((uniform int)((taskIndex+1) * _span), _end);
+  foreach({{Kernel.ThreadId0.Name}} = xstart ... xend) {
+  {% else %}
+  const uniform int ystart = _start + taskIndex * _span;
+  const uniform int yend   = _start + min((uniform int)((taskIndex+1) * _span), _end);
+  foreach({{Kernel.ThreadId1.Name}} = ystart ... yend, {{Kernel.ThreadId0.Name}} = {{Kernel.ThreadId0.Start}} ... {{Kernel.ThreadId0.Size}}) {
+  {% endif %}
+  {{Kernel.Source}}
+  }
+  {% for Var in Kernel.SubjToRed %}
+  atomic_{{Var.Op2}}_global(&ubo[0].{{Var.Name}}, {{Var.Op}}({{Var.Name}}));
+  {% endfor %}
+}
+
 export void {{Kernel.Name}}_ISPC(
   {% for Arg in Kernel.Args %}
   {% if not Arg.IsUBO %} 
@@ -38,20 +72,20 @@ export void {{Kernel.Name}}_ISPC(
   {% endif %}
   {% endfor %}
   uniform struct {{MainClassName}}_UBO_Data ubo[1])
-{
-  {# /* declare varyings which are subjected to reduction */ #}
-  {% for Var in Kernel.SubjToRed %}
-  {{Var.Type}} {{Var.Name}};
+{ 
+  {% for TID in Kernel.ThreadIds %}
+  const uniform int l_start{{loop.index}} = {{TID.Start}};
+  const uniform int l_size{{loop.index}}  = {{TID.Size}};
   {% endfor %}
-  {{Kernel.InitSource}}
-  foreach ({% for TID in Kernel.ThreadIds %}{{TID.Name}} = {{TID.Start}} ... {{TID.Size}}{% if loop.index1 != Kernel.threadDim %}, {% endif %}{% endfor %}) { 
-  {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
-  {{Kernel.Source}}
-  }
-  {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
-  {% for Var in Kernel.SubjToRed %}
-  ubo[0].{{Var.Name}} = {{Var.Op}}({{Var.Name}});
-  {% endfor %}
+  {% if Kernel.threadDim == 1 %}
+  const uniform int span  = 1024;
+  const uniform int width = l_size0-l_start0;
+  launch[width/span] {{Kernel.Name}}_Task({% for Arg in Kernel.Args %}{{Arg.Name}},{% endfor %}ubo,l_start0,l_size0,span);
+  {% else %}
+  const uniform int span   = 4;
+  const uniform int height = l_size1-l_start1;
+  launch[height/span] {{Kernel.Name}}_Task({% for Arg in Kernel.Args %}{{Arg.Name}},{% endfor %}ubo,l_start1,l_size1, span);
+  {% endif %}
 }
 
 ## endfor

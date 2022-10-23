@@ -38,6 +38,7 @@ add_executable(testapp main.cpp
                        test_class.cpp
                        test_class_ispc.cpp
                        test_class_kernels.o
+                       ../LiteMath/ispc_tasksys.cpp
                        test_class_generated.cpp 
                        test_class_generated_ds.cpp
                        test_class_generated_init.cpp 

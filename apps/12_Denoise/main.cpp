@@ -92,7 +92,7 @@ int main(int argc, const char** argv)
   ArgParser args(argc, argv);
 
   bool onGPU  = false; // args.hasOption("--gpu");
-  bool isISPC = false; // args.hasOption("--ispc");
+  bool isISPC = true; // args.hasOption("--ispc");
   std::shared_ptr<Denoise> pImpl = nullptr;
   if(onGPU)
   {
@@ -112,6 +112,8 @@ int main(int argc, const char** argv)
 
   if(onGPU)
     SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
+  else if(isISPC)
+    SaveBMP("zout_ispc.bmp", ldrData.data(), w, h);
   else 
     SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
 

@@ -133,7 +133,7 @@ void Denoise::Resize(int w, int h)
 
 void Denoise::kernel1D_int32toFloat4(const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth)
 {
-  //#pragma omp parallel for
+  #pragma omp parallel for
   for (int i = 0; i < m_sizeImg; ++i)  
   {      
     int pxData      = a_inTexColor[i];
@@ -167,7 +167,7 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
   m_windowArea  = std::sqrt(2.0f * (float)(a_windowRadius) + 1.0f);
 
 
-  //#pragma omp parallel for collaplse(2)
+  #pragma omp parallel for 
   for (int y = 0; y < a_height; ++y)
   {
     for (int x = 0; x < a_width; ++x)
