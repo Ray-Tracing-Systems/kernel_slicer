@@ -40,7 +40,7 @@ int main(int argc, const char** argv)
   ArgParser args(argc, argv);
 
   bool onGPU  = false; // args.hasOption("--gpu");
-  bool isISPC = true;  // args.hasOption("--ispc");
+  bool isISPC = true; // args.hasOption("--ispc");
   
   if(onGPU)
   {

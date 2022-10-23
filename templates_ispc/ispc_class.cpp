@@ -47,7 +47,29 @@ protected:
   virtual void ReadPlainMembers();
 
   {% for Kernel in Kernels %}
-  void {{Kernel.Name}}({% for Arg in Kernel.Args %}{% if not Arg.IsUBO and not Arg.IsMember %}{% if Arg.IsPointer %}{{Arg.Type}}* {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %}{% else %}{{Arg.Type}} {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %} {% endif %}{% endif %} {% endfor %}) override { ispc::{{Kernel.Name}}_ISPC({% for Arg in Kernel.Args %}{% if Arg.IsPointer and Arg.IsMember %}{{Arg.NameISPC}}.data(){% else %}{{Arg.NameISPC}}{%endif%}{% if loop.index1 != Kernel.LastArgNF1 %},{% endif %}{% endfor %},&m_uboData); }
+  void {{Kernel.Name}}({% for Arg in Kernel.Args %}{% if not Arg.IsUBO and not Arg.IsMember %}{% if Arg.IsPointer %}{{Arg.Type}}* {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %}{% else %}{{Arg.Type}} {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %} {% endif %}{% endif %} {% endfor %}) override 
+  { 
+    {% if Kernel.OpenMPAndISPC %}
+    constexpr int BLOCK_SIZE = 64;
+    {% if Kernel.threadDim == 1 %}
+    #pragma omp parallel for 
+    for(int {{Kernel.ThreadId0.Name}} = {{Kernel.ThreadId0.Start}}; {{Kernel.ThreadId0.Name}} < {{Kernel.ThreadId0.Size}}; {{Kernel.ThreadId0.Name}} += BLOCK_SIZE) {
+      const int end = std::min({{Kernel.ThreadId0.Name}} + BLOCK_SIZE, int({{Kernel.ThreadId0.Size}}));
+      ispc::{{Kernel.Name}}_ISPC({% for Arg in Kernel.Args %}{% if Arg.IsPointer and Arg.IsMember %}{{Arg.NameISPC}}.data(){% else %}{{Arg.NameISPC}}{%endif%}{% if loop.index1 != Kernel.LastArgNF1 %},{% endif %}{% endfor %},&m_uboData,{{Kernel.ThreadId0.Name}},end,0);  
+    }
+    {% else %}
+    #pragma omp parallel for 
+    for(int {{Kernel.ThreadId0.Name}} = {{Kernel.ThreadId0.Start}}; {{Kernel.ThreadId0.Name}} < {{Kernel.ThreadId0.Size}}; {{Kernel.ThreadId0.Name}}++) {
+      for(int {{Kernel.ThreadId1.Name}} = {{Kernel.ThreadId1.Start}}; {{Kernel.ThreadId1.Name}} < {{Kernel.ThreadId1.Size}}; {{Kernel.ThreadId1.Name}} += BLOCK_SIZE) {
+        const int end = std::min({{Kernel.ThreadId1.Name}} + BLOCK_SIZE, int({{Kernel.ThreadId1.Size}}));
+        ispc::{{Kernel.Name}}_ISPC({% for Arg in Kernel.Args %}{% if Arg.IsPointer and Arg.IsMember %}{{Arg.NameISPC}}.data(){% else %}{{Arg.NameISPC}}{%endif%}{% if loop.index1 != Kernel.LastArgNF1 %},{% endif %}{% endfor %},&m_uboData,{{Kernel.ThreadId1.Name}},end,{{Kernel.ThreadId0.Name}});  
+      }
+    }
+    {% endif %}
+    {% else %}
+    ispc::{{Kernel.Name}}_ISPC({% for Arg in Kernel.Args %}{% if Arg.IsPointer and Arg.IsMember %}{{Arg.NameISPC}}.data(){% else %}{{Arg.NameISPC}}{%endif%}{% if loop.index1 != Kernel.LastArgNF1 %},{% endif %}{% endfor %},&m_uboData); 
+    {% endif %}
+  }
   {% endfor %}
 
   ispc::{{MainClassName}}_UBO_Data m_uboData;

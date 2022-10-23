@@ -588,6 +588,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["NeedTexArray"] = isTextureArrayUsedInThisKernel;
     kernelJson["WarpSize"]     = k.warpSize;
     kernelJson["InitSource"]   = "";
+    kernelJson["SingleThreadISPC"] = k.singleThreadISPC;
+    kernelJson["OpenMPAndISPC"]    = k.openMpAndISPC;
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));

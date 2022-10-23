@@ -388,6 +388,7 @@ int main(int argc, const char **argv)
   bool        useMegakernel      = false;
   auto        defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
   bool        enableSubGroupOps  = false;
+  int         ispcThreadModel    = 0;
   
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
@@ -434,6 +435,9 @@ int main(int argc, const char **argv)
     else if(params["-vkernel_t="] == "indirect_dispatch")
       defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_INDIRECT_DISPATCH;
   } 
+
+  if(params.find("-ispc_threads") != params.end())
+    ispcThreadModel = atoi(params["-ispc_threads"].c_str());
 
   std::unordered_set<std::string> values;
   std::vector<std::string> includeFolderList;
@@ -1031,8 +1035,10 @@ int main(int argc, const char **argv)
       kernel.wgSize[1] = defaultWgSize[kernelDim-1][1];
       kernel.wgSize[2] = defaultWgSize[kernelDim-1][2];
     }
-    kernel.warpSize        = warpSize;
-    kernel.enableSubGroups = enableSubGroupOps;
+    kernel.warpSize         = warpSize;
+    kernel.enableSubGroups  = enableSubGroupOps;
+    kernel.singleThreadISPC = (ispcThreadModel == 1);
+    kernel.openMpAndISPC    = (ispcThreadModel == 2);
   }
  
   auto& megakernelsByName = inputCodeInfo.megakernelsByName;

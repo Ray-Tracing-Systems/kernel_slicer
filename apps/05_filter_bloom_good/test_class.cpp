@@ -74,7 +74,8 @@ void ToneMapping::SetMaxImageSize(int w, int h)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void ToneMapping::kernel2D_ExtractBrightPixels(int width, int height, const float4* inData4f, float4* a_brightPixels)
-{  
+{ 
+  #pragma omp parallel for collapse(2) 
   for(int y=0;y<height;y++)
   {
     for(int x=0;x<width;x++)
@@ -90,6 +91,7 @@ void ToneMapping::kernel2D_ExtractBrightPixels(int width, int height, const floa
 
 void ToneMapping::kernel2D_DownSample4x(int width, int height, const float4* a_dataFullRes, float4* a_dataSmallRes)
 {
+  #pragma omp parallel for collapse(2)
   for(int j=0;j<height;j++)
   {
     for(int i=0;i<width;i++)
@@ -106,6 +108,7 @@ void ToneMapping::kernel2D_DownSample4x(int width, int height, const float4* a_d
 
 void ToneMapping::kernel2D_BlurX(int width, int height, const float4* a_dataIn, float4* a_dataOut)
 {
+  #pragma omp parallel for collapse(2)
   for(int tidY=0;tidY<height;tidY++)
   {
     for(int tidX=0;tidX<width;tidX++)
@@ -132,6 +135,7 @@ void ToneMapping::kernel2D_BlurX(int width, int height, const float4* a_dataIn, 
 
 void ToneMapping::kernel2D_BlurY(int width, int height, const float4* a_dataIn, float4* a_dataOut)
 {
+  #pragma omp parallel for collapse(2)
   for(int tidY=0;tidY<height;tidY++)
   {
     for(int tidX=0;tidX<width;tidX++)
@@ -158,6 +162,7 @@ void ToneMapping::kernel2D_BlurY(int width, int height, const float4* a_dataIn, 
 
 void ToneMapping::kernel2D_MixAndToneMap(int width, int height, const float4* inData4f, const float4* inBrightPixels, unsigned int* outData1ui)
 {
+  #pragma omp parallel for collapse(2)
   for(int tidY=0;tidY<height;tidY++)
   {
     for(int tidX=0;tidX<width;tidX++)
