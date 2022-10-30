@@ -188,4 +188,24 @@ static inline float3 cross(float3 a, float3 b)
   return shuffle_yzx(a*b_yzx - a_yzx*b);
 }
 
+static inline float atomic_max_global(uniform float * uniform ptr, float value) 
+{ 
+  float old; 
+  do 
+  {
+    old = atomic_swap_global(ptr, value);
+  } while(old > value);
+  return old;
+}
+
+static inline float atomic_min_global(uniform float * uniform ptr, float value) 
+{ 
+  float old; 
+  do 
+  {
+    old = atomic_swap_global(ptr, value);
+  } while(old < value);
+  return old;
+}
+
 #endif
