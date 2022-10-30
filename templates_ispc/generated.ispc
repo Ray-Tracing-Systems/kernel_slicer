@@ -122,7 +122,7 @@ task void {{Kernel.Name}}_Task(
   {% else %}
   const uniform int ystart = _start + taskIndex * _span;
   const uniform int yend   = _start + min((uniform int)((taskIndex+1) * _span), _end);
-  foreach({{Kernel.ThreadId1.Name}} = ystart ... yend, {{Kernel.ThreadId0.Name}} = {{Kernel.ThreadId0.Start}} ... {{Kernel.ThreadId0.Size}}) {
+  foreach({{Kernel.ThreadId0.Name}} = {{Kernel.ThreadId0.Start}} ... {{Kernel.ThreadId0.Size}}, {{Kernel.ThreadId1.Name}} = ystart ... yend) {
   {% endif %}
   {{Kernel.Source}}
   }
