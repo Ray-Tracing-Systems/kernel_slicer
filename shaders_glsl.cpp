@@ -1476,7 +1476,7 @@ bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
   if(qt->isPointerType() || qt->isReferenceType()) // we can't put references to push constants
     return true;
   
-  std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
+  const std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
   if(m_userArgs.find(text) != m_userArgs.end() && WasNotRewrittenYet(expr))
   {
     if(!m_codeInfo->megakernelRTV || m_currKernel.isMega)

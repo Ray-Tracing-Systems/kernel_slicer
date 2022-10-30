@@ -193,6 +193,13 @@ kslicer::KernelRewriter::KernelRewriter(clang::Rewriter &R, const clang::Compile
   m_variables.reserve(a_variables.size());
   for(const auto& var : a_variables) 
     m_variables[var.name] = var;
+  
+  auto tidArgs = a_codeInfo->GetKernelTIDArgs(a_kernel);
+  for(const auto& arg : tidArgs)
+    m_threadIdArgs.push_back(arg.name);
+  m_explicitIdISPC = a_kernel.explicitIdISPC;
+  if(tidArgs.size() > 0)
+    m_threadIdExplicitIndexISPC = tidArgs[tidArgs.size()-1].name;
 }
 
 

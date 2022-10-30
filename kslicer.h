@@ -250,6 +250,7 @@ namespace kslicer
     bool     enableSubGroups  = false;           ///<! enable subgroup operations for reduction and e.t.c.
     bool     singleThreadISPC = false;
     bool     openMpAndISPC    = false;
+    bool     explicitIdISPC   = false;
 
     bool      isIndirect = false;                ///<! IPV pattern; if loop size is defined by class member variable or vector size, we interpret it as indirect dispatching
     uint32_t  indirectBlockOffset = 0;           ///<! IPV pattern; for such kernels we have to know some offset in indirect buffer for thread blocks number (use int4 data for each kernel)
@@ -638,10 +639,13 @@ namespace kslicer
     std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
     const std::vector<kslicer::KernelInfo::ArgInfo>&         m_args;
     const std::string&                                       m_fakeOffsetExp;
+    std::vector<std::string>                                 m_threadIdArgs;
+    std::string                                              m_threadIdExplicitIndexISPC = ""; 
     bool                                                     m_kernelIsBoolTyped;
     bool                                                     m_kernelIsMaker;
     kslicer::KernelInfo&                                     m_currKernel;
     bool                                                     m_infoPass;
+    bool                                                     m_explicitIdISPC = false;
 
     std::unordered_set<uint64_t>                             m_visitedTexAccessNodes;
 
@@ -675,7 +679,7 @@ namespace kslicer
     virtual bool VisitVarDecl_Impl(clang::VarDecl* decl)                   { return true; } // override this in Derived class
     virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)     { return true; } // override this in Derived class
     virtual bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) { return true; } // override this in Derived class
-    virtual bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)           { return true; } // override this in Derived class
+    virtual bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr);
     virtual bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                 { return true; } // override this in Derived class
     virtual bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)  { return true; } // override this in Derived class
     virtual bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { return true; }

@@ -45,11 +45,22 @@ export void {{Kernel.Name}}_ISPC(
   {{Var.Type}} {{Var.Name}};
   {% endfor %}
   {{Kernel.InitSource}}
+  {% if Kernel.ExplicitIdISPC %}
+  {% if Kernel.threadDim == 1 %}
+  for (uniform {{Kernel.ThreadId0.Type}} {{Kernel.ThreadId0.Name}} = {{Kernel.ThreadId0.Start}}; {{Kernel.ThreadId0.Name}} < {{Kernel.ThreadId0.Size}}; {{Kernel.ThreadId0.Name}} += programCount) {
+  {% else %}
+  for (uniform {{Kernel.ThreadId1.Type}} {{Kernel.ThreadId1.Name}} = {{Kernel.ThreadId1.Start}}; {{Kernel.ThreadId1.Name}} < {{Kernel.ThreadId1.Size}}; {{Kernel.ThreadId1.Name}} ++) {
+  for (uniform {{Kernel.ThreadId0.Type}} {{Kernel.ThreadId0.Name}} = {{Kernel.ThreadId0.Start}}; {{Kernel.ThreadId0.Name}} < {{Kernel.ThreadId0.Size}}; {{Kernel.ThreadId0.Name}} += programCount) {
+  {% endif %}
+  {% else %}
   foreach ({% for TID in Kernel.ThreadIds %}{{TID.Name}} = {{TID.Start}} ... {{TID.Size}}{% if loop.index1 != Kernel.threadDim %}, {% endif %}{% endfor %}) { 
-  {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
+  {% endif %}
   {{Kernel.Source}}
+  {% if Kernel.ExplicitIdISPC and Kernel.threadDim == 2 %}
+  }}
+  {% else %}
   }
-  {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
+  {% endif %}
   {% for Var in Kernel.SubjToRed %}
   ubo[0].{{Var.Name}} = {{Var.Op}}({{Var.Name}});
   {% endfor %}

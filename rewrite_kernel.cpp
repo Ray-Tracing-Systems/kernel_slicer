@@ -58,6 +58,25 @@ bool kslicer::KernelRewriter::VisitForStmt(clang::ForStmt* forLoop)
   return true;
 }
 
+bool kslicer::KernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)               // ISPC explicit naming for thread id's
+{
+  if(!m_explicitIdISPC)
+    return true;
+
+  const std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
+  bool textFound = (m_threadIdExplicitIndexISPC == text);
+  //for(const auto& threadIdName : m_threadIdArgs) {
+  //  if(threadIdName == text)
+  //    textFound = true;
+  //}
+
+  if(textFound && WasNotRewrittenYet(expr))
+  {
+    m_rewriter.ReplaceText(expr->getSourceRange(), std::string("(") + text + "+programIndex)");
+    MarkRewritten(expr);
+  }
+  return true;
+}
 
 bool kslicer::CheckSettersAccess(const clang::MemberExpr* expr, const MainClassInfo* a_codeInfo, const clang::CompilerInstance& a_compiler,
                                  std::string* setterS, std::string* setterM)

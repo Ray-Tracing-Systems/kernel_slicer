@@ -1043,6 +1043,7 @@
                         "-I${workspaceFolder}/apps/LiteMath", "ignore", 
                         "-shaderCC", "ispc",
                         "-ispc_threads",  "1",
+                        "-ispc_explicit_id", "1",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry"    : false,

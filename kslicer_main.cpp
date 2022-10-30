@@ -389,6 +389,7 @@ int main(int argc, const char **argv)
   auto        defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
   bool        enableSubGroupOps  = false;
   int         ispcThreadModel    = 0;
+  bool        ispcExplicitIndices = false;
   
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
@@ -438,6 +439,10 @@ int main(int argc, const char **argv)
 
   if(params.find("-ispc_threads") != params.end())
     ispcThreadModel = atoi(params["-ispc_threads"].c_str());
+  
+  if(params.find("-ispc_explicit_id") != params.end())
+    ispcExplicitIndices = (atoi(params["-ispc_explicit_id"].c_str()) == 1);
+
 
   std::unordered_set<std::string> values;
   std::vector<std::string> includeFolderList;
@@ -733,7 +738,13 @@ int main(int argc, const char **argv)
 
   for(auto& nk : inputCodeInfo.kernels)
   {
-    auto& kernel        = nk.second;
+    auto& kernel            = nk.second;
+    kernel.warpSize         = warpSize;
+    kernel.enableSubGroups  = enableSubGroupOps;
+    kernel.singleThreadISPC = (ispcThreadModel == 1);
+    kernel.openMpAndISPC    = (ispcThreadModel == 2);
+    kernel.explicitIdISPC   = ispcExplicitIndices;
+
     auto kernelMatchers = inputCodeInfo.ListMatchers_KF(kernel.name);
     auto pFilter        = inputCodeInfo.MatcherHandler_KF(kernel, compiler);
 
@@ -1035,10 +1046,6 @@ int main(int argc, const char **argv)
       kernel.wgSize[1] = defaultWgSize[kernelDim-1][1];
       kernel.wgSize[2] = defaultWgSize[kernelDim-1][2];
     }
-    kernel.warpSize         = warpSize;
-    kernel.enableSubGroups  = enableSubGroupOps;
-    kernel.singleThreadISPC = (ispcThreadModel == 1);
-    kernel.openMpAndISPC    = (ispcThreadModel == 2);
   }
  
   auto& megakernelsByName = inputCodeInfo.megakernelsByName;
