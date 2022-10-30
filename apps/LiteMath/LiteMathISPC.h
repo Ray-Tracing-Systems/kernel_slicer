@@ -188,24 +188,27 @@ static inline float3 cross(float3 a, float3 b)
   return shuffle_yzx(a*b_yzx - a_yzx*b);
 }
 
-static inline float atomic_max_global(uniform float * uniform ptr, float value) 
+
+static inline float atomic_max_global(uniform float * uniform ptr, uniform float value) 
 { 
-  float old; 
+  uniform float current  = *ptr;
+  uniform float expected = current;
   do 
   {
-    old = atomic_swap_global(ptr, value);
-  } while(old > value);
-  return old;
+    uniform float next          = max(expected, value);
+    *((uniform int*)(&current)) = atomic_compare_exchange_global((uniform int*)ptr, *((uniform int*)(&expected)), *((uniform int*)(&next)));
+  } while( current != expected);
 }
 
-static inline float atomic_min_global(uniform float * uniform ptr, float value) 
+static inline float atomic_min_global(uniform float * uniform ptr, uniform float value) 
 { 
-  float old; 
+  uniform float current  = *ptr;
+  uniform float expected = current;
   do 
   {
-    old = atomic_swap_global(ptr, value);
-  } while(old < value);
-  return old;
+    uniform float next          = min(expected, value);
+    *((uniform int*)(&current)) = atomic_compare_exchange_global((uniform int*)ptr, *((uniform int*)(&expected)), *((uniform int*)(&next)));
+  } while( current != expected);
 }
 
 #endif
