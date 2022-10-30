@@ -761,7 +761,7 @@ int main(int argc, const char **argv)
       uint32_t buffNumber = 0;
       for(auto& redVar : kernel.subjectedToReduction)
       {
-        if(redVar.second.SupportAtomicLastStep())
+        if(redVar.second.SupportAtomicLastStep() || inputCodeInfo.pShaderCC->IsISPC())
           continue;
         
         std::stringstream strOut;

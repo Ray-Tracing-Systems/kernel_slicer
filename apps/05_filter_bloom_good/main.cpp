@@ -39,8 +39,8 @@ int main(int argc, const char** argv)
   std::shared_ptr<ToneMapping> pImpl = nullptr;
   ArgParser args(argc, argv);
 
-  bool onGPU  = false; // args.hasOption("--gpu");
-  bool isISPC = true; // args.hasOption("--ispc");
+  bool onGPU  = args.hasOption("--gpu");
+  bool isISPC = args.hasOption("--ispc");
   
   if(onGPU)
   {

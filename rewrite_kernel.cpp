@@ -965,7 +965,7 @@ bool kslicer::KernelRewriter::VisitBinaryOperator_Impl(BinaryOperator* expr) // 
     m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
     m_currKernel.subjectedToReduction[leftStr] = access;
   }
-  else if (WasNotRewrittenYet(expr))
+  else if (WasNotRewrittenYet(expr) && !m_codeInfo->pShaderCC->IsISPC())
   {
     std::string argsType = "";
     if(call->getNumArgs() > 0)
