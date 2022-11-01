@@ -18,7 +18,7 @@
       "program": "${workspaceFolder}/cmake-build-release/testapp",
       "args": [
         "skybox",
-        "bbb"
+        "--cpu"
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
@@ -33,89 +33,5 @@
         }
       ]
     },
-    {
-      "name": "(gdb) Launch skybox 1",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/cmake-build-debug/testapp",
-      "args": [
-        "skybox", "--gpu"
-      ],
-      "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
-      "environment": [],
-      "externalConsole": false,
-      "MIMode": "gdb",
-      "setupCommands": [
-        {
-          "description": "Enable pretty-printing for gdb",
-          "text": "-enable-pretty-printing",
-          "ignoreFailures": true
-        }
-      ]
-    },
-    {
-      "name": "(gdb) Launch skybox 2",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/cmake-build-debug/testapp",
-      "args": [
-        "skybox2"
-      ],
-      "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
-      "environment": [],
-      "externalConsole": false,
-      "MIMode": "gdb",
-      "setupCommands": [
-        {
-          "description": "Enable pretty-printing for gdb",
-          "text": "-enable-pretty-printing",
-          "ignoreFailures": true
-        }
-      ]
-    },
-    {
-      "name": "(gdb) Launch skybox 3",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/cmake-build-debug/testapp",
-      "args": [
-        "skybox3"
-      ],
-      "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
-      "environment": [],
-      "externalConsole": false,
-      "MIMode": "gdb",
-      "setupCommands": [
-        {
-          "description": "Enable pretty-printing for gdb",
-          "text": "-enable-pretty-printing",
-          "ignoreFailures": true
-        }
-      ]
-    },
-    {
-      "name": "(gdb) Launch skybox 4",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/cmake-build-debug/testapp",
-      "args": [
-        "skybox4"
-      ],
-      "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
-      "environment": [],
-      "externalConsole": false,
-      "MIMode": "gdb",
-      "setupCommands": [
-        {
-          "description": "Enable pretty-printing for gdb",
-          "text": "-enable-pretty-printing",
-          "ignoreFailures": true
-        }
-      ]
-    }
   ]
 }
