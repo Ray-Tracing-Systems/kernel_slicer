@@ -307,9 +307,9 @@ protected:
   VkPipeline            {{Kernel.Name}}PipelineArray[{{length(Kernel.Hierarchy.Implementations)}}] = {};
   {% endif %}  
   VkDescriptorSetLayout Create{{Kernel.Name}}DSLayout();
-  void InitKernel_{{Kernel.Name}}(const char* a_filePath);
+  virtual void InitKernel_{{Kernel.Name}}(const char* a_filePath);
   {% if Kernel.IsIndirect %}
-  void {{Kernel.Name}}_UpdateIndirect();
+  virtual void {{Kernel.Name}}_UpdateIndirect();
   {% endif %}
   {% endfor %}
 
