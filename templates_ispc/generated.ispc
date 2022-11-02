@@ -122,7 +122,7 @@ task void {{Kernel.Name}}_Task(
   {% else %}
   const uniform int ystart = _start + taskIndex * _span;
   const uniform int yend   = _start + min((uniform int)((taskIndex+1) * _span), _end);
-  foreach({{Kernel.ThreadId0.Name}} = {{Kernel.ThreadId0.Start}} ... {{Kernel.ThreadId0.Size}}, {{Kernel.ThreadId1.Name}} = ystart ... yend) {
+  foreach({{Kernel.ThreadId0.Name}} = ystart ... yend, {{Kernel.ThreadId1.Name}} = {{Kernel.ThreadId1.Start}} ... {{Kernel.ThreadId1.Size}}) {
   {% endif %}
   {{Kernel.Source}}
   }
@@ -153,8 +153,8 @@ export void {{Kernel.Name}}_ISPC(
   launch[width/span] {{Kernel.Name}}_Task({% for Arg in Kernel.Args %}{{Arg.Name}},{% endfor %}ubo,l_start0,l_size0,span);
   {% else %}
   const uniform int span   = 4;
-  const uniform int height = l_size1-l_start1;
-  launch[height/span] {{Kernel.Name}}_Task({% for Arg in Kernel.Args %}{{Arg.Name}},{% endfor %}ubo,l_start1,l_size1, span);
+  const uniform int height = l_size0-l_start0;
+  launch[height/span] {{Kernel.Name}}_Task({% for Arg in Kernel.Args %}{{Arg.Name}},{% endfor %}ubo,l_start0,l_size0, span);
   {% endif %}
 }
 {% endif %}
