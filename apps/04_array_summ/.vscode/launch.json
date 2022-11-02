@@ -9,7 +9,7 @@
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-release/testapp",
-            "args"   : ["--ispc"],
+            "args"   : ["--cpu"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],

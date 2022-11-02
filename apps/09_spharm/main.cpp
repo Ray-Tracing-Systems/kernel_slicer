@@ -14,6 +14,7 @@
 
 #include "vk_context.h"
 std::shared_ptr<SphHarm> CreateSphHarm_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+std::shared_ptr<SphHarm> CreateSphHarm_ISPC();
 
 int main(int argc, const char** argv)
 {
@@ -32,7 +33,8 @@ int main(int argc, const char** argv)
     throw std::runtime_error("Failed to load inputImageData from file: " + filename + ".bmp");
   
 
-  bool onGPU = args.hasOption("--gpu");
+  bool onGPU  = args.hasOption("--gpu");
+  bool onISPC = args.hasOption("--ispc");
   std::shared_ptr<SphHarm> pImpl = nullptr;
   if(onGPU)
   {
@@ -40,6 +42,8 @@ int main(int argc, const char** argv)
     auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateSphHarm_Generated(ctx, inputImageData.size());
   }
+  else if(onISPC)
+    pImpl = CreateSphHarm_ISPC();
   else
     pImpl = std::make_shared<SphHarm>();
 

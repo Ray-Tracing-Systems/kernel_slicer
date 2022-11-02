@@ -2,6 +2,8 @@
 #include "include/crandom.h"
 
 #include <memory>
+#include <chrono>
+#include <iostream>
 
 static uint32_t nextRandValue(const uint32_t value) {
   return value * 22695477 + 1; // Borland C random
@@ -13,15 +15,19 @@ static float4 randFloat4(float4 min_value, float4 max_value, const uint32_t thre
 }
 
 void nBody::perform(BodyState *out_bodies) {
+  auto before = std::chrono::high_resolution_clock::now();
   kernel1D_GenerateBodies(BODIES_COUNT);
   for (uint32_t i = 0; i < m_iters; ++i) {
     kernel1D_UpdateVelocity(BODIES_COUNT);
     kernel1D_UpdatePosition(BODIES_COUNT);
   }
   memcpy(out_bodies, m_bodies.data(), m_bodies.size()*sizeof(BodyState));
+  m_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - before).count()/1000.f;
 }
 
 void nBody::kernel1D_GenerateBodies(uint32_t bodies_count) {
+
+  #pragma omp parallel for
   for (uint32_t i = 0; i < bodies_count; ++i) {
     m_bodies[i].pos_weight = randFloat4(make_float4(-BOUNDARY * 0.1f, -BOUNDARY* 0.1f, -BOUNDARY* 0.1f, MASS),
                                         make_float4(BOUNDARY* 0.1f, BOUNDARY* 0.1f, BOUNDARY* 0.1f, MASS), i);
@@ -77,6 +83,7 @@ static float pow3(float value) {
 }
 
 void nBody::kernel1D_UpdateVelocity(uint32_t bodies_count) {
+  #pragma omp parallel for
   for (uint32_t i = 0; i < bodies_count; ++i) {
     float3 acceleration = make_float3(0, 0, 0);
     for (uint32_t j = 0; j < m_bodies.size(); ++j) {
@@ -113,6 +120,7 @@ void nBody::kernel1D_UpdateVelocity(uint32_t bodies_count) {
 }
 
 void nBody::kernel1D_UpdatePosition(uint32_t bodies_count) {
+  #pragma omp parallel for
   for (uint32_t i = 0; i < bodies_count; ++i) {
     m_bodies[i].pos_weight.x += m_bodies[i].vel_charge.x * dt;
     m_bodies[i].pos_weight.y += m_bodies[i].vel_charge.y * dt;
@@ -142,6 +150,11 @@ std::vector<nBody::BodyState> n_body_cpu(uint32_t seed, uint32_t iterations) {
   std::vector<nBody::BodyState> outBodies(nBody::BODIES_COUNT);
   bodies.setParameters(seed, iterations);
   bodies.perform(outBodies.data());
+  float timings[4] = {0,0,0,0};
+  bodies.GetExecutionTime("perform", timings);
+  std::cout << "(CPU) perform(exec) = " << timings[0]              << " ms " << std::endl;
+  std::cout << "(CPU) perform(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
+  std::cout << "(CPU) perform(ovrh) = " << timings[3]              << " ms " << std::endl;
   return outBodies;
 }
 
@@ -151,5 +164,10 @@ std::vector<nBody::BodyState> n_body_ispc(uint32_t seed, uint32_t iterations) {
   std::vector<nBody::BodyState> outBodies(nBody::BODIES_COUNT);
   pImpl->setParameters(seed, iterations);
   pImpl->perform(outBodies.data());
+  float timings[4] = {0,0,0,0};
+  pImpl->GetExecutionTime("perform", timings);
+  std::cout << "(ISPC) perform(exec) = " << timings[0]              << " ms " << std::endl;
+  std::cout << "(ISPC) perform(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
+  std::cout << "(ISPC) perform(ovrh) = " << timings[3]              << " ms " << std::endl;
   return outBodies;
 }

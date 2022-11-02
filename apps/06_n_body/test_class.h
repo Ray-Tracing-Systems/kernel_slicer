@@ -47,7 +47,7 @@ public:
   static constexpr bool PERIODIC_BOUNDARY_CONDITIONS = true;
   static constexpr float LATTICE_STEP = 5.f;
   static constexpr uint32_t LATTICE_RES = 10;
-  static constexpr uint32_t BODIES_COUNT = 4096; //LATTICE_RES * LATTICE_RES * LATTICE_RES + 100;
+  static constexpr uint32_t BODIES_COUNT = 16384; // 4096; //LATTICE_RES * LATTICE_RES * LATTICE_RES + 100;
   static constexpr float SOFTENING_CONST = 1e-5f;
   static constexpr float BOUNDARY = 60.0f;
   static constexpr float MASS = 5;
@@ -64,5 +64,7 @@ public:
     m_iters = iters;
   }
   virtual void perform(BodyState *out_bodies);
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) { a_out[0] = m_time; }
   std::vector<BodyState> m_bodies;
+  float m_time;
 };

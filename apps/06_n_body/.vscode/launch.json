@@ -40,7 +40,7 @@
       "request": "launch",
       "program": "${workspaceFolder}/cmake-build-debug/testapp",
       "args": [
-        "aaa",
+        "--test",
         "bbb"
       ],
       "stopAtEntry": false,

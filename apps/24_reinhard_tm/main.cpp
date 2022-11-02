@@ -19,16 +19,16 @@ int main(int argc, const char** argv)
   std::vector<float> hdrData;
   int w,h;
   
-  if(!LoadHDRImageFromFile("kitchen.hdr", &w, &h, hdrData))
+  if(!LoadHDRImageFromFile("../images/nancy_church_2.hdr", &w, &h, hdrData))
   {
-    std::cout << "can't open input file 'kitchen.hdr' " << std::endl;
+    std::cout << "can't open input file '../images/nancy_church_2.hdr' " << std::endl;
     return 0;
   }
 
   std::vector<uint> ldrData(w*h);
 
-  bool onGPU  = false;
-  bool isISPC = true;
+  bool onGPU  = true; // args.hasOption("--gpu");
+  bool isISPC = false; // args.hasOption("--ispc");
 
   std::shared_ptr<ReinhardTM> pImpl = nullptr;
 

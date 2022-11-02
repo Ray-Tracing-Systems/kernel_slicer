@@ -26,7 +26,7 @@ public:
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) { a_out[0] = m_exTime; } // will be overriden in generated class
 
   virtual void ProcessPixels(const uint32_t* a_data __attribute__((size("a_width", "a_height"))), uint32_t a_width, uint32_t a_height);
-  void kernel2D_IntegrateSphHarm(const uint32_t* a_data, uint32_t a_width, uint32_t a_height);
+  virtual void kernel2D_IntegrateSphHarm(const uint32_t* a_data, uint32_t a_width, uint32_t a_height);
   
   void GetCoefficients(LiteMath::float3 out_coeff[COEFS_COUNT]) const { memcpy(out_coeff, coefs, sizeof(LiteMath::float3)*COEFS_COUNT); }
 

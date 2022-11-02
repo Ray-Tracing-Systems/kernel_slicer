@@ -21,8 +21,8 @@ int compute_main()
   const uint32_t SEED       = 42;
   const uint32_t ITERATIONS = 10;
   auto out_cpu = n_body_cpu(SEED, ITERATIONS);
-  //auto out_gpu = n_body_gpu(SEED, ITERATIONS);
   auto out_gpu = n_body_ispc(SEED, ITERATIONS);
+  //auto out_gpu = n_body_gpu(SEED, ITERATIONS);
   bool failed = false;
 
   std::vector<uint32_t> badId; badId.reserve(10);

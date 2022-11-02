@@ -36,7 +36,7 @@ add_compile_definitions(USE_VOLK)
 #uncomment this to detect broken memory problems via gcc sanitizers
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize-address-use-after-scope -fno-omit-frame-pointer -fsanitize=leak -fsanitize=undefined -fsanitize=bounds-strict")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 
 set(VKUTILS_NEW_SRC ../vkutils/vk_copy.cpp
                     ../vkutils/vk_utils.cpp
@@ -64,6 +64,7 @@ add_executable(testapp main.cpp
                        test_class.cpp
                        test_class_ispc.cpp
                        test_class_kernels.o
+                       ../LiteMath/ispc_tasksys.cpp
                        test_class_gpu.cpp
                        test_class_generated.cpp
                        test_class_generated_ds.cpp

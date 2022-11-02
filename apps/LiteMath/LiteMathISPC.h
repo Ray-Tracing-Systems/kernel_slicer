@@ -210,4 +210,14 @@ static inline float as_float(uint32 x) { return floatbits(x); }
 
 static inline uint32 as_uint32(float x) { return intbits(x); }
 
+
+static inline uniform float3 reduce_add(float3 v)
+{
+  uniform float3 res;
+  res.x = reduce_add(v.x);
+  res.y = reduce_add(v.y);
+  res.z = reduce_add(v.z);
+  return res;
+}
+
 #endif

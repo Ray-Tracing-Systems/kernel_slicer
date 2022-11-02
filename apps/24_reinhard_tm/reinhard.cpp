@@ -11,7 +11,7 @@ float reinhard_extended(float v, float max_white)
 void ReinhardTM::kernel1D_findMax(int size, const float4* inData4f)
 {
   m_whitePoint = 0;  
-  //#pragma omp parallel for reduction(max:m_whitePoint)
+  #pragma omp parallel for reduction(max:m_whitePoint)
   for(int i=0;i<size;i++)
   {
     float4 color = inData4f[i];
@@ -26,7 +26,7 @@ void ReinhardTM::kernel1D_findMax(int size, const float4* inData4f)
 
 void ReinhardTM::kernel2D_process(int w, int h, const float4* inData4f, uint32_t* outData)
 {
-  //#pragma omp parallel for 
+  #pragma omp parallel for 
   for(int y=0;y<h;y++)
   {
     for(int x=0;x<w;x++) 
