@@ -32,7 +32,7 @@ void SphHarm::kernel2D_IntegrateSphHarm(const uint32_t* a_data, uint32_t a_width
   coefs[8] = float3(0,0,0); 
 
   //Iterate over height
-  #pragma omp parallel for // num_threads(8) 
+  //#pragma omp parallel for // num_threads(8) 
   for (uint32_t i = 0; i < a_height; ++i) {
     //Iterate over width
     for (uint32_t j = 0; j < a_width; ++j) {
