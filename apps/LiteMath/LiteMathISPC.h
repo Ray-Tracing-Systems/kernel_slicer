@@ -205,4 +205,9 @@ static inline float atomic_min_global(uniform float * uniform ptr, uniform float
   return value;
 }
 
+static inline float as_float(int x)    { return floatbits(x); }
+static inline float as_float(uint32 x) { return floatbits(x); }
+
+static inline uint32 as_uint32(float x) { return intbits(x); }
+
 #endif
