@@ -27,8 +27,8 @@ int main(int argc, const char** argv)
 
   std::vector<uint> ldrData(w*h);
 
-  bool onGPU  = true; // args.hasOption("--gpu");
-  bool isISPC = false; // args.hasOption("--ispc");
+  bool onGPU  = false; // args.hasOption("--gpu");
+  bool isISPC = true; // args.hasOption("--ispc");
 
   std::shared_ptr<ReinhardTM> pImpl = nullptr;
 
