@@ -221,13 +221,23 @@ namespace hydra_xml
     return res;
   }
 
-  LiteMath::float3 readval3f(pugi::xml_node a_node)
+  LiteMath::float3 readval3f(const pugi::xml_node a_node)
   {
     float3 color;
     if(a_node.attribute(L"val") != nullptr)
       color = hydra_xml::read3f(a_node.attribute(L"val"));
     else
       color = hydra_xml::read3f(a_node);
+    return color;
+  }
+
+  float readval1f(const pugi::xml_node a_color) 
+  {
+    float color = 0.0f;
+    if (a_color.attribute(L"val") != nullptr)
+      color = a_color.attribute(L"val").as_float();
+    else
+      color = a_color.text().as_float();          // deprecated
     return color;
   }
 

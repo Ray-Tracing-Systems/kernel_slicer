@@ -22,9 +22,10 @@ namespace hydra_xml
   std::wstring s2ws(const std::string& str);
   std::string  ws2s(const std::wstring& wstr);
   LiteMath::float4x4 float4x4FromString(const std::wstring &matrix_str);
-  LiteMath::float3   read3f(pugi::xml_attribute a_attr);
-  LiteMath::float3   read3f(pugi::xml_node a_node);
+  //LiteMath::float3   read3f(pugi::xml_attribute a_attr);
+  //LiteMath::float3   read3f(pugi::xml_node a_node);
   LiteMath::float3   readval3f(pugi::xml_node a_node);
+  float              readval1f(const pugi::xml_node a_color);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -154,9 +155,9 @@ namespace hydra_xml
       cam.nearPlane = m_iter->child(L"nearClipPlane").text().as_float();
       cam.farPlane  = m_iter->child(L"farClipPlane").text().as_float();  
       
-      LiteMath::float3 pos    = hydra_xml::read3f(m_iter->child(L"position"));
-      LiteMath::float3 lookAt = hydra_xml::read3f(m_iter->child(L"look_at"));
-      LiteMath::float3 up     = hydra_xml::read3f(m_iter->child(L"up"));
+      LiteMath::float3 pos    = hydra_xml::readval3f(m_iter->child(L"position"));
+      LiteMath::float3 lookAt = hydra_xml::readval3f(m_iter->child(L"look_at"));
+      LiteMath::float3 up     = hydra_xml::readval3f(m_iter->child(L"up"));
       for(int i=0;i<3;i++)
       {
         cam.pos   [i] = pos[i];
