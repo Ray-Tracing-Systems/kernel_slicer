@@ -237,7 +237,27 @@ namespace hydra_xml
     if (a_color.attribute(L"val") != nullptr)
       color = a_color.attribute(L"val").as_float();
     else
-      color = a_color.text().as_float();          // deprecated
+      color = a_color.text().as_float();        // deprecated
+    return color;
+  }
+
+  int readval1i(const pugi::xml_node a_color)
+  {
+    int color = 0;
+    if (a_color.attribute(L"val") != nullptr)
+      color = a_color.attribute(L"val").as_int();
+    else
+      color = a_color.text().as_int();          // deprecated
+    return color;
+  }
+
+  unsigned int readval1u(const pugi::xml_node a_color)
+  {
+    unsigned int color = 0;
+    if (a_color.attribute(L"val") != nullptr)
+      color = a_color.attribute(L"val").as_uint();
+    else
+      color = a_color.text().as_uint();          // deprecated
     return color;
   }
 

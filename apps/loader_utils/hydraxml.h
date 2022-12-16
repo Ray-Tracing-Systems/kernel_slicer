@@ -26,6 +26,8 @@ namespace hydra_xml
   //LiteMath::float3   read3f(pugi::xml_node a_node);
   LiteMath::float3   readval3f(pugi::xml_node a_node);
   float              readval1f(const pugi::xml_node a_color);
+  int                readval1i(const pugi::xml_node a_color);
+  unsigned int       readval1u(const pugi::xml_node a_color);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -58,7 +60,17 @@ namespace hydra_xml
     float fov;
     float nearPlane;
     float farPlane;
-    pugi::xml_node     node;
+    pugi::xml_node node;
+  };
+
+  struct Settings
+  {
+    uint32_t width;
+    uint32_t height;
+    uint32_t spp;
+    uint32_t depth;
+    uint32_t depthDiffuse;
+    pugi::xml_node node;
   };
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -151,9 +163,9 @@ namespace hydra_xml
     Camera operator*() const 
     { 
       Camera cam;
-      cam.fov       = m_iter->child(L"fov").text().as_float(); 
-      cam.nearPlane = m_iter->child(L"nearClipPlane").text().as_float();
-      cam.farPlane  = m_iter->child(L"farClipPlane").text().as_float();  
+      cam.fov       = hydra_xml::readval1f(m_iter->child(L"fov")); 
+      cam.nearPlane = hydra_xml::readval1f(m_iter->child(L"nearClipPlane"));
+      cam.farPlane  = hydra_xml::readval1f(m_iter->child(L"farClipPlane"));  
       
       LiteMath::float3 pos    = hydra_xml::readval3f(m_iter->child(L"position"));
       LiteMath::float3 lookAt = hydra_xml::readval3f(m_iter->child(L"look_at"));
@@ -213,6 +225,44 @@ namespace hydra_xml
   private:
     pugi::xml_node_iterator m_iter;
 	};
+  
+  class SettingsIterator //
+	{
+	  friend class pugi::xml_node;
+    friend class pugi::xml_node_iterator;
+  
+	public:
+  
+		// Default constructor
+		SettingsIterator() {}
+		SettingsIterator(const pugi::xml_node_iterator& a_iter) : m_iter(a_iter) {}
+  
+		// Iterator operators
+		bool operator==(const SettingsIterator& rhs) const { return m_iter == rhs.m_iter;}
+		bool operator!=(const SettingsIterator& rhs) const { return (m_iter != rhs.m_iter); }
+  
+    Settings operator*() const 
+    { 
+      Settings settings;
+      settings.width  = hydra_xml::readval1u(m_iter->child(L"width"));
+      settings.height = hydra_xml::readval1u(m_iter->child(L"height"));
+      settings.depth  = hydra_xml::readval1u(m_iter->child(L"trace_depth"));
+      settings.depthDiffuse = hydra_xml::readval1u(m_iter->child(L"diff_trace_depth"));
+      settings.spp    = hydra_xml::readval1u(m_iter->child(L"maxRaysPerPixel"));
+      settings.node   = (*m_iter);
+      return settings;
+    }
+  
+		const SettingsIterator& operator++() { ++m_iter; return *this; }
+		SettingsIterator operator++(int)     { m_iter++; return *this; }
+  
+		const SettingsIterator& operator--() { --m_iter; return *this; }
+		SettingsIterator operator--(int)     { m_iter--; return *this; }
+  
+  private:
+    pugi::xml_node_iterator m_iter;
+	};
+
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -257,8 +307,8 @@ namespace hydra_xml
                                                                                             RemapListIterator(m_scenesNode.child(L"scene").child(L"remap_lists").end())
                                                                                             ); }
 
-    pugi::xml_object_range<CamIterator> Cameras() { return pugi::xml_object_range(CamIterator(m_cameraLib.begin()), 
-                                                                                  CamIterator(m_cameraLib.end())); }
+    pugi::xml_object_range<CamIterator>      Cameras()  { return pugi::xml_object_range(CamIterator(m_cameraLib.begin()), CamIterator(m_cameraLib.end())); }
+    pugi::xml_object_range<SettingsIterator> Settings() { return pugi::xml_object_range(SettingsIterator(m_settingsNode.begin()), SettingsIterator(m_settingsNode.end())); }
 
     std::vector<LiteMath::float4x4> GetAllInstancesOfMeshLoc(const std::string& a_loc) const 
     { 
