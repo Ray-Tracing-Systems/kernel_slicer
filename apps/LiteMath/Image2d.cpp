@@ -177,8 +177,8 @@ float4 LiteImage::Image2D<float4>::sample(const LiteImage::Sampler& a_sampler, f
 // inline float4 exp2m1(float4 v) { return float4(std::exp2(v.x), std::exp2(v.y), std::exp2(v.z), std::exp2(v.w)) - float4(1.0f); }
 // inline float4 pow_22(float4 x) { return (exp2m1(0.718151f*x)-0.503456f*x)*7.07342f; }
 // //inline float4 pow_22(float4 x) { x*x*(float4(0.75f) + 0.25f*x); }
-
-static inline float sRGBToLinear(float s)
+                                          // not so fast as pow_22, but more correct implementation
+static inline float sRGBToLinear(float s) // https://entropymine.com/imageworsener/srgbformula/
 {
   if(s <= 0.0404482362771082f)
     return s*0.077399381f;
@@ -218,10 +218,17 @@ float4 LiteImage::Image2D<uchar4>::sample(const LiteImage::Sampler& a_sampler, f
       const float w4 = fx  * fy;
   
       const int4 offsets = bilinearOffsets(ffx, ffy, a_sampler, m_width, m_height);
-      const float4 f1    = read_array_uchar4(m_data.data(), offsets.x);
-      const float4 f2    = read_array_uchar4(m_data.data(), offsets.y);
-      const float4 f3    = read_array_uchar4(m_data.data(), offsets.z);
-      const float4 f4    = read_array_uchar4(m_data.data(), offsets.w);
+      float4 f1 = read_array_uchar4(m_data.data(), offsets.x);
+      float4 f2 = read_array_uchar4(m_data.data(), offsets.y);
+      float4 f3 = read_array_uchar4(m_data.data(), offsets.z);
+      float4 f4 = read_array_uchar4(m_data.data(), offsets.w);
+      if(m_srgb)
+      {
+        f1 = sRGBToLinear4f(f1);
+        f2 = sRGBToLinear4f(f2);
+        f3 = sRGBToLinear4f(f3);
+        f4 = sRGBToLinear4f(f4);
+      }
 
       // Calculate the weighted sum of pixels (for each color channel)
       //
@@ -262,12 +269,11 @@ float4 LiteImage::Image2D<uchar4>::sample(const LiteImage::Sampler& a_sampler, f
         py = (py < 0) ? py + m_height : py;
       }
       res = read_array_uchar4(m_data.data(), py*m_width + px);
+      if(m_srgb)
+        res = sRGBToLinear4f(res);
     }
     break;
   };
-
-  if(m_srgb)
-    res = sRGBToLinear4f(res);
   
   return res;
 }
@@ -303,11 +309,17 @@ float4 LiteImage::Image2D<uint32_t>::sample(const LiteImage::Sampler& a_sampler,
       const float w4 = fx  * fy;
   
       const int4 offsets = bilinearOffsets(ffx, ffy, a_sampler, m_width, m_height);
-      const float4 f1    = read_array_uchar4(m_data.data(), offsets.x);
-      const float4 f2    = read_array_uchar4(m_data.data(), offsets.y);
-      const float4 f3    = read_array_uchar4(m_data.data(), offsets.z);
-      const float4 f4    = read_array_uchar4(m_data.data(), offsets.w);
-
+      float4 f1 = read_array_uchar4(m_data.data(), offsets.x);
+      float4 f2 = read_array_uchar4(m_data.data(), offsets.y);
+      float4 f3 = read_array_uchar4(m_data.data(), offsets.z);
+      float4 f4 = read_array_uchar4(m_data.data(), offsets.w);
+      if(m_srgb)
+      {
+        f1 = sRGBToLinear4f(f1);
+        f2 = sRGBToLinear4f(f2);
+        f3 = sRGBToLinear4f(f3);
+        f4 = sRGBToLinear4f(f4);
+      }
       // Calculate the weighted sum of pixels (for each color channel)
       //
       const float outr = f1.x * w1 + f2.x * w2 + f3.x * w3 + f4.x * w4;
@@ -347,106 +359,15 @@ float4 LiteImage::Image2D<uint32_t>::sample(const LiteImage::Sampler& a_sampler,
         py = (py < 0) ? py + m_height : py;
       }
       res = read_array_uchar4(m_data.data(), py*m_width + px);
+      if(m_srgb)
+        res = sRGBToLinear4f(res);
     }
     break;
   };
   
-  if(m_srgb)
-    res = sRGBToLinear4f(res);
 
   return res;
-
-  // unfortunately this doesn not works correctly for bilinear sampling .... 
-
-  /*bool useBorderColor = false;
-  a_uv = process_coord(a_sampler.addressU, a_uv, &useBorderColor);
-    
-  if (useBorderColor) {
-    return a_sampler.borderColor;
-  }
-
-  const float2 textureSize = make_float2(m_width, m_height);
-  const float2 scaledUV    = textureSize * a_uv;
-  const int2   baseTexel   = make_int2(scaledUV.x, scaledUV.y);
-  const int    stride      = m_width;
-
-  const uchar4* data2      = (const uchar4*)m_data.data();
-
-  switch (a_sampler.filter)
-  {
-  
-  case Sampler::Filter::LINEAR:
-  {
-    const int2 cornerTexel  = make_int2(baseTexel.x < m_width  - 1 ? baseTexel.x + 1 : baseTexel.x,
-                                        baseTexel.y < m_height - 1 ? baseTexel.y + 1 : baseTexel.y);
-
-    const int offset0       = pitch(baseTexel.x  , baseTexel.y  , stride);
-    const int offset1       = pitch(cornerTexel.x, baseTexel.y  , stride);
-    const int offset2       = pitch(baseTexel.x  , cornerTexel.y, stride);
-    const int offset3       = pitch(cornerTexel.x, cornerTexel.y, stride);
-
-    const float2 lerpCoefs  = scaledUV - float2(baseTexel.x, baseTexel.y);
-    const uchar4 uData1     = lerp(data2[offset0], data2[offset1], lerpCoefs.x);
-    const uchar4 uData2     = lerp(data2[offset2], data2[offset3], lerpCoefs.x);
-    const float4 line1Color = (1.0f/255.0f)*float4(uData1.x, uData1.y, uData1.z, uData1.w);
-    const float4 line2Color = (1.0f/255.0f)*float4(uData2.x, uData2.y, uData2.z, uData2.w);
-
-    return lerp(line1Color, line2Color, lerpCoefs.y);
-  }     
-  case Sampler::Filter::NEAREST:
-  default:
-  {
-    const uchar4 uData = data2[pitch(baseTexel.x, baseTexel.y, stride)];
-    return (1.0f/255.0f)*float4(uData.x, uData.y, uData.z, uData.w);
-  }
-
-  //default:
-  //  fprintf(stderr, "Unsupported filter is used.");
-  //  break;
-  }
-
-  return make_float4(0.0F, 0.0F, 0.0F, 0.0F);
-  */
 }
-
-/*
-template<typename Type>
-float2 Image2D<Type>::process_coord(const Sampler::AddressMode mode, const float2 coord, bool* use_border_color) const
-{ 
-  float2 res = coord;
-
-  switch (mode)
-  {
-    case Sampler::AddressMode::CLAMP: 
-      //res = coord;            
-      break;
-    case Sampler::AddressMode::WRAP:  
-    {
-      res = make_float2(std::fmod(coord.x, 1.0), std::fmod(coord.y, 1.0));            
-      if (res.x < 0.0F) res.x += 1.0F;
-      if (res.y < 0.0F) res.y += 1.0F;      
-      break;
-    }
-    case Sampler::AddressMode::MIRROR:
-    {
-      const float u = static_cast<int>(coord.x) % 2 ? 1.0f - std::fmod(coord.x, 1.0f) : std::fmod(coord.x, 1.0f);
-      const float v = static_cast<int>(coord.y) % 2 ? 1.0f - std::fmod(coord.y, 1.0f) : std::fmod(coord.y, 1.0f);
-      res = make_float2(u, v);            
-      break;
-    }
-    case Sampler::AddressMode::MIRROR_ONCE:
-      res = make_float2(std::abs(coord.x), std::abs(coord.y));
-      break;
-    case Sampler::AddressMode::BORDER:
-      *use_border_color = *use_border_color || coord.x < 0.0f || coord.x > 1.0f || coord.y < 0.0f || coord.y > 1.0f;
-      break;      
-    default:
-      break;
-  }
-
-  return clamp(res, 0.0f, 1.0F);
-} 
-*/
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
