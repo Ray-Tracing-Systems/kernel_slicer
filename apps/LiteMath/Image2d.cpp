@@ -141,8 +141,8 @@ float4 LiteImage::Image2D<float4>::sample(const LiteImage::Sampler& a_sampler, f
     case Sampler::Filter::NEAREST:
     default:
     {
-      int px = (int)(ffx + 0.5f);
-      int py = (int)(ffy + 0.5f);
+      int px = (ffx > 0.0f) ? (int)(ffx + 0.5f) : (int)(ffx - 0.5f);
+      int py = (ffy > 0.0f) ? (int)(ffy + 0.5f) : (int)(ffy - 0.5f);
 
       if (a_sampler.addressU == Sampler::AddressMode::CLAMP)
       {
@@ -237,8 +237,8 @@ float4 LiteImage::Image2D<uchar4>::sample(const LiteImage::Sampler& a_sampler, f
     case Sampler::Filter::NEAREST:
     default:
     {
-      int px = (int)(ffx + 0.5f);
-      int py = (int)(ffy + 0.5f);
+      int px = (ffx > 0.0f) ? (int)(ffx + 0.5f) : (int)(ffx - 0.5f);
+      int py = (ffy > 0.0f) ? (int)(ffy + 0.5f) : (int)(ffy - 0.5f);
 
       if (a_sampler.addressU == Sampler::AddressMode::CLAMP)
       {
@@ -289,8 +289,8 @@ float4 LiteImage::Image2D<uint32_t>::sample(const LiteImage::Sampler& a_sampler,
     {
       // Calculate the weights for each pixel
       //
-      const int   px = (int)(ffx);
-      const int   py = (int)(ffy);
+      const int   px = (int)(ffx); 
+      const int   py = (int)(ffy); 
   
       const float fx  = std::abs(ffx - (float)px);
       const float fy  = std::abs(ffy - (float)py);
@@ -322,8 +322,8 @@ float4 LiteImage::Image2D<uint32_t>::sample(const LiteImage::Sampler& a_sampler,
     case Sampler::Filter::NEAREST:
     default:
     {
-      int px = (int)(ffx + 0.5f);
-      int py = (int)(ffy + 0.5f);
+      int px = (ffx > 0.0f) ? (int)(ffx + 0.5f) : (int)(ffx - 0.5f);
+      int py = (ffy > 0.0f) ? (int)(ffy + 0.5f) : (int)(ffy - 0.5f);
 
       if (a_sampler.addressU == Sampler::AddressMode::CLAMP)
       {
