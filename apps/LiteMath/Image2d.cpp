@@ -173,11 +173,20 @@ float4 LiteImage::Image2D<float4>::sample(const LiteImage::Sampler& a_sampler, f
   return res;
 }
 
-// https://www.shadertoy.com/view/WlG3zG
-inline float4 exp2m1(float4 v) { return float4(std::exp2(v.x), std::exp2(v.y), std::exp2(v.z), std::exp2(v.w)) - float4(1.0f); }
-inline float4 pow_22(float4 x) { return (exp2m1(0.718151f*x)-0.503456f*x)*7.07342f; }
+// // https://www.shadertoy.com/view/WlG3zG
+// inline float4 exp2m1(float4 v) { return float4(std::exp2(v.x), std::exp2(v.y), std::exp2(v.z), std::exp2(v.w)) - float4(1.0f); }
+// inline float4 pow_22(float4 x) { return (exp2m1(0.718151f*x)-0.503456f*x)*7.07342f; }
+// //inline float4 pow_22(float4 x) { x*x*(float4(0.75f) + 0.25f*x); }
 
-//inline float4 pow_22(float4 x) { x*x*(float4(0.75f) + 0.25f*x); }
+static inline float sRGBToLinear(float s)
+{
+  if(s <= 0.0404482362771082f)
+    return s*0.077399381f;
+  else 
+    return std::pow((s+0.055f)*0.947867299f, 2.4f);
+}
+
+static inline float4 sRGBToLinear4f(float4 s) { return float4(sRGBToLinear(s.x), sRGBToLinear(s.y), sRGBToLinear(s.z), sRGBToLinear(s.w)); }
 
 template<> 
 float4 LiteImage::Image2D<uchar4>::sample(const LiteImage::Sampler& a_sampler, float2 a_uv) const
@@ -258,7 +267,7 @@ float4 LiteImage::Image2D<uchar4>::sample(const LiteImage::Sampler& a_sampler, f
   };
 
   if(m_srgb)
-    res = pow_22(res);
+    res = sRGBToLinear4f(res);
   
   return res;
 }
@@ -343,7 +352,7 @@ float4 LiteImage::Image2D<uint32_t>::sample(const LiteImage::Sampler& a_sampler,
   };
   
   if(m_srgb)
-    res = pow_22(res);
+    res = sRGBToLinear4f(res);
 
   return res;
 
