@@ -34,19 +34,29 @@ int main(int argc, const char** argv)
   pImpl->CommitDeviceData();
 
   std::vector<uint> pixelData(WIN_WIDTH*WIN_HEIGHT);  
-  pImpl->MainFuncBlock(WIN_WIDTH, WIN_HEIGHT, pixelData.data(), 1);
+  pImpl->BFRT_ReadAndComputeBlock(WIN_WIDTH, WIN_HEIGHT, pixelData.data(), 1);
   
   if(onGPU)
-    SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    SaveBMP("zout_gpu_v1.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
-    SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    SaveBMP("zout_cpu_v1.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
 
   float timings[4] = {0,0,0,0};
-  pImpl->GetExecutionTime("MainFunc", timings);
-  std::cout << "MainFunc(exec) = " << timings[0]              << " ms " << std::endl;
-  std::cout << "MainFunc(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
-  std::cout << "MainFunc(ovrh) = " << timings[3]              << " ms " << std::endl;
+  pImpl->GetExecutionTime("ReadAndCompute", timings);
+  std::cout << "ReadAndCompute(exec) = " << timings[0]              << " ms " << std::endl;
+  //std::cout << "ReadAndCompute(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
+  //std::cout << "ReadAndCompute(ovrh) = " << timings[3]              << " ms " << std::endl;
   
+  pImpl->BFRT_ComputeBlock(WIN_WIDTH, WIN_HEIGHT, pixelData.data(), 1);
+
+  if(onGPU)
+    SaveBMP("zout_gpu_v2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+  else
+    SaveBMP("zout_cpu_v2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+
+  pImpl->GetExecutionTime("Compute", timings);
+  std::cout << "Compute(exec) = " << timings[0]              << " ms " << std::endl;
+
   pImpl = nullptr;
   return 0;
 }

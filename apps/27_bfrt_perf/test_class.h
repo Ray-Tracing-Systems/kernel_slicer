@@ -13,16 +13,22 @@ public:
 
   TestClass(int w, int h);
 
-  virtual void MainFunc(uint tidX, uint tidY, uint* out_color __attribute__((size("tidX", "tidY"))));
-  virtual void MainFuncBlock(uint tidX, uint tidY, uint* out_color, uint32_t a_numPasses = 1);
+  virtual void BFRT_ReadAndCompute(uint tidX, uint tidY, uint* out_color __attribute__((size("tidX", "tidY"))));
+  virtual void BFRT_ReadAndComputeBlock(uint tidX, uint tidY, uint* out_color, uint32_t a_numPasses = 1);
 
-  virtual void CommitDeviceData() {}                                       // will be overriden in generated class
-  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class
+  virtual void BFRT_Compute(uint tidX, uint tidY, uint* out_color __attribute__((size("tidX", "tidY"))));
+  virtual void BFRT_ComputeBlock(uint tidX, uint tidY, uint* out_color, uint32_t a_numPasses = 1);
+
+  virtual void CommitDeviceData() {}                                     // will be overriden in generated class
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]); // will be overriden in generated class
 
   virtual void kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY); // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 
   virtual void kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFar, 
                                int* out_hit, uint tidX, uint tidY);
+
+  virtual void kernel_RayTrace_v2(const float4* rayPosAndNear, float4* rayDirAndFar, 
+                                  int* out_hit, uint tidX, uint tidY);
   
   virtual void kernel_TestColor(const int* in_hit, uint* out_color, uint tidX, uint tidY);
 
@@ -35,6 +41,9 @@ protected:
 
   float m_widthInv;
   float m_heightInv;
+
+  float m_time1;
+  float m_time2;
 };
 
 #endif

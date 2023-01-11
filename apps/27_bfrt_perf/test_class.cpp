@@ -1,4 +1,5 @@
 #include <vector>
+#include <chrono>
 #include "test_class.h"
 
 TestClass::TestClass(int w, int h) { InitBoxesAndTris(); m_widthInv = 1.0f/float(w); m_heightInv = 1.0f/float(h); }
@@ -11,8 +12,8 @@ void TestClass::InitBoxesAndTris()
   boxes.resize(numBoxes*2);
   trivets.resize(numTris*3);
 
-  int boxesInString = std::max(numBoxes/5, 10);
-  int trisInString  = std::max(numTris/5, 10);
+  int boxesInString = std::max(numBoxes/5, 5);
+  int trisInString  = std::max(numTris/5, 5);
 
   float boxSize = 0.25f/float(boxesInString);
   float triSize = 0.25f/float(trisInString);
@@ -32,11 +33,11 @@ void TestClass::InitBoxesAndTris()
   for(int i=0;i<numTris;i++)
   {
     int centerX = i%trisInString;
-    int centerY = i/trisInString;
+    int centerY = (numBoxes/boxesInString) + (i)/trisInString;
 
-    trivets[i*3+0] = float4(0,0.65f,0,0) + float4(float(centerX + 0.75f)/float(boxesInString) - boxSize, float(centerY + 0.75f)/float(boxesInString) - boxSize, i, 0.0f);
-    trivets[i*3+1] = float4(0,0.65f,0,0) + float4(float(centerX + 0.25f)/float(boxesInString),           float(centerY + 0.75f)/float(boxesInString), i, 0.0f);
-    trivets[i*3+2] = float4(0,0.65f,0,0) + float4(float(centerX + 0.75f)/float(boxesInString) - boxSize, float(centerY + 0.75f)/float(boxesInString) + boxSize, i, 0.0f);
+    trivets[i*3+0] = float4(float(centerX + 0.75f)/float(boxesInString) - boxSize, float(centerY + 0.75f)/float(boxesInString) - boxSize, i, 0.0f);
+    trivets[i*3+1] = float4(float(centerX + 0.25f)/float(boxesInString),           float(centerY + 0.75f)/float(boxesInString), i, 0.0f);
+    trivets[i*3+2] = float4(float(centerX + 0.75f)/float(boxesInString) - boxSize, float(centerY + 0.75f)/float(boxesInString) + boxSize, i, 0.0f);
   }
   
 }
@@ -124,6 +125,74 @@ void TestClass::kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFa
   *out_hit = hitId;
 }
 
+void TestClass::kernel_RayTrace_v2(const float4* rayPosAndNear, float4* rayDirAndFar, 
+                                   int* out_hit, uint tidX, uint tidY)
+{
+  const float3 rayPos    = to_float3(*rayPosAndNear);
+  const float3 rayDirInv = SafeInverse(to_float3(*rayDirAndFar));
+  
+  const float tNear = rayPosAndNear->w;
+  const float tFar  = rayDirAndFar->w;
+  
+  float3 boxMin1 = to_float3(boxes[0]);
+  float3 boxMax1 = to_float3(boxes[1]);
+  float3 boxMin2 = to_float3(boxes[2]);
+  float3 boxMax2 = to_float3(boxes[3]);
+
+  int hitId = -1;
+  for(uint32_t boxId = 0; boxId < uint32_t(boxes.size()); boxId+=4) 
+  {
+    const float2 tm0 = RayBoxIntersection2(rayPos, rayDirInv, boxMin1, boxMax1);
+    const float2 tm1 = RayBoxIntersection2(rayPos, rayDirInv, boxMin2, boxMax2);
+
+    const bool hitChild0 = (tm0.x <= tm0.y) && (tm0.y >= tNear) && (tm0.x <= tFar);
+    const bool hitChild1 = (tm1.x <= tm1.y) && (tm1.y >= tNear) && (tm1.x <= tFar);
+
+    if(hitChild0)
+      hitId = int(boxId >> 2);
+    else if(hitChild1)
+      hitId = int((boxId+2) >> 2);
+
+    boxMin1 += float3(0.02f);
+    boxMax1 += float3(0.02f);
+    boxMin2 += float3(0.02f);
+    boxMax2 += float3(0.02f);
+  }
+
+  float3 v1 = to_float3(trivets[0]);
+  float3 v2 = to_float3(trivets[1]);
+  float3 v3 = to_float3(trivets[2]);
+
+  const float3 ray_dir = to_float3(*rayDirAndFar);
+  for (uint32_t triId = 0; triId < trivets.size(); triId+=3)
+  {
+    const float3 A_pos = v1;
+    const float3 B_pos = v2;
+    const float3 C_pos = v3;
+
+    const float3 edge1 = B_pos - A_pos;
+    const float3 edge2 = C_pos - A_pos;
+    const float3 pvec = cross(ray_dir, edge2);
+    const float3 tvec = rayPos - A_pos;
+    const float3 qvec = cross(tvec, edge1);
+
+    const float invDet = 1.0f / dot(edge1, pvec);
+    const float v = dot(tvec, pvec) * invDet;
+    const float u = dot(qvec, ray_dir) * invDet;
+    const float t = dot(edge2, qvec) * invDet;
+
+    if (v >= -1e-6f && u >= -1e-6f && (u + v <= 1.0f + 1e-6f) && t > tNear && t < tFar)
+      hitId = int(triId);
+
+    v1 += float3(0.02f);
+    v2 += float3(0.02f);
+    v3 += float3(0.02f);
+  }
+
+  *out_hit = hitId;
+}
+
+
 void TestClass::kernel_TestColor(const int* in_hit, uint* out_color, uint tidX, uint tidY)
 {
   if(*in_hit != -1)
@@ -133,7 +202,7 @@ void TestClass::kernel_TestColor(const int* in_hit, uint* out_color, uint tidX, 
 }
 
 
-void TestClass::MainFunc(uint tidX, uint tidY, uint* out_color)
+void TestClass::BFRT_ReadAndCompute(uint tidX, uint tidY, uint* out_color)
 {
   float4 rayPosAndNear, rayDirAndFar;
   uint   flags;
@@ -147,11 +216,46 @@ void TestClass::MainFunc(uint tidX, uint tidY, uint* out_color)
   kernel_TestColor(&hit, out_color, tidX, tidY);
 }
 
-void TestClass::MainFuncBlock(uint tidX, uint tidY, uint* out_color, uint32_t a_numPasses)
+void TestClass::BFRT_Compute(uint tidX, uint tidY, uint* out_color)
 {
-  //#pragma omp parallel for collapse(2)
+  float4 rayPosAndNear, rayDirAndFar;
+  uint   flags;
+
+  kernel_InitEyeRay(&flags, &rayPosAndNear, &rayDirAndFar, tidX, tidY);
+
+  int hit;
+  kernel_RayTrace_v2(&rayPosAndNear, &rayDirAndFar, 
+                     &hit, tidX, tidY);
+  
+  kernel_TestColor(&hit, out_color, tidX, tidY);
+}
+
+void TestClass::BFRT_ReadAndComputeBlock(uint tidX, uint tidY, uint* out_color, uint32_t a_numPasses)
+{
+  auto before = std::chrono::high_resolution_clock::now();
+  #pragma omp parallel for collapse(2)
   for(int y=0;y<tidY;y++)
     for(int x=0;x<tidX;x++)
       for(int p=0;p<a_numPasses;p++)
-        MainFunc(x,y,out_color);
+        BFRT_ReadAndCompute(x,y,out_color);
+  m_time1 = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - before).count()/1000.f;
+}
+
+void TestClass::BFRT_ComputeBlock(uint tidX, uint tidY, uint* out_color, uint32_t a_numPasses)
+{
+  auto before = std::chrono::high_resolution_clock::now();
+  #pragma omp parallel for collapse(2)
+  for(int y=0;y<tidY;y++)
+    for(int x=0;x<tidX;x++)
+      for(int p=0;p<a_numPasses;p++)
+        BFRT_Compute(x,y,out_color);
+  m_time2 = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - before).count()/1000.f;
+}
+
+void TestClass::GetExecutionTime(const char* a_funcName, float a_out[4])
+{
+  if(std::string(a_funcName).find("ReadAndCompute") != std::string::npos)
+    a_out[0] = m_time1;
+  else if(std::string(a_funcName).find("Compute") != std::string::npos)
+    a_out[0] = m_time2;
 }
