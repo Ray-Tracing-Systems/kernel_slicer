@@ -59,17 +59,7 @@ static inline float2 RayBoxIntersection2(float3 rayOrigin, float3 rayDirInv, flo
                 std::min(tmax, std::max(lo2, hi2)));
 }
 
-static inline float3 SafeInverse(float3 d)
-{
-  const float ooeps = 1.0e-36f; // Avoid div by zero.
-  float3 res;
-  res.x = 1.0f / (std::abs(d.x) > ooeps ? d.x : std::copysign(ooeps, d.x));
-  res.y = 1.0f / (std::abs(d.y) > ooeps ? d.y : std::copysign(ooeps, d.y));
-  res.z = 1.0f / (std::abs(d.z) > ooeps ? d.z : std::copysign(ooeps, d.z));
-  return res;
-}
-
-void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
+void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY) 
 {
   const float x = float(tidX)*m_widthInv;
   const float y = float(tidY)*m_heightInv;
@@ -82,7 +72,7 @@ void TestClass::kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFa
                                 int* out_hit, uint tidX, uint tidY)
 {
   const float3 rayPos    = to_float3(*rayPosAndNear);
-  const float3 rayDirInv = SafeInverse(to_float3(*rayDirAndFar));
+  const float3 rayDirInv = 1.0f/to_float3(*rayDirAndFar);
   
   const float tNear = rayPosAndNear->w;
   const float tFar  = rayDirAndFar->w;
@@ -131,7 +121,7 @@ void TestClass::kernel_RayTrace_v2(const float4* rayPosAndNear, float4* rayDirAn
                                    int* out_hit, uint tidX, uint tidY)
 {
   const float3 rayPos    = to_float3(*rayPosAndNear);
-  const float3 rayDirInv = SafeInverse(to_float3(*rayDirAndFar));
+  const float3 rayDirInv = 1.0f/to_float3(*rayDirAndFar);
   
   const float tNear = rayPosAndNear->w;
   const float tFar  = rayDirAndFar->w;
@@ -142,7 +132,7 @@ void TestClass::kernel_RayTrace_v2(const float4* rayPosAndNear, float4* rayDirAn
   float3 boxMax2 = to_float3(boxes[3]);
 
   int hitId = -1;
-  for(uint32_t boxId = 0; boxId < uint32_t(boxes.size()); boxId+=4) 
+  for(uint32_t boxId = 0; boxId < m_boxNum*2; boxId+=4) 
   {
     const float2 tm0 = RayBoxIntersection2(rayPos, rayDirInv, boxMin1, boxMax1);
     const float2 tm1 = RayBoxIntersection2(rayPos, rayDirInv, boxMin2, boxMax2);
@@ -208,27 +198,21 @@ void TestClass::BFRT_ReadAndCompute(uint tidX, uint tidY, uint* out_color)
 {
   float4 rayPosAndNear, rayDirAndFar;
   uint   flags;
+  int hit;
 
   kernel_InitEyeRay(&flags, &rayPosAndNear, &rayDirAndFar, tidX, tidY);
-
-  int hit;
-  kernel_RayTrace(&rayPosAndNear, &rayDirAndFar, 
-                  &hit, tidX, tidY);
-  
-  kernel_TestColor(&hit, out_color, tidX, tidY);
+  kernel_RayTrace  (&rayPosAndNear, &rayDirAndFar, &hit, tidX, tidY);
+  kernel_TestColor (&hit, out_color, tidX, tidY);
 }
 
 void TestClass::BFRT_Compute(uint tidX, uint tidY, uint* out_color)
 {
   float4 rayPosAndNear, rayDirAndFar;
   uint   flags;
+  int hit;
 
   kernel_InitEyeRay(&flags, &rayPosAndNear, &rayDirAndFar, tidX, tidY);
-
-  int hit;
-  kernel_RayTrace_v2(&rayPosAndNear, &rayDirAndFar, 
-                     &hit, tidX, tidY);
-  
+  kernel_RayTrace_v2(&rayPosAndNear, &rayDirAndFar, &hit, tidX, tidY);
   kernel_TestColor(&hit, out_color, tidX, tidY);
 }
 
