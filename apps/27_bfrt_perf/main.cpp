@@ -31,6 +31,11 @@ int main(int argc, const char** argv)
   else
     pImpl = std::make_shared<TestClass>(1024,1024);
 
+  pImpl->InitBoxesAndTris(60,25); // init with some max number
+  
+  // evaluate timings
+
+  pImpl->SetBoxTrisNum(50,25);
   pImpl->CommitDeviceData();
 
   std::vector<uint> pixelData(WIN_WIDTH*WIN_HEIGHT);  
@@ -54,6 +59,8 @@ int main(int argc, const char** argv)
 
   pImpl->GetExecutionTime("BFRT_Compute", timings);
   std::cout << "BFRT_Compute(exec) = " << timings[0] << " ms " << std::endl;
+
+  // print timings and max M(Rays/sec)
 
   pImpl = nullptr;
   return 0;

@@ -4,10 +4,10 @@
 
 TestClass::TestClass(int w, int h) { InitBoxesAndTris(); m_widthInv = 1.0f/float(w); m_heightInv = 1.0f/float(h); }
 
-void TestClass::InitBoxesAndTris()
+void TestClass::InitBoxesAndTris(int numBoxes, int numTris)
 { 
-  int numBoxes = 60;
-  int numTris  = 25;
+  m_boxNum = numBoxes;
+  m_triNum = numTris;
 
   boxes.resize(numBoxes*2);
   trivets.resize(numTris*3);
@@ -71,7 +71,9 @@ static inline float3 SafeInverse(float3 d)
 
 void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY) // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
 {
-  *(rayPosAndNear) = float4(float(tidX)*m_widthInv, float(tidY)*m_heightInv, -1.0f, 0.0f);
+  const float x = float(tidX)*m_widthInv;
+  const float y = float(tidY)*m_heightInv;
+  *(rayPosAndNear) = float4(x, y, -1.0f, 0.0f);
   *(rayDirAndFar ) = float4(0, 0, 1, MAXFLOAT);
   *flags           = 0;
 }
@@ -86,7 +88,7 @@ void TestClass::kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFa
   const float tFar  = rayDirAndFar->w;
   
   int hitId = -1;
-  for(uint32_t boxId = 0; boxId < uint32_t(boxes.size()); boxId+=4) 
+  for(uint32_t boxId = 0; boxId < m_boxNum*2; boxId+=4) 
   {
     const float2 tm0 = RayBoxIntersection2(rayPos, rayDirInv, to_float3(boxes[boxId+0]), to_float3(boxes[boxId+1]));
     const float2 tm1 = RayBoxIntersection2(rayPos, rayDirInv, to_float3(boxes[boxId+2]), to_float3(boxes[boxId+3]));
@@ -101,7 +103,7 @@ void TestClass::kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFa
   }
 
   const float3 ray_dir = to_float3(*rayDirAndFar);
-  for (uint32_t triId = 0; triId < trivets.size(); triId+=3)
+  for (uint32_t triId = 0; triId < m_triNum*3; triId+=3)
   {
     const float3 A_pos = to_float3(trivets[triId + 0]);
     const float3 B_pos = to_float3(trivets[triId + 1]);

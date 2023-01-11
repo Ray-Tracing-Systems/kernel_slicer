@@ -15,6 +15,9 @@ public:
 
   TestClass(int w, int h);
 
+  virtual void InitBoxesAndTris(int numBoxes = 60, int numTris  = 25);
+  virtual void SetBoxTrisNum   (int numBoxes, int numTris) { m_boxNum = numBoxes; m_triNum = numTris; }
+
   virtual void BFRT_ReadAndCompute(uint tidX, uint tidY, uint* out_color __attribute__((size("tidX", "tidY"))));
   virtual void BFRT_ReadAndComputeBlock(uint tidX, uint tidY, uint* out_color, uint32_t a_numPasses = 1);
 
@@ -36,8 +39,6 @@ public:
 
 protected:
 
-  void InitBoxesAndTris();
-
   std::vector<float4> boxes;
   std::vector<float4> trivets;
 
@@ -46,6 +47,9 @@ protected:
 
   float m_time1;
   float m_time2;
+
+  unsigned int m_boxNum;
+  unsigned int m_triNum;
 };
 
 #endif
