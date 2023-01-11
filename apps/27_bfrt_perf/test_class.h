@@ -2,10 +2,12 @@
 #define TEST_CLASS_H
 
 #include <vector>
-#include "include/BasicLogic.h" // We assume that all code that should pe passed to kernels will be just included both for CPU and OpenCL
+#include <string>
 
 #include <iostream>
 #include <fstream>
+
+#include "include/BasicLogic.h" // We assume that all code that should pe passed to kernels will be just included both for CPU and OpenCL
 
 class TestClass 
 {

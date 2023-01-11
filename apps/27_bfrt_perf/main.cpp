@@ -8,7 +8,7 @@
 #include "ArgParser.h"
 
 #include "vk_context.h"
-std::shared_ptr<TestClass> CreateTestClass_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+std::shared_ptr<TestClass> CreateTestClass_Generated(int w, int h, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
 
 int main(int argc, const char** argv)
 {
@@ -22,13 +22,13 @@ int main(int argc, const char** argv)
   bool onGPU = args.hasOption("--gpu");
 
   std::shared_ptr<TestClass> pImpl = nullptr;
-  //if(onGPU)
-  //{
-  //  unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-  //  auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
-  //  pImpl = CreateTestClass_Generated(ctx, WIN_WIDTH*WIN_HEIGHT);
-  //}
-  //else
+  if(onGPU)
+  {
+    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+    pImpl = CreateTestClass_Generated(1024, 1024, ctx, 1024*1024);
+  }
+  else
     pImpl = std::make_shared<TestClass>(1024,1024);
 
   pImpl->CommitDeviceData();
@@ -42,10 +42,8 @@ int main(int argc, const char** argv)
     SaveBMP("zout_cpu_v1.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
 
   float timings[4] = {0,0,0,0};
-  pImpl->GetExecutionTime("ReadAndCompute", timings);
-  std::cout << "ReadAndCompute(exec) = " << timings[0]              << " ms " << std::endl;
-  //std::cout << "ReadAndCompute(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
-  //std::cout << "ReadAndCompute(ovrh) = " << timings[3]              << " ms " << std::endl;
+  pImpl->GetExecutionTime("BFRT_ReadAndCompute", timings);
+  std::cout << "BFRT_ReadAndCompute(exec) = " << timings[0] << " ms " << std::endl;
   
   pImpl->BFRT_ComputeBlock(WIN_WIDTH, WIN_HEIGHT, pixelData.data(), 1);
 
@@ -54,8 +52,8 @@ int main(int argc, const char** argv)
   else
     SaveBMP("zout_cpu_v2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
 
-  pImpl->GetExecutionTime("Compute", timings);
-  std::cout << "Compute(exec) = " << timings[0]              << " ms " << std::endl;
+  pImpl->GetExecutionTime("BFRT_Compute", timings);
+  std::cout << "BFRT_Compute(exec) = " << timings[0] << " ms " << std::endl;
 
   pImpl = nullptr;
   return 0;

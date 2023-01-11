@@ -1,6 +1,8 @@
 #ifndef STD_STRING_HEADER
 #define STD_STRING_HEADER
 
+#include <cstring>
+
 /*
 *******************************************
 *** C++ string class
@@ -142,6 +144,7 @@ namespace str {
 		typedef const T *const_iterator;			/* const iterator type */
 		typedef T &reference;						/* normal reference type */
 		typedef const T &const_reference;			/* const reference type */
+		static constexpr unsigned int npos = (unsigned int)(-1);
 #ifdef STR_USE_BINDINGS
 		typedef std::basic_string<T, 
 			std::char_traits<T>, 
