@@ -12,9 +12,12 @@ We heavily used clang front-end infrastructure to transform input C++ source cod
 
 # Project goal
 
-The goal of this project is to increase developer productivity when porting CPU code to Vulkan which is time consuming work in general.
+The goal of this project is to increase developer productivity when porting naive CPU code to GPU via Vulkan which is time consuming work in general.
+The Intel ISPC is also supported as back-end for CPU-based code vectorization. 
 This means cross platform for C++ developers providing them at the same time ability to use any existing and any perspective HW featues of GPUs.
-We did this by accelerating/simplifying software development in Vulkan. Our conept is to provide quick transition from HW-agnostic C++ to GPU version of the same algorithm which can be automated for more than 90% (Fig. 2). The remaining 10% are written by hand and can use any desire HW extensions which, for example, are not supported by the kernel_slicer yet.
+We did this by accelerating/simplifying software development in Vulkan and ISPC. 
+Our conept is to provide quick transition from HW-agnostic C++ to GPU and ISPC versions of the same algorithm which can be automated for more than 90% (Fig. 2). 
+The remaining 10% are written by hand and can use any desire HW extensions which, for example, are not supported by the kernel_slicer yet.
 
 <p align = "center"><img src="images/concept_why.jpg" width = "1081"></p>
 <p align = "center">Fig. 2. Purpose and place of our tool among other GPU programming technologies.</p><BR>
@@ -49,7 +52,7 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 2. Download dependencies 
  * cd kernel_slicer
- * bash fetch_sources.bat 
+ * bash clone_dependencies.bat  
 
 3. sudo apt-get install llvm-14-dev
 
@@ -69,7 +72,9 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 9. (optional) build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") if you want OpenCL shaders
 
-10. (optional) If you want to [build it as a part of llvm](doc/README_build_with_llvm.md)
+10. (optional) install [intel ispc](https://ispc.github.io/ "Intel® Implicit SPMD Program Compiler") if you are going to vectorize code for CPU
+
+11. (optional) If you want to [build it as a part of llvm](doc/README_build_with_llvm.md)
 
 # Concept and general workflow
 
