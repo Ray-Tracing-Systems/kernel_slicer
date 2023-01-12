@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.8)
 project (kernel_slicer)
 set (CMAKE_CXX_STANDARD 17)
 
-find_package(LLVM 12 REQUIRED CONFIG)
+find_package(LLVM 14 REQUIRED CONFIG)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
@@ -37,7 +37,7 @@ add_executable(kslicer
                shaders_ispc.cpp
                )
 
-target_link_libraries(kslicer PRIVATE -lclang -lLLVM-12 
+target_link_libraries(kslicer PRIVATE -lclang -lLLVM-14 
                      -lclangAST -lclangTooling -lclangBasic -lclangASTMatchers 
                      -lclangFrontendTool -lclangFrontend -lclangDriver -lclangSerialization 
                      -lclangCodeGen -lclangParse -lclangSema -lclangStaticAnalyzerFrontend 
