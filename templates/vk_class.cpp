@@ -500,7 +500,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
   VkDeviceMemory imagesMem  = VK_NULL_HANDLE; // vk_utils::allocateAndBindWithPadding(device, physicalDevice, std::vector<VkBuffer>(), images);
   
   vk_utils::MemAllocInfo tempMemoryAllocInfo;
-  tempMemoryAllocInfo.memProps = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT; // TODO, selecty depending on device and sample/application (???)
+  tempMemoryAllocInfo.memUsage = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT; // TODO, select depending on device and sample/application (???)
   if(buffers.size() != 0)
     pAllocatorSpec->Allocate(tempMemoryAllocInfo, buffers);
   if(images.size() != 0)
