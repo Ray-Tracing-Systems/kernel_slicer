@@ -35,9 +35,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wno-attributes")
 
 add_executable(testapp main.cpp 
                        mandelbrot.cpp
-                       #mandelbrot_ispc.cpp
-                       #mandelbrot_kernels.o
-                       #../LiteMath/ispc_tasksys.cpp
+                       mandelbrot_ispc.cpp
+                       mandelbrot_kernels.o
+                       ../LiteMath/ispc_tasksys.cpp
+                       mandelbrot_generated.cpp
+                       mandelbrot_generated_init.cpp
+                       mandelbrot_generated_ds.cpp
                        Bitmap.cpp
                        ../vkutils/vk_utils.cpp
                        ../vkutils/vk_copy.cpp

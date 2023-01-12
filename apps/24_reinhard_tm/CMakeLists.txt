@@ -40,11 +40,11 @@ add_executable(testapp main.cpp
                        reinhard_ispc.cpp
                        reinhard_kernels.o
                        ../LiteMath/ispc_tasksys.cpp
-                       Bitmap.cpp
-                       imageutils.cpp
                        reinhard_generated.cpp
                        reinhard_generated_init.cpp
                        reinhard_generated_ds.cpp
+                       Bitmap.cpp
+                       imageutils.cpp
                        ../vkutils/vk_utils.cpp
                        ../vkutils/vk_copy.cpp
                        ../vkutils/vk_buffers.cpp

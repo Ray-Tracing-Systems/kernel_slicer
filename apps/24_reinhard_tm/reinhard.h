@@ -10,28 +10,26 @@
 using namespace LiteMath;
 #endif
 
-class ReinhardTM 
+
+class ReinhardTM
 {
 public:
-
   ReinhardTM(){}
-
-  virtual void Run(int w, int h, const float4* inData4f __attribute__((size("w*h"))), uint32_t* outData __attribute__((size("w*h"))));
-
-  virtual void CommitDeviceData() {}                                                          // will be overriden in generated class
-  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) { a_out[0] = m_time; } // will be overriden in generated class    
   
-  float getWhitePoint() { return m_whitePoint; }
+  virtual void Run(int w, int h, const float* inData __attribute__((size("w*h*4"))), uint32_t* outData __attribute__((size("w*h"))));
+
+  virtual void CommitDeviceData(){}
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]){ a_out[0] = m_time;}
 
 protected:
 
-  virtual void kernel1D_findMax(int size, const float4* inData4f);
-  virtual void kernel2D_process(int w, int h, const float4* inData4f, uint32_t* outData);
+  virtual void kernel1D_finMax(const float* inData, int size);
+  virtual void kernel2D_process(int w, int h, const float* inData, uint32_t* outData);
+  
 
-  float m_whitePoint = 0;
+  float whitePoint;
   float m_time;
-  int m_width, m_height;
-
 };
+
 
 #endif

@@ -166,8 +166,7 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
   m_noiseLevel  = 1.0f / (a_noiseLevel * a_noiseLevel);    
   m_windowArea  = std::sqrt(2.0f * (float)(a_windowRadius) + 1.0f);
 
-
-  #pragma omp parallel for 
+  #pragma omp parallel for collapse(2)
   for (int y = 0; y < a_height; ++y)
   {
     for (int x = 0; x < a_width; ++x)
@@ -244,12 +243,12 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
       a_outData1ui[y * a_width + x] = RealColorToUint32(result, 1.0F / m_gamma);
     }
 
-    #pragma omp critical       
-    {
-      m_linesDone++;
-      std::cout << "NLM Denoiser: " << (int)(100.0F * (float)(m_linesDone) / (float)(a_height)) << " \r";
-      std::cout.flush();
-    }        
+    //#pragma omp critical       
+    //{
+    //  m_linesDone++;
+    //  std::cout << "NLM Denoiser: " << (int)(100.0F * (float)(m_linesDone) / (float)(a_height)) << " \r";
+    //  std::cout.flush();
+    //}        
   }
 }
 
