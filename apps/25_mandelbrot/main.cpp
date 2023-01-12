@@ -5,20 +5,24 @@
 #include <cstdint>
 #include <cassert>
 
+#include "ArgParser.h"
 #include "mandelbrot.h"
 void SaveBMP(const char* fname, const unsigned int* pixels, int w, int h);
 
 #include "vk_context.h"
 std::shared_ptr<Mandelbrot> CreateMandelbrot_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+#ifdef USE_ISPC
 std::shared_ptr<Mandelbrot> CreateMandelbrot_ISPC(); 
+#endif
 
 int main(int argc, const char** argv)
 {
   int w = 1024,h = 1024; 
   std::vector<uint> ldrData(w*h);
-
-  bool onGPU  = false; //args.hasOption("--gpu");
-  bool isISPC = true; //args.hasOption("--ispc");
+  
+  ArgParser args(argc, argv);
+  bool onGPU  = args.hasOption("--gpu");
+  bool isISPC = args.hasOption("--ispc");
 
   std::shared_ptr<Mandelbrot> pImpl = nullptr;
 
@@ -27,10 +31,10 @@ int main(int argc, const char** argv)
     auto ctx   = vk_utils::globalContextGet(false, 0);
     pImpl = CreateMandelbrot_Generated(ctx, w*h);
   }
+  #ifdef USE_ISPC
   else if(isISPC)
-  {
     pImpl = CreateMandelbrot_ISPC();
-  }
+  #endif
   else
     pImpl = std::make_shared<Mandelbrot>();
 
@@ -43,7 +47,6 @@ int main(int argc, const char** argv)
     SaveBMP("zout_ispc.bmp", ldrData.data(), w, h);
   else
     SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
-
 
   float timings[4] = {0,0,0,0};
   pImpl->GetExecutionTime("Fractal", timings);

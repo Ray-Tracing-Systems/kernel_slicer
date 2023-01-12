@@ -158,6 +158,7 @@ std::vector<nBody::BodyState> n_body_cpu(uint32_t seed, uint32_t iterations) {
   return outBodies;
 }
 
+#ifdef USE_ISPC
 std::shared_ptr<nBody> CreatenBody_ISPC();
 std::vector<nBody::BodyState> n_body_ispc(uint32_t seed, uint32_t iterations) {
   auto pImpl = CreatenBody_ISPC();
@@ -171,3 +172,4 @@ std::vector<nBody::BodyState> n_body_ispc(uint32_t seed, uint32_t iterations) {
   std::cout << "(ISPC) perform(ovrh) = " << timings[3]              << " ms " << std::endl;
   return outBodies;
 }
+#endif

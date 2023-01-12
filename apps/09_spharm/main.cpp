@@ -14,7 +14,9 @@
 
 #include "vk_context.h"
 std::shared_ptr<SphHarm> CreateSphHarm_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+#ifdef USE_ISPC
 std::shared_ptr<SphHarm> CreateSphHarm_ISPC();
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -42,8 +44,10 @@ int main(int argc, const char** argv)
     auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateSphHarm_Generated(ctx, inputImageData.size());
   }
+  #ifdef USE_ISPC
   else if(onISPC)
     pImpl = CreateSphHarm_ISPC();
+  #endif
   else
     pImpl = std::make_shared<SphHarm>();
 

@@ -11,7 +11,9 @@
 
 #include "vk_context.h"
 std::shared_ptr<ToneMapping> CreateToneMapping_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+#ifdef USE_ISPC
 std::shared_ptr<ToneMapping> CreateToneMapping_ISPC();
+#endif
 
 bool LoadHDRImageFromFile(const char* a_fileName, 
                           int* pW, int* pH, std::vector<float>& a_data); // defined in imageutils.cpp
@@ -48,8 +50,10 @@ int main(int argc, const char** argv)
     auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateToneMapping_Generated(ctx, w*h);
   }
+  #ifdef USE_ISPC
   else if(isISPC)
     pImpl = CreateToneMapping_ISPC();
+  #endif
   else
     pImpl = std::make_shared<ToneMapping>();
 

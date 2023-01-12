@@ -1100,6 +1100,63 @@
         },
 
         {
+            "name"   : "Launch (app_25/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["${workspaceFolder}/apps/25_mandelbrot/mandelbrot.cpp",
+                        "-mainClass", "Mandelbrot", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-reorderLoops", "YX", 
+                        "-I${workspaceFolder}/apps/LiteMath", "ignore", 
+                        "-I${workspaceFolder}/TINYSTL",       "ignore",
+                        "-shaderCC", "glsl",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name"   : "Launch (app_25/ISPC)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["${workspaceFolder}/apps/25_mandelbrot/mandelbrot.cpp",
+                        "-mainClass", "Mandelbrot", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-reorderLoops", "YX", 
+                        "-I${workspaceFolder}/apps/LiteMath", "ignore", 
+                        "-I${workspaceFolder}/TINYSTL",       "ignore",
+                        "-shaderCC", "ispc",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (app_24/ISPC)",
             "type"   : "cppdbg",
             "request": "launch",

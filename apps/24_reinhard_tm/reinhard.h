@@ -21,11 +21,12 @@ public:
   virtual void CommitDeviceData(){}
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]){ a_out[0] = m_time;}
 
+  float getWhitePoint() const { return whitePoint; }
+
 protected:
 
   virtual void kernel1D_finMax(const float* inData, int size);
   virtual void kernel2D_process(int w, int h, const float* inData, uint32_t* outData);
-  
 
   float whitePoint;
   float m_time;

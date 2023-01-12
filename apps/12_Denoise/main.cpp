@@ -15,7 +15,9 @@ bool LoadLDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<
 
 #include "vk_context.h"
 std::shared_ptr<Denoise> CreateDenoise_Generated(const int w, const int h, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+#ifdef USE_ISPC
 std::shared_ptr<Denoise> CreateDenoise_ISPC(const int w, const int h);
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -98,10 +100,12 @@ int main(int argc, const char** argv)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
     auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
-    pImpl = CreateDenoise_Generated(w, h, ctx, w*h);
+    pImpl    = CreateDenoise_Generated(w, h, ctx, w*h);
   }
+  #ifdef USE_ISPC
   else if(isISPC)
     pImpl = CreateDenoise_ISPC(w,h);
+  #endif
   else
     pImpl = std::make_shared<Denoise>(w,h);
   

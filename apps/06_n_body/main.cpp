@@ -6,8 +6,9 @@
 
 std::vector<nBody::BodyState> n_body_cpu(uint32_t seed, uint32_t iterations);
 std::vector<nBody::BodyState> n_body_gpu(uint32_t seed, uint32_t iterations);
+#ifdef USE_ISPC
 std::vector<nBody::BodyState> n_body_ispc(uint32_t seed, uint32_t iterations);
-
+#endif
 const float EPS = 1e-3f;
 
 inline float errFloat4(const float4& a, const float4& b) 
@@ -21,8 +22,10 @@ int compute_main()
   const uint32_t SEED       = 42;
   const uint32_t ITERATIONS = 10;
   auto out_cpu = n_body_cpu(SEED, ITERATIONS);
-  auto out_gpu = n_body_ispc(SEED, ITERATIONS);
-  //auto out_gpu = n_body_gpu(SEED, ITERATIONS);
+  auto out_gpu = n_body_gpu(SEED, ITERATIONS);
+  #ifdef USE_ISPC
+      out_gpu = n_body_ispc(SEED, ITERATIONS);
+  #endif
   bool failed = false;
 
   std::vector<uint32_t> badId; badId.reserve(10);

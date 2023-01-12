@@ -6,13 +6,16 @@
 #include <cassert>
 
 #include "reinhard.h"
+#include "ArgParser.h"
 
 bool LoadHDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<float>& a_data); // defined in imageutils.cpp
 void SaveBMP(const char* fname, const unsigned int* pixels, int w, int h);
 
 #include "vk_context.h"
 std::shared_ptr<ReinhardTM> CreateReinhardTM_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+#ifdef USE_ISPC
 std::shared_ptr<ReinhardTM> CreateReinhardTM_ISPC();
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -26,27 +29,26 @@ int main(int argc, const char** argv)
   }
 
   std::vector<uint> ldrData(w*h);
-
-  bool onGPU  = false; // args.hasOption("--gpu");
-  bool isISPC = true; // args.hasOption("--ispc");
+  
+  ArgParser args(argc, argv);
+  bool onGPU  = args.hasOption("--gpu");
+  bool isISPC = args.hasOption("--ispc");
 
   std::shared_ptr<ReinhardTM> pImpl = nullptr;
-
-  //auto pImpl = std::make_shared<ReinhardTM>();
   if(onGPU)
   {
     auto ctx   = vk_utils::globalContextGet(false, 0);
     pImpl = CreateReinhardTM_Generated(ctx, w*h);
   }
+  #ifdef USE_ISPC
   else if(isISPC)
-  {
     pImpl = CreateReinhardTM_ISPC();
-  }
+  #endif
   else
     pImpl = std::make_shared<ReinhardTM>();
 
   pImpl->CommitDeviceData();
-  pImpl->Run(w, h, (const float4*)hdrData.data(), ldrData.data());
+  pImpl->Run(w, h, hdrData.data(), ldrData.data()); // (const float4*)
 
   if(onGPU)
     SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
