@@ -23,7 +23,7 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
 
-  std::vector<int32_t> array(1024*1024);
+  std::vector<int32_t> array(1024);
   for(size_t i=0;i<array.size();i++)
   {
     if(i%3 == 0)
