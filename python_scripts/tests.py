@@ -15,6 +15,7 @@ from compare_json import compare_generated_json_files
 def compile_shaders(shader_lang):
     Log().info("Compiling {} shaders".format(shader_lang.name))
     res = None
+    #print("shader = ", shader_lang)
     if shader_lang == ShaderLang.OPEN_CL:
         res = subprocess.run(["bash", "z_build.sh"],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -23,6 +24,9 @@ def compile_shaders(shader_lang):
         res = subprocess.run(["bash", "build.sh"],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         os.chdir("..")
+    elif shader_lang == ShaderLang.ISPC:
+        res = subprocess.run(["bash", "z_build_ispc.sh"],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     return res
 
@@ -30,7 +34,7 @@ def compile_shaders(shader_lang):
 def compile_sample(sample_config, num_threads=1):
     os.chdir(sample_config.root)
     Log().info("Building sample: {}".format(sample_config.name))
-    res, msg = utils.cmake_build("build", "Release", return_to_root=True, num_threads=num_threads)
+    res, msg = utils.cmake_build("build", "Release", return_to_root=True, num_threads=num_threads, clearAll=True)
     if res.returncode != 0:
         Log().status_info("{} release build: ".format(sample_config.name) + msg, status=Status.FAILED)
         Log().save_std_output("{}_release_build".format(sample_config.name), res.stdout.decode(), res.stderr.decode())
@@ -45,14 +49,15 @@ def compile_sample(sample_config, num_threads=1):
     return 0
 
 
-def run_sample(test_name, on_gpu=False, gpu_id=0):
+def run_sample(test_name, on_gpu=False, gpu_id=0, on_ispc=False):
     Log().info("Running sample: {0}, gpu={1}".format(test_name, on_gpu))
-    
     args = ["./build/testapp", "--test"]
     args = args + ["--gpu_id", str(gpu_id)]  # for single launch samples
-    if on_gpu:
+    if on_ispc:
+        args = args + ["--ispc"]
+    elif on_gpu:
         args = args + ["--gpu"]
-
+    print("args = ", args)
     try:
         res = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except Exception as e:
@@ -97,7 +102,7 @@ def run_test(sample_config: SampleConfig, test_config: TestsConfig):
     if return_code != 0:
         os.chdir(workdir)
         return -1
-
+    
     if Backend.CPU in test_config.backends:
         return_code = run_sample(sample_config.name, on_gpu=False, gpu_id=test_config.gpu_id)
         if return_code != 0:
@@ -105,7 +110,7 @@ def run_test(sample_config: SampleConfig, test_config: TestsConfig):
             return -1
 
     if Backend.GPU in test_config.backends:
-        return_code = run_sample(sample_config.name, on_gpu=True, gpu_id=test_config.gpu_id)
+        return_code = run_sample(sample_config.name, on_gpu=True, gpu_id=test_config.gpu_id, on_ispc = (sample_config.shaderType == "ispc"))
         if return_code != 0:
             os.chdir(workdir)
             return -1
@@ -155,6 +160,7 @@ def run_test(sample_config: SampleConfig, test_config: TestsConfig):
 
 def tests(test_config):
     sample_configs = read_sample_config_list(test_config.sample_names_path)
+    #print("sample_configs = ", sample_configs)
     for config in sample_configs:
         run_test(config, test_config)
 

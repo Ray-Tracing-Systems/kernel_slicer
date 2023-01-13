@@ -36,6 +36,18 @@ int main(int argc, const char** argv)
 
   bool onGPU  = args.hasOption("--gpu");
   bool isISPC = args.hasOption("--ispc");
+
+  if(isISPC)
+  {
+    std::cout << "[sample04]: run ISPC ver " << std::endl;
+    #ifdef USE_ISPC
+    std::cout << "[OK!]     ISPC implementations exists!" << std::endl;
+    #else 
+    std::cout << "[FAILED!] ISPC is not defined!!!" << std::endl;
+    return -1;
+    #endif
+  }
+
   std::shared_ptr<Numbers> pImpl = nullptr;
   if(onGPU)
   {

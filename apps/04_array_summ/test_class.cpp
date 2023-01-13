@@ -15,7 +15,9 @@ void Numbers::kernel1D_ArraySumm(const int* a_data, size_t a_dataSize)
   #pragma omp parallel for reduction(+:m_summ) // num_threads(4)
   for(int i=0; i<a_dataSize; i++)
   {
+    //if(a_data[i] > 0)
+    //  m_summ += float(a_data[i])*3.14159f;
     if(a_data[i] > 0)
-      m_summ += float(a_data[i])*3.14159f;
+      m_summ += a_data[i];
   }
 }

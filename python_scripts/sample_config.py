@@ -12,7 +12,7 @@ config_black_list = {
 class ShaderLang(Enum):
     OPEN_CL = 0
     GLSL    = 1
-
+    ISPC    = 2
 
 class SampleConfig:
     def __init__(self, name, args):
@@ -24,6 +24,9 @@ class SampleConfig:
         self.has_megakernel_key = "-megakernel" in self.__args
         self.has_subgroups_key  = "-enableSubgroup" in self.__args
         self.__extract_megakernel_from_args()
+        self.shaderType = "opencl"
+        if "-shaderCC" in self.__args:
+          self.shaderType = self.__args[self.__args.index("-shaderCC")+1]
 
     def get_kernel_slicer_args(self, megakernel=False, subgroups=False):
         out_args = self.__args
@@ -55,11 +58,11 @@ class SampleConfig:
     @staticmethod
     def __extract_shader_lang(args):
         lang = ShaderLang.OPEN_CL
-
         for arg in args:
             if arg.lower() == "glsl":
                 lang = ShaderLang.GLSL
-
+            elif arg.lower() == "ispc":
+                lang = ShaderLang.ISPC
         return lang
 
 
