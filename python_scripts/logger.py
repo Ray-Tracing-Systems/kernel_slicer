@@ -30,7 +30,7 @@ class Status(Enum):
 
     @staticmethod
     def worst_of(status_list):
-        worst_status_val = max([status.value for status in status_list])
+        worst_status_val = max([status.value for status in status_list if type(status) is Status])
         return Status(worst_status_val)
 
 

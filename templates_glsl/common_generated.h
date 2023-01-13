@@ -28,7 +28,8 @@
 #define MINFLOAT 1e37f
 #define FLT_MAX 1e37f
 #define FLT_MIN -1e37f
-#define FLT_EPSILON 1e-6f;
+#define FLT_EPSILON 1e-6f
+#define unmasked
 ## for Decl in ClassDecls  
 {{Decl.Text}}
 ## endfor
