@@ -158,6 +158,8 @@ std::string kslicer::ClspvCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
     default:
     break;
   };
+  ReplaceFirst(result, "LiteMath::", "");
+  ReplaceFirst(result, "std::", "");
   return result;
 }
 

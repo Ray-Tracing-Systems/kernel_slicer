@@ -17,33 +17,38 @@ def compile_shaders(shader_lang):
     res = None
     #print("shader = ", shader_lang)
     if shader_lang == ShaderLang.OPEN_CL:
+        #print("BuildShaders --> OpenCL")
         res = subprocess.run(["bash", "z_build.sh"],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     elif shader_lang == ShaderLang.GLSL:
+        #print("BuildShaders --> GLSL")
         os.chdir("shaders_generated")
         res = subprocess.run(["bash", "build.sh"],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         os.chdir("..")
     elif shader_lang == ShaderLang.ISPC:
+        #print("BuildShaders --> ISPC")
         res = subprocess.run(["bash", "z_build_ispc.sh"],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     return res
 
 
-def compile_sample(sample_config, num_threads=1):
+def compile_sample(sample_config, num_threads=1, enable_ispc = False):
     os.chdir(sample_config.root)
-    Log().info("Building sample: {}".format(sample_config.name))
-    res, msg = utils.cmake_build("build", "Release", return_to_root=True, num_threads=num_threads, clearAll=True)
-    if res.returncode != 0:
-        Log().status_info("{} release build: ".format(sample_config.name) + msg, status=Status.FAILED)
-        Log().save_std_output("{}_release_build".format(sample_config.name), res.stdout.decode(), res.stderr.decode())
-        return -1
-
+    
+    Log().info("Building sample shaders: {}".format(sample_config.name))
     res = compile_shaders(sample_config.shader_lang)
     if res.returncode != 0:
         Log().status_info("{} shaders compilation: ".format(sample_config.name), status=Status.FAILED)
         Log().save_std_output("{}_shaders".format(sample_config.name), res.stdout.decode(), res.stderr.decode())
+        return -1
+    
+    Log().info("Building sample cppcode: {}".format(sample_config.name))
+    res, msg = utils.cmake_build("build", "Release", return_to_root=True, num_threads=num_threads, clearAll=True, enable_ispc=enable_ispc)
+    if res.returncode != 0:
+        Log().status_info("{} release build: ".format(sample_config.name) + msg, status=Status.FAILED)
+        Log().save_std_output("{}_release_build".format(sample_config.name), res.stdout.decode(), res.stderr.decode())
         return -1
 
     return 0
@@ -57,7 +62,7 @@ def run_sample(test_name, on_gpu=False, gpu_id=0, on_ispc=False):
         args = args + ["--ispc"]
     elif on_gpu:
         args = args + ["--gpu"]
-    print("args = ", args)
+    #print("args = ", args)
     try:
         res = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except Exception as e:
@@ -71,7 +76,7 @@ def run_sample(test_name, on_gpu=False, gpu_id=0, on_ispc=False):
     return 0
 
 
-def run_kslicer_and_compile_sample(sample_config: SampleConfig, test_config: TestsConfig, megakernel=False, subgroups=False):
+def run_kslicer(sample_config: SampleConfig, test_config: TestsConfig, megakernel=False, subgroups=False):
     Log().info("Generating files by kernel_slicer with params: [\n" +
                "\torig cpp file: {}\n".format(os.path.relpath(sample_config.orig_cpp_file)) +
                ("\tmegakernel: {}\n".format(megakernel) if sample_config.has_megakernel_key else "") +
@@ -86,10 +91,6 @@ def run_kslicer_and_compile_sample(sample_config: SampleConfig, test_config: Tes
         Log().save_std_output(sample_config.name, res.stdout.decode(), res.stderr.decode())
         return -1
 
-    return_code = compile_sample(sample_config, test_config.num_threads)
-    if return_code != 0:
-        return -1
-
     return 0
 
 
@@ -98,11 +99,15 @@ def run_test(sample_config: SampleConfig, test_config: TestsConfig):
     workdir = os.getcwd()
     final_status = Status.OK
 
-    return_code = run_kslicer_and_compile_sample(sample_config, test_config, megakernel=False, subgroups=False)
+    return_code = run_kslicer(sample_config, test_config, megakernel=False, subgroups=False)
     if return_code != 0:
         os.chdir(workdir)
         return -1
     
+    return_code = compile_sample(sample_config, test_config.num_threads, enable_ispc = (sample_config.shaderType == "ispc"))
+    if return_code != 0:
+        return -1
+
     if Backend.CPU in test_config.backends:
         return_code = run_sample(sample_config.name, on_gpu=False, gpu_id=test_config.gpu_id)
         if return_code != 0:
@@ -121,9 +126,12 @@ def run_test(sample_config: SampleConfig, test_config: TestsConfig):
 
         if sample_config.has_megakernel_key:
             os.chdir(workdir)
-            return_code = run_kslicer_and_compile_sample(sample_config, test_config, megakernel=True)
+            return_code = run_kslicer(sample_config, test_config, megakernel=True)
             if return_code != 0:
                 os.chdir(workdir)
+                return -1
+            return_code = compile_sample(sample_config, test_config.num_threads, enable_ispc = False)
+            if return_code != 0:
                 return -1
             return_code = run_sample(sample_config.name, on_gpu=True, gpu_id=test_config.gpu_id)
             if return_code != 0:
@@ -136,9 +144,12 @@ def run_test(sample_config: SampleConfig, test_config: TestsConfig):
 
         if sample_config.has_subgroups_key:
             os.chdir(workdir)
-            return_code = run_kslicer_and_compile_sample(sample_config, test_config, megakernel=False, subgroups=True)
+            return_code = run_kslicer(sample_config, test_config, megakernel=False, subgroups=True)
             if return_code != 0:
                 os.chdir(workdir)
+                return -1
+            return_code = compile_sample(sample_config, test_config.num_threads, enable_ispc = False)
+            if return_code != 0:
                 return -1
             return_code = run_sample(sample_config.name, on_gpu=True, gpu_id=test_config.gpu_id)
             if return_code != 0:
