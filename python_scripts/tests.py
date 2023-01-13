@@ -2,7 +2,6 @@ import sys
 import os
 import subprocess
 
-
 import utils
 from tests_config import TestsConfig, Backend
 from sample_config import read_sample_config_list, SampleConfig, ShaderLang
@@ -10,7 +9,6 @@ from logger import Log, Status
 from download_resources import download_resources
 from compare_images import compare_generated_images
 from compare_json import compare_generated_json_files
-
 
 def compile_shaders(shader_lang):
     Log().info("Compiling {} shaders".format(shader_lang.name))
@@ -50,7 +48,7 @@ def compile_sample(sample_config, num_threads=1, enable_ispc = False):
         Log().status_info("{} release build: ".format(sample_config.name) + msg, status=Status.FAILED)
         Log().save_std_output("{}_release_build".format(sample_config.name), res.stdout.decode(), res.stderr.decode())
         return -1
-
+    
     return 0
 
 
@@ -84,8 +82,7 @@ def run_kslicer(sample_config: SampleConfig, test_config: TestsConfig, megakerne
 
     kslicer_args = sample_config.get_kernel_slicer_args(megakernel=megakernel, subgroups=subgroups)
     #print(kslicer_args)
-    res = subprocess.run(["./cmake-build-release/kslicer", *kslicer_args],
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    res = subprocess.run(["./cmake-build-release/kslicer", *kslicer_args], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if res.returncode != 0:
         Log().status_info("{}: kernel_slicer files generation".format(sample_config.name), status=Status.FAILED)
         Log().save_std_output(sample_config.name, res.stdout.decode(), res.stderr.decode())
@@ -94,16 +91,14 @@ def run_kslicer(sample_config: SampleConfig, test_config: TestsConfig, megakerne
     return 0
 
 
-def run_test(sample_config: SampleConfig, test_config: TestsConfig):
+def run_test(sample_config: SampleConfig, test_config: TestsConfig, workdir):
     Log().info("Running test: {}".format(sample_config.name))
-    workdir = os.getcwd()
     final_status = Status.OK
-
+    os.chdir(workdir)
     return_code = run_kslicer(sample_config, test_config, megakernel=False, subgroups=False)
     if return_code != 0:
         os.chdir(workdir)
         return -1
-    
     return_code = compile_sample(sample_config, test_config.num_threads, enable_ispc = (sample_config.shaderType == "ispc"))
     if return_code != 0:
         return -1
@@ -169,11 +164,11 @@ def run_test(sample_config: SampleConfig, test_config: TestsConfig):
     os.chdir(workdir)
 
 
-def tests(test_config):
+def tests(test_config, workdir):
     sample_configs = read_sample_config_list(test_config.sample_names_path)
     #print("sample_configs = ", sample_configs)
     for config in sample_configs:
-        run_test(config, test_config)
+        run_test(config, test_config, workdir)
 
 
 def create_clspv_symlink(clspv_path, dest_path):
@@ -191,7 +186,7 @@ def create_clspv_symlink(clspv_path, dest_path):
 
 def build_kernel_slicer(num_threads):
     Log().info("Building kernel_slicer")
-    res, msg = utils.cmake_build("cmake-build-debug", "Debug", return_to_root=True, num_threads=num_threads)
+    res, msg = utils.cmake_build("cmake-build-debug", "Debug", return_to_root=True, num_threads=num_threads, clearAll = False)
     if res.returncode != 0:
         Log().status_info("kernel_slicer debug build: " + msg, status=Status.FAILED)
         Log().save_std_output("kernel_slicer_debug_build", res.stdout.decode(), res.stderr.decode())
@@ -199,7 +194,7 @@ def build_kernel_slicer(num_threads):
     else:
         Log().status_info("kernel_slicer debug build", status=Status.OK)
 
-    res, msg = utils.cmake_build("cmake-build-release", "Release", return_to_root=True, num_threads=num_threads)
+    res, msg = utils.cmake_build("cmake-build-release", "Release", return_to_root=True, num_threads=num_threads, clearAll = False)
     if res.returncode != 0:
         Log().status_info("kernel_slicer release build: " + msg, status=Status.FAILED)
         Log().save_std_output("kernel_slicer_release_build", res.stdout.decode(), res.stderr.decode())
@@ -224,7 +219,7 @@ def main():
     download_resources()
     create_clspv_symlink("apps/clspv", "apps/tests/clspv")
     build_kernel_slicer(test_config.num_threads)
-    tests(test_config)
+    tests(test_config,workdir)
     Log().close()
 
 
