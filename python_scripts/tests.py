@@ -116,7 +116,7 @@ def run_test(sample_config: SampleConfig, test_config: TestsConfig, workdir):
             return -1
 
         final_status = Status.worst_of([
-            final_status, compare_generated_images(), compare_generated_json_files()
+            final_status, compare_generated_images((sample_config.shaderType == "ispc")), compare_generated_json_files()
         ])
 
         if sample_config.has_megakernel_key:

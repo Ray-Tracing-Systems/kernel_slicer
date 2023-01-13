@@ -11,11 +11,13 @@ def is_out_img(img_name: str):
     return img_name.startswith("zout_") and utils.has_image_ext(img_name)
 
 
-def find_image_pairs():
+def find_image_pairs(is_ispc):
     filenames = utils.get_files(os.getcwd())
     image_filenames = sorted([f for f in filenames if is_out_img(f)])
     cpu_images = [img for img in image_filenames if img.find("cpu") >= 0]
     gpu_images = [img for img in image_filenames if img.find("gpu") >= 0]
+    if is_ispc:
+        gpu_images = [img for img in image_filenames if img.find("ispc") >= 0]
     if len(cpu_images) != len(gpu_images):
         Log().error("Non equal image count for different code versions: cpu={0}, gpu={1}".format(
             len(cpu_images), len(gpu_images)
@@ -36,9 +38,9 @@ def compare_images(img_name1, img_name2):
     return status
 
 
-def compare_generated_images():
-    Log().info("Comparing images")
-    image_pairs = find_image_pairs()
+def compare_generated_images(is_ispc = False):
+    image_pairs = find_image_pairs(is_ispc)
+    Log().info("Comparing images: ", image_pairs)
     if image_pairs is None:
         return -1
 
