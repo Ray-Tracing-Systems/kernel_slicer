@@ -646,16 +646,14 @@ int main(int argc, const char **argv)
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
   compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
   
-  //#TODO: remove this copy, just pass pointer to 'inputCodeInfo' inside 'firstPassData.rv' and thats all
-  //
-  inputCodeInfo.allKernels           = firstPassData.rv.functions; 
-  inputCodeInfo.allOtherKernels      = firstPassData.rv.otherFunctions;
-  inputCodeInfo.allDataMembers       = firstPassData.rv.dataMembers;   
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.m_mainClassASTNode;
-  inputCodeInfo.ctors                = firstPassData.rv.ctors;
-  inputCodeInfo.allMemberFunctions   = firstPassData.rv.allMemberFunctions;
-  inputCodeInfo.ProcessAllSetters(firstPassData.rv.m_setters, compiler);
+  inputCodeInfo.allKernels           = firstPassData.rv.mci.functions; 
+  inputCodeInfo.allOtherKernels      = firstPassData.rv.mci.otherFunctions;
+  inputCodeInfo.allDataMembers       = firstPassData.rv.mci.dataMembers;   
+  inputCodeInfo.ctors                = firstPassData.rv.mci.ctors;
+  inputCodeInfo.allMemberFunctions   = firstPassData.rv.mci.allMemberFunctions;
+  inputCodeInfo.ProcessAllSetters(firstPassData.rv.mci.m_setters, compiler);
 
   std::vector<kslicer::DeclInClass> generalDecls = firstPassData.rv.GetExtractedDecls();
   if(inputCodeInfo.mainClassASTNode == nullptr)
@@ -676,7 +674,7 @@ int main(int argc, const char **argv)
     const std::string& mainFuncName = f.first;
     auto& mainFuncRef = inputCodeInfo.mainFunc[mainFuncId];
     mainFuncRef.Name  = mainFuncName;
-    mainFuncRef.Node  = firstPassData.rv.m_mainFuncNodes[mainFuncName];
+    mainFuncRef.Node  = firstPassData.rv.mci.m_mainFuncNodes[mainFuncName];
 
     // Now process each main function: variables and kernel calls, if()->break and if()->return statements.
     //

@@ -342,7 +342,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
   bool isMainClassMember = IsMainClassName(thisTypeName);
   if(isMainClassMember && fsrcfull != fdecl) // we need to store MethodDec with full source code, not hust decls
   {
-    allMemberFunctions [fname] = f; // just save this for further process in templated text rendering_host.cpp (virtual functions override for RTV pattern, so called "FullImpl" override)
+    mci.allMemberFunctions[fname] = f; // just save this for further process in templated text rendering_host.cpp (virtual functions override for RTV pattern, so called "FullImpl" override)
   }
 
   if (f->hasBody())
@@ -353,28 +353,28 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
     {
       if(isMainClassMember)
       {
-        ProcessKernelDef(f, functions, MAIN_CLASS_NAME); // MAIN_CLASS_NAME::f ==> functions
+        ProcessKernelDef(f, mci.functions, MAIN_CLASS_NAME); // MAIN_CLASS_NAME::f ==> functions
         std::cout << "  found member kernel " << MAIN_CLASS_NAME.c_str() << "::" << fname.c_str() << std::endl;
-        if(ctors.size() == 0)
+        if(mci.ctors.size() == 0)
         {
           clang::CXXRecordDecl* pClasDecl =	f->getParent();
           for(auto ctor : pClasDecl->ctors()) 
           {
             if(!ctor->isCopyOrMoveConstructor())
-              ctors.push_back(ctor);
+              mci.ctors.push_back(ctor);
           }
         }
       }
       else // extract other kernels and classes
       {
         thisTypeName = kslicer::CutOffStructClass(thisTypeName);
-        ProcessKernelDef(f, otherFunctions, thisTypeName); // thisTypeName::f ==> otherFunctions
+        ProcessKernelDef(f, mci.otherFunctions, thisTypeName); // thisTypeName::f ==> otherFunctions
         std::cout << "  found other kernel " << thisTypeName.c_str() << "::" << fname.c_str() << std::endl;
       }
     }
     else if(m_mainFuncts.find(fname) != m_mainFuncts.end())
     {
-      m_mainFuncNodes[fname] = f;
+      mci.m_mainFuncNodes[fname] = f;
       //std::cout << "control function has found:\t" << fname.c_str() << std::endl;
       //std::string text = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler); 
       //std::cout << "found src = " << text.c_str() << std::endl;
@@ -382,7 +382,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
     }
     else if(attr == CPP11_ATTR::ATTR_SETTER)
     {
-      m_setters[fname] = f;
+      mci.m_setters[fname] = f;
     }
     else
     {
@@ -470,7 +470,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
     if(member.isPointer) // we ignore pointers due to we can't pass them to GPU correctly
       return true;
 
-    dataMembers[member.name] = member;
+    mci.dataMembers[member.name] = member;
   }
 
   return true;

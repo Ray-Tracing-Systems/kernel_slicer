@@ -12,6 +12,18 @@
 
 namespace kslicer
 {
+  struct ClassInfo
+  {
+    std::unordered_map<std::string, KernelInfo>                  functions;
+    std::unordered_map<std::string, KernelInfo>                  otherFunctions;
+    std::unordered_map<std::string, DataMemberInfo>              dataMembers;
+    std::unordered_map<std::string, const clang::CXXMethodDecl*> m_mainFuncNodes;
+    std::unordered_map<std::string, const clang::CXXMethodDecl*> m_setters;
+    std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFunctions;
+    std::vector<const clang::CXXConstructorDecl* >               ctors;
+  };
+
+
   using namespace clang;
   
   // RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.
@@ -38,15 +50,12 @@ namespace kslicer
     bool VisitTypeDecl     (TypeDecl* record);
     bool VisitVarDecl      (VarDecl* pTargetVar);
   
-    std::unordered_map<std::string, KernelInfo>                  functions;
-    std::unordered_map<std::string, DataMemberInfo>              dataMembers;
-    std::unordered_map<std::string, const clang::CXXMethodDecl*> m_mainFuncNodes;
-    std::unordered_map<std::string, const clang::CXXMethodDecl*> m_setters;
-    std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFunctions;
-    //std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFuncByDecl;
-  
-    std::unordered_map<std::string, KernelInfo>           otherFunctions;
-    std::vector<const clang::CXXConstructorDecl* >        ctors;
+    //std::unordered_map<std::string, KernelInfo>                  functions;
+    //std::unordered_map<std::string, DataMemberInfo>              dataMembers;
+    //std::unordered_map<std::string, const clang::CXXMethodDecl*> m_mainFuncNodes;
+    //std::unordered_map<std::string, const clang::CXXMethodDecl*> m_setters;
+    //std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFunctions;
+    ClassInfo mci; // main class info
 
     const CXXRecordDecl* m_mainClassASTNode = nullptr;
     std::vector<const clang::CXXRecordDecl*> m_classList;
