@@ -14,7 +14,6 @@ zout_*
 apps/resources/*
 .vscode/settings.json
 apps/01_intersectSphere/z_build.sh
-apps/volk
 apps/01_intersectSphere/include/TestClass_ubo.h
 apps/02_spheresStupidPt/test.cl
 apps/02_spheresStupidPt/z_build.sh
