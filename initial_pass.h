@@ -35,7 +35,10 @@ namespace kslicer
     std::string MAIN_CLASS_NAME;
     std::string MAIN_FILE_INCLUDE;
   
-    InitialPassRecursiveASTVisitor(std::vector<std::string>& a_mainFunctionNames, std::string main_class, CompilerInstance& a_compiler, const MainClassInfo& a_codeInfo) : 
+    InitialPassRecursiveASTVisitor(std::vector<std::string>& a_mainFunctionNames,
+                                   std::string main_class, 
+                                   std::vector<std::string> compos_classes,
+                                   CompilerInstance& a_compiler, const MainClassInfo& a_codeInfo) : 
                                    MAIN_CLASS_NAME(main_class), m_compiler(a_compiler), m_astContext(a_compiler.getASTContext()), m_sourceManager(a_compiler.getSourceManager()), m_codeInfo(a_codeInfo)  
     {
       m_mainFuncts.reserve(a_mainFunctionNames.size());
@@ -84,8 +87,11 @@ namespace kslicer
   {
    public:
   
-    InitialPassASTConsumer (std::vector<std::string>& a_mainFunctionNames, std::string main_class, CompilerInstance& a_compiler, const MainClassInfo& a_codeInfo) : 
-                            rv(a_mainFunctionNames, main_class, a_compiler, a_codeInfo) { }
+    InitialPassASTConsumer (std::vector<std::string>& a_mainFunctionNames, 
+                            std::string main_class,
+                            std::vector<std::string> compos_classes, 
+                            CompilerInstance& a_compiler, const MainClassInfo& a_codeInfo) : 
+                            rv(a_mainFunctionNames, main_class, compos_classes, a_compiler, a_codeInfo) { }
     bool HandleTopLevelDecl(DeclGroupRef d) override;
     InitialPassRecursiveASTVisitor rv;
   };

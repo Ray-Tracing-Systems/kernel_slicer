@@ -381,6 +381,10 @@ int main(int argc, const char **argv)
   std::string patternName     = "rtv";
   std::string shaderCCName    = "clspv";
   std::string hintFile        = "";
+  
+  std::string composeAPIName  = "";
+  std::string composeImplName = "";
+
   uint32_t    threadsOrder[3] = {0,1,2};
   uint32_t    warpSize        = 32;
   bool        useCppInKernels = false;
@@ -443,6 +447,11 @@ int main(int argc, const char **argv)
   if(params.find("-ispc_explicit_id") != params.end())
     ispcExplicitIndices = (atoi(params["-ispc_explicit_id"].c_str()) == 1);
 
+  if(params.find("-composInterface") != params.end())
+    composeAPIName = params["-composInterface"];  
+
+  if(params.find("-composImplementation") != params.end())
+    composeImplName = params["-composImplementation"];
 
   std::unordered_set<std::string> values;
   std::vector<std::string> includeFolderList;
@@ -642,7 +651,10 @@ int main(int argc, const char **argv)
 
   // Parse code, initial pass
   //
-  kslicer::InitialPassASTConsumer firstPassData(cfNames, mainClassName, compiler, inputCodeInfo); 
+  std::vector<std::string> composClassNames;
+  composClassNames.push_back(composeAPIName);
+  composClassNames.push_back(composeImplName);  
+  kslicer::InitialPassASTConsumer firstPassData(cfNames, mainClassName, composClassNames, compiler, inputCodeInfo); 
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
   compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
   
