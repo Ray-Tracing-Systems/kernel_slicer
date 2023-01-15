@@ -12,8 +12,13 @@
 
 namespace kslicer
 {
+  
   struct ClassInfo
   {
+    ClassInfo(){}
+    ClassInfo(const std::string& a_name) : name(a_name) {}
+    std::string                                                  name;
+    const clang::CXXRecordDecl*                                  astNode = nullptr;
     std::unordered_map<std::string, KernelInfo>                  functions;
     std::unordered_map<std::string, KernelInfo>                  otherFunctions;
     std::unordered_map<std::string, DataMemberInfo>              dataMembers;
@@ -44,6 +49,9 @@ namespace kslicer
       m_mainFuncts.reserve(a_mainFunctionNames.size());
       for(const auto& name : a_mainFunctionNames)
         m_mainFuncts.insert(name);
+      for(const auto& name : compos_classes)
+        m_composedClassInfo[name] = ClassInfo(name);
+      mci.name = MAIN_CLASS_NAME;
     }
     
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
@@ -60,7 +68,6 @@ namespace kslicer
     //std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFunctions;
     ClassInfo mci; // main class info
 
-    const CXXRecordDecl* m_mainClassASTNode = nullptr;
     std::vector<const clang::CXXRecordDecl*> m_classList;
     std::vector<kslicer::DeclInClass> GetExtractedDecls();
 
@@ -81,6 +88,7 @@ namespace kslicer
     uint32_t m_currId = 0;
     std::unordered_map<std::string, kslicer::DeclInClass> m_transferredDecl;
     std::unordered_map<std::string, kslicer::DeclInClass> m_storedDecl;
+    std::unordered_map<std::string, ClassInfo>            m_composedClassInfo;
   };
   
   class InitialPassASTConsumer : public ASTConsumer
@@ -95,6 +103,8 @@ namespace kslicer
     bool HandleTopLevelDecl(DeclGroupRef d) override;
     InitialPassRecursiveASTVisitor rv;
   };
+
+  std::string ClearTypeName(const std::string& a_typeName);
 }
 
 #endif

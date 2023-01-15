@@ -659,7 +659,7 @@ int main(int argc, const char **argv)
   compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
   
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
-  inputCodeInfo.mainClassASTNode     = firstPassData.rv.m_mainClassASTNode;
+  inputCodeInfo.mainClassASTNode     = firstPassData.rv.mci.astNode;
   inputCodeInfo.allKernels           = firstPassData.rv.mci.functions; 
   inputCodeInfo.allOtherKernels      = firstPassData.rv.mci.otherFunctions;
   inputCodeInfo.allDataMembers       = firstPassData.rv.mci.dataMembers;   

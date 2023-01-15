@@ -109,10 +109,14 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* 
     return true;
 
   const QualType qt   = pType->getLocallyUnqualifiedSingleStepDesugaredType();
-  const auto typeName = qt.getAsString();
+  const auto typeName = ClearTypeName(qt.getAsString());
+
+  auto pCompos = m_composedClassInfo.find(typeName);
 
   if(IsMainClassName(typeName))
-    m_mainClassASTNode = record;
+    mci.astNode = record;
+  else if(pCompos != m_composedClassInfo.end())
+    pCompos->second.astNode = record;
   else if(!record->isPOD())
     m_classList.push_back(record); // rememer for futher processing of complex classes
   
@@ -307,18 +311,28 @@ kslicer::CPP11_ATTR kslicer::GetMethodAttr(const clang::CXXMethodDecl* f, clang:
   return CPP11_ATTR::ATTR_UNKNOWN;
 }
 
+std::string kslicer::ClearTypeName(const std::string& a_typeName)
+{
+  std::string copystr = a_typeName;
+  ReplaceFirst(copystr, "const struct ", "");
+  ReplaceFirst(copystr, "const class ", "");
+  ReplaceFirst(copystr, "struct ", "");
+  ReplaceFirst(copystr, "class ", "");
+  return copystr;
+}
+
 bool kslicer::InitialPassRecursiveASTVisitor::IsMainClassName(const std::string& a_typeName)
 {
   if(a_typeName == MAIN_CLASS_NAME)
     return true;
-  if(a_typeName == std::string("struct ") + MAIN_CLASS_NAME)
-    return true;
-  if(a_typeName == std::string("class ") + MAIN_CLASS_NAME)
-    return true;
-  if(a_typeName == std::string("const struct ") + MAIN_CLASS_NAME)
-    return true;
-  if(a_typeName == std::string("const class ") + MAIN_CLASS_NAME)
-    return true;
+  //if(a_typeName == std::string("struct ") + MAIN_CLASS_NAME)
+  //  return true;
+  //if(a_typeName == std::string("class ") + MAIN_CLASS_NAME)
+  //  return true;
+  //if(a_typeName == std::string("const struct ") + MAIN_CLASS_NAME)
+  //  return true;
+  //if(a_typeName == std::string("const class ") + MAIN_CLASS_NAME)
+  //  return true;
   return false;
 }
 
@@ -337,13 +351,15 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
   
   const QualType qThisType = f->getThisType();   
   const QualType classType = qThisType.getTypePtr()->getPointeeType();
-  std::string thisTypeName = classType.getAsString();
+  std::string thisTypeName = ClearTypeName(classType.getAsString());
   
-  bool isMainClassMember = IsMainClassName(thisTypeName);
+  const bool isMainClassMember = IsMainClassName(thisTypeName);
+  const auto pCompos           = m_composedClassInfo.find(thisTypeName);
+
   if(isMainClassMember && fsrcfull != fdecl) // we need to store MethodDec with full source code, not hust decls
-  {
-    mci.allMemberFunctions[fname] = f; // just save this for further process in templated text rendering_host.cpp (virtual functions override for RTV pattern, so called "FullImpl" override)
-  }
+    mci.allMemberFunctions[fname] = f;       // just save this for further process in templated text rendering_host.cpp (virtual functions override for RTV pattern, so called "FullImpl" override)
+  else if (pCompos != m_composedClassInfo.end())
+    pCompos->second.allMemberFunctions[fname] = f;  
 
   if (f->hasBody())
   {
@@ -365,9 +381,13 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
           }
         }
       }
+      else if(pCompos != m_composedClassInfo.end())
+      {
+        ProcessKernelDef(f, pCompos->second.otherFunctions, pCompos->first); 
+        std::cout << "found member function " << pCompos->first.c_str() << "::" << fname.c_str() << std::endl;
+      }
       else // extract other kernels and classes
       {
-        thisTypeName = kslicer::CutOffStructClass(thisTypeName);
         ProcessKernelDef(f, mci.otherFunctions, thisTypeName); // thisTypeName::f ==> otherFunctions
         std::cout << "  found other kernel " << thisTypeName.c_str() << "::" << fname.c_str() << std::endl;
       }
@@ -456,21 +476,28 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
   const clang::RecordDecl* rd = fd->getParent();
   const clang::QualType    qt = fd->getType();
  
-  const std::string& thisTypeName = rd->getName().str();
+  const std::string& thisTypeName = ClearTypeName(rd->getName().str());
+  const auto pCompos = m_composedClassInfo.find(thisTypeName);
 
   if(thisTypeName == MAIN_CLASS_NAME)
   {
     std::cout << "  found data member: " << fd->getName().str().c_str() << " of type\t" << qt.getAsString().c_str() << ", isPOD = " << qt.isCXX11PODType(m_astContext) << std::endl;
 
-    auto funcSourceRange = rd->getSourceRange();
-    auto fileName        = m_sourceManager.getFilename(funcSourceRange.getBegin());
+    auto funcSourceRange    = rd->getSourceRange();
+    auto fileName           = m_sourceManager.getFilename(funcSourceRange.getBegin());
     this->MAIN_FILE_INCLUDE = fileName;
 
     DataMemberInfo member = ExtractMemberInfo(fd, m_astContext);
     if(member.isPointer) // we ignore pointers due to we can't pass them to GPU correctly
       return true;
-
     mci.dataMembers[member.name] = member;
+  }
+  else if(pCompos != m_composedClassInfo.end())
+  {
+    DataMemberInfo member = ExtractMemberInfo(fd, m_astContext);
+    if(member.isPointer) // we ignore pointers due to we can't pass them to GPU correctly
+      return true;
+    pCompos->second.dataMembers[member.name] = member;
   }
 
   return true;
