@@ -644,7 +644,7 @@ bool kslicer::KernelRewriter::VisitUnaryOperator_Impl(UnaryOperator* expr)
   const bool needOffset = CheckIfExprHasArgumentThatNeedFakeOffset(exprInside);
   if(needOffset && WasNotRewrittenYet(expr))
   {
-    if(m_codeInfo->megakernelRTV)
+    if(m_codeInfo->megakernelRTV || m_fakeOffsetExp == "")
       m_rewriter.ReplaceText(expr->getSourceRange(), exprInside);
     else
       m_rewriter.ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");

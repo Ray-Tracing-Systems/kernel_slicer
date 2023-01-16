@@ -827,9 +827,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       {
         auto funcNode = const_cast<clang::FunctionDecl*>(f.astNode);
         pVisitorF->SetCurrFuncInfo(&f);    // pass auxilary function data inside pVisitorF
+        pVisitorK->SetCurrFuncInfo(&f); 
         const std::string funcDeclText = pVisitorF->RewriteFuncDecl(funcNode);
         const std::string funcBodyText = pVisitorK->RecursiveRewrite(funcNode->getBody());
         pVisitorF->ResetCurrFuncInfo();
+        pVisitorK->ResetCurrFuncInfo();
         kernelJson["MemberFunctions"].push_back(funcDeclText + funcBodyText);
       }
     }

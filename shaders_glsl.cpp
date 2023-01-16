@@ -1145,6 +1145,8 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       }
     }
   }
+  rewriteDueToFakeOffset = rewriteDueToFakeOffset && !processFuncMember;      // function members don't apply fake offsets because they are not kernels
+  rewriteDueToFakeOffset = rewriteDueToFakeOffset && (m_fakeOffsetExp != ""); // if fakeOffset is not set for some reason, don't use it. 
 
   const clang::FunctionDecl* fDecl = call->getDirectCallee();  
   if(shittyPointers.size() > 0 && fDecl != nullptr)

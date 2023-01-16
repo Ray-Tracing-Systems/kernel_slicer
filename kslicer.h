@@ -627,8 +627,12 @@ namespace kslicer
     bool NameNeedsFakeOffset(const std::string& a_name) const;
     
     bool processFuncMember = false;
+    virtual void SetCurrFuncInfo  (kslicer::FuncData* a_pInfo) { m_pCurrFuncInfo = a_pInfo; }
+    virtual void ResetCurrFuncInfo()                           { m_pCurrFuncInfo = nullptr; }
 
   protected:
+
+    kslicer::FuncData* m_pCurrFuncInfo = nullptr;
 
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
     void ProcessReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);

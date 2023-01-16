@@ -340,7 +340,7 @@ public:
 
     if(WasNotRewrittenYet(subExpr))
     {
-      if(m_codeInfo->megakernelRTV)
+      if(m_codeInfo->megakernelRTV || m_fakeOffsetExp == "") // m_fakeOffsetExp == "" may happen for merged functions member during class composition
         m_rewriter.ReplaceText(expr->getSourceRange(), exprInside);
       else
         m_rewriter.ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
