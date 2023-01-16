@@ -35,7 +35,9 @@ std::string kslicer::PerformClassComposition(kslicer::ClassInfo& mainClassInfo, 
   // (2) merge data and functions (dataMembers, allMemberFunctions)
   //
   for(auto member : implClassInfo.dataMembers) {
-    member.second.name = prefixName + "_" + member.second.name;
+    member.second.name       = prefixName + "_" + member.second.name;
+    member.second.hasPrefix  = true;
+    member.second.prefixName = prefixName;
     mainClassInfo.dataMembers[member.second.name] = member.second;
   }
 

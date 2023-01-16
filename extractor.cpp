@@ -61,7 +61,9 @@ public:
         
         const auto pPrefix  = m_patternImpl.composPrefix.find(typeName); 
         if(pPrefix != m_patternImpl.composPrefix.end()) {
-          func.name = pPrefix->second + "_" + func.name;
+          func.name        = pPrefix->second + "_" + func.name;
+          func.hasPrefix   = true;
+          func.prefixName  = pPrefix->second;
           auto pNodeByDecl = m_patternImpl.allMemberFunctions.find(func.name);
           if(pNodeByDecl != m_patternImpl.allMemberFunctions.end())
             f = pNodeByDecl->second;
@@ -95,8 +97,11 @@ public:
 
       if(pPrefix != m_patternImpl.composPrefix.end())
       {
-        if(func.name.find(pPrefix->second) == std::string::npos) // please see code upper, probably we already changed the name if it is a member function
-          func.name = pPrefix->second + "_" + func.name;
+        if(func.name.find(pPrefix->second) == std::string::npos) { // please see code upper, probably we already changed the name if it is a member function
+          func.name        = pPrefix->second + "_" + func.name;
+          func.hasPrefix   = true;
+          func.prefixName  = pPrefix->second;
+        }
       }
       else if(typeName != m_patternImpl.mainClassName)
         return true;
@@ -235,8 +240,11 @@ public:
 
     auto baseName = kslicer::GetRangeSourceCode(baseExpr->getSourceRange(), m_compiler);
     auto member   = kslicer::ExtractMemberInfo(pFieldDecl, m_compiler.getASTContext());
-    if(prefixName != "")
-      member.name = prefixName + "_" + member.name;
+    if(prefixName != "") {
+      member.name        = prefixName + "_" + member.name;
+      member.hasPrefix   = true;
+      member.prefixName  = pPrefix->second;
+    }
     m_usedMembers[member.name] = member;
 
     return true;

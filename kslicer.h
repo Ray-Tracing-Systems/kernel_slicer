@@ -299,6 +299,9 @@ namespace kslicer
     bool isPointer         = false;
     bool isConst           = false; ///<! const float4 BACKGROUND_COLOR = ... (they should not be read back)
 
+    bool hasPrefix = false;
+    std::string prefixName;
+
     DATA_USAGE usage = DATA_USAGE::USAGE_USER;         ///<! if this is service and 'implicit' data which was agged by generator, not by user;
     TEX_ACCESS tmask = TEX_ACCESS::TEX_ACCESS_NOTHING; ///<! store texture access flags if this data member is a texture
 
@@ -452,7 +455,9 @@ namespace kslicer
     bool               isKernel = false;
     int                depthUse = 0;    ///!< depth Of Usage; 0 -- for kernels; 1 -- for functions called from kernel; 2 -- for functions called from functions called from kernels
                                         ///!< please note that if function is called under different depth, maximum depth should be stored in this variable;
-
+    bool hasPrefix = false;
+    std::string prefixName;
+    
     std::unordered_set<std::string> calledMembers;
   };
   
@@ -531,11 +536,15 @@ namespace kslicer
     virtual std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) { return ""; } // TODO: chengr for OpenCL? or not?
     virtual std::string RecursiveRewrite(const clang::Stmt* expr); 
 
+    virtual void SetCurrFuncInfo  (kslicer::FuncData* a_pInfo) { m_pCurrFuncInfo = a_pInfo; }
+    virtual void ResetCurrFuncInfo()                           { m_pCurrFuncInfo = nullptr; }  
+  
   protected:
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     clang::Rewriter&               m_rewriter;
     const clang::CompilerInstance& m_compiler;
     MainClassInfo*                 m_codeInfo;
+    kslicer::FuncData*             m_pCurrFuncInfo = nullptr;
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     
     std::unordered_set<std::string> m_predefinedTypes;
