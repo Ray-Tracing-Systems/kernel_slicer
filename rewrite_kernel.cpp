@@ -175,8 +175,11 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
       const std::string exprContent = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
       auto pos = exprContent.find("->");
       if(pos == std::string::npos && processFuncMember)
+      {
+        out_text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
         return true;
-        
+      }
+
       assert(pos != std::string::npos);
       const std::string memberName = exprContent.substr(pos+2);
   
