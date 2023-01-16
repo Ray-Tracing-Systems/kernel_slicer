@@ -127,14 +127,15 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
   if(!isa<FieldDecl>(pValueDecl))
     return false;
 
-  clang::FieldDecl* pFieldDecl   = dyn_cast<FieldDecl>(pValueDecl);
-  clang::RecordDecl* pRecodDecl  = pFieldDecl->getParent();
-  const std::string thisTypeName = pRecodDecl->getNameAsString();
+  clang::FieldDecl*  pFieldDecl   = dyn_cast<FieldDecl>(pValueDecl);
+  std::string        fieldName    = pFieldDecl->getNameAsString();
+  clang::RecordDecl* pRecodDecl   = pFieldDecl->getParent();
+  const std::string  thisTypeName = kslicer::CleanTypeName(pRecodDecl->getNameAsString());
   
   if(!WasNotRewrittenYet(expr))
     return false;
   
-  std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
   
   // (1) setter access
   //
@@ -144,10 +145,19 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
     out_text = setter + "_" + containerName;
     return true; 
   }
-
-  // (2) *payload ==>  payload[fakeOffset],  RTV, process access to arguments payload->xxx
-  //
-  if(thisTypeName != m_mainClassName)
+  
+  bool inCompositiClass = false;
+  auto pPrefix = m_codeInfo->composPrefix.find(thisTypeName);
+  std::string classPrefix = "";
+  if(m_pCurrFuncInfo != nullptr)
+    classPrefix = m_pCurrFuncInfo->prefixName;
+  
+  if(m_pCurrFuncInfo != nullptr && pPrefix != m_codeInfo->composPrefix.end())
+  {
+    fieldName = pPrefix->second + "_" + fieldName;
+    inCompositiClass = true;
+  }
+  else if(thisTypeName != m_mainClassName) // (2) *payload ==>  payload[fakeOffset],  RTV, process access to arguments payload->xxx
   {
     Expr* baseExpr = expr->getBase(); 
     assert(baseExpr != nullptr);
@@ -203,17 +213,22 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
       }
     }
   }
-  
-  //if(thisTypeName != m_mainClassName)
-  //  return false;
 
   // (3) member ==> ubo.member
-  //
-  const std::string fieldName = pFieldDecl->getNameAsString(); 
+  // 
   const auto pMember = m_variables.find(fieldName);
   if(pMember == m_variables.end())
     return false;
 
+  if(inCompositiClass && WasNotRewrittenYet(expr))
+  {
+    if(pMember->second.isContainer)
+      out_text = pMember->second.name;
+    else
+      out_text = m_codeInfo->pShaderCC->UBOAccess(pMember->second.name);
+    return true;
+  }
+  
   // (2) put ubo->var instead of var, leave containers as they are
   // process arrays and large data structures because small can be read once in the beggining of kernel
   // // m_currKernel.hasInitPass &&
@@ -418,13 +433,14 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
   CXXRecordDecl* typeDecl  = f->getRecordDecl(); 
 
   const bool isVector = (typeDecl != nullptr && isa<ClassTemplateSpecializationDecl>(typeDecl)) && thisTypeName.find("vector<") != std::string::npos; 
-  //const auto exprHash = kslicer::GetHashOfSourceRange(f->getSourceRange());
-
   if(isVector && WasNotRewrittenYet(f))
   {
     const std::string exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
     const auto posOfPoint         = exprContent.find(".");
-    const std::string memberNameA = exprContent.substr(0, posOfPoint);
+    std::string memberNameA       = exprContent.substr(0, posOfPoint);
+    
+    if(processFuncMember && m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix)
+      memberNameA = m_pCurrFuncInfo->prefixName + "_" + memberNameA;
 
     if(fname == "size" || fname == "capacity")
     {

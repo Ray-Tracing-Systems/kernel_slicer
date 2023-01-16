@@ -785,7 +785,9 @@ namespace kslicer
 
   struct GLSLCompiler : IShaderCompiler
   {
-    std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
+    std::string UBOAccess(const std::string& a_name) const override { 
+      return std::string("ubo.") + a_name; 
+    };
     bool        IsSingleSource()                     const override { return false; }
     std::string ShaderFolder()                       const override { return "shaders_generated"; }
     std::string ShaderSingleFile()                   const override { return ""; }
