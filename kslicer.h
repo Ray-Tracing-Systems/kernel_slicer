@@ -830,14 +830,13 @@ namespace kslicer
     std::string mainClassName;
     std::string mainClassFileName;
     std::string mainClassFileInclude;
-    std::string composMemberName;
+    std::unordered_map<std::string, std::string> composPrefix;
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
     std::vector<const clang::CXXConstructorDecl* > ctors;
 
     std::vector<std::string> ignoreFolders;
     std::vector<std::string> includeCPPFolders;  
    
-
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
 

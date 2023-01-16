@@ -6,8 +6,10 @@
 #include "clang/AST/ASTTypeTraits.h"
 #include "clang/AST/DeclTemplate.h"
 
+#include <vector>
 #include <queue>
 #include <stack>
+#include <algorithm>
 
 class FuncExtractor : public clang::RecursiveASTVisitor<FuncExtractor>
 {
@@ -22,22 +24,17 @@ public:
 
   bool VisitCallExpr(clang::CallExpr* call)
   {
-    std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+    //std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
     const clang::FunctionDecl* f = call->getDirectCallee();
     if(f == nullptr)
       return true;
     
-    std::string debugName = f->getNameAsString();
+    //std::string debugName = f->getNameAsString();
     if(f->isOverloadedOperator())
       return true;
-    
-    //if(debugName.find("Shade") != std::string::npos)
-    //{
-    //  int a = 2;
-    //}
 
     std::string fileName = std::string(m_sm.getFilename(f->getSourceRange().getBegin())); // check that we are in test_class.cpp or test_class.h or sms like that;                                                                             
-    for(auto f : m_patternImpl.ignoreFolders)                                   // exclude everything from "shader" folders
+    for(auto f : m_patternImpl.ignoreFolders)                                             // exclude everything from "shader" folders
     {
       if(fileName.find(f) != std::string::npos)
        return true;
@@ -55,6 +52,21 @@ public:
       auto pNodeByDecl = m_patternImpl.allMemberFunctions.find(func.name);
       if(pNodeByDecl != m_patternImpl.allMemberFunctions.end())
         f = pNodeByDecl->second;
+      else if (clang::isa<clang::CXXMemberCallExpr>(call)) // try to find composed functions
+      {
+        clang::CXXRecordDecl* recordDecl = clang::dyn_cast<clang::CXXMemberCallExpr>(call)->getRecordDecl();
+        const auto pType    = recordDecl->getTypeForDecl();     
+        const auto qt       = pType->getLocallyUnqualifiedSingleStepDesugaredType();
+        const auto typeName = kslicer::CleanTypeName(qt.getAsString());
+        
+        const auto pPrefix  = m_patternImpl.composPrefix.find(typeName); 
+        if(pPrefix != m_patternImpl.composPrefix.end()) {
+          func.name = pPrefix->second + "_" + func.name;
+          auto pNodeByDecl = m_patternImpl.allMemberFunctions.find(func.name);
+          if(pNodeByDecl != m_patternImpl.allMemberFunctions.end())
+            f = pNodeByDecl->second;
+        }
+      }
     }
 
     func.astNode  = f;
@@ -64,7 +76,7 @@ public:
     func.isKernel = m_patternImpl.IsKernel(func.name);
     func.depthUse = 0;
 
-     //pCurrProcessedFunc->calledMembers.insert(func.name);
+    //pCurrProcessedFunc->calledMembers.insert(func.name);
 
     if(func.isKernel)
     {
@@ -72,16 +84,21 @@ public:
       kslicer::PrintError(std::string("Calling kernel + '" + func.name + "' from a kernel is not allowed currently, ") + pCurrProcessedFunc->name, func.srcRange, m_sm);
       return true;
     }
-    
+
     if(func.isMember && clang::isa<clang::CXXMemberCallExpr>(call)) // currently we support export for members of current class only
     {
       clang::CXXRecordDecl* recordDecl = clang::dyn_cast<clang::CXXMemberCallExpr>(call)->getRecordDecl();
       const auto pType    = recordDecl->getTypeForDecl();     
       const auto qt       = pType->getLocallyUnqualifiedSingleStepDesugaredType();
-      const auto typeName = qt.getAsString();
-      if(typeName != std::string("class ") + m_patternImpl.mainClassName && 
-         typeName != std::string("struct ") + m_patternImpl.mainClassName && 
-         typeName != m_patternImpl.mainClassName)
+      const auto typeName = kslicer::CleanTypeName(qt.getAsString());
+      const auto pPrefix  = m_patternImpl.composPrefix.find(typeName);
+
+      if(pPrefix != m_patternImpl.composPrefix.end())
+      {
+        if(func.name.find(pPrefix->second) == std::string::npos) // please see code upper, probably we already changed the name if it is a member function
+          func.name = pPrefix->second + "_" + func.name;
+      }
+      else if(typeName != m_patternImpl.mainClassName)
         return true;
     }
 
@@ -104,7 +121,7 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
 {
   std::queue<FuncData> functionsToProcess; 
 
-  for(const auto& k : a_codeInfo.kernels)
+  for(const auto& k : a_codeInfo.kernels)        // (1) first traverse kernels as used functions
   {
     kslicer::FuncData func;
     func.name     = k.second.name;
@@ -120,17 +137,10 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
   std::unordered_map<uint64_t, FuncData> usedFunctions;
   usedFunctions.reserve(functionsToProcess.size()*10);
   
-  FuncExtractor visitor(a_compiler, a_codeInfo); // first traverse kernels to used functions, then repeat this recursivelly in a breadth first manner ... 
+  FuncExtractor visitor(a_compiler, a_codeInfo); // (2) then repeat this recursivelly in a breadth first manner ... 
   while(!functionsToProcess.empty())
   {
     auto currFunc = functionsToProcess.front(); functionsToProcess.pop();
-    
-    //if(currFunc.name == "CookTorrance")
-    //{
-    //  std::string text = kslicer::GetRangeSourceCode(currFunc.astNode->getSourceRange(), a_compiler);
-    //  std::cout << text.c_str() << std::endl;
-    //  currFunc.astNode->dump();
-    //}
 
     visitor.pCurrProcessedFunc = &currFunc;
     visitor.TraverseDecl(const_cast<clang::FunctionDecl*>(currFunc.astNode));
@@ -183,23 +193,8 @@ public:
   }
   
   bool VisitMemberExpr(clang::MemberExpr* expr) 
-  {
-    //const std::string debugText1 = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-    if(false) // TODO: check if this is texture.sample, save texture name 
-    {
-      // clang::CXXMethodDecl* fDecl = call->getMethodDecl();  
-      // if(fDecl == nullptr)  
-      //   return;
-      // 
-      // //std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler); 
-      // std::string fname     = fDecl->getNameInfo().getName().getAsString();
-      // clang::Expr* pTexName =	call->getImplicitObjectArgument(); 
-      // std::string objName   = GetRangeSourceCode(pTexName->getSourceRange(), m_compiler);     
-      // 
-      // if(fname == "sample" || fname == "Sample")
-    }
-    
-    std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  {   
+    //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 
     std::string setter, containerName;
     if(kslicer::CheckSettersAccess(expr, &m_patternImpl, m_compiler, &setter, &containerName))
@@ -224,8 +219,13 @@ public:
     clang::FieldDecl* pFieldDecl  = clang::dyn_cast<clang::FieldDecl>(pValueDecl);
     clang::RecordDecl* pRecodDecl = pFieldDecl->getParent();
 
-    const std::string thisTypeName = pRecodDecl->getNameAsString();
-    if(thisTypeName != m_patternImpl.mainClassName)
+    const std::string thisTypeName = kslicer::CleanTypeName(pRecodDecl->getNameAsString());
+    const auto pPrefix             = m_patternImpl.composPrefix.find(thisTypeName);
+    
+    std::string prefixName = "";
+    if(pPrefix != m_patternImpl.composPrefix.end())
+      prefixName = pPrefix->second;
+    else if(thisTypeName != m_patternImpl.mainClassName)
       return true;
 
     // process access to arguments payload->xxx
@@ -235,6 +235,8 @@ public:
 
     auto baseName = kslicer::GetRangeSourceCode(baseExpr->getSourceRange(), m_compiler);
     auto member   = kslicer::ExtractMemberInfo(pFieldDecl, m_compiler.getASTContext());
+    if(prefixName != "")
+      member.name = prefixName + "_" + member.name;
     m_usedMembers[member.name] = member;
 
     return true;

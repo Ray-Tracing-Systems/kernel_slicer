@@ -133,7 +133,9 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
   
   if(!WasNotRewrittenYet(expr))
     return false;
-
+  
+  std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  
   // (1) setter access
   //
   std::string setter, containerName;
@@ -172,6 +174,9 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
       // 
       const std::string exprContent = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
       auto pos = exprContent.find("->");
+      if(pos == std::string::npos && processFuncMember)
+        return true;
+        
       assert(pos != std::string::npos);
       const std::string memberName = exprContent.substr(pos+2);
   
