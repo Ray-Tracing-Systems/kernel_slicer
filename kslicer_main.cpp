@@ -658,6 +658,12 @@ int main(int argc, const char **argv)
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
   compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
   
+  std::string composMemberName = "";
+  auto pComposAPI  = firstPassData.rv.m_composedClassInfo.find(composeAPIName);
+  auto pComposImpl = firstPassData.rv.m_composedClassInfo.find(composeImplName);
+  if(pComposAPI != firstPassData.rv.m_composedClassInfo.end() && pComposImpl != firstPassData.rv.m_composedClassInfo.end()) // if compos classes are found
+    composMemberName = kslicer::PerformClassComposition(firstPassData.rv.mci, pComposAPI->second, pComposImpl->second);     // perform class composition           
+
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.mci.astNode;
   inputCodeInfo.allKernels           = firstPassData.rv.mci.functions; 
@@ -665,6 +671,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.allDataMembers       = firstPassData.rv.mci.dataMembers;   
   inputCodeInfo.ctors                = firstPassData.rv.mci.ctors;
   inputCodeInfo.allMemberFunctions   = firstPassData.rv.mci.allMemberFunctions;
+  inputCodeInfo.composMemberName     = composMemberName;
   inputCodeInfo.ProcessAllSetters(firstPassData.rv.mci.m_setters, compiler);
 
   std::vector<kslicer::DeclInClass> generalDecls = firstPassData.rv.GetExtractedDecls();

@@ -12,7 +12,6 @@
 
 namespace kslicer
 {
-  
   struct ClassInfo
   {
     ClassInfo(){}
@@ -27,6 +26,8 @@ namespace kslicer
     std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFunctions;
     std::vector<const clang::CXXConstructorDecl* >               ctors;
   };
+
+  std::string PerformClassComposition(ClassInfo& mainClassInfo, const ClassInfo& apiClassInfo, const ClassInfo& implClassInfo);
 
 
   using namespace clang;
@@ -61,12 +62,8 @@ namespace kslicer
     bool VisitTypeDecl     (TypeDecl* record);
     bool VisitVarDecl      (VarDecl* pTargetVar);
   
-    //std::unordered_map<std::string, KernelInfo>                  functions;
-    //std::unordered_map<std::string, DataMemberInfo>              dataMembers;
-    //std::unordered_map<std::string, const clang::CXXMethodDecl*> m_mainFuncNodes;
-    //std::unordered_map<std::string, const clang::CXXMethodDecl*> m_setters;
-    //std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFunctions;
     ClassInfo mci; // main class info
+    std::unordered_map<std::string, ClassInfo>  m_composedClassInfo;
 
     std::vector<const clang::CXXRecordDecl*> m_classList;
     std::vector<kslicer::DeclInClass> GetExtractedDecls();
@@ -88,7 +85,6 @@ namespace kslicer
     uint32_t m_currId = 0;
     std::unordered_map<std::string, kslicer::DeclInClass> m_transferredDecl;
     std::unordered_map<std::string, kslicer::DeclInClass> m_storedDecl;
-    std::unordered_map<std::string, ClassInfo>            m_composedClassInfo;
   };
   
   class InitialPassASTConsumer : public ASTConsumer

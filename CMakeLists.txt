@@ -18,13 +18,14 @@ message("${LLVM_INCLUDE_DIRS}")
 add_executable(kslicer 
                kslicer_main.cpp
                attributes.cpp
+               initial_pass.cpp
+               initial_pass_compos.cpp
+               extractor.cpp
                ast_matchers.cpp
                class_gen.cpp
                class_gen_ipv.cpp
                class_gen_rtv.cpp
                class_data.cpp
-               extractor.cpp
-               initial_pass.cpp
                template_rendering.cpp
                template_rendering_host.cpp
                rewrite_functions.cpp

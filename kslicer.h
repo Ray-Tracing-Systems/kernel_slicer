@@ -830,6 +830,7 @@ namespace kslicer
     std::string mainClassName;
     std::string mainClassFileName;
     std::string mainClassFileInclude;
+    std::string composMemberName;
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
     std::vector<const clang::CXXConstructorDecl* > ctors;
 
