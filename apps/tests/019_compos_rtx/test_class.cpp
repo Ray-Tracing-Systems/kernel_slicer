@@ -58,8 +58,6 @@ void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* ra
 void TestClass::kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFar, 
                                 int* out_hit, uint tidX, uint tidY)
 {
-  //int hitId = m_pRayTraceImpl->RayTrace(*rayPosAndNear, *rayDirAndFar); 
-  //*out_hit  = hitId;
   CRT_Hit hit = m_pAccelStruct->RayQuery_NearestHit(*rayPosAndNear, *rayDirAndFar);
   *out_hit = hit.primId;
 }
