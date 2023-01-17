@@ -487,9 +487,9 @@ static bool IgnoreArgForDS(size_t j, const std::vector<kslicer::ArgReferenceOnCa
 
 nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, const clang::CompilerInstance& compiler,
                                              const std::vector<MainFuncInfo>& a_methodsToGenerate, const std::vector<kslicer::DeclInClass>& usedDecl,
-                                             const std::string& a_genIncude,
-                                             const uint32_t    threadsOrder[3],
-                                             const std::string& uboIncludeName, const nlohmann::json& uboJson)
+                                             const std::string& a_genIncude, const uint32_t    threadsOrder[3],
+                                             const std::string& uboIncludeName, const std::string& a_composImplName, 
+                                             const nlohmann::json& uboJson)
 {
   std::string folderPath           = GetFolderPath(a_classInfo.mainClassFileName);
   std::string shaderPath           = "./" + a_classInfo.pShaderCC->ShaderFolder();
@@ -507,6 +507,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   strOut << "#include \"" << mainInclude.c_str() << "\"" << std::endl;
   auto mainIncludeFile = strOut.str();
   
+  std::string prefixDataName = a_classInfo.composPrefix.begin()->second;
+
   json data;
   data["Includes"]           = mainIncludeFile; //strOut.str();
   data["UBOIncl"]            = uboIncludeName;
@@ -518,6 +520,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
   data["IsRTV"]              = a_classInfo.IsRTV();
   data["IsMega"]             = a_classInfo.megakernelRTV;
+  data["HasPrefixData"]      = (a_classInfo.composPrefix.size() != 0);
+  data["PrefixDataName"]     = prefixDataName;
+  data["PrefixDataClass"]    = a_composImplName;
 
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";
@@ -544,8 +549,17 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       data["TextureMembers"].push_back(var.name);
     else if(var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
       data["TexArrayMembers"].push_back(var.name);
-    else if(var.isContainer && kslicer::IsVectorContainer(var.containerType))
-      data["VectorMembers"].push_back(var.name);
+    else if(var.isContainer && kslicer::IsVectorContainer(var.containerType)) 
+    {
+      std::string cleanName = var.name;
+      ReplaceFirst(cleanName, prefixDataName + "_", "");
+      json local;
+      local["Name"]      = var.name;
+      local["CleanName"] = cleanName;
+      local["Type"]      = var.type;
+      local["HasPrefix"] = var.hasPrefix;
+      data["VectorMembers"].push_back(local);
+    }
     else if(var.isContainer && kslicer::IsPointerContainer(var.containerType) && 
                                ((var.containerDataType == "struct ISceneObject") || 
                                 (var.containerDataType == "class ISceneObject")))
@@ -637,12 +651,14 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(v.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
     {
       json local;
-      local["Name"] = v.name; 
+      local["Name"]        = v.name; 
       local["Usage"]       = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT";
       local["NeedUpdate"]  = true; 
       local["Format"]      = v.name + "->format()";
       local["AccessSymb"]  = "->";
       local["NeedSampler"] = true;
+      local["HasPrefix"]   = v.hasPrefix;
+      local["PrefixName"]  = v.prefixName;
       data["ClassTextureVars"].push_back(local);  
     }
     else if(v.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
@@ -654,6 +670,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["Format"]      = v.name + "->format()";
       local["AccessSymb"]  = "->";
       local["NeedSampler"] = true;
+      local["HasPrefix"]   = v.hasPrefix;
+      local["PrefixName"]  = v.prefixName;
       data["ClassTexArrayVars"].push_back(local); 
     }
     else if(v.IsUsedTexture())
@@ -689,6 +707,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         local["NeedUpdate"] = false;
       }
 
+      local["HasPrefix"]      = v.hasPrefix;
+      local["PrefixName"]     = v.prefixName;
+      if(v.hasPrefix)
+         local["AccessSymb"]     = "->";
+
       data["ClassTextureVars"].push_back(local);     
     }
     else if(v.isContainer && kslicer::IsVectorContainer(v.containerType))
@@ -708,6 +731,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["TypeOfData"]     = v.containerDataType;
       local["AccessSymb"]     = ".";
       local["NeedSampler"]    = false;
+      local["HasPrefix"]      = v.hasPrefix;
+      local["PrefixName"]     = v.prefixName;
+      if(v.hasPrefix)
+         local["AccessSymb"]     = "->";
       data["ClassVectorVars"].push_back(local);     
     }
     // TODO: add processing for Scene/Acceleration structures

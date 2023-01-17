@@ -88,9 +88,26 @@ public:
     UpdateTextureMembers(a_pCopyEngine);
   }
   
-  {% if HasCommitDeviceFunc %}
-  void CommitDeviceData() override // you have to define this virtual function in the original imput class
+  {% if HasPrefixData %}
+  virtual void UpdatePrefixPointers()
   {
+    auto pUnderlyingImpl = dynamic_cast<{{PrefixDataClass}}*>({{PrefixDataName}}.get());
+    if(pUnderlyingImpl != nullptr)
+    {
+      {% for Vector in VectorMembers %}
+      {% if Vector.HasPrefix %}
+      {{Vector.Name}} = &pUnderlyingImpl->{{Vector.CleanName}};
+      {% endif %}
+      {% endfor %}
+    }
+  }
+  {% endif %}
+  {% if HasCommitDeviceFunc %}
+  virtual void CommitDeviceData() override // you have to define this virtual function in the original imput class
+  {
+    {% if HasPrefixData %}
+    UpdatePrefixPointers(); 
+    {% endif %}
     InitMemberBuffers();
     UpdateAll(m_ctx.pCopyHelper);
   }  
@@ -221,8 +238,8 @@ protected:
   struct MembersDataGPU
   {
     {% for Vector in VectorMembers %}
-    VkBuffer {{Vector}}Buffer = VK_NULL_HANDLE;
-    size_t   {{Vector}}Offset = 0;
+    VkBuffer {{Vector.Name}}Buffer = VK_NULL_HANDLE;
+    size_t   {{Vector.Name}}Offset = 0;
     {% endfor %}
     {% for Tex in TextureMembers %}
     VkImage     {{Tex}}Texture = VK_NULL_HANDLE;
@@ -239,7 +256,13 @@ protected:
     VkSampler      {{Sam}} = VK_NULL_HANDLE;
     {% endfor %}
   } m_vdata;
-
+  
+  {% for Vector in VectorMembers %}
+  {% if Vector.HasPrefix %}
+  {{Vector.Type}}* {{Vector.Name}} = nullptr;
+  {% endif %}
+  {% endfor %}
+  
   {% if length(TextureMembers) > 0 or length(ClassTexArrayVars) > 0 %}
   VkImage   CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage);
   VkSampler CreateSampler(const Sampler& a_sampler);

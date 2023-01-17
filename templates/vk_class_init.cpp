@@ -521,7 +521,7 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
   std::vector<VkImage>  memberTextures;
 
   {% for Var in ClassVectorVars %}
-  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}.capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
   {% endfor %}
 

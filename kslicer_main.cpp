@@ -1134,7 +1134,10 @@ int main(int argc, const char **argv)
   }
 
   std::string rawname = kslicer::CutOffFileExt(allFiles[0]);
-  auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls, rawname + "_generated.h", threadsOrder, uboIncludeName, jsonUBO); 
+  auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls, 
+                                      rawname + "_generated.h", threadsOrder, 
+                                      uboIncludeName, composeImplName, 
+                                      jsonUBO); 
 
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
   std::cout << "{" << std::endl;

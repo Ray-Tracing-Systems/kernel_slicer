@@ -27,7 +27,7 @@ struct BFRayTrace : public IRayTraceImpl
   void InitBoxesAndTris(int numBoxes, int numTris) override;
   int  RayTrace(float4 rayPosAndNear, float4 rayDirAndFar) override;
 
-protected:
+//protected:
   
   std::vector<float4> boxes;
   std::vector<float4> trivets;

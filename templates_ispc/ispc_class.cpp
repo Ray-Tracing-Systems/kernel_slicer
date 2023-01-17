@@ -87,8 +87,8 @@ void {{MainClassName}}_ISPC::UpdatePlainMembers()
   {% endif %}
 ## endfor
 ## for Var in ClassVectorVars 
-  m_uboData.{{Var.Name}}_size     = uint32_t( {{Var.Name}}.size() );    assert( {{Var.Name}}.size() < maxAllowedSize );
-  m_uboData.{{Var.Name}}_capacity = uint32_t( {{Var.Name}}.capacity() ); assert( {{Var.Name}}.capacity() < maxAllowedSize );
+  m_uboData.{{Var.Name}}_size     = uint32_t( {{Var.Name}}{{Var.AccessSymb}}size() );     assert( {{Var.Name}}{{Var.AccessSymb}}size()     < maxAllowedSize );
+  m_uboData.{{Var.Name}}_capacity = uint32_t( {{Var.Name}}{{Var.AccessSymb}}capacity() ); assert( {{Var.Name}}{{Var.AccessSymb}}capacity() < maxAllowedSize );
 ## endfor
 }
 
@@ -104,7 +104,7 @@ void {{MainClassName}}_ISPC::ReadPlainMembers()
   {% endif %} {#/* end of if not var.IsConst */#}
   {% endfor %}
   {% for Var in ClassVectorVars %}
-  {{Var.Name}}.resize(m_uboData.{{Var.Name}}_size);
+  {{Var.Name}}{{Var.AccessSymb}}resize(m_uboData.{{Var.Name}}_size);
   {% endfor %}
 }
 

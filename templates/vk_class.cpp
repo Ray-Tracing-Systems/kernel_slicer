@@ -104,8 +104,8 @@ void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vk_utils::I
   {% endif %}
 ## endfor
 ## for Var in ClassVectorVars 
-  m_uboData.{{Var.Name}}_size     = uint32_t( {{Var.Name}}.size() );    assert( {{Var.Name}}.size() < maxAllowedSize );
-  m_uboData.{{Var.Name}}_capacity = uint32_t( {{Var.Name}}.capacity() ); assert( {{Var.Name}}.capacity() < maxAllowedSize );
+  m_uboData.{{Var.Name}}_size     = uint32_t( {{Var.Name}}{{Var.AccessSymb}}size() );     assert( {{Var.Name}}{{Var.AccessSymb}}size() < maxAllowedSize );
+  m_uboData.{{Var.Name}}_capacity = uint32_t( {{Var.Name}}{{Var.AccessSymb}}capacity() ); assert( {{Var.Name}}{{Var.AccessSymb}}capacity() < maxAllowedSize );
 ## endfor
   a_pCopyEngine->UpdateBuffer(m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
 }
@@ -124,7 +124,7 @@ void {{MainClassName}}_Generated::ReadPlainMembers(std::shared_ptr<vk_utils::ICo
   {% endif %} {#/* end of if not var.IsConst */#}
   {% endfor %}
   {% for Var in ClassVectorVars %}
-  {{Var.Name}}.resize(m_uboData.{{Var.Name}}_size);
+  {{Var.Name}}{{Var.AccessSymb}}resize(m_uboData.{{Var.Name}}_size);
   {% endfor %}
 }
 {% endif %}
@@ -132,8 +132,8 @@ void {{MainClassName}}_Generated::ReadPlainMembers(std::shared_ptr<vk_utils::ICo
 void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
   {% for Var in ClassVectorVars %}
-  if({{Var.Name}}.size() > 0)
-    a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}.data(), {{Var.Name}}.size()*sizeof({{Var.TypeOfData}}) );
+  if({{Var.Name}}{{Var.AccessSymb}}size() > 0)
+    a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}{{Var.AccessSymb}}data(), {{Var.Name}}{{Var.AccessSymb}}size()*sizeof({{Var.TypeOfData}}) );
   {% endfor %}
 }
 
