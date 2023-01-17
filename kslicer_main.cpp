@@ -652,8 +652,10 @@ int main(int argc, const char **argv)
   // Parse code, initial pass
   //
   std::vector<std::string> composClassNames;
-  composClassNames.push_back(composeAPIName);
-  composClassNames.push_back(composeImplName);  
+  if(composeAPIName != "")
+    composClassNames.push_back(composeAPIName);
+  if(composeImplName != "")
+    composClassNames.push_back(composeImplName);  
   kslicer::InitialPassASTConsumer firstPassData(cfNames, mainClassName, composClassNames, compiler, inputCodeInfo); 
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
   compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???

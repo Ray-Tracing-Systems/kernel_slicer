@@ -507,7 +507,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   strOut << "#include \"" << mainInclude.c_str() << "\"" << std::endl;
   auto mainIncludeFile = strOut.str();
   
-  std::string prefixDataName = a_classInfo.composPrefix.begin()->second;
+  std::string prefixDataName = ""; 
+  if(a_classInfo.composPrefix.size() != 0)
+    prefixDataName = a_classInfo.composPrefix.begin()->second;
 
   json data;
   data["Includes"]           = mainIncludeFile; //strOut.str();
@@ -562,8 +564,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     }
     else if(var.isContainer && kslicer::IsPointerContainer(var.containerType) && 
                                ((var.containerDataType == "struct ISceneObject") || 
-                                (var.containerDataType == "class ISceneObject")))
-      data["SceneMembers"].push_back(var.name);
+                                (var.containerDataType == "class ISceneObject"))) {
+      std::string cleanDataType = kslicer::CleanTypeName(var.containerDataType);
+      if(a_classInfo.composPrefix.find(cleanDataType) == a_classInfo.composPrefix.end())
+        data["SceneMembers"].push_back(var.name);
+    }
   }
 
   data["SamplerMembers"] = std::vector<std::string>();
