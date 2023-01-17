@@ -18,6 +18,8 @@ public:
   TestClass(int w, int h);
   virtual ~TestClass(){ m_pAccelStruct = nullptr; }
 
+  virtual void InitScene();
+
   virtual void BFRT_ReadAndCompute(uint tidX, uint tidY, uint* out_color __attribute__((size("tidX", "tidY"))));
   virtual void BFRT_ReadAndComputeBlock(uint tidX, uint tidY, uint* out_color, uint32_t a_numPasses = 1);
 

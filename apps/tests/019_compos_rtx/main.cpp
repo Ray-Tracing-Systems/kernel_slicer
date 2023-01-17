@@ -33,7 +33,8 @@ int main(int argc, const char** argv)
     pImpl = std::make_shared<TestClass>(WIN_WIDTH, WIN_HEIGHT);
   
   std::vector<uint> pixelData(WIN_WIDTH*WIN_HEIGHT);  
-
+  
+  pImpl->InitScene();
   pImpl->CommitDeviceData();  
   pImpl->BFRT_ReadAndComputeBlock(WIN_WIDTH, WIN_HEIGHT, pixelData.data(), 1);
     

@@ -27,13 +27,18 @@ void TestClass::InitTris(size_t numTris, std::vector<float4>& trivets, std::vect
 
 TestClass::TestClass(int w, int h) 
 {
-  std::vector<float4> vPos4f;
-  std::vector<uint32_t> indices;
-  this->InitTris(16, vPos4f, indices);
-
+  m_widthInv  = 1.0f/float(w); 
+  m_heightInv = 1.0f/float(h); 
   //m_pAccelStruct = std::shared_ptr<ISceneObject>(CreateSceneRT(""), [](ISceneObject *p) { DeleteSceneRT(p); } );
   auto pBFImpl   = std::make_shared<BFRayTrace>();
   m_pAccelStruct = pBFImpl;
+}
+
+void TestClass::InitScene()
+{
+  std::vector<float4> vPos4f;
+  std::vector<uint32_t> indices;
+  this->InitTris(16, vPos4f, indices);
 
   m_pAccelStruct->ClearGeom();
   auto geomId = m_pAccelStruct->AddGeom_Triangles3f((const float*)vPos4f.data(), vPos4f.size(), indices.data(), indices.size(), BUILD_HIGH, sizeof(float)*4);
@@ -41,9 +46,6 @@ TestClass::TestClass(int w, int h)
   m_pAccelStruct->ClearScene();
   m_pAccelStruct->AddInstance(geomId, LiteMath::float4x4());
   m_pAccelStruct->CommitScene();
-
-  m_widthInv  = 1.0f/float(w); 
-  m_heightInv = 1.0f/float(h); 
 }
 
 void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY) 
