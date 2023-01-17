@@ -330,7 +330,14 @@ namespace kslicer
               container.type    = pDataMember->second.type;           
               container.kind    = pDataMember->second.kind;
               container.isConst = qt.isConstQualified();
-              currKernel->usedContainers[container.name] = container;
+              
+              bool isComposMember = false;
+              for(const auto& keyval : m_allInfo.composPrefix) 
+                if(keyval.second == container.name) 
+                  isComposMember = true;
+                  
+              if(!isComposMember)
+                currKernel->usedContainers[container.name] = container;
             }
             else
               currKernel->usedMembers.insert(pDataMember->first);

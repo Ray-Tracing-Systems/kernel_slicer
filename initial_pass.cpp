@@ -321,21 +321,7 @@ std::string kslicer::ClearTypeName(const std::string& a_typeName)
   return copystr;
 }
 
-bool kslicer::InitialPassRecursiveASTVisitor::IsMainClassName(const std::string& a_typeName)
-{
-  if(a_typeName == MAIN_CLASS_NAME)
-    return true;
-  //if(a_typeName == std::string("struct ") + MAIN_CLASS_NAME)
-  //  return true;
-  //if(a_typeName == std::string("class ") + MAIN_CLASS_NAME)
-  //  return true;
-  //if(a_typeName == std::string("const struct ") + MAIN_CLASS_NAME)
-  //  return true;
-  //if(a_typeName == std::string("const class ") + MAIN_CLASS_NAME)
-  //  return true;
-  return false;
-}
-
+bool kslicer::InitialPassRecursiveASTVisitor::IsMainClassName(const std::string& a_typeName) { return (a_typeName == MAIN_CLASS_NAME); }
 
 bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f) 
 {
