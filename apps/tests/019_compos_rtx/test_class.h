@@ -10,24 +10,23 @@
 #include "CrossRT.h" // special include for ray tracing
 #include "include/BasicLogic.h" // We assume that all code that should pe passed to kernels will be just included both for CPU and OpenCL
 
-struct IRayTraceImpl 
-{
-  IRayTraceImpl(){}
-  virtual ~IRayTraceImpl(){}
-
-  virtual void InitBoxesAndTris(int numBoxes, int numTris) = 0;
-  virtual int  RayTrace(float4 rayPosAndNear, float4 rayDirAndFar) = 0;
-};
-
-struct BFRayTrace : public IRayTraceImpl
+struct BFRayTrace : public ISceneObject
 {
   BFRayTrace(){}
   ~BFRayTrace(){}
 
-  void InitBoxesAndTris(int numBoxes, int numTris) override;
-  int  RayTrace(float4 rayPosAndNear, float4 rayDirAndFar) override;
+  void     ClearGeom() override{}
 
-//protected:
+  uint32_t AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, BuildQuality a_qualityLevel, size_t vByteStride) override;
+  void     UpdateGeom_Triangles3f(uint32_t a_geomId, const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, BuildQuality a_qualityLevel, size_t vByteStride) override {}
+  
+  void     ClearScene() override {} 
+  void     CommitScene(BuildQuality a_qualityLevel) override {}
+  uint32_t AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_matrix) override {return 0;}
+  void     UpdateInstance(uint32_t a_instanceId, const LiteMath::float4x4& a_matrix) override {}
+
+  CRT_Hit RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) override;
+  bool    RayQuery_AnyHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) override { return false; }  
   
   std::vector<float4> trivets;
   float testOffset = 1.0f;
@@ -58,7 +57,6 @@ protected:
 
   void InitTris(size_t numTris, std::vector<float4>& verts, std::vector<uint32_t>& indices);
 
-  std::shared_ptr<IRayTraceImpl> m_pRayTraceImpl;
   std::shared_ptr<ISceneObject>  m_pAccelStruct = nullptr;
 
   float m_widthInv;

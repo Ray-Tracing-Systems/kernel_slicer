@@ -10,8 +10,6 @@ void TestClass::InitTris(size_t numTris, std::vector<float4>& trivets, std::vect
   int trisInString  = std::max(int(numTris)/10, 5);
   float triSize     = 0.25f/float(trisInString);
 
-  // (2) second half of the screen contain triangles
-  //
   for(int i=0;i<numTris;i++)
   {
     int centerX = i%trisInString;
@@ -33,16 +31,16 @@ TestClass::TestClass(int w, int h)
   std::vector<uint32_t> indices;
   this->InitTris(16, vPos4f, indices);
 
-  m_pAccelStruct = std::shared_ptr<ISceneObject>(CreateSceneRT(""), [](ISceneObject *p) { DeleteSceneRT(p); } );
+  //m_pAccelStruct = std::shared_ptr<ISceneObject>(CreateSceneRT(""), [](ISceneObject *p) { DeleteSceneRT(p); } );
+  auto pBFImpl   = std::make_shared<BFRayTrace>();
+  m_pAccelStruct = pBFImpl;
+
   m_pAccelStruct->ClearGeom();
   auto geomId = m_pAccelStruct->AddGeom_Triangles3f((const float*)vPos4f.data(), vPos4f.size(), indices.data(), indices.size(), BUILD_HIGH, sizeof(float)*4);
 
   m_pAccelStruct->ClearScene();
   m_pAccelStruct->AddInstance(geomId, LiteMath::float4x4());
   m_pAccelStruct->CommitScene();
-
-  m_pRayTraceImpl = std::make_shared<BFRayTrace>(); 
-  m_pRayTraceImpl->InitBoxesAndTris(0,60); 
 
   m_widthInv  = 1.0f/float(w); 
   m_heightInv = 1.0f/float(h); 
@@ -111,25 +109,16 @@ void TestClass::GetExecutionTime(const char* a_funcName, float a_out[4])
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BFRayTrace::InitBoxesAndTris(int numBoxes, int numTris)
+uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNumber, 
+                                         const uint32_t* a_triIndices, size_t a_indNumber, 
+                                         BuildQuality a_qualityLevel, size_t vByteStride)
 {
-  trivets.resize(numTris*3);
+  const float4* verts2 = (const float4*)a_vpos3f;
+  trivets = std::vector<float4>(verts2, verts2+a_vertNumber);
+  return 0;
+} 
 
-  int trisInString  = std::max(int(numTris)/10, 5);
-  float triSize     = 0.25f/float(trisInString);
-
-  for(int i=0;i<numTris;i++)
-  {
-    int centerX = i%trisInString;
-    int centerY = (i)/trisInString;
-
-    trivets[i*3+0] = float4(float(centerX + 0.75f)/float(trisInString) - triSize, float(centerY + 0.75f)/float(trisInString) - triSize, i, 0.0f);
-    trivets[i*3+1] = float4(float(centerX + 0.25f)/float(trisInString),           float(centerY + 0.75f)/float(trisInString), i, 0.0f);
-    trivets[i*3+2] = float4(float(centerX + 0.75f)/float(trisInString) - triSize, float(centerY + 0.75f)/float(trisInString) + triSize, i, 0.0f);
-  }
-}
-
-int  BFRayTrace::RayTrace(float4 rayPosAndNear, float4 rayDirAndFar)
+CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFar)
 {
   const float3 rayPos  = to_float3(rayPosAndNear);
   const float3 ray_dir = to_float3(rayDirAndFar);
@@ -158,5 +147,7 @@ int  BFRayTrace::RayTrace(float4 rayPosAndNear, float4 rayDirAndFar)
     if (v >= -1e-6f && u >= -1e-6f && (u + v <= 1.0f + 1e-6f) && t > tNear && t < tFar)
       hitId = int(triId);
   }
-  return hitId;
+  CRT_Hit res;
+  res.primId = hitId;
+  return res;
 }
