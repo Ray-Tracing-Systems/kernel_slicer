@@ -31,6 +31,7 @@ struct BFRayTrace : public IRayTraceImpl
   
   std::vector<float4> boxes;
   std::vector<float4> trivets;
+  float testOffset = 1.0f;
 };
 
 

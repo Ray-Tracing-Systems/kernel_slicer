@@ -95,12 +95,22 @@ void {{MainClassName}}_Generated::InitVulkanObjects(VkDevice a_device, VkPhysica
 void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
   const size_t maxAllowedSize = std::numeric_limits<uint32_t>::max();
-
+  {% if HasPrefixData %}
+  auto pUnderlyingImpl = dynamic_cast<{{PrefixDataClass}}*>({{PrefixDataName}}.get());
+  {% endif %}
 ## for Var in ClassVars
   {% if Var.IsArray %}
+  {% if Var.HasPrefix %}
+  memcpy(m_uboData.{{Var.Name}}, pUnderlyingImpl->{{Var.CleanName}},sizeof(m_uboData.{{Var.Name}}));
+  {% else %}
   memcpy(m_uboData.{{Var.Name}},{{Var.Name}},sizeof({{Var.Name}}));
+  {% endif %}
+  {% else %}
+  {% if Var.HasPrefix %}
+  m_uboData.{{Var.Name}} = pUnderlyingImpl->{{Var.CleanName}};
   {% else %}
   m_uboData.{{Var.Name}} = {{Var.Name}};
+  {% endif %}
   {% endif %}
 ## endfor
 ## for Var in ClassVectorVars 
@@ -114,12 +124,23 @@ void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vk_utils::I
 void {{MainClassName}}_Generated::ReadPlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
   a_pCopyEngine->ReadBuffer(m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
+  {% if HasPrefixData %}
+  auto pUnderlyingImpl = dynamic_cast<{{PrefixDataClass}}*>({{PrefixDataName}}.get());
+  {% endif %}
   {% for Var in ClassVars %}
   {% if not Var.IsConst %}
   {% if Var.IsArray %}
+  {% if Var.HasPrefix %}
+  memcpy(pUnderlyingImpl->{{Var.CleanName}}, m_uboData.{{Var.Name}}, sizeof(m_uboData.{{Var.Name}});
+  {% else %}
   memcpy({{Var.Name}}, m_uboData.{{Var.Name}}, sizeof({{Var.Name}}));
+  {% endif %}
+  {% else %}
+  {% if Var.HasPrefix %}
+  pUnderlyingImpl->{{Var.CleanName}} = m_uboData.{{Var.Name}};
   {% else %}
   {{Var.Name}} = m_uboData.{{Var.Name}};
+  {% endif %}
   {% endif %}
   {% endif %} {#/* end of if not var.IsConst */#}
   {% endfor %}

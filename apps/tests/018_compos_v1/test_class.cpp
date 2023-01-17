@@ -128,7 +128,7 @@ int  BFRayTrace::RayTrace(float4 rayPosAndNear, float4 rayDirAndFar)
   const float3 rayDirInv = 1.0f/to_float3(rayDirAndFar);
   
   const float tNear = rayPosAndNear.w;
-  const float tFar  = rayDirAndFar.w;
+  const float tFar  = rayDirAndFar.w + testOffset;
   
   int hitId = -1;
   for(uint32_t boxId = 0; boxId < boxes.size(); boxId+=4) 

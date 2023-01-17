@@ -631,12 +631,22 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       continue;
 
     json local;
-    local["Name"]      = v.name;
-    local["Offset"]    = v.offsetInTargetBuffer;
-    local["Size"]      = v.sizeInBytes;
-    local["IsArray"]   = v.isArray;
-    local["ArraySize"] = v.arraySize;
-    local["IsConst"]   = v.isConst;
+    local["Name"]       = v.name;
+    local["Offset"]     = v.offsetInTargetBuffer;
+    local["Size"]       = v.sizeInBytes;
+    local["IsArray"]    = v.isArray;
+    local["ArraySize"]  = v.arraySize;
+    local["IsConst"]    = v.isConst;
+    local["HasPrefix"]  = v.hasPrefix;
+    local["PrefixName"] = v.prefixName;
+    if(v.hasPrefix)
+    {
+      std::string cleanName = v.name;
+      ReplaceFirst(cleanName, v.prefixName + "_", "");
+      local["CleanName"] = cleanName;
+    }
+    else
+      local["CleanName"] = v.name;
     data["ClassVars"].push_back(local);
   }
 
