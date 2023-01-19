@@ -45,7 +45,7 @@ typedef LiteMath::uint4    uvec4;
 #endif
 {% endif %}
 
-struct {{MainClassName}}_UBO_Data
+struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
 {
 ## for Field in UBOStructFields  
   {% if Field.IsDummy %} 

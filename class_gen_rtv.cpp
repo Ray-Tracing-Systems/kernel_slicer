@@ -377,7 +377,7 @@ public:
         else
           result += "__global struct ";
         
-        result += m_mainClassName + "_UBO_Data* " + pParam->getNameAsString();
+        result += m_codeInfo->mainClassName + m_codeInfo->mainClassSuffix + "_UBO_Data* " + pParam->getNameAsString();
       }
       else
       {

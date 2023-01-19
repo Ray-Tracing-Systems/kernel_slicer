@@ -72,7 +72,7 @@ protected:
   }
   {% endfor %}
 
-  ispc::{{MainClassName}}_UBO_Data m_uboData;
+  ispc::{{MainClassName}}{{MainClassSuffix}}_UBO_Data m_uboData;
   std::unordered_map<std::string, float> m_exTimeISPC;
 };
 

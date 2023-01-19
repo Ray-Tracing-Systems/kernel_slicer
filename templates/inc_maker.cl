@@ -152,7 +152,7 @@ __kernel void {{Kernel.Name}}_Sorter({% include "inc_args.cl" %})
 {% if not UseSpecConstWgSize %}
 __attribute__((reqd_work_group_size(32, 1, 1))) 
 {% endif %} 
-__kernel void {{Kernel.Name}}_UpdateIndirect(__global struct {{MainClassName}}_UBO_Data* ubo, __global uint4* indirectBuffer)
+__kernel void {{Kernel.Name}}_UpdateIndirect(__global struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data* ubo, __global uint4* indirectBuffer)
 {
   const uint lid = get_local_id(0); 
   if(lid < {{length(Kernel.Hierarchy.Implementations)}})

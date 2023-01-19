@@ -38,7 +38,7 @@ export void {{Kernel.Name}}_ISPC(
   {% endif %}
   {% endif %}
   {% endfor %}
-  uniform struct {{MainClassName}}_UBO_Data ubo[1])
+  uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1])
 {
   {# /* declare varyings which are subjected to reduction */ #}
   {% for Var in Kernel.SubjToRed %}
@@ -76,7 +76,7 @@ export void {{Kernel.Name}}_ISPC(
   {% endif %}
   {% endif %}
   {% endfor %}
-  uniform struct {{MainClassName}}_UBO_Data ubo[1],
+  uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1],
   uniform int _start, uniform int _end, uniform int _ycoord)
 {
   {# /* declare varyings which are subjected to reduction */ #}
@@ -107,7 +107,7 @@ task void {{Kernel.Name}}_Task(
   {% endif %}
   {% endif %}
   {% endfor %}
-  uniform struct {{MainClassName}}_UBO_Data ubo[1],
+  uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1],
   uniform int _start, uniform int _end, uniform int _span)
 {
   {# /* declare varyings which are subjected to reduction */ #}
@@ -141,7 +141,7 @@ export void {{Kernel.Name}}_ISPC(
   {% endif %}
   {% endif %}
   {% endfor %}
-  uniform struct {{MainClassName}}_UBO_Data ubo[1])
+  uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1])
 { 
   {% for TID in Kernel.ThreadIds %}
   const uniform int l_start{{loop.index}} = {{TID.Start}};

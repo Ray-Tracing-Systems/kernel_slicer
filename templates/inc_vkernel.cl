@@ -15,7 +15,7 @@ __kernel void {{Kernel.Name}}_{{Impl.ClassName}}(
 ## endfor
   __global uint2       * kgen_objPtrData,
   __global unsigned int* kgen_objData,
-  __global struct {{MainClassName}}_UBO_Data* ubo,
+  __global struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data* ubo,
   const uint {{Kernel.threadSZName1}}, 
   const uint {{Kernel.threadSZName2}},
   const uint {{Kernel.threadSZName3}},
@@ -52,7 +52,7 @@ __kernel void {{Kernel.Name}}(
 ## endfor
   __global uint2       * kgen_objPtrData,
   __global unsigned int* kgen_objData,
-  __global struct {{MainClassName}}_UBO_Data* ubo,
+  __global struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data* ubo,
   const uint {{Kernel.threadSZName1}}, 
   const uint {{Kernel.threadSZName2}},
   const uint {{Kernel.threadSZName3}},

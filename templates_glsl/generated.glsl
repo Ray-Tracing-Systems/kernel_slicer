@@ -23,7 +23,7 @@ layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}} { {{Arg.Type
 {% endif %} {# /* Arg.IsImage */ #}
 {% endif %} {# /* not Arg.IsUBO */ #}
 ## endfor
-layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassName}}_UBO_Data ubo; };
+layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo; };
 
 ## for MembFunc in Kernel.MemberFunctions  
 {{MembFunc}}

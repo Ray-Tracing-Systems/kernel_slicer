@@ -3,7 +3,7 @@
 
 #include "include/{{UBOIncl}}"
 
-layout(binding = 0, set = 0) buffer dataUBO { {{MainClassName}}_UBO_Data ubo; };
+layout(binding = 0, set = 0) buffer dataUBO { {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo; };
 layout(binding = 1, set = 0) buffer dataInd { uvec4 indirectBuffer[]; };
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;

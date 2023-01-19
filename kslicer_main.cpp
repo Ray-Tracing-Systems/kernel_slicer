@@ -128,6 +128,9 @@ int main(int argc, const char **argv)
   if(params.find("-shaderCC") != params.end())
     shaderCCName = params["-shaderCC"];
 
+  if(suffix == "_generated" && (shaderCCName == "ispc") || (shaderCCName == "ISPC"))
+    suffix = "_ispc";
+
   if(params.find("-hint") != params.end())
     hintFile = params["-hint"];
 
@@ -725,7 +728,7 @@ int main(int argc, const char **argv)
   std::sort(inputCodeInfo.dataMembers.begin(), inputCodeInfo.dataMembers.end(), kslicer::DataMemberInfo_ByAligment()); // sort by aligment in GLSL
 
   auto jsonUBO               = kslicer::PrepareUBOJson(inputCodeInfo, inputCodeInfo.dataMembers, compiler);
-  std::string uboIncludeName = inputCodeInfo.mainClassName + "_ubo.h";
+  std::string uboIncludeName = inputCodeInfo.mainClassName + inputCodeInfo.mainClassSuffix + "_ubo.h";
 
   std::string uboOutName = "";
   std::cout << "  placed classVariables num = " << inputCodeInfo.dataMembers.size() << std::endl;
