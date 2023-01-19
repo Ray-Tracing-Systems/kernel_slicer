@@ -1,0 +1,13 @@
+
+#pragma once
+#include <unordered_map>
+
+namespace std
+{
+  template<typename _Key, typename _Hash = hash<_Key> >
+  class unordered_set
+  { 
+  public:
+    inline size_t size() const { return 0; }
+  };
+};
