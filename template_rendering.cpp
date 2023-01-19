@@ -21,8 +21,6 @@ typedef unsigned int uint;
 using namespace inja;
 using json = nlohmann::json;
 
-
-
 static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(const std::vector<std::string>& kernelsCallCmdDecl)
 {
   std::unordered_map<std::string,std::string> kernelDeclByName;
@@ -63,7 +61,6 @@ std::string kslicer::GetDSArgName(const std::string& a_mainFuncName, const kslic
     return std::string("m_vdata.") + a_arg.name;
   };
 }
-
 
 std::string kslicer::GetDSVulkanAccessMask(kslicer::TEX_ACCESS a_accessMask)
 {

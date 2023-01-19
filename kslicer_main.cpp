@@ -71,7 +71,7 @@ int main(int argc, const char **argv)
   #endif
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  struct stat sb;
+  //struct stat sb;
 
   if (argc < 2)
   {
@@ -200,23 +200,13 @@ int main(int argc, const char **argv)
   llvm::ArrayRef<const char*> args(argsForClang.data(), argsForClang.data() + argsForClang.size());
 
   // Make sure it exists
-  #ifndef WIN32
-  if (stat(fileName.c_str(), &sb) == -1)
+  std::ifstream fin(fileName.c_str());
+  if(!fin.is_open())
   {
     std::cout << "[main]: error, input file " << fileName.c_str() << " not found!" << std::endl;
     return 0;
   }
-  #else
-  {
-    std::ifstream fin(fileName.c_str());
-    if(!fin.is_open())
-    {
-      std::cout << "[main]: error, input file " << fileName.c_str() << " not found!" << std::endl;
-      return 0;
-    }
-    fin.close();
-  }
-  #endif
+  fin.close();
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
