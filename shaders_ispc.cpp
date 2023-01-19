@@ -13,8 +13,6 @@ kslicer::ISPCCompiler::ISPCCompiler(bool a_useCPP)
 
 }
 
-std::string GetFolderPath(const std::string& a_filePath);
-
 std::string kslicer::ISPCCompiler::BuildCommand(const std::string& a_inputFile) const
 {
   return std::string("ispc ") + a_inputFile + " --target=\"avx2-i32x8\" -O2 ";

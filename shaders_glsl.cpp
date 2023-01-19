@@ -10,9 +10,6 @@
 #endif
 
 
-std::string GetFolderPath(const std::string& a_filePath);
-
-
 void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo)
 {
   const auto& mainClassFileName       = a_codeInfo->mainClassFileName;

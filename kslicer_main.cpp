@@ -57,301 +57,17 @@ using namespace clang;
 using kslicer::KernelInfo;
 using kslicer::DataMemberInfo;
 
-//extern clang::CompilerInstance* g_pCompilerInstance;
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler) 
-{
-  const clang::SourceManager& sm = compiler.getSourceManager();
-  const clang::LangOptions& lopt = compiler.getLangOpts();
-
-  clang::SourceLocation b(a_range.getBegin()), _e(a_range.getEnd());
-  clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
-
-  return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
-}
-
-std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const clang::SourceManager& sm) 
-{
-  clang::LangOptions lopt;
-
-  clang::SourceLocation b(a_range.getBegin()), _e(a_range.getEnd());
-  clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
-
-  return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
-}
-
-uint64_t kslicer::GetHashOfSourceRange(const clang::SourceRange& a_range)
-{
-  //const uint32_t hash1 = a_range.getBegin().getHashValue(); // getHashValue presents in clang 12, but not in clang 10!
-  //const uint32_t hash2 = a_range.getEnd().getHashValue();   // getHashValue presents in clang 12, but not in clang 10!
-  const uint32_t hash1 = a_range.getBegin().getRawEncoding(); // getRawEncoding presents in clang 10, what about clang 12?
-  const uint32_t hash2 = a_range.getEnd().getRawEncoding();   // getRawEncoding presents in clang 10, what about clang 12?
-  return (uint64_t(hash1) << 32) | uint64_t(hash2);
-}
-
-void kslicer::PrintError(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm)
-{
-  const auto beginLoc  = a_range.getBegin();
-  const auto inFileLoc = a_sm.getPresumedLoc(beginLoc);
-  
-  const auto fileName = std::string(a_sm.getFilename(beginLoc));
-  const auto line     = inFileLoc.getLine();
-  const auto col      = inFileLoc.getColumn();
-
-  std::string code = GetRangeSourceCode(a_range, a_sm);
-
-  std::cout << fileName.c_str() << ":" << line << ":" << col << ": error: " << a_msg << std::endl;
-  std::cout << "--> " << code.c_str() << std::endl;
-}
-
-void kslicer::PrintWarning(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm)
-{
-  const auto beginLoc  = a_range.getBegin();
-  const auto inFileLoc = a_sm.getPresumedLoc(beginLoc);
-  
-  const auto fileName = std::string(a_sm.getFilename(beginLoc));
-  const auto line     = inFileLoc.getLine();
-  const auto col      = inFileLoc.getColumn();
-
-  std::string code = GetRangeSourceCode(a_range, a_sm);
-
-  std::cout << fileName.c_str() << ":" << line << ":" << col << ": warning: " << a_msg << " --> " << code.c_str() << std::endl;
-}
-
-std::string kslicer::CutOffFileExt(const std::string& a_filePath)
-{
-  const size_t lastindex = a_filePath.find_last_of("."); 
-  if(lastindex != std::string::npos)
-    return a_filePath.substr(0, lastindex); 
-  else
-    return a_filePath;
-}
-
-std::string kslicer::CutOffStructClass(const std::string& a_typeName)
-{
-  auto spacePos = a_typeName.find_last_of(" ");
-  if(spacePos != std::string::npos)
-    return a_typeName.substr(spacePos+1);
-  return a_typeName;
-}
-
-void kslicer::ReplaceOpenCLBuiltInTypes(std::string& a_typeName)
-{
-  std::string lmStucts("struct LiteMath::");
-  auto found1 = a_typeName.find(lmStucts);
-  if(found1 != std::string::npos)
-    a_typeName.replace(found1, lmStucts.length(), "");
-
-  std::string lm("LiteMath::");
-  auto found2 = a_typeName.find(lm);
-  if(found2 != std::string::npos)
-    a_typeName.replace(found2, lm.length(), "");
-}
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::string& fileName, std::vector<std::string>& allFiles)
-{
-  std::unordered_map<std::string, std::string> cmdLineParams;
-  for(int i=0; i<argc; i++)
-  {
-    std::string key(argv[i]);
-    
-    const bool isDefine = key.size() > 1 && key.substr(0,2) == "-D";
-    const bool isKey    = key.size() > 0 && key[0] == '-';
-    
-    if(key != "-v" && !isDefine && isKey) // exclude special "-IfoldePath" form, exclude "-v"
-    {
-      if(i != argc-1) // not last argument
-      {
-        cmdLineParams[key] = argv[i+1];
-        i++;
-      }
-      else
-        cmdLineParams[key] = "";
-    }
-    else if(key.find(".cpp") != std::string::npos)
-      allFiles.push_back(key);
-  }
-
-  if(allFiles.size() == 0)
-  {
-    std::cout << "[kslicer]: no input file is specified " << std::endl;
-    exit(0);
-  }
-  else if(allFiles.size() == 1)
-    fileName = allFiles[0];
-  else
-  {
-    fileName = allFiles[0];
-    #ifdef WIN32
-    const std::string slash = "\\";
-    #else
-    const std::string slash = "/";
-    #endif
-
-    size_t posSlash = fileName.find_last_of(slash); 
-    auto   posCPP   = fileName.find(".cpp");
-    
-    assert(posSlash != std::string::npos);   
-    assert(posCPP   != std::string::npos);   
-
-    // merge files to a single temporary file
-    auto folderPath = fileName.substr(0, posSlash);
-    auto fileName2  = fileName.substr(posSlash+1, posCPP-posSlash-1);
-    auto fileNameT  = folderPath + slash + fileName2 + "_temp.cpp";
-    
-    std::cout << "[kslicer]: merging input files to temporary file '" << fileName2 << "_temp.cpp' " << std::endl;
-    std::ofstream fout(fileNameT);
-    for(auto file : allFiles)
-    {
-      fout << "////////////////////////////////////////////////////" << std::endl;
-      fout << "//// input file: " << file << std::endl;
-      fout << "////////////////////////////////////////////////////" << std::endl;
-      std::ifstream fin(file);
-      std::string line;
-      while (std::getline(fin, line))
-        fout << line.c_str() << std::endl;
-    } 
-    fout.close();
-    fileName = fileNameT;
-    std::cout << "[kslicer]: merging finished" << std::endl;
-  }
-
-  return cmdLineParams;
-}
-
-std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params)
-{
-  std::unordered_set<std::string> values;
-  for(auto p : params) 
-    values.insert(p.second);
-
-  std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
-  argsForClang.reserve(argc);
-  for(int i=1;i<argc;i++)
-  {
-    if(params.find(argv[i]) == params.end() && values.find(argv[i]) == values.end()) 
-      argsForClang.push_back(argv[i]);
-  }
-
-  return argsForClang;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class HeaderLister : public clang::PPCallbacks 
-{
-public:
-
-  HeaderLister(kslicer::MainClassInfo* a_pInfo) : m_pGlobInfo(a_pInfo) {}
-
-  void InclusionDirective(clang::SourceLocation HashLoc,
-                          const clang::Token &IncludeTok,
-                          llvm::StringRef FileName, bool IsAngled,
-                          clang::CharSourceRange FilenameRange,
-                          const clang::FileEntry *File,
-                          llvm::StringRef SearchPath,
-                          llvm::StringRef RelativePath,
-                          const clang::Module *Imported,
-                          clang::SrcMgr::CharacteristicKind FileType) override
-  {
-    if(!IsAngled && File != nullptr)
-    {
-      assert(File != nullptr);
-      std::string filename = std::string(RelativePath.begin(), RelativePath.end()); 
-      m_pGlobInfo->allIncludeFiles[filename] = false;   
-    }
-  }
-
-private:
-
-  kslicer::MainClassInfo* m_pGlobInfo;
-
-};
-
-std::string GetFolderPath(const std::string& a_filePath);
-
-const char* GetClangToolingErrorCodeMessage(int code)
-{
-  if(code == 0)
-    return "OK";
-  else if (code == 1)
-    return "ERROR";
-  else
-    return "SKIPPED_FILES";  
-}
-
-void ReadThreadsOrderFromStr(const std::string& threadsOrderStr, uint32_t  threadsOrder[3])
-{
-  auto size = std::min<size_t>(threadsOrderStr.size(), 3);
-  for(size_t symbId = 0; symbId < size; symbId++)
-  {
-    switch(threadsOrderStr[symbId])
-    {
-      case 'x':
-      case 'X':
-      case '0':
-      threadsOrder[symbId] = 0;
-      break;
-      case 'y':
-      case 'Y':
-      case '1':
-      threadsOrder[symbId] = 1;
-      break;
-      case 'z':
-      case 'Z':
-      case '2':
-      threadsOrder[symbId] = 2;
-      break;
-      default:
-      break;
-    };
-  }
-}
-
-struct less_than_key2
-{
-  inline bool operator() (const kslicer::DataMemberInfo& struct1, const kslicer::DataMemberInfo& struct2)
-  {
-    if(struct1.aligmentGLSL != struct2.aligmentGLSL)
-      return (struct1.aligmentGLSL > struct2.aligmentGLSL);
-    else if(struct1.sizeInBytes != struct2.sizeInBytes)
-      return (struct1.sizeInBytes > struct2.sizeInBytes);
-    else if(struct1.isContainerInfo && !struct2.isContainerInfo)
-      return false;
-    else if(!struct1.isContainerInfo && struct2.isContainerInfo)
-      return true;
-    else
-      return struct1.name < struct2.name;
-  }
-};
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 int main(int argc, const char **argv)
 {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
   #ifdef WIN32
   wchar_t NPath[512];
   GetCurrentDirectoryW(512, NPath);
-  std::wcout << L"[main]: curr_dir = " << NPath << std::endl;
+  std::wcout << L"[main]: work_dir = " << NPath << std::endl;
   #else
   char cwd[1024];
   if (getcwd(cwd, sizeof(cwd)) != nullptr)
-    std::cout << "[main]: curr_dir = " << cwd << std::endl;
+    std::cout << "[main]: work_dir = " << cwd << std::endl;
   #endif
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -381,6 +97,7 @@ int main(int argc, const char **argv)
   std::string patternName     = "rtv";
   std::string shaderCCName    = "clspv";
   std::string hintFile        = "";
+  std::string suffix          = "_generated";
   
   std::string composeAPIName  = "";
   std::string composeImplName = "";
@@ -452,6 +169,9 @@ int main(int argc, const char **argv)
 
   if(params.find("-composImplementation") != params.end())
     composeImplName = params["-composImplementation"];
+
+  if(params.find("-suffix") != params.end())
+    suffix = params["-suffix"];
 
   std::unordered_set<std::string> values;
   std::vector<std::string> includeFolderList;
@@ -1013,7 +733,7 @@ int main(int argc, const char **argv)
                                    generalDecls);                      // ==> generalDecls
   inputCodeInfo.ProcessMemberTypesAligment(inputCodeInfo.dataMembers, firstPassData.rv.GetOtherTypeDecls(), compiler.getASTContext()); // ==> inputCodeInfo.dataMembers
 
-  std::sort(inputCodeInfo.dataMembers.begin(), inputCodeInfo.dataMembers.end(), less_than_key2()); // sort by aligment in GLSL
+  std::sort(inputCodeInfo.dataMembers.begin(), inputCodeInfo.dataMembers.end(), kslicer::DataMemberInfo_ByAligment()); // sort by aligment in GLSL
 
   auto jsonUBO               = kslicer::PrepareUBOJson(inputCodeInfo, inputCodeInfo.dataMembers, compiler);
   std::string uboIncludeName = inputCodeInfo.mainClassName + "_ubo.h";

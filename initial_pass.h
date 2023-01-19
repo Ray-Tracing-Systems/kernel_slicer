@@ -103,4 +103,39 @@ namespace kslicer
   std::string ClearTypeName(const std::string& a_typeName);
 }
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class HeaderLister : public clang::PPCallbacks 
+{
+public:
+
+  HeaderLister(kslicer::MainClassInfo* a_pInfo) : m_pGlobInfo(a_pInfo) {}
+
+  void InclusionDirective(clang::SourceLocation HashLoc,
+                          const clang::Token &IncludeTok,
+                          llvm::StringRef FileName, bool IsAngled,
+                          clang::CharSourceRange FilenameRange,
+                          const clang::FileEntry *File,
+                          llvm::StringRef SearchPath,
+                          llvm::StringRef RelativePath,
+                          const clang::Module *Imported,
+                          clang::SrcMgr::CharacteristicKind FileType) override
+  {
+    if(!IsAngled && File != nullptr)
+    {
+      assert(File != nullptr);
+      std::string filename = std::string(RelativePath.begin(), RelativePath.end()); 
+      m_pGlobInfo->allIncludeFiles[filename] = false;   
+    }
+  }
+
+private:
+
+  kslicer::MainClassInfo* m_pGlobInfo;
+
+};
+
 #endif

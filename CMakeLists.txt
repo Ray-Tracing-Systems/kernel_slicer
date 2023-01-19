@@ -17,6 +17,7 @@ message("${LLVM_INCLUDE_DIRS}")
 
 add_executable(kslicer 
                kslicer_main.cpp
+               kslicer_utils.cpp
                attributes.cpp
                initial_pass.cpp
                initial_pass_compos.cpp

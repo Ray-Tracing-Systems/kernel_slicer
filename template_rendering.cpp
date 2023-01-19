@@ -1,3 +1,4 @@
+#include "kslicer.h"
 #include "template_rendering.h"
 #include "class_gen.h"
 
@@ -20,24 +21,6 @@ typedef unsigned int uint;
 using namespace inja;
 using json = nlohmann::json;
 
-std::string GetFolderPath(const std::string& a_filePath)
-{
-  #ifdef WIN32
-  const std::string slash = "\\";
-  #else
-  const std::string slash = "/";
-  #endif
-
-  size_t lastindex = a_filePath.find_last_of(slash); 
-  assert(lastindex != std::string::npos);   
-  return a_filePath.substr(0, lastindex); 
-}
-
-void MakeAbsolutePathRelativeTo(std::string& a_filePath, const std::string& a_folderPath)
-{
-  if(a_filePath.find(a_folderPath) != std::string::npos)  // cut off folder path
-    a_filePath = a_filePath.substr(a_folderPath.size() + 1);
-}
 
 
 static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(const std::vector<std::string>& kernelsCallCmdDecl)

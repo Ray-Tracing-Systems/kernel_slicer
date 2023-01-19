@@ -58,7 +58,6 @@ std::string kslicer::ClspvCompiler::BuildCommand(const std::string& a_inputFile)
     return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-pushconstant";
 } 
 
-std::string GetFolderPath(const std::string& a_filePath);
 
 void kslicer::ClspvCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) 
 {

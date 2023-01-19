@@ -314,6 +314,23 @@ namespace kslicer
 
     bool IsUsedTexture() const { return isContainer && IsTextureContainer(containerType); }  // && isContainer && kslicer::IsTexture(containerType); }
   };
+  
+  struct DataMemberInfo_ByAligment
+  {
+    inline bool operator() (const kslicer::DataMemberInfo& struct1, const kslicer::DataMemberInfo& struct2)
+    {
+      if(struct1.aligmentGLSL != struct2.aligmentGLSL)
+        return (struct1.aligmentGLSL > struct2.aligmentGLSL);
+      else if(struct1.sizeInBytes != struct2.sizeInBytes)
+        return (struct1.sizeInBytes > struct2.sizeInBytes);
+      else if(struct1.isContainerInfo && !struct2.isContainerInfo)
+        return false;
+      else if(!struct1.isContainerInfo && struct2.isContainerInfo)
+        return true;
+      else
+        return struct1.name < struct2.name;
+    }
+  };
 
   /**
   \brief for local variables of MainFunc
@@ -1089,7 +1106,25 @@ namespace kslicer
   
   bool IsInExcludedFolder(const std::string& fileName, const std::vector<std::string>& a_excludeFolderList);
   std::unordered_set<std::string> GetAllServiceKernels();
+
+  std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler);
+  std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::SourceManager& sm);
+  void PrintError(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm); 
+  void PrintWarning(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm);
+
+  std::string CutOffFileExt(const std::string& a_filePath);
+  std::string CutOffStructClass(const std::string& a_typeName);
+  void        ReplaceOpenCLBuiltInTypes(std::string& a_typeName);
 }
+
+std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::string& fileName, std::vector<std::string>& allFiles);
+std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params);
+
+std::string GetFolderPath(const std::string& a_filePath);
+void MakeAbsolutePathRelativeTo(std::string& a_filePath, const std::string& a_folderPath);
+
+const char* GetClangToolingErrorCodeMessage(int code);
+void ReadThreadsOrderFromStr(const std::string& threadsOrderStr, uint32_t  threadsOrder[3]);
 
 template <typename Cont, typename Pred>
 Cont filter(const Cont &container, Pred predicate) 
