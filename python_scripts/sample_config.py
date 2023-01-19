@@ -26,7 +26,10 @@ class SampleConfig:
         self.__extract_megakernel_from_args()
         self.shaderType = "opencl"
         if "-shaderCC" in self.__args:
-          self.shaderType = self.__args[self.__args.index("-shaderCC")+1]
+            self.shaderType = self.__args[self.__args.index("-shaderCC")+1]
+        self.shader_folder = "shaders_generated"
+        if "-suffix" in self.__args:
+            self.shader_folder = "shaders" + self.__args[self.__args.index("-suffix")+1].lower()
 
     def get_kernel_slicer_args(self, megakernel=False, subgroups=False):
         out_args = self.__args

@@ -122,8 +122,8 @@ int32_t array_summ_gpu(const int32_t* inArrayCPU, const size_t inArrayCPUSize, u
     auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
     std::cout << ms << " ms for command buffer execution " << std::endl;
 
-    Numbers_UBO_Data uboData;
-    pCopyHelper->ReadBuffer(pGPUImpl->GiveMeUBO(), 0, &uboData, sizeof(Numbers_UBO_Data));
+    Numbers_Generated_UBO_Data uboData;
+    pCopyHelper->ReadBuffer(pGPUImpl->GiveMeUBO(), 0, &uboData, sizeof(Numbers_Generated_UBO_Data));
     resSumm = uboData.m_summ;
   }
   

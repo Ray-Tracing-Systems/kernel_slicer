@@ -16,8 +16,8 @@ kslicer::GLSLCompiler::GLSLCompiler(const std::string& a_prefix) : m_suffix(a_pr
 
 void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo)
 {
-  const auto& mainClassFileName       = a_codeInfo->mainClassFileName;
-  const auto& ignoreFolders = a_codeInfo->ignoreFolders;
+  const auto& mainClassFileName = a_codeInfo->mainClassFileName;
+  const auto& ignoreFolders     = a_codeInfo->ignoreFolders;
   
   #ifdef WIN32
   const std::string slash = "\\";
@@ -40,7 +40,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   
   // generate header for all used functions in GLSL code
   //
-  std::string headerCommon = "common" + m_suffix + ".h"; 
+  std::string headerCommon = "common" + ToLowerCase(m_suffix) + ".h"; 
   kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "common_generated.h", shaderPath + slash + headerCommon, a_kernelsJson);  
   
   // now generate all glsl shaders

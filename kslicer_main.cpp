@@ -95,7 +95,7 @@ int main(int argc, const char **argv)
   std::string patternName     = "rtv";
   std::string shaderCCName    = "clspv";
   std::string hintFile        = "";
-  std::string suffix          = "_generated";
+  std::string suffix          = "_Generated";
   
   std::string composeAPIName  = "";
   std::string composeImplName = "";
@@ -128,8 +128,8 @@ int main(int argc, const char **argv)
   if(params.find("-shaderCC") != params.end())
     shaderCCName = params["-shaderCC"];
 
-  if(suffix == "_generated" && (shaderCCName == "ispc") || (shaderCCName == "ISPC"))
-    suffix = "_ispc";
+  if(suffix == "_Generated" && (shaderCCName == "ispc") || (shaderCCName == "ISPC"))
+    suffix = "_ISPC";
 
   if(params.find("-hint") != params.end())
     hintFile = params["-hint"];
@@ -721,14 +721,13 @@ int main(int argc, const char **argv)
 
   inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
 
-  inputCodeInfo.ProcessMemberTypes(firstPassData.rv.GetOtherTypeDecls(), compiler.getSourceManager(), 
-                                   generalDecls);                      // ==> generalDecls
+  inputCodeInfo.ProcessMemberTypes(firstPassData.rv.GetOtherTypeDecls(), compiler.getSourceManager(), generalDecls);                   // ==> generalDecls
   inputCodeInfo.ProcessMemberTypesAligment(inputCodeInfo.dataMembers, firstPassData.rv.GetOtherTypeDecls(), compiler.getASTContext()); // ==> inputCodeInfo.dataMembers
 
   std::sort(inputCodeInfo.dataMembers.begin(), inputCodeInfo.dataMembers.end(), kslicer::DataMemberInfo_ByAligment()); // sort by aligment in GLSL
 
   auto jsonUBO               = kslicer::PrepareUBOJson(inputCodeInfo, inputCodeInfo.dataMembers, compiler);
-  std::string uboIncludeName = inputCodeInfo.mainClassName + inputCodeInfo.mainClassSuffix + "_ubo.h";
+  std::string uboIncludeName = inputCodeInfo.mainClassName + ToLowerCase(inputCodeInfo.mainClassSuffix) + "_ubo.h";
 
   std::string uboOutName = "";
   std::cout << "  placed classVariables num = " << inputCodeInfo.dataMembers.size() << std::endl;
@@ -849,7 +848,7 @@ int main(int argc, const char **argv)
 
   std::string rawname = kslicer::CutOffFileExt(allFiles[0]);
   auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls, 
-                                      rawname + suffix + ".h", threadsOrder, 
+                                      rawname + ToLowerCase(suffix) + ".h", threadsOrder, 
                                       uboIncludeName, composeImplName, 
                                       jsonUBO); 
 
@@ -858,10 +857,10 @@ int main(int argc, const char **argv)
   {
     if(!inputCodeInfo.pShaderCC->IsISPC())
     {
-      kslicer::ApplyJsonToTemplate("templates/vk_class.h",        rawname + suffix + ".h", jsonCPP); 
-      kslicer::ApplyJsonToTemplate("templates/vk_class.cpp",      rawname + suffix + ".cpp", jsonCPP);
-      kslicer::ApplyJsonToTemplate("templates/vk_class_ds.cpp",   rawname + suffix + "_ds.cpp", jsonCPP);
-      kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + suffix + "_init.cpp", jsonCPP); 
+      kslicer::ApplyJsonToTemplate("templates/vk_class.h",        rawname + ToLowerCase(suffix) + ".h", jsonCPP); 
+      kslicer::ApplyJsonToTemplate("templates/vk_class.cpp",      rawname + ToLowerCase(suffix) + ".cpp", jsonCPP);
+      kslicer::ApplyJsonToTemplate("templates/vk_class_ds.cpp",   rawname + ToLowerCase(suffix) + "_ds.cpp", jsonCPP);
+      kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + ToLowerCase(suffix) + "_init.cpp", jsonCPP); 
     }   
   }
   std::cout << "}" << std::endl;

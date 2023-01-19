@@ -10,22 +10,18 @@ from download_resources import download_resources
 from compare_images import compare_generated_images
 from compare_json import compare_generated_json_files
 
-def compile_shaders(shader_lang):
+def compile_shaders(shader_lang, shader_folder):
     Log().info("Compiling {} shaders".format(shader_lang.name))
     res = None
-    #print("shader = ", shader_lang)
     if shader_lang == ShaderLang.OPEN_CL:
-        #print("BuildShaders --> OpenCL")
         res = subprocess.run(["bash", "z_build.sh"],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     elif shader_lang == ShaderLang.GLSL:
-        #print("BuildShaders --> GLSL")
-        os.chdir("shaders_generated")
+        os.chdir(shader_folder)
         res = subprocess.run(["bash", "build.sh"],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         os.chdir("..")
     elif shader_lang == ShaderLang.ISPC:
-        #print("BuildShaders --> ISPC")
         res = subprocess.run(["bash", "z_build_ispc.sh"],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -36,7 +32,7 @@ def compile_sample(sample_config, num_threads=1, enable_ispc = False):
     os.chdir(sample_config.root)
     
     Log().info("Building sample shaders: {}".format(sample_config.name))
-    res = compile_shaders(sample_config.shader_lang)
+    res = compile_shaders(sample_config.shader_lang, sample_config.shader_folder)
     if res.returncode != 0:
         Log().status_info("{} shaders compilation: ".format(sample_config.name), status=Status.FAILED)
         Log().save_std_output("{}_shaders".format(sample_config.name), res.stdout.decode(), res.stderr.decode())

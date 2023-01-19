@@ -23,6 +23,7 @@
 #include "clang/Rewrite/Core/Rewriter.h"
 
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
+std::string ToLowerCase(std::string a_str);
 
 namespace kslicer
 {
@@ -808,7 +809,7 @@ namespace kslicer
       return std::string("ubo.") + a_name; 
     };
     bool        IsSingleSource()                     const override { return false; }
-    std::string ShaderFolder()                       const override { return std::string("shaders") + m_suffix; }
+    std::string ShaderFolder()                       const override { return std::string("shaders") + ToLowerCase(m_suffix); }
     std::string ShaderSingleFile()                   const override { return ""; }
    
     void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
@@ -1135,6 +1136,5 @@ Cont filter(const Cont &container, Pred predicate)
   std::copy_if(container.begin(), container.end(), std::back_inserter(result), predicate);
   return result;
 }
-
 
 #endif
