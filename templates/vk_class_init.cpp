@@ -21,7 +21,7 @@ static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t 
   return sizeTotal;
 }
 
-VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO() const
+VkBufferUsageFlags {{MainClassName}}{{MainClassSuffix}}::GetAdditionalFlagsForUBO() const
 {
   {% if HasFullImpl %}
   return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -30,9 +30,9 @@ VkBufferUsageFlags {{MainClassName}}_Generated::GetAdditionalFlagsForUBO() const
   {% endif %}
 }
 
-uint32_t {{MainClassName}}_Generated::GetDefaultMaxTextures() const { return 256; }
+uint32_t {{MainClassName}}{{MainClassSuffix}}::GetDefaultMaxTextures() const { return 256; }
 
-{{MainClassName}}_Generated::~{{MainClassName}}_Generated()
+{{MainClassName}}{{MainClassSuffix}}::~{{MainClassName}}{{MainClassSuffix}}()
 {
   m_pMaker = nullptr;
   {% if UseServiceMemCopy %}
@@ -129,7 +129,7 @@ uint32_t {{MainClassName}}_Generated::GetDefaultMaxTextures() const { return 256
   FreeAllAllocations(m_allMems);
 }
 
-void {{MainClassName}}_Generated::InitHelpers()
+void {{MainClassName}}{{MainClassSuffix}}::InitHelpers()
 {
   vkGetPhysicalDeviceProperties(physicalDevice, &m_devProps);
   m_pMaker = std::make_unique<vk_utils::ComputePipelineMaker>();
@@ -156,7 +156,7 @@ void {{MainClassName}}_Generated::InitHelpers()
 }
 
 ## for Kernel in Kernels
-VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout()
+VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}}DSLayout()
 {
   {% if UseSeparateUBO and Kernel.IsVirtual %}
   std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+3> dsBindings;
@@ -227,7 +227,7 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::Create{{Kernel.Name}}DSLayout
 }
 ## endfor
 
-VkDescriptorSetLayout {{MainClassName}}_Generated::CreatecopyKernelFloatDSLayout()
+VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::CreatecopyKernelFloatDSLayout()
 {
   {% if UseSpecConstWgSize %}
   std::array<VkDescriptorSetLayoutBinding, 3> dsBindings;
@@ -267,7 +267,7 @@ VkDescriptorSetLayout {{MainClassName}}_Generated::CreatecopyKernelFloatDSLayout
 }
 
 {% if length(DispatchHierarchies) > 0 %}
-VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForObjCounters(VkBuffer a_buffer)
+VkBufferMemoryBarrier {{MainClassName}}{{MainClassSuffix}}::BarrierForObjCounters(VkBuffer a_buffer)
 {
   VkBufferMemoryBarrier bar = {};
   bar.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -281,7 +281,7 @@ VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForObjCounters(VkBuffe
 {% endif %}
 
 ## for Kernel in Kernels
-void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_filePath)
+void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char* a_filePath)
 {
   {% if MultipleSourceShaders %}
   std::string shaderPath = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}.comp.spv"); 
@@ -394,7 +394,7 @@ void {{MainClassName}}_Generated::InitKernel_{{Kernel.Name}}(const char* a_fileP
 
 ## endfor
 
-void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
+void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
 {
 ## for Kernel in Kernels
   InitKernel_{{Kernel.Name}}(a_filePath);
@@ -423,7 +423,7 @@ void {{MainClassName}}_Generated::InitKernels(const char* a_filePath)
   {% endif %}
 }
 
-void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount, bool a_tempBuffersOverlay)
+void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount, bool a_tempBuffersOverlay)
 {
   m_maxThreadCount = a_maxThreadsCount;
   std::vector<VkBuffer> allBuffers;
@@ -515,7 +515,7 @@ void {{MainClassName}}_Generated::InitBuffers(size_t a_maxThreadsCount, bool a_t
   }
 }
 
-void {{MainClassName}}_Generated::InitMemberBuffers()
+void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
 {
   std::vector<VkBuffer> memberVectors;
   std::vector<VkImage>  memberTextures;
@@ -564,7 +564,7 @@ void {{MainClassName}}_Generated::InitMemberBuffers()
 }
 
 {% if length(IndirectDispatches) > 0 %}
-void {{MainClassName}}_Generated::InitIndirectBufferUpdateResources(const char* a_filePath)
+void {{MainClassName}}{{MainClassSuffix}}::InitIndirectBufferUpdateResources(const char* a_filePath)
 {
   // (1) init m_indirectUpdateDSLayout
   //
@@ -659,7 +659,7 @@ void {{MainClassName}}_Generated::InitIndirectBufferUpdateResources(const char* 
   {% endif %} {# /* end else branch of if ShaderGLSL */ #}
 }
 
-VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForIndirectBufferUpdate(VkBuffer a_buffer)
+VkBufferMemoryBarrier {{MainClassName}}{{MainClassSuffix}}::BarrierForIndirectBufferUpdate(VkBuffer a_buffer)
 {
   VkBufferMemoryBarrier bar = {};
   bar.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -676,7 +676,7 @@ VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForIndirectBufferUpdat
 {% endif %}
 
 {% if UseSeparateUBO %}
-VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForArgsUBO(size_t a_size)
+VkBufferMemoryBarrier {{MainClassName}}{{MainClassSuffix}}::BarrierForArgsUBO(size_t a_size)
 {
   VkBufferMemoryBarrier bar = {};
   bar.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -693,7 +693,7 @@ VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForArgsUBO(size_t a_si
 {% endif %}
 
 {% if length(TextureMembers) > 0 or length(ClassTexArrayVars) > 0 %}
-VkImage {{MainClassName}}_Generated::CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage)
+VkImage {{MainClassName}}{{MainClassSuffix}}::CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage)
 {
   VkImage result = VK_NULL_HANDLE;
   VkImageCreateInfo imgCreateInfo = {};
@@ -714,7 +714,7 @@ VkImage {{MainClassName}}_Generated::CreateTexture2D(const int a_width, const in
   return result;
 }
 
-VkSampler {{MainClassName}}_Generated::CreateSampler(const Sampler& a_sampler) // TODO: implement this function correctly
+VkSampler {{MainClassName}}{{MainClassSuffix}}::CreateSampler(const Sampler& a_sampler) // TODO: implement this function correctly
 {
   VkSampler result = VK_NULL_HANDLE;
   VkSamplerCreateInfo samplerInfo = {};
@@ -739,7 +739,7 @@ VkSampler {{MainClassName}}_Generated::CreateSampler(const Sampler& a_sampler) /
   return result;
 }
 {% if 0 %}
-void {{MainClassName}}_Generated::TrackTextureAccess(const std::vector<TexAccessPair>& a_pairs, std::unordered_map<uint64_t, VkAccessFlags>& a_currImageFlags)
+void {{MainClassName}}{{MainClassSuffix}}::TrackTextureAccess(const std::vector<TexAccessPair>& a_pairs, std::unordered_map<uint64_t, VkAccessFlags>& a_currImageFlags)
 {
   if(a_pairs.size() == 0)
     return;
@@ -788,7 +788,7 @@ void {{MainClassName}}_Generated::TrackTextureAccess(const std::vector<TexAccess
 
 {% endif %} {# /* length(TextureMembers) > 0 */ #}
 
-void {{MainClassName}}_Generated::AssignBuffersToMemory(const std::vector<VkBuffer>& a_buffers, VkDeviceMemory a_mem)
+void {{MainClassName}}{{MainClassSuffix}}::AssignBuffersToMemory(const std::vector<VkBuffer>& a_buffers, VkDeviceMemory a_mem)
 {
   if(a_buffers.size() == 0 || a_mem == VK_NULL_HANDLE)
     return;
@@ -809,7 +809,7 @@ void {{MainClassName}}_Generated::AssignBuffersToMemory(const std::vector<VkBuff
   {
     if(memInfos[i].memoryTypeBits != memInfos[0].memoryTypeBits)
     {
-      std::cout << "[{{MainClassName}}_Generated::AssignBuffersToMemory]: error, input buffers has different 'memReq.memoryTypeBits'" << std::endl;
+      std::cout << "[{{MainClassName}}{{MainClassSuffix}}::AssignBuffersToMemory]: error, input buffers has different 'memReq.memoryTypeBits'" << std::endl;
       return;
     }
   }
@@ -822,7 +822,7 @@ void {{MainClassName}}_Generated::AssignBuffersToMemory(const std::vector<VkBuff
   }
 }
 
-{{MainClassName}}_Generated::MemLoc {{MainClassName}}_Generated::AllocAndBind(const std::vector<VkBuffer>& a_buffers)
+{{MainClassName}}{{MainClassSuffix}}::MemLoc {{MainClassName}}{{MainClassSuffix}}::AllocAndBind(const std::vector<VkBuffer>& a_buffers)
 {
   MemLoc currLoc;
   if(a_buffers.size() > 0)
@@ -834,7 +834,7 @@ void {{MainClassName}}_Generated::AssignBuffersToMemory(const std::vector<VkBuff
   return currLoc;
 }
 
-{{MainClassName}}_Generated::MemLoc {{MainClassName}}_Generated::AllocAndBind(const std::vector<VkImage>& a_images)
+{{MainClassName}}{{MainClassSuffix}}::MemLoc {{MainClassName}}{{MainClassSuffix}}::AllocAndBind(const std::vector<VkImage>& a_images)
 {
   MemLoc currLoc;
   if(a_images.size() > 0)
@@ -847,7 +847,7 @@ void {{MainClassName}}_Generated::AssignBuffersToMemory(const std::vector<VkBuff
     {
       if(reqs[i].memoryTypeBits != reqs[0].memoryTypeBits)
       {
-        std::cout << "{{MainClassName}}_Generated::AllocAndBind(textures): memoryTypeBits warning, need to split mem allocation (override me)" << std::endl;
+        std::cout << "{{MainClassName}}{{MainClassSuffix}}::AllocAndBind(textures): memoryTypeBits warning, need to split mem allocation (override me)" << std::endl;
         break;
       }
     } 
@@ -872,7 +872,7 @@ void {{MainClassName}}_Generated::AssignBuffersToMemory(const std::vector<VkBuff
   return currLoc;
 }
 
-void {{MainClassName}}_Generated::FreeAllAllocations(std::vector<MemLoc>& a_memLoc)
+void {{MainClassName}}{{MainClassSuffix}}::FreeAllAllocations(std::vector<MemLoc>& a_memLoc)
 {
   // in general you may check 'mem.allocId' for unique to be sure you dont free mem twice
   // for default implementation this is not needed
@@ -881,7 +881,7 @@ void {{MainClassName}}_Generated::FreeAllAllocations(std::vector<MemLoc>& a_memL
   a_memLoc.resize(0);
 }     
 
-void {{MainClassName}}_Generated::AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_images)
+void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_images)
 {
   AllocAndBind(a_buffers);
   {% if length(ClassTextureVars) > 0 or length(ClassTexArrayVars) > 0 %}

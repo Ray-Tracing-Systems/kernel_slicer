@@ -33,15 +33,15 @@ using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data
 {{SetterDecl}}
 
 {% endfor %}
-class {{MainClassName}}_Generated : public {{MainClassName}}
+class {{MainClassName}}{{MainClassSuffix}} : public {{MainClassName}}
 {
 public:
 
   {% for ctorDecl in Constructors %}
   {% if ctorDecl.NumParams == 0 %}
-  {{ctorDecl.ClassName}}_Generated() {}
+  {{ctorDecl.ClassName}}{{MainClassSuffix}}() {}
   {% else %}
-  {{ctorDecl.ClassName}}_Generated({{ctorDecl.Params}}) : {{ctorDecl.ClassName}}({{ctorDecl.PrevCall}}) {}
+  {{ctorDecl.ClassName}}{{MainClassSuffix}}({{ctorDecl.Params}}) : {{ctorDecl.ClassName}}({{ctorDecl.PrevCall}}) {}
   {% endif %}
   {% endfor %}
   virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount);
@@ -73,7 +73,7 @@ public:
   }
 
 ## endfor
-  virtual ~{{MainClassName}}_Generated();
+  virtual ~{{MainClassName}}{{MainClassSuffix}}();
 
   {% for SetterFunc in SetterFuncs %}  
   {{SetterFunc}}

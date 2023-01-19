@@ -759,7 +759,7 @@ namespace kslicer
 
   struct ClspvCompiler : IShaderCompiler
   {
-    ClspvCompiler(bool a_useCPP = false);
+    ClspvCompiler(bool a_useCPP, const std::string& a_prefix);
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo->") + a_name; };
     bool        IsSingleSource()   const override { return true; }
     std::string ShaderFolder()     const override { return "clspv_shaders_aux"; }
@@ -786,11 +786,12 @@ namespace kslicer
   protected:
     virtual std::string BuildCommand(const std::string& a_inputFile = "") const;
     bool m_useCpp;
+    const std::string& m_suffix;
   };
 
   struct ISPCCompiler : ClspvCompiler
   {
-    ISPCCompiler(bool a_useCPP = false);
+    ISPCCompiler(bool a_useCPP, const std::string& a_prefix);
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo[0].") + a_name; };
     std::string Name() const override { return "ISPC"; }
     void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
@@ -802,11 +803,12 @@ namespace kslicer
 
   struct GLSLCompiler : IShaderCompiler
   {
+    GLSLCompiler(const std::string& a_prefix);
     std::string UBOAccess(const std::string& a_name) const override { 
       return std::string("ubo.") + a_name; 
     };
     bool        IsSingleSource()                     const override { return false; }
-    std::string ShaderFolder()                       const override { return "shaders_generated"; }
+    std::string ShaderFolder()                       const override { return std::string("shaders") + m_suffix; }
     std::string ShaderSingleFile()                   const override { return ""; }
    
     void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
@@ -825,9 +827,8 @@ namespace kslicer
 
     std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
   private:
-
+    const std::string& m_suffix;
     void ProcessVectorTypesString(std::string& a_str);
-
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -862,6 +863,7 @@ namespace kslicer
     std::string mainClassName;
     std::string mainClassFileName;
     std::string mainClassFileInclude;
+    std::string mainClassSuffix;
     std::unordered_map<std::string, std::string> composPrefix;
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
     std::vector<const clang::CXXConstructorDecl* > ctors;

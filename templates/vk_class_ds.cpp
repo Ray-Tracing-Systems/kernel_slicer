@@ -13,7 +13,7 @@
 #include "VulkanRTX.h"
 {% endif %}
 
-void {{MainClassName}}_Generated::AllocateAllDescriptorSets()
+void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
 {
   // allocate pool
   //
@@ -47,7 +47,7 @@ void {{MainClassName}}_Generated::AllocateAllDescriptorSets()
 }
 
 ## for MainFunc in MainFunctions
-void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name}}()
+void {{MainClassName}}{{MainClassSuffix}}::InitAllGeneratedDescriptorSets_{{MainFunc.Name}}()
 {
   // now create actual bindings
   //
@@ -98,7 +98,7 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
     {
       VulkanRTX* pScene = dynamic_cast<VulkanRTX*>({{Arg.Name}}.get());
       if(pScene == nullptr)
-        std::cout << "[{{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name}}]: fatal error, wrong accel struct type" << std::endl;
+        std::cout << "[{{MainClassName}}{{MainClassSuffix}}::InitAllGeneratedDescriptorSets_{{MainFunc.Name}}]: fatal error, wrong accel struct type" << std::endl;
       accelStructs       [{{Arg.Id}}] = pScene->GetSceneAccelStruct();
       descriptorAccelInfo[{{Arg.Id}}] = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,VK_NULL_HANDLE,1,&accelStructs[{{Arg.Id}}]};
     }
@@ -211,7 +211,7 @@ void {{MainClassName}}_Generated::InitAllGeneratedDescriptorSets_{{MainFunc.Name
 ## endfor
 
 {% if length(IndirectDispatches) > 0 %}
-void {{MainClassName}}_Generated::InitIndirectDescriptorSets()
+void {{MainClassName}}{{MainClassSuffix}}::InitIndirectDescriptorSets()
 {
   if(m_indirectUpdateDS != VK_NULL_HANDLE)
     return;

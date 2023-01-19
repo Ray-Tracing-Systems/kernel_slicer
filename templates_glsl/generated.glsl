@@ -10,7 +10,7 @@
 #extension GL_KHR_shader_subgroup_arithmetic: enable
 {% endif %}
 
-#include "common_generated.h"
+#include "common{{MainClassSuffix}}.h"
 
 ## for Arg in Kernel.Args
 {% if not Arg.IsUBO %} 

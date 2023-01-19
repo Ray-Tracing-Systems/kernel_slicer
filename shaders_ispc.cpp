@@ -8,7 +8,7 @@
   #include <sys/types.h>
 #endif
 
-kslicer::ISPCCompiler::ISPCCompiler(bool a_useCPP)
+kslicer::ISPCCompiler::ISPCCompiler(bool a_useCPP, const std::string& a_prefix) : ClspvCompiler(a_useCPP, a_prefix)
 {
 
 }

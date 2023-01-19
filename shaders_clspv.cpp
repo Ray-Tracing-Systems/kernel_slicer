@@ -45,9 +45,9 @@ bool kslicer::IsVectorContructorNeedsReplacement(const std::string& a_typeName)
   return m_ctorReplacement.find(a_typeName) != m_ctorReplacement.end();
 }
 
-kslicer::ClspvCompiler::ClspvCompiler(bool a_useCPP) : m_useCpp(a_useCPP)
+kslicer::ClspvCompiler::ClspvCompiler(bool a_useCPP, const std::string& a_prefix) : m_useCpp(a_useCPP), m_suffix(a_prefix)
 {
-
+  
 }
 
 std::string kslicer::ClspvCompiler::BuildCommand(const std::string& a_inputFile) const 

@@ -41,9 +41,9 @@ set(ISPC_SOURCE test_class_ispc.cpp
                 test_class_kernels.o
                  ../LiteMath/ispc_tasksys.cpp)
 
-set(VKGEN_SOURCE test_class_generated.cpp 
-                 test_class_generated_ds.cpp
-                 test_class_generated_init.cpp)
+set(VKGEN_SOURCE test_class_GPU.cpp 
+                 test_class_GPU_ds.cpp
+                 test_class_GPU_init.cpp)
 
 set(VKUTILS_SOURCE ../vkutils/vk_utils.cpp
                    ../vkutils/vk_copy.cpp

@@ -10,7 +10,7 @@
 #include "ArgParser.h"
 
 #include "vk_context.h"
-std::shared_ptr<ToneMapping> CreateToneMapping_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+std::shared_ptr<ToneMapping> CreateToneMapping_GPU(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
 #ifdef USE_ISPC
 std::shared_ptr<ToneMapping> CreateToneMapping_ISPC();
 #endif
@@ -48,7 +48,7 @@ int main(int argc, const char** argv)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
     auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
-    pImpl = CreateToneMapping_Generated(ctx, w*h);
+    pImpl = CreateToneMapping_GPU(ctx, w*h);
   }
   #ifdef USE_ISPC
   else if(isISPC)

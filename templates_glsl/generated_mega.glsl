@@ -7,7 +7,7 @@
 #extension GL_EXT_nonuniform_qualifier : require
 {% endif %}
 
-#include "common_generated.h"
+#include "common{{MainClassSuffix}}.h"
 
 ## for Arg in Kernel.Args
 {% if not Arg.IsUBO %} 

@@ -9,6 +9,10 @@
   #include <sys/types.h>
 #endif
 
+kslicer::GLSLCompiler::GLSLCompiler(const std::string& a_prefix) : m_suffix(a_prefix)
+{
+
+}
 
 void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo)
 {
@@ -36,7 +40,8 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   
   // generate header for all used functions in GLSL code
   //
-  kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "common_generated.h", shaderPath + slash + "common_generated.h", a_kernelsJson);  
+  std::string headerCommon = "common" + m_suffix + ".h"; 
+  kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "common_generated.h", shaderPath + slash + headerCommon, a_kernelsJson);  
   
   // now generate all glsl shaders
   //

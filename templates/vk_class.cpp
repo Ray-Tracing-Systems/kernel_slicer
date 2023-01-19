@@ -21,17 +21,17 @@ ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, 
 
 {% for ctorDecl in Constructors %}
 {% if ctorDecl.NumParams == 0 %}
-std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated) 
+std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated) 
 { 
-  auto pObj = std::make_shared<{{MainClassName}}_Generated>(); 
+  auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}>(); 
   pObj->SetVulkanContext(a_ctx);
   pObj->InitVulkanObjects(a_ctx.device, a_ctx.physicalDevice, a_maxThreadsGenerated); 
   return pObj;
 }
 {% else %}
-std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}_Generated({{ctorDecl.Params}}, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated) 
+std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}({{ctorDecl.Params}}, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated) 
 { 
-  auto pObj = std::make_shared<{{MainClassName}}_Generated>({{ctorDecl.PrevCall}}); 
+  auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}>({{ctorDecl.PrevCall}}); 
   pObj->SetVulkanContext(a_ctx);
   pObj->InitVulkanObjects(a_ctx.device, a_ctx.physicalDevice, a_maxThreadsGenerated); 
   return pObj;
@@ -58,7 +58,7 @@ constexpr uint32_t KGEN_FLAG_SET_EXIT_NEGATIVE = 8;
 {% endif %}
 constexpr uint32_t KGEN_REDUCTION_LAST_STEP    = 16;
 
-void {{MainClassName}}_Generated::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount) 
+void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount) 
 {
   physicalDevice = a_physicalDevice;
   device         = a_device;
@@ -83,16 +83,16 @@ void {{MainClassName}}_Generated::InitVulkanObjects(VkDevice a_device, VkPhysica
   {% endfor %}
   {% if UseSubGroups %}
   if((m_ctx.subgroupProps.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) == 0)
-    std::cout << "ALERT! class '{{MainClassName}}_Generated' uses subgroup operations but seems your device does not support them" << std::endl;
+    std::cout << "ALERT! class '{{MainClassName}}{{MainClassSuffix}}' uses subgroup operations but seems your device does not support them" << std::endl;
   if(m_ctx.subgroupProps.subgroupSize != {{SubGroupSize}}) {
-    std::cout << "ALERT! class '{{MainClassName}}_Generated' uses subgroup operations with different subgroup size:" << std::endl;
+    std::cout << "ALERT! class '{{MainClassName}}{{MainClassSuffix}}' uses subgroup operations with different subgroup size:" << std::endl;
     std::cout << " --> your device 'subgroupSize' = " << m_ctx.subgroupProps.subgroupSize << std::endl;
     std::cout << " --> this class  'subgroupSize' = " << {{SubGroupSize}} << std::endl;
   }
   {% endif %}
 }
 
-void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
+void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
   const size_t maxAllowedSize = std::numeric_limits<uint32_t>::max();
   {% if HasPrefixData %}
@@ -121,7 +121,7 @@ void {{MainClassName}}_Generated::UpdatePlainMembers(std::shared_ptr<vk_utils::I
 }
 
 {% if HasFullImpl %}
-void {{MainClassName}}_Generated::ReadPlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
+void {{MainClassName}}{{MainClassSuffix}}::ReadPlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
   a_pCopyEngine->ReadBuffer(m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
   {% if HasPrefixData %}
@@ -150,7 +150,7 @@ void {{MainClassName}}_Generated::ReadPlainMembers(std::shared_ptr<vk_utils::ICo
 }
 {% endif %}
 
-void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
+void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
   {% for Var in ClassVectorVars %}
   if({{Var.Name}}{{Var.AccessSymb}}size() > 0)
@@ -158,7 +158,7 @@ void {{MainClassName}}_Generated::UpdateVectorMembers(std::shared_ptr<vk_utils::
   {% endfor %}
 }
 
-void {{MainClassName}}_Generated::UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
+void {{MainClassName}}{{MainClassSuffix}}::UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 { 
   {% if length(ClassTextureVars) > 0 or length(ClassTexArrayVars) > 0 %}
   {% for Var in ClassTextureVars %}
@@ -203,7 +203,7 @@ void {{MainClassName}}_Generated::UpdateTextureMembers(std::shared_ptr<vk_utils:
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
   if (vkBeginCommandBuffer(cmdBuff, &beginInfo) != VK_SUCCESS)
-    throw std::runtime_error("{{MainClassName}}_Generated::UpdateTextureMembers: failed to begin command buffer!");
+    throw std::runtime_error("{{MainClassName}}{{MainClassSuffix}}::UpdateTextureMembers: failed to begin command buffer!");
   vkCmdPipelineBarrier(cmdBuff,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,0,nullptr,0,nullptr,uint32_t(barriers.size()),barriers.data());
   vkEndCommandBuffer(cmdBuff);
   
@@ -213,7 +213,7 @@ void {{MainClassName}}_Generated::UpdateTextureMembers(std::shared_ptr<vk_utils:
 
 ## for Kernel in Kernels
 {% if Kernel.IsIndirect %}
-void {{MainClassName}}_Generated::{{Kernel.Name}}_UpdateIndirect()
+void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Name}}_UpdateIndirect()
 {
   VkBufferMemoryBarrier barIndirect = BarrierForIndirectBufferUpdate(m_indirectBuffer);
   vkCmdBindDescriptorSets(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectUpdateLayout, 0, 1, &m_indirectUpdateDS, 0, nullptr);
@@ -223,7 +223,7 @@ void {{MainClassName}}_Generated::{{Kernel.Name}}_UpdateIndirect()
 }
 
 {% endif %}
-void {{MainClassName}}_Generated::{{Kernel.Decl}}
+void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
 {
   uint32_t blockSizeX = {{Kernel.WGSizeX}};
   uint32_t blockSizeY = {{Kernel.WGSizeY}};
@@ -359,7 +359,7 @@ void {{MainClassName}}_Generated::{{Kernel.Decl}}
 
 ## endfor
 
-void {{MainClassName}}_Generated::copyKernelFloatCmd(uint32_t length)
+void {{MainClassName}}{{MainClassSuffix}}::copyKernelFloatCmd(uint32_t length)
 {
   uint32_t blockSizeX = MEMCPY_BLOCK_SIZE;
 
@@ -377,7 +377,7 @@ void {{MainClassName}}_Generated::copyKernelFloatCmd(uint32_t length)
   vkCmdDispatch(m_currCmdBuffer, (length + blockSizeX - 1) / blockSizeX, 1, 1);
 }
 
-VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForClearFlags(VkBuffer a_buffer)
+VkBufferMemoryBarrier {{MainClassName}}{{MainClassSuffix}}::BarrierForClearFlags(VkBuffer a_buffer)
 {
   VkBufferMemoryBarrier bar = {};
   bar.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -392,7 +392,7 @@ VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForClearFlags(VkBuffer
   return bar;
 }
 
-VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForSingleBuffer(VkBuffer a_buffer)
+VkBufferMemoryBarrier {{MainClassName}}{{MainClassSuffix}}::BarrierForSingleBuffer(VkBuffer a_buffer)
 {
   VkBufferMemoryBarrier bar = {};
   bar.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -407,7 +407,7 @@ VkBufferMemoryBarrier {{MainClassName}}_Generated::BarrierForSingleBuffer(VkBuff
   return bar;
 }
 
-void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffers, VkBufferMemoryBarrier* a_outBarriers, uint32_t a_buffersNum)
+void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a_inBuffers, VkBufferMemoryBarrier* a_outBarriers, uint32_t a_buffersNum)
 {
   for(uint32_t i=0; i<a_buffersNum;i++)
   {
@@ -424,7 +424,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
 }
 
 ## for MainFunc in MainFunctions
-{{MainFunc.ReturnType}} {{MainClassName}}_Generated::{{MainFunc.MainFuncDeclCmd}}
+{{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.MainFuncDeclCmd}}
 {
   m_currCmdBuffer = a_commandBuffer;
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT }; 
@@ -457,7 +457,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
 ## for MainFunc in MainFunctions
 {% if MainFunc.OverrideMe %}
 
-{{MainFunc.ReturnType}} {{MainClassName}}_Generated::{{MainFunc.DeclOrig}}
+{{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.DeclOrig}}
 {
   // (1) get global Vulkan context objects
   //
@@ -714,7 +714,7 @@ void {{MainClassName}}_Generated::BarriersForSeveralBuffers(VkBuffer* a_inBuffer
 ## endfor
 {% if HasGetTimeFunc %}
 
-void {{MainClassName}}_Generated::GetExecutionTime(const char* a_funcName, float a_out[4])
+void {{MainClassName}}{{MainClassSuffix}}::GetExecutionTime(const char* a_funcName, float a_out[4])
 {
   vk_utils::ExecTime res = {};
   {% for MainFunc in MainFunctions %}

@@ -71,8 +71,6 @@ int main(int argc, const char **argv)
   #endif
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  //struct stat sb;
-
   if (argc < 2)
   {
     llvm::errs() << "Usage: <filename>\n";
@@ -227,23 +225,24 @@ int main(int argc, const char **argv)
   //inputCodeInfo.includeCPPFolders.push_back(stdlibFolder);
   if(shaderCCName == "glsl" || shaderCCName == "GLSL")
   {
-    inputCodeInfo.pShaderCC = std::make_shared<kslicer::GLSLCompiler>();
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::GLSLCompiler>(inputCodeInfo.mainClassSuffix);
     inputCodeInfo.includeCPPFolders.push_back("include/");
   }
   else if(shaderCCName == "ispc" || shaderCCName == "ISPC")
   {
-    inputCodeInfo.pShaderCC = std::make_shared<kslicer::ISPCCompiler>(useCppInKernels);
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::ISPCCompiler>(useCppInKernels, inputCodeInfo.mainClassSuffix);
     inputCodeInfo.ignoreFolders.push_back("include/");
   }
   else
   {
-    inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>(useCppInKernels);
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>(useCppInKernels, inputCodeInfo.mainClassSuffix);
     inputCodeInfo.ignoreFolders.push_back("include/");
   }
 
   inputCodeInfo.defaultVkernelType = defaultVkernelType;
   inputCodeInfo.halfFloatTextures  = halfFloatTextures;
   inputCodeInfo.megakernelRTV      = useMegakernel;
+  inputCodeInfo.mainClassSuffix    = suffix;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -847,7 +846,7 @@ int main(int argc, const char **argv)
 
   std::string rawname = kslicer::CutOffFileExt(allFiles[0]);
   auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls, 
-                                      rawname + "_generated.h", threadsOrder, 
+                                      rawname + suffix + ".h", threadsOrder, 
                                       uboIncludeName, composeImplName, 
                                       jsonUBO); 
 
@@ -856,10 +855,10 @@ int main(int argc, const char **argv)
   {
     if(!inputCodeInfo.pShaderCC->IsISPC())
     {
-      kslicer::ApplyJsonToTemplate("templates/vk_class.h",        rawname + "_generated.h", jsonCPP); 
-      kslicer::ApplyJsonToTemplate("templates/vk_class.cpp",      rawname + "_generated.cpp", jsonCPP);
-      kslicer::ApplyJsonToTemplate("templates/vk_class_ds.cpp",   rawname + "_generated_ds.cpp", jsonCPP);
-      kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + "_generated_init.cpp", jsonCPP); 
+      kslicer::ApplyJsonToTemplate("templates/vk_class.h",        rawname + suffix + ".h", jsonCPP); 
+      kslicer::ApplyJsonToTemplate("templates/vk_class.cpp",      rawname + suffix + ".cpp", jsonCPP);
+      kslicer::ApplyJsonToTemplate("templates/vk_class_ds.cpp",   rawname + suffix + "_ds.cpp", jsonCPP);
+      kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + suffix + "_init.cpp", jsonCPP); 
     }   
   }
   std::cout << "}" << std::endl;
