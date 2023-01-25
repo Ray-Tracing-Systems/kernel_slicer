@@ -342,8 +342,10 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
   const bool isMainClassMember = IsMainClassName(thisTypeName);
   const auto pCompos           = m_composedClassInfo.find(thisTypeName);
 
-  if(isMainClassMember && fsrcfull != fdecl) // we need to store MethodDec with full source code, not hust decls
-    mci.allMemberFunctions[fname] = f;       // just save this for further process in templated text rendering_host.cpp (virtual functions override for RTV pattern, so called "FullImpl" override)
+  if(isMainClassMember && fsrcfull != fdecl) // we need to store MethodDec with full source code, not hust decls just save this for further process in templated text rendering_host.cpp
+    mci.allMemberFunctions[fname] = f;
+  else if (isMainClassMember && fsrcfull == fdecl && fdecl.find("Block(") != std::string::npos) // needed for override CPU imple of XXXBlock functions
+    mci.allMemberFunctions[fname] = f;
   else if (pCompos != m_composedClassInfo.end())
     pCompos->second.allMemberFunctions[fname] = f;  
 
