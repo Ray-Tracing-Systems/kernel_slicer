@@ -341,6 +341,15 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
   
   const bool isMainClassMember = IsMainClassName(thisTypeName);
   const auto pCompos           = m_composedClassInfo.find(thisTypeName);
+ 
+  //std::cout << "fname = " << fname.c_str() << std::endl;
+  //if(fname == "EyeRayDirNormalized")
+  //{
+  //  bool cond1 = (fsrcfull != fdecl);
+  //  bool cond2 = (fsrcfull == fdecl);
+  //  bool cond3 = (fdecl.find("Block") != std::string::npos);
+  //  int a = 2;
+  //}
 
   if(isMainClassMember && fsrcfull != fdecl) // we need to store MethodDec with full source code, not hust decls just save this for further process in templated text rendering_host.cpp
     mci.allMemberFunctions[fname] = f;

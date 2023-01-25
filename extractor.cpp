@@ -24,12 +24,19 @@ public:
 
   bool VisitCallExpr(clang::CallExpr* call)
   {
+    
     //std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
     const clang::FunctionDecl* f = call->getDirectCallee();
     if(f == nullptr)
       return true;
-    
+ 
     //std::string debugName = f->getNameAsString();
+    //std::cout << "[debug]: find call of " << debugName.c_str() << std::endl;
+    //if(debugName == "EyeRayDirNormalized")
+    //{
+    //  int a = 2;
+    //}
+   
     if(f->isOverloadedOperator())
       return true;
 
