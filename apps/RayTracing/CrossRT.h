@@ -32,6 +32,8 @@ struct ISceneObject
   ISceneObject(){}
   virtual ~ISceneObject(){} 
 
+  virtual const char* Name() const { return ""; }
+
   /**
   \brief clear everything 
   */

@@ -12,7 +12,7 @@ public:
   EmbreeRT();
   ~EmbreeRT();
   void ClearGeom() override;
-  
+  const char* Name() const override { return "VulkanRTX"; }
 
   uint32_t AddGeom_Triangles3f(const float * a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, BuildQuality a_qualityLevel, size_t vByteStride) override;
   void     UpdateGeom_Triangles3f(uint32_t a_geomId, const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, BuildQuality a_qualityLevel, size_t vByteStride) override;
