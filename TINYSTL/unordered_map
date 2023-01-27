@@ -17,5 +17,6 @@ namespace std
   { 
   public:
     inline size_t size() const { return 0; }
+    _Tp& operator[](const _Key& rhs); 
   };
 };
