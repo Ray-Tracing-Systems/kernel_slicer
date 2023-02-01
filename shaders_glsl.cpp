@@ -762,13 +762,13 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     m_rewriter.ReplaceText(call->getSourceRange(), "mix(" + A + ", " + B + ", " + C + ")");
     MarkRewritten(call);
   }
-  else if(fname == "as_int32" && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
+  else if((fname == "as_int32" || fname == "as_int") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
   {
     const std::string text = RecursiveRewrite(call->getArg(0));
     m_rewriter.ReplaceText(call->getSourceRange(), "floatBitsToInt(" + text + ")");
     MarkRewritten(call);
   }
-  else if(fname == "as_uint32" && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
+  else if((fname == "as_uint32" || fname == "as_uint") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
   {
     const std::string text = RecursiveRewrite(call->getArg(0));
     m_rewriter.ReplaceText(call->getSourceRange(), "floatBitsToUint(" + text + ")");
@@ -776,11 +776,11 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   }
   else if((fname == "as_float" || fname == "as_float32")  && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
   {
-    const std::string text = RecursiveRewrite(call->getArg(0));
-    const auto qtOfArg     = call->getArg(0)->getType();
+    const std::string text  = RecursiveRewrite(call->getArg(0));
+    const auto qtOfArg      = call->getArg(0)->getType();
+    const std::string tname = kslicer::CleanTypeName(qtOfArg.getAsString());
     
-    if(std::string(qtOfArg.getAsString()) == "uint"     || std::string(qtOfArg.getAsString()) == "const uint" || 
-       std::string(qtOfArg.getAsString()) == "uint32_t" || std::string(qtOfArg.getAsString()) == "const uint32_t")
+    if(tname == "uint" || tname == "const uint" || tname == "uint32_t" || tname == "const uint32_t" || tname == "unsigned" || tname == "const unsigned")
       m_rewriter.ReplaceText(call->getSourceRange(), "uintBitsToFloat(" + text + ")");
     else
       m_rewriter.ReplaceText(call->getSourceRange(), "intBitsToFloat(" + text + ")");
