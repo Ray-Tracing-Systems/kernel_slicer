@@ -96,6 +96,7 @@ int main(int argc, const char **argv)
   std::string shaderCCName    = "clspv";
   std::string hintFile        = "";
   std::string suffix          = "_Generated";
+  std::string shaderFolder    = "";
   
   std::string composeAPIName  = "";
   std::string composeImplName = "";
@@ -127,6 +128,9 @@ int main(int argc, const char **argv)
 
   if(params.find("-shaderCC") != params.end())
     shaderCCName = params["-shaderCC"];
+  
+  if(params.find("-shaderFolder") != params.end())
+    shaderFolder = params["-shaderFolder"];
 
   if(suffix == "_Generated" && (shaderCCName == "ispc") || (shaderCCName == "ISPC"))
     suffix = "_ISPC";
@@ -246,6 +250,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.halfFloatTextures  = halfFloatTextures;
   inputCodeInfo.megakernelRTV      = useMegakernel;
   inputCodeInfo.mainClassSuffix    = suffix;
+  inputCodeInfo.shaderFolder       = shaderFolder;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
