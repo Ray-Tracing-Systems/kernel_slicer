@@ -24,8 +24,7 @@ public:
 
   bool VisitCallExpr(clang::CallExpr* call)
   {
-    
-    //std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+    std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
     const clang::FunctionDecl* f = call->getDirectCallee();
     if(f == nullptr)
       return true;
@@ -312,7 +311,7 @@ std::vector<kslicer::ArgMatch> kslicer::MatchCallArgsForKernel(clang::CallExpr* 
   if(fDecl == nullptr || clang::isa<clang::CXXOperatorCallExpr>(call)) 
     return result;
   
-  std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), a_compiler);
+  //std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), a_compiler);
 
   for(size_t i=0;i<call->getNumArgs();i++)
   {

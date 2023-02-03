@@ -718,11 +718,13 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     return true;
 
   const std::string fname = fDecl->getNameInfo().getName().getAsString();
+  ///////////////////////////////////////////////////////////////////////
   std::string makeSmth = "";
   if(fname.substr(0, 5) == "make_")
     makeSmth = fname.substr(5);
-
-  const std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+  auto pVecMaker = m_vecReplacements.find(makeSmth);
+  ///////////////////////////////////////////////////////////////////////
+  //const std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
 
   auto pFoundSmth = m_funReplacements.find(fname);
   if(fname == "to_float3" && call->getNumArgs() == 1 && WasNotRewrittenYet(call) )
@@ -741,9 +743,9 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       MarkRewritten(call);
     }
   }
-  else if(makeSmth != "" && call->getNumArgs() !=0 && WasNotRewrittenYet(call) )
+  else if(makeSmth != "" && pVecMaker != m_vecReplacements.end() && call->getNumArgs() !=0 && WasNotRewrittenYet(call) )
   {
-    std::string rewrittenRes = m_vecReplacements[makeSmth] + "(" + CompleteFunctionCallRewrite(call);
+    std::string rewrittenRes = pVecMaker->second + "(" + CompleteFunctionCallRewrite(call);
     m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
     MarkRewritten(call);
   }
@@ -810,7 +812,7 @@ bool GLSLFunctionRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special 
 {
   if(!decl->isSingleDecl())
   {
-    const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
+    //const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
     std::string varType = "";
     std::string resExpr = "";
     for(auto it = decl->decl_begin(); it != decl->decl_end(); ++it)
@@ -921,7 +923,7 @@ bool GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* c
     return true;
 
   clang::Expr* next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr(); 
-  std::string dbgTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
+  std::string debugTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
   
   //https://code.woboq.org/llvm/clang/include/clang/AST/OperationKinds.def.html
   if(kind != clang::CK_IntegralCast && kind != clang::CK_IntegralToFloating && kind != clang::CK_FloatingToIntegral) // in GLSL we don't have implicit casts
@@ -1258,7 +1260,7 @@ bool GLSLKernelRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
     return kslicer::KernelRewriter::VisitUnaryOperator_Impl(expr);
   
   const auto op = expr->getOpcodeStr(expr->getOpcode());
-  std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
+  //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
   if(op == "*")
   {
     auto subExpr           = expr->getSubExpr();
@@ -1393,11 +1395,11 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
   clang::CXXMethodDecl* fDecl = call->getMethodDecl();  
   if(fDecl != nullptr && WasNotRewrittenYet(call))  
   {
-    std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+    //std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
     std::string fname     = fDecl->getNameInfo().getName().getAsString();
     clang::Expr* pTexName =	call->getImplicitObjectArgument(); 
     std::string objName   = kslicer::GetRangeSourceCode(pTexName->getSourceRange(), m_compiler);     
-  
+
     if(fname == "sample" || fname == "Sample")
     {
       bool needRewrite = true;

@@ -391,6 +391,7 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
     const std::string textOrig = GetRangeSourceCode(call->getSourceRange(), m_compiler);
     const std::string text     = FunctionCallRewriteNoName(call);
     const std::string textRes  = VectorTypeContructorReplace(fname, text);
+    //std::cout << "[Kernel::CXXConstructExpr]" << fname.c_str() << std::endl;
 
     if(isa<CXXTemporaryObjectExpr>(call) || IsGLSL())
     {
@@ -425,7 +426,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
   const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
-  
+
   // Get name of "this" type; we should check wherther this member is std::vector<T>  
   //
   const clang::QualType qt = f->getObjectType();
@@ -897,6 +898,8 @@ void kslicer::KernelRewriter::DetectTextureAccess(CXXOperatorCallExpr* expr)
 
 bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(CXXOperatorCallExpr* expr)
 {
+  std::string debugTxt = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); 
+
   DetectTextureAccess(expr);
   auto opRange = expr->getSourceRange();
   if(opRange.getEnd()   <= m_currKernel.loopInsides.getBegin() || 

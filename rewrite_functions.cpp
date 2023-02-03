@@ -25,7 +25,6 @@ std::string kslicer::FunctionRewriter::FunctionCallRewrite(const CallExpr* call)
   
   std::string fname   = fDecl->getNameInfo().getName().getAsString();
   std::string textRes = m_codeInfo->pShaderCC->ReplaceCallFromStdNamespace(fname, argsType);
-
   //std::string textRes = fDecl->getNameInfo().getName().getAsString();
 
   textRes += "(";
@@ -70,6 +69,7 @@ bool kslicer::FunctionRewriter::VisitCallExpr_Impl(CallExpr* call)
   // Get name of function
   //
   std::string fname = fDecl->getNameInfo().getName().getAsString();
+  //std::cout << "[VisitCallExpr]: fname = " << fname.c_str() << std::endl;
 
   if(fDecl->isInStdNamespace())
   {
@@ -106,6 +106,7 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* cal
   
   //const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);   
   const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
+  //std::cout << "[Function::CXXConstructExpr]" << fname.c_str() << std::endl;
   
   //call->dump();
   if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0 ) //

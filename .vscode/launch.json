@@ -1814,8 +1814,8 @@
             "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/tests/019_compos_rtx/test_class.cpp",
                         "-mainClass", "TestClass",
-                        "-composInterface", "ISceneObject",
-                        "-composImplementation","BFRayTrace", 
+                        //"-composInterface", "ISceneObject",
+                        //"-composImplementation","BFRayTrace", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
                         "-I${workspaceFolder}/apps/LiteMath",   "ignore", 
@@ -1823,6 +1823,37 @@
                         "-I${workspaceFolder}/apps/RayTracing", "process",
                         "-shaderCC", "glsl",
                         "-megakernel", "1",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (test_020/MakeFun)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/020_make_struct/test_class.cpp",
+                        "-mainClass", "TestClass",
+                        //"-composInterface", "ISceneObject",
+                        //"-composImplementation","BFRayTrace", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore", 
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I${workspaceFolder}/apps/RayTracing", "process",
+                        "-shaderCC", "glsl",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,
