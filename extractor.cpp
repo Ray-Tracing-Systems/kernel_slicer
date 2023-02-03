@@ -723,8 +723,7 @@ void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::st
   for(auto tn : a_additionalTypes)
   {
     std::string typeName = kslicer::CleanTypeName(tn);
-    if(declsByName.find(typeName) == declsByName.end() && 
-       internalTypes.find(typeName) == internalTypes.end())
+    if(declsByName.find(typeName) == declsByName.end() && internalTypes.find(typeName) == internalTypes.end())
     {
       const clang::TypeDecl* node = nullptr;
       for(auto memb : a_allDataMembers)
@@ -741,6 +740,10 @@ void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::st
       if(node != nullptr)
         typesToProcess.push(TypePair(typeName, node)); 
     }
+    
+    const auto pDecl = a_otherDecls.find(typeName);
+    if(pDecl != a_otherDecls.end())
+      typesToProcess.push(TypePair(typeName, pDecl->second.astNode)); 
   }
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -987,6 +990,24 @@ std::unordered_set<std::string> kslicer::MainClassInfo::ExtractTypesFromUsedCont
           res.insert(pFound->second.containerDataType);
       }
     }
+    
+    for(const auto& c : k.second.args)
+    {
+      if(c.IsPointer())
+      {
+        std::string structName = c.type;
+        if(ReplaceFirst(structName, "struct ", ""))
+        {
+          ReplaceFirst(structName, "*", "");
+          while(ReplaceFirst(structName, " ", ""))
+            ;
+          auto p = a_otherDecls.find(structName);
+          if(p != a_otherDecls.end())
+            res.insert(structName);
+        }
+      }
+    }
+
   }
   return res;
 }

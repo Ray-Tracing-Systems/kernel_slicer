@@ -178,7 +178,7 @@ std::string kslicer::GLSLCompiler::RewritePushBack(const std::string& memberName
 ////////////////////////////////////////  GLSLFunctionRewriter  ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
 
-std::unordered_map<std::string, std::string> ListGLSLVectorReplacements()
+std::unordered_map<std::string, std::string> kslicer::ListGLSLVectorReplacements()
 {
   std::unordered_map<std::string, std::string> m_vecReplacements;
   m_vecReplacements["float2"] = "vec2";
@@ -231,7 +231,7 @@ std::unordered_map<std::string, std::string> ListGLSLVectorReplacements()
 
 std::unordered_set<std::string> kslicer::ListPredefinedMathTypes()
 {
-  auto types = ListGLSLVectorReplacements();
+  auto types = kslicer::ListGLSLVectorReplacements();
   std::unordered_set<std::string> res;
   for(auto p : types)
   {
@@ -293,7 +293,7 @@ public:
   
   GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) : FunctionRewriter(R,a_compiler,a_codeInfo)
   { 
-    m_vecReplacements  = ListGLSLVectorReplacements();
+    m_vecReplacements  = kslicer::ListGLSLVectorReplacements();
     m_vecReplacements2 = SortByKeysByLen(m_vecReplacements);
    
     m_funReplacements["fmin"]  = "min";

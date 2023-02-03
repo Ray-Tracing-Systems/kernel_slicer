@@ -153,19 +153,71 @@ bool kslicer::InitialPassRecursiveASTVisitor::NeedToProcessDeclInFile(std::strin
   return needInsertToKernels;
 }
 
+static std::unordered_set<std::string> ListExcludedTypes()
+{
+  std::unordered_set<std::string> res = kslicer::ListPredefinedMathTypes();
+  res.insert("float3x3");
+  res.insert("RowTmp");
+  res.insert("uchar4");
+  res.insert("ushort4");
+  res.insert("uchar");
+  res.insert("fstream");
+  res.insert("in");
+  res.insert("ushort2");
+  res.insert("binary");
+  res.insert("istream");
+  res.insert("FILE");
+  res.insert("Box4f");
+  res.insert("other");
+  res.insert("ptrdiff_t");
+  res.insert("size_t");
+  res.insert("aligned");
+  res.insert("uint");
+  res.insert("allocator");
+  res.insert("ostream");
+  res.insert("int64_t");
+  res.insert("uint16_t");
+  res.insert("const_iterator");
+  res.insert("placeholder");
+  res.insert("int16_t");
+  res.insert("ushort");
+  res.insert("value_type");
+  res.insert("uint8_t");
+  res.insert("uint64_t");
+  res.insert("pod_traits");
+  res.insert("int8_t");
+  res.insert("ofstream");
+  res.insert("remove_reference");
+  res.insert("coutT");
+  res.insert("type");
+  res.insert("int32_t");
+  res.insert("buffer");
+  res.insert("pointer");
+  res.insert("initializer_list");
+  res.insert("reference");
+  res.insert("const_reference");
+  res.insert("numeric_limits");
+  res.insert("size_type");
+  res.insert("rebind");
+  res.insert("Ray4f");
+  res.insert("iterator");
+  res.insert("vector");
+  res.insert("const_pointer");
+  res.insert("uint32_t");
+  res.insert("difference_type");
+  res.insert("");
+  return res;
+}
+
 bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
 {
+  static const auto excludedTypes = ListExcludedTypes();
+
   const FileEntry* Entry = m_sourceManager.getFileEntryForID(m_sourceManager.getFileID(type->getLocation()));
   if(Entry == nullptr)
     return true;
 
   std::string FileName  = Entry->getName().str();
-  //std::string debugName = type->getNameAsString();
-  //if(debugName == "MyFloat3" || debugName == "MyType")
-  //{
-  //  int a = 2;
-  //}
-
   const bool isDefinitelyInsideShaders = NeedToProcessDeclInFile(FileName);
 
   if(isa<CXXRecordDecl>(type)) 
@@ -173,15 +225,11 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
     // currently we don't put polimorphic C++ classes to shaders, in far future we need to process them in special way probably
     //
     CXXRecordDecl* pCXXDecl = dyn_cast<CXXRecordDecl>(type);
-    //if(!pCXXDecl->isCLike())
-    //  return true;
     if(!pCXXDecl->hasDefinition())
       return true;
     if(pCXXDecl->isPolymorphic() || pCXXDecl->isAbstract())
       return true;   
   }
-
-  //const clang::QualType qt = 
 
   kslicer::DeclInClass decl;
   
@@ -195,14 +243,19 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
     decl.order     = m_currId;
     decl.kind      = kslicer::DECL_IN_CLASS::DECL_STRUCT;
     decl.extracted = true;
+    decl.astNode   = type;
     
+    //std::cout << "[VisitTypeDecl]: recordName = " << decl.name.c_str() << std::endl;
+    //if(decl.name == "BoxHit")
+    //  int a = 2;
+
     if(decl.name != m_codeInfo.mainClassName && 
        decl.name != std::string("class ") + m_codeInfo.mainClassName && 
        decl.name != std::string("struct ") + m_codeInfo.mainClassName)
     {
       if(isDefinitelyInsideShaders)
         m_transferredDecl[decl.name] = decl;
-      else
+      else if(excludedTypes.find(decl.name) == excludedTypes.end())
         m_storedDecl     [decl.name] = decl;
       m_currId++;
     }
@@ -220,7 +273,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
     decl.extracted = true;
     if(isDefinitelyInsideShaders)
       m_transferredDecl[decl.name] = decl;
-    else
+    else if(excludedTypes.find(decl.name) == excludedTypes.end())
       m_storedDecl     [decl.name] = decl;
     m_currId++;
   }
@@ -241,7 +294,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
       decl.extracted = true;
       if(isDefinitelyInsideShaders)
         m_transferredDecl[decl.name] = decl;
-      else
+      else if(excludedTypes.find(decl.name) == excludedTypes.end())
         m_storedDecl     [decl.name] = decl;
       m_currId++;
     }
