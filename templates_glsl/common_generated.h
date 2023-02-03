@@ -40,6 +40,8 @@
 /////////////////// local functions /////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 bool isfinite(float x) { return !isinf(x); }
+float copysign(float mag, float a_sign) { return abs(mag)*sign(a_sign); }
+
 
 ## for LocalFunc in LocalFunctions  
 {{LocalFunc}}

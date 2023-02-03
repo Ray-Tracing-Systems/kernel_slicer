@@ -432,10 +432,11 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
   const auto& thisTypeName = qt.getAsString();
   CXXRecordDecl* typeDecl  = f->getRecordDecl(); 
   const std::string cleanTypeName = kslicer::CleanTypeName(thisTypeName);
-
+  
   const bool isVector   = (typeDecl != nullptr && isa<ClassTemplateSpecializationDecl>(typeDecl)) && thisTypeName.find("vector<") != std::string::npos; 
   const bool isRTX      = (thisTypeName == "struct ISceneObject") && (fname.find("RayQuery_") != std::string::npos);
-  const bool isPrefixed = (m_codeInfo->composPrefix.find(cleanTypeName) != m_codeInfo->composPrefix.end());
+  const auto pPrefix    = m_codeInfo->composPrefix.find(cleanTypeName);
+  const bool isPrefixed = (pPrefix != m_codeInfo->composPrefix.end());
   
   if(isVector && WasNotRewrittenYet(f))
   {
@@ -487,9 +488,15 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
   }
   else if((isRTX || isPrefixed) && WasNotRewrittenYet(f))
   {
-    const std::string exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
-    const auto posOfPoint         = exprContent.find("->");
-    const std::string memberNameA = exprContent.substr(0, posOfPoint);
+    const auto exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
+    const auto posOfPoint  = exprContent.find("->"); // seek for "m_pImpl->Func()" 
+    
+    std::string memberNameA;
+    if(isPrefixed && posOfPoint == std::string::npos)   // Func() inside composed class of m_pImpl
+      memberNameA = pPrefix->second;
+    else
+      memberNameA = exprContent.substr(0, posOfPoint);  // m_pImpl->Func() inside main class
+
     std::string resCallText = memberNameA + "_" + fname + "(";
     for(unsigned i=0;i<f->getNumArgs(); i++)
     {
