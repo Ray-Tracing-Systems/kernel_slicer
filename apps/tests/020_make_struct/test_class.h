@@ -16,6 +16,13 @@ struct BoxHit
   float tHit;
 };
 
+struct Cow
+{
+  float pos;
+  float moooo;
+  float mass;
+};
+
 static inline BoxHit make_BoxHit(uint32_t a_id, float a_t)
 {
   BoxHit res;
@@ -30,7 +37,7 @@ public:
   TestClass(){}
 
   virtual void Test(BoxHit* a_data __attribute__((size("a_size"))), unsigned int a_size);
-  void kernel1D_Test(BoxHit* a_data, unsigned int a_size);
+  void kernel1D_Test(BoxHit* a_data, unsigned int a_size, Cow a_cow);
 
 
   virtual void CommitDeviceData() {}                                       // will be overriden in generated class
