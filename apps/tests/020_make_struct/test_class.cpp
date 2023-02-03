@@ -10,7 +10,7 @@ void TestClass::kernel1D_Test(BoxHit* a_data, uint32_t a_size)
 {
   for(uint32_t i=0; i<a_size; i++)
   {
-    //BoxHit dummy;
+    //BoxHit dummy; // don't help actually
     a_data[i] = make_BoxHit(i, 1.0f);
   }
 }

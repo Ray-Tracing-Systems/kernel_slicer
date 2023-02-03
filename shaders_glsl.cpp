@@ -588,11 +588,24 @@ std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
           }
         }
       }
-
+      
+      const auto originalText = kslicer::GetRangeSourceCode(pParam->getSourceRange(), m_compiler);  
+     
       if(pointerToGlobalMemory)
         result += std::string("uint ") + pParam->getNameAsString() + "Offset";
+      else if(originalText.find("[") != std::string::npos && originalText.find("]") != std::string::npos) // fixed size arrays
+      {
+        if(typeOfParam->getPointeeType().isConstQualified())
+        {
+          ReplaceFirst(typeStr, "const ", "");
+          result += originalText;
+        }
+        else
+          result += std::string("inout ") + originalText;
+      }
       else
       {
+        std::string paramName = pParam->getNameAsString();
         ReplaceFirst(typeStr, "*", "");
         if(typeOfParam->getPointeeType().isConstQualified())
         {

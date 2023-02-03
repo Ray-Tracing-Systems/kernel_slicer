@@ -2003,7 +2003,7 @@
             "name"   : "RTProject(Eye-->BVH2Common)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
             "args"   : ["/home/frol/PROG/huawei/cbvh_raytrace/examples/01_eye_rays/eye_ray.cpp",
                         "/home/frol/PROG/huawei/cbvh_raytrace/core/BVH2CommonRT.cpp",
                         "-mainClass", "EyeRayCaster", 
