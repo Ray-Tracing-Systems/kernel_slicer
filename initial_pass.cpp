@@ -123,10 +123,11 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* 
   return true;
 }
 
+/// @brief check that file code (either Decl or else) is in 'includeCPPFolders' bot not in 'ignoreFolders' at the same time
+/// @param a_fileName -- file name path
+/// @return flag if we need to process decl or function or ignore them
 bool kslicer::InitialPassRecursiveASTVisitor::NeedToProcessDeclInFile(std::string a_fileName)
 {
-  //if(a_fileName == m_codeInfo.mainClassFileInclude)   // we don't yet know neither m_codeInfo.mainClassFileInclude, nor MAIN_FILE_INCLUDE
-  //  return true;
   bool needInsertToKernels = false;                     // do we have to process this declaration to further insert it to GLSL/CL ?
   for(auto folder : m_codeInfo.includeCPPFolders)       //
   {
@@ -136,6 +137,19 @@ bool kslicer::InitialPassRecursiveASTVisitor::NeedToProcessDeclInFile(std::strin
       break;
     }
   }
+  
+  if(needInsertToKernels) 
+  {
+    for(auto folder : m_codeInfo.ignoreFolders)        // consider ["maypath/AA"] in 'includeCPPFolders' and ["maypath/AA/BB"] in 'ignoreFolders' 
+    {                                                  // we should definitely ignore such definitions
+      if(a_fileName.find(folder) != std::string::npos)
+      {
+        needInsertToKernels = false;
+        break;
+      }
+    }
+  }
+
   return needInsertToKernels;
 }
 

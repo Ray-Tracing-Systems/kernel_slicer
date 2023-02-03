@@ -298,6 +298,8 @@ int main(int argc, const char **argv)
 
   compiler.createPreprocessor(clang::TU_Complete);
   compiler.getPreprocessorOpts().UsePredefines = true;
+  //auto definitions = compiler.getPreprocessor().getPredefines();
+  //std::cout << definitions.c_str() << std::endl;
   //compiler.getPreprocessorOpts().addMacroDef("KERNEL_SLICER"); // IT DOES NOT WORKS FOR SOME REASON!!! 
   compiler.createASTContext();
 

@@ -3,6 +3,9 @@
 #include "FILE.h"
 #include "stdio.h"
 
+#include <istream>
+#include <ostream>
+
 namespace std
 {
   struct coutT 

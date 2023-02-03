@@ -1,0 +1,13 @@
+#pragma once
+
+#include "FILE.h"
+#include "stdio.h"
+
+namespace std
+{
+  struct istream 
+  { 
+    void flush();
+    template<class T> istream& operator>>(T x);
+  };
+};
