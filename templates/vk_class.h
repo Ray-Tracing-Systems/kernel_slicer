@@ -39,9 +39,21 @@ public:
 
   {% for ctorDecl in Constructors %}
   {% if ctorDecl.NumParams == 0 %}
-  {{ctorDecl.ClassName}}{{MainClassSuffix}}() {}
+  {{ctorDecl.ClassName}}{{MainClassSuffix}}() 
+  {
+    {% if HasPrefixData %}
+    if({{PrefixDataName}} == nullptr)
+      {{PrefixDataName}} = std::make_shared<{{PrefixDataClass}}>();
+    {% endif %}
+  }
   {% else %}
-  {{ctorDecl.ClassName}}{{MainClassSuffix}}({{ctorDecl.Params}}) : {{ctorDecl.ClassName}}({{ctorDecl.PrevCall}}) {}
+  {{ctorDecl.ClassName}}{{MainClassSuffix}}({{ctorDecl.Params}}) : {{ctorDecl.ClassName}}({{ctorDecl.PrevCall}}) 
+  {
+    {% if HasPrefixData %}
+    if({{PrefixDataName}} == nullptr)
+      {{PrefixDataName}} = std::make_shared<{{PrefixDataClass}}>({{ctorDecl.PrevCall}});
+    {% endif %}
+  }
   {% endif %}
   {% endfor %}
   {% if HasNameFunc %}
