@@ -187,18 +187,19 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
       if(pos == std::string::npos && processFuncMember)
         return false;
 
-      assert(pos != std::string::npos);
-      const std::string memberName = exprContent.substr(pos+2);
-  
-      if(m_codeInfo->megakernelRTV && m_codeInfo->pShaderCC->IsGLSL()) 
-      {
-        out_text = baseName + "." + memberName;
-        return true;
-      }
-      else if(needOffset)
-      {
-        out_text = baseName + "[" + m_fakeOffsetExp + "]." + memberName;
-        return true;
+      if(pos != std::string::npos)
+      {    
+        const std::string memberName = exprContent.substr(pos+2);
+        if(m_codeInfo->megakernelRTV && m_codeInfo->pShaderCC->IsGLSL()) 
+        {
+          out_text = baseName + "." + memberName;
+          return true;
+        }
+        else if(needOffset)
+        {
+          out_text = baseName + "[" + m_fakeOffsetExp + "]." + memberName;
+          return true;
+        }
       }
     }
     else if(!isKernel && m_codeInfo->pShaderCC->IsGLSL()) // for common member functions

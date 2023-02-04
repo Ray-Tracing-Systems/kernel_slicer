@@ -509,7 +509,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["HasPrefixData"]      = (a_classInfo.composPrefix.size() != 0);
   data["PrefixDataName"]     = prefixDataName;
   data["PrefixDataClass"]    = a_composImplName;
-  data["ShaderFolder2"]      = a_classInfo.shaderFolder;
+  data["ShaderFolderPrefix"] = a_classInfo.shaderFolderPrefix;
 
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";

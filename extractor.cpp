@@ -1006,6 +1006,20 @@ std::unordered_set<std::string> kslicer::MainClassInfo::ExtractTypesFromUsedCont
             res.insert(structName);
         }
       }
+      else if(c.isContainer) // (!!!) Untested branch!
+      {
+        std::string structName = kslicer::CleanTypeName(c.containerDataType);
+        auto p = a_otherDecls.find(structName);
+          if(p != a_otherDecls.end())
+            res.insert(structName);
+      }
+      else
+      {
+        std::string structName = kslicer::CleanTypeName(c.type);
+        auto p = a_otherDecls.find(structName);
+        if(p != a_otherDecls.end())
+          res.insert(structName);
+      }
     }
 
   }

@@ -206,7 +206,7 @@ protected:
   virtual void AssignBuffersToMemory(const std::vector<VkBuffer>& a_buffers, VkDeviceMemory a_mem);
 
   virtual void AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_image);
-  virtual std::string AlterShaderPath(const char* in_shaderPath) { return std::string("{{ShaderFolder2}}") + std::string(in_shaderPath); }
+  virtual std::string AlterShaderPath(const char* in_shaderPath) { return std::string("{{ShaderFolderPrefix}}") + std::string(in_shaderPath); }
 
   {{PlainMembersUpdateFunctions}}
   {{VectorMembersUpdateFunctions}}

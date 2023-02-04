@@ -867,7 +867,7 @@ namespace kslicer
     std::unordered_map<std::string, std::string> composPrefix;
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
     std::vector<const clang::CXXConstructorDecl* > ctors;
-    std::string shaderFolder = "";
+    std::string shaderFolderPrefix = "";
 
     std::vector<std::string> ignoreFolders;
     std::vector<std::string> includeCPPFolders;  
