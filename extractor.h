@@ -26,6 +26,8 @@ namespace kslicer
   std::vector< std::unordered_map<std::string, std::string> > ArgMatchTraversal(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMambers,
                                                                                 MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);
 
+  std::vector<std::string> ExtractDefines(const clang::CompilerInstance& a_compiler);                                                                               
+
 }
 
 #endif

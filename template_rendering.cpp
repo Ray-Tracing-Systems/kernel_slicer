@@ -218,7 +218,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
                                     const std::vector<kslicer::DeclInClass>& usedDecl,
                                     const clang::CompilerInstance& compiler,
                                     const uint32_t  threadsOrder[3],
-                                    const std::string& uboIncludeName, const nlohmann::json& uboJson)
+                                    const std::string& uboIncludeName, const nlohmann::json& uboJson, const std::vector<std::string>& usedDefines)
 {
   auto pShaderRewriter = a_classInfo.pShaderFuncRewriter;
 
@@ -243,6 +243,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["MainClassSuffixLowerCase"] = ToLowerCase(a_classInfo.mainClassSuffix);
   data["UseSpecConstWgSize"] = a_classInfo.pShaderCC->UseSpecConstForWgSize();
   data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
+  
+  data["Defines"] = std::vector<std::string>();
+  for(const auto& def : usedDefines)
+    data["Defines"].push_back(def);
 
   // (1) put includes
   //

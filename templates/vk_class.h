@@ -51,7 +51,7 @@ public:
   {
     {% if HasPrefixData %}
     if({{PrefixDataName}} == nullptr)
-      {{PrefixDataName}} = std::make_shared<{{PrefixDataClass}}>({{ctorDecl.PrevCall}});
+      {{PrefixDataName}} = std::make_shared<{{PrefixDataClass}}>();
     {% endif %}
   }
   {% endif %}

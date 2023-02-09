@@ -1025,3 +1025,99 @@ std::unordered_set<std::string> kslicer::MainClassInfo::ExtractTypesFromUsedCont
   }
   return res;
 }
+
+static std::unordered_set<std::string> ListPredefinedMacro()
+{
+  std::unordered_set<std::string> predefined;
+  predefined.insert("TINYSTL_NEW_H");
+  predefined.insert("stderr");
+  predefined.insert("TINYSTL_BUFFER_H");
+  predefined.insert("UINT_LEAST32_MAX");
+  predefined.insert("UINT_LEAST64_MAX");
+  predefined.insert("STD_LIMITS_H");
+  predefined.insert("TINYSTL_ARRAY_H");
+  predefined.insert("TINYSTL_STDDEF_H");
+  predefined.insert("NULL");
+  predefined.insert("STD_CMATH_H");
+  predefined.insert("uniform");
+  predefined.insert("varying");
+  predefined.insert("LITE_MATH_G");
+  predefined.insert("PUGIXML_NO_EXCEPTIONS");
+  predefined.insert("KERNEL_SLICER");
+  predefined.insert("STR_CPP11_OR_HIGHER");
+  predefined.insert("STD_CSTDINT_H");
+  predefined.insert("unix");
+  predefined.insert("linux");
+  predefined.insert("STD_STRING_HEADER");
+  predefined.insert("STD_CSTRING_H");
+  predefined.insert("INT16_MIN");
+  predefined.insert("INT8_MIN");
+  predefined.insert("INT8_MAX");
+  predefined.insert("INT64_MIN");
+  predefined.insert("INT32_MIN");
+  predefined.insert("UINT16_MAX");
+  predefined.insert("CVEX_ALIGNED");
+  predefined.insert("UINT8_MAX");
+  predefined.insert("INT64_MAX");
+  predefined.insert("INT32_MAX");
+  predefined.insert("INT16_MAX");
+  predefined.insert("INT_LEAST8_MIN");
+  predefined.insert("UINT64_MAX");
+  predefined.insert("UINT32_MAX");
+  predefined.insert("MIN");
+  predefined.insert("STR_VERSION");
+  predefined.insert("INT_LEAST16_MAX");
+  predefined.insert("ABS");
+  predefined.insert("STR_ALLOC");
+  predefined.insert("INT_LEAST8_MAX");
+  predefined.insert("INT_LEAST64_MIN");
+  predefined.insert("INT_LEAST32_MIN");
+  predefined.insert("STR_DEFSTRCAP");
+  predefined.insert("INT_LEAST16_MIN");
+  predefined.insert("MAX");
+  predefined.insert("UINT_LEAST16_MAX");
+  predefined.insert("UINT_LEAST8_MAX");
+  predefined.insert("INT_LEAST64_MAX");
+  predefined.insert("INT_LEAST32_MAX");
+  predefined.insert("TINYSTL_TRY_POD_OPTIMIZATION");
+  predefined.insert("TINYSTL_TRAITS_H");
+  predefined.insert("stdout");
+  predefined.insert("stdin");
+  predefined.insert("TINYSTL_ALLOCATOR_H");
+  predefined.insert("TINYSTL_VECTOR_H");
+  predefined.insert("TINYSTL_ALLOCATOR");
+  return predefined;
+}
+
+
+std::vector<std::string> kslicer::ExtractDefines(const clang::CompilerInstance& a_compiler)
+{
+  auto predefined = ListPredefinedMacro();
+
+  std::vector<std::string> res;
+  res.reserve(32);
+  for(auto macro = a_compiler.getPreprocessor().macro_begin(); macro != a_compiler.getPreprocessor().macro_end(); macro++) {
+    auto first = macro->first;
+    std::string name = first->getNameStart();
+    if(first->hasMacroDefinition() && (first->isReserved(a_compiler.getLangOpts()) == clang::ReservedIdentifierStatus::NotReserved)) {
+      if(!first->isPoisoned()) {
+        if(predefined.find(name) == predefined.end()) {
+          
+          const clang::MacroDirective* MD = a_compiler.getPreprocessor().getLocalMacroDirective(first);
+          const clang::MacroInfo*      MI = MD->getMacroInfo();
+
+          std::stringstream strout;
+          strout << "#define " << name.c_str() << " ";
+          for (const auto &T : MI->tokens()) {
+            std::string temp = a_compiler.getPreprocessor().getSpelling(T);
+            strout << temp.c_str();
+          }
+          
+          res.push_back(strout.str());
+        }
+      }
+    }
+  }
+
+  return res;
+}
