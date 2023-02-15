@@ -136,7 +136,6 @@ public:
 
   std::string GetStrideText(const clang::Expr* a_expr)
   {
-    //a_expr->dump();
     if(clang::isa<clang::UnaryOperator>(a_expr))
     {  
       auto uop = clang::dyn_cast<clang::UnaryOperator>(a_expr);
@@ -146,9 +145,7 @@ public:
       else
         return "1";
     }
-
     //#TODO: process += and -= expressinons, but first we must fix ast matchers for that 
-
     return "1";
   }
 

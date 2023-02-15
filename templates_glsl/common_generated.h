@@ -51,3 +51,6 @@ float copysign(float mag, float s) { return abs(mag)*sign(s); }
 #define KGEN_FLAG_DONT_SET_EXIT     4
 #define KGEN_FLAG_SET_EXIT_NEGATIVE 8
 #define KGEN_REDUCTION_LAST_STEP    16
+## for Def in Defines  
+{{Def}}
+## endfor

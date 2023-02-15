@@ -187,18 +187,19 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
       if(pos == std::string::npos && processFuncMember)
         return false;
 
-      assert(pos != std::string::npos);
-      const std::string memberName = exprContent.substr(pos+2);
-  
-      if(m_codeInfo->megakernelRTV && m_codeInfo->pShaderCC->IsGLSL()) 
-      {
-        out_text = baseName + "." + memberName;
-        return true;
-      }
-      else if(needOffset)
-      {
-        out_text = baseName + "[" + m_fakeOffsetExp + "]." + memberName;
-        return true;
+      if(pos != std::string::npos)
+      {    
+        const std::string memberName = exprContent.substr(pos+2);
+        if(m_codeInfo->megakernelRTV && m_codeInfo->pShaderCC->IsGLSL()) 
+        {
+          out_text = baseName + "." + memberName;
+          return true;
+        }
+        else if(needOffset)
+        {
+          out_text = baseName + "[" + m_fakeOffsetExp + "]." + memberName;
+          return true;
+        }
       }
     }
     else if(!isKernel && m_codeInfo->pShaderCC->IsGLSL()) // for common member functions
@@ -391,6 +392,7 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
     const std::string textOrig = GetRangeSourceCode(call->getSourceRange(), m_compiler);
     const std::string text     = FunctionCallRewriteNoName(call);
     const std::string textRes  = VectorTypeContructorReplace(fname, text);
+    //std::cout << "[Kernel::CXXConstructExpr]" << fname.c_str() << std::endl;
 
     if(isa<CXXTemporaryObjectExpr>(call) || IsGLSL())
     {
@@ -425,17 +427,18 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
   const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
-  
+
   // Get name of "this" type; we should check wherther this member is std::vector<T>  
   //
   const clang::QualType qt = f->getObjectType();
   const auto& thisTypeName = qt.getAsString();
   CXXRecordDecl* typeDecl  = f->getRecordDecl(); 
   const std::string cleanTypeName = kslicer::CleanTypeName(thisTypeName);
-
+  
   const bool isVector   = (typeDecl != nullptr && isa<ClassTemplateSpecializationDecl>(typeDecl)) && thisTypeName.find("vector<") != std::string::npos; 
   const bool isRTX      = (thisTypeName == "struct ISceneObject") && (fname.find("RayQuery_") != std::string::npos);
-  const bool isPrefixed = (m_codeInfo->composPrefix.find(cleanTypeName) != m_codeInfo->composPrefix.end());
+  const auto pPrefix    = m_codeInfo->composPrefix.find(cleanTypeName);
+  const bool isPrefixed = (pPrefix != m_codeInfo->composPrefix.end());
   
   if(isVector && WasNotRewrittenYet(f))
   {
@@ -487,9 +490,15 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
   }
   else if((isRTX || isPrefixed) && WasNotRewrittenYet(f))
   {
-    const std::string exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
-    const auto posOfPoint         = exprContent.find("->");
-    const std::string memberNameA = exprContent.substr(0, posOfPoint);
+    const auto exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
+    const auto posOfPoint  = exprContent.find("->"); // seek for "m_pImpl->Func()" 
+    
+    std::string memberNameA;
+    if(isPrefixed && posOfPoint == std::string::npos)   // Func() inside composed class of m_pImpl
+      memberNameA = pPrefix->second;
+    else
+      memberNameA = exprContent.substr(0, posOfPoint);  // m_pImpl->Func() inside main class
+
     std::string resCallText = memberNameA + "_" + fname + "(";
     for(unsigned i=0;i<f->getNumArgs(); i++)
     {
@@ -890,6 +899,8 @@ void kslicer::KernelRewriter::DetectTextureAccess(CXXOperatorCallExpr* expr)
 
 bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(CXXOperatorCallExpr* expr)
 {
+  std::string debugTxt = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); 
+
   DetectTextureAccess(expr);
   auto opRange = expr->getSourceRange();
   if(opRange.getEnd()   <= m_currKernel.loopInsides.getBegin() || 

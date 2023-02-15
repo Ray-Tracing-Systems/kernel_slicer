@@ -86,6 +86,13 @@ namespace LiteMath
     return res; 
   }
 
+  static inline float as_float(unsigned int x)
+  {
+    float res; 
+    memcpy((void*)&res, (void*)&x, sizeof(float)); // modern C++ allow only this way, speed ik ok, check assembly with godbolt
+    return res; 
+  }
+
   static inline int   as_int32(float x)  { return as_int(x);    }
   static inline uint  as_uint32(float x) { return as_uint(x); }
   static inline float as_float32(int x)  { return as_float(x);  }

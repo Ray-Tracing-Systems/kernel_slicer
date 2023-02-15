@@ -19,7 +19,7 @@ namespace kslicer
                                        const std::vector<kslicer::DeclInClass>& usedDecl,
                                        const clang::CompilerInstance& compiler,
                                        const uint32_t    threadsOrder[3],
-                                       const std::string& uboIncludeName, const nlohmann::json& uboJson);
+                                       const std::string& uboIncludeName, const nlohmann::json& uboJson, const std::vector<std::string>& usedDefines);
 
   nlohmann::json PrepareUBOJson(MainClassInfo& a_classInfo, 
                                 const std::vector<kslicer::DataMemberInfo>& a_dataMembers,

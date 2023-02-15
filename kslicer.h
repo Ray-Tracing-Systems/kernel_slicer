@@ -490,6 +490,7 @@ namespace kslicer
     std::string        type;
     clang::SourceRange srcRange;
     uint64_t           srcHash;
+    clang::TypeDecl*   astNode = nullptr;
     uint32_t           order = 0; ///<! to sort them before put in generated kernels source code
     DECL_IN_CLASS      kind  = DECL_IN_CLASS::DECL_UNKNOWN;
     bool               extracted = false;
@@ -518,7 +519,6 @@ namespace kslicer
                      m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo)
     { 
       m_pRewrittenNodes = std::make_shared< std::unordered_set<uint64_t> >();
-      m_predefinedTypes = ListPredefinedMathTypes();
     }
 
     virtual ~FunctionRewriter(){}
@@ -564,8 +564,7 @@ namespace kslicer
     MainClassInfo*                 m_codeInfo;
     kslicer::FuncData*             m_pCurrFuncInfo = nullptr;
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    
-    std::unordered_set<std::string> m_predefinedTypes;
+  
 
     void MarkRewritten(const clang::Stmt* expr);
     bool WasNotRewrittenYet(const clang::Stmt* expr);
@@ -868,6 +867,7 @@ namespace kslicer
     std::unordered_map<std::string, std::string> composPrefix;
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
     std::vector<const clang::CXXConstructorDecl* > ctors;
+    std::string shaderFolderPrefix = "";
 
     std::vector<std::string> ignoreFolders;
     std::vector<std::string> includeCPPFolders;  
@@ -1118,6 +1118,8 @@ namespace kslicer
   std::string CutOffFileExt(const std::string& a_filePath);
   std::string CutOffStructClass(const std::string& a_typeName);
   void        ReplaceOpenCLBuiltInTypes(std::string& a_typeName);
+
+  std::unordered_map<std::string, std::string> ListGLSLVectorReplacements();
 }
 
 std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::string& fileName, std::vector<std::string>& allFiles);

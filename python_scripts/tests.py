@@ -157,6 +157,8 @@ def run_test(sample_config: SampleConfig, test_config: TestsConfig, workdir):
         Status.FAILED: "\"{}\" has errors".format(sample_config.name)
     }
     Log().status_info(final_msg[final_status], status=final_status)
+    if final_status == Status.FAILED:
+        Log().info("reason: " + str([final_status, compare_generated_images(), compare_generated_json_files()]))
     os.chdir(workdir)
 
 

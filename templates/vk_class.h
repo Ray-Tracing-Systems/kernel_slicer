@@ -39,11 +39,26 @@ public:
 
   {% for ctorDecl in Constructors %}
   {% if ctorDecl.NumParams == 0 %}
-  {{ctorDecl.ClassName}}{{MainClassSuffix}}() {}
+  {{ctorDecl.ClassName}}{{MainClassSuffix}}() 
+  {
+    {% if HasPrefixData %}
+    if({{PrefixDataName}} == nullptr)
+      {{PrefixDataName}} = std::make_shared<{{PrefixDataClass}}>();
+    {% endif %}
+  }
   {% else %}
-  {{ctorDecl.ClassName}}{{MainClassSuffix}}({{ctorDecl.Params}}) : {{ctorDecl.ClassName}}({{ctorDecl.PrevCall}}) {}
+  {{ctorDecl.ClassName}}{{MainClassSuffix}}({{ctorDecl.Params}}) : {{ctorDecl.ClassName}}({{ctorDecl.PrevCall}}) 
+  {
+    {% if HasPrefixData %}
+    if({{PrefixDataName}} == nullptr)
+      {{PrefixDataName}} = std::make_shared<{{PrefixDataClass}}>();
+    {% endif %}
+  }
   {% endif %}
   {% endfor %}
+  {% if HasNameFunc %}
+  const char* Name() const override { return "{{MainClassName}}{{MainClassSuffix}}";}
+  {% endif %}
   virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount);
   virtual void SetVulkanContext(vk_utils::VulkanContext a_ctx) { m_ctx = a_ctx; }
 
@@ -203,7 +218,7 @@ protected:
   virtual void AssignBuffersToMemory(const std::vector<VkBuffer>& a_buffers, VkDeviceMemory a_mem);
 
   virtual void AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_image);
-  virtual std::string AlterShaderPath(const char* in_shaderPath) { return std::string(in_shaderPath); }
+  virtual std::string AlterShaderPath(const char* in_shaderPath) { return std::string("{{ShaderFolderPrefix}}") + std::string(in_shaderPath); }
 
   {{PlainMembersUpdateFunctions}}
   {{VectorMembersUpdateFunctions}}

@@ -9,7 +9,7 @@
 #include <vk_copy.h>
 #include <vk_images.h>
 
-#include "../loader_utils/hydraxml.h"
+#include "hydraxml.h"
 
 
 struct InstanceInfo

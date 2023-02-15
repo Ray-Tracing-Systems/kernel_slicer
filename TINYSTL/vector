@@ -337,6 +337,36 @@ namespace std {
 	}
 }
 
+template <class T, int N>
+class aligned
+{
+public:
+  typedef T value_type;
+  typedef T& reference;
+  typedef const T& const_reference;
+  typedef T* pointer;
+  typedef const T* const_pointer;
+  typedef size_t size_type;
+  typedef ptrdiff_t difference_type;
+
+  pointer allocate(size_type n, const void* hint = nullptr);
+  void deallocate(void* p, size_type n);
+
+  template <class U> struct rebind { typedef aligned<U,N> other; };
+  inline aligned() throw();
+  inline aligned(const aligned&);
+  template <class U> inline aligned(const aligned<U,N>&);
+  inline ~aligned();
+
+  inline pointer address(reference r);
+  inline const_pointer address(const_reference r);
+  inline void construct(pointer p, const_reference value);
+  inline void destroy(pointer p);
+  inline size_type max_size() const;
+  inline bool operator==(const aligned&);
+  inline bool operator!=(const aligned& rhs);
+};
+
 #include <cstdint>
 
 #endif // TINYSTL_VECTOR_H

@@ -96,6 +96,7 @@ int main(int argc, const char **argv)
   std::string shaderCCName    = "clspv";
   std::string hintFile        = "";
   std::string suffix          = "_Generated";
+  std::string shaderFolderPrefix    = "";
   
   std::string composeAPIName  = "";
   std::string composeImplName = "";
@@ -127,6 +128,9 @@ int main(int argc, const char **argv)
 
   if(params.find("-shaderCC") != params.end())
     shaderCCName = params["-shaderCC"];
+  
+  if(params.find("-shaderFolderPrefix") != params.end())
+    shaderFolderPrefix = params["-shaderFolderPrefix"];
 
   if(suffix == "_Generated" && (shaderCCName == "ispc") || (shaderCCName == "ISPC"))
     suffix = "_ISPC";
@@ -246,6 +250,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.halfFloatTextures  = halfFloatTextures;
   inputCodeInfo.megakernelRTV      = useMegakernel;
   inputCodeInfo.mainClassSuffix    = suffix;
+  inputCodeInfo.shaderFolderPrefix = shaderFolderPrefix;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -298,6 +303,8 @@ int main(int argc, const char **argv)
 
   compiler.createPreprocessor(clang::TU_Complete);
   compiler.getPreprocessorOpts().UsePredefines = true;
+  //auto definitions = compiler.getPreprocessor().getPredefines();
+  //std::cout << definitions.c_str() << std::endl;
   //compiler.getPreprocessorOpts().addMacroDef("KERNEL_SLICER"); // IT DOES NOT WORKS FOR SOME REASON!!! 
   compiler.createASTContext();
 
@@ -372,6 +379,7 @@ int main(int argc, const char **argv)
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
   compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
   
+
   std::string composMemberName = "";
   auto pComposAPI  = firstPassData.rv.m_composedClassInfo.find(composeAPIName);
   auto pComposImpl = firstPassData.rv.m_composedClassInfo.find(composeImplName);
@@ -526,6 +534,7 @@ int main(int argc, const char **argv)
   std::vector<kslicer::FuncData> usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
   std::vector<kslicer::DeclInClass> usedDecls           = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
   
+  
   for(const auto& usedDecl : usedDecls) // merge usedDecls with generalDecls
   {
     bool found = false;
@@ -540,6 +549,8 @@ int main(int argc, const char **argv)
     if(!found)
       generalDecls.push_back(usedDecl);
   }
+
+  std::vector<std::string> usedDefines = kslicer::ExtractDefines(compiler);
   
   std::cout << "}" << std::endl;
   std::cout << std::endl;
@@ -923,7 +934,7 @@ int main(int argc, const char **argv)
       k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
   }
   
-  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO);
+  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO, usedDefines);
   if(inputCodeInfo.pShaderCC->IsISPC()) {
     json["Constructors"]        = jsonCPP["Constructors"];
     json["HasCommitDeviceFunc"] = jsonCPP["HasCommitDeviceFunc"];

@@ -24,8 +24,7 @@ public:
 
   bool VisitCallExpr(clang::CallExpr* call)
   {
-    
-    //std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+    std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
     const clang::FunctionDecl* f = call->getDirectCallee();
     if(f == nullptr)
       return true;
@@ -312,7 +311,7 @@ std::vector<kslicer::ArgMatch> kslicer::MatchCallArgsForKernel(clang::CallExpr* 
   if(fDecl == nullptr || clang::isa<clang::CXXOperatorCallExpr>(call)) 
     return result;
   
-  std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), a_compiler);
+  //std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), a_compiler);
 
   for(size_t i=0;i<call->getNumArgs();i++)
   {
@@ -724,8 +723,7 @@ void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::st
   for(auto tn : a_additionalTypes)
   {
     std::string typeName = kslicer::CleanTypeName(tn);
-    if(declsByName.find(typeName) == declsByName.end() && 
-       internalTypes.find(typeName) == internalTypes.end())
+    if(declsByName.find(typeName) == declsByName.end() && internalTypes.find(typeName) == internalTypes.end())
     {
       const clang::TypeDecl* node = nullptr;
       for(auto memb : a_allDataMembers)
@@ -742,6 +740,10 @@ void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::st
       if(node != nullptr)
         typesToProcess.push(TypePair(typeName, node)); 
     }
+    
+    const auto pDecl = a_otherDecls.find(typeName);
+    if(pDecl != a_otherDecls.end())
+      typesToProcess.push(TypePair(typeName, pDecl->second.astNode)); 
   }
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -988,6 +990,134 @@ std::unordered_set<std::string> kslicer::MainClassInfo::ExtractTypesFromUsedCont
           res.insert(pFound->second.containerDataType);
       }
     }
+    
+    for(const auto& c : k.second.args)
+    {
+      if(c.IsPointer())
+      {
+        std::string structName = c.type;
+        if(ReplaceFirst(structName, "struct ", ""))
+        {
+          ReplaceFirst(structName, "*", "");
+          while(ReplaceFirst(structName, " ", ""))
+            ;
+          auto p = a_otherDecls.find(structName);
+          if(p != a_otherDecls.end())
+            res.insert(structName);
+        }
+      }
+      else if(c.isContainer) // (!!!) Untested branch!
+      {
+        std::string structName = kslicer::CleanTypeName(c.containerDataType);
+        auto p = a_otherDecls.find(structName);
+          if(p != a_otherDecls.end())
+            res.insert(structName);
+      }
+      else
+      {
+        std::string structName = kslicer::CleanTypeName(c.type);
+        auto p = a_otherDecls.find(structName);
+        if(p != a_otherDecls.end())
+          res.insert(structName);
+      }
+    }
+
   }
+  return res;
+}
+
+static std::unordered_set<std::string> ListPredefinedMacro()
+{
+  std::unordered_set<std::string> predefined;
+  predefined.insert("TINYSTL_NEW_H");
+  predefined.insert("stderr");
+  predefined.insert("TINYSTL_BUFFER_H");
+  predefined.insert("UINT_LEAST32_MAX");
+  predefined.insert("UINT_LEAST64_MAX");
+  predefined.insert("STD_LIMITS_H");
+  predefined.insert("TINYSTL_ARRAY_H");
+  predefined.insert("TINYSTL_STDDEF_H");
+  predefined.insert("NULL");
+  predefined.insert("STD_CMATH_H");
+  predefined.insert("uniform");
+  predefined.insert("varying");
+  predefined.insert("LITE_MATH_G");
+  predefined.insert("PUGIXML_NO_EXCEPTIONS");
+  predefined.insert("KERNEL_SLICER");
+  predefined.insert("STR_CPP11_OR_HIGHER");
+  predefined.insert("STD_CSTDINT_H");
+  predefined.insert("unix");
+  predefined.insert("linux");
+  predefined.insert("STD_STRING_HEADER");
+  predefined.insert("STD_CSTRING_H");
+  predefined.insert("INT16_MIN");
+  predefined.insert("INT8_MIN");
+  predefined.insert("INT8_MAX");
+  predefined.insert("INT64_MIN");
+  predefined.insert("INT32_MIN");
+  predefined.insert("UINT16_MAX");
+  predefined.insert("CVEX_ALIGNED");
+  predefined.insert("UINT8_MAX");
+  predefined.insert("INT64_MAX");
+  predefined.insert("INT32_MAX");
+  predefined.insert("INT16_MAX");
+  predefined.insert("INT_LEAST8_MIN");
+  predefined.insert("UINT64_MAX");
+  predefined.insert("UINT32_MAX");
+  predefined.insert("MIN");
+  predefined.insert("STR_VERSION");
+  predefined.insert("INT_LEAST16_MAX");
+  predefined.insert("ABS");
+  predefined.insert("STR_ALLOC");
+  predefined.insert("INT_LEAST8_MAX");
+  predefined.insert("INT_LEAST64_MIN");
+  predefined.insert("INT_LEAST32_MIN");
+  predefined.insert("STR_DEFSTRCAP");
+  predefined.insert("INT_LEAST16_MIN");
+  predefined.insert("MAX");
+  predefined.insert("UINT_LEAST16_MAX");
+  predefined.insert("UINT_LEAST8_MAX");
+  predefined.insert("INT_LEAST64_MAX");
+  predefined.insert("INT_LEAST32_MAX");
+  predefined.insert("TINYSTL_TRY_POD_OPTIMIZATION");
+  predefined.insert("TINYSTL_TRAITS_H");
+  predefined.insert("stdout");
+  predefined.insert("stdin");
+  predefined.insert("TINYSTL_ALLOCATOR_H");
+  predefined.insert("TINYSTL_VECTOR_H");
+  predefined.insert("TINYSTL_ALLOCATOR");
+  return predefined;
+}
+
+
+std::vector<std::string> kslicer::ExtractDefines(const clang::CompilerInstance& a_compiler)
+{
+  auto predefined = ListPredefinedMacro();
+
+  std::vector<std::string> res;
+  res.reserve(32);
+  for(auto macro = a_compiler.getPreprocessor().macro_begin(); macro != a_compiler.getPreprocessor().macro_end(); macro++) {
+    auto first = macro->first;
+    std::string name = first->getNameStart();
+    if(first->hasMacroDefinition() && (first->isReserved(a_compiler.getLangOpts()) == clang::ReservedIdentifierStatus::NotReserved)) {
+      if(!first->isPoisoned()) {
+        if(predefined.find(name) == predefined.end()) {
+          
+          const clang::MacroDirective* MD = a_compiler.getPreprocessor().getLocalMacroDirective(first);
+          const clang::MacroInfo*      MI = MD->getMacroInfo();
+
+          std::stringstream strout;
+          strout << "#define " << name.c_str() << " ";
+          for (const auto &T : MI->tokens()) {
+            std::string temp = a_compiler.getPreprocessor().getSpelling(T);
+            strout << temp.c_str();
+          }
+          
+          res.push_back(strout.str());
+        }
+      }
+    }
+  }
+
   return res;
 }

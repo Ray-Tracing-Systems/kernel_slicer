@@ -178,7 +178,7 @@ std::string kslicer::GLSLCompiler::RewritePushBack(const std::string& memberName
 ////////////////////////////////////////  GLSLFunctionRewriter  ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
 
-std::unordered_map<std::string, std::string> ListGLSLVectorReplacements()
+std::unordered_map<std::string, std::string> kslicer::ListGLSLVectorReplacements()
 {
   std::unordered_map<std::string, std::string> m_vecReplacements;
   m_vecReplacements["float2"] = "vec2";
@@ -231,7 +231,7 @@ std::unordered_map<std::string, std::string> ListGLSLVectorReplacements()
 
 std::unordered_set<std::string> kslicer::ListPredefinedMathTypes()
 {
-  auto types = ListGLSLVectorReplacements();
+  auto types = kslicer::ListGLSLVectorReplacements();
   std::unordered_set<std::string> res;
   for(auto p : types)
   {
@@ -293,7 +293,7 @@ public:
   
   GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) : FunctionRewriter(R,a_compiler,a_codeInfo)
   { 
-    m_vecReplacements  = ListGLSLVectorReplacements();
+    m_vecReplacements  = kslicer::ListGLSLVectorReplacements();
     m_vecReplacements2 = SortByKeysByLen(m_vecReplacements);
    
     m_funReplacements["fmin"]  = "min";
@@ -588,11 +588,24 @@ std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
           }
         }
       }
-
+      
+      const auto originalText = kslicer::GetRangeSourceCode(pParam->getSourceRange(), m_compiler);  
+     
       if(pointerToGlobalMemory)
         result += std::string("uint ") + pParam->getNameAsString() + "Offset";
+      else if(originalText.find("[") != std::string::npos && originalText.find("]") != std::string::npos) // fixed size arrays
+      {
+        if(typeOfParam->getPointeeType().isConstQualified())
+        {
+          ReplaceFirst(typeStr, "const ", "");
+          result += originalText;
+        }
+        else
+          result += std::string("inout ") + originalText;
+      }
       else
       {
+        std::string paramName = pParam->getNameAsString();
         ReplaceFirst(typeStr, "*", "");
         if(typeOfParam->getPointeeType().isConstQualified())
         {
@@ -718,11 +731,13 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     return true;
 
   const std::string fname = fDecl->getNameInfo().getName().getAsString();
+  ///////////////////////////////////////////////////////////////////////
   std::string makeSmth = "";
   if(fname.substr(0, 5) == "make_")
     makeSmth = fname.substr(5);
-
-  const std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+  auto pVecMaker = m_vecReplacements.find(makeSmth);
+  ///////////////////////////////////////////////////////////////////////
+  //const std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
 
   auto pFoundSmth = m_funReplacements.find(fname);
   if(fname == "to_float3" && call->getNumArgs() == 1 && WasNotRewrittenYet(call) )
@@ -741,9 +756,9 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       MarkRewritten(call);
     }
   }
-  else if(makeSmth != "" && call->getNumArgs() !=0 && WasNotRewrittenYet(call) )
+  else if(makeSmth != "" && pVecMaker != m_vecReplacements.end() && call->getNumArgs() !=0 && WasNotRewrittenYet(call) )
   {
-    std::string rewrittenRes = m_vecReplacements[makeSmth] + "(" + CompleteFunctionCallRewrite(call);
+    std::string rewrittenRes = pVecMaker->second + "(" + CompleteFunctionCallRewrite(call);
     m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
     MarkRewritten(call);
   }
@@ -762,13 +777,13 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     m_rewriter.ReplaceText(call->getSourceRange(), "mix(" + A + ", " + B + ", " + C + ")");
     MarkRewritten(call);
   }
-  else if(fname == "as_int32" && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
+  else if((fname == "as_int32" || fname == "as_int") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
   {
     const std::string text = RecursiveRewrite(call->getArg(0));
     m_rewriter.ReplaceText(call->getSourceRange(), "floatBitsToInt(" + text + ")");
     MarkRewritten(call);
   }
-  else if(fname == "as_uint32" && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
+  else if((fname == "as_uint32" || fname == "as_uint") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
   {
     const std::string text = RecursiveRewrite(call->getArg(0));
     m_rewriter.ReplaceText(call->getSourceRange(), "floatBitsToUint(" + text + ")");
@@ -776,11 +791,11 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   }
   else if((fname == "as_float" || fname == "as_float32")  && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
   {
-    const std::string text = RecursiveRewrite(call->getArg(0));
-    const auto qtOfArg     = call->getArg(0)->getType();
+    const std::string text  = RecursiveRewrite(call->getArg(0));
+    const auto qtOfArg      = call->getArg(0)->getType();
+    const std::string tname = kslicer::CleanTypeName(qtOfArg.getAsString());
     
-    if(std::string(qtOfArg.getAsString()) == "uint"     || std::string(qtOfArg.getAsString()) == "const uint" || 
-       std::string(qtOfArg.getAsString()) == "uint32_t" || std::string(qtOfArg.getAsString()) == "const uint32_t")
+    if(tname == "uint" || tname == "const uint" || tname == "uint32_t" || tname == "const uint32_t" || tname == "unsigned" || tname == "const unsigned")
       m_rewriter.ReplaceText(call->getSourceRange(), "uintBitsToFloat(" + text + ")");
     else
       m_rewriter.ReplaceText(call->getSourceRange(), "intBitsToFloat(" + text + ")");
@@ -810,7 +825,7 @@ bool GLSLFunctionRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special 
 {
   if(!decl->isSingleDecl())
   {
-    const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
+    //const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
     std::string varType = "";
     std::string resExpr = "";
     for(auto it = decl->decl_begin(); it != decl->decl_end(); ++it)
@@ -921,7 +936,7 @@ bool GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* c
     return true;
 
   clang::Expr* next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr(); 
-  std::string dbgTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
+  std::string debugTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
   
   //https://code.woboq.org/llvm/clang/include/clang/AST/OperationKinds.def.html
   if(kind != clang::CK_IntegralCast && kind != clang::CK_IntegralToFloating && kind != clang::CK_FloatingToIntegral) // in GLSL we don't have implicit casts
@@ -1258,7 +1273,7 @@ bool GLSLKernelRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
     return kslicer::KernelRewriter::VisitUnaryOperator_Impl(expr);
   
   const auto op = expr->getOpcodeStr(expr->getOpcode());
-  std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
+  //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
   if(op == "*")
   {
     auto subExpr           = expr->getSubExpr();
@@ -1393,11 +1408,11 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
   clang::CXXMethodDecl* fDecl = call->getMethodDecl();  
   if(fDecl != nullptr && WasNotRewrittenYet(call))  
   {
-    std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+    //std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
     std::string fname     = fDecl->getNameInfo().getName().getAsString();
     clang::Expr* pTexName =	call->getImplicitObjectArgument(); 
     std::string objName   = kslicer::GetRangeSourceCode(pTexName->getSourceRange(), m_compiler);     
-  
+
     if(fname == "sample" || fname == "Sample")
     {
       bool needRewrite = true;
