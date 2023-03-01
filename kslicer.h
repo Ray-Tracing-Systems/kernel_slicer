@@ -873,6 +873,7 @@ namespace kslicer
     std::vector<std::string> processFolders; ///<! in these folders files are processed to take functions and structures from them to shaders  
     std::vector<std::string> ignoreFiles;    ///<! exception to 'processFolders'
     std::vector<std::string> processFiles;   ///<! exception to 'ignoreFolders'
+    std::vector<std::string> cppIncudes;     ///<! additional includes which we need to insert in generated cpp file 
     bool NeedToProcessDeclInFile(const std::string a_fileName) const;
     bool IsInExcludedFolder(const std::string& fileName);
    
@@ -1128,8 +1129,9 @@ namespace kslicer
 std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::string& fileName, 
                                                                    std::vector<std::string>& allFiles,
                                                                    std::vector<std::string>& ignoreFiles,
-                                                                   std::vector<std::string>& processFiles);
-                                                                   
+                                                                   std::vector<std::string>& processFiles,
+                                                                   std::vector<std::string>& cppIncludes);
+
 std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params);
 
 std::string GetFolderPath(const std::string& a_filePath);

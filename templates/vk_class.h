@@ -20,6 +20,9 @@ using namespace LiteMath;
 {% endif %}
 
 #include "{{MainInclude}}"
+{% for Include in AdditionalIncludes %}
+#include "{{Include}}"
+{% endfor %}
 
 ## for Decl in ClassDecls  
 {% if Decl.InClass and Decl.IsType %}

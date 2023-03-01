@@ -87,8 +87,10 @@ int main(int argc, const char **argv)
   std::vector<std::string> ignoreFiles;
   std::vector<std::string> processFiles;
   std::vector<std::string> allFiles;
+  std::vector<std::string> cppIncludesAdditional;
   std::string fileName;
-  auto params = ReadCommandLineParams(argc, argv, fileName, allFiles, ignoreFiles, processFiles);
+  auto params = ReadCommandLineParams(argc, argv, fileName, 
+                                      allFiles, ignoreFiles, processFiles, cppIncludesAdditional);
   
   std::string mainFolderPath  = GetFolderPath(fileName);
   std::string mainClassName   = "TestClass";
@@ -232,7 +234,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.processFolders = processFolders; // set common C/C++ folders
   inputCodeInfo.ignoreFiles    = ignoreFiles;    // set exceptions for common C/C++ folders (i.e. processFolders)
   inputCodeInfo.processFiles   = processFiles;   // set exceptions for shader folders (i.e. ignoreFolders)
-
+  inputCodeInfo.cppIncudes     = cppIncludesAdditional;
 
   if(shaderCCName == "glsl" || shaderCCName == "GLSL")
   {

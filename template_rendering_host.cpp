@@ -490,6 +490,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   json data;
   data["MainInclude"]        = mainInclude; 
+  data["AdditionalIncludes"] = std::vector<std::string>();
+  for(auto file : a_classInfo.cppIncudes)
+    data["AdditionalIncludes"].push_back(file);
   data["UBOIncl"]            = uboIncludeName;
   data["MainClassName"]      = a_classInfo.mainClassName;
   data["MainClassSuffix"]    = a_classInfo.mainClassSuffix;
