@@ -127,7 +127,10 @@ std::string ToLowerCase(std::string a_str)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::string& fileName, std::vector<std::string>& allFiles)
+std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::string& fileName, 
+                                                                   std::vector<std::string>& allFiles,
+                                                                   std::vector<std::string>& ignoreFiles,
+                                                                   std::vector<std::string>& processFiles)
 {
   std::unordered_map<std::string, std::string> cmdLineParams;
   for(int i=0; i<argc; i++)
@@ -137,7 +140,11 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
     const bool isDefine = key.size() > 1 && key.substr(0,2) == "-D";
     const bool isKey    = key.size() > 0 && key[0] == '-';
     
-    if(key != "-v" && !isDefine && isKey) // exclude special "-IfoldePath" form, exclude "-v"
+    if(key == "-ignore")
+      ignoreFiles.push_back(argv[i+1]);
+    else if (key == "-process")
+      processFiles.push_back(argv[i+1]);
+    else if(key != "-v" && !isDefine && isKey) // exclude special "-IfoldePath" form, exclude "-v"
     {
       if(i != argc-1) // not last argument
       {

@@ -869,8 +869,10 @@ namespace kslicer
     std::vector<const clang::CXXConstructorDecl* > ctors;
     std::string shaderFolderPrefix = "";
 
-    std::vector<std::string> ignoreFolders;
-    std::vector<std::string> processFolders;  
+    std::vector<std::string> ignoreFolders;  ///<! in these folders files are ignored
+    std::vector<std::string> processFolders; ///<! in these folders files are processed to take functions and structures from them to shaders  
+    std::vector<std::string> ignoreFiles;    ///<! exception to 'processFolders'
+    std::vector<std::string> processFiles;   ///<! exception to 'ignoreFolders'
     bool NeedToProcessDeclInFile(const std::string a_fileName) const;
     bool IsInExcludedFolder(const std::string& fileName);
    
@@ -1123,7 +1125,11 @@ namespace kslicer
   std::unordered_map<std::string, std::string> ListGLSLVectorReplacements();
 }
 
-std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::string& fileName, std::vector<std::string>& allFiles);
+std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::string& fileName, 
+                                                                   std::vector<std::string>& allFiles,
+                                                                   std::vector<std::string>& ignoreFiles,
+                                                                   std::vector<std::string>& processFiles);
+                                                                   
 std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params);
 
 std::string GetFolderPath(const std::string& a_filePath);

@@ -83,10 +83,12 @@ int main(int argc, const char **argv)
   std::cout << std::endl;
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+  
+  std::vector<std::string> ignoreFiles;
+  std::vector<std::string> processFiles;
   std::vector<std::string> allFiles;
   std::string fileName;
-  auto params = ReadCommandLineParams(argc, argv, fileName, allFiles);
+  auto params = ReadCommandLineParams(argc, argv, fileName, allFiles, ignoreFiles, processFiles);
   
   std::string mainFolderPath  = GetFolderPath(fileName);
   std::string mainClassName   = "TestClass";
@@ -179,8 +181,8 @@ int main(int argc, const char **argv)
     suffix = params["-suffix"];
 
   std::unordered_set<std::string> values;
-  std::vector<std::string> includeFolderList;
-  std::vector<std::string> includeFolderList2;
+  std::vector<std::string> ignoreFolders;
+  std::vector<std::string> processFolders;
   for(auto p : params) 
   {
     values.insert(p.second);
@@ -188,17 +190,17 @@ int main(int argc, const char **argv)
     std::transform(folderT.begin(), folderT.end(), folderT.begin(), [](unsigned char c){ return std::tolower(c); });
 
     if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I' && folderT == "ignore")
-      includeFolderList.push_back(p.first.substr(2));
+      ignoreFolders.push_back(p.first.substr(2));
     else if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I' && folderT == "process")
-      includeFolderList2.push_back(p.first.substr(2));
+      processFolders.push_back(p.first.substr(2));
   }
 
   // make specific checks to be sure user don't include these files to hit project as normal files
   //
   {
-    auto excludeFolders = includeFolderList2;
-    excludeFolders.push_back(mainFolderPath);
-    kslicer::CheckInterlanIncInExcludedFolders(excludeFolders);
+    auto processFolders2 = processFolders;
+    processFolders2.push_back(mainFolderPath);
+    kslicer::CheckInterlanIncInExcludedFolders(processFolders2);
   }
 
   std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params);  
@@ -226,8 +228,11 @@ int main(int argc, const char **argv)
     exit(0);
   }
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
-  inputCodeInfo.ignoreFolders  = includeFolderList;  // set shader folders
-  inputCodeInfo.processFolders = includeFolderList2; // set common C/C++ folders
+  inputCodeInfo.ignoreFolders  = ignoreFolders;  // set shader folders
+  inputCodeInfo.processFolders = processFolders; // set common C/C++ folders
+  inputCodeInfo.ignoreFiles    = ignoreFiles;    // set exceptions for common C/C++ folders (i.e. processFolders)
+  inputCodeInfo.processFiles   = processFiles;   // set exceptions for shader folders (i.e. ignoreFolders)
+
 
   if(shaderCCName == "glsl" || shaderCCName == "GLSL")
   {
@@ -941,7 +946,7 @@ int main(int argc, const char **argv)
     json["ClassVars"]           = jsonCPP["ClassVars"];
     json["ClassVectorVars"]     = jsonCPP["ClassVectorVars"];
     json["MainFunctions"]       = jsonCPP["MainFunctions"];
-    json["MainInclude"]         = jsonCPP["Includes"];
+    json["MainInclude"]         = jsonCPP["MainInclude"];
   }
   inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo);
 

@@ -668,7 +668,7 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
 bool kslicer::MainClassInfo::IsInExcludedFolder(const std::string& fileName)
 {
   bool exclude = false;
-  for(auto folder : this->ignoreFolders)       //
+  for(auto folder : this->ignoreFolders)  //
   {
     if(fileName.find(folder) != std::string::npos)
     {
@@ -676,6 +676,19 @@ bool kslicer::MainClassInfo::IsInExcludedFolder(const std::string& fileName)
       break;
     }
   }
+
+  if(exclude) // now check exception files
+  {
+    for(auto file : this->processFiles)
+    {
+      if(file.find(fileName) != std::string::npos)
+      {
+        exclude = false;
+        break;
+      }
+    }
+  }
+
   return exclude;
 }
 
@@ -705,6 +718,32 @@ bool kslicer::MainClassInfo::NeedToProcessDeclInFile(const std::string a_fileNam
       }
     }
   }
+  
+  // now process exceptions
+  //
+  if(needInsertToKernels)
+  {
+    for(auto file : this->ignoreFiles)
+    {
+      if(file.find(a_fileName) != std::string::npos)
+      {
+        needInsertToKernels = false;
+        break;
+      }
+    }
+  }
+  else if(!needInsertToKernels) 
+  {
+    for(auto file : this->processFiles)
+    {
+      if(file.find(a_fileName) != std::string::npos)
+      {
+        needInsertToKernels = true;
+        break;
+      }
+    }
+  }
+  
 
   return needInsertToKernels;
 }

@@ -19,7 +19,7 @@ using LiteImage::Sampler;
 using namespace LiteMath;
 {% endif %}
 
-{{Includes}}
+#include "{{MainInclude}}"
 
 ## for Decl in ClassDecls  
 {% if Decl.InClass and Decl.IsType %}

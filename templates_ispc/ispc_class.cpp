@@ -5,7 +5,7 @@
 #include <cassert>
 #include <chrono>
 
-{{MainInclude}}
+#include "{{MainInclude}}"
 #include "{{MainISPCFile}}"
 ## for Decl in ClassDecls  
 {% if Decl.InClass and Decl.IsType %}
