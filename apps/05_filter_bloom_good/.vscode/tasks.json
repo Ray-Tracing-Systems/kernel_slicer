@@ -33,7 +33,7 @@
         {
             "label": "Build Kernels (GLSL)",
             "type": "shell",
-            "command": "cd shaders_GPU && bash build.sh",
+            "command": "cd shaders_gpu && bash build.sh",
             "group": "build",
             "problemMatcher": [
                 "$gcc"

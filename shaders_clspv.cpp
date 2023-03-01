@@ -61,8 +61,8 @@ std::string kslicer::ClspvCompiler::BuildCommand(const std::string& a_inputFile)
 
 void kslicer::ClspvCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) 
 {
-  const auto& mainClassFileName       = a_codeInfo->mainClassFileName;
-  const auto& ignoreFolders = a_codeInfo->ignoreFolders;
+  const auto& mainClassFileName = a_codeInfo->mainClassFileName;
+  const auto& ignoreFolders     = a_codeInfo->ignoreFolders;
   
   std::string folderPath = GetFolderPath(mainClassFileName);
   std::string incUBOPath = folderPath + "/include";

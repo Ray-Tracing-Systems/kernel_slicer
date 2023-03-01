@@ -40,11 +40,8 @@ public:
       return true;
 
     std::string fileName = std::string(m_sm.getFilename(f->getSourceRange().getBegin())); // check that we are in test_class.cpp or test_class.h or sms like that;                                                                             
-    for(auto f : m_patternImpl.ignoreFolders)                                             // exclude everything from "shader" folders
-    {
-      if(fileName.find(f) != std::string::npos)
-       return true;
-    }
+    if(m_patternImpl.IsInExcludedFolder(fileName))
+      return true;
 
     if(fileName.find(".h") == std::string::npos && fileName.find(".cpp") == std::string::npos && fileName.find(".cxx") == std::string::npos)
       return true;
@@ -668,10 +665,10 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool kslicer::IsInExcludedFolder(const std::string& fileName, const std::vector<std::string>& a_excludeFolderList)
+bool kslicer::MainClassInfo::IsInExcludedFolder(const std::string& fileName)
 {
   bool exclude = false;
-  for(auto folder : a_excludeFolderList)       //
+  for(auto folder : this->ignoreFolders)       //
   {
     if(fileName.find(folder) != std::string::npos)
     {
@@ -680,6 +677,36 @@ bool kslicer::IsInExcludedFolder(const std::string& fileName, const std::vector<
     }
   }
   return exclude;
+}
+
+/// @brief check that file code (either Decl or else) is in 'processFolders' bot not in 'ignoreFolders' at the same time
+/// @param a_fileName -- file name path
+/// @return flag if we need to process decl or function or ignore them
+bool kslicer::MainClassInfo::NeedToProcessDeclInFile(const std::string a_fileName) const
+{
+  bool needInsertToKernels = false;             // do we have to process this declaration to further insert it to GLSL/CL ?
+  for(auto folder : this->processFolders)       //
+  {
+    if(a_fileName.find(folder) != std::string::npos)
+    {
+      needInsertToKernels = true;
+      break;
+    }
+  }
+  
+  if(needInsertToKernels) 
+  {
+    for(auto folder : this->ignoreFolders)        // consider ["maypath/AA"] in 'processFolders' and ["maypath/AA/BB"] in 'ignoreFolders' 
+    {                                             // we should definitely ignore such definitions
+      if(a_fileName.find(folder) != std::string::npos)
+      {
+        needInsertToKernels = false;
+        break;
+      }
+    }
+  }
+
+  return needInsertToKernels;
 }
 
 struct TypePair
@@ -696,7 +723,6 @@ void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::st
 {
   const auto& a_members           = this->dataMembers;
   const auto  a_additionalTypes   = this->ExtractTypesFromUsedContainers(a_otherDecls);
-  const auto& a_excludeFolderList = this->ignoreFolders;
   const auto& a_allDataMembers    = this->allDataMembers;     
 
   std::unordered_map<std::string, kslicer::DeclInClass> declsByName;
@@ -766,7 +792,7 @@ void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::st
       declsByName[elem.typeName] = tdecl;
       const clang::FileEntry* Entry = a_srcMgr.getFileEntryForID(a_srcMgr.getFileID(elem.node->getLocation()));
       const std::string fileName    = std::string(Entry->getName());        
-      const bool        exclude     = IsInExcludedFolder(fileName, a_excludeFolderList); 
+      const bool        exclude     = IsInExcludedFolder(fileName); 
       if(!exclude)
         auxDecls.push_back(tdecl);
       

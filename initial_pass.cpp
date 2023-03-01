@@ -123,36 +123,6 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* 
   return true;
 }
 
-/// @brief check that file code (either Decl or else) is in 'includeCPPFolders' bot not in 'ignoreFolders' at the same time
-/// @param a_fileName -- file name path
-/// @return flag if we need to process decl or function or ignore them
-bool kslicer::InitialPassRecursiveASTVisitor::NeedToProcessDeclInFile(std::string a_fileName)
-{
-  bool needInsertToKernels = false;                     // do we have to process this declaration to further insert it to GLSL/CL ?
-  for(auto folder : m_codeInfo.includeCPPFolders)       //
-  {
-    if(a_fileName.find(folder) != std::string::npos)
-    {
-      needInsertToKernels = true;
-      break;
-    }
-  }
-  
-  if(needInsertToKernels) 
-  {
-    for(auto folder : m_codeInfo.ignoreFolders)        // consider ["maypath/AA"] in 'includeCPPFolders' and ["maypath/AA/BB"] in 'ignoreFolders' 
-    {                                                  // we should definitely ignore such definitions
-      if(a_fileName.find(folder) != std::string::npos)
-      {
-        needInsertToKernels = false;
-        break;
-      }
-    }
-  }
-
-  return needInsertToKernels;
-}
-
 static std::unordered_set<std::string> ListExcludedTypes()
 {
   std::unordered_set<std::string> res = kslicer::ListPredefinedMathTypes();
@@ -218,7 +188,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
     return true;
 
   std::string FileName  = Entry->getName().str();
-  const bool isDefinitelyInsideShaders = NeedToProcessDeclInFile(FileName);
+  const bool isDefinitelyInsideShaders = m_codeInfo.NeedToProcessDeclInFile(FileName);
 
   if(isa<CXXRecordDecl>(type)) 
   {
@@ -312,7 +282,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitVarDecl(VarDecl* pTargetVar)
     return true;
     
   std::string FileName   = Entry->getName().str();
-  if(!NeedToProcessDeclInFile(FileName))
+  if(!m_codeInfo.NeedToProcessDeclInFile(FileName))
     return true;
 
   const clang::QualType qt = pTargetVar->getType();

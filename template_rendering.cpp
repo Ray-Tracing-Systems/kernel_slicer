@@ -253,18 +253,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["Includes"] = std::vector<std::string>();
   for(auto keyVal : a_classInfo.allIncludeFiles) // we will search for only used include files among all of them (quoted, angled were excluded earlier)
   { 
-    bool found = false;
-    for(auto f : a_classInfo.ignoreFolders)  // exclude everything from "shader" folders
-    {
-      if(keyVal.first.find(f) != std::string::npos)
-      {
-        found = true;
-        break;
-      }
-    }
-    if(!found)
+    if(!a_classInfo.IsInExcludedFolder(keyVal.first))
       continue;
-   
+
     if(a_classInfo.mainClassFileInclude.find(keyVal.first) == std::string::npos)
       data["Includes"].push_back(keyVal.first);
   }

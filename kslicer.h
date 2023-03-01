@@ -870,7 +870,9 @@ namespace kslicer
     std::string shaderFolderPrefix = "";
 
     std::vector<std::string> ignoreFolders;
-    std::vector<std::string> includeCPPFolders;  
+    std::vector<std::string> processFolders;  
+    bool NeedToProcessDeclInFile(const std::string a_fileName) const;
+    bool IsInExcludedFolder(const std::string& fileName);
    
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
@@ -1107,7 +1109,6 @@ namespace kslicer
 
   std::string CleanTypeName(const std::string& a_str);
   
-  bool IsInExcludedFolder(const std::string& fileName, const std::vector<std::string>& a_excludeFolderList);
   std::unordered_set<std::string> GetAllServiceKernels();
 
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler);

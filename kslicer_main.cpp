@@ -226,14 +226,13 @@ int main(int argc, const char **argv)
     exit(0);
   }
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
-  inputCodeInfo.ignoreFolders     = includeFolderList;  // set shader folders
-  inputCodeInfo.includeCPPFolders = includeFolderList2; // set common C/C++ folders
-  //inputCodeInfo.ignoreFolders.push_back(stdlibFolder);
-  //inputCodeInfo.includeCPPFolders.push_back(stdlibFolder);
+  inputCodeInfo.ignoreFolders  = includeFolderList;  // set shader folders
+  inputCodeInfo.processFolders = includeFolderList2; // set common C/C++ folders
+
   if(shaderCCName == "glsl" || shaderCCName == "GLSL")
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::GLSLCompiler>(inputCodeInfo.mainClassSuffix);
-    inputCodeInfo.includeCPPFolders.push_back("include/");
+    inputCodeInfo.processFolders.push_back("include/");
   }
   else if(shaderCCName == "ispc" || shaderCCName == "ISPC")
   {
