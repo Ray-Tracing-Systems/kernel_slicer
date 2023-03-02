@@ -550,6 +550,7 @@ void kslicer::CheckInterlanIncInExcludedFolders(const std::vector<std::string>& 
 {
   std::vector<std::string> stopList;
   stopList.push_back("LiteMath.h");
+  stopList.push_back("half.hpp");
   stopList.push_back("LiteMathGPU.h");
   stopList.push_back("aligned_alloc.h");
   stopList.push_back("Image2d.h");

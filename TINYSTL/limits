@@ -1,15 +1,62 @@
 #ifndef STD_LIMITS_H
 #define STD_LIMITS_H
 
+static constexpr int INT_MAX = 0;
+static constexpr int INT_MIN = 0;
+
+
 namespace std
 { 
+  enum float_round_style
+  {
+    round_indeterminate       = -1, /// Intermediate.
+    round_toward_zero         = 0,  /// To zero.
+    round_to_nearest          = 1,  /// To the nearest representable value.
+    round_toward_infinity     = 2,  /// To infinity.
+    round_toward_neg_infinity = 3   /// To negative infinity.
+  };
+
+  enum float_denorm_style
+  {
+    denorm_indeterminate = -1, /// Indeterminate at compile time whether denormalized values are allowed.
+    denorm_absent        = 0,  /// The type does not allow denormalized values.
+    denorm_present       = 1   /// The type allows denormalized values.
+  };
+
   template<class T> 
   struct numeric_limits
   {
+		static constexpr bool is_specialized = false;
+		static constexpr bool is_signed      = true;
+		static constexpr bool is_integer     = false;
+		static constexpr bool is_exact       = false;
+		static constexpr bool is_modulo      = false;
+		static constexpr bool is_bounded     = true;
+		static constexpr bool is_iec559 = true;
+		static constexpr bool has_infinity = true;
+		static constexpr bool has_quiet_NaN = true;
+		static constexpr bool has_signaling_NaN = true;
+		static constexpr bool has_denorm_loss = false;
+		static constexpr bool traps = false;
+		static constexpr bool tinyness_before = false;
+		static constexpr int digits = 11;
+		static constexpr int digits10 = 3;
+		static constexpr int max_digits10 = 5;
+		static constexpr int radix = 2;
+		static constexpr int min_exponent = -13;
+		static constexpr int min_exponent10 = -4;
+		static constexpr int max_exponent = 16;
+		static constexpr int max_exponent10 = 4;
+
+    static constexpr int round_style = 1;
+    static constexpr int has_denorm = 1;
+
     static constexpr T infinity() { return T(1e38f); }
     static constexpr T max     () { return T(1e38f); }
     static constexpr T min     () { return -T(1e37f); }
     static constexpr T epsilon () { return -T(1e6f); }
+    static constexpr T signaling_NaN() noexcept { return 0; }
+    static constexpr T quiet_NaN() noexcept { return 0; }
   };
 
   

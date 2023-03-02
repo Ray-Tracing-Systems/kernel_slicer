@@ -79,6 +79,10 @@ namespace std
 
   template<typename T> T isfinite(T x);
   template<typename T> T copysign(T x, T y);
+
+  template<typename T> T frexp (T arg, int* exp);
+  template<typename T> T ldexp (T x, int exp );
+  template<typename T> T modf  (T x, T* iptr );
 };
 
 #include <cstdint>

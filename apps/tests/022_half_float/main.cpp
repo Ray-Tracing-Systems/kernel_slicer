@@ -10,7 +10,7 @@
 #include "JSONLog.hpp"
 
 #include "vk_context.h"
-std::shared_ptr<Padding> CreatePadding_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+std::shared_ptr<HalfTest> CreateHalfTest_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 
 int main(int argc, const char** argv)
 {
@@ -22,19 +22,19 @@ int main(int argc, const char** argv)
 
   std::vector<float> array(4*14);
 
-  std::shared_ptr<Padding> pImpl = nullptr;
+  std::shared_ptr<HalfTest> pImpl = nullptr;
   ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
   
-  //if(onGPU)
-  //{
-  //  unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-  //  auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
-  //  pImpl = CreatePadding_Generated(ctx, array.size());
-  //}
-  //else
-    pImpl = std::make_shared<Padding>();
+  if(onGPU)
+  {
+    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+    pImpl = CreateHalfTest_Generated(ctx, array.size());
+  }
+  else
+    pImpl = std::make_shared<HalfTest>();
 
   std::string backendName = onGPU ? "gpu" : "cpu";
 

@@ -1,12 +1,12 @@
 #include "test_class.h"
 #include <cstdint>
 
-void Padding::Test(float* a_data, unsigned int a_size)
+void HalfTest::Test(float* a_data, unsigned int a_size)
 {
   kernel1D_Test(a_data, a_size);
 }
 
-void Padding::kernel1D_Test(float* a_data, unsigned int a_size)
+void HalfTest::kernel1D_Test(float* a_data, unsigned int a_size)
 {
   for(int i=0; i<a_size; i++)
   {

@@ -10,5 +10,8 @@ namespace std
     void flush();
     template<class T> ostream& operator<<(T x);
   };
+
+  template<class CharT,class Traits> class basic_ostream;
+	template<class CharT,class Traits> class basic_istream;
 };
 

@@ -23,10 +23,10 @@ struct TestBox
   uint32_t offs2;
 };
 
-class Padding
+class HalfTest
 {
 public:
-  Padding()
+  HalfTest()
   { 
     m_data.resize(4);
     for(size_t i=0;i < m_data.size();i++) {

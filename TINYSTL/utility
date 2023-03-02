@@ -14,4 +14,7 @@ namespace std
     _T1 first;                 ///< The first member
     _T2 second;                ///< The second member
   };
+
+  template< class T1, class T2 > std::pair<T1, T2> make_pair( T1 t, T2 u );
+  template< class T > void swap( T& a, T& b );
 }
