@@ -1926,6 +1926,58 @@ namespace LiteMath
 
 };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#include "half.hpp"
+
+namespace LiteMath
+{ 
+  using half_float::half;
+
+  struct half4
+  {
+    inline half4() : x(0), y(0), z(0), w(0) {}
+    inline half4(float a_x, float a_y, float a_z, float a_w) : x(a_x), y(a_y), z(a_z), w(a_w) {}
+
+    inline explicit half4(float a_val) : x(a_val), y(a_val), z(a_val), w(a_val) {}
+    inline explicit half4(const float a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
+    inline explicit half4(float4 f4)   : x(f4.x), y(f4.y), z(f4.z), w(f4.w) {}
+    
+    inline half4(half a_x, half a_y, half a_z, half a_w) : x(a_x), y(a_y), z(a_z), w(a_w) {}
+    inline explicit half4(half a_val) : x(a_val), y(a_val), z(a_val), w(a_val) {}
+    inline explicit half4(const half a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
+    
+    inline operator float4() const { return float4(x,y,z,w); }
+
+    inline half& operator[](int i)  
+    {
+      switch(i)
+      {
+        case 0:  return x;
+        case 1:  return y;
+        case 2:  return z;
+        default: return w;
+      };
+    }
+
+    inline half  operator[](int i) const 
+    {
+      switch(i)
+      {
+        case 0:  return x;
+        case 1:  return y;
+        case 2:  return z;
+        default: return w;
+      };
+    }
+
+    half x, y, z, w;
+  };
+};
+
 #endif
 #endif
 #endif
