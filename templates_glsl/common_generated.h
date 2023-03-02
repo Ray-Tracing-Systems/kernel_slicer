@@ -10,6 +10,10 @@
 {% if GlobalUseInt64 %} 
 #extension GL_EXT_shader_explicit_arithmetic_types_int64: require
 {% endif %}
+{% if GlobalUseHalf %} 
+#extension GL_EXT_shader_16bit_storage : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_float16: enable
+{% endif %}
 
 /////////////////////////////////////////////////////////////////////
 /////////////////// include files ///////////////////////////////////
@@ -30,6 +34,10 @@
 #define FLT_MIN -1e37f
 #define FLT_EPSILON 1e-6f
 #define unmasked
+#define half  float16_t
+#define half2 f16vec2
+#define half3 f16vec3
+#define half4 f16vec4
 ## for Decl in ClassDecls  
 {{Decl.Text}}
 ## endfor

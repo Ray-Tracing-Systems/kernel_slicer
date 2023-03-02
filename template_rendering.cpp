@@ -285,7 +285,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (3) local functions
   //
-  ShaderFeatures shaderFeatures;
+  ShaderFeatures shaderFeatures = a_classInfo.globalShaderFeatures;
   data["LocalFunctions"] = std::vector<std::string>();
   std::vector<kslicer::FuncData> funcMembers;
   std::unordered_map<std::string, kslicer::FuncData> cachedFunc;
@@ -325,6 +325,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["GlobalUseInt8"]  = shaderFeatures.useByteType;
   data["GlobalUseInt16"] = shaderFeatures.useShortType;
   data["GlobalUseInt64"] = shaderFeatures.useInt64Type;
+  data["GlobalUseHalf"]  = shaderFeatures.useHalfType;
 
   auto dhierarchies   = a_classInfo.GetDispatchingHierarchies();
   data["Hierarchies"] = PutHierarchiesDataToJson(dhierarchies, compiler);

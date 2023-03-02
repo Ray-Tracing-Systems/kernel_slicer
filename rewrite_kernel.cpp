@@ -380,6 +380,7 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
   
   // Get name of function
   //
+  const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);  
   const DeclarationNameInfo dni = ctorDecl->getNameInfo();
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();

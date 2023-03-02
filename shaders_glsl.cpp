@@ -385,9 +385,15 @@ std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_s
   const bool isInt64  = (a_str.find("long long int") != std::string::npos) ||
                         (a_str.find("uint64_t") != std::string::npos) || (a_str.find("int64_t") != std::string::npos);
  
+  std::string copy = a_str;
+  ReplaceFirst(copy, "const ", "");
+  while(ReplaceFirst(copy, " ", ""));
+  const bool isHalf = (copy == "half") || (copy == "half2") || (copy == "half3") || (copy == "half4"); 
+
   sFeatures.useByteType  = sFeatures.useByteType  || isByte;
   sFeatures.useShortType = sFeatures.useShortType || isUshort;
   sFeatures.useInt64Type = sFeatures.useInt64Type || isInt64;
+  sFeatures.useHalfType  = sFeatures.useHalfType  || isHalf;
 
   std::string resStr;
   std::string typeStr = kslicer::CleanTypeName(a_str);

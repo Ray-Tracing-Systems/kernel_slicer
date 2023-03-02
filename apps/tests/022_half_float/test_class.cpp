@@ -11,9 +11,10 @@ void HalfTest::kernel1D_Test(float* a_data, unsigned int a_size)
   for(int i=0; i<a_size; i++)
   {
     const TestBox box = m_data[i];
-    const float4 f1   = float4(box.b1);
-    const float4 f2   = float4(box.b2);
-    const float4 f3   = float4(box.b3); 
+    const float4 test = float4(1.0f);
+    const float4 f1   = to_float4(box.b1);
+    const float4 f2   = to_float4(box.b2);
+    const float4 f3   = to_float4(box.b3); 
 
     a_data[i*14+0] = f1.x;
     a_data[i*14+1] = f1.y;

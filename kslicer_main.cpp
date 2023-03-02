@@ -114,6 +114,8 @@ int main(int argc, const char **argv)
   bool        enableSubGroupOps  = false;
   int         ispcThreadModel    = 0;
   bool        ispcExplicitIndices = false;
+
+  kslicer::ShaderFeatures forcedFeatures;
   
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
@@ -182,6 +184,15 @@ int main(int argc, const char **argv)
   if(params.find("-suffix") != params.end())
     suffix = params["-suffix"];
 
+  if(params.find("-forceEnableHalf") != params.end())
+    forcedFeatures.useHalfType = (atoi(params["-forceEnableHalf"].c_str()) == 1);
+  if(params.find("-forceEnableInt8") != params.end())
+    forcedFeatures.useByteType = (atoi(params["-forceEnableInt8"].c_str()) == 1);
+  if(params.find("-forceEnableInt16") != params.end())
+    forcedFeatures.useShortType = (atoi(params["-forceEnableInt16"].c_str()) == 1);
+  if(params.find("-forceEnableInt64") != params.end())
+    forcedFeatures.useInt64Type = (atoi(params["-forceEnableInt64"].c_str()) == 1);
+ 
   std::unordered_set<std::string> values;
   std::vector<std::string> ignoreFolders;
   std::vector<std::string> processFolders;
@@ -252,12 +263,13 @@ int main(int argc, const char **argv)
     inputCodeInfo.ignoreFolders.push_back("include/");
   }
 
-  inputCodeInfo.defaultVkernelType = defaultVkernelType;
-  inputCodeInfo.halfFloatTextures  = halfFloatTextures;
-  inputCodeInfo.megakernelRTV      = useMegakernel;
-  inputCodeInfo.mainClassSuffix    = suffix;
-  inputCodeInfo.shaderFolderPrefix = shaderFolderPrefix;
-
+  inputCodeInfo.defaultVkernelType   = defaultVkernelType;
+  inputCodeInfo.halfFloatTextures    = halfFloatTextures;
+  inputCodeInfo.megakernelRTV        = useMegakernel;
+  inputCodeInfo.mainClassSuffix      = suffix;
+  inputCodeInfo.shaderFolderPrefix   = shaderFolderPrefix;
+  inputCodeInfo.globalShaderFeatures = forcedFeatures;
+   
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   

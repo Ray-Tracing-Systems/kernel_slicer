@@ -107,12 +107,14 @@ namespace kslicer
       useByteType  = useByteType  || rhs.useByteType;
       useShortType = useShortType || rhs.useShortType;
       useInt64Type = useInt64Type || rhs.useInt64Type;
+      useHalfType  = useHalfType  || rhs.useHalfType;
       return *this;
     }
 
     bool useByteType  = false; 
     bool useShortType = false;
     bool useInt64Type = false;
+    bool useHalfType  = false;
   };
 
   /**
@@ -868,6 +870,7 @@ namespace kslicer
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
     std::vector<const clang::CXXConstructorDecl* > ctors;
     std::string shaderFolderPrefix = "";
+    ShaderFeatures globalShaderFeatures;
 
     std::vector<std::string> ignoreFolders;  ///<! in these folders files are ignored
     std::vector<std::string> processFolders; ///<! in these folders files are processed to take functions and structures from them to shaders  

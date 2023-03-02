@@ -1949,8 +1949,6 @@ namespace LiteMath
     inline half4(half a_x, half a_y, half a_z, half a_w) : x(a_x), y(a_y), z(a_z), w(a_w) {}
     inline explicit half4(half a_val) : x(a_val), y(a_val), z(a_val), w(a_val) {}
     inline explicit half4(const half a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
-    
-    inline operator float4() const { return float4(x,y,z,w); }
 
     inline half& operator[](int i)  
     {
@@ -1976,6 +1974,8 @@ namespace LiteMath
 
     half x, y, z, w;
   };
+
+  static inline float4 to_float4(half4 v) { return float4(v.x, v.y, v.z, v.w); }
 };
 
 #endif

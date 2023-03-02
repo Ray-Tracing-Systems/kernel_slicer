@@ -1910,6 +1910,7 @@
                         "-I${workspaceFolder}/apps/LiteMath", "ignore", 
                         "-I${workspaceFolder}/TINYSTL",       "ignore",
                         "-shaderCC", "glsl",
+                        "-forceEnableHalf", "1",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,
