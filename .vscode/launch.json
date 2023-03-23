@@ -2304,6 +2304,48 @@
         },
 
         {
+            "name"   : "RTProject(Eye-->BVH2Fat06)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/huawei/cbvh_raytrace/examples/01_eye_rays/eye_ray.cpp",
+                        "/home/frol/PROG/huawei/cbvh_raytrace/core/BVH2FatCompactRT.cpp",
+                        "-shaderFolderPrefix", "examples/01_eye_rays/",
+                        "-mainClass", "EyeRayCaster", 
+                        "-composInterface", "ISceneObject",
+                        "-composImplementation","BVH2FatRTCompact", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I/home/frol/PROG/huawei/cbvh_raytrace/examples",     "process",
+                        "-I/home/frol/PROG/huawei/cbvh_raytrace/core",         "process",
+                        "-I/home/frol/PROG/huawei/cbvh_raytrace/core/builders","ignore",
+                        "-process", "/home/frol/PROG/huawei/cbvh_raytrace/core/builders/cbvh.h",
+                        "-cpp_include", "BVH2FatCompactRT.h",
+                        "-megakernel", "1",
+                        "-suffix", "_BVH2_FAT06",
+                        "-forceEnableHalf", "1",
+                        "-DPUGIXML_NO_EXCEPTIONS",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+                        //"-dM", "-E", "-x", "c", "/dev/null"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "RTProject(Eye-->BVH4)",
             "type"   : "cppdbg",
             "request": "launch",
