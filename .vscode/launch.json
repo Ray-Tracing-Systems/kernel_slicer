@@ -2387,6 +2387,85 @@
         },
 
         {
+            "name"   : "RTProject(Eye-->BVH4Half)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/huawei/cbvh_raytrace/examples/01_eye_rays/eye_ray.cpp",
+                        "/home/frol/PROG/huawei/cbvh_raytrace/core/BVH4HalfRT.cpp",
+                        "-shaderFolderPrefix", "examples/01_eye_rays/",
+                        "-mainClass", "EyeRayCaster", 
+                        "-composInterface", "ISceneObject",
+                        "-composImplementation","BVH4HalfRT", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I/home/frol/PROG/huawei/cbvh_raytrace/examples",     "process",
+                        "-I/home/frol/PROG/huawei/cbvh_raytrace/core",         "process",
+                        "-I/home/frol/PROG/huawei/cbvh_raytrace/core/builders","ignore",
+                        "-process", "/home/frol/PROG/huawei/cbvh_raytrace/core/builders/cbvh.h",
+                        "-cpp_include", "BVH4HalfRT.h",
+                        "-megakernel", "1",
+                        "-suffix", "_BVH4_HALF",
+                        "-forceEnableHalf", "1",
+                        "-DPUGIXML_NO_EXCEPTIONS",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+                        //"-dM", "-E", "-x", "c", "/dev/null"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "RTProject(BFRT)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/huawei/cbvh_raytrace/examples/03_bfrt/test_class.cpp",
+                        "-shaderFolderPrefix", "examples/03_bfrt/",
+                        "-mainClass", "TestClass", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I/home/frol/PROG/huawei/cbvh_raytrace/examples",     "process",
+                        "-I/home/frol/PROG/huawei/cbvh_raytrace/core",         "process",
+                        "-I/home/frol/PROG/huawei/cbvh_raytrace/core/builders","ignore",
+                        "-process", "/home/frol/PROG/huawei/cbvh_raytrace/core/builders/cbvh.h",
+                        "-megakernel", "1",
+                        "-forceEnableHalf", "1",
+                        "-DPUGIXML_NO_EXCEPTIONS",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+                        //"-dM", "-E", "-x", "c", "/dev/null"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "RTProject(AO-->RTX)",
             "type"   : "cppdbg",
             "request": "launch",
