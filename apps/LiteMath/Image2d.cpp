@@ -24,8 +24,6 @@ using LiteMath::ushort4;
 using LiteMath::uchar4;
 using LiteMath::clamp;
 
-//static inline uint pitch(uint x, uint y, uint pitch) { return y * pitch + x; }  
-
 static inline float4 read_array_uchar4(const uchar4* a_data, int offset)
 {
   const float mult = 0.003921568f; // (1.0f/255.0f);

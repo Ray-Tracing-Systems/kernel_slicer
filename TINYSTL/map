@@ -1,0 +1,9 @@
+#pragma once 
+
+namespace std
+{
+  template<typename T, typename U> class map
+  {
+
+  };
+}
