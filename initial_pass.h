@@ -121,7 +121,7 @@ public:
                           llvm::StringRef SearchPath,
                           llvm::StringRef RelativePath,
                           const clang::Module *Imported,
-                          clang::SrcMgr::CharacteristicKind FileType) override
+                          clang::SrcMgr::CharacteristicKind FileType)
   {
     if(!IsAngled && File != nullptr)
     {

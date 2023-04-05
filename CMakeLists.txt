@@ -2,18 +2,26 @@ cmake_minimum_required (VERSION 3.8)
 project (kernel_slicer)
 set (CMAKE_CXX_STANDARD 17)
 
-find_package(LLVM 14 REQUIRED CONFIG)
+find_package(LLVM 17 REQUIRED CONFIG)
+find_package(Clang REQUIRED)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 include_directories("include")
 include_directories(${LLVM_INCLUDE_DIRS})
-link_directories(${LLVM_INCLUDE_DIRS}/../lib)
+include_directories(${CLANG_INCLUDE_DIRS})
+link_directories(${LLVM_LIBRARY_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
+add_definitions(${CLANG_DEFINITIONS})
 
-message("${LLVM_INCLUDE_DIRS}")
+message("LLVM_INCLUDE_DIRS = ${LLVM_INCLUDE_DIRS}")
+message("LLVM_LIBRARY_DIRS = ${LLVM_LIBRARY_DIRS}")
+# message("CLANG_INCLUDE_DIRS = ${CLANG_INCLUDE_DIRS}")
+# message("CLANG_LIBRARY_DIRS = ${CLANG_LIBRARY_DIRS}")
 
+
+# set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${LLVM_CMAKE_DIR}")
 
 add_executable(kslicer 
                kslicer_main.cpp
@@ -39,10 +47,10 @@ add_executable(kslicer
                shaders_ispc.cpp
                )
 
-target_link_libraries(kslicer PRIVATE -lclang -lLLVM-14 
-                     -lclangAST -lclangTooling -lclangBasic -lclangASTMatchers 
-                     -lclangFrontendTool -lclangFrontend -lclangDriver -lclangSerialization 
-                     -lclangCodeGen -lclangParse -lclangSema -lclangStaticAnalyzerFrontend 
-                     -lclangStaticAnalyzerCheckers -lclangStaticAnalyzerCore -lclangAnalysis
-                     -lclangIndex -lclangARCMigrate -lclangRewrite -lclangAST -lclangLex -lclangEdit
+target_link_libraries(kslicer PRIVATE clang LLVM-17 clangAST clangTooling 
+                     clangBasic clangASTMatchers 
+                     clangFrontendTool clangFrontend clangDriver clangSerialization 
+                     clangCodeGen clangParse clangSema clangStaticAnalyzerFrontend 
+                     clangStaticAnalyzerCheckers clangStaticAnalyzerCore clangAnalysis
+                     clangIndex clangARCMigrate clangRewrite clangLex clangEdit
                      ) 
