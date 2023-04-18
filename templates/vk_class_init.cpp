@@ -39,6 +39,15 @@ uint32_t {{MainClassName}}{{MainClassSuffix}}::GetDefaultMaxTextures() const { r
   vkDestroyPipeline(device, copyKernelFloatPipeline, nullptr);
   vkDestroyPipelineLayout(device, copyKernelFloatLayout, nullptr);
   {% endif %} {# /* UseServiceMemCopy */ #}
+  {% if UseServiceScan %}
+  vkDestroyPipeline(device, m_scan.scanFwdPipeline, nullptr);
+  vkDestroyPipeline(device, m_scan.scanPropPipeline, nullptr);
+  vkDestroyPipelineLayout(device, m_scan.scanFwdLayout, nullptr);
+  vkDestroyPipelineLayout(device, m_scan.scanPropLayout, nullptr);
+  {% if not UseServiceMemCopy %}
+  vkDestroyDescriptorSetLayout(device, copyKernelFloatDSLayout, nullptr);
+  {% endif %}
+  {% endif %} {# /* UseServiceMemCopy */ #}
 ## for Kernel in Kernels
   vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
@@ -420,6 +429,21 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   copyKernelFloatLayout   = m_pMaker->MakeLayout(device, {copyKernelFloatDSLayout}, 128); // at least 128 bytes for push constants
   copyKernelFloatPipeline = m_pMaker->MakePipeline(device);
   {% endif %} {# /* UseServiceMemCopy */ #}
+  {% if UseServiceScan %}
+  {% if not UseServiceMemCopy %}
+  copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
+  {% endif %} {# /* UseServiceMemCopy */ #}
+  std::string servPathFwd  = AlterShaderPath("{{ShaderFolder}}/z_scan_block.comp.spv");
+  std::string servPathProp = AlterShaderPath("{{ShaderFolder}}/z_scan_propagate.comp.spv");
+  
+  m_pMaker->LoadShader(device, servPathFwd.c_str(), nullptr, "main");
+  m_scan.scanFwdLayout   = m_pMaker->MakeLayout(device, {copyKernelFloatDSLayout}, 128); // at least 128 bytes for push constants
+  m_scan.scanFwdPipeline = m_pMaker->MakePipeline(device);
+  
+  m_pMaker->LoadShader(device, servPathProp.c_str(), nullptr, "main");
+  m_scan.scanPropLayout   = m_pMaker->MakeLayout(device, {copyKernelFloatDSLayout}, 128); // at least 128 bytes for push constants
+  m_scan.scanPropPipeline = m_pMaker->MakePipeline(device);
+  {% endif %} {# /* UseServiceScan */ #}
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectBufferUpdateResources(a_filePath);
   {% endif %}

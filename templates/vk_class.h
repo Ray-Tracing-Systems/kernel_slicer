@@ -398,6 +398,13 @@ protected:
     size_t                m_scanMaxSize;
     std::vector<VkBuffer> InitTempScanBuffers(VkDevice a_device, size_t a_maxSize);
     void                  DeleteTempScanBuffers(VkDevice a_device);
+
+    VkPipelineLayout      scanFwdLayout   = VK_NULL_HANDLE;
+    VkPipeline            scanFwdPipeline = VK_NULL_HANDLE;
+
+    VkPipelineLayout      scanPropLayout   = VK_NULL_HANDLE;
+    VkPipeline            scanPropPipeline = VK_NULL_HANDLE;
+
   } m_scan;
   {% endif %}
 };
