@@ -115,14 +115,18 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   {
     nlohmann::json dummy;
     kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_memcpy.glsl", shaderPath + slash + "z_memcpy.comp", dummy); // just file copy actually
-    buildSH << "glslangValidator -V z_memcpy.comp -o z_memcpy.comp.spv";
-    buildSH << std::endl;
+    buildSH << "glslangValidator -V z_memcpy.comp -o z_memcpy.comp.spv" << std::endl;
   }
 
   if(a_codeInfo->usedServiceCalls.find("exclusive_scan") != a_codeInfo->usedServiceCalls.end() || 
      a_codeInfo->usedServiceCalls.find("inclusive_scan") != a_codeInfo->usedServiceCalls.end())
   {
-
+    nlohmann::json params;
+    params["Type"] = "uint";
+    kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_scan_block.glsl",     shaderPath + slash + "z_scan_block.comp", params);
+    kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_scan_propagate.glsl", shaderPath + slash + "z_scan_propagate.comp", params);
+    buildSH << "glslangValidator -V z_scan_block.comp -o z_scan_block.comp.spv" << std::endl;
+    buildSH << "glslangValidator -V z_scan_propagate.comp -o z_scan_propagate.comp.spv" << std::endl;
   }
 
   if(a_codeInfo->usedServiceCalls.find("sort") != a_codeInfo->usedServiceCalls.end())

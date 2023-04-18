@@ -950,32 +950,35 @@ inline size_t sRoundBlocks(size_t elems, int threadsPerBlock)
 
 std::vector<VkBuffer> {{MainClassName}}{{MainClassSuffix}}::ScanTempData::InitTempScanBuffers(VkDevice a_device, size_t a_maxSize)
 {
-  m_scanTempDataMipLevels.resize(0);
+  m_scanMipOffsets.resize(0);
   size_t currSize = a_maxSize;
+  size_t currOffset = 0;
   for (int i = 0; i < 16; i++)
   {
     size_t size2 = sRoundBlocks(currSize, 256) / 256;
     if (currSize > 0)
     {
       size_t size3 = std::max(size2, size_t(256));
-      m_scanTempDataMipLevels.push_back(vk_utils::createBuffer(a_device, size3*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)); 
+      m_scanMipOffsets.push_back(currOffset); 
+      currOffset += size3;
     }
     else
     {
-      m_scanTempDataMipLevels.push_back(vk_utils::createBuffer(a_device, 256*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)) ;
+      m_scanMipOffsets.push_back(currOffset); 
+      currOffset += 256;
       break;
     }
     currSize = currSize / 256;
   }
 
-  m_scanMaxSize = a_maxSize;
-  return m_scanTempDataMipLevels;
+  m_scanTempData = vk_utils::createBuffer(a_device, currOffset*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  m_scanMaxSize  = a_maxSize;
+  return {m_scanTempData};
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::ScanTempData::DeleteTempScanBuffers(VkDevice a_device)
 {
-  for(auto buf : m_scanTempDataMipLevels)
-    vkDestroyBuffer(a_device, buf, nullptr);
-  m_scanTempDataMipLevels.resize(0);
+  vkDestroyBuffer(a_device, m_scanTempData, nullptr);
+  m_scanMipOffsets.resize(0);
 }
 {% endif %}
