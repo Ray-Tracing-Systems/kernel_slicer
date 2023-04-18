@@ -118,6 +118,19 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     buildSH << "glslangValidator -V z_memcpy.comp -o z_memcpy.comp.spv";
     buildSH << std::endl;
   }
+
+  if(a_codeInfo->usedServiceCalls.find("exclusive_scan") != a_codeInfo->usedServiceCalls.end() || 
+     a_codeInfo->usedServiceCalls.find("inclusive_scan") != a_codeInfo->usedServiceCalls.end())
+  {
+
+  }
+
+  if(a_codeInfo->usedServiceCalls.find("sort") != a_codeInfo->usedServiceCalls.end())
+  {
+
+  }
+
+
   buildSH.close();
 }
 

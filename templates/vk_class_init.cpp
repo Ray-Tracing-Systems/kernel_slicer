@@ -125,7 +125,9 @@ uint32_t {{MainClassName}}{{MainClassSuffix}}::GetDefaultMaxTextures() const { r
   {% for Hierarchy in DispatchHierarchies %}
   vkDestroyBuffer(device, m_{{Hierarchy.Name}}ObjPtrBuffer, nullptr);
   {% endfor %}
-
+  {% if UseServiceScan %}
+  m_scan.DeleteTempScanBuffers(device);
+  {% endif %}
   FreeAllAllocations(m_allMems);
 }
 
@@ -505,6 +507,11 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
   m_{{Hierarchy.Name}}ObjPtrBuffer = vk_utils::createBuffer(device, 2*sizeof(uint32_t)*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
   allBuffersRef.push_back(m_{{Hierarchy.Name}}ObjPtrBuffer);
   {% endfor %}
+
+  {% if UseServiceScan %}
+  auto tempBuffersForScan = m_scan.InitTempScanBuffers(device, a_maxThreadsCount);
+  allBuffersRef.insert(allBuffersRef.end(), tempBuffersForScan.begin(), tempBuffersForScan.end());
+  {% endif %}
   
   auto internalBuffersMem = AllocAndBind(allBuffersRef);
   if(a_tempBuffersOverlay)
@@ -923,3 +930,52 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(
   }
   {% endif %}
 }
+
+{% if UseServiceScan %}
+inline size_t sblocksST(size_t elems, int threadsPerBlock)
+{
+  if (elems % threadsPerBlock == 0 && elems >= threadsPerBlock)
+    return elems / threadsPerBlock;
+  else
+    return (elems / threadsPerBlock) + 1;
+}
+
+inline size_t sRoundBlocks(size_t elems, int threadsPerBlock)
+{
+  if (elems < threadsPerBlock)
+    return (size_t)threadsPerBlock;
+  else
+    return sblocksST(elems, threadsPerBlock) * threadsPerBlock;
+}
+
+std::vector<VkBuffer> {{MainClassName}}{{MainClassSuffix}}::ScanTempData::InitTempScanBuffers(VkDevice a_device, size_t a_maxSize)
+{
+  m_scanTempDataMipLevels.resize(0);
+  size_t currSize = a_maxSize;
+  for (int i = 0; i < 16; i++)
+  {
+    size_t size2 = sRoundBlocks(currSize, 256) / 256;
+    if (currSize > 0)
+    {
+      size_t size3 = std::max(size2, size_t(256));
+      m_scanTempDataMipLevels.push_back(vk_utils::createBuffer(a_device, size3*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)); 
+    }
+    else
+    {
+      m_scanTempDataMipLevels.push_back(vk_utils::createBuffer(a_device, 256*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)) ;
+      break;
+    }
+    currSize = currSize / 256;
+  }
+
+  m_scanMaxSize = a_maxSize;
+  return m_scanTempDataMipLevels;
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::ScanTempData::DeleteTempScanBuffers(VkDevice a_device)
+{
+  for(auto buf : m_scanTempDataMipLevels)
+    vkDestroyBuffer(a_device, buf, nullptr);
+  m_scanTempDataMipLevels.resize(0);
+}
+{% endif %}

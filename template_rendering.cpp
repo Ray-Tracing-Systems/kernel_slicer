@@ -242,8 +242,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["MainClassSuffix"] = a_classInfo.mainClassSuffix;
   data["MainClassSuffixLowerCase"] = ToLowerCase(a_classInfo.mainClassSuffix);
   data["UseSpecConstWgSize"] = a_classInfo.pShaderCC->UseSpecConstForWgSize();
+
   data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
-  
+  data["UseServiceScan"]     = (a_classInfo.usedServiceCalls.find("exclusive_scan") != a_classInfo.usedServiceCalls.end()) || (a_classInfo.usedServiceCalls.find("inclusive_scan") != a_classInfo.usedServiceCalls.end());
+  data["UseServiceSort"]     = (a_classInfo.usedServiceCalls.find("sort") != a_classInfo.usedServiceCalls.end());
+
   data["Defines"] = std::vector<std::string>();
   for(const auto& def : usedDefines)
     data["Defines"].push_back(def);

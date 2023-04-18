@@ -389,6 +389,16 @@ protected:
     a_restrictions[3] = maxPrimitivesPerMesh;
   }
   {% endif %}
+  
+  {% if UseServiceScan %}
+  struct ScanTempData
+  {
+    std::vector<VkBuffer> m_scanTempDataMipLevels;
+    size_t                m_scanMaxSize;
+    std::vector<VkBuffer> InitTempScanBuffers(VkDevice a_device, size_t a_maxSize);
+    void                  DeleteTempScanBuffers(VkDevice a_device);
+  } m_scan;
+  {% endif %}
 };
 
 #endif
