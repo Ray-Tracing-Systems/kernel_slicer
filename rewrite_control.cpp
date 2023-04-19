@@ -184,7 +184,7 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
     kernName = "copyKernelFloat";
     auto memCpyArgs = ExtractArgumentsOfAKernelCall(call, m_mainFunc.ExcludeList);
   
-    std::vector<ArgReferenceOnCall> args(2); // TODO: extract corretc arguments from memcpy (CallExpr* call)
+    std::vector<ArgReferenceOnCall> args(2); // extract corretc arguments from memcpy (CallExpr* call)
     {
       args[0].argType = memCpyArgs[0].argType;
       args[0].name    = memCpyArgs[0].name;
