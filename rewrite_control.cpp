@@ -177,21 +177,21 @@ std::unordered_set<std::string> kslicer::GetAllServiceKernels()
 
 std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallExpr* call, const std::string& a_name)
 {
-  std::string kernName = "copyKernelFloat"; // extract from 'call' exact name of service function;
-                                  
+  std::string kernName = "copyKernelFloat"; // extract from 'call' exact name of service function; 
+  auto originArgs = ExtractArgumentsOfAKernelCall(call, m_mainFunc.ExcludeList);
+  const std::string memBarCode = "vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr)";
+
   if(a_name == "memcpy")
   {
     kernName = "copyKernelFloat";
-    auto memCpyArgs = ExtractArgumentsOfAKernelCall(call, m_mainFunc.ExcludeList);
-  
     std::vector<ArgReferenceOnCall> args(2); // extract corretc arguments from memcpy (CallExpr* call)
     {
-      args[0].argType = memCpyArgs[0].argType;
-      args[0].name    = memCpyArgs[0].name;
+      args[0].argType = originArgs[0].argType;
+      args[0].name    = originArgs[0].name;
       args[0].kind    = DATA_KIND::KIND_POINTER;
   
-      args[1].argType = memCpyArgs[1].argType;
-      args[1].name    = memCpyArgs[1].name;
+      args[1].argType = originArgs[1].argType;
+      args[1].name    = originArgs[1].name;
       args[1].kind    = DATA_KIND::KIND_POINTER;
     }
   
@@ -214,16 +214,56 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
     std::stringstream strOut;
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
-    strOut << "  " << kernName.c_str() << "Cmd(" << memCpyArgs[2].name << " / sizeof(float));" << std::endl;
-    strOut << "  " << "vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr)";
+    strOut << "  " << kernName.c_str() << "Cmd(" << originArgs[2].name << " / sizeof(float));" << std::endl;
+    strOut << "  " << memBarCode.c_str();
     return strOut.str();
   }
   else if(a_name == "exclusive_scan" || a_name == "inclusive_scan")
   {
     if(a_name == "exclusive_scan")
-      return "//ExclusiveScanCmd(...)";
+      kernName = "ExclusiveScan";
     else
-      return "//InclusiveScanCmd(...)";
+      kernName = "InclusiveScan";
+
+    std::vector<ArgReferenceOnCall> args(3); // extract corretc arguments from memcpy (CallExpr* call)
+    {
+      args[0].argType = originArgs[0].argType;
+      args[0].name    = originArgs[0].name;
+      args[0].kind    = DATA_KIND::KIND_POINTER;
+  
+      args[1].argType = originArgs[1].argType;
+      args[1].name    = originArgs[1].name;
+      args[1].kind    = DATA_KIND::KIND_POINTER;
+
+      args[2].argType = kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR;
+      args[2].name    = "m_scan.m_scanTempData";
+      args[2].kind    = DATA_KIND::KIND_VECTOR;
+    }
+  
+    const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, std::unordered_map<std::string, kslicer::UsedContainerInfo>()); // + strOut1.str();
+    auto p2 = dsIdBySignature.find(callSign);
+    if(p2 == dsIdBySignature.end())
+    {
+      dsIdBySignature[callSign] = allDescriptorSetsInfo.size();
+      p2 = dsIdBySignature.find(callSign);
+      KernelCallInfo call;
+      call.kernelName         = kernName;
+      call.originKernelName   = kernName;
+      call.callerName         = m_mainFuncName;
+      call.descriptorSetsInfo = args;
+      call.isService          = true; 
+      allDescriptorSetsInfo.push_back(call);
+    }
+    m_dsTagId++;
+
+    std::string scanSize = "ExtractedScanSize";
+  
+    std::stringstream strOut;
+    strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_scan.scanFwdLayout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
+    strOut << "  //" << kernName.c_str() << "Cmd(" << scanSize.c_str() << ");" << std::endl;
+    strOut << "  "   << memBarCode.c_str();
+    return strOut.str();
+
   }
   else if(a_name == "sort")
   {
