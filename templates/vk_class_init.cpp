@@ -995,14 +995,16 @@ std::vector<VkBuffer> {{MainClassName}}{{MainClassSuffix}}::ScanTempData::InitTe
     currSize = currSize / 256;
   }
 
-  m_scanTempData = vk_utils::createBuffer(a_device, currOffset*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-  m_scanMaxSize  = a_maxSize;
-  return {m_scanTempData};
+  m_scanTempDataBuffer = vk_utils::createBuffer(a_device, currOffset*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  m_scanTempDataOffset = 0;
+  m_scanMaxSize        = a_maxSize;
+  return {m_scanTempDataBuffer};
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::ScanTempData::DeleteTempScanBuffers(VkDevice a_device)
 {
-  vkDestroyBuffer(a_device, m_scanTempData, nullptr);
+  vkDestroyBuffer(a_device, m_scanTempDataBuffer, nullptr);
+  m_scanTempDataBuffer = VK_NULL_HANDLE;
   m_scanMipOffsets.resize(0);
 }
 {% endif %}

@@ -56,6 +56,11 @@ std::string kslicer::GetDSArgName(const std::string& a_mainFuncName, const kslic
       else
         return a_mainFuncName + "_local." + a_arg.name; 
     }
+    break;
+
+    case kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_SERVICE_DATA:
+    return a_arg.name;
+    break;
     
     default:
     return std::string("m_vdata.") + a_arg.name;

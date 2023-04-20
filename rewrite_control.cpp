@@ -235,7 +235,7 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
       args[1].name    = originArgs[1].name;
       args[1].kind    = DATA_KIND::KIND_POINTER;
 
-      args[2].argType = kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR;
+      args[2].argType = kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_SERVICE_DATA;
       args[2].name    = "m_scan.m_scanTempData";
       args[2].kind    = DATA_KIND::KIND_VECTOR;
     }

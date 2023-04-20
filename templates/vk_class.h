@@ -393,7 +393,8 @@ protected:
   {% if UseServiceScan %}
   struct ScanTempData
   {
-    VkBuffer              m_scanTempData;
+    VkBuffer              m_scanTempDataBuffer;
+    size_t                m_scanTempDataOffset = 0;
     std::vector<size_t>   m_scanMipOffsets;
     size_t                m_scanMaxSize;
     std::vector<VkBuffer> InitTempScanBuffers(VkDevice a_device, size_t a_maxSize);

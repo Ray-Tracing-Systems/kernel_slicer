@@ -382,7 +382,8 @@ namespace kslicer
     ARG_REFERENCE_CLASS_POD     = 3, // Passing a pointer to a member of the class of type plain old data. For example, "&m_worldViewProjInv"
     ARG_REFERENCE_THREAD_ID     = 4, // Passing tidX, tidY or tidZ
     ARG_REFERENCE_CONST_OR_LITERAL = 5, // Passing const variables or literals (numbers)
-    ARG_REFERENCE_UNKNOWN_TYPE  = 9  // Unknown type of arument yet. Generaly means we need to furthe process it, for example find among class variables or local variables
+    ARG_REFERENCE_SERVICE_DATA  = 6,    // Passing reference to some temp buffer whis should be generated inside class
+    ARG_REFERENCE_UNKNOWN_TYPE  = 9     // Unknown type of arument yet. Generaly means we need to furthe process it, for example find among class variables or local variables
     };
 
   struct ArgReferenceOnCall
