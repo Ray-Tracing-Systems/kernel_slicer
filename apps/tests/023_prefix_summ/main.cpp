@@ -22,13 +22,13 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
 
-  std::vector<int> array    (1024);
-  std::vector<int> outArray (1024);
-  std::vector<int> outArray2(1024);
-  //for(size_t i=0;i<array.size();i++)
-  //  array[i] = i + 1;
+  std::vector<int> array    (1024*371 + 777); // 1024
+  std::vector<int> outArray (array.size());
+  std::vector<int> outArray2(array.size());
   for(size_t i=0;i<array.size();i++)
-    array[i] = 1;    
+    array[i] = i + 1;
+  //for(size_t i=0;i<array.size();i++)
+  //  array[i] = 1;    
 
   std::shared_ptr<PrefSummTest> pImpl = nullptr;
   ArgParser args(argc, argv);
@@ -83,6 +83,8 @@ int main(int argc, const char** argv)
       break;
     }
   }
+  
+  std::cout << "array size = " << array.size() << std::endl;
 
   if(exclusiveDiffId == size_t(-1))
     std::cout << "exclusive_scan: PASSED!" << std::endl; 
