@@ -401,7 +401,7 @@ protected:
     void                  DeleteTempBuffers(VkDevice a_device);
     
     void ExclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size);
-    void InclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size);
+    void InclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size, bool actuallyExclusive = false);
 
     VkDescriptorSetLayout CreateInternalScanDSLayout(VkDevice a_device);
     void                  DeletePipelines(VkDevice a_device);

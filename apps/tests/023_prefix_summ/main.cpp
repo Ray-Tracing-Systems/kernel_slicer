@@ -3,6 +3,8 @@
 #include <vector>
 #include <memory>
 #include <cstdint>
+#include <algorithm>
+#include <numeric>
 
 #include "test_class.h"
 #include "ArgParser.h"
@@ -23,8 +25,10 @@ int main(int argc, const char** argv)
   std::vector<int> array    (1024);
   std::vector<int> outArray (1024);
   std::vector<int> outArray2(1024);
+  //for(size_t i=0;i<array.size();i++)
+  //  array[i] = i + 1;
   for(size_t i=0;i<array.size();i++)
-    array[i] = i + 1;
+    array[i] = 1;    
 
   std::shared_ptr<PrefSummTest> pImpl = nullptr;
   ArgParser args(argc, argv);
@@ -41,8 +45,7 @@ int main(int argc, const char** argv)
   std::string backendName = onGPU ? "gpu" : "cpu";
 
   pImpl->CommitDeviceData();
-  pImpl->PrefixSumm(array.data(), array.size(), 
-                    outArray.data(), outArray2.data());
+  pImpl->PrefixSumm(array.data(), array.size(), outArray.data(), outArray2.data());
 
   for(int i=0;i<10;i++)
     std::cout << outArray[i] << " ";
@@ -51,6 +54,45 @@ int main(int argc, const char** argv)
   for(int i=0;i<10;i++)
     std::cout << outArray2[i] << " ";
   std::cout << std::endl;
+  
+  // check results right now
+  //
+  std::vector<int> refArray (outArray.size());
+  std::vector<int> refArray2(outArray.size());
+ 
+  std::exclusive_scan(array.begin(), array.end(), refArray.begin(), 0);
+  std::inclusive_scan(array.begin(), array.end(), refArray2.begin(), std::plus<int>(), 0);
+  
+  size_t exclusiveDiffId = size_t(-1);
+  size_t inclusiveDiffId = size_t(-1);
+
+  for(size_t i=0;i<array.size();i++)
+  {
+    if(refArray[i] != outArray[i])
+    {
+      exclusiveDiffId = i;
+      break;
+    }
+  }
+
+  for(size_t i=0;i<array.size();i++)
+  {
+    if(refArray2[i] != outArray2[i])
+    {
+      inclusiveDiffId = i;
+      break;
+    }
+  }
+
+  if(exclusiveDiffId == size_t(-1))
+    std::cout << "exclusive_scan: PASSED!" << std::endl; 
+  else
+    std::cout << "exclusive_scan: FAILED! at " <<  exclusiveDiffId << " " << refArray[exclusiveDiffId] << " != " << outArray[exclusiveDiffId] << std::endl; 
+
+  if(inclusiveDiffId == size_t(-1))
+    std::cout << "inclusive_scan: PASSED!" << std::endl; 
+  else
+    std::cout << "inclusive_scan: FAILED! at " <<  inclusiveDiffId << " " << refArray[inclusiveDiffId] << " != " << outArray[inclusiveDiffId] << std::endl; 
 
   //JSONLog::write("array", outArray);
   //JSONLog::write("array2", outArray2);

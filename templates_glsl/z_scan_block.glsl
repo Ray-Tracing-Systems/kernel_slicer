@@ -11,6 +11,7 @@ layout( push_constant ) uniform kernelIntArgs
   uint currMip;
   uint currPassOffset;
   uint nextPassOffset;
+  uint exclusiveFlag;
 } kgenArgs;
 
 shared {{Type}} l_Data[512];
@@ -25,8 +26,18 @@ void main()
   
   if(kgenArgs.currMip == 0)
   {
-    if (globalId < kgenArgs.iNumElementsX)
-      idata = in_data[globalId];
+    if(kgenArgs.exclusiveFlag == 0)
+    {
+      if (globalId < kgenArgs.iNumElementsX)
+        idata = in_data[globalId];
+    }
+    else
+    {
+      if(globalId == 0)
+        idata = 0;
+      else if (globalId < kgenArgs.iNumElementsX)
+        idata = in_data[globalId-1];
+    }
   }
   else
   {

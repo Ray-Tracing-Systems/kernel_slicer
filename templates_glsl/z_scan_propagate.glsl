@@ -11,6 +11,7 @@ layout( push_constant ) uniform kernelIntArgs
   uint currMip;
   uint currPassOffset;
   uint nextPassOffset;
+  uint exclusiveFlag;
 } kgenArgs;
 
 void main()

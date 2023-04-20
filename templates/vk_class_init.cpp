@@ -1043,6 +1043,17 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::DeletePipelines(VkDevice a_
 
 void {{MainClassName}}{{MainClassSuffix}}::ScanData::ExclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size)
 {
+  InclusiveScanCmd(a_cmdBuffer, a_size, true);
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size, bool actuallyExclusive)
+{
+  if (m_scanMaxSize < a_size)
+  {
+    std::cout << "InclusiveScanCmd: too big input size = " << a_size << ", maximum allowed is " << m_scanMaxSize << std::endl;
+    return;
+  }
+
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT }; 
   VkBufferMemoryBarrier bufBars[2] = {};
   bufBars[0].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -1059,12 +1070,6 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::ExclusiveScanCmd(VkCommandB
   bufBars[1].dstAccessMask = 0; // we don't going to read summ in next kernel launch
 
   size_t sizeOfElem = sizeof(uint32_t);
-
-  if (m_scanMaxSize < a_size)
-  {
-    std::cout << "ExclusiveScanCmd: too big input size = " << a_size << ", maximum allowed is " << m_scanMaxSize << std::endl;
-    return;
-  }
   
   uint32_t blockSizeX = 256;
   uint32_t blockSizeY = 1;
@@ -1076,9 +1081,14 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::ExclusiveScanCmd(VkCommandB
     uint32_t currMip;
     uint32_t currPassOffset;
     uint32_t nextPassOffset;
+    uint32_t exclusiveFlag;
   } pcData;
 
+  pcData.exclusiveFlag = actuallyExclusive ? 1 : 0;
+
   std::vector<size_t> lastSizeV;
+  std::vector<size_t> offsets;
+  offsets.reserve(16);
   
   vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, scanFwdPipeline);
 
@@ -1101,6 +1111,7 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::ExclusiveScanCmd(VkCommandB
     }
     else
     {
+      offsets.push_back(currOffset);
       pcData.currPassOffset = currOffset; 
       pcData.nextPassOffset = currOffset + runSize; 
       currOffset += runSize;
@@ -1147,9 +1158,8 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::ExclusiveScanCmd(VkCommandB
     }
     else
     {
-      pcData.currPassOffset = currOffset; 
-      pcData.nextPassOffset = currOffset - runSize; 
-      currOffset -= runSize;
+      pcData.currPassOffset = offsets[currMip]; 
+      pcData.nextPassOffset = offsets[currMip-1]; 
     }
  
     vkCmdPushConstants(a_cmdBuffer, scanFwdLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
@@ -1161,14 +1171,5 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::ExclusiveScanCmd(VkCommandB
     currMip--;
   }
 
-}
-
-void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size)
-{
-  if (m_scanMaxSize < a_size)
-  {
-    std::cout << "InclusiveScanCmd: too big input size = " << a_size << ", maximum allowed is " << m_scanMaxSize << std::endl;
-    return;
-  }
 }
 {% endif %}
