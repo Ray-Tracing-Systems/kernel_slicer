@@ -391,6 +391,7 @@ protected:
   {% endif %}
   
   {% if UseServiceScan %}
+  VkDescriptorSetLayout   internalScanRefDSLayout = VK_NULL_HANDLE;
   struct ScanTempData
   {
     VkBuffer              m_scanTempDataBuffer;

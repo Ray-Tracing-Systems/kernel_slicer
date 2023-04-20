@@ -443,6 +443,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   m_pMaker->LoadShader(device, servPathProp.c_str(), nullptr, "main");
   m_scan.scanPropLayout   = m_pMaker->MakeLayout(device, {copyKernelFloatDSLayout}, 128); // at least 128 bytes for push constants
   m_scan.scanPropPipeline = m_pMaker->MakePipeline(device);
+  internalScanRefDSLayout = copyKernelFloatDSLayout; // same layouyt as copy
   {% endif %} {# /* UseServiceScan */ #}
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectBufferUpdateResources(a_filePath);
