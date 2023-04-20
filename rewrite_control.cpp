@@ -176,8 +176,8 @@ std::unordered_set<std::string> kslicer::GetAllServiceKernels()
 
 static std::string ExtractSizeFromArgExpression(const std::string a_str)
 {
-  auto posOfPlus = a_str.find_first_of("+");
-  auto posOfEnd  = a_str.find_first_of(".end()");
+  auto posOfPlus = a_str.find("+");
+  auto posOfEnd  = a_str.find(".end()");
 
   if(posOfPlus != std::string::npos)
   {

@@ -1,5 +1,7 @@
 #pragma once 
 
+#include <vector>
+
 namespace std
 {
   /// One of the @link arithmetic_functors math functors@endlink.
@@ -9,6 +11,9 @@ namespace std
     _Tp operator()(const _Tp& __x, const _Tp& __y) const { return __x + __y; }
   };
 
-  template<class T>           T* exclusive_scan(const T* first, const T* last, const T* d_first, T init );
-  template<class T, class Op> T* inclusive_scan(const T* first, const T* last, const T* d_first, Op op, T init );
+  template<class T>           T* exclusive_scan(const T* first, const T* last, T* d_first, T init );
+  template<class T, class Op> T* inclusive_scan(const T* first, const T* last, T* d_first, Op op, T init );
+
+  template<class T, class It, class CIt>           It exclusive_scan(CIt first, CIt last, It d_first, T init );
+  template<class T, class It, class CIt, class Op> It inclusive_scan(CIt first, CIt last, It d_first, Op op, T init);
 }

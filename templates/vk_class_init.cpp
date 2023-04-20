@@ -1148,7 +1148,6 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandB
     lastSizeV.pop_back();
 
     const size_t runSize  = sRoundBlocks(currSize, 256);
-    const size_t nextSize = runSize * 256;
     pcData.iNumElementsX  = uint32_t(runSize);
     pcData.currMip        = uint32_t(currMip);
     if(currMip == 0)
@@ -1165,9 +1164,13 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandB
     vkCmdPushConstants(a_cmdBuffer, scanFwdLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
     vkCmdDispatch(a_cmdBuffer, (runSize + blockSizeX - 1) / blockSizeX, 1, 1);
 
-    if(currMip != 0) // will have pipeline barrir outside of this function anyway
-      vkCmdPipelineBarrier(a_cmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
-
+    if(currMip != 0) // will have pipeline barrier outside of this function anyway
+    {
+      //vkCmdPipelineBarrier(a_cmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+      bufBars[0].offset = pcData.nextPassOffset*sizeOfElem;
+      bufBars[0].size   = runSize*sizeOfElem;
+      vkCmdPipelineBarrier(a_cmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, bufBars, 0, nullptr);
+    }
     currMip--;
   }
 
