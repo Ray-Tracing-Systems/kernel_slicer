@@ -224,7 +224,7 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
     //  kernName = "ExclusiveScan";
     //else
     //  kernName = "InclusiveScan";
-    kernName = "internalScanRef";
+    kernName = "internalScan";
     std::vector<ArgReferenceOnCall> args(3); // extract corretc arguments from memcpy (CallExpr* call)
     {
       args[0].argType = originArgs[0].argType;

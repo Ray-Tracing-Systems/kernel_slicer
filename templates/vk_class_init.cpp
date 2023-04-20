@@ -44,9 +44,7 @@ uint32_t {{MainClassName}}{{MainClassSuffix}}::GetDefaultMaxTextures() const { r
   vkDestroyPipeline(device, m_scan.scanPropPipeline, nullptr);
   vkDestroyPipelineLayout(device, m_scan.scanFwdLayout, nullptr);
   vkDestroyPipelineLayout(device, m_scan.scanPropLayout, nullptr);
-  {% if not UseServiceMemCopy %}
-  vkDestroyDescriptorSetLayout(device, copyKernelFloatDSLayout, nullptr);
-  {% endif %}
+  vkDestroyDescriptorSetLayout(device, internalScanDSLayout, nullptr);
   {% endif %} {# /* UseServiceMemCopy */ #}
 ## for Kernel in Kernels
   vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
@@ -237,6 +235,40 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
   return layout;
 }
 ## endfor
+
+{% if UseServiceScan %}
+VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::CreateInternalScanDSLayout()
+{
+  std::array<VkDescriptorSetLayoutBinding, 3> dsBindings;
+
+  dsBindings[0].binding            = 0;
+  dsBindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[0].descriptorCount    = 1;
+  dsBindings[0].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[0].pImmutableSamplers = nullptr;
+
+  dsBindings[1].binding            = 1;
+  dsBindings[1].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[1].descriptorCount    = 1;
+  dsBindings[1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[1].pImmutableSamplers = nullptr;
+ 
+  dsBindings[2].binding            = 1;
+  dsBindings[2].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[2].descriptorCount    = 1;
+  dsBindings[2].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[2].pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
+  descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  descriptorSetLayoutCreateInfo.bindingCount = dsBindings.size();
+  descriptorSetLayoutCreateInfo.pBindings    = dsBindings.data();
+
+  VkDescriptorSetLayout layout = nullptr;
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
+  return layout;
+}
+{% endif%}
 
 VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::CreatecopyKernelFloatDSLayout()
 {
@@ -430,20 +462,17 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   copyKernelFloatPipeline = m_pMaker->MakePipeline(device);
   {% endif %} {# /* UseServiceMemCopy */ #}
   {% if UseServiceScan %}
-  {% if not UseServiceMemCopy %}
-  copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
-  {% endif %} {# /* UseServiceMemCopy */ #}
   std::string servPathFwd  = AlterShaderPath("{{ShaderFolder}}/z_scan_block.comp.spv");
   std::string servPathProp = AlterShaderPath("{{ShaderFolder}}/z_scan_propagate.comp.spv");
-  
+  internalScanDSLayout     = CreateInternalScanDSLayout();
+
   m_pMaker->LoadShader(device, servPathFwd.c_str(), nullptr, "main");
-  m_scan.scanFwdLayout   = m_pMaker->MakeLayout(device, {copyKernelFloatDSLayout}, 128); // at least 128 bytes for push constants
+  m_scan.scanFwdLayout   = m_pMaker->MakeLayout(device, {internalScanDSLayout}, 128); // at least 128 bytes for push constants
   m_scan.scanFwdPipeline = m_pMaker->MakePipeline(device);
   
   m_pMaker->LoadShader(device, servPathProp.c_str(), nullptr, "main");
-  m_scan.scanPropLayout   = m_pMaker->MakeLayout(device, {copyKernelFloatDSLayout}, 128); // at least 128 bytes for push constants
+  m_scan.scanPropLayout   = m_pMaker->MakeLayout(device, {internalScanDSLayout}, 128); // at least 128 bytes for push constants
   m_scan.scanPropPipeline = m_pMaker->MakePipeline(device);
-  internalScanRefDSLayout = copyKernelFloatDSLayout; // same layouyt as copy
   {% endif %} {# /* UseServiceScan */ #}
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectBufferUpdateResources(a_filePath);
