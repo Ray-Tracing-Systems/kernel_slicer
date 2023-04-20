@@ -40,11 +40,7 @@ uint32_t {{MainClassName}}{{MainClassSuffix}}::GetDefaultMaxTextures() const { r
   vkDestroyPipelineLayout(device, copyKernelFloatLayout, nullptr);
   {% endif %} {# /* UseServiceMemCopy */ #}
   {% if UseServiceScan %}
-  vkDestroyPipeline(device, m_scan.scanFwdPipeline, nullptr);
-  vkDestroyPipeline(device, m_scan.scanPropPipeline, nullptr);
-  vkDestroyPipelineLayout(device, m_scan.scanFwdLayout, nullptr);
-  vkDestroyPipelineLayout(device, m_scan.scanPropLayout, nullptr);
-  vkDestroyDescriptorSetLayout(device, internalScanDSLayout, nullptr);
+  m_scan.DeletePipelines(device);
   {% endif %} {# /* UseServiceMemCopy */ #}
 ## for Kernel in Kernels
   vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
@@ -133,7 +129,7 @@ uint32_t {{MainClassName}}{{MainClassSuffix}}::GetDefaultMaxTextures() const { r
   vkDestroyBuffer(device, m_{{Hierarchy.Name}}ObjPtrBuffer, nullptr);
   {% endfor %}
   {% if UseServiceScan %}
-  m_scan.DeleteTempScanBuffers(device);
+  m_scan.DeleteTempBuffers(device);
   {% endif %}
   FreeAllAllocations(m_allMems);
 }
@@ -237,7 +233,7 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
 ## endfor
 
 {% if UseServiceScan %}
-VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::CreateInternalScanDSLayout()
+VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::ScanTempData::CreateInternalScanDSLayout(VkDevice a_device)
 {
   std::array<VkDescriptorSetLayoutBinding, 3> dsBindings;
 
@@ -265,8 +261,27 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::CreateInternalScanDS
   descriptorSetLayoutCreateInfo.pBindings    = dsBindings.data();
 
   VkDescriptorSetLayout layout = nullptr;
-  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(a_device, &descriptorSetLayoutCreateInfo, NULL, &layout));
   return layout;
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::ScanTempData::DeletePipelines(VkDevice a_device)
+{
+  vkDestroyPipeline(a_device, scanFwdPipeline, nullptr);
+  vkDestroyPipeline(a_device, scanPropPipeline, nullptr);
+  vkDestroyPipelineLayout(a_device, scanFwdLayout, nullptr);
+  vkDestroyPipelineLayout(a_device, scanPropLayout, nullptr);
+  vkDestroyDescriptorSetLayout(a_device, internalDSLayout, nullptr);
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::ScanTempData::ExclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size)
+{
+
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::ScanTempData::InclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size)
+{
+
 }
 {% endif%}
 
@@ -464,14 +479,14 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   {% if UseServiceScan %}
   std::string servPathFwd  = AlterShaderPath("{{ShaderFolder}}/z_scan_block.comp.spv");
   std::string servPathProp = AlterShaderPath("{{ShaderFolder}}/z_scan_propagate.comp.spv");
-  internalScanDSLayout     = CreateInternalScanDSLayout();
+  m_scan.internalDSLayout  = m_scan.CreateInternalScanDSLayout(device);
 
   m_pMaker->LoadShader(device, servPathFwd.c_str(), nullptr, "main");
-  m_scan.scanFwdLayout   = m_pMaker->MakeLayout(device, {internalScanDSLayout}, 128); // at least 128 bytes for push constants
+  m_scan.scanFwdLayout   = m_pMaker->MakeLayout(device, {m_scan.internalDSLayout}, 128); // at least 128 bytes for push constants
   m_scan.scanFwdPipeline = m_pMaker->MakePipeline(device);
   
   m_pMaker->LoadShader(device, servPathProp.c_str(), nullptr, "main");
-  m_scan.scanPropLayout   = m_pMaker->MakeLayout(device, {internalScanDSLayout}, 128); // at least 128 bytes for push constants
+  m_scan.scanPropLayout   = m_pMaker->MakeLayout(device, {m_scan.internalDSLayout}, 128); // at least 128 bytes for push constants
   m_scan.scanPropPipeline = m_pMaker->MakePipeline(device);
   {% endif %} {# /* UseServiceScan */ #}
   {% if length(IndirectDispatches) > 0 %}
@@ -563,7 +578,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
   {% endfor %}
 
   {% if UseServiceScan %}
-  auto tempBuffersForScan = m_scan.InitTempScanBuffers(device, a_maxThreadsCount);
+  auto tempBuffersForScan = m_scan.InitTempBuffers(device, a_maxThreadsCount);
   allBuffersRef.insert(allBuffersRef.end(), tempBuffersForScan.begin(), tempBuffersForScan.end());
   {% endif %}
   
@@ -1002,7 +1017,7 @@ inline size_t sRoundBlocks(size_t elems, int threadsPerBlock)
     return sblocksST(elems, threadsPerBlock) * threadsPerBlock;
 }
 
-std::vector<VkBuffer> {{MainClassName}}{{MainClassSuffix}}::ScanTempData::InitTempScanBuffers(VkDevice a_device, size_t a_maxSize)
+std::vector<VkBuffer> {{MainClassName}}{{MainClassSuffix}}::ScanTempData::InitTempBuffers(VkDevice a_device, size_t a_maxSize)
 {
   m_scanMipOffsets.resize(0);
   size_t currSize = a_maxSize;
@@ -1031,7 +1046,7 @@ std::vector<VkBuffer> {{MainClassName}}{{MainClassSuffix}}::ScanTempData::InitTe
   return {m_scanTempDataBuffer};
 }
 
-void {{MainClassName}}{{MainClassSuffix}}::ScanTempData::DeleteTempScanBuffers(VkDevice a_device)
+void {{MainClassName}}{{MainClassSuffix}}::ScanTempData::DeleteTempBuffers(VkDevice a_device)
 {
   vkDestroyBuffer(a_device, m_scanTempDataBuffer, nullptr);
   m_scanTempDataBuffer = VK_NULL_HANDLE;

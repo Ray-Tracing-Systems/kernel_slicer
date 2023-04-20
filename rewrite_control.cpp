@@ -174,6 +174,24 @@ std::unordered_set<std::string> kslicer::GetAllServiceKernels()
   return names;
 }
 
+static std::string ExtractSizeFromArgExpression(const std::string a_str)
+{
+  auto posOfPlus = a_str.find_first_of("+");
+  auto posOfEnd  = a_str.find_first_of(".end()");
+
+  if(posOfPlus != std::string::npos)
+  {
+    std::string sizeExpr = a_str.substr(posOfPlus+1);
+    ReplaceFirst(sizeExpr," ", "");
+    return sizeExpr;
+  }
+  else if(posOfEnd != std::string::npos)
+  {
+    return a_str.substr(0, posOfEnd) + ".size()";
+  }
+
+  return a_str;
+}
 
 std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallExpr* call, const std::string& a_name)
 {
@@ -219,20 +237,24 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
     return strOut.str();
   }
   else if(a_name == "exclusive_scan" || a_name == "inclusive_scan")
-  {
-    //if(a_name == "exclusive_scan")
-    //  kernName = "ExclusiveScan";
-    //else
-    //  kernName = "InclusiveScan";
-    kernName = "internalScan";
+  { 
+    std::string commandName = "m_scan.ExclusiveScan";
+    if(a_name == "exclusive_scan")
+      commandName = "m_scan.ExclusiveScan";
+    else
+      commandName = "m_scan.InclusiveScan";
+    kernName = "m_scan.internal";
+    std::string launchSize = ExtractSizeFromArgExpression(originArgs[1].name); 
     std::vector<ArgReferenceOnCall> args(3); // extract corretc arguments from memcpy (CallExpr* call)
     {
       args[0].argType = originArgs[0].argType;
       args[0].name    = originArgs[0].name;
       args[0].kind    = DATA_KIND::KIND_POINTER;
   
-      args[1].argType = originArgs[1].argType;
-      args[1].name    = originArgs[1].name;
+      //std::cout << "  originArgs[1].name = " << originArgs[1].name.c_str() << std::endl;
+
+      args[1].argType = originArgs[2].argType;
+      args[1].name    = originArgs[2].name;
       args[1].kind    = DATA_KIND::KIND_POINTER;
 
       args[2].argType = kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_SERVICE_DATA;
@@ -255,13 +277,11 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
       allDescriptorSetsInfo.push_back(call);
     }
     m_dsTagId++;
-
-    std::string scanSize = "ExtractedScanSize";
   
     std::stringstream strOut;
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_scan.scanFwdLayout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
-    strOut << "  //" << kernName.c_str() << "Cmd(" << scanSize.c_str() << ");" << std::endl;
-    strOut << "  "   << memBarCode.c_str();
+    strOut << "  " << commandName.c_str() << "Cmd(m_currCmdBuffer, " << launchSize.c_str() << ");" << std::endl;
+    strOut << "  " << memBarCode.c_str();
     return strOut.str();
 
   }
