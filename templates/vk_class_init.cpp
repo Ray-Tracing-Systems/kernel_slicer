@@ -232,59 +232,6 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
 }
 ## endfor
 
-{% if UseServiceScan %}
-VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::ScanData::CreateInternalScanDSLayout(VkDevice a_device)
-{
-  std::array<VkDescriptorSetLayoutBinding, 3> dsBindings;
-
-  dsBindings[0].binding            = 0;
-  dsBindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  dsBindings[0].descriptorCount    = 1;
-  dsBindings[0].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
-  dsBindings[0].pImmutableSamplers = nullptr;
-
-  dsBindings[1].binding            = 1;
-  dsBindings[1].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  dsBindings[1].descriptorCount    = 1;
-  dsBindings[1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
-  dsBindings[1].pImmutableSamplers = nullptr;
- 
-  dsBindings[2].binding            = 1;
-  dsBindings[2].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  dsBindings[2].descriptorCount    = 1;
-  dsBindings[2].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
-  dsBindings[2].pImmutableSamplers = nullptr;
-
-  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
-  descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  descriptorSetLayoutCreateInfo.bindingCount = dsBindings.size();
-  descriptorSetLayoutCreateInfo.pBindings    = dsBindings.data();
-
-  VkDescriptorSetLayout layout = nullptr;
-  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(a_device, &descriptorSetLayoutCreateInfo, NULL, &layout));
-  return layout;
-}
-
-void {{MainClassName}}{{MainClassSuffix}}::ScanData::DeletePipelines(VkDevice a_device)
-{
-  vkDestroyPipeline(a_device, scanFwdPipeline, nullptr);
-  vkDestroyPipeline(a_device, scanPropPipeline, nullptr);
-  vkDestroyPipelineLayout(a_device, scanFwdLayout, nullptr);
-  vkDestroyPipelineLayout(a_device, scanPropLayout, nullptr);
-  vkDestroyDescriptorSetLayout(a_device, internalDSLayout, nullptr);
-}
-
-void {{MainClassName}}{{MainClassSuffix}}::ScanData::ExclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size)
-{
-
-}
-
-void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size)
-{
-
-}
-{% endif%}
-
 VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::CreatecopyKernelFloatDSLayout()
 {
   {% if UseSpecConstWgSize %}
@@ -1051,5 +998,177 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::DeleteTempBuffers(VkDevice 
   vkDestroyBuffer(a_device, m_scanTempDataBuffer, nullptr);
   m_scanTempDataBuffer = VK_NULL_HANDLE;
   m_scanMipOffsets.resize(0);
+}
+
+VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::ScanData::CreateInternalScanDSLayout(VkDevice a_device)
+{
+  std::array<VkDescriptorSetLayoutBinding, 3> dsBindings;
+
+  dsBindings[0].binding            = 0;
+  dsBindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[0].descriptorCount    = 1;
+  dsBindings[0].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[0].pImmutableSamplers = nullptr;
+
+  dsBindings[1].binding            = 1;
+  dsBindings[1].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[1].descriptorCount    = 1;
+  dsBindings[1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[1].pImmutableSamplers = nullptr;
+ 
+  dsBindings[2].binding            = 2;
+  dsBindings[2].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[2].descriptorCount    = 1;
+  dsBindings[2].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[2].pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
+  descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  descriptorSetLayoutCreateInfo.bindingCount = dsBindings.size();
+  descriptorSetLayoutCreateInfo.pBindings    = dsBindings.data();
+
+  VkDescriptorSetLayout layout = nullptr;
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(a_device, &descriptorSetLayoutCreateInfo, NULL, &layout));
+  return layout;
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::ScanData::DeletePipelines(VkDevice a_device)
+{
+  vkDestroyPipeline(a_device, scanFwdPipeline, nullptr);
+  vkDestroyPipeline(a_device, scanPropPipeline, nullptr);
+  vkDestroyPipelineLayout(a_device, scanFwdLayout, nullptr);
+  vkDestroyPipelineLayout(a_device, scanPropLayout, nullptr);
+  vkDestroyDescriptorSetLayout(a_device, internalDSLayout, nullptr);
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::ScanData::ExclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size)
+{
+  VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT }; 
+  VkBufferMemoryBarrier bufBars[2] = {};
+  bufBars[0].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  bufBars[0].pNext               = NULL;
+  bufBars[0].srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT;
+  bufBars[0].dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
+  bufBars[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bufBars[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bufBars[0].buffer              = m_scanTempDataBuffer;
+  bufBars[0].offset              = 0;
+  bufBars[0].size                = VK_WHOLE_SIZE;
+
+  bufBars[1] = bufBars[0];
+  bufBars[1].dstAccessMask = 0; // we don't going to read summ in next kernel launch
+
+  size_t sizeOfElem = sizeof(uint32_t);
+
+  if (m_scanMaxSize < a_size)
+  {
+    std::cout << "ExclusiveScanCmd: too big input size = " << a_size << ", maximum allowed is " << m_scanMaxSize << std::endl;
+    return;
+  }
+  
+  uint32_t blockSizeX = 256;
+  uint32_t blockSizeY = 1;
+  uint32_t blockSizeZ = 1;
+
+  struct KernelArgsPC
+  {
+    uint32_t iNumElementsX;  
+    uint32_t currMip;
+    uint32_t currPassOffset;
+    uint32_t nextPassOffset;
+  } pcData;
+
+  std::vector<size_t> lastSizeV;
+  
+  vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, scanFwdPipeline);
+
+  // down, scan phase
+  //
+  int currMip = 0;
+  size_t currOffset = 0;
+  for (size_t currSize = a_size; currSize > 1; currSize = currSize / 256)
+  {
+    lastSizeV.push_back(currSize);
+  
+    const size_t runSize  = sRoundBlocks(currSize, 256);
+    const size_t nextSize = runSize / 256;
+    pcData.iNumElementsX  = uint32_t(runSize);
+    pcData.currMip        = uint32_t(currMip);
+    if(currMip == 0)
+    {
+      pcData.currPassOffset = 0; 
+      pcData.nextPassOffset = 0; 
+    }
+    else
+    {
+      pcData.currPassOffset = currOffset; 
+      pcData.nextPassOffset = currOffset + runSize; 
+      currOffset += runSize;
+    }
+
+    vkCmdPushConstants(a_cmdBuffer, scanFwdLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
+    vkCmdDispatch(a_cmdBuffer, (runSize + blockSizeX - 1) / blockSizeX, 1, 1);
+    
+    if(currMip == 0)
+      vkCmdPipelineBarrier(a_cmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+    else
+    {
+      bufBars[0].offset = pcData.nextPassOffset*sizeOfElem;
+      bufBars[0].size   = nextSize*sizeOfElem;
+      bufBars[1].offset = pcData.currPassOffset*sizeOfElem;
+      bufBars[1].size   = runSize*sizeOfElem;
+      vkCmdPipelineBarrier(a_cmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 2, bufBars, 0, nullptr);
+    }
+
+    currMip++;
+  }
+
+  currMip--;
+  currMip--;
+  lastSizeV.pop_back();
+  
+  vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, scanPropPipeline);
+
+  // up, propagate phase (IN PROGRESS!!!)
+  //
+  while (currMip >= 0)
+  {
+    size_t currSize = lastSizeV.back();
+    lastSizeV.pop_back();
+
+    const size_t runSize  = sRoundBlocks(currSize, 256);
+    const size_t nextSize = runSize * 256;
+    pcData.iNumElementsX  = uint32_t(runSize);
+    pcData.currMip        = uint32_t(currMip);
+    if(currMip == 0)
+    {
+      pcData.currPassOffset = 0; 
+      pcData.nextPassOffset = 0; 
+    }
+    else
+    {
+      pcData.currPassOffset = currOffset; 
+      pcData.nextPassOffset = currOffset - runSize; 
+      currOffset -= runSize;
+    }
+ 
+    vkCmdPushConstants(a_cmdBuffer, scanFwdLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
+    vkCmdDispatch(a_cmdBuffer, (runSize + blockSizeX - 1) / blockSizeX, 1, 1);
+
+    if(currMip != 0) // will have pipeline barrir outside of this function anyway
+      vkCmdPipelineBarrier(a_cmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+
+    currMip--;
+  }
+
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size)
+{
+  if (m_scanMaxSize < a_size)
+  {
+    std::cout << "InclusiveScanCmd: too big input size = " << a_size << ", maximum allowed is " << m_scanMaxSize << std::endl;
+    return;
+  }
 }
 {% endif %}
