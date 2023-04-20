@@ -87,18 +87,28 @@ int main(int argc, const char** argv)
   std::cout << "array size = " << array.size() << std::endl;
 
   if(exclusiveDiffId == size_t(-1))
-    std::cout << "exclusive_scan: PASSED!" << std::endl; 
+  {
+    JSONLog::write("exclusive_scan", "PASSED!");
+    //std::cout << "exclusive_scan: PASSED!" << std::endl; 
+  }
   else
-    std::cout << "exclusive_scan: FAILED! at " <<  exclusiveDiffId << " " << refArray[exclusiveDiffId] << " != " << outArray[exclusiveDiffId] << std::endl; 
+  {
+    JSONLog::write("exclusive_scan", "FAILED!");
+    //std::cout << "exclusive_scan: FAILED! at " <<  exclusiveDiffId << " " << refArray[exclusiveDiffId] << " != " << outArray[exclusiveDiffId] << std::endl; 
+  }
 
   if(inclusiveDiffId == size_t(-1))
-    std::cout << "inclusive_scan: PASSED!" << std::endl; 
+  {
+    JSONLog::write("inclusive_scan", "PASSED!");
+    //std::cout << "inclusive_scan: PASSED!" << std::endl; 
+  }
   else
-    std::cout << "inclusive_scan: FAILED! at " <<  inclusiveDiffId << " " << refArray[inclusiveDiffId] << " != " << outArray[inclusiveDiffId] << std::endl; 
+  {
+    JSONLog::write("inclusive_scan", "FAILED!");
+    //std::cout << "inclusive_scan: FAILED! at " <<  inclusiveDiffId << " " << refArray[inclusiveDiffId] << " != " << outArray[inclusiveDiffId] << std::endl; 
+  }
 
-  //JSONLog::write("array", outArray);
-  //JSONLog::write("array2", outArray2);
-  //JSONLog::saveToFile("zout_" + backendName + ".json");
+  JSONLog::saveToFile("zout_" + backendName + ".json");
 
   return 0;
 }
