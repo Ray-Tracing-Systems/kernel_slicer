@@ -233,7 +233,7 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
 ## endfor
 
 {% if UseServiceScan %}
-VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::ScanTempData::CreateInternalScanDSLayout(VkDevice a_device)
+VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::ScanData::CreateInternalScanDSLayout(VkDevice a_device)
 {
   std::array<VkDescriptorSetLayoutBinding, 3> dsBindings;
 
@@ -265,7 +265,7 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::ScanTempData::Create
   return layout;
 }
 
-void {{MainClassName}}{{MainClassSuffix}}::ScanTempData::DeletePipelines(VkDevice a_device)
+void {{MainClassName}}{{MainClassSuffix}}::ScanData::DeletePipelines(VkDevice a_device)
 {
   vkDestroyPipeline(a_device, scanFwdPipeline, nullptr);
   vkDestroyPipeline(a_device, scanPropPipeline, nullptr);
@@ -274,12 +274,12 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanTempData::DeletePipelines(VkDevic
   vkDestroyDescriptorSetLayout(a_device, internalDSLayout, nullptr);
 }
 
-void {{MainClassName}}{{MainClassSuffix}}::ScanTempData::ExclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size)
+void {{MainClassName}}{{MainClassSuffix}}::ScanData::ExclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size)
 {
 
 }
 
-void {{MainClassName}}{{MainClassSuffix}}::ScanTempData::InclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size)
+void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size)
 {
 
 }
@@ -1017,7 +1017,7 @@ inline size_t sRoundBlocks(size_t elems, int threadsPerBlock)
     return sblocksST(elems, threadsPerBlock) * threadsPerBlock;
 }
 
-std::vector<VkBuffer> {{MainClassName}}{{MainClassSuffix}}::ScanTempData::InitTempBuffers(VkDevice a_device, size_t a_maxSize)
+std::vector<VkBuffer> {{MainClassName}}{{MainClassSuffix}}::ScanData::InitTempBuffers(VkDevice a_device, size_t a_maxSize)
 {
   m_scanMipOffsets.resize(0);
   size_t currSize = a_maxSize;
@@ -1046,7 +1046,7 @@ std::vector<VkBuffer> {{MainClassName}}{{MainClassSuffix}}::ScanTempData::InitTe
   return {m_scanTempDataBuffer};
 }
 
-void {{MainClassName}}{{MainClassSuffix}}::ScanTempData::DeleteTempBuffers(VkDevice a_device)
+void {{MainClassName}}{{MainClassSuffix}}::ScanData::DeleteTempBuffers(VkDevice a_device)
 {
   vkDestroyBuffer(a_device, m_scanTempDataBuffer, nullptr);
   m_scanTempDataBuffer = VK_NULL_HANDLE;

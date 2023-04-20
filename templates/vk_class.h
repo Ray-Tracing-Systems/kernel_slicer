@@ -391,7 +391,7 @@ protected:
   {% endif %}
   
   {% if UseServiceScan %}
-  struct ScanTempData
+  struct ScanData
   {
     VkBuffer              m_scanTempDataBuffer;
     size_t                m_scanTempDataOffset = 0;
