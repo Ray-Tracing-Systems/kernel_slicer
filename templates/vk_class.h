@@ -426,6 +426,7 @@ protected:
     
     void DeletePipelines(VkDevice a_device);
     void BitonicSortCmd(VkCommandBuffer a_cmdBuffer, size_t a_size);
+    void BitonicSortSimpleCmd(VkCommandBuffer a_cmdBuffer, size_t a_size);
   } m_sort;
   {% endif %}
 };
