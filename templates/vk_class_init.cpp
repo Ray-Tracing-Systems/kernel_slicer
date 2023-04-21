@@ -1286,7 +1286,7 @@ void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::BitonicSortSimpleCmd
   }
 }
 
-void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::BitonicSortCmd(VkCommandBuffer a_cmdBuffer, size_t a_size)
+void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::BitonicSortCmd(VkCommandBuffer a_cmdBuffer, size_t a_size, uint32_t a_maxWorkGroupSize)
 {
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT }; 
 
@@ -1318,7 +1318,7 @@ void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::BitonicSortCmd(VkCom
     for (int passOfStage = stage; passOfStage >= 0; passOfStage--)
     {
       bool stopNow = false;
-      if (passOfStage > 0 && passOfStage <= 8) // && maxWorkGroupSize >= 256
+      if (passOfStage > 0 && passOfStage <= 8 && a_maxWorkGroupSize >= 256)
       {
         vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, bitonic512Pipeline);
         stopNow = true;
