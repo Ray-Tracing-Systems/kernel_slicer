@@ -444,8 +444,8 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   m_sort.sortDSLayout          = m_sort.CreateSortDSLayout(device);
 
   m_pMaker->LoadShader(device, bitonicPassPath.c_str(), nullptr, "main");
-  m_scan.bitonicPassLayout   = m_pMaker->MakeLayout(device, {m_sort.sortDSLayout}, 128); // at least 128 bytes for push constants
-  m_scan.bitonicPassPipeline = m_pMaker->MakePipeline(device);
+  m_sort.bitonicPassLayout   = m_pMaker->MakeLayout(device, {m_sort.sortDSLayout}, 128); // at least 128 bytes for push constants
+  m_sort.bitonicPassPipeline = m_pMaker->MakePipeline(device);
   {% endif %} {# /* UseServiceSort */ #}
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectBufferUpdateResources(a_filePath);
@@ -1215,8 +1215,65 @@ void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::DeletePipelines(VkDe
   vkDestroyDescriptorSetLayout(a_device, sortDSLayout, nullptr);
 }
 
+static bool isPowerOfTwo(size_t n)
+{
+  if (n == 0)
+    return false;
+  return (std::ceil(std::log2(n)) == std::floor(std::log2(n)));
+}
+
 void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::BitonicSortCmd(VkCommandBuffer a_cmdBuffer, size_t a_size)
 {
+  VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT }; 
 
+  if(!isPowerOfTwo(a_size))
+  {
+    std::cout << "BitonicSortCmd, bad input size " << a_size << ", it must be power of 2" << std::endl;
+    return;
+  }
+
+  int numStages = 0;
+  for (size_t temp = a_size; temp > 2; temp >>= 1)
+    numStages++;
+
+  const size_t blockSizeX = 256;
+  struct KernelArgsPC
+  {
+    int iNumElementsX;  
+    int stage;
+    int passOfStage; 
+    int invertModeOn;
+  } pcData;
+  
+  vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, bitonicPassPipeline);
+  
+  // up, form bitonic sequence with half arrays
+  //
+  for (int stage = 0; stage < numStages; stage++)
+  {
+    for (int passOfStage = stage; passOfStage >= 0; passOfStage--)
+    {
+      pcData.iNumElementsX = int(a_size);
+      pcData.stage         = stage;
+      pcData.passOfStage   = passOfStage;
+      pcData.invertModeOn  = 1;
+      vkCmdPushConstants(a_cmdBuffer, bitonicPassLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
+      vkCmdDispatch(a_cmdBuffer, (a_size + blockSizeX - 1) / blockSizeX, 1, 1);
+      vkCmdPipelineBarrier(a_cmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+    }
+  }
+
+  // down, finally sort it
+  //
+  for(int passOfStage = numStages; passOfStage >= 0; passOfStage--)
+  {
+    pcData.iNumElementsX = int(a_size);
+    pcData.stage         = numStages - 1;
+    pcData.passOfStage   = passOfStage;
+    pcData.invertModeOn  = 0;
+    vkCmdPushConstants(a_cmdBuffer, bitonicPassLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
+    vkCmdDispatch(a_cmdBuffer, (a_size + blockSizeX - 1) / blockSizeX, 1, 1);
+    vkCmdPipelineBarrier(a_cmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+  }
 }
 {% endif %}

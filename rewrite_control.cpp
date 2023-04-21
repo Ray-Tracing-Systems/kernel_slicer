@@ -297,8 +297,8 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
   else if(a_name == "sort")
   {
     std::string commandName = "m_sort.BitonicSort";
-    kernName = "m_sort.bitonic";
-    
+    kernName = "m_sort.sort";
+
     std::string launchSize = ExtractSizeFromArgExpression(originArgs[1].name); 
     std::vector<ArgReferenceOnCall> args(1); // extract corretc arguments from memcpy (CallExpr* call)
     {
@@ -324,7 +324,7 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
     m_dsTagId++;
   
     std::stringstream strOut;
-    strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_scan.scanFwdLayout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
+    strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_sort.bitonicPassLayout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
     strOut << "  " << commandName.c_str() << "Cmd(m_currCmdBuffer, " << launchSize.c_str() << ");" << std::endl;
     strOut << "  " << memBarCode.c_str();
     return strOut.str();

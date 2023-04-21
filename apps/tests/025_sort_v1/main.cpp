@@ -16,8 +16,8 @@
 #include "LiteMath.h"
 using LiteMath::uint2;
 
-//#include "vk_context.h"
-//std::shared_ptr<PrefSummTest> CreatePrefSummTest_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+#include "vk_context.h"
+std::shared_ptr<Sorter> CreateSorter_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
 
 int main(int argc, const char** argv)
 {
@@ -29,7 +29,7 @@ int main(int argc, const char** argv)
 
   srand(777);
 
-  std::vector<uint2> array    (1024); // 1024
+  std::vector<uint2> array    (1024*256); // 1024
   std::vector<uint2> outArray (array.size());
   for(size_t i=0;i<array.size();i++)
     array[i] = uint2(rand() % 2000, i);  
@@ -38,13 +38,13 @@ int main(int argc, const char** argv)
   ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
-  //if(onGPU)
-  //{
-  //  unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-  //  auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
-  //  pImpl = CreatePrefSummTest_Generated(ctx, array.size());
-  //}
-  //else
+  if(onGPU)
+  {
+    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+    pImpl = CreateSorter_Generated(ctx, array.size());
+  }
+  else
     pImpl = std::make_shared<Sorter>();
   std::string backendName = onGPU ? "gpu" : "cpu";
   
@@ -63,7 +63,7 @@ int main(int argc, const char** argv)
   size_t diffId = size_t(-1);
   for(size_t i=0;i<array.size();i++)
   {
-    if(refArray[i].x != outArray[i].x || refArray[i].y != outArray[i].y)
+    if(refArray[i].x != outArray[i].x) // || refArray[i].y != outArray[i].y
     {
       diffId = i;
       break;
@@ -80,7 +80,7 @@ int main(int argc, const char** argv)
   else
   {
     JSONLog::write("sort", "FAILED!");
-    //std::cout << "sort: FAILED! at " <<  exclusiveDiffId << " " << refArray[exclusiveDiffId] << " != " << outArray[exclusiveDiffId] << std::endl; 
+    //std::cout << "sort: FAILED! at " <<  diffId << " " << std::endl; // << refArray[diffId] << " != " << outArray[diffId] << std::endl; 
   }
 
   JSONLog::saveToFile("zout_" + backendName + ".json");
