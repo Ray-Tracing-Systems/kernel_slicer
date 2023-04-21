@@ -296,7 +296,38 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
   }
   else if(a_name == "sort")
   {
-    return "//SortCmd(...)";
+    std::string commandName = "m_sort.BitonicSort";
+    kernName = "m_sort.bitonic";
+    
+    std::string launchSize = ExtractSizeFromArgExpression(originArgs[1].name); 
+    std::vector<ArgReferenceOnCall> args(1); // extract corretc arguments from memcpy (CallExpr* call)
+    {
+      args[0].argType = originArgs[0].argType;
+      args[0].name    = ClearNameFromBegin(originArgs[0].name);
+      args[0].kind    = DATA_KIND::KIND_POINTER;
+    }
+  
+    const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, std::unordered_map<std::string, kslicer::UsedContainerInfo>()); // + strOut1.str();
+    auto p2 = dsIdBySignature.find(callSign);
+    if(p2 == dsIdBySignature.end())
+    {
+      dsIdBySignature[callSign] = allDescriptorSetsInfo.size();
+      p2 = dsIdBySignature.find(callSign);
+      KernelCallInfo call;
+      call.kernelName         = kernName;
+      call.originKernelName   = kernName;
+      call.callerName         = m_mainFuncName;
+      call.descriptorSetsInfo = args;
+      call.isService          = true; 
+      allDescriptorSetsInfo.push_back(call);
+    }
+    m_dsTagId++;
+  
+    std::stringstream strOut;
+    strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_scan.scanFwdLayout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
+    strOut << "  " << commandName.c_str() << "Cmd(m_currCmdBuffer, " << launchSize.c_str() << ");" << std::endl;
+    strOut << "  " << memBarCode.c_str();
+    return strOut.str();
   }
   
   return "";

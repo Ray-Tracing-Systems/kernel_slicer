@@ -389,7 +389,6 @@ protected:
     a_restrictions[3] = maxPrimitivesPerMesh;
   }
   {% endif %}
-  
   {% if UseServiceScan %}
   struct ScanData
   {
@@ -414,6 +413,18 @@ protected:
     VkPipeline            scanPropPipeline = VK_NULL_HANDLE;
 
   } m_scan;
+  {% endif %}
+  {% if UseServiceSort %}
+  struct BitonicSortData
+  {
+    VkDescriptorSetLayout CreateSortDSLayout(VkDevice a_device);
+    VkDescriptorSetLayout sortDSLayout        = VK_NULL_HANDLE;
+    VkPipelineLayout      bitonicPassLayout   = VK_NULL_HANDLE;
+    VkPipeline            bitonicPassPipeline = VK_NULL_HANDLE;
+    
+    void DeletePipelines(VkDevice a_device);
+    void BitonicSortCmd(VkCommandBuffer a_cmdBuffer, size_t a_size);
+  } m_sort;
   {% endif %}
 };
 

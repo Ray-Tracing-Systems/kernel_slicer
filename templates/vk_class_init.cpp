@@ -41,7 +41,10 @@ uint32_t {{MainClassName}}{{MainClassSuffix}}::GetDefaultMaxTextures() const { r
   {% endif %} {# /* UseServiceMemCopy */ #}
   {% if UseServiceScan %}
   m_scan.DeletePipelines(device);
-  {% endif %} {# /* UseServiceMemCopy */ #}
+  {% endif %} {# /* UseServiceScan */ #}
+  {% if UseServiceSort %}
+  m_sort.DeletePipelines(device);
+  {% endif %} {# /* UseServiceSort */ #}
 ## for Kernel in Kernels
   vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
@@ -436,6 +439,14 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   m_scan.scanPropLayout   = m_pMaker->MakeLayout(device, {m_scan.internalDSLayout}, 128); // at least 128 bytes for push constants
   m_scan.scanPropPipeline = m_pMaker->MakePipeline(device);
   {% endif %} {# /* UseServiceScan */ #}
+  {% if UseServiceSort %}
+  std::string bitonicPassPath  = AlterShaderPath("{{ShaderFolder}}/z_bitonic_pass.comp.spv");
+  m_sort.sortDSLayout          = m_sort.CreateSortDSLayout(device);
+
+  m_pMaker->LoadShader(device, bitonicPassPath.c_str(), nullptr, "main");
+  m_scan.bitonicPassLayout   = m_pMaker->MakeLayout(device, {m_sort.sortDSLayout}, 128); // at least 128 bytes for push constants
+  m_scan.bitonicPassPipeline = m_pMaker->MakePipeline(device);
+  {% endif %} {# /* UseServiceSort */ #}
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectBufferUpdateResources(a_filePath);
   {% endif %}
@@ -1173,6 +1184,39 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandB
     }
     currMip--;
   }
+
+}
+{% endif %}
+{% if UseServiceSort %}
+VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::CreateSortDSLayout(VkDevice a_device)
+{
+  std::array<VkDescriptorSetLayoutBinding, 1> dsBindings;
+
+  dsBindings[0].binding            = 0;
+  dsBindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[0].descriptorCount    = 1;
+  dsBindings[0].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[0].pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
+  descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  descriptorSetLayoutCreateInfo.bindingCount = dsBindings.size();
+  descriptorSetLayoutCreateInfo.pBindings    = dsBindings.data();
+
+  VkDescriptorSetLayout layout = nullptr;
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(a_device, &descriptorSetLayoutCreateInfo, NULL, &layout));
+  return layout;
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::DeletePipelines(VkDevice a_device)
+{
+  vkDestroyPipeline(a_device, bitonicPassPipeline, nullptr);
+  vkDestroyPipelineLayout(a_device, bitonicPassLayout, nullptr);
+  vkDestroyDescriptorSetLayout(a_device, sortDSLayout, nullptr);
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::BitonicSortCmd(VkCommandBuffer a_cmdBuffer, size_t a_size)
+{
 
 }
 {% endif %}

@@ -131,9 +131,11 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
 
   if(a_codeInfo->usedServiceCalls.find("sort") != a_codeInfo->usedServiceCalls.end())
   {
-
+    nlohmann::json params;
+    params["Type"] = "uvec2";
+    kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_pass.glsl", shaderPath + slash + "z_bitonic_pass.comp", params);
+    buildSH << "glslangValidator -V z_bitonic_pass.comp -o z_bitonic_pass.comp.spv" << std::endl;
   }
-
 
   buildSH.close();
 }

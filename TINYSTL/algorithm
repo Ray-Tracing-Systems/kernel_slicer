@@ -10,5 +10,8 @@ namespace std
   template< class Iter, class P >
   void copy_if(Iter begin, Iter end, Iter begin2, P predicate) {}
   
-  template< class T > void swap( T& a, T& b );
+  template< class T > void swap( T& a, T& b ){}
+
+  template<class It, class CmpOp>
+  void sort(It a_beg, It a_end, CmpOp compareOp) {}
 };
