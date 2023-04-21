@@ -441,11 +441,16 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   {% endif %} {# /* UseServiceScan */ #}
   {% if UseServiceSort %}
   std::string bitonicPassPath  = AlterShaderPath("{{ShaderFolder}}/z_bitonic_pass.comp.spv");
+  std::string bitonic512Path   = AlterShaderPath("{{ShaderFolder}}/z_bitonic_512.comp.spv");
   m_sort.sortDSLayout          = m_sort.CreateSortDSLayout(device);
 
   m_pMaker->LoadShader(device, bitonicPassPath.c_str(), nullptr, "main");
   m_sort.bitonicPassLayout   = m_pMaker->MakeLayout(device, {m_sort.sortDSLayout}, 128); // at least 128 bytes for push constants
   m_sort.bitonicPassPipeline = m_pMaker->MakePipeline(device);
+
+  m_pMaker->LoadShader(device, bitonic512Path.c_str(), nullptr, "main");
+  m_sort.bitonic512Layout   = m_pMaker->MakeLayout(device, {m_sort.sortDSLayout}, 128); // at least 128 bytes for push constants
+  m_sort.bitonic512Pipeline = m_pMaker->MakePipeline(device);
   {% endif %} {# /* UseServiceSort */ #}
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectBufferUpdateResources(a_filePath);
@@ -1210,8 +1215,12 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::Cre
 
 void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::DeletePipelines(VkDevice a_device)
 {
-  vkDestroyPipeline(a_device, bitonicPassPipeline, nullptr);
-  vkDestroyPipelineLayout(a_device, bitonicPassLayout, nullptr);
+  vkDestroyPipeline      (a_device, bitonicPassPipeline, nullptr);
+  vkDestroyPipelineLayout(a_device, bitonicPassLayout,   nullptr);
+  
+  vkDestroyPipeline      (a_device, bitonic512Pipeline, nullptr);
+  vkDestroyPipelineLayout(a_device, bitonic512Layout,   nullptr);
+
   vkDestroyDescriptorSetLayout(a_device, sortDSLayout, nullptr);
 }
 

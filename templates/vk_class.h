@@ -421,6 +421,8 @@ protected:
     VkDescriptorSetLayout sortDSLayout        = VK_NULL_HANDLE;
     VkPipelineLayout      bitonicPassLayout   = VK_NULL_HANDLE;
     VkPipeline            bitonicPassPipeline = VK_NULL_HANDLE;
+    VkPipelineLayout      bitonic512Layout    = VK_NULL_HANDLE;
+    VkPipeline            bitonic512Pipeline  = VK_NULL_HANDLE;
     
     void DeletePipelines(VkDevice a_device);
     void BitonicSortCmd(VkCommandBuffer a_cmdBuffer, size_t a_size);
