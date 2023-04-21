@@ -443,6 +443,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   std::string bitonicPassPath  = AlterShaderPath("{{ShaderFolder}}/z_bitonic_pass.comp.spv");
   std::string bitonic512Path   = AlterShaderPath("{{ShaderFolder}}/z_bitonic_512.comp.spv");
   std::string bitonic1024Path  = AlterShaderPath("{{ShaderFolder}}/z_bitonic_1024.comp.spv");
+  std::string bitonic2048Path  = AlterShaderPath("{{ShaderFolder}}/z_bitonic_2048.comp.spv");
   m_sort.sortDSLayout          = m_sort.CreateSortDSLayout(device);
 
   m_pMaker->LoadShader(device, bitonicPassPath.c_str(), nullptr, "main");
@@ -473,6 +474,17 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
     m_sort.bitonic1024Pipeline = VK_NULL_HANDLE;
   }
 
+  if(m_devProps.limits.maxComputeWorkGroupSize[0] >= 1024)
+  {
+    m_pMaker->LoadShader(device, bitonic2048Path.c_str(), nullptr, "main");
+    m_sort.bitonic2048Layout   = m_pMaker->MakeLayout(device, {m_sort.sortDSLayout}, 128); // at least 128 bytes for push constants
+    m_sort.bitonic2048Pipeline = m_pMaker->MakePipeline(device);
+  }
+  else
+  {
+    m_sort.bitonic2048Layout   = VK_NULL_HANDLE;
+    m_sort.bitonic2048Pipeline = VK_NULL_HANDLE;
+  }
   {% endif %} {# /* UseServiceSort */ #}
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectBufferUpdateResources(a_filePath);
@@ -1252,6 +1264,12 @@ void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::DeletePipelines(VkDe
     vkDestroyPipelineLayout(a_device, bitonic1024Layout,   nullptr);
   }
 
+  if(bitonic2048Layout != VK_NULL_HANDLE)
+  {
+    vkDestroyPipeline      (a_device, bitonic2048Pipeline, nullptr);
+    vkDestroyPipelineLayout(a_device, bitonic2048Layout,   nullptr);
+  }
+
   vkDestroyDescriptorSetLayout(a_device, sortDSLayout, nullptr);
 }
 
@@ -1349,8 +1367,13 @@ void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::BitonicSortCmd(VkCom
     for (int passOfStage = stage; passOfStage >= 0; passOfStage--)
     {
       bool stopNow = false;
-
-      if (passOfStage > 0 && passOfStage <= 9 && a_maxWorkGroupSize >= 512)
+      
+      if (passOfStage > 0 && passOfStage <= 10 && a_maxWorkGroupSize >= 1024)
+      {
+        vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, bitonic2048Pipeline);
+        stopNow = true;
+      }
+      else if (passOfStage > 0 && passOfStage <= 9 && a_maxWorkGroupSize >= 512)
       {
         vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, bitonic1024Pipeline);
         stopNow = true;
@@ -1382,7 +1405,12 @@ void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::BitonicSortCmd(VkCom
   {
     bool stopNow = false;
 
-    if (passOfStage > 0 && passOfStage <= 9 && a_maxWorkGroupSize >= 512)
+    if (passOfStage > 0 && passOfStage <= 10 && a_maxWorkGroupSize >= 1024)
+    {
+      vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, bitonic2048Pipeline);
+      stopNow = true;
+    }
+    else if (passOfStage > 0 && passOfStage <= 9 && a_maxWorkGroupSize >= 512)
     {
       vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, bitonic1024Pipeline);
       stopNow = true;

@@ -425,6 +425,8 @@ protected:
     VkPipeline            bitonic512Pipeline  = VK_NULL_HANDLE;
     VkPipelineLayout      bitonic1024Layout   = VK_NULL_HANDLE;
     VkPipeline            bitonic1024Pipeline = VK_NULL_HANDLE;
+    VkPipelineLayout      bitonic2048Layout   = VK_NULL_HANDLE;
+    VkPipeline            bitonic2048Pipeline = VK_NULL_HANDLE;
     void DeletePipelines(VkDevice a_device);
     void BitonicSortCmd(VkCommandBuffer a_cmdBuffer, size_t a_size, uint32_t a_maxWorkGroupSize = 256);
     void BitonicSortSimpleCmd(VkCommandBuffer a_cmdBuffer, size_t a_size);
