@@ -174,7 +174,7 @@ std::unordered_set<std::string> kslicer::GetAllServiceKernels()
   return names;
 }
 
-static std::string ExtractSizeFromArgExpression(const std::string a_str)
+static std::string ExtractSizeFromArgExpression(const std::string& a_str)
 {
   auto posOfPlus = a_str.find("+");
   auto posOfEnd  = a_str.find(".end()");
@@ -189,6 +189,15 @@ static std::string ExtractSizeFromArgExpression(const std::string a_str)
   {
     return a_str.substr(0, posOfEnd) + ".size()";
   }
+
+  return a_str;
+}
+
+static std::string ClearNameFromBegin(const std::string& a_str)
+{
+  auto posOfBeg = a_str.find(".begin()");
+  if(posOfBeg != std::string::npos)
+    return a_str.substr(0, posOfBeg);
 
   return a_str;
 }
@@ -248,13 +257,13 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
     std::vector<ArgReferenceOnCall> args(3); // extract corretc arguments from memcpy (CallExpr* call)
     {
       args[0].argType = originArgs[0].argType;
-      args[0].name    = originArgs[0].name;
+      args[0].name    = ClearNameFromBegin(originArgs[0].name);
       args[0].kind    = DATA_KIND::KIND_POINTER;
   
       //std::cout << "  originArgs[1].name = " << originArgs[1].name.c_str() << std::endl;
 
       args[1].argType = originArgs[2].argType;
-      args[1].name    = originArgs[2].name;
+      args[1].name    = ClearNameFromBegin(originArgs[2].name);
       args[1].kind    = DATA_KIND::KIND_POINTER;
 
       args[2].argType = kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_SERVICE_DATA;
