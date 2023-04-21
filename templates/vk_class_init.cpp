@@ -442,15 +442,37 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   {% if UseServiceSort %}
   std::string bitonicPassPath  = AlterShaderPath("{{ShaderFolder}}/z_bitonic_pass.comp.spv");
   std::string bitonic512Path   = AlterShaderPath("{{ShaderFolder}}/z_bitonic_512.comp.spv");
+  std::string bitonic1024Path  = AlterShaderPath("{{ShaderFolder}}/z_bitonic_1024.comp.spv");
   m_sort.sortDSLayout          = m_sort.CreateSortDSLayout(device);
 
   m_pMaker->LoadShader(device, bitonicPassPath.c_str(), nullptr, "main");
   m_sort.bitonicPassLayout   = m_pMaker->MakeLayout(device, {m_sort.sortDSLayout}, 128); // at least 128 bytes for push constants
   m_sort.bitonicPassPipeline = m_pMaker->MakePipeline(device);
+  
+  if(m_devProps.limits.maxComputeWorkGroupSize[0] >= 256)
+  {
+    m_pMaker->LoadShader(device, bitonic512Path.c_str(), nullptr, "main");
+    m_sort.bitonic512Layout   = m_pMaker->MakeLayout(device, {m_sort.sortDSLayout}, 128); // at least 128 bytes for push constants
+    m_sort.bitonic512Pipeline = m_pMaker->MakePipeline(device);
+  }
+  else
+  {
+    m_sort.bitonic512Layout   = VK_NULL_HANDLE;
+    m_sort.bitonic512Pipeline = VK_NULL_HANDLE;
+  }
 
-  m_pMaker->LoadShader(device, bitonic512Path.c_str(), nullptr, "main");
-  m_sort.bitonic512Layout   = m_pMaker->MakeLayout(device, {m_sort.sortDSLayout}, 128); // at least 128 bytes for push constants
-  m_sort.bitonic512Pipeline = m_pMaker->MakePipeline(device);
+  if(m_devProps.limits.maxComputeWorkGroupSize[0] >= 512)
+  {
+    m_pMaker->LoadShader(device, bitonic1024Path.c_str(), nullptr, "main");
+    m_sort.bitonic1024Layout   = m_pMaker->MakeLayout(device, {m_sort.sortDSLayout}, 128); // at least 128 bytes for push constants
+    m_sort.bitonic1024Pipeline = m_pMaker->MakePipeline(device);
+  }
+  else
+  {
+    m_sort.bitonic1024Layout   = VK_NULL_HANDLE;
+    m_sort.bitonic1024Pipeline = VK_NULL_HANDLE;
+  }
+
   {% endif %} {# /* UseServiceSort */ #}
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectBufferUpdateResources(a_filePath);
@@ -1218,8 +1240,17 @@ void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::DeletePipelines(VkDe
   vkDestroyPipeline      (a_device, bitonicPassPipeline, nullptr);
   vkDestroyPipelineLayout(a_device, bitonicPassLayout,   nullptr);
   
-  vkDestroyPipeline      (a_device, bitonic512Pipeline, nullptr);
-  vkDestroyPipelineLayout(a_device, bitonic512Layout,   nullptr);
+  if(bitonic512Layout != VK_NULL_HANDLE)
+  {
+    vkDestroyPipeline      (a_device, bitonic512Pipeline, nullptr);
+    vkDestroyPipelineLayout(a_device, bitonic512Layout,   nullptr);
+  }
+
+  if(bitonic1024Layout != VK_NULL_HANDLE)
+  {
+    vkDestroyPipeline      (a_device, bitonic1024Pipeline, nullptr);
+    vkDestroyPipelineLayout(a_device, bitonic1024Layout,   nullptr);
+  }
 
   vkDestroyDescriptorSetLayout(a_device, sortDSLayout, nullptr);
 }
@@ -1318,7 +1349,13 @@ void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::BitonicSortCmd(VkCom
     for (int passOfStage = stage; passOfStage >= 0; passOfStage--)
     {
       bool stopNow = false;
-      if (passOfStage > 0 && passOfStage <= 8 && a_maxWorkGroupSize >= 256)
+
+      if (passOfStage > 0 && passOfStage <= 9 && a_maxWorkGroupSize >= 512)
+      {
+        vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, bitonic1024Pipeline);
+        stopNow = true;
+      }
+      else if (passOfStage > 0 && passOfStage <= 8 && a_maxWorkGroupSize >= 256)
       {
         vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, bitonic512Pipeline);
         stopNow = true;
@@ -1344,7 +1381,13 @@ void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::BitonicSortCmd(VkCom
   for(int passOfStage = numStages; passOfStage >= 0; passOfStage--)
   {
     bool stopNow = false;
-    if (passOfStage > 0 && passOfStage <= 8) // && maxWorkGroupSize >= 256
+
+    if (passOfStage > 0 && passOfStage <= 9 && a_maxWorkGroupSize >= 512)
+    {
+      vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, bitonic1024Pipeline);
+      stopNow = true;
+    }
+    else if (passOfStage > 0 && passOfStage <= 8 && a_maxWorkGroupSize >= 256) 
     {
       vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, bitonic512Pipeline);
       stopNow = true;
