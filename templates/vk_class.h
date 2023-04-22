@@ -412,7 +412,10 @@ protected:
     VkPipelineLayout      scanPropLayout   = VK_NULL_HANDLE;
     VkPipeline            scanPropPipeline = VK_NULL_HANDLE;
 
-  } m_scan;
+  };
+  {% for Scan in ServiceScan %}
+  ScanData m_scan_{{Scan.Type}};
+  {% endfor %}
   {% endif %}
   {% if UseServiceSort %}
   struct BitonicSortData

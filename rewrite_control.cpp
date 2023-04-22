@@ -204,6 +204,7 @@ static std::string ClearNameFromBegin(const std::string& a_str)
 static std::string FixLamdbaSourceCode(std::string a_str)
 {
   while(ReplaceFirst(a_str, "uint32_t ", "uint "));
+  while(ReplaceFirst(a_str, "unsigned int ", "uint "));
   
   while(ReplaceFirst(a_str, "uint2 ",    "uvec2 "));
   while(ReplaceFirst(a_str, "uint3 ",    "uvec3 "));
@@ -217,6 +218,15 @@ static std::string FixLamdbaSourceCode(std::string a_str)
   while(ReplaceFirst(a_str, "float3 ",   "vec3 "));
   while(ReplaceFirst(a_str, "float4 ",   "vec4 "));
 
+  return a_str;
+}
+
+static std::string SubstrBetween(const std::string& a_str, const std::string& first, const std::string& second)
+{
+  auto pos1 = a_str.find(first);
+  auto pos2 = a_str.find(second);
+  if(pos1 != std::string::npos && pos2 != std::string::npos)
+    return a_str.substr(pos1+1, pos2 - pos1 - 1);
   return a_str;
 }
 
@@ -264,12 +274,14 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
   }
   else if(a_name == "exclusive_scan" || a_name == "inclusive_scan")
   { 
-    std::string commandName = "m_scan.ExclusiveScan";
+    std::string commandName  = "ExclusiveScan";
+    std::string dsLayoutName = "";
     if(a_name == "exclusive_scan")
-      commandName = "m_scan.ExclusiveScan";
+      commandName = "ExclusiveScan";
     else
-      commandName = "m_scan.InclusiveScan";
+      commandName = "InclusiveScan";
     kernName = "m_scan.internal";
+
     std::string launchSize = ExtractSizeFromArgExpression(originArgs[1].name); 
     std::vector<ArgReferenceOnCall> args(3); 
     {
@@ -287,6 +299,19 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
       args[2].name    = "m_scan.m_scanTempData";
       args[2].kind    = DATA_KIND::KIND_VECTOR;
     }
+
+    kslicer::ServiceCall call;
+    call.opName       = "scan";
+    call.dataTypeName = m_pCodeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(SubstrBetween(originArgs[0].type, "<", ">"));
+    ReplaceFirst(call.dataTypeName, "const ", "");
+
+    call.lambdaSource = "+";
+    m_pCodeInfo->serviceCalls[call.key()] = call;
+ 
+    commandName  = "m_scan_" + call.dataTypeName + "." + commandName;
+    kernName     = "m_scan_" + call.dataTypeName + ".internal";
+    dsLayoutName = "m_scan_" + call.dataTypeName;
+    args[2].name = "m_scan_" + call.dataTypeName + ".m_scanTempData";
   
     const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, std::unordered_map<std::string, kslicer::UsedContainerInfo>()); // + strOut1.str();
     auto p2 = dsIdBySignature.find(callSign);
@@ -304,11 +329,10 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
     }
   
     std::stringstream strOut;
-    strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_scan.scanFwdLayout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
+    strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, " << dsLayoutName.c_str() << ".scanFwdLayout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
     strOut << "  " << commandName.c_str() << "Cmd(m_currCmdBuffer, " << launchSize.c_str() << ");" << std::endl;
     strOut << "  " << memBarCode.c_str();
     return strOut.str();
-
   }
   else if(a_name == "sort")
   {
@@ -322,18 +346,18 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
       args[0].argType = originArgs[0].argType;
       args[0].name    = ClearNameFromBegin(originArgs[0].name);
       args[0].kind    = DATA_KIND::KIND_POINTER;
-
-      kslicer::ServiceCall call;
-      call.opName       = a_name;
-      call.dataTypeName = m_pCodeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(originArgs[0].type);
-      call.lambdaSource = FixLamdbaSourceCode(m_pCodeInfo->pShaderFuncRewriter->RecursiveRewrite(originArgs[2].node));
-      call.lambdaSource = call.lambdaSource.substr(call.lambdaSource.find("[]")+2); // eliminate "[]" from source code
-      m_pCodeInfo->serviceCalls[call.key()] = call;
- 
-      commandName  = "m_sort_" + call.dataTypeName + ".BitonicSort";
-      kernName     = "m_sort_" + call.dataTypeName + ".sort";
-      dsLayoutName = "m_sort_" + call.dataTypeName;
     }
+
+    kslicer::ServiceCall call;
+    call.opName       = a_name;
+    call.dataTypeName = m_pCodeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(SubstrBetween(originArgs[0].type, "<", ">"));
+    call.lambdaSource = FixLamdbaSourceCode(m_pCodeInfo->pShaderFuncRewriter->RecursiveRewrite(originArgs[2].node));
+    call.lambdaSource = call.lambdaSource.substr(call.lambdaSource.find("[]")+2); // eliminate "[]" from source code
+    m_pCodeInfo->serviceCalls[call.key()] = call;
+ 
+    commandName  = "m_sort_" + call.dataTypeName + ".BitonicSort";
+    kernName     = "m_sort_" + call.dataTypeName + ".sort";
+    dsLayoutName = "m_sort_" + call.dataTypeName;
   
     const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, std::unordered_map<std::string, kslicer::UsedContainerInfo>()); // + strOut1.str();
     auto p2 = dsIdBySignature.find(callSign);

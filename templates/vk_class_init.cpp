@@ -40,7 +40,9 @@ uint32_t {{MainClassName}}{{MainClassSuffix}}::GetDefaultMaxTextures() const { r
   vkDestroyPipelineLayout(device, copyKernelFloatLayout, nullptr);
   {% endif %} {# /* UseServiceMemCopy */ #}
   {% if UseServiceScan %}
-  m_scan.DeletePipelines(device);
+  {% for Scan in ServiceScan %}
+  m_scan_{{Scan.Type}}.DeletePipelines(device);
+  {% endfor %}
   {% endif %} {# /* UseServiceScan */ #}
   {% if UseServiceSort %}
   {% for Sort in ServiceSort %}
@@ -134,7 +136,9 @@ uint32_t {{MainClassName}}{{MainClassSuffix}}::GetDefaultMaxTextures() const { r
   vkDestroyBuffer(device, m_{{Hierarchy.Name}}ObjPtrBuffer, nullptr);
   {% endfor %}
   {% if UseServiceScan %}
-  m_scan.DeleteTempBuffers(device);
+  {% for Scan in ServiceScan %}
+  m_scan_{{Scan.Type}}.DeleteTempBuffers(device);
+  {% endfor %}
   {% endif %}
   FreeAllAllocations(m_allMems);
 }
@@ -429,17 +433,22 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   copyKernelFloatPipeline = m_pMaker->MakePipeline(device);
   {% endif %} {# /* UseServiceMemCopy */ #}
   {% if UseServiceScan %}
-  std::string servPathFwd  = AlterShaderPath("{{ShaderFolder}}/z_scan_block.comp.spv");
-  std::string servPathProp = AlterShaderPath("{{ShaderFolder}}/z_scan_propagate.comp.spv");
-  m_scan.internalDSLayout  = m_scan.CreateInternalScanDSLayout(device);
-
-  m_pMaker->LoadShader(device, servPathFwd.c_str(), nullptr, "main");
-  m_scan.scanFwdLayout   = m_pMaker->MakeLayout(device, {m_scan.internalDSLayout}, 128); // at least 128 bytes for push constants
-  m_scan.scanFwdPipeline = m_pMaker->MakePipeline(device);
+  {% for Scan in ServiceScan %}
+  // init m_scan_{{Scan.Type}}
+  {
+    std::string servPathFwd  = AlterShaderPath("{{ShaderFolder}}/z_scan_{{Scan.Type}}_block.comp.spv");
+    std::string servPathProp = AlterShaderPath("{{ShaderFolder}}/z_scan_{{Scan.Type}}_propagate.comp.spv");
+    m_scan_{{Scan.Type}}.internalDSLayout  = m_scan_{{Scan.Type}}.CreateInternalScanDSLayout(device);
   
-  m_pMaker->LoadShader(device, servPathProp.c_str(), nullptr, "main");
-  m_scan.scanPropLayout   = m_pMaker->MakeLayout(device, {m_scan.internalDSLayout}, 128); // at least 128 bytes for push constants
-  m_scan.scanPropPipeline = m_pMaker->MakePipeline(device);
+    m_pMaker->LoadShader(device, servPathFwd.c_str(), nullptr, "main");
+    m_scan_{{Scan.Type}}.scanFwdLayout   = m_pMaker->MakeLayout(device, {m_scan_{{Scan.Type}}.internalDSLayout}, 128); // at least 128 bytes for push constants
+    m_scan_{{Scan.Type}}.scanFwdPipeline = m_pMaker->MakePipeline(device);
+    
+    m_pMaker->LoadShader(device, servPathProp.c_str(), nullptr, "main");
+    m_scan_{{Scan.Type}}.scanPropLayout   = m_pMaker->MakeLayout(device, {m_scan_{{Scan.Type}}.internalDSLayout}, 128); // at least 128 bytes for push constants
+    m_scan_{{Scan.Type}}.scanPropPipeline = m_pMaker->MakePipeline(device);
+  }
+  {% endfor %}
   {% endif %} {# /* UseServiceScan */ #}
   {% if UseServiceSort %}
   {% for Sort in ServiceSort %}
@@ -582,10 +591,14 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
   {% endfor %}
 
   {% if UseServiceScan %}
-  auto tempBuffersForScan = m_scan.InitTempBuffers(device, a_maxThreadsCount);
-  allBuffersRef.insert(allBuffersRef.end(), tempBuffersForScan.begin(), tempBuffersForScan.end());
+  {% for Scan in ServiceScan %}
+  {
+    auto tempBuffersForScan = m_scan_{{Scan.Type}}.InitTempBuffers(device, a_maxThreadsCount);
+    allBuffersRef.insert(allBuffersRef.end(), tempBuffersForScan.begin(), tempBuffersForScan.end());
+  }
+  {% endfor %}
   {% endif %}
-  
+
   auto internalBuffersMem = AllocAndBind(allBuffersRef);
   if(a_tempBuffersOverlay)
   {

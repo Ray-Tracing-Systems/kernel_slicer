@@ -121,12 +121,19 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   if(a_codeInfo->usedServiceCalls.find("exclusive_scan") != a_codeInfo->usedServiceCalls.end() || 
      a_codeInfo->usedServiceCalls.find("inclusive_scan") != a_codeInfo->usedServiceCalls.end())
   {
-    nlohmann::json params;
-    params["Type"] = "uint";
-    kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_scan_block.glsl",     shaderPath + slash + "z_scan_block.comp", params);
-    kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_scan_propagate.glsl", shaderPath + slash + "z_scan_propagate.comp", params);
-    buildSH << "glslangValidator -V z_scan_block.comp -o z_scan_block.comp.spv" << std::endl;
-    buildSH << "glslangValidator -V z_scan_propagate.comp -o z_scan_propagate.comp.spv" << std::endl;
+    for(auto scanImpl : a_codeInfo->serviceCalls) 
+    {
+      if (scanImpl.second.opName == "scan") 
+      {
+        nlohmann::json params;
+        params["Type"] = scanImpl.second.dataTypeName;
+
+        kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_scan_block.glsl",     shaderPath + slash + "z_scan_" + scanImpl.second.dataTypeName + "_block.comp", params);
+        kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_scan_propagate.glsl", shaderPath + slash + "z_scan_" + scanImpl.second.dataTypeName + "_propagate.comp", params);
+        buildSH << "glslangValidator -V z_scan_" + scanImpl.second.dataTypeName + "_block.comp     -o z_scan_" + scanImpl.second.dataTypeName + "_block.comp.spv" << std::endl;
+        buildSH << "glslangValidator -V z_scan_" + scanImpl.second.dataTypeName + "_propagate.comp -o z_scan_" + scanImpl.second.dataTypeName + "_propagate.comp.spv" << std::endl;
+      }
+    }
   }
 
   if(a_codeInfo->usedServiceCalls.find("sort") != a_codeInfo->usedServiceCalls.end())

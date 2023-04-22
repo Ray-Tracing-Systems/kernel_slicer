@@ -505,6 +505,19 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
   data["UseServiceScan"]     = (a_classInfo.usedServiceCalls.find("exclusive_scan") != a_classInfo.usedServiceCalls.end()) || (a_classInfo.usedServiceCalls.find("inclusive_scan") != a_classInfo.usedServiceCalls.end());
   data["UseServiceSort"]     = (a_classInfo.usedServiceCalls.find("sort") != a_classInfo.usedServiceCalls.end());
+ 
+  if(data["UseServiceScan"])
+  {
+    data["ServiceScan"] = std::vector<std::string>();
+    for(auto sortImpl : a_classInfo.serviceCalls) {
+      if (sortImpl.second.opName == "scan") {
+        json local;
+        local["Type"]   = sortImpl.second.dataTypeName;
+        local["Lambda"] = "+";
+        data["ServiceScan"].push_back(local);
+      }
+    }
+  }
 
   if(data["UseServiceSort"])
   {
