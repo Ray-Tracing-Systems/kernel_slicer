@@ -99,7 +99,6 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
     call.descriptorSetsInfo = args;
     allDescriptorSetsInfo.push_back(call);
   }
-  m_dsTagId++;
 
   //std::string textOfCall = GetRangeSourceCode(f->getSourceRange(), m_compiler);
   //std::string textOfArgs = textOfCall.substr( textOfCall.find("("));
@@ -202,6 +201,25 @@ static std::string ClearNameFromBegin(const std::string& a_str)
   return a_str;
 }
 
+static std::string FixLamdbaSourceCode(std::string a_str)
+{
+  while(ReplaceFirst(a_str, "uint32_t ", "uint "));
+  
+  while(ReplaceFirst(a_str, "uint2 ",    "uvec2 "));
+  while(ReplaceFirst(a_str, "uint3 ",    "uvec3 "));
+  while(ReplaceFirst(a_str, "uint4 ",    "uvec4 "));
+
+  while(ReplaceFirst(a_str, "int2 ",     "ivec2 "));
+  while(ReplaceFirst(a_str, "int3 ",     "ivec3 "));
+  while(ReplaceFirst(a_str, "int4 ",     "ivec4 "));
+  
+  while(ReplaceFirst(a_str, "float2 ",   "vec2 "));
+  while(ReplaceFirst(a_str, "float3 ",   "vec3 "));
+  while(ReplaceFirst(a_str, "float4 ",   "vec4 "));
+
+  return a_str;
+}
+
 std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallExpr* call, const std::string& a_name)
 {
   std::string kernName = "copyKernelFloat"; // extract from 'call' exact name of service function; 
@@ -236,7 +254,6 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
       call.isService          = true; 
       allDescriptorSetsInfo.push_back(call);
     }
-    m_dsTagId++;
   
     std::stringstream strOut;
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
@@ -254,7 +271,7 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
       commandName = "m_scan.InclusiveScan";
     kernName = "m_scan.internal";
     std::string launchSize = ExtractSizeFromArgExpression(originArgs[1].name); 
-    std::vector<ArgReferenceOnCall> args(3); // extract corretc arguments from memcpy (CallExpr* call)
+    std::vector<ArgReferenceOnCall> args(3); 
     {
       args[0].argType = originArgs[0].argType;
       args[0].name    = ClearNameFromBegin(originArgs[0].name);
@@ -285,7 +302,6 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
       call.isService          = true; 
       allDescriptorSetsInfo.push_back(call);
     }
-    m_dsTagId++;
   
     std::stringstream strOut;
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_scan.scanFwdLayout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
@@ -296,15 +312,27 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
   }
   else if(a_name == "sort")
   {
-    std::string commandName = "m_sort.BitonicSort";
+    std::string commandName  = "m_sort.BitonicSort";
+    std::string dsLayoutName = "";
     kernName = "m_sort.sort";
 
     std::string launchSize = ExtractSizeFromArgExpression(originArgs[1].name); 
-    std::vector<ArgReferenceOnCall> args(1); // extract corretc arguments from memcpy (CallExpr* call)
+    std::vector<ArgReferenceOnCall> args(1); 
     {
       args[0].argType = originArgs[0].argType;
       args[0].name    = ClearNameFromBegin(originArgs[0].name);
       args[0].kind    = DATA_KIND::KIND_POINTER;
+
+      kslicer::ServiceCall call;
+      call.opName       = a_name;
+      call.dataTypeName = m_pCodeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(originArgs[0].type);
+      call.lambdaSource = FixLamdbaSourceCode(m_pCodeInfo->pShaderFuncRewriter->RecursiveRewrite(originArgs[2].node));
+      call.lambdaSource = call.lambdaSource.substr(call.lambdaSource.find("[]")+2); // eliminate "[]" from source code
+      m_pCodeInfo->serviceCalls[call.key()] = call;
+ 
+      commandName  = "m_sort_" + call.dataTypeName + ".BitonicSort";
+      kernName     = "m_sort_" + call.dataTypeName + ".sort";
+      dsLayoutName = "m_sort_" + call.dataTypeName;
     }
   
     const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, std::unordered_map<std::string, kslicer::UsedContainerInfo>()); // + strOut1.str();
@@ -321,10 +349,9 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
       call.isService          = true; 
       allDescriptorSetsInfo.push_back(call);
     }
-    m_dsTagId++;
   
     std::stringstream strOut;
-    strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_sort.bitonicPassLayout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
+    strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, " << dsLayoutName.c_str() << ".bitonicPassLayout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
     strOut << "  " << commandName.c_str() << "Cmd(m_currCmdBuffer, " << launchSize.c_str() << ", m_devProps.limits.maxComputeWorkGroupSize[0]);" << std::endl;
     strOut << "  " << memBarCode.c_str();
     return strOut.str();
@@ -516,6 +543,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
     arg.type          = q.getAsString();
     arg.isConst       = q.isConstQualified() || isConstFound;
     arg.isExcludedRTV = (a_excludeList.find(text) != a_excludeList.end());
+    arg.node          = checkExpr;
     if(text[0] == '&')
     {
       arg.umpersanned = true;

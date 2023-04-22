@@ -131,16 +131,25 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
 
   if(a_codeInfo->usedServiceCalls.find("sort") != a_codeInfo->usedServiceCalls.end())
   {
-    nlohmann::json params;
-    params["Type"] = "uvec2";
-    kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_pass.glsl",  shaderPath + slash + "z_bitonic_pass.comp", params);
-    kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_512.glsl",   shaderPath + slash + "z_bitonic_512.comp", params);
-    kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_1024.glsl",  shaderPath + slash + "z_bitonic_1024.comp", params);
-    kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_2048.glsl",  shaderPath + slash + "z_bitonic_2048.comp", params);
-    buildSH << "glslangValidator -V z_bitonic_pass.comp -o z_bitonic_pass.comp.spv" << std::endl;
-    buildSH << "glslangValidator -V z_bitonic_512.comp  -o z_bitonic_512.comp.spv"  << std::endl;
-    buildSH << "glslangValidator -V z_bitonic_1024.comp -o z_bitonic_1024.comp.spv" << std::endl;
-    buildSH << "glslangValidator -V z_bitonic_2048.comp -o z_bitonic_2048.comp.spv" << std::endl;
+    for(auto sortImpl : a_codeInfo->serviceCalls) 
+    {
+      if (sortImpl.second.opName == "sort") 
+      {
+        nlohmann::json params;
+        params["Type"]   = sortImpl.second.dataTypeName;
+        params["Lambda"] = sortImpl.second.lambdaSource;
+
+        kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_pass.glsl",  shaderPath + slash + "z_bitonic_" + sortImpl.second.dataTypeName + "_pass.comp", params);
+        kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_512.glsl",   shaderPath + slash + "z_bitonic_" + sortImpl.second.dataTypeName + "_512.comp", params);
+        kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_1024.glsl",  shaderPath + slash + "z_bitonic_" + sortImpl.second.dataTypeName + "_1024.comp", params);
+        kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_2048.glsl",  shaderPath + slash + "z_bitonic_" + sortImpl.second.dataTypeName + "_2048.comp", params);
+        
+        buildSH << "glslangValidator -V z_bitonic_" + sortImpl.second.dataTypeName + "_pass.comp -o z_bitonic_" + sortImpl.second.dataTypeName + "_pass.comp.spv" << std::endl;
+        buildSH << "glslangValidator -V z_bitonic_" + sortImpl.second.dataTypeName + "_512.comp  -o z_bitonic_" + sortImpl.second.dataTypeName + "_512.comp.spv"  << std::endl;
+        buildSH << "glslangValidator -V z_bitonic_" + sortImpl.second.dataTypeName + "_1024.comp -o z_bitonic_" + sortImpl.second.dataTypeName + "_1024.comp.spv" << std::endl;
+        buildSH << "glslangValidator -V z_bitonic_" + sortImpl.second.dataTypeName + "_2048.comp -o z_bitonic_" + sortImpl.second.dataTypeName + "_2048.comp.spv" << std::endl;
+      }
+    }
   }
 
   buildSH.close();

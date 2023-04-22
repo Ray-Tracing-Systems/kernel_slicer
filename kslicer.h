@@ -392,6 +392,7 @@ namespace kslicer
     std::string        name = "";
     std::string        type = "";
     DATA_KIND          kind = DATA_KIND::KIND_UNKNOWN;
+    const clang::Expr* node = nullptr;
     
     bool isConst               = false;
     bool umpersanned           = false; // just signal that '&' was applied to this argument, and thus it is likely to be (ARG_REFERENCE_LOCAL or ARG_REFERENCE_CLASS_POD)
@@ -833,6 +834,14 @@ namespace kslicer
     const std::string& m_suffix;
     void ProcessVectorTypesString(std::string& a_str);
   };
+  
+  struct ServiceCall
+  {
+    std::string opName;
+    std::string dataTypeName;
+    std::string lambdaSource;
+    std::string key() const { return opName + "_" + dataTypeName; }
+  };
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -848,7 +857,9 @@ namespace kslicer
     std::unordered_map<std::string, KernelInfo>     allKernels;       ///<! list of all kernels; used only on the second pass to identify Control Functions; it is not recommended to use it anywhere else
     std::unordered_map<std::string, KernelInfo>     allOtherKernels;  ///<! kernels from other classes. we probably need them if they are used.
     std::unordered_map<std::string, DataMemberInfo> allDataMembers;   ///<! list of all class data members;
-    std::unordered_set<std::string>                 usedServiceCalls; ///<! memcpy, memset and e.t.c.
+
+    std::unordered_set<std::string>                 usedServiceCalls; ///<! memcpy, memset, scan, sort and e.t.c.
+    std::unordered_map<std::string, ServiceCall>    serviceCalls;     ///<! actual list of used service calls
     
     std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFunctions;  ///<! in fact this is used for a specific case, RTV pattern, full impl function, check for user define 'XXXBlock' function for control function 'XXX'
                                                                                       ///<! and we do not support overloading here ...

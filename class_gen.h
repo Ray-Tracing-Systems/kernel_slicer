@@ -33,7 +33,7 @@ namespace kslicer
     MainFunctionRewriter(Rewriter &R, const clang::CompilerInstance& a_compiler, MainFuncInfo& a_mainFunc, 
                          const std::vector<InOutVarInfo>& a_args, MainClassInfo* a_pCodeInfo) : 
                          m_rewriter(R), m_compiler(a_compiler), m_sm(R.getSourceMgr()), 
-                         m_dsTagId(0), m_mainFuncName(a_mainFunc.Name), m_mainFuncLocals(a_mainFunc.Locals),
+                         m_mainFuncName(a_mainFunc.Name), m_mainFuncLocals(a_mainFunc.Locals),
                          m_pCodeInfo(a_pCodeInfo), m_allClassMembers(a_pCodeInfo->allDataMembers), allDescriptorSetsInfo(a_pCodeInfo->allDescriptorSetsInfo),
                          m_kernels(a_pCodeInfo->kernels), m_mainFunc(a_mainFunc) 
     { 
@@ -61,7 +61,6 @@ namespace kslicer
     Rewriter&                      m_rewriter;
     const clang::CompilerInstance& m_compiler;
     const clang::SourceManager&    m_sm;
-    uint32_t m_dsTagId;
 
   public:
 
@@ -75,9 +74,8 @@ namespace kslicer
     
     const std::unordered_map<std::string, KernelInfo>& m_kernels;
     std::unordered_map<std::string, InOutVarInfo>      m_argsOfMainFunc;
-    MainFuncInfo& m_mainFunc;
-
-    std::shared_ptr< std::unordered_set<uint64_t> > m_pRewrittenNodes;
+    MainFuncInfo&                                      m_mainFunc;
+    std::shared_ptr< std::unordered_set<uint64_t> >    m_pRewrittenNodes;
 
     bool WasNotRewrittenYet(const clang::Stmt* expr) const
     {

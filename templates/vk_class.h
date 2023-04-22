@@ -430,7 +430,10 @@ protected:
     void DeletePipelines(VkDevice a_device);
     void BitonicSortCmd(VkCommandBuffer a_cmdBuffer, size_t a_size, uint32_t a_maxWorkGroupSize = 256);
     void BitonicSortSimpleCmd(VkCommandBuffer a_cmdBuffer, size_t a_size);
-  } m_sort;
+  };
+  {% for Sort in ServiceSort %}
+  BitonicSortData m_sort_{{Sort.Type}};
+  {% endfor %}
   {% endif %}
 };
 

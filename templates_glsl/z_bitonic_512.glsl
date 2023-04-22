@@ -2,7 +2,7 @@
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 layout(binding = 0, set = 0) buffer data0 { {{Type}} theArray[]; }; //
 
-bool compare(uvec2 a, uvec2 b) { return a.x < b.x; }
+bool compare{{Lambda}}
 
 layout( push_constant ) uniform kernelIntArgs
 {

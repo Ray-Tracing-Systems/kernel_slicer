@@ -43,7 +43,9 @@ uint32_t {{MainClassName}}{{MainClassSuffix}}::GetDefaultMaxTextures() const { r
   m_scan.DeletePipelines(device);
   {% endif %} {# /* UseServiceScan */ #}
   {% if UseServiceSort %}
-  m_sort.DeletePipelines(device);
+  {% for Sort in ServiceSort %}
+  m_sort_{{Sort.Type}}.DeletePipelines(device);
+  {% endfor %}
   {% endif %} {# /* UseServiceSort */ #}
 ## for Kernel in Kernels
   vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
@@ -440,51 +442,56 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   m_scan.scanPropPipeline = m_pMaker->MakePipeline(device);
   {% endif %} {# /* UseServiceScan */ #}
   {% if UseServiceSort %}
-  std::string bitonicPassPath  = AlterShaderPath("{{ShaderFolder}}/z_bitonic_pass.comp.spv");
-  std::string bitonic512Path   = AlterShaderPath("{{ShaderFolder}}/z_bitonic_512.comp.spv");
-  std::string bitonic1024Path  = AlterShaderPath("{{ShaderFolder}}/z_bitonic_1024.comp.spv");
-  std::string bitonic2048Path  = AlterShaderPath("{{ShaderFolder}}/z_bitonic_2048.comp.spv");
-  m_sort.sortDSLayout          = m_sort.CreateSortDSLayout(device);
-
-  m_pMaker->LoadShader(device, bitonicPassPath.c_str(), nullptr, "main");
-  m_sort.bitonicPassLayout   = m_pMaker->MakeLayout(device, {m_sort.sortDSLayout}, 128); // at least 128 bytes for push constants
-  m_sort.bitonicPassPipeline = m_pMaker->MakePipeline(device);
+  {% for Sort in ServiceSort %}
+  // init m_sort_{{Sort.Type}}
+  { 
+    std::string bitonicPassPath = AlterShaderPath("{{ShaderFolder}}/z_bitonic_{{Sort.Type}}_pass.comp.spv");
+    std::string bitonic512Path  = AlterShaderPath("{{ShaderFolder}}/z_bitonic_{{Sort.Type}}_512.comp.spv");
+    std::string bitonic1024Path = AlterShaderPath("{{ShaderFolder}}/z_bitonic_{{Sort.Type}}_1024.comp.spv");
+    std::string bitonic2048Path = AlterShaderPath("{{ShaderFolder}}/z_bitonic_{{Sort.Type}}_2048.comp.spv");
+    m_sort_{{Sort.Type}}.sortDSLayout = m_sort_{{Sort.Type}}.CreateSortDSLayout(device);
   
-  if(m_devProps.limits.maxComputeWorkGroupSize[0] >= 256)
-  {
-    m_pMaker->LoadShader(device, bitonic512Path.c_str(), nullptr, "main");
-    m_sort.bitonic512Layout   = m_pMaker->MakeLayout(device, {m_sort.sortDSLayout}, 128); // at least 128 bytes for push constants
-    m_sort.bitonic512Pipeline = m_pMaker->MakePipeline(device);
+    m_pMaker->LoadShader(device, bitonicPassPath.c_str(), nullptr, "main");
+    m_sort_{{Sort.Type}}.bitonicPassLayout   = m_pMaker->MakeLayout(device, {m_sort_{{Sort.Type}}.sortDSLayout}, 128); // at least 128 bytes for push constants
+    m_sort_{{Sort.Type}}.bitonicPassPipeline = m_pMaker->MakePipeline(device);
+    
+    if(m_devProps.limits.maxComputeWorkGroupSize[0] >= 256)
+    {
+      m_pMaker->LoadShader(device, bitonic512Path.c_str(), nullptr, "main");
+      m_sort_{{Sort.Type}}.bitonic512Layout   = m_pMaker->MakeLayout(device, {m_sort_{{Sort.Type}}.sortDSLayout}, 128); // at least 128 bytes for push constants
+      m_sort_{{Sort.Type}}.bitonic512Pipeline = m_pMaker->MakePipeline(device);
+    }
+    else
+    {
+      m_sort_{{Sort.Type}}.bitonic512Layout   = VK_NULL_HANDLE;
+      m_sort_{{Sort.Type}}.bitonic512Pipeline = VK_NULL_HANDLE;
+    }
+  
+    if(m_devProps.limits.maxComputeWorkGroupSize[0] >= 512)
+    {
+      m_pMaker->LoadShader(device, bitonic1024Path.c_str(), nullptr, "main");
+      m_sort_{{Sort.Type}}.bitonic1024Layout   = m_pMaker->MakeLayout(device, {m_sort_{{Sort.Type}}.sortDSLayout}, 128); // at least 128 bytes for push constants
+      m_sort_{{Sort.Type}}.bitonic1024Pipeline = m_pMaker->MakePipeline(device);
+    }
+    else
+    {
+      m_sort_{{Sort.Type}}.bitonic1024Layout   = VK_NULL_HANDLE;
+      m_sort_{{Sort.Type}}.bitonic1024Pipeline = VK_NULL_HANDLE;
+    }
+  
+    if(m_devProps.limits.maxComputeWorkGroupSize[0] >= 1024)
+    {
+      m_pMaker->LoadShader(device, bitonic2048Path.c_str(), nullptr, "main");
+      m_sort_{{Sort.Type}}.bitonic2048Layout   = m_pMaker->MakeLayout(device, {m_sort_{{Sort.Type}}.sortDSLayout}, 128); // at least 128 bytes for push constants
+      m_sort_{{Sort.Type}}.bitonic2048Pipeline = m_pMaker->MakePipeline(device);
+    }
+    else
+    {
+      m_sort_{{Sort.Type}}.bitonic2048Layout   = VK_NULL_HANDLE;
+      m_sort_{{Sort.Type}}.bitonic2048Pipeline = VK_NULL_HANDLE;
+    }
   }
-  else
-  {
-    m_sort.bitonic512Layout   = VK_NULL_HANDLE;
-    m_sort.bitonic512Pipeline = VK_NULL_HANDLE;
-  }
-
-  if(m_devProps.limits.maxComputeWorkGroupSize[0] >= 512)
-  {
-    m_pMaker->LoadShader(device, bitonic1024Path.c_str(), nullptr, "main");
-    m_sort.bitonic1024Layout   = m_pMaker->MakeLayout(device, {m_sort.sortDSLayout}, 128); // at least 128 bytes for push constants
-    m_sort.bitonic1024Pipeline = m_pMaker->MakePipeline(device);
-  }
-  else
-  {
-    m_sort.bitonic1024Layout   = VK_NULL_HANDLE;
-    m_sort.bitonic1024Pipeline = VK_NULL_HANDLE;
-  }
-
-  if(m_devProps.limits.maxComputeWorkGroupSize[0] >= 1024)
-  {
-    m_pMaker->LoadShader(device, bitonic2048Path.c_str(), nullptr, "main");
-    m_sort.bitonic2048Layout   = m_pMaker->MakeLayout(device, {m_sort.sortDSLayout}, 128); // at least 128 bytes for push constants
-    m_sort.bitonic2048Pipeline = m_pMaker->MakePipeline(device);
-  }
-  else
-  {
-    m_sort.bitonic2048Layout   = VK_NULL_HANDLE;
-    m_sort.bitonic2048Pipeline = VK_NULL_HANDLE;
-  }
+  {% endfor %}
   {% endif %} {# /* UseServiceSort */ #}
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectBufferUpdateResources(a_filePath);
