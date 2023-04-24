@@ -145,16 +145,17 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
         nlohmann::json params;
         params["Type"]   = sortImpl.second.dataTypeName;
         params["Lambda"] = sortImpl.second.lambdaSource;
+        params["Suffix"] = ToLowerCase(a_codeInfo->mainClassSuffix);
 
         kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_pass.glsl",  shaderPath + slash + "z_bitonic_" + sortImpl.second.dataTypeName + "_pass.comp", params);
         kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_512.glsl",   shaderPath + slash + "z_bitonic_" + sortImpl.second.dataTypeName + "_512.comp", params);
         kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_1024.glsl",  shaderPath + slash + "z_bitonic_" + sortImpl.second.dataTypeName + "_1024.comp", params);
         kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_2048.glsl",  shaderPath + slash + "z_bitonic_" + sortImpl.second.dataTypeName + "_2048.comp", params);
         
-        buildSH << "glslangValidator -V z_bitonic_" + sortImpl.second.dataTypeName + "_pass.comp -o z_bitonic_" + sortImpl.second.dataTypeName + "_pass.comp.spv" << std::endl;
-        buildSH << "glslangValidator -V z_bitonic_" + sortImpl.second.dataTypeName + "_512.comp  -o z_bitonic_" + sortImpl.second.dataTypeName + "_512.comp.spv"  << std::endl;
-        buildSH << "glslangValidator -V z_bitonic_" + sortImpl.second.dataTypeName + "_1024.comp -o z_bitonic_" + sortImpl.second.dataTypeName + "_1024.comp.spv" << std::endl;
-        buildSH << "glslangValidator -V z_bitonic_" + sortImpl.second.dataTypeName + "_2048.comp -o z_bitonic_" + sortImpl.second.dataTypeName + "_2048.comp.spv" << std::endl;
+        buildSH << "glslangValidator -V -DSKIP_UBO_INCLUDE z_bitonic_" + sortImpl.second.dataTypeName + "_pass.comp -o z_bitonic_" + sortImpl.second.dataTypeName + "_pass.comp.spv" << std::endl;
+        buildSH << "glslangValidator -V -DSKIP_UBO_INCLUDE z_bitonic_" + sortImpl.second.dataTypeName + "_512.comp  -o z_bitonic_" + sortImpl.second.dataTypeName + "_512.comp.spv"  << std::endl;
+        buildSH << "glslangValidator -V -DSKIP_UBO_INCLUDE z_bitonic_" + sortImpl.second.dataTypeName + "_1024.comp -o z_bitonic_" + sortImpl.second.dataTypeName + "_1024.comp.spv" << std::endl;
+        buildSH << "glslangValidator -V -DSKIP_UBO_INCLUDE z_bitonic_" + sortImpl.second.dataTypeName + "_2048.comp -o z_bitonic_" + sortImpl.second.dataTypeName + "_2048.comp.spv" << std::endl;
       }
     }
   }

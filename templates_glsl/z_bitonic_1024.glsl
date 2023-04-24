@@ -1,4 +1,7 @@
 #version 460
+#extension GL_GOOGLE_include_directive : require
+#include "common{{Suffix}}.h"
+
 layout(local_size_x = 512, local_size_y = 1, local_size_z = 1) in;
 layout(binding = 0, set = 0) buffer data0 { {{Type}} theArray[]; }; //
 
