@@ -6,16 +6,22 @@ namespace std
 namespace chrono
 {
   typedef int duration;
-  typedef int time_point;
+  //typedef int time_point;
   typedef int nanoseconds;
   typedef int microseconds;
   typedef int miliseconds;
   typedef int seconds;
 
+  template<typename T>
+  struct time_point
+  { 
+    T data;
+  };
+
   struct system_clock
   {
     typedef chrono::nanoseconds duration;
-    static chrono::time_point now();
+    static chrono::time_point<int> now();
   };
 
   typedef system_clock high_resolution_clock;
@@ -29,6 +35,8 @@ namespace chrono
   template<typename castType>
   duration_cast_temp<castType> duration_cast(duration dur) { return duration_cast_temp<castType>(); }
 
+
+  //std::chrono::time_point<std::chrono::high_resolution_clock> m_start = std::chrono::high_resolution_clock::now()
 }
 
 }
