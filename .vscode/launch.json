@@ -3377,6 +3377,46 @@
         },
 
         {
+            "name"   : "RTProject(WhittedRT-->BVH2_SHRT64_SEPARATE)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/huawei/cbvh_raytrace/examples/04_simple_rt/simple_rt.cpp",
+                        "/home/frol/PROG/huawei/cbvh_raytrace/core/ShtRT64.cpp",
+                        "-shaderFolderPrefix", "examples/04_simple_rt/",
+                        "-mainClass", "SimpleRayTracer", 
+                        "-composInterface", "ISceneObject",
+                        "-composImplementation","ShtRT64", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I/home/frol/PROG/huawei/cbvh_raytrace/examples",     "process",
+                        "-I/home/frol/PROG/huawei/cbvh_raytrace/core",         "process",
+                        "-I/home/frol/PROG/huawei/cbvh_raytrace/core/builders","process",
+                        "-cpp_include", "ShtRT64.h",
+                        "-megakernel", "0",
+                        "-suffix", "_SEPARATE_BVH2_SHRT64",
+                        //"-forceEnableHalf", "1",
+                        "-DPUGIXML_NO_EXCEPTIONS",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "RTProject(WhittedRT-->BVH4_SHRT64_HALF)",
             "type"   : "cppdbg",
             "request": "launch",

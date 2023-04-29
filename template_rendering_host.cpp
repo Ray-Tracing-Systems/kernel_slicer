@@ -815,6 +815,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   bool useSubgroups = false;
   int subgroupMaxSize = 0;
+  
+  size_t totalBuffersUsed     = 0;
+  size_t totalTexCombinedUsed = 0;
+  size_t totalTexStorageUsed  = 0;
+  size_t totalTexArrayUsed    = 0;
+  size_t totalAccels          = 0;
 
   for(const auto& k : currKernels)
   {    
@@ -863,7 +869,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["Decl"]           = kernelDeclByName[kernName];
     kernelJson["Args"]           = std::vector<std::string>();
     kernelJson["threadDim"]      = a_classInfo.GetKernelTIDArgs(k).size();
-    size_t actualSize     = 0;
+    size_t actualSize = 0;
     for(const auto& arg : k.args)
     {
       const auto pos1 = arg.type.find(std::string("class ")  + a_classInfo.mainClassName);
@@ -885,21 +891,32 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         argData["Count"] = arg.name + ".size()";
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
         argData["IsTextureArray"] = true;
+        totalTexArrayUsed++;
       }
       else if(arg.IsTexture())
       {
         auto pAccessFlags = k.texAccessInArgs.find(arg.name);
         if(pAccessFlags->second == TEX_ACCESS::TEX_ACCESS_SAMPLE)
+        {
           argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+          totalTexCombinedUsed++;
+        }
         else
+        {
           argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+          totalTexStorageUsed++;
+        }
       }
       else if(arg.isContainer && arg.containerDataType == "struct ISceneObject")
       {
         argData["Type"] = "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR";
+        totalAccels++;
       }
       else
+      {
         argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+        totalBuffersUsed++;
+      }
 
       kernelJson["Args"].push_back(argData);
       actualSize++;
@@ -919,25 +936,37 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
         argData["Count"] = container.second.name + ".size()";
         argData["IsTextureArray"] = true;
+        totalTexArrayUsed++;
       }
       else if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
       {
         argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+        totalTexCombinedUsed++;
       }
       else if(container.second.isTexture())
       {
         auto pAccessFlags = k.texAccessInMemb.find(container.second.name);
         if(pAccessFlags == k.texAccessInMemb.end() || pAccessFlags->second == TEX_ACCESS::TEX_ACCESS_SAMPLE)
+        {
           argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+          totalTexCombinedUsed++;
+        }
         else
+        {
           argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+          totalTexStorageUsed++;
+        }
       }
       else if(container.second.isAccelStruct())
       {
         argData["Type"] = "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR";
+        totalAccels++;
       }
       else
+      {
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+        totalBuffersUsed++;
+      }
       
       kernelJson["Args"].push_back(argData);
       actualSize++;
@@ -1072,6 +1101,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
     data["Kernels"].push_back(kernelJson);
   }
+
+  data["TotalBuffersUsed"]     = totalBuffersUsed;
+  data["TotalTexCombinedUsed"] = totalTexCombinedUsed;
+  data["TotalTexStorageUsed"]  = totalTexStorageUsed;
+  data["TotalTexArrayUsed"]    = totalTexArrayUsed;
+  data["TotalAccels"]          = totalAccels;
   
   data["UseSubGroups"] = useSubgroups;
   data["SubGroupSize"] = subgroupMaxSize;

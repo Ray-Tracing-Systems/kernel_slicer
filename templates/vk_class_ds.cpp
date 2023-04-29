@@ -17,15 +17,23 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
 {
   // allocate pool
   //
-  VkDescriptorPoolSize buffersSize;
-  buffersSize.type            = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  buffersSize.descriptorCount = {{TotalDSNumber}}*4 + 100; // mul 4 and add 100 because of AMD bug
+  VkDescriptorPoolSize buffersSize, combinedImageSamSize, imageStorageSize;
+  buffersSize.type                     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  buffersSize.descriptorCount          = {{TotalBuffersUsed}} + 16; // + 16 for reserve
+
+  combinedImageSamSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  combinedImageSamSize.descriptorCount = {{TotalTexArrayUsed}}*GetDefaultMaxTextures() + {{TotalTexCombinedUsed}};
+  
+  imageStorageSize.type                = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+  imageStorageSize.descriptorCount     = {{TotalTexStorageUsed}};
+
+  std::vector<VkDescriptorPoolSize> poolSizes = {buffersSize, combinedImageSamSize, imageStorageSize};
 
   VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
   descriptorPoolCreateInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   descriptorPoolCreateInfo.maxSets       = {{TotalDSNumber}} + 2; // add 1 to prevent zero case and one more for internal needs
-  descriptorPoolCreateInfo.poolSizeCount = 1;
-  descriptorPoolCreateInfo.pPoolSizes    = &buffersSize;
+  descriptorPoolCreateInfo.poolSizeCount = poolSizes.size();
+  descriptorPoolCreateInfo.pPoolSizes    = poolSizes.data();
   
   VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, NULL, &m_dsPool));
   
