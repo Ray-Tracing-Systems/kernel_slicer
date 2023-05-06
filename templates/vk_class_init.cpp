@@ -698,7 +698,8 @@ void {{MainClassName}}{{MainClassSuffix}}::InitIndirectBufferUpdateResources(con
   //
   {
     VkShaderModule tempShaderModule = VK_NULL_HANDLE;
-    std::vector<uint32_t> code      = vk_utils::readSPVFile("{{ShaderFolder}}/{{Dispatch.OriginalName}}_UpdateIndirect.comp.spv");
+    const std::string shaderPath = AlterShaderPath("{{ShaderFolder}}/{{Dispatch.OriginalName}}_UpdateIndirect.comp.spv");
+    std::vector<uint32_t> code   = vk_utils::readSPVFile(shaderPath.c_str());
     
     VkShaderModuleCreateInfo createInfo = {};
     createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

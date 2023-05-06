@@ -400,6 +400,7 @@ bool kslicer::MainFunctionRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
     {
       std::string callStr = MakeKernelCallCmdString(f);
       m_rewriter.ReplaceText(f->getSourceRange(), callStr); // getExprLoc
+      MarkRewritten(f);
     }
     else
     {
@@ -426,11 +427,12 @@ bool kslicer::MainFunctionRewriter::VisitCallExpr(CallExpr* call)
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
   
-  if(fname == "memcpy" || fname == "exclusive_scan" || fname == "inclusive_scan" || fname == "sort")
+  if((fname == "memcpy" || fname == "exclusive_scan" || fname == "inclusive_scan" || fname == "sort") && WasNotRewrittenYet(call))
   {
     m_pCodeInfo->usedServiceCalls.insert(fname);
     std::string testStr = MakeServiceKernelCallCmdString(call, fname);
     m_rewriter.ReplaceText(call->getSourceRange(), testStr);
+    MarkRewritten(call);
   }
 
   return true;
@@ -471,7 +473,7 @@ bool kslicer::MainFunctionRewriter::VisitMemberExpr(MemberExpr* expr)
     return true;
 
   std::string setter, containerName;
-  if(CheckSettersAccess(expr, m_pCodeInfo, m_compiler, &setter, &containerName))
+  if(CheckSettersAccess(expr, m_pCodeInfo, m_compiler, &setter, &containerName) && WasNotRewrittenYet(expr))
   {
     std::string name = setter + "Vulkan." + containerName;            
     m_rewriter.ReplaceText(expr->getSourceRange(), name);
