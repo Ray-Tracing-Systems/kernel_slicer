@@ -188,12 +188,13 @@ namespace kslicer
 
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 
-static json ReductionAccessFill(const kslicer::KernelInfo::ReductionAccess& second, std::shared_ptr<kslicer::IShaderCompiler> pShaderCC)
+static json ReductionAccessFill(const kslicer::KernelInfo::ReductionAccess& second, std::shared_ptr<kslicer::IShaderCompiler> pShaderCC, std::shared_ptr<kslicer::FunctionRewriter> pShaderFuncRewriter)
 {
+  const std::string rewrtittenType = pShaderFuncRewriter->RewriteStdVectorTypeStr(second.dataType); 
   json varJ;
-  varJ["Type"]          = second.dataType;
+  varJ["Type"]          = rewrtittenType; 
   varJ["Name"]          = second.leftExpr;
-  varJ["Init"]          = second.GetInitialValue(pShaderCC->IsGLSL());
+  varJ["Init"]          = second.GetInitialValue(pShaderCC->IsGLSL(), rewrtittenType);
   varJ["Op"]            = second.GetOp(pShaderCC);
   varJ["Op2"]           = second.GetOp2(pShaderCC);
   varJ["NegLastStep"]   = (second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB || second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB_ONE);
@@ -532,14 +533,14 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     json reductionArrs = std::vector<std::string>();
     for(const auto& var : subjToRedCopy)
     {
-      json varJ = ReductionAccessFill(var.second, a_classInfo.pShaderCC);
+      json varJ = ReductionAccessFill(var.second, a_classInfo.pShaderCC, a_classInfo.pShaderFuncRewriter);
       needFinishReductionPass = needFinishReductionPass || !varJ["SupportAtomic"];
       reductionVars.push_back(varJ);
     }
 
     for(const auto& var : subjToRedArray)
     {
-      json varJ = ReductionAccessFill(var.second, a_classInfo.pShaderCC);
+      json varJ = ReductionAccessFill(var.second, a_classInfo.pShaderCC, a_classInfo.pShaderFuncRewriter);
       needFinishReductionPass = needFinishReductionPass || !varJ["SupportAtomic"];
       reductionArrs.push_back(varJ);
     }
@@ -578,6 +579,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["SingleThreadISPC"] = k.singleThreadISPC;
     kernelJson["OpenMPAndISPC"]    = k.openMpAndISPC;
     kernelJson["ExplicitIdISPC"]   = k.explicitIdISPC;
+    kernelJson["InitKPass"]        = false;
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));

@@ -102,7 +102,7 @@ std::string kslicer::KernelInfo::ReductionAccess::GetOp2(std::shared_ptr<IShader
   };
 }
 
-std::string kslicer::KernelInfo::ReductionAccess::GetInitialValue(bool isGLSL) const // best in nomination shitty code
+std::string kslicer::KernelInfo::ReductionAccess::GetInitialValue(bool isGLSL, const std::string& a_dataType) const // best in nomination shitty code
 {
   if(isGLSL)
   {
@@ -113,32 +113,32 @@ std::string kslicer::KernelInfo::ReductionAccess::GetInitialValue(bool isGLSL) c
       case REDUCTION_TYPE::SUB:
       case REDUCTION_TYPE::SUB_ONE:
       {
-        if(dataType == "ivec2")  return "ivec2(0,0)";
-        if(dataType == "uvec2")  return "uvec2(0,0)";
-        if(dataType == "vec2")   return "vec2(0,0)";
+        if(a_dataType == "ivec2")  return "ivec2(0,0)";
+        if(a_dataType == "uvec2")  return "uvec2(0,0)";
+        if(a_dataType == "vec2")   return "vec2(0,0)";
         
-        if(dataType == "ivec3")  return "ivec3(0,0,0)";
-        if(dataType == "uvec3")  return "uvec3(0,0,0)";
-        if(dataType == "vec3")   return "vec3(0,0,0)";
+        if(a_dataType == "ivec3")  return "ivec3(0,0,0)";
+        if(a_dataType == "uvec3")  return "uvec3(0,0,0)";
+        if(a_dataType == "vec3")   return "vec3(0,0,0)";
   
-        if(dataType == "int4")   return "ivec4(0,0,0,0)";
-        if(dataType == "uint4")  return "uvec4(0,0,0,0)";
-        if(dataType == "vec4")   return "vec4(0,0,0,0)";
+        if(a_dataType == "int4")   return "ivec4(0,0,0,0)";
+        if(a_dataType == "uint4")  return "uvec4(0,0,0,0)";
+        if(a_dataType == "vec4")   return "vec4(0,0,0,0)";
         return "0";
       }
       break;
       case REDUCTION_TYPE::MUL:
-        if(dataType == "ivec2")  return "ivec2(1,1)";
-        if(dataType == "uvec2")  return "uvec2(1,1)";
-        if(dataType == "vec2")   return "vec2(1,1)";
+        if(a_dataType == "ivec2")  return "ivec2(1,1)";
+        if(a_dataType == "uvec2")  return "uvec2(1,1)";
+        if(a_dataType == "vec2")   return "vec2(1,1)";
         
-        if(dataType == "ivec3")  return "ivec3(1,1,1)";
-        if(dataType == "uvec3")  return "uvec3(1,1,1)";
-        if(dataType == "vec3")   return "vec3(1,1,1)";
+        if(a_dataType == "ivec3")  return "ivec3(1,1,1)";
+        if(a_dataType == "uvec3")  return "uvec3(1,1,1)";
+        if(a_dataType == "vec3")   return "vec3(1,1,1)";
   
-        if(dataType == "int4")   return "ivec4(1,1,1,1)";
-        if(dataType == "uint4")  return "uvec4(1,1,1,1)";
-        if(dataType == "vec4")   return "vec4(1,1,1,1)";
+        if(a_dataType == "int4")   return "ivec4(1,1,1,1)";
+        if(a_dataType == "uint4")  return "uvec4(1,1,1,1)";
+        if(a_dataType == "vec4")   return "vec4(1,1,1,1)";
         return "1";
       break;
       case REDUCTION_TYPE::FUNC:
@@ -146,20 +146,20 @@ std::string kslicer::KernelInfo::ReductionAccess::GetInitialValue(bool isGLSL) c
         if(funcName == "fmin") return "MAXFLOAT";
         if(funcName == "fmax") return "-MAXFLOAT";
         
-        if(dataType == "float" || dataType == "vec4" || dataType == "vec3" || dataType == "vec2")
+        if(a_dataType == "float" || a_dataType == "vec4" || a_dataType == "vec3" || a_dataType == "vec2")
         {
-          if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return "MAXFLOAT";
-          if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return "-MAXFLOAT";
+          if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return a_dataType + "(MAXFLOAT)";
+          if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return a_dataType + "(-MAXFLOAT)";
         }
-        else if(dataType == "int" || dataType == "ivec4" || dataType == "ivec3" || dataType == "ivec2")
+        else if(a_dataType == "int" || a_dataType == "ivec4" || a_dataType == "ivec3" || a_dataType == "ivec2")
         {
-          if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return "2147483647";
-          if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return "-2147483648";
+          if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return a_dataType + "(2147483647)";
+          if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return a_dataType + "(-2147483648)";
         }
-        else if(dataType == "uint" || dataType == "uvec4" || dataType == "uvec3" || dataType == "uvec2")
+        else if(a_dataType == "uint" || a_dataType == "uvec4" || a_dataType == "uvec3" || a_dataType == "uvec2")
         {
-          if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return "4294967295";
-          if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return "0";
+          if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return a_dataType + "(4294967295)";
+          if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return a_dataType + "(0)";
         }
         
         return "0";

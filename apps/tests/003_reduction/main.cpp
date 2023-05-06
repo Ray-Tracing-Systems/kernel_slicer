@@ -12,8 +12,8 @@
 #define JSON_LOG_IMPLEMENTATION
 #include <JSONLog.hpp>
 
-//#include "vk_context.h"
-//std::shared_ptr<BoxMinMax> CreateBoxMinMax_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+#include "vk_context.h"
+std::shared_ptr<BoxMinMax> CreateBoxMinMax_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 
 int main(int argc, const char** argv)
 {
@@ -33,13 +33,13 @@ int main(int argc, const char** argv)
   bool onGPU = args.hasOption("--gpu");
   std::shared_ptr<BoxMinMax> pImpl = nullptr;
   
-  //if(onGPU)
-  //{
-  //  unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-  //  auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
-  //  pImpl = BoxMinMaxPixels_Generated(ctx, inputImageData.size());
-  //}
-  //else
+  if(onGPU)
+  {
+    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+    pImpl = CreateBoxMinMax_Generated(ctx, points.size());
+  }
+  else
     pImpl = std::make_shared<BoxMinMax>();
   
   std::string backendName = onGPU ? "gpu" : "cpu";

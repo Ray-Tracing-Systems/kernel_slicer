@@ -21,6 +21,7 @@ void BoxMinMax::kernel1D_FindBoundingBox(const float4* a_inData, uint32_t a_data
 
   a_outData[0] = m_boxMin;
   a_outData[1] = m_boxMax;
+  int a = 2;
 }
 
 void BoxMinMax::ProcessPoints(const float4* a_inData, size_t a_dataSize, float4* a_outData)

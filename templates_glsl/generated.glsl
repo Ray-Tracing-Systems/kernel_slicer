@@ -90,12 +90,14 @@ layout( push_constant ) uniform kernelArgs
   uint tFlagsMask;    
 } kgenArgs;
 
+{% if not Kernel.InitKPass %}
 {% for redvar in Kernel.SubjToRed %} 
 shared {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}}]; 
 {% endfor %}
 {% for redvar in Kernel.ArrsToRed %} 
 shared {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][{{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}}]; 
 {% endfor %}
+{% endif %}
 
 void main()
 {

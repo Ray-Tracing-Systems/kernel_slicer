@@ -920,6 +920,13 @@ bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(CXXOperatorCallExpr*
 
     ProcessReductionOp(op, lhs, rhs, expr);
   }
+  else if (op == "=")
+  {
+    const Expr* lhs = expr->getArg(0);
+    const Expr* rhs = expr->getArg(1);
+
+    DetectFuncReductionAccess(lhs, rhs, expr);
+  }
 
   return true;
 }
@@ -943,45 +950,40 @@ void kslicer::KernelRewriter::DetectTextureAccess(clang::BinaryOperator* expr)
   //  ProcessReadWriteTexture(expr, false);
 }
 
-bool kslicer::KernelRewriter::VisitBinaryOperator_Impl(BinaryOperator* expr) // detect reduction like m_var = F(m_var,expr)
+void kslicer::KernelRewriter::DetectFuncReductionAccess(const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr)
 {
-  auto opRange = expr->getSourceRange();
-  if(!m_codeInfo->IsRTV() && (opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd())) // not inside loop
-    return true;  
-
-  const auto op = expr->getOpcodeStr();
-  if(op != "=")
-    return true;
-  
-  DetectTextureAccess(expr);
-  const Expr* lhs = expr->getLHS();
-  const Expr* rhs = expr->getRHS();
-
   if(!isa<MemberExpr>(lhs))
-    return true;
+    return;
 
   std::string leftStr  = GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
+  std::string rightStr = GetRangeSourceCode(rhs->getSourceRange(), m_compiler);
   auto p = m_currKernel.usedMembers.find(leftStr);
   if(p == m_currKernel.usedMembers.end())
-    return true;
-  
-  if(!isa<CallExpr>(rhs))
+    return;
+
+  if(clang::isa<clang::MaterializeTemporaryExpr>(rhs))
+  {
+    auto tmp = dyn_cast<clang::MaterializeTemporaryExpr>(rhs);
+    rhs = tmp->getSubExpr();
+  }
+
+  if(!clang::isa<clang::CallExpr>(rhs))
   {
     PrintWarning("unsupported expression for reduction via assigment inside loop; must be 'a = f(a,b)'", rhs->getSourceRange(), m_compiler.getSourceManager());
     PrintWarning("reduction for variable '" +  leftStr + "' will not be generated, sure this is ok for you?", rhs->getSourceRange(), m_compiler.getSourceManager());
-    return true;
-  }
+    return;
+  }  
   
-  auto call    = dyn_cast<CallExpr>(rhs);
+  auto call    = dyn_cast<clang::CallExpr>(rhs);
   auto numArgs = call->getNumArgs();
   if(numArgs != 2)
   {
     PrintError("function which is used in reduction must have 2 args; a = f(a,b)'", expr->getSourceRange(), m_compiler.getSourceManager());
-    return true;
+    return;
   }
-  
-  const Expr* arg0 = call->getArg(0);
-  const Expr* arg1 = call->getArg(1);
+
+  const clang::Expr* arg0 = call->getArg(0);
+  const clang::Expr* arg1 = call->getArg(1);
 
   std::string arg0Str = GetRangeSourceCode(arg0->getSourceRange(), m_compiler);
   std::string arg1Str = GetRangeSourceCode(arg1->getSourceRange(), m_compiler);
@@ -997,8 +999,8 @@ bool kslicer::KernelRewriter::VisitBinaryOperator_Impl(BinaryOperator* expr) // 
   }
   else
   {
-    PrintError("incorrect arguments of reduction function, one of them must be same as assigment result; a = f(a,b)'", call->getSourceRange(), m_compiler.getSourceManager());
-    return true;
+    PrintError("incorrect arguments of reduction function, one of them must be same as assigment result; a = f(a,b)'", expr->getSourceRange(), m_compiler.getSourceManager());
+    return;
   }
 
   std::string callExpr = GetRangeSourceCode(call->getSourceRange(), m_compiler);
@@ -1022,11 +1024,11 @@ bool kslicer::KernelRewriter::VisitBinaryOperator_Impl(BinaryOperator* expr) // 
   else if (WasNotRewrittenYet(expr) && !m_codeInfo->pShaderCC->IsISPC())
   {
     std::string argsType = "";
-    if(call->getNumArgs() > 0)
+    if(numArgs > 0)
     {
-      const Expr* firstArgExpr = call->getArgs()[0];
-      const QualType qt        = firstArgExpr->getType();
-      argsType                 = qt.getAsString();
+      const clang::Expr* firstArgExpr = arg0;
+      const clang::QualType qt        = firstArgExpr->getType();
+      argsType                        = qt.getAsString();
     }
     
     const std::string leftStr2   = RecursiveRewrite(arg0);
@@ -1037,6 +1039,26 @@ bool kslicer::KernelRewriter::VisitBinaryOperator_Impl(BinaryOperator* expr) // 
     m_rewriter.ReplaceText(expr->getSourceRange(), left + " = " + fname + "(" + left + ", " + rightStr2 + ")" ); 
     MarkRewritten(expr);
   }
+}
+
+
+bool kslicer::KernelRewriter::VisitBinaryOperator_Impl(BinaryOperator* expr) // detect reduction like m_var = F(m_var,expr)
+{
+  auto opRange = expr->getSourceRange();
+  if(!m_codeInfo->IsRTV() && (opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd())) // not inside loop
+    return true;  
+
+  const auto op = expr->getOpcodeStr();
+  if(op != "=")
+    return true;
+  
+  DetectTextureAccess(expr);
+
+  const clang::Expr* lhs = expr->getLHS();
+  const clang::Expr* rhs = expr->getRHS();
+  
+  DetectFuncReductionAccess(lhs, rhs, expr);
+  
   return true;
 }
 

@@ -1420,7 +1420,7 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
   std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler); 
   //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);   
 
-  if(op == "+=" || op == "-=" || op == "*=")
+  if(op == "+=" || op == "-=" || op == "*=" || op == "=")
   {
     return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr); // process reduction access in KernelRewriter
   }

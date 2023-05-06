@@ -185,7 +185,7 @@ namespace kslicer
       std::string    funcName;
       std::string    dataType   = "UnknownType";
       std::string    tmpVarName = "UnknownReductionOutput";
-      std::string    GetInitialValue(bool isGLSL)  const;
+      std::string    GetInitialValue(bool isGLSL, const std::string& a_dataType)  const;
       std::string    GetOp(std::shared_ptr<IShaderCompiler> pShaderCC) const;
       std::string    GetOp2(std::shared_ptr<IShaderCompiler> pShaderCC) const;
 
@@ -664,6 +664,7 @@ namespace kslicer
     void DetectTextureAccess(clang::CXXOperatorCallExpr* expr);
     void DetectTextureAccess(clang::CXXMemberCallExpr*   call);
     void DetectTextureAccess(clang::BinaryOperator* expr);
+    void DetectFuncReductionAccess(const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
     void ProcessReadWriteTexture(clang::CXXOperatorCallExpr* expr, bool write);
 
     clang::Rewriter&                                         m_rewriter;
