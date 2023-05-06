@@ -21,13 +21,18 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
   buffersSize.type                     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
   buffersSize.descriptorCount          = {{TotalBuffersUsed}} + 16; // + 16 for reserve
 
+  std::vector<VkDescriptorPoolSize> poolSizes = {buffersSize};
+
   combinedImageSamSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
   combinedImageSamSize.descriptorCount = {{TotalTexArrayUsed}}*GetDefaultMaxTextures() + {{TotalTexCombinedUsed}};
   
   imageStorageSize.type                = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
   imageStorageSize.descriptorCount     = {{TotalTexStorageUsed}};
 
-  std::vector<VkDescriptorPoolSize> poolSizes = {buffersSize, combinedImageSamSize, imageStorageSize};
+  if(combinedImageSamSize.descriptorCount > 0)
+    poolSizes.push_back(combinedImageSamSize);
+  if(imageStorageSize.descriptorCount > 0)
+    poolSizes.push_back(imageStorageSize);
 
   VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
   descriptorPoolCreateInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

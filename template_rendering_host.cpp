@@ -815,12 +815,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   bool useSubgroups = false;
   int subgroupMaxSize = 0;
-  
-  size_t totalBuffersUsed     = 0;
-  size_t totalTexCombinedUsed = 0;
-  size_t totalTexStorageUsed  = 0;
-  size_t totalTexArrayUsed    = 0;
-  size_t totalAccels          = 0;
 
   for(const auto& k : currKernels)
   {    
@@ -891,7 +885,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         argData["Count"] = arg.name + ".size()";
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
         argData["IsTextureArray"] = true;
-        totalTexArrayUsed++;
       }
       else if(arg.IsTexture())
       {
@@ -899,23 +892,19 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         if(pAccessFlags->second == TEX_ACCESS::TEX_ACCESS_SAMPLE)
         {
           argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
-          totalTexCombinedUsed++;
         }
         else
         {
           argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
-          totalTexStorageUsed++;
         }
       }
       else if(arg.isContainer && arg.containerDataType == "struct ISceneObject")
       {
         argData["Type"] = "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR";
-        totalAccels++;
       }
       else
       {
         argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
-        totalBuffersUsed++;
       }
 
       kernelJson["Args"].push_back(argData);
@@ -936,12 +925,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
         argData["Count"] = container.second.name + ".size()";
         argData["IsTextureArray"] = true;
-        totalTexArrayUsed++;
       }
       else if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
       {
         argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
-        totalTexCombinedUsed++;
       }
       else if(container.second.isTexture())
       {
@@ -949,23 +936,19 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         if(pAccessFlags == k.texAccessInMemb.end() || pAccessFlags->second == TEX_ACCESS::TEX_ACCESS_SAMPLE)
         {
           argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
-          totalTexCombinedUsed++;
         }
         else
         {
           argData["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
-          totalTexStorageUsed++;
         }
       }
       else if(container.second.isAccelStruct())
       {
         argData["Type"] = "VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR";
-        totalAccels++;
       }
       else
       {
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
-        totalBuffersUsed++;
       }
       
       kernelJson["Args"].push_back(argData);
@@ -1102,12 +1085,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["Kernels"].push_back(kernelJson);
   }
 
-  data["TotalBuffersUsed"]     = totalBuffersUsed;
-  data["TotalTexCombinedUsed"] = totalTexCombinedUsed;
-  data["TotalTexStorageUsed"]  = totalTexStorageUsed;
-  data["TotalTexArrayUsed"]    = totalTexArrayUsed;
-  data["TotalAccels"]          = totalAccels;
-  
   data["UseSubGroups"] = useSubgroups;
   data["SubGroupSize"] = subgroupMaxSize;
 
@@ -1177,6 +1154,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["HasRTXAccelStruct"] = false;
   data["MainFunctions"] = std::vector<std::string>();
   bool atLeastOneFullOverride = false;
+  
+  size_t totalBuffersUsed     = 0;
+  size_t totalTexCombinedUsed = 0;
+  size_t totalTexStorageUsed  = 0;
+  size_t totalTexArrayUsed    = 0;
+  size_t totalAccels          = 0;
+
   for(const auto& mainFunc : a_methodsToGenerate)
   {
     json data2;
@@ -1223,7 +1207,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
     // for impl, ds bindings
     //
-    //std::ofstream debug("z_problems.txt", std::ios::app);
+
     for(size_t i=mainFunc.startDSNumber; i<mainFunc.endDSNumber; i++)
     {
       auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
@@ -1270,6 +1254,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           arg["AccessLayout"]  = "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
           arg["AccessDSType"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
           arg["SamplerName"]   = std::string("m_vdata.") + dsArgs.descriptorSetsInfo[j].name + "Sampler";
+          totalTexCombinedUsed++;
         }
         else if(dsArgs.descriptorSetsInfo[j].kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
         {
@@ -1279,6 +1264,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           arg["AccessLayout"]  = "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
           arg["AccessDSType"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
           arg["SamplerName"]   = std::string("m_vdata.") + dsArgs.descriptorSetsInfo[j].name + "ArraySampler";
+          totalTexArrayUsed++;
         }
         else if(dsArgs.descriptorSetsInfo[j].isTexture())
         {
@@ -1293,12 +1279,17 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           arg["AccessLayout"] = texDSInfo.accessLayout;
           arg["AccessDSType"] = texDSInfo.accessDSType;
           arg["SamplerName"]  = texDSInfo.SamplerName;
+          totalTexStorageUsed++;
+          totalTexCombinedUsed++;
         }
         else if(dsArgs.descriptorSetsInfo[j].isAccelStruct())
         {
           //std::cout << "[kslicer error]: passing acceleration structures to kernel arguments is not yet implemented" << std::endl; 
           data["HasRTXAccelStruct"] = true;
-        } 
+          totalAccels++;
+        }
+        else
+          totalBuffersUsed++; 
 
         local["Args"].push_back(arg);
         local["ArgNames"].push_back(dsArgs.descriptorSetsInfo[j].name);
@@ -1324,6 +1315,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
             arg["AccessLayout"]  = "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
             arg["AccessDSType"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
             arg["SamplerName"]   = std::string("m_vdata.") + container.second.name + "Sampler";
+            totalTexCombinedUsed++;
           }
           else if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
           {
@@ -1333,6 +1325,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
             arg["AccessLayout"]  = "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
             arg["AccessDSType"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
             arg["SamplerName"]   = std::string("m_vdata.") + container.second.name + "ArraySampler";
+            totalTexArrayUsed++;
           }
           else if(container.second.isTexture())
           {
@@ -1344,18 +1337,20 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
             arg["AccessLayout"] = texDSInfo.accessLayout;
             arg["AccessDSType"] = texDSInfo.accessDSType;
             arg["SamplerName"]  = texDSInfo.SamplerName;
+            totalTexStorageUsed++;
+            totalTexCombinedUsed++;
           }
           else if(container.second.isAccelStruct())
           {
             data["HasRTXAccelStruct"] = true;
             arg["Name"] = container.second.name; // remove m_vdata."
+            totalAccels++;
           }
           else // buffer
           {
             if(container.second.isSetter)
-            {
-              arg["Name"]   = container.second.setterPrefix + "Vulkan." + container.second.setterSuffix;
-            }
+              arg["Name"] = container.second.setterPrefix + "Vulkan." + container.second.setterSuffix;
+            totalBuffersUsed++;
           }
 
           local["Args"].push_back(arg);
@@ -1404,6 +1399,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["MainFunctions"].push_back(data2);
   }
   
+  data["TotalBuffersUsed"]     = totalBuffersUsed;
+  data["TotalTexCombinedUsed"] = totalTexCombinedUsed;
+  data["TotalTexStorageUsed"]  = totalTexStorageUsed;
+  data["TotalTexArrayUsed"]    = totalTexArrayUsed;
+  data["TotalAccels"]          = totalAccels;
+
   data["HasFullImpl"] = atLeastOneFullOverride;
   if(atLeastOneFullOverride && a_classInfo.ctors.size() == 0)
   {
