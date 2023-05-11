@@ -16,12 +16,13 @@
     uint32_t oldSize    = {{Kernel.tidX}}*{{Kernel.tidY}};
     uint32_t wholeSize  = (oldSize + blockSizeX*blockSizeY - 1) / (blockSizeX*blockSizeY); // assume first pass of reduction is done inside kernel itself
     {% endif %}
+    bool     singleRun  = (wholeSize == 1);
     uint32_t wgSize     = REDUCTION_BLOCK_SIZE;
     uint32_t currOffset = 0;
-    while (wholeSize > 1)
+    while (wholeSize > 1 || singleRun)
     {
       uint32_t nextSize = (wholeSize + wgSize - 1) / wgSize;
-      pcData.m_sizeX  = oldSize;                // put current size here
+      pcData.m_sizeX  = wholeSize;              // put current size here
       pcData.m_sizeY  = currOffset;             // put input offset here
       pcData.m_sizeZ  = currOffset + wholeSize; // put output offet here
       pcData.m_tFlags = m_currThreadFlags;      // now flags:
@@ -55,5 +56,6 @@
       currOffset += wholeSize;
       oldSize    =  wholeSize;
       wholeSize  =  nextSize;
+      singleRun  = false;
     }
   }
