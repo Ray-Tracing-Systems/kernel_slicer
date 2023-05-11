@@ -1454,6 +1454,16 @@ namespace LiteMath
     return res;
   }
 
+  static inline float3 mul3x3(float4x4 m, float3 v)
+  {
+    return to_float3(m*to_float4(v, 0.0f));
+  }
+
+  static inline float3 mul4x3(float4x4 m, float3 v)
+  {
+    return to_float3(m*to_float4(v, 1.0f));
+  }
+
   static inline float4 mul4x4x4(const float4x4& m, const float4& v) { return m*v; }
 
   static inline float4 mul(const float4x4& m, const float4& v)
