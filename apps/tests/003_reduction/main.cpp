@@ -24,7 +24,7 @@ int main(int argc, const char** argv)
   #endif
 
   const size_t N = 2399;
-  //const size_t N = 256;
+  //const size_t N = 257;
 
   std::vector<float4> points(N);
   //for(auto& p : points)

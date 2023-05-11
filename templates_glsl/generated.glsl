@@ -101,6 +101,7 @@ shared {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][{{Kernel.WGSi
 
 void main()
 {
+  bool runThisThread = true;
   {% if not Kernel.InitKPass %}
   ///////////////////////////////////////////////////////////////// prolog
   {% for TID in Kernel.ThreadIds %}
@@ -121,9 +122,12 @@ void main()
   {% endif %}
   ///////////////////////////////////////////////////////////////// prolog
   {% endif %}
+  if(runThisThread)
+  {
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {{Kernel.Source}}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
+  }
   {% if Kernel.HasEpilog %}
   //KGEN_EPILOG:
   {% if Kernel.IsBoolean %}
