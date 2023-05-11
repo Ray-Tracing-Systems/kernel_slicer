@@ -593,7 +593,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
   {% if UseServiceScan %}
   {% for Scan in ServiceScan %}
   {
-    auto tempBuffersForScan = m_scan_{{Scan.Type}}.InitTempBuffers(device, a_maxThreadsCount);
+    auto tempBuffersForScan = m_scan_{{Scan.Type}}.InitTempBuffers(device, std::max(a_maxThreadsCount, size_t(256)));
     allBuffersRef.insert(allBuffersRef.end(), tempBuffersForScan.begin(), tempBuffersForScan.end());
   }
   {% endfor %}

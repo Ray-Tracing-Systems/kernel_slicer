@@ -23,9 +23,11 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
 
-  std::vector<float4> points(1024);
-  for(auto& p : points)
-    p = float4(rand() % 2000 - 1000, rand() % 200 - 100, rand() % 20 - 10, (rand() % 2000 - 1000)*0.00001f);
+  std::vector<float4> points(2399);
+  //for(auto& p : points)
+  //  p = float4(rand() % 2000 - 1000, rand() % 200 - 100, rand() % 20 - 10, (rand() % 2000 - 1000)*0.00001f);
+  for(int i=0;i<int(points.size());i++)
+    points[i] = float4(float(i) - 100, float(-i), rand() % 200 - 100, float(i/2) + 10);
 
   float4 minMax[2] = {};
 
