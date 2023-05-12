@@ -19,7 +19,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
   //
   VkDescriptorPoolSize buffersSize, combinedImageSamSize, imageStorageSize;
   buffersSize.type                     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  buffersSize.descriptorCount          = {{TotalBuffersUsed}} + 16; // + 16 for reserve
+  buffersSize.descriptorCount          = {{TotalBuffersUsed}} + 64; // + 64 for reserve
 
   std::vector<VkDescriptorPoolSize> poolSizes = {buffersSize};
 
