@@ -977,7 +977,48 @@ void {{MainClassName}}{{MainClassSuffix}}::FreeAllAllocations(std::vector<MemLoc
 
 void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_images)
 {
-  AllocAndBind(a_buffers);
+  std::vector<VkMemoryRequirements> bufMemReqs(a_buffers.size()); // we must check that all buffers have same memoryTypeBits;
+  for(size_t i = 0; i < a_buffers.size(); ++i)                    // if not, split to multiple allocations
+  {
+    if(a_buffers[i] != VK_NULL_HANDLE)
+      vkGetBufferMemoryRequirements(device, a_buffers[i], &bufMemReqs[i]);
+    else
+    {
+      bufMemReqs[i] = bufMemReqs[0];
+      bufMemReqs[i].size = 0;
+    }
+  }
+
+  bool needSplit = false;
+  for(size_t i = 1; i < bufMemReqs.size(); ++i)
+  {
+    if(bufMemReqs[i].memoryTypeBits != bufMemReqs[0].memoryTypeBits)
+    {
+      needSplit = true;
+      break;
+    }
+  }
+
+  if(needSplit)
+  {
+    std::unordered_map<uint32_t, std::vector<uint32_t> > bufferSets;
+    for(uint32_t j = 0; j < uint32_t(bufMemReqs.size()); ++j)
+    {
+      uint32_t key = uint32_t(bufMemReqs[j].memoryTypeBits);
+      bufferSets[key].push_back(j);
+    }
+
+    for(const auto& buffGroup : bufferSets)
+    {
+      std::vector<VkBuffer> currGroup;
+      for(auto id : buffGroup.second)
+        currGroup.push_back(a_buffers[id]);
+      AllocAndBind(currGroup);
+    }
+  }
+  else
+    AllocAndBind(a_buffers);
+
   {% if length(ClassTextureVars) > 0 or length(ClassTexArrayVars) > 0 %}
   std::vector<VkFormat>             formats;  formats.reserve({{length(ClassTextureVars)}});
   std::vector<VkImageView*>         views;    views.reserve({{length(ClassTextureVars)}});
