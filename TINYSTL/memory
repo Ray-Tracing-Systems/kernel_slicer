@@ -16,6 +16,12 @@ namespace std
     T* operator->() { return data; }
     const T* operator->() const { return data; }
 
+    bool operator==(shared_ptr<T> rhs) { return false; }
+    bool operator==(void* rhs) { return false; }
+
+    bool operator!=(shared_ptr<T> rhs) { return true; }
+    bool operator!=(void* rhs) { return true; }
+
     template<class Base> operator shared_ptr<Base>() { return nullptr; } 
 
   protected:
@@ -35,10 +41,15 @@ namespace std
     T* get() { return data; }
     const T* get() const { return data; }
 
+    bool operator==(shared_ptr<T> rhs) { return false; }
+    bool operator==(void* rhs) { return false; }
+
+    bool operator!=(shared_ptr<T> rhs) { return true; }
+    bool operator!=(void* rhs) { return true; }
+
   protected:
     T* data; 
   };
-
 
   template<class T, class ... Args> shared_ptr<T> make_shared(Args && ... args) { return nullptr; }
   template<class T, class ... Args> unique_ptr<T> make_unique(Args && ... args) { return nullptr; }
