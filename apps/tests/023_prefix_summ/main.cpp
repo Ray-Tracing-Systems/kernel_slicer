@@ -22,13 +22,13 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
 
-  std::vector<int> array    (1025*371 + 776); // 1024
+  std::vector<int> array    (66450); // 1024
   std::vector<int> outArray (array.size());
   std::vector<int> outArray2(array.size());
-  for(size_t i=0;i<array.size();i++)
-    array[i] = i + 1;
   //for(size_t i=0;i<array.size();i++)
-  //  array[i] = 1;    
+  //  array[i] = i + 1;
+  for(size_t i=0;i<array.size();i++)
+    array[i] = 1;    
 
   std::shared_ptr<PrefSummTest> pImpl = nullptr;
   ArgParser args(argc, argv);
@@ -95,6 +95,9 @@ int main(int argc, const char** argv)
   {
     JSONLog::write("exclusive_scan", "FAILED!");
     //std::cout << "exclusive_scan: FAILED! at " <<  exclusiveDiffId << " " << refArray[exclusiveDiffId] << " != " << outArray[exclusiveDiffId] << std::endl; 
+    std::ofstream fout("z_ex_scan.txt");
+    for(size_t i=0;i<outArray.size();i++)
+      fout << i << "\t" << outArray[i] << std::endl;
   }
 
   if(inclusiveDiffId == size_t(-1))

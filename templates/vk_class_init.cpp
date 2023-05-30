@@ -2,7 +2,9 @@
 #include <array>
 #include <memory>
 #include <limits>
-
+{% if UseServiceScan %}
+#include <utility> // for std::pair
+{% endif %}
 #include <cassert>
 #include "vk_copy.h"
 #include "vk_context.h"
@@ -1179,7 +1181,9 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandB
   bufBars[0].size                = VK_WHOLE_SIZE;
 
   bufBars[1] = bufBars[0];
-  bufBars[1].dstAccessMask = 0; // we don't going to read summ in next kernel launch
+  bufBars[1].srcAccessMask = 0;                          // we don't going to read 'next' part of buffer in next kernel launch, just write it
+  bufBars[1].dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT; // we don't going to read 'next' part of buffer in next kernel launch, just write it
+
 
   size_t sizeOfElem = sizeof(uint32_t);
   
@@ -1199,8 +1203,7 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandB
   pcData.exclusiveFlag = actuallyExclusive ? 1 : 0;
 
   std::vector<size_t> lastSizeV;
-  std::vector<size_t> offsets;
-  offsets.reserve(16);
+  std::vector< std::pair<size_t,size_t> > offsets;
   
   vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, scanFwdPipeline);
 
@@ -1223,9 +1226,9 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandB
     }
     else
     {
-      offsets.push_back(currOffset);
       pcData.currPassOffset = currOffset; 
       pcData.nextPassOffset = currOffset + runSize; 
+      offsets.push_back( std::make_pair(currOffset, currOffset + runSize) );
       currOffset += runSize;
     }
 
@@ -1247,12 +1250,13 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandB
   }
 
   currMip--;
-  currMip--;
-  lastSizeV.pop_back();
   
-  vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, scanPropPipeline);
+  bufBars[0].offset = 0;            
+  bufBars[0].size   = VK_WHOLE_SIZE; 
 
-  // up, propagate phase (IN PROGRESS!!!)
+  vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, scanPropPipeline);
+   
+  // up, propagate phase
   //
   while (currMip >= 0)
   {
@@ -1269,23 +1273,16 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandB
     }
     else
     {
-      pcData.currPassOffset = offsets[currMip]; 
-      pcData.nextPassOffset = offsets[currMip-1]; 
+      auto pair = offsets[currMip-1];
+      pcData.currPassOffset = pair.second; 
+      pcData.nextPassOffset = pair.first; 
     }
- 
+     
+    vkCmdPipelineBarrier(a_cmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, bufBars, 0, nullptr);
     vkCmdPushConstants(a_cmdBuffer, scanFwdLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
     vkCmdDispatch(a_cmdBuffer, (runSize + blockSizeX - 1) / blockSizeX, 1, 1);
-
-    if(currMip != 0) // will have pipeline barrier outside of this function anyway
-    {
-      //vkCmdPipelineBarrier(a_cmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
-      bufBars[0].offset = pcData.nextPassOffset*sizeOfElem;
-      bufBars[0].size   = runSize*sizeOfElem;
-      vkCmdPipelineBarrier(a_cmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, bufBars, 0, nullptr);
-    }
     currMip--;
   }
-
 }
 {% endif %}
 {% if UseServiceSort %}
