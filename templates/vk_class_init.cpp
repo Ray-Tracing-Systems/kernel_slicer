@@ -1207,7 +1207,7 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandB
   
   vkCmdBindPipeline(a_cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, scanFwdPipeline);
 
-  // down, scan phase
+  // down, scan phase // fixed
   //
   int currMip = 0;
   size_t currOffset = 0;
