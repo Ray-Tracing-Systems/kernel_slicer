@@ -23,6 +23,7 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
 
+  //const size_t N = 66450;
   const size_t N = 2399;
   //const size_t N = 257;
 

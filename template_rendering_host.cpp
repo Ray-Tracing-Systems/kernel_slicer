@@ -989,6 +989,19 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       kernelJson["Hierarchy"] = temp;
     }
 
+    if(k.isIndirect)
+    {
+      json argData;
+      argData["Name"]  = "m_indirectBuffer";
+      argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+      argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
+      argData["Id"]    = actualSize;
+      argData["Count"] = "1";
+      argData["IsTextureArray"] = false;
+      kernelJson["Args"].push_back(argData);
+      actualSize++;
+    }
+
     kernelJson["ArgCount"] = actualSize;
   
     auto tidArgs = a_classInfo.GetKernelTIDArgs(k);
@@ -1371,6 +1384,20 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
           local["Args"].push_back(arg);
           local["ArgNames"].push_back(hierarchy.interfaceName + "ObjPtrData");
+          realId++;          
+        }
+
+        if(pFoundKernel->second.isIndirect)
+        {
+          json arg;
+          arg["Id"]        = realId;
+          arg["Name"]      = "m_indirect";
+          arg["IsTexture"]     = false;
+          arg["IsTextureArray"]= false;
+          arg["IsAccelStruct"] = false;
+
+          local["Args"].push_back(arg);
+          local["ArgNames"].push_back("m_indirect");
           realId++;          
         }
         

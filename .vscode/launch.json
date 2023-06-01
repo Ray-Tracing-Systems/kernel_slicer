@@ -490,7 +490,7 @@
             "name"   : "Launch (app_08/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
             "args"   : ["${workspaceFolder}/apps/08_push_back_red_pixels/test_class.cpp",
                         "-mainClass", "RedPixels", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
@@ -2273,6 +2273,47 @@
                 }
             ]
         },
+
+        {
+            "name"   : "RTProject(Lib-->BVH2Fat32)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/huawei/cbvh_raytrace/examples/05_cbvh_trav/ray_lib_core.cpp",
+                        "/home/frol/PROG/huawei/cbvh_raytrace/core/BVH2FatRT.cpp",
+                        "-shaderFolderPrefix", "examples/05_cbvh_trav/",
+                        "-mainClass", "CBVHTraversalCore", 
+                        "-composInterface", "ISceneObject",
+                        "-composImplementation","BVH2FatRT", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I/home/frol/PROG/huawei/cbvh_raytrace/examples",     "process",
+                        "-I/home/frol/PROG/huawei/cbvh_raytrace/core",         "process",
+                        "-I/home/frol/PROG/huawei/cbvh_raytrace/core/builders","ignore",
+                        "-process", "/home/frol/PROG/huawei/cbvh_raytrace/core/builders/cbvh.h",
+                        "-cpp_include", "BVH2FatRT.h",
+                        "-suffix", "_BVH2_FAT32",
+                        "-DPUGIXML_NO_EXCEPTIONS",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+                        //"-dM", "-E", "-x", "c", "/dev/null"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
 
 
     ]

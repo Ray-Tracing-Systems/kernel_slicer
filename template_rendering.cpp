@@ -487,7 +487,22 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Name"]       = "kgen_objPtrData";
       argj["IsUBO"]      = false;
       argj["IsPointer"]  = false;
-      argj["IsMember"]   = false;
+      argj["IsImage"]    = false;
+      argj["IsAccelStruct"] = false;
+      argj["IsMember"]      = false; 
+      args.push_back(argj);
+    }
+
+    if(k.isIndirect) // add indirect buffer to shaders
+    {
+      json argj; 
+      argj["Type"]       = a_classInfo.pShaderCC->IsGLSL() ? "uvec4 " : "uint4* ";
+      argj["Name"]       = "m_indirectBuffer";
+      argj["IsUBO"]      = false;
+      argj["IsPointer"]  = false;
+      argj["IsImage"]    = false;
+      argj["IsAccelStruct"] = false;
+      argj["IsMember"]   = false; 
       args.push_back(argj);
     }
 

@@ -312,6 +312,7 @@ protected:
   void InitIndirectDescriptorSets();
   VkBufferMemoryBarrier BarrierForIndirectBufferUpdate(VkBuffer a_buffer);
   VkBuffer              m_indirectBuffer  = VK_NULL_HANDLE;
+  size_t                m_indirectOffset  = 0;
   VkPipelineLayout      m_indirectUpdateLayout   = VK_NULL_HANDLE;
   VkDescriptorSetLayout m_indirectUpdateDSLayout = VK_NULL_HANDLE;
   VkDescriptorSet       m_indirectUpdateDS       = VK_NULL_HANDLE;
