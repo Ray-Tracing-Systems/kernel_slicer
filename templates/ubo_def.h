@@ -5,6 +5,7 @@
 #ifndef GLSL
 #define LAYOUT_STD140
 #include "LiteMath.h"
+using LiteMath::uint;
 typedef LiteMath::float4x4 mat4;
 typedef LiteMath::float2   vec2;
 typedef LiteMath::float3   vec3;
