@@ -51,6 +51,7 @@ static const unsigned int RAND_MAX = 65535;
 static const float        MAXFLOAT = 1e37f;
 
 unsigned int rand();
+void srand( unsigned seed );
 
 namespace std
 {
@@ -83,6 +84,9 @@ namespace std
   template<typename T> T frexp (T arg, int* exp);
   template<typename T> T ldexp (T x, int exp );
   template<typename T> T modf  (T x, T* iptr );
+
+  unsigned int rand();
+  void srand( unsigned seed );
 };
 
 #include <cstdint>
