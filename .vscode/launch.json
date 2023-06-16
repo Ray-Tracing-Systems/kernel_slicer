@@ -2203,7 +2203,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-release/kslicer",
             "args"   : ["/home/frol/PROG/huawei/cbvh_raytrace/examples/Animation.cpp",
-                        "-shaderFolderPrefix", "examples",
+                        "-shaderFolderPrefix", "examples/",
                         "-mainClass", "AnimationExample", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
