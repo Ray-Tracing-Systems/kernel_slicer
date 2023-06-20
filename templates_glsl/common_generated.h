@@ -85,6 +85,7 @@ mat4 rotate4x4Z(float phi)
               vec4(0.0f,      0.0f,     0.0f, 1.0f));
 }
 
+mat4 inverse4x4(mat4 m) { return inverse(m); }
 
 ## for LocalFunc in LocalFunctions  
 {{LocalFunc}}
