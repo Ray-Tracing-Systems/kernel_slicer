@@ -127,8 +127,8 @@ namespace hydra_xml
     Instance operator*() const 
     { 
       Instance inst;
-      inst.geomId = m_iter->attribute(L"mesh_id").as_uint();
-      inst.rmapId = m_iter->attribute(L"rmap_id").as_uint();
+      inst.geomId = uint32_t(m_iter->attribute(L"mesh_id").as_int()); // because we must process -1 case separately!
+      inst.rmapId = uint32_t(m_iter->attribute(L"rmap_id").as_int()); // because we must process -1 case separately!
       inst.matrix = float4x4FromString(m_iter->attribute(L"matrix").as_string());
       inst.node   = (*m_iter);
       return inst;
