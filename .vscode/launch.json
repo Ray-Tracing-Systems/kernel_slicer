@@ -2136,6 +2136,7 @@
             "program": "${workspaceFolder}/cmake-build-release/kslicer",
             "args"   : ["${workspaceFolder}/apps/HydraCore3/integrator_pt1.cpp",
                         "${workspaceFolder}/apps/HydraCore3/integrator_pt2.cpp",
+                        "${workspaceFolder}/apps/HydraCore3/integrator_rt.cpp",
                         "-mainClass", "Integrator", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
