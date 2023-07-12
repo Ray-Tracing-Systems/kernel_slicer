@@ -438,9 +438,9 @@ void PointsRender::UpdateCamera(const Camera *cams, uint32_t a_camsCount)
 void PointsRender::UpdateView()
 {
   const float aspect = float(m_width) / float(m_height);
-  auto mProjFix = OpenglToVulkanProjectionMatrixFix();
-  auto mProj = projectionMatrix(m_cam.fov, aspect, 0.1f, 1000.0f);
-  auto mLookAt = LiteMath::lookAt(m_cam.pos, m_cam.lookAt, m_cam.up);
+  auto mProjFix = LiteMath::OpenglToVulkanProjectionMatrixFix();
+  auto mProj    = LiteMath::perspectiveMatrix(m_cam.fov, aspect, 0.1f, 1000.0f);
+  auto mLookAt  = LiteMath::lookAt(m_cam.pos, m_cam.lookAt, m_cam.up);
   auto mWorldViewProj = mProjFix * mProj * mLookAt;
   m_pushConsts.projView = mWorldViewProj;
   m_pushConsts.cameraPos = LiteMath::float4(m_cam.pos.x, m_cam.pos.y, m_cam.pos.z, 1.0f);

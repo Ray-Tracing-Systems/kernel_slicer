@@ -321,8 +321,8 @@ int Integrator::LoadScene(const char* scehePath)
   for(auto cam : scene.Cameras())
   {
     float aspect   = 1.0f;
-    auto proj      = perspectiveMatrix(cam.fov, aspect, cam.nearPlane, cam.farPlane);
-    auto worldView = lookAt(float3(cam.pos), float3(cam.lookAt), float3(cam.up));
+    auto proj      = LiteMath::perspectiveMatrix(cam.fov, aspect, cam.nearPlane, cam.farPlane);
+    auto worldView = LiteMath::lookAt(float3(cam.pos), float3(cam.lookAt), float3(cam.up));
       
     m_projInv      = inverse4x4(proj);
     m_worldViewInv = inverse4x4(worldView);

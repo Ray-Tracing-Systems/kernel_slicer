@@ -25,12 +25,12 @@ layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}} { {{Arg.Type
 ## endfor
 layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo; };
 
-## for MembFunc in Kernel.MemberFunctions  
-{{MembFunc}}
-
-## endfor
 ## for ShitFunc in Kernel.ShityFunctions  
 {{ShitFunc}}
+
+## endfor
+## for MembFunc in Kernel.MemberFunctions  
+{{MembFunc}}
 
 ## endfor
 {% for RTName in Kernel.RTXNames %}

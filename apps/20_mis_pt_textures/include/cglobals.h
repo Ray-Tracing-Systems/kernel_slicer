@@ -55,7 +55,7 @@ static inline uint RealColorToUint32_f3(float3 real_color)
   float  r = real_color.x*255.0f;
   float  g = real_color.y*255.0f;
   float  b = real_color.z*255.0f;
-  unsigned char red = (unsigned char)r, green = (unsigned char)g, blue = (unsigned char)b;
+  unsigned int red = (unsigned int)r, green = (unsigned int)g, blue = (unsigned int)b;
   return red | (green << 8) | (blue << 16) | 0xFF000000;
 }
 
@@ -66,10 +66,10 @@ static inline uint RealColorToUint32(float4 real_color)
   float  b = real_color.z*255.0f;
   float  a = real_color.w*255.0f;
 
-  unsigned char red   = (unsigned char)r;
-  unsigned char green = (unsigned char)g;
-  unsigned char blue  = (unsigned char)b;
-  unsigned char alpha = (unsigned char)a;
+  unsigned int red   = (unsigned int)r;
+  unsigned int green = (unsigned int)g;
+  unsigned int blue  = (unsigned int)b;
+  unsigned int alpha = (unsigned int)a;
 
   return red | (green << 8) | (blue << 16) | (alpha << 24);
 }
@@ -162,16 +162,6 @@ static inline float3 OffsRayPos(const float3 a_hitPos, const float3 a_surfaceNor
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-static inline float3 mul3x3(float4x4 m, float3 v)
-{ 
-  return to_float3(m*to_float4(v, 0.0f));
-}
-
-static inline float3 mul4x3(float4x4 m, float3 v)
-{
-  return to_float3(m*to_float4(v, 1.0f));
-}
 
 static inline void transform_ray3f(float4x4 a_mWorldViewInv, float3* ray_pos, float3* ray_dir) 
 {

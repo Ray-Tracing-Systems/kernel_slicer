@@ -292,44 +292,27 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     data["ClassDecls"].push_back(cdecl);
   }
 
-  // (3) local functions
+  // (3) local functions preprocess
   //
-  ShaderFeatures shaderFeatures = a_classInfo.globalShaderFeatures;
-  data["LocalFunctions"] = std::vector<std::string>();
   std::vector<kslicer::FuncData> funcMembers;
   std::unordered_map<std::string, kslicer::FuncData> cachedFunc;
   {
-    clang::Rewriter rewrite2;
-    rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-    auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
-
     for (const auto& f : usedFunctions) 
     { 
       if(a_classInfo.IsExcludedLocalFunction(f.name)) // check exclude list here, don't put such functions in cl file
         continue;
       
       cachedFunc[f.name] = f;
-      auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions frol 'LocalFunctions'
+      auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions'
       if(pShit != shittyFunctions.end())
         continue;
-
-      if(!f.isMember)
-      {
-        //f.astNode->dump();
-        pVisitorF->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
-        data["LocalFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
-        shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();
-      }
-      else
+      
+      if(f.isMember)
         funcMembers.push_back(f);
     }
   }
-
-  if(a_classInfo.NeedFakeOffset())
-  {
-    data["LocalFunctions"].push_back("uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }  // RTV pattern, for 2D threading"); // todo: ckeck if RTV pattern is used here!
-    //data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");
-  }
+  
+  ShaderFeatures shaderFeatures = a_classInfo.globalShaderFeatures;
 
   data["GlobalUseInt8"]  = shaderFeatures.useByteType;
   data["GlobalUseInt16"] = shaderFeatures.useShortType;
@@ -490,6 +473,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsImage"]    = false;
       argj["IsAccelStruct"] = false;
       argj["IsMember"]      = false; 
+      argj["NameISPC"] = argj["Name"];
       args.push_back(argj);
     }
 
@@ -503,6 +487,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsImage"]    = false;
       argj["IsAccelStruct"] = false;
       argj["IsMember"]   = false; 
+      argj["NameISPC"] = argj["Name"];
       args.push_back(argj);
     }
 
@@ -518,6 +503,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsUBO"] = false;
       argj["IsPointer"] = false;
       argj["IsMember"]  = false;
+      argj["NameISPC"]  = argj["Name"];
       userArgs.push_back(argj);
     }
     
@@ -841,8 +827,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     
     kernelJson["ShityFunctions"] = std::vector<std::string>();
     std::unordered_map<std::string, kslicer::ShittyFunction> shitByName;
-    for(auto shit : k.shittyFunctions)
+    for(auto shit : k.shittyFunctions) {
       shitByName[shit.ShittyName()] = shit;
+      shittyFunctions[shit.originalName] = shit;
+    }
 
     for(auto shit : shitByName)
     {
@@ -938,6 +926,40 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       data["Kernels"].push_back(kernelJson);
     }
   
+  } // for (const auto& nk : kernels)  
+  
+  // (5) generate local functions
+  //
+  data["LocalFunctions"] = std::vector<std::string>(); 
+  {
+    clang::Rewriter rewrite2;
+    rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+    auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
+
+    for (const auto& f : usedFunctions) 
+    { 
+      if(a_classInfo.IsExcludedLocalFunction(f.name)) // check exclude list here, don't put such functions in cl file
+        continue;
+      
+      cachedFunc[f.name] = f;
+      auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions'
+      if(pShit != shittyFunctions.end())
+        continue;
+      
+      if(!f.isMember)
+      {
+        //f.astNode->dump();
+        pVisitorF->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
+        data["LocalFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
+        shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();
+      }
+    }
+  }
+
+  if(a_classInfo.NeedFakeOffset())
+  {
+    data["LocalFunctions"].push_back("uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }  // RTV pattern, for 2D threading"); // todo: ckeck if RTV pattern is used here!
+    //data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");
   }
 
   return data;

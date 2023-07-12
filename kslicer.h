@@ -82,7 +82,7 @@ namespace kslicer
   \brief functions with input pointers which access global memory; they should be rewritten for GLSL.
 
          GLSL don't support pointers or passing buffers inside functions, so ... we have to insert all actual arguments inside function source code
-         This greately complicate kslicer work and we support it only for 1 level of recursion currently, but we don't really have a choice.   
+         This greately complicate kernel_slicer work and we support currently only ove level of recursion, but we don't really have a choice.   
   */
   struct ShittyFunction
   {
