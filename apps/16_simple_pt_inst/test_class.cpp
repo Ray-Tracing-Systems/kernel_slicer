@@ -19,16 +19,6 @@ void TestClass::InitRandomGens(int a_maxThreads)
 #define __private
 #endif
 
-static inline float3 mul3x3(float4x4 m, float3 v)
-{ 
-  return to_float3(m*to_float4(v, 0.0f));
-}
-
-static inline float3 mul4x3(float4x4 m, float3 v)
-{
-  return to_float3(m*to_float4(v, 1.0f));
-}
-
 static inline void transform_ray3f(float4x4 a_mWorldViewInv, 
                                    __private float3* ray_pos, __private float3* ray_dir) 
 {

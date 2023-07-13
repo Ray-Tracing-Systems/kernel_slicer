@@ -552,13 +552,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
       }
     }
     
-    auto checkExpr = currArgExpr;
-    if(clang::isa<clang::ImplicitCastExpr>(checkExpr))
-    {
-      const clang::ImplicitCastExpr* cast = clang::dyn_cast<clang::ImplicitCastExpr>(checkExpr);
-      checkExpr = cast->getSubExpr();
-    }
-
+    auto checkExpr = kslicer::RemoveImplicitCast(currArgExpr);
     if(clang::isa<clang::IntegerLiteral>(checkExpr) || clang::isa<clang::FloatingLiteral>(checkExpr) || clang::isa<clang::CXXBoolLiteralExpr>(checkExpr) || clang::isa<clang::CompoundLiteralExpr>(checkExpr))
     {
       isConstFound = true;

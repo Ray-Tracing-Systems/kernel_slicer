@@ -68,6 +68,16 @@ void kslicer::PrintWarning(const std::string& a_msg, const clang::SourceRange& a
   std::cout << fileName.c_str() << ":" << line << ":" << col << ": warning: " << a_msg << " --> " << code.c_str() << std::endl;
 }
 
+const clang::Expr* kslicer::RemoveImplicitCast(const clang::Expr* nextNode)
+{
+  while(clang::isa<clang::ImplicitCastExpr>(nextNode))
+  {
+    auto cast = dyn_cast<const clang::ImplicitCastExpr>(nextNode);
+    nextNode  = cast->getSubExpr();
+  }
+  return nextNode;
+}
+
 std::string kslicer::CutOffFileExt(const std::string& a_filePath)
 {
   const size_t lastindex = a_filePath.find_last_of("."); 
@@ -262,4 +272,5 @@ void ReadThreadsOrderFromStr(const std::string& threadsOrderStr, uint32_t  threa
     };
   }
 }
+
 

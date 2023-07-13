@@ -711,14 +711,7 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
       
       // extract array size
       //
-      const Expr* nextNode = lhsArray->getLHS();
-      
-      if(isa<ImplicitCastExpr>(nextNode))
-      {
-        auto cast = dyn_cast<const ImplicitCastExpr>(nextNode);
-        nextNode  = cast->getSubExpr();
-      }
-      
+      const Expr* nextNode = kslicer::RemoveImplicitCast(lhsArray->getLHS());  
       if(isa<MemberExpr>(nextNode))
       {
         const MemberExpr* pMemberExpr = dyn_cast<const MemberExpr>(nextNode); 

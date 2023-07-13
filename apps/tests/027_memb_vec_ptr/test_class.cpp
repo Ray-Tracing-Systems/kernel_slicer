@@ -17,7 +17,7 @@ TestVecDataAccessFromMember::TestVecDataAccessFromMember(size_t a_size)
 
 int TestVecDataAccessFromMember::getMemberData(int a_id)
 {
-  return read_data(m_vec.data(), a_id);
+  return read_data(m_vec.data() + 2, a_id - 2);
 }
 
 void TestVecDataAccessFromMember::kernel1D_Run(const int a_size, int* outData1ui)

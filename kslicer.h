@@ -1140,6 +1140,7 @@ namespace kslicer
   void        ReplaceOpenCLBuiltInTypes(std::string& a_typeName);
 
   std::unordered_map<std::string, std::string> ListGLSLVectorReplacements();
+  const clang::Expr* RemoveImplicitCast(const clang::Expr* a_expr);
 }
 
 std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::string& fileName, 

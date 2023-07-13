@@ -1127,7 +1127,7 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
     return "";
-
+  
   while(clang::isa<clang::ImplicitCastExpr>(expr))
     expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->getSubExpr();
 
@@ -1237,7 +1237,21 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       }
 
       if(found != size_t(-1))
-        rewrittenRes += "0";
+      {
+        std::string offset = "0";
+        const auto arg = kslicer::RemoveImplicitCast(call->getArg(i));
+        //const std::string debugText = kslicer::GetRangeSourceCode(arg->getSourceRange(), m_compiler);
+        //arg->dump();
+        if(clang::isa<clang::BinaryOperator>(arg))
+        {
+          const auto bo = clang::dyn_cast<clang::BinaryOperator>(arg);
+          const clang::Expr *lhs = bo->getLHS();
+          const clang::Expr *rhs = bo->getRHS();
+          if(bo->getOpcodeStr() == "+")
+            offset = RecursiveRewrite(rhs);
+        }
+        rewrittenRes += offset;
+      }
       else
         rewrittenRes += RecursiveRewrite(call->getArg(i));
       
