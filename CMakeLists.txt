@@ -2,7 +2,10 @@ cmake_minimum_required (VERSION 3.8)
 project (kernel_slicer)
 set (CMAKE_CXX_STANDARD 17)
 
-find_package(LLVM 17 REQUIRED CONFIG)
+set(LLVM_VER "16")
+set(LLVM_LIB "LLVM-${LLVM_VER}")
+
+find_package(LLVM ${LLVM_VER} REQUIRED CONFIG)
 find_package(Clang REQUIRED)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -47,7 +50,7 @@ add_executable(kslicer
                shaders_ispc.cpp
                )
 
-target_link_libraries(kslicer PRIVATE clang LLVM-17 clangAST clangTooling 
+target_link_libraries(kslicer PRIVATE clang ${LLVM_LIB} clangAST clangTooling 
                      clangBasic clangASTMatchers 
                      clangFrontendTool clangFrontend clangDriver clangSerialization 
                      clangCodeGen clangParse clangSema clangStaticAnalyzerFrontend 
