@@ -54,11 +54,11 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
  * cd kernel_slicer
  * bash clone_dependencies.bat  
 
-3. sudo apt-get install llvm-14-dev
+3. sudo apt-get install llvm-16-dev
 
-4. sudo touch /usr/lib/llvm-14/bin/yaml-bench 
+4. sudo touch /usr/lib/llvm-16/bin/yaml-bench 
 
-5. sudo apt-get install libclang-14-dev 
+5. sudo apt-get install libclang-16-dev 
 
 6. use Cmake and make
 
