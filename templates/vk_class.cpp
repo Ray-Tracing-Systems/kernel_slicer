@@ -577,6 +577,7 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
     }
     vkEndCommandBuffer(imgCmdBuf);
     vk_utils::executeCommandBufferNow(imgCmdBuf, transferQueue, device);
+    vkFreeCommandBuffers(device, commandPool, 1, &imgCmdBuf);
     auto afterLayoutChange = std::chrono::high_resolution_clock::now();
     m_exTime{{MainFunc.Name}}.msLayoutChange = std::chrono::duration_cast<std::chrono::microseconds>(afterLayoutChange - afterInitBuffers).count()/1000.f;
   }
@@ -619,6 +620,7 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
   //  }
   //  vkEndCommandBuffer(imgCmdBuf);
   //  vk_utils::executeCommandBufferNow(imgCmdBuf, transferQueue, device);
+  //  vkFreeCommandBuffers(device, commandPool, 1, &imgCmdBuf);
   //  auto afterLayoutChange = std::chrono::high_resolution_clock::now();
   //  m_exTime{{MainFunc.Name}}.msLayoutChange += std::chrono::duration_cast<std::chrono::microseconds>(afterLayoutChange - afterCopy).count()/1000.f;
   //}
@@ -643,6 +645,7 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
     vkEndCommandBuffer(commandBuffer);  
     auto start = std::chrono::high_resolution_clock::now();
     vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
+    vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
     auto stop = std::chrono::high_resolution_clock::now();
     m_exTime{{MainFunc.Name}}.msExecuteOnGPU  += std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
   }
@@ -665,6 +668,7 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
     {% else %}
     vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
     {% endif %}
+    vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
     auto stop = std::chrono::high_resolution_clock::now();
     m_exTime{{MainFunc.Name}}.msExecuteOnGPU += std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
   }
