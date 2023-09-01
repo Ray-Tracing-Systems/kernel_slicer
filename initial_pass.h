@@ -113,7 +113,7 @@ public:
 
   HeaderLister(kslicer::MainClassInfo* a_pInfo) : m_pGlobInfo(a_pInfo) {}
 
-  void InclusionDirective(clang::SourceLocation HashLoc,
+  /*void InclusionDirective(clang::SourceLocation HashLoc,
                           const clang::Token &IncludeTok,
                           llvm::StringRef FileName, bool IsAngled,
                           clang::CharSourceRange FilenameRange,
@@ -121,7 +121,18 @@ public:
                           llvm::StringRef SearchPath,
                           llvm::StringRef RelativePath,
                           const clang::Module *Imported,
-                          clang::SrcMgr::CharacteristicKind FileType)
+                          clang::SrcMgr::CharacteristicKind FileType) override */
+
+  void InclusionDirective (clang::SourceLocation HashLoc, 
+                      const clang::Token &IncludeTok, 
+                      clang::StringRef FileName, 
+                      bool IsAngled, 
+                      clang::CharSourceRange FilenameRange, 
+                      clang::OptionalFileEntryRef File, 
+                      clang::StringRef SearchPath, 
+                      clang::StringRef RelativePath, 
+                      const clang::Module *Imported, 
+                      clang::SrcMgr::CharacteristicKind FileType) override                        
   {
     if(!IsAngled && File != nullptr)
     {

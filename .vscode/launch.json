@@ -8,10 +8,12 @@
             "name"   : "Launch (app_01)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/01_intersectSphere/test_class.cpp", 
                         "-pattern", "rtv", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        //"-I${workspaceFolder}/apps/01_intersectSphere/", "ignore",
+                        //"-I${workspaceFolder}/apps/01_intersectSphere/include", "ignore",
                         "-I${workspaceFolder}/TINYSTL",          "ignore",
                         "-I${workspaceFolder}/apps/LiteMath",    "ignore", // or "process"
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 

@@ -322,19 +322,15 @@ int main(int argc, const char **argv)
 
   compiler.createPreprocessor(clang::TU_Complete);
   compiler.getPreprocessorOpts().UsePredefines = true;
-  //auto definitions = compiler.getPreprocessor().getPredefines();
-  //std::cout << definitions.c_str() << std::endl;
-  //compiler.getPreprocessorOpts().addMacroDef("KERNEL_SLICER"); // IT DOES NOT WORKS FOR SOME REASON!!! 
+  // register our header lister
+  HeaderLister headerLister(&inputCodeInfo);
+  compiler.getPreprocessor().addPPCallbacks(std::make_unique<HeaderLister>(headerLister));
   compiler.createASTContext();
 
   const FileEntry *pFile = compiler.getFileManager().getFile(fileName).get();
   compiler.getSourceManager().setMainFileID( compiler.getSourceManager().createFileID( pFile, clang::SourceLocation(), clang::SrcMgr::C_User));
   compiler.getDiagnosticClient().BeginSourceFile(compiler.getLangOpts(), &compiler.getPreprocessor());
-  
-  // register our header lister
-  
-  HeaderLister headerLister(&inputCodeInfo);
-  compiler.getPreprocessor().addPPCallbacks(std::make_unique<HeaderLister>(headerLister));
+
 
   // init clang tooling
   //
