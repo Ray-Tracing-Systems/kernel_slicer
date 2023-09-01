@@ -38,6 +38,7 @@
 #include "clang/Tooling/CommonOptionsParser.h"
 
 #include "kslicer.h"
+#include "kslicer_warnings.h"
 #include "initial_pass.h"
 #include "ast_matchers.h"
 #include "class_gen.h"
@@ -978,6 +979,7 @@ int main(int argc, const char **argv)
   std::cout << std::endl;
   
   kslicer::ApplyJsonToTemplate("templates/ubo_def.h",  uboOutName, jsonUBO); // need to call it after "GenerateShaders"
+  kslicer::CheckForWarnings(inputCodeInfo);
 
   return 0;
 }

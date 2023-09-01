@@ -6,7 +6,7 @@ set(LLVM_VER "16")
 set(LLVM_LIB "LLVM-${LLVM_VER}")
 
 find_package(LLVM ${LLVM_VER} REQUIRED CONFIG)
-find_package(Clang REQUIRED)
+find_package(Clang ${LLVM_VER} REQUIRED)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
@@ -22,13 +22,12 @@ message("LLVM_INCLUDE_DIRS = ${LLVM_INCLUDE_DIRS}")
 message("LLVM_LIBRARY_DIRS = ${LLVM_LIBRARY_DIRS}")
 # message("CLANG_INCLUDE_DIRS = ${CLANG_INCLUDE_DIRS}")
 # message("CLANG_LIBRARY_DIRS = ${CLANG_LIBRARY_DIRS}")
-
-
 # set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${LLVM_CMAKE_DIR}")
 
 add_executable(kslicer 
                kslicer_main.cpp
                kslicer_utils.cpp
+               kslicer_warnings.cpp
                attributes.cpp
                initial_pass.cpp
                initial_pass_compos.cpp
