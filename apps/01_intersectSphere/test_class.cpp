@@ -12,7 +12,7 @@ void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* ra
   rayPos = make_float3(m_data2[0], m_data2[1], m_data2[2]);
   
   *(rayPosAndNear) = to_float4(rayPos, 0.0f);
-  *(rayDirAndFar ) = to_float4(rayDir, MAXFLOAT);
+  *(rayDirAndFar ) = to_float4(rayDir, FLT_MAX);
   *flags           = 0;
 }
 

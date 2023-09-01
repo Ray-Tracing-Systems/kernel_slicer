@@ -1,0 +1,12 @@
+[submodule "apps/LiteMath"]
+	path = apps/LiteMath
+	url = https://github.com/msu-graphics-group/LiteMath.git
+[submodule "apps/LiteScene"]
+	path = apps/LiteScene
+	url = https://github.com/msu-graphics-group/LiteScene
+[submodule "apps/vkutils"]
+	path = apps/vkutils
+	url = https://github.com/msu-graphics-group/vk-utils
+[submodule "apps/volk"]
+	path = apps/volk
+	url = https://github.com/zeux/volk

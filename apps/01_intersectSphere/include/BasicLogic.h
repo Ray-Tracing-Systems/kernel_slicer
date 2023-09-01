@@ -1,8 +1,9 @@
 #ifndef BASIC_PROJ_LOGIC_H
 #define BASIC_PROJ_LOGIC_H
 
-#include "LiteMath.h"
 #ifndef __OPENCL_VERSION__
+#include <cfloat>
+#include "LiteMath.h"
 using namespace LiteMath;
 #endif
 
@@ -76,7 +77,7 @@ static inline Lite_Hit RayTraceImpl(float3 rayPos, float3 rayDir)
   res.primId = -1;
   res.instId = -1;
   res.geomId = -1;
-  res.t      = MAXFLOAT;
+  res.t      = FLT_MAX;
 
   const float2 tNearAndFar = RaySphereHit(rayPos, rayDir, make_float4(0,0,-2.0f,1.0f));
 

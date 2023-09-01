@@ -332,10 +332,9 @@ int main(int argc, const char **argv)
   compiler.getDiagnosticClient().BeginSourceFile(compiler.getLangOpts(), &compiler.getPreprocessor());
   
   // register our header lister
-  {
-    auto pHeaderLister = std::make_unique<HeaderLister>(&inputCodeInfo);
-    compiler.getPreprocessor().addPPCallbacks(std::move(pHeaderLister));
-  }
+  
+  HeaderLister headerLister(&inputCodeInfo);
+  compiler.getPreprocessor().addPPCallbacks(std::make_unique<HeaderLister>(headerLister));
 
   // init clang tooling
   //
