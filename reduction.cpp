@@ -143,13 +143,13 @@ std::string kslicer::KernelInfo::ReductionAccess::GetInitialValue(bool isGLSL, c
       break;
       case REDUCTION_TYPE::FUNC:
       {
-        if(funcName == "fmin") return "MAXFLOAT";
-        if(funcName == "fmax") return "-MAXFLOAT";
+        if(funcName == "fmin") return "FLT_MAX";
+        if(funcName == "fmax") return "-FLT_MAX";
         
         if(a_dataType == "float" || a_dataType == "vec4" || a_dataType == "vec3" || a_dataType == "vec2")
         {
-          if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return a_dataType + "(MAXFLOAT)";
-          if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return a_dataType + "(-MAXFLOAT)";
+          if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return a_dataType + "(FLT_MAX)";
+          if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return a_dataType + "(-FLT_MAX)";
         }
         else if(a_dataType == "int" || a_dataType == "ivec4" || a_dataType == "ivec3" || a_dataType == "ivec2")
         {
@@ -211,8 +211,8 @@ std::string kslicer::KernelInfo::ReductionAccess::GetInitialValue(bool isGLSL, c
     break;
     case REDUCTION_TYPE::FUNC:
     {
-      if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return "MAXFLOAT";
-      if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return "-MAXFLOAT";
+      if(funcName == "min" || funcName == "std::min" || funcName == "fmin") return "FLT_MAX";
+      if(funcName == "max" || funcName == "std::max" || funcName == "fmax") return "-FLT_MAX";
       return "0";
     }
     break;
