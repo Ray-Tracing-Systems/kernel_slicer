@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <string>
+#include <cfloat>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +64,7 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, uint* flags, f
   const float3 rayPos = make_float3(0.0f, 0.0f, 0.0f);
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
-  *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
+  *rayDirAndFar  = to_float4(rayDir, FLT_MAX);
   *flags         = 0;
 }
 
@@ -80,7 +81,7 @@ void TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   res.primId = -1;
   res.instId = -1;
   res.geomId = -1;
-  res.t      = MAXFLOAT;
+  res.t      = FLT_MAX;
   
   for(int sphereId=0;sphereId<spheresPosRadius.size();sphereId++)
   {
@@ -166,7 +167,7 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit,
   const float3 newPos = OffsRayPos(hitPos, hitNorm, newDir);  
 
   *rayPosAndNear    = to_float4(newPos, 0.0f);
-  *rayDirAndFar     = to_float4(newDir, MAXFLOAT);
+  *rayDirAndFar     = to_float4(newDir, FLT_MAX);
   *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f);
 }
 

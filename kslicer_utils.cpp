@@ -17,8 +17,10 @@ std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const 
 
   clang::SourceLocation b(a_range.getBegin()), _e(a_range.getEnd());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, lopt));
-
-  return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
+  if(e < b)
+    return std::string("");
+  else
+    return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
 }
 
 std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const clang::SourceManager& sm) 
