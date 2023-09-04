@@ -39,7 +39,7 @@ set(MAIN_SOURCE main.cpp
 
 set(ISPC_SOURCE test_class_ispc.cpp
                 test_class_kernels.o
-                 ../LiteMath/ispc_tasksys.cpp)
+                 ../LiteMathAux/ispc_tasksys.cpp)
 
 set(VKGEN_SOURCE test_class_gpu.cpp 
                  test_class_gpu_ds.cpp
