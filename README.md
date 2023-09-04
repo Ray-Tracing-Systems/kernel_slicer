@@ -60,21 +60,23 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 5. sudo apt-get install libclang-16-dev 
 
-6. use Cmake and make
+6. sudo apt install clang-16
+
+7. use Cmake and make
 
   * cd kernel_slicer
   * cmake . 
   * make -j 10
 
-7. you may also use provided VS Code config to build and run test cases (tasks.json and launch.json)
+8. you may also use provided VS Code config to build and run test cases (tasks.json and launch.json)
 
-8. Install Vulkan SDK (https://vulkan.lunarg.com/sdk/home)
+9. Install Vulkan SDK (https://vulkan.lunarg.com/sdk/home)
 
-9. (optional) build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") if you want OpenCL shaders
+10. (optional) build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") if you want OpenCL shaders
 
-10. (optional) install [intel ispc](https://ispc.github.io/ "Intel® Implicit SPMD Program Compiler") if you are going to vectorize code for CPU
+11. (optional) install [intel ispc](https://ispc.github.io/ "Intel® Implicit SPMD Program Compiler") if you are going to vectorize code for CPU
 
-11. (optional) If you want to [build it as a part of llvm](doc/README_build_with_llvm.md)
+12. (optional) If you want to [build it as a part of llvm](doc/README_build_with_llvm.md)
 
 # Concept and general workflow
 
