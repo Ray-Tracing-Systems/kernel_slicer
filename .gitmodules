@@ -10,3 +10,6 @@
 [submodule "apps/volk"]
 	path = apps/volk
 	url = https://github.com/zeux/volk
+[submodule "apps/RayTracing"]
+	path = apps/RayTracing
+	url = https://github.com/msu-graphics-group/CrossRT.git

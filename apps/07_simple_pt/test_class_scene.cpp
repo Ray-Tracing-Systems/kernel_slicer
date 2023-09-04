@@ -1,8 +1,8 @@
 #include "test_class.h"
 #include "include/crandom.h"
 
-#include "cmesh.h"
-using cmesh::SimpleMesh;
+#include "cmesh4.h"
+using cmesh4::SimpleMesh;
 
 void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
 { 
@@ -25,7 +25,7 @@ void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
 
 int TestClass::LoadScene(const char* bvhPath, const char* meshPath, bool a_needReorder)
 { 
-  SimpleMesh m_mesh = cmesh::LoadMeshFromVSGF(meshPath);
+  auto m_mesh = cmesh4::LoadMeshFromVSGF(meshPath);
 
   m_vPos4f  = m_mesh.vPos4f;
   m_vNorm4f = m_mesh.vNorm4f;

@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <string>
+#include <cfloat>
 
 void TestClass::InitRandomGens(int a_maxThreads)
 {
@@ -26,7 +27,7 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   const float3 rayPos = m_camPos;
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
-  *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
+  *rayDirAndFar  = to_float4(rayDir, FLT_MAX);
 }
 
 void TestClass::kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar,
@@ -44,7 +45,7 @@ void TestClass::kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPo
   const float3 rayPos = m_camPos;
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
-  *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
+  *rayDirAndFar  = to_float4(rayDir, FLT_MAX);
 }
 
 
@@ -153,7 +154,7 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
   const float3 bxdfVal = brdfVal * (1.0f / std::max(pdfVal, 1e-10f));
   
   *rayPosAndNear    = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
-  *rayDirAndFar     = to_float4(newDir, MAXFLOAT);
+  *rayDirAndFar     = to_float4(newDir, FLT_MAX);
   *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f);
 }
 

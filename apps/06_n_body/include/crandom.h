@@ -6,6 +6,7 @@
 #ifndef __OPENCL_VERSION__
 using namespace LiteMath;
 #endif
+#define varying
 #endif
 
 typedef struct RandomGenT
