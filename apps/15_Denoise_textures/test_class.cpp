@@ -115,6 +115,7 @@ void Denoise::PrepareInput(int w, int h, const float4* in_color, const int32_t* 
   { 
     for (size_t x = 0; x < m_width; ++x)
     {      
+
       const int2 coord(x, y);
       const uint linearCoord = pitch(x, y, m_width);
 
@@ -125,9 +126,9 @@ void Denoise::PrepareInput(int w, int h, const float4* in_color, const int32_t* 
       PixelLdr ldrColor = DecodeIntToInt3(a_inTexColor[linearCoord]);
 
       float4 color;    
-      color.x = powf((float)ldrColor.r / 255.0F, m_gamma);
-      color.y = powf((float)ldrColor.g / 255.0F, m_gamma);
-      color.z = powf((float)ldrColor.b / 255.0F, m_gamma);
+      color.x = std::pow((float)ldrColor.r / 255.0F, m_gamma);
+      color.y = std::pow((float)ldrColor.g / 255.0F, m_gamma);
+      color.z = std::pow((float)ldrColor.b / 255.0F, m_gamma);
       color.w = 0.0F;
 
       m_texColor[coord] = color;
@@ -135,9 +136,9 @@ void Denoise::PrepareInput(int w, int h, const float4* in_color, const int32_t* 
       // Normal and depth pass    
       ldrColor = DecodeIntToInt3(a_inNormal[linearCoord]);
 
-      color.x = powf((float)ldrColor.r / 255.0F, m_gamma) * 2.0F - 1.0F;
-      color.y = powf((float)ldrColor.g / 255.0F, m_gamma) * 2.0F - 1.0F;
-      color.z = powf((float)ldrColor.b / 255.0F, m_gamma) * 2.0F - 1.0F;
+      color.x = std::pow((float)ldrColor.r / 255.0F, m_gamma) * 2.0F - 1.0F;
+      color.y = std::pow((float)ldrColor.g / 255.0F, m_gamma) * 2.0F - 1.0F;
+      color.z = std::pow((float)ldrColor.b / 255.0F, m_gamma) * 2.0F - 1.0F;
       color.w = a_inDepth[linearCoord].x;      
     
       m_normDepth[coord] = color;
