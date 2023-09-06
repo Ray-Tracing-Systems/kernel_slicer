@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <string>
+#include <cfloat>
 
 using std::max;
 using std::min;
@@ -29,7 +30,7 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   const float3 rayPos = m_camPos;
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
-  *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
+  *rayDirAndFar  = to_float4(rayDir, FLT_MAX);
 }
 
 bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,

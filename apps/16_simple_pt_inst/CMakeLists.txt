@@ -24,7 +24,6 @@ include_directories("../vkutils"
                     "../volk" 
                     "../LiteMath" 
                     "../LiteScene"
-                    "../geo_utils"
                     "../RayTracing"
                     "../utils"
                     "..")

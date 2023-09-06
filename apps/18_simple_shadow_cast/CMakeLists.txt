@@ -23,10 +23,10 @@ include_directories(${Vulkan_INCLUDE_DIR})
 include_directories("../vkutils"
                     "../volk" 
                     "../LiteMath" 
-                    "../loader_utils"
-                    "../geo_utils"
+                    "../LiteScene"
                     "../RayTracing"
-                    "../utils")
+                    "../utils"
+                    "..")
                     
 link_directories("../volk")
 link_directories("../RayTracing/lib")
@@ -57,9 +57,10 @@ add_executable(testapp main.cpp
                        ../vkutils/vk_descriptor_sets.cpp
                        ../vkutils/ray_tracing/vk_rt_utils.cpp
                        ../vkutils/geom/vk_mesh.cpp
-                       ../loader_utils/pugixml.cpp
-                       ../loader_utils/hydraxml.cpp
-                       ../loader_utils/scene_mgr.cpp
+                       ../LiteScene/pugixml.cpp
+                       ../LiteScene/hydraxml.cpp
+                       ../LiteScene/scene_mgr.cpp
+                       ../LiteScene/cmesh4.cpp
                        ../RayTracing/EmbreeRT.cpp
                        ../RayTracing/VulkanRTX.cpp)
 
