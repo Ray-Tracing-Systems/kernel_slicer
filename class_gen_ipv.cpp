@@ -244,7 +244,8 @@ kslicer::IPV_Pattern::MHandlerKFPtr kslicer::IPV_Pattern::MatcherHandler_KF(Kern
 std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, 
                                                      std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode)
 {
-  //a_funcInfo.astNode->dump();
+  //if(a_funcInfo.name == "kernel2D_ExtractBrightPixels")
+  //  a_funcInfo.astNode->dump();
   
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());

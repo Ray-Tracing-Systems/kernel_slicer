@@ -6,6 +6,7 @@
 #ifndef __OPENCL_VERSION__
 using namespace LiteMath;
 #endif
+#define varying 
 #endif
 
 static inline uint RealColorToUint32(float4 a_realColor, const float a_gamma)

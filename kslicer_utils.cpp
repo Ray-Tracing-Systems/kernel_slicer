@@ -72,6 +72,8 @@ void kslicer::PrintWarning(const std::string& a_msg, const clang::SourceRange& a
 
 const clang::Expr* kslicer::RemoveImplicitCast(const clang::Expr* nextNode)
 {
+  if(nextNode == nullptr)
+    return nullptr;
   while(clang::isa<clang::ImplicitCastExpr>(nextNode))
   {
     auto cast = dyn_cast<const clang::ImplicitCastExpr>(nextNode);
@@ -79,6 +81,19 @@ const clang::Expr* kslicer::RemoveImplicitCast(const clang::Expr* nextNode)
   }
   return nextNode;
 }
+
+clang::Expr* kslicer::RemoveImplicitCast(clang::Expr* nextNode)
+{
+  if(nextNode == nullptr)
+    return nullptr;
+  while(clang::isa<clang::ImplicitCastExpr>(nextNode))
+  {
+    auto cast = dyn_cast<clang::ImplicitCastExpr>(nextNode);
+    nextNode  = cast->getSubExpr();
+  }
+  return nextNode;
+}
+
 
 std::string kslicer::CutOffFileExt(const std::string& a_filePath)
 {

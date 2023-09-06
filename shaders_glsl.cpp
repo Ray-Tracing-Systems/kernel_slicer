@@ -1432,27 +1432,33 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
     return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr);
   
   std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler); 
-  //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);   
+  std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);   
 
-  if(op == "+=" || op == "-=" || op == "*=" || op == "=")
+  if(op == "+=" || op == "-=" || op == "*=") // detect reduction access
   {
     return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr); // process reduction access in KernelRewriter
   }
-  else if(expr->isAssignmentOp()) // detect a_brightPixels[coord] = color;
-  {
-    clang::Expr* left = expr->getArg(0); 
+  else if(expr->isAssignmentOp()) // detect 'a_brightPixels[coord] = color'
+  {    
+    clang::Expr* left = kslicer::RemoveImplicitCast(expr->getArg(0));
     if(clang::isa<clang::CXXOperatorCallExpr>(left))
     {
       clang::CXXOperatorCallExpr* leftOp = clang::dyn_cast<clang::CXXOperatorCallExpr>(left);
       std::string op2 = kslicer::GetRangeSourceCode(clang::SourceRange(leftOp->getOperatorLoc()), m_compiler);  
-      if((op2 == "]" || op2 == "[" || op2 == "[]") && WasNotRewrittenYet(expr))
+      if((op2 == "]" || op2 == "[" || op2 == "[]") && WasNotRewrittenYet(expr)) // detect 'a_brightPixels[coord]'
       {
-        std::string assignExprText = RecursiveRewrite(expr->getArg(1));
-        RewriteTextureAccess(leftOp, expr, assignExprText);
+        const clang::Expr* leftLeft = kslicer::RemoveImplicitCast(leftOp->getArg(0));
+        if(kslicer::IsTexture(leftLeft->getType())) // detect that 'a_brightPixels' is texture type
+        {
+          std::string assignExprText = RecursiveRewrite(expr->getArg(1));
+          RewriteTextureAccess(leftOp, expr, assignExprText);
+        }
+        else 
+          return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr); // detect reduction access
       }
     }
   }
-  else if(op == "]" || op == "[" || op == "[]")
+  else if((op == "]" || op == "[" || op == "[]") && WasNotRewrittenYet(expr))
   {
     RewriteTextureAccess(expr, nullptr, "");
   }
@@ -1605,6 +1611,7 @@ bool GLSLKernelRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr)
     return KernelRewriter::VisitBinaryOperator_Impl(expr); 
   
   std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler); 
+  std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 
   if(expr->isAssignmentOp())
   {

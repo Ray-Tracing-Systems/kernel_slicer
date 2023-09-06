@@ -335,7 +335,6 @@ std::vector<kslicer::InOutVarInfo> kslicer::ListParamsOfMainFunc(const CXXMethod
 std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode)
 {
   const CXXMethodDecl* a_node = a_funcInfo.astNode;
-  //a_node->dump();
   
   std::string names[3];
   pShaderCC->GetThreadSizeNames(names);

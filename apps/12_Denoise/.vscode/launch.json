@@ -10,7 +10,7 @@
       "request": "launch",
       "program": "${workspaceFolder}/cmake-build-release/testapp",
       "args"   : [
-        "--gpu",
+        "--cpu",
         "bbb"
       ],
       "stopAtEntry"    : false,
@@ -32,7 +32,7 @@
       "request": "launch",
       "program": "${workspaceFolder}/cmake-build-debug/testapp",
       "args"   : [
-        "aaa",
+        "--gpu",
         "bbb"
       ],
       "stopAtEntry"    : false,

@@ -875,7 +875,7 @@ void kslicer::KernelRewriter::DetectTextureAccess(clang::CXXMemberCallExpr* call
 void kslicer::KernelRewriter::DetectTextureAccess(CXXOperatorCallExpr* expr)
 {
   std::string op = GetRangeSourceCode(SourceRange(expr->getOperatorLoc()), m_compiler); 
-  //std::string debugText = GetRangeSourceCode(expr->getSourceRange(), m_compiler);     
+  std::string debugText = GetRangeSourceCode(expr->getSourceRange(), m_compiler);     
   if(expr->isAssignmentOp()) // detect a_brightPixels[coord] = color;
   {
     clang::Expr* left = expr->getArg(0); 
@@ -927,7 +927,7 @@ bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(CXXOperatorCallExpr*
 void kslicer::KernelRewriter::DetectTextureAccess(clang::BinaryOperator* expr)
 {
   std::string op = GetRangeSourceCode(SourceRange(expr->getOperatorLoc()), m_compiler); 
-  //std::string debugText = GetRangeSourceCode(expr->getSourceRange(), m_compiler);     
+  std::string debugText = GetRangeSourceCode(expr->getSourceRange(), m_compiler);     
   if(expr->isAssignmentOp()) // detect a_brightPixels[coord] = color;
   {
     clang::Expr* left = expr->getLHS(); 
@@ -939,8 +939,8 @@ void kslicer::KernelRewriter::DetectTextureAccess(clang::BinaryOperator* expr)
         ProcessReadWriteTexture(leftOp, true);
     }
   }
-  //else if(op == "]" || op == "[" || op == "[]")
-  //  ProcessReadWriteTexture(expr, false);
+  else if((op == "]" || op == "[" || op == "[]") && clang::isa<clang::CXXOperatorCallExpr>(expr))
+    ProcessReadWriteTexture(clang::dyn_cast<clang::CXXOperatorCallExpr>(expr), false);
 }
 
 void kslicer::KernelRewriter::DetectFuncReductionAccess(const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr)
