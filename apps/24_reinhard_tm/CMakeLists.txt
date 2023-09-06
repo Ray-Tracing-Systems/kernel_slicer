@@ -45,7 +45,7 @@ set(MAIN_SOURCE main.cpp
 
 set(ISPC_SOURCE reinhard_ispc.cpp
                 reinhard_kernels.o
-                ../LiteMath/ispc_tasksys.cpp)
+                ../LiteMathAux/ispc_tasksys.cpp)
 
 set(VKGEN_SOURCE reinhard_generated.cpp
                  reinhard_generated_init.cpp

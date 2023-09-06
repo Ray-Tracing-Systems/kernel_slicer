@@ -25,7 +25,8 @@ include_directories("../../RayTracing"
                     "../../volk"
                     "../../LiteMath"
                     "../../utils"
-                    "../../loader_utils")
+                    "../../LiteScene"
+                    "../..")
                     
 link_directories("../../volk")
 link_directories("../../RayTracing/lib")
@@ -53,7 +54,7 @@ add_executable(testapp main.cpp
                        ../../vkutils/vk_descriptor_sets.cpp
                        ../../vkutils/ray_tracing/vk_rt_utils.cpp
                        ../../RayTracing/VulkanRTX.cpp
-                       ../../loader_utils/scene_mgr.cpp
+                       ../../LiteScene/scene_mgr.cpp
                        ../../vkutils/geom/vk_mesh.cpp
                        ../../vkutils/geom/cmesh.cpp)
 

@@ -36,7 +36,7 @@ set(MAIN_SOURCE main.cpp
 
 set(ISPC_SOURCE mandelbrot_ispc.cpp
                 mandelbrot_kernels.o
-                ../LiteMath/ispc_tasksys.cpp)
+                ../LiteMathAux/ispc_tasksys.cpp)
 
 set(VKGEN_SOURCE mandelbrot_generated.cpp
                  mandelbrot_generated_init.cpp

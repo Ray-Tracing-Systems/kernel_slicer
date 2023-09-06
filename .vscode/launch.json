@@ -1436,7 +1436,7 @@
             "name"   : "Launch (test_004/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/tests/004_setter/test_class.cpp",
                         "-mainClass", "ArrayProcess", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",

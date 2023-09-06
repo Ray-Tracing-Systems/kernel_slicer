@@ -1,5 +1,7 @@
 #include <vector>
 #include <chrono>
+#include <cfloat>
+
 #include "test_class.h"
 
 TestClass::TestClass(int w, int h) 
@@ -32,7 +34,7 @@ void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* ra
   const float x = float(tidX)*m_widthInv;
   const float y = float(tidY)*m_heightInv;
   *(rayPosAndNear) = float4(x, y, -1.0f, 0.0f);
-  *(rayDirAndFar ) = float4(0, 0, 1, MAXFLOAT);
+  *(rayDirAndFar ) = float4(0, 0, 1, FLT_MAX);
   *flags           = 0;
 }
 

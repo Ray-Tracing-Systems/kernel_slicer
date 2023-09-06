@@ -89,7 +89,7 @@ void kslicer::MainClassInfo::ProcessAllSetters(const std::unordered_map<std::str
     {
       const clang::CXXRecordDecl* pDecl = kv.second;
       std::stringstream strOut;
-      strOut << kv.first.c_str() << "Vulkan" << "{" << std::endl;
+      strOut << "struct " << kv.first.c_str() << "Vulkan" << "{" << std::endl;
       
       for(const auto field : pDecl->fields()) //  clang::FieldDecl
       {

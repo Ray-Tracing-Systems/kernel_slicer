@@ -6,25 +6,13 @@
         {
             "label": "BuildRelease",
             "type": "shell",
-            "command": "cd cmake-build-release && make -j 4",
-            "group": "build",
-            "problemMatcher": [
-                "$gcc"
-            ]
+            "command": "cd cmake-build-release && make -j 8",
+            "group": "build"
         },
         {
             "label": "BuildDebug",
             "type": "shell",
-            "command": "cd cmake-build-debug && make -j 4",
-            "group": "build",
-            "problemMatcher": [
-                "$gcc"
-            ]
-        },
-        {
-            "label": "Build Kernels",
-            "type": "shell",
-            "command": "bash z_build.sh",
+            "command": "cd cmake-build-debug && make -j 8",
             "group": "build",
             "problemMatcher": [
                 "$gcc"
@@ -40,4 +28,3 @@
             ]
         }
     ]
-}
