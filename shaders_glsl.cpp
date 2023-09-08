@@ -1457,6 +1457,8 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
           return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr); // detect reduction access
       }
     }
+    else 
+      return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr); // detect reduction access
   }
   else if((op == "]" || op == "[" || op == "[]") && WasNotRewrittenYet(expr))
   {
