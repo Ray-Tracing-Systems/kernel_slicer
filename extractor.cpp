@@ -1061,15 +1061,13 @@ std::unordered_set<std::string> kslicer::MainClassInfo::ExtractTypesFromUsedCont
       if(c.IsPointer())
       {
         std::string structName = c.type;
-        if(ReplaceFirst(structName, "struct ", ""))
-        {
-          ReplaceFirst(structName, "*", "");
-          while(ReplaceFirst(structName, " ", ""))
-            ;
-          auto p = a_otherDecls.find(structName);
-          if(p != a_otherDecls.end())
-            res.insert(structName);
-        }
+        ReplaceFirst(structName, "struct ", "");
+        ReplaceFirst(structName, "*", "");
+        while(ReplaceFirst(structName, " ", ""))
+          ;
+        auto p = a_otherDecls.find(structName);
+        if(p != a_otherDecls.end())
+          res.insert(structName);
       }
       else if(c.isContainer) // (!!!) Untested branch!
       {
