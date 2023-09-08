@@ -19,7 +19,7 @@
       "program": "${workspaceFolder}/cmake-build-release/testapp",
       "args": [
         "--test",
-        "bbb"
+        "--ispc"
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
