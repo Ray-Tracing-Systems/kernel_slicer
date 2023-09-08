@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 
+#define HALFFLOAT
 #include "LiteMath.h"
 
 using LiteMath::float4x4;
