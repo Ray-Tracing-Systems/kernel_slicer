@@ -302,7 +302,8 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
 
     kslicer::ServiceCall call;
     call.opName       = "scan";
-    call.dataTypeName = m_pCodeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(SubstrBetween(originArgs[0].type, "<", ">"));
+    const std::string dataType = SubstrBetween(originArgs[0].type, "<", ">");
+    call.dataTypeName = m_pCodeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(dataType);
     ReplaceFirst(call.dataTypeName, "const ", "");
 
     call.lambdaSource = "+";
@@ -533,7 +534,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
   for(size_t i=0;i<f->getNumArgs();i++)
   {
     const Expr* currArgExpr = f->getArgs()[i];
-    const clang::QualType q = currArgExpr->getType();
+    const clang::QualType q = currArgExpr->getType().getCanonicalType();
     std::string text        = GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler);
   
     // check if this is conbst variable which is declared inside control func
@@ -575,7 +576,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
         arg.kind    = DATA_KIND::KIND_POD;
       }
     }
-    else if(q->isPointerType() && text.find(".data()") != std::string::npos) // TODO: add check for reference, fo the case if we want to pas vectors by reference
+    else if(q->isPointerType() && text.find(".data()") != std::string::npos) // TODO: add check for reference, fo the case if we want to pass vectors by reference
     {
       std::string varName = text.substr(0, text.find(".data()"));
       auto pClassVar = m_allClassMembers.find(varName);

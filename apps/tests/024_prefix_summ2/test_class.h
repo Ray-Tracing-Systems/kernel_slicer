@@ -4,13 +4,6 @@
 #include <iostream>
 #include <fstream>
 
-#define LAYOUT_STD140
-#include "LiteMath.h"
-
-using LiteMath::float4;
-using LiteMath::float3;
-using LiteMath::float2;
-
 class PrefSummTest
 {
 public:

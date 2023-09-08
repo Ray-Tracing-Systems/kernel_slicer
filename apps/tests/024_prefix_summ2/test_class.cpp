@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <cstring>
 
 void PrefSummTest::PrefixSumm(const int* a_data, unsigned int a_size, int* a_outExc)
 {
