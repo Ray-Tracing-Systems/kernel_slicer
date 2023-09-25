@@ -44,7 +44,7 @@ std::string kslicer::FunctionRewriter::FunctionCallRewriteNoName(const CXXConstr
   std::string textRes = "(";
   for(unsigned i=0;i<call->getNumArgs();i++)
   {
-    textRes += RecursiveRewrite(call->getArg(i));
+    textRes += RecursiveRewrite(kslicer::RemoveImplicitCast(call->getArg(i)));
     if(i < call->getNumArgs()-1)
       textRes += ",";
   }
@@ -106,13 +106,20 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* cal
   
   const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);   
   const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
-  //std::cout << "[Function::CXXConstructExpr]" << fname.c_str() << std::endl;
-  
-  //call->dump();
+
   if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0 ) //
   {
-    const std::string text    = FunctionCallRewriteNoName(call);
-    const std::string textRes = VectorTypeContructorReplace(fname, text); 
+    if(fname == "complex")
+    {
+      int b = 3;
+      call->dump();
+    }
+    const std::string text = FunctionCallRewriteNoName(call);
+    std::string textRes    = VectorTypeContructorReplace(fname, text); 
+    if(fname == "complex" && call->getNumArgs() == 1)
+      textRes = "make_complex1" + text;
+    else if(fname == "complex" && call->getNumArgs() == 2)
+      textRes = "make_complex" + text;
     m_rewriter.ReplaceText(call->getSourceRange(), textRes);
     MarkRewritten(call);
   }
@@ -139,7 +146,7 @@ bool kslicer::FunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperator
     if(debugText == "eta * cosThetaI")
     {
       int a = 2;
-      expr->dump();
+      //expr->dump();
     }
 
     if(leftType == keyType || rightType == keyType)
@@ -157,6 +164,8 @@ bool kslicer::FunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperator
           rewrittenOp = keyType + "_" + remapOp[op] + "_s2(" + leftText + "," + rightText + ")";
       }
       m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenOp);
+      MarkRewritten(left);
+      MarkRewritten(right);
       MarkRewritten(expr);
     }
   }

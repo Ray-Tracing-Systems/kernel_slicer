@@ -39,6 +39,7 @@ bool kslicer::IsVectorContructorNeedsReplacement(const std::string& a_typeName)
     m_ctorReplacement.insert("uint2");
     m_ctorReplacement.insert("uint3");
     m_ctorReplacement.insert("uint4");
+    m_ctorReplacement.insert("complex");
     first = false;
   }
 

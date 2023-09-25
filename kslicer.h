@@ -528,10 +528,7 @@ namespace kslicer
     virtual ~FunctionRewriter(){}
 
     bool VisitCallExpr(clang::CallExpr* f)                    { return VisitCallExpr_Impl(f); }
-    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call) 
-    { 
-      return VisitCXXConstructExpr_Impl(call);
-    }
+    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call) { return VisitCXXConstructExpr_Impl(call); }
 
     bool VisitFunctionDecl(clang::FunctionDecl* fDecl)       { return VisitFunctionDecl_Impl(fDecl); }
     bool VisitCXXMethodDecl(clang::CXXMethodDecl* fDecl)     { return VisitCXXMethodDecl_Impl(fDecl); }

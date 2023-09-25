@@ -534,7 +534,11 @@ std::string GLSLFunctionRewriter::RewriteImageType(const std::string& a_containe
 
 std::string GLSLFunctionRewriter::VectorTypeContructorReplace(const std::string& fname, const std::string& callText)
 {
-  return m_vecReplacements[fname] + callText;
+  auto p = m_vecReplacements.find(fname);
+  if(p == m_vecReplacements.end())
+    return std::string("make_") + fname + callText;
+  else
+    return p->second + callText;
 }
 
 bool GLSLFunctionRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // TODO: make this implementation more smart, bad implementation actually!
