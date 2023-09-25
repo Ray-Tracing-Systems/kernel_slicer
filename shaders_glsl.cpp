@@ -408,7 +408,7 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
     GLSLFunctionRewriter rvCopy = *this;
     rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
     sFeatures = sFeatures || rvCopy.sFeatures;
-  
+    MarkRewritten(expr);
     std::string text = m_rewriter.getRewrittenText(expr->getSourceRange());
     if(text == "")                                                            // try to repair from the errors
       return kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // which reason is unknown ... 
