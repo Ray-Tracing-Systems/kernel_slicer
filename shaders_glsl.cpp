@@ -1460,6 +1460,23 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
     else 
       return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr); // detect reduction access
   }
+  else if(op == "+" || op == "-" || op == "*" || op == "/")
+  {
+    clang::Expr* left  = kslicer::RemoveImplicitCast(expr->getArg(0));
+    clang::Expr* tight = kslicer::RemoveImplicitCast(expr->getArg(1));
+    const std::string leftType  = left->getType().getAsString();
+    const std::string rightType = tight->getType().getAsString();
+
+    if(leftType.find("complex") != std::string::npos)
+    {
+      int a = 2;
+    }
+
+    if(rightType.find("complex") != std::string::npos)
+    {
+      int b = 3;
+    }
+  }
   else if((op == "]" || op == "[" || op == "[]") && WasNotRewrittenYet(expr))
   {
     RewriteTextureAccess(expr, nullptr, "");

@@ -87,6 +87,9 @@ namespace std
 
   unsigned int rand();
   void srand( unsigned seed );
+
+  bool isinf( float num );
+  bool isinf( double num );
 };
 
 #include <cstdint>

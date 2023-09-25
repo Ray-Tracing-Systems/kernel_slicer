@@ -548,6 +548,8 @@ namespace kslicer
     
     bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* arrayExpr) { return VisitArraySubscriptExpr_Impl(arrayExpr); }
     bool VisitUnaryExprOrTypeTraitExpr(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { return VisitUnaryExprOrTypeTraitExpr_Impl(szOfExpr); }
+    
+    bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr* expr)  { return VisitCXXOperatorCallExpr_Impl(expr); }
 
     virtual std::string RewriteStdVectorTypeStr(const std::string& a_str) const;
     virtual std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, TEX_ACCESS a_accessType, std::string& outImageFormat) const { return "readonly image2D"; }
@@ -593,6 +595,7 @@ namespace kslicer
     virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)    { return true; } // override this in Derived class
     virtual bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast){ return true; } // override this in Derived class
     virtual bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call);                // override this in Derived class
+    virtual bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr);
 
     virtual bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) { return true; } 
     virtual bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { return true; }

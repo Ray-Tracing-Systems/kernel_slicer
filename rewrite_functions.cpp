@@ -120,7 +120,50 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* cal
   return true;
 }
 
-std::string kslicer::FunctionRewriter::RecursiveRewrite(const Stmt* expr)
+bool kslicer::FunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr)
+{
+  std::string op        = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler); 
+  std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);   
+
+  static std::unordered_map<std::string, std::string> remapOp = {{"+","add"}, {"-","sub"}, {"*","mul"}, {"/","div"}};
+
+  if((op == "+" || op == "-" || op == "*" || op == "/") && WasNotRewrittenYet(expr))
+  {
+    clang::Expr* left  = kslicer::RemoveImplicitCast(expr->getArg(0));
+    clang::Expr* right = kslicer::RemoveImplicitCast(expr->getArg(1));
+
+    const std::string leftType  = left->getType().getAsString();
+    const std::string rightType = right->getType().getAsString();
+    const std::string keyType   = "complex"; 
+
+    if(debugText == "eta * cosThetaI")
+    {
+      int a = 2;
+      expr->dump();
+    }
+
+    if(leftType == keyType || rightType == keyType)
+    {
+      const std::string leftText  = RecursiveRewrite(left);
+      const std::string rightText = RecursiveRewrite(right);
+      
+      std::string rewrittenOp;
+      {
+        if(leftType == keyType && rightType == keyType)
+          rewrittenOp = keyType + "_" + remapOp[op] + "(" + leftText + "," + rightText + ")";
+        else if (leftType == keyType)
+          rewrittenOp = keyType + "_" + remapOp[op] + "_s1(" + leftText + "," + rightText + ")";
+        else if(rightType == keyType)
+          rewrittenOp = keyType + "_" + remapOp[op] + "_s2(" + leftText + "," + rightText + ")";
+      }
+      m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenOp);
+      MarkRewritten(expr);
+    }
+  }
+  return true;
+}
+
+std::string kslicer::FunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
     return "";
@@ -134,7 +177,7 @@ std::string kslicer::FunctionRewriter::RecursiveRewrite(const Stmt* expr)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool kslicer::NodesMarker::VisitStmt(Stmt* expr)
+bool kslicer::NodesMarker::VisitStmt(clang::Stmt* expr)
 {
   auto hash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
   m_rewrittenNodes.insert(hash);
