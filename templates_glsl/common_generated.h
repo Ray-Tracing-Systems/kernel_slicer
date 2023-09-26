@@ -37,8 +37,58 @@
 #define half2 f16vec2
 #define half3 f16vec3
 #define half4 f16vec4
+bool  isfinite(float x)            { return !isinf(x); }
+float copysign(float mag, float s) { return abs(mag)*sign(s); }
 {% if UseComplex %}
-//UseComplex = {{UseComplex}}
+
+struct complex
+{
+  float re, im;
+};
+
+complex make_complex(float re, float im) { 
+  complex res;
+  res.re = re;
+  res.im = im;
+  return res;
+}
+
+complex to_complex(float re)              { return make_complex(re, 0.0f);}
+complex complex_add(complex a, complex b) { return make_complex(a.re + b.re, a.im + b.im); }
+complex complex_sub(complex a, complex b) { return make_complex(a.re - b.re, a.im - b.im); }
+complex complex_mul(complex a, complex b) { return make_complex(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re); }
+complex complex_div(complex a, complex b) {
+  const float scale = 1 / (b.re * b.re + b.im * b.im);
+  return make_complex(scale * (a.re * b.re + a.im * b.im), scale * (a.im * b.re - a.re * b.im));
+}
+
+complex real_add_complex(float value, complex z) { return complex_add(to_complex(value),z); }
+complex real_sub_complex(float value, complex z) { return complex_sub(to_complex(value),z); }
+complex real_mul_complex(float value, complex z) { return complex_mul(to_complex(value),z); }
+complex real_div_complex(float value, complex z) { return complex_div(to_complex(value),z); }
+
+complex complex_add_real(complex z, float value) { return complex_add(z, to_complex(value)); }
+complex complex_sub_real(complex z, float value) { return complex_sub(z, to_complex(value)); }
+complex complex_mul_real(complex z, float value) { return complex_mul(z, to_complex(value)); }
+complex complex_div_real(complex z, float value) { return complex_div(z, to_complex(value)); }
+
+float real(complex z) { return z.re;}
+float imag(complex z) { return z.im; }
+float complex_norm(complex z) { return z.re * z.re + z.im * z.im; }
+float complex_abs(complex z) { return sqrt(complex_norm(z)); }
+complex complex_sqrt(complex z) 
+{
+  float n = complex_abs(z);
+  float t1 = sqrt(0.5f * (n + abs(z.re)));
+  float t2 = 0.5f * z.im / t1;
+  if (n == 0.0f)
+    return to_complex(0.0f);
+  if (z.re >= 0.0f)
+    return make_complex(t1, t2);
+  else
+    return make_complex(abs(t2), copysign(t1, z.im));
+}
+
 {% endif %}
 ## for Decl in ClassDecls  
 {{Decl.Text}}
@@ -51,8 +101,6 @@
 /////////////////////////////////////////////////////////////////////
 /////////////////// local functions /////////////////////////////////
 /////////////////////////////////////////////////////////////////////
-bool  isfinite(float x)            { return !isinf(x); }
-float copysign(float mag, float s) { return abs(mag)*sign(s); }
 
 mat4 translate4x4(vec3 delta)
 {
