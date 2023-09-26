@@ -566,12 +566,12 @@ namespace kslicer
     const clang::CompilerInstance& m_compiler;
     MainClassInfo*                 m_codeInfo;
     kslicer::FuncData*             m_pCurrFuncInfo = nullptr;
+    std::string                    m_lastRewrittenText;
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-  
 
     void MarkRewritten(const clang::Stmt* expr);
     bool WasNotRewrittenYet(const clang::Stmt* expr);
-
+    bool BadASTPattern(const clang::Stmt* expr);
   
     std::string FunctionCallRewrite(const clang::CallExpr* call);
     std::string FunctionCallRewrite(const clang::CXXConstructExpr* call);

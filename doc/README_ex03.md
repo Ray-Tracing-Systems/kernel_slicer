@@ -114,7 +114,7 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   res.primId = -1;
   res.instId = -1;
   res.geomId = -1;
-  res.t      = MAXFLOAT;
+  res.t      = FLT_MAX;
   
   for(int sphereId=0;sphereId<spheresPosRadius.size();sphereId++)
   {

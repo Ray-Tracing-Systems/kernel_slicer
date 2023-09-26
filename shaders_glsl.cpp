@@ -391,7 +391,6 @@ public:
 
 };
 
-
 std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
@@ -406,12 +405,22 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
   else
   {
     GLSLFunctionRewriter rvCopy = *this;
+    rvCopy.m_lastRewrittenText = "";
     rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
     sFeatures = sFeatures || rvCopy.sFeatures;
     MarkRewritten(expr);
+    //expr->dump();
+    //for(auto copyNodeId : *(rvCopy.m_pRewrittenNodes))
+    //  this->m_pRewrittenNodes->insert(copyNodeId);
+    const std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);   
     std::string text = m_rewriter.getRewrittenText(expr->getSourceRange());
-    if(text == "")                                                            // try to repair from the errors
-      return kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // which reason is unknown ... 
+    if(text == "")                                                                  // try to repair from the errors
+      return kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);       // which reason is unknown ... 
+    else if(BadASTPattern(expr) && text.size() < rvCopy.m_lastRewrittenText.size()) // work around clang rewrite bug
+    {
+      m_lastRewrittenText = "";
+      return rvCopy.m_lastRewrittenText;
+    }
     else
       return text;
   }
@@ -574,7 +583,9 @@ bool GLSLFunctionRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExp
     {
       //right->dump();
       const std::string rightText = RecursiveRewrite(right);
-      m_rewriter.ReplaceText(arrayExpr->getSourceRange(), globalPointer.actual + "[" + rightText + " + " + leftText + "Offset]"); // process shitty global pointers
+      const std::string texRes    = globalPointer.actual + "[" + rightText + " + " + leftText + "Offset]";
+      m_lastRewrittenText         = texRes;
+      m_rewriter.ReplaceText(arrayExpr->getSourceRange(), texRes); // process shitty global pointers
       MarkRewritten(right);
       break;
     }
@@ -599,6 +610,7 @@ bool GLSLFunctionRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOr
   {
     std::stringstream str;
     str << sizeInBytes;
+    m_lastRewrittenText = str.str();
     m_rewriter.ReplaceText(szOfExpr->getSourceRange(), str.str()); 
     MarkRewritten(szOfExpr);
   }
@@ -724,8 +736,8 @@ bool GLSLFunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)
   {
     const std::string funcDeclText = RewriteFuncDecl(fDecl);
     const std::string funcBodyText = RecursiveRewrite(fDecl->getBody());
- 
-    //auto debugMeIn = GetRangeSourceCode(call->getSourceRange(), m_compiler);     
+    //auto debugMeIn = GetRangeSourceCode(call->getSourceRange(), m_compiler);   
+    m_lastRewrittenText = funcDeclText + funcBodyText;  
     m_rewriter.ReplaceText(fDecl->getSourceRange(), funcDeclText + funcBodyText);
     MarkRewritten(fDecl->getBody());
   }
@@ -740,6 +752,7 @@ bool GLSLFunctionRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
     const auto exprText     = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
     const std::string lText = exprText.substr(exprText.find("->")+2);
     const std::string rText = RecursiveRewrite(expr->getBase());
+    m_lastRewrittenText                          = rText + "." + lText;
     m_rewriter.ReplaceText(expr->getSourceRange(), rText + "." + lText);
     MarkRewritten(expr->getBase()); 
   }
@@ -752,7 +765,8 @@ bool GLSLFunctionRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
   const auto op = expr->getOpcodeStr(expr->getOpcode());
   if((op == "*" || op == "&") && WasNotRewrittenYet(expr->getSubExpr()) )
   {
-    std::string text  = RecursiveRewrite(expr->getSubExpr());
+    std::string text = RecursiveRewrite(expr->getSubExpr());
+    m_lastRewrittenText = text;
     m_rewriter.ReplaceText(expr->getSourceRange(), text);
     MarkRewritten(expr->getSubExpr()); 
   }
@@ -799,18 +813,21 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     if(typeName.find("float4") != std::string::npos)
     {
       const std::string exprText = RecursiveRewrite(call->getArg(0));
-      
-      if(clang::isa<clang::CXXConstructExpr>(call->getArg(0)))                                 // TODO: add other similar node types process here
-        m_rewriter.ReplaceText(call->getSourceRange(), exprText + ".xyz");                     // to_float3(f4Data) ==> f4Data.xyz
+      std::string textRes;
+      if(clang::isa<clang::CXXConstructExpr>(call->getArg(0))) // TODO: add other similar node types process here
+        textRes = exprText + ".xyz"; // to_float3(f4Data) ==> f4Data.xyz
       else
-        m_rewriter.ReplaceText(call->getSourceRange(), std::string("(") + exprText + ").xyz"); // to_float3(a+b)    ==> (a+b).xyz
-        
+        textRes = std::string("(") + exprText + ").xyz"; // to_float3(a+b) ==> (a+b).xyz
+
+      m_lastRewrittenText = textRes;  
+      m_rewriter.ReplaceText(call->getSourceRange(), textRes); 
       MarkRewritten(call);
     }
   }
   else if(makeSmth != "" && pVecMaker != m_vecReplacements.end() && call->getNumArgs() !=0 && WasNotRewrittenYet(call) )
   {
-    std::string rewrittenRes = pVecMaker->second + "(" + CompleteFunctionCallRewrite(call);
+    const std::string rewrittenRes = pVecMaker->second + "(" + CompleteFunctionCallRewrite(call);
+    m_lastRewrittenText = rewrittenRes;
     m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
     MarkRewritten(call);
   }
@@ -818,7 +835,8 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   {
     const std::string A = RecursiveRewrite(call->getArg(0));
     const std::string B = RecursiveRewrite(call->getArg(1));
-    m_rewriter.ReplaceText(call->getSourceRange(), "(" + A + "*" + B + ")");
+    m_lastRewrittenText = "(" + A + "*" + B + ")";
+    m_rewriter.ReplaceText(call->getSourceRange(), m_lastRewrittenText);
     MarkRewritten(call);
   }
   else if(fname == "lerp" && call->getNumArgs() == 3 && WasNotRewrittenYet(call))
@@ -826,19 +844,22 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     const std::string A = RecursiveRewrite(call->getArg(0));
     const std::string B = RecursiveRewrite(call->getArg(1));
     const std::string C = RecursiveRewrite(call->getArg(2));
-    m_rewriter.ReplaceText(call->getSourceRange(), "mix(" + A + ", " + B + ", " + C + ")");
+    m_lastRewrittenText = "mix(" + A + ", " + B + ", " + C + ")";
+    m_rewriter.ReplaceText(call->getSourceRange(), m_lastRewrittenText);
     MarkRewritten(call);
   }
   else if((fname == "as_int32" || fname == "as_int") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
   {
     const std::string text = RecursiveRewrite(call->getArg(0));
-    m_rewriter.ReplaceText(call->getSourceRange(), "floatBitsToInt(" + text + ")");
+    m_lastRewrittenText    = "floatBitsToInt(" + text + ")";
+    m_rewriter.ReplaceText(call->getSourceRange(), m_lastRewrittenText);
     MarkRewritten(call);
   }
   else if((fname == "as_uint32" || fname == "as_uint") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
   {
     const std::string text = RecursiveRewrite(call->getArg(0));
-    m_rewriter.ReplaceText(call->getSourceRange(), "floatBitsToUint(" + text + ")");
+    m_lastRewrittenText    = "floatBitsToUint(" + text + ")";
+    m_rewriter.ReplaceText(call->getSourceRange(), m_lastRewrittenText);
     MarkRewritten(call);
   }
   else if((fname == "as_float" || fname == "as_float32")  && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
@@ -848,25 +869,29 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     const std::string tname = kslicer::CleanTypeName(qtOfArg.getAsString());
     
     if(tname == "uint" || tname == "const uint" || tname == "uint32_t" || tname == "const uint32_t" || tname == "unsigned" || tname == "const unsigned")
-      m_rewriter.ReplaceText(call->getSourceRange(), "uintBitsToFloat(" + text + ")");
+      m_lastRewrittenText = "uintBitsToFloat(" + text + ")";
     else
-      m_rewriter.ReplaceText(call->getSourceRange(), "intBitsToFloat(" + text + ")");
+      m_lastRewrittenText = "intBitsToFloat(" + text + ")";
+    m_rewriter.ReplaceText(call->getSourceRange(), m_lastRewrittenText);
     MarkRewritten(call);
   }
   else if((fname == "inverse4x4" || fname == "inverse3x3" || fname == "inverse2x2") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
   {
     const std::string text = RecursiveRewrite(call->getArg(0));
-    m_rewriter.ReplaceText(call->getSourceRange(), "inverse(" + text + ")");
+    m_lastRewrittenText    = "inverse(" + text + ")";
+    m_rewriter.ReplaceText(call->getSourceRange(), m_lastRewrittenText);
     MarkRewritten(call);
   }
   else if(pFoundSmth != m_funReplacements.end() && WasNotRewrittenYet(call))
   {
-    m_rewriter.ReplaceText(call->getSourceRange(), pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call));
+    m_lastRewrittenText = pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call);
+    m_rewriter.ReplaceText(call->getSourceRange(), m_lastRewrittenText);
     MarkRewritten(call);
   }
   else if(fDecl->isInStdNamespace() && WasNotRewrittenYet(call)) // remove "std::"
   {
-    m_rewriter.ReplaceText(call->getSourceRange(), fname + "(" + CompleteFunctionCallRewrite(call));
+    m_lastRewrittenText = fname + "(" + CompleteFunctionCallRewrite(call);
+    m_rewriter.ReplaceText(call->getSourceRange(), m_lastRewrittenText);
     MarkRewritten(call);
   }
  
@@ -923,6 +948,7 @@ bool GLSLFunctionRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special 
 
     if(WasNotRewrittenYet(decl)) 
     {
+      m_lastRewrittenText = resExpr;
       m_rewriter.ReplaceText(decl->getSourceRange(), resExpr);
       MarkRewritten(decl);
     }
@@ -941,8 +967,7 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
       
   //const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
   //const std::string debugTextVal = kslicer::GetRangeSourceCode(pValue->getSourceRange(), m_compiler); 
-  const std::string varType   = qt.getAsString();
-
+  const std::string varType = qt.getAsString();
   if(pValue != nullptr && NeedsVectorTypeRewrite(varType) && WasNotRewrittenYet(pValue))
   {
     const std::string varName  = decl->getNameAsString();
@@ -950,9 +975,11 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
     const std::string varType2 = RewriteStdVectorTypeStr(varType);
     
     if(varValue == "" || varValue == varName) // 'float3 deviation;' for some reason !decl->hasInit() does not works 
-      m_rewriter.ReplaceText(decl->getSourceRange(), varType2 + " " + varName);
+      m_lastRewrittenText = varType2 + " " + varName;
     else
-      m_rewriter.ReplaceText(decl->getSourceRange(), varType2 + " " + varName + " = " + varValue);
+      m_lastRewrittenText = varType2 + " " + varName + " = " + varValue;
+    
+    m_rewriter.ReplaceText(decl->getSourceRange(), m_lastRewrittenText);
     MarkRewritten(pValue);
   }
   return true;
@@ -970,7 +997,9 @@ bool GLSLFunctionRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
     const std::string exprText = RecursiveRewrite(next);
     if(exprText == ")") // strange bug for casts inside 'DeclStmt' 
       return true;
-    m_rewriter.ReplaceText(cast->getSourceRange(), typeCast + "(" + exprText + ")");
+    
+    m_lastRewrittenText = typeCast + "(" + exprText + ")";
+    m_rewriter.ReplaceText(cast->getSourceRange(), m_lastRewrittenText);
     MarkRewritten(next);
   }
 
@@ -1006,7 +1035,8 @@ bool GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* c
   if(WasNotRewrittenYet(next) && qt.getAsString() != "size_t" && qt.getAsString() != "std::size_t")
   {
     const std::string exprText = RecursiveRewrite(next);
-    m_rewriter.ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");
+    m_lastRewrittenText = castTo + "(" + exprText + ")";
+    m_rewriter.ReplaceText(next->getSourceRange(), m_lastRewrittenText);
     //std::string test = m_rewriter.getRewrittenText(cast->getSourceRange());
     MarkRewritten(next);
   }
@@ -1263,7 +1293,8 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
         rewrittenRes += ", ";
     }
     rewrittenRes += ")"; 
-
+    
+    //m_lastRewrittenText = rewrittenRes;
     m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes); 
     MarkRewritten(call);
   }
@@ -1283,7 +1314,7 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
         rewrittenRes += ", ";
     }
     rewrittenRes += ")"; 
-
+    //m_lastRewrittenText = rewrittenRes;
     m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes); 
     MarkRewritten(call);
   }
@@ -1417,13 +1448,14 @@ void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, 
     std::string indexText = RecursiveRewrite(expr->getArg(1));
     if(a_assignOp != nullptr && WasNotRewrittenYet(a_assignOp)) // write 
     {
-      std::string result         = std::string("imageStore") + "(" + objName + ", " + indexText + ", " + convertedType + "(" + rhsText + "))";
-      m_rewriter.ReplaceText(a_assignOp->getSourceRange(), result);
+      std::string lastRewrittenText = std::string("imageStore") + "(" + objName + ", " + indexText + ", " + convertedType + "(" + rhsText + "))";
+      m_rewriter.ReplaceText(a_assignOp->getSourceRange(), lastRewrittenText);
       MarkRewritten(a_assignOp);
     }
     else if(WasNotRewrittenYet(expr))                           // read
     {
-      m_rewriter.ReplaceText(expr->getSourceRange(), std::string("imageLoad") + "(" + objName + ", " + indexText + ")");
+      std::string lastRewrittenText = std::string("imageLoad") + "(" + objName + ", " + indexText + ")";
+      m_rewriter.ReplaceText(expr->getSourceRange(), lastRewrittenText);
       MarkRewritten(expr);
     }
   }
@@ -1531,8 +1563,9 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
         //clang::Expr* txCoordExpr = call->getArg(1);
         //std::string text1 = kslicer::GetRangeSourceCode(samplerExpr->getSourceRange(), m_compiler); 
         //std::string text2 = kslicer::GetRangeSourceCode(txCoordExpr->getSourceRange(), m_compiler); 
-        std::string texCoord = RecursiveRewrite(call->getArg(texCoordId));
-        m_rewriter.ReplaceText(call->getSourceRange(), std::string("texture") + "(" + objName + ", " + texCoord + ")");
+        const std::string texCoord = RecursiveRewrite(call->getArg(texCoordId));
+        const std::string lastRewrittenText = std::string("texture") + "(" + objName + ", " + texCoord + ")";
+        m_rewriter.ReplaceText(call->getSourceRange(), lastRewrittenText);
         MarkRewritten(call); 
       }
     }
@@ -1567,7 +1600,7 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
             callOut << ", ";
         }
         callOut << ")";
-        //std::string resText = callOut.str();
+        //m_lastRewrittenText = callOut.str();
         m_rewriter.ReplaceText(call->getSourceRange(), callOut.str());
         MarkRewritten(call); 
       }
@@ -1595,8 +1628,11 @@ bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
   if(m_userArgs.find(text) != m_userArgs.end() && WasNotRewrittenYet(expr))
   {
     if(!m_codeInfo->megakernelRTV || m_currKernel.isMega)
-      m_rewriter.ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + text);
-    MarkRewritten(expr);
+    {
+      std::string lastRewrittenText = std::string("kgenArgs.") + text;
+      m_rewriter.ReplaceText(expr->getSourceRange(), lastRewrittenText);
+      MarkRewritten(expr);
+    }
   }
 
   return true;

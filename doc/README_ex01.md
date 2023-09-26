@@ -73,7 +73,7 @@ __kernel void kernel_InitEyeRay(
   const float3 rayPos = make_float3(0.0f, 0.0f, 0.0f);
   
   rayPosAndNear[tid] = to_float4(rayPos, 0.0f);
-  rayDirAndFar [tid] = to_float4(rayDir, MAXFLOAT);
+  rayDirAndFar [tid] = to_float4(rayDir, FLT_MAX);
 }
 ```
 
