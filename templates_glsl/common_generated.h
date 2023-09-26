@@ -37,6 +37,9 @@
 #define half2 f16vec2
 #define half3 f16vec3
 #define half4 f16vec4
+{% if UseComplex %}
+//UseComplex = {{UseComplex}}
+{% endif %}
 ## for Decl in ClassDecls  
 {{Decl.Text}}
 ## endfor

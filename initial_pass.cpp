@@ -285,7 +285,10 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitVarDecl(VarDecl* pTargetVar)
   if(!m_codeInfo.NeedToProcessDeclInFile(FileName))
     return true;
 
-  const clang::QualType qt = pTargetVar->getType();
+  const clang::QualType qt  = pTargetVar->getType();
+  const std::string varType = qt.getAsString();
+  if(varType == "complex" || varType == "LiteMath::complex")
+    m_codeInfo.useComplexNumbers = true;
 
   kslicer::DeclInClass decl;
   if(pTargetVar->isConstexpr())

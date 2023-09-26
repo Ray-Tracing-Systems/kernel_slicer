@@ -44,7 +44,7 @@ namespace kslicer
     InitialPassRecursiveASTVisitor(std::vector<std::string>& a_mainFunctionNames,
                                    std::string main_class, 
                                    std::vector<std::string> compos_classes,
-                                   CompilerInstance& a_compiler, const MainClassInfo& a_codeInfo) : 
+                                   CompilerInstance& a_compiler, MainClassInfo& a_codeInfo) : 
                                    MAIN_CLASS_NAME(main_class), m_compiler(a_compiler), m_astContext(a_compiler.getASTContext()), m_sourceManager(a_compiler.getSourceManager()), m_codeInfo(a_codeInfo)  
     {
       m_mainFuncts.reserve(a_mainFunctionNames.size());
@@ -79,7 +79,7 @@ namespace kslicer
     clang::SourceManager& m_sourceManager;
 
     std::unordered_set<std::string> m_mainFuncts;
-    const MainClassInfo&            m_codeInfo;
+    MainClassInfo&                  m_codeInfo;
 
     uint32_t m_currId = 0;
     std::unordered_map<std::string, kslicer::DeclInClass> m_transferredDecl;
@@ -93,7 +93,7 @@ namespace kslicer
     InitialPassASTConsumer (std::vector<std::string>& a_mainFunctionNames, 
                             std::string main_class,
                             std::vector<std::string> compos_classes, 
-                            CompilerInstance& a_compiler, const MainClassInfo& a_codeInfo) : 
+                            CompilerInstance& a_compiler, MainClassInfo& a_codeInfo) : 
                             rv(a_mainFunctionNames, main_class, compos_classes, a_compiler, a_codeInfo) { }
     bool HandleTopLevelDecl(DeclGroupRef d) override;
     InitialPassRecursiveASTVisitor rv;
