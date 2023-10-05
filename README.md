@@ -26,9 +26,9 @@ Vulkan is great! But it is time consuming technology, which mean significant inc
 
 # Project overview
 
-kernel_slicer is prototype auto-programming tool which takes C++ code as input and port this code to GPU by generating optimized Vulkan implemantation automaticly using source-to-source transtation and domain specific knowlege. Please read several short remarks about our project.
+kernel_slicer is prototype auto-programming tool which takes C++ code as input and port this code to GPU by generating optimized GPU implemantation automaticly using source-to-source transtation and domain specific knowlege. Please read several short remarks about our project.
 
-* We generate C++ source code in Vulkan. We don't (and don't plan currently) to support any other back-ends (like CUDA or OpenCL) since we see no need for this. Nevertheless, if you see such a need for your project and you like our concept, please contact us;
+* We generate C++ source code in Vulkan and ISPC. if you see a need on custom back-end for your project and you like our concept, please contact us;
 
 * Our goal is to generate code as if it were written by hand, but we automate 90% mechanical work which developers have to do when using Vulkan. We don't introduce any ineffitiency in the generated code and generate readable and understandable code. It is assumed that you will use generated code as normal;
 
@@ -48,7 +48,10 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 # Build:
 
-1. git clone https://github.com/Ray-Tracing-Systems/kernel_slicer
+1. git clone --recurse-submodules https://github.com/Ray-Tracing-Systems/kernel_slicer
+  * otherwise execute after clone:
+  * git submodule init
+  * git submodule update
 
 2. Download dependencies 
  * cd kernel_slicer
