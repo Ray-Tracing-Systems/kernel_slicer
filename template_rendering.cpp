@@ -219,6 +219,23 @@ std::unordered_map<std::string, std::string> ListISPCVectorReplacements();
 const std::string ConvertVecTypesToISPC(const std::string& a_typeName,
                                         const std::string& a_argName);
 
+static bool isConvertibleToInt(const std::string& str) {
+    bool result = false;
+    try {
+        // Attempt to convert the string to
+        // an integer using std::stoi
+        std::stoi(str);
+        // Conversion successful,
+        // string can be converted to an integer
+        result = true;
+    } catch (...) {
+        // Conversion failed, string cannot
+        // be converted to an integer
+    }
+    return result;
+}
+
+
 json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo, 
                                     const std::vector<kslicer::FuncData>& usedFunctions,
                                     const std::vector<kslicer::DeclInClass>& usedDecl,
@@ -278,12 +295,19 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     excludedNames.insert(kslicer::CleanTypeName(pair.second));
 
   data["ClassDecls"] = std::vector<std::string>();
+  std::map<std::string, kslicer::DeclInClass> specConsts; 
   for(const auto decl : usedDecl)
   {
     if(!decl.extracted)
       continue;
     if(excludedNames.find(decl.type) != excludedNames.end())
       continue;
+
+    if(a_classInfo.pShaderCC->IsGLSL() && decl.name.find("KSPEC_") != std::string::npos) { // process specialization constants, remove them from normal constants
+      std::string val = kslicer::GetRangeSourceCode(decl.srcRange, compiler);
+      specConsts[val] = decl;
+      continue;
+    }
 
     json cdecl;
     cdecl["Text"]    = a_classInfo.pShaderCC->PrintHeaderDecl(decl, compiler);
@@ -585,6 +609,15 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
+
+    kernelJson["SpecConstants"] = std::vector<std::string>();
+    for(auto keyval : specConsts) 
+    {
+      json kspec;
+      kspec["Name"] = keyval.second.name;
+      kspec["Id"]   = keyval.first;
+      kernelJson["SpecConstants"].push_back(kspec);
+    }
 
     //////////////////////////////////////////////////////////////////////////////////////////
     {

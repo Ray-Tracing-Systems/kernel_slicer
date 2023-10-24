@@ -8,6 +8,9 @@
 {% endif %}
 
 #include "common{{MainClassSuffixLowerCase}}.h"
+{% for KSpec in Kernel.SpecConstants %}
+layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}};
+{% endfor %}
 
 ## for Arg in Kernel.Args
 {% if not Arg.IsUBO %} 
