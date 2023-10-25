@@ -236,6 +236,27 @@ VkBufferMemoryBarrier {{MainClassName}}{{MainClassSuffix}}::BarrierForObjCounter
   return bar;
 }
 {% endif %}
+{% if length(SpecConstants) > 0 %}
+const VkSpecializationInfo* {{MainClassName}}{{MainClassSuffix}}::GetAllSpecInfo()
+{
+  if(m_allSpecConstInfo.size() == m_allSpecConstVals.size()) // already processed
+    return &m_allSpecInfo;
+  m_allSpecConstInfo.resize(m_allSpecConstVals.size());
+  m_allSpecConstInfo[0].constantID = 0;
+  m_allSpecConstInfo[0].size       = sizeof(uint32_t);
+  m_allSpecConstInfo[0].offset     = 0;
+  {% for x in SpecConstants %}
+  m_allSpecConstInfo[{{loop.index1}}].constantID = {{loop.index1}};
+  m_allSpecConstInfo[{{loop.index1}}].size       = sizeof(uint32_t);
+  m_allSpecConstInfo[{{loop.index1}}].offset     = {{loop.index1}}*sizeof(uint32_t);
+  {% endfor %}
+  m_allSpecInfo.dataSize      = m_allSpecConstVals.size()*sizeof(uint32_t);
+  m_allSpecInfo.mapEntryCount = static_cast<uint32_t>(m_allSpecConstInfo.size());
+  m_allSpecInfo.pMapEntries   = m_allSpecConstInfo.data();
+  m_allSpecInfo.pData         = m_allSpecConstVals.data();
+  return &m_allSpecInfo;  
+}
+{% endif %}
 
 ## for Kernel in Kernels
 void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char* a_filePath)
@@ -245,7 +266,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   {% else %}
   std::string shaderPath = AlterShaderPath(a_filePath); 
   {% endif %}
-  const VkSpecializationInfo* kspec = nullptr;
+  const VkSpecializationInfo* kspec = {% if length(SpecConstants) > 0 %}GetAllSpecInfo(){% else %}nullptr{% endif %};
   {% if UseSpecConstWgSize %}
   uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
   m_specsForWGSize.pData         = specializationData;

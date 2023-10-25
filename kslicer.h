@@ -896,9 +896,8 @@ namespace kslicer
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
 
-    std::shared_ptr<IShaderCompiler>           pShaderCC           = nullptr;
-    std::shared_ptr<kslicer::FunctionRewriter> pShaderFuncRewriter = nullptr;
-    
+    std::shared_ptr<IShaderCompiler>            pShaderCC           = nullptr;
+    std::shared_ptr<kslicer::FunctionRewriter>  pShaderFuncRewriter = nullptr;
     uint32_t m_indirectBufferSize = 0; ///<! size of indirect buffer
 
     typedef std::vector<clang::ast_matchers::StatementMatcher>               MList;

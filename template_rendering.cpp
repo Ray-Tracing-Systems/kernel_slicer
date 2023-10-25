@@ -295,7 +295,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     excludedNames.insert(kslicer::CleanTypeName(pair.second));
 
   data["ClassDecls"] = std::vector<std::string>();
-  std::map<std::string, kslicer::DeclInClass> specConsts; 
+  std::map<std::string, kslicer::DeclInClass> specConsts;
   for(const auto decl : usedDecl)
   {
     if(!decl.extracted)

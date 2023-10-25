@@ -98,14 +98,6 @@ public:
   {% endfor %}
 
   virtual void InitMemberBuffers();
-  virtual void MakeComputePipelineAndLayout(const char* a_shaderPath, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout, 
-                                            VkPipelineLayout* pPipelineLayout, VkPipeline* pPipeline);
-  virtual void MakeComputePipelineOnly(const char* a_shaderPath, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout, VkPipelineLayout pipelineLayout, 
-                                       VkPipeline* pPipeline);
-
-  std::vector<VkPipelineLayout> m_allCreatedPipelineLayouts; ///<! remenber them here to delete later
-  std::vector<VkPipeline>       m_allCreatedPipelines;       ///<! remenber them here to delete later
-
   virtual void UpdateAll(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
   {
     UpdatePlainMembers(a_pCopyEngine);
@@ -441,6 +433,19 @@ protected:
   {% for Sort in ServiceSort %}
   BitonicSortData m_sort_{{Sort.Type}};
   {% endfor %}
+  {% endif %}
+  virtual void MakeComputePipelineAndLayout(const char* a_shaderPath, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout, 
+                                            VkPipelineLayout* pPipelineLayout, VkPipeline* pPipeline);
+  virtual void MakeComputePipelineOnly(const char* a_shaderPath, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout, VkPipelineLayout pipelineLayout, 
+                                       VkPipeline* pPipeline);
+
+  std::vector<VkPipelineLayout> m_allCreatedPipelineLayouts; ///<! remenber them here to delete later
+  std::vector<VkPipeline>       m_allCreatedPipelines;       ///<! remenber them here to delete later
+  {% if length(SpecConstants) > 0 %}
+  std::vector<uint32_t>                  m_allSpecConstVals; ///<! require user to define "ListRequiredFeatures" func.    
+  std::vector<VkSpecializationMapEntry>  m_allSpecConstInfo;
+  VkSpecializationInfo                   m_allSpecInfo;
+  const VkSpecializationInfo*            GetAllSpecInfo();
   {% endif %}
 };
 

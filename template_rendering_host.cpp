@@ -538,6 +538,43 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["PrefixDataName"]     = prefixDataName;
   data["PrefixDataClass"]    = a_composImplName;
   data["ShaderFolderPrefix"] = a_classInfo.shaderFolderPrefix;
+  
+  ///////////////////////////////////////////////////////////////////////////
+  data["SpecConstants"] = std::vector<std::string>();
+  {
+    std::unordered_set<std::string> excludedNames;
+    for(auto pair : a_classInfo.m_setterVars)
+      excludedNames.insert(kslicer::CleanTypeName(pair.second));
+    std::map<std::string, kslicer::DeclInClass> specConsts;
+    for(const auto decl : usedDecl)
+    {
+      if(!decl.extracted)
+        continue;
+      if(excludedNames.find(decl.type) != excludedNames.end())
+        continue;
+      if(a_classInfo.pShaderCC->IsGLSL() && decl.name.find("KSPEC_") != std::string::npos) { // process specialization constants, remove them from normal constants
+        std::string val = kslicer::GetRangeSourceCode(decl.srcRange, compiler);
+        specConsts[val] = decl;
+        continue;
+      }
+    }
+    for(auto keyval : specConsts) 
+    {
+      json kspec;
+      kspec["Name"] = keyval.second.name;
+      kspec["Id"]   = keyval.first;
+      data["SpecConstants"].push_back(kspec);
+    }
+    if(specConsts.size() != 0)
+    {
+      auto pListReqFeatures = a_classInfo.allMemberFunctions.find("ListRequiredFeatures");
+      if(pListReqFeatures == a_classInfo.allMemberFunctions.end()) {
+        std::cout << "  [kslicer]: warning, KSPEC_** opt. is used, but can't find fuction 'ListRequiredFeatures': " << std::endl; 
+        std::cout << "  [kslicer]: you should define it: 'virtual std::vector<uint32_t> ListRequiredFeatures();'" << std::endl;
+      }
+    }
+  }
+  ///////////////////////////////////////////////////////////////////////////
 
   data["PlainMembersUpdateFunctions"]  = "";
   data["VectorMembersUpdateFunctions"] = "";

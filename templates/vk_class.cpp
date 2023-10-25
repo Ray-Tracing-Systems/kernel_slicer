@@ -64,6 +64,9 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   device         = a_device;
   m_allCreatedPipelineLayouts.reserve(256);
   m_allCreatedPipelines.reserve(256);
+  {% if length(SpecConstants) > 0 %}
+  m_allSpecConstVals = ListRequiredFeatures();
+  {% endif %}
   InitHelpers();
   InitBuffers(a_maxThreadsCount, true);
   InitKernels("{{ShaderSingleFile}}.spv");
