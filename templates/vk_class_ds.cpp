@@ -59,6 +59,117 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
   VK_CHECK_RESULT(tmpRes);
 }
 
+## for Kernel in Kernels
+VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}}DSLayout()
+{
+  {% if UseSeparateUBO and Kernel.IsVirtual %}
+  std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+3> dsBindings;
+  {% else if UseSeparateUBO or Kernel.IsVirtual %}
+  std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+2> dsBindings;
+  {% else %}
+  std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+1> dsBindings;
+  {% endif %}
+
+## for KernelARG in Kernel.Args
+  // binding for {{KernelARG.Name}}
+  dsBindings[{{KernelARG.Id}}].binding            = {{KernelARG.Id}};
+  dsBindings[{{KernelARG.Id}}].descriptorType     = {{KernelARG.Type}};
+  {% if KernelARG.IsTextureArray %}
+  m_vdata.{{KernelARG.Name}}ArrayMaxSize = {{KernelARG.Count}};
+  if(m_vdata.{{KernelARG.Name}}ArrayMaxSize == 0)
+    m_vdata.{{KernelARG.Name}}ArrayMaxSize = GetDefaultMaxTextures();
+  dsBindings[{{KernelARG.Id}}].descriptorCount    = m_vdata.{{KernelARG.Name}}ArrayMaxSize;
+  {% else %}
+  dsBindings[{{KernelARG.Id}}].descriptorCount    = {{KernelARG.Count}};
+  {% endif %}
+  dsBindings[{{KernelARG.Id}}].stageFlags         = {{KernelARG.Flags}};
+  dsBindings[{{KernelARG.Id}}].pImmutableSamplers = nullptr;
+
+## endfor
+  // binding for {% if Kernel.IsVirtual %}kgen_objData{% else %}POD members stored in m_classDataBuffer{% endif %}
+
+  dsBindings[{{Kernel.ArgCount}}].binding            = {{Kernel.ArgCount}};
+  dsBindings[{{Kernel.ArgCount}}].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[{{Kernel.ArgCount}}].descriptorCount    = 1;
+  dsBindings[{{Kernel.ArgCount}}].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[{{Kernel.ArgCount}}].pImmutableSamplers = nullptr;
+  {% if UseSeparateUBO and Kernel.IsVirtual %}
+  
+  // binding for m_classDataBuffer
+  dsBindings[{{Kernel.ArgCount}}+1].binding            = {{Kernel.ArgCount}}+1;
+  dsBindings[{{Kernel.ArgCount}}+1].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[{{Kernel.ArgCount}}+1].descriptorCount    = 1;
+  dsBindings[{{Kernel.ArgCount}}+1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[{{Kernel.ArgCount}}+1].pImmutableSamplers = nullptr;
+  
+  // binding for separate ubo
+  dsBindings[{{Kernel.ArgCount}}+2].binding            = {{Kernel.ArgCount}}+1;
+  dsBindings[{{Kernel.ArgCount}}+2].descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  dsBindings[{{Kernel.ArgCount}}+2].descriptorCount    = 1;
+  dsBindings[{{Kernel.ArgCount}}+2].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[{{Kernel.ArgCount}}+2].pImmutableSamplers = nullptr;
+  {% else if UseSeparateUBO or Kernel.IsVirtual %}
+  
+  // binding for {% if UseSeparateUBO%}separate ubo{% else %}m_classDataBuffer {% endif %}
+
+  dsBindings[{{Kernel.ArgCount}}+1].binding            = {{Kernel.ArgCount}}+1;
+  dsBindings[{{Kernel.ArgCount}}+1].descriptorType     = {% if UseSeparateUBO %}VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER{% else %}VK_DESCRIPTOR_TYPE_STORAGE_BUFFER{% endif %};
+  dsBindings[{{Kernel.ArgCount}}+1].descriptorCount    = 1;
+  dsBindings[{{Kernel.ArgCount}}+1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[{{Kernel.ArgCount}}+1].pImmutableSamplers = nullptr;
+  {% else %}
+  {% endif %}
+  
+  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
+  descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  descriptorSetLayoutCreateInfo.bindingCount = uint32_t(dsBindings.size());
+  descriptorSetLayoutCreateInfo.pBindings    = dsBindings.data();
+  
+  VkDescriptorSetLayout layout = nullptr;
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
+  return layout;
+}
+## endfor
+
+VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::CreatecopyKernelFloatDSLayout()
+{
+  {% if UseSpecConstWgSize %}
+  std::array<VkDescriptorSetLayoutBinding, 3> dsBindings;
+  {% else %}
+  std::array<VkDescriptorSetLayoutBinding, 2> dsBindings;
+  {% endif %}
+
+  dsBindings[0].binding            = 0;
+  dsBindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[0].descriptorCount    = 1;
+  dsBindings[0].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[0].pImmutableSamplers = nullptr;
+
+  dsBindings[1].binding            = 1;
+  dsBindings[1].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[1].descriptorCount    = 1;
+  dsBindings[1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[1].pImmutableSamplers = nullptr;
+  {% if UseSpecConstWgSize %}
+  
+  // binding for POD arguments
+  dsBindings[2].binding            = 2;
+  dsBindings[2].descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  dsBindings[2].descriptorCount    = 1;
+  dsBindings[2].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[2].pImmutableSamplers = nullptr;
+  {% endif %}
+
+  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
+  descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  descriptorSetLayoutCreateInfo.bindingCount = dsBindings.size();
+  descriptorSetLayoutCreateInfo.pBindings    = dsBindings.data();
+
+  VkDescriptorSetLayout layout = nullptr;
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
+  return layout;
+}
+
 ## for MainFunc in MainFunctions
 void {{MainClassName}}{{MainClassSuffix}}::InitAllGeneratedDescriptorSets_{{MainFunc.Name}}()
 {

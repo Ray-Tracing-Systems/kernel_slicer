@@ -5,6 +5,17 @@ namespace std
 
 namespace chrono
 {
+  namespace steady_clock
+  {
+    template<typename T>
+    struct time_point
+    { 
+      time_point<T> operator-(const time_point<T> rhs);
+      operator int(){ return 0; }
+      T data;
+    };
+  }
+
   typedef int duration;
   //typedef int time_point;
   typedef int nanoseconds;

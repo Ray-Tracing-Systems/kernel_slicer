@@ -34,60 +34,113 @@ VkBufferUsageFlags {{MainClassName}}{{MainClassSuffix}}::GetAdditionalFlagsForUB
 
 uint32_t {{MainClassName}}{{MainClassSuffix}}::GetDefaultMaxTextures() const { return 256; }
 
+void {{MainClassName}}{{MainClassSuffix}}::MakeComputePipelineAndLayout(const char* a_shaderPath, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout, VkPipelineLayout* pPipelineLayout, VkPipeline* pPipeline)
+{
+  VkPipelineShaderStageCreateInfo shaderStageInfo = {};
+  shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  shaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+
+  auto shaderCode   = vk_utils::readSPVFile(a_shaderPath);
+  auto shaderModule = vk_utils::createShaderModule(device, shaderCode);
+
+  shaderStageInfo.module              = shaderModule;
+  shaderStageInfo.pName               = a_mainName;
+  shaderStageInfo.pSpecializationInfo = a_specInfo;
+
+  VkPushConstantRange pcRange = {};
+  pcRange.stageFlags = shaderStageInfo.stage;
+  pcRange.offset     = 0;
+  pcRange.size       = 128; // at least 128 bytes for push constants for all Vulkan implementations
+
+  VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+  pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  pipelineLayoutInfo.pushConstantRangeCount = 1;
+  pipelineLayoutInfo.pPushConstantRanges    = &pcRange;
+  pipelineLayoutInfo.pSetLayouts            = &a_dsLayout;
+  pipelineLayoutInfo.setLayoutCount         = 1;
+   
+  VkResult res = vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, pPipelineLayout);
+  if(res != VK_SUCCESS)
+  {
+    std::string errMsg = vk_utils::errorString(res);
+    std::cout << "[ShaderError]: vkCreatePipelineLayout have failed for '" << a_shaderPath << "' with '" << errMsg.c_str() << "'" << std::endl;
+  }
+  else
+    m_allCreatedPipelineLayouts.push_back(*pPipelineLayout);
+
+  VkComputePipelineCreateInfo pipelineInfo = {};
+  pipelineInfo.sType              = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+  pipelineInfo.flags              = 0;
+  pipelineInfo.stage              = shaderStageInfo;
+  pipelineInfo.layout             = (*pPipelineLayout);
+  pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+  res = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pPipeline);
+  if(res != VK_SUCCESS)
+  {
+    std::string errMsg = vk_utils::errorString(res);
+    std::cout << "[ShaderError]: vkCreateComputePipelines have failed for '" << a_shaderPath << "' with '" << errMsg.c_str() << "'" << std::endl;
+  }
+  else
+    m_allCreatedPipelines.push_back(*pPipeline);
+
+  if (shaderModule != VK_NULL_HANDLE)
+    vkDestroyShaderModule(device, shaderModule, VK_NULL_HANDLE);
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::MakeComputePipelineOnly(const char* a_shaderPath, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout, VkPipelineLayout pipelineLayout, VkPipeline* pPipeline)
+{
+  VkPipelineShaderStageCreateInfo shaderStageInfo = {};
+  shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  shaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+
+  auto shaderCode   = vk_utils::readSPVFile(a_shaderPath);
+  auto shaderModule = vk_utils::createShaderModule(device, shaderCode);
+
+  shaderStageInfo.module              = shaderModule;
+  shaderStageInfo.pName               = a_mainName;
+  shaderStageInfo.pSpecializationInfo = a_specInfo;
+
+  VkComputePipelineCreateInfo pipelineInfo = {};
+  pipelineInfo.sType              = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+  pipelineInfo.flags              = 0;
+  pipelineInfo.stage              = shaderStageInfo;
+  pipelineInfo.layout             = pipelineLayout;
+  pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+  VkResult res = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pPipeline);
+  if(res != VK_SUCCESS)
+  {
+    std::string errMsg = vk_utils::errorString(res);
+    std::cout << "[ShaderError]: vkCreateComputePipelines have failed for '" << a_shaderPath << "' with '" << errMsg.c_str() << "'" << std::endl;
+  }
+  else
+    m_allCreatedPipelines.push_back(*pPipeline);
+
+  if (shaderModule != VK_NULL_HANDLE)
+    vkDestroyShaderModule(device, shaderModule, VK_NULL_HANDLE);
+}
+
+
 {{MainClassName}}{{MainClassSuffix}}::~{{MainClassName}}{{MainClassSuffix}}()
 {
-  m_pMaker = nullptr;
-  {% if UseServiceMemCopy %}
-  vkDestroyPipeline(device, copyKernelFloatPipeline, nullptr);
-  vkDestroyPipelineLayout(device, copyKernelFloatLayout, nullptr);
-  {% endif %} {# /* UseServiceMemCopy */ #}
+  for(size_t i=0;i<m_allCreatedPipelines.size();i++)
+    vkDestroyPipeline(device, m_allCreatedPipelines[i], nullptr);
+  for(size_t i=0;i<m_allCreatedPipelineLayouts.size();i++)
+    vkDestroyPipelineLayout(device, m_allCreatedPipelineLayouts[i], nullptr);
+
   {% if UseServiceScan %}
   {% for Scan in ServiceScan %}
-  m_scan_{{Scan.Type}}.DeletePipelines(device);
+  m_scan_{{Scan.Type}}.DeleteDSLayouts(device);
   {% endfor %}
   {% endif %} {# /* UseServiceScan */ #}
   {% if UseServiceSort %}
   {% for Sort in ServiceSort %}
-  m_sort_{{Sort.Type}}.DeletePipelines(device);
+  m_sort_{{Sort.Type}}.DeleteDSLayouts(device);
   {% endfor %}
   {% endif %} {# /* UseServiceSort */ #}
 ## for Kernel in Kernels
   vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
-
-  vkDestroyPipeline(device, {{Kernel.Name}}Pipeline, nullptr);
-  vkDestroyPipelineLayout(device, {{Kernel.Name}}Layout, nullptr);
-  {{Kernel.Name}}Layout   = VK_NULL_HANDLE;
-  {{Kernel.Name}}Pipeline = VK_NULL_HANDLE;
-  {% if Kernel.HasLoopInit %}
-  vkDestroyPipeline(device, {{Kernel.Name}}InitPipeline, nullptr);
-  {{Kernel.Name}}InitPipeline = VK_NULL_HANDLE;
-  {% endif %} 
-  {% if Kernel.HasLoopFinish %}
-  vkDestroyPipeline(device, {{Kernel.Name}}FinishPipeline, nullptr);
-  {{Kernel.Name}}FinishPipeline = VK_NULL_HANDLE;
-  {% endif %} 
-  {% if Kernel.FinishRed %}
-  vkDestroyPipeline(device, {{Kernel.Name}}ReductionPipeline, nullptr);
-  {{Kernel.Name}}ReductionPipeline = VK_NULL_HANDLE;
-  {% endif %} 
-  {% if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch %}
-  vkDestroyPipeline(device, {{Kernel.Name}}ZeroObjCounters, nullptr);
-  vkDestroyPipeline(device, {{Kernel.Name}}CountTypeIntervals, nullptr);
-  vkDestroyPipeline(device, {{Kernel.Name}}Sorter, nullptr);
-  {{Kernel.Name}}ZeroObjCounters    = VK_NULL_HANDLE;
-  {{Kernel.Name}}CountTypeIntervals = VK_NULL_HANDLE;
-  {{Kernel.Name}}Sorter             = VK_NULL_HANDLE; 
-  {% endif %}     
-  {% if Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch %}
-  for(int i=0;i<{{length(Kernel.Hierarchy.Implementations)}};i++)
-  {
-    vkDestroyPipeline(device, {{Kernel.Name}}PipelineArray[i], nullptr);
-    {{Kernel.Name}}PipelineArray[i] = nullptr;
-  }
-  {% endif %}  
 ## endfor
-  vkDestroyDescriptorSetLayout(device, copyKernelFloatDSLayout, nullptr);
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
 
 ## for MainFunc in MainFunctions
@@ -148,7 +201,6 @@ uint32_t {{MainClassName}}{{MainClassSuffix}}::GetDefaultMaxTextures() const { r
 void {{MainClassName}}{{MainClassSuffix}}::InitHelpers()
 {
   vkGetPhysicalDeviceProperties(physicalDevice, &m_devProps);
-  m_pMaker = std::make_unique<vk_utils::ComputePipelineMaker>();
   {% if UseSpecConstWgSize %}
   {
     m_specializationEntriesWgSize[0].constantID = 0;
@@ -169,117 +221,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitHelpers()
     m_specsForWGSize.pData         = nullptr;
   }
   {% endif %}
-}
-
-## for Kernel in Kernels
-VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}}DSLayout()
-{
-  {% if UseSeparateUBO and Kernel.IsVirtual %}
-  std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+3> dsBindings;
-  {% else if UseSeparateUBO or Kernel.IsVirtual %}
-  std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+2> dsBindings;
-  {% else %}
-  std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+1> dsBindings;
-  {% endif %}
-
-## for KernelARG in Kernel.Args
-  // binding for {{KernelARG.Name}}
-  dsBindings[{{KernelARG.Id}}].binding            = {{KernelARG.Id}};
-  dsBindings[{{KernelARG.Id}}].descriptorType     = {{KernelARG.Type}};
-  {% if KernelARG.IsTextureArray %}
-  m_vdata.{{KernelARG.Name}}ArrayMaxSize = {{KernelARG.Count}};
-  if(m_vdata.{{KernelARG.Name}}ArrayMaxSize == 0)
-    m_vdata.{{KernelARG.Name}}ArrayMaxSize = GetDefaultMaxTextures();
-  dsBindings[{{KernelARG.Id}}].descriptorCount    = m_vdata.{{KernelARG.Name}}ArrayMaxSize;
-  {% else %}
-  dsBindings[{{KernelARG.Id}}].descriptorCount    = {{KernelARG.Count}};
-  {% endif %}
-  dsBindings[{{KernelARG.Id}}].stageFlags         = {{KernelARG.Flags}};
-  dsBindings[{{KernelARG.Id}}].pImmutableSamplers = nullptr;
-
-## endfor
-  // binding for {% if Kernel.IsVirtual %}kgen_objData{% else %}POD members stored in m_classDataBuffer{% endif %}
-
-  dsBindings[{{Kernel.ArgCount}}].binding            = {{Kernel.ArgCount}};
-  dsBindings[{{Kernel.ArgCount}}].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  dsBindings[{{Kernel.ArgCount}}].descriptorCount    = 1;
-  dsBindings[{{Kernel.ArgCount}}].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
-  dsBindings[{{Kernel.ArgCount}}].pImmutableSamplers = nullptr;
-  {% if UseSeparateUBO and Kernel.IsVirtual %}
-  
-  // binding for m_classDataBuffer
-  dsBindings[{{Kernel.ArgCount}}+1].binding            = {{Kernel.ArgCount}}+1;
-  dsBindings[{{Kernel.ArgCount}}+1].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  dsBindings[{{Kernel.ArgCount}}+1].descriptorCount    = 1;
-  dsBindings[{{Kernel.ArgCount}}+1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
-  dsBindings[{{Kernel.ArgCount}}+1].pImmutableSamplers = nullptr;
-  
-  // binding for separate ubo
-  dsBindings[{{Kernel.ArgCount}}+2].binding            = {{Kernel.ArgCount}}+1;
-  dsBindings[{{Kernel.ArgCount}}+2].descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  dsBindings[{{Kernel.ArgCount}}+2].descriptorCount    = 1;
-  dsBindings[{{Kernel.ArgCount}}+2].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
-  dsBindings[{{Kernel.ArgCount}}+2].pImmutableSamplers = nullptr;
-  {% else if UseSeparateUBO or Kernel.IsVirtual %}
-  
-  // binding for {% if UseSeparateUBO%}separate ubo{% else %}m_classDataBuffer {% endif %}
-
-  dsBindings[{{Kernel.ArgCount}}+1].binding            = {{Kernel.ArgCount}}+1;
-  dsBindings[{{Kernel.ArgCount}}+1].descriptorType     = {% if UseSeparateUBO %}VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER{% else %}VK_DESCRIPTOR_TYPE_STORAGE_BUFFER{% endif %};
-  dsBindings[{{Kernel.ArgCount}}+1].descriptorCount    = 1;
-  dsBindings[{{Kernel.ArgCount}}+1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
-  dsBindings[{{Kernel.ArgCount}}+1].pImmutableSamplers = nullptr;
-  {% else %}
-  {% endif %}
-  
-  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
-  descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  descriptorSetLayoutCreateInfo.bindingCount = uint32_t(dsBindings.size());
-  descriptorSetLayoutCreateInfo.pBindings    = dsBindings.data();
-  
-  VkDescriptorSetLayout layout = nullptr;
-  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
-  return layout;
-}
-## endfor
-
-VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::CreatecopyKernelFloatDSLayout()
-{
-  {% if UseSpecConstWgSize %}
-  std::array<VkDescriptorSetLayoutBinding, 3> dsBindings;
-  {% else %}
-  std::array<VkDescriptorSetLayoutBinding, 2> dsBindings;
-  {% endif %}
-
-  dsBindings[0].binding            = 0;
-  dsBindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  dsBindings[0].descriptorCount    = 1;
-  dsBindings[0].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
-  dsBindings[0].pImmutableSamplers = nullptr;
-
-  dsBindings[1].binding            = 1;
-  dsBindings[1].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  dsBindings[1].descriptorCount    = 1;
-  dsBindings[1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
-  dsBindings[1].pImmutableSamplers = nullptr;
-  {% if UseSpecConstWgSize %}
-  
-  // binding for POD arguments
-  dsBindings[2].binding            = 2;
-  dsBindings[2].descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  dsBindings[2].descriptorCount    = 1;
-  dsBindings[2].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
-  dsBindings[2].pImmutableSamplers = nullptr;
-  {% endif %}
-
-  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
-  descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  descriptorSetLayoutCreateInfo.bindingCount = dsBindings.size();
-  descriptorSetLayoutCreateInfo.pBindings    = dsBindings.data();
-
-  VkDescriptorSetLayout layout = nullptr;
-  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
-  return layout;
 }
 
 {% if length(DispatchHierarchies) > 0 %}
@@ -304,108 +245,37 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   {% else %}
   std::string shaderPath = AlterShaderPath(a_filePath); 
   {% endif %}
-  
-  {% if Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch %}
-  {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
-  {% else%}
+  const VkSpecializationInfo* kspec = nullptr;
   {% if UseSpecConstWgSize %}
-  {
-    uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
-    m_specsForWGSize.pData         = specializationData;
-    m_pMaker->LoadShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %});
-  }
-  {% else %}
-  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %});
+  uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
+  m_specsForWGSize.pData         = specializationData;
+  kspec = &m_specsForWGSize;
   {% endif %}
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
-  {{Kernel.Name}}Layout   = m_pMaker->MakeLayout(device, { {{Kernel.Name}}DSLayout }, 128); // at least 128 bytes for push constants
-  {{Kernel.Name}}Pipeline = m_pMaker->MakePipeline(device);  
-  {% endif %} {# /* not Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch */ #}
+  MakeComputePipelineAndLayout(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %}, kspec, {{Kernel.Name}}DSLayout, &{{Kernel.Name}}Layout, &{{Kernel.Name}}Pipeline);
   {% if Kernel.FinishRed %}
-  
   {% if ShaderGLSL %}
   shaderPath = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}_Reduction.comp.spv");
   {% endif %}
   {% if UseSpecConstWgSize %}
-  {
-    uint32_t specializationData[3] = { 256, 1, 1 };
-    m_specsForWGSize.pData         = specializationData;
-    m_pMaker->LoadShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Reduction"{% endif %});
-  }
-  {% else %}
-  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Reduction"{% endif %});
+  uint32_t specializationData[3] = { 256, 1, 1 };
+  m_specsForWGSize.pData         = specializationData;
+  kspec = &m_specsForWGSize;  
   {% endif %}
-  {{Kernel.Name}}ReductionPipeline = m_pMaker->MakePipeline(device);
-  {% endif %} 
+  MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Reduction"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}ReductionPipeline);
+  {% endif %} {# /* if Kernel.FinishRed */ #} 
   {% if Kernel.HasLoopInit %}
-  
   {% if ShaderGLSL %}
   shaderPath = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}_Init.comp.spv");
   {% endif %}
-  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Init"{% endif %}); 
-  {{Kernel.Name}}InitPipeline = m_pMaker->MakePipeline(device);
+  MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Init"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}InitPipeline);
   {% endif %} {# /* if Kernel.HasLoopInit */ #} 
   {% if Kernel.HasLoopFinish %}
-  
   {% if ShaderGLSL %}
   shaderPath = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}_Finish.comp.spv");
   {% endif %}
-  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Finish"{% endif %});
-  {{Kernel.Name}}FinishPipeline = m_pMaker->MakePipeline(device);
+  MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Finish"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}FinishPipeline);
   {% endif %} {# /* if Kernel.HasLoopFinish */ #} 
-  {% if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch %}
-  
-  {% if UseSpecConstWgSize %}
-  {
-    uint32_t specializationData[3] = { 32, 1, 1 };
-    m_specsForWGSize.pData         = specializationData;
-    m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_ZeroObjCounters"{% endif %});
-  }
-  {% else %}
-  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_ZeroObjCounters"{% endif %});
-  {% endif %}
-  {{Kernel.Name}}ZeroObjCounters    = m_pMaker->MakePipeline(device);
-  
-  {% if UseSpecConstWgSize %}
-  {
-    uint32_t specializationData[3] = { 32, 1, 1 };
-    m_specsForWGSize.pData         = specializationData;
-    m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_CountTypeIntervals"{% endif %});
-  }
-  {% else %}
-  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_CountTypeIntervals"{% endif %});
-  {% endif %}
-  {{Kernel.Name}}CountTypeIntervals = m_pMaker->MakePipeline(device);
-  
-  {% if UseSpecConstWgSize %}
-  {
-    uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
-    m_specsForWGSize.pData         = specializationData;
-    m_pMaker->LoadShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Sorter"{% endif %});
-  }
-  {% else %}
-  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Sorter"{% endif %});
-  {% endif %}
-  {{Kernel.Name}}Sorter             = m_pMaker->MakePipeline(device);
-  {% else if Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch %} {# /* if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch */ #} 
-  {% for Impl in Kernel.Hierarchy.Implementations %}
-  
-  {% if UseSpecConstWgSize %}
-  {
-    uint32_t specializationData[3] = { {{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}} };
-    m_specsForWGSize.pData         = specializationData;
-    m_pMaker->LoadShader(device, shaderPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_{{Impl.ClassName}}"{% endif %});
-  }
-  {% else %}
-  m_pMaker->LoadShader(device, shaderPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_{{Impl.ClassName}}"{% endif %});
-  {% endif %}
-  {% if loop.index == 0 %}
-  {{Kernel.Name}}Layout = m_pMaker->MakeLayout(device, { {{Kernel.Name}}DSLayout }, 128); // at least 128 bytes for push constants
-  {% endif %}
-  {{Kernel.Name}}PipelineArray[{{loop.index}}] = m_pMaker->MakePipeline(device);  
-  {% endfor %}
- 
-  {% endif %} {# /* if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch */ #} 
 }
 
 ## endfor
@@ -421,34 +291,24 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   {% else %}
   std::string servPath = AlterShaderPath(a_filePath);
   {% endif %}
+  const VkSpecializationInfo* kspec = nullptr;
   {% if UseSpecConstWgSize %}
-  {
-    uint32_t specializationData[3] = { 256, 1, 1 };
-    m_specsForWGSize.pData         = specializationData;
-    m_pMaker->LoadShader(device, servPath.c_str(), &m_specsForWGSize, {% if ShaderGLSL %}"main"{% else %}"copyKernelFloat"{% endif %});
-  }
-  {% else %}
-  m_pMaker->LoadShader(device, servPath.c_str(), nullptr, {% if ShaderGLSL %}"main"{% else %}"copyKernelFloat"{% endif %});
+  uint32_t specializationData[3] = { 256, 1, 1 };
+  m_specsForWGSize.pData         = specializationData;
+  kspec = &m_specsForWGSize;
   {% endif %}
   copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
-  copyKernelFloatLayout   = m_pMaker->MakeLayout(device, {copyKernelFloatDSLayout}, 128); // at least 128 bytes for push constants
-  copyKernelFloatPipeline = m_pMaker->MakePipeline(device);
+  MakeComputePipelineAndLayout(servPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"copyKernelFloat"{% endif %}, kspec, copyKernelFloatDSLayout, &copyKernelFloatLayout, &copyKernelFloatPipeline);
   {% endif %} {# /* UseServiceMemCopy */ #}
   {% if UseServiceScan %}
   {% for Scan in ServiceScan %}
   // init m_scan_{{Scan.Type}}
   {
-    std::string servPathFwd  = AlterShaderPath("{{ShaderFolder}}/z_scan_{{Scan.Type}}_block.comp.spv");
-    std::string servPathProp = AlterShaderPath("{{ShaderFolder}}/z_scan_{{Scan.Type}}_propagate.comp.spv");
-    m_scan_{{Scan.Type}}.internalDSLayout  = m_scan_{{Scan.Type}}.CreateInternalScanDSLayout(device);
-  
-    m_pMaker->LoadShader(device, servPathFwd.c_str(), nullptr, "main");
-    m_scan_{{Scan.Type}}.scanFwdLayout   = m_pMaker->MakeLayout(device, {m_scan_{{Scan.Type}}.internalDSLayout}, 128); // at least 128 bytes for push constants
-    m_scan_{{Scan.Type}}.scanFwdPipeline = m_pMaker->MakePipeline(device);
-    
-    m_pMaker->LoadShader(device, servPathProp.c_str(), nullptr, "main");
-    m_scan_{{Scan.Type}}.scanPropLayout   = m_pMaker->MakeLayout(device, {m_scan_{{Scan.Type}}.internalDSLayout}, 128); // at least 128 bytes for push constants
-    m_scan_{{Scan.Type}}.scanPropPipeline = m_pMaker->MakePipeline(device);
+    const std::string servPathFwd         = AlterShaderPath("{{ShaderFolder}}/z_scan_{{Scan.Type}}_block.comp.spv");
+    const std::string servPathProp        = AlterShaderPath("{{ShaderFolder}}/z_scan_{{Scan.Type}}_propagate.comp.spv");
+    m_scan_{{Scan.Type}}.internalDSLayout = m_scan_{{Scan.Type}}.CreateInternalScanDSLayout(device);
+    MakeComputePipelineAndLayout(servPathFwd.c_str(),  "main", nullptr, m_scan_{{Scan.Type}}.internalDSLayout, &m_scan_{{Scan.Type}}.scanFwdLayout,  &m_scan_{{Scan.Type}}.scanFwdPipeline);
+    MakeComputePipelineAndLayout(servPathProp.c_str(), "main", nullptr, m_scan_{{Scan.Type}}.internalDSLayout, &m_scan_{{Scan.Type}}.scanPropLayout, &m_scan_{{Scan.Type}}.scanPropPipeline);
   }
   {% endfor %}
   {% endif %} {# /* UseServiceScan */ #}
@@ -460,17 +320,13 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
     std::string bitonic512Path  = AlterShaderPath("{{ShaderFolder}}/z_bitonic_{{Sort.Type}}_512.comp.spv");
     std::string bitonic1024Path = AlterShaderPath("{{ShaderFolder}}/z_bitonic_{{Sort.Type}}_1024.comp.spv");
     std::string bitonic2048Path = AlterShaderPath("{{ShaderFolder}}/z_bitonic_{{Sort.Type}}_2048.comp.spv");
+    
     m_sort_{{Sort.Type}}.sortDSLayout = m_sort_{{Sort.Type}}.CreateSortDSLayout(device);
-  
-    m_pMaker->LoadShader(device, bitonicPassPath.c_str(), nullptr, "main");
-    m_sort_{{Sort.Type}}.bitonicPassLayout   = m_pMaker->MakeLayout(device, {m_sort_{{Sort.Type}}.sortDSLayout}, 128); // at least 128 bytes for push constants
-    m_sort_{{Sort.Type}}.bitonicPassPipeline = m_pMaker->MakePipeline(device);
+    MakeComputePipelineAndLayout(bitonicPassPath.c_str(),  "main", nullptr, m_sort_{{Sort.Type}}.sortDSLayout, &m_sort_{{Sort.Type}}.bitonicPassLayout, &m_sort_{{Sort.Type}}.bitonicPassPipeline);
     
     if(m_devProps.limits.maxComputeWorkGroupSize[0] >= 256)
     {
-      m_pMaker->LoadShader(device, bitonic512Path.c_str(), nullptr, "main");
-      m_sort_{{Sort.Type}}.bitonic512Layout   = m_pMaker->MakeLayout(device, {m_sort_{{Sort.Type}}.sortDSLayout}, 128); // at least 128 bytes for push constants
-      m_sort_{{Sort.Type}}.bitonic512Pipeline = m_pMaker->MakePipeline(device);
+      MakeComputePipelineAndLayout(bitonic512Path.c_str(), "main", nullptr, m_sort_{{Sort.Type}}.sortDSLayout, &m_sort_{{Sort.Type}}.bitonic512Layout, &m_sort_{{Sort.Type}}.bitonic512Pipeline);
     }
     else
     {
@@ -480,9 +336,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   
     if(m_devProps.limits.maxComputeWorkGroupSize[0] >= 512)
     {
-      m_pMaker->LoadShader(device, bitonic1024Path.c_str(), nullptr, "main");
-      m_sort_{{Sort.Type}}.bitonic1024Layout   = m_pMaker->MakeLayout(device, {m_sort_{{Sort.Type}}.sortDSLayout}, 128); // at least 128 bytes for push constants
-      m_sort_{{Sort.Type}}.bitonic1024Pipeline = m_pMaker->MakePipeline(device);
+      MakeComputePipelineAndLayout(bitonic1024Path.c_str(), "main", nullptr, m_sort_{{Sort.Type}}.sortDSLayout, &m_sort_{{Sort.Type}}.bitonic1024Layout, &m_sort_{{Sort.Type}}.bitonic1024Pipeline);
     }
     else
     {
@@ -492,9 +346,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   
     if(m_devProps.limits.maxComputeWorkGroupSize[0] >= 1024)
     {
-      m_pMaker->LoadShader(device, bitonic2048Path.c_str(), nullptr, "main");
-      m_sort_{{Sort.Type}}.bitonic2048Layout   = m_pMaker->MakeLayout(device, {m_sort_{{Sort.Type}}.sortDSLayout}, 128); // at least 128 bytes for push constants
-      m_sort_{{Sort.Type}}.bitonic2048Pipeline = m_pMaker->MakePipeline(device);
+      MakeComputePipelineAndLayout(bitonic2048Path.c_str(), "main", nullptr, m_sort_{{Sort.Type}}.sortDSLayout, &m_sort_{{Sort.Type}}.bitonic2048Layout, &m_sort_{{Sort.Type}}.bitonic2048Pipeline);
     }
     else
     {
@@ -1146,12 +998,8 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::ScanData::CreateInte
   return layout;
 }
 
-void {{MainClassName}}{{MainClassSuffix}}::ScanData::DeletePipelines(VkDevice a_device)
+void {{MainClassName}}{{MainClassSuffix}}::ScanData::DeleteDSLayouts(VkDevice a_device)
 {
-  vkDestroyPipeline(a_device, scanFwdPipeline, nullptr);
-  vkDestroyPipeline(a_device, scanPropPipeline, nullptr);
-  vkDestroyPipelineLayout(a_device, scanFwdLayout, nullptr);
-  vkDestroyPipelineLayout(a_device, scanPropLayout, nullptr);
   vkDestroyDescriptorSetLayout(a_device, internalDSLayout, nullptr);
 }
 
@@ -1306,29 +1154,8 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::Cre
   return layout;
 }
 
-void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::DeletePipelines(VkDevice a_device)
+void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::DeleteDSLayouts(VkDevice a_device)
 {
-  vkDestroyPipeline      (a_device, bitonicPassPipeline, nullptr);
-  vkDestroyPipelineLayout(a_device, bitonicPassLayout,   nullptr);
-  
-  if(bitonic512Layout != VK_NULL_HANDLE)
-  {
-    vkDestroyPipeline      (a_device, bitonic512Pipeline, nullptr);
-    vkDestroyPipelineLayout(a_device, bitonic512Layout,   nullptr);
-  }
-
-  if(bitonic1024Layout != VK_NULL_HANDLE)
-  {
-    vkDestroyPipeline      (a_device, bitonic1024Pipeline, nullptr);
-    vkDestroyPipelineLayout(a_device, bitonic1024Layout,   nullptr);
-  }
-
-  if(bitonic2048Layout != VK_NULL_HANDLE)
-  {
-    vkDestroyPipeline      (a_device, bitonic2048Pipeline, nullptr);
-    vkDestroyPipelineLayout(a_device, bitonic2048Layout,   nullptr);
-  }
-
   vkDestroyDescriptorSetLayout(a_device, sortDSLayout, nullptr);
 }
 

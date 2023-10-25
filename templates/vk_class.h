@@ -98,6 +98,13 @@ public:
   {% endfor %}
 
   virtual void InitMemberBuffers();
+  virtual void MakeComputePipelineAndLayout(const char* a_shaderPath, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout, 
+                                            VkPipelineLayout* pPipelineLayout, VkPipeline* pPipeline);
+  virtual void MakeComputePipelineOnly(const char* a_shaderPath, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout, VkPipelineLayout pipelineLayout, 
+                                       VkPipeline* pPipeline);
+
+  std::vector<VkPipelineLayout> m_allCreatedPipelineLayouts; ///<! remenber them here to delete later
+  std::vector<VkPipeline>       m_allCreatedPipelines;       ///<! remenber them here to delete later
 
   virtual void UpdateAll(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
   {
@@ -193,16 +200,12 @@ public:
 
 protected:
 
-  VkPhysicalDevice        physicalDevice = VK_NULL_HANDLE;
-  VkDevice                device         = VK_NULL_HANDLE;
-  vk_utils::VulkanContext m_ctx          = {};
-
-  VkCommandBuffer         m_currCmdBuffer   = VK_NULL_HANDLE;
-  uint32_t                m_currThreadFlags = 0;
-
-  std::vector<MemLoc>     m_allMems;
-
-  std::unique_ptr<vk_utils::ComputePipelineMaker> m_pMaker = nullptr;
+  VkPhysicalDevice           physicalDevice = VK_NULL_HANDLE;
+  VkDevice                   device         = VK_NULL_HANDLE;
+  vk_utils::VulkanContext    m_ctx          = {};
+  VkCommandBuffer            m_currCmdBuffer   = VK_NULL_HANDLE;
+  uint32_t                   m_currThreadFlags = 0;
+  std::vector<MemLoc>        m_allMems;
   VkPhysicalDeviceProperties m_devProps;
 
   VkBufferMemoryBarrier BarrierForClearFlags(VkBuffer a_buffer);
@@ -404,7 +407,7 @@ protected:
     void InclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size, bool actuallyExclusive = false);
 
     VkDescriptorSetLayout CreateInternalScanDSLayout(VkDevice a_device);
-    void                  DeletePipelines(VkDevice a_device);
+    void                  DeleteDSLayouts(VkDevice a_device);
 
     VkDescriptorSetLayout internalDSLayout = VK_NULL_HANDLE;
     VkPipelineLayout      scanFwdLayout   = VK_NULL_HANDLE;
@@ -431,7 +434,7 @@ protected:
     VkPipeline            bitonic1024Pipeline = VK_NULL_HANDLE;
     VkPipelineLayout      bitonic2048Layout   = VK_NULL_HANDLE;
     VkPipeline            bitonic2048Pipeline = VK_NULL_HANDLE;
-    void DeletePipelines(VkDevice a_device);
+    void DeleteDSLayouts(VkDevice a_device);
     void BitonicSortCmd(VkCommandBuffer a_cmdBuffer, size_t a_size, uint32_t a_maxWorkGroupSize = 256);
     void BitonicSortSimpleCmd(VkCommandBuffer a_cmdBuffer, size_t a_size);
   };

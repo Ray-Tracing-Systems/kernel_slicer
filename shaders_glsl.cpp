@@ -803,7 +803,10 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     makeSmth = fname.substr(5);
   auto pVecMaker = m_vecReplacements.find(makeSmth);
   ///////////////////////////////////////////////////////////////////////
+  
   //const std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+  //if(fname == "as_uint32" || fname == "as_uint")
+  //  int a = 2;
 
   auto pFoundSmth = m_funReplacements.find(fname);
   if(fname == "to_float3" && call->getNumArgs() == 1 && WasNotRewrittenYet(call) )
