@@ -60,11 +60,10 @@ struct SetterAttrInfo : public ParsedAttrInfo {
 struct SizeAttrInfo : public ParsedAttrInfo {
   SizeAttrInfo() {
     // Can take up to 3 optional arguments
-    OptArgs = 3;
-    // GNU-style __attribute__(("example")) and C++-style [[example]] and
-    // [[plugin::example]] supported.
-    static constexpr Spelling S[] = {{ParsedAttr::AS_GNU,   "size"},
-                                     {ParsedAttr::AS_CXX11, "kslicer::size"}};
+    OptArgs = 1;
+    static constexpr Spelling S[] = {{ParsedAttr::AS_GNU,   "size"},           // __attribute__((size("a_dataSize")))
+                                     {ParsedAttr::AS_CXX11, "size"},           // [[size("a_dataSize")]]
+                                     {ParsedAttr::AS_CXX11, "kslicer::size"}}; // [[kslicer::size("a_dataSize")]]
     Spellings = S;
   }
 
