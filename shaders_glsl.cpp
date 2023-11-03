@@ -968,10 +968,12 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   const auto qt      = decl->getType();
   const auto pValue  = decl->getAnyInitializer();
       
-  //const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
+  //const std::string debugText    = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
   //const std::string debugTextVal = kslicer::GetRangeSourceCode(pValue->getSourceRange(), m_compiler); 
   const std::string varType = qt.getAsString();
-  if(pValue != nullptr && NeedsVectorTypeRewrite(varType) && WasNotRewrittenYet(pValue))
+  const clang::Type::TypeClass typeClass = qt->getTypeClass();
+  const bool isAuto = (typeClass == clang::Type::Auto);
+  if(pValue != nullptr && WasNotRewrittenYet(pValue) && (NeedsVectorTypeRewrite(varType) || isAuto))
   {
     const std::string varName  = decl->getNameAsString();
     const std::string varValue = RecursiveRewrite(pValue);
