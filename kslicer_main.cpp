@@ -115,9 +115,10 @@ int main(int argc, const char **argv)
   bool        enableSubGroupOps  = false;
   int         ispcThreadModel    = 0;
   bool        ispcExplicitIndices = false;
+  bool        genGPUAPI          = false;
 
   kslicer::ShaderFeatures forcedFeatures;
-  
+
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
 
@@ -194,6 +195,9 @@ int main(int argc, const char **argv)
   if(params.find("-forceEnableInt64") != params.end())
     forcedFeatures.useInt64Type = (atoi(params["-forceEnableInt64"].c_str()) == 1);
  
+  if(params.find("-gen_gpu_api") != params.end())
+    genGPUAPI = atoi(params["-gen_gpu_api"].c_str());
+  
   std::unordered_set<std::string> values;
   std::vector<std::string> ignoreFolders;
   std::vector<std::string> processFolders;
@@ -886,6 +890,8 @@ int main(int argc, const char **argv)
       kslicer::ApplyJsonToTemplate("templates/vk_class.cpp",      rawname + ToLowerCase(suffix) + ".cpp", jsonCPP);
       kslicer::ApplyJsonToTemplate("templates/vk_class_ds.cpp",   rawname + ToLowerCase(suffix) + "_ds.cpp", jsonCPP);
       kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + ToLowerCase(suffix) + "_init.cpp", jsonCPP); 
+      if(genGPUAPI)
+        kslicer::ApplyJsonToTemplate("templates/vk_class_api.h",  rawname + ToLowerCase(suffix) + "_api.h", jsonCPP);
     }   
   }
   std::cout << "}" << std::endl;

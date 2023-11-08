@@ -88,17 +88,7 @@ struct SizeAttrInfo : public ParsedAttrInfo {
     
     auto argInfo = Attr.getInfo();
     auto argNum  = Attr.getNumArgs();
-    //auto argText = kslicer::GetRangeSourceCode(Attr.getRange(), *g_pCompilerInstance);
-
-    // We make some rules here:
-    // 1. Only accept at most 3 arguments here.
-    // 2. The first argument must be a string literal if it exists.
-    if (argNum > 3) {
-      unsigned ID = S.getDiagnostics().getCustomDiagID(DiagnosticsEngine::Error, "'kslicer::size' attribute only accepts at most three arguments");
-      S.Diag(Attr.getLoc(), ID);
-      return AttributeNotApplied;
-    }
-
+   
     // If there are arguments, the first argument should be a string literal.
     if (argNum > 0) 
     {
@@ -126,4 +116,4 @@ struct SizeAttrInfo : public ParsedAttrInfo {
 } // namespace
 
 static ParsedAttrInfoRegistry::Add<SetterAttrInfo> G_SETTER_ATTR("setter", "");
-static ParsedAttrInfoRegistry::Add<SizeAttrInfo> G_SIZE_ATTR("size", "");
+static ParsedAttrInfoRegistry::Add<SizeAttrInfo>   G_SIZE_ATTR("size", "");

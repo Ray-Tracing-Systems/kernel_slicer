@@ -18,8 +18,8 @@
       "request": "launch",
       "program": "${workspaceFolder}/cmake-build-release/testapp",
       "args": [
-        "--test",
-        "--ispc"
+        //"--test",
+        "--gpu"
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",

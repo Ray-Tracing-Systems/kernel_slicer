@@ -222,6 +222,7 @@
                         "-shaderCC", "glsl",
                         "-warpSize", "32",
                         "-enableSubgroup", "1",
+                        "-gen_gpu_api", "1",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,
