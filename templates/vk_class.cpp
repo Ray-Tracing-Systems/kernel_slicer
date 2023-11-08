@@ -771,9 +771,12 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   static VkPhysicalDeviceFeatures2 features2 = {};
   features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
   features2.pNext = nullptr; 
+  features2.features.shaderInt64   = {{GlobalUseInt64}};
+  features2.features.shaderFloat64 = {{GlobalUseFloat64}};  
+  features2.features.shaderInt16   = {{GlobalUseInt16}};
   void** ppNext = &features2.pNext;
   {% if HasRTXAccelStruct %}
-  static RTXDeviceFeatures rtx = SetupRTXFeatures(templates/vk_class.h);
+  static RTXDeviceFeatures rtx = SetupRTXFeatures(physicalDevice);
   (*ppNext) = &rtx.m_enabledAccelStructFeatures; ppNext = &rtx.m_enabledRayQueryFeatures.pNext;
   {% endif %}
   {% if HasVarPointers %}
@@ -782,14 +785,6 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   (*ppNext) = &varPointersQuestion; ppNext = &varPointersQuestion.pNext;
   {% endif %}
   {% if HasSubGroups %} 
-  {% endif %}
-  {% if GlobalUseFloat64 or GlobalUseInt64 %} 
-  static VkPhysicalDeviceFeatures features64 = {};
-  features64.shaderInt64   = {{GlobalUseInt64}};
-  features64.shaderFloat64 = {{GlobalUseFloat64}};
-  (*ppNext) = features64; ppNext = &features64.pNext;
-  {% endif %}
-  {% if GlobalUseInt16 %} 
   {% endif %}
   {% if GlobalUseHalf %} 
   {% endif %}

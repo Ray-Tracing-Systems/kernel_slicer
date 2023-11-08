@@ -983,5 +983,15 @@ int main(int argc, const char **argv)
   kslicer::ApplyJsonToTemplate("templates/ubo_def.h",  uboOutName, jsonUBO); // need to call it after "GenerateShaders"
   kslicer::CheckForWarnings(inputCodeInfo);
 
+  if(genGPUAPI)
+  {
+    auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls, 
+                                        rawname + ToLowerCase(suffix) + ".h", threadsOrder, 
+                                        uboIncludeName, composeImplName, jsonUBO); 
+
+    std::cout << "(9) Generate host code again for 'ListRequiredDeviceFeatures' " << std::endl; 
+    kslicer::ApplyJsonToTemplate("templates/vk_class.cpp", rawname + ToLowerCase(suffix) + ".cpp", jsonCPP);
+  }
+
   return 0;
 }
