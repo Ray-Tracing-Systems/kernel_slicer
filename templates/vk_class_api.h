@@ -39,6 +39,7 @@ public:
   virtual const char* Name() const { return "I{{MainClassName}}{{MainClassSuffix}}";}
   {% endif %}
   virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount) = 0;
+  virtual VkPhysicalDeviceFeatures2 ListRequiredDeviceFeatures() = 0;
 
 ## for MainFunc in MainFunctions
   virtual void SetVulkanInOutFor_{{MainFunc.Name}}(

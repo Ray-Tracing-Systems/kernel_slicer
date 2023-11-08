@@ -11,6 +11,7 @@ void Numbers::CalcArraySumm(const int* a_data, unsigned int a_dataSize)
 
 void Numbers::kernel1D_ArraySumm(const int* a_data, size_t a_dataSize)
 {
+  double x = 0.0;
   m_summ = 0;
   #pragma omp parallel for reduction(+:m_summ) // num_threads(4)
   for(int i=0; i<a_dataSize; i++)

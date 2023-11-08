@@ -738,3 +738,62 @@ void {{MainClassName}}{{MainClassSuffix}}::GetExecutionTime(const char* a_funcNa
   a_out[3] = res.msAPIOverhead;             
 }
 {% endif %}
+
+
+{% if HasRTXAccelStruct %}
+struct RTXDeviceFeatures
+{
+  VkPhysicalDeviceAccelerationStructureFeaturesKHR m_enabledAccelStructFeatures{};
+  VkPhysicalDeviceBufferDeviceAddressFeatures      m_enabledDeviceAddressFeatures{};
+  VkPhysicalDeviceRayQueryFeaturesKHR              m_enabledRayQueryFeatures;
+};
+static RTXDeviceFeatures SetupRTXFeatures(VkPhysicalDevice a_physDev)
+{
+  static RTXDeviceFeatures g_rtFeatures;
+
+  g_rtFeatures.m_enabledRayQueryFeatures.sType    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+  g_rtFeatures.m_enabledRayQueryFeatures.rayQuery = VK_TRUE;
+
+  g_rtFeatures.m_enabledDeviceAddressFeatures.sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+  g_rtFeatures.m_enabledDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
+  g_rtFeatures.m_enabledDeviceAddressFeatures.pNext               = &g_rtFeatures.m_enabledRayQueryFeatures;
+
+  g_rtFeatures.m_enabledAccelStructFeatures.sType                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+  g_rtFeatures.m_enabledAccelStructFeatures.accelerationStructure = VK_TRUE;
+  g_rtFeatures.m_enabledAccelStructFeatures.pNext                 = &g_rtFeatures.m_enabledDeviceAddressFeatures;
+
+  return g_rtFeatures;
+}
+{% endif %}
+
+VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDeviceFeatures()
+{
+  static VkPhysicalDeviceFeatures2 features2 = {};
+  features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+  features2.pNext = nullptr; 
+  void** ppNext = &features2.pNext;
+  {% if HasRTXAccelStruct %}
+  static RTXDeviceFeatures rtx = SetupRTXFeatures(templates/vk_class.h);
+  (*ppNext) = &rtx.m_enabledAccelStructFeatures; ppNext = &rtx.m_enabledRayQueryFeatures.pNext;
+  {% endif %}
+  {% if HasVarPointers %}
+  static VkPhysicalDeviceVariablePointersFeatures varPointersQuestion = {};
+  varPointersQuestion.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES;
+  (*ppNext) = &varPointersQuestion; ppNext = &varPointersQuestion.pNext;
+  {% endif %}
+  {% if HasSubGroups %} 
+  {% endif %}
+  {% if GlobalUseFloat64 or GlobalUseInt64 %} 
+  static VkPhysicalDeviceFeatures features64 = {};
+  features64.shaderInt64   = {{GlobalUseInt64}};
+  features64.shaderFloat64 = {{GlobalUseFloat64}};
+  (*ppNext) = features64; ppNext = &features64.pNext;
+  {% endif %}
+  {% if GlobalUseInt16 %} 
+  {% endif %}
+  {% if GlobalUseHalf %} 
+  {% endif %}
+  {% if GlobalUseInt8 %} 
+  {% endif %}
+  return features2;
+}

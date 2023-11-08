@@ -338,11 +338,14 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   }
   
   ShaderFeatures shaderFeatures = a_classInfo.globalShaderFeatures;
+  for(auto k : a_classInfo.kernels)
+    shaderFeatures = shaderFeatures || k.second.shaderFeatures;
 
-  data["GlobalUseInt8"]  = shaderFeatures.useByteType;
-  data["GlobalUseInt16"] = shaderFeatures.useShortType;
-  data["GlobalUseInt64"] = shaderFeatures.useInt64Type;
-  data["GlobalUseHalf"]  = shaderFeatures.useHalfType;
+  data["GlobalUseInt8"]    = shaderFeatures.useByteType;
+  data["GlobalUseInt16"]   = shaderFeatures.useShortType;
+  data["GlobalUseInt64"]   = shaderFeatures.useInt64Type;
+  data["GlobalUseFloat64"] = shaderFeatures.useFloat64Type;
+  data["GlobalUseHalf"]    = shaderFeatures.useHalfType;
 
   auto dhierarchies   = a_classInfo.GetDispatchingHierarchies();
   data["Hierarchies"] = PutHierarchiesDataToJson(dhierarchies, compiler);

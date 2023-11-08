@@ -426,7 +426,7 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
   }
 }
 
-std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_str) const
+kslicer::ShaderFeatures kslicer::GetUsedShaderFeaturesFromTypeName(const std::string& a_str)
 {
   const bool isConst  = (a_str.find("const") != std::string::npos);
   const bool isUshort = (a_str.find("short") != std::string::npos)    || (a_str.find("ushort") != std::string::npos) || 
@@ -435,16 +435,32 @@ std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_s
                         (a_str.find("uint8_t") != std::string::npos) || (a_str.find("int8_t") != std::string::npos);
   const bool isInt64  = (a_str.find("long long int") != std::string::npos) ||
                         (a_str.find("uint64_t") != std::string::npos) || (a_str.find("int64_t") != std::string::npos);
- 
+
+  const bool isFloat64 = (a_str.find("double") != std::string::npos);
+
   std::string copy = a_str;
   ReplaceFirst(copy, "const ", "");
   while(ReplaceFirst(copy, " ", ""));
   const bool isHalf = (copy == "half") || (copy == "half2") || (copy == "half3") || (copy == "half4"); 
+  
+  kslicer::ShaderFeatures sFeatures;
+  sFeatures.useByteType    = isByte;
+  sFeatures.useShortType   = isUshort;
+  sFeatures.useInt64Type   = isInt64;
+  sFeatures.useFloat64Type = isFloat64;
+  sFeatures.useHalfType    = isHalf;
+  return sFeatures;
+}
 
-  sFeatures.useByteType  = sFeatures.useByteType  || isByte;
-  sFeatures.useShortType = sFeatures.useShortType || isUshort;
-  sFeatures.useInt64Type = sFeatures.useInt64Type || isInt64;
-  sFeatures.useHalfType  = sFeatures.useHalfType  || isHalf;
+std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_str) const
+{
+  const bool isConst  = (a_str.find("const") != std::string::npos);
+  std::string copy = a_str;
+  ReplaceFirst(copy, "const ", "");
+  while(ReplaceFirst(copy, " ", ""));
+  
+  auto sFeatures2 = kslicer::GetUsedShaderFeaturesFromTypeName(a_str);
+  sFeatures = sFeatures || sFeatures2;
 
   std::string resStr;
   std::string typeStr = kslicer::CleanTypeName(a_str);
@@ -971,6 +987,9 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   //const std::string debugText    = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
   //const std::string debugTextVal = kslicer::GetRangeSourceCode(pValue->getSourceRange(), m_compiler); 
   const std::string varType = qt.getAsString();
+  auto sFeatures2 = kslicer::GetUsedShaderFeaturesFromTypeName(varType);
+  m_codeInfo->globalShaderFeatures = m_codeInfo->globalShaderFeatures || sFeatures2;
+
   const clang::Type::TypeClass typeClass = qt->getTypeClass();
   const bool isAuto = (typeClass == clang::Type::Auto);
   if(pValue != nullptr && WasNotRewrittenYet(pValue) && (NeedsVectorTypeRewrite(varType) || isAuto))

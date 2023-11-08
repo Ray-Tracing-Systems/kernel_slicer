@@ -154,9 +154,10 @@ public:
   {% if HasFullImpl %}
   virtual void ReadPlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   {% endif %}
-  
+
+  {% if not GenGpuApi %}virtual {%endif%}VkPhysicalDeviceFeatures2 ListRequiredDeviceFeatures() {% if GenGpuApi %} override{% endif %};
   {% for MainFunc in MainFunctions %}  
-  {% if not GenGpuApi %}  virtual {%endif%}{{MainFunc.ReturnType}} {{MainFunc.Decl}} {% if GenGpuApi %} override{% endif %};
+  {% if not GenGpuApi %}virtual {%endif%}{{MainFunc.ReturnType}}   {{MainFunc.Decl}} {% if GenGpuApi %} override{% endif %};
   {% endfor %}
   {% if HasFullImpl %}
 

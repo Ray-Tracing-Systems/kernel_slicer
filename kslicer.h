@@ -107,15 +107,34 @@ namespace kslicer
       useByteType  = useByteType  || rhs.useByteType;
       useShortType = useShortType || rhs.useShortType;
       useInt64Type = useInt64Type || rhs.useInt64Type;
-      useHalfType  = useHalfType  || rhs.useHalfType;
+      useFloat64Type = useFloat64Type || rhs.useFloat64Type;
+      useHalfType    = useHalfType    || rhs.useHalfType;
       return *this;
     }
 
     bool useByteType  = false; 
     bool useShortType = false;
     bool useInt64Type = false;
+    bool useFloat64Type = false;
     bool useHalfType  = false;
   };
+ 
+  /**
+  \brief These features (within previous) should be enabled for Device in Vulkan
+  */
+  struct OptionalDeviceFeatures
+  {
+    OptionalDeviceFeatures operator||(const OptionalDeviceFeatures& rhs)
+    {
+      useRTX    = useRTX    || rhs.useRTX;
+      useVarPtr = useVarPtr || rhs.useVarPtr;
+      return *this;
+    }
+
+    bool useRTX    = false; 
+    bool useVarPtr = false;
+  };
+
 
   /**
   \brief for each method MainClass::kernel_XXX
@@ -883,7 +902,8 @@ namespace kslicer
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
     std::vector<const clang::CXXConstructorDecl* > ctors;
     std::string shaderFolderPrefix = "";
-    ShaderFeatures globalShaderFeatures;
+    ShaderFeatures          globalShaderFeatures;
+    OptionalDeviceFeatures  globalDeviceFeatures;
 
     std::vector<std::string> ignoreFolders;  ///<! in these folders files are ignored
     std::vector<std::string> processFolders; ///<! in these folders files are processed to take functions and structures from them to shaders  
@@ -1128,6 +1148,7 @@ namespace kslicer
   void CheckInterlanIncInExcludedFolders(const std::vector<std::string>& a_folders);
 
   std::string CleanTypeName(const std::string& a_str);
+  ShaderFeatures GetUsedShaderFeaturesFromTypeName(const std::string& a_str);
   
   std::unordered_set<std::string> GetAllServiceKernels();
 

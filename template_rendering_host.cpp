@@ -1207,8 +1207,26 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["UpdateMembersTextureData"]  = (pUpdTex  != a_classInfo.allMemberFunctions.end());
     data["GenerateSceneRestrictions"] = (pScnRstr == a_classInfo.allMemberFunctions.end() && a_classInfo.IsRTV());
   }
+  
+  auto otherFeatures  = a_classInfo.globalDeviceFeatures;
+  auto shaderFeatures = a_classInfo.globalShaderFeatures;
+  bool useSubGroups   = false;
+  for(auto k : a_classInfo.kernels)
+  {
+    shaderFeatures = shaderFeatures || k.second.shaderFeatures;
+    useSubGroups = useSubGroups || k.second.enableSubGroups;
+  }
 
-  data["HasRTXAccelStruct"] = false;
+  data["GlobalUseInt8"]     = shaderFeatures.useByteType;
+  data["GlobalUseInt16"]    = shaderFeatures.useShortType;
+  data["GlobalUseInt64"]    = shaderFeatures.useInt64Type;
+  data["GlobalUseFloat64"]  = shaderFeatures.useFloat64Type;
+  data["GlobalUseHalf"]     = shaderFeatures.useHalfType;
+
+  data["HasRTXAccelStruct"] = otherFeatures.useRTX;
+  data["HasVarPointers"]    = (!a_classInfo.pShaderCC->IsGLSL() && !a_classInfo.pShaderCC->IsISPC()) || otherFeatures.useVarPtr;
+  data["HasSubGroups"]      = useSubGroups;
+
   data["MainFunctions"] = std::vector<std::string>();
   bool atLeastOneFullOverride = false;
   
@@ -1365,7 +1383,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         else if(dsArgs.descriptorSetsInfo[j].isAccelStruct())
         {
           //std::cout << "[kslicer error]: passing acceleration structures to kernel arguments is not yet implemented" << std::endl; 
-          data["HasRTXAccelStruct"] = true;
+          data["HasRTXAccelStruct"] = true; // check that thius is for RTX a_classInfo.composPrefix.empty();
           totalAccels++;
         }
         else
