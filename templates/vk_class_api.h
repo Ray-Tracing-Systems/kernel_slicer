@@ -1,5 +1,4 @@
-#ifndef MAIN_CLASS_DECL_{{MainClassName}}_H
-#define MAIN_CLASS_DECL_{{MainClassName}}_H
+#pragma once
 
 #include <vector>
 #include <memory>
@@ -31,11 +30,11 @@ using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data
 {{SetterDecl}}
 
 {% endfor %}
-class I{{MainClassName}}{{MainClassSuffix}} : public {{MainClassName}}
+class I{{MainClassName}}{{MainClassSuffix}} 
 {
 public:
-  
-  virtual ~{{MainClassName}}{{MainClassSuffix}}(){}
+  I{{MainClassName}}{{MainClassSuffix}}(){}
+  virtual ~I{{MainClassName}}{{MainClassSuffix}}(){}
   {% if HasNameFunc %}
   virtual const char* Name() const { return "I{{MainClassName}}{{MainClassSuffix}}";}
   {% endif %}
@@ -53,19 +52,19 @@ public:
     {% endif %}
 ## endfor
     uint32_t dummyArgument = 0) = 0;
-    
-  virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}};
-## endfor
 
+  virtual void {{MainFunc.Name}}Cmd(VkCommandBuffer a_commandBuffer, {% for Arg in MainFunc.InOutVarsPod %}{{Arg.Type}} {{Arg.Name}}{% if loop.index1 != MainFunc.InOutVarsNumPod %}, {% endif %}{% endfor %}) { {{MainFunc.Name}}Cmd(a_commandBuffer, {% for Arg in MainFunc.InOutVarsAll %}{% if Arg.IsPointer or Arg.IsTexture %}nullptr{% else %}{{Arg.Name}}{% endif %}{% if loop.index1 != MainFunc.InOutVarsNumAll %}, {% endif %}{% endfor %}); }
+
+## endfor
   {% for SetterFunc in SetterFuncs %}  
   {{SetterFunc}}
   {% endfor %}
-  {% if HasCommitDeviceFunc %}
-  virtual void CommitDeviceData() {} // kslicer override this virtual function in derived class
-  {% endif %}
   {% if HasGetTimeFunc %}
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // kslicer override this virtual function in derived class
   {% endif %}
-};
+protected:
+  {% for MainFunc in MainFunctions %}
+  virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}} = 0;
+  {% endfor %}
 
-#endif
+};

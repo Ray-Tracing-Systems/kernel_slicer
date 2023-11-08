@@ -1,5 +1,4 @@
-#ifndef MAIN_CLASS_DECL_{{MainClassName}}_H
-#define MAIN_CLASS_DECL_{{MainClassName}}_H
+#pragma once
 
 #include <vector>
 #include <memory>
@@ -20,6 +19,9 @@ using namespace LiteMath;
 {% endif %}
 
 #include "{{MainInclude}}"
+{% if GenGpuApi %}
+#include "{{MainIncludeApi}}"
+{% endif %}
 {% for Include in AdditionalIncludes %}
 #include "{{Include}}"
 {% endfor %}
@@ -36,7 +38,11 @@ using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data
 {{SetterDecl}}
 
 {% endfor %}
+{% if GenGpuApi %}
+class {{MainClassName}}{{MainClassSuffix}} : public {{MainClassName}}, public I{{MainClassName}}{{MainClassSuffix}}
+{% else %}
 class {{MainClassName}}{{MainClassSuffix}} : public {{MainClassName}}
+{% endif %}
 {
 public:
 
@@ -150,7 +156,7 @@ public:
   {% endif %}
   
   {% for MainFunc in MainFunctions %}  
-  virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}};
+  {% if not GenGpuApi %}  virtual {%endif%}{{MainFunc.ReturnType}} {{MainFunc.Decl}} {% if GenGpuApi %} override{% endif %};
   {% endfor %}
   {% if HasFullImpl %}
 
@@ -449,4 +455,3 @@ protected:
   {% endif %}
 };
 
-#endif

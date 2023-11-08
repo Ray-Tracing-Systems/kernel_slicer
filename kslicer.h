@@ -993,6 +993,7 @@ namespace kslicer
     bool halfFloatTextures = false;
     bool megakernelRTV     = false;
     bool useComplexNumbers = false;
+    bool genGPUAPI         = false;
 
     std::unordered_map<std::string, DHierarchy> m_vhierarchy;
     virtual const std::unordered_map<std::string, DHierarchy>& GetDispatchingHierarchies() const { return m_vhierarchy; }

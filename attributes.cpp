@@ -60,7 +60,7 @@ struct SetterAttrInfo : public ParsedAttrInfo {
 struct SizeAttrInfo : public ParsedAttrInfo {
   SizeAttrInfo() {
     // Can take up to 3 optional arguments
-    OptArgs = 1;
+    OptArgs = 3;
     static constexpr Spelling S[] = {{ParsedAttr::AS_GNU,   "size"},           // __attribute__((size("a_dataSize")))
                                      {ParsedAttr::AS_CXX11, "size"},           // [[size("a_dataSize")]]
                                      {ParsedAttr::AS_CXX11, "kslicer::size"}}; // [[kslicer::size("a_dataSize")]]
@@ -88,7 +88,8 @@ struct SizeAttrInfo : public ParsedAttrInfo {
     
     auto argInfo = Attr.getInfo();
     auto argNum  = Attr.getNumArgs();
-   
+    //auto argText = kslicer::GetRangeSourceCode(Attr.getRange(), *g_pCompilerInstance);
+
     // If there are arguments, the first argument should be a string literal.
     if (argNum > 0) 
     {
@@ -116,4 +117,4 @@ struct SizeAttrInfo : public ParsedAttrInfo {
 } // namespace
 
 static ParsedAttrInfoRegistry::Add<SetterAttrInfo> G_SETTER_ATTR("setter", "");
-static ParsedAttrInfoRegistry::Add<SizeAttrInfo>   G_SIZE_ATTR("size", "");
+static ParsedAttrInfoRegistry::Add<SizeAttrInfo> G_SIZE_ATTR("size", "");

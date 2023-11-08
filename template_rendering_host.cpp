@@ -468,7 +468,8 @@ static bool IgnoreArgForDS(size_t j, const std::vector<kslicer::ArgReferenceOnCa
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, const clang::CompilerInstance& compiler,
-                                             const std::vector<MainFuncInfo>& a_methodsToGenerate, const std::vector<kslicer::DeclInClass>& usedDecl,
+                                             const std::vector<MainFuncInfo>& a_methodsToGenerate, 
+                                             const std::vector<kslicer::DeclInClass>& usedDecl,
                                              const std::string& a_genIncude, const uint32_t    threadsOrder[3],
                                              const std::string& uboIncludeName, const std::string& a_composImplName, 
                                              const nlohmann::json& uboJson)
@@ -481,6 +482,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   MakeAbsolutePathRelativeTo(mainInclude, folderPath);
   MakeAbsolutePathRelativeTo(mainIncludeGenerated, folderPath);
 
+  auto posOfDot = mainIncludeGenerated.find(".h");
+  std::string mainIncludeGeneratedClean = mainIncludeGenerated.substr(0, posOfDot);
+  std::string mainIncludeGeneratedAPI   = mainIncludeGeneratedClean + "_api.h";
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
@@ -489,7 +494,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     prefixDataName = a_classInfo.composPrefix.begin()->second;
 
   json data;
-  data["MainInclude"]        = mainInclude; 
+  data["MainInclude"]        = mainInclude;
+  data["MainIncludeApi"]     = mainIncludeGeneratedAPI; 
   data["AdditionalIncludes"] = std::vector<std::string>();
   for(auto file : a_classInfo.cppIncudes)
     data["AdditionalIncludes"].push_back(file);
@@ -505,7 +511,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
   data["UseServiceScan"]     = (a_classInfo.usedServiceCalls.find("exclusive_scan") != a_classInfo.usedServiceCalls.end()) || (a_classInfo.usedServiceCalls.find("inclusive_scan") != a_classInfo.usedServiceCalls.end());
   data["UseServiceSort"]     = (a_classInfo.usedServiceCalls.find("sort") != a_classInfo.usedServiceCalls.end());
- 
+  data["GenGpuApi"]          = a_classInfo.genGPUAPI;
+
   if(data["UseServiceScan"])
   {
     data["ServiceScan"] = std::vector<std::string>();
@@ -1239,21 +1246,44 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     }
     
     uint32_t inOutNum = 0;
-    data2["InOutVars"] = std::vector<std::string>();
+    uint32_t inOutPod = 0;
+    uint32_t inOutAll = 0;
+    data2["InOutVars"]    = std::vector<std::string>();
+    data2["InOutVarsPod"] = std::vector<std::string>(); //
+    data2["InOutVarsAll"] = std::vector<std::string>(); //
     for(const auto& v : mainFunc.InOuts)
     {
-      if(!a_classInfo.pShaderCC->IsISPC()) 
+      if((v.isThreadId || v.kind == DATA_KIND::KIND_POD || v.kind == DATA_KIND::KIND_UNKNOWN) && !a_classInfo.pShaderCC->IsISPC())
       {
-        if(v.isThreadId || v.kind == DATA_KIND::KIND_POD || v.kind == DATA_KIND::KIND_UNKNOWN)
-          continue;
+        json controlArg;
+        controlArg["Name"]      = v.name;
+        controlArg["Type"]      = v.type;
+        controlArg["IsTexture"] = false;
+        controlArg["IsPointer"] = false;
+        controlArg["IsConst"]   = v.isConst;
+        data2["InOutVarsPod"].push_back(controlArg);
+        data2["InOutVarsAll"].push_back(controlArg);
+        inOutPod++;
+        inOutAll++;
       }
-      json controlArg;
-      controlArg["Name"]      = v.name;
-      controlArg["IsTexture"] = v.isTexture();
-      data2["InOutVars"].push_back(controlArg);
-      inOutNum++;
+      else
+      {
+        json controlArg;
+        controlArg["Name"]      = v.name;
+        controlArg["Type"]      = v.type;
+        controlArg["IsTexture"] = v.isTexture();
+        controlArg["IsPointer"] = v.isPointer();
+        controlArg["IsConst"]   = v.isConst;
+        data2["InOutVars"].push_back(controlArg);
+        data2["InOutVarsAll"].push_back(controlArg);
+        inOutNum++;
+        inOutAll++;
+      }
     }
-    data2["InOutVarsNum"] = inOutNum;
+
+    data2["InOutVarsNumPod"] = inOutPod;
+    data2["InOutVarsNumAll"] = inOutAll;
+    data2["InOutVarsNum"]    = inOutNum;
 
     // for impl, ds bindings
     //

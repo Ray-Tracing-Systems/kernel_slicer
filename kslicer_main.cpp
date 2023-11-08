@@ -251,6 +251,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.ignoreFiles    = ignoreFiles;    // set exceptions for common C/C++ folders (i.e. processFolders)
   inputCodeInfo.processFiles   = processFiles;   // set exceptions for shader folders (i.e. ignoreFolders)
   inputCodeInfo.cppIncudes     = cppIncludesAdditional;
+  inputCodeInfo.genGPUAPI      = genGPUAPI;
 
   if(shaderCCName == "glsl" || shaderCCName == "GLSL")
   {
