@@ -29,7 +29,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-debug/testapp",
-            "args": ["--gpu", "-in", "/home/frol/PROG/HydraRepos2/HydraAPI-tests/tests_f/test_103/statex_00001.xml"],
+            "args": ["--gpu"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

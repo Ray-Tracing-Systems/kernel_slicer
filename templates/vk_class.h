@@ -106,7 +106,16 @@ public:
   {% for SetterFunc in SetterFuncs %}  
   {{SetterFunc}}
   {% endfor %}
-
+  
+  {% if GenGpuApi %}
+  void InitMemberBuffers() override;
+  void UpdateAll(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine) override
+  {
+    UpdatePlainMembers(a_pCopyEngine);
+    UpdateVectorMembers(a_pCopyEngine);
+    UpdateTextureMembers(a_pCopyEngine);
+  }
+  {% else %}
   virtual void InitMemberBuffers();
   virtual void UpdateAll(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
   {
@@ -114,6 +123,7 @@ public:
     UpdateVectorMembers(a_pCopyEngine);
     UpdateTextureMembers(a_pCopyEngine);
   }
+  {% endif %}
   
   {% if HasPrefixData %}
   virtual void UpdatePrefixPointers()

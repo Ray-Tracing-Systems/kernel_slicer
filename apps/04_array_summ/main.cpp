@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "test_class.h"
+#include "test_class_generated.h"
 #include "ArgParser.h"
 #define JSON_LOG_IMPLEMENTATION
 #include "JSONLog.hpp"
@@ -52,7 +53,11 @@ int main(int argc, const char** argv)
   if(onGPU)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+
+    std::vector<const char*> requiredExtensions;
+    auto deviceFeatures = Numbers_Generated::ListRequiredDeviceFeatures(requiredExtensions);
+    auto ctx            = vk_utils::globalContextInit(requiredExtensions, enableValidationLayers, a_preferredDeviceId, &deviceFeatures);
+    //auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateNumbers_Generated(ctx, array.size());
   }
   #ifdef USE_ISPC

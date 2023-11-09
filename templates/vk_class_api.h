@@ -31,6 +31,27 @@ using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data
 
 {% endfor %}
 
+// how to use generated class '{{MainClassName}}{{MainClassSuffix}}' and GPU API 'I{{MainClassName}}{{MainClassSuffix}}':
+// (0) auto pImplGPU = std::make_shared<{{MainClassName}}{{MainClassSuffix}}>(); 
+//                                                                                  // or use Create{{MainClassName}}{{MainClassSuffix}}(...) function
+// then you have 2 basic variants of working with GPU API:
+
+// (1) simple one:
+// (1.1) pImplGPU->SetVulkanContext(ctx);                                           // or use Create{{MainClassName}}{{MainClassSuffix}}(...) function
+// (1.2) pImplGPU->InitVulkanObjects(device, physicalDevice, MAX_THREADS);          // or use Create{{MainClassName}}{{MainClassSuffix}}(...) function
+// (1.2) do so some stuff on CPU in base class
+// (1.3) pImplGPU->CommitDeviceData();            // use implicit commit
+// (1.4) now you can work BOTH with CPU and GPU API
+
+// (2) more explicit:
+// (2.1) pImplGPU->InitVulkanObjects(device, physicalDevice, MAX_THREADS);
+// (2.2) do so some stuff on CPU in base class
+// (2.3) pImplGPU->CommitDeviceData(pCopyHelper); // use explicit commit
+// (2.4) now you can work with GPU API only
+
+// (3) finally you may use std::dynamic_pointer_cast to get GPU API of 'I{{MainClassName}}{{MainClassSuffix}}' class:
+// pGPUAPI = std::dynamic_pointer_cast<I{{MainClassName}}{{MainClassSuffix}}>(pImplGPU);
+
 class I{{MainClassName}}{{MainClassSuffix}} 
 {
 public:
@@ -40,9 +61,17 @@ public:
   virtual const char* Name() const { return "I{{MainClassName}}{{MainClassSuffix}}";}
   {% endif %}
   
-  virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount) = 0;
   virtual void SetVulkanContext(vk_utils::VulkanContext a_ctx) = 0;
-  
+  virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount) = 0;  
+  virtual void CommitDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine) // explicit commit
+  {
+    {% if HasPrefixData %}
+    UpdatePrefixPointers(); 
+    {% endif %}
+    InitMemberBuffers();
+    UpdateAll(a_pCopyEngine);
+  }  
+
 ## for MainFunc in MainFunctions
   virtual void SetVulkanInOutFor_{{MainFunc.Name}}(
 ## for Arg in MainFunc.InOutVars
@@ -62,6 +91,8 @@ public:
   {% for SetterFunc in SetterFuncs %}  
   {{SetterFunc}}
   {% endfor %}
+  virtual void InitMemberBuffers() = 0;
+  virtual void UpdateAll(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine) = 0;
 protected:
   {% for MainFunc in MainFunctions %}
   virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}} = 0;
