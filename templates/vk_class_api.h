@@ -30,6 +30,7 @@ using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data
 {{SetterDecl}}
 
 {% endfor %}
+
 class I{{MainClassName}}{{MainClassSuffix}} 
 {
 public:
@@ -38,9 +39,10 @@ public:
   {% if HasNameFunc %}
   virtual const char* Name() const { return "I{{MainClassName}}{{MainClassSuffix}}";}
   {% endif %}
+  
   virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount) = 0;
-  virtual VkPhysicalDeviceFeatures2 ListRequiredDeviceFeatures() = 0;
-
+  virtual void SetVulkanContext(vk_utils::VulkanContext a_ctx) = 0;
+  
 ## for MainFunc in MainFunctions
   virtual void SetVulkanInOutFor_{{MainFunc.Name}}(
 ## for Arg in MainFunc.InOutVars
@@ -60,12 +62,8 @@ public:
   {% for SetterFunc in SetterFuncs %}  
   {{SetterFunc}}
   {% endfor %}
-  {% if HasGetTimeFunc %}
-  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // kslicer override this virtual function in derived class
-  {% endif %}
 protected:
   {% for MainFunc in MainFunctions %}
   virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}} = 0;
   {% endfor %}
-
 };

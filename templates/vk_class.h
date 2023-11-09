@@ -69,8 +69,12 @@ public:
   const char* Name() const override { return "{{MainClassName}}{{MainClassSuffix}}";}
   {% endif %}
   virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount);
+  
+  {% if GenGpuApi %}
+  void SetVulkanContext(vk_utils::VulkanContext a_ctx) override { m_ctx = a_ctx; }
+  {% else %}
   virtual void SetVulkanContext(vk_utils::VulkanContext a_ctx) { m_ctx = a_ctx; }
-
+  {% endif %}
 ## for MainFunc in MainFunctions
   virtual void SetVulkanInOutFor_{{MainFunc.Name}}(
 ## for Arg in MainFunc.InOutVars
@@ -154,10 +158,14 @@ public:
   {% if HasFullImpl %}
   virtual void ReadPlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   {% endif %}
-
-  {% if not GenGpuApi %}virtual {%endif%}VkPhysicalDeviceFeatures2 ListRequiredDeviceFeatures() {% if GenGpuApi %} override{% endif %};
-  {% for MainFunc in MainFunctions %}  
-  {% if not GenGpuApi %}virtual {%endif%}{{MainFunc.ReturnType}}   {{MainFunc.Decl}} {% if GenGpuApi %} override{% endif %};
+  static VkPhysicalDeviceFeatures2 ListRequiredDeviceFeatures(std::vector<const char*>& deviceExtensions);
+  
+  {% for MainFunc in MainFunctions %} 
+  {% if GenGpuApi %}
+  {{MainFunc.ReturnType}} {{MainFunc.Decl}} override;
+  {% else %}
+  virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}};
+  {% endif %}
   {% endfor %}
   {% if HasFullImpl %}
 
