@@ -1341,3 +1341,92 @@ void {{MainClassName}}{{MainClassSuffix}}::BitonicSortData::BitonicSortCmd(VkCom
   }
 }
 {% endif %}
+{% if HasRTXAccelStruct %}
+
+struct RTXDeviceFeatures
+{
+  VkPhysicalDeviceAccelerationStructureFeaturesKHR m_enabledAccelStructFeatures{};
+  VkPhysicalDeviceBufferDeviceAddressFeatures      m_enabledDeviceAddressFeatures{};
+  VkPhysicalDeviceRayQueryFeaturesKHR              m_enabledRayQueryFeatures;
+};
+static RTXDeviceFeatures SetupRTXFeatures()
+{
+  static RTXDeviceFeatures g_rtFeatures;
+
+  g_rtFeatures.m_enabledRayQueryFeatures.sType    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+  g_rtFeatures.m_enabledRayQueryFeatures.rayQuery = VK_TRUE;
+  g_rtFeatures.m_enabledRayQueryFeatures.pNext    = nullptr;
+
+  g_rtFeatures.m_enabledDeviceAddressFeatures.sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+  g_rtFeatures.m_enabledDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
+  g_rtFeatures.m_enabledDeviceAddressFeatures.pNext               = &g_rtFeatures.m_enabledRayQueryFeatures;
+
+  g_rtFeatures.m_enabledAccelStructFeatures.sType                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+  g_rtFeatures.m_enabledAccelStructFeatures.accelerationStructure = VK_TRUE;
+  g_rtFeatures.m_enabledAccelStructFeatures.pNext                 = &g_rtFeatures.m_enabledDeviceAddressFeatures;
+
+  return g_rtFeatures;
+}
+{% endif %}
+
+VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDeviceFeatures(std::vector<const char*>& deviceExtensions)
+{
+  static VkPhysicalDeviceFeatures2 features2 = {};
+  features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+  features2.pNext = nullptr; 
+  features2.features.shaderInt64   = {{GlobalUseInt64}};
+  features2.features.shaderFloat64 = {{GlobalUseFloat64}};  
+  features2.features.shaderInt16   = {{GlobalUseInt16}};
+  void** ppNext = &features2.pNext;
+  {% if GlobalUseInt8 or GlobalUseHalf %}
+  deviceExtensions.push_back("VK_KHR_shader_float16_int8");
+  {% endif %}
+  {% if HasRTXAccelStruct %}
+  {
+    static RTXDeviceFeatures rtx = SetupRTXFeatures();
+    static VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{};
+    indexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+    indexingFeatures.pNext = nullptr;
+    indexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE; // TODO: move bindless texture to seperate feature!
+    indexingFeatures.runtimeDescriptorArray                    = VK_TRUE; // TODO: move bindless texture to seperate feature!
+    rtx.m_enabledRayQueryFeatures.pNext = &indexingFeatures;
+    (*ppNext) = &rtx.m_enabledAccelStructFeatures; ppNext = &rtx.m_enabledRayQueryFeatures.pNext;
+
+    // Required by VK_KHR_RAY_QUERY
+    deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+    deviceExtensions.push_back("VK_KHR_spirv_1_4");
+    deviceExtensions.push_back("VK_KHR_shader_float_controls");  
+    // Required by VK_KHR_acceleration_structure
+    deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+    // // Required by VK_KHR_ray_tracing_pipeline
+    // m_deviceExtensions.push_back(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
+    // // Required by VK_KHR_spirv_1_4
+    // m_deviceExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
+    deviceExtensions.push_back("VK_EXT_descriptor_indexing"); // TODO: move bindless texture it to seperate feature!
+  }
+  {% endif %}
+  {% if HasVarPointers %}
+  {
+    static VkPhysicalDeviceVariablePointersFeatures varPointersQuestion = {};
+    varPointersQuestion.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES;
+    (*ppNext) = &varPointersQuestion; ppNext = &varPointersQuestion.pNext;
+    deviceExtensions.push_back("VK_KHR_variable_pointers");
+    deviceExtensions.push_back("VK_KHR_shader_non_semantic_info"); // for clspv
+  }
+  {% endif %}
+  {% if HasSubGroups %}
+  {
+    static VkPhysicalDeviceSubgroupProperties subgroupProperties = {};
+    static VkPhysicalDeviceProperties2 physicalDeviceProperties = {};
+    subgroupProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
+    subgroupProperties.pNext = nullptr;
+    physicalDeviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    physicalDeviceProperties.pNext = &subgroupProperties;
+    (*ppNext) = &physicalDeviceProperties; ppNext = &subgroupProperties.pNext;
+  } 
+  {% endif %}
+  return features2;
+}
