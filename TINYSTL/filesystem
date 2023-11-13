@@ -1,0 +1,10 @@
+#pragma once
+#include <string>
+
+namespace std
+{
+  namespace filesystem
+  {
+    typedef string path;
+  };
+};

@@ -65,6 +65,10 @@ namespace std
   template<typename T> T cos(T x) { return x; }
   template<typename T> T tan(T x) { return x; }
   
+  template<typename T> T sinh(T x) { return x; }
+  template<typename T> T cosh(T x) { return x; }
+  template<typename T> T tanh(T x) { return x; }
+
   template<typename T> T pow(T x, T power) { return x; }
   template<typename T> T exp(T x)          { return x; }
   template<typename T> T log2(T x);
@@ -74,6 +78,10 @@ namespace std
   template<typename T> T acos  (T x) { return x; }
   template<typename T> T atan  (T y_over_x) { return y_over_x; }
   template<typename T> T atan2 (T y, T x) { return y; }
+
+  template<typename T> T asinh(T x) { return x; }
+  template<typename T> T acosh(T x) { return x; }
+  template<typename T> T atanh(T x) { return x; }
 
   template<typename T> T floor(T x);
   template<typename T> T ceil(T x);
