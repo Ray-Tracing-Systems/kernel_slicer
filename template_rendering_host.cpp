@@ -646,7 +646,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       auto pParam = ctor->getParamDecl(i);
       auto qt     = pParam->getType();
       
-      fNameGented += qt.getAsString() + " " + pParam->getNameAsString();
+      std::string paramType = qt.getAsString();
+      if(paramType == "_Bool")
+        paramType = "bool";
+      fNameGented += paramType + " " + pParam->getNameAsString();
       fNameOrigin += pParam->getNameAsString();
     
       if(i < ctor->getNumParams()-1)

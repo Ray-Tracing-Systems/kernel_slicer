@@ -2214,6 +2214,7 @@
             "args"   : ["/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt1.cpp",
                         "/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt2.cpp",
                         "/home/frol/PROG/HydraRepos/HydraCore3/integrator_rt.cpp",
+                        "/home/frol/PROG/HydraRepos/HydraCore3/integrator_spectrum.cpp",
                         "-mainClass", "Integrator", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
