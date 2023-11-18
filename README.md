@@ -57,29 +57,30 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
  * cd kernel_slicer
  * bash clone_dependencies.bat  
 
-3. sudo apt-get install llvm-16-dev
+3. install llvm-17 (both dev and not dev)
+ * wget https://apt.llvm.org/llvm.sh
+ * chmod +x llvm.sh
+ * sudo ./llvm.sh 17
+ * sudo apt-get install llvm-17-dev
+ * sudo touch /usr/lib/llvm-17/bin/yaml-bench 
+ * sudo apt-get install libclang-17-dev 
+ * sudo apt install clang-17
 
-4. sudo touch /usr/lib/llvm-16/bin/yaml-bench 
-
-5. sudo apt-get install libclang-16-dev 
-
-6. sudo apt install clang-16
-
-7. use Cmake and make
+4. use Cmake and make
 
   * cd kernel_slicer
   * cmake . 
   * make -j 10
 
-8. you may also use provided VS Code config to build and run test cases (tasks.json and launch.json)
+5. you may also use provided VS Code config to build and run test cases (tasks.json and launch.json)
 
-9. Install Vulkan SDK (https://vulkan.lunarg.com/sdk/home)
+6. Install Vulkan SDK (https://vulkan.lunarg.com/sdk/home)
 
-10. (optional) build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") if you want OpenCL shaders
+7. (optional) build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") if you want OpenCL shaders
 
-11. (optional) install [intel ispc](https://ispc.github.io/ "Intel® Implicit SPMD Program Compiler") if you are going to vectorize code for CPU
+8. (optional) install [intel ispc](https://ispc.github.io/ "Intel® Implicit SPMD Program Compiler") if you are going to vectorize code for CPU
 
-12. (optional) If you want to [build it as a part of llvm](doc/README_build_with_llvm.md)
+9. (optional) If you want to [build it as a part of llvm](doc/README_build_with_llvm.md)
 
 # Concept and general workflow
 
