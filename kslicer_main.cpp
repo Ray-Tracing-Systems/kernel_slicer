@@ -332,8 +332,9 @@ int main(int argc, const char **argv)
   compiler.getPreprocessor().addPPCallbacks(std::make_unique<HeaderLister>(headerLister));
   compiler.createASTContext();
 
-  const FileEntry *pFile = compiler.getFileManager().getFile(fileName).get();
-  compiler.getSourceManager().setMainFileID( compiler.getSourceManager().createFileID( pFile, clang::SourceLocation(), clang::SrcMgr::C_User));
+  // const FileEntry *pFile = compiler.getFileManager().getFile(fileName).get();
+  FileEntryRef file = compiler.getFileManager().getFileRef(fileName).get();
+  compiler.getSourceManager().setMainFileID( compiler.getSourceManager().createFileID( file, clang::SourceLocation(), clang::SrcMgr::C_User));
   compiler.getDiagnosticClient().BeginSourceFile(compiler.getLangOpts(), &compiler.getPreprocessor());
 
 
