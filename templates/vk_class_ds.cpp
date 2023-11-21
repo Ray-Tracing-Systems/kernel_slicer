@@ -44,10 +44,9 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
   
   // allocate all descriptor sets
   //
-  int dsTop = 0;
   VkDescriptorSetLayout layouts[{{TotalDSNumber}}] = {};
 ## for DescriptorSet in DescriptorSetsAll
-  layouts[{{DescriptorSet.Id}}] = {{DescriptorSet.Layout}}; dsTop++;
+  layouts[{{DescriptorSet.Id}}] = {{DescriptorSet.Layout}};
 ## endfor
 
   VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
