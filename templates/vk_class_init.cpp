@@ -273,7 +273,17 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   kspec = &m_specsForWGSize;
   {% endif %}
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
+  {% if Kernel.IsMega %}
+  if(m_megaKernelFlags.enable{{Kernel.Name}})
+    MakeComputePipelineAndLayout(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %}, kspec, {{Kernel.Name}}DSLayout, &{{Kernel.Name}}Layout, &{{Kernel.Name}}Pipeline);
+  else
+  {
+    {{Kernel.Name}}Layout   = nullptr;
+    {{Kernel.Name}}Pipeline = nullptr;
+  }
+  {% else %}
   MakeComputePipelineAndLayout(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %}, kspec, {{Kernel.Name}}DSLayout, &{{Kernel.Name}}Layout, &{{Kernel.Name}}Pipeline);
+  {% endif %}
   {% if Kernel.FinishRed %}
   {% if ShaderGLSL %}
   shaderPath = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}_Reduction.comp.spv");
@@ -1405,3 +1415,5 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   {% endif %}
   return features2;
 }
+
+{{MainClassName}}{{MainClassSuffix}}::MegaKernelIsEnabled {{MainClassName}}{{MainClassSuffix}}::m_megaKernelFlags;

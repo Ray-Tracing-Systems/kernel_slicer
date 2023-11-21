@@ -215,7 +215,7 @@ def main():
     Log().set_workdir(workdir)
     Log().print("Running in root: ", workdir)
     download_resources()
-    create_clspv_symlink("apps/clspv", "apps/tests/clspv")
+    #create_clspv_symlink("apps/clspv", "apps/tests/clspv")
     build_kernel_slicer(test_config.num_threads)
     tests(test_config,workdir)
     Log().close()

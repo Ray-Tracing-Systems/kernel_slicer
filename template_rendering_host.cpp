@@ -904,6 +904,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["IndirectOffset"] = k.indirectBlockOffset;
     kernelJson["IsMaker"]        = k.isMaker;
     kernelJson["IsVirtual"]      = k.isVirtual;
+    kernelJson["IsMega"]         = k.isMega;
     kernelJson["ArgCount"]       = k.args.size();
     kernelJson["HasLoopInit"]    = k.hasInitPass;
     kernelJson["HasLoopFinish"]  = k.hasFinishPassSelf;
@@ -1536,7 +1537,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     const auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
     json local;
     local["Id"]         = i;
+    local["IsMega"]     = dsArgs.isMega;
     local["Layout"]     = dsArgs.kernelName + "DSLayout";
+    local["Name"]       = dsArgs.kernelName;
     data["DescriptorSetsAll"].push_back(local);
   }
 

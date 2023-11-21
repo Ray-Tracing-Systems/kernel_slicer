@@ -428,6 +428,7 @@ namespace kslicer
     std::string                     callerName;
     std::vector<ArgReferenceOnCall> descriptorSetsInfo;
     bool isService = false; ///<! indicate that this call is added by the slicer itself. It is not user kernel.
+    bool isMega = false;
   };
 
   struct CFNameInfo
