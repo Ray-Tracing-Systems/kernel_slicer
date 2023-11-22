@@ -15,6 +15,6 @@ namespace std
   template<class It, class CmpOp>
   void sort(It a_beg, It a_end, CmpOp compareOp) {}
 
-  template<class It, class CmpOp>
+  template<class It>
   void reverse(It a_beg, It a_end) {}
 };
