@@ -470,5 +470,20 @@ protected:
   VkSpecializationInfo                   m_allSpecInfo;
   const VkSpecializationInfo*            GetAllSpecInfo();
   {% endif %}
+public:
+
+  struct MegaKernelIsEnabled
+  {
+    {% for MainFunc in MainFunctions %}
+    {% if MainFunc.IsRTV and MainFunc.IsMega %}
+    bool enable{{MainFunc.Name}}Mega = true;
+    {% endif %}
+    {% endfor %}
+    bool dummy = 0;
+  };
+
+  static MegaKernelIsEnabled  m_megaKernelFlags;
+  static MegaKernelIsEnabled& EnabledPipelines() { return m_megaKernelFlags; }
+
 };
 

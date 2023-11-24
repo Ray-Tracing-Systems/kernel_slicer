@@ -9,7 +9,7 @@
 #include <cctype>
 #include <queue>
 
-#include "llvm/Support/Host.h"
+#include "llvm/TargetParser/Host.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/ADT/IntrusiveRefCntPtr.h"
 #include "llvm/ADT/StringRef.h"
@@ -836,6 +836,7 @@ int main(int argc, const char **argv)
       if(pKernelInfo == megakernelsByName.end())
         continue;
       
+      dsInfo.isMega = true;
       kslicer::MainFuncInfo* pCF = nullptr;
       std::string cfName = dsInfo.originKernelName.substr(0, dsInfo.originKernelName.size()-4); // cut of "Mega"
       for(size_t i=0; i<inputCodeInfo.mainFunc.size(); i++)

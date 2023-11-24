@@ -2227,7 +2227,76 @@
                         "-I/home/frol/PROG/HydraRepos/HydraCore3/external/CrossRT",   "process",
                         "-I/home/frol/PROG/HydraRepos/HydraCore3/cam_plugin",         "process",  
                         "-megakernel", "1",
-                        //"-cl-std=", "C++",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (HydraCam/PinHole)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/HydraRepos/HydraCore3/cam_plugin/CamPinHole.cpp",
+                        "-mainClass", "CamPinHole", 
+                        "-shaderFolderPrefix", "cam_plugin/",
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/external/LiteMath",  "ignore",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/external/LiteScene", "ignore",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/external/CrossRT",   "process",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/cam_plugin",         "process",
+                        "-suffix", "_PINHOLE_GPU",  
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (HydraCam/Table)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/HydraRepos/HydraCore3/cam_plugin/CamTableLens.cpp",
+                        "-mainClass", "CamTableLens", 
+                        "-shaderFolderPrefix", "cam_plugin/",
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/external/LiteMath",  "ignore",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/external/LiteScene", "ignore",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/external/CrossRT",   "process",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/cam_plugin",         "process",
+                        "-suffix", "_TABLELENS_GPU",  
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,
