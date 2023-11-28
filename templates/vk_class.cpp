@@ -3,6 +3,7 @@
 #include <limits>
 #include <cassert>
 #include <chrono>
+#include <array>
 
 #include "vk_copy.h"
 #include "vk_context.h"

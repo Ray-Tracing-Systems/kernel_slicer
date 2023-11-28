@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <array>
 
 #include "vk_pipeline.h"
 #include "vk_buffers.h"
