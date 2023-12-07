@@ -233,6 +233,7 @@ std::unordered_map<std::string, std::string> kslicer::ListGLSLVectorReplacements
   m_vecReplacements["uint3"]  = "uvec3";
   m_vecReplacements["uint4"]  = "uvec4";
   m_vecReplacements["float4x4"] = "mat4";
+  m_vecReplacements["float3x3"] = "mat3";
   m_vecReplacements["_Bool"] = "bool";
   m_vecReplacements["unsigned int"]   = "uint";
   m_vecReplacements["unsigned"]       = "uint";
@@ -256,6 +257,7 @@ std::unordered_map<std::string, std::string> kslicer::ListGLSLVectorReplacements
   m_vecReplacements["const uint3"]  = "const uvec3";
   m_vecReplacements["const uint4"]  = "const uvec4";
   m_vecReplacements["const float4x4"] = "const mat4";
+  m_vecReplacements["const float3x3"] = "const mat3";
   m_vecReplacements["const _Bool"] = "const bool";
   m_vecReplacements["const unsigned int"]   = "const uint";
   m_vecReplacements["const unsigned char"]  = "const uint8_t";

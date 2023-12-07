@@ -138,6 +138,12 @@ mat4 inverse4x4(mat4 m) { return inverse(m); }
 vec3 mul4x3(mat4 m, vec3 v) { return (m*vec4(v, 1.0f)).xyz; }
 vec3 mul3x3(mat4 m, vec3 v) { return (m*vec4(v, 0.0f)).xyz; }
 
+mat3 make_float3x3(vec3 a, vec3 b, vec3 c) { // by rows
+    return mat3(a.x, a.y, a.z,
+                b.x, b.y, b.z,
+                c.x, c.y, c.z);
+}
+
 ## for LocalFunc in LocalFunctions  
 {{LocalFunc}}
 
