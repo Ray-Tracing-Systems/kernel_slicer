@@ -2350,5 +2350,36 @@
             ]
         },
 
+        {
+            "name"   : "Launch (TexCube/GP)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["/home/frol/PROG/noapi-v2.0/examples/textured_cube_alg.cpp",
+                        "-mainClass", "TexturedShader", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        //"-I${workspaceFolder}/apps/LiteMath",    "ignore",
+                        //"-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-I/home/frol/PROG/noapi-v2.0/external/litemath",  "ignore",
+                        "-I/home/frol/PROG/noapi-v2.0/include",            "ignore",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
     ]
 }

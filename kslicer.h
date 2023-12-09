@@ -1035,7 +1035,9 @@ namespace kslicer
     void ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler);
   };
 
-
+  /**
+   \brief Ray Tracing Vectorization pattern ('OptiX' case) 
+   */
   struct RTV_Pattern : public MainClassInfo
   {
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
@@ -1074,8 +1076,36 @@ namespace kslicer
   private:
     std::vector< std::pair< std::string, std::string> > m_vkernelPairs;
   };
-
+  
+  /**
+   \brief Image Processing Vectorization pattern (general, 'CUDA' case) 
+   */
   struct IPV_Pattern : public MainClassInfo
+  {
+    std::string   RemoveKernelPrefix(const std::string& a_funcName) const override; ///<! "kernel2D_XXX" --> "XXX"; 
+    bool          IsKernel(const std::string& a_funcName) const override;           ///<! return true if function is a kernel
+
+    MList         ListMatchers_CF(const std::string& mainFuncName) override;
+    MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
+    void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override; 
+
+    MList         ListMatchers_KF(const std::string& mainFuncName) override;
+    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override; 
+    std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, 
+                                     std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode) override;
+    void          VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) override;
+
+    uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
+    void          ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const override; 
+
+    std::vector<ArgFinal> GetKernelTIDArgs(const KernelInfo& a_kernel) const override; 
+    bool NeedThreadFlags() const override { return false; }                   
+  };
+  
+  /**
+   \brief Graphics Pipeline Vectorization pattern   
+   */
+  struct GPV_Pattern : public MainClassInfo
   {
     std::string   RemoveKernelPrefix(const std::string& a_funcName) const override; ///<! "kernel2D_XXX" --> "XXX"; 
     bool          IsKernel(const std::string& a_funcName) const override;           ///<! return true if function is a kernel
