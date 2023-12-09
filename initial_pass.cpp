@@ -399,7 +399,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
   if (f->hasBody())
   {
     auto attr = kslicer::GetMethodAttr(f, m_compiler);
-
+    //std::cout << "access '" << fname.c_str() << "'" << std::endl; 
     if(m_codeInfo.IsKernel(fname)) // 
     {
       if(isMainClassMember)

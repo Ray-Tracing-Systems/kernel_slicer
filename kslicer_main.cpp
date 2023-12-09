@@ -240,11 +240,15 @@ int main(int argc, const char **argv)
     pImplPattern = std::make_shared<kslicer::RTV_Pattern>();
   else if(patternName == "ipv")
     pImplPattern = std::make_shared<kslicer::IPV_Pattern>();
+  else if(patternName == "gpv")
+    pImplPattern = std::make_shared<kslicer::GPV_Pattern>();
   else
   { 
-    std::cout << "[main]: wrong pattern name '" << patternName.c_str() << "' " << std::endl; 
+    std::cout << "[main]: wrong pattern name '" << patternName.c_str() << "' " << std::endl;
+    std::cout << "[main]: for '-pattern' argument allowed names are ('ipv', 'rtv','gpv') " << std::endl; 
     exit(0);
   }
+  
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
   inputCodeInfo.ignoreFolders  = ignoreFolders;  // set shader folders
   inputCodeInfo.processFolders = processFolders; // set common C/C++ folders
