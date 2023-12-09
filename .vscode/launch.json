@@ -2381,5 +2381,37 @@
             ]
         },
 
+        {
+            "name"   : "Launch (app_04/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/04_array_summ/test_class.cpp",
+                        "-mainClass", "Numbers", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-I${workspaceFolder}/apps/LiteMath", "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",
+                        "-I${workspaceFolder}/TINYSTL",       "ignore", 
+                        "-shaderCC", "glsl",
+                        "-warpSize", "32",
+                        "-enableSubgroup", "1",
+                        "-gen_gpu_api", "1",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
     ]
 }

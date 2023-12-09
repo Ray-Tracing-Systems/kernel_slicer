@@ -365,13 +365,16 @@ bool kslicer::InitialPassRecursiveASTVisitor::IsMainClassName(const std::string&
 
 bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f) 
 {
+  const DeclarationNameInfo dni = f->getNameInfo();
+  const DeclarationName dn      = dni.getName();
+  const std::string fname       = dn.getAsString();
+
+  //std::cout << "access '" << fname.c_str() << "'" << std::endl; 
+
   if(f->isStatic())
     return true;
   
   // Get name of function
-  const DeclarationNameInfo dni = f->getNameInfo();
-  const DeclarationName dn      = dni.getName();
-  const std::string fname       = dn.getAsString();
   const std::string fsrcfull    = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
   const std::string fdecl       = fsrcfull.substr(0, fsrcfull.find(")")+1);
   
@@ -399,7 +402,6 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
   if (f->hasBody())
   {
     auto attr = kslicer::GetMethodAttr(f, m_compiler);
-    //std::cout << "access '" << fname.c_str() << "'" << std::endl; 
     if(m_codeInfo.IsKernel(fname)) // 
     {
       if(isMainClassMember)
