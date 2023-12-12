@@ -3,6 +3,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <array>
 
 #include "vk_pipeline.h"
 #include "vk_buffers.h"
