@@ -45,7 +45,8 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   
   // now generate all glsl shaders
   //
-  const std::string templatePath       = a_codeInfo->megakernelRTV ? "templates_glsl" + slash + "generated_mega.glsl" : "templates_glsl" + slash + "generated.glsl";
+  auto templatesPath = a_codeInfo->WhereIsMyTemplates();
+  const std::string templatePath       = templatesPath.shaderMain;
   const std::string templatePathUpdInd = "templates_glsl" + slash + "update_indirect.glsl";
   const std::string templatePathRedFin = "templates_glsl" + slash + "reduction_finish.glsl";
   

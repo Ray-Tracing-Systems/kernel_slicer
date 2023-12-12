@@ -118,3 +118,20 @@ std::unordered_map<std::string, kslicer::KernelInfo>::const_iterator kslicer::Ma
     std::cout << "[FindKernelByName]: kernel " << a_name.c_str() << " is not found" << std::endl;
   return pFoundKernel2;
 }
+
+kslicer::TemplatesPaths kslicer::MainClassInfo::WhereIsMyTemplates() const
+{
+  #ifdef WIN32
+  const std::string slash = "\\";
+  #else
+  const std::string slash = "/";
+  #endif
+
+  TemplatesPaths res;
+  res.classHeader  = "templates" + slash + "vk_class.h";
+  res.classCppInit = "templates" + slash + "vk_class_init.cpp";
+  res.classCppMain = "templates" + slash + "vk_class.cpp";
+  res.classCppDS   = "templates" + slash + "vk_class_ds.cpp";
+  res.shaderMain   = megakernelRTV ? "templates_glsl" + slash + "generated_mega.glsl" : "templates_glsl" + slash + "generated.glsl";
+  return res;
+}

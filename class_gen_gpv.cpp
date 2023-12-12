@@ -18,6 +18,12 @@ bool kslicer::GPV_Pattern::IsKernel(const std::string& a_funcName) const ///<! r
   return (pos1 != std::string::npos) || (pos2 != std::string::npos); 
 }
 
+void kslicer::GPV_Pattern::ElableSpecialKernels()
+{
+  kernels["vertex_shader"] = allKernels["vertex_shader"];
+  kernels["pixel_shader"]  = allKernels["pixel_shader"];
+}
+
 void kslicer::GPV_Pattern::ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const 
 {
 
@@ -120,3 +126,19 @@ std::string kslicer::GPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";";
 }
 
+kslicer::TemplatesPaths kslicer::GPV_Pattern::WhereIsMyTemplates() const
+{
+  #ifdef WIN32
+  const std::string slash = "\\";
+  #else
+  const std::string slash = "/";
+  #endif
+
+  TemplatesPaths res;
+  res.classHeader  = "templates_gp" + slash + "gp_class.h";
+  res.classCppInit = "templates_gp" + slash + "gp_class_init.cpp";
+  res.classCppMain = "templates_gp" + slash + "gp_class.cpp";
+  res.classCppDS   = "templates_gp" + slash + "gp_class_ds.cpp";
+  res.shaderMain   = "templates_gp" + slash + "gp_shaders.glsl";
+  return res;
+}

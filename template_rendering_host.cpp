@@ -1055,56 +1055,57 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     auto tidArgs = a_classInfo.GetKernelTIDArgs(k);
     std::vector<std::string> threadIdNamesList(tidArgs.size());
     assert(threadIdNamesList.size() <= 3);
-    assert(threadIdNamesList.size() > 0);
-
-    // change threads/loops order if required
-    //
-    for(size_t i=0;i<tidArgs.size();i++)
+    if(threadIdNamesList.size() != 0) 
     {
-      uint32_t tid = std::min<uint32_t>(threadsOrder[i], tidArgs.size()-1);
-      if(tidArgs[tid].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL)
-        threadIdNamesList[i] = tidArgs[tid].loopIter.sizeText + "+1";
+      // change threads/loops order if required
+      //
+      for(size_t i=0;i<tidArgs.size();i++)
+      {
+        uint32_t tid = std::min<uint32_t>(threadsOrder[i], tidArgs.size()-1);
+        if(tidArgs[tid].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL)
+          threadIdNamesList[i] = tidArgs[tid].loopIter.sizeText + "+1";
+        else
+          threadIdNamesList[i] = tidArgs[tid].loopIter.sizeText;
+      }
+  
+      if(threadIdNamesList.size() > 0)
+      {
+        kernelJson["tidX"] = threadIdNamesList[0];
+        kernelJson["begX"] = tidArgs[0].loopIter.startText == "" ? "0" : tidArgs[0].loopIter.startText;  
+        kernelJson["SmplX"] = IsZeroStartLoopStatement(tidArgs[0].loopIter.startNode, compiler);
+      }
       else
-        threadIdNamesList[i] = tidArgs[tid].loopIter.sizeText;
-    }
-
-    if(threadIdNamesList.size() > 0)
-    {
-      kernelJson["tidX"] = threadIdNamesList[0];
-      kernelJson["begX"] = tidArgs[0].loopIter.startText == "" ? "0" : tidArgs[0].loopIter.startText;  
-      kernelJson["SmplX"] = IsZeroStartLoopStatement(tidArgs[0].loopIter.startNode, compiler);
-    }
-    else
-    {
-      kernelJson["tidX"] = 1;
-      kernelJson["begX"] = 0;
-      kernelJson["SmplX"] = true;
-    }
-
-    if(threadIdNamesList.size() > 1)
-    {
-      kernelJson["tidY"] = threadIdNamesList[1];
-      kernelJson["begY"] = tidArgs[1].loopIter.startText;  
-      kernelJson["SmplY"] = IsZeroStartLoopStatement(tidArgs[1].loopIter.startNode, compiler);
-    }
-    else
-    {
-      kernelJson["tidY"] = 1;
-      kernelJson["begY"] = 0;
-      kernelJson["SmplY"] = true;
-    }
-
-    if(threadIdNamesList.size() > 2)
-    {
-      kernelJson["tidZ"] = threadIdNamesList[2];
-      kernelJson["begZ"] = tidArgs[2].loopIter.startText;  
-      kernelJson["SmplZ"] = IsZeroStartLoopStatement(tidArgs[2].loopIter.startNode, compiler);
-    }
-    else
-    {
-      kernelJson["tidZ"] = 1;
-      kernelJson["begZ"] = 0;
-      kernelJson["SmplZ"] = true;
+      {
+        kernelJson["tidX"] = 1;
+        kernelJson["begX"] = 0;
+        kernelJson["SmplX"] = true;
+      }
+  
+      if(threadIdNamesList.size() > 1)
+      {
+        kernelJson["tidY"] = threadIdNamesList[1];
+        kernelJson["begY"] = tidArgs[1].loopIter.startText;  
+        kernelJson["SmplY"] = IsZeroStartLoopStatement(tidArgs[1].loopIter.startNode, compiler);
+      }
+      else
+      {
+        kernelJson["tidY"] = 1;
+        kernelJson["begY"] = 0;
+        kernelJson["SmplY"] = true;
+      }
+  
+      if(threadIdNamesList.size() > 2)
+      {
+        kernelJson["tidZ"] = threadIdNamesList[2];
+        kernelJson["begZ"] = tidArgs[2].loopIter.startText;  
+        kernelJson["SmplZ"] = IsZeroStartLoopStatement(tidArgs[2].loopIter.startNode, compiler);
+      }
+      else
+      {
+        kernelJson["tidZ"] = 1;
+        kernelJson["begZ"] = 0;
+        kernelJson["SmplZ"] = true;
+      }
     }
 
     // put auxArgs to push constants

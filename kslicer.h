@@ -232,6 +232,8 @@ namespace kslicer
         if(arg.isThreadID)
           size++;
       }
+      if(size == 0)
+        size = 1;
       return size;
     }
 
@@ -870,6 +872,15 @@ namespace kslicer
 
   class UsedCodeFilter;
 
+  struct TemplatesPaths
+  {
+    std::string classHeader;
+    std::string classCppInit;
+    std::string classCppMain;
+    std::string classCppDS;
+    std::string shaderMain;
+  };
+
   /**
   \brief collector of all information about input main class
   */
@@ -913,6 +924,7 @@ namespace kslicer
     std::vector<std::string> cppIncudes;     ///<! additional includes which we need to insert in generated cpp file 
     bool NeedToProcessDeclInFile(const std::string a_fileName) const;
     bool IsInExcludedFolder(const std::string& fileName);
+    virtual TemplatesPaths WhereIsMyTemplates() const;
    
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
@@ -1033,6 +1045,8 @@ namespace kslicer
     std::unordered_map<std::string, DataMemberInfo>    m_setterData;
 
     void ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler);
+
+    virtual void ElableSpecialKernels(){}
   };
 
   /**
@@ -1109,6 +1123,7 @@ namespace kslicer
   {
     std::string   RemoveKernelPrefix(const std::string& a_funcName) const override; ///<! "kernel2D_XXX" --> "XXX"; 
     bool          IsKernel(const std::string& a_funcName) const override;           ///<! return true if function is a kernel
+    void          ElableSpecialKernels() override;  
 
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
@@ -1124,7 +1139,8 @@ namespace kslicer
     void          ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const override; 
 
     std::vector<ArgFinal> GetKernelTIDArgs(const KernelInfo& a_kernel) const override; 
-    bool NeedThreadFlags() const override { return false; }                   
+    bool NeedThreadFlags() const override { return false; }      
+    TemplatesPaths WhereIsMyTemplates() const override;           
   };
 
 

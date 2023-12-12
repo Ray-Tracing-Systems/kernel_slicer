@@ -494,6 +494,7 @@ int main(int argc, const char **argv)
 
     mainFuncId++;
   }
+  inputCodeInfo.ElableSpecialKernels(); // currenly only in GPV pattern
   
   std::cout << "}" << std::endl;
   std::cout << std::endl;
@@ -892,10 +893,11 @@ int main(int argc, const char **argv)
   {
     if(!inputCodeInfo.pShaderCC->IsISPC())
     {
-      kslicer::ApplyJsonToTemplate("templates/vk_class.h",        rawname + ToLowerCase(suffix) + ".h", jsonCPP); 
-      kslicer::ApplyJsonToTemplate("templates/vk_class.cpp",      rawname + ToLowerCase(suffix) + ".cpp", jsonCPP);
-      kslicer::ApplyJsonToTemplate("templates/vk_class_ds.cpp",   rawname + ToLowerCase(suffix) + "_ds.cpp", jsonCPP);
-      kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + ToLowerCase(suffix) + "_init.cpp", jsonCPP); 
+      auto templates = inputCodeInfo.WhereIsMyTemplates();
+      kslicer::ApplyJsonToTemplate(templates.classHeader.c_str(),  rawname + ToLowerCase(suffix) + ".h", jsonCPP);
+      kslicer::ApplyJsonToTemplate(templates.classCppInit.c_str(), rawname + ToLowerCase(suffix) + "_init.cpp", jsonCPP);  
+      kslicer::ApplyJsonToTemplate(templates.classCppMain.c_str(), rawname + ToLowerCase(suffix) + ".cpp", jsonCPP);
+      kslicer::ApplyJsonToTemplate(templates.classCppDS.c_str(),   rawname + ToLowerCase(suffix) + "_ds.cpp", jsonCPP);
       if(genGPUAPI)
         kslicer::ApplyJsonToTemplate("templates/vk_class_api.h",  rawname + ToLowerCase(suffix) + "_api.h", jsonCPP);
     }   
