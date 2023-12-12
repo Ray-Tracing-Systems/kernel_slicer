@@ -83,7 +83,15 @@ public:
 
   void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
   {
-    UsedCodeFilter::run(result);                                                                  // we don't AST matchers for GP, but we need sume matchers for 'UsedCodeFilter' class
+    const clang::FunctionDecl* func_decl = result.Nodes.getNodeAs<clang::FunctionDecl>("targetFunction");
+    if(func_decl)
+    {
+      std::string fname = func_decl->getNameInfo().getName().getAsString();
+      if(fname == "vertex_shader" || fname == "pixel_shader")
+        currKernel->loopInsides = func_decl->getBody()->getSourceRange(); // todo: get AST node for shader here!
+    }
+    else
+      UsedCodeFilter::run(result);                                                                 
   } 
 };
 
@@ -116,12 +124,6 @@ std::string kslicer::GPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
   
   a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures(); // TODO: dont work !!!
-  
-  if(a_funcInfo.loopOutsidesInit.isValid())
-    a_outLoopInitCode   = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit)   + ";";
-
-  if(a_funcInfo.loopOutsidesFinish.isValid())  
-    a_outLoopFinishCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesFinish) + ";";
 
   return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";";
 }
