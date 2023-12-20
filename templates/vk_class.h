@@ -138,15 +138,16 @@ public:
     }
   }
   {% endif %}
-  {% if HasCommitDeviceFunc %}
-  virtual void CommitDeviceData() override // you have to define this virtual function in the original imput class
+  virtual void CommitDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper) // you have to define this virtual function in the original imput class
   {
     {% if HasPrefixData %}
     UpdatePrefixPointers(); 
     {% endif %}
     InitMemberBuffers();
-    UpdateAll(m_ctx.pCopyHelper);
+    UpdateAll(a_pCopyHelper);
   }  
+  {% if HasCommitDeviceFunc %}
+  void CommitDeviceData() override { CommitDeviceData(m_ctx.pCopyHelper); }  
   {% endif %}
   {% if HasGetTimeFunc %}
   void GetExecutionTime(const char* a_funcName, float a_out[4]) override; 
@@ -161,6 +162,8 @@ public:
   void UpdateMembersTexureData() override { UpdateTextureMembers(m_ctx.pCopyHelper); }
   {% endif %}
   
+
+  virtual void ReserveEmptyVectors();
   virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
