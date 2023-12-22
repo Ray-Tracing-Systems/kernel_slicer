@@ -138,15 +138,16 @@ public:
     }
   }
   {% endif %}
-  {% if HasCommitDeviceFunc %}
-  virtual void CommitDeviceData() override // you have to define this virtual function in the original imput class
+  virtual void CommitDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper) 
   {
     {% if HasPrefixData %}
     UpdatePrefixPointers(); 
     {% endif %}
     InitMemberBuffers();
-    UpdateAll(m_ctx.pCopyHelper);
-  }  
+    UpdateAll(a_pCopyHelper);
+  }
+  {% if HasCommitDeviceFunc %}
+  virtual void CommitDeviceData() override { CommitDeviceData(m_ctx.pCopyHelper); }  
   {% endif %}
   {% if HasGetTimeFunc %}
   void GetExecutionTime(const char* a_funcName, float a_out[4]) override; 
