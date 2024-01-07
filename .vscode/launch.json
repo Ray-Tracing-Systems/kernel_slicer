@@ -5,6 +5,35 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name"   : "Launch (app_00/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["${workspaceFolder}/apps/00_my_test/tensor_processor.cpp", 
+                        "-mainClass", "TensorProcessor", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv", 
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore", 
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-shaderCC", "glsl",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (app_01)",
             "type"   : "cppdbg",
             "request": "launch",

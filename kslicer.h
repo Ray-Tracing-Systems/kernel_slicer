@@ -1033,6 +1033,8 @@ namespace kslicer
     std::unordered_map<std::string, DataMemberInfo>    m_setterData;
 
     void ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler);
+
+    mutable std::vector<std::string> kernelsCallCmdDeclCached; 
   };
 
 
