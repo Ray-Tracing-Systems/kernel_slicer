@@ -876,7 +876,7 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   else if(fname == "atan2" && call->getNumArgs() == 2 && WasNotRewrittenYet(call))
   {
     const std::string arg1 = RecursiveRewrite(call->getArg(0));
-    const std::string arg2 = RecursiveRewrite(call->getArg(0));
+    const std::string arg2 = RecursiveRewrite(call->getArg(1));
     m_lastRewrittenText    = "atan(" + arg1 + "," + arg2 + ")";
     m_rewriter.ReplaceText(call->getSourceRange(), m_lastRewrittenText);
     MarkRewritten(call);
