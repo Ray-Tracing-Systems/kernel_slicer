@@ -394,6 +394,8 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
 
 void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount, bool a_tempBuffersOverlay)
 {
+  ReserveEmptyVectors();
+  
   m_maxThreadCount = a_maxThreadsCount;
   std::vector<VkBuffer> allBuffers;
   allBuffers.reserve(64);
@@ -491,6 +493,14 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
       if(i != largestIndex)
         AssignBuffersToMemory(groups[i].bufsClean, internalBuffersMem.memObject);
   }
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::ReserveEmptyVectors()
+{
+  {% for Var in ClassVectorVars %}
+  if({{Var.Name}}{{Var.AccessSymb}}capacity() == 0)
+    {{Var.Name}}{{Var.AccessSymb}}reserve(4);
+  {% endfor %}
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()

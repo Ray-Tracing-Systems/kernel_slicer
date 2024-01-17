@@ -702,7 +702,7 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
   vkDestroyImageView(device, {{var.Name}}Img.view, nullptr);
   vkDestroyImage    (device, {{var.Name}}Img.image, nullptr);
   {% else %}
-  //vkDestroyBuffer(device, {{var.Name}}GPU, nullptr);
+  vkDestroyBuffer(device, {{var.Name}}GPU, nullptr);
   {% endif %}
   {% endfor %}
   {% for var in MainFunc.FullImpl.OutputData %}
@@ -710,7 +710,7 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
   vkDestroyImageView(device, {{var.Name}}Img.view, nullptr);
   vkDestroyImage    (device, {{var.Name}}Img.image, nullptr);
   {% else %}
-  //vkDestroyBuffer(device, {{var.Name}}GPU, nullptr);
+  vkDestroyBuffer(device, {{var.Name}}GPU, nullptr);
   {% endif %}
   {% endfor %}
   if(buffersMem != VK_NULL_HANDLE)
