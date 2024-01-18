@@ -2385,7 +2385,7 @@
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-debug/kslicer",
-            "args"   : ["/home/frol/PROG/noapi-v2.0/examples/textured_cube_alg.cpp",
+            "args"   : ["/home/frol/PROG/noapi-v2.0/examples/textured_cube/textured_cube_alg.cpp",
                         "-mainClass", "TexturedShader", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "gpv",
