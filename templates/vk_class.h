@@ -138,16 +138,16 @@ public:
     }
   }
   {% endif %}
-  virtual void CommitDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper) 
+  virtual void CommitDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper) // you have to define this virtual function in the original imput class
   {
     {% if HasPrefixData %}
     UpdatePrefixPointers(); 
     {% endif %}
     InitMemberBuffers();
     UpdateAll(a_pCopyHelper);
-  }
+  }  
   {% if HasCommitDeviceFunc %}
-  virtual void CommitDeviceData() override { CommitDeviceData(m_ctx.pCopyHelper); }  
+  void CommitDeviceData() override { CommitDeviceData(m_ctx.pCopyHelper); }  
   {% endif %}
   {% if HasGetTimeFunc %}
   void GetExecutionTime(const char* a_funcName, float a_out[4]) override; 
@@ -162,6 +162,8 @@ public:
   void UpdateMembersTexureData() override { UpdateTextureMembers(m_ctx.pCopyHelper); }
   {% endif %}
   
+
+  virtual void ReserveEmptyVectors();
   virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
@@ -302,8 +304,9 @@ protected:
   {% endfor %}
   
   {% if length(TextureMembers) > 0 or length(ClassTexArrayVars) > 0 %}
-  VkImage   CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage);
-  VkSampler CreateSampler(const Sampler& a_sampler);
+  VkImage     CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage);
+  VkSampler   CreateSampler(const Sampler& a_sampler);
+  VkImageView CreateView(VkFormat a_format, VkImage a_image);
   struct TexAccessPair
   {
     TexAccessPair() : image(VK_NULL_HANDLE), access(0) {}

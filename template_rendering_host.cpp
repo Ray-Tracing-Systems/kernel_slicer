@@ -27,6 +27,7 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
   for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
   {
     std::string kernDecl = kernelsCallCmdDecl[i];
+    //std::cout << "kernDecl = " << kernDecl.c_str() << std::endl;
     size_t      rbPos    = kernDecl.find("Cmd(");
     assert(rbPos    != std::string::npos);    
     
@@ -843,10 +844,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       currKernels.push_back(nk.second);
   }
 
-  std::vector<std::string> kernelsCallCmdDecl; 
-  kernelsCallCmdDecl.reserve(a_classInfo.kernels.size());
-  for(const auto& k : currKernels)
-    kernelsCallCmdDecl.push_back(k.DeclCmd);  
+  auto& kernelsCallCmdDecl = a_classInfo.kernelsCallCmdDeclCached; 
+  if(kernelsCallCmdDecl.size() == 0) 
+  {
+    kernelsCallCmdDecl.reserve(a_classInfo.kernels.size());
+    for(const auto& k : currKernels)
+      kernelsCallCmdDecl.push_back(k.DeclCmd);
+  }  
 
   auto kernelDeclByName = MakeMapForKernelsDeclByName(kernelsCallCmdDecl);
 

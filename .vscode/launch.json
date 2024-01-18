@@ -5,6 +5,35 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name"   : "Launch (app_00/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/00_neuralCore/tensor_processor_impl.cpp", 
+                        "-mainClass", "TensorProcessorImpl", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv", 
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore", 
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-shaderCC", "glsl",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (app_01)",
             "type"   : "cppdbg",
             "request": "launch",
@@ -2220,13 +2249,14 @@
                         "-pattern", "rtv",
                         "-shaderCC", "glsl",
                         "-I${workspaceFolder}/TINYSTL",         "ignore",
-                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
-                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        //"-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        //"-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
                         "-I/home/frol/PROG/HydraRepos/HydraCore3/external/LiteMath",  "ignore",
                         "-I/home/frol/PROG/HydraRepos/HydraCore3/external/LiteScene", "ignore",
                         "-I/home/frol/PROG/HydraRepos/HydraCore3/external/CrossRT",   "process",
                         "-I/home/frol/PROG/HydraRepos/HydraCore3/cam_plugin",         "process",  
                         "-megakernel", "1",
+                        "-gen_gpu_api", "0",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,

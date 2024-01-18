@@ -881,7 +881,8 @@ int main(int argc, const char **argv)
       }
     }
   }
-
+  
+  inputCodeInfo.kernelsCallCmdDeclCached.clear();
   std::string rawname = kslicer::CutOffFileExt(allFiles[0]);
   auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls, 
                                       rawname + ToLowerCase(suffix) + ".h", threadsOrder, 
