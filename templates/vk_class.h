@@ -304,8 +304,9 @@ protected:
   {% endfor %}
   
   {% if length(TextureMembers) > 0 or length(ClassTexArrayVars) > 0 %}
-  VkImage   CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage);
-  VkSampler CreateSampler(const Sampler& a_sampler);
+  VkImage     CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage);
+  VkSampler   CreateSampler(const Sampler& a_sampler);
+  VkImageView CreateView(VkFormat a_format, VkImage a_image);
   struct TexAccessPair
   {
     TexAccessPair() : image(VK_NULL_HANDLE), access(0) {}

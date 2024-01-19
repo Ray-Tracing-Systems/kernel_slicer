@@ -546,6 +546,10 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   memberVectors.push_back(m_indirectBuffer);
   {% endif %}
   AllocMemoryForMemberBuffersAndImages(memberVectors, memberTextures);
+  {% for Var in ClassTexArrayVars %}
+  for(size_t i = 0; i < {{Var.Name}}.size(); i++) 
+    m_vdata.{{Var.Name}}ArrayView[i] = CreateView(VkFormat({{Var.Name}}[i]->format()), m_vdata.{{Var.Name}}ArrayTexture[i]);
+  {% endfor %}
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectDescriptorSets();
   {% endif %}
@@ -727,6 +731,42 @@ VkSampler {{MainClassName}}{{MainClassSuffix}}::CreateSampler(const Sampler& a_s
   VK_CHECK_RESULT(vkCreateSampler(device, &samplerInfo, nullptr, &result));
   return result;
 }
+
+VkImageView {{MainClassName}}{{MainClassSuffix}}::CreateView(VkFormat a_format, VkImage a_image) 
+{
+  VkImageView result = VK_NULL_HANDLE;
+  VkImageViewCreateInfo createInfo{};
+  createInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+  createInfo.image    = a_image;
+  createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  createInfo.format   = a_format;
+  
+  if(a_format == VK_FORMAT_R32_SFLOAT)
+  {
+    createInfo.components.r = VK_COMPONENT_SWIZZLE_R;
+    createInfo.components.g = VK_COMPONENT_SWIZZLE_R;
+    createInfo.components.b = VK_COMPONENT_SWIZZLE_R;
+    createInfo.components.a = VK_COMPONENT_SWIZZLE_R;
+  }
+  else
+  {
+    createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+  }
+
+  createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+  createInfo.subresourceRange.baseMipLevel   = 0;
+  createInfo.subresourceRange.levelCount     = 1;
+  createInfo.subresourceRange.baseArrayLayer = 0;
+  createInfo.subresourceRange.layerCount     = 1;
+
+  VK_CHECK_RESULT(vkCreateImageView(device, &createInfo, nullptr, &result));
+  return result;
+}
+
+
 {% if 0 %}
 void {{MainClassName}}{{MainClassSuffix}}::TrackTextureAccess(const std::vector<TexAccessPair>& a_pairs, std::unordered_map<uint64_t, VkAccessFlags>& a_currImageFlags)
 {
