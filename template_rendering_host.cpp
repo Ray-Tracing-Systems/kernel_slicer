@@ -1165,6 +1165,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     auto pUpdTex  = a_classInfo.allMemberFunctions.find("UpdateMembersTexureData");
     auto pScnRstr = a_classInfo.allMemberFunctions.find("SceneRestrictions");
     auto pNameFn  = a_classInfo.allMemberFunctions.find("Name");
+
+    auto pNamePBI  = a_classInfo.allMemberFunctions.find("ProgressBarStart");
+    auto pNamePBA  = a_classInfo.allMemberFunctions.find("ProgressBarAccum");
+    auto pNamePBD  = a_classInfo.allMemberFunctions.find("ProgressBarDone");
+
+    data["HasProgressBar"] = (pNamePBI != a_classInfo.allMemberFunctions.end()) && (pNamePBA != a_classInfo.allMemberFunctions.end()) && (pNamePBD != a_classInfo.allMemberFunctions.end());
     
     if(pCommit == a_classInfo.allMemberFunctions.end())
       std::cout << "  [kslicer]: warning, can't find fuction 'CommitDeviceData', you should define it: 'virtual void CommitDeviceData(){}'" << std::endl; 

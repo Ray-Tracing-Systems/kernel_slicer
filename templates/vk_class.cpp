@@ -669,8 +669,21 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
     vkEndCommandBuffer(commandBuffer);  
     auto start = std::chrono::high_resolution_clock::now();
     {% if MainFunc.IsRTV %} 
-    for(uint32_t pass = 0; pass < a_numPasses; pass++)
+    {% if HasProgressBar %}
+    if(a_numPasses > 1)
+      ProgressBarStart();
+    {% endif %}    
+    for(uint32_t pass = 0; pass < a_numPasses; pass++) {
       vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
+      {% if HasProgressBar %}
+      if((pass != 0) && (pass % 256 == 0)) 
+        ProgressBarAccum(256.0f/float(a_numPasses));
+      {% endif %}
+    }
+    {% if HasProgressBar %}
+    if(a_numPasses > 1)
+      ProgressBarDone();
+    {% endif %}    
     {% else %}
     vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
     {% endif %}
