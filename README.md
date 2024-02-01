@@ -55,7 +55,7 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 
 2. Download dependencies 
  * cd kernel_slicer
- * bash clone_dependencies.bat  
+ * bash clone_dependencies.bat 
 
 3. install llvm-17 (both dev and not dev)
  * wget https://apt.llvm.org/llvm.sh
