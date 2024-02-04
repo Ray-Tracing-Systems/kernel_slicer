@@ -167,21 +167,38 @@ class Test
 
 На рубеже 20-ого десятилетия, когда в GPU только появлялось аппаратное ускорение трассировки лучей и свёрток для нейро-сетевых моделей, это было также и нашей проблемой. И тогда и сейчас единственной технологией программирования, которая позволяет осуществить доступ к широкому спектру аппаратного ускорения в GPU на большом числе различных устройств является Vulkan. Однако с Vulkan всё не так просто (рис. \ref{fig:mem}). 
 
+
 \begin{figure}[h]
+\begin{minipage}{0.45\textwidth}
 	\centering
-	\includegraphics[width=0.5\textwidth]{mem.jpg}
+	\includegraphics[width=\textwidth]{mem.jpg}
 	\caption{Известный мем, пошедший из предложения ``нельзя просто так взять и напасть на Мордор'' в фильме ``Властелин Колец''.}
 	\label{fig:mem}
-\end{figure}
-
-К сожалению, работа с этим API как напрямую, так и посредством обёрток/библиотек является довольно трудоёмкой. Как следствие растёт стоимость и время разработки. Эта проблема не столько техническая, сколько фундаментальная: она происходит из того, что в Vulkan сочетаются такие фундаментально-противоречивые вещи как кросс-платформенность и аппаратное ускорение. На одних GPU определённое аппаратное ускорение есть, на других его нет,.. на одних оно реализовано таким образом, на других --- по другому. Например, простейшая отрисовка треугольника может занимать несколько тысяч строк кода (рис. \ref{fig:vulkan_complexity}). 
-
-\begin{figure}[h]
+\end{minipage}
+\hfill
+\begin{minipage}{0.45\textwidth}
 	\centering
-	\includegraphics[width=0.5\textwidth]{vulkan_is_hard.png}
+	\includegraphics[width=\textwidth]{vulkan_is_hard.png}
 	\caption{Простые программы писать на Vulkan сложно, а сложные -- очень сложно.}
 	\label{fig:vulkan_complexity}
+\end{minipage}
 \end{figure}
+
+%\begin{figure}[h]
+%	\centering
+%	\includegraphics[width=0.5\textwidth]{mem.jpg}
+%	\caption{Известный мем, пошедший из предложения ``нельзя просто так взять и напасть на Мордор'' в фильме ``Властелин Колец''.}
+%	\label{fig:mem}
+%\end{figure}
+
+К сожалению, работа с этим API как напрямую, так и посредством обёрток/библиотек является довольно трудоёмкой. Например, простейшая отрисовка треугольника может занимать несколько тысяч строк кода (рис. \ref{fig:vulkan_complexity}). Как следствие растёт стоимость и время разработки. Эта проблема не столько техническая, сколько фундаментальная: она происходит из того, что в Vulkan сочетаются такие фундаментально-противоречивые вещи как кросс-платформенность и аппаратное ускорение. На одних GPU определённое аппаратное ускорение есть, на других его нет,.. на одних оно реализовано таким образом, на других --- по другому. 
+
+%\begin{figure}[h]
+%	\centering
+%	\includegraphics[width=0.5\textwidth]{vulkan_is_hard.png}
+%	\caption{Простые программы писать на Vulkan сложно, а сложные -- очень сложно.}
+%	\label{fig:vulkan_complexity}
+%\end{figure}
 
 %Традиционными способами (библиотеки, обёртки, движки) сложность работы с Vulkan  можно победить лишь ограниченно, в рамках конкретного приложения или движка. Но и здесь есть свои недостатки: когда что-то не работает (а это происходит во время разработки постоянно), отлаживать код с библиотеками становится весьма непросто, если только Вы сами не разработчик этих библиотек.
 
@@ -200,7 +217,7 @@ kernel\_slicer позволяет разработчику делать 4 вещ
 \item Если в kernel\_slicer реализована аппаратная поддержка некоторой функциональности, но ваш целевой GPU её не поддерживает, Вы можете заместить неподдерживаемую аппаратную функциональность своей программной реализацией.
 \end{enumerate}
 
-\begin{remark}Имея опыт работы с различными технологиями (CUDA, OpenCL, DX9-11, OpenGL) и значительную кодовую базу на OpenCL, мы долго не хотели делать свою технологию программирования и рассматривали существующие (Halide, Taichi, HIP и др.). К сожалению, всё упиралось в слабую аппаратную поддержку. Разработка kernel\_slicer была начата конце 2020-ого года как вынужденная мера по спасению существующих алгоритмических наработок. По прошествии 3 лет мы можем сказать, что она сработала. Наши программы более не зависят ни от одного производителя GPU, а при необходимости мы всегда можем добавить в kernel\_slicer новый бэк-енд. При этом во время разработки алгоримической части мы, как правило, вообще забываем про существование GPU.
+\begin{remark}Имея опыт работы с различными технологиями (CUDA, OpenCL, DX9-11, OpenGL) и значительную кодовую базу на OpenCL, мы долго не хотели делать свою технологию программирования и рассматривали существующие (Halide, Taichi, HIP и др.). К сожалению, всё упиралось в слабую аппаратную поддержку. Разработка kernel\_slicer была начата конце 2020-ого года как вынужденная мера по спасению существующих алгоритмических наработок. По прошествии 3 лет мы можем сказать, что она сработала. Наши программы более не зависят ни от одного производителя GPU, а при необходимости мы всегда можем добавить в kernel\_slicer новый бэк-енд. При этом во время разработки алгоритмической части мы, как правило, вообще забываем про существование GPU.
 \end{remark}
 
 %This statement requires citation \cite{book_key}; this one is more specific \cite[122]{article_key}.
@@ -272,7 +289,7 @@ Before continuing, first and most importantly you must select the \emph{raw} dat
 
 \chapterimage{head1.png} % Chapter heading image
 
-\chapter{Experimenting}
+\chapter{Частые проблемы и пути их решения}
 
 I discovered surfing on the internet a cloud computing software that is free, has data mining algorithms embedded, is specifically developed for Astronomy and is programmed by Caltech, University Federico II and the Astronomical Observatory of Capodimonte. The homepage website, \url{http://dame.dsf.unina.it/index.html}. Well, the platform for testing is ready!, now what? I requested and account and the next day they sent me an acceptance with my user name and my password approved.
 I introduced myself to the documentation, the available clustering functions, the manuals for every method, the blogs and discovered that the was one method available that could work with data cubes and do its clustering on every pattern (number in the multidimensional matrix) which was exactly what I needed. The name of this method is ESOM (Evolving Self Organizing Maps) and I read its manual, did some foolish test with all my image and ... never got a result ... the experiment ran forever (more than two weeks), when I realised that this wasn't the best way to tackle this problem I started considering only clustering on the independent images and not in the data cube due to the fact that the dimensionality was immense. So, in the end my selected methods have some results but not all, here is where all the work has to be done, analysed and tested again.
