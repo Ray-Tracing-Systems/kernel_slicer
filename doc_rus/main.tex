@@ -1,0 +1,438 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  My documentation report
+%  Objective: Explain what I did and how, in order to help someone continue with the investigation
+%
+% Important note:
+% Chapter heading images should have a 2:1 width:height ratio,
+% e.g. 920px width and 460px height.
+%
+% The images can be found anywhere, usually on sky surveys websites or the
+% Astronomy Picture of the day archive http://apod.nasa.gov/apod/archivepix.html
+%
+% The original template (the Legrand Orange Book Template) can be found here --> http://www.latextemplates.com/template/the-legrand-orange-book
+%
+% Original author of the Legrand Orange Book Template:
+% Mathias Legrand (legrand.mathias@gmail.com) with modifications by:
+% Vel (vel@latextemplates.com)
+%
+% Original License:
+% CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ 
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+\documentclass[11pt,fleqn,english,russian]{report} % book or report
+
+\usepackage[top=3cm,bottom=3cm,left=3.2cm,right=3.2cm,headsep=10pt,letterpaper]{geometry} % Page margins
+
+\usepackage{courier}
+\usepackage{xcolor} % Required for specifying colors by name
+\definecolor{ocre}{RGB}{25,50,150} % Define the orange color used for highlighting throughout the book
+
+\definecolor{tssteelblue}{RGB}{70,130,180}
+\definecolor{tsorange}{RGB}{255,138,88}
+\definecolor{tsblue}{RGB}{23,74,117}
+\definecolor{tsforestgreen}{RGB}{21,122,81}
+\definecolor{tsyellow}{RGB}{255,185,88}
+\definecolor{tsgrey}{RGB}{200,200,200}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\usepackage{listings}
+%Code listing style named "mystyle"
+\lstdefinestyle{mystyle}{
+	backgroundcolor=\color{tsblue!10},   commentstyle=\color{codegreen},
+	keywordstyle=\color{magenta},
+	numberstyle=\tiny\color{codegray},
+	stringstyle=\color{codepurple},
+	basicstyle=\ttfamily\footnotesize,
+	breakatwhitespace=false,         
+	breaklines=true,                 
+	captionpos=b, 
+	xleftmargin=.05\linewidth,
+	keepspaces=true,                 
+	numbers=left,                    
+	numbersep=5pt,                  
+	showspaces=false,                
+	showstringspaces=false,
+	showtabs=false,                  
+	tabsize=2
+}
+
+\usepackage{listings}
+\lstset{basicstyle=\footnotesize\ttfamily,breaklines=true, style=mystyle}
+\lstset{framextopmargin=50pt,frame=bottomline}
+
+\usepackage{graphicx}
+
+% Font Settings
+\usepackage{avant} % Use the Avantgarde font for headings
+%\usepackage{times} % Use the Times font for headings
+\usepackage{mathptmx} % Use the Adobe Times Roman as the default text font together with math symbols from the Sym­bol, Chancery and Com­puter Modern fonts
+
+\usepackage{microtype} % Slightly tweak font spacing for aesthetics
+\usepackage[utf8]{inputenc} % Required for including letters with accents
+\usepackage[T2A]{fontenc}
+
+% Bibliography
+%\usepackage[style=alphabetic,sorting=nyt,sortcites=true,autopunct=true,babel=hyphen,hyperref=true,abbreviate=false,backref=true,backend=biber]{biblatex}
+%\addbibresource{bibliography.bib} % BibTeX bibliography file
+%\defbibheading{bibempty}{}
+
+\input{structure} % Insert the commands.tex file which contains the majority of the structure behind the template
+
+\begin{document}
+\title{kernel\_slicer: руководство пользователя}
+
+%----------------------------------------------------------------------------------------
+%	TITLE PAGE
+%----------------------------------------------------------------------------------------
+
+\begingroup
+\thispagestyle{empty}
+\AddToShipoutPicture*{\put(150,200){\includegraphics[scale=0.25]{../images/logo.png}}} % Image background
+
+\AddToShipoutPicture*{\put(0,-375){\includegraphics[scale=1.0]{back_title.jpg}}} % Image
+
+\AddToShipoutPicture*{\put(0,650){\includegraphics[scale=1.0]{back_title.jpg}}} % Image
+
+
+\centering
+\vspace*{5cm}
+\par\normalfont\fontsize{35}{35}\sffamily\selectfont
+\textbf{kernel\_slicer}\\
+{\LARGE Руководство пользователя}\par % Book title
+%\vspace*{1cm}
+%{\Huge Фролов В.А.}\par % Author name
+\endgroup
+
+%----------------------------------------------------------------------------------------
+%	TABLE OF CONTENTS
+%----------------------------------------------------------------------------------------
+
+\chapterimage{baikal2.jpg} % Table of contents heading image
+
+\pagestyle{empty} % No headers
+
+\tableofcontents % Print the table of contents itself
+
+%\cleardoublepage % Forces the first chapter to start on an odd page so it's on the right
+
+\pagestyle{fancy} % Print headers again
+
+%----------------------------------------------------------------------------------------
+%	CHAPTER 1
+%----------------------------------------------------------------------------------------
+
+\chapterimage{cheshir.jpg} % Chapter heading image
+
+\chapter{Введение}
+
+\section{Что такое kernel\_slicer?}\index{what}
+
+kernel\_slicer --- это генератор кода, принимающий на вход класс на С++ c некоторыми вычисленими/алгоритмами, и генерирующий на выходе другой класс, реализующий те же самые вычисления/алгоритмы на GPU при помощи некоторой технологии программирования нижнего уровня. В данный момент такими технологиями программирования являются Vulkan для векторизации вычислений на GPU и ISPC для векторизации высчислений на CPU. В листинге \ref{lst:add_vectors} показан пример простейшего класса, реализующего сложения двух векторов.
+
+\begin{lstlisting}[language=C++, caption=сложение двух векторов]
+class Test 
+{	
+  void kernel1D_add(const float* a, const float* b, float* res, int N) 
+  {
+    for(int i=0;i<N;i++)
+      res[i] = a[i] + b[i];
+  } 
+	
+  virtual void AddVec(const float* a   [[size("N")]], 
+                      const float* b   [[size("N")]], 
+                            float* res [[size("N")]], int N) 
+  {
+		kernel1D_add(a,b,res,N); 
+  } 	
+};
+\end{lstlisting}\label{lst:add_vectors}
+
+Предполагается, что пользователь такого класса работает с функцией ``AddVec'' в своём коде как обычно. Обратите внимание, что эта функция виртуальная. В сгенерированном классе Test\_GPU, наследуемом от Test, она будет замещена реализацией сложения векторов на GPU. Конструкция ``[[size("N")]]'' определяет размер данных, которые необходимо копировать между CPU и GPU в данном примере.
+
+\section{Предыстория}\index{Histotry}
+
+Последнее десятилетие технологии программирования GPU (как и других массивно-параллельных вычислительных систем) шли очень непростой дорогой. Эта дорога, или, вернее, дороги, появились на поле постоянного противоречия между аппаратным ускорением и кросс-платформенностью. 
+
+Когда разработчик полагается на одного производителя вычислительного оборудования (например, Nvidia), вопрос выбора технологии программирования, как правило, остро не стоит. Разработчики использует технологии программирования, которые этот производитель поддерживает наилучшим образом \cite{NVCPP,CUDA,OpenACC}. Однако такой подход возможен далеко не всегда. 
+
+Кросс-платформенная разработка (под разные вычислительные системы, центральные процессоры с различными векторными архитектурами, графические процессоры от разных производителей и т.д.)  высоко-производительного ПО представляет собой сложную проблему, для которой в настоящий момент нет простого решения. Если Вы разрабочик программного обеспечения --- это ваша проблема.
+
+На рубеже 20-ого десятилетия, когда в GPU только появлялось аппаратное ускорение трассировки лучей и свёрток для нейро-сетевых моделей, это было также и нашей проблемой. И тогда и сейчас единственной технологией программирования, которая позволяет осуществить доступ к широкому спектру аппаратного ускорения в GPU на большом числе различных устройств является Vulkan. Однако с Vulkan есть ряд нюансов (рис. \ref{fig:mem}). 
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=1.0\textwidth]{mem.jpg}
+	\caption{Известный мем, пошедший из предложения ``нельзя просто так взять и напасть на Мордор'' в фильме ``Властелин Колец''}
+	\label{fig:mem}
+\end{figure}
+
+\section{Мотивация}\index{Motivation}
+
+\begin{quote}
+The different populations of stars in a galaxy carry the record of its past star formation history, and also affect its future. The project involves  analysing Hubble Space Telescopes images of nearby galaxies of different types. By measuring the brightness and colours of millions of stars, we can understand the ages and compositions of the stars, and learn how the galaxy formed stars in the past. The radiation emitted by stars affects the gas in a galaxy, and thus how it will form stars in the future. We will use multi-colour images of galaxies to gain new insights into both their past and future.
+\end{quote}
+
+А вот и листинги подъехали:
+
+\begin{lstlisting}[language=python, caption=Python example]
+import numpy as np
+	
+def incmatrix(genl1,genl2):
+	m = len(genl1)
+	n = len(genl2)
+	M = None #to become the incidence matrix
+	VT = np.zeros((n*m,1), int)  #dummy variable
+	
+	#compute the bitwise xor matrix
+	M1 = bitxormatrix(genl1)
+	M2 = np.triu(bitxormatrix(genl2),1) 
+	
+	for i in range(m-1):
+	for j in range(i+1, m):
+	[r,c] = np.where(M2 == M1[i,j])
+	for k in range(len(r)):
+	VT[(i)*n + r[k]] = 1;
+	VT[(i)*n + c[k]] = 1;
+	VT[(j)*n + r[k]] = 1;
+	VT[(j)*n + c[k]] = 1;
+	
+	if M is None:
+	M = np.copy(VT)
+	else:
+	M = np.concatenate((M, VT), 1)
+	
+	VT = np.zeros((n*m,1), int)
+	
+	return M
+\end{lstlisting}
+
+\begin{remark}
+For more information about the cosmological principle, review Chapter 1: Why Learn Astronomy?, page 10, from \textbf{21st Century Astronomy}, \textit{Hester | Smith | Blumenthal | Kay | Voss}, Third Edition, 2010.
+\end{remark}
+
+%This statement requires citation \cite{book_key}; this one is more specific \cite[122]{article_key}.
+
+
+%----------------------------------------------------------------------------------------
+%	CHAPTER 2
+%----------------------------------------------------------------------------------------
+\chapterimage{take_off2.jpg}
+
+\chapter{Быстрый старт}
+
+
+\begin{remark}
+	You can find some example test I tested with Matlab and with Python in this web page: \url{https://github.com/LaurethTeX/Clustering/blob/master/Methods.md}, also there is a huge amount of information on the internet about this but here are two pages you might find useful:
+    \begin{itemize}
+    	\item Superpixel: Empirical Studies and Applications \\ \url{http://ttic.uchicago.edu/~xren/research/superpixel/}
+        \item Segmentation Algorithms in scikits-image \\ \url{http://peekaboo-vision.blogspot.ca/2012/09/segmentation-algorithms-in-scikits-image.html}
+    \end{itemize}
+    Also there is one article (from IEEE) I found about and might interest you, it's pure computer science,
+    \begin{itemize}
+    	\item Normalized Cuts and Image Segmentation \\ \url{http://www.cs.berkeley.edu/~malik/papers/SM-ncut.pdf}
+    \end{itemize}
+\end{remark}
+
+
+%----------------------------------------------------------------------------------------
+%	CHAPTER 3
+%----------------------------------------------------------------------------------------
+
+\chapterimage{boat.png}
+\chapter{Погружение}
+
+Before continuing, first and most importantly you must select the \emph{raw} data you are going to process and later after you acquire experience with an specific dataset the idea is to expand the algorithms to any kind of dataset. The important things are to learn how to input the data correctly, establish the right \emph{learning parameters} in the selected algorithm and find the best way to visualize your results and interpret them correctly.
+
+    
+\begin{table}[h]
+  \centering
+  \begin{tabular}{ c c c c c c }
+    \hline\hline
+    Filter / Config. & Waveband / Central $\lambda$/ Line & Obs. Date & Comment \\
+    \hline
+    F225W & UV filter / 235.9 nm & 26 Aug 2009 &  UV wide\\
+    
+    F336W & UV filter / 335.5 nm & 26 Aug 2009 & Str$\ddot{o}$mgren $u$\\
+    
+    F373N & Narrow-Band Filter / 373.0 nm & 19 Aug 2009 & Includes \textsc{[OII]}\\
+    
+    F438W & Wide-Band Filter / 432.5 nm & 26 Aug 2009 & $B$, Johnson-Cousins set\\
+    
+    F487N & Narrow-Band Filter / 487.1 nm & 25 Aug 2009 & Includes H$\beta$\\
+    
+    F502N & Narrow-Band Filter / 501.0 nm & 26 Aug 2009 & Includes \textsc{[O III]}\\
+    
+    F657N & Narrow-Band Filter / 656.7 nm & 25 Aug 2009 & Includes H$\alpha$+\textsc{[NII]}\\
+    
+    F673N & Narrow-Band Filter / 676.6 nm & 20 Aug 2009 & Includes \textsc{[SII]}\\
+    
+    F814W & Wide-Band Filter / 802.4 nm & 26 Aug 2009 & $I$, Johnson-Cousins set\\
+    \hline
+  \end{tabular}
+  \caption{Summary of Observations}
+  \label{tab:uno}
+\end{table}
+
+%----------------------------------------------------------------------------------------
+%	CHAPTER 4
+%----------------------------------------------------------------------------------------
+
+\chapterimage{head1.png} % Chapter heading image
+
+\chapter{Experimenting}
+
+I discovered surfing on the internet a cloud computing software that is free, has data mining algorithms embedded, is specifically developed for Astronomy and is programmed by Caltech, University Federico II and the Astronomical Observatory of Capodimonte. The homepage website, \url{http://dame.dsf.unina.it/index.html}. Well, the platform for testing is ready!, now what? I requested and account and the next day they sent me an acceptance with my user name and my password approved.
+I introduced myself to the documentation, the available clustering functions, the manuals for every method, the blogs and discovered that the was one method available that could work with data cubes and do its clustering on every pattern (number in the multidimensional matrix) which was exactly what I needed. The name of this method is ESOM (Evolving Self Organizing Maps) and I read its manual, did some foolish test with all my image and ... never got a result ... the experiment ran forever (more than two weeks), when I realised that this wasn't the best way to tackle this problem I started considering only clustering on the independent images and not in the data cube due to the fact that the dimensionality was immense. So, in the end my selected methods have some results but not all, here is where all the work has to be done, analysed and tested again.
+
+\begin{thebibliography}{10}
+	
+	\bibitem{NVCPP} NVIDIA. \textit{NVC++: a C++17 compiler for NVIDIA GPUs and AMD, Intel, OpenPOWER, and Arm CPUs.} // 	
+	
+	\bibitem{CUDA} NVIDIA, Vingelmann, P. \& Fitzek, F.H.P., 2020. CUDA, release: 10.2.89, Available at: https://developer.nvidia.com/cuda-toolkit.	
+	
+	\bibitem{OpenACC} ``OpenACC'', 2021 URL: https://www.openacc.org/
+	
+	\bibitem{ispc} Matt Pharr, William R. Mark. ``spc: A SPMD Compiler for High-Performance CPU Programming''
+	
+	\bibitem{b10} Jacobsen, Niklas. ``LLVM supported source-to-source translation-Translation from annotated C/C++ to CUDA C/C++.'' MS thesis. University of Oslo, 2016. 
+	
+	\bibitem{b11} Balogh, Gabor Daniel, et al. ``Op2-clang: A source-to-source translator using clang/llvm libtooling'', IEEE/ACM 5th Workshop on the LLVM Compiler Infrastructure in HPC (LLVM-HPC). IEEE, 2018. 
+	
+	\bibitem{b12} Yang, Po, et al. ``Improving utility of GPU in accelerating industrial applications with user-centered automatic code translation'', IEEE Transactions on Industrial Informatics 14.4, 2017, 1347-1360. 
+	
+	\bibitem{b13} Pienaar, Jacques A., Srimat Chakradhar, and Anand Raghunathan. ``Automatic generation of software pipelines for heterogeneous parallel systems'', SC'12: Proceedings of the International Conference on HPC, Networking, Storage and Analysis. IEEE, 2012. 	
+	
+	\bibitem{b14} Wenzel Jakob, Sebastien Speierer, Nicolas Roussel, and Delio Vicini. 2022. DR.JIT: a just-in-time compiler for differentiable rendering. ACM Trans. Graph. 41, 4, Article 124 (July 2022), 19 pages. https://doi.org/10.1145/3528223.3530099
+	
+	\bibitem{b16} Bakhtin V., Krukov V. ``DVM-Approach to the Automation of the Development of Parallel Programs for Clusters.'' Programming and Computer Software. 45. 121-132. 10.1134/S0361768819030034. 
+	
+	\bibitem{b18} Ohberg, Tomas. ``Auto-tuning Hybrid CPU-GPU Execution of Algorithmic Skeletons in SkePU'', MS thesis. Linkoping University, 2018.	
+	
+	\bibitem{b19} Ernstsson, August, Lu Li, and Christoph Kessler. ``SkePU 2: Flexible and type-safe skeleton programming for heterogeneous parallel systems'', International Journal of Parallel Programming 46.1, 2018, 62-80. 
+	
+	\bibitem{b20} Steuwer, Michel, Philipp Kegel, and Sergei Gorlatch. ``Skelcl-a portable skeleton library for high-level gpu programming'', 2011 IEEE International Symposium on Parallel and Distributed Processing Workshops and Phd Forum. IEEE, 2011. 
+	
+	\bibitem{b21} SYCL, cross-platform abstraction layer, 2021. URL: https://www.khronos.org/sycl/	
+	
+	
+	\bibitem{b23} Han, Tianyi David, and Tarek S. Abdelrahman. ``hiCUDA: High-level GPGPU programming'', IEEE Transactions on Parallel and Distributed systems 22.1, 2010, 78-90. 	
+	
+	\bibitem{b24} Wu, Jingyue, et al. ``gpucc: an open-source GPGPU compiler'', Proceedings of the 2016 International Symposium on Code Generation and Optimization. 2016. 	
+	
+	\bibitem{b25} Sathre, Paul, Mark Gardner, and Wu-chun Feng. ``On the portability of cpu-accelerated applications via automated source-to-source translation'', Proceedings of the International Conference on High Performance Computing in Asia-Pacific Region. 2019.
+	
+	\bibitem{b26} ``HIP, C++ Runtime API and Kernel Language'', 2021, URL: https://github.com/ROCm-Developer-Tools/HIP	
+	
+	\bibitem{b27} ``Vulkan specification, indirect dispatch command'', 2021, URL: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/vkCmdDispatchIndirect.html
+	
+	\bibitem{b29} Mammeri, Nadjib, and Ben Juurlink. ``Vcomputebench: A vulkan benchmark suite for gpgpu on mobile and embedded gpus'', IEEE International Symposium on Workload Characterization (IISWC). IEEE, 2018. 
+	
+	\bibitem{b35} Ragan-Kelley, Jonathan, et al. ``Halide: a language and compiler for optimizing parallelism, locality, and recomputation in image processing pipelines''. ACM Sigplan Notices 48.6, 2013, 519-530. 
+	
+	\bibitem{b37} Adams, Andrew, et al. ``Learning to optimize halide with tree search and random programs'', ACM Trans. Graph. (TOG)38.4,2019:1-12. 
+	
+	\bibitem{b40} Haidl, Michael, and Sergei Gorlatch, ``PACXX: Towards a unified programming model for programming accelerators using C++14'', LLVM Compiler Infrastructure in HPC. IEEE, 2014.
+	
+	\bibitem{b41} Haidl, Michael, et al. ``Pacxxv2+ RV: an LLVM-based portable high-performance programming model'', Proceedings of the Fourth Workshop on the LLVM Compiler Infrastructure in HPC, 2017. 
+	
+	\bibitem{b46} Sean Baxter. ``Circle C++ shaders'', 2021. URL: https://github.com/seanbaxter/shaders  
+	
+	\bibitem{b48} ``Clang documentation'', 2021. URL: https://clang.llvm.org/docs/LibTooling.html
+	
+	\bibitem{b49} ``Inja, template engine for modern C++'', 2021. URL: https://github.com/pantor/inja
+	
+	\bibitem{b42} Sidelnik, Albert, et al, ``Performance portability with the chapel language'', IEEE 26th international parallel and distributed processing symposium. IEEE, 2012. 
+	
+	\bibitem{b44} Baghdadi, Riyadh, et al. ``Tiramisu: A polyhedral compiler for expressing fast and portable code'', IEEE/ACM International Symposium on Code Generation and Optimization (CGO), IEEE, 2019. 
+	
+	\bibitem{b30} ``Nvidia OptiX'', 2021, URL: https://developer.nvidia.com/optix 
+	
+	\bibitem{b31} MS ``DirectML'', 2021: https://github.com/microsoft/DirectML 
+	
+	\bibitem{b34} Hegarty, James, et al. ``Darkroom: compiling high-level image processing code into hardware pipelines'', ACM Trans.Graph.33.4(2014):144-1. 
+	
+	\bibitem{b38} Rasch, Ari, Richard Schulze, and Sergei Gorlatch, ``Developing High-Performance, Portable OpenCL Code via Multi-Dimensional Homomorphisms'', Proceedings of the International Workshop on OpenCL, 2019. 
+	
+	\bibitem{b39} Huang, Tsung-Wei, et al, ``Taskflow: A General-purpose Parallel and Heterogeneous Task Programming System'', IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems, 2021. 
+	
+	\bibitem{b45} ``Google clspv. A prototype compiler for a subset of OpenCL C to Vulkan compute shaders.'' 2021. URL: https://github.com/google/clspv
+	
+	\bibitem{b47} Huang, Shan Shan, David Zook, and Yannis Smaragdakis. ``Morphing: Safely shaping a class in the image of others'', European Conference on Object-Oriented Programming, Springer, Berlin, Heidelberg, 2007. 
+	
+	\bibitem{b50} Parker, Steven G., et al. ``Optix: a general purpose ray tracing engine'', ACM transactions on graphics (tog) 29.4 (2010): 1-13.
+	
+	\bibitem{b52} Laine, Samuli, Tero Karras, and Timo Aila. ``Megakernels considered harmful: Wavefront path tracing on GPUs'', Proceedings of the 5th High-Performance Graphics Conference. 2013.
+	
+	\bibitem{unifiedcppshaders} Kerry A. Seitz Jr., Theresa Foley, Serban D. Porumbescu, John D. Owens. ``Supporting Unified Shader Specialization by Co-opting C++ Features''. arXiv:2109.14682 
+	
+	\bibitem{old} Frolov Vladimir, Sanzharov Vadim, Galaktionov Vladimir, Scherbakov Alexandr. An auto-programming approach to Vulkan. // Proceedings of the 31th International Conference on Computer Graphics and Machine Vision, CEUR Workshop Proceedings, Vol 3027, pp. 150-165. URL: http://ceur-ws.org/Vol-3027/paper14.pdf 
+	
+	\bibitem{taichi} ``Taichi Programming Language''. https://www.taichi-lang.org/
+	
+	\bibitem{numba} ``Numba''. JIT compiler. https://numba.readthedocs.io/en/stable/
+	
+	\bibitem{nvidiacompilers} Nvidia. ``NVIDIA HPC Fortran, C++ and C Compilers with OpenACC''.
+	
+	\bibitem{oneapi} J. Gold. ``OneAPI: Software Abstraction for a Heterog. Comp. World''. 
+	
+	\bibitem{drjit} Wenzel Jakob, Sebastien Speierer, Nicolas Roussel, and Delio Vicini. 2022. ``DR.JIT: a just-in-time compiler for differentiable rendering.'' ACM Trans. Graph. 41, 4, Article 124 (July 2022), 19 pages. https://doi.org/10.1145/3528223.3530099
+	
+	\bibitem{difftaichi} Yuanming Hu, Luke Anderson, Tzu-Mao Li, Qi Sun, Nathan Carr, Jonathan Ragan-Kelley, Fredo Durand. ``DiffTaichi: Differentiable Programming for Physical Simulation.'' ICLR 2020.
+	
+	\bibitem{diffhalide} Tzu-Mao Li, Michael Gharbi, Andrew Adams, Fredo Durand, and Jonathan Ragan-Kelley. ``Differentiable programming for image processing and deep learning in halide.'' ACM Trans. Graph. 37, 4, Article 139, 2018, 13 pages. https://doi.org/10.1145/3197517.3201383
+	
+	\bibitem{Reinhard05} Reinhard, E., Ward, G., Pattanaik, S., and Debevec, P. ``High Dynamic Range Imaging: Acquisition, Display and Image-Based Lighting'', 2005, chap. 6, pp. 187–221. Morgan Kaufmann Publishers Inc., first edition.
+	
+	\bibitem{Embree} Ingo Wald, Sven Woop, Carsten Benthin, Gregory S. Johnson, and Manfred Ernst. ``Embree: a kernel framework for efficient CPU ray tracing.'' ACM Trans. Graph. 33, 4, Article 143 (2014), 8 pages. https://doi.org/10.1145/2601097.2601199
+	
+	\bibitem{HydraRT} Ray Tracing Systems, Keldysh Institute of Applied Mathematics, Moscow State Uiversity. ``Hydra Renderer. Open source rendering system'', 2019.
+	https://github.com/Ray-Tracing-Systems/HydraAPI
+	
+	\bibitem{kslicer} Frolov Vladimir, Sanzharov Vadim, Galaktionov Vladimir. kernel\_slicer. https://github.com/Ray-Tracing-Systems/kernel\_slicer
+	
+	\bibitem{vez} V-EZ, an open source, cross-platform wrapper, 2018. URL: https://github.com/GPUOpen-LibrariesAndSDKs/V-EZ
+	
+	\bibitem{vuh} Vuh. A Vulkan-based GPGPU computing framework, 2020 URL: https://github.com/Glavnokoman/vuh
+	
+	\bibitem{kompute} Kompute. The general purpose GPU compute framework for cross vendor graphics cards, 2021. URL: https://github.com/KomputeProject/kompute
+	
+	\bibitem{MLIR} Chris Lattner, Mehdi Amini, Uday Bondhugula, Albert Cohen, Andy Davis, Jacques Pienaar, River Riddle, Tatiana Shpeisman, Nicolas Vasilache, Oleksandr Zinenko. \textit{MLIR: A Compiler Infrastructure for the End of Moore's Law} // arXiv:2002.11054
+	
+	\bibitem{glslangValidator} KhronosGroup. glslangValidator // reference shader compiler for Vulkan. URL = https://github.com/KhronosGroup/glslang
+	
+	\bibitem{glslc} Google. Shaderc // A collection of tools, libraries and tests for shader compilation. URL = https://github.com/google/shaderc
+	
+	\bibitem{clvk} Kevin Petit. \textit{A prototype implementation of OpenCL 3.0 on top of Vulkan using clspv as the compiler.} // https://github.com/kpet/clvk
+	
+	\bibitem{Morton66} Morton G.M. \textit{A Computer Oriented Geodetic Data Base: and a New Technique in File Sequencing} // Research Report IBM Ltd., Ottawa, ON, Canada, 1966.
+	
+	\bibitem{Karras12} Tero Karras. Maximizing Parallelism in the Construction of BVHs, Octrees, and k-d Trees. // High Performance Graphics (2012)
+	
+	\bibitem{Karras13} Tero Karras and Timo Aila. \textit{Fast parallel construction of high-quality bounding volume hierarchies.} // In Proceedings of the 5th High-Performance Graphics Conference (HPG '13). 2013. Association for Computing Machinery, New York, NY, USA, 89–99. https://doi.org/10.1145/2492045.2492055
+	
+	\bibitem{fastbuild1} Christian Lauterbach, Michael Garland, Shubhabrata Sengupta et al. \textit{Fast BVH Construction on GPUs} // Computer Graphics Forum. — 2009.
+	
+	\bibitem{fastbuild2} Yan Gu, Yong He, Kayvon Fatahalian, Guy Blelloch. \textit{Efficient BVH Construction via Approximate Agglomerative Clustering} // Proceedings of the 5th High-Performance Graphics Conference. — HPG ’13. — Association for Computing Machinery, 2013. — P. 81–88. https://doi.org/10.1145/2492045.2492054.
+	
+	\bibitem{fastbuild3} Kirill Garanzha, Jacopo Pantaleoni, and David McAllister. \textit{Simpler and faster HLBVH with work queues.} // In Proceedings of the ACM SIGGRAPH Symposium on High Performance Graphics (HPG '11). 2011. Association for Computing Machinery, New York, NY, USA, 59–64. https://doi.org/10.1145/2018323.2018333
+	
+	\bibitem{fastbuild4} Chitalu, Francis M. \textit{Binary Ostensibly-Implicit Trees for Fast Collision Detection} // Computer Graphics Forum. — 2020. https://doi.org/10.1111/cgf.13948.
+	
+	\bibitem{fastbuild5} Ciprian Apetrei. \textit{Fast and Simple Agglomerative LBVH Construction} // EG UK Computer Graphics and Visual Computing (2014).
+	
+	\bibitem{MB22} Daniel Meister and Jiri Bittner. \textit{Performance Comparison of Bounding Volume Hierarchies for GPU Ray Tracing} // Journal of Computer Graphics Techniques (JCGT), vol. 11, no. 4, 1-19, 2022. Available online http://jcgt.org/published/0011/04/01/
+	
+	\bibitem{Aila2009} Timo Aila and Samuli Laine. \textit{Understanding the Efficiency of Ray Traversal on GPUs.} // Proc. High-Performance Graphics 2009.
+	
+	
+\end{thebibliography}
+
+\end{document}

@@ -2380,5 +2380,36 @@
             ]
         },
 
+        {
+            "name"   : "Launch (LiteRF)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/msu-graphics-group/LiteRF/example_tracer/example_tracer.cpp",
+                        "-mainClass", "RayMarcherExample", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-shaderFolderPrefix", "example_tracer/",
+                        "-pattern", "ipv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        //"-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I/home/frol/PROG/msu-graphics-group/LiteRF/external/LiteMath", "ignore",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+
     ]
 }
