@@ -208,16 +208,16 @@ kernel\_slicer позволяет разработчику делать 4 вещ
 
 \begin{enumerate}
 
-\item Вы можете сохранить описание своих программ в чистом алгоритимческом виде на обычном С++. Параллельные версии для GPU (Vulkan) и векторных CPU (ISPC) генерируются автоматически. При этом исходная версия может собираться любым существующим компилятором C++. Например, Вы можете также использовать прагмы OpenMP для распараллеливания циклов.
+\item Вы можете сохранить описание своих программ в чистом алгоритимческом виде на обычном С++. Параллельные версии для GPU (Vulkan) и векторных CPU (ISPC) генерируются автоматически. При этом исходная версия может собираться любым существующим компилятором C++. Например, Вы можете также использовать прагмы OpenMP для распараллеливания циклов. Таким образом, kernel\_slicer не делает ваш проект зависимым от себя самого.
 
 \item Процесс разработки позволяет Вам двигаться мелкими шагами, поэтапно и плавно модифицировать код таким образом, чтобы он в итоге стал параллельным и мог быть перенесён на GPU. Это больше всего похоже на обычный рефакторинг.
 
-\item Вы можете осуществить доступ к любому аппаратному ускорению, доступному в Vulkan/ISPC, даже если текущая версия kernel\_slicer его не поддерживает в данный момент. Для этого предусмотрен менанизм доработки сгенерированного кода. Технология рассчитана на это изначально.
+\item Вы можете осуществить доступ к любому аппаратному ускорению, доступному в Vulkan/ISPC, даже если текущая версия kernel\_slicer его ещё не поддерживает. Для этого предусмотрен менанизм доработки сгенерированного кода. Технология рассчитана на это изначально.
 
-\item Если в kernel\_slicer реализована аппаратная поддержка некоторой функциональности, но ваш целевой GPU её не поддерживает, Вы можете заместить неподдерживаемую аппаратную функциональность своей программной реализацией.
+\item Если в kernel\_slicer реализована аппаратная поддержка некоторой функциональности, но ваш целевой GPU её не поддерживает, Вы можете заместить неподдерживаемую аппаратную функциональность собственной программной реализацией во время генерации кода.
 \end{enumerate}
 
-\begin{remark}Имея опыт работы с различными технологиями (CUDA, OpenCL, DX9-11, OpenGL) и значительную кодовую базу на OpenCL, мы долго не хотели делать свою технологию программирования и рассматривали существующие (Halide, Taichi, HIP и др.). К сожалению, всё упиралось в слабую аппаратную поддержку. Разработка kernel\_slicer была начата конце 2020-ого года как вынужденная мера по спасению существующих алгоритмических наработок. По прошествии 3 лет мы можем сказать, что она сработала. Наши программы более не зависят ни от одного производителя GPU, а при необходимости мы всегда можем добавить в kernel\_slicer новый бэк-енд. При этом во время разработки алгоритмической части мы, как правило, вообще забываем про существование GPU.
+\begin{remark}Имея опыт работы с различными технологиями (CUDA, OpenCL, DX9-11, OpenGL) и значительную кодовую базу на OpenCL, мы долго не хотели делать свою технологию программирования и рассматривали существующие (Halide, Taichi, HIP и др.). К сожалению, как и в самом OpenCL, всё упиралось в слабую аппаратную поддержку. Разработка kernel\_slicer была начата конце 2020-ого года как вынужденная мера по спасению существующих алгоритмических наработок. По прошествии 3 лет мы можем сказать, что эта мера сработала. Наши программы более не зависят ни от одного производителя GPU, и вобщем-то, даже от Вулкана они не зависят, т.к. при необходимости мы всегда можем добавить в kernel\_slicer почти любой новый бэк-енд. При этом во время разработки алгоритмической части мы, как правило, вообще забываем про существование GPU.
 \end{remark}
 
 %This statement requires citation \cite{book_key}; this one is more specific \cite[122]{article_key}.
@@ -230,69 +230,68 @@ kernel\_slicer позволяет разработчику делать 4 вещ
 
 \chapter{Быстрый старт}
 
+\section{Сборка}
+
+\begin{enumerate}
+	
+\item Склонируйте на свою машину kernel\_slicer и его сабмодули: \begin{itemize}
+	\item git clone https://github.com/Ray-Tracing-Systems/kernel\_slicer.git
+	\item git submodule init
+	\item git submodule update
+\end{itemize}
+
+\item Установите в своей системе llvm и clang 17-ой версии: \begin{itemize}
+	\item wget https://apt.llvm.org/llvm.sh
+	\item chmod +x llvm.sh
+	\item sudo ./llvm.sh 17
+	\item sudo apt-get install llvm-17-dev
+	\item sudo touch /usr/lib/llvm-17/bin/yaml-bench
+	\item sudo apt-get install libclang-17-dev
+	\item sudo apt install clang-17
+\end{itemize}
+
+\item Осуществите сборку при помощи cmake: 
+\begin{itemize}
+	\item cd kernel\_slicer
+    \item mkdir cmake-build-release \&\& cd cmake-build-release
+    \item cmake -DCMAKE\_BUILD\_TYPE=Release .. 
+    \item make -j 8
+\end{itemize}
+
+\end{enumerate}
 
 \begin{remark}
-	You can find some example test I tested with Matlab and with Python in this web page: \url{https://github.com/LaurethTeX/Clustering/blob/master/Methods.md}, also there is a huge amount of information on the internet about this but here are two pages you might find useful:
-    \begin{itemize}
-    	\item Superpixel: Empirical Studies and Applications \\ \url{http://ttic.uchicago.edu/~xren/research/superpixel/}
-        \item Segmentation Algorithms in scikits-image \\ \url{http://peekaboo-vision.blogspot.ca/2012/09/segmentation-algorithms-in-scikits-image.html}
-    \end{itemize}
-    Also there is one article (from IEEE) I found about and might interest you, it's pure computer science,
-    \begin{itemize}
-    	\item Normalized Cuts and Image Segmentation \\ \url{http://www.cs.berkeley.edu/~malik/papers/SM-ncut.pdf}
-    \end{itemize}
+	kernel\_slicer можно собрать и использовать под ОС Windows и другие операционные системы, поскольку он является обычным плагином для clang. Для этого смотрите в репозитории инструкцию по сборке в составе LLVM. В данный момент мы не поддерживаем документацию и примеры для Windows в актуальном состоянии, поэтому мы не рекомендуем начинать с этого. 
 \end{remark}
 
+\section{Запуск первого примера}
 
-%----------------------------------------------------------------------------------------
-%	CHAPTER 3
-%----------------------------------------------------------------------------------------
+Создайте файл main.cpp и скопируйте в него следующий код:
+
+...
+
+
+
 
 \chapterimage{boat.png}
-\chapter{Погружение}
+\chapter{Настраиваем процесс разработки}
+
+
+\chapterimage{boat.png}
+\chapter{Частые проблемы и пути их решения}
 
 Before continuing, first and most importantly you must select the \emph{raw} data you are going to process and later after you acquire experience with an specific dataset the idea is to expand the algorithms to any kind of dataset. The important things are to learn how to input the data correctly, establish the right \emph{learning parameters} in the selected algorithm and find the best way to visualize your results and interpret them correctly.
 
-    
-\begin{table}[h]
-  \centering
-  \begin{tabular}{ c c c c c c }
-    \hline\hline
-    Filter / Config. & Waveband / Central $\lambda$/ Line & Obs. Date & Comment \\
-    \hline
-    F225W & UV filter / 235.9 nm & 26 Aug 2009 &  UV wide\\
-    
-    F336W & UV filter / 335.5 nm & 26 Aug 2009 & Str$\ddot{o}$mgren $u$\\
-    
-    F373N & Narrow-Band Filter / 373.0 nm & 19 Aug 2009 & Includes \textsc{[OII]}\\
-    
-    F438W & Wide-Band Filter / 432.5 nm & 26 Aug 2009 & $B$, Johnson-Cousins set\\
-    
-    F487N & Narrow-Band Filter / 487.1 nm & 25 Aug 2009 & Includes H$\beta$\\
-    
-    F502N & Narrow-Band Filter / 501.0 nm & 26 Aug 2009 & Includes \textsc{[O III]}\\
-    
-    F657N & Narrow-Band Filter / 656.7 nm & 25 Aug 2009 & Includes H$\alpha$+\textsc{[NII]}\\
-    
-    F673N & Narrow-Band Filter / 676.6 nm & 20 Aug 2009 & Includes \textsc{[SII]}\\
-    
-    F814W & Wide-Band Filter / 802.4 nm & 26 Aug 2009 & $I$, Johnson-Cousins set\\
-    \hline
-  \end{tabular}
-  \caption{Summary of Observations}
-  \label{tab:uno}
-\end{table}
-
-%----------------------------------------------------------------------------------------
-%	CHAPTER 4
-%----------------------------------------------------------------------------------------
-
 \chapterimage{head1.png} % Chapter heading image
 
-\chapter{Частые проблемы и пути их решения}
+\chapter{Особенности шаблона для трассировки лучей}
 
 I discovered surfing on the internet a cloud computing software that is free, has data mining algorithms embedded, is specifically developed for Astronomy and is programmed by Caltech, University Federico II and the Astronomical Observatory of Capodimonte. The homepage website, \url{http://dame.dsf.unina.it/index.html}. Well, the platform for testing is ready!, now what? I requested and account and the next day they sent me an acceptance with my user name and my password approved.
 I introduced myself to the documentation, the available clustering functions, the manuals for every method, the blogs and discovered that the was one method available that could work with data cubes and do its clustering on every pattern (number in the multidimensional matrix) which was exactly what I needed. The name of this method is ESOM (Evolving Self Organizing Maps) and I read its manual, did some foolish test with all my image and ... never got a result ... the experiment ran forever (more than two weeks), when I realised that this wasn't the best way to tackle this problem I started considering only clustering on the independent images and not in the data cube due to the fact that the dimensionality was immense. So, in the end my selected methods have some results but not all, here is where all the work has to be done, analysed and tested again.
+
+\chapterimage{head1.png} % Chapter heading image
+
+\chapter{Параметры командной строки}
 
 \begin{thebibliography}{10}
 	
