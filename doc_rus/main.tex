@@ -139,7 +139,8 @@ kernel\_slicer --- это генератор кода, принимающий н
 
 \begin{lstlisting}[language=C++, caption=сложение двух векторов]
 class Test 
-{	
+{
+public:	
   void kernel1D_add(const float* a, const float* b, float* res, int N) 
   {
     for(int i=0;i<N;i++)
@@ -250,7 +251,7 @@ kernel\_slicer позволяет разработчику делать 4 вещ
 	\item sudo apt install clang-17
 \end{itemize}
 
-\item Осуществите сборку при помощи cmake: 
+\item Осуществите сборку при помощи CMake: 
 \begin{itemize}
 	\item cd kernel\_slicer
     \item mkdir cmake-build-release \&\& cd cmake-build-release
@@ -264,14 +265,203 @@ kernel\_slicer позволяет разработчику делать 4 вещ
 	kernel\_slicer можно собрать и использовать под ОС Windows и другие операционные системы, поскольку он является обычным плагином для clang. Для этого смотрите в репозитории инструкцию по сборке в составе LLVM. В данный момент мы не поддерживаем документацию и примеры для Windows в актуальном состоянии, поэтому мы не рекомендуем начинать с этого. 
 \end{remark}
 
+\pagebreak
 \section{Запуск первого примера}
 
-Создайте файл main.cpp и скопируйте в него следующий код:
+\underline{Шаг 1}: Создайте файл main.cpp и скопируйте в него следующий код:
 
+\begin{lstlisting}[language=C++, caption=полный листинг сложения двух векторов]
+#include <iostream>
+#include <vector>
+
+class Test 
+{	
+public:
+	void kernel1D_add(const float* a, const float* b, float* res, int N) 
+	{
+		for(int i=0;i<N;i++)
+		res[i] = a[i] + b[i];
+	} 
+	
+	virtual void AddVec(const float* a   [[size("N")]], 
+	                    const float* b   [[size("N")]], 
+	                    float* res [[size("N")]], int N) 
+	{
+		kernel1D_add(a,b,res,N); 
+	}	
+};
+
+int main(int argc, const char** argv)
+{  
+	std::vector<float> va(100), vb(100), vc(100);
+	
+	for(size_t i=0;i<va.size();i++) 
+	{
+		va[i] = float(i);
+		vb[i] = float(i*i);
+		vc[i] = 0.0f;
+	}
+	
+	Test test;
+	test.AddVec(va.data(), vb.data(), vc.data(), int(va.size()));
+	
+	for(size_t i=0;i<vc.size();i++)
+	std::cout << i << ":\t" << vc[i] << std::endl;
+	
+	return 0;
+}
+\end{lstlisting}\label{lst:add_vectors_full}
+
+\underline{Шаг 2}: Cоздайте в той же папке файл CMakeLists.txt со следующим содержанием:
+
+\begin{lstlisting}[caption=CMake файл для простейший программы на C++]
+cmake_minimum_required(VERSION 3.10)
+project(test_vadd)
+add_executable(test_vadd main.cpp)
+\end{lstlisting}\label{lst:first_cmake}
+
+\underline{Шаг 3}: Соберите программу и убедитесь что она работает: 
+\begin{itemize}
+	\item cmake . \&\& make
+	\item ./test\_vadd 
+\end{itemize}
+
+\pagebreak
+\underline{Шаг 4}: Подготовьтесь к полиморфизму вашей реализации сложения векторов. Для этого следует создавать экземпляр класса Test в динамической памяти, а не на стеке:
+
+\begin{lstlisting}[language=C++, caption=работаем с указателем на экземпляр класса]
+#include <memory> // for std::shared_ptr and std::make_shared
 ...
+int main(int argc, const char** argv)
+{  
+  ...
+  auto pTest = std::make_shared<Test>();
+  pTest->AddVec(va.data(), vb.data(), vc.data(), int(va.size()));
+  ...
+  return 0
+}
+\end{lstlisting}\label{lst:create_shared_ptr}
 
+Использование умных указателей не является обязательным. Но в подобных случаях мы рекомендуем это делать. Теперь Вы готовы к тому чтобы сделать реализацию сложения векторов на GPU в классе Test\_GPU, наследуемом от класса Test. В принципе Вы можете сделать это вручную. Для этого Вам понанобится написать такой класс (используя любой API программирования GPU какой Вам нравится) и заместить указатель pTest указателем на экземпляр производного класса. kernel\_slicer сделает за Вас первый пункт.
 
+\vspace*{5px}
+\underline{Шаг 5}: Пишем json конфиг для slicer-а. Для этого откройте файл 'kernel\_slicer/.vscode/launch.json' и добавьте в его конец следующую запись (Вы можете скопировать один из существующих конфигов): 
 
+\begin{lstlisting}[caption=конфиг для генерации класса сложения 2 векторов]
+{
+	"name"   : "Launch (MyExample)",
+	"type"   : "cppdbg",
+	"request": "launch",
+	"program": "${workspaceFolder}/cmake-build-release/kslicer",
+	"args"   : ["/home/path-to-our-sample/main.cpp",
+	            "-mainClass", "Test", 
+	            "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+	            "-pattern", "ipv",
+	            "-shaderCC", "glsl",
+	            "-I${workspaceFolder}/TINYSTL", "ignore",
+	            "-DKERNEL_SLICER",
+	            "-v"],
+	"stopAtEntry": false,
+	"cwd"    : "${workspaceFolder}",
+	"environment": [],
+	"externalConsole": false,
+	"MIMode": "gdb",
+	"setupCommands": [
+	{
+		"description": "Enable pretty-printing for gdb",
+		"text": "-enable-pretty-printing",
+		"ignoreFailures": true
+	}
+	]
+},
+\end{lstlisting}\label{lst:my_first_json}
+
+Вы \underline{НЕ ОБЯЗАНЫ} использовать json конфиги для VS Code. Но рекомендуется запускать kernel\_slicer из корня его репозитория для чего конфиги удобны. Обратите внимание на аргументы '-stdlibfolder' и '-I...', которые дают ему путь к stl библиотеке.  
+
+%TBD: сделать запуск через командную строку
+
+\vspace*{5px}
+\underline{Шаг 6}: Запустите kernel\_slicer с созданным конфигом либо через командную строку. Вы получите некоторый вывод и, в том числе 3 предупредждения следующего содержания:
+
+\begin{lstlisting}[caption=конфиг для генерации класса сложения 2 векторов]
+warning, can't find fuction 'CommitDeviceData', you should define it: 
+'virtual void CommitDeviceData(){}'
+
+warning, can't find fuction 'GetExecutionTime', you should define it: 
+'virtual void GetExecutionTime(const char* a_funcName, float a_out[4]){}'
+
+warning, class 'Test' has Control Functions to override, 
+but does not have any declared constructots.
+At least one constructor should be declared to 
+succsesfully generate factory function for generated class
+\end{lstlisting}\label{lst:kslicer_warnings}
+
+Просто сделайте в точности то что он хочет -- определите в своём классе конструкутор и пустые функции CommitDeviceData и GetExecutionTime:
+
+\begin{lstlisting}[language=C++, caption=работаем с указателем на экземпляр класса]
+class Test 
+{	
+public:
+  Test(){}
+  virtual void CommitDeviceData(){}
+  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]){}
+  ...	
+};
+\end{lstlisting}\label{lst:define_empty_func}
+
+В данном примере Вам эти функции не понанобятся, но в дальнейшем Вы сможете использовать их для копирования состояния объекта на GPU и получения статистики о времени выполнения. Теперь запускайте генерацию ещё раз, предупреждения должны исчезнуть.
+
+\vspace*{5px}
+\underline{Шаг 7 (опционально)}:  Проанализируете сгенерированные файлы. В данном случае их 8 штук.
+
+\vspace*{5px}
+Файлы хостового кода:
+\begin{enumerate}
+\item main\_generated.h -- заголовочный файл для сгенерированного класса
+\item main\_generated.cpp -- основной код на Vulkan
+\item main\_generated\_init.cpp -- инициализация Vulkan-объектов
+\item main\_generated\_ds.cpp -- инициализация дескриптор-сетов
+\item include/Test\_generated\_ubo.h -- выделенная структура используемых полей класса
+\end{enumerate}
+
+\vspace*{5px}
+Файлы шейдеров:
+\begin{enumerate}
+\item shaders\_generated/build.sh -- последовательность команд для сборки шейдеров	
+\item shaders\_generated/common\_generated.h -- файл, подключаемый во все шейдеры
+\item shaders\_generated/kernel1D\_add.comp -- файл шейдера сложения векторов
+\end{enumerate}	
+
+\vspace*{5px}
+\underline{Шаг 8}: соберите шейдеры, выполнив скрипт 'shaders\_generated/build.sh':
+\begin{itemize}
+	\item cd shaders\_generated
+	\item bash build.sh
+\end{itemize}
+
+В папке 'shaders\_generated' вы должны получить новый файл 'kernel1D\_add.comp.spv'. Это скомпилированный в SPIR-V представление вычислительный шейдер.
+
+\vspace*{5px}
+\underline{Шаг 9}: Скачайте в Ваш проект исходные коды библиотек, которые Вам понанобятся:
+
+\begin{itemize}
+	\item https://github.com/msu-graphics-group/LiteMath.git ==> external/LiteMath
+	\item https://github.com/msu-graphics-group/vk-utils.git ==> external/vkutils
+	\item https://github.com/zeux/volk.git                   ==> external/volk
+\end{itemize}
+
+Обычно мы делаем это через сабмодули, однако этот способ будет работать только если Ваш код уже привязан к некоторому репозиторию. В данном примере это не предполагается. Поэтому Вы просто можете скачать архивы с github и положить из содержимое в соответсвующие папки.
+
+\vspace*{5px}
+\underline{Шаг 10}: Соберите volk как статическую библиотеку:
+
+\begin{itemize}
+	\item cd external/volk
+	\item cmake .
+	\item make
+\end{itemize}
+
+\underline{Шаг 11}: Измените Ваш CMakeLists.txt следующим образом:
 
 \chapterimage{boat.png}
 \chapter{Настраиваем процесс разработки}
