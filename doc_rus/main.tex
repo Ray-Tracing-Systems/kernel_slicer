@@ -135,7 +135,7 @@
 
 \section{Что такое kernel\_slicer?}\index{what}
 
-kernel\_slicer --- это генератор кода, принимающий на вход класс на С++ c некоторыми вычисленими/алгоритмами, и генерирующий на выходе другой класс, реализующий те же самые вычисления/алгоритмы на GPU при помощи некоторой технологии программирования нижнего уровня. В данный момент такими технологиями являются Vulkan для векторизации вычислений на GPU и ISPC для векторизации высчислений на CPU. В листинге \ref{lst:add_vectors} показан пример простейшего класса, реализующего сложения двух векторов.
+kernel\_slicer --- это генератор кода, принимающий на вход класс на С++ c некоторыми вычисленими/алгоритмами, и генерирующий на выходе другой класс, реализующий те же самые вычисления/алгоритмы на GPU при помощи некоторой технологии программирования нижнего уровня. В данный момент такими технологиями являются Vulkan для векторизации вычислений на GPU и ISPC для векторизации вычислений на CPU. В листинге \ref{lst:add_vectors} показан пример простейшего класса, реализующего сложения двух векторов.
 
 \begin{lstlisting}[language=C++, caption=сложение двух векторов]
 class Test 
@@ -200,16 +200,15 @@ kernel\_slicer не просто позволяет Вам ускорить ра
 
 \item Процесс разработки позволяет Вам двигаться мелкими шагами, поэтапно и плавно модифицировать код таким образом, чтобы он в итоге стал параллельным и мог быть перенесён на GPU. Это больше всего похоже на обычный рефакторинг.
 
-\item Вы можете осуществить доступ к любому аппаратному ускорению, доступному в Vulkan/ISPC, даже если текущая версия kernel\_slicer его ещё не поддерживает. Для этого предусмотрен менанизм доработки сгенерированного кода. Технология рассчитана на это изначально.
+\item Вы можете осуществить доступ к любому аппаратному ускорению, доступному в Vulkan и ISPC, даже если текущая версия kernel\_slicer его ещё не поддерживает. Для этого предусмотрен менанизм доработки сгенерированного кода. То есть технология рассчитана на это изначально.
 
 \item Если в kernel\_slicer реализована аппаратная поддержка некоторой функциональности, но ваш целевой GPU её не поддерживает, Вы можете заместить неподдерживаемую аппаратную функциональность собственной программной реализацией во время генерации кода.
 \end{enumerate}
 
-\begin{remark}Имея опыт работы с различными технологиями (CUDA, OpenCL, DX9-11, OpenGL) и значительную кодовую базу на OpenCL, мы долго не хотели делать свою технологию программирования и рассматривали существующие (Halide, Taichi, HIP и др.). К сожалению, как и в самом OpenCL, всё упиралось в слабую аппаратную поддержку. Разработка kernel\_slicer была начата конце 2020-ого года как вынужденная мера по спасению существующих алгоритмических наработок. По прошествии 3 лет мы можем сказать, что эта мера сработала. Наши программы более не зависят ни от одного производителя GPU, и вобщем-то, даже от Вулкана они не зависят, т.к. при необходимости мы всегда можем добавить в kernel\_slicer почти любой новый бэк-енд. При этом во время разработки алгоритмической части мы, как правило, вообще забываем про существование GPU.
+\begin{remark}Имея опыт работы с различными технологиями (CUDA, OpenCL, DX9-11, OpenGL) и значительную кодовую базу на OpenCL, мы долго не хотели делать свою технологию программирования и рассматривали существующие (Halide, Taichi, HIP и др.). К сожалению, как и в самом OpenCL, всё упиралось в слабую аппаратную поддержку или в жёсткую зависимость от одного производителя. Разработка kernel\_slicer была начата конце 2020-ого года как вынужденная мера по спасению существующих алгоритмических наработок, которые могли потерять актуальность из-за отсутствия аппаратного ускорения. По прошествии 3 лет мы можем сказать, что эта мера сработала. Наши программы более не зависят ни от одного производителя GPU, и вобщем-то, даже от Вулкана они не зависят, т.к. при необходимости мы всегда можем добавить в kernel\_slicer почти любой новый бэк-енд. При этом во время разработки алгоритмической части мы, как правило, вообще забываем про существование GPU.
 \end{remark}
 
 %This statement requires citation \cite{book_key}; this one is more specific \cite[122]{article_key}.
-
 
 %----------------------------------------------------------------------------------------
 %	CHAPTER 2
@@ -327,7 +326,21 @@ kernel\_slicer не просто позволяет Вам ускорить ра
 \end{remark}
 
 \chapterimage{boat.png}
-\chapter{Настраиваем процесс разработки}
+\chapter{Измеряем время выполнения и копирования}
+
+В предыдущей главе мы опустили некоторые детали, в частности Вы могли заметить что в тестовом классе присутствуют функции CommitDeviceData и GetExecutionTime, которые никак не использовались. 
+
+\section{Запуск второго примера}
+
+\underline{Шаг 1}: Склонируйте туториал из репозитория:
+
+\begin{itemize}
+	\item git clone https://github.com/kernel-slicer-tutorials/tutorial2\_...
+	\item cd tutorial2\_...
+	\item git submodule init
+	\item git submodule update
+\end{itemize}
+
 
 
 \chapterimage{boat.png}
@@ -343,8 +356,11 @@ I discovered surfing on the internet a cloud computing software that is free, ha
 I introduced myself to the documentation, the available clustering functions, the manuals for every method, the blogs and discovered that the was one method available that could work with data cubes and do its clustering on every pattern (number in the multidimensional matrix) which was exactly what I needed. The name of this method is ESOM (Evolving Self Organizing Maps) and I read its manual, did some foolish test with all my image and ... never got a result ... the experiment ran forever (more than two weeks), when I realised that this wasn't the best way to tackle this problem I started considering only clustering on the independent images and not in the data cube due to the fact that the dimensionality was immense. So, in the end my selected methods have some results but not all, here is where all the work has to be done, analysed and tested again.
 
 \chapterimage{head1.png} % Chapter heading image
-
 \chapter{Параметры командной строки}
+
+\chapterimage{head1.png} % Chapter heading image
+\chapter{Работа с ISPC}
+
 
 \begin{thebibliography}{10}
 	
