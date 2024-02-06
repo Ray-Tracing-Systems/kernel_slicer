@@ -2411,15 +2411,16 @@
         },
 
         {
-            "name"   : "Launch (MyExample)",
+            "name"   : "Launch (tutorial1_vec_add)",
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-release/kslicer",
-            "args"   : ["/home/frol/PROG/kernel_slicer_tutorials/tut1/main.cpp",
+            "args"   : ["/home/frol/PROG/kernel-slicer-tutorials/tutorial1_vec_add/test.cpp",
                         "-mainClass", "Test", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
                         "-shaderCC", "glsl",
+                        "-suffix", "_GPU",
                         "-I${workspaceFolder}/TINYSTL", "ignore",
                         "-DKERNEL_SLICER",
                         "-v"],

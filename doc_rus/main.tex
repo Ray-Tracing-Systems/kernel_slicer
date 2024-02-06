@@ -141,16 +141,14 @@ kernel\_slicer --- это генератор кода, принимающий н
 class Test 
 {
 public:	
-  void kernel1D_add(const float* a, const float* b, float* res, int N) 
-  {
+  void kernel1D_add(const float* a, const float* b, float* res, int N) {
     for(int i=0;i<N;i++)
       res[i] = a[i] + b[i];
   } 
 	
   virtual void AddVec(const float* a   [[size("N")]], 
                       const float* b   [[size("N")]], 
-                            float* res [[size("N")]], int N) 
-  {
+                            float* res [[size("N")]], int N) {
 		kernel1D_add(a,b,res,N); 
   } 	
 };
@@ -162,12 +160,9 @@ public:
 
 Последнее десятилетие технологии программирования GPU (как и других массивно-параллельных вычислительных систем) шли очень непростой дорогой. Эта дорога, или, вернее, дороги, появились на поле постоянного противоречия между аппаратным ускорением и кросс-платформенностью. 
 
-Когда разработчик полагается на одного производителя вычислительного оборудования (например, Nvidia), вопрос выбора технологии программирования, как правило, остро не стоит. Разработчики использует технологии программирования, которые этот производитель поддерживает наилучшим образом \cite{NVCPP,CUDA,OpenACC}. Однако такой подход возможен далеко не всегда. 
+Когда разработчик полагается на одного производителя вычислительного оборудования (например, Nvidia), вопрос выбора технологии программирования, как правило, остро не стоит. Можно использовать технологии программирования, которые этот производитель поддерживает наилучшим образом \cite{NVCPP,CUDA,OpenACC}. Однако такой подход возможен далеко не всегда. 
 
-Кросс-платформенная разработка (под разные вычислительные системы, центральные процессоры с различными векторными архитектурами, графические процессоры от разных производителей и т.д.)  высоко-производительного ПО представляет собой сложную проблему, для которой в настоящий момент нет простого решения. Если Вы разрабочик программного обеспечения --- это ваша проблема.
-
-На рубеже 20-ого десятилетия, когда в GPU только появлялось аппаратное ускорение трассировки лучей и свёрток для нейро-сетевых моделей, это было также и нашей проблемой. И тогда и сейчас единственной технологией программирования, которая позволяет осуществить доступ к широкому спектру аппаратного ускорения в GPU на большом числе различных устройств является Vulkan. Однако с Vulkan всё не так просто (рис. \ref{fig:mem}). 
-
+Кросс-платформенная разработка (под разные вычислительные системы, центральные процессоры с различными векторными архитектурами, графические процессоры от разных производителей и т.д.)  высоко-производительного ПО представляет собой сложную проблему, для которой в настоящий момент нет простого решения. И тогда и сейчас единственной технологией программирования, которая позволяет осуществить доступ к широкому спектру аппаратного ускорения в GPU на большом числе различных устройств является Vulkan. Однако с Vulkan всё не так просто (рис. \ref{fig:mem}, \ref{fig:vulkan_complexity}). 
 
 \begin{figure}[h]
 \begin{minipage}{0.45\textwidth}
@@ -192,20 +187,12 @@ public:
 %	\label{fig:mem}
 %\end{figure}
 
-К сожалению, работа с этим API как напрямую, так и посредством обёрток/библиотек является довольно трудоёмкой. Например, простейшая отрисовка треугольника может занимать несколько тысяч строк кода (рис. \ref{fig:vulkan_complexity}). Как следствие растёт стоимость и время разработки. Эта проблема не столько техническая, сколько фундаментальная: она происходит из того, что в Vulkan сочетаются такие фундаментально-противоречивые вещи как кросс-платформенность и аппаратное ускорение. На одних GPU определённое аппаратное ускорение есть, на других его нет,.. на одних оно реализовано таким образом, на других --- по другому. 
+К сожалению, работа с этим API как напрямую, так и посредством обёрток/библиотек является довольно трудоёмкой. Например, простейшая отрисовка треугольника может занимать несколько тысяч строк кода. Как следствие растёт стоимость и время разработки. Эта проблема не столько техническая, сколько фундаментальная: она происходит из того, что в Vulkan сочетаются такие противоречивые вещи как кросс-платформенность и аппаратное ускорение. На одних GPU определённое аппаратное ускорение есть, на других его нет,.. на одних оно реализовано таким образом, на других --- по другому. Изначально kernel\_slicer задумывался как инструмент в борьбе со сложностью при работе с Vulkan. Позже он превратился в самостоятельную технологию программирования.
 
-%\begin{figure}[h]
-%	\centering
-%	\includegraphics[width=0.5\textwidth]{vulkan_is_hard.png}
-%	\caption{Простые программы писать на Vulkan сложно, а сложные -- очень сложно.}
-%	\label{fig:vulkan_complexity}
-%\end{figure}
-
-%Традиционными способами (библиотеки, обёртки, движки) сложность работы с Vulkan  можно победить лишь ограниченно, в рамках конкретного приложения или движка. Но и здесь есть свои недостатки: когда что-то не работает (а это происходит во время разработки постоянно), отлаживать код с библиотеками становится весьма непросто, если только Вы сами не разработчик этих библиотек.
 
 \section{Мотивация вашей работы с kernel\_slicer }\index{Motivation}
 
-kernel\_slicer позволяет разработчику делать 4 вещи, которые в других технологиях программирования затруднительно сделать одновременно:
+kernel\_slicer не просто позволяет Вам ускорить разработку кода для GPU на Vulkan. Он позволяет делать 4 вещи, которые в других технологиях программирования затруднительно сделать одновременно:
 
 \begin{enumerate}
 
@@ -268,200 +255,76 @@ kernel\_slicer позволяет разработчику делать 4 вещ
 \pagebreak
 \section{Запуск первого примера}
 
-\underline{Шаг 1}: Создайте файл main.cpp и скопируйте в него следующий код:
+\underline{Шаг 1}: Склонируйте туториал из репозитория:
 
-\begin{lstlisting}[language=C++, caption=полный листинг сложения двух векторов]
-#include <iostream>
-#include <vector>
-
-class Test 
-{	
-public:
-	void kernel1D_add(const float* a, const float* b, float* res, int N) 
-	{
-		for(int i=0;i<N;i++)
-		res[i] = a[i] + b[i];
-	} 
-	
-	virtual void AddVec(const float* a   [[size("N")]], 
-	                    const float* b   [[size("N")]], 
-	                    float* res [[size("N")]], int N) 
-	{
-		kernel1D_add(a,b,res,N); 
-	}	
-};
-
-int main(int argc, const char** argv)
-{  
-	std::vector<float> va(100), vb(100), vc(100);
-	
-	for(size_t i=0;i<va.size();i++) 
-	{
-		va[i] = float(i);
-		vb[i] = float(i*i);
-		vc[i] = 0.0f;
-	}
-	
-	Test test;
-	test.AddVec(va.data(), vb.data(), vc.data(), int(va.size()));
-	
-	for(size_t i=0;i<vc.size();i++)
-	std::cout << i << ":\t" << vc[i] << std::endl;
-	
-	return 0;
-}
-\end{lstlisting}\label{lst:add_vectors_full}
-
-\underline{Шаг 2}: Cоздайте в той же папке файл CMakeLists.txt со следующим содержанием:
-
-\begin{lstlisting}[caption=CMake файл для простейший программы на C++]
-cmake_minimum_required(VERSION 3.10)
-project(test_vadd)
-add_executable(test_vadd main.cpp)
-\end{lstlisting}\label{lst:first_cmake}
-
-\underline{Шаг 3}: Соберите программу и убедитесь что она работает: 
 \begin{itemize}
-	\item cmake . \&\& make
+	\item git clone https://github.com/kernel-slicer-tutorials/tutorial1\_vec\_add
+	\item cd tutorial1\_vec\_add
+	\item git submodule init
+	\item git submodule update
+\end{itemize}
+
+\vspace*{5px}
+Обратите внимание, что туториал, как и сам репозиторий kernel\_slicer использует три существующих репозитория на github: (1) LiteMath для базовых математических операций, (2) vk-utils как легковесную библиотеку хелперов (функций-помошников) для работы с Vulkan и volk (2) для корректной загрузки указателей на функций Vulkan.
+
+\vspace*{5px}
+\noindent\underline{Шаг 2}: Соберите программу (пока что на СPU), проанализируйте её исходные коды и убедитесь что она работает: 
+\begin{itemize}
+	\item mkdir cmake-build-debug \&\& cd cmake-build-debug
+	\item cmake -DCMAKE\_BUILD\_TYPE=Debug ..
+	\item make -j 2
 	\item ./test\_vadd 
 \end{itemize}
 
-\pagebreak
-\underline{Шаг 4}: Подготовьтесь к полиморфизму вашей реализации сложения векторов. Для этого следует создавать экземпляр класса Test в динамической памяти, а не на стеке:
-
-\begin{lstlisting}[language=C++, caption=работаем с указателем на экземпляр класса]
-#include <memory> // for std::shared_ptr and std::make_shared
-...
-int main(int argc, const char** argv)
-{  
-  ...
-  auto pTest = std::make_shared<Test>();
-  pTest->AddVec(va.data(), vb.data(), vc.data(), int(va.size()));
-  ...
-  return 0
-}
-\end{lstlisting}\label{lst:create_shared_ptr}
-
-Использование умных указателей не является обязательным. Но в подобных случаях мы рекомендуем это делать. Теперь Вы готовы к тому чтобы сделать реализацию сложения векторов на GPU в классе Test\_GPU, наследуемом от класса Test. В принципе Вы можете сделать это вручную. Для этого Вам понанобится написать такой класс (используя любой API программирования GPU какой Вам нравится) и заместить указатель pTest указателем на экземпляр производного класса. kernel\_slicer сделает за Вас первый пункт.
-
 \vspace*{5px}
-\underline{Шаг 5}: Пишем json конфиг для slicer-а. Для этого откройте файл 'kernel\_slicer/.vscode/launch.json' и добавьте в его конец следующую запись (Вы можете скопировать один из существующих конфигов): 
-
-\begin{lstlisting}[caption=конфиг для генерации класса сложения 2 векторов]
-{
-	"name"   : "Launch (MyExample)",
-	"type"   : "cppdbg",
-	"request": "launch",
-	"program": "${workspaceFolder}/cmake-build-release/kslicer",
-	"args"   : ["/home/path-to-our-sample/main.cpp",
-	            "-mainClass", "Test", 
-	            "-stdlibfolder", "${workspaceFolder}/TINYSTL",
-	            "-pattern", "ipv",
-	            "-shaderCC", "glsl",
-	            "-I${workspaceFolder}/TINYSTL", "ignore",
-	            "-DKERNEL_SLICER",
-	            "-v"],
-	"stopAtEntry": false,
-	"cwd"    : "${workspaceFolder}",
-	"environment": [],
-	"externalConsole": false,
-	"MIMode": "gdb",
-	"setupCommands": [
-	{
-		"description": "Enable pretty-printing for gdb",
-		"text": "-enable-pretty-printing",
-		"ignoreFailures": true
-	}
-	]
-},
-\end{lstlisting}\label{lst:my_first_json}
-
-Вы \underline{НЕ ОБЯЗАНЫ} использовать json конфиги для VS Code. Но рекомендуется запускать kernel\_slicer из корня его репозитория для чего конфиги удобны. Обратите внимание на аргументы '-stdlibfolder' и '-I...', которые дают ему путь к stl библиотеке.  
-
-%TBD: сделать запуск через командную строку
-
-\vspace*{5px}
-\underline{Шаг 6}: Запустите kernel\_slicer с созданным конфигом либо через командную строку. Вы получите некоторый вывод и, в том числе 3 предупредждения следующего содержания:
-
-\begin{lstlisting}[caption=конфиг для генерации класса сложения 2 векторов]
-warning, can't find fuction 'CommitDeviceData', you should define it: 
-'virtual void CommitDeviceData(){}'
-
-warning, can't find fuction 'GetExecutionTime', you should define it: 
-'virtual void GetExecutionTime(const char* a_funcName, float a_out[4]){}'
-
-warning, class 'Test' has Control Functions to override, 
-but does not have any declared constructots.
-At least one constructor should be declared to 
-succsesfully generate factory function for generated class
-\end{lstlisting}\label{lst:kslicer_warnings}
-
-Просто сделайте в точности то что он хочет -- определите в своём классе конструкутор и пустые функции CommitDeviceData и GetExecutionTime:
-
-\begin{lstlisting}[language=C++, caption=работаем с указателем на экземпляр класса]
-class Test 
-{	
-public:
-  Test(){}
-  virtual void CommitDeviceData(){}
-  virtual void GetExecutionTime(const char* a_funcName, float a_out[4]){}
-  ...	
-};
-\end{lstlisting}\label{lst:define_empty_func}
-
-В данном примере Вам эти функции не понанобятся, но в дальнейшем Вы сможете использовать их для копирования состояния объекта на GPU и получения статистики о времени выполнения. Теперь запускайте генерацию ещё раз, предупреждения должны исчезнуть.
-
-\vspace*{5px}
-\underline{Шаг 7 (опционально)}:  Проанализируете сгенерированные файлы. В данном случае их 8 штук.
-
-\vspace*{5px}
-Файлы хостового кода:
-\begin{enumerate}
-\item main\_generated.h -- заголовочный файл для сгенерированного класса
-\item main\_generated.cpp -- основной код на Vulkan
-\item main\_generated\_init.cpp -- инициализация Vulkan-объектов
-\item main\_generated\_ds.cpp -- инициализация дескриптор-сетов
-\item include/Test\_generated\_ubo.h -- выделенная структура используемых полей класса
-\end{enumerate}
-
-\vspace*{5px}
-Файлы шейдеров:
-\begin{enumerate}
-\item shaders\_generated/build.sh -- последовательность команд для сборки шейдеров	
-\item shaders\_generated/common\_generated.h -- файл, подключаемый во все шейдеры
-\item shaders\_generated/kernel1D\_add.comp -- файл шейдера сложения векторов
-\end{enumerate}	
-
-\vspace*{5px}
-\underline{Шаг 8}: соберите шейдеры, выполнив скрипт 'shaders\_generated/build.sh':
+\noindent\underline{Шаг 3}: Запустите kernel\_slicer:
 \begin{itemize}
-	\item cd shaders\_generated
-	\item bash build.sh
+	\item Отредактируйте файл run\_kslicer.sh. Измените значение переменной 'kslicer\_directory' так, чтобы она указывала на правильный путь для вашей системы.
+	\item bash run\_kslicer.sh 
 \end{itemize}
 
-В папке 'shaders\_generated' вы должны получить новый файл 'kernel1D\_add.comp.spv'. Это скомпилированный в SPIR-V представление вычислительный шейдер.
-
 \vspace*{5px}
-\underline{Шаг 9}: Скачайте в Ваш проект исходные коды библиотек, которые Вам понанобятся:
-
+\noindent\underline{Шаг 4}: Соберите сгенерированный шейдер:
 \begin{itemize}
-	\item https://github.com/msu-graphics-group/LiteMath.git ==> external/LiteMath
-	\item https://github.com/msu-graphics-group/vk-utils.git ==> external/vkutils
-	\item https://github.com/zeux/volk.git                   ==> external/volk
+\item cd shaders\_gpu 	
+\item bash build.sh
 \end{itemize}
 
-Обычно мы делаем это через сабмодули, однако этот способ будет работать только если Ваш код уже привязан к некоторому репозиторию. В данном примере это не предполагается. Поэтому Вы просто можете скачать архивы с github и положить из содержимое в соответсвующие папки.
-
 \vspace*{5px}
-\underline{Шаг 10}: Соберите volk как статическую библиотеку:
-
+\noindent\underline{Шаг 5}: Соберите программу (в этот раз уже для GPU) и запустите её:
 \begin{itemize}
-	\item cd external/volk
-	\item cmake .
-	\item make
+	\item mkdir cmake-build-debug \&\& cd cmake-build-debug
+	\item cmake -DCMAKE\_BUILD\_TYPE=Debug -DUSE\_VULKAN=ON ..
+	\item make -j 8
+	\item cd ..
+	\item ./cmake-build-debug/test\_vadd 
 \end{itemize}
 
-\underline{Шаг 11}: Измените Ваш CMakeLists.txt следующим образом:
+Обратите внимание, что запуск производится из основной папки туториала для того чтобы SPIR-V файл корректно загрузился. Вы также можете пользоваться предоставленными конфигами VS Code для сборки, запуска и отладки. Попробуйте зайти внутрь функции 'AddVec' в отладчике.
+
+%\vspace*{5px}
+%\noindent\underline{Шаг 6 (опционально)}: Проанализируете сгенерированные файлы.
+%\vspace*{2px}
+%\noindent Файлы хостового кода:
+%\begin{enumerate}
+%\item test\_gpu.h -- заголовочный файл для сгенерированного класса
+%\item test\_gpu.cpp -- основной код на Vulkan
+%\item test\_gpu\_init.cpp -- инициализация Vulkan-объектов
+%\item test\_gpu\_ds.cpp -- инициализация дескриптор-сетов
+%\item include/Test\_gpu\_ubo.h -- выделенная структура используемых полей класса
+%\end{enumerate}
+
+%\vspace*{2px}
+%\noindent Файлы шейдеров:
+%\begin{enumerate}
+%\item shaders\_gpu/build.sh -- последовательность команд для сборки шейдеров	
+%\item shaders\_gpu/common\_generated.h -- файл, подключаемый во все шейдеры
+%\item shaders\_gpu/kernel1D\_add.comp -- файл шейдера сложения векторов
+%\end{enumerate}	
+
+\begin{remark} 
+Вы могли заметить, что наш туториал использует кастомный флаг в CMake 'USE\_VULKAN' для опционального подключения Вулкана и задействования GPU версии программы. Если Вы плохо знакомы с CMake, то самое время начать знакомиться с ним. В современном мире разработки ПО это абсолютно необходимо. 
+\end{remark}
 
 \chapterimage{boat.png}
 \chapter{Настраиваем процесс разработки}
