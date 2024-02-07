@@ -129,13 +129,13 @@
 %	CHAPTER 1
 %----------------------------------------------------------------------------------------
 
-\chapterimage{cheshir.jpg} % Chapter heading image
+\chapterimage{baikal2.jpg} % Chapter heading image
 
 \chapter{Введение}
 
 \section{Что такое kernel\_slicer?}\index{what}
 
-kernel\_slicer --- это генератор кода, принимающий на вход класс на С++ c некоторыми вычисленими/алгоритмами, и генерирующий на выходе другой класс, реализующий те же самые вычисления/алгоритмы на GPU при помощи некоторой технологии программирования нижнего уровня. В данный момент такими технологиями являются Vulkan для векторизации вычислений на GPU и ISPC для векторизации вычислений на CPU. В листинге \ref{lst:add_vectors} показан пример простейшего класса, реализующего сложения двух векторов.
+kernel\_slicer --- это генератор кода, принимающий на вход класс на С++ c некоторыми вычисленими/алгоритмами, и генерирующий на выходе другой класс, реализующий те же самые вычисления/алгоритмы на GPU при помощи некоторой технологии программирования нижнего уровня. В данный момент такими технологиями являются Vulkan для векторизации вычислений на GPU и ISPC \cite{ispc} для векторизации вычислений на CPU. В листинге \ref{lst:add_vectors} показан пример простейшего класса, реализующего сложения двух векторов.
 
 \begin{lstlisting}[language=C++, caption=сложение двух векторов]
 class Test 
@@ -188,7 +188,6 @@ public:
 %\end{figure}
 
 К сожалению, работа с этим API как напрямую, так и посредством обёрток/библиотек является довольно трудоёмкой. Например, простейшая отрисовка треугольника может занимать несколько тысяч строк кода. Как следствие растёт стоимость и время разработки. Эта проблема не столько техническая, сколько фундаментальная: она происходит из того, что в Vulkan сочетаются такие противоречивые вещи как кросс-платформенность и аппаратное ускорение. На одних GPU определённое аппаратное ускорение есть, на других его нет,.. на одних оно реализовано таким образом, на других --- по другому. Изначально kernel\_slicer задумывался как инструмент в борьбе со сложностью при работе с Vulkan. Позже он превратился в самостоятельную технологию программирования.
-
 
 \section{Мотивация вашей работы с kernel\_slicer }\index{Motivation}
 
@@ -248,13 +247,13 @@ kernel\_slicer не просто позволяет Вам ускорить ра
 \end{enumerate}
 
 \begin{remark}
-	kernel\_slicer можно собрать и использовать под ОС Windows и другие операционные системы, поскольку он является обычным плагином для clang. Для этого смотрите в репозитории инструкцию по сборке в составе LLVM. В данный момент мы не поддерживаем документацию и примеры для Windows в актуальном состоянии, поэтому мы не рекомендуем начинать с этого. 
+	kernel\_slicer можно собрать и использовать под ОС Windows и другие операционные системы, поскольку он является обычным плагином для clang. Для этого смотрите в репозитории инструкцию по сборке в составе LLVM. В данный момент мы не поддерживаем документацию и примеры для Windows в актуальном состоянии, поэтому не рекомендуем начинать с этого. 
 \end{remark}
 
 \pagebreak
 \section{Запуск первого примера}
 
-\underline{Шаг 1}: Склонируйте туториал из репозитория:
+\underline{Шаг 1}: Склонируйте первый туториал из репозитория:
 
 \begin{itemize}
 	\item git clone https://github.com/kernel-slicer-tutorials/tutorial1\_vec\_add
@@ -325,14 +324,134 @@ kernel\_slicer не просто позволяет Вам ускорить ра
 Вы могли заметить, что наш туториал использует кастомный флаг в CMake 'USE\_VULKAN' для опционального подключения Вулкана и задействования GPU версии программы. Если Вы плохо знакомы с CMake, то самое время начать знакомиться с ним. В современном мире разработки ПО это абсолютно необходимо. 
 \end{remark}
 
-\chapterimage{boat.png}
-\chapter{Измеряем время выполнения и копирования}
+\chapterimage{baikal2.jpg}
+\chapter{Процесс разработки и основы}
 
-В предыдущей главе мы опустили некоторые детали, в частности Вы могли заметить что в тестовом классе присутствуют функции CommitDeviceData и GetExecutionTime, которые никак не использовались. 
+Процесс разработки который Вы встретите в туториалах, предполагает, что Вы можете делать несколько различных реализаций ваших алгоритмов на разных технологиях программирования для CPU и GPU. Независимо от того, используете ли Вы kernel\_slicer или нет. 
 
-\section{Запуск второго примера}
+Кроме того, скорее всего вы захотите реализовывать различные варианты алгоритмов -- более быстрые и простые, либо наоборот, более медленные и качественные. Наконец, входные и выходные данные, как правило, лежат в обычной хостовой памяти (более сложный вариант, когда данные уже в памяти GPU мы рассмотрим в главе \ref{vulkan-direct}). Именно поэтому взаимодействие ваших алгоритмов с внешней средой предполагается реализовывать через простой и очевидный способ --- виртуальные функции с входными и выходными массивами данных. Рассмотрим как это выглядит на примере: 
 
-\underline{Шаг 1}: Склонируйте туториал из репозитория:
+\section{Концепция на примере тон-маппинга}
+
+Предположим, что Вы хотите написать библиотеку тонирующих операторов (tone mapping). Смысл тон-маппинга довольно прост: на входе у нас есть изображение широкого динамического диапазона (т.н. HDR изображение), которое может содержать произвольные значения яркости в пикселах (float). На выходе у нас т.н. LDR изображение, где все яркости могут быть только в интервале от 0 до 255. Такое изображение уже можно посмотреть на экране монитора. Собственно для этого тонирующие операторы в основном и нужны.
+
+Количество каналов для определённости пусть будет 4. Тогда для каждого пикселя четыре float значения на входе будут превращаться в четыре 8-битных значения на выходе. Это довольно стандартное представление и четыре таких 8-битных значения обычно просто пакуют в один uint32\_t. Делается это, как правило, для того, чтобы при работе с памятью загрузка и сохранение одного пиксела гарантированно превращалась бы в одну инструкцию, загружающую или, соотвественно, сохраняющую понятное количество байт. Не будем нарушать эту традицию (листинг \ref{lst:tonemapping_api2}).
+
+\begin{lstlisting}[language=C++, caption=интерфейс алгоритмов тон-маппинга]
+struct IToneMapping
+{
+  virtual void Run(int width, int height, 
+                   const float* in_data,
+                   uint32_t* out_data) = 0;
+                   
+  virtual void Update(...) {}                 
+};
+\end{lstlisting}\label{lst:tonemapping_api2}
+
+Функция Run будет делать всю работу, но возможно в нашем интерфейсе потребуется объявить дополнительные функции (например Update для задания настроек алгоритма или функции синхронизации, если предполагается, что алгоритм может работать асинхронно с основной программой). Обратите внимание, что входной массив объявлен как const, а выходной не содержит этого спецификатора. Это важно на будущее. Мы считаем in-out массивы плохой практикой с неочевидной семантикой, и kernel\_slicer их не поддерживает (любой не const указатель он воспринимает как out). Если Вы хотите, чтобы один и тот же массив подавался как на вход и на выход, сделайте в вашей функции явно два указателя (один const, другой обычный), и подайте один и тот же указатель как на вход так и на выход явно.  
+
+Но пока что вернёмся к интерфейсу. Мы можем реализовать простой клампинг значений, экспоненциальное отображение или, например, известный алгоритм тон-маппинга Рейнхарда \cite{Reinhard05}. Или что-то более сложное \cite{Mantiuk08}. Для каждой такой реализации Вы скорее всего напишете класс, который будет замещать виртуальную функцию Run. Это является примером нормального и естественного использованием ООП в С++. Очевидно, что в таком случае Вы будете пользоваться этим механизмом и для подключения реализаций на GPU. Давайте считать для определённости, что мы хотим реализовать алгоритм Рейнхарда в классе ReinhardTM (листинг \ref{lst:reinhard}).
+
+\begin{lstlisting}[language=C++, 
+	               caption=класс для алгоритма Рейнхарда, 
+	               label=lst:reinhard]	
+class ReinhardTM : public IToneMapping
+{
+public:
+  void Run(int width, int height, 
+           const float* in_data  [[size(w*h*4)]], 
+           uint32_t*    out_data [[size(w*h)]]) override;
+		   
+  void Update(...) override { ... }
+   	
+protected:
+  void kernel1D_findMax(int size, const float*);
+  void kernel2D_process(int w, int h, 
+                        const float* inpData, 
+                        uint32_t*    outData);
+  float m_whitePoint;
+};
+\end{lstlisting}
+
+Далее мы захотим написать классы ReinhardTM\_Vulkan и ReinhardTM\_ISPC, которые будут реализовывать оператор Рейнхарда на GPU и CPU, но уже векторизованным образом, при помощи ISPC. Мы имеем полное право сделать это без участия kernel\_slicer, реализовав соответствующие классы через соответсвующие API программирования GPU самостоятельно. Однако эта работа техническая и достаточно трудоёмкая. Кроме этого, нам придётся повторять её каждый раз, когда CPU вермися алгоритма изменится. Для больших программ такая ``поддержка'' может превратиться в настоящий кошмар из-за большого количества деталей, с которыми нам придётся иметь дело. kernel\_slicer позволяет написать только класс ReinhardTM, а параллельные реализации ReinhardTM\_Vulkan и ReinhardTM\_ISPC будут сгенерированы автоматически. Для того чтобы это работало, мы должны следать нескольким правилам при написании классов.
+
+\section{Основные правила написания класса}
+
+kernel\_slicer является плагином для clang. Поскольку единица компиляции в clang это один текстовый файл (обычно с расширением ``.cpp''), Вам прежде всего нужно грамотно разделить код на файлы таким образом, чтобы не подавать в kernel\_slicer тот код, который не должен им обрабатываться. 
+
+\underline{Правило №1:} Выполняйте реализацию Ваших алгоритмов изолированно от остальной части программы в одном или нескольких классах. Для каждого такого класса лучше всего делать один или несколько ``.cpp'' файлов.
+
+\begin{remark}
+Если в вашем классе есть код, который не должен обрабатываться kernel\_slicer-ом, просто поместите его в отдельный файл.
+\end{remark}
+
+\underline{Правило №2:} Все ваши алгоритмы должны иметь двух-уровневую организацию. Это функции (т.н. управляющие функции), которые вызывают другие функции (т.н. вычислительные ядра). Код, который должен что-то считать реализуйте внутри функций-ядер. Код, который управляет запуском ядер (например в зависимости от значения параметра запускает один или другой кернел) реализуйте в управляющих функциях (листинг \ref{lst:RunFunc}). Код вычислительных ядер выполняется на GPU, код управляющих функций --- на CPU.
+
+\begin{lstlisting}[language=C++, 
+	               caption=реализация управляющей функции Run, 
+	               label=lst:RunFunc]	
+void ReinhardTM::Run(int width, int height, 
+                     const float* in_data, 
+                     uint32_t* outData)
+{
+  kernel1D_finMax(in_data, width*height);
+  kernel2D_process(width,height,in_data,outData);
+}
+\end{lstlisting}
+
+\underline{Правило №3:} Вычислительные ядра должны содержать в имени префикс kernel1D\_, kernel2D\_ или kernel3D\_. Число перед буквой D указывает на то, сколько вложенных циклов нужно параллелить. Остальные циклы и все функции вызываемые из них будут вставлены в код шейдера (листинг \ref{lst:kernel2D_process}). 
+
+\underline{Правило №4:} Количество итераций для параллельных циклов должно: (1) передаваться через аргументы функций-ядер либо (2) быть переменной, являющейся членом класса. Если Вам нужно вычислить это количество каким-то образом, Вы можете сделать это двумя путями.
+\begin{enumerate}
+\item Вычислить это число в управляюшей функции, как в нашем примере, где вычисляется произведение width*height для ядра kernel1D\_findMax. В этом случае эти вычисления будут произведены на CPU.
+\item Вычислить это число в другом вычислительном ядре и сохранить его в переменной, являющейся членом класса. Такая переменная должна непосредственно учавствовать далее в выражении for в качестве количества итераций цикла в тех ядрах, которые предполагается запускать этим способом. Забегая вперёд скажем, что это т.н. непрямой вызов вычислительного ядра (indirect dispatch), когда количество итераций/микро-потоков станет известно лишь в момент выполнения программы на GPU. 
+\end{enumerate}
+
+\begin{lstlisting}[language=C++, 
+	               caption=двумерное вычислительнрео ядро вызывает функцию reinhard\_ext, 
+	               label=lst:kernel2D_process]	
+float reinhard_ext(float v, float max_white)
+{
+  float numerator = v * (1.0f + (v / (max_white * max_white)));
+  return numerator / (1.0f + v);
+}
+
+void ReinhardTM::kernel2D_process(int width, int height, 
+                                  const float* in_data, 
+                                  uint32_t* outData)
+{
+  for(int y=0;y<height;y++) // first par. loop (kernel2D_)
+  {
+    for(int x=0;x<width;x++) // second par. loop (kernel2D_)
+    {
+      float r = reinhard_ext(in_data[4*(y*width+x)+0], m_whitePoint);
+      float g = reinhard_ext(in_data[4*(y*width+x)+1], m_whitePoint);
+      float b = reinhard_ext(in_data[4*(y*width+x)+2], m_whitePoint);
+			
+      int ir  = (int)std::min(r*255.0f, 255.0f);
+      int ig  = (int)std::min(g*255.0f, 255.0f);
+      int ib  = (int)std::min(b*255.0f, 255.0f);
+			
+      outData[y*w+x] = 0xFF000000 | (ib << 16) | (ig << 8) | ir;
+    }
+  }
+}
+\end{lstlisting}
+
+
+\underline{Правило №5:} Вы можете передавать данные из управляющей функцией в ядро только через аргументы ядра. Нельзя, например, записать значение переменной члена класса в управляющей функции и прочитать его в ядре: на GPU прочитается старое значение.
+
+\underline{Правило №6:} Вы можете передавать данные между различными вычислительными ядрами либо (1) через их аргументы (как в нашем примере, где оба вычислительных ядра принимают на вход один и тот же указатель in\_data), либо (2) через члены класса. Члены класса могут иметь типы данных std::vector и LiteImage::Image2D.
+
+
+\chapterimage{baikal2.jpg}
+\section{Измеряем время выполнения и копирования}
+
+Ранее мы опустили некоторые детали, в частности Вы могли заметить, что в тестовом классе присутствуют функции CommitDeviceData и GetExecutionTime, которые никак не использовались. 
+
+\subsection{Запуск второго примера}
+
+\noindent\underline{Шаг 1}: Склонируйте второй туториал (фрактал Мандельброта) из репозитория:
 
 \begin{itemize}
 	\item git clone https://github.com/kernel-slicer-tutorials/tutorial2\_...
@@ -341,24 +460,32 @@ kernel\_slicer не просто позволяет Вам ускорить ра
 	\item git submodule update
 \end{itemize}
 
+\vspace*{5px}
+\noindent\underline{Шаги 2--5}: повторите шаги 2--5 из главы быстрый старт для туториала фрактала Мандельброта. 
+
+\vspace*{5px}
+\noindent\underline{Шаг 6}: Обратите внимание на механизм измерения времени при помощи функции GetExecutionTime.
 
 
-\chapterimage{boat.png}
+\chapterimage{baikal2.jpg}
 \chapter{Частые проблемы и пути их решения}
 
 Before continuing, first and most importantly you must select the \emph{raw} data you are going to process and later after you acquire experience with an specific dataset the idea is to expand the algorithms to any kind of dataset. The important things are to learn how to input the data correctly, establish the right \emph{learning parameters} in the selected algorithm and find the best way to visualize your results and interpret them correctly.
 
-\chapterimage{head1.png} % Chapter heading image
-
+\chapterimage{baikal2.jpg} % Chapter heading image
 \chapter{Особенности шаблона для трассировки лучей}
 
 I discovered surfing on the internet a cloud computing software that is free, has data mining algorithms embedded, is specifically developed for Astronomy and is programmed by Caltech, University Federico II and the Astronomical Observatory of Capodimonte. The homepage website, \url{http://dame.dsf.unina.it/index.html}. Well, the platform for testing is ready!, now what? I requested and account and the next day they sent me an acceptance with my user name and my password approved.
 I introduced myself to the documentation, the available clustering functions, the manuals for every method, the blogs and discovered that the was one method available that could work with data cubes and do its clustering on every pattern (number in the multidimensional matrix) which was exactly what I needed. The name of this method is ESOM (Evolving Self Organizing Maps) and I read its manual, did some foolish test with all my image and ... never got a result ... the experiment ran forever (more than two weeks), when I realised that this wasn't the best way to tackle this problem I started considering only clustering on the independent images and not in the data cube due to the fact that the dimensionality was immense. So, in the end my selected methods have some results but not all, here is where all the work has to be done, analysed and tested again.
 
-\chapterimage{head1.png} % Chapter heading image
+\chapterimage{baikal2.jpg} % Chapter heading image
 \chapter{Параметры командной строки}
 
-\chapterimage{head1.png} % Chapter heading image
+
+\chapterimage{baikal2.jpg} % Chapter heading image
+\chapter{Работа с Vulkan-интерфейсом напрямую}\label{vulkan-direct}
+
+\chapterimage{baikal2.jpg} % Chapter heading image
 \chapter{Работа с ISPC}
 
 
@@ -502,6 +629,9 @@ I introduced myself to the documentation, the available clustering functions, th
 	
 	\bibitem{Aila2009} Timo Aila and Samuli Laine. \textit{Understanding the Efficiency of Ray Traversal on GPUs.} // Proc. High-Performance Graphics 2009.
 	
+	\bibitem{Reinhard05} Reinhard, E., Ward, G., Pattanaik, S., and Debevec, P. \textit{High Dynamic Range Imaging: Acquisition, Display and Image-Based Lighting}, 2005.
+	
+	\bibitem{Mantiuk08} Mantiuk R., Daly S., Kerofsky L. Display adaptive tone mapping //ACM SIGGRAPH 2008 papers. – 2008. – С. 1-10.
 	
 \end{thebibliography}
 
