@@ -212,7 +212,7 @@ kernel\_slicer не просто позволяет Вам ускорить ра
 %----------------------------------------------------------------------------------------
 %	CHAPTER 2
 %----------------------------------------------------------------------------------------
-\chapterimage{take_off2.jpg}
+\chapterimage{ice_konki1.png}
 
 \chapter{Быстрый старт}
 
@@ -324,8 +324,8 @@ kernel\_slicer не просто позволяет Вам ускорить ра
 Вы могли заметить, что наш туториал использует кастомный флаг в CMake 'USE\_VULKAN' для опционального подключения Вулкана и задействования GPU версии программы. Если Вы плохо знакомы с CMake, то самое время начать знакомиться с ним. В современном мире разработки ПО это абсолютно необходимо. 
 \end{remark}
 
-\chapterimage{baikal2.jpg}
-\chapter{Основы разработки алгоритмов для GPU}
+\chapterimage{ice_fundament.png}
+\chapter{Базовые принципы}
 
 Процесс разработки который Вы встретите в туториалах, предполагает, что Вы можете делать несколько различных реализаций ваших алгоритмов на разных технологиях программирования для CPU и GPU. Независимо от того, используете ли Вы kernel\_slicer или нет. 
 
@@ -373,7 +373,7 @@ protected:
 };
 \end{lstlisting}
 
-Далее мы захотим написать классы ReinhardTM\_Vulkan и ReinhardTM\_ISPC, которые будут реализовывать оператор Рейнхарда на GPU и CPU, но уже векторизованным образом, при помощи ISPC. Мы имеем полное право сделать это без участия kernel\_slicer, реализовав соответствующие классы через соответсвующие API программирования GPU самостоятельно. Однако эта работа техническая и достаточно трудоёмкая. Кроме этого, нам придётся повторять её каждый раз, когда CPU версия алгоритма изменится. Для больших программ такая ``поддержка'' может превратиться в настоящий кошмар из-за большого количества деталей, с которыми нам придётся иметь дело при каждом более-мении серьезном обновлении программы. kernel\_slicer позволяет написать только класс ReinhardTM, а параллельные реализации ReinhardTM\_Vulkan и ReinhardTM\_ISPC будут сгенерированы автоматически. Для того чтобы это работало, мы должны следовать нескольким правилам при написании классов.
+Далее мы захотим написать классы ReinhardTM\_Vulkan и ReinhardTM\_ISPC, которые будут реализовывать оператор Рейнхарда на GPU и CPU, но уже векторизованным образом, при помощи ISPC. Мы имеем полное право сделать это без участия kernel\_slicer, реализовав соответствующие классы через соответсвующие API программирования GPU самостоятельно. Однако эта работа техническая и достаточно трудоёмкая. Кроме этого, нам придётся повторять её каждый раз, когда CPU версия алгоритма изменится. Для больших программ такая ``поддержка'' может превратиться в настоящий кошмар из-за большого количества деталей, с которыми нам придётся иметь дело при каждом более-менее серьезном обновлении программы. kernel\_slicer позволяет написать только класс ReinhardTM, а параллельные реализации ReinhardTM\_Vulkan и ReinhardTM\_ISPC будут сгенерированы автоматически. Для того чтобы это работало, мы должны следовать нескольким правилам при написании классов.
 
 \section{Основные правила написания класса}
 
@@ -452,7 +452,7 @@ void ReinhardTM::kernel2D_process(int width, int height,
 \end{remark}
 
 \begin{remark}
-Тип данных float3/vec3 весьма коварен. Его размер на CPU обычно 12 байт. Однако его размер на GPU зависит от того, как он используется. Если он является членом структуры, в которой есть, например, ещё один float, тогда vec3 будет занимать 12 байт, а сама структура --- 16 байт. Однако если обратиться по индексу к буферу, в котором хранятся vec3, то сам тип данных vec3 будет уже занимать 16 байт. Такое поведение невозможно корректно реализовать на CPU, поэтому мы не рекомендуем Вам хранить что-то во float3. При этом в рассчётах его можно свободно использовать.
+Тип данных float3/vec3 весьма коварен. Его размер на CPU обычно 12 байт. Однако его размер на GPU зависит от того, как он используется. Если он является членом структуры, в которой есть, например, ещё один float, тогда vec3 будет занимать 12 байт, а сама структура --- 16 байт. Однако если обратиться по индексу к буферу, в котором хранятся vec3, то сам тип данных vec3 будет уже занимать 16 байт. Такое поведение невозможно корректно реализовать на CPU, поэтому мы не рекомендуем Вам хранить что-то во float3. При этом в рассчётах его можно свободно использовать. То есть в качестве локальныйх переменных или аргументов функций.
 \end{remark}	
 
 \chapterimage{baikal2.jpg}
@@ -543,33 +543,40 @@ void main()
 Таким образом, Вы можете сохранить описание вашего алгоритма в простом виде с последовательной логикой, и не заниматься самостоятельной реализаций по крайней мере для некоторых часто-используемых примитивов параллельного программирования. В главе \ref{patterns} Вы найдёте описание всех реализованных алгоритмических паттернов.
 
 \begin{remark}
-Посмотрите как делается параллельная редукция в OpenMP. В kernel\_slicer мы не стали добавлять специальные директивы для указания перменных для которых следует генерировать параллельную редукцию. Мотивация которой мы руководствовались заключается в том, что подобный паттерн является слишком очевидным, и его проще запомнить в алгоритмическом виде, чем в виде отдельной директивы или конструкции языка. Попробуйте воспроизвести по памяти пример параллельной редукции из OpenMP.
+Посмотрите как делается параллельная редукция в OpenMP. В kernel\_slicer мы не стали добавлять специальные директивы для указания перменных для которых следует генерировать параллельную редукцию. Мотивация которой мы руководствовались заключается в том, что подобный паттерн является слишком очевидным, и его проще запомнить в алгоритмическом виде, чем в виде отдельной директивы или конструкции языка. Попробуйте воспроизвести по памяти пример параллельной редукции из OpenMP. 
 \end{remark}
 
-\chapterimage{baikal2.jpg}
+\chapterimage{ice_problems.jpg}
 \chapter{Частые проблемы и пути их решения}
 
 Before continuing, first and most importantly you must select the \emph{raw} data you are going to process and later after you acquire experience with an specific dataset the idea is to expand the algorithms to any kind of dataset. The important things are to learn how to input the data correctly, establish the right \emph{learning parameters} in the selected algorithm and find the best way to visualize your results and interpret them correctly.
 
-\chapterimage{baikal2.jpg}
+\chapterimage{ice_patterns.jpg}
 \chapter{Паттерны}\label{patterns}
 
-\chapterimage{baikal2.jpg} % Chapter heading image
-\chapter{Особенности шаблона для трассировки лучей}
+\chapterimage{nerpa_functions.jpg}
+\chapter{Специальные функции}\label{spec_functions}
+
+\chapterimage{nerpa_work_generated.jpg}
+\chapter{Доработка сгенерированного кода}\label{work_with_generated_code}
+
+\chapterimage{ice_rt.jpg} % Chapter heading image
+\chapter{Особенности паттерна трассировки лучей}
 
 I discovered surfing on the internet a cloud computing software that is free, has data mining algorithms embedded, is specifically developed for Astronomy and is programmed by Caltech, University Federico II and the Astronomical Observatory of Capodimonte. The homepage website, \url{http://dame.dsf.unina.it/index.html}. Well, the platform for testing is ready!, now what? I requested and account and the next day they sent me an acceptance with my user name and my password approved.
 I introduced myself to the documentation, the available clustering functions, the manuals for every method, the blogs and discovered that the was one method available that could work with data cubes and do its clustering on every pattern (number in the multidimensional matrix) which was exactly what I needed. The name of this method is ESOM (Evolving Self Organizing Maps) and I read its manual, did some foolish test with all my image and ... never got a result ... the experiment ran forever (more than two weeks), when I realised that this wasn't the best way to tackle this problem I started considering only clustering on the independent images and not in the data cube due to the fact that the dimensionality was immense. So, in the end my selected methods have some results but not all, here is where all the work has to be done, analysed and tested again.
 
-\chapterimage{baikal2.jpg} % Chapter heading image
+\chapterimage{ice_cmd.jpg} % Chapter heading image
 \chapter{Параметры командной строки}
 
 
-\chapterimage{baikal2.jpg} % Chapter heading image
+\chapterimage{shaman_vulkan_buben.jpg} % Chapter heading image
 \chapter{Работа с Vulkan-интерфейсом напрямую}\label{vulkan-direct}
 
-\chapterimage{baikal2.jpg} % Chapter heading image
+\chapterimage{velik.jpg} % Chapter heading image
 \chapter{Работа с ISPC}
 
+\chapterimage{literature.jpg} 
 
 \begin{thebibliography}{10}
 	
