@@ -1162,7 +1162,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     auto pGetTime = a_classInfo.allMemberFunctions.find("GetExecutionTime");
     auto pUpdPOD  = a_classInfo.allMemberFunctions.find("UpdateMembersPlainData");
     auto pUpdVec  = a_classInfo.allMemberFunctions.find("UpdateMembersVectorData");
-    auto pUpdTex  = a_classInfo.allMemberFunctions.find("UpdateMembersTexureData");
+    auto pUpdTex  = a_classInfo.allMemberFunctions.find("UpdateMembersTextureData");
     auto pScnRstr = a_classInfo.allMemberFunctions.find("SceneRestrictions");
     auto pNameFn  = a_classInfo.allMemberFunctions.find("Name");
 
@@ -1203,7 +1203,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(pUpdTex != a_classInfo.allMemberFunctions.end())
     {
       if(!pUpdTex->second->isVirtual())
-        std::cout << "  [kslicer]: warning, function 'UpdateMembersTexureData' should be virtual" << std::endl;  
+        std::cout << "  [kslicer]: warning, function 'UpdateMembersTextureData' should be virtual" << std::endl;  
     }
 
     if(pScnRstr == a_classInfo.allMemberFunctions.end() && a_classInfo.IsRTV())
