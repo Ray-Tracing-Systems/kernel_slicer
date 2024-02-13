@@ -498,8 +498,13 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
 void {{MainClassName}}{{MainClassSuffix}}::ReserveEmptyVectors()
 {
   {% for Var in ClassVectorVars %}
+  {% if Var.AccessSymb == "." %}
   if({{Var.Name}}{{Var.AccessSymb}}capacity() == 0)
     {{Var.Name}}{{Var.AccessSymb}}reserve(4);
+  {% else %}
+  if({{Var.Name}} != nullptr && {{Var.Name}}{{Var.AccessSymb}}capacity() == 0)
+    {{Var.Name}}{{Var.AccessSymb}}reserve(4);
+  {% endif %}
   {% endfor %}
 }
 
