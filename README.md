@@ -9,7 +9,6 @@ This project is carried out at the Institute of Applied Mathematics Russian Acad
 This project is based on clang (fig. 1.). We sincerely thank the clang front-end developers for the great structure and documentation of their project!
 We heavily used clang front-end infrastructure to transform input C++ source code and generate GPU implementation of the algorithm in Vulkan. 
 
-
 # Project goal
 
 The goal of this project is to increase developer productivity when porting naive CPU code to GPU via Vulkan which is time consuming work in general.
@@ -23,6 +22,39 @@ The remaining 10% are written by hand and can use any desire HW extensions which
 <p align = "center">Fig. 2. Purpose and place of our tool among other GPU programming technologies.</p><BR>
 
 Vulkan is great! But it is time consuming technology, which mean significant increase for cost and time of software developemnt. Our goal is to create complex algorithms in Vulkan fast. And our goal is to preserve 100% cross-platform ability be keeping the input source code in form of common C++ without **any** language extensions.
+
+# Build:
+
+1. git clone --recurse-submodules https://github.com/Ray-Tracing-Systems/kernel_slicer
+  * otherwise execute after clone:
+  * git submodule init
+  * git submodule update
+
+2. install llvm-17 (both dev and not dev)
+ * wget https://apt.llvm.org/llvm.sh
+ * chmod +x llvm.sh
+ * sudo ./llvm.sh 17
+ * sudo apt-get install llvm-17-dev
+ * sudo touch /usr/lib/llvm-17/bin/yaml-bench 
+ * sudo apt-get install libclang-17-dev 
+ * sudo apt install clang-17
+
+3. use Cmake and make
+
+  * cd kernel_slicer
+  * mkdir cmake-build-release && cd cmake-build-release
+  * cmake -DCMAKE_BUILD_TYPE=Release .. 
+  * make -j 10
+
+4. you may also use provided VS Code config to build and run test cases (tasks.json and launch.json)
+
+5. Install Vulkan SDK (https://vulkan.lunarg.com/sdk/home)
+
+6. (optional) build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") if you want OpenCL shaders
+
+7. (optional) install [intel ispc](https://ispc.github.io/ "Intel® Implicit SPMD Program Compiler") if you are going to vectorize code for CPU
+
+8. (optional) If you want to [build it as a part of llvm](doc/README_build_with_llvm.md)
 
 # Project overview
 
@@ -45,42 +77,6 @@ kernel_slicer is prototype auto-programming tool which takes C++ code as input a
 * Let's summarize again: you have to bind generated code to your program yourself, thus you can't  escape Vulkan experience. You can directly use generated class. You can also override some functions if you want to change behaviour of some parts of generated code (see [Example of glue code](doc/README_glue.md));
 
 * Our main users are Vulkan developers that has to use Vulkan due to some specific hardware features or performance requirenments. Therefore, we initially pay special attention to interaction between generated and hand written code (which can use any desired hardware extensions). Such interaction is assumed to be done via inheritance and virtual function overides (see [Example of glue code](doc/README_glue.md));
-
-# Build:
-
-1. git clone --recurse-submodules https://github.com/Ray-Tracing-Systems/kernel_slicer
-  * otherwise execute after clone:
-  * git submodule init
-  * git submodule update
-
-2. Download dependencies 
- * cd kernel_slicer
- * bash clone_dependencies.bat  
-
-3. install llvm-17 (both dev and not dev)
- * wget https://apt.llvm.org/llvm.sh
- * chmod +x llvm.sh
- * sudo ./llvm.sh 17
- * sudo apt-get install llvm-17-dev
- * sudo touch /usr/lib/llvm-17/bin/yaml-bench 
- * sudo apt-get install libclang-17-dev 
- * sudo apt install clang-17
-
-4. use Cmake and make
-
-  * cd kernel_slicer
-  * cmake . 
-  * make -j 10
-
-5. you may also use provided VS Code config to build and run test cases (tasks.json and launch.json)
-
-6. Install Vulkan SDK (https://vulkan.lunarg.com/sdk/home)
-
-7. (optional) build [google clspv](https://github.com/google/clspv "Clspv is a prototype compiler for a subset of OpenCL C to Vulkan compute shaders") if you want OpenCL shaders
-
-8. (optional) install [intel ispc](https://ispc.github.io/ "Intel® Implicit SPMD Program Compiler") if you are going to vectorize code for CPU
-
-9. (optional) If you want to [build it as a part of llvm](doc/README_build_with_llvm.md)
 
 # Concept and general workflow
 

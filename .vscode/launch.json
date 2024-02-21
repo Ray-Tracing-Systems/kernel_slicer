@@ -2170,6 +2170,35 @@
             ]
         },
 
+        {
+            "name"   : "Launch (test_028/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/028_complex_numbers/test_class.cpp",
+                        "-mainClass", "TestClass", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore", 
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-shaderCC", "glsl",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
 
         {
             "name"   : "Launch (msu/vk_graphics_rt)",
@@ -2240,8 +2269,9 @@
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-release/kslicer",
-            "args"   : ["/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt1.cpp",
-                        "/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt2.cpp",
+            "args"   : ["/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt.cpp",
+                        "/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt_lgt.cpp",
+                        "/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt_mat.cpp",
                         "/home/frol/PROG/HydraRepos/HydraCore3/integrator_rt.cpp",
                         "/home/frol/PROG/HydraRepos/HydraCore3/integrator_spectrum.cpp",
                         "-mainClass", "Integrator", 
@@ -2454,6 +2484,65 @@
                 }
             ]
         },
+
+        {
+            "name"   : "Launch (LiteRF)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/msu-graphics-group/LiteRF/example_tracer/example_tracer.cpp",
+                        "-mainClass", "RayMarcherExample", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-shaderFolderPrefix", "example_tracer/",
+                        "-pattern", "ipv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        //"-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I/home/frol/PROG/msu-graphics-group/LiteRF/external/LiteMath", "ignore",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (tutorial1_vec_add)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/kernel-slicer-tutorials/tutorial1_vec_add/test.cpp",
+                        "-mainClass", "Test", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-shaderCC", "glsl",
+                        "-suffix", "_GPU",
+                        "-I${workspaceFolder}/TINYSTL", "ignore",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
 
     ]
 }

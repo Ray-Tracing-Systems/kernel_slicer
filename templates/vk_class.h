@@ -159,7 +159,7 @@ public:
   void UpdateMembersVectorData() override { UpdateVectorMembers(m_ctx.pCopyHelper); }
   {% endif %}
   {% if UpdateMembersTextureData %}
-  void UpdateMembersTexureData() override { UpdateTextureMembers(m_ctx.pCopyHelper); }
+  void UpdateMembersTextureData() override { UpdateTextureMembers(m_ctx.pCopyHelper); }
   {% endif %}
   
 
