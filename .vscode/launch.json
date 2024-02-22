@@ -961,7 +961,7 @@
             "name"   : "Launch (app_17/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/17_shadow_pt_inst/test_class.cpp",
                         "-mainClass", "TestClass", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",

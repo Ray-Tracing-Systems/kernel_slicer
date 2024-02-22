@@ -60,23 +60,32 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   }
   
   //std::cout << "shaderPath = " << shaderPath.c_str() << std::endl;
-    
+
+  bool needRTDummies = false;
+
   std::ofstream buildSH(shaderPath + slash + scriptName);
   buildSH << "#!/bin/sh" << std::endl;
   for(auto& kernel : kernels.items())
   {
     nlohmann::json currKerneJson = copy;
     currKerneJson["Kernel"] = kernel.value();
-    
-    const bool vulkan11 = kernel.value()["UseSubGroups"];
 
-    std::string kernelName  = std::string(kernel.value()["Name"]);
-    std::string outFileName = kernelName + ".comp";
+    std::string kernelName     = std::string(kernel.value()["Name"]);
+    bool useRayTracingPipeline = kernel.value()["UseRayGen"];
+    const bool vulkan11        = kernel.value()["UseSubGroups"];
+    const bool vulkan12        = useRayTracingPipeline;
+    needRTDummies              = needRTDummies || useRayTracingPipeline;
+    
+    std::string outFileName = kernelName + (useRayTracingPipeline ? "RGEN.glsl" : ".comp");
     std::string outFilePath = shaderPath + slash + outFileName;
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
     buildSH << "glslangValidator -V ";
-    if(vulkan11)
+    if(vulkan12)
+      buildSH << "--target-env vulkan1.2 ";
+    else if(vulkan11)
       buildSH << "--target-env vulkan1.1 ";
+    if(useRayTracingPipeline)
+      buildSH << "-S rgen ";
     buildSH << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
     for(auto folder : ignoreFolders)
       buildSH << "-I" << folder.c_str() << " ";
@@ -158,6 +167,18 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
         buildSH << "glslangValidator -V z_bitonic_" + sortImpl.second.dataTypeName + "_2048.comp -o z_bitonic_" + sortImpl.second.dataTypeName + "_2048.comp.spv" << std::endl;
       }
     }
+  }
+
+  if(needRTDummies)
+  {
+    nlohmann::json params;
+    kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_trace_rchit.glsl", shaderPath + slash + "z_trace_rchit.glsl", params);
+    kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_trace_rmiss.glsl", shaderPath + slash + "z_trace_rmiss.glsl", params);
+    kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_trace_smiss.glsl", shaderPath + slash + "z_trace_smiss.glsl", params);
+
+    buildSH << "glslangValidator -V -target-env vulkan1.2 -S rchit z_trace_rchit.glsl -o z_trace_rchit.glsl.spv" << std::endl;
+    buildSH << "glslangValidator -V -target-env vulkan1.2 -S rmiss z_trace_rmiss.glsl -o z_trace_rmiss.glsl.spv" << std::endl;
+    buildSH << "glslangValidator -V -target-env vulkan1.2 -S rmiss z_trace_smiss.glsl -o z_trace_smiss.glsl.spv" << std::endl;
   }
 
   buildSH.close();
