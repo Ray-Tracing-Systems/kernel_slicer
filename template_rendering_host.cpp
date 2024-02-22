@@ -473,7 +473,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
                                              const std::vector<kslicer::DeclInClass>& usedDecl,
                                              const std::string& a_genIncude, const uint32_t    threadsOrder[3],
                                              const std::string& uboIncludeName, const std::string& a_composImplName, 
-                                             const nlohmann::json& uboJson)
+                                             const nlohmann::json& uboJson,
+                                             const TextGenSettings& a_settings)
 {
   std::string folderPath           = GetFolderPath(a_classInfo.mainClassFileName);
   std::string shaderPath           = "./" + a_classInfo.pShaderCC->ShaderFolder();
@@ -513,6 +514,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UseServiceScan"]     = (a_classInfo.usedServiceCalls.find("exclusive_scan") != a_classInfo.usedServiceCalls.end()) || (a_classInfo.usedServiceCalls.find("inclusive_scan") != a_classInfo.usedServiceCalls.end());
   data["UseServiceSort"]     = (a_classInfo.usedServiceCalls.find("sort") != a_classInfo.usedServiceCalls.end());
   data["GenGpuApi"]          = a_classInfo.genGPUAPI;
+  data["UseRayGen"]          = a_settings.enableRayGen;
+  data["UseMotionBlur"]      = a_settings.enableMotionBlur;
 
   if(data["UseServiceScan"])
   {
@@ -915,6 +918,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["Decl"]           = kernelDeclByName[kernName];
     kernelJson["Args"]           = std::vector<std::string>();
     kernelJson["threadDim"]      = a_classInfo.GetKernelTIDArgs(k).size();
+    kernelJson["UseRayGen"]      = a_settings.enableRayGen;       // duplicate these options for kernels so we can 
+    kernelJson["UseMotionBlur"]  = a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
+
     size_t actualSize = 0;
     for(const auto& arg : k.args)
     {
@@ -1608,7 +1614,10 @@ namespace kslicer
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 
 
-nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::vector<kslicer::DataMemberInfo>& a_dataMembers, const clang::CompilerInstance& compiler)
+nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, 
+                                       const std::vector<kslicer::DataMemberInfo>& a_dataMembers, 
+                                       const clang::CompilerInstance& compiler,
+                                       const TextGenSettings& a_settings)
 {
   nlohmann::json data;
   auto pShaderRewriter = a_classInfo.pShaderFuncRewriter;
@@ -1621,6 +1630,8 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::ve
   data["UBOStructFields"] = std::vector<std::string>();
   data["ShaderGLSL"]      = a_classInfo.pShaderCC->IsGLSL();
   data["Hierarchies"]     = PutHierarchiesDataToJson(a_classInfo.GetDispatchingHierarchies(), compiler);
+  data["UseRayGen"]       = a_settings.enableRayGen;
+  data["UseMotionBlur"]   = a_settings.enableMotionBlur;
 
   for(auto member : podMembers)
   {

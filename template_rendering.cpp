@@ -241,7 +241,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
                                     const std::vector<kslicer::DeclInClass>& usedDecl,
                                     const clang::CompilerInstance& compiler,
                                     const uint32_t  threadsOrder[3],
-                                    const std::string& uboIncludeName, const nlohmann::json& uboJson, const std::vector<std::string>& usedDefines)
+                                    const std::string& uboIncludeName, 
+                                    const nlohmann::json& uboJson, 
+                                    const std::vector<std::string>& usedDefines,
+                                    const TextGenSettings& a_settings)
 {
   auto pShaderRewriter = a_classInfo.pShaderFuncRewriter;
 
@@ -270,6 +273,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["UseServiceScan"]     = (a_classInfo.usedServiceCalls.find("exclusive_scan") != a_classInfo.usedServiceCalls.end()) || (a_classInfo.usedServiceCalls.find("inclusive_scan") != a_classInfo.usedServiceCalls.end());
   data["UseServiceSort"]     = (a_classInfo.usedServiceCalls.find("sort") != a_classInfo.usedServiceCalls.end());
   data["UseComplex"]         = true; // a_classInfo.useComplexNumbers; does not works in appropriate way ... 
+  data["UseRayGen"]          = a_settings.enableRayGen;
+  data["UseMotionBlur"]      = a_settings.enableMotionBlur;
 
   data["Defines"] = std::vector<std::string>();
   for(const auto& def : usedDefines)
@@ -609,6 +614,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["OpenMPAndISPC"]    = k.openMpAndISPC;
     kernelJson["ExplicitIdISPC"]   = k.explicitIdISPC;
     kernelJson["InitKPass"]        = false;
+
+    kernelJson["UseRayGen"]      = a_settings.enableRayGen;       // duplicate these options for kernels so we can 
+    kernelJson["UseMotionBlur"]  = a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
