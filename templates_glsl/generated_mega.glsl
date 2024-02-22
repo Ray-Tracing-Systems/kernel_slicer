@@ -1,7 +1,11 @@
 #version 460
 #extension GL_GOOGLE_include_directive : require
 {% if length(Kernel.RTXNames) > 0 %}
+{% if UseRayGen %}
+#extension GL_EXT_ray_tracing : require 
+{% else %}
 #extension GL_EXT_ray_query : require
+{% endif %}
 {% endif %}
 {% if Kernel.NeedTexArray %}
 #extension GL_EXT_nonuniform_qualifier : require
@@ -36,6 +40,23 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 {% for RTName in Kernel.RTXNames %}
 // RayScene intersection with '{{RTName}}'
 //
+{% if UseRayGen %}
+layout(location = 0) rayPayloadEXT CRT_Hit kgen_hitValue;
+layout(location = 1) rayPayloadEXT bool    kgen_inShadow;
+
+CRT_Hit {{RTName}}_RayQuery_NearestHit(const vec4 rayPos, const vec4 rayDir)
+{
+  traceRayEXT(m_pAccelStruct, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, 0);
+  return kgen_hitValue;
+}
+
+bool {{RTName}}_RayQuery_AnyHit(const vec4 rayPos, const vec4 rayDir)
+{
+  traceRayEXT(m_pAccelStruct, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT,
+              0xff, 0, 0, 1, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, 1);
+  return kgen_inShadow;
+}
+{% else %}
 CRT_Hit {{RTName}}_RayQuery_NearestHit(const vec4 rayPos, const vec4 rayDir)
 {
   rayQueryEXT rayQuery;
@@ -73,7 +94,7 @@ bool {{RTName}}_RayQuery_AnyHit(const vec4 rayPos, const vec4 rayDir)
   rayQueryProceedEXT(rayQuery);
   return (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 }
-
+{% endif %}
 {% endfor %}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +126,7 @@ void main()
 {
   ///////////////////////////////////////////////////////////////// prolog
   {% for TID in Kernel.ThreadIds %}
-  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(gl_GlobalInvocationID[{{ loop.index }}]); 
+  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}({% if UseRayGen %}gl_LaunchIDEXT{% else %}gl_GlobalInvocationID{% endif %}[{{ loop.index }}]); 
   {% endfor %}
   ///////////////////////////////////////////////////////////////// prolog
 
