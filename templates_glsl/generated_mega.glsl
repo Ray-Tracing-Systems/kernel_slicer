@@ -52,6 +52,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(const vec4 rayPos, const vec4 rayDir)
 
 bool {{RTName}}_RayQuery_AnyHit(const vec4 rayPos, const vec4 rayDir)
 {
+  kgen_inShadow = true;
   traceRayEXT(m_pAccelStruct, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT,
               0xff, 0, 0, 1, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, 1);
   return kgen_inShadow;
