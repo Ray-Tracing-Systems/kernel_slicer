@@ -1,7 +1,7 @@
 #version 460
 #extension GL_GOOGLE_include_directive : require
 {% if length(Kernel.RTXNames) > 0 %}
-{% if UseRayGen %}
+{% if Kernel.UseRayGen %}
 #extension GL_EXT_ray_tracing : require 
 {% else %}
 #extension GL_EXT_ray_query : require
@@ -40,7 +40,7 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 {% for RTName in Kernel.RTXNames %}
 // RayScene intersection with '{{RTName}}'
 //
-{% if UseRayGen %}
+{% if Kernel.UseRayGen %}
 layout(location = 0) rayPayloadEXT CRT_Hit kgen_hitValue;
 layout(location = 1) rayPayloadEXT bool    kgen_inShadow;
 
@@ -98,7 +98,7 @@ bool {{RTName}}_RayQuery_AnyHit(const vec4 rayPos, const vec4 rayDir)
 {% endfor %}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-{% if not UseRayGen %}
+{% if not Kernel.UseRayGen %}
 layout(local_size_x = {{Kernel.WGSizeX}}, local_size_y = {{Kernel.WGSizeY}}, local_size_z = {{Kernel.WGSizeZ}}) in;
 {% endif %}
 layout( push_constant ) uniform kernelArgs
@@ -126,7 +126,7 @@ void main()
 {
   ///////////////////////////////////////////////////////////////// prolog
   {% for TID in Kernel.ThreadIds %}
-  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}({% if UseRayGen %}gl_LaunchIDEXT{% else %}gl_GlobalInvocationID{% endif %}[{{ loop.index }}]); 
+  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}({% if Kernel.UseRayGen %}gl_LaunchIDEXT{% else %}gl_GlobalInvocationID{% endif %}[{{ loop.index }}]); 
   {% endfor %}
   ///////////////////////////////////////////////////////////////// prolog
 

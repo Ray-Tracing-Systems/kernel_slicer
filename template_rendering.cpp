@@ -363,7 +363,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       for(const auto& cf : a_classInfo.mainFunc)
       {
-        kernels[cf.megakernel.name] = cf.megakernel;
+        kernels[cf.megakernel.name]            = cf.megakernel;
         kernels[cf.megakernel.name].subkernels = cf.subkernels;
       }
     }
@@ -615,8 +615,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["ExplicitIdISPC"]   = k.explicitIdISPC;
     kernelJson["InitKPass"]        = false;
 
-    kernelJson["UseRayGen"]      = a_settings.enableRayGen;       // duplicate these options for kernels so we can 
-    kernelJson["UseMotionBlur"]  = a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
+    kernelJson["UseRayGen"]      = k.enableRTPipeline && a_settings.enableRayGen;       // duplicate these options for kernels so we can 
+    kernelJson["UseMotionBlur"]  = k.enableRTPipeline && a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
 
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));

@@ -176,9 +176,9 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_trace_rmiss.glsl", shaderPath + slash + "z_trace_rmiss.glsl", params);
     kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_trace_smiss.glsl", shaderPath + slash + "z_trace_smiss.glsl", params);
 
-    buildSH << "glslangValidator -V -target-env vulkan1.2 -S rchit z_trace_rchit.glsl -o z_trace_rchit.glsl.spv" << std::endl;
-    buildSH << "glslangValidator -V -target-env vulkan1.2 -S rmiss z_trace_rmiss.glsl -o z_trace_rmiss.glsl.spv" << std::endl;
-    buildSH << "glslangValidator -V -target-env vulkan1.2 -S rmiss z_trace_smiss.glsl -o z_trace_smiss.glsl.spv" << std::endl;
+    buildSH << "glslangValidator -V --target-env vulkan1.2 -S rchit z_trace_rchit.glsl -o z_trace_rchit.glsl.spv" << std::endl;
+    buildSH << "glslangValidator -V --target-env vulkan1.2 -S rmiss z_trace_rmiss.glsl -o z_trace_rmiss.glsl.spv" << std::endl;
+    buildSH << "glslangValidator -V --target-env vulkan1.2 -S rmiss z_trace_smiss.glsl -o z_trace_smiss.glsl.spv" << std::endl;
   }
 
   buildSH.close();

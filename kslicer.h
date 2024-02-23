@@ -270,6 +270,8 @@ namespace kslicer
     uint32_t wgSize[3] = {256,1,1};              ///<! workgroup size for the case when setting wgsize with spec constant is not allowed
     uint32_t warpSize  = 32;                     ///<! warp size in which we can rely on to omit sync in reduction and e.t.c.
     bool     enableSubGroups  = false;           ///<! enable subgroup operations for reduction and e.t.c.
+    bool     enableRTPipeline = false;
+    
     bool     singleThreadISPC = false;
     bool     openMpAndISPC    = false;
     bool     explicitIdISPC   = false;

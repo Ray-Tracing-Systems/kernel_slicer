@@ -918,8 +918,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["Decl"]           = kernelDeclByName[kernName];
     kernelJson["Args"]           = std::vector<std::string>();
     kernelJson["threadDim"]      = a_classInfo.GetKernelTIDArgs(k).size();
-    kernelJson["UseRayGen"]      = a_settings.enableRayGen;       // duplicate these options for kernels so we can 
-    kernelJson["UseMotionBlur"]  = a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
+    kernelJson["UseRayGen"]      = k.enableRTPipeline && a_settings.enableRayGen;       // duplicate these options for kernels so we can 
+    kernelJson["UseMotionBlur"]  = k.enableRTPipeline && a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
 
     size_t actualSize = 0;
     for(const auto& arg : k.args)

@@ -833,6 +833,7 @@ int main(int argc, const char **argv)
     for(auto& cf : inputCodeInfo.mainFunc)
       cf.megakernel.DeclCmd = megakernelsByName[cf.megakernel.name].DeclCmd;
 
+
     // fix megakernels descriptor sets
     //
     for(auto& dsInfo : inputCodeInfo.allDescriptorSetsInfo)
@@ -881,6 +882,34 @@ int main(int argc, const char **argv)
         dsInfo.descriptorSetsInfo.push_back(arg);
       }
     }
+    
+    // enable Ray Tracing Pipeline if kernel uses accel atruct and this option is enabled in settings
+    //
+    for(auto& cf : inputCodeInfo.mainFunc) {
+      bool hasAccelStructs = false;
+      for(const auto& container : cf.megakernel.usedContainers) {
+        if(container.second.isAccelStruct()) {
+          hasAccelStructs = true;
+          break;
+        }
+      }
+      cf.megakernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
+    }
+  }
+  
+  // enable Ray Tracing Pipeline if kernel uses accel atruct and this option is enabled in settings
+  // 
+  for(auto& nk : inputCodeInfo.kernels)
+  {
+    auto& kernel = nk.second;
+    bool hasAccelStructs = false;
+    for(const auto& container : kernel.usedContainers) {
+      if(container.second.isAccelStruct()) {
+        hasAccelStructs = true;
+        break;
+      }
+    }
+    kernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
   }
   
   inputCodeInfo.kernelsCallCmdDeclCached.clear();
@@ -955,6 +984,15 @@ int main(int argc, const char **argv)
         if(processed.find(oldKernelP->name) == processed.end())
           cf.subkernels.push_back(oldKernelP);
       } 
+
+      bool hasAccelStructs = false;
+      for(const auto& container : cf.megakernel.usedContainers) {
+        if(container.second.isAccelStruct()) {
+          hasAccelStructs = true;
+          break;
+        }
+      }
+      cf.megakernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
     }
   }
   else
