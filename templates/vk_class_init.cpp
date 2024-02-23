@@ -1771,6 +1771,9 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
     static VkPhysicalDeviceBufferDeviceAddressFeatures      enabledDeviceAddressFeatures = {};
     static VkPhysicalDeviceRayQueryFeaturesKHR              enabledRayQueryFeatures =  {};
     static VkPhysicalDeviceDescriptorIndexingFeatures       indexingFeatures = {};
+    {% if UseRayGen %}
+    static VkPhysicalDeviceRayTracingPipelineFeaturesKHR    enabledRTPipelineFeatures = {};
+    {% endif %}
 
     indexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
     indexingFeatures.pNext = nullptr;
@@ -1784,27 +1787,34 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
     enabledDeviceAddressFeatures.sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
     enabledDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
     enabledDeviceAddressFeatures.pNext               = &enabledRayQueryFeatures;
-  
+    
     enabledAccelStructFeatures.sType                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
     enabledAccelStructFeatures.accelerationStructure = VK_TRUE;
     enabledAccelStructFeatures.pNext                 = &enabledDeviceAddressFeatures;
-
-    (*ppNext) = &enabledAccelStructFeatures; ppNext = &indexingFeatures.pNext;
+    {% if UseRayGen %}
     
+    enabledRTPipelineFeatures.sType              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+    enabledRTPipelineFeatures.rayTracingPipeline = VK_TRUE;
+    enabledRTPipelineFeatures.pNext              = &enabledAccelStructFeatures;
+    (*ppNext) = &enabledRTPipelineFeatures; 
+    {% else %}
+    (*ppNext) = &enabledAccelStructFeatures; 
+    {% endif %}
+    ppNext = &indexingFeatures.pNext;
+
     // Required by VK_KHR_RAY_QUERY
     deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
     deviceExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
-    deviceExtensions.push_back("VK_KHR_spirv_1_4");
-    deviceExtensions.push_back("VK_KHR_shader_float_controls");  
+    deviceExtensions.push_back(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);  
     // Required by VK_KHR_acceleration_structure
     deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
     deviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
-    deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
-    // // Required by VK_KHR_ray_tracing_pipeline
-    // m_deviceExtensions.push_back(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
-    // // Required by VK_KHR_spirv_1_4
-    // m_deviceExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
-    deviceExtensions.push_back("VK_EXT_descriptor_indexing"); // TODO: move bindless texture it to seperate feature!
+    deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME); // TODO: move bindless texture it to seperate feature!
+    {% if UseRayGen %}
+    // Required by VK_KHR_ray_tracing_pipeline
+    deviceExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+    {% endif %}
   }
   {% endif %}
   {% if HasVarPointers %}

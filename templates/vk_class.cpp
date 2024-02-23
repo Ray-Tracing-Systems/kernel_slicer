@@ -273,8 +273,8 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   {% else %}
   vkCmdBindPipeline(m_currCmdBuffer, {% if Kernel.UseRayGen %}VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR{% else %}VK_PIPELINE_BIND_POINT_COMPUTE{% endif %}, {{Kernel.Name}}Pipeline);
   {% if Kernel.UseRayGen %}
-  //const auto* strides = {{Kernel.Name}}SBTStrides;
-  //vkCmdTraceRaysKHR(m_currCmdBuffer, strides[0],strides[1],strides[2],strides[3], sizeX,sizeY,sizeZ);
+  const auto* strides = {{Kernel.Name}}SBTStrides.data();
+  vkCmdTraceRaysKHR(m_currCmdBuffer, &strides[0],&strides[1],&strides[2],&strides[3], sizeX,sizeY,sizeZ);
   {% else %}
   vkCmdDispatch    (m_currCmdBuffer, (sizeX + blockSizeX - 1) / blockSizeX, (sizeY + blockSizeY - 1) / blockSizeY, (sizeZ + blockSizeZ - 1) / blockSizeZ);
   {% endif %}
