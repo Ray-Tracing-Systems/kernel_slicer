@@ -376,6 +376,9 @@ protected:
   {% if Kernel.IsIndirect %}
   virtual void {{Kernel.Name}}_UpdateIndirect();
   {% endif %}
+  {% if Kernel.UseRayGen %}
+  std::vector<VkStridedDeviceAddressRegionKHR> {{Kernel.Name}}SBTStrides;
+  {% endif %}
   {% endfor %}
 
   {% if UseSpecConstWgSize %}
@@ -469,6 +472,9 @@ protected:
   {% if UseRayGen %}
   virtual void MakeRayTracingPipelineAndLayout(const std::vector< std::pair<VkShaderStageFlagBits, std::string> >& shader_paths, bool a_hw_motion_blur, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout, 
                                                VkPipelineLayout* pPipelineLayout, VkPipeline* pPipeline); 
+  virtual void AllocAllShaderBindingTables(); 
+  std::vector<VkBuffer> m_allShaderTableBuffers;
+  VkDeviceMemory        m_allShaderTableMem;                                              
   {% endif %}
 
   std::vector<VkPipelineLayout> m_allCreatedPipelineLayouts; ///<! remenber them here to delete later

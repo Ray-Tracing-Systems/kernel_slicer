@@ -8,7 +8,10 @@
 #include <cassert>
 #include "vk_copy.h"
 #include "vk_context.h"
-
+{% if UseRayGen %}
+#include "ray_tracing/vk_rt_funcs.h"
+#include "ray_tracing/vk_rt_utils.h"
+{% endif %}
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
 
@@ -67,6 +70,9 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
                                                              maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true),
                                                              [](ISceneObject *p) { DeleteSceneRT(p); } );
   {% endfor %}
+  {% if UseRayGen %}
+  AllocAllShaderBindingTables();
+  {% endif %}
   {% if UseSubGroups %}
   if((m_ctx.subgroupProps.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) == 0)
     std::cout << "ALERT! class '{{MainClassName}}{{MainClassSuffix}}' uses subgroup operations but seems your device does not support them" << std::endl;
@@ -311,7 +317,11 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
 ## endfor
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
-
+  
+  {% if UseRayGen %}
+  for(size_t i=0;i<m_allShaderTableBuffers.size();i++)
+    vkDestroyBuffer(device, m_allShaderTableBuffers[i], nullptr);   
+  {% endif %}
 ## for MainFunc in MainFunctions
   {% if MainFunc.IsRTV and not MainFunc.IsMega %} 
   {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
@@ -363,6 +373,9 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
   {% for Scan in ServiceScan %}
   m_scan_{{Scan.Type}}.DeleteTempBuffers(device);
   {% endfor %}
+  {% endif %}
+  {% if UseRayGen %}
+  vkFreeMemory(device, m_allShaderTableMem, nullptr);
   {% endif %}
   FreeAllAllocations(m_allMems);
 }
@@ -1189,8 +1202,150 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(
   }
   {% endif %}
 }
+{% if UseRayGen %}
+void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
+{
+  m_allShaderTableBuffers.clear();
 
+  uint32_t numShaderGroups = 4u; 
+  uint32_t numHitStages    = 1u;
+  uint32_t numMissStages   = 2u;
+
+  VkPhysicalDeviceRayTracingPipelinePropertiesKHR  rtPipelineProperties{};
+  {
+    rtPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+    VkPhysicalDeviceProperties2 deviceProperties2{};
+    deviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    deviceProperties2.pNext = &rtPipelineProperties;
+    vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
+  }
+
+  const uint32_t handleSize        = rtPipelineProperties.shaderGroupHandleSize;
+  const uint32_t handleSizeAligned = vk_utils::getSBTAlignedSize(rtPipelineProperties.shaderGroupHandleSize, rtPipelineProperties.shaderGroupHandleAlignment);
+  const uint32_t sbtSize           = numShaderGroups * handleSize;
+  
+  const auto rgenStride = vk_utils::getSBTAlignedSize(handleSizeAligned,                 rtPipelineProperties.shaderGroupBaseAlignment);
+  const auto missSize   = vk_utils::getSBTAlignedSize(numMissStages * handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment);
+  const auto hitSize    = vk_utils::getSBTAlignedSize(numHitStages  * handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment);
+
+  std::vector<VkPipeline> allRTPipelines = {};
+  {% for Kernel in Kernels %}
+  {% if Kernel.UseRayGen %}
+  allRTPipelines.push_back({{Kernel.Name}}Pipeline);
+  {% endif%}
+  {% endfor %}
+
+  // (1) create buffers for SBT
+  //
+  for(VkPipeline rtPipeline : allRTPipelines) // todo add for loop
+  {
+    std::vector<uint8_t> shaderHandleStorage(sbtSize);
+    VK_CHECK_RESULT(vkGetRayTracingShaderGroupHandlesKHR(device, rtPipeline, 0, numShaderGroups, sbtSize, shaderHandleStorage.data()));
+    
+    VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+  
+    auto raygenBuf  = vk_utils::createBuffer(device, rgenStride, flags);
+    auto raymissBuf = vk_utils::createBuffer(device, missSize * numMissStages, flags);
+    auto rayhitBuf  = vk_utils::createBuffer(device, hitSize * numHitStages, flags);
+  
+    m_allShaderTableBuffers.push_back(raygenBuf);
+    m_allShaderTableBuffers.push_back(raymissBuf);
+    m_allShaderTableBuffers.push_back(rayhitBuf);
+  }
+
+  // (2) allocate and bind everything for 'm_allShaderTableBuffers'
+  //
+  std::vector<size_t> offsets;
+  size_t memTotal;
+  {
+    auto a_buffers = m_allShaderTableBuffers; // in
+    auto& res      = m_allShaderTableMem;     // in out
+    auto a_dev     = device;                  // in
+    auto a_physDev = physicalDevice;          // in
+
+    std::vector<VkMemoryRequirements> memInfos(a_buffers.size());
+    for(size_t i = 0; i < memInfos.size(); ++i)
+    {
+      if(a_buffers[i] != VK_NULL_HANDLE)
+        vkGetBufferMemoryRequirements(a_dev, a_buffers[i], &memInfos[i]);
+      else
+      {
+        memInfos[i] = memInfos[0];
+        memInfos[i].size = 0;
+      }
+    }
+
+    offsets  = vk_utils::calculateMemOffsets(memInfos); // out
+    memTotal = offsets.back();                          // out
+
+    VkMemoryAllocateFlagsInfo memoryAllocateFlagsInfo{};
+    {
+      memoryAllocateFlagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+      memoryAllocateFlagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+    }
+
+    VkMemoryAllocateInfo allocateInfo = {};
+    {
+      allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+      allocateInfo.pNext           = &memoryAllocateFlagsInfo;
+      allocateInfo.allocationSize  = memTotal;
+      allocateInfo.memoryTypeIndex = vk_utils::findMemoryType(memInfos[0].memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, a_physDev);
+    }
+
+    VK_CHECK_RESULT(vkAllocateMemory(a_dev, &allocateInfo, NULL, &res));
+
+    for (size_t i = 0; i < memInfos.size(); i++)
+    {
+      if(a_buffers[i] != VK_NULL_HANDLE)
+        vkBindBufferMemory(a_dev, a_buffers[i], res, offsets[i]);
+    }
+  }
+
+  // (3) get all device addresses
+  //
+  std::vector<uint8_t> shaderHandleStorage(sbtSize);
+  
+  char* mapped = nullptr;
+  VkResult result = vkMapMemory(device, m_allShaderTableMem, 0, memTotal, 0, (void**)&mapped);
+  VK_CHECK_RESULT(result);
+  
+  int groupId = 0;
+  {% for Kernel in Kernels %}
+  {% if Kernel.UseRayGen %}
+  {
+    VK_CHECK_RESULT(vkGetRayTracingShaderGroupHandlesKHR(device, allRTPipelines[groupId], 0, numShaderGroups, sbtSize, shaderHandleStorage.data()));
+   
+    auto raygenBuf  = m_allShaderTableBuffers[groupId*3+0];
+    auto raymissBuf = m_allShaderTableBuffers[groupId*3+1];
+    auto rayhitBuf  = m_allShaderTableBuffers[groupId*3+2];
+
+    {{Kernel.Name}}SBTStrides.resize(4);
+    {{Kernel.Name}}SBTStrides[0] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, raygenBuf),  rgenStride,         rgenStride };
+    {{Kernel.Name}}SBTStrides[1] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, raymissBuf), handleSizeAligned,  missSize };
+    {{Kernel.Name}}SBTStrides[2] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, rayhitBuf),  handleSizeAligned,  hitSize};
+    {{Kernel.Name}}SBTStrides[3] = VkStridedDeviceAddressRegionKHR{ 0u, 0u, 0u };
+
+    auto *pData = shaderHandleStorage.data();
+
+    memcpy(mapped + offsets[groupId*3 + 0], pData, handleSize * 1); // raygenBuf
+    pData += handleSize * 1;
+
+    memcpy(mapped + offsets[groupId*3 + 1], pData, handleSize * numMissStages); // raymissBuf
+    pData += handleSize * numMissStages;
+
+    memcpy(mapped + offsets[groupId*3 + 2], pData, handleSize * numHitStages); // rayhitBuf
+    pData += handleSize * numHitStages;
+
+    groupId++;
+  }
+  {% endif%}
+  {% endfor %}
+
+  vkUnmapMemory(device, m_allShaderTableMem);     
+} 
+{% endif %}
 {% if UseServiceScan %}
+
 inline size_t sblocksST(size_t elems, int threadsPerBlock)
 {
   if (elems % threadsPerBlock == 0 && elems >= threadsPerBlock)
