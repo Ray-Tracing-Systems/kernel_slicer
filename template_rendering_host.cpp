@@ -920,6 +920,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["threadDim"]      = a_classInfo.GetKernelTIDArgs(k).size();
     kernelJson["UseRayGen"]      = k.enableRTPipeline && a_settings.enableRayGen;       // duplicate these options for kernels so we can 
     kernelJson["UseMotionBlur"]  = k.enableRTPipeline && a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
+    kernelJson["StageFlags"]     = k.enableRTPipeline ? "(VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)" : "VK_SHADER_STAGE_COMPUTE_BIT";
 
     size_t actualSize = 0;
     for(const auto& arg : k.args)
@@ -933,7 +934,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       
       json argData;
       argData["Name"]  = arg.name;
-      argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
+      argData["Flags"] = kernelJson["StageFlags"]; // "VK_SHADER_STAGE_COMPUTE_BIT";
       argData["Count"] = "1";
       argData["Id"]    = actualSize;
       argData["IsTextureArray"] = false;
@@ -1528,6 +1529,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["NeedToAddThreadFlags"] = mainFunc.needToAddThreadFlags;
     data2["DSId"]                 = mainFunc.startDSNumber;
     data2["MegaKernelCall"]       = mainFunc.MegaKernelCall;
+    data2["UseRayGen"]            = mainFunc.megakernel.enableRTPipeline; 
     data["MainFunctions"].push_back(data2);
   }
   

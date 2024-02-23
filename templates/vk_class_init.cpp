@@ -65,7 +65,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   uint32_t maxPrimitivesPerMesh = userRestrictions[3];
   {{ScnObj}} = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, m_ctx.pCopyHelper,
                                                              maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true),
-                                                            [](ISceneObject *p) { DeleteSceneRT(p); } );
+                                                             [](ISceneObject *p) { DeleteSceneRT(p); } );
   {% endfor %}
   {% if UseSubGroups %}
   if((m_ctx.subgroupProps.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) == 0)
@@ -184,7 +184,110 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeComputePipelineOnly(const char* a
   if (shaderModule != VK_NULL_HANDLE)
     vkDestroyShaderModule(device, shaderModule, VK_NULL_HANDLE);
 }
+{% if UseRayGen %}
 
+void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const std::vector< std::pair<VkShaderStageFlagBits, std::string> >& shader_paths, 
+                                                                           bool a_hw_motion_blur, const char* a_mainName, 
+                                                                           const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout, 
+                                                                           VkPipelineLayout* pPipelineLayout, VkPipeline* pPipeline)
+{
+  // (1) load shader modules
+  //
+  std::vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroups; 
+  std::vector<VkShaderModule>                       shaderModules; 
+  std::vector<VkPipelineShaderStageCreateInfo>      shaderStages;  
+  
+  shaderGroups.reserve(shader_paths.size());
+  shaderModules.reserve(shader_paths.size());
+  shaderStages.reserve(shader_paths.size());
+
+  for(const auto& [stage, path] : shader_paths)
+  {
+    VkPipelineShaderStageCreateInfo shaderStage = {};
+    shaderStage.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shaderStage.stage  = stage;
+    auto shaderCode    = vk_utils::readSPVFile(path.c_str());
+    shaderModules.push_back(vk_utils::createShaderModule(device, shaderCode));
+    shaderStage.module = shaderModules.back();
+    shaderStage.pName  = a_mainName;
+    assert(shaderStage.module != VK_NULL_HANDLE);
+    shaderStages.push_back(shaderStage);
+    
+    VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
+    shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+    if(stage == VK_SHADER_STAGE_MISS_BIT_KHR || stage == VK_SHADER_STAGE_RAYGEN_BIT_KHR ||
+       stage == VK_SHADER_STAGE_CALLABLE_BIT_KHR)
+    {
+      shaderGroup.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+      shaderGroup.generalShader    = static_cast<uint32_t>(shaderStages.size()) - 1;
+      shaderGroup.closestHitShader = VK_SHADER_UNUSED_KHR;
+    }
+    else if(stage == VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+    {
+      shaderGroup.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+      shaderGroup.generalShader    = VK_SHADER_UNUSED_KHR;
+      shaderGroup.closestHitShader = static_cast<uint32_t>(shaderStages.size()) - 1;
+    }
+
+    // @TODO: intersection, procedural, anyhit
+    shaderGroup.anyHitShader       = VK_SHADER_UNUSED_KHR;
+    shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
+    
+    shaderGroups.push_back(shaderGroup);
+  }
+
+  // (2) create pipeline layout
+  //
+  std::array<VkPushConstantRange,3> pcRanges = {};
+  pcRanges[0].stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+  pcRanges[1].stageFlags = VK_SHADER_STAGE_MISS_BIT_KHR;
+  pcRanges[2].stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+  for(size_t i=0;i<pcRanges.size();i++) {
+    pcRanges[i].offset = 0;
+    pcRanges[i].size   = 128;
+  }
+    
+  VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+  pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  pipelineLayoutInfo.pushConstantRangeCount = uint32_t(pcRanges.size());
+  pipelineLayoutInfo.pPushConstantRanges    = pcRanges.data();
+  pipelineLayoutInfo.pSetLayouts            = &a_dsLayout;
+  pipelineLayoutInfo.setLayoutCount         = 1;
+   
+  VkResult res = vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, pPipelineLayout);
+  if(res != VK_SUCCESS)
+  {
+    std::string errMsg = vk_utils::errorString(res);
+    std::cout << "[ShaderError]: vkCreatePipelineLayout have failed for '" << shader_paths[0].second.c_str() << "' with '" << errMsg.c_str() << "'" << std::endl;
+  }
+  else
+    m_allCreatedPipelineLayouts.push_back(*pPipelineLayout);
+  
+  // (3) create ray tracing pipeline
+  //
+  VkPipelineCreateFlags pipelineFlags = 0;
+  if(a_hw_motion_blur)
+    pipelineFlags |= VK_PIPELINE_CREATE_RAY_TRACING_ALLOW_MOTION_BIT_NV;
+
+  VkRayTracingPipelineCreateInfoKHR createInfo = {};
+  createInfo.sType      = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
+  createInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+  createInfo.pStages    = shaderStages.data();
+  createInfo.groupCount = static_cast<uint32_t>(shaderGroups.size());
+  createInfo.pGroups    = shaderGroups.data();
+  createInfo.maxPipelineRayRecursionDepth = 1;
+  createInfo.layout     = (*pPipelineLayout);
+  createInfo.flags      = pipelineFlags;
+  VK_CHECK_RESULT(vkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &createInfo, nullptr, pPipeline));
+
+  for (size_t i = 0; i < shader_paths.size(); ++i)
+  {
+    if(shaderModules[i] != VK_NULL_HANDLE)
+      vkDestroyShaderModule(device, shaderModules[i], VK_NULL_HANDLE);
+    shaderModules[i] = VK_NULL_HANDLE;
+  }
+}
+{% endif %}
 
 {{MainClassName}}{{MainClassSuffix}}::~{{MainClassName}}{{MainClassSuffix}}()
 {
@@ -340,8 +443,29 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   {% endif %}
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
   {% if Kernel.IsMega %}
-  if(m_megaKernelFlags.enable{{Kernel.Name}})
+  if(m_megaKernelFlags.enable{{Kernel.Name}}) 
+  {
+    {% if Kernel.UseRayGen %}
+    const bool enableMotionBlur = {{UseMotionBlur}};
+
+    std::string shaderPathRGEN  = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}RGEN.glsl.spv"); 
+    std::string shaderPathRCHT  = AlterShaderPath("{{ShaderFolder}}/z_trace_rchit.glsl.spv"); 
+    std::string shaderPathRMIS1 = AlterShaderPath("{{ShaderFolder}}/z_trace_rmiss.glsl.spv"); 
+    std::string shaderPathRMIS2 = AlterShaderPath("{{ShaderFolder}}/z_trace_smiss.glsl.spv"); 
+
+    std::vector< std::pair<VkShaderStageFlagBits, std::string> > shader_paths;
+    {
+      shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_RAYGEN_BIT_KHR,      shaderPathRGEN.c_str()));
+      shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_MISS_BIT_KHR,        shaderPathRMIS1.c_str()));
+      shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_MISS_BIT_KHR,        shaderPathRMIS2.c_str()));
+      shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, shaderPathRCHT.c_str()));
+    }
+ 
+    MakeRayTracingPipelineAndLayout(shader_paths, enableMotionBlur, "main", kspec, {{Kernel.Name}}DSLayout, &{{Kernel.Name}}Layout, &{{Kernel.Name}}Pipeline); 
+    {% else %}
     MakeComputePipelineAndLayout(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %}, kspec, {{Kernel.Name}}DSLayout, &{{Kernel.Name}}Layout, &{{Kernel.Name}}Pipeline);
+    {% endif %}
+  }
   else
   {
     {{Kernel.Name}}Layout   = nullptr;

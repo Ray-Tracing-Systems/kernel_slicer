@@ -165,10 +165,12 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Name}}_UpdateIndirect()
 {% endif %}
 void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
 {
+  {% if not Kernel.UseRayGen %}
   uint32_t blockSizeX = {{Kernel.WGSizeX}};
   uint32_t blockSizeY = {{Kernel.WGSizeY}};
   uint32_t blockSizeZ = {{Kernel.WGSizeZ}};
-
+  
+  {% endif %}
   struct KernelArgsPC
   {
     {% for Arg in Kernel.AuxArgs %}
@@ -206,15 +208,14 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   {% if Kernel.HasLoopFinish %}
   KernelArgsPC oldPCData = pcData;
   {% endif %}
-
   {% if UseSeparateUBO %}
   {
     vkCmdUpdateBuffer(m_currCmdBuffer, m_uboArgsBuffer, 0, sizeof(KernelArgsPC), &pcData);
     VkBufferMemoryBarrier barUBO2 = BarrierForArgsUBO(sizeof(KernelArgsPC));
-    vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO2, 0, nullptr);
+    vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, {% if Kernel.UseRayGen %}VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR{% else %}VK_SHADER_STAGE_COMPUTE_BIT{% endif %}, 0, 0, nullptr, 1, &barUBO2, 0, nullptr);
   }
   {% else %}
-  vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
+  vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, {% if Kernel.UseRayGen %}VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR{% else %}VK_SHADER_STAGE_COMPUTE_BIT{% endif %}, 0, sizeof(KernelArgsPC), &pcData);
   {% endif %}
   {% if Kernel.HasLoopInit %}
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}InitPipeline);
@@ -222,7 +223,6 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   VkBufferMemoryBarrier barUBO = BarrierForSingleBuffer(m_classDataBuffer);
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
   {% endif %}
-  
   {# /* --------------------------------------------------------------------------------------------------------------------------------------- */ #}
   {% if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch %}
   VkBufferMemoryBarrier objCounterBar = BarrierForObjCounters(m_classDataBuffer);
@@ -271,14 +271,18 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   vkCmdBindPipeline    (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   vkCmdDispatchIndirect(m_currCmdBuffer, m_indirectBuffer, {{Kernel.IndirectOffset}}*sizeof(uint32_t)*4);
   {% else %}
-  vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
+  vkCmdBindPipeline(m_currCmdBuffer, {% if Kernel.UseRayGen %}VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR{% else %}VK_PIPELINE_BIND_POINT_COMPUTE{% endif %}, {{Kernel.Name}}Pipeline);
+  {% if Kernel.UseRayGen %}
+  //const auto* strides = {{Kernel.Name}}SBTStrides;
+  //vkCmdTraceRaysKHR(m_currCmdBuffer, strides[0],strides[1],strides[2],strides[3], sizeX,sizeY,sizeZ);
+  {% else %}
   vkCmdDispatch    (m_currCmdBuffer, (sizeX + blockSizeX - 1) / blockSizeX, (sizeY + blockSizeY - 1) / blockSizeY, (sizeZ + blockSizeZ - 1) / blockSizeZ);
+  {% endif %}
   {% if Kernel.FinishRed %}
   {% include "inc_reduction_vulkan.cpp" %}
   {% endif %} {# /* Kernel.FinishRed      */ #}
   {% endif %} {# /* NOT INDIRECT DISPATCH */ #}
   {# /* --------------------------------------------------------------------------------------------------------------------------------------- */ #}
- 
   {% if Kernel.HasLoopFinish %}
   VkBufferMemoryBarrier barUBOFin = BarrierForSingleBuffer(m_classDataBuffer);
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBOFin, 0, nullptr);
@@ -293,7 +297,6 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   {% endif %}
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}FinishPipeline);
   vkCmdDispatch(m_currCmdBuffer, 1, 1, 1); 
-  
   {% endif %}   
 }
 
@@ -369,7 +372,7 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
   m_currCmdBuffer = a_commandBuffer;
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT }; 
   {% if MainFunc.IsMega %}
-  vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{MainFunc.Name}}MegaLayout, 0, 1, &m_allGeneratedDS[{{MainFunc.DSId}}], 0, nullptr);
+  vkCmdBindDescriptorSets(a_commandBuffer, {% if MainFunc.UseRayGen %}VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR{% else %}VK_PIPELINE_BIND_POINT_COMPUTE{% endif %}, {{MainFunc.Name}}MegaLayout, 0, 1, &m_allGeneratedDS[{{MainFunc.DSId}}], 0, nullptr);
   {{MainFunc.MegaKernelCall}}
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr); 
   {% else %}
