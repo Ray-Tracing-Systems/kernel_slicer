@@ -1231,7 +1231,8 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
   std::vector<VkPipeline> allRTPipelines = {};
   {% for Kernel in Kernels %}
   {% if Kernel.UseRayGen %}
-  allRTPipelines.push_back({{Kernel.Name}}Pipeline);
+  if({{Kernel.Name}}Pipeline != VK_NULL_HANDLE)
+    allRTPipelines.push_back({{Kernel.Name}}Pipeline);
   {% endif%}
   {% endfor %}
 
@@ -1312,6 +1313,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
   int groupId = 0;
   {% for Kernel in Kernels %}
   {% if Kernel.UseRayGen %}
+  if({{Kernel.Name}}Pipeline != VK_NULL_HANDLE)
   {
     VK_CHECK_RESULT(vkGetRayTracingShaderGroupHandlesKHR(device, allRTPipelines[groupId], 0, numShaderGroups, sbtSize, shaderHandleStorage.data()));
    
