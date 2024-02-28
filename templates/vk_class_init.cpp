@@ -1775,6 +1775,9 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
     static VkPhysicalDeviceDescriptorIndexingFeatures       indexingFeatures = {};
     {% if UseRayGen %}
     static VkPhysicalDeviceRayTracingPipelineFeaturesKHR    enabledRTPipelineFeatures = {};
+    {% if UseMotionBlur %}
+    static VkPhysicalDeviceRayTracingMotionBlurFeaturesNV   enabledMotionBlurFeatures = {};
+    {% endif %}
     {% endif %}
 
     indexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
@@ -1794,10 +1797,20 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
     enabledAccelStructFeatures.accelerationStructure = VK_TRUE;
     enabledAccelStructFeatures.pNext                 = &enabledDeviceAddressFeatures;
     {% if UseRayGen %}
-    
+    {% if UseMotionBlur %}
+    enabledMotionBlurFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MOTION_BLUR_FEATURES_NV;
+    enabledMotionBlurFeatures.rayTracingMotionBlur = VK_TRUE;
+    enabledMotionBlurFeatures.rayTracingMotionBlurPipelineTraceRaysIndirect = VK_FALSE; // not using indirect rt in this impl.
+    enabledMotionBlurFeatures.pNext = &enabledAccelStructFeatures;
+
+    enabledRTPipelineFeatures.sType              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+    enabledRTPipelineFeatures.rayTracingPipeline = VK_TRUE;
+    enabledRTPipelineFeatures.pNext              = &enabledMotionBlurFeatures;
+    {% else %}
     enabledRTPipelineFeatures.sType              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
     enabledRTPipelineFeatures.rayTracingPipeline = VK_TRUE;
     enabledRTPipelineFeatures.pNext              = &enabledAccelStructFeatures;
+    {% endif %}
     (*ppNext) = &enabledRTPipelineFeatures; 
     {% else %}
     (*ppNext) = &enabledAccelStructFeatures; 
@@ -1816,6 +1829,9 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
     {% if UseRayGen %}
     // Required by VK_KHR_ray_tracing_pipeline
     deviceExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+    {% if UseMotionBlur %}
+    deviceExtensions.push_back(VK_NV_RAY_TRACING_MOTION_BLUR_EXTENSION_NAME);
+    {% endif %}
     {% endif %}
   }
   {% endif %}
