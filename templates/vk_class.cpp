@@ -12,34 +12,6 @@
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
 
-
-{% if length(SceneMembers) > 0 %}
-#include "CrossRT.h"
-ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_graphicsQId, std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper,
-                              uint32_t a_maxMeshes, uint32_t a_maxTotalVertices, uint32_t a_maxTotalPrimitives, uint32_t a_maxPrimitivesPerMesh,
-                              bool build_as_add);
-{% endif %}
-
-{% for ctorDecl in Constructors %}
-{% if ctorDecl.NumParams == 0 %}
-std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated) 
-{ 
-  auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}>(); 
-  pObj->SetVulkanContext(a_ctx);
-  pObj->InitVulkanObjects(a_ctx.device, a_ctx.physicalDevice, a_maxThreadsGenerated); 
-  return pObj;
-}
-{% else %}
-std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}({{ctorDecl.Params}}, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated) 
-{ 
-  auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}>({{ctorDecl.PrevCall}}); 
-  pObj->SetVulkanContext(a_ctx);
-  pObj->InitVulkanObjects(a_ctx.device, a_ctx.physicalDevice, a_maxThreadsGenerated); 
-  return pObj;
-}
-{% endif %}
-{% endfor %}
-
 static uint32_t ComputeReductionSteps(uint32_t whole_size, uint32_t wg_size)
 {
   uint32_t steps = 0;
@@ -59,44 +31,6 @@ constexpr uint32_t KGEN_FLAG_SET_EXIT_NEGATIVE = 8;
 {% endif %}
 constexpr uint32_t KGEN_REDUCTION_LAST_STEP    = 16;
 
-void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount) 
-{
-  physicalDevice = a_physicalDevice;
-  device         = a_device;
-  m_allCreatedPipelineLayouts.reserve(256);
-  m_allCreatedPipelines.reserve(256);
-  {% if length(SpecConstants) > 0 %}
-  m_allSpecConstVals = ListRequiredFeatures();
-  {% endif %}
-  InitHelpers();
-  InitBuffers(a_maxThreadsCount, true);
-  InitKernels("{{ShaderSingleFile}}.spv");
-  AllocateAllDescriptorSets();
-
-  {% if length(SceneMembers) > 0 %}
-  auto queueAllFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
-  {% endif %}
-  {% for ScnObj in SceneMembers %}
-  uint32_t userRestrictions[4];
-  this->SceneRestrictions(userRestrictions);
-  uint32_t maxMeshes            = userRestrictions[0];
-  uint32_t maxTotalVertices     = userRestrictions[1];
-  uint32_t maxTotalPrimitives   = userRestrictions[2];
-  uint32_t maxPrimitivesPerMesh = userRestrictions[3];
-  {{ScnObj}} = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, m_ctx.pCopyHelper,
-                                                             maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true),
-                                                            [](ISceneObject *p) { DeleteSceneRT(p); } );
-  {% endfor %}
-  {% if UseSubGroups %}
-  if((m_ctx.subgroupProps.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) == 0)
-    std::cout << "ALERT! class '{{MainClassName}}{{MainClassSuffix}}' uses subgroup operations but seems your device does not support them" << std::endl;
-  if(m_ctx.subgroupProps.subgroupSize != {{SubGroupSize}}) {
-    std::cout << "ALERT! class '{{MainClassName}}{{MainClassSuffix}}' uses subgroup operations with different subgroup size:" << std::endl;
-    std::cout << " --> your device 'subgroupSize' = " << m_ctx.subgroupProps.subgroupSize << std::endl;
-    std::cout << " --> this class  'subgroupSize' = " << {{SubGroupSize}} << std::endl;
-  }
-  {% endif %}
-}
 
 void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
@@ -231,10 +165,12 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Name}}_UpdateIndirect()
 {% endif %}
 void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
 {
+  {% if not Kernel.UseRayGen %}
   uint32_t blockSizeX = {{Kernel.WGSizeX}};
   uint32_t blockSizeY = {{Kernel.WGSizeY}};
   uint32_t blockSizeZ = {{Kernel.WGSizeZ}};
-
+  
+  {% endif %}
   struct KernelArgsPC
   {
     {% for Arg in Kernel.AuxArgs %}
@@ -272,15 +208,14 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   {% if Kernel.HasLoopFinish %}
   KernelArgsPC oldPCData = pcData;
   {% endif %}
-
   {% if UseSeparateUBO %}
   {
     vkCmdUpdateBuffer(m_currCmdBuffer, m_uboArgsBuffer, 0, sizeof(KernelArgsPC), &pcData);
     VkBufferMemoryBarrier barUBO2 = BarrierForArgsUBO(sizeof(KernelArgsPC));
-    vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO2, 0, nullptr);
+    vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, {% if Kernel.UseRayGen %}VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR{% else %}VK_SHADER_STAGE_COMPUTE_BIT{% endif %}, 0, 0, nullptr, 1, &barUBO2, 0, nullptr);
   }
   {% else %}
-  vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(KernelArgsPC), &pcData);
+  vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, {% if Kernel.UseRayGen %}VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR{% else %}VK_SHADER_STAGE_COMPUTE_BIT{% endif %}, 0, sizeof(KernelArgsPC), &pcData);
   {% endif %}
   {% if Kernel.HasLoopInit %}
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}InitPipeline);
@@ -288,7 +223,6 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   VkBufferMemoryBarrier barUBO = BarrierForSingleBuffer(m_classDataBuffer);
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
   {% endif %}
-  
   {# /* --------------------------------------------------------------------------------------------------------------------------------------- */ #}
   {% if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch %}
   VkBufferMemoryBarrier objCounterBar = BarrierForObjCounters(m_classDataBuffer);
@@ -337,14 +271,18 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   vkCmdBindPipeline    (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   vkCmdDispatchIndirect(m_currCmdBuffer, m_indirectBuffer, {{Kernel.IndirectOffset}}*sizeof(uint32_t)*4);
   {% else %}
-  vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
+  vkCmdBindPipeline(m_currCmdBuffer, {% if Kernel.UseRayGen %}VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR{% else %}VK_PIPELINE_BIND_POINT_COMPUTE{% endif %}, {{Kernel.Name}}Pipeline);
+  {% if Kernel.UseRayGen %}
+  const auto* strides = {{Kernel.Name}}SBTStrides.data();
+  vkCmdTraceRaysKHR(m_currCmdBuffer, &strides[0],&strides[1],&strides[2],&strides[3], sizeX,sizeY,sizeZ);
+  {% else %}
   vkCmdDispatch    (m_currCmdBuffer, (sizeX + blockSizeX - 1) / blockSizeX, (sizeY + blockSizeY - 1) / blockSizeY, (sizeZ + blockSizeZ - 1) / blockSizeZ);
+  {% endif %}
   {% if Kernel.FinishRed %}
   {% include "inc_reduction_vulkan.cpp" %}
   {% endif %} {# /* Kernel.FinishRed      */ #}
   {% endif %} {# /* NOT INDIRECT DISPATCH */ #}
   {# /* --------------------------------------------------------------------------------------------------------------------------------------- */ #}
- 
   {% if Kernel.HasLoopFinish %}
   VkBufferMemoryBarrier barUBOFin = BarrierForSingleBuffer(m_classDataBuffer);
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBOFin, 0, nullptr);
@@ -359,7 +297,6 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   {% endif %}
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}FinishPipeline);
   vkCmdDispatch(m_currCmdBuffer, 1, 1, 1); 
-  
   {% endif %}   
 }
 
@@ -435,7 +372,7 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
   m_currCmdBuffer = a_commandBuffer;
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT }; 
   {% if MainFunc.IsMega %}
-  vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{MainFunc.Name}}MegaLayout, 0, 1, &m_allGeneratedDS[{{MainFunc.DSId}}], 0, nullptr);
+  vkCmdBindDescriptorSets(a_commandBuffer, {% if MainFunc.UseRayGen %}VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR{% else %}VK_PIPELINE_BIND_POINT_COMPUTE{% endif %}, {{MainFunc.Name}}MegaLayout, 0, 1, &m_allGeneratedDS[{{MainFunc.DSId}}], 0, nullptr);
   {{MainFunc.MegaKernelCall}}
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr); 
   {% else %}

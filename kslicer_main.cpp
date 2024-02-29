@@ -198,6 +198,12 @@ int main(int argc, const char **argv)
   if(params.find("-gen_gpu_api") != params.end())
     genGPUAPI = atoi(params["-gen_gpu_api"].c_str());
   
+  kslicer::TextGenSettings textGenSettings;
+  if(params.find("-enable_motion_blur") != params.end())
+    textGenSettings.enableMotionBlur = atoi(params["-enable_motion_blur"].c_str()) != 0;
+  if(params.find("-enable_ray_tracing_pipeline") != params.end())
+    textGenSettings.enableRayGen = (atoi(params["-enable_ray_tracing_pipeline"].c_str()) != 0) || textGenSettings.enableMotionBlur;
+
   std::unordered_set<std::string> values;
   std::vector<std::string> ignoreFolders;
   std::vector<std::string> processFolders;
@@ -757,7 +763,7 @@ int main(int argc, const char **argv)
 
   std::sort(inputCodeInfo.dataMembers.begin(), inputCodeInfo.dataMembers.end(), kslicer::DataMemberInfo_ByAligment()); // sort by aligment in GLSL
 
-  auto jsonUBO               = kslicer::PrepareUBOJson(inputCodeInfo, inputCodeInfo.dataMembers, compiler);
+  auto jsonUBO               = kslicer::PrepareUBOJson(inputCodeInfo, inputCodeInfo.dataMembers, compiler, textGenSettings);
   std::string uboIncludeName = inputCodeInfo.mainClassName + ToLowerCase(inputCodeInfo.mainClassSuffix) + "_ubo.h";
 
   std::string uboOutName = "";
@@ -828,6 +834,7 @@ int main(int argc, const char **argv)
     for(auto& cf : inputCodeInfo.mainFunc)
       cf.megakernel.DeclCmd = megakernelsByName[cf.megakernel.name].DeclCmd;
 
+
     // fix megakernels descriptor sets
     //
     for(auto& dsInfo : inputCodeInfo.allDescriptorSetsInfo)
@@ -876,6 +883,34 @@ int main(int argc, const char **argv)
         dsInfo.descriptorSetsInfo.push_back(arg);
       }
     }
+    
+    // enable Ray Tracing Pipeline if kernel uses accel atruct and this option is enabled in settings
+    //
+    for(auto& cf : inputCodeInfo.mainFunc) {
+      bool hasAccelStructs = false;
+      for(const auto& container : cf.megakernel.usedContainers) {
+        if(container.second.isAccelStruct()) {
+          hasAccelStructs = true;
+          break;
+        }
+      }
+      cf.megakernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
+    }
+  }
+  
+  // enable Ray Tracing Pipeline if kernel uses accel atruct and this option is enabled in settings
+  // 
+  for(auto& nk : inputCodeInfo.kernels)
+  {
+    auto& kernel = nk.second;
+    bool hasAccelStructs = false;
+    for(const auto& container : kernel.usedContainers) {
+      if(container.second.isAccelStruct()) {
+        hasAccelStructs = true;
+        break;
+      }
+    }
+    kernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
   }
   
   inputCodeInfo.kernelsCallCmdDeclCached.clear();
@@ -883,7 +918,7 @@ int main(int argc, const char **argv)
   auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls, 
                                       rawname + ToLowerCase(suffix) + ".h", threadsOrder, 
                                       uboIncludeName, composeImplName, 
-                                      jsonUBO); 
+                                      jsonUBO, textGenSettings); 
 
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
   std::cout << "{" << std::endl;
@@ -950,6 +985,15 @@ int main(int argc, const char **argv)
         if(processed.find(oldKernelP->name) == processed.end())
           cf.subkernels.push_back(oldKernelP);
       } 
+
+      bool hasAccelStructs = false;
+      for(const auto& container : cf.megakernel.usedContainers) {
+        if(container.second.isAccelStruct()) {
+          hasAccelStructs = true;
+          break;
+        }
+      }
+      cf.megakernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
     }
   }
   else
@@ -958,7 +1002,7 @@ int main(int argc, const char **argv)
       k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
   }
   
-  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO, usedDefines);
+  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO, usedDefines, textGenSettings);
   if(inputCodeInfo.pShaderCC->IsISPC()) {
     json["Constructors"]        = jsonCPP["Constructors"];
     json["HasCommitDeviceFunc"] = jsonCPP["HasCommitDeviceFunc"];
@@ -991,7 +1035,7 @@ int main(int argc, const char **argv)
   {
     auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls, 
                                         rawname + ToLowerCase(suffix) + ".h", threadsOrder, 
-                                        uboIncludeName, composeImplName, jsonUBO); 
+                                        uboIncludeName, composeImplName, jsonUBO, textGenSettings); 
     kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + ToLowerCase(suffix) + "_init.cpp", jsonCPP);
   }
   std::cout << "(10) Finished!  " << std::endl; 
