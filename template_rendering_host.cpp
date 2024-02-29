@@ -271,7 +271,7 @@ static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func, const kslicer
     {
       if(var.sizeUserAttr.size() != 0)
       {
-        std::cout << "  [kslicer]: attribute size(...) is specified for argument '" << var.name.c_str() << "', but Control Function " << a_func.Name.c_str() << " is not virtual" << std::endl;  
+        std::cout << "  [kslicer]: [[size(\"...\")]] is specified for argument '" << var.name.c_str() << "', but Control Function " << a_func.Name.c_str() << " is not virtual" << std::endl;  
         std::cout << "  [kslicer]: the Control Function which is supposed to be overriden must be virtual " << std::endl;
       }
     }
@@ -286,7 +286,7 @@ static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func, const kslicer
       if(var.sizeUserAttr.size() == 0) {
         std::cout << "  [kslicer]: warning, unknown data size for param " << var.name.c_str() << " of Control Function " << a_func.Name.c_str() << std::endl;
         std::cout << "  [kslicer]: the Control Function is declared virual, but kslicer can't generate implementation due to unknown data size of a pointer " << std::endl;
-        std::cout << "  [kslicer]: use '__attribute__((size(\"...\")))' after " << var.name.c_str() << std::endl;
+        std::cout << "  [kslicer]: use '[[size(\"...\"]]' after " << var.name.c_str() << std::endl;
         return false;
       }
     }
@@ -1162,9 +1162,15 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     auto pGetTime = a_classInfo.allMemberFunctions.find("GetExecutionTime");
     auto pUpdPOD  = a_classInfo.allMemberFunctions.find("UpdateMembersPlainData");
     auto pUpdVec  = a_classInfo.allMemberFunctions.find("UpdateMembersVectorData");
-    auto pUpdTex  = a_classInfo.allMemberFunctions.find("UpdateMembersTexureData");
+    auto pUpdTex  = a_classInfo.allMemberFunctions.find("UpdateMembersTextureData");
     auto pScnRstr = a_classInfo.allMemberFunctions.find("SceneRestrictions");
     auto pNameFn  = a_classInfo.allMemberFunctions.find("Name");
+
+    auto pNamePBI  = a_classInfo.allMemberFunctions.find("ProgressBarStart");
+    auto pNamePBA  = a_classInfo.allMemberFunctions.find("ProgressBarAccum");
+    auto pNamePBD  = a_classInfo.allMemberFunctions.find("ProgressBarDone");
+
+    data["HasProgressBar"] = (pNamePBI != a_classInfo.allMemberFunctions.end()) && (pNamePBA != a_classInfo.allMemberFunctions.end()) && (pNamePBD != a_classInfo.allMemberFunctions.end());
     
     if(pCommit == a_classInfo.allMemberFunctions.end())
       std::cout << "  [kslicer]: warning, can't find fuction 'CommitDeviceData', you should define it: 'virtual void CommitDeviceData(){}'" << std::endl; 
@@ -1197,7 +1203,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(pUpdTex != a_classInfo.allMemberFunctions.end())
     {
       if(!pUpdTex->second->isVirtual())
-        std::cout << "  [kslicer]: warning, function 'UpdateMembersTexureData' should be virtual" << std::endl;  
+        std::cout << "  [kslicer]: warning, function 'UpdateMembersTextureData' should be virtual" << std::endl;  
     }
 
     if(pScnRstr == a_classInfo.allMemberFunctions.end() && a_classInfo.IsRTV())

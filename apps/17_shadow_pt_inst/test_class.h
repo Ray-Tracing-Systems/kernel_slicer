@@ -48,7 +48,7 @@ public:
 
   virtual void UpdateMembersPlainData() {}                               // will be overriden in generated class, optional function
   //virtual void UpdateMembersVectorData() {}                              // will be overriden in generated class, optional function
-  //virtual void UpdateMembersTexureData() {}                              // will be overriden in generated class, optional function
+  //virtual void UpdateMembersTextureData() {}                              // will be overriden in generated class, optional function
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

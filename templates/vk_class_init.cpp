@@ -498,8 +498,13 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
 void {{MainClassName}}{{MainClassSuffix}}::ReserveEmptyVectors()
 {
   {% for Var in ClassVectorVars %}
+  {% if Var.AccessSymb == "." %}
   if({{Var.Name}}{{Var.AccessSymb}}capacity() == 0)
     {{Var.Name}}{{Var.AccessSymb}}reserve(4);
+  {% else %}
+  if({{Var.Name}} != nullptr && {{Var.Name}}{{Var.AccessSymb}}capacity() == 0)
+    {{Var.Name}}{{Var.AccessSymb}}reserve(4);
+  {% endif %}
   {% endfor %}
 }
 
@@ -741,7 +746,8 @@ VkImageView {{MainClassName}}{{MainClassSuffix}}::CreateView(VkFormat a_format, 
   createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
   createInfo.format   = a_format;
   
-  if(a_format == VK_FORMAT_R32_SFLOAT)
+  if(a_format == VK_FORMAT_R32_SFLOAT || a_format == VK_FORMAT_R8_UNORM  || a_format == VK_FORMAT_R8_SNORM ||
+     a_format == VK_FORMAT_R16_SFLOAT || a_format == VK_FORMAT_R16_UNORM || a_format == VK_FORMAT_R16_SNORM)
   {
     createInfo.components.r = VK_COMPONENT_SWIZZLE_R;
     createInfo.components.g = VK_COMPONENT_SWIZZLE_R;
