@@ -101,6 +101,9 @@ namespace std
 
   bool isinf( float num );
   bool isinf( double num );
+
+  bool isnan( float num );
+  bool isnan( double num );
 };
 
 #include <cstdint>

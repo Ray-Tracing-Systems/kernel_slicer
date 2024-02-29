@@ -2,8 +2,9 @@ cmake_minimum_required (VERSION 3.8)
 project (kernel_slicer)
 set (CMAKE_CXX_STANDARD 17)
 
-set(LLVM_VER "18")
-set(LLVM_LIB "LLVM-${LLVM_VER}")
+set(LLVM_VER "18.1")
+set(LLVM_LIB "LLVM-18")
+include("/usr/lib/llvm-18/cmake/LLVMConfig.cmake")
 
 find_package(LLVM ${LLVM_VER} REQUIRED CONFIG)
 find_package(Clang ${LLVM_VER} REQUIRED)
