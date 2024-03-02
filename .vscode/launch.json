@@ -972,7 +972,7 @@
                         "-I${workspaceFolder}/TINYSTL",         "ignore",
                         "-I${workspaceFolder}/apps/RayTracing", "process",
                         "-megakernel", "1",
-                        "-enable_ray_tracing_pipeline", "1",
+                        "-enable_ray_tracing_pipeline", "0",
                         //"-cl-std=", "C++",
                         "-DKERNEL_SLICER",
                         "-v"],
@@ -2200,6 +2200,37 @@
             ]
         },
 
+        {
+            "name"   : "Launch (test_029/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/029_gml_lib1/test_class.cpp",
+                        "-mainClass", "TestClass", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore", 
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-I${workspaceFolder}/apps/tests/029_gml_lib1/gml", "ignore",
+                        "-I${workspaceFolder}/apps/tests/029_gml_lib1/detail", "ignore",
+                        "-shaderCC", "glsl",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
 
         {
             "name"   : "Launch (msu/vk_graphics_rt)",
@@ -2288,7 +2319,7 @@
                         "-I/home/frol/PROG/HydraRepos/HydraCore3/cam_plugin",         "process",  
                         "-megakernel", "1",
                         "-enable_ray_tracing_pipeline", "1",
-                        "-enable_motion_blur", "1",
+                        "-enable_motion_blur", "0",
                         "-gen_gpu_api", "0",
                         "-DKERNEL_SLICER",
                         "-v"],

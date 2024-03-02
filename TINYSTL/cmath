@@ -34,6 +34,7 @@ float pow(float x, float power);
 float powf(float x, float power);
 
 float exp(float x);
+float exp2(float x);
 float expf(float x);
 float log2(float x);
 float log(float x, float power);
@@ -43,9 +44,11 @@ float copysign(float eps, float val);
 float floor(float x);
 float ceil(float x);
 float floorf(float x);
-float round ( float num );
+float round (float num );
+float trunc (float num );
 
 float isfinite(float x);
+bool  isnan(float x);
 float copysign(float x, float y);
 
 static const unsigned int RAND_MAX = 65535;
@@ -72,6 +75,7 @@ namespace std
 
   template<typename T> T pow(T x, T power) { return x; }
   template<typename T> T exp(T x)          { return x; }
+  template<typename T> T exp2(T num);
   template<typename T> T log2(T x);
   template<typename T, typename U> T log(T x, U power);
 
@@ -86,8 +90,10 @@ namespace std
 
   template<typename T> T floor(T x);
   template<typename T> T ceil(T x);
+  template<typename T> T trunc(T x);
 
   template<typename T> T isfinite(T x);
+  template<typename T> T isnan(T x);
   template<typename T> T copysign(T x, T y);
 
   template<typename T> T frexp (T arg, int* exp);
@@ -95,12 +101,14 @@ namespace std
   template<typename T> T modf  (T x, T* iptr );
 
   template<typename T> T round (T num) { return num; }
+  template<typename T> T fma (T x, T y, T z);
 
   unsigned int rand();
   void srand( unsigned seed );
 
   bool isinf( float num );
   bool isinf( double num );
+
 };
 
 #include <cstdint>
