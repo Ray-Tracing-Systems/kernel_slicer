@@ -1108,7 +1108,6 @@ namespace kslicer
   std::vector<DataMemberInfo> MakeClassDataListAndCalcOffsets(std::unordered_map<std::string, DataMemberInfo>& vars);
   std::vector<kslicer::KernelInfo::ArgInfo> GetUserKernelArgs(const std::vector<kslicer::KernelInfo::ArgInfo>& a_allArgs);
 
-  void ReplaceOpenCLBuiltInTypes(std::string& a_typeName);
   std::vector<std::string> GetAllPredefinedThreadIdNamesRTV();
 
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler);
@@ -1164,7 +1163,6 @@ namespace kslicer
 
   std::string CutOffFileExt(const std::string& a_filePath);
   std::string CutOffStructClass(const std::string& a_typeName);
-  void        ReplaceOpenCLBuiltInTypes(std::string& a_typeName);
 
   std::unordered_map<std::string, std::string> ListGLSLVectorReplacements();
   const clang::Expr* RemoveImplicitCast(const clang::Expr* a_expr);

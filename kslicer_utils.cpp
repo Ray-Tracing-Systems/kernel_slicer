@@ -112,19 +112,6 @@ std::string kslicer::CutOffStructClass(const std::string& a_typeName)
   return a_typeName;
 }
 
-void kslicer::ReplaceOpenCLBuiltInTypes(std::string& a_typeName)
-{
-  std::string lmStucts("struct LiteMath::");
-  auto found1 = a_typeName.find(lmStucts);
-  if(found1 != std::string::npos)
-    a_typeName.replace(found1, lmStucts.length(), "");
-
-  std::string lm("LiteMath::");
-  auto found2 = a_typeName.find(lm);
-  if(found2 != std::string::npos)
-    a_typeName.replace(found2, lm.length(), "");
-}
-
 std::string GetFolderPath(const std::string& a_filePath)
 {
   #ifdef WIN32
