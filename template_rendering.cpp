@@ -165,13 +165,14 @@ static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslic
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void kslicer::ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, const std::string& a_outFilePath, const nlohmann::json& a_data)
+void kslicer::ApplyJsonToTemplate(const std::filesystem::path& a_declTemplateFilePath, const std::filesystem::path& a_outFilePath, const nlohmann::json& a_data)
 {
   inja::Environment env;
   env.set_trim_blocks(true);
   env.set_lstrip_blocks(true);
 
-  inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());
+  const std::string declTemplateFilePath = a_declTemplateFilePath.u8string();
+  inja::Template temp = env.parse_template(declTemplateFilePath.c_str());
   std::string result  = env.render(temp, a_data);
 
   std::ofstream fout(a_outFilePath);

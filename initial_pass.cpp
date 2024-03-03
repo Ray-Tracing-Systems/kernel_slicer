@@ -549,7 +549,7 @@ bool kslicer::InitialPassASTConsumer::HandleTopLevelDecl(DeclGroupRef d)
 #include <filesystem>
 namespace fs = std::filesystem;
 
-void kslicer::CheckInterlanIncInExcludedFolders(const std::vector<std::string>& a_folders)
+void kslicer::CheckInterlanIncInExcludedFolders(const std::vector<fs::path>& a_folders)
 {
   std::vector<std::string> stopList;
   stopList.push_back("LiteMath.h");

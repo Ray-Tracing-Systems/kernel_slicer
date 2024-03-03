@@ -476,17 +476,17 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
                                              const nlohmann::json& uboJson,
                                              const TextGenSettings& a_settings)
 {
-  std::string folderPath           = GetFolderPath(a_classInfo.mainClassFileName);
+  std::filesystem::path folderPath = a_classInfo.mainClassFileName.parent_path();
   std::string shaderPath           = "./" + a_classInfo.pShaderCC->ShaderFolder();
-  std::string mainInclude          = a_classInfo.mainClassFileInclude;
-  std::string mainIncludeGenerated = a_genIncude;
+  std::filesystem::path mainInclude          = a_classInfo.mainClassFileInclude;
+  std::filesystem::path mainIncludeGenerated = a_genIncude;
 
   MakeAbsolutePathRelativeTo(mainInclude, folderPath);
   MakeAbsolutePathRelativeTo(mainIncludeGenerated, folderPath);
 
-  auto posOfDot = mainIncludeGenerated.find(".h");
-  std::string mainIncludeGeneratedClean = mainIncludeGenerated.substr(0, posOfDot);
-  std::string mainIncludeGeneratedAPI   = mainIncludeGeneratedClean + "_api.h";
+  std::filesystem::path mainIncludeGeneratedAPI   = mainIncludeGenerated;
+  mainIncludeGeneratedAPI.replace_extension("");
+  mainIncludeGeneratedAPI.concat("_api.h");
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -496,8 +496,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     prefixDataName = a_classInfo.composPrefix.begin()->second;
 
   json data;
-  data["MainInclude"]        = mainInclude;
-  data["MainIncludeApi"]     = mainIncludeGeneratedAPI;
+  data["MainInclude"]        = mainInclude.u8string();
+  data["MainIncludeApi"]     = mainIncludeGeneratedAPI.u8string();
   data["AdditionalIncludes"] = std::vector<std::string>();
   for(auto file : a_classInfo.cppIncudes)
     data["AdditionalIncludes"].push_back(file);
@@ -674,7 +674,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  data["IncludeClassDecl"]    = mainIncludeGenerated;
+  data["IncludeClassDecl"]    = mainIncludeGenerated.u8string();
   data["TotalDescriptorSets"] = a_classInfo.allDescriptorSetsInfo.size(); // #TODO: REFACTOR THIS !!!
   data["TotalDSNumber"]       = a_classInfo.allDescriptorSetsInfo.size(); // #TODO: REFACTOR THIS !!!
 

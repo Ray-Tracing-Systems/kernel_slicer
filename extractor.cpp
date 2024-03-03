@@ -14,38 +14,38 @@
 class FuncExtractor : public clang::RecursiveASTVisitor<FuncExtractor>
 {
 public:
-  
+
   FuncExtractor(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo) : m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_patternImpl(a_codeInfo)
-  { 
-    
+  {
+
   }
 
-  kslicer::FuncData* pCurrProcessedFunc = nullptr; 
+  kslicer::FuncData* pCurrProcessedFunc = nullptr;
 
   bool VisitCallExpr(clang::CallExpr* call)
   {
-    std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+    std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler);
     const clang::FunctionDecl* f = call->getDirectCallee();
     if(f == nullptr)
       return true;
- 
+
     //std::string debugName = f->getNameAsString();
     //std::cout << "[debug]: find call of " << debugName.c_str() << std::endl;
     //if(debugName == "EyeRayDirNormalized")
     //{
     //  int a = 2;
     //}
-   
+
     if(f->isOverloadedOperator())
       return true;
 
-    std::string fileName = std::string(m_sm.getFilename(f->getSourceRange().getBegin())); // check that we are in test_class.cpp or test_class.h or sms like that;                                                                             
+    std::string fileName = std::string(m_sm.getFilename(f->getSourceRange().getBegin())); // check that we are in test_class.cpp or test_class.h or sms like that;
     if(m_patternImpl.IsInExcludedFolder(fileName))
       return true;
 
     if(fileName.find(".h") == std::string::npos && fileName.find(".cpp") == std::string::npos && fileName.find(".cxx") == std::string::npos)
       return true;
-    
+
     kslicer::FuncData func;
     func.name = f->getNameAsString();
 
@@ -58,11 +58,11 @@ public:
       else if (clang::isa<clang::CXXMemberCallExpr>(call)) // try to find composed functions
       {
         clang::CXXRecordDecl* recordDecl = clang::dyn_cast<clang::CXXMemberCallExpr>(call)->getRecordDecl();
-        const auto pType    = recordDecl->getTypeForDecl();     
+        const auto pType    = recordDecl->getTypeForDecl();
         const auto qt       = pType->getLocallyUnqualifiedSingleStepDesugaredType();
         const auto typeName = kslicer::CleanTypeName(qt.getAsString());
-        
-        const auto pPrefix  = m_patternImpl.composPrefix.find(typeName); 
+
+        const auto pPrefix  = m_patternImpl.composPrefix.find(typeName);
         if(pPrefix != m_patternImpl.composPrefix.end()) {
           func.name        = pPrefix->second + "_" + func.name;
           func.hasPrefix   = true;
@@ -75,7 +75,7 @@ public:
     }
 
     func.astNode  = f;
-    func.srcRange = f->getSourceRange(); 
+    func.srcRange = f->getSourceRange();
     func.srcHash  = kslicer::GetHashOfSourceRange(func.srcRange);
     func.isMember = clang::isa<clang::CXXMethodDecl>(func.astNode);
     func.isKernel = m_patternImpl.IsKernel(func.name);
@@ -93,7 +93,7 @@ public:
     if(func.isMember && clang::isa<clang::CXXMemberCallExpr>(call)) // currently we support export for members of current class only
     {
       clang::CXXRecordDecl* recordDecl = clang::dyn_cast<clang::CXXMemberCallExpr>(call)->getRecordDecl();
-      const auto pType    = recordDecl->getTypeForDecl();     
+      const auto pType    = recordDecl->getTypeForDecl();
       const auto qt       = pType->getLocallyUnqualifiedSingleStepDesugaredType();
       const auto typeName = kslicer::CleanTypeName(qt.getAsString());
       const auto pPrefix  = m_patternImpl.composPrefix.find(typeName);
@@ -127,7 +127,7 @@ private:
 
 std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
 {
-  std::queue<FuncData> functionsToProcess; 
+  std::queue<FuncData> functionsToProcess;
 
   for(const auto& k : a_codeInfo.kernels)        // (1) first traverse kernels as used functions
   {
@@ -144,8 +144,8 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
 
   std::unordered_map<uint64_t, FuncData> usedFunctions;
   usedFunctions.reserve(functionsToProcess.size()*10);
-  
-  FuncExtractor visitor(a_compiler, a_codeInfo); // (2) then repeat this recursivelly in a breadth first manner ... 
+
+  FuncExtractor visitor(a_compiler, a_codeInfo); // (2) then repeat this recursivelly in a breadth first manner ...
   while(!functionsToProcess.empty())
   {
     auto currFunc = functionsToProcess.front(); functionsToProcess.pop();
@@ -159,12 +159,12 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
       nextFunc.depthUse = currFunc.depthUse + 1;
       functionsToProcess.push(nextFunc);
       if(f.second.isMember)
-        currFunc.calledMembers.insert(f.second.name);      
+        currFunc.calledMembers.insert(f.second.name);
     }
 
     if(!currFunc.isKernel)
       usedFunctions[currFunc.srcHash] = currFunc;
-    
+
     for(auto foundCall : visitor.usedFunctions)
     {
       auto p = usedFunctions.find(foundCall.first);
@@ -180,7 +180,7 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
   std::vector<kslicer::FuncData> result; result.reserve(usedFunctions.size());
   for(const auto& f : usedFunctions)
     result.push_back(f.second);
-  
+
   std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.depthUse > b.depthUse; });
 
   return result;
@@ -192,25 +192,25 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
 class DataExtractor : public clang::RecursiveASTVisitor<DataExtractor>
 {
 public:
-  
-  DataExtractor(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo, 
-                std::unordered_map<std::string, kslicer::DataMemberInfo>& a_members, std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers) : 
+
+  DataExtractor(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo,
+                std::unordered_map<std::string, kslicer::DataMemberInfo>& a_members, std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers) :
                 m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_patternImpl(a_codeInfo), m_usedMembers(a_members), m_auxContainers(a_auxContainers)
-  { 
-    
+  {
+
   }
-  
-  bool VisitMemberExpr(clang::MemberExpr* expr) 
-  {   
+
+  bool VisitMemberExpr(clang::MemberExpr* expr)
+  {
     //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 
     std::string setter, containerName;
     if(kslicer::CheckSettersAccess(expr, &m_patternImpl, m_compiler, &setter, &containerName))
     {
-      clang::QualType qt = expr->getType(); // 
+      clang::QualType qt = expr->getType(); //
       kslicer::UsedContainerInfo container;
       container.type     = qt.getAsString();
-      container.name     = setter + "_" + containerName;            
+      container.name     = setter + "_" + containerName;
       container.kind     = kslicer::GetKindOfType(qt);
       container.isConst  = qt.isConstQualified();
       container.isSetter = true;
@@ -229,7 +229,7 @@ public:
 
     const std::string thisTypeName = kslicer::CleanTypeName(pRecodDecl->getNameAsString());
     const auto pPrefix             = m_patternImpl.composPrefix.find(thisTypeName);
-    
+
     std::string prefixName = "";
     if(pPrefix != m_patternImpl.composPrefix.end())
       prefixName = pPrefix->second;
@@ -238,7 +238,7 @@ public:
 
     // process access to arguments payload->xxx
     //
-    clang::Expr* baseExpr = expr->getBase(); 
+    clang::Expr* baseExpr = expr->getBase();
     assert(baseExpr != nullptr);
 
     auto baseName = kslicer::GetRangeSourceCode(baseExpr->getSourceRange(), m_compiler);
@@ -257,7 +257,7 @@ private:
   const clang::CompilerInstance& m_compiler;
   const clang::SourceManager&    m_sm;
   kslicer::MainClassInfo&        m_patternImpl;
-  std::unordered_map<std::string, kslicer::DataMemberInfo>& m_usedMembers; 
+  std::unordered_map<std::string, kslicer::DataMemberInfo>& m_usedMembers;
   std::unordered_map<std::string, kslicer::UsedContainerInfo>& m_auxContainers;
 
 };
@@ -270,10 +270,10 @@ std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMem
 
   for(auto f : a_otherMembers)
     allMembers[f.name] = f;
-  
+
   //process a_funcData.astNode to get all accesed data, then recursivelly process calledMembers
   //
-  std::queue<FuncData> functionsToProcess; 
+  std::queue<FuncData> functionsToProcess;
   functionsToProcess.push(a_funcData);
 
   DataExtractor visitor(a_compiler, a_codeInfo, result, a_auxContainers);
@@ -281,7 +281,7 @@ std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMem
   while(!functionsToProcess.empty())
   {
     auto currFunc = functionsToProcess.front(); functionsToProcess.pop();
-    
+
     // (1) process curr function to get all accesed data
     //
     visitor.TraverseDecl(const_cast<clang::FunctionDecl*>(currFunc.astNode));
@@ -295,7 +295,7 @@ std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMem
         functionsToProcess.push(pNext->second);
     }
   }
-  
+
   return result;
 }
 
@@ -304,10 +304,10 @@ std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMem
 std::vector<kslicer::ArgMatch> kslicer::MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler)
 {
   std::vector<kslicer::ArgMatch> result;
-  const clang::FunctionDecl* fDecl = call->getDirectCallee();  
-  if(fDecl == nullptr || clang::isa<clang::CXXOperatorCallExpr>(call)) 
+  const clang::FunctionDecl* fDecl = call->getDirectCallee();
+  if(fDecl == nullptr || clang::isa<clang::CXXOperatorCallExpr>(call))
     return result;
-  
+
   //std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), a_compiler);
 
   for(size_t i=0;i<call->getNumArgs();i++)
@@ -320,9 +320,9 @@ std::vector<kslicer::ArgMatch> kslicer::MatchCallArgsForKernel(clang::CallExpr* 
 
     std::string formalName = formalArg->getNameAsString();
     std::string actualText = kslicer::GetRangeSourceCode(actualArg->getSourceRange(), a_compiler);
-    if(actualText.find(".data()") != std::string::npos) 
+    if(actualText.find(".data()") != std::string::npos)
       actualText = actualText.substr(0, actualText.find(".data()"));
-    
+
     for(const auto& argOfCurrKernel : k.args)
     {
       if(argOfCurrKernel.name == actualText)
@@ -336,7 +336,7 @@ std::vector<kslicer::ArgMatch> kslicer::MatchCallArgsForKernel(clang::CallExpr* 
         result.push_back(arg);
       }
     }
-    
+
     for(const auto& container : k.usedContainers)
     {
       if(container.second.name == actualText)
@@ -351,7 +351,7 @@ std::vector<kslicer::ArgMatch> kslicer::MatchCallArgsForKernel(clang::CallExpr* 
       }
     }
   }
-  
+
   return result;
 }
 
@@ -359,23 +359,23 @@ std::vector<kslicer::ArgMatch> kslicer::MatchCallArgsForKernel(clang::CallExpr* 
 class ArgMatcher : public clang::RecursiveASTVisitor<ArgMatcher>
 {
 public:
-  
-  ArgMatcher(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo, std::vector< std::unordered_map<std::string, std::string> >& a_match, std::string a_funcName) : 
+
+  ArgMatcher(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo, std::vector< std::unordered_map<std::string, std::string> >& a_match, std::string a_funcName) :
              m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_patternImpl(a_codeInfo), m_argMatch(a_match), m_currFuncName(a_funcName)
-  { 
-        
+  {
+
   }
 
   bool VisitCallExpr(clang::CallExpr* call)
   {
-    const clang::FunctionDecl* fDecl = call->getDirectCallee();  
-    if(fDecl == nullptr)             // definitely can't process nullpointer 
+    const clang::FunctionDecl* fDecl = call->getDirectCallee();
+    if(fDecl == nullptr)             // definitely can't process nullpointer
       return true;
-    
+
     std::string fname = fDecl->getNameInfo().getName().getAsString();
     if(fname != m_currFuncName)
       return true;
-    
+
     std::unordered_map<std::string, std::string> agrMap;
     for(size_t i=0;i<call->getNumArgs();i++)
     {
@@ -385,23 +385,23 @@ public:
       //const clang::QualType     qtActual  = actualArg->getType();
       std::string formalTypeName          = qtFormal.getAsString();
 
-      bool supportedContainerType = (formalTypeName.find("Texture") != std::string::npos) || 
-                                    (formalTypeName.find("Image") != std::string::npos)   || 
-                                    (formalTypeName.find("vector") != std::string::npos)  || 
-                                    (formalTypeName.find("Sampler") != std::string::npos) || 
+      bool supportedContainerType = (formalTypeName.find("Texture") != std::string::npos) ||
+                                    (formalTypeName.find("Image") != std::string::npos)   ||
+                                    (formalTypeName.find("vector") != std::string::npos)  ||
+                                    (formalTypeName.find("Sampler") != std::string::npos) ||
                                     (formalTypeName.find("sampler") != std::string::npos);
 
       if(qtFormal->isPointerType() || (qtFormal->isReferenceType() && supportedContainerType))
       {
         std::string formalName = formalArg->getNameAsString();
         std::string actualText = kslicer::GetRangeSourceCode(actualArg->getSourceRange(), m_compiler);
-        if(actualText.find(".data()") != std::string::npos) 
+        if(actualText.find(".data()") != std::string::npos)
           actualText = actualText.substr(0, actualText.find(".data()"));
         //TODO: for pointers we should support pointrer arithmatic here ... or not?
         agrMap[formalName] = actualText;
       }
     }
-    
+
     if(!agrMap.empty())
       m_argMatch.push_back(agrMap);
 
@@ -412,7 +412,7 @@ private:
   const clang::CompilerInstance& m_compiler;
   const clang::SourceManager&    m_sm;
   kslicer::MainClassInfo&        m_patternImpl;
-  std::vector< std::unordered_map<std::string, std::string> >& m_argMatch; 
+  std::vector< std::unordered_map<std::string, std::string> >& m_argMatch;
   std::string                    m_currFuncName;
 };
 
@@ -435,9 +435,9 @@ std::vector< std::unordered_map<std::string, std::string> > kslicer::ArgMatchTra
 class DeclExtractor : public clang::RecursiveASTVisitor<DeclExtractor>
 {
 public:
-  
+
   DeclExtractor(const clang::CompilerInstance& a_compiler, const std::vector<kslicer::DeclInClass>& a_listedNames) : m_compiler(a_compiler), m_sm(a_compiler.getSourceManager())
-  { 
+  {
     for(const auto& decl : a_listedNames)
       usedDecls[decl.name] = decl;
   }
@@ -446,7 +446,7 @@ public:
 
   bool VisitCXXRecordDecl(clang::CXXRecordDecl* record)
   {
-    const auto pType = record->getTypeForDecl(); 
+    const auto pType = record->getTypeForDecl();
     const auto qt    = pType->getLocallyUnqualifiedSingleStepDesugaredType();
     const std::string typeName = qt.getAsString();
 
@@ -464,7 +464,7 @@ public:
     }
 
     return true;
-  } 
+  }
 
   bool VisitVarDecl(clang::VarDecl* var)
   {
@@ -472,10 +472,10 @@ public:
       return true;
 
     const clang::QualType qt = var->getType();
-    const auto typePtr = qt.getTypePtr(); 
+    const auto typePtr = qt.getTypePtr();
     if(typePtr->isPointerType())
       return true;
-    
+
     auto p = usedDecls.find(var->getNameAsString());
     if(p != usedDecls.end())
     {
@@ -492,11 +492,11 @@ public:
   }
 
   bool VisitTypedefDecl(clang::TypedefDecl* tDecl)
-  { 
+  {
     auto p = usedDecls.find(tDecl->getNameAsString());
     if(p != usedDecls.end())
     {
-      //const std::string typeName = qt2.getAsString(); 
+      //const std::string typeName = qt2.getAsString();
       //const auto qt2 = tDecl->getUnderlyingType();
       //const std::string typeName1 = tDecl->getNameAsString();
       p->second.srcRange  = tDecl->getSourceRange();
@@ -532,7 +532,7 @@ std::vector<kslicer::DeclInClass> kslicer::ExtractTCFromClass(const std::string&
   auto structMatcher = kslicer::MakeMatch_StructDeclInsideClass(a_className);
   auto varMatcher    = kslicer::MakeMatch_VarDeclInsideClass(a_className);
   auto tpdefMatcher  = kslicer::MakeMatch_TypedefInsideClass(a_className);
-    
+
   clang::ast_matchers::MatchFinder finder;
   kslicer::TC_Extractor typeAndConstantsHandler(compiler);
   finder.addMatcher(clang::ast_matchers::traverse(clang::TK_IgnoreUnlessSpelledInSource, structMatcher), &typeAndConstantsHandler);
@@ -541,12 +541,12 @@ std::vector<kslicer::DeclInClass> kslicer::ExtractTCFromClass(const std::string&
 
   auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
   std::cout << "  [TC_Extractor]: end process constants and structs:\t" << GetClangToolingErrorCodeMessage(res) << std::endl;
-  
+
   std::vector<kslicer::DeclInClass> usedDecls;
   usedDecls.reserve(typeAndConstantsHandler.foundDecl.size());
   for(const auto decl : typeAndConstantsHandler.foundDecl)
     usedDecls.push_back(decl.second);
-  
+
   std::sort(usedDecls.begin(), usedDecls.end(), [](const auto& a, const auto& b) { return a.order < b.order; } );
   return kslicer::ExtractUsedTC(usedDecls, classAstNode, compiler);
 }
@@ -574,15 +574,15 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
 
   bool isContainer = false;
   std::string containerType, containerDataType;
- 
-  const clang::Type* fieldTypePtr = qt.getTypePtr(); 
+
+  const clang::Type* fieldTypePtr = qt.getTypePtr();
   if(fieldTypePtr != nullptr)
   {
-    auto typeDecl = fieldTypePtr->getAsRecordDecl();  
+    auto typeDecl = fieldTypePtr->getAsRecordDecl();
     isContainer = (typeDecl != nullptr) && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl);
     if(isContainer)
     {
-      auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl); 
+      auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
       kslicer::SplitContainerTypes(specDecl, containerType, containerDataType);
     }
   }
@@ -592,7 +592,7 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
   {
     auto dataType     = qt->getPointeeType();
     containerDataType = kslicer::CleanTypeName(dataType.getAsString());
-    
+
     if(containerDataType == "ISceneObject")
       kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
     else if(kslicer::IsCombinedImageSamplerTypeName(containerDataType))
@@ -618,26 +618,26 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
     }
     else if(containerType.find("vector") != std::string::npos)
     {
-      kind = kslicer::DATA_KIND::KIND_VECTOR; 
-      
-      auto typeDecl     = fieldTypePtr->getAsRecordDecl(); 
-      auto specDecl     = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl); 
+      kind = kslicer::DATA_KIND::KIND_VECTOR;
+
+      auto typeDecl     = fieldTypePtr->getAsRecordDecl();
+      auto specDecl     = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
       auto typeOfData   = specDecl->getTemplateArgs()[0].getAsType();
-      auto typePtr2     = typeOfData.getTypePtr(); 
-      
+      auto typePtr2     = typeOfData.getTypePtr();
+
       if(typePtr2 != nullptr)
       {
-        auto typeDecl2    = typePtr2->getAsRecordDecl();  
+        auto typeDecl2    = typePtr2->getAsRecordDecl();
         bool isContainer2 = (typeDecl2 != nullptr) && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl2);
         if(isContainer2)
         {
-          auto specDecl2 = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl2); 
+          auto specDecl2 = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl2);
           kslicer::SplitContainerTypes(specDecl2, containerType, containerDataType);
           containerDataType = kslicer::CleanTypeName(containerDataType);
           if(kslicer::IsCombinedImageSamplerTypeName(containerDataType))
             kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY;
           else
-            kind = kslicer::DATA_KIND::KIND_VECTOR; 
+            kind = kslicer::DATA_KIND::KIND_VECTOR;
         }
         else if(typeOfData->isPointerType())
         {
@@ -646,17 +646,17 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
           if(kslicer::IsCombinedImageSamplerTypeName(containerDataType))
             kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY;
           else
-            kind = kslicer::DATA_KIND::KIND_VECTOR; 
+            kind = kslicer::DATA_KIND::KIND_VECTOR;
         }
       }
       else
-        kind = kslicer::DATA_KIND::KIND_VECTOR; 
+        kind = kslicer::DATA_KIND::KIND_VECTOR;
     }
     else
-      kind = kslicer::DATA_KIND::KIND_VECTOR;  
+      kind = kslicer::DATA_KIND::KIND_VECTOR;
   }
-  else 
-    kind = kslicer::DATA_KIND::KIND_POD; 
+  else
+    kind = kslicer::DATA_KIND::KIND_POD;
   return kind;
 }
 
@@ -700,16 +700,16 @@ bool kslicer::MainClassInfo::NeedToProcessDeclInFile(const std::string a_fileNam
   bool needInsertToKernels = false;             // do we have to process this declaration to further insert it to GLSL/CL ?
   for(auto folder : this->processFolders)       //
   {
-    if(a_fileName.find(folder) != std::string::npos)
+    if(a_fileName.find(folder.u8string()) != std::string::npos)
     {
       needInsertToKernels = true;
       break;
     }
   }
-  
-  if(needInsertToKernels) 
+
+  if(needInsertToKernels)
   {
-    for(auto folder : this->ignoreFolders)        // consider ["maypath/AA"] in 'processFolders' and ["maypath/AA/BB"] in 'ignoreFolders' 
+    for(auto folder : this->ignoreFolders)        // consider ["maypath/AA"] in 'processFolders' and ["maypath/AA/BB"] in 'ignoreFolders'
     {                                             // we should definitely ignore such definitions
       if(a_fileName.find(folder) != std::string::npos)
       {
@@ -718,7 +718,7 @@ bool kslicer::MainClassInfo::NeedToProcessDeclInFile(const std::string a_fileNam
       }
     }
   }
-  
+
   // now process exceptions
   //
   if(needInsertToKernels)
@@ -732,7 +732,7 @@ bool kslicer::MainClassInfo::NeedToProcessDeclInFile(const std::string a_fileNam
       }
     }
   }
-  else if(!needInsertToKernels) 
+  else if(!needInsertToKernels)
   {
     for(auto file : this->processFiles)
     {
@@ -743,7 +743,6 @@ bool kslicer::MainClassInfo::NeedToProcessDeclInFile(const std::string a_fileNam
       }
     }
   }
-  
 
   return needInsertToKernels;
 }
@@ -754,29 +753,29 @@ struct TypePair
   TypePair(const std::string& a_name, const clang::TypeDecl* a_node) : typeName(a_name), node(a_node) {}
   std::string typeName;
   const clang::TypeDecl* node;
-  size_t aligment = sizeof(int);  
+  size_t aligment = sizeof(int);
 };
 
-void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls, clang::SourceManager& a_srcMgr, 
+void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls, clang::SourceManager& a_srcMgr,
                                                 std::vector<kslicer::DeclInClass>& generalDecls)
 {
   const auto& a_members           = this->dataMembers;
   const auto  a_additionalTypes   = this->ExtractTypesFromUsedContainers(a_otherDecls);
-  const auto& a_allDataMembers    = this->allDataMembers;     
+  const auto& a_allDataMembers    = this->allDataMembers;
 
   std::unordered_map<std::string, kslicer::DeclInClass> declsByName;
   for(const auto& decl : generalDecls)
     declsByName[decl.name] = decl;
-  
+
   auto internalTypes = kslicer::ListPredefinedMathTypes();
   std::queue<TypePair> typesToProcess;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////
   for(const auto& member : a_members)
   {
-    std::string typeName = kslicer::CleanTypeName(member.type);       // TODO: make type clear function 
-    if(member.pTypeDeclIfRecord != nullptr && 
-       declsByName.find(typeName) == declsByName.end() && 
+    std::string typeName = kslicer::CleanTypeName(member.type);       // TODO: make type clear function
+    if(member.pTypeDeclIfRecord != nullptr &&
+       declsByName.find(typeName) == declsByName.end() &&
        internalTypes.find(typeName) == internalTypes.end())
     {
       auto pFound = a_otherDecls.find(typeName);
@@ -803,12 +802,12 @@ void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::st
         }
       }
       if(node != nullptr)
-        typesToProcess.push(TypePair(typeName, node)); 
+        typesToProcess.push(TypePair(typeName, node));
     }
-    
+
     const auto pDecl = a_otherDecls.find(typeName);
     if(pDecl != a_otherDecls.end())
-      typesToProcess.push(TypePair(typeName, pDecl->second.astNode)); 
+      typesToProcess.push(TypePair(typeName, pDecl->second.astNode));
   }
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -823,19 +822,19 @@ void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::st
       kslicer::DeclInClass tdecl;
       tdecl.type     = elem.typeName;
       tdecl.name     = elem.typeName;
-      tdecl.srcRange = elem.node->getSourceRange();    
-      tdecl.srcHash  = kslicer::GetHashOfSourceRange(tdecl.srcRange); 
+      tdecl.srcRange = elem.node->getSourceRange();
+      tdecl.srcHash  = kslicer::GetHashOfSourceRange(tdecl.srcRange);
       tdecl.order    = lastDeclOrder; lastDeclOrder++;
       tdecl.kind     = kslicer::DECL_IN_CLASS::DECL_STRUCT;
       tdecl.extracted= true;
       declsByName[elem.typeName] = tdecl;
       const clang::FileEntry* Entry = a_srcMgr.getFileEntryForID(a_srcMgr.getFileID(elem.node->getLocation()));
-      const std::string fileName    = std::string(Entry->getName());        
-      const bool        exclude     = IsInExcludedFolder(fileName); 
+      const std::string fileName    = std::string(Entry->getName());
+      const bool        exclude     = IsInExcludedFolder(fileName);
       if(!exclude)
         auxDecls.push_back(tdecl);
-      
-      // process all field types 
+
+      // process all field types
       //
       if(elem.node != nullptr && clang::isa<clang::RecordDecl>(elem.node))
       {
@@ -852,7 +851,7 @@ void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::st
     }
   }
 
-  std::reverse_copy(auxDecls.begin(), auxDecls.end(), std::back_inserter(generalDecls)); 
+  std::reverse_copy(auxDecls.begin(), auxDecls.end(), std::back_inserter(generalDecls));
 }
 
 std::unordered_map<std::string, size_t> ListPredefinedAligmentTypes()
@@ -914,8 +913,8 @@ std::unordered_map<std::string, size_t> ListForbiddenTypes()
 }
 
 
-size_t GetBaseAligmentForGLSL(TypePair* pCurrType, 
-                              const std::unordered_map<std::string, TypePair>& a_typeToProcess, 
+size_t GetBaseAligmentForGLSL(TypePair* pCurrType,
+                              const std::unordered_map<std::string, TypePair>& a_typeToProcess,
                               const std::unordered_map<std::string, size_t>& a_endTypes, int a_level)
 {
   auto pEndType = a_endTypes.find(pCurrType->typeName);
@@ -923,14 +922,14 @@ size_t GetBaseAligmentForGLSL(TypePair* pCurrType,
     return pEndType->second;
   else if(pCurrType->node != nullptr && clang::isa<clang::RecordDecl>(pCurrType->node))
   {
-    auto badTypes    = ListForbiddenTypes();   
+    auto badTypes    = ListForbiddenTypes();
     auto pRecordDecl = clang::dyn_cast<clang::RecordDecl>(pCurrType->node);
     size_t maxAligment = 0;
     for(auto field : pRecordDecl->fields())
     {
       clang::QualType qt = field->getType();
       const std::string typeName2 = kslicer::CleanTypeName(qt.getAsString());
-      
+
       auto pForbidden = badTypes.find(typeName2);
       if(pForbidden != badTypes.end())
       {
@@ -962,8 +961,8 @@ static inline size_t Padding(size_t a_size, size_t a_alignment)
   }
 }
 
-void kslicer::MainClassInfo::ProcessMemberTypesAligment(std::vector<DataMemberInfo>& a_members, 
-                                                        const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls, 
+void kslicer::MainClassInfo::ProcessMemberTypesAligment(std::vector<DataMemberInfo>& a_members,
+                                                        const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls,
                                                         const clang::ASTContext& a_astContext)
 {
   const auto  a_additionalTypes = this->ExtractTypesFromUsedContainers(a_otherDecls);
@@ -981,7 +980,7 @@ void kslicer::MainClassInfo::ProcessMemberTypesAligment(std::vector<DataMemberIn
   std::unordered_map<std::string, TypePair> typesToProcess;
   for(const auto& member : a_members)
   {
-    std::string typeName = kslicer::CleanTypeName(member.type);   
+    std::string typeName = kslicer::CleanTypeName(member.type);
     if(member.pTypeDeclIfRecord != nullptr && internalTypes.find(typeName) == internalTypes.end())
       typesToProcess[typeName] = TypePair(typeName, member.pTypeDeclIfRecord);
   }
@@ -1002,8 +1001,8 @@ void kslicer::MainClassInfo::ProcessMemberTypesAligment(std::vector<DataMemberIn
           node = memb.second.pContainerDataTypeDeclIfRecord;
           break;
         }
-      } 
-      typesToProcess[typeName] = TypePair(typeName, node);  // #TODO: extract pTypeDeclIfRecord for containers data also  
+      }
+      typesToProcess[typeName] = TypePair(typeName, node);  // #TODO: extract pTypeDeclIfRecord for containers data also
     }
   }
 
@@ -1055,7 +1054,7 @@ std::unordered_set<std::string> kslicer::MainClassInfo::ExtractTypesFromUsedCont
           res.insert(pFound->second.containerDataType);
       }
     }
-    
+
     for(const auto& c : k.second.args)
     {
       if(c.IsPointer())
@@ -1165,7 +1164,7 @@ std::vector<std::string> kslicer::ExtractDefines(const clang::CompilerInstance& 
     if(first->hasMacroDefinition() && (first->isReserved(a_compiler.getLangOpts()) == clang::ReservedIdentifierStatus::NotReserved)) {
       if(!first->isPoisoned()) {
         if(predefined.find(name) == predefined.end()) {
-          
+
           const clang::MacroDirective* MD = a_compiler.getPreprocessor().getLocalMacroDirective(first);
           const clang::MacroInfo*      MI = MD->getMacroInfo();
 
@@ -1175,7 +1174,7 @@ std::vector<std::string> kslicer::ExtractDefines(const clang::CompilerInstance& 
             std::string temp = a_compiler.getPreprocessor().getSpelling(T);
             strout << temp.c_str();
           }
-          
+
           res.push_back(strout.str());
         }
       }

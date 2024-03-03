@@ -10,7 +10,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler) 
+std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler)
 {
   const clang::SourceManager& sm = compiler.getSourceManager();
   const clang::LangOptions& lopt = compiler.getLangOpts();
@@ -23,7 +23,7 @@ std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const 
     return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
 }
 
-std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const clang::SourceManager& sm) 
+std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const clang::SourceManager& sm)
 {
   clang::LangOptions lopt;
 
@@ -35,8 +35,8 @@ std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const 
 
 uint64_t kslicer::GetHashOfSourceRange(const clang::SourceRange& a_range)
 {
-  const uint32_t hash1 = a_range.getBegin().getRawEncoding(); 
-  const uint32_t hash2 = a_range.getEnd().getRawEncoding();   
+  const uint32_t hash1 = a_range.getBegin().getRawEncoding();
+  const uint32_t hash2 = a_range.getEnd().getRawEncoding();
   return (uint64_t(hash1) << 32) | uint64_t(hash2);
 }
 
@@ -45,7 +45,7 @@ void kslicer::PrintError(const std::string& a_msg, const clang::SourceRange& a_r
 {
   const auto beginLoc  = a_range.getBegin();
   const auto inFileLoc = a_sm.getPresumedLoc(beginLoc);
-  
+
   const auto fileName = std::string(a_sm.getFilename(beginLoc));
   const auto line     = inFileLoc.getLine();
   const auto col      = inFileLoc.getColumn();
@@ -60,7 +60,7 @@ void kslicer::PrintWarning(const std::string& a_msg, const clang::SourceRange& a
 {
   const auto beginLoc  = a_range.getBegin();
   const auto inFileLoc = a_sm.getPresumedLoc(beginLoc);
-  
+
   const auto fileName = std::string(a_sm.getFilename(beginLoc));
   const auto line     = inFileLoc.getLine();
   const auto col      = inFileLoc.getColumn();
@@ -97,9 +97,9 @@ clang::Expr* kslicer::RemoveImplicitCast(clang::Expr* nextNode)
 
 std::string kslicer::CutOffFileExt(const std::string& a_filePath)
 {
-  const size_t lastindex = a_filePath.find_last_of("."); 
+  const size_t lastindex = a_filePath.find_last_of(".");
   if(lastindex != std::string::npos)
-    return a_filePath.substr(0, lastindex); 
+    return a_filePath.substr(0, lastindex);
   else
     return a_filePath;
 }
@@ -112,23 +112,9 @@ std::string kslicer::CutOffStructClass(const std::string& a_typeName)
   return a_typeName;
 }
 
-std::string GetFolderPath(const std::string& a_filePath)
+void MakeAbsolutePathRelativeTo(std::filesystem::path& a_filePath, const std::filesystem::path& a_folderPath)
 {
-  #ifdef WIN32
-  const std::string slash = "\\";
-  #else
-  const std::string slash = "/";
-  #endif
-
-  size_t lastindex = a_filePath.find_last_of(slash); 
-  assert(lastindex != std::string::npos);   
-  return a_filePath.substr(0, lastindex); 
-}
-
-void MakeAbsolutePathRelativeTo(std::string& a_filePath, const std::string& a_folderPath)
-{
-  if(a_filePath.find(a_folderPath) != std::string::npos)  // cut off folder path
-    a_filePath = a_filePath.substr(a_folderPath.size() + 1);
+  a_filePath = std::filesystem::relative(a_filePath, a_folderPath);
 }
 
 std::string ToLowerCase(std::string a_str)
@@ -141,7 +127,7 @@ std::string ToLowerCase(std::string a_str)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::string& fileName, 
+std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::filesystem::path& fileName,
                                                                    std::vector<std::string>& allFiles,
                                                                    std::vector<std::string>& ignoreFiles,
                                                                    std::vector<std::string>& processFiles,
@@ -151,10 +137,10 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
   for(int i=0; i<argc; i++)
   {
     std::string key(argv[i]);
-    
+
     const bool isDefine = key.size() > 1 && key.substr(0,2) == "-D";
     const bool isKey    = key.size() > 0 && key[0] == '-';
-    
+
     if(key == "-ignore")
       ignoreFiles.push_back(argv[i+1]);
     else if (key == "-process")
@@ -185,24 +171,15 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
   else
   {
     fileName = allFiles[0];
-    #ifdef WIN32
-    const std::string slash = "\\";
-    #else
-    const std::string slash = "/";
-    #endif
-
-    size_t posSlash = fileName.find_last_of(slash); 
-    auto   posCPP   = fileName.find(".cpp");
-    
-    assert(posSlash != std::string::npos);   
-    assert(posCPP   != std::string::npos);   
 
     // merge files to a single temporary file
-    auto folderPath = fileName.substr(0, posSlash);
-    auto fileName2  = fileName.substr(posSlash+1, posCPP-posSlash-1);
-    auto fileNameT  = folderPath + slash + fileName2 + "_temp.cpp";
-    
-    std::cout << "[kslicer]: merging input files to temporary file '" << fileName2 << "_temp.cpp' " << std::endl;
+    auto folderPath = fileName.parent_path();
+    auto fileName2  = fileName.filename();
+    fileName2.replace_extension("");
+    fileName2.concat("_temp.cpp");
+    auto fileNameT  = folderPath / fileName2;
+
+    std::cout << "[kslicer]: merging input files to temporary file '" << fileName2 << std::endl;
     std::ofstream fout(fileNameT);
     for(auto file : allFiles)
     {
@@ -213,7 +190,7 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
       std::string line;
       while (std::getline(fin, line))
         fout << line.c_str() << std::endl;
-    } 
+    }
     fout.close();
     fileName = fileNameT;
     std::cout << "[kslicer]: merging finished" << std::endl;
@@ -225,14 +202,14 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
 std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params)
 {
   std::unordered_set<std::string> values;
-  for(auto p : params) 
+  for(auto p : params)
     values.insert(p.second);
 
   std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
   argsForClang.reserve(argc);
   for(int i=1;i<argc;i++)
   {
-    if(params.find(argv[i]) == params.end() && values.find(argv[i]) == values.end()) 
+    if(params.find(argv[i]) == params.end() && values.find(argv[i]) == values.end())
       argsForClang.push_back(argv[i]);
   }
 
@@ -246,7 +223,7 @@ const char* GetClangToolingErrorCodeMessage(int code)
   else if (code == 1)
     return "ERROR";
   else
-    return "SKIPPED_FILES";  
+    return "SKIPPED_FILES";
 }
 
 void ReadThreadsOrderFromStr(const std::string& threadsOrderStr, uint32_t  threadsOrder[3])
