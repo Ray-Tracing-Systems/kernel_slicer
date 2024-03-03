@@ -310,6 +310,8 @@ std::unordered_set<std::string> kslicer::ListPredefinedMathTypes()
 
 std::string kslicer::CleanTypeName(const std::string& a_str)
 {
+  if (a_str.empty())
+    return a_str;
   std::string typeName = a_str;
   ReplaceFirst(typeName, "const ",     "");
   ReplaceFirst(typeName, "const",      ""); // for 'const*'
