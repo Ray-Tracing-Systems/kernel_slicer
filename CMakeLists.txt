@@ -55,10 +55,20 @@ add_executable(kslicer
                shaders_ispc.cpp
                )
 
-target_link_libraries(kslicer PRIVATE "${PLATFORM_DEPENDENT_LIBS}" clangAST clangTooling
+if(WIN32)
+target_link_libraries(kslicer PRIVATE ${PLATFORM_DEPENDENT_LIBS} clangAST clangTooling
                      clangBasic clangASTMatchers
                      clangFrontendTool clangFrontend clangDriver clangSerialization
                      clangCodeGen clangParse clangSema clangStaticAnalyzerFrontend
                      clangStaticAnalyzerCheckers clangStaticAnalyzerCore clangAnalysis
                      clangIndex clangARCMigrate clangRewrite clangLex clangEdit
                      )
+else()
+target_link_libraries(kslicer PRIVATE clang ${LLVM_LIB} clangAST clangTooling
+                     clangBasic clangASTMatchers
+                     clangFrontendTool clangFrontend clangDriver clangSerialization
+                     clangCodeGen clangParse clangSema clangStaticAnalyzerFrontend
+                     clangStaticAnalyzerCheckers clangStaticAnalyzerCore clangAnalysis
+                     clangIndex clangARCMigrate clangRewrite clangLex clangEdit
+                     )
+endif()
