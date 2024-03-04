@@ -8,7 +8,7 @@ set(LLVM_LIB "LLVM-${LLVM_VER}")
 if (MSVC)
   add_compile_options(/bigobj)
 else ()
-  set(PLATFORM_DEPENDENT_LIBS "clang ${LLVM_LIB}")
+  set(PLATFORM_DEPENDENT_LIBS clang ${LLVM_LIB})
 endif ()
 
 find_package(LLVM ${LLVM_VER} REQUIRED CONFIG)
@@ -55,7 +55,6 @@ add_executable(kslicer
                shaders_ispc.cpp
                )
 
-if(WIN32)
 target_link_libraries(kslicer PRIVATE ${PLATFORM_DEPENDENT_LIBS} clangAST clangTooling
                      clangBasic clangASTMatchers
                      clangFrontendTool clangFrontend clangDriver clangSerialization
@@ -63,12 +62,3 @@ target_link_libraries(kslicer PRIVATE ${PLATFORM_DEPENDENT_LIBS} clangAST clangT
                      clangStaticAnalyzerCheckers clangStaticAnalyzerCore clangAnalysis
                      clangIndex clangARCMigrate clangRewrite clangLex clangEdit
                      )
-else()
-target_link_libraries(kslicer PRIVATE clang ${LLVM_LIB} clangAST clangTooling
-                     clangBasic clangASTMatchers
-                     clangFrontendTool clangFrontend clangDriver clangSerialization
-                     clangCodeGen clangParse clangSema clangStaticAnalyzerFrontend
-                     clangStaticAnalyzerCheckers clangStaticAnalyzerCore clangAnalysis
-                     clangIndex clangARCMigrate clangRewrite clangLex clangEdit
-                     )
-endif()
