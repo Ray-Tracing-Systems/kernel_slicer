@@ -31,21 +31,21 @@ namespace kslicer
 
 
   using namespace clang;
-  
+
   // RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.
   //
   class InitialPassRecursiveASTVisitor : public RecursiveASTVisitor<InitialPassRecursiveASTVisitor>
   {
   public:
-    
+
     std::string MAIN_CLASS_NAME;
     std::string MAIN_FILE_INCLUDE;
-  
+
     InitialPassRecursiveASTVisitor(std::vector<std::string>& a_mainFunctionNames,
-                                   std::string main_class, 
+                                   std::string main_class,
                                    std::vector<std::string> compos_classes,
-                                   CompilerInstance& a_compiler, MainClassInfo& a_codeInfo) : 
-                                   MAIN_CLASS_NAME(main_class), m_compiler(a_compiler), m_astContext(a_compiler.getASTContext()), m_sourceManager(a_compiler.getSourceManager()), m_codeInfo(a_codeInfo)  
+                                   CompilerInstance& a_compiler, MainClassInfo& a_codeInfo) :
+                                   MAIN_CLASS_NAME(main_class), m_compiler(a_compiler), m_astContext(a_compiler.getASTContext()), m_sourceManager(a_compiler.getSourceManager()), m_codeInfo(a_codeInfo)
     {
       m_mainFuncts.reserve(a_mainFunctionNames.size());
       for(const auto& name : a_mainFunctionNames)
@@ -54,14 +54,14 @@ namespace kslicer
         m_composedClassInfo[name] = ClassInfo(name);
       mci.name = MAIN_CLASS_NAME;
     }
-    
+
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
     bool VisitFieldDecl    (FieldDecl* var);
 
     bool VisitCXXRecordDecl(CXXRecordDecl* record);
     bool VisitTypeDecl     (TypeDecl* record);
     bool VisitVarDecl      (VarDecl* pTargetVar);
-  
+
     ClassInfo mci; // main class info
     std::unordered_map<std::string, ClassInfo>  m_composedClassInfo;
 
@@ -85,15 +85,15 @@ namespace kslicer
     std::unordered_map<std::string, kslicer::DeclInClass> m_transferredDecl;
     std::unordered_map<std::string, kslicer::DeclInClass> m_storedDecl;
   };
-  
+
   class InitialPassASTConsumer : public ASTConsumer
   {
    public:
-  
-    InitialPassASTConsumer (std::vector<std::string>& a_mainFunctionNames, 
+
+    InitialPassASTConsumer (std::vector<std::string>& a_mainFunctionNames,
                             std::string main_class,
-                            std::vector<std::string> compos_classes, 
-                            CompilerInstance& a_compiler, MainClassInfo& a_codeInfo) : 
+                            std::vector<std::string> compos_classes,
+                            CompilerInstance& a_compiler, MainClassInfo& a_codeInfo) :
                             rv(a_mainFunctionNames, main_class, compos_classes, a_compiler, a_codeInfo) { }
     bool HandleTopLevelDecl(DeclGroupRef d) override;
     InitialPassRecursiveASTVisitor rv;
@@ -107,7 +107,7 @@ namespace kslicer
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class HeaderLister : public clang::PPCallbacks 
+class HeaderLister : public clang::PPCallbacks
 {
 public:
 
@@ -123,22 +123,22 @@ public:
                           const clang::Module *Imported,
                           clang::SrcMgr::CharacteristicKind FileType) override */
 
-  void InclusionDirective (clang::SourceLocation HashLoc, 
-                      const clang::Token &IncludeTok, 
-                      clang::StringRef FileName, 
-                      bool IsAngled, 
-                      clang::CharSourceRange FilenameRange, 
-                      clang::OptionalFileEntryRef File, 
-                      clang::StringRef SearchPath, 
-                      clang::StringRef RelativePath, 
-                      const clang::Module *Imported, 
-                      clang::SrcMgr::CharacteristicKind FileType) override                        
+  void InclusionDirective (clang::SourceLocation HashLoc,
+                      const clang::Token &IncludeTok,
+                      clang::StringRef FileName,
+                      bool IsAngled,
+                      clang::CharSourceRange FilenameRange,
+                      clang::OptionalFileEntryRef File,
+                      clang::StringRef SearchPath,
+                      clang::StringRef RelativePath,
+                      const clang::Module *Imported,
+                      clang::SrcMgr::CharacteristicKind FileType)
   {
     if(!IsAngled && File != nullptr)
     {
       assert(File != nullptr);
-      std::string filename = std::string(RelativePath.begin(), RelativePath.end()); 
-      m_pGlobInfo->allIncludeFiles[filename] = false;   
+      std::string filename = std::string(RelativePath.begin(), RelativePath.end());
+      m_pGlobInfo->allIncludeFiles[filename] = false;
     }
   }
 

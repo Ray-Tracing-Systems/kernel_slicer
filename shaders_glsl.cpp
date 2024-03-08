@@ -18,37 +18,31 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
 {
   const auto& mainClassFileName = a_codeInfo->mainClassFileName;
   const auto& ignoreFolders     = a_codeInfo->ignoreFolders;
-  
+
   #ifdef WIN32
-  const std::string slash = "\\";
   const std::string scriptName = "build.bat";
   #else
-  const std::string slash = "/";
   const std::string scriptName = "build.sh";
   #endif
 
-  std::string folderPath = GetFolderPath(mainClassFileName);
-  std::string shaderPath = folderPath + slash + this->ShaderFolder();
-  std::string incUBOPath = folderPath + slash + "include";
-  #ifdef WIN32
-  mkdir(shaderPath.c_str());
-  mkdir(incUBOPath.c_str());
-  #else
-  mkdir(shaderPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-  mkdir(incUBOPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-  #endif
-  
+  std::filesystem::path folderPath = mainClassFileName.parent_path();
+  std::filesystem::path shaderPath = folderPath / this->ShaderFolder();
+  std::filesystem::path incUBOPath = folderPath / "include";
+  std::filesystem::create_directory(shaderPath);
+  std::filesystem::create_directory(incUBOPath);
+
   // generate header for all used functions in GLSL code
   //
-  std::string headerCommon = "common" + ToLowerCase(m_suffix) + ".h"; 
-  kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "common_generated.h", shaderPath + slash + headerCommon, a_kernelsJson);  
-  
+  std::string headerCommon = "common" + ToLowerCase(m_suffix) + ".h";
+  std::filesystem::path templatesFolder("templates_glsl");
+  kslicer::ApplyJsonToTemplate(templatesFolder / "common_generated.h", shaderPath / headerCommon, a_kernelsJson);
+
   // now generate all glsl shaders
   //
-  const std::string templatePath       = a_codeInfo->megakernelRTV ? "templates_glsl" + slash + "generated_mega.glsl" : "templates_glsl" + slash + "generated.glsl";
-  const std::string templatePathUpdInd = "templates_glsl" + slash + "update_indirect.glsl";
-  const std::string templatePathRedFin = "templates_glsl" + slash + "reduction_finish.glsl";
-  
+  const std::filesystem::path templatePath       = templatesFolder / (a_codeInfo->megakernelRTV ? "generated_mega.glsl" : "generated.glsl");
+  const std::filesystem::path templatePathUpdInd = templatesFolder / "update_indirect.glsl";
+  const std::filesystem::path templatePathRedFin = templatesFolder / "reduction_finish.glsl";
+
   nlohmann::json copy, kernels;
   for (auto& el : a_kernelsJson.items())
   {
@@ -58,25 +52,36 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     else
       copy[el.key()] = a_kernelsJson[el.key()];
   }
-  
+
   //std::cout << "shaderPath = " << shaderPath.c_str() << std::endl;
-    
-  std::ofstream buildSH(shaderPath + slash + scriptName);
+
+  bool needRTDummies = false;
+
+  std::ofstream buildSH(shaderPath / scriptName);
+  #if not __WIN32__
   buildSH << "#!/bin/sh" << std::endl;
+  #endif
   for(auto& kernel : kernels.items())
   {
     nlohmann::json currKerneJson = copy;
     currKerneJson["Kernel"] = kernel.value();
-    
-    const bool vulkan11 = kernel.value()["UseSubGroups"];
 
-    std::string kernelName  = std::string(kernel.value()["Name"]);
-    std::string outFileName = kernelName + ".comp";
-    std::string outFilePath = shaderPath + slash + outFileName;
+    std::string kernelName     = std::string(kernel.value()["Name"]);
+    bool useRayTracingPipeline = kernel.value()["UseRayGen"];
+    const bool vulkan11        = kernel.value()["UseSubGroups"];
+    const bool vulkan12        = useRayTracingPipeline;
+    needRTDummies              = needRTDummies || useRayTracingPipeline;
+
+    std::string outFileName = kernelName + (useRayTracingPipeline ? "RGEN.glsl" : ".comp");
+    std::filesystem::path outFilePath = shaderPath / outFileName;
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
     buildSH << "glslangValidator -V ";
-    if(vulkan11)
+    if(vulkan12)
+      buildSH << "--target-env vulkan1.2 ";
+    else if(vulkan11)
       buildSH << "--target-env vulkan1.1 ";
+    if(useRayTracingPipeline)
+      buildSH << "-S rgen ";
     buildSH << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
     for(auto folder : ignoreFolders)
       buildSH << "-I" << folder.c_str() << " ";
@@ -85,9 +90,9 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     if(kernel.value()["IsIndirect"])
     {
       outFileName = kernelName + "_UpdateIndirect.comp";
-      outFilePath = shaderPath + slash + outFileName;
+      outFilePath = shaderPath / outFileName;
       kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
-      buildSH << "glslangValidator -V "; 
+      buildSH << "glslangValidator -V ";
       if(vulkan11)
         buildSH << "--target-env vulkan1.1 ";
       buildSH << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
@@ -99,9 +104,9 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     if(kernel.value()["FinishRed"])
     {
       outFileName = kernelName + "_Reduction.comp";
-      outFilePath = shaderPath + slash + outFileName;
+      outFilePath = shaderPath / outFileName;
       kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
-      buildSH << "glslangValidator -V "; 
+      buildSH << "glslangValidator -V ";
       if(vulkan11)
         buildSH << "--target-env vulkan1.1 ";
       buildSH << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
@@ -114,22 +119,22 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   if(a_codeInfo->usedServiceCalls.find("memcpy") != a_codeInfo->usedServiceCalls.end())
   {
     nlohmann::json dummy;
-    kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_memcpy.glsl", shaderPath + slash + "z_memcpy.comp", dummy); // just file copy actually
+    kslicer::ApplyJsonToTemplate(templatesFolder / "z_memcpy.glsl", shaderPath / "z_memcpy.comp", dummy); // just file copy actually
     buildSH << "glslangValidator -V z_memcpy.comp -o z_memcpy.comp.spv" << std::endl;
   }
 
-  if(a_codeInfo->usedServiceCalls.find("exclusive_scan") != a_codeInfo->usedServiceCalls.end() || 
+  if(a_codeInfo->usedServiceCalls.find("exclusive_scan") != a_codeInfo->usedServiceCalls.end() ||
      a_codeInfo->usedServiceCalls.find("inclusive_scan") != a_codeInfo->usedServiceCalls.end())
   {
-    for(auto scanImpl : a_codeInfo->serviceCalls) 
+    for(auto scanImpl : a_codeInfo->serviceCalls)
     {
-      if (scanImpl.second.opName == "scan") 
+      if (scanImpl.second.opName == "scan")
       {
         nlohmann::json params;
         params["Type"] = scanImpl.second.dataTypeName;
 
-        kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_scan_block.glsl",     shaderPath + slash + "z_scan_" + scanImpl.second.dataTypeName + "_block.comp", params);
-        kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_scan_propagate.glsl", shaderPath + slash + "z_scan_" + scanImpl.second.dataTypeName + "_propagate.comp", params);
+        kslicer::ApplyJsonToTemplate(templatesFolder / "z_scan_block.glsl",     shaderPath / ("z_scan_" + scanImpl.second.dataTypeName + "_block.comp"), params);
+        kslicer::ApplyJsonToTemplate(templatesFolder / "z_scan_propagate.glsl", shaderPath / ("z_scan_" + scanImpl.second.dataTypeName + "_propagate.comp"), params);
         buildSH << "glslangValidator -V z_scan_" + scanImpl.second.dataTypeName + "_block.comp     -o z_scan_" + scanImpl.second.dataTypeName + "_block.comp.spv" << std::endl;
         buildSH << "glslangValidator -V z_scan_" + scanImpl.second.dataTypeName + "_propagate.comp -o z_scan_" + scanImpl.second.dataTypeName + "_propagate.comp.spv" << std::endl;
       }
@@ -138,26 +143,38 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
 
   if(a_codeInfo->usedServiceCalls.find("sort") != a_codeInfo->usedServiceCalls.end())
   {
-    for(auto sortImpl : a_codeInfo->serviceCalls) 
+    for(auto sortImpl : a_codeInfo->serviceCalls)
     {
-      if (sortImpl.second.opName == "sort") 
+      if (sortImpl.second.opName == "sort")
       {
         nlohmann::json params;
         params["Type"]   = sortImpl.second.dataTypeName;
         params["Lambda"] = sortImpl.second.lambdaSource;
         params["Suffix"] = ToLowerCase(a_codeInfo->mainClassSuffix);
 
-        kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_pass.glsl",  shaderPath + slash + "z_bitonic_" + sortImpl.second.dataTypeName + "_pass.comp", params);
-        kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_512.glsl",   shaderPath + slash + "z_bitonic_" + sortImpl.second.dataTypeName + "_512.comp", params);
-        kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_1024.glsl",  shaderPath + slash + "z_bitonic_" + sortImpl.second.dataTypeName + "_1024.comp", params);
-        kslicer::ApplyJsonToTemplate("templates_glsl" + slash + "z_bitonic_2048.glsl",  shaderPath + slash + "z_bitonic_" + sortImpl.second.dataTypeName + "_2048.comp", params);
-        
+        kslicer::ApplyJsonToTemplate(templatesFolder / "z_bitonic_pass.glsl",  shaderPath / ("z_bitonic_" + sortImpl.second.dataTypeName + "_pass.comp"), params);
+        kslicer::ApplyJsonToTemplate(templatesFolder / "z_bitonic_512.glsl",   shaderPath / ("z_bitonic_" + sortImpl.second.dataTypeName + "_512.comp"), params);
+        kslicer::ApplyJsonToTemplate(templatesFolder / "z_bitonic_1024.glsl",  shaderPath / ("z_bitonic_" + sortImpl.second.dataTypeName + "_1024.comp"), params);
+        kslicer::ApplyJsonToTemplate(templatesFolder / "z_bitonic_2048.glsl",  shaderPath / ("z_bitonic_" + sortImpl.second.dataTypeName + "_2048.comp"), params);
+
         buildSH << "glslangValidator -V z_bitonic_" + sortImpl.second.dataTypeName + "_pass.comp -o z_bitonic_" + sortImpl.second.dataTypeName + "_pass.comp.spv" << std::endl;
         buildSH << "glslangValidator -V z_bitonic_" + sortImpl.second.dataTypeName + "_512.comp  -o z_bitonic_" + sortImpl.second.dataTypeName + "_512.comp.spv"  << std::endl;
         buildSH << "glslangValidator -V z_bitonic_" + sortImpl.second.dataTypeName + "_1024.comp -o z_bitonic_" + sortImpl.second.dataTypeName + "_1024.comp.spv" << std::endl;
         buildSH << "glslangValidator -V z_bitonic_" + sortImpl.second.dataTypeName + "_2048.comp -o z_bitonic_" + sortImpl.second.dataTypeName + "_2048.comp.spv" << std::endl;
       }
     }
+  }
+
+  if(needRTDummies)
+  {
+    nlohmann::json params;
+    kslicer::ApplyJsonToTemplate(templatesFolder / "z_trace_rchit.glsl", shaderPath / "z_trace_rchit.glsl", params);
+    kslicer::ApplyJsonToTemplate(templatesFolder / "z_trace_rmiss.glsl", shaderPath / "z_trace_rmiss.glsl", params);
+    kslicer::ApplyJsonToTemplate(templatesFolder / "z_trace_smiss.glsl", shaderPath / "z_trace_smiss.glsl", params);
+
+    buildSH << "glslangValidator -V --target-env vulkan1.2 -S rchit z_trace_rchit.glsl -o z_trace_rchit.glsl.spv" << std::endl;
+    buildSH << "glslangValidator -V --target-env vulkan1.2 -S rmiss z_trace_rmiss.glsl -o z_trace_rmiss.glsl.spv" << std::endl;
+    buildSH << "glslangValidator -V --target-env vulkan1.2 -S rmiss z_trace_smiss.glsl -o z_trace_smiss.glsl.spv" << std::endl;
   }
 
   buildSH.close();
@@ -186,7 +203,7 @@ std::string kslicer::GLSLCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_
   }
 }
 
-std::string kslicer::GLSLCompiler::ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const 
+std::string kslicer::GLSLCompiler::ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const
 {
   std::string text = a_call;
   ReplaceFirst(text, "std::", "");
@@ -195,30 +212,30 @@ std::string kslicer::GLSLCompiler::ReplaceCallFromStdNamespace(const std::string
 
 void kslicer::GLSLCompiler::GetThreadSizeNames(std::string a_strs[3]) const
 {
-  a_strs[0] = "iNumElementsX"; 
-  a_strs[1] = "iNumElementsY"; 
-  a_strs[2] = "iNumElementsZ"; 
+  a_strs[0] = "iNumElementsX";
+  a_strs[1] = "iNumElementsY";
+  a_strs[2] = "iNumElementsZ";
 }
 
 
-std::string kslicer::GLSLCompiler::ProcessBufferType(const std::string& a_typeName) const 
-{ 
+std::string kslicer::GLSLCompiler::ProcessBufferType(const std::string& a_typeName) const
+{
   std::string type = kslicer::CleanTypeName(a_typeName);
   ReplaceFirst(type, "*", "");
   if(type[type.size()-1] == ' ')
     type = type.substr(0, type.size()-1);
 
-  return type; 
+  return type;
 }
 
-std::string kslicer::GLSLCompiler::RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const 
+std::string kslicer::GLSLCompiler::RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const
 {
   return std::string("{ uint offset = atomicAdd(") + UBOAccess(memberNameB) + ", 1); " + memberNameA + "[offset] = " + newElemValue + ";}";
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////  GLSLFunctionRewriter  ////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 std::unordered_map<std::string, std::string> kslicer::ListGLSLVectorReplacements()
 {
@@ -293,6 +310,8 @@ std::unordered_set<std::string> kslicer::ListPredefinedMathTypes()
 
 std::string kslicer::CleanTypeName(const std::string& a_str)
 {
+  if (a_str.empty())
+    return a_str;
   std::string typeName = a_str;
   ReplaceFirst(typeName, "const ",     "");
   ReplaceFirst(typeName, "const",      ""); // for 'const*'
@@ -303,7 +322,7 @@ std::string kslicer::CleanTypeName(const std::string& a_str)
   auto posOfDD = typeName.find("::");
   if(posOfDD != std::string::npos)
     typeName = typeName.substr(posOfDD+2);
-  
+
   // remove spaces at the end
   while(typeName[typeName.size()-1] == ' ')
     typeName = typeName.substr(0, typeName.size()-1);
@@ -331,15 +350,15 @@ struct IRecursiveRewriteOverride
 /**
 \brief process local functions
 */
-class GLSLFunctionRewriter : public kslicer::FunctionRewriter // 
+class GLSLFunctionRewriter : public kslicer::FunctionRewriter //
 {
 public:
-  
+
   GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) : FunctionRewriter(R,a_compiler,a_codeInfo)
-  { 
+  {
     m_vecReplacements  = kslicer::ListGLSLVectorReplacements();
     m_vecReplacements2 = SortByKeysByLen(m_vecReplacements);
-   
+
     m_funReplacements["fmin"]  = "min";
     m_funReplacements["fmax"]  = "max";
     m_funReplacements["fminf"] = "min";
@@ -378,9 +397,9 @@ public:
   std::vector<std::pair<std::string, std::string> > m_vecReplacements2;
 
   mutable kslicer::ShaderFeatures sFeatures;
-  kslicer::ShaderFeatures GetShaderFeatures() const override 
-  { 
-    return sFeatures; 
+  kslicer::ShaderFeatures GetShaderFeatures() const override
+  {
+    return sFeatures;
   }
 
   std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
@@ -398,7 +417,7 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
   if(expr == nullptr)
     return "";
   if(m_pKernelRewriter != nullptr) // we actually do kernel rewrite
-  { 
+  {
     std::string result = m_pKernelRewriter->RecursiveRewriteImpl(expr);
     sFeatures = sFeatures || m_pKernelRewriter->GetShaderFeatures();
     MarkRewritten(expr);
@@ -414,10 +433,10 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
     //expr->dump();
     //for(auto copyNodeId : *(rvCopy.m_pRewrittenNodes))
     //  this->m_pRewrittenNodes->insert(copyNodeId);
-    const std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);   
+    const std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
     std::string text = m_rewriter.getRewrittenText(expr->getSourceRange());
     if(text == "")                                                                  // try to repair from the errors
-      return kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);       // which reason is unknown ... 
+      return kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);       // which reason is unknown ...
     else if(BadASTPattern(expr) && text.size() < rvCopy.m_lastRewrittenText.size()) // work around clang rewrite bug
     {
       m_lastRewrittenText = "";
@@ -431,7 +450,7 @@ std::string GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
 kslicer::ShaderFeatures kslicer::GetUsedShaderFeaturesFromTypeName(const std::string& a_str)
 {
   const bool isConst  = (a_str.find("const") != std::string::npos);
-  const bool isUshort = (a_str.find("short") != std::string::npos)    || (a_str.find("ushort") != std::string::npos) || 
+  const bool isUshort = (a_str.find("short") != std::string::npos)    || (a_str.find("ushort") != std::string::npos) ||
                         (a_str.find("uint16_t") != std::string::npos) || (a_str.find("int16_t") != std::string::npos);
   const bool isByte   = (a_str.find("char") != std::string::npos)    || (a_str.find("uchar") != std::string::npos) || (a_str.find("unsigned char") != std::string::npos) ||
                         (a_str.find("uint8_t") != std::string::npos) || (a_str.find("int8_t") != std::string::npos);
@@ -443,8 +462,8 @@ kslicer::ShaderFeatures kslicer::GetUsedShaderFeaturesFromTypeName(const std::st
   std::string copy = a_str;
   ReplaceFirst(copy, "const ", "");
   while(ReplaceFirst(copy, " ", ""));
-  const bool isHalf = (copy == "half") || (copy == "half2") || (copy == "half3") || (copy == "half4"); 
-  
+  const bool isHalf = (copy == "half") || (copy == "half2") || (copy == "half3") || (copy == "half4");
+
   kslicer::ShaderFeatures sFeatures;
   sFeatures.useByteType    = isByte;
   sFeatures.useShortType   = isUshort;
@@ -460,7 +479,7 @@ std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_s
   std::string copy = a_str;
   ReplaceFirst(copy, "const ", "");
   while(ReplaceFirst(copy, " ", ""));
-  
+
   auto sFeatures2 = kslicer::GetUsedShaderFeaturesFromTypeName(a_str);
   sFeatures = sFeatures || sFeatures2;
 
@@ -468,7 +487,7 @@ std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_s
   std::string typeStr = kslicer::CleanTypeName(a_str);
   ReplaceFirst(typeStr, "unsigned long", "uint");
   ReplaceFirst(typeStr, "unsigned char", "uint8_t");
-  
+
   if(typeStr.size() > 0 && typeStr[typeStr.size()-1] == ' ')
     typeStr = typeStr.substr(0, typeStr.size()-1);
 
@@ -487,14 +506,14 @@ std::string GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_s
   return resStr;
 }
 
-std::string GLSLFunctionRewriter::RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, kslicer::TEX_ACCESS a_accessType, std::string& outImageFormat) const 
+std::string GLSLFunctionRewriter::RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, kslicer::TEX_ACCESS a_accessType, std::string& outImageFormat) const
 {
   std::string result = "";
   if(a_accessType == kslicer::TEX_ACCESS::TEX_ACCESS_READ)
     result = "readonly  ";
-  else if(a_accessType == kslicer::TEX_ACCESS::TEX_ACCESS_WRITE) 
+  else if(a_accessType == kslicer::TEX_ACCESS::TEX_ACCESS_WRITE)
     result = "writeonly ";
-  
+
   if(a_accessType != kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE)
   {
     const std::string dataTypeRewritten = RewriteStdVectorTypeStr(a_containerDataType);
@@ -502,7 +521,7 @@ std::string GLSLFunctionRewriter::RewriteImageType(const std::string& a_containe
       result += "u";
     if(dataTypeRewritten == "int" || dataTypeRewritten == "ivec2" || dataTypeRewritten == "ivec4")
       result += "i";
-  
+
     if(a_containerType == "Texture1D" || a_containerType == "Image1D")
     {
       result += "image1D";
@@ -515,10 +534,10 @@ std::string GLSLFunctionRewriter::RewriteImageType(const std::string& a_containe
     {
       result += "image3D";
     }
-    
+
     // image Format qualifiers, post it to govnokod.ru
     //
-    if(dataTypeRewritten == "float" || dataTypeRewritten == "int" || dataTypeRewritten == "uint" || 
+    if(dataTypeRewritten == "float" || dataTypeRewritten == "int" || dataTypeRewritten == "uint" ||
        dataTypeRewritten == "uint8_t" || dataTypeRewritten == "uint16_t")
     {
       outImageFormat = "r";
@@ -585,14 +604,14 @@ bool GLSLFunctionRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // T
   return need;
 }
 
-bool GLSLFunctionRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) 
+bool GLSLFunctionRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)
 {
   if(m_shit.originalName == "")
     return true;
-  
+
   clang::Expr* left  = arrayExpr->getLHS();
   clang::Expr* right = arrayExpr->getRHS();
-  
+
   const std::string leftText  = kslicer::GetRangeSourceCode(left->getSourceRange(), m_compiler);
   //const std::string rightText = kslicer::GetRangeSourceCode(right->getSourceRange(), m_compiler);
   for(auto globalPointer : m_shit.pointers)
@@ -623,13 +642,13 @@ bool GLSLFunctionRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOr
   clang::QualType qt = SizeOf->getTypeOfArgument();
   auto typeInfo      = m_compiler.getASTContext().getTypeInfo(qt);
   auto sizeInBytes   = typeInfo.Width / 8;
-  
+
   if(WasNotRewrittenYet(szOfExpr))
   {
     std::stringstream str;
     str << sizeInBytes;
     m_lastRewrittenText = str.str();
-    m_rewriter.ReplaceText(szOfExpr->getSourceRange(), str.str()); 
+    m_rewriter.ReplaceText(szOfExpr->getSourceRange(), str.str());
     MarkRewritten(szOfExpr);
   }
 
@@ -638,10 +657,10 @@ bool GLSLFunctionRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOr
 
 std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
 {
-  std::string retT   = RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString()); 
+  std::string retT   = RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString());
   std::string fname  = fDecl->getNameInfo().getName().getAsString();
 
-  if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix) // alter function name if it has any prefix 
+  if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix) // alter function name if it has any prefix
     if(fname.find(m_pCurrFuncInfo->prefixName) == std::string::npos)
       fname = m_pCurrFuncInfo->prefixName + "_" + fname;
 
@@ -670,9 +689,9 @@ std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
           }
         }
       }
-      
-      const auto originalText = kslicer::GetRangeSourceCode(pParam->getSourceRange(), m_compiler);  
-     
+
+      const auto originalText = kslicer::GetRangeSourceCode(pParam->getSourceRange(), m_compiler);
+
       if(pointerToGlobalMemory)
         result += std::string("uint ") + pParam->getNameAsString() + "Offset";
       else if(originalText.find("[") != std::string::npos && originalText.find("]") != std::string::npos) // fixed size arrays
@@ -704,12 +723,12 @@ std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
       {
         if(typeStr.find("Texture") != std::string::npos || typeStr.find("Image") != std::string::npos)
         {
-          auto dataType = typeOfParam.getNonReferenceType(); 
+          auto dataType = typeOfParam.getNonReferenceType();
           auto typeDecl = dataType->getAsRecordDecl();
           if(typeDecl != nullptr && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl))
           {
             std::string containerType, containerDataType;
-            auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);   
+            auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
             kslicer::SplitContainerTypes(specDecl, containerType, containerDataType);
             ReplaceFirst(containerType, "Texture", "sampler");
             ReplaceFirst(containerType, "Image",   "sampler");
@@ -745,22 +764,22 @@ std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
   return result + ") ";
 }
 
-bool GLSLFunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl) 
-{ 
-  if(clang::isa<clang::CXXMethodDecl>(fDecl)) // ignore methods here, for a while ... 
+bool GLSLFunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)
+{
+  if(clang::isa<clang::CXXMethodDecl>(fDecl)) // ignore methods here, for a while ...
     return true;
 
   if(WasNotRewrittenYet(fDecl->getBody()))
   {
     const std::string funcDeclText = RewriteFuncDecl(fDecl);
     const std::string funcBodyText = RecursiveRewrite(fDecl->getBody());
-    //auto debugMeIn = GetRangeSourceCode(call->getSourceRange(), m_compiler);   
-    m_lastRewrittenText = funcDeclText + funcBodyText;  
+    //auto debugMeIn = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+    m_lastRewrittenText = funcDeclText + funcBodyText;
     m_rewriter.ReplaceText(fDecl->getSourceRange(), funcDeclText + funcBodyText);
     MarkRewritten(fDecl->getBody());
   }
 
-  return true; 
+  return true;
 }
 
 bool GLSLFunctionRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
@@ -772,7 +791,7 @@ bool GLSLFunctionRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
     const std::string rText = RecursiveRewrite(expr->getBase());
     m_lastRewrittenText                          = rText + "." + lText;
     m_rewriter.ReplaceText(expr->getSourceRange(), rText + "." + lText);
-    MarkRewritten(expr->getBase()); 
+    MarkRewritten(expr->getBase());
   }
 
   return true;
@@ -786,7 +805,7 @@ bool GLSLFunctionRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
     std::string text = RecursiveRewrite(expr->getSubExpr());
     m_lastRewrittenText = text;
     m_rewriter.ReplaceText(expr->getSourceRange(), text);
-    MarkRewritten(expr->getSubExpr()); 
+    MarkRewritten(expr->getSubExpr());
   }
 
   return true;
@@ -819,14 +838,14 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   std::string makeSmth = "";
   if(fname == "make_float3x3_by_columns") // mat3(a,b,c) == make_float3x3_by_columns(a,b,c)
     makeSmth = "float3x3";
-  else if(fname == "make_float3x3")       // don't change it! 
+  else if(fname == "make_float3x3")       // don't change it!
     ;
   else if(fname.substr(0, 5) == "make_")
     makeSmth = fname.substr(5);
   auto pVecMaker = m_vecReplacements.find(makeSmth);
   ///////////////////////////////////////////////////////////////////////
-  
-  //const std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+
+  //const std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler);
   //if(fname == "as_uint32" || fname == "as_uint")
   //  int a = 2;
 
@@ -844,8 +863,8 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       else
         textRes = std::string("(") + exprText + ").xyz"; // to_float3(a+b) ==> (a+b).xyz
 
-      m_lastRewrittenText = textRes;  
-      m_rewriter.ReplaceText(call->getSourceRange(), textRes); 
+      m_lastRewrittenText = textRes;
+      m_rewriter.ReplaceText(call->getSourceRange(), textRes);
       MarkRewritten(call);
     }
   }
@@ -900,7 +919,7 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     const std::string text  = RecursiveRewrite(call->getArg(0));
     const auto qtOfArg      = call->getArg(0)->getType();
     const std::string tname = kslicer::CleanTypeName(qtOfArg.getAsString());
-    
+
     if(tname == "uint" || tname == "const uint" || tname == "uint32_t" || tname == "const uint32_t" || tname == "unsigned" || tname == "const unsigned")
       m_lastRewrittenText = "uintBitsToFloat(" + text + ")";
     else
@@ -927,24 +946,24 @@ bool GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     m_rewriter.ReplaceText(call->getSourceRange(), m_lastRewrittenText);
     MarkRewritten(call);
   }
- 
-  return true; 
+
+  return true;
 }
 
 bool GLSLFunctionRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special case for process multiple decls in line, like 'int i,j,k=2'
 {
   if(!decl->isSingleDecl())
   {
-    //const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
+    //const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler);
     std::string varType = "";
     std::string resExpr = "";
     for(auto it = decl->decl_begin(); it != decl->decl_end(); ++it)
     {
-      clang::Decl* cdecl = (*it);
-      if(!clang::isa<clang::VarDecl>(cdecl))
+      clang::Decl* c_decl = (*it);
+      if(!clang::isa<clang::VarDecl>(c_decl))
         continue;
-      
-      clang::VarDecl* vdecl = clang::dyn_cast<clang::VarDecl>(cdecl);
+
+      clang::VarDecl* vdecl = clang::dyn_cast<clang::VarDecl>(c_decl);
       const auto qt         = vdecl->getType();
       const auto pValue     = vdecl->getAnyInitializer();
       const std::string varName  = vdecl->getNameAsString();
@@ -953,23 +972,23 @@ bool GLSLFunctionRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special 
       if(varType == "") // first element
       {
         varType = qt.getAsString();
-        if(!NeedsVectorTypeRewrite(varType)) // immediately ignore DeclStmt like 'int i,j,k=2' if we dont need to rewrite the type 
+        if(!NeedsVectorTypeRewrite(varType)) // immediately ignore DeclStmt like 'int i,j,k=2' if we dont need to rewrite the type
           return true;
         varType = RewriteStdVectorTypeStr(varType);
-        
-        if(varValue == "" || varValue == varName) 
+
+        if(varValue == "" || varValue == varName)
           resExpr = varType + " " + varName;
         else
           resExpr = varType + " " + varName + " = " + varValue;
       }
       else              // second or other
       {
-        if(varValue == "" || varValue == varName) 
+        if(varValue == "" || varValue == varName)
           resExpr += (" " + varName);
         else
           resExpr += (varName + " = " + varValue);
       }
-      
+
       auto next = it; ++next;
       if(next != decl->decl_end())
         resExpr += ", ";
@@ -979,7 +998,7 @@ bool GLSLFunctionRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special 
       MarkRewritten(pValue);
     }
 
-    if(WasNotRewrittenYet(decl)) 
+    if(WasNotRewrittenYet(decl))
     {
       m_lastRewrittenText = resExpr;
       m_rewriter.ReplaceText(decl->getSourceRange(), resExpr);
@@ -990,16 +1009,16 @@ bool GLSLFunctionRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special 
   return true;
 }
 
-bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl) 
+bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 {
   if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
     return true;
 
   const auto qt      = decl->getType();
   const auto pValue  = decl->getAnyInitializer();
-      
-  //const std::string debugText    = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler); 
-  //const std::string debugTextVal = kslicer::GetRangeSourceCode(pValue->getSourceRange(), m_compiler); 
+
+  //const std::string debugText    = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler);
+  //const std::string debugTextVal = kslicer::GetRangeSourceCode(pValue->getSourceRange(), m_compiler);
   const std::string varType = qt.getAsString();
   auto sFeatures2 = kslicer::GetUsedShaderFeaturesFromTypeName(varType);
   m_codeInfo->globalShaderFeatures = m_codeInfo->globalShaderFeatures || sFeatures2;
@@ -1011,12 +1030,12 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
     const std::string varName  = decl->getNameAsString();
     const std::string varValue = RecursiveRewrite(pValue);
     const std::string varType2 = RewriteStdVectorTypeStr(varType);
-    
-    if(varValue == "" || varValue == varName) // 'float3 deviation;' for some reason !decl->hasInit() does not works 
+
+    if(varValue == "" || varValue == varName) // 'float3 deviation;' for some reason !decl->hasInit() does not works
       m_lastRewrittenText = varType2 + " " + varName;
     else
       m_lastRewrittenText = varType2 + " " + varName + " = " + varValue;
-    
+
     m_rewriter.ReplaceText(decl->getSourceRange(), m_lastRewrittenText);
     MarkRewritten(pValue);
   }
@@ -1028,14 +1047,14 @@ bool GLSLFunctionRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
   clang::QualType qt   = cast->getTypeAsWritten();
   clang::Expr* 	  next = cast->getSubExpr();
   std::string typeCast = qt.getAsString();
-  //const std::string debugText = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
+  //const std::string debugText = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler);
   if(WasNotRewrittenYet(next))
   {
     typeCast = RewriteStdVectorTypeStr(typeCast);
     const std::string exprText = RecursiveRewrite(next);
-    if(exprText == ")") // strange bug for casts inside 'DeclStmt' 
+    if(exprText == ")") // strange bug for casts inside 'DeclStmt'
       return true;
-    
+
     m_lastRewrittenText = typeCast + "(" + exprText + ")";
     m_rewriter.ReplaceText(cast->getSourceRange(), m_lastRewrittenText);
     MarkRewritten(next);
@@ -1049,21 +1068,21 @@ bool GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* c
   if(cast->isPartOfExplicitCast())
     return true;
   auto kind = cast->getCastKind();
-  
-  clang::Expr* preNext = cast->getSubExpr(); 
+
+  clang::Expr* preNext = cast->getSubExpr();
   if(!clang::isa<clang::ImplicitCastExpr>(preNext))
     return true;
 
-  clang::Expr* next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr(); 
-  std::string debugTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler); 
-  
+  clang::Expr* next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr();
+  std::string debugTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler);
+
   //https://code.woboq.org/llvm/clang/include/clang/AST/OperationKinds.def.html
   if(kind != clang::CK_IntegralCast && kind != clang::CK_IntegralToFloating && kind != clang::CK_FloatingToIntegral) // in GLSL we don't have implicit casts
     return true;
-  
+
   clang::QualType qt = cast->getType(); qt.removeLocalFastQualifiers();
   std::string castTo = RewriteStdVectorTypeStr(qt.getAsString());
-  
+
   //if(castTo == "std::size_t")
   //{
   //  std::string debugText = qt.getAsString();
@@ -1096,7 +1115,7 @@ void kslicer::GLSLCompiler::ProcessVectorTypesString(std::string& a_str)
 std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler)
 {
   std::string typeInCL = a_decl.type;
-  std::string result = "";  
+  std::string result = "";
   std::string nameWithoutStruct = typeInCL;
   ReplaceFirst(nameWithoutStruct, "struct ", "");
   switch(a_decl.kind)
@@ -1144,9 +1163,9 @@ std::shared_ptr<kslicer::FunctionRewriter> kslicer::GLSLCompiler::MakeFuncRewrit
 class GLSLKernelRewriter : public kslicer::KernelRewriter, IRecursiveRewriteOverride
 {
 public:
-  
-  GLSLKernelRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr, const bool a_infoPass) : 
-                     kslicer::KernelRewriter(R, a_compiler, a_codeInfo, a_kernel, a_fakeOffsetExpr, a_infoPass), m_glslRW(R, a_compiler, a_codeInfo, a_kernel.currentShit) // 
+
+  GLSLKernelRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr, const bool a_infoPass) :
+                     kslicer::KernelRewriter(R, a_compiler, a_codeInfo, a_kernel, a_fakeOffsetExpr, a_infoPass), m_glslRW(R, a_compiler, a_codeInfo, a_kernel.currentShit) //
   {
     m_glslRW.m_pKernelRewriter = this;
     m_glslRW.m_pRewrittenNodes = this->m_pRewrittenNodes;
@@ -1183,7 +1202,7 @@ public:
   kslicer::ShaderFeatures GetShaderFeatures()       const override { return m_glslRW.GetShaderFeatures(); }
   kslicer::ShaderFeatures GetKernelShaderFeatures() const override { return m_glslRW.GetShaderFeatures(); }
 
-protected: 
+protected:
 
   GLSLFunctionRewriter m_glslRW;
   std::string RecursiveRewriteImpl(const clang::Stmt* expr) override { return RecursiveRewrite(expr); }
@@ -1199,19 +1218,19 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
     return "";
-  
+
   while(clang::isa<clang::ImplicitCastExpr>(expr))
     expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->getSubExpr();
 
   //expr->dump();
   if(clang::isa<clang::DeclRefExpr>(expr)) // bugfix for recurive rewrite of single node, function args access
   {
-    std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
+    std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); //
     const auto pRef  = clang::dyn_cast<clang::DeclRefExpr>(expr);
 
     const clang::ValueDecl* pDecl = pRef->getDecl();
     if(!clang::isa<clang::ParmVarDecl>(pDecl))
-      return text; 
+      return text;
     clang::QualType qt = pDecl->getType();
     if(qt->isPointerType() || qt->isReferenceType()) // we can't put references to push constants
       return text;
@@ -1219,14 +1238,14 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
       return text;
     return std::string("kgenArgs.") + text;
   }
-  
+
   //// check CXXConstructExpr->ImplicitCastExpr->MemberExpr, CXXConstructExpr->MemberExpr and NeedToRewriteMemberExpr(MemberExpr)
   //
   if(clang::isa<clang::CXXConstructExpr>(expr)) // bugfix for recurive rewrite of single node, MemberExpr access in kernel
   {
     const clang::CXXConstructExpr* pConstruct = clang::dyn_cast<clang::CXXConstructExpr>(expr);
     const clang::CXXConstructorDecl* ctorDecl = pConstruct->getConstructor();
-    //const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);   
+    //const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
     //const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
     if(ctorDecl->isCopyOrMoveConstructor()) // || call->getNumArgs() == 0
     {
@@ -1245,7 +1264,7 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
     if(NeedToRewriteMemberExpr(pMemberExpr, rewrittenText))
       return rewrittenText;
   }
-  
+
   GLSLKernelRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
   return m_rewriter.getRewrittenText(expr->getSourceRange());
@@ -1255,9 +1274,9 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
 bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
-    return true; 
-  
-  // (#1) check if buffer/pointer to global memory is passed to a function 
+    return true;
+
+  // (#1) check if buffer/pointer to global memory is passed to a function
   //
   std::vector<kslicer::ArgMatch> usedArgMatches = kslicer::MatchCallArgsForKernel(call, m_currKernel, m_compiler);
   std::vector<kslicer::ArgMatch> shittyPointers; shittyPointers.reserve(usedArgMatches.size());
@@ -1266,7 +1285,7 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     if(x.isPointer && !exclude)
       shittyPointers.push_back(x);
   }
-  
+
   // check if at leat one argument of a function call require function call rewrite due to fake offset
   //
   bool rewriteDueToFakeOffset = false;
@@ -1283,9 +1302,9 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     }
   }
   rewriteDueToFakeOffset = rewriteDueToFakeOffset && !processFuncMember;      // function members don't apply fake offsets because they are not kernels
-  rewriteDueToFakeOffset = rewriteDueToFakeOffset && (m_fakeOffsetExp != ""); // if fakeOffset is not set for some reason, don't use it. 
+  rewriteDueToFakeOffset = rewriteDueToFakeOffset && (m_fakeOffsetExp != ""); // if fakeOffset is not set for some reason, don't use it.
 
-  const clang::FunctionDecl* fDecl = call->getDirectCallee();  
+  const clang::FunctionDecl* fDecl = call->getDirectCallee();
   if(shittyPointers.size() > 0 && fDecl != nullptr)
   {
     std::string fname = fDecl->getNameInfo().getName().getAsString();
@@ -1326,14 +1345,14 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       }
       else
         rewrittenRes += RecursiveRewrite(call->getArg(i));
-      
+
       if(i!=call->getNumArgs()-1)
         rewrittenRes += ", ";
     }
-    rewrittenRes += ")"; 
-    
+    rewrittenRes += ")";
+
     //m_lastRewrittenText = rewrittenRes;
-    m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes); 
+    m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
     MarkRewritten(call);
   }
   else if (m_codeInfo->IsRTV() && rewriteDueToFakeOffset)
@@ -1351,9 +1370,9 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       if(i!=call->getNumArgs()-1)
         rewrittenRes += ", ";
     }
-    rewrittenRes += ")"; 
+    rewrittenRes += ")";
     //m_lastRewrittenText = rewrittenRes;
-    m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes); 
+    m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
     MarkRewritten(call);
   }
   else
@@ -1365,7 +1384,7 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
 bool GLSLKernelRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
-    return true; 
+    return true;
   m_glslRW.VisitVarDecl_Impl(decl);
   return true;
 }
@@ -1373,7 +1392,7 @@ bool GLSLKernelRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 bool GLSLKernelRewriter::VisitDeclStmt_Impl(clang::DeclStmt* stmt)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
-    return true; 
+    return true;
   m_glslRW.VisitDeclStmt_Impl(stmt);
   return true;
 }
@@ -1381,7 +1400,7 @@ bool GLSLKernelRewriter::VisitDeclStmt_Impl(clang::DeclStmt* stmt)
 bool GLSLKernelRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
-    return true; 
+    return true;
   m_glslRW.VisitCStyleCastExpr_Impl(cast);
   return true;
 }
@@ -1389,15 +1408,15 @@ bool GLSLKernelRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
 bool GLSLKernelRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
-    return true; 
+    return true;
   m_glslRW.VisitArraySubscriptExpr_Impl(arrayExpr);
   return true;
 }
 
-bool GLSLKernelRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) 
+bool GLSLKernelRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
-    return true; 
+    return true;
   m_glslRW.VisitUnaryExprOrTypeTraitExpr_Impl(szOfExpr);
   return true;
 }
@@ -1406,9 +1425,9 @@ bool GLSLKernelRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
 {
   if(m_infoPass)
     return kslicer::KernelRewriter::VisitUnaryOperator_Impl(expr);
-  
+
   const auto op = expr->getOpcodeStr(expr->getOpcode());
-  //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
+  //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); //
   if(op == "*")
   {
     auto subExpr           = expr->getSubExpr();
@@ -1418,12 +1437,12 @@ bool GLSLKernelRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
       return kslicer::KernelRewriter::VisitUnaryOperator_Impl(expr);
     else
       m_glslRW.VisitUnaryOperator_Impl(expr);
-  } 
+  }
   else if(op == "++" || op == "--") // process reduction for ++ and  --
     return kslicer::KernelRewriter::VisitUnaryOperator_Impl(expr);
   else
     m_glslRW.VisitUnaryOperator_Impl(expr);
-  
+
   return true;
 }
 
@@ -1431,7 +1450,7 @@ bool GLSLKernelRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
 bool GLSLKernelRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
-    return true; 
+    return true;
   return m_glslRW.VisitCXXConstructExpr_Impl(call);
 }
 
@@ -1443,10 +1462,10 @@ void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, 
   if(a_assignOp != nullptr && !WasNotRewrittenYet(expr))
     return;
 
-  const clang::QualType leftType = expr->getArg(0)->getType(); 
+  const clang::QualType leftType = expr->getArg(0)->getType();
   if(leftType->isPointerType()) // buffer ? --> ignore
     return;
-  
+
   if(!kslicer::IsTexture(leftType))
     return;
 
@@ -1484,7 +1503,7 @@ void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, 
   if(shouldRewrite)
   {
     std::string indexText = RecursiveRewrite(expr->getArg(1));
-    if(a_assignOp != nullptr && WasNotRewrittenYet(a_assignOp)) // write 
+    if(a_assignOp != nullptr && WasNotRewrittenYet(a_assignOp)) // write
     {
       std::string lastRewrittenText = std::string("imageStore") + "(" + objName + ", " + indexText + ", " + convertedType + "(" + rhsText + "))";
       m_rewriter.ReplaceText(a_assignOp->getSourceRange(), lastRewrittenText);
@@ -1504,21 +1523,21 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr);
-  
-  std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler); 
-  std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);   
+
+  std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler);
+  std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 
   if(op == "+=" || op == "-=" || op == "*=") // detect reduction access
   {
     return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr); // process reduction access in KernelRewriter
   }
   else if(expr->isAssignmentOp()) // detect 'a_brightPixels[coord] = color'
-  {    
+  {
     clang::Expr* left = kslicer::RemoveImplicitCast(expr->getArg(0));
     if(clang::isa<clang::CXXOperatorCallExpr>(left))
     {
       clang::CXXOperatorCallExpr* leftOp = clang::dyn_cast<clang::CXXOperatorCallExpr>(left);
-      std::string op2 = kslicer::GetRangeSourceCode(clang::SourceRange(leftOp->getOperatorLoc()), m_compiler);  
+      std::string op2 = kslicer::GetRangeSourceCode(clang::SourceRange(leftOp->getOperatorLoc()), m_compiler);
       if((op2 == "]" || op2 == "[" || op2 == "[]") && WasNotRewrittenYet(expr)) // detect 'a_brightPixels[coord]'
       {
         const clang::Expr* leftLeft = kslicer::RemoveImplicitCast(leftOp->getArg(0));
@@ -1527,11 +1546,11 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
           std::string assignExprText = RecursiveRewrite(expr->getArg(1));
           RewriteTextureAccess(leftOp, expr, assignExprText);
         }
-        else 
+        else
           return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr); // detect reduction access
       }
     }
-    else 
+    else
       return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr); // detect reduction access
   }
   else if(op == "+" || op == "-" || op == "*" || op == "/")
@@ -1565,19 +1584,19 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(call);
- 
-  clang::CXXMethodDecl* fDecl = call->getMethodDecl();  
-  if(fDecl != nullptr && WasNotRewrittenYet(call))  
+
+  clang::CXXMethodDecl* fDecl = call->getMethodDecl();
+  if(fDecl != nullptr && WasNotRewrittenYet(call))
   {
-    //std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+    //std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler);
     std::string fname     = fDecl->getNameInfo().getName().getAsString();
-    clang::Expr* pTexName =	call->getImplicitObjectArgument(); 
-    std::string objName   = kslicer::GetRangeSourceCode(pTexName->getSourceRange(), m_compiler);     
+    clang::Expr* pTexName =	call->getImplicitObjectArgument();
+    std::string objName   = kslicer::GetRangeSourceCode(pTexName->getSourceRange(), m_compiler);
 
     if(fname == "sample" || fname == "Sample")
     {
       bool needRewrite = true;
-      const clang::QualType leftType = pTexName->getType(); 
+      const clang::QualType leftType = pTexName->getType();
       std::string typeName = leftType.getAsString();
       int texCoordId = 1;                                        ///<! texture.sample(m_sampler, texCoord)
       if(leftType->isPointerType()) // buffer ? --> ignore
@@ -1599,12 +1618,12 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
       {
         //clang::Expr* samplerExpr = call->getArg(0); // TODO: process sampler? use separate sampler and image?
         //clang::Expr* txCoordExpr = call->getArg(1);
-        //std::string text1 = kslicer::GetRangeSourceCode(samplerExpr->getSourceRange(), m_compiler); 
-        //std::string text2 = kslicer::GetRangeSourceCode(txCoordExpr->getSourceRange(), m_compiler); 
+        //std::string text1 = kslicer::GetRangeSourceCode(samplerExpr->getSourceRange(), m_compiler);
+        //std::string text2 = kslicer::GetRangeSourceCode(txCoordExpr->getSourceRange(), m_compiler);
         const std::string texCoord = RecursiveRewrite(call->getArg(texCoordId));
         const std::string lastRewrittenText = std::string("texture") + "(" + objName + ", " + texCoord + ")";
         m_rewriter.ReplaceText(call->getSourceRange(), lastRewrittenText);
-        MarkRewritten(call); 
+        MarkRewritten(call);
       }
     }
     else if(m_codeInfo->megakernelRTV && m_codeInfo->IsKernel(fname) && WasNotRewrittenYet(call)) // replace 'Texture2D<...>&' arguments to '0' if this is not sampler
@@ -1626,13 +1645,13 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
         callOut << fname.c_str() << "(";
         for(unsigned i=0;i<call->getNumArgs();i++)
         {
-          const clang::QualType argT = call->getArg(i)->getType();          
+          const clang::QualType argT = call->getArg(i)->getType();
           std::string argText = "";
           if(!argT.isConstQualified() && kslicer::IsTexture(argT))
             argText = "0";
           else
             argText = RecursiveRewrite(call->getArg(i));
-          
+
           callOut << argText;
           if(i < call->getNumArgs()-1)
             callOut << ", ";
@@ -1640,7 +1659,7 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
         callOut << ")";
         //m_lastRewrittenText = callOut.str();
         m_rewriter.ReplaceText(call->getSourceRange(), callOut.str());
-        MarkRewritten(call); 
+        MarkRewritten(call);
       }
     }
 
@@ -1652,17 +1671,17 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
 bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
-    return true; 
-  
+    return true;
+
   const clang::ValueDecl* pDecl = expr->getDecl();
   if(!clang::isa<clang::ParmVarDecl>(pDecl))
-    return true; 
+    return true;
 
   clang::QualType qt = pDecl->getType();
   if(qt->isPointerType() || qt->isReferenceType()) // we can't put references to push constants
     return true;
-  
-  const std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // 
+
+  const std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); //
   if(m_userArgs.find(text) != m_userArgs.end() && WasNotRewrittenYet(expr))
   {
     if(!m_codeInfo->megakernelRTV || m_currKernel.isMega)
@@ -1674,49 +1693,49 @@ bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
   }
 
   return true;
-} 
+}
 
 bool GLSLKernelRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast)
 {
   if(m_infoPass)
     return true;
-  
+
   return m_glslRW.VisitImplicitCastExpr_Impl(cast);
 }
 
 bool GLSLKernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 {
-  return KernelRewriter::VisitMemberExpr_Impl(expr); 
+  return KernelRewriter::VisitMemberExpr_Impl(expr);
 }
 
 bool GLSLKernelRewriter::VisitReturnStmt_Impl(clang::ReturnStmt* ret)
 {
   if(m_infoPass)
     return true;
-  
-  return KernelRewriter::VisitReturnStmt_Impl(ret); 
+
+  return KernelRewriter::VisitReturnStmt_Impl(ret);
 }
 
 bool GLSLKernelRewriter::VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr)
 {
-  return KernelRewriter::VisitCompoundAssignOperator_Impl(expr); 
-}  
+  return KernelRewriter::VisitCompoundAssignOperator_Impl(expr);
+}
 
 bool GLSLKernelRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass  
-    return KernelRewriter::VisitBinaryOperator_Impl(expr); 
-  
-  std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler); 
+  if(m_infoPass) // don't have to rewrite during infoPass
+    return KernelRewriter::VisitBinaryOperator_Impl(expr);
+
+  std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler);
   std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 
   if(expr->isAssignmentOp())
   {
-    clang::Expr* left = expr->getLHS(); 
+    clang::Expr* left = expr->getLHS();
     if(clang::isa<clang::CXXOperatorCallExpr>(left))
     {
       clang::CXXOperatorCallExpr* leftOp = clang::dyn_cast<clang::CXXOperatorCallExpr>(left);
-      std::string op2 = kslicer::GetRangeSourceCode(clang::SourceRange(leftOp->getOperatorLoc()), m_compiler);  
+      std::string op2 = kslicer::GetRangeSourceCode(clang::SourceRange(leftOp->getOperatorLoc()), m_compiler);
       if((op2 == "]" || op2 == "[" || op2 == "[]") && WasNotRewrittenYet(expr))
       {
         std::string assignExprText = RecursiveRewrite(expr->getRHS());
@@ -1725,11 +1744,11 @@ bool GLSLKernelRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr)
       }
     }
   }
-  
-  return KernelRewriter::VisitBinaryOperator_Impl(expr); 
+
+  return KernelRewriter::VisitBinaryOperator_Impl(expr);
 }
 
-std::shared_ptr<kslicer::KernelRewriter> kslicer::GLSLCompiler::MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, 
+std::shared_ptr<kslicer::KernelRewriter> kslicer::GLSLCompiler::MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
                                                                                  kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass)
 {
   return std::make_shared<GLSLKernelRewriter>(R, a_compiler, a_codeInfo, a_kernel, fakeOffs, a_infoPass);

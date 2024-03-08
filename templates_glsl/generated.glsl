@@ -39,6 +39,48 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 {% for RTName in Kernel.RTXNames %}
 // RayScene intersection with '{{RTName}}'
 //
+{% if Kernel.UseRayGen %}
+layout(location = 0) rayPayloadEXT CRT_Hit {{RTName}}_hitValue;
+layout(location = 1) rayPayloadEXT bool    {{RTName}}_inShadow;
+
+CRT_Hit {{RTName}}_RayQuery_NearestHit(const vec4 rayPos, const vec4 rayDir)
+{
+  traceRayEXT(m_pAccelStruct, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, 0);
+  return {{RTName}}_hitValue;
+}
+
+CRT_Hit {{RTName}}_RayQuery_NearestHitMotion(const vec4 rayPos, const vec4 rayDir, float t)
+{
+  {% if UseMotionBlur %}
+  traceRayMotionNV(m_pAccelStruct, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, t, 0);
+  {% else %}
+  traceRayEXT(m_pAccelStruct, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, 0);
+  {% endif %} 
+  return {{RTName}}_hitValue;
+}
+
+bool {{RTName}}_RayQuery_AnyHit(const vec4 rayPos, const vec4 rayDir)
+{
+  {{RTName}}_inShadow = true;
+  traceRayEXT(m_pAccelStruct, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT,
+              0xff, 0, 0, 1, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, 1);
+  return {{RTName}}_inShadow;
+}
+
+bool {{RTName}}_RayQuery_AnyHitMotion(const vec4 rayPos, const vec4 rayDir, float t)
+{
+  {{RTName}}_inShadow = true;
+  {% if UseMotionBlur %}
+  traceRayMotionNV(m_pAccelStruct, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT,
+                   0xff, 0, 0, 1, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, t, 1);
+  {% else %}
+  traceRayEXT(m_pAccelStruct, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT,
+              0xff, 0, 0, 1, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, 1);
+  {% endif %}
+  return {{RTName}}_inShadow;
+}
+
+{% else %}
 CRT_Hit {{RTName}}_RayQuery_NearestHit(const vec4 rayPos, const vec4 rayDir)
 {
   rayQueryEXT rayQuery;
@@ -69,6 +111,8 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(const vec4 rayPos, const vec4 rayDir)
   return res;
 }
 
+CRT_Hit {{RTName}}_RayQuery_NearestHitMotion(const vec4 rayPos, const vec4 rayDir, float t) { return {{RTName}}_RayQuery_NearestHit(rayPos, rayDir); }
+
 bool {{RTName}}_RayQuery_AnyHit(const vec4 rayPos, const vec4 rayDir)
 {
   rayQueryEXT rayQuery;
@@ -77,7 +121,11 @@ bool {{RTName}}_RayQuery_AnyHit(const vec4 rayPos, const vec4 rayDir)
   return (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 }
 
+bool {{RTName}}_RayQuery_AnyHitMotion(const vec4 rayPos, const vec4 rayDir, float t) { return {{RTName}}_RayQuery_AnyHit(rayPos, rayDir); }
+
+{% endif %}
 {% endfor %}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -29,8 +29,8 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
     std::string kernDecl = kernelsCallCmdDecl[i];
     //std::cout << "kernDecl = " << kernDecl.c_str() << std::endl;
     size_t      rbPos    = kernDecl.find("Cmd(");
-    assert(rbPos    != std::string::npos);    
-    
+    assert(rbPos    != std::string::npos);
+
     std::string kernName       = kernDecl.substr(0, rbPos);
     kernelDeclByName[kernName] = kernDecl;
   }
@@ -51,7 +51,7 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
   hierarchy["Name"]             = h.interfaceName;
   hierarchy["IndirectDispatch"] = (h.dispatchType == kslicer::VKERNEL_IMPL_TYPE::VKERNEL_INDIRECT_DISPATCH);
   hierarchy["IndirectOffset"]   = h.indirectBlockOffset;
-  
+
   hierarchy["Constants"]        = std::vector<std::string>();
   for(const auto& decl : h.usedDecls)
   {
@@ -66,7 +66,7 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
       hierarchy["Constants"].push_back(currConstant);
     }
   }
-  
+
   hierarchy["Implementations"] = std::vector<std::string>();
   for(const auto& impl : h.implementations)
   {
@@ -85,15 +85,15 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
     currImpl["Fields"] = std::vector<std::string>();
     for(const auto& field : impl.fields)
       currImpl["Fields"].push_back(field);
-      
+
     hierarchy["Implementations"].push_back(currImpl);
   }
   hierarchy["ImplAlignedSize"] = AlignedSize(h.implementations.size()+1);
-  
-  return hierarchy;  
+
+  return hierarchy;
 }
 
-static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies, 
+static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies,
                                      const clang::CompilerInstance& compiler)
 {
   json data = std::vector<std::string>();
@@ -151,14 +151,14 @@ DSTextureAccess ObtainDSTextureAccessArg(const kslicer::KernelInfo& kernel, int 
 {
   std::string argNameInKernel = kernel.args[argId].name;
   const auto pAccessFlags     = kernel.texAccessInArgs.find(argNameInKernel);
-  const auto pSampler         = kernel.texAccessSampler.find(argNameInKernel); 
+  const auto pSampler         = kernel.texAccessSampler.find(argNameInKernel);
   return ObtainDSTextureAccess(kernel, pAccessFlags, pSampler, isConstAccess);
 }
 
 DSTextureAccess ObtainDSTextureAccessMemb(const kslicer::KernelInfo& kernel, const std::string& varName, bool isConstAccess)
 {
   const auto pAccessFlags     = kernel.texAccessInMemb.find(varName);
-  const auto pSampler         = kernel.texAccessSampler.find(varName); 
+  const auto pSampler         = kernel.texAccessSampler.find(varName);
   return ObtainDSTextureAccess(kernel, pAccessFlags, pSampler, isConstAccess);
 }
 
@@ -177,7 +177,7 @@ std::string kslicer::InferenceVulkanTextureFormatFromTypeName(const std::string&
     return "VK_FORMAT_R16_SNORM"; // assume sample floats in [-1,1]
   else if(a_typeName == "char " || a_typeName == "int8_t")
     return "VK_FORMAT_R8_SNORM";  // assume sample floats in [-1,1]
-  
+
   else if(a_typeName == "uint2" || a_typeName == "uvec2")
     return "VK_FORMAT_R32G32_UINT";
   else if(a_typeName == "ushort2")
@@ -190,7 +190,7 @@ std::string kslicer::InferenceVulkanTextureFormatFromTypeName(const std::string&
     return "VK_FORMAT_R16G16_SNORM";
   else if(a_typeName == "char2")
     return "VK_FORMAT_R8G8_SNORM";
-  
+
   else if(a_typeName == "uint3" || a_typeName == "uvec3")
     return "VK_FORMAT_R32G32B32_UINT";
   else if(a_typeName == "ushort3")
@@ -203,7 +203,7 @@ std::string kslicer::InferenceVulkanTextureFormatFromTypeName(const std::string&
     return "VK_FORMAT_R16G16B16_SNORM";
   else if(a_typeName == "char3")
     return "VK_FORMAT_R8G8B8_SNORM";
-  
+
   else if(a_typeName == "uint4" || a_typeName == "uvec4")
     return "VK_FORMAT_R32G32B32A32_UINT";
   else if(a_typeName == "ushort4")
@@ -271,7 +271,7 @@ static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func, const kslicer
     {
       if(var.sizeUserAttr.size() != 0)
       {
-        std::cout << "  [kslicer]: [[size(\"...\")]] is specified for argument '" << var.name.c_str() << "', but Control Function " << a_func.Name.c_str() << " is not virtual" << std::endl;  
+        std::cout << "  [kslicer]: [[size(\"...\")]] is specified for argument '" << var.name.c_str() << "', but Control Function " << a_func.Name.c_str() << " is not virtual" << std::endl;
         std::cout << "  [kslicer]: the Control Function which is supposed to be overriden must be virtual " << std::endl;
       }
     }
@@ -295,7 +295,7 @@ static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func, const kslicer
   if(a_classInfo.IsRTV())
   {
     auto p = a_classInfo.allMemberFunctions.find(a_func.Name + "Block");
-    if(p == a_classInfo.allMemberFunctions.end()) 
+    if(p == a_classInfo.allMemberFunctions.end())
     {
       std::stringstream strOut;
       strOut << "virtual " << a_func.ReturnType << " " << a_func.Name << "Block(";
@@ -316,11 +316,11 @@ static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func, const kslicer
       std::cout << "[kslicer]: In your case it should be: '" << strOut.str() << "'" << std::endl;
       std::cout << "[kslicer]: This function will be overriden in the generated class. " << std::endl;
     }
-    
-    if(p != a_classInfo.allMemberFunctions.end()) 
+
+    if(p != a_classInfo.allMemberFunctions.end())
     {
       if(!p->second->isVirtual())
-        std::cout << "[kslicer]: warning, function '" << a_func.Name << "Block' should be virtual" << std::endl;  
+        std::cout << "[kslicer]: warning, function '" << a_func.Name << "Block' should be virtual" << std::endl;
       //#TODO: check function prototype
     }
   }
@@ -350,7 +350,7 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
   res["OutputData"] = std::vector<std::string>();
 
   bool hasImages = false;
-  
+
   for(const auto& var : a_func.InOuts)
   {
     if(!var.isTexture() && !var.isPointer())
@@ -359,7 +359,7 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
     varData["Name"]      = var.name;
     varData["IsTexture"] = var.isTexture();
     varData["IsTextureArray"] = (var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY);
-    
+
     std::string type = var.type;
     if(var.isPointer())
       type.erase(std::remove(type.begin(), type.end(), '*'), type.end());
@@ -368,16 +368,16 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
       varData["Format"] = kslicer::InferenceVulkanTextureFormatFromTypeName(a_classInfo.pShaderFuncRewriter->RewriteStdVectorTypeStr(var.containerDataType), false);
       hasImages = true;
     }
-  
+
     varData["DataType"] = type; // TODO: if texture, get data type
     varData["DataSize"] = GetSizeExpression(var.sizeUserAttr);
 
     if(var.isConst)
       res["InputData"].push_back(varData);
-    else 
+    else
       res["OutputData"].push_back(varData);
   }
-  
+
   // both SetVulkanInOutFor_ControlFunc(...) and ControlFuncCmd;
   //
   bool useBufferOffsets = false;
@@ -399,7 +399,7 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
         commandInOut << "tempBuffer, " << pParam->getNameAsString() << "Offset";
       else
         commandInOut << pParam->getNameAsString() << "GPU, 0";
-      
+
       if(i!=a_func.Node->getNumParams()-1)
       {
         commandInOut << ", ";
@@ -420,10 +420,10 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
         unclosedComma = false;
     }
   }
-  
+
 
   if(unclosedComma)
-    commandInOut << "0"; 
+    commandInOut << "0";
   res["ArgsOnCall"]     = callsOut.str();
   res["ArgsOnSetInOut"] = commandInOut.str();
   res["HasImages"]      = hasImages;
@@ -435,17 +435,17 @@ static bool IgnoreArgForDS(size_t j, const std::vector<kslicer::ArgReferenceOnCa
 {
   if(argsOnCall[j].name == "this") // if this pointer passed to kernel (used for virtual kernels), ignore it because it passe there anyway
     return true;
-  bool ignoreArg = false; 
-  
+  bool ignoreArg = false;
+
   if(isRTV)
   {
     if(argsOnCall[j].argType == kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_CONST_OR_LITERAL)
       return true;
-    
+
     if(argsOnCall[j].isExcludedRTV)
       return true;
 
-    bool found     = false;   
+    bool found     = false;
     size_t foundId = size_t(-1);
     for(size_t k=0;k<args.size();k++)
     {
@@ -455,48 +455,49 @@ static bool IgnoreArgForDS(size_t j, const std::vector<kslicer::ArgReferenceOnCa
         break;
       }
     }
-    
+
     if(foundId != size_t(-1))
       ignoreArg = (args[foundId].isThreadID || args[foundId].isLoopSize || args[foundId].IsUser());
   }
   else if(j < args.size())
     ignoreArg = (args[j].isThreadID || args[j].isLoopSize || args[j].IsUser());
-  
-  return ignoreArg;      
+
+  return ignoreArg;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, const clang::CompilerInstance& compiler,
-                                             const std::vector<MainFuncInfo>& a_methodsToGenerate, 
+                                             const std::vector<MainFuncInfo>& a_methodsToGenerate,
                                              const std::vector<kslicer::DeclInClass>& usedDecl,
                                              const std::string& a_genIncude, const uint32_t    threadsOrder[3],
-                                             const std::string& uboIncludeName, const std::string& a_composImplName, 
-                                             const nlohmann::json& uboJson)
+                                             const std::string& uboIncludeName, const std::string& a_composImplName,
+                                             const nlohmann::json& uboJson,
+                                             const TextGenSettings& a_settings)
 {
-  std::string folderPath           = GetFolderPath(a_classInfo.mainClassFileName);
+  std::filesystem::path folderPath = a_classInfo.mainClassFileName.parent_path();
   std::string shaderPath           = "./" + a_classInfo.pShaderCC->ShaderFolder();
-  std::string mainInclude          = a_classInfo.mainClassFileInclude;
-  std::string mainIncludeGenerated = a_genIncude;
+  std::filesystem::path mainInclude          = a_classInfo.mainClassFileInclude;
+  std::filesystem::path mainIncludeGenerated = a_genIncude;
 
   MakeAbsolutePathRelativeTo(mainInclude, folderPath);
   MakeAbsolutePathRelativeTo(mainIncludeGenerated, folderPath);
 
-  auto posOfDot = mainIncludeGenerated.find(".h");
-  std::string mainIncludeGeneratedClean = mainIncludeGenerated.substr(0, posOfDot);
-  std::string mainIncludeGeneratedAPI   = mainIncludeGeneratedClean + "_api.h";
+  std::filesystem::path mainIncludeGeneratedAPI   = mainIncludeGenerated;
+  mainIncludeGeneratedAPI.replace_extension("");
+  mainIncludeGeneratedAPI.concat("_api.h");
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
-  std::string prefixDataName = ""; 
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  std::string prefixDataName = "";
   if(a_classInfo.composPrefix.size() != 0)
     prefixDataName = a_classInfo.composPrefix.begin()->second;
 
   json data;
-  data["MainInclude"]        = mainInclude;
-  data["MainIncludeApi"]     = mainIncludeGeneratedAPI; 
+  data["MainInclude"]        = mainInclude.u8string();
+  data["MainIncludeApi"]     = mainIncludeGeneratedAPI.u8string();
   data["AdditionalIncludes"] = std::vector<std::string>();
   for(auto file : a_classInfo.cppIncudes)
     data["AdditionalIncludes"].push_back(file);
@@ -513,6 +514,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UseServiceScan"]     = (a_classInfo.usedServiceCalls.find("exclusive_scan") != a_classInfo.usedServiceCalls.end()) || (a_classInfo.usedServiceCalls.find("inclusive_scan") != a_classInfo.usedServiceCalls.end());
   data["UseServiceSort"]     = (a_classInfo.usedServiceCalls.find("sort") != a_classInfo.usedServiceCalls.end());
   data["GenGpuApi"]          = a_classInfo.genGPUAPI;
+  data["UseRayGen"]          = a_settings.enableRayGen;
+  data["UseMotionBlur"]      = a_settings.enableMotionBlur;
 
   if(data["UseServiceScan"])
   {
@@ -546,7 +549,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["PrefixDataName"]     = prefixDataName;
   data["PrefixDataClass"]    = a_composImplName;
   data["ShaderFolderPrefix"] = a_classInfo.shaderFolderPrefix;
-  
+
   ///////////////////////////////////////////////////////////////////////////
   data["SpecConstants"] = std::vector<std::string>();
   {
@@ -566,7 +569,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         continue;
       }
     }
-    for(auto keyval : specConsts) 
+    for(auto keyval : specConsts)
     {
       json kspec;
       kspec["Name"] = keyval.second.name;
@@ -577,7 +580,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     {
       auto pListReqFeatures = a_classInfo.allMemberFunctions.find("ListRequiredFeatures");
       if(pListReqFeatures == a_classInfo.allMemberFunctions.end()) {
-        std::cout << "  [kslicer]: warning, KSPEC_** opt. is used, but can't find fuction 'ListRequiredFeatures': " << std::endl; 
+        std::cout << "  [kslicer]: warning, KSPEC_** opt. is used, but can't find fuction 'ListRequiredFeatures': " << std::endl;
         std::cout << "  [kslicer]: you should define it: 'virtual std::vector<uint32_t> ListRequiredFeatures();'" << std::endl;
       }
     }
@@ -596,7 +599,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   {
     for(const auto& k : a_classInfo.kernels)
       data["KernelsDecls"].push_back("virtual void " + k.second.DeclCmd + ";");
-  } 
+  }
 
   data["TotalDSNumber"]   = a_classInfo.allDescriptorSetsInfo.size();
   data["VectorMembers"]   = std::vector<std::string>();
@@ -609,7 +612,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       data["TextureMembers"].push_back(var.name);
     else if(var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
       data["TexArrayMembers"].push_back(var.name);
-    else if(var.isContainer && kslicer::IsVectorContainer(var.containerType)) 
+    else if(var.isContainer && kslicer::IsVectorContainer(var.containerType))
     {
       std::string cleanName = var.name;
       ReplaceFirst(cleanName, prefixDataName + "_", "");
@@ -620,8 +623,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["HasPrefix"] = var.hasPrefix;
       data["VectorMembers"].push_back(local);
     }
-    else if(var.isContainer && kslicer::IsPointerContainer(var.containerType) && 
-                               ((var.containerDataType == "struct ISceneObject") || 
+    else if(var.isContainer && kslicer::IsPointerContainer(var.containerType) &&
+                               ((var.containerDataType == "struct ISceneObject") ||
                                 (var.containerDataType == "class ISceneObject"))) {
       std::string cleanDataType = kslicer::CleanTypeName(var.containerDataType);
       if(a_classInfo.composPrefix.find(cleanDataType) == a_classInfo.composPrefix.end())
@@ -639,20 +642,20 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["Constructors"] = std::vector<std::string>();
   for(auto ctor : a_classInfo.ctors)
   {
-    std::string fNameGented = ""; 
+    std::string fNameGented = "";
     std::string fNameOrigin = "";
 
     for(unsigned i=0;i<ctor->getNumParams();i++)
     {
       auto pParam = ctor->getParamDecl(i);
       auto qt     = pParam->getType();
-      
+
       std::string paramType = qt.getAsString();
       if(paramType == "_Bool")
         paramType = "bool";
       fNameGented += paramType + " " + pParam->getNameAsString();
       fNameOrigin += pParam->getNameAsString();
-    
+
       if(i < ctor->getNumParams()-1)
       {
         fNameOrigin += ", ";
@@ -664,24 +667,24 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     local["ClassName"] = ctor->getNameInfo().getName().getAsString();
     local["NumParams"] = ctor->getNumParams();
     local["Params"]    = fNameGented;
-    local["PrevCall"]  = fNameOrigin;      
+    local["PrevCall"]  = fNameOrigin;
     data["Constructors"].push_back(local);
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  data["IncludeClassDecl"]    = mainIncludeGenerated;
+  data["IncludeClassDecl"]    = mainIncludeGenerated.u8string();
   data["TotalDescriptorSets"] = a_classInfo.allDescriptorSetsInfo.size(); // #TODO: REFACTOR THIS !!!
-  data["TotalDSNumber"]       = a_classInfo.allDescriptorSetsInfo.size(); // #TODO: REFACTOR THIS !!! 
+  data["TotalDSNumber"]       = a_classInfo.allDescriptorSetsInfo.size(); // #TODO: REFACTOR THIS !!!
 
   size_t allClassVarsSizeInBytes = 0;
   for(const auto& var : a_classInfo.dataMembers)
     allClassVarsSizeInBytes += var.sizeInBytes;
-  
+
   data["AllClassVarsSize"]  = allClassVarsSizeInBytes;
 
-  std::unordered_map<std::string, DataMemberInfo> containersInfo; 
+  std::unordered_map<std::string, DataMemberInfo> containersInfo;
   containersInfo.reserve(a_classInfo.dataMembers.size());
 
   data["ClassVars"] = std::vector<std::string>();
@@ -723,32 +726,32 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   {
     if(!v.isContainer || v.usage != kslicer::DATA_USAGE::USAGE_USER)
       continue;
-    
+
     if(v.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
     {
       json local;
-      local["Name"]        = v.name; 
+      local["Name"]        = v.name;
       local["Usage"]       = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT";
-      local["NeedUpdate"]  = true; 
+      local["NeedUpdate"]  = true;
       local["Format"]      = v.name + "->format()";
       local["AccessSymb"]  = "->";
       local["NeedSampler"] = true;
       local["HasPrefix"]   = v.hasPrefix;
       local["PrefixName"]  = v.prefixName;
-      data["ClassTextureVars"].push_back(local);  
+      data["ClassTextureVars"].push_back(local);
     }
     else if(v.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
     {
       json local;
-      local["Name"] = v.name; 
+      local["Name"] = v.name;
       local["Usage"]       = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT";
-      local["NeedUpdate"]  = true; 
+      local["NeedUpdate"]  = true;
       local["Format"]      = v.name + "->format()";
       local["AccessSymb"]  = "->";
       local["NeedSampler"] = true;
       local["HasPrefix"]   = v.hasPrefix;
       local["PrefixName"]  = v.prefixName;
-      data["ClassTexArrayVars"].push_back(local); 
+      data["ClassTexArrayVars"].push_back(local);
     }
     else if(v.IsUsedTexture())
     {
@@ -760,8 +763,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["NeedSampler"] = false;
       local["AccessSymb"] = ".";
 
-      if(v.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE || 
-         v.tmask == TEX_ACCESS::TEX_ACCESS_READ   || 
+      if(v.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE ||
+         v.tmask == TEX_ACCESS::TEX_ACCESS_READ   ||
          v.tmask == TEX_ACCESS::TEX_ACCESS_NOTHING) // TEX_ACCESS_NOTHING arises due to passing textures to functions
       {
         local["Usage"]      = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT";
@@ -788,18 +791,18 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       if(v.hasPrefix)
          local["AccessSymb"]     = "->";
 
-      data["ClassTextureVars"].push_back(local);     
+      data["ClassTextureVars"].push_back(local);
     }
     else if(v.isContainer && kslicer::IsVectorContainer(v.containerType))
     {
       std::string sizeName     = v.name + "_size";
       std::string capacityName = v.name + "_capacity";
-  
+
       auto p1 = containersInfo.find(sizeName);
       auto p2 = containersInfo.find(capacityName);
-  
+
       assert(p1 != containersInfo.end() && p2 != containersInfo.end());
-  
+
       json local;
       local["Name"]           = v.name;
       local["SizeOffset"]     = p1->second.offsetInTargetBuffer;
@@ -811,7 +814,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["PrefixName"]     = v.prefixName;
       if(v.hasPrefix)
          local["AccessSymb"]     = "->";
-      data["ClassVectorVars"].push_back(local);     
+      data["ClassVectorVars"].push_back(local);
     }
     // TODO: add processing for Scene/Acceleration structures
 
@@ -822,7 +825,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   {
     if(!v.isContainer || v.usage != kslicer::DATA_USAGE::USAGE_SLICER_REDUCTION)
       continue;
-    
+
     json local;
     local["Name"] = v.name;
     local["Type"] = v.containerDataType;
@@ -844,34 +847,34 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       currKernels.push_back(nk.second);
   }
 
-  auto& kernelsCallCmdDecl = a_classInfo.kernelsCallCmdDeclCached; 
-  if(kernelsCallCmdDecl.size() == 0) 
+  auto& kernelsCallCmdDecl = a_classInfo.kernelsCallCmdDeclCached;
+  if(kernelsCallCmdDecl.size() == 0)
   {
     kernelsCallCmdDecl.reserve(a_classInfo.kernels.size());
     for(const auto& k : currKernels)
       kernelsCallCmdDecl.push_back(k.DeclCmd);
-  }  
+  }
 
   auto kernelDeclByName = MakeMapForKernelsDeclByName(kernelsCallCmdDecl);
 
   data["MultipleSourceShaders"] = !a_classInfo.pShaderCC->IsSingleSource();
   data["ShaderFolder"]          = a_classInfo.pShaderCC->ShaderFolder();
-  
+
   auto dhierarchies             = a_classInfo.GetDispatchingHierarchies();
   data["DispatchHierarchies"]   = PutHierarchiesDataToJson(dhierarchies, compiler);
-  
+
   data["IndirectBufferSize"] = a_classInfo.m_indirectBufferSize;
   data["IndirectDispatches"] = std::vector<std::string>();
-  data["Kernels"]            = std::vector<std::string>();  
+  data["Kernels"]            = std::vector<std::string>();
 
   bool useSubgroups = false;
   int subgroupMaxSize = 0;
 
   for(const auto& k : currKernels)
-  {    
+  {
     std::string kernName = a_classInfo.RemoveKernelPrefix(k.name);
     const auto auxArgs   = GetUserKernelArgs(k.args);
-    
+
     std::string outFileName = k.name + "_UpdateIndirect" + ".cl.spv";
     std::string outFilePath = shaderPath + "/" + outFileName;
 
@@ -915,6 +918,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["Decl"]           = kernelDeclByName[kernName];
     kernelJson["Args"]           = std::vector<std::string>();
     kernelJson["threadDim"]      = a_classInfo.GetKernelTIDArgs(k).size();
+    kernelJson["UseRayGen"]      = k.enableRTPipeline && a_settings.enableRayGen;       // duplicate these options for kernels so we can
+    kernelJson["UseMotionBlur"]  = k.enableRTPipeline && a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
+    kernelJson["StageFlags"]     = k.enableRTPipeline ? "(VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)" : "VK_SHADER_STAGE_COMPUTE_BIT";
+
     size_t actualSize = 0;
     for(const auto& arg : k.args)
     {
@@ -924,10 +931,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       if(arg.isThreadID || arg.isLoopSize || arg.IsUser() ||                                  // exclude TID and loopSize args bindings
          pos1 != std::string::npos || pos2 != std::string::npos || pos3 != std::string::npos) // exclude special case of passing MainClass to virtual kernels
         continue;
-      
+
       json argData;
       argData["Name"]  = arg.name;
-      argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
+      argData["Flags"] = kernelJson["StageFlags"]; // "VK_SHADER_STAGE_COMPUTE_BIT";
       argData["Count"] = "1";
       argData["Id"]    = actualSize;
       argData["IsTextureArray"] = false;
@@ -971,7 +978,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       argData["Id"]    = actualSize;
       argData["Count"] = "1";
       argData["IsTextureArray"] = false;
-      
+
       if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
       {
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
@@ -1002,7 +1009,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       {
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
       }
-      
+
       kernelJson["Args"].push_back(argData);
       actualSize++;
     }
@@ -1019,8 +1026,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       kernelJson["Args"].push_back(argData);
       actualSize++;
 
-      json hierarchy = PutHierarchyToJson(dhierarchies[k.interfaceName], compiler); 
-      
+      json hierarchy = PutHierarchyToJson(dhierarchies[k.interfaceName], compiler);
+
       //std::cout << std::endl << "--------------------------" << std::endl;
       //std::cout << hierarchy.dump(2) << std::endl;
       //std::cout << std::endl << "--------------------------" << std::endl;
@@ -1032,7 +1039,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         hierarchy["RedLoop1"].push_back(c);
       for (uint c = k.warpSize; c>0; c/=2)
         hierarchy["RedLoop2"].push_back(c);
-      kernelJson["Hierarchy"] = hierarchy; 
+      kernelJson["Hierarchy"] = hierarchy;
     }
     else
     {
@@ -1055,7 +1062,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     }
 
     kernelJson["ArgCount"] = actualSize;
-  
+
     auto tidArgs = a_classInfo.GetKernelTIDArgs(k);
     std::vector<std::string> threadIdNamesList(tidArgs.size());
     assert(threadIdNamesList.size() <= 3);
@@ -1075,7 +1082,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(threadIdNamesList.size() > 0)
     {
       kernelJson["tidX"] = threadIdNamesList[0];
-      kernelJson["begX"] = tidArgs[0].loopIter.startText == "" ? "0" : tidArgs[0].loopIter.startText;  
+      kernelJson["begX"] = tidArgs[0].loopIter.startText == "" ? "0" : tidArgs[0].loopIter.startText;
       kernelJson["SmplX"] = IsZeroStartLoopStatement(tidArgs[0].loopIter.startNode, compiler);
     }
     else
@@ -1088,7 +1095,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(threadIdNamesList.size() > 1)
     {
       kernelJson["tidY"] = threadIdNamesList[1];
-      kernelJson["begY"] = tidArgs[1].loopIter.startText;  
+      kernelJson["begY"] = tidArgs[1].loopIter.startText;
       kernelJson["SmplY"] = IsZeroStartLoopStatement(tidArgs[1].loopIter.startNode, compiler);
     }
     else
@@ -1101,7 +1108,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(threadIdNamesList.size() > 2)
     {
       kernelJson["tidZ"] = threadIdNamesList[2];
-      kernelJson["begZ"] = tidArgs[2].loopIter.startText;  
+      kernelJson["begZ"] = tidArgs[2].loopIter.startText;
       kernelJson["SmplZ"] = IsZeroStartLoopStatement(tidArgs[2].loopIter.startNode, compiler);
     }
     else
@@ -1124,7 +1131,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       kernelJson["AuxArgs"].push_back(argData);
       sizeCurr += arg.size;
     }
-    
+
     // identify wherther we nedd to add reduction pass after current kernel
     //
     json reductionVarNames = std::vector<std::string>();
@@ -1138,14 +1145,14 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         reductionVarNames.push_back(varData);
       }
     }
-      
+
     kernelJson["FinishRed"]    = (reductionVarNames.size() !=0);
     kernelJson["RedVarsFPNum"] = reductionVarNames.size();
     kernelJson["RedVarsFPArr"] = reductionVarNames;
 
     kernelJson["WGSizeX"]      = k.wgSize[0]; //
-    kernelJson["WGSizeY"]      = k.wgSize[1]; // 
-    kernelJson["WGSizeZ"]      = k.wgSize[2]; // 
+    kernelJson["WGSizeY"]      = k.wgSize[1]; //
+    kernelJson["WGSizeZ"]      = k.wgSize[2]; //
 
     data["Kernels"].push_back(kernelJson);
   }
@@ -1155,9 +1162,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  
+
   // check for CommitDeviceData and GetExecutionTime and other specific functions
-  { 
+  {
     auto pCommit  = a_classInfo.allMemberFunctions.find("CommitDeviceData");
     auto pGetTime = a_classInfo.allMemberFunctions.find("GetExecutionTime");
     auto pUpdPOD  = a_classInfo.allMemberFunctions.find("UpdateMembersPlainData");
@@ -1171,47 +1178,47 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     auto pNamePBD  = a_classInfo.allMemberFunctions.find("ProgressBarDone");
 
     data["HasProgressBar"] = (pNamePBI != a_classInfo.allMemberFunctions.end()) && (pNamePBA != a_classInfo.allMemberFunctions.end()) && (pNamePBD != a_classInfo.allMemberFunctions.end());
-    
+
     if(pCommit == a_classInfo.allMemberFunctions.end())
-      std::cout << "  [kslicer]: warning, can't find fuction 'CommitDeviceData', you should define it: 'virtual void CommitDeviceData(){}'" << std::endl; 
+      std::cout << "  [kslicer]: warning, can't find fuction 'CommitDeviceData', you should define it: 'virtual void CommitDeviceData(){}'" << std::endl;
     else
     {
       if(!pCommit->second->isVirtual())
-        std::cout << "  [kslicer]: warning, function 'CommitDeviceData' should be virtual" << std::endl;  
+        std::cout << "  [kslicer]: warning, function 'CommitDeviceData' should be virtual" << std::endl;
     }
-  
+
     if(pGetTime == a_classInfo.allMemberFunctions.end())
-      std::cout << "  [kslicer]: warning, can't find fuction 'GetExecutionTime', you should define it: 'virtual void GetExecutionTime(const char* a_funcName, float a_out[4]){}'" << std::endl; 
+      std::cout << "  [kslicer]: warning, can't find fuction 'GetExecutionTime', you should define it: 'virtual void GetExecutionTime(const char* a_funcName, float a_out[4]){}'" << std::endl;
     else
     {
       if(!pGetTime->second->isVirtual())
-        std::cout << "  [kslicer]: warning, function 'GetExecutionTime' should be virtual" << std::endl;  
+        std::cout << "  [kslicer]: warning, function 'GetExecutionTime' should be virtual" << std::endl;
     }
 
     if(pUpdPOD != a_classInfo.allMemberFunctions.end())
     {
       if(!pUpdPOD->second->isVirtual())
-        std::cout << "  [kslicer]: warning, function 'UpdateMembersPlainData' should be virtual" << std::endl;  
+        std::cout << "  [kslicer]: warning, function 'UpdateMembersPlainData' should be virtual" << std::endl;
     }
 
     if(pUpdVec != a_classInfo.allMemberFunctions.end())
     {
       if(!pUpdVec->second->isVirtual())
-        std::cout << "  [kslicer]: warning, function 'UpdateMembersVectorData' should be virtual" << std::endl;  
+        std::cout << "  [kslicer]: warning, function 'UpdateMembersVectorData' should be virtual" << std::endl;
     }
 
     if(pUpdTex != a_classInfo.allMemberFunctions.end())
     {
       if(!pUpdTex->second->isVirtual())
-        std::cout << "  [kslicer]: warning, function 'UpdateMembersTextureData' should be virtual" << std::endl;  
+        std::cout << "  [kslicer]: warning, function 'UpdateMembersTextureData' should be virtual" << std::endl;
     }
 
     if(pScnRstr == a_classInfo.allMemberFunctions.end() && a_classInfo.IsRTV())
     {
-      std::cout << "  [kslicer]: warning, function 'SceneRestrictions' is not found. It would be generated by kernel_slicer." << std::endl;  
+      std::cout << "  [kslicer]: warning, function 'SceneRestrictions' is not found. It would be generated by kernel_slicer." << std::endl;
       std::cout << "  [kslicer]: you may add this function in base class or override it in derived class (derived from generated class)." << std::endl;
     }
-    
+
     data["HasNameFunc"]               = (pNameFn != a_classInfo.allMemberFunctions.end());
     data["HasCommitDeviceFunc"]       = (pCommit  != a_classInfo.allMemberFunctions.end());
     data["HasGetTimeFunc"]            = (pGetTime != a_classInfo.allMemberFunctions.end());
@@ -1221,7 +1228,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["UpdateMembersTextureData"]  = (pUpdTex  != a_classInfo.allMemberFunctions.end());
     data["GenerateSceneRestrictions"] = (pScnRstr == a_classInfo.allMemberFunctions.end() && a_classInfo.IsRTV());
   }
-  
+
   auto otherFeatures  = a_classInfo.globalDeviceFeatures;
   auto shaderFeatures = a_classInfo.globalShaderFeatures;
   bool useSubGroups   = false;
@@ -1243,7 +1250,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   data["MainFunctions"] = std::vector<std::string>();
   bool atLeastOneFullOverride = false;
-  
+
   size_t totalBuffersUsed     = 0;
   size_t totalTexCombinedUsed = 0;
   size_t totalTexStorageUsed  = 0;
@@ -1259,7 +1266,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["DeclOrig"]             = mainFunc.OriginalDecl;
     data2["LocalVarsBuffersDecl"] = std::vector<std::string>();
 
-    bool HasCPUOverride = HaveToBeOverriden(mainFunc, a_classInfo); 
+    bool HasCPUOverride = HaveToBeOverriden(mainFunc, a_classInfo);
     data2["OverrideMe"] = HasCPUOverride;
     if(HasCPUOverride)
     {
@@ -1276,7 +1283,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["TransferDST"] = (v.second.name == "threadFlags"); // rtv thread flags
       data2["LocalVarsBuffersDecl"].push_back(local);
     }
-    
+
     uint32_t inOutNum = 0;
     uint32_t inOutPod = 0;
     uint32_t inOutAll = 0;
@@ -1328,7 +1335,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       const auto pFoundKernel   = a_classInfo.FindKernelByName(dsArgs.originKernelName);
       const bool internalKernel = (pFoundKernel == a_classInfo.kernels.end());
       const bool isMegaKernel   = internalKernel ? false : pFoundKernel->second.isMega;
-      
+
       json local;
       local["Id"]         = i;
       local["KernelName"] = dsArgs.kernelName;
@@ -1338,16 +1345,16 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["IsServiceCall"] = dsArgs.isService;
       local["IsVirtual"]     = false;
 
-      uint32_t realId = 0; 
+      uint32_t realId = 0;
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
-      {  
+      {
         if(!internalKernel && !a_classInfo.pShaderCC->IsISPC())
         {
-          const bool ignoreArg = IgnoreArgForDS(j, dsArgs.descriptorSetsInfo, pFoundKernel->second.args, pFoundKernel->second.name, a_classInfo.IsRTV()); 
-          if(ignoreArg && !isMegaKernel) 
+          const bool ignoreArg = IgnoreArgForDS(j, dsArgs.descriptorSetsInfo, pFoundKernel->second.args, pFoundKernel->second.name, a_classInfo.IsRTV());
+          if(ignoreArg && !isMegaKernel)
             continue;
         }
-        
+
         const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j], a_classInfo.megakernelRTV);
 
         json arg;
@@ -1383,8 +1390,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           bool isConst = dsArgs.descriptorSetsInfo[j].isConst;
           auto pMember = a_classInfo.allDataMembers.find(dsArgName);
           if(pMember != a_classInfo.allDataMembers.end() && pMember->second.IsUsedTexture())
-            isConst = (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE) || 
-                      (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_READ)   ||  
+            isConst = (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE) ||
+                      (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_READ)   ||
                       (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_NOTHING);
 
           auto texDSInfo = ObtainDSTextureAccessArg(pFoundKernel->second, j, isConst);
@@ -1396,19 +1403,19 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         }
         else if(dsArgs.descriptorSetsInfo[j].isAccelStruct())
         {
-          //std::cout << "[kslicer error]: passing acceleration structures to kernel arguments is not yet implemented" << std::endl; 
+          //std::cout << "[kslicer error]: passing acceleration structures to kernel arguments is not yet implemented" << std::endl;
           data["HasRTXAccelStruct"] = true; // check that thius is for RTX a_classInfo.composPrefix.empty();
           totalAccels++;
         }
         else
-          totalBuffersUsed++; 
+          totalBuffersUsed++;
 
         local["Args"].push_back(arg);
         local["ArgNames"].push_back(dsArgs.descriptorSetsInfo[j].name);
         realId++;
       }
-      
-      if(pFoundKernel != a_classInfo.kernels.end() && !isMegaKernel) // seems for MegaKernel these containers are already in 'dsArgs.descriptorSetsInfo' 
+
+      if(pFoundKernel != a_classInfo.kernels.end() && !isMegaKernel) // seems for MegaKernel these containers are already in 'dsArgs.descriptorSetsInfo'
       {
         for(const auto& container : pFoundKernel->second.usedContainers) // add all class-member vectors bindings
         {
@@ -1419,7 +1426,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           arg["IsTexture"]     = container.second.isTexture();
           arg["IsAccelStruct"] = container.second.isAccelStruct();
           arg["IsTextureArray"]= false;
-          
+
           if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
           {
             arg["IsTexture"]     = true;
@@ -1442,8 +1449,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           else if(container.second.isTexture())
           {
             auto pMember = a_classInfo.allDataMembers.find(container.second.name);
-            bool isConst = (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE) || 
-                           (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_READ)   ||  
+            bool isConst = (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE) ||
+                           (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_READ)   ||
                            (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_NOTHING);
             auto texDSInfo = ObtainDSTextureAccessMemb(pFoundKernel->second, container.second.name, isConst);
             arg["AccessLayout"] = texDSInfo.accessLayout;
@@ -1483,7 +1490,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
           local["Args"].push_back(arg);
           local["ArgNames"].push_back(hierarchy.interfaceName + "ObjPtrData");
-          realId++;          
+          realId++;
         }
 
         if(pFoundKernel->second.isIndirect)
@@ -1497,9 +1504,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
           local["Args"].push_back(arg);
           local["ArgNames"].push_back("m_indirect");
-          realId++;          
+          realId++;
         }
-        
+
         local["IsVirtual"] = pFoundKernel->second.isVirtual;
         if(pFoundKernel->second.isVirtual)
         {
@@ -1507,7 +1514,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           local["ObjectBufferName"] = hierarchy.objBufferName;
         }
       }
-      
+
       local["ArgNumber"] = realId;
       data2["DescriptorSets"].push_back(local);
     }
@@ -1522,9 +1529,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["NeedToAddThreadFlags"] = mainFunc.needToAddThreadFlags;
     data2["DSId"]                 = mainFunc.startDSNumber;
     data2["MegaKernelCall"]       = mainFunc.MegaKernelCall;
+    data2["UseRayGen"]            = mainFunc.megakernel.enableRTPipeline;
     data["MainFunctions"].push_back(data2);
   }
-  
+
   data["TotalBuffersUsed"]     = totalBuffersUsed;
   data["TotalTexCombinedUsed"] = totalTexCombinedUsed;
   data["TotalTexStorageUsed"]  = totalTexStorageUsed;
@@ -1567,7 +1575,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["SetterFuncs"].push_back(s);
 
   for(const auto& kv : a_classInfo.m_setterVars)
-  { 
+  {
     json local;
     local["Type"] = kv.second;
     local["Name"] = kv.first;
@@ -1588,11 +1596,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(excludedNames.find(decl.type) != excludedNames.end())
       continue;
 
-    json cdecl;
-    cdecl["InClass"] = decl.inClass;
-    cdecl["IsType"]  = (decl.kind == DECL_IN_CLASS::DECL_STRUCT);
-    cdecl["Type"]    = kslicer::CleanTypeName(decl.type);
-    data["ClassDecls"].push_back(cdecl);
+    json c_decl;
+    c_decl["InClass"] = decl.inClass;
+    c_decl["IsType"]  = (decl.kind == DECL_IN_CLASS::DECL_STRUCT);
+    c_decl["Type"]    = kslicer::CleanTypeName(decl.type);
+    data["ClassDecls"].push_back(c_decl);
   }
 
   return data;
@@ -1600,7 +1608,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
 namespace kslicer
 {
-  std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, 
+  std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo,
                                       const std::vector<kslicer::ArgFinal>& threadIds,
                                       const std::string a_names[3]);
 }
@@ -1608,7 +1616,10 @@ namespace kslicer
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 
 
-nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::vector<kslicer::DataMemberInfo>& a_dataMembers, const clang::CompilerInstance& compiler)
+nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
+                                       const std::vector<kslicer::DataMemberInfo>& a_dataMembers,
+                                       const clang::CompilerInstance& compiler,
+                                       const TextGenSettings& a_settings)
 {
   nlohmann::json data;
   auto pShaderRewriter = a_classInfo.pShaderFuncRewriter;
@@ -1621,13 +1632,15 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::ve
   data["UBOStructFields"] = std::vector<std::string>();
   data["ShaderGLSL"]      = a_classInfo.pShaderCC->IsGLSL();
   data["Hierarchies"]     = PutHierarchiesDataToJson(a_classInfo.GetDispatchingHierarchies(), compiler);
+  data["UseRayGen"]       = a_settings.enableRayGen;
+  data["UseMotionBlur"]   = a_settings.enableMotionBlur;
 
   for(auto member : podMembers)
   {
     std::string typeStr = member.type;
     if(member.isArray)
       typeStr = typeStr.substr(0, typeStr.find("["));
-    typeStr = pShaderRewriter->RewriteStdVectorTypeStr(typeStr); 
+    typeStr = pShaderRewriter->RewriteStdVectorTypeStr(typeStr);
     ReplaceFirst(typeStr, "const ", "");
 
     size_t sizeO = member.sizeInBytes;
@@ -1635,16 +1648,16 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo, const std::ve
 
     const bool isVec3Member = ((typeStr == "vec3") || (typeStr == "ivec3") || (typeStr == "uvec3")) && a_classInfo.pShaderCC->IsGLSL();
 
-   
+
     json uboField;
     uboField["Type"]      = typeStr;
     uboField["Name"]      = member.name;
     uboField["IsArray"]   = member.isArray;
     uboField["ArraySize"] = member.arraySize;
-    uboField["IsDummy"]   = false; 
-    uboField["IsVec3"]    = isVec3Member; 
+    uboField["IsDummy"]   = false;
+    uboField["IsVec3"]    = isVec3Member;
     data["UBOStructFields"].push_back(uboField);
-    
+
     while(sizeO < sizeA) // TODO: make this more effitient
     {
       std::stringstream strOut;

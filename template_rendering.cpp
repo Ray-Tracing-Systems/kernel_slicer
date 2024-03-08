@@ -28,8 +28,8 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
   {
     std::string kernDecl = kernelsCallCmdDecl[i];
     size_t      rbPos    = kernDecl.find("Cmd(");
-    assert(rbPos    != std::string::npos);    
-    
+    assert(rbPos    != std::string::npos);
+
     std::string kernName       = kernDecl.substr(0, rbPos);
     kernelDeclByName[kernName] = kernDecl;
   }
@@ -41,7 +41,7 @@ std::string kslicer::GetDSArgName(const std::string& a_mainFuncName, const kslic
   switch(a_arg.argType)
   {
     case  kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG:
-    return a_mainFuncName + "_local." + a_arg.name; 
+    return a_mainFuncName + "_local." + a_arg.name;
 
     case  kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL:
     case  kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR:
@@ -54,14 +54,14 @@ std::string kslicer::GetDSArgName(const std::string& a_mainFuncName, const kslic
       else if(a_megakernel)
         return std::string("m_vdata.") + a_arg.name;
       else
-        return a_mainFuncName + "_local." + a_arg.name; 
+        return a_mainFuncName + "_local." + a_arg.name;
     }
     break;
 
     case kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_SERVICE_DATA:
     return a_arg.name;
     break;
-    
+
     default:
     return std::string("m_vdata.") + a_arg.name;
   };
@@ -111,7 +111,7 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
   hierarchy["Name"]             = h.interfaceName;
   hierarchy["IndirectDispatch"] = (h.dispatchType == kslicer::VKERNEL_IMPL_TYPE::VKERNEL_INDIRECT_DISPATCH);
   hierarchy["IndirectOffset"]   = h.indirectBlockOffset;
-  
+
   hierarchy["Constants"]        = std::vector<std::string>();
   for(const auto& decl : h.usedDecls)
   {
@@ -126,7 +126,7 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
       hierarchy["Constants"].push_back(currConstant);
     }
   }
-  
+
   hierarchy["Implementations"] = std::vector<std::string>();
   for(const auto& impl : h.implementations)
   {
@@ -145,15 +145,15 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
     currImpl["Fields"] = std::vector<std::string>();
     for(const auto& field : impl.fields)
       currImpl["Fields"].push_back(field);
-      
+
     hierarchy["Implementations"].push_back(currImpl);
   }
   hierarchy["ImplAlignedSize"] = AlignedSize(h.implementations.size()+1);
-  
-  return hierarchy;  
+
+  return hierarchy;
 }
 
-static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies, 
+static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies,
                                      const clang::CompilerInstance& compiler)
 {
   json data = std::vector<std::string>();
@@ -165,15 +165,16 @@ static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslic
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void kslicer::ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, const std::string& a_outFilePath, const nlohmann::json& a_data)
+void kslicer::ApplyJsonToTemplate(const std::filesystem::path& a_declTemplateFilePath, const std::filesystem::path& a_outFilePath, const nlohmann::json& a_data)
 {
   inja::Environment env;
   env.set_trim_blocks(true);
   env.set_lstrip_blocks(true);
 
-  inja::Template temp = env.parse_template(a_declTemplateFilePath.c_str());
+  const std::string declTemplateFilePath = a_declTemplateFilePath.u8string();
+  inja::Template temp = env.parse_template(declTemplateFilePath.c_str());
   std::string result  = env.render(temp, a_data);
-  
+
   std::ofstream fout(a_outFilePath);
   fout << result.c_str() << std::endl;
   fout.close();
@@ -181,7 +182,7 @@ void kslicer::ApplyJsonToTemplate(const std::string& a_declTemplateFilePath, con
 
 namespace kslicer
 {
-  std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, 
+  std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo,
                                       const std::vector<kslicer::ArgFinal>& threadIds,
                                       const std::string a_names[3]);
 }
@@ -190,9 +191,9 @@ bool ReplaceFirst(std::string& str, const std::string& from, const std::string& 
 
 static json ReductionAccessFill(const kslicer::KernelInfo::ReductionAccess& second, std::shared_ptr<kslicer::IShaderCompiler> pShaderCC, std::shared_ptr<kslicer::FunctionRewriter> pShaderFuncRewriter)
 {
-  const std::string rewrtittenType = pShaderFuncRewriter->RewriteStdVectorTypeStr(second.dataType); 
+  const std::string rewrtittenType = pShaderFuncRewriter->RewriteStdVectorTypeStr(second.dataType);
   json varJ;
-  varJ["Type"]          = rewrtittenType; 
+  varJ["Type"]          = rewrtittenType;
   varJ["Name"]          = second.leftExpr;
   varJ["Init"]          = second.GetInitialValue(pShaderCC->IsGLSL(), rewrtittenType);
   varJ["Op"]            = second.GetOp(pShaderCC);
@@ -202,7 +203,7 @@ static json ReductionAccessFill(const kslicer::KernelInfo::ReductionAccess& seco
   varJ["OutTempName"]   = second.tmpVarName;
   varJ["SupportAtomic"] = second.SupportAtomicLastStep();
   varJ["AtomicOp"]      = second.GetAtomicImplCode(pShaderCC->IsGLSL());
-  varJ["SubgroupOp"]    = second.GetSubgroupOpCode(pShaderCC->IsGLSL()); 
+  varJ["SubgroupOp"]    = second.GetSubgroupOpCode(pShaderCC->IsGLSL());
   //varJ["UseSubgroups"]  = second.useSubGroups;
   varJ["IsArray"]       = second.leftIsArray;
   varJ["ArraySize"]     = second.arraySize;
@@ -236,12 +237,15 @@ static bool isConvertibleToInt(const std::string& str) {
 }
 
 
-json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo, 
+json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
                                     const std::vector<kslicer::FuncData>& usedFunctions,
                                     const std::vector<kslicer::DeclInClass>& usedDecl,
                                     const clang::CompilerInstance& compiler,
                                     const uint32_t  threadsOrder[3],
-                                    const std::string& uboIncludeName, const nlohmann::json& uboJson, const std::vector<std::string>& usedDefines)
+                                    const std::string& uboIncludeName,
+                                    const nlohmann::json& uboJson,
+                                    const std::vector<std::string>& usedDefines,
+                                    const TextGenSettings& a_settings)
 {
   auto pShaderRewriter = a_classInfo.pShaderFuncRewriter;
 
@@ -269,7 +273,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
   data["UseServiceScan"]     = (a_classInfo.usedServiceCalls.find("exclusive_scan") != a_classInfo.usedServiceCalls.end()) || (a_classInfo.usedServiceCalls.find("inclusive_scan") != a_classInfo.usedServiceCalls.end());
   data["UseServiceSort"]     = (a_classInfo.usedServiceCalls.find("sort") != a_classInfo.usedServiceCalls.end());
-  data["UseComplex"]         = true; // a_classInfo.useComplexNumbers; does not works in appropriate way ... 
+  data["UseComplex"]         = true; // a_classInfo.useComplexNumbers; does not works in appropriate way ...
+  data["UseRayGen"]          = a_settings.enableRayGen;
+  data["UseMotionBlur"]      = a_settings.enableMotionBlur;
 
   data["Defines"] = std::vector<std::string>();
   for(const auto& def : usedDefines)
@@ -279,7 +285,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   //
   data["Includes"] = std::vector<std::string>();
   for(auto keyVal : a_classInfo.allIncludeFiles) // we will search for only used include files among all of them (quoted, angled were excluded earlier)
-  { 
+  {
     if(!a_classInfo.IsInExcludedFolder(keyVal.first))
       continue;
 
@@ -309,12 +315,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       continue;
     }
 
-    json cdecl;
-    cdecl["Text"]    = a_classInfo.pShaderCC->PrintHeaderDecl(decl, compiler);
-    cdecl["InClass"] = decl.inClass;
-    cdecl["IsType"]  = (decl.kind == DECL_IN_CLASS::DECL_STRUCT); // || (decl.kind == DECL_IN_CLASS::DECL_TYPEDEF);
-    cdecl["Type"]    = kslicer::CleanTypeName(decl.type);
-    data["ClassDecls"].push_back(cdecl);
+    json c_decl;
+    c_decl["Text"]    = a_classInfo.pShaderCC->PrintHeaderDecl(decl, compiler);
+    c_decl["InClass"] = decl.inClass;
+    c_decl["IsType"]  = (decl.kind == DECL_IN_CLASS::DECL_STRUCT); // || (decl.kind == DECL_IN_CLASS::DECL_TYPEDEF);
+    c_decl["Type"]    = kslicer::CleanTypeName(decl.type);
+    data["ClassDecls"].push_back(c_decl);
   }
 
   // (3) local functions preprocess
@@ -322,21 +328,21 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   std::vector<kslicer::FuncData> funcMembers;
   std::unordered_map<std::string, kslicer::FuncData> cachedFunc;
   {
-    for (const auto& f : usedFunctions) 
-    { 
+    for (const auto& f : usedFunctions)
+    {
       if(a_classInfo.IsExcludedLocalFunction(f.name)) // check exclude list here, don't put such functions in cl file
         continue;
-      
+
       cachedFunc[f.name] = f;
       auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions'
       if(pShit != shittyFunctions.end())
         continue;
-      
+
       if(f.isMember)
         funcMembers.push_back(f);
     }
   }
-  
+
   ShaderFeatures shaderFeatures = a_classInfo.globalShaderFeatures;
   for(auto k : a_classInfo.kernels)
     shaderFeatures = shaderFeatures || k.second.shaderFeatures;
@@ -358,7 +364,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       for(const auto& cf : a_classInfo.mainFunc)
       {
-        kernels[cf.megakernel.name] = cf.megakernel;
+        kernels[cf.megakernel.name]            = cf.megakernel;
         kernels[cf.megakernel.name].subkernels = cf.subkernels;
       }
     }
@@ -367,11 +373,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   }
 
   data["Kernels"] = std::vector<std::string>();
-  for (const auto& nk : kernels)  
+  for (const auto& nk : kernels)
   {
     const auto& k = nk.second;
     std::cout << "  processing " << k.name << std::endl;
-    
+
     auto commonArgs = a_classInfo.GetKernelCommonArgs(k);
     auto tidArgs    = a_classInfo.GetKernelTIDArgs(k);
     uint VArgsSize  = 0;
@@ -383,12 +389,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       json argj;
       std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(commonArg.type);
-      std::string buffType2 = pShaderRewriter->RewriteStdVectorTypeStr(buffType1); 
+      std::string buffType2 = pShaderRewriter->RewriteStdVectorTypeStr(buffType1);
       argj["Type"]     = commonArg.isImage ? commonArg.imageType : buffType2;
       argj["Name"]     = commonArg.name;
       argj["IsUBO"]    = commonArg.isDefinedInClass;
       argj["IsImage"]  = commonArg.isImage;
-      argj["IsAccelStruct"] = false; 
+      argj["IsAccelStruct"] = false;
       argj["NeedFmt"]       = !commonArg.isSampler;
       argj["ImFormat"]      = commonArg.imageFormat;
       argj["IsPointer"]     = commonArg.isPointer;
@@ -427,7 +433,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       {
         bufferSizeOffset = pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
       }
-      
+
       assert(pVecMember != dataMembersCached.end());
       assert(pVecMember->second.isContainer);
 
@@ -435,13 +441,13 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       std::string buffType2 = pShaderRewriter->RewriteStdVectorTypeStr(buffType1);
       if(!a_classInfo.pShaderCC->IsGLSL() && !a_classInfo.pShaderCC->IsISPC())
         buffType2 += "*";
-      
+
       json argj;
       argj["Type"]       = buffType2;
       argj["Name"]       = pVecMember->second.name;
       argj["IsUBO"]      = false;
       argj["IsImage"]    = false;
-      argj["IsAccelStruct"] = false; 
+      argj["IsAccelStruct"] = false;
       argj["IsPointer"]     = (pVecMember->second.kind == kslicer::DATA_KIND::KIND_VECTOR);
       argj["IsMember"]      = true;
       std::string ispcConverted = argj["Name"];
@@ -471,8 +477,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       else if(pVecMember->second.isContainer && kslicer::IsTextureContainer(pVecMember->second.containerType))
       {
         std::string imageFormat;
-        auto pMemberAccess = k.texAccessInMemb.find(pVecMember->second.name); 
-        auto accessFlags   = (pMemberAccess == k.texAccessInMemb.end()) ? kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE : pMemberAccess->second; //pVecMember->second.tmask; 
+        auto pMemberAccess = k.texAccessInMemb.find(pVecMember->second.name);
+        auto accessFlags   = (pMemberAccess == k.texAccessInMemb.end()) ? kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE : pMemberAccess->second; //pVecMember->second.tmask;
         argj["IsImage"]  = true;
         argj["Type"]     = a_classInfo.pShaderFuncRewriter->RewriteImageType(pVecMember->second.containerType, pVecMember->second.containerDataType, accessFlags, imageFormat);
         argj["NeedFmt"]  = (accessFlags != kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE);
@@ -486,35 +492,35 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       }
       else
         argj["SizeOffset"] = bufferSizeOffset; // pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
-      
+
       args.push_back(argj);
       vecs.push_back(argj);
     }
 
     if(k.isMaker) // add to kernel ObjPtr buffer
     {
-      json argj; 
+      json argj;
       argj["Type"]       = "uint2       *";
       argj["Name"]       = "kgen_objPtrData";
       argj["IsUBO"]      = false;
       argj["IsPointer"]  = false;
       argj["IsImage"]    = false;
       argj["IsAccelStruct"] = false;
-      argj["IsMember"]      = false; 
+      argj["IsMember"]      = false;
       argj["NameISPC"] = argj["Name"];
       args.push_back(argj);
     }
 
     if(k.isIndirect && !a_classInfo.pShaderCC->IsISPC()) // add indirect buffer to shaders
     {
-      json argj; 
+      json argj;
       argj["Type"]       = a_classInfo.pShaderCC->IsGLSL() ? "uvec4 " : "uint4* ";
       argj["Name"]       = "m_indirectBuffer";
       argj["IsUBO"]      = false;
       argj["IsPointer"]  = false;
       argj["IsImage"]    = false;
       argj["IsAccelStruct"] = false;
-      argj["IsMember"]   = false; 
+      argj["IsMember"]   = false;
       argj["NameISPC"] = argj["Name"];
       args.push_back(argj);
     }
@@ -534,7 +540,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["NameISPC"]  = argj["Name"];
       userArgs.push_back(argj);
     }
-    
+
     // extract all arrays access in seperate map
     //
     std::unordered_map<std::string, KernelInfo::ReductionAccess> subjToRedCopy; subjToRedCopy.reserve(k.subjectedToReduction.size());
@@ -546,7 +552,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         subjToRedCopy[var.first] = var.second;
         continue;
       }
-      
+
       auto p = subjToRedArray.find(var.second.arrayName);
       if(p != subjToRedArray.end())
         p->second.arrayTmpBufferNames.push_back(var.second.tmpVarName);
@@ -555,7 +561,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         subjToRedArray[var.second.arrayName] = var.second;
         subjToRedArray[var.second.arrayName].arrayTmpBufferNames.push_back(var.second.tmpVarName);
       }
-    } 
+    }
 
     bool needFinishReductionPass = false;
     json reductionVars = std::vector<std::string>();
@@ -573,7 +579,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       needFinishReductionPass = needFinishReductionPass || !varJ["SupportAtomic"];
       reductionArrs.push_back(varJ);
     }
-    
+
     json kernelJson;
     kernelJson["RedLoop1"] = std::vector<std::string>();
     kernelJson["RedLoop2"] = std::vector<std::string>();
@@ -584,8 +590,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     for (uint c = k.warpSize; c>0; c/=2)
       kernelJson["RedLoop2"].push_back(c);
 
-    kernelJson["UseSubGroups"] = k.enableSubGroups; 
-    
+    kernelJson["UseSubGroups"] = k.enableSubGroups;
+
     kernelJson["LastArgNF1"]   = VArgsSize + MArgsSize;
     kernelJson["LastArgNF"]    = VArgsSize; // Last Argument No Flags
     kernelJson["Args"]         = args;
@@ -604,17 +610,20 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["NeedTexArray"] = isTextureArrayUsedInThisKernel;
     kernelJson["WarpSize"]     = k.warpSize;
     kernelJson["InitSource"]   = "";
-    
+
     kernelJson["SingleThreadISPC"] = k.singleThreadISPC;
     kernelJson["OpenMPAndISPC"]    = k.openMpAndISPC;
     kernelJson["ExplicitIdISPC"]   = k.explicitIdISPC;
     kernelJson["InitKPass"]        = false;
 
+    kernelJson["UseRayGen"]      = k.enableRTPipeline && a_settings.enableRayGen;       // duplicate these options for kernels so we can
+    kernelJson["UseMotionBlur"]  = k.enableRTPipeline && a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
+
     std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
     kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
 
     kernelJson["SpecConstants"] = std::vector<std::string>();
-    for(auto keyval : specConsts) 
+    for(auto keyval : specConsts)
     {
       json kspec;
       kspec["Name"] = keyval.second.name;
@@ -624,7 +633,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     //////////////////////////////////////////////////////////////////////////////////////////
     {
-      clang::Rewriter rewrite2; 
+      clang::Rewriter rewrite2;
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
       auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "", false);
       //pVisitorK->ClearUserArgs();
@@ -639,11 +648,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       {
         uint32_t tid = std::min<uint32_t>(threadsOrder[i], tidArgs.size()-1);
         threadIdNames[i] = tidArgs[tid].name;
-        
-        std::string loopSize   = tidArgs[tid].loopIter.sizeText;   
-        std::string loopStart  = tidArgs[tid].loopIter.startText;  
-        std::string loopStride = tidArgs[tid].loopIter.strideText; 
-        
+
+        std::string loopSize   = tidArgs[tid].loopIter.sizeText;
+        std::string loopStart  = tidArgs[tid].loopIter.startText;
+        std::string loopStride = tidArgs[tid].loopIter.strideText;
+
         if(loopStart == "")
           loopStart = "0";
 
@@ -657,9 +666,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
             loopStride  = a_classInfo.pShaderCC->UBOAccess(loopStride);
         }
 
-        const bool noStride = (loopStride == "1") && ((loopStart == "0") || 
+        const bool noStride = (loopStride == "1") && ((loopStart == "0") ||
                                                       a_classInfo.pShaderCC->IsISPC());
-        
+
         json threadId;
         if(tidArgs[tid].loopIter.startNode != nullptr && !noStride)
         {
@@ -682,7 +691,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
           kernelJson["ThreadId1"] = threadId;
         else
           kernelJson["ThreadId2"] = threadId;
-          
+
         kernelJson["ThreadIds"].push_back(threadId);
       }
 
@@ -704,13 +713,13 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         kernelJson["CondLE3"]     = (tidArgs[2].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
       }
     }
-    
+
     //////////////////////////////////////////////////////////////////////////////////  TODO: refactor this code
     std::string tidNames[3];
     std::string tidTypes[3] = {"uint", "uint", "uint"};
-    a_classInfo.pShaderCC->GetThreadSizeNames(tidNames);  
+    a_classInfo.pShaderCC->GetThreadSizeNames(tidNames);
 
-    if(k.loopIters.size() != 0) 
+    if(k.loopIters.size() != 0)
     {
       std::unordered_set<std::string> usedVars;
       for(const auto& iter : k.loopIters)
@@ -726,21 +735,21 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
           tidTypes[loopIdReorderd] = typeName;
           usedVars.insert(iter.sizeText);
         }
-      }                                                                // we must change it to 'vec_size2' for example 
+      }                                                                // we must change it to 'vec_size2' for example
     }
     //////////////////////////////////////////////////////////////////////////////////  TODO: refactor this code
 
-    kernelJson["threadSZName1"] = tidNames[0]; 
-    kernelJson["threadSZName2"] = tidNames[1]; 
-    kernelJson["threadSZName3"] = tidNames[2]; 
+    kernelJson["threadSZName1"] = tidNames[0];
+    kernelJson["threadSZName2"] = tidNames[1];
+    kernelJson["threadSZName3"] = tidNames[2];
 
-    kernelJson["threadSZType1"] = tidTypes[0]; 
-    kernelJson["threadSZType2"] = tidTypes[1]; 
-    kernelJson["threadSZType3"] = tidTypes[2]; 
+    kernelJson["threadSZType1"] = tidTypes[0];
+    kernelJson["threadSZType2"] = tidTypes[1];
+    kernelJson["threadSZType3"] = tidTypes[2];
 
     kernelJson["WGSizeX"]       = k.wgSize[0]; //
-    kernelJson["WGSizeY"]       = k.wgSize[1]; // 
-    kernelJson["WGSizeZ"]       = k.wgSize[2]; // 
+    kernelJson["WGSizeY"]       = k.wgSize[1]; //
+    kernelJson["WGSizeZ"]       = k.wgSize[2]; //
 
     //////////////////////////////////////////////////////////////////////////////////////////
     std::string names[3];
@@ -765,18 +774,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["IndirectStartX"] = "0";
       kernelJson["IndirectStartY"] = "0";
       kernelJson["IndirectStartZ"] = "0";
-      
+
       if(k.loopIters.size() > 0)
       {
         std::string exprContent      = kslicer::ReplaceSizeCapacityExpr(k.loopIters[0].sizeText);
-        kernelJson["IndirectSizeX"]  = a_classInfo.pShaderCC->UBOAccess(exprContent); 
+        kernelJson["IndirectSizeX"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
         kernelJson["IndirectStartX"] = kernelJson["ThreadIds"][0]["Start"];
       }
 
       if(k.loopIters.size() > 1)
       {
         std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[1].sizeText);
-        kernelJson["IndirectSizeY"] = a_classInfo.pShaderCC->UBOAccess(exprContent); 
+        kernelJson["IndirectSizeY"] = a_classInfo.pShaderCC->UBOAccess(exprContent);
         kernelJson["IndirectStartY"] = kernelJson["ThreadIds"][1]["Start"];
       }
 
@@ -784,21 +793,21 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       {
         std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[2].sizeText);
         kernelJson["IndirectSizeZ"] = a_classInfo.pShaderCC->UBOAccess(exprContent);
-        kernelJson["IndirectStartZ"] = kernelJson["ThreadIds"][2]["Start"]; 
+        kernelJson["IndirectStartZ"] = kernelJson["ThreadIds"][2]["Start"];
       }
 
-      kernelJson["IndirectOffset"] = k.indirectBlockOffset; 
+      kernelJson["IndirectOffset"] = k.indirectBlockOffset;
       kernelJson["threadSZName1"]  = "kgen_iNumElementsX";
       kernelJson["threadSZName2"]  = "kgen_iNumElementsY";
       kernelJson["threadSZName3"]  = "kgen_iNumElementsZ";
     }
     else
     {
-      kernelJson["IndirectSizeX"] = tidNames[0]; 
-      kernelJson["IndirectSizeY"] = tidNames[1]; 
-      kernelJson["IndirectSizeZ"] = tidNames[2]; 
+      kernelJson["IndirectSizeX"] = tidNames[0];
+      kernelJson["IndirectSizeY"] = tidNames[1];
+      kernelJson["IndirectSizeZ"] = tidNames[2];
     }
-    
+
     if(k.isVirtual || k.isMaker)
     {
       json hierarchy = PutHierarchyToJson(dhierarchies[k.interfaceName], compiler);
@@ -809,9 +818,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         hierarchy["RedLoop1"].push_back(c);
       for (uint c = k.warpSize; c>0; c/=2)
         hierarchy["RedLoop2"].push_back(c);
-      kernelJson["Hierarchy"] = hierarchy; 
+      kernelJson["Hierarchy"] = hierarchy;
       kernelJson["WarpSize"]  = k.warpSize;
-      
+
       bool isConstObj = false;
       if(k.isVirtual)
       {
@@ -842,18 +851,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["MemberFunctions"] = std::vector<std::string>();
     if(funcMembers.size() > 0)
     {
-      clang::Rewriter rewrite2; 
+      clang::Rewriter rewrite2;
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
       auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
       auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "", false);
       pVisitorK->ClearUserArgs();
       pVisitorK->processFuncMember = true; // signal that we process function member, not the kernel itself
-    
+
       for(auto& f : funcMembers)
       {
         auto funcNode = const_cast<clang::FunctionDecl*>(f.astNode);
         pVisitorF->SetCurrFuncInfo(&f);    // pass auxilary function data inside pVisitorF
-        pVisitorK->SetCurrFuncInfo(&f); 
+        pVisitorK->SetCurrFuncInfo(&f);
         const std::string funcDeclText = pVisitorF->RewriteFuncDecl(funcNode);
         const std::string funcBodyText = pVisitorK->RecursiveRewrite(funcNode->getBody());
         pVisitorF->ResetCurrFuncInfo();
@@ -861,7 +870,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         kernelJson["MemberFunctions"].push_back(funcDeclText + funcBodyText);
       }
     }
-    
+
     kernelJson["ShityFunctions"] = std::vector<std::string>();
     std::unordered_map<std::string, kslicer::ShittyFunction> shitByName;
     for(auto shit : k.shittyFunctions) {
@@ -874,12 +883,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       auto pFunc = cachedFunc.find(shit.second.originalName);
       if(pFunc == cachedFunc.end())
         continue;
-      
+
       clang::Rewriter rewrite2;                                                    // It is important to have clear rewriter for each function because here we access same node several times!!!
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());  //
       auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo, shit.second);
       auto funcNode  = const_cast<clang::FunctionDecl*>(pFunc->second.astNode);
-  
+
       const std::string funcDeclText = pVisitorF->RewriteFuncDecl(funcNode);
       const std::string funcBodyText = pVisitorF->RecursiveRewrite(funcNode->getBody());
 
@@ -892,10 +901,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       for(auto pSubkernel : k.subkernels)
       {
         auto& subkernel = (*pSubkernel);
-         
+
         std::string funcDeclText = "...";
         {
-          kslicer::ShittyFunction shit;  
+          kslicer::ShittyFunction shit;
           for(const auto& candidate : k.shittyFunctions)
           {
             if(candidate.originalName == subkernel.name)
@@ -924,18 +933,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
 
     auto original = kernelJson;
-    
+
     // if we have additional init statements we should add additional init kernel before our kernel
     //
     if(k.hasInitPass)
-    { 
-      std::string initSourceCode = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1); 
+    {
+      std::string initSourceCode = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1);
       if(a_classInfo.pShaderCC->IsISPC())
       {
         original["InitSource"] = initSourceCode;
-      } 
+      }
       else
-      {    
+      {
         kernelJson["Name"]      = k.name + "_Init";
         kernelJson["Source"]    = initSourceCode;
         kernelJson["HasEpilog"] = false;
@@ -962,27 +971,27 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["WGSizeZ"]   = 1;
       data["Kernels"].push_back(kernelJson);
     }
-  
-  } // for (const auto& nk : kernels)  
-  
+
+  } // for (const auto& nk : kernels)
+
   // (5) generate local functions
   //
-  data["LocalFunctions"] = std::vector<std::string>(); 
+  data["LocalFunctions"] = std::vector<std::string>();
   {
     clang::Rewriter rewrite2;
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
     auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
 
-    for (const auto& f : usedFunctions) 
-    { 
+    for (const auto& f : usedFunctions)
+    {
       if(a_classInfo.IsExcludedLocalFunction(f.name)) // check exclude list here, don't put such functions in cl file
         continue;
-      
+
       cachedFunc[f.name] = f;
       auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions'
       if(pShit != shittyFunctions.end())
         continue;
-      
+
       if(!f.isMember)
       {
         //f.astNode->dump();

@@ -427,7 +427,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
   //
   const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
   const DeclarationName dn      = dni.getName();
-  const std::string fname       = dn.getAsString();
+        std::string fname       = dn.getAsString();
 
   // Get name of "this" type; we should check wherther this member is std::vector<T>  
   //
@@ -499,11 +499,22 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
       memberNameA = pPrefix->second;
     else
       memberNameA = exprContent.substr(0, posOfPoint);  // m_pImpl->Func() inside main class
+    
+    bool lastArgIsEmpty = false;
+    if((fname == "RayQuery_NearestHit" || fname == "RayQuery_AnyHit") && f->getNumArgs() == 3) // support for motion blur inside RTX
+    {
+      const auto argText = GetRangeSourceCode(f->getArg(2)->getSourceRange(), m_compiler);
+      lastArgIsEmpty = (argText == "");
+      if(!lastArgIsEmpty)
+        fname += "Motion";
+    }
 
     std::string resCallText = memberNameA + "_" + fname + "(";
     for(unsigned i=0;i<f->getNumArgs(); i++)
     {
       resCallText += RecursiveRewrite(f->getArg(i));
+      if(i == f->getNumArgs()-2 && lastArgIsEmpty)
+        break;
       if(i!=f->getNumArgs()-1)
         resCallText += ", ";
     }

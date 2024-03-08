@@ -70,6 +70,8 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
   std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+1> dsBindings;
   {% endif %}
 
+  const auto stageFlags = {{Kernel.StageFlags}};
+
 ## for KernelARG in Kernel.Args
   // binding for {{KernelARG.Name}}
   dsBindings[{{KernelARG.Id}}].binding            = {{KernelARG.Id}};
@@ -82,7 +84,7 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
   {% else %}
   dsBindings[{{KernelARG.Id}}].descriptorCount    = {{KernelARG.Count}};
   {% endif %}
-  dsBindings[{{KernelARG.Id}}].stageFlags         = {{KernelARG.Flags}};
+  dsBindings[{{KernelARG.Id}}].stageFlags         = stageFlags;
   dsBindings[{{KernelARG.Id}}].pImmutableSamplers = nullptr;
 
 ## endfor
@@ -91,7 +93,7 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
   dsBindings[{{Kernel.ArgCount}}].binding            = {{Kernel.ArgCount}};
   dsBindings[{{Kernel.ArgCount}}].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
   dsBindings[{{Kernel.ArgCount}}].descriptorCount    = 1;
-  dsBindings[{{Kernel.ArgCount}}].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[{{Kernel.ArgCount}}].stageFlags         = stageFlags;
   dsBindings[{{Kernel.ArgCount}}].pImmutableSamplers = nullptr;
   {% if UseSeparateUBO and Kernel.IsVirtual %}
   
@@ -99,14 +101,14 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
   dsBindings[{{Kernel.ArgCount}}+1].binding            = {{Kernel.ArgCount}}+1;
   dsBindings[{{Kernel.ArgCount}}+1].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
   dsBindings[{{Kernel.ArgCount}}+1].descriptorCount    = 1;
-  dsBindings[{{Kernel.ArgCount}}+1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[{{Kernel.ArgCount}}+1].stageFlags         = stageFlags;
   dsBindings[{{Kernel.ArgCount}}+1].pImmutableSamplers = nullptr;
   
   // binding for separate ubo
   dsBindings[{{Kernel.ArgCount}}+2].binding            = {{Kernel.ArgCount}}+1;
   dsBindings[{{Kernel.ArgCount}}+2].descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
   dsBindings[{{Kernel.ArgCount}}+2].descriptorCount    = 1;
-  dsBindings[{{Kernel.ArgCount}}+2].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[{{Kernel.ArgCount}}+2].stageFlags         = stageFlags;
   dsBindings[{{Kernel.ArgCount}}+2].pImmutableSamplers = nullptr;
   {% else if UseSeparateUBO or Kernel.IsVirtual %}
   
@@ -115,7 +117,7 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
   dsBindings[{{Kernel.ArgCount}}+1].binding            = {{Kernel.ArgCount}}+1;
   dsBindings[{{Kernel.ArgCount}}+1].descriptorType     = {% if UseSeparateUBO %}VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER{% else %}VK_DESCRIPTOR_TYPE_STORAGE_BUFFER{% endif %};
   dsBindings[{{Kernel.ArgCount}}+1].descriptorCount    = 1;
-  dsBindings[{{Kernel.ArgCount}}+1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+  dsBindings[{{Kernel.ArgCount}}+1].stageFlags         = stageFlags;
   dsBindings[{{Kernel.ArgCount}}+1].pImmutableSamplers = nullptr;
   {% else %}
   {% endif %}

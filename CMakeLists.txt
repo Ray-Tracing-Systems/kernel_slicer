@@ -5,6 +5,12 @@ set (CMAKE_CXX_STANDARD 17)
 set(LLVM_VER "18")
 set(LLVM_LIB "LLVM-${LLVM_VER}")
 
+if (MSVC)
+  add_compile_options(/bigobj)
+else ()
+  set(PLATFORM_DEPENDENT_LIBS clang ${LLVM_LIB})
+endif ()
+
 find_package(LLVM ${LLVM_VER} REQUIRED CONFIG)
 find_package(Clang ${LLVM_VER} REQUIRED)
 
@@ -24,7 +30,7 @@ message("LLVM_LIBRARY_DIRS = ${LLVM_LIBRARY_DIRS}")
 # message("CLANG_LIBRARY_DIRS = ${CLANG_LIBRARY_DIRS}")
 # set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${LLVM_CMAKE_DIR}")
 
-add_executable(kslicer 
+add_executable(kslicer
                kslicer_main.cpp
                kslicer_utils.cpp
                kslicer_warnings.cpp
@@ -49,10 +55,10 @@ add_executable(kslicer
                shaders_ispc.cpp
                )
 
-target_link_libraries(kslicer PRIVATE clang ${LLVM_LIB} clangAST clangTooling 
-                     clangBasic clangASTMatchers 
-                     clangFrontendTool clangFrontend clangDriver clangSerialization 
-                     clangCodeGen clangParse clangSema clangStaticAnalyzerFrontend 
+target_link_libraries(kslicer PRIVATE ${PLATFORM_DEPENDENT_LIBS} clangAST clangTooling
+                     clangBasic clangASTMatchers
+                     clangFrontendTool clangFrontend clangDriver clangSerialization
+                     clangCodeGen clangParse clangSema clangStaticAnalyzerFrontend
                      clangStaticAnalyzerCheckers clangStaticAnalyzerCore clangAnalysis
                      clangIndex clangARCMigrate clangRewrite clangLex clangEdit
-                     ) 
+                     )
