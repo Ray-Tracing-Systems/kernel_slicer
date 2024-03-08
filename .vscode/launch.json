@@ -2340,7 +2340,7 @@
 
         {
             "name"   : "Launch (HydraCore3/External) - VS",
-            "type"   : "cppdbg",
+            "type"   : "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/kslicer",
             "args"   : ["/media/vs/data2/repos/hydra/HydraCore3/integrator_pt.cpp",
