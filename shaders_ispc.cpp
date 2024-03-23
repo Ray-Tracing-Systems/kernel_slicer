@@ -1,10 +1,7 @@
 #include "kslicer.h"
 #include "template_rendering.h"
 
-#ifdef WIN32
-  #include <direct.h>     // for windows mkdir
-#else
-  #include <sys/stat.h>   // for linux mkdir
+#ifdef _WIN32
   #include <sys/types.h>
 #endif
 
