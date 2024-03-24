@@ -2,9 +2,9 @@ cmake_minimum_required (VERSION 3.8)
 project (kernel_slicer)
 set (CMAKE_CXX_STANDARD 17)
 
-set(LLVM_VER "18.1")
-set(LLVM_LIB "LLVM-18")
-include("/usr/lib/llvm-18/cmake/LLVMConfig.cmake")
+set(LLVM_VER "19")
+set(LLVM_LIB "LLVM")
+include("/usr/lib/llvm-19/cmake/LLVMConfig.cmake")
 
 if (MSVC)
   add_compile_options(/bigobj)

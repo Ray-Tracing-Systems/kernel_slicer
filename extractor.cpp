@@ -829,7 +829,7 @@ void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::st
       tdecl.extracted= true;
       declsByName[elem.typeName] = tdecl;
       const clang::FileEntry* Entry = a_srcMgr.getFileEntryForID(a_srcMgr.getFileID(elem.node->getLocation()));
-      const std::string fileName    = std::string(Entry->getName());
+      const std::string fileName    = std::string(Entry->tryGetRealPathName().str());
       const bool        exclude     = IsInExcludedFolder(fileName);
       if(!exclude)
         auxDecls.push_back(tdecl);

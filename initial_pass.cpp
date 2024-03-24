@@ -187,7 +187,8 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
   if(Entry == nullptr)
     return true;
 
-  std::string FileName  = Entry->getName().str();
+  
+  std::string FileName  = Entry->tryGetRealPathName().str();
   const bool isDefinitelyInsideShaders = m_codeInfo.NeedToProcessDeclInFile(FileName);
 
   if(isa<CXXRecordDecl>(type))
@@ -281,7 +282,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitVarDecl(VarDecl* pTargetVar)
   if(Entry == nullptr)
     return true;
 
-  std::string FileName   = Entry->getName().str();
+  std::string FileName   = Entry->tryGetRealPathName().str();
   if(!m_codeInfo.NeedToProcessDeclInFile(FileName))
     return true;
 
