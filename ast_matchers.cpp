@@ -251,6 +251,7 @@ std::unordered_map<std::string, kslicer::CFNameInfo> kslicer::ListAllMainRTFunct
 clang::ast_matchers::DeclarationMatcher  kslicer::MakeMatch_Kernel1DBlockExpansion()
 {
   using namespace clang::ast_matchers;
+  //auto outerLoop = forStmt().bind("blockIdLoop");
   return
   functionDecl(	matchesName("kernelBE1D_*")).bind("kernelFunction");
 }
@@ -258,8 +259,8 @@ clang::ast_matchers::DeclarationMatcher  kslicer::MakeMatch_Kernel1DBlockExpansi
 class KernelBlockExpansionSeeker : public clang::ast_matchers::MatchFinder::MatchCallback 
 {
 public:
-  explicit KernelBlockExpansionSeeker(std::ostream& s, const std::string& a_mainClassName, const clang::ASTContext& a_astContext, const kslicer::MainClassInfo& a_codeInfo) : 
-                                      m_out(s), m_mainClassName(a_mainClassName), m_astContext(a_astContext), m_codeInfo(a_codeInfo) 
+  explicit KernelBlockExpansionSeeker(std::ostream& s, const std::string& a_mainClassName, const clang::CompilerInstance& a_compiler, const kslicer::MainClassInfo& a_codeInfo) : 
+                                      m_out(s), m_mainClassName(a_mainClassName), m_astContext(a_compiler.getASTContext()), m_compiler(a_compiler), m_codeInfo(a_codeInfo) 
   {
   }
 
@@ -267,7 +268,8 @@ public:
   {
     using namespace clang;
    
-    CXXMethodDecl const * kern_decl = result.Nodes.getNodeAs<CXXMethodDecl>("kernelFunction");
+    const clang::CXXMethodDecl* const kern_decl  = result.Nodes.getNodeAs<clang::CXXMethodDecl>("kernelFunction");
+    //const clang::Stmt*          const outer_loop = result.Nodes.getNodeAs<clang::Stmt>         ("outer_loop");
 
     if(kern_decl != nullptr) 
     {
@@ -278,7 +280,8 @@ public:
       if(pClass->getName().str() == m_mainClassName) // && m_codeInfo.IsKernel(kName)
       {
         std::cout << "[BlockExpansionFound]:" <<  pClass->getNameAsString() << "::" << kern_decl->getNameAsString() << std::endl;
-      
+        //std::string text = kslicer::GetRangeSourceCode(outer_loop->getSourceRange(), m_compiler);
+        //std::cout << text.c_str() << std::endl;
       }
     }
     else 
@@ -288,21 +291,22 @@ public:
     return;
   }  // run
   
-  std::ostream&                 m_out;
-  const std::string&            m_mainClassName;
-  const clang::ASTContext&      m_astContext;
-  const kslicer::MainClassInfo& m_codeInfo;
+  std::ostream&                  m_out;
+  const std::string&             m_mainClassName;
+  const clang::ASTContext&       m_astContext;
+  const clang::CompilerInstance& m_compiler; 
+  const kslicer::MainClassInfo&  m_codeInfo;
   std::unordered_map<std::string, kslicer::CFNameInfo> m_mainFunctions;
 }; 
 
 std::vector<std::string> kslicer::ListAllBlockExpansionKernels(clang::tooling::ClangTool& Tool, 
                                                                const std::string& a_mainClassName, 
-                                                               const clang::ASTContext& a_astContext,
-                                                               const kslicer::MainClassInfo& a_codeInfo)
+                                                               const clang::CompilerInstance& a_compiler,
+                                                               const MainClassInfo& a_codeInfo)
 {
   auto kernelCallMatcher = kslicer::MakeMatch_Kernel1DBlockExpansion();
   
-  KernelBlockExpansionSeeker printer(std::cout, a_mainClassName, a_astContext, a_codeInfo);
+  KernelBlockExpansionSeeker printer(std::cout, a_mainClassName, a_compiler, a_codeInfo);
   clang::ast_matchers::MatchFinder finder;
   finder.addMatcher(kernelCallMatcher,  &printer);
 

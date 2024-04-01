@@ -7,6 +7,7 @@
 
 #include "clang/Basic/SourceManager.h"
 #include "clang/AST/ASTContext.h"
+#include "clang/Frontend/CompilerInstance.h"
 
 #include <string>
 #include <vector>
@@ -51,7 +52,7 @@ namespace kslicer
   
   std::vector<std::string>        ListAllBlockExpansionKernels(clang::tooling::ClangTool& Tool, 
                                                                const std::string& a_mainClassName, 
-                                                               const clang::ASTContext& a_astContext,
+                                                               const clang::CompilerInstance& a_compiler,
                                                                const kslicer::MainClassInfo& a_codeInfo);
 
 
