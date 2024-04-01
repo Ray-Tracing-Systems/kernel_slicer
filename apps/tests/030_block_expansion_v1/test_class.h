@@ -9,7 +9,7 @@
 using LiteMath::float4;
 using LiteMath::float3;
 using LiteMath::float2;
-
+using LiteMath::uint;
 
 class TestClass
 {

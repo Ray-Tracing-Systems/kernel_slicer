@@ -43,9 +43,17 @@ namespace kslicer
   clang::ast_matchers::DeclarationMatcher MakeMatch_TypedefInsideClass(std::string const& className);
 
   std::unordered_map<std::string, CFNameInfo> ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
-                                                                           const std::string& a_mainClassName, 
-                                                                           const clang::ASTContext& a_astContext,
-                                                                           const MainClassInfo& a_codeInfo);
+                                                                     const std::string& a_mainClassName, 
+                                                                     const clang::ASTContext& a_astContext,
+                                                                     const kslicer::MainClassInfo& a_codeInfo);
+
+  clang::ast_matchers::DeclarationMatcher MakeMatch_Kernel1DBlockExpansion();
+  
+  std::vector<std::string>        ListAllBlockExpansionKernels(clang::tooling::ClangTool& Tool, 
+                                                               const std::string& a_mainClassName, 
+                                                               const clang::ASTContext& a_astContext,
+                                                               const kslicer::MainClassInfo& a_codeInfo);
+
 
   /**\brief Complain if pointer is invalid.
   \param p: pointer

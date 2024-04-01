@@ -357,6 +357,8 @@ int main(int argc, const char **argv)
 
   std::cout << "(0) Listing main functions of " << mainClassName.c_str() << std::endl;
   auto cfList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, compiler.getASTContext(), inputCodeInfo);
+  auto beList = kslicer::ListAllBlockExpansionKernels(Tool, mainClassName, compiler.getASTContext(), inputCodeInfo);
+
   std::cout << "{" << std::endl;
   for(const auto& f : cfList)
   {
