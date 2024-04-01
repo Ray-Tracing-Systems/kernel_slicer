@@ -18,7 +18,10 @@ void TestClass::kernelBE1D_Test(uint blockNum, float* out_buffer)
       blockData[localId] = float(localId + blockId);
     }
     
-    [[parallel]] for(int localId = 0; localId < bsize; localId++) // single thread per block, simple loop (!!!)
+    for(int localId = 0; localId < 4; localId++)                  // single threaded loop
+      blockData[localId] = 4.0f;                                        
+    
+    [[parallel]] for(int localId = 0; localId < bsize; localId++) // full parallel
     {
       out_buffer[blockId*bsize + localId] = blockData[localId];
     }
