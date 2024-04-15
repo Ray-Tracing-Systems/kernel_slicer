@@ -513,6 +513,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
   data["UseServiceScan"]     = (a_classInfo.usedServiceCalls.find("exclusive_scan") != a_classInfo.usedServiceCalls.end()) || (a_classInfo.usedServiceCalls.find("inclusive_scan") != a_classInfo.usedServiceCalls.end());
   data["UseServiceSort"]     = (a_classInfo.usedServiceCalls.find("sort") != a_classInfo.usedServiceCalls.end());
+  data["UseMatMult"]         = (a_classInfo.usedServiceCalls.find("MatMulTranspose") != a_classInfo.usedServiceCalls.end());
   data["GenGpuApi"]          = a_classInfo.genGPUAPI;
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
