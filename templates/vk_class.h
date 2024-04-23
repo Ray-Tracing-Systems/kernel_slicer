@@ -27,13 +27,13 @@ using namespace LiteMath;
 #include "{{Include}}"
 {% endfor %}
 
-## for Decl in ClassDecls  
+## for Decl in ClassDecls
 {% if Decl.InClass and Decl.IsType %}
 using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data type to UBO
 {% endif %}
 ## endfor
 #include "include/{{UBOIncl}}"
-{% for SetterDecl in SettersDecl %}  
+{% for SetterDecl in SettersDecl %}
 {{SetterDecl}}
 
 {% endfor %}
@@ -47,7 +47,7 @@ public:
 
   {% for ctorDecl in Constructors %}
   {% if ctorDecl.NumParams == 0 %}
-  {{ctorDecl.ClassName}}{{MainClassSuffix}}() 
+  {{ctorDecl.ClassName}}{{MainClassSuffix}}()
   {
     {% if HasPrefixData %}
     if({{PrefixDataName}} == nullptr)
@@ -55,7 +55,7 @@ public:
     {% endif %}
   }
   {% else %}
-  {{ctorDecl.ClassName}}{{MainClassSuffix}}({{ctorDecl.Params}}) : {{ctorDecl.ClassName}}({{ctorDecl.PrevCall}}) 
+  {{ctorDecl.ClassName}}{{MainClassSuffix}}({{ctorDecl.Params}}) : {{ctorDecl.ClassName}}({{ctorDecl.PrevCall}})
   {
     {% if HasPrefixData %}
     if({{PrefixDataName}} == nullptr)
@@ -68,7 +68,7 @@ public:
   const char* Name() const override { return "{{MainClassName}}{{MainClassSuffix}}";}
   {% endif %}
   virtual void InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount);
-  
+
   {% if GenGpuApi %}
   void SetVulkanContext(vk_utils::VulkanContext a_ctx) override { m_ctx = a_ctx; }
   {% else %}
@@ -102,10 +102,10 @@ public:
 ## endfor
   virtual ~{{MainClassName}}{{MainClassSuffix}}();
 
-  {% for SetterFunc in SetterFuncs %}  
+  {% for SetterFunc in SetterFuncs %}
   {{SetterFunc}}
   {% endfor %}
-  
+
   {% if GenGpuApi %}
   void InitMemberBuffers() override;
   void UpdateAll(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine) override
@@ -123,7 +123,7 @@ public:
     UpdateTextureMembers(a_pCopyEngine);
   }
   {% endif %}
-  
+
   {% if HasPrefixData %}
   virtual void UpdatePrefixPointers()
   {
@@ -141,19 +141,19 @@ public:
   virtual void CommitDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper) // you have to define this virtual function in the original imput class
   {
     {% if HasPrefixData %}
-    UpdatePrefixPointers(); 
+    UpdatePrefixPointers();
     {% endif %}
     InitMemberBuffers();
     UpdateAll(a_pCopyHelper);
-  }  
+  }
   {% if HasCommitDeviceFunc %}
-  void CommitDeviceData() override { CommitDeviceData(m_ctx.pCopyHelper); }  
+  void CommitDeviceData() override { CommitDeviceData(m_ctx.pCopyHelper); }
   {% endif %}
   {% if HasGetTimeFunc %}
-  void GetExecutionTime(const char* a_funcName, float a_out[4]) override; 
+  void GetExecutionTime(const char* a_funcName, float a_out[4]) override;
   {% endif %}
   {% if UpdateMembersPlainData %}
-  void UpdateMembersPlainData() override { UpdatePlainMembers(m_ctx.pCopyHelper); } 
+  void UpdateMembersPlainData() override { UpdatePlainMembers(m_ctx.pCopyHelper); }
   {% endif %}
   {% if UpdateMembersVectorData %}
   void UpdateMembersVectorData() override { UpdateVectorMembers(m_ctx.pCopyHelper); }
@@ -161,7 +161,7 @@ public:
   {% if UpdateMembersTextureData %}
   void UpdateMembersTextureData() override { UpdateTextureMembers(m_ctx.pCopyHelper); }
   {% endif %}
-  
+
 
   virtual void ReserveEmptyVectors();
   virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
@@ -171,8 +171,8 @@ public:
   virtual void ReadPlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   {% endif %}
   static VkPhysicalDeviceFeatures2 ListRequiredDeviceFeatures(std::vector<const char*>& deviceExtensions);
-  
-  {% for MainFunc in MainFunctions %} 
+
+  {% for MainFunc in MainFunctions %}
   {% if GenGpuApi %}
   {{MainFunc.ReturnType}} {{MainFunc.Decl}} override;
   {% else %}
@@ -181,19 +181,19 @@ public:
   {% endfor %}
   {% if HasFullImpl %}
 
-  {% for MainFunc in MainFunctions %}  
+  {% for MainFunc in MainFunctions %}
   {% if MainFunc.OverrideMe %}
   {{MainFunc.ReturnType}} {{MainFunc.DeclOrig}} override;
   {% endif %}
   {% endfor %}
 
-  {% for MainFunc in MainFunctions %}  
+  {% for MainFunc in MainFunctions %}
   {% if MainFunc.OverrideMe %}
   inline vk_utils::ExecTime Get{{MainFunc.Name}}ExecutionTime() const { return m_exTime{{MainFunc.Name}}; }
   {% endif %}
   {% endfor %}
 
-  {% for MainFunc in MainFunctions %}  
+  {% for MainFunc in MainFunctions %}
   {% if MainFunc.OverrideMe %}
   vk_utils::ExecTime m_exTime{{MainFunc.Name}};
   {% endif %}
@@ -201,11 +201,12 @@ public:
   {% endif %} {# /* end if HasFullImpl */ #}
 
   virtual void copyKernelFloatCmd(uint32_t length);
-  
+  virtual void matMulTransposeCmd(uint32_t A_offset, uint32_t B_offset, uint32_t C_offset, uint32_t A_col_len, uint32_t B_col_len, uint32_t A_row_len);
+
   {% for KernelDecl in KernelsDecls %}
   {{KernelDecl}}
   {% endfor %}
-  
+
   struct MemLoc
   {
     VkDeviceMemory memObject = VK_NULL_HANDLE;
@@ -248,7 +249,7 @@ protected:
   {{PlainMembersUpdateFunctions}}
   {{VectorMembersUpdateFunctions}}
 
-## for MainFunc in MainFunctions  
+## for MainFunc in MainFunctions
   struct {{MainFunc.Name}}_Data
   {
     {% if MainFunc.IsRTV and not MainFunc.IsMega %}
@@ -271,7 +272,7 @@ protected:
 
 ## endfor
 
-  {% for var in SetterVars %}  
+  {% for var in SetterVars %}
   {{var.Type}}Vulkan {{var.Name}}Vulkan;
   {% endfor %}
 
@@ -296,13 +297,13 @@ protected:
     VkSampler      {{Sam}} = VK_NULL_HANDLE;
     {% endfor %}
   } m_vdata;
-  
+
   {% for Vector in VectorMembers %}
   {% if Vector.HasPrefix %}
   {{Vector.Type}}* {{Vector.Name}} = nullptr;
   {% endif %}
   {% endfor %}
-  
+
   {% if length(TextureMembers) > 0 or length(ClassTexArrayVars) > 0 %}
   VkImage     CreateTexture2D(const int a_width, const int a_height, VkFormat a_format, VkImageUsageFlags a_usage);
   VkSampler   CreateSampler(const Sampler& a_sampler);
@@ -312,7 +313,7 @@ protected:
     TexAccessPair() : image(VK_NULL_HANDLE), access(0) {}
     TexAccessPair(VkImage a_image, VkAccessFlags a_access) : image(a_image), access(a_access) {}
     VkImage image;
-    VkAccessFlags access;  
+    VkAccessFlags access;
   };
   void TrackTextureAccess(const std::vector<TexAccessPair>& a_pairs, std::unordered_map<uint64_t, VkAccessFlags>& a_currImageFlags);
   {% endif %} {# /* length(TextureMembers) > 0 */ #}
@@ -324,9 +325,9 @@ protected:
   size_t           m_{{Hierarchy.Name}}ObjPtrOffset = 0;
   {% if Hierarchy.IndirectDispatch %}
   VkPipelineLayout {{Hierarchy.Name}}ZeroObjCountersLayout   = VK_NULL_HANDLE;
-  VkPipeline       {{Hierarchy.Name}}ZeroObjCountersPipeline = VK_NULL_HANDLE; 
+  VkPipeline       {{Hierarchy.Name}}ZeroObjCountersPipeline = VK_NULL_HANDLE;
   void             {{Hierarchy.Name}}ZeroObjCountersCmd();
-  {% endif %} 
+  {% endif %}
   {% endfor %}
   VkBufferMemoryBarrier BarrierForObjCounters(VkBuffer a_buffer);
   {% endif %} {# /* length(DispatchHierarchies) > 0 */ #}
@@ -340,7 +341,7 @@ protected:
   VkDescriptorSetLayout m_indirectUpdateDSLayout = VK_NULL_HANDLE;
   VkDescriptorSet       m_indirectUpdateDS       = VK_NULL_HANDLE;
   {% for Dispatch in IndirectDispatches %}
-  VkPipeline            m_indirectUpdate{{Dispatch.KernelName}}Pipeline = VK_NULL_HANDLE; 
+  VkPipeline            m_indirectUpdate{{Dispatch.KernelName}}Pipeline = VK_NULL_HANDLE;
   {% endfor %}
   {% endif %} {# /* length(IndirectDispatches) > 0 */ #}
   size_t m_maxThreadCount = 0;
@@ -352,25 +353,25 @@ protected:
 
   {% for Kernel in Kernels %}
   VkPipelineLayout      {{Kernel.Name}}Layout   = VK_NULL_HANDLE;
-  VkPipeline            {{Kernel.Name}}Pipeline = VK_NULL_HANDLE; 
+  VkPipeline            {{Kernel.Name}}Pipeline = VK_NULL_HANDLE;
   VkDescriptorSetLayout {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
   {% if Kernel.HasLoopInit %}
   VkPipeline            {{Kernel.Name}}InitPipeline = VK_NULL_HANDLE;
-  {% endif %} 
+  {% endif %}
   {% if Kernel.HasLoopFinish %}
   VkPipeline            {{Kernel.Name}}FinishPipeline = VK_NULL_HANDLE;
-  {% endif %}   
+  {% endif %}
   {% if Kernel.FinishRed %}
-  VkPipeline            {{Kernel.Name}}ReductionPipeline = VK_NULL_HANDLE; 
-  {% endif %}  
+  VkPipeline            {{Kernel.Name}}ReductionPipeline = VK_NULL_HANDLE;
+  {% endif %}
   {% if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch %}
   VkPipeline            {{Kernel.Name}}ZeroObjCounters    = VK_NULL_HANDLE;
   VkPipeline            {{Kernel.Name}}CountTypeIntervals = VK_NULL_HANDLE;
-  VkPipeline            {{Kernel.Name}}Sorter             = VK_NULL_HANDLE; 
-  {% endif %}  
+  VkPipeline            {{Kernel.Name}}Sorter             = VK_NULL_HANDLE;
+  {% endif %}
   {% if Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch %}
   VkPipeline            {{Kernel.Name}}PipelineArray[{{length(Kernel.Hierarchy.Implementations)}}] = {};
-  {% endif %}  
+  {% endif %}
   VkDescriptorSetLayout Create{{Kernel.Name}}DSLayout();
   virtual void InitKernel_{{Kernel.Name}}(const char* a_filePath);
   {% if Kernel.IsIndirect %}
@@ -394,11 +395,16 @@ protected:
   VkDescriptorSetLayout copyKernelFloatDSLayout = VK_NULL_HANDLE;
   VkDescriptorSetLayout CreatecopyKernelFloatDSLayout();
 
+  VkPipelineLayout      matMulTransposeLayout   = VK_NULL_HANDLE;
+  VkPipeline            matMulTransposePipeline = VK_NULL_HANDLE;
+  VkDescriptorSetLayout matMulTransposeDSLayout = VK_NULL_HANDLE;
+  VkDescriptorSetLayout CreatematMulTransposeDSLayout();
+
   VkDescriptorPool m_dsPool = VK_NULL_HANDLE;
   VkDescriptorSet  m_allGeneratedDS[{{TotalDSNumber}}];
 
   {{MainClassName}}{{MainClassSuffix}}_UBO_Data m_uboData;
-  
+
   constexpr static uint32_t MEMCPY_BLOCK_SIZE = 256;
   constexpr static uint32_t REDUCTION_BLOCK_SIZE = 256;
 
@@ -425,7 +431,7 @@ protected:
     size_t                m_scanMaxSize;
     std::vector<VkBuffer> InitTempBuffers(VkDevice a_device, size_t a_maxSize);
     void                  DeleteTempBuffers(VkDevice a_device);
-    
+
     void ExclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size);
     void InclusiveScanCmd(VkCommandBuffer a_cmdBuffer, size_t a_size, bool actuallyExclusive = false);
 
@@ -465,22 +471,22 @@ protected:
   BitonicSortData m_sort_{{Sort.Type}};
   {% endfor %}
   {% endif %}
-  virtual void MakeComputePipelineAndLayout(const char* a_shaderPath, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout, 
+  virtual void MakeComputePipelineAndLayout(const char* a_shaderPath, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout,
                                             VkPipelineLayout* pPipelineLayout, VkPipeline* pPipeline);
-  virtual void MakeComputePipelineOnly(const char* a_shaderPath, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout, VkPipelineLayout pipelineLayout, 
+  virtual void MakeComputePipelineOnly(const char* a_shaderPath, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout, VkPipelineLayout pipelineLayout,
                                        VkPipeline* pPipeline);
   {% if UseRayGen %}
-  virtual void MakeRayTracingPipelineAndLayout(const std::vector< std::pair<VkShaderStageFlagBits, std::string> >& shader_paths, bool a_hw_motion_blur, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout, 
-                                               VkPipelineLayout* pPipelineLayout, VkPipeline* pPipeline); 
-  virtual void AllocAllShaderBindingTables(); 
+  virtual void MakeRayTracingPipelineAndLayout(const std::vector< std::pair<VkShaderStageFlagBits, std::string> >& shader_paths, bool a_hw_motion_blur, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout,
+                                               VkPipelineLayout* pPipelineLayout, VkPipeline* pPipeline);
+  virtual void AllocAllShaderBindingTables();
   std::vector<VkBuffer> m_allShaderTableBuffers;
-  VkDeviceMemory        m_allShaderTableMem;                                              
+  VkDeviceMemory        m_allShaderTableMem;
   {% endif %}
 
   std::vector<VkPipelineLayout> m_allCreatedPipelineLayouts; ///<! remenber them here to delete later
   std::vector<VkPipeline>       m_allCreatedPipelines;       ///<! remenber them here to delete later
   {% if length(SpecConstants) > 0 %}
-  std::vector<uint32_t>                  m_allSpecConstVals; ///<! require user to define "ListRequiredFeatures" func.    
+  std::vector<uint32_t>                  m_allSpecConstVals; ///<! require user to define "ListRequiredFeatures" func.
   std::vector<VkSpecializationMapEntry>  m_allSpecConstInfo;
   VkSpecializationInfo                   m_allSpecInfo;
   const VkSpecializationInfo*            GetAllSpecInfo();
