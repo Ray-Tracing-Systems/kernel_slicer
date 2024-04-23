@@ -113,14 +113,14 @@ void TestClass::GetExecutionTime(const char* a_funcName, float a_out[4])
 
 uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNumber, 
                                          const uint32_t* a_triIndices, size_t a_indNumber, 
-                                         BuildQuality a_qualityLevel, size_t vByteStride)
+                                         uint32_t a_qualityLevel, size_t vByteStride)
 {
   const float4* verts2 = (const float4*)a_vpos3f;
   trivets = std::vector<float4>(verts2, verts2+a_vertNumber);
   return 0;
 } 
 
-CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFar)
+CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFar, float time)
 {
   const float3 rayPos  = to_float3(rayPosAndNear);
   const float3 ray_dir = to_float3(rayDirAndFar);

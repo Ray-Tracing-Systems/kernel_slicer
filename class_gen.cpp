@@ -78,8 +78,19 @@ std::string kslicer::MainClassInfo::RemoveKernelPrefix(const std::string& a_func
 
 bool kslicer::MainClassInfo::IsKernel(const std::string& a_funcName) const
 {
-  auto pos = a_funcName.find("kernel_");
-  return (pos != std::string::npos);
+  auto pos0 = a_funcName.find("kernel_");
+  
+  auto pos1 = a_funcName.find("kernel1D_");
+  auto pos2 = a_funcName.find("kernel2D_");
+  auto pos3 = a_funcName.find("kernel3D_");
+ 
+  auto pos4 = a_funcName.find("kernelBE1D_");
+  auto pos5 = a_funcName.find("kernelBE2D_");
+  auto pos6 = a_funcName.find("kernelBE3D_");
+
+  return (pos0 != std::string::npos) || 
+         (pos1 != std::string::npos) || (pos2 != std::string::npos) || (pos3 != std::string::npos) ||
+         (pos4 != std::string::npos) || (pos5 != std::string::npos) || (pos6 != std::string::npos);
 }
 
 bool kslicer::IsTextureContainer(const std::string& a_typeName)
