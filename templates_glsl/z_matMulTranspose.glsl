@@ -30,7 +30,7 @@ void main()
   uint cCol = lN * matrixID.x;
   fcoopmatNV<16, gl_ScopeWorkgroup, lM, lK> matA;
   fcoopmatNV<16, gl_ScopeWorkgroup, lK, lN> matB;
-  fcoopmatNV<32, gl_ScopeWorkgroup, lM, lN> matC;
+  fcoopmatNV<32, gl_ScopeWorkgroup, lM, lN> matC = fcoopmatNV<32, gl_ScopeWorkgroup, lM, lN>(0.0f);
 
   for (uint k = 0; k < kgenArgs.m_A_row_len; k += lK) {
     uint aRow = lM * matrixID.y;
