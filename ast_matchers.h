@@ -49,12 +49,6 @@ namespace kslicer
                                                                      const kslicer::MainClassInfo& a_codeInfo);
 
   clang::ast_matchers::DeclarationMatcher MakeMatch_Kernel1DBlockExpansion();
-  
-  std::vector<std::string>        ListAllBlockExpansionKernels(clang::tooling::ClangTool& Tool, 
-                                                               const std::string& a_mainClassName, 
-                                                               const clang::CompilerInstance& a_compiler,
-                                                               const kslicer::MainClassInfo& a_codeInfo);
-
 
   /**\brief Complain if pointer is invalid.
   \param p: pointer
