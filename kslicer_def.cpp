@@ -2,7 +2,7 @@
 #include <array>
 
 static std::array<std::string,7> POSSIBLE_KERNEL_NAMES = {"kernel_", "kernel1D_", "kernel2D_", "kernel3D_", "kernelBE1D_", "kernelBE2D_", "kernelBE3D_"};
-static std::array<std::string,6> POSSIBLE_IMAGE_NAMES  = {"Texture1D", "Texture2D", "Texture3D", "Image1D", "Image2D", "Image3D", "ImageCube"};
+static std::array<std::string,8> POSSIBLE_IMAGE_NAMES  = {"Texture1D", "Texture2D", "Texture3D", "TextureCube", "Image1D", "Image2D", "Image3D", "ImageCube"};
 
 bool kslicer::MainClassInfo::IsKernel(const std::string& a_funcName) const
 {

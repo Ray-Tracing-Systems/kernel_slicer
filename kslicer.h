@@ -1037,6 +1037,8 @@ namespace kslicer
 
     void ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler);
 
+    void ProcessBlockExpansionKernel(KernelInfo& a_kernel);
+
     mutable std::vector<std::string> kernelsCallCmdDeclCached;
   };
 
