@@ -142,7 +142,9 @@ namespace std
     using add_cv_t          = typename add_cv<T>::type;
  
   // reference modifications
-  template<class T> struct remove_reference;
+  template<class T> struct remove_reference { typedef T type; };
+  template<class T> struct remove_reference<T&> { typedef T type; };
+  template<class T> struct remove_reference<T&&> { typedef T type; };
   template<class T> struct add_lvalue_reference;
   template<class T> struct add_rvalue_reference;
  
