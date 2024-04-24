@@ -244,8 +244,11 @@ protected:
   virtual void AssignBuffersToMemory(const std::vector<VkBuffer>& a_buffers, VkDeviceMemory a_mem);
 
   virtual void AllocMemoryForMemberBuffersAndImages(const std::vector<VkBuffer>& a_buffers, const std::vector<VkImage>& a_image);
+  {% if HasGetResDirFunc %}
+  virtual std::string AlterShaderPath(const char* in_shaderPath) { return GetResourcesRootDir() + "/" + std::string("{{ShaderFolderPrefix}}") + std::string(in_shaderPath); }
+  {% else %}
   virtual std::string AlterShaderPath(const char* in_shaderPath) { return std::string("{{ShaderFolderPrefix}}") + std::string(in_shaderPath); }
-
+  {% endif %}
   {{PlainMembersUpdateFunctions}}
   {{VectorMembersUpdateFunctions}}
 

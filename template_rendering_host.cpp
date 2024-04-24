@@ -1174,6 +1174,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     auto pScnRstr = a_classInfo.allMemberFunctions.find("SceneRestrictions");
     auto pNameFn  = a_classInfo.allMemberFunctions.find("Name");
 
+    auto pResDir  = a_classInfo.allMemberFunctions.find("GetResourcesRootDir");
+
     auto pNamePBI  = a_classInfo.allMemberFunctions.find("ProgressBarStart");
     auto pNamePBA  = a_classInfo.allMemberFunctions.find("ProgressBarAccum");
     auto pNamePBD  = a_classInfo.allMemberFunctions.find("ProgressBarDone");
@@ -1194,6 +1196,14 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     {
       if(!pGetTime->second->isVirtual())
         std::cout << "  [kslicer]: warning, function 'GetExecutionTime' should be virtual" << std::endl;
+    }
+
+    if(pResDir == a_classInfo.allMemberFunctions.end())
+      std::cout << "  [kslicer]: warning, can't find fuction 'GetResourcesRootDir', you should define it: 'virtual std::string GetResourcesRootDir(){}'" << std::endl;
+    else
+    {
+      if(!pResDir->second->isVirtual())
+        std::cout << "  [kslicer]: warning, function 'GetResourcesRootDir' should be virtual" << std::endl;
     }
 
     if(pUpdPOD != a_classInfo.allMemberFunctions.end())
@@ -1223,6 +1233,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["HasNameFunc"]               = (pNameFn != a_classInfo.allMemberFunctions.end());
     data["HasCommitDeviceFunc"]       = (pCommit  != a_classInfo.allMemberFunctions.end());
     data["HasGetTimeFunc"]            = (pGetTime != a_classInfo.allMemberFunctions.end());
+
+    data["HasGetResDirFunc"]          = (pResDir != a_classInfo.allMemberFunctions.end());
 
     data["UpdateMembersPlainData"]    = (pUpdPOD  != a_classInfo.allMemberFunctions.end());
     data["UpdateMembersVectorData"]   = (pUpdVec  != a_classInfo.allMemberFunctions.end());
