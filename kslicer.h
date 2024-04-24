@@ -1082,8 +1082,6 @@ namespace kslicer
 
   struct IPV_Pattern : public MainClassInfo
   {
-    std::string   RemoveKernelPrefix(const std::string& a_funcName) const override; ///<! "kernel2D_XXX" --> "XXX";
-
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
     void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;

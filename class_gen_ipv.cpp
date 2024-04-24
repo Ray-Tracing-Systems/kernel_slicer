@@ -11,36 +11,6 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::string kslicer::IPV_Pattern::RemoveKernelPrefix(const std::string& a_funcName) const ///<! "kernel2D_XXX" --> "XXX"; 
-{
-  std::string name = a_funcName;
-  if(ReplaceFirst(name, "kernel1D_", "") || ReplaceFirst(name, "kernel2D_", "") || ReplaceFirst(name, "kernel3D_", ""))
-    return name;
-  else
-    return a_funcName;
-}
-
-uint32_t kslicer::IPV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel) const
-{
-  const std::string& a_funcName = a_kernel.name;
-  auto pos1 = a_funcName.find("kernel1D_");
-  auto pos2 = a_funcName.find("kernel2D_");
-  auto pos3 = a_funcName.find("kernel3D_");
-
-  auto pos4 = a_funcName.find("kernelBE1D_");
-  auto pos5 = a_funcName.find("kernelBE2D_");
-  auto pos6 = a_funcName.find("kernelBE3D_");
-
-  if(pos1 != std::string::npos || pos4 != std::string::npos)
-    return 1;
-  else if(pos2 != std::string::npos || pos5 != std::string::npos) 
-    return 2;
-  else if(pos3 != std::string::npos || pos6 != std::string::npos)
-    return 3;
-  else
-    return 0;
-} 
-
 void kslicer::IPV_Pattern::ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const 
 {
   auto found = std::find_if(a_kernel.loopIters.begin(), a_kernel.loopIters.end(), 

@@ -258,12 +258,12 @@ std::unordered_map<std::string, kslicer::CFNameInfo> kslicer::ListAllMainRTFunct
                                                                                      const MainClassInfo& a_codeInfo)
 {
   auto kernelCallMatcher  = kslicer::MakeMatch_MethodCallFromMethod();
-  auto kernelBlockMatcher = kslicer::MakeMatch_Kernel1DBlockExpansion();
+  //auto kernelBlockMatcher = kslicer::MakeMatch_Kernel1DBlockExpansion();
   
   MainFuncSeeker printer(std::cout, a_mainClassName, a_astContext, a_codeInfo);
   clang::ast_matchers::MatchFinder finder;
   finder.addMatcher(kernelCallMatcher,  &printer);
-  finder.addMatcher(kernelBlockMatcher,  &printer);
+  //finder.addMatcher(kernelBlockMatcher,  &printer);
 
   auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
   if(res != 0) 

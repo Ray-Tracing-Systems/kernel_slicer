@@ -36,6 +36,7 @@ add_executable(kslicer
                kslicer_main.cpp
                kslicer_utils.cpp
                kslicer_warnings.cpp
+               kslicer_def.cpp
                attributes.cpp
                initial_pass.cpp
                initial_pass_compos.cpp
