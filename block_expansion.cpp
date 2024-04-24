@@ -8,7 +8,7 @@
 #include <sstream>
 #include <algorithm>
 
-void kslicer::MainClassInfo::ProcessBlockExpansionKernel(KernelInfo& a_kernel)
+void kslicer::MainClassInfo::ProcessBlockExpansionKernel(KernelInfo& a_kernel, const clang::CompilerInstance& a_compiler)
 {
   auto kernelBody = a_kernel.loopIters[a_kernel.loopIters.size()-1].bodyNode;
   if(!clang::isa<clang::CompoundStmt>(kernelBody))
@@ -17,7 +17,7 @@ void kslicer::MainClassInfo::ProcessBlockExpansionKernel(KernelInfo& a_kernel)
   const clang::CompoundStmt* kernelBody2 = clang::dyn_cast<clang::CompoundStmt>(kernelBody);
   
   std::cout << "  BlockExpansion: " << a_kernel.name.c_str() << std::endl;
-  kernelBody->dump();
+  //kernelBody->dump();
   
   enum BEType{BE_SHARED_VARIABLE = 0, BE_PARALLEL_FOR = 1, BE_SINGLE = 2};
   struct BECode
@@ -41,15 +41,14 @@ void kslicer::MainClassInfo::ProcessBlockExpansionKernel(KernelInfo& a_kernel)
     else if(clang::isa<clang::ForStmt>(child))
     {
       const clang::ForStmt* forExpr = clang::dyn_cast<const clang::ForStmt>(child);
-      //if(forExpr->hasAttrs())
-      //{
-      //  
-      //}
-      //const auto *AttrList = forExpr->getAttrs();
-      //for (const auto *attr : AttrList) {
-      //  std::cout << "  forAttr: " << attr->getName() << std::endl;
-      //}
+      std::string text = kslicer::GetRangeSourceCode(forExpr->getSourceRange(), a_compiler);
+      if(text.find("[[parallel]]") != std::string::npos) 
+        blockOperators.push_back(BECode(child, BE_PARALLEL_FOR));
+      else
+        blockOperators.push_back(BECode(child, BE_SINGLE));
     }
+    else
+      blockOperators.push_back(BECode(child, BE_SINGLE));
   }
   
   int a = 2;

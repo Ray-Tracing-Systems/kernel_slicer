@@ -14,17 +14,16 @@ void TestClass::kernelBE1D_Test(uint blockNum, float* out_buffer)
   {
     float blockData[bsize];  // will be stored in shared memory
 
-    #pragma omp parallel for
-    for(int localId = 0; localId < bsize; localId++) // full parallel
+    for(int localId = 0; localId < bsize; localId++) [[parallel]]  // full parallel
     {
       blockData[localId] = float(localId + blockId);
     }
     
+    blockData[5] = 5.0f;
     for(int localId = 0; localId < 4; localId++)                  // single threaded loop
       blockData[localId] = 4.0f;                                        
     
-    #pragma omp parallel for 
-    for(int localId = 0; localId < bsize; localId++) // full parallel
+    for(int localId = 0; localId < bsize; localId++) [[parallel]]  // full parallel
     {
       out_buffer[blockId*bsize + localId] = blockData[localId];
     }

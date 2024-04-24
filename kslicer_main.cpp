@@ -521,7 +521,7 @@ int main(int argc, const char **argv)
 
     inputCodeInfo.VisitAndPrepare_KF(kernel, compiler);
     if(kernel.name.find("kernelBE") != std::string::npos)
-      inputCodeInfo.ProcessBlockExpansionKernel(kernel);
+      inputCodeInfo.ProcessBlockExpansionKernel(kernel, compiler);
 
     if(kernel.hasFinishPass) // add additional buffers for reduction
     {
