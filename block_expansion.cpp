@@ -41,6 +41,10 @@ void kslicer::MainClassInfo::ProcessBlockExpansionKernel(KernelInfo& a_kernel)
     else if(clang::isa<clang::ForStmt>(child))
     {
       const clang::ForStmt* forExpr = clang::dyn_cast<const clang::ForStmt>(child);
+      //if(forExpr->hasAttrs())
+      //{
+      //  
+      //}
       //const auto *AttrList = forExpr->getAttrs();
       //for (const auto *attr : AttrList) {
       //  std::cout << "  forAttr: " << attr->getName() << std::endl;

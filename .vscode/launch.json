@@ -2240,7 +2240,7 @@
             "args"   : ["${workspaceFolder}/apps/tests/030_block_expansion_v1/test_class.cpp",
                         "-mainClass", "TestClass", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
-                        "-pattern", "ipv",
+                        "-pattern", "ipv", 
                         "-I${workspaceFolder}/apps/LiteMath",    "ignore", 
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
                         "-I${workspaceFolder}/TINYSTL",          "ignore",
