@@ -2,10 +2,7 @@
 #include "template_rendering.h"
 #include <iostream>
 
-#ifdef WIN32
-  #include <direct.h>     // for windows mkdir
-#else
-  #include <sys/stat.h>   // for linux mkdir
+#ifdef _WIN32
   #include <sys/types.h>
 #endif
 
@@ -19,7 +16,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   const auto& mainClassFileName = a_codeInfo->mainClassFileName;
   const auto& ignoreFolders     = a_codeInfo->ignoreFolders;
 
-  #ifdef WIN32
+  #ifdef _WIN32
   const std::string scriptName = "build.bat";
   #else
   const std::string scriptName = "build.sh";
@@ -121,6 +118,12 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     nlohmann::json dummy;
     kslicer::ApplyJsonToTemplate(templatesFolder / "z_memcpy.glsl", shaderPath / "z_memcpy.comp", dummy); // just file copy actually
     buildSH << "glslangValidator -V z_memcpy.comp -o z_memcpy.comp.spv" << std::endl;
+  }
+  if(a_codeInfo->usedServiceCalls.find("MatMulTranspose") != a_codeInfo->usedServiceCalls.end())
+  {
+    nlohmann::json dummy;
+    kslicer::ApplyJsonToTemplate(templatesFolder / "z_matMulTranspose.glsl", shaderPath / "z_matMulTranspose.comp", dummy); // just file copy actually
+    buildSH << "glslangValidator -V z_matMulTranspose.comp -o z_matMulTranspose.comp.spv" << std::endl;
   }
 
   if(a_codeInfo->usedServiceCalls.find("exclusive_scan") != a_codeInfo->usedServiceCalls.end() ||

@@ -2,10 +2,7 @@
 #include "template_rendering.h"
 #include <iostream>
 
-#ifdef WIN32
-  #include <direct.h>     // for windows mkdir
-#else
-  #include <sys/stat.h>   // for linux mkdir
+#ifndef _WIN32
   #include <sys/types.h>
 #endif
 

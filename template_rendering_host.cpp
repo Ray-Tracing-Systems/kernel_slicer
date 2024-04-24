@@ -12,7 +12,7 @@
 
 #include <algorithm>
 
-#ifdef WIN32
+#ifdef _WIN32
 typedef unsigned int uint;
 #endif
 
@@ -513,6 +513,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
   data["UseServiceScan"]     = (a_classInfo.usedServiceCalls.find("exclusive_scan") != a_classInfo.usedServiceCalls.end()) || (a_classInfo.usedServiceCalls.find("inclusive_scan") != a_classInfo.usedServiceCalls.end());
   data["UseServiceSort"]     = (a_classInfo.usedServiceCalls.find("sort") != a_classInfo.usedServiceCalls.end());
+  data["UseMatMult"]         = (a_classInfo.usedServiceCalls.find("MatMulTranspose") != a_classInfo.usedServiceCalls.end());
   data["GenGpuApi"]          = a_classInfo.genGPUAPI;
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
@@ -1333,8 +1334,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       //std::cout << "[ds bindings] kname = " << dsArgs.originKernelName.c_str() << std::endl;
 
       const auto pFoundKernel   = a_classInfo.FindKernelByName(dsArgs.originKernelName);
-      const bool internalKernel = (pFoundKernel == a_classInfo.kernels.end());
-      const bool isMegaKernel   = internalKernel ? false : pFoundKernel->second.isMega;
+      const bool internalKernel = (a_classInfo.kernels.find(dsArgs.originKernelName) == a_classInfo.kernels.end());
+      const bool isServeceKernel = kslicer::GetAllServiceKernels().count(dsArgs.originKernelName) > 0;
+      const bool isMegaKernel   = internalKernel || isServeceKernel ? false : pFoundKernel->second.isMega;
 
       json local;
       local["Id"]         = i;
@@ -1348,7 +1350,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       uint32_t realId = 0;
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
-        if(!internalKernel && !a_classInfo.pShaderCC->IsISPC())
+        if(!internalKernel && !isServeceKernel && !a_classInfo.pShaderCC->IsISPC())
         {
           const bool ignoreArg = IgnoreArgForDS(j, dsArgs.descriptorSetsInfo, pFoundKernel->second.args, pFoundKernel->second.name, a_classInfo.IsRTV());
           if(ignoreArg && !isMegaKernel)
@@ -1415,7 +1417,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         realId++;
       }
 
-      if(pFoundKernel != a_classInfo.kernels.end() && !isMegaKernel) // seems for MegaKernel these containers are already in 'dsArgs.descriptorSetsInfo'
+      if(!internalKernel && !isMegaKernel) // seems for MegaKernel these containers are already in 'dsArgs.descriptorSetsInfo'
       {
         for(const auto& container : pFoundKernel->second.usedContainers) // add all class-member vectors bindings
         {

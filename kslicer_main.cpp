@@ -3,6 +3,7 @@
 #include <system_error>
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 
 #include <unordered_map>
 #include <iomanip>
@@ -47,29 +48,13 @@
 using namespace clang;
 #include "template_rendering.h"
 
-#ifdef WIN32
-  #include <windows.h>    // for GetCurrentDirectoryW
-  #include <direct.h>     // for windows mkdir
-#else
-  #include <sys/stat.h>   // for linux mkdir
-  #include <unistd.h>     // for getcwd
-#endif
-
 using kslicer::KernelInfo;
 using kslicer::DataMemberInfo;
 
 int main(int argc, const char **argv)
 {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  #ifdef WIN32
-  wchar_t NPath[512];
-  GetCurrentDirectoryW(512, NPath);
-  std::wcout << L"[main]: work_dir = " << NPath << std::endl;
-  #else
-  char cwd[1024];
-  if (getcwd(cwd, sizeof(cwd)) != nullptr)
-    std::cout << "[main]: work_dir = " << cwd << std::endl;
-  #endif
+  std::cout << "[main]: work_dir = " << std::filesystem::current_path() << std::endl;
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   if (argc < 2)
