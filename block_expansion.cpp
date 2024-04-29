@@ -8,6 +8,41 @@
 #include <sstream>
 #include <algorithm>
 
+kslicer::KernelInfo::BlockExpansionInfo ExtractBlocks(const clang::CompoundStmt* kernelBody2, const clang::CompilerInstance& a_compiler)
+{
+  kslicer::KernelInfo::BlockExpansionInfo be;
+  be.enabled = true;
+
+  // iterate over whole code
+  for(const clang::Stmt* child : kernelBody2->children())
+  {
+    if(clang::isa<clang::DeclStmt>(child)) 
+    {
+      be.sharedDecls.push_back(clang::dyn_cast<const clang::DeclStmt>(child));
+    }
+    else if(clang::isa<clang::ForStmt>(child))
+    {
+      const clang::ForStmt* forExpr = clang::dyn_cast<const clang::ForStmt>(child);
+      std::string text = kslicer::GetRangeSourceCode(forExpr->getSourceRange(), a_compiler);
+      kslicer::KernelInfo::BEBlock block;
+      block.isParallel = (text.find("[[parallel]]") != std::string::npos);
+      block.astNode    = child;
+      block.forLoop    = forExpr;
+      be.statements.push_back(block); 
+    }
+    else
+    {
+      kslicer::KernelInfo::BEBlock block;
+      block.isParallel = false;
+      block.astNode    = child;
+      block.forLoop    = nullptr;
+      be.statements.push_back(block); 
+    }
+  }
+
+  return be;
+}
+
 void kslicer::MainClassInfo::ProcessBlockExpansionKernel(KernelInfo& a_kernel, const clang::CompilerInstance& a_compiler)
 {
   auto kernelBody = a_kernel.loopIters[a_kernel.loopIters.size()-1].bodyNode;
@@ -15,42 +50,23 @@ void kslicer::MainClassInfo::ProcessBlockExpansionKernel(KernelInfo& a_kernel, c
     return;
   
   const clang::CompoundStmt* kernelBody2 = clang::dyn_cast<clang::CompoundStmt>(kernelBody);
-  
   std::cout << "  BlockExpansion: " << a_kernel.name.c_str() << std::endl;
   //kernelBody->dump();
   
-  enum BEType{BE_SHARED_VARIABLE = 0, BE_PARALLEL_FOR = 1, BE_SINGLE = 2};
-  struct BECode
-  {
-    BECode(){}
-    BECode(const clang::Stmt* a_node, BEType a_type) : node(a_node), type(a_type) {}
-    const clang::Stmt* node = nullptr;
-    BEType             type = BE_SINGLE;
-  };
+  a_kernel.be = ExtractBlocks(kernelBody2, a_compiler);
+}
 
-  std::vector<BECode> sharedDecls;
-  std::vector<BECode> blockOperators;
+std::string kslicer::IShaderCompiler::RewriteBESharedDecl(const clang::DeclStmt* decl, std::shared_ptr<KernelRewriter> pRewriter)
+{
+  return "";
+}
 
-  // iterate over whole code
-  for(const clang::Stmt* child : kernelBody2->children())
-  {
-    if(clang::isa<clang::DeclStmt>(child)) 
-    {
-      sharedDecls.push_back(BECode(child, BE_SHARED_VARIABLE));
-    }
-    else if(clang::isa<clang::ForStmt>(child))
-    {
-      const clang::ForStmt* forExpr = clang::dyn_cast<const clang::ForStmt>(child);
-      std::string text = kslicer::GetRangeSourceCode(forExpr->getSourceRange(), a_compiler);
-      if(text.find("[[parallel]]") != std::string::npos) 
-        blockOperators.push_back(BECode(child, BE_PARALLEL_FOR));
-      else
-        blockOperators.push_back(BECode(child, BE_SINGLE));
-    }
-    else
-      blockOperators.push_back(BECode(child, BE_SINGLE));
-  }
-  
-  int a = 2;
+std::string kslicer::IShaderCompiler::RewriteBEParallelFor(const clang::ForStmt* forExpr, std::shared_ptr<KernelRewriter> pRewriter)
+{
+  return "";
+}
 
+std::string kslicer::IShaderCompiler::RewriteBEStmt(const clang::Stmt* stmt, std::shared_ptr<KernelRewriter> pRewriter)
+{
+  return "";
 }

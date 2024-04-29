@@ -619,9 +619,36 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     kernelJson["UseRayGen"]      = k.enableRTPipeline && a_settings.enableRayGen;       // duplicate these options for kernels so we can
     kernelJson["UseMotionBlur"]  = k.enableRTPipeline && a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
+    
+    kernelJson["EnableBlockExpansion"] = k.be.enabled;
+    if(k.be.enabled) // process separate statements inside for loop for Block Expansion
+    {
+      kernelJson["Source"]   = "";
+      kernelJson["SourceBE"] = std::vector<std::string>(); 
+      kernelJson["SharedBE"] = std::vector<std::string>();
+      
+      clang::Rewriter rewrite2;
+      rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+      std::shared_ptr<KernelRewriter> pRewriter = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), std::string(""), false);
 
-    std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
-    kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
+      for(const auto var : k.be.sharedDecls)
+        kernelJson["SharedBE"].push_back(a_classInfo.pShaderCC->RewriteBESharedDecl(var, pRewriter));
+      
+      for(const auto stmt : k.be.statements) 
+      {
+        if(stmt.isParallel && stmt.forLoop != nullptr)
+          kernelJson["SourceBE"].push_back(a_classInfo.pShaderCC->RewriteBEParallelFor(stmt.forLoop, pRewriter));
+        else
+          kernelJson["SourceBE"].push_back(a_classInfo.pShaderCC->RewriteBEStmt(stmt.astNode, pRewriter));
+      }
+    }
+    else             // process the whole code in single pass 
+    {
+      std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
+      kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
+      kernelJson["SourceBE"]    = std::vector<std::string>();
+      kernelJson["SharedBE"]    = std::vector<std::string>();
+    }
 
     kernelJson["SpecConstants"] = std::vector<std::string>();
     for(auto keyval : specConsts)

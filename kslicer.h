@@ -264,6 +264,22 @@ namespace kslicer
     std::vector<const KernelInfo*>                     subkernels;          ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
     ShittyFunction                                     currentShit;         ///<!
 
+    struct BEBlock
+    {
+      bool                  isParallel = false;
+      const clang::ForStmt* forLoop    = nullptr;
+      const clang::Stmt*    astNode    = nullptr;
+    };
+
+    struct BlockExpansionInfo
+    {
+      std::vector<const clang::DeclStmt*> sharedDecls;
+      std::vector<BEBlock>                statements;
+      bool enabled = false;
+    };
+
+    BlockExpansionInfo be;
+
     std::string rewrittenText;                   ///<! rewritten source code of a kernel
     std::string rewrittenInit;                   ///<! rewritten loop initialization code for kernel
     std::string rewrittenFinish;                 ///<! rewritten loop finish         code for kernel
@@ -783,6 +799,12 @@ namespace kslicer
     virtual std::string Name() const { return "unknown shader compiler"; }
 
     virtual std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const = 0;
+    
+    // for block expansion
+    //
+    virtual std::string RewriteBESharedDecl(const clang::DeclStmt* decl, std::shared_ptr<KernelRewriter> pRewriter);
+    virtual std::string RewriteBEParallelFor(const clang::ForStmt* forExpr, std::shared_ptr<KernelRewriter> pRewriter);
+    virtual std::string RewriteBEStmt(const clang::Stmt* stmt, std::shared_ptr<KernelRewriter> pRewriter);
   };
 
   struct ClspvCompiler : IShaderCompiler
