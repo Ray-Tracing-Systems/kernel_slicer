@@ -151,6 +151,12 @@ shared {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][{{Kernel.WGSi
 {% endfor %}
 {% endif %}
 
+{% if Kernel.EnableBlockExpansion %}
+{% for Var in Kernel.SharedBE %}
+shared {{Var}}
+{% endfor %}
+{% endif %}
+
 void main()
 {
   bool runThisThread = true;
@@ -174,12 +180,18 @@ void main()
   {% endif %}
   ///////////////////////////////////////////////////////////////// prolog
   {% endif %}
+  {% if Kernel.EnableBlockExpansion %}
+  {% for Block in Kernel.SourceBE %}
+  {{Block}}
+  {% endfor %}
+  {% else %}
   if(runThisThread)
   {
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {{Kernel.Source}}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   }
+  {% endif %} {# /* EnableBlockExpansion */ #}
   {% if Kernel.HasEpilog %}
   //KGEN_EPILOG:
   {% if Kernel.IsBoolean %}

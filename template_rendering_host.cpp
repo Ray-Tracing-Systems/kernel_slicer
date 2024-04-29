@@ -1198,13 +1198,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         std::cout << "  [kslicer]: warning, function 'GetExecutionTime' should be virtual" << std::endl;
     }
 
-    if(pResDir == a_classInfo.allMemberFunctions.end())
-      std::cout << "  [kslicer]: warning, can't find fuction 'GetResourcesRootDir', you should define it: 'virtual std::string GetResourcesRootDir(){}'" << std::endl;
-    else
-    {
-      if(!pResDir->second->isVirtual())
-        std::cout << "  [kslicer]: warning, function 'GetResourcesRootDir' should be virtual" << std::endl;
-    }
+    //if(pResDir == a_classInfo.allMemberFunctions.end())
+    //  std::cout << "  [kslicer]: warning, can't find fuction 'GetResourcesRootDir', you should define it: 'virtual std::string GetResourcesRootDir(){}'" << std::endl;
+    //else
+    //{
+    //  if(!pResDir->second->isVirtual())
+    //    std::cout << "  [kslicer]: warning, function 'GetResourcesRootDir' should be virtual" << std::endl;
+    //}
 
     if(pUpdPOD != a_classInfo.allMemberFunctions.end())
     {

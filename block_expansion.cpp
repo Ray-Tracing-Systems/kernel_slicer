@@ -58,15 +58,15 @@ void kslicer::MainClassInfo::ProcessBlockExpansionKernel(KernelInfo& a_kernel, c
 
 std::string kslicer::IShaderCompiler::RewriteBESharedDecl(const clang::DeclStmt* decl, std::shared_ptr<KernelRewriter> pRewriter)
 {
-  return "";
+  return pRewriter->RecursiveRewrite(decl);
 }
 
 std::string kslicer::IShaderCompiler::RewriteBEParallelFor(const clang::ForStmt* forExpr, std::shared_ptr<KernelRewriter> pRewriter)
 {
-  return "";
+  return pRewriter->RecursiveRewrite(forExpr);
 }
 
 std::string kslicer::IShaderCompiler::RewriteBEStmt(const clang::Stmt* stmt, std::shared_ptr<KernelRewriter> pRewriter)
 {
-  return "";
+  return pRewriter->RecursiveRewrite(stmt);
 }
