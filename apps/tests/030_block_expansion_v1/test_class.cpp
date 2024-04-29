@@ -1,8 +1,6 @@
 #include "test_class.h"
 #include <cstdint>
 
-#define MY_BLOCK_SIZE 64
-
 void TestClass::Test(uint numElements, float* out_buffer)
 {
   kernelBE1D_Test(numElements/MY_BLOCK_SIZE, out_buffer);

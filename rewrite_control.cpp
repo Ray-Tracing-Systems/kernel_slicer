@@ -108,7 +108,7 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
   for(size_t i=0;i<f->getNumArgs();i++)
   {
     const Expr* currArgExpr = f->getArgs()[i];
-    //std::string text = GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler);
+    std::string textDebug = GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler);
     std::string text = RecursiveRewrite(currArgExpr);
     argsOut << text.c_str();
     if(i < f->getNumArgs()-1)

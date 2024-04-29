@@ -22,4 +22,6 @@ public:
 
   virtual void CommitDeviceData() {}                                       // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class
+
+  static constexpr uint MY_BLOCK_SIZE = 64;
 };
