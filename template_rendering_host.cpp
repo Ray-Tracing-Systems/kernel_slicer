@@ -922,6 +922,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["UseRayGen"]      = k.enableRTPipeline && a_settings.enableRayGen;       // duplicate these options for kernels so we can
     kernelJson["UseMotionBlur"]  = k.enableRTPipeline && a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
     kernelJson["StageFlags"]     = k.enableRTPipeline ? "(VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)" : "VK_SHADER_STAGE_COMPUTE_BIT";
+    kernelJson["EnableBlockExpansion"] = k.be.enabled;
 
     size_t actualSize = 0;
     for(const auto& arg : k.args)
@@ -1358,6 +1359,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["ArgNames"]   = std::vector<std::string>();
       local["IsServiceCall"] = dsArgs.isService;
       local["IsVirtual"]     = false;
+      local["EnableBlockExpansion"] = pFoundKernel->second.be.enabled;
 
       uint32_t realId = 0;
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)

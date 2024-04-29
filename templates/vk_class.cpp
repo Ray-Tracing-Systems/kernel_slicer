@@ -275,6 +275,8 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   {% if Kernel.UseRayGen %}
   const auto* strides = {{Kernel.Name}}SBTStrides.data();
   vkCmdTraceRaysKHR(m_currCmdBuffer, &strides[0],&strides[1],&strides[2],&strides[3], sizeX,sizeY,sizeZ);
+  {% else if Kernel.EnableBlockExpansion %}
+  vkCmdDispatch    (m_currCmdBuffer, pcData.m_sizeX, pcData.m_sizeY, pcData.m_sizeZ);
   {% else %}
   vkCmdDispatch    (m_currCmdBuffer, (sizeX + blockSizeX - 1) / blockSizeX, (sizeY + blockSizeY - 1) / blockSizeY, (sizeZ + blockSizeZ - 1) / blockSizeZ);
   {% endif %}

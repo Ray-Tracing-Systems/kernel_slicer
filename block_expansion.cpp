@@ -85,26 +85,6 @@ std::string kslicer::IShaderCompiler::RewriteBEParallelFor(const clang::ForStmt*
   std::string condText = loopInit + "  " + std::string("if(") + kslicer::GetRangeSourceCode(cond->getSourceRange(), pRewriter->GetCompiler()) + ")"; // pRewriter->RecursiveRewrite(cond)
     
   return condText + pRewriter->RecursiveRewrite(body);
-  
-  //if (!clang::isa<clang::BinaryOperator>(cond))
-  //  return pRewriter->RecursiveRewrite(forExpr);
-  //
-  //const clang::BinaryOperator* binOp = clang::dyn_cast<clang::BinaryOperator>(cond);
-  //const clang::Expr *LHS = binOp->getLHS();
-  //const clang::Expr *RHS = binOp->getRHS();
-  
-  //auto astContext = pRewriter->GetCompiler().getASTContext();
-  //
-  //if(LHS->isIntegerConstantExpr(astContext)) 
-  //{
-  //  llvm::APInt LHSVal = LHS->EvaluateKnownConstInt(astContext);
-  //} 
-  //else
-  //{
-  //
-  //}
-
-  //return pRewriter->RecursiveRewrite(forExpr);
 }
 
 std::string kslicer::IShaderCompiler::RewriteBEStmt(const clang::Stmt* stmt, std::shared_ptr<KernelRewriter> pRewriter)
