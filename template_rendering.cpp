@@ -636,10 +636,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       
       for(const auto stmt : k.be.statements) 
       {
+        json statement;
         if(stmt.isParallel && stmt.forLoop != nullptr)
-          kernelJson["SourceBE"].push_back(a_classInfo.pShaderCC->RewriteBEParallelFor(stmt.forLoop, pRewriter));
+        {
+          statement["IsParallel"] = true;
+          statement["Text"]     = a_classInfo.pShaderCC->RewriteBEParallelFor(stmt.forLoop, pRewriter);
+        }
         else
-          kernelJson["SourceBE"].push_back(a_classInfo.pShaderCC->RewriteBEStmt(stmt.astNode, pRewriter));
+        {
+          statement["IsParallel"] = false;
+          statement["Text"]     = a_classInfo.pShaderCC->RewriteBEStmt(stmt.astNode, pRewriter);
+        }
+        kernelJson["SourceBE"].push_back(statement);
       }
     }
     else             // process the whole code in single pass 

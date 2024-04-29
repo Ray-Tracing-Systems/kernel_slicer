@@ -9,8 +9,8 @@ void TestClass::Test(uint numElements, float* out_buffer)
 template<int bsize>
 void TestClass::kernelBE1D_Test(uint blockNum, float* out_buffer)
 {
-  #pragma omp parallel for
-  for(int blockId = 0; blockId < int(blockNum); blockId++) 
+  //#pragma omp parallel for
+  for(uint blockId = 0; blockId < blockNum; blockId++) 
   {
     float blockData[bsize];  // will be stored in shared memory
 
