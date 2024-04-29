@@ -194,10 +194,14 @@ void main()
   {% for Block in Kernel.SourceBE %}
   {% if Block.IsParallel %}
   barrier();
+  {
   {{Block.Text}}
+  }
   barrier();
   {% else %}
+  if(gl_LocalInvocationID[0] == 0) {
   {{Block.Text}}
+  }
   {% endif %}
   {% endfor %}
   {% else %}

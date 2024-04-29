@@ -18,7 +18,6 @@ public:
 
   virtual void Test(uint numElements, float*  out_buffer [[size("numElements")]]);
   
-  template<int bsize> 
   void kernelBE1D_Test(uint blockNum, float* out_buffer); 
 
   virtual void CommitDeviceData() {}                                       // will be overriden in generated class

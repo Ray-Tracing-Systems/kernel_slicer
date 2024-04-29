@@ -689,6 +689,8 @@ namespace kslicer
     bool processFuncMember = false;
     virtual void SetCurrFuncInfo  (kslicer::FuncData* a_pInfo) { m_pCurrFuncInfo = a_pInfo; }
     virtual void ResetCurrFuncInfo()                           { m_pCurrFuncInfo = nullptr; }
+    
+    const clang::CompilerInstance& GetCompiler() { return m_compiler; }
 
   protected:
 
