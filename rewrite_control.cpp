@@ -442,6 +442,9 @@ bool kslicer::MainFunctionRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
     auto pKernel = m_kernels.find(fname);
     if(pKernel != m_kernels.end())
     {
+      //std::string debugText = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
+      if(pKernel->second.be.enabled)
+        kslicer::ExtractBlockSizeFromCall(f, pKernel->second, m_compiler);
       std::string callStr = MakeKernelCallCmdString(f);
       m_rewriter.ReplaceText(f->getSourceRange(), callStr); // getExprLoc
       MarkRewritten(f);

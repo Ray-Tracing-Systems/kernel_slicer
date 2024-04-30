@@ -72,7 +72,7 @@ namespace kslicer
 
   private:
     
-    const std::unordered_map<std::string, KernelInfo>& m_kernels;
+    std::unordered_map<std::string, KernelInfo>&       m_kernels;
     std::unordered_map<std::string, InOutVarInfo>      m_argsOfMainFunc;
     MainFuncInfo&                                      m_mainFunc;
     std::shared_ptr< std::unordered_set<uint64_t> >    m_pRewrittenNodes;

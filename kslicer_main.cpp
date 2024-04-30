@@ -489,7 +489,7 @@ int main(int argc, const char **argv)
 
   std::cout << "(3) Mark data members, methods and functions which are actually used in kernels." << std::endl;
   std::cout << "{" << std::endl;
-
+  
   for(auto& nk : inputCodeInfo.kernels)
   {
     auto& kernel            = nk.second;
@@ -786,6 +786,8 @@ int main(int argc, const char **argv)
   for(auto& nk : inputCodeInfo.kernels)
   {
     auto& kernel   = nk.second;
+    if(kernel.be.enabled)
+      continue;
     auto kernelDim = kernel.GetDim();
     auto it = wgszJson.find(kernel.name);
     if(it != wgszJson.end())

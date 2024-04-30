@@ -17,11 +17,11 @@ public:
   TestClass(){}
 
   virtual void Test(uint numElements, float*  out_buffer [[size("numElements")]]);
-  
+
+  template<uint bsize> 
   void kernelBE1D_Test(uint blockNum, float* out_buffer); 
 
   virtual void CommitDeviceData() {}                                       // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class
 
-  static constexpr uint MY_BLOCK_SIZE = 64;
 };

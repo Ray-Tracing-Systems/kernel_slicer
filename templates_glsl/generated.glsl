@@ -152,6 +152,9 @@ shared {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][{{Kernel.WGSi
 {% endif %}
 
 {% if Kernel.EnableBlockExpansion %}
+{% for TID in Kernel.ThreadSizeBE %}
+const {{TID.Type}} {{TID.Name}} = {{TID.Value}}; 
+{% endfor %}
 {% for Var in Kernel.SharedBE %}
 shared {{Var}}
 {% endfor %}

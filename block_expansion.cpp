@@ -91,3 +91,77 @@ std::string kslicer::IShaderCompiler::RewriteBEStmt(const clang::Stmt* stmt, std
 {
   return pRewriter->RecursiveRewrite(stmt) + ";";
 }
+
+void ExtractTemplateParamsFromString(const std::string& input, int data[3]) 
+{
+  // Ищем позиции угловых скобок
+  size_t start = input.find('<');
+  size_t end = input.find('>');
+
+  // Если скобки не найдены, выводим ошибку и выходим
+  if (start == std::string::npos || end == std::string::npos) {
+      std::cout << "Error: No angle brackets found!\n";
+      return;
+  }
+
+  // Получаем строку между угловыми скобками
+  std::string valuesStr = input.substr(start + 1, end - start - 1);
+
+  // Используем строковый поток для разбиения строки на части
+  std::istringstream iss(valuesStr);
+  std::string token;
+  std::vector<int> values;
+
+  // Разбиваем строку по запятым и извлекаем числа
+  while (std::getline(iss, token, ',')) {
+      values.push_back(std::stoi(token));
+  }
+
+  // Проверяем, что количество чисел соответствует ожидаемому
+  if (values.size() < 1 || values.size() > 3) {
+      std::cerr << "Error: Invalid number of values between angle brackets!\n";
+      return;
+  }
+
+  // Заполняем массив данными из вектора
+  for (size_t i = 0; i < values.size(); ++i) {
+      data[i] = values[i];
+  }
+}
+
+
+void kslicer::ExtractBlockSizeFromCall(clang::CXXMemberCallExpr* f, 
+                                       kslicer::KernelInfo& kernel, 
+                                       const clang::CompilerInstance& compiler)
+{
+  const auto* methodDecl = f->getMethodDecl();
+  if(methodDecl == nullptr)
+    return;
+  
+  // (1) extract template argument names
+  //
+  int top = 0;
+  auto templateDecl = methodDecl->getPrimaryTemplate();
+  const clang::TemplateParameterList* TPL = templateDecl->getTemplateParameters();
+  for (const clang::NamedDecl* arg : *TPL)  
+  {
+    //auto qt = arg->getDeclName().getCXXNameType(); 
+    kernel.be.wgNames[top] = arg->getNameAsString();
+    //kernel.be.wgTypes[top] = qt.getAsString(); 
+    top++;
+    if(top >= 2)
+      break;
+  }
+  
+  // (2) extract actual template argument names
+  //
+  std::string callText = kslicer::GetRangeSourceCode(f->getSourceRange(), compiler);
+  int wgSize[3] = {1,1,1};
+  ExtractTemplateParamsFromString(callText, wgSize);
+
+  uint32_t kernelDim = kernel.GetDim();
+  assert(kernelDim == top);
+
+  for(int i=0;i<top;i++)
+    kernel.wgSize[i] = wgSize[i];
+}

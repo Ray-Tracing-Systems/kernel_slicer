@@ -276,6 +276,8 @@ namespace kslicer
       std::vector<const clang::DeclStmt*> sharedDecls;
       std::vector<BEBlock>                statements;
       bool enabled = false;
+      std::string wgNames[3] = {"unknown", "unknown", "unknown"};
+      std::string wgTypes[3] = {"uint", "uint", "uint"};
     };
 
     BlockExpansionInfo be;
@@ -1191,6 +1193,8 @@ namespace kslicer
   std::unordered_map<std::string, std::string> ListGLSLVectorReplacements();
   const clang::Expr* RemoveImplicitCast(const clang::Expr* a_expr);
   clang::Expr* RemoveImplicitCast(clang::Expr* a_expr);
+
+  void ExtractBlockSizeFromCall(clang::CXXMemberCallExpr* f, kslicer::KernelInfo& kernel, const clang::CompilerInstance& compiler);
 }
 
 std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::filesystem::path& fileName,

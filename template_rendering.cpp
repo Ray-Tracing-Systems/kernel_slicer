@@ -679,6 +679,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["ThreadId1"] = "";
       kernelJson["ThreadId2"] = "";
 
+      kernelJson["ThreadSizeBE"] = std::vector<std::string>();
+
       std::vector<std::string> threadIdNames(tidArgs.size());
       for(size_t i=0;i<tidArgs.size();i++)
       {
@@ -727,8 +729,14 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
           kernelJson["ThreadId1"] = threadId;
         else
           kernelJson["ThreadId2"] = threadId;
+        
+        json threadIdBE = threadId;
+        threadIdBE["Name"]  = k.be.wgNames[i];
+        threadIdBE["Type"]  = k.be.wgTypes[i];
+        threadIdBE["Value"] = k.wgSize[i];
 
         kernelJson["ThreadIds"].push_back(threadId);
+        kernelJson["ThreadSizeBE"].push_back(threadIdBE);
       }
 
       kernelJson["threadDim"]   = tidArgs.size();

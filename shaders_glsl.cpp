@@ -1270,7 +1270,8 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
 
   GLSLKernelRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
-  return m_rewriter.getRewrittenText(expr->getSourceRange());
+  std::string text = m_rewriter.getRewrittenText(expr->getSourceRange()); 
+  return (text != "") ? text : kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 }
 
 
