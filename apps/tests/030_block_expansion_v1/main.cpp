@@ -20,7 +20,7 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
 
-  std::vector<float> array(1024);
+  std::vector<float> array(256);
 
   std::shared_ptr<TestClass> pImpl = nullptr;
   ArgParser args(argc, argv);
@@ -44,17 +44,7 @@ int main(int argc, const char** argv)
   for(int i=0;i<256;i++)
     std::cout << i << ", " << array[i] << std::endl;
   
-  //uint32_t outArray[1024] = {};
-  //float    outArray2[1024] = {};
-  //for(int i=0;i<1024;i++) 
-  //{
-  //  outArray[i]  = array[i].id;
-  //  outArray2[i] = array[2].tHit;
-  //}
-  //
-  //JSONLog::write("array", outArray);
-  //JSONLog::write("array", outArray2);
-  //JSONLog::saveToFile("zout_"+backendName+".json");
+  JSONLog::write("array", array);
 
   return 0;
 }
