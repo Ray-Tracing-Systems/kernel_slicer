@@ -3,7 +3,7 @@ project(raymarch_sample)
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(CMAKE_ISPC_COMPILER /home/frol/ispc/bin)
+set(CMAKE_ISPC_COMPILER ispc)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/AddISPCExample.cmake)
 
 if(WIN32)

@@ -45,6 +45,7 @@ int main(int argc, const char** argv)
     std::cout << i << ", " << array[i] << std::endl;
   
   JSONLog::write("array", array);
+  JSONLog::saveToFile("zout_"+backendName+".json");
 
   return 0;
 }

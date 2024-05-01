@@ -61,15 +61,15 @@ struct BFRayTrace : public ISceneObject
   
   void     ClearScene() override {} 
   void     CommitScene(uint32_t options = BUILD_HIGH) override {}
-  uint32_t AddInstance(uint32_t a_geomId, const LiteMath::float4x4* a_matrices, uint32_t a_matrixNumber) override {return 0;}
+  uint32_t AddInstanceMotion(uint32_t a_geomId, const LiteMath::float4x4* a_matrices, uint32_t a_matrixNumber) override {return 0;}
   uint32_t AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_matrix) override { return 0;}
   void     UpdateInstance(uint32_t a_instanceId, const LiteMath::float4x4& a_matrix) override {}
 
-  CRT_Hit RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override;
-  bool    RayQuery_AnyHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override { return false; }  
+  CRT_Hit RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar);
+  bool    RayQuery_AnyHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) { return false; }  
 
-  //CRT_Hit RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar);
-  //bool    RayQuery_AnyHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) { return false; }  
+  CRT_Hit RayQuery_NearestHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override { return RayQuery_NearestHit(posAndNear, dirAndFar); }
+  bool    RayQuery_AnyHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override { return RayQuery_AnyHit(posAndNear, dirAndFar); }
   
   std::vector<float4> trivets;
   float testOffset = 0.0f;

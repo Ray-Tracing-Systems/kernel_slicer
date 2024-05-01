@@ -120,7 +120,7 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
   return 0;
 } 
 
-CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFar, float time)
+CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFar)
 {
   const float3 rayPos  = to_float3(rayPosAndNear);
   const float3 ray_dir = to_float3(rayDirAndFar);
