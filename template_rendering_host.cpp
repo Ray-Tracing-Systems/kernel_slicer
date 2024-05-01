@@ -1359,12 +1359,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["ArgNames"]   = std::vector<std::string>();
       local["IsServiceCall"] = dsArgs.isService;
       local["IsVirtual"]     = false;
-      local["EnableBlockExpansion"] = pFoundKernel->second.be.enabled;
+      if (pFoundKernel != a_classInfo.megakernelsByName.end())
+          local["EnableBlockExpansion"] = pFoundKernel->second.be.enabled;
 
       uint32_t realId = 0;
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
-        if(!internalKernel && !isServeceKernel && !a_classInfo.pShaderCC->IsISPC())
+        if(!internalKernel && !isServeceKernel && !a_classInfo.pShaderCC->IsISPC() && pFoundKernel != a_classInfo.megakernelsByName.end())
         {
           const bool ignoreArg = IgnoreArgForDS(j, dsArgs.descriptorSetsInfo, pFoundKernel->second.args, pFoundKernel->second.name, a_classInfo.IsRTV());
           if(ignoreArg && !isMegaKernel)
