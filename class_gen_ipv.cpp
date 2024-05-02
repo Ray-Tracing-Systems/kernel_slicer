@@ -11,40 +11,6 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::string kslicer::IPV_Pattern::RemoveKernelPrefix(const std::string& a_funcName) const ///<! "kernel2D_XXX" --> "XXX"; 
-{
-  std::string name = a_funcName;
-  if(ReplaceFirst(name, "kernel1D_", "") || ReplaceFirst(name, "kernel2D_", "") || ReplaceFirst(name, "kernel3D_", ""))
-    return name;
-  else
-    return a_funcName;
-}
-
-bool kslicer::IPV_Pattern::IsKernel(const std::string& a_funcName) const ///<! return true if function is a kernel
-{
-  auto pos1 = a_funcName.find("kernel1D_");
-  auto pos2 = a_funcName.find("kernel2D_");
-  auto pos3 = a_funcName.find("kernel3D_");
-  return (pos1 != std::string::npos) || (pos2 != std::string::npos) || (pos3 != std::string::npos); 
-}
-
-uint32_t kslicer::IPV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel) const
-{
-  const std::string& a_funcName = a_kernel.name;
-  auto pos1 = a_funcName.find("kernel1D_");
-  auto pos2 = a_funcName.find("kernel2D_");
-  auto pos3 = a_funcName.find("kernel3D_");
-
-  if(pos1 != std::string::npos)
-    return 1;
-  else if(pos2 != std::string::npos) 
-    return 2;
-  else if(pos3 != std::string::npos)
-    return 3;
-  else
-    return 0;
-} 
-
 void kslicer::IPV_Pattern::ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const 
 {
   auto found = std::find_if(a_kernel.loopIters.begin(), a_kernel.loopIters.end(), 
@@ -181,12 +147,12 @@ public:
           tidArg.strideText  = GetStrideText(forLoop->getInc()); //kslicer::GetRangeSourceCode(forLoop->getInc()->getSourceRange(), m_compiler);
           tidArg.condTextOriginal = kslicer::GetRangeSourceCode(forLoop->getCond()->getSourceRange(), m_compiler);
           tidArg.iterTextOriginal = kslicer::GetRangeSourceCode(forLoop->getInc()->getSourceRange(), m_compiler);
-          //tidArg.startRange  = initVar->getAnyInitializer()->getSourceRange();
-          //tidArg.sizeRange   = loopSZ->getSourceRange();
-          //tidArg.strideRange = forLoop->getInc()->getSourceRange();
-          //tidArg.startNode   = initVar->getAnyInitializer();
-          //tidArg.sizeNode    = loopSZ;
-          //tidArg.strideNode  = forLoop->getInc();
+          //tidArg.startRange  = initVar->getAnyInitializer()->getSourceRange(); // seems does not works
+          //tidArg.sizeRange   = loopSZ->getSourceRange();                       // seems does not works
+          //tidArg.strideRange = forLoop->getInc()->getSourceRange();            // seems does not works
+          //tidArg.startNode   = initVar->getAnyInitializer();                   // seems does not works
+          //tidArg.sizeNode    = loopSZ;                                         // seems does not works
+          //tidArg.strideNode  = forLoop->getInc();                              // seems does not works
 
           tidArg.loopNesting = uint32_t(currKernel->loopIters.size());
           currKernel->loopIters.push_back(tidArg);
@@ -272,32 +238,5 @@ void kslicer::IPV_Pattern::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clan
 
   auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "", true);
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
-
-  // check kernel
-  //
-  if(a_funcInfo.loopIters.size() == 1)
-  {
-    auto pos = a_funcInfo.name.find("kernel1D_");
-    if(pos == std::string::npos)
-      std::cout << "  [KF, ERROR]: wrong naming for 1D kernels, 'kernel1D_' should be used for kernel " << a_funcInfo.name.c_str() << std::endl;
-  }
-  else if (a_funcInfo.loopIters.size() == 2)
-  {
-    auto pos = a_funcInfo.name.find("kernel2D_");
-    if(pos == std::string::npos)
-      std::cout << "  [KF, ERROR]: wrong naming for 2D kernels, 'kernel2D_' should be used for kernel " << a_funcInfo.name.c_str() << std::endl;
-  }
-  else if (a_funcInfo.loopIters.size() == 3)
-  {
-    auto pos = a_funcInfo.name.find("kernel3D_");
-    if(pos == std::string::npos)
-      std::cout << "  [KF, ERROR]: wrong naming for 3D kernels, 'kernel3D_' should be used for kernel " << a_funcInfo.name.c_str() << std::endl;
-  }
-  else
-  {
-    std::cout << "  [KF, ERROR]: wrong loop nesting " << a_funcInfo.loopIters.size() << " for kernel " << a_funcInfo.name.c_str() << std::endl;
-  }
-  
-
 }
 

@@ -3,6 +3,7 @@
 #include <system_error>
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 
 #include <unordered_map>
 #include <iomanip>
@@ -47,29 +48,13 @@
 using namespace clang;
 #include "template_rendering.h"
 
-#ifdef WIN32
-  #include <windows.h>    // for GetCurrentDirectoryW
-  #include <direct.h>     // for windows mkdir
-#else
-  #include <sys/stat.h>   // for linux mkdir
-  #include <unistd.h>     // for getcwd
-#endif
-
 using kslicer::KernelInfo;
 using kslicer::DataMemberInfo;
 
 int main(int argc, const char **argv)
 {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  #ifdef WIN32
-  wchar_t NPath[512];
-  GetCurrentDirectoryW(512, NPath);
-  std::wcout << L"[main]: work_dir = " << NPath << std::endl;
-  #else
-  char cwd[1024];
-  if (getcwd(cwd, sizeof(cwd)) != nullptr)
-    std::cout << "[main]: work_dir = " << cwd << std::endl;
-  #endif
+  std::cout << "[main]: work_dir = " << std::filesystem::current_path() << std::endl;
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   if (argc < 2)
@@ -77,23 +62,23 @@ int main(int argc, const char **argv)
     llvm::errs() << "Usage: <filename>\n";
     return 1;
   }
-  
+
   std::cout << "CMD LINE: ";
   for(int i=0;i<argc;i++)
      std::cout << argv[i] << " ";
   std::cout << std::endl;
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  
+
   std::vector<std::string> ignoreFiles;
   std::vector<std::string> processFiles;
   std::vector<std::string> allFiles;
   std::vector<std::string> cppIncludesAdditional;
-  std::string fileName;
-  auto params = ReadCommandLineParams(argc, argv, fileName, 
+  std::filesystem::path fileName;
+  auto params = ReadCommandLineParams(argc, argv, fileName,
                                       allFiles, ignoreFiles, processFiles, cppIncludesAdditional);
-  
-  std::string mainFolderPath  = GetFolderPath(fileName);
+
+  std::filesystem::path mainFolderPath  = fileName.parent_path();
   std::string mainClassName   = "TestClass";
   std::string outGenerated    = "data/generated.cl";
   std::string stdlibFolder    = "";
@@ -102,7 +87,7 @@ int main(int argc, const char **argv)
   std::string hintFile        = "";
   std::string suffix          = "_Generated";
   std::string shaderFolderPrefix    = "";
-  
+
   std::string composeAPIName  = "";
   std::string composeImplName = "";
 
@@ -136,7 +121,7 @@ int main(int argc, const char **argv)
 
   if(params.find("-shaderCC") != params.end())
     shaderCCName = params["-shaderCC"];
-  
+
   if(params.find("-shaderFolderPrefix") != params.end())
     shaderFolderPrefix = params["-shaderFolderPrefix"];
 
@@ -151,7 +136,7 @@ int main(int argc, const char **argv)
 
   if(params.find("-enableSubgroup") != params.end())
     enableSubGroupOps = atoi(params["-enableSubgroup"].c_str());
-  
+
   if(params.find("-halfTex") != params.end())
     halfFloatTextures = (params["-halfTex"] == "1");
 
@@ -169,16 +154,16 @@ int main(int argc, const char **argv)
       defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
     else if(params["-vkernel_t="] == "indirect_dispatch")
       defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_INDIRECT_DISPATCH;
-  } 
+  }
 
   if(params.find("-ispc_threads") != params.end())
     ispcThreadModel = atoi(params["-ispc_threads"].c_str());
-  
+
   if(params.find("-ispc_explicit_id") != params.end())
     ispcExplicitIndices = (atoi(params["-ispc_explicit_id"].c_str()) == 1);
 
   if(params.find("-composInterface") != params.end())
-    composeAPIName = params["-composInterface"];  
+    composeAPIName = params["-composInterface"];
 
   if(params.find("-composImplementation") != params.end())
     composeImplName = params["-composImplementation"];
@@ -194,10 +179,10 @@ int main(int argc, const char **argv)
     forcedFeatures.useShortType = (atoi(params["-forceEnableInt16"].c_str()) == 1);
   if(params.find("-forceEnableInt64") != params.end())
     forcedFeatures.useInt64Type = (atoi(params["-forceEnableInt64"].c_str()) == 1);
- 
+
   if(params.find("-gen_gpu_api") != params.end())
     genGPUAPI = atoi(params["-gen_gpu_api"].c_str());
-  
+
   kslicer::TextGenSettings textGenSettings;
   if(params.find("-enable_motion_blur") != params.end())
     textGenSettings.enableMotionBlur = atoi(params["-enable_motion_blur"].c_str()) != 0;
@@ -206,8 +191,8 @@ int main(int argc, const char **argv)
 
   std::unordered_set<std::string> values;
   std::vector<std::string> ignoreFolders;
-  std::vector<std::string> processFolders;
-  for(auto p : params) 
+  std::vector<std::filesystem::path> processFolders;
+  for(auto p : params)
   {
     values.insert(p.second);
     std::string folderT = p.second;
@@ -227,7 +212,7 @@ int main(int argc, const char **argv)
     kslicer::CheckInterlanIncInExcludedFolders(processFolders2);
   }
 
-  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params);  
+  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params);
   llvm::ArrayRef<const char*> args(argsForClang.data(), argsForClang.data() + argsForClang.size());
 
   // Make sure it exists
@@ -247,8 +232,8 @@ int main(int argc, const char **argv)
   else if(patternName == "ipv")
     pImplPattern = std::make_shared<kslicer::IPV_Pattern>();
   else
-  { 
-    std::cout << "[main]: wrong pattern name '" << patternName.c_str() << "' " << std::endl; 
+  {
+    std::cout << "[main]: wrong pattern name '" << patternName.c_str() << "' " << std::endl;
     exit(0);
   }
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
@@ -281,10 +266,10 @@ int main(int argc, const char **argv)
   inputCodeInfo.mainClassSuffix      = suffix;
   inputCodeInfo.shaderFolderPrefix   = shaderFolderPrefix;
   inputCodeInfo.globalShaderFeatures = forcedFeatures;
-   
+
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  
+
   std::unique_ptr<kslicer::MainClassInfo> pInputCodeInfoImpl = nullptr;
 
   CompilerInstance compiler;
@@ -303,11 +288,11 @@ int main(int argc, const char **argv)
   compiler.setTarget(pti);
 
   {
-    compiler.getLangOpts().GNUMode = 1; 
-    compiler.getLangOpts().CXXExceptions = 1; 
-    compiler.getLangOpts().RTTI        = 1; 
-    compiler.getLangOpts().Bool        = 1; 
-    compiler.getLangOpts().CPlusPlus   = 1; 
+    compiler.getLangOpts().GNUMode = 1;
+    compiler.getLangOpts().CXXExceptions = 1;
+    compiler.getLangOpts().RTTI        = 1;
+    compiler.getLangOpts().Bool        = 1;
+    compiler.getLangOpts().CPlusPlus   = 1;
     compiler.getLangOpts().CPlusPlus14 = 1;
     compiler.getLangOpts().CPlusPlus17 = 1;
   }
@@ -318,7 +303,7 @@ int main(int argc, const char **argv)
 
   // (0) add path dummy include files for STL and e.t.c. (we don't want to parse actually std library)
   //
-  HeaderSearchOptions &headerSearchOptions = compiler.getHeaderSearchOpts();  
+  HeaderSearchOptions &headerSearchOptions = compiler.getHeaderSearchOpts();
   headerSearchOptions.AddPath(stdlibFolder.c_str(), clang::frontend::Angled, false, false);
   for(auto p : params)
   {
@@ -346,7 +331,8 @@ int main(int argc, const char **argv)
 
   // init clang tooling
   //
-  std::vector<const char*> argv2 = {argv[0], fileName.c_str()};
+  const std::string filenameString = fileName.u8string();
+  std::vector<const char*> argv2 = {argv[0], filenameString.c_str()};
   std::vector<std::string> extraArgs; extraArgs.reserve(32);
   for(auto p : params)
   {
@@ -367,11 +353,12 @@ int main(int argc, const char **argv)
 
   // (0) find all "Main" functions, a functions which call kernels. Kernels are also listed for each mainFunc;
   //
-  std::vector<std::string> cfNames; 
+  std::vector<std::string> cfNames;
   cfNames.reserve(20);
-  
-  std::cout << "(0) Listing main functions of " << mainClassName.c_str() << std::endl; 
+
+  std::cout << "(0) Listing main functions of " << mainClassName.c_str() << std::endl;
   auto cfList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, compiler.getASTContext(), inputCodeInfo);
+
   std::cout << "{" << std::endl;
   for(const auto& f : cfList)
   {
@@ -384,14 +371,14 @@ int main(int argc, const char **argv)
   inputCodeInfo.mainFunc.resize(cfList.size());
   inputCodeInfo.mainClassName     = mainClassName;
   inputCodeInfo.mainClassFileName = fileName;
-  
+
   // create default Shader Rewriter, don't delete it please!
   //
   clang::Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
   inputCodeInfo.pShaderFuncRewriter = inputCodeInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &inputCodeInfo);
 
-  std::cout << "(1) Processing class " << mainClassName.c_str() << " with initial pass" << std::endl; 
+  std::cout << "(1) Processing class " << mainClassName.c_str() << " with initial pass" << std::endl;
   std::cout << "{" << std::endl;
 
   // Parse code, initial pass
@@ -400,26 +387,26 @@ int main(int argc, const char **argv)
   if(composeAPIName != "")
     composClassNames.push_back(composeAPIName);
   if(composeImplName != "")
-    composClassNames.push_back(composeImplName);  
-  kslicer::InitialPassASTConsumer firstPassData(cfNames, mainClassName, composClassNames, compiler, inputCodeInfo); 
+    composClassNames.push_back(composeImplName);
+  kslicer::InitialPassASTConsumer firstPassData(cfNames, mainClassName, composClassNames, compiler, inputCodeInfo);
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
   compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
-  
+
 
   std::string composMemberName = "";
   auto pComposAPI  = firstPassData.rv.m_composedClassInfo.find(composeAPIName);
   auto pComposImpl = firstPassData.rv.m_composedClassInfo.find(composeImplName);
-  
+
   if(pComposAPI != firstPassData.rv.m_composedClassInfo.end() && pComposImpl != firstPassData.rv.m_composedClassInfo.end()) // if compos classes are found
-    composMemberName = kslicer::PerformClassComposition(firstPassData.rv.mci, pComposAPI->second, pComposImpl->second);     // perform class composition           
+    composMemberName = kslicer::PerformClassComposition(firstPassData.rv.mci, pComposAPI->second, pComposImpl->second);     // perform class composition
   for(const auto& name : composClassNames)
     inputCodeInfo.composPrefix[name] = composMemberName;
 
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.mci.astNode;
-  inputCodeInfo.allKernels           = firstPassData.rv.mci.functions; 
+  inputCodeInfo.allKernels           = firstPassData.rv.mci.functions;
   inputCodeInfo.allOtherKernels      = firstPassData.rv.mci.otherFunctions;
-  inputCodeInfo.allDataMembers       = firstPassData.rv.mci.dataMembers;   
+  inputCodeInfo.allDataMembers       = firstPassData.rv.mci.dataMembers;
   inputCodeInfo.ctors                = firstPassData.rv.mci.ctors;
   inputCodeInfo.allMemberFunctions   = firstPassData.rv.mci.allMemberFunctions;
   inputCodeInfo.ProcessAllSetters(firstPassData.rv.mci.m_setters, compiler);
@@ -434,7 +421,7 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  std::cout << "(2) Process control functions; extract local variables, known calls like memcpy, sort, std::fill and other " << std::endl; 
+  std::cout << "(2) Process control functions; extract local variables, known calls like memcpy, sort, std::fill and other " << std::endl;
   std::cout << "{" << std::endl;
 
   size_t mainFuncId = 0;
@@ -454,11 +441,11 @@ int main(int argc, const char **argv)
       clang::ast_matchers::MatchFinder finder;
       for(auto& matcher : allMatchers)
         finder.addMatcher(clang::ast_matchers::traverse(clang::TK_IgnoreUnlessSpelledInSource,matcher), pMatcherPrc.get());
-      
+
       std::cout << "  process control function: " << mainFuncName.c_str() << "(...)" << std::endl;
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
       std::cout << "  process control function: " << mainFuncName.c_str() << "(...) --> " << GetClangToolingErrorCodeMessage(res) << std::endl;
-      
+
       // filter out unused kernels
       //
       inputCodeInfo.kernels.reserve(inputCodeInfo.allKernels.size());
@@ -474,7 +461,7 @@ int main(int argc, const char **argv)
         std::unordered_map<std::string, KernelInfo> vkernels;
         for(const auto& p : inputCodeInfo.allOtherKernels)
           vkernels[p.second.name] = p.second;
-        
+
         for(auto& p : vkernels)
         {
           if(inputCodeInfo.kernels.find(p.first) == inputCodeInfo.kernels.end())
@@ -497,13 +484,13 @@ int main(int argc, const char **argv)
 
     mainFuncId++;
   }
-  
+
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  std::cout << "(3) Mark data members, methods and functions which are actually used in kernels." << std::endl; 
+  std::cout << "(3) Mark data members, methods and functions which are actually used in kernels." << std::endl;
   std::cout << "{" << std::endl;
-
+  
   for(auto& nk : inputCodeInfo.kernels)
   {
     auto& kernel            = nk.second;
@@ -534,7 +521,9 @@ int main(int argc, const char **argv)
     }
 
     inputCodeInfo.VisitAndPrepare_KF(kernel, compiler);
-    
+    if(kernel.name.find("kernelBE") != std::string::npos)
+      inputCodeInfo.ProcessBlockExpansionKernel(kernel, compiler);
+
     if(kernel.hasFinishPass) // add additional buffers for reduction
     {
       uint32_t buffNumber = 0;
@@ -542,7 +531,7 @@ int main(int argc, const char **argv)
       {
         if(redVar.second.SupportAtomicLastStep() || inputCodeInfo.pShaderCC->IsISPC())
           continue;
-        
+
         std::stringstream strOut;
         strOut << "tmpred" << buffNumber << redVar.second.GetSizeOfDataType();
         inputCodeInfo.AddTempBufferToKernel(strOut.str(), redVar.second.dataType, kernel);
@@ -554,13 +543,13 @@ int main(int argc, const char **argv)
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
-  
-  std::cout << "(4) Extract functions, constants and structs from 'MainClass' " << std::endl; 
+
+  std::cout << "(4) Extract functions, constants and structs from 'MainClass' " << std::endl;
   std::cout << "{" << std::endl;
   std::vector<kslicer::FuncData> usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
   std::vector<kslicer::DeclInClass> usedDecls           = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
-  
-  
+
+
   for(const auto& usedDecl : usedDecls) // merge usedDecls with generalDecls
   {
     bool found = false;
@@ -577,10 +566,10 @@ int main(int argc, const char **argv)
   }
 
   std::vector<std::string> usedDefines = kslicer::ExtractDefines(compiler);
-  
+
   std::cout << "}" << std::endl;
   std::cout << std::endl;
-  
+
   inputCodeInfo.AddSpecVars_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
 
   bool hasMembers = false;
@@ -593,7 +582,7 @@ int main(int argc, const char **argv)
 
   if(hasMembers && inputCodeInfo.pShaderCC->IsGLSL()) // We don't implement this for OpenCL kernels yet ... or at all.
   {
-    std::cout << "(4.1) Process Member function calls, extract data accesed in member functions " << std::endl; 
+    std::cout << "(4.1) Process Member function calls, extract data accesed in member functions " << std::endl;
     std::cout << "{" << std::endl;
     for(auto& k : inputCodeInfo.kernels)
     {
@@ -603,10 +592,10 @@ int main(int argc, const char **argv)
         {
           // list all input parameters for each call of member function inside kernel; in this way we know which textures, vectors and samplers were actually used by these functions
           //
-          std::unordered_map<std::string, kslicer::UsedContainerInfo> auxContainers; 
-          auto machedParams = kslicer::ArgMatchTraversal    (&k.second, f, usedByKernelsFunctions,                inputCodeInfo, compiler); 
+          std::unordered_map<std::string, kslicer::UsedContainerInfo> auxContainers;
+          auto machedParams = kslicer::ArgMatchTraversal    (&k.second, f, usedByKernelsFunctions,                inputCodeInfo, compiler);
           auto usedMembers  = kslicer::ExtractUsedMemberData(&k.second, f, usedByKernelsFunctions, auxContainers, inputCodeInfo, compiler);
-          
+
           // TODO: process bindedParams correctly
           //
           std::vector<kslicer::DataMemberInfo> samplerMembers;
@@ -614,12 +603,12 @@ int main(int argc, const char **argv)
           {
             if(kslicer::IsSamplerTypeName(x.second.type))
             {
-              auto y = x.second; 
+              auto y = x.second;
               y.kind = kslicer::DATA_KIND::KIND_SAMPLER;
               samplerMembers.push_back(y);
             }
           }
-          
+
           for(auto& member : usedMembers)
           {
             k.second.usedMembers.insert(member.first);
@@ -645,10 +634,10 @@ int main(int argc, const char **argv)
               info.type          = member.second.type;
               info.name          = member.second.name;
               info.kind          = member.second.kind;
-              info.isConst       = member.second.IsUsedTexture();      // strange thing ... 
+              info.isConst       = member.second.IsUsedTexture();      // strange thing ...
               k.second.usedContainers[info.name] = info;
             }
-            else 
+            else
             {
               auto p1 = inputCodeInfo.allDataMembers.find(member.first);
               auto p2 = inputCodeInfo.m_setterVars.find(member.first);
@@ -679,8 +668,8 @@ int main(int argc, const char **argv)
     std::cout << "}" << std::endl;
     std::cout << std::endl;
   }
-  
-  std::cout << "(5) Process control functions to generate all 'MainCmd' functions" << std::endl; 
+
+  std::cout << "(5) Process control functions to generate all 'MainCmd' functions" << std::endl;
   std::cout << "{" << std::endl;
 
   // (5) Process controll functions and generate some intermediate cpp code with Vulkan calls
@@ -698,7 +687,7 @@ int main(int argc, const char **argv)
       std::cout << " process subkernel " << mainFunc.Name.c_str() << std::endl;
       inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
     }
-    inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);        
+    inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);
     for(const auto& call : inputCodeInfo.allDescriptorSetsInfo)
       inputCodeInfo.ProcessCallArs_KF(call);
 
@@ -719,7 +708,7 @@ int main(int argc, const char **argv)
     inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
   }
 
-  inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);        
+  inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);
 
   // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg
   //
@@ -731,8 +720,8 @@ int main(int argc, const char **argv)
 
   if(inputCodeInfo.SupportVirtualKernels())
   {
-    std::cout << "(5.1) Process Virtual Kernels hierarchies" << std::endl; 
-    std::cout << "(5.2) Extract Virtual Kernels hierarchies constants" << std::endl; 
+    std::cout << "(5.1) Process Virtual Kernels hierarchies" << std::endl;
+    std::cout << "(5.2) Extract Virtual Kernels hierarchies constants" << std::endl;
     std::cout << "{" << std::endl;
     inputCodeInfo.ProcessDispatchHierarchies(firstPassData.rv.m_classList, compiler);
     inputCodeInfo.ExtractHierarchiesConstants(compiler, Tool);
@@ -752,8 +741,8 @@ int main(int argc, const char **argv)
     std::cout << "}" << std::endl;
     std::cout << std::endl;
   }
-  
-  std::cout << "(6) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl; 
+
+  std::cout << "(6) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl;
   std::cout << "{" << std::endl;
 
   inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
@@ -766,16 +755,13 @@ int main(int argc, const char **argv)
   auto jsonUBO               = kslicer::PrepareUBOJson(inputCodeInfo, inputCodeInfo.dataMembers, compiler, textGenSettings);
   std::string uboIncludeName = inputCodeInfo.mainClassName + ToLowerCase(inputCodeInfo.mainClassSuffix) + "_ubo.h";
 
-  std::string uboOutName = "";
+  std::filesystem::path uboOutName = "";
   std::cout << "  placed classVariables num = " << inputCodeInfo.dataMembers.size() << std::endl;
-  {
-    std::string rawname = GetFolderPath(inputCodeInfo.mainClassFileName);
-    uboOutName          = rawname + "/include/" + uboIncludeName;
-  }
+  uboOutName = inputCodeInfo.mainClassFileName.parent_path() / "include" / uboIncludeName;
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
-  
+
   // if user set custom work group size for kernels via hint file we should apply it befor generating kernels
   //
   nlohmann::json wgszJson;
@@ -801,6 +787,8 @@ int main(int argc, const char **argv)
   for(auto& nk : inputCodeInfo.kernels)
   {
     auto& kernel   = nk.second;
+    if(kernel.be.enabled)
+      continue;
     auto kernelDim = kernel.GetDim();
     auto it = wgszJson.find(kernel.name);
     if(it != wgszJson.end())
@@ -817,19 +805,19 @@ int main(int argc, const char **argv)
       kernel.wgSize[2] = defaultWgSize[kernelDim-1][2];
     }
   }
- 
+
   auto& megakernelsByName = inputCodeInfo.megakernelsByName;
   if(inputCodeInfo.megakernelRTV) // join all kernels in one for each CF
   {
     for(auto& cf : inputCodeInfo.mainFunc)
-    { 
+    {
       cf.subkernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
       cf.megakernel = kslicer::joinToMegaKernel(cf.subkernels, cf);
       cf.megakernel.isMega = true;
       cf.MegaKernelCall    = kslicer::GetCFMegaKernelCall(cf);
       megakernelsByName[cf.megakernel.name] = cf.megakernel;
     }
-  
+
     ObtainKernelsDecl(megakernelsByName, compiler, inputCodeInfo.mainClassName, inputCodeInfo);
     for(auto& cf : inputCodeInfo.mainFunc)
       cf.megakernel.DeclCmd = megakernelsByName[cf.megakernel.name].DeclCmd;
@@ -842,7 +830,7 @@ int main(int argc, const char **argv)
       auto pKernelInfo = megakernelsByName.find(dsInfo.originKernelName);
       if(pKernelInfo == megakernelsByName.end())
         continue;
-      
+
       dsInfo.isMega = true;
       kslicer::MainFuncInfo* pCF = nullptr;
       std::string cfName = dsInfo.originKernelName.substr(0, dsInfo.originKernelName.size()-4); // cut of "Mega"
@@ -853,13 +841,13 @@ int main(int argc, const char **argv)
       }
       if(pCF == nullptr)
         continue;
-      
+
       for(const auto& inout : pCF->InOuts)
       {
         kslicer::ArgReferenceOnCall arg;
-        if(inout.kind == kslicer::DATA_KIND::KIND_POINTER || 
-           inout.kind == kslicer::DATA_KIND::KIND_VECTOR  || 
-           inout.kind == kslicer::DATA_KIND::KIND_TEXTURE) 
+        if(inout.kind == kslicer::DATA_KIND::KIND_POINTER ||
+           inout.kind == kslicer::DATA_KIND::KIND_VECTOR  ||
+           inout.kind == kslicer::DATA_KIND::KIND_TEXTURE)
         {
           arg.name = inout.name;
           arg.type = inout.type;
@@ -883,7 +871,7 @@ int main(int argc, const char **argv)
         dsInfo.descriptorSetsInfo.push_back(arg);
       }
     }
-    
+
     // enable Ray Tracing Pipeline if kernel uses accel atruct and this option is enabled in settings
     //
     for(auto& cf : inputCodeInfo.mainFunc) {
@@ -897,9 +885,9 @@ int main(int argc, const char **argv)
       cf.megakernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
     }
   }
-  
+
   // enable Ray Tracing Pipeline if kernel uses accel atruct and this option is enabled in settings
-  // 
+  //
   for(auto& nk : inputCodeInfo.kernels)
   {
     auto& kernel = nk.second;
@@ -912,47 +900,47 @@ int main(int argc, const char **argv)
     }
     kernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
   }
-  
+
   inputCodeInfo.kernelsCallCmdDeclCached.clear();
   std::string rawname = kslicer::CutOffFileExt(allFiles[0]);
-  auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls, 
-                                      rawname + ToLowerCase(suffix) + ".h", threadsOrder, 
-                                      uboIncludeName, composeImplName, 
-                                      jsonUBO, textGenSettings); 
+  auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls,
+                                      rawname + ToLowerCase(suffix) + ".h", threadsOrder,
+                                      uboIncludeName, composeImplName,
+                                      jsonUBO, textGenSettings);
 
-  std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl; 
+  std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl;
   std::cout << "{" << std::endl;
   {
     if(!inputCodeInfo.pShaderCC->IsISPC())
     {
-      kslicer::ApplyJsonToTemplate("templates/vk_class.h",        rawname + ToLowerCase(suffix) + ".h", jsonCPP); 
+      kslicer::ApplyJsonToTemplate("templates/vk_class.h",        rawname + ToLowerCase(suffix) + ".h", jsonCPP);
       kslicer::ApplyJsonToTemplate("templates/vk_class.cpp",      rawname + ToLowerCase(suffix) + ".cpp", jsonCPP);
       kslicer::ApplyJsonToTemplate("templates/vk_class_ds.cpp",   rawname + ToLowerCase(suffix) + "_ds.cpp", jsonCPP);
-      kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + ToLowerCase(suffix) + "_init.cpp", jsonCPP); 
+      kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + ToLowerCase(suffix) + "_init.cpp", jsonCPP);
       if(genGPUAPI)
         kslicer::ApplyJsonToTemplate("templates/vk_class_api.h",  rawname + ToLowerCase(suffix) + "_api.h", jsonCPP);
-    }   
+    }
   }
   std::cout << "}" << std::endl;
   std::cout << std::endl;
-  
+
   std::string shaderCCName2 = inputCodeInfo.pShaderCC->Name();
-  std::cout << "(8) Generate " << shaderCCName2.c_str() << " kernels" << std::endl; 
+  std::cout << "(8) Generate " << shaderCCName2.c_str() << " kernels" << std::endl;
   std::cout << "{" << std::endl;
-  
+
   if(inputCodeInfo.megakernelRTV) // join all kernels in one for each CF, WE MUST REPEAT THIS HERE BECAUSE OF SHITTY FUNCTIONS ARE PROCESSED DURING 'VisitAndRewrite_KF' for kernels !!!
   {
     for(auto& k : inputCodeInfo.kernels)
       k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
-  
+
     for(auto& cf : inputCodeInfo.mainFunc)
-    { 
+    {
       cf.subkernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
       cf.megakernel = kslicer::joinToMegaKernel(cf.subkernels, cf);
       cf.megakernel.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(cf.megakernel, compiler, cf.megakernel.rewrittenInit, cf.megakernel.rewrittenFinish);
 
       // only here we know the full list of shitty functions (with subkernels)
-      // so we should update subkernels and apply transform inside "VisitArraySubscriptExpr_Impl" to kernels in the same way we did for functions 
+      // so we should update subkernels and apply transform inside "VisitArraySubscriptExpr_Impl" to kernels in the same way we did for functions
       //
       auto oldKernels = cf.subkernels;
       std::unordered_set<std::string> processed;
@@ -965,26 +953,26 @@ int main(int argc, const char **argv)
             continue;
 
           auto kernel          = inputCodeInfo.kernels[name];
-          kernel.currentShit   = shit; // just pass shit inside GLSLKernelRewriter via 'kernel.currentShit'; don't want to break VisitAndRewrite_KF API 
+          kernel.currentShit   = shit; // just pass shit inside GLSLKernelRewriter via 'kernel.currentShit'; don't want to break VisitAndRewrite_KF API
           kernel.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(kernel, compiler, kernel.rewrittenInit, kernel.rewrittenFinish);
           cf.subkernelsData.push_back(kernel);
           processed.insert(name);
         }
       }
-      
+
       // get subkernels were processed and rewritten with "shitty" transforms
       //
       cf.subkernels.clear();
       for(const auto& data : cf.subkernelsData)
         cf.subkernels.push_back(&data);
-      
+
       // get back subkernels which were not processed
       //
       for(const auto& oldKernelP : oldKernels)
       {
         if(processed.find(oldKernelP->name) == processed.end())
           cf.subkernels.push_back(oldKernelP);
-      } 
+      }
 
       bool hasAccelStructs = false;
       for(const auto& container : cf.megakernel.usedContainers) {
@@ -1001,7 +989,7 @@ int main(int argc, const char **argv)
     for(auto& k : inputCodeInfo.kernels)
       k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
   }
-  
+
   auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO, usedDefines, textGenSettings);
   if(inputCodeInfo.pShaderCC->IsISPC()) {
     json["Constructors"]        = jsonCPP["Constructors"];
@@ -1014,31 +1002,30 @@ int main(int argc, const char **argv)
   }
   inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo);
 
-  //std::ofstream file(GetFolderPath(inputCodeInfo.mainClassFileName) + "/z_ubo.json");
+  //std::ofstream file(inputCodeInfo.mainClassFileName.parent_path / "z_ubo.json");
   //file << std::setw(2) << json; //
   //file.close();
 
   {
-    std::string rawname        = GetFolderPath(inputCodeInfo.mainClassFileName);
-    std::string outName        = rawname + "/include/" + uboIncludeName;
+    std::filesystem::path outName = inputCodeInfo.mainClassFileName.parent_path() / "include" / uboIncludeName;
     kslicer::ApplyJsonToTemplate("templates/ubo_def.h",  outName, jsonUBO);
   }
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
-  
+
   kslicer::ApplyJsonToTemplate("templates/ubo_def.h",  uboOutName, jsonUBO); // need to call it after "GenerateShaders"
   kslicer::CheckForWarnings(inputCodeInfo);
 
-  std::cout << "(9) Generate host code again for 'ListRequiredDeviceFeatures' " << std::endl << std::endl; 
+  std::cout << "(9) Generate host code again for 'ListRequiredDeviceFeatures' " << std::endl << std::endl;
   if(true)
   {
-    auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls, 
-                                        rawname + ToLowerCase(suffix) + ".h", threadsOrder, 
-                                        uboIncludeName, composeImplName, jsonUBO, textGenSettings); 
+    auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls,
+                                        rawname + ToLowerCase(suffix) + ".h", threadsOrder,
+                                        uboIncludeName, composeImplName, jsonUBO, textGenSettings);
     kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + ToLowerCase(suffix) + "_init.cpp", jsonCPP);
   }
-  std::cout << "(10) Finished!  " << std::endl; 
+  std::cout << "(10) Finished!  " << std::endl;
 
   return 0;
 }

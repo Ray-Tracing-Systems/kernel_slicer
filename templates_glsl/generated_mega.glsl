@@ -44,13 +44,13 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 // RayScene intersection with '{{RTName}}'
 //
 {% if Kernel.UseRayGen %}
-layout(location = 0) rayPayloadEXT CRT_Hit kgen_hitValue;
-layout(location = 1) rayPayloadEXT bool    kgen_inShadow;
+layout(location = 0) rayPayloadEXT CRT_Hit {{RTName}}_hitValue;
+layout(location = 1) rayPayloadEXT bool    {{RTName}}_inShadow;
 
 CRT_Hit {{RTName}}_RayQuery_NearestHit(const vec4 rayPos, const vec4 rayDir)
 {
   traceRayEXT(m_pAccelStruct, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, 0);
-  return kgen_hitValue;
+  return {{RTName}}_hitValue;
 }
 
 CRT_Hit {{RTName}}_RayQuery_NearestHitMotion(const vec4 rayPos, const vec4 rayDir, float t)
@@ -60,20 +60,20 @@ CRT_Hit {{RTName}}_RayQuery_NearestHitMotion(const vec4 rayPos, const vec4 rayDi
   {% else %}
   traceRayEXT(m_pAccelStruct, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, 0);
   {% endif %} 
-  return kgen_hitValue;
+  return {{RTName}}_hitValue;
 }
 
 bool {{RTName}}_RayQuery_AnyHit(const vec4 rayPos, const vec4 rayDir)
 {
-  kgen_inShadow = true;
+  {{RTName}}_inShadow = true;
   traceRayEXT(m_pAccelStruct, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT,
               0xff, 0, 0, 1, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, 1);
-  return kgen_inShadow;
+  return {{RTName}}_inShadow;
 }
 
 bool {{RTName}}_RayQuery_AnyHitMotion(const vec4 rayPos, const vec4 rayDir, float t)
 {
-  kgen_inShadow = true;
+  {{RTName}}_inShadow = true;
   {% if UseMotionBlur %}
   traceRayMotionNV(m_pAccelStruct, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT,
                    0xff, 0, 0, 1, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, t, 1);
@@ -81,7 +81,7 @@ bool {{RTName}}_RayQuery_AnyHitMotion(const vec4 rayPos, const vec4 rayDir, floa
   traceRayEXT(m_pAccelStruct, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT,
               0xff, 0, 0, 1, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, 1);
   {% endif %}
-  return kgen_inShadow;
+  return {{RTName}}_inShadow;
 }
 
 {% else %}

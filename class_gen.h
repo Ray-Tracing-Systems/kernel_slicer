@@ -72,7 +72,7 @@ namespace kslicer
 
   private:
     
-    const std::unordered_map<std::string, KernelInfo>& m_kernels;
+    std::unordered_map<std::string, KernelInfo>&       m_kernels;
     std::unordered_map<std::string, InOutVarInfo>      m_argsOfMainFunc;
     MainFuncInfo&                                      m_mainFunc;
     std::shared_ptr< std::unordered_set<uint64_t> >    m_pRewrittenNodes;
@@ -95,7 +95,10 @@ namespace kslicer
         return "";
       MainFunctionRewriter rvCopy = *this;
       rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
-      return m_rewriter.getRewrittenText(expr->getSourceRange());
+      
+      std::string text = m_rewriter.getRewrittenText(expr->getSourceRange());
+
+      return (text != "") ? text : kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
     }
 
   };

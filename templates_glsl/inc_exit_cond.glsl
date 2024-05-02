@@ -1,3 +1,4 @@
+  {% if not Kernel.EnableBlockExpansion %}
   {% if Kernel.IsIndirect %}
   {% if Kernel.threadDim == 3 %}
   if({{Kernel.threadName1}} >= {{Kernel.IndirectSizeX}} + {{Kernel.CondLE1}} || {{Kernel.threadName2}} >= {{Kernel.IndirectSizeY}} + {{Kernel.CondLE2}} || {{Kernel.threadName3}} >= {{Kernel.IndirectSizeY}} + {{Kernel.CondLE3}})
@@ -29,4 +30,5 @@
     runThisThread = false;
   {% endif %}
   {% endif %} {# /* if Kernel.IsIndirect */ #}
+  {% endif %} {# /* if not Kernel.EnableBlockExpansion */ #}
   

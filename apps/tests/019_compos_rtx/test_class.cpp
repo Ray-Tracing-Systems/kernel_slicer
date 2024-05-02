@@ -113,7 +113,7 @@ void TestClass::GetExecutionTime(const char* a_funcName, float a_out[4])
 
 uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNumber, 
                                          const uint32_t* a_triIndices, size_t a_indNumber, 
-                                         BuildQuality a_qualityLevel, size_t vByteStride)
+                                         uint32_t a_qualityLevel, size_t vByteStride)
 {
   const float4* verts2 = (const float4*)a_vpos3f;
   trivets = std::vector<float4>(verts2, verts2+a_vertNumber);

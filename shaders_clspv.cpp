@@ -2,19 +2,18 @@
 #include "template_rendering.h"
 #include <iostream>
 
-#ifdef WIN32
-  #include <direct.h>     // for windows mkdir
-#else
-  #include <sys/stat.h>   // for linux mkdir
+#ifndef _WIN32
   #include <sys/types.h>
 #endif
 
 std::string kslicer::FunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_str) const
-{      
+{
   const bool isConst = (a_str.find("const ") != std::string::npos);
   std::string typeStr = a_str;
   ReplaceFirst(typeStr, "struct LiteMath::", "");
   ReplaceFirst(typeStr, "LiteMath::", "");
+  ReplaceFirst(typeStr, "struct glm::", "");
+  ReplaceFirst(typeStr, "glm::", "");
   ReplaceFirst(typeStr, "const ",    "");
   ReplaceFirst(typeStr, m_codeInfo->mainClassName + "::", "");
   ReplaceFirst(typeStr, "struct float4x4", "float4x4");       // small inconvinience in math library
@@ -48,37 +47,35 @@ bool kslicer::IsVectorContructorNeedsReplacement(const std::string& a_typeName)
 
 kslicer::ClspvCompiler::ClspvCompiler(bool a_useCPP, const std::string& a_prefix) : m_useCpp(a_useCPP), m_suffix(a_prefix)
 {
-  
+
 }
 
-std::string kslicer::ClspvCompiler::BuildCommand(const std::string& a_inputFile) const 
+std::string kslicer::ClspvCompiler::BuildCommand(const std::string& a_inputFile) const
 {
-  if(m_useCpp) 
-    return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-ubo -cl-std=CLC++ -inline-entry-points";  
+  if(m_useCpp)
+    return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-ubo -cl-std=CLC++ -inline-entry-points";
   else
     return std::string("../clspv ") + ShaderSingleFile() + " -o " + ShaderSingleFile() + ".spv -pod-pushconstant";
-} 
+}
 
 
-void kslicer::ClspvCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) 
+void kslicer::ClspvCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo)
 {
   const auto& mainClassFileName = a_codeInfo->mainClassFileName;
   const auto& ignoreFolders     = a_codeInfo->ignoreFolders;
-  
-  std::string folderPath = GetFolderPath(mainClassFileName);
-  std::string incUBOPath = folderPath + "/include";
-  #ifdef WIN32
-  mkdir(incUBOPath.c_str());
-  #else
-  mkdir(incUBOPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-  #endif
+
+  std::filesystem::path folderPath = mainClassFileName.parent_path();
+  std::filesystem::path incUBOPath = folderPath / "include";
+  std::filesystem::create_directory(incUBOPath);
 
   const std::string templatePath = "templates/generated.cl";
-  const std::string outFileName  = GetFolderPath(mainClassFileName) + "/z_generated.cl";
-  kslicer::ApplyJsonToTemplate(templatePath, outFileName, a_kernelsJson);  
+  const std::filesystem::path outFileName  = mainClassFileName.parent_path() / "z_generated.cl";
+  kslicer::ApplyJsonToTemplate(templatePath, outFileName, a_kernelsJson);
 
-  std::ofstream buildSH(GetFolderPath(mainClassFileName) + "/z_build.sh");
+  std::ofstream buildSH(mainClassFileName.parent_path() / "z_build.sh");
+  #if not __WIN32__
   buildSH << "#!/bin/sh" << std::endl;
+  #endif
   std::string build = this->BuildCommand();
   buildSH << build.c_str() << " ";
   for(auto folder : ignoreFolders) {
@@ -90,7 +87,7 @@ void kslicer::ClspvCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
   buildSH.close();
 }
 
-std::string kslicer::ClspvCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const 
+std::string kslicer::ClspvCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const
 {
   if(a_kernelDim == 1)
     return "get_local_id(0)";
@@ -130,13 +127,13 @@ std::string kslicer::ClspvCompiler::ReplaceCallFromStdNamespace(const std::strin
     ReplaceFirst(call, "std::min", "fmin");
     ReplaceFirst(call, "std::max", "fmax");
     ReplaceFirst(call, "std::abs", "fabs");
-    
+
     if(call == "min")
       ReplaceFirst(call, "min", "fmin");
     if(call == "max")
       ReplaceFirst(call, "max", "fmax");
     if(call == "abs")
-      ReplaceFirst(call, "abs", "fabs"); 
+      ReplaceFirst(call, "abs", "fabs");
   }
   ReplaceFirst(call, "std::", "");
   return call;
@@ -146,7 +143,7 @@ std::string kslicer::ClspvCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
 {
   std::string typeInCL = a_decl.type;
   ReplaceFirst(typeInCL, "const", "__constant static");
-  std::string result = "";  
+  std::string result = "";
   switch(a_decl.kind)
   {
     case kslicer::DECL_IN_CLASS::DECL_STRUCT:
@@ -166,7 +163,7 @@ std::string kslicer::ClspvCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
   return result;
 }
 
-std::string kslicer::ClspvCompiler::RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const 
+std::string kslicer::ClspvCompiler::RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const
 {
   return std::string("{ uint offset = atomic_inc(&") + UBOAccess(memberNameB) + "); " + memberNameA + "[offset] = " + newElemValue + ";}";
 }
@@ -176,7 +173,7 @@ std::shared_ptr<kslicer::FunctionRewriter> kslicer::ClspvCompiler::MakeFuncRewri
   return std::make_shared<kslicer::FunctionRewriter>(R, a_compiler, a_codeInfo);
 }
 
-std::shared_ptr<kslicer::KernelRewriter> kslicer::ClspvCompiler::MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,  
+std::shared_ptr<kslicer::KernelRewriter> kslicer::ClspvCompiler::MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
                                                                                   kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass)
 {
   return std::make_shared<kslicer::KernelRewriter>(R, a_compiler, a_codeInfo, a_kernel, fakeOffs, a_infoPass);
@@ -187,18 +184,18 @@ std::shared_ptr<kslicer::KernelRewriter> kslicer::ClspvCompiler::MakeKernRewrite
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-kslicer::KernelRewriter::KernelRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, 
-                                        const std::string& a_fakeOffsetExpr, const bool a_infoPass) : 
-                                        m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_mainClassName(a_codeInfo->mainClassName), 
-                                        m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_kernelIsBoolTyped(a_kernel.isBoolTyped), 
+kslicer::KernelRewriter::KernelRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel,
+                                        const std::string& a_fakeOffsetExpr, const bool a_infoPass) :
+                                        m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_mainClassName(a_codeInfo->mainClassName),
+                                        m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_kernelIsBoolTyped(a_kernel.isBoolTyped),
                                         m_kernelIsMaker(a_kernel.isMaker), m_currKernel(a_kernel), m_infoPass(a_infoPass)
-{ 
+{
   m_pRewrittenNodes = std::make_shared< std::unordered_set<uint64_t> >();
   const auto& a_variables = a_codeInfo->dataMembers;
   m_variables.reserve(a_variables.size());
-  for(const auto& var : a_variables) 
+  for(const auto& var : a_variables)
     m_variables[var.name] = var;
-  
+
   auto tidArgs = a_codeInfo->GetKernelTIDArgs(a_kernel);
   for(const auto& arg : tidArgs)
     m_threadIdArgs.push_back(arg.name);
@@ -218,9 +215,9 @@ bool kslicer::KernelRewriter::WasNotRewrittenYet(const clang::Stmt* expr)
   return (m_pRewrittenNodes->find(exprHash) == m_pRewrittenNodes->end());
 }
 
-void kslicer::KernelRewriter::MarkRewritten(const clang::Stmt* expr) 
-{ 
-  kslicer::MarkRewrittenRecursive(expr, *m_pRewrittenNodes); 
+void kslicer::KernelRewriter::MarkRewritten(const clang::Stmt* expr)
+{
+  kslicer::MarkRewrittenRecursive(expr, *m_pRewrittenNodes);
 }
 
 void kslicer::DisplayVisitedNodes(const std::unordered_set<uint64_t>& a_nodes)

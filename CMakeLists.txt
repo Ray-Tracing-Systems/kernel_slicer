@@ -6,6 +6,14 @@ set(LLVM_VER "18.1")
 set(LLVM_LIB "LLVM-18")
 include("/usr/lib/llvm-18/cmake/LLVMConfig.cmake")
 
+if (WIN32)
+  if (MSVC)
+    add_compile_options(/bigobj)
+  endif()
+else ()
+  set(PLATFORM_DEPENDENT_LIBS clang ${LLVM_LIB})
+endif ()
+
 find_package(LLVM ${LLVM_VER} REQUIRED CONFIG)
 find_package(Clang ${LLVM_VER} REQUIRED)
 
@@ -25,11 +33,13 @@ message("LLVM_LIBRARY_DIRS = ${LLVM_LIBRARY_DIRS}")
 # message("CLANG_LIBRARY_DIRS = ${CLANG_LIBRARY_DIRS}")
 # set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${LLVM_CMAKE_DIR}")
 
-add_executable(kslicer 
+add_executable(kslicer
                kslicer_main.cpp
                kslicer_utils.cpp
                kslicer_warnings.cpp
+               kslicer_def.cpp
                attributes.cpp
+               block_expansion.cpp
                initial_pass.cpp
                initial_pass_compos.cpp
                extractor.cpp
@@ -50,10 +60,10 @@ add_executable(kslicer
                shaders_ispc.cpp
                )
 
-target_link_libraries(kslicer PRIVATE clang ${LLVM_LIB} clangAST clangTooling 
-                     clangBasic clangASTMatchers 
-                     clangFrontendTool clangFrontend clangDriver clangSerialization 
-                     clangCodeGen clangParse clangSema clangStaticAnalyzerFrontend 
+target_link_libraries(kslicer PRIVATE ${PLATFORM_DEPENDENT_LIBS} clangAST clangTooling
+                     clangBasic clangASTMatchers
+                     clangFrontendTool clangFrontend clangDriver clangSerialization
+                     clangCodeGen clangParse clangSema clangStaticAnalyzerFrontend
                      clangStaticAnalyzerCheckers clangStaticAnalyzerCore clangAnalysis
                      clangIndex clangARCMigrate clangRewrite clangLex clangEdit
-                     ) 
+                     )

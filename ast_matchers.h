@@ -7,6 +7,7 @@
 
 #include "clang/Basic/SourceManager.h"
 #include "clang/AST/ASTContext.h"
+#include "clang/Frontend/CompilerInstance.h"
 
 #include <string>
 #include <vector>
@@ -43,9 +44,11 @@ namespace kslicer
   clang::ast_matchers::DeclarationMatcher MakeMatch_TypedefInsideClass(std::string const& className);
 
   std::unordered_map<std::string, CFNameInfo> ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
-                                                                           const std::string& a_mainClassName, 
-                                                                           const clang::ASTContext& a_astContext,
-                                                                           const MainClassInfo& a_codeInfo);
+                                                                     const std::string& a_mainClassName, 
+                                                                     const clang::ASTContext& a_astContext,
+                                                                     const kslicer::MainClassInfo& a_codeInfo);
+
+  clang::ast_matchers::DeclarationMatcher MakeMatch_Kernel1DBlockExpansion();
 
   /**\brief Complain if pointer is invalid.
   \param p: pointer
