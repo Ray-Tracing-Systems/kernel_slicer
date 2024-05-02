@@ -324,7 +324,7 @@ int main(int argc, const char **argv)
   compiler.createASTContext();
 
   // const FileEntry *pFile = compiler.getFileManager().getFile(fileName).get();
-  FileEntryRef file = compiler.getFileManager().getFileRef(fileName).get();
+  FileEntryRef file = compiler.getFileManager().getFileRef(fileName.string()).get();
   compiler.getSourceManager().setMainFileID( compiler.getSourceManager().createFileID( file, clang::SourceLocation(), clang::SrcMgr::C_User));
   compiler.getDiagnosticClient().BeginSourceFile(compiler.getLangOpts(), &compiler.getPreprocessor());
 
