@@ -26,15 +26,18 @@ struct IMaterial
 
   IMaterial(){}  // Dispatching on GPU hierarchy must not have destructors, especially virtual      
 
-  virtual uint32_t GetTag() const = 0;
-  virtual size_t   GetSizeOf() const = 0;
+  virtual uint32_t GetTag() const { return 0; }
+  virtual size_t   GetSizeOf() const { return sizeof(IMaterial); }
 
-  virtual void   kernel_GetColor(uint tid, __global uint* out_color, const TestClass* a_pGlobals) const = 0;
+  void kernel_GetColor(uint tid, uint* out_color, const TestClass* a_pGlobals) const 
+  { 
+    out_color[tid] = RealColorToUint32_f3(float3(m_color[0], m_color[1], m_color[2])); 
+  }
 
   virtual void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
                                    const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
                                    float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
-                                   float4* accumColor, float4* accumThoroughput) const = 0;
+                                   float4* accumColor, float4* accumThoroughput) const {}
 
   float m_color[3];
   float roughness;
@@ -92,7 +95,6 @@ public:
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  IMaterial* kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit);
 
   float3    testColor = float3(0, 1, 1);
   uint32_t  m_emissiveMaterialId = 0;
@@ -107,9 +109,7 @@ protected:
   float3 camPos = float3(0.0f, 0.85f, 4.5f);
   void InitSceneMaterials(int a_numSpheres, int a_seed = 0);
 
-  uint32_t PackObject(uint32_t*& pData, IMaterial* a_pObject);
-
-//  BVHTree                      m_bvhTree;
+  //  BVHTree                  m_bvhTree;
   std::vector<struct BVHNode>  m_nodes;
   std::vector<struct Interval> m_intervals;
   std::vector<uint32_t>        m_indicesReordered;
@@ -117,8 +117,7 @@ protected:
   std::vector<float4>          m_vPos4f;      // copy from m_mesh
   std::vector<float4>          m_vNorm4f;     // copy from m_mesh
 
-  std::vector<uint32_t>        m_materialData;
-  std::vector<uint32_t>        m_materialOffsets;
+  std::vector<IMaterial>       m_materials;
 
   float4x4                     m_worldViewProjInv;
   std::vector<RandomGen>       m_randomGens;
@@ -138,11 +137,6 @@ struct LambertMaterial : public IMaterial
 
   uint32_t GetTag()    const override { return TAG_LAMBERT; }
   size_t   GetSizeOf() const override { return sizeof(LambertMaterial); }                  
-
-  void  kernel_GetColor(uint tid, uint* out_color, const TestClass* a_pGlobals) const override 
-  { 
-    out_color[tid] = RealColorToUint32_f3(float3(m_color[0], m_color[1], m_color[2])); 
-  }
 
   void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
                            const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
@@ -181,11 +175,6 @@ struct PerfectMirrorMaterial : public IMaterial
 
   uint32_t GetTag()    const override { return TAG_MIRROR; }
   size_t   GetSizeOf() const override { return sizeof(PerfectMirrorMaterial); }
-
-  void kernel_GetColor(uint tid, uint* out_color, const TestClass* a_pGlobals) const override 
-  { 
-    out_color[tid] = RealColorToUint32_f3(a_pGlobals->testColor); 
-  }
   
   void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
                            const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
@@ -218,11 +207,6 @@ struct EmissiveMaterial : public IMaterial
   size_t   GetSizeOf() const override { return sizeof(EmissiveMaterial); }
   
   float3 GetColor() const { return float3(1,1,1); }
-  
-  void   kernel_GetColor(uint tid, uint* out_color, const TestClass* a_pGlobals) const override 
-  { 
-    out_color[tid] = RealColorToUint32_f3(roughness*GetColor()); 
-  }
 
   void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
                            const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
@@ -248,12 +232,6 @@ struct GGXGlossyMaterial : public IMaterial
 
   uint32_t GetTag()    const override { return TAG_GGX_GLOSSY; }
   size_t   GetSizeOf() const override { return sizeof(GGXGlossyMaterial); }
-  
-  void  kernel_GetColor(uint tid, uint* out_color, const TestClass* a_pGlobals) const override 
-  { 
-    float redColor = std::max(1.0f, m_color[0]);
-    out_color[tid] = RealColorToUint32_f3(float3(redColor, m_color[1], m_color[2])); 
-  }
 
   void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
                            const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
@@ -327,8 +305,6 @@ struct EmptyMaterial : public IMaterial
 
   uint32_t GetTag() const override { return TAG_EMPTY; }
   size_t   GetSizeOf() const override { return sizeof(EmptyMaterial); }
-
-  void kernel_GetColor(uint tid, uint* out_color, const TestClass* a_pGlobals) const override  { }
 
   void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
                            const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,

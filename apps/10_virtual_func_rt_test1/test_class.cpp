@@ -111,9 +111,9 @@ static inline float3 SafeInverse_4to3(float4 d)
 {
   const float ooeps = 1.0e-36f; // Avoid div by zero.
   float3 res;
-  res.x = 1.0f / (fabs(d.x) > ooeps ? d.x : copysign(ooeps, d.x));
-  res.y = 1.0f / (fabs(d.y) > ooeps ? d.y : copysign(ooeps, d.y));
-  res.z = 1.0f / (fabs(d.z) > ooeps ? d.z : copysign(ooeps, d.z));
+  res.x = 1.0f / (std::abs(d.x) > ooeps ? d.x : std::copysign(ooeps, d.x));
+  res.y = 1.0f / (std::abs(d.y) > ooeps ? d.y : std::copysign(ooeps, d.y));
+  res.z = 1.0f / (std::abs(d.z) > ooeps ? d.z : std::copysign(ooeps, d.z));
   return res;
 }
 
@@ -189,33 +189,6 @@ void TestClass::kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* o
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-IMaterial* MakeObjPtr(uint32_t objectPtr, __global const uint32_t* a_data)
-{
-  const uint32_t objectOffset = (objectPtr & IMaterial::OFS_MASK);
-  const uint32_t objectTag    = (objectPtr & IMaterial::TAG_MASK) >> (32 - IMaterial::TAG_BITS);
-  return (__global IMaterial*)(a_data + objectOffset);
-}
-
-IMaterial* TestClass::kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit)
-{
-  uint32_t objPtr = 0;  
- 
-  if(in_hit->geomId == HIT_FLAT_LIGHT_GEOM)
-  {
-    objPtr = m_materialOffsets[m_emissiveMaterialId];
-  }
-  else if(in_hit->primId != -1)
-  {
-    const uint32_t mtId = m_materialIds[in_hit->primId]+1; // +1 due to empty object
-    objPtr = m_materialOffsets[mtId];
-  }
-
-  return MakeObjPtr(objPtr, m_materialData.data());
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 void TestClass::PackXY(uint tidX, uint tidY, uint* out_pakedXY)
 {
   kernel_PackXY(tidX, tidY, out_pakedXY);
@@ -231,9 +204,11 @@ void TestClass::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color)
   if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
     return;
   
-  IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
+  uint mid = 0;
+  if(hit.primId != -1) 
+    mid = (hit.geomId == HIT_FLAT_LIGHT_GEOM) ? m_emissiveMaterialId : m_materialIds[hit.primId]+1;
 
-  pMaterial->kernel_GetColor(tid, out_color, this);
+  (m_materials.data() + mid)->kernel_GetColor(tid, out_color, this);
 }
 
 void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, float4* out_color)
@@ -259,13 +234,15 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY
     Lite_Hit hit;
     if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
       break;
-
-    IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
     
-    pMaterial->kernel_NextBounce(tid, &hit, &baricentrics, 
-                                 m_indicesReordered.data(), m_vPos4f.data(), m_vNorm4f.data(), 
-                                 &rayPosAndNear, &rayDirAndFar, m_randomGens.data(), 
-                                 &accumColor, &accumThoroughput);
+    uint mid = 0;
+    if(hit.primId != -1) 
+      mid = (hit.geomId == HIT_FLAT_LIGHT_GEOM) ? m_emissiveMaterialId : m_materialIds[hit.primId]+1;
+    
+    (m_materials.data() + mid)->kernel_NextBounce(tid, &hit, &baricentrics, 
+                                                  m_indicesReordered.data(), m_vPos4f.data(), m_vNorm4f.data(), 
+                                                  &rayPosAndNear, &rayDirAndFar, m_randomGens.data(), 
+                                                  &accumColor, &accumThoroughput);
   }
 
   kernel_ContributeToImage(tid, &accumColor, in_pakedXY, 
