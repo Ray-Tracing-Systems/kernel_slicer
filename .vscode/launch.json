@@ -2340,7 +2340,7 @@
 
         {
             "name"   : "Launch (HydraCore3/External) - VS",
-            "type"   : "lldb",
+            "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/kslicer",
             "args"   : ["/media/vs/data2/repos/hydra/HydraCore3/integrator_pt.cpp",
@@ -2375,7 +2375,81 @@
                 }
             ]
         },
-
+        {
+            "name"   : "Launch (HydraCore3/ORB-API) - VS",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/kslicer",
+            "args"   : ["/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/integrator_pt.cpp",
+                        "/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/integrator_rt.cpp",
+                        "/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/integrator_spectrum.cpp",
+                        "/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/integrator_pt_lgt.cpp",
+                        "/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/integrator_pt_mat.cpp",
+                        "-mainClass", "Integrator", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-I/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/external/LiteMath",  "ignore",
+                        "-I/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/external/LiteScene", "ignore",
+                        "-I/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/external/CrossRT",   "process",
+                        "-I/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/cam_plugin",         "process",  
+                        "-megakernel", "1",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name"   : "Launch HydraCore3 - Upsampling",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/kslicer",
+            "args"   : ["/media/vs/data2/repos/hydra/upsampling/HydraCore3/integrator_pt.cpp",
+                        "/media/vs/data2/repos/hydra/upsampling/HydraCore3/integrator_rt.cpp",
+                        "/media/vs/data2/repos/hydra/upsampling/HydraCore3/integrator_spectrum.cpp",
+                        "/media/vs/data2/repos/hydra/upsampling/HydraCore3/integrator_pt_lgt.cpp",
+                        "/media/vs/data2/repos/hydra/upsampling/HydraCore3/integrator_pt_mat.cpp",
+                        "/media/vs/data2/repos/hydra/upsampling/HydraCore3/integrator_pt_upsample.cpp",
+                        "-mainClass", "Integrator", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-I/media/vs/data2/repos/hydra/upsampling/HydraCore3/external/LiteMath",  "ignore",
+                        "-I/media/vs/data2/repos/hydra/upsampling/HydraCore3/external/LiteScene", "ignore",
+                        "-I/media/vs/data2/repos/hydra/upsampling/HydraCore3/external/CrossRT",   "process",
+                        "-I/media/vs/data2/repos/hydra/upsampling/HydraCore3/cam_plugin",         "process",  
+                        "-megakernel", "1",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
         {
             "name"   : "Launch (HydraCore3/ThinFilm) - VS",
             "type"   : "cppdbg",
