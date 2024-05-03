@@ -119,6 +119,12 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     kslicer::ApplyJsonToTemplate(templatesFolder / "z_memcpy.glsl", shaderPath / "z_memcpy.comp", dummy); // just file copy actually
     buildSH << "glslangValidator -V z_memcpy.comp -o z_memcpy.comp.spv" << std::endl;
   }
+  if(a_codeInfo->usedServiceCalls.find("MatMulTranspose") != a_codeInfo->usedServiceCalls.end())
+  {
+    nlohmann::json dummy;
+    kslicer::ApplyJsonToTemplate(templatesFolder / "z_matMulTranspose.glsl", shaderPath / "z_matMulTranspose.comp", dummy); // just file copy actually
+    buildSH << "glslangValidator -V z_matMulTranspose.comp -o z_matMulTranspose.comp.spv" << std::endl;
+  }
 
   if(a_codeInfo->usedServiceCalls.find("exclusive_scan") != a_codeInfo->usedServiceCalls.end() ||
      a_codeInfo->usedServiceCalls.find("inclusive_scan") != a_codeInfo->usedServiceCalls.end())
@@ -1264,7 +1270,8 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
 
   GLSLKernelRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
-  return m_rewriter.getRewrittenText(expr->getSourceRange());
+  std::string text = m_rewriter.getRewrittenText(expr->getSourceRange()); 
+  return (text != "") ? text : kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 }
 
 

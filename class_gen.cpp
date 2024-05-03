@@ -67,57 +67,6 @@ bool CheckTextureAccessFlags(kslicer::TEX_ACCESS a_flags, const std::string& arg
   return false;
 }
 
-std::string kslicer::MainClassInfo::RemoveKernelPrefix(const std::string& a_funcName) const
-{
-  std::string name = a_funcName;
-  if(ReplaceFirst(name, "kernel_", ""))
-    return name;
-  else
-    return a_funcName;
-}
-
-bool kslicer::MainClassInfo::IsKernel(const std::string& a_funcName) const
-{
-  auto pos = a_funcName.find("kernel_");
-  return (pos != std::string::npos);
-}
-
-bool kslicer::IsTextureContainer(const std::string& a_typeName)
-{
-  if(a_typeName == "Texture1D" || a_typeName == "Image1D")
-    return true;
-  if(a_typeName == "Texture2D" || a_typeName == "Image2D")
-    return true;
-  if(a_typeName == "Texture3D" || a_typeName == "Image3D")
-    return true;
-  if(a_typeName == "TextureCube" || a_typeName == "ImageCube")
-    return true;
-
-  return false;
-} 
-
-bool kslicer::IsSamplerTypeName(const std::string& a_typeName)
-{
-  if(a_typeName == "struct Sampler")
-    return true;
-  auto posOfXX = a_typeName.find_last_of("::");
-  auto name2   = a_typeName.substr(posOfXX+1);
-  if(name2 == "Sampler" || name2 == "Sampler")
-    return true;
-  return false;
-}
-
-bool kslicer::IsCombinedImageSamplerTypeName(const std::string& a_typeName)
-{
-  if(a_typeName == "struct ICombinedImageSampler")
-    return true;
-  auto posOfXX = a_typeName.find_last_of("::");
-  auto name2   = a_typeName.substr(posOfXX+1);
-  if(name2 == "ICombinedImageSampler" || name2 == "ICombinedImageSampler")
-    return true;
-  return false;
-}
-
 
 bool kslicer::MainClassInfo::IsIndirect(const KernelInfo& a_kernel) const
 {

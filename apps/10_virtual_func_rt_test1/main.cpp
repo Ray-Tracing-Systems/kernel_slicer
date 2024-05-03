@@ -1,12 +1,13 @@
 #include <iostream>
 #include <fstream>
+#include <memory>
 
 #include "test_class.h"
 #include "Bitmap.h"
 #include "ArgParser.h"
 
-#include "vk_context.h"
-std::shared_ptr<TestClass> CreateTestClass_Generated(int a_maxThreads, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+//#include "vk_context.h"
+//std::shared_ptr<TestClass> CreateTestClass_Generated(int a_maxThreads, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 
 int main(int argc, const char** argv)
 {
@@ -24,13 +25,13 @@ int main(int argc, const char** argv)
   ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
-  if(onGPU)
-  {
-    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
-    pImpl = CreateTestClass_Generated( WIN_WIDTH*WIN_HEIGHT, ctx, WIN_WIDTH*WIN_HEIGHT);
-  }
-  else
+  //if(onGPU)
+  //{
+  //  unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+  //  auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+  //  pImpl = CreateTestClass_Generated( WIN_WIDTH*WIN_HEIGHT, ctx, WIN_WIDTH*WIN_HEIGHT);
+  //}
+  //else
     pImpl = std::make_shared<TestClass>(WIN_WIDTH*WIN_HEIGHT);
   
   pImpl->LoadScene("cornell_collapsed.bvh", "cornell_collapsed.vsgf");
@@ -48,7 +49,7 @@ int main(int argc, const char** argv)
 
   // now test path tracing
   //
-  const int PASS_NUMBER = 1000;
+  const int PASS_NUMBER = 256;
   pImpl->NaivePathTraceBlock(WIN_HEIGHT*WIN_HEIGHT, 6, packedXY.data(), realColor.data(), PASS_NUMBER);
   
   const float normConst = 1.0f/float(PASS_NUMBER);

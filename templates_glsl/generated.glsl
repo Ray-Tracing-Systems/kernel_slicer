@@ -151,11 +151,30 @@ shared {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][{{Kernel.WGSi
 {% endfor %}
 {% endif %}
 
+{% if Kernel.EnableBlockExpansion %}
+{% for TID in Kernel.ThreadSizeBE %}
+const {{TID.Type}} {{TID.Name}} = {{TID.Value}}; 
+{% endfor %}
+{% for Var in Kernel.SharedBE %}
+shared {{Var}}
+{% endfor %}
+{% endif %}
+
 void main()
 {
+  {% if not Kernel.EnableBlockExpansion %}
   bool runThisThread = true;
+  {% endif %}
   {% if not Kernel.InitKPass %}
-  ///////////////////////////////////////////////////////////////// prolog
+  {% if Kernel.EnableBlockExpansion %}
+  {% for TID in Kernel.ThreadIds %}
+  {% if TID.Simple %}
+  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(gl_WorkGroupID[{{ loop.index }}]); 
+  {% else %}
+  const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + {{TID.Type}}(gl_WorkGroupID[{{ loop.index }}])*{{TID.Stride}}; 
+  {% endif %}
+  {% endfor %}
+  {% else %}
   {% for TID in Kernel.ThreadIds %}
   {% if TID.Simple %}
   const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(gl_GlobalInvocationID[{{ loop.index }}]); 
@@ -163,6 +182,7 @@ void main()
   const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + {{TID.Type}}(gl_GlobalInvocationID[{{ loop.index }}])*{{TID.Stride}}; 
   {% endif %}
   {% endfor %}
+  {% endif %} {# /* Kernel.EnableBlockExpansion */ #}
   {# /*------------------------------------------------------------- BEG. INIT ------------------------------------------------------------- */ #}
   {% include "inc_exit_cond.glsl" %}
   {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                        
@@ -172,14 +192,29 @@ void main()
   {% if Kernel.IsBoolean %}
   bool kgenExitCond = false;
   {% endif %}
-  ///////////////////////////////////////////////////////////////// prolog
   {% endif %}
+  {% if Kernel.EnableBlockExpansion %}
+  {% for Block in Kernel.SourceBE %}
+  {% if Block.IsParallel %}
+  barrier();
+  {
+  {{Block.Text}}
+  }
+  barrier();
+  {% else %}
+  if(gl_LocalInvocationID[0] == 0) {
+  {{Block.Text}}
+  }
+  {% endif %}
+  {% endfor %}
+  {% else %}
   if(runThisThread)
   {
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {{Kernel.Source}}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   }
+  {% endif %} {# /* EnableBlockExpansion */ #}
   {% if Kernel.HasEpilog %}
   //KGEN_EPILOG:
   {% if Kernel.IsBoolean %}

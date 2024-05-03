@@ -358,6 +358,7 @@ int main(int argc, const char **argv)
 
   std::cout << "(0) Listing main functions of " << mainClassName.c_str() << std::endl;
   auto cfList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, compiler.getASTContext(), inputCodeInfo);
+
   std::cout << "{" << std::endl;
   for(const auto& f : cfList)
   {
@@ -489,7 +490,7 @@ int main(int argc, const char **argv)
 
   std::cout << "(3) Mark data members, methods and functions which are actually used in kernels." << std::endl;
   std::cout << "{" << std::endl;
-
+  
   for(auto& nk : inputCodeInfo.kernels)
   {
     auto& kernel            = nk.second;
@@ -520,6 +521,8 @@ int main(int argc, const char **argv)
     }
 
     inputCodeInfo.VisitAndPrepare_KF(kernel, compiler);
+    if(kernel.name.find("kernelBE") != std::string::npos)
+      inputCodeInfo.ProcessBlockExpansionKernel(kernel, compiler);
 
     if(kernel.hasFinishPass) // add additional buffers for reduction
     {
@@ -784,6 +787,8 @@ int main(int argc, const char **argv)
   for(auto& nk : inputCodeInfo.kernels)
   {
     auto& kernel   = nk.second;
+    if(kernel.be.enabled)
+      continue;
     auto kernelDim = kernel.GetDim();
     auto it = wgszJson.find(kernel.name);
     if(it != wgszJson.end())

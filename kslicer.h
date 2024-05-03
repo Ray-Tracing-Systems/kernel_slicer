@@ -264,6 +264,24 @@ namespace kslicer
     std::vector<const KernelInfo*>                     subkernels;          ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
     ShittyFunction                                     currentShit;         ///<!
 
+    struct BEBlock
+    {
+      bool                  isParallel = false;
+      const clang::ForStmt* forLoop    = nullptr;
+      const clang::Stmt*    astNode    = nullptr;
+    };
+
+    struct BlockExpansionInfo
+    {
+      std::vector<const clang::DeclStmt*> sharedDecls;
+      std::vector<BEBlock>                statements;
+      bool enabled = false;
+      std::string wgNames[3] = {"unknown", "unknown", "unknown"};
+      std::string wgTypes[3] = {"uint", "uint", "uint"};
+    };
+
+    BlockExpansionInfo be;
+
     std::string rewrittenText;                   ///<! rewritten source code of a kernel
     std::string rewrittenInit;                   ///<! rewritten loop initialization code for kernel
     std::string rewrittenFinish;                 ///<! rewritten loop finish         code for kernel
@@ -673,6 +691,8 @@ namespace kslicer
     bool processFuncMember = false;
     virtual void SetCurrFuncInfo  (kslicer::FuncData* a_pInfo) { m_pCurrFuncInfo = a_pInfo; }
     virtual void ResetCurrFuncInfo()                           { m_pCurrFuncInfo = nullptr; }
+    
+    const clang::CompilerInstance& GetCompiler() { return m_compiler; }
 
   protected:
 
@@ -783,6 +803,12 @@ namespace kslicer
     virtual std::string Name() const { return "unknown shader compiler"; }
 
     virtual std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const = 0;
+    
+    // for block expansion
+    //
+    virtual std::string RewriteBESharedDecl(const clang::DeclStmt* decl, std::shared_ptr<KernelRewriter> pRewriter);
+    virtual std::string RewriteBEParallelFor(const clang::ForStmt* forExpr, std::shared_ptr<KernelRewriter> pRewriter);
+    virtual std::string RewriteBEStmt(const clang::Stmt* stmt, std::shared_ptr<KernelRewriter> pRewriter);
   };
 
   struct ClspvCompiler : IShaderCompiler
@@ -1037,6 +1063,8 @@ namespace kslicer
 
     void ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler);
 
+    void ProcessBlockExpansionKernel(KernelInfo& a_kernel, const clang::CompilerInstance& compiler);
+
     mutable std::vector<std::string> kernelsCallCmdDeclCached;
   };
 
@@ -1082,9 +1110,6 @@ namespace kslicer
 
   struct IPV_Pattern : public MainClassInfo
   {
-    std::string   RemoveKernelPrefix(const std::string& a_funcName) const override; ///<! "kernel2D_XXX" --> "XXX";
-    bool          IsKernel(const std::string& a_funcName) const override;           ///<! return true if function is a kernel
-
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
     void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;
@@ -1168,6 +1193,8 @@ namespace kslicer
   std::unordered_map<std::string, std::string> ListGLSLVectorReplacements();
   const clang::Expr* RemoveImplicitCast(const clang::Expr* a_expr);
   clang::Expr* RemoveImplicitCast(clang::Expr* a_expr);
+
+  void ExtractBlockSizeFromCall(clang::CXXMemberCallExpr* f, kslicer::KernelInfo& kernel, const clang::CompilerInstance& compiler);
 }
 
 std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::filesystem::path& fileName,

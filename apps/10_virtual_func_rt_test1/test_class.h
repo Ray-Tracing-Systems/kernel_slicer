@@ -35,6 +35,11 @@ struct IMaterial
                                    const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
                                    float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
                                    float4* accumColor, float4* accumThoroughput) const = 0;
+
+  float m_color[3];
+  float roughness;
+
+
 };
 
 
@@ -134,8 +139,6 @@ struct LambertMaterial : public IMaterial
   uint32_t GetTag()    const override { return TAG_LAMBERT; }
   size_t   GetSizeOf() const override { return sizeof(LambertMaterial); }                  
 
-  float m_color[3];
-
   void  kernel_GetColor(uint tid, uint* out_color, const TestClass* a_pGlobals) const override 
   { 
     out_color[tid] = RealColorToUint32_f3(float3(m_color[0], m_color[1], m_color[2])); 
@@ -208,7 +211,7 @@ struct PerfectMirrorMaterial : public IMaterial
 
 struct EmissiveMaterial : public IMaterial
 {
-  EmissiveMaterial(float a_intensity) : intensity(a_intensity) {}
+  EmissiveMaterial(float a_intensity) { roughness = a_intensity; }
   ~EmissiveMaterial() = delete;
 
   uint32_t GetTag()    const override { return TAG_EMISSIVE; }
@@ -218,7 +221,7 @@ struct EmissiveMaterial : public IMaterial
   
   void   kernel_GetColor(uint tid, uint* out_color, const TestClass* a_pGlobals) const override 
   { 
-    out_color[tid] = RealColorToUint32_f3(intensity*GetColor()); 
+    out_color[tid] = RealColorToUint32_f3(roughness*GetColor()); 
   }
 
   void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
@@ -226,7 +229,7 @@ struct EmissiveMaterial : public IMaterial
                            float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen,
                            float4* accumColor, float4* accumThoroughput) const override
   {
-    float4 emissiveColor = to_float4(intensity*GetColor(), 0.0f);
+    float4 emissiveColor = to_float4(roughness*GetColor(), 0.0f);
     const float3 ray_dir = to_float3(*rayDirAndFar);
     if(ray_dir.y <= 0.0f)
       emissiveColor = float4(0,0,0,0);
@@ -236,12 +239,11 @@ struct EmissiveMaterial : public IMaterial
     *rayDirAndFar  = make_float4(0,1.0f,0,0);        // 
   }
 
-  float  intensity;
 };
 
 struct GGXGlossyMaterial : public IMaterial
 {
-  GGXGlossyMaterial(float3 a_color) { color[0] = a_color[0]; color[1] = a_color[1]; color[2] = a_color[2]; roughness = 0.3f; }
+  GGXGlossyMaterial(float3 a_color) { m_color[0] = a_color[0]; m_color[1] = a_color[1]; m_color[2] = a_color[2]; roughness = 0.3f; }
   ~GGXGlossyMaterial() = delete;
 
   uint32_t GetTag()    const override { return TAG_GGX_GLOSSY; }
@@ -249,8 +251,8 @@ struct GGXGlossyMaterial : public IMaterial
   
   void  kernel_GetColor(uint tid, uint* out_color, const TestClass* a_pGlobals) const override 
   { 
-    float redColor = std::max(1.0f, color[0]);
-    out_color[tid] = RealColorToUint32_f3(float3(redColor, color[1], color[2])); 
+    float redColor = std::max(1.0f, m_color[0]);
+    out_color[tid] = RealColorToUint32_f3(float3(redColor, m_color[1], m_color[2])); 
   }
 
   void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
@@ -307,17 +309,15 @@ struct GGXGlossyMaterial : public IMaterial
       const float D = GGX_Distribution(dotNH, roughSqr);
       const float G = GGX_GeomShadMask(dotNV, roughSqr) * GGX_GeomShadMask(dotNL, roughSqr); 
     
-      Pss    = D * G / fmax(4.0f * dotNV * dotNL, 1e-6f);        
-      outPdf = D * dotNH / fmax(4.0f * dotHV, 1e-6f);
+      Pss    = D * G / std::max(4.0f * dotNV * dotNL, 1e-6f);        
+      outPdf = D * dotNH / std::max(4.0f * dotHV, 1e-6f);
     }  
   
     *rayPosAndNear    = to_float4(OffsRayPos(hit.pos, hit.norm, newDir), 0.0f);
     *rayDirAndFar     = to_float4(newDir, MAXFLOAT);
-    *accumThoroughput *= cosTheta*to_float4(float3(color[0], color[1], color[2]) * Pss * (1.0f/fmax(outPdf, 1e-5f)), 0.0f);
+    *accumThoroughput *= cosTheta*to_float4(float3(m_color[0], m_color[1], m_color[2]) * Pss * (1.0f/std::max(outPdf, 1e-5f)), 0.0f);
   }
 
-  float color[3];
-  float roughness;
 };
 
 struct EmptyMaterial : public IMaterial

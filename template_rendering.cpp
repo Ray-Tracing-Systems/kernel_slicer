@@ -273,6 +273,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
   data["UseServiceScan"]     = (a_classInfo.usedServiceCalls.find("exclusive_scan") != a_classInfo.usedServiceCalls.end()) || (a_classInfo.usedServiceCalls.find("inclusive_scan") != a_classInfo.usedServiceCalls.end());
   data["UseServiceSort"]     = (a_classInfo.usedServiceCalls.find("sort") != a_classInfo.usedServiceCalls.end());
+  data["UseMatMult"]         = (a_classInfo.usedServiceCalls.find("MatMulTranspose") != a_classInfo.usedServiceCalls.end());
   data["UseComplex"]         = true; // a_classInfo.useComplexNumbers; does not works in appropriate way ...
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
@@ -618,9 +619,44 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     kernelJson["UseRayGen"]      = k.enableRTPipeline && a_settings.enableRayGen;       // duplicate these options for kernels so we can
     kernelJson["UseMotionBlur"]  = k.enableRTPipeline && a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
+    
+    kernelJson["EnableBlockExpansion"] = k.be.enabled;
+    if(k.be.enabled) // process separate statements inside for loop for Block Expansion
+    {
+      kernelJson["Source"]   = "";
+      kernelJson["SourceBE"] = std::vector<std::string>(); 
+      kernelJson["SharedBE"] = std::vector<std::string>();
+      
+      clang::Rewriter rewrite2;
+      rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+      std::shared_ptr<KernelRewriter> pRewriter = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), std::string(""), false);
 
-    std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
-    kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
+      for(const auto var : k.be.sharedDecls)
+        kernelJson["SharedBE"].push_back(a_classInfo.pShaderCC->RewriteBESharedDecl(var, pRewriter));
+      
+      for(const auto stmt : k.be.statements) 
+      {
+        json statement;
+        if(stmt.isParallel && stmt.forLoop != nullptr)
+        {
+          statement["IsParallel"] = true;
+          statement["Text"]     = a_classInfo.pShaderCC->RewriteBEParallelFor(stmt.forLoop, pRewriter);
+        }
+        else
+        {
+          statement["IsParallel"] = false;
+          statement["Text"]     = a_classInfo.pShaderCC->RewriteBEStmt(stmt.astNode, pRewriter);
+        }
+        kernelJson["SourceBE"].push_back(statement);
+      }
+    }
+    else             // process the whole code in single pass 
+    {
+      std::string sourceCodeCut = k.rewrittenText.substr(k.rewrittenText.find_first_of('{')+1);
+      kernelJson["Source"]      = sourceCodeCut.substr(0, sourceCodeCut.find_last_of('}'));
+      kernelJson["SourceBE"]    = std::vector<std::string>();
+      kernelJson["SharedBE"]    = std::vector<std::string>();
+    }
 
     kernelJson["SpecConstants"] = std::vector<std::string>();
     for(auto keyval : specConsts)
@@ -642,6 +678,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["ThreadId0"] = "";
       kernelJson["ThreadId1"] = "";
       kernelJson["ThreadId2"] = "";
+
+      kernelJson["ThreadSizeBE"] = std::vector<std::string>();
 
       std::vector<std::string> threadIdNames(tidArgs.size());
       for(size_t i=0;i<tidArgs.size();i++)
@@ -691,8 +729,14 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
           kernelJson["ThreadId1"] = threadId;
         else
           kernelJson["ThreadId2"] = threadId;
+        
+        json threadIdBE = threadId;
+        threadIdBE["Name"]  = k.be.wgNames[i];
+        threadIdBE["Type"]  = k.be.wgTypes[i];
+        threadIdBE["Value"] = k.wgSize[i];
 
         kernelJson["ThreadIds"].push_back(threadId);
+        kernelJson["ThreadSizeBE"].push_back(threadIdBE);
       }
 
       kernelJson["threadDim"]   = tidArgs.size();

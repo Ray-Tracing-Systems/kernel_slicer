@@ -513,6 +513,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
   data["UseServiceScan"]     = (a_classInfo.usedServiceCalls.find("exclusive_scan") != a_classInfo.usedServiceCalls.end()) || (a_classInfo.usedServiceCalls.find("inclusive_scan") != a_classInfo.usedServiceCalls.end());
   data["UseServiceSort"]     = (a_classInfo.usedServiceCalls.find("sort") != a_classInfo.usedServiceCalls.end());
+  data["UseMatMult"]         = (a_classInfo.usedServiceCalls.find("MatMulTranspose") != a_classInfo.usedServiceCalls.end());
   data["GenGpuApi"]          = a_classInfo.genGPUAPI;
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
@@ -921,6 +922,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["UseRayGen"]      = k.enableRTPipeline && a_settings.enableRayGen;       // duplicate these options for kernels so we can
     kernelJson["UseMotionBlur"]  = k.enableRTPipeline && a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
     kernelJson["StageFlags"]     = k.enableRTPipeline ? "(VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)" : "VK_SHADER_STAGE_COMPUTE_BIT";
+    kernelJson["EnableBlockExpansion"] = k.be.enabled;
 
     size_t actualSize = 0;
     for(const auto& arg : k.args)
@@ -1173,6 +1175,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     auto pScnRstr = a_classInfo.allMemberFunctions.find("SceneRestrictions");
     auto pNameFn  = a_classInfo.allMemberFunctions.find("Name");
 
+    auto pResDir  = a_classInfo.allMemberFunctions.find("GetResourcesRootDir");
+
     auto pNamePBI  = a_classInfo.allMemberFunctions.find("ProgressBarStart");
     auto pNamePBA  = a_classInfo.allMemberFunctions.find("ProgressBarAccum");
     auto pNamePBD  = a_classInfo.allMemberFunctions.find("ProgressBarDone");
@@ -1194,6 +1198,14 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       if(!pGetTime->second->isVirtual())
         std::cout << "  [kslicer]: warning, function 'GetExecutionTime' should be virtual" << std::endl;
     }
+
+    //if(pResDir == a_classInfo.allMemberFunctions.end())
+    //  std::cout << "  [kslicer]: warning, can't find fuction 'GetResourcesRootDir', you should define it: 'virtual std::string GetResourcesRootDir(){}'" << std::endl;
+    //else
+    //{
+    //  if(!pResDir->second->isVirtual())
+    //    std::cout << "  [kslicer]: warning, function 'GetResourcesRootDir' should be virtual" << std::endl;
+    //}
 
     if(pUpdPOD != a_classInfo.allMemberFunctions.end())
     {
@@ -1222,6 +1234,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["HasNameFunc"]               = (pNameFn != a_classInfo.allMemberFunctions.end());
     data["HasCommitDeviceFunc"]       = (pCommit  != a_classInfo.allMemberFunctions.end());
     data["HasGetTimeFunc"]            = (pGetTime != a_classInfo.allMemberFunctions.end());
+
+    data["HasGetResDirFunc"]          = (pResDir != a_classInfo.allMemberFunctions.end());
 
     data["UpdateMembersPlainData"]    = (pUpdPOD  != a_classInfo.allMemberFunctions.end());
     data["UpdateMembersVectorData"]   = (pUpdVec  != a_classInfo.allMemberFunctions.end());
@@ -1333,8 +1347,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       //std::cout << "[ds bindings] kname = " << dsArgs.originKernelName.c_str() << std::endl;
 
       const auto pFoundKernel   = a_classInfo.FindKernelByName(dsArgs.originKernelName);
-      const bool internalKernel = (pFoundKernel == a_classInfo.kernels.end());
-      const bool isMegaKernel   = internalKernel ? false : pFoundKernel->second.isMega;
+      const bool internalKernel = (a_classInfo.kernels.find(dsArgs.originKernelName) == a_classInfo.kernels.end());
+      const bool isServeceKernel = kslicer::GetAllServiceKernels().count(dsArgs.originKernelName) > 0;
+      const bool isMegaKernel   = internalKernel || isServeceKernel ? false : pFoundKernel->second.isMega;
 
       json local;
       local["Id"]         = i;
@@ -1344,11 +1359,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["ArgNames"]   = std::vector<std::string>();
       local["IsServiceCall"] = dsArgs.isService;
       local["IsVirtual"]     = false;
+      if (pFoundKernel != a_classInfo.megakernelsByName.end())
+          local["EnableBlockExpansion"] = pFoundKernel->second.be.enabled;
 
       uint32_t realId = 0;
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
-        if(!internalKernel && !a_classInfo.pShaderCC->IsISPC())
+        if(!internalKernel && !isServeceKernel && !a_classInfo.pShaderCC->IsISPC() && pFoundKernel != a_classInfo.megakernelsByName.end())
         {
           const bool ignoreArg = IgnoreArgForDS(j, dsArgs.descriptorSetsInfo, pFoundKernel->second.args, pFoundKernel->second.name, a_classInfo.IsRTV());
           if(ignoreArg && !isMegaKernel)
@@ -1415,7 +1432,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         realId++;
       }
 
-      if(pFoundKernel != a_classInfo.kernels.end() && !isMegaKernel) // seems for MegaKernel these containers are already in 'dsArgs.descriptorSetsInfo'
+      if(!internalKernel && !isMegaKernel) // seems for MegaKernel these containers are already in 'dsArgs.descriptorSetsInfo'
       {
         for(const auto& container : pFoundKernel->second.usedContainers) // add all class-member vectors bindings
         {

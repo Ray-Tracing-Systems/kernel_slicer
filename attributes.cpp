@@ -110,11 +110,11 @@ struct SizeAttrInfo : public ParsedAttrInfo {
 
     return AttributeApplied;
   }
-};
 
+};
 
 
 } // namespace
 
-static ParsedAttrInfoRegistry::Add<SetterAttrInfo> G_SETTER_ATTR("setter", "");
-static ParsedAttrInfoRegistry::Add<SizeAttrInfo> G_SIZE_ATTR("size", "");
+static ParsedAttrInfoRegistry::Add<SetterAttrInfo>  G_SETTER_ATTR("setter", "");
+static ParsedAttrInfoRegistry::Add<SizeAttrInfo>    G_SIZE_ATTR  ("size",   "");
