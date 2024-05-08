@@ -143,6 +143,7 @@ public:
     {% if HasPrefixData %}
     UpdatePrefixPointers();
     {% endif %}
+    ReserveEmptyVectors();
     InitMemberBuffers();
     UpdateAll(a_pCopyHelper);
   }
