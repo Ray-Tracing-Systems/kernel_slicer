@@ -1038,9 +1038,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       if(!f.isMember)
       {
-        //f.astNode->dump();
         pVisitorF->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
-        data["LocalFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
+        const std::string funDecl  = rewrite2.getRewrittenText(f.srcRange);             // func body rewrite does not works correctly in this way some-times (see float4x4 indices)
+        const std::string funBody  = pVisitorF->RecursiveRewrite(f.astNode->getBody()); // but works in this way ... 
+        const std::string declHead = funDecl.substr(0,funDecl.find("{"));               // therefore we join function head and body
+    
+        data["LocalFunctions"].push_back(declHead + funBody);
         shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();
       }
     }

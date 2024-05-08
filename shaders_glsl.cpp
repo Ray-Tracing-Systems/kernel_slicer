@@ -389,6 +389,8 @@ public:
   bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)  override;
   bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
 
+  bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
+
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
   IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
 
@@ -407,6 +409,7 @@ public:
 
   std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
   std::string RecursiveRewrite(const clang::Stmt* expr) override;
+  void        Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3]);
 
   bool        NeedsVectorTypeRewrite(const std::string& a_str);
   std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
@@ -656,6 +659,33 @@ bool GLSLFunctionRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOr
   }
 
   return true;
+}
+
+bool  GLSLFunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr)
+{
+  std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler); 
+  
+  if(op == "[" || op == "]" || op == "[]")
+  {
+    const clang::Expr* nodes[3] = {nullptr,nullptr,nullptr};
+    Get2DIndicesOfFloat4x4(expr,nodes);
+
+    if(nodes[0] != nullptr)
+    {
+      std::string varName = RecursiveRewrite(nodes[0]);
+      std::string yText   = RecursiveRewrite(nodes[1]);
+      std::string xText   = RecursiveRewrite(nodes[2]);
+      std::string resVal  = varName + "[" + yText + "][" + xText + "]";
+
+      m_rewriter.ReplaceText(expr->getSourceRange(), resVal);
+      m_lastRewrittenText = resVal;
+      MarkRewritten(expr);
+      return true;
+    }
+  }
+
+  return FunctionRewriter::VisitCXXOperatorCallExpr_Impl(expr);
 }
 
 std::string GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
@@ -1101,6 +1131,36 @@ bool GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* c
     MarkRewritten(next);
   }
   return true;
+}
+
+void GLSLFunctionRewriter::Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3])
+{
+  out[0] = nullptr;
+  out[1] = nullptr;
+  out[2] = nullptr;
+
+  const auto *arg0 = expr->getArg(0)->IgnoreImpCasts();
+  const auto *arg1 = expr->getArg(1)->IgnoreImpCasts();
+  
+  const clang::QualType arg0T    = arg0->getType();
+  const std::string arg0TypeName = arg0T.getAsString();
+
+  if(clang::isa<clang::MaterializeTemporaryExpr>(arg0) && arg0TypeName == "RowTmp")
+  {
+    auto arg0_op = clang::dyn_cast<const clang::MaterializeTemporaryExpr>(arg0);
+    auto nextOp  = arg0_op->getSubExpr();
+    
+    if(clang::isa<clang::CXXOperatorCallExpr>(nextOp)) 
+    { 
+      const auto nextOp2 = clang::dyn_cast<const clang::CXXOperatorCallExpr>(nextOp);
+      const auto arg00   = nextOp2->getArg(0)->IgnoreImpCasts();
+      const auto arg01   = nextOp2->getArg(1)->IgnoreImpCasts();
+      
+      out[0] = arg00;
+      out[1] = arg1;
+      out[2] = arg01;
+    }
+  }
 }
 
 void kslicer::GLSLCompiler::ProcessVectorTypesString(std::string& a_str)
@@ -1557,26 +1617,39 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
     else
       return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr); // detect reduction access
   }
-  else if(op == "+" || op == "-" || op == "*" || op == "/")
+  else if(op == "+" || op == "-" || op == "*" || op == "/")                // WTF ??? NOT IMPLEMENTED ???
   {
     clang::Expr* left  = kslicer::RemoveImplicitCast(expr->getArg(0));
     clang::Expr* tight = kslicer::RemoveImplicitCast(expr->getArg(1));
     const std::string leftType  = left->getType().getAsString();
     const std::string rightType = tight->getType().getAsString();
 
-    if(leftType.find("complex") != std::string::npos)
-    {
-      int a = 2;
-    }
-
-    if(rightType.find("complex") != std::string::npos)
-    {
-      int b = 3;
-    }
+    //if(leftType.find("complex") != std::string::npos)
+    //{
+    //  int a = 2;
+    //}
+    //
+    //if(rightType.find("complex") != std::string::npos)
+    //{
+    //  int b = 3;
+    //}
   }
   else if((op == "]" || op == "[" || op == "[]") && WasNotRewrittenYet(expr))
   {
-    RewriteTextureAccess(expr, nullptr, "");
+    const clang::Expr* nodes[3] = {nullptr,nullptr,nullptr};
+    m_glslRW.Get2DIndicesOfFloat4x4(expr,nodes);
+
+    if(nodes[0] != nullptr)
+    {
+      std::string varName = RecursiveRewrite(nodes[0]);
+      std::string yText   = RecursiveRewrite(nodes[1]);
+      std::string xText   = RecursiveRewrite(nodes[2]);
+      std::string resVal = varName + "[" + yText + "][" + xText + "]";
+      m_rewriter.ReplaceText(expr->getSourceRange(), resVal);
+      MarkRewritten(expr);
+    }
+    else
+      RewriteTextureAccess(expr, nullptr, "");
   }
   else
     return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr);
