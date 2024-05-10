@@ -322,8 +322,8 @@ void {{MainClassName}}{{MainClassSuffix}}::copyKernelFloatCmd(uint32_t length)
 
 void {{MainClassName}}{{MainClassSuffix}}::matMulTransposeCmd(uint32_t A_offset, uint32_t B_offset, uint32_t C_offset, uint32_t A_col_len, uint32_t B_col_len, uint32_t A_row_len)
 {
-  const uint32_t blockSizeX = 8;
-  const uint32_t blockSizeY = 8;
+  const uint32_t blockSizeX = 8 * 2;
+  const uint32_t blockSizeY = 8 * 2;
 
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, matMulTransposePipeline);
   struct KernelArgsPC
