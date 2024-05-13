@@ -4,6 +4,27 @@
 #include <chrono>
 #include <string>
 
+void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
+{ 
+  // using in place new to create objects on the CPU side
+  //
+  m_materials.resize(11);
+  
+  new (m_materials.data() + 0 ) EmptyMaterial()                                      ;
+  new (m_materials.data() + 1 ) LambertMaterial(float3(0.5,0.5,0.5))                 ;
+  new (m_materials.data() + 2 ) LambertMaterial(float3(0.6,0.0235294,0.0235294))     ;
+  new (m_materials.data() + 3 ) LambertMaterial(float3(0.0235294, 0.6, 0.0235294))   ;
+  new (m_materials.data() + 4 ) GGXGlossyMaterial(float3(0.6,0.6,0.1))               ;
+  new (m_materials.data() + 5 ) LambertMaterial(float3(0.0847059, 0.144706,0.265882));
+  new (m_materials.data() + 6 ) PerfectMirrorMaterial                                ;
+  new (m_materials.data() + 7 ) LambertMaterial(float3(0.25,0.0,0.5))                ;
+  new (m_materials.data() + 8 ) PerfectMirrorMaterial                                ;
+  new (m_materials.data() + 9 ) PerfectMirrorMaterial                                ;
+  new (m_materials.data() + 10) EmissiveMaterial(20.0f)                              ;
+  
+  m_emissiveMaterialId = 10;
+}
+
 void TestClass::InitRandomGens(int a_maxThreads)
 {
   m_randomGens.resize(a_maxThreads);

@@ -10,8 +10,6 @@
 
 #include "include/bvh.h"
 
-class TestClass;
-
 struct BxDFSample
 {
   float3 brdfVal;
