@@ -30,12 +30,9 @@ struct IMaterial
 
   IMaterial(){}  // Dispatching on GPU hierarchy must not have destructors, especially virtual      
 
-  virtual uint32_t GetTag() const { return 0; }
+  virtual uint32_t   GetTag() const { return 0; }
 
-  void kernel_GetColor(uint tid, uint* out_color, const TestClass* a_pGlobals) const 
-  { 
-    out_color[tid] = RealColorToUint32_f3(float3(m_color[0], m_color[1], m_color[2])); 
-  }
+  virtual float3     GetColor() const { return float3(m_color[0], m_color[1], m_color[2]); }
 
   virtual BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv) const
   {
@@ -43,44 +40,8 @@ struct IMaterial
     return res;
   }
 
-  virtual void  kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
-                                  const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
-                                  float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
-                                  float4* accumColor, float4* accumThoroughput) const
-  {
-    const Lite_Hit lHit  = *in_hit;
-    const float3 ray_dir = to_float3(*rayDirAndFar);
-    
-    SurfaceHit hit;
-    hit.pos  = to_float3(*rayPosAndNear) + lHit.t*ray_dir;
-    hit.norm = EvalSurfaceNormal(ray_dir, lHit.primId, *in_bars, in_indices, in_vnorm);
-  
-    RandomGen gen   = pGen[tid];
-    const float2 uv = rndFloat2_Pseudo(&gen);
-    pGen[tid]       = gen;
-    
-    const BxDFSample matSam   = SampleAndEvalBxDF(*rayPosAndNear, *rayDirAndFar, hit, uv);
-    const float3     bxdfVal  = matSam.brdfVal * (1.0f / std::max(matSam.pdfVal, 1e-10f));
-    const float      cosTheta = dot(matSam.newDir, hit.norm);
-    
-    if(matSam.flags != 0) 
-    {
-      *accumColor    = to_float4(matSam.brdfVal,0.0f)*(*accumThoroughput);
-      *rayPosAndNear = make_float4(0,10000000.0f,0,0); // shoot ray out of scene
-      *rayDirAndFar  = make_float4(0,1.0f,0,0);        // 
-    }
-    else
-    {
-      *rayPosAndNear    = to_float4(OffsRayPos(hit.pos, hit.norm, matSam.newDir), 0.0f);
-      *rayDirAndFar     = to_float4(matSam.newDir, MAXFLOAT);
-      *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f);
-    }
-  }
-
   float m_color[3];
   float roughness;
-
-
 };
 
 
@@ -124,15 +85,19 @@ public:
   void kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumuThoroughput);        
 
   bool kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
-                       Lite_Hit* out_hit, float2* out_bars);
+                       Lite_Hit* out_hit, float2* out_bars, uint* out_mid);
   
-  void kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* out_color);
+  void kernel_RealColorToUint32(uint tid, uint mid, uint* out_color);
 
   void kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, 
                                 float4* out_color);
+ 
+  void kernel_NextBounce(uint tid, uint mid, const Lite_Hit* in_hit, const float2* in_bars, 
+                         const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
+                         float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
+                         float4* accumColor, float4* accumThoroughput);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
   float3    testColor = float3(0, 1, 1);
   uint32_t  m_emissiveMaterialId = 0;
@@ -196,7 +161,8 @@ struct PerfectMirrorMaterial : public IMaterial
   PerfectMirrorMaterial() { m_color[0] = 0.85f; m_color[1] = 0.85f; m_color[2] = 0.85f;}
   ~PerfectMirrorMaterial() = delete;
 
-  uint32_t GetTag()    const override { return TAG_MIRROR; }
+  uint32_t GetTag()   const override { return TAG_MIRROR; }
+  float3   GetColor() const override { return float3(0,0,0); }
   
   BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv) const override
   {
@@ -221,9 +187,8 @@ struct EmissiveMaterial : public IMaterial
   EmissiveMaterial(float a_intensity) { roughness = a_intensity; }
   ~EmissiveMaterial() = delete;
 
-  uint32_t GetTag()    const override { return TAG_EMISSIVE; }
-  
-  float3 GetColor() const { return float3(1,1,1); }
+  uint32_t GetTag() const override { return TAG_EMISSIVE; }
+  float3 GetColor() const override { return float3(1,1,1); }
   
   BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv) const override
   {
@@ -310,13 +275,6 @@ struct EmptyMaterial : public IMaterial
   ~EmptyMaterial() = delete;
 
   uint32_t GetTag() const override { return TAG_EMPTY; }
-
-  void   kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2* in_bars, 
-                           const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
-                           float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen,
-                           float4* accumColor, float4* accumThoroughput) const override { }
 };
-
-
 
 #endif
