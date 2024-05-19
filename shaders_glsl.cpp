@@ -1042,6 +1042,23 @@ bool GLSLFunctionRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special 
   return true;
 }
 
+const clang::DeclStmt* getParentDeclContext(const clang::VarDecl* varDecl, clang::ASTContext& context) 
+{
+    clang::ParentMapContext& parentMapContext = context.getParentMapContext();
+
+    // Получаем родительский узел
+    const clang::DynTypedNodeList parents = parentMapContext.getParents(*varDecl);
+    
+    // Перебираем всех родителей
+    for (const clang::DynTypedNode& parent : parents) {
+      auto stmt = parent.get<clang::DeclStmt>();
+      if(stmt != nullptr)
+        return stmt;
+      //parent.dump(llvm::outs(), context);
+    }
+    return nullptr;
+}
+
 bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 {
   if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
@@ -1050,11 +1067,63 @@ bool GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   const auto qt      = decl->getType();
   const auto pValue  = decl->getAnyInitializer();
 
-  //const std::string debugText    = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler);
+  const std::string debugText    = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler);
   //const std::string debugTextVal = kslicer::GetRangeSourceCode(pValue->getSourceRange(), m_compiler);
   const std::string varType = qt.getAsString();
   auto sFeatures2 = kslicer::GetUsedShaderFeaturesFromTypeName(varType);
   m_codeInfo->globalShaderFeatures = m_codeInfo->globalShaderFeatures || sFeatures2;
+
+  for (const clang::Attr* attr : decl->attrs()) 
+  {
+    //const std::string attrType = attr->getSpelling();
+    const std::string attrText = kslicer::GetRangeSourceCode(attr->getRange(), m_compiler);
+
+    clang::QualType varType = decl->getType();
+
+    if (varType->isArrayType() && attrText == "threadlocal") 
+    {
+      std::cout << "  found: " << attrText.c_str() << " for " << debugText.c_str() << std::endl;
+      std::string varName = decl->getNameAsString();
+      auto p = m_codeInfo->m_threadLocalArrays.find(varName.c_str());
+      if(p == m_codeInfo->m_threadLocalArrays.end())
+      {
+        const clang::ArrayType* arrayType = varType->getAsArrayTypeUnsafe();
+        clang::QualType elementType = arrayType->getElementType();
+        
+        int arraySize = 0;
+        if (const clang::ConstantArrayType* constantArrayType = llvm::dyn_cast<clang::ConstantArrayType>(arrayType)) {
+          clang::SmallVector<char, 16> tmpBuf;
+          constantArrayType->getSize().toStringUnsigned(tmpBuf, 10);
+          arraySize = std::atoi(tmpBuf.data());
+        }
+
+        const clang::DeclStmt* declStmt = getParentDeclContext(decl, m_compiler.getASTContext());
+        if(declStmt != nullptr && WasNotRewrittenYet(declStmt))
+        {
+          std::stringstream strOut;
+          strOut << "// " << debugText.c_str() << "; was moved to global scope in GLSL"; // 123
+          m_rewriter.ReplaceText(declStmt->getSourceRange(), strOut.str());
+          MarkRewritten(declStmt);
+          
+          kslicer::ArrayData array;
+          array.arrayName = varName;
+          array.elemType  = elementType.getAsString();
+          array.arraySize = arraySize;
+
+          if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->isKernel) 
+          {
+            auto pKernel = m_codeInfo->kernels.find(m_pCurrFuncInfo->name);
+            if(pKernel != m_codeInfo->kernels.end())
+              pKernel->second.threadLocalArrays[array.arrayName] = array;
+            else
+              m_codeInfo->m_threadLocalArrays[array.arrayName] = array;
+          }
+          else
+            m_codeInfo->m_threadLocalArrays[array.arrayName] = array;
+        }
+      }
+    }
+  }
 
   const clang::Type::TypeClass typeClass = qt->getTypeClass();
   const bool isAuto = (typeClass == clang::Type::Auto);
@@ -1449,7 +1518,21 @@ bool GLSLKernelRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
     return true;
+
+  kslicer::FuncData fdata;
+  if(m_pCurrKernelInfo != nullptr) 
+  {
+    fdata.astNode  = m_pCurrKernelInfo->astNode;
+    fdata.name     = m_pCurrKernelInfo->name;
+    fdata.srcRange = fdata.astNode->getSourceRange();
+    fdata.srcHash  = kslicer::GetHashOfSourceRange(fdata.srcRange);
+    fdata.isMember = false;
+    fdata.isKernel = true;
+    fdata.depthUse = 0;    
+  };
+  m_glslRW.SetCurrFuncInfo(&fdata);  
   m_glslRW.VisitVarDecl_Impl(decl);
+  m_glslRW.ResetCurrFuncInfo();
   return true;
 }
 

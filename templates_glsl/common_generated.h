@@ -150,6 +150,10 @@ struct Box4f
   vec4 boxMax;
 };  
 
+{% for Array in ThreadLocalArrays %}
+{{Array.Type}} {{Array.Name}}[{{Array.Size}}];
+{% endfor %}
+
 ## for LocalFunc in LocalFunctions  
 {{LocalFunc}}
 

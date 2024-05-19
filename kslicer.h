@@ -136,6 +136,12 @@ namespace kslicer
     bool useVarPtr = false;
   };
 
+  struct ArrayData
+  {
+    uint32_t    arraySize  = 0;
+    std::string arrayName;
+    std::string elemType;
+  };
 
   /**
   \brief for each method MainClass::kernel_XXX
@@ -263,6 +269,7 @@ namespace kslicer
     std::vector<ShittyFunction>                        shittyFunctions;     ///<! functions with input pointers accesed global memory, they should be rewritten for GLSL
     std::vector<const KernelInfo*>                     subkernels;          ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
     ShittyFunction                                     currentShit;         ///<!
+    std::unordered_map<std::string, ArrayData>         threadLocalArrays;
 
     struct BEBlock
     {
@@ -691,12 +698,16 @@ namespace kslicer
     bool processFuncMember = false;
     virtual void SetCurrFuncInfo  (kslicer::FuncData* a_pInfo) { m_pCurrFuncInfo = a_pInfo; }
     virtual void ResetCurrFuncInfo()                           { m_pCurrFuncInfo = nullptr; }
+
+    virtual void SetCurrKernelInfo  (kslicer::KernelInfo* a_pInfo) { m_pCurrKernelInfo = a_pInfo; }
+    virtual void ResetCurrKernelInfo()                             { m_pCurrKernelInfo = nullptr; }
     
     const clang::CompilerInstance& GetCompiler() { return m_compiler; }
 
   protected:
 
-    kslicer::FuncData* m_pCurrFuncInfo = nullptr;
+    kslicer::FuncData* m_pCurrFuncInfo   = nullptr;
+    KernelInfo*        m_pCurrKernelInfo = nullptr;
 
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
     void ProcessReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
@@ -923,6 +934,8 @@ namespace kslicer
     std::vector<std::string>                    indirectKernels; ///<! list of all kernel names which require indirect dispatch; The order is essential because it is used for indirect buffer offsets
     std::vector<DataMemberInfo>                 dataMembers;     ///<! only those member variables which are referenced from kernels
     std::vector<MainFuncInfo>                   mainFunc;        ///<! list of all control functions
+  
+    std::unordered_map<std::string, ArrayData>  m_threadLocalArrays;
 
     std::string mainClassName;
     std::filesystem::path mainClassFileName;
@@ -934,6 +947,7 @@ namespace kslicer
     std::string shaderFolderPrefix = "";
     ShaderFeatures          globalShaderFeatures;
     OptionalDeviceFeatures  globalDeviceFeatures;
+    
 
     std::vector<std::string> ignoreFolders;  ///<! in these folders files are ignored
     std::vector<std::filesystem::path> processFolders; ///<! in these folders files are processed to take functions and structures from them to shaders

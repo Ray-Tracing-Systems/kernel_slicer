@@ -976,6 +976,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       }
     }
 
+    kernelJson["ThreadLocalArrays"] = std::vector<json>();
+    for(const auto& array : k.threadLocalArrays)
+    {
+      json local;
+      local["Type"] = array.second.elemType;
+      local["Name"] = array.second.arrayName;
+      local["Size"] = array.second.arraySize;
+      kernelJson["ThreadLocalArrays"].push_back(local);
+    }
+
     auto original = kernelJson;
 
     // if we have additional init statements we should add additional init kernel before our kernel
@@ -1053,6 +1063,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   {
     data["LocalFunctions"].push_back("uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }  // RTV pattern, for 2D threading"); // todo: ckeck if RTV pattern is used here!
     //data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");
+  }
+
+  data["ThreadLocalArrays"] = std::vector<json>();
+  for(const auto& array : a_classInfo.m_threadLocalArrays)
+  {
+    json local;
+    local["Type"] = array.second.elemType;
+    local["Name"] = array.second.arrayName;
+    local["Size"] = array.second.arraySize;
+    data["ThreadLocalArrays"].push_back(local);
   }
 
   return data;

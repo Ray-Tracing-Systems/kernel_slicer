@@ -114,7 +114,45 @@ struct SizeAttrInfo : public ParsedAttrInfo {
 };
 
 
+struct ThreadLocalInfo : public ParsedAttrInfo {
+  ThreadLocalInfo() {
+    OptArgs = 1;
+    static constexpr Spelling S[] = {{ParsedAttr::AS_CXX11, "threadlocal"}}; 
+    Spellings = S;
+  }
+
+  bool diagAppertainsToDecl(Sema &S, const ParsedAttr &Attr, const Decl *D) const override 
+  {
+    // This attribute appertains to functions only.
+    if (!isa<VarDecl>(D)) \
+    {
+      S.Diag(Attr.getLoc(), diag::warn_attribute_wrong_decl_type_str) << Attr << " is for variables-arrays only";
+      return false;
+    }
+    
+    const clang::VarDecl *varDecl = llvm::dyn_cast<clang::VarDecl>(D);
+    clang::QualType varType = varDecl->getType();
+
+    if (!varType->isArrayType()) 
+    {
+      S.Diag(Attr.getLoc(), diag::warn_attribute_wrong_decl_type_str) << Attr << " is for arrays only";
+      return false;
+    }
+
+    return true;
+  }
+
+  AttrHandling handleDeclAttribute(Sema &S, Decl *D, const ParsedAttr &Attr) const override 
+  {
+    // Attach an annotate attribute to the Decl.
+    D->addAttr(AnnotateAttr::Create(S.Context, "threadlocal", nullptr, 0, Attr.getRange()));
+    return AttributeApplied;
+  }
+};
+
+
 } // namespace
 
-static ParsedAttrInfoRegistry::Add<SetterAttrInfo>  G_SETTER_ATTR("setter", "");
-static ParsedAttrInfoRegistry::Add<SizeAttrInfo>    G_SIZE_ATTR  ("size",   "");
+static ParsedAttrInfoRegistry::Add<SetterAttrInfo>  G_SETTER_ATTR("setter",      "");
+static ParsedAttrInfoRegistry::Add<SizeAttrInfo>    G_SIZE_ATTR  ("size",        "");
+static ParsedAttrInfoRegistry::Add<ThreadLocalInfo> G_THRL_ATTR  ("threadlocal", "");
