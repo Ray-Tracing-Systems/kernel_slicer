@@ -521,12 +521,14 @@ namespace kslicer
     uint64_t           srcHash;
     bool               isMember = false;
     bool               isKernel = false;
+    bool               isVirtual = false;
     int                depthUse = 0;    ///!< depth Of Usage; 0 -- for kernels; 1 -- for functions called from kernel; 2 -- for functions called from functions called from kernels
                                         ///!< please note that if function is called under different depth, maximum depth should be stored in this variable;
     bool hasPrefix = false;
     std::string prefixName;
-
     std::unordered_set<std::string> calledMembers;
+
+    std::string thisTypeName;
   };
 
   enum class DECL_IN_CLASS{ DECL_STRUCT, DECL_TYPEDEF, DECL_CONSTANT, DECL_UNKNOWN};
@@ -983,10 +985,9 @@ namespace kslicer
                                         const std::unordered_map<std::string, KernelInfo>&    a_kernelList,
                                         std::vector<KernelCallInfo>&                          a_kernelCalls) {}
 
-    virtual void AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) { } ///<! for Virtual Kernels
-    virtual void AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) { } ///<! for Virtual Kernels
-    virtual void ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler) {}
-    virtual void ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool) {}
+    virtual void AddVFH(const std::string& a_className);
+    virtual void ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler);
+    virtual void ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool);
 
 
     //// \\
@@ -1000,7 +1001,6 @@ namespace kslicer
     virtual void          VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) { } // additional informational pass, does not rewrite the code!
 
     virtual void ProcessCallArs_KF(const KernelCallInfo& a_call);
-    virtual bool IsExcludedLocalFunction(const std::string& a_name) const { return false; }
 
     //// These methods used for final template text rendering
     //
@@ -1038,15 +1038,12 @@ namespace kslicer
     {
       const clang::CXXRecordDecl* interfaceDecl = nullptr;
       std::string                 interfaceName;
-      std::string                 makerName;
       std::string                 objBufferName;
       std::vector<DImplClass>     implementations;
 
       std::vector<kslicer::DeclInClass>            usedDecls;
       std::unordered_map<std::string, std::string> tagByClassName;
-
-      VKERNEL_IMPL_TYPE dispatchType = VKERNEL_IMPL_TYPE::VKERNEL_SWITCH; ///<! simple variant by default
-      uint32_t indirectBlockOffset   = 0;
+      std::map<std::string, kslicer::FuncData>     virtualFunctions;
     };
 
     kslicer::VKERNEL_IMPL_TYPE defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
@@ -1099,22 +1096,12 @@ namespace kslicer
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
     void          ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const override;
 
-    void          AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) override;  ///<! for Virtual Kernels
-    void          AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) override; ///<! for Virtual Kernels
-    void          ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler) override;
-    void          ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool) override;
-
     bool NeedThreadFlags() const override { return true; }
     bool NeedFakeOffset () const override { return true; }
-    bool IsExcludedLocalFunction(const std::string& a_name) const override
-    {
-      return (a_name == "MakeObjPtr");
-    }
-
-    bool IsRTV() const override { return true; }
+    bool IsRTV          () const override { return true; }
 
   private:
-    std::vector< std::pair< std::string, std::string> > m_vkernelPairs;
+
   };
 
   struct IPV_Pattern : public MainClassInfo

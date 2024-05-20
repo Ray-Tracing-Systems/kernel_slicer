@@ -30,10 +30,9 @@ public:
       return true;
 
     //std::string debugName = f->getNameAsString();
-    //std::cout << "[debug]: find call of " << debugName.c_str() << std::endl;
-    //if(debugName == "EyeRayDirNormalized")
+    //if(debugName == "SampleAndEvalBxDF")
     //{
-    //  int a = 2;
+    //  std::cout << "[debug]: find call of " << debugName.c_str() << std::endl;
     //}
 
     if(f->isOverloadedOperator())
@@ -74,12 +73,13 @@ public:
       }
     }
 
-    func.astNode  = f;
-    func.srcRange = f->getSourceRange();
-    func.srcHash  = kslicer::GetHashOfSourceRange(func.srcRange);
-    func.isMember = clang::isa<clang::CXXMethodDecl>(func.astNode);
-    func.isKernel = m_patternImpl.IsKernel(func.name);
-    func.depthUse = 0;
+    func.astNode   = f;
+    func.srcRange  = f->getSourceRange();
+    func.srcHash   = kslicer::GetHashOfSourceRange(func.srcRange);
+    func.isMember  = clang::isa<clang::CXXMethodDecl>(func.astNode);
+    func.isKernel  = m_patternImpl.IsKernel(func.name);
+    func.isVirtual = f->isVirtualAsWritten();
+    func.depthUse  = 0;
 
     //pCurrProcessedFunc->calledMembers.insert(func.name);
 
@@ -105,6 +105,27 @@ public:
           func.hasPrefix   = true;
           func.prefixName  = pPrefix->second;
         }
+      }
+      else if(func.isVirtual)
+      {
+        auto posBegin = debugText.find("(");       // todo: make it better
+        auto posEnd   = debugText.find(".data()"); //
+        std::string buffName = debugText.substr(posBegin+1, posEnd-posBegin-1);
+
+        func.thisTypeName = typeName;
+        auto& vfh = m_patternImpl.GetDispatchingHierarchies();
+        auto p = vfh.find(typeName);
+        if(p == vfh.end())
+        {
+          kslicer::MainClassInfo::DHierarchy hierarchy;
+          hierarchy.interfaceDecl  = recordDecl;
+          hierarchy.interfaceName  = typeName;
+          hierarchy.objBufferName  = buffName;
+          hierarchy.virtualFunctions[func.name] = func;
+          vfh[typeName] = hierarchy;
+        }
+        else
+          p->second.virtualFunctions[func.name] = func;
       }
       else if(typeName != m_patternImpl.mainClassName)
         return true;

@@ -49,8 +49,8 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
 {
   json hierarchy;
   hierarchy["Name"]             = h.interfaceName;
-  hierarchy["IndirectDispatch"] = (h.dispatchType == kslicer::VKERNEL_IMPL_TYPE::VKERNEL_INDIRECT_DISPATCH);
-  hierarchy["IndirectOffset"]   = h.indirectBlockOffset;
+  hierarchy["IndirectDispatch"] = 0;
+  hierarchy["IndirectOffset"]   = 0;
 
   hierarchy["Constants"]        = std::vector<std::string>();
   for(const auto& decl : h.usedDecls)

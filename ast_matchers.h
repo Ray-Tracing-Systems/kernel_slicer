@@ -115,25 +115,24 @@ namespace kslicer
           if(pKernel != m_allInfo.allKernels.end()) 
             pKernel->second.usedInMainFunc = true;  // mark this kernel is used
           
-          const QualType retType = kern->getReturnType();
-          const QualType thsType = kern->getThisType();
-          
-          if(retType->isPointerType())                                                ////  IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
-          {
-            auto qtOfClass = retType->getPointeeType(); 
-            m_allInfo.AddDispatchingHierarchy(qtOfClass.getAsString(), kName);
-          }
-          else if(thsType->isPointerType() && pKernel == m_allInfo.allKernels.end())  ////  pMaterial->kernel_GetColor(tid, out_color);
-          {
-            auto qtOfClass = thsType->getPointeeType(); 
-            m_allInfo.AddDispatchingKernel(qtOfClass.getAsString(), kName);
-            
-            std::string typeName = qtOfClass.getAsString();
-            auto pos = typeName.find(" ");
-            if(pos != std::string::npos)
-              typeName = typeName.substr(pos+1);
-            auto pKernel2 = m_allInfo.allOtherKernels.find(typeName + "::" + kName);
-          }
+          //const QualType retType = kern->getReturnType();
+          //const QualType thsType = kern->getThisType();
+          //if(retType->isPointerType())                                                ////  IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
+          //{
+          //  auto qtOfClass = retType->getPointeeType(); 
+          //  m_allInfo.AddVFH(qtOfClass.getAsString(), kName);
+          //}
+          //else if(thsType->isPointerType() && pKernel == m_allInfo.allKernels.end())  ////  pMaterial->kernel_GetColor(tid, out_color);
+          //{
+          //  auto qtOfClass = thsType->getPointeeType(); 
+          //  m_allInfo.AddDispatchingKernel(qtOfClass.getAsString(), kName);
+          //  
+          //  std::string typeName = qtOfClass.getAsString();
+          //  auto pos = typeName.find(" ");
+          //  if(pos != std::string::npos)
+          //    typeName = typeName.substr(pos+1);
+          //  auto pKernel2 = m_allInfo.allOtherKernels.find(typeName + "::" + kName);
+          //}
           
           CurrMainFunc().UsedKernels.insert(kName); // add  this kernel to list of used kernels by MainFunc 
         }

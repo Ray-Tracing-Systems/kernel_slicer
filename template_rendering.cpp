@@ -109,8 +109,8 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
 {
   json hierarchy;
   hierarchy["Name"]             = h.interfaceName;
-  hierarchy["IndirectDispatch"] = (h.dispatchType == kslicer::VKERNEL_IMPL_TYPE::VKERNEL_INDIRECT_DISPATCH);
-  hierarchy["IndirectOffset"]   = h.indirectBlockOffset;
+  hierarchy["IndirectDispatch"] = 0;
+  hierarchy["IndirectOffset"]   = 0;
 
   hierarchy["Constants"]        = std::vector<std::string>();
   for(const auto& decl : h.usedDecls)
@@ -331,9 +331,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   {
     for (const auto& f : usedFunctions)
     {
-      if(a_classInfo.IsExcludedLocalFunction(f.name)) // check exclude list here, don't put such functions in cl file
-        continue;
-
       cachedFunc[f.name] = f;
       auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions'
       if(pShit != shittyFunctions.end())
@@ -989,9 +986,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     for (const auto& f : usedFunctions)
     {
-      if(a_classInfo.IsExcludedLocalFunction(f.name)) // check exclude list here, don't put such functions in cl file
-        continue;
-
       cachedFunc[f.name] = f;
       auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions'
       if(pShit != shittyFunctions.end())

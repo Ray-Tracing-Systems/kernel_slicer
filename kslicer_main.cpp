@@ -532,7 +532,6 @@ int main(int argc, const char **argv)
   std::vector<kslicer::FuncData> usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
   std::vector<kslicer::DeclInClass> usedDecls           = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
 
-
   for(const auto& usedDecl : usedDecls) // merge usedDecls with generalDecls
   {
     bool found = false;

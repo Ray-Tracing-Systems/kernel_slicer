@@ -528,26 +528,17 @@ private:
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void kslicer::RTV_Pattern::AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName)
+void kslicer::MainClassInfo::AddVFH(const std::string& a_className)
 {
-  std::cout << "   found class hierarchy: " << a_className.c_str() << " from " << a_makerName.c_str() << std::endl;
+  std::cout << " found class hierarchy: " << a_className.c_str() << std::endl;
 
   DHierarchy hdata;
   hdata.interfaceName = kslicer::CutOffStructClass(a_className);
-  hdata.makerName     = a_makerName;
-  hdata.dispatchType  = this->defaultVkernelType;
   hdata.implementations.clear();
   m_vhierarchy[hdata.interfaceName] = hdata;
-  allKernels[a_makerName].interfaceName = hdata.interfaceName;
 } 
 
-void kslicer::RTV_Pattern::AddDispatchingKernel(const std::string& a_className, const std::string& a_kernelName)
-{
-  std::cout << "   found virtual kernel dispatch: " << a_className.c_str() << "::" << a_kernelName.c_str() << std::endl;
-  m_vkernelPairs.push_back(std::pair(kslicer::CutOffStructClass(a_className), a_kernelName));
-} 
-
-void kslicer::RTV_Pattern::ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler)
+void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler)
 {
   //
   //
@@ -688,7 +679,7 @@ private:
 };
 
 
-void kslicer::RTV_Pattern::ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool)
+void kslicer::MainClassInfo::ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool)
 {
   for(auto& p : m_vhierarchy)
   {
