@@ -581,7 +581,7 @@ bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
       }
     }
   }
-  else if(WasNotRewrittenYet(ret) && m_kernelIsMaker && !m_codeInfo->megakernelRTV)
+  else if(WasNotRewrittenYet(ret) && !m_codeInfo->megakernelRTV)
   { 
     // change 'return MakeObjPtr(objPtr, ObjData) to 'kgen_objPtr = objPtr'
     //

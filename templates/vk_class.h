@@ -368,14 +368,6 @@ protected:
   {% if Kernel.FinishRed %}
   VkPipeline            {{Kernel.Name}}ReductionPipeline = VK_NULL_HANDLE;
   {% endif %}
-  {% if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch %}
-  VkPipeline            {{Kernel.Name}}ZeroObjCounters    = VK_NULL_HANDLE;
-  VkPipeline            {{Kernel.Name}}CountTypeIntervals = VK_NULL_HANDLE;
-  VkPipeline            {{Kernel.Name}}Sorter             = VK_NULL_HANDLE;
-  {% endif %}
-  {% if Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch %}
-  VkPipeline            {{Kernel.Name}}PipelineArray[{{length(Kernel.Hierarchy.Implementations)}}] = {};
-  {% endif %}
   VkDescriptorSetLayout Create{{Kernel.Name}}DSLayout();
   virtual void InitKernel_{{Kernel.Name}}(const char* a_filePath);
   {% if Kernel.IsIndirect %}

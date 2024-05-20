@@ -254,9 +254,7 @@ namespace kslicer
     bool isBoolTyped    = false;                ///<! used by RTV pattern; special case: if kernel return boolean, we analyze loop exit (break) or function exit (return) expression
     bool usedInExitExpr = false;                ///<! used by RTV pattern; if kernel is used in Control Function in if(kernelXXX()) --> break or return extression
     bool checkThreadFlags = false;              ///<! used by RTV pattern; if Kernel.shouldCheckExitFlag --> insert check flags code in kernel
-    bool isVirtual      = false;                ///<! used by RTV pattern; if kernel is a 'Virtual Kernel'
-    bool isMaker        = false;                ///<! used by RTV pattern; if kernel is an object Maker
-    bool isMega         = false;
+    bool isMega           = false;
 
     std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
@@ -731,7 +729,6 @@ namespace kslicer
     std::vector<std::string>                                 m_threadIdArgs;
     std::string                                              m_threadIdExplicitIndexISPC = "";
     bool                                                     m_kernelIsBoolTyped;
-    bool                                                     m_kernelIsMaker;
     kslicer::KernelInfo&                                     m_currKernel;
     bool                                                     m_infoPass;
     bool                                                     m_explicitIdISPC = false;

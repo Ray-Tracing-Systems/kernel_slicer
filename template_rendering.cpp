@@ -498,20 +498,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       vecs.push_back(argj);
     }
 
-    if(k.isMaker) // add to kernel ObjPtr buffer
-    {
-      json argj;
-      argj["Type"]       = "uint2       *";
-      argj["Name"]       = "kgen_objPtrData";
-      argj["IsUBO"]      = false;
-      argj["IsPointer"]  = false;
-      argj["IsImage"]    = false;
-      argj["IsAccelStruct"] = false;
-      argj["IsMember"]      = false;
-      argj["NameISPC"] = argj["Name"];
-      args.push_back(argj);
-    }
-
     if(k.isIndirect && !a_classInfo.pShaderCC->IsISPC()) // add indirect buffer to shaders
     {
       json argj;
@@ -601,10 +587,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["UserArgs"]     = userArgs;
     kernelJson["Name"]         = k.name;
     kernelJson["UBOBinding"]   = args.size(); // for circle
-    kernelJson["HasEpilog"]    = k.isBoolTyped || reductionVars.size() != 0 || reductionArrs.size() != 0 || k.isMaker;
+    kernelJson["HasEpilog"]    = k.isBoolTyped || reductionVars.size() != 0 || reductionArrs.size() != 0;
     kernelJson["IsBoolean"]    = k.isBoolTyped;
-    kernelJson["IsMaker"]      = k.isMaker;
-    kernelJson["IsVirtual"]    = k.isVirtual;
     kernelJson["SubjToRed"]    = reductionVars;
     kernelJson["ArrsToRed"]    = reductionArrs;
     kernelJson["FinishRed"]    = needFinishReductionPass;
@@ -852,39 +836,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["IndirectSizeZ"] = tidNames[2];
     }
 
-    if(k.isVirtual || k.isMaker)
-    {
-      json hierarchy = PutHierarchyToJson(dhierarchies[k.interfaceName], compiler);
-      hierarchy["RedLoop1"] = std::vector<std::string>();
-      hierarchy["RedLoop2"] = std::vector<std::string>();
-      const uint32_t blockSize = k.wgSize[0]*k.wgSize[1]*k.wgSize[2];
-      for (uint c = blockSize/2; c>k.warpSize; c/=2)
-        hierarchy["RedLoop1"].push_back(c);
-      for (uint c = k.warpSize; c>0; c/=2)
-        hierarchy["RedLoop2"].push_back(c);
-      kernelJson["Hierarchy"] = hierarchy;
-      kernelJson["WarpSize"]  = k.warpSize;
-
-      bool isConstObj = false;
-      if(k.isVirtual)
-      {
-        for(const auto& impl : dhierarchies[k.interfaceName].implementations) // TODO: refactor this code to function
-        {
-          for(const auto& member : impl.memberFunctions)
-          {
-            if(member.name == k.name)
-            {
-              isConstObj = member.isConstMember || isConstObj;
-              if(isConstObj)
-                break;
-            }
-          }
-          break; // it is enough to process only one of impl, because function interface is the same for all of them
-        }
-      }
-      kernelJson["IsConstObj"] = isConstObj;
-    }
-    else
     {
       json temp;
       temp["IndirectDispatch"] = false; // because of 'Kernel.Hierarchy.IndirectDispatch' check could happen

@@ -122,8 +122,6 @@ namespace kslicer
           {
             auto qtOfClass = retType->getPointeeType(); 
             m_allInfo.AddDispatchingHierarchy(qtOfClass.getAsString(), kName);
-            if(pKernel != m_allInfo.allKernels.end()) 
-              pKernel->second.isMaker = true;
           }
           else if(thsType->isPointerType() && pKernel == m_allInfo.allKernels.end())  ////  pMaterial->kernel_GetColor(tid, out_color);
           {
@@ -135,8 +133,6 @@ namespace kslicer
             if(pos != std::string::npos)
               typeName = typeName.substr(pos+1);
             auto pKernel2 = m_allInfo.allOtherKernels.find(typeName + "::" + kName);
-            if(pKernel2 != m_allInfo.allOtherKernels.end()) 
-              pKernel2->second.isVirtual = true;
           }
           
           CurrMainFunc().UsedKernels.insert(kName); // add  this kernel to list of used kernels by MainFunc 

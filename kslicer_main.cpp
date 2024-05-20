@@ -709,18 +709,6 @@ int main(int argc, const char **argv)
     inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
     inputCodeInfo.ExtractVFHConstants(compiler, Tool);
 
-    for(auto& k : inputCodeInfo.kernels)
-    {
-      if(k.second.isMaker)
-      {
-        auto p = inputCodeInfo.m_vhierarchy.find(k.second.interfaceName);
-        assert(p != inputCodeInfo.m_vhierarchy.end());
-        k.second.indirectMakerOffset  = inputCodeInfo.m_indirectBufferSize;
-        p->second.indirectBlockOffset = inputCodeInfo.m_indirectBufferSize;
-        inputCodeInfo.m_indirectBufferSize += p->second.implementations.size(); // allocate place for all implementations
-      }
-    }
-
     std::cout << "}" << std::endl;
     std::cout << std::endl;
   }
