@@ -547,7 +547,7 @@ void kslicer::RTV_Pattern::AddDispatchingKernel(const std::string& a_className, 
   m_vkernelPairs.push_back(std::pair(kslicer::CutOffStructClass(a_className), a_kernelName));
 } 
 
-void kslicer::RTV_Pattern::ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler)
+void kslicer::RTV_Pattern::ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler)
 {
   //
   //
@@ -688,7 +688,7 @@ private:
 };
 
 
-void kslicer::RTV_Pattern::ExtractHierarchiesConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool)
+void kslicer::RTV_Pattern::ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool)
 {
   for(auto& p : m_vhierarchy)
   {

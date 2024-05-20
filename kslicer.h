@@ -986,11 +986,10 @@ namespace kslicer
                                         const std::unordered_map<std::string, KernelInfo>&    a_kernelList,
                                         std::vector<KernelCallInfo>&                          a_kernelCalls) {}
 
-    virtual bool SupportVirtualKernels() const { return false; }
     virtual void AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) { } ///<! for Virtual Kernels
     virtual void AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) { } ///<! for Virtual Kernels
-    virtual void ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler) {}
-    virtual void ExtractHierarchiesConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool) {}
+    virtual void ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler) {}
+    virtual void ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool) {}
 
 
     //// \\
@@ -1103,11 +1102,10 @@ namespace kslicer
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
     void          ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const override;
 
-    bool          SupportVirtualKernels() const override { return true; }
     void          AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) override;  ///<! for Virtual Kernels
     void          AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) override; ///<! for Virtual Kernels
-    void          ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler) override;
-    void          ExtractHierarchiesConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool) override;
+    void          ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler) override;
+    void          ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool) override;
 
     bool NeedThreadFlags() const override { return true; }
     bool NeedFakeOffset () const override { return true; }

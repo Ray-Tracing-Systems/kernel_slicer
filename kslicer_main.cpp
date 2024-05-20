@@ -455,22 +455,6 @@ int main(int argc, const char **argv)
           inputCodeInfo.kernels[k.first] = k.second;
       }
 
-      if(inputCodeInfo.SupportVirtualKernels())
-      {
-        std::unordered_map<std::string, KernelInfo> vkernels;
-        for(const auto& p : inputCodeInfo.allOtherKernels)
-          vkernels[p.second.name] = p.second;
-
-        for(auto& p : vkernels)
-        {
-          if(inputCodeInfo.kernels.find(p.first) == inputCodeInfo.kernels.end())
-          {
-            p.second.isVirtual             = true;
-            inputCodeInfo.kernels[p.first] = p.second;
-          }
-        }
-      }
-
       // filter out excluded local variables
       //
       for(const auto& var : mainFuncRef.ExcludeList)
@@ -717,13 +701,13 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  if(inputCodeInfo.SupportVirtualKernels())
+  // process virtual functions
   {
-    std::cout << "(5.1) Process Virtual Kernels hierarchies" << std::endl;
-    std::cout << "(5.2) Extract Virtual Kernels hierarchies constants" << std::endl;
+    std::cout << "(5.1) Process Virtual-Functions-Hierarchies" << std::endl;
+    std::cout << "(5.2) Extract Virtual-Functions-Hierarchies constants" << std::endl;
     std::cout << "{" << std::endl;
-    inputCodeInfo.ProcessDispatchHierarchies(firstPassData.rv.m_classList, compiler);
-    inputCodeInfo.ExtractHierarchiesConstants(compiler, Tool);
+    inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
+    inputCodeInfo.ExtractVFHConstants(compiler, Tool);
 
     for(auto& k : inputCodeInfo.kernels)
     {

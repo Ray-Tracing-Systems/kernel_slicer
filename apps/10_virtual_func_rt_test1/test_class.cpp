@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <string>
+#include <new>
 
 void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
 { 
