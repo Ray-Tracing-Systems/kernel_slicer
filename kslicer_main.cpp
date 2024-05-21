@@ -555,11 +555,12 @@ int main(int argc, const char **argv)
   inputCodeInfo.AddSpecVars_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
 
   bool hasMembers = false;
+  bool hasVirtual = false;
   for(const auto& f : usedByKernelsFunctions) {
-    if(f.isMember) {
+    if(f.isMember)
       hasMembers = true;
-      break;
-    }
+    if(f.isVirtual)
+      hasVirtual = true;
   }
 
   if(hasMembers && inputCodeInfo.pShaderCC->IsGLSL()) // We don't implement this for OpenCL kernels yet ... or at all.
@@ -701,6 +702,7 @@ int main(int argc, const char **argv)
   std::cout << std::endl;
 
   // process virtual functions
+  if(hasVirtual)
   {
     std::cout << "(5.1) Process Virtual-Functions-Hierarchies" << std::endl;
     std::cout << "(5.2) Extract Virtual-Functions-Hierarchies constants" << std::endl;

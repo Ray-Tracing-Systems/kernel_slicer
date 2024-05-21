@@ -98,6 +98,8 @@ public:
       const auto typeName = kslicer::CleanTypeName(qt.getAsString());
       const auto pPrefix  = m_patternImpl.composPrefix.find(typeName);
 
+      const bool isRTX    = ((typeName == "struct ISceneObject") || (typeName == "ISceneObject")) && (func.name.find("RayQuery_") != std::string::npos);
+
       if(pPrefix != m_patternImpl.composPrefix.end())
       {
         if(func.name.find(pPrefix->second) == std::string::npos) { // please see code upper, probably we already changed the name if it is a member function
@@ -108,6 +110,8 @@ public:
       }
       else if(func.isVirtual)
       {
+        if(isRTX)
+          return true;                             // do not process HW accelerated calls
         auto posBegin = debugText.find("(");       // todo: make it better
         auto posEnd   = debugText.find(".data()"); //
         std::string buffName = debugText.substr(posBegin+1, posEnd-posBegin-1);
