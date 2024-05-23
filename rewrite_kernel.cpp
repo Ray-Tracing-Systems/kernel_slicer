@@ -415,6 +415,7 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
 }
 
 
+
 bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
 {
   if(m_infoPass) // don't have to rewrite during infoPass
@@ -428,6 +429,30 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
   const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
   const DeclarationName dn      = dni.getName();
         std::string fname       = dn.getAsString();
+
+
+  if(kslicer::IsCalledWithArrowAndVirtual(f) && WasNotRewrittenYet(f))
+  {
+    auto buffAndOffset = kslicer::GetVFHAccessNodes(f);
+    if(buffAndOffset.buffNode != nullptr && buffAndOffset.offsetNode != nullptr)
+    {
+      std::string buffText   = GetRangeSourceCode(buffAndOffset.buffNode->getSourceRange(), m_compiler); 
+      std::string offsetText = GetRangeSourceCode(buffAndOffset.offsetNode->getSourceRange(), m_compiler); 
+      std::string buffText2  = buffText.substr(0, buffText.find(".data()"));
+      
+      std::string textCallNoName = "(" + offsetText + ",";
+      for(unsigned i=0;i<f->getNumArgs();i++)
+      {
+        textCallNoName += RecursiveRewrite(f->getArg(i));
+        if(i < f->getNumArgs()-1)
+          textCallNoName += ",";
+      }
+
+      std::string vcallFunc  = buffAndOffset.interfaceName + "_" + fname + "_" + buffText2 + textCallNoName + ")";
+      m_rewriter.ReplaceText(f->getSourceRange(), vcallFunc);
+      MarkRewritten(f);
+    }
+  }
 
   // Get name of "this" type; we should check wherther this member is std::vector<T>  
   //

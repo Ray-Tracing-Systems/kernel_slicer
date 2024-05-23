@@ -430,3 +430,96 @@ void kslicer::MainClassInfo::ExtractVFHConstants(const clang::CompilerInstance& 
   }
 
 }
+
+bool kslicer::IsCalledWithArrowAndVirtual(const clang::CXXMemberCallExpr* f) 
+{
+    if (!f) return false;
+
+    // Получаем выражение, на котором вызывается метод
+    const auto* calleeExpr = f->getCallee();
+    if (!calleeExpr) return false;
+
+    // Проверяем, является ли выражение MemberExpr
+    const clang::MemberExpr* memberExpr = clang::dyn_cast<clang::MemberExpr>(calleeExpr);
+    if (!memberExpr) return false;
+
+    // Получаем выражение объекта
+    const clang::Expr* baseExpr = memberExpr->getBase();
+    if (!baseExpr) return false;
+
+    // Проверяем тип базового выражения
+    if (const auto* baseType = baseExpr->getType()->getPointeeType().getTypePtrOrNull()) {
+        if (baseType->isRecordType()) {
+            // Использован оператор "->"
+            const clang::CXXMethodDecl* methodDecl = clang::dyn_cast<clang::CXXMethodDecl>(memberExpr->getMemberDecl());
+            if (methodDecl && methodDecl->isVirtual()) {
+                // Метод является виртуальным
+                return true;
+            }
+        }
+    }
+    
+    // Если условие не выполнено, возвращаем false
+    return false;
+}
+
+kslicer::VFHAccessNodes kslicer::GetVFHAccessNodes(const clang::CXXMemberCallExpr* f) 
+{
+    VFHAccessNodes result;
+
+    if (!f) return result;
+
+    // Get the MemberExpr for the method call
+    const clang::MemberExpr* memberExpr = clang::dyn_cast<clang::MemberExpr>(f->getCallee());
+    if (!memberExpr) return result;
+
+    // Get the base of the MemberExpr
+    const clang::Expr* baseExpr = memberExpr->getBase();
+    if (!baseExpr) return result;
+
+    // Expecting baseExpr to be an ImplicitCastExpr
+    const clang::ImplicitCastExpr* castExpr = clang::dyn_cast<clang::ImplicitCastExpr>(baseExpr);
+    if (!castExpr) return result;
+
+    // Get the subexpression of the cast
+    const clang::Expr* subExpr = castExpr->getSubExpr();
+    if (!subExpr) return result;
+
+    // Expecting subExpr to be a ParenExpr
+    const clang::ParenExpr* parenExpr = clang::dyn_cast<clang::ParenExpr>(subExpr);
+    if (!parenExpr) return result;
+
+    // Get the subexpression of the paren
+    const clang::Expr* innerExpr = parenExpr->getSubExpr();
+    if (!innerExpr) return result;
+
+    // Expecting innerExpr to be a BinaryOperator
+    const clang::BinaryOperator* binOp = clang::dyn_cast<clang::BinaryOperator>(innerExpr);
+    if (!binOp || binOp->getOpcode() != clang::BO_Add) return result;
+
+    // Get the left and right hand sides of the binary operator
+    const clang::Expr* lhs = binOp->getLHS();
+    const clang::Expr* rhs = binOp->getRHS();
+
+    if (!lhs || !rhs) 
+      return result;
+
+    // The left hand side should be a CXXMemberCallExpr (m_materials.data())
+    result.buffNode = clang::dyn_cast<clang::CXXMemberCallExpr>(lhs);
+
+    // The right hand side should be a DeclRefExpr (mid)
+    result.offsetNode = rhs;
+
+     // Get the class name (IMaterial)
+    if (result.buffNode) {
+      const clang::Expr* baseCallExpr = f->getImplicitObjectArgument();
+      if (baseCallExpr) {
+        clang::QualType baseType = baseCallExpr->getType();
+        if (const clang::CXXRecordDecl* recordDecl = baseType->getPointeeCXXRecordDecl())
+          result.interfaceName = recordDecl->getNameAsString();
+      }
+    }
+
+    return result;
+}
+

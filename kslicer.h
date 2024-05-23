@@ -1191,6 +1191,17 @@ namespace kslicer
   clang::Expr* RemoveImplicitCast(clang::Expr* a_expr);
 
   void ExtractBlockSizeFromCall(clang::CXXMemberCallExpr* f, kslicer::KernelInfo& kernel, const clang::CompilerInstance& compiler);
+  
+  struct VFHAccessNodes 
+  {
+    const clang::CXXMemberCallExpr* buffNode;
+    const clang::Expr*              offsetNode;
+    std::string                     interfaceName;
+    VFHAccessNodes() : buffNode(nullptr), offsetNode(nullptr) {}
+  };
+
+  VFHAccessNodes GetVFHAccessNodes(const clang::CXXMemberCallExpr* f);
+  bool IsCalledWithArrowAndVirtual(const clang::CXXMemberCallExpr* f);
 }
 
 std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::filesystem::path& fileName,
