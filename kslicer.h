@@ -1090,6 +1090,7 @@ namespace kslicer
       std::vector<std::string>    fields;
       bool                        isEmpty = false; ///<! empty if all memberFunctions are empty
       std::string                 objBufferName;
+      std::string                 interfaceName;
     };
 
     struct DHierarchy

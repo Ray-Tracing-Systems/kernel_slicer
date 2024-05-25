@@ -13,12 +13,7 @@
 
 
 /**
-\brief processing of C++ member function for virtual kernels
-
-  1) C++ class --> C style struct; this --> self; 
-  2) *payload => payload[tid]; payload->member => payload[tid].member (TBD)
-  3) this->vector[...]                                                (TBD)
-
+\brief processing of C++ member function for virtual functions
 */
 class MemberRewriter : public kslicer::GLSLFunctionRewriter
 {
@@ -26,7 +21,8 @@ public:
   
   MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::MainClassInfo::DImplClass& dImpl) : 
                 kslicer::GLSLFunctionRewriter(R, a_compiler, a_codeInfo, kslicer::ShittyFunction()), 
-                m_processed(dImpl.memberFunctions), m_fields(dImpl.fields), m_className(dImpl.name), m_objBufferName(dImpl.objBufferName), m_mainClassName(a_codeInfo->mainClassName)
+                m_processed(dImpl.memberFunctions), m_fields(dImpl.fields), m_className(dImpl.name), m_objBufferName(dImpl.objBufferName), m_interfaceName(dImpl.interfaceName), 
+                m_mainClassName(a_codeInfo->mainClassName)
   { 
     
   }
@@ -40,15 +36,13 @@ public:
     clang::FieldDecl* pFieldDecl   = clang::dyn_cast<clang::FieldDecl>(pValueDecl);
     clang::RecordDecl* pRecodDecl  = pFieldDecl->getParent();
     const std::string thisTypeName = pRecodDecl->getNameAsString();
+    const std::string debugText    = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); 
 
-    if(thisTypeName != m_className) // ignore other than this-> expr
-      return true;
-    
-    if(WasNotRewrittenYet(expr))
+    if((thisTypeName == m_className || thisTypeName == m_interfaceName) && WasNotRewrittenYet(expr))
     {
       const clang::Expr* baseExpr = expr->getBase(); 
       std::string exprContent     = RecursiveRewrite(baseExpr);
-      m_rewriter.ReplaceText(expr->getSourceRange(), "self->" + exprContent);
+      m_rewriter.ReplaceText(expr->getSourceRange(), m_objBufferName + "[selfId]." + exprContent);
       MarkRewritten(expr);
     }
 
@@ -231,6 +225,7 @@ private:
   const std::string&                              m_className;
   const std::string&                              m_mainClassName;
   const std::string&                              m_objBufferName;
+  const std::string&                              m_interfaceName;
 
   bool isCopy = false;
   std::unordered_set<std::string> m_fakeOffsArgs;
@@ -311,6 +306,7 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
         dImpl.decl = decl;
         dImpl.name = decl->getNameAsString();
         dImpl.objBufferName = p.second.objBufferName;
+        dImpl.interfaceName = p.second.interfaceName;
         
         MemberRewriter rv(rewrite2, a_compiler, this, dImpl); 
         rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));                                  
