@@ -20,13 +20,13 @@
   3) this->vector[...]                                                (TBD)
 
 */
-class MemberRewriter : public kslicer::FunctionRewriter
+class MemberRewriter : public kslicer::GLSLFunctionRewriter
 {
 public:
   
   MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::MainClassInfo::DImplClass& dImpl) : 
-                FunctionRewriter(R, a_compiler, a_codeInfo), 
-                m_processed(dImpl.memberFunctions), m_fields(dImpl.fields), m_className(dImpl.name), m_mainClassName(a_codeInfo->mainClassName)
+                kslicer::GLSLFunctionRewriter(R, a_compiler, a_codeInfo, kslicer::ShittyFunction()), 
+                m_processed(dImpl.memberFunctions), m_fields(dImpl.fields), m_className(dImpl.name), m_objBufferName(dImpl.objBufferName), m_mainClassName(a_codeInfo->mainClassName)
   { 
     
   }
@@ -90,7 +90,7 @@ public:
   std::string RewriteMemberDecl(clang::CXXMethodDecl* fDecl, const std::string& classTypeName)
   {
     std::string fname  = fDecl->getNameInfo().getName().getAsString();
-    std::string result = m_codeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString()) + " " + classTypeName + "_" + fname + "(\n  __global const " + classTypeName + "* self";
+    std::string result = m_codeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString()) + " " + classTypeName + "_" + fname + "_" + m_objBufferName + "(uint selfId" ;
     if(fDecl->getNumParams() != 0)
       result += ", \n  ";
 
@@ -230,6 +230,7 @@ private:
   std::vector<std::string>&                       m_fields;
   const std::string&                              m_className;
   const std::string&                              m_mainClassName;
+  const std::string&                              m_objBufferName;
 
   bool isCopy = false;
   std::unordered_set<std::string> m_fakeOffsArgs;
@@ -309,8 +310,8 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
         DImplClass dImpl;
         dImpl.decl = decl;
         dImpl.name = decl->getNameAsString();
-        // extract all member functions from class that should be rewritten
-        //
+        dImpl.objBufferName = p.second.objBufferName;
+        
         MemberRewriter rv(rewrite2, a_compiler, this, dImpl); 
         rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));                                  
         

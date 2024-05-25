@@ -112,22 +112,20 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
   hierarchy["IndirectDispatch"] = 0;
   hierarchy["IndirectOffset"]   = 0;
 
-  hierarchy["Constants"]        = std::vector<std::string>();
+  hierarchy["Constants"]        = std::vector<json>();
   for(const auto& decl : h.usedDecls)
   {
     if(decl.kind == kslicer::DECL_IN_CLASS::DECL_CONSTANT)
     {
-      std::string typeInCL = decl.type;
-      ReplaceFirst(typeInCL, "const", "__constant static");
       json currConstant;
-      currConstant["Type"]  = typeInCL;
+      currConstant["Type"]  = decl.type;
       currConstant["Name"]  = decl.name;
       currConstant["Value"] = kslicer::GetRangeSourceCode(decl.srcRange, compiler);
       hierarchy["Constants"].push_back(currConstant);
     }
   }
 
-  hierarchy["Implementations"] = std::vector<std::string>();
+  hierarchy["Implementations"] = std::vector<json>();
   for(const auto& impl : h.implementations)
   {
     if(impl.isEmpty)
@@ -137,12 +135,13 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
     json currImpl;
     currImpl["ClassName"] = impl.name;
     currImpl["TagName"]   = p2->second;
-    currImpl["MemberFunctions"] = std::vector<std::string>();
+    currImpl["MemberFunctions"] = std::vector<json>();
+    currImpl["ObjBufferName"]   = h.objBufferName;
     for(const auto& member : impl.memberFunctions)
     {
       currImpl["MemberFunctions"].push_back(member.srcRewritten);
     }
-    currImpl["Fields"] = std::vector<std::string>();
+    currImpl["Fields"] = std::vector<json>();
     for(const auto& field : impl.fields)
       currImpl["Fields"].push_back(field);
 
@@ -156,7 +155,7 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
 static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies,
                                      const clang::CompilerInstance& compiler)
 {
-  json data = std::vector<std::string>();
+  json data = std::vector<json>();
   for(const auto& p : hierarchies)
     data.push_back(PutHierarchyToJson(p.second, compiler));
   return data;

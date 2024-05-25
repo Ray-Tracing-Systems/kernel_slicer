@@ -40,6 +40,26 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 {{MembFunc}}
 
 ## endfor
+{% for Hierarchy in Hierarchies %}
+// Virtual Functions of "{{Hierarchy.Name}}":
+{% for Contant in Hierarchy.Constants %}
+const {{Contant.Type}}  {{Contant.Name}} =  {{Contant.Value}};
+{% endfor %} 
+
+{% for Impl in Hierarchy.Implementations %}
+//Impl.ClassName = {{Impl.ClassName}}
+//Impl.TagName   = {{Impl.TagName}}
+//ObjBufferName  = {{Impl.ObjBufferName}}
+{% for Member in Impl.MemberFunctions %}
+
+{{Member}}
+{% endfor %}
+{% for Field in Impl.Fields %}
+//{{Field}}
+{% endfor %}
+{% endfor %}
+{% endfor %}
+
 {% for RTName in Kernel.RTXNames %}
 // RayScene intersection with '{{RTName}}'
 //

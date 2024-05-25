@@ -648,6 +648,63 @@ namespace kslicer
 
   };
 
+  struct IRecursiveRewriteOverride
+  {
+    virtual std::string RecursiveRewriteImpl(const clang::Stmt* expr) = 0;
+    virtual kslicer::ShaderFeatures GetShaderFeatures() const { return kslicer::ShaderFeatures(); }
+    virtual std::unordered_set<uint64_t> GetVisitedNodes() const = 0;
+  };
+
+  /**
+  \brief process local functions
+  */
+  class GLSLFunctionRewriter : public FunctionRewriter //
+  {
+  public:
+  
+    GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit);
+    ~GLSLFunctionRewriter(){}
+  
+    bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl) override;
+    bool VisitCallExpr_Impl(clang::CallExpr* f)             override;
+    bool VisitVarDecl_Impl(clang::VarDecl* decl)            override;
+    bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
+    bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) override;
+    bool VisitMemberExpr_Impl(clang::MemberExpr* expr)         override;
+    bool VisitUnaryOperator_Impl(clang::UnaryOperator* expr)   override;
+    bool VisitDeclStmt_Impl(clang::DeclStmt* decl)             override;
+    bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)  override;
+    bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
+  
+    bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
+  
+    std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
+    IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
+  
+    std::string RewriteStdVectorTypeStr(const std::string& a_str) const override;
+    std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, kslicer::TEX_ACCESS a_accessType, std::string& outImageFormat) const override;
+  
+    std::unordered_map<std::string, std::string> m_vecReplacements;
+    std::unordered_map<std::string, std::string> m_funReplacements;
+    std::vector<std::pair<std::string, std::string> > m_vecReplacements2;
+  
+    mutable kslicer::ShaderFeatures sFeatures;
+    kslicer::ShaderFeatures GetShaderFeatures() const override
+    {
+      return sFeatures;
+    }
+  
+    std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
+    std::string RecursiveRewrite(const clang::Stmt* expr) override;
+    void        Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3]);
+  
+    bool        NeedsVectorTypeRewrite(const std::string& a_str);
+    std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
+  
+    kslicer::ShittyFunction m_shit;
+  
+  };
+  
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////  KernelRewriter  //////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1032,6 +1089,7 @@ namespace kslicer
       std::vector<DImplFunc>      memberFunctions;
       std::vector<std::string>    fields;
       bool                        isEmpty = false; ///<! empty if all memberFunctions are empty
+      std::string                 objBufferName;
     };
 
     struct DHierarchy
