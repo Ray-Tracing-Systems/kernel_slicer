@@ -58,19 +58,7 @@ public:
     clang::Expr* subExpr = expr->getSubExpr();
     if(subExpr == nullptr)
       return true;
-    
-    std::string exprInside = kslicer::GetRangeSourceCode(subExpr->getSourceRange(), m_compiler);  ; //RecursiveRewrite(subExpr);
-    if(m_fakeOffsArgs.find(exprInside) == m_fakeOffsArgs.end())
-      return true;
-
-    if(WasNotRewrittenYet(subExpr))
-    {
-      if(m_codeInfo->megakernelRTV || m_fakeOffsetExp == "") // m_fakeOffsetExp == "" may happen for merged functions member during class composition
-        m_rewriter.ReplaceText(expr->getSourceRange(), exprInside);
-      else
-        m_rewriter.ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
-    }
-
+  
     return true; 
   }
   
@@ -92,51 +80,20 @@ public:
 
     for(uint32_t i=0; i < fDecl->getNumParams(); i++)
     {
-      const clang::ParmVarDecl* pParam  = fDecl->getParamDecl(i);
-      const clang::QualType typeOfParam =	pParam->getType();
+      const clang::ParmVarDecl* pParam    = fDecl->getParamDecl(i);
+      const clang::QualType typeOfParam   =	pParam->getType();
+      const std::string typeNameRewritten = m_codeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(typeOfParam.getAsString());
+      const clang::IdentifierInfo* identifier = pParam->getIdentifier();
+      if(identifier == nullptr)
+        continue;
 
-      if(typeOfParam.getAsString().find(m_mainClassName) != std::string::npos)
-      {
-        if(isPointerToConst(typeOfParam))
-          result += "__global const struct ";
-        else
-          result += "__global struct ";
-        
-        result += m_codeInfo->mainClassName + m_codeInfo->mainClassSuffix + "_UBO_Data* " + pParam->getNameAsString();
-      }
-      else
-      {
-        if(typeOfParam->isPointerType() && isKernel)
-          result += "__global ";
-        result += kslicer::GetRangeSourceCode(pParam->getSourceRange(), m_compiler); 
-      }
+      result += typeNameRewritten + " " + std::string(identifier->getName());
 
       if(i!=fDecl->getNumParams()-1)
         result += ", \n  ";
     }
 
     return result + ")\n  ";
-  }
-
-  std::unordered_set<std::string> ListFakeOffArgsForKernelNamed(const std::string& fname)
-  {
-    std::unordered_set<std::string> fakeOffsArgs;
-    if(m_codeInfo->IsKernel(fname))     
-    {
-      auto p = m_codeInfo->kernels.find(fname);
-      if(p != m_codeInfo->kernels.end())
-      {
-         for(const auto& arg : p->second.args)
-         {
-           if(arg.needFakeOffset)
-             fakeOffsArgs.insert(arg.name);
-
-           if(arg.isThreadID)
-             m_fakeOffsetExp = arg.name; // TODO: if we have 2D thread id this is more complex a bit ... 
-         }
-      }
-    }
-    return fakeOffsArgs;
   }
 
   bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) override
@@ -154,11 +111,12 @@ public:
     
     if(WasNotRewrittenYet(fDecl->getBody()))
     { 
-      if(m_codeInfo->IsKernel(fname))                          // enable fakeOffset rewrite
-        m_fakeOffsArgs = ListFakeOffArgsForKernelNamed(fname); //
       std::string declSource = RewriteMemberDecl(fDecl, classTypeName);
       std::string bodySource = RecursiveRewrite(fDecl->getBody());
-      m_fakeOffsArgs.clear();                                  // disable fakeOffset rewrite
+
+      auto p = declByName.find(fname);
+      if(p == declByName.end())
+        declByName[fname] = RewriteMemberDecl(fDecl, m_interfaceName); // make text decls for IMaterial_sample_materials(...)
 
       kslicer::MainClassInfo::DImplFunc funcData;
       funcData.decl          = fDecl;
@@ -191,7 +149,7 @@ public:
     if(WasNotRewrittenYet(call))
     { 
       std::string textRes = classTypeName + "_" + fname;
-      textRes += "(self";
+      textRes += "(selfId";
       if(call->getNumArgs() > 0)
         textRes += ",";
       for(unsigned i=0;i<call->getNumArgs();i++)
@@ -218,6 +176,8 @@ public:
     return true; 
   } 
 
+  std::unordered_map<std::string, std::string> declByName; 
+
 private:
     
   std::vector<kslicer::MainClassInfo::DImplFunc>& m_processed;
@@ -228,8 +188,6 @@ private:
   const std::string&                              m_interfaceName;
 
   bool isCopy = false;
-  std::unordered_set<std::string> m_fakeOffsArgs;
-  std::string                     m_fakeOffsetExp;
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   
   //std::unordered_set<uint64_t>  m_rewrittenNodes;
@@ -264,7 +222,7 @@ void kslicer::MainClassInfo::AddVFH(const std::string& a_className)
   hdata.interfaceName = kslicer::CutOffStructClass(a_className);
   hdata.implementations.clear();
   m_vhierarchy[hdata.interfaceName] = hdata;
-} 
+}
 
 void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler)
 {
@@ -294,10 +252,11 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
 
     // find all derived classes for target base class
     //
-    
+    std::unordered_map<std::string, std::string> declByName;
+
     clang::Rewriter rewrite2;
     rewrite2.setSourceMgr(a_compiler.getSourceManager(), a_compiler.getLangOpts());
-
+    
     for(const auto& decl : a_decls)
     {
       if(decl->isDerivedFrom(pBaseClass))
@@ -311,6 +270,9 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
         MemberRewriter rv(rewrite2, a_compiler, this, dImpl); 
         rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));                                  
         
+        for (const auto& kv : rv.declByName) 
+          declByName[kv.first] = kv.second;
+
         dImpl.isEmpty = true;
         for(auto member : dImpl.memberFunctions)
         {
@@ -329,6 +291,12 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
 
         p.second.implementations.push_back(dImpl);
       }
+    }
+
+    for(auto& f : p.second.virtualFunctions) {
+      auto pFound = declByName.find(f.second.name);
+      if(pFound != declByName.end())
+        f.second.declRewritten = pFound->second;
     }
   }
   

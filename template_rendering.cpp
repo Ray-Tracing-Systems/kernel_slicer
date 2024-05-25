@@ -109,6 +109,7 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
 {
   json hierarchy;
   hierarchy["Name"]             = h.interfaceName;
+  hierarchy["ObjBufferName"]    = h.objBufferName;
   hierarchy["IndirectDispatch"] = 0;
   hierarchy["IndirectOffset"]   = 0;
 
@@ -148,6 +149,16 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
     hierarchy["Implementations"].push_back(currImpl);
   }
   hierarchy["ImplAlignedSize"] = AlignedSize(h.implementations.size()+1);
+
+  hierarchy["VirtualFunctions"] = std::vector<json>();
+  for(const auto& vf : h.virtualFunctions)
+  {
+    json virtualFunc;
+    virtualFunc["Name"] = vf.second.name;
+    virtualFunc["Decl"] = vf.second.declRewritten;
+    //virtualFunc["ThisTypeName"]  = vf.second.thisTypeName;
+    hierarchy["VirtualFunctions"].push_back(virtualFunc);
+  }
 
   return hierarchy;
 }

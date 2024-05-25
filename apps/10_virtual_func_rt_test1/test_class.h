@@ -40,6 +40,7 @@ struct IMaterial
 
   float m_color[3];
   float roughness;
+  uint32_t m_tag;
 };
 
 
@@ -133,7 +134,7 @@ protected:
 
 struct LambertMaterial : public IMaterial
 {
-  LambertMaterial(float3 a_color) { m_color[0] = a_color[0]; m_color[1] = a_color[1]; m_color[2] = a_color[2]; }
+  LambertMaterial(float3 a_color) { m_color[0] = a_color[0]; m_color[1] = a_color[1]; m_color[2] = a_color[2]; m_tag = GetTag(); }
   ~LambertMaterial() = delete;  
 
   uint32_t GetTag()    const override { return TAG_LAMBERT; }      
@@ -156,7 +157,7 @@ struct LambertMaterial : public IMaterial
 
 struct PerfectMirrorMaterial : public IMaterial
 {
-  PerfectMirrorMaterial() { m_color[0] = 0.85f; m_color[1] = 0.85f; m_color[2] = 0.85f;}
+  PerfectMirrorMaterial() { m_color[0] = 0.85f; m_color[1] = 0.85f; m_color[2] = 0.85f; m_tag = GetTag();}
   ~PerfectMirrorMaterial() = delete;
 
   uint32_t GetTag()   const override { return TAG_MIRROR; }
@@ -182,7 +183,7 @@ struct PerfectMirrorMaterial : public IMaterial
 
 struct EmissiveMaterial : public IMaterial
 {
-  EmissiveMaterial(float a_intensity) { roughness = a_intensity; }
+  EmissiveMaterial(float a_intensity) { roughness = a_intensity; m_tag = GetTag();}
   ~EmissiveMaterial() = delete;
 
   uint32_t GetTag() const override { return TAG_EMISSIVE; }
@@ -269,7 +270,7 @@ struct GGXGlossyMaterial : public IMaterial
 
 struct EmptyMaterial : public IMaterial
 {
-  EmptyMaterial() {}
+  EmptyMaterial() { m_tag = GetTag();}
   ~EmptyMaterial() = delete;
 
   uint32_t GetTag() const override { return TAG_EMPTY; }

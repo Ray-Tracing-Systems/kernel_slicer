@@ -529,6 +529,7 @@ namespace kslicer
     std::unordered_set<std::string> calledMembers;
 
     std::string thisTypeName;
+    std::string declRewritten;
   };
 
   enum class DECL_IN_CLASS{ DECL_STRUCT, DECL_TYPEDEF, DECL_CONSTANT, DECL_UNKNOWN};
