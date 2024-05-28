@@ -123,6 +123,9 @@ public:
     UpdateTextureMembers(a_pCopyEngine);
   }
   {% endif %}
+  {% for UpdateFun in UpdateVectorFun %}
+  void {{UpdateFun.Name}}(size_t a_first, size_t a_size) override;
+  {% endfor %}
 
   {% if HasPrefixData %}
   virtual void UpdatePrefixPointers()

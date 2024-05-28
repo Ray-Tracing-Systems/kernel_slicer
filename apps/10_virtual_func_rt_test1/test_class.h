@@ -115,6 +115,8 @@ protected:
 
   std::vector<IMaterial>       m_materials;
 
+  virtual void Update_m_materials(size_t a_start, size_t a_size) {}
+
   float4x4                     m_worldViewProjInv;
   std::vector<RandomGen>       m_randomGens;
 

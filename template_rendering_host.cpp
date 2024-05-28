@@ -1199,6 +1199,28 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["UpdateMembersTextureData"]  = (pUpdTex  != a_classInfo.allMemberFunctions.end());
     data["GenerateSceneRestrictions"] = (pScnRstr == a_classInfo.allMemberFunctions.end() && a_classInfo.IsRTV());
   }
+  
+  // check for cector-update functions
+  data["UpdateVectorFun"] = std::vector<json>();
+  {
+    for(auto member : a_classInfo.dataMembers) 
+    {
+      if(!member.isContainer)
+        continue;
+      
+      std::string funName = std::string("Update_") + member.name; 
+      auto pUpdateFun = a_classInfo.allMemberFunctions.find(funName);
+      if(pUpdateFun != a_classInfo.allMemberFunctions.end())
+      {
+        json fun;
+        fun["Name"]       = funName;
+        fun["VectorName"] = member.name;
+        fun["TypeOfData"] = member.containerDataType;
+        data["UpdateVectorFun"].push_back(fun);
+        std::cout << "  [kslicer]: override '" << funName.c_str() << "' update member-function " << std::endl;
+      }
+    }
+  }
 
   auto otherFeatures  = a_classInfo.globalDeviceFeatures;
   auto shaderFeatures = a_classInfo.globalShaderFeatures;
