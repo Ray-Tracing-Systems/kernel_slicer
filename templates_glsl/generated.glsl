@@ -40,7 +40,7 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 {{MembFunc}}
 
 ## endfor
-{% for Hierarchy in Hierarchies %}
+{% for Hierarchy in Hierarchies %} {# /*------------------------------ vfh ------------------------------ */ #}
 // Virtual Functions of {{Hierarchy.Name}}:
 {% for Contant in Hierarchy.Constants %}
 const {{Contant.Type}}  {{Contant.Name}} =  {{Contant.Value}};
@@ -61,10 +61,17 @@ const {{Contant.Type}}  {{Contant.Name}} =  {{Contant.Value}};
 {% for VirtualFunc in Hierarchy.VirtualFunctions %}
 {{VirtualFunc.Decl}} 
 {
-  // todo: put switch here
+  const uint tag = {{Hierarchy.ObjBufferName}}[selfId].m_tag;
+  switch(tag) 
+  {
+    {% for Impl in Hierarchy.Implementations %}
+    case {{Impl.TagName}}: return {{Impl.ClassName}}_{{VirtualFunc.Name}}_{{Impl.ObjBufferName}}({% for Arg in VirtualFunc.Args %}{{Arg.Name}}{% if loop.index != VirtualFunc.ArgLen %},{% endif %}{% endfor %});
+    {% endfor %}
+    //default: return {{Hierarchy.EmptyImplementation.ClassName}}_{{VirtualFunc.Name}}_{{Hierarchy.EmptyImplementation.ObjBufferName}}(...);
+  };
 }
 {% endfor %}
-{% endfor %} 
+{% endfor %}                        {# /*------------------------------ vfh ------------------------------ */ #}
 
 {% for RTName in Kernel.RTXNames %}
 // RayScene intersection with '{{RTName}}'

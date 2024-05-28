@@ -69,7 +69,9 @@ public:
     return !Ty->getPointeeType().isNull() && Ty->getPointeeType().getCanonicalType().isConstQualified();
   }
 
-  std::string RewriteMemberDecl(clang::CXXMethodDecl* fDecl, const std::string& classTypeName)
+  using ArgList = std::vector< std::pair<std::string, std::string> >; 
+
+  std::string RewriteMemberDecl(clang::CXXMethodDecl* fDecl, const std::string& classTypeName, ArgList* pList = nullptr)
   {
     std::string fname  = fDecl->getNameInfo().getName().getAsString();
     std::string result = m_codeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString()) + " " + classTypeName + "_" + fname + "_" + m_objBufferName + "(uint selfId" ;
@@ -88,6 +90,8 @@ public:
         continue;
 
       result += typeNameRewritten + " " + std::string(identifier->getName());
+      if(pList != nullptr)
+        pList->push_back(std::make_pair(typeNameRewritten, std::string(identifier->getName())));
 
       if(i!=fDecl->getNumParams()-1)
         result += ", \n  ";
@@ -115,8 +119,11 @@ public:
       std::string bodySource = RecursiveRewrite(fDecl->getBody());
 
       auto p = declByName.find(fname);
-      if(p == declByName.end())
-        declByName[fname] = RewriteMemberDecl(fDecl, m_interfaceName); // make text decls for IMaterial_sample_materials(...)
+      if(p == declByName.end()) {
+        ArgList args;
+        declByName[fname] = RewriteMemberDecl(fDecl, m_interfaceName, &args); // make text decls for IMaterial_sample_materials(...)
+        argsByName[fname] = args;
+      }
 
       kslicer::MainClassInfo::DImplFunc funcData;
       funcData.decl          = fDecl;
@@ -176,6 +183,7 @@ public:
     return true; 
   } 
 
+  std::unordered_map<std::string, ArgList>     argsByName;
   std::unordered_map<std::string, std::string> declByName; 
 
 private:
@@ -252,7 +260,8 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
 
     // find all derived classes for target base class
     //
-    std::unordered_map<std::string, std::string> declByName;
+    std::unordered_map<std::string, std::string>             declByName;
+    std::unordered_map<std::string, MemberRewriter::ArgList> argsByName;
 
     clang::Rewriter rewrite2;
     rewrite2.setSourceMgr(a_compiler.getSourceManager(), a_compiler.getLangOpts());
@@ -272,6 +281,8 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
         
         for (const auto& kv : rv.declByName) 
           declByName[kv.first] = kv.second;
+        for (const auto& kv : rv.argsByName)
+          argsByName[kv.first] = kv.second; 
 
         dImpl.isEmpty = true;
         for(auto member : dImpl.memberFunctions)
@@ -297,6 +308,10 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
       auto pFound = declByName.find(f.second.name);
       if(pFound != declByName.end())
         f.second.declRewritten = pFound->second;
+
+      auto pFound2 = argsByName.find(f.second.name);
+      if(pFound2 != argsByName.end())
+        f.second.args = pFound2->second;
     }
   }
   

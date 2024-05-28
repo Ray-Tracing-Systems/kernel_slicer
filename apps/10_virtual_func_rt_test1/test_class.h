@@ -28,15 +28,9 @@ struct IMaterial
 
   IMaterial(){}  // Dispatching on GPU hierarchy must not have destructors, especially virtual      
 
-  virtual uint32_t   GetTag() const { return 0; }
-
-  virtual float3     GetColor() const { return float3(m_color[0], m_color[1], m_color[2]); }
-
-  virtual BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv) const
-  {
-    BxDFSample res;
-    return res;
-  }
+  virtual uint32_t   GetTag()   const  { return 0; };
+  virtual float3     GetColor() const  { return float3(0.0f); };
+  virtual BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv) const  { return BxDFSample(); }
 
   float m_color[3];
   float roughness;
@@ -137,7 +131,8 @@ struct LambertMaterial : public IMaterial
   LambertMaterial(float3 a_color) { m_color[0] = a_color[0]; m_color[1] = a_color[1]; m_color[2] = a_color[2]; m_tag = GetTag(); }
   ~LambertMaterial() = delete;  
 
-  uint32_t GetTag()    const override { return TAG_LAMBERT; }      
+  uint32_t GetTag()   const override { return TAG_LAMBERT; }      
+  float3   GetColor() const override { return float3(m_color[0], m_color[1], m_color[2]); }
   
   BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv) const override
   {
@@ -210,7 +205,8 @@ struct GGXGlossyMaterial : public IMaterial
   GGXGlossyMaterial(float3 a_color) { m_color[0] = a_color[0]; m_color[1] = a_color[1]; m_color[2] = a_color[2]; roughness = 0.3f; }
   ~GGXGlossyMaterial() = delete;
 
-  uint32_t GetTag() const override { return TAG_GGX_GLOSSY; }
+  uint32_t GetTag()   const override { return TAG_GGX_GLOSSY; }
+  float3   GetColor() const override { return float3(m_color[0], m_color[1], m_color[2]); }
 
   BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv) const override
   {
@@ -273,7 +269,7 @@ struct EmptyMaterial : public IMaterial
   EmptyMaterial() { m_tag = GetTag();}
   ~EmptyMaterial() = delete;
 
-  uint32_t GetTag() const override { return TAG_EMPTY; }
+  uint32_t GetTag()   const override { return TAG_EMPTY; }
 };
 
 #endif

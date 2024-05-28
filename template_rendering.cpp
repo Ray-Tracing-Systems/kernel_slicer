@@ -125,12 +125,11 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
       hierarchy["Constants"].push_back(currConstant);
     }
   }
-
+  
+  bool emptyIsFound = false;
   hierarchy["Implementations"] = std::vector<json>();
   for(const auto& impl : h.implementations)
-  {
-    if(impl.isEmpty)
-      continue;
+  {  
     const auto p2 = h.tagByClassName.find(impl.name);
     assert(p2 != h.tagByClassName.end());
     json currImpl;
@@ -145,10 +144,17 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
     currImpl["Fields"] = std::vector<json>();
     for(const auto& field : impl.fields)
       currImpl["Fields"].push_back(field);
-
-    hierarchy["Implementations"].push_back(currImpl);
+   
+    if(impl.isEmpty) {
+      hierarchy["EmptyImplementation"] = currImpl;
+      emptyIsFound = true;
+    }
+    else
+      hierarchy["Implementations"].push_back(currImpl);
   }
   hierarchy["ImplAlignedSize"] = AlignedSize(h.implementations.size()+1);
+  if(h.implementations.size()!= 0 && !emptyIsFound)
+    std::cout << "  VFH::ALERT! Empty implementation is not found! Don't add any functions except 'GetTag()' to EmptyImpl class" << std::endl;
 
   hierarchy["VirtualFunctions"] = std::vector<json>();
   for(const auto& vf : h.virtualFunctions)
@@ -156,6 +162,20 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
     json virtualFunc;
     virtualFunc["Name"] = vf.second.name;
     virtualFunc["Decl"] = vf.second.declRewritten;
+    virtualFunc["Args"] = std::vector<json>();
+    {
+      json argJ;
+      argJ["Type"] = "uint";
+      argJ["Name"] = "selfId";
+      virtualFunc["Args"].push_back(argJ);
+    }
+    for(const auto arg : vf.second.args) {
+      json argJ;
+      argJ["Type"] = arg.first;
+      argJ["Name"] = arg.second;
+      virtualFunc["Args"].push_back(argJ);
+    }
+    virtualFunc["ArgLen"] = vf.second.args.size();
     //virtualFunc["ThisTypeName"]  = vf.second.thisTypeName;
     hierarchy["VirtualFunctions"].push_back(virtualFunc);
   }

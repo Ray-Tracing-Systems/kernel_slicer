@@ -527,9 +527,10 @@ namespace kslicer
     bool hasPrefix = false;
     std::string prefixName;
     std::unordered_set<std::string> calledMembers;
-
-    std::string thisTypeName;
-    std::string declRewritten;
+  
+    std::string thisTypeName;                                ///!< currently filled for VFH only, TODO: fill for other
+    std::string declRewritten;                               ///!< currently filled for VFH only, TODO: fill for other
+    std::vector< std::pair<std::string, std::string> > args; ///!< currently filled for VFH only, TODO: fill for other
   };
 
   enum class DECL_IN_CLASS{ DECL_STRUCT, DECL_TYPEDEF, DECL_CONSTANT, DECL_UNKNOWN};
