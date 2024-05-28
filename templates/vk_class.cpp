@@ -99,11 +99,19 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<v
 }
 
 {% for UpdateFun in UpdateVectorFun %}
+{% if UpdateFun.NumParams == 2 %}
 void {{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}(size_t a_first, size_t a_size)
 {
-  if({{UpdateFun.VectorName}}.size() != 0)
-    a_pCopyEngine->UpdateBuffer(m_vdata.{{UpdateFun.VectorName}}Buffer, 0, {{UpdateFun.VectorName}}.data(), {{UpdateFun.VectorName}}.size()*sizeof({{UpdateFun.TypeOfData}}) );
+  if({{UpdateFun.VectorName}}.size() != 0 && m_pLastCopyHelper != nullptr)
+    m_pLastCopyHelper->UpdateBuffer(m_vdata.{{UpdateFun.VectorName}}Buffer, 0, {{UpdateFun.VectorName}}.data() + a_first, a_size*sizeof({{UpdateFun.TypeOfData}}) );
 }
+{%else%}
+void {{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}()
+{
+  if({{UpdateFun.VectorName}}.size() != 0 && m_pLastCopyHelper != nullptr)
+    m_pLastCopyHelper->UpdateBuffer(m_vdata.{{UpdateFun.VectorName}}Buffer, 0, {{UpdateFun.VectorName}}.data(), {{UpdateFun.VectorName}}.size()*sizeof({{UpdateFun.TypeOfData}}) );
+}
+{%endif%}
 {% endfor %}
 
 void {{MainClassName}}{{MainClassSuffix}}::UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)

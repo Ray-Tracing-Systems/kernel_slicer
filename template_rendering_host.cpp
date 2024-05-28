@@ -1216,6 +1216,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         fun["Name"]       = funName;
         fun["VectorName"] = member.name;
         fun["TypeOfData"] = member.containerDataType;
+        fun["NumParams"]  = pUpdateFun->second->getNumParams();
         data["UpdateVectorFun"].push_back(fun);
         std::cout << "  [kslicer]: override '" << funName.c_str() << "' update member-function " << std::endl;
       }

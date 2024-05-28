@@ -124,7 +124,11 @@ public:
   }
   {% endif %}
   {% for UpdateFun in UpdateVectorFun %}
+  {% if UpdateFun.NumParams == 2 %}
   void {{UpdateFun.Name}}(size_t a_first, size_t a_size) override;
+  {% else %}
+  void {{UpdateFun.Name}}() override;
+  {% endif %}
   {% endfor %}
 
   {% if HasPrefixData %}
@@ -141,6 +145,7 @@ public:
     }
   }
   {% endif %}
+  std::shared_ptr<vk_utils::ICopyEngine> m_pLastCopyHelper = nullptr;
   virtual void CommitDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper) // you have to define this virtual function in the original imput class
   {
     {% if HasPrefixData %}
@@ -149,6 +154,7 @@ public:
     ReserveEmptyVectors();
     InitMemberBuffers();
     UpdateAll(a_pCopyHelper);
+    m_pLastCopyHelper = a_pCopyHelper;
   }
   {% if HasCommitDeviceFunc %}
   void CommitDeviceData() override { CommitDeviceData(m_ctx.pCopyHelper); }
