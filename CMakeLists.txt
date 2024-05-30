@@ -47,6 +47,7 @@ add_executable(kslicer
                class_gen.cpp
                class_gen_ipv.cpp
                class_gen_rtv.cpp
+               class_gen_vfh.cpp
                class_data.cpp
                template_rendering.cpp
                template_rendering_host.cpp

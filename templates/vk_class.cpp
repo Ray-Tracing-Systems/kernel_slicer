@@ -98,6 +98,22 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<v
   {% endfor %}
 }
 
+{% for UpdateFun in UpdateVectorFun %}
+{% if UpdateFun.NumParams == 2 %}
+void {{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}(size_t a_first, size_t a_size)
+{
+  if({{UpdateFun.VectorName}}.size() != 0 && m_pLastCopyHelper != nullptr)
+    m_pLastCopyHelper->UpdateBuffer(m_vdata.{{UpdateFun.VectorName}}Buffer, a_first*sizeof({{UpdateFun.TypeOfData}}), {{UpdateFun.VectorName}}.data() + a_first, a_size*sizeof({{UpdateFun.TypeOfData}}) );
+}
+{%else%}
+void {{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}()
+{
+  if({{UpdateFun.VectorName}}.size() != 0 && m_pLastCopyHelper != nullptr)
+    m_pLastCopyHelper->UpdateBuffer(m_vdata.{{UpdateFun.VectorName}}Buffer, 0, {{UpdateFun.VectorName}}.data(), {{UpdateFun.VectorName}}.size()*sizeof({{UpdateFun.TypeOfData}}) );
+}
+{%endif%}
+{% endfor %}
+
 void {{MainClassName}}{{MainClassSuffix}}::UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
   {% if length(ClassTextureVars) > 0 or length(ClassTexArrayVars) > 0 %}
@@ -224,50 +240,8 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
   {% endif %}
   {# /* --------------------------------------------------------------------------------------------------------------------------------------- */ #}
-  {% if Kernel.IsMaker and Kernel.Hierarchy.IndirectDispatch %}
-  VkBufferMemoryBarrier objCounterBar = BarrierForObjCounters(m_classDataBuffer);
-  VkBufferMemoryBarrier barIndirect   = BarrierForIndirectBufferUpdate(m_indirectBuffer);
-
-  // (1) zero obj. counters
-  //
-  vkCmdBindPipeline   (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}ZeroObjCounters);
-  vkCmdDispatch       (m_currCmdBuffer, 1, 1, 1);
-  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &objCounterBar, 0, nullptr);
-
-  // (2)  execute maker first time, count objects for each class
-  //
-  vkCmdBindPipeline   (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
-  vkCmdDispatch       (m_currCmdBuffer, (sizeX + blockSizeX - 1) / blockSizeX, (sizeY + blockSizeY - 1) / blockSizeY, (sizeZ + blockSizeZ - 1) / blockSizeZ);
-  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &objCounterBar, 0, nullptr);
-
-  // (3) small prefix summ to compute global offsets for each type region
-  //
-  vkCmdBindPipeline   (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}CountTypeIntervals);
-  vkCmdDispatch       (m_currCmdBuffer, 1, 1, 1);
-  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &objCounterBar, 0, nullptr);
-
-  // (4) execute maker second time, count offset for each object using local prefix summ (in the work group) and put ObjPtr at this offset
-  //
-  vkCmdBindPipeline   (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Sorter);
-  vkCmdDispatch       (m_currCmdBuffer, (sizeX + blockSizeX - 1) / blockSizeX, (sizeY + blockSizeY - 1) / blockSizeY, (sizeZ + blockSizeZ - 1) / blockSizeZ);
-
-  // (5) update indirect buffer for futher vkernels dispatching
-  //
-  vkCmdBindDescriptorSets(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectUpdateLayout, 0, 1, &m_indirectUpdateDS, 0, nullptr);
-  vkCmdBindPipeline      (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectUpdate{{Kernel.Name}}Pipeline);
-  vkCmdDispatch          (m_currCmdBuffer, 1, 1, 1);
-  vkCmdPipelineBarrier   (m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0, nullptr, 1, &barIndirect, 0, nullptr);
-
-  {% else if Kernel.IsVirtual and Kernel.Hierarchy.IndirectDispatch %}
-  // use reverse order of classes because assume heavy implementations in the end
-  {
-    {% for Impl in Kernel.Hierarchy.Implementations %}
-    vkCmdBindPipeline    (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}PipelineArray[{{length(Kernel.Hierarchy.Implementations)}}-{{loop.index}}-1]);
-    vkCmdDispatchIndirect(m_currCmdBuffer, m_indirectBuffer, ({{length(Kernel.Hierarchy.Implementations)}}-{{loop.index}}-1+{{Kernel.Hierarchy.IndirectOffset}})*sizeof(uint32_t)*4);
-
-    {% endfor %}
-  }
-  {% else if Kernel.IsIndirect %}
+  
+  {% if Kernel.IsIndirect %}
   vkCmdBindPipeline    (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   vkCmdDispatchIndirect(m_currCmdBuffer, m_indirectBuffer, {{Kernel.IndirectOffset}}*sizeof(uint32_t)*4);
   {% else %}

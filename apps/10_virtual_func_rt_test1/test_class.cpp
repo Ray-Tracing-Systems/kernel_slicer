@@ -3,6 +3,28 @@
 
 #include <chrono>
 #include <string>
+#include <new>
+
+void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
+{ 
+  // using in place new to create objects on the CPU side
+  //
+  m_materials.resize(11);
+  
+  new (m_materials.data() + 0 ) EmptyMaterial()                                      ;
+  new (m_materials.data() + 1 ) LambertMaterial(float3(0.5,0.5,0.5))                 ;
+  new (m_materials.data() + 2 ) LambertMaterial(float3(0.6,0.0235294,0.0235294))     ;
+  new (m_materials.data() + 3 ) LambertMaterial(float3(0.0235294, 0.6, 0.0235294))   ;
+  new (m_materials.data() + 4 ) GGXGlossyMaterial(float3(0.6,0.6,0.1))               ;
+  new (m_materials.data() + 5 ) LambertMaterial(float3(0.0847059, 0.144706,0.265882));
+  new (m_materials.data() + 6 ) PerfectMirrorMaterial                                ;
+  new (m_materials.data() + 7 ) LambertMaterial(float3(0.25,0.0,0.5))                ;
+  new (m_materials.data() + 8 ) PerfectMirrorMaterial                                ;
+  new (m_materials.data() + 9 ) PerfectMirrorMaterial                                ;
+  new (m_materials.data() + 10) EmissiveMaterial(20.0f)                              ;
+  
+  m_emissiveMaterialId = 10;
+}
 
 void TestClass::InitRandomGens(int a_maxThreads)
 {
@@ -111,14 +133,14 @@ static inline float3 SafeInverse_4to3(float4 d)
 {
   const float ooeps = 1.0e-36f; // Avoid div by zero.
   float3 res;
-  res.x = 1.0f / (fabs(d.x) > ooeps ? d.x : copysign(ooeps, d.x));
-  res.y = 1.0f / (fabs(d.y) > ooeps ? d.y : copysign(ooeps, d.y));
-  res.z = 1.0f / (fabs(d.z) > ooeps ? d.z : copysign(ooeps, d.z));
+  res.x = 1.0f / (std::abs(d.x) > ooeps ? d.x : std::copysign(ooeps, d.x));
+  res.y = 1.0f / (std::abs(d.y) > ooeps ? d.y : std::copysign(ooeps, d.y));
+  res.z = 1.0f / (std::abs(d.z) > ooeps ? d.z : std::copysign(ooeps, d.z));
   return res;
 }
 
 bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
-                                Lite_Hit* out_hit, float2* out_bars)
+                                Lite_Hit* out_hit, float2* out_bars, uint* out_mid)
 {
   const float4 rayPos = *rayPosAndNear;
   const float4 rayDir = *rayDirAndFar ;
@@ -171,8 +193,14 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
       res.geomId = HIT_TRIANGLE_GEOM;
   }
   
+  uint mid = 0;
+  if(res.primId != -1) 
+    mid = (res.geomId == HIT_FLAT_LIGHT_GEOM) ? m_emissiveMaterialId : m_materialIds[res.primId]+1;
+
   *out_hit  = res;
   *out_bars = baricentrics;
+  *out_mid  = mid;  
+
   return (res.primId != -1);
 }
 
@@ -181,36 +209,10 @@ void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
   out_pakedXY[pitchOffset(tidX,tidY)] = ((tidY << 16) & 0xFFFF0000) | (tidX & 0x0000FFFF);
 }
 
-void TestClass::kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* out_color)
+void TestClass::kernel_RealColorToUint32(uint tid, uint mid, uint* out_color)
 {
-  out_color[tid] = RealColorToUint32(*a_accumColor);
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-IMaterial* MakeObjPtr(uint32_t objectPtr, __global const uint32_t* a_data)
-{
-  const uint32_t objectOffset = (objectPtr & IMaterial::OFS_MASK);
-  const uint32_t objectTag    = (objectPtr & IMaterial::TAG_MASK) >> (32 - IMaterial::TAG_BITS);
-  return (__global IMaterial*)(a_data + objectOffset);
-}
-
-IMaterial* TestClass::kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit)
-{
-  uint32_t objPtr = 0;  
- 
-  if(in_hit->geomId == HIT_FLAT_LIGHT_GEOM)
-  {
-    objPtr = m_materialOffsets[m_emissiveMaterialId];
-  }
-  else if(in_hit->primId != -1)
-  {
-    const uint32_t mtId = m_materialIds[in_hit->primId]+1; // +1 due to empty object
-    objPtr = m_materialOffsets[mtId];
-  }
-
-  return MakeObjPtr(objPtr, m_materialData.data());
+  const float3 color = (m_materials.data() + mid)->GetColor();
+  out_color[tid] = RealColorToUint32_f3(color);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -228,12 +230,11 @@ void TestClass::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color)
 
   Lite_Hit hit; 
   float2   baricentrics; 
-  if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
+  uint     mid;
+  if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, &mid))
     return;
-  
-  IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
-
-  pMaterial->kernel_GetColor(tid, out_color, this);
+    
+  kernel_RealColorToUint32(tid, mid, out_color);
 }
 
 void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, float4* out_color)
@@ -244,6 +245,40 @@ void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, c
  
   out_color[y*WIN_WIDTH+x] += *a_accumColor;
 }
+
+void  TestClass::kernel_NextBounce(uint tid, uint mid, const Lite_Hit* in_hit, const float2* in_bars, 
+                                   const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
+                                   float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
+                                   float4* accumColor, float4* accumThoroughput)
+  {
+    const Lite_Hit lHit  = *in_hit;
+    const float3 ray_dir = to_float3(*rayDirAndFar);
+    
+    SurfaceHit hit;
+    hit.pos  = to_float3(*rayPosAndNear) + lHit.t*ray_dir;
+    hit.norm = EvalSurfaceNormal(ray_dir, lHit.primId, *in_bars, in_indices, in_vnorm);
+  
+    RandomGen gen   = pGen[tid];
+    const float2 uv = rndFloat2_Pseudo(&gen);
+    pGen[tid]       = gen;
+    
+    const BxDFSample matSam   = (m_materials.data() + mid)->SampleAndEvalBxDF(*rayPosAndNear, *rayDirAndFar, hit, uv);
+    const float3     bxdfVal  = matSam.brdfVal * (1.0f / std::max(matSam.pdfVal, 1e-10f));
+    const float      cosTheta = dot(matSam.newDir, hit.norm);
+    
+    if(matSam.flags != 0) 
+    {
+      *accumColor    = to_float4(matSam.brdfVal,0.0f)*(*accumThoroughput);
+      *rayPosAndNear = make_float4(0,10000000.0f,0,0); // shoot ray out of scene
+      *rayDirAndFar  = make_float4(0,1.0f,0,0);        // 
+    }
+    else
+    {
+      *rayPosAndNear    = to_float4(OffsRayPos(hit.pos, hit.norm, matSam.newDir), 0.0f);
+      *rayDirAndFar     = to_float4(matSam.newDir, MAXFLOAT);
+      *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f);
+    }
+  }
 
 void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color)
 {
@@ -257,15 +292,14 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY
   for(int depth = 0; depth < a_maxDepth; depth++) 
   {
     Lite_Hit hit;
-    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
+    uint     mid;
+    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, &mid))
       break;
-
-    IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
     
-    pMaterial->kernel_NextBounce(tid, &hit, &baricentrics, 
-                                 m_indicesReordered.data(), m_vPos4f.data(), m_vNorm4f.data(), 
-                                 &rayPosAndNear, &rayDirAndFar, m_randomGens.data(), 
-                                 &accumColor, &accumThoroughput);
+    kernel_NextBounce(tid, mid, &hit, &baricentrics, 
+                       m_indicesReordered.data(), m_vPos4f.data(), m_vNorm4f.data(), 
+                       &rayPosAndNear, &rayDirAndFar, m_randomGens.data(), 
+                       &accumColor, &accumThoroughput);
   }
 
   kernel_ContributeToImage(tid, &accumColor, in_pakedXY, 

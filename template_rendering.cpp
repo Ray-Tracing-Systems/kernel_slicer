@@ -109,46 +109,76 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
 {
   json hierarchy;
   hierarchy["Name"]             = h.interfaceName;
-  hierarchy["IndirectDispatch"] = (h.dispatchType == kslicer::VKERNEL_IMPL_TYPE::VKERNEL_INDIRECT_DISPATCH);
-  hierarchy["IndirectOffset"]   = h.indirectBlockOffset;
+  hierarchy["ObjBufferName"]    = h.objBufferName;
+  hierarchy["IndirectDispatch"] = 0;
+  hierarchy["IndirectOffset"]   = 0;
 
-  hierarchy["Constants"]        = std::vector<std::string>();
+  hierarchy["Constants"]        = std::vector<json>();
   for(const auto& decl : h.usedDecls)
   {
     if(decl.kind == kslicer::DECL_IN_CLASS::DECL_CONSTANT)
     {
-      std::string typeInCL = decl.type;
-      ReplaceFirst(typeInCL, "const", "__constant static");
       json currConstant;
-      currConstant["Type"]  = typeInCL;
+      currConstant["Type"]  = decl.type;
       currConstant["Name"]  = decl.name;
       currConstant["Value"] = kslicer::GetRangeSourceCode(decl.srcRange, compiler);
       hierarchy["Constants"].push_back(currConstant);
     }
   }
-
-  hierarchy["Implementations"] = std::vector<std::string>();
+  
+  bool emptyIsFound = false;
+  hierarchy["Implementations"] = std::vector<json>();
   for(const auto& impl : h.implementations)
-  {
-    if(impl.isEmpty)
-      continue;
+  {  
     const auto p2 = h.tagByClassName.find(impl.name);
     assert(p2 != h.tagByClassName.end());
     json currImpl;
     currImpl["ClassName"] = impl.name;
     currImpl["TagName"]   = p2->second;
-    currImpl["MemberFunctions"] = std::vector<std::string>();
+    currImpl["MemberFunctions"] = std::vector<json>();
+    currImpl["ObjBufferName"]   = h.objBufferName;
     for(const auto& member : impl.memberFunctions)
     {
       currImpl["MemberFunctions"].push_back(member.srcRewritten);
     }
-    currImpl["Fields"] = std::vector<std::string>();
+    currImpl["Fields"] = std::vector<json>();
     for(const auto& field : impl.fields)
       currImpl["Fields"].push_back(field);
-
-    hierarchy["Implementations"].push_back(currImpl);
+   
+    if(impl.isEmpty) {
+      hierarchy["EmptyImplementation"] = currImpl;
+      emptyIsFound = true;
+    }
+    else
+      hierarchy["Implementations"].push_back(currImpl);
   }
   hierarchy["ImplAlignedSize"] = AlignedSize(h.implementations.size()+1);
+  if(h.implementations.size()!= 0 && !emptyIsFound)
+    std::cout << "  VFH::ALERT! Empty implementation is not found! Don't add any functions except 'GetTag()' to EmptyImpl class" << std::endl;
+
+  hierarchy["VirtualFunctions"] = std::vector<json>();
+  for(const auto& vf : h.virtualFunctions)
+  {
+    json virtualFunc;
+    virtualFunc["Name"] = vf.second.name;
+    virtualFunc["Decl"] = vf.second.declRewritten;
+    virtualFunc["Args"] = std::vector<json>();
+    {
+      json argJ;
+      argJ["Type"] = "uint";
+      argJ["Name"] = "selfId";
+      virtualFunc["Args"].push_back(argJ);
+    }
+    for(const auto arg : vf.second.args) {
+      json argJ;
+      argJ["Type"] = arg.first;
+      argJ["Name"] = arg.second;
+      virtualFunc["Args"].push_back(argJ);
+    }
+    virtualFunc["ArgLen"] = vf.second.args.size();
+    //virtualFunc["ThisTypeName"]  = vf.second.thisTypeName;
+    hierarchy["VirtualFunctions"].push_back(virtualFunc);
+  }
 
   return hierarchy;
 }
@@ -156,7 +186,7 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
 static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies,
                                      const clang::CompilerInstance& compiler)
 {
-  json data = std::vector<std::string>();
+  json data = std::vector<json>();
   for(const auto& p : hierarchies)
     data.push_back(PutHierarchyToJson(p.second, compiler));
   return data;
@@ -331,9 +361,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   {
     for (const auto& f : usedFunctions)
     {
-      if(a_classInfo.IsExcludedLocalFunction(f.name)) // check exclude list here, don't put such functions in cl file
-        continue;
-
       cachedFunc[f.name] = f;
       auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions'
       if(pShit != shittyFunctions.end())
@@ -498,20 +525,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       vecs.push_back(argj);
     }
 
-    if(k.isMaker) // add to kernel ObjPtr buffer
-    {
-      json argj;
-      argj["Type"]       = "uint2       *";
-      argj["Name"]       = "kgen_objPtrData";
-      argj["IsUBO"]      = false;
-      argj["IsPointer"]  = false;
-      argj["IsImage"]    = false;
-      argj["IsAccelStruct"] = false;
-      argj["IsMember"]      = false;
-      argj["NameISPC"] = argj["Name"];
-      args.push_back(argj);
-    }
-
     if(k.isIndirect && !a_classInfo.pShaderCC->IsISPC()) // add indirect buffer to shaders
     {
       json argj;
@@ -601,10 +614,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["UserArgs"]     = userArgs;
     kernelJson["Name"]         = k.name;
     kernelJson["UBOBinding"]   = args.size(); // for circle
-    kernelJson["HasEpilog"]    = k.isBoolTyped || reductionVars.size() != 0 || reductionArrs.size() != 0 || k.isMaker;
+    kernelJson["HasEpilog"]    = k.isBoolTyped || reductionVars.size() != 0 || reductionArrs.size() != 0;
     kernelJson["IsBoolean"]    = k.isBoolTyped;
-    kernelJson["IsMaker"]      = k.isMaker;
-    kernelJson["IsVirtual"]    = k.isVirtual;
     kernelJson["SubjToRed"]    = reductionVars;
     kernelJson["ArrsToRed"]    = reductionArrs;
     kernelJson["FinishRed"]    = needFinishReductionPass;
@@ -852,39 +863,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["IndirectSizeZ"] = tidNames[2];
     }
 
-    if(k.isVirtual || k.isMaker)
-    {
-      json hierarchy = PutHierarchyToJson(dhierarchies[k.interfaceName], compiler);
-      hierarchy["RedLoop1"] = std::vector<std::string>();
-      hierarchy["RedLoop2"] = std::vector<std::string>();
-      const uint32_t blockSize = k.wgSize[0]*k.wgSize[1]*k.wgSize[2];
-      for (uint c = blockSize/2; c>k.warpSize; c/=2)
-        hierarchy["RedLoop1"].push_back(c);
-      for (uint c = k.warpSize; c>0; c/=2)
-        hierarchy["RedLoop2"].push_back(c);
-      kernelJson["Hierarchy"] = hierarchy;
-      kernelJson["WarpSize"]  = k.warpSize;
-
-      bool isConstObj = false;
-      if(k.isVirtual)
-      {
-        for(const auto& impl : dhierarchies[k.interfaceName].implementations) // TODO: refactor this code to function
-        {
-          for(const auto& member : impl.memberFunctions)
-          {
-            if(member.name == k.name)
-            {
-              isConstObj = member.isConstMember || isConstObj;
-              if(isConstObj)
-                break;
-            }
-          }
-          break; // it is enough to process only one of impl, because function interface is the same for all of them
-        }
-      }
-      kernelJson["IsConstObj"] = isConstObj;
-    }
-    else
     {
       json temp;
       temp["IndirectDispatch"] = false; // because of 'Kernel.Hierarchy.IndirectDispatch' check could happen
@@ -976,6 +954,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       }
     }
 
+    kernelJson["ThreadLocalArrays"] = std::vector<json>();
+    for(const auto& array : k.threadLocalArrays)
+    {
+      json local;
+      local["Type"] = array.second.elemType;
+      local["Name"] = array.second.arrayName;
+      local["Size"] = array.second.arraySize;
+      kernelJson["ThreadLocalArrays"].push_back(local);
+    }
+
     auto original = kernelJson;
 
     // if we have additional init statements we should add additional init kernel before our kernel
@@ -1028,9 +1016,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     for (const auto& f : usedFunctions)
     {
-      if(a_classInfo.IsExcludedLocalFunction(f.name)) // check exclude list here, don't put such functions in cl file
-        continue;
-
       cachedFunc[f.name] = f;
       auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions'
       if(pShit != shittyFunctions.end())
@@ -1038,9 +1023,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       if(!f.isMember)
       {
-        //f.astNode->dump();
         pVisitorF->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
-        data["LocalFunctions"].push_back(rewrite2.getRewrittenText(f.srcRange));
+        const std::string funDecl  = rewrite2.getRewrittenText(f.srcRange);             // func body rewrite does not works correctly in this way some-times (see float4x4 indices)
+        const std::string funBody  = pVisitorF->RecursiveRewrite(f.astNode->getBody()); // but works in this way ... 
+        const std::string declHead = funDecl.substr(0,funDecl.find("{"));               // therefore we join function head and body
+    
+        data["LocalFunctions"].push_back(declHead + funBody);
         shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();
       }
     }
@@ -1050,6 +1038,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   {
     data["LocalFunctions"].push_back("uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }  // RTV pattern, for 2D threading"); // todo: ckeck if RTV pattern is used here!
     //data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");
+  }
+
+  data["ThreadLocalArrays"] = std::vector<json>();
+  for(const auto& array : a_classInfo.m_threadLocalArrays)
+  {
+    json local;
+    local["Type"] = array.second.elemType;
+    local["Name"] = array.second.arrayName;
+    local["Size"] = array.second.arraySize;
+    data["ThreadLocalArrays"].push_back(local);
   }
 
   return data;

@@ -62,9 +62,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
 ## for Kernel in Kernels
 VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}}DSLayout()
 {
-  {% if UseSeparateUBO and Kernel.IsVirtual %}
-  std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+3> dsBindings;
-  {% else if UseSeparateUBO or Kernel.IsVirtual %}
+  {% if UseSeparateUBO %}
   std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+2> dsBindings;
   {% else %}
   std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+1> dsBindings;
@@ -88,29 +86,14 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
   dsBindings[{{KernelARG.Id}}].pImmutableSamplers = nullptr;
 
 ## endfor
-  // binding for {% if Kernel.IsVirtual %}kgen_objData{% else %}POD members stored in m_classDataBuffer{% endif %}
 
   dsBindings[{{Kernel.ArgCount}}].binding            = {{Kernel.ArgCount}};
   dsBindings[{{Kernel.ArgCount}}].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
   dsBindings[{{Kernel.ArgCount}}].descriptorCount    = 1;
   dsBindings[{{Kernel.ArgCount}}].stageFlags         = stageFlags;
   dsBindings[{{Kernel.ArgCount}}].pImmutableSamplers = nullptr;
-  {% if UseSeparateUBO and Kernel.IsVirtual %}
 
-  // binding for m_classDataBuffer
-  dsBindings[{{Kernel.ArgCount}}+1].binding            = {{Kernel.ArgCount}}+1;
-  dsBindings[{{Kernel.ArgCount}}+1].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  dsBindings[{{Kernel.ArgCount}}+1].descriptorCount    = 1;
-  dsBindings[{{Kernel.ArgCount}}+1].stageFlags         = stageFlags;
-  dsBindings[{{Kernel.ArgCount}}+1].pImmutableSamplers = nullptr;
-
-  // binding for separate ubo
-  dsBindings[{{Kernel.ArgCount}}+2].binding            = {{Kernel.ArgCount}}+1;
-  dsBindings[{{Kernel.ArgCount}}+2].descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  dsBindings[{{Kernel.ArgCount}}+2].descriptorCount    = 1;
-  dsBindings[{{Kernel.ArgCount}}+2].stageFlags         = stageFlags;
-  dsBindings[{{Kernel.ArgCount}}+2].pImmutableSamplers = nullptr;
-  {% else if UseSeparateUBO or Kernel.IsVirtual %}
+  {% if UseSeparateUBO %}
 
   // binding for {% if UseSeparateUBO%}separate ubo{% else %}m_classDataBuffer {% endif %}
 

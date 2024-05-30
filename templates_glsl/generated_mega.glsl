@@ -32,6 +32,10 @@ layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}} { {{Arg.Type
 ## endfor
 layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo; };
 
+{% for Array in Kernel.ThreadLocalArrays %}
+{{Array.Type}} {{Array.Name}}[{{Array.Size}}];
+{% endfor %}
+
 ## for ShitFunc in Kernel.ShityFunctions  
 {{ShitFunc}}
 

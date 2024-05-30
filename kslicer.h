@@ -136,6 +136,12 @@ namespace kslicer
     bool useVarPtr = false;
   };
 
+  struct ArrayData
+  {
+    uint32_t    arraySize  = 0;
+    std::string arrayName;
+    std::string elemType;
+  };
 
   /**
   \brief for each method MainClass::kernel_XXX
@@ -248,9 +254,7 @@ namespace kslicer
     bool isBoolTyped    = false;                ///<! used by RTV pattern; special case: if kernel return boolean, we analyze loop exit (break) or function exit (return) expression
     bool usedInExitExpr = false;                ///<! used by RTV pattern; if kernel is used in Control Function in if(kernelXXX()) --> break or return extression
     bool checkThreadFlags = false;              ///<! used by RTV pattern; if Kernel.shouldCheckExitFlag --> insert check flags code in kernel
-    bool isVirtual      = false;                ///<! used by RTV pattern; if kernel is a 'Virtual Kernel'
-    bool isMaker        = false;                ///<! used by RTV pattern; if kernel is an object Maker
-    bool isMega         = false;
+    bool isMega           = false;
 
     std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
@@ -263,6 +267,7 @@ namespace kslicer
     std::vector<ShittyFunction>                        shittyFunctions;     ///<! functions with input pointers accesed global memory, they should be rewritten for GLSL
     std::vector<const KernelInfo*>                     subkernels;          ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
     ShittyFunction                                     currentShit;         ///<!
+    std::unordered_map<std::string, ArrayData>         threadLocalArrays;
 
     struct BEBlock
     {
@@ -516,12 +521,16 @@ namespace kslicer
     uint64_t           srcHash;
     bool               isMember = false;
     bool               isKernel = false;
+    bool               isVirtual = false;
     int                depthUse = 0;    ///!< depth Of Usage; 0 -- for kernels; 1 -- for functions called from kernel; 2 -- for functions called from functions called from kernels
                                         ///!< please note that if function is called under different depth, maximum depth should be stored in this variable;
     bool hasPrefix = false;
     std::string prefixName;
-
     std::unordered_set<std::string> calledMembers;
+  
+    std::string thisTypeName;                                ///!< currently filled for VFH only, TODO: fill for other
+    std::string declRewritten;                               ///!< currently filled for VFH only, TODO: fill for other
+    std::vector< std::pair<std::string, std::string> > args; ///!< currently filled for VFH only, TODO: fill for other
   };
 
   enum class DECL_IN_CLASS{ DECL_STRUCT, DECL_TYPEDEF, DECL_CONSTANT, DECL_UNKNOWN};
@@ -641,6 +650,63 @@ namespace kslicer
 
   };
 
+  struct IRecursiveRewriteOverride
+  {
+    virtual std::string RecursiveRewriteImpl(const clang::Stmt* expr) = 0;
+    virtual kslicer::ShaderFeatures GetShaderFeatures() const { return kslicer::ShaderFeatures(); }
+    virtual std::unordered_set<uint64_t> GetVisitedNodes() const = 0;
+  };
+
+  /**
+  \brief process local functions
+  */
+  class GLSLFunctionRewriter : public FunctionRewriter //
+  {
+  public:
+  
+    GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit);
+    ~GLSLFunctionRewriter(){}
+  
+    bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl) override;
+    bool VisitCallExpr_Impl(clang::CallExpr* f)             override;
+    bool VisitVarDecl_Impl(clang::VarDecl* decl)            override;
+    bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
+    bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) override;
+    bool VisitMemberExpr_Impl(clang::MemberExpr* expr)         override;
+    bool VisitUnaryOperator_Impl(clang::UnaryOperator* expr)   override;
+    bool VisitDeclStmt_Impl(clang::DeclStmt* decl)             override;
+    bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)  override;
+    bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
+  
+    bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
+  
+    std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
+    IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
+  
+    std::string RewriteStdVectorTypeStr(const std::string& a_str) const override;
+    std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, kslicer::TEX_ACCESS a_accessType, std::string& outImageFormat) const override;
+  
+    std::unordered_map<std::string, std::string> m_vecReplacements;
+    std::unordered_map<std::string, std::string> m_funReplacements;
+    std::vector<std::pair<std::string, std::string> > m_vecReplacements2;
+  
+    mutable kslicer::ShaderFeatures sFeatures;
+    kslicer::ShaderFeatures GetShaderFeatures() const override
+    {
+      return sFeatures;
+    }
+  
+    std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
+    std::string RecursiveRewrite(const clang::Stmt* expr) override;
+    void        Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3]);
+  
+    bool        NeedsVectorTypeRewrite(const std::string& a_str);
+    std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
+  
+    kslicer::ShittyFunction m_shit;
+  
+  };
+  
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////  KernelRewriter  //////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -691,12 +757,16 @@ namespace kslicer
     bool processFuncMember = false;
     virtual void SetCurrFuncInfo  (kslicer::FuncData* a_pInfo) { m_pCurrFuncInfo = a_pInfo; }
     virtual void ResetCurrFuncInfo()                           { m_pCurrFuncInfo = nullptr; }
+
+    virtual void SetCurrKernelInfo  (kslicer::KernelInfo* a_pInfo) { m_pCurrKernelInfo = a_pInfo; }
+    virtual void ResetCurrKernelInfo()                             { m_pCurrKernelInfo = nullptr; }
     
     const clang::CompilerInstance& GetCompiler() { return m_compiler; }
 
   protected:
 
-    kslicer::FuncData* m_pCurrFuncInfo = nullptr;
+    kslicer::FuncData* m_pCurrFuncInfo   = nullptr;
+    KernelInfo*        m_pCurrKernelInfo = nullptr;
 
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
     void ProcessReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
@@ -720,7 +790,6 @@ namespace kslicer
     std::vector<std::string>                                 m_threadIdArgs;
     std::string                                              m_threadIdExplicitIndexISPC = "";
     bool                                                     m_kernelIsBoolTyped;
-    bool                                                     m_kernelIsMaker;
     kslicer::KernelInfo&                                     m_currKernel;
     bool                                                     m_infoPass;
     bool                                                     m_explicitIdISPC = false;
@@ -923,6 +992,8 @@ namespace kslicer
     std::vector<std::string>                    indirectKernels; ///<! list of all kernel names which require indirect dispatch; The order is essential because it is used for indirect buffer offsets
     std::vector<DataMemberInfo>                 dataMembers;     ///<! only those member variables which are referenced from kernels
     std::vector<MainFuncInfo>                   mainFunc;        ///<! list of all control functions
+  
+    std::unordered_map<std::string, ArrayData>  m_threadLocalArrays;
 
     std::string mainClassName;
     std::filesystem::path mainClassFileName;
@@ -934,6 +1005,7 @@ namespace kslicer
     std::string shaderFolderPrefix = "";
     ShaderFeatures          globalShaderFeatures;
     OptionalDeviceFeatures  globalDeviceFeatures;
+    
 
     std::vector<std::string> ignoreFolders;  ///<! in these folders files are ignored
     std::vector<std::filesystem::path> processFolders; ///<! in these folders files are processed to take functions and structures from them to shaders
@@ -972,11 +1044,9 @@ namespace kslicer
                                         const std::unordered_map<std::string, KernelInfo>&    a_kernelList,
                                         std::vector<KernelCallInfo>&                          a_kernelCalls) {}
 
-    virtual bool SupportVirtualKernels() const { return false; }
-    virtual void AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) { } ///<! for Virtual Kernels
-    virtual void AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) { } ///<! for Virtual Kernels
-    virtual void ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler) {}
-    virtual void ExtractHierarchiesConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool) {}
+    virtual void AddVFH(const std::string& a_className);
+    virtual void ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler);
+    virtual void ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool);
 
 
     //// \\
@@ -990,7 +1060,6 @@ namespace kslicer
     virtual void          VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) { } // additional informational pass, does not rewrite the code!
 
     virtual void ProcessCallArs_KF(const KernelCallInfo& a_call);
-    virtual bool IsExcludedLocalFunction(const std::string& a_name) const { return false; }
 
     //// These methods used for final template text rendering
     //
@@ -1022,21 +1091,20 @@ namespace kslicer
       std::vector<DImplFunc>      memberFunctions;
       std::vector<std::string>    fields;
       bool                        isEmpty = false; ///<! empty if all memberFunctions are empty
+      std::string                 objBufferName;
+      std::string                 interfaceName;
     };
 
     struct DHierarchy
     {
       const clang::CXXRecordDecl* interfaceDecl = nullptr;
       std::string                 interfaceName;
-      std::string                 makerName;
       std::string                 objBufferName;
       std::vector<DImplClass>     implementations;
 
       std::vector<kslicer::DeclInClass>            usedDecls;
       std::unordered_map<std::string, std::string> tagByClassName;
-
-      VKERNEL_IMPL_TYPE dispatchType = VKERNEL_IMPL_TYPE::VKERNEL_SWITCH; ///<! simple variant by default
-      uint32_t indirectBlockOffset   = 0;
+      std::map<std::string, kslicer::FuncData>     virtualFunctions;
     };
 
     kslicer::VKERNEL_IMPL_TYPE defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
@@ -1089,23 +1157,12 @@ namespace kslicer
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
     void          ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const override;
 
-    bool          SupportVirtualKernels() const override { return true; }
-    void          AddDispatchingHierarchy(const std::string& a_className, const std::string& a_makerName) override;  ///<! for Virtual Kernels
-    void          AddDispatchingKernel   (const std::string& a_className, const std::string& a_kernelName) override; ///<! for Virtual Kernels
-    void          ProcessDispatchHierarchies(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler) override;
-    void          ExtractHierarchiesConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool) override;
-
     bool NeedThreadFlags() const override { return true; }
     bool NeedFakeOffset () const override { return true; }
-    bool IsExcludedLocalFunction(const std::string& a_name) const override
-    {
-      return (a_name == "MakeObjPtr");
-    }
-
-    bool IsRTV() const override { return true; }
+    bool IsRTV          () const override { return true; }
 
   private:
-    std::vector< std::pair< std::string, std::string> > m_vkernelPairs;
+
   };
 
   struct IPV_Pattern : public MainClassInfo
@@ -1195,6 +1252,17 @@ namespace kslicer
   clang::Expr* RemoveImplicitCast(clang::Expr* a_expr);
 
   void ExtractBlockSizeFromCall(clang::CXXMemberCallExpr* f, kslicer::KernelInfo& kernel, const clang::CompilerInstance& compiler);
+  
+  struct VFHAccessNodes 
+  {
+    const clang::CXXMemberCallExpr* buffNode;
+    const clang::Expr*              offsetNode;
+    std::string                     interfaceName;
+    VFHAccessNodes() : buffNode(nullptr), offsetNode(nullptr) {}
+  };
+
+  VFHAccessNodes GetVFHAccessNodes(const clang::CXXMemberCallExpr* f);
+  bool IsCalledWithArrowAndVirtual(const clang::CXXMemberCallExpr* f);
 }
 
 std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::filesystem::path& fileName,
