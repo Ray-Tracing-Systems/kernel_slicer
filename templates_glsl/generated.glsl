@@ -41,9 +41,18 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 
 ## endfor
 {% for Hierarchy in Hierarchies %} {# /*------------------------------ vfh ------------------------------ */ #}
+
+struct {{Hierarchy.Name}}
+{
+  uint vptr_dummy[2];
+  {% for Field in Hierarchy.InterfaceFields %}
+  {{Field.Type}} {{Field.Name}};
+  {% endfor %}
+};
+
 // Virtual Functions of {{Hierarchy.Name}}:
 {% for Contant in Hierarchy.Constants %}
-const {{Contant.Type}}  {{Contant.Name}} =  {{Contant.Value}};
+const {{Contant.Type}}  {{Contant.Name}} = {{Contant.Value}};
 {% endfor %} 
 
 {% for Impl in Hierarchy.Implementations %}

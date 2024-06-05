@@ -105,13 +105,26 @@ static inline size_t AlignedSize(const size_t a_size)
   return currSize;
 }
 
-static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, const clang::CompilerInstance& compiler)
+nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, 
+                                           const clang::CompilerInstance& compiler,
+                                           const MainClassInfo& a_classInfo)
 {
   json hierarchy;
   hierarchy["Name"]             = h.interfaceName;
   hierarchy["ObjBufferName"]    = h.objBufferName;
   hierarchy["IndirectDispatch"] = 0;
   hierarchy["IndirectOffset"]   = 0;
+  
+  hierarchy["InterfaceFields"]  = std::vector<json>();
+  auto fields = a_classInfo.GetFieldsFromStruct(h.interfaceDecl);
+  for(auto field : fields) 
+  {
+    json local;
+    local["Type"] = field.first;
+    local["Name"] = field.second;
+    hierarchy["InterfaceFields"].push_back(local);
+  }
+
 
   hierarchy["Constants"]        = std::vector<json>();
   for(const auto& decl : h.usedDecls)
@@ -183,12 +196,13 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
   return hierarchy;
 }
 
-static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies,
-                                     const clang::CompilerInstance& compiler)
+nlohmann::json kslicer::PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies,
+                                                 const clang::CompilerInstance& compiler,
+                                                 const MainClassInfo& a_classInfo)
 {
   json data = std::vector<json>();
   for(const auto& p : hierarchies)
-    data.push_back(PutHierarchyToJson(p.second, compiler));
+    data.push_back(PutHierarchyToJson(p.second, compiler, a_classInfo));
   return data;
 }
 
@@ -382,7 +396,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["GlobalUseHalf"]    = shaderFeatures.useHalfType;
 
   auto dhierarchies   = a_classInfo.GetDispatchingHierarchies();
-  data["Hierarchies"] = PutHierarchiesDataToJson(dhierarchies, compiler);
+  data["Hierarchies"] = PutHierarchiesDataToJson(dhierarchies, compiler, a_classInfo);
 
   // (4) put kernels
   //

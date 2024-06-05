@@ -45,63 +45,6 @@ static inline size_t AlignedSize(const size_t a_size)
   return currSize;
 }
 
-static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, const clang::CompilerInstance& compiler)
-{
-  json hierarchy;
-  hierarchy["Name"]             = h.interfaceName;
-  hierarchy["IndirectDispatch"] = 0;
-  hierarchy["IndirectOffset"]   = 0;
-
-  hierarchy["Constants"]        = std::vector<std::string>();
-  for(const auto& decl : h.usedDecls)
-  {
-    if(decl.kind == kslicer::DECL_IN_CLASS::DECL_CONSTANT)
-    {
-      std::string typeInCL = decl.type;
-      ReplaceFirst(typeInCL, "const", "__constant static");
-      json currConstant;
-      currConstant["Type"]  = typeInCL;
-      currConstant["Name"]  = decl.name;
-      currConstant["Value"] = kslicer::GetRangeSourceCode(decl.srcRange, compiler);
-      hierarchy["Constants"].push_back(currConstant);
-    }
-  }
-
-  hierarchy["Implementations"] = std::vector<std::string>();
-  for(const auto& impl : h.implementations)
-  {
-    if(impl.isEmpty)
-      continue;
-    const auto p2 = h.tagByClassName.find(impl.name);
-    assert(p2 != h.tagByClassName.end());
-    json currImpl;
-    currImpl["ClassName"] = impl.name;
-    currImpl["TagName"]   = p2->second;
-    currImpl["MemberFunctions"] = std::vector<std::string>();
-    for(const auto& member : impl.memberFunctions)
-    {
-      currImpl["MemberFunctions"].push_back(member.srcRewritten);
-    }
-    currImpl["Fields"] = std::vector<std::string>();
-    for(const auto& field : impl.fields)
-      currImpl["Fields"].push_back(field);
-
-    hierarchy["Implementations"].push_back(currImpl);
-  }
-  hierarchy["ImplAlignedSize"] = AlignedSize(h.implementations.size()+1);
-
-  return hierarchy;
-}
-
-static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies,
-                                     const clang::CompilerInstance& compiler)
-{
-  json data = std::vector<std::string>();
-  for(const auto& p : hierarchies)
-    data.push_back(PutHierarchyToJson(p.second, compiler));
-  return data;
-}
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -862,7 +805,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["ShaderFolder"]          = a_classInfo.pShaderCC->ShaderFolder();
 
   auto dhierarchies             = a_classInfo.GetDispatchingHierarchies();
-  data["DispatchHierarchies"]   = PutHierarchiesDataToJson(dhierarchies, compiler);
+  data["DispatchHierarchies"]   = kslicer::PutHierarchiesDataToJson(dhierarchies, compiler, a_classInfo);
 
   data["IndirectBufferSize"] = a_classInfo.m_indirectBufferSize;
   data["IndirectDispatches"] = std::vector<std::string>();
@@ -1607,7 +1550,7 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
   data["MainClassSuffixLowerCase"] = ToLowerCase(a_classInfo.mainClassSuffix);
   data["UBOStructFields"] = std::vector<std::string>();
   data["ShaderGLSL"]      = a_classInfo.pShaderCC->IsGLSL();
-  data["Hierarchies"]     = PutHierarchiesDataToJson(a_classInfo.GetDispatchingHierarchies(), compiler);
+  data["Hierarchies"]     = kslicer::PutHierarchiesDataToJson(a_classInfo.GetDispatchingHierarchies(), compiler, a_classInfo);
   data["UseRayGen"]       = a_settings.enableRayGen;
   data["UseMotionBlur"]   = a_settings.enableMotionBlur;
 

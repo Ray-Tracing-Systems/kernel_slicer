@@ -222,16 +222,6 @@ private:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void kslicer::MainClassInfo::AddVFH(const std::string& a_className)
-{
-  std::cout << " found class hierarchy: " << a_className.c_str() << std::endl;
-
-  DHierarchy hdata;
-  hdata.interfaceName = kslicer::CutOffStructClass(a_className);
-  hdata.implementations.clear();
-  m_vhierarchy[hdata.interfaceName] = hdata;
-}
-
 void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler)
 {
   //
@@ -409,6 +399,27 @@ void kslicer::MainClassInfo::ExtractVFHConstants(const clang::CompilerInstance& 
       visitor.TraverseDecl(const_cast<clang::CXXRecordDecl*>(impl.decl));
   }
 
+}
+
+std::vector< std::pair<std::string, std::string> > kslicer::MainClassInfo::GetFieldsFromStruct(const clang::CXXRecordDecl* recordDecl) const
+{
+  std::vector< std::pair<std::string, std::string> > fieldInfo;
+
+  // Проходим по всем полям структуры
+  for (auto it = recordDecl->field_begin(); it != recordDecl->field_end(); ++it) 
+  {
+      const clang::FieldDecl* field = *it;
+      const clang::QualType fieldType = field->getType();
+      const clang::Type* baseType = fieldType.getTypePtrOrNull();
+      // Получаем имена типов и полей и добавляем их в массив пар
+      if (baseType) {
+          const std::string typeName  = baseType->getCanonicalTypeInternal().getAsString();
+          const std::string fieldName = field->getNameAsString();
+          const std::string typeNameR = pShaderFuncRewriter->RewriteStdVectorTypeStr(typeName);
+          fieldInfo.push_back(std::make_pair(typeNameR, fieldName));
+      }
+  }
+  return fieldInfo;
 }
 
 bool kslicer::IsCalledWithArrowAndVirtual(const clang::CXXMemberCallExpr* f) 

@@ -1044,7 +1044,6 @@ namespace kslicer
                                         const std::unordered_map<std::string, KernelInfo>&    a_kernelList,
                                         std::vector<KernelCallInfo>&                          a_kernelCalls) {}
 
-    virtual void AddVFH(const std::string& a_className);
     virtual void ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler);
     virtual void ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool);
 
@@ -1134,6 +1133,8 @@ namespace kslicer
     void ProcessBlockExpansionKernel(KernelInfo& a_kernel, const clang::CompilerInstance& compiler);
 
     mutable std::vector<std::string> kernelsCallCmdDeclCached;
+
+    std::vector< std::pair<std::string, std::string> > GetFieldsFromStruct(const clang::CXXRecordDecl* recordDecl) const;
   };
 
 
