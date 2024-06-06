@@ -154,10 +154,6 @@ struct Box4f
 {{Array.Type}} {{Array.Name}}[{{Array.Size}}];
 {% endfor %}
 
-## for LocalFunc in LocalFunctions  
-{{LocalFunc}}
-
-## endfor
 #define KGEN_FLAG_RETURN            1
 #define KGEN_FLAG_BREAK             2
 #define KGEN_FLAG_DONT_SET_EXIT     4
@@ -165,4 +161,9 @@ struct Box4f
 #define KGEN_REDUCTION_LAST_STEP    16
 ## for Def in Defines  
 {{Def}}
+## endfor
+
+## for LocalFunc in LocalFunctions  
+{{LocalFunc}}
+
 ## endfor

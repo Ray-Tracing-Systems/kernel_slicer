@@ -53,7 +53,7 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 {% for Hierarchy in Hierarchies %} {# /*------------------------------ vfh ------------------------------ */ #}
 // Virtual Functions of {{Hierarchy.Name}}:
 {% for Contant in Hierarchy.Constants %}
-const {{Contant.Type}}  {{Contant.Name}} = {{Contant.Value}};
+{{Contant.Type}} {{Contant.Name}} = {{Contant.Value}};
 {% endfor %} 
 
 {% for Impl in Hierarchy.Implementations %}

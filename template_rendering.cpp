@@ -126,13 +126,13 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::DHierar
   }
 
 
-  hierarchy["Constants"]        = std::vector<json>();
+  hierarchy["Constants"] = std::vector<json>();
   for(const auto& decl : h.usedDecls)
   {
     if(decl.kind == kslicer::DECL_IN_CLASS::DECL_CONSTANT)
     {
       json currConstant;
-      currConstant["Type"]  = decl.type;
+      currConstant["Type"]  = a_classInfo.pShaderFuncRewriter->RewriteStdVectorTypeStr(decl.type);
       currConstant["Name"]  = decl.name;
       currConstant["Value"] = kslicer::GetRangeSourceCode(decl.srcRange, compiler);
       hierarchy["Constants"].push_back(currConstant);
@@ -896,6 +896,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       for(auto& f : funcMembers)
       {
+        if(f.astNode->isVirtualAsWritten()) // skip virtual functions because they are proccesed else-where
+          continue;
+
         auto funcNode = const_cast<clang::FunctionDecl*>(f.astNode);
         pVisitorF->SetCurrFuncInfo(&f);    // pass auxilary function data inside pVisitorF
         pVisitorK->SetCurrFuncInfo(&f);
