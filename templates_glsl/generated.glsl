@@ -14,7 +14,17 @@
 {% for KSpec in Kernel.SpecConstants %}
 layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}};
 {% endfor %}
+{% for Hierarchy in Hierarchies %} 
 
+struct {{Hierarchy.Name}}
+{
+  uint vptr_dummy[2];
+  {% for Field in Hierarchy.InterfaceFields %}
+  {{Field.Type}} {{Field.Name}};
+  {% endfor %}
+};
+
+{% endfor %}
 ## for Arg in Kernel.Args
 {% if not Arg.IsUBO %} 
 {% if Arg.IsImage %}
@@ -41,15 +51,6 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 
 ## endfor
 {% for Hierarchy in Hierarchies %} {# /*------------------------------ vfh ------------------------------ */ #}
-
-struct {{Hierarchy.Name}}
-{
-  uint vptr_dummy[2];
-  {% for Field in Hierarchy.InterfaceFields %}
-  {{Field.Type}} {{Field.Name}};
-  {% endfor %}
-};
-
 // Virtual Functions of {{Hierarchy.Name}}:
 {% for Contant in Hierarchy.Constants %}
 const {{Contant.Type}}  {{Contant.Name}} = {{Contant.Value}};
