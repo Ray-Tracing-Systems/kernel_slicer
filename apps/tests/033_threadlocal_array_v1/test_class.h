@@ -6,6 +6,7 @@
 #include <fstream>
 
 #include "LiteMath.h"
+using LiteMath::float2;
 using LiteMath::float4;
 using LiteMath::float4x4;
 

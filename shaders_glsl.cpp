@@ -452,6 +452,21 @@ std::string kslicer::GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::st
   return resStr;
 }
 
+// process arrays: 'float[3] data' --> 'float data[3]' 
+std::string kslicer::GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const
+{
+  auto typeNameR = a_typeName;
+  auto posArrayBegin = typeNameR.find("[");
+  auto posArrayEnd   = typeNameR.find("]");
+  if(posArrayBegin != std::string::npos && posArrayEnd != std::string::npos)
+  {
+    varName   = varName + typeNameR.substr(posArrayBegin, posArrayEnd-posArrayBegin+1);
+    typeNameR = typeNameR.substr(0, posArrayBegin);
+  }
+
+  return RewriteStdVectorTypeStr(typeNameR);
+}
+
 std::string kslicer::GLSLFunctionRewriter::RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, kslicer::TEX_ACCESS a_accessType, std::string& outImageFormat) const
 {
   std::string result = "";
@@ -1069,11 +1084,11 @@ bool kslicer::GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   const bool isAuto = (typeClass == clang::Type::Auto);
   if(pValue != nullptr && WasNotRewrittenYet(pValue) && (NeedsVectorTypeRewrite(varType) || isAuto))
   {
-    const std::string varName  = decl->getNameAsString();
-    const std::string varValue = RecursiveRewrite(pValue);
-    const std::string varType2 = RewriteStdVectorTypeStr(varType);
-
-    if(varValue == "" || varValue == varName) // 'float3 deviation;' for some reason !decl->hasInit() does not works
+    std::string varName  = decl->getNameAsString();
+    std::string varValue = RecursiveRewrite(pValue);
+    std::string varType2 = RewriteStdVectorTypeStr(varType, varName);
+    
+    if(varValue == "" || varName.find(varValue) != std::string::npos) // 'float3 deviation;' for some reason !decl->hasInit() does not works
       m_lastRewrittenText = varType2 + " " + varName;
     else
       m_lastRewrittenText = varType2 + " " + varName + " = " + varValue;

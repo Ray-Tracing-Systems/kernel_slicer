@@ -599,6 +599,7 @@ namespace kslicer
     bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr* expr)  { return VisitCXXOperatorCallExpr_Impl(expr); }
 
     virtual std::string RewriteStdVectorTypeStr(const std::string& a_str) const;
+    virtual std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const { return RewriteStdVectorTypeStr(a_typeName); }
     virtual std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, TEX_ACCESS a_accessType, std::string& outImageFormat) const { return "readonly image2D"; }
 
     virtual ShaderFeatures GetShaderFeatures() const { return ShaderFeatures(); }
@@ -684,6 +685,7 @@ namespace kslicer
     IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
   
     std::string RewriteStdVectorTypeStr(const std::string& a_str) const override;
+    std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const override;
     std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, kslicer::TEX_ACCESS a_accessType, std::string& outImageFormat) const override;
   
     std::unordered_map<std::string, std::string> m_vecReplacements;

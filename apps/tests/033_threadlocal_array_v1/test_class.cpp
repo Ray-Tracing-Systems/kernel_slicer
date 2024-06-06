@@ -1,6 +1,5 @@
 #include "test_class.h"
 
-
 float fSumm(int tid)
 {
   [[threadlocal]] float tempData2[8];
@@ -25,6 +24,7 @@ void TestClass::kernel1D_Test(float* a_data, int a_size)
   for(int i=0; i<a_size; i++) 
   {
     [[threadlocal]] float tempData[16];
+    float2 tempData2[4];
     
     for(int j=0;j<16;j++)
       tempData[j] = float(j*i + j);
