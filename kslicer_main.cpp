@@ -527,7 +527,7 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  std::cout << "(4.0) Extract functions, constants and structs from 'MainClass' " << std::endl;
+  std::cout << "(4) Extract functions, constants and structs from 'MainClass' " << std::endl;
   std::cout << "{" << std::endl;
   std::vector<kslicer::FuncData> usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
   std::vector<kslicer::DeclInClass> usedDecls           = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
@@ -544,13 +544,9 @@ int main(int argc, const char **argv)
   // process virtual functions
   if(hasVirtual)
   {
-    std::cout << "  (4.0.1) Process Virtual-Functions-Hierarchies" << std::endl;
-    std::cout << "  (4.0.2) Extract Virtual-Functions-Hierarchies constants" << std::endl;
-    std::cout << "  {" << std::endl;
+    std::cout << "  Process Virtual-Functions-Hierarchies:" << std::endl;
     inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
     inputCodeInfo.ExtractVFHConstants(compiler, Tool);
-
-    std::cout << "  }" << std::endl;
     std::cout << std::endl;
   }
 
