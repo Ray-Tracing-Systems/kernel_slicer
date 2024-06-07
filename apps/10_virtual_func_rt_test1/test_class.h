@@ -80,12 +80,12 @@ public:
   bool kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                        Lite_Hit* out_hit, float2* out_bars, uint* out_mid);
   
-  void kernel_RealColorToUint32(uint tid, uint mid, uint* out_color);
+  void kernel_RealColorToUint32(uint tid, uint* mid, uint* out_color);
 
   void kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, 
                                 float4* out_color);
  
-  void kernel_NextBounce(uint tid, uint mid, const Lite_Hit* in_hit, const float2* in_bars, 
+  void kernel_NextBounce(uint tid, uint* mid, const Lite_Hit* in_hit, const float2* in_bars, 
                          const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
                          float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
                          float4* accumColor, float4* accumThoroughput);

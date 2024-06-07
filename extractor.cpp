@@ -149,27 +149,9 @@ private:
 
 };
 
-
-std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
+void kslicer::ProcessFunctionsInQueueBFS(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, 
+                                         std::queue<kslicer::FuncData>& functionsToProcess, std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions)
 {
-  std::queue<FuncData> functionsToProcess;
-
-  for(const auto& k : a_codeInfo.kernels)        // (1) first traverse kernels as used functions
-  {
-    kslicer::FuncData func;
-    func.name     = k.second.name;
-    func.astNode  = k.second.astNode;
-    func.srcRange = k.second.astNode->getSourceRange();
-    func.srcHash  = GetHashOfSourceRange(func.srcRange);
-    func.isMember = true; //isa<clang::CXXMethodDecl>(kernel.astNode);
-    func.isKernel = true;
-    func.depthUse = 0;
-    functionsToProcess.push(func);
-  }
-
-  std::unordered_map<uint64_t, FuncData> usedFunctions;
-  usedFunctions.reserve(functionsToProcess.size()*10);
-
   FuncExtractor visitor(a_compiler, a_codeInfo); // (2) then repeat this recursivelly in a breadth first manner ...
   while(!functionsToProcess.empty())
   {
@@ -201,7 +183,10 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
 
     visitor.usedFunctions.clear();
   }
+}
 
+std::vector<kslicer::FuncData> kslicer::SortByDepthInUse(const std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions)
+{
   std::vector<kslicer::FuncData> result; result.reserve(usedFunctions.size());
   for(const auto& f : usedFunctions)
     result.push_back(f.second);
@@ -209,6 +194,55 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
   std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.depthUse > b.depthUse; });
 
   return result;
+}
+
+std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions)
+{
+  std::queue<FuncData> functionsToProcess;
+
+  for(const auto& k : a_codeInfo.kernels)        // (1) first traverse kernels as used functions
+  {
+    kslicer::FuncData func;
+    func.name     = k.second.name;
+    func.astNode  = k.second.astNode;
+    func.srcRange = k.second.astNode->getSourceRange();
+    func.srcHash  = GetHashOfSourceRange(func.srcRange);
+    func.isMember = true; //isa<clang::CXXMethodDecl>(kernel.astNode);
+    func.isKernel = true;
+    func.depthUse = 0;
+    functionsToProcess.push(func);
+  }
+  
+  kslicer::ProcessFunctionsInQueueBFS(a_codeInfo, a_compiler, functionsToProcess, // functionsToProcess => usedFunctions
+                                      usedFunctions);
+
+  return kslicer::SortByDepthInUse(usedFunctions);
+}
+
+std::vector<kslicer::FuncData> kslicer::ExtractUsedFromVFH(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions)
+{
+  std::queue<FuncData> functionsToProcess;
+
+  for(const auto& p : a_codeInfo.m_vhierarchy) {
+    for(const auto& impl : p.second.implementations) {
+      for(const auto& f : impl.memberFunctions) { 
+        kslicer::FuncData func;
+        func.name     = f.name;
+        func.astNode  = f.decl;
+        func.srcRange = f.decl->getSourceRange();
+        func.srcHash  = GetHashOfSourceRange(func.srcRange);
+        func.isMember = true; // isa<clang::CXXMethodDecl>(kernel.astNode);
+        func.isKernel = true; // force exclude function itself from functions list
+        func.depthUse = 0;
+        functionsToProcess.push(func);
+      }
+    }
+  }
+
+  kslicer::ProcessFunctionsInQueueBFS(a_codeInfo, a_compiler, functionsToProcess, // functionsToProcess => usedFunctions
+                                      usedFunctions);
+
+  return kslicer::SortByDepthInUse(usedFunctions);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

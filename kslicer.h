@@ -1255,7 +1255,10 @@ namespace kslicer
   clang::Expr* RemoveImplicitCast(clang::Expr* a_expr);
 
   void ExtractBlockSizeFromCall(clang::CXXMemberCallExpr* f, kslicer::KernelInfo& kernel, const clang::CompilerInstance& compiler);
-  
+
+  void ProcessFunctionsInQueueBFS(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::queue<kslicer::FuncData>& functionsToProcess, std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions);
+  std::vector<kslicer::FuncData> SortByDepthInUse(const std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions);
+
   struct VFHAccessNodes 
   {
     const clang::CXXMemberCallExpr* buffNode;

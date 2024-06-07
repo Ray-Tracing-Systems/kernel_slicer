@@ -529,26 +529,12 @@ int main(int argc, const char **argv)
 
   std::cout << "(4) Extract functions, constants and structs from 'MainClass' " << std::endl;
   std::cout << "{" << std::endl;
-  std::vector<kslicer::FuncData> usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
-  std::vector<kslicer::DeclInClass> usedDecls           = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
 
-  bool hasMembers = false;
-  bool hasVirtual = false;
-  for(const auto& f : usedByKernelsFunctions) {
-    if(f.isMember)
-      hasMembers = true;
-    if(f.isVirtual)
-      hasVirtual = true;
-  }
+  std::unordered_map<uint64_t, kslicer::FuncData> usedFunctionsMap;
+  usedFunctionsMap.reserve(1000);
 
-  // process virtual functions
-  if(hasVirtual)
-  {
-    std::cout << "  Process Virtual-Functions-Hierarchies:" << std::endl;
-    inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
-    inputCodeInfo.ExtractVFHConstants(compiler, Tool);
-    std::cout << std::endl;
-  }
+  std::vector<kslicer::FuncData>    usedFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler, usedFunctionsMap); // recursive processing of functions used by kernel, extracting all needed functions
+  std::vector<kslicer::DeclInClass> usedDecls     = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
 
   for(const auto& usedDecl : usedDecls) // merge usedDecls with generalDecls
   {
@@ -565,6 +551,25 @@ int main(int argc, const char **argv)
       generalDecls.push_back(usedDecl);
   }
 
+  bool hasMembers = false;
+  bool hasVirtual = false;
+  for(const auto& f : usedFunctions) {
+    if(f.isMember)
+      hasMembers = true;
+    if(f.isVirtual)
+      hasVirtual = true;
+  }
+
+  // process virtual functions
+  if(hasVirtual)
+  {
+    std::cout << "  Process Virtual-Functions-Hierarchies:" << std::endl;
+    inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
+    inputCodeInfo.ExtractVFHConstants(compiler, Tool);
+    usedFunctions = kslicer::ExtractUsedFromVFH(inputCodeInfo, compiler, usedFunctionsMap);
+    std::cout << std::endl;
+  }
+
   std::vector<std::string> usedDefines = kslicer::ExtractDefines(compiler);
 
   std::cout << "}" << std::endl;
@@ -578,15 +583,15 @@ int main(int argc, const char **argv)
     std::cout << "{" << std::endl;
     for(auto& k : inputCodeInfo.kernels)
     {
-      for(const auto& f : usedByKernelsFunctions)
+      for(const auto& f : usedFunctions)
       {
         if(f.isMember) // and if is called from this kernel.It it is called, list all input parameters for each call!
         {
           // list all input parameters for each call of member function inside kernel; in this way we know which textures, vectors and samplers were actually used by these functions
           //
           std::unordered_map<std::string, kslicer::UsedContainerInfo> auxContainers;
-          auto machedParams = kslicer::ArgMatchTraversal    (&k.second, f, usedByKernelsFunctions,                inputCodeInfo, compiler);
-          auto usedMembers  = kslicer::ExtractUsedMemberData(&k.second, f, usedByKernelsFunctions, auxContainers, inputCodeInfo, compiler);
+          auto machedParams = kslicer::ArgMatchTraversal    (&k.second, f, usedFunctions,                inputCodeInfo, compiler);
+          auto usedMembers  = kslicer::ExtractUsedMemberData(&k.second, f, usedFunctions, auxContainers, inputCodeInfo, compiler);
 
           // TODO: process bindedParams correctly
           //
@@ -644,7 +649,7 @@ int main(int argc, const char **argv)
             k.second.usedContainers[c.first] = c.second;
 
         } // end if(f.isMember)
-      } // end for(const auto& f : usedByKernelsFunctions)
+      } // end for(const auto& f : usedFunctions)
     } // end for(auto& k : inputCodeInfo.kernels)
 
     for(const auto& k : inputCodeInfo.kernels) // fix this flag for members that were used in member functions but not in kernels directly
@@ -875,7 +880,8 @@ int main(int argc, const char **argv)
                                       rawname + ToLowerCase(suffix) + ".h", threadsOrder,
                                       uboIncludeName, composeImplName,
                                       jsonUBO, textGenSettings);
-
+  
+  std::cout << std::endl;
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl;
   std::cout << "{" << std::endl;
   {
@@ -958,7 +964,7 @@ int main(int argc, const char **argv)
       k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
   }
 
-  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO, usedDefines, textGenSettings);
+  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO, usedDefines, textGenSettings);
   if(inputCodeInfo.pShaderCC->IsISPC()) {
     json["Constructors"]        = jsonCPP["Constructors"];
     json["HasCommitDeviceFunc"] = jsonCPP["HasCommitDeviceFunc"];
@@ -985,7 +991,8 @@ int main(int argc, const char **argv)
   kslicer::ApplyJsonToTemplate("templates/ubo_def.h",  uboOutName, jsonUBO); // need to call it after "GenerateShaders"
   kslicer::CheckForWarnings(inputCodeInfo);
 
-  std::cout << "(9) Generate host code again for 'ListRequiredDeviceFeatures' " << std::endl << std::endl;
+  std::cout << "(9) Generate host code again for 'ListRequiredDeviceFeatures' " << std::endl;
+  std::cout << "{" << std::endl;
   if(true)
   {
     auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls,
@@ -993,7 +1000,8 @@ int main(int argc, const char **argv)
                                         uboIncludeName, composeImplName, jsonUBO, textGenSettings);
     kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + ToLowerCase(suffix) + "_init.cpp", jsonCPP);
   }
-  std::cout << "(10) Finished!  " << std::endl;
+  std::cout << "}" << std::endl << std::endl;
+  std::cout << "(10) Finished! " << std::endl;
 
   return 0;
 }

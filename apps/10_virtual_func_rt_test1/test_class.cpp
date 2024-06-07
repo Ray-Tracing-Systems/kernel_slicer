@@ -210,9 +210,10 @@ void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
   out_pakedXY[pitchOffset(tidX,tidY)] = ((tidY << 16) & 0xFFFF0000) | (tidX & 0x0000FFFF);
 }
 
-void TestClass::kernel_RealColorToUint32(uint tid, uint mid, uint* out_color)
+void TestClass::kernel_RealColorToUint32(uint tid, uint* mid, uint* out_color)
 {
-  const float3 color = (m_materials.data() + mid)->GetColor();
+  const uint mid2 = *mid;
+  const float3 color = (m_materials.data() + mid2)->GetColor();
   out_color[tid] = RealColorToUint32_f3(color);
 }
 
@@ -235,7 +236,7 @@ void TestClass::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color)
   if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, &mid))
     return;
     
-  kernel_RealColorToUint32(tid, mid, out_color);
+  kernel_RealColorToUint32(tid, &mid, out_color);
 }
 
 void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, float4* out_color)
@@ -247,7 +248,7 @@ void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, c
   out_color[y*WIN_WIDTH+x] += *a_accumColor;
 }
 
-void  TestClass::kernel_NextBounce(uint tid, uint mid, const Lite_Hit* in_hit, const float2* in_bars, 
+void  TestClass::kernel_NextBounce(uint tid, uint* mid, const Lite_Hit* in_hit, const float2* in_bars, 
                                    const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
                                    float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
                                    float4* accumColor, float4* accumThoroughput)
@@ -263,7 +264,8 @@ void  TestClass::kernel_NextBounce(uint tid, uint mid, const Lite_Hit* in_hit, c
     const float2 uv = rndFloat2_Pseudo(&gen);
     pGen[tid]       = gen;
     
-    const BxDFSample matSam   = (m_materials.data() + mid)->SampleAndEvalBxDF(*rayPosAndNear, *rayDirAndFar, hit, uv);
+    const uint       mid2     = *mid;
+    const BxDFSample matSam   = (m_materials.data() + mid2)->SampleAndEvalBxDF(*rayPosAndNear, *rayDirAndFar, hit, uv);
     const float3     bxdfVal  = matSam.brdfVal * (1.0f / std::max(matSam.pdfVal, 1e-10f));
     const float      cosTheta = dot(matSam.newDir, hit.norm);
     
@@ -297,7 +299,7 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY
     if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, &mid))
       break;
     
-    kernel_NextBounce(tid, mid, &hit, &baricentrics, 
+    kernel_NextBounce(tid, &mid, &hit, &baricentrics, 
                        m_indicesReordered.data(), m_vPos4f.data(), m_vNorm4f.data(), 
                        &rayPosAndNear, &rayDirAndFar, m_randomGens.data(), 
                        &accumColor, &accumThoroughput);
