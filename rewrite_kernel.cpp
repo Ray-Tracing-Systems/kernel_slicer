@@ -430,7 +430,6 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
   const DeclarationName dn      = dni.getName();
         std::string fname       = dn.getAsString();
 
-
   if(kslicer::IsCalledWithArrowAndVirtual(f) && WasNotRewrittenYet(f))
   {
     auto buffAndOffset = kslicer::GetVFHAccessNodes(f);
@@ -440,7 +439,10 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
       std::string offsetText = GetRangeSourceCode(buffAndOffset.offsetNode->getSourceRange(), m_compiler); 
       std::string buffText2  = buffText.substr(0, buffText.find(".data()"));
       
-      std::string textCallNoName = "(" + offsetText + ",";
+      std::string textCallNoName = "(" + offsetText; 
+      if(f->getNumArgs() != 0)
+        textCallNoName += ",";
+        
       for(unsigned i=0;i<f->getNumArgs();i++)
       {
         textCallNoName += RecursiveRewrite(f->getArg(i));

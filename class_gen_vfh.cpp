@@ -155,8 +155,7 @@ public:
 
     if(WasNotRewrittenYet(call))
     { 
-      std::string textRes = classTypeName + "_" + fname;
-      textRes += "(selfId";
+      std::string textRes = classTypeName + "_" + fname + "_" + m_objBufferName + "(selfId";
       if(call->getNumArgs() > 0)
         textRes += ",";
       for(unsigned i=0;i<call->getNumArgs();i++)
