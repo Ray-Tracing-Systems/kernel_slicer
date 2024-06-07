@@ -4,6 +4,7 @@
 #include <chrono>
 #include <string>
 #include <new>
+#include <cfloat>
 
 void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
 { 
@@ -44,11 +45,11 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   const uint x = (XY & 0x0000FFFF);
   const uint y = (XY & 0xFFFF0000) >> 16;
 
-  const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
+  const float3 rayDir = EyeRayDir(float(x), float(y), float(WIN_WIDTH), float(WIN_HEIGHT), m_worldViewProjInv); 
   const float3 rayPos = camPos;
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
-  *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
+  *rayDirAndFar  = to_float4(rayDir, FLT_MAX);
 }
 
 void TestClass::kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar,
@@ -62,11 +63,11 @@ void TestClass::kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPo
   const uint x = (XY & 0x0000FFFF);
   const uint y = (XY & 0xFFFF0000) >> 16;
 
-  const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
+  const float3 rayDir = EyeRayDir(float(x), float(y), float(WIN_WIDTH), float(WIN_HEIGHT), m_worldViewProjInv); 
   const float3 rayPos = camPos;
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
-  *rayDirAndFar  = to_float4(rayDir, MAXFLOAT);
+  *rayDirAndFar  = to_float4(rayDir, FLT_MAX);
 }
 
 static float2 RayBoxIntersectionLite(const float3 ray_pos, const float3 ray_dir_inv, const float boxMin[3], const float boxMax[3])
@@ -109,9 +110,9 @@ static void IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float
 
     const float4 edge1 = B_pos - A_pos;
     const float4 edge2 = C_pos - A_pos;
-    const float4 pvec  = cross(rayDirAndFar, edge2);
+    const float4 pvec  = cross3(rayDirAndFar, edge2);
     const float4 tvec  = rayPosAndNear - A_pos;
-    const float4 qvec  = cross(tvec, edge1);
+    const float4 qvec  = cross3(tvec, edge1);
     const float dotTmp = dot(to_float3(edge1), to_float3(pvec));
     const float invDet = 1.0f / (dotTmp > 1e-6f ? dotTmp : 1e-6f);
 
@@ -122,7 +123,7 @@ static void IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float
     if (v > -1e-6f && u > -1e-6f && (u + v < 1.0f + 1e-6f) && t > rayPosAndNear.w && t < pHit->t)
     {
       pHit->t      = t;
-      pHit->primId = triAddress/3;
+      pHit->primId = int(triAddress)/3;
       (*pBars)     = make_float2(u,v);
     }
   }
@@ -158,13 +159,13 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   uint nodeIdx = 0;
   while(nodeIdx < 0xFFFFFFFE)
   {
-    const struct BVHNode currNode = m_nodes[nodeIdx];
+    const BVHNode currNode = m_nodes[nodeIdx];
     const float2 boxHit           = RayBoxIntersectionLite(to_float3(rayPos), rayDirInv, currNode.boxMin, currNode.boxMax);
     const bool   intersects       = (boxHit.x <= boxHit.y) && (boxHit.y > rayPos.w) && (boxHit.x < res.t); // (tmin <= tmax) && (tmax > 0.f) && (tmin < curr_t)
 
     if(intersects && currNode.leftOffset == 0xFFFFFFFF) //leaf
     {
-      struct Interval startCount = m_intervals[nodeIdx];
+      Interval startCount = m_intervals[nodeIdx];
       IntersectAllPrimitivesInLeaf(rayPos, rayDir, m_indicesReordered.data(), startCount.start*3, startCount.count*3, m_vPos4f.data(), 
                                    &res, &baricentrics);
     }
@@ -275,7 +276,7 @@ void  TestClass::kernel_NextBounce(uint tid, uint mid, const Lite_Hit* in_hit, c
     else
     {
       *rayPosAndNear    = to_float4(OffsRayPos(hit.pos, hit.norm, matSam.newDir), 0.0f);
-      *rayDirAndFar     = to_float4(matSam.newDir, MAXFLOAT);
+      *rayDirAndFar     = to_float4(matSam.newDir, FLT_MAX);
       *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f);
     }
   }

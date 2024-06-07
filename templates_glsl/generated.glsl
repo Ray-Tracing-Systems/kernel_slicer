@@ -14,7 +14,7 @@
 {% for KSpec in Kernel.SpecConstants %}
 layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}};
 {% endfor %}
-{% for Hierarchy in Hierarchies %} 
+{% for Hierarchy in Kernel.Hierarchies %} 
 
 struct {{Hierarchy.Name}}
 {
@@ -50,7 +50,7 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 {{MembFunc}}
 
 ## endfor
-{% for Hierarchy in Hierarchies %} {# /*------------------------------ vfh ------------------------------ */ #}
+{% for Hierarchy in Kernel.Hierarchies %} {# /*------------------------------ vfh ------------------------------ */ #}
 // Virtual Functions of {{Hierarchy.Name}}:
 {% for Contant in Hierarchy.Constants %}
 {{Contant.Type}} {{Contant.Name}} = {{Contant.Value}};

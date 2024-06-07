@@ -362,11 +362,23 @@ std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* e
 {
   if(expr == nullptr)
     return "";
+  
+  auto old = expr;
+  while(clang::isa<clang::ImplicitCastExpr>(expr))
+    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->IgnoreImpCasts();
+
+  //auto debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  //if(debugText == "MAXFLOAT")
+  //{
+  //  int a = 2;
+  //}
+
   if(m_pKernelRewriter != nullptr) // we actually do kernel rewrite
   {
     std::string result = m_pKernelRewriter->RecursiveRewriteImpl(expr);
     sFeatures = sFeatures || m_pKernelRewriter->GetShaderFeatures();
     MarkRewritten(expr);
+    MarkRewritten(old);
     return result;
   }
   else
@@ -376,6 +388,7 @@ std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* e
     rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
     sFeatures = sFeatures || rvCopy.sFeatures;
     MarkRewritten(expr);
+    MarkRewritten(old);
     //expr->dump();
     //for(auto copyNodeId : *(rvCopy.m_pRewrittenNodes))
     //  this->m_pRewrittenNodes->insert(copyNodeId);
@@ -1304,9 +1317,16 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
     return "";
-
+  
+  auto old = expr;
   while(clang::isa<clang::ImplicitCastExpr>(expr))
-    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->getSubExpr();
+    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->IgnoreImpCasts();
+
+  //auto debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  //if(debugText == "MAXFLOAT")
+  //{
+  //  int a = 2;
+  //}
 
   //expr->dump();
   if(clang::isa<clang::DeclRefExpr>(expr)) // bugfix for recurive rewrite of single node, function args access
@@ -1347,13 +1367,18 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
   {
     const clang::MemberExpr* pMemberExpr = clang::dyn_cast<const clang::MemberExpr>(expr);
     std::string rewrittenText;
-    if(NeedToRewriteMemberExpr(pMemberExpr, rewrittenText))
+    if(NeedToRewriteMemberExpr(pMemberExpr, rewrittenText)) {
+      MarkRewritten(expr);
+      MarkRewritten(old);
       return rewrittenText;
+    }
   }
 
   GLSLKernelRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
   std::string text = m_rewriter.getRewrittenText(expr->getSourceRange()); 
+  MarkRewritten(expr);
+  MarkRewritten(old);
   return (text != "") ? text : kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 }
 

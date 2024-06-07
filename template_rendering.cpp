@@ -396,7 +396,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["GlobalUseHalf"]    = shaderFeatures.useHalfType;
 
   auto dhierarchies   = a_classInfo.GetDispatchingHierarchies();
-  data["Hierarchies"] = PutHierarchiesDataToJson(dhierarchies, compiler, a_classInfo);
 
   // (4) put kernels
   //
@@ -609,6 +608,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
 
     json kernelJson;
+
+    auto copy = dhierarchies; 
+    {
+      copy.clear();
+      for(const auto& h : dhierarchies) {
+        auto p = k.usedContainers.find(h.second.objBufferName);
+        if(p != k.usedContainers.end())
+          copy.insert(h);
+      }
+    }
+    kernelJson["Hierarchies"] = PutHierarchiesDataToJson(copy, compiler, a_classInfo); 
+
     kernelJson["RedLoop1"] = std::vector<std::string>();
     kernelJson["RedLoop2"] = std::vector<std::string>();
 
