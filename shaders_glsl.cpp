@@ -1101,7 +1101,7 @@ bool kslicer::GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
     std::string varValue = RecursiveRewrite(pValue);
     std::string varType2 = RewriteStdVectorTypeStr(varType, varName);
     
-    if(varValue == "" || varName.find(varValue) != std::string::npos) // 'float3 deviation;' for some reason !decl->hasInit() does not works
+    if(varValue == "" || varName == varValue) // 'float3 deviation;' for some reason !decl->hasInit() does not works
       m_lastRewrittenText = varType2 + " " + varName;
     else
       m_lastRewrittenText = varType2 + " " + varName + " = " + varValue;
