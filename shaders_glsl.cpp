@@ -1098,10 +1098,11 @@ bool kslicer::GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   if(pValue != nullptr && WasNotRewrittenYet(pValue) && (NeedsVectorTypeRewrite(varType) || isAuto))
   {
     std::string varName  = decl->getNameAsString();
+    std::string varNameOld = varName;
     std::string varValue = RecursiveRewrite(pValue);
     std::string varType2 = RewriteStdVectorTypeStr(varType, varName);
     
-    if(varValue == "" || varName == varValue) // 'float3 deviation;' for some reason !decl->hasInit() does not works
+    if(varValue == "" || varNameOld == varValue) // 'float3 deviation;' for some reason !decl->hasInit() does not works
       m_lastRewrittenText = varType2 + " " + varName;
     else
       m_lastRewrittenText = varType2 + " " + varName + " = " + varValue;
