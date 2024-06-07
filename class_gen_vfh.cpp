@@ -52,13 +52,19 @@ public:
   bool VisitUnaryOperator_Impl(clang::UnaryOperator* expr) override 
   { 
     const auto op = expr->getOpcodeStr(expr->getOpcode());
-    if(expr->canOverflow() || op != "*") // -UnaryOperator ... lvalue prefix '*' cannot overflow
-      return true;
-
+  
     clang::Expr* subExpr = expr->getSubExpr();
     if(subExpr == nullptr)
       return true;
-  
+
+    if((op == "*" || op == "&") && WasNotRewrittenYet(expr->getSubExpr()) )
+    {
+      std::string text = RecursiveRewrite(expr->getSubExpr());
+      m_lastRewrittenText = text;
+      m_rewriter.ReplaceText(expr->getSourceRange(), text);
+      MarkRewritten(expr->getSubExpr());
+    }
+
     return true; 
   }
   
