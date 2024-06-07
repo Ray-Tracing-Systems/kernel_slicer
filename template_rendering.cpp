@@ -907,8 +907,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       for(auto& f : funcMembers)
       {
-        if(f.astNode->isVirtualAsWritten()) // skip virtual functions because they are proccesed else-where
-          continue;
+        //if(f.astNode->isVirtualAsWritten()) // skip virtual functions because they are proccesed else-where
+        //  continue;
 
         auto funcNode = const_cast<clang::FunctionDecl*>(f.astNode);
         pVisitorF->SetCurrFuncInfo(&f);    // pass auxilary function data inside pVisitorF

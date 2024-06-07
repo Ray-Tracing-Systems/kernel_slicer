@@ -365,7 +365,7 @@ std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* e
   
   auto old = expr;
   while(clang::isa<clang::ImplicitCastExpr>(expr))
-    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->IgnoreImpCasts();
+    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->getSubExpr(); //IgnoreImpCasts();
 
   //auto debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
   //if(debugText == "MAXFLOAT")
@@ -378,7 +378,7 @@ std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* e
     std::string result = m_pKernelRewriter->RecursiveRewriteImpl(expr);
     sFeatures = sFeatures || m_pKernelRewriter->GetShaderFeatures();
     MarkRewritten(expr);
-    MarkRewritten(old);
+    //MarkRewritten(old);
     return result;
   }
   else
@@ -388,7 +388,7 @@ std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* e
     rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
     sFeatures = sFeatures || rvCopy.sFeatures;
     MarkRewritten(expr);
-    MarkRewritten(old);
+    //MarkRewritten(old);
     //expr->dump();
     //for(auto copyNodeId : *(rvCopy.m_pRewrittenNodes))
     //  this->m_pRewrittenNodes->insert(copyNodeId);
@@ -1320,7 +1320,7 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
   
   auto old = expr;
   while(clang::isa<clang::ImplicitCastExpr>(expr))
-    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->IgnoreImpCasts();
+    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->getSubExpr(); //IgnoreImpCasts();
 
   //auto debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
   //if(debugText == "MAXFLOAT")
@@ -1368,8 +1368,8 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
     const clang::MemberExpr* pMemberExpr = clang::dyn_cast<const clang::MemberExpr>(expr);
     std::string rewrittenText;
     if(NeedToRewriteMemberExpr(pMemberExpr, rewrittenText)) {
-      MarkRewritten(expr);
-      MarkRewritten(old);
+      //MarkRewritten(expr);
+      //MarkRewritten(old);
       return rewrittenText;
     }
   }
@@ -1377,8 +1377,8 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
   GLSLKernelRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
   std::string text = m_rewriter.getRewrittenText(expr->getSourceRange()); 
-  MarkRewritten(expr);
-  MarkRewritten(old);
+  //MarkRewritten(expr);
+  //MarkRewritten(old);
   return (text != "") ? text : kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 }
 
