@@ -365,7 +365,7 @@ std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* e
   
   auto old = expr;
   while(clang::isa<clang::ImplicitCastExpr>(expr))
-    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->getSubExpr(); //IgnoreImpCasts();
+    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->IgnoreImpCasts();
 
   //auto debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
   //if(debugText == "MAXFLOAT")
@@ -1321,7 +1321,7 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
   
   auto old = expr;
   while(clang::isa<clang::ImplicitCastExpr>(expr))
-    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->getSubExpr(); //IgnoreImpCasts();
+    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->IgnoreImpCasts();
 
   //auto debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
   //if(debugText == "MAXFLOAT")

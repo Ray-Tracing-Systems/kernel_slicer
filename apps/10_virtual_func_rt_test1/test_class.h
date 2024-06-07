@@ -30,7 +30,7 @@ struct IMaterial
 
   virtual uint32_t   GetTag()   const  { return 0; };
   virtual float3     GetColor() const  { return float3(0.0f); };
-  virtual BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv) const  { return BxDFSample(); }
+  virtual BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv) const  { BxDFSample res; return res; }
 
   float m_color[3];
   float roughness;
