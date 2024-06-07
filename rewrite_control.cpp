@@ -150,8 +150,6 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
 
     auto accesedTextures = ListAccessedTextures(args, pKernelInfo->second);
 
-    if(pKernel->second.isMaker)
-      strOut << "nullptr;" << std::endl << "  ";
     if(pKernel->second.isIndirect)
       strOut << kernName.c_str() << "_UpdateIndirect();" << std::endl << "  ";
 

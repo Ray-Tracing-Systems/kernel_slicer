@@ -49,8 +49,8 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
 {
   json hierarchy;
   hierarchy["Name"]             = h.interfaceName;
-  hierarchy["IndirectDispatch"] = (h.dispatchType == kslicer::VKERNEL_IMPL_TYPE::VKERNEL_INDIRECT_DISPATCH);
-  hierarchy["IndirectOffset"]   = h.indirectBlockOffset;
+  hierarchy["IndirectDispatch"] = 0;
+  hierarchy["IndirectOffset"]   = 0;
 
   hierarchy["Constants"]        = std::vector<std::string>();
   for(const auto& decl : h.usedDecls)
@@ -891,27 +891,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       indirectJson["Offset"]       = k.indirectBlockOffset;
       data["IndirectDispatches"].push_back(indirectJson);
     }
-    else if(k.isMaker)
-    {
-      auto p = a_classInfo.m_vhierarchy.find(k.interfaceName);
-      if(p != a_classInfo.m_vhierarchy.end() && p->second.dispatchType == kslicer::VKERNEL_IMPL_TYPE::VKERNEL_INDIRECT_DISPATCH)
-      {
-        json indirectJson;
-        indirectJson["KernelName"]   = kernName;
-        indirectJson["OriginalName"] = k.name;
-        indirectJson["ShaderPath"]   = outFilePath.c_str();
-        indirectJson["Offset"]       = k.indirectMakerOffset;
-        data["IndirectDispatches"].push_back(indirectJson);
-      }
-    }
 
     json kernelJson;
     kernelJson["Name"]           = kernName;
     kernelJson["OriginalName"]   = k.name;
     kernelJson["IsIndirect"]     = k.isIndirect;
     kernelJson["IndirectOffset"] = k.indirectBlockOffset;
-    kernelJson["IsMaker"]        = k.isMaker;
-    kernelJson["IsVirtual"]      = k.isVirtual;
     kernelJson["IsMega"]         = k.isMega;
     kernelJson["ArgCount"]       = k.args.size();
     kernelJson["HasLoopInit"]    = k.hasInitPass;
@@ -1016,34 +1001,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       actualSize++;
     }
 
-    if(k.isMaker || k.isVirtual)
-    {
-      json argData;
-      argData["Type"]  = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
-      argData["Name"]  = "SomeInterfaceObjPointerData";
-      argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
-      argData["Id"]    = actualSize;
-      argData["Count"] = "1";
-      argData["IsTextureArray"] = false;
-      kernelJson["Args"].push_back(argData);
-      actualSize++;
-
-      json hierarchy = PutHierarchyToJson(dhierarchies[k.interfaceName], compiler);
-
-      //std::cout << std::endl << "--------------------------" << std::endl;
-      //std::cout << hierarchy.dump(2) << std::endl;
-      //std::cout << std::endl << "--------------------------" << std::endl;
-
-      hierarchy["RedLoop1"] = std::vector<std::string>();
-      hierarchy["RedLoop2"] = std::vector<std::string>();
-      const uint32_t blockSize = k.wgSize[0]*k.wgSize[1]*k.wgSize[2];
-      for (uint c = blockSize/2; c>k.warpSize; c/=2)
-        hierarchy["RedLoop1"].push_back(c);
-      for (uint c = k.warpSize; c>0; c/=2)
-        hierarchy["RedLoop2"].push_back(c);
-      kernelJson["Hierarchy"] = hierarchy;
-    }
-    else
     {
       json temp;
       temp["IndirectDispatch"] = false; // because of 'Kernel.Hierarchy.IndirectDispatch' check
@@ -1241,6 +1198,29 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["UpdateMembersVectorData"]   = (pUpdVec  != a_classInfo.allMemberFunctions.end());
     data["UpdateMembersTextureData"]  = (pUpdTex  != a_classInfo.allMemberFunctions.end());
     data["GenerateSceneRestrictions"] = (pScnRstr == a_classInfo.allMemberFunctions.end() && a_classInfo.IsRTV());
+  }
+  
+  // check for cector-update functions
+  data["UpdateVectorFun"] = std::vector<json>();
+  {
+    for(auto member : a_classInfo.dataMembers) 
+    {
+      if(!member.isContainer)
+        continue;
+      
+      std::string funName = std::string("Update_") + member.name; 
+      auto pUpdateFun = a_classInfo.allMemberFunctions.find(funName);
+      if(pUpdateFun != a_classInfo.allMemberFunctions.end())
+      {
+        json fun;
+        fun["Name"]       = funName;
+        fun["VectorName"] = member.name;
+        fun["TypeOfData"] = member.containerDataType;
+        fun["NumParams"]  = pUpdateFun->second->getNumParams();
+        data["UpdateVectorFun"].push_back(fun);
+        std::cout << "  [kslicer]: override '" << funName.c_str() << "' update member-function " << std::endl;
+      }
+    }
   }
 
   auto otherFeatures  = a_classInfo.globalDeviceFeatures;
@@ -1494,22 +1474,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           realId++;
         }
 
-        if(pFoundKernel->second.isMaker || pFoundKernel->second.isVirtual)
-        {
-          auto hierarchy = dhierarchies[pFoundKernel->second.interfaceName];
-
-          json arg;
-          arg["Id"]        = realId;
-          arg["Name"]      = std::string("m_") + hierarchy.interfaceName + "ObjPtr";
-          arg["IsTexture"] = false;
-          arg["IsTextureArray"]= false;
-          arg["IsAccelStruct"] = false;
-
-          local["Args"].push_back(arg);
-          local["ArgNames"].push_back(hierarchy.interfaceName + "ObjPtrData");
-          realId++;
-        }
-
         if(pFoundKernel->second.isIndirect)
         {
           json arg;
@@ -1524,12 +1488,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           realId++;
         }
 
-        local["IsVirtual"] = pFoundKernel->second.isVirtual;
-        if(pFoundKernel->second.isVirtual)
-        {
-          auto hierarchy            = dhierarchies[pFoundKernel->second.interfaceName];
-          local["ObjectBufferName"] = hierarchy.objBufferName;
-        }
+        local["IsVirtual"] = false;
       }
 
       local["ArgNumber"] = realId;

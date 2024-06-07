@@ -17,6 +17,8 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
 
+  std::cout << "sizeof(IMaterial) = " << sizeof(IMaterial) << std::endl; 
+
   std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
   std::vector<uint32_t> packedXY(WIN_WIDTH*WIN_HEIGHT);
   std::vector<float4>   realColor(WIN_WIDTH*WIN_HEIGHT);

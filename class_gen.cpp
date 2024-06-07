@@ -299,7 +299,10 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
   
   auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, fakeOffsetExpr, false);
+  pVisitor->SetCurrKernelInfo(&a_funcInfo);
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
+  pVisitor->ResetCurrKernelInfo();
+  
   a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures();
 
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());

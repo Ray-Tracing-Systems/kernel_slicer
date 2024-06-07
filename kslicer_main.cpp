@@ -456,22 +456,6 @@ int main(int argc, const char **argv)
           inputCodeInfo.kernels[k.first] = k.second;
       }
 
-      if(inputCodeInfo.SupportVirtualKernels())
-      {
-        std::unordered_map<std::string, KernelInfo> vkernels;
-        for(const auto& p : inputCodeInfo.allOtherKernels)
-          vkernels[p.second.name] = p.second;
-
-        for(auto& p : vkernels)
-        {
-          if(inputCodeInfo.kernels.find(p.first) == inputCodeInfo.kernels.end())
-          {
-            p.second.isVirtual             = true;
-            inputCodeInfo.kernels[p.first] = p.second;
-          }
-        }
-      }
-
       // filter out excluded local variables
       //
       for(const auto& var : mainFuncRef.ExcludeList)
@@ -549,7 +533,6 @@ int main(int argc, const char **argv)
   std::vector<kslicer::FuncData> usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
   std::vector<kslicer::DeclInClass> usedDecls           = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
 
-
   for(const auto& usedDecl : usedDecls) // merge usedDecls with generalDecls
   {
     bool found = false;
@@ -573,11 +556,12 @@ int main(int argc, const char **argv)
   inputCodeInfo.AddSpecVars_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
 
   bool hasMembers = false;
+  bool hasVirtual = false;
   for(const auto& f : usedByKernelsFunctions) {
-    if(f.isMember) {
+    if(f.isMember)
       hasMembers = true;
-      break;
-    }
+    if(f.isVirtual)
+      hasVirtual = true;
   }
 
   if(hasMembers && inputCodeInfo.pShaderCC->IsGLSL()) // We don't implement this for OpenCL kernels yet ... or at all.
@@ -718,25 +702,14 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  if(inputCodeInfo.SupportVirtualKernels())
+  // process virtual functions
+  if(hasVirtual)
   {
-    std::cout << "(5.1) Process Virtual Kernels hierarchies" << std::endl;
-    std::cout << "(5.2) Extract Virtual Kernels hierarchies constants" << std::endl;
+    std::cout << "(5.1) Process Virtual-Functions-Hierarchies" << std::endl;
+    std::cout << "(5.2) Extract Virtual-Functions-Hierarchies constants" << std::endl;
     std::cout << "{" << std::endl;
-    inputCodeInfo.ProcessDispatchHierarchies(firstPassData.rv.m_classList, compiler);
-    inputCodeInfo.ExtractHierarchiesConstants(compiler, Tool);
-
-    for(auto& k : inputCodeInfo.kernels)
-    {
-      if(k.second.isMaker)
-      {
-        auto p = inputCodeInfo.m_vhierarchy.find(k.second.interfaceName);
-        assert(p != inputCodeInfo.m_vhierarchy.end());
-        k.second.indirectMakerOffset  = inputCodeInfo.m_indirectBufferSize;
-        p->second.indirectBlockOffset = inputCodeInfo.m_indirectBufferSize;
-        inputCodeInfo.m_indirectBufferSize += p->second.implementations.size(); // allocate place for all implementations
-      }
-    }
+    inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
+    inputCodeInfo.ExtractVFHConstants(compiler, Tool);
 
     std::cout << "}" << std::endl;
     std::cout << std::endl;
