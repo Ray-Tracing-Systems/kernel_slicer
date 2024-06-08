@@ -417,8 +417,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["GlobalUseFloat64"] = shaderFeatures.useFloat64Type;
   data["GlobalUseHalf"]    = shaderFeatures.useHalfType;
 
-  auto dhierarchies   = a_classInfo.GetDispatchingHierarchies();
-
   // (4) put kernels
   //
   std::unordered_map<std::string, KernelInfo> kernels; // #TODO: Put this to virtual function and override it for RTV
@@ -630,8 +628,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
 
     json kernelJson;
-
-    auto copy = dhierarchies; 
+    
+    auto dhierarchies = a_classInfo.m_vhierarchy;
+    auto copy         = dhierarchies; 
     {
       copy.clear();
       for(const auto& h : dhierarchies) {
@@ -928,9 +927,21 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       pVisitorK->processFuncMember = true; // signal that we process function member, not the kernel itself
 
       for(auto& f : funcMembers)
-      {
-        //if(f.astNode->isVirtualAsWritten()) // skip virtual functions because they are proccesed else-where
-        //  continue;
+      { 
+        bool fromVFH = false;
+        if(f.astNode->isVirtualAsWritten()) {
+          for(const auto& h : a_classInfo.m_vhierarchy) {
+            auto p = h.second.virtualFunctions.find(f.name);
+            if(p != h.second.virtualFunctions.end())
+            {
+              fromVFH = true;
+              break;
+            }
+          }
+        }
+
+        if(fromVFH) // skip virtual functions because they are proccesed else-where
+          continue;
 
         auto funcNode = const_cast<clang::FunctionDecl*>(f.astNode);
         pVisitorF->SetCurrFuncInfo(&f);    // pass auxilary function data inside pVisitorF

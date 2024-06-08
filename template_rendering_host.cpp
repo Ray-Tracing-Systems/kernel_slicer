@@ -803,9 +803,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   data["MultipleSourceShaders"] = !a_classInfo.pShaderCC->IsSingleSource();
   data["ShaderFolder"]          = a_classInfo.pShaderCC->ShaderFolder();
-
-  auto dhierarchies             = a_classInfo.GetDispatchingHierarchies();
-  data["DispatchHierarchies"]   = kslicer::PutHierarchiesDataToJson(dhierarchies, compiler, a_classInfo);
+  data["DispatchHierarchies"]   = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
 
   data["IndirectBufferSize"] = a_classInfo.m_indirectBufferSize;
   data["IndirectDispatches"] = std::vector<std::string>();
@@ -1550,7 +1548,7 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
   data["MainClassSuffixLowerCase"] = ToLowerCase(a_classInfo.mainClassSuffix);
   data["UBOStructFields"] = std::vector<std::string>();
   data["ShaderGLSL"]      = a_classInfo.pShaderCC->IsGLSL();
-  data["Hierarchies"]     = kslicer::PutHierarchiesDataToJson(a_classInfo.GetDispatchingHierarchies(), compiler, a_classInfo);
+  data["Hierarchies"]     = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
   data["UseRayGen"]       = a_settings.enableRayGen;
   data["UseMotionBlur"]   = a_settings.enableMotionBlur;
 

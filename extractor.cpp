@@ -119,7 +119,7 @@ public:
           func.prefixName  = pPrefix->second;
         }
       }
-      else if(func.isVirtual)
+      else if(func.isVirtual && typeName != m_patternImpl.mainClassName)
       {
         if(isRTX)
           return true;                             // do not process HW accelerated calls
@@ -128,16 +128,15 @@ public:
         std::string buffName = debugText.substr(posBegin+1, posEnd-posBegin-1);
 
         func.thisTypeName = typeName;
-        auto& vfh = m_patternImpl.GetDispatchingHierarchies();
-        auto p = vfh.find(typeName);
-        if(p == vfh.end())
+        auto p = m_patternImpl.m_vhierarchy.find(typeName);
+        if(p == m_patternImpl.m_vhierarchy.end())
         {
           kslicer::MainClassInfo::DHierarchy hierarchy;
           hierarchy.interfaceDecl  = recordDecl;
           hierarchy.interfaceName  = typeName;
           hierarchy.objBufferName  = buffName;
           hierarchy.virtualFunctions[func.name] = func;
-          vfh[typeName] = hierarchy;
+          m_patternImpl.m_vhierarchy[typeName] = hierarchy;
         }
         else
           p->second.virtualFunctions[func.name] = func;

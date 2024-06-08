@@ -599,7 +599,7 @@ bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
     std::string makerObjBufferName = kslicer::GetRangeSourceCode(secondArgExpr->getSourceRange(), m_compiler);
     ReplaceFirst(makerObjBufferName, ".data()", "");
 
-    for(auto& h : m_codeInfo->GetDispatchingHierarchies())
+    for(auto& h : m_codeInfo->m_vhierarchy)
     {
       if(h.second.interfaceName == retTypeName)
       {
