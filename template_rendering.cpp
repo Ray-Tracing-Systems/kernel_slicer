@@ -169,6 +169,7 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::DHierar
   if(h.implementations.size()!= 0 && !emptyIsFound)
     std::cout << "  VFH::ALERT! Empty implementation is not found! Don't add any functions except 'GetTag()' to EmptyImpl class" << std::endl;
 
+  std::unordered_map<std::string, const clang::CXXRecordDecl*> retDeclHash;
   hierarchy["VirtualFunctions"] = std::vector<json>();
   for(const auto& vf : h.virtualFunctions)
   {
@@ -190,7 +191,28 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::DHierar
     }
     virtualFunc["ArgLen"] = vf.second.args.size();
     //virtualFunc["ThisTypeName"]  = vf.second.thisTypeName;
+    
+    if(vf.second.retTypeDecl != nullptr && !a_classInfo.pShaderFuncRewriter->NeedsVectorTypeRewrite(vf.second.retTypeName)) // not some of predefined types
+      retDeclHash[vf.second.retTypeName] = vf.second.retTypeDecl;
+
     hierarchy["VirtualFunctions"].push_back(virtualFunc);
+  }
+
+  hierarchy["AuxDecls"] = std::vector<json>();
+  for(auto retDecl : retDeclHash) 
+  {
+    json declOfRetType;
+    declOfRetType["Name"]   = retDecl.first;
+    declOfRetType["Fields"] = std::vector<json>();
+    auto fields = a_classInfo.GetFieldsFromStruct(retDecl.second);
+    for(auto field : fields) 
+    {
+      json local;
+      local["Type"] = field.first;
+      local["Name"] = field.second;
+      declOfRetType["Fields"].push_back(local);
+    }
+    hierarchy["AuxDecls"].push_back(declOfRetType);
   }
 
   return hierarchy;

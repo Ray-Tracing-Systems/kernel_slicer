@@ -417,20 +417,12 @@ std::vector< std::pair<std::string, std::string> > kslicer::MainClassInfo::GetFi
       const clang::QualType fieldType = field->getType();
       const clang::Type* baseType = fieldType.getTypePtrOrNull();
       // Получаем имена типов и полей и добавляем их в массив пар
-      if (baseType) {
+      if (baseType) 
+      {
           std::string typeName  = baseType->getCanonicalTypeInternal().getAsString();
           std::string fieldName = field->getNameAsString();
           std::string typeNameR = pShaderFuncRewriter->RewriteStdVectorTypeStr(typeName, fieldName);
-          
-          //// process arrays: 'float[3] data' --> 'float data[3]' 
-          //auto posArrayBegin = typeNameR.find("[");
-          //auto posArrayEnd   = typeNameR.find("]");
-          //if(posArrayBegin != std::string::npos && posArrayEnd != std::string::npos)
-          //{
-          //  fieldName = fieldName + typeNameR.substr(posArrayBegin, posArrayEnd-posArrayBegin+1);
-          //  typeNameR = typeNameR.substr(0, posArrayBegin);
-          //}
-
+    
           fieldInfo.push_back(std::make_pair(typeNameR, fieldName));
       }
   }

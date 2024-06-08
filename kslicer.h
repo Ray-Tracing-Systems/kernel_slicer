@@ -531,6 +531,9 @@ namespace kslicer
     std::string thisTypeName;                                ///!< currently filled for VFH only, TODO: fill for other
     std::string declRewritten;                               ///!< currently filled for VFH only, TODO: fill for other
     std::vector< std::pair<std::string, std::string> > args; ///!< currently filled for VFH only, TODO: fill for other
+    
+    std::string retTypeName;
+    const clang::CXXRecordDecl* retTypeDecl;
   };
 
   enum class DECL_IN_CLASS{ DECL_STRUCT, DECL_TYPEDEF, DECL_CONSTANT, DECL_UNKNOWN};
@@ -610,7 +613,8 @@ namespace kslicer
 
     virtual void SetCurrFuncInfo  (kslicer::FuncData* a_pInfo) { m_pCurrFuncInfo = a_pInfo; }
     virtual void ResetCurrFuncInfo()                           { m_pCurrFuncInfo = nullptr; }
-
+    
+    virtual bool NeedsVectorTypeRewrite(const std::string& a_str) { return false; }
   protected:
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     clang::Rewriter&               m_rewriter;
@@ -702,7 +706,7 @@ namespace kslicer
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
     void        Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3]);
   
-    bool        NeedsVectorTypeRewrite(const std::string& a_str);
+    bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
     std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
   
     kslicer::ShittyFunction m_shit;

@@ -81,8 +81,19 @@ public:
     func.isVirtual = f->isVirtualAsWritten();
     func.depthUse  = 0;
 
-    //pCurrProcessedFunc->calledMembers.insert(func.name);
+    const clang::QualType returnType = f->getReturnType();
+    func.retTypeName = returnType.getAsString();
+    func.retTypeDecl = nullptr;
+    if (const clang::RecordType *recordType = returnType->getAs<clang::RecordType>()) {
+      if (const clang::CXXRecordDecl *recordDecl = clang::dyn_cast<clang::CXXRecordDecl>(recordType->getDecl())) {
+        func.retTypeDecl = recordDecl;
+        // Печатаем имя класса или структуры
+        //std::cout << "Function " << f->getNameAsString() << " returns a class or struct: " << recordDecl->getNameAsString() << std::endl;
+      }
+    }
 
+    //pCurrProcessedFunc->calledMembers.insert(func.name);
+  
     if(func.isKernel)
     {
       assert(pCurrProcessedFunc != nullptr);
