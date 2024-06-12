@@ -406,26 +406,40 @@ void kslicer::MainClassInfo::ExtractVFHConstants(const clang::CompilerInstance& 
 
 }
 
-std::vector< std::pair<std::string, std::string> > kslicer::MainClassInfo::GetFieldsFromStruct(const clang::CXXRecordDecl* recordDecl) const
+std::vector< std::pair<std::string, std::string> > kslicer::MainClassInfo::GetFieldsFromStruct(const clang::CXXRecordDecl* recordDecl,  size_t* pSummOfFiledsSize) const
 {
   std::vector< std::pair<std::string, std::string> > fieldInfo;
+
+  size_t summOfSize = 0;
+  const auto& context = recordDecl->getASTContext();
 
   // Проходим по всем полям структуры
   for (auto it = recordDecl->field_begin(); it != recordDecl->field_end(); ++it) 
   {
-      const clang::FieldDecl* field = *it;
-      const clang::QualType fieldType = field->getType();
-      const clang::Type* baseType = fieldType.getTypePtrOrNull();
-      // Получаем имена типов и полей и добавляем их в массив пар
-      if (baseType) 
-      {
-          std::string typeName  = baseType->getCanonicalTypeInternal().getAsString();
-          std::string fieldName = field->getNameAsString();
-          std::string typeNameR = pShaderFuncRewriter->RewriteStdVectorTypeStr(typeName, fieldName);
-    
-          fieldInfo.push_back(std::make_pair(typeNameR, fieldName));
-      }
+    const clang::FieldDecl* field = *it;
+    const clang::QualType fieldType = field->getType();
+    const clang::Type* baseType = fieldType.getTypePtrOrNull();
+    // Получаем имена типов и полей и добавляем их в массив пар
+    if (baseType) 
+    {
+      std::string typeName  = baseType->getCanonicalTypeInternal().getAsString();
+      std::string fieldName = field->getNameAsString();
+      std::string typeNameR = pShaderFuncRewriter->RewriteStdVectorTypeStr(typeName, fieldName);
+  
+      fieldInfo.push_back(std::make_pair(typeNameR, fieldName));
+
+      const clang::Type*     fieldType = field->getType().getTypePtr();
+      const clang::TypeInfo& typeInfo  = context.getTypeInfo(fieldType);
+
+      const uint64_t sizeInBits  = typeInfo.Width;
+      const uint64_t sizeInBytes = llvm::divideCeil(sizeInBits, 8);
+      summOfSize += size_t(sizeInBytes);
+    }
   }
+
+  if(pSummOfFiledsSize != nullptr)
+    (*pSummOfFiledsSize) = summOfSize;
+
   return fieldInfo;
 }
 

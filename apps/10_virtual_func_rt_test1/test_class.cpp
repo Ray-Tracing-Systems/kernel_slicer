@@ -25,6 +25,28 @@ void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
   new (m_materials.data() + 10) EmissiveMaterial(20.0f)                              ;
   
   m_emissiveMaterialId = 10;
+  
+  std::cout << "[info]: sizeof(IMaterial)         = " << sizeof(IMaterial) << std::endl;
+  std::cout << "[info]: sizeof(LambertMaterial)   = " << sizeof(LambertMaterial) << std::endl;
+  std::cout << "[info]: sizeof(GGXGlossyMaterial) = " << sizeof(GGXGlossyMaterial) << std::endl;
+  std::cout << "[info]: sizeof(MirrorMaterial)    = " << sizeof(PerfectMirrorMaterial) << std::endl;
+  std::cout << "[info]: sizeof(EmissiveMaterial)  = " << sizeof(EmissiveMaterial) << std::endl;
+  std::cout << "[info]: sizeof(EmptyMaterial)     = " << sizeof(EmptyMaterial) << std::endl;
+  
+  char* pBegin = (char*)m_materials.data();
+  {
+    char* p_m_color   = (char*)(&m_materials[0].m_color[0]);
+    char* p_roughness = (char*)(&m_materials[0].roughness);
+    char* p_m_tag     = (char*)(&m_materials[0].m_tag);
+
+    auto  m_colorOffset   = static_cast<int64_t>(p_m_color   - pBegin);
+    auto  roughnessOffset = static_cast<int64_t>(p_roughness - pBegin);
+    auto  m_tagOffset     = static_cast<int64_t>(p_m_tag     - pBegin);
+
+    std::cout << "[info]: offset_of(m_color)   = " << m_colorOffset   << std::endl;
+    std::cout << "[info]: offset_of(roughness) = " << roughnessOffset << std::endl;
+    std::cout << "[info]: offset_of(m_tag )    = " << m_tagOffset     << std::endl;
+  }
 }
 
 void TestClass::InitRandomGens(int a_maxThreads)

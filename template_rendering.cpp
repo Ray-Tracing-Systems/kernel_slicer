@@ -115,8 +115,10 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::DHierar
   hierarchy["IndirectDispatch"] = 0;
   hierarchy["IndirectOffset"]   = 0;
   
+  size_t summOfFieldsSize = 0;
+
   hierarchy["InterfaceFields"]  = std::vector<json>();
-  auto fields = a_classInfo.GetFieldsFromStruct(h.interfaceDecl);
+  auto fields = a_classInfo.GetFieldsFromStruct(h.interfaceDecl, &summOfFieldsSize);
   for(auto field : fields) 
   {
     json local;
@@ -124,7 +126,16 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::DHierar
     local["Name"] = field.second;
     hierarchy["InterfaceFields"].push_back(local);
   }
-
+  
+  // manually align struct to 64 bits (8 bytes) if needed
+  //
+  if(summOfFieldsSize % 8 != 0)
+  {
+    json local;
+    local["Type"] = "uint";
+    local["Name"] = "dummy";
+    hierarchy["InterfaceFields"].push_back(local);
+  }
 
   hierarchy["Constants"] = std::vector<json>();
   for(const auto& decl : h.usedDecls)

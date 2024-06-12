@@ -204,7 +204,7 @@ struct EmissiveMaterial : public IMaterial
 
 struct GGXGlossyMaterial : public IMaterial
 {
-  GGXGlossyMaterial(float3 a_color) { m_color[0] = a_color[0]; m_color[1] = a_color[1]; m_color[2] = a_color[2]; roughness = 0.3f; }
+  GGXGlossyMaterial(float3 a_color) { m_color[0] = a_color[0]; m_color[1] = a_color[1]; m_color[2] = a_color[2]; roughness = 0.3f; m_tag = GetTag(); }
   ~GGXGlossyMaterial() = delete;
 
   uint32_t GetTag()   const override { return TAG_GGX_GLOSSY; }
