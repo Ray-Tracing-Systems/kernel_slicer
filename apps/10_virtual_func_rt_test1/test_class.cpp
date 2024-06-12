@@ -271,7 +271,6 @@ void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, c
 }
 
 void  TestClass::kernel_NextBounce(uint tid, uint* mid, const Lite_Hit* in_hit, const float2* in_bars, 
-                                   const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
                                    float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
                                    float4* accumColor, float4* accumThoroughput)
   {
@@ -280,7 +279,7 @@ void  TestClass::kernel_NextBounce(uint tid, uint* mid, const Lite_Hit* in_hit, 
     
     SurfaceHit hit;
     hit.pos  = to_float3(*rayPosAndNear) + lHit.t*ray_dir;
-    hit.norm = EvalSurfaceNormal(ray_dir, lHit.primId, *in_bars, in_indices, in_vnorm);
+    hit.norm = EvalSurfaceNormal(ray_dir, lHit.primId, *in_bars, m_indicesReordered.data(), m_vNorm4f.data()); 
   
     RandomGen gen   = pGen[tid];
     const float2 uv = rndFloat2_Pseudo(&gen);
@@ -322,9 +321,8 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY
       break;
     
     kernel_NextBounce(tid, &mid, &hit, &baricentrics, 
-                       m_indicesReordered.data(), m_vPos4f.data(), m_vNorm4f.data(), 
-                       &rayPosAndNear, &rayDirAndFar, m_randomGens.data(), 
-                       &accumColor, &accumThoroughput);
+                      &rayPosAndNear, &rayDirAndFar, m_randomGens.data(), 
+                      &accumColor, &accumThoroughput);
   }
 
   kernel_ContributeToImage(tid, &accumColor, in_pakedXY, 

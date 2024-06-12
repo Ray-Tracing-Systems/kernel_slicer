@@ -86,7 +86,6 @@ public:
                                 float4* out_color);
  
   void kernel_NextBounce(uint tid, uint* mid, const Lite_Hit* in_hit, const float2* in_bars, 
-                         const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
                          float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
                          float4* accumColor, float4* accumThoroughput);
 

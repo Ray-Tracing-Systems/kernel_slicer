@@ -18,7 +18,17 @@
 {% for KSpec in Kernel.SpecConstants %}
 layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}};
 {% endfor %}
+{% for Hierarchy in Kernel.Hierarchies %} 
 
+struct {{Hierarchy.Name}}
+{
+  uint vptr_dummy[2];
+  {% for Field in Hierarchy.InterfaceFields %}
+  {{Field.Type}} {{Field.Name}};
+  {% endfor %}
+};
+
+{% endfor %}
 ## for Arg in Kernel.Args
 {% if not Arg.IsUBO %} 
 {% if Arg.IsImage %}
@@ -44,6 +54,57 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 {{MembFunc}}
 
 ## endfor
+{% for Hierarchy in Kernel.Hierarchies %} {# /*------------------------------ vfh ------------------------------ */ #}
+// Virtual Functions of {{Hierarchy.Name}}:
+{% for Contant in Hierarchy.Constants %}
+{{Contant.Type}} {{Contant.Name}} = {{Contant.Value}};
+{% endfor %} 
+
+{% for RetDecl in Hierarchy.AuxDecls %}
+struct {{RetDecl.Name}} 
+{
+  {% for Field in RetDecl.Fields %}
+  {{Field.Type}} {{Field.Name}};
+  {% endfor %}
+};
+
+{% endfor %}
+//Impl.ClassName: Empty Imlementation
+//Impl.ObjBuffer: {{Hierarchy.EmptyImplementation.ObjBufferName}}
+//
+{% for Member in Hierarchy.EmptyImplementation.MemberFunctions %}
+{{Member}}
+
+{% endfor %}
+
+{% for Impl in Hierarchy.Implementations %}
+//Impl.ClassName: {{Impl.ClassName}}
+//Impl.ObjBuffer: {{Impl.ObjBufferName}}
+//
+{% for Member in Impl.MemberFunctions %}
+{{Member}}
+
+{% endfor %}
+
+{% for Field in Impl.Fields %}
+//{{Field}}
+{% endfor %}
+{% endfor %}
+{% for VirtualFunc in Hierarchy.VirtualFunctions %}
+{{VirtualFunc.Decl}} 
+{
+  const uint tag = {{Hierarchy.ObjBufferName}}[selfId].m_tag;
+  switch(tag) 
+  {
+    {% for Impl in Hierarchy.Implementations %}
+    case {{Impl.TagName}}: return {{Impl.ClassName}}_{{VirtualFunc.Name}}_{{Impl.ObjBufferName}}({% for Arg in VirtualFunc.Args %}{{Arg.Name}}{% if loop.index != VirtualFunc.ArgLen %},{% endif %}{% endfor %});
+    {% endfor %}
+    default: return {{Hierarchy.EmptyImplementation.ClassName}}_{{VirtualFunc.Name}}_{{Hierarchy.EmptyImplementation.ObjBufferName}}({% for Arg in VirtualFunc.Args %}{{Arg.Name}}{% if loop.index != VirtualFunc.ArgLen %},{% endif %}{% endfor %});
+  };
+}
+{% endfor %}
+{% endfor %}                        {# /*------------------------------ vfh ------------------------------ */ #}
+
 {% for RTName in Kernel.RTXNames %}
 // RayScene intersection with '{{RTName}}'
 //

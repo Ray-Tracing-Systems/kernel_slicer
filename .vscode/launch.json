@@ -500,6 +500,7 @@
                         "-mainClass", "TestClass", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
+                        "-megakernel", "1",
                         "-I${workspaceFolder}/apps/LiteMath",    "ignore",
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
                         "-I${workspaceFolder}/TINYSTL",          "ignore",
