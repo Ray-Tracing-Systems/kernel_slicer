@@ -82,7 +82,7 @@ public:
     std::string fname  = fDecl->getNameInfo().getName().getAsString();
     std::string result = m_codeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString()) + " " + classTypeName + "_" + fname + "_" + m_objBufferName + "(uint selfId" ;
     if(fDecl->getNumParams() != 0)
-      result += ", \n  ";
+      result += ", ";
 
     bool isKernel = m_codeInfo->IsKernel(fname); 
 
@@ -100,10 +100,10 @@ public:
         pList->push_back(std::make_pair(typeNameRewritten, std::string(identifier->getName())));
 
       if(i!=fDecl->getNumParams()-1)
-        result += ", \n  ";
+        result += ", ";
     }
 
-    return result + ")\n  ";
+    return result + ") ";
   }
 
   bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) override

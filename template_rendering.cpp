@@ -169,7 +169,9 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::DHierar
     for(const auto& field : impl.fields)
       currImpl["Fields"].push_back(field);
    
-    if(impl.isEmpty) {
+    //if(impl.isEmpty) 
+    if(impl.name.find("Empty") != std::string::npos)
+    {
       hierarchy["EmptyImplementation"] = currImpl;
       emptyIsFound = true;
     }
@@ -178,7 +180,7 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::DHierar
   }
   hierarchy["ImplAlignedSize"] = AlignedSize(h.implementations.size()+1);
   if(h.implementations.size()!= 0 && !emptyIsFound)
-    std::cout << "  VFH::ALERT! Empty implementation is not found! Don't add any functions except 'GetTag()' to EmptyImpl class" << std::endl;
+    std::cout << "  VFH::ALERT! Empty implementation is not found! You need to declate a default implementation class with 'Empty' prefix in its name " << std::endl; // Don't add any functions except 'GetTag()' to EmptyImpl class
 
   std::unordered_map<std::string, const clang::CXXRecordDecl*> retDeclHash;
   hierarchy["VirtualFunctions"] = std::vector<json>();

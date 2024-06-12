@@ -65,14 +65,23 @@ struct {{RetDecl.Name}}
 };
 
 {% endfor %}
-{% for Impl in Hierarchy.Implementations %}
-//Impl.ClassName = {{Impl.ClassName}}
-//Impl.TagName   = {{Impl.TagName}}
-//ObjBufferName  = {{Impl.ObjBufferName}}
-{% for Member in Impl.MemberFunctions %}
-
+//Impl.ClassName: Empty Imlementation
+//Impl.ObjBuffer: {{Hierarchy.EmptyImplementation.ObjBufferName}}
+//
+{% for Member in Hierarchy.EmptyImplementation.MemberFunctions %}
 {{Member}}
+
 {% endfor %}
+
+{% for Impl in Hierarchy.Implementations %}
+//Impl.ClassName: {{Impl.ClassName}}
+//Impl.ObjBuffer: {{Impl.ObjBufferName}}
+//
+{% for Member in Impl.MemberFunctions %}
+{{Member}}
+
+{% endfor %}
+
 {% for Field in Impl.Fields %}
 //{{Field}}
 {% endfor %}
@@ -86,7 +95,7 @@ struct {{RetDecl.Name}}
     {% for Impl in Hierarchy.Implementations %}
     case {{Impl.TagName}}: return {{Impl.ClassName}}_{{VirtualFunc.Name}}_{{Impl.ObjBufferName}}({% for Arg in VirtualFunc.Args %}{{Arg.Name}}{% if loop.index != VirtualFunc.ArgLen %},{% endif %}{% endfor %});
     {% endfor %}
-    //default: return {{Hierarchy.EmptyImplementation.ClassName}}_{{VirtualFunc.Name}}_{{Hierarchy.EmptyImplementation.ObjBufferName}}(...);
+    default: return {{Hierarchy.EmptyImplementation.ClassName}}_{{VirtualFunc.Name}}_{{Hierarchy.EmptyImplementation.ObjBufferName}}({% for Arg in VirtualFunc.Args %}{{Arg.Name}}{% if loop.index != VirtualFunc.ArgLen %},{% endif %}{% endfor %});
   };
 }
 {% endfor %}

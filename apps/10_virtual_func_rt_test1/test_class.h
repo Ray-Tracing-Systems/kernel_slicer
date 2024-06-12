@@ -30,7 +30,7 @@ struct IMaterial
 
   virtual uint32_t   GetTag()   const  { return 0; };
   virtual float3     GetColor() const  { return float3(0.0f); };
-  virtual BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv) const  { BxDFSample res; return res; }
+  virtual BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv) const { BxDFSample res; return res; }
 
   float m_color[3];
   float roughness;
@@ -271,7 +271,17 @@ struct EmptyMaterial : public IMaterial
   EmptyMaterial() { m_tag = GetTag();}
   ~EmptyMaterial() = delete;
 
-  uint32_t GetTag()   const override { return TAG_EMPTY; }
+  uint32_t   GetTag() const override { return TAG_EMPTY; }  
+  float3     GetColor() const override  { return float3(0.0f); };
+  BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv) const override
+  { 
+    BxDFSample res;
+    res.pdfVal  = 1.0f;
+    res.brdfVal = float3(0.0f);
+    res.newDir  = float3(0.0f, -1.0f, 0.0f);
+    res.flags   = 0;
+    return res;
+  }
 };
 
 #endif
