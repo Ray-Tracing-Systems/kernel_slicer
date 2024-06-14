@@ -6,12 +6,12 @@
 class Base
 {
 public:
-  Base(){ }
+  Base() { }
 
   virtual void Init(size_t a_size);
 
-  virtual void Test(float* a_data [[size("a_size")]], unsigned int a_size) {}
-  virtual void kernel1D_Test(float* a_data, unsigned int a_size) {}
+  virtual void Test(float* a_data [[size("a_size")]], unsigned int a_size);
+  virtual void kernel1D_Test(float* a_data, unsigned int a_size);
   
   float dataInBaseClass;
   std::vector<float> vInBase;
@@ -23,7 +23,7 @@ public:
 class Derived : public Base
 {
 public:
-  Derived(){ }
+  Derived() { }
 
   void Init(size_t a_size) override;
 

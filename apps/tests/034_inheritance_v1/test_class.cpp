@@ -9,6 +9,19 @@ void Base::Init(size_t a_size)
     vInBase[i] = i*2.0f;
 }
 
+void Base::Test(float* a_data, unsigned int a_size)
+{
+  kernel1D_Test(a_data, a_size);
+}
+
+void Base::kernel1D_Test(float* a_data, unsigned int a_size)
+{
+  for(int i=0; i<a_size; i++)
+  {
+    a_data[i] = dataInBaseClass*vInBase[i] + 1.0f;
+  }
+}
+
 void Derived::Init(size_t a_size)
 {
   Base::Init(a_size);

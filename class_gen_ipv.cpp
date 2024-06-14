@@ -163,8 +163,8 @@ public:
     else if(loopOutsidesInit && func_decl)
     {
       currKernel->loopOutsidesInit    = loopOutsidesInit->getSourceRange();
-      //auto debugMe = kslicer::GetRangeSourceCode(loopOutsidesInit->getSourceRange(), m_compiler);
-      //std::cout << "debugMe = " << debugMe.c_str() << std::endl;
+      auto debugText = kslicer::GetRangeSourceCode(loopOutsidesInit->getSourceRange(), m_compiler);
+      //std::cout << "debugText = " << debugText.c_str() << std::endl;
       clang::SourceLocation endOfInit = currKernel->loopOutsidesInit.getEnd();
       auto p = loopOutsidesInit->body_begin();
       for(; p != loopOutsidesInit->body_end(); ++p)
@@ -182,7 +182,9 @@ public:
       if(p != loopOutsidesInit->body_end())
       {
         const Stmt* beginOfEnd = *p;
-        currKernel->loopOutsidesFinish.setBegin(beginOfEnd->getSourceRange().getBegin());
+        const auto range = beginOfEnd->getSourceRange();
+        const auto begin = range.getBegin();
+        currKernel->loopOutsidesFinish.setBegin(begin);
         p = loopOutsidesInit->body_end(); --p;
         const Stmt* endOfFinish = *p;
         currKernel->loopOutsidesFinish.setEnd(endOfFinish->getSourceRange().getEnd());
