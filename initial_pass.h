@@ -28,6 +28,7 @@ namespace kslicer
   };
 
   std::string PerformClassComposition(ClassInfo& mainClassInfo, const ClassInfo& apiClassInfo, const ClassInfo& implClassInfo);
+  void        PerformInheritanceMerge(kslicer::ClassInfo& mainClassInfo, const kslicer::ClassInfo& implClassInfo);
 
 
   using namespace clang;

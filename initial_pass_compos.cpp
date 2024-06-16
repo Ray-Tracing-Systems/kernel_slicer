@@ -49,6 +49,27 @@ std::string kslicer::PerformClassComposition(kslicer::ClassInfo& mainClassInfo, 
   return prefixName;
 }
 
+void kslicer::PerformInheritanceMerge(kslicer::ClassInfo& mainClassInfo, const kslicer::ClassInfo& implClassInfo)
+{
+  // (2) merge data and functions (dataMembers, allMemberFunctions)
+  //
+  for(auto member : implClassInfo.dataMembers) 
+  {
+    member.second.name       = member.second.name;
+    member.second.hasPrefix  = false;
+    member.second.prefixName = "";
+    mainClassInfo.dataMembers[member.second.name] = member.second;
+  }
+
+  for(auto member : implClassInfo.allMemberFunctions) 
+  {
+    std::string name = member.first;
+    auto p = mainClassInfo.allMemberFunctions.find(name);
+    if(p == mainClassInfo.allMemberFunctions.end())             // because implementation in main (derived) class
+      mainClassInfo.allMemberFunctions[name] = member.second;   // always overrides any implementations in base class
+  }
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////

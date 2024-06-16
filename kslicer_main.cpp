@@ -420,7 +420,11 @@ int main(int argc, const char **argv)
                    std::back_inserter(aux_classes), [](const auto& pair) { return pair.second.astNode; });
 
     auto sorted = kslicer::ExtractAndSortBaseClasses(aux_classes, firstPassData.rv.mci.astNode);
-    int a = 2;
+    for(const auto& baseClass : sorted) {
+      auto typeName = baseClass->getQualifiedNameAsString();
+      const auto& classInfo = firstPassData.rv.m_composedClassInfo[typeName];
+      kslicer::PerformInheritanceMerge(firstPassData.rv.mci, classInfo);
+    }
   }
 
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
