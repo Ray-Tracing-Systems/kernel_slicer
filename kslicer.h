@@ -228,6 +228,7 @@ namespace kslicer
     std::string           interfaceName;        ///<! Name of the interface if the kernel is virtual
     std::vector<ArgInfo>  args;                 ///<! all arguments of a kernel
     std::vector<LoopIter> loopIters;            ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
+    std::string           debugOriginalText;
 
     uint32_t GetDim() const
     {

@@ -11,7 +11,7 @@ void Base::Init(size_t a_size)
 
 void Base::Test(float* a_data, unsigned int a_size)
 {
-  kernel1D_Test(a_data, a_size);
+  kernel1D_Test(a_data, a_size); // Base class
 }
 
 void Base::kernel1D_Test(float* a_data, unsigned int a_size)
@@ -33,7 +33,7 @@ void Derived::Init(size_t a_size)
 
 void Derived::Test(float* a_data, unsigned int a_size)
 {
-  kernel1D_Test(a_data, a_size);
+  kernel1D_Test(a_data, a_size); // Derived class
 }
 
 void Derived::kernel1D_Test(float* a_data, unsigned int a_size)

@@ -92,6 +92,8 @@ void kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDe
     info.args.push_back(kslicer::ProcessParameter(f->parameters()[i]));
   }
 
+  info.debugOriginalText = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
+
   if(a_className == MAIN_CLASS_NAME)
     a_funcList[info.name] = info;
   else

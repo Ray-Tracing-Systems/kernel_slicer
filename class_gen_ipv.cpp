@@ -133,9 +133,20 @@ public:
       
       if(areSameVariable(initVar,condVar) && areSameVariable(initVar, incVar) && loopSZ)
       {
-        std::string name = initVar->getNameAsString();
+        std::string name      = initVar->getNameAsString();
+        std::string debugText = kslicer::GetRangeSourceCode(forLoop->getBody()->getSourceRange(), m_compiler);
+        
+        bool fromThisClass = true;
+        if(func_decl->getNameAsString() == currKernel->name && clang::isa<clang::CXXMethodDecl>(func_decl))
+        {
+          const clang::CXXMethodDecl* method      = clang::dyn_cast<clang::CXXMethodDecl>(func_decl);
+          const clang::CXXRecordDecl* parentClass = method->getParent();
+          std::string className = parentClass->getNameAsString();
+          fromThisClass = (className == m_mainClassName);
+        }
+
         //std::cout << "  [LoopHandlerIPV]: Variable name is: " << name.c_str() << std::endl;
-        if(currKernel->loopIters.size() < m_maxNesting)
+        if(currKernel->loopIters.size() < m_maxNesting && fromThisClass)
         {
           const clang::QualType qt = initVar->getType();
           kslicer::KernelInfo::LoopIter tidArg;
@@ -220,6 +231,9 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   
   auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "", false);
   pVisitor->SetCurrKernelInfo(&a_funcInfo);
+
+  const std::string funBody  = pVisitor->RecursiveRewrite(a_funcInfo.astNode->getBody());
+
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
   pVisitor->ResetCurrKernelInfo();
   
@@ -231,7 +245,8 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   if(a_funcInfo.loopOutsidesFinish.isValid())  
     a_outLoopFinishCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesFinish) + ";";
 
-  return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";";
+  std::string texRes = rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";";
+  return texRes;
 }
 
 void kslicer::IPV_Pattern::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
