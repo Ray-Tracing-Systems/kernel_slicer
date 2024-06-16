@@ -1257,6 +1257,9 @@ namespace kslicer
   const clang::Expr* RemoveImplicitCast(const clang::Expr* a_expr);
   clang::Expr* RemoveImplicitCast(clang::Expr* a_expr);
 
+  std::vector<std::string> GetBaseClassesNames(const clang::CXXRecordDecl* mainClassASTNode);
+  std::vector<const clang::CXXRecordDecl*> ExtractAndSortBaseClasses(const std::vector<const clang::CXXRecordDecl*>& classes, const clang::CXXRecordDecl* derived);
+
   void ExtractBlockSizeFromCall(clang::CXXMemberCallExpr* f, kslicer::KernelInfo& kernel, const clang::CompilerInstance& compiler);
 
   void ProcessFunctionsInQueueBFS(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::queue<kslicer::FuncData>& functionsToProcess, std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions);

@@ -421,7 +421,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
       else if(pCompos != m_composedClassInfo.end())
       {
         ProcessKernelDef(f, pCompos->second.otherFunctions, pCompos->first);
-        std::cout << "found member function " << pCompos->first.c_str() << "::" << fname.c_str() << std::endl;
+        std::cout << "  found member function " << pCompos->first.c_str() << "::" << fname.c_str() << std::endl;
       }
       else // extract other kernels and classes
       {

@@ -1503,7 +1503,7 @@
             "name"   : "Launch (test_018/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/tests/018_compos_v1/test_class.cpp",
                         "-mainClass", "TestClass",
                         "-composInterface", "IRayTraceImpl",

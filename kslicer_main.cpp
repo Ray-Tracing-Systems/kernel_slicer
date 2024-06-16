@@ -376,30 +376,52 @@ int main(int argc, const char **argv)
   clang::Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
   inputCodeInfo.pShaderFuncRewriter = inputCodeInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &inputCodeInfo);
-
+  
+  // Parse code, initial pass
+  //
   std::cout << "(1) Processing class " << mainClassName.c_str() << " with initial pass" << std::endl;
   std::cout << "{" << std::endl;
 
-  // Parse code, initial pass
-  //
+  std::vector<std::string> baseClases = kslicer::GetBaseClassesNames(inputCodeInfo.mainClassASTNode);
   std::vector<std::string> composClassNames;
-  if(composeAPIName != "")
-    composClassNames.push_back(composeAPIName);
-  if(composeImplName != "")
-    composClassNames.push_back(composeImplName);
+  {
+    if(composeAPIName != "")
+      composClassNames.push_back(composeAPIName);
+    if(composeImplName != "")
+      composClassNames.push_back(composeImplName);
+
+    composClassNames.insert(composClassNames.end(), baseClases.begin(), baseClases.end()); // process all base classes also
+  }
+  
   kslicer::InitialPassASTConsumer firstPassData(cfNames, mainClassName, composClassNames, compiler, inputCodeInfo);
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
+
   compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
+  // вызов compiler.getDiagnosticClient().EndSourceFile() 
+  // обеспечивает корректное завершение обработки диагностических сообщений 
+  // для текущего исходного файла в процессе компиляции с использованием Clang.
 
-
-  std::string composMemberName = "";
   auto pComposAPI  = firstPassData.rv.m_composedClassInfo.find(composeAPIName);
   auto pComposImpl = firstPassData.rv.m_composedClassInfo.find(composeImplName);
 
   if(pComposAPI != firstPassData.rv.m_composedClassInfo.end() && pComposImpl != firstPassData.rv.m_composedClassInfo.end()) // if compos classes are found
-    composMemberName = kslicer::PerformClassComposition(firstPassData.rv.mci, pComposAPI->second, pComposImpl->second);     // perform class composition
-  for(const auto& name : composClassNames)
-    inputCodeInfo.composPrefix[name] = composMemberName;
+  {
+    std::string composMemberName = kslicer::PerformClassComposition(firstPassData.rv.mci, pComposAPI->second, pComposImpl->second);     // perform class composition
+    for(const auto& name : composClassNames)
+      inputCodeInfo.composPrefix[name] = composMemberName;
+  }
+  else if(baseClases.size() != 0)
+  { 
+    std::vector<const clang::CXXRecordDecl*> aux_classes;
+    aux_classes.reserve(firstPassData.rv.m_composedClassInfo.size());
+
+    // Преобразование unordered_map в vector
+    std::transform(firstPassData.rv.m_composedClassInfo.begin(), firstPassData.rv.m_composedClassInfo.end(), 
+                   std::back_inserter(aux_classes), [](const auto& pair) { return pair.second.astNode; });
+
+    auto sorted = kslicer::ExtractAndSortBaseClasses(aux_classes, firstPassData.rv.mci.astNode);
+    int a = 2;
+  }
 
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.mci.astNode;

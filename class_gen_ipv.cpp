@@ -232,7 +232,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "", false);
   pVisitor->SetCurrKernelInfo(&a_funcInfo);
 
-  const std::string funBody  = pVisitor->RecursiveRewrite(a_funcInfo.astNode->getBody());
+  //const std::string funBody  = pVisitor->RecursiveRewrite(a_funcInfo.astNode->getBody());
 
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
   pVisitor->ResetCurrKernelInfo();
@@ -245,8 +245,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   if(a_funcInfo.loopOutsidesFinish.isValid())  
     a_outLoopFinishCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesFinish) + ";";
 
-  std::string texRes = rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";";
-  return texRes;
+  return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";";
 }
 
 void kslicer::IPV_Pattern::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
