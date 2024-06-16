@@ -10,8 +10,8 @@
 #define JSON_LOG_IMPLEMENTATION
 #include "JSONLog.hpp"
 
-//#include "vk_context.h"
-//std::shared_ptr<Base> CreatePadding_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+#include "vk_context.h"
+std::shared_ptr<Base> CreateDerived_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
 
 int main(int argc, const char** argv)
 {
@@ -24,17 +24,17 @@ int main(int argc, const char** argv)
   ArgParser args(argc, argv);
   bool onGPU = args.hasOption("--gpu");
 
-  std::vector<float> array(1024);
+  std::vector<float> array(256);
 
   std::shared_ptr<Base> pImpl = nullptr;
-  //
-  //if(onGPU)
-  //{
-  //  unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-  //  auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
-  //  pImpl = CreatePadding_Generated(ctx, array.size());
-  //}
-  //else
+  
+  if(onGPU)
+  {
+    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+    pImpl = CreateDerived_Generated(ctx, array.size());
+  }
+  else
     pImpl = std::make_shared<Derived>();
 
   std::string backendName = onGPU ? "gpu" : "cpu";
@@ -43,13 +43,7 @@ int main(int argc, const char** argv)
   pImpl->CommitDeviceData();
   pImpl->Test(array.data(), unsigned(array.size()));
 
-  for(int i=0;i<16;i++)
-    std::cout << i << "\t" << array[i] << std::endl;
-  
-  float outArray[16] = {};
-  memcpy(outArray, array.data(), sizeof(outArray));
-
-  JSONLog::write("array", outArray);
+  JSONLog::write("array", array);
   JSONLog::saveToFile("zout_"+backendName+".json");
 
   return 0;

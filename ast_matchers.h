@@ -289,7 +289,7 @@ namespace kslicer
       if(func_decl && l_var && var)
       {
         const RecordDecl* parentClass = var->getParent(); 
-        if(parentClass != nullptr && parentClass->getNameAsString() == m_allInfo.mainClassName)
+        if(parentClass != nullptr && m_allInfo.mainClassNames.find(parentClass->getNameAsString()) != m_allInfo.mainClassNames.end())
         {
           auto varName     = var->getNameAsString();
           auto pDataMember = m_allInfo.allDataMembers.find(varName);

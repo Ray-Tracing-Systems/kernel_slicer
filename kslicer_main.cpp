@@ -424,8 +424,11 @@ int main(int argc, const char **argv)
       auto typeName = baseClass->getQualifiedNameAsString();
       const auto& classInfo = firstPassData.rv.m_composedClassInfo[typeName];
       kslicer::PerformInheritanceMerge(firstPassData.rv.mci, classInfo);
+      inputCodeInfo.mainClassNames.insert(typeName);
     }
   }
+  
+  inputCodeInfo.mainClassNames.insert(inputCodeInfo.mainClassName); // put main (derived) class name in this hash-set, use 'mainClassNames' instead of 'mainClassName' later
 
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.mci.astNode;

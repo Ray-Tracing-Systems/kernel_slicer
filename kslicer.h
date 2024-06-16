@@ -1002,10 +1002,12 @@ namespace kslicer
   
     std::unordered_map<std::string, ArrayData>  m_threadLocalArrays;
 
-    std::string mainClassName;
-    std::filesystem::path mainClassFileName;
-    std::string mainClassFileInclude;
-    std::string mainClassSuffix;
+    std::string                     mainClassName;               ///<! Current main class (derived)
+    std::unordered_set<std::string> mainClassNames;              ///<! All main classes (derived + base)
+    std::filesystem::path           mainClassFileName;
+    std::string                     mainClassFileInclude;
+    std::string                     mainClassSuffix;
+    
     std::unordered_map<std::string, std::string> composPrefix;
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
     std::vector<const clang::CXXConstructorDecl* > ctors;
