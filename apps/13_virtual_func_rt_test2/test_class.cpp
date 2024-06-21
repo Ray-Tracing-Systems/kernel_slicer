@@ -3,6 +3,51 @@
 
 #include <chrono>
 #include <string>
+#include <new>
+#include <cfloat>
+
+void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
+{ 
+  // using in place new to create objects on the CPU side
+  //
+  m_materials.resize(11);
+  
+  new (m_materials.data() + 0 ) EmptyMaterial()                                      ;
+  new (m_materials.data() + 1 ) LambertMaterial(float3(0.5,0.5,0.5))                 ;
+  new (m_materials.data() + 2 ) LambertMaterial(float3(0.6,0.0235294,0.0235294))     ;
+  new (m_materials.data() + 3 ) LambertMaterial(float3(0.0235294, 0.6, 0.0235294))   ;
+  new (m_materials.data() + 4 ) GGXGlossyMaterial(float3(0.6,0.6,0.1))               ;
+  new (m_materials.data() + 5 ) LambertMaterial(float3(0.0847059, 0.144706,0.265882));
+  new (m_materials.data() + 6 ) PerfectMirrorMaterial                                ;
+  new (m_materials.data() + 7 ) LambertMaterial(float3(0.25,0.0,0.5))                ;
+  new (m_materials.data() + 8 ) PerfectMirrorMaterial                                ;
+  new (m_materials.data() + 9 ) PerfectMirrorMaterial                                ;
+  new (m_materials.data() + 10) EmissiveMaterial(20.0f)                              ;
+  
+  m_emissiveMaterialId = 10;
+  
+  std::cout << "[info]: sizeof(IMaterial)         = " << sizeof(IMaterial) << std::endl;
+  std::cout << "[info]: sizeof(LambertMaterial)   = " << sizeof(LambertMaterial) << std::endl;
+  std::cout << "[info]: sizeof(GGXGlossyMaterial) = " << sizeof(GGXGlossyMaterial) << std::endl;
+  std::cout << "[info]: sizeof(MirrorMaterial)    = " << sizeof(PerfectMirrorMaterial) << std::endl;
+  std::cout << "[info]: sizeof(EmissiveMaterial)  = " << sizeof(EmissiveMaterial) << std::endl;
+  std::cout << "[info]: sizeof(EmptyMaterial)     = " << sizeof(EmptyMaterial) << std::endl;
+  
+  char* pBegin = (char*)m_materials.data();
+  {
+    char* p_m_color   = (char*)(&m_materials[0].m_color[0]);
+    char* p_roughness = (char*)(&m_materials[0].roughness);
+    char* p_m_tag     = (char*)(&m_materials[0].m_tag);
+
+    auto  m_colorOffset   = static_cast<int64_t>(p_m_color   - pBegin);
+    auto  roughnessOffset = static_cast<int64_t>(p_roughness - pBegin);
+    auto  m_tagOffset     = static_cast<int64_t>(p_m_tag     - pBegin);
+
+    std::cout << "[info]: offset_of(m_color)   = " << m_colorOffset   << std::endl;
+    std::cout << "[info]: offset_of(roughness) = " << roughnessOffset << std::endl;
+    std::cout << "[info]: offset_of(m_tag )    = " << m_tagOffset     << std::endl;
+  }
+}
 
 void TestClass::InitRandomGens(int a_maxThreads)
 {
@@ -22,7 +67,7 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   const uint x = (XY & 0x0000FFFF);
   const uint y = (XY & 0xFFFF0000) >> 16;
 
-  const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
+  const float3 rayDir = EyeRayDir(float(x), float(y), float(WIN_WIDTH), float(WIN_HEIGHT), m_worldViewProjInv); 
   const float3 rayPos = camPos;
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
@@ -40,7 +85,7 @@ void TestClass::kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPo
   const uint x = (XY & 0x0000FFFF);
   const uint y = (XY & 0xFFFF0000) >> 16;
 
-  const float3 rayDir = EyeRayDir((float)x, (float)y, (float)WIN_WIDTH, (float)WIN_HEIGHT, m_worldViewProjInv); 
+  const float3 rayDir = EyeRayDir(float(x), float(y), float(WIN_WIDTH), float(WIN_HEIGHT), m_worldViewProjInv); 
   const float3 rayPos = camPos;
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
@@ -87,9 +132,9 @@ static void IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float
 
     const float4 edge1 = B_pos - A_pos;
     const float4 edge2 = C_pos - A_pos;
-    const float4 pvec  = cross(rayDirAndFar, edge2);
+    const float4 pvec  = cross3(rayDirAndFar, edge2);
     const float4 tvec  = rayPosAndNear - A_pos;
-    const float4 qvec  = cross(tvec, edge1);
+    const float4 qvec  = cross3(tvec, edge1);
     const float dotTmp = dot(to_float3(edge1), to_float3(pvec));
     const float invDet = 1.0f / (dotTmp > 1e-6f ? dotTmp : 1e-6f);
 
@@ -100,7 +145,7 @@ static void IntersectAllPrimitivesInLeaf(const float4 rayPosAndNear, const float
     if (v > -1e-6f && u > -1e-6f && (u + v < 1.0f + 1e-6f) && t > rayPosAndNear.w && t < pHit->t)
     {
       pHit->t      = t;
-      pHit->primId = triAddress/3;
+      pHit->primId = int(triAddress)/3;
       (*pBars)     = make_float2(u,v);
     }
   }
@@ -111,14 +156,14 @@ static inline float3 SafeInverse_4to3(float4 d)
 {
   const float ooeps = 1.0e-36f; // Avoid div by zero.
   float3 res;
-  res.x = 1.0f / (fabs(d.x) > ooeps ? d.x : copysign(ooeps, d.x));
-  res.y = 1.0f / (fabs(d.y) > ooeps ? d.y : copysign(ooeps, d.y));
-  res.z = 1.0f / (fabs(d.z) > ooeps ? d.z : copysign(ooeps, d.z));
+  res.x = 1.0f / (std::abs(d.x) > ooeps ? d.x : std::copysign(ooeps, d.x));
+  res.y = 1.0f / (std::abs(d.y) > ooeps ? d.y : std::copysign(ooeps, d.y));
+  res.z = 1.0f / (std::abs(d.z) > ooeps ? d.z : std::copysign(ooeps, d.z));
   return res;
 }
 
 bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
-                                Lite_Hit* out_hit, float2* out_bars)
+                                Lite_Hit* out_hit, float2* out_bars, uint* out_mid)
 {
   const float4 rayPos = *rayPosAndNear;
   const float4 rayDir = *rayDirAndFar ;
@@ -136,13 +181,13 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   uint nodeIdx = 0;
   while(nodeIdx < 0xFFFFFFFE)
   {
-    const struct BVHNode currNode = m_nodes[nodeIdx];
+    const BVHNode currNode = m_nodes[nodeIdx];
     const float2 boxHit           = RayBoxIntersectionLite(to_float3(rayPos), rayDirInv, currNode.boxMin, currNode.boxMax);
     const bool   intersects       = (boxHit.x <= boxHit.y) && (boxHit.y > rayPos.w) && (boxHit.x < res.t); // (tmin <= tmax) && (tmax > 0.f) && (tmin < curr_t)
 
     if(intersects && currNode.leftOffset == 0xFFFFFFFF) //leaf
     {
-      struct Interval startCount = m_intervals[nodeIdx];
+      Interval startCount = m_intervals[nodeIdx];
       IntersectAllPrimitivesInLeaf(rayPos, rayDir, m_indicesReordered.data(), startCount.start*3, startCount.count*3, m_vPos4f.data(), 
                                    &res, &baricentrics);
     }
@@ -151,23 +196,34 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
     nodeIdx = (nodeIdx == 0) ? 0xFFFFFFFE : nodeIdx;
   }
   
-  // intersect light under roof
+  // intersect flat light under roof
   {
-    const float2 tNearFar = RaySphereHit(to_float3(rayPos), to_float3(rayDir), m_lightSphere);
+    const float tLightHit  = (m_lightGeom.boxMax.y - rayPos.y)*rayDirInv.y;
+    const float4 hit_point = rayPos + tLightHit*rayDir;
+    
+    bool is_hit = (hit_point.x > m_lightGeom.boxMin.x) && (hit_point.x < m_lightGeom.boxMax.x) &&
+                  (hit_point.z > m_lightGeom.boxMin.z) && (hit_point.z < m_lightGeom.boxMax.z) &&
+                  (tLightHit < res.t);
   
-    if(tNearFar.x < tNearFar.y && tNearFar.x > 0.0f && tNearFar.x < res.t)
+    if(is_hit)
     {
       res.primId = 0;
       res.instId = -1;
-      res.geomId = HIT_LIGHT_GEOM;
-      res.t      = tNearFar.x;
+      res.geomId = HIT_FLAT_LIGHT_GEOM;
+      res.t      = tLightHit;
     }
     else
       res.geomId = HIT_TRIANGLE_GEOM;
   }
   
+  uint mid = 0;
+  if(res.primId != -1) 
+    mid = (res.geomId == HIT_FLAT_LIGHT_GEOM) ? m_emissiveMaterialId : m_materialIds[res.primId]+1;
+
   *out_hit  = res;
   *out_bars = baricentrics;
+  *out_mid  = mid;  
+
   return (res.primId != -1);
 }
 
@@ -176,36 +232,11 @@ void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
   out_pakedXY[pitchOffset(tidX,tidY)] = ((tidY << 16) & 0xFFFF0000) | (tidX & 0x0000FFFF);
 }
 
-void TestClass::kernel_RealColorToUint32(uint tid, float4* a_accumColor, uint* out_color)
+void TestClass::kernel_RealColorToUint32(uint tid, uint* mid, uint* out_color)
 {
-  out_color[tid] = RealColorToUint32(*a_accumColor);
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-IMaterial* MakeObjPtr(uint32_t objectPtr, __global const uint32_t* a_data)
-{
-  const uint32_t objectOffset = (objectPtr & IMaterial::OFS_MASK);
-  const uint32_t objectTag    = (objectPtr & IMaterial::TAG_MASK) >> (32 - IMaterial::TAG_BITS);
-  return (__global IMaterial*)(a_data + objectOffset);
-}
-
-IMaterial* TestClass::kernel_MakeMaterial(uint tid, const Lite_Hit* in_hit)
-{
-  uint32_t objPtr = 0;  
- 
-  if(in_hit->geomId == HIT_LIGHT_GEOM)
-  {
-    objPtr = m_materialOffsets[m_emissiveMaterialId];
-  }
-  else if(in_hit->primId != -1)
-  {
-    const uint32_t mtId = m_materialIds[in_hit->primId]+1; // +1 due to empty object
-    objPtr = m_materialOffsets[mtId];
-  }
-
-  return MakeObjPtr(objPtr, m_materialData.data());
+  const uint mid2 = *mid;
+  const float3 color = (m_materials.data() + mid2)->GetColor();
+  out_color[tid] = RealColorToUint32_f3(color);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -223,12 +254,11 @@ void TestClass::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color)
 
   Lite_Hit hit; 
   float2   baricentrics; 
-  if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
+  uint     mid;
+  if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, &mid))
     return;
-  
-  IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
-
-  pMaterial->kernel_GetColor(tid, out_color, this);
+    
+  kernel_RealColorToUint32(tid, &mid, out_color);
 }
 
 void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, float4* out_color)
@@ -239,6 +269,40 @@ void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, c
  
   out_color[y*WIN_WIDTH+x] += *a_accumColor;
 }
+
+void  TestClass::kernel_NextBounce(uint tid, uint* mid, const Lite_Hit* in_hit, const float2* in_bars, 
+                                   float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
+                                   float4* accumColor, float4* accumThoroughput)
+  {
+    const Lite_Hit lHit  = *in_hit;
+    const float3 ray_dir = to_float3(*rayDirAndFar);
+    
+    SurfaceHit hit;
+    hit.pos  = to_float3(*rayPosAndNear) + lHit.t*ray_dir;
+    hit.norm = EvalSurfaceNormal(ray_dir, lHit.primId, *in_bars, m_indicesReordered.data(), m_vNorm4f.data()); 
+  
+    RandomGen gen   = pGen[tid];
+    const float2 uv = rndFloat2_Pseudo(&gen);
+    pGen[tid]       = gen;
+    
+    const uint       mid2     = *mid;
+    const BxDFSample matSam   = (m_materials.data() + mid2)->SampleAndEvalBxDF(*rayPosAndNear, *rayDirAndFar, hit, uv, this);
+    const float3     bxdfVal  = matSam.brdfVal * (1.0f / std::max(matSam.pdfVal, 1e-10f));
+    const float      cosTheta = dot(matSam.newDir, hit.norm);
+    
+    if(matSam.flags != 0) 
+    {
+      *accumColor    = to_float4(matSam.brdfVal,0.0f)*(*accumThoroughput);
+      *rayPosAndNear = make_float4(0,10000000.0f,0,0); // shoot ray out of scene
+      *rayDirAndFar  = make_float4(0,1.0f,0,0);        // 
+    }
+    else
+    {
+      *rayPosAndNear    = to_float4(OffsRayPos(hit.pos, hit.norm, matSam.newDir), 0.0f);
+      *rayDirAndFar     = to_float4(matSam.newDir, FLT_MAX);
+      *accumThoroughput *= cosTheta*to_float4(bxdfVal, 0.0f);
+    }
+  }
 
 void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color)
 {
@@ -252,15 +316,13 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY
   for(int depth = 0; depth < a_maxDepth; depth++) 
   {
     Lite_Hit hit;
-    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
+    uint     mid;
+    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, &mid))
       break;
-
-    IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
     
-    pMaterial->kernel_NextBounce(tid, &hit, &baricentrics, 
-                                 m_indicesReordered.data(), m_vPos4f.data(), m_vNorm4f.data(), 
-                                 &rayPosAndNear, &rayDirAndFar, m_randomGens.data(), 
-                                 &accumColor, &accumThoroughput);
+    kernel_NextBounce(tid, &mid, &hit, &baricentrics, 
+                      &rayPosAndNear, &rayDirAndFar, m_randomGens.data(), 
+                      &accumColor, &accumThoroughput);
   }
 
   kernel_ContributeToImage(tid, &accumColor, in_pakedXY, 
@@ -299,84 +361,4 @@ void TestClass::GetExecutionTime(const char* a_funcName, float a_out[4])
 {
   if(std::string(a_funcName) == "NaivePathTrace" || std::string(a_funcName) == "NaivePathTraceBlock")
     a_out[0] = m_executionTimePT;
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#include "Bitmap.h"
-
-void test_class_cpu()
-{
-  TestClass test(WIN_WIDTH*WIN_HEIGHT);
-
-  std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
-  std::vector<uint32_t> packedXY(WIN_WIDTH*WIN_HEIGHT);
-  std::vector<float4>   realColor(WIN_WIDTH*WIN_HEIGHT);
-  
-  // remember pitch-linear (x,y) for each thread to make our threading 1D
-  //
-  for(int y=0;y<WIN_HEIGHT;y++)
-  {
-    for(int x=0;x<WIN_WIDTH;x++)
-      test.PackXY(x, y, packedXY.data());
-  }
-
-  test.LoadScene("../10_virtual_func_rt_test1/cornell_collapsed.bvh", "../10_virtual_func_rt_test1/cornell_collapsed.vsgf");
-
-  // test simple ray casting
-  //
-  #pragma omp parallel for default(shared)
-  for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
-    test.CastSingleRay(i, packedXY.data(), pixelData.data());
-
-  SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-
-
-  // now test path tracing
-  //
-  
-  //auto start = std::chrono::high_resolution_clock::now();
-
-  const int PASS_NUMBER           = 100;
-  const int ITERS_PER_PASS_NUMBER = 4;
-  for(int passId = 0; passId < PASS_NUMBER; passId++)
-  {
-    #pragma omp parallel for default(shared)
-    for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
-    {
-      for(int j=0;j<ITERS_PER_PASS_NUMBER;j++)
-        test.NaivePathTrace(i, 6, packedXY.data(), realColor.data());
-    }
-
-    if(passId%10 == 0)
-    {
-      const float progress = 100.0f*float(passId)/float(PASS_NUMBER);
-      std::cout << "progress = " << progress << "%   \r";
-      std::cout.flush();
-    }
-  }
-  
-  //auto stop = std::chrono::high_resolution_clock::now();
-  //auto ms   = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()/1000.f;
-  //std::cout << ms << " ms for " << PASS_NUMBER*ITERS_PER_PASS_NUMBER << " passes " << std::endl;
-  //std::cout << std::endl;
-
-  const float normConst = 1.0f/float(PASS_NUMBER*ITERS_PER_PASS_NUMBER);
-  const float invGamma  = 1.0f / 2.2f;
-
-  for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
-  {
-    float4 color = realColor[i]*normConst;
-    color.x      = powf(color.x, invGamma);
-    color.y      = powf(color.y, invGamma);
-    color.z      = powf(color.z, invGamma);
-    color.w      = 1.0f;
-    pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
-  }
-  SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-
-  return;
 }

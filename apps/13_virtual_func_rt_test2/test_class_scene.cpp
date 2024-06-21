@@ -50,40 +50,8 @@ struct SimpleMesh
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-uint32_t TestClass::PackObject(uint32_t*& pData, IMaterial* a_pObject)
-{
-  const uint32_t offset = uint32_t(pData - m_materialData.data());   // TODO: encode offset and type in single uint32_t
-  pData += a_pObject->GetSizeOf()/sizeof(uint32_t);
-  return offset | (a_pObject->GetTag() << (32 - IMaterial::TAG_BITS));
-}
 
-void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
-{ 
-  auto maxSize = std::max( std::max(sizeof(EmissiveMaterial),      sizeof(GGXGlossyMaterial)), 
-                           std::max(sizeof(PerfectMirrorMaterial), sizeof(LambertMaterial)));
-  
-  // using in place new to create objects on the CPU side
-  //
-  m_materialData.resize(11*maxSize/sizeof(uint32_t));
-  m_materialOffsets.resize(11);
-  
-  uint32_t* pData = m_materialData.data();
-
-  m_materialOffsets[0+0] = PackObject(pData, new (pData) EmptyMaterial()                                       ); // !!! #REQUIRED by kernel slicer: Empty/Default impl must have zero both tag and offset
-  m_materialOffsets[0+1] = PackObject(pData, new (pData) LambertMaterial(float3(0.5,0.5,0.5))                  );
-  m_materialOffsets[1+1] = PackObject(pData, new (pData) LambertMaterial(float3(0.6,0.0235294,0.0235294))      );
-  m_materialOffsets[2+1] = PackObject(pData, new (pData) LambertMaterial(float3(0.0235294, 0.6, 0.0235294))    );
-  m_materialOffsets[3+1] = PackObject(pData, new (pData) GGXGlossyMaterial(float3(0.6,0.6,0.1))                );
-  m_materialOffsets[4+1] = PackObject(pData, new (pData) LambertMaterialMix(float3(0.0847059, 0.144706,0.265882)) );
-  m_materialOffsets[5+1] = PackObject(pData, new (pData) PerfectMirrorMaterial                                 );
-  m_materialOffsets[6+1] = PackObject(pData, new (pData) LambertMaterial(float3(0.25,0.0,0.5))                 );
-  m_materialOffsets[7+1] = PackObject(pData, new (pData) PerfectMirrorMaterial);
-  m_materialOffsets[8+1] = PackObject(pData, new (pData) PerfectMirrorMaterial);
-  m_materialOffsets[9+1] = PackObject(pData, new (pData) EmissiveMaterial(20.0f));  
-  m_emissiveMaterialId   = 10;
-}
-
-int TestClass::LoadScene(const char* bvhPath, const char* meshPath, bool a_needReorder)
+int TestClass::LoadScene(const char* bvhPath, const char* meshPath)
 {
   std::fstream input_file;
   input_file.open(bvhPath, std::ios::binary | std::ios::in);
@@ -153,35 +121,28 @@ int TestClass::LoadScene(const char* bvhPath, const char* meshPath, bool a_needR
   m_vNorm4f     = m_mesh.vNorm4f;
   
   std::cout << "[LoadScene]: fixing material indices back ... " << std::endl;
-   
-  if(a_needReorder)
+
+  m_materialIds.resize(m_mesh.matIndices.size());   
+  //m_materialIds = m_mesh.matIndices; // // NO!!! Need to reorder them accordimg to reorderedIndices!!!
+  #pragma omp parallel for
+  for(uint32_t triIdNew = 0; triIdNew < m_mesh.TrianglesNum(); triIdNew++)
   {
-    m_materialIds.resize(m_mesh.matIndices.size());
-    #pragma omp parallel for
-    for(uint32_t triIdNew = 0; triIdNew < m_mesh.TrianglesNum(); triIdNew++)
+    const uint32_t A = m_indicesReordered[triIdNew*3+0];
+    const uint32_t B = m_indicesReordered[triIdNew*3+1];
+    const uint32_t C = m_indicesReordered[triIdNew*3+2];
+
+    for(uint32_t triIdOld = 0; triIdOld < m_mesh.TrianglesNum(); triIdOld++)
     {
-      const uint32_t A = m_indicesReordered[triIdNew*3+0];
-      const uint32_t B = m_indicesReordered[triIdNew*3+1];
-      const uint32_t C = m_indicesReordered[triIdNew*3+2];
-  
-      for(uint32_t triIdOld = 0; triIdOld < m_mesh.TrianglesNum(); triIdOld++)
+      const uint32_t AOld = m_mesh.indices[triIdOld*3+0];
+      const uint32_t BOld = m_mesh.indices[triIdOld*3+1];
+      const uint32_t COld = m_mesh.indices[triIdOld*3+2];
+
+      if(A == AOld && B == BOld && C == COld)
       {
-        const uint32_t AOld = m_mesh.indices[triIdOld*3+0];
-        const uint32_t BOld = m_mesh.indices[triIdOld*3+1];
-        const uint32_t COld = m_mesh.indices[triIdOld*3+2];
-  
-        if(A == AOld && B == BOld && C == COld)
-        {
-          m_materialIds[triIdNew] = m_mesh.matIndices[triIdOld];
-          break;
-        } 
-      }
+        m_materialIds[triIdNew] = m_mesh.matIndices[triIdOld];
+        break;
+      } 
     }
-  }
-  else
-  {
-    m_materialIds      = m_mesh.matIndices; // will use bvh in RTX, don't need tp reorder indices !!!
-    m_indicesReordered = m_mesh.indices;    // will use bvh in RTX, don't need tp reorder indices !!!
   }
 
   InitSceneMaterials(10);

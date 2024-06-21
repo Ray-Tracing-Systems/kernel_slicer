@@ -7,6 +7,7 @@
 using namespace LiteMath;
 #endif
 
+
 typedef struct RandomGenT
 {
   uint2 state;
