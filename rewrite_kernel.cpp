@@ -445,6 +445,16 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
         
       for(unsigned i=0;i<f->getNumArgs();i++)
       {
+        const auto pParam                   = f->getArg(i);
+        const clang::QualType typeOfParam   =	pParam->getType();
+        const std::string typeNameRewritten = typeOfParam.getAsString();
+        if(m_codeInfo->dataClassNames.find(typeNameRewritten) != m_codeInfo->dataClassNames.end()) 
+        {
+          if(i==f->getNumArgs()-1)
+            textCallNoName[textCallNoName.rfind(",")] = ' ';
+          continue;
+        }
+
         textCallNoName += RecursiveRewrite(f->getArg(i));
         if(i < f->getNumArgs()-1)
           textCallNoName += ",";

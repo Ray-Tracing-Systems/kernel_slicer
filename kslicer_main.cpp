@@ -409,6 +409,8 @@ int main(int argc, const char **argv)
     std::string composMemberName = kslicer::PerformClassComposition(firstPassData.rv.mci, pComposAPI->second, pComposImpl->second);     // perform class composition
     for(const auto& name : composClassNames)
       inputCodeInfo.composPrefix[name] = composMemberName;
+
+    inputCodeInfo.composClassNames.insert(composeImplName);
   }
   else if(baseClases.size() != 0)
   { 
@@ -429,6 +431,29 @@ int main(int argc, const char **argv)
   }
   
   inputCodeInfo.mainClassNames.insert(inputCodeInfo.mainClassName); // put main (derived) class name in this hash-set, use 'mainClassNames' instead of 'mainClassName' later
+  
+  // merge mainClassNames and composClassNames in single array, add 'const Type' names to it; TODO: merge to single function
+  {
+    inputCodeInfo.dataClassNames.clear();
+    inputCodeInfo.dataClassNames.insert(inputCodeInfo.mainClassNames.begin(),   inputCodeInfo.mainClassNames.end());
+    inputCodeInfo.dataClassNames.insert(inputCodeInfo.composClassNames.begin(), inputCodeInfo.composClassNames.end());
+    
+    std::vector<std::string> constVarianst; 
+    constVarianst.reserve(inputCodeInfo.dataClassNames.size());
+    for(auto name : inputCodeInfo.dataClassNames) {
+      constVarianst.push_back(name + "*");
+      constVarianst.push_back(name + " *");
+      constVarianst.push_back(name + "&");
+      constVarianst.push_back(name + " &");
+      constVarianst.push_back(std::string("const ") + name);
+      constVarianst.push_back(std::string("const ") + name + "*");
+      constVarianst.push_back(std::string("const ") + name + " *");
+      constVarianst.push_back(std::string("const ") + name + "&");
+      constVarianst.push_back(std::string("const ") + name + " &");
+    }
+    for(auto name : constVarianst)
+      inputCodeInfo.dataClassNames.insert(name);
+  }
 
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.mci.astNode;

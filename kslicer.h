@@ -1004,6 +1004,8 @@ namespace kslicer
 
     std::string                     mainClassName;               ///<! Current main class (derived)
     std::unordered_set<std::string> mainClassNames;              ///<! All main classes (derived + base)
+    std::unordered_set<std::string> composClassNames; 
+    std::unordered_set<std::string> dataClassNames; 
     std::filesystem::path           mainClassFileName;
     std::string                     mainClassFileInclude;
     std::string                     mainClassSuffix;

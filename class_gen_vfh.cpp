@@ -22,9 +22,9 @@ public:
   MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::MainClassInfo::DImplClass& dImpl) : 
                 kslicer::GLSLFunctionRewriter(R, a_compiler, a_codeInfo, kslicer::ShittyFunction()), 
                 m_processed(dImpl.memberFunctions), m_fields(dImpl.fields), m_className(dImpl.name), m_objBufferName(dImpl.objBufferName), m_interfaceName(dImpl.interfaceName), 
-                m_mainClassName(a_codeInfo->mainClassName)
+                m_mainClassName(a_codeInfo->mainClassName), dataClassNames(a_codeInfo->dataClassNames)
   { 
-    
+
   }
 
   bool VisitMemberExpr_Impl(clang::MemberExpr* expr) override
@@ -94,6 +94,12 @@ public:
       const clang::IdentifierInfo* identifier = pParam->getIdentifier();
       if(identifier == nullptr)
         continue;
+      if(dataClassNames.find(typeNameRewritten) != dataClassNames.end()) 
+      {
+        if(i==fDecl->getNumParams()-1)
+          result[result.rfind(",")] = ' ';
+        continue;
+      }
 
       result += typeNameRewritten + " " + std::string(identifier->getName());
       if(pList != nullptr)
@@ -166,6 +172,16 @@ public:
         textRes += ",";
       for(unsigned i=0;i<call->getNumArgs();i++)
       {
+        const auto pParam                   = call->getArg(i);
+        const clang::QualType typeOfParam   =	pParam->getType();
+        const std::string typeNameRewritten = typeOfParam.getAsString();
+        if(dataClassNames.find(typeNameRewritten) != dataClassNames.end()) 
+        {
+          if(i==call->getNumArgs()-1)
+            textRes[textRes.rfind(",")] = ' ';
+          continue;
+        }
+
         textRes += RecursiveRewrite(call->getArg(i));
         if(i < call->getNumArgs()-1)
           textRes += ",";
@@ -190,6 +206,7 @@ public:
 
   std::unordered_map<std::string, ArgList>     argsByName;
   std::unordered_map<std::string, std::string> declByName; 
+  const std::unordered_set<std::string>&       dataClassNames; 
 
 private:
     
