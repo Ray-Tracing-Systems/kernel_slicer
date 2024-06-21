@@ -70,6 +70,16 @@ namespace kslicer
   bool  IsSamplerTypeName(const std::string& a_typeName);  ///<! return true for all types of textures
   bool  IsCombinedImageSamplerTypeName(const std::string& a_typeName);  ///<! return true for all types of image combined samplers
 
+  struct ProbablyUsedContainer
+  {
+    UsedContainerInfo info;
+    std::string interfaceName;
+    std::string className;
+    std::string objBufferName;
+    std::string containerType;
+    std::string containerDataType;
+  };
+
   struct ArgMatch
   {
     std::string formal;
@@ -259,8 +269,9 @@ namespace kslicer
 
     std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
-    std::unordered_map<std::string, UsedContainerInfo> usedContainers; ///<! list of all std::vector<T> member names which is referenced inside kernel
-    std::unordered_set<std::string>                    usedMembers;    ///<! list of all other variables used inside kernel
+    std::unordered_map<std::string, UsedContainerInfo>     usedContainers;   ///<! list of all std::vector<T> member names which is referenced inside kernel
+    std::unordered_set<std::string>                        usedMembers;      ///<! list of all other variables used inside kernel
+
     std::unordered_map<std::string, ReductionAccess>   subjectedToReduction; ///<! if member is used in reduction expression
     std::unordered_map<std::string, TEX_ACCESS>        texAccessInArgs;
     std::unordered_map<std::string, TEX_ACCESS>        texAccessInMemb;
@@ -269,7 +280,7 @@ namespace kslicer
     std::vector<const KernelInfo*>                     subkernels;          ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
     ShittyFunction                                     currentShit;         ///<!
     std::unordered_map<std::string, ArrayData>         threadLocalArrays;
-
+   
     struct BEBlock
     {
       bool                  isParallel = false;
@@ -983,6 +994,7 @@ namespace kslicer
     std::unordered_map<std::string, KernelInfo>     allKernels;       ///<! list of all kernels; used only on the second pass to identify Control Functions; it is not recommended to use it anywhere else
     std::unordered_map<std::string, KernelInfo>     allOtherKernels;  ///<! kernels from other classes. we probably need them if they are used.
     std::unordered_map<std::string, DataMemberInfo> allDataMembers;   ///<! list of all class data members;
+    std::unordered_map<std::string, ProbablyUsedContainer> usedContainersProbably; ///<! containers which are used in virtual functions and probably will be used in *SOME* kernels
 
     std::unordered_set<std::string>                 usedServiceCalls; ///<! memcpy, memset, scan, sort and e.t.c.
     std::unordered_map<std::string, ServiceCall>    serviceCalls;     ///<! actual list of used service calls

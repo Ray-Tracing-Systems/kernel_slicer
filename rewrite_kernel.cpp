@@ -463,6 +463,12 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
       std::string vcallFunc  = buffAndOffset.interfaceName + "_" + fname + "_" + buffText2 + textCallNoName + ")";
       m_rewriter.ReplaceText(f->getSourceRange(), vcallFunc);
       MarkRewritten(f);
+
+      for(auto container : m_codeInfo->usedContainersProbably) // if container is used inside curr interface impl, add it to usedContainers list for current kernel  
+      {
+        if(container.second.interfaceName == buffAndOffset.interfaceName)
+          m_currKernel.usedContainers[container.second.info.name] = container.second.info;
+      }
     }
   }
 

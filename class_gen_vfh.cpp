@@ -45,6 +45,42 @@ public:
       m_rewriter.ReplaceText(expr->getSourceRange(), m_objBufferName + "[selfId]." + exprContent);
       MarkRewritten(expr);
     }
+    else if(dataClassNames.find(thisTypeName) != dataClassNames.end() && WasNotRewrittenYet(expr))
+    {
+      const std::string fieldName     = pFieldDecl->getNameAsString();
+      const clang::QualType qt        = pFieldDecl->getType();
+      const std::string fieldTypeName = qt.getAsString(); 
+      const auto typeDecl      = qt->getAsRecordDecl();
+      const bool isContainer   = (typeDecl != nullptr) && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl);
+      const std::string prefix = isContainer ? "" : "ubo.";
+      
+      auto p = m_codeInfo->allDataMembers.find(fieldName);
+      if(p != m_codeInfo->allDataMembers.end()) 
+      {
+        if(isContainer)
+        {
+          kslicer::UsedContainerInfo container;
+          container.name    = p->first;
+          container.type    = p->second.type;
+          container.kind    = p->second.kind;
+          container.isConst = qt.isConstQualified();
+
+          kslicer::ProbablyUsedContainer pcontainer;
+          pcontainer.info          = container;
+          pcontainer.interfaceName = m_interfaceName;
+          pcontainer.className     = m_className;
+          pcontainer.objBufferName = m_objBufferName;
+          auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
+          kslicer::SplitContainerTypes(specDecl, pcontainer.containerType, pcontainer.containerDataType);
+          m_codeInfo->usedContainersProbably[container.name] = pcontainer;
+        }
+        else
+          p->second.usedInKernel = true;
+      }
+
+      m_rewriter.ReplaceText(expr->getSourceRange(), prefix + fieldName);
+      MarkRewritten(expr);
+    }
 
     return true;
   }
