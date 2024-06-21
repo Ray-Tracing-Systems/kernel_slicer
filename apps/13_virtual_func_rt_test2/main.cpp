@@ -48,7 +48,8 @@ int main(int argc, const char** argv)
     SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
     SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-
+  
+  std::cout << "start NaivePathTraceBlock ... " << std::endl;
   // now test path tracing
   //
   const int PASS_NUMBER = 256;

@@ -36,7 +36,8 @@ struct IMaterial
 
   float m_color[3];
   float roughness;
-  uint32_t m_tag;
+  uint32_t m_tag    = TAG_EMPTY;
+  int m_takeFromExt = 0;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -92,7 +93,8 @@ public:
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  float3    testColor = float3(0, 1, 1);
+  float3             g_testColor = float3(0, 1, 1);
+  std::vector<float> g_testVector;
   uint32_t  m_emissiveMaterialId = 0;
   LightGeom m_lightGeom = {float3(-0.3f, 2.0f, -0.3f), 
                            float3(+0.3f, 2.0f, +0.3f)   
@@ -130,7 +132,7 @@ protected:
 
 struct LambertMaterial : public IMaterial
 {
-  LambertMaterial(float3 a_color) { m_color[0] = a_color[0]; m_color[1] = a_color[1]; m_color[2] = a_color[2]; m_tag = GetTag(); }
+  LambertMaterial(float3 a_color, bool a_takeColorFromExt = false) { m_color[0] = a_color[0]; m_color[1] = a_color[1]; m_color[2] = a_color[2]; m_tag = GetTag(); m_takeFromExt = a_takeColorFromExt ? 1 : 0; }
   ~LambertMaterial() = delete;  
 
   uint32_t GetTag()   const override { return TAG_LAMBERT; }      
@@ -141,9 +143,11 @@ struct LambertMaterial : public IMaterial
     const float3 newDir   = MapSampleToCosineDistribution(uv.x, uv.y, hit.norm, hit.norm, 1.0f);
     const float  cosTheta = dot(newDir, hit.norm);
 
+    float3 color = (m_takeFromExt == 0) ? float3(m_color[0], m_color[1], m_color[2]) : pStorage->g_testColor;
+
     BxDFSample res;
     res.pdfVal  = cosTheta * INV_PI;
-    res.brdfVal = (cosTheta > 1e-5f) ? float3(m_color[0], m_color[1], m_color[2]) * INV_PI : float3(0,0,0);
+    res.brdfVal = (cosTheta > 1e-5f) ? color * INV_PI : float3(0,0,0);
     res.newDir  = newDir;
     res.flags   = 0;
     return res;
@@ -154,7 +158,7 @@ struct LambertMaterial : public IMaterial
 
 struct PerfectMirrorMaterial : public IMaterial
 {
-  PerfectMirrorMaterial() { m_color[0] = 0.85f; m_color[1] = 0.85f; m_color[2] = 0.85f; m_tag = GetTag();}
+  PerfectMirrorMaterial(bool a_takeColorFromExt) { m_color[0] = 0.85f; m_color[1] = 0.85f; m_color[2] = 0.85f; m_tag = GetTag(); m_takeFromExt = a_takeColorFromExt ? 1 : 0;}
   ~PerfectMirrorMaterial() = delete;
 
   uint32_t GetTag()   const override { return TAG_MIRROR; }
@@ -169,9 +173,17 @@ struct PerfectMirrorMaterial : public IMaterial
 
     const float cosTheta = dot(newDir, hit.norm);
 
+    float3 color = float3(m_color[0], m_color[1], m_color[2]);
+    if(m_takeFromExt != 0)
+    {
+      color.x = pStorage->g_testVector[0];
+      color.y = pStorage->g_testVector[1];
+      color.z = pStorage->g_testVector[2];
+    }
+
     BxDFSample res;
     res.pdfVal  = 1.0f;
-    res.brdfVal = (cosTheta > 1e-5f) ? float3(m_color[0], m_color[1], m_color[2]) * (1.0f / std::max(cosTheta, 1e-5f)): float3(0,0,0);
+    res.brdfVal = (cosTheta > 1e-5f) ? color * (1.0f / std::max(cosTheta, 1e-5f)): float3(0,0,0);
     res.newDir  = newDir;
     res.flags   = 0;
     return res;
