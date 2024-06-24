@@ -79,7 +79,7 @@ public:
   void kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar);        // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
   void kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumuThoroughput);        
 
-  bool kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
+  void kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                        Lite_Hit* out_hit, float2* out_bars, uint* out_mid);
   
   void kernel_RealColorToUint32(uint tid, uint* mid, uint* out_color);
@@ -116,8 +116,6 @@ protected:
   std::vector<float4>          m_vNorm4f;     // copy from m_mesh
 
   std::vector<IMaterial>       m_materials;
-
-  virtual void Update_m_materials(size_t a_start, size_t a_size) {}
 
   float4x4                     m_worldViewProjInv;
   std::vector<RandomGen>       m_randomGens;

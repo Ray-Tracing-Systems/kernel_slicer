@@ -24,6 +24,16 @@ void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
   new (m_materials.data() + 9 ) PerfectMirrorMaterial(false)                      ;
   new (m_materials.data() + 10) EmissiveMaterial(20.0f)                           ;
   
+  //struct IMaterial2
+  //{
+  //  uint vptr_dummy[2];
+  //  float m_color[3];
+  //  float roughness;
+  //  uint m_tag;
+  //  int m_takeFromExt;
+  //};
+  //IMaterial2* materials2 = (IMaterial2*)m_materials.data();
+
   m_emissiveMaterialId = 10;
 
   g_testColor  = float4(0, 1, 1, 1);
@@ -165,7 +175,7 @@ static inline float3 SafeInverse_4to3(float4 d)
   return res;
 }
 
-bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
+void TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                                 Lite_Hit* out_hit, float2* out_bars, uint* out_mid)
 {
   const float4 rayPos = *rayPosAndNear;
@@ -225,9 +235,7 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
 
   *out_hit  = res;
   *out_bars = baricentrics;
-  *out_mid  = mid;  
-
-  return (res.primId != -1);
+  *out_mid  = (res.primId == -1) ? -1 : mid;  
 }
 
 void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
@@ -238,8 +246,11 @@ void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
 void TestClass::kernel_RealColorToUint32(uint tid, uint* mid, uint* out_color)
 {
   const uint mid2 = *mid;
-  const float3 color = (m_materials.data() + mid2)->GetColor();
-  out_color[tid] = RealColorToUint32_f3(color);
+  if(mid2 != uint(-1)) 
+  {
+    const float3 color = (m_materials.data() + mid2)->GetColor();
+    out_color[tid] = RealColorToUint32_f3(color);
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -258,8 +269,7 @@ void TestClass::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color)
   Lite_Hit hit; 
   float2   baricentrics; 
   uint     mid;
-  if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, &mid))
-    return;
+  kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, &mid);
     
   kernel_RealColorToUint32(tid, &mid, out_color);
 }
@@ -277,6 +287,10 @@ void  TestClass::kernel_NextBounce(uint tid, uint* mid, const Lite_Hit* in_hit, 
                                    float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
                                    float4* accumColor, float4* accumThoroughput)
   {
+    const uint mid2 = *mid;
+    if(mid2 == uint(-1))
+      return;
+
     const Lite_Hit lHit  = *in_hit;
     const float3 ray_dir = to_float3(*rayDirAndFar);
     
@@ -288,7 +302,6 @@ void  TestClass::kernel_NextBounce(uint tid, uint* mid, const Lite_Hit* in_hit, 
     const float2 uv = rndFloat2_Pseudo(&gen);
     pGen[tid]       = gen;
     
-    const uint       mid2     = *mid;
     const BxDFSample matSam   = (m_materials.data() + mid2)->SampleAndEvalBxDF(*rayPosAndNear, *rayDirAndFar, hit, uv, this);
     const float3     bxdfVal  = matSam.brdfVal * (1.0f / std::max(matSam.pdfVal, 1e-10f));
     const float      cosTheta = dot(matSam.newDir, hit.norm);
@@ -320,9 +333,10 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY
   {
     Lite_Hit hit;
     uint     mid;
-    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, &mid))
+    kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics, &mid);
+    if(mid == uint(-1))
       break;
-    
+
     kernel_NextBounce(tid, &mid, &hit, &baricentrics, 
                       &rayPosAndNear, &rayDirAndFar, m_randomGens.data(), 
                       &accumColor, &accumThoroughput);
