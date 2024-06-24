@@ -93,7 +93,7 @@ public:
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  float3             g_testColor = float3(0, 1, 1);
+  float4             g_testColor = float4(0, 1, 1, 1);
   std::vector<float> g_testVector;
   uint32_t  m_emissiveMaterialId = 0;
   LightGeom m_lightGeom = {float3(-0.3f, 2.0f, -0.3f), 
@@ -104,7 +104,7 @@ public:
   static constexpr uint HIT_FLAT_LIGHT_GEOM = 1;
 
 protected:
-  float3 camPos = float3(0.0f, 0.85f, 4.5f);
+  float4 camPos = float4(0.0f, 0.85f, 4.5f, 1.0f);
   void InitSceneMaterials(int a_numSpheres, int a_seed = 0);
 
   //  BVHTree                  m_bvhTree;
@@ -143,7 +143,7 @@ struct LambertMaterial : public IMaterial
     const float3 newDir   = MapSampleToCosineDistribution(uv.x, uv.y, hit.norm, hit.norm, 1.0f);
     const float  cosTheta = dot(newDir, hit.norm);
 
-    float3 color = (m_takeFromExt == 0) ? float3(m_color[0], m_color[1], m_color[2]) : pStorage->g_testColor;
+    float3 color = (m_takeFromExt == 0) ? float3(m_color[0], m_color[1], m_color[2]) : to_float3(pStorage->g_testColor);
 
     BxDFSample res;
     res.pdfVal  = cosTheta * INV_PI;

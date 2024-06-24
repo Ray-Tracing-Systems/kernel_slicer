@@ -26,7 +26,7 @@ void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
   
   m_emissiveMaterialId = 10;
 
-  g_testColor  = float3(0, 1, 1);
+  g_testColor  = float4(0, 1, 1, 1);
   g_testVector = std::vector<float>({0.2, 0.2f, 0.75f});
   
   std::cout << "[info]: sizeof(IMaterial)         = " << sizeof(IMaterial) << std::endl;
@@ -71,7 +71,7 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   const uint y = (XY & 0xFFFF0000) >> 16;
 
   const float3 rayDir = EyeRayDir(float(x), float(y), float(WIN_WIDTH), float(WIN_HEIGHT), m_worldViewProjInv); 
-  const float3 rayPos = camPos;
+  const float3 rayPos = to_float3(camPos);
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
   *rayDirAndFar  = to_float4(rayDir, FLT_MAX);
@@ -89,7 +89,7 @@ void TestClass::kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPo
   const uint y = (XY & 0xFFFF0000) >> 16;
 
   const float3 rayDir = EyeRayDir(float(x), float(y), float(WIN_WIDTH), float(WIN_HEIGHT), m_worldViewProjInv); 
-  const float3 rayPos = camPos;
+  const float3 rayPos = to_float3(camPos);
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
   *rayDirAndFar  = to_float4(rayDir, FLT_MAX);
