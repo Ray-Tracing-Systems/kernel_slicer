@@ -60,8 +60,8 @@ Vulkan is great! But it is time consuming technology, which mean significant inc
 3. use Cmake and VS:
   * cd kernel_slicer
   * mkdir cmake-build-release && cd cmake-build-release
-  * cmake -DLLVM_DIR=..\tmp\llvm-project\build\lib\cmake\llvm -DClang_DIR=..\tmp\llvm-project\build\lib\cmake\clang -DCMAKE_BUILD_TYPE=Release ..
-  * Open the solution "llvm-project\cmake-build-release\kernel_slicer.sln" and compile the release.
+  * cmake -DLLVM_DIR=..\llvm-project\build\lib\cmake\llvm -DClang_DIR=..\llvm-project\build\lib\cmake\clang -DCMAKE_BUILD_TYPE=Release ..
+  * Open the solution "kernel_slicer\cmake-build-release\kernel_slicer.sln" and compile the release.
     
 ## We continue:
 
