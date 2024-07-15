@@ -283,6 +283,11 @@ void TestClass::kernel_ContributeToImage(uint tid, const float4* a_accumColor, c
   out_color[y*WIN_WIDTH+x] += *a_accumColor;
 }
 
+BxDFSample TestClass::SampleMaterial(uint mid2, float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 rands)
+{
+  return (m_materials.data() + mid2)->SampleAndEvalBxDF(rayPosAndNear, rayDirAndFar, hit, rands, this);
+}
+
 void  TestClass::kernel_NextBounce(uint tid, uint* mid, const Lite_Hit* in_hit, const float2* in_bars, 
                                    float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
                                    float4* accumColor, float4* accumThoroughput)
@@ -302,7 +307,7 @@ void  TestClass::kernel_NextBounce(uint tid, uint* mid, const Lite_Hit* in_hit, 
     const float2 uv = rndFloat2_Pseudo(&gen);
     pGen[tid]       = gen;
     
-    const BxDFSample matSam   = (m_materials.data() + mid2)->SampleAndEvalBxDF(*rayPosAndNear, *rayDirAndFar, hit, uv, this);
+    const BxDFSample matSam   = SampleMaterial(mid2, *rayPosAndNear, *rayDirAndFar, hit, uv); // (m_materials.data() + mid2)->SampleAndEvalBxDF(*rayPosAndNear, *rayDirAndFar, hit, uv, this);
     const float3     bxdfVal  = matSam.brdfVal * (1.0f / std::max(matSam.pdfVal, 1e-10f));
     const float      cosTheta = dot(matSam.newDir, hit.norm);
     

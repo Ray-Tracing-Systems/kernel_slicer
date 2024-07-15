@@ -91,6 +91,8 @@ public:
                          float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
                          float4* accumColor, float4* accumThoroughput);
 
+  BxDFSample SampleMaterial(uint mid2, float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 rands);
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   float4             g_testColor = float4(0, 1, 1, 1);

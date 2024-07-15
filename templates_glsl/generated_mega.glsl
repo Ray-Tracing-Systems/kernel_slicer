@@ -50,15 +50,11 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 {{ShitFunc}}
 
 ## endfor
-## for MembFunc in Kernel.MemberFunctions  
-{{MembFunc}}
-
-## endfor
 {% for Hierarchy in Kernel.Hierarchies %} {# /*------------------------------ vfh ------------------------------ */ #}
 // Virtual Functions of {{Hierarchy.Name}}:
 {% for Contant in Hierarchy.Constants %}
 {{Contant.Type}} {{Contant.Name}} = {{Contant.Value}};
-{% endfor %} 
+{% endfor %}
 
 {% for RetDecl in Hierarchy.AuxDecls %}
 struct {{RetDecl.Name}} 
@@ -104,6 +100,10 @@ struct {{RetDecl.Name}}
 }
 {% endfor %}
 {% endfor %}                        {# /*------------------------------ vfh ------------------------------ */ #}
+## for MembFunc in Kernel.MemberFunctions  
+{{MembFunc}}
+
+## endfor 
 
 {% for RTName in Kernel.RTXNames %}
 // RayScene intersection with '{{RTName}}'
