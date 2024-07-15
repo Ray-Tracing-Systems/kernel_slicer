@@ -19,18 +19,9 @@
             ]
         },
         {
-            "label": "Build Kernels",
+            "label": "Build Kernels (GLSL)",
             "type": "shell",
-            "command": "bash z_build.sh",
-            "group": "build",
-            "problemMatcher": [
-                "$gcc"
-            ]
-        },
-        {
-            "label": "Build GLSL",
-            "type": "shell",
-            "command": "cd shaders && glslangValidator -V raytrace.comp -o raytrace.comp.spv -DGLSL",
+            "command": "cd shaders_generated && bash build.sh",
             "group": "build",
             "problemMatcher": [
                 "$gcc"

@@ -22,9 +22,9 @@ public:
   MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::MainClassInfo::DImplClass& dImpl) : 
                 kslicer::GLSLFunctionRewriter(R, a_compiler, a_codeInfo, kslicer::ShittyFunction()), 
                 m_processed(dImpl.memberFunctions), m_fields(dImpl.fields), m_className(dImpl.name), m_objBufferName(dImpl.objBufferName), m_interfaceName(dImpl.interfaceName), 
-                m_mainClassName(a_codeInfo->mainClassName)
+                m_mainClassName(a_codeInfo->mainClassName), dataClassNames(a_codeInfo->dataClassNames)
   { 
-    
+
   }
 
   bool VisitMemberExpr_Impl(clang::MemberExpr* expr) override
@@ -43,6 +43,42 @@ public:
       const clang::Expr* baseExpr = expr->getBase(); 
       std::string exprContent     = RecursiveRewrite(baseExpr);
       m_rewriter.ReplaceText(expr->getSourceRange(), m_objBufferName + "[selfId]." + exprContent);
+      MarkRewritten(expr);
+    }
+    else if(dataClassNames.find(thisTypeName) != dataClassNames.end() && WasNotRewrittenYet(expr))
+    {
+      const std::string fieldName     = pFieldDecl->getNameAsString();
+      const clang::QualType qt        = pFieldDecl->getType();
+      const std::string fieldTypeName = qt.getAsString(); 
+      const auto typeDecl      = qt->getAsRecordDecl();
+      const bool isContainer   = (typeDecl != nullptr) && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl);
+      const std::string prefix = isContainer ? "" : "ubo.";
+      
+      auto p = m_codeInfo->allDataMembers.find(fieldName);
+      if(p != m_codeInfo->allDataMembers.end()) 
+      {
+        if(isContainer)
+        {
+          kslicer::UsedContainerInfo container;
+          container.name    = p->first;
+          container.type    = p->second.type;
+          container.kind    = p->second.kind;
+          container.isConst = qt.isConstQualified();
+
+          kslicer::ProbablyUsedContainer pcontainer;
+          pcontainer.info          = container;
+          pcontainer.interfaceName = m_interfaceName;
+          pcontainer.className     = m_className;
+          pcontainer.objBufferName = m_objBufferName;
+          auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
+          kslicer::SplitContainerTypes(specDecl, pcontainer.containerType, pcontainer.containerDataType);
+          m_codeInfo->usedContainersProbably[container.name] = pcontainer;
+        }
+        else
+          p->second.usedInKernel = true;
+      }
+
+      m_rewriter.ReplaceText(expr->getSourceRange(), prefix + fieldName);
       MarkRewritten(expr);
     }
 
@@ -94,6 +130,12 @@ public:
       const clang::IdentifierInfo* identifier = pParam->getIdentifier();
       if(identifier == nullptr)
         continue;
+      if(dataClassNames.find(typeNameRewritten) != dataClassNames.end()) 
+      {
+        if(i==fDecl->getNumParams()-1)
+          result[result.rfind(",")] = ' ';
+        continue;
+      }
 
       result += typeNameRewritten + " " + std::string(identifier->getName());
       if(pList != nullptr)
@@ -166,6 +208,16 @@ public:
         textRes += ",";
       for(unsigned i=0;i<call->getNumArgs();i++)
       {
+        const auto pParam                   = call->getArg(i);
+        const clang::QualType typeOfParam   =	pParam->getType();
+        const std::string typeNameRewritten = typeOfParam.getAsString();
+        if(dataClassNames.find(typeNameRewritten) != dataClassNames.end()) 
+        {
+          if(i==call->getNumArgs()-1)
+            textRes[textRes.rfind(",")] = ' ';
+          continue;
+        }
+
         textRes += RecursiveRewrite(call->getArg(i));
         if(i < call->getNumArgs()-1)
           textRes += ",";
@@ -190,6 +242,7 @@ public:
 
   std::unordered_map<std::string, ArgList>     argsByName;
   std::unordered_map<std::string, std::string> declByName; 
+  const std::unordered_set<std::string>&       dataClassNames; 
 
 private:
     

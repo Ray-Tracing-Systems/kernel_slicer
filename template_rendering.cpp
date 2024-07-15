@@ -332,6 +332,22 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   dataMembersCached.reserve(a_classInfo.dataMembers.size());
   for(const auto& member : a_classInfo.dataMembers)
     dataMembersCached[member.name] = member;
+  for(const auto& cont : a_classInfo.usedContainersProbably) 
+  {
+    DataMemberInfo containerInfo;
+    containerInfo.isArray     = false;
+    containerInfo.isPointer   = false;
+    containerInfo.isContainer = true;
+    containerInfo.name          = cont.first;
+    containerInfo.type          = cont.second.containerType + std::string("<") + cont.second.containerDataType + ">";
+    containerInfo.sizeInBytes   = 0; // not used by containers
+    containerInfo.usedInKernel  = true;
+    containerInfo.containerType = cont.second.containerType;
+    containerInfo.containerDataType = cont.second.containerDataType;
+    containerInfo.usage = kslicer::DATA_USAGE::USAGE_USER;
+    containerInfo.kind  = cont.second.info.kind;
+    dataMembersCached[cont.first] = containerInfo;
+  }
 
   std::unordered_map<std::string, kslicer::ShittyFunction> shittyFunctions;
   if(a_classInfo.pShaderCC->IsGLSL())
@@ -446,7 +462,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernels = a_classInfo.kernels;
   }
 
-  data["Kernels"] = std::vector<std::string>();
+  data["Kernels"] = std::vector<json>();
   for (const auto& nk : kernels)
   {
     const auto& k = nk.second;
@@ -458,7 +474,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     uint MArgsSize  = 0;
     bool isTextureArrayUsedInThisKernel = false;
 
-    json args = std::vector<std::string>();
+    json args = std::vector<json>();
     for(auto commonArg : commonArgs)
     {
       json argj;
@@ -488,8 +504,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     // now add all std::vector members
     //
-    json rtxNames = std::vector<std::string>();
-    json vecs = std::vector<std::string>();
+    json rtxNames = std::vector<json>();
+    json vecs     = std::vector<json>();
     for(const auto& container : k.usedContainers)
     {
       auto pVecMember     = dataMembersCached.find(container.second.name);
