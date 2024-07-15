@@ -621,6 +621,10 @@ int main(int argc, const char **argv)
     inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
     inputCodeInfo.ExtractVFHConstants(compiler, Tool);
     usedFunctions = kslicer::ExtractUsedFromVFH(inputCodeInfo, compiler, usedFunctionsMap);
+
+    for(auto& nk : inputCodeInfo.kernels)
+      inputCodeInfo.VisitAndPrepare_KF(nk.second, compiler); // move data from usedContainersProbably to usedContainers if a kernel actually uses it
+
     std::cout << std::endl;
   }
 
@@ -928,6 +932,12 @@ int main(int argc, const char **argv)
     kernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
   }
 
+  // process usedContainersProbably to get all vectors and it's size/capacity
+  //
+  {
+
+  }
+
   inputCodeInfo.kernelsCallCmdDeclCached.clear();
   std::string rawname = kslicer::CutOffFileExt(allFiles[0]);
   auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls,
@@ -955,7 +965,8 @@ int main(int argc, const char **argv)
   std::string shaderCCName2 = inputCodeInfo.pShaderCC->Name();
   std::cout << "(8) Generate " << shaderCCName2.c_str() << " kernels" << std::endl;
   std::cout << "{" << std::endl;
-
+  
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   if(inputCodeInfo.megakernelRTV) // join all kernels in one for each CF, WE MUST REPEAT THIS HERE BECAUSE OF SHITTY FUNCTIONS ARE PROCESSED DURING 'VisitAndRewrite_KF' for kernels !!!
   {
     for(auto& k : inputCodeInfo.kernels)
@@ -1017,6 +1028,7 @@ int main(int argc, const char **argv)
     for(auto& k : inputCodeInfo.kernels)
       k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
   }
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO, usedDefines, textGenSettings);
   if(inputCodeInfo.pShaderCC->IsISPC()) {

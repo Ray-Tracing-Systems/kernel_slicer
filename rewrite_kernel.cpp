@@ -418,17 +418,31 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
 
 bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-  {
-    DetectTextureAccess(f);
-    return true; 
-  }
-
   // Get name of function
   //
   const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
   const DeclarationName dn      = dni.getName();
         std::string fname       = dn.getAsString();
+
+  if(m_infoPass) // don't have to rewrite during infoPass
+  {
+    DetectTextureAccess(f);
+
+    if(kslicer::IsCalledWithArrowAndVirtual(f)) // DetectDataAccessFromVFH
+    {
+      auto buffAndOffset = kslicer::GetVFHAccessNodes(f);
+      if(buffAndOffset.buffNode != nullptr && buffAndOffset.offsetNode != nullptr)
+      {
+        for(auto container : m_codeInfo->usedContainersProbably) // if container is used inside curr interface impl, add it to usedContainers list for current kernel  
+        {
+          if(container.second.interfaceName == buffAndOffset.interfaceName)
+            m_currKernel.usedContainers[container.second.info.name] = container.second.info;
+        }
+      }
+    }
+
+    return true; 
+  }
 
   if(kslicer::IsCalledWithArrowAndVirtual(f) && WasNotRewrittenYet(f))
   {
@@ -464,11 +478,11 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
       m_rewriter.ReplaceText(f->getSourceRange(), vcallFunc);
       MarkRewritten(f);
 
-      for(auto container : m_codeInfo->usedContainersProbably) // if container is used inside curr interface impl, add it to usedContainers list for current kernel  
-      {
-        if(container.second.interfaceName == buffAndOffset.interfaceName)
-          m_currKernel.usedContainers[container.second.info.name] = container.second.info;
-      }
+      //for(auto container : m_codeInfo->usedContainersProbably) // if container is used inside curr interface impl, add it to usedContainers list for current kernel  
+      //{
+      //  if(container.second.interfaceName == buffAndOffset.interfaceName)
+      //    m_currKernel.usedContainers[container.second.info.name] = container.second.info;
+      //}
     }
   }
 

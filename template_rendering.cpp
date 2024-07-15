@@ -462,7 +462,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernels = a_classInfo.kernels;
   }
 
-  data["Kernels"] = std::vector<std::string>();
+  data["Kernels"] = std::vector<json>();
   for (const auto& nk : kernels)
   {
     const auto& k = nk.second;
@@ -474,7 +474,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     uint MArgsSize  = 0;
     bool isTextureArrayUsedInThisKernel = false;
 
-    json args = std::vector<std::string>();
+    json args = std::vector<json>();
     for(auto commonArg : commonArgs)
     {
       json argj;
@@ -504,8 +504,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     // now add all std::vector members
     //
-    json rtxNames = std::vector<std::string>();
-    json vecs = std::vector<std::string>();
+    json rtxNames = std::vector<json>();
+    json vecs     = std::vector<json>();
     for(const auto& container : k.usedContainers)
     {
       auto pVecMember     = dataMembersCached.find(container.second.name);

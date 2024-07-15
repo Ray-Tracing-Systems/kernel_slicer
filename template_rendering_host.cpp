@@ -546,10 +546,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   }
 
   data["TotalDSNumber"]   = a_classInfo.allDescriptorSetsInfo.size();
-  data["VectorMembers"]   = std::vector<std::string>();
-  data["TextureMembers"]  = std::vector<std::string>();
-  data["TexArrayMembers"] = std::vector<std::string>();
-  data["SceneMembers"]    = std::vector<std::string>(); // ray tracing specific objects
+  data["VectorMembers"]   = std::vector<json>();
+  data["TextureMembers"]  = std::vector<json>();
+  data["TexArrayMembers"] = std::vector<json>();
+  data["SceneMembers"]    = std::vector<json>(); // ray tracing specific objects
   for(const auto var : a_classInfo.dataMembers)
   {
     if(var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED || var.IsUsedTexture())
