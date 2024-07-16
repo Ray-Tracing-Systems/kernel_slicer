@@ -389,7 +389,6 @@ int main(int argc, const char **argv)
       composClassNames.push_back(composeAPIName);
     if(composeImplName != "")
       composClassNames.push_back(composeImplName);
-
     composClassNames.insert(composClassNames.end(), baseClases.begin(), baseClases.end()); // process all base classes also
   }
   

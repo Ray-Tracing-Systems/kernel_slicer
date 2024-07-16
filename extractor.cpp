@@ -306,9 +306,7 @@ public:
     if(pPrefix != m_codeInfo.composPrefix.end())
       prefixName = pPrefix->second;
     else if(thisTypeName != m_codeInfo.mainClassName) 
-      return true;                                   
-    //else if(m_codeInfo.mainClassNames.find(thisTypeName) != m_codeInfo.mainClassNames.end())
-    //  return true;
+      return true;          
 
     // process access to arguments payload->xxx
     //
@@ -325,6 +323,10 @@ public:
 
     if(member.name == "")
       return true;
+    
+    for(auto compos : m_codeInfo.composPrefix) // don't add composed members in used members list
+      if(compos.second == member.name)
+        return true;
     
     m_usedMembers[member.name] = member;
 
