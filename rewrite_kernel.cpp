@@ -947,10 +947,15 @@ void kslicer::KernelRewriter::DetectDataAccessFromVFH(clang::CXXMemberCallExpr* 
     auto buffAndOffset = kslicer::GetVFHAccessNodes(call);
     if(buffAndOffset.buffNode != nullptr && buffAndOffset.offsetNode != nullptr)
     {
-      for(auto container : m_codeInfo->usedContainersProbably) // if container is used inside curr interface impl, add it to usedContainers list for current kernel  
+      for(auto container : m_codeInfo->usedProbably) // if container is used inside curr interface impl, add it to usedContainers list for current kernel  
       {
-        if(container.second.interfaceName == buffAndOffset.interfaceName)
-          m_currKernel.usedContainers[container.second.info.name] = container.second.info;
+        if(container.second.interfaceName == buffAndOffset.interfaceName) 
+        {
+          if(container.second.isContainer)
+            m_currKernel.usedContainers[container.second.info.name] = container.second.info;
+          else
+            m_currKernel.usedMembers.insert(container.second.info.name);
+        }
       }
     }
   }

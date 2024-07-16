@@ -57,26 +57,37 @@ public:
       auto p = m_codeInfo->allDataMembers.find(fieldName);
       if(p != m_codeInfo->allDataMembers.end()) 
       {
+        kslicer::UsedContainerInfo container;
+        container.name    = p->first;
+        container.type    = p->second.type;
+        container.kind    = p->second.kind;
+        container.isConst = qt.isConstQualified();
+
         if(isContainer)
         {
-          kslicer::UsedContainerInfo container;
-          container.name    = p->first;
-          container.type    = p->second.type;
-          container.kind    = p->second.kind;
-          container.isConst = qt.isConstQualified();
-
-          kslicer::ProbablyUsedContainer pcontainer;
+          kslicer::ProbablyUsed pcontainer;
           pcontainer.astNode       = pFieldDecl;
+          pcontainer.isContainer   = true;
           pcontainer.info          = container;
           pcontainer.interfaceName = m_interfaceName;
           pcontainer.className     = m_className;
           pcontainer.objBufferName = m_objBufferName;
           auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
           kslicer::SplitContainerTypes(specDecl, pcontainer.containerType, pcontainer.containerDataType);
-          m_codeInfo->usedContainersProbably[container.name] = pcontainer;
+          m_codeInfo->usedProbably[container.name] = pcontainer;
         }
         else
+        {
+          kslicer::ProbablyUsed pvar;
+          pvar.astNode       = pFieldDecl;
+          pvar.isContainer   = false;
+          pvar.info          = container;
+          pvar.interfaceName = m_interfaceName;
+          pvar.className     = m_className;
+          pvar.objBufferName = m_objBufferName;
+          m_codeInfo->usedProbably[container.name] = pvar;
           p->second.usedInKernel = true;
+        }
       }
 
       m_rewriter.ReplaceText(expr->getSourceRange(), prefix + fieldName);

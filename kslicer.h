@@ -70,9 +70,10 @@ namespace kslicer
   bool  IsSamplerTypeName(const std::string& a_typeName);  ///<! return true for all types of textures
   bool  IsCombinedImageSamplerTypeName(const std::string& a_typeName);  ///<! return true for all types of image combined samplers
 
-  struct ProbablyUsedContainer
+  struct ProbablyUsed
   {
     clang::FieldDecl* astNode = nullptr;
+    bool isContainer;
     UsedContainerInfo info;
     std::string interfaceName;
     std::string className;
@@ -998,7 +999,7 @@ namespace kslicer
     std::unordered_map<std::string, KernelInfo>     allKernels;       ///<! list of all kernels; used only on the second pass to identify Control Functions; it is not recommended to use it anywhere else
     std::unordered_map<std::string, KernelInfo>     allOtherKernels;  ///<! kernels from other classes. we probably need them if they are used.
     std::unordered_map<std::string, DataMemberInfo> allDataMembers;   ///<! list of all class data members;
-    std::unordered_map<std::string, ProbablyUsedContainer> usedContainersProbably; ///<! containers which are used in virtual functions and probably will be used in *SOME* kernels
+    std::unordered_map<std::string, ProbablyUsed>   usedProbably;     ///<! variables which are used in virtual functions and *probably* will be used in *SOME* kernels if they call these virtual functions
 
     std::unordered_set<std::string>                 usedServiceCalls; ///<! memcpy, memset, scan, sort and e.t.c.
     std::unordered_map<std::string, ServiceCall>    serviceCalls;     ///<! actual list of used service calls

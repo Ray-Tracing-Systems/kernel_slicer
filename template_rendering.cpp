@@ -332,8 +332,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   dataMembersCached.reserve(a_classInfo.dataMembers.size());
   for(const auto& member : a_classInfo.dataMembers)
     dataMembersCached[member.name] = member;
-  for(const auto& cont : a_classInfo.usedContainersProbably) 
+  for(const auto& cont : a_classInfo.usedProbably) 
   {
+    if(!cont.second.isContainer)
+      continue;
     DataMemberInfo containerInfo;
     containerInfo.isArray     = false;
     containerInfo.isPointer   = false;
