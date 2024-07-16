@@ -66,6 +66,7 @@ public:
           container.isConst = qt.isConstQualified();
 
           kslicer::ProbablyUsedContainer pcontainer;
+          pcontainer.astNode       = pFieldDecl;
           pcontainer.info          = container;
           pcontainer.interfaceName = m_interfaceName;
           pcontainer.className     = m_className;

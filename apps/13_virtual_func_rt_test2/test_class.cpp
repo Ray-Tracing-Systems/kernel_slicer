@@ -308,6 +308,7 @@ void  TestClass::kernel_NextBounce(uint tid, uint* mid, const Lite_Hit* in_hit, 
     pGen[tid]       = gen;
     
     const BxDFSample matSam   = SampleMaterial(mid2, *rayPosAndNear, *rayDirAndFar, hit, uv); // (m_materials.data() + mid2)->SampleAndEvalBxDF(*rayPosAndNear, *rayDirAndFar, hit, uv, this);
+    //const BxDFSample matSam   = (m_materials.data() + mid2)->SampleAndEvalBxDF(*rayPosAndNear, *rayDirAndFar, hit, uv, this);
     const float3     bxdfVal  = matSam.brdfVal * (1.0f / std::max(matSam.pdfVal, 1e-10f));
     const float      cosTheta = dot(matSam.newDir, hit.norm);
     

@@ -264,7 +264,7 @@ public:
 
   DataExtractor(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo,
                 std::unordered_map<std::string, kslicer::DataMemberInfo>& a_members, std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers) :
-                m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_patternImpl(a_codeInfo), m_usedMembers(a_members), m_auxContainers(a_auxContainers)
+                m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_codeInfo(a_codeInfo), m_usedMembers(a_members), m_auxContainers(a_auxContainers)
   {
 
   }
@@ -274,7 +274,7 @@ public:
     //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 
     std::string setter, containerName;
-    if(kslicer::CheckSettersAccess(expr, &m_patternImpl, m_compiler, &setter, &containerName))
+    if(kslicer::CheckSettersAccess(expr, &m_codeInfo, m_compiler, &setter, &containerName))
     {
       clang::QualType qt = expr->getType(); //
       kslicer::UsedContainerInfo container;
@@ -297,12 +297,12 @@ public:
     clang::RecordDecl* pRecodDecl = pFieldDecl->getParent();
 
     const std::string thisTypeName = kslicer::CleanTypeName(pRecodDecl->getNameAsString());
-    const auto pPrefix             = m_patternImpl.composPrefix.find(thisTypeName);
+    const auto pPrefix             = m_codeInfo.composPrefix.find(thisTypeName);
 
     std::string prefixName = "";
-    if(pPrefix != m_patternImpl.composPrefix.end())
+    if(pPrefix != m_codeInfo.composPrefix.end())
       prefixName = pPrefix->second;
-    else if(thisTypeName != m_patternImpl.mainClassName)
+    else if(thisTypeName != m_codeInfo.mainClassName)
       return true;
 
     // process access to arguments payload->xxx
@@ -322,10 +322,32 @@ public:
     return true;
   }
 
+  bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* call)
+  { 
+    if(kslicer::IsCalledWithArrowAndVirtual(call))
+    {
+      auto buffAndOffset = kslicer::GetVFHAccessNodes(call);
+      if(buffAndOffset.buffNode != nullptr && buffAndOffset.offsetNode != nullptr)
+      {
+        for(auto container : m_codeInfo.usedContainersProbably) // if container is used inside curr interface impl, add it to usedContainers list for current kernel  
+        {
+          if(container.second.interfaceName == buffAndOffset.interfaceName) 
+          {
+            auto member = kslicer::ExtractMemberInfo(container.second.astNode, m_compiler.getASTContext());
+            m_usedMembers[member.name] = member;
+          }
+        }
+      }
+    }
+    //std::cout << "  [DataExtractor]: catch " << fname.c_str() << std::endl;
+
+    return true;
+  }
+
 private:
   const clang::CompilerInstance& m_compiler;
   const clang::SourceManager&    m_sm;
-  kslicer::MainClassInfo&        m_patternImpl;
+  kslicer::MainClassInfo&        m_codeInfo;
   std::unordered_map<std::string, kslicer::DataMemberInfo>& m_usedMembers;
   std::unordered_map<std::string, kslicer::UsedContainerInfo>& m_auxContainers;
 

@@ -72,6 +72,7 @@ namespace kslicer
 
   struct ProbablyUsedContainer
   {
+    clang::FieldDecl* astNode = nullptr;
     UsedContainerInfo info;
     std::string interfaceName;
     std::string className;
@@ -673,7 +674,6 @@ namespace kslicer
     virtual kslicer::ShaderFeatures GetShaderFeatures() const { return kslicer::ShaderFeatures(); }
     virtual std::unordered_set<uint64_t> GetVisitedNodes() const = 0;
     virtual bool IsInfoPass() const = 0;
-    virtual void DeteclAllAccessByMemberCall(clang::CXXMemberCallExpr* f) = 0;
   };
 
   /**
