@@ -653,7 +653,7 @@ namespace kslicer
     virtual bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                { return true; } // override this in Derived class
 
     virtual bool VisitMemberExpr_Impl(clang::MemberExpr* expr)            { return true; } // override this in Derived class
-    virtual bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) { return true; } // override this in Derived class
+    virtual bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) { return true; } // override this in Derived class 
     virtual bool VisitFieldDecl_Impl(clang::FieldDecl* decl)              { return true; } // override this in Derived class
     virtual bool VisitUnaryOperator_Impl(clang::UnaryOperator* op)        { return true; } // override this in Derived class
     virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)    { return true; } // override this in Derived class
@@ -672,6 +672,8 @@ namespace kslicer
     virtual std::string RecursiveRewriteImpl(const clang::Stmt* expr) = 0;
     virtual kslicer::ShaderFeatures GetShaderFeatures() const { return kslicer::ShaderFeatures(); }
     virtual std::unordered_set<uint64_t> GetVisitedNodes() const = 0;
+    virtual bool IsInfoPass() const = 0;
+    virtual void DeteclAllAccessByMemberCall(clang::CXXMemberCallExpr* f) = 0;
   };
 
   /**
@@ -695,6 +697,7 @@ namespace kslicer
     bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)  override;
     bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
   
+    bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) override;
     bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
   
     std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
@@ -796,6 +799,7 @@ namespace kslicer
     void DetectTextureAccess(clang::CXXMemberCallExpr*   call);
     void DetectTextureAccess(clang::BinaryOperator* expr);
     void DetectFuncReductionAccess(const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
+    void DetectDataAccessFromVFH(clang::CXXMemberCallExpr* call);
     void ProcessReadWriteTexture(clang::CXXOperatorCallExpr* expr, bool write);
 
     clang::Rewriter&                                         m_rewriter;

@@ -427,20 +427,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
   if(m_infoPass) // don't have to rewrite during infoPass
   {
     DetectTextureAccess(f);
-
-    if(kslicer::IsCalledWithArrowAndVirtual(f)) // DetectDataAccessFromVFH
-    {
-      auto buffAndOffset = kslicer::GetVFHAccessNodes(f);
-      if(buffAndOffset.buffNode != nullptr && buffAndOffset.offsetNode != nullptr)
-      {
-        for(auto container : m_codeInfo->usedContainersProbably) // if container is used inside curr interface impl, add it to usedContainers list for current kernel  
-        {
-          if(container.second.interfaceName == buffAndOffset.interfaceName)
-            m_currKernel.usedContainers[container.second.info.name] = container.second.info;
-        }
-      }
-    }
-
+    DetectDataAccessFromVFH(f);
     return true; 
   }
 
@@ -477,12 +464,6 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
       std::string vcallFunc  = buffAndOffset.interfaceName + "_" + fname + "_" + buffText2 + textCallNoName + ")";
       m_rewriter.ReplaceText(f->getSourceRange(), vcallFunc);
       MarkRewritten(f);
-
-      //for(auto container : m_codeInfo->usedContainersProbably) // if container is used inside curr interface impl, add it to usedContainers list for current kernel  
-      //{
-      //  if(container.second.interfaceName == buffAndOffset.interfaceName)
-      //    m_currKernel.usedContainers[container.second.info.name] = container.second.info;
-      //}
     }
   }
 
@@ -957,6 +938,22 @@ void kslicer::KernelRewriter::DetectTextureAccess(CXXOperatorCallExpr* expr)
   }
   else if(op == "]" || op == "[" || op == "[]")
     ProcessReadWriteTexture(expr, false);
+}
+
+void kslicer::KernelRewriter::DetectDataAccessFromVFH(clang::CXXMemberCallExpr* call)
+{
+  if(kslicer::IsCalledWithArrowAndVirtual(call))
+  {
+    auto buffAndOffset = kslicer::GetVFHAccessNodes(call);
+    if(buffAndOffset.buffNode != nullptr && buffAndOffset.offsetNode != nullptr)
+    {
+      for(auto container : m_codeInfo->usedContainersProbably) // if container is used inside curr interface impl, add it to usedContainers list for current kernel  
+      {
+        if(container.second.interfaceName == buffAndOffset.interfaceName)
+          m_currKernel.usedContainers[container.second.info.name] = container.second.info;
+      }
+    }
+  }
 }
 
 bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(CXXOperatorCallExpr* expr)

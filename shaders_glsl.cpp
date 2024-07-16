@@ -629,6 +629,17 @@ bool kslicer::GLSLFunctionRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::Un
   return true;
 }
 
+bool kslicer::GLSLFunctionRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) 
+{ 
+  if(m_pKernelRewriter != nullptr && m_pKernelRewriter->IsInfoPass()) // don't have to rewrite during infoPass
+  {
+    m_pKernelRewriter->DeteclAllAccessByMemberCall(f);
+    return true;
+  }
+  
+  return true; 
+}
+
 bool kslicer::GLSLFunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr)
 {
   std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
@@ -1301,6 +1312,14 @@ public:
 
   kslicer::ShaderFeatures GetShaderFeatures()       const override { return m_glslRW.GetShaderFeatures(); }
   kslicer::ShaderFeatures GetKernelShaderFeatures() const override { return m_glslRW.GetShaderFeatures(); }
+  bool                    IsInfoPass()              const override { return m_infoPass; }
+  void                    DeteclAllAccessByMemberCall(clang::CXXMemberCallExpr* f) override
+  {
+    if(!m_infoPass)
+      return;
+    DetectTextureAccess(f);
+    DetectDataAccessFromVFH(f);
+  }
 
 protected:
 
