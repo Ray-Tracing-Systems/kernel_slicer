@@ -226,8 +226,35 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassI
   for(const auto& k : a_codeInfo.kernels)  // (1) first traverse kernels as used functions
     functionsToProcess.push(FuncDataFromKernel(k.second));
   
+  std::unordered_set<uint64_t> controlFunctions;
+  if(a_codeInfo.megakernelRTV) {
+    for(auto m : a_codeInfo.mainFunc) {
+       kslicer::FuncData func; // FuncDataFromControlFunction
+       func.name     = m.Name;
+       func.astNode  = m.Node;
+       func.srcRange = m.Node->getSourceRange();
+       func.srcHash  = GetHashOfSourceRange(func.srcRange);
+       func.isMember = true; 
+       func.isKernel = false;
+       func.depthUse = 0;
+       functionsToProcess.push(func);
+       controlFunctions.insert(func.srcHash);
+    }
+  }
+
   kslicer::ProcessFunctionsInQueueBFS(a_codeInfo, a_compiler, functionsToProcess, // functionsToProcess => usedFunctions
                                       usedFunctions);
+  
+  if(a_codeInfo.megakernelRTV) // remove control functions theirselves from 'usedFunctions'
+  {
+    auto usedFunctionsCleaned = usedFunctions;
+    for(auto func : usedFunctions) {
+      auto p = controlFunctions.find(func.second.srcHash);
+      if(p != controlFunctions.end())
+         usedFunctionsCleaned.erase(func.second.srcHash);
+    }
+    usedFunctions = usedFunctionsCleaned;
+  }
 
   return kslicer::SortByDepthInUse(usedFunctions);
 }

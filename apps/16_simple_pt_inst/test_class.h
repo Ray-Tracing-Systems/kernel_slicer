@@ -11,6 +11,8 @@
 
 #include "CrossRT.h"
 
+static inline float testFun() { return 1.0f; }
+
 class TestClass // : public DataClass
 {
 public:

@@ -715,7 +715,7 @@
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore",
                         "-I${workspaceFolder}/TINYSTL",         "ignore",
                         "-I${workspaceFolder}/apps/RayTracing", "process",
-                        "-megakernel", "1",
+                        "-megakernel", "0",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,
