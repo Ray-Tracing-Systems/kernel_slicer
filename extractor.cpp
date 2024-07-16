@@ -274,7 +274,7 @@ public:
 
   bool VisitMemberExpr(clang::MemberExpr* expr)
   {
-    //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 
     std::string setter, containerName;
     if(kslicer::CheckSettersAccess(expr, &m_codeInfo, m_compiler, &setter, &containerName))
@@ -305,8 +305,10 @@ public:
     std::string prefixName = "";
     if(pPrefix != m_codeInfo.composPrefix.end())
       prefixName = pPrefix->second;
-    if(m_codeInfo.mainClassNames.find(thisTypeName) != m_codeInfo.mainClassNames.end())
-      return true;
+    else if(thisTypeName != m_codeInfo.mainClassName) 
+      return true;                                   
+    //else if(m_codeInfo.mainClassNames.find(thisTypeName) != m_codeInfo.mainClassNames.end())
+    //  return true;
 
     // process access to arguments payload->xxx
     //
