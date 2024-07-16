@@ -23,7 +23,9 @@ namespace kslicer
                                                        const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool);
 
   std::unordered_map<std::string, kslicer::DataMemberInfo> ExtractUsedMemberData(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMambers,
-                                                                                 std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers, MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);
+                                                                                 std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers, 
+                                                                                 const std::unordered_set<std::string>& a_excludedByNames,
+                                                                                 MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);
 
   std::vector< std::unordered_map<std::string, std::string> > ArgMatchTraversal(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMambers,
                                                                                 MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);

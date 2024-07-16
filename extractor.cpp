@@ -206,22 +206,25 @@ std::vector<kslicer::FuncData> kslicer::SortByDepthInUse(const std::unordered_ma
   return result;
 }
 
+kslicer::FuncData kslicer::FuncDataFromKernel(const kslicer::KernelInfo& k)
+{
+  kslicer::FuncData func;
+  func.name     = k.name;
+  func.astNode  = k.astNode;
+  func.srcRange = k.astNode->getSourceRange();
+  func.srcHash  = GetHashOfSourceRange(func.srcRange);
+  func.isMember = true; 
+  func.isKernel = true;
+  func.depthUse = 0;
+  return func;
+}
+
 std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions)
 {
   std::queue<FuncData> functionsToProcess;
 
-  for(const auto& k : a_codeInfo.kernels)        // (1) first traverse kernels as used functions
-  {
-    kslicer::FuncData func;
-    func.name     = k.second.name;
-    func.astNode  = k.second.astNode;
-    func.srcRange = k.second.astNode->getSourceRange();
-    func.srcHash  = GetHashOfSourceRange(func.srcRange);
-    func.isMember = true; //isa<clang::CXXMethodDecl>(kernel.astNode);
-    func.isKernel = true;
-    func.depthUse = 0;
-    functionsToProcess.push(func);
-  }
+  for(const auto& k : a_codeInfo.kernels)  // (1) first traverse kernels as used functions
+    functionsToProcess.push(FuncDataFromKernel(k.second));
   
   kslicer::ProcessFunctionsInQueueBFS(a_codeInfo, a_compiler, functionsToProcess, // functionsToProcess => usedFunctions
                                       usedFunctions);
@@ -302,7 +305,7 @@ public:
     std::string prefixName = "";
     if(pPrefix != m_codeInfo.composPrefix.end())
       prefixName = pPrefix->second;
-    else if(thisTypeName != m_codeInfo.mainClassName)
+    if(m_codeInfo.mainClassNames.find(thisTypeName) != m_codeInfo.mainClassNames.end())
       return true;
 
     // process access to arguments payload->xxx
@@ -317,6 +320,10 @@ public:
       member.hasPrefix   = true;
       member.prefixName  = pPrefix->second;
     }
+
+    if(member.name == "")
+      return true;
+    
     m_usedMembers[member.name] = member;
 
     return true;
@@ -354,7 +361,9 @@ private:
 };
 
 std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMemberData(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMembers,
-                                                                                        std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers, MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
+                                                                                        std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers, 
+                                                                                        const std::unordered_set<std::string>& a_excludedByNames,
+                                                                                        MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
 {
   std::unordered_map<std::string, kslicer::DataMemberInfo> result;
   std::unordered_map<std::string, kslicer::FuncData>       allMembers;
@@ -382,7 +391,7 @@ std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMem
     for(auto nextFuncName : currFunc.calledMembers)
     {
       auto pNext = allMembers.find(nextFuncName);
-      if(pNext != allMembers.end())
+      if(pNext != allMembers.end() && a_excludedByNames.find(nextFuncName) == a_excludedByNames.end())
         functionsToProcess.push(pNext->second);
     }
   }

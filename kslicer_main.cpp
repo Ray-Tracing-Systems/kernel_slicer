@@ -617,7 +617,7 @@ int main(int argc, const char **argv)
   // process virtual functions
   if(hasVirtual)
   {
-    std::cout << "  Process Virtual-Functions-Hierarchies:" << std::endl;
+    std::cout << "(4.0) Process Virtual-Functions-Hierarchies:" << std::endl;
     inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
     inputCodeInfo.ExtractVFHConstants(compiler, Tool);
     usedFunctions = kslicer::ExtractUsedFromVFH(inputCodeInfo, compiler, usedFunctionsMap);
@@ -641,15 +641,21 @@ int main(int argc, const char **argv)
     std::cout << "{" << std::endl;
     for(auto& k : inputCodeInfo.kernels)
     {
-      for(const auto& f : usedFunctions)
+      auto usedFunctionsCopy = usedFunctions;                             // process kernel in the same way as used member functions by this kernel
+      usedFunctionsCopy.push_back(kslicer::FuncDataFromKernel(k.second)); // 
+      std::unordered_set<std::string> excludedbyNames;                    // but at the same time we must remember that we process 'shittyFunctions'
+      for(auto f : k.second.shittyFunctions)                              // in a different way, so don't process them here!
+        excludedbyNames.insert(f.originalName);
+
+      for(const auto& f : usedFunctionsCopy)
       {
         if(f.isMember) // and if is called from this kernel.It it is called, list all input parameters for each call!
         {
           // list all input parameters for each call of member function inside kernel; in this way we know which textures, vectors and samplers were actually used by these functions
           //
           std::unordered_map<std::string, kslicer::UsedContainerInfo> auxContainers;
-          auto machedParams = kslicer::ArgMatchTraversal    (&k.second, f, usedFunctions,                inputCodeInfo, compiler);
-          auto usedMembers  = kslicer::ExtractUsedMemberData(&k.second, f, usedFunctions, auxContainers, inputCodeInfo, compiler);
+          auto machedParams = kslicer::ArgMatchTraversal    (&k.second, f, usedFunctions, inputCodeInfo, compiler);
+          auto usedMembers  = kslicer::ExtractUsedMemberData(&k.second, f, usedFunctions, auxContainers, excludedbyNames, inputCodeInfo, compiler);
 
           // TODO: process bindedParams correctly
           //

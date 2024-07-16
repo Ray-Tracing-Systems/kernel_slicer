@@ -800,7 +800,6 @@ namespace kslicer
     void DetectTextureAccess(clang::CXXMemberCallExpr*   call);
     void DetectTextureAccess(clang::BinaryOperator* expr);
     void DetectFuncReductionAccess(const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
-    void DetectDataAccessFromVFH(clang::CXXMemberCallExpr* call);
     void ProcessReadWriteTexture(clang::CXXOperatorCallExpr* expr, bool write);
 
     clang::Rewriter&                                         m_rewriter;
@@ -1225,8 +1224,8 @@ namespace kslicer
   std::string CutOffFileExt(const std::string& a_filePath);
   std::string CutOffStructClass(const std::string& a_typeName);
   std::string ReplaceSizeCapacityExpr(const std::string& a_str);
-
-
+  
+  FuncData FuncDataFromKernel(const kslicer::KernelInfo& k);
   uint64_t GetHashOfSourceRange(const clang::SourceRange& a_range);
   static constexpr size_t READ_BEFORE_USE_THRESHOLD = sizeof(float)*4;
 

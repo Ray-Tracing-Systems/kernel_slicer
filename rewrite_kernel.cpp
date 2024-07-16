@@ -427,7 +427,6 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
   if(m_infoPass) // don't have to rewrite during infoPass
   {
     DetectTextureAccess(f);
-    DetectDataAccessFromVFH(f);
     return true; 
   }
 
@@ -938,27 +937,6 @@ void kslicer::KernelRewriter::DetectTextureAccess(CXXOperatorCallExpr* expr)
   }
   else if(op == "]" || op == "[" || op == "[]")
     ProcessReadWriteTexture(expr, false);
-}
-
-void kslicer::KernelRewriter::DetectDataAccessFromVFH(clang::CXXMemberCallExpr* call)
-{
-  if(kslicer::IsCalledWithArrowAndVirtual(call))
-  {
-    auto buffAndOffset = kslicer::GetVFHAccessNodes(call);
-    if(buffAndOffset.buffNode != nullptr && buffAndOffset.offsetNode != nullptr)
-    {
-      for(auto container : m_codeInfo->usedProbably) // if container is used inside curr interface impl, add it to usedContainers list for current kernel  
-      {
-        if(container.second.interfaceName == buffAndOffset.interfaceName) 
-        {
-          if(container.second.isContainer)
-            m_currKernel.usedContainers[container.second.info.name] = container.second.info;
-          else
-            m_currKernel.usedMembers.insert(container.second.info.name);
-        }
-      }
-    }
-  }
 }
 
 bool kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(CXXOperatorCallExpr* expr)

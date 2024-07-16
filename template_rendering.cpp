@@ -351,7 +351,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     dataMembersCached[cont.first] = containerInfo;
   }
 
-  std::unordered_map<std::string, kslicer::ShittyFunction> shittyFunctions;
+  std::unordered_map<std::string, kslicer::ShittyFunction> shittyFunctions; //
   if(a_classInfo.pShaderCC->IsGLSL())
   {
     for(const auto& k : a_classInfo.kernels)
