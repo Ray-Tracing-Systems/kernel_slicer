@@ -643,9 +643,6 @@ int main(int argc, const char **argv)
     {
       auto usedFunctionsCopy = usedFunctions;                             // process kernel in the same way as used member functions by this kernel
       usedFunctionsCopy.push_back(kslicer::FuncDataFromKernel(k.second)); // 
-      std::unordered_set<std::string> excludedbyNames;                    // but at the same time we must remember that we process 'shittyFunctions'
-      for(auto f : k.second.shittyFunctions)                              // in a different way, so don't process them here!
-        excludedbyNames.insert(f.originalName);
 
       for(const auto& f : usedFunctionsCopy)
       {
@@ -655,7 +652,7 @@ int main(int argc, const char **argv)
           //
           std::unordered_map<std::string, kslicer::UsedContainerInfo> auxContainers;
           auto machedParams = kslicer::ArgMatchTraversal    (&k.second, f, usedFunctions, inputCodeInfo, compiler);
-          auto usedMembers  = kslicer::ExtractUsedMemberData(&k.second, f, usedFunctions, auxContainers, excludedbyNames, inputCodeInfo, compiler);
+          auto usedMembers  = kslicer::ExtractUsedMemberData(&k.second, f, usedFunctions, auxContainers, inputCodeInfo, compiler);
 
           // TODO: process bindedParams correctly
           //

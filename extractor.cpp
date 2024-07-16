@@ -364,7 +364,6 @@ private:
 
 std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMemberData(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMembers,
                                                                                         std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers, 
-                                                                                        const std::unordered_set<std::string>& a_excludedByNames,
                                                                                         MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
 {
   std::unordered_map<std::string, kslicer::DataMemberInfo> result;
@@ -393,7 +392,7 @@ std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMem
     for(auto nextFuncName : currFunc.calledMembers)
     {
       auto pNext = allMembers.find(nextFuncName);
-      if(pNext != allMembers.end() && a_excludedByNames.find(nextFuncName) == a_excludedByNames.end())
+      if(pNext != allMembers.end())
         functionsToProcess.push(pNext->second);
     }
   }
