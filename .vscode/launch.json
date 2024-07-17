@@ -2288,6 +2288,54 @@
         },
 
         {
+            "name"   : "Launch (LiteRT)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["/home/frol/PROG/msu-graphics-group/LiteRT/Renderer/eye_ray.cpp",
+                        "/home/frol/PROG/msu-graphics-group/LiteRT/BVH/BVH2Common.cpp",
+                        "-mainClass", "MultiRenderer", 
+                        "-composInterface", "ISceneObject",
+                        "-composImplementation", "BVHRT",
+                        
+                        "-pattern",    "rtv",
+                        "-suffix",     "_GPU",
+                        "-megakernel", "1",
+                        "-shaderCC",   "glsl",
+                        
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-I${workspaceFolder}/TINYSTL",            "ignore",
+                        "-I${workspaceFolder}/apps",          "ignore",
+                        "-I${workspaceFolder}/apps/LiteMath", "ignore",
+
+                        "-I/home/frol/PROG/msu-graphics-group/LiteRT",               "process",
+                        "-I/home/frol/PROG/msu-graphics-group/LiteRT/Renderer",      "process",
+                        "-I/home/frol/PROG/msu-graphics-group/LiteRT/BVH",           "process",
+                        "-I/home/frol/PROG/msu-graphics-group/LiteRT/sdfScene",      "ignore",
+                        
+                        "-DPUGIXML_NO_EXCEPTIONS",
+                        "-DDISABLE_SDF_OCTREE",
+                        "-DDISABLE_SDF_GRID",
+                        "-DDISABLE_SDF_FRAME_OCTREE",
+                        "-DDISABLE_SDF_SBS",
+                        "-DDISABLE_SDF_HP",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (tutorial1_vec_add)",
             "type"   : "cppdbg",
             "request": "launch",
