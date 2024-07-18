@@ -2304,7 +2304,7 @@
                         "-shaderCC",   "glsl",
                         
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
-                        "-I${workspaceFolder}/TINYSTL",            "ignore",
+                        "-I${workspaceFolder}/TINYSTL",       "ignore",
                         "-I${workspaceFolder}/apps",          "ignore",
                         "-I${workspaceFolder}/apps/LiteMath", "ignore",
 
@@ -2317,7 +2317,7 @@
                         "-DDISABLE_SDF_OCTREE",
                         "-DDISABLE_SDF_GRID",
                         "-DDISABLE_SDF_FRAME_OCTREE",
-                        "-DDISABLE_SDF_SBS",
+                        //"-DDISABLE_SDF_SBS",
                         "-DDISABLE_SDF_HP",
                         "-DKERNEL_SLICER",
                         "-v"],
