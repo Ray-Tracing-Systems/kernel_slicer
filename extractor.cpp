@@ -96,7 +96,6 @@ public:
   
     if(func.isKernel && pCurrProcessedFunc != nullptr && pCurrProcessedFunc->isKernel)
     {
-      assert(pCurrProcessedFunc != nullptr);
       kslicer::PrintError(std::string("Calling kernel + '" + func.name + "' from a kernel is not allowed currently, ") + pCurrProcessedFunc->name, func.srcRange, m_sm);
       return true;
     }
