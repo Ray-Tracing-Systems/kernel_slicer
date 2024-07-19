@@ -309,6 +309,37 @@
         },
 
         {
+            "name"   : "Launch (app_05/GLSL_Windows)",
+            "type"   : "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Release/kslicer",
+            "args"   : ["${workspaceFolder}/apps/05_filter_bloom_good/test_class.cpp",
+                        "-mainClass", "ToneMapping", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-reorderLoops", "YX",
+                        "-I${workspaceFolder}/apps/LiteMath", "ignore", 
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",
+                        "-I${workspaceFolder}/TINYSTL",       "ignore",
+                        "-shaderCC", "glsl",
+                        "-suffix", "_GPU",
+                        "-DKERNEL_SLICER",
+                        "-DWIN32",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (app_06/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",

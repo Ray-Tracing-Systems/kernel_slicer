@@ -1,0 +1,56 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+
+#include "common_gpu.h"
+layout(binding = 0, set = 0) buffer data0 { vec4 a_dataIn[]; }; //
+layout(binding = 1, set = 0) buffer data1 { vec4 a_dataOut[]; }; //
+layout(binding = 2, set = 0) buffer data2 { float m_filterWeights[]; }; //
+layout(binding = 3, set = 0) buffer dataUBO { ToneMapping_GPU_UBO_Data ubo; };
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+layout(local_size_x = 32, local_size_y = 8, local_size_z = 1) in;
+
+layout( push_constant ) uniform kernelArgs
+{
+  int width; 
+  int height; 
+  uint iNumElementsZ; 
+  uint tFlagsMask;    
+} kgenArgs;
+
+
+
+void main()
+{
+  bool runThisThread = true;
+  const int tidX = int(gl_GlobalInvocationID[0]); 
+  const int tidY = int(gl_GlobalInvocationID[1]); 
+  if(tidX >= kgenArgs.width + 0 || tidY >= kgenArgs.height + 0)
+    runThisThread = false;
+    if(runThisThread)
+  {
+  
+      vec4 summ = m_filterWeights[ubo.m_blurRadius]*a_dataIn[pitch(uint(tidX), uint(tidY), uint(ubo.m_widthSmall))]; 
+     
+      for (int wid = 1; wid < ubo.m_blurRadius; wid++) //  <--- * --->
+      {
+        int left  = tidX-wid;
+        int right = tidX+wid;
+    
+        if(left < 0) left = 0;
+        if(right >= ubo.m_widthSmall) right = ubo.m_widthSmall-1;
+    
+        vec4 p0 = m_filterWeights[wid + ubo.m_blurRadius]*a_dataIn[pitch(uint(left), uint(tidY), uint(ubo.m_widthSmall))]; 
+        vec4 p1 = m_filterWeights[wid + ubo.m_blurRadius]*a_dataIn[pitch(uint(right), uint(tidY), uint(ubo.m_widthSmall))]; 
+        summ = summ + (p0 + p1);
+      }
+    
+      a_dataOut[pitch(uint(tidX), uint(tidY), uint(ubo.m_widthSmall))] = summ;
+    
+  }
+}
+

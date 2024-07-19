@@ -1,0 +1,44 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+
+#include "common_gpu.h"
+layout(binding = 0, set = 0) buffer data0 { vec4 inData4f[]; }; //
+layout(binding = 1, set = 0) buffer data1 { vec4 a_brightPixels[]; }; //
+layout(binding = 2, set = 0) buffer dataUBO { ToneMapping_GPU_UBO_Data ubo; };
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+layout(local_size_x = 32, local_size_y = 8, local_size_z = 1) in;
+
+layout( push_constant ) uniform kernelArgs
+{
+  int width; 
+  int height; 
+  uint iNumElementsZ; 
+  uint tFlagsMask;    
+} kgenArgs;
+
+
+
+void main()
+{
+  bool runThisThread = true;
+  const int x = int(gl_GlobalInvocationID[0]); 
+  const int y = int(gl_GlobalInvocationID[1]); 
+  if(x >= kgenArgs.width + 0 || y >= kgenArgs.height + 0)
+    runThisThread = false;
+    if(runThisThread)
+  {
+  
+      vec4 pixel = inData4f[pitch(uint(x), uint(y), uint(ubo.m_width))];
+      if(pixel.x >= 1.0f || pixel.y >= 1.0f || pixel.z >= 1.0f)
+        a_brightPixels[pitch(uint(x), uint(y), uint(ubo.m_width))] = pixel;
+      else
+        a_brightPixels[pitch(uint(x), uint(y), uint(ubo.m_width))] = vec4(0, 0, 0, 0);      
+    
+  }
+}
+

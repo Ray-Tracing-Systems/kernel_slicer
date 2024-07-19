@@ -1,0 +1,5 @@
+glslangValidator -V kernel2D_ExtractBrightPixels.comp -o kernel2D_ExtractBrightPixels.comp.spv -DGLSL -I.. -ID:\PROG\kernel_slicer/apps/LiteMath -ID:\PROG\kernel_slicer/TINYSTL -ID:\PROG\kernel_slicer/apps/LiteMathAux 
+glslangValidator -V kernel2D_BlurY.comp -o kernel2D_BlurY.comp.spv -DGLSL -I.. -ID:\PROG\kernel_slicer/apps/LiteMath -ID:\PROG\kernel_slicer/TINYSTL -ID:\PROG\kernel_slicer/apps/LiteMathAux 
+glslangValidator -V kernel2D_DownSample4x.comp -o kernel2D_DownSample4x.comp.spv -DGLSL -I.. -ID:\PROG\kernel_slicer/apps/LiteMath -ID:\PROG\kernel_slicer/TINYSTL -ID:\PROG\kernel_slicer/apps/LiteMathAux 
+glslangValidator -V kernel2D_BlurX.comp -o kernel2D_BlurX.comp.spv -DGLSL -I.. -ID:\PROG\kernel_slicer/apps/LiteMath -ID:\PROG\kernel_slicer/TINYSTL -ID:\PROG\kernel_slicer/apps/LiteMathAux 
+glslangValidator -V kernel2D_MixAndToneMap.comp -o kernel2D_MixAndToneMap.comp.spv -DGLSL -I.. -ID:\PROG\kernel_slicer/apps/LiteMath -ID:\PROG\kernel_slicer/TINYSTL -ID:\PROG\kernel_slicer/apps/LiteMathAux 

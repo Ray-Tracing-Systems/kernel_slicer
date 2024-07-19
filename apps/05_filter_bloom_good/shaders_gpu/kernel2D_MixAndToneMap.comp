@@ -1,0 +1,89 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+
+#include "common_gpu.h"
+layout(binding = 0, set = 0) buffer data0 { vec4 inData4f[]; }; //
+layout(binding = 1, set = 0) buffer data1 { vec4 inBrightPixels[]; }; //
+layout(binding = 2, set = 0) buffer data2 { uint outData1ui[]; }; //
+layout(binding = 3, set = 0) buffer dataUBO { ToneMapping_GPU_UBO_Data ubo; };
+
+
+vec4 BilinearSample_inBrightPixels(uint dataOffset, int w, int h, float a_texCoordX, float a_texCoordY) {
+  const float fw = float((w));
+  const float fh = float((h));
+
+  const float ffx = clamp(a_texCoordX*fw - 0.5f, 0.0f, fw - 1.0f);
+  const float ffy = clamp(a_texCoordY*fh - 0.5f, 0.0f, fh - 1.0f);
+
+  const int px = int((ffx));
+  const int py = int((ffy));
+
+  const int stride = w;
+
+  const int px1 = (px < w - 1) ? px + 1 : px;
+  const int py1 = (py < h - 1) ? py + 1 : py;
+
+  const int offset0 = (px + py*stride);
+  const int offset1 = (px1 + py*stride);
+  const int offset2 = (px + py1*stride);
+  const int offset3 = (px1 + py1*stride);
+
+  const float  alpha = ffx - float(px);
+  const float  beta  = ffy - float(py);
+  const float  gamma = 1.0f - alpha;
+  const float  delta = 1.0f - beta;
+
+  const vec4 samplesA = inBrightPixels[offset0 + dataOffset]*gamma;
+  const vec4 samplesB = inBrightPixels[offset1 + dataOffset]*alpha;
+  const vec4 samplesC = inBrightPixels[offset2 + dataOffset]*gamma;
+  const vec4 samplesD = inBrightPixels[offset3 + dataOffset]*alpha;
+
+  const vec4 resultX0 = samplesA + samplesB;
+  const vec4 resultX1 = samplesC + samplesD;
+  const vec4 resultY0 = resultX0*delta;
+  const vec4 resultY1 = resultX1*beta;
+
+  return resultY0 + resultY1;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+layout(local_size_x = 32, local_size_y = 8, local_size_z = 1) in;
+
+layout( push_constant ) uniform kernelArgs
+{
+  int width; 
+  int height; 
+  uint iNumElementsZ; 
+  uint tFlagsMask;    
+} kgenArgs;
+
+
+
+void main()
+{
+  bool runThisThread = true;
+  const int tidX = int(gl_GlobalInvocationID[0]); 
+  const int tidY = int(gl_GlobalInvocationID[1]); 
+  if(tidX >= kgenArgs.width + 0 || tidY >= kgenArgs.height + 0)
+    runThisThread = false;
+    if(runThisThread)
+  {
+  
+      const float texCoordX = float((tidX)) / float((ubo.m_width));
+      const float texCoordY = float((tidY)) / float((ubo.m_height));
+      vec4 sampledColor = BilinearSample_inBrightPixels(0, ubo.m_widthSmall, ubo.m_heightSmall, texCoordX, texCoordY);
+      vec4 colorSumm = clamp(sampledColor + inData4f[pitch(uint(tidX), uint(tidY), uint(ubo.m_width))], 0.0f, 1.0f);
+    
+      colorSumm.x = pow(colorSumm.x, ubo.m_gammaInv);
+      colorSumm.y = pow(colorSumm.y, ubo.m_gammaInv);
+      colorSumm.z = pow(colorSumm.z, ubo.m_gammaInv);
+      colorSumm.w = 1.0f;
+    
+      outData1ui[pitch(uint(tidX), uint(tidY), uint(ubo.m_width))] = RealColorToUint32( colorSumm );
+    
+  }
+}
+

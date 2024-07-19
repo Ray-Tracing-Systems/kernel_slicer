@@ -391,7 +391,7 @@ int main(int argc, const char **argv)
       composClassNames.push_back(composeImplName);
     composClassNames.insert(composClassNames.end(), baseClases.begin(), baseClases.end()); // process all base classes also
   }
-  
+
   kslicer::InitialPassASTConsumer firstPassData(cfNames, mainClassName, composClassNames, compiler, inputCodeInfo);
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
 
