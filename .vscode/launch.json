@@ -618,7 +618,7 @@
                         "-mainClass", "TestClass", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
-                        "-megakernel", "0",
+                        "-megakernel", "1",
                         "-I${workspaceFolder}/apps/LiteMath",    "ignore",
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
                         "-I${workspaceFolder}/TINYSTL",          "ignore",
@@ -2300,7 +2300,7 @@
                         
                         "-pattern",    "rtv",
                         "-suffix",     "_GPU",
-                        "-megakernel", "1",
+                        "-megakernel", "0",
                         "-shaderCC",   "glsl",
                         
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",

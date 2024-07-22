@@ -238,6 +238,7 @@ nlohmann::json kslicer::PutHierarchiesDataToJson(const std::unordered_map<std::s
   json data = std::vector<json>();
   for(const auto& p : hierarchies)
     data.push_back(PutHierarchyToJson(p.second, compiler, a_classInfo));
+  //std::cout << data.dump(2) << std::endl;
   return data;
 }
 
