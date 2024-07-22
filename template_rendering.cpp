@@ -395,11 +395,20 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (2) declarations of struct, constants and typedefs inside class
   //
-  std::unordered_set<std::string> excludedNames;
-  for(auto pair : a_classInfo.m_setterVars)
-    excludedNames.insert(kslicer::CleanTypeName(pair.second));
+  std::unordered_set<std::string> excludedNames; 
+  {
+    for(auto pair : a_classInfo.m_setterVars)
+      excludedNames.insert(kslicer::CleanTypeName(pair.second));
+  }
 
-  data["ClassDecls"] = std::vector<std::string>();
+  std::unordered_set<std::string> excludedConstantsFromVFH;
+  {
+    for(const auto& p : a_classInfo.m_vhierarchy)
+      for(const auto& decl : p.second.usedDecls)
+        excludedConstantsFromVFH.insert(decl.name);
+  }
+
+  data["ClassDecls"] = std::vector<json>();
   std::map<std::string, kslicer::DeclInClass> specConsts;
   for(const auto decl : usedDecl)
   {
@@ -413,6 +422,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       specConsts[val] = decl;
       continue;
     }
+    
+    if(excludedConstantsFromVFH.find(decl.name) != excludedConstantsFromVFH.end())
+      continue;
 
     json c_decl;
     c_decl["Text"]    = a_classInfo.pShaderCC->PrintHeaderDecl(decl, compiler);

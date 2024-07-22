@@ -1502,10 +1502,15 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   // declarations of struct, constants and typedefs inside class
   //
   std::unordered_set<std::string> excludedNames;
-  for(auto pair : a_classInfo.m_setterVars)
-    excludedNames.insert(kslicer::CleanTypeName(pair.second));
+  {
+    for(auto pair : a_classInfo.m_setterVars)
+      excludedNames.insert(kslicer::CleanTypeName(pair.second));
+    //for(const auto& p : a_classInfo.m_vhierarchy)
+    //  for(const auto& decl : p.second.usedDecls)
+    //    excludedNames.insert(kslicer::CleanTypeName(decl.name));
+  }
 
-  data["ClassDecls"] = std::vector<std::string>();
+  data["ClassDecls"] = std::vector<json>();
   for(const auto decl : usedDecl)
   {
     if(!decl.extracted)
