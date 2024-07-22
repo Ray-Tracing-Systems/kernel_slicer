@@ -53,7 +53,15 @@ public:
       const std::string fieldTypeName = qt.getAsString(); 
       const auto typeDecl      = qt->getAsRecordDecl();
       const bool isContainer   = (typeDecl != nullptr) && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl);
-      const std::string prefix = isContainer ? "" : "ubo.";
+      
+      std::string prefix = "ubo.";
+      if(isContainer)
+      {
+        prefix = "";
+        auto pComposPrefix = m_codeInfo->composPrefix.find(thisTypeName);
+        if(pComposPrefix != m_codeInfo->composPrefix.end())
+          prefix = pComposPrefix->second + "_";
+      }
       
       auto p = m_codeInfo->allDataMembers.find(fieldName);
       if(p != m_codeInfo->allDataMembers.end()) 
