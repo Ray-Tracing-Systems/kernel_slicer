@@ -1,6 +1,7 @@
 #include "kslicer.h"
 #include "class_gen.h"
 #include "ast_matchers.h"
+#include "initial_pass.h"
 
 #include <sstream>
 #include <algorithm>
@@ -447,7 +448,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
       {
         const auto pParam                   = f->getArg(i);
         const clang::QualType typeOfParam   =	pParam->getType();
-        const std::string typeNameRewritten = typeOfParam.getAsString();
+        const std::string typeNameRewritten = kslicer::ClearTypeName(typeOfParam.getAsString());
         if(m_codeInfo->dataClassNames.find(typeNameRewritten) != m_codeInfo->dataClassNames.end()) 
         {
           if(i==f->getNumArgs()-1)
@@ -459,6 +460,10 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
         if(i < f->getNumArgs()-1)
           textCallNoName += ",";
       }
+      
+      auto pBuffNameFromVFH = m_codeInfo->m_vhierarchy.find(buffAndOffset.interfaceTypeName);
+      if(pBuffNameFromVFH != m_codeInfo->m_vhierarchy.end())
+        buffText2 = pBuffNameFromVFH->second.objBufferName;
 
       std::string vcallFunc  = buffAndOffset.interfaceName + "_" + fname + "_" + buffText2 + textCallNoName + ")";
       m_rewriter.ReplaceText(f->getSourceRange(), vcallFunc);
