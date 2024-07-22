@@ -2372,7 +2372,7 @@
                         
                         "-pattern",    "rtv",
                         "-suffix",     "_GPU",
-                        "-megakernel", "0",
+                        "-megakernel", "1",
                         "-shaderCC",   "glsl",
                         
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
