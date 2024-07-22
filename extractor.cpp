@@ -11,6 +11,24 @@
 #include <stack>
 #include <algorithm>
 
+static clang::MemberExpr* ExtractVCallDataMemberExpr(clang::Expr *expr, const std::string& a_targetName) 
+{
+  // Рекурсивно ищем выражение-член, соответствующее a_targetName
+  if (clang::MemberExpr *memberExpr = clang::dyn_cast<clang::MemberExpr>(expr)) 
+    if (memberExpr->getMemberDecl()->getNameAsString() == a_targetName)
+      return memberExpr;
+
+  for (clang::Stmt *child : expr->children()) 
+  {
+    if (child) 
+      if (clang::MemberExpr *result = ExtractVCallDataMemberExpr(clang::dyn_cast<clang::Expr>(child), a_targetName)) 
+        return result;
+  }
+
+  return nullptr;
+}
+
+
 class FuncExtractor : public clang::RecursiveASTVisitor<FuncExtractor>
 {
 public:
@@ -124,9 +142,31 @@ public:
       {
         if(isRTX)
           return true;                             // do not process HW accelerated calls
+
         auto posBegin = debugText.find("(");       // todo: make it better
         auto posEnd   = debugText.find(".data()"); //
         std::string buffName = debugText.substr(posBegin+1, posEnd-posBegin-1);
+        
+        const clang::MemberExpr* buffMemberExpr = ExtractVCallDataMemberExpr(call, buffName);  // wherther this is in compose class
+        if (buffMemberExpr != nullptr) 
+        {
+          const clang::ValueDecl* valueDecl = buffMemberExpr->getMemberDecl();
+          if(valueDecl != nullptr) 
+          {
+            // Проверяем, что это поле класса
+            if (const clang::FieldDecl* fieldDecl = clang::dyn_cast<const clang::FieldDecl>(valueDecl)) 
+            {
+              // Получаем родительский класс
+              if (const clang::CXXRecordDecl* parentClass = clang::dyn_cast<const clang::CXXRecordDecl>(fieldDecl->getParent()))
+              {
+                const std::string holderName = parentClass->getNameAsString();
+                auto holderPrefix = m_patternImpl.composPrefix.find(holderName);
+                if(holderPrefix != m_patternImpl.composPrefix.end())
+                  buffName = holderPrefix->second + "_" + buffName;
+              }
+            }
+          }
+        }
 
         func.thisTypeName = typeName;
         auto p = m_patternImpl.m_vhierarchy.find(typeName);

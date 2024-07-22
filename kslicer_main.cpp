@@ -616,7 +616,7 @@ int main(int argc, const char **argv)
   // process virtual functions
   if(hasVirtual)
   {
-    std::cout << "(4.0) Process Virtual-Functions-Hierarchies:" << std::endl;
+    std::cout << "  (4.0) Process Virtual-Functions-Hierarchies:" << std::endl;
     inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
     inputCodeInfo.ExtractVFHConstants(compiler, Tool);
     usedFunctions = kslicer::ExtractUsedFromVFH(inputCodeInfo, compiler, usedFunctionsMap);
@@ -741,7 +741,7 @@ int main(int argc, const char **argv)
     auto auxDecriptorSets = inputCodeInfo.allDescriptorSetsInfo;
     for(auto& mainFunc : inputCodeInfo.mainFunc)
     {
-      std::cout << " process subkernel " << mainFunc.Name.c_str() << std::endl;
+      std::cout << "  process subkernel " << mainFunc.Name.c_str() << std::endl;
       inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
     }
     inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);
