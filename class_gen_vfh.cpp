@@ -136,18 +136,22 @@ public:
 
     for(uint32_t i=0; i < fDecl->getNumParams(); i++)
     {
-      const clang::ParmVarDecl* pParam    = fDecl->getParamDecl(i);
-      const clang::QualType typeOfParam   =	pParam->getType();
-      const std::string typeNameRewritten = m_codeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(typeOfParam.getAsString());
+      const clang::ParmVarDecl* pParam        = fDecl->getParamDecl(i);
+      const clang::QualType typeOfParam       =	pParam->getType();
       const clang::IdentifierInfo* identifier = pParam->getIdentifier();
       if(identifier == nullptr)
         continue;
+      
+      std::string typeNameRewritten = m_codeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(typeOfParam.getAsString());
       if(dataClassNames.find(typeNameRewritten) != dataClassNames.end()) 
       {
         if(i==fDecl->getNumParams()-1)
           result[result.rfind(",")] = ' ';
         continue;
       }
+
+      if(typeOfParam->isPointerType() && !typeOfParam->getPointeeType().isConstQualified())
+        typeNameRewritten = std::string("inout ") + typeNameRewritten;
 
       result += typeNameRewritten + " " + std::string(identifier->getName());
       if(pList != nullptr)
