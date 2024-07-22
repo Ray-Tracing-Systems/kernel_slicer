@@ -2,6 +2,7 @@
 #include "class_gen.h"
 #include "ast_matchers.h"
 #include "extractor.h"
+#include "initial_pass.h"
 
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/AST/ASTConsumer.h"
@@ -597,7 +598,10 @@ kslicer::VFHAccessNodes kslicer::GetVFHAccessNodes(const clang::CXXMemberCallExp
       if (baseCallExpr) {
         clang::QualType baseType = baseCallExpr->getType();
         if (const clang::CXXRecordDecl* recordDecl = baseType->getPointeeCXXRecordDecl())
-          result.interfaceName = recordDecl->getNameAsString();
+          result.interfaceName     = recordDecl->getNameAsString();
+          result.interfaceTypeName = kslicer::ClearTypeName(baseType.getAsString());
+          ReplaceFirst(result.interfaceTypeName, "*", "");
+          while(ReplaceFirst(result.interfaceTypeName, " ", ""));
       }
     }
 

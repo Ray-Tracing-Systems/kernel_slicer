@@ -1290,6 +1290,7 @@ namespace kslicer
     const clang::CXXMemberCallExpr* buffNode;
     const clang::Expr*              offsetNode;
     std::string                     interfaceName;
+    std::string                     interfaceTypeName;
     VFHAccessNodes() : buffNode(nullptr), offsetNode(nullptr) {}
   };
 
