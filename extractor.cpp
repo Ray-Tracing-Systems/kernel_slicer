@@ -396,6 +396,8 @@ public:
       if(compos.second == member.name)
         return true;
     
+    // std::cout << "  [DataExtractor]: found " << thisTypeName.c_str() << "::" << member.name.c_str() << std::endl;
+
     m_usedMembers[member.name] = member;
 
     return true;
@@ -413,6 +415,7 @@ public:
           if(container.second.interfaceName == buffAndOffset.interfaceName) 
           {
             auto member = kslicer::ExtractMemberInfo(container.second.astNode, m_compiler.getASTContext());
+            member.name = container.first;
             m_usedMembers[member.name] = member;
           }
         }
