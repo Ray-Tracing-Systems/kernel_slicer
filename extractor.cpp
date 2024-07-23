@@ -43,12 +43,14 @@ public:
   bool VisitCallExpr(clang::CallExpr* call)
   {
     std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler);
+    //std::cout << "  [debug]: debugText = '" << debugText.c_str() << "'" << std::endl;
+
     const clang::FunctionDecl* f = call->getDirectCallee();
     if(f == nullptr)
       return true;
 
-    //std::string debugName = f->getNameAsString();
-    //if(debugName == "SampleAndEvalBxDF")
+    std::string debugName = f->getNameAsString();
+    //if(debugName == "need_normal")
     //{
     //  std::cout << "[debug]: find call of " << debugName.c_str() << std::endl;
     //}
@@ -310,6 +312,8 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFromVFH(kslicer::MainClassInf
         kslicer::FuncData func;
         func.name     = f.name;
         func.astNode  = f.decl;
+        //std::string funText = kslicer::GetRangeSourceCode(func.astNode->getSourceRange(), a_compiler);
+        //std::cout << funText.c_str() << std::endl;
         func.srcRange = f.decl->getSourceRange();
         func.srcHash  = GetHashOfSourceRange(func.srcRange);
         func.isMember = true; // isa<clang::CXXMethodDecl>(kernel.astNode);
