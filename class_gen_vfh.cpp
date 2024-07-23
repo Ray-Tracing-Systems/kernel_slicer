@@ -63,7 +63,10 @@ public:
           prefix = pComposPrefix->second + "_";
       }
       
-      auto p = m_codeInfo->allDataMembers.find(fieldName);
+      //std::cout << "  [MemberRewriter]: fieldName = " << fieldName.c_str() << std::endl;
+
+      const std::string filedNameToFind = (isContainer && prefix != "") ? prefix + fieldName : fieldName;
+      auto p = m_codeInfo->allDataMembers.find(filedNameToFind);    
       if(p != m_codeInfo->allDataMembers.end()) 
       {
         kslicer::UsedContainerInfo container;
