@@ -39,6 +39,13 @@ public:
     const std::string thisTypeName = pRecodDecl->getNameAsString();
     const std::string debugText    = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); 
 
+    const std::string fieldName     = pFieldDecl->getNameAsString();
+    const clang::QualType qt        = pFieldDecl->getType();
+    const std::string fieldTypeName = qt.getAsString(); 
+
+    const auto typeDecl    = qt->getAsRecordDecl();
+    const bool isContainer = (typeDecl != nullptr) && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl);
+
     if((thisTypeName == m_className || thisTypeName == m_interfaceName) && WasNotRewrittenYet(expr))
     {
       const clang::Expr* baseExpr = expr->getBase(); 
@@ -48,12 +55,6 @@ public:
     }
     else if(dataClassNames.find(thisTypeName) != dataClassNames.end() && WasNotRewrittenYet(expr))
     {
-      const std::string fieldName     = pFieldDecl->getNameAsString();
-      const clang::QualType qt        = pFieldDecl->getType();
-      const std::string fieldTypeName = qt.getAsString(); 
-      const auto typeDecl      = qt->getAsRecordDecl();
-      const bool isContainer   = (typeDecl != nullptr) && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl);
-      
       std::string prefix = "ubo.";
       if(isContainer)
       {
@@ -103,6 +104,18 @@ public:
       }
 
       m_rewriter.ReplaceText(expr->getSourceRange(), prefix + fieldName);
+      MarkRewritten(expr);
+    }  
+    else if(expr->isArrow() && WasNotRewrittenYet(expr))
+    {
+      // a->b ==> a.b
+      clang::Expr* base    = expr->getBase();       // Получаем указатель на ноду, соответствующую a
+      auto  memberNameInfo = expr->getMemberNameInfo();
+      auto  memberName     = memberNameInfo.getName().getAsString();
+      
+      //std::cout << "  [MemberRewriter]: process with '.' for " << thisTypeName.c_str() << "::" << fieldName.c_str() << std::endl;
+
+      m_rewriter.ReplaceText(expr->getSourceRange(), kslicer::GetRangeSourceCode(base->getSourceRange(), m_compiler) + "." + memberName);
       MarkRewritten(expr);
     }
 

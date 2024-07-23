@@ -436,6 +436,7 @@ int main(int argc, const char **argv)
     inputCodeInfo.dataClassNames.clear();
     inputCodeInfo.dataClassNames.insert(inputCodeInfo.mainClassNames.begin(),   inputCodeInfo.mainClassNames.end());
     inputCodeInfo.dataClassNames.insert(inputCodeInfo.composClassNames.begin(), inputCodeInfo.composClassNames.end());
+    inputCodeInfo.dataClassNames.insert("ISceneObject"); // TODO: list all base classes for compose classes 
     
     std::vector<std::string> constVarianst; 
     constVarianst.reserve(inputCodeInfo.dataClassNames.size());
