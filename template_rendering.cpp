@@ -960,7 +960,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["IsConstObj"] = false;
     }
 
-    kernelJson["MemberFunctions"] = std::vector<std::string>();
+    kernelJson["MemberFunctions"] = std::vector<json>();
     if(funcMembers.size() > 0)
     {
       clang::Rewriter rewrite2;
@@ -994,7 +994,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         const std::string funcBodyText = pVisitorK->RecursiveRewrite(funcNode->getBody());
         pVisitorF->ResetCurrFuncInfo();
         pVisitorK->ResetCurrFuncInfo();
-        kernelJson["MemberFunctions"].push_back(funcDeclText + funcBodyText);
+        
+        json funData;
+        funData["Decl"]   = funcDeclText;
+        funData["Text"]   = funcDeclText + funcBodyText;
+        funData["UseVFH"] = (a_classInfo.membersThatCallVFH.find(f.name) != a_classInfo.membersThatCallVFH.end());
+        kernelJson["MemberFunctions"].push_back(funData);
       }
     }
 

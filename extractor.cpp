@@ -337,6 +337,8 @@ class DataExtractor : public clang::RecursiveASTVisitor<DataExtractor>
 {
 public:
 
+  kslicer::FuncData* pCurrFuncData = nullptr;
+
   DataExtractor(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo,
                 std::unordered_map<std::string, kslicer::DataMemberInfo>& a_members, std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers) :
                 m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_codeInfo(a_codeInfo), m_usedMembers(a_members), m_auxContainers(a_auxContainers)
@@ -421,6 +423,8 @@ public:
             auto member = kslicer::ExtractMemberInfo(container.second.astNode, m_compiler.getASTContext());
             member.name = container.first;
             m_usedMembers[member.name] = member;
+            if(pCurrFuncData != nullptr)
+              m_codeInfo.membersThatCallVFH[pCurrFuncData->name] = (*pCurrFuncData);
           }
         }
       }
@@ -462,6 +466,7 @@ std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMem
 
     // (1) process curr function to get all accesed data
     //
+    visitor.pCurrFuncData = &currFunc;
     visitor.TraverseDecl(const_cast<clang::FunctionDecl*>(currFunc.astNode));
 
     // (2) then recursivelly process calledMembers

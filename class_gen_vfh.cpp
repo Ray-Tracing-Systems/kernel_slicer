@@ -245,8 +245,14 @@ public:
     if(WasNotRewrittenYet(call))
     { 
       std::string textRes = classTypeName + "_" + fname + "_" + m_objBufferName + "(selfId";
-      if(call->getNumArgs() > 0)
-        textRes += ",";
+      {
+        const auto pPrefix  = m_codeInfo->composPrefix.find(classTypeName);
+        if(pPrefix != m_codeInfo->composPrefix.end())
+          textRes = pPrefix->second + "_" + fname + "(";
+        else if(call->getNumArgs() > 0)
+          textRes += ",";
+      }
+
       for(unsigned i=0;i<call->getNumArgs();i++)
       {
         const auto pParam                   = call->getArg(i);

@@ -1053,9 +1053,9 @@ namespace kslicer
     typedef std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> MHandlerCFPtr;
     typedef std::unique_ptr<kslicer::UsedCodeFilter>                         MHandlerKFPtr;
 
-    virtual std::string RemoveKernelPrefix(const std::string& a_funcName) const;                       ///<! "kernel_XXX" --> "XXX";
-    virtual bool        IsKernel(const std::string& a_funcName) const;                                 ///<! return true if function is a kernel
-    virtual void        ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const { }   ///<!
+    virtual std::string RemoveKernelPrefix(const std::string& a_funcName) const;                          ///<! "kernel_XXX" --> "XXX";
+    virtual bool        IsKernel(const std::string& a_funcName) const;                                    ///<! return true if function is a kernel
+    virtual void        ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const { }  ///<!
     virtual bool        IsIndirect(const KernelInfo& a_kernel) const;
     virtual bool        IsRTV() const { return false; }
 
@@ -1073,7 +1073,8 @@ namespace kslicer
 
     virtual void ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler);
     virtual void ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool);
-
+    
+    std::unordered_map<std::string, FuncData> membersThatCallVFH; ///<! this function members call virtual functions inside their code
 
     //// \\
 
