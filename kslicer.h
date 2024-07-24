@@ -1073,8 +1073,6 @@ namespace kslicer
 
     virtual void ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler);
     virtual void ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool);
-    
-    std::unordered_map<std::string, FuncData> membersThatCallVFH; ///<! this function members call virtual functions inside their code
 
     //// \\
 

@@ -423,8 +423,6 @@ public:
             auto member = kslicer::ExtractMemberInfo(container.second.astNode, m_compiler.getASTContext());
             member.name = container.first;
             m_usedMembers[member.name] = member;
-            if(pCurrFuncData != nullptr)
-              m_codeInfo.membersThatCallVFH[pCurrFuncData->name] = (*pCurrFuncData);
           }
         }
       }
