@@ -38,12 +38,6 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 {{MembFunc.Decl}};
 {% endfor %}
 
-{% for MembFunc in Kernel.MemberFunctions %}
-{% if not MembFunc.UseVFH %}
-{{MembFunc.Text}}
-
-{% endif %}
-{% endfor %} 
 {% for Hierarchy in Kernel.Hierarchies %} {# /*------------------------------ vfh ------------------------------ */ #}
 // Virtual Functions of {{Hierarchy.Name}}:
 {% for Contant in Hierarchy.Constants %}
@@ -95,10 +89,8 @@ struct {{RetDecl.Name}}
 {% endfor %}
 {% endfor %}                        {# /*------------------------------ vfh ------------------------------ */ #}
 {% for MembFunc in Kernel.MemberFunctions %}
-{% if MembFunc.UseVFH %}
 {{MembFunc.Text}}
 
-{% endif %}
 {% endfor %} 
 {% for RTName in Kernel.RTXNames %}
 // RayScene intersection with '{{RTName}}'

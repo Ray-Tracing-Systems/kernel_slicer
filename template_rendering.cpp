@@ -998,7 +998,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         json funData;
         funData["Decl"]   = funcDeclText;
         funData["Text"]   = funcDeclText + funcBodyText;
-        funData["UseVFH"] = (a_classInfo.membersThatCallVFH.find(f.name) != a_classInfo.membersThatCallVFH.end());
+        funData["UseVFH"] = false; 
         kernelJson["MemberFunctions"].push_back(funData);
       }
     }
