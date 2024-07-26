@@ -12,8 +12,71 @@ using LiteMath::float4;
 using LiteMath::float3;
 using LiteMath::float2;
 using LiteMath::uint;
+using LiteMath::min;
+using LiteMath::max;
 
 #include "CrossRT.h" // special include for ray tracing
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct AbtractPrimitive                           // This is implementation deal, can be any
+{
+  static constexpr uint32_t TAG_EMPTY     = 0;    // !!! #REQUIRED by kernel slicer: Empty/Default impl must have zero both tag and offset
+  static constexpr uint32_t TAG_TRIANGLES = 1; 
+  static constexpr uint32_t TAG_BOXES     = 2; 
+  static constexpr uint32_t TAG_SPHERES   = 3; 
+
+  AbtractPrimitive(){}  // Dispatching on GPU hierarchy must not have destructors, especially virtual      
+
+  virtual uint32_t GetTag() const { return 0; };
+
+  uint32_t m_tag = TAG_EMPTY;
+  uint32_t m_dummy;
+  float4   boxMin;
+  float4   boxMax;
+};
+
+struct AABBPrim : public AbtractPrimitive
+{
+  AABBPrim(float4 a_boxMin, float4 a_boxMax) { boxMin = a_boxMin; 
+                                               boxMax = a_boxMax; 
+                                               m_tag  = GetTag();  }
+  ~AABBPrim() = delete;  
+
+  uint32_t GetTag()   const override { return TAG_BOXES; }      
+};
+
+struct TrianglePrim : public AbtractPrimitive
+{
+  TrianglePrim(float4 A, float4 B, float4 C) { boxMin = min(A, min(B, C)); 
+                                               boxMax = max(A, max(B, C)); 
+                                               m_tag = GetTag();  }
+  ~TrianglePrim() = delete;  
+
+  uint32_t GetTag()   const override { return TAG_TRIANGLES; }      
+};
+
+struct SpherePrim : public AbtractPrimitive
+{
+  SpherePrim(float4 a_boxMin, float4 a_boxMax) { boxMin = a_boxMin; 
+                                                 boxMax = a_boxMax; 
+                                                 m_tag = GetTag();  }
+  ~SpherePrim() = delete;  
+
+  uint32_t GetTag()   const override { return TAG_SPHERES; }      
+};
+
+struct EmptyPrim : public AbtractPrimitive
+{
+  EmptyPrim() { m_tag = GetTag();  }
+  ~EmptyPrim() = delete;  
+
+  uint32_t GetTag()   const override { return TAG_EMPTY; }      
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct BFRayTrace : public ISceneObject
 {
@@ -22,14 +85,18 @@ struct BFRayTrace : public ISceneObject
 
   const char* Name() const override { return "BFRayTrace"; }
 
-  void     ClearGeom() override {}
+  void     ClearGeom() override { primitives.clear(); }
 
   uint32_t AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber,
-                               uint32_t a_flags = BUILD_HIGH, size_t vByteStride = sizeof(float)*3) override {}
+                               uint32_t a_flags = BUILD_HIGH, size_t vByteStride = sizeof(float)*3) override;
                                
   void UpdateGeom_Triangles3f(uint32_t a_geomId, const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber,
-                              uint32_t a_flags = BUILD_HIGH, size_t vByteStride = sizeof(float)*3) override {}
+                              uint32_t a_flags = BUILD_HIGH, size_t vByteStride = sizeof(float)*3) override;
   
+  
+  uint32_t AddGeom_AABB(uint32_t a_typeId, const CRT_AABB8f* boxMinMaxF8, size_t a_boxNumber) override;
+  void     UpdateGeom_AABB(uint32_t a_geomId, uint32_t a_typeId, const CRT_AABB8f* boxMinMaxF8, size_t a_boxNumber) override;
+
   void     ClearScene() override {} 
   void     CommitScene(uint32_t options = BUILD_HIGH) override {}
   uint32_t AddInstanceMotion(uint32_t a_geomId, const LiteMath::float4x4* a_matrices, uint32_t a_matrixNumber) override {return 0;}
@@ -46,6 +113,8 @@ struct BFRayTrace : public ISceneObject
   std::vector<float4>   boxes;
   std::vector<float4>   trivets;
   std::vector<uint32_t> indices;
+
+  std::vector<AbtractPrimitive> primitives;
 };
 
 

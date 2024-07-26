@@ -146,7 +146,7 @@ void TestClass::InitScene(int numBoxes, int numTris)
   { 
     int centerX = i%spheresInString;
     int centerY = i/spheresInString;
-    spheres[i] = float4(0.5f*float(centerX + 0.5f)/float(spheresInString) + 0.5f, 0.5f*float(centerY + 0.5f)/float(spheresInString) + 0.5f, 1.0f*i + 0.0f, 0.02f);
+    spheres[i] = float4(0.5f*float(centerX + 0.5f)/float(spheresInString) + 0.5f, 0.5f*float(centerY + 0.5f)/float(spheresInString) + 0.5f, 1.0f*i + 0.0f, 0.02f); // radius = 0.02f
   }
 
   // (3) anoher quater of the screen contain triangles
@@ -165,7 +165,25 @@ void TestClass::InitScene(int numBoxes, int numTris)
     indices[i*3+2] = i*3+2;
   }
   
-  auto bfRayTrace     = std::make_shared<BFRayTrace>(); 
+  // TODO: add this via an API
+
+  auto bfRayTrace = std::make_shared<BFRayTrace>(); 
+
+  std::vector<CRT_AABB8f> boxesOnTopOfSpheres(spheres.size());
+  for(size_t i=0;i<boxesOnTopOfSpheres.size();i++) 
+  {
+    boxesOnTopOfSpheres[i].boxMin.x = spheres[i].x - spheres[i].w;
+    boxesOnTopOfSpheres[i].boxMin.y = spheres[i].y - spheres[i].w;
+    boxesOnTopOfSpheres[i].boxMin.z = spheres[i].z - spheres[i].w; 
+
+    boxesOnTopOfSpheres[i].boxMax.x = spheres[i].x + spheres[i].w;
+    boxesOnTopOfSpheres[i].boxMax.y = spheres[i].y + spheres[i].w;
+    boxesOnTopOfSpheres[i].boxMax.z = spheres[i].z + spheres[i].w; 
+  }
+
+  bfRayTrace->AddGeom_AABB(AbtractPrimitive::TAG_BOXES, (const CRT_AABB8f*)boxes.data(), numBoxes);
+  bfRayTrace->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, boxesOnTopOfSpheres.data(), boxesOnTopOfSpheres.size());
+
   bfRayTrace->boxes   = boxes;
   bfRayTrace->spheres = spheres;
   bfRayTrace->trivets = trivets;
@@ -178,6 +196,58 @@ void TestClass::InitScene(int numBoxes, int numTris)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, uint32_t a_flags, size_t vByteStride)
+{
+  trivets.resize(a_vertNumber);
+  for(size_t i=0;i<a_vertNumber;i++)
+  {
+    trivets[i].x = a_vpos3f[i*3+0];
+    trivets[i].y = a_vpos3f[i*3+1];
+    trivets[i].z = a_vpos3f[i*3+2];
+    trivets[i].w = 1.0f;
+  }  
+  
+  indices = std::vector<uint32_t>(a_triIndices, a_triIndices + a_indNumber);
+
+  const size_t oldSize = primitives.size();
+  primitives.resize(oldSize + a_indNumber/3);
+  for(size_t i = oldSize; i < primitives.size(); i++) 
+  {
+    const size_t oldIndex = i - oldSize;
+    const uint32_t A      = a_triIndices[oldIndex*3+0];
+    const uint32_t B      = a_triIndices[oldIndex*3+1];
+    const uint32_t C      = a_triIndices[oldIndex*3+2];
+    new (primitives.data() + i) TrianglePrim(trivets[A], trivets[B], trivets[C]); 
+  }
+
+  return 0;
+}
+
+uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB8f* boxMinMaxF8, size_t a_boxNumber)
+{
+  const size_t oldSize = primitives.size();
+  primitives.resize(oldSize + a_boxNumber);
+  if(a_typeId == AbtractPrimitive::TAG_BOXES) 
+  {
+    for(size_t i = oldSize; i < primitives.size(); i++)
+      new (primitives.data() + i) AABBPrim(boxMinMaxF8[i].boxMin, boxMinMaxF8[i].boxMax); 
+  }
+  else if(a_typeId == AbtractPrimitive::TAG_SPHERES)
+  {
+    for(size_t i = oldSize; i < primitives.size(); i++)
+      new (primitives.data() + i) SpherePrim(boxMinMaxF8[i].boxMin, boxMinMaxF8[i].boxMax); 
+  }
+  else 
+  {
+    for(size_t i = oldSize; i < primitives.size(); i++)
+      new (primitives.data() + i) EmptyPrim(); 
+  }
+  return 0;
+}
+             
+void BFRayTrace::UpdateGeom_Triangles3f(uint32_t a_geomId, const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, uint32_t a_flags, size_t vByteStride) {}
+void BFRayTrace::UpdateGeom_AABB(uint32_t a_geomId, uint32_t a_typeId, const CRT_AABB8f* boxMinMaxF8, size_t a_boxNumber) { }
 
 CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFar)
 {
