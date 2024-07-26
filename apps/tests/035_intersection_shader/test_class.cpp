@@ -10,57 +10,6 @@ TestClass::TestClass(int w, int h)
   m_heightInv = 1.0f/float(h); 
 }
 
-static inline float2 RayBoxIntersection2(float3 rayOrigin, float3 rayDirInv, float3 boxMin, float3 boxMax)
-{
-  const float lo  = rayDirInv.x*(boxMin.x - rayOrigin.x);
-  const float hi  = rayDirInv.x*(boxMax.x - rayOrigin.x);
-  const float lo1 = rayDirInv.y*(boxMin.y - rayOrigin.y);
-  const float hi1 = rayDirInv.y*(boxMax.y - rayOrigin.y);
-  const float lo2 = rayDirInv.z*(boxMin.z - rayOrigin.z);
-  const float hi2 = rayDirInv.z*(boxMax.z - rayOrigin.z);
-
-  const float tmin = std::max(std::min(lo, hi), std::min(lo1, hi1));
-  const float tmax = std::min(std::max(lo, hi), std::max(lo1, hi1));
-
-  return float2(std::max(tmin, std::min(lo2, hi2)), 
-                std::min(tmax, std::max(lo2, hi2)));
-}
-
-static inline float2 RaySphereHit(float3 orig, float3 dir, float4 sphere) // see Ray Tracing Gems Book
-{
-  const float3 center = to_float3(sphere);
-  const float  radius = sphere.w;
-
-  // Hearn and Baker equation 10-72 for when radius^2 << distance between origin and center
-	// Also at https://www.cg.tuwien.ac.at/courses/EinfVisComp/Slides/SS16/EVC-11%20Ray-Tracing%20Slides.pdf
-	// Assumes ray direction is normalized
-	//dir = normalize(dir);
-	const float3 deltap   = center - orig;
-	const float ddp       = dot(dir, deltap);
-	const float deltapdot = dot(deltap, deltap);
-
-	// old way, "standard", though it seems to be worse than the methods above
-	//float discriminant = ddp * ddp - deltapdot + radius * radius;
-	float3 remedyTerm  = deltap - ddp * dir;
-	float discriminant = radius * radius - dot(remedyTerm, remedyTerm);
-
-  float2 result = {0,0};
-	if (discriminant >= 0.0f)
-	{
-		const float sqrtVal = std::sqrt(discriminant);
-		// include Press, William H., Saul A. Teukolsky, William T. Vetterling, and Brian P. Flannery, 
-		// "Numerical Recipes in C," Cambridge University Press, 1992.
-		const float q = (ddp >= 0) ? (ddp + sqrtVal) : (ddp - sqrtVal);
-		// we don't bother testing for division by zero
-		const float t1 = q;
-		const float t2 = (deltapdot - radius * radius) / q;
-    result.x = std::min(t1,t2);
-    result.y = std::max(t1,t2);
-  }
-  
-  return result;
-}
-
 void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY) 
 {
   const float x = float(tidX)*m_widthInv;
@@ -218,7 +167,7 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
     const uint32_t A      = a_triIndices[oldIndex*3+0];
     const uint32_t B      = a_triIndices[oldIndex*3+1];
     const uint32_t C      = a_triIndices[oldIndex*3+2];
-    new (primitives.data() + i) TrianglePrim(trivets[A], trivets[B], trivets[C]); 
+    new (primitives.data() + i) TrianglePrim(trivets[A], trivets[B], trivets[C], oldIndex); 
   }
 
   return 0;
@@ -231,12 +180,12 @@ uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB8f* boxMinMax
   if(a_typeId == AbtractPrimitive::TAG_BOXES) 
   {
     for(size_t i = oldSize; i < primitives.size(); i++)
-      new (primitives.data() + i) AABBPrim(boxMinMaxF8[i].boxMin, boxMinMaxF8[i].boxMax); 
+      new (primitives.data() + i) AABBPrim(boxMinMaxF8[i].boxMin, boxMinMaxF8[i].boxMax, uint32_t(i-oldSize)); 
   }
   else if(a_typeId == AbtractPrimitive::TAG_SPHERES)
   {
     for(size_t i = oldSize; i < primitives.size(); i++)
-      new (primitives.data() + i) SpherePrim(boxMinMaxF8[i].boxMin, boxMinMaxF8[i].boxMax); 
+      new (primitives.data() + i) SpherePrim(boxMinMaxF8[i].boxMin, boxMinMaxF8[i].boxMax, uint32_t(i-oldSize)); 
   }
   else 
   {
