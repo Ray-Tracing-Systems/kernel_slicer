@@ -221,18 +221,18 @@ struct SpherePrim : public AbtractPrimitive
 
   uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_Hit* pHit, BFRayTrace* pData) const override 
   { 
-    float4 sphere = (boxMin + boxMax)*0.5f;
-    sphere.w      = (boxMax.x - boxMin.x)*0.5f;
-    
-    const float2 tm0 = RaySphereHit(to_float3(rayPosAndNear), to_float3(rayDirAndFar), sphere);
-    const bool hit   = (tm0.x < tm0.y) && (tm0.y > rayPosAndNear.w) && (tm0.x < rayDirAndFar.w);
-    if(hit)
-    {
-      pHit->t      = tm0.x;
-      pHit->primId = m_primId;
-      return TAG_SPHERES; 
-    }
-    else
+    //float4 sphere = (boxMin + boxMax)*0.5f;
+    //sphere.w      = (boxMax.x - boxMin.x)*0.5f;
+    //
+    //const float2 tm0 = RaySphereHit(to_float3(rayPosAndNear), to_float3(rayDirAndFar), sphere);
+    //const bool hit   = (tm0.x < tm0.y) && (tm0.y > rayPosAndNear.w) && (tm0.x < rayDirAndFar.w);
+    //if(hit)
+    //{
+    //  pHit->t      = tm0.x;
+    //  pHit->primId = m_primId;
+    //  return TAG_SPHERES; 
+    //}
+    //else
       return TAG_EMPTY;
   } 
 };
