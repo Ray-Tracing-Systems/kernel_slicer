@@ -17,12 +17,63 @@ using LiteMath::max;
 
 #include "CrossRT.h" // special include for ray tracing
 
+static inline float2 RayBoxIntersection2(float3 rayOrigin, float3 rayDirInv, float3 boxMin, float3 boxMax)
+{
+  const float lo  = rayDirInv.x*(boxMin.x - rayOrigin.x);
+  const float hi  = rayDirInv.x*(boxMax.x - rayOrigin.x);
+  const float lo1 = rayDirInv.y*(boxMin.y - rayOrigin.y);
+  const float hi1 = rayDirInv.y*(boxMax.y - rayOrigin.y);
+  const float lo2 = rayDirInv.z*(boxMin.z - rayOrigin.z);
+  const float hi2 = rayDirInv.z*(boxMax.z - rayOrigin.z);
+
+  const float tmin = std::max(std::min(lo, hi), std::min(lo1, hi1));
+  const float tmax = std::min(std::max(lo, hi), std::max(lo1, hi1));
+
+  return float2(std::max(tmin, std::min(lo2, hi2)), 
+                std::min(tmax, std::max(lo2, hi2)));
+}
+
+static inline float2 RaySphereHit(float3 orig, float3 dir, float4 sphere) // see Ray Tracing Gems Book
+{
+  const float3 center = to_float3(sphere);
+  const float  radius = sphere.w;
+
+  // Hearn and Baker equation 10-72 for when radius^2 << distance between origin and center
+	// Also at https://www.cg.tuwien.ac.at/courses/EinfVisComp/Slides/SS16/EVC-11%20Ray-Tracing%20Slides.pdf
+	// Assumes ray direction is normalized
+	//dir = normalize(dir);
+	const float3 deltap   = center - orig;
+	const float ddp       = dot(dir, deltap);
+	const float deltapdot = dot(deltap, deltap);
+
+	// old way, "standard", though it seems to be worse than the methods above
+	//float discriminant = ddp * ddp - deltapdot + radius * radius;
+	float3 remedyTerm  = deltap - ddp * dir;
+	float discriminant = radius * radius - dot(remedyTerm, remedyTerm);
+
+  float2 result = {0,0};
+	if (discriminant >= 0.0f)
+	{
+		const float sqrtVal = std::sqrt(discriminant);
+		// include Press, William H., Saul A. Teukolsky, William T. Vetterling, and Brian P. Flannery, 
+		// "Numerical Recipes in C," Cambridge University Press, 1992.
+		const float q = (ddp >= 0) ? (ddp + sqrtVal) : (ddp - sqrtVal);
+		// we don't bother testing for division by zero
+		const float t1 = q;
+		const float t2 = (deltapdot - radius * radius) / q;
+    result.x = std::min(t1,t2);
+    result.y = std::max(t1,t2);
+  }
+  
+  return result;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct AbtractPrimitive                           // This is implementation deal, can be any
+struct AbtractPrimitive                         // This is implementation deal, can be any
 {
-  static constexpr uint32_t TAG_EMPTY     = 0;    // !!! #REQUIRED by kernel slicer: Empty/Default impl must have zero both tag and offset
+  static constexpr uint32_t TAG_EMPTY     = 0;  // !!! #REQUIRED by kernel slicer: Empty/Default impl must have zero both tag and offset
   static constexpr uint32_t TAG_TRIANGLES = 1; 
   static constexpr uint32_t TAG_BOXES     = 2; 
   static constexpr uint32_t TAG_SPHERES   = 3; 
@@ -30,41 +81,83 @@ struct AbtractPrimitive                           // This is implementation deal
   AbtractPrimitive(){}  // Dispatching on GPU hierarchy must not have destructors, especially virtual      
 
   virtual uint32_t GetTag() const { return 0; };
+  virtual uint32_t Intersect(float4 rayPosAndNear,float4 rayDirAndFar, CRT_Hit* pHit) const { return TAG_EMPTY; }
 
-  uint32_t m_tag = TAG_EMPTY;
-  uint32_t m_dummy;
+  uint32_t m_tag    = TAG_EMPTY;
+  uint32_t m_primId = 0;
   float4   boxMin;
   float4   boxMax;
 };
 
 struct AABBPrim : public AbtractPrimitive
 {
-  AABBPrim(float4 a_boxMin, float4 a_boxMax) { boxMin = a_boxMin; 
-                                               boxMax = a_boxMax; 
-                                               m_tag  = GetTag();  }
+  AABBPrim(float4 a_boxMin, float4 a_boxMax, uint32_t a_primId) { boxMin = a_boxMin; 
+                                                                  boxMax = a_boxMax; 
+                                                                  m_tag  = GetTag();
+                                                                  m_primId = a_primId; }
   ~AABBPrim() = delete;  
 
   uint32_t GetTag()   const override { return TAG_BOXES; }      
+
+  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_Hit* pHit) const override 
+  { 
+    const float2 tMinMax = RayBoxIntersection2( to_float3(rayPosAndNear), to_float3(rayDirAndFar), to_float3(boxMin), to_float3(boxMax) );
+    
+    if(tMinMax.x <= tMinMax.y && tMinMax.y >= rayPosAndNear.w && tMinMax.x <= rayDirAndFar.w)
+    {
+      pHit->t      = tMinMax.x;
+      pHit->primId = m_primId;    
+      return TAG_BOXES; 
+    }
+    else
+      return TAG_EMPTY;
+  }
 };
 
 struct TrianglePrim : public AbtractPrimitive
 {
-  TrianglePrim(float4 A, float4 B, float4 C) { boxMin = min(A, min(B, C)); 
-                                               boxMax = max(A, max(B, C)); 
-                                               m_tag = GetTag();  }
-  ~TrianglePrim() = delete;  
+  TrianglePrim(float4 A, float4 B, float4 C, uint32_t a_triId) { boxMin   = min(A, min(B, C)); 
+                                                                 boxMax   = max(A, max(B, C)); 
+                                                                 m_tag    = GetTag();  
+                                                                 m_primId = a_triId; 
+                                                                 }
+  ~TrianglePrim() = delete; 
 
-  uint32_t GetTag()   const override { return TAG_TRIANGLES; }      
+  uint32_t GetTag()   const override { return TAG_TRIANGLES; }   
+
+  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_Hit* pHit) const override 
+  { 
+    
+    return TAG_TRIANGLES; 
+  }   
 };
 
 struct SpherePrim : public AbtractPrimitive
 {
-  SpherePrim(float4 a_boxMin, float4 a_boxMax) { boxMin = a_boxMin; 
-                                                 boxMax = a_boxMax; 
-                                                 m_tag = GetTag();  }
+  SpherePrim(float4 a_boxMin, float4 a_boxMax, uint32_t a_primId) { boxMin   = a_boxMin; 
+                                                                    boxMax   = a_boxMax; 
+                                                                    m_tag    = GetTag();  
+                                                                    m_primId = a_primId;}
   ~SpherePrim() = delete;  
 
-  uint32_t GetTag()   const override { return TAG_SPHERES; }      
+  uint32_t GetTag()   const override { return TAG_SPHERES; }     
+
+  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_Hit* pHit) const override 
+  { 
+    float4 sphere = (boxMin + boxMax)*0.5f;
+    sphere.w      = (boxMax.x - boxMin.x)*0.5f;
+    
+    const float2 tm0 = RaySphereHit(to_float3(rayPosAndNear), to_float3(rayDirAndFar), sphere);
+    const bool hit   = (tm0.x < tm0.y) && (tm0.y > rayPosAndNear.w) && (tm0.x < rayDirAndFar.w);
+    if(hit)
+    {
+      pHit->t      = tm0.x;
+      pHit->primId = m_primId;
+      return TAG_SPHERES; 
+    }
+    else
+      return TAG_EMPTY;
+  } 
 };
 
 struct EmptyPrim : public AbtractPrimitive
@@ -72,7 +165,8 @@ struct EmptyPrim : public AbtractPrimitive
   EmptyPrim() { m_tag = GetTag();  }
   ~EmptyPrim() = delete;  
 
-  uint32_t GetTag()   const override { return TAG_EMPTY; }      
+  uint32_t GetTag() const override { return TAG_EMPTY; }    
+  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_Hit* pHit) const override { return TAG_EMPTY; }  
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
