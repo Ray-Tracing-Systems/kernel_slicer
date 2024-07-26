@@ -42,6 +42,7 @@ struct BFRayTrace : public ISceneObject
   CRT_Hit RayQuery_NearestHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override { return RayQuery_NearestHit(posAndNear, dirAndFar); }
   bool    RayQuery_AnyHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override { return RayQuery_AnyHit(posAndNear, dirAndFar); }
 
+  std::vector<float4>   spheres;
   std::vector<float4>   boxes;
   std::vector<float4>   trivets;
   std::vector<uint32_t> indices;
@@ -74,9 +75,10 @@ public:
   virtual void kernel_TestColor(const int* in_hit, uint* out_color, uint tidX, uint tidY);
 
 protected:
-
-  std::vector<float4>   boxes;
-  std::vector<float4>   trivets;
+  
+  std::vector<float4>   spheres;  // (1)
+  std::vector<float4>   boxes;    // (2)
+  std::vector<float4>   trivets;  // (3)
   std::vector<uint32_t> indices;
 
   std::shared_ptr<ISceneObject> m_pRayTraceImpl;
