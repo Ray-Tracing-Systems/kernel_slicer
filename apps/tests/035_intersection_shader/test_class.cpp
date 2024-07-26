@@ -132,6 +132,7 @@ void TestClass::InitScene(int numBoxes, int numTris)
 
   bfRayTrace->AddGeom_AABB(AbtractPrimitive::TAG_BOXES, (const CRT_AABB8f*)boxes.data(), numBoxes);
   bfRayTrace->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, boxesOnTopOfSpheres.data(), boxesOnTopOfSpheres.size());
+  bfRayTrace->AddGeom_Triangles3f((const float*)trivets.data(), trivets.size(), indices.data(), indices.size());
 
   bfRayTrace->boxes   = boxes;
   bfRayTrace->spheres = spheres;
