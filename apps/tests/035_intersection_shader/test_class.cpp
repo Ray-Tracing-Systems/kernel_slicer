@@ -130,9 +130,15 @@ void TestClass::InitScene(int numBoxes, int numTris)
   // put all geometry inaside impl.
   //
   m_pRayTraceImpl->ClearGeom();
-  m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_BOXES, (const CRT_AABB8f*)boxes.data(), numBoxes);
-  m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, boxesOnTopOfSpheres.data(), boxesOnTopOfSpheres.size());
-  m_pRayTraceImpl->AddGeom_Triangles3f((const float*)trivets.data(), trivets.size(), indices.data(), indices.size(), 0, 16);
+  auto geomId0 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_BOXES, (const CRT_AABB8f*)boxes.data(), numBoxes);
+  auto geomId1 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, boxesOnTopOfSpheres.data(), boxesOnTopOfSpheres.size());
+  auto geomId2 = m_pRayTraceImpl->AddGeom_Triangles3f((const float*)trivets.data(), trivets.size(), indices.data(), indices.size(), 0, 16);
+
+  m_pRayTraceImpl->ClearScene();
+  m_pRayTraceImpl->AddInstance(geomId0, LiteMath::float4x4());
+  m_pRayTraceImpl->AddInstance(geomId1, LiteMath::float4x4());
+  m_pRayTraceImpl->AddInstance(geomId2, LiteMath::float4x4());
+  m_pRayTraceImpl->CommitScene();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
