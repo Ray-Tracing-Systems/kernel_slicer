@@ -114,8 +114,6 @@ void TestClass::InitScene(int numBoxes, int numTris)
     indices[i*3+1] = i*3+1;
     indices[i*3+2] = i*3+2;
   }
-  
-  // TODO: add this via an API 
 
   std::vector<CRT_AABB8f> boxesOnTopOfSpheres(spheres.size());
   for(size_t i=0;i<boxesOnTopOfSpheres.size();i++) 
@@ -128,7 +126,9 @@ void TestClass::InitScene(int numBoxes, int numTris)
     boxesOnTopOfSpheres[i].boxMax.y = spheres[i].y + spheres[i].w;
     boxesOnTopOfSpheres[i].boxMax.z = spheres[i].z + spheres[i].w; 
   }
-
+  
+  // put all geometry inaside impl.
+  //
   m_pRayTraceImpl->ClearGeom();
   m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_BOXES, (const CRT_AABB8f*)boxes.data(), numBoxes);
   m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, boxesOnTopOfSpheres.data(), boxesOnTopOfSpheres.size());

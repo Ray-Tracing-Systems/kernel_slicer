@@ -120,8 +120,8 @@ struct BFRayTrace : public ISceneObject
   uint32_t AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_matrix) override { return 0;}
   void     UpdateInstance(uint32_t a_instanceId, const LiteMath::float4x4& a_matrix) override {}
 
-  CRT_Hit RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar);
-  bool    RayQuery_AnyHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) { return false; }  
+  CRT_Hit RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) override;
+  bool    RayQuery_AnyHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) override { return false; }  
 
   CRT_Hit RayQuery_NearestHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override { return RayQuery_NearestHit(posAndNear, dirAndFar); }
   bool    RayQuery_AnyHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override { return RayQuery_AnyHit(posAndNear, dirAndFar); }
@@ -247,8 +247,6 @@ struct EmptyPrim : public AbtractPrimitive
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-enum WINDOW_SIZE{WIN_WIDTH = 512, WIN_HEIGHT = 512};
-static uint pitchOffset(uint x, uint y) { return y*WIN_WIDTH + x; } 
 
 class TestClass 
 {
@@ -271,9 +269,14 @@ public:
                                int* out_hit, uint tidX, uint tidY);
   
   virtual void kernel_TestColor(const int* in_hit, uint* out_color, uint tidX, uint tidY);
+  
+  static constexpr int WIN_WIDTH  = 512;
+  static constexpr int WIN_HEIGHT = 512;
 
 protected:
   
+  static uint pitchOffset(uint x, uint y) { return y*WIN_WIDTH + x; } 
+
   std::vector<float4>   spheres;  // (1)
   std::vector<float4>   boxes;    // (2)
   std::vector<float4>   trivets;  // (3)
