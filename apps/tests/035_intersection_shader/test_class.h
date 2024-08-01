@@ -83,7 +83,7 @@ struct AbtractPrimitive                         // This is implementation deal, 
   AbtractPrimitive(){}  // Dispatching on GPU hierarchy must not have destructors, especially virtual      
 
   virtual uint32_t GetTag() const { return 0; };
-  virtual uint32_t Intersect(float4 rayPosAndNear,float4 rayDirAndFar, CRT_Hit* pHit, BFRayTrace* pData) const { return TAG_EMPTY; }
+  virtual uint32_t Intersect(float4 rayPosAndNear,float4 rayDirAndFar, float3 rayDirInv, CRT_Hit* pHit, BFRayTrace* pData) const { return TAG_EMPTY; }
 
   uint32_t m_tag    = TAG_EMPTY;
   uint32_t m_primId = 0;
@@ -102,7 +102,7 @@ struct BFRayTrace : public ISceneObject
 
   const char* Name() const override { return "BFRayTrace"; }
 
-  void     ClearGeom() override { primitives.clear(); }
+  void     ClearGeom() override { primitives.clear(); primitives.reserve(1000); } // reserve is MANDATORY!!!
 
   uint32_t AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber,
                                uint32_t a_flags = BUILD_HIGH, size_t vByteStride = sizeof(float)*3) override;
@@ -126,11 +126,9 @@ struct BFRayTrace : public ISceneObject
   CRT_Hit RayQuery_NearestHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override { return RayQuery_NearestHit(posAndNear, dirAndFar); }
   bool    RayQuery_AnyHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override { return RayQuery_AnyHit(posAndNear, dirAndFar); }
 
-  std::vector<float4>   spheres;
-  std::vector<float4>   boxes;
-  std::vector<float4>   trivets;
-  std::vector<uint32_t> indices;
 
+  std::vector<float4>           trivets;
+  std::vector<uint32_t>         indices;
   std::vector<AbtractPrimitive> primitives;
 };
 
@@ -148,9 +146,9 @@ struct AABBPrim : public AbtractPrimitive
 
   uint32_t GetTag() const override { return TAG_BOXES; }      
 
-  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_Hit* pHit, BFRayTrace* pData) const override 
+  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, float3 rayDirInv, CRT_Hit* pHit, BFRayTrace* pData) const override 
   { 
-    const float2 tMinMax = RayBoxIntersection2( to_float3(rayPosAndNear), to_float3(rayDirAndFar), to_float3(boxMin), to_float3(boxMax) );
+    const float2 tMinMax = RayBoxIntersection2( to_float3(rayPosAndNear), rayDirInv, to_float3(boxMin), to_float3(boxMax) );
     
     if(tMinMax.x <= tMinMax.y && tMinMax.y >= rayPosAndNear.w && tMinMax.x <= rayDirAndFar.w)
     {
@@ -174,7 +172,7 @@ struct TrianglePrim : public AbtractPrimitive
 
   uint32_t GetTag()   const override { return TAG_TRIANGLES; }   
 
-  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_Hit* pHit, BFRayTrace* pData) const override 
+  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, float3 rayDirInv, CRT_Hit* pHit, BFRayTrace* pData) const override 
   { 
     const float3 rayPos = to_float3(rayPosAndNear);
     const float3 rayDir = to_float3(rayDirAndFar);
@@ -219,20 +217,20 @@ struct SpherePrim : public AbtractPrimitive
 
   uint32_t GetTag()   const override { return TAG_SPHERES; }     
 
-  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_Hit* pHit, BFRayTrace* pData) const override 
+  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, float3 rayDirInv, CRT_Hit* pHit, BFRayTrace* pData) const override 
   { 
-    //float4 sphere = (boxMin + boxMax)*0.5f;
-    //sphere.w      = (boxMax.x - boxMin.x)*0.5f;
-    //
-    //const float2 tm0 = RaySphereHit(to_float3(rayPosAndNear), to_float3(rayDirAndFar), sphere);
-    //const bool hit   = (tm0.x < tm0.y) && (tm0.y > rayPosAndNear.w) && (tm0.x < rayDirAndFar.w);
-    //if(hit)
-    //{
-    //  pHit->t      = tm0.x;
-    //  pHit->primId = m_primId;
-    //  return TAG_SPHERES; 
-    //}
-    //else
+    float4 sphere = (boxMin + boxMax)*0.5f;
+    sphere.w      = (boxMax.x - boxMin.x)*0.5f;
+    
+    const float2 tm0 = RaySphereHit(to_float3(rayPosAndNear), to_float3(rayDirAndFar), sphere);
+    const bool hit   = (tm0.x < tm0.y) && (tm0.y > rayPosAndNear.w) && (tm0.x < rayDirAndFar.w);
+    if(hit)
+    {
+      pHit->t      = tm0.x;
+      pHit->primId = m_primId;
+      return TAG_SPHERES; 
+    }
+    else
       return TAG_EMPTY;
   } 
 };
@@ -243,7 +241,7 @@ struct EmptyPrim : public AbtractPrimitive
   ~EmptyPrim() = delete;  
 
   uint32_t GetTag() const override { return TAG_EMPTY; }    
-  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_Hit* pHit, BFRayTrace* pData) const override { return TAG_EMPTY; }  
+  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, float3 rayDirInv, CRT_Hit* pHit, BFRayTrace* pData) const override { return TAG_EMPTY; }  
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
