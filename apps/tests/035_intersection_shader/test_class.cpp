@@ -8,6 +8,7 @@ TestClass::TestClass(int w, int h)
 {
   m_widthInv  = 1.0f/float(w); 
   m_heightInv = 1.0f/float(h); 
+  m_pRayTraceImpl = std::make_shared<BFRayTrace>();
 }
 
 void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY) 
@@ -128,14 +129,10 @@ void TestClass::InitScene(int numBoxes, int numTris)
     boxesOnTopOfSpheres[i].boxMax.z = spheres[i].z + spheres[i].w; 
   }
 
-  auto bfRayTrace = std::make_shared<BFRayTrace>();
-
-  bfRayTrace->ClearGeom();
-  bfRayTrace->AddGeom_AABB(AbtractPrimitive::TAG_BOXES, (const CRT_AABB8f*)boxes.data(), numBoxes);
-  bfRayTrace->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, boxesOnTopOfSpheres.data(), boxesOnTopOfSpheres.size());
-  bfRayTrace->AddGeom_Triangles3f((const float*)trivets.data(), trivets.size(), indices.data(), indices.size(), 0, 16);
-
-  m_pRayTraceImpl = bfRayTrace;  
+  m_pRayTraceImpl->ClearGeom();
+  m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_BOXES, (const CRT_AABB8f*)boxes.data(), numBoxes);
+  m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, boxesOnTopOfSpheres.data(), boxesOnTopOfSpheres.size());
+  m_pRayTraceImpl->AddGeom_Triangles3f((const float*)trivets.data(), trivets.size(), indices.data(), indices.size(), 0, 16);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
