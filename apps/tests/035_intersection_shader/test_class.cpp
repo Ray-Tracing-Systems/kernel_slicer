@@ -114,9 +114,7 @@ void TestClass::InitScene(int numBoxes, int numTris)
     indices[i*3+2] = i*3+2;
   }
   
-  // TODO: add this via an API
-
-  auto bfRayTrace = std::make_shared<BFRayTrace>(); 
+  // TODO: add this via an API 
 
   std::vector<CRT_AABB8f> boxesOnTopOfSpheres(spheres.size());
   for(size_t i=0;i<boxesOnTopOfSpheres.size();i++) 
@@ -130,16 +128,14 @@ void TestClass::InitScene(int numBoxes, int numTris)
     boxesOnTopOfSpheres[i].boxMax.z = spheres[i].z + spheres[i].w; 
   }
 
+  auto bfRayTrace = std::make_shared<BFRayTrace>();
+
+  bfRayTrace->ClearGeom();
   bfRayTrace->AddGeom_AABB(AbtractPrimitive::TAG_BOXES, (const CRT_AABB8f*)boxes.data(), numBoxes);
   bfRayTrace->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, boxesOnTopOfSpheres.data(), boxesOnTopOfSpheres.size());
-  bfRayTrace->AddGeom_Triangles3f((const float*)trivets.data(), trivets.size(), indices.data(), indices.size());
+  bfRayTrace->AddGeom_Triangles3f((const float*)trivets.data(), trivets.size(), indices.data(), indices.size(), 0, 16);
 
-  bfRayTrace->boxes   = boxes;
-  bfRayTrace->spheres = spheres;
-  bfRayTrace->trivets = trivets;
-  bfRayTrace->indices = indices;
-
-  m_pRayTraceImpl     = bfRayTrace;  
+  m_pRayTraceImpl = bfRayTrace;  
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -152,9 +148,9 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
   trivets.resize(a_vertNumber);
   for(size_t i=0;i<a_vertNumber;i++)
   {
-    trivets[i].x = a_vpos3f[i*3+0];
-    trivets[i].y = a_vpos3f[i*3+1];
-    trivets[i].z = a_vpos3f[i*3+2];
+    trivets[i].x = a_vpos3f[i*(vByteStride/4)+0];
+    trivets[i].y = a_vpos3f[i*(vByteStride/4)+1];
+    trivets[i].z = a_vpos3f[i*(vByteStride/4)+2];
     trivets[i].w = 1.0f;
   }  
   
@@ -181,12 +177,12 @@ uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB8f* boxMinMax
   if(a_typeId == AbtractPrimitive::TAG_BOXES) 
   {
     for(size_t i = oldSize; i < primitives.size(); i++)
-      new (primitives.data() + i) AABBPrim(boxMinMaxF8[i].boxMin, boxMinMaxF8[i].boxMax, uint32_t(i-oldSize)); 
+      new (primitives.data() + i) AABBPrim(boxMinMaxF8[i-oldSize].boxMin, boxMinMaxF8[i-oldSize].boxMax, uint32_t(i-oldSize)); 
   }
   else if(a_typeId == AbtractPrimitive::TAG_SPHERES)
   {
     for(size_t i = oldSize; i < primitives.size(); i++)
-      new (primitives.data() + i) SpherePrim(boxMinMaxF8[i].boxMin, boxMinMaxF8[i].boxMax, uint32_t(i-oldSize)); 
+      new (primitives.data() + i) SpherePrim(boxMinMaxF8[i-oldSize].boxMin, boxMinMaxF8[i-oldSize].boxMax, uint32_t(i-oldSize)); 
   }
   else 
   {
@@ -206,63 +202,7 @@ CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFa
   hit.primId = -1;
   
   for(uint32_t primid = 0; primid < primitives.size(); primid++)
-    (primitives.data() + primid)->Intersect(rayPosAndNear, rayDirAndFar, &hit, this); 
-
-
-  /*
-  const float3 rayPos    = to_float3(rayPosAndNear);
-  const float3 rayDir    = to_float3(rayDirAndFar);
-  
-  const float tNear = rayPosAndNear.w;
-  const float tFar  = rayDirAndFar.w;
-  
-  int hitId = -1;
-  for(uint32_t boxId = 0; boxId < boxes.size(); boxId+=4) 
-  {
-    const float2 tm0 = RayBoxIntersection2(rayPos, rayDirInv, to_float3(boxes[boxId+0]), to_float3(boxes[boxId+1]));
-    const float2 tm1 = RayBoxIntersection2(rayPos, rayDirInv, to_float3(boxes[boxId+2]), to_float3(boxes[boxId+3]));
-  
-    const bool hitChild0 = (tm0.x <= tm0.y) && (tm0.y >= tNear) && (tm0.x <= tFar);
-    const bool hitChild1 = (tm1.x <= tm1.y) && (tm1.y >= tNear) && (tm1.x <= tFar);
-  
-    if(hitChild0)
-      hitId = int(boxId >> 2);
-    else if(hitChild1)
-      hitId = int((boxId+2) >> 2);
-  }
-
-  for(uint32_t sphereId = 0; sphereId < spheres.size(); sphereId++) 
-  {
-    const float2 tm0 = RaySphereHit(rayPos, rayDir, spheres[sphereId]);
-    const bool hit   = (tm0.x < tm0.y) && (tm0.y > tNear) && (tm0.x < tFar);
-    if(hit)
-      hitId = int(sphereId);
-  }
-
-  for (uint32_t triId = 0; triId < trivets.size(); triId+=3)
-  {
-    const float3 A_pos = to_float3(trivets[triId + 0]);
-    const float3 B_pos = to_float3(trivets[triId + 1]);
-    const float3 C_pos = to_float3(trivets[triId + 2]);
-  
-    const float3 edge1 = B_pos - A_pos;
-    const float3 edge2 = C_pos - A_pos;
-    const float3 pvec = cross(rayDir, edge2);
-    const float3 tvec = rayPos - A_pos;
-    const float3 qvec = cross(tvec, edge1);
-  
-    const float invDet = 1.0f / dot(edge1, pvec);
-    const float v = dot(tvec, pvec) * invDet;
-    const float u = dot(qvec, rayDir) * invDet;
-    const float t = dot(edge2, qvec) * invDet;
-  
-    if (v >= -1e-6f && u >= -1e-6f && (u + v <= 1.0f + 1e-6f) && t > tNear && t < tFar)
-      hitId = int(triId);
-  }
-  
-  CRT_Hit hit;
-  hit.primId = hitId;
-  */
+    (primitives.data() + primid)->Intersect(rayPosAndNear, rayDirAndFar, rayDirInv, &hit, this); 
 
   return hit;
 }
