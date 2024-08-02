@@ -11,6 +11,8 @@
 #include "vk_context.h"
 std::shared_ptr<TestClass> CreateTestClass_Generated(int w, int h, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
 
+#include "test_class_generated.h"
+
 int main(int argc, const char** argv)
 {
   #ifndef NDEBUG
@@ -26,7 +28,9 @@ int main(int argc, const char** argv)
   if(onGPU)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+    std::vector<const char*> requiredExtensions;
+    auto deviceFeatures = TestClass_Generated::ListRequiredDeviceFeatures(requiredExtensions);
+    auto ctx = vk_utils::globalContextInit(requiredExtensions, enableValidationLayers, a_preferredDeviceId, &deviceFeatures);
     pImpl = CreateTestClass_Generated(TestClass::WIN_WIDTH, TestClass::WIN_HEIGHT, ctx, TestClass::WIN_WIDTH*TestClass::WIN_HEIGHT);
   }
   else
