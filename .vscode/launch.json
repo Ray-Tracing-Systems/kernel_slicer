@@ -2086,6 +2086,7 @@
                         "-I${workspaceFolder}/apps/RayTracing", "process",
                         "-shaderCC", "glsl",
                         "-megakernel", "1",
+                        "-enable_ray_tracing_pipeline", "1",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,
