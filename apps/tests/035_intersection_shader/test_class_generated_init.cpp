@@ -657,12 +657,11 @@ void TestClass_Generated::AllocAllShaderBindingTables()
     auto rayhitBuf  = m_allShaderTableBuffers[groupId*4+2]; //#CHANGED: 3 --> 4
     auto rayintBuf  = m_allShaderTableBuffers[groupId*4+3]; //#ADDED
 
-    BFRT_ReadAndComputeMegaSBTStrides.resize(5);            //#CHANGED:
+    BFRT_ReadAndComputeMegaSBTStrides.resize(4);            //#CHANGED:
     BFRT_ReadAndComputeMegaSBTStrides[0] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, raygenBuf),  rgenStride,         rgenStride };
     BFRT_ReadAndComputeMegaSBTStrides[1] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, raymissBuf), handleSizeAligned,  missSize   };
     BFRT_ReadAndComputeMegaSBTStrides[2] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, rayhitBuf),  handleSizeAligned,  hitSize    };
-    BFRT_ReadAndComputeMegaSBTStrides[3] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, rayintBuf),  handleSizeAligned,  intSize    }; //#ADDED
-    BFRT_ReadAndComputeMegaSBTStrides[4] = VkStridedDeviceAddressRegionKHR{ 0u, 0u, 0u };
+    BFRT_ReadAndComputeMegaSBTStrides[3] = VkStridedDeviceAddressRegionKHR{ 0u, 0u, 0u }; // for callable shaders
 
     auto *pData = shaderHandleStorage.data();
 
