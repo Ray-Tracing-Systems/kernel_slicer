@@ -575,8 +575,8 @@ void TestClass_Generated::AllocAllShaderBindingTables()
   //
   for(VkPipeline rtPipeline : allRTPipelines) // todo add for loop
   {
-    std::vector<uint8_t> shaderHandleStorage(sbtSize);
-    VK_CHECK_RESULT(vkGetRayTracingShaderGroupHandlesKHR(device, rtPipeline, 0, numShaderGroups, sbtSize, shaderHandleStorage.data()));
+    //std::vector<uint8_t> shaderHandleStorage(sbtSize);                                                                                   //#REMOVED
+    //VK_CHECK_RESULT(vkGetRayTracingShaderGroupHandlesKHR(device, rtPipeline, 0, numShaderGroups, sbtSize, shaderHandleStorage.data()));  //#REMOVED
 
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 

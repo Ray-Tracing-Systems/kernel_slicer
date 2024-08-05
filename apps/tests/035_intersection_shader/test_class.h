@@ -111,8 +111,8 @@ struct BFRayTrace : public ISceneObject
                               uint32_t a_flags = BUILD_HIGH, size_t vByteStride = sizeof(float)*3) override;
   
   
-  uint32_t AddGeom_AABB(uint32_t a_typeId, const CRT_AABB8f* boxMinMaxF8, size_t a_boxNumber) override;
-  void     UpdateGeom_AABB(uint32_t a_geomId, uint32_t a_typeId, const CRT_AABB8f* boxMinMaxF8, size_t a_boxNumber) override;
+  uint32_t AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber) override;
+  void     UpdateGeom_AABB(uint32_t a_geomId, uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber) override;
 
   void     ClearScene() override {} 
   void     CommitScene(uint32_t options = BUILD_HIGH) override {}
