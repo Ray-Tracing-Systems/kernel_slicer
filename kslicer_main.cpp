@@ -395,10 +395,10 @@ int main(int argc, const char **argv)
   kslicer::InitialPassASTConsumer firstPassData(cfNames, mainClassName, composClassNames, compiler, inputCodeInfo);
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
 
-  compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
   // вызов compiler.getDiagnosticClient().EndSourceFile() 
   // обеспечивает корректное завершение обработки диагностических сообщений 
   // для текущего исходного файла в процессе компиляции с использованием Clang.
+  compiler.getDiagnosticClient().EndSourceFile(); 
 
   auto pComposAPI  = firstPassData.rv.m_composedClassInfo.find(composeAPIName);
   auto pComposImpl = firstPassData.rv.m_composedClassInfo.find(composeImplName);
