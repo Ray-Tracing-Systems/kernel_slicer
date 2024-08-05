@@ -115,7 +115,7 @@ void TestClass::InitScene(int numBoxes, int numTris)
     indices[i*3+2] = i*3+2;
   }
 
-  std::vector<CRT_AABB8f> boxesOnTopOfSpheres(spheres.size());
+  std::vector<CRT_AABB> boxesOnTopOfSpheres(spheres.size());
   for(size_t i=0;i<boxesOnTopOfSpheres.size();i++) 
   {
     boxesOnTopOfSpheres[i].boxMin.x = spheres[i].x - spheres[i].w;
@@ -130,9 +130,9 @@ void TestClass::InitScene(int numBoxes, int numTris)
   // put all geometry inaside impl.
   //
   m_pRayTraceImpl->ClearGeom();
-  auto geomId0 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_BOXES, (const CRT_AABB8f*)boxes.data(), numBoxes);
-  auto geomId1 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, boxesOnTopOfSpheres.data(), boxesOnTopOfSpheres.size());
-  auto geomId2 = m_pRayTraceImpl->AddGeom_Triangles3f((const float*)trivets.data(), trivets.size(), indices.data(), indices.size(), 0, 16);
+  auto geomId0 = m_pRayTraceImpl->AddGeom_Triangles3f((const float*)trivets.data(), trivets.size(), indices.data(), indices.size(), 0, 16);
+  auto geomId1 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_BOXES, (const CRT_AABB*)boxes.data(), numBoxes);
+  auto geomId2 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, boxesOnTopOfSpheres.data(), boxesOnTopOfSpheres.size());
 
   m_pRayTraceImpl->ClearScene();
   m_pRayTraceImpl->AddInstance(geomId0, LiteMath::float4x4());
@@ -173,7 +173,7 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
   return 0;
 }
 
-uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB8f* boxMinMaxF8, size_t a_boxNumber)
+uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber)
 {
   const size_t oldSize = primitives.size();
   primitives.resize(oldSize + a_boxNumber);
@@ -196,7 +196,7 @@ uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB8f* boxMinMax
 }
              
 void BFRayTrace::UpdateGeom_Triangles3f(uint32_t a_geomId, const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, uint32_t a_flags, size_t vByteStride) {}
-void BFRayTrace::UpdateGeom_AABB(uint32_t a_geomId, uint32_t a_typeId, const CRT_AABB8f* boxMinMaxF8, size_t a_boxNumber) { }
+void BFRayTrace::UpdateGeom_AABB(uint32_t a_geomId, uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber) { }
 
 CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFar)
 {

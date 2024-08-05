@@ -87,7 +87,7 @@ struct CRT_Hit
   uint geomId;    ///< use 4 most significant bits for geometry type; thay are zero for triangles 
   float    coords[4]; ///< custom intersection data; for triangles coords[0] and coords[1] stores baricentric coords (u,v)
 };
-struct CRT_AABB8f
+struct CRT_AABB
 {
   vec4 boxMin;
   vec4 boxMax;
