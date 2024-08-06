@@ -178,6 +178,11 @@ void TestClass_Generated::MakeRayTracingPipelineAndLayout(const std::vector< std
     shaderStage.pName  = a_mainName;
     assert(shaderStage.module != VK_NULL_HANDLE);
     shaderStages.push_back(shaderStage);
+  }
+
+  for(uint32_t shaderId=0; shaderId < uint32_t(shader_paths.size()); shaderId++)
+  {
+    const auto stage = shader_paths[shaderId].first;
 
     VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
     shaderGroup.anyHitShader       = VK_SHADER_UNUSED_KHR; // #CHANGED
@@ -187,21 +192,22 @@ void TestClass_Generated::MakeRayTracingPipelineAndLayout(const std::vector< std
     if(stage == VK_SHADER_STAGE_MISS_BIT_KHR || stage == VK_SHADER_STAGE_RAYGEN_BIT_KHR || stage == VK_SHADER_STAGE_CALLABLE_BIT_KHR)
     {
       shaderGroup.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-      shaderGroup.generalShader    = static_cast<uint32_t>(shaderStages.size()) - 1;
+      shaderGroup.generalShader    = shaderId;
       shaderGroup.closestHitShader = VK_SHADER_UNUSED_KHR;
     }
     else if(stage == VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
     {
       shaderGroup.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
       shaderGroup.generalShader    = VK_SHADER_UNUSED_KHR;
-      shaderGroup.closestHitShader = static_cast<uint32_t>(shaderStages.size()) - 1;
+      shaderGroup.closestHitShader = shaderId;
     }
     else if(stage == VK_SHADER_STAGE_INTERSECTION_BIT_KHR) // #CHANGED / #ADDED
     {
       shaderGroup.type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
       shaderGroup.generalShader      = VK_SHADER_UNUSED_KHR;
-      shaderGroup.closestHitShader   = static_cast<uint32_t>(shaderStages.size()) - 2; // must be previous
-      shaderGroup.intersectionShader = static_cast<uint32_t>(shaderStages.size()) - 1; // this one
+      shaderGroup.intersectionShader = shaderId + 0; //
+      shaderGroup.closestHitShader   = shaderId + 1; // assume next is always 'closestHitShader' for current 'intersectionShader'
+      shaderId++;
     }                                                      // #CHANGED / #ADDED
 
     shaderGroups.push_back(shaderGroup);
@@ -295,10 +301,9 @@ void TestClass_Generated::InitKernel_BFRT_ReadAndComputeMega(const char* a_fileP
   {
     const bool enableMotionBlur = false;
 
-    std::string shaderPathRGEN  = AlterShaderPath("shaders_generated/BFRT_ReadAndComputeMegaRGEN.glsl.spv");
-    std::string shaderPathRCHT  = AlterShaderPath("shaders_generated/z_trace_rchit.glsl.spv");
-    std::string shaderPathRMIS1 = AlterShaderPath("shaders_generated/z_trace_rmiss.glsl.spv");
-    std::string shaderPathRMIS2 = AlterShaderPath("shaders_generated/z_trace_smiss.glsl.spv");
+    std::string shaderPathRGEN = AlterShaderPath("shaders_generated/BFRT_ReadAndComputeMegaRGEN.glsl.spv");
+    std::string shaderPathRCHT = AlterShaderPath("shaders_generated/z_trace_rchit.glsl.spv");
+    std::string shaderPathRMIS = AlterShaderPath("shaders_generated/z_trace_rmiss.glsl.spv");
     
     // #ADDED 
     std::string shaderSpherePrimRCHT = AlterShaderPath("shaders_generated/z_SpherePrim_rchit.glsl.spv");
@@ -308,12 +313,11 @@ void TestClass_Generated::InitKernel_BFRT_ReadAndComputeMega(const char* a_fileP
     std::vector< std::pair<VkShaderStageFlagBits, std::string> > shader_paths;
     {
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_RAYGEN_BIT_KHR,      shaderPathRGEN.c_str()));
-      shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_MISS_BIT_KHR,        shaderPathRMIS1.c_str()));
-      shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_MISS_BIT_KHR,        shaderPathRMIS2.c_str()));
+      shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_MISS_BIT_KHR,        shaderPathRMIS.c_str()));
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, shaderPathRCHT.c_str()));
       // #ADDED 
-      shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR,  shaderSpherePrimRCHT.c_str()));
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_INTERSECTION_BIT_KHR, shaderSpherePrimRINT.c_str()));
+      shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR,  shaderSpherePrimRCHT.c_str()));
       // #ADDED
     }
 
@@ -555,7 +559,7 @@ void TestClass_Generated::AllocAllShaderBindingTables()
   m_allShaderTableBuffers.clear();
 
   uint32_t numHitStages    = uint32_t(sbtRecordOffsets.size()); //#CHANHED, should be different for each RT pipeline
-  uint32_t numShaderGroups = uint32_t(2 + numHitStages);        // raygen, miss, rayhit[0] .. rayhit[N-1] where N is total number of BLAS equal to sbtRecordOffsets.size()
+  uint32_t numShaderGroups = 4;                                 // raygen, miss, rayhit<tri>, rayhit<spheres> 
 
   VkPhysicalDeviceRayTracingPipelinePropertiesKHR  rtPipelineProperties{};
   {
