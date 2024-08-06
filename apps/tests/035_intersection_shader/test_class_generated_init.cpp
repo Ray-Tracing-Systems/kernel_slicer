@@ -589,7 +589,7 @@ void TestClass_Generated::AllocAllShaderBindingTables()
 
     auto raygenBuf  = vk_utils::createBuffer(device, rgenStride, flags);
     auto raymissBuf = vk_utils::createBuffer(device, missSize, flags);
-    auto rayhitBuf  = vk_utils::createBuffer(device, hitSize * numHitStages, flags);
+    auto rayhitBuf  = vk_utils::createBuffer(device, hitSize, flags);
 
     m_allShaderTableBuffers.push_back(raygenBuf);
     m_allShaderTableBuffers.push_back(raymissBuf);
