@@ -72,7 +72,8 @@ void TestClass_Generated::BFRT_ReadAndComputeMegaCmd(uint tidX, uint tidY, uint*
   pcData.m_sizeY  = tidY;
   pcData.m_sizeZ  = 1;
   pcData.m_tFlags = m_currThreadFlags;
-  vkCmdPushConstants(m_currCmdBuffer, BFRT_ReadAndComputeMegaLayout, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(KernelArgsPC), &pcData);
+  auto stages = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR; // #CHANGED (add VK_SHADER_STAGE_INTERSECTION_BIT_KHR)
+  vkCmdPushConstants(m_currCmdBuffer, BFRT_ReadAndComputeMegaLayout, stages, 0, sizeof(KernelArgsPC), &pcData); 
   
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, BFRT_ReadAndComputeMegaPipeline);
   const auto* strides = BFRT_ReadAndComputeMegaSBTStrides.data();

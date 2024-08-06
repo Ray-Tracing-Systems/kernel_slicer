@@ -10,6 +10,8 @@
 #include "test_class_generated.h"
 #include "include/TestClass_generated_ubo.h"
 
+#include "VulkanRTX.h" //#ADDED 
+
 #include "CrossRT.h"
 ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_graphicsQId, std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper,
                               uint32_t a_maxMeshes, uint32_t a_maxTotalVertices, uint32_t a_maxTotalPrimitives, uint32_t a_maxPrimitivesPerMesh,
@@ -207,10 +209,11 @@ void TestClass_Generated::MakeRayTracingPipelineAndLayout(const std::vector< std
 
   // (2) create pipeline layout
   //
-  std::array<VkPushConstantRange,3> pcRanges = {};
+  std::array<VkPushConstantRange,4> pcRanges = {};
   pcRanges[0].stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
   pcRanges[1].stageFlags = VK_SHADER_STAGE_MISS_BIT_KHR;
   pcRanges[2].stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+  pcRanges[3].stageFlags = VK_SHADER_STAGE_INTERSECTION_BIT_KHR;  // #CHANGED / #ADDED
   for(size_t i=0;i<pcRanges.size();i++) {
     pcRanges[i].offset = 0;
     pcRanges[i].size   = 128;
@@ -542,12 +545,17 @@ void TestClass_Generated::AllocMemoryForMemberBuffersAndImages(const std::vector
 }
 void TestClass_Generated::AllocAllShaderBindingTables()
 {
+  // (0) remember appropriate record offsets inside VulkanRTX impl. for future use them with acceleration structure //#ADDED
+  //
+  std::vector<uint32_t> sbtRecordOffsets = {0, 1, 2};              //#TODO: get from m_pRayTraceImpl after move RT 'AllocAllShaderBindingTables' call to CommitDeviceData() function (?) 
+  auto pRTXImpl = dynamic_cast<VulkanRTX*>(m_pRayTraceImpl.get()); //#TODO: should be different for each pipelite
+  if(pRTXImpl != nullptr)
+    pRTXImpl->SetSBTRecordOffsets(sbtRecordOffsets);
+
   m_allShaderTableBuffers.clear();
 
-  uint32_t numShaderGroups = 4u;
-  uint32_t numHitStages    = 2u; //#CHANHED 
-  uint32_t numMissStages   = 2u;
-  uint32_t numIntStages    = 1u; //#ADDED
+  uint32_t numHitStages    = uint32_t(sbtRecordOffsets.size()); //#CHANHED, should be different for each RT pipeline
+  uint32_t numShaderGroups = uint32_t(2 + numHitStages);        // raygen, miss, rayhit[0] .. rayhit[N-1] where N is total number of BLAS equal to sbtRecordOffsets.size()
 
   VkPhysicalDeviceRayTracingPipelinePropertiesKHR  rtPipelineProperties{};
   {
@@ -562,10 +570,9 @@ void TestClass_Generated::AllocAllShaderBindingTables()
   const uint32_t handleSizeAligned = vk_utils::getSBTAlignedSize(rtPipelineProperties.shaderGroupHandleSize, rtPipelineProperties.shaderGroupHandleAlignment);
   const uint32_t sbtSize           = numShaderGroups * handleSize;
 
-  const auto rgenStride = vk_utils::getSBTAlignedSize(handleSizeAligned,                 rtPipelineProperties.shaderGroupBaseAlignment);
-  const auto missSize   = vk_utils::getSBTAlignedSize(numMissStages * handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment);
+  const auto rgenStride = vk_utils::getSBTAlignedSize(handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment);
+  const auto missSize   = vk_utils::getSBTAlignedSize(handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment);
   const auto hitSize    = vk_utils::getSBTAlignedSize(numHitStages  * handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment);
-  const auto intSize    = vk_utils::getSBTAlignedSize(numIntStages  * handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment); //#ADDED
 
   std::vector<VkPipeline> allRTPipelines = {};
   if(BFRT_ReadAndComputeMegaPipeline != VK_NULL_HANDLE)
@@ -581,14 +588,12 @@ void TestClass_Generated::AllocAllShaderBindingTables()
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
     auto raygenBuf  = vk_utils::createBuffer(device, rgenStride, flags);
-    auto raymissBuf = vk_utils::createBuffer(device, missSize * numMissStages, flags);
+    auto raymissBuf = vk_utils::createBuffer(device, missSize, flags);
     auto rayhitBuf  = vk_utils::createBuffer(device, hitSize * numHitStages, flags);
-    auto rayintBuf  = vk_utils::createBuffer(device, intSize * numIntStages, flags); //#ADDED
 
     m_allShaderTableBuffers.push_back(raygenBuf);
     m_allShaderTableBuffers.push_back(raymissBuf);
     m_allShaderTableBuffers.push_back(rayhitBuf);
-    m_allShaderTableBuffers.push_back(rayintBuf);
   }
 
   // (2) allocate and bind everything for 'm_allShaderTableBuffers'
@@ -652,10 +657,9 @@ void TestClass_Generated::AllocAllShaderBindingTables()
   {
     VK_CHECK_RESULT(vkGetRayTracingShaderGroupHandlesKHR(device, allRTPipelines[groupId], 0, numShaderGroups, sbtSize, shaderHandleStorage.data()));
 
-    auto raygenBuf  = m_allShaderTableBuffers[groupId*4+0]; //#CHANGED: 3 --> 4
-    auto raymissBuf = m_allShaderTableBuffers[groupId*4+1]; //#CHANGED: 3 --> 4
-    auto rayhitBuf  = m_allShaderTableBuffers[groupId*4+2]; //#CHANGED: 3 --> 4
-    auto rayintBuf  = m_allShaderTableBuffers[groupId*4+3]; //#ADDED
+    auto raygenBuf  = m_allShaderTableBuffers[groupId*3+0];
+    auto raymissBuf = m_allShaderTableBuffers[groupId*3+1]; 
+    auto rayhitBuf  = m_allShaderTableBuffers[groupId*3+2]; 
 
     BFRT_ReadAndComputeMegaSBTStrides.resize(4);            //#CHANGED:
     BFRT_ReadAndComputeMegaSBTStrides[0] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, raygenBuf),  rgenStride,         rgenStride };
@@ -664,23 +668,24 @@ void TestClass_Generated::AllocAllShaderBindingTables()
     BFRT_ReadAndComputeMegaSBTStrides[3] = VkStridedDeviceAddressRegionKHR{ 0u, 0u, 0u }; // for callable shaders
 
     auto *pData = shaderHandleStorage.data();
-
-    memcpy(mapped + offsets[groupId*4 + 0], pData, handleSize * 1);             // raygenBuf //#CHANGED: 3 --> 4
-    pData += handleSize * 1;
+    
+    memcpy(mapped + offsets[groupId*3 + 0], pData, handleSize * 1); // raygenBuf //#CHANGED: 3 --> 4 ; copy raygen shader handle to SBT
+    pData += handleSizeAligned * 1;
  
-    memcpy(mapped + offsets[groupId*4 + 1], pData, handleSize * numMissStages); // raymissBuf //#CHANGED: 3 --> 4
-    pData += handleSize * numMissStages;
-
-    memcpy(mapped + offsets[groupId*4 + 2], pData, handleSize * numHitStages); // rayhitBuf //#CHANGED: 3 --> 4
-    pData += handleSize * numHitStages;
-
-    memcpy(mapped + offsets[groupId*4 + 3], pData, handleSize * numIntStages); // rayhitBuf //#CHANGED: 3 --> 4
-    pData += handleSize * numIntStages;
-
+    memcpy(mapped + offsets[groupId*3 + 1], pData, handleSize * 1); // raymissBuf //#CHANGED: 3 --> 4; copy miss shader handle(s) to SBT
+    pData += handleSizeAligned * 1;
+    
+    for(size_t i=0; i<sbtRecordOffsets.size(); i++) 
+    {
+      memcpy(mapped + offsets[groupId*3 + 2] + i*handleSizeAligned, pData, handleSize); // rayhitBuf //#CHANGED: 3 --> 4;   copy hit shader handle(s) to SBT
+    }
+    pData += handleSizeAligned * numHitStages;
+    
     groupId++;
   }
 
   vkUnmapMemory(device, m_allShaderTableMem);
+
 }
 
 VkPhysicalDeviceFeatures2 TestClass_Generated::ListRequiredDeviceFeatures(std::vector<const char*>& deviceExtensions)
