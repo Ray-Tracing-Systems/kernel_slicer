@@ -673,13 +673,16 @@ void TestClass_Generated::AllocAllShaderBindingTables()
 
     auto *pData = shaderHandleStorage.data();
     
-    memcpy(mapped + offsets[groupId*3 + 0], pData, handleSize * 1); // raygenBuf //#CHANGED: 3 --> 4 ; copy raygen shader handle to SBT
+    memcpy(mapped + offsets[groupId*3 + 0], pData, handleSize * 1); // raygenBuf; copy raygen shader handle to SBT
     pData += handleSize * 1;
  
-    memcpy(mapped + offsets[groupId*3 + 1], pData, handleSize * 1); // raymissBuf //#CHANGED: 3 --> 4; copy miss shader handle(s) to SBT
+    memcpy(mapped + offsets[groupId*3 + 1], pData, handleSize * 1); // raymissBuf; copy miss shader handle(s) to SBT
     pData += handleSize * 1;
     
-    for(size_t i=0; i<sbtRecordOffsets.size(); i++) 
+    memcpy(mapped + offsets[groupId*3 + 2], pData, handleSize);     // rchit for triangles BLAS
+    pData += handleSize * 1;
+
+    for(size_t i=1; i<sbtRecordOffsets.size(); i++)                 // rchit for spheres BLAS and boxes BLAS
     {
       memcpy(mapped + offsets[groupId*3 + 2] + i*handleSizeAligned, pData, handleSize); // rayhitBuf //#CHANGED: 3 --> 4;   copy hit shader handle(s) to SBT
     }
