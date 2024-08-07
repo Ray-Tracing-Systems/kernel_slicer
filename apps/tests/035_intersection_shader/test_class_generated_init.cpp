@@ -43,9 +43,11 @@ void TestClass_Generated::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice 
   uint32_t maxTotalVertices     = userRestrictions[1];
   uint32_t maxTotalPrimitives   = userRestrictions[2];
   uint32_t maxPrimitivesPerMesh = userRestrictions[3];
-  m_pRayTraceImpl = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, m_ctx.pCopyHelper,
-                                                             maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true),
-                                                             [](ISceneObject *p) { DeleteSceneRT(p); } );
+
+  m_pRayTraceImplOld = m_pRayTraceImpl;
+  m_pRayTraceImpl    = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, m_ctx.pCopyHelper,
+                                                                     maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true),
+                                                                     [](ISceneObject *p) { DeleteSceneRT(p); } );
   AllocAllShaderBindingTables();
 }
 
@@ -396,12 +398,25 @@ void TestClass_Generated::ReserveEmptyVectors()
 {
 }
 
+void TestClass_Generated::UpdatePrefixPointers()
+{
+  auto pUnderlyingImpl = dynamic_cast<BFRayTrace*>(m_pRayTraceImplOld.get());
+  if(pUnderlyingImpl != nullptr)
+  {
+    pUnderlyingImpl->primitives.resize(115); // #TODO: import this from merged/unified impl
+    m_pRayTraceImpl_primitives = &pUnderlyingImpl->primitives;
+  }
+}
+
 void TestClass_Generated::InitMemberBuffers()
 {
   std::vector<VkBuffer> memberVectors;
   std::vector<VkImage>  memberTextures;
+  
+  std::cout << "m_pRayTraceImpl_primitives->capacity() = " << m_pRayTraceImpl_primitives->capacity() << std::endl;
 
-
+  m_vdata.m_pRayTraceImpl_primitivesBuffer = vk_utils::createBuffer(device, m_pRayTraceImpl_primitives->capacity()*sizeof(AbtractPrimitive), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  memberVectors.push_back(m_vdata.m_pRayTraceImpl_primitivesBuffer);
 
   AllocMemoryForMemberBuffersAndImages(memberVectors, memberTextures);
 }

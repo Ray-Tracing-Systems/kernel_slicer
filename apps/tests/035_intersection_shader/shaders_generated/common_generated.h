@@ -166,3 +166,11 @@ struct Box4f
 uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }  // RTV pattern, for 2D threading
 
 
+struct AbtractPrimitive //#ADDED
+{
+  uint vptr[2];
+  uint m_tag;
+  uint m_primId;
+  vec4 boxMin;
+  vec4 boxMax;
+};

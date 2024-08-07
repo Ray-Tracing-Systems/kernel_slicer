@@ -3,6 +3,12 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_GOOGLE_include_directive : require
 
+#include "common_generated.h"
+layout(binding = 0, set = 0) buffer data0 { uint out_color[]; }; //
+layout(binding = 1, set = 0) uniform accelerationStructureEXT m_pRayTraceImpl;
+layout(binding = 2, set = 0) buffer dataUBO { TestClass_Generated_UBO_Data ubo; };
+layout(binding = 3, set = 0) buffer data1 { AbtractPrimitive m_pRayTraceImpl_primitives[]; }; //
+
 //struct CRT_Hit 
 //{
 //  float    t;         ///< intersection distance from ray origin to object
@@ -36,18 +42,20 @@ vec2 gems_intersections(vec3 orig, vec3 dir, vec3 center, float radius)
 
 void main()
 {
-  //SpherePrimitive sph = sphere_buffer.spheres[gl_PrimitiveID];
-	//vec3 orig = gl_WorldRayOriginEXT;
-	//vec3 dir = gl_WorldRayDirectionEXT;
-	//
-	//vec3 aabb_max = vec3(sph.aabb_maxx, sph.aabb_maxy, sph.aabb_maxz);
-	//vec3 aabb_min = vec3(sph.aabb_minx, sph.aabb_miny, sph.aabb_minz);
-	//vec3 center = (aabb_max + aabb_min) / vec3(2.0);
-	//float radius = (aabb_max.x - aabb_min.x) / 2.0;
+	//vec4  boxMin = m_pRayTraceImpl_primitives[gl_PrimitiveID].boxMin; // SEEMS using gl_PrimitiveID is INCORRECT HERE 
+	//vec4  boxMax = m_pRayTraceImpl_primitives[gl_PrimitiveID].boxMax; // SEEMS using gl_PrimitiveID is INCORRECT HERE
+	//vec3  center = (boxMin + boxMax).xyz*0.5f;
+  //float radius = (boxMax.x - boxMin.x)*0.5f;
   //
-	//vec2 t = gems_intersections(orig, dir, center, radius);
-	
-	attribs = vec3(1); //orig + t.x * dir;
-	reportIntersectionEXT(1.0f, 0);
+	//vec3 orig = gl_WorldRayOriginEXT;
+	//vec3 dir  = gl_WorldRayDirectionEXT;
+	//vec2 t    = gems_intersections(orig, dir, center, radius);
+	//
+	//attribs = orig + t.x * dir;
+	//reportIntersectionEXT(t.x, 0);
+	//attribs = orig + t.y * dir;
+	//reportIntersectionEXT(t.y, 0);	
+
+  reportIntersectionEXT(1.0f, 0);
 }
 

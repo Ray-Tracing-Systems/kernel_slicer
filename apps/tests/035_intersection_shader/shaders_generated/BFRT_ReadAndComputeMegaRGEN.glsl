@@ -6,6 +6,7 @@
 layout(binding = 0, set = 0) buffer data0 { uint out_color[]; }; //
 layout(binding = 1, set = 0) uniform accelerationStructureEXT m_pRayTraceImpl;
 layout(binding = 2, set = 0) buffer dataUBO { TestClass_Generated_UBO_Data ubo; };
+layout(binding = 3, set = 0) buffer data1 { AbtractPrimitive m_pRayTraceImpl_primitives[]; }; //
 
 
 uint pitchOffset(uint x, uint y) ;

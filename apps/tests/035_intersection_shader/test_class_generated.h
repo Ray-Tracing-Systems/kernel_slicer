@@ -47,9 +47,12 @@ public:
     UpdateTextureMembers(a_pCopyEngine);
   }
 
+  virtual void UpdatePrefixPointers();
+
   std::shared_ptr<vk_utils::ICopyEngine> m_pLastCopyHelper = nullptr;
   virtual void CommitDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper) // you have to define this virtual function in the original imput class
   {
+    UpdatePrefixPointers();
     ReserveEmptyVectors();
     InitMemberBuffers();
     UpdateAll(a_pCopyHelper);
@@ -129,8 +132,12 @@ protected:
 
   struct MembersDataGPU
   {
+    VkBuffer m_pRayTraceImpl_primitivesBuffer = VK_NULL_HANDLE;
+    size_t   m_pRayTraceImpl_primitivesOffset = 0;
   } m_vdata;
-
+  
+  std::vector<AbtractPrimitive>* m_pRayTraceImpl_primitives = nullptr;
+  std::shared_ptr<ISceneObject>  m_pRayTraceImplOld = nullptr;
 
   size_t m_maxThreadCount = 0;
   VkBuffer m_classDataBuffer = VK_NULL_HANDLE;

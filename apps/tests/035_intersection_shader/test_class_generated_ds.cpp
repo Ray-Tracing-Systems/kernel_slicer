@@ -57,9 +57,9 @@ void TestClass_Generated::AllocateAllDescriptorSets()
 
 VkDescriptorSetLayout TestClass_Generated::CreateBFRT_ReadAndComputeMegaDSLayout()
 {
-  std::array<VkDescriptorSetLayoutBinding, 2+1> dsBindings;
+  std::array<VkDescriptorSetLayoutBinding, 4> dsBindings;
 
-  const auto stageFlags = (VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+  const auto stageFlags = (VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR);
 
   // binding for out_color
   dsBindings[0].binding            = 0;
@@ -75,13 +75,19 @@ VkDescriptorSetLayout TestClass_Generated::CreateBFRT_ReadAndComputeMegaDSLayout
   dsBindings[1].stageFlags         = stageFlags;
   dsBindings[1].pImmutableSamplers = nullptr;
 
-
+  // binding for 'ubo'  #TODO: add comment here
   dsBindings[2].binding            = 2;
   dsBindings[2].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
   dsBindings[2].descriptorCount    = 1;
   dsBindings[2].stageFlags         = stageFlags;
   dsBindings[2].pImmutableSamplers = nullptr;
 
+  // binding for 'm_pRayTraceImpl_primitives' #ADDED
+  dsBindings[3].binding            = 3;
+  dsBindings[3].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[3].descriptorCount    = 1;
+  dsBindings[3].stageFlags         = stageFlags;
+  dsBindings[3].pImmutableSamplers = nullptr;
 
   VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
   descriptorSetLayoutCreateInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -155,9 +161,9 @@ void TestClass_Generated::InitAllGeneratedDescriptorSets_BFRT_ReadAndCompute()
 {
   // now create actual bindings
   //
-  // descriptor set #0: BFRT_ReadAndComputeMegaCmd (["out_color","m_pRayTraceImpl"])
+  // descriptor set #0: BFRT_ReadAndComputeMegaCmd (["out_color","m_pRayTraceImpl", "m_pRayTraceImpl_primitives"])
   {
-    constexpr uint additionalSize = 1;
+    constexpr uint additionalSize = 2;
 
     std::array<VkDescriptorBufferInfo, 2 + additionalSize> descriptorBufferInfo;
     std::array<VkDescriptorImageInfo,  2 + additionalSize> descriptorImageInfo;
@@ -168,6 +174,7 @@ void TestClass_Generated::InitAllGeneratedDescriptorSets_BFRT_ReadAndCompute()
     descriptorBufferInfo[0]        = VkDescriptorBufferInfo{};
     descriptorBufferInfo[0].buffer = BFRT_ReadAndCompute_local.out_colorBuffer;
     descriptorBufferInfo[0].offset = BFRT_ReadAndCompute_local.out_colorOffset;
+
     descriptorBufferInfo[0].range  = VK_WHOLE_SIZE;
     writeDescriptorSet[0]                  = VkWriteDescriptorSet{};
     writeDescriptorSet[0].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -208,6 +215,21 @@ void TestClass_Generated::InitAllGeneratedDescriptorSets_BFRT_ReadAndCompute()
     writeDescriptorSet[2].pBufferInfo      = &descriptorBufferInfo[2];
     writeDescriptorSet[2].pImageInfo       = nullptr;
     writeDescriptorSet[2].pTexelBufferView = nullptr;
+
+    descriptorBufferInfo[3]        = VkDescriptorBufferInfo{};
+    descriptorBufferInfo[3].buffer = m_vdata.m_pRayTraceImpl_primitivesBuffer;
+    descriptorBufferInfo[3].offset = m_vdata.m_pRayTraceImpl_primitivesOffset;
+    descriptorBufferInfo[3].range  = VK_WHOLE_SIZE;
+
+    writeDescriptorSet[3]                  = VkWriteDescriptorSet{};
+    writeDescriptorSet[3].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSet[3].dstSet           = m_allGeneratedDS[0];
+    writeDescriptorSet[3].dstBinding       = 3;
+    writeDescriptorSet[3].descriptorCount  = 1;
+    writeDescriptorSet[3].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    writeDescriptorSet[3].pBufferInfo      = &descriptorBufferInfo[3];
+    writeDescriptorSet[3].pImageInfo       = nullptr;
+    writeDescriptorSet[3].pTexelBufferView = nullptr;
 
     vkUpdateDescriptorSets(device, uint32_t(writeDescriptorSet.size()), writeDescriptorSet.data(), 0, NULL);
   }
