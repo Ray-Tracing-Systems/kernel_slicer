@@ -47,6 +47,8 @@ void TestClass_Generated::ReadPlainMembers(std::shared_ptr<vk_utils::ICopyEngine
 
 void TestClass_Generated::UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
+  if(m_pRayTraceImpl_primitives->size() > 0)
+    a_pCopyEngine->UpdateBuffer(m_vdata.m_pRayTraceImpl_primitivesBuffer, 0, m_pRayTraceImpl_primitives->data(), m_pRayTraceImpl_primitives->size()*sizeof(AbtractPrimitive) );
 }
 
 
