@@ -551,7 +551,7 @@ void TestClass_Generated::AllocAllShaderBindingTables()
 {
   // (0) remember appropriate record offsets inside VulkanRTX impl. for future use them with acceleration structure //#ADDED
   //
-  std::vector<uint32_t> sbtRecordOffsets = {0, 2+1, 2+2};          //#TODO: get from m_pRayTraceImpl after move RT 'AllocAllShaderBindingTables' call to CommitDeviceData() function (?) 
+  std::vector<uint32_t> sbtRecordOffsets = {0, 1, 2};          //#TODO: get from m_pRayTraceImpl after move RT 'AllocAllShaderBindingTables' call to CommitDeviceData() function (?) 
   auto pRTXImpl = dynamic_cast<VulkanRTX*>(m_pRayTraceImpl.get()); //#TODO: should be different for each pipelite
   if(pRTXImpl != nullptr)
     pRTXImpl->SetSBTRecordOffsets(sbtRecordOffsets);
@@ -686,7 +686,7 @@ void TestClass_Generated::AllocAllShaderBindingTables()
     {
       memcpy(mapped + offsets[groupId*3 + 2] + i*handleSizeAligned, pData, handleSize); // rayhitBuf //#CHANGED: 3 --> 4;   copy hit shader handle(s) to SBT
     }
-    pData += handleSize * numHitStages;
+    pData += handleSize * 1;
   }
   groupId++;
 
