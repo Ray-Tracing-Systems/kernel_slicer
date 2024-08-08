@@ -25,6 +25,77 @@ std::shared_ptr<TestClass> CreateTestClass_Generated(int w, int h, vk_utils::Vul
   return pObj;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class BFRayTrace_RTX_Proxy : public ISceneObject
+{
+public:
+  BFRayTrace_RTX_Proxy(std::shared_ptr<ISceneObject> a, std::shared_ptr<ISceneObject> b) { m_imps[0] = a; m_imps[1] = b; } 
+  
+  const char* Name() const override { return "BFRayTrace_RTX_Proxy"; }
+  ISceneObject* UnderlyingImpl(uint32_t a_implId) override { return (a_implId < 2) ? m_imps[a_implId].get() : nullptr; }
+
+  void ClearGeom() override { for(auto impl : m_imps) impl->ClearGeom(); } 
+
+  uint32_t AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, uint32_t a_flags, size_t vByteStride) override
+  {
+    uint32_t res = 0;
+    for(auto impl : m_imps) 
+      res = impl->AddGeom_Triangles3f(a_vpos3f, a_vertNumber, a_triIndices, a_indNumber, a_flags, vByteStride);
+    return res;
+  }
+                               
+  void UpdateGeom_Triangles3f(uint32_t a_geomId, const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, uint32_t a_flags, size_t vByteStride) override
+  {
+    for(auto impl : m_imps) 
+      impl->UpdateGeom_Triangles3f(a_geomId, a_vpos3f, a_vertNumber, a_triIndices, a_indNumber, a_flags, vByteStride);
+  }
+  
+  uint32_t AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber) override
+  {
+    uint32_t res = 0;
+    for(auto impl : m_imps) 
+      res = impl->AddGeom_AABB(a_typeId, boxMinMaxF8, a_boxNumber);
+    return res;
+  }
+  
+  void UpdateGeom_AABB(uint32_t a_geomId, uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber) override
+  {
+    for(auto impl : m_imps) 
+      impl->UpdateGeom_AABB(a_geomId, a_typeId, boxMinMaxF8, a_boxNumber);
+  }
+
+  void     ClearScene() override { for(auto impl : m_imps) impl->ClearScene(); } 
+  void     CommitScene(uint32_t options) override { for(auto impl : m_imps) impl->CommitScene();  }
+
+  uint32_t AddInstanceMotion(uint32_t a_geomId, const LiteMath::float4x4* a_matrices, uint32_t a_matrixNumber) override 
+  { 
+    uint32_t res = 0;
+    for(auto impl : m_imps) 
+      res = impl->AddInstanceMotion(a_geomId, a_matrices, a_matrixNumber);
+    return res; 
+  }
+
+  uint32_t AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_matrix) override 
+  { 
+    uint32_t res = 0;
+    for(auto impl : m_imps) 
+      res = impl->AddInstance(a_geomId, a_matrix);
+    return res; 
+  }
+
+  void    UpdateInstance(uint32_t a_instanceId, const LiteMath::float4x4& a_matrix) override   { for(auto impl : m_imps) impl->UpdateInstance(a_instanceId, a_matrix); }
+
+  CRT_Hit RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) override { return m_imps[0]->RayQuery_NearestHit(posAndNear, dirAndFar); }
+  bool    RayQuery_AnyHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar)     override { return m_imps[0]->RayQuery_AnyHit(posAndNear, dirAndFar);; }  
+
+  CRT_Hit RayQuery_NearestHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override { return m_imps[0]->RayQuery_NearestHit(posAndNear, dirAndFar); }
+  bool    RayQuery_AnyHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time)     override { return m_imps[0]->RayQuery_AnyHit(posAndNear, dirAndFar); }
+
+protected:
+  std::array<std::shared_ptr<ISceneObject>, 2> m_imps = {nullptr, nullptr};
+};
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void TestClass_Generated::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount)
 {
   physicalDevice = a_physicalDevice;
@@ -44,10 +115,13 @@ void TestClass_Generated::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice 
   uint32_t maxTotalPrimitives   = userRestrictions[2];
   uint32_t maxPrimitivesPerMesh = userRestrictions[3];
 
-  m_pRayTraceImplOld = m_pRayTraceImpl;
-  m_pRayTraceImpl    = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, m_ctx.pCopyHelper,
-                                                                     maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true),
-                                                                     [](ISceneObject *p) { DeleteSceneRT(p); } );
+  auto pRayTraceImplOld = m_pRayTraceImpl;                                        
+  m_pRayTraceImpl = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, m_ctx.pCopyHelper,
+                                                                  maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true),
+                                                                  [](ISceneObject *p) { DeleteSceneRT(p); } );
+
+  m_pRayTraceImpl = std::make_shared<BFRayTrace_RTX_Proxy>(pRayTraceImplOld, m_pRayTraceImpl); // #ADDED: wrap both user and RTX implementation with proxy object                                                                    
+  
   AllocAllShaderBindingTables();
 }
 
@@ -400,12 +474,13 @@ void TestClass_Generated::ReserveEmptyVectors()
 
 void TestClass_Generated::UpdatePrefixPointers()
 {
-  auto pUnderlyingImpl = dynamic_cast<BFRayTrace*>(m_pRayTraceImplOld.get());
-  if(pUnderlyingImpl != nullptr)
-  {
-    pUnderlyingImpl->primitives.resize(115); // #TODO: import this from merged/unified impl
+  static std::vector<AbtractPrimitive> g_temp(115);
+
+  auto pUnderlyingImpl = dynamic_cast<BFRayTrace*>(m_pRayTraceImpl->UnderlyingImpl(0));  //#CHANGED
+  if(pUnderlyingImpl != nullptr) 
     m_pRayTraceImpl_primitives = &pUnderlyingImpl->primitives;
-  }
+  else 
+    m_pRayTraceImpl_primitives = &g_temp;
 }
 
 void TestClass_Generated::InitMemberBuffers()
@@ -566,10 +641,12 @@ void TestClass_Generated::AllocAllShaderBindingTables()
 {
   // (0) remember appropriate record offsets inside VulkanRTX impl. for future use them with acceleration structure //#ADDED
   //
-  std::vector<uint32_t> sbtRecordOffsets = {0, 1, 2};          //#TODO: get from m_pRayTraceImpl after move RT 'AllocAllShaderBindingTables' call to CommitDeviceData() function (?) 
-  auto pRTXImpl = dynamic_cast<VulkanRTX*>(m_pRayTraceImpl.get()); //#TODO: should be different for each pipelite
+  std::vector<uint32_t> sbtRecordOffsets = {0, 1, 2};                           //#TODO: get from m_pRayTraceImpl after move RT 'AllocAllShaderBindingTables' call to CommitDeviceData() function (?) 
+  auto pRTXImpl = dynamic_cast<VulkanRTX*>(m_pRayTraceImpl->UnderlyingImpl(1)); //#TODO: should be different for each pipelite
   if(pRTXImpl != nullptr)
     pRTXImpl->SetSBTRecordOffsets(sbtRecordOffsets);
+  else
+    std::cout << "AllocAllShaderBindingTables(): can't get SBT data from 'UnderlyingImpl' " << std::endl; 
 
   m_allShaderTableBuffers.clear();
 

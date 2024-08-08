@@ -137,7 +137,6 @@ protected:
   } m_vdata;
   
   std::vector<AbtractPrimitive>* m_pRayTraceImpl_primitives = nullptr;
-  std::shared_ptr<ISceneObject>  m_pRayTraceImplOld = nullptr;
 
   size_t m_maxThreadCount = 0;
   VkBuffer m_classDataBuffer = VK_NULL_HANDLE;
