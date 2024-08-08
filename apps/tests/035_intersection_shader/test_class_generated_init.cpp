@@ -15,7 +15,7 @@
 #include "CrossRT.h"
 ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_graphicsQId, std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper,
                               uint32_t a_maxMeshes, uint32_t a_maxTotalVertices, uint32_t a_maxTotalPrimitives, uint32_t a_maxPrimitivesPerMesh,
-                              bool build_as_add);
+                              bool build_as_add, bool deferred_tlas_build = false); //#ADDED: bool derrered_tlas_build = false
 
 std::shared_ptr<TestClass> CreateTestClass_Generated(int w, int h, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated)
 {
@@ -65,7 +65,7 @@ public:
   }
 
   void     ClearScene() override { for(auto impl : m_imps) impl->ClearScene(); } 
-  void     CommitScene(uint32_t options) override { for(auto impl : m_imps) impl->CommitScene();  }
+  void     CommitScene(uint32_t options) override { for(auto impl : m_imps) impl->CommitScene(options);  }
 
   uint32_t AddInstanceMotion(uint32_t a_geomId, const LiteMath::float4x4* a_matrices, uint32_t a_matrixNumber) override 
   { 
@@ -117,12 +117,12 @@ void TestClass_Generated::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice 
 
   auto pRayTraceImplOld = m_pRayTraceImpl;                                        
   m_pRayTraceImpl = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, m_ctx.pCopyHelper,
-                                                                  maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true),
+                                                                  maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true, true),
                                                                   [](ISceneObject *p) { DeleteSceneRT(p); } );
 
   m_pRayTraceImpl = std::make_shared<BFRayTrace_RTX_Proxy>(pRayTraceImplOld, m_pRayTraceImpl); // #ADDED: wrap both user and RTX implementation with proxy object                                                                    
   
-  AllocAllShaderBindingTables();
+  //AllocAllShaderBindingTables();
 }
 
 static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t wg_size)
@@ -637,17 +637,8 @@ void TestClass_Generated::AllocMemoryForMemberBuffersAndImages(const std::vector
     AllocAndBind(a_buffers);
 
 }
-void TestClass_Generated::AllocAllShaderBindingTables()
+void TestClass_Generated::AllocAllShaderBindingTables(const std::vector<uint32_t>& sbtRecordOffsets)
 {
-  // (0) remember appropriate record offsets inside VulkanRTX impl. for future use them with acceleration structure //#ADDED
-  //
-  std::vector<uint32_t> sbtRecordOffsets = {0, 1, 2};                           //#TODO: get from m_pRayTraceImpl after move RT 'AllocAllShaderBindingTables' call to CommitDeviceData() function (?) 
-  auto pRTXImpl = dynamic_cast<VulkanRTX*>(m_pRayTraceImpl->UnderlyingImpl(1)); //#TODO: should be different for each pipelite
-  if(pRTXImpl != nullptr)
-    pRTXImpl->SetSBTRecordOffsets(sbtRecordOffsets);
-  else
-    std::cout << "AllocAllShaderBindingTables(): can't get SBT data from 'UnderlyingImpl' " << std::endl; 
-
   m_allShaderTableBuffers.clear();
 
   uint32_t numHitStages    = uint32_t(sbtRecordOffsets.size()); //#CHANHED, should be different for each RT pipeline

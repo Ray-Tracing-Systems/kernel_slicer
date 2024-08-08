@@ -11,7 +11,7 @@
 #include "vk_utils.h"
 #include "vk_copy.h"
 #include "vk_context.h"
-
+#include "VulkanRTX.h" //#ADDED 
 
 #include "test_class.h"
 
@@ -45,12 +45,13 @@ public:
     UpdatePlainMembers(a_pCopyEngine);
     UpdateVectorMembers(a_pCopyEngine);
     UpdateTextureMembers(a_pCopyEngine);
+    UpdateAccelerationStructureMembers(a_pCopyEngine); //#ADDED
   }
 
   virtual void UpdatePrefixPointers();
 
   std::shared_ptr<vk_utils::ICopyEngine> m_pLastCopyHelper = nullptr;
-  virtual void CommitDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper) // you have to define this virtual function in the original imput class
+  virtual void CommitDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper) // #TODO: move from header to cpp file you have to define this virtual function in the original imput class
   {
     UpdatePrefixPointers();
     ReserveEmptyVectors();
@@ -66,6 +67,7 @@ public:
   virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
+  virtual void UpdateAccelerationStructureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void ReadPlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   static VkPhysicalDeviceFeatures2 ListRequiredDeviceFeatures(std::vector<const char*>& deviceExtensions);
 
@@ -188,7 +190,7 @@ protected:
                                        VkPipeline* pPipeline);
   virtual void MakeRayTracingPipelineAndLayout(const std::vector< std::pair<VkShaderStageFlagBits, std::string> >& shader_paths, bool a_hw_motion_blur, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout,
                                                VkPipelineLayout* pPipelineLayout, VkPipeline* pPipeline);
-  virtual void AllocAllShaderBindingTables();
+  virtual void AllocAllShaderBindingTables(const std::vector<uint32_t>& sbtRecordOffsets);
   std::vector<VkBuffer> m_allShaderTableBuffers;
   VkDeviceMemory        m_allShaderTableMem;
 
