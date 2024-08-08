@@ -187,7 +187,7 @@ void TestClass_Generated::InitAllGeneratedDescriptorSets_BFRT_ReadAndCompute()
     writeDescriptorSet[0].pTexelBufferView = nullptr;
 
     {
-      VulkanRTX* pScene = dynamic_cast<VulkanRTX*>(m_pRayTraceImpl.get());
+      VulkanRTX* pScene = dynamic_cast<VulkanRTX*>(m_pRayTraceImpl->UnderlyingImpl(1)); //#CHANGED
       if(pScene == nullptr)
         std::cout << "[TestClass_Generated::InitAllGeneratedDescriptorSets_BFRT_ReadAndCompute]: fatal error, wrong accel struct type" << std::endl;
       accelStructs       [1] = pScene->GetSceneAccelStruct();
