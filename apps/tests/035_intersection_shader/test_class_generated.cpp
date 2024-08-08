@@ -56,6 +56,24 @@ void TestClass_Generated::UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEn
 {
 }
 
+void TestClass_Generated::UpdateAccelerationStructureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
+{
+  std::vector<uint32_t> sbtRecordOffsets = {0}; // single HIT stage             //#TODO: get from m_pRayTraceImpl after move RT 'AllocAllShaderBindingTables' call to CommitDeviceData() function (?) 
+  auto pRTXImpl = dynamic_cast<VulkanRTX*>(m_pRayTraceImpl->UnderlyingImpl(1)); //#TODO: should be different for each pipelite
+  if(pRTXImpl != nullptr)
+  {
+    sbtRecordOffsets.resize(pRTXImpl->GetBLASCount());
+    for(size_t i=0;i<sbtRecordOffsets.size();i++)
+      sbtRecordOffsets[i] = uint32_t(i);
+    pRTXImpl->SetSBTRecordOffsets(sbtRecordOffsets);
+    pRTXImpl->CommitScene(BUILD_NOW);
+  }
+  else
+    std::cout << "[TestClass_Generated]::UpdateAccelerationStructureMembers(): can't cast 'm_pRayTraceImpl' to 'VulkanRTX' " << std::endl; 
+  
+  AllocAllShaderBindingTables(sbtRecordOffsets);
+}
+
 void TestClass_Generated::BFRT_ReadAndComputeMegaCmd(uint tidX, uint tidY, uint* out_color)
 {
   struct KernelArgsPC
