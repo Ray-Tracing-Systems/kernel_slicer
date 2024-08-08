@@ -42,8 +42,8 @@ vec2 gems_intersections(vec3 orig, vec3 dir, vec3 center, float radius)
 
 void main()
 {
-  //vec4  boxMin = m_pRayTraceImpl_primitives[gl_PrimitiveID].boxMin; // SEEMS using gl_PrimitiveID is INCORRECT HERE 
-  //vec4  boxMax = m_pRayTraceImpl_primitives[gl_PrimitiveID].boxMax; // SEEMS using gl_PrimitiveID is INCORRECT HERE
+  //vec4  boxMin = m_pRayTraceImpl_primitives[gl_PrimitiveID + 25].boxMin; // SEEMS using gl_PrimitiveID is INCORRECT HERE 
+  //vec4  boxMax = m_pRayTraceImpl_primitives[gl_PrimitiveID + 25].boxMax; // SEEMS using gl_PrimitiveID is INCORRECT HERE
   //vec3  center = (boxMin + boxMax).xyz*0.5f;
   //float radius = (boxMax.x - boxMin.x)*0.5f;
   //
