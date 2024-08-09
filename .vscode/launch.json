@@ -490,37 +490,6 @@
                 }
             ]
         },
-
-        //{
-        //    "name"   : "Launch (app_09/ISPC)",
-        //    "type"   : "cppdbg",
-        //    "request": "launch",
-        //    "program": "${workspaceFolder}/cmake-build-release/kslicer",
-        //    "args"   : ["${workspaceFolder}/apps/09_spharm/test_class.cpp",
-        //                "-mainClass", "SphHarm", 
-        //                "-stdlibfolder", "${workspaceFolder}/TINYSTL",
-        //                "-pattern", "ipv",
-        //                "-reorderLoops", "YX",
-        //                "-I${workspaceFolder}/apps/LiteMath", "ignore",
-        //                "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
-        //                "-I${workspaceFolder}/TINYSTL",       "ignore",
-        //                "-shaderCC", "ispc",
-        //                "-ispc_threads",  "1",
-        //                "-DKERNEL_SLICER",
-        //                "-v"],
-        //    "stopAtEntry"    : false,
-        //    "cwd"            : "${workspaceFolder}",
-        //    "environment"    : [],
-        //    "externalConsole": false,
-        //    "MIMode"         : "gdb",
-        //    "setupCommands"  : [
-        //        {
-        //            "description"   : "Enable pretty-printing for gdb",
-        //            "text"          : "-enable-pretty-printing",
-        //            "ignoreFailures": true
-        //        }
-        //    ]
-        //},
         
         {
             "name"   : "Launch (app_10/GLSL)",
@@ -2108,7 +2077,9 @@
             "args"   : ["${workspaceFolder}/apps/tests/035_intersection_shader/test_class.cpp",
                         "-mainClass", "TestClass",
                         //"-composInterface", "ISceneObject",
-                        //"-composImplementation","BFRayTrace", 
+                        //"-composImplementation","BFRayTrace",
+                        //"-intersectionShader","AbtractPrimitive::Intersect", 
+                        "-enable_ray_tracing_pipeline", "1",
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
                         "-I${workspaceFolder}/apps/LiteMath",   "ignore",
@@ -2117,7 +2088,6 @@
                         "-I${workspaceFolder}/apps/RayTracing", "process",
                         "-shaderCC", "glsl",
                         "-megakernel", "1",
-                        "-enable_ray_tracing_pipeline", "1",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,

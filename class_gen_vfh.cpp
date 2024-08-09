@@ -638,3 +638,57 @@ kslicer::VFHAccessNodes kslicer::GetVFHAccessNodes(const clang::CXXMemberCallExp
     return result;
 }
 
+bool kslicer::MainClassInfo::IsVFHBuffer(const std::string& a_name) const
+{
+  bool isVFHBuffer = false;
+  for(auto vfh : this->m_vhierarchy)
+    if(vfh.second.objBufferName == a_name)
+      isVFHBuffer = true;
+  return isVFHBuffer;
+}
+
+const kslicer::DataMemberInfo* kslicer::MainClassInfo::FindVFHTableFor(const std::string& a_name) const
+{
+  const kslicer::DataMemberInfo* res = nullptr;
+  for(const auto& member : this->dataMembers) {
+    if(member.name == a_name + "_vtable") {
+      res = &member;
+      break;
+    }
+  }
+  return res;
+}
+
+void kslicer::MainClassInfo::AppendVFHTables(std::vector<DataMemberInfo>& a_vector)
+{
+  const size_t oldDataMembersSize = a_vector.size();
+  for(size_t i=0;i<oldDataMembersSize;i++)
+  {
+    bool isVFH = this->IsVFHBuffer(a_vector[i].name);
+    if(isVFH)
+    {
+      // add vector itself
+      //
+      auto memberVFHTable = a_vector[i];
+      memberVFHTable.name += "_vtable";
+      memberVFHTable.type = "std::vector<uint2>";
+      memberVFHTable.containerDataType = "uint2";
+      a_vector.push_back(memberVFHTable);
+      
+      // add vector size and capacity for this vector
+      //
+      kslicer::DataMemberInfo size;
+      size.type         = "uint";
+      size.sizeInBytes  = sizeof(unsigned int);
+      size.name         = memberVFHTable.name + "_size";
+      size.usedInKernel    = true;
+      size.isContainerInfo = true;
+      size.kind            = kslicer::DATA_KIND::KIND_POD;
+      kslicer::DataMemberInfo capacity = size;
+      capacity.name     = memberVFHTable.name + "_capacity";
+
+      a_vector.push_back(size);
+      a_vector.push_back(capacity);
+    }
+  }
+}
