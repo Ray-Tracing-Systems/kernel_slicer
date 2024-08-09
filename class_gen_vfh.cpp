@@ -691,4 +691,26 @@ void kslicer::MainClassInfo::AppendVFHTables(std::vector<DataMemberInfo>& a_vect
       a_vector.push_back(capacity);
     }
   }
+  
+  // add xxx_vtable to kernel.usedContainers to bind it to shaders further 
+  //
+  for(auto& k : this->kernels)
+  {
+    for(auto cont : k.second.usedContainers) 
+    {
+      if(this->IsVFHBuffer(cont.second.name))
+      {
+         auto pVTable = this->FindVFHTableFor(cont.second.name);
+         if(pVTable != nullptr)
+         {
+           kslicer::UsedContainerInfo info;
+           info.type    = pVTable->type;
+           info.name    = pVTable->name;
+           info.kind    = pVTable->kind;
+           info.isConst = true;
+           k.second.usedContainers[info.name] = info;
+         }
+      }
+    }
+  }
 }
