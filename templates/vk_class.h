@@ -310,6 +310,11 @@ protected:
     VkSampler      {{Sam}} = VK_NULL_HANDLE;
     {% endfor %}
   } m_vdata;
+  {% for Vector in VectorMembers %}
+  {% if Vector.IsVFHBuffer %}
+  {{Vector.VTable.Type}} {{Vector.VTable.Name}};
+  {% endif %}
+  {% endfor %}
 
   {% for Vector in VectorMembers %}
   {% if Vector.HasPrefix %}

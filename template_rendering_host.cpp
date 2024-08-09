@@ -565,6 +565,23 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["CleanName"] = cleanName;
       local["Type"]      = var.type;
       local["HasPrefix"] = var.hasPrefix;
+      ////////////////////////////////////////////////////////////////////
+      bool isVFHBuffer = a_classInfo.IsVFHBuffer(var.name);
+      local["IsVFHBuffer"]    = isVFHBuffer;
+      local["VTable"]         = json(); 
+      if(isVFHBuffer)
+      {
+        auto pTable = a_classInfo.FindVFHTableFor(var.name);
+        if(pTable != nullptr)
+        {
+          json vtable;
+          vtable["Type"]  = pTable->type;
+          vtable["Name"]  = pTable->name;
+          local["VTable"] = vtable;
+        }
+      }  
+      //local["IsVFHPointers"] = v.isVFHPointers;
+      ////////////////////////////////////////////////////////////////////
       data["VectorMembers"].push_back(local);
     }
     else if(var.isContainer && kslicer::IsPointerContainer(var.containerType) &&
@@ -663,9 +680,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["ClassVars"].push_back(local);
   }
 
-  data["ClassVectorVars"]   = std::vector<std::string>();
-  data["ClassTextureVars"]  = std::vector<std::string>();
-  data["ClassTexArrayVars"] = std::vector<std::string>();
+  data["ClassVectorVars"]   = std::vector<json>();
+  data["ClassTextureVars"]  = std::vector<json>();
+  data["ClassTexArrayVars"] = std::vector<json>();
   for(const auto& v : a_classInfo.dataMembers)
   {
     if(!v.isContainer || v.usage != kslicer::DATA_USAGE::USAGE_USER)
@@ -746,6 +763,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       auto p2 = containersInfo.find(capacityName);
 
       assert(p1 != containersInfo.end() && p2 != containersInfo.end());
+      
+      bool isVFHBuffer = a_classInfo.IsVFHBuffer(v.name);
 
       json local;
       local["Name"]           = v.name;
@@ -756,6 +775,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["NeedSampler"]    = false;
       local["HasPrefix"]      = v.hasPrefix;
       local["PrefixName"]     = v.prefixName;
+      local["IsVFHBuffer"]    = isVFHBuffer;
       if(v.hasPrefix)
          local["AccessSymb"]     = "->";
       data["ClassVectorVars"].push_back(local);
