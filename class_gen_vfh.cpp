@@ -661,6 +661,7 @@ const kslicer::DataMemberInfo* kslicer::MainClassInfo::FindVFHTableFor(const std
 
 void kslicer::MainClassInfo::AppendVFHTables(std::vector<DataMemberInfo>& a_vector)
 {
+  /*
   const size_t oldDataMembersSize = a_vector.size();
   for(size_t i=0;i<oldDataMembersSize;i++)
   {
@@ -713,4 +714,5 @@ void kslicer::MainClassInfo::AppendVFHTables(std::vector<DataMemberInfo>& a_vect
       }
     }
   }
+  */
 }

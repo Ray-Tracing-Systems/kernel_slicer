@@ -312,7 +312,7 @@ protected:
   } m_vdata;
   {% for Vector in VectorMembers %}
   {% if Vector.IsVFHBuffer %}
-  {{Vector.VTable.Type}} {{Vector.VTable.Name}};
+  // {# {{Vector.VTable.Type}} {{Vector.VTable.Name}} #};
   {% endif %}
   {% endfor %}
 

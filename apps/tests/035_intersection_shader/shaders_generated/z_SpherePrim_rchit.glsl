@@ -18,7 +18,7 @@ hitAttributeEXT vec3 attribs;
 void main()
 {
   kgen_hitValue.primId = gl_PrimitiveID;
-  kgen_hitValue.geomId = gl_InstanceCustomIndexEXT;
+  kgen_hitValue.geomId = gl_InstanceCustomIndexEXT; 
   kgen_hitValue.instId = gl_InstanceID;
   kgen_hitValue.t      = gl_HitTEXT;
  
