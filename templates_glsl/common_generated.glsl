@@ -77,8 +77,7 @@ struct {{RetDecl.Name}}
 {% for VirtualFunc in Hierarchy.VirtualFunctions %}
 {{VirtualFunc.Decl}} 
 {
-  const uint tag = {{Hierarchy.ObjBufferName}}_vtable[selfId].x;
-          selfId = {{Hierarchy.ObjBufferName}}_vtable[selfId].y;
+  const uint tag = {{Hierarchy.ObjBufferName}}[selfId].m_tag;
   switch(tag) 
   {
     {% for Impl in Hierarchy.Implementations %}

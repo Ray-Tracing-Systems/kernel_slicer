@@ -732,12 +732,12 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   std::vector<VkImage>  memberTextures;
   {% for Var in ClassVectorVars %}
   {% if Var.IsVFHBuffer %}
-  if({{Var.Name}}_vtable.size() != {{Var.Name}}.size())
-  {
-    {{Var.Name}}_vtable.resize({{Var.Name}}.size());
-    for(size_t i=0;i<{{Var.Name}}.size();i++) 
-      {{Var.Name}}_vtable[i] = uint2({{Var.Name}}[i].GetTag(), uint32_t(i));
-  }
+  //if({{Var.Name}}_vtable.size() != {{Var.Name}}.size())
+  //{
+  //  {{Var.Name}}_vtable.resize({{Var.Name}}.size());
+  //  for(size_t i=0;i<{{Var.Name}}.size();i++) 
+  //    {{Var.Name}}_vtable[i] = uint2({{Var.Name}}[i].GetTag(), uint32_t(i));
+  //}
   {% endif %}
   {% endfor %}
   
