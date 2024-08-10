@@ -105,7 +105,7 @@ static inline size_t AlignedSize(const size_t a_size)
   return currSize;
 }
 
-nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, 
+nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHierarchy& h, 
                                            const clang::CompilerInstance& compiler,
                                            const MainClassInfo& a_classInfo)
 {
@@ -231,7 +231,7 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::DHierar
   return hierarchy;
 }
 
-nlohmann::json kslicer::PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies,
+nlohmann::json kslicer::PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
                                                  const clang::CompilerInstance& compiler,
                                                  const MainClassInfo& a_classInfo)
 {

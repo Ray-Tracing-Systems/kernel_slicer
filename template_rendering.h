@@ -37,11 +37,11 @@ namespace kslicer
 
   void ApplyJsonToTemplate(const std::filesystem::path& a_declTemplateFilePath, const std::filesystem::path& a_suffix, const nlohmann::json& a_data);
 
-  nlohmann::json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, 
+  nlohmann::json PutHierarchyToJson(const kslicer::MainClassInfo::VFHHierarchy& h, 
                                     const clang::CompilerInstance& compiler,
                                     const MainClassInfo& a_classInfo);
 
-  nlohmann::json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies,
+  nlohmann::json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
                                           const clang::CompilerInstance& compiler,
                                           const MainClassInfo& a_classInfo);
 }
