@@ -1121,12 +1121,18 @@ namespace kslicer
       std::string                 interfaceName;
     };
 
-    struct DHierarchy
+    enum  VFH_LEVEL{ VFH_LEVEL_1 = 1, // all imlementations are same size as interface, switch-based impl. in shader
+                     VFH_LEVEL_2 = 2, // implementations of different size, GLSL_EXT_buffer_reference2, switch-based impl. in shader
+                     VFH_LEVEL_3 = 3  // implementations of different size, GLSL_EXT_buffer_reference2, callable-shaders based implementation; 
+                     };               // select between VFH_LEVEL_2 and VFH_LEVEL_3 is a responsibility of generator option and, there is no difference of them for user
+
+    struct VFHHierarchy
     {
       const clang::CXXRecordDecl* interfaceDecl = nullptr;
       std::string                 interfaceName;
       std::string                 objBufferName;
       std::vector<DImplClass>     implementations;
+      VFH_LEVEL                   level = VFH_LEVEL_1;
 
       std::vector<kslicer::DeclInClass>            usedDecls;
       std::unordered_map<std::string, std::string> tagByClassName;
@@ -1139,7 +1145,7 @@ namespace kslicer
     bool useComplexNumbers = false;
     bool genGPUAPI         = false;
 
-    std::unordered_map<std::string, DHierarchy> m_vhierarchy;
+    std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;
     bool IsVFHBuffer(const std::string& a_name) const;
     const DataMemberInfo* FindVFHTableFor(const std::string& a_name) const;
 

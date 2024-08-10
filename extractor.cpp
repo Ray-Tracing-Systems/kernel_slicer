@@ -174,7 +174,7 @@ public:
         auto p = m_patternImpl.m_vhierarchy.find(typeName);
         if(p == m_patternImpl.m_vhierarchy.end())
         {
-          kslicer::MainClassInfo::DHierarchy hierarchy;
+          kslicer::MainClassInfo::VFHHierarchy hierarchy;
           hierarchy.interfaceDecl  = recordDecl;
           hierarchy.interfaceName  = typeName;
           hierarchy.objBufferName  = buffName;
