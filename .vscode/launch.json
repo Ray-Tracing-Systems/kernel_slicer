@@ -1010,6 +1010,36 @@
             ]
         },
 
+        {
+            "name"   : "Launch (app_26/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/26_virtual_func_rt_test3/test_class.cpp",
+                        "-mainClass", "TestClass", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-megakernel", "1",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-shaderCC", "glsl",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
         //{
         //    "name"   : "Launch (test_001/clspv)",
         //    "type"   : "cppdbg",
