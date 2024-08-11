@@ -40,20 +40,12 @@ struct CallClassificationResult
   std::string                       containerDataType;
 };
 
-static const clang::Expr* SkipImplicitCasts(const clang::Expr* expr) 
-{
-  // Рекурсивно пропускаем все узлы типа ImplicitCastExpr
-  while (const auto* castExpr = clang::dyn_cast<clang::ImplicitCastExpr>(expr))
-    expr = castExpr->getSubExpr();
-  return expr;
-}
-
 static CallClassificationResult ClassifVirtualCall(const clang::CallExpr* call) 
 {
     CallClassificationResult result = {};
 
     // Получаем вызываемое выражение (callee) и пропускаем все ImplicitCastExpr
-    const clang::Expr* callee = SkipImplicitCasts(call->getCallee());
+    const clang::Expr* callee = kslicer::RemoveImplicitCast(call->getCallee());
 
     const auto* memberExpr = clang::dyn_cast<clang::MemberExpr>(callee);
     if(memberExpr == nullptr)
@@ -63,17 +55,17 @@ static CallClassificationResult ClassifVirtualCall(const clang::CallExpr* call)
     //
     if (memberExpr) 
     {
-      const clang::Expr* baseExpr = SkipImplicitCasts(memberExpr->getBase());
+      const clang::Expr* baseExpr = kslicer::RemoveImplicitCast(memberExpr->getBase());
       const auto* parenExpr = clang::dyn_cast<clang::ParenExpr>(baseExpr);
       if (parenExpr) {
-          const auto* binOp = clang::dyn_cast<clang::BinaryOperator>(SkipImplicitCasts(parenExpr->getSubExpr()));
+          const auto* binOp = clang::dyn_cast<clang::BinaryOperator>(kslicer::RemoveImplicitCast(parenExpr->getSubExpr()));
           if (binOp && binOp->getOpcode() == clang::BO_Add) {
-              const auto* lhs = clang::dyn_cast<clang::CXXMemberCallExpr>(SkipImplicitCasts(binOp->getLHS()));
+              const auto* lhs = clang::dyn_cast<clang::CXXMemberCallExpr>(kslicer::RemoveImplicitCast(binOp->getLHS()));
               if (lhs) {
-                  const auto* dataMemberExpr = clang::dyn_cast<clang::MemberExpr>(SkipImplicitCasts(lhs->getCallee()));
+                  const auto* dataMemberExpr = clang::dyn_cast<clang::MemberExpr>(kslicer::RemoveImplicitCast(lhs->getCallee()));
                   if (dataMemberExpr) {
                       result.level = kslicer::MainClassInfo::VFH_LEVEL_1;
-                      result.materialsMemberExpr = clang::dyn_cast<clang::MemberExpr>(SkipImplicitCasts(dataMemberExpr->getBase()));
+                      result.materialsMemberExpr = clang::dyn_cast<clang::MemberExpr>(kslicer::RemoveImplicitCast(dataMemberExpr->getBase()));
                       // Получение типа данных, хранящегося в векторе
                       if (result.materialsMemberExpr) {
                         result.vectorType   = result.materialsMemberExpr->getType().getAsString();
@@ -94,10 +86,10 @@ static CallClassificationResult ClassifVirtualCall(const clang::CallExpr* call)
 
     // Проверка на второй тип/уровень вызова, соотвествующий VFH_LEVEL_2: "m_materials[matId]->GetColor()"
     //
-    const clang::Expr* baseExpr = SkipImplicitCasts(memberExpr->getBase());
-    const auto* operatorCallExpr = clang::dyn_cast<clang::CXXOperatorCallExpr>(SkipImplicitCasts(baseExpr));
+    const clang::Expr* baseExpr = kslicer::RemoveImplicitCast(memberExpr->getBase());
+    const auto* operatorCallExpr = clang::dyn_cast<clang::CXXOperatorCallExpr>(kslicer::RemoveImplicitCast(baseExpr));
     if (operatorCallExpr && operatorCallExpr->getOperator() == clang::OO_Subscript) {
-        const auto* memberExpr2 = clang::dyn_cast<clang::MemberExpr>(SkipImplicitCasts(operatorCallExpr->getArg(0)));
+        const auto* memberExpr2 = clang::dyn_cast<clang::MemberExpr>(kslicer::RemoveImplicitCast(operatorCallExpr->getArg(0)));
         if (memberExpr2) {
             result.level = kslicer::MainClassInfo::VFH_LEVEL_2;
             result.materialsMemberExpr = memberExpr2;
@@ -505,10 +497,12 @@ public:
 
   bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* call)
   { 
+    std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler);
+
     if(kslicer::IsCalledWithArrowAndVirtual(call))
     {
-      auto buffAndOffset = kslicer::GetVFHAccessNodes(call);
-      if(buffAndOffset.buffNode != nullptr && buffAndOffset.offsetNode != nullptr)
+      auto buffAndOffset = kslicer::GetVFHAccessNodes(call, m_compiler);
+      if(buffAndOffset.buffName != "" && buffAndOffset.offsetName != "")
       {
         for(auto container : m_codeInfo.usedProbably) // if container is used inside curr interface impl, add it to usedContainers list for current kernel  
         {
@@ -521,6 +515,7 @@ public:
         }
       }
     }
+    
     //std::cout << "  [DataExtractor]: catch " << fname.c_str() << std::endl;
 
     return true;

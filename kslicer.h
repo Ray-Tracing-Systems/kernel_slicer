@@ -1294,14 +1294,14 @@ namespace kslicer
 
   struct VFHAccessNodes 
   {
-    const clang::CXXMemberCallExpr* buffNode;
-    const clang::Expr*              offsetNode;
-    std::string                     interfaceName;
-    std::string                     interfaceTypeName;
-    VFHAccessNodes() : buffNode(nullptr), offsetNode(nullptr) {}
+    VFHAccessNodes(){}
+    std::string interfaceName;
+    std::string interfaceTypeName;
+    std::string buffName;
+    std::string offsetName;
   };
 
-  VFHAccessNodes GetVFHAccessNodes(const clang::CXXMemberCallExpr* f);
+  VFHAccessNodes GetVFHAccessNodes(const clang::CXXMemberCallExpr* f, const clang::CompilerInstance& a_compiler);
   bool IsCalledWithArrowAndVirtual(const clang::CXXMemberCallExpr* f);
 }
 
