@@ -11,6 +11,8 @@
 #include <stack>
 #include <algorithm>
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static clang::MemberExpr* ExtractVCallDataMemberExpr(clang::Expr *expr, const std::string& a_targetName) 
 {
   // Рекурсивно ищем выражение-член, соответствующее a_targetName
@@ -28,6 +30,98 @@ static clang::MemberExpr* ExtractVCallDataMemberExpr(clang::Expr *expr, const st
   return nullptr;
 }
 
+struct CallClassificationResult 
+{
+  kslicer::MainClassInfo::VFH_LEVEL level;
+  const clang::MemberExpr*          materialsMemberExpr;
+  std::string                       vectorType;
+  std::string                       vectorName;
+  std::string                       containerType;
+  std::string                       containerDataType;
+};
+
+static const clang::Expr* SkipImplicitCasts(const clang::Expr* expr) 
+{
+  // Рекурсивно пропускаем все узлы типа ImplicitCastExpr
+  while (const auto* castExpr = clang::dyn_cast<clang::ImplicitCastExpr>(expr))
+    expr = castExpr->getSubExpr();
+  return expr;
+}
+
+static CallClassificationResult ClassifVirtualCall(const clang::CallExpr* call) 
+{
+    CallClassificationResult result = {};
+
+    // Получаем вызываемое выражение (callee) и пропускаем все ImplicitCastExpr
+    const clang::Expr* callee = SkipImplicitCasts(call->getCallee());
+
+    const auto* memberExpr = clang::dyn_cast<clang::MemberExpr>(callee);
+    if(memberExpr == nullptr)
+      return result;
+
+    // Проверка на первый тип/уровень вызова, соотвествующий VFH_LEVEL_1: "(m_materials.data() + matId)->GetColor()"
+    //
+    if (memberExpr) 
+    {
+      const clang::Expr* baseExpr = SkipImplicitCasts(memberExpr->getBase());
+      const auto* parenExpr = clang::dyn_cast<clang::ParenExpr>(baseExpr);
+      if (parenExpr) {
+          const auto* binOp = clang::dyn_cast<clang::BinaryOperator>(SkipImplicitCasts(parenExpr->getSubExpr()));
+          if (binOp && binOp->getOpcode() == clang::BO_Add) {
+              const auto* lhs = clang::dyn_cast<clang::CXXMemberCallExpr>(SkipImplicitCasts(binOp->getLHS()));
+              if (lhs) {
+                  const auto* dataMemberExpr = clang::dyn_cast<clang::MemberExpr>(SkipImplicitCasts(lhs->getCallee()));
+                  if (dataMemberExpr) {
+                      result.level = kslicer::MainClassInfo::VFH_LEVEL_1;
+                      result.materialsMemberExpr = clang::dyn_cast<clang::MemberExpr>(SkipImplicitCasts(dataMemberExpr->getBase()));
+                      // Получение типа данных, хранящегося в векторе
+                      if (result.materialsMemberExpr) {
+                        result.vectorType   = result.materialsMemberExpr->getType().getAsString();
+                        result.vectorName   = result.materialsMemberExpr->getMemberNameInfo().getAsString();
+                        const auto qt       = result.materialsMemberExpr->getType();
+                        const auto typeDecl = qt->getAsRecordDecl();
+                        auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
+                        if(specDecl != nullptr)
+                          kslicer::SplitContainerTypes(specDecl, result.containerType, result.containerDataType);
+                          ReplaceFirst(result.containerDataType, "struct ", "");
+                      }
+                      return result;
+                  }
+              }
+          }
+      }
+    }
+
+    // Проверка на второй тип/уровень вызова, соотвествующий VFH_LEVEL_2: "m_materials[matId]->GetColor()"
+    //
+    const clang::Expr* baseExpr = SkipImplicitCasts(memberExpr->getBase());
+    const auto* operatorCallExpr = clang::dyn_cast<clang::CXXOperatorCallExpr>(SkipImplicitCasts(baseExpr));
+    if (operatorCallExpr && operatorCallExpr->getOperator() == clang::OO_Subscript) {
+        const auto* memberExpr2 = clang::dyn_cast<clang::MemberExpr>(SkipImplicitCasts(operatorCallExpr->getArg(0)));
+        if (memberExpr2) {
+            result.level = kslicer::MainClassInfo::VFH_LEVEL_2;
+            result.materialsMemberExpr = memberExpr2;
+            // Получение типа данных, хранящегося в векторе
+            if (result.materialsMemberExpr) {
+              result.vectorType   = result.materialsMemberExpr->getType().getAsString();
+              result.vectorName   = result.materialsMemberExpr->getMemberNameInfo().getAsString();
+              const auto qt       = result.materialsMemberExpr->getType();
+              const auto typeDecl = qt->getAsRecordDecl();
+              auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
+              if(specDecl != nullptr)
+                kslicer::SplitContainerTypes(specDecl, result.containerType, result.containerDataType);
+                ReplaceFirst(result.containerDataType, "struct ", "");
+            }
+            return result;
+        }
+    }
+
+    return result; // Возвращаем пустой результат, если тип вызова не был определен
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class FuncExtractor : public clang::RecursiveASTVisitor<FuncExtractor>
 {
@@ -144,11 +238,10 @@ public:
       {
         if(isRTX)
           return true;                             // do not process HW accelerated calls
-
-        auto posBegin = debugText.find("(");       // todo: make it better
-        auto posEnd   = debugText.find(".data()"); //
-        std::string buffName = debugText.substr(posBegin+1, posEnd-posBegin-1);
         
+        auto classiedCallData = ClassifVirtualCall(call);
+        std::string buffName  = classiedCallData.vectorName;        
+
         const clang::MemberExpr* buffMemberExpr = ExtractVCallDataMemberExpr(call, buffName);  // wherther this is in compose class
         if (buffMemberExpr != nullptr) 
         {
@@ -177,9 +270,10 @@ public:
           kslicer::MainClassInfo::VFHHierarchy hierarchy;
           hierarchy.interfaceDecl  = recordDecl;
           hierarchy.interfaceName  = typeName;
-          hierarchy.objBufferName  = buffName;
+          hierarchy.objBufferName  = classiedCallData.vectorName;
+          hierarchy.level          = classiedCallData.level;
           hierarchy.virtualFunctions[func.name] = func;
-          m_patternImpl.m_vhierarchy[typeName] = hierarchy;
+          m_patternImpl.m_vhierarchy[typeName]  = hierarchy;
         }
         else
           p->second.virtualFunctions[func.name] = func;
