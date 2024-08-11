@@ -433,12 +433,11 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
 
   if(kslicer::IsCalledWithArrowAndVirtual(f) && WasNotRewrittenYet(f))
   {
-    auto buffAndOffset = kslicer::GetVFHAccessNodes(f);
-    if(buffAndOffset.buffNode != nullptr && buffAndOffset.offsetNode != nullptr)
+    auto buffAndOffset = kslicer::GetVFHAccessNodes(f, m_compiler);
+    if(buffAndOffset.buffName != "" && buffAndOffset.offsetName != "")
     {
-      std::string buffText   = GetRangeSourceCode(buffAndOffset.buffNode->getSourceRange(), m_compiler); 
-      std::string offsetText = GetRangeSourceCode(buffAndOffset.offsetNode->getSourceRange(), m_compiler); 
-      std::string buffText2  = buffText.substr(0, buffText.find(".data()"));
+      std::string buffText2  = buffAndOffset.buffName;
+      std::string offsetText = buffAndOffset.offsetName; //GetRangeSourceCode(buffAndOffset.offsetNode->getSourceRange(), m_compiler); 
       
       std::string textCallNoName = "(" + offsetText; 
       if(f->getNumArgs() != 0)

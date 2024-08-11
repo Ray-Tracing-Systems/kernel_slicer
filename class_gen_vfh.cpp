@@ -575,32 +575,29 @@ bool kslicer::IsCalledWithArrowAndVirtual(const clang::CXXMemberCallExpr* f)
     return false;
 }
 
-kslicer::VFHAccessNodes kslicer::GetVFHAccessNodes(const clang::CXXMemberCallExpr* f) 
+kslicer::VFHAccessNodes kslicer::GetVFHAccessNodes(const clang::CXXMemberCallExpr* f, const clang::CompilerInstance& a_compiler) 
 {
-    VFHAccessNodes result;
+  VFHAccessNodes result = {};
 
-    if (!f) return result;
+  if (!f) return result;
+  // Get the MemberExpr for the method call
+  const clang::MemberExpr* memberExpr = clang::dyn_cast<clang::MemberExpr>(f->getCallee());
+  if (!memberExpr) return result;
+  // Get the base of the MemberExpr
+  const clang::Expr* baseExpr = memberExpr->getBase();
+  if (!baseExpr) return result;
+  // Expecting baseExpr to be an ImplicitCastExpr
+  const clang::ImplicitCastExpr* castExpr = clang::dyn_cast<clang::ImplicitCastExpr>(baseExpr);
+  if (!castExpr) return result;
+  // Get the subexpression of the cast
+  const clang::Expr* subExpr = kslicer::RemoveImplicitCast(castExpr->getSubExpr());
+  if (!subExpr) 
+    return result;
 
-    // Get the MemberExpr for the method call
-    const clang::MemberExpr* memberExpr = clang::dyn_cast<clang::MemberExpr>(f->getCallee());
-    if (!memberExpr) return result;
-
-    // Get the base of the MemberExpr
-    const clang::Expr* baseExpr = memberExpr->getBase();
-    if (!baseExpr) return result;
-
-    // Expecting baseExpr to be an ImplicitCastExpr
-    const clang::ImplicitCastExpr* castExpr = clang::dyn_cast<clang::ImplicitCastExpr>(baseExpr);
-    if (!castExpr) return result;
-
-    // Get the subexpression of the cast
-    const clang::Expr* subExpr = castExpr->getSubExpr();
-    if (!subExpr) return result;
-
-    // Expecting subExpr to be a ParenExpr
-    const clang::ParenExpr* parenExpr = clang::dyn_cast<clang::ParenExpr>(subExpr);
-    if (!parenExpr) return result;
-
+  // Проверка на первый тип/уровень вызова, соотвествующий VFH_LEVEL_1: "(m_materials.data() + matId)->GetColor()"
+  //
+  if (const clang::ParenExpr* parenExpr = clang::dyn_cast<clang::ParenExpr>(subExpr))
+  {
     // Get the subexpression of the paren
     const clang::Expr* innerExpr = parenExpr->getSubExpr();
     if (!innerExpr) return result;
@@ -616,26 +613,35 @@ kslicer::VFHAccessNodes kslicer::GetVFHAccessNodes(const clang::CXXMemberCallExp
     if (!lhs || !rhs) 
       return result;
 
-    // The left hand side should be a CXXMemberCallExpr (m_materials.data())
-    result.buffNode = clang::dyn_cast<clang::CXXMemberCallExpr>(lhs);
+    std::string buffText = GetRangeSourceCode(lhs->getSourceRange(), a_compiler); 
 
-    // The right hand side should be a DeclRefExpr (mid)
-    result.offsetNode = rhs;
+    result.buffName   = buffText.substr(0, buffText.find(".data()"));          // The left hand side should be a CXXMemberCallExpr (m_materials.data())
+    result.offsetName = GetRangeSourceCode(rhs->getSourceRange(), a_compiler); // The right hand side should be a DeclRefExpr (mid)
+  }
+  // Проверка на второй тип/уровень вызова, соотвествующий VFH_LEVEL_2: "m_materials[matId]->GetColor()"
+  else if(const clang::CXXOperatorCallExpr* arrayExpr = clang::dyn_cast<clang::CXXOperatorCallExpr>(subExpr))
+  {
+    if(arrayExpr->getOperator() != clang::OO_Subscript) // operator[]
+      return result;
 
-     // Get the class name (IMaterial)
-    if (result.buffNode) {
-      const clang::Expr* baseCallExpr = f->getImplicitObjectArgument();
-      if (baseCallExpr) {
-        clang::QualType baseType = baseCallExpr->getType();
-        if (const clang::CXXRecordDecl* recordDecl = baseType->getPointeeCXXRecordDecl())
-          result.interfaceName     = recordDecl->getNameAsString();
-          result.interfaceTypeName = kslicer::ClearTypeName(baseType.getAsString());
-          ReplaceFirst(result.interfaceTypeName, "*", "");
-          while(ReplaceFirst(result.interfaceTypeName, " ", ""));
-      }
-    }
+    const auto arg0 = kslicer::RemoveImplicitCast(arrayExpr->getArg(0));
+    const auto arg1 = kslicer::RemoveImplicitCast(arrayExpr->getArg(1));
+     
+    result.buffName   = GetRangeSourceCode(arg0->getSourceRange(), a_compiler); // The left hand side should be a 'm_materials'
+    result.offsetName = GetRangeSourceCode(arg1->getSourceRange(), a_compiler); // The right hand side should be a 'mid'
+  }
 
-    return result;
+  const clang::Expr* baseCallExpr = f->getImplicitObjectArgument();
+  if (baseCallExpr) {
+    clang::QualType baseType = baseCallExpr->getType();
+    if (const clang::CXXRecordDecl* recordDecl = baseType->getPointeeCXXRecordDecl())
+      result.interfaceName     = recordDecl->getNameAsString();
+      result.interfaceTypeName = kslicer::ClearTypeName(baseType.getAsString());
+      ReplaceFirst(result.interfaceTypeName, "*", "");
+      while(ReplaceFirst(result.interfaceTypeName, " ", ""));
+  }
+
+  return result;
 }
 
 bool kslicer::MainClassInfo::IsVFHBuffer(const std::string& a_name) const
