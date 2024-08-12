@@ -571,15 +571,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       bool isVFHBuffer        = a_classInfo.IsVFHBuffer(var.name, &level);
       local["IsVFHBuffer"]    = isVFHBuffer;
       local["VFHLevel"]       = int(level);
-      local["VTable"]         = json(); 
-      if(isVFHBuffer)
-      {
-        json vtable;
-        vtable["Type"]  = "std::vector<uint2>";
-        vtable["Name"]  = var.name + "_vtable";
-        local["VTable"] = vtable;
-      }  
-      //local["IsVFHPointers"] = v.isVFHPointers;
       ////////////////////////////////////////////////////////////////////
       data["VectorMembers"].push_back(local);
     }

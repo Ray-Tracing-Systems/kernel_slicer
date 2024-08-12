@@ -660,72 +660,60 @@ bool kslicer::MainClassInfo::IsVFHBuffer(const std::string& a_name, VFH_LEVEL* p
   return isVFHBuffer;
 }
 
-const kslicer::DataMemberInfo* kslicer::MainClassInfo::FindVFHTableFor(const std::string& a_name) const
+void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberInfo>& a_vector)
 {
-  const kslicer::DataMemberInfo* res = nullptr;
-  for(const auto& member : this->dataMembers) {
-    if(member.name == a_name + "_vtable") {
-      res = &member;
-      break;
-    }
-  }
-  return res;
-}
+  if(m_vhierarchy.empty()) // TODO: add also check for the case when force binding for all buffers via refs is used
+    return;
 
-void kslicer::MainClassInfo::AppendVFHTables(std::vector<DataMemberInfo>& a_vector)
-{
-  /*
-  const size_t oldDataMembersSize = a_vector.size();
-  for(size_t i=0;i<oldDataMembersSize;i++)
+  const std::string nameOfBuffer = "all_references";
+
+  auto pMember = std::find_if(a_vector.begin(), a_vector.end(), [&nameOfBuffer](const DataMemberInfo & m) { return m.name == nameOfBuffer; });
+  if(pMember == a_vector.end())
   {
-    bool isVFH = this->IsVFHBuffer(a_vector[i].name);
-    if(isVFH)
-    {
-      // add vector itself
-      //
-      auto memberVFHTable = a_vector[i];
-      memberVFHTable.name += "_vtable";
-      memberVFHTable.type = "std::vector<uint2>";
-      memberVFHTable.containerDataType = "uint2";
-      a_vector.push_back(memberVFHTable);
-      
-      // add vector size and capacity for this vector
-      //
-      kslicer::DataMemberInfo size;
-      size.type         = "uint";
-      size.sizeInBytes  = sizeof(unsigned int);
-      size.name         = memberVFHTable.name + "_size";
-      size.usedInKernel    = true;
-      size.isContainerInfo = true;
-      size.kind            = kslicer::DATA_KIND::KIND_POD;
-      kslicer::DataMemberInfo capacity = size;
-      capacity.name     = memberVFHTable.name + "_capacity";
+    // add vector itself
+    //
+    DataMemberInfo memberVFHTable;
+    memberVFHTable.name              = nameOfBuffer;
+    memberVFHTable.type              = "std::vector<uint2>"; // TODO: different type
+    memberVFHTable.containerDataType = "uint2"; // TODO: different type
+    memberVFHTable.containerType     = "std::vector";
+    memberVFHTable.isContainer       = true;
+    memberVFHTable.kind              = DATA_KIND::KIND_VECTOR;
+    a_vector.push_back(memberVFHTable);
+    
+    // add vector size and capacity for this vector
+    //
+    kslicer::DataMemberInfo size;
+    size.type         = "uint";
+    size.sizeInBytes  = sizeof(unsigned int);
+    size.name         = memberVFHTable.name + "_size";
+    size.usedInKernel    = true;
+    size.isContainerInfo = true;
+    size.kind            = kslicer::DATA_KIND::KIND_POD;
+    kslicer::DataMemberInfo capacity = size;
+    capacity.name     = memberVFHTable.name + "_capacity";
+    a_vector.push_back(size);
+    a_vector.push_back(capacity);
 
-      a_vector.push_back(size);
-      a_vector.push_back(capacity);
-    }
+    pMember = std::find_if(a_vector.begin(), a_vector.end(), [&nameOfBuffer](const DataMemberInfo & m) { return m.name == nameOfBuffer; });
+  }
+    
+  if(pMember == a_vector.end())
+  {
+    std::cout << "[AppendAllRefsBufferIfNeeded]: ERROR, can't find data member '" << nameOfBuffer.c_str() << "'" << std::endl;
+    return;
+  }
+
+  // add kernel.usedContainers to bind it to shaders further (because we must readreferences from this buffer)
+  //
+  for(auto& k : this->kernels) // TODO: check if kernel actually needs this buffer in some way
+  {
+    kslicer::UsedContainerInfo info;
+    info.type    = pMember->type;
+    info.name    = pMember->name;
+    info.kind    = pMember->kind;
+    info.isConst = true;
+    k.second.usedContainers[info.name] = info; 
   }
   
-  // add xxx_vtable to kernel.usedContainers to bind it to shaders further 
-  //
-  for(auto& k : this->kernels)
-  {
-    for(auto cont : k.second.usedContainers) 
-    {
-      if(this->IsVFHBuffer(cont.second.name))
-      {
-         auto pVTable = this->FindVFHTableFor(cont.second.name);
-         if(pVTable != nullptr)
-         {
-           kslicer::UsedContainerInfo info;
-           info.type    = pVTable->type;
-           info.name    = pVTable->name;
-           info.kind    = pVTable->kind;
-           info.isConst = true;
-           k.second.usedContainers[info.name] = info;
-         }
-      }
-    }
-  }
-  */
 }
