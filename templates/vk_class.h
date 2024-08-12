@@ -324,7 +324,13 @@ protected:
   {% endif %}
   {% endfor %}
   {% if HasAllRefs %}
-  std::vector<uint2> all_references;
+  struct AllBufferReferences 
+  {
+    {% for Ref in AllReferences %}
+    VkDeviceAddress {{Ref.Name}}Address;
+    {% endfor %}
+  };
+  std::vector<AllBufferReferences> all_references;
   {% endif %}
 
   {% for Vector in VectorMembers %}

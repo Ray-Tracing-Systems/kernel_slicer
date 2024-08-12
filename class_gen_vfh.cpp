@@ -717,4 +717,14 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
   }
   
   this->hasAllRefs = true;
+  for(const auto& h : m_vhierarchy) {
+    if(int(h.second.level) >= 2) {
+      for(auto impl : h.second.implementations) {
+        BufferReference ref;
+        ref.name       = impl.name;
+        ref.typeOfElem = impl.name;
+        this->m_allRefs.push_back(ref);
+      }
+    }
+  }
 }
