@@ -1073,7 +1073,7 @@ namespace kslicer
 
     virtual void ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler);
     virtual void ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool);
-    virtual void AppendVFHTables(std::vector<DataMemberInfo>& a_vector);
+    virtual void AppendAllRefsBufferIfNeeded(std::vector<DataMemberInfo>& a_vector);
 
     //// \\
 
@@ -1147,7 +1147,6 @@ namespace kslicer
 
     std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;
     bool IsVFHBuffer(const std::string& a_name, VFH_LEVEL* pOutLevel = nullptr, VFHHierarchy* pHierarchy = nullptr) const;
-    const DataMemberInfo* FindVFHTableFor(const std::string& a_name) const;
 
     std::unordered_set<std::string> ExtractTypesFromUsedContainers(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls);
     void ProcessMemberTypes(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls, clang::SourceManager& a_srcMgr,
