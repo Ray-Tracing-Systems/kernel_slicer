@@ -1144,6 +1144,8 @@ namespace kslicer
     bool megakernelRTV     = false;
     bool useComplexNumbers = false;
     bool genGPUAPI         = false;
+    bool hasAllRefs        = false;
+    bool forceAllBufToRefs = false;
 
     std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;
     bool IsVFHBuffer(const std::string& a_name, VFH_LEVEL* pOutLevel = nullptr, VFHHierarchy* pHierarchy = nullptr) const;

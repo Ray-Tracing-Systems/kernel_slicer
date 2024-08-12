@@ -323,6 +323,9 @@ protected:
   std::vector<size_t>                 {{Vector.Name}}_obj_storage_offsets;
   {% endif %}
   {% endfor %}
+  {% if HasAllRefs %}
+  std::vector<uint2> all_references;
+  {% endif %}
 
   {% for Vector in VectorMembers %}
   {% if Vector.HasPrefix %}
