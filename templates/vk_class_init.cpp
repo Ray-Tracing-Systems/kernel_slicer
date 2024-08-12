@@ -772,17 +772,21 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
       PackObject_IMaterial(sorted[tag], {{Var.Name}}[i]);
     }
 
-    const size_t buffReferenceAlign = 256; // get from device or some thing like that ... 
+    const size_t buffReferenceAlign = 16; // from EXT_buffer_reference spec: "If the layout qualifier is not specified, it defaults to 16 bytes"
     size_t objDataBufferSize = 0;
     m_vdata.{{Var.Name}}_obj_storage_offsets.resize(sorted.size());
     for(size_t arrId=0;arrId<sorted.size(); arrId++)
     {
       m_vdata.{{Var.Name}}_obj_storage_offsets[arrId] = objDataBufferSize;
-      objDataBufferSize += vk_utils::getPaddedSize(objDataBufferSize, buffReferenceAlign);
+      objDataBufferSize += vk_utils::getPaddedSize(sorted[arrId].size(), buffReferenceAlign);
     }
 
-    //for(size_t i=0;i<{{Var.Name}}.size();i++) 
-    //  {{Var.Name}}_vtable[i] = uint2({{Var.Name}}[i].GetTag(), uint32_t(i));
+    m_vdata.{{Var.Name}}_dataSBuffer = vk_utils::createBuffer(device, objDataBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+    m_vdata.{{Var.Name}}_dataVBuffer = vk_utils::createBuffer(device, bufferV.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+    m_vdata.{{Var.Name}}_dataSOffset = 0;
+    m_vdata.{{Var.Name}}_dataVOffset = 0;
+    memberVectors.push_back(m_vdata.{{Var.Name}}_dataSBuffer);
+    memberVectors.push_back(m_vdata.{{Var.Name}}_dataVBuffer);
   }
   {% endif %}
   {% endfor %}
