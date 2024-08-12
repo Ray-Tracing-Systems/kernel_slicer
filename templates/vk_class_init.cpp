@@ -8,7 +8,7 @@
 #include <cassert>
 #include "vk_copy.h"
 #include "vk_context.h"
-{% if UseRayGen %}
+{% if UseRayGen or HasAllRefs %}
 #include "ray_tracing/vk_rt_funcs.h"
 #include "ray_tracing/vk_rt_utils.h"
 {% endif %}
@@ -831,6 +831,18 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   memberVectors.push_back(m_indirectBuffer);
   {% endif %}
   AllocMemoryForMemberBuffersAndImages(memberVectors, memberTextures);
+  {% if HasAllRefs %}
+  all_references.resize(1); // need just single element to store all references
+  {
+    {% for Var in ClassVectorVars %}
+    {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}
+    {% for Impl in Var.Hierarchy.Implementations %}
+    all_references[0].{{Impl.ClassName}}Address = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Var.Name}}_dataSBuffer) + {{Var.Name}}_obj_storage_offsets[{{Var.Hierarchy.Name}}::{{Impl.TagName}}];
+    {% endfor %}
+    {% endif %}
+    {% endfor %}
+  }
+  {% endif %}
   {% for Var in ClassTexArrayVars %}
   for(size_t i = 0; i < {{Var.Name}}.size(); i++)
     m_vdata.{{Var.Name}}ArrayView[i] = CreateView(VkFormat({{Var.Name}}[i]->format()), m_vdata.{{Var.Name}}ArrayTexture[i]);

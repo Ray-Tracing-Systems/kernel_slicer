@@ -462,6 +462,16 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
   data["Hierarchies"]        = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
   data["HasAllRefs"]         = a_classInfo.hasAllRefs;
+  if(a_classInfo.hasAllRefs)
+  {
+    data["AllReferences"] = std::vector<json>();
+    for(auto ref : a_classInfo.m_allRefs) {
+      json refJson;
+      refJson["Name"] = ref.name;
+      refJson["Type"] = ref.typeOfElem;
+      data["AllReferences"].push_back(refJson);
+    }
+  }
 
   if(data["UseServiceScan"])
   {

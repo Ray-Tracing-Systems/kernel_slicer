@@ -1139,6 +1139,12 @@ namespace kslicer
       std::map<std::string, kslicer::FuncData>     virtualFunctions;
     };
 
+    struct BufferReference 
+    {
+      std::string name;
+      std::string typeOfElem;
+    };
+
     kslicer::VKERNEL_IMPL_TYPE defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
     bool halfFloatTextures = false;
     bool megakernelRTV     = false;
@@ -1148,6 +1154,7 @@ namespace kslicer
     bool forceAllBufToRefs = false;
 
     std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;
+    std::vector<BufferReference>                  m_allRefs;
     bool IsVFHBuffer(const std::string& a_name, VFH_LEVEL* pOutLevel = nullptr, VFHHierarchy* pHierarchy = nullptr) const;
 
     std::unordered_set<std::string> ExtractTypesFromUsedContainers(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls);

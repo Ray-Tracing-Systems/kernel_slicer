@@ -32,6 +32,7 @@ add_executable(testapp main.cpp
                        test_class_generated_init.cpp 
                        test_class_generated_ds.cpp 
                        ../vkutils/vk_utils.cpp
+                       ../vkutils/ray_tracing/vk_rt_utils.cpp
                        ../vkutils/vk_copy.cpp
                        ../vkutils/vk_buffers.cpp
                        ../vkutils/vk_images.cpp
