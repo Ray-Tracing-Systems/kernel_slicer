@@ -716,4 +716,5 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
     k.second.usedContainers[info.name] = info; 
   }
   
+  this->hasAllRefs = true;
 }
