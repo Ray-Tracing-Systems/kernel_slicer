@@ -755,12 +755,12 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   std::vector<VkImage>  memberTextures;
   {% for Var in ClassVectorVars %}
   {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}
-  if(m_vdata.{{Var.Name}}_vtable.size() != {{Var.Name}}.size()) // Pack all objects of 
+  
+  if({{Var.Name}}_sorted.size() == 0) // Pack all objects of '{{Var.Hierarchy.Name}}'
   {
-    m_vdata.{{Var.Name}}_vtable.resize({{Var.Name}}.size());
-    std::array< std::vector<uint8_t> , 5> sorted;
-    std::vector<uint8_t>                  bufferV;
-    
+    auto& bufferV = {{Var.Name}}_dataV;
+    auto& sorted  = {{Var.Name}}_sorted;
+    sorted.resize({{length(Var.Hierarchy.Implementations)}} + 1);
     bufferV.reserve(16*4); // ({{Var.Name}}.size()*sizeof({{Var.Name}})); actual reserve may not be needed due to implementation don't have vectors. TODO: you may cvheck this explicitly in kslicer
     for(size_t arrId=0;arrId<sorted.size(); arrId++) {
       sorted[arrId].reserve({{Var.Name}}.size()*sizeof({{Var.Hierarchy.Name}}));
@@ -774,12 +774,14 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
 
     const size_t buffReferenceAlign = 16; // from EXT_buffer_reference spec: "If the layout qualifier is not specified, it defaults to 16 bytes"
     size_t objDataBufferSize = 0;
-    m_vdata.{{Var.Name}}_obj_storage_offsets.resize(sorted.size());
+    {{Var.Name}}_obj_storage_offsets.reserve(sorted.size() + 1);
+    {{Var.Name}}_obj_storage_offsets.resize(0);
     for(size_t arrId=0;arrId<sorted.size(); arrId++)
     {
-      m_vdata.{{Var.Name}}_obj_storage_offsets[arrId] = objDataBufferSize;
+      {{Var.Name}}_obj_storage_offsets.push_back(objDataBufferSize);
       objDataBufferSize += vk_utils::getPaddedSize(sorted[arrId].size(), buffReferenceAlign);
     }
+    {{Var.Name}}_obj_storage_offsets.push_back(objDataBufferSize); // store total buffer size also in this array
 
     m_vdata.{{Var.Name}}_dataSBuffer = vk_utils::createBuffer(device, objDataBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
     m_vdata.{{Var.Name}}_dataVBuffer = vk_utils::createBuffer(device, bufferV.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
