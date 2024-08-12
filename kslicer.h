@@ -1146,7 +1146,7 @@ namespace kslicer
     bool genGPUAPI         = false;
 
     std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;
-    bool IsVFHBuffer(const std::string& a_name) const;
+    bool IsVFHBuffer(const std::string& a_name, VFH_LEVEL* pOutLevel = nullptr, VFHHierarchy* pHierarchy = nullptr) const;
     const DataMemberInfo* FindVFHTableFor(const std::string& a_name) const;
 
     std::unordered_set<std::string> ExtractTypesFromUsedContainers(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls);

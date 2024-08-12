@@ -725,19 +725,65 @@ void {{MainClassName}}{{MainClassSuffix}}::ReserveEmptyVectors()
   {% endif %}
   {% endfor %}
 }
+{% for Hierarchy in Hierarchies %} 
+static size_t GetSizeByTag_{{Hierarchy.Name}}(uint32_t a_tag)
+{
+  switch(a_tag)
+  {
+    {% for Impl in Hierarchy.Implementations %}
+    case {{Hierarchy.Name}}::{{Impl.TagName}}: return sizeof({{Impl.ClassName}});
+    {% endfor %}
+    default : return sizeof({{Hierarchy.EmptyImplementation.ClassName}});
+  }
+};
+
+static size_t PackObject_{{Hierarchy.Name}}(std::vector<uint8_t>& buffer, const {{Hierarchy.Name}}* a_ptr) // todo: generate implementation via dynamic_cast or static_cast (can be used because we know the type)
+{
+  const size_t objSize  = GetSizeByTag_{{Hierarchy.Name}}(a_ptr->GetTag());
+  const size_t currSize = buffer.size();
+  const size_t nextSize = buffer.size() + objSize;
+  buffer.resize(nextSize);
+  memcpy(buffer.data() + currSize, a_ptr, objSize);
+  return objSize;
+}
+
+{% endfor %}
 
 void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
 {
   std::vector<VkBuffer> memberVectors;
   std::vector<VkImage>  memberTextures;
   {% for Var in ClassVectorVars %}
-  {% if Var.IsVFHBuffer %}
-  //if({{Var.Name}}_vtable.size() != {{Var.Name}}.size())
-  //{
-  //  {{Var.Name}}_vtable.resize({{Var.Name}}.size());
-  //  for(size_t i=0;i<{{Var.Name}}.size();i++) 
-  //    {{Var.Name}}_vtable[i] = uint2({{Var.Name}}[i].GetTag(), uint32_t(i));
-  //}
+  {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}
+  if(m_vdata.{{Var.Name}}_vtable.size() != {{Var.Name}}.size()) // Pack all objects of 
+  {
+    m_vdata.{{Var.Name}}_vtable.resize({{Var.Name}}.size());
+    std::array< std::vector<uint8_t> , 5> sorted;
+    std::vector<uint8_t>                  bufferV;
+    
+    bufferV.reserve(16*4); // ({{Var.Name}}.size()*sizeof({{Var.Name}})); actual reserve may not be needed due to implementation don't have vectors. TODO: you may cvheck this explicitly in kslicer
+    for(size_t arrId=0;arrId<sorted.size(); arrId++) {
+      sorted[arrId].reserve({{Var.Name}}.size()*sizeof({{Var.Hierarchy.Name}}));
+      sorted[arrId].resize(0);
+    }
+
+    for(size_t i=0;i<{{Var.Name}}.size();i++) {
+      const auto tag = {{Var.Name}}[i]->GetTag(); 
+      PackObject_IMaterial(sorted[tag], {{Var.Name}}[i]);
+    }
+
+    const size_t buffReferenceAlign = 256; // get from device or some thing like that ... 
+    size_t objDataBufferSize = 0;
+    m_vdata.{{Var.Name}}_obj_storage_offsets.resize(sorted.size());
+    for(size_t arrId=0;arrId<sorted.size(); arrId++)
+    {
+      m_vdata.{{Var.Name}}_obj_storage_offsets[arrId] = objDataBufferSize;
+      objDataBufferSize += vk_utils::getPaddedSize(objDataBufferSize, buffReferenceAlign);
+    }
+
+    //for(size_t i=0;i<{{Var.Name}}.size();i++) 
+    //  {{Var.Name}}_vtable[i] = uint2({{Var.Name}}[i].GetTag(), uint32_t(i));
+  }
   {% endif %}
   {% endfor %}
   
