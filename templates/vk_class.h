@@ -294,6 +294,14 @@ protected:
     {% for Vector in VectorMembers %}
     VkBuffer {{Vector.Name}}Buffer = VK_NULL_HANDLE;
     size_t   {{Vector.Name}}Offset = 0;
+    {% if Vector.IsVFHBuffer and Vector.VFHLevel >= 2 %}
+    {{Vector.VTable.Type}} {{Vector.VTable.Name}};
+    std::vector<size_t>    {{Vector.Name}}_obj_storage_offsets;
+    VkBuffer {{Vector.Name}}_dataSBuffer = VK_NULL_HANDLE;
+    size_t   {{Vector.Name}}_dataSOffset = 0;
+    VkBuffer {{Vector.Name}}_dataVBuffer = VK_NULL_HANDLE;
+    size_t   {{Vector.Name}}_dataVOffset = 0;
+    {% endif %}
     {% endfor %}
     {% for Tex in TextureMembers %}
     VkImage     {{Tex}}Texture = VK_NULL_HANDLE;
@@ -310,11 +318,6 @@ protected:
     VkSampler      {{Sam}} = VK_NULL_HANDLE;
     {% endfor %}
   } m_vdata;
-  {% for Vector in VectorMembers %}
-  {% if Vector.IsVFHBuffer %}
-  // {# {{Vector.VTable.Type}} {{Vector.VTable.Name}} #};
-  {% endif %}
-  {% endfor %}
 
   {% for Vector in VectorMembers %}
   {% if Vector.HasPrefix %}

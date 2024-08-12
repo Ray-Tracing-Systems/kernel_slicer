@@ -644,12 +644,19 @@ kslicer::VFHAccessNodes kslicer::GetVFHAccessNodes(const clang::CXXMemberCallExp
   return result;
 }
 
-bool kslicer::MainClassInfo::IsVFHBuffer(const std::string& a_name) const
+bool kslicer::MainClassInfo::IsVFHBuffer(const std::string& a_name, VFH_LEVEL* pOutLevel, VFHHierarchy* pHierarchy) const
 {
   bool isVFHBuffer = false;
-  for(auto vfh : this->m_vhierarchy)
-    if(vfh.second.objBufferName == a_name)
+  for(const auto& vfh : this->m_vhierarchy) {
+    if(vfh.second.objBufferName == a_name) {
       isVFHBuffer = true;
+      if(pOutLevel != nullptr)
+        (*pOutLevel) = vfh.second.level;
+      if(pHierarchy != nullptr)
+        (*pHierarchy) = vfh.second;
+      break;
+    }
+  }
   return isVFHBuffer;
 }
 

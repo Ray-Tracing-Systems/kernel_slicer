@@ -460,6 +460,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["GenGpuApi"]          = a_classInfo.genGPUAPI;
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
+  data["Hierarchies"]        = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
 
   if(data["UseServiceScan"])
   {
@@ -566,19 +567,17 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["Type"]      = var.type;
       local["HasPrefix"] = var.hasPrefix;
       ////////////////////////////////////////////////////////////////////
-      bool isVFHBuffer = a_classInfo.IsVFHBuffer(var.name);
+      MainClassInfo::VFH_LEVEL level = MainClassInfo::VFH_LEVEL_1;
+      bool isVFHBuffer        = a_classInfo.IsVFHBuffer(var.name, &level);
       local["IsVFHBuffer"]    = isVFHBuffer;
+      local["VFHLevel"]       = int(level);
       local["VTable"]         = json(); 
       if(isVFHBuffer)
       {
-        auto pTable = a_classInfo.FindVFHTableFor(var.name);
-        if(pTable != nullptr)
-        {
-          json vtable;
-          vtable["Type"]  = pTable->type;
-          vtable["Name"]  = pTable->name;
-          local["VTable"] = vtable;
-        }
+        json vtable;
+        vtable["Type"]  = "std::vector<uint2>";
+        vtable["Name"]  = var.name + "_vtable";
+        local["VTable"] = vtable;
       }  
       //local["IsVFHPointers"] = v.isVFHPointers;
       ////////////////////////////////////////////////////////////////////
@@ -764,7 +763,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
       assert(p1 != containersInfo.end() && p2 != containersInfo.end());
       
-      bool isVFHBuffer = a_classInfo.IsVFHBuffer(v.name);
+      kslicer::MainClassInfo::VFHHierarchy hierarchy;
+      MainClassInfo::VFH_LEVEL level = MainClassInfo::VFH_LEVEL_1;
+      bool isVFHBuffer = a_classInfo.IsVFHBuffer(v.name, &level, &hierarchy);
 
       json local;
       local["Name"]           = v.name;
@@ -776,6 +777,18 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["HasPrefix"]      = v.hasPrefix;
       local["PrefixName"]     = v.prefixName;
       local["IsVFHBuffer"]    = isVFHBuffer;
+      local["VFHLevel"]       = int(level);
+      if(isVFHBuffer && int(level) >= 2 ) 
+      {
+        json found;
+        for(auto h : data["Hierarchies"])
+          if(h["Name"] == hierarchy.interfaceName)
+            found = h;
+        local["Hierarchy"] = found;
+      }
+      else
+        local["Hierarchy"] = json();
+
       if(v.hasPrefix)
          local["AccessSymb"]     = "->";
       data["ClassVectorVars"].push_back(local);
