@@ -674,10 +674,11 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
     //
     DataMemberInfo memberVFHTable;
     memberVFHTable.name              = nameOfBuffer;
-    memberVFHTable.type              = "std::vector<uint2>"; // TODO: different type
-    memberVFHTable.containerDataType = "uint2"; // TODO: different type
+    memberVFHTable.type              = "std::vector<AllBufferReferences>"; 
+    memberVFHTable.containerDataType = "AllBufferReferences"; 
     memberVFHTable.containerType     = "std::vector";
     memberVFHTable.isContainer       = true;
+    memberVFHTable.isSingle          = true;
     memberVFHTable.kind              = DATA_KIND::KIND_VECTOR;
     a_vector.push_back(memberVFHTable);
     

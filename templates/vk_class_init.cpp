@@ -792,7 +792,10 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   }
   {% endif %}
   {% endfor %}
-  
+  {% if HasAllRefs %}
+  all_references.resize(1); // need just single element to store all references
+  {% endif %}
+
   {% for Var in ClassVectorVars %}
   m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
@@ -805,6 +808,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   {% endif %}
   memberTextures.push_back(m_vdata.{{Var.Name}}Texture);
   {% endfor %}
+  
   {% for Var in ClassTexArrayVars %}
   m_vdata.{{Var.Name}}ArrayTexture.resize(0);
   m_vdata.{{Var.Name}}ArrayView.resize(0);
@@ -822,6 +826,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
     memberTextures.push_back(tex);
   }
   {% endfor %}
+
   {% for Sam in SamplerMembers %}
   m_vdata.{{Sam}} = CreateSampler({{Sam}});
   {% endfor %}
@@ -832,7 +837,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   {% endif %}
   AllocMemoryForMemberBuffersAndImages(memberVectors, memberTextures);
   {% if HasAllRefs %}
-  all_references.resize(1); // need just single element to store all references
   {
     {% for Var in ClassVectorVars %}
     {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}

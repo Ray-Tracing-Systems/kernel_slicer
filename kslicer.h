@@ -360,6 +360,7 @@ namespace kslicer
     bool usedInMainFn      = false; ///<! if std::vector is used in MainFunction like vector.data();
     bool isPointer         = false;
     bool isConst           = false; ///<! const float4 BACKGROUND_COLOR = ... (they should not be read back)
+    bool isSingle          = false; ///<! single struct inside buffer, not a vector (vector with size() == 1), special case for all_references and other service needs
 
     bool hasPrefix = false;
     std::string prefixName;
