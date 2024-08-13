@@ -709,12 +709,25 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
   //
   for(auto& k : this->kernels) // TODO: check if kernel actually needs this buffer in some way
   {
-    kslicer::UsedContainerInfo info;
-    info.type    = pMember->type;
-    info.name    = pMember->name;
-    info.kind    = pMember->kind;
-    info.isConst = true;
-    k.second.usedContainers[info.name] = info; 
+    bool usedWithAtLeastOneVFH = false;
+    for(const auto& h : m_vhierarchy) 
+    {
+      auto p = k.second.usedContainers.find(h.second.objBufferName);
+      if(p != k.second.usedContainers.end() && int(h.second.level) >= 2) {
+        usedWithAtLeastOneVFH = true;
+        break;
+      }
+    }
+
+    if(usedWithAtLeastOneVFH)
+    {
+      kslicer::UsedContainerInfo info;
+      info.type    = pMember->type;
+      info.name    = pMember->name;
+      info.kind    = pMember->kind;
+      info.isConst = true;
+      k.second.usedContainers[info.name] = info; 
+    }
   }
   
   this->hasAllRefs = true;
