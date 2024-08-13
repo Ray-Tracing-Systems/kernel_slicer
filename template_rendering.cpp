@@ -114,28 +114,79 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
   hierarchy["ObjBufferName"]    = h.objBufferName;
   hierarchy["IndirectDispatch"] = 0;
   hierarchy["IndirectOffset"]   = 0;
+  hierarchy["VFHLevel"]         = int(h.level);
   
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   size_t summOfFieldsSize = 0;
+  auto fieldsInterface = a_classInfo.GetFieldsFromStruct(h.interfaceDecl, &summOfFieldsSize);
 
-  hierarchy["InterfaceFields"]  = std::vector<json>();
-  auto fields = a_classInfo.GetFieldsFromStruct(h.interfaceDecl, &summOfFieldsSize);
-  for(auto field : fields) 
+  hierarchy["InterfaceFields"] = std::vector<json>();
+  for(auto field : fieldsInterface) 
   {
     json local;
     local["Type"] = field.first;
     local["Name"] = field.second;
     hierarchy["InterfaceFields"].push_back(local);
   }
-  
-  // manually align struct to 64 bits (8 bytes) if needed
-  //
-  if(summOfFieldsSize % 8 != 0)
+
+  if(summOfFieldsSize % 8 != 0) // manually align struct to 64 bits (8 bytes) if needed
   {
     json local;
     local["Type"] = "uint";
     local["Name"] = "dummy";
     hierarchy["InterfaceFields"].push_back(local);
   }
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  hierarchy["ImplementationStructures"] = std::vector<json>();
+  for(auto impl : h.implementations) 
+  {
+    size_t summOfFieldsSize2 = 0;
+    auto fieldsImpl  = a_classInfo.GetFieldsFromStruct(impl.decl, &summOfFieldsSize2);
+    auto fieldsImpl2 = fieldsInterface;
+    
+    // // join interface and implementation
+    // //
+    // fieldsImpl2.insert(fieldsImpl2.end(), fieldsInterface.begin(), fieldsInterface.end());
+    // summOfFieldsSize2 += summOfFieldsSize;
+
+    json local;
+    local["Name"]   = impl.name;
+    local["Fields"] = std::vector<json>();
+    { 
+
+      // (0) put vptr_dummy
+      {
+        json local2;
+        local2["Type"] = "uint";
+        local2["Name"] = "vptr_dummy[2]";
+        local["Fields"].push_back(local2);
+      }
+      
+      // (1) put fields
+      // 
+      for(auto field : fieldsImpl2) 
+      {
+        json local2;
+        local2["Type"] = field.first;
+        local2["Name"] = field.second;
+        local["Fields"].push_back(local2);
+      }
+      
+      // (3) append aligment if needed
+      //
+      if(summOfFieldsSize2 % 8 != 0) // manually align struct to 64 bits (8 bytes) if needed
+      {
+        json local2;
+        local2["Type"] = "uint";
+        local2["Name"] = "dummy";
+        local["Fields"].push_back(local2);
+      }
+    }
+    hierarchy["ImplementationStructures"].push_back(local);
+  }
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   hierarchy["Constants"] = std::vector<json>();
   for(const auto& decl : h.usedDecls)
@@ -504,6 +555,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["ImFormat"]      = commonArg.imageFormat;
       argj["IsPointer"]     = commonArg.isPointer;
       argj["IsMember"]      = false;
+      argj["IsSingle"]      = false;
 
       std::string ispcConverted = argj["Name"];
       if(argj["IsPointer"])
@@ -520,7 +572,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     // now add all std::vector members
     //
     json rtxNames = std::vector<json>();
-    json vecs     = std::vector<json>();
     for(const auto& container : k.usedContainers)
     {
       auto pVecMember     = dataMembersCached.find(container.second.name);
@@ -555,6 +606,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsAccelStruct"] = false;
       argj["IsPointer"]     = (pVecMember->second.kind == kslicer::DATA_KIND::KIND_VECTOR);
       argj["IsMember"]      = true;
+      argj["IsSingle"]      = pVecMember->second.isSingle;
       std::string ispcConverted = argj["Name"];
       if(argj["IsPointer"])
         ispcConverted = ConvertVecTypesToISPC(argj["Type"], argj["Name"]);
@@ -599,7 +651,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         argj["SizeOffset"] = bufferSizeOffset; // pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
 
       args.push_back(argj);
-      vecs.push_back(argj);
     }
 
     if(k.isIndirect && !a_classInfo.pShaderCC->IsISPC()) // add indirect buffer to shaders
@@ -612,12 +663,13 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsImage"]    = false;
       argj["IsAccelStruct"] = false;
       argj["IsMember"]   = false;
+      argj["IsSingle"]   = false;
       argj["NameISPC"] = argj["Name"];
       args.push_back(argj);
     }
 
     const auto userArgsArr = GetUserKernelArgs(k.args);
-    json userArgs = std::vector<std::string>();
+    json userArgs = std::vector<json>();
     for(const auto& arg : userArgsArr)
     {
       std::string typeName = pShaderRewriter->RewriteStdVectorTypeStr(arg.type);
@@ -655,8 +707,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
 
     bool needFinishReductionPass = false;
-    json reductionVars = std::vector<std::string>();
-    json reductionArrs = std::vector<std::string>();
+    json reductionVars = std::vector<json>();
+    json reductionArrs = std::vector<json>();
     for(const auto& var : subjToRedCopy)
     {
       json varJ = ReductionAccessFill(var.second, a_classInfo.pShaderCC, a_classInfo.pShaderFuncRewriter);
@@ -699,7 +751,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["LastArgNF1"]   = VArgsSize + MArgsSize;
     kernelJson["LastArgNF"]    = VArgsSize; // Last Argument No Flags
     kernelJson["Args"]         = args;
-    kernelJson["Vecs"]         = vecs;
     kernelJson["RTXNames"]     = rtxNames;
     kernelJson["UserArgs"]     = userArgs;
     kernelJson["Name"]         = k.name;

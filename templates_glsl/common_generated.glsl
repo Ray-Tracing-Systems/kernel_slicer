@@ -11,6 +11,17 @@ struct {{Hierarchy.Name}}
   {{Field.Type}} {{Field.Name}};
   {% endfor %}
 };
+{% if Hierarchy.VFHLevel >= 2 %}
+{% for ImplS in Hierarchy.ImplementationStructures %}
+
+struct {{ImplS.Name}}
+{
+  {% for Field in ImplS.Fields %}
+  {{Field.Type}} {{Field.Name}};
+  {% endfor %}  
+};
+{% endfor %}
+{% endif %}
 
 {% endfor %}
 ## for Arg in Kernel.Args
@@ -20,7 +31,7 @@ layout(binding = {{loop.index}}, set = 0{% if Arg.NeedFmt%}, {{Arg.ImFormat}}{% 
 {% else if Arg.IsAccelStruct %}
 layout(binding = {{loop.index}}, set = 0) uniform accelerationStructureEXT {{Arg.Name}};
 {% else %}
-layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}} { {{Arg.Type}} {{Arg.Name}}[]; }; //
+layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}} { {{Arg.Type}} {{Arg.Name}}{% if not Arg.IsSingle %}[]{% endif %}; }; //
 {% endif %} {# /* Arg.IsImage */ #}
 {% endif %} {# /* not Arg.IsUBO */ #}
 ## endfor
