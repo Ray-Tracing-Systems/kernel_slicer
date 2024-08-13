@@ -152,8 +152,9 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
     // summOfFieldsSize2 += summOfFieldsSize;
 
     json local;
-    local["Name"]   = impl.name;
-    local["Fields"] = std::vector<json>();
+    local["Name"]       = impl.name;
+    local["BufferName"] = impl.objBufferName; // + "_" + impl.name;
+    local["Fields"]     = std::vector<json>();
     { 
 
       // (0) put vptr_dummy
@@ -426,6 +427,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["UseComplex"]         = true; // a_classInfo.useComplexNumbers; does not works in appropriate way ...
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
+  data["HasAllRefs"]         = a_classInfo.hasAllRefs;
 
   data["Defines"] = std::vector<std::string>();
   for(const auto& def : usedDefines)

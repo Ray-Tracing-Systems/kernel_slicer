@@ -13,6 +13,9 @@
 {% if Kernel.NeedTexArray %}
 #extension GL_EXT_nonuniform_qualifier : require
 {% endif %}
+{% if HasAllRefs %}
+#extension GL_EXT_buffer_reference : require
+{% endif %}
 
 {% include "common_generated.glsl" %}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

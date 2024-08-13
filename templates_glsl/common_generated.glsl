@@ -11,7 +11,7 @@ struct {{Hierarchy.Name}}
   {{Field.Type}} {{Field.Name}};
   {% endfor %}
 };
-{% if Hierarchy.VFHLevel >= 2 %}
+{% if Hierarchy.VFHLevel >= 2 and HasAllRefs %}
 {% for ImplS in Hierarchy.ImplementationStructures %}
 
 struct {{ImplS.Name}}
@@ -21,6 +21,22 @@ struct {{ImplS.Name}}
   {% endfor %}  
 };
 {% endfor %}
+{% for ImplS in Hierarchy.ImplementationStructures %}
+
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer {{ImplS.Name}}Buffer
+{
+	{{ImplS.Name}} {{ImplS.BufferName}}[];
+};
+{% endfor %}
+{% endif %}
+
+{% if HasAllRefs %}
+struct AllBufferReferences
+{
+  {% for ImplS in Hierarchy.ImplementationStructures %}
+  {{ImplS.Name}}Buffer {{ImplS.Name}}_buffer;
+  {% endfor %}
+};
 {% endif %}
 
 {% endfor %}
