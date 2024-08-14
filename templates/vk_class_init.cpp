@@ -735,9 +735,10 @@ static size_t PackObject_{{Hierarchy.Name}}(std::vector<uint8_t>& buffer, const 
 {
   const size_t objSize  = GetSizeByTag_{{Hierarchy.Name}}(a_ptr->GetTag());
   const size_t currSize = buffer.size();
-  const size_t nextSize = buffer.size() + objSize;
+  const size_t nextSize = buffer.size() + objSize - sizeof(void*); // minus vptr size
   buffer.resize(nextSize);
-  memcpy(buffer.data() + currSize, a_ptr, objSize);
+  const char* objData = ((const char*)a_ptr) + sizeof(void*);      // do not account for vptr
+  memcpy(buffer.data() + currSize, objData, objSize - sizeof(void*)); 
   return objSize;
 }
 
