@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <vector>
 #include <array>
 #include <memory>
@@ -760,16 +761,23 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   {
     auto& bufferV = {{Var.Name}}_dataV;
     auto& sorted  = {{Var.Name}}_sorted;
+    auto& vtable  = {{Var.Name}}_vtable;
+    vtable.resize({{Var.Name}}.size());
     sorted.resize({{length(Var.Hierarchy.Implementations)}} + 1);
-    bufferV.reserve(16*4); // ({{Var.Name}}.size()*sizeof({{Var.Name}})); actual reserve may not be needed due to implementation don't have vectors. TODO: you may cvheck this explicitly in kslicer
+    bufferV.resize(16*4); // ({{Var.Name}}.size()*sizeof({{Var.Name}})); actual reserve may not be needed due to implementation don't have vectors. TODO: you may cvheck this explicitly in kslicer
     for(size_t arrId=0;arrId<sorted.size(); arrId++) {
       sorted[arrId].reserve({{Var.Name}}.size()*sizeof({{Var.Hierarchy.Name}}));
       sorted[arrId].resize(0);
     }
+    
+    std::vector<size_t> objCount(sorted.size());
+    for(auto& x : objCount) x = 0;
 
     for(size_t i=0;i<{{Var.Name}}.size();i++) {
       const auto tag = {{Var.Name}}[i]->GetTag(); 
       PackObject_IMaterial(sorted[tag], {{Var.Name}}[i]);
+      vtable[i] = uint2(tag, uint32_t(objCount[tag]));
+      objCount[tag]++;
     }
 
     const size_t buffReferenceAlign = 16; // from EXT_buffer_reference spec: "If the layout qualifier is not specified, it defaults to 16 bytes"
@@ -797,7 +805,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   {% endif %}
 
   {% for Var in ClassVectorVars %}
-  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT{% if Var.NeedDevAddr %} | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT{% endif %});
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
   {% endfor %}
 
