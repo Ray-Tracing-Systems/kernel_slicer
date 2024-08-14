@@ -20,10 +20,10 @@ class MemberRewriter : public kslicer::GLSLFunctionRewriter
 {
 public:
   
-  MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::MainClassInfo::DImplClass& dImpl) : 
+  MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::MainClassInfo::DImplClass& dImpl, int a_level) : 
                 kslicer::GLSLFunctionRewriter(R, a_compiler, a_codeInfo, kslicer::ShittyFunction()), 
                 m_processed(dImpl.memberFunctions), m_fields(dImpl.fields), m_className(dImpl.name), m_objBufferName(dImpl.objBufferName), m_interfaceName(dImpl.interfaceName), 
-                m_mainClassName(a_codeInfo->mainClassName), dataClassNames(a_codeInfo->dataClassNames)
+                m_mainClassName(a_codeInfo->mainClassName), dataClassNames(a_codeInfo->dataClassNames), m_vfhLevel(a_level)
   { 
 
   }
@@ -50,7 +50,10 @@ public:
     {
       const clang::Expr* baseExpr = expr->getBase(); 
       std::string exprContent     = RecursiveRewrite(baseExpr);
-      m_rewriter.ReplaceText(expr->getSourceRange(), m_objBufferName + "[selfId]." + exprContent);
+      std::string exprReplaced    = m_objBufferName + "[selfId]." + exprContent;
+      if(m_vfhLevel >= 2)
+        exprReplaced = "all_references." + m_className + "_buffer." + exprReplaced;
+      m_rewriter.ReplaceText(expr->getSourceRange(), exprReplaced);
       MarkRewritten(expr);
     }
     else if(dataClassNames.find(thisTypeName) != dataClassNames.end() && WasNotRewrittenYet(expr))
@@ -301,6 +304,7 @@ private:
   const std::string&                              m_interfaceName;
 
   bool isCopy = false;
+  int m_vfhLevel = 0;
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   
   //std::unordered_set<uint64_t>  m_rewrittenNodes;
@@ -371,7 +375,7 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
         dImpl.objBufferName = p.second.objBufferName;
         dImpl.interfaceName = p.second.interfaceName;
         
-        MemberRewriter rv(rewrite2, a_compiler, this, dImpl); 
+        MemberRewriter rv(rewrite2, a_compiler, this, dImpl, int(p.second.level)); 
         rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));                                  
         
         for (const auto& kv : rv.declByName) 
