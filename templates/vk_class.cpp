@@ -93,8 +93,21 @@ void {{MainClassName}}{{MainClassSuffix}}::ReadPlainMembers(std::shared_ptr<vk_u
 void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
   {% for Var in ClassVectorVars %}
+  {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}
+  if({{Var.Name}}{{Var.AccessSymb}}size() > 0)
+  {
+    a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer      , 0, {{Var.Name}}_vtable{{Var.AccessSymb}}data(), {{Var.Name}}_vtable{{Var.AccessSymb}}size()*sizeof(uint2) );
+    a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}_dataVBuffer, 0, {{Var.Name}}_dataV.data(), {{Var.Name}}_dataV.size());
+    for(size_t i=0;i<{{Var.Name}}_obj_storage_offsets.size()-1;i++) {
+      size_t     offset = {{Var.Name}}_obj_storage_offsets[i];
+      const auto& odata = {{Var.Name}}_sorted[i];
+      a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}_dataSBuffer, offset, odata.data(), odata.size());
+    }
+  }
+  {% else %}
   if({{Var.Name}}{{Var.AccessSymb}}size() > 0)
     a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}{{Var.AccessSymb}}data(), {{Var.Name}}{{Var.AccessSymb}}size()*sizeof({{Var.TypeOfData}}) );
+  {% endif %}
   {% endfor %}
 }
 

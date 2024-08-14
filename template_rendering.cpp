@@ -558,6 +558,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsPointer"]     = commonArg.isPointer;
       argj["IsMember"]      = false;
       argj["IsSingle"]      = false;
+      argj["IsVFHBuffer"]   = false;
+      argj["VFHLevel"]      = 0;
 
       std::string ispcConverted = argj["Name"];
       if(argj["IsPointer"])
@@ -609,6 +611,13 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsPointer"]     = (pVecMember->second.kind == kslicer::DATA_KIND::KIND_VECTOR);
       argj["IsMember"]      = true;
       argj["IsSingle"]      = pVecMember->second.isSingle;
+      ////////////////////////////////////////////////////////////////////
+      MainClassInfo::VFH_LEVEL level = MainClassInfo::VFH_LEVEL_1;
+      bool isVFHBuffer       = a_classInfo.IsVFHBuffer(pVecMember->second.name, &level);
+      argj["IsVFHBuffer"]    = isVFHBuffer;
+      argj["VFHLevel"]       = int(level);
+      ////////////////////////////////////////////////////////////////////
+
       std::string ispcConverted = argj["Name"];
       if(argj["IsPointer"])
         ispcConverted = ConvertVecTypesToISPC(argj["Type"], argj["Name"]);
@@ -667,6 +676,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsMember"]   = false;
       argj["IsSingle"]   = false;
       argj["NameISPC"] = argj["Name"];
+      argj["IsVFHBuffer"]   = false;
+      argj["VFHLevel"]      = 0;
       args.push_back(argj);
     }
 

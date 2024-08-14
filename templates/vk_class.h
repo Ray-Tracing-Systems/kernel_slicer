@@ -318,8 +318,9 @@ protected:
   } m_vdata;
   {% for Vector in VectorMembers %}
   {% if Vector.IsVFHBuffer and Vector.VFHLevel >= 2 %}
+  std::vector<uint2>                  {{Vector.Name}}_vtable;
   std::vector< std::vector<uint8_t> > {{Vector.Name}}_sorted;
-  std::vector<uint2>                  {{Vector.Name}}_dataV;
+  std::vector<uint8_t>                {{Vector.Name}}_dataV;
   std::vector<size_t>                 {{Vector.Name}}_obj_storage_offsets;
   {% endif %}
   {% endfor %}

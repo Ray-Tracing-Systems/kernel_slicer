@@ -780,6 +780,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["PrefixName"]     = v.prefixName;
       local["IsVFHBuffer"]    = isVFHBuffer;
       local["VFHLevel"]       = int(level);
+      local["NeedDevAddr"]    = v.isSingle && (v.name == "all_references");
       if(isVFHBuffer && int(level) >= 2 ) 
       {
         json found;
