@@ -104,7 +104,13 @@ struct {{RetDecl.Name}}
 {% for VirtualFunc in Hierarchy.VirtualFunctions %}
 {{VirtualFunc.Decl}} 
 {
+  {% if Hierarchy.VFHLevel >= 2 %}
+  const uvec2 tableVal = {{Hierarchy.ObjBufferName}}[selfId];
+  const uint tag = tableVal.x;
+  selfId         = tableVal.y;
+  {% else %}
   const uint tag = {{Hierarchy.ObjBufferName}}[selfId].m_tag;
+  {% endif %}
   switch(tag) 
   {
     {% for Impl in Hierarchy.Implementations %}

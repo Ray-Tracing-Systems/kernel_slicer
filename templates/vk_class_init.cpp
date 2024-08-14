@@ -367,9 +367,6 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
   vkDestroyPipeline(device, m_indirectUpdate{{Dispatch.KernelName}}Pipeline, nullptr);
   {% endfor %}
   {% endif %}
-  {% for Hierarchy in DispatchHierarchies %}
-  vkDestroyBuffer(device, m_{{Hierarchy.Name}}ObjPtrBuffer, nullptr);
-  {% endfor %}
   {% if UseServiceScan %}
   {% for Scan in ServiceScan %}
   m_scan_{{Scan.Type}}.DeleteTempBuffers(device);
@@ -690,10 +687,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
     m_vdata.{{Buffer.Name}}Buffer = vk_utils::createBuffer(device, sizeOfBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     allBuffersRef.push_back(m_vdata.{{Buffer.Name}}Buffer);
   }
-  {% endfor %}
-  {% for Hierarchy in DispatchHierarchies %}
-  m_{{Hierarchy.Name}}ObjPtrBuffer = vk_utils::createBuffer(device, 2*sizeof(uint32_t)*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-  allBuffersRef.push_back(m_{{Hierarchy.Name}}ObjPtrBuffer);
   {% endfor %}
 
   {% if UseServiceScan %}
