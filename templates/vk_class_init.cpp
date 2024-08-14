@@ -752,6 +752,7 @@ static size_t PackObject_{{Hierarchy.Name}}(std::vector<uint8_t>& buffer, const 
 
 void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
 {
+  std::vector<VkBuffer> memberVectorsWithDevAddr;
   std::vector<VkBuffer> memberVectors;
   std::vector<VkImage>  memberTextures;
   {% for Var in ClassVectorVars %}
@@ -791,11 +792,11 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
     }
     {{Var.Name}}_obj_storage_offsets.push_back(objDataBufferSize); // store total buffer size also in this array
 
-    m_vdata.{{Var.Name}}_dataSBuffer = vk_utils::createBuffer(device, objDataBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+    m_vdata.{{Var.Name}}_dataSBuffer = vk_utils::createBuffer(device, objDataBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
     m_vdata.{{Var.Name}}_dataVBuffer = vk_utils::createBuffer(device, bufferV.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
     m_vdata.{{Var.Name}}_dataSOffset = 0;
     m_vdata.{{Var.Name}}_dataVOffset = 0;
-    memberVectors.push_back(m_vdata.{{Var.Name}}_dataSBuffer);
+    memberVectorsWithDevAddr.push_back(m_vdata.{{Var.Name}}_dataSBuffer);
     memberVectors.push_back(m_vdata.{{Var.Name}}_dataVBuffer);
   }
   {% endif %}
@@ -805,7 +806,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   {% endif %}
 
   {% for Var in ClassVectorVars %}
-  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT{% if Var.NeedDevAddr %} | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT{% endif %});
+  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
   {% endfor %}
 
@@ -844,6 +845,8 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   memberVectors.push_back(m_indirectBuffer);
   {% endif %}
   AllocMemoryForMemberBuffersAndImages(memberVectors, memberTextures);
+  if(memberVectorsWithDevAddr.size() != 0)
+    AllocAndBind(memberVectorsWithDevAddr, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT);
   {% if HasAllRefs %}
   {
     {% for Var in ClassVectorVars %}
@@ -1161,19 +1164,19 @@ void {{MainClassName}}{{MainClassSuffix}}::AssignBuffersToMemory(const std::vect
   }
 }
 
-{{MainClassName}}{{MainClassSuffix}}::MemLoc {{MainClassName}}{{MainClassSuffix}}::AllocAndBind(const std::vector<VkBuffer>& a_buffers)
+{{MainClassName}}{{MainClassSuffix}}::MemLoc {{MainClassName}}{{MainClassSuffix}}::AllocAndBind(const std::vector<VkBuffer>& a_buffers, VkMemoryAllocateFlags a_flags)
 {
   MemLoc currLoc;
   if(a_buffers.size() > 0)
   {
-    currLoc.memObject = vk_utils::allocateAndBindWithPadding(device, physicalDevice, a_buffers);
+    currLoc.memObject = vk_utils::allocateAndBindWithPadding(device, physicalDevice, a_buffers, a_flags);
     currLoc.allocId   = m_allMems.size();
     m_allMems.push_back(currLoc);
   }
   return currLoc;
 }
 
-{{MainClassName}}{{MainClassSuffix}}::MemLoc {{MainClassName}}{{MainClassSuffix}}::AllocAndBind(const std::vector<VkImage>& a_images)
+{{MainClassName}}{{MainClassSuffix}}::MemLoc {{MainClassName}}{{MainClassSuffix}}::AllocAndBind(const std::vector<VkImage>& a_images, VkMemoryAllocateFlags a_flags)
 {
   MemLoc currLoc;
   if(a_images.size() > 0)
