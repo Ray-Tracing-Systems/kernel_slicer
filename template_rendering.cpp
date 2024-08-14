@@ -427,7 +427,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["UseComplex"]         = true; // a_classInfo.useComplexNumbers; does not works in appropriate way ...
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
-  data["HasAllRefs"]         = a_classInfo.hasAllRefs;
+  data["HasAllRefs"]         = bool(a_classInfo.m_allRefs.size() != 0);
 
   data["Defines"] = std::vector<std::string>();
   for(const auto& def : usedDefines)
