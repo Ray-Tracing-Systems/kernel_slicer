@@ -146,10 +146,10 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
     auto fieldsImpl  = a_classInfo.GetFieldsFromStruct(impl.decl, &summOfFieldsSize2);
     auto fieldsImpl2 = fieldsInterface;
     
-    // // join interface and implementation
-    // //
-    // fieldsImpl2.insert(fieldsImpl2.end(), fieldsInterface.begin(), fieldsInterface.end());
-    // summOfFieldsSize2 += summOfFieldsSize;
+    // join interface and implementation
+    //
+    fieldsImpl2.insert(fieldsImpl2.end(), fieldsImpl.begin(), fieldsImpl.end());
+    summOfFieldsSize2 += summOfFieldsSize;
 
     json local;
     local["Name"]       = impl.name;
@@ -157,13 +157,13 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
     local["Fields"]     = std::vector<json>();
     { 
 
-      // (0) put vptr_dummy
-      {
-        json local2;
-        local2["Type"] = "uint";
-        local2["Name"] = "vptr_dummy[2]";
-        local["Fields"].push_back(local2);
-      }
+      //// (0) put vptr_dummy
+      //{
+      //  json local2;
+      //  local2["Type"] = "uint";
+      //  local2["Name"] = "vptr_dummy[2]";
+      //  local["Fields"].push_back(local2);
+      //}
       
       // (1) put fields
       // 
