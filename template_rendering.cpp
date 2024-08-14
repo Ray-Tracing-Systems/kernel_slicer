@@ -616,6 +616,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       bool isVFHBuffer       = a_classInfo.IsVFHBuffer(pVecMember->second.name, &level);
       argj["IsVFHBuffer"]    = isVFHBuffer;
       argj["VFHLevel"]       = int(level);
+      if(isVFHBuffer && int(level) >= 2)
+        argj["Type"] = "uvec2";
       ////////////////////////////////////////////////////////////////////
 
       std::string ispcConverted = argj["Name"];

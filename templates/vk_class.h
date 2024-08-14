@@ -354,17 +354,6 @@ protected:
   void TrackTextureAccess(const std::vector<TexAccessPair>& a_pairs, std::unordered_map<uint64_t, VkAccessFlags>& a_currImageFlags);
   {% endif %} {# /* length(TextureMembers) > 0 */ #}
   {% if length(DispatchHierarchies) > 0 %}
-  {% for Hierarchy in DispatchHierarchies %}
-  // Auxilary data and kernels for 'VirtualKernels'; Dispatch hierarchy of '{{Hierarchy.Name}}'
-  //
-  VkBuffer         m_{{Hierarchy.Name}}ObjPtrBuffer = VK_NULL_HANDLE;
-  size_t           m_{{Hierarchy.Name}}ObjPtrOffset = 0;
-  {% if Hierarchy.IndirectDispatch %}
-  VkPipelineLayout {{Hierarchy.Name}}ZeroObjCountersLayout   = VK_NULL_HANDLE;
-  VkPipeline       {{Hierarchy.Name}}ZeroObjCountersPipeline = VK_NULL_HANDLE;
-  void             {{Hierarchy.Name}}ZeroObjCountersCmd();
-  {% endif %}
-  {% endfor %}
   VkBufferMemoryBarrier BarrierForObjCounters(VkBuffer a_buffer);
   {% endif %} {# /* length(DispatchHierarchies) > 0 */ #}
   {% if length(IndirectDispatches) > 0 %}
