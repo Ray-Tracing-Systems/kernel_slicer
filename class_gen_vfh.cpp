@@ -666,9 +666,14 @@ bool kslicer::MainClassInfo::IsVFHBuffer(const std::string& a_name, VFH_LEVEL* p
 
 void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberInfo>& a_vector)
 {
-  if(m_vhierarchy.empty()) // TODO: add also check for the case when force binding for all buffers via refs is used
-    return;
+  bool exitFromThisFunction = true;
+  for(const auto& h : m_vhierarchy) 
+    if(int(h.second.level) >= 2)
+      exitFromThisFunction = false;
 
+  if(exitFromThisFunction)
+    return;
+ 
   const std::string nameOfBuffer = "all_references";
 
   auto pMember = std::find_if(a_vector.begin(), a_vector.end(), [&nameOfBuffer](const DataMemberInfo & m) { return m.name == nameOfBuffer; });
@@ -734,7 +739,6 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
     }
   }
   
-  this->hasAllRefs = true;
   for(const auto& h : m_vhierarchy) {
     if(int(h.second.level) >= 2) {
       for(auto impl : h.second.implementations) {
