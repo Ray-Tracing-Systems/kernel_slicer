@@ -156,15 +156,6 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
     local["BufferName"] = impl.objBufferName; // + "_" + impl.name;
     local["Fields"]     = std::vector<json>();
     { 
-
-      //// (0) put vptr_dummy
-      //{
-      //  json local2;
-      //  local2["Type"] = "uint";
-      //  local2["Name"] = "vptr_dummy[2]";
-      //  local["Fields"].push_back(local2);
-      //}
-      
       // (1) put fields
       // 
       for(auto field : fieldsImpl2) 
@@ -172,16 +163,6 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
         json local2;
         local2["Type"] = field.first;
         local2["Name"] = field.second;
-        local["Fields"].push_back(local2);
-      }
-      
-      // (3) append aligment if needed
-      //
-      if(summOfFieldsSize2 % 8 != 0) // manually align struct to 64 bits (8 bytes) if needed
-      {
-        json local2;
-        local2["Type"] = "uint";
-        local2["Name"] = "dummy";
         local["Fields"].push_back(local2);
       }
     }

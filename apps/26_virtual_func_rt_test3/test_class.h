@@ -35,9 +35,7 @@ struct IMaterial
   virtual BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv, const TestClass* pStorage) const { BxDFSample res; return res; }
 
   float m_color[3];
-  float roughness;
-  uint32_t m_tag    = TAG_EMPTY;
-  int m_takeFromExt = 0;
+  uint32_t m_tag = TAG_EMPTY;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -155,7 +153,8 @@ struct LambertMaterial : public IMaterial
     return res;
   }
  
-
+  int m_takeFromExt = 0;
+  int m_dummy = 0;
 };
 
 struct PerfectMirrorMaterial : public IMaterial
@@ -190,11 +189,14 @@ struct PerfectMirrorMaterial : public IMaterial
     res.flags   = 0;
     return res;
   }
+
+  int m_takeFromExt = 0;
+  int m_dummy = 0;
 };
 
 struct EmissiveMaterial : public IMaterial
 {
-  EmissiveMaterial(float a_intensity) { roughness = a_intensity; m_tag = GetTag();}
+  EmissiveMaterial(float a_intensity) { intensity = a_intensity; m_tag = GetTag();}
   ~EmissiveMaterial() = delete;
 
   uint32_t GetTag() const override { return TAG_EMISSIVE; }
@@ -203,7 +205,7 @@ struct EmissiveMaterial : public IMaterial
   BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv, const TestClass* pStorage) const override
   {
     const float3 ray_dir = to_float3(rayDirAndFar);    
-    float3 emissiveColor = roughness*GetColor();
+    float3 emissiveColor = intensity*GetColor();
     if(ray_dir.y <= 0.0f)
       emissiveColor = float3(0,0,0);
 
@@ -214,6 +216,9 @@ struct EmissiveMaterial : public IMaterial
     res.flags   = 1;
     return res;
   }
+
+  float intensity;
+  int m_dummy = 0;
 };
 
 struct GGXGlossyMaterial : public IMaterial
@@ -278,6 +283,8 @@ struct GGXGlossyMaterial : public IMaterial
     return res;
   }
 
+  float roughness;
+  int m_dummy = 0;
 };
 
 struct EmptyMaterial : public IMaterial
