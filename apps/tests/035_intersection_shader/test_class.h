@@ -148,7 +148,9 @@ struct AABBPrim : public AbtractPrimitive
 
   uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, float3 rayDirInv, CRT_Hit* pHit, BFRayTrace* pData) const override 
   { 
-    const float2 tMinMax = RayBoxIntersection2( to_float3(rayPosAndNear), rayDirInv, to_float3(boxMin), to_float3(boxMax) );
+    const float4 myBoxMin = boxMin;
+    const float4 myBoxMax = boxMax;
+    const float2 tMinMax  = RayBoxIntersection2( to_float3(rayPosAndNear), rayDirInv, to_float3(myBoxMin), to_float3(myBoxMax) );
     
     if(tMinMax.x <= tMinMax.y && tMinMax.y >= rayPosAndNear.w && tMinMax.x <= rayDirAndFar.w)
     {
