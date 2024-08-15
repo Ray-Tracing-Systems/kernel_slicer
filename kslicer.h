@@ -1017,15 +1017,18 @@ namespace kslicer
     std::vector<DataMemberInfo>                 dataMembers;     ///<! only those member variables which are referenced from kernels
     std::vector<MainFuncInfo>                   mainFunc;        ///<! list of all control functions
   
-    std::unordered_map<std::string, ArrayData>  m_threadLocalArrays;
+    std::unordered_map<std::string, ArrayData>         m_threadLocalArrays;
 
-    std::string                     mainClassName;               ///<! Current main class (derived)
-    std::unordered_set<std::string> mainClassNames;              ///<! All main classes (derived + base)
-    std::unordered_set<std::string> composClassNames; 
-    std::unordered_set<std::string> dataClassNames; 
-    std::filesystem::path           mainClassFileName;
-    std::string                     mainClassFileInclude;
-    std::string                     mainClassSuffix;
+    std::string                                        mainClassName;         ///<! Current main class (derived)
+    std::unordered_set<std::string>                    mainClassNames;        ///<! All main classes (derived + base)
+    std::unordered_set<std::string>                    composClassNames; 
+    std::unordered_set<std::string>                    dataClassNames; 
+    std::vector< std::pair<std::string, std::string> > intersectionShaders;
+
+    std::filesystem::path mainClassFileName;
+    std::string           mainClassFileInclude;
+    std::string           mainClassSuffix;
+
     
     std::unordered_map<std::string, std::string> composPrefix;
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;

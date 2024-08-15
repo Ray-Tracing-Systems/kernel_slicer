@@ -229,7 +229,7 @@ public:
       else if(func.isVirtual && typeName != m_patternImpl.mainClassName)
       {
         if(isRTX)
-          return true;                             // do not process HW accelerated calls
+          return true;  // do not process HW accelerated 'RayQuery_' calls
         
         auto classiedCallData = ClassifVirtualCall(call);
         std::string buffName  = classiedCallData.vectorName;        
@@ -262,7 +262,7 @@ public:
           kslicer::MainClassInfo::VFHHierarchy hierarchy;
           hierarchy.interfaceDecl  = recordDecl;
           hierarchy.interfaceName  = typeName;
-          hierarchy.objBufferName  = classiedCallData.vectorName;
+          hierarchy.objBufferName  = buffName;
           hierarchy.level          = classiedCallData.level;
           hierarchy.virtualFunctions[func.name] = func;
           m_patternImpl.m_vhierarchy[typeName]  = hierarchy;

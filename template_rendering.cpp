@@ -151,7 +151,7 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
     fieldsImpl2.insert(fieldsImpl2.end(), fieldsImpl.begin(), fieldsImpl.end());
     summOfFieldsSize2 += summOfFieldsSize;
 
-    if(summOfFieldsSize2 % sizeof(void*) != 0)\
+    if(summOfFieldsSize2 % sizeof(void*) != 0 && int(h.level) >= 2)
     {
       std::cout << "  [ALIGMENT VIOLATION]: sizeof(" << impl.name << ") = " << summOfFieldsSize2 + sizeof(void*) << " which is not a multiple of " << sizeof(void*) << std::endl;
       std::cout << "  [ALIGMENT VIOLATION]: sizeof any class in VFH hierarchy with virtual functions must be multiple of " << sizeof(void*) << std::endl;
