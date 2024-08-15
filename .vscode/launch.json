@@ -2078,7 +2078,7 @@
                         "-composInterface",     "ISceneObject",
                         "-composImplementation","BFRayTrace",
                         "-intersectionShader",  "AbtractPrimitive::Intersect", 
-                        "-enable_ray_tracing_pipeline", "0",
+                        "-enable_ray_tracing_pipeline", "1",
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
                         "-I${workspaceFolder}/apps/LiteMath",   "ignore",

@@ -1078,6 +1078,7 @@ namespace kslicer
     virtual void ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler);
     virtual void ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool);
     virtual void AppendAllRefsBufferIfNeeded(std::vector<DataMemberInfo>& a_vector);
+    virtual void AppendAccelStructForIntersectionShadersIfNeeded(std::vector<DataMemberInfo>& a_vector);
 
     //// \\
 

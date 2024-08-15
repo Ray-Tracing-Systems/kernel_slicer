@@ -720,6 +720,7 @@ void {{MainClassName}}{{MainClassSuffix}}::ReserveEmptyVectors()
   {% endfor %}
 }
 {% for Hierarchy in Hierarchies %} 
+{% if Hierarchy.VFHLevel >= 2 %}
 static size_t GetSizeByTag_{{Hierarchy.Name}}(uint32_t a_tag)
 {
   switch(a_tag)
@@ -742,6 +743,7 @@ static size_t PackObject_{{Hierarchy.Name}}(std::vector<uint8_t>& buffer, const 
   return objSize;
 }
 
+{% endif %}
 {% endfor %}
 
 void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
