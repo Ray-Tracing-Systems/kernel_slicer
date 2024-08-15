@@ -363,14 +363,16 @@ namespace kslicer
     bool isSingle          = false; ///<! single struct inside buffer, not a vector (vector with size() == 1), special case for all_references and other service needs
 
     bool hasPrefix = false;
+    bool hasIntersectionShader = false; ///<! indicate that this acceleration structure has user-defined intersection procedure
     std::string prefixName;
 
     DATA_USAGE usage = DATA_USAGE::USAGE_USER;         ///<! if this is service and 'implicit' data which was agged by generator, not by user;
     TEX_ACCESS tmask = TEX_ACCESS::TEX_ACCESS_NOTHING; ///<! store texture access flags if this data member is a texture
 
-    size_t      arraySize = 0;     ///<! 'N' if data is declared as 'array[N]';
-    std::string containerType;     ///<! std::vector usually
-    std::string containerDataType; ///<! data type 'T' inside of std::vector<T>
+    size_t      arraySize = 0;                         ///<! 'N' if data is declared as 'array[N]';
+    std::string containerType;                         ///<! std::vector usually
+    std::string containerDataType;                     ///<! data type 'T' inside of std::vector<T>
+    std::string intersectionClassName;                 ///<! used in the case of user intersection
 
     clang::TypeDecl* pTypeDeclIfRecord = nullptr;
     clang::TypeDecl* pContainerDataTypeDeclIfRecord = nullptr;
@@ -1078,7 +1080,7 @@ namespace kslicer
     virtual void ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler);
     virtual void ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool);
     virtual void AppendAllRefsBufferIfNeeded(std::vector<DataMemberInfo>& a_vector);
-    virtual void AppendAccelStructForIntersectionShadersIfNeeded(std::vector<DataMemberInfo>& a_vector);
+    virtual void AppendAccelStructForIntersectionShadersIfNeeded(std::vector<DataMemberInfo>& a_vector, std::string composImplName);
 
     //// \\
 

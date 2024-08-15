@@ -751,7 +751,7 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
   }
 }
 
-void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std::vector<DataMemberInfo>& a_vector)
+void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std::vector<DataMemberInfo>& a_vector, std::string composImplName)
 {
   struct IntersectionShader
   {
@@ -789,16 +789,13 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
       }
     }
 
-    DataMemberInfo memberAccel;
-    memberAccel.name              = memberName;
-    memberAccel.type              = "std::shared_ptr<ISceneObject>"; 
-    memberAccel.containerDataType = "ISceneObject"; 
-    memberAccel.containerType     = "std::shared_ptr";
-    memberAccel.isContainer       = true;
-    memberAccel.isSingle          = false;
-    memberAccel.kind              = DATA_KIND::KIND_ACCEL_STRUCT;
-    group.memberInfo = memberAccel;
-    a_vector.push_back(memberAccel);
+    for(auto& member : a_vector) {
+      if(member.kind == DATA_KIND::KIND_ACCEL_STRUCT && member.name == memberName) {
+        member.hasIntersectionShader = true;
+        member.intersectionClassName = composImplName;
+        group.memberInfo = member;
+      }
+    }
   }
 
   // add to kernel.usedContainers to bind it to shaders further (because we must readreferences from this buffer)
@@ -812,7 +809,7 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
       if(p != k.second.usedContainers.end() && int(h.level) >= 2) 
       {
         kslicer::UsedContainerInfo info;
-        info.type    = "std::shared_ptr<ISceneObject>";
+        info.type    = "std::shared_ptr<struct ISceneObject>";
         info.name    = group.memberInfo.name;
         info.kind    = DATA_KIND::KIND_ACCEL_STRUCT;
         info.isConst = true;
