@@ -101,7 +101,8 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<v
     for(size_t i=0;i<{{Var.Name}}_obj_storage_offsets.size()-1;i++) {
       size_t     offset = {{Var.Name}}_obj_storage_offsets[i];
       const auto& odata = {{Var.Name}}_sorted[i];
-      a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}_dataSBuffer, offset, odata.data(), odata.size());
+      if(odata.size() != 0)
+        a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}_dataSBuffer, offset, odata.data(), odata.size());
     }
   }
   {% else %}
