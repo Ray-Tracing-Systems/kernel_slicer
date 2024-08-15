@@ -271,7 +271,7 @@ int main(int argc, const char **argv)
   //
   for(int argId = 1; argId < argc; argId++ )
   {
-    if(std::string(argv[argId]) == "intersectionShader" && argId+1 < argc) {
+    if(std::string(argv[argId]) == "-intersectionShader" && argId+1 < argc) {
       std::string shaderClassAndFunc = argv[argId+1];
       auto splitPos = shaderClassAndFunc.find("::");
       std::string className = shaderClassAndFunc.substr(0, splitPos);
@@ -793,7 +793,8 @@ int main(int argc, const char **argv)
   std::cout << "{" << std::endl;
 
   inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
-  inputCodeInfo.AppendAllRefsBufferIfNeeded(inputCodeInfo.dataMembers);                                             // add abstract to concrete tables
+  inputCodeInfo.AppendAllRefsBufferIfNeeded(inputCodeInfo.dataMembers);                       // add abstract to concrete tables
+  inputCodeInfo.AppendAccelStructForIntersectionShadersIfNeeded(inputCodeInfo.dataMembers);   //
 
   inputCodeInfo.ProcessMemberTypes(firstPassData.rv.GetOtherTypeDecls(), compiler.getSourceManager(), generalDecls);                   // ==> generalDecls
   inputCodeInfo.ProcessMemberTypesAligment(inputCodeInfo.dataMembers, firstPassData.rv.GetOtherTypeDecls(), compiler.getASTContext()); // ==> inputCodeInfo.dataMembers

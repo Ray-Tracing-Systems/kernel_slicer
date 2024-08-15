@@ -714,7 +714,7 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
     return;
   }
 
-  // add kernel.usedContainers to bind it to shaders further (because we must readreferences from this buffer)
+  // add to kernel.usedContainers to bind it to shaders further (because we must readreferences from this buffer)
   //
   for(auto& k : this->kernels) // TODO: check if kernel actually needs this buffer in some way
   {
@@ -749,4 +749,79 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
       }
     }
   }
+}
+
+void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std::vector<DataMemberInfo>& a_vector)
+{
+  struct IntersectionShader
+  {
+    std::string   interfaceName; 
+    std::string   functionName;
+    const VFHHierarchy* hierarchy = nullptr;
+    DataMemberInfo memberInfo;
+  };
+
+  std::vector<IntersectionShader> shaders;
+
+  for(const auto& h : m_vhierarchy) {
+    for(auto is : intersectionShaders) {
+      if(is.first == h.second.interfaceName) {
+        IntersectionShader entity;
+        entity.interfaceName = is.first;
+        entity.functionName  = is.second;
+        entity.hierarchy     = &h.second;
+        shaders.push_back(entity);
+      }
+    }
+  }
+  
+  if(shaders.size() == 0) // exit if we dont have intersection shaders indication and didn't found appropriate VFH
+    return;
+
+  for(auto& group : shaders)
+  {
+    std::string memberName = group.hierarchy->objBufferName;
+    for(auto prefix : composPrefix) {
+      auto pos = memberName.find(prefix.second);
+      if(pos != std::string::npos) {
+        memberName = prefix.second;
+        break;
+      }
+    }
+
+    DataMemberInfo memberAccel;
+    memberAccel.name              = memberName;
+    memberAccel.type              = "std::shared_ptr<ISceneObject>"; 
+    memberAccel.containerDataType = "ISceneObject"; 
+    memberAccel.containerType     = "std::shared_ptr";
+    memberAccel.isContainer       = true;
+    memberAccel.isSingle          = false;
+    memberAccel.kind              = DATA_KIND::KIND_ACCEL_STRUCT;
+    group.memberInfo = memberAccel;
+    a_vector.push_back(memberAccel);
+  }
+
+  // add to kernel.usedContainers to bind it to shaders further (because we must readreferences from this buffer)
+  //
+  for(auto& k : this->kernels) 
+  {
+    for(const auto group : shaders)
+    {
+      auto& h = *group.hierarchy;
+      auto p = k.second.usedContainers.find(h.objBufferName);
+      if(p != k.second.usedContainers.end() && int(h.level) >= 2) 
+      {
+        kslicer::UsedContainerInfo info;
+        info.type    = "std::shared_ptr<ISceneObject>";
+        info.name    = group.memberInfo.name;
+        info.kind    = DATA_KIND::KIND_ACCEL_STRUCT;
+        info.isConst = true;
+        k.second.usedContainers[info.name] = info;   
+      }
+    }
+  }
+  
+
+
+  
 }
