@@ -96,7 +96,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<v
   {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}
   if({{Var.Name}}{{Var.AccessSymb}}size() > 0)
   {
-    a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer      , 0, {{Var.Name}}_vtable{{Var.AccessSymb}}data(), {{Var.Name}}_vtable{{Var.AccessSymb}}size()*sizeof(uint2) );
+    a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer      , 0, {{Var.Name}}_vtable.data(), {{Var.Name}}_vtable.size()*sizeof(unsigned)*2 );
     a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}_dataVBuffer, 0, {{Var.Name}}_dataV.data(), {{Var.Name}}_dataV.size());
     for(size_t i=0;i<{{Var.Name}}_obj_storage_offsets.size()-1;i++) {
       size_t     offset = {{Var.Name}}_obj_storage_offsets[i];

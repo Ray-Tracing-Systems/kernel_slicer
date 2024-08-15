@@ -167,7 +167,7 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
     const uint32_t A      = a_triIndices[oldIndex*3+0];
     const uint32_t B      = a_triIndices[oldIndex*3+1];
     const uint32_t C      = a_triIndices[oldIndex*3+2];
-    new (primitives.data() + i) TrianglePrim(trivets[A], trivets[B], trivets[C], oldIndex); 
+    primitives[i] = new TrianglePrim(trivets[A], trivets[B], trivets[C], oldIndex); 
   }
 
   return 0;
@@ -180,19 +180,27 @@ uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8
   if(a_typeId == AbtractPrimitive::TAG_BOXES) 
   {
     for(size_t i = oldSize; i < primitives.size(); i++)
-      new (primitives.data() + i) AABBPrim(boxMinMaxF8[i-oldSize].boxMin, boxMinMaxF8[i-oldSize].boxMax, uint32_t(i-oldSize)); 
+      primitives[i] = new AABBPrim(boxMinMaxF8[i-oldSize].boxMin, boxMinMaxF8[i-oldSize].boxMax, uint32_t(i-oldSize)); 
   }
   else if(a_typeId == AbtractPrimitive::TAG_SPHERES)
   {
     for(size_t i = oldSize; i < primitives.size(); i++)
-      new (primitives.data() + i) SpherePrim(boxMinMaxF8[i-oldSize].boxMin, boxMinMaxF8[i-oldSize].boxMax, uint32_t(i-oldSize)); 
+      primitives[i] = new SpherePrim(boxMinMaxF8[i-oldSize].boxMin, boxMinMaxF8[i-oldSize].boxMax, uint32_t(i-oldSize)); 
   }
   else 
   {
     for(size_t i = oldSize; i < primitives.size(); i++)
-      new (primitives.data() + i) EmptyPrim(); 
+      primitives[i] = new EmptyPrim(); 
   }
   return 0;
+}
+
+BFRayTrace::~BFRayTrace()
+{
+  for(size_t i=0;i<primitives.size();i++) {
+    delete primitives[i];
+    primitives[i] = nullptr;
+  }
 }
              
 void BFRayTrace::UpdateGeom_Triangles3f(uint32_t a_geomId, const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, uint32_t a_flags, size_t vByteStride) {}
@@ -205,7 +213,7 @@ CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFa
   hit.primId = -1;
   
   for(uint32_t primid = 0; primid < primitives.size(); primid++)
-    (primitives.data() + primid)->Intersect(rayPosAndNear, rayDirAndFar, rayDirInv, &hit, this); 
+    primitives[primid]->Intersect(rayPosAndNear, rayDirAndFar, rayDirInv, &hit, this); 
 
   return hit;
 }
