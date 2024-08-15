@@ -88,6 +88,8 @@ struct AbtractPrimitive                         // This is implementation deal, 
 
   uint32_t m_tag    = TAG_EMPTY;
   uint32_t m_primId = 0;
+  uint32_t dummy1;
+  uint32_t dummy2;
   float4   boxMin;
   float4   boxMax;
 };
