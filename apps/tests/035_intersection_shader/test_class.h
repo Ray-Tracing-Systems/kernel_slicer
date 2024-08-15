@@ -80,7 +80,8 @@ struct AbtractPrimitive                         // This is implementation deal, 
   static constexpr uint32_t TAG_BOXES     = 2; 
   static constexpr uint32_t TAG_SPHERES   = 3; 
 
-  AbtractPrimitive(){}  // Dispatching on GPU hierarchy must not have destructors, especially virtual      
+  AbtractPrimitive(){}  // Dispatching on GPU hierarchy must not have destructors, especially virtual 
+  virtual ~AbtractPrimitive(){}     
 
   virtual uint32_t GetTag() const { return 0; };
   virtual uint32_t Intersect(float4 rayPosAndNear,float4 rayDirAndFar, float3 rayDirInv, CRT_Hit* pHit, BFRayTrace* pData) const { return TAG_EMPTY; }
@@ -98,7 +99,7 @@ struct AbtractPrimitive                         // This is implementation deal, 
 struct BFRayTrace : public ISceneObject
 {
   BFRayTrace(){}
-  ~BFRayTrace(){}
+  ~BFRayTrace();
 
   const char* Name() const override { return "BFRayTrace"; }
 
@@ -129,7 +130,7 @@ struct BFRayTrace : public ISceneObject
 
   std::vector<float4>           trivets;
   std::vector<uint32_t>         indices;
-  std::vector<AbtractPrimitive> primitives;
+  std::vector<AbtractPrimitive*> primitives;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -142,7 +143,6 @@ struct AABBPrim : public AbtractPrimitive
                                                                   boxMax = a_boxMax; 
                                                                   m_tag  = GetTag();
                                                                   m_primId = a_primId; }
-  ~AABBPrim() = delete;  
 
   uint32_t GetTag() const override { return TAG_BOXES; }      
 
@@ -170,7 +170,6 @@ struct TrianglePrim : public AbtractPrimitive
                                                                  m_tag    = GetTag();  
                                                                  m_primId = a_triId; 
                                                                  }
-  ~TrianglePrim() = delete; 
 
   uint32_t GetTag()   const override { return TAG_TRIANGLES; }   
 
@@ -215,7 +214,6 @@ struct SpherePrim : public AbtractPrimitive
                                                                     boxMax   = a_boxMax; 
                                                                     m_tag    = GetTag();  
                                                                     m_primId = a_primId;}
-  ~SpherePrim() = delete;  
 
   uint32_t GetTag()   const override { return TAG_SPHERES; }     
 
@@ -239,8 +237,7 @@ struct SpherePrim : public AbtractPrimitive
 
 struct EmptyPrim : public AbtractPrimitive
 {
-  EmptyPrim() { m_tag = GetTag();  }
-  ~EmptyPrim() = delete;  
+  EmptyPrim() { m_tag = GetTag();  }  
 
   uint32_t GetTag() const override { return TAG_EMPTY; }    
   uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, float3 rayDirInv, CRT_Hit* pHit, BFRayTrace* pData) const override { return TAG_EMPTY; }  

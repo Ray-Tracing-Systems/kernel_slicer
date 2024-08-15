@@ -757,21 +757,21 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
     auto& bufferV = {{Var.Name}}_dataV;
     auto& sorted  = {{Var.Name}}_sorted;
     auto& vtable  = {{Var.Name}}_vtable;
-    vtable.resize({{Var.Name}}.size());
+    vtable.resize({{Var.Name}}{{Var.AccessSymb}}size());
     sorted.resize({{length(Var.Hierarchy.Implementations)}} + 1);
     bufferV.resize(16*4); // ({{Var.Name}}.size()*sizeof({{Var.Name}})); actual reserve may not be needed due to implementation don't have vectors. TODO: you may cvheck this explicitly in kslicer
     for(size_t arrId=0;arrId<sorted.size(); arrId++) {
-      sorted[arrId].reserve({{Var.Name}}.size()*sizeof({{Var.Hierarchy.Name}}));
+      sorted[arrId].reserve({{Var.Name}}{{Var.AccessSymb}}size()*sizeof({{Var.Hierarchy.Name}}));
       sorted[arrId].resize(0);
     }
     
     std::vector<size_t> objCount(sorted.size());
     for(auto& x : objCount) x = 0;
 
-    for(size_t i=0;i<{{Var.Name}}.size();i++) {
-      const auto tag = {{Var.Name}}[i]->GetTag(); 
-      PackObject_IMaterial(sorted[tag], {{Var.Name}}[i]);
-      vtable[i] = uint2(tag, uint32_t(objCount[tag]));
+    for(size_t i=0;i<{{Var.Name}}{{Var.AccessSymb}}size();i++) {
+      const auto tag = {{Var.Name}}{{Var.AccessSymb}}at(i)->GetTag(); 
+      PackObject_{{Var.Hierarchy.Name}}(sorted[tag], {{Var.Name}}{{Var.AccessSymb}}at(i));
+      vtable[i] = LiteMath::uint2(tag, uint32_t(objCount[tag]));
       objCount[tag]++;
     }
 
