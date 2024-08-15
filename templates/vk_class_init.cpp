@@ -20,7 +20,7 @@
 #include "CrossRT.h"
 ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_graphicsQId, std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper,
                               uint32_t a_maxMeshes, uint32_t a_maxTotalVertices, uint32_t a_maxTotalPrimitives, uint32_t a_maxPrimitivesPerMesh,
-                              bool build_as_add);
+                              bool build_as_add, bool deferred_tlas_build = false);
 {% endif %}
 
 {% for ctorDecl in Constructors %}
@@ -43,6 +43,79 @@ std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix
 {% endif %}
 {% endfor %}
 
+{% for ScnObj in SceneMembers %}
+{% if ScnObj.HasIntersectionShader %}
+struct {{ScnObj.IntersectionImplName}}_RTX_Proxy : public ISceneObject
+{
+public:
+  {{ScnObj.IntersectionImplName}}_RTX_Proxy(std::shared_ptr<ISceneObject> a, std::shared_ptr<ISceneObject> b) { m_imps[0] = a; m_imps[1] = b; }  
+  
+  const char* Name() const override { return "{{ScnObj.IntersectionImplName}}_RTX_Proxy"; }
+  ISceneObject* UnderlyingImpl(uint32_t a_implId) override { return (a_implId < 2) ? m_imps[a_implId].get() : nullptr; }
+
+   void ClearGeom() override { for(auto impl : m_imps) impl->ClearGeom(); } 
+
+  uint32_t AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, uint32_t a_flags, size_t vByteStride) override
+  {
+    uint32_t res = 0;
+    for(auto impl : m_imps) 
+      res = impl->AddGeom_Triangles3f(a_vpos3f, a_vertNumber, a_triIndices, a_indNumber, a_flags, vByteStride);
+    return res;
+  }
+                               
+  void UpdateGeom_Triangles3f(uint32_t a_geomId, const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, uint32_t a_flags, size_t vByteStride) override
+  {
+    for(auto impl : m_imps) 
+      impl->UpdateGeom_Triangles3f(a_geomId, a_vpos3f, a_vertNumber, a_triIndices, a_indNumber, a_flags, vByteStride);
+  }
+  
+  uint32_t AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber) override
+  {
+    uint32_t res = 0;
+    for(auto impl : m_imps) 
+      res = impl->AddGeom_AABB(a_typeId, boxMinMaxF8, a_boxNumber);
+    return res;
+  }
+  
+  void UpdateGeom_AABB(uint32_t a_geomId, uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber) override
+  {
+    for(auto impl : m_imps) 
+      impl->UpdateGeom_AABB(a_geomId, a_typeId, boxMinMaxF8, a_boxNumber);
+  }
+
+  void     ClearScene() override { for(auto impl : m_imps) impl->ClearScene(); } 
+  void     CommitScene(uint32_t options) override { for(auto impl : m_imps) impl->CommitScene(options);  }
+
+  uint32_t AddInstanceMotion(uint32_t a_geomId, const LiteMath::float4x4* a_matrices, uint32_t a_matrixNumber) override 
+  { 
+    uint32_t res = 0;
+    for(auto impl : m_imps) 
+      res = impl->AddInstanceMotion(a_geomId, a_matrices, a_matrixNumber);
+    return res; 
+  }
+
+  uint32_t AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_matrix) override 
+  { 
+    uint32_t res = 0;
+    for(auto impl : m_imps) 
+      res = impl->AddInstance(a_geomId, a_matrix);
+    return res; 
+  }
+
+  void    UpdateInstance(uint32_t a_instanceId, const LiteMath::float4x4& a_matrix) override   { for(auto impl : m_imps) impl->UpdateInstance(a_instanceId, a_matrix); }
+
+  CRT_Hit RayQuery_NearestHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar) override { return m_imps[0]->RayQuery_NearestHit(posAndNear, dirAndFar); }
+  bool    RayQuery_AnyHit(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar)     override { return m_imps[0]->RayQuery_AnyHit(posAndNear, dirAndFar);; }  
+
+  CRT_Hit RayQuery_NearestHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override { return m_imps[0]->RayQuery_NearestHit(posAndNear, dirAndFar); }
+  bool    RayQuery_AnyHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time)     override { return m_imps[0]->RayQuery_AnyHit(posAndNear, dirAndFar); }
+
+protected:
+  std::array<std::shared_ptr<ISceneObject>, 2> m_imps = {nullptr, nullptr};
+};
+{% endif %}
+{% endfor %}
+
 void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount)
 {
   physicalDevice = a_physicalDevice;
@@ -56,7 +129,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   InitBuffers(a_maxThreadsCount, true);
   InitKernels("{{ShaderSingleFile}}.spv");
   AllocateAllDescriptorSets();
-
+  
   {% if length(SceneMembers) > 0 %}
   auto queueAllFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
   {% endif %}
@@ -67,9 +140,15 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   uint32_t maxTotalVertices     = userRestrictions[1];
   uint32_t maxTotalPrimitives   = userRestrictions[2];
   uint32_t maxPrimitivesPerMesh = userRestrictions[3];
-  {{ScnObj}} = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, m_ctx.pCopyHelper,
+  {% if ScnObj.HasIntersectionShader %}
+  auto {{ScnObj.Name}}Old = {{ScnObj.Name}}; // save user implementation
+  {% endif %}
+  {{ScnObj.Name}} = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, m_ctx.pCopyHelper,
                                                              maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true),
                                                              [](ISceneObject *p) { DeleteSceneRT(p); } );
+  {% if ScnObj.HasIntersectionShader %}
+  {{ScnObj.Name}} = std::make_shared<{{ScnObj.IntersectionImplName}}_RTX_Proxy>({{ScnObj.Name}}Old, {{ScnObj.Name}}); // wrap both user and RTX implementation with proxy object 
+  {% endif %}
   {% endfor %}
   {% if UseRayGen %}
   AllocAllShaderBindingTables();

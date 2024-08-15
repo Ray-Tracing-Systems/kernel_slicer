@@ -562,8 +562,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["TextureMembers"]  = std::vector<json>();
   data["TexArrayMembers"] = std::vector<json>();
   data["SceneMembers"]    = std::vector<json>(); // ray tracing specific objects
-  for(const auto var : a_classInfo.dataMembers)
+  for(size_t memberId = 0; memberId < a_classInfo.dataMembers.size(); memberId++)
   {
+    const auto var = a_classInfo.dataMembers[memberId];
     if(var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED || var.IsUsedTexture())
       data["TextureMembers"].push_back(var.name);
     else if(var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
@@ -587,10 +588,19 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     }
     else if(var.isContainer && kslicer::IsPointerContainer(var.containerType) &&
                                ((var.containerDataType == "struct ISceneObject") ||
-                                (var.containerDataType == "class ISceneObject"))) {
+                                (var.containerDataType == "class ISceneObject"))) 
+    {
+      // when composed class is not completely replace ISceneObject but work together with an implementation
+      //
       std::string cleanDataType = kslicer::CleanTypeName(var.containerDataType);
-      if(a_classInfo.composPrefix.find(cleanDataType) == a_classInfo.composPrefix.end())
-        data["SceneMembers"].push_back(var.name);
+      if(a_classInfo.composPrefix.find(cleanDataType) == a_classInfo.composPrefix.end() || var.hasIntersectionShader) 
+      {
+        json local;
+        local["Name"] = var.name;
+        local["HasIntersectionShader"] = var.hasIntersectionShader; //
+        local["IntersectionImplName"]  = var.intersectionClassName; //
+        data["SceneMembers"].push_back(local);
+      }
     }
   }
 
