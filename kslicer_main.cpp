@@ -266,6 +266,19 @@ int main(int argc, const char **argv)
   inputCodeInfo.mainClassSuffix      = suffix;
   inputCodeInfo.shaderFolderPrefix   = shaderFolderPrefix;
   inputCodeInfo.globalShaderFeatures = forcedFeatures;
+  
+  // analize multiple definitions of args which can not be processed via hash-table params
+  //
+  for(int argId = 1; argId < argc; argId++ )
+  {
+    if(std::string(argv[argId]) == "intersectionShader" && argId+1 < argc) {
+      std::string shaderClassAndFunc = argv[argId+1];
+      auto splitPos = shaderClassAndFunc.find("::");
+      std::string className = shaderClassAndFunc.substr(0, splitPos);
+      std::string funcName  = shaderClassAndFunc.substr(splitPos + 2);
+      inputCodeInfo.intersectionShaders.push_back( std::make_pair(className, funcName) );
+    }
+  }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
