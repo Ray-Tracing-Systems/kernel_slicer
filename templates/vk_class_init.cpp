@@ -144,7 +144,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   auto {{ScnObj.Name}}Old = {{ScnObj.Name}}; // save user implementation
   {% endif %}
   {{ScnObj.Name}} = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, m_ctx.pCopyHelper,
-                                                             maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true),
+                                                             maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true, {{ScnObj.HasIntersectionShader}}),
                                                              [](ISceneObject *p) { DeleteSceneRT(p); } );
   {% if ScnObj.HasIntersectionShader %}
   {{ScnObj.Name}} = std::make_shared<{{ScnObj.IntersectionImplName}}_RTX_Proxy>({{ScnObj.Name}}Old, {{ScnObj.Name}}); // wrap both user and RTX implementation with proxy object 
