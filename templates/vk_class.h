@@ -11,7 +11,9 @@
 #include "vk_utils.h"
 #include "vk_copy.h"
 #include "vk_context.h"
-
+{% if UseRayGen and length(SceneMembers) > 0 %}
+#include "VulkanRTX.h"
+{% endif %}
 {% if length(TextureMembers) > 0 or length(ClassTexArrayVars) > 0 %}
 #include "Image2d.h"
 using LiteImage::Image2D;
@@ -113,6 +115,9 @@ public:
     UpdatePlainMembers(a_pCopyEngine);
     UpdateVectorMembers(a_pCopyEngine);
     UpdateTextureMembers(a_pCopyEngine);
+    {% if UseRayGen and length(SceneMembers) > 0 %}
+    UpdateAccelerationStructureMembers(a_pCopyEngine);
+    {% endif %}
   }
   {% else %}
   virtual void InitMemberBuffers();
@@ -121,6 +126,9 @@ public:
     UpdatePlainMembers(a_pCopyEngine);
     UpdateVectorMembers(a_pCopyEngine);
     UpdateTextureMembers(a_pCopyEngine);
+    {% if UseRayGen and length(SceneMembers) > 0 %}
+    UpdateAccelerationStructureMembers(a_pCopyEngine);
+    {% endif %}
   }
   {% endif %}
   {% for UpdateFun in UpdateVectorFun %}
@@ -134,7 +142,7 @@ public:
   {% if HasPrefixData %}
   virtual void UpdatePrefixPointers()
   {
-    auto pUnderlyingImpl = dynamic_cast<{{PrefixDataClass}}*>({{PrefixDataName}}.get());
+    auto pUnderlyingImpl = dynamic_cast<{{PrefixDataClass}}*>({{PrefixDataName}}->UnderlyingImpl(0));
     if(pUnderlyingImpl != nullptr)
     {
       {% for Vector in VectorMembers %}
@@ -171,12 +179,14 @@ public:
   {% if UpdateMembersTextureData %}
   void UpdateMembersTextureData() override { UpdateTextureMembers(m_ctx.pCopyHelper); }
   {% endif %}
-
-
+  
   virtual void ReserveEmptyVectors();
   virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
+  {% if UseRayGen and length(SceneMembers) > 0 %}
+  virtual void UpdateAccelerationStructureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
+  {% endif %}
   {% if HasFullImpl %}
   virtual void ReadPlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   {% endif %}
@@ -495,7 +505,13 @@ protected:
   {% if UseRayGen %}
   virtual void MakeRayTracingPipelineAndLayout(const std::vector< std::pair<VkShaderStageFlagBits, std::string> >& shader_paths, bool a_hw_motion_blur, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout,
                                                VkPipelineLayout* pPipelineLayout, VkPipeline* pPipeline);
-  virtual void AllocAllShaderBindingTables();
+  
+  struct AccelStructRelated
+  {
+    VulkanRTX* pAccel = nullptr;
+    std::vector<uint32_t> sbtRecordOffsets;
+  };
+  virtual void AllocAllShaderBindingTables(const std::vector<AccelStructRelated>& a_table);
   std::vector<VkBuffer> m_allShaderTableBuffers;
   VkDeviceMemory        m_allShaderTableMem;
   {% endif %}
