@@ -150,9 +150,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   {{ScnObj.Name}} = std::make_shared<{{ScnObj.IntersectionImplName}}_RTX_Proxy>({{ScnObj.Name}}Old, {{ScnObj.Name}}); // wrap both user and RTX implementation with proxy object 
   {% endif %}
   {% endfor %}
-  {% if UseRayGen %}
-  AllocAllShaderBindingTables();
-  {% endif %}
   {% if UseSubGroups %}
   if((m_ctx.subgroupProps.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) == 0)
     std::cout << "ALERT! class '{{MainClassName}}{{MainClassSuffix}}' uses subgroup operations but seems your device does not support them" << std::endl;
@@ -1382,7 +1379,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(
   {% endif %}
 }
 {% if UseRayGen %}
-void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
+void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables(const std::vector<AccelStructRelated>& a_table)
 {
   m_allShaderTableBuffers.clear();
 
@@ -1419,9 +1416,6 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
   //
   for(VkPipeline rtPipeline : allRTPipelines) // todo add for loop
   {
-    std::vector<uint8_t> shaderHandleStorage(sbtSize);
-    VK_CHECK_RESULT(vkGetRayTracingShaderGroupHandlesKHR(device, rtPipeline, 0, numShaderGroups, sbtSize, shaderHandleStorage.data()));
-
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
     auto raygenBuf  = vk_utils::createBuffer(device, rgenStride, flags);
@@ -2022,7 +2016,7 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   deviceExtensions.push_back("VK_KHR_variable_pointers");
   deviceExtensions.push_back("VK_KHR_shader_non_semantic_info"); // for clspv
   {% endif %}
-  {% if HasAllRefs %} {# /***** buffer device address ********/ #}
+  {% if HasAllRefs and not HasRTXAccelStruct %} {# /***** buffer device address ********/ #}
   static VkPhysicalDeviceBufferDeviceAddressFeaturesKHR bufferDeviceAddressFeatures = {};
   bufferDeviceAddressFeatures.sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
   bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;

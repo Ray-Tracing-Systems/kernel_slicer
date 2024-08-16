@@ -250,7 +250,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitAllGeneratedDescriptorSets_{{Main
     }
     {% else if Arg.IsAccelStruct %}
     {
-      VulkanRTX* pScene = dynamic_cast<VulkanRTX*>({{Arg.Name}}.get());
+      VulkanRTX* pScene = dynamic_cast<VulkanRTX*>({{Arg.Name}}->UnderlyingImpl(1));
       if(pScene == nullptr)
         std::cout << "[{{MainClassName}}{{MainClassSuffix}}::InitAllGeneratedDescriptorSets_{{MainFunc.Name}}]: fatal error, wrong accel struct type" << std::endl;
       accelStructs       [{{Arg.Id}}] = pScene->GetSceneAccelStruct();
