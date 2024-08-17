@@ -39,8 +39,9 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   const std::filesystem::path templatePath       = templatesFolder / (a_codeInfo->megakernelRTV ? "generated_mega.glsl" : "generated.glsl");
   const std::filesystem::path templatePathUpdInd = templatesFolder / "update_indirect.glsl";
   const std::filesystem::path templatePathRedFin = templatesFolder / "reduction_finish.glsl";
+  const std::filesystem::path templatePathIntShd = templatesFolder / "intersection_shader.glsl";
 
-  nlohmann::json copy, kernels;
+  nlohmann::json copy, kernels, intersections;
   for (auto& el : a_kernelsJson.items())
   {
     //std::cout << el.key() << std::endl;
@@ -49,7 +50,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     else
       copy[el.key()] = a_kernelsJson[el.key()];
   }
-
+  
   //std::cout << "shaderPath = " << shaderPath.c_str() << std::endl;
 
   bool needRTDummies = false;
@@ -68,10 +69,37 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     const bool vulkan11        = kernel.value()["UseSubGroups"];
     const bool vulkan12        = useRayTracingPipeline;
     needRTDummies              = needRTDummies || useRayTracingPipeline;
+    if(useRayTracingPipeline) 
+    {
+      std::ofstream file(a_codeInfo->mainClassFileName.parent_path() / "z_debug.json");
+      file << std::setw(2) << currKerneJson; //
+      file.close();
+
+      for(auto impl : currKerneJson["Kernel"]["IntersectionHierarhcy"]["Implementations"]) 
+      {
+        nlohmann::json intersectionShader;
+        for(auto f : impl["MemberFunctions"])
+          if(f["IsIntersection"])
+            intersectionShader = f;
+        
+        if(intersectionShader.empty())
+          continue;
+          
+        nlohmann::json ISData;
+        ISData["Kernel"] = currKerneJson["Kernel"];
+        ISData["Implementation"] = impl;
+        std::string outFileName_RCHIT = std::string(impl["ClassName"]) + "_" + std::string(intersectionShader["Name"]) + "_hit.glsl";
+        std::string outFileName_RCINT = std::string(impl["ClassName"]) + "_" + std::string(intersectionShader["Name"]) + "_int.glsl";
+        //std::filesystem::path outFileIS = shaderPath / outFileNameIS;
+        //kslicer::ApplyJsonToTemplate(templatePathIntShd.c_str(), shaderPath / outFileName_RCHIT, ISData);
+        //kslicer::ApplyJsonToTemplate(templatePathIntShd.c_str(), shaderPath / outFileName_RCINT, ISData);
+      }
+    }
 
     std::string outFileName = kernelName + (useRayTracingPipeline ? "RGEN.glsl" : ".comp");
     std::filesystem::path outFilePath = shaderPath / outFileName;
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
+
     buildSH << "glslangValidator -V ";
     if(vulkan12)
       buildSH << "--target-env vulkan1.2 ";

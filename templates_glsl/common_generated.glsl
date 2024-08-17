@@ -12,20 +12,20 @@ struct {{Hierarchy.Name}}
   {% endfor %}
 };
 {% if Hierarchy.VFHLevel >= 2 and HasAllRefs %}
-{% for ImplS in Hierarchy.ImplementationStructures %}
+{% for ImplS in Hierarchy.Implementations %}
 
-struct {{ImplS.Name}}
+struct {{ImplS.DataStructure.Name}}
 {
-  {% for Field in ImplS.Fields %}
+  {% for Field in ImplS.DataStructure.Fields %}
   {{Field.Type}} {{Field.Name}};
   {% endfor %}  
 };
 {% endfor %}
-{% for ImplS in Hierarchy.ImplementationStructures %}
+{% for ImplS in Hierarchy.Implementations %}
 
-layout(buffer_reference, std430, buffer_reference_align = 16) buffer {{ImplS.Name}}Buffer
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer {{ImplS.DataStructure.Name}}Buffer
 {
-	{{ImplS.Name}} {{ImplS.BufferName}}[];
+	{{ImplS.DataStructure.Name}} {{ImplS.DataStructure.BufferName}}[];
 };
 {% endfor %}
 {% endif %}
@@ -33,8 +33,8 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer {{ImplS.Nam
 {% if HasAllRefs %}
 struct AllBufferReferences
 {
-  {% for ImplS in Hierarchy.ImplementationStructures %}
-  {{ImplS.Name}}Buffer {{ImplS.Name}}_buffer;
+  {% for ImplS in Hierarchy.Implementations %}
+  {{ImplS.DataStructure.Name}}Buffer {{ImplS.DataStructure.Name}}_buffer;
   {% endfor %}
 };
 {% endif %}
@@ -93,7 +93,7 @@ struct {{RetDecl.Name}}
 //Impl.ObjBuffer: {{Impl.ObjBufferName}}
 //
 {% for Member in Impl.MemberFunctions %}
-{{Member}}
+{{Member.Source}}
 
 {% endfor %}
 
