@@ -1382,7 +1382,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(
 void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables(const std::vector<AccelStructRelated>& a_table)
 {
   std::vector<uint32_t> sbtRecordOffsets;
-  if(a_table.size() ! = 0)
+  if(a_table.size() != 0)
   {
     sbtRecordOffsets = a_table[0].sbtRecordOffsets;
   }
@@ -1508,14 +1508,18 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables(const std
 
     auto *pData = shaderHandleStorage.data();
 
-    memcpy(mapped + offsets[groupId*3 + 0], pData, handleSize * 1); // raygenBuf
+    memcpy(mapped + offsets[groupId*3 + 0], pData, handleSize * 1);             // raygenBuf
     pData += handleSize * 1;
 
     memcpy(mapped + offsets[groupId*3 + 1], pData, handleSize * numMissStages); // raymissBuf
     pData += handleSize * numMissStages;
 
-    memcpy(mapped + offsets[groupId*3 + 2], pData, handleSize * numHitStages); // rayhitBuf
+    memcpy(mapped + offsets[groupId*3 + 2], pData, handleSize * numHitStages);  // rayhitBuf part for triangles
     pData += handleSize * numHitStages;
+
+    for(size_t i=1; i<sbtRecordOffsets.size(); i++)                             // rayhitBuf part for custom primitives
+      memcpy(mapped + offsets[groupId*3 + 2] + i*handleSizeAligned, pData, handleSize); 
+    pData += handleSize * 1;
 
     groupId++;
   }
