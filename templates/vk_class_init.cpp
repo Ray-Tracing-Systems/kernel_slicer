@@ -1389,7 +1389,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables(const std
 
   m_allShaderTableBuffers.clear();
 
-  uint32_t numShaderGroups = 2 + {{length(IntersectionHierarhcy.Implementations)}}; // (raygen, miss) + ({% for Impl in IntersectionHierarhcy.Implementations %}{{Impl.ClassName}}, {% endfor %})
+  uint32_t numShaderGroups = 3 + {{length(IntersectionHierarhcy.Implementations)}}; // (raygen, miss, rchit(tris)) + ({% for Impl in IntersectionHierarhcy.Implementations %}{{Impl.ClassName}}, {% endfor %})
   uint32_t numHitStages    = std::max(uint32_t(sbtRecordOffsets.size()), 1u); // 1 if we don't have actual sbtRecordOffsets at all
   uint32_t numMissStages   = 1u; 
 
