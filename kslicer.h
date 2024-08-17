@@ -1113,8 +1113,9 @@ namespace kslicer
       const clang::CXXMethodDecl* decl = nullptr;
       std::string                 name;
       std::string                 srcRewritten;
-      bool                        isEmpty       = false;
-      bool                        isConstMember = false;
+      bool                        isEmpty        = false;
+      bool                        isConstMember  = false;
+      bool                        isIntersection = false;
     };
 
     struct DImplClass
@@ -1140,6 +1141,7 @@ namespace kslicer
       std::string                 objBufferName;
       std::vector<DImplClass>     implementations;
       VFH_LEVEL                   level = VFH_LEVEL_1;
+      bool                        hasIntersection = false;
 
       std::vector<kslicer::DeclInClass>            usedDecls;
       std::unordered_map<std::string, std::string> tagByClassName;
