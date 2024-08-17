@@ -138,44 +138,6 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
     hierarchy["InterfaceFields"].push_back(local);
   }
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  hierarchy["ImplementationStructures"] = std::vector<json>();
-  for(auto impl : h.implementations) 
-  {
-    size_t summOfFieldsSize2 = 0;
-    auto fieldsImpl  = a_classInfo.GetFieldsFromStruct(impl.decl, &summOfFieldsSize2);
-    auto fieldsImpl2 = fieldsInterface;
-    
-    // join interface and implementation
-    //
-    fieldsImpl2.insert(fieldsImpl2.end(), fieldsImpl.begin(), fieldsImpl.end());
-    summOfFieldsSize2 += summOfFieldsSize;
-
-    if(summOfFieldsSize2 % sizeof(void*) != 0 && int(h.level) >= 2)
-    {
-      std::cout << "  [ALIGMENT VIOLATION]: sizeof(" << impl.name << ") = " << summOfFieldsSize2 + sizeof(void*) << " which is not a multiple of " << sizeof(void*) << std::endl;
-      std::cout << "  [ALIGMENT VIOLATION]: sizeof any class in VFH hierarchy with virtual functions must be multiple of " << sizeof(void*) << std::endl;
-    }
-
-    json local;
-    local["Name"]       = impl.name;
-    local["BufferName"] = impl.objBufferName; // + "_" + impl.name;
-    local["Fields"]     = std::vector<json>();
-    { 
-      // (1) put fields
-      // 
-      for(auto field : fieldsImpl2) 
-      {
-        json local2;
-        local2["Type"] = field.first;
-        local2["Name"] = field.second;
-        local["Fields"].push_back(local2);
-      }
-    }
-    hierarchy["ImplementationStructures"].push_back(local);
-  }
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   hierarchy["Constants"] = std::vector<json>();
   for(const auto& decl : h.usedDecls)
@@ -203,12 +165,55 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
     currImpl["ObjBufferName"]   = h.objBufferName;
     for(const auto& member : impl.memberFunctions)
     {
-      currImpl["MemberFunctions"].push_back(member.srcRewritten);
+      json local;
+      local["Name"]           = member.name;
+      local["IsIntersection"] = member.isIntersection;
+      local["Source"]         = member.srcRewritten;
+      currImpl["MemberFunctions"].push_back(local);
     }
+
+    // 'old' fields for level 1 (?)
+    //
     currImpl["Fields"] = std::vector<json>();
     for(const auto& field : impl.fields)
       currImpl["Fields"].push_back(field);
-   
+    // 'new' fields for level 2 and 3
+    //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    {
+      size_t summOfFieldsSize2 = 0;
+      auto fieldsImpl  = a_classInfo.GetFieldsFromStruct(impl.decl, &summOfFieldsSize2);
+      auto fieldsImpl2 = fieldsInterface;
+      
+      // join interface and implementation
+      //
+      fieldsImpl2.insert(fieldsImpl2.end(), fieldsImpl.begin(), fieldsImpl.end());
+      summOfFieldsSize2 += summOfFieldsSize;
+  
+      if(summOfFieldsSize2 % sizeof(void*) != 0 && int(h.level) >= 2)
+      {
+        std::cout << "  [ALIGMENT VIOLATION]: sizeof(" << impl.name << ") = " << summOfFieldsSize2 + sizeof(void*) << " which is not a multiple of " << sizeof(void*) << std::endl;
+        std::cout << "  [ALIGMENT VIOLATION]: sizeof any class in VFH hierarchy with virtual functions must be multiple of " << sizeof(void*) << std::endl;
+      }
+  
+      json local;
+      local["Name"]       = impl.name;
+      local["BufferName"] = impl.objBufferName; // + "_" + impl.name;
+      local["Fields"]     = std::vector<json>();
+      { 
+        // (1) put fields
+        // 
+        for(auto field : fieldsImpl2) 
+        {
+          json local2;
+          local2["Type"] = field.first;
+          local2["Name"] = field.second;
+          local["Fields"].push_back(local2);
+        }
+      }
+      currImpl["DataStructure"] = local;
+    }
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //if(impl.isEmpty) 
     if(impl.name.find("Empty") != std::string::npos)
     {

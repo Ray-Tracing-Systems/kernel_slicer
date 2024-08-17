@@ -770,7 +770,7 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
         entity.interfaceName = is.first;
         entity.functionName  = is.second;
         entity.hierarchy     = &h.second;
-        for(auto func : h.second.implementations[0].memberFunctions){
+        for(auto& func : h.second.implementations[0].memberFunctions){
           if(func.name == entity.functionName) {
             func.isIntersection      = true;
             h.second.hasIntersection = true;
