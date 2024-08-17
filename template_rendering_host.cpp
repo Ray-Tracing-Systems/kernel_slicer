@@ -461,6 +461,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
   data["Hierarchies"]        = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
+  data["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(data["Hierarchies"]);
   data["HasAllRefs"]         = bool(a_classInfo.m_allRefs.size() != 0);
   if(a_classInfo.m_allRefs.size() != 0)
   {
@@ -848,7 +849,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   data["MultipleSourceShaders"] = !a_classInfo.pShaderCC->IsSingleSource();
   data["ShaderFolder"]          = a_classInfo.pShaderCC->ShaderFolder();
-  data["DispatchHierarchies"]   = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
 
   data["IndirectBufferSize"] = a_classInfo.m_indirectBufferSize;
   data["IndirectDispatches"] = std::vector<std::string>();
@@ -1599,6 +1599,7 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
   data["UBOStructFields"] = std::vector<std::string>();
   data["ShaderGLSL"]      = a_classInfo.pShaderCC->IsGLSL();
   data["Hierarchies"]     = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
+  data["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(data["Hierarchies"]);
   data["UseRayGen"]       = a_settings.enableRayGen;
   data["UseMotionBlur"]   = a_settings.enableMotionBlur;
 

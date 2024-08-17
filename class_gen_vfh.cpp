@@ -757,19 +757,26 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
   {
     std::string   interfaceName; 
     std::string   functionName;
-    const VFHHierarchy* hierarchy = nullptr;
+    VFHHierarchy* hierarchy = nullptr;
     DataMemberInfo memberInfo;
   };
 
   std::vector<IntersectionShader> shaders;
 
-  for(const auto& h : m_vhierarchy) {
+  for(auto& h : m_vhierarchy) {
     for(auto is : intersectionShaders) {
       if(is.first == h.second.interfaceName) {
         IntersectionShader entity;
         entity.interfaceName = is.first;
         entity.functionName  = is.second;
         entity.hierarchy     = &h.second;
+        for(auto func : h.second.implementations[0].memberFunctions){
+          if(func.name == entity.functionName) {
+            func.isIntersection      = true;
+            h.second.hasIntersection = true;
+            break;  // we assume only single member-function could be an intersection shader
+          }
+        }
         shaders.push_back(entity);
       }
     }

@@ -363,9 +363,9 @@ protected:
   };
   void TrackTextureAccess(const std::vector<TexAccessPair>& a_pairs, std::unordered_map<uint64_t, VkAccessFlags>& a_currImageFlags);
   {% endif %} {# /* length(TextureMembers) > 0 */ #}
-  {% if length(DispatchHierarchies) > 0 %}
+  {% if length(Hierarchies) > 0 %}
   VkBufferMemoryBarrier BarrierForObjCounters(VkBuffer a_buffer);
-  {% endif %} {# /* length(DispatchHierarchies) > 0 */ #}
+  {% endif %} {# /* length(Hierarchies) > 0 */ #}
   {% if length(IndirectDispatches) > 0 %}
   void InitIndirectBufferUpdateResources(const char* a_filePath);
   void InitIndirectDescriptorSets();

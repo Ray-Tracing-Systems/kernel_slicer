@@ -479,7 +479,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitHelpers()
   {% endif %}
 }
 
-{% if length(DispatchHierarchies) > 0 %}
+{% if length(Hierarchies) > 0 %}
 VkBufferMemoryBarrier {{MainClassName}}{{MainClassSuffix}}::BarrierForObjCounters(VkBuffer a_buffer)
 {
   VkBufferMemoryBarrier bar = {};
@@ -1381,11 +1381,17 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(
 {% if UseRayGen %}
 void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables(const std::vector<AccelStructRelated>& a_table)
 {
+  std::vector<uint32_t> sbtRecordOffsets;
+  if(a_table.size() ! = 0)
+  {
+    sbtRecordOffsets = a_table[0].sbtRecordOffsets;
+  }
+
   m_allShaderTableBuffers.clear();
 
-  uint32_t numShaderGroups = 4u;
-  uint32_t numHitStages    = 1u;
-  uint32_t numMissStages   = 2u;
+  uint32_t numShaderGroups = 2 + {{length(IntersectionHierarhcy.Implementations)}}; // (raygen, miss) + ({% for Impl in IntersectionHierarhcy.Implementations %}{{Impl.ClassName}}, {% endfor %})
+  uint32_t numHitStages    = std::max(uint32_t(sbtRecordOffsets.size()), 1u); // 1 if we don't have actual sbtRecordOffsets at all
+  uint32_t numMissStages   = 1u; 
 
   VkPhysicalDeviceRayTracingPipelinePropertiesKHR  rtPipelineProperties{};
   {

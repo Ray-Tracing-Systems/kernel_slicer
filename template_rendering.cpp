@@ -115,6 +115,7 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
   hierarchy["IndirectDispatch"] = 0;
   hierarchy["IndirectOffset"]   = 0;
   hierarchy["VFHLevel"]         = int(h.level);
+  hierarchy["HasIntersection"]  = h.hasIntersection;
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   size_t summOfFieldsSize = 0;
@@ -277,8 +278,19 @@ nlohmann::json kslicer::PutHierarchiesDataToJson(const std::unordered_map<std::s
   json data = std::vector<json>();
   for(const auto& p : hierarchies)
     data.push_back(PutHierarchyToJson(p.second, compiler, a_classInfo));
-  //std::cout << data.dump(2) << std::endl;
   return data;
+}
+
+nlohmann::json kslicer::FindIntersectionHierarchy(nlohmann::json a_hierarchies)
+{
+  json result;
+  for(auto h : a_hierarchies) {
+    if(h["HasIntersection"]) {
+      result = h;
+      break;
+    }
+  }
+  return result;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -737,7 +749,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
           copy.insert(h);
       }
     }
-    kernelJson["Hierarchies"] = PutHierarchiesDataToJson(copy, compiler, a_classInfo); 
+    kernelJson["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(copy, compiler, a_classInfo); 
+    kernelJson["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(kernelJson["Hierarchies"]);
 
     kernelJson["RedLoop1"] = std::vector<std::string>();
     kernelJson["RedLoop2"] = std::vector<std::string>();
