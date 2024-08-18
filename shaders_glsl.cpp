@@ -40,6 +40,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   const std::filesystem::path templatePathUpdInd = templatesFolder / "update_indirect.glsl";
   const std::filesystem::path templatePathRedFin = templatesFolder / "reduction_finish.glsl";
   const std::filesystem::path templatePathIntShd = templatesFolder / "intersection_shader.glsl";
+  const std::filesystem::path templatePathHitShd = templatesFolder / "closest_hit_shader.glsl";
 
   nlohmann::json copy, kernels, intersections;
   for (auto& el : a_kernelsJson.items())
@@ -74,7 +75,8 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
       std::ofstream file(a_codeInfo->mainClassFileName.parent_path() / "z_debug.json");
       file << std::setw(2) << currKerneJson; //
       file.close();
-
+      
+      std::unordered_set<std::string> alreadyGenerated;
       for(auto impl : currKerneJson["Kernel"]["IntersectionHierarhcy"]["Implementations"]) 
       {
         nlohmann::json intersectionShader;
@@ -85,14 +87,20 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
         if(intersectionShader.empty())
           continue;
           
-        nlohmann::json ISData;
-        ISData["Kernel"] = currKerneJson["Kernel"];
-        ISData["Implementation"] = impl;
-        std::string outFileName_RCHIT = std::string(impl["ClassName"]) + "_" + std::string(intersectionShader["Name"]) + "_hit.glsl";
-        std::string outFileName_RCINT = std::string(impl["ClassName"]) + "_" + std::string(intersectionShader["Name"]) + "_int.glsl";
-        //std::filesystem::path outFileIS = shaderPath / outFileNameIS;
-        //kslicer::ApplyJsonToTemplate(templatePathIntShd.c_str(), shaderPath / outFileName_RCHIT, ISData);
-        //kslicer::ApplyJsonToTemplate(templatePathIntShd.c_str(), shaderPath / outFileName_RCINT, ISData);
+        nlohmann::json ISData = copy;
+        ISData["Kernel"]             = currKerneJson["Kernel"];
+        ISData["Implementation"]     = impl;
+        ISData["IntersectionShader"] = intersectionShader;
+        std::string outFileName_RHIT = std::string(impl["ClassName"]) + "_" + std::string(intersectionShader["Name"]) + "_hit.glsl";
+        std::string outFileName_RINT = std::string(impl["ClassName"]) + "_" + std::string(intersectionShader["Name"]) + "_int.glsl";
+
+        if(alreadyGenerated.find(outFileName_RHIT) != alreadyGenerated.end())
+          continue;
+
+        kslicer::ApplyJsonToTemplate(templatePathIntShd.c_str(), shaderPath / outFileName_RHIT, ISData);
+        kslicer::ApplyJsonToTemplate(templatePathHitShd.c_str(), shaderPath / outFileName_RINT, ISData);
+
+        alreadyGenerated.insert(outFileName_RHIT);
       }
     }
 
