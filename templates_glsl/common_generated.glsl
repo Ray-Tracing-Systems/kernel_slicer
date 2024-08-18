@@ -84,7 +84,7 @@ struct {{RetDecl.Name}}
 //Impl.ObjBuffer: {{Hierarchy.EmptyImplementation.ObjBufferName}}
 //
 {% for Member in Hierarchy.EmptyImplementation.MemberFunctions %}
-{{Member}}
+{{Member.Source}}
 
 {% endfor %}
 
