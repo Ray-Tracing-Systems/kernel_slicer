@@ -208,12 +208,11 @@ void BFRayTrace::UpdateGeom_AABB(uint32_t a_geomId, uint32_t a_typeId, const CRT
 
 CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFar)
 {
-  const float3 rayDirInv = 1.0f/to_float3(rayDirAndFar);
   CRT_Hit hit;
   hit.primId = -1;
   
   for(uint32_t primid = 0; primid < primitives.size(); primid++)
-    primitives[primid]->Intersect(rayPosAndNear, rayDirAndFar, rayDirInv, &hit, this); 
+    primitives[primid]->Intersect(rayPosAndNear, rayDirAndFar, &hit, this); 
 
   return hit;
 }

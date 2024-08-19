@@ -86,7 +86,11 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
         
         if(intersectionShader.empty())
           continue;
-          
+        
+        std::ofstream file(a_codeInfo->mainClassFileName.parent_path() / "z_intersection_shader.json");
+        file << std::setw(2) << intersectionShader; //
+        file.close();
+
         nlohmann::json ISData = copy;
         ISData["Kernel"]             = currKerneJson["Kernel"];
         ISData["Implementation"]     = impl;
@@ -97,8 +101,8 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
         if(alreadyGenerated.find(outFileName_RHIT) != alreadyGenerated.end())
           continue;
 
-        kslicer::ApplyJsonToTemplate(templatePathIntShd.c_str(), shaderPath / outFileName_RHIT, ISData);
-        kslicer::ApplyJsonToTemplate(templatePathHitShd.c_str(), shaderPath / outFileName_RINT, ISData);
+        kslicer::ApplyJsonToTemplate(templatePathHitShd.c_str(), shaderPath / outFileName_RHIT, ISData);
+        kslicer::ApplyJsonToTemplate(templatePathIntShd.c_str(), shaderPath / outFileName_RINT, ISData);
 
         alreadyGenerated.insert(outFileName_RHIT);
       }
