@@ -892,8 +892,25 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["threadDim"]      = a_classInfo.GetKernelTIDArgs(k).size();
     kernelJson["UseRayGen"]      = k.enableRTPipeline && a_settings.enableRayGen;       // duplicate these options for kernels so we can
     kernelJson["UseMotionBlur"]  = k.enableRTPipeline && a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
-    kernelJson["StageFlags"]     = k.enableRTPipeline ? "(VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)" : "VK_SHADER_STAGE_COMPUTE_BIT";
+    kernelJson["StageFlags"]     = "VK_SHADER_STAGE_COMPUTE_BIT";
     kernelJson["EnableBlockExpansion"] = k.be.enabled;
+    kernelJson["Hierarchies"] = kslicer::PutHierarchiesDataToJson(a_classInfo.SelectVFHOnlyUsedByKernel(a_classInfo.m_vhierarchy, k), compiler, a_classInfo);
+    bool hasIntersectionShader = false;
+    if(k.enableRTPipeline) 
+    {
+      for(auto h : kernelJson["Hierarchies"]) 
+        for(auto impl : h["Implementations"]) 
+          for(auto f : impl["MemberFunctions"])
+            if(f["IsIntersection"])
+              hasIntersectionShader = true;
+      kernelJson["StageFlags"]      = "(VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR)";
+      kernelJson["HasIntersection"] = true;
+    }
+    else
+    {
+      kernelJson["StageFlags"]      = "(VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)";
+      kernelJson["HasIntersection"] = false;
+    }
 
     size_t actualSize = 0;
     for(const auto& arg : k.args)

@@ -295,36 +295,48 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
     shaderStage.pName  = a_mainName;
     assert(shaderStage.module != VK_NULL_HANDLE);
     shaderStages.push_back(shaderStage);
+  }
+
+  // (2) make shader groups
+  //
+  for(uint32_t shaderId=0; shaderId < uint32_t(shader_paths.size()); shaderId++)
+  {
+    const auto stage = shader_paths[shaderId].first;
 
     VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
-    shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-    if(stage == VK_SHADER_STAGE_MISS_BIT_KHR || stage == VK_SHADER_STAGE_RAYGEN_BIT_KHR ||
-       stage == VK_SHADER_STAGE_CALLABLE_BIT_KHR)
+    shaderGroup.anyHitShader       = VK_SHADER_UNUSED_KHR; 
+    shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR; 
+    shaderGroup.sType              = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+    if(stage == VK_SHADER_STAGE_MISS_BIT_KHR || stage == VK_SHADER_STAGE_RAYGEN_BIT_KHR || stage == VK_SHADER_STAGE_CALLABLE_BIT_KHR)
     {
       shaderGroup.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-      shaderGroup.generalShader    = static_cast<uint32_t>(shaderStages.size()) - 1;
+      shaderGroup.generalShader    = shaderId;
       shaderGroup.closestHitShader = VK_SHADER_UNUSED_KHR;
     }
     else if(stage == VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
     {
       shaderGroup.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
       shaderGroup.generalShader    = VK_SHADER_UNUSED_KHR;
-      shaderGroup.closestHitShader = static_cast<uint32_t>(shaderStages.size()) - 1;
+      shaderGroup.closestHitShader = shaderId;
     }
-
-    // @TODO: intersection, procedural, anyhit
-    shaderGroup.anyHitShader       = VK_SHADER_UNUSED_KHR;
-    shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
+    else if(stage == VK_SHADER_STAGE_INTERSECTION_BIT_KHR) 
+    {
+      shaderGroup.type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+      shaderGroup.generalShader      = VK_SHADER_UNUSED_KHR;
+      shaderGroup.intersectionShader = shaderId + 0; //
+      shaderGroup.closestHitShader   = shaderId + 1; // assume next is always 'closestHitShader' for current 'intersectionShader'
+      shaderId++;
+    }                                                      
 
     shaderGroups.push_back(shaderGroup);
   }
 
-  // (2) create pipeline layout
+  // (3) create pipeline layout
   //
-  std::array<VkPushConstantRange,3> pcRanges = {};
+  std::array<VkPushConstantRange,1> pcRanges = {};
   pcRanges[0].stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-  pcRanges[1].stageFlags = VK_SHADER_STAGE_MISS_BIT_KHR;
-  pcRanges[2].stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+  //pcRanges[1].stageFlags = VK_SHADER_STAGE_MISS_BIT_KHR;
+  //pcRanges[2].stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
   for(size_t i=0;i<pcRanges.size();i++) {
     pcRanges[i].offset = 0;
     pcRanges[i].size   = 128;
@@ -534,18 +546,42 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   {
     {% if Kernel.UseRayGen %}
     const bool enableMotionBlur = {{UseMotionBlur}};
-
     std::string shaderPathRGEN  = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}RGEN.glsl.spv");
     std::string shaderPathRCHT  = AlterShaderPath("{{ShaderFolder}}/z_trace_rchit.glsl.spv");
     std::string shaderPathRMIS1 = AlterShaderPath("{{ShaderFolder}}/z_trace_rmiss.glsl.spv");
     std::string shaderPathRMIS2 = AlterShaderPath("{{ShaderFolder}}/z_trace_smiss.glsl.spv");
+    {% for Hierarchy in Kernel.Hierarchies %}
+    {% if Hierarchy.HasIntersection %}
+    {% for Impl in Hierarchy.Implementations %}
+    {% for Func in Impl.MemberFunctions %}
+    {% if Func.IsIntersection %}
 
+    std::string shader{{Impl.ClassName}}RINT = AlterShaderPath("{{ShaderFolder}}/{{Impl.ClassName}}_{{Func.Name}}_int.glsl.spv");
+    std::string shader{{Impl.ClassName}}RHIT = AlterShaderPath("{{ShaderFolder}}/{{Impl.ClassName}}_{{Func.Name}}_hit.glsl.spv");  
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
+    {% endfor %}
     std::vector< std::pair<VkShaderStageFlagBits, std::string> > shader_paths;
     {
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_RAYGEN_BIT_KHR,      shaderPathRGEN.c_str()));
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_MISS_BIT_KHR,        shaderPathRMIS1.c_str()));
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_MISS_BIT_KHR,        shaderPathRMIS2.c_str()));
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, shaderPathRCHT.c_str()));
+      {% for Hierarchy in Kernel.Hierarchies %}
+      {% if Hierarchy.HasIntersection %}
+      {% for Impl in Hierarchy.Implementations %}
+      {% for Func in Impl.MemberFunctions %}
+      {% if Func.IsIntersection %}
+
+      shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_INTERSECTION_BIT_KHR, shader{{Impl.ClassName}}RINT.c_str()));
+      shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR,  shader{{Impl.ClassName}}RHIT.c_str()));
+      {% endif %}
+      {% endfor %}
+      {% endfor %}
+      {% endif %}
+      {% endfor %}
     }
 
     MakeRayTracingPipelineAndLayout(shader_paths, enableMotionBlur, "main", kspec, {{Kernel.Name}}DSLayout, &{{Kernel.Name}}Layout, &{{Kernel.Name}}Pipeline);
