@@ -217,9 +217,13 @@ public:
         argsByName[fname] = args;
       }
 
+      auto beginPos = declSource.find(" ");
+      auto endPos   = declSource.find("(");
+
       kslicer::MainClassInfo::DImplFunc funcData;
       funcData.decl          = fDecl;
       funcData.name          = fname;
+      funcData.nameRewritten = declSource.substr(beginPos+1, endPos - beginPos - 1);
       funcData.srcRewritten  = declSource + bodySource;
       funcData.isEmpty       = false;
       funcData.isConstMember = fDecl->isConst();

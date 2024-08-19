@@ -84,7 +84,7 @@ struct AbtractPrimitive                         // This is implementation deal, 
   virtual ~AbtractPrimitive(){}     
 
   virtual uint32_t GetTag() const { return 0; };
-  virtual uint32_t Intersect(float4 rayPosAndNear,float4 rayDirAndFar, float3 rayDirInv, CRT_Hit* pHit, BFRayTrace* pData) const { return TAG_EMPTY; }
+  virtual uint32_t Intersect(float4 rayPosAndNear,float4 rayDirAndFar, CRT_Hit* pHit, BFRayTrace* pData) const { return TAG_EMPTY; }
 
   uint32_t m_tag    = TAG_EMPTY;
   uint32_t m_primId = 0;
@@ -148,8 +148,10 @@ struct AABBPrim : public AbtractPrimitive
 
   uint32_t GetTag() const override { return TAG_BOXES; }      
 
-  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, float3 rayDirInv, CRT_Hit* pHit, BFRayTrace* pData) const override 
+  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_Hit* pHit, BFRayTrace* pData) const override 
   { 
+    const float3 rayDirInv = 1.0f/to_float3(rayDirAndFar);
+
     const float4 myBoxMin = boxMin;
     const float4 myBoxMax = boxMax;
     const float2 tMinMax  = RayBoxIntersection2( to_float3(rayPosAndNear), rayDirInv, to_float3(myBoxMin), to_float3(myBoxMax) );
@@ -175,7 +177,7 @@ struct TrianglePrim : public AbtractPrimitive
 
   uint32_t GetTag()   const override { return TAG_TRIANGLES; }   
 
-  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, float3 rayDirInv, CRT_Hit* pHit, BFRayTrace* pData) const override 
+  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_Hit* pHit, BFRayTrace* pData) const override 
   { 
     const float3 rayPos = to_float3(rayPosAndNear);
     const float3 rayDir = to_float3(rayDirAndFar);
@@ -219,7 +221,7 @@ struct SpherePrim : public AbtractPrimitive
 
   uint32_t GetTag()   const override { return TAG_SPHERES; }     
 
-  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, float3 rayDirInv, CRT_Hit* pHit, BFRayTrace* pData) const override 
+  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_Hit* pHit, BFRayTrace* pData) const override 
   { 
     float4 sphere = (boxMin + boxMax)*0.5f;
     sphere.w      = (boxMax.x - boxMin.x)*0.5f;
@@ -242,7 +244,7 @@ struct EmptyPrim : public AbtractPrimitive
   EmptyPrim() { m_tag = GetTag();  }  
 
   uint32_t GetTag() const override { return TAG_EMPTY; }    
-  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, float3 rayDirInv, CRT_Hit* pHit, BFRayTrace* pData) const override { return TAG_EMPTY; }  
+  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_Hit* pHit, BFRayTrace* pData) const override { return TAG_EMPTY; }  
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

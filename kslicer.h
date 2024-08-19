@@ -1112,6 +1112,7 @@ namespace kslicer
     {
       const clang::CXXMethodDecl* decl = nullptr;
       std::string                 name;
+      std::string                 nameRewritten;
       std::string                 srcRewritten;
       bool                        isEmpty        = false;
       bool                        isConstMember  = false;

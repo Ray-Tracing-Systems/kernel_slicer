@@ -167,6 +167,7 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
     {
       json local;
       local["Name"]           = member.name;
+      local["NameRewritten"]  = member.nameRewritten;
       local["IsIntersection"] = member.isIntersection;
       local["Source"]         = member.srcRewritten;
       currImpl["MemberFunctions"].push_back(local);
