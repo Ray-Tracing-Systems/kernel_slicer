@@ -1553,7 +1553,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables(const std
     memcpy(mapped + offsets[groupId*3 + 2], pData, handleSize * numHitStages);  // rayhitBuf part for triangles
     pData += handleSize * 1;
 
-    for(size_t i=1; i<sbtRecordOffsets.size(); i++)                             // rayhitBuf part for custom primitives
+    for(size_t i=1; i<sbtRecordOffsets.size(); i++)                             // rayhitBuf part for custom primitives //#TODO: FIX THIS LOOP
       memcpy(mapped + offsets[groupId*3 + 2] + i*handleSizeAligned, pData, handleSize); 
     pData += handleSize * 1;
 
