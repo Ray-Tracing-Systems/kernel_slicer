@@ -745,17 +745,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     json kernelJson;
     
-    auto dhierarchies = a_classInfo.m_vhierarchy;
-    auto copy         = dhierarchies; 
-    {
-      copy.clear();
-      for(const auto& h : dhierarchies) {
-        auto p = k.usedContainers.find(h.second.objBufferName);
-        if(p != k.usedContainers.end())
-          copy.insert(h);
-      }
-    }
-    kernelJson["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(copy, compiler, a_classInfo); 
+    kernelJson["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(a_classInfo.SelectVFHOnlyUsedByKernel(a_classInfo.m_vhierarchy, k), compiler, a_classInfo); 
     kernelJson["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(kernelJson["Hierarchies"]);
 
     kernelJson["RedLoop1"] = std::vector<std::string>();

@@ -831,7 +831,19 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
     }
   }
   
+}
 
+std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy> kslicer::MainClassInfo::SelectVFHOnlyUsedByKernel(const std::unordered_map<std::string, VFHHierarchy>& a_hierarhices, const KernelInfo& k) const
+{
+  auto copy = a_hierarhices; 
+  {
+    copy.clear();
+    for(const auto& h : a_hierarhices) {
+      auto p = k.usedContainers.find(h.second.objBufferName);
+      if(p != k.usedContainers.end())
+        copy.insert(h);
+    }
+  }
 
-  
+  return copy;
 }

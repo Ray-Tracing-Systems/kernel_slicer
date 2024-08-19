@@ -34,11 +34,13 @@ void main()
 {
   kgen_hitValue = attribs;
   //kgen_hitValue.primId = gl_PrimitiveID;
-  //kgen_hitValue.geomId = gl_InstanceCustomIndexEXT; 
-  //kgen_hitValue.instId = gl_InstanceID;
-  //kgen_hitValue.t      = gl_HitTEXT;
+  kgen_hitValue.geomId = gl_InstanceCustomIndexEXT; 
+  kgen_hitValue.instId = gl_InstanceID;
+  kgen_hitValue.t      = gl_HitTEXT;
+  
+  // for triangles
   //
-  //kgen_hitValue.coords[0] = attribs.y;
+  //kgen_hitValue.coords[0] = attribs.y; 
   //kgen_hitValue.coords[1] = attribs.x;
   //kgen_hitValue.coords[2] = 1.0f - attribs.x - attribs.y;
   //kgen_hitValue.coords[3] = 0.0f;
