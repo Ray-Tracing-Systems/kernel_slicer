@@ -1068,9 +1068,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         pVisitorK->ResetCurrFuncInfo();
         
         json funData;
-        funData["Decl"]   = funcDeclText;
-        funData["Text"]   = funcDeclText + funcBodyText;
-        funData["UseVFH"] = false; 
+        funData["Decl"]       = funcDeclText;
+        funData["Text"]       = funcDeclText + funcBodyText;
+        funData["IsRayQuery"] = (funcDeclText.find("CRT_Hit") == 0 && funcDeclText.find("RayQuery_") != std::string::npos);
+        funData["UseVFH"]     = false; 
         kernelJson["MemberFunctions"].push_back(funData);
       }
     }

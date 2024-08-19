@@ -76,7 +76,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
       file << std::setw(2) << currKerneJson; //
       file.close();
       
-      std::unordered_set<std::string> alreadyGenerated;
+      std::unordered_set<std::string> intersectionShaders;
       for(auto impl : currKerneJson["Kernel"]["IntersectionHierarhcy"]["Implementations"]) 
       {
         nlohmann::json intersectionShader;
@@ -98,13 +98,22 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
         std::string outFileName_RHIT = std::string(impl["ClassName"]) + "_" + std::string(intersectionShader["Name"]) + "_hit.glsl";
         std::string outFileName_RINT = std::string(impl["ClassName"]) + "_" + std::string(intersectionShader["Name"]) + "_int.glsl";
 
-        if(alreadyGenerated.find(outFileName_RHIT) != alreadyGenerated.end())
+        if(intersectionShaders.find(outFileName_RHIT) != intersectionShaders.end())
           continue;
+        
+        intersectionShaders.insert(outFileName_RHIT);
 
         kslicer::ApplyJsonToTemplate(templatePathHitShd.c_str(), shaderPath / outFileName_RHIT, ISData);
         kslicer::ApplyJsonToTemplate(templatePathIntShd.c_str(), shaderPath / outFileName_RINT, ISData);
 
-        alreadyGenerated.insert(outFileName_RHIT);
+        buildSH << "glslangValidator -V --target-env vulkan1.2 -S rchit " << outFileName_RHIT.c_str() << " -o " << outFileName_RHIT.c_str() << ".spv" << " -DGLSL -I.. ";
+        for(auto folder : ignoreFolders)
+          buildSH << "-I" << folder.c_str() << " ";
+        buildSH << std::endl;
+        buildSH << "glslangValidator -V --target-env vulkan1.2 -S rint " << outFileName_RINT.c_str() << " -o " << outFileName_RINT.c_str() << ".spv" << " -DGLSL -I.. ";
+        for(auto folder : ignoreFolders)
+          buildSH << "-I" << folder.c_str() << " ";
+        buildSH << std::endl;
       }
     }
 

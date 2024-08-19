@@ -5,18 +5,8 @@
 #extension GL_EXT_ray_tracing          : require
 
 #include "common{{MainClassSuffixLowerCase}}.h"
-{% for KSpec in Kernel.SpecConstants %}
-layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}};
-{% endfor %}
-{% for Hierarchy in Kernel.Hierarchies %} 
 
-struct {{Hierarchy.Name}}
-{
-  uint vptr_dummy[2];
-  {% for Field in Hierarchy.InterfaceFields %}
-  {{Field.Type}} {{Field.Name}};
-  {% endfor %}
-};
+{% for Hierarchy in Kernel.Hierarchies %} 
 {% if Hierarchy.VFHLevel >= 2 and HasAllRefs %}
 {% for ImplS in Hierarchy.Implementations %}
 
@@ -51,7 +41,7 @@ struct AllBufferReferences
 {% if Arg.IsImage %}
 layout(binding = {{loop.index}}, set = 0{% if Arg.NeedFmt%}, {{Arg.ImFormat}}{% endif %}) uniform {{Arg.Type}} {{Arg.Name}}; //
 {% else if Arg.IsAccelStruct %}
-layout(binding = {{loop.index}}, set = 0) uniform accelerationStructureEXT {{Arg.Name}};
+//layout(binding = {{loop.index}}, set = 0) uniform accelerationStructureEXT {{Arg.Name}}; // can't be used inside intersection shader
 {% else %}
 layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}} { {{Arg.Type}} {{Arg.Name}}{% if not Arg.IsSingle %}[]{% endif %}; }; //
 {% endif %} {# /* Arg.IsImage */ #}
@@ -68,7 +58,9 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 
 {% endfor %}
 {% for MembFunc in Kernel.MemberFunctions %}
+{% if not MembFunc.IsRayQuery %}
 {{MembFunc.Decl}};
+{% endif %}
 {% endfor %}
 
 {% for Hierarchy in Kernel.Hierarchies %} {# /*------------------------------ vfh ------------------------------ */ #}
@@ -87,21 +79,16 @@ struct {{RetDecl.Name}}
 
 {% endfor %}
 
-{% for Impl in Hierarchy.Implementations %}
-{% for Field in Impl.Fields %}
-//{{Field}}
-{% endfor %}
+{% for Member in Implementation.MemberFunctions %}
+{{Member.Source}}
+
 {% endfor %}
 {% endfor %}                        {# /*------------------------------ vfh ------------------------------ */ #}
 {% for MembFunc in Kernel.MemberFunctions %}
+{% if not MembFunc.IsRayQuery %}
 {{MembFunc.Text}}
-
+{% endif %}
 {% endfor %} 
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-{{IntersectionShader.Source}}
 
 hitAttributeEXT CRT_Hit attribs;
 
