@@ -1426,8 +1426,8 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables(const std
   m_allShaderTableBuffers.clear();
 
   uint32_t numShaderGroups = 3 + {{length(IntersectionHierarhcy.Implementations)}}; // (raygen, miss, rchit(tris)) + ({% for Impl in IntersectionHierarhcy.Implementations %}{{Impl.ClassName}}, {% endfor %})
-  uint32_t numHitStages    = std::max(uint32_t(sbtRecordOffsets.size()), 1u); // 1 if we don't have actual sbtRecordOffsets at all
-  uint32_t numMissStages   = 2u;                                              // common mis shader and shadow miss  
+  uint32_t numHitStages    = uint32_t(sbtRecordOffsets.size()) + 1u; // 1 if we don't have actual sbtRecordOffsets at all
+  uint32_t numMissStages   = 2u;                                     // common mis shader and shadow miss  
 
   VkPhysicalDeviceRayTracingPipelinePropertiesKHR  rtPipelineProperties{};
   {
@@ -1551,7 +1551,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables(const std
     pData += handleSize * numMissStages;
 
     memcpy(mapped + offsets[groupId*3 + 2], pData, handleSize * numHitStages);  // rayhitBuf part for triangles
-    pData += handleSize * numHitStages;
+    pData += handleSize * 1;
 
     for(size_t i=1; i<sbtRecordOffsets.size(); i++)                             // rayhitBuf part for custom primitives
       memcpy(mapped + offsets[groupId*3 + 2] + i*handleSizeAligned, pData, handleSize); 
