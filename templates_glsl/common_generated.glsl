@@ -132,13 +132,13 @@ struct {{RetDecl.Name}}
 layout(location = 0) rayPayloadEXT CRT_Hit {{RTName}}_hitValue;
 layout(location = 1) rayPayloadEXT bool    {{RTName}}_inShadow;
 
-CRT_Hit {{RTName}}_RayQuery_NearestHit(const vec4 rayPos, const vec4 rayDir)
+CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
 {
   traceRayEXT({{RTName}}, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, 0);
   return {{RTName}}_hitValue;
 }
 
-CRT_Hit {{RTName}}_RayQuery_NearestHitMotion(const vec4 rayPos, const vec4 rayDir, float t)
+CRT_Hit {{RTName}}_RayQuery_NearestHitMotion(vec4 rayPos, vec4 rayDir, float t)
 {
   {% if UseMotionBlur %}
   traceRayMotionNV({{RTName}}, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w, t, 0);
@@ -148,7 +148,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHitMotion(const vec4 rayPos, const vec4 rayDi
   return {{RTName}}_hitValue;
 }
 
-bool {{RTName}}_RayQuery_AnyHit(const vec4 rayPos, const vec4 rayDir)
+bool {{RTName}}_RayQuery_AnyHit(vec4 rayPos, vec4 rayDir)
 {
   {{RTName}}_inShadow = true;
   traceRayEXT({{RTName}}, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT,
@@ -156,7 +156,7 @@ bool {{RTName}}_RayQuery_AnyHit(const vec4 rayPos, const vec4 rayDir)
   return {{RTName}}_inShadow;
 }
 
-bool {{RTName}}_RayQuery_AnyHitMotion(const vec4 rayPos, const vec4 rayDir, float t)
+bool {{RTName}}_RayQuery_AnyHitMotion(vec4 rayPos, vec4 rayDir, float t)
 {
   {{RTName}}_inShadow = true;
   {% if UseMotionBlur %}
@@ -170,7 +170,7 @@ bool {{RTName}}_RayQuery_AnyHitMotion(const vec4 rayPos, const vec4 rayDir, floa
 }
 
 {% else %}
-CRT_Hit {{RTName}}_RayQuery_NearestHit(const vec4 rayPos, const vec4 rayDir)
+CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
 {
   rayQueryEXT rayQuery;
   rayQueryInitializeEXT(rayQuery, {{RTName}}, gl_RayFlagsOpaqueEXT, 0xff, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w);
@@ -200,9 +200,9 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(const vec4 rayPos, const vec4 rayDir)
   return res;
 }
 
-CRT_Hit {{RTName}}_RayQuery_NearestHitMotion(const vec4 rayPos, const vec4 rayDir, float t) { return {{RTName}}_RayQuery_NearestHit(rayPos, rayDir); }
+CRT_Hit {{RTName}}_RayQuery_NearestHitMotion(vec4 rayPos, vec4 rayDir, float t) { return {{RTName}}_RayQuery_NearestHit(rayPos, rayDir); }
 
-bool {{RTName}}_RayQuery_AnyHit(const vec4 rayPos, const vec4 rayDir)
+bool {{RTName}}_RayQuery_AnyHit(vec4 rayPos, vec4 rayDir)
 {
   rayQueryEXT rayQuery;
   rayQueryInitializeEXT(rayQuery, {{RTName}}, gl_RayFlagsTerminateOnFirstHitEXT, 0xff, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w);
@@ -210,7 +210,7 @@ bool {{RTName}}_RayQuery_AnyHit(const vec4 rayPos, const vec4 rayDir)
   return (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 }
 
-bool {{RTName}}_RayQuery_AnyHitMotion(const vec4 rayPos, const vec4 rayDir, float t) { return {{RTName}}_RayQuery_AnyHit(rayPos, rayDir); }
+bool {{RTName}}_RayQuery_AnyHitMotion(vec4 rayPos, vec4 rayDir, float t) { return {{RTName}}_RayQuery_AnyHit(rayPos, rayDir); }
 
 {% endif %}
 {% endfor %}
