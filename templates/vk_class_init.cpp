@@ -1415,19 +1415,13 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(
   {% endif %}
 }
 {% if UseRayGen %}
-void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables(const std::vector<AccelStructRelated>& a_table)
+void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
 {
-  std::vector<uint32_t> sbtRecordOffsets;
-  if(a_table.size() != 0)
-  {
-    sbtRecordOffsets = a_table[0].sbtRecordOffsets;
-  }
-
   m_allShaderTableBuffers.clear();
-
-  uint32_t numShaderGroups = 3 + {{length(IntersectionHierarhcy.Implementations)}}; // (raygen, miss, rchit(tris)) + ({% for Impl in IntersectionHierarhcy.Implementations %}{{Impl.ClassName}}, {% endfor %})
-  uint32_t numHitStages    = uint32_t(sbtRecordOffsets.size()) + 1u; // 1 if we don't have actual sbtRecordOffsets at all
-  uint32_t numMissStages   = 2u;                                     // common mis shader and shadow miss  
+  uint32_t customStages    = {{length(IntersectionHierarhcy.Implementations)}};
+  uint32_t numShaderGroups = 4 + customStages;            // (raygen, miss, miss, rchit(tris)) + ({% for Impl in IntersectionHierarhcy.Implementations %}{{Impl.ClassName}}, {% endfor %})
+  uint32_t numHitStages    = uint32_t(customStages) + 1u; // 1 if we don't have actual sbtRecordOffsets at all
+  uint32_t numMissStages   = 2u;                          // common mis shader and shadow miss  
 
   VkPhysicalDeviceRayTracingPipelinePropertiesKHR  rtPipelineProperties{};
   {
@@ -1441,6 +1435,8 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables(const std
   const uint32_t handleSize        = rtPipelineProperties.shaderGroupHandleSize;
   const uint32_t handleSizeAligned = vk_utils::getSBTAlignedSize(rtPipelineProperties.shaderGroupHandleSize, rtPipelineProperties.shaderGroupHandleAlignment);
   const uint32_t sbtSize           = numShaderGroups * handleSize;
+  
+  //assert(handleSize == handleSizeAligned);
 
   const auto rgenStride = vk_utils::getSBTAlignedSize(handleSizeAligned,                 rtPipelineProperties.shaderGroupBaseAlignment);
   const auto missSize   = vk_utils::getSBTAlignedSize(numMissStages * handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment);
@@ -1550,12 +1546,11 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables(const std
     memcpy(mapped + offsets[groupId*3 + 1], pData, handleSize * numMissStages); // raymissBuf
     pData += handleSize * numMissStages;
 
-    memcpy(mapped + offsets[groupId*3 + 2], pData, handleSize * numHitStages);  // rayhitBuf part for triangles
+    memcpy(mapped + offsets[groupId*3 + 2], pData, handleSize * 1);             // rayhitBuf part for triangles
     pData += handleSize * 1;
-
-    for(size_t i=1; i<sbtRecordOffsets.size(); i++)                             // rayhitBuf part for custom primitives //#TODO: FIX THIS LOOP
-      memcpy(mapped + offsets[groupId*3 + 2] + i*handleSizeAligned, pData, handleSize); 
-    pData += handleSize * 1;
+    
+    memcpy(mapped + offsets[groupId*3 + 2], pData, handleSize*customStages); 
+    pData += handleSize*customStages;
 
     groupId++;
   }

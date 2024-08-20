@@ -184,7 +184,6 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateTextureMembers(std::shared_ptr<
 {% if UseRayGen and length(SceneMembers) > 0 %}
 void {{MainClassName}}{{MainClassSuffix}}::UpdateAccelerationStructureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 { 
-  std::vector<AccelStructRelated> related;
   {% for ScnObj in SceneMembers  %}
   std::vector<uint32_t> sbtRecordOffsets = {0}; // single HIT stage             
   auto pRTXImpl = dynamic_cast<VulkanRTX*>({{ScnObj.Name}}->UnderlyingImpl(1)); 
@@ -197,13 +196,9 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAccelerationStructureMembers(st
     pRTXImpl->CommitScene(BUILD_NOW);
   }
   else
-    std::cout << "[{MainClassName}}{{MainClassSuffix}}]::UpdateAccelerationStructureMembers(): can't cast 'm_pRayTraceImpl' to 'VulkanRTX' " << std::endl;
-  AccelStructRelated r;
-  r.pAccel           = pRTXImpl;
-  r.sbtRecordOffsets = sbtRecordOffsets;
-  related.push_back(r); 
+    std::cout << "[{MainClassName}}{{MainClassSuffix}}]::UpdateAccelerationStructureMembers(): can't cast 'm_pRayTraceImpl' to 'VulkanRTX' " << std::endl; 
   {% endfor %}
-  AllocAllShaderBindingTables(related);
+  AllocAllShaderBindingTables();
 }
 {% endif %}
 

@@ -597,7 +597,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       if(a_classInfo.composPrefix.find(cleanDataType) == a_classInfo.composPrefix.end() || var.hasIntersectionShader) 
       {
         json local;
-        local["Name"] = var.name;
+        local["Name"]                  = var.name;
         local["HasIntersectionShader"] = var.hasIntersectionShader; //
         local["IntersectionImplName"]  = var.intersectionClassName; //
         data["SceneMembers"].push_back(local);
