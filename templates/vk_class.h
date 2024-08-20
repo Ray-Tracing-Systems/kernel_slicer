@@ -506,12 +506,7 @@ protected:
   virtual void MakeRayTracingPipelineAndLayout(const std::vector< std::pair<VkShaderStageFlagBits, std::string> >& shader_paths, bool a_hw_motion_blur, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout,
                                                VkPipelineLayout* pPipelineLayout, VkPipeline* pPipeline);
   
-  struct AccelStructRelated
-  {
-    VulkanRTX* pAccel = nullptr;
-    std::vector<uint32_t> sbtRecordOffsets;
-  };
-  virtual void AllocAllShaderBindingTables(const std::vector<AccelStructRelated>& a_table);
+  virtual void AllocAllShaderBindingTables();
   std::vector<VkBuffer> m_allShaderTableBuffers;
   VkDeviceMemory        m_allShaderTableMem;
   {% endif %}
