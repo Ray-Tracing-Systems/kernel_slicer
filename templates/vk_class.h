@@ -115,9 +115,6 @@ public:
     UpdatePlainMembers(a_pCopyEngine);
     UpdateVectorMembers(a_pCopyEngine);
     UpdateTextureMembers(a_pCopyEngine);
-    {% if UseRayGen and length(SceneMembers) > 0 %}
-    UpdateAccelerationStructureMembers(a_pCopyEngine);
-    {% endif %}
   }
   {% else %}
   virtual void InitMemberBuffers();
@@ -126,9 +123,6 @@ public:
     UpdatePlainMembers(a_pCopyEngine);
     UpdateVectorMembers(a_pCopyEngine);
     UpdateTextureMembers(a_pCopyEngine);
-    {% if UseRayGen and length(SceneMembers) > 0 %}
-    UpdateAccelerationStructureMembers(a_pCopyEngine);
-    {% endif %}
   }
   {% endif %}
   {% for UpdateFun in UpdateVectorFun %}
@@ -161,6 +155,7 @@ public:
     {% endif %}
     ReserveEmptyVectors();
     InitMemberBuffers();
+    AllocAllShaderBindingTables();
     UpdateAll(a_pCopyHelper);
     m_pLastCopyHelper = a_pCopyHelper;
   }
@@ -184,9 +179,6 @@ public:
   virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
-  {% if UseRayGen and length(SceneMembers) > 0 %}
-  virtual void UpdateAccelerationStructureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
-  {% endif %}
   {% if HasFullImpl %}
   virtual void ReadPlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   {% endif %}
