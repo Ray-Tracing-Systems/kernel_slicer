@@ -136,8 +136,8 @@ void TestClass::InitScene(int numBoxes, int numTris)
 
   m_pRayTraceImpl->ClearScene();
   m_pRayTraceImpl->AddInstance(geomId1, LiteMath::float4x4());
-  m_pRayTraceImpl->AddInstance(geomId0, LiteMath::float4x4());
   m_pRayTraceImpl->AddInstance(geomId2, LiteMath::float4x4());
+  m_pRayTraceImpl->AddInstance(geomId0, LiteMath::float4x4());
   m_pRayTraceImpl->CommitScene();
 }
 

@@ -3,7 +3,7 @@
 layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}};
 {% endfor %}
 {% for Hierarchy in Kernel.Hierarchies %} 
-
+{% if Hierarchy.VFHLevel <= 1 %}
 struct {{Hierarchy.Name}}
 {
   uint vptr_dummy[2];
@@ -11,6 +11,7 @@ struct {{Hierarchy.Name}}
   {{Field.Type}} {{Field.Name}};
   {% endfor %}
 };
+{% endif %}
 {% if Hierarchy.VFHLevel >= 2 and HasAllRefs %}
 {% for ImplS in Hierarchy.Implementations %}
 
@@ -66,6 +67,7 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 {% endfor %}
 
 {% for Hierarchy in Kernel.Hierarchies %} {# /*------------------------------ vfh ------------------------------ */ #}
+{% if  Hierarchy.VFHLevel < 3 %}          {# /*------------------------------ vfh ------------------------------ */ #}
 // Virtual Functions of {{Hierarchy.Name}}:
 {% for Contant in Hierarchy.Constants %}
 {{Contant.Type}} {{Contant.Name}} = {{Contant.Value}};
@@ -80,18 +82,13 @@ struct {{RetDecl.Name}}
 };
 
 {% endfor %}
-//Impl.ClassName: Empty Imlementation
-//Impl.ObjBuffer: {{Hierarchy.EmptyImplementation.ObjBufferName}}
-//
+
 {% for Member in Hierarchy.EmptyImplementation.MemberFunctions %}
+
 {{Member.Source}}
-
 {% endfor %}
-
 {% for Impl in Hierarchy.Implementations %}
-//Impl.ClassName: {{Impl.ClassName}}
-//Impl.ObjBuffer: {{Impl.ObjBufferName}}
-//
+
 {% for Member in Impl.MemberFunctions %}
 {{Member.Source}}
 
@@ -119,11 +116,14 @@ struct {{RetDecl.Name}}
     default: return {{Hierarchy.EmptyImplementation.ClassName}}_{{VirtualFunc.Name}}_{{Hierarchy.EmptyImplementation.ObjBufferName}}({% for Arg in VirtualFunc.Args %}{{Arg.Name}}{% if loop.index != VirtualFunc.ArgLen %},{% endif %}{% endfor %});
   };
 }
-{% endfor %}
-{% endfor %}                        {# /*------------------------------ vfh ------------------------------ */ #}
+{% endfor %}                                 
+{% endfor %}                                 {# /*------------------------------ vfh ------------------------------ */ #}
+{% endif %}                                  {# /*------------------------------ vfh ------------------------------ */ #}
 {% for MembFunc in Kernel.MemberFunctions %}
-{{MembFunc.Text}}
+{% if not (MembFunc.IsRayQuery and Kernel.UseRayGen) %}
 
+{{MembFunc.Text}}
+{% endif%}
 {% endfor %} 
 {% for RTName in Kernel.RTXNames %}
 // RayScene intersection with '{{RTName}}'

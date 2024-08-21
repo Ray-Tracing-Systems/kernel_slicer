@@ -155,7 +155,9 @@ public:
     {% endif %}
     ReserveEmptyVectors();
     InitMemberBuffers();
+    {% if UseRayGen %}
     AllocAllShaderBindingTables();
+    {% endif %}
     UpdateAll(a_pCopyHelper);
     m_pLastCopyHelper = a_pCopyHelper;
   }
@@ -497,8 +499,9 @@ protected:
   {% if UseRayGen %}
   virtual void MakeRayTracingPipelineAndLayout(const std::vector< std::pair<VkShaderStageFlagBits, std::string> >& shader_paths, bool a_hw_motion_blur, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout,
                                                VkPipelineLayout* pPipelineLayout, VkPipeline* pPipeline);
-  
+  {% if UseRayGen %}
   virtual void AllocAllShaderBindingTables();
+  {% endif %}
   std::vector<VkBuffer> m_allShaderTableBuffers;
   VkDeviceMemory        m_allShaderTableMem;
   {% endif %}

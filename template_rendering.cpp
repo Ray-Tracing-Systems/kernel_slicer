@@ -114,7 +114,7 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
   hierarchy["ObjBufferName"]    = h.objBufferName;
   hierarchy["IndirectDispatch"] = 0;
   hierarchy["IndirectOffset"]   = 0;
-  hierarchy["VFHLevel"]         = int(h.level);
+  hierarchy["VFHLevel"]         = h.hasIntersection ? 3 : int(h.level);
   hierarchy["HasIntersection"]  = h.hasIntersection;
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -159,8 +159,8 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
     const auto p2 = h.tagByClassName.find(impl.name);
     assert(p2 != h.tagByClassName.end());
     json currImpl;
-    currImpl["ClassName"] = impl.name;
-    currImpl["TagName"]   = p2->second;
+    currImpl["ClassName"]       = impl.name;
+    currImpl["TagName"]         = p2->second;
     currImpl["MemberFunctions"] = std::vector<json>();
     currImpl["ObjBufferName"]   = h.objBufferName;
     for(const auto& member : impl.memberFunctions)
@@ -290,6 +290,7 @@ nlohmann::json kslicer::PutHierarchiesDataToJson(const std::unordered_map<std::s
 nlohmann::json kslicer::FindIntersectionHierarchy(nlohmann::json a_hierarchies)
 {
   json result;
+  result["Implementations"] = std::vector<json>();
   for(auto h : a_hierarchies) {
     if(h["HasIntersection"]) {
       result = h;
