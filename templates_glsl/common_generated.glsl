@@ -88,7 +88,6 @@ struct {{RetDecl.Name}}
 {{Member.Source}}
 {% endfor %}
 {% for Impl in Hierarchy.Implementations %}
-
 {% for Member in Impl.MemberFunctions %}
 {{Member.Source}}
 
@@ -117,8 +116,8 @@ struct {{RetDecl.Name}}
   };
 }
 {% endfor %}                                 
-{% endfor %}                                 {# /*------------------------------ vfh ------------------------------ */ #}
 {% endif %}                                  {# /*------------------------------ vfh ------------------------------ */ #}
+{% endfor %}                                 {# /*------------------------------ vfh ------------------------------ */ #}
 {% for MembFunc in Kernel.MemberFunctions %}
 {% if not (MembFunc.IsRayQuery and Kernel.UseRayGen) %}
 
