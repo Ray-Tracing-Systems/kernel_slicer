@@ -56,7 +56,7 @@ int main(int argc, const char** argv)
   else
     LiteImage::SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
 
-  // now test path tracing
+  // now test path tracing //
   //
   const int PASS_NUMBER = 1000;
   pImpl->NaivePathTraceBlock(WIN_HEIGHT*WIN_HEIGHT, 6, packedXY.data(), realColor.data(), PASS_NUMBER);
