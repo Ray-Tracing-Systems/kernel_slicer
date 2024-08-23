@@ -7,7 +7,7 @@
 
 #include "ArgParser.h"
 #include "mandelbrot.h"
-void SaveBMP(const char* fname, const unsigned int* pixels, int w, int h);
+#include "Image2d.h"
 
 #include "vk_context.h"
 std::shared_ptr<Mandelbrot> CreateMandelbrot_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
@@ -42,11 +42,11 @@ int main(int argc, const char** argv)
   pImpl->Fractal(w, h, ldrData.data());
 
   if(onGPU)
-    SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
+    LiteImage::SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
   else if(isISPC)
-    SaveBMP("zout_ispc.bmp", ldrData.data(), w, h);
+    LiteImage::SaveBMP("zout_ispc.bmp", ldrData.data(), w, h);
   else
-    SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
+    LiteImage::SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
 
   float timings[4] = {0,0,0,0};
   pImpl->GetExecutionTime("Fractal", timings);

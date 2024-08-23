@@ -1,6 +1,6 @@
 #include <iostream>
 #include <chrono>
-#include "Bitmap.h"
+#include "Image2d.h"
 #include "raymarch.h"
 #include "ArgParser.h"
 //#include "raymarch_ispc.h"
@@ -68,9 +68,9 @@ int main(int argc, const char** argv)
   }
   
   if(onGPU)
-    SaveBMP("z_test_gpu.bmp", output.data(), WIDTH, HEIGHT);
+    LiteImage::SaveBMP("z_test_gpu.bmp", output.data(), WIDTH, HEIGHT);
   else
-    SaveBMP("z_test_cpu.bmp", output.data(), WIDTH, HEIGHT);
+    LiteImage::SaveBMP("z_test_cpu.bmp", output.data(), WIDTH, HEIGHT);
   
 
   /*

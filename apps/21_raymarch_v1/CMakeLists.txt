@@ -3,8 +3,8 @@ project(raymarch_sample)
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(CMAKE_ISPC_COMPILER ispc)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/AddISPCExample.cmake)
+#set(CMAKE_ISPC_COMPILER ispc)
+#include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/AddISPCExample.cmake)
 
 if(WIN32)
     add_compile_definitions(WIN32)
@@ -13,12 +13,11 @@ if(WIN32)
     endif()
 endif()
 
-
 set (EXAMPLES_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 set (ISPC_SRC_NAME "raymarch") # => raymarch.ispc
 set (TARGET_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/raymarch.cpp
-                    ${CMAKE_CURRENT_SOURCE_DIR}/Bitmap.cpp
+                    ${CMAKE_CURRENT_SOURCE_DIR}/../LiteMath/Image2d.cpp
                     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 set (ISPC_IA_TARGETS "sse2-i32x4,sse4-i32x8,avx1-i32x8,avx2-i32x8,avx512knl-i32x16,avx512skx-i32x16" CACHE STRING "ISPC IA targets")
 set (ISPC_ARM_TARGETS "neon" CACHE STRING "ISPC ARM targets")
@@ -56,8 +55,9 @@ set(UTILS_SRC   ../vkutils/geom/cmesh.cpp
 
 add_executable(testapp ${UTILS_SRC} main.cpp
                                raymarch.cpp
-                               Bitmap.cpp
+                               ../LiteMath/Image2d.cpp
                                raymarch_generated.cpp
                                raymarch_generated_ds.cpp
                                raymarch_generated_init.cpp)
+
 target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} volk dl)

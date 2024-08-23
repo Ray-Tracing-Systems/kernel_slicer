@@ -1,5 +1,4 @@
 #include "test_class.h"
-#include "Bitmap.h"
 #include <cassert>
 #include <chrono>
 #include <algorithm>
@@ -95,21 +94,7 @@ static inline float NLMWeight(__global const float4* in_buff, int w, int h, int 
   return w1 / std::sqrt(2.0F * (float)a_blockRadius + 1.0F);
 }
 
-
-static void SaveTestImage(const float4* data, int w, int h)
-{
-  size_t sizeImg = w * h;
-  std::vector<uint> ldrData(sizeImg);
-
-  #pragma omp parallel for
-  for(size_t i = 0; i < sizeImg; ++i)
-    ldrData[i] = RealColorToUint32(data[i], 1.0F / 2.2F);
-
-  SaveBMP("ztest.bmp", ldrData.data(), w, h);
-}
-
-
-Denoise::Denoise(const int w, const int h)
+Denoise::Denoise(const int w, const int h) // 
 {
   Resize(w,h);
 }

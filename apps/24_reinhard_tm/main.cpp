@@ -7,9 +7,9 @@
 
 #include "reinhard.h"
 #include "ArgParser.h"
+#include "Image2d.h"
 
 bool LoadHDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<float>& a_data); // defined in imageutils.cpp
-void SaveBMP(const char* fname, const unsigned int* pixels, int w, int h);
 
 #include "vk_context.h"
 std::shared_ptr<ReinhardTM> CreateReinhardTM_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
@@ -51,11 +51,11 @@ int main(int argc, const char** argv)
   pImpl->Run(w, h, hdrData.data(), ldrData.data()); // (const float4*)
 
   if(onGPU)
-    SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
+    LiteImage::SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
   else if(isISPC)
-    SaveBMP("zout_ispc.bmp", ldrData.data(), w, h);
+    LiteImage::SaveBMP("zout_ispc.bmp", ldrData.data(), w, h);
   else
-    SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
+    LiteImage::SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
 
   std::cout << "whitePoint = " << pImpl->getWhitePoint() << std::endl;
 

@@ -40,7 +40,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wno-attributes")
 
 set(MAIN_SOURCE main.cpp 
                 reinhard.cpp
-                Bitmap.cpp
+                ../LiteMath/Image2d.cpp
                 imageutils.cpp)
 
 set(ISPC_SOURCE reinhard_ispc.cpp

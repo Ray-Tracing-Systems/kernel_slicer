@@ -6,7 +6,7 @@
 #include <new>
 #include <cfloat>
 
-void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
+void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed) //
 { 
   // using in place new to create objects on the CPU side
   //
@@ -23,16 +23,6 @@ void TestClass::InitSceneMaterials(int a_numSpheres, int a_seed)
   new (m_materials.data() + 8 ) PerfectMirrorMaterial(false)                      ;
   new (m_materials.data() + 9 ) PerfectMirrorMaterial(false)                      ;
   new (m_materials.data() + 10) EmissiveMaterial(20.0f)                           ;
-  
-  //struct IMaterial2
-  //{
-  //  uint vptr_dummy[2];
-  //  float m_color[3];
-  //  float roughness;
-  //  uint m_tag;
-  //  int m_takeFromExt;
-  //};
-  //IMaterial2* materials2 = (IMaterial2*)m_materials.data();
 
   m_emissiveMaterialId = 10;
 
