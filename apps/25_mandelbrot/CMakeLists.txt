@@ -32,7 +32,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wno-attributes")
 
 set(MAIN_SOURCE main.cpp 
                 mandelbrot.cpp
-                Bitmap.cpp)
+                ../LiteMath/Image2d.cpp)
 
 set(ISPC_SOURCE mandelbrot_ispc.cpp
                 mandelbrot_kernels.o

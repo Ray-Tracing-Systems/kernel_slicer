@@ -1,18 +1,7 @@
 #include "test_class.h"
-#include "Bitmap.h"
 #include <cassert>
 
 inline static uint pitch(uint x, uint y, uint pitch) { return y*pitch + x; }  
-
-
-static void SaveTestImage(const float4* data, int w, int h)
-{
-  std::vector<uint> ldrData(w*h);
-  for(size_t i=0;i<w*h;i++)
-    ldrData[i] = RealColorToUint32( clamp(data[i], 0.0f, 1.0f));
-  SaveBMP("ztest.bmp", ldrData.data(), w, h);
-}
-
 
 static void ConvertSrgbToXyz(float3* a_data)
 {

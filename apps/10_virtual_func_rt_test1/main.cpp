@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "test_class.h"
-#include "Bitmap.h"
+#include "Image2d.h"
 #include "ArgParser.h"
 
 #include "vk_context.h"
@@ -45,9 +45,9 @@ int main(int argc, const char** argv)
   pImpl->CastSingleRayBlock(WIN_HEIGHT*WIN_HEIGHT, packedXY.data(), pixelData.data(), 1);
   
   if(onGPU)
-    SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    LiteImage::SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
-    SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    LiteImage::SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
 
   // now test path tracing
   //
@@ -60,17 +60,17 @@ int main(int argc, const char** argv)
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
   {
     float4 color = realColor[i]*normConst;
-    color.x      = powf(color.x, invGamma);
-    color.y      = powf(color.y, invGamma);
-    color.z      = powf(color.z, invGamma);
+    color.x      = std::pow(color.x, invGamma);
+    color.y      = std::pow(color.y, invGamma);
+    color.z      = std::pow(color.z, invGamma);
     color.w      = 1.0f;
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }
 
   if(onGPU)
-    SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    LiteImage::SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
-    SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    LiteImage::SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
   float timings[4] = {0,0,0,0};
   pImpl->GetExecutionTime("NaivePathTraceBlock", timings);
