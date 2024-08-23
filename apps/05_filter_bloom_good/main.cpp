@@ -6,7 +6,7 @@
 #include <cassert>
 
 #include "test_class.h"
-#include "Bitmap.h"
+#include "Image2d.h"
 #include "ArgParser.h"
 
 #include "vk_context.h"
@@ -63,11 +63,11 @@ int main(int argc, const char** argv)
   pImpl->Bloom(w, h, (const LiteMath::float4*)hdrData.data(), ldrData.data());
 
   if(onGPU)
-    SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
+    LiteImage::SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
   else if(isISPC)
-    SaveBMP("zout_ispc.bmp", ldrData.data(), w, h);
+    LiteImage::SaveBMP("zout_ispc.bmp", ldrData.data(), w, h);
   else
-    SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
+    LiteImage::SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
   
   float timings[4] = {0,0,0,0};
   pImpl->GetExecutionTime("Bloom", timings);
