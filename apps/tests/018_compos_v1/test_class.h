@@ -17,6 +17,8 @@ struct IRayTraceImpl
 
   virtual void InitBoxesAndTris(int numBoxes, int numTris) = 0;
   virtual int  RayTrace(float4 rayPosAndNear, float4 rayDirAndFar) = 0;
+
+  virtual IRayTraceImpl* UnderlyingImpl(int id) { return this; }
 };
 
 struct BFRayTrace : public IRayTraceImpl
@@ -26,6 +28,7 @@ struct BFRayTrace : public IRayTraceImpl
 
   void InitBoxesAndTris(int numBoxes, int numTris) override;
   int  RayTrace(float4 rayPosAndNear, float4 rayDirAndFar) override;
+  IRayTraceImpl* UnderlyingImpl(int id) override { return this; }
 
 //protected:
   
