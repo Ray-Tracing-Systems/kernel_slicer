@@ -4,20 +4,11 @@
 #include <memory>
 
 #include "test_class.h"
-#include "Bitmap.h"
+#include "Image2d.h"
 #include "ArgParser.h"
 
 #include "vk_copy.h"
 
-//void test_class_cpu();
-//void test_class_gpu();
-//
-//int main(int argc, const char** argv)
-//{
-//  test_class_cpu();
-//  test_class_gpu();
-//  return 0;
-//}
 
 // the problem in this sample is that LoadScene should be called after InitVulkanObjects ... need to think.
 
@@ -61,9 +52,9 @@ int main(int argc, const char** argv)
   pImpl->CastSingleRayBlock(WIN_HEIGHT*WIN_HEIGHT, packedXY.data(), pixelData.data(), 1);
   
   if(onGPU)
-    SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    LiteImage::SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
-    SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    LiteImage::SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
 
   // now test path tracing
   //
@@ -84,9 +75,9 @@ int main(int argc, const char** argv)
   }
 
   if(onGPU)
-    SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    LiteImage::SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
-    SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    LiteImage::SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
   float timings[4] = {0,0,0,0};
   pImpl->GetExecutionTime("NaivePathTraceBlock", timings);
