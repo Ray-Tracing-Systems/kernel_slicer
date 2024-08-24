@@ -348,8 +348,11 @@ kslicer::FuncData kslicer::FuncDataFromKernel(const kslicer::KernelInfo& k)
   return func;
 }
 
-std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::unordered_map<uint64_t, kslicer::FuncData>& a_usedFunctions)
+std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
 {
+  std::unordered_map<uint64_t, kslicer::FuncData> a_usedFunctions;
+  a_usedFunctions.reserve(1000);
+
   // (1) first traverse kernels as used functions
   for(auto& k : a_codeInfo.kernels)  
   {
