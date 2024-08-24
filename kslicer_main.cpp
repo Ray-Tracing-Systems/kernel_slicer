@@ -956,6 +956,7 @@ int main(int argc, const char **argv)
         }
       }
       cf.megakernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
+      inputCodeInfo.globalDeviceFeatures.useRTX = inputCodeInfo.globalDeviceFeatures.useRTX || hasAccelStructs;
     }
   }
 
