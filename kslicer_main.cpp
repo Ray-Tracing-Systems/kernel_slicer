@@ -597,10 +597,8 @@ int main(int argc, const char **argv)
   std::cout << "(4) Extract functions, constants and structs from 'MainClass' " << std::endl;
   std::cout << "{" << std::endl;
 
-  std::unordered_map<uint64_t, kslicer::FuncData> usedFunctionsMap;
-  usedFunctionsMap.reserve(1000);
 
-  std::vector<kslicer::FuncData>    usedFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler, usedFunctionsMap); // recursive processing of functions used by kernel, extracting all needed functions
+  std::vector<kslicer::FuncData>    usedFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
   std::vector<kslicer::DeclInClass> usedDecls     = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
 
   for(const auto& usedDecl : usedDecls) // merge usedDecls with generalDecls
@@ -618,37 +616,37 @@ int main(int argc, const char **argv)
       generalDecls.push_back(usedDecl);
   }
 
-  //bool hasMembers = false;
-  //bool hasVirtual = false;
-  //for(const auto& f : usedFunctions) {
-  //  if(f.isMember)
-  //    hasMembers = true;
-  //  if(f.isVirtual)
-  //    hasVirtual = true;
-  //}
 
   // process virtual functions
-  std::cout << "  (4.0) Process Virtual-Functions-Hierarchies:" << std::endl;
-  for(auto& k : inputCodeInfo.kernels)
+  // 
+  std::unordered_map<uint64_t, kslicer::FuncData> allMemberFunctions;
+  bool hasVirtual = false;
   {
-    bool hasVirtual = false;
-    for(const auto& f : k.second.usedMemberFunctions) {
-      if(f.second.isVirtual) {
-        hasVirtual = true;
-        break;
-      }
-    }
-
+    for(auto& k : inputCodeInfo.kernels)
     {
-      inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
-      inputCodeInfo.ExtractVFHConstants(compiler, Tool);
-      usedFunctions = kslicer::ExtractUsedFromVFH(inputCodeInfo, compiler, k.second.usedMemberFunctions);
-  
-      for(auto& nk : inputCodeInfo.kernels)
-        inputCodeInfo.VisitAndPrepare_KF(nk.second, compiler); // move data from usedContainersProbably to usedContainers if a kernel actually uses it
-  
-      std::cout << std::endl;
+      for(const auto& f : k.second.usedMemberFunctions) {
+        if(f.second.isVirtual) {
+          hasVirtual = true;
+          break;
+        }
+      }
+      
+      for(const auto& member : k.second.usedMemberFunctions)
+        allMemberFunctions.insert(member);
     }
+  }
+  
+  if(hasVirtual)
+  {
+    std::cout << "  (4.0) Process Virtual-Functions-Hierarchies:" << std::endl;
+    inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
+    inputCodeInfo.ExtractVFHConstants(compiler, Tool);
+    usedFunctions = kslicer::ExtractUsedFromVFH(inputCodeInfo, compiler, allMemberFunctions);
+
+    for(auto& nk : inputCodeInfo.kernels)
+      inputCodeInfo.VisitAndPrepare_KF(nk.second, compiler); // move data from usedContainersProbably to usedContainers if a kernel actually uses it
+
+    std::cout << std::endl;
   }
 
   std::vector<std::string> usedDefines = kslicer::ExtractDefines(compiler);
@@ -664,7 +662,7 @@ int main(int argc, const char **argv)
     std::cout << "{" << std::endl;
     for(auto& k : inputCodeInfo.kernels)
     {
-      auto usedFunctionsCopy = usedFunctions;
+      std::vector<kslicer::FuncData> usedFunctionsCopy;
       for(auto memberF : k.second.usedMemberFunctions)                    // (1) process member functions
         usedFunctionsCopy.push_back(memberF.second);                                                                                                                           
       usedFunctionsCopy.push_back(kslicer::FuncDataFromKernel(k.second)); // (2) process kernel in the same way as used member functions by this kernel  
