@@ -470,6 +470,9 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
   {% if Kernel.IsMega %}
   if(m_megaKernelFlags.enable{{Kernel.Name}})
+  {% else %}
+  if(true)
+  {% endif %}
   {
     {% if Kernel.UseRayGen %}
     const bool enableMotionBlur = {{UseMotionBlur}};
@@ -521,9 +524,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
     {{Kernel.Name}}Layout   = nullptr;
     {{Kernel.Name}}Pipeline = nullptr;
   }
-  {% else %}
-  MakeComputePipelineAndLayout(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %}, kspec, {{Kernel.Name}}DSLayout, &{{Kernel.Name}}Layout, &{{Kernel.Name}}Pipeline);
-  {% endif %}
   {% if Kernel.FinishRed %}
   {% if ShaderGLSL %}
   shaderPath = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}_Reduction.comp.spv");

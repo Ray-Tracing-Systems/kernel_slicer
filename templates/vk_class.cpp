@@ -393,6 +393,7 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
 ## for MainFunc in MainFunctions
 {{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.MainFuncDeclCmd}}
 {
+  VkPipelineStageFlagBits prevStageBits = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
   m_currCmdBuffer = a_commandBuffer;
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   {% if MainFunc.IsMega %}

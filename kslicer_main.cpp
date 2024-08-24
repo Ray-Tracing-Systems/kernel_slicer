@@ -793,15 +793,17 @@ int main(int argc, const char **argv)
       inputCodeInfo.ProcessCallArs_KF(call);
     inputCodeInfo.megakernelRTV = true;
   }
-  /////////////////////////////////////////////////////////////////////////////////////////////// fakeOffset flag for local variables
-
+  
+  /////////////////////////////////////////////////////////////
   for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
     std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
     inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
   }
-
+  /////////////////////////////////////////////////////////////
   inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);
+
+  /////////////////////////////////////////////////////////////////////////////////////////////// fakeOffset flag for local variables
 
   // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg
   //
@@ -971,12 +973,14 @@ int main(int argc, const char **argv)
     }
     kernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
   }
-
-  // process usedContainersProbably to get all vectors and it's size/capacity
-  //
+  
+  /////////////////////////////////////////////////////////////////////////////
+  for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
-
+    std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
+    inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
   }
+  /////////////////////////////////////////////////////////////////////////////
 
   inputCodeInfo.kernelsCallCmdDeclCached.clear();
   std::string rawname = kslicer::CutOffFileExt(allFiles[0]);
