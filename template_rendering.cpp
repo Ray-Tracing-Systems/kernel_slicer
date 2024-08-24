@@ -1031,6 +1031,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       for(auto& f : k.usedMemberFunctions)
       { 
+        if(!f.second.isMember) // may happen to meet non member here due to VFH hierarchy analysis  
+          continue;
         bool fromVFH = false;
         if(f.second.astNode->isVirtualAsWritten()) {
           for(const auto& h : a_classInfo.m_vhierarchy) {

@@ -616,38 +616,51 @@ int main(int argc, const char **argv)
       generalDecls.push_back(usedDecl);
   }
 
-
   // process virtual functions
   // 
-  std::unordered_map<uint64_t, kslicer::FuncData> allMemberFunctions;
-  bool hasVirtual = false;
+  std::cout << "  (4.0) Process Virtual-Functions-Hierarchies:" << std::endl;
+  std::unordered_map<const clang::FunctionDecl*, kslicer::FuncData> procesedFunctions;
+  for(auto f  : usedFunctions)
+    procesedFunctions[f.astNode] = f;
+  
+  size_t oldSizeOfFunctions = usedFunctions.size();
+
+  for(auto& k : inputCodeInfo.kernels)
   {
-    for(auto& k : inputCodeInfo.kernels)
+    bool hasVirtual = false;
+    for(const auto& f : k.second.usedMemberFunctions) {
+      if(f.second.isVirtual) {
+        hasVirtual = true;
+        break;
+      }
+    }
+    
+    if(hasVirtual)
     {
-      for(const auto& f : k.second.usedMemberFunctions) {
-        if(f.second.isVirtual) {
-          hasVirtual = true;
-          break;
+      inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
+      inputCodeInfo.ExtractVFHConstants(compiler, Tool);
+      
+      auto sortedFunctions = kslicer::ExtractUsedFromVFH(inputCodeInfo, compiler, k.second.usedMemberFunctions);
+      for(auto f : sortedFunctions) 
+      {
+        if(f.isMember)
+          continue;
+        
+        if(procesedFunctions.find(f.astNode) == procesedFunctions.end()) 
+        {
+          procesedFunctions[f.astNode] = f;
+          usedFunctions.push_back(f);
         }
       }
-      
-      for(const auto& member : k.second.usedMemberFunctions)
-        allMemberFunctions.insert(member);
+  
+      inputCodeInfo.VisitAndPrepare_KF(k.second, compiler); // move data from usedContainersProbably to usedContainers if a kernel actually uses it
+  
+      std::cout << std::endl;
     }
   }
-  
-  if(hasVirtual)
-  {
-    std::cout << "  (4.0) Process Virtual-Functions-Hierarchies:" << std::endl;
-    inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
-    inputCodeInfo.ExtractVFHConstants(compiler, Tool);
-    usedFunctions = kslicer::ExtractUsedFromVFH(inputCodeInfo, compiler, allMemberFunctions);
 
-    for(auto& nk : inputCodeInfo.kernels)
-      inputCodeInfo.VisitAndPrepare_KF(nk.second, compiler); // move data from usedContainersProbably to usedContainers if a kernel actually uses it
-
-    std::cout << std::endl;
-  }
+  if(usedFunctions.size() != oldSizeOfFunctions)
+    std::sort(usedFunctions.begin(), usedFunctions.end(), [](const auto& a, const auto& b) { return a.depthUse > b.depthUse; });
 
   std::vector<std::string> usedDefines = kslicer::ExtractDefines(compiler);
 
