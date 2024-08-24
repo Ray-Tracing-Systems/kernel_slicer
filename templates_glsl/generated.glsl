@@ -16,6 +16,9 @@
 {% if HasAllRefs %}
 #extension GL_EXT_buffer_reference : require
 {% endif %}
+{% if Kernel.UseSubGroups %}
+#extension GL_KHR_shader_subgroup_arithmetic: enable
+{% endif %}
 
 {% include "common_generated.glsl" %}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
