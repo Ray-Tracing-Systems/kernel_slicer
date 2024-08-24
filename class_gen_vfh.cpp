@@ -402,8 +402,17 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
           if(k.second.className == dImpl.name)
             k.second.interfaceName = className;
         }
-
-        p.second.implementations.push_back(dImpl);
+        
+        bool alreadyHasSuchImpl = false;
+        for(const auto& impl : p.second.implementations) {
+          if(impl.name == dImpl.name) {
+            alreadyHasSuchImpl = true;
+            break;
+          }
+        }
+        
+        if(!alreadyHasSuchImpl)
+          p.second.implementations.push_back(dImpl);
       }
     }
 
