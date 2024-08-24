@@ -97,7 +97,7 @@
             "name"   : "Launch (app_03/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/03_spheresStupidPt_loopBreak/test_class.cpp",
                         "-mainClass", "TestClass", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",

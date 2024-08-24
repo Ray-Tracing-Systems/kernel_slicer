@@ -147,7 +147,7 @@ static std::string GetOriginalDeclText(const clang::FunctionDecl* fDecl, clang::
   return text + ")";
 }
 
-void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler, bool a_megakernelRTV)
+void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler, bool a_megakernelRTV, bool a_skipDS)
 {
   //const std::string&   a_mainClassName = this->mainClassName;
   const CXXMethodDecl* a_node = a_mainFunc.Node;
@@ -156,23 +156,29 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
   const auto funcBody = a_node->getBody();
   clang::SourceLocation b(funcBody->getBeginLoc()), _e(funcBody->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
-
-  a_mainFunc.ReturnType    = a_node->getReturnType().getAsString();
-  a_mainFunc.GeneratedDecl = GetControlFuncDeclText(a_node, compiler);
-  a_mainFunc.startDSNumber = allDescriptorSetsInfo.size();
-  a_mainFunc.OriginalDecl  = GetOriginalDeclText(a_node, compiler, IsRTV());
   
+  if(!a_skipDS)
+  {
+    a_mainFunc.ReturnType    = a_node->getReturnType().getAsString();
+    a_mainFunc.GeneratedDecl = GetControlFuncDeclText(a_node, compiler);
+    a_mainFunc.startDSNumber = allDescriptorSetsInfo.size();
+    a_mainFunc.OriginalDecl  = GetOriginalDeclText(a_node, compiler, IsRTV());
+  }
+
   if(a_megakernelRTV)
   {
     // (1) just add allDescriptorSetsInfo for current megakernel 
     //
-    a_mainFunc.CodeGenerated = "";
-    KernelCallInfo dsInfo;
-    dsInfo.callerName = a_mainFunc.Name;
-    dsInfo.isService  = false;
-    dsInfo.kernelName       = a_mainFunc.Name + "Mega";
-    dsInfo.originKernelName = a_mainFunc.Name + "Mega"; // postpone "descriptorSetsInfo" process untill megakernels will be formed at the end
-    allDescriptorSetsInfo.push_back(dsInfo);
+    if(!a_skipDS)
+    {
+      a_mainFunc.CodeGenerated = "";
+      KernelCallInfo dsInfo;
+      dsInfo.callerName = a_mainFunc.Name;
+      dsInfo.isService  = false;
+      dsInfo.kernelName       = a_mainFunc.Name + "Mega";
+      dsInfo.originKernelName = a_mainFunc.Name + "Mega"; // postpone "descriptorSetsInfo" process untill megakernels will be formed at the end
+      allDescriptorSetsInfo.push_back(dsInfo);
+    }
   }
   else
   {
@@ -181,7 +187,7 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
     Rewriter rewrite2;
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
   
-    kslicer::MainFunctionRewriter rv(rewrite2, compiler, a_mainFunc, inOutParamList, this); // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
+    kslicer::MainFunctionRewriter rv(rewrite2, compiler, a_mainFunc, inOutParamList, this, a_skipDS); // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
     rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
     
     std::string sourceCode   = rewrite2.getRewrittenText(clang::SourceRange(b,e));

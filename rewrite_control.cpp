@@ -97,7 +97,8 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
     call.originKernelName   = fname;
     call.callerName         = m_mainFuncName;
     call.descriptorSetsInfo = args;
-    allDescriptorSetsInfo.push_back(call);
+    if(!m_skipDSInfo)
+      allDescriptorSetsInfo.push_back(call);
   }
 
   //std::string textOfCall = GetRangeSourceCode(f->getSourceRange(), m_compiler);
@@ -265,7 +266,8 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
       call.callerName         = m_mainFuncName;
       call.descriptorSetsInfo = args;
       call.isService          = true;
-      allDescriptorSetsInfo.push_back(call);
+      if(!m_skipDSInfo)
+        allDescriptorSetsInfo.push_back(call);
     }
 
     std::stringstream strOut;
@@ -329,7 +331,8 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
       call.callerName         = m_mainFuncName;
       call.descriptorSetsInfo = args;
       call.isService          = true;
-      allDescriptorSetsInfo.push_back(call);
+      if(!m_skipDSInfo)
+        allDescriptorSetsInfo.push_back(call);
     }
 
     std::stringstream strOut;
@@ -375,7 +378,8 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
       call.callerName         = m_mainFuncName;
       call.descriptorSetsInfo = args;
       call.isService          = true;
-      allDescriptorSetsInfo.push_back(call);
+      if(!m_skipDSInfo)
+        allDescriptorSetsInfo.push_back(call);
     }
 
     std::stringstream strOut;
@@ -407,7 +411,8 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
       call.callerName         = m_mainFuncName;
       call.descriptorSetsInfo = args;
       call.isService          = true;
-      allDescriptorSetsInfo.push_back(call);
+      if(!m_skipDSInfo)
+        allDescriptorSetsInfo.push_back(call);
     }
 
     std::stringstream strOut;

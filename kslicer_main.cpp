@@ -778,7 +778,7 @@ int main(int argc, const char **argv)
     for(auto& mainFunc : inputCodeInfo.mainFunc)
     {
       std::cout << "  process subkernel " << mainFunc.Name.c_str() << std::endl;
-      inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
+      inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler, false);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
     }
     inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);
     for(const auto& call : inputCodeInfo.allDescriptorSetsInfo)
@@ -798,7 +798,7 @@ int main(int argc, const char **argv)
   for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
     std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
-    inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
+    inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler, false);             // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
   }
   /////////////////////////////////////////////////////////////
   inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);
@@ -976,14 +976,14 @@ int main(int argc, const char **argv)
   }
   
   ///////////////////////////////////////////////////////////////////////////// run again to get connecr rewritten code for barriers stages, breaks megakernel generation unfortunetely
-  if(!inputCodeInfo.megakernelRTV) 
-  {
-    for(auto& mainFunc : inputCodeInfo.mainFunc)
-    {
-      std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
-      inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
-    }
-  }
+  //if(!inputCodeInfo.megakernelRTV) 
+  //{
+  //  for(auto& mainFunc : inputCodeInfo.mainFunc)
+  //  {
+  //    std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
+  //    inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler, true);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
+  //  }
+  //}
   /////////////////////////////////////////////////////////////////////////////
 
   inputCodeInfo.kernelsCallCmdDeclCached.clear();
