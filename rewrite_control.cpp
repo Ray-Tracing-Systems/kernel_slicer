@@ -153,12 +153,16 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
     if(pKernel->second.isIndirect)
       strOut << kernName.c_str() << "_UpdateIndirect();" << std::endl << "  ";
 
-    strOut << "vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, ";
+    std::string currStageBits    = pKernel->second.enableRTPipeline ? "VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR" : "VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT";
+    std::string currBindingPoint = pKernel->second.enableRTPipeline ? "VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR" : "VK_PIPELINE_BIND_POINT_COMPUTE";
+
+    strOut << "{vkCmdBindDescriptorSets(a_commandBuffer, " << currBindingPoint.c_str() << ", ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
     if(m_pCodeInfo->NeedThreadFlags())
       strOut << "  m_currThreadFlags = " << flagsVariableName.c_str() << ";" << std::endl;
     strOut << "  " << kernName.c_str() << "Cmd" << textOfArgs.c_str() << ";" << std::endl;
-    strOut << "  " << "vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr)";
+    strOut << "  " << "vkCmdPipelineBarrier(m_currCmdBuffer, prevStageBits, " << currStageBits.c_str() << ", 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);" << std::endl;
+    strOut << "  " << "prevStageBits = " << currStageBits.c_str() << ";}";
   }
 
   return strOut.str();
