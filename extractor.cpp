@@ -348,16 +348,35 @@ kslicer::FuncData kslicer::FuncDataFromKernel(const kslicer::KernelInfo& k)
   return func;
 }
 
-std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions)
+std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::unordered_map<uint64_t, kslicer::FuncData>& a_usedFunctions)
 {
-  std::queue<FuncData> functionsToProcess;
-
-  for(const auto& k : a_codeInfo.kernels)  // (1) first traverse kernels as used functions
+  // (1) first traverse kernels as used functions
+  for(auto& k : a_codeInfo.kernels)  
+  {
+    std::queue<kslicer::FuncData>                   functionsToProcess; 
+    std::unordered_map<uint64_t, kslicer::FuncData> usedFunctions;
     functionsToProcess.push(FuncDataFromKernel(k.second));
+
+    kslicer::ProcessFunctionsInQueueBFS(a_codeInfo, a_compiler, functionsToProcess, // functionsToProcess => usedFunctions
+                                        usedFunctions);
+
+    for(auto f : usedFunctions) {
+      if(f.second.isKernel)
+        continue;
+      if(f.second.isMember)
+        k.second.usedMemberFunctions.insert(f);
+      else
+        a_usedFunctions.insert(f);
+    }
+  }
   
   std::unordered_set<uint64_t> controlFunctions;
-  if(a_codeInfo.megakernelRTV) {
-    for(auto m : a_codeInfo.mainFunc) {
+  if(a_codeInfo.megakernelRTV) 
+  {
+    for(auto& m : a_codeInfo.mainFunc) 
+    {
+       std::queue<FuncData>                            functionsToProcess; 
+       std::unordered_map<uint64_t, kslicer::FuncData> usedFunctions;
        kslicer::FuncData func; // FuncDataFromControlFunction
        func.name     = m.Name;
        func.astNode  = m.Node;
@@ -368,24 +387,23 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassI
        func.depthUse = 0;
        functionsToProcess.push(func);
        controlFunctions.insert(func.srcHash);
+
+       kslicer::ProcessFunctionsInQueueBFS(a_codeInfo, a_compiler, functionsToProcess, // functionsToProcess => usedFunctions
+                                           usedFunctions);
+
+       for(auto f : usedFunctions) 
+       {
+         if(f.first == func.srcHash)
+           continue;
+         if(f.second.isMember)
+           m.usedMemberFunctions.insert(f);
+         else
+           a_usedFunctions.insert(f);
+       }
     }
   }
 
-  kslicer::ProcessFunctionsInQueueBFS(a_codeInfo, a_compiler, functionsToProcess, // functionsToProcess => usedFunctions
-                                      usedFunctions);
-  
-  if(a_codeInfo.megakernelRTV) // remove control functions theirselves from 'usedFunctions'
-  {
-    auto usedFunctionsCleaned = usedFunctions;
-    for(auto func : usedFunctions) {
-      auto p = controlFunctions.find(func.second.srcHash);
-      if(p != controlFunctions.end())
-         usedFunctionsCleaned.erase(func.second.srcHash);
-    }
-    usedFunctions = usedFunctionsCleaned;
-  }
-
-  return kslicer::SortByDepthInUse(usedFunctions);
+  return kslicer::SortByDepthInUse(a_usedFunctions);
 }
 
 std::vector<kslicer::FuncData> kslicer::ExtractUsedFromVFH(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions)

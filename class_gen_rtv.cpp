@@ -339,6 +339,15 @@ kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo
       res.usedContainers.insert(cont);
   }
 
+  // (5) join usedMemberFunctions
+  //
+  {
+    res.usedMemberFunctions = cf.usedMemberFunctions;
+    for(const auto& k : a_kernels)
+      for(const auto& member : k->usedMemberFunctions)
+        res.usedMemberFunctions.insert(member);
+  }
+
   res.isMega = true;
   return res;
 }

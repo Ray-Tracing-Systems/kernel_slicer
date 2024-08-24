@@ -618,27 +618,37 @@ int main(int argc, const char **argv)
       generalDecls.push_back(usedDecl);
   }
 
-  bool hasMembers = false;
-  bool hasVirtual = false;
-  for(const auto& f : usedFunctions) {
-    if(f.isMember)
-      hasMembers = true;
-    if(f.isVirtual)
-      hasVirtual = true;
-  }
+  //bool hasMembers = false;
+  //bool hasVirtual = false;
+  //for(const auto& f : usedFunctions) {
+  //  if(f.isMember)
+  //    hasMembers = true;
+  //  if(f.isVirtual)
+  //    hasVirtual = true;
+  //}
 
   // process virtual functions
-  if(hasVirtual)
+  std::cout << "  (4.0) Process Virtual-Functions-Hierarchies:" << std::endl;
+  for(auto& k : inputCodeInfo.kernels)
   {
-    std::cout << "  (4.0) Process Virtual-Functions-Hierarchies:" << std::endl;
-    inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
-    inputCodeInfo.ExtractVFHConstants(compiler, Tool);
-    usedFunctions = kslicer::ExtractUsedFromVFH(inputCodeInfo, compiler, usedFunctionsMap);
+    bool hasVirtual = false;
+    for(const auto& f : k.second.usedMemberFunctions) {
+      if(f.second.isVirtual) {
+        hasVirtual = true;
+        break;
+      }
+    }
 
-    for(auto& nk : inputCodeInfo.kernels)
-      inputCodeInfo.VisitAndPrepare_KF(nk.second, compiler); // move data from usedContainersProbably to usedContainers if a kernel actually uses it
-
-    std::cout << std::endl;
+    {
+      inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
+      inputCodeInfo.ExtractVFHConstants(compiler, Tool);
+      usedFunctions = kslicer::ExtractUsedFromVFH(inputCodeInfo, compiler, k.second.usedMemberFunctions);
+  
+      for(auto& nk : inputCodeInfo.kernels)
+        inputCodeInfo.VisitAndPrepare_KF(nk.second, compiler); // move data from usedContainersProbably to usedContainers if a kernel actually uses it
+  
+      std::cout << std::endl;
+    }
   }
 
   std::vector<std::string> usedDefines = kslicer::ExtractDefines(compiler);
@@ -648,81 +658,82 @@ int main(int argc, const char **argv)
 
   inputCodeInfo.AddSpecVars_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
 
-  if(hasMembers && inputCodeInfo.pShaderCC->IsGLSL()) // We don't implement this for OpenCL kernels yet ... or at all.
+  if(inputCodeInfo.pShaderCC->IsGLSL()) // We don't implement this for OpenCL kernels yet ... or at all.
   {
     std::cout << "(4.1) Process Member function calls, extract data accesed in member functions " << std::endl;
     std::cout << "{" << std::endl;
     for(auto& k : inputCodeInfo.kernels)
     {
-      auto usedFunctionsCopy = usedFunctions;                             // process kernel in the same way as used member functions by this kernel
-      usedFunctionsCopy.push_back(kslicer::FuncDataFromKernel(k.second)); // 
+      auto usedFunctionsCopy = usedFunctions;
+      for(auto memberF : k.second.usedMemberFunctions)                    // (1) process member functions
+        usedFunctionsCopy.push_back(memberF.second);                                                                                                                           
+      usedFunctionsCopy.push_back(kslicer::FuncDataFromKernel(k.second)); // (2) process kernel in the same way as used member functions by this kernel  
 
       for(const auto& f : usedFunctionsCopy)
       {
-        if(f.isMember) // and if is called from this kernel.It it is called, list all input parameters for each call!
+        if(!f.isMember) // and if is called from this kernel.It it is called, list all input parameters for each call!
+          continue;
+
+        // list all input parameters for each call of member function inside kernel; in this way we know which textures, vectors and samplers were actually used by these functions
+        //
+        std::unordered_map<std::string, kslicer::UsedContainerInfo> auxContainers;
+        auto machedParams = kslicer::ArgMatchTraversal    (&k.second, f, usedFunctions, inputCodeInfo, compiler);
+        auto usedMembers  = kslicer::ExtractUsedMemberData(&k.second, f, usedFunctions, auxContainers, inputCodeInfo, compiler);
+
+        // TODO: process bindedParams correctly
+        //
+        std::vector<kslicer::DataMemberInfo> samplerMembers;
+        for(auto x : usedMembers)
         {
-          // list all input parameters for each call of member function inside kernel; in this way we know which textures, vectors and samplers were actually used by these functions
-          //
-          std::unordered_map<std::string, kslicer::UsedContainerInfo> auxContainers;
-          auto machedParams = kslicer::ArgMatchTraversal    (&k.second, f, usedFunctions, inputCodeInfo, compiler);
-          auto usedMembers  = kslicer::ExtractUsedMemberData(&k.second, f, usedFunctions, auxContainers, inputCodeInfo, compiler);
-
-          // TODO: process bindedParams correctly
-          //
-          std::vector<kslicer::DataMemberInfo> samplerMembers;
-          for(auto x : usedMembers)
+          if(kslicer::IsSamplerTypeName(x.second.type))
           {
-            if(kslicer::IsSamplerTypeName(x.second.type))
-            {
-              auto y = x.second;
-              y.kind = kslicer::DATA_KIND::KIND_SAMPLER;
-              samplerMembers.push_back(y);
-            }
+            auto y = x.second;
+            y.kind = kslicer::DATA_KIND::KIND_SAMPLER;
+            samplerMembers.push_back(y);
           }
+        }
 
-          for(auto& member : usedMembers)
+        for(auto& member : usedMembers)
+        {
+          k.second.usedMembers.insert(member.first);
+          member.second.usedInKernel = true;
+          if(kslicer::IsSamplerTypeName(member.second.type)) // actually this is not correct!!!
           {
-            k.second.usedMembers.insert(member.first);
-            member.second.usedInKernel = true;
-
-            if(kslicer::IsSamplerTypeName(member.second.type)) // actually this is not correct!!!
+            for(auto sampler : samplerMembers)
             {
-              for(auto sampler : samplerMembers)
+              for(auto map : machedParams)
               {
-                for(auto map : machedParams)
+                for(auto par : map)
                 {
-                  for(auto par : map)
-                  {
-                    std::string actualTextureName = par.second;
-                    k.second.texAccessSampler[actualTextureName] = sampler.name;
-                  }
+                  std::string actualTextureName = par.second;
+                  k.second.texAccessSampler[actualTextureName] = sampler.name;
                 }
               }
             }
-            else if(member.second.isContainer)
-            {
-              kslicer::UsedContainerInfo info;
-              info.type          = member.second.type;
-              info.name          = member.second.name;
-              info.kind          = member.second.kind;
-              info.isConst       = member.second.IsUsedTexture();      // strange thing ...
-              k.second.usedContainers[info.name] = info;
-            }
-            else
-            {
-              auto p1 = inputCodeInfo.allDataMembers.find(member.first);
-              auto p2 = inputCodeInfo.m_setterVars.find(member.first);
-              if(p1 != inputCodeInfo.allDataMembers.end())
-                p1->second.usedInKernel = true;
-              else if(p2 ==  inputCodeInfo.m_setterVars.end()) // don't add setters
-                inputCodeInfo.allDataMembers[member.first] = member.second;
-            }
-          } // end for(auto& member : usedMembers)
+          }
+          else if(member.second.isContainer)
+          {
+            kslicer::UsedContainerInfo info;
+            info.type          = member.second.type;
+            info.name          = member.second.name;
+            info.kind          = member.second.kind;
+            info.isConst       = member.second.IsUsedTexture();      // strange thing ...
+            k.second.usedContainers[info.name] = info;
+          }
+          else
+          {
+            auto p1 = inputCodeInfo.allDataMembers.find(member.first);
+            auto p2 = inputCodeInfo.m_setterVars.find(member.first);
+            if(p1 != inputCodeInfo.allDataMembers.end())
+              p1->second.usedInKernel = true;
+            else if(p2 ==  inputCodeInfo.m_setterVars.end()) // don't add setters
+              inputCodeInfo.allDataMembers[member.first] = member.second;
+          }
+        } // end for(auto& member : usedMembers)
 
-          for(const auto& c : auxContainers)
-            k.second.usedContainers[c.first] = c.second;
-
-        } // end if(f.isMember)
+        for(const auto& c : auxContainers)
+          k.second.usedContainers[c.first] = c.second;
+        
       } // end for(const auto& f : usedFunctions)
     } // end for(auto& k : inputCodeInfo.kernels)
 

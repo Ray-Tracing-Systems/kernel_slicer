@@ -1,13 +1,17 @@
 #version 460
 #extension GL_GOOGLE_include_directive : require
 {% if length(Kernel.RTXNames) > 0 %}
+{% if Kernel.UseRayGen %}
+#extension GL_EXT_ray_tracing : require 
+{% if Kernel.UseMotionBlur %}
+#extension GL_NV_ray_tracing_motion_blur : require
+{% endif %}
+{% else %}
 #extension GL_EXT_ray_query : require
+{% endif %}
 {% endif %}
 {% if Kernel.NeedTexArray %}
 #extension GL_EXT_nonuniform_qualifier : require
-{% endif %}
-{% if Kernel.UseSubGroups %}
-#extension GL_KHR_shader_subgroup_arithmetic: enable
 {% endif %}
 {% if HasAllRefs %}
 #extension GL_EXT_buffer_reference : require
@@ -16,8 +20,9 @@
 {% include "common_generated.glsl" %}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+{% if not Kernel.UseRayGen %}
 layout(local_size_x = {{Kernel.WGSizeX}}, local_size_y = {{Kernel.WGSizeY}}, local_size_z = {{Kernel.WGSizeZ}}) in;
+{% endif %}
 
 layout( push_constant ) uniform kernelArgs
 {
@@ -65,9 +70,9 @@ void main()
   {% else %}
   {% for TID in Kernel.ThreadIds %}
   {% if TID.Simple %}
-  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(gl_GlobalInvocationID[{{ loop.index }}]); 
+  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}({% if Kernel.UseRayGen %}gl_LaunchIDEXT{% else %}gl_GlobalInvocationID{% endif %}[{{ loop.index }}]); 
   {% else %}
-  const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + {{TID.Type}}(gl_GlobalInvocationID[{{ loop.index }}])*{{TID.Stride}}; 
+  const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + {{TID.Type}}({% if Kernel.UseRayGen %}gl_LaunchIDEXT{% else %}gl_GlobalInvocationID{% endif %}[{{ loop.index }}])*{{TID.Stride}}; 
   {% endif %}
   {% endfor %}
   {% endif %} {# /* Kernel.EnableBlockExpansion */ #}

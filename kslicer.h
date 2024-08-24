@@ -156,6 +156,32 @@ namespace kslicer
   };
 
   /**
+  \brief Both for common functions and member functions called from kernels
+  */
+  struct FuncData
+  {
+    const clang::FunctionDecl* astNode;
+    std::string        name;
+    clang::SourceRange srcRange;
+    uint64_t           srcHash;
+    bool               isMember = false;
+    bool               isKernel = false;
+    bool               isVirtual = false;
+    int                depthUse = 0;    ///!< depth Of Usage; 0 -- for kernels; 1 -- for functions called from kernel; 2 -- for functions called from functions called from kernels
+                                        ///!< please note that if function is called under different depth, maximum depth should be stored in this variable;
+    bool hasPrefix = false;
+    std::string prefixName;
+    std::unordered_set<std::string> calledMembers;
+  
+    std::string thisTypeName;                                ///!< currently filled for VFH only, TODO: fill for other
+    std::string declRewritten;                               ///!< currently filled for VFH only, TODO: fill for other
+    std::vector< std::pair<std::string, std::string> > args; ///!< currently filled for VFH only, TODO: fill for other
+    
+    std::string retTypeName;
+    const clang::CXXRecordDecl* retTypeDecl;
+  };
+
+  /**
   \brief for each method MainClass::kernel_XXX
   */
   struct KernelInfo
@@ -271,8 +297,9 @@ namespace kslicer
 
     std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
-    std::unordered_map<std::string, UsedContainerInfo>     usedContainers;   ///<! list of all std::vector<T> member names which is referenced inside kernel
-    std::unordered_set<std::string>                        usedMembers;      ///<! list of all other variables used inside kernel
+    std::unordered_map<std::string, UsedContainerInfo>     usedContainers;      ///<! list of all std::vector<T> member names which is referenced inside kernel
+    std::unordered_set<std::string>                        usedMembers;         ///<! list of all other variables used inside kernel
+    std::unordered_map<uint64_t, FuncData>                 usedMemberFunctions; ///<! list of all used member functions from this kernel
 
     std::unordered_map<std::string, ReductionAccess>   subjectedToReduction; ///<! if member is used in reduction expression
     std::unordered_map<std::string, TEX_ACCESS>        texAccessInArgs;
@@ -503,8 +530,9 @@ namespace kslicer
     std::unordered_set<std::string>                   ExcludeList;
     std::unordered_set<std::string>                   UsedKernels;
 
-    std::unordered_map<std::string, UsedContainerInfo> usedContainers; ///<! list of all std::vector<T> member names which is referenced inside ControlFunc
-    std::unordered_set<std::string>                    usedMembers;    ///<! list of all other variables used inside ControlFunc
+    std::unordered_map<std::string, UsedContainerInfo> usedContainers;      ///<! list of all std::vector<T> member names which is referenced inside ControlFunc
+    std::unordered_set<std::string>                    usedMembers;         ///<! list of all other variables used inside ControlFunc
+    std::unordered_map<uint64_t,          FuncData>    usedMemberFunctions; ///<! list of all used member functions from this kernel
 
     std::string ReturnType;
     std::string GeneratedDecl;
@@ -525,32 +553,6 @@ namespace kslicer
     KernelInfo                     megakernel;     ///<! for RTV pattern only, when joing everything to mega-kernel
     std::vector<const KernelInfo*> subkernels;     ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
     std::vector<KernelInfo>        subkernelsData; ///<! for RTV pattern only
-  };
-
-  /**
-  \brief Both for common functions and member functions called from kernels
-  */
-  struct FuncData
-  {
-    const clang::FunctionDecl* astNode;
-    std::string        name;
-    clang::SourceRange srcRange;
-    uint64_t           srcHash;
-    bool               isMember = false;
-    bool               isKernel = false;
-    bool               isVirtual = false;
-    int                depthUse = 0;    ///!< depth Of Usage; 0 -- for kernels; 1 -- for functions called from kernel; 2 -- for functions called from functions called from kernels
-                                        ///!< please note that if function is called under different depth, maximum depth should be stored in this variable;
-    bool hasPrefix = false;
-    std::string prefixName;
-    std::unordered_set<std::string> calledMembers;
-  
-    std::string thisTypeName;                                ///!< currently filled for VFH only, TODO: fill for other
-    std::string declRewritten;                               ///!< currently filled for VFH only, TODO: fill for other
-    std::vector< std::pair<std::string, std::string> > args; ///!< currently filled for VFH only, TODO: fill for other
-    
-    std::string retTypeName;
-    const clang::CXXRecordDecl* retTypeDecl;
   };
 
   enum class DECL_IN_CLASS{ DECL_STRUCT, DECL_TYPEDEF, DECL_CONSTANT, DECL_UNKNOWN};
