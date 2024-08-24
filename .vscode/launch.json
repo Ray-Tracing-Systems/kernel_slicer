@@ -2117,7 +2117,7 @@
                         "-I${workspaceFolder}/TINYSTL",         "ignore",
                         "-I${workspaceFolder}/apps/RayTracing", "process",
                         "-shaderCC", "glsl",
-                        "-megakernel", "1",
+                        "-megakernel", "0",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,

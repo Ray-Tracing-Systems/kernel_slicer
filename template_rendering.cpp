@@ -495,7 +495,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (3) local functions preprocess
   //
-  std::vector<kslicer::FuncData> funcMembers;
   std::unordered_map<std::string, kslicer::FuncData> cachedFunc;
   {
     for (const auto& f : usedFunctions)
@@ -504,9 +503,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions'
       if(pShit != shittyFunctions.end())
         continue;
-
-      if(f.isMember)
-        funcMembers.push_back(f);
     }
   }
 
@@ -1024,7 +1020,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
 
     kernelJson["MemberFunctions"] = std::vector<json>();
-    if(funcMembers.size() > 0)
+    if(k.usedMemberFunctions.size() > 0)
     {
       clang::Rewriter rewrite2;
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
@@ -1033,12 +1029,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       pVisitorK->ClearUserArgs();
       pVisitorK->processFuncMember = true; // signal that we process function member, not the kernel itself
 
-      for(auto& f : funcMembers)
+      for(auto& f : k.usedMemberFunctions)
       { 
         bool fromVFH = false;
-        if(f.astNode->isVirtualAsWritten()) {
+        if(f.second.astNode->isVirtualAsWritten()) {
           for(const auto& h : a_classInfo.m_vhierarchy) {
-            auto p = h.second.virtualFunctions.find(f.name);
+            auto p = h.second.virtualFunctions.find(f.second.name);
             if(p != h.second.virtualFunctions.end())
             {
               fromVFH = true;
@@ -1050,9 +1046,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         if(fromVFH) // skip virtual functions because they are proccesed else-where
           continue;
 
-        auto funcNode = const_cast<clang::FunctionDecl*>(f.astNode);
-        pVisitorF->SetCurrFuncInfo(&f);    // pass auxilary function data inside pVisitorF
-        pVisitorK->SetCurrFuncInfo(&f);
+        auto funcNode    = const_cast<clang::FunctionDecl*>(f.second.astNode);
+        auto funcDataPtr = const_cast<kslicer::FuncData*>  (&f.second);
+
+        pVisitorF->SetCurrFuncInfo(funcDataPtr); // pass auxilary function data inside pVisitorF
+        pVisitorK->SetCurrFuncInfo(funcDataPtr);
         const std::string funcDeclText = pVisitorF->RewriteFuncDecl(funcNode);
         const std::string funcBodyText = pVisitorK->RecursiveRewrite(funcNode->getBody());
         pVisitorF->ResetCurrFuncInfo();
@@ -1182,7 +1180,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (5) generate local functions
   //
-  data["LocalFunctions"] = std::vector<std::string>();
+  data["LocalFunctions"] = std::vector<json>();
   {
     clang::Rewriter rewrite2;
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
@@ -1192,19 +1190,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       cachedFunc[f.name] = f;
       auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions'
-      if(pShit != shittyFunctions.end())
+      if(pShit != shittyFunctions.end() || f.isMember)
         continue;
 
-      if(!f.isMember)
-      {
-        pVisitorF->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
-        const std::string funDecl  = rewrite2.getRewrittenText(f.srcRange);             // func body rewrite does not works correctly in this way some-times (see float4x4 indices)
-        const std::string funBody  = pVisitorF->RecursiveRewrite(f.astNode->getBody()); // but works in this way ... 
-        const std::string declHead = funDecl.substr(0,funDecl.find("{"));               // therefore we join function head and body
-    
-        data["LocalFunctions"].push_back(declHead + funBody);
-        shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();
-      }
+      pVisitorF->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
+      const std::string funDecl  = rewrite2.getRewrittenText(f.srcRange);             // func body rewrite does not works correctly in this way some-times (see float4x4 indices)
+      const std::string funBody  = pVisitorF->RecursiveRewrite(f.astNode->getBody()); // but works in this way ... 
+      const std::string declHead = funDecl.substr(0,funDecl.find("{"));               // therefore we join function head and body
+  
+      data["LocalFunctions"].push_back(declHead + funBody);
+      shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();
     }
   }
 
