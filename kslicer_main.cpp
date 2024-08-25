@@ -778,7 +778,7 @@ int main(int argc, const char **argv)
     for(auto& mainFunc : inputCodeInfo.mainFunc)
     {
       std::cout << "  process subkernel " << mainFunc.Name.c_str() << std::endl;
-      inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler, false);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
+      inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
     }
     inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);
     for(const auto& call : inputCodeInfo.allDescriptorSetsInfo)
@@ -795,10 +795,11 @@ int main(int argc, const char **argv)
   }
   
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  inputCodeInfo.allDescriptorSetsInfo.clear();
   for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
     std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
-    inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler, false);             // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
+    inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);  // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
   }
   inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -975,15 +976,32 @@ int main(int argc, const char **argv)
     kernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
   }
   
-  ///////////////////////////////////////////////////////////////////////////// run again to get connecr rewritten code for barriers stages, breaks megakernel generation unfortunetely
-  //if(!inputCodeInfo.megakernelRTV) 
-  //{
-  //  for(auto& mainFunc : inputCodeInfo.mainFunc)
-  //  {
-  //    std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
-  //    inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler, true);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
-  //  }
-  //}
+  ///////////////////////////////////////////////////////////////////////////// DOES NOT WORKS WELL ACTUALLY
+  if(!inputCodeInfo.megakernelRTV) // && textGenSettings.enableRayGen 
+  { 
+    // save correct info
+    //
+    auto copy = inputCodeInfo.mainFunc;
+    auto tmp  = inputCodeInfo.allDescriptorSetsInfo;
+    
+    inputCodeInfo.allDescriptorSetsInfo.clear();
+    for(auto& mainFunc : inputCodeInfo.mainFunc)
+    {
+      std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
+      inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
+    }
+    
+    // restore correct info
+    //
+    auto copy2 = inputCodeInfo.mainFunc;
+    inputCodeInfo.mainFunc = copy;
+    inputCodeInfo.allDescriptorSetsInfo = tmp;
+     
+    // exctract fixed text
+    //
+    for(size_t i=0;i<inputCodeInfo.mainFunc.size();i++)
+      inputCodeInfo.mainFunc[i].CodeGenerated = copy2[i].CodeGenerated;
+  }
   /////////////////////////////////////////////////////////////////////////////
 
   inputCodeInfo.kernelsCallCmdDeclCached.clear();
