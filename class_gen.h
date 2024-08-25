@@ -31,11 +31,11 @@ namespace kslicer
   public:
     
     MainFunctionRewriter(Rewriter &R, const clang::CompilerInstance& a_compiler, MainFuncInfo& a_mainFunc, 
-                         const std::vector<InOutVarInfo>& a_args, MainClassInfo* a_pCodeInfo, bool a_skipDSInfo) : 
+                         const std::vector<InOutVarInfo>& a_args, MainClassInfo* a_pCodeInfo) : 
                          m_rewriter(R), m_compiler(a_compiler), m_sm(R.getSourceMgr()), 
                          m_mainFuncName(a_mainFunc.Name), m_mainFuncLocals(a_mainFunc.Locals),
                          m_pCodeInfo(a_pCodeInfo), m_allClassMembers(a_pCodeInfo->allDataMembers), allDescriptorSetsInfo(a_pCodeInfo->allDescriptorSetsInfo),
-                         m_kernels(a_pCodeInfo->kernels), m_mainFunc(a_mainFunc), m_skipDSInfo(a_skipDSInfo) 
+                         m_kernels(a_pCodeInfo->kernels), m_mainFunc(a_mainFunc)
     { 
       for(const auto& arg : a_args) 
         m_argsOfMainFunc[arg.name] = arg;
@@ -61,7 +61,6 @@ namespace kslicer
     Rewriter&                      m_rewriter;
     const clang::CompilerInstance& m_compiler;
     const clang::SourceManager&    m_sm;
-    bool                           m_skipDSInfo;
 
   public:
 
