@@ -94,9 +94,11 @@ hitAttributeEXT CRT_Hit attribs;
 
 void main()
 { 
-  vec4 rayPosAndNear = vec4(gl_WorldRayOriginEXT,    gl_RayTminEXT);
-  vec4 rayDirAndFar  = vec4(gl_WorldRayDirectionEXT, gl_RayTmaxEXT);
-  uint intersected   = {{IntersectionShader.NameRewritten}}(gl_PrimitiveID, rayPosAndNear, rayDirAndFar, attribs);
+  vec3 rayPosObjSpace = gl_WorldToObjectEXT*vec4(gl_WorldRayOriginEXT, 1.0f);
+  vec3 rayDirObjSpace = gl_WorldToObjectEXT*vec4(gl_WorldRayDirectionEXT, 0.0f);
+  vec4 rayPosAndNear  = vec4(rayPosObjSpace, gl_RayTminEXT);
+  vec4 rayDirAndFar   = vec4(rayDirObjSpace, gl_RayTmaxEXT);
+  uint intersected    = {{IntersectionShader.NameRewritten}}(gl_PrimitiveID, rayPosAndNear, rayDirAndFar, attribs);
   if(intersected != TAG_EMPTY)
     reportIntersectionEXT(attribs.t, 0);
 }
