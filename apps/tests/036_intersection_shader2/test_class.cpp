@@ -226,6 +226,8 @@ uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8
 
 uint32_t BFRayTrace::AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_matrix)
 {
+  if((a_geomId & CRT_GEOM_MASK_AABB_BIT) != 0)
+    a_geomId = (a_geomId & CRT_GEOM_MASK_AABB_BIT_RM);
   m_instStartEnd.push_back(startEnd[a_geomId]);
   m_instMatricesFwd.push_back(a_matrix);
   m_instMatricesInv.push_back(LiteMath::inverse4x4(a_matrix));
