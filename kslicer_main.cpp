@@ -976,7 +976,7 @@ int main(int argc, const char **argv)
     kernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
   }
   
-  ///////////////////////////////////////////////////////////////////////////// DOES NOT WORKS WELL ACTUALLY
+  ///////////////////////////////////////////////////////////////////////////// fix code for seperate kernel with RT pipeline
   if(!inputCodeInfo.megakernelRTV) // && textGenSettings.enableRayGen 
   { 
     // save correct info
