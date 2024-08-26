@@ -73,12 +73,11 @@ void TestClass::InitScene(int numBoxes, int numTris)
   trivets.resize(numTris*3);
   indices.resize(numTris*3);
 
-  int boxesInString   = std::max(numBoxes/5, 5);
-  int spheresInString = boxesInString/2;
-  int trisInString    = std::max(numTris/5, 5);
+  int boxesInString   = int(std::sqrt(numBoxes)); // std::max(numBoxes/5, 5);
+  int trisInString    = int(std::sqrt(numTris));
 
-  float boxSize = 0.25f/float(boxesInString);
-  float triSize = 0.25f/float(trisInString);
+  float boxSize = 0.05f/float(boxesInString);
+  float triSize = 0.15f/float(trisInString);
 
   // (1) first half of the screen contain boxes
   //
@@ -86,17 +85,21 @@ void TestClass::InitScene(int numBoxes, int numTris)
   { 
     int centerX = i%boxesInString;
     int centerY = i/boxesInString;
-    boxes[i*2+0] = float4(float(centerX + 0.5f)/float(boxesInString) - boxSize, float(centerY + 0.5f)/float(boxesInString) - boxSize, 1.0f*i + 0.0f, 0.0f);
-    boxes[i*2+1] = float4(float(centerX + 0.5f)/float(boxesInString) + boxSize, float(centerY + 0.5f)/float(boxesInString) + boxSize, 1.0f*i + 0.5f, 0.0f);
+    boxes[i*2+0] = float4(float(centerX + 0.5f)/float(20) - boxSize, float(centerY + 0.5f)/float(20) - boxSize, 1.0f*i + 0.0f, 0.0f);
+    boxes[i*2+1] = float4(float(centerX + 0.5f)/float(20) + boxSize, float(centerY + 0.5f)/float(20) + boxSize, 1.0f*i + 0.5f, 0.0f);
   }
 
   // (2) first quater of the screen contain spheres
   //
-  for(int i=0;i<spheres.size();i++)
-  { 
-    int centerX = i%spheresInString;
-    int centerY = i/spheresInString;
-    spheres[i] = float4(0.5f*float(centerX + 0.5f)/float(spheresInString) + 0.5f, 0.5f*float(centerY + 0.5f)/float(spheresInString) + 0.5f, 1.0f*i + 0.0f, 0.02f); // radius = 0.02f
+  spheres.resize(9);
+  for(int y=0;y<3;y++) 
+  {
+    for(int x=0;x<3;x++)
+    { 
+      int centerX = x;
+      int centerY = y;
+      spheres[y*3+x] = float4(float(centerX)/float(16), float(centerY)/float(16), 1.0f, 0.02f); // radius = 0.02f
+    }
   }
 
   // (3) anoher quater of the screen contain triangles
@@ -104,11 +107,11 @@ void TestClass::InitScene(int numBoxes, int numTris)
   for(int i=0;i<numTris;i++)
   {
     const int centerX = i%trisInString;
-    const int centerY = (numBoxes/boxesInString) + (i)/trisInString;
+    const int centerY = i/trisInString;
 
-    trivets[i*3+0] = float4(float(centerX + 0.75f)/float(boxesInString) - boxSize, float(centerY + 0.75f)/float(boxesInString) - boxSize, i, 0.0f);
-    trivets[i*3+1] = float4(float(centerX + 0.25f)/float(boxesInString),           float(centerY + 0.75f)/float(boxesInString), i, 0.0f);
-    trivets[i*3+2] = float4(float(centerX + 0.75f)/float(boxesInString) - boxSize, float(centerY + 0.75f)/float(boxesInString) + boxSize, i, 0.0f);
+    trivets[i*3+0] = float4(float(centerX)/float(12) - triSize, float(centerY)/float(12) - triSize, i, 0.0f);
+    trivets[i*3+1] = float4(float(centerX)/float(12),           float(centerY)/float(12), i, 0.0f);
+    trivets[i*3+2] = float4(float(centerX)/float(12) - triSize, float(centerY)/float(12) + triSize, i, 0.0f);
 
     indices[i*3+0] = i*3+0;
     indices[i*3+1] = i*3+1;
@@ -134,10 +137,31 @@ void TestClass::InitScene(int numBoxes, int numTris)
   auto geomId0 = m_pRayTraceImpl->AddGeom_Triangles3f((const float*)trivets.data(), trivets.size(), indices.data(), indices.size(), 0, 16);
   auto geomId1 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_BOXES, (const CRT_AABB*)boxes.data(), numBoxes);
 
+  float4x4 transformTris1 = LiteMath::translate4x4(float3(0.3f, 0.60f, 0.0f)) * LiteMath::rotate4x4Z(+LiteMath::DEG_TO_RAD*45.0f);
+  float4x4 transformTris2 = LiteMath::translate4x4(float3(0.6f, 0.75f, 0.0f)) * LiteMath::rotate4x4Z(-LiteMath::DEG_TO_RAD*45.0f);
+
+  float4x4 transformSpheres1 = LiteMath::translate4x4(float3(0.2f, 0.2f, 0.0f)) * LiteMath::rotate4x4Z(+LiteMath::DEG_TO_RAD*25.0f);
+  float4x4 transformSpheres2 = LiteMath::translate4x4(float3(0.5f, 0.1f, 0.0f)) * LiteMath::rotate4x4Z(-LiteMath::DEG_TO_RAD*25.0f);
+  float4x4 transformSpheres3 = LiteMath::translate4x4(float3(0.75f, 0.25f, 0.0f)) * LiteMath::rotate4x4Z(+LiteMath::DEG_TO_RAD*30.0f);
+
   m_pRayTraceImpl->ClearScene();
+  
+  // boxes
+  //
   m_pRayTraceImpl->AddInstance(geomId1, LiteMath::float4x4());
-  m_pRayTraceImpl->AddInstance(geomId2, LiteMath::float4x4());
-  m_pRayTraceImpl->AddInstance(geomId0, LiteMath::float4x4());
+  m_pRayTraceImpl->AddInstance(geomId1, LiteMath::translate4x4(float3(0.4f, 0.4f, 0.0f)));
+  
+  // spheres
+  //
+  m_pRayTraceImpl->AddInstance(geomId2, transformSpheres1);
+  m_pRayTraceImpl->AddInstance(geomId2, transformSpheres2);
+  m_pRayTraceImpl->AddInstance(geomId2, transformSpheres3);
+  
+  // triangles
+  //
+  m_pRayTraceImpl->AddInstance(geomId0, transformTris1);
+  m_pRayTraceImpl->AddInstance(geomId0, transformTris2);
+  
   m_pRayTraceImpl->CommitScene();
 }
 

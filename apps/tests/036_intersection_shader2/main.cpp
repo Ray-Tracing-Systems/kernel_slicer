@@ -37,7 +37,7 @@ int main(int argc, const char** argv)
   
   std::vector<uint> pixelData(TestClass::WIN_WIDTH*TestClass::WIN_HEIGHT);  
   
-  pImpl->InitScene(60,25);
+  pImpl->InitScene(9,16);
   pImpl->CommitDeviceData();  
   pImpl->RenderBlock(TestClass::WIN_WIDTH, TestClass::WIN_HEIGHT, pixelData.data(), 1);
     
