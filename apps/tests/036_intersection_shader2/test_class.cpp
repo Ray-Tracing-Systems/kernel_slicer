@@ -172,7 +172,7 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
 
   startEnd.push_back(uint2(uint32_t(oldSize), uint32_t(primitives.size()))); // may save TAG_TRIANGLES
 
-  return 0;
+  return uint32_t(startEnd.size() - 1);
 }
 
 uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber)
@@ -197,7 +197,7 @@ uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8
 
   startEnd.push_back(uint2(uint32_t(oldSize), uint32_t(primitives.size()))); // may save a_typeId
 
-  return 0;
+  return uint32_t(startEnd.size() - 1);
 }
 
 uint32_t BFRayTrace::AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_matrix)
