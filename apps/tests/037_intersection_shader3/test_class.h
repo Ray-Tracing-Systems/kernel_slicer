@@ -139,6 +139,8 @@ struct BFRayTrace : public ISceneObject
   std::vector<uint2>             m_instStartEnd;
   std::vector<float4x4>          m_instMatricesFwd; ///< instance matrices
   std::vector<float4x4>          m_instMatricesInv; ///< inverse instance matrices
+  
+  std::vector<uint32_t>          m_spheresTable;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -220,12 +222,28 @@ struct TrianglePrim : public AbtractPrimitive
 
 struct SpherePrim : public AbtractPrimitive
 {
-  SpherePrim(float4 a_boxMin, float4 a_boxMax, uint32_t a_primId) { boxMin   = a_boxMin; 
-                                                                    boxMax   = a_boxMax; 
-                                                                    m_tag    = GetTag();  
-                                                                    m_primId = a_primId;}
+  SpherePrim(float4 a_sphData, uint32_t a_primId) 
+  {
+    boxMin.x = a_sphData.x - a_sphData.w;
+    boxMin.y = a_sphData.y - a_sphData.w;
+    boxMin.z = a_sphData.z - a_sphData.w; 
+    boxMin.w = 0.0f;
 
-  uint32_t GetTag()   const override { return TAG_SPHERES; }     
+    boxMax.x = a_sphData.x + a_sphData.w;
+    boxMax.y = a_sphData.y + a_sphData.w;
+    boxMax.z = a_sphData.z + a_sphData.w; 
+    boxMax.w = 1.0f;
+  }
+  
+  SpherePrim(float4 a_boxMin, float4 a_boxMax, uint32_t a_primId) 
+  { 
+    boxMin   = a_boxMin; 
+    boxMax   = a_boxMax; 
+    m_tag    = GetTag();  
+    m_primId = a_primId;
+  }
+
+  uint32_t GetTag() const override { return TAG_SPHERES; }     
 
   uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_Hit* pHit, BFRayTrace* pData) const override 
   { 
