@@ -130,38 +130,76 @@ void TestClass::InitScene(int numBoxes, int numTris)
 
   // single sphere with several bounding boxes
   //
-  float4 sphereCenter(0,0,0,0.1f);
-  std::vector<CRT_AABB> singleSphereBoxes(1);
+  float4 sphereCenter(0,0,0,0.05f);
+  std::vector<CRT_AABB> singleSphereBoxes(4);
   {
     singleSphereBoxes[0].boxMin.x = sphereCenter.x - sphereCenter.w;
     singleSphereBoxes[0].boxMin.y = sphereCenter.y - sphereCenter.w;
     singleSphereBoxes[0].boxMin.z = sphereCenter.z - sphereCenter.w; 
-  
-    singleSphereBoxes[0].boxMax.x = sphereCenter.x + sphereCenter.w;
-    singleSphereBoxes[0].boxMax.y = sphereCenter.y + sphereCenter.w;
-    singleSphereBoxes[0].boxMax.z = sphereCenter.z + sphereCenter.w; 
+
+    singleSphereBoxes[0].boxMax.x = sphereCenter.x;
+    singleSphereBoxes[0].boxMax.y = sphereCenter.y;
+    singleSphereBoxes[0].boxMax.z = sphereCenter.z; 
+
+    singleSphereBoxes[1].boxMin = singleSphereBoxes[0].boxMin; singleSphereBoxes[1].boxMin.x += sphereCenter.w;
+    singleSphereBoxes[1].boxMax = singleSphereBoxes[0].boxMax; singleSphereBoxes[1].boxMax.x += sphereCenter.w;
+
+    singleSphereBoxes[2].boxMin = singleSphereBoxes[0].boxMin; singleSphereBoxes[2].boxMin.y += sphereCenter.w;
+    singleSphereBoxes[2].boxMax = singleSphereBoxes[0].boxMax; singleSphereBoxes[2].boxMax.y += sphereCenter.w;
+    
+    singleSphereBoxes[3].boxMin = singleSphereBoxes[0].boxMin; singleSphereBoxes[3].boxMin.x += sphereCenter.w; singleSphereBoxes[3].boxMin.y += sphereCenter.w;
+    singleSphereBoxes[3].boxMax = singleSphereBoxes[0].boxMax; singleSphereBoxes[3].boxMax.x += sphereCenter.w; singleSphereBoxes[3].boxMax.y += sphereCenter.w;
   }
-  //for(int y=0;y<2;y++) 
-  //{
-  //  for(int x=0;x<2;x++)
-  //  { 
-  //    int centerX = x;
-  //    int centerY = y;
-  //    //float4 center = float4(float(centerX)/float(16), float(centerY)/float(16), 1.0f, 0.02f); // radius = 0.02f
-  //    //y*2+x
-  //  }
-  //}
+   
+  SpherePrim* pSingleSphere = new SpherePrim(sphereCenter, 0);
   
+  // 2 separate spheres inside single geom object
+  //
+  float4 sphereData1(0.1,0,0,0.025f);
+  float4 sphereData2(0,0.1,0,0.025f);
+  SpherePrim* pSphere1 = new SpherePrim(sphereData1, 0);
+  SpherePrim* pSphere2 = new SpherePrim(sphereData2, 0);
+
+  std::vector<CRT_AABB> sphereBoxes(4);
+  {
+    sphereBoxes[0].boxMin.x = sphereData1.x - sphereData1.w;
+    sphereBoxes[0].boxMin.y = sphereData1.y - sphereData1.w;
+    sphereBoxes[0].boxMin.z = sphereData1.z - sphereData1.w; 
+
+    sphereBoxes[0].boxMax.x = sphereData1.x;
+    sphereBoxes[0].boxMax.y = sphereData1.y + sphereData1.w;
+    sphereBoxes[0].boxMax.z = sphereData1.z + sphereData1.w; 
+
+    sphereBoxes[1].boxMin = sphereBoxes[0].boxMin; sphereBoxes[1].boxMin.x += sphereData1.w;
+    sphereBoxes[1].boxMax = sphereBoxes[0].boxMax; sphereBoxes[1].boxMax.x += sphereData1.w;
+
+    sphereBoxes[2].boxMin.x = sphereData2.x - sphereData2.w;
+    sphereBoxes[2].boxMin.y = sphereData2.y - sphereData2.w;
+    sphereBoxes[2].boxMin.z = sphereData2.z - sphereData2.w; 
+
+    sphereBoxes[2].boxMax.x = sphereData2.x;
+    sphereBoxes[2].boxMax.y = sphereData2.y + sphereData2.w;
+    sphereBoxes[2].boxMax.z = sphereData2.z + sphereData2.w; 
+
+    sphereBoxes[3].boxMin = sphereBoxes[2].boxMin; sphereBoxes[3].boxMin.x += sphereData2.w;
+    sphereBoxes[3].boxMax = sphereBoxes[2].boxMax; sphereBoxes[3].boxMax.x += sphereData2.w;
+  }
+
   // put all geometry inaside impl.
   //
   m_pRayTraceImpl->ClearGeom();
   auto geomId2 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, boxesOnTopOfSpheres.data(), boxesOnTopOfSpheres.size());
   auto geomId0 = m_pRayTraceImpl->AddGeom_Triangles3f((const float*)trivets.data(), trivets.size(), indices.data(), indices.size(), 0, 16);
   auto geomId1 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_BOXES, (const CRT_AABB*)boxes.data(), numBoxes);
-  auto geomId3 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, (const CRT_AABB*)singleSphereBoxes.data(), singleSphereBoxes.size(), nullptr, 0);
+
+  void* spherePtr = (void*)pSingleSphere; 
+  auto geomId3 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, (const CRT_AABB*)singleSphereBoxes.data(), singleSphereBoxes.size(), &spherePtr, 1);
+
+  void* spheresPtrArray[] = {(void*)pSphere1, (void*)pSphere2}; 
+  auto geomId4 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, (const CRT_AABB*)sphereBoxes.data(), sphereBoxes.size(), spheresPtrArray, 2);
 
   float4x4 transformTris1 = LiteMath::translate4x4(float3(0.3f, 0.60f, 0.0f)) * LiteMath::rotate4x4Z(+LiteMath::DEG_TO_RAD*45.0f);
-  float4x4 transformTris2 = LiteMath::translate4x4(float3(0.6f, 0.75f, 0.0f)) * LiteMath::rotate4x4Z(-LiteMath::DEG_TO_RAD*45.0f);
+  float4x4 transformTris2 = LiteMath::translate4x4(float3(0.6f, 0.75f, 0.0f)) * LiteMath::rotate4x4Z(-LiteMath::DEG_TO_RAD*25.0f);
 
   float4x4 transformSpheres1 = LiteMath::translate4x4(float3(0.2f, 0.2f, 0.0f)) * LiteMath::rotate4x4Z(+LiteMath::DEG_TO_RAD*25.0f);
   float4x4 transformSpheres2 = LiteMath::translate4x4(float3(0.5f, 0.2f, 0.0f)) * LiteMath::rotate4x4Z(-LiteMath::DEG_TO_RAD*25.0f);
@@ -179,11 +217,12 @@ void TestClass::InitScene(int numBoxes, int numTris)
   m_pRayTraceImpl->AddInstance(geomId2, transformSpheres1);
   m_pRayTraceImpl->AddInstance(geomId3, transformSpheres2);
   m_pRayTraceImpl->AddInstance(geomId2, transformSpheres3);
+  m_pRayTraceImpl->AddInstance(geomId4, transformTris2);
   
   // triangles
   //
   m_pRayTraceImpl->AddInstance(geomId0, transformTris1);
-  m_pRayTraceImpl->AddInstance(geomId0, transformTris2);
+  //m_pRayTraceImpl->AddInstance(geomId0, transformTris2);
   
   m_pRayTraceImpl->CommitScene();
 }
@@ -225,19 +264,38 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
 uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber, void** a_customPrimPtrs, size_t a_customPrimCount)
 {
   const size_t oldSize = primitives.size();
-  primitives.resize(oldSize + a_boxNumber);
   if(a_typeId == AbtractPrimitive::TAG_BOXES) 
   {
+    primitives.resize(oldSize + a_boxNumber);
     for(size_t i = oldSize; i < primitives.size(); i++)
       primitives[i] = new AABBPrim(boxMinMaxF8[i-oldSize].boxMin, boxMinMaxF8[i-oldSize].boxMax, uint32_t(i-oldSize)); 
   }
   else if(a_typeId == AbtractPrimitive::TAG_SPHERES)
   {
-    for(size_t i = oldSize; i < primitives.size(); i++)
-      primitives[i] = new SpherePrim(boxMinMaxF8[i-oldSize].boxMin, boxMinMaxF8[i-oldSize].boxMax, uint32_t(i-oldSize)); 
+    size_t oldSizeSpheres = m_spheresTable.size();
+    if(a_customPrimPtrs != nullptr)
+    {
+      primitives.resize(oldSize + a_customPrimCount);
+      m_spheresTable.resize(oldSizeSpheres + a_boxNumber);
+
+      for(size_t i = oldSize; i < primitives.size(); i++)
+        primitives[i] = (SpherePrim*)(a_customPrimPtrs[i - oldSize]);
+      
+      const uint32_t div = uint32_t(a_boxNumber/a_customPrimCount);
+      for(size_t i = oldSizeSpheres; i < m_spheresTable.size(); i++)
+        m_spheresTable[i] = oldSize + (i-oldSizeSpheres)/div;
+    }
+    else
+    {
+      primitives.resize(oldSize + a_boxNumber);
+      for(size_t i = oldSize; i < primitives.size(); i++)
+        primitives[i] = new SpherePrim(boxMinMaxF8[i-oldSize].boxMin, boxMinMaxF8[i-oldSize].boxMax, uint32_t(i-oldSize)); 
+    }
+
   }
   else 
   {
+    primitives.resize(oldSize + a_boxNumber);
     for(size_t i = oldSize; i < primitives.size(); i++)
       primitives[i] = new EmptyPrim(); 
   }
