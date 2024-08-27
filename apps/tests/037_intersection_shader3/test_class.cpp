@@ -127,6 +127,30 @@ void TestClass::InitScene(int numBoxes, int numTris)
     boxesOnTopOfSpheres[i].boxMax.y = spheres[i].y + spheres[i].w;
     boxesOnTopOfSpheres[i].boxMax.z = spheres[i].z + spheres[i].w; 
   }
+
+  // single sphere with several bounding boxes
+  //
+  float4 sphereCenter(0,0,0,0.1f);
+  std::vector<CRT_AABB> singleSphereBoxes(1);
+  {
+    singleSphereBoxes[0].boxMin.x = sphereCenter.x - sphereCenter.w;
+    singleSphereBoxes[0].boxMin.y = sphereCenter.y - sphereCenter.w;
+    singleSphereBoxes[0].boxMin.z = sphereCenter.z - sphereCenter.w; 
+  
+    singleSphereBoxes[0].boxMax.x = sphereCenter.x + sphereCenter.w;
+    singleSphereBoxes[0].boxMax.y = sphereCenter.y + sphereCenter.w;
+    singleSphereBoxes[0].boxMax.z = sphereCenter.z + sphereCenter.w; 
+  }
+  //for(int y=0;y<2;y++) 
+  //{
+  //  for(int x=0;x<2;x++)
+  //  { 
+  //    int centerX = x;
+  //    int centerY = y;
+  //    //float4 center = float4(float(centerX)/float(16), float(centerY)/float(16), 1.0f, 0.02f); // radius = 0.02f
+  //    //y*2+x
+  //  }
+  //}
   
   // put all geometry inaside impl.
   //
@@ -134,13 +158,14 @@ void TestClass::InitScene(int numBoxes, int numTris)
   auto geomId2 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, boxesOnTopOfSpheres.data(), boxesOnTopOfSpheres.size());
   auto geomId0 = m_pRayTraceImpl->AddGeom_Triangles3f((const float*)trivets.data(), trivets.size(), indices.data(), indices.size(), 0, 16);
   auto geomId1 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_BOXES, (const CRT_AABB*)boxes.data(), numBoxes);
+  auto geomId3 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, (const CRT_AABB*)singleSphereBoxes.data(), singleSphereBoxes.size(), nullptr, 0);
 
   float4x4 transformTris1 = LiteMath::translate4x4(float3(0.3f, 0.60f, 0.0f)) * LiteMath::rotate4x4Z(+LiteMath::DEG_TO_RAD*45.0f);
   float4x4 transformTris2 = LiteMath::translate4x4(float3(0.6f, 0.75f, 0.0f)) * LiteMath::rotate4x4Z(-LiteMath::DEG_TO_RAD*45.0f);
 
   float4x4 transformSpheres1 = LiteMath::translate4x4(float3(0.2f, 0.2f, 0.0f)) * LiteMath::rotate4x4Z(+LiteMath::DEG_TO_RAD*25.0f);
-  float4x4 transformSpheres2 = LiteMath::translate4x4(float3(0.5f, 0.1f, 0.0f)) * LiteMath::rotate4x4Z(-LiteMath::DEG_TO_RAD*25.0f);
-  float4x4 transformSpheres3 = LiteMath::translate4x4(float3(0.75f, 0.25f, 0.0f)) * LiteMath::rotate4x4Z(+LiteMath::DEG_TO_RAD*30.0f);
+  float4x4 transformSpheres2 = LiteMath::translate4x4(float3(0.5f, 0.2f, 0.0f)) * LiteMath::rotate4x4Z(-LiteMath::DEG_TO_RAD*25.0f);
+  float4x4 transformSpheres3 = LiteMath::translate4x4(float3(0.75f, 0.25f, 0.0f)) * LiteMath::rotate4x4Z(-LiteMath::DEG_TO_RAD*30.0f);
 
   m_pRayTraceImpl->ClearScene();
   
@@ -152,7 +177,7 @@ void TestClass::InitScene(int numBoxes, int numTris)
   // spheres
   //
   m_pRayTraceImpl->AddInstance(geomId2, transformSpheres1);
-  m_pRayTraceImpl->AddInstance(geomId2, transformSpheres2);
+  m_pRayTraceImpl->AddInstance(geomId3, transformSpheres2);
   m_pRayTraceImpl->AddInstance(geomId2, transformSpheres3);
   
   // triangles
@@ -197,7 +222,7 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
   return uint32_t(startEnd.size() - 1);
 }
 
-uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber)
+uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber, void** a_customPrimPtrs, size_t a_customPrimCount)
 {
   const size_t oldSize = primitives.size();
   primitives.resize(oldSize + a_boxNumber);
@@ -241,7 +266,7 @@ BFRayTrace::~BFRayTrace()
 }
              
 void BFRayTrace::UpdateGeom_Triangles3f(uint32_t a_geomId, const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, uint32_t a_flags, size_t vByteStride) {}
-void BFRayTrace::UpdateGeom_AABB(uint32_t a_geomId, uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber) { }
+void BFRayTrace::UpdateGeom_AABB(uint32_t a_geomId, uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber, void** a_customPrimPtrs, size_t a_customPrimCount) { }
 
 static inline float3 matmul3x3(float4x4 m, float3 v)
 { 
