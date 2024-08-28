@@ -155,8 +155,8 @@ void TestClass::InitScene(int numBoxes, int numTris)
   
   // 2 separate spheres inside single geom object
   //
-  float4 sphereData1(0.1,0,0,0.025f);
-  float4 sphereData2(0,0.1,0,0.025f);
+  float4 sphereData1(-0.1,0,0,0.03f);
+  float4 sphereData2(+0.1,0.0,0,0.04f);
   SpherePrim* pSphere1 = new SpherePrim(sphereData1, 0);
   SpherePrim* pSphere2 = new SpherePrim(sphereData2, 0);
 
@@ -199,7 +199,7 @@ void TestClass::InitScene(int numBoxes, int numTris)
   auto geomId4 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, (const CRT_AABB*)sphereBoxes.data(), sphereBoxes.size(), spheresPtrArray, 2);
 
   float4x4 transformTris1 = LiteMath::translate4x4(float3(0.3f, 0.60f, 0.0f)) * LiteMath::rotate4x4Z(+LiteMath::DEG_TO_RAD*45.0f);
-  float4x4 transformTris2 = LiteMath::translate4x4(float3(0.6f, 0.75f, 0.0f)) * LiteMath::rotate4x4Z(-LiteMath::DEG_TO_RAD*25.0f);
+  float4x4 transformTris2 = LiteMath::translate4x4(float3(0.7f, 0.75f, 0.0f)) * LiteMath::rotate4x4Z(-LiteMath::DEG_TO_RAD*45.0f);
 
   float4x4 transformSpheres1 = LiteMath::translate4x4(float3(0.2f, 0.2f, 0.0f)) * LiteMath::rotate4x4Z(+LiteMath::DEG_TO_RAD*25.0f);
   float4x4 transformSpheres2 = LiteMath::translate4x4(float3(0.5f, 0.2f, 0.0f)) * LiteMath::rotate4x4Z(-LiteMath::DEG_TO_RAD*25.0f);
@@ -272,18 +272,11 @@ uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8
   }
   else if(a_typeId == AbtractPrimitive::TAG_SPHERES)
   {
-    size_t oldSizeSpheres = m_spheresTable.size();
     if(a_customPrimPtrs != nullptr)
     {
       primitives.resize(oldSize + a_customPrimCount);
-      m_spheresTable.resize(oldSizeSpheres + a_boxNumber);
-
       for(size_t i = oldSize; i < primitives.size(); i++)
         primitives[i] = (SpherePrim*)(a_customPrimPtrs[i - oldSize]);
-      
-      const uint32_t div = uint32_t(a_boxNumber/a_customPrimCount);
-      for(size_t i = oldSizeSpheres; i < m_spheresTable.size(); i++)
-        m_spheresTable[i] = oldSize + (i-oldSizeSpheres)/div;
     }
     else
     {
