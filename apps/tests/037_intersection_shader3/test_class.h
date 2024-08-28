@@ -139,8 +139,6 @@ struct BFRayTrace : public ISceneObject
   std::vector<uint2>             m_instStartEnd;
   std::vector<float4x4>          m_instMatricesFwd; ///< instance matrices
   std::vector<float4x4>          m_instMatricesInv; ///< inverse instance matrices
-  
-  std::vector<uint32_t>          m_spheresTable;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
