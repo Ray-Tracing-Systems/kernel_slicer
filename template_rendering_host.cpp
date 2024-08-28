@@ -498,6 +498,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     local["Name"]  = primName;
     local["BType"] = "RemapTable";
     local["DType"] = "uint";
+    local["TagName"]       = tagName;
+    local["InterfaceName"] = interfaceName;
+    local["AccelName"]     = accStructName;
     data["RemapTables"].push_back(local);
   }
 
