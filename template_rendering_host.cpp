@@ -462,11 +462,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
   data["Hierarchies"]        = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
   data["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(data["Hierarchies"]);
-  data["HasAllRefs"]         = bool(a_classInfo.m_allRefs.size() != 0);
-  if(a_classInfo.m_allRefs.size() != 0)
+  data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0);
+  if(a_classInfo.m_allRefsFromVFH.size() != 0)
   {
     data["AllReferences"] = std::vector<json>();
-    for(auto ref : a_classInfo.m_allRefs) {
+    for(auto ref : a_classInfo.m_allRefsFromVFH) {
       json refJson;
       refJson["Name"] = ref.name;
       refJson["Type"] = ref.typeOfElem;

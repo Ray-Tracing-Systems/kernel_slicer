@@ -387,15 +387,15 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
         for (const auto& kv : rv.argsByName)
           argsByName[kv.first] = kv.second; 
 
-        dImpl.isEmpty = true;
-        for(auto member : dImpl.memberFunctions)
-        {
-          if(!member.isEmpty)
-          {
-            dImpl.isEmpty = false;
-            break;
-          }
-        }
+        dImpl.isEmpty = (dImpl.name.find("Empty") != std::string::npos);
+        //for(auto member : dImpl.memberFunctions)
+        //{
+        //  if(!member.isEmpty)
+        //  {
+        //    dImpl.isEmpty = false;
+        //    break;
+        //  }
+        //}
 
         for(auto& k : kernels)
         {
@@ -755,10 +755,12 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
   for(const auto& h : m_vhierarchy) {
     if(int(h.second.level) >= 2) {
       for(auto impl : h.second.implementations) {
+        if(impl.isEmpty)
+          continue;
         BufferReference ref;
         ref.name       = impl.name;
         ref.typeOfElem = impl.name;
-        this->m_allRefs.push_back(ref);
+        this->m_allRefsFromVFH.push_back(ref);
       }
     }
   }
