@@ -1028,6 +1028,7 @@ namespace kslicer
     std::unordered_set<std::string>                    composClassNames; 
     std::unordered_set<std::string>                    dataClassNames; 
     std::vector< std::pair<std::string, std::string> > intersectionShaders;
+    std::unordered_set<std::string>                    intersectionComplexPrimitives; ///<! when single intersection class object represented as multiple bounding boxes
 
     std::filesystem::path mainClassFileName;
     std::string           mainClassFileInclude;
@@ -1165,7 +1166,7 @@ namespace kslicer
     bool forceAllBufToRefs = false;
 
     std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;
-    std::vector<BufferReference>                  m_allRefs;
+    std::vector<BufferReference>                  m_allRefsFromVFH;
     bool IsVFHBuffer(const std::string& a_name, VFH_LEVEL* pOutLevel = nullptr, VFHHierarchy* pHierarchy = nullptr) const;
 
     std::unordered_set<std::string> ExtractTypesFromUsedContainers(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls);

@@ -30,12 +30,22 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer {{ImplS.Dat
 };
 {% endfor %}
 {% endif %}
+{% for Remap in Kernel.IntersectionShaderRemaps %}
+
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer {{Remap.Name}}Remap
+{
+	{{Remap.DType}} {{Remap.Name}}_table[];
+};
+{% endfor %}
 
 {% if HasAllRefs %}
 struct AllBufferReferences
 {
   {% for ImplS in Hierarchy.Implementations %}
   {{ImplS.DataStructure.Name}}Buffer {{ImplS.DataStructure.Name}}_buffer;
+  {% endfor %}
+  {% for Remap in Kernel.IntersectionShaderRemaps %}
+  {{Remap.Name}}Remap {{Remap.Name}}_remap;
   {% endfor %}
 };
 {% endif %}

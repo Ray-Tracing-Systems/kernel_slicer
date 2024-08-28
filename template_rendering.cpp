@@ -163,6 +163,7 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
     currImpl["TagName"]         = p2->second;
     currImpl["MemberFunctions"] = std::vector<json>();
     currImpl["ObjBufferName"]   = h.objBufferName;
+    currImpl["IsEmpty"]         = impl.isEmpty;
     for(const auto& member : impl.memberFunctions)
     {
       json local;
@@ -215,8 +216,8 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
       currImpl["DataStructure"] = local;
     }
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //if(impl.isEmpty) 
-    if(impl.name.find("Empty") != std::string::npos)
+    if(impl.isEmpty) 
+    //if(impl.name.find("Empty") != std::string::npos)
     {
       hierarchy["EmptyImplementation"] = currImpl;
       emptyIsFound = true;
@@ -433,7 +434,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["UseComplex"]         = true; // a_classInfo.useComplexNumbers; does not works in appropriate way ...
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
-  data["HasAllRefs"]         = bool(a_classInfo.m_allRefs.size() != 0);
+  data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0);
 
   data["Defines"] = std::vector<std::string>();
   for(const auto& def : usedDefines)
@@ -1136,6 +1137,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       local["Name"] = array.second.arrayName;
       local["Size"] = array.second.arraySize;
       kernelJson["ThreadLocalArrays"].push_back(local);
+    }
+
+    // add primitive remap tables for intesection shaders
+    //
+    kernelJson["IntersectionShaderRemaps"] = std::vector<json>();
+    for(auto primName : a_classInfo.intersectionComplexPrimitives) 
+    {
+      json local;
+      local["Name"]  = primName;
+      local["BType"] = "RemapTable";
+      local["DType"] = "uint";
+      kernelJson["IntersectionShaderRemaps"].push_back(local);
     }
 
     auto original = kernelJson;
