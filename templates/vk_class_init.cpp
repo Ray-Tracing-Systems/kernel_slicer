@@ -895,6 +895,9 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
     {% endfor %}
     {% endif %}
     {% endfor %}
+    {% for Table in RemapTables %}
+    all_references[0].{{Table.Name}}RemapAddr = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Table.Name}}RemapTableBuffer);
+    {% endfor %}
   }
   {% endif %}
   {% for Var in ClassTexArrayVars %}

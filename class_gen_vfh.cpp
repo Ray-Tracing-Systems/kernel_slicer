@@ -808,7 +808,8 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
     for(auto prefix : composPrefix) {
       auto pos = memberName.find(prefix.second);
       if(pos != std::string::npos) {
-        memberName = prefix.second;
+        memberName                     = prefix.second;
+        group.hierarchy->accStructName = prefix.second;
         break;
       }
     }
