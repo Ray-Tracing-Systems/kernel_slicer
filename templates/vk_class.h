@@ -319,6 +319,9 @@ protected:
     {% for Sam in SamplerMembers %}
     VkSampler      {{Sam}} = VK_NULL_HANDLE;
     {% endfor %}
+    {% for Table in RemapTables %}
+    VkBuffer {{Table.Name}}RemapTableBuffer = VK_NULL_HANDLE;
+    {% endfor %}
   } m_vdata;
   {% for Vector in VectorMembers %}
   {% if Vector.IsVFHBuffer and Vector.VFHLevel >= 2 %}
@@ -333,6 +336,9 @@ protected:
   {
     {% for Ref in AllReferences %}
     VkDeviceAddress {{Ref.Name}}Address;
+    {% endfor %}
+    {% for Remap in RemapTables %}
+    VkDeviceAddress {{Remap.Name}}RemapAddr;
     {% endfor %}
   };
   std::vector<AllBufferReferences> all_references;
