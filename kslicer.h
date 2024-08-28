@@ -1143,6 +1143,7 @@ namespace kslicer
       const clang::CXXRecordDecl* interfaceDecl = nullptr;
       std::string                 interfaceName;
       std::string                 objBufferName;
+      std::string                 accStructName;
       std::vector<DImplClass>     implementations;
       VFH_LEVEL                   level = VFH_LEVEL_1;
       bool                        hasIntersection = false;
