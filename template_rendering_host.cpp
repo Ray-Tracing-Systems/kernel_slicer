@@ -474,6 +474,16 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     }
   }
 
+  data["RemapTables"] = std::vector<json>();
+  for(auto primName : a_classInfo.intersectionComplexPrimitives) 
+  {
+    json local;
+    local["Name"]  = primName;
+    local["BType"] = "RemapTable";
+    local["DType"] = "uint";
+    data["RemapTables"].push_back(local);
+  }
+
   if(data["UseServiceScan"])
   {
     data["ServiceScan"] = std::vector<std::string>();
