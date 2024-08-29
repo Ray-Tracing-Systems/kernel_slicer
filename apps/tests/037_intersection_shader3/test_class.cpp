@@ -334,8 +334,7 @@ CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFa
   CRT_Hit hit;
   hit.primId = -1;
   
-  //for(uint32_t primid = 0; primid < primitives.size(); primid++)
-  //  primitives[primid]->Intersect(rayPosAndNear, rayDirAndFar, &hit, this); 
+  CRT_LeafInfo info;
 
   for(uint32_t instId = 0; instId < m_instStartEnd.size(); instId++) 
   {
@@ -345,9 +344,15 @@ CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFa
     
     const float4 rayPosAndNear2 = to_float4(ray_pos, rayPosAndNear.w);
     const float4 rayDirAndFar2  = to_float4(ray_dir, rayDirAndFar.w);
+
+    info.instId = instId;
   
-    for(uint32_t primid = startEnd.x; primid < startEnd.y; primid++)
-      primitives[primid]->Intersect(rayPosAndNear2, rayDirAndFar2, &hit, this); 
+    for(uint32_t primid = startEnd.x; primid < startEnd.y; primid++) 
+    {
+      info.aabbId = primid;
+      info.geomId = primid; // TODO: use remap table to get it
+      primitives[primid]->Intersect(rayPosAndNear2, rayDirAndFar2, info, &hit, this); 
+    }
   }
 
   return hit;
