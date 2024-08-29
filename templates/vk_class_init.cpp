@@ -837,11 +837,14 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   {% endif %}
   {% endfor %}
   {% for Table in RemapTables %}
-  auto pProxyObj = dynamic_cast<RTX_Proxy*>({{Table.AccelName}}.get());
-  auto tablePtrs = pProxyObj->GetAABBToPrimTable({{Table.InterfaceName}}::{{Table.TagName}});
-  m_vdata.{{Table.Name}}RemapTableBuffer = vk_utils::createBuffer(device, 10, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-  memberVectorsWithDevAddr.push_back(m_vdata.{{Table.Name}}RemapTableBuffer);
+  {
+    auto pProxyObj = dynamic_cast<RTX_Proxy*>({{Table.AccelName}}.get());
+    auto tablePtrs = pProxyObj->GetAABBToPrimTable({{Table.InterfaceName}}::{{Table.TagName}});
+    m_vdata.{{Table.Name}}RemapTableBuffer = vk_utils::createBuffer(device, tablePtrs.tableSize*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+    memberVectorsWithDevAddr.push_back(m_vdata.{{Table.Name}}RemapTableBuffer);
+  }
   {% endfor %}
+  
   {% if HasAllRefs %}
   all_references.resize(1); // need just single element to store all references
   {% endif %}
