@@ -131,12 +131,19 @@ struct BFRayTrace : public ISceneObject
   CRT_Hit RayQuery_NearestHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override { return RayQuery_NearestHit(posAndNear, dirAndFar); }
   bool    RayQuery_AnyHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override { return RayQuery_AnyHit(posAndNear, dirAndFar); }
 
+  struct BLASInfo
+  {
+    uint32_t startPrim;
+    uint32_t sizePrims;
+    uint32_t startAABB;
+    uint32_t sizeAABBs;
+  };
 
   std::vector<float4>            trivets;
   std::vector<uint32_t>          indices;
   std::vector<AbtractPrimitive*> primitives;
-  std::vector<uint2>             startEnd;
-  std::vector<uint2>             m_instStartEnd;
+  std::vector<BLASInfo>          startEnd;
+  std::vector<BLASInfo>          m_instStartEnd;
   std::vector<float4x4>          m_instMatricesFwd; ///< instance matrices
   std::vector<float4x4>          m_instMatricesInv; ///< inverse instance matrices
 };

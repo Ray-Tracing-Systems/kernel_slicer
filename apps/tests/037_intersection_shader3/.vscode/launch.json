@@ -29,7 +29,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-debug/testapp",
-            "args": ["--gpu", "bbb"],
+            "args": ["--сpu", "bbb"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
