@@ -258,7 +258,7 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
 
   BLASInfo info;
   info.startPrim = uint32_t(oldSize);
-  info.sizePrims = uint32_t(primitives.size());
+  info.sizePrims = uint32_t(primitives.size() - oldSize);
   info.startAABB = 0;
   info.sizeAABBs = 0;
 
@@ -270,6 +270,7 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
 uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber, void** a_customPrimPtrs, size_t a_customPrimCount)
 {
   const size_t oldSize = primitives.size();
+  const size_t oldBoxSize = allBoxes.size();
   if(a_typeId == AbtractPrimitive::TAG_BOXES) 
   {
     primitives.resize(oldSize + a_boxNumber);
@@ -299,11 +300,15 @@ uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8
       primitives[i] = new EmptyPrim(); 
   }
 
+  allBoxes.insert(allBoxes.begin(), boxMinMaxF8, boxMinMaxF8 + a_boxNumber);
+
   BLASInfo info;
-  info.startPrim = uint32_t(oldSize);
-  info.sizePrims = uint32_t(primitives.size());
-  info.startAABB = 0;
-  info.sizeAABBs = 0;
+  {
+    info.startPrim = uint32_t(oldSize);
+    info.sizePrims = uint32_t(primitives.size() - oldSize);
+    info.startAABB = uint32_t(oldBoxSize);
+    info.sizeAABBs = uint32_t(a_boxNumber - oldBoxSize);
+  }
   startEnd.push_back(info); // may save a_typeId
 
   return uint32_t(startEnd.size() - 1);
@@ -357,8 +362,16 @@ CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFa
     const float4 rayDirAndFar2  = to_float4(ray_dir, rayDirAndFar.w);
 
     info.instId = instId;
-  
-    for(uint32_t primid = startEnd.startPrim; primid < startEnd.sizePrims; primid++) 
+    
+    // list all intersected boxes, for each box get primitive id abd intersect primitive id
+    //
+
+    //for(uint32_t boxId = startEnd.startAABB; boxId < startEnd.startAABB + startEnd.sizeAABBs; boxId++)
+    //{
+    //  
+    //}
+
+    for(uint32_t primid = startEnd.startPrim; primid < startEnd.startPrim + startEnd.sizePrims; primid++) 
     {
       info.aabbId = primid;
       info.geomId = primid; // TODO: use remap table to get it
