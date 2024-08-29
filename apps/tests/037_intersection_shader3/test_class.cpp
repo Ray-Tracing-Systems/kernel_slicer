@@ -256,7 +256,13 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
     primitives[i] = new TrianglePrim(trivets[A], trivets[B], trivets[C], oldIndex); 
   }
 
-  startEnd.push_back(uint2(uint32_t(oldSize), uint32_t(primitives.size()))); // may save TAG_TRIANGLES
+  BLASInfo info;
+  info.startPrim = uint32_t(oldSize);
+  info.sizePrims = uint32_t(primitives.size());
+  info.startAABB = 0;
+  info.sizeAABBs = 0;
+
+  startEnd.push_back(info); // may save TAG_TRIANGLES
 
   return uint32_t(startEnd.size() - 1);
 }
@@ -293,7 +299,12 @@ uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8
       primitives[i] = new EmptyPrim(); 
   }
 
-  startEnd.push_back(uint2(uint32_t(oldSize), uint32_t(primitives.size()))); // may save a_typeId
+  BLASInfo info;
+  info.startPrim = uint32_t(oldSize);
+  info.sizePrims = uint32_t(primitives.size());
+  info.startAABB = 0;
+  info.sizeAABBs = 0;
+  startEnd.push_back(info); // may save a_typeId
 
   return uint32_t(startEnd.size() - 1);
 }
@@ -338,7 +349,7 @@ CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFa
 
   for(uint32_t instId = 0; instId < m_instStartEnd.size(); instId++) 
   {
-    const uint2 startEnd = m_instStartEnd[instId];
+    const auto  startEnd = m_instStartEnd[instId];
     const float3 ray_pos = matmul4x3(m_instMatricesInv[instId], to_float3(rayPosAndNear));
     const float3 ray_dir = matmul3x3(m_instMatricesInv[instId], to_float3(rayDirAndFar)); 
     
@@ -347,7 +358,7 @@ CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFa
 
     info.instId = instId;
   
-    for(uint32_t primid = startEnd.x; primid < startEnd.y; primid++) 
+    for(uint32_t primid = startEnd.startPrim; primid < startEnd.sizePrims; primid++) 
     {
       info.aabbId = primid;
       info.geomId = primid; // TODO: use remap table to get it
