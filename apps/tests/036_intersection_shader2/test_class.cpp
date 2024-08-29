@@ -59,10 +59,8 @@ void TestClass::RenderBlock(uint tidX, uint tidY, uint* out_color, uint32_t a_nu
 
 void TestClass::GetExecutionTime(const char* a_funcName, float a_out[4])
 {
-  if(std::string(a_funcName).find("ReadAndCompute") != std::string::npos)
+  if(std::string(a_funcName).find("Render") != std::string::npos)
     a_out[0] = m_time1;
-  else if(std::string(a_funcName).find("Compute") != std::string::npos)
-    a_out[0] = m_time2;
 }
 
 void TestClass::InitScene(int numBoxes, int numTris)
@@ -260,8 +258,7 @@ CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFa
   CRT_Hit hit;
   hit.primId = -1;
   
-  //for(uint32_t primid = 0; primid < primitives.size(); primid++)
-  //  primitives[primid]->Intersect(rayPosAndNear, rayDirAndFar, &hit, this); 
+  CRT_LeafInfo info;
 
   for(uint32_t instId = 0; instId < m_instStartEnd.size(); instId++) 
   {
@@ -271,9 +268,15 @@ CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFa
     
     const float4 rayPosAndNear2 = to_float4(ray_pos, rayPosAndNear.w);
     const float4 rayDirAndFar2  = to_float4(ray_dir, rayDirAndFar.w);
+
+    info.instId = instId;
   
-    for(uint32_t primid = startEnd.x; primid < startEnd.y; primid++)
-      primitives[primid]->Intersect(rayPosAndNear2, rayDirAndFar2, &hit, this); 
+    for(uint32_t primid = startEnd.x; primid < startEnd.y; primid++) 
+    {
+      info.aabbId = primid;
+      info.geomId = primid;
+      primitives[primid]->Intersect(rayPosAndNear2, rayDirAndFar2, info, &hit, this); 
+    }
   }
 
   return hit;

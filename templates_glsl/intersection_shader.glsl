@@ -106,7 +106,13 @@ void main()
 { 
   vec4 rayPosAndNear  = vec4(gl_ObjectRayOriginEXT,    gl_RayTminEXT);
   vec4 rayDirAndFar   = vec4(gl_ObjectRayDirectionEXT, gl_RayTmaxEXT);
-  uint intersected    = {{IntersectionShader.NameRewritten}}(gl_PrimitiveID, rayPosAndNear, rayDirAndFar, attribs);
+  CRT_LeafInfo info;
+  info.aabbId = gl_PrimitiveID;  
+  info.instId = gl_InstanceID; 
+  info.geomId = gl_InstanceCustomIndexEXT; 
+  info.rayxId = gl_LaunchIDEXT[0];
+  info.rayyId = gl_LaunchIDEXT[1]; 
+  uint intersected    = {{IntersectionShader.NameRewritten}}(gl_PrimitiveID, rayPosAndNear, rayDirAndFar, info, attribs);
   if(intersected != TAG_EMPTY)
     reportIntersectionEXT(attribs.t, 0);
 }
