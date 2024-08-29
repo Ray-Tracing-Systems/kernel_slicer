@@ -92,6 +92,13 @@ void {{MainClassName}}{{MainClassSuffix}}::ReadPlainMembers(std::shared_ptr<vk_u
 
 void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
+  {% for Table in RemapTables %}
+  {
+    auto pProxyObj = dynamic_cast<RTX_Proxy*>({{Table.AccelName}}.get());
+    auto tablePtrs = pProxyObj->GetAABBToPrimTable({{Table.InterfaceName}}::{{Table.TagName}});
+    a_pCopyEngine->UpdateBuffer(m_vdata.{{Table.Name}}RemapTableBuffer, 0, tablePtrs.table, tablePtrs.tableSize*sizeof(uint32_t));
+  }
+  {% endfor %}
   {% for Var in ClassVectorVars %}
   {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}
   if({{Var.Name}}{{Var.AccessSymb}}size() > 0)
