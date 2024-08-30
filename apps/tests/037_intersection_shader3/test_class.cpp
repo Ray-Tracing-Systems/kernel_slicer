@@ -49,7 +49,9 @@ void TestClass::Render(uint tidX, uint tidY, uint* out_color)
 void TestClass::RenderBlock(uint tidX, uint tidY, uint* out_color, uint32_t a_numPasses)
 {
   auto before = std::chrono::high_resolution_clock::now();
+  #ifndef _DEBUG
   #pragma omp parallel for collapse(2)
+  #endif
   for(int y=0;y<tidY;y++)
     for(int x=0;x<tidX;x++)
       for(int p=0;p<a_numPasses;p++)
@@ -247,20 +249,34 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
 
   const size_t oldSize = primitives.size();
   primitives.resize(oldSize + a_indNumber/3);
+  std::vector<CRT_AABB> boxesOfTris(a_indNumber/3);
+
   for(size_t i = oldSize; i < primitives.size(); i++) 
   {
     const size_t oldIndex = i - oldSize;
     const uint32_t A      = a_triIndices[oldIndex*3+0];
     const uint32_t B      = a_triIndices[oldIndex*3+1];
     const uint32_t C      = a_triIndices[oldIndex*3+2];
-    primitives[i] = new TrianglePrim(trivets[A], trivets[B], trivets[C], oldIndex); 
+    primitives [i] = new TrianglePrim(trivets[A], trivets[B], trivets[C], oldIndex); 
+    boxesOfTris[oldIndex].boxMin = LiteMath::min(trivets[A], LiteMath::min(trivets[B], trivets[C]));
+    boxesOfTris[oldIndex].boxMax = LiteMath::max(trivets[A], LiteMath::max(trivets[B], trivets[C]));
+  }
+  
+  const size_t oldBoxSize = allBoxes.size();
+  allBoxes.insert(allBoxes.end(), boxesOfTris.begin(), boxesOfTris.end());
+  
+  for(size_t i = oldBoxSize; i<allBoxes.size(); i++) 
+  {
+    uint32_t primIndex   = uint32_t(oldSize + (i - oldBoxSize));
+    allBoxes[i].boxMin.w = LiteMath::as_float(primIndex);
+    allBoxes[i].boxMax.w = LiteMath::as_float(AbtractPrimitive::TAG_TRIANGLES);
   }
 
   BLASInfo info;
   info.startPrim = uint32_t(oldSize);
   info.sizePrims = uint32_t(primitives.size() - oldSize);
-  info.startAABB = 0;
-  info.sizeAABBs = 0;
+  info.startAABB = uint32_t(oldBoxSize);
+  info.sizeAABBs = uint32_t(allBoxes.size() - oldBoxSize);
 
   startEnd.push_back(info); // may save TAG_TRIANGLES
 
@@ -269,8 +285,9 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
 
 uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber, void** a_customPrimPtrs, size_t a_customPrimCount)
 {
-  const size_t oldSize = primitives.size();
+  const size_t oldSize    = primitives.size();
   const size_t oldBoxSize = allBoxes.size();
+  size_t actualPrimsCount = a_boxNumber;
   if(a_typeId == AbtractPrimitive::TAG_BOXES) 
   {
     primitives.resize(oldSize + a_boxNumber);
@@ -281,6 +298,7 @@ uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8
   {
     if(a_customPrimPtrs != nullptr)
     {
+      actualPrimsCount = a_customPrimCount;
       primitives.resize(oldSize + a_customPrimCount);
       for(size_t i = oldSize; i < primitives.size(); i++)
         primitives[i] = (SpherePrim*)(a_customPrimPtrs[i - oldSize]);
@@ -300,14 +318,22 @@ uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8
       primitives[i] = new EmptyPrim(); 
   }
 
-  allBoxes.insert(allBoxes.begin(), boxMinMaxF8, boxMinMaxF8 + a_boxNumber);
+  allBoxes.insert(allBoxes.end(), boxMinMaxF8, boxMinMaxF8 + a_boxNumber);
+  
+  const size_t div = a_boxNumber/actualPrimsCount;
+  for(size_t i = oldBoxSize; i<allBoxes.size(); i++) 
+  {
+    uint32_t primIndex   = uint32_t(oldSize + (i - oldBoxSize) / div);
+    allBoxes[i].boxMin.w = LiteMath::as_float(primIndex);
+    allBoxes[i].boxMax.w = LiteMath::as_float(a_typeId);
+  }
 
   BLASInfo info;
   {
     info.startPrim = uint32_t(oldSize);
-    info.sizePrims = uint32_t(primitives.size() - oldSize);
+    info.sizePrims = uint32_t(actualPrimsCount);
     info.startAABB = uint32_t(oldBoxSize);
-    info.sizeAABBs = uint32_t(a_boxNumber - oldBoxSize);
+    info.sizeAABBs = uint32_t(a_boxNumber);
   }
   startEnd.push_back(info); // may save a_typeId
 
@@ -345,6 +371,8 @@ static inline float3 matmul4x3(float4x4 m, float3 v)
   return to_float3(m*to_float4(v, 1.0f));
 }
 
+//#include <set>
+
 CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFar)
 {
   CRT_Hit hit;
@@ -363,20 +391,29 @@ CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFa
 
     info.instId = instId;
     
+    const float3 rayDirInv = 1.0f/to_float3(rayDirAndFar2);
+
     // list all intersected boxes, for each box get primitive id abd intersect primitive id
     //
-
-    //for(uint32_t boxId = startEnd.startAABB; boxId < startEnd.startAABB + startEnd.sizeAABBs; boxId++)
-    //{
-    //  
-    //}
-
-    for(uint32_t primid = startEnd.startPrim; primid < startEnd.startPrim + startEnd.sizePrims; primid++) 
+    for(uint32_t boxId = startEnd.startAABB; boxId < startEnd.startAABB + startEnd.sizeAABBs; boxId++)
     {
-      info.aabbId = primid;
-      info.geomId = primid; // TODO: use remap table to get it
-      primitives[primid]->Intersect(rayPosAndNear2, rayDirAndFar2, info, &hit, this); 
+      CRT_AABB currBox = allBoxes[boxId];
+      uint32_t primid  = LiteMath::as_uint(currBox.boxMin.w); 
+      float2 tMinMax   = RayBoxIntersection2( to_float3(rayPosAndNear2), rayDirInv, to_float3(currBox.boxMin), to_float3(currBox.boxMax) )
+      if(tMinMax.x <= tMinMax.y && tMinMax.y >= rayPosAndNear2.w && tMinMax.x <= rayDirAndFar2.w)
+      {  
+        info.aabbId = boxId;
+        info.geomId = primid;
+        primitives[primid]->Intersect(rayPosAndNear2, rayDirAndFar2, info, &hit, this); 
+      }
     }
+
+    //for(uint32_t primid = startEnd.startPrim; primid < startEnd.startPrim + startEnd.sizePrims; primid++) 
+    //{
+    //  info.aabbId = primid;
+    //  info.geomId = primid; // TODO: use remap table to get it
+    //  primitives[primid]->Intersect(rayPosAndNear2, rayDirAndFar2, info, &hit, this); 
+    //}
   }
 
   return hit;
