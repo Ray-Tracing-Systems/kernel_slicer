@@ -133,7 +133,7 @@ void TestClass::InitScene(int numBoxes, int numTris)
   // single sphere with several bounding boxes
   //
   float4 sphereCenter(0,0,0,0.05f);
-  std::vector<CRT_AABB> singleSphereBoxes(2);
+  std::vector<CRT_AABB> singleSphereBoxes(3);
   {
     singleSphereBoxes[0].boxMin.x = sphereCenter.x - sphereCenter.w;
     singleSphereBoxes[0].boxMin.y = sphereCenter.y - sphereCenter.w;
@@ -151,11 +151,13 @@ void TestClass::InitScene(int numBoxes, int numTris)
     singleSphereBoxes[1].boxMax.y = sphereCenter.y + sphereCenter.w;
     singleSphereBoxes[1].boxMax.z = sphereCenter.z + sphereCenter.w; 
 
-    //singleSphereBoxes[2].boxMin = singleSphereBoxes[0].boxMin; singleSphereBoxes[2].boxMin.y += sphereCenter.w;
-    //singleSphereBoxes[2].boxMax = singleSphereBoxes[0].boxMax; singleSphereBoxes[2].boxMax.y += sphereCenter.w;
-    //
-    //singleSphereBoxes[3].boxMin = singleSphereBoxes[0].boxMin; singleSphereBoxes[3].boxMin.x += sphereCenter.w; singleSphereBoxes[3].boxMin.y += sphereCenter.w;
-    //singleSphereBoxes[3].boxMax = singleSphereBoxes[0].boxMax; singleSphereBoxes[3].boxMax.x += sphereCenter.w; singleSphereBoxes[3].boxMax.y += sphereCenter.w;
+    singleSphereBoxes[2].boxMin.x = sphereCenter.x;
+    singleSphereBoxes[2].boxMin.y = sphereCenter.y - sphereCenter.w;
+    singleSphereBoxes[2].boxMin.z = sphereCenter.z - sphereCenter.w; 
+
+    singleSphereBoxes[2].boxMax.x = sphereCenter.x +  sphereCenter.w;
+    singleSphereBoxes[2].boxMax.y = sphereCenter.y;
+    singleSphereBoxes[2].boxMax.z = sphereCenter.z; 
   }
    
   SpherePrim* pSingleSphere = new SpherePrim(sphereCenter, 0);
@@ -169,27 +171,41 @@ void TestClass::InitScene(int numBoxes, int numTris)
 
   std::vector<CRT_AABB> sphereBoxes(4);
   {
+    // sphere #1
+    //
     sphereBoxes[0].boxMin.x = sphereData1.x - sphereData1.w;
     sphereBoxes[0].boxMin.y = sphereData1.y - sphereData1.w;
     sphereBoxes[0].boxMin.z = sphereData1.z - sphereData1.w; 
 
     sphereBoxes[0].boxMax.x = sphereData1.x;
-    sphereBoxes[0].boxMax.y = sphereData1.y + sphereData1.w;
-    sphereBoxes[0].boxMax.z = sphereData1.z + sphereData1.w; 
+    sphereBoxes[0].boxMax.y = sphereData1.y;
+    sphereBoxes[0].boxMax.z = sphereData1.z; 
 
-    sphereBoxes[1].boxMin = sphereBoxes[0].boxMin; sphereBoxes[1].boxMin.x += sphereData1.w;
-    sphereBoxes[1].boxMax = sphereBoxes[0].boxMax; sphereBoxes[1].boxMax.x += sphereData1.w;
+    sphereBoxes[1].boxMin.x = sphereData1.x;
+    sphereBoxes[1].boxMin.y = sphereData1.y;
+    sphereBoxes[1].boxMin.z = sphereData1.z; 
 
+    sphereBoxes[1].boxMax.x = sphereData1.x + sphereData1.w;
+    sphereBoxes[1].boxMax.y = sphereData1.y + sphereData1.w;
+    sphereBoxes[1].boxMax.z = sphereData1.z + sphereData1.w;
+    
+    // sphere #2
+    //
     sphereBoxes[2].boxMin.x = sphereData2.x - sphereData2.w;
     sphereBoxes[2].boxMin.y = sphereData2.y - sphereData2.w;
     sphereBoxes[2].boxMin.z = sphereData2.z - sphereData2.w; 
 
     sphereBoxes[2].boxMax.x = sphereData2.x;
-    sphereBoxes[2].boxMax.y = sphereData2.y + sphereData2.w;
-    sphereBoxes[2].boxMax.z = sphereData2.z + sphereData2.w; 
+    sphereBoxes[2].boxMax.y = sphereData2.y;
+    sphereBoxes[2].boxMax.z = sphereData2.z; 
 
-    sphereBoxes[3].boxMin = sphereBoxes[2].boxMin; sphereBoxes[3].boxMin.x += sphereData2.w;
-    sphereBoxes[3].boxMax = sphereBoxes[2].boxMax; sphereBoxes[3].boxMax.x += sphereData2.w;
+    sphereBoxes[3].boxMin.x = sphereData2.x;
+    sphereBoxes[3].boxMin.y = sphereData2.y;
+    sphereBoxes[3].boxMin.z = sphereData2.z; 
+
+    sphereBoxes[3].boxMax.x = sphereData2.x + sphereData2.w;
+    sphereBoxes[3].boxMax.y = sphereData2.y + sphereData2.w;
+    sphereBoxes[3].boxMax.z = sphereData2.z + sphereData2.w; 
   }
 
   // put all geometry inaside impl.
