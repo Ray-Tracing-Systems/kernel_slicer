@@ -743,8 +743,27 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     json kernelJson;
     
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     kernelJson["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(a_classInfo.SelectVFHOnlyUsedByKernel(a_classInfo.m_vhierarchy, k), compiler, a_classInfo); 
     kernelJson["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(kernelJson["Hierarchies"]);
+    
+    // add primitive remap tables for intesection shaders
+    //
+    kernelJson["IntersectionShaderRemaps"] = std::vector<json>();
+    for(const auto& vfh : a_classInfo.m_vhierarchy)
+    {
+      if(!vfh.second.hasIntersection)
+        continue;
+  
+      json local;
+      local["Name"]          = vfh.second.interfaceName;
+      local["BType"]         = "RemapTable";
+      local["DType"]         = "uvec2";
+      local["InterfaceName"] = vfh.second.interfaceName;
+      local["AccelName"]     = vfh.second.accStructName;
+      kernelJson["IntersectionShaderRemaps"].push_back(local);
+    }
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     kernelJson["RedLoop1"] = std::vector<std::string>();
     kernelJson["RedLoop2"] = std::vector<std::string>();
@@ -1138,19 +1157,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       local["Size"] = array.second.arraySize;
       kernelJson["ThreadLocalArrays"].push_back(local);
     }
-
-    // add primitive remap tables for intesection shaders
-    //
-    kernelJson["IntersectionShaderRemaps"] = std::vector<json>();
-    for(auto primName : a_classInfo.intersectionComplexPrimitives) 
-    {
-      json local;
-      local["Name"]  = primName;
-      local["BType"] = "RemapTable";
-      local["DType"] = "uint";
-      kernelJson["IntersectionShaderRemaps"].push_back(local);
-    }
-
+  
     auto original = kernelJson;
 
     // if we have additional init statements we should add additional init kernel before our kernel

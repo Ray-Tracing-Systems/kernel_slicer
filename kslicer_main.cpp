@@ -278,9 +278,6 @@ int main(int argc, const char **argv)
       std::string funcName  = shaderClassAndFunc.substr(splitPos + 2);
       inputCodeInfo.intersectionShaders.push_back( std::make_pair(className, funcName) );
     }
-    else if(std::string(argv[argId]) == "-intersectionComplex" && argId+1 < argc) {
-      inputCodeInfo.intersectionComplexPrimitives.insert( argv[argId+1] );
-    }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

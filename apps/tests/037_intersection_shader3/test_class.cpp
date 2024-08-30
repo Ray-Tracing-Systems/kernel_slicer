@@ -133,7 +133,7 @@ void TestClass::InitScene(int numBoxes, int numTris)
   // single sphere with several bounding boxes
   //
   float4 sphereCenter(0,0,0,0.05f);
-  std::vector<CRT_AABB> singleSphereBoxes(4);
+  std::vector<CRT_AABB> singleSphereBoxes(2);
   {
     singleSphereBoxes[0].boxMin.x = sphereCenter.x - sphereCenter.w;
     singleSphereBoxes[0].boxMin.y = sphereCenter.y - sphereCenter.w;
@@ -143,14 +143,19 @@ void TestClass::InitScene(int numBoxes, int numTris)
     singleSphereBoxes[0].boxMax.y = sphereCenter.y;
     singleSphereBoxes[0].boxMax.z = sphereCenter.z; 
 
-    singleSphereBoxes[1].boxMin = singleSphereBoxes[0].boxMin; singleSphereBoxes[1].boxMin.x += sphereCenter.w;
-    singleSphereBoxes[1].boxMax = singleSphereBoxes[0].boxMax; singleSphereBoxes[1].boxMax.x += sphereCenter.w;
+    singleSphereBoxes[1].boxMin.x = sphereCenter.x;
+    singleSphereBoxes[1].boxMin.y = sphereCenter.y;
+    singleSphereBoxes[1].boxMin.z = sphereCenter.z; 
 
-    singleSphereBoxes[2].boxMin = singleSphereBoxes[0].boxMin; singleSphereBoxes[2].boxMin.y += sphereCenter.w;
-    singleSphereBoxes[2].boxMax = singleSphereBoxes[0].boxMax; singleSphereBoxes[2].boxMax.y += sphereCenter.w;
-    
-    singleSphereBoxes[3].boxMin = singleSphereBoxes[0].boxMin; singleSphereBoxes[3].boxMin.x += sphereCenter.w; singleSphereBoxes[3].boxMin.y += sphereCenter.w;
-    singleSphereBoxes[3].boxMax = singleSphereBoxes[0].boxMax; singleSphereBoxes[3].boxMax.x += sphereCenter.w; singleSphereBoxes[3].boxMax.y += sphereCenter.w;
+    singleSphereBoxes[1].boxMax.x = sphereCenter.x + sphereCenter.w;
+    singleSphereBoxes[1].boxMax.y = sphereCenter.y + sphereCenter.w;
+    singleSphereBoxes[1].boxMax.z = sphereCenter.z + sphereCenter.w; 
+
+    //singleSphereBoxes[2].boxMin = singleSphereBoxes[0].boxMin; singleSphereBoxes[2].boxMin.y += sphereCenter.w;
+    //singleSphereBoxes[2].boxMax = singleSphereBoxes[0].boxMax; singleSphereBoxes[2].boxMax.y += sphereCenter.w;
+    //
+    //singleSphereBoxes[3].boxMin = singleSphereBoxes[0].boxMin; singleSphereBoxes[3].boxMin.x += sphereCenter.w; singleSphereBoxes[3].boxMin.y += sphereCenter.w;
+    //singleSphereBoxes[3].boxMax = singleSphereBoxes[0].boxMax; singleSphereBoxes[3].boxMax.x += sphereCenter.w; singleSphereBoxes[3].boxMax.y += sphereCenter.w;
   }
    
   SpherePrim* pSingleSphere = new SpherePrim(sphereCenter, 0);
@@ -399,7 +404,7 @@ CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFa
     {
       CRT_AABB currBox = allBoxes[boxId];
       uint32_t primid  = LiteMath::as_uint(currBox.boxMin.w); 
-      float2 tMinMax   = RayBoxIntersection2( to_float3(rayPosAndNear2), rayDirInv, to_float3(currBox.boxMin), to_float3(currBox.boxMax) )
+      float2 tMinMax   = RayBoxIntersection2( to_float3(rayPosAndNear2), rayDirInv, to_float3(currBox.boxMin), to_float3(currBox.boxMax) );
       if(tMinMax.x <= tMinMax.y && tMinMax.y >= rayPosAndNear2.w && tMinMax.x <= rayDirAndFar2.w)
       {  
         info.aabbId = boxId;

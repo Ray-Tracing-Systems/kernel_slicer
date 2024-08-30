@@ -475,32 +475,17 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   }
 
   data["RemapTables"] = std::vector<json>();
-  for(auto primName : a_classInfo.intersectionComplexPrimitives) 
+  for(const auto& vfh : a_classInfo.m_vhierarchy)
   {
-    std::string tagName       = "SOME_TAG";
-    std::string interfaceName = "SomeAbstractType";
-    std::string accStructName = "pSomeAccel";
-    for(const auto& vfh : a_classInfo.m_vhierarchy) {
-      if(!vfh.second.hasIntersection)
-        continue;
-      for(const auto& impl : vfh.second.implementations) {
-        if(impl.name == primName) {
-          interfaceName = vfh.second.interfaceName;
-          accStructName = vfh.second.accStructName;
-          auto pTag = vfh.second.tagByClassName.find(primName);
-          if(pTag != vfh.second.tagByClassName.end())
-            tagName = pTag->second;
-        }
-      }
-    }
+    if(!vfh.second.hasIntersection)
+      continue;
 
     json local;
-    local["Name"]  = primName;
-    local["BType"] = "RemapTable";
-    local["DType"] = "uint";
-    local["TagName"]       = tagName;
-    local["InterfaceName"] = interfaceName;
-    local["AccelName"]     = accStructName;
+    local["Name"]          = vfh.second.interfaceName;
+    local["BType"]         = "RemapTable";
+    local["DType"]         = "uvec2";
+    local["InterfaceName"] = vfh.second.interfaceName;
+    local["AccelName"]     = vfh.second.accStructName;
     data["RemapTables"].push_back(local);
   }
 

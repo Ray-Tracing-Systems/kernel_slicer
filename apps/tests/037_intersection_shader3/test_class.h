@@ -96,6 +96,13 @@ struct AbtractPrimitive                         // This is implementation deal, 
   float4   boxMax;
 };
 
+struct BLASInfo
+{
+  uint32_t startPrim;
+  uint32_t sizePrims;
+  uint32_t startAABB;
+  uint32_t sizeAABBs;
+};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -130,14 +137,6 @@ struct BFRayTrace : public ISceneObject
 
   CRT_Hit RayQuery_NearestHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override { return RayQuery_NearestHit(posAndNear, dirAndFar); }
   bool    RayQuery_AnyHitMotion(LiteMath::float4 posAndNear, LiteMath::float4 dirAndFar, float time) override { return RayQuery_AnyHit(posAndNear, dirAndFar); }
-
-  struct BLASInfo
-  {
-    uint32_t startPrim;
-    uint32_t sizePrims;
-    uint32_t startAABB;
-    uint32_t sizeAABBs;
-  };
 
   std::vector<float4>            trivets;
   std::vector<uint32_t>          indices;
