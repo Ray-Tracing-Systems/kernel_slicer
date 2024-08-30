@@ -151,9 +151,10 @@ struct AABBPrim : public AbtractPrimitive
 {
   AABBPrim(float4 a_boxMin, float4 a_boxMax, uint32_t a_primId) 
   { 
-    boxMin  = a_boxMin; 
-    boxMax  = a_boxMax; 
-    m_tag   = GetTag();
+    boxMin   = a_boxMin; 
+    boxMax   = a_boxMax; 
+    m_tag    = GetTag();
+    m_primId = a_primId;
   }
 
   uint32_t GetTag() const override { return TAG_BOXES; }      
@@ -169,7 +170,7 @@ struct AABBPrim : public AbtractPrimitive
     if(tMinMax.x <= tMinMax.y && tMinMax.y >= rayPosAndNear.w && tMinMax.x <= rayDirAndFar.w)
     {
       pHit->t      = tMinMax.x;
-      pHit->primId = info.primId; 
+      pHit->primId = m_primId; 
       pHit->geomId = info.geomId;
       pHit->instId = info.instId;   
       return TAG_BOXES; 
@@ -177,7 +178,8 @@ struct AABBPrim : public AbtractPrimitive
     else
       return TAG_EMPTY;
   }
-  uint   m_dummy[3];
+  uint   m_primId;
+  uint   m_dummy[2];
   float4 boxMin;
   float4 boxMax;
 };
