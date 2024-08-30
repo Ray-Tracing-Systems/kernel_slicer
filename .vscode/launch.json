@@ -2179,8 +2179,41 @@
                         "-composInterface",     "ISceneObject",
                         "-composImplementation","BFRayTrace",
                         "-intersectionShader",  "AbtractPrimitive::Intersect",
-                        "-intersectionComplex", "SpherePrim",
-                        //"-intersectionComplex", "AABBPrim", 
+                        "-enable_ray_tracing_pipeline", "1",
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",  
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I${workspaceFolder}/apps/RayTracing", "process",
+                        "-shaderCC", "glsl",
+                        "-megakernel", "1",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (test_038/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/038_intersection_shader4/test_class.cpp",
+                        "-mainClass",           "TestClass",
+                        "-composInterface",     "ISceneObject",
+                        "-composImplementation","BFRayTrace",
+                        "-intersectionShader",  "AbtractPrimitive::Intersect",
                         "-enable_ray_tracing_pipeline", "1",
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
