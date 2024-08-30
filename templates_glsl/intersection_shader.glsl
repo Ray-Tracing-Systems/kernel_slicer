@@ -104,17 +104,17 @@ hitAttributeEXT CRT_Hit attribs;
 
 void main()
 { 
-  vec4 rayPosAndNear  = vec4(gl_ObjectRayOriginEXT,    gl_RayTminEXT);
-  vec4 rayDirAndFar   = vec4(gl_ObjectRayDirectionEXT, gl_RayTmaxEXT);
+  vec4  rayPosAndNear = vec4(gl_ObjectRayOriginEXT,    gl_RayTminEXT);
+  vec4  rayDirAndFar  = vec4(gl_ObjectRayDirectionEXT, gl_RayTmaxEXT);
+  uvec2 remap         = all_references.{{Kernel.IntersectionHierarhcy.Name}}_remap.{{Kernel.IntersectionHierarhcy.Name}}_table[gl_InstanceCustomIndexEXT];
   CRT_LeafInfo info;
   info.aabbId = gl_PrimitiveID;  
+  info.primId = gl_PrimitiveID/remap.y;
   info.instId = gl_InstanceID; 
   info.geomId = gl_InstanceCustomIndexEXT; 
   info.rayxId = gl_LaunchIDEXT[0];
   info.rayyId = gl_LaunchIDEXT[1]; 
-  uvec2 remap = all_references.{{Kernel.IntersectionHierarhcy.Name}}_remap.{{Kernel.IntersectionHierarhcy.Name}}_table[gl_InstanceCustomIndexEXT];
-  uint  objId = remap.x + gl_PrimitiveID/remap.y;
-  uint intersected    = {{IntersectionShader.NameRewritten}}(objId, rayPosAndNear, rayDirAndFar, info, attribs);
+  uint intersected = {{IntersectionShader.NameRewritten}}(remap.x + info.primId, rayPosAndNear, rayDirAndFar, info, attribs);
   if(intersected != TAG_EMPTY)
     reportIntersectionEXT(attribs.t, 0);
 }
