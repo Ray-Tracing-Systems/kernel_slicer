@@ -8,9 +8,9 @@
 #include "Image2d.h"
 #include "ArgParser.h"
 
-//#include "vk_context.h"
-//std::shared_ptr<TestClass> CreateTestClass_Generated(int w, int h, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
-//#include "test_class_generated.h"
+#include "vk_context.h"
+std::shared_ptr<TestClass> CreateTestClass_Generated(int w, int h, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+#include "test_class_generated.h"
 
 int main(int argc, const char** argv)
 {
@@ -24,15 +24,15 @@ int main(int argc, const char** argv)
   bool onGPU = args.hasOption("--gpu");
 
   std::shared_ptr<TestClass> pImpl = nullptr;
-  //if(onGPU)
-  //{
-  //  unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-  //  std::vector<const char*> requiredExtensions;
-  //  auto deviceFeatures = TestClass_Generated::ListRequiredDeviceFeatures(requiredExtensions);
-  //  auto ctx = vk_utils::globalContextInit(requiredExtensions, enableValidationLayers, a_preferredDeviceId, &deviceFeatures);
-  //  pImpl = CreateTestClass_Generated(TestClass::WIN_WIDTH, TestClass::WIN_HEIGHT, ctx, TestClass::WIN_WIDTH*TestClass::WIN_HEIGHT);
-  //}
-  //else
+  if(onGPU)
+  {
+    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    std::vector<const char*> requiredExtensions;
+    auto deviceFeatures = TestClass_Generated::ListRequiredDeviceFeatures(requiredExtensions);
+    auto ctx = vk_utils::globalContextInit(requiredExtensions, enableValidationLayers, a_preferredDeviceId, &deviceFeatures);
+    pImpl = CreateTestClass_Generated(TestClass::WIN_WIDTH, TestClass::WIN_HEIGHT, ctx, TestClass::WIN_WIDTH*TestClass::WIN_HEIGHT);
+  }
+  else
     pImpl = std::make_shared<TestClass>(TestClass::WIN_WIDTH, TestClass::WIN_HEIGHT);
   
   std::vector<uint> pixelData(TestClass::WIN_WIDTH*TestClass::WIN_HEIGHT);  

@@ -112,7 +112,9 @@ void main()
   info.geomId = gl_InstanceCustomIndexEXT; 
   info.rayxId = gl_LaunchIDEXT[0];
   info.rayyId = gl_LaunchIDEXT[1]; 
-  uint intersected    = {{IntersectionShader.NameRewritten}}(gl_PrimitiveID, rayPosAndNear, rayDirAndFar, info, attribs);
+  uvec2 remap = all_references.{{Kernel.IntersectionHierarhcy.Name}}_remap.{{Kernel.IntersectionHierarhcy.Name}}_table[gl_InstanceCustomIndexEXT];
+  uint  objId = remap.x + gl_PrimitiveID/remap.y;
+  uint intersected    = {{IntersectionShader.NameRewritten}}(objId, rayPosAndNear, rayDirAndFar, info, attribs);
   if(intersected != TAG_EMPTY)
     reportIntersectionEXT(attribs.t, 0);
 }

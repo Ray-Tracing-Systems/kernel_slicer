@@ -1028,7 +1028,6 @@ namespace kslicer
     std::unordered_set<std::string>                    composClassNames; 
     std::unordered_set<std::string>                    dataClassNames; 
     std::vector< std::pair<std::string, std::string> > intersectionShaders;
-    std::unordered_set<std::string>                    intersectionComplexPrimitives; ///<! when single intersection class object represented as multiple bounding boxes
 
     std::filesystem::path mainClassFileName;
     std::string           mainClassFileInclude;
