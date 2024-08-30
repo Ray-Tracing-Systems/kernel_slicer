@@ -72,9 +72,9 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     needRTDummies              = needRTDummies || useRayTracingPipeline;
     if(useRayTracingPipeline) 
     {
-      std::ofstream file(a_codeInfo->mainClassFileName.parent_path() / "z_debug.json");
-      file << std::setw(2) << currKerneJson; //
-      file.close();
+      //std::ofstream file(a_codeInfo->mainClassFileName.parent_path() / "z_debug.json");
+      //file << std::setw(2) << currKerneJson; //
+      //file.close();
       
       std::unordered_set<std::string> intersectionShaders;
       for(auto impl : currKerneJson["Kernel"]["IntersectionHierarhcy"]["Implementations"]) 
@@ -87,9 +87,9 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
         if(intersectionShader.empty())
           continue;
         
-        std::ofstream file(a_codeInfo->mainClassFileName.parent_path() / "z_intersection_shader.json");
-        file << std::setw(2) << intersectionShader; //
-        file.close();
+        //std::ofstream file(a_codeInfo->mainClassFileName.parent_path() / "z_intersection_shader.json");
+        //file << std::setw(2) << intersectionShader; //
+        //file.close();
 
         nlohmann::json ISData = copy;
         ISData["Kernel"]             = currKerneJson["Kernel"];
