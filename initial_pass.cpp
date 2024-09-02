@@ -56,7 +56,7 @@ kslicer::KernelInfo::ArgInfo kslicer::ProcessParameter(const clang::ParmVarDecl 
         arg.kind = kslicer::DATA_KIND::KIND_VECTOR;
       else if(arg.containerType == "unordered_map" || arg.containerType == "std::unordered_map")
         arg.kind = kslicer::DATA_KIND::KIND_HASH_TABLE;
-      else if((arg.containerType == "shared_ptr" || arg.containerType == "std::shared_ptr") && arg.containerDataType == "ISceneObject")
+      else if((arg.containerType == "shared_ptr" || arg.containerType == "std::shared_ptr") && (arg.containerDataType == "ISceneObject" ||  arg.containerDataType == "ISceneObject2"))
         arg.kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
     }
   }

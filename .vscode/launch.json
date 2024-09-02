@@ -2434,8 +2434,10 @@
             "args"   : ["/home/frol/PROG/msu-graphics-group/LiteRT/Renderer/eye_ray.cpp",
                         "/home/frol/PROG/msu-graphics-group/LiteRT/BVH/BVH2Common.cpp",
                         "-mainClass", "MultiRenderer", 
-                        "-composInterface", "ISceneObject",
+                        "-composInterface", "ISceneObject2",
                         "-composImplementation", "BVHRT",
+                        "-intersectionShader",  "AbstractObject::Intersect",
+                        "-enable_ray_tracing_pipeline", "1",
                         
                         "-pattern",    "rtv",
                         "-suffix",     "_GPU",

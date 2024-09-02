@@ -749,6 +749,10 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
       info.kind    = pMember->kind;
       info.isConst = true;
       k.second.usedContainers[info.name] = info; 
+      if(info.name == "")
+      {
+        int a = 2;
+      }
     }
   }
   
@@ -838,7 +842,7 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
         info.name    = group.memberInfo.name;
         info.kind    = DATA_KIND::KIND_ACCEL_STRUCT;
         info.isConst = true;
-        k.second.usedContainers[info.name] = info;   
+        k.second.usedContainers[info.name] = info; 
       }
     }
   }

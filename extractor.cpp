@@ -216,7 +216,7 @@ public:
       const auto typeName = kslicer::CleanTypeName(qt.getAsString());
       const auto pPrefix  = m_patternImpl.composPrefix.find(typeName);
 
-      const bool isRTX    = ((typeName == "struct ISceneObject") || (typeName == "ISceneObject")) && (func.name.find("RayQuery_") != std::string::npos);
+      const bool isRTX    = kslicer::IsAccelStruct(typeName) && (func.name.find("RayQuery_") != std::string::npos);
 
       if(pPrefix != m_patternImpl.composPrefix.end())
       {
@@ -884,7 +884,7 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
     auto dataType     = qt->getPointeeType();
     containerDataType = kslicer::CleanTypeName(dataType.getAsString());
 
-    if(containerDataType == "ISceneObject")
+    if(kslicer::IsAccelStruct(containerDataType))
       kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
     else if(kslicer::IsCombinedImageSamplerTypeName(containerDataType))
       kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED;
@@ -902,7 +902,7 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
     }
     else if(containerType == "shared_ptr" || containerType == "unique_ptr")
     {
-      if(containerDataType == "ISceneObject")
+      if(kslicer::IsAccelStruct(containerDataType))
         kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
       else if(kslicer::IsCombinedImageSamplerTypeName(containerDataType))
         kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED;

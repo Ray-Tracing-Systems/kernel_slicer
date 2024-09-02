@@ -1264,7 +1264,6 @@ namespace kslicer
 
 
   bool IsTexture(clang::QualType a_qt);
-  bool IsAccelStruct(clang::QualType a_qt);
   bool IsAccelStruct(const std::string& a_typeName);
   bool IsVectorContainer(const std::string& a_typeName);
   bool IsPointerContainer(const std::string& a_typeName);
