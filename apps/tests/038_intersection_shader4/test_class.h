@@ -262,6 +262,8 @@ struct EmptyPrim : public AbtractPrimitive
 
   uint32_t GetTag() const override { return TAG_EMPTY; }    
   uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_LeafInfo info, CRT_Hit* pHit, BFRayTrace* pData) const override { return TAG_EMPTY; }  
+
+  uint dummy;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

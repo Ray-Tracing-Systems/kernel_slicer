@@ -549,15 +549,15 @@ bool kslicer::IsTexture(clang::QualType a_qt)
   return (typeName.find("Texture") != std::string::npos || typeName.find("Image") != std::string::npos);
 }
 
-bool kslicer::IsAccelStruct(clang::QualType a_qt)
-{
-  return IsAccelStruct(a_qt.getAsString());
-}
-
 bool kslicer::IsAccelStruct(const std::string& a_typeName)
 {
-  return (a_typeName == "std::shared_ptr<ISceneObject>") || (a_typeName == "std::unique_ptr<ISceneObject>") ||
-         (a_typeName == "const std::shared_ptr<ISceneObject>") || (a_typeName == "const std::unique_ptr<ISceneObject>");
+  if( (a_typeName == "struct ISceneObject")  || (a_typeName == "ISceneObject") || 
+      (a_typeName == "struct ISceneObject2") || (a_typeName == "ISceneObject2") )
+    return true;
+  else if(a_typeName.find("ISceneObject_") != std::string::npos)  
+    return true;
+  else
+    return false;
 }
 
 bool kslicer::IsVectorContainer(const std::string& a_typeName)
