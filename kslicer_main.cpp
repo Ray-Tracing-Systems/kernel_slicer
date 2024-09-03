@@ -90,6 +90,7 @@ int main(int argc, const char **argv)
 
   std::string composeAPIName  = "";
   std::string composeImplName = "";
+  nlohmann::json inputOptions;
 
   uint32_t    threadsOrder[3] = {0,1,2};
   uint32_t    warpSize        = 32;
@@ -103,6 +104,13 @@ int main(int argc, const char **argv)
   bool        genGPUAPI          = false;
 
   kslicer::ShaderFeatures forcedFeatures;
+
+  if(params.find("-options") != params.end())
+  {
+    std::string optionsPath = params["-options"];
+    std::ifstream ifs(optionsPath);
+    inputOptions = nlohmann::json::parse(ifs);
+  }
 
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
@@ -1012,6 +1020,35 @@ int main(int argc, const char **argv)
       inputCodeInfo.mainFunc[i].CodeGenerated = copy2[i].CodeGenerated;
   }
   /////////////////////////////////////////////////////////////////////////////
+
+  
+  // apply user exclude lists for kernels
+  //
+  auto kernelOptions = inputOptions["kernels"];
+  for(auto& k : inputCodeInfo.kernels) 
+  {
+    auto p = kernelOptions.find(k.second.name);
+    if(p != kernelOptions.end())
+    {
+      for(auto excludeFunc : (*p)["ExcludeFunctions"].items()) {
+        std::string name = excludeFunc.value();
+        for(auto p = k.second.usedMemberFunctions.begin(); p!=  k.second.usedMemberFunctions.end(); ++p) {
+          if(p->second.name == name) {
+            k.second.usedMemberFunctions.erase(p);
+            break;
+          }
+        }
+      }
+
+      for(auto excludeData : (*p)["ExcludeData"].items()) {
+        std::string name = excludeData.value();
+        auto p = k.second.usedContainers.find(name);
+        if(p != k.second.usedContainers.end())
+          k.second.usedContainers.erase(p);
+      }
+    }
+  }
+  
 
   inputCodeInfo.kernelsCallCmdDeclCached.clear();
   std::string rawname = kslicer::CutOffFileExt(allFiles[0]);

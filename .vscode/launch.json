@@ -2434,6 +2434,7 @@
             "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["/home/frol/PROG/msu-graphics-group/LiteRT/Renderer/eye_ray.cpp",
                         "/home/frol/PROG/msu-graphics-group/LiteRT/BVH/BVH2Common.cpp",
+                        "-options", "/home/frol/PROG/msu-graphics-group/LiteRT/options.json",
                         "-mainClass", "MultiRenderer", 
                         "-composInterface", "ISceneObject2",
                         "-composImplementation", "BVHRT",
