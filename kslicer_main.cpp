@@ -269,6 +269,9 @@ int main(int argc, const char **argv)
   
   // analize multiple definitions of args which can not be processed via hash-table params
   //
+
+  std::vector<std::string> baseClases;
+
   for(int argId = 1; argId < argc; argId++ )
   {
     if(std::string(argv[argId]) == "-intersectionShader" && argId+1 < argc) {
@@ -277,6 +280,9 @@ int main(int argc, const char **argv)
       std::string className = shaderClassAndFunc.substr(0, splitPos);
       std::string funcName  = shaderClassAndFunc.substr(splitPos + 2);
       inputCodeInfo.intersectionShaders.push_back( std::make_pair(className, funcName) );
+    }
+    else if (std::string(argv[argId]) == "-baseClass" && argId+1 < argc) {
+      baseClases.push_back(argv[argId+1]);
     }
   }
 
@@ -392,10 +398,10 @@ int main(int argc, const char **argv)
   
   // Parse code, initial pass
   //
-  std::cout << "(1) Processing class " << mainClassName.c_str() << " with initial pass" << std::endl;
+  std::cout << "(1) Processing class '" << mainClassName.c_str() << "' with initial pass" << std::endl;
   std::cout << "{" << std::endl;
 
-  std::vector<std::string> baseClases = kslicer::GetBaseClassesNames(inputCodeInfo.mainClassASTNode);
+  //std::vector<std::string> baseClases = kslicer::GetBaseClassesNames(inputCodeInfo.mainClassASTNode);
   std::vector<std::string> composClassNames;
   {
     if(composeAPIName != "")

@@ -12,6 +12,8 @@
 
 namespace kslicer
 {
+  std::string ClearTypeName(const std::string& a_typeName);
+
   struct ClassInfo
   {
     ClassInfo(){}
@@ -26,6 +28,36 @@ namespace kslicer
     std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFunctions;
     std::vector<const clang::CXXConstructorDecl* >               ctors;
   };
+
+  //// RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.
+  ////
+  //class ZeroPassRecursiveASTVisitor : public clang::RecursiveASTVisitor<ZeroPassRecursiveASTVisitor>
+  //{
+  //public:
+  //
+  //  std::string MAIN_CLASS_NAME;
+  //
+  //  ZeroPassRecursiveASTVisitor(std::string main_class, clang::CompilerInstance& a_compiler, MainClassInfo& a_codeInfo, std::unordered_map<std::string, ClassInfo>& a_composeClassInfo) :
+  //                              MAIN_CLASS_NAME(main_class), m_compiler(a_compiler), m_astContext(a_compiler.getASTContext()), m_sourceManager(a_compiler.getSourceManager()), 
+  //                              m_codeInfo(a_codeInfo), m_composedClassInfo(a_composeClassInfo) {}
+  //
+  //  bool VisitCXXRecordDecl(clang::CXXRecordDecl* record);
+  //
+  //private:
+  // 
+  //  void ExtractAllBaseClasses(const clang::CXXRecordDecl* parentClass);
+  //
+  //  clang::CompilerInstance& m_compiler;
+  //  const clang::ASTContext& m_astContext;
+  //  clang::SourceManager&    m_sourceManager;
+  //  MainClassInfo&           m_codeInfo;
+  //
+  //  std::unordered_map<std::string, ClassInfo>&  m_composedClassInfo;
+  //};
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
   std::string PerformClassComposition(ClassInfo& mainClassInfo, const ClassInfo& apiClassInfo, const ClassInfo& implClassInfo);
   void        PerformInheritanceMerge(kslicer::ClassInfo& mainClassInfo, const kslicer::ClassInfo& implClassInfo);
@@ -95,9 +127,13 @@ namespace kslicer
                             std::string main_class,
                             std::vector<std::string> compos_classes,
                             CompilerInstance& a_compiler, MainClassInfo& a_codeInfo) :
-                            rv(a_mainFunctionNames, main_class, compos_classes, a_compiler, a_codeInfo) { }
+                            rv(a_mainFunctionNames, main_class, compos_classes, a_compiler, a_codeInfo)
+                            //rv0(main_class, a_compiler, a_codeInfo, rv.m_composedClassInfo) 
+                            { }
     bool HandleTopLevelDecl(DeclGroupRef d) override;
+    
     InitialPassRecursiveASTVisitor rv;
+    //ZeroPassRecursiveASTVisitor    rv0;
   };
 
   std::string ClearTypeName(const std::string& a_typeName);
