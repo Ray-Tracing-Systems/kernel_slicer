@@ -2509,8 +2509,8 @@
                         "-mainClass", "MultiRenderer", 
                         "-composInterface", "ISceneObject2",
                         "-composImplementation", "BVHRT",
-                        //"-intersectionShader",  "AbstractObject::Intersect",
-                        //"-enable_ray_tracing_pipeline", "1",
+                        "-intersectionShader",  "AbstractObject::Intersect",
+                        "-enable_ray_tracing_pipeline", "1",
                         
                         "-pattern",    "rtv",
                         "-suffix",     "_GPU",
