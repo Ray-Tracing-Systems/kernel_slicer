@@ -2077,6 +2077,7 @@
             "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/tests/034_inheritance_v1/test_class.cpp",
                         "-mainClass", "Derived", 
+                        "-baseClass", "Base",
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv", 
                         "-I${workspaceFolder}/apps/LiteMath",    "ignore", 

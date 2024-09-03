@@ -101,6 +101,43 @@ void kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDe
 }
 
 
+//void kslicer::ZeroPassRecursiveASTVisitor::ExtractAllBaseClasses(const clang::CXXRecordDecl* parentClass)
+//{
+//  // Итерируем по базовым классам
+//  for (const auto &base : parentClass->bases()) 
+//  {
+//    const clang::CXXRecordDecl* baseClass = base.getType()->getAsCXXRecordDecl();
+//    if (baseClass) 
+//    {
+//      ClassInfo baseClassInfo;
+//      baseClassInfo.astNode = baseClass;
+//      baseClassInfo.name    = baseClass->getNameAsString();
+//      if(m_composedClassInfo.find(baseClassInfo.name) == m_composedClassInfo.end())
+//        m_composedClassInfo.insert(std::make_pair(baseClassInfo.name, baseClassInfo));
+//    }
+//  }
+//}
+//
+//bool kslicer::ZeroPassRecursiveASTVisitor::VisitCXXRecordDecl(clang::CXXRecordDecl* record)
+//{
+//  if(!record->hasDefinition())
+//    return true;
+//
+//  const auto pType = record->getTypeForDecl();
+//  if(pType == nullptr)
+//    return true;
+//
+//  const auto qt       = pType->getLocallyUnqualifiedSingleStepDesugaredType();
+//  const auto typeName = ClearTypeName(qt.getAsString());
+//  if(typeName == MAIN_CLASS_NAME) 
+//  {
+//    m_codeInfo.mainClassASTNode = record;
+//    ExtractAllBaseClasses(record);
+//  }
+//
+//  return false;
+//}
+
 bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* record)
 {
   if(!record->hasDefinition())
@@ -543,8 +580,10 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
 bool kslicer::InitialPassASTConsumer::HandleTopLevelDecl(DeclGroupRef d)
 {
   typedef DeclGroupRef::iterator iter;
-  for (iter b = d.begin(), e = d.end(); b != e; ++b)
+  for (iter b = d.begin(), e = d.end(); b != e; ++b) {
+    //rv0.TraverseDecl(*b);
     rv.TraverseDecl(*b);
+  }
   return true; // keep going
 }
 
