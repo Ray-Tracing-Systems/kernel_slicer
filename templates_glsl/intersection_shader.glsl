@@ -115,6 +115,6 @@ void main()
   info.rayxId = gl_LaunchIDEXT[0];
   info.rayyId = gl_LaunchIDEXT[1]; 
   uint intersected = {{IntersectionShader.NameRewritten}}(remap.x + info.primId, rayPosAndNear, rayDirAndFar, info, attribs);
-  if(intersected != 0) // empty tag MUST BE zero
+  if(intersected != {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}}) 
     reportIntersectionEXT(attribs.t, 0);
 }
