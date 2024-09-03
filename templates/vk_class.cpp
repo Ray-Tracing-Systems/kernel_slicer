@@ -99,7 +99,8 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<v
   {
     auto pProxyObj = dynamic_cast<RTX_Proxy*>({{Table.AccelName}}.get());
     auto tablePtrs = pProxyObj->GetAABBToPrimTable();
-    a_pCopyEngine->UpdateBuffer(m_vdata.{{Table.Name}}RemapTableBuffer, 0, tablePtrs.table, tablePtrs.tableSize*sizeof(LiteMath::uint2));
+    if(tablePtrs.tableSize != 0)
+      a_pCopyEngine->UpdateBuffer(m_vdata.{{Table.Name}}RemapTableBuffer, 0, tablePtrs.table, tablePtrs.tableSize*sizeof(LiteMath::uint2));
   }
   {% endfor %}
   {% for Var in ClassVectorVars %}

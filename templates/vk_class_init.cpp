@@ -843,8 +843,13 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   {
     auto pProxyObj = dynamic_cast<RTX_Proxy*>({{Table.AccelName}}.get());
     auto tablePtrs = pProxyObj->GetAABBToPrimTable();
-    m_vdata.{{Table.Name}}RemapTableBuffer = vk_utils::createBuffer(device, tablePtrs.tableSize*sizeof(LiteMath::uint2), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-    memberVectorsWithDevAddr.push_back(m_vdata.{{Table.Name}}RemapTableBuffer);
+    if(tablePtrs.tableSize != 0)
+    {
+      m_vdata.{{Table.Name}}RemapTableBuffer = vk_utils::createBuffer(device, tablePtrs.tableSize*sizeof(LiteMath::uint2), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+      memberVectorsWithDevAddr.push_back(m_vdata.{{Table.Name}}RemapTableBuffer);
+    }
+    else
+      m_vdata.{{Table.Name}}RemapTableBuffer = VK_NULL_HANDLE;
   }
   {% endfor %}
   
@@ -904,7 +909,10 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
     {% endif %}
     {% endfor %}
     {% for Table in RemapTables %}
-    all_references[0].{{Table.Name}}RemapAddr = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Table.Name}}RemapTableBuffer);
+    if(m_vdata.{{Table.Name}}RemapTableBuffer != VK_NULL_HANDLE)
+      all_references[0].{{Table.Name}}RemapAddr = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Table.Name}}RemapTableBuffer);
+    else
+      all_references[0].{{Table.Name}}RemapAddr = VkDeviceAddress(0);
     {% endfor %}
   }
   {% endif %}
