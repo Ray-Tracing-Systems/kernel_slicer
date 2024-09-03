@@ -11,6 +11,9 @@
 
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
+{% if UseRayGen %}
+#include "VulkanRTX.h"
+{% endif%}
 
 static uint32_t ComputeReductionSteps(uint32_t whole_size, uint32_t wg_size)
 {

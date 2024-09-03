@@ -22,6 +22,9 @@ ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, 
                               uint32_t a_maxMeshes, uint32_t a_maxTotalVertices, uint32_t a_maxTotalPrimitives, uint32_t a_maxPrimitivesPerMesh,
                               bool build_as_add);
 {% endif %}
+{% if UseRayGen %}
+#include "VulkanRTX.h"
+{% endif%}
 
 {% for ctorDecl in Constructors %}
 {% if ctorDecl.NumParams == 0 %}
