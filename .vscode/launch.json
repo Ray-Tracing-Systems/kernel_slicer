@@ -2508,7 +2508,7 @@
                         "/home/frol/PROG/msu-graphics-group/LiteRT/BVH/BVH2Common.cpp",
                         "-options", "/home/frol/PROG/msu-graphics-group/LiteRT/options.json",
                         "-mainClass", "MultiRenderer", 
-                        "-composInterface", "ISceneObject2",
+                        "-composInterface", "ISceneObject",
                         "-composImplementation", "BVHRT",
                         "-intersectionShader",  "AbstractObject::Intersect",
                         "-enable_ray_tracing_pipeline", "1",
