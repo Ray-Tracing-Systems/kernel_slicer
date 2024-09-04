@@ -20,7 +20,7 @@
 #include "CrossRT.h"
 ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_graphicsQId, std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper,
                               uint32_t a_maxMeshes, uint32_t a_maxTotalVertices, uint32_t a_maxTotalPrimitives, uint32_t a_maxPrimitivesPerMesh,
-                              bool build_as_add);
+                              bool build_as_add, bool has_aabb);
 {% endif %}
 {% if UseRayGen %}
 #include "VulkanRTX.h"
@@ -74,7 +74,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   auto {{ScnObj.Name}}Old = {{ScnObj.Name}}; // save user implementation
   {% endif %}
   {{ScnObj.Name}} = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, m_ctx.pCopyHelper,
-                                                             maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true),
+                                                             maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true, {{ScnObj.HasIntersectionShader}}),
                                                              [](ISceneObject *p) { DeleteSceneRT(p); } );
   {% if ScnObj.HasIntersectionShader %}
   {{ScnObj.Name}} = std::make_shared<RTX_Proxy>({{ScnObj.Name}}Old, {{ScnObj.Name}}); // wrap both user and RTX implementation with proxy object 
