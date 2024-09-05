@@ -2016,6 +2016,14 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   (*ppNext) = &bufferDeviceAddressFeatures; ppNext = &bufferDeviceAddressFeatures.pNext;
   deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
   {% endif %} {# /***** buffer device address ********/ #}
+  {% if HasTextureArray %}
+  static VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{};
+  indexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+  indexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+  indexingFeatures.runtimeDescriptorArray                    = VK_TRUE;
+  (*ppNext) = &indexingFeatures; ppNext = &indexingFeatures.pNext;
+  deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+  {% endif %}
   return features2;
 }
 
