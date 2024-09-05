@@ -463,6 +463,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["Hierarchies"]        = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
   data["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(data["Hierarchies"]);
   data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0);
+
+  bool hasTextureArray = false;
+
   if(a_classInfo.m_allRefsFromVFH.size() != 0)
   {
     data["AllReferences"] = std::vector<json>();
@@ -583,8 +586,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     const auto var = a_classInfo.dataMembers[memberId];
     if(var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED || var.IsUsedTexture())
       data["TextureMembers"].push_back(var.name);
-    else if(var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
+    else if(var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY) {
       data["TexArrayMembers"].push_back(var.name);
+      hasTextureArray = true;
+    }
     else if(var.isContainer && kslicer::IsVectorContainer(var.containerType))
     {
       std::string cleanName = var.name;
@@ -740,6 +745,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["HasPrefix"]   = v.hasPrefix;
       local["PrefixName"]  = v.prefixName;
       data["ClassTexArrayVars"].push_back(local);
+      hasTextureArray = true;
     }
     else if(v.IsUsedTexture())
     {
@@ -944,6 +950,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         argData["Count"] = arg.name + ".size()";
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
         argData["IsTextureArray"] = true;
+        hasTextureArray = true;
       }
       else if(arg.IsTexture())
       {
@@ -984,6 +991,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
         argData["Count"] = container.second.name + ".size()";
         argData["IsTextureArray"] = true;
+        hasTextureArray = true;
       }
       else if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
       {
@@ -1375,6 +1383,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         arg["IsTexture"]     = dsArgs.descriptorSetsInfo[j].isTexture();
         arg["IsAccelStruct"] = dsArgs.descriptorSetsInfo[j].isAccelStruct();
         arg["IsTextureArray"]= (dsArgs.descriptorSetsInfo[j].kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY);
+        if(arg["IsTextureArray"])
+          hasTextureArray = true;
 
         if(dsArgs.descriptorSetsInfo[j].kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
         {
@@ -1394,6 +1404,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           arg["AccessDSType"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
           arg["SamplerName"]   = std::string("m_vdata.") + dsArgs.descriptorSetsInfo[j].name + "ArraySampler";
           totalTexArrayUsed++;
+          hasTextureArray = true;
         }
         else if(dsArgs.descriptorSetsInfo[j].isTexture())
         {
@@ -1455,6 +1466,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
             arg["AccessDSType"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
             arg["SamplerName"]   = std::string("m_vdata.") + container.second.name + "ArraySampler";
             totalTexArrayUsed++;
+            hasTextureArray = true;
           }
           else if(container.second.isTexture())
           {
@@ -1527,6 +1539,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["TotalTexStorageUsed"]  = totalTexStorageUsed;
   data["TotalTexArrayUsed"]    = totalTexArrayUsed;
   data["TotalAccels"]          = totalAccels;
+  data["HasTextureArray"]      = hasTextureArray;
 
   data["HasFullImpl"] = atLeastOneFullOverride;
   if(atLeastOneFullOverride && a_classInfo.ctors.size() == 0)
