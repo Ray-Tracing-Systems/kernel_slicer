@@ -4,20 +4,6 @@
 #extension GL_EXT_buffer_reference     : require
 #extension GL_EXT_ray_tracing          : require
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-layout( push_constant ) uniform kernelArgs
-{
-  {% for UserArg in Kernel.UserArgs %} 
-  {{UserArg.Type}} {{UserArg.Name}};
-  {% endfor %}
-  {{Kernel.threadSZType1}} {{Kernel.threadSZName1}}; 
-  {{Kernel.threadSZType2}} {{Kernel.threadSZName2}}; 
-  {{Kernel.threadSZType3}} {{Kernel.threadSZName3}}; 
-  uint tFlagsMask;    
-} kgenArgs;
-
 struct CRT_Hit 
 {
   float    t;         ///< intersection distance from ray origin to object
@@ -33,16 +19,5 @@ hitAttributeEXT CRT_Hit attribs;
 void main()
 {
   kgen_hitValue = attribs;
-  //kgen_hitValue.primId = gl_PrimitiveID;
-  kgen_hitValue.geomId = gl_InstanceCustomIndexEXT; 
-  kgen_hitValue.instId = gl_InstanceID;
-  kgen_hitValue.t      = gl_HitTEXT;
-  
-  // for triangles
-  //
-  //kgen_hitValue.coords[0] = attribs.y; 
-  //kgen_hitValue.coords[1] = attribs.x;
-  //kgen_hitValue.coords[2] = 1.0f - attribs.x - attribs.y;
-  //kgen_hitValue.coords[3] = 0.0f;
 }
 
