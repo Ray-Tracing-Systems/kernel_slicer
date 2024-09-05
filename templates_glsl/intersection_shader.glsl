@@ -114,6 +114,10 @@ void main()
   info.geomId = gl_InstanceCustomIndexEXT; 
   info.rayxId = gl_LaunchIDEXT[0];
   info.rayyId = gl_LaunchIDEXT[1]; 
+  attribs.t   = 1e6f;  
+  attribs.primId = 0xFFFFFFFF; 
+  attribs.instId = 0xFFFFFFFF;
+  attribs.geomId = 0xFFFFFFFF;     
   uint intersected = {{IntersectionShader.NameRewritten}}(remap.x + info.primId, rayPosAndNear, rayDirAndFar, info, attribs);
   if(intersected != {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}}) 
     reportIntersectionEXT(attribs.t, 0);
