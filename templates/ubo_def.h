@@ -1,5 +1,5 @@
-#ifndef {{MainClassName}}_UBO_H
-#define {{MainClassName}}_UBO_H
+#ifndef {{MainClassName}}_gpu_UBO_H
+#define {{MainClassName}}_gpu_UBO_H
 
 {% if ShaderGLSL %}
 #ifndef GLSL
