@@ -2438,12 +2438,12 @@
                         "-mainClass", "MultiRenderer", 
                         "-composInterface", "ISceneObject",
                         "-composImplementation", "BVHRT",
-                        //"-intersectionShader",  "AbstractObject::Intersect",
-                        //"-enable_ray_tracing_pipeline", "1",
-                        //"-options", "/home/frol/PROG/msu-graphics-group/LiteRT/options.json",
+                        "-intersectionShader",  "AbstractObject::Intersect",
+                        "-enable_ray_tracing_pipeline", "1",
+                        "-options", "/home/frol/PROG/msu-graphics-group/LiteRT/options.json",
                         
                         "-pattern",    "rtv",
-                        "-suffix",     "_GPU",
+                        "-suffix",     "_RTX",
                         "-megakernel", "1",
                         "-shaderCC",   "glsl",
                         
