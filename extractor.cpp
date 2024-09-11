@@ -11,6 +11,110 @@
 #include <stack>
 #include <algorithm>
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+static clang::MemberExpr* ExtractVCallDataMemberExpr(clang::Expr *expr, const std::string& a_targetName) 
+{
+  // Рекурсивно ищем выражение-член, соответствующее a_targetName
+  if (clang::MemberExpr *memberExpr = clang::dyn_cast<clang::MemberExpr>(expr)) 
+    if (memberExpr->getMemberDecl()->getNameAsString() == a_targetName)
+      return memberExpr;
+
+  for (clang::Stmt *child : expr->children()) 
+  {
+    if (child) 
+      if (clang::MemberExpr *result = ExtractVCallDataMemberExpr(clang::dyn_cast<clang::Expr>(child), a_targetName)) 
+        return result;
+  }
+
+  return nullptr;
+}
+
+struct CallClassificationResult 
+{
+  kslicer::MainClassInfo::VFH_LEVEL level;
+  const clang::MemberExpr*          materialsMemberExpr;
+  std::string                       vectorType;
+  std::string                       vectorName;
+  std::string                       containerType;
+  std::string                       containerDataType;
+};
+
+static CallClassificationResult ClassifVirtualCall(const clang::CallExpr* call) 
+{
+    CallClassificationResult result = {};
+
+    // Получаем вызываемое выражение (callee) и пропускаем все ImplicitCastExpr
+    const clang::Expr* callee = kslicer::RemoveImplicitCast(call->getCallee());
+
+    const auto* memberExpr = clang::dyn_cast<clang::MemberExpr>(callee);
+    if(memberExpr == nullptr)
+      return result;
+
+    // Проверка на первый тип/уровень вызова, соотвествующий VFH_LEVEL_1: "(m_materials.data() + matId)->GetColor()"
+    //
+    if (memberExpr) 
+    {
+      const clang::Expr* baseExpr = kslicer::RemoveImplicitCast(memberExpr->getBase());
+      const auto* parenExpr = clang::dyn_cast<clang::ParenExpr>(baseExpr);
+      if (parenExpr) {
+          const auto* binOp = clang::dyn_cast<clang::BinaryOperator>(kslicer::RemoveImplicitCast(parenExpr->getSubExpr()));
+          if (binOp && binOp->getOpcode() == clang::BO_Add) {
+              const auto* lhs = clang::dyn_cast<clang::CXXMemberCallExpr>(kslicer::RemoveImplicitCast(binOp->getLHS()));
+              if (lhs) {
+                  const auto* dataMemberExpr = clang::dyn_cast<clang::MemberExpr>(kslicer::RemoveImplicitCast(lhs->getCallee()));
+                  if (dataMemberExpr) {
+                      result.level = kslicer::MainClassInfo::VFH_LEVEL_1;
+                      result.materialsMemberExpr = clang::dyn_cast<clang::MemberExpr>(kslicer::RemoveImplicitCast(dataMemberExpr->getBase()));
+                      // Получение типа данных, хранящегося в векторе
+                      if (result.materialsMemberExpr) {
+                        result.vectorType   = result.materialsMemberExpr->getType().getAsString();
+                        result.vectorName   = result.materialsMemberExpr->getMemberNameInfo().getAsString();
+                        const auto qt       = result.materialsMemberExpr->getType();
+                        const auto typeDecl = qt->getAsRecordDecl();
+                        auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
+                        if(specDecl != nullptr)
+                          kslicer::SplitContainerTypes(specDecl, result.containerType, result.containerDataType);
+                          ReplaceFirst(result.containerDataType, "struct ", "");
+                      }
+                      return result;
+                  }
+              }
+          }
+      }
+    }
+
+    // Проверка на второй тип/уровень вызова, соотвествующий VFH_LEVEL_2: "m_materials[matId]->GetColor()"
+    //
+    const clang::Expr* baseExpr = kslicer::RemoveImplicitCast(memberExpr->getBase());
+    const auto* operatorCallExpr = clang::dyn_cast<clang::CXXOperatorCallExpr>(kslicer::RemoveImplicitCast(baseExpr));
+    if (operatorCallExpr && operatorCallExpr->getOperator() == clang::OO_Subscript) {
+        const auto* memberExpr2 = clang::dyn_cast<clang::MemberExpr>(kslicer::RemoveImplicitCast(operatorCallExpr->getArg(0)));
+        if (memberExpr2) {
+            result.level = kslicer::MainClassInfo::VFH_LEVEL_2;
+            result.materialsMemberExpr = memberExpr2;
+            // Получение типа данных, хранящегося в векторе
+            if (result.materialsMemberExpr) {
+              result.vectorType   = result.materialsMemberExpr->getType().getAsString();
+              result.vectorName   = result.materialsMemberExpr->getMemberNameInfo().getAsString();
+              const auto qt       = result.materialsMemberExpr->getType();
+              const auto typeDecl = qt->getAsRecordDecl();
+              auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
+              if(specDecl != nullptr)
+                kslicer::SplitContainerTypes(specDecl, result.containerType, result.containerDataType);
+                ReplaceFirst(result.containerDataType, "struct ", "");
+            }
+            return result;
+        }
+    }
+
+    return result; // Возвращаем пустой результат, если тип вызова не был определен
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class FuncExtractor : public clang::RecursiveASTVisitor<FuncExtractor>
 {
 public:
@@ -25,12 +129,14 @@ public:
   bool VisitCallExpr(clang::CallExpr* call)
   {
     std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler);
+    //std::cout << "  [debug]: debugText = '" << debugText.c_str() << "'" << std::endl;
+
     const clang::FunctionDecl* f = call->getDirectCallee();
     if(f == nullptr)
       return true;
 
-    //std::string debugName = f->getNameAsString();
-    //if(debugName == "SampleAndEvalBxDF")
+    std::string debugName = f->getNameAsString();
+    //if(debugName == "need_normal")
     //{
     //  std::cout << "[debug]: find call of " << debugName.c_str() << std::endl;
     //}
@@ -81,14 +187,26 @@ public:
     func.isVirtual = f->isVirtualAsWritten();
     func.depthUse  = 0;
 
-    //pCurrProcessedFunc->calledMembers.insert(func.name);
+    const clang::QualType returnType = f->getReturnType();
+    func.retTypeName = returnType.getAsString();
+    func.retTypeDecl = nullptr;
+    if (const clang::RecordType *recordType = returnType->getAs<clang::RecordType>()) {
+      if (const clang::CXXRecordDecl *recordDecl = clang::dyn_cast<clang::CXXRecordDecl>(recordType->getDecl())) {
+        func.retTypeDecl = recordDecl;
+        // Печатаем имя класса или структуры
+        //std::cout << "Function " << f->getNameAsString() << " returns a class or struct: " << recordDecl->getNameAsString() << std::endl;
+      }
+    }
 
-    if(func.isKernel)
+    //pCurrProcessedFunc->calledMembers.insert(func.name);
+  
+    if(func.isKernel && pCurrProcessedFunc != nullptr && pCurrProcessedFunc->isKernel)
     {
-      assert(pCurrProcessedFunc != nullptr);
       kslicer::PrintError(std::string("Calling kernel + '" + func.name + "' from a kernel is not allowed currently, ") + pCurrProcessedFunc->name, func.srcRange, m_sm);
       return true;
     }
+    else if(func.isKernel)
+      return true;
 
     if(func.isMember && clang::isa<clang::CXXMemberCallExpr>(call)) // currently we support export for members of current class only
     {
@@ -98,7 +216,7 @@ public:
       const auto typeName = kslicer::CleanTypeName(qt.getAsString());
       const auto pPrefix  = m_patternImpl.composPrefix.find(typeName);
 
-      const bool isRTX    = ((typeName == "struct ISceneObject") || (typeName == "ISceneObject")) && (func.name.find("RayQuery_") != std::string::npos);
+      const bool isRTX    = kslicer::IsAccelStruct(typeName) && (func.name.find("RayQuery_") != std::string::npos);
 
       if(pPrefix != m_patternImpl.composPrefix.end())
       {
@@ -108,25 +226,46 @@ public:
           func.prefixName  = pPrefix->second;
         }
       }
-      else if(func.isVirtual)
+      else if(func.isVirtual && typeName != m_patternImpl.mainClassName)
       {
         if(isRTX)
-          return true;                             // do not process HW accelerated calls
-        auto posBegin = debugText.find("(");       // todo: make it better
-        auto posEnd   = debugText.find(".data()"); //
-        std::string buffName = debugText.substr(posBegin+1, posEnd-posBegin-1);
+          return true;  // do not process HW accelerated 'RayQuery_' calls
+        
+        auto classiedCallData = ClassifVirtualCall(call);
+        std::string buffName  = classiedCallData.vectorName;        
+
+        const clang::MemberExpr* buffMemberExpr = ExtractVCallDataMemberExpr(call, buffName);  // wherther this is in compose class
+        if (buffMemberExpr != nullptr) 
+        {
+          const clang::ValueDecl* valueDecl = buffMemberExpr->getMemberDecl();
+          if(valueDecl != nullptr) 
+          {
+            // Проверяем, что это поле класса
+            if (const clang::FieldDecl* fieldDecl = clang::dyn_cast<const clang::FieldDecl>(valueDecl)) 
+            {
+              // Получаем родительский класс
+              if (const clang::CXXRecordDecl* parentClass = clang::dyn_cast<const clang::CXXRecordDecl>(fieldDecl->getParent()))
+              {
+                const std::string holderName = parentClass->getNameAsString();
+                auto holderPrefix = m_patternImpl.composPrefix.find(holderName);
+                if(holderPrefix != m_patternImpl.composPrefix.end())
+                  buffName = holderPrefix->second + "_" + buffName;
+              }
+            }
+          }
+        }
 
         func.thisTypeName = typeName;
-        auto& vfh = m_patternImpl.GetDispatchingHierarchies();
-        auto p = vfh.find(typeName);
-        if(p == vfh.end())
+        auto p = m_patternImpl.m_vhierarchy.find(typeName);
+        if(p == m_patternImpl.m_vhierarchy.end())
         {
-          kslicer::MainClassInfo::DHierarchy hierarchy;
+          kslicer::MainClassInfo::VFHHierarchy hierarchy;
           hierarchy.interfaceDecl  = recordDecl;
           hierarchy.interfaceName  = typeName;
           hierarchy.objBufferName  = buffName;
+          hierarchy.level          = classiedCallData.level;
           hierarchy.virtualFunctions[func.name] = func;
-          vfh[typeName] = hierarchy;
+          m_patternImpl.m_vhierarchy[typeName]  = hierarchy;
         }
         else
           p->second.virtualFunctions[func.name] = func;
@@ -149,27 +288,9 @@ private:
 
 };
 
-
-std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
+void kslicer::ProcessFunctionsInQueueBFS(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, 
+                                         std::queue<kslicer::FuncData>& functionsToProcess, std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions)
 {
-  std::queue<FuncData> functionsToProcess;
-
-  for(const auto& k : a_codeInfo.kernels)        // (1) first traverse kernels as used functions
-  {
-    kslicer::FuncData func;
-    func.name     = k.second.name;
-    func.astNode  = k.second.astNode;
-    func.srcRange = k.second.astNode->getSourceRange();
-    func.srcHash  = GetHashOfSourceRange(func.srcRange);
-    func.isMember = true; //isa<clang::CXXMethodDecl>(kernel.astNode);
-    func.isKernel = true;
-    func.depthUse = 0;
-    functionsToProcess.push(func);
-  }
-
-  std::unordered_map<uint64_t, FuncData> usedFunctions;
-  usedFunctions.reserve(functionsToProcess.size()*10);
-
   FuncExtractor visitor(a_compiler, a_codeInfo); // (2) then repeat this recursivelly in a breadth first manner ...
   while(!functionsToProcess.empty())
   {
@@ -201,7 +322,10 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
 
     visitor.usedFunctions.clear();
   }
+}
 
+std::vector<kslicer::FuncData> kslicer::SortByDepthInUse(const std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions)
+{
   std::vector<kslicer::FuncData> result; result.reserve(usedFunctions.size());
   for(const auto& f : usedFunctions)
     result.push_back(f.second);
@@ -211,6 +335,108 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(MainClassInfo& a_co
   return result;
 }
 
+kslicer::FuncData kslicer::FuncDataFromKernel(const kslicer::KernelInfo& k)
+{
+  kslicer::FuncData func;
+  func.name     = k.name;
+  func.astNode  = k.astNode;
+  func.srcRange = k.astNode->getSourceRange();
+  func.srcHash  = GetHashOfSourceRange(func.srcRange);
+  func.isMember = true; 
+  func.isKernel = true;
+  func.depthUse = 0;
+  return func;
+}
+
+std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
+{
+  std::unordered_map<uint64_t, kslicer::FuncData> a_usedFunctions;
+  a_usedFunctions.reserve(1000);
+
+  // (1) first traverse kernels as used functions
+  for(auto& k : a_codeInfo.kernels)  
+  {
+    std::queue<kslicer::FuncData>                   functionsToProcess; 
+    std::unordered_map<uint64_t, kslicer::FuncData> usedFunctions;
+    functionsToProcess.push(FuncDataFromKernel(k.second));
+
+    kslicer::ProcessFunctionsInQueueBFS(a_codeInfo, a_compiler, functionsToProcess, // functionsToProcess => usedFunctions
+                                        usedFunctions);
+
+    for(auto f : usedFunctions) {
+      if(f.second.isKernel)
+        continue;
+      if(f.second.isMember)
+        k.second.usedMemberFunctions.insert(f);
+      else
+        a_usedFunctions.insert(f);
+    }
+  }
+  
+  std::unordered_set<uint64_t> controlFunctions;
+  if(a_codeInfo.megakernelRTV) 
+  {
+    for(auto& m : a_codeInfo.mainFunc) 
+    {
+       std::queue<FuncData>                            functionsToProcess; 
+       std::unordered_map<uint64_t, kslicer::FuncData> usedFunctions;
+       kslicer::FuncData func; // FuncDataFromControlFunction
+       func.name     = m.Name;
+       func.astNode  = m.Node;
+       func.srcRange = m.Node->getSourceRange();
+       func.srcHash  = GetHashOfSourceRange(func.srcRange);
+       func.isMember = true; 
+       func.isKernel = false;
+       func.depthUse = 0;
+       functionsToProcess.push(func);
+       controlFunctions.insert(func.srcHash);
+
+       kslicer::ProcessFunctionsInQueueBFS(a_codeInfo, a_compiler, functionsToProcess, // functionsToProcess => usedFunctions
+                                           usedFunctions);
+
+       for(auto f : usedFunctions) 
+       {
+         if(f.first == func.srcHash)
+           continue;
+         if(f.second.isMember)
+           m.usedMemberFunctions.insert(f);
+         else
+           a_usedFunctions.insert(f);
+       }
+    }
+  }
+
+  return kslicer::SortByDepthInUse(a_usedFunctions);
+}
+
+std::vector<kslicer::FuncData> kslicer::ExtractUsedFromVFH(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions)
+{
+  std::queue<FuncData> functionsToProcess;
+
+  for(const auto& p : a_codeInfo.m_vhierarchy) {
+    for(const auto& impl : p.second.implementations) {
+      for(const auto& f : impl.memberFunctions) { 
+        kslicer::FuncData func;
+        func.name     = f.name;
+        func.astNode  = f.decl;
+        //std::string funText = kslicer::GetRangeSourceCode(func.astNode->getSourceRange(), a_compiler);
+        //std::cout << funText.c_str() << std::endl;
+        func.srcRange = f.decl->getSourceRange();
+        func.srcHash  = GetHashOfSourceRange(func.srcRange);
+        func.isMember = true; // isa<clang::CXXMethodDecl>(kernel.astNode);
+        func.isKernel = true; // force exclude function itself from functions list
+        func.depthUse = 0;
+        functionsToProcess.push(func);
+      }
+    }
+  }
+
+  kslicer::ProcessFunctionsInQueueBFS(a_codeInfo, a_compiler, functionsToProcess, // functionsToProcess => usedFunctions
+                                      usedFunctions);
+
+  return kslicer::SortByDepthInUse(usedFunctions);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -218,19 +444,21 @@ class DataExtractor : public clang::RecursiveASTVisitor<DataExtractor>
 {
 public:
 
+  kslicer::FuncData* pCurrFuncData = nullptr;
+
   DataExtractor(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo,
                 std::unordered_map<std::string, kslicer::DataMemberInfo>& a_members, std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers) :
-                m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_patternImpl(a_codeInfo), m_usedMembers(a_members), m_auxContainers(a_auxContainers)
+                m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_codeInfo(a_codeInfo), m_usedMembers(a_members), m_auxContainers(a_auxContainers)
   {
 
   }
 
   bool VisitMemberExpr(clang::MemberExpr* expr)
   {
-    //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 
     std::string setter, containerName;
-    if(kslicer::CheckSettersAccess(expr, &m_patternImpl, m_compiler, &setter, &containerName))
+    if(kslicer::CheckSettersAccess(expr, &m_codeInfo, m_compiler, &setter, &containerName))
     {
       clang::QualType qt = expr->getType(); //
       kslicer::UsedContainerInfo container;
@@ -253,13 +481,13 @@ public:
     clang::RecordDecl* pRecodDecl = pFieldDecl->getParent();
 
     const std::string thisTypeName = kslicer::CleanTypeName(pRecodDecl->getNameAsString());
-    const auto pPrefix             = m_patternImpl.composPrefix.find(thisTypeName);
+    const auto pPrefix             = m_codeInfo.composPrefix.find(thisTypeName);
 
     std::string prefixName = "";
-    if(pPrefix != m_patternImpl.composPrefix.end())
+    if(pPrefix != m_codeInfo.composPrefix.end())
       prefixName = pPrefix->second;
-    else if(thisTypeName != m_patternImpl.mainClassName)
-      return true;
+    else if(thisTypeName != m_codeInfo.mainClassName) 
+      return true;          
 
     // process access to arguments payload->xxx
     //
@@ -273,7 +501,43 @@ public:
       member.hasPrefix   = true;
       member.prefixName  = pPrefix->second;
     }
+
+    if(member.name == "")
+      return true;
+    
+    for(auto compos : m_codeInfo.composPrefix) // don't add composed members in used members list
+      if(compos.second == member.name)
+        return true;
+    
+    // std::cout << "  [DataExtractor]: found " << thisTypeName.c_str() << "::" << member.name.c_str() << std::endl;
+
     m_usedMembers[member.name] = member;
+
+    return true;
+  }
+
+  bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* call)
+  { 
+    std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler);
+
+    if(kslicer::IsCalledWithArrowAndVirtual(call))
+    {
+      auto buffAndOffset = kslicer::GetVFHAccessNodes(call, m_compiler);
+      if(buffAndOffset.buffName != "" && buffAndOffset.offsetName != "")
+      {
+        for(auto container : m_codeInfo.usedProbably) // if container is used inside curr interface impl, add it to usedContainers list for current kernel  
+        {
+          if(container.second.interfaceName == buffAndOffset.interfaceName) 
+          {
+            auto member = kslicer::ExtractMemberInfo(container.second.astNode, m_compiler.getASTContext());
+            member.name = container.first;
+            m_usedMembers[member.name] = member;
+          }
+        }
+      }
+    }
+    
+    //std::cout << "  [DataExtractor]: catch " << fname.c_str() << std::endl;
 
     return true;
   }
@@ -281,14 +545,15 @@ public:
 private:
   const clang::CompilerInstance& m_compiler;
   const clang::SourceManager&    m_sm;
-  kslicer::MainClassInfo&        m_patternImpl;
+  kslicer::MainClassInfo&        m_codeInfo;
   std::unordered_map<std::string, kslicer::DataMemberInfo>& m_usedMembers;
   std::unordered_map<std::string, kslicer::UsedContainerInfo>& m_auxContainers;
 
 };
 
 std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMemberData(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMembers,
-                                                                                        std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers, MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
+                                                                                        std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers, 
+                                                                                        MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
 {
   std::unordered_map<std::string, kslicer::DataMemberInfo> result;
   std::unordered_map<std::string, kslicer::FuncData>       allMembers;
@@ -309,6 +574,7 @@ std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMem
 
     // (1) process curr function to get all accesed data
     //
+    visitor.pCurrFuncData = &currFunc;
     visitor.TraverseDecl(const_cast<clang::FunctionDecl*>(currFunc.astNode));
 
     // (2) then recursivelly process calledMembers
@@ -618,7 +884,7 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
     auto dataType     = qt->getPointeeType();
     containerDataType = kslicer::CleanTypeName(dataType.getAsString());
 
-    if(containerDataType == "ISceneObject")
+    if(kslicer::IsAccelStruct(containerDataType))
       kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
     else if(kslicer::IsCombinedImageSamplerTypeName(containerDataType))
       kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED;
@@ -636,7 +902,7 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
     }
     else if(containerType == "shared_ptr" || containerType == "unique_ptr")
     {
-      if(containerDataType == "ISceneObject")
+      if(kslicer::IsAccelStruct(containerDataType))
         kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
       else if(kslicer::IsCombinedImageSamplerTypeName(containerDataType))
         kind = kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED;

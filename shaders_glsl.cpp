@@ -39,8 +39,10 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   const std::filesystem::path templatePath       = templatesFolder / (a_codeInfo->megakernelRTV ? "generated_mega.glsl" : "generated.glsl");
   const std::filesystem::path templatePathUpdInd = templatesFolder / "update_indirect.glsl";
   const std::filesystem::path templatePathRedFin = templatesFolder / "reduction_finish.glsl";
+  const std::filesystem::path templatePathIntShd = templatesFolder / "intersection_shader.glsl";
+  const std::filesystem::path templatePathHitShd = templatesFolder / "closest_hit_shader.glsl";
 
-  nlohmann::json copy, kernels;
+  nlohmann::json copy, kernels, intersections;
   for (auto& el : a_kernelsJson.items())
   {
     //std::cout << el.key() << std::endl;
@@ -49,7 +51,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     else
       copy[el.key()] = a_kernelsJson[el.key()];
   }
-
+  
   //std::cout << "shaderPath = " << shaderPath.c_str() << std::endl;
 
   bool needRTDummies = false;
@@ -68,10 +70,57 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     const bool vulkan11        = kernel.value()["UseSubGroups"];
     const bool vulkan12        = useRayTracingPipeline;
     needRTDummies              = needRTDummies || useRayTracingPipeline;
+    if(useRayTracingPipeline) 
+    {
+      //std::ofstream file(a_codeInfo->mainClassFileName.parent_path() / "z_debug.json");
+      //file << std::setw(2) << currKerneJson; //
+      //file.close();
+      
+      std::unordered_set<std::string> intersectionShaders;
+      for(auto impl : currKerneJson["Kernel"]["IntersectionHierarhcy"]["Implementations"]) 
+      {
+        nlohmann::json intersectionShader;
+        for(auto f : impl["MemberFunctions"])
+          if(f["IsIntersection"])
+            intersectionShader = f;
+        
+        if(intersectionShader.empty())
+          continue;
+        
+        //std::ofstream file(a_codeInfo->mainClassFileName.parent_path() / "z_intersection_shader.json");
+        //file << std::setw(2) << intersectionShader; //
+        //file.close();
+
+        nlohmann::json ISData = copy;
+        ISData["Kernel"]             = currKerneJson["Kernel"];
+        ISData["Implementation"]     = impl;
+        ISData["IntersectionShader"] = intersectionShader;
+        std::string outFileName_RHIT = std::string(impl["ClassName"]) + "_" + std::string(intersectionShader["Name"]) + "_hit.glsl";
+        std::string outFileName_RINT = std::string(impl["ClassName"]) + "_" + std::string(intersectionShader["Name"]) + "_int.glsl";
+
+        if(intersectionShaders.find(outFileName_RHIT) != intersectionShaders.end())
+          continue;
+        
+        intersectionShaders.insert(outFileName_RHIT);
+
+        kslicer::ApplyJsonToTemplate(templatePathHitShd.c_str(), shaderPath / outFileName_RHIT, ISData);
+        kslicer::ApplyJsonToTemplate(templatePathIntShd.c_str(), shaderPath / outFileName_RINT, ISData);
+
+        buildSH << "glslangValidator -V --target-env vulkan1.2 -S rchit " << outFileName_RHIT.c_str() << " -o " << outFileName_RHIT.c_str() << ".spv" << " -DGLSL -I.. ";
+        for(auto folder : ignoreFolders)
+          buildSH << "-I" << folder.c_str() << " ";
+        buildSH << std::endl;
+        buildSH << "glslangValidator -V --target-env vulkan1.2 -S rint " << outFileName_RINT.c_str() << " -o " << outFileName_RINT.c_str() << ".spv" << " -DGLSL -I.. ";
+        for(auto folder : ignoreFolders)
+          buildSH << "-I" << folder.c_str() << " ";
+        buildSH << std::endl;
+      }
+    }
 
     std::string outFileName = kernelName + (useRayTracingPipeline ? "RGEN.glsl" : ".comp");
     std::filesystem::path outFilePath = shaderPath / outFileName;
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
+
     buildSH << "glslangValidator -V ";
     if(vulkan12)
       buildSH << "--target-env vulkan1.2 ";
@@ -362,11 +411,23 @@ std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* e
 {
   if(expr == nullptr)
     return "";
+  
+  auto old = expr;
+  while(clang::isa<clang::ImplicitCastExpr>(expr))
+    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->IgnoreImpCasts();
+
+  //auto debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  //if(debugText == "MAXFLOAT")
+  //{
+  //  int a = 2;
+  //}
+
   if(m_pKernelRewriter != nullptr) // we actually do kernel rewrite
   {
     std::string result = m_pKernelRewriter->RecursiveRewriteImpl(expr);
     sFeatures = sFeatures || m_pKernelRewriter->GetShaderFeatures();
     MarkRewritten(expr);
+    //MarkRewritten(old);
     return result;
   }
   else
@@ -376,6 +437,7 @@ std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* e
     rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
     sFeatures = sFeatures || rvCopy.sFeatures;
     MarkRewritten(expr);
+    //MarkRewritten(old);
     //expr->dump();
     //for(auto copyNodeId : *(rvCopy.m_pRewrittenNodes))
     //  this->m_pRewrittenNodes->insert(copyNodeId);
@@ -450,6 +512,21 @@ std::string kslicer::GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::st
     resStr = std::string("const ") + resStr;
 
   return resStr;
+}
+
+// process arrays: 'float[3] data' --> 'float data[3]' 
+std::string kslicer::GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const
+{
+  auto typeNameR = a_typeName;
+  auto posArrayBegin = typeNameR.find("[");
+  auto posArrayEnd   = typeNameR.find("]");
+  if(posArrayBegin != std::string::npos && posArrayEnd != std::string::npos)
+  {
+    varName   = varName + typeNameR.substr(posArrayBegin, posArrayEnd-posArrayBegin+1);
+    typeNameR = typeNameR.substr(0, posArrayBegin);
+  }
+
+  return RewriteStdVectorTypeStr(typeNameR);
 }
 
 std::string kslicer::GLSLFunctionRewriter::RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, kslicer::TEX_ACCESS a_accessType, std::string& outImageFormat) const
@@ -599,6 +676,11 @@ bool kslicer::GLSLFunctionRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::Un
   }
 
   return true;
+}
+
+bool kslicer::GLSLFunctionRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) 
+{ 
+  return true; 
 }
 
 bool kslicer::GLSLFunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr)
@@ -1069,11 +1151,12 @@ bool kslicer::GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   const bool isAuto = (typeClass == clang::Type::Auto);
   if(pValue != nullptr && WasNotRewrittenYet(pValue) && (NeedsVectorTypeRewrite(varType) || isAuto))
   {
-    const std::string varName  = decl->getNameAsString();
-    const std::string varValue = RecursiveRewrite(pValue);
-    const std::string varType2 = RewriteStdVectorTypeStr(varType);
-
-    if(varValue == "" || varValue == varName) // 'float3 deviation;' for some reason !decl->hasInit() does not works
+    std::string varName  = decl->getNameAsString();
+    std::string varNameOld = varName;
+    std::string varValue = RecursiveRewrite(pValue);
+    std::string varType2 = RewriteStdVectorTypeStr(varType, varName);
+    
+    if(varValue == "" || varNameOld == varValue) // 'float3 deviation;' for some reason !decl->hasInit() does not works
       m_lastRewrittenText = varType2 + " " + varName;
     else
       m_lastRewrittenText = varType2 + " " + varName + " = " + varValue;
@@ -1272,6 +1355,7 @@ public:
 
   kslicer::ShaderFeatures GetShaderFeatures()       const override { return m_glslRW.GetShaderFeatures(); }
   kslicer::ShaderFeatures GetKernelShaderFeatures() const override { return m_glslRW.GetShaderFeatures(); }
+  bool                    IsInfoPass()              const override { return m_infoPass; }
 
 protected:
 
@@ -1289,9 +1373,16 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
     return "";
-
+  
+  auto old = expr;
   while(clang::isa<clang::ImplicitCastExpr>(expr))
-    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->getSubExpr();
+    expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->IgnoreImpCasts();
+
+  //auto debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  //if(debugText == "MAXFLOAT")
+  //{
+  //  int a = 2;
+  //}
 
   //expr->dump();
   if(clang::isa<clang::DeclRefExpr>(expr)) // bugfix for recurive rewrite of single node, function args access
@@ -1332,13 +1423,18 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
   {
     const clang::MemberExpr* pMemberExpr = clang::dyn_cast<const clang::MemberExpr>(expr);
     std::string rewrittenText;
-    if(NeedToRewriteMemberExpr(pMemberExpr, rewrittenText))
+    if(NeedToRewriteMemberExpr(pMemberExpr, rewrittenText)) {
+      //MarkRewritten(expr);
+      //MarkRewritten(old);
       return rewrittenText;
+    }
   }
 
   GLSLKernelRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
   std::string text = m_rewriter.getRewrittenText(expr->getSourceRange()); 
+  //MarkRewritten(expr);
+  //MarkRewritten(old);
   return (text != "") ? text : kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 }
 

@@ -35,7 +35,7 @@ namespace kslicer
                          m_rewriter(R), m_compiler(a_compiler), m_sm(R.getSourceMgr()), 
                          m_mainFuncName(a_mainFunc.Name), m_mainFuncLocals(a_mainFunc.Locals),
                          m_pCodeInfo(a_pCodeInfo), m_allClassMembers(a_pCodeInfo->allDataMembers), allDescriptorSetsInfo(a_pCodeInfo->allDescriptorSetsInfo),
-                         m_kernels(a_pCodeInfo->kernels), m_mainFunc(a_mainFunc) 
+                         m_kernels(a_pCodeInfo->kernels), m_mainFunc(a_mainFunc)
     { 
       for(const auto& arg : a_args) 
         m_argsOfMainFunc[arg.name] = arg;

@@ -2,7 +2,7 @@
 #include <fstream>
 
 #include "test_class.h"
-#include "Bitmap.h"
+#include "Image2d.h"
 #include "ArgParser.h"
 
 #include "vk_context.h"
@@ -42,9 +42,9 @@ int main(int argc, const char** argv)
   pImpl->CastSingleRayBlock(WIN_HEIGHT*WIN_HEIGHT, packedXY.data(), pixelData.data(), 1);
   
   if(onGPU)
-    SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    LiteImage::SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
-    SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    LiteImage::SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
   float timings[4] = {0,0,0,0};
   pImpl->GetExecutionTime("CastSingleRayBlock", timings);

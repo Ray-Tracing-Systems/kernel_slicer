@@ -179,7 +179,7 @@ clang::ast_matchers::DeclarationMatcher  kslicer::MakeMatch_Kernel1DBlockExpansi
 class MainFuncSeeker : public clang::ast_matchers::MatchFinder::MatchCallback 
 {
 public:
-  explicit MainFuncSeeker(std::ostream& s, const std::string& a_mainClassName, const clang::ASTContext& a_astContext, const kslicer::MainClassInfo& a_codeInfo) : 
+  explicit MainFuncSeeker(std::ostream& s, const std::string& a_mainClassName, const clang::ASTContext& a_astContext, kslicer::MainClassInfo& a_codeInfo) : 
                           m_out(s), m_mainClassName(a_mainClassName), m_astContext(a_astContext), m_codeInfo(a_codeInfo) 
   {
   }
@@ -218,6 +218,8 @@ public:
             kernNames.push_back(kern->getNameAsString());
         }
         
+        if(m_codeInfo.mainClassASTNode == nullptr)
+          m_codeInfo.mainClassASTNode = pClass;
       }
     }
     else if(kern_block != nullptr) 
@@ -248,14 +250,14 @@ public:
   std::ostream&                 m_out;
   const std::string&            m_mainClassName;
   const clang::ASTContext&      m_astContext;
-  const kslicer::MainClassInfo& m_codeInfo;
+        kslicer::MainClassInfo& m_codeInfo;
   std::unordered_map<std::string, kslicer::CFNameInfo> m_mainFunctions;
 }; 
 
 std::unordered_map<std::string, kslicer::CFNameInfo> kslicer::ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
                                                                                      const std::string& a_mainClassName, 
                                                                                      const clang::ASTContext& a_astContext,
-                                                                                     const MainClassInfo& a_codeInfo)
+                                                                                     MainClassInfo& a_codeInfo)
 {
   auto kernelCallMatcher  = kslicer::MakeMatch_MethodCallFromMethod();
   //auto kernelBlockMatcher = kslicer::MakeMatch_Kernel1DBlockExpansion();

@@ -30,7 +30,7 @@ struct IMaterial
 
   virtual uint32_t   GetTag()   const  { return 0; };
   virtual float3     GetColor() const  { return float3(0.0f); };
-  virtual BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv) const  { return BxDFSample(); }
+  virtual BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv) const { BxDFSample res; return res; }
 
   float m_color[3];
   float roughness;
@@ -80,13 +80,12 @@ public:
   bool kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                        Lite_Hit* out_hit, float2* out_bars, uint* out_mid);
   
-  void kernel_RealColorToUint32(uint tid, uint mid, uint* out_color);
+  void kernel_RealColorToUint32(uint tid, uint* mid, uint* out_color);
 
   void kernel_ContributeToImage(uint tid, const float4* a_accumColor, const uint* in_pakedXY, 
                                 float4* out_color);
  
-  void kernel_NextBounce(uint tid, uint mid, const Lite_Hit* in_hit, const float2* in_bars, 
-                         const uint32_t* in_indices, const float4* in_vpos, const float4* in_vnorm,
+  void kernel_NextBounce(uint tid, uint* mid, const Lite_Hit* in_hit, const float2* in_bars, 
                          float4* rayPosAndNear, float4* rayDirAndFar, RandomGen* pGen, 
                          float4* accumColor, float4* accumThoroughput);
 
@@ -204,7 +203,7 @@ struct EmissiveMaterial : public IMaterial
 
 struct GGXGlossyMaterial : public IMaterial
 {
-  GGXGlossyMaterial(float3 a_color) { m_color[0] = a_color[0]; m_color[1] = a_color[1]; m_color[2] = a_color[2]; roughness = 0.3f; }
+  GGXGlossyMaterial(float3 a_color) { m_color[0] = a_color[0]; m_color[1] = a_color[1]; m_color[2] = a_color[2]; roughness = 0.3f; m_tag = GetTag(); }
   ~GGXGlossyMaterial() = delete;
 
   uint32_t GetTag()   const override { return TAG_GGX_GLOSSY; }
@@ -271,7 +270,17 @@ struct EmptyMaterial : public IMaterial
   EmptyMaterial() { m_tag = GetTag();}
   ~EmptyMaterial() = delete;
 
-  uint32_t GetTag()   const override { return TAG_EMPTY; }
+  uint32_t   GetTag() const override { return TAG_EMPTY; }  
+  float3     GetColor() const override  { return float3(0.0f); };
+  BxDFSample SampleAndEvalBxDF(float4 rayPosAndNear, float4 rayDirAndFar, SurfaceHit hit, float2 uv) const override
+  { 
+    BxDFSample res;
+    res.pdfVal  = 1.0f;
+    res.brdfVal = float3(0.0f);
+    res.newDir  = float3(0.0f, -1.0f, 0.0f);
+    res.flags   = 0;
+    return res;
+  }
 };
 
 #endif

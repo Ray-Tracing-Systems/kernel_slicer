@@ -6,7 +6,7 @@
 #include <cassert>
 
 #include "test_class.h"
-#include "Bitmap.h"
+#include "Image2d.h"
 #include "ArgParser.h"
 #define JSON_LOG_IMPLEMENTATION
 #include <JSONLog.hpp>
@@ -24,7 +24,7 @@ int main(int argc, const char** argv)
 
   std::string inputImagePath = "../01_intersectSphere/zout_cpu.bmp";
   int w, h;
-  std::vector<uint32_t> inputImageData = LoadBMP(inputImagePath.c_str(), &w, &h);
+  std::vector<uint32_t> inputImageData = LiteImage::LoadBMP(inputImagePath.c_str(), &w, &h);
   if (inputImageData.empty()) {
     throw std::runtime_error("Failed to load image from path: "+inputImagePath);
   }
@@ -60,7 +60,7 @@ int main(int argc, const char** argv)
   JSONLog::write("found red pixels count", pImpl->m_foundPixels.size());
 
   JSONLog::saveToFile("zout_"+backendName+".json");
-  SaveBMP(("zout_"+backendName+".bmp").c_str(), inputImageData.data(), w, h);
+  LiteImage::SaveBMP(("zout_"+backendName+".bmp").c_str(), inputImageData.data(), w, h);
   
   std::cout << std::endl;
   

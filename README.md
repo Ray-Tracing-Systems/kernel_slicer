@@ -30,6 +30,7 @@ Vulkan is great! But it is time consuming technology, which mean significant inc
   * git submodule init
   * git submodule update
 
+## Linux:
 2. install llvm-17 (both dev and not dev)
  * wget https://apt.llvm.org/llvm.sh
  * chmod +x llvm.sh
@@ -39,12 +40,30 @@ Vulkan is great! But it is time consuming technology, which mean significant inc
  * sudo apt-get install libclang-17-dev 
  * sudo apt install clang-17
 
-3. use Cmake and make
-
+3. use Cmake and make:
   * cd kernel_slicer
   * mkdir cmake-build-release && cd cmake-build-release
   * cmake -DCMAKE_BUILD_TYPE=Release .. 
   * make -j 10
+    
+## Windows:
+2. Getting the source code and building LLVM:
+ * Follow these instructions: https://llvm.org/docs/GettingStarted.html#getting-the-source-code-and-building-llvm
+ * Be sure to add clang to the configuration: -DLLVM_ENABLE_PROJECTS="clang"
+ * Example:
+   * git clone --branch release/17.x --depth=1 https://github.com/llvm/llvm-project.git
+   * cd llvm-project
+   * cmake -S llvm -B build -G "Visual Studio 17 2022" -DLLVM_ENABLE_PROJECTS="clang" -DCMAKE_BUILD_TYPE=Release
+   * Open the solution "llvm-project\build\LLVM.sln" and compile the release.
+   * The build may end in partial failure due to a lack of heap. Some of it has already been compiled. We try again, it should work.
+
+3. use Cmake and VS:
+  * cd kernel_slicer
+  * mkdir cmake-build-release && cd cmake-build-release
+  * cmake -DLLVM_DIR=..\llvm-project\build\lib\cmake\llvm -DClang_DIR=..\llvm-project\build\lib\cmake\clang -DCMAKE_BUILD_TYPE=Release ..
+  * Open the solution "kernel_slicer\cmake-build-release\kernel_slicer.sln" and compile the release.
+    
+## We continue:
 
 4. you may also use provided VS Code config to build and run test cases (tasks.json and launch.json)
 

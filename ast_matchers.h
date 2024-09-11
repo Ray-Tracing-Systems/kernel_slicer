@@ -46,7 +46,7 @@ namespace kslicer
   std::unordered_map<std::string, CFNameInfo> ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
                                                                      const std::string& a_mainClassName, 
                                                                      const clang::ASTContext& a_astContext,
-                                                                     const kslicer::MainClassInfo& a_codeInfo);
+                                                                     kslicer::MainClassInfo& a_codeInfo);
 
   clang::ast_matchers::DeclarationMatcher MakeMatch_Kernel1DBlockExpansion();
 
@@ -114,25 +114,6 @@ namespace kslicer
           auto pKernel = m_allInfo.allKernels.find(kName);  
           if(pKernel != m_allInfo.allKernels.end()) 
             pKernel->second.usedInMainFunc = true;  // mark this kernel is used
-          
-          //const QualType retType = kern->getReturnType();
-          //const QualType thsType = kern->getThisType();
-          //if(retType->isPointerType())                                                ////  IMaterial* pMaterial = kernel_MakeMaterial(tid, &hit);
-          //{
-          //  auto qtOfClass = retType->getPointeeType(); 
-          //  m_allInfo.AddVFH(qtOfClass.getAsString(), kName);
-          //}
-          //else if(thsType->isPointerType() && pKernel == m_allInfo.allKernels.end())  ////  pMaterial->kernel_GetColor(tid, out_color);
-          //{
-          //  auto qtOfClass = thsType->getPointeeType(); 
-          //  m_allInfo.AddDispatchingKernel(qtOfClass.getAsString(), kName);
-          //  
-          //  std::string typeName = qtOfClass.getAsString();
-          //  auto pos = typeName.find(" ");
-          //  if(pos != std::string::npos)
-          //    typeName = typeName.substr(pos+1);
-          //  auto pKernel2 = m_allInfo.allOtherKernels.find(typeName + "::" + kName);
-          //}
           
           CurrMainFunc().UsedKernels.insert(kName); // add  this kernel to list of used kernels by MainFunc 
         }
@@ -286,7 +267,7 @@ namespace kslicer
   public:
 
     explicit UsedCodeFilter(std::ostream& s, kslicer::MainClassInfo& a_allInfo,  kslicer::KernelInfo* a_currKernel, const clang::CompilerInstance& a_compiler) : 
-                            m_out(s), m_allInfo(a_allInfo), currKernel(a_currKernel), 
+                            m_out(s), m_allInfo(a_allInfo), currKernel(a_currKernel), m_mainClassName(a_allInfo.mainClassName),
                             m_compiler(a_compiler), m_sourceManager(a_compiler.getSourceManager()), m_astContext(a_compiler.getASTContext())
     {
     
@@ -308,7 +289,7 @@ namespace kslicer
       if(func_decl && l_var && var)
       {
         const RecordDecl* parentClass = var->getParent(); 
-        if(parentClass != nullptr && parentClass->getNameAsString() == m_allInfo.mainClassName)
+        if(parentClass != nullptr && m_allInfo.mainClassNames.find(parentClass->getNameAsString()) != m_allInfo.mainClassNames.end())
         {
           auto varName     = var->getNameAsString();
           auto pDataMember = m_allInfo.allDataMembers.find(varName);

@@ -201,6 +201,7 @@ void TestClass::PackXY(uint tidX, uint tidY, uint* out_pakedXY)
 
 void TestClass::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color)
 {
+  float x = testFun();
   float4 rayPosAndNear, rayDirAndFar;
   kernel_InitEyeRay(tid, in_pakedXY, &rayPosAndNear, &rayDirAndFar);
 

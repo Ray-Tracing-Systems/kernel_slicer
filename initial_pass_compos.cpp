@@ -48,3 +48,78 @@ std::string kslicer::PerformClassComposition(kslicer::ClassInfo& mainClassInfo, 
 
   return prefixName;
 }
+
+void kslicer::PerformInheritanceMerge(kslicer::ClassInfo& mainClassInfo, const kslicer::ClassInfo& implClassInfo)
+{
+  // (2) merge data and functions (dataMembers, allMemberFunctions)
+  //
+  for(auto member : implClassInfo.dataMembers) 
+  {
+    member.second.name       = member.second.name;
+    member.second.hasPrefix  = false;
+    member.second.prefixName = "";
+    mainClassInfo.dataMembers[member.second.name] = member.second;
+  }
+
+  for(auto member : implClassInfo.allMemberFunctions) 
+  {
+    std::string name = member.first;
+    auto p = mainClassInfo.allMemberFunctions.find(name);
+    if(p == mainClassInfo.allMemberFunctions.end())             // because implementation in main (derived) class
+      mainClassInfo.allMemberFunctions[name] = member.second;   // always overrides any implementations in base class
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::string> kslicer::GetBaseClassesNames(const clang::CXXRecordDecl* mainClassASTNode)
+{
+  std::vector<std::string> baseClassNames;
+  if(mainClassASTNode == nullptr)
+    return baseClassNames;
+
+  // Итерируемся по базовым классам
+  for (const auto& base : mainClassASTNode->bases()) {
+    const clang::CXXRecordDecl* baseDecl = base.getType()->getAsCXXRecordDecl();
+    if (baseDecl) {
+      baseClassNames.push_back(baseDecl->getNameAsString());
+    }
+  }
+
+  return baseClassNames;
+}
+
+namespace kslicer 
+{
+  // Helper function to get the depth of a class in the inheritance hierarchy
+  int GetClassDepth(const clang::CXXRecordDecl* derived) 
+  {
+    int depth = 0;
+    while (!derived->bases().empty()) {
+      derived = derived->bases_begin()->getType()->getAsCXXRecordDecl();
+      depth++;
+    }
+    return depth;
+  }
+}
+
+std::vector<const clang::CXXRecordDecl*> kslicer::ExtractAndSortBaseClasses(const std::vector<const clang::CXXRecordDecl*>& classes, const clang::CXXRecordDecl* derived) 
+{
+  std::vector<const clang::CXXRecordDecl*> result;
+  result.reserve(classes.size());
+  
+  for(size_t i=0;i<classes.size();i++)
+    if(derived->isDerivedFrom(classes[i]))
+      result.push_back(classes[i]);
+  
+  std::unordered_map<const clang::CXXRecordDecl*, int> depth;
+  for(auto node : result)
+    depth[node] = GetClassDepth(node);
+
+  std::sort(result.begin(), result.end(), [&](const clang::CXXRecordDecl* a, const clang::CXXRecordDecl* b) { return depth[a] > depth[b]; });
+
+  return result;
+}

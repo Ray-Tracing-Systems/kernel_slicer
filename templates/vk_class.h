@@ -11,7 +11,9 @@
 #include "vk_utils.h"
 #include "vk_copy.h"
 #include "vk_context.h"
-
+{% if UseRayGen and length(SceneMembers) > 0 %}
+#include "VulkanRTX.h"
+{% endif %}
 {% if length(TextureMembers) > 0 or length(ClassTexArrayVars) > 0 %}
 #include "Image2d.h"
 using LiteImage::Image2D;
@@ -134,7 +136,7 @@ public:
   {% if HasPrefixData %}
   virtual void UpdatePrefixPointers()
   {
-    auto pUnderlyingImpl = dynamic_cast<{{PrefixDataClass}}*>({{PrefixDataName}}.get());
+    auto pUnderlyingImpl = dynamic_cast<{{PrefixDataClass}}*>({{PrefixDataName}}->UnderlyingImpl(0));
     if(pUnderlyingImpl != nullptr)
     {
       {% for Vector in VectorMembers %}
@@ -153,6 +155,9 @@ public:
     {% endif %}
     ReserveEmptyVectors();
     InitMemberBuffers();
+    {% if UseRayGen %}
+    AllocAllShaderBindingTables();
+    {% endif %}
     UpdateAll(a_pCopyHelper);
     m_pLastCopyHelper = a_pCopyHelper;
   }
@@ -171,8 +176,7 @@ public:
   {% if UpdateMembersTextureData %}
   void UpdateMembersTextureData() override { UpdateTextureMembers(m_ctx.pCopyHelper); }
   {% endif %}
-
-
+  
   virtual void ReserveEmptyVectors();
   virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
@@ -224,8 +228,8 @@ public:
     size_t         allocId   = 0;
   };
 
-  virtual MemLoc AllocAndBind(const std::vector<VkBuffer>& a_buffers); ///< replace this function to apply custom allocator
-  virtual MemLoc AllocAndBind(const std::vector<VkImage>& a_image);    ///< replace this function to apply custom allocator
+  virtual MemLoc AllocAndBind(const std::vector<VkBuffer>& a_buffers, VkMemoryAllocateFlags a_flags = 0); ///< replace this function to apply custom allocator
+  virtual MemLoc AllocAndBind(const std::vector<VkImage>& a_image,    VkMemoryAllocateFlags a_flags = 0);    ///< replace this function to apply custom allocator
   virtual void   FreeAllAllocations(std::vector<MemLoc>& a_memLoc);    ///< replace this function to apply custom allocator
 
 protected:
@@ -294,6 +298,12 @@ protected:
     {% for Vector in VectorMembers %}
     VkBuffer {{Vector.Name}}Buffer = VK_NULL_HANDLE;
     size_t   {{Vector.Name}}Offset = 0;
+    {% if Vector.IsVFHBuffer and Vector.VFHLevel >= 2 %}
+    VkBuffer {{Vector.Name}}_dataSBuffer = VK_NULL_HANDLE;
+    size_t   {{Vector.Name}}_dataSOffset = 0;
+    VkBuffer {{Vector.Name}}_dataVBuffer = VK_NULL_HANDLE;
+    size_t   {{Vector.Name}}_dataVOffset = 0;
+    {% endif %}
     {% endfor %}
     {% for Tex in TextureMembers %}
     VkImage     {{Tex}}Texture = VK_NULL_HANDLE;
@@ -309,7 +319,30 @@ protected:
     {% for Sam in SamplerMembers %}
     VkSampler      {{Sam}} = VK_NULL_HANDLE;
     {% endfor %}
+    {% for Table in RemapTables %}
+    VkBuffer {{Table.Name}}RemapTableBuffer = VK_NULL_HANDLE;
+    {% endfor %}
   } m_vdata;
+  {% for Vector in VectorMembers %}
+  {% if Vector.IsVFHBuffer and Vector.VFHLevel >= 2 %}
+  std::vector<LiteMath::uint2>        {{Vector.Name}}_vtable;
+  std::vector<std::vector<uint8_t> >  {{Vector.Name}}_sorted;
+  std::vector<uint8_t>                {{Vector.Name}}_dataV;
+  std::vector<size_t>                 {{Vector.Name}}_obj_storage_offsets;
+  {% endif %}
+  {% endfor %}
+  {% if HasAllRefs %}
+  struct AllBufferReferences 
+  {
+    {% for Ref in AllReferences %}
+    VkDeviceAddress {{Ref.Name}}Address;
+    {% endfor %}
+    {% for Remap in RemapTables %}
+    VkDeviceAddress {{Remap.Name}}RemapAddr;
+    {% endfor %}
+  };
+  std::vector<AllBufferReferences> all_references;
+  {% endif %}
 
   {% for Vector in VectorMembers %}
   {% if Vector.HasPrefix %}
@@ -330,20 +363,9 @@ protected:
   };
   void TrackTextureAccess(const std::vector<TexAccessPair>& a_pairs, std::unordered_map<uint64_t, VkAccessFlags>& a_currImageFlags);
   {% endif %} {# /* length(TextureMembers) > 0 */ #}
-  {% if length(DispatchHierarchies) > 0 %}
-  {% for Hierarchy in DispatchHierarchies %}
-  // Auxilary data and kernels for 'VirtualKernels'; Dispatch hierarchy of '{{Hierarchy.Name}}'
-  //
-  VkBuffer         m_{{Hierarchy.Name}}ObjPtrBuffer = VK_NULL_HANDLE;
-  size_t           m_{{Hierarchy.Name}}ObjPtrOffset = 0;
-  {% if Hierarchy.IndirectDispatch %}
-  VkPipelineLayout {{Hierarchy.Name}}ZeroObjCountersLayout   = VK_NULL_HANDLE;
-  VkPipeline       {{Hierarchy.Name}}ZeroObjCountersPipeline = VK_NULL_HANDLE;
-  void             {{Hierarchy.Name}}ZeroObjCountersCmd();
-  {% endif %}
-  {% endfor %}
+  {% if length(Hierarchies) > 0 %}
   VkBufferMemoryBarrier BarrierForObjCounters(VkBuffer a_buffer);
-  {% endif %} {# /* length(DispatchHierarchies) > 0 */ #}
+  {% endif %} {# /* length(Hierarchies) > 0 */ #}
   {% if length(IndirectDispatches) > 0 %}
   void InitIndirectBufferUpdateResources(const char* a_filePath);
   void InitIndirectDescriptorSets();
@@ -483,7 +505,9 @@ protected:
   {% if UseRayGen %}
   virtual void MakeRayTracingPipelineAndLayout(const std::vector< std::pair<VkShaderStageFlagBits, std::string> >& shader_paths, bool a_hw_motion_blur, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout,
                                                VkPipelineLayout* pPipelineLayout, VkPipeline* pPipeline);
+  {% if UseRayGen %}
   virtual void AllocAllShaderBindingTables();
+  {% endif %}
   std::vector<VkBuffer> m_allShaderTableBuffers;
   VkDeviceMemory        m_allShaderTableMem;
   {% endif %}

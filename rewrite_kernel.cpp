@@ -1,6 +1,7 @@
 #include "kslicer.h"
 #include "class_gen.h"
 #include "ast_matchers.h"
+#include "initial_pass.h"
 
 #include <sstream>
 #include <algorithm>
@@ -418,35 +419,50 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
 
 bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-  {
-    DetectTextureAccess(f);
-    return true; 
-  }
-
   // Get name of function
   //
   const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
   const DeclarationName dn      = dni.getName();
         std::string fname       = dn.getAsString();
 
+  if(m_infoPass) // don't have to rewrite during infoPass
+  {
+    DetectTextureAccess(f);
+    return true; 
+  }
 
   if(kslicer::IsCalledWithArrowAndVirtual(f) && WasNotRewrittenYet(f))
   {
-    auto buffAndOffset = kslicer::GetVFHAccessNodes(f);
-    if(buffAndOffset.buffNode != nullptr && buffAndOffset.offsetNode != nullptr)
+    auto buffAndOffset = kslicer::GetVFHAccessNodes(f, m_compiler);
+    if(buffAndOffset.buffName != "" && buffAndOffset.offsetName != "")
     {
-      std::string buffText   = GetRangeSourceCode(buffAndOffset.buffNode->getSourceRange(), m_compiler); 
-      std::string offsetText = GetRangeSourceCode(buffAndOffset.offsetNode->getSourceRange(), m_compiler); 
-      std::string buffText2  = buffText.substr(0, buffText.find(".data()"));
+      std::string buffText2  = buffAndOffset.buffName;
+      std::string offsetText = buffAndOffset.offsetName; //GetRangeSourceCode(buffAndOffset.offsetNode->getSourceRange(), m_compiler); 
       
-      std::string textCallNoName = "(" + offsetText + ",";
+      std::string textCallNoName = "(" + offsetText; 
+      if(f->getNumArgs() != 0)
+        textCallNoName += ",";
+        
       for(unsigned i=0;i<f->getNumArgs();i++)
       {
+        const auto pParam                   = f->getArg(i);
+        const clang::QualType typeOfParam   =	pParam->getType();
+        const std::string typeNameRewritten = kslicer::ClearTypeName(typeOfParam.getAsString());
+        if(m_codeInfo->dataClassNames.find(typeNameRewritten) != m_codeInfo->dataClassNames.end()) 
+        {
+          if(i==f->getNumArgs()-1)
+            textCallNoName[textCallNoName.rfind(",")] = ' ';
+          continue;
+        }
+
         textCallNoName += RecursiveRewrite(f->getArg(i));
         if(i < f->getNumArgs()-1)
           textCallNoName += ",";
       }
+      
+      auto pBuffNameFromVFH = m_codeInfo->m_vhierarchy.find(buffAndOffset.interfaceTypeName);
+      if(pBuffNameFromVFH != m_codeInfo->m_vhierarchy.end())
+        buffText2 = pBuffNameFromVFH->second.objBufferName;
 
       std::string vcallFunc  = buffAndOffset.interfaceName + "_" + fname + "_" + buffText2 + textCallNoName + ")";
       m_rewriter.ReplaceText(f->getSourceRange(), vcallFunc);
@@ -597,7 +613,7 @@ bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
     std::string makerObjBufferName = kslicer::GetRangeSourceCode(secondArgExpr->getSourceRange(), m_compiler);
     ReplaceFirst(makerObjBufferName, ".data()", "");
 
-    for(auto& h : m_codeInfo->GetDispatchingHierarchies())
+    for(auto& h : m_codeInfo->m_vhierarchy)
     {
       if(h.second.interfaceName == retTypeName)
       {

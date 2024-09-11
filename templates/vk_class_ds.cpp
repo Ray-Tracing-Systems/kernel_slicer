@@ -68,7 +68,7 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
   std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+1> dsBindings;
   {% endif %}
 
-  const auto stageFlags = {{Kernel.StageFlags}};
+  const auto stageFlags = {% if Kernel.UseRayGen %}VK_SHADER_STAGE_RAYGEN_BIT_KHR{% if Kernel.HasIntersection %} | VK_SHADER_STAGE_INTERSECTION_BIT_KHR{% endif %}{% else %}VK_SHADER_STAGE_COMPUTE_BIT{% endif %};
 
 ## for KernelARG in Kernel.Args
   // binding for {{KernelARG.Name}}
@@ -250,7 +250,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitAllGeneratedDescriptorSets_{{Main
     }
     {% else if Arg.IsAccelStruct %}
     {
-      VulkanRTX* pScene = dynamic_cast<VulkanRTX*>({{Arg.Name}}.get());
+      VulkanRTX* pScene = dynamic_cast<VulkanRTX*>({{Arg.Name}}->UnderlyingImpl(1));
       if(pScene == nullptr)
         std::cout << "[{{MainClassName}}{{MainClassSuffix}}::InitAllGeneratedDescriptorSets_{{MainFunc.Name}}]: fatal error, wrong accel struct type" << std::endl;
       accelStructs       [{{Arg.Id}}] = pScene->GetSceneAccelStruct();

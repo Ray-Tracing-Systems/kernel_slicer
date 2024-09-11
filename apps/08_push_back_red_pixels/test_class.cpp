@@ -1,9 +1,11 @@
 #include "test_class.h"
-#include "Bitmap.h"
 #include <cassert>
 #include <algorithm>
 #include <memory>
 #include <cstring>
+
+using std::min;
+using std::max;
 
 inline bool PixelIsRed(uint32_t a_pixelValue)
 {
@@ -46,8 +48,8 @@ void RedPixels::kernel1D_CountRedPixels(const uint32_t* a_data, size_t a_dataSiz
       float strangeVal = ((float)a_data[i])*((float)i);
       if(i == 1000)
         strangeVal = -10.0f;
-      m_testMin = std::min(m_testMin, strangeVal);
-      m_testMax = std::max(m_testMax, strangeVal);
+      m_testMin = min(m_testMin, strangeVal);
+      m_testMax = max(m_testMax, strangeVal);
       m_otherPixelsNum++;
     }
   }

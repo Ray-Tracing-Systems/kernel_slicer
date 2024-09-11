@@ -1,5 +1,4 @@
 #include "test_class.h"
-#include "Bitmap.h"
 #include <cassert>
 #include <chrono>
 
@@ -41,15 +40,7 @@ inline float4 BilinearSample(__global const float4* data, int w, int h, float a_
   const float4 resultY0 = resultX0*delta;
   const float4 resultY1 = resultX1*beta;
 
-  return resultY0 + resultY1;
-}
-
-void SaveTestImage(const float4* data, int w, int h)
-{
-  std::vector<uint> ldrData(w*h);
-  for(size_t i=0;i<w*h;i++)
-    ldrData[i] = RealColorToUint32( clamp(data[i], 0.0f, 1.0f));
-  SaveBMP("ztest.bmp", ldrData.data(), w, h);
+  return resultY0 + resultY1; //
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

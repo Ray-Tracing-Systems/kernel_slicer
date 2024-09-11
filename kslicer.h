@@ -70,6 +70,18 @@ namespace kslicer
   bool  IsSamplerTypeName(const std::string& a_typeName);  ///<! return true for all types of textures
   bool  IsCombinedImageSamplerTypeName(const std::string& a_typeName);  ///<! return true for all types of image combined samplers
 
+  struct ProbablyUsed
+  {
+    clang::FieldDecl* astNode = nullptr;
+    bool isContainer;
+    UsedContainerInfo info;
+    std::string interfaceName;
+    std::string className;
+    std::string objBufferName;
+    std::string containerType;
+    std::string containerDataType;
+  };
+
   struct ArgMatch
   {
     std::string formal;
@@ -141,6 +153,32 @@ namespace kslicer
     uint32_t    arraySize  = 0;
     std::string arrayName;
     std::string elemType;
+  };
+
+  /**
+  \brief Both for common functions and member functions called from kernels
+  */
+  struct FuncData
+  {
+    const clang::FunctionDecl* astNode;
+    std::string        name;
+    clang::SourceRange srcRange;
+    uint64_t           srcHash;
+    bool               isMember = false;
+    bool               isKernel = false;
+    bool               isVirtual = false;
+    int                depthUse = 0;    ///!< depth Of Usage; 0 -- for kernels; 1 -- for functions called from kernel; 2 -- for functions called from functions called from kernels
+                                        ///!< please note that if function is called under different depth, maximum depth should be stored in this variable;
+    bool hasPrefix = false;
+    std::string prefixName;
+    std::unordered_set<std::string> calledMembers;
+  
+    std::string thisTypeName;                                ///!< currently filled for VFH only, TODO: fill for other
+    std::string declRewritten;                               ///!< currently filled for VFH only, TODO: fill for other
+    std::vector< std::pair<std::string, std::string> > args; ///!< currently filled for VFH only, TODO: fill for other
+    
+    std::string retTypeName;
+    const clang::CXXRecordDecl* retTypeDecl;
   };
 
   /**
@@ -228,6 +266,7 @@ namespace kslicer
     std::string           interfaceName;        ///<! Name of the interface if the kernel is virtual
     std::vector<ArgInfo>  args;                 ///<! all arguments of a kernel
     std::vector<LoopIter> loopIters;            ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
+    std::string           debugOriginalText;
 
     uint32_t GetDim() const
     {
@@ -258,8 +297,10 @@ namespace kslicer
 
     std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
-    std::unordered_map<std::string, UsedContainerInfo> usedContainers; ///<! list of all std::vector<T> member names which is referenced inside kernel
-    std::unordered_set<std::string>                    usedMembers;    ///<! list of all other variables used inside kernel
+    std::unordered_map<std::string, UsedContainerInfo>     usedContainers;      ///<! list of all std::vector<T> member names which is referenced inside kernel
+    std::unordered_set<std::string>                        usedMembers;         ///<! list of all other variables used inside kernel
+    std::unordered_map<uint64_t, FuncData>                 usedMemberFunctions; ///<! list of all used member functions from this kernel
+
     std::unordered_map<std::string, ReductionAccess>   subjectedToReduction; ///<! if member is used in reduction expression
     std::unordered_map<std::string, TEX_ACCESS>        texAccessInArgs;
     std::unordered_map<std::string, TEX_ACCESS>        texAccessInMemb;
@@ -268,7 +309,7 @@ namespace kslicer
     std::vector<const KernelInfo*>                     subkernels;          ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
     ShittyFunction                                     currentShit;         ///<!
     std::unordered_map<std::string, ArrayData>         threadLocalArrays;
-
+   
     struct BEBlock
     {
       bool                  isParallel = false;
@@ -346,16 +387,19 @@ namespace kslicer
     bool usedInMainFn      = false; ///<! if std::vector is used in MainFunction like vector.data();
     bool isPointer         = false;
     bool isConst           = false; ///<! const float4 BACKGROUND_COLOR = ... (they should not be read back)
+    bool isSingle          = false; ///<! single struct inside buffer, not a vector (vector with size() == 1), special case for all_references and other service needs
 
     bool hasPrefix = false;
+    bool hasIntersectionShader = false; ///<! indicate that this acceleration structure has user-defined intersection procedure
     std::string prefixName;
 
     DATA_USAGE usage = DATA_USAGE::USAGE_USER;         ///<! if this is service and 'implicit' data which was agged by generator, not by user;
     TEX_ACCESS tmask = TEX_ACCESS::TEX_ACCESS_NOTHING; ///<! store texture access flags if this data member is a texture
 
-    size_t      arraySize = 0;     ///<! 'N' if data is declared as 'array[N]';
-    std::string containerType;     ///<! std::vector usually
-    std::string containerDataType; ///<! data type 'T' inside of std::vector<T>
+    size_t      arraySize = 0;                         ///<! 'N' if data is declared as 'array[N]';
+    std::string containerType;                         ///<! std::vector usually
+    std::string containerDataType;                     ///<! data type 'T' inside of std::vector<T>
+    std::string intersectionClassName;                 ///<! used in the case of user intersection
 
     clang::TypeDecl* pTypeDeclIfRecord = nullptr;
     clang::TypeDecl* pContainerDataTypeDeclIfRecord = nullptr;
@@ -486,8 +530,9 @@ namespace kslicer
     std::unordered_set<std::string>                   ExcludeList;
     std::unordered_set<std::string>                   UsedKernels;
 
-    std::unordered_map<std::string, UsedContainerInfo> usedContainers; ///<! list of all std::vector<T> member names which is referenced inside ControlFunc
-    std::unordered_set<std::string>                    usedMembers;    ///<! list of all other variables used inside ControlFunc
+    std::unordered_map<std::string, UsedContainerInfo> usedContainers;      ///<! list of all std::vector<T> member names which is referenced inside ControlFunc
+    std::unordered_set<std::string>                    usedMembers;         ///<! list of all other variables used inside ControlFunc
+    std::unordered_map<uint64_t,          FuncData>    usedMemberFunctions; ///<! list of all used member functions from this kernel
 
     std::string ReturnType;
     std::string GeneratedDecl;
@@ -508,29 +553,6 @@ namespace kslicer
     KernelInfo                     megakernel;     ///<! for RTV pattern only, when joing everything to mega-kernel
     std::vector<const KernelInfo*> subkernels;     ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
     std::vector<KernelInfo>        subkernelsData; ///<! for RTV pattern only
-  };
-
-  /**
-  \brief Both for common functions and member functions called from kernels
-  */
-  struct FuncData
-  {
-    const clang::FunctionDecl* astNode;
-    std::string        name;
-    clang::SourceRange srcRange;
-    uint64_t           srcHash;
-    bool               isMember = false;
-    bool               isKernel = false;
-    bool               isVirtual = false;
-    int                depthUse = 0;    ///!< depth Of Usage; 0 -- for kernels; 1 -- for functions called from kernel; 2 -- for functions called from functions called from kernels
-                                        ///!< please note that if function is called under different depth, maximum depth should be stored in this variable;
-    bool hasPrefix = false;
-    std::string prefixName;
-    std::unordered_set<std::string> calledMembers;
-  
-    std::string thisTypeName;                                ///!< currently filled for VFH only, TODO: fill for other
-    std::string declRewritten;                               ///!< currently filled for VFH only, TODO: fill for other
-    std::vector< std::pair<std::string, std::string> > args; ///!< currently filled for VFH only, TODO: fill for other
   };
 
   enum class DECL_IN_CLASS{ DECL_STRUCT, DECL_TYPEDEF, DECL_CONSTANT, DECL_UNKNOWN};
@@ -599,6 +621,7 @@ namespace kslicer
     bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr* expr)  { return VisitCXXOperatorCallExpr_Impl(expr); }
 
     virtual std::string RewriteStdVectorTypeStr(const std::string& a_str) const;
+    virtual std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const { return RewriteStdVectorTypeStr(a_typeName); }
     virtual std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, TEX_ACCESS a_accessType, std::string& outImageFormat) const { return "readonly image2D"; }
 
     virtual ShaderFeatures GetShaderFeatures() const { return ShaderFeatures(); }
@@ -609,7 +632,8 @@ namespace kslicer
 
     virtual void SetCurrFuncInfo  (kslicer::FuncData* a_pInfo) { m_pCurrFuncInfo = a_pInfo; }
     virtual void ResetCurrFuncInfo()                           { m_pCurrFuncInfo = nullptr; }
-
+    
+    virtual bool NeedsVectorTypeRewrite(const std::string& a_str) { return false; }
   protected:
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     clang::Rewriter&               m_rewriter;
@@ -636,7 +660,7 @@ namespace kslicer
     virtual bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                { return true; } // override this in Derived class
 
     virtual bool VisitMemberExpr_Impl(clang::MemberExpr* expr)            { return true; } // override this in Derived class
-    virtual bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) { return true; } // override this in Derived class
+    virtual bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) { return true; } // override this in Derived class 
     virtual bool VisitFieldDecl_Impl(clang::FieldDecl* decl)              { return true; } // override this in Derived class
     virtual bool VisitUnaryOperator_Impl(clang::UnaryOperator* op)        { return true; } // override this in Derived class
     virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)    { return true; } // override this in Derived class
@@ -655,6 +679,7 @@ namespace kslicer
     virtual std::string RecursiveRewriteImpl(const clang::Stmt* expr) = 0;
     virtual kslicer::ShaderFeatures GetShaderFeatures() const { return kslicer::ShaderFeatures(); }
     virtual std::unordered_set<uint64_t> GetVisitedNodes() const = 0;
+    virtual bool IsInfoPass() const = 0;
   };
 
   /**
@@ -678,12 +703,14 @@ namespace kslicer
     bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)  override;
     bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
   
+    bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) override;
     bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
   
     std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
     IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
   
     std::string RewriteStdVectorTypeStr(const std::string& a_str) const override;
+    std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const override;
     std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, kslicer::TEX_ACCESS a_accessType, std::string& outImageFormat) const override;
   
     std::unordered_map<std::string, std::string> m_vecReplacements;
@@ -700,7 +727,7 @@ namespace kslicer
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
     void        Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3]);
   
-    bool        NeedsVectorTypeRewrite(const std::string& a_str);
+    bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
     std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
   
     kslicer::ShittyFunction m_shit;
@@ -976,6 +1003,7 @@ namespace kslicer
     std::unordered_map<std::string, KernelInfo>     allKernels;       ///<! list of all kernels; used only on the second pass to identify Control Functions; it is not recommended to use it anywhere else
     std::unordered_map<std::string, KernelInfo>     allOtherKernels;  ///<! kernels from other classes. we probably need them if they are used.
     std::unordered_map<std::string, DataMemberInfo> allDataMembers;   ///<! list of all class data members;
+    std::unordered_map<std::string, ProbablyUsed>   usedProbably;     ///<! variables which are used in virtual functions and *probably* will be used in *SOME* kernels if they call these virtual functions
 
     std::unordered_set<std::string>                 usedServiceCalls; ///<! memcpy, memset, scan, sort and e.t.c.
     std::unordered_map<std::string, ServiceCall>    serviceCalls;     ///<! actual list of used service calls
@@ -993,12 +1021,19 @@ namespace kslicer
     std::vector<DataMemberInfo>                 dataMembers;     ///<! only those member variables which are referenced from kernels
     std::vector<MainFuncInfo>                   mainFunc;        ///<! list of all control functions
   
-    std::unordered_map<std::string, ArrayData>  m_threadLocalArrays;
+    std::unordered_map<std::string, ArrayData>         m_threadLocalArrays;
 
-    std::string mainClassName;
+    std::string                                        mainClassName;         ///<! Current main class (derived)
+    std::unordered_set<std::string>                    mainClassNames;        ///<! All main classes (derived + base)
+    std::unordered_set<std::string>                    composClassNames; 
+    std::unordered_set<std::string>                    dataClassNames; 
+    std::vector< std::pair<std::string, std::string> > intersectionShaders;
+
     std::filesystem::path mainClassFileName;
-    std::string mainClassFileInclude;
-    std::string mainClassSuffix;
+    std::string           mainClassFileInclude;
+    std::string           mainClassSuffix;
+
+    
     std::unordered_map<std::string, std::string> composPrefix;
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
     std::vector<const clang::CXXConstructorDecl* > ctors;
@@ -1026,9 +1061,9 @@ namespace kslicer
     typedef std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> MHandlerCFPtr;
     typedef std::unique_ptr<kslicer::UsedCodeFilter>                         MHandlerKFPtr;
 
-    virtual std::string RemoveKernelPrefix(const std::string& a_funcName) const;                       ///<! "kernel_XXX" --> "XXX";
-    virtual bool        IsKernel(const std::string& a_funcName) const;                                 ///<! return true if function is a kernel
-    virtual void        ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const { }   ///<!
+    virtual std::string RemoveKernelPrefix(const std::string& a_funcName) const;                          ///<! "kernel_XXX" --> "XXX";
+    virtual bool        IsKernel(const std::string& a_funcName) const;                                    ///<! return true if function is a kernel
+    virtual void        ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const { }  ///<!
     virtual bool        IsIndirect(const KernelInfo& a_kernel) const;
     virtual bool        IsRTV() const { return false; }
 
@@ -1044,10 +1079,10 @@ namespace kslicer
                                         const std::unordered_map<std::string, KernelInfo>&    a_kernelList,
                                         std::vector<KernelCallInfo>&                          a_kernelCalls) {}
 
-    virtual void AddVFH(const std::string& a_className);
     virtual void ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler);
     virtual void ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool);
-
+    virtual void AppendAllRefsBufferIfNeeded(std::vector<DataMemberInfo>& a_vector);
+    virtual void AppendAccelStructForIntersectionShadersIfNeeded(std::vector<DataMemberInfo>& a_vector, std::string composImplName);
 
     //// \\
 
@@ -1079,9 +1114,11 @@ namespace kslicer
     {
       const clang::CXXMethodDecl* decl = nullptr;
       std::string                 name;
+      std::string                 nameRewritten;
       std::string                 srcRewritten;
-      bool                        isEmpty       = false;
-      bool                        isConstMember = false;
+      bool                        isEmpty        = false;
+      bool                        isConstMember  = false;
+      bool                        isIntersection = false;
     };
 
     struct DImplClass
@@ -1095,16 +1132,30 @@ namespace kslicer
       std::string                 interfaceName;
     };
 
-    struct DHierarchy
+    enum  VFH_LEVEL{ VFH_LEVEL_1 = 1, // all imlementations are same size as interface, switch-based impl. in shader
+                     VFH_LEVEL_2 = 2, // implementations of different size, GLSL_EXT_buffer_reference2, switch-based impl. in shader
+                     VFH_LEVEL_3 = 3  // implementations of different size, GLSL_EXT_buffer_reference2, callable-shaders based implementation; 
+                     };               // select between VFH_LEVEL_2 and VFH_LEVEL_3 is a responsibility of generator option and, there is no difference of them for user
+
+    struct VFHHierarchy
     {
       const clang::CXXRecordDecl* interfaceDecl = nullptr;
       std::string                 interfaceName;
       std::string                 objBufferName;
+      std::string                 accStructName;
       std::vector<DImplClass>     implementations;
+      VFH_LEVEL                   level = VFH_LEVEL_1;
+      bool                        hasIntersection = false;
 
       std::vector<kslicer::DeclInClass>            usedDecls;
       std::unordered_map<std::string, std::string> tagByClassName;
       std::map<std::string, kslicer::FuncData>     virtualFunctions;
+    };
+
+    struct BufferReference 
+    {
+      std::string name;
+      std::string typeOfElem;
     };
 
     kslicer::VKERNEL_IMPL_TYPE defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
@@ -1112,16 +1163,19 @@ namespace kslicer
     bool megakernelRTV     = false;
     bool useComplexNumbers = false;
     bool genGPUAPI         = false;
+    bool forceAllBufToRefs = false;
 
-    std::unordered_map<std::string, DHierarchy> m_vhierarchy;
-    virtual const std::unordered_map<std::string, DHierarchy>& GetDispatchingHierarchies() const { return m_vhierarchy; }
-    virtual std::unordered_map<std::string, DHierarchy>&       GetDispatchingHierarchies()       { return m_vhierarchy; }
+    std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;
+    std::vector<BufferReference>                  m_allRefsFromVFH;
+    bool IsVFHBuffer(const std::string& a_name, VFH_LEVEL* pOutLevel = nullptr, VFHHierarchy* pHierarchy = nullptr) const;
 
     std::unordered_set<std::string> ExtractTypesFromUsedContainers(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls);
     void ProcessMemberTypes(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls, clang::SourceManager& a_srcMgr,
                             std::vector<kslicer::DeclInClass>& generalDecls);
 
     void ProcessMemberTypesAligment(std::vector<DataMemberInfo>& a_members, const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls, const clang::ASTContext& a_astContext);
+
+    std::unordered_map<std::string, VFHHierarchy> SelectVFHOnlyUsedByKernel(const std::unordered_map<std::string, VFHHierarchy>& a_hierarhices, const KernelInfo& k) const;
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     std::vector<std::string>                           m_setterStructDecls;
@@ -1130,10 +1184,11 @@ namespace kslicer
     std::unordered_map<std::string, DataMemberInfo>    m_setterData;
 
     void ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler);
-
     void ProcessBlockExpansionKernel(KernelInfo& a_kernel, const clang::CompilerInstance& compiler);
 
     mutable std::vector<std::string> kernelsCallCmdDeclCached;
+
+    std::vector< std::pair<std::string, std::string> > GetFieldsFromStruct(const clang::CXXRecordDecl* recordDecl, size_t* pSummOfFiledsSize = nullptr) const;
   };
 
 
@@ -1198,8 +1253,8 @@ namespace kslicer
   std::string CutOffFileExt(const std::string& a_filePath);
   std::string CutOffStructClass(const std::string& a_typeName);
   std::string ReplaceSizeCapacityExpr(const std::string& a_str);
-
-
+  
+  FuncData FuncDataFromKernel(const kslicer::KernelInfo& k);
   uint64_t GetHashOfSourceRange(const clang::SourceRange& a_range);
   static constexpr size_t READ_BEFORE_USE_THRESHOLD = sizeof(float)*4;
 
@@ -1209,7 +1264,6 @@ namespace kslicer
 
 
   bool IsTexture(clang::QualType a_qt);
-  bool IsAccelStruct(clang::QualType a_qt);
   bool IsAccelStruct(const std::string& a_typeName);
   bool IsVectorContainer(const std::string& a_typeName);
   bool IsPointerContainer(const std::string& a_typeName);
@@ -1251,17 +1305,24 @@ namespace kslicer
   const clang::Expr* RemoveImplicitCast(const clang::Expr* a_expr);
   clang::Expr* RemoveImplicitCast(clang::Expr* a_expr);
 
+  std::vector<std::string> GetBaseClassesNames(const clang::CXXRecordDecl* mainClassASTNode);
+  std::vector<const clang::CXXRecordDecl*> ExtractAndSortBaseClasses(const std::vector<const clang::CXXRecordDecl*>& classes, const clang::CXXRecordDecl* derived);
+
   void ExtractBlockSizeFromCall(clang::CXXMemberCallExpr* f, kslicer::KernelInfo& kernel, const clang::CompilerInstance& compiler);
-  
+
+  void ProcessFunctionsInQueueBFS(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::queue<kslicer::FuncData>& functionsToProcess, std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions);
+  std::vector<kslicer::FuncData> SortByDepthInUse(const std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions);
+
   struct VFHAccessNodes 
   {
-    const clang::CXXMemberCallExpr* buffNode;
-    const clang::Expr*              offsetNode;
-    std::string                     interfaceName;
-    VFHAccessNodes() : buffNode(nullptr), offsetNode(nullptr) {}
+    VFHAccessNodes(){}
+    std::string interfaceName;
+    std::string interfaceTypeName;
+    std::string buffName;
+    std::string offsetName;
   };
 
-  VFHAccessNodes GetVFHAccessNodes(const clang::CXXMemberCallExpr* f);
+  VFHAccessNodes GetVFHAccessNodes(const clang::CXXMemberCallExpr* f, const clang::CompilerInstance& a_compiler);
   bool IsCalledWithArrowAndVirtual(const clang::CXXMemberCallExpr* f);
 }
 

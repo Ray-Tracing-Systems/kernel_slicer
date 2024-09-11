@@ -90,6 +90,7 @@ int main(int argc, const char **argv)
 
   std::string composeAPIName  = "";
   std::string composeImplName = "";
+  nlohmann::json inputOptions;
 
   uint32_t    threadsOrder[3] = {0,1,2};
   uint32_t    warpSize        = 32;
@@ -103,6 +104,13 @@ int main(int argc, const char **argv)
   bool        genGPUAPI          = false;
 
   kslicer::ShaderFeatures forcedFeatures;
+
+  if(params.find("-options") != params.end())
+  {
+    std::string optionsPath = params["-options"];
+    std::ifstream ifs(optionsPath);
+    inputOptions = nlohmann::json::parse(ifs);
+  }
 
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
@@ -266,6 +274,25 @@ int main(int argc, const char **argv)
   inputCodeInfo.mainClassSuffix      = suffix;
   inputCodeInfo.shaderFolderPrefix   = shaderFolderPrefix;
   inputCodeInfo.globalShaderFeatures = forcedFeatures;
+  
+  // analize multiple definitions of args which can not be processed via hash-table params
+  //
+
+  std::vector<std::string> baseClases;
+
+  for(int argId = 1; argId < argc; argId++ )
+  {
+    if(std::string(argv[argId]) == "-intersectionShader" && argId+1 < argc) {
+      std::string shaderClassAndFunc = argv[argId+1];
+      auto splitPos = shaderClassAndFunc.find("::");
+      std::string className = shaderClassAndFunc.substr(0, splitPos);
+      std::string funcName  = shaderClassAndFunc.substr(splitPos + 2);
+      inputCodeInfo.intersectionShaders.push_back( std::make_pair(className, funcName) );
+    }
+    else if (std::string(argv[argId]) == "-baseClass" && argId+1 < argc) {
+      baseClases.push_back(argv[argId+1]);
+    }
+  }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -377,30 +404,87 @@ int main(int argc, const char **argv)
   clang::Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
   inputCodeInfo.pShaderFuncRewriter = inputCodeInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &inputCodeInfo);
-
-  std::cout << "(1) Processing class " << mainClassName.c_str() << " with initial pass" << std::endl;
-  std::cout << "{" << std::endl;
-
+  
   // Parse code, initial pass
   //
+  std::cout << "(1) Processing class '" << mainClassName.c_str() << "' with initial pass" << std::endl;
+  std::cout << "{" << std::endl;
+
+  //std::vector<std::string> baseClases = kslicer::GetBaseClassesNames(inputCodeInfo.mainClassASTNode);
   std::vector<std::string> composClassNames;
-  if(composeAPIName != "")
-    composClassNames.push_back(composeAPIName);
-  if(composeImplName != "")
-    composClassNames.push_back(composeImplName);
+  {
+    if(composeAPIName != "")
+      composClassNames.push_back(composeAPIName);
+    if(composeImplName != "")
+      composClassNames.push_back(composeImplName);
+    composClassNames.insert(composClassNames.end(), baseClases.begin(), baseClases.end()); // process all base classes also
+    if(composeAPIName != "ISceneObject" && composeAPIName.find("ISceneObject") != std::string::npos) // need to add 'ISceneObject' if ISceneObject2 or ISceneObject_LiteRT or sms like that is used for API 
+      composClassNames.push_back("ISceneObject");
+  }
+  
   kslicer::InitialPassASTConsumer firstPassData(cfNames, mainClassName, composClassNames, compiler, inputCodeInfo);
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
-  compiler.getDiagnosticClient().EndSourceFile(); // ??? What Is This Line For ???
 
+  // вызов compiler.getDiagnosticClient().EndSourceFile() 
+  // обеспечивает корректное завершение обработки диагностических сообщений 
+  // для текущего исходного файла в процессе компиляции с использованием Clang.
+  compiler.getDiagnosticClient().EndSourceFile(); 
 
-  std::string composMemberName = "";
   auto pComposAPI  = firstPassData.rv.m_composedClassInfo.find(composeAPIName);
   auto pComposImpl = firstPassData.rv.m_composedClassInfo.find(composeImplName);
 
   if(pComposAPI != firstPassData.rv.m_composedClassInfo.end() && pComposImpl != firstPassData.rv.m_composedClassInfo.end()) // if compos classes are found
-    composMemberName = kslicer::PerformClassComposition(firstPassData.rv.mci, pComposAPI->second, pComposImpl->second);     // perform class composition
-  for(const auto& name : composClassNames)
-    inputCodeInfo.composPrefix[name] = composMemberName;
+  {
+    std::string composMemberName = kslicer::PerformClassComposition(firstPassData.rv.mci, pComposAPI->second, pComposImpl->second);     // perform class composition
+    for(const auto& name : composClassNames)
+      inputCodeInfo.composPrefix[name] = composMemberName;
+    
+    inputCodeInfo.composClassNames.insert(composeImplName);
+  }
+  else if(baseClases.size() != 0)
+  { 
+    std::vector<const clang::CXXRecordDecl*> aux_classes;
+    aux_classes.reserve(firstPassData.rv.m_composedClassInfo.size());
+
+    // Преобразование unordered_map в vector
+    std::transform(firstPassData.rv.m_composedClassInfo.begin(), firstPassData.rv.m_composedClassInfo.end(), 
+                   std::back_inserter(aux_classes), [](const auto& pair) { return pair.second.astNode; });
+
+    auto sorted = kslicer::ExtractAndSortBaseClasses(aux_classes, firstPassData.rv.mci.astNode);
+    for(const auto& baseClass : sorted) {
+      auto typeName = baseClass->getQualifiedNameAsString();
+      const auto& classInfo = firstPassData.rv.m_composedClassInfo[typeName];
+      kslicer::PerformInheritanceMerge(firstPassData.rv.mci, classInfo);
+      inputCodeInfo.mainClassNames.insert(typeName);
+    }
+  }
+  
+  inputCodeInfo.mainClassNames.insert(inputCodeInfo.mainClassName); // put main (derived) class name in this hash-set, use 'mainClassNames' instead of 'mainClassName' later
+  
+  // merge mainClassNames and composClassNames in single array, add 'const Type' names to it; TODO: merge to single function
+  {
+    inputCodeInfo.dataClassNames.clear();
+    inputCodeInfo.dataClassNames.insert(inputCodeInfo.mainClassNames.begin(),   inputCodeInfo.mainClassNames.end());
+    inputCodeInfo.dataClassNames.insert(inputCodeInfo.composClassNames.begin(), inputCodeInfo.composClassNames.end());
+    inputCodeInfo.dataClassNames.insert("ISceneObject");  // TODO: list all base classes for compose classes 
+    inputCodeInfo.dataClassNames.insert("ISceneObject2"); // TODO: list all base classes for compose classes 
+    
+    std::vector<std::string> constVarianst; 
+    constVarianst.reserve(inputCodeInfo.dataClassNames.size());
+    for(auto name : inputCodeInfo.dataClassNames) {
+      constVarianst.push_back(name + "*");
+      constVarianst.push_back(name + " *");
+      constVarianst.push_back(name + "&");
+      constVarianst.push_back(name + " &");
+      constVarianst.push_back(std::string("const ") + name);
+      constVarianst.push_back(std::string("const ") + name + "*");
+      constVarianst.push_back(std::string("const ") + name + " *");
+      constVarianst.push_back(std::string("const ") + name + "&");
+      constVarianst.push_back(std::string("const ") + name + " &");
+    }
+    for(auto name : constVarianst)
+      inputCodeInfo.dataClassNames.insert(name);
+  }
 
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.mci.astNode;
@@ -530,8 +614,10 @@ int main(int argc, const char **argv)
 
   std::cout << "(4) Extract functions, constants and structs from 'MainClass' " << std::endl;
   std::cout << "{" << std::endl;
-  std::vector<kslicer::FuncData> usedByKernelsFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
-  std::vector<kslicer::DeclInClass> usedDecls           = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
+
+
+  std::vector<kslicer::FuncData>    usedFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
+  std::vector<kslicer::DeclInClass> usedDecls     = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
 
   for(const auto& usedDecl : usedDecls) // merge usedDecls with generalDecls
   {
@@ -548,6 +634,52 @@ int main(int argc, const char **argv)
       generalDecls.push_back(usedDecl);
   }
 
+  // process virtual functions
+  // 
+  std::cout << "  (4.0) Process Virtual-Functions-Hierarchies:" << std::endl;
+  std::unordered_map<const clang::FunctionDecl*, kslicer::FuncData> procesedFunctions;
+  for(auto f  : usedFunctions)
+    procesedFunctions[f.astNode] = f;
+  
+  size_t oldSizeOfFunctions = usedFunctions.size();
+
+  for(auto& k : inputCodeInfo.kernels)
+  {
+    bool hasVirtual = false;
+    for(const auto& f : k.second.usedMemberFunctions) {
+      if(f.second.isVirtual) {
+        hasVirtual = true;
+        break;
+      }
+    }
+    
+    if(hasVirtual)
+    {
+      inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
+      inputCodeInfo.ExtractVFHConstants(compiler, Tool);
+      
+      auto sortedFunctions = kslicer::ExtractUsedFromVFH(inputCodeInfo, compiler, k.second.usedMemberFunctions);
+      for(auto f : sortedFunctions) 
+      {
+        if(f.isMember)
+          continue;
+        
+        if(procesedFunctions.find(f.astNode) == procesedFunctions.end()) 
+        {
+          procesedFunctions[f.astNode] = f;
+          usedFunctions.push_back(f);
+        }
+      }
+  
+      inputCodeInfo.VisitAndPrepare_KF(k.second, compiler); // move data from usedContainersProbably to usedContainers if a kernel actually uses it
+  
+      std::cout << std::endl;
+    }
+  }
+
+  if(usedFunctions.size() != oldSizeOfFunctions)
+    std::sort(usedFunctions.begin(), usedFunctions.end(), [](const auto& a, const auto& b) { return a.depthUse > b.depthUse; });
+
   std::vector<std::string> usedDefines = kslicer::ExtractDefines(compiler);
 
   std::cout << "}" << std::endl;
@@ -555,88 +687,83 @@ int main(int argc, const char **argv)
 
   inputCodeInfo.AddSpecVars_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
 
-  bool hasMembers = false;
-  bool hasVirtual = false;
-  for(const auto& f : usedByKernelsFunctions) {
-    if(f.isMember)
-      hasMembers = true;
-    if(f.isVirtual)
-      hasVirtual = true;
-  }
-
-  if(hasMembers && inputCodeInfo.pShaderCC->IsGLSL()) // We don't implement this for OpenCL kernels yet ... or at all.
+  if(inputCodeInfo.pShaderCC->IsGLSL()) // We don't implement this for OpenCL kernels yet ... or at all.
   {
     std::cout << "(4.1) Process Member function calls, extract data accesed in member functions " << std::endl;
     std::cout << "{" << std::endl;
     for(auto& k : inputCodeInfo.kernels)
     {
-      for(const auto& f : usedByKernelsFunctions)
+      std::vector<kslicer::FuncData> usedFunctionsCopy;
+      for(auto memberF : k.second.usedMemberFunctions)                    // (1) process member functions
+        usedFunctionsCopy.push_back(memberF.second);                                                                                                                           
+      usedFunctionsCopy.push_back(kslicer::FuncDataFromKernel(k.second)); // (2) process kernel in the same way as used member functions by this kernel  
+
+      for(const auto& f : usedFunctionsCopy)
       {
-        if(f.isMember) // and if is called from this kernel.It it is called, list all input parameters for each call!
+        if(!f.isMember) // and if is called from this kernel.It it is called, list all input parameters for each call!
+          continue;
+
+        // list all input parameters for each call of member function inside kernel; in this way we know which textures, vectors and samplers were actually used by these functions
+        //
+        std::unordered_map<std::string, kslicer::UsedContainerInfo> auxContainers;
+        auto machedParams = kslicer::ArgMatchTraversal    (&k.second, f, usedFunctions, inputCodeInfo, compiler);
+        auto usedMembers  = kslicer::ExtractUsedMemberData(&k.second, f, usedFunctions, auxContainers, inputCodeInfo, compiler);
+
+        // TODO: process bindedParams correctly
+        //
+        std::vector<kslicer::DataMemberInfo> samplerMembers;
+        for(auto x : usedMembers)
         {
-          // list all input parameters for each call of member function inside kernel; in this way we know which textures, vectors and samplers were actually used by these functions
-          //
-          std::unordered_map<std::string, kslicer::UsedContainerInfo> auxContainers;
-          auto machedParams = kslicer::ArgMatchTraversal    (&k.second, f, usedByKernelsFunctions,                inputCodeInfo, compiler);
-          auto usedMembers  = kslicer::ExtractUsedMemberData(&k.second, f, usedByKernelsFunctions, auxContainers, inputCodeInfo, compiler);
-
-          // TODO: process bindedParams correctly
-          //
-          std::vector<kslicer::DataMemberInfo> samplerMembers;
-          for(auto x : usedMembers)
+          if(kslicer::IsSamplerTypeName(x.second.type))
           {
-            if(kslicer::IsSamplerTypeName(x.second.type))
-            {
-              auto y = x.second;
-              y.kind = kslicer::DATA_KIND::KIND_SAMPLER;
-              samplerMembers.push_back(y);
-            }
+            auto y = x.second;
+            y.kind = kslicer::DATA_KIND::KIND_SAMPLER;
+            samplerMembers.push_back(y);
           }
+        }
 
-          for(auto& member : usedMembers)
+        for(auto& member : usedMembers)
+        {
+          k.second.usedMembers.insert(member.first);
+          member.second.usedInKernel = true;
+          if(kslicer::IsSamplerTypeName(member.second.type)) // actually this is not correct!!!
           {
-            k.second.usedMembers.insert(member.first);
-            member.second.usedInKernel = true;
-
-            if(kslicer::IsSamplerTypeName(member.second.type)) // actually this is not correct!!!
+            for(auto sampler : samplerMembers)
             {
-              for(auto sampler : samplerMembers)
+              for(auto map : machedParams)
               {
-                for(auto map : machedParams)
+                for(auto par : map)
                 {
-                  for(auto par : map)
-                  {
-                    std::string actualTextureName = par.second;
-                    k.second.texAccessSampler[actualTextureName] = sampler.name;
-                  }
+                  std::string actualTextureName = par.second;
+                  k.second.texAccessSampler[actualTextureName] = sampler.name;
                 }
               }
             }
-            else if(member.second.isContainer)
-            {
-              kslicer::UsedContainerInfo info;
-              info.type          = member.second.type;
-              info.name          = member.second.name;
-              info.kind          = member.second.kind;
-              info.isConst       = member.second.IsUsedTexture();      // strange thing ...
-              k.second.usedContainers[info.name] = info;
-            }
-            else
-            {
-              auto p1 = inputCodeInfo.allDataMembers.find(member.first);
-              auto p2 = inputCodeInfo.m_setterVars.find(member.first);
-              if(p1 != inputCodeInfo.allDataMembers.end())
-                p1->second.usedInKernel = true;
-              else if(p2 ==  inputCodeInfo.m_setterVars.end()) // don't add setters
-                inputCodeInfo.allDataMembers[member.first] = member.second;
-            }
-          } // end for(auto& member : usedMembers)
+          }
+          else if(member.second.isContainer)
+          {
+            kslicer::UsedContainerInfo info;
+            info.type          = member.second.type;
+            info.name          = member.second.name;
+            info.kind          = member.second.kind;
+            info.isConst       = member.second.IsUsedTexture();      // strange thing ...
+            k.second.usedContainers[info.name] = info;
+          }
+          else
+          {
+            auto p1 = inputCodeInfo.allDataMembers.find(member.first);
+            auto p2 = inputCodeInfo.m_setterVars.find(member.first);
+            if(p1 != inputCodeInfo.allDataMembers.end())
+              p1->second.usedInKernel = true;
+            else if(p2 ==  inputCodeInfo.m_setterVars.end()) // don't add setters
+              inputCodeInfo.allDataMembers[member.first] = member.second;
+          }
+        } // end for(auto& member : usedMembers)
 
-          for(const auto& c : auxContainers)
-            k.second.usedContainers[c.first] = c.second;
-
-        } // end if(f.isMember)
-      } // end for(const auto& f : usedByKernelsFunctions)
+        for(const auto& c : auxContainers)
+          k.second.usedContainers[c.first] = c.second;
+        
+      } // end for(const auto& f : usedFunctions)
     } // end for(auto& k : inputCodeInfo.kernels)
 
     for(const auto& k : inputCodeInfo.kernels) // fix this flag for members that were used in member functions but not in kernels directly
@@ -668,7 +795,7 @@ int main(int argc, const char **argv)
     auto auxDecriptorSets = inputCodeInfo.allDescriptorSetsInfo;
     for(auto& mainFunc : inputCodeInfo.mainFunc)
     {
-      std::cout << " process subkernel " << mainFunc.Name.c_str() << std::endl;
+      std::cout << "  process subkernel " << mainFunc.Name.c_str() << std::endl;
       inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
     }
     inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);
@@ -684,15 +811,18 @@ int main(int argc, const char **argv)
       inputCodeInfo.ProcessCallArs_KF(call);
     inputCodeInfo.megakernelRTV = true;
   }
-  /////////////////////////////////////////////////////////////////////////////////////////////// fakeOffset flag for local variables
-
+  
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  inputCodeInfo.allDescriptorSetsInfo.clear();
   for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
     std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
-    inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
+    inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);  // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
   }
-
   inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  /////////////////////////////////////////////////////////////////////////////////////////////// fakeOffset flag for local variables
 
   // analize inputCodeInfo.allDescriptorSetsInfo to mark all args of each kernel that we need to apply fakeOffset(tid) inside kernel to this arg
   //
@@ -702,23 +832,12 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  // process virtual functions
-  if(hasVirtual)
-  {
-    std::cout << "(5.1) Process Virtual-Functions-Hierarchies" << std::endl;
-    std::cout << "(5.2) Extract Virtual-Functions-Hierarchies constants" << std::endl;
-    std::cout << "{" << std::endl;
-    inputCodeInfo.ProcessVFH(firstPassData.rv.m_classList, compiler);
-    inputCodeInfo.ExtractVFHConstants(compiler, Tool);
-
-    std::cout << "}" << std::endl;
-    std::cout << std::endl;
-  }
-
   std::cout << "(6) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl;
   std::cout << "{" << std::endl;
 
   inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
+  inputCodeInfo.AppendAllRefsBufferIfNeeded(inputCodeInfo.dataMembers);                       // add abstract to concrete tables
+  inputCodeInfo.AppendAccelStructForIntersectionShadersIfNeeded(inputCodeInfo.dataMembers, composeImplName); 
 
   inputCodeInfo.ProcessMemberTypes(firstPassData.rv.GetOtherTypeDecls(), compiler.getSourceManager(), generalDecls);                   // ==> generalDecls
   inputCodeInfo.ProcessMemberTypesAligment(inputCodeInfo.dataMembers, firstPassData.rv.GetOtherTypeDecls(), compiler.getASTContext()); // ==> inputCodeInfo.dataMembers
@@ -856,6 +975,7 @@ int main(int argc, const char **argv)
         }
       }
       cf.megakernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
+      inputCodeInfo.globalDeviceFeatures.useRTX = inputCodeInfo.globalDeviceFeatures.useRTX || hasAccelStructs;
     }
   }
 
@@ -873,6 +993,63 @@ int main(int argc, const char **argv)
     }
     kernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
   }
+  
+  ///////////////////////////////////////////////////////////////////////////// fix code for seperate kernel with RT pipeline
+  if(!inputCodeInfo.megakernelRTV) // && textGenSettings.enableRayGen 
+  { 
+    // save correct info
+    //
+    auto copy = inputCodeInfo.mainFunc;
+    auto tmp  = inputCodeInfo.allDescriptorSetsInfo;
+    
+    inputCodeInfo.allDescriptorSetsInfo.clear();
+    for(auto& mainFunc : inputCodeInfo.mainFunc)
+    {
+      std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
+      inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
+    }
+    
+    // restore correct info
+    //
+    auto copy2 = inputCodeInfo.mainFunc;
+    inputCodeInfo.mainFunc = copy;
+    inputCodeInfo.allDescriptorSetsInfo = tmp;
+     
+    // exctract fixed text
+    //
+    for(size_t i=0;i<inputCodeInfo.mainFunc.size();i++)
+      inputCodeInfo.mainFunc[i].CodeGenerated = copy2[i].CodeGenerated;
+  }
+  /////////////////////////////////////////////////////////////////////////////
+
+  
+  // apply user exclude lists for kernels
+  //
+  auto kernelOptions = inputOptions["kernels"];
+  for(auto& k : inputCodeInfo.kernels) 
+  {
+    auto p = kernelOptions.find(k.second.name);
+    if(p != kernelOptions.end())
+    {
+      for(auto excludeFunc : (*p)["ExcludeFunctions"].items()) {
+        std::string name = excludeFunc.value();
+        for(auto p = k.second.usedMemberFunctions.begin(); p!=  k.second.usedMemberFunctions.end(); ++p) {
+          if(p->second.name == name) {
+            k.second.usedMemberFunctions.erase(p);
+            break;
+          }
+        }
+      }
+
+      for(auto excludeData : (*p)["ExcludeData"].items()) {
+        std::string name = excludeData.value();
+        auto p = k.second.usedContainers.find(name);
+        if(p != k.second.usedContainers.end())
+          k.second.usedContainers.erase(p);
+      }
+    }
+  }
+  
 
   inputCodeInfo.kernelsCallCmdDeclCached.clear();
   std::string rawname = kslicer::CutOffFileExt(allFiles[0]);
@@ -880,7 +1057,8 @@ int main(int argc, const char **argv)
                                       rawname + ToLowerCase(suffix) + ".h", threadsOrder,
                                       uboIncludeName, composeImplName,
                                       jsonUBO, textGenSettings);
-
+  
+  std::cout << std::endl;
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl;
   std::cout << "{" << std::endl;
   {
@@ -900,7 +1078,8 @@ int main(int argc, const char **argv)
   std::string shaderCCName2 = inputCodeInfo.pShaderCC->Name();
   std::cout << "(8) Generate " << shaderCCName2.c_str() << " kernels" << std::endl;
   std::cout << "{" << std::endl;
-
+  
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   if(inputCodeInfo.megakernelRTV) // join all kernels in one for each CF, WE MUST REPEAT THIS HERE BECAUSE OF SHITTY FUNCTIONS ARE PROCESSED DURING 'VisitAndRewrite_KF' for kernels !!!
   {
     for(auto& k : inputCodeInfo.kernels)
@@ -962,8 +1141,9 @@ int main(int argc, const char **argv)
     for(auto& k : inputCodeInfo.kernels)
       k.second.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(k.second, compiler, k.second.rewrittenInit, k.second.rewrittenFinish);
   }
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedByKernelsFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO, usedDefines, textGenSettings);
+  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO, usedDefines, textGenSettings);
   if(inputCodeInfo.pShaderCC->IsISPC()) {
     json["Constructors"]        = jsonCPP["Constructors"];
     json["HasCommitDeviceFunc"] = jsonCPP["HasCommitDeviceFunc"];
@@ -990,7 +1170,8 @@ int main(int argc, const char **argv)
   kslicer::ApplyJsonToTemplate("templates/ubo_def.h",  uboOutName, jsonUBO); // need to call it after "GenerateShaders"
   kslicer::CheckForWarnings(inputCodeInfo);
 
-  std::cout << "(9) Generate host code again for 'ListRequiredDeviceFeatures' " << std::endl << std::endl;
+  std::cout << "(9) Generate host code again for 'ListRequiredDeviceFeatures' " << std::endl;
+  std::cout << "{" << std::endl;
   if(true)
   {
     auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls,
@@ -998,7 +1179,8 @@ int main(int argc, const char **argv)
                                         uboIncludeName, composeImplName, jsonUBO, textGenSettings);
     kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + ToLowerCase(suffix) + "_init.cpp", jsonCPP);
   }
-  std::cout << "(10) Finished!  " << std::endl;
+  std::cout << "}" << std::endl << std::endl;
+  std::cout << "(10) Finished! " << std::endl;
 
   return 0;
 }

@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <vector>
 #include <array>
 #include <memory>
@@ -8,7 +9,7 @@
 #include <cassert>
 #include "vk_copy.h"
 #include "vk_context.h"
-{% if UseRayGen %}
+{% if UseRayGen or HasAllRefs %}
 #include "ray_tracing/vk_rt_funcs.h"
 #include "ray_tracing/vk_rt_utils.h"
 {% endif %}
@@ -19,8 +20,11 @@
 #include "CrossRT.h"
 ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_graphicsQId, std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper,
                               uint32_t a_maxMeshes, uint32_t a_maxTotalVertices, uint32_t a_maxTotalPrimitives, uint32_t a_maxPrimitivesPerMesh,
-                              bool build_as_add);
+                              bool build_as_add, bool has_aabb);
 {% endif %}
+{% if UseRayGen %}
+#include "VulkanRTX.h"
+{% endif%}
 
 {% for ctorDecl in Constructors %}
 {% if ctorDecl.NumParams == 0 %}
@@ -55,7 +59,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   InitBuffers(a_maxThreadsCount, true);
   InitKernels("{{ShaderSingleFile}}.spv");
   AllocateAllDescriptorSets();
-
+  
   {% if length(SceneMembers) > 0 %}
   auto queueAllFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
   {% endif %}
@@ -66,13 +70,16 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   uint32_t maxTotalVertices     = userRestrictions[1];
   uint32_t maxTotalPrimitives   = userRestrictions[2];
   uint32_t maxPrimitivesPerMesh = userRestrictions[3];
-  {{ScnObj}} = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, m_ctx.pCopyHelper,
-                                                             maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true),
-                                                             [](ISceneObject *p) { DeleteSceneRT(p); } );
-  {% endfor %}
-  {% if UseRayGen %}
-  AllocAllShaderBindingTables();
+  {% if ScnObj.HasIntersectionShader %}
+  auto {{ScnObj.Name}}Old = {{ScnObj.Name}}; // save user implementation
   {% endif %}
+  {{ScnObj.Name}} = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, m_ctx.pCopyHelper,
+                                                             maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true, {{ScnObj.HasIntersectionShader}}),
+                                                             [](ISceneObject *p) { DeleteSceneRT(p); } );
+  {% if ScnObj.HasIntersectionShader %}
+  {{ScnObj.Name}} = std::make_shared<RTX_Proxy>({{ScnObj.Name}}Old, {{ScnObj.Name}}); // wrap both user and RTX implementation with proxy object 
+  {% endif %}
+  {% endfor %}
   {% if UseSubGroups %}
   if((m_ctx.subgroupProps.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) == 0)
     std::cout << "ALERT! class '{{MainClassName}}{{MainClassSuffix}}' uses subgroup operations but seems your device does not support them" << std::endl;
@@ -218,36 +225,48 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
     shaderStage.pName  = a_mainName;
     assert(shaderStage.module != VK_NULL_HANDLE);
     shaderStages.push_back(shaderStage);
+  }
+
+  // (2) make shader groups
+  //
+  for(uint32_t shaderId=0; shaderId < uint32_t(shader_paths.size()); shaderId++)
+  {
+    const auto stage = shader_paths[shaderId].first;
 
     VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
-    shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-    if(stage == VK_SHADER_STAGE_MISS_BIT_KHR || stage == VK_SHADER_STAGE_RAYGEN_BIT_KHR ||
-       stage == VK_SHADER_STAGE_CALLABLE_BIT_KHR)
+    shaderGroup.anyHitShader       = VK_SHADER_UNUSED_KHR; 
+    shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR; 
+    shaderGroup.sType              = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+    if(stage == VK_SHADER_STAGE_MISS_BIT_KHR || stage == VK_SHADER_STAGE_RAYGEN_BIT_KHR || stage == VK_SHADER_STAGE_CALLABLE_BIT_KHR)
     {
       shaderGroup.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-      shaderGroup.generalShader    = static_cast<uint32_t>(shaderStages.size()) - 1;
+      shaderGroup.generalShader    = shaderId;
       shaderGroup.closestHitShader = VK_SHADER_UNUSED_KHR;
     }
     else if(stage == VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
     {
       shaderGroup.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
       shaderGroup.generalShader    = VK_SHADER_UNUSED_KHR;
-      shaderGroup.closestHitShader = static_cast<uint32_t>(shaderStages.size()) - 1;
+      shaderGroup.closestHitShader = shaderId;
     }
-
-    // @TODO: intersection, procedural, anyhit
-    shaderGroup.anyHitShader       = VK_SHADER_UNUSED_KHR;
-    shaderGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
+    else if(stage == VK_SHADER_STAGE_INTERSECTION_BIT_KHR) 
+    {
+      shaderGroup.type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+      shaderGroup.generalShader      = VK_SHADER_UNUSED_KHR;
+      shaderGroup.intersectionShader = shaderId + 0; //
+      shaderGroup.closestHitShader   = shaderId + 1; // assume next is always 'closestHitShader' for current 'intersectionShader'
+      shaderId++;
+    }                                                      
 
     shaderGroups.push_back(shaderGroup);
   }
 
-  // (2) create pipeline layout
+  // (3) create pipeline layout
   //
-  std::array<VkPushConstantRange,3> pcRanges = {};
+  std::array<VkPushConstantRange,1> pcRanges = {};
   pcRanges[0].stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-  pcRanges[1].stageFlags = VK_SHADER_STAGE_MISS_BIT_KHR;
-  pcRanges[2].stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+  //pcRanges[1].stageFlags = VK_SHADER_STAGE_MISS_BIT_KHR;
+  //pcRanges[2].stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
   for(size_t i=0;i<pcRanges.size();i++) {
     pcRanges[i].offset = 0;
     pcRanges[i].size   = 128;
@@ -366,9 +385,6 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
   vkDestroyPipeline(device, m_indirectUpdate{{Dispatch.KernelName}}Pipeline, nullptr);
   {% endfor %}
   {% endif %}
-  {% for Hierarchy in DispatchHierarchies %}
-  vkDestroyBuffer(device, m_{{Hierarchy.Name}}ObjPtrBuffer, nullptr);
-  {% endfor %}
   {% if UseServiceScan %}
   {% for Scan in ServiceScan %}
   m_scan_{{Scan.Type}}.DeleteTempBuffers(device);
@@ -405,7 +421,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitHelpers()
   {% endif %}
 }
 
-{% if length(DispatchHierarchies) > 0 %}
+{% if length(Hierarchies) > 0 %}
 VkBufferMemoryBarrier {{MainClassName}}{{MainClassSuffix}}::BarrierForObjCounters(VkBuffer a_buffer)
 {
   VkBufferMemoryBarrier bar = {};
@@ -457,21 +473,48 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
   {% if Kernel.IsMega %}
   if(m_megaKernelFlags.enable{{Kernel.Name}})
+  {% else %}
+  if(true)
+  {% endif %}
   {
     {% if Kernel.UseRayGen %}
     const bool enableMotionBlur = {{UseMotionBlur}};
-
     std::string shaderPathRGEN  = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}RGEN.glsl.spv");
     std::string shaderPathRCHT  = AlterShaderPath("{{ShaderFolder}}/z_trace_rchit.glsl.spv");
     std::string shaderPathRMIS1 = AlterShaderPath("{{ShaderFolder}}/z_trace_rmiss.glsl.spv");
     std::string shaderPathRMIS2 = AlterShaderPath("{{ShaderFolder}}/z_trace_smiss.glsl.spv");
+    {% for Hierarchy in Kernel.Hierarchies %}
+    {% if Hierarchy.HasIntersection %}
+    {% for Impl in Hierarchy.Implementations %}
+    {% for Func in Impl.MemberFunctions %}
+    {% if Func.IsIntersection %}
 
+    std::string shader{{Impl.ClassName}}RINT = AlterShaderPath("{{ShaderFolder}}/{{Impl.ClassName}}_{{Func.Name}}_int.glsl.spv");
+    std::string shader{{Impl.ClassName}}RHIT = AlterShaderPath("{{ShaderFolder}}/{{Impl.ClassName}}_{{Func.Name}}_hit.glsl.spv");  
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
+    {% endfor %}
     std::vector< std::pair<VkShaderStageFlagBits, std::string> > shader_paths;
     {
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_RAYGEN_BIT_KHR,      shaderPathRGEN.c_str()));
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_MISS_BIT_KHR,        shaderPathRMIS1.c_str()));
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_MISS_BIT_KHR,        shaderPathRMIS2.c_str()));
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, shaderPathRCHT.c_str()));
+      {% for Hierarchy in Kernel.Hierarchies %}
+      {% if Hierarchy.HasIntersection %}
+      {% for Impl in Hierarchy.Implementations %}
+      {% for Func in Impl.MemberFunctions %}
+      {% if Func.IsIntersection %}
+
+      shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_INTERSECTION_BIT_KHR, shader{{Impl.ClassName}}RINT.c_str()));
+      shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR,  shader{{Impl.ClassName}}RHIT.c_str()));
+      {% endif %}
+      {% endfor %}
+      {% endfor %}
+      {% endif %}
+      {% endfor %}
     }
 
     MakeRayTracingPipelineAndLayout(shader_paths, enableMotionBlur, "main", kspec, {{Kernel.Name}}DSLayout, &{{Kernel.Name}}Layout, &{{Kernel.Name}}Pipeline);
@@ -484,9 +527,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
     {{Kernel.Name}}Layout   = nullptr;
     {{Kernel.Name}}Pipeline = nullptr;
   }
-  {% else %}
-  MakeComputePipelineAndLayout(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %}, kspec, {{Kernel.Name}}DSLayout, &{{Kernel.Name}}Layout, &{{Kernel.Name}}Pipeline);
-  {% endif %}
   {% if Kernel.FinishRed %}
   {% if ShaderGLSL %}
   shaderPath = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}_Reduction.comp.spv");
@@ -690,10 +730,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
     allBuffersRef.push_back(m_vdata.{{Buffer.Name}}Buffer);
   }
   {% endfor %}
-  {% for Hierarchy in DispatchHierarchies %}
-  m_{{Hierarchy.Name}}ObjPtrBuffer = vk_utils::createBuffer(device, 2*sizeof(uint32_t)*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-  allBuffersRef.push_back(m_{{Hierarchy.Name}}ObjPtrBuffer);
-  {% endfor %}
 
   {% if UseServiceScan %}
   {% for Scan in ServiceScan %}
@@ -725,11 +761,101 @@ void {{MainClassName}}{{MainClassSuffix}}::ReserveEmptyVectors()
   {% endif %}
   {% endfor %}
 }
+{% for Hierarchy in Hierarchies %} 
+{% if Hierarchy.VFHLevel >= 2 %}
+static size_t GetSizeByTag_{{Hierarchy.Name}}(uint32_t a_tag)
+{
+  switch(a_tag)
+  {
+    {% for Impl in Hierarchy.Implementations %}
+    case {{Hierarchy.Name}}::{{Impl.TagName}}: return sizeof({{Impl.ClassName}});
+    {% endfor %}
+    default : return sizeof({{Hierarchy.EmptyImplementation.ClassName}});
+  }
+};
+
+static size_t PackObject_{{Hierarchy.Name}}(std::vector<uint8_t>& buffer, const {{Hierarchy.Name}}* a_ptr) // todo: generate implementation via dynamic_cast or static_cast (can be used because we know the type)
+{
+  const size_t objSize  = GetSizeByTag_{{Hierarchy.Name}}(a_ptr->GetTag());
+  const size_t currSize = buffer.size();
+  const size_t nextSize = buffer.size() + objSize - sizeof(void*); // minus vptr size
+  buffer.resize(nextSize);
+  const char* objData = ((const char*)a_ptr) + sizeof(void*);      // do not account for vptr
+  memcpy(buffer.data() + currSize, objData, objSize - sizeof(void*)); 
+  return objSize;
+}
+
+{% endif %}
+{% endfor %}
 
 void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
 {
+  std::vector<VkBuffer> memberVectorsWithDevAddr;
   std::vector<VkBuffer> memberVectors;
   std::vector<VkImage>  memberTextures;
+  {% for Var in ClassVectorVars %}
+  {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}
+  
+  if({{Var.Name}}_sorted.size() == 0) // Pack all objects of '{{Var.Hierarchy.Name}}'
+  {
+    auto& bufferV = {{Var.Name}}_dataV;
+    auto& sorted  = {{Var.Name}}_sorted;
+    auto& vtable  = {{Var.Name}}_vtable;
+    vtable.resize({{Var.Name}}{{Var.AccessSymb}}size());
+    sorted.resize({{length(Var.Hierarchy.Implementations)}} + 1);
+    bufferV.resize(16*4); // ({{Var.Name}}.size()*sizeof({{Var.Name}})); actual reserve may not be needed due to implementation don't have vectors. TODO: you may cvheck this explicitly in kslicer
+    for(size_t arrId=0;arrId<sorted.size(); arrId++) {
+      sorted[arrId].reserve({{Var.Name}}{{Var.AccessSymb}}size()*sizeof({{Var.Hierarchy.Name}}));
+      sorted[arrId].resize(0);
+    }
+    
+    std::vector<size_t> objCount(sorted.size());
+    for(auto& x : objCount) x = 0;
+
+    for(size_t i=0;i<{{Var.Name}}{{Var.AccessSymb}}size();i++) {
+      const auto tag = {{Var.Name}}{{Var.AccessSymb}}at(i)->GetTag(); 
+      PackObject_{{Var.Hierarchy.Name}}(sorted[tag], {{Var.Name}}{{Var.AccessSymb}}at(i));
+      vtable[i] = LiteMath::uint2(tag, uint32_t(objCount[tag]));
+      objCount[tag]++;
+    }
+
+    const size_t buffReferenceAlign = 16; // from EXT_buffer_reference spec: "If the layout qualifier is not specified, it defaults to 16 bytes"
+    size_t objDataBufferSize = 0;
+    {{Var.Name}}_obj_storage_offsets.reserve(sorted.size() + 1);
+    {{Var.Name}}_obj_storage_offsets.resize(0);
+    for(size_t arrId=0;arrId<sorted.size(); arrId++)
+    {
+      {{Var.Name}}_obj_storage_offsets.push_back(objDataBufferSize);
+      objDataBufferSize += vk_utils::getPaddedSize(sorted[arrId].size(), buffReferenceAlign);
+    }
+    {{Var.Name}}_obj_storage_offsets.push_back(objDataBufferSize); // store total buffer size also in this array
+
+    m_vdata.{{Var.Name}}_dataSBuffer = vk_utils::createBuffer(device, objDataBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+    m_vdata.{{Var.Name}}_dataVBuffer = vk_utils::createBuffer(device, bufferV.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+    m_vdata.{{Var.Name}}_dataSOffset = 0;
+    m_vdata.{{Var.Name}}_dataVOffset = 0;
+    memberVectorsWithDevAddr.push_back(m_vdata.{{Var.Name}}_dataSBuffer);
+    memberVectors.push_back(m_vdata.{{Var.Name}}_dataVBuffer);
+  }
+  {% endif %}
+  {% endfor %}
+  {% for Table in RemapTables %}
+  {
+    auto pProxyObj = dynamic_cast<RTX_Proxy*>({{Table.AccelName}}.get());
+    auto tablePtrs = pProxyObj->GetAABBToPrimTable();
+    if(tablePtrs.tableSize != 0)
+    {
+      m_vdata.{{Table.Name}}RemapTableBuffer = vk_utils::createBuffer(device, tablePtrs.tableSize*sizeof(LiteMath::uint2), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+      memberVectorsWithDevAddr.push_back(m_vdata.{{Table.Name}}RemapTableBuffer);
+    }
+    else
+      m_vdata.{{Table.Name}}RemapTableBuffer = VK_NULL_HANDLE;
+  }
+  {% endfor %}
+  
+  {% if HasAllRefs %}
+  all_references.resize(1); // need just single element to store all references
+  {% endif %}
 
   {% for Var in ClassVectorVars %}
   m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
@@ -743,6 +869,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   {% endif %}
   memberTextures.push_back(m_vdata.{{Var.Name}}Texture);
   {% endfor %}
+  
   {% for Var in ClassTexArrayVars %}
   m_vdata.{{Var.Name}}ArrayTexture.resize(0);
   m_vdata.{{Var.Name}}ArrayView.resize(0);
@@ -760,6 +887,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
     memberTextures.push_back(tex);
   }
   {% endfor %}
+
   {% for Sam in SamplerMembers %}
   m_vdata.{{Sam}} = CreateSampler({{Sam}});
   {% endfor %}
@@ -769,6 +897,25 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   memberVectors.push_back(m_indirectBuffer);
   {% endif %}
   AllocMemoryForMemberBuffersAndImages(memberVectors, memberTextures);
+  if(memberVectorsWithDevAddr.size() != 0)
+    AllocAndBind(memberVectorsWithDevAddr, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT);
+  {% if HasAllRefs %}
+  {
+    {% for Var in ClassVectorVars %}
+    {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}
+    {% for Impl in Var.Hierarchy.Implementations %}
+    all_references[0].{{Impl.ClassName}}Address = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Var.Name}}_dataSBuffer) + {{Var.Name}}_obj_storage_offsets[{{Var.Hierarchy.Name}}::{{Impl.TagName}}];
+    {% endfor %}
+    {% endif %}
+    {% endfor %}
+    {% for Table in RemapTables %}
+    if(m_vdata.{{Table.Name}}RemapTableBuffer != VK_NULL_HANDLE)
+      all_references[0].{{Table.Name}}RemapAddr = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Table.Name}}RemapTableBuffer);
+    else
+      all_references[0].{{Table.Name}}RemapAddr = VkDeviceAddress(0);
+    {% endfor %}
+  }
+  {% endif %}
   {% for Var in ClassTexArrayVars %}
   for(size_t i = 0; i < {{Var.Name}}.size(); i++)
     m_vdata.{{Var.Name}}ArrayView[i] = CreateView(VkFormat({{Var.Name}}[i]->format()), m_vdata.{{Var.Name}}ArrayTexture[i]);
@@ -1075,19 +1222,19 @@ void {{MainClassName}}{{MainClassSuffix}}::AssignBuffersToMemory(const std::vect
   }
 }
 
-{{MainClassName}}{{MainClassSuffix}}::MemLoc {{MainClassName}}{{MainClassSuffix}}::AllocAndBind(const std::vector<VkBuffer>& a_buffers)
+{{MainClassName}}{{MainClassSuffix}}::MemLoc {{MainClassName}}{{MainClassSuffix}}::AllocAndBind(const std::vector<VkBuffer>& a_buffers, VkMemoryAllocateFlags a_flags)
 {
   MemLoc currLoc;
   if(a_buffers.size() > 0)
   {
-    currLoc.memObject = vk_utils::allocateAndBindWithPadding(device, physicalDevice, a_buffers);
+    currLoc.memObject = vk_utils::allocateAndBindWithPadding(device, physicalDevice, a_buffers, a_flags);
     currLoc.allocId   = m_allMems.size();
     m_allMems.push_back(currLoc);
   }
   return currLoc;
 }
 
-{{MainClassName}}{{MainClassSuffix}}::MemLoc {{MainClassName}}{{MainClassSuffix}}::AllocAndBind(const std::vector<VkImage>& a_images)
+{{MainClassName}}{{MainClassSuffix}}::MemLoc {{MainClassName}}{{MainClassSuffix}}::AllocAndBind(const std::vector<VkImage>& a_images, VkMemoryAllocateFlags a_flags)
 {
   MemLoc currLoc;
   if(a_images.size() > 0)
@@ -1221,10 +1368,10 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(
 void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
 {
   m_allShaderTableBuffers.clear();
-
-  uint32_t numShaderGroups = 4u;
-  uint32_t numHitStages    = 1u;
-  uint32_t numMissStages   = 2u;
+  uint32_t customStages    = {{length(IntersectionHierarhcy.Implementations)}};
+  uint32_t numShaderGroups = 4 + customStages;            // (raygen, miss, miss, rchit(tris)) + ({% for Impl in IntersectionHierarhcy.Implementations %}{{Impl.ClassName}}, {% endfor %})
+  uint32_t numHitStages    = uint32_t(customStages) + 1u; // 1 if we don't have actual sbtRecordOffsets at all
+  uint32_t numMissStages   = 2u;                          // common mis shader and shadow miss  
 
   VkPhysicalDeviceRayTracingPipelinePropertiesKHR  rtPipelineProperties{};
   {
@@ -1238,6 +1385,8 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
   const uint32_t handleSize        = rtPipelineProperties.shaderGroupHandleSize;
   const uint32_t handleSizeAligned = vk_utils::getSBTAlignedSize(rtPipelineProperties.shaderGroupHandleSize, rtPipelineProperties.shaderGroupHandleAlignment);
   const uint32_t sbtSize           = numShaderGroups * handleSize;
+  
+  //assert(handleSize == handleSizeAligned);
 
   const auto rgenStride = vk_utils::getSBTAlignedSize(handleSizeAligned,                 rtPipelineProperties.shaderGroupBaseAlignment);
   const auto missSize   = vk_utils::getSBTAlignedSize(numMissStages * handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment);
@@ -1255,9 +1404,6 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
   //
   for(VkPipeline rtPipeline : allRTPipelines) // todo add for loop
   {
-    std::vector<uint8_t> shaderHandleStorage(sbtSize);
-    VK_CHECK_RESULT(vkGetRayTracingShaderGroupHandlesKHR(device, rtPipeline, 0, numShaderGroups, sbtSize, shaderHandleStorage.data()));
-
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
     auto raygenBuf  = vk_utils::createBuffer(device, rgenStride, flags);
@@ -1344,14 +1490,19 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
 
     auto *pData = shaderHandleStorage.data();
 
-    memcpy(mapped + offsets[groupId*3 + 0], pData, handleSize * 1); // raygenBuf
+    memcpy(mapped + offsets[groupId*3 + 0], pData, handleSize * 1);             // raygenBuf
     pData += handleSize * 1;
 
     memcpy(mapped + offsets[groupId*3 + 1], pData, handleSize * numMissStages); // raymissBuf
     pData += handleSize * numMissStages;
 
-    memcpy(mapped + offsets[groupId*3 + 2], pData, handleSize * numHitStages); // rayhitBuf
-    pData += handleSize * numHitStages;
+    memcpy(mapped + offsets[groupId*3 + 2], pData, handleSize * 1);             // rayhitBuf part for hw accelerated triangles
+    pData += handleSize * 1;
+                                                                                // rayhitBuf part for custom primitives
+    {% for Impl in IntersectionHierarhcy.Implementations %}                     
+    memcpy(mapped + offsets[groupId*3 + 2] + handleSize*({{IntersectionHierarhcy.Name}}::{{Impl.TagName}}), pData + {{loop.index}}*handleSize, handleSize); // {{Impl.ClassName}}
+    {% endfor %}
+    pData += handleSize*customStages;
 
     groupId++;
   }
@@ -1778,6 +1929,7 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   features2.features.shaderInt64   = {{GlobalUseInt64}};
   features2.features.shaderFloat64 = {{GlobalUseFloat64}};
   features2.features.shaderInt16   = {{GlobalUseInt16}};
+
   void** ppNext = &features2.pNext;
   {% if GlobalUseInt8 or GlobalUseHalf %}
   deviceExtensions.push_back("VK_KHR_shader_float16_int8");
@@ -1856,6 +2008,21 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   (*ppNext) = &varPointersQuestion; ppNext = &varPointersQuestion.pNext;
   deviceExtensions.push_back("VK_KHR_variable_pointers");
   deviceExtensions.push_back("VK_KHR_shader_non_semantic_info"); // for clspv
+  {% endif %}
+  {% if HasAllRefs and not HasRTXAccelStruct %} {# /***** buffer device address ********/ #}
+  static VkPhysicalDeviceBufferDeviceAddressFeaturesKHR bufferDeviceAddressFeatures = {};
+  bufferDeviceAddressFeatures.sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
+  bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
+  (*ppNext) = &bufferDeviceAddressFeatures; ppNext = &bufferDeviceAddressFeatures.pNext;
+  deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+  {% endif %} {# /***** buffer device address ********/ #}
+  {% if HasTextureArray %}
+  static VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{};
+  indexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+  indexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+  indexingFeatures.runtimeDescriptorArray                    = VK_TRUE;
+  (*ppNext) = &indexingFeatures; ppNext = &indexingFeatures.pNext;
+  deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
   {% endif %}
   return features2;
 }

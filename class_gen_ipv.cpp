@@ -39,9 +39,6 @@ std::vector<kslicer::ArgFinal> kslicer::IPV_Pattern::GetKernelTIDArgs(const Kern
 
 void kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
-  //const std::string&   a_mainClassName = this->mainClassName;
-  //const CXXMethodDecl* a_node          = a_mainFunc.Node;
-  //const std::string&   a_mainFuncName  = a_mainFunc.Name;
   GetCFSourceCodeCmd(a_mainFunc, compiler, false); // ==> write this->allDescriptorSetsInfo, a_mainFunc // TODO: may simplify impl for image processing 
   a_mainFunc.endDSNumber   = allDescriptorSetsInfo.size();
   a_mainFunc.InOuts        = kslicer::ListParamsOfMainFunc(a_mainFunc.Node, compiler);
@@ -133,9 +130,20 @@ public:
       
       if(areSameVariable(initVar,condVar) && areSameVariable(initVar, incVar) && loopSZ)
       {
-        std::string name = initVar->getNameAsString();
+        std::string name      = initVar->getNameAsString();
+        std::string debugText = kslicer::GetRangeSourceCode(forLoop->getBody()->getSourceRange(), m_compiler);
+        
+        bool fromThisClass = true;
+        if(func_decl->getNameAsString() == currKernel->name && clang::isa<clang::CXXMethodDecl>(func_decl))
+        {
+          const clang::CXXMethodDecl* method      = clang::dyn_cast<clang::CXXMethodDecl>(func_decl);
+          const clang::CXXRecordDecl* parentClass = method->getParent();
+          std::string className = parentClass->getNameAsString();
+          fromThisClass = (className == m_mainClassName);
+        }
+
         //std::cout << "  [LoopHandlerIPV]: Variable name is: " << name.c_str() << std::endl;
-        if(currKernel->loopIters.size() < m_maxNesting)
+        if(currKernel->loopIters.size() < m_maxNesting && fromThisClass)
         {
           const clang::QualType qt = initVar->getType();
           kslicer::KernelInfo::LoopIter tidArg;
@@ -163,8 +171,8 @@ public:
     else if(loopOutsidesInit && func_decl)
     {
       currKernel->loopOutsidesInit    = loopOutsidesInit->getSourceRange();
-      //auto debugMe = kslicer::GetRangeSourceCode(loopOutsidesInit->getSourceRange(), m_compiler);
-      //std::cout << "debugMe = " << debugMe.c_str() << std::endl;
+      auto debugText = kslicer::GetRangeSourceCode(loopOutsidesInit->getSourceRange(), m_compiler);
+      //std::cout << "debugText = " << debugText.c_str() << std::endl;
       clang::SourceLocation endOfInit = currKernel->loopOutsidesInit.getEnd();
       auto p = loopOutsidesInit->body_begin();
       for(; p != loopOutsidesInit->body_end(); ++p)
@@ -182,7 +190,9 @@ public:
       if(p != loopOutsidesInit->body_end())
       {
         const Stmt* beginOfEnd = *p;
-        currKernel->loopOutsidesFinish.setBegin(beginOfEnd->getSourceRange().getBegin());
+        const auto range = beginOfEnd->getSourceRange();
+        const auto begin = range.getBegin();
+        currKernel->loopOutsidesFinish.setBegin(begin);
         p = loopOutsidesInit->body_end(); --p;
         const Stmt* endOfFinish = *p;
         currKernel->loopOutsidesFinish.setEnd(endOfFinish->getSourceRange().getEnd());
@@ -218,6 +228,9 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   
   auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "", false);
   pVisitor->SetCurrKernelInfo(&a_funcInfo);
+
+  //const std::string funBody  = pVisitor->RecursiveRewrite(a_funcInfo.astNode->getBody());
+
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
   pVisitor->ResetCurrKernelInfo();
   

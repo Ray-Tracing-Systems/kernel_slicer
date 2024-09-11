@@ -7,7 +7,7 @@
 #include <memory>
 
 #include "test_class.h"
-#include "Bitmap.h"
+#include "Image2d.h"
 #include "ArgParser.h"
 #define JSON_LOG_IMPLEMENTATION
 #include "JSONLog.hpp"
@@ -30,7 +30,7 @@ int main(int argc, const char** argv)
 
   std::string filename = args.hasOption("--test") ? "skybox" : argv[1];
   int w, h;
-  std::vector<uint32_t> inputImageData = LoadBMP((filename + ".bmp").c_str(), &w, &h);
+  std::vector<uint32_t> inputImageData = LiteImage::LoadBMP((filename + ".bmp").c_str(), &w, &h);
   if(inputImageData.empty())
     throw std::runtime_error("Failed to load inputImageData from file: " + filename + ".bmp");
   

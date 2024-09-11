@@ -105,21 +105,47 @@ static inline size_t AlignedSize(const size_t a_size)
   return currSize;
 }
 
-static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, const clang::CompilerInstance& compiler)
+nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHierarchy& h, 
+                                           const clang::CompilerInstance& compiler,
+                                           const MainClassInfo& a_classInfo)
 {
   json hierarchy;
   hierarchy["Name"]             = h.interfaceName;
   hierarchy["ObjBufferName"]    = h.objBufferName;
   hierarchy["IndirectDispatch"] = 0;
   hierarchy["IndirectOffset"]   = 0;
+  hierarchy["VFHLevel"]         = h.hasIntersection ? 3 : int(h.level);
+  hierarchy["HasIntersection"]  = h.hasIntersection;
+  
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  size_t summOfFieldsSize = 0;
+  auto fieldsInterface = a_classInfo.GetFieldsFromStruct(h.interfaceDecl, &summOfFieldsSize);
 
-  hierarchy["Constants"]        = std::vector<json>();
+  hierarchy["InterfaceFields"] = std::vector<json>();
+  for(auto field : fieldsInterface) 
+  {
+    json local;
+    local["Type"] = field.first;
+    local["Name"] = field.second;
+    hierarchy["InterfaceFields"].push_back(local);
+  }
+
+  if(summOfFieldsSize % 8 != 0) // manually align struct to 64 bits (8 bytes) if needed
+  {
+    json local;
+    local["Type"] = "uint";
+    local["Name"] = "dummy";
+    hierarchy["InterfaceFields"].push_back(local);
+  }
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  hierarchy["Constants"] = std::vector<json>();
   for(const auto& decl : h.usedDecls)
   {
     if(decl.kind == kslicer::DECL_IN_CLASS::DECL_CONSTANT)
     {
       json currConstant;
-      currConstant["Type"]  = decl.type;
+      currConstant["Type"]  = a_classInfo.pShaderFuncRewriter->RewriteStdVectorTypeStr(decl.type);
       currConstant["Name"]  = decl.name;
       currConstant["Value"] = kslicer::GetRangeSourceCode(decl.srcRange, compiler);
       hierarchy["Constants"].push_back(currConstant);
@@ -133,19 +159,66 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
     const auto p2 = h.tagByClassName.find(impl.name);
     assert(p2 != h.tagByClassName.end());
     json currImpl;
-    currImpl["ClassName"] = impl.name;
-    currImpl["TagName"]   = p2->second;
+    currImpl["ClassName"]       = impl.name;
+    currImpl["TagName"]         = p2->second;
     currImpl["MemberFunctions"] = std::vector<json>();
     currImpl["ObjBufferName"]   = h.objBufferName;
+    currImpl["IsEmpty"]         = impl.isEmpty;
     for(const auto& member : impl.memberFunctions)
     {
-      currImpl["MemberFunctions"].push_back(member.srcRewritten);
+      json local;
+      local["Name"]           = member.name;
+      local["NameRewritten"]  = member.nameRewritten;
+      local["IsIntersection"] = member.isIntersection;
+      local["Source"]         = member.srcRewritten;
+      currImpl["MemberFunctions"].push_back(local);
     }
+
+    // 'old' fields for level 1 (?)
+    //
     currImpl["Fields"] = std::vector<json>();
     for(const auto& field : impl.fields)
       currImpl["Fields"].push_back(field);
-   
-    if(impl.isEmpty) {
+    // 'new' fields for level 2 and 3
+    //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    {
+      size_t summOfFieldsSize2 = 0;
+      auto fieldsImpl  = a_classInfo.GetFieldsFromStruct(impl.decl, &summOfFieldsSize2);
+      auto fieldsImpl2 = fieldsInterface;
+      
+      // join interface and implementation
+      //
+      fieldsImpl2.insert(fieldsImpl2.end(), fieldsImpl.begin(), fieldsImpl.end());
+      summOfFieldsSize2 += summOfFieldsSize;
+  
+      if(summOfFieldsSize2 % sizeof(void*) != 0 && int(h.level) >= 2)
+      {
+        std::cout << "  [ALIGMENT VIOLATION]: sizeof(" << impl.name << ") = " << summOfFieldsSize2 + sizeof(void*) << " which is not a multiple of " << sizeof(void*) << std::endl;
+        std::cout << "  [ALIGMENT VIOLATION]: sizeof any class in VFH hierarchy with virtual functions must be multiple of " << sizeof(void*) << std::endl;
+      }
+  
+      json local;
+      local["Name"]       = impl.name;
+      local["BufferName"] = impl.objBufferName; // + "_" + impl.name;
+      local["Fields"]     = std::vector<json>();
+      { 
+        // (1) put fields
+        // 
+        for(auto field : fieldsImpl2) 
+        {
+          json local2;
+          local2["Type"] = field.first;
+          local2["Name"] = field.second;
+          local["Fields"].push_back(local2);
+        }
+      }
+      currImpl["DataStructure"] = local;
+    }
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if(impl.isEmpty) 
+    //if(impl.name.find("Empty") != std::string::npos)
+    {
       hierarchy["EmptyImplementation"] = currImpl;
       emptyIsFound = true;
     }
@@ -154,8 +227,9 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
   }
   hierarchy["ImplAlignedSize"] = AlignedSize(h.implementations.size()+1);
   if(h.implementations.size()!= 0 && !emptyIsFound)
-    std::cout << "  VFH::ALERT! Empty implementation is not found! Don't add any functions except 'GetTag()' to EmptyImpl class" << std::endl;
+    std::cout << "  VFH::ALERT! Empty implementation is not found! You need to declate a default implementation class with 'Empty' prefix in its name " << std::endl; // Don't add any functions except 'GetTag()' to EmptyImpl class
 
+  std::unordered_map<std::string, const clang::CXXRecordDecl*> retDeclHash;
   hierarchy["VirtualFunctions"] = std::vector<json>();
   for(const auto& vf : h.virtualFunctions)
   {
@@ -177,19 +251,54 @@ static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, cons
     }
     virtualFunc["ArgLen"] = vf.second.args.size();
     //virtualFunc["ThisTypeName"]  = vf.second.thisTypeName;
+    
+    if(vf.second.retTypeDecl != nullptr && !a_classInfo.pShaderFuncRewriter->NeedsVectorTypeRewrite(vf.second.retTypeName)) // not some of predefined types
+      retDeclHash[vf.second.retTypeName] = vf.second.retTypeDecl;
+
     hierarchy["VirtualFunctions"].push_back(virtualFunc);
+  }
+
+  hierarchy["AuxDecls"] = std::vector<json>();
+  for(auto retDecl : retDeclHash) 
+  {
+    json declOfRetType;
+    declOfRetType["Name"]   = retDecl.first;
+    declOfRetType["Fields"] = std::vector<json>();
+    auto fields = a_classInfo.GetFieldsFromStruct(retDecl.second);
+    for(auto field : fields) 
+    {
+      json local;
+      local["Type"] = field.first;
+      local["Name"] = field.second;
+      declOfRetType["Fields"].push_back(local);
+    }
+    hierarchy["AuxDecls"].push_back(declOfRetType);
   }
 
   return hierarchy;
 }
 
-static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies,
-                                     const clang::CompilerInstance& compiler)
+nlohmann::json kslicer::PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
+                                                 const clang::CompilerInstance& compiler,
+                                                 const MainClassInfo& a_classInfo)
 {
   json data = std::vector<json>();
   for(const auto& p : hierarchies)
-    data.push_back(PutHierarchyToJson(p.second, compiler));
+    data.push_back(PutHierarchyToJson(p.second, compiler, a_classInfo));
   return data;
+}
+
+nlohmann::json kslicer::FindIntersectionHierarchy(nlohmann::json a_hierarchies)
+{
+  json result;
+  result["Implementations"] = std::vector<json>();
+  for(auto h : a_hierarchies) {
+    if(h["HasIntersection"]) {
+      result = h;
+      break;
+    }
+  }
+  return result;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -283,8 +392,26 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   dataMembersCached.reserve(a_classInfo.dataMembers.size());
   for(const auto& member : a_classInfo.dataMembers)
     dataMembersCached[member.name] = member;
+  for(const auto& cont : a_classInfo.usedProbably) 
+  {
+    if(!cont.second.isContainer)
+      continue;
+    DataMemberInfo containerInfo;
+    containerInfo.isArray     = false;
+    containerInfo.isPointer   = false;
+    containerInfo.isContainer = true;
+    containerInfo.name          = cont.first;
+    containerInfo.type          = cont.second.containerType + std::string("<") + cont.second.containerDataType + ">";
+    containerInfo.sizeInBytes   = 0; // not used by containers
+    containerInfo.usedInKernel  = true;
+    containerInfo.containerType = cont.second.containerType;
+    containerInfo.containerDataType = cont.second.containerDataType;
+    containerInfo.usage = kslicer::DATA_USAGE::USAGE_USER;
+    containerInfo.kind  = cont.second.info.kind;
+    dataMembersCached[cont.first] = containerInfo;
+  }
 
-  std::unordered_map<std::string, kslicer::ShittyFunction> shittyFunctions;
+  std::unordered_map<std::string, kslicer::ShittyFunction> shittyFunctions; //
   if(a_classInfo.pShaderCC->IsGLSL())
   {
     for(const auto& k : a_classInfo.kernels)
@@ -307,6 +434,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["UseComplex"]         = true; // a_classInfo.useComplexNumbers; does not works in appropriate way ...
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
+  data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0);
 
   data["Defines"] = std::vector<std::string>();
   for(const auto& def : usedDefines)
@@ -327,11 +455,20 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (2) declarations of struct, constants and typedefs inside class
   //
-  std::unordered_set<std::string> excludedNames;
-  for(auto pair : a_classInfo.m_setterVars)
-    excludedNames.insert(kslicer::CleanTypeName(pair.second));
+  std::unordered_set<std::string> excludedNames; 
+  {
+    for(auto pair : a_classInfo.m_setterVars)
+      excludedNames.insert(kslicer::CleanTypeName(pair.second));
+  }
 
-  data["ClassDecls"] = std::vector<std::string>();
+  std::unordered_set<std::string> excludedConstantsFromVFH;
+  {
+    for(const auto& p : a_classInfo.m_vhierarchy)
+      for(const auto& decl : p.second.usedDecls)
+        excludedConstantsFromVFH.insert(decl.name);
+  }
+
+  data["ClassDecls"] = std::vector<json>();
   std::map<std::string, kslicer::DeclInClass> specConsts;
   for(const auto decl : usedDecl)
   {
@@ -345,6 +482,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       specConsts[val] = decl;
       continue;
     }
+    
+    if(excludedConstantsFromVFH.find(decl.name) != excludedConstantsFromVFH.end())
+      continue;
 
     json c_decl;
     c_decl["Text"]    = a_classInfo.pShaderCC->PrintHeaderDecl(decl, compiler);
@@ -356,7 +496,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (3) local functions preprocess
   //
-  std::vector<kslicer::FuncData> funcMembers;
   std::unordered_map<std::string, kslicer::FuncData> cachedFunc;
   {
     for (const auto& f : usedFunctions)
@@ -365,9 +504,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions'
       if(pShit != shittyFunctions.end())
         continue;
-
-      if(f.isMember)
-        funcMembers.push_back(f);
     }
   }
 
@@ -380,9 +516,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["GlobalUseInt64"]   = shaderFeatures.useInt64Type;
   data["GlobalUseFloat64"] = shaderFeatures.useFloat64Type;
   data["GlobalUseHalf"]    = shaderFeatures.useHalfType;
-
-  auto dhierarchies   = a_classInfo.GetDispatchingHierarchies();
-  data["Hierarchies"] = PutHierarchiesDataToJson(dhierarchies, compiler);
 
   // (4) put kernels
   //
@@ -400,7 +533,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernels = a_classInfo.kernels;
   }
 
-  data["Kernels"] = std::vector<std::string>();
+  data["Kernels"] = std::vector<json>();
   for (const auto& nk : kernels)
   {
     const auto& k = nk.second;
@@ -412,7 +545,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     uint MArgsSize  = 0;
     bool isTextureArrayUsedInThisKernel = false;
 
-    json args = std::vector<std::string>();
+    json args = std::vector<json>();
     for(auto commonArg : commonArgs)
     {
       json argj;
@@ -427,6 +560,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["ImFormat"]      = commonArg.imageFormat;
       argj["IsPointer"]     = commonArg.isPointer;
       argj["IsMember"]      = false;
+      argj["IsSingle"]      = false;
+      argj["IsVFHBuffer"]   = false;
+      argj["VFHLevel"]      = 0;
 
       std::string ispcConverted = argj["Name"];
       if(argj["IsPointer"])
@@ -442,8 +578,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     // now add all std::vector members
     //
-    json rtxNames = std::vector<std::string>();
-    json vecs = std::vector<std::string>();
+    json rtxNames = std::vector<json>();
     for(const auto& container : k.usedContainers)
     {
       auto pVecMember     = dataMembersCached.find(container.second.name);
@@ -478,6 +613,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsAccelStruct"] = false;
       argj["IsPointer"]     = (pVecMember->second.kind == kslicer::DATA_KIND::KIND_VECTOR);
       argj["IsMember"]      = true;
+      argj["IsSingle"]      = pVecMember->second.isSingle;
+      ////////////////////////////////////////////////////////////////////
+      MainClassInfo::VFH_LEVEL level = MainClassInfo::VFH_LEVEL_1;
+      bool isVFHBuffer       = a_classInfo.IsVFHBuffer(pVecMember->second.name, &level);
+      argj["IsVFHBuffer"]    = isVFHBuffer;
+      argj["VFHLevel"]       = int(level);
+      if(isVFHBuffer && int(level) >= 2)
+        argj["Type"] = "uvec2";
+      ////////////////////////////////////////////////////////////////////
+
       std::string ispcConverted = argj["Name"];
       if(argj["IsPointer"])
         ispcConverted = ConvertVecTypesToISPC(argj["Type"], argj["Name"]);
@@ -522,7 +667,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         argj["SizeOffset"] = bufferSizeOffset; // pVecSizeMember->second.offsetInTargetBuffer / sizeof(uint32_t);
 
       args.push_back(argj);
-      vecs.push_back(argj);
     }
 
     if(k.isIndirect && !a_classInfo.pShaderCC->IsISPC()) // add indirect buffer to shaders
@@ -535,12 +679,15 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsImage"]    = false;
       argj["IsAccelStruct"] = false;
       argj["IsMember"]   = false;
+      argj["IsSingle"]   = false;
       argj["NameISPC"] = argj["Name"];
+      argj["IsVFHBuffer"]   = false;
+      argj["VFHLevel"]      = 0;
       args.push_back(argj);
     }
 
     const auto userArgsArr = GetUserKernelArgs(k.args);
-    json userArgs = std::vector<std::string>();
+    json userArgs = std::vector<json>();
     for(const auto& arg : userArgsArr)
     {
       std::string typeName = pShaderRewriter->RewriteStdVectorTypeStr(arg.type);
@@ -578,8 +725,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
 
     bool needFinishReductionPass = false;
-    json reductionVars = std::vector<std::string>();
-    json reductionArrs = std::vector<std::string>();
+    json reductionVars = std::vector<json>();
+    json reductionArrs = std::vector<json>();
     for(const auto& var : subjToRedCopy)
     {
       json varJ = ReductionAccessFill(var.second, a_classInfo.pShaderCC, a_classInfo.pShaderFuncRewriter);
@@ -595,6 +742,29 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
 
     json kernelJson;
+    
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    kernelJson["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(a_classInfo.SelectVFHOnlyUsedByKernel(a_classInfo.m_vhierarchy, k), compiler, a_classInfo); 
+    kernelJson["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(kernelJson["Hierarchies"]);
+    
+    // add primitive remap tables for intesection shaders
+    //
+    kernelJson["IntersectionShaderRemaps"] = std::vector<json>();
+    for(const auto& vfh : a_classInfo.m_vhierarchy)
+    {
+      if(!vfh.second.hasIntersection)
+        continue;
+  
+      json local;
+      local["Name"]          = vfh.second.interfaceName;
+      local["BType"]         = "RemapTable";
+      local["DType"]         = "uvec2";
+      local["InterfaceName"] = vfh.second.interfaceName;
+      local["AccelName"]     = vfh.second.accStructName;
+      kernelJson["IntersectionShaderRemaps"].push_back(local);
+    }
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     kernelJson["RedLoop1"] = std::vector<std::string>();
     kernelJson["RedLoop2"] = std::vector<std::string>();
 
@@ -609,7 +779,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["LastArgNF1"]   = VArgsSize + MArgsSize;
     kernelJson["LastArgNF"]    = VArgsSize; // Last Argument No Flags
     kernelJson["Args"]         = args;
-    kernelJson["Vecs"]         = vecs;
     kernelJson["RTXNames"]     = rtxNames;
     kernelJson["UserArgs"]     = userArgs;
     kernelJson["Name"]         = k.name;
@@ -870,8 +1039,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["IsConstObj"] = false;
     }
 
-    kernelJson["MemberFunctions"] = std::vector<std::string>();
-    if(funcMembers.size() > 0)
+    kernelJson["MemberFunctions"] = std::vector<json>();
+    if(k.usedMemberFunctions.size() > 0)
     {
       clang::Rewriter rewrite2;
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
@@ -880,16 +1049,41 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       pVisitorK->ClearUserArgs();
       pVisitorK->processFuncMember = true; // signal that we process function member, not the kernel itself
 
-      for(auto& f : funcMembers)
-      {
-        auto funcNode = const_cast<clang::FunctionDecl*>(f.astNode);
-        pVisitorF->SetCurrFuncInfo(&f);    // pass auxilary function data inside pVisitorF
-        pVisitorK->SetCurrFuncInfo(&f);
+      for(auto& f : k.usedMemberFunctions)
+      { 
+        if(!f.second.isMember) // may happen to meet non member here due to VFH hierarchy analysis  
+          continue;
+        bool fromVFH = false;
+        if(f.second.astNode->isVirtualAsWritten()) {
+          for(const auto& h : a_classInfo.m_vhierarchy) {
+            auto p = h.second.virtualFunctions.find(f.second.name);
+            if(p != h.second.virtualFunctions.end())
+            {
+              fromVFH = true;
+              break;
+            }
+          }
+        }
+
+        if(fromVFH) // skip virtual functions because they are proccesed else-where
+          continue;
+
+        auto funcNode    = const_cast<clang::FunctionDecl*>(f.second.astNode);
+        auto funcDataPtr = const_cast<kslicer::FuncData*>  (&f.second);
+
+        pVisitorF->SetCurrFuncInfo(funcDataPtr); // pass auxilary function data inside pVisitorF
+        pVisitorK->SetCurrFuncInfo(funcDataPtr);
         const std::string funcDeclText = pVisitorF->RewriteFuncDecl(funcNode);
         const std::string funcBodyText = pVisitorK->RecursiveRewrite(funcNode->getBody());
         pVisitorF->ResetCurrFuncInfo();
         pVisitorK->ResetCurrFuncInfo();
-        kernelJson["MemberFunctions"].push_back(funcDeclText + funcBodyText);
+        
+        json funData;
+        funData["Decl"]       = funcDeclText;
+        funData["Text"]       = funcDeclText + funcBodyText;
+        funData["IsRayQuery"] = (funcDeclText.find("CRT_Hit") == 0 && funcDeclText.find("RayQuery_") != std::string::npos);
+        funData["UseVFH"]     = false; 
+        kernelJson["MemberFunctions"].push_back(funData);
       }
     }
 
@@ -963,7 +1157,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       local["Size"] = array.second.arraySize;
       kernelJson["ThreadLocalArrays"].push_back(local);
     }
-
+  
     auto original = kernelJson;
 
     // if we have additional init statements we should add additional init kernel before our kernel
@@ -1008,7 +1202,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (5) generate local functions
   //
-  data["LocalFunctions"] = std::vector<std::string>();
+  data["LocalFunctions"] = std::vector<json>();
   {
     clang::Rewriter rewrite2;
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
@@ -1018,19 +1212,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       cachedFunc[f.name] = f;
       auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions'
-      if(pShit != shittyFunctions.end())
+      if(pShit != shittyFunctions.end() || f.isMember)
         continue;
 
-      if(!f.isMember)
-      {
-        pVisitorF->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
-        const std::string funDecl  = rewrite2.getRewrittenText(f.srcRange);             // func body rewrite does not works correctly in this way some-times (see float4x4 indices)
-        const std::string funBody  = pVisitorF->RecursiveRewrite(f.astNode->getBody()); // but works in this way ... 
-        const std::string declHead = funDecl.substr(0,funDecl.find("{"));               // therefore we join function head and body
-    
-        data["LocalFunctions"].push_back(declHead + funBody);
-        shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();
-      }
+      pVisitorF->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
+      const std::string funDecl  = rewrite2.getRewrittenText(f.srcRange);             // func body rewrite does not works correctly in this way some-times (see float4x4 indices)
+      const std::string funBody  = pVisitorF->RecursiveRewrite(f.astNode->getBody()); // but works in this way ... 
+      const std::string declHead = funDecl.substr(0,funDecl.find("{"));               // therefore we join function head and body
+  
+      data["LocalFunctions"].push_back(declHead + funBody);
+      shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();
     }
   }
 

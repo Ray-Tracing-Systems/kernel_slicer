@@ -11,6 +11,9 @@
 
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
+{% if UseRayGen %}
+#include "VulkanRTX.h"
+{% endif%}
 
 static uint32_t ComputeReductionSteps(uint32_t whole_size, uint32_t wg_size)
 {
@@ -92,9 +95,31 @@ void {{MainClassName}}{{MainClassSuffix}}::ReadPlainMembers(std::shared_ptr<vk_u
 
 void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {
+  {% for Table in RemapTables %}
+  {
+    auto pProxyObj = dynamic_cast<RTX_Proxy*>({{Table.AccelName}}.get());
+    auto tablePtrs = pProxyObj->GetAABBToPrimTable();
+    if(tablePtrs.tableSize != 0)
+      a_pCopyEngine->UpdateBuffer(m_vdata.{{Table.Name}}RemapTableBuffer, 0, tablePtrs.table, tablePtrs.tableSize*sizeof(LiteMath::uint2));
+  }
+  {% endfor %}
   {% for Var in ClassVectorVars %}
+  {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}
+  if({{Var.Name}}{{Var.AccessSymb}}size() > 0)
+  {
+    a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer      , 0, {{Var.Name}}_vtable.data(), {{Var.Name}}_vtable.size()*sizeof(unsigned)*2 );
+    a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}_dataVBuffer, 0, {{Var.Name}}_dataV.data(), {{Var.Name}}_dataV.size());
+    for(size_t i=0;i<{{Var.Name}}_obj_storage_offsets.size()-1;i++) {
+      size_t     offset = {{Var.Name}}_obj_storage_offsets[i];
+      const auto& odata = {{Var.Name}}_sorted[i];
+      if(odata.size() != 0)
+        a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}_dataSBuffer, offset, odata.data(), odata.size());
+    }
+  }
+  {% else %}
   if({{Var.Name}}{{Var.AccessSymb}}size() > 0)
     a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}{{Var.AccessSymb}}data(), {{Var.Name}}{{Var.AccessSymb}}size()*sizeof({{Var.TypeOfData}}) );
+  {% endif %}
   {% endfor %}
 }
 
@@ -228,10 +253,10 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   {
     vkCmdUpdateBuffer(m_currCmdBuffer, m_uboArgsBuffer, 0, sizeof(KernelArgsPC), &pcData);
     VkBufferMemoryBarrier barUBO2 = BarrierForArgsUBO(sizeof(KernelArgsPC));
-    vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, {% if Kernel.UseRayGen %}VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR{% else %}VK_SHADER_STAGE_COMPUTE_BIT{% endif %}, 0, 0, nullptr, 1, &barUBO2, 0, nullptr);
+    vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, {% if Kernel.UseRayGen %}VK_SHADER_STAGE_RAYGEN_BIT_KHR{% else %}VK_SHADER_STAGE_COMPUTE_BIT{% endif %}, 0, 0, nullptr, 1, &barUBO2, 0, nullptr);
   }
   {% else %}
-  vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, {% if Kernel.UseRayGen %}VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR{% else %}VK_SHADER_STAGE_COMPUTE_BIT{% endif %}, 0, sizeof(KernelArgsPC), &pcData);
+  vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, {% if Kernel.UseRayGen %}VK_SHADER_STAGE_RAYGEN_BIT_KHR{% else %}VK_SHADER_STAGE_COMPUTE_BIT{% endif %}, 0, sizeof(KernelArgsPC), &pcData);
   {% endif %}
   {% if Kernel.HasLoopInit %}
   vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}InitPipeline);
@@ -379,6 +404,7 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
 ## for MainFunc in MainFunctions
 {{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.MainFuncDeclCmd}}
 {
+  VkPipelineStageFlagBits prevStageBits = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
   m_currCmdBuffer = a_commandBuffer;
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   {% if MainFunc.IsMega %}

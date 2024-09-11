@@ -1,5 +1,4 @@
 #include "test_class.h"
-#include "Bitmap.h"
 #include <cassert>
 #include <algorithm>
 #include <array>

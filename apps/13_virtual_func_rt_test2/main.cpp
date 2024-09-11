@@ -1,11 +1,9 @@
 #include <iostream>
 #include <fstream>
-
-//void test_class_cpu();
-//void test_class_gpu();
+#include <memory>
 
 #include "test_class.h"
-#include "Bitmap.h"
+#include "Image2d.h"
 #include "ArgParser.h"
 
 #include "vk_context.h"
@@ -18,6 +16,8 @@ int main(int argc, const char** argv)
   #else
   bool enableValidationLayers = false;
   #endif
+
+  std::cout << "sizeof(IMaterial) = " << sizeof(IMaterial) << std::endl; 
 
   std::vector<uint32_t> pixelData(WIN_WIDTH*WIN_HEIGHT);
   std::vector<uint32_t> packedXY(WIN_WIDTH*WIN_HEIGHT);
@@ -45,13 +45,14 @@ int main(int argc, const char** argv)
   pImpl->CastSingleRayBlock(WIN_HEIGHT*WIN_HEIGHT, packedXY.data(), pixelData.data(), 1);
   
   if(onGPU)
-    SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    LiteImage::SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
-    SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-
-   // now test path tracing
+    LiteImage::SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+  
+  std::cout << "start NaivePathTraceBlock ... " << std::endl;
+  // now test path tracing
   //
-  const int PASS_NUMBER = 100;
+  const int PASS_NUMBER = 256;
   pImpl->NaivePathTraceBlock(WIN_HEIGHT*WIN_HEIGHT, 6, packedXY.data(), realColor.data(), PASS_NUMBER);
   
   const float normConst = 1.0f/float(PASS_NUMBER);
@@ -60,17 +61,17 @@ int main(int argc, const char** argv)
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
   {
     float4 color = realColor[i]*normConst;
-    color.x      = powf(color.x, invGamma);
-    color.y      = powf(color.y, invGamma);
-    color.z      = powf(color.z, invGamma);
+    color.x      = std::pow(color.x, invGamma);
+    color.y      = std::pow(color.y, invGamma);
+    color.z      = std::pow(color.z, invGamma);
     color.w      = 1.0f;
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }
 
   if(onGPU)
-    SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    LiteImage::SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
-    SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+    LiteImage::SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
   float timings[4] = {0,0,0,0};
   pImpl->GetExecutionTime("NaivePathTraceBlock", timings);

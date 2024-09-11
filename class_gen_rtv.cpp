@@ -43,13 +43,9 @@ uint32_t kslicer::RTV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel)
 
 void kslicer::RTV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
-  //const std::string&   a_mainClassName = this->mainClassName;
-  //const CXXMethodDecl* a_node          = a_mainFunc.Node;
-  //const std::string&   a_mainFuncName  = a_mainFunc.Name;
-  //std::string&         a_outFuncDecl   = a_mainFunc.GeneratedDecl;
   GetCFSourceCodeCmd(a_mainFunc, compiler, this->megakernelRTV); // ==> write this->allDescriptorSetsInfo, a_mainFunc
-  a_mainFunc.endDSNumber   = allDescriptorSetsInfo.size();
-  a_mainFunc.InOuts        = kslicer::ListParamsOfMainFunc(a_mainFunc.Node, compiler);
+  a_mainFunc.endDSNumber = allDescriptorSetsInfo.size();
+  a_mainFunc.InOuts      = kslicer::ListParamsOfMainFunc(a_mainFunc.Node, compiler);
 }
 
 
@@ -337,6 +333,15 @@ kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo
       res.usedMembers.insert(member);
     for(auto cont : cf.usedContainers)
       res.usedContainers.insert(cont);
+  }
+
+  // (5) join usedMemberFunctions
+  //
+  {
+    res.usedMemberFunctions = cf.usedMemberFunctions;
+    for(const auto& k : a_kernels)
+      for(const auto& member : k->usedMemberFunctions)
+        res.usedMemberFunctions.insert(member);
   }
 
   res.isMega = true;

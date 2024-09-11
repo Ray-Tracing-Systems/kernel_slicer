@@ -144,6 +144,8 @@ mat3 make_float3x3(vec3 a, vec3 b, vec3 c) { // different way than mat3(a,b,c)
               a.z, b.z, c.z);
 }
 
+vec4 cross3(vec4 a, vec4 b) { return vec4(cross(a.xyz, b.xyz), 1.0f); }
+
 struct Box4f 
 { 
   vec4 boxMin; 
@@ -154,10 +156,6 @@ struct Box4f
 {{Array.Type}} {{Array.Name}}[{{Array.Size}}];
 {% endfor %}
 
-## for LocalFunc in LocalFunctions  
-{{LocalFunc}}
-
-## endfor
 #define KGEN_FLAG_RETURN            1
 #define KGEN_FLAG_BREAK             2
 #define KGEN_FLAG_DONT_SET_EXIT     4
@@ -165,4 +163,9 @@ struct Box4f
 #define KGEN_REDUCTION_LAST_STEP    16
 ## for Def in Defines  
 {{Def}}
+## endfor
+
+## for LocalFunc in LocalFunctions  
+{{LocalFunc}}
+
 ## endfor

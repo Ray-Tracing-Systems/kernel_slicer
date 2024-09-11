@@ -45,63 +45,6 @@ static inline size_t AlignedSize(const size_t a_size)
   return currSize;
 }
 
-static json PutHierarchyToJson(const kslicer::MainClassInfo::DHierarchy& h, const clang::CompilerInstance& compiler)
-{
-  json hierarchy;
-  hierarchy["Name"]             = h.interfaceName;
-  hierarchy["IndirectDispatch"] = 0;
-  hierarchy["IndirectOffset"]   = 0;
-
-  hierarchy["Constants"]        = std::vector<std::string>();
-  for(const auto& decl : h.usedDecls)
-  {
-    if(decl.kind == kslicer::DECL_IN_CLASS::DECL_CONSTANT)
-    {
-      std::string typeInCL = decl.type;
-      ReplaceFirst(typeInCL, "const", "__constant static");
-      json currConstant;
-      currConstant["Type"]  = typeInCL;
-      currConstant["Name"]  = decl.name;
-      currConstant["Value"] = kslicer::GetRangeSourceCode(decl.srcRange, compiler);
-      hierarchy["Constants"].push_back(currConstant);
-    }
-  }
-
-  hierarchy["Implementations"] = std::vector<std::string>();
-  for(const auto& impl : h.implementations)
-  {
-    if(impl.isEmpty)
-      continue;
-    const auto p2 = h.tagByClassName.find(impl.name);
-    assert(p2 != h.tagByClassName.end());
-    json currImpl;
-    currImpl["ClassName"] = impl.name;
-    currImpl["TagName"]   = p2->second;
-    currImpl["MemberFunctions"] = std::vector<std::string>();
-    for(const auto& member : impl.memberFunctions)
-    {
-      currImpl["MemberFunctions"].push_back(member.srcRewritten);
-    }
-    currImpl["Fields"] = std::vector<std::string>();
-    for(const auto& field : impl.fields)
-      currImpl["Fields"].push_back(field);
-
-    hierarchy["Implementations"].push_back(currImpl);
-  }
-  hierarchy["ImplAlignedSize"] = AlignedSize(h.implementations.size()+1);
-
-  return hierarchy;
-}
-
-static json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::DHierarchy>& hierarchies,
-                                     const clang::CompilerInstance& compiler)
-{
-  json data = std::vector<std::string>();
-  for(const auto& p : hierarchies)
-    data.push_back(PutHierarchyToJson(p.second, compiler));
-  return data;
-}
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -517,6 +460,37 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["GenGpuApi"]          = a_classInfo.genGPUAPI;
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
+  data["Hierarchies"]        = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
+  data["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(data["Hierarchies"]);
+  data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0);
+
+  bool hasTextureArray = false;
+
+  if(a_classInfo.m_allRefsFromVFH.size() != 0)
+  {
+    data["AllReferences"] = std::vector<json>();
+    for(auto ref : a_classInfo.m_allRefsFromVFH) {
+      json refJson;
+      refJson["Name"] = ref.name;
+      refJson["Type"] = ref.typeOfElem;
+      data["AllReferences"].push_back(refJson);
+    }
+  }
+
+  data["RemapTables"] = std::vector<json>();
+  for(const auto& vfh : a_classInfo.m_vhierarchy)
+  {
+    if(!vfh.second.hasIntersection)
+      continue;
+
+    json local;
+    local["Name"]          = vfh.second.interfaceName;
+    local["BType"]         = "RemapTable";
+    local["DType"]         = "uvec2";
+    local["InterfaceName"] = vfh.second.interfaceName;
+    local["AccelName"]     = vfh.second.accStructName;
+    data["RemapTables"].push_back(local);
+  }
 
   if(data["UseServiceScan"])
   {
@@ -603,16 +577,19 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   }
 
   data["TotalDSNumber"]   = a_classInfo.allDescriptorSetsInfo.size();
-  data["VectorMembers"]   = std::vector<std::string>();
-  data["TextureMembers"]  = std::vector<std::string>();
-  data["TexArrayMembers"] = std::vector<std::string>();
-  data["SceneMembers"]    = std::vector<std::string>(); // ray tracing specific objects
-  for(const auto var : a_classInfo.dataMembers)
+  data["VectorMembers"]   = std::vector<json>();
+  data["TextureMembers"]  = std::vector<json>();
+  data["TexArrayMembers"] = std::vector<json>();
+  data["SceneMembers"]    = std::vector<json>(); // ray tracing specific objects
+  for(size_t memberId = 0; memberId < a_classInfo.dataMembers.size(); memberId++)
   {
+    const auto var = a_classInfo.dataMembers[memberId];
     if(var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED || var.IsUsedTexture())
       data["TextureMembers"].push_back(var.name);
-    else if(var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
+    else if(var.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY) {
       data["TexArrayMembers"].push_back(var.name);
+      hasTextureArray = true;
+    }
     else if(var.isContainer && kslicer::IsVectorContainer(var.containerType))
     {
       std::string cleanName = var.name;
@@ -622,14 +599,29 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["CleanName"] = cleanName;
       local["Type"]      = var.type;
       local["HasPrefix"] = var.hasPrefix;
+      ////////////////////////////////////////////////////////////////////
+      MainClassInfo::VFH_LEVEL level = MainClassInfo::VFH_LEVEL_1;
+      bool isVFHBuffer        = a_classInfo.IsVFHBuffer(var.name, &level);
+      local["IsVFHBuffer"]    = isVFHBuffer;
+      local["VFHLevel"]       = int(level);
+      ////////////////////////////////////////////////////////////////////
       data["VectorMembers"].push_back(local);
     }
     else if(var.isContainer && kslicer::IsPointerContainer(var.containerType) &&
                                ((var.containerDataType == "struct ISceneObject") ||
-                                (var.containerDataType == "class ISceneObject"))) {
+                                (var.containerDataType == "class ISceneObject"))) 
+    {
+      // when composed class is not completely replace ISceneObject but work together with an implementation
+      //
       std::string cleanDataType = kslicer::CleanTypeName(var.containerDataType);
-      if(a_classInfo.composPrefix.find(cleanDataType) == a_classInfo.composPrefix.end())
-        data["SceneMembers"].push_back(var.name);
+      if(a_classInfo.composPrefix.find(cleanDataType) == a_classInfo.composPrefix.end() || var.hasIntersectionShader) 
+      {
+        json local;
+        local["Name"]                  = var.name;
+        local["HasIntersectionShader"] = var.hasIntersectionShader; //
+        local["IntersectionImplName"]  = var.intersectionClassName; //
+        data["SceneMembers"].push_back(local);
+      }
     }
   }
 
@@ -720,9 +712,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["ClassVars"].push_back(local);
   }
 
-  data["ClassVectorVars"]   = std::vector<std::string>();
-  data["ClassTextureVars"]  = std::vector<std::string>();
-  data["ClassTexArrayVars"] = std::vector<std::string>();
+  data["ClassVectorVars"]   = std::vector<json>();
+  data["ClassTextureVars"]  = std::vector<json>();
+  data["ClassTexArrayVars"] = std::vector<json>();
   for(const auto& v : a_classInfo.dataMembers)
   {
     if(!v.isContainer || v.usage != kslicer::DATA_USAGE::USAGE_USER)
@@ -753,6 +745,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["HasPrefix"]   = v.hasPrefix;
       local["PrefixName"]  = v.prefixName;
       data["ClassTexArrayVars"].push_back(local);
+      hasTextureArray = true;
     }
     else if(v.IsUsedTexture())
     {
@@ -803,6 +796,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       auto p2 = containersInfo.find(capacityName);
 
       assert(p1 != containersInfo.end() && p2 != containersInfo.end());
+      
+      kslicer::MainClassInfo::VFHHierarchy hierarchy;
+      MainClassInfo::VFH_LEVEL level = MainClassInfo::VFH_LEVEL_1;
+      bool isVFHBuffer = a_classInfo.IsVFHBuffer(v.name, &level, &hierarchy);
 
       json local;
       local["Name"]           = v.name;
@@ -813,6 +810,19 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["NeedSampler"]    = false;
       local["HasPrefix"]      = v.hasPrefix;
       local["PrefixName"]     = v.prefixName;
+      local["IsVFHBuffer"]    = isVFHBuffer;
+      local["VFHLevel"]       = int(level);
+      if(isVFHBuffer && int(level) >= 2 ) 
+      {
+        json found;
+        for(auto h : data["Hierarchies"])
+          if(h["Name"] == hierarchy.interfaceName)
+            found = h;
+        local["Hierarchy"] = found;
+      }
+      else
+        local["Hierarchy"] = json();
+
       if(v.hasPrefix)
          local["AccessSymb"]     = "->";
       data["ClassVectorVars"].push_back(local);
@@ -861,9 +871,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["MultipleSourceShaders"] = !a_classInfo.pShaderCC->IsSingleSource();
   data["ShaderFolder"]          = a_classInfo.pShaderCC->ShaderFolder();
 
-  auto dhierarchies             = a_classInfo.GetDispatchingHierarchies();
-  data["DispatchHierarchies"]   = PutHierarchiesDataToJson(dhierarchies, compiler);
-
   data["IndirectBufferSize"] = a_classInfo.m_indirectBufferSize;
   data["IndirectDispatches"] = std::vector<std::string>();
   data["Kernels"]            = std::vector<std::string>();
@@ -906,8 +913,20 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["threadDim"]      = a_classInfo.GetKernelTIDArgs(k).size();
     kernelJson["UseRayGen"]      = k.enableRTPipeline && a_settings.enableRayGen;       // duplicate these options for kernels so we can
     kernelJson["UseMotionBlur"]  = k.enableRTPipeline && a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
-    kernelJson["StageFlags"]     = k.enableRTPipeline ? "(VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)" : "VK_SHADER_STAGE_COMPUTE_BIT";
     kernelJson["EnableBlockExpansion"] = k.be.enabled;
+    kernelJson["Hierarchies"] = kslicer::PutHierarchiesDataToJson(a_classInfo.SelectVFHOnlyUsedByKernel(a_classInfo.m_vhierarchy, k), compiler, a_classInfo);
+    bool hasIntersectionShader = false;
+    if(k.enableRTPipeline) 
+    {
+      for(auto h : kernelJson["Hierarchies"]) 
+        for(auto impl : h["Implementations"]) 
+          for(auto f : impl["MemberFunctions"])
+            if(f["IsIntersection"])
+              hasIntersectionShader = true;
+      kernelJson["HasIntersection"] = true;
+    }
+    else
+      kernelJson["HasIntersection"] = false;
 
     size_t actualSize = 0;
     for(const auto& arg : k.args)
@@ -931,6 +950,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         argData["Count"] = arg.name + ".size()";
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
         argData["IsTextureArray"] = true;
+        hasTextureArray = true;
       }
       else if(arg.IsTexture())
       {
@@ -971,6 +991,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         argData["Type"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
         argData["Count"] = container.second.name + ".size()";
         argData["IsTextureArray"] = true;
+        hasTextureArray = true;
       }
       else if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
       {
@@ -1255,7 +1276,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   {
     json data2;
     data2["Name"]                 = mainFunc.Name;
-    data2["DescriptorSets"]       = std::vector<std::string>();
+    data2["DescriptorSets"]       = std::vector<json>();
     data2["Decl"]                 = mainFunc.GeneratedDecl;
     data2["DeclOrig"]             = mainFunc.OriginalDecl;
     data2["LocalVarsBuffersDecl"] = std::vector<std::string>();
@@ -1362,6 +1383,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         arg["IsTexture"]     = dsArgs.descriptorSetsInfo[j].isTexture();
         arg["IsAccelStruct"] = dsArgs.descriptorSetsInfo[j].isAccelStruct();
         arg["IsTextureArray"]= (dsArgs.descriptorSetsInfo[j].kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY);
+        if(arg["IsTextureArray"])
+          hasTextureArray = true;
 
         if(dsArgs.descriptorSetsInfo[j].kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
         {
@@ -1381,6 +1404,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           arg["AccessDSType"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
           arg["SamplerName"]   = std::string("m_vdata.") + dsArgs.descriptorSetsInfo[j].name + "ArraySampler";
           totalTexArrayUsed++;
+          hasTextureArray = true;
         }
         else if(dsArgs.descriptorSetsInfo[j].isTexture())
         {
@@ -1442,6 +1466,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
             arg["AccessDSType"]  = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
             arg["SamplerName"]   = std::string("m_vdata.") + container.second.name + "ArraySampler";
             totalTexArrayUsed++;
+            hasTextureArray = true;
           }
           else if(container.second.isTexture())
           {
@@ -1514,6 +1539,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["TotalTexStorageUsed"]  = totalTexStorageUsed;
   data["TotalTexArrayUsed"]    = totalTexArrayUsed;
   data["TotalAccels"]          = totalAccels;
+  data["HasTextureArray"]      = hasTextureArray;
 
   data["HasFullImpl"] = atLeastOneFullOverride;
   if(atLeastOneFullOverride && a_classInfo.ctors.size() == 0)
@@ -1561,10 +1587,15 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   // declarations of struct, constants and typedefs inside class
   //
   std::unordered_set<std::string> excludedNames;
-  for(auto pair : a_classInfo.m_setterVars)
-    excludedNames.insert(kslicer::CleanTypeName(pair.second));
+  {
+    for(auto pair : a_classInfo.m_setterVars)
+      excludedNames.insert(kslicer::CleanTypeName(pair.second));
+    //for(const auto& p : a_classInfo.m_vhierarchy)
+    //  for(const auto& decl : p.second.usedDecls)
+    //    excludedNames.insert(kslicer::CleanTypeName(decl.name));
+  }
 
-  data["ClassDecls"] = std::vector<std::string>();
+  data["ClassDecls"] = std::vector<json>();
   for(const auto decl : usedDecl)
   {
     if(!decl.extracted)
@@ -1607,7 +1638,8 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
   data["MainClassSuffixLowerCase"] = ToLowerCase(a_classInfo.mainClassSuffix);
   data["UBOStructFields"] = std::vector<std::string>();
   data["ShaderGLSL"]      = a_classInfo.pShaderCC->IsGLSL();
-  data["Hierarchies"]     = PutHierarchiesDataToJson(a_classInfo.GetDispatchingHierarchies(), compiler);
+  data["Hierarchies"]     = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
+  data["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(data["Hierarchies"]);
   data["UseRayGen"]       = a_settings.enableRayGen;
   data["UseMotionBlur"]   = a_settings.enableMotionBlur;
 

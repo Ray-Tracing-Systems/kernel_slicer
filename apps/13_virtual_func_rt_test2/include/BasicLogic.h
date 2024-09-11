@@ -18,7 +18,6 @@ typedef struct Lite_HitT
   int   geomId;
 } Lite_Hit;
 
-
 typedef struct SurfaceHitT
 {
   float3 pos;
@@ -86,7 +85,7 @@ static inline uint RealColorToUint32_f3(float3 real_color)
   float  r = real_color.x*255.0f;
   float  g = real_color.y*255.0f;
   float  b = real_color.z*255.0f;
-  unsigned char red = (unsigned char)r, green = (unsigned char)g, blue = (unsigned char)b;
+  uint red = (uint)r, green = (uint)g, blue = (uint)b;
   return red | (green << 8) | (blue << 16) | 0xFF000000;
 }
 
@@ -97,10 +96,10 @@ static inline uint RealColorToUint32(float4 real_color)
   float  b = real_color.z*255.0f;
   float  a = real_color.w*255.0f;
 
-  unsigned char red   = (unsigned char)r;
-  unsigned char green = (unsigned char)g;
-  unsigned char blue  = (unsigned char)b;
-  unsigned char alpha = (unsigned char)a;
+  uint red   = uint(r);
+  uint green = uint(g);
+  uint blue  = uint(b);
+  uint alpha = uint(a);
 
   return red | (green << 8) | (blue << 16) | (alpha << 24);
 }
@@ -129,6 +128,18 @@ static inline void CoordinateSystem(float3 v1, float3* v2, float3* v3)
 
   (*v3) = cross(v1, (*v2));
 }
+
+#ifndef M_PI
+#define M_PI          3.14159265358979323846f
+#endif
+
+#ifndef M_TWOPI
+#define M_TWOPI       6.28318530717958647692f
+#endif
+
+#ifndef INV_PI
+#define INV_PI        0.31830988618379067154f
+#endif
 
 #define GEPSILON      5e-6f
 #define DEPSILON      1e-20f
@@ -258,131 +269,6 @@ static inline float GGX_GeomShadMask(const float cosThetaN, const float alpha)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-static inline float2 fract2(float2 v)
-{
-  return v - floor(v);
-}
-
-static inline float3 floor3(float3 v)
-{
-  return make_float3(floor(v.x), floor(v.y), floor(v.z));
-}
-
-static inline float3 fract3(float3 v)
-{
-  return v - floor3(v);
-}
-
-static inline float4 mix4(float4 x, float4 y, float a)
-{
-  return x*(1.0f - a) + y*a;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-static inline float2 hash2(float2 p ) 
-{
-  const float2 p1 = make_float2(dot(p, make_float2(123.4f, 748.6f)), dot(p, make_float2(547.3f, 659.3f)));
-  return fract2(make_float2(sin(p1.x)*5232.85324f, sin(p1.y)*5232.85324f));   
-}
-
-//Based off of iq's described here: http://www.iquilezles.org/www/articles/voronoilin
-//
-
-static inline float voronoi(float2 p, float iTime) 
-{
-    float2 n = floor(p);
-    float2 f = fract2(p);
-    float md = 5.0f;
-    float2 m = make_float2(0.0f, 0.0f);
-    for (int i = -1;i<=1;i++) {
-        for (int j = -1;j<=1;j++) {
-            float2 g = make_float2(i, j);
-            float2 o = hash2(n+g);
-            o.x = 0.5f+0.5f*sin(iTime+5.038f*o.x);
-            o.y = 0.5f+0.5f*sin(iTime+5.038f*o.y);
-            float2 r = g + o - f;
-            float d = dot(r, r);
-            if (d<md) {
-              md = d;
-              m = n+g+o;
-            }
-        }
-    }
-    return md;
-}
-
-static inline float ov(float2 p, float iTime) 
-{
-    float v = 0.0f;
-    float a = 0.4f;
-    for (int i = 0;i<3;i++) {
-        v+= voronoi(p, iTime)*a;
-        p *= 2.0f;
-        a *= 0.5f;
-    }
-    return v;
-}
-
-static inline float4 BlueWhiteColor(const float3 pos)
-{  
-  const float4 a  = make_float4(0.20f, 0.4f, 1.0f, 1.0f);
-  const float4 b  = make_float4(0.85f, 0.9f, 1.0f, 1.0f)*2.0f;
-  
-  return mix4(a, b, smoothstep(0.0f, 0.35f, ov(make_float2(pos.x, pos.y), pos.z)));
-}
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-// https://www.shadertoy.com/view/4sfGzS
-
-static inline float hash(float3 p)  // replace this by something better
-{
-  p  = fract3( p*0.3183099f + make_float3(0.1f,0.1f,0.1f) );
-	p *= 17.0f;
-  return fract( p.x*p.y*p.z*(p.x+p.y+p.z) );
-}
-
-static inline float noise(float3 x )
-{
-  float3 p = floor3(x);
-  float3 f = fract3(x);
-  f = f*f*(make_float3(3.0f,3.0f,3.0f) - 2.0f*f);
-
-  return mix(mix(mix( hash(p + make_float3(0,0,0)), 
-                      hash(p + make_float3(1,0,0)),f.x),
-                 mix( hash(p + make_float3(0,1,0)), 
-                      hash(p + make_float3(1,1,0)),f.x),f.y),
-             mix(mix( hash(p + make_float3(0,0,1)), 
-                      hash(p + make_float3(1,0,1)),f.x),
-                 mix( hash(p + make_float3(0,1,1)), 
-                      hash(p + make_float3(1,1,1)),f.x),f.y),f.z);
-}
-
-
-static inline float3 WhiteNoise(const float3 pos)
-{ 
-  const float3x3 m = make_float3x3(make_float3(0.00f,  0.80f,  0.60f),
-                                   make_float3(-0.80f,  0.36f, -0.48f),
-                                   make_float3(-0.60f, -0.48f,  0.64f));
-   
-  float f = 0.0f;
-  
-  float3 q = 10.0f*pos;
-  f  = 0.5000f*noise( q ); q = mul3x3x3(m, q*2.01f);
-  f += 0.2500f*noise( q ); q = mul3x3x3(m, q*2.02f);
-  f += 0.1250f*noise( q ); q = mul3x3x3(m, q*2.03f);
-  f += 0.0625f*noise( q ); q = mul3x3x3(m, q*2.01f);
-  
-  return make_float3(f, f, f);
-}
 
 
 #endif

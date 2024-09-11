@@ -39,7 +39,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wno-attributes")
 
 set(MAIN_SOURCE main.cpp 
                 test_class.cpp
-                Bitmap.cpp)
+                ../LiteMath/Image2d.cpp)
 
 set(ISPC_SOURCE test_class_ispc.cpp
                 test_class_kernels.o
