@@ -39,7 +39,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembers(std::shared_ptr<vk
 {
   const size_t maxAllowedSize = std::numeric_limits<uint32_t>::max();
   {% if HasPrefixData %}
-  auto pUnderlyingImpl = dynamic_cast<{{PrefixDataClass}}*>({{PrefixDataName}}.get());
+  auto pUnderlyingImpl = dynamic_cast<{{PrefixDataClass}}*>({{PrefixDataName}}->UnderlyingImpl(0));
   {% endif %}
 ## for Var in ClassVars
   {% if Var.IsArray %}
@@ -68,7 +68,7 @@ void {{MainClassName}}{{MainClassSuffix}}::ReadPlainMembers(std::shared_ptr<vk_u
 {
   a_pCopyEngine->ReadBuffer(m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
   {% if HasPrefixData %}
-  auto pUnderlyingImpl = dynamic_cast<{{PrefixDataClass}}*>({{PrefixDataName}}.get());
+  auto pUnderlyingImpl = dynamic_cast<{{PrefixDataClass}}*>({{PrefixDataName}}->UnderlyingImpl(0));
   {% endif %}
   {% for Var in ClassVars %}
   {% if not Var.IsConst %}
