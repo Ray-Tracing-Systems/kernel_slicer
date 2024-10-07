@@ -280,6 +280,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
     decl.order     = m_currId;
     decl.kind      = kslicer::DECL_IN_CLASS::DECL_TYPEDEF;
     decl.extracted = true;
+    decl.astNode   = type;
     if(isDefinitelyInsideShaders)
       m_transferredDecl[decl.name] = decl;
     else if(excludedTypes.find(decl.name) == excludedTypes.end())
@@ -301,6 +302,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
       decl.order     = m_currId;
       decl.kind      = kslicer::DECL_IN_CLASS::DECL_CONSTANT;
       decl.extracted = true;
+      decl.astNode   = type;
       if(isDefinitelyInsideShaders)
         m_transferredDecl[decl.name] = decl;
       else if(excludedTypes.find(decl.name) == excludedTypes.end())
