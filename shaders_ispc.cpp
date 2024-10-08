@@ -100,7 +100,7 @@ const std::string ConvertVecTypesToISPC(const std::string& a_typeName,
   return a_argName;
 }
 
-std::string kslicer::ISPCCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler)
+std::string kslicer::ISPCCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter)
 {
   std::string typeInCL = a_decl.type;
   std::string result = "";

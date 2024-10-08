@@ -292,6 +292,9 @@ std::string kslicer::GLSLCompiler::RewritePushBack(const std::string& memberName
 std::unordered_map<std::string, std::string> kslicer::ListGLSLVectorReplacements()
 {
   std::unordered_map<std::string, std::string> m_vecReplacements;
+  m_vecReplacements["double2"] ="dvec2";
+  m_vecReplacements["double3"] ="dvec3";
+  m_vecReplacements["double4"] ="dvec4";
   m_vecReplacements["float2"] = "vec2";
   m_vecReplacements["float3"] = "vec3";
   m_vecReplacements["float4"] = "vec4";
@@ -1266,7 +1269,7 @@ void kslicer::GLSLCompiler::ProcessVectorTypesString(std::string& a_str)
   }
 }
 
-std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler)
+std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter)
 {
   std::string typeInCL = a_decl.type;
   std::string result = "";
@@ -1295,7 +1298,17 @@ std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
     ProcessVectorTypesString(result);
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
-    result = "#define " + a_decl.name + " " + nameWithoutStruct;
+    {
+      const clang::TypedefNameDecl* typedefDecl = llvm::dyn_cast<clang::TypedefNameDecl>(a_decl.astNode);
+      if(typedefDecl != nullptr)
+      {
+        clang::QualType underlyingType = typedefDecl->getUnderlyingType();
+        std::string originalTypeName = underlyingType.getAsString();
+        result = "#define " + a_decl.name + " " + a_pRewriter->RewriteStdVectorTypeStr(originalTypeName); // a_classInfo.pShaderFuncRewriter->
+      }
+      else
+        result = "#define " + a_decl.name + " " + nameWithoutStruct;
+    }
     break;
     default:
     break;

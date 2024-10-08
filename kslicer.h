@@ -895,7 +895,7 @@ namespace kslicer
     virtual std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
                                                                         kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass) = 0;
 
-    virtual std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler) = 0;
+    virtual std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) = 0;
     virtual std::string Name() const { return "unknown shader compiler"; }
 
     virtual std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const = 0;
@@ -928,7 +928,7 @@ namespace kslicer
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
                                                                 kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass) override;
 
-    std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler) override;
+    std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) override;
     std::string Name() const override { return "OpenCL"; }
 
     std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
@@ -947,7 +947,7 @@ namespace kslicer
     void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
     bool        IsISPC() const override { return true; }
     std::string BuildCommand(const std::string& a_inputFile) const override;
-    std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler) override;
+    std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) override;
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
   };
 
@@ -972,7 +972,7 @@ namespace kslicer
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
                                                                 kslicer::KernelInfo& a_kernel, const std::string& fakeOffs, bool a_infoPass) override;
 
-    std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler) override;
+    std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) override;
     std::string Name() const override { return "GLSL"; }
 
     std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
@@ -1282,7 +1282,8 @@ namespace kslicer
   KernelInfo                     joinToMegaKernel        (const std::vector<const KernelInfo*>& a_kernels, const MainFuncInfo& cf);
   std::string                    GetCFMegaKernelCall     (const MainFuncInfo& a_mainFunc);
 
-  DATA_KIND GetKindOfType(const clang::QualType qt);
+  DATA_KIND     GetKindOfType(const clang::QualType qt);
+  DECL_IN_CLASS GetKindOfDecl(const clang::TypeDecl* node);
   CPP11_ATTR GetMethodAttr(const clang::CXXMethodDecl* f, clang::CompilerInstance& a_compiler);
 
   KernelInfo::ArgInfo ProcessParameter(const clang::ParmVarDecl *p);

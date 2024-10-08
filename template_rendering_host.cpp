@@ -229,7 +229,7 @@ static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func, const kslicer
       if(var.sizeUserAttr.size() == 0) {
         std::cout << "  [kslicer]: warning, unknown data size for param " << var.name.c_str() << " of Control Function " << a_func.Name.c_str() << std::endl;
         std::cout << "  [kslicer]: the Control Function is declared virual, but kslicer can't generate implementation due to unknown data size of a pointer " << std::endl;
-        std::cout << "  [kslicer]: use '[[size(\"...\"]]' after " << var.name.c_str() << std::endl;
+        std::cout << "  [kslicer]: use '[[size(\"...\")]]' after " << var.name.c_str() << std::endl;
         return false;
       }
     }

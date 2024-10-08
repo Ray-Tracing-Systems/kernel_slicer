@@ -2427,7 +2427,7 @@
                     "ignoreFailures": true
                 }
             ]
-        }
+        },
 
         {
             "name"   : "Launch (LiteRF)",
