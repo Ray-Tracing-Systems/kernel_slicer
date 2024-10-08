@@ -490,6 +490,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     c_decl["Text"]    = a_classInfo.pShaderCC->PrintHeaderDecl(decl, compiler, pShaderRewriter);
     c_decl["InClass"] = decl.inClass;
     c_decl["IsType"]  = (decl.kind == DECL_IN_CLASS::DECL_STRUCT); // || (decl.kind == DECL_IN_CLASS::DECL_TYPEDEF);
+    c_decl["IsTdef"]  = (decl.kind == DECL_IN_CLASS::DECL_TYPEDEF); // || (decl.kind == DECL_IN_CLASS::DECL_TYPEDEF);
     c_decl["Type"]    = kslicer::CleanTypeName(decl.type);
     data["ClassDecls"].push_back(c_decl);
   }

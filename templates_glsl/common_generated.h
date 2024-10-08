@@ -91,7 +91,14 @@ complex complex_sqrt(complex z)
 
 {% endif %}
 ## for Decl in ClassDecls  
+{% if Decl.IsTdef %}
 {{Decl.Text}}
+{% endif %}
+## endfor
+## for Decl in ClassDecls  
+{% if not Decl.IsTdef %}
+{{Decl.Text}}
+{% endif %}
 ## endfor
 
 #ifndef SKIP_UBO_INCLUDE
