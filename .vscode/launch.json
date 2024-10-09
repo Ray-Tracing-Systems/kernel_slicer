@@ -2547,6 +2547,38 @@
         },
 
         {
+            "name"   : "Launch (OpticsRT)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["/home/frol/PROG/vsan/opticsrt/src/aspheric_surf.cpp",
+                        "-mainClass", "AsphericSurface", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I/home/frol/PROG/vsan/opticsrt/ext/LiteMath",  "ignore",
+                        "-megakernel", "1",
+                        "-enable_ray_tracing_pipeline", "0",
+                        "-enable_motion_blur", "0",
+                        "-gen_gpu_api", "0",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (LiteRF)",
             "type"   : "cppdbg",
             "request": "launch",

@@ -951,6 +951,23 @@ kslicer::DATA_KIND kslicer::GetKindOfType(const clang::QualType qt)
   return kind;
 }
 
+kslicer::DECL_IN_CLASS kslicer::GetKindOfDecl(const clang::TypeDecl* node)
+{
+  const clang::TypedefNameDecl* typedefDecl = clang::dyn_cast<clang::TypedefNameDecl>(node);
+  if(typedefDecl != nullptr)
+    return DECL_IN_CLASS::DECL_TYPEDEF;
+  
+  const clang::RecordDecl* recordDecl = llvm::dyn_cast<clang::RecordDecl>(node);
+  if(recordDecl->isStruct())
+    return DECL_IN_CLASS::DECL_STRUCT;
+  
+  clang::QualType qualType = node->getTypeForDecl()->getCanonicalTypeInternal();
+  if (qualType.isConstQualified())
+    return DECL_IN_CLASS::DECL_CONSTANT;
+  
+  return DECL_IN_CLASS::DECL_UNKNOWN;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1111,13 +1128,14 @@ void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::st
     if(declsByName.find(elem.typeName) == declsByName.end())
     {
       kslicer::DeclInClass tdecl;
-      tdecl.type     = elem.typeName;
-      tdecl.name     = elem.typeName;
-      tdecl.srcRange = elem.node->getSourceRange();
-      tdecl.srcHash  = kslicer::GetHashOfSourceRange(tdecl.srcRange);
-      tdecl.order    = lastDeclOrder; lastDeclOrder++;
-      tdecl.kind     = kslicer::DECL_IN_CLASS::DECL_STRUCT;
-      tdecl.extracted= true;
+      tdecl.type      = elem.typeName;
+      tdecl.name      = elem.typeName;
+      tdecl.srcRange  = elem.node->getSourceRange();
+      tdecl.srcHash   = kslicer::GetHashOfSourceRange(tdecl.srcRange);
+      tdecl.order     = lastDeclOrder; lastDeclOrder++;
+      tdecl.kind      = kslicer::GetKindOfDecl(elem.node);
+      tdecl.extracted = true;
+      tdecl.astNode   = const_cast<clang::TypeDecl*>(elem.node);
       declsByName[elem.typeName] = tdecl;
       const clang::FileEntry* Entry = a_srcMgr.getFileEntryForID(a_srcMgr.getFileID(elem.node->getLocation()));
       const std::string fileName    = std::string(Entry->tryGetRealPathName().str());

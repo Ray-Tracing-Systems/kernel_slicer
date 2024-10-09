@@ -139,7 +139,7 @@ std::string kslicer::ClspvCompiler::ReplaceCallFromStdNamespace(const std::strin
   return call;
 }
 
-std::string kslicer::ClspvCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler)
+std::string kslicer::ClspvCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter)
 {
   std::string typeInCL = a_decl.type;
   ReplaceFirst(typeInCL, "const", "__constant static");
