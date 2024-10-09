@@ -2550,7 +2550,7 @@
             "name"   : "Launch (OpticsRT) - vs",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "program": "${workspaceFolder}/build/kslicer",
             "args"   : ["/media/vs/data2/repos/optics/optics-rt-1/src/aspheric_surf.cpp",
                         "-mainClass", "AsphericSurface", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
