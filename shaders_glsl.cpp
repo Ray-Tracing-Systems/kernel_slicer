@@ -439,10 +439,7 @@ std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* e
     if(p != rvCopy.m_workAround.end())
       return p->second;
     else
-    {  
-      std::string text = m_rewriter.getRewrittenText(range);
-      return text;
-    }
+      return m_rewriter.getRewrittenText(range);
   }
   return "";
 }
@@ -1413,7 +1410,7 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
   if(p != rvCopy.m_workAround.end())
     return p->second;
   else
-    return kslicer::GetRangeSourceCode(range, m_compiler);
+    return m_rewriter.getRewrittenText(range);
 }
 
 

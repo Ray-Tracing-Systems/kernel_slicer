@@ -37,7 +37,7 @@
             "name"   : "Launch (app_01/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/01_intersectSphere/test_class.cpp", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv", 
