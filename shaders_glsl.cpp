@@ -1851,13 +1851,14 @@ bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
   if(qt->isPointerType() || qt->isReferenceType()) // we can't put references to push constants
     return true;
 
-  const std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); //
-  if(m_userArgs.find(text) != m_userArgs.end() && WasNotRewrittenYet(expr))
+  const std::string textOri = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); //
+  //const std::string textRes = RecursiveRewrite(expr);
+  if(m_userArgs.find(textOri) != m_userArgs.end() && WasNotRewrittenYet(expr))
   {
     if(!m_codeInfo->megakernelRTV || m_currKernel.isMega)
     {
-      std::string lastRewrittenText = std::string("kgenArgs.") + text;
-      ReplaceTextOrWorkAround(expr->getSourceRange(), lastRewrittenText);
+      //ReplaceTextOrWorkAround(expr->getSourceRange(), std::string("kgenArgs.") + textRes);
+      m_rewriter.ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + textOri);
       MarkRewritten(expr);
     }
   }
