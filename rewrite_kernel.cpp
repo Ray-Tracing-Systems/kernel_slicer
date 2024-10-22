@@ -280,14 +280,10 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
   std::string rewrittenText;
   if(NeedToRewriteMemberExpr(expr, rewrittenText))
   {
-    ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
+    //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
+    m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
     MarkRewritten(expr);
   }
-  //else if(WasNotRewrittenYet(expr))
-  //{
-  //  ReplaceTextOrWorkAround(expr->getSourceRange(), originalText);
-  //  MarkRewritten(expr);
-  //}
 
   return true;
 }
