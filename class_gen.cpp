@@ -303,11 +303,20 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
   pVisitor->ResetCurrKernelInfo();
   
+  // replace all work arounds if they were not processed
+  //
+  //for(const auto& pair : pVisitor->m_workAround) // TODO: sort nodes by their rucursion depth or source location?
+  //{
+  //  if(pVisitor->m_pRewrittenNodes->find(pair.first) == pVisitor->m_pRewrittenNodes->end()) // was not proceseed during rewrite
+  //  {
+  //    //pVisitor->m_rewriter.ReplaceText(pair.first, pair.second);
+  //  } 
+  //}
+
   a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures();
 
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
-  
   return rewrite2.getRewrittenText(clang::SourceRange(b,e));
 }
 
