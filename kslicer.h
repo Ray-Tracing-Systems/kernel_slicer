@@ -779,6 +779,7 @@ namespace kslicer
     std::shared_ptr<std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
     virtual std::string RecursiveRewrite (const clang::Stmt* expr);
     void ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text);
+    void ApplyDefferedWorkArounds();
     std::unordered_map<uint64_t, std::string>  m_workAround;
 
     virtual void ClearUserArgs() { }

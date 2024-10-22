@@ -301,17 +301,8 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
   auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, fakeOffsetExpr, false);
   pVisitor->SetCurrKernelInfo(&a_funcInfo);
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
+  pVisitor->ApplyDefferedWorkArounds();
   pVisitor->ResetCurrKernelInfo();
-  
-  // replace all work arounds if they were not processed
-  //
-  //for(const auto& pair : pVisitor->m_workAround) // TODO: sort nodes by their rucursion depth or source location?
-  //{
-  //  if(pVisitor->m_pRewrittenNodes->find(pair.first) == pVisitor->m_pRewrittenNodes->end()) // was not proceseed during rewrite
-  //  {
-  //    //pVisitor->m_rewriter.ReplaceText(pair.first, pair.second);
-  //  } 
-  //}
 
   a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures();
 

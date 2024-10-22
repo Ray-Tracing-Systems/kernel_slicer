@@ -1854,7 +1854,7 @@ bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
   {
     if(!m_codeInfo->megakernelRTV || m_currKernel.isMega)
     {
-      //ReplaceTextOrWorkAround(expr->getSourceRange(), std::string("kgenArgs.") + textRes);
+      //ReplaceTextOrWorkAround(expr->getSourceRange(), std::string("kgenArgs.") + textOri);
       m_rewriter.ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + textOri);
       MarkRewritten(expr);
     }
