@@ -78,18 +78,31 @@ void kslicer::PerformInheritanceMerge(kslicer::ClassInfo& mainClassInfo, const k
 std::vector<std::string> kslicer::GetBaseClassesNames(const clang::CXXRecordDecl* mainClassASTNode)
 {
   std::vector<std::string> baseClassNames;
+  return baseClassNames;
+  
+  /*
   if(mainClassASTNode == nullptr)
     return baseClassNames;
+  
+  std::cout << "[GetBaseClassesNames]: (0): ok, pointer = " << mainClassASTNode << std::endl;
+  auto name = mainClassASTNode->getName().str();
+  std::cout << "[GetBaseClassesNames]: (1): ok, pointer = " << mainClassASTNode << std::endl;
+  std::cout << "[MainFuncSeeker]: find main class " << name.c_str() << ", name = " << name.c_str() << std::endl;
 
   // Итерируемся по базовым классам
   for (const auto& base : mainClassASTNode->bases()) {
-    const clang::CXXRecordDecl* baseDecl = base.getType()->getAsCXXRecordDecl();
-    if (baseDecl) {
+    std::cout << "[GetBaseClassesNames]: (1): ok " << std::endl;
+    const auto baseT = base.getType();
+    std::cout << "[GetBaseClassesNames]: (2): ok " << std::endl;
+    const clang::CXXRecordDecl* baseDecl = baseT->getAsCXXRecordDecl();
+     std::cout << "[GetBaseClassesNames]: (3): ok " << std::endl;
+    if (baseDecl)
       baseClassNames.push_back(baseDecl->getNameAsString());
-    }
   }
 
   return baseClassNames;
+  */
+ 
 }
 
 namespace kslicer 

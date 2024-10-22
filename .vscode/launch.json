@@ -309,6 +309,37 @@
         },
 
         {
+            "name"   : "Launch (app_05/GLSL_Windows)",
+            "type"   : "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Release/kslicer",
+            "args"   : ["${workspaceFolder}/apps/05_filter_bloom_good/test_class.cpp",
+                        "-mainClass", "ToneMapping", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-reorderLoops", "YX",
+                        "-I${workspaceFolder}/apps/LiteMath", "ignore", 
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",
+                        "-I${workspaceFolder}/TINYSTL",       "ignore",
+                        "-shaderCC", "glsl",
+                        "-suffix", "_GPU",
+                        "-DKERNEL_SLICER",
+                        "-DWIN32",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (app_06/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
@@ -2281,6 +2312,47 @@
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (HydraCore3/Windows)",
+            "type"   : "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Release/kslicer",
+            "args"   : ["D:/PROG/HydraRepos3/HydraCore3/integrator_pt.cpp",
+                        "D:/PROG/HydraRepos3/HydraCore3/integrator_pt_lgt.cpp",
+                        "D:/PROG/HydraRepos3/HydraCore3/integrator_pt_mat.cpp",
+                        "D:/PROG/HydraRepos3/HydraCore3/integrator_rt.cpp",
+                        "D:/PROG/HydraRepos3/HydraCore3/integrator_spectrum.cpp",
+                        //"D:/PROG/HydraRepos3/HydraCore3/integrator_pt_lite.cpp",
+                        "-mainClass", "Integrator", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        //"-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        //"-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-ID:/PROG/HydraRepos3/HydraCore3/external/LiteMath",  "ignore",
+                        "-ID:/PROG/HydraRepos3/HydraCore3/external/LiteScene", "ignore",
+                        "-ID:/PROG/HydraRepos3/HydraCore3/external/CrossRT",   "process",
+                        "-ID:/PROG/HydraRepos3/HydraCore3/cam_plugin",         "process",  
+                        "-megakernel", "1",
+                        "-enable_ray_tracing_pipeline", "0",
+                        "-enable_motion_blur", "0",
+                        "-gen_gpu_api", "0",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",

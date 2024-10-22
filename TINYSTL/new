@@ -34,9 +34,20 @@ namespace tinystl {
 	struct placeholder {};
 }
 
-inline void* operator new(size_t, tinystl::placeholder, void* ptr) { return ptr;}
+// for WINDOWS
+
+#ifdef WIN32
+inline void* operator new(unsigned long long, tinystl::placeholder, void* ptr) { return ptr;}
+void*        operator new(unsigned long long, void*) throw(); // in placement new
+#else
+// for LINUX
+//
+inline void* operator new(unsigned long, tinystl::placeholder, void* ptr) { return ptr;}
+void*        operator new(unsigned long, void*) throw(); // in placement new
+#endif
+
 inline void operator delete(void*, tinystl::placeholder, void*) throw() {}
 
-void* operator new(std::size_t, void*) throw(); // in placement new
+typedef unsigned long long ptrdiff_t;
 
 #endif
