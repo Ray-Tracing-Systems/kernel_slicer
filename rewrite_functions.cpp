@@ -85,8 +85,7 @@ bool kslicer::FunctionRewriter::VisitCallExpr_Impl(CallExpr* call)
     { 
       auto debugMeIn = GetRangeSourceCode(call->getSourceRange(), m_compiler);     
       auto textRes   = FunctionCallRewrite(call);
-      m_lastRewrittenText = textRes;
-      m_rewriter.ReplaceText(call->getSourceRange(), textRes);
+      ReplaceTextOrWorkAround(call->getSourceRange(), textRes);
       MarkRewritten(call);
       //std::cout << "  " << text.c_str() << " of type " << argsType.c_str() << "; --> " <<  textRes.c_str() << std::endl;
     }
@@ -121,8 +120,7 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* cal
       textRes = "to_complex" + text;
     else if(fname == "complex" && call->getNumArgs() == 2)
       textRes = "make_complex" + text;
-    m_lastRewrittenText = textRes;
-    m_rewriter.ReplaceText(call->getSourceRange(), textRes);
+    ReplaceTextOrWorkAround(call->getSourceRange(), textRes);
     MarkRewritten(call);
   }
 
@@ -165,8 +163,7 @@ bool kslicer::FunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperator
         else if(rightType == keyType)
           rewrittenOp =  "real_" + remapOp[op] + "_" + keyType + "(" + leftText + "," + rightText + ")";
       }
-      m_lastRewrittenText = rewrittenOp;
-      m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenOp);
+      ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenOp);
       MarkRewritten(expr);
     }
   }
@@ -179,7 +176,13 @@ std::string kslicer::FunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
     return "";
   FunctionRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
-  return m_rewriter.getRewrittenText(expr->getSourceRange());
+
+  auto range = expr->getSourceRange();
+  auto p = rvCopy.m_workAround.find(GetHashOfSourceRange(range));
+  if(p != rvCopy.m_workAround.end())
+    return p->second;
+  else
+    return m_rewriter.getRewrittenText(range);
 }
 
 

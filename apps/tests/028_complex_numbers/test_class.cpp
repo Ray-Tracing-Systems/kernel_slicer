@@ -6,7 +6,7 @@ using LiteMath::M_PI;
 
 static inline complex filmPhaseDiff(complex cosTheta, complex eta, float thickness, float lambda)
 {
-  return 4 * M_PI * eta * cosTheta * thickness / complex(lambda);
+  return 4 * M_PI * eta * cosTheta * thickness / lambda;
 }
 
 void TestClass::Test(BoxHit* a_data, unsigned int a_size)

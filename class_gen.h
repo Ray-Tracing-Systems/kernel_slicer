@@ -76,31 +76,12 @@ namespace kslicer
     std::unordered_map<std::string, InOutVarInfo>      m_argsOfMainFunc;
     MainFuncInfo&                                      m_mainFunc;
     std::shared_ptr< std::unordered_set<uint64_t> >    m_pRewrittenNodes;
+    std::unordered_map<uint64_t, std::string>          m_workAround;
 
-    bool WasNotRewrittenYet(const clang::Stmt* expr) const
-    {
-      if(expr == nullptr)
-        return true;
-      if(clang::isa<clang::NullStmt>(expr))
-        return true;
-      const auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
-      return (m_pRewrittenNodes->find(exprHash) == m_pRewrittenNodes->end());
-    }
-
-    void MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, *m_pRewrittenNodes); }
-
-    std::string RecursiveRewrite(const clang::Stmt* expr)
-    {
-      if(expr == nullptr)
-        return "";
-      MainFunctionRewriter rvCopy = *this;
-      rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
-      
-      std::string text = m_rewriter.getRewrittenText(expr->getSourceRange());
-
-      return (text != "") ? text : kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-    }
-
+    void ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text);
+    bool WasNotRewrittenYet(const clang::Stmt* expr) const;
+    void MarkRewritten(const clang::Stmt* expr);
+    std::string RecursiveRewrite(const clang::Stmt* expr);
   };
 
   std::vector<InOutVarInfo> ListParamsOfMainFunc(const CXXMethodDecl* a_node, const clang::CompilerInstance& compiler);

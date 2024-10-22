@@ -430,3 +430,11 @@ bool kslicer::FunctionRewriter::WasNotRewrittenYet(const clang::Stmt* expr)
   const auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
   return (m_pRewrittenNodes->find(exprHash) == m_pRewrittenNodes->end());
 }
+
+void kslicer::FunctionRewriter::ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text)
+{
+  if(a_range.getBegin().getRawEncoding() == a_range.getEnd().getRawEncoding())
+    m_workAround[GetHashOfSourceRange(a_range)] = a_text;
+  else
+    m_rewriter.ReplaceText(a_range, a_text);
+}

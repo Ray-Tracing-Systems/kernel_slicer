@@ -640,8 +640,10 @@ namespace kslicer
     const clang::CompilerInstance& m_compiler;
     MainClassInfo*                 m_codeInfo;
     kslicer::FuncData*             m_pCurrFuncInfo = nullptr;
-    std::string                    m_lastRewrittenText;
+    std::unordered_map<uint64_t, std::string> m_workAround;
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+  
+    void ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text);
 
     void MarkRewritten(const clang::Stmt* expr);
     bool WasNotRewrittenYet(const clang::Stmt* expr);
@@ -776,6 +778,8 @@ namespace kslicer
 
     std::shared_ptr<std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
     virtual std::string RecursiveRewrite (const clang::Stmt* expr);
+    void ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text);
+    std::unordered_map<uint64_t, std::string>  m_workAround;
 
     virtual void ClearUserArgs() { }
     virtual ShaderFeatures GetKernelShaderFeatures() const { return ShaderFeatures(); }
