@@ -277,8 +277,6 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 
   std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 
-  std::cout << "[VisitMemberExpr]: " << originalText << std::endl;
-
   std::string rewrittenText;
   if(NeedToRewriteMemberExpr(expr, rewrittenText))
   {

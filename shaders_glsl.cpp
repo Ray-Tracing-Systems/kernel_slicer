@@ -1264,15 +1264,20 @@ std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
     {
-      const clang::TypedefNameDecl* typedefDecl = llvm::dyn_cast<clang::TypedefNameDecl>(a_decl.astNode);
-      if(typedefDecl != nullptr)
+      if(a_decl.astNode != nullptr)
       {
-        clang::QualType underlyingType = typedefDecl->getUnderlyingType();
-        std::string originalTypeName = underlyingType.getAsString();
-        result = "#define " + a_decl.name + " " + a_pRewriter->RewriteStdVectorTypeStr(originalTypeName); // a_classInfo.pShaderFuncRewriter->
+        const clang::TypedefNameDecl* typedefDecl = llvm::dyn_cast<clang::TypedefNameDecl>(a_decl.astNode); // normal typedef
+        if(typedefDecl != nullptr)
+        {
+          clang::QualType underlyingType = typedefDecl->getUnderlyingType();
+          std::string originalTypeName = underlyingType.getAsString();
+          result = "#define " + a_decl.name + " " + a_pRewriter->RewriteStdVectorTypeStr(originalTypeName); // a_classInfo.pShaderFuncRewriter->
+        }
+        else
+          result = "#define " + a_decl.name + " " + nameWithoutStruct;                                      
       }
       else
-        result = "#define " + a_decl.name + " " + nameWithoutStruct;
+        result = "#define " + a_decl.name + " " + nameWithoutStruct; // typedef struct
     }
     break;
     default:
