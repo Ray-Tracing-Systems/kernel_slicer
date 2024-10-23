@@ -16,7 +16,9 @@ Download LLVM project and integrate `kernel_slicer` in it with prepared bash scr
 
 ```shell
 # FIXME(hack3rmann): provide link from master branch
-sh $(curl https://github.com/Ray-Tracing-Systems/kernel_slicer/blob/fix/build-with-llvm-update/doc/other/build-with-llvm.sh)
+wget https://raw.githubusercontent.com/Ray-Tracing-Systems/kernel_slicer/refs/heads/fix/build-with-llvm-update/doc/other/build-with-llvm.sh
+chmod +x build-with-llvm.sh
+./build-with-llvm.sh
 ```
 
 Build LLVM project with `kernel_slicer`:
