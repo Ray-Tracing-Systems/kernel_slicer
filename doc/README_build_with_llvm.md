@@ -43,6 +43,7 @@ After build you can find executable `kslicer` in `build/bin/` directory of `llvm
 You can run a test to check that `kslicer` works properly:
 
 ```shell
-build/bin/kslicer "clang-tools-extra/kernel_slicer/apps/05_filter_bloom_good/test_class.cpp" \
+cd clang-tools-extra/kernel_slicer
+../../build/bin/kslicer "apps/05_filter_bloom_good/test_class.cpp" \
     -mainClass ToneMapping -stdlibfolder TINYSTL -pattern ipv -reorderLoops YX -Iapps/LiteMath IncludeToShaders -shaderCC GLSL -DKERNEL_SLICER -v
 ```
