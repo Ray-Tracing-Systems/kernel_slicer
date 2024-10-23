@@ -868,7 +868,8 @@ bool kslicer::GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   clang::FunctionDecl* fDecl = call->getDirectCallee();
   if(fDecl == nullptr)
     return true;
-
+  
+  const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
   const std::string fname = fDecl->getNameInfo().getName().getAsString();
   ///////////////////////////////////////////////////////////////////////
   std::string makeSmth = "";
@@ -1185,7 +1186,8 @@ bool kslicer::GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCa
   if(WasNotRewrittenYet(next) && qt.getAsString() != "size_t" && qt.getAsString() != "std::size_t")
   {
     const std::string exprText = RecursiveRewrite(next);
-    ReplaceTextOrWorkAround(next->getSourceRange(), castTo + "(" + exprText + ")");
+    //ReplaceTextOrWorkAround(next->getSourceRange(), castTo + "(" + exprText + ")");
+    m_rewriter.ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");
     MarkRewritten(next);
   }
   return true;
@@ -1410,7 +1412,10 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
   if(p != rvCopy.m_workAround.end())
     return p->second;
   else
+  {
+    //rvCopy.ApplyDefferedWorkArounds();
     return m_rewriter.getRewrittenText(range);
+  }
 }
 
 

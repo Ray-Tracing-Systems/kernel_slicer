@@ -277,11 +277,13 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 
   std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 
+  std::cout << "[VisitMemberExpr]: " << originalText << std::endl;
+
   std::string rewrittenText;
   if(NeedToRewriteMemberExpr(expr, rewrittenText))
   {
-    ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
-    //m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
+    //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
+    m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
     MarkRewritten(expr);
   }
 
@@ -1120,7 +1122,10 @@ std::string kslicer::KernelRewriter::RecursiveRewrite(const Stmt* expr)
   if(p != rvCopy.m_workAround.end())
     return p->second;
   else
+  {
+    //rvCopy.ApplyDefferedWorkArounds();
     return m_rewriter.getRewrittenText(range);
+  }
 }
 
 void kslicer::KernelRewriter::ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text)
@@ -1145,4 +1150,6 @@ void kslicer::KernelRewriter::ApplyDefferedWorkArounds()
     clang::SourceRange range(loc, loc); 
     m_rewriter.ReplaceText(range, pair.second);
   }
+
+  m_workAround.clear();
 }

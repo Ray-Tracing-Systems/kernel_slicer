@@ -109,11 +109,6 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* cal
 
   if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0 ) //
   {
-    if(fname == "complex")
-    {
-      int b = 3;
-      //call->dump();
-    }
     const std::string text = FunctionCallRewriteNoName(call);
     std::string textRes    = VectorTypeContructorReplace(fname, text); 
     if(fname == "complex" && call->getNumArgs() == 1)
