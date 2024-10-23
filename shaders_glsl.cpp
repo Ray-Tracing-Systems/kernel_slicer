@@ -439,9 +439,32 @@ std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* e
     if(p != rvCopy.m_workAround.end())
       return p->second;
     else
+    {
+      //rvCopy.ApplyDefferedWorkArounds();
       return m_rewriter.getRewrittenText(range);
+    }
   }
   return "";
+}
+
+void kslicer::GLSLFunctionRewriter::ApplyDefferedWorkArounds()
+{
+  // replace all work arounds if they were not processed
+  //
+  std::map<uint32_t, std::string> sorted;
+  {
+    for(const auto& pair : m_workAround)
+      sorted.insert(std::make_pair(uint32_t(pair.first & uint64_t(0xFFFFFFFF)), pair.second));
+  }
+
+  for(const auto& pair : sorted) // TODO: sort nodes by their rucursion depth or source location?
+  {
+    auto loc = clang::SourceLocation::getFromRawEncoding(pair.first);
+    clang::SourceRange range(loc, loc); 
+    m_rewriter.ReplaceText(range, pair.second);
+  }
+
+  m_workAround.clear();
 }
 
 kslicer::ShaderFeatures kslicer::GetUsedShaderFeaturesFromTypeName(const std::string& a_str)
@@ -1168,13 +1191,13 @@ bool kslicer::GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCa
   if(cast->isPartOfExplicitCast())
     return true;
   auto kind = cast->getCastKind();
+  std::string debugTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler);
 
   clang::Expr* preNext = cast->getSubExpr();
   if(!clang::isa<clang::ImplicitCastExpr>(preNext))
     return true;
 
   clang::Expr* next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr();
-  std::string debugTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler);
 
   //https://code.woboq.org/llvm/clang/include/clang/AST/OperationKinds.def.html
   if(kind != clang::CK_IntegralCast && kind != clang::CK_IntegralToFloating && kind != clang::CK_FloatingToIntegral) // in GLSL we don't have implicit casts

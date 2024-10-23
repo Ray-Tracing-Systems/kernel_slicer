@@ -107,6 +107,11 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* cal
   const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);   
   const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
 
+  if(debugText == "126.0f")
+  {
+    int a = 2;
+  }
+
   if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0 ) //
   {
     const std::string text = FunctionCallRewriteNoName(call);
@@ -181,30 +186,6 @@ std::string kslicer::FunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
     return m_rewriter.getRewrittenText(range);
 }
 
-
-bool kslicer::FunctionRewriter::BadASTPattern(const clang::Stmt* expr)
-{
-  // bad pattern #1:
-  // CXXConstructExpr 
-  // `-ImplicitCastExpr 
-  //  `-DeclRefExpr 
-  if(clang::isa<clang::CXXConstructExpr>(expr)) 
-  {
-    const auto construct = clang::dyn_cast<clang::CXXConstructExpr>(expr);
-    if(construct->getNumArgs() == 1)
-    {
-      auto argNode = construct->getArg(0);
-      if(clang::isa<clang::ImplicitCastExpr>(argNode))
-      {
-        const auto argNodeUnderlying = kslicer::RemoveImplicitCast(argNode);
-        if(clang::isa<clang::DeclRefExpr>(argNodeUnderlying))
-          return true;
-      }
-    }
-  }
-
-  return false;
-}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

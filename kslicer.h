@@ -649,7 +649,6 @@ namespace kslicer
 
     void MarkRewritten(const clang::Stmt* expr);
     bool WasNotRewrittenYet(const clang::Stmt* expr);
-    bool BadASTPattern(const clang::Stmt* expr);
 
     std::string FunctionCallRewrite(const clang::CallExpr* call);
     std::string FunctionCallRewrite(const clang::CXXConstructExpr* call);
@@ -729,6 +728,7 @@ namespace kslicer
   
     std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
+    void        ApplyDefferedWorkArounds();
     void        Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3]);
   
     bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
