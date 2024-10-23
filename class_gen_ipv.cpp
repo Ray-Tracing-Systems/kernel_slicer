@@ -232,6 +232,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   //const std::string funBody  = pVisitor->RecursiveRewrite(a_funcInfo.astNode->getBody());
 
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
+  pVisitor->ApplyDefferedWorkArounds();
   pVisitor->ResetCurrKernelInfo();
   
   a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures(); // TODO: dont work !!!

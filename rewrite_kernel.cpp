@@ -1139,9 +1139,14 @@ void kslicer::KernelRewriter::ApplyDefferedWorkArounds()
   // replace all work arounds if they were not processed
   //
   std::map<uint32_t, std::string> sorted;
-  for(const auto& pair : m_workAround)
-    sorted.insert(std::make_pair(uint32_t(pair.first & uint64_t(0xFFFFFFFF)), pair.second));
-  
+  {
+    for(const auto& pair : m_workAround)
+      sorted.insert(std::make_pair(uint32_t(pair.first & uint64_t(0xFFFFFFFF)), pair.second));
+    
+    //for(const auto& pair : m_glslRW.m_workAround)
+    //  sorted.insert(std::make_pair(uint32_t(pair.first & uint64_t(0xFFFFFFFF)), pair.second));
+  }
+
   for(const auto& pair : sorted) // TODO: sort nodes by their rucursion depth or source location?
   {
     auto loc = clang::SourceLocation::getFromRawEncoding(pair.first);

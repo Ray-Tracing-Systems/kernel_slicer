@@ -11,18 +11,6 @@ static inline complex filmPhaseDiff(complex cosTheta, complex eta, float thickne
 
 static inline complex FrComplexRefl(complex cosThetaI, complex cosThetaT, complex iorI, complex iorT, int polarization)
 {
-  if (complex_norm(cosThetaI) < 1e-6f) //approximated
-  {
-    return {-1, 0};
-  }
-  if (polarization == 1)
-  {
-    return (iorI * cosThetaI - iorT * cosThetaT) / (iorI * cosThetaI + iorT * cosThetaT);
-  }
-  else if (polarization == 2)
-  {
-    return (iorT * cosThetaI - iorI * cosThetaT) / (iorT * cosThetaI + iorI * cosThetaT);
-  }
   return 1.0f;
 }
 

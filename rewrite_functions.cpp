@@ -115,7 +115,8 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* cal
       textRes = "to_complex" + text;
     else if(fname == "complex" && call->getNumArgs() == 2)
       textRes = "make_complex" + text;
-    ReplaceTextOrWorkAround(call->getSourceRange(), textRes);
+    ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
+    //m_rewriter.ReplaceText(call->getSourceRange(), textRes);    //
     MarkRewritten(call);
   }
 

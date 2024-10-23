@@ -301,7 +301,7 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
   auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, fakeOffsetExpr, false);
   pVisitor->SetCurrKernelInfo(&a_funcInfo);
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
-  //pVisitor->ApplyDefferedWorkArounds();
+  pVisitor->ApplyDefferedWorkArounds();
   pVisitor->ResetCurrKernelInfo();
 
   a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures();

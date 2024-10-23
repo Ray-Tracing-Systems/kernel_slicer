@@ -1333,6 +1333,7 @@ public:
   std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override { return m_glslRW.VectorTypeContructorReplace(fname, callText); }
 
   std::string RecursiveRewrite(const clang::Stmt* expr) override;
+  void ApplyDefferedWorkArounds() override;
 
   void ClearUserArgs() override { m_userArgs.clear(); }
 
@@ -1421,6 +1422,30 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
     //rvCopy.ApplyDefferedWorkArounds();
     return m_rewriter.getRewrittenText(range);
   }
+}
+
+void GLSLKernelRewriter::ApplyDefferedWorkArounds()
+{
+  // replace all work arounds if they were not processed
+  //
+  std::map<uint32_t, std::string> sorted;
+  {
+    for(const auto& pair : m_workAround)
+      sorted.insert(std::make_pair(uint32_t(pair.first & uint64_t(0xFFFFFFFF)), pair.second));
+    
+    for(const auto& pair : m_glslRW.WorkAroundRef())
+      sorted.insert(std::make_pair(uint32_t(pair.first & uint64_t(0xFFFFFFFF)), pair.second));
+  }
+
+  for(const auto& pair : sorted) // TODO: sort nodes by their rucursion depth or source location?
+  {
+    auto loc = clang::SourceLocation::getFromRawEncoding(pair.first);
+    clang::SourceRange range(loc, loc); 
+    m_rewriter.ReplaceText(range, pair.second);
+  }
+
+  m_workAround.clear();
+  m_glslRW.WorkAroundRef().clear();
 }
 
 

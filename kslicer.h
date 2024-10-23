@@ -634,6 +634,8 @@ namespace kslicer
     virtual void ResetCurrFuncInfo()                           { m_pCurrFuncInfo = nullptr; }
     
     virtual bool NeedsVectorTypeRewrite(const std::string& a_str) { return false; }
+
+    std::unordered_map<uint64_t, std::string>& WorkAroundRef() { return m_workAround; }
   protected:
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     clang::Rewriter&               m_rewriter;
@@ -778,8 +780,9 @@ namespace kslicer
 
     std::shared_ptr<std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
     virtual std::string RecursiveRewrite (const clang::Stmt* expr);
-    void ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text);
-    void ApplyDefferedWorkArounds();
+    virtual void ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text);
+    virtual void ApplyDefferedWorkArounds();
+    
     std::unordered_map<uint64_t, std::string>  m_workAround;
 
     virtual void ClearUserArgs() { }
