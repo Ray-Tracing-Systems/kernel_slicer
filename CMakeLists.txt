@@ -4,6 +4,8 @@ project(kernel_slicer)
 set(CMAKE_CXX_STANDARD 17)
 set(LLVM_LINK_COMPONENTS support)
 
+include_directories("include")
+
 # file(GLOB_RECURSE SRC_DIR "include/*.h" "include/nlohmann/*.h" )
 # set_source_files_properties(${SRC_DIR} 
 #                             PROPERTIES COMPILE_FLAGS "-w")
