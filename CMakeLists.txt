@@ -33,7 +33,9 @@ set(KSLICER_SOURCE_FILES
 
 include_directories("include")
 
-if(NOT DEFINED KSLICER_LLVM_BUILD)
+option(KSLICER_LLVM_BUILD "Build kernel_slicer as a LLVM project module" OFF)
+
+if(NOT KSLICER_LLVM_BUILD)
   set(LLVM_VER "17")
   set(LLVM_LIB "LLVM-${LLVM_VER}")
 

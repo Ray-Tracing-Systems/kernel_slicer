@@ -28,7 +28,7 @@ cd llvm-project
 cmake -G Ninja -B build -S llvm -DLLVM_PARALLEL_LINK_JOBS=1 \
                                 -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" \
                                 -DCMAKE_BUILD_TYPE=Release \
-                                -DKSLICER_LLVM_BUILD=1
+                                -DKSLICER_LLVM_BUILD=ON
 ninja -C build
 ```
 
