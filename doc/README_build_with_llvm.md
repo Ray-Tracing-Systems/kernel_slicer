@@ -15,8 +15,7 @@ This script will download the source code of LLVM project and integrate `kernel_
 Download LLVM project and integrate `kernel_slicer` in it with prepared bash script:
 
 ```shell
-# FIXME(hack3rmann): provide link from master branch
-wget https://raw.githubusercontent.com/Ray-Tracing-Systems/kernel_slicer/refs/heads/fix/build-with-llvm-update/doc/other/build-with-llvm.sh
+wget https://raw.githubusercontent.com/Ray-Tracing-Systems/kernel_slicer/refs/heads/master/doc/other/build-with-llvm.sh
 chmod +x build-with-llvm.sh
 ./build-with-llvm.sh
 ```

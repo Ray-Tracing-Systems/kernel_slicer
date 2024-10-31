@@ -21,8 +21,8 @@ cd llvm-project
 
 # Add kernel_slicer to LLVM
 echo "Cloning kernel_slicer source code"
-# FIXME(hack3rmann): git clone from master branch
-if ! git clone https://github.com/Ray-Tracing-Systems/kernel_slicer.git ./clang-tools-extra/kernel_slicer --recurse-submodules -b fix/build-with-llvm-update; then
+
+if ! git clone https://github.com/Ray-Tracing-Systems/kernel_slicer.git ./clang-tools-extra/kernel_slicer --recurse-submodules; then
     echo "Failed to clone \`kernel_slicer\`, exiting"
     exit 1
 fi
