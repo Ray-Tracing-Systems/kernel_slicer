@@ -913,6 +913,7 @@ bool kslicer::GLSLFunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* 
     const std::string funcDeclText = RewriteFuncDecl(fDecl);
     const std::string funcBodyText = RecursiveRewrite(fDecl->getBody());
     
+    //fDecl->dump();
     RewrittenFunction done;
     done.funDecl = funcDeclText;
     done.funBody = funcBodyText;
@@ -1276,25 +1277,48 @@ bool kslicer::GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCa
   std::string debugTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler);
 
   clang::Expr* preNext = cast->getSubExpr();
-  if(!clang::isa<clang::ImplicitCastExpr>(preNext))
-    return true;
 
-  clang::Expr* next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr();
-
-  //https://code.woboq.org/llvm/clang/include/clang/AST/OperationKinds.def.html
-  if(kind != clang::CK_IntegralCast && kind != clang::CK_IntegralToFloating && kind != clang::CK_FloatingToIntegral) // in GLSL we don't have implicit casts
-    return true;
-
-  clang::QualType qt = cast->getType(); qt.removeLocalFastQualifiers();
-  std::string castTo = RewriteStdVectorTypeStr(qt.getAsString());
-
-  if(WasNotRewrittenYet(next) && qt.getAsString() != "size_t" && qt.getAsString() != "std::size_t")
+  if(clang::isa<clang::CXXConstructExpr>(preNext))
   {
-    const std::string exprText = RecursiveRewrite(next);
-    //ReplaceTextOrWorkAround(next->getSourceRange(), castTo + "(" + exprText + ")");
-    m_rewriter.ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");
-    MarkRewritten(next);
+    auto call = clang::dyn_cast<clang::CXXConstructExpr>(preNext);
+    clang::CXXConstructorDecl* ctorDecl = call->getConstructor();
+    const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
+    
+    if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0 ) //
+    {
+      const std::string text = FunctionCallRewriteNoName(call);
+      std::string textRes    = VectorTypeContructorReplace(fname, text); 
+      if(fname == "complex" && call->getNumArgs() == 1)
+        textRes = "to_complex" + text;
+      else if(fname == "complex" && call->getNumArgs() == 2) // never should happen with implicit constructors
+        textRes = "make_complex" + text;
+      //ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
+      m_rewriter.ReplaceText(call->getSourceRange(), textRes);    //
+      MarkRewritten(call);
+    }
+
+    return true;
   }
+  else if(clang::isa<clang::ImplicitCastExpr>(preNext))
+  {
+    clang::Expr* next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr();
+  
+    //https://code.woboq.org/llvm/clang/include/clang/AST/OperationKinds.def.html
+    if(kind != clang::CK_IntegralCast && kind != clang::CK_IntegralToFloating && kind != clang::CK_FloatingToIntegral) // in GLSL we don't have implicit casts
+      return true;
+  
+    clang::QualType qt = cast->getType(); qt.removeLocalFastQualifiers();
+    std::string castTo = RewriteStdVectorTypeStr(qt.getAsString());
+  
+    if(WasNotRewrittenYet(next) && qt.getAsString() != "size_t" && qt.getAsString() != "std::size_t")
+    {
+      const std::string exprText = RecursiveRewrite(next);
+      //ReplaceTextOrWorkAround(next->getSourceRange(), castTo + "(" + exprText + ")");
+      m_rewriter.ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");
+      MarkRewritten(next);
+    }
+  }
+
   return true;
 }
 
