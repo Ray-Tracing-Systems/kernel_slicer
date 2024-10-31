@@ -729,6 +729,16 @@ namespace kslicer
     std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
     void        ApplyDefferedWorkArounds();
+    
+    struct BadRewqriteResult
+    {
+      std::string text;
+      bool        isSingle;
+      bool        isRewritten;
+    };
+
+    BadRewqriteResult BadSubtreeRewrite(const clang::Stmt* expr);
+
     void        Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3]);
   
     bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
@@ -1003,6 +1013,13 @@ namespace kslicer
 
   class UsedCodeFilter;
 
+  struct RewrittenFunction
+  {
+    std::string funText() const { return funDecl + funBody; }
+    std::string funDecl;
+    std::string funBody;
+  };
+
   /**
   \brief collector of all information about input main class
   */
@@ -1041,6 +1058,7 @@ namespace kslicer
     std::string           mainClassFileInclude;
     std::string           mainClassSuffix;
 
+    std::unordered_map<uint64_t, RewrittenFunction>    m_functionsDone; 
     
     std::unordered_map<std::string, std::string> composPrefix;
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
