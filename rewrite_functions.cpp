@@ -85,8 +85,7 @@ bool kslicer::FunctionRewriter::VisitCallExpr_Impl(CallExpr* call)
     { 
       auto debugMeIn = GetRangeSourceCode(call->getSourceRange(), m_compiler);     
       auto textRes   = FunctionCallRewrite(call);
-      m_lastRewrittenText = textRes;
-      m_rewriter.ReplaceText(call->getSourceRange(), textRes);
+      ReplaceTextOrWorkAround(call->getSourceRange(), textRes);
       MarkRewritten(call);
       //std::cout << "  " << text.c_str() << " of type " << argsType.c_str() << "; --> " <<  textRes.c_str() << std::endl;
     }
@@ -108,26 +107,27 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* cal
   const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);   
   const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
 
+  if(debugText == "126.0f")
+  {
+    int a = 2;
+  }
+
   if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0 ) //
   {
-    if(fname == "complex")
-    {
-      int b = 3;
-      //call->dump();
-    }
     const std::string text = FunctionCallRewriteNoName(call);
     std::string textRes    = VectorTypeContructorReplace(fname, text); 
     if(fname == "complex" && call->getNumArgs() == 1)
       textRes = "to_complex" + text;
     else if(fname == "complex" && call->getNumArgs() == 2)
       textRes = "make_complex" + text;
-    m_lastRewrittenText = textRes;
-    m_rewriter.ReplaceText(call->getSourceRange(), textRes);
+    ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
+    //m_rewriter.ReplaceText(call->getSourceRange(), textRes);    //
     MarkRewritten(call);
   }
 
   return true;
 }
+
 
 bool kslicer::FunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr)
 {
@@ -165,8 +165,7 @@ bool kslicer::FunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperator
         else if(rightType == keyType)
           rewrittenOp =  "real_" + remapOp[op] + "_" + keyType + "(" + leftText + "," + rightText + ")";
       }
-      m_lastRewrittenText = rewrittenOp;
-      m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenOp);
+      ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenOp);
       MarkRewritten(expr);
     }
   }
@@ -179,33 +178,15 @@ std::string kslicer::FunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
     return "";
   FunctionRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
-  return m_rewriter.getRewrittenText(expr->getSourceRange());
+
+  auto range = expr->getSourceRange();
+  auto p = rvCopy.m_workAround.find(GetHashOfSourceRange(range));
+  if(p != rvCopy.m_workAround.end())
+    return p->second;
+  else
+    return m_rewriter.getRewrittenText(range);
 }
 
-
-bool kslicer::FunctionRewriter::BadASTPattern(const clang::Stmt* expr)
-{
-  // bad pattern #1:
-  // CXXConstructExpr 
-  // `-ImplicitCastExpr 
-  //  `-DeclRefExpr 
-  if(clang::isa<clang::CXXConstructExpr>(expr)) 
-  {
-    const auto construct = clang::dyn_cast<clang::CXXConstructExpr>(expr);
-    if(construct->getNumArgs() == 1)
-    {
-      auto argNode = construct->getArg(0);
-      if(clang::isa<clang::ImplicitCastExpr>(argNode))
-      {
-        const auto argNodeUnderlying = kslicer::RemoveImplicitCast(argNode);
-        if(clang::isa<clang::DeclRefExpr>(argNodeUnderlying))
-          return true;
-      }
-    }
-  }
-
-  return false;
-}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

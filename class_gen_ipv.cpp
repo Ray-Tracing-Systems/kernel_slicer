@@ -220,7 +220,7 @@ kslicer::IPV_Pattern::MHandlerKFPtr kslicer::IPV_Pattern::MatcherHandler_KF(Kern
 std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, 
                                                      std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode)
 {
-  //if(a_funcInfo.name == "kernel1D_ArraySumm")
+  //if(a_funcInfo.name == "kernel2D_ExtractBrightPixels")
   //  a_funcInfo.astNode->dump();
   
   Rewriter rewrite2;
@@ -232,6 +232,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   //const std::string funBody  = pVisitor->RecursiveRewrite(a_funcInfo.astNode->getBody());
 
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
+  pVisitor->ApplyDefferedWorkArounds();
   pVisitor->ResetCurrKernelInfo();
   
   a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures(); // TODO: dont work !!!

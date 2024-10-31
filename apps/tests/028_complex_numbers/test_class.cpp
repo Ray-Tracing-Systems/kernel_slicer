@@ -6,7 +6,12 @@ using LiteMath::M_PI;
 
 static inline complex filmPhaseDiff(complex cosTheta, complex eta, float thickness, float lambda)
 {
-  return 4 * M_PI * eta * cosTheta * thickness / complex(lambda);
+  return 4 * M_PI * eta * cosTheta * thickness / lambda;
+}
+
+static inline complex FrComplexRefl(complex cosThetaI, complex cosThetaT, complex iorI, complex iorT, int polarization)
+{
+  return 126.0f;
 }
 
 void TestClass::Test(BoxHit* a_data, unsigned int a_size)
@@ -22,7 +27,8 @@ void TestClass::kernel1D_Test(BoxHit* a_data, uint32_t a_size, Cow a_cow)
   {
     complex a = complex(1.0f, 0.0f);
     complex b = complex(1.0f, -1.0f);
-    complex test = filmPhaseDiff(a, b, 3.0f, 4.0f);
+    complex test  = filmPhaseDiff(a, b, 3.0f, 4.0f);
+    complex test2 = FrComplexRefl(a, b, 1.5f, 1.0f, 1);
     a_data[i] = make_BoxHit(i, a_cow.moooo + test.re + test.im);
   }
 }

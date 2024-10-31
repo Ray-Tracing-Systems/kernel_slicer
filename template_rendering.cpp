@@ -1215,16 +1215,17 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions'
       if(pShit != shittyFunctions.end() || f.isMember)
         continue;
-
+      
+      //f.astNode->dump();
       pVisitorF->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
-       
+
       auto p = a_classInfo.m_functionsDone.find(GetHashOfSourceRange(f.astNode->getBody()->getSourceRange()));
       if(p == a_classInfo.m_functionsDone.end())
       {
-        std::cout << "[kslicer]: ERROR, cant't find '" << f.name << "' function" << std::endl;
+        std::cout << "[PrepareJsonForKernels]: ALERT! function " << f.name << " is not found in 'm_functionsDone'" << std::endl;
         continue;
       }
-      
+  
       data["LocalFunctions"].push_back(p->second.funText());
       shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();
     }

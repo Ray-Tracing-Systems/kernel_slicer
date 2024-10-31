@@ -634,18 +634,21 @@ namespace kslicer
     virtual void ResetCurrFuncInfo()                           { m_pCurrFuncInfo = nullptr; }
     
     virtual bool NeedsVectorTypeRewrite(const std::string& a_str) { return false; }
+
+    std::unordered_map<uint64_t, std::string>& WorkAroundRef() { return m_workAround; }
   protected:
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     clang::Rewriter&               m_rewriter;
     const clang::CompilerInstance& m_compiler;
     MainClassInfo*                 m_codeInfo;
     kslicer::FuncData*             m_pCurrFuncInfo = nullptr;
-    std::string                    m_lastRewrittenText;
+    std::unordered_map<uint64_t, std::string> m_workAround;
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+  
+    void ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text);
 
     void MarkRewritten(const clang::Stmt* expr);
     bool WasNotRewrittenYet(const clang::Stmt* expr);
-    bool BadASTPattern(const clang::Stmt* expr);
 
     std::string FunctionCallRewrite(const clang::CallExpr* call);
     std::string FunctionCallRewrite(const clang::CXXConstructExpr* call);
@@ -725,6 +728,17 @@ namespace kslicer
   
     std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
+    void        ApplyDefferedWorkArounds();
+    
+    struct BadRewqriteResult
+    {
+      std::string text;
+      bool        isSingle;
+      bool        isRewritten;
+    };
+
+    BadRewqriteResult BadSubtreeRewrite(const clang::Stmt* expr);
+
     void        Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3]);
   
     bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
@@ -776,6 +790,10 @@ namespace kslicer
 
     std::shared_ptr<std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
     virtual std::string RecursiveRewrite (const clang::Stmt* expr);
+    virtual void ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text);
+    virtual void ApplyDefferedWorkArounds();
+    
+    std::unordered_map<uint64_t, std::string>  m_workAround;
 
     virtual void ClearUserArgs() { }
     virtual ShaderFeatures GetKernelShaderFeatures() const { return ShaderFeatures(); }
@@ -1040,7 +1058,6 @@ namespace kslicer
     std::filesystem::path mainClassFileName;
     std::string           mainClassFileInclude;
     std::string           mainClassSuffix;
-
     
     std::unordered_map<std::string, std::string> composPrefix;
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
