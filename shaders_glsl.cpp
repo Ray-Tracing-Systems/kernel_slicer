@@ -829,11 +829,12 @@ bool kslicer::GLSLFunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* 
 
   if(WasNotRewrittenYet(fDecl->getBody()))
   {
-    const std::string funcDeclText = RewriteFuncDecl(fDecl);
-    const std::string funcBodyText = RecursiveRewrite(fDecl->getBody());
-    //auto debugMeIn = GetRangeSourceCode(call->getSourceRange(), m_compiler);
-    m_lastRewrittenText = funcDeclText + funcBodyText;
-    m_rewriter.ReplaceText(fDecl->getSourceRange(), funcDeclText + funcBodyText);
+    RewrittenFunction done;
+    done.funDecl = RewriteFuncDecl(fDecl);
+    done.funBody = RecursiveRewrite(fDecl->getBody());
+    auto hash = GetHashOfSourceRange(fDecl->getBody()->getSourceRange());
+    if(m_codeInfo->m_functionsDone.find(hash) == m_codeInfo->m_functionsDone.end())
+      m_codeInfo->m_functionsDone[hash] = done;
     MarkRewritten(fDecl->getBody());
   }
 

@@ -995,6 +995,13 @@ namespace kslicer
 
   class UsedCodeFilter;
 
+  struct RewrittenFunction
+  {
+    std::string funText() const { return funDecl + funBody; }
+    std::string funDecl;
+    std::string funBody;
+  };
+
   /**
   \brief collector of all information about input main class
   */
@@ -1021,7 +1028,8 @@ namespace kslicer
     std::vector<DataMemberInfo>                 dataMembers;     ///<! only those member variables which are referenced from kernels
     std::vector<MainFuncInfo>                   mainFunc;        ///<! list of all control functions
   
-    std::unordered_map<std::string, ArrayData>         m_threadLocalArrays;
+    std::unordered_map<std::string, ArrayData>      m_threadLocalArrays;
+    std::unordered_map<uint64_t, RewrittenFunction> m_functionsDone;
 
     std::string                                        mainClassName;         ///<! Current main class (derived)
     std::unordered_set<std::string>                    mainClassNames;        ///<! All main classes (derived + base)
