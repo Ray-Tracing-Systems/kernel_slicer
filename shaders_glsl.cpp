@@ -410,78 +410,6 @@ kslicer::GLSLFunctionRewriter::GLSLFunctionRewriter(clang::Rewriter &R, const cl
   m_shit = a_shit;
 }
 
-kslicer::GLSLFunctionRewriter::BadRewqriteResult kslicer::GLSLFunctionRewriter::BadSubtreeRewrite(const clang::Stmt* expr)
-{
-  BadRewqriteResult res;
-
-  // check if this is single-child part of a tree
-  //
-  int childNodesCount = 0;
-  for(auto node : expr->children())
-    childNodesCount++;
-  
-  if(childNodesCount == 0)
-  {
-    res.isSingle    = true;
-    res.isRewritten = false;
-    res.text        = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-    return res;
-  }
-  else if(childNodesCount > 1)
-  {
-    res.isRewritten = false;
-    res.isSingle    = false;
-    return res;
-  }
-
-  auto child = (*expr->child_begin());
-  
-  std::string textRewritten;
-  auto nextChildResult = BadSubtreeRewrite(child);
-
-  if(nextChildResult.isSingle)
-  {
-    if(clang::isa<clang::ImplicitCastExpr>(child))
-    {
-      auto preNext = clang::dyn_cast<clang::ImplicitCastExpr>(child)->getSubExpr();
-      if(clang::isa<clang::ImplicitCastExpr>(preNext))
-      {
-        auto next = clang::dyn_cast<clang::ImplicitCastExpr>(preNext)->getSubExpr();
-
-        clang::QualType qt = preNext->getType(); qt.removeLocalFastQualifiers();
-        std::string castTo = RewriteStdVectorTypeStr(qt.getAsString());
-
-        if(qt.getAsString() != "size_t" && qt.getAsString() != "std::size_t")
-        {
-          nextChildResult.text        = castTo + "(" + nextChildResult.text + ")";
-          nextChildResult.isRewritten = true;
-        }
-      }
-      else if(clang::isa<clang::CXXConstructExpr>(preNext))
-      {
-        auto call = clang::dyn_cast<clang::CXXConstructExpr>(preNext);
-        clang::CXXConstructorDecl* ctorDecl = call->getConstructor();
-        assert(ctorDecl != nullptr);
-         
-        //const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);   
-        const std::string fname     = ctorDecl->getNameInfo().getName().getAsString();
-        if(kslicer::IsVectorContructorNeedsReplacement(fname) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0) //
-        {
-          const std::string text = nextChildResult.text;
-          std::string textRes    = VectorTypeContructorReplace(fname, text); 
-          if(fname == "complex")
-            textRes = "to_complex(" + text + ")";
-          
-          nextChildResult.text        = textRes;
-          nextChildResult.isRewritten = true;
-        }
-      }
-    }
-  }
-  
-  return nextChildResult;
-}
-
 std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
@@ -501,10 +429,6 @@ std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* e
   }
   else
   {
-    //BadRewqriteResult badCase = BadSubtreeRewrite(expr);
-    //if(badCase.isRewritten && badCase.text != "")
-    //  return badCase.text;
-
     GLSLFunctionRewriter rvCopy = *this;
     rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
     sFeatures = sFeatures || rvCopy.sFeatures;

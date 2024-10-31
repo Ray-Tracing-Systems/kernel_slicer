@@ -737,8 +737,6 @@ namespace kslicer
       bool        isRewritten;
     };
 
-    BadRewqriteResult BadSubtreeRewrite(const clang::Stmt* expr);
-
     void        Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3]);
   
     bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
