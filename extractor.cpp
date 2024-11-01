@@ -723,6 +723,49 @@ std::vector< std::unordered_map<std::string, std::string> > kslicer::ArgMatchTra
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct TypedefChainResult 
+{
+  std::string initialTypeName;
+  std::string finalTypeName;
+};
+
+TypedefChainResult getTypedefChain(clang::TypedefNameDecl* tDecl) 
+{
+  TypedefChainResult result;
+  if (!tDecl)
+    return result; // Проверяем, что tDecl не равен nullptr
+  
+  // Получаем имя конечного типа
+  result.finalTypeName = tDecl->getNameAsString();
+  // Извлекаем связанный тип
+  clang::QualType currentType = tDecl->getUnderlyingType();
+  // Обозначаем начальный тип как потенциально тот же, что и итоговый
+  const clang::Type* typePtr = currentType.getTypePtrOrNull();
+
+  while (typePtr) 
+  {
+    if (typePtr->isTypedefNameType()) 
+    {
+      const clang::TypedefType* typedefType = typePtr->getAs<clang::TypedefType>();
+      if(typedefType == nullptr)
+        break;
+      // Переходим на следующее объявление typedef
+      auto tDecl2 = typedefType->getDecl();
+      currentType = tDecl2->getUnderlyingType();
+      typePtr = currentType.getTypePtrOrNull();
+    } 
+    else 
+    {
+      // Как только мы не можем больше кастовать к TypedefType,
+      // этот тип и есть начальный
+      result.initialTypeName = currentType.getAsString();
+      break;
+    }
+  }
+  
+  return result;
+}
+
 class DeclExtractor : public clang::RecursiveASTVisitor<DeclExtractor>
 {
 public:
@@ -787,9 +830,10 @@ public:
     auto p = usedDecls.find(tDecl->getNameAsString());
     if(p != usedDecls.end())
     {
-      //const std::string typeName = qt2.getAsString();
-      //const auto qt2 = tDecl->getUnderlyingType();
-      //const std::string typeName1 = tDecl->getNameAsString();
+      auto chainRes = getTypedefChain(tDecl);
+      if(chainRes.initialTypeName != "")
+        p->second.type = chainRes.initialTypeName;
+        
       p->second.srcRange  = tDecl->getSourceRange();
       p->second.srcHash   = kslicer::GetHashOfSourceRange(p->second.srcRange);
       p->second.extracted = true;

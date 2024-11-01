@@ -1289,6 +1289,7 @@ std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
   std::string result = "";
   std::string nameWithoutStruct = typeInCL;
   ReplaceFirst(nameWithoutStruct, "struct ", "");
+  nameWithoutStruct = a_pRewriter->RewriteStdVectorTypeStr(nameWithoutStruct);
   switch(a_decl.kind)
   {
     case kslicer::DECL_IN_CLASS::DECL_STRUCT:
