@@ -440,8 +440,8 @@ std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* e
       return p->second;
     else
     {
-      //rvCopy.ApplyDefferedWorkArounds();
-      return m_rewriter.getRewrittenText(range);
+      std::string res = m_rewriter.getRewrittenText(range);
+      return (res != "") ? res : GetRangeSourceCode(range, m_compiler);
     }
   }
   return "";
