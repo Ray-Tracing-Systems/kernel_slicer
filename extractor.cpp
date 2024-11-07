@@ -136,10 +136,10 @@ public:
       return true;
 
     std::string debugName = f->getNameAsString();
-    //if(debugName == "need_normal")
-    //{
-    //  std::cout << "[debug]: find call of " << debugName.c_str() << std::endl;
-    //}
+    if(debugName.find("m_pAccelStruct") != std::string::npos || debugName.find("RayQuery") != std::string::npos)
+    {
+      std::cout << "[debug]: find call of " << debugName.c_str() << std::endl;
+    }
 
     if(f->isOverloadedOperator())
       return true;

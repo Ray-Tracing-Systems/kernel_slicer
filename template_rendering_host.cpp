@@ -460,6 +460,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["GenGpuApi"]          = a_classInfo.genGPUAPI;
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
+  data["EnableTimeStamps"]   = a_settings.enableTimeStamps;
+  data["TimeStampSize"]      = a_classInfo.m_timestampPoolSize;
+
   data["Hierarchies"]        = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
   data["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(data["Hierarchies"]);
   data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0);

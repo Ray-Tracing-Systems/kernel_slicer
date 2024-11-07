@@ -59,7 +59,19 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   InitBuffers(a_maxThreadsCount, true);
   InitKernels("{{ShaderSingleFile}}.spv");
   AllocateAllDescriptorSets();
-  
+  {% if EnableTimeStamps %}
+  {
+    VkQueryPoolCreateInfo query_pool_info{};
+    query_pool_info.sType      = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+    query_pool_info.queryType  = VK_QUERY_TYPE_TIMESTAMP;
+    query_pool_info.queryCount = uint32_t({{TimeStampSize}}); // when each kernel launch always have eqnique descriptir set
+    VkResult res = vkCreateQueryPool(device, &query_pool_info, nullptr, &m_queryPoolTimestamps);
+    if(res != VK_SUCCESS)
+    {
+      std::cout << "[InitVulkanObjects]: can't create timestamp pool " << std::endl;
+    }
+  }
+  {% endif %}
   {% if length(SceneMembers) > 0 %}
   auto queueAllFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
   {% endif %}
@@ -316,6 +328,10 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
 
 {{MainClassName}}{{MainClassSuffix}}::~{{MainClassName}}{{MainClassSuffix}}()
 {
+  {% if EnableTimeStamps %}
+  if(m_queryPoolTimestamps != VK_NULL_HANDLE)
+    vkDestroyQueryPool(device, m_queryPoolTimestamps, nullptr);
+  {% endif %}
   for(size_t i=0;i<m_allCreatedPipelines.size();i++)
     vkDestroyPipeline(device, m_allCreatedPipelines[i], nullptr);
   for(size_t i=0;i<m_allCreatedPipelineLayouts.size();i++)

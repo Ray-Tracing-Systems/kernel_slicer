@@ -12,6 +12,7 @@ namespace kslicer
   {
     bool enableRayGen     = false;
     bool enableMotionBlur = false;
+    bool enableTimeStamps = false;
   };
 
   nlohmann::json PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, const clang::CompilerInstance& compiler,
