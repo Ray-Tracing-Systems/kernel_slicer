@@ -616,6 +616,9 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
     beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
+    {% if EnableTimeStamps %}
+    vkCmdResetQueryPool(commandBuffer, m_queryPoolTimestamps, 0, m_timestampPoolSize);
+    {% endif %}
     {% for var in MainFunc.FullImpl.OutputData %}
     {% if not var.IsTexture %}
     vkCmdFillBuffer(commandBuffer, {{var.Name}}GPU, 0, VK_WHOLE_SIZE, 0); // zero output buffer {{var.Name}}GPU
@@ -638,6 +641,9 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
     beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
+    {% if EnableTimeStamps %}
+    vkCmdResetQueryPool(commandBuffer, m_queryPoolTimestamps, 0, m_timestampPoolSize);
+    {% endif %}
     {{MainFunc.Name}}Cmd(commandBuffer, {{MainFunc.FullImpl.ArgsOnCall}});
     vkEndCommandBuffer(commandBuffer);
     auto start = std::chrono::high_resolution_clock::now();

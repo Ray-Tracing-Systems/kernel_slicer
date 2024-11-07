@@ -199,13 +199,15 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
     if(m_pCodeInfo->NeedThreadFlags())
       strOut << "  m_currThreadFlags = " << flagsVariableName.c_str() << ";" << std::endl;
+    if(m_pCodeInfo->m_timestampPoolSize != uint32_t(-1)) // disabled
+      strOut << "  " << " vkCmdWriteTimestamp(a_commandBuffer, " << currStageBits.c_str() << ", m_queryPoolTimestamps, " <<  m_pCodeInfo->m_timestampPoolSize+0 - 1 << ");" << std::endl;
     strOut << "  " << kernName.c_str() << "Cmd" << textOfArgs.c_str() << ";" << std::endl;
-    strOut << "  " << "vkCmdPipelineBarrier(m_currCmdBuffer, prevStageBits, " << currStageBits.c_str() << ", 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);" << std::endl;
     if(m_pCodeInfo->m_timestampPoolSize != uint32_t(-1)) // disabled
     {
-      strOut << "  " << "// timespampId = " <<  m_pCodeInfo->m_timestampPoolSize << std::endl;
+      strOut << "  " << " vkCmdWriteTimestamp(a_commandBuffer, " << currStageBits.c_str() << ", m_queryPoolTimestamps, " <<  m_pCodeInfo->m_timestampPoolSize+1 - 1 << ");" << std::endl;
       m_pCodeInfo->m_timestampPoolSize++;
     }
+    strOut << "  " << "vkCmdPipelineBarrier(m_currCmdBuffer, prevStageBits, " << currStageBits.c_str() << ", 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);" << std::endl;
     strOut << "  " << "prevStageBits = " << currStageBits.c_str() << ";}";
   }
 

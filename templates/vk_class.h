@@ -536,6 +536,7 @@ public:
   static MegaKernelIsEnabled& EnabledPipelines() { return m_megaKernelFlags; }
   {% if EnableTimeStamps %}
   VkQueryPool m_queryPoolTimestamps = VK_NULL_HANDLE;
+  uint32_t    m_timestampPoolSize = 0;
   {% endif %}
 };
 

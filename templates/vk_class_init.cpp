@@ -61,10 +61,11 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   AllocateAllDescriptorSets();
   {% if EnableTimeStamps %}
   {
+    m_timestampPoolSize = uint32_t({{TimeStampSize}}); // when each kernel launch always have eqnique descriptir set
     VkQueryPoolCreateInfo query_pool_info{};
     query_pool_info.sType      = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
     query_pool_info.queryType  = VK_QUERY_TYPE_TIMESTAMP;
-    query_pool_info.queryCount = uint32_t({{TimeStampSize}}); // when each kernel launch always have eqnique descriptir set
+    query_pool_info.queryCount = m_timestampPoolSize; 
     VkResult res = vkCreateQueryPool(device, &query_pool_info, nullptr, &m_queryPoolTimestamps);
     if(res != VK_SUCCESS)
     {
