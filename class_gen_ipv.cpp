@@ -39,8 +39,10 @@ std::vector<kslicer::ArgFinal> kslicer::IPV_Pattern::GetKernelTIDArgs(const Kern
 
 void kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
+  a_mainFunc.startTSNumber = m_timestampPoolSize;
   GetCFSourceCodeCmd(a_mainFunc, compiler, false); // ==> write this->allDescriptorSetsInfo, a_mainFunc // TODO: may simplify impl for image processing 
   a_mainFunc.endDSNumber   = allDescriptorSetsInfo.size();
+  a_mainFunc.endTSNumber   = m_timestampPoolSize;
   a_mainFunc.InOuts        = kslicer::ListParamsOfMainFunc(a_mainFunc.Node, compiler);
 }
 

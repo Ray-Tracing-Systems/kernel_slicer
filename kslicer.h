@@ -542,6 +542,8 @@ namespace kslicer
 
     size_t startDSNumber = 0;
     size_t endDSNumber   = 0;
+    size_t startTSNumber = 0;
+    size_t endTSNumber   = 0;
 
     // RT template specific
     //
