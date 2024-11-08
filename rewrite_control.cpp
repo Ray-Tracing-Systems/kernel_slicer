@@ -200,11 +200,12 @@ std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCall
     if(m_pCodeInfo->NeedThreadFlags())
       strOut << "  m_currThreadFlags = " << flagsVariableName.c_str() << ";" << std::endl;
     if(m_pCodeInfo->m_timestampPoolSize != uint32_t(-1)) // disabled
-      strOut << "  " << " vkCmdWriteTimestamp(a_commandBuffer, " << currStageBits.c_str() << ", m_queryPoolTimestamps, " <<  m_pCodeInfo->m_timestampPoolSize+0 - 1 << ");" << std::endl;
+      strOut << "  " << " vkCmdWriteTimestamp(a_commandBuffer, " << currStageBits.c_str() << ", m_queryPoolTimestamps, " <<  m_pCodeInfo->m_timestampPoolSize*2+0 << ");" << std::endl;
     strOut << "  " << kernName.c_str() << "Cmd" << textOfArgs.c_str() << ";" << std::endl;
     if(m_pCodeInfo->m_timestampPoolSize != uint32_t(-1)) // disabled
     {
-      strOut << "  " << " vkCmdWriteTimestamp(a_commandBuffer, " << currStageBits.c_str() << ", m_queryPoolTimestamps, " <<  m_pCodeInfo->m_timestampPoolSize+1 - 1 << ");" << std::endl;
+      strOut << "  " << " vkCmdWriteTimestamp(a_commandBuffer, " << currStageBits.c_str() << ", m_queryPoolTimestamps, " <<  m_pCodeInfo->m_timestampPoolSize*2+1 << ");" << std::endl;
+      strOut << "  " << " m_tsIdToKernelName[" << m_pCodeInfo->m_timestampPoolSize << "] = \"" << fname.c_str() << "\";" << std::endl;
       m_pCodeInfo->m_timestampPoolSize++;
     }
     strOut << "  " << "vkCmdPipelineBarrier(m_currCmdBuffer, prevStageBits, " << currStageBits.c_str() << ", 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);" << std::endl;

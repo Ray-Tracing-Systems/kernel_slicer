@@ -537,6 +537,18 @@ public:
   {% if EnableTimeStamps %}
   VkQueryPool m_queryPoolTimestamps = VK_NULL_HANDLE;
   uint32_t    m_timestampPoolSize = 0;
+  float       m_timestampPeriod = 1.0f;
+  void        ResetTimeStampMeasurements();
+  void        AccumTimeStampMeasurements();
+  struct PerKernelMeasure 
+  {
+    float avg = 0.0f;
+    float min = 1e20f;
+    float max = 0.0f;
+    int   count = 0;
+  };
+  std::unordered_map<std::string, PerKernelMeasure> m_kernelTimings;
+  std::vector<std::string>                          m_tsIdToKernelName;
   {% endif %}
 };
 

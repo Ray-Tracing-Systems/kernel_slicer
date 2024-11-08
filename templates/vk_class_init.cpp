@@ -61,16 +61,22 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   AllocateAllDescriptorSets();
   {% if EnableTimeStamps %}
   {
-    m_timestampPoolSize = uint32_t({{TimeStampSize}}); // when each kernel launch always have eqnique descriptir set
+    m_timestampPoolSize = uint32_t({{TimeStampSize}}*2); // 2 for each kernel call
     VkQueryPoolCreateInfo query_pool_info{};
     query_pool_info.sType      = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
     query_pool_info.queryType  = VK_QUERY_TYPE_TIMESTAMP;
     query_pool_info.queryCount = m_timestampPoolSize; 
     VkResult res = vkCreateQueryPool(device, &query_pool_info, nullptr, &m_queryPoolTimestamps);
     if(res != VK_SUCCESS)
-    {
-      std::cout << "[InitVulkanObjects]: can't create timestamp pool " << std::endl;
-    }
+      std::cout << "[InitVulkanObjects]: ALERT! can't create timestamp pool " << std::endl;
+    ResetTimeStampMeasurements();
+    // get timestampPeriod from device props
+    //
+    VkPhysicalDeviceProperties2 physicalDeviceProperties;
+    physicalDeviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    physicalDeviceProperties.pNext = nullptr;
+    vkGetPhysicalDeviceProperties2(physicalDevice, &physicalDeviceProperties);
+    m_timestampPeriod = float(physicalDeviceProperties.properties.limits.timestampPeriod);
   }
   {% endif %}
   {% if length(SceneMembers) > 0 %}

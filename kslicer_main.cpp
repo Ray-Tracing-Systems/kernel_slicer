@@ -813,7 +813,9 @@ int main(int argc, const char **argv)
   }
   
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  inputCodeInfo.allDescriptorSetsInfo.clear();
+  inputCodeInfo.allDescriptorSetsInfo.clear();          // clear (1)
+  if(inputCodeInfo.m_timestampPoolSize != uint32_t(-1)) // clear (2)
+    inputCodeInfo.m_timestampPoolSize = 0;
   for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
     std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
@@ -1002,7 +1004,9 @@ int main(int argc, const char **argv)
     auto copy = inputCodeInfo.mainFunc;
     auto tmp  = inputCodeInfo.allDescriptorSetsInfo;
     
-    inputCodeInfo.allDescriptorSetsInfo.clear();
+    inputCodeInfo.allDescriptorSetsInfo.clear();           // clear(1)
+    if(inputCodeInfo.m_timestampPoolSize != uint32_t(-1))  // clear(2)
+      inputCodeInfo.m_timestampPoolSize = 0;
     for(auto& mainFunc : inputCodeInfo.mainFunc)
     {
       std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
