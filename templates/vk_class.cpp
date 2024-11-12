@@ -11,7 +11,7 @@
 
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
-{% if UseRayGen %}
+{% if UseRayGen or length(IntersectionHierarhcy.Implementations) >= 1 %}
 #include "VulkanRTX.h"
 {% endif%}
 
