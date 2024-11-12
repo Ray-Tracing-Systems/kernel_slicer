@@ -221,7 +221,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
     info.geomId = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, true);
     info.rayxId = gl_GlobalInvocationID[0];
     info.rayyId = gl_GlobalInvocationID[1]; 
-
+    
     const uint tag = {{Kernel.IntersectionHierarhcy.ObjBufferName}}[res.primId].x; // or info.primId ?
     uint intersected = {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}};
     switch(tag) 
@@ -232,7 +232,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
       break;
       {% endfor %}
     };  
-
+    //uint intersected = {{Kernel.IntersectionHierarhcy.Name}}_Intersect_{{Kernel.IntersectionHierarhcy.ObjBufferName}}(info.aabbId, rayPosAndNear, rayDirAndFar, info, res);
     if(intersected != {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}}) 
     {
       res.primId = -1;
