@@ -498,6 +498,21 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["RemapTables"].push_back(local);
   }
 
+  data["VTables"] = std::vector<json>();
+  for(const auto& vfh : a_classInfo.m_vhierarchy)
+  {
+    if(!vfh.second.hasIntersection)
+      continue;
+
+    json local;
+    local["Name"]          = vfh.second.interfaceName;
+    local["BType"]         = "VirtualTable";
+    local["DType"]         = "uvec2";
+    local["InterfaceName"] = vfh.second.interfaceName;
+    local["ObjBufferName"] = vfh.second.objBufferName;
+    data["VTables"].push_back(local);
+  }
+
   if(data["UseServiceScan"])
   {
     data["ServiceScan"] = std::vector<std::string>();

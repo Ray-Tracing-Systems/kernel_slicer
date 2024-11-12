@@ -337,8 +337,11 @@ protected:
     {% for Ref in AllReferences %}
     VkDeviceAddress {{Ref.Name}}Address;
     {% endfor %}
-    {% for Remap in RemapTables %}
-    VkDeviceAddress {{Remap.Name}}RemapAddr;
+    {% for Table in RemapTables %}
+    VkDeviceAddress {{Table.Name}}RemapAddr;
+    {% endfor %}
+    {% for Table in VTables %}
+    VkDeviceAddress {{Table.Name}}VTable;
     {% endfor %}
   };
   std::vector<AllBufferReferences> all_references;

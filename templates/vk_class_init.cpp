@@ -881,8 +881,13 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   {% endif %}
 
   {% for Var in ClassVectorVars %}
+  {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}
+  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+  memberVectorsWithDevAddr.push_back(m_vdata.{{Var.Name}}Buffer);
+  {% else %}
   m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
+  {%endif%}
   {% endfor %}
 
   {% for Var in ClassTextureVars %}
@@ -936,6 +941,12 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
       all_references[0].{{Table.Name}}RemapAddr = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Table.Name}}RemapTableBuffer);
     else
       all_references[0].{{Table.Name}}RemapAddr = VkDeviceAddress(0);
+    {% endfor %}
+    {% for Table in VTables %}
+    if(m_vdata.{{Table.ObjBufferName}}Buffer != VK_NULL_HANDLE)
+      all_references[0].{{Table.Name}}VTable = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Table.ObjBufferName}}Buffer);
+    else
+      all_references[0].{{Table.Name}}VTable = VkDeviceAddress(0);
     {% endfor %}
   }
   {% endif %}
