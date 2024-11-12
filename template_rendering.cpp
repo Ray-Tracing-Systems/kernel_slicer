@@ -764,6 +764,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       local["AccelName"]     = vfh.second.accStructName;
       kernelJson["IntersectionShaderRemaps"].push_back(local);
     }
+    
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     kernelJson["RedLoop1"] = std::vector<std::string>();

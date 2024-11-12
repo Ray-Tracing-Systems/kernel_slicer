@@ -129,7 +129,7 @@ struct {{RetDecl.Name}}
 {% endif %}                                  {# /*------------------------------ vfh ------------------------------ */ #}
 {% endfor %}                                 {# /*------------------------------ vfh ------------------------------ */ #}
 {% for MembFunc in Kernel.MemberFunctions %}
-{% if not (MembFunc.IsRayQuery and Kernel.UseRayGen) %}
+{% if not (MembFunc.IsRayQuery and (Kernel.UseRayGen or (length(Kernel.IntersectionHierarhcy.Implementations) >= 1)) %}
 
 {{MembFunc.Text}}
 {% endif%}
@@ -205,6 +205,20 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
     res.coords[2] = 1.0f - bars.y - bars.x;
     res.coords[3] = 0.0f;
   }
+  {% if length(Kernel.IntersectionHierarhcy.Implementations) >= 1 %}
+  else if (rayQueryGetIntersectionTypeEXT(rayQuery, false) == gl_RayQueryCandidateIntersectionAABBEXT)
+  {
+    res.primId    = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
+	  res.geomId    = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, true);
+    res.instId    = rayQueryGetIntersectionInstanceIdEXT    (rayQuery, true);
+	  res.t         = 1.0f;
+
+    res.coords[0] = 0.0f;
+    res.coords[1] = 0.0f;
+    res.coords[2] = 0.0f;
+    res.coords[3] = 0.0f;
+  }
+  {% endif %}
 
   return res;
 }
