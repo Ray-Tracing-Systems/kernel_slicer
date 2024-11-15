@@ -236,7 +236,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
       }
     {% endif %}
   } // actually may omit 'while' when 'gl_RayFlagsOpaqueEXT' is used
-
+ 
   if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT)
   {    
 	  res.primId    = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
