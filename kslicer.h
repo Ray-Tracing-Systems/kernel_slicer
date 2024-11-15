@@ -542,6 +542,8 @@ namespace kslicer
 
     size_t startDSNumber = 0;
     size_t endDSNumber   = 0;
+    size_t startTSNumber = 0;
+    size_t endTSNumber   = 0;
 
     // RT template specific
     //
@@ -1079,7 +1081,8 @@ namespace kslicer
 
     std::shared_ptr<IShaderCompiler>            pShaderCC           = nullptr;
     std::shared_ptr<kslicer::FunctionRewriter>  pShaderFuncRewriter = nullptr;
-    uint32_t m_indirectBufferSize = 0; ///<! size of indirect buffer
+    uint32_t m_indirectBufferSize = 0;            ///<! size of indirect buffer
+    uint32_t m_timestampPoolSize  = uint32_t(-1); ///<! size of timestamp pool for all kernels calls
 
     typedef std::vector<clang::ast_matchers::StatementMatcher>               MList;
     typedef std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> MHandlerCFPtr;

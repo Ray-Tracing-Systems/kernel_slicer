@@ -460,6 +460,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["GenGpuApi"]          = a_classInfo.genGPUAPI;
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
+  data["EnableTimeStamps"]   = a_settings.enableTimeStamps;
+  if(a_classInfo.megakernelRTV)
+    data["TimeStampSize"]    = a_classInfo.megakernelsByName.size();
+  else
+    data["TimeStampSize"]    = a_classInfo.m_timestampPoolSize;
+
   data["Hierarchies"]        = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
   data["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(data["Hierarchies"]);
   data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0);
@@ -1263,7 +1269,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["HasVarPointers"]    = (!a_classInfo.pShaderCC->IsGLSL() && !a_classInfo.pShaderCC->IsISPC()) || otherFeatures.useVarPtr;
   data["HasSubGroups"]      = useSubGroups;
 
-  data["MainFunctions"] = std::vector<std::string>();
+  data["MainFunctions"] = std::vector<json>();
   bool atLeastOneFullOverride = false;
 
   size_t totalBuffersUsed     = 0;
@@ -1271,7 +1277,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   size_t totalTexStorageUsed  = 0;
   size_t totalTexArrayUsed    = 0;
   size_t totalAccels          = 0;
-
+  
   for(const auto& mainFunc : a_methodsToGenerate)
   {
     json data2;
@@ -1279,7 +1285,17 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["DescriptorSets"]       = std::vector<json>();
     data2["Decl"]                 = mainFunc.GeneratedDecl;
     data2["DeclOrig"]             = mainFunc.OriginalDecl;
-    data2["LocalVarsBuffersDecl"] = std::vector<std::string>();
+    data2["LocalVarsBuffersDecl"] = std::vector<json>();
+    if(mainFunc.megakernel.isMega)
+    {
+      data2["TS_START"]           = 0; // TODO: get MegaKernelId by name
+      data2["TS_SIZE"]            = 1;
+    }
+    else
+    {
+      data2["TS_START"]           = mainFunc.startTSNumber;
+      data2["TS_SIZE"]            = mainFunc.endTSNumber - mainFunc.startTSNumber;
+    }
 
     bool HasCPUOverride = HaveToBeOverriden(mainFunc, a_classInfo);
     data2["OverrideMe"] = HasCPUOverride;
@@ -1529,7 +1545,18 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["NeedThreadFlags"]      = a_classInfo.NeedThreadFlags();
     data2["NeedToAddThreadFlags"] = mainFunc.needToAddThreadFlags;
     data2["DSId"]                 = mainFunc.startDSNumber;
+    if(mainFunc.megakernel.isMega)
+    {
+      data2["TS_START"]           = 0; // TODO: get MegaKernelId by name
+      data2["TS_SIZE"]            = 1;
+    }
+    else
+    {
+      data2["TS_START"]           = mainFunc.startTSNumber;
+      data2["TS_SIZE"]            = mainFunc.endTSNumber - mainFunc.startTSNumber;
+    }
     data2["MegaKernelCall"]       = mainFunc.MegaKernelCall;
+    data2["UseRayGen"]            = mainFunc.megakernel.enableRTPipeline;
     data2["UseRayGen"]            = mainFunc.megakernel.enableRTPipeline;
     data["MainFunctions"].push_back(data2);
   }

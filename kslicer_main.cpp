@@ -101,7 +101,7 @@ int main(int argc, const char **argv)
   bool        enableSubGroupOps  = false;
   int         ispcThreadModel    = 0;
   bool        ispcExplicitIndices = false;
-  bool        genGPUAPI          = false;
+  bool        genGPUAPI           = false;
 
   kslicer::ShaderFeatures forcedFeatures;
 
@@ -196,13 +196,13 @@ int main(int argc, const char **argv)
     textGenSettings.enableMotionBlur = atoi(params["-enable_motion_blur"].c_str()) != 0;
   if(params.find("-enable_ray_tracing_pipeline") != params.end())
     textGenSettings.enableRayGen = (atoi(params["-enable_ray_tracing_pipeline"].c_str()) != 0) || textGenSettings.enableMotionBlur;
+  if(params.find("-timestamps") != params.end())
+    textGenSettings.enableTimeStamps = (atoi(params["-timestamps"].c_str()) != 0);
 
-  std::unordered_set<std::string> values;
   std::vector<std::string> ignoreFolders;
   std::vector<std::filesystem::path> processFolders;
   for(auto p : params)
   {
-    values.insert(p.second);
     std::string folderT = p.second;
     std::transform(folderT.begin(), folderT.end(), folderT.begin(), [](unsigned char c){ return std::tolower(c); });
 
@@ -251,6 +251,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.processFiles   = processFiles;   // set exceptions for shader folders (i.e. ignoreFolders)
   inputCodeInfo.cppIncudes     = cppIncludesAdditional;
   inputCodeInfo.genGPUAPI      = genGPUAPI;
+  inputCodeInfo.m_timestampPoolSize = textGenSettings.enableTimeStamps ? 0 : uint32_t(-1);
 
   if(shaderCCName == "glsl" || shaderCCName == "GLSL")
   {
@@ -813,7 +814,9 @@ int main(int argc, const char **argv)
   }
   
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  inputCodeInfo.allDescriptorSetsInfo.clear();
+  inputCodeInfo.allDescriptorSetsInfo.clear();          // clear (1)
+  if(inputCodeInfo.m_timestampPoolSize != uint32_t(-1)) // clear (2)
+    inputCodeInfo.m_timestampPoolSize = 0;
   for(auto& mainFunc : inputCodeInfo.mainFunc)
   {
     std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
@@ -1002,7 +1005,9 @@ int main(int argc, const char **argv)
     auto copy = inputCodeInfo.mainFunc;
     auto tmp  = inputCodeInfo.allDescriptorSetsInfo;
     
-    inputCodeInfo.allDescriptorSetsInfo.clear();
+    inputCodeInfo.allDescriptorSetsInfo.clear();           // clear(1)
+    if(inputCodeInfo.m_timestampPoolSize != uint32_t(-1))  // clear(2)
+      inputCodeInfo.m_timestampPoolSize = 0;
     for(auto& mainFunc : inputCodeInfo.mainFunc)
     {
       std::cout << "  process " << mainFunc.Name.c_str() << std::endl;

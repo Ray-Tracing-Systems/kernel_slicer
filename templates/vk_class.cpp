@@ -409,7 +409,14 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
   VkMemoryBarrier memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT };
   {% if MainFunc.IsMega %}
   vkCmdBindDescriptorSets(a_commandBuffer, {% if MainFunc.UseRayGen %}VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR{% else %}VK_PIPELINE_BIND_POINT_COMPUTE{% endif %}, {{MainFunc.Name}}MegaLayout, 0, 1, &m_allGeneratedDS[{{MainFunc.DSId}}], 0, nullptr);
+  {% if EnableTimeStamps %}
+  vkCmdWriteTimestamp(a_commandBuffer, {% if MainFunc.UseRayGen %}VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR{% else %}VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT{% endif %}, m_queryPoolTimestamps, 0);
+  {% endif %}
   {{MainFunc.MegaKernelCall}}
+  {% if EnableTimeStamps %}
+  vkCmdWriteTimestamp(a_commandBuffer, {% if MainFunc.UseRayGen %}VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR{% else %}VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT{% endif %}, m_queryPoolTimestamps, 1);
+  m_tsIdToKernelName[0] = "{{MainFunc.Name}}Mega";
+  {% endif %}
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
   {% else %}
   {% if MainFunc.IsRTV %}
@@ -638,6 +645,9 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
     beginCommandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginCommandBufferInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginCommandBufferInfo);
+    {% if EnableTimeStamps %}
+    vkCmdResetQueryPool(commandBuffer, m_queryPoolTimestamps, 0, m_timestampPoolSize);
+    {% endif %}
     {{MainFunc.Name}}Cmd(commandBuffer, {{MainFunc.FullImpl.ArgsOnCall}});
     vkEndCommandBuffer(commandBuffer);
     auto start = std::chrono::high_resolution_clock::now();
@@ -648,6 +658,9 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
     {% endif %}
     for(uint32_t pass = 0; pass < a_numPasses; pass++) {
       vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
+      {% if EnableTimeStamps %}
+      AccumTimeStampMeasurements({{MainFunc.TS_START}}*2, {{MainFunc.TS_SIZE}}*2);
+      {% endif %}
       {% if HasProgressBar %}
       if((pass != 0) && (pass % 256 == 0))
         ProgressBarAccum(256.0f/float(a_numPasses));
@@ -659,6 +672,9 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
     {% endif %}
     {% else %}
     vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
+    {% if EnableTimeStamps %}
+    AccumTimeStampMeasurements({{MainFunc.TS_START}}*2, {{MainFunc.TS_SIZE}}*2);
+    {% endif %}
     {% endif %}
     vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
     auto stop = std::chrono::high_resolution_clock::now();
@@ -708,6 +724,43 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
 }
 {% endif %}
 ## endfor
+
+{% if EnableTimeStamps %}
+void {{MainClassName}}{{MainClassSuffix}}::ResetTimeStampMeasurements()
+{
+  m_tsIdToKernelName.resize(m_timestampPoolSize/2);
+  m_kernelTimings.clear();
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::AccumTimeStampMeasurements(uint32_t a_start, uint32_t a_size)
+{
+  std::vector<uint64_t> time_stamps(m_timestampPoolSize);
+  vkGetQueryPoolResults(device, m_queryPoolTimestamps, 
+                        a_start, a_size, 
+                        a_size * sizeof(uint64_t), time_stamps.data() + a_start, 
+                        sizeof(uint64_t), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
+  
+  for(size_t id=a_start; id < a_size; id++) 
+  {
+    float deltaInMs = float(time_stamps[id*2+1] - time_stamps[id*2+0]) * m_timestampPeriod / 1000000.0f;
+    if(id >= m_tsIdToKernelName.size())
+      break;
+    const std::string& kernelName = m_tsIdToKernelName[id];
+    auto p = m_kernelTimings.find(kernelName);
+    if(p == m_kernelTimings.end())
+      p = m_kernelTimings.insert(std::make_pair(kernelName, PerKernelMeasure{deltaInMs, deltaInMs, deltaInMs, 1})).first;
+    else
+    {
+      p->second.avg += deltaInMs;
+      p->second.min = std::min(p->second.min, deltaInMs);
+      p->second.max = std::max(p->second.max, deltaInMs);
+      p->second.count++;
+    }
+
+  }
+}
+{% endif %}
+
 {% if HasGetTimeFunc %}
 
 void {{MainClassName}}{{MainClassSuffix}}::GetExecutionTime(const char* a_funcName, float a_out[4])
@@ -723,5 +776,15 @@ void {{MainClassName}}{{MainClassSuffix}}::GetExecutionTime(const char* a_funcNa
   a_out[1] = res.msCopyToGPU;
   a_out[2] = res.msCopyFromGPU;
   a_out[3] = res.msAPIOverhead;
+  {% if EnableTimeStamps %}
+  auto p = m_kernelTimings.find(a_funcName);
+  if(p != m_kernelTimings.end())
+  {
+    a_out[0] = p->second.avg / float(p->second.count);
+    a_out[1] = p->second.min;
+    a_out[2] = p->second.max;
+    a_out[3] = 0.0f;
+  }
+  {% endif %}
 }
 {% endif %}

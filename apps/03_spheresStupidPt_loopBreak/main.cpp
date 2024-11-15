@@ -78,5 +78,11 @@ int main(int argc, const char** argv)
   std::cout << "StupidPathTraceBlock(exec) = " << timings[0]              << " ms " << std::endl;
   std::cout << "StupidPathTraceBlock(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
   std::cout << "StupidPathTraceBlock(ovrh) = " << timings[3]              << " ms " << std::endl;
+
+  pImpl->GetExecutionTime("StupidPathTraceMega", timings);
+  std::cout << "StupidPathTraceMega(avg) = " << timings[0]*PASS_NUMBER << " ms " << std::endl;
+  std::cout << "StupidPathTraceMega(min) = " << timings[1]*PASS_NUMBER << " ms " << std::endl;
+  std::cout << "StupidPathTraceMega(max) = " << timings[2]*PASS_NUMBER << " ms " << std::endl;
+
   return 0;
 }

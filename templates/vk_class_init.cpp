@@ -59,7 +59,26 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   InitBuffers(a_maxThreadsCount, true);
   InitKernels("{{ShaderSingleFile}}.spv");
   AllocateAllDescriptorSets();
-  
+  {% if EnableTimeStamps %}
+  {
+    m_timestampPoolSize = uint32_t({{TimeStampSize}}*2); // 2 for each kernel call
+    VkQueryPoolCreateInfo query_pool_info{};
+    query_pool_info.sType      = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+    query_pool_info.queryType  = VK_QUERY_TYPE_TIMESTAMP;
+    query_pool_info.queryCount = m_timestampPoolSize; 
+    VkResult res = vkCreateQueryPool(device, &query_pool_info, nullptr, &m_queryPoolTimestamps);
+    if(res != VK_SUCCESS)
+      std::cout << "[InitVulkanObjects]: ALERT! can't create timestamp pool " << std::endl;
+    ResetTimeStampMeasurements();
+    // get timestampPeriod from device props
+    //
+    VkPhysicalDeviceProperties2 physicalDeviceProperties;
+    physicalDeviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    physicalDeviceProperties.pNext = nullptr;
+    vkGetPhysicalDeviceProperties2(physicalDevice, &physicalDeviceProperties);
+    m_timestampPeriod = float(physicalDeviceProperties.properties.limits.timestampPeriod);
+  }
+  {% endif %}
   {% if length(SceneMembers) > 0 %}
   auto queueAllFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
   {% endif %}
@@ -316,6 +335,10 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
 
 {{MainClassName}}{{MainClassSuffix}}::~{{MainClassName}}{{MainClassSuffix}}()
 {
+  {% if EnableTimeStamps %}
+  if(m_queryPoolTimestamps != VK_NULL_HANDLE)
+    vkDestroyQueryPool(device, m_queryPoolTimestamps, nullptr);
+  {% endif %}
   for(size_t i=0;i<m_allCreatedPipelines.size();i++)
     vkDestroyPipeline(device, m_allCreatedPipelines[i], nullptr);
   for(size_t i=0;i<m_allCreatedPipelineLayouts.size();i++)
