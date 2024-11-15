@@ -22,7 +22,7 @@ ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, 
                               uint32_t a_maxMeshes, uint32_t a_maxTotalVertices, uint32_t a_maxTotalPrimitives, uint32_t a_maxPrimitivesPerMesh,
                               bool build_as_add, bool has_aabb);
 {% endif %}
-{% if UseRayGen %}
+{% if UseRayGen or length(IntersectionHierarhcy.Implementations) >= 1 %}
 #include "VulkanRTX.h"
 {% endif%}
 

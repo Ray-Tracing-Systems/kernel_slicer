@@ -9,7 +9,7 @@
 
 #include "{{IncludeClassDecl}}"
 
-{% if HasRTXAccelStruct %}
+{% if HasRTXAccelStruct or length(IntersectionHierarhcy.Implementations) >= 1 %}
 #include "VulkanRTX.h"
 {% endif %}
 
