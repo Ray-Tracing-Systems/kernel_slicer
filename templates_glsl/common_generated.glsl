@@ -224,14 +224,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
         {% endfor %}
       };  
       //uint intersected = {{Kernel.IntersectionHierarhcy.Name}}_Intersect_{{Kernel.IntersectionHierarhcy.ObjBufferName}}(info.aabbId, rayPosAndNear, rayDirAndFar, info, res);
-      if(intersected == {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}}) 
-      {
-        res.primId = -1;
-        res.instId = -1;
-        res.geomId = -1;
-        res.t      = rayDir.w;
-      } 
-      else
+      if(intersected != {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}}) 
         rayQueryConfirmIntersectionEXT(rayQuery);      
       }
     {% endif %}
@@ -249,6 +242,13 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
     res.coords[1] = bars.x;
     res.coords[2] = 1.0f - bars.y - bars.x;
     res.coords[3] = 0.0f;
+  }
+  else if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT)
+  {
+    res.primId = -1;
+    res.instId = -1;
+    res.geomId = -1;
+    res.t      = rayDir.w;
   }
 
   return res;
