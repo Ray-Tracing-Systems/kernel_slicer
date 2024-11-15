@@ -182,13 +182,60 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
   rayQueryEXT rayQuery;
   rayQueryInitializeEXT(rayQuery, {{RTName}}, gl_RayFlagsOpaqueEXT, 0xff, rayPos.xyz, rayPos.w, rayDir.xyz, rayDir.w);
   
-  while(rayQueryProceedEXT(rayQuery)) { } // actually may omit 'while' when 'gl_RayFlagsOpaqueEXT' is used
- 
   CRT_Hit res;
   res.primId = -1;
   res.instId = -1;
   res.geomId = -1;
   res.t      = rayDir.w;
+
+  while(rayQueryProceedEXT(rayQuery)) 
+  { 
+    {% if length(Kernel.IntersectionHierarhcy.Implementations) >= 1 %}
+    if(rayQueryGetIntersectionTypeEXT(rayQuery, false) == gl_RayQueryCandidateIntersectionTriangleEXT)
+    {
+      rayQueryConfirmIntersectionEXT(rayQuery);
+    }
+    else if (rayQueryGetIntersectionTypeEXT(rayQuery, false) == gl_RayQueryCandidateIntersectionAABBEXT)
+    {
+      res.primId    = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, false);
+	    res.geomId    = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false);
+      res.instId    = rayQueryGetIntersectionInstanceIdEXT    (rayQuery, false);
+	    
+      vec4  rayPosAndNear = vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, false),    rayPos.w);
+      vec4  rayDirAndFar  = vec4(rayQueryGetIntersectionObjectRayDirectionEXT(rayQuery, false), rayDir.w);
+      uvec2 remap         = all_references.{{Kernel.IntersectionHierarhcy.Name}}_remap.{{Kernel.IntersectionHierarhcy.Name}}_table[rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false)];
+     
+      CRT_LeafInfo info;
+      info.aabbId = res.primId;  
+      info.primId = info.aabbId/remap.y;
+      info.instId = rayQueryGetIntersectionInstanceIdEXT(rayQuery, false); 
+      info.geomId = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false);
+      info.rayxId = gl_GlobalInvocationID[0];
+      info.rayyId = gl_GlobalInvocationID[1]; 
+      
+      const uint tag = {{Kernel.IntersectionHierarhcy.ObjBufferName}}[res.primId].x; // or info.primId ?
+      uint intersected = {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}};
+      switch(tag) 
+      {
+        {% for Impl in Kernel.IntersectionHierarhcy.Implementations %}
+        case {{Impl.TagName}}: 
+        intersected = {{Impl.ClassName}}_Intersect_{{Impl.ObjBufferName}}(remap.x + info.primId, rayPosAndNear, rayDirAndFar, info, res);
+        break;
+        {% endfor %}
+      };  
+      //uint intersected = {{Kernel.IntersectionHierarhcy.Name}}_Intersect_{{Kernel.IntersectionHierarhcy.ObjBufferName}}(info.aabbId, rayPosAndNear, rayDirAndFar, info, res);
+      if(intersected == {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}}) 
+      {
+        res.primId = -1;
+        res.instId = -1;
+        res.geomId = -1;
+        res.t      = rayDir.w;
+      } 
+      else
+        rayQueryConfirmIntersectionEXT(rayQuery);      
+      }
+    {% endif %}
+  } // actually may omit 'while' when 'gl_RayFlagsOpaqueEXT' is used
 
   if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionTriangleEXT)
   {    
@@ -203,49 +250,6 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
     res.coords[2] = 1.0f - bars.y - bars.x;
     res.coords[3] = 0.0f;
   }
-  {% if length(Kernel.IntersectionHierarhcy.Implementations) >= 1 %}
-  else if (rayQueryGetIntersectionTypeEXT(rayQuery, false) == gl_RayQueryCandidateIntersectionAABBEXT)
-  {
-    res.primId    = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, false);
-	  res.geomId    = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false);
-    res.instId    = rayQueryGetIntersectionInstanceIdEXT    (rayQuery, false);
-	  
-    //vec4  rayPosAndNear = rayPos;
-    //vec4  rayDirAndFar  = rayDir;
-    vec4  rayPosAndNear = vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, false),    rayPos.w);
-    vec4  rayDirAndFar  = vec4(rayQueryGetIntersectionObjectRayDirectionEXT(rayQuery, false), rayDir.w);
-    uvec2 remap         = all_references.{{Kernel.IntersectionHierarhcy.Name}}_remap.{{Kernel.IntersectionHierarhcy.Name}}_table[rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false)];
-   
-    CRT_LeafInfo info;
-    info.aabbId = res.primId;  
-    info.primId = info.aabbId/remap.y;
-    info.instId = rayQueryGetIntersectionInstanceIdEXT(rayQuery, false); 
-    info.geomId = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false);
-    info.rayxId = gl_GlobalInvocationID[0];
-    info.rayyId = gl_GlobalInvocationID[1]; 
-    
-    const uint tag = {{Kernel.IntersectionHierarhcy.ObjBufferName}}[res.primId].x; // or info.primId ?
-    uint intersected = {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}};
-    switch(tag) 
-    {
-      {% for Impl in Kernel.IntersectionHierarhcy.Implementations %}
-      case {{Impl.TagName}}: 
-      intersected = {{Impl.ClassName}}_Intersect_{{Impl.ObjBufferName}}(remap.x + info.primId, rayPosAndNear, rayDirAndFar, info, res);
-      break;
-      {% endfor %}
-    };  
-    //uint intersected = {{Kernel.IntersectionHierarhcy.Name}}_Intersect_{{Kernel.IntersectionHierarhcy.ObjBufferName}}(info.aabbId, rayPosAndNear, rayDirAndFar, info, res);
-    if(intersected == {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}}) 
-    {
-      res.primId = -1;
-      res.instId = -1;
-      res.geomId = -1;
-      res.t      = rayDir.w;
-    } 
-    else
-      rayQueryConfirmIntersectionEXT(rayQuery);             
-  }
-  {% endif %}
 
   return res;
 }
