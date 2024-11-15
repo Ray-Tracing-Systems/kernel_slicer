@@ -210,13 +210,15 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
 	  res.geomId    = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, true);
     res.instId    = rayQueryGetIntersectionInstanceIdEXT    (rayQuery, true);
 	  
-    vec4  rayPosAndNear = vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true),    rayPos.w);
-    vec4  rayDirAndFar  = vec4(rayQueryGetIntersectionObjectRayDirectionEXT(rayQuery, true), rayDir.w);
+    vec4  rayPosAndNear = rayPos;
+    vec4  rayDirAndFar  = rayDir;
+    //vec4  rayPosAndNear = vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true),    rayPos.w);
+    //vec4  rayDirAndFar  = vec4(rayQueryGetIntersectionObjectRayDirectionEXT(rayQuery, true), rayDir.w);
     uvec2 remap         = all_references.{{Kernel.IntersectionHierarhcy.Name}}_remap.{{Kernel.IntersectionHierarhcy.Name}}_table[rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, true)];
    
     CRT_LeafInfo info;
     info.aabbId = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);  
-    info.primId = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true)/remap.y;
+    info.primId = info.aabbId/remap.y;
     info.instId = rayQueryGetIntersectionInstanceIdEXT(rayQuery, true); 
     info.geomId = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, true);
     info.rayxId = gl_GlobalInvocationID[0];
@@ -233,7 +235,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
       {% endfor %}
     };  
     //uint intersected = {{Kernel.IntersectionHierarhcy.Name}}_Intersect_{{Kernel.IntersectionHierarhcy.ObjBufferName}}(info.aabbId, rayPosAndNear, rayDirAndFar, info, res);
-    if(intersected != {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}}) 
+    if(intersected == {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}}) 
     {
       res.primId = -1;
       res.instId = -1;
