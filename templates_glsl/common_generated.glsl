@@ -127,7 +127,7 @@ struct {{RetDecl.Name}}
 {% endfor %}                                 
 {% endfor %}                                 {# /*------------------------------ vfh ------------------------------ */ #}
 {% for MembFunc in Kernel.MemberFunctions %}
-{% if not (MembFunc.IsRayQuery and Kernel.UseRayGen) %}
+{% if not (MembFunc.IsRayQuery and (Kernel.UseRayGen or (length(Kernel.IntersectionHierarhcy.Implementations) >= 1)) ) %}
 
 {{MembFunc.Text}}
 {% endif%}
