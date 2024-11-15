@@ -226,7 +226,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
       //uint intersected = {{Kernel.IntersectionHierarhcy.Name}}_Intersect_{{Kernel.IntersectionHierarhcy.ObjBufferName}}(info.aabbId, rayPosAndNear, rayDirAndFar, info, res);
       if(intersected != {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}}) 
         rayQueryConfirmIntersectionEXT(rayQuery);      
-      }
+    }
     {% endif %}
   } // actually may omit 'while' when 'gl_RayFlagsOpaqueEXT' is used
  
