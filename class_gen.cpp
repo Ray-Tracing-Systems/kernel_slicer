@@ -301,13 +301,13 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
   auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, fakeOffsetExpr, false);
   pVisitor->SetCurrKernelInfo(&a_funcInfo);
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
+  pVisitor->ApplyDefferedWorkArounds();
   pVisitor->ResetCurrKernelInfo();
-  
+
   a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures();
 
   clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
-  
   return rewrite2.getRewrittenText(clang::SourceRange(b,e));
 }
 
@@ -429,4 +429,12 @@ bool kslicer::FunctionRewriter::WasNotRewrittenYet(const clang::Stmt* expr)
     return true;
   const auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
   return (m_pRewrittenNodes->find(exprHash) == m_pRewrittenNodes->end());
+}
+
+void kslicer::FunctionRewriter::ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text)
+{
+  if(a_range.getBegin().getRawEncoding() == a_range.getEnd().getRawEncoding())
+    m_workAround[GetHashOfSourceRange(a_range)] = a_text;
+  else
+    m_rewriter.ReplaceText(a_range, a_text);
 }

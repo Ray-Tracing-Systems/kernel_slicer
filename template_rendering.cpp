@@ -1215,13 +1215,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions'
       if(pShit != shittyFunctions.end() || f.isMember)
         continue;
-
+      
+      //f.astNode->dump();
       pVisitorF->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
-      const std::string funDecl  = rewrite2.getRewrittenText(f.srcRange);             // func body rewrite does not works correctly in this way some-times (see float4x4 indices)
-      const std::string funBody  = pVisitorF->RecursiveRewrite(f.astNode->getBody()); // but works in this way ... 
-      const std::string declHead = funDecl.substr(0,funDecl.find("{"));               // therefore we join function head and body
+
+      auto p = a_classInfo.m_functionsDone.find(GetHashOfSourceRange(f.astNode->getBody()->getSourceRange()));
+      if(p == a_classInfo.m_functionsDone.end())
+      {
+        std::cout << "[PrepareJsonForKernels]: ALERT! function " << f.name << " is not found in 'm_functionsDone'" << std::endl;
+        continue;
+      }
   
-      data["LocalFunctions"].push_back(declHead + funBody);
+      data["LocalFunctions"].push_back(p->second.funText());
       shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();
     }
   }

@@ -218,8 +218,12 @@ public:
             kernNames.push_back(kern->getNameAsString());
         }
         
-        if(m_codeInfo.mainClassASTNode == nullptr)
+        if(m_codeInfo.mainClassASTNode == nullptr) 
+        {
+          auto name = pClass->getName().str();
           m_codeInfo.mainClassASTNode = pClass;
+          std::cout << "[MainFuncSeeker]: find main class " << name.c_str() << ", poiter = " << m_codeInfo.mainClassASTNode << std::endl;
+        }
       }
     }
     else if(kern_block != nullptr) 

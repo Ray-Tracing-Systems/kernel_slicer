@@ -37,7 +37,7 @@
             "name"   : "Launch (app_01/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/01_intersectSphere/test_class.cpp", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv", 
@@ -122,35 +122,6 @@
                 }
             ]
         },
-
-        //{
-        //    "name"   : "Launch (app_04)",
-        //    "type"   : "cppdbg",
-        //    "request": "launch",
-        //    "program": "${workspaceFolder}/cmake-build-release/kslicer",
-        //    "args"   : ["${workspaceFolder}/apps/04_array_summ/test_class.cpp",
-        //                "-mainClass", "Numbers", 
-        //                "-stdlibfolder", "${workspaceFolder}/TINYSTL",
-        //                "-pattern", "ipv",
-        //                "-I${workspaceFolder}/apps/LiteMath", "ignore",
-        //                "-I${workspaceFolder}/apps/LiteMathAux", "ignore",
-        //                "-I${workspaceFolder}/TINYSTL",       "ignore",
-        //                //"-cl-std=", "C++",
-        //                "-DKERNEL_SLICER",
-        //                "-v"],
-        //    "stopAtEntry": false,
-        //    "cwd"    : "${workspaceFolder}",
-        //    "environment": [],
-        //    "externalConsole": false,
-        //    "MIMode": "gdb",
-        //    "setupCommands": [
-        //        {
-        //            "description": "Enable pretty-printing for gdb",
-        //            "text": "-enable-pretty-printing",
-        //            "ignoreFailures": true
-        //        }
-        //    ]
-        //},
 
         {
             "name"   : "Launch (app_04/GLSL)",
@@ -250,7 +221,7 @@
             "name"   : "Launch (app_05/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/05_filter_bloom_good/test_class.cpp",
                         "-mainClass", "ToneMapping", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
@@ -299,6 +270,37 @@
             "environment"    : [],
             "externalConsole": false,
             "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (app_05/GLSL_Windows)",
+            "type"   : "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Release/kslicer",
+            "args"   : ["${workspaceFolder}/apps/05_filter_bloom_good/test_class.cpp",
+                        "-mainClass", "ToneMapping", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-reorderLoops", "YX",
+                        "-I${workspaceFolder}/apps/LiteMath", "ignore", 
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",
+                        "-I${workspaceFolder}/TINYSTL",       "ignore",
+                        "-shaderCC", "glsl",
+                        "-suffix", "_GPU",
+                        "-DKERNEL_SLICER",
+                        "-DWIN32",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
             "setupCommands"  : [
                 {
                     "description"   : "Enable pretty-printing for gdb",
@@ -402,7 +404,7 @@
             "name"   : "Launch (app_08/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/08_push_back_red_pixels/test_class.cpp",
                         "-mainClass", "RedPixels", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
@@ -2555,6 +2557,7 @@
                         "-mainClass", "AsphericSurface", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
+                        "-pattern", "ipv",
                         "-shaderCC", "glsl",
                         "-I${workspaceFolder}/TINYSTL",         "ignore",
                         "-I/media/vs/data2/repos/optics/optics-rt-1/ext/LiteMath",  "ignore",
@@ -2597,7 +2600,7 @@
             "name"   : "Launch (LiteRT)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
             "args"   : ["/home/frol/PROG/msu-graphics-group/LiteRT/Renderer/eye_ray.cpp",
                         "/home/frol/PROG/msu-graphics-group/LiteRT/BVH/BVH2Common.cpp",
                         "-shaderFolderPrefix", "Renderer/",
@@ -2606,7 +2609,7 @@
                         "-composImplementation", "BVHRT",
                         "-intersectionShader",  "AbstractObject::Intersect",
                         "-enable_ray_tracing_pipeline", "1",
-                        "-options", "/home/frol/PROG/msu-graphics-group/LiteRT/options.json",
+                        //"-options", "/home/frol/PROG/msu-graphics-group/LiteRT/options.json",
                         
                         "-pattern",    "rtv",
                         "-suffix",     "_RTX",
@@ -2615,21 +2618,25 @@
                         
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-I${workspaceFolder}/TINYSTL",       "ignore",
-                        "-I${workspaceFolder}/apps",          "ignore",
-                        "-I${workspaceFolder}/apps/LiteMath", "ignore",
 
                         "-I/home/frol/PROG/msu-graphics-group/LiteRT",               "process",
                         "-I/home/frol/PROG/msu-graphics-group/LiteRT/Renderer",      "process",
                         "-I/home/frol/PROG/msu-graphics-group/LiteRT/BVH",           "process",
                         "-I/home/frol/PROG/msu-graphics-group/LiteRT/sdfScene",      "ignore",
+                        "-I/home/frol/PROG/msu-graphics-group/LiteRT/dependencies/HydraCore3/external/CrossRT",  "ignore",
+                        "-I/home/frol/PROG/msu-graphics-group/LiteRT/dependencies/HydraCore3/external",  "ignore",
+                        "-I/home/frol/PROG/msu-graphics-group/LiteRT/dependencies/HydraCore3/external/LiteMath",  "ignore",
+                        "-I/home/frol/PROG/msu-graphics-group/LiteRT/dependencies",  "ignore",
                         
                         "-DPUGIXML_NO_EXCEPTIONS",
                         "-DDISABLE_SDF_OCTREE",
-                        "-DDISABLE_SDF_GRID",
+                        //"-DDISABLE_SDF_GRID",
                         "-DDISABLE_SDF_FRAME_OCTREE",
                         //"-DDISABLE_SDF_SBS",
                         "-DDISABLE_SDF_HP",
                         "-DKERNEL_SLICER",
+                        "-DDISABLE_NURBS",
+                        "-DDISABLE_GS_PRIMITIVE",
                         "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",

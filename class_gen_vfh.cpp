@@ -53,6 +53,7 @@ public:
       std::string exprReplaced    = m_objBufferName + "[selfId]." + exprContent;
       if(m_vfhLevel >= 2)
         exprReplaced = "all_references." + m_className + "_buffer." + exprReplaced;
+      //ReplaceTextOrWorkAround(expr->getSourceRange(), exprReplaced);
       m_rewriter.ReplaceText(expr->getSourceRange(), exprReplaced);
       MarkRewritten(expr);
     }
@@ -106,6 +107,7 @@ public:
         }
       }
 
+      //ReplaceTextOrWorkAround(expr->getSourceRange(), prefix + fieldName);
       m_rewriter.ReplaceText(expr->getSourceRange(), prefix + fieldName);
       MarkRewritten(expr);
     }  
@@ -118,6 +120,7 @@ public:
       
       //std::cout << "  [MemberRewriter]: process with '.' for " << thisTypeName.c_str() << "::" << fieldName.c_str() << std::endl;
 
+      //ReplaceTextOrWorkAround(expr->getSourceRange(), kslicer::GetRangeSourceCode(base->getSourceRange(), m_compiler) + "." + memberName);
       m_rewriter.ReplaceText(expr->getSourceRange(), kslicer::GetRangeSourceCode(base->getSourceRange(), m_compiler) + "." + memberName);
       MarkRewritten(expr);
     }
@@ -136,8 +139,7 @@ public:
     if((op == "*" || op == "&") && WasNotRewrittenYet(expr->getSubExpr()) )
     {
       std::string text = RecursiveRewrite(expr->getSubExpr());
-      m_lastRewrittenText = text;
-      m_rewriter.ReplaceText(expr->getSourceRange(), text);
+      ReplaceTextOrWorkAround(expr->getSourceRange(), text);
       MarkRewritten(expr->getSubExpr());
     }
 
@@ -278,7 +280,7 @@ public:
       }
       textRes += ")";
       
-      m_rewriter.ReplaceText(call->getSourceRange(), textRes);
+      ReplaceTextOrWorkAround(call->getSourceRange(), textRes);
       MarkRewritten(call);
     }
 
@@ -311,7 +313,6 @@ private:
   int m_vfhLevel = 0;
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   
-  //std::unordered_set<uint64_t>  m_rewrittenNodes;
   inline void MarkRewritten(const clang::Stmt* expr) { FunctionRewriter::MarkRewritten(expr); }
 
   inline bool WasNotRewrittenYet(const clang::Stmt* expr) { return FunctionRewriter::WasNotRewrittenYet(expr); }

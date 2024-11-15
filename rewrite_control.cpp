@@ -5,6 +5,45 @@
 #include <sstream>
 #include <algorithm>
 
+void kslicer::MainFunctionRewriter::ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text)
+{
+  if(a_range.getBegin().getRawEncoding() == a_range.getEnd().getRawEncoding())
+    m_workAround[GetHashOfSourceRange(a_range)] = a_text;
+  else
+    m_rewriter.ReplaceText(a_range, a_text);
+}
+
+bool kslicer::MainFunctionRewriter::WasNotRewrittenYet(const clang::Stmt* expr) const
+{
+  if(expr == nullptr)
+    return true;
+  if(clang::isa<clang::NullStmt>(expr))
+    return true;
+  const auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+  return (m_pRewrittenNodes->find(exprHash) == m_pRewrittenNodes->end());
+}
+
+void kslicer::MainFunctionRewriter::MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, *m_pRewrittenNodes); }
+
+std::string kslicer::MainFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
+{
+  if(expr == nullptr)
+    return "";
+  
+  MainFunctionRewriter rvCopy = *this;
+  rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
+  
+  auto range = expr->getSourceRange();
+  auto p = rvCopy.m_workAround.find(GetHashOfSourceRange(range));
+  if(p != rvCopy.m_workAround.end())
+    return p->second;
+  else
+  {
+    std::string text = m_rewriter.getRewrittenText(range);
+    return (text != "") ? text : kslicer::GetRangeSourceCode(range, m_compiler);
+  }
+}
+
 bool kslicer::MainFunctionRewriter::VisitCXXMethodDecl(CXXMethodDecl* f)
 {
   if (f->hasBody())
@@ -18,7 +57,7 @@ bool kslicer::MainFunctionRewriter::VisitCXXMethodDecl(CXXMethodDecl* f)
     if(m_pRewrittenNodes->find(exprHash) == m_pRewrittenNodes->end())
     {
       mainFuncCmdName = fname + "Cmd";
-      m_rewriter.ReplaceText(dni.getSourceRange(), mainFuncCmdName);
+      ReplaceTextOrWorkAround(dni.getSourceRange(), mainFuncCmdName);
       m_pRewrittenNodes->insert(exprHash);
     }
   }
@@ -448,7 +487,7 @@ bool kslicer::MainFunctionRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
       if(pKernel->second.be.enabled)
         kslicer::ExtractBlockSizeFromCall(f, pKernel->second, m_compiler);
       std::string callStr = MakeKernelCallCmdString(f);
-      m_rewriter.ReplaceText(f->getSourceRange(), callStr); // getExprLoc
+      ReplaceTextOrWorkAround(f->getSourceRange(), callStr); // getExprLoc
       MarkRewritten(f);
     }
     else
@@ -480,7 +519,7 @@ bool kslicer::MainFunctionRewriter::VisitCallExpr(CallExpr* call)
   {
     m_pCodeInfo->usedServiceCalls.insert(fname);
     std::string testStr = MakeServiceKernelCallCmdString(call, fname);
-    m_rewriter.ReplaceText(call->getSourceRange(), testStr);
+    ReplaceTextOrWorkAround(call->getSourceRange(), testStr);
     MarkRewritten(call);
   }
 
@@ -508,7 +547,7 @@ bool kslicer::MainFunctionRewriter::VisitIfStmt(IfStmt* ifExpr)
     if(m_pCodeInfo->IsKernel(fname) && WasNotRewrittenYet(ifExpr))
     {
       std::string callStr = MakeKernelCallCmdString(f);
-      m_rewriter.ReplaceText(ifExpr->getSourceRange(), callStr);
+      ReplaceTextOrWorkAround(ifExpr->getSourceRange(), callStr);
       MarkRewritten(ifExpr);
     }
   }
@@ -525,7 +564,7 @@ bool kslicer::MainFunctionRewriter::VisitMemberExpr(MemberExpr* expr)
   if(CheckSettersAccess(expr, m_pCodeInfo, m_compiler, &setter, &containerName) && WasNotRewrittenYet(expr))
   {
     std::string name = setter + "Vulkan." + containerName;
-    m_rewriter.ReplaceText(expr->getSourceRange(), name);
+    ReplaceTextOrWorkAround(expr->getSourceRange(), name);
     MarkRewritten(expr);
   }
   return true;

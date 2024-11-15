@@ -51,8 +51,8 @@ void TestClass::MainFunc(uint tidX, uint tidY, uint* out_color)
 
 void TestClass::MainFuncBlock(uint tidX, uint tidY, uint* out_color, uint32_t a_numPasses)
 {
-  for(int p=0;p<a_numPasses;p++)
-    for(int y=0;y<tidY;y++)
-      for(int x=0;x<tidX;x++)
+  for(int y=0;y<tidY;y++)
+    for(int x=0;x<tidX;x++)
+      for(int p=0;p<a_numPasses;p++)
         MainFunc(x,y,out_color);
 }
