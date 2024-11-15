@@ -206,21 +206,21 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
   {% if length(Kernel.IntersectionHierarhcy.Implementations) >= 1 %}
   else if (rayQueryGetIntersectionTypeEXT(rayQuery, false) == gl_RayQueryCandidateIntersectionAABBEXT)
   {
-    res.primId    = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
-	  res.geomId    = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, true);
-    res.instId    = rayQueryGetIntersectionInstanceIdEXT    (rayQuery, true);
+    res.primId    = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, false);
+	  res.geomId    = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false);
+    res.instId    = rayQueryGetIntersectionInstanceIdEXT    (rayQuery, false);
 	  
-    vec4  rayPosAndNear = rayPos;
-    vec4  rayDirAndFar  = rayDir;
-    //vec4  rayPosAndNear = vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, true),    rayPos.w);
-    //vec4  rayDirAndFar  = vec4(rayQueryGetIntersectionObjectRayDirectionEXT(rayQuery, true), rayDir.w);
-    uvec2 remap         = all_references.{{Kernel.IntersectionHierarhcy.Name}}_remap.{{Kernel.IntersectionHierarhcy.Name}}_table[rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, true)];
+    //vec4  rayPosAndNear = rayPos;
+    //vec4  rayDirAndFar  = rayDir;
+    vec4  rayPosAndNear = vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, false),    rayPos.w);
+    vec4  rayDirAndFar  = vec4(rayQueryGetIntersectionObjectRayDirectionEXT(rayQuery, false), rayDir.w);
+    uvec2 remap         = all_references.{{Kernel.IntersectionHierarhcy.Name}}_remap.{{Kernel.IntersectionHierarhcy.Name}}_table[rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false)];
    
     CRT_LeafInfo info;
-    info.aabbId = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);  
+    info.aabbId = res.primId;  
     info.primId = info.aabbId/remap.y;
-    info.instId = rayQueryGetIntersectionInstanceIdEXT(rayQuery, true); 
-    info.geomId = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, true);
+    info.instId = rayQueryGetIntersectionInstanceIdEXT(rayQuery, false); 
+    info.geomId = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false);
     info.rayxId = gl_GlobalInvocationID[0];
     info.rayyId = gl_GlobalInvocationID[1]; 
     
@@ -241,7 +241,9 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
       res.instId = -1;
       res.geomId = -1;
       res.t      = rayDir.w;
-    }              
+    } 
+    else
+      rayQueryConfirmIntersectionEXT(rayQuery);             
   }
   {% endif %}
 
