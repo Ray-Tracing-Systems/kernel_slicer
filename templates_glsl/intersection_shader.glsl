@@ -35,7 +35,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer {{Remap.Nam
 layout(buffer_reference, std430, buffer_reference_align = 16) buffer {{Remap.Name}}Tags
 {
 	uint {{Remap.Name}}_gtags[];
-}
+};
 {% endfor %}
 
 {% if HasAllRefs %}
