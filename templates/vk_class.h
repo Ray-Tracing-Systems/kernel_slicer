@@ -321,6 +321,7 @@ protected:
     {% endfor %}
     {% for Table in RemapTables %}
     VkBuffer {{Table.Name}}RemapTableBuffer = VK_NULL_HANDLE;
+    VkBuffer {{Table.Name}}GeomTagsBuffer   = VK_NULL_HANDLE;
     {% endfor %}
   } m_vdata;
   {% for Vector in VectorMembers %}
@@ -339,6 +340,7 @@ protected:
     {% endfor %}
     {% for Remap in RemapTables %}
     VkDeviceAddress {{Remap.Name}}RemapAddr;
+    VkDeviceAddress {{Remap.Name}}GeomTags;
     {% endfor %}
   };
   std::vector<AllBufferReferences> all_references;

@@ -36,6 +36,11 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer {{Remap.Nam
 {
 	{{Remap.DType}} {{Remap.Name}}_table[];
 };
+
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer {{Remap.Name}}Tags
+{
+	uint {{Remap.Name}}_gtags[];
+};
 {% endfor %}
 
 {% if HasAllRefs %}
@@ -46,6 +51,7 @@ struct AllBufferReferences
   {% endfor %}
   {% for Remap in Kernel.IntersectionShaderRemaps %}
   {{Remap.Name}}Remap {{Remap.Name}}_remap;
+  {{Remap.Name}}Tags  {{Remap.Name}}_gtags;
   {% endfor %}
 };
 {% endif %}
@@ -213,7 +219,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
       info.rayxId = gl_GlobalInvocationID[0];
       info.rayyId = gl_GlobalInvocationID[1]; 
       
-      const uint tag = {{Kernel.IntersectionHierarhcy.ObjBufferName}}[res.primId].x; // or info.primId ?
+      const uint tag   = all_references.{{Kernel.IntersectionHierarhcy.Name}}_gtags.{{Kernel.IntersectionHierarhcy.Name}}_gtags[res.geomId];
       uint intersected = {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}};
       switch(tag) 
       {

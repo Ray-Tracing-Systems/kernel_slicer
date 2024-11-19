@@ -31,6 +31,11 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer {{Remap.Nam
 {
 	{{Remap.DType}} {{Remap.Name}}_table[];
 };
+
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer {{Remap.Name}}Tags
+{
+	uint {{Remap.Name}}_gtags[];
+}
 {% endfor %}
 
 {% if HasAllRefs %}
@@ -41,6 +46,7 @@ struct AllBufferReferences
   {% endfor %}
   {% for Remap in Kernel.IntersectionShaderRemaps %}
   {{Remap.Name}}Remap {{Remap.Name}}_remap;
+  {{Remap.Name}}Tags  {{Remap.Name}}_gtags;
   {% endfor %}
 };
 {% endif %}

@@ -869,10 +869,15 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
     if(tablePtrs.tableSize != 0)
     {
       m_vdata.{{Table.Name}}RemapTableBuffer = vk_utils::createBuffer(device, tablePtrs.tableSize*sizeof(LiteMath::uint2), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+      m_vdata.{{Table.Name}}GeomTagsBuffer   = vk_utils::createBuffer(device, tablePtrs.geomSize*sizeof(LiteMath::uint), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
       memberVectorsWithDevAddr.push_back(m_vdata.{{Table.Name}}RemapTableBuffer);
+      memberVectorsWithDevAddr.push_back(m_vdata.{{Table.Name}}GeomTagsBuffer);
     }
     else
+    {
       m_vdata.{{Table.Name}}RemapTableBuffer = VK_NULL_HANDLE;
+      m_vdata.{{Table.Name}}GeomTagsBuffer = VK_NULL_HANDLE;
+    }
   }
   {% endfor %}
   
@@ -936,6 +941,10 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
       all_references[0].{{Table.Name}}RemapAddr = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Table.Name}}RemapTableBuffer);
     else
       all_references[0].{{Table.Name}}RemapAddr = VkDeviceAddress(0);
+    if(m_vdata.{{Table.Name}}GeomTagsBuffer != VK_NULL_HANDLE)
+      all_references[0].{{Table.Name}}GeomTags = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Table.Name}}GeomTagsBuffer);
+    else
+      all_references[0].{{Table.Name}}GeomTags = VkDeviceAddress(0);
     {% endfor %}
   }
   {% endif %}
