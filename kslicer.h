@@ -1054,6 +1054,7 @@ namespace kslicer
     std::unordered_set<std::string>                    composClassNames; 
     std::unordered_set<std::string>                    dataClassNames; 
     std::vector< std::pair<std::string, std::string> > intersectionShaders;
+    std::vector< std::pair<std::string, std::string> > intersectionTriangle;
 
     std::filesystem::path mainClassFileName;
     std::string           mainClassFileInclude;

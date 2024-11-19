@@ -214,6 +214,12 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
         }
       }
       currImpl["DataStructure"] = local;
+
+      bool isTriangles = false;
+      for(auto x : a_classInfo.intersectionTriangle)
+        if(x.first == h.interfaceName && x.second == impl.name)
+          isTriangles = true;
+      currImpl["IsTriangleMesh"] = isTriangles;
     }
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     if(impl.isEmpty) 

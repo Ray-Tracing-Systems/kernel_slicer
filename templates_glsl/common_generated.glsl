@@ -199,6 +199,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
     {% if length(Kernel.IntersectionHierarhcy.Implementations) >= 1 %}
     if(rayQueryGetIntersectionTypeEXT(rayQuery, false) == gl_RayQueryCandidateIntersectionTriangleEXT)
     {
+      //TODO: add opacity check here
       rayQueryConfirmIntersectionEXT(rayQuery);
     }
     else if (rayQueryGetIntersectionTypeEXT(rayQuery, false) == gl_RayQueryCandidateIntersectionAABBEXT)
@@ -224,12 +225,13 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
       switch(tag) 
       {
         {% for Impl in Kernel.IntersectionHierarhcy.Implementations %}
+        {% if not Impl.IsTriangleMesh %}
         case {{Impl.TagName}}: 
         intersected = {{Impl.ClassName}}_Intersect_{{Impl.ObjBufferName}}(remap.x + info.primId, rayPosAndNear, rayDirAndFar, info, res);
         break;
+        {% endif %}
         {% endfor %}
       };  
-      //uint intersected = {{Kernel.IntersectionHierarhcy.Name}}_Intersect_{{Kernel.IntersectionHierarhcy.ObjBufferName}}(info.aabbId, rayPosAndNear, rayDirAndFar, info, res);
       if(intersected != {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}}) 
         rayQueryConfirmIntersectionEXT(rayQuery);      
     }

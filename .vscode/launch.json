@@ -2083,6 +2083,7 @@
                         "-composInterface",     "ISceneObject",
                         "-composImplementation","BFRayTrace",
                         "-intersectionShader",  "AbtractPrimitive::Intersect", 
+                        "-intersectionTriangle","AbtractPrimitive::TrianglePrim", 
                         "-enable_ray_tracing_pipeline", "0",
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
