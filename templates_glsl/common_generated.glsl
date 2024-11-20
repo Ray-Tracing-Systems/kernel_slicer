@@ -247,13 +247,13 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
     res.coords[2] = 1.0f - bars.y - bars.x;
     res.coords[3] = 0.0f;
   }
-  else if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT)
-  {
-    res.primId = -1;
-    res.instId = -1;
-    res.geomId = -1;
-    res.t      = rayDir.w;
-  }
+  //else if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT)
+  //{
+  //  res.primId = -1;
+  //  res.instId = -1;
+  //  res.geomId = -1;
+  //  res.t      = rayDir.w;
+  //}
 
   return res;
 }
