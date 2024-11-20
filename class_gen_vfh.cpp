@@ -412,8 +412,14 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
           }
         }
         
-        if(!alreadyHasSuchImpl)
-          p.second.implementations.push_back(dImpl);
+        if(!alreadyHasSuchImpl) 
+        { 
+          bool skip = false;
+          if(!intersectionWhiteList.empty())
+            skip = (intersectionWhiteList.find(dImpl.name) == intersectionWhiteList.end());
+          if(!skip)
+            p.second.implementations.push_back(dImpl);
+        }
       }
     }
 

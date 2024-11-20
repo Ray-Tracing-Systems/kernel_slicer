@@ -297,6 +297,13 @@ int main(int argc, const char **argv)
       std::string funcName  = shaderClassAndFunc.substr(splitPos + 2);
       inputCodeInfo.intersectionTriangle.push_back( std::make_pair(className, funcName) );
     }
+    else if(std::string(argv[argId]) == "-intersectionWiteList" && argId+1 < argc) {
+      std::string shaderClassAndFunc = argv[argId+1];
+      auto splitPos = shaderClassAndFunc.find("::");
+      std::string className = shaderClassAndFunc.substr(0, splitPos);
+      std::string funcName  = shaderClassAndFunc.substr(splitPos + 2);
+      inputCodeInfo.intersectionWhiteList.insert(funcName);
+    }
     else if (std::string(argv[argId]) == "-baseClass" && argId+1 < argc) {
       baseClases.push_back(argv[argId+1]);
     }
