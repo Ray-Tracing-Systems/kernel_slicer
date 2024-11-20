@@ -204,23 +204,19 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
     }
     else if (rayQueryGetIntersectionTypeEXT(rayQuery, false) == gl_RayQueryCandidateIntersectionAABBEXT)
     {
-      res.primId    = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, false);
-	    res.geomId    = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false);
-      res.instId    = rayQueryGetIntersectionInstanceIdEXT    (rayQuery, false);
-	    
       vec4  rayPosAndNear = vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, false),    rayPos.w);
       vec4  rayDirAndFar  = vec4(rayQueryGetIntersectionObjectRayDirectionEXT(rayQuery, false), rayDir.w);
       uvec2 remap         = all_references.{{Kernel.IntersectionHierarhcy.Name}}_remap.{{Kernel.IntersectionHierarhcy.Name}}_table[rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false)];
      
       CRT_LeafInfo info;
-      info.aabbId = res.primId;  
+      info.aabbId = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, false);  
       info.primId = info.aabbId/remap.y;
       info.instId = rayQueryGetIntersectionInstanceIdEXT(rayQuery, false); 
       info.geomId = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false);
       info.rayxId = gl_GlobalInvocationID[0];
       info.rayyId = gl_GlobalInvocationID[1]; 
       
-      const uint tag   = all_references.{{Kernel.IntersectionHierarhcy.Name}}_gtags.{{Kernel.IntersectionHierarhcy.Name}}_gtags[res.geomId];
+      const uint tag   = all_references.{{Kernel.IntersectionHierarhcy.Name}}_gtags.{{Kernel.IntersectionHierarhcy.Name}}_gtags[info.geomId];
       uint intersected = {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}};
       switch(tag) 
       {
@@ -233,7 +229,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
         {% endfor %}
       };  
       if(intersected != {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}}) 
-        rayQueryConfirmIntersectionEXT(rayQuery);      
+        rayQueryGenerateIntersectionEXT(rayQuery, res.t);      
     }
     {% endif %}
   } // actually may omit 'while' when 'gl_RayFlagsOpaqueEXT' is used
