@@ -849,14 +849,12 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
 
     const size_t buffReferenceAlign = 16; // from EXT_buffer_reference spec: "If the layout qualifier is not specified, it defaults to 16 bytes"
     size_t objDataBufferSize = 0;
-    {{Var.Name}}_obj_storage_offsets.reserve(sorted.size() + 1);
-    {{Var.Name}}_obj_storage_offsets.resize(0);
-    for(size_t arrId=0;arrId<sorted.size(); arrId++)
+    {{Var.Name}}_obj_storage_offsets.reserve(sorted.size());
+    for(auto it = sorted.begin(); it != sorted.end(); ++it)
     {
-      {{Var.Name}}_obj_storage_offsets.push_back(objDataBufferSize);
-      objDataBufferSize += vk_utils::getPaddedSize(sorted[arrId].size(), buffReferenceAlign);
+      {{Var.Name}}_obj_storage_offsets[it->first] = objDataBufferSize;
+      objDataBufferSize += vk_utils::getPaddedSize(it->second.size(), buffReferenceAlign);
     }
-    {{Var.Name}}_obj_storage_offsets.push_back(objDataBufferSize); // store total buffer size also in this array
 
     m_vdata.{{Var.Name}}_dataSBuffer = vk_utils::createBuffer(device, objDataBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
     m_vdata.{{Var.Name}}_dataVBuffer = vk_utils::createBuffer(device, bufferV.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);

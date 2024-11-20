@@ -326,10 +326,10 @@ protected:
   } m_vdata;
   {% for Vector in VectorMembers %}
   {% if Vector.IsVFHBuffer and Vector.VFHLevel >= 2 %}
-  std::vector<LiteMath::uint2>        {{Vector.Name}}_vtable;
-  std::unordered_map<uint32_t, std::vector<uint8_t> >  {{Vector.Name}}_sorted;
-  std::vector<uint8_t>                {{Vector.Name}}_dataV;
-  std::vector<size_t>                 {{Vector.Name}}_obj_storage_offsets;
+  std::vector<LiteMath::uint2> {{Vector.Name}}_vtable;
+  std::vector<uint8_t>         {{Vector.Name}}_dataV;
+  std::unordered_map<uint32_t, std::vector<uint8_t> > {{Vector.Name}}_sorted;
+  std::unordered_map<uint32_t, size_t>                {{Vector.Name}}_obj_storage_offsets;
   {% endif %}
   {% endfor %}
   {% if HasAllRefs %}
