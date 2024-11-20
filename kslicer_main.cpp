@@ -291,25 +291,16 @@ int main(int argc, const char **argv)
       inputCodeInfo.intersectionShaders.push_back( std::make_pair(className, funcName) );
     }
     else if(std::string(argv[argId]) == "-intersectionTriangle" && argId+1 < argc) {
-      std::string shaderClassAndFunc = argv[argId+1];
-      auto splitPos = shaderClassAndFunc.find("::");
-      std::string className = shaderClassAndFunc.substr(0, splitPos);
-      std::string funcName  = shaderClassAndFunc.substr(splitPos + 2);
-      inputCodeInfo.intersectionTriangle.push_back( std::make_pair(className, funcName) );
+      const std::string className = argv[argId+1];
+      inputCodeInfo.intersectionTriangle.push_back( std::make_pair(className, className) );
     }
     else if(std::string(argv[argId]) == "-intersectionWhiteList" && argId+1 < argc) {
-      std::string shaderClassAndFunc = argv[argId+1];
-      auto splitPos = shaderClassAndFunc.find("::");
-      std::string className = shaderClassAndFunc.substr(0, splitPos);
-      std::string funcName  = shaderClassAndFunc.substr(splitPos + 2);
-      inputCodeInfo.intersectionWhiteList.insert(funcName);
+      const std::string className = argv[argId+1];
+      inputCodeInfo.intersectionWhiteList.insert(className);
     }
     else if(std::string(argv[argId]) == "-intersectionBlackList" && argId+1 < argc) {
-      std::string shaderClassAndFunc = argv[argId+1];
-      auto splitPos = shaderClassAndFunc.find("::");
-      std::string className = shaderClassAndFunc.substr(0, splitPos);
-      std::string funcName  = shaderClassAndFunc.substr(splitPos + 2);
-      inputCodeInfo.intersectionBlackList.insert(funcName);
+      const std::string className = argv[argId+1];
+      inputCodeInfo.intersectionBlackList.insert(className);
     }
     else if (std::string(argv[argId]) == "-baseClass" && argId+1 < argc) {
       baseClases.push_back(argv[argId+1]);
