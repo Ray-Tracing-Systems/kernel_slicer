@@ -379,7 +379,15 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
         dImpl.name = decl->getNameAsString();
         dImpl.objBufferName = p.second.objBufferName;
         dImpl.interfaceName = p.second.interfaceName;
-        
+
+        if(intersectionBlackList.find(dImpl.name) != intersectionBlackList.end())
+          continue;
+        else if(!intersectionWhiteList.empty())
+        {
+          if(intersectionWhiteList.find(dImpl.name) == intersectionWhiteList.end())
+            continue;
+        }
+
         MemberRewriter rv(rewrite2, a_compiler, this, dImpl, int(p.second.level)); 
         rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));                                  
         
@@ -389,14 +397,6 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
           argsByName[kv.first] = kv.second; 
 
         dImpl.isEmpty = (dImpl.name.find("Empty") != std::string::npos);
-        //for(auto member : dImpl.memberFunctions)
-        //{
-        //  if(!member.isEmpty)
-        //  {
-        //    dImpl.isEmpty = false;
-        //    break;
-        //  }
-        //}
 
         for(auto& k : kernels)
         {
@@ -413,13 +413,7 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
         }
         
         if(!alreadyHasSuchImpl) 
-        { 
-          bool skip = false;
-          if(!intersectionWhiteList.empty())
-            skip = (intersectionWhiteList.find(dImpl.name) == intersectionWhiteList.end());
-          if(!skip)
-            p.second.implementations.push_back(dImpl);
-        }
+          p.second.implementations.push_back(dImpl);
       }
     }
 

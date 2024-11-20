@@ -819,27 +819,32 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   {% for Var in ClassVectorVars %}
   {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}
   
-  if({{Var.Name}}_sorted.size() == 0) // Pack all objects of '{{Var.Hierarchy.Name}}'
+  if({{Var.Name}}_sorted.empty()) // Pack all objects of '{{Var.Hierarchy.Name}}'
   {
     auto& bufferV = {{Var.Name}}_dataV;
     auto& sorted  = {{Var.Name}}_sorted;
     auto& vtable  = {{Var.Name}}_vtable;
     vtable.resize({{Var.Name}}{{Var.AccessSymb}}size());
-    sorted.resize({{length(Var.Hierarchy.Implementations)}} + 1);
+    //sorted.resize({{length(Var.Hierarchy.Implementations)}} + 1);
     bufferV.resize(16*4); // ({{Var.Name}}.size()*sizeof({{Var.Name}})); actual reserve may not be needed due to implementation don't have vectors. TODO: you may cvheck this explicitly in kslicer
     for(size_t arrId=0;arrId<sorted.size(); arrId++) {
       sorted[arrId].reserve({{Var.Name}}{{Var.AccessSymb}}size()*sizeof({{Var.Hierarchy.Name}}));
       sorted[arrId].resize(0);
     }
     
-    std::vector<size_t> objCount(sorted.size());
-    for(auto& x : objCount) x = 0;
+    std::unordered_map<uint32_t, uint32_t> objCount;
 
-    for(size_t i=0;i<{{Var.Name}}{{Var.AccessSymb}}size();i++) {
+    for(size_t i=0;i<{{Var.Name}}{{Var.AccessSymb}}size();i++) 
+    {
       const auto tag = {{Var.Name}}{{Var.AccessSymb}}at(i)->GetTag(); 
       PackObject_{{Var.Hierarchy.Name}}(sorted[tag], {{Var.Name}}{{Var.AccessSymb}}at(i));
-      vtable[i] = LiteMath::uint2(tag, uint32_t(objCount[tag]));
-      objCount[tag]++;
+
+      auto p = objCount.find(tag);
+      if(p == objCount.end())
+        p = objCount.insert(std::make_pair(tag,0)).first;
+
+      vtable[i] = LiteMath::uint2(tag, uint32_t(p->second));
+      p->second++;
     }
 
     const size_t buffReferenceAlign = 16; // from EXT_buffer_reference spec: "If the layout qualifier is not specified, it defaults to 16 bytes"
