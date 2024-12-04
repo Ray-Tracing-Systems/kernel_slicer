@@ -1403,9 +1403,10 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(
 void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
 {
   m_allShaderTableBuffers.clear();
-  uint32_t customStages    = {{length(IntersectionHierarhcy.Implementations)}};
+  uint32_t callStages      = 0; // TODO: calculate it
+  uint32_t customStages    = callStages + {{length(IntersectionHierarhcy.Implementations)}};
   uint32_t numShaderGroups = 4 + customStages;            // (raygen, miss, miss, rchit(tris)) + ({% for Impl in IntersectionHierarhcy.Implementations %}{{Impl.ClassName}}, {% endfor %})
-  uint32_t numHitStages    = uint32_t(customStages) + 1u; // 1 if we don't have actual sbtRecordOffsets at all
+  uint32_t numHitStages    = uint32_t({{length(IntersectionHierarhcy.Implementations)}}) + 1u; // 1 if we don't have actual sbtRecordOffsets at all
   uint32_t numMissStages   = 2u;                          // common mis shader and shadow miss  
 
   VkPhysicalDeviceRayTracingPipelinePropertiesKHR  rtPipelineProperties{};
@@ -1426,6 +1427,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
   const auto rgenStride = vk_utils::getSBTAlignedSize(handleSizeAligned,                 rtPipelineProperties.shaderGroupBaseAlignment);
   const auto missSize   = vk_utils::getSBTAlignedSize(numMissStages * handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment);
   const auto hitSize    = vk_utils::getSBTAlignedSize(numHitStages  * handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment);
+  const auto callSize   = vk_utils::getSBTAlignedSize((callStages+1)* handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment);
 
   std::vector<VkPipeline> allRTPipelines = {};
   {% for Kernel in Kernels %}
@@ -1442,12 +1444,14 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
     auto raygenBuf  = vk_utils::createBuffer(device, rgenStride, flags);
-    auto raymissBuf = vk_utils::createBuffer(device, missSize * numMissStages, flags);
-    auto rayhitBuf  = vk_utils::createBuffer(device, hitSize * numHitStages, flags);
+    auto raymissBuf = vk_utils::createBuffer(device, missSize, flags); 
+    auto rayhitBuf  = vk_utils::createBuffer(device, hitSize , flags); 
+    auto callBuf    = vk_utils::createBuffer(device, callSize, flags);
 
     m_allShaderTableBuffers.push_back(raygenBuf);
     m_allShaderTableBuffers.push_back(raymissBuf);
     m_allShaderTableBuffers.push_back(rayhitBuf);
+    m_allShaderTableBuffers.push_back(callBuf);
   }
 
   // (2) allocate and bind everything for 'm_allShaderTableBuffers'
@@ -1513,9 +1517,9 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
   {
     VK_CHECK_RESULT(vkGetRayTracingShaderGroupHandlesKHR(device, allRTPipelines[groupId], 0, numShaderGroups, sbtSize, shaderHandleStorage.data()));
 
-    auto raygenBuf  = m_allShaderTableBuffers[groupId*3+0];
-    auto raymissBuf = m_allShaderTableBuffers[groupId*3+1];
-    auto rayhitBuf  = m_allShaderTableBuffers[groupId*3+2];
+    auto raygenBuf  = m_allShaderTableBuffers[groupId*4+0];
+    auto raymissBuf = m_allShaderTableBuffers[groupId*4+1];
+    auto rayhitBuf  = m_allShaderTableBuffers[groupId*4+2];
 
     {{Kernel.Name}}SBTStrides.resize(4);
     {{Kernel.Name}}SBTStrides[0] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, raygenBuf),  rgenStride,         rgenStride };
@@ -1525,19 +1529,19 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
 
     auto *pData = shaderHandleStorage.data();
 
-    memcpy(mapped + offsets[groupId*3 + 0], pData, handleSize * 1);             // raygenBuf
+    memcpy(mapped + offsets[groupId*4 + 0], pData, handleSize * 1);             // raygenBuf
     pData += handleSize * 1;
 
-    memcpy(mapped + offsets[groupId*3 + 1], pData, handleSize * numMissStages); // raymissBuf
+    memcpy(mapped + offsets[groupId*4 + 1], pData, handleSize * numMissStages); // raymissBuf
     pData += handleSize * numMissStages;
 
-    memcpy(mapped + offsets[groupId*3 + 2], pData, handleSize * 1);             // rayhitBuf part for hw accelerated triangles
+    memcpy(mapped + offsets[groupId*4 + 2], pData, handleSize * 1);             // rayhitBuf part for hw accelerated triangles
     pData += handleSize * 1;
                                                                                 // rayhitBuf part for custom primitives
     {% for Impl in IntersectionHierarhcy.Implementations %}                     
-    memcpy(mapped + offsets[groupId*3 + 2] + handleSize*({{IntersectionHierarhcy.Name}}::{{Impl.TagName}}), pData + {{loop.index}}*handleSize, handleSize); // {{Impl.ClassName}}
+    memcpy(mapped + offsets[groupId*4 + 2] + handleSize*({{IntersectionHierarhcy.Name}}::{{Impl.TagName}}), pData + {{loop.index}}*handleSize, handleSize); // {{Impl.ClassName}}
     {% endfor %}
-    pData += handleSize*customStages;
+    pData += handleSize*{{length(IntersectionHierarhcy.Implementations)}};
 
     groupId++;
   }
