@@ -202,6 +202,10 @@ int main(int argc, const char **argv)
   }
   else if(params.find("-enable_ray_tracing_pipeline") != params.end())
     textGenSettings.enableRayGen = (atoi(params["-enable_ray_tracing_pipeline"].c_str()) != 0) || textGenSettings.enableMotionBlur;
+  
+  if(params.find("-enable_callable_shaders") != params.end()) // enable_callable_shaders
+    textGenSettings.enableCallable = (atoi(params["-enable_callable_shaders"].c_str()) != 0);
+  
   if(params.find("-timestamps") != params.end())
     textGenSettings.enableTimeStamps = (atoi(params["-timestamps"].c_str()) != 0);
 

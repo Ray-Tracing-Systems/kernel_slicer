@@ -13,6 +13,7 @@ namespace kslicer
     bool enableRayGen      = false;
     bool enableRayGenForce = false;
     bool enableMotionBlur  = false;
+    bool enableCallable    = false;
     bool enableTimeStamps  = false;
   };
 
@@ -48,6 +49,8 @@ namespace kslicer
                                           const MainClassInfo& a_classInfo);
 
   nlohmann::json FindIntersectionHierarchy(nlohmann::json a_hierarchies);
+
+  uint32_t CountCallablesAndSetGroupOffsets(nlohmann::json& a_hierarchies);
 }
 
 #endif
