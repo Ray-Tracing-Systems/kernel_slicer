@@ -194,7 +194,13 @@ int main(int argc, const char **argv)
   kslicer::TextGenSettings textGenSettings;
   if(params.find("-enable_motion_blur") != params.end())
     textGenSettings.enableMotionBlur = atoi(params["-enable_motion_blur"].c_str()) != 0;
-  if(params.find("-enable_ray_tracing_pipeline") != params.end())
+  if(params.find("-force_ray_tracing_pipeline") != params.end())
+  {
+    bool isEnabled = (atoi(params["-force_ray_tracing_pipeline"].c_str()) != 0);
+    textGenSettings.enableRayGen      = isEnabled;
+    textGenSettings.enableRayGenForce = isEnabled;
+  }
+  else if(params.find("-enable_ray_tracing_pipeline") != params.end())
     textGenSettings.enableRayGen = (atoi(params["-enable_ray_tracing_pipeline"].c_str()) != 0) || textGenSettings.enableMotionBlur;
   if(params.find("-timestamps") != params.end())
     textGenSettings.enableTimeStamps = (atoi(params["-timestamps"].c_str()) != 0);
@@ -988,8 +994,8 @@ int main(int argc, const char **argv)
           break;
         }
       }
-      cf.megakernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
-      inputCodeInfo.globalDeviceFeatures.useRTX = inputCodeInfo.globalDeviceFeatures.useRTX || hasAccelStructs;
+      cf.megakernel.enableRTPipeline = (hasAccelStructs && textGenSettings.enableRayGen) || textGenSettings.enableRayGenForce;
+      inputCodeInfo.globalDeviceFeatures.useRTX = inputCodeInfo.globalDeviceFeatures.useRTX || hasAccelStructs || textGenSettings.enableRayGenForce;
     }
   }
 
@@ -1005,7 +1011,7 @@ int main(int argc, const char **argv)
         break;
       }
     }
-    kernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
+    kernel.enableRTPipeline = (hasAccelStructs && textGenSettings.enableRayGen) || textGenSettings.enableRayGenForce;
   }
   
   ///////////////////////////////////////////////////////////////////////////// fix code for seperate kernel with RT pipeline
@@ -1149,7 +1155,7 @@ int main(int argc, const char **argv)
           break;
         }
       }
-      cf.megakernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
+      cf.megakernel.enableRTPipeline = (hasAccelStructs && textGenSettings.enableRayGen) || textGenSettings.enableRayGenForce;
     }
   }
   else
@@ -1160,6 +1166,11 @@ int main(int argc, const char **argv)
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO, usedDefines, textGenSettings);
+  
+  //std::ofstream file(inputCodeInfo.mainClassFileName.parent_path() / "z_debug_kernels.json");
+  //file << std::setw(2) << json; //
+  //file.close();
+  
   if(inputCodeInfo.pShaderCC->IsISPC()) {
     json["Constructors"]        = jsonCPP["Constructors"];
     json["HasCommitDeviceFunc"] = jsonCPP["HasCommitDeviceFunc"];
@@ -1170,10 +1181,6 @@ int main(int argc, const char **argv)
     json["MainInclude"]         = jsonCPP["MainInclude"];
   }
   inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo);
-
-  //std::ofstream file(inputCodeInfo.mainClassFileName.parent_path / "z_ubo.json");
-  //file << std::setw(2) << json; //
-  //file.close();
 
   {
     std::filesystem::path outName = inputCodeInfo.mainClassFileName.parent_path() / "include" / uboIncludeName;

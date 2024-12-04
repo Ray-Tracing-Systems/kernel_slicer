@@ -7,7 +7,9 @@
 #include "ArgParser.h"
 
 #include "vk_context.h"
+#include "test_class_generated.h"
 std::shared_ptr<TestClass> CreateTestClass_Generated(int a_maxThreads, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+
 
 int main(int argc, const char** argv)
 {
@@ -31,7 +33,11 @@ int main(int argc, const char** argv)
   if(onGPU)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+    std::vector<const char*> requiredExtensions;
+    auto deviceFeatures = TestClass_Generated::ListRequiredDeviceFeatures(requiredExtensions);
+    auto ctx            = vk_utils::globalContextInit(requiredExtensions, enableValidationLayers, a_preferredDeviceId, &deviceFeatures);
+    //unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    //auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateTestClass_Generated( WIN_WIDTH*WIN_HEIGHT, ctx, WIN_WIDTH*WIN_HEIGHT);
   }
   else
