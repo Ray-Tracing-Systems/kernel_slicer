@@ -275,7 +275,14 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
       shaderGroup.intersectionShader = shaderId + 0; //
       shaderGroup.closestHitShader   = shaderId + 1; // assume next is always 'closestHitShader' for current 'intersectionShader'
       shaderId++;
-    }                                                      
+    } 
+    else if(stage == VK_SHADER_STAGE_CALLABLE_BIT_KHR)
+    {
+      shaderGroup.type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+      shaderGroup.closestHitShader   = VK_SHADER_UNUSED_KHR;
+      shaderGroup.generalShader      = shaderId;
+      shaderId++;
+    }                                                     
 
     shaderGroups.push_back(shaderGroup);
   }
@@ -517,8 +524,15 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
     {% endif %}
     {% endfor %}
     {% endfor %}
+    {% else if UseCallable %}
+    {% for Impl in Hierarchy.Implementations %}
+    {% for Func in Impl.MemberFunctions %}
+    std::string shader{{Impl.ClassName}}_{{Func.Name}} = AlterShaderPath("{{ShaderFolder}}/{{Impl.ClassName}}_{{Func.Name}}_call.glsl.spv");
+    {% endfor %}
+    {% endfor %}
     {% endif %}
     {% endfor %}
+    
     std::vector< std::pair<VkShaderStageFlagBits, std::string> > shader_paths;
     {
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_RAYGEN_BIT_KHR,      shaderPathRGEN.c_str()));
@@ -534,6 +548,12 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_INTERSECTION_BIT_KHR, shader{{Impl.ClassName}}RINT.c_str()));
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR,  shader{{Impl.ClassName}}RHIT.c_str()));
       {% endif %}
+      {% endfor %}
+      {% endfor %}
+      {% else if UseCallable %}
+      {% for Impl in Hierarchy.Implementations %}
+      {% for Func in Impl.MemberFunctions %}
+      shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_CALLABLE_BIT_KHR,  shader{{Impl.ClassName}}_{{Func.Name}}.c_str()));
       {% endfor %}
       {% endfor %}
       {% endif %}
