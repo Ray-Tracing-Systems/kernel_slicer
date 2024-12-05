@@ -11,7 +11,7 @@ kslicer::GLSLCompiler::GLSLCompiler(const std::string& a_prefix) : m_suffix(a_pr
 
 }
 
-void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo)
+void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings)
 {
   const auto& mainClassFileName = a_codeInfo->mainClassFileName;
   const auto& ignoreFolders     = a_codeInfo->ignoreFolders;
@@ -41,6 +41,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   const std::filesystem::path templatePathRedFin = templatesFolder / "reduction_finish.glsl";
   const std::filesystem::path templatePathIntShd = templatesFolder / "intersection_shader.glsl";
   const std::filesystem::path templatePathHitShd = templatesFolder / "closest_hit_shader.glsl";
+  const std::filesystem::path templatePathCalShd = templatesFolder / "callable_shader.glsl";
 
   nlohmann::json copy, kernels, intersections;
   for (auto& el : a_kernelsJson.items())
@@ -114,6 +115,35 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
         for(auto folder : ignoreFolders)
           buildSH << "-I" << folder.c_str() << " ";
         buildSH << std::endl;
+      }
+      
+      if(a_settings.enableCallable)
+      {
+        std::unordered_set<std::string> callableShaders;
+        for(auto hierarchy : currKerneJson["Kernel"]["Hierarchies"]) {
+          for(auto impl : hierarchy["Implementations"]) {
+            for(const auto& member : impl["MemberFunctions"]) {
+            
+              nlohmann::json CSData    = copy;
+              CSData["Kernel"]         = currKerneJson["Kernel"];
+              CSData["Implementation"] = impl;
+              CSData["MemberName"]     = member["Name"];
+  
+              std::string outFileName  = std::string(impl["ClassName"]) + "_" + std::string(member["Name"]) + "_call.glsl";
+          
+              if(callableShaders.find(outFileName) != callableShaders.end())
+                continue;
+          
+              callableShaders.insert(outFileName);
+              kslicer::ApplyJsonToTemplate(templatePathCalShd.c_str(), shaderPath / outFileName, CSData);
+              
+              buildSH << "glslangValidator -V --target-env vulkan1.2 -S rcall " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
+              for(auto folder : ignoreFolders)
+                buildSH << "-I" << folder.c_str() << " ";
+              buildSH << std::endl;
+            }
+          }
+        }
       }
     }
 

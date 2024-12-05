@@ -28,6 +28,15 @@ std::string ToLowerCase(std::string a_str);
 
 namespace kslicer
 {
+  struct TextGenSettings
+  {
+    bool enableRayGen      = false;
+    bool enableRayGenForce = false;
+    bool enableMotionBlur  = false;
+    bool enableCallable    = false;
+    bool enableTimeStamps  = false;
+  };
+
   struct IShaderCompiler;
   enum class VKERNEL_IMPL_TYPE { VKERNEL_SWITCH = 0, VKERNEL_INDIRECT_DISPATCH=2 };
 
@@ -898,7 +907,7 @@ namespace kslicer
     virtual bool        IsGLSL() const { return !IsSingleSource(); }
     virtual bool        IsISPC() const { return false; }
 
-    virtual void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) = 0;
+    virtual void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) = 0;
 
     virtual std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const = 0;
 
@@ -933,7 +942,7 @@ namespace kslicer
     std::string ShaderFolder()     const override { return "clspv_shaders_aux"; }
     std::string ShaderSingleFile() const override { return "z_generated.cl"; }
 
-    void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
+    void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
 
     bool        UseSeparateUBOForArguments() const override { return m_useCpp; }
     bool        UseSpecConstForWgSize()      const override { return m_useCpp; }
@@ -962,7 +971,7 @@ namespace kslicer
     ISPCCompiler(bool a_useCPP, const std::string& a_prefix);
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo[0].") + a_name; };
     std::string Name() const override { return "ISPC"; }
-    void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
+    void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
     bool        IsISPC() const override { return true; }
     std::string BuildCommand(const std::string& a_inputFile) const override;
     std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) override;
@@ -979,7 +988,7 @@ namespace kslicer
     std::string ShaderFolder()                       const override { return std::string("shaders") + ToLowerCase(m_suffix); }
     std::string ShaderSingleFile()                   const override { return ""; }
 
-    void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
+    void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
 
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;

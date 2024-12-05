@@ -1184,7 +1184,7 @@ int main(int argc, const char **argv)
     json["MainFunctions"]       = jsonCPP["MainFunctions"];
     json["MainInclude"]         = jsonCPP["MainInclude"];
   }
-  inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo);
+  inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo, textGenSettings);
 
   {
     std::filesystem::path outName = inputCodeInfo.mainClassFileName.parent_path() / "include" / uboIncludeName;

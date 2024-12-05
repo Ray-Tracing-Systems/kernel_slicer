@@ -334,6 +334,15 @@ nlohmann::json kslicer::ListCallableStructures(const std::unordered_map<std::str
       funcData["Name"] = f.second.name;
       funcData["Args"] = std::vector<json>();
       
+      // self offset/ptr
+      {
+        nlohmann::json arg;
+        arg["Name"]  = "selfId";
+        arg["Type"]  = "uint";
+        arg["IsRet"] = false;
+        funcData["Args"].push_back(arg);
+      }
+
       // list arguments
       // 
       for (const auto* param : f.second.astNode->parameters()) {   
@@ -347,6 +356,8 @@ nlohmann::json kslicer::ListCallableStructures(const std::unordered_map<std::str
         if(a_classInfo.dataClassNames.find(paramType) == a_classInfo.dataClassNames.end())
           funcData["Args"].push_back(arg);
       }
+
+      funcData["ArgLen"] = funcData["Args"].size()-1;
       
       // get return type
       //

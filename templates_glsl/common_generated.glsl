@@ -107,10 +107,6 @@ struct {{RetDecl.Name}}
 {{Member.Source}}
 
 {% endfor %}
-
-{% for Field in Impl.Fields %}
-//{{Field}}
-{% endfor %}
 {% endfor %}
 {% if UseCallable %}
 
@@ -138,6 +134,19 @@ layout(location = {{loop.index}}) callableDataEXT {{S.Name}}DataType {{S.Name}}D
   {% else %}
   const uint tag = {{Hierarchy.ObjBufferName}}[selfId].m_tag;
   {% endif %}
+  {% if UseCallable %}
+  {% for S in Kernel.CallableStructures %}
+  {% if VirtualFunc.Name == S.Name %}
+  {% for Arg in S.Args %}
+  {% if not Arg.IsRet %}
+  {{S.Name}}Data.{{Arg.Name}} = {{Arg.Name}};
+  {% endif %}
+  {% endfor %}
+  executeCallableEXT(tag, 0); // TODO: add sbt offset to tag
+  return {{S.Name}}Data.ret;
+  {% endif %}
+  {% endfor %}
+  /*
   switch(tag) 
   {
     {% for Impl in Hierarchy.Implementations %}
@@ -145,6 +154,16 @@ layout(location = {{loop.index}}) callableDataEXT {{S.Name}}DataType {{S.Name}}D
     {% endfor %}
     default: return {{Hierarchy.EmptyImplementation.ClassName}}_{{VirtualFunc.Name}}_{{Hierarchy.EmptyImplementation.ObjBufferName}}({% for Arg in VirtualFunc.Args %}{{Arg.Name}}{% if loop.index != VirtualFunc.ArgLen %},{% endif %}{% endfor %});
   };
+  */
+  {% else %}
+  switch(tag) 
+  {
+    {% for Impl in Hierarchy.Implementations %}
+    case {{Impl.TagName}}: return {{Impl.ClassName}}_{{VirtualFunc.Name}}_{{Impl.ObjBufferName}}({% for Arg in VirtualFunc.Args %}{{Arg.Name}}{% if loop.index != VirtualFunc.ArgLen %},{% endif %}{% endfor %});
+    {% endfor %}
+    default: return {{Hierarchy.EmptyImplementation.ClassName}}_{{VirtualFunc.Name}}_{{Hierarchy.EmptyImplementation.ObjBufferName}}({% for Arg in VirtualFunc.Args %}{{Arg.Name}}{% if loop.index != VirtualFunc.ArgLen %},{% endif %}{% endfor %});
+  };
+  {% endif %}
 }
 {% endfor %}                                 
 {% endfor %}                                 {# /*------------------------------ vfh ------------------------------ */ #}

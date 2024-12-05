@@ -59,7 +59,7 @@ std::string kslicer::ClspvCompiler::BuildCommand(const std::string& a_inputFile)
 }
 
 
-void kslicer::ClspvCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo)
+void kslicer::ClspvCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings)
 {
   const auto& mainClassFileName = a_codeInfo->mainClassFileName;
   const auto& ignoreFolders     = a_codeInfo->ignoreFolders;
