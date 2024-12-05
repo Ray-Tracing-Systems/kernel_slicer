@@ -48,6 +48,10 @@ namespace kslicer
                                           const clang::CompilerInstance& compiler,
                                           const MainClassInfo& a_classInfo);
 
+  nlohmann::json ListCallableStructures(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
+                                        const clang::CompilerInstance& compiler,
+                                        const MainClassInfo& a_classInfo);                                         
+
   nlohmann::json FindIntersectionHierarchy(nlohmann::json a_hierarchies);
 
   uint32_t CountCallablesAndSetGroupOffsets(nlohmann::json& a_hierarchies);

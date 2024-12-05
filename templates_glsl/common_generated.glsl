@@ -112,6 +112,22 @@ struct {{RetDecl.Name}}
 //{{Field}}
 {% endfor %}
 {% endfor %}
+{% if UseCallable %}
+
+{% for S in Kernel.CallableStructures %}
+struct {{S.Name}}DataType
+{
+  {% for Arg in S.Args %}
+  {{Arg.Type}} {{Arg.Name}};
+  {% endfor %}
+};
+{% endfor %}
+
+{% for S in Kernel.CallableStructures %}
+layout(location = {{loop.index}}) callableDataEXT {{S.Name}}DataType {{S.Name}}Data;
+{% endfor %}
+
+{% endif %} {# /* UseCallable */ #}
 {% for VirtualFunc in Hierarchy.VirtualFunctions %}
 {{VirtualFunc.Decl}} 
 {

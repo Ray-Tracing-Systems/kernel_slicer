@@ -320,6 +320,52 @@ uint32_t kslicer::CountCallablesAndSetGroupOffsets(nlohmann::json& a_hierarchies
   return result; 
 }
 
+nlohmann::json kslicer::ListCallableStructures(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
+                                               const clang::CompilerInstance& compiler,
+                                               const MainClassInfo& a_classInfo)
+{
+  auto pShaderRewriter = a_classInfo.pShaderFuncRewriter;
+
+  nlohmann::json data = std::vector<json>();
+  for(const auto& h : hierarchies) {
+    for(const auto& f : h.second.virtualFunctions) {
+      
+      nlohmann::json funcData;
+      funcData["Name"] = f.second.name;
+      funcData["Args"] = std::vector<json>();
+      
+      // list arguments
+      // 
+      for (const auto* param : f.second.astNode->parameters()) {   
+        std::string paramName  = param->getNameAsString();       // Получаем имя параметра
+        std::string paramType  = param->getType().getAsString(); // Получаем тип параметра
+        std::string paramType2 = pShaderRewriter->RewriteStdVectorTypeStr(paramType);
+        nlohmann::json arg;
+        arg["Name"]  = paramName;
+        arg["Type"]  = paramType2;
+        arg["IsRet"] = false;
+        if(a_classInfo.dataClassNames.find(paramType) == a_classInfo.dataClassNames.end())
+          funcData["Args"].push_back(arg);
+      }
+      
+      // get return type
+      //
+      const clang::Type* type = f.second.retTypeDecl->getTypeForDecl();
+      if (const auto* recordType = clang::dyn_cast<clang::RecordType>(type)) {
+        std::string retTypeName = recordType->getDecl()->getQualifiedNameAsString();
+        nlohmann::json arg;
+        arg["Name"]  = "ret";
+        arg["Type"]  =  pShaderRewriter->RewriteStdVectorTypeStr(retTypeName);
+        arg["IsRet"] = true;
+        funcData["Args"].push_back(arg);
+      }
+
+      data.push_back(funcData);
+    }
+  }
+  return data;
+}                                               
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -453,6 +499,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["UseComplex"]         = true; // a_classInfo.useComplexNumbers; does not works in appropriate way ...
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
+  data["UseCallable"]        = a_settings.enableCallable;
   data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0);
 
   data["Defines"] = std::vector<std::string>();
@@ -764,7 +811,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     json kernelJson;
     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    kernelJson["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(a_classInfo.SelectVFHOnlyUsedByKernel(a_classInfo.m_vhierarchy, k), compiler, a_classInfo); 
+    auto selectedVFH = a_classInfo.SelectVFHOnlyUsedByKernel(a_classInfo.m_vhierarchy, k);
+    kernelJson["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(selectedVFH, compiler, a_classInfo); 
+    kernelJson["CallableStructures"]    = kslicer::ListCallableStructures(selectedVFH, compiler, a_classInfo);
     kernelJson["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(kernelJson["Hierarchies"]);
     kernelJson["CallableCount"]         = kslicer::CountCallablesAndSetGroupOffsets(data["Hierarchies"]);
     
