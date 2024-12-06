@@ -33,7 +33,8 @@ namespace kslicer
 
   nlohmann::json PutHierarchyToJson(const kslicer::MainClassInfo::VFHHierarchy& h, 
                                     const clang::CompilerInstance& compiler,
-                                    const MainClassInfo& a_classInfo);
+                                    const MainClassInfo& a_classInfo,
+                                    size_t& fnGroupOffset);
 
   nlohmann::json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
                                           const clang::CompilerInstance& compiler,
@@ -41,7 +42,8 @@ namespace kslicer
 
   nlohmann::json ListCallableStructures(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
                                         const clang::CompilerInstance& compiler,
-                                        const MainClassInfo& a_classInfo);                                         
+                                        const MainClassInfo& a_classInfo, 
+                                        uint32_t& a_totalShaders);                                         
 
   nlohmann::json FindIntersectionHierarchy(nlohmann::json a_hierarchies);
 }

@@ -553,7 +553,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
       {% endfor %}
       {% else if UseCallable %}
       {% for Func in Hierarchy.VirtualFunctions %}
-      
+
       {% for Impl in Hierarchy.Implementations %}
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_CALLABLE_BIT_KHR,  shader{{Impl.ClassName}}_{{Func.Name}}.c_str()));
       {% endfor %}
@@ -1425,7 +1425,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(
 void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
 {
   m_allShaderTableBuffers.clear();
-  uint32_t callStages      = {{length(CallableStructures)}};
+  uint32_t callStages      = {{CallablesTotal}};
   uint32_t customStages    = callStages + {{length(IntersectionHierarhcy.Implementations)}};
   uint32_t numShaderGroups = 4 + customStages;            // (raygen, miss, miss, rchit(tris)) + ({% for Impl in IntersectionHierarhcy.Implementations %}{{Impl.ClassName}}, {% endfor %}) + callables
   uint32_t numHitStages    = uint32_t({{length(IntersectionHierarhcy.Implementations)}}) + 1u; // 1 if we don't have actual sbtRecordOffsets at all
@@ -1449,7 +1449,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
   const auto rgenStride = vk_utils::getSBTAlignedSize(handleSizeAligned,                 rtPipelineProperties.shaderGroupBaseAlignment);
   const auto missSize   = vk_utils::getSBTAlignedSize(numMissStages * handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment);
   const auto hitSize    = vk_utils::getSBTAlignedSize(numHitStages  * handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment);
-  const auto callSize   = vk_utils::getSBTAlignedSize((callStages+1)* handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment);
+  const auto callSize   = vk_utils::getSBTAlignedSize(callStages    * handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment);
 
   std::vector<VkPipeline> allRTPipelines = {};
   {% for Kernel in Kernels %}
@@ -1542,12 +1542,17 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
     auto raygenBuf  = m_allShaderTableBuffers[groupId*4+0];
     auto raymissBuf = m_allShaderTableBuffers[groupId*4+1];
     auto rayhitBuf  = m_allShaderTableBuffers[groupId*4+2];
+    auto raycallBuf = m_allShaderTableBuffers[groupId*4+3];
 
     {{Kernel.Name}}SBTStrides.resize(4);
     {{Kernel.Name}}SBTStrides[0] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, raygenBuf),  rgenStride,         rgenStride };
     {{Kernel.Name}}SBTStrides[1] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, raymissBuf), handleSizeAligned,  missSize };
-    {{Kernel.Name}}SBTStrides[2] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, rayhitBuf),  handleSizeAligned,  hitSize};
+    {{Kernel.Name}}SBTStrides[2] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, rayhitBuf),  handleSizeAligned,  hitSize };
+    {% if UseCallable and CallablesTotal > 0 %}
+    {{Kernel.Name}}SBTStrides[3] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, raycallBuf), handleSizeAligned,  callSize };
+    {% else %}
     {{Kernel.Name}}SBTStrides[3] = VkStridedDeviceAddressRegionKHR{ 0u, 0u, 0u };
+    {% endif %}
 
     auto *pData = shaderHandleStorage.data();
 
@@ -1564,7 +1569,16 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
     memcpy(mapped + offsets[groupId*4 + 2] + handleSize*({{IntersectionHierarhcy.Name}}::{{Impl.TagName}}), pData + {{loop.index}}*handleSize, handleSize); // {{Impl.ClassName}}
     {% endfor %}
     pData += handleSize*{{length(IntersectionHierarhcy.Implementations)}};
+    {% if UseCallable and CallablesTotal > 0 %}
+    {% for Hierarchy in Kernel.Hierarchies %}
+    {% for Func in Hierarchy.VirtualFunctions %}    
 
+    {% for Impl in Hierarchy.Implementations %}
+    memcpy(mapped + offsets[groupId*4 + 3] + handleSize*({{Func.FuncGroupOffset}} + {{Hierarchy.Name}}::{{Impl.TagName}} - 1), pData + {{loop.index}}*handleSize, handleSize); // {{Impl.ClassName}}::{{Func.Name}}
+    {% endfor %}
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
     groupId++;
   }
   {% endif%}

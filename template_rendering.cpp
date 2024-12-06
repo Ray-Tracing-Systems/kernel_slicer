@@ -107,7 +107,8 @@ static inline size_t AlignedSize(const size_t a_size)
 
 nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHierarchy& h, 
                                            const clang::CompilerInstance& compiler,
-                                           const MainClassInfo& a_classInfo)
+                                           const MainClassInfo& a_classInfo,
+                                           size_t& fnGroupOffset)
 {
   json hierarchy;
   hierarchy["Name"]             = h.interfaceName;
@@ -243,6 +244,8 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
     virtualFunc["Name"] = vf.second.name;
     virtualFunc["Decl"] = vf.second.declRewritten;
     virtualFunc["Args"] = std::vector<json>();
+    virtualFunc["FuncGroupOffset"] = fnGroupOffset;
+    fnGroupOffset += (h.implementations.size() - 1);
     {
       json argJ;
       argJ["Type"] = "uint";
@@ -289,8 +292,11 @@ nlohmann::json kslicer::PutHierarchiesDataToJson(const std::unordered_map<std::s
                                                  const MainClassInfo& a_classInfo)
 {
   json data = std::vector<json>();
+  size_t fnGroupOffset = 0;
+  
   for(const auto& p : hierarchies)
-    data.push_back(PutHierarchyToJson(p.second, compiler, a_classInfo));
+    data.push_back(PutHierarchyToJson(p.second, compiler, a_classInfo, fnGroupOffset));
+  
   return data;
 }
 
@@ -309,12 +315,13 @@ nlohmann::json kslicer::FindIntersectionHierarchy(nlohmann::json a_hierarchies)
 
 nlohmann::json kslicer::ListCallableStructures(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
                                                const clang::CompilerInstance& compiler,
-                                               const MainClassInfo& a_classInfo)
+                                               const MainClassInfo& a_classInfo,
+                                               uint32_t& a_totalShaders)
 {
   auto pShaderRewriter = a_classInfo.pShaderFuncRewriter;
   nlohmann::json data  = std::vector<json>();
   size_t fnGroupOffset = 0;
-  
+
   for(const auto& h : hierarchies) {
     for(const auto& f : h.second.virtualFunctions) {
       
@@ -365,7 +372,7 @@ nlohmann::json kslicer::ListCallableStructures(const std::unordered_map<std::str
     }
   }
 
-  //std::cout << "  [callables]:" << '\n' << data.dump(2) << "\n\n" << std::endl;
+  a_totalShaders = uint32_t(fnGroupOffset);
 
   return data;
 }                                               
@@ -815,9 +822,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     json kernelJson;
     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    uint32_t totalCallableShaders = 0;
     auto selectedVFH = a_classInfo.SelectVFHOnlyUsedByKernel(a_classInfo.m_vhierarchy, k);
     kernelJson["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(selectedVFH, compiler, a_classInfo); 
-    kernelJson["CallableStructures"]    = kslicer::ListCallableStructures(selectedVFH, compiler, a_classInfo);
+    kernelJson["CallableStructures"]    = kslicer::ListCallableStructures(selectedVFH, compiler, a_classInfo, totalCallableShaders);
+    kernelJson["CallablesTotal"]        = totalCallableShaders;
     kernelJson["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(kernelJson["Hierarchies"]);
     
     // add primitive remap tables for intesection shaders

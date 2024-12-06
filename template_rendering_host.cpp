@@ -466,9 +466,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["TimeStampSize"]    = a_classInfo.megakernelsByName.size();
   else
     data["TimeStampSize"]    = a_classInfo.m_timestampPoolSize;
-
+  
+  uint32_t totalCallableShaders = 0;
   data["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
-  data["CallableStructures"]    = kslicer::ListCallableStructures  (a_classInfo.m_vhierarchy, compiler, a_classInfo);
+  data["CallableStructures"]    = kslicer::ListCallableStructures  (a_classInfo.m_vhierarchy, compiler, a_classInfo, totalCallableShaders);
+  data["CallablesTotal"]        = totalCallableShaders;
   data["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(data["Hierarchies"]);
   data["HasAllRefs"]            = bool(a_classInfo.m_allRefsFromVFH.size() != 0);
 
