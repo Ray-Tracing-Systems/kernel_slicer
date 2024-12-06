@@ -1426,8 +1426,8 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
 {
   m_allShaderTableBuffers.clear();
   uint32_t callStages      = {{CallablesTotal}};
-  uint32_t customStages    = callStages + {{length(IntersectionHierarhcy.Implementations)}};
-  uint32_t numShaderGroups = 4 + customStages;            // (raygen, miss, miss, rchit(tris)) + ({% for Impl in IntersectionHierarhcy.Implementations %}{{Impl.ClassName}}, {% endfor %}) + callables
+  uint32_t customStages    = {{length(IntersectionHierarhcy.Implementations)}};
+  uint32_t numShaderGroups = 4 + customStages;            // (raygen, miss, miss, rchit(tris)) + ({% for Impl in IntersectionHierarhcy.Implementations %}{{Impl.ClassName}}, {% endfor %})
   uint32_t numHitStages    = uint32_t({{length(IntersectionHierarhcy.Implementations)}}) + 1u; // 1 if we don't have actual sbtRecordOffsets at all
   uint32_t numMissStages   = 2u;                          // common mis shader and shadow miss  
 
