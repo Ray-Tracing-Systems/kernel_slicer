@@ -109,24 +109,28 @@ struct {{RetDecl.Name}}
 {# /*------------------------------ BEFOR THIS SAME FOR INTERSECTION SHADER, TODO: REFACTOR(!!!) ------------------------------ */ #}
 
 {% for S in Kernel.CallableStructures %}
+{% if S.Name == MemberName %}
 struct {{S.Name}}DataType
 {
   {% for Arg in S.Args %}
   {{Arg.Type}} {{Arg.Name}};
   {% endfor %}
 };
+{% endif %}
 {% endfor %}
 
 {% for S in Kernel.CallableStructures %}
-layout(location = {{loop.index}}) callableDataInEXT {{S.Name}}DataType {{S.Name}}Data;
+{% if S.Name == MemberName %}
+layout(location = {{loop.index}}) callableDataInEXT {{S.Name}}DataType dat;
+{% endif %}
 {% endfor %}
 
 void main()
 { 
   {% for S in Kernel.CallableStructures %}
   {% for Member in Implementation.MemberFunctions %}
-  {% if Member.Name == S.Name and Member.Name == MemberName %}
-  {{S.Name}}Data.ret = {{Implementation.ClassName}}_{{Member.Name}}_{{Implementation.ObjBufferName}}({% for Arg in S.Args %}{% if not Arg.IsRet %}{{S.Name}}Data.{{Arg.Name}}{% endif %}{% if loop.index < S.ArgLen and not Arg.IsRet %},{% endif %}{% endfor %});
+  {% if Member.Name == S.Name and S.Name == MemberName %}
+  dat.ret = {{Implementation.ClassName}}_{{Member.Name}}_{{Implementation.ObjBufferName}}({% for Arg in S.Args %}{% if not Arg.IsRet %}dat.{{Arg.Name}}{% endif %}{% if loop.index < S.ArgLen and not Arg.IsRet %},{% endif %}{% endfor %});
   {% endif %}
   {% endfor %}
   {% endfor %}
