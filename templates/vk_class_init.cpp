@@ -528,7 +528,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
     {% for Func in Hierarchy.VirtualFunctions %}
 
     {% for Impl in Hierarchy.Implementations %}
-    std::string shader{{Impl.ClassName}}_{{Func.Name}} = AlterShaderPath("{{ShaderFolder}}/{{Impl.ClassName}}_{{Func.Name}}_call.glsl.spv");
+    std::string shader{{Impl.ClassName}}_{{Func.Name}} = AlterShaderPath("{{ShaderFolder}}/{{Kernel.Name}}_{{Impl.ClassName}}_{{Func.Name}}_call.glsl.spv");
     {% endfor %}
     {% endfor %}
     {% endif %}

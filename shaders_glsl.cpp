@@ -119,7 +119,6 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
       
       if(a_settings.enableCallable)
       {
-        std::unordered_set<std::string> callableShaders;
         for(auto hierarchy : currKerneJson["Kernel"]["Hierarchies"]) {
           for(auto impl : hierarchy["Implementations"]) {
             for(const auto& member : impl["MemberFunctions"]) {
@@ -129,12 +128,8 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
               CSData["Implementation"] = impl;
               CSData["MemberName"]     = member["Name"];
   
-              std::string outFileName  = std::string(impl["ClassName"]) + "_" + std::string(member["Name"]) + "_call.glsl";
-          
-              if(callableShaders.find(outFileName) != callableShaders.end())
-                continue;
-          
-              callableShaders.insert(outFileName);
+              std::string outFileName  = kernelName + "_" + std::string(impl["ClassName"]) + "_" + std::string(member["Name"]) + "_call.glsl";
+        
               kslicer::ApplyJsonToTemplate(templatePathCalShd.c_str(), shaderPath / outFileName, CSData);
               
               buildSH << "glslangValidator -V --target-env vulkan1.2 -S rcall " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";

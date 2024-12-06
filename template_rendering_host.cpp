@@ -924,7 +924,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["UseRayGen"]      = k.enableRTPipeline && a_settings.enableRayGen;       // duplicate these options for kernels so we can
     kernelJson["UseMotionBlur"]  = k.enableRTPipeline && a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
     kernelJson["EnableBlockExpansion"] = k.be.enabled;
-    kernelJson["Hierarchies"]          = kslicer::PutHierarchiesDataToJson(a_classInfo.SelectVFHOnlyUsedByKernel(a_classInfo.m_vhierarchy, k), compiler, a_classInfo);
+    
+    uint32_t totalCallableShaders = 0;
+    auto selectedVFH                 = a_classInfo.SelectVFHOnlyUsedByKernel(a_classInfo.m_vhierarchy, k);
+    kernelJson["Hierarchies"]        = kslicer::PutHierarchiesDataToJson(selectedVFH, compiler, a_classInfo);
+    kernelJson["CallableStructures"] = kslicer::ListCallableStructures(selectedVFH, compiler, a_classInfo, totalCallableShaders);
+    kernelJson["CallablesTotal"]     = totalCallableShaders;
+
     bool hasIntersectionShader = false;
     if(k.enableRTPipeline) 
     {
