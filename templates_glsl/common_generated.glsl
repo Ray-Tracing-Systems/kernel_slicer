@@ -142,7 +142,7 @@ layout(location = {{loop.index}}) callableDataEXT {{S.Name}}DataType {{S.Name}}D
   {{S.Name}}Data.{{Arg.Name}} = {{Arg.Name}};
   {% endif %}
   {% endfor %}
-  executeCallableEXT(tag, 0); // TODO: add sbt offset to tag
+  executeCallableEXT(tag + {{S.FuncGroupOffset}}, 0); 
   return {{S.Name}}Data.ret;
   {% endif %}
   {% endfor %}

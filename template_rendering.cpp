@@ -307,33 +307,22 @@ nlohmann::json kslicer::FindIntersectionHierarchy(nlohmann::json a_hierarchies)
   return result;
 }
 
-uint32_t kslicer::CountCallablesAndSetGroupOffsets(nlohmann::json& a_hierarchies)
-{
-  uint32_t result = 0;
-  for(auto h : a_hierarchies) {
-    if(!h["HasIntersection"]) {
-      h["GroupOffset"] = result;
-      for(auto impl : h["Implementations"])
-        result++;
-    }
-  }
-  return result; 
-}
-
 nlohmann::json kslicer::ListCallableStructures(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
                                                const clang::CompilerInstance& compiler,
                                                const MainClassInfo& a_classInfo)
 {
   auto pShaderRewriter = a_classInfo.pShaderFuncRewriter;
-
-  nlohmann::json data = std::vector<json>();
+  nlohmann::json data  = std::vector<json>();
+  size_t fnGroupOffset = 0;
+  
   for(const auto& h : hierarchies) {
     for(const auto& f : h.second.virtualFunctions) {
       
       nlohmann::json funcData;
       funcData["Name"] = f.second.name;
       funcData["Args"] = std::vector<json>();
-      
+      funcData["FuncGroupOffset"] = fnGroupOffset;
+
       // self offset/ptr
       {
         nlohmann::json arg;
@@ -370,10 +359,14 @@ nlohmann::json kslicer::ListCallableStructures(const std::unordered_map<std::str
         arg["IsRet"] = true;
         funcData["Args"].push_back(arg);
       }
-
+      
+      fnGroupOffset += (h.second.implementations.size() - 1); // exclude empty impl
       data.push_back(funcData);
     }
   }
+
+  //std::cout << "  [callables]:" << '\n' << data.dump(2) << "\n\n" << std::endl;
+
   return data;
 }                                               
 
@@ -826,7 +819,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(selectedVFH, compiler, a_classInfo); 
     kernelJson["CallableStructures"]    = kslicer::ListCallableStructures(selectedVFH, compiler, a_classInfo);
     kernelJson["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(kernelJson["Hierarchies"]);
-    kernelJson["CallableCount"]         = kslicer::CountCallablesAndSetGroupOffsets(data["Hierarchies"]);
     
     // add primitive remap tables for intesection shaders
     //

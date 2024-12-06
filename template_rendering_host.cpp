@@ -468,8 +468,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["TimeStampSize"]    = a_classInfo.m_timestampPoolSize;
 
   data["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
+  data["CallableStructures"]    = kslicer::ListCallableStructures  (a_classInfo.m_vhierarchy, compiler, a_classInfo);
   data["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(data["Hierarchies"]);
-  data["CallableCount"]         = kslicer::CountCallablesAndSetGroupOffsets(data["Hierarchies"]);
   data["HasAllRefs"]            = bool(a_classInfo.m_allRefsFromVFH.size() != 0);
 
   bool hasTextureArray = false;
@@ -923,7 +923,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["UseMotionBlur"]  = k.enableRTPipeline && a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
     kernelJson["EnableBlockExpansion"] = k.be.enabled;
     kernelJson["Hierarchies"]          = kslicer::PutHierarchiesDataToJson(a_classInfo.SelectVFHOnlyUsedByKernel(a_classInfo.m_vhierarchy, k), compiler, a_classInfo);
-    kernelJson["CallableCount"]        = kslicer::CountCallablesAndSetGroupOffsets(data["Hierarchies"]);
     bool hasIntersectionShader = false;
     if(k.enableRTPipeline) 
     {
@@ -1670,7 +1669,6 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
   data["ShaderGLSL"]      = a_classInfo.pShaderCC->IsGLSL();
   data["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
   data["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(data["Hierarchies"]);
-  data["CallableCount"]         = kslicer::CountCallablesAndSetGroupOffsets(data["Hierarchies"]);
   data["UseRayGen"]       = a_settings.enableRayGen;
   data["UseMotionBlur"]   = a_settings.enableMotionBlur;
 

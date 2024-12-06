@@ -525,8 +525,9 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
     {% endfor %}
     {% endfor %}
     {% else if UseCallable %}
+    {% for Func in Hierarchy.VirtualFunctions %}
+
     {% for Impl in Hierarchy.Implementations %}
-    {% for Func in Impl.MemberFunctions %}
     std::string shader{{Impl.ClassName}}_{{Func.Name}} = AlterShaderPath("{{ShaderFolder}}/{{Impl.ClassName}}_{{Func.Name}}_call.glsl.spv");
     {% endfor %}
     {% endfor %}
@@ -551,8 +552,9 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
       {% endfor %}
       {% endfor %}
       {% else if UseCallable %}
+      {% for Func in Hierarchy.VirtualFunctions %}
+      
       {% for Impl in Hierarchy.Implementations %}
-      {% for Func in Impl.MemberFunctions %}
       shader_paths.emplace_back(std::make_pair(VK_SHADER_STAGE_CALLABLE_BIT_KHR,  shader{{Impl.ClassName}}_{{Func.Name}}.c_str()));
       {% endfor %}
       {% endfor %}
@@ -1423,9 +1425,9 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(
 void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
 {
   m_allShaderTableBuffers.clear();
-  uint32_t callStages      = {{CallableCount}};
+  uint32_t callStages      = {{length(CallableStructures)}};
   uint32_t customStages    = callStages + {{length(IntersectionHierarhcy.Implementations)}};
-  uint32_t numShaderGroups = 4 + customStages;            // (raygen, miss, miss, rchit(tris)) + ({% for Impl in IntersectionHierarhcy.Implementations %}{{Impl.ClassName}}, {% endfor %})
+  uint32_t numShaderGroups = 4 + customStages;            // (raygen, miss, miss, rchit(tris)) + ({% for Impl in IntersectionHierarhcy.Implementations %}{{Impl.ClassName}}, {% endfor %}) + callables
   uint32_t numHitStages    = uint32_t({{length(IntersectionHierarhcy.Implementations)}}) + 1u; // 1 if we don't have actual sbtRecordOffsets at all
   uint32_t numMissStages   = 2u;                          // common mis shader and shadow miss  
 
