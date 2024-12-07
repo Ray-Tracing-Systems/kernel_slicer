@@ -1457,8 +1457,8 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
   {
     RTPipelineInfo info;
     info.pipeline        = {{Kernel.Name}}Pipeline;
-    info.callStages      = {{Kernel.CallablesTotal}};
-    info.customStages    = {{Kernel.CallablesTotal}} + {{length(Kernel.IntersectionHierarhcy.Implementations)}};
+    info.callStages      = {% if UseCallable %}{{Kernel.CallablesTotal}}{% else %}0{% endif %};
+    info.customStages    = info.callStages + {{length(Kernel.IntersectionHierarhcy.Implementations)}};
     info.numHitStages    = {{length(Kernel.IntersectionHierarhcy.Implementations)}} + 1u;
     info.numMissStages   = 2u;
     info.numShaderGroups = 4 + info.customStages;  // (raygen, miss, miss, rchit(tris)) + ({% for Impl in Kernel.IntersectionHierarhcy.Implementations %}{{Impl.ClassName}}, {% endfor %})

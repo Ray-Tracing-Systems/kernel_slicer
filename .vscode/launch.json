@@ -994,7 +994,7 @@
                         "-pattern", "rtv",
                         "-megakernel", "1",
                         "-force_ray_tracing_pipeline", "1",
-                        "-enable_callable_shaders", "1",
+                        //"-enable_callable_shaders", "1",
                         "-I${workspaceFolder}/apps/LiteMath",    "ignore",
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
                         "-I${workspaceFolder}/TINYSTL",          "ignore",
