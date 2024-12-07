@@ -85,5 +85,11 @@ int main(int argc, const char** argv)
   std::cout << "NaivePathTraceBlock(exec) = " << timings[0]              << " ms " << std::endl;
   std::cout << "NaivePathTraceBlock(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
   std::cout << "NaivePathTraceBlock(ovrh) = " << timings[3]              << " ms " << std::endl;
+
+  pImpl->GetExecutionTime("NaivePathTraceMega", timings);
+  std::cout << "NaivePathTraceMega(avg) = " << timings[0]*PASS_NUMBER << " ms " << std::endl;
+  std::cout << "NaivePathTraceMega(min) = " << timings[1]*PASS_NUMBER << " ms " << std::endl;
+  std::cout << "NaivePathTraceMega(max) = " << timings[2]*PASS_NUMBER << " ms " << std::endl;
+
   return 0;
 }
