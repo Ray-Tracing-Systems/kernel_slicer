@@ -323,6 +323,10 @@ nlohmann::json kslicer::ListCallableStructures(const std::unordered_map<std::str
   size_t fnGroupOffset = 0;
 
   for(const auto& h : hierarchies) {
+    
+    if(h.second.hasIntersection)
+      continue;
+
     for(const auto& f : h.second.virtualFunctions) {
       
       nlohmann::json funcData;

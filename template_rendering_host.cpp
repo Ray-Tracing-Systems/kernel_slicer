@@ -882,8 +882,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["ShaderFolder"]          = a_classInfo.pShaderCC->ShaderFolder();
 
   data["IndirectBufferSize"] = a_classInfo.m_indirectBufferSize;
-  data["IndirectDispatches"] = std::vector<std::string>();
-  data["Kernels"]            = std::vector<std::string>();
+  data["IndirectDispatches"] = std::vector<json>();
+  data["Kernels"]            = std::vector<json>();
 
   bool useSubgroups = false;
   int subgroupMaxSize = 0;
@@ -919,17 +919,18 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["HasLoopInit"]    = k.hasInitPass;
     kernelJson["HasLoopFinish"]  = k.hasFinishPassSelf;
     kernelJson["Decl"]           = kernelDeclByName[kernName];
-    kernelJson["Args"]           = std::vector<std::string>();
+    kernelJson["Args"]           = std::vector<json>();
     kernelJson["threadDim"]      = a_classInfo.GetKernelTIDArgs(k).size();
     kernelJson["UseRayGen"]      = k.enableRTPipeline && a_settings.enableRayGen;       // duplicate these options for kernels so we can
     kernelJson["UseMotionBlur"]  = k.enableRTPipeline && a_settings.enableMotionBlur;   // generate some kernels in comute and some in ray tracing mode
     kernelJson["EnableBlockExpansion"] = k.be.enabled;
     
     uint32_t totalCallableShaders = 0;
-    auto selectedVFH                 = a_classInfo.SelectVFHOnlyUsedByKernel(a_classInfo.m_vhierarchy, k);
-    kernelJson["Hierarchies"]        = kslicer::PutHierarchiesDataToJson(selectedVFH, compiler, a_classInfo);
-    kernelJson["CallableStructures"] = kslicer::ListCallableStructures(selectedVFH, compiler, a_classInfo, totalCallableShaders);
-    kernelJson["CallablesTotal"]     = totalCallableShaders;
+    auto selectedVFH                    = a_classInfo.SelectVFHOnlyUsedByKernel(a_classInfo.m_vhierarchy, k);
+    kernelJson["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(selectedVFH, compiler, a_classInfo);
+    kernelJson["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(kernelJson["Hierarchies"]);
+    kernelJson["CallableStructures"]    = kslicer::ListCallableStructures(selectedVFH, compiler, a_classInfo, totalCallableShaders);
+    kernelJson["CallablesTotal"]        = totalCallableShaders;
 
     bool hasIntersectionShader = false;
     if(k.enableRTPipeline) 
