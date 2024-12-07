@@ -142,7 +142,7 @@ layout(location = {{loop.index}}) callableDataEXT {{S.Name}}DataType {{S.Name}}D
   {{S.Name}}Data.{{Arg.Name}} = {{Arg.Name}};
   {% endif %}
   {% endfor %}
-  executeCallableEXT(tag + {{S.FuncGroupOffset}} - 1, 0); 
+  executeCallableEXT(tag + {{S.FuncGroupOffset}} - 1, {{loop.index}}); 
   return {{S.Name}}Data.ret;
   {% endif %}
   {% endfor %}
