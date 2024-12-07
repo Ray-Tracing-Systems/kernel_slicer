@@ -361,14 +361,17 @@ nlohmann::json kslicer::ListCallableStructures(const std::unordered_map<std::str
       
       // get return type
       //
-      const clang::Type* type = f.second.retTypeDecl->getTypeForDecl();
-      if (const auto* recordType = clang::dyn_cast<clang::RecordType>(type)) {
-        std::string retTypeName = recordType->getDecl()->getQualifiedNameAsString();
-        nlohmann::json arg;
-        arg["Name"]  = "ret";
-        arg["Type"]  =  pShaderRewriter->RewriteStdVectorTypeStr(retTypeName);
-        arg["IsRet"] = true;
-        funcData["Args"].push_back(arg);
+      if(f.second.retTypeDecl != nullptr)
+      {
+        const clang::Type* type = f.second.retTypeDecl->getTypeForDecl();
+        if (const auto* recordType = clang::dyn_cast<clang::RecordType>(type)) {
+          std::string retTypeName = recordType->getDecl()->getQualifiedNameAsString();
+          nlohmann::json arg;
+          arg["Name"]  = "ret";
+          arg["Type"]  =  pShaderRewriter->RewriteStdVectorTypeStr(retTypeName);
+          arg["IsRet"] = true;
+          funcData["Args"].push_back(arg);
+        }
       }
       
       fnGroupOffset += (h.second.implementations.size() - 1); // exclude empty impl
