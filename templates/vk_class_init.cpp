@@ -1588,7 +1588,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
     {% for Func in Hierarchy.VirtualFunctions %}    
 
     {% for Impl in Hierarchy.Implementations %}
-    memcpy(mapped + offsets[groupId*4 + 3] + handleSize*({{Func.FuncGroupOffset}} + {{Hierarchy.Name}}::{{Impl.TagName}} - 1), pData + {{loop.index}}*handleSize, handleSize); // {{Impl.ClassName}}::{{Func.Name}}
+    memcpy(mapped + offsets[groupId*4 + 3] + handleSize*({{Func.FuncGroupOffset}} + {{Hierarchy.Name}}::{{Impl.TagName}} - 1), pData + ({{Func.FuncGroupOffset}} + {{loop.index}})*handleSize, handleSize); // {{Impl.ClassName}}::{{Func.Name}}
     {% endfor %}
     {% endfor %}
     {% endfor %}
