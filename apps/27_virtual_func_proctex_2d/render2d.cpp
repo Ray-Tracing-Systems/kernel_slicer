@@ -28,6 +28,7 @@ void ProcRender2D::InitAllTextures()
   allProcTextures.push_back(new YellowNoise);
   allProcTextures.push_back(new Mandelbrot2D);
   allProcTextures.push_back(new Ocean2D);
+  allProcTextures.push_back(new Voronoi2D);
 }
 
 static inline float step(float edge, float x) { return x < edge ? 0.0f : 1.0f; }

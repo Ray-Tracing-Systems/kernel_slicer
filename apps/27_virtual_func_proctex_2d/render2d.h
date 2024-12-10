@@ -14,6 +14,7 @@ struct IProcTexture2D
   static constexpr uint32_t TAG_YELLOW_NOISE = 1;
   static constexpr uint32_t TAG_MANDELBROT   = 2;
   static constexpr uint32_t TAG_OCEAN        = 3; 
+  static constexpr uint32_t TAG_VORONOI      = 4; 
 
   virtual uint32_t GetTag() const { return TAG_EMPTY; }      
   virtual float3 Evaluate(float2 tc) const { return float3(0.0f); }
@@ -33,7 +34,7 @@ public:
   virtual void CommitDeviceData() {}                                                           // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) { a_out[0] = m_time; } // will be overriden in generated class    
 
-  static constexpr uint32_t TOTAL_IMPLEMANTATIONS = 3;
+  static constexpr uint32_t TOTAL_IMPLEMANTATIONS = 4;
 
   enum {BRANCHING_LITE = 0, BRANCHING_MEDIUM = 1, BRANCHING_HEAVY = 2 }; 
 
@@ -129,7 +130,7 @@ struct Mandelbrot2D : public IProcTexture2D
   
   float3 Evaluate(float2 tc) const override 
   { 
-    const int index = mandel(tc.x-0.5f, tc.y, 100);
+    const int index = mandel((tc.x-0.5f)*1.25f, tc.y*1.25f, 100);
 
     const int r1 = std::min((index*128)/32, 255);
     const int g1 = std::min((index*128)/25, 255);
@@ -284,3 +285,74 @@ struct Ocean2D : public IProcTexture2D
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Based off of iq's described here: http://www.iquilezles.org/www/articles/voronoilin
+//
+
+static inline float2 fract2(float2 v)
+{
+  return v - floor(v);
+}
+
+static inline float fract(float v)
+{
+  return v - floor(v);
+}
+
+static inline float2 hash2(float2 p ) 
+{
+  const float2 p1 = float2(dot(p, make_float2(123.4f, 748.6f)), dot(p, float2(547.3f, 659.3f)));
+  return fract2(float2(sin(p1.x)*5232.85324f, sin(p1.y)*5232.85324f));   
+}
+
+static inline float4 mix(float4 x, float4 y, float a)
+{
+  return x*(1.0f - a) + y*a;
+}
+
+static inline float voronoi(float2 p, float iTime) 
+{
+    float2 n = floor(p);
+    float2 f = fract2(p);
+    float md = 5.0f;
+    float2 m = float2(0.0f, 0.0f);
+    for (int i = -1;i<=1;i++) {
+        for (int j = -1;j<=1;j++) {
+            float2 g = float2(i, j);
+            float2 o = hash2(n+g);
+            o = 0.5f+0.5f*float2(std::sin(iTime + 5.038f*o.x), std::sin(iTime + 5.038f*o.y));
+            float2 r = g + o - f;
+            float d = dot(r, r);
+            if (d<md) {
+              md = d;
+              m = n+g+o;
+            }
+        }
+    }
+    return md;
+}
+
+static inline float ov(float2 p, float iTime) 
+{
+    float v = 0.0f;
+    float a = 0.4f;
+    for (int i = 0;i<3;i++) {
+        v+= voronoi(p, iTime)*a;
+        p*=2.0f;
+        a*=0.5f;
+    }
+    return v;
+}
+
+struct Voronoi2D : public IProcTexture2D
+{
+  Voronoi2D() { m_tag = GetTag(); }
+  uint32_t GetTag() const override { return TAG_VORONOI; }      
+  
+  float3 Evaluate(float2 tc) const override 
+  { 
+    const float f = ov(tc*16.0f, 1.0f);
+    return clamp(2*float3(f*f,f*f*f,f), 0.0f, 1.0f);
+  }
+};
+
