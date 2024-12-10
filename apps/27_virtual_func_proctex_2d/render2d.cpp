@@ -25,7 +25,7 @@ ProcRender2D::~ProcRender2D()
 
 void ProcRender2D::InitAllTextures()
 {
-  allProcTextures.push_back(new Red2D);
+  allProcTextures.push_back(new YellowNoise);
   allProcTextures.push_back(new Mandelbrot2D);
   allProcTextures.push_back(new Ocean2D);
 }

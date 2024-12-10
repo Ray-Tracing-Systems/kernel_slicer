@@ -10,10 +10,10 @@ using namespace LiteMath;
 
 struct IProcTexture2D
 {
-  static constexpr uint32_t TAG_EMPTY      = 0;   
-  static constexpr uint32_t TAG_COLOR_RED  = 1;
-  static constexpr uint32_t TAG_MANDELBROT = 2;
-  static constexpr uint32_t TAG_OCEAN      = 3; 
+  static constexpr uint32_t TAG_EMPTY        = 0;   
+  static constexpr uint32_t TAG_YELLOW_NOISE = 1;
+  static constexpr uint32_t TAG_MANDELBROT   = 2;
+  static constexpr uint32_t TAG_OCEAN        = 3; 
 
   virtual uint32_t GetTag() const { return TAG_EMPTY; }      
   virtual float3 Evaluate(float2 tc) const { return float3(0.0f); }
@@ -46,6 +46,63 @@ protected:
   void InitAllTextures();
 };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static inline float2 grad(int2 z )  // replace this anything that returns a random vector
+{
+  // 2D to 1D  (feel free to replace by some other)
+  int n = z.x+z.y*11111;
+  // Hugo Elias hash (feel free to replace by another one)
+  n = (n<<13)^n;
+  n = (n*(n*n*15731+789221)+1376312589)>>16;
+  // Perlin style vectors
+  n &= 7;
+  float2 gr = float2(n&1,n>>1)*2.0-1.0;
+  return ( n>=6 ) ? float2(0.0f,gr.x) : 
+         ( n>=4 ) ? float2(gr.x,0.0f) : gr;                           
+}
+
+static inline float noise(float2 p)
+{
+  int2   i = int2(floor( p ));
+  float2 f =      fract( p );
+
+  float2 u = f*f*(3.0f - 2.0f*f); // feel free to replace by a quintic smoothstep instead
+  return mix( mix( dot( grad( i + int2(0,0) ), f - float2(0.0,0.0) ), 
+                   dot( grad( i + int2(1,0) ), f - float2(1.0,0.0) ), u.x),
+              mix( dot( grad( i + int2(0,1) ), f - float2(0.0,1.0) ), 
+                   dot( grad( i + int2(1,1) ), f - float2(1.0,1.0) ), u.x), u.y);
+}
+
+
+struct YellowNoise : public IProcTexture2D
+{
+  YellowNoise() { m_tag = GetTag(); }  
+
+  uint32_t GetTag()          const override { return TAG_YELLOW_NOISE; }      
+  float3 Evaluate(float2 tc) const override 
+  {
+    float4 uv = 8.0f*float4(tc.x, tc.y, 0.0f, 1.0f);
+
+    float4x4 m = float4x4( 1.6,  1.2, 0.0f,  0.0f, 
+                          -1.2,  1.6, 0.0f,  0.0f,
+                           0.0f, 0.0f, 1.0f, 0.0f,
+                           0.0f, 0.0f, 0.0f, 1.0f);
+    float f = 0.0;                       
+		f  = 0.5000f*noise( float2(uv.x, uv.y) ); uv = m*uv;
+		f += 0.2500f*noise( float2(uv.x, uv.y) ); uv = m*uv;
+		f += 0.1250f*noise( float2(uv.x, uv.y) ); uv = m*uv;
+		f += 0.0625f*noise( float2(uv.x, uv.y) ); uv = m*uv; 
+    f = 0.5f + 0.5*f;
+    f *= smoothstep(0.0f, 0.005f, abs(tc.x-0.6f) );	
+
+    return float3(f, f*f, 0.0f); 
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static inline int mandel(float c_re, float c_im, int count) 
 {
@@ -64,14 +121,6 @@ static inline int mandel(float c_re, float c_im, int count)
   return i;
 }
 
-
-struct Red2D : public IProcTexture2D
-{
-  Red2D() { m_tag = GetTag(); }  
-
-  uint32_t GetTag()          const override { return TAG_COLOR_RED; }      
-  float3 Evaluate(float2 tc) const override { return float3(1.0f, 0.0f, 0.0f); }
-};
 
 struct Mandelbrot2D : public IProcTexture2D
 {
@@ -93,6 +142,9 @@ struct Mandelbrot2D : public IProcTexture2D
     return float3(fr1, fg1, fb1); 
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static inline float circ(float2 pos, float2 c, float s)
 {
@@ -229,3 +281,6 @@ struct Ocean2D : public IProcTexture2D
     return water((tc - float2(0.5f,0.5f))*16.0f, float3(0.01f,1.0f,0.01f));
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
