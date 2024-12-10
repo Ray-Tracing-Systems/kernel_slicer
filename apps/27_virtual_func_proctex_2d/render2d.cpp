@@ -29,9 +29,8 @@ void ProcRender2D::InitAllTextures()
   allProcTextures.push_back(new Mandelbrot2D);
   allProcTextures.push_back(new Ocean2D);
   allProcTextures.push_back(new Voronoi2D);
+  allProcTextures.push_back(new Perlin2D);
 }
-
-static inline float step(float edge, float x) { return x < edge ? 0.0f : 1.0f; }
 
 static inline float mi(float2 a){return min(a.x,a.y);}
 static inline float ma(float2 a){return max(a.x,a.y);}
