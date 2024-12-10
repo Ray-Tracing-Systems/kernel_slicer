@@ -459,6 +459,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UseMatMult"]         = (a_classInfo.usedServiceCalls.find("MatMulTranspose") != a_classInfo.usedServiceCalls.end());
   data["GenGpuApi"]          = a_classInfo.genGPUAPI;
   data["UseRayGen"]          = a_settings.enableRayGen;
+  data["ForceRayGen"]        = a_settings.enableRayGenForce;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
   data["UseCallable"]        = a_settings.enableCallable;
   data["EnableTimeStamps"]   = a_settings.enableTimeStamps;

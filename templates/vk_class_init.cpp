@@ -2023,7 +2023,7 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   {% if GlobalUseInt8 or GlobalUseHalf %}
   deviceExtensions.push_back("VK_KHR_shader_float16_int8");
   {% endif %}
-  {% if HasRTXAccelStruct %}
+  {% if HasRTXAccelStruct or ForceRayGen or UseCallable %}
   {
     static VkPhysicalDeviceAccelerationStructureFeaturesKHR enabledAccelStructFeatures = {};
     static VkPhysicalDeviceBufferDeviceAddressFeatures      enabledDeviceAddressFeatures = {};

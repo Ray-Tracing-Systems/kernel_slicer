@@ -139,7 +139,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
               CSData["Implementation"] = impl;
               CSData["MemberName"]     = member["Name"];
   
-              std::string outFileName  = kernelName + "_" + std::string(impl["ClassName"]) + "_" + std::string(member["Name"]) + "_call.glsl";
+              std::string outFileName  = a_codeInfo->RemoveKernelPrefix(kernelName) + "_" + std::string(impl["ClassName"]) + "_" + std::string(member["Name"]) + "_call.glsl";
         
               kslicer::ApplyJsonToTemplate(templatePathCalShd.c_str(), shaderPath / outFileName, CSData);
               
