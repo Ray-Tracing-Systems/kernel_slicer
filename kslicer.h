@@ -584,6 +584,7 @@ namespace kslicer
     bool               isArray   = false;
     bool               inClass   = false;
     uint32_t           arraySize = 0;
+    int64_t            constVal  = 0;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1168,12 +1169,20 @@ namespace kslicer
       bool                        isEmpty = false; ///<! empty if all memberFunctions are empty
       std::string                 objBufferName;
       std::string                 interfaceName;
+      std::string                 tagName;
+      uint32_t                    tagId;
     };
 
     enum  VFH_LEVEL{ VFH_LEVEL_1 = 1, // all imlementations are same size as interface, switch-based impl. in shader
                      VFH_LEVEL_2 = 2, // implementations of different size, GLSL_EXT_buffer_reference2, switch-based impl. in shader
                      VFH_LEVEL_3 = 3  // implementations of different size, GLSL_EXT_buffer_reference2, callable-shaders based implementation; 
                      };               // select between VFH_LEVEL_2 and VFH_LEVEL_3 is a responsibility of generator option and, there is no difference of them for user
+
+    struct VFHTagInfo
+    {
+      std::string name;
+      uint32_t    id;
+    };
 
     struct VFHHierarchy
     {
@@ -1186,7 +1195,7 @@ namespace kslicer
       bool                        hasIntersection = false;
 
       std::vector<kslicer::DeclInClass>            usedDecls;
-      std::unordered_map<std::string, std::string> tagByClassName;
+      std::unordered_map<std::string, VFHTagInfo>  tagByClassName;
       std::map<std::string, kslicer::FuncData>     virtualFunctions;
     };
 

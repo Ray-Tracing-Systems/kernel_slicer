@@ -157,11 +157,10 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
   hierarchy["Implementations"] = std::vector<json>();
   for(const auto& impl : h.implementations)
   {  
-    const auto p2 = h.tagByClassName.find(impl.name);
-    assert(p2 != h.tagByClassName.end());
     json currImpl;
     currImpl["ClassName"]       = impl.name;
-    currImpl["TagName"]         = p2->second;
+    currImpl["TagName"]         = impl.tagName;
+    currImpl["TagId"]           = impl.tagId;
     currImpl["MemberFunctions"] = std::vector<json>();
     currImpl["ObjBufferName"]   = h.objBufferName;
     currImpl["IsEmpty"]         = impl.isEmpty;

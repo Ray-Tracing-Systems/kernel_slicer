@@ -374,6 +374,23 @@ namespace kslicer
       m_currId = 0;
     }
 
+    bool GetConstantValue(const clang::VarDecl* pTargetVar, int64_t &value) 
+    {
+      // Проверяем, является ли переменная инициализированной и имеет ли она инициализатор
+      if (const clang::Expr* initializer = pTargetVar->getAnyInitializer()) {
+          clang::ASTContext &context = pTargetVar->getASTContext();
+          clang::Expr::EvalResult evalResult;
+          
+          // Пытаемся вычислить значение, если это возможно
+          if (initializer->EvaluateAsInt(evalResult, context)) {
+              value = evalResult.Val.getInt().getSExtValue();
+              return true;
+          }
+      }
+      
+      return false;
+    }
+
     void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
     {
       using namespace clang;
@@ -423,7 +440,8 @@ namespace kslicer
             decl.srcHash  = kslicer::GetHashOfSourceRange(decl.srcRange); // (!!!) DON'T WORK (!!!) // NEED SECOND PASS !!!
             decl.order    = m_currId;
             decl.kind     = kslicer::DECL_IN_CLASS::DECL_CONSTANT;
-            
+            GetConstantValue(pTargetVar, decl.constVal); // extract constant value to 'decl.constVal' if possible
+
             if(typePtr->isConstantArrayType())
             {
               auto arrayType = dyn_cast<ConstantArrayType>(typePtr); 

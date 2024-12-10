@@ -443,7 +443,7 @@ class TagSeeker : public clang::RecursiveASTVisitor<TagSeeker>
 {
 public:
   
-  TagSeeker(const clang::CompilerInstance& a_compiler, std::vector<kslicer::DeclInClass>& a_constants, std::unordered_map<std::string, std::string>& a_tagByName) : 
+  TagSeeker(const clang::CompilerInstance& a_compiler, std::vector<kslicer::DeclInClass>& a_constants, std::unordered_map<std::string, kslicer::MainClassInfo::VFHTagInfo>& a_tagByName) : 
             m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_knownConstants(a_constants), m_tagByClassName(a_tagByName) { m_tagByClassName.clear(); }
 
   bool VisitCXXMethodDecl(const clang::CXXMethodDecl* f)
@@ -488,7 +488,10 @@ public:
         //auto pos = funcBody.find(decl.name);
         if(decl.name == tagName)
         {
-          m_tagByClassName[thisTypeName] = decl.name;
+          kslicer::MainClassInfo::VFHTagInfo tagInfo;
+          tagInfo.name = decl.name;
+          tagInfo.id   = decl.constVal;
+          m_tagByClassName[thisTypeName] = tagInfo;
           break;
         }
       }
@@ -502,7 +505,7 @@ private:
   const clang::CompilerInstance& m_compiler;
   const clang::SourceManager&    m_sm;
   std::vector<kslicer::DeclInClass>& m_knownConstants;
-  std::unordered_map<std::string, std::string>& m_tagByClassName; 
+  std::unordered_map<std::string, kslicer::MainClassInfo::VFHTagInfo>& m_tagByClassName; 
 };
 
 
@@ -520,6 +523,29 @@ void kslicer::MainClassInfo::ExtractVFHConstants(const clang::CompilerInstance& 
     TagSeeker visitor(compiler, p.second.usedDecls, p.second.tagByClassName);
     for(auto impl : p.second.implementations)
       visitor.TraverseDecl(const_cast<clang::CXXRecordDecl*>(impl.decl));
+  }
+  
+  // fill tag name and id for each implementation
+  //
+  for(auto& p : m_vhierarchy) {
+    for(auto& impl : p.second.implementations) {
+      auto pTagInfo = p.second.tagByClassName.find(impl.name);
+      if(pTagInfo != p.second.tagByClassName.end()) {
+        impl.tagName = pTagInfo->second.name;
+        impl.tagId   = pTagInfo->second.id;
+      }
+    }
+
+    std::sort(p.second.implementations.begin(), p.second.implementations.end(), [](auto& a, auto& b){ return a.tagId < b.tagId; });
+  }
+
+  // debug output
+  //
+  std::cout << "  reordered vfh: " << std::endl;
+  for(const auto& p : m_vhierarchy)
+  {
+    for(const auto& impl : p.second.implementations)
+      std::cout << "   " << p.first.c_str() << " --> " << impl.name.c_str() << "; tag(" <<  impl.tagName.c_str() << ") = " <<  impl.tagId << std::endl;
   }
 
 }
