@@ -2,10 +2,6 @@
 #include <algorithm>
 #include <chrono>
 
-#ifndef unmasked
-#define unmasked 
-#endif
-
 static inline uint RealColorToUint32_f3(float3 real_color)
 {
   float  r = real_color.x*255.0f;
@@ -31,7 +27,19 @@ void ProcRender2D::InitAllTextures()
 {
   allProcTextures.push_back(new Red2D);
   allProcTextures.push_back(new Mandelbrot2D);
+  allProcTextures.push_back(new Ocean2D);
 }
+
+static inline float step(float edge, float x) { return x < edge ? 0.0f : 1.0f; }
+
+static inline float mi(float2 a){return min(a.x,a.y);}
+static inline float ma(float2 a){return max(a.x,a.y);}
+static inline float mu(float2 a){return a.x*a.y;}
+static inline float ad(float2 a){return a.x+a.y;}
+static inline float su(float2 a){return a.x-a.y;}
+static inline float sq2(float a){return a*a;}
+
+float CheckerSignMuFract(float2 u){ return sign(mu(.5-fract(u))); }
 
 void ProcRender2D::kernel2D_EvaluateTextures(int w, int h, uint32_t* outData)
 {
@@ -40,21 +48,24 @@ void ProcRender2D::kernel2D_EvaluateTextures(int w, int h, uint32_t* outData)
   {
     for(int x=0;x<w;x++) 
     { 
-      const float2 texCoord = float2(float(x)/float(w), float(y)/float(h));
-      const int index       = (x + y) % TOTAL_IMPLEMANTATIONS;
-      const float3 color    = allProcTextures[index]->Evaluate(texCoord);
+      const float2 texCoord  = float2(float(x)/float(w), float(y)/float(h));
+      const float brickColor = CheckerSignMuFract(texCoord*16.0f);
+      
+      int index = 2; 
 
+      //if(brickColor < 0.5f)
+      //{
+      //  index = (x + y) % TOTAL_IMPLEMANTATIONS;
+      //}
+      //else
+      //{
+      //  index = ((x + y)/16) % (TOTAL_IMPLEMANTATIONS);
+      //}
+
+      const float3 color = allProcTextures[index]->Evaluate(texCoord);
+      
       outData[y*w+x] = RealColorToUint32_f3(color);
 
-      //const float tx  = 0.5f*((float)x - (0.75f * (float)w)) / (w / 4);
-      //const float ty  = 0.5f*((float)y - (h / 2)) / (h / 4);
-      //const int index = mandel(tx, ty, 100);
-      //
-      //int r1 = min((index*128)/32, 255);
-      //int g1 = min((index*128)/25, 255);
-      //int b1 = min((index*index), 255);
-      //
-      //outData[y*w+x] = 0xFF000000 | (r1) | (g1 << 8) | (b1 << 16);
     }
   }
 }
