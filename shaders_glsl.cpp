@@ -56,6 +56,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   //std::cout << "shaderPath = " << shaderPath.c_str() << std::endl;
 
   bool needRTDummies = false;
+  bool rcHitForIntersectionIsGenerated = false;
 
   std::ofstream buildSH(shaderPath / scriptName);
   #if not __WIN32__
@@ -101,16 +102,26 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
 
         if(intersectionShaders.find(outFileName_RHIT) != intersectionShaders.end())
           continue;
-        
+         
         intersectionShaders.insert(outFileName_RHIT);
 
-        kslicer::ApplyJsonToTemplate(templatePathHitShd.c_str(), shaderPath / outFileName_RHIT, ISData);
+        if(!rcHitForIntersectionIsGenerated)
+        {
+          kslicer::ApplyJsonToTemplate(templatePathHitShd.c_str(), shaderPath / "z_trace_custom_hit.glsl", ISData);
+          buildSH << "glslangValidator -V --target-env vulkan1.2 -S rchit " << "z_trace_custom_hit.glsl" << " -o " << "z_trace_custom_hit.glsl" << ".spv" << " -DGLSL -I.. ";
+          for(auto folder : ignoreFolders)
+            buildSH << "-I" << folder.c_str() << " ";
+          buildSH << std::endl;
+          rcHitForIntersectionIsGenerated = false;
+        }
+
+        //kslicer::ApplyJsonToTemplate(templatePathHitShd.c_str(), shaderPath / outFileName_RHIT, ISData);
         kslicer::ApplyJsonToTemplate(templatePathIntShd.c_str(), shaderPath / outFileName_RINT, ISData);
 
-        buildSH << "glslangValidator -V --target-env vulkan1.2 -S rchit " << outFileName_RHIT.c_str() << " -o " << outFileName_RHIT.c_str() << ".spv" << " -DGLSL -I.. ";
-        for(auto folder : ignoreFolders)
-          buildSH << "-I" << folder.c_str() << " ";
-        buildSH << std::endl;
+        //buildSH << "glslangValidator -V --target-env vulkan1.2 -S rchit " << outFileName_RHIT.c_str() << " -o " << outFileName_RHIT.c_str() << ".spv" << " -DGLSL -I.. ";
+        //for(auto folder : ignoreFolders)
+        //  buildSH << "-I" << folder.c_str() << " ";
+        //buildSH << std::endl;
         buildSH << "glslangValidator -V --target-env vulkan1.2 -S rint " << outFileName_RINT.c_str() << " -o " << outFileName_RINT.c_str() << ".spv" << " -DGLSL -I.. ";
         for(auto folder : ignoreFolders)
           buildSH << "-I" << folder.c_str() << " ";
