@@ -28,16 +28,18 @@ public:
   ProcRender2D();
   ~ProcRender2D();
 
-  virtual void Fractal(int w, int h, uint32_t* outData [[size("w*h")]]);
+  virtual void Fractal(int w, int h, uint32_t* outData [[size("w*h")]], int a_branchMode);
 
   virtual void CommitDeviceData() {}                                                           // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) { a_out[0] = m_time; } // will be overriden in generated class    
 
-  static constexpr uint32_t TOTAL_IMPLEMANTATIONS = 2; 
+  static constexpr uint32_t TOTAL_IMPLEMANTATIONS = 3;
+
+  enum {BRANCHING_LITE = 0, BRANCHING_MEDIUM = 1, BRANCHING_HEAVY = 2 }; 
 
 protected:
 
-  virtual void kernel2D_EvaluateTextures(int w, int h, uint32_t* outData);
+  virtual void kernel2D_EvaluateTextures(int w, int h, uint32_t* outData, int a_branchMode);
   float m_time;
 
   std::vector<IProcTexture2D*> allProcTextures; 

@@ -41,7 +41,7 @@ static inline float sq2(float a){return a*a;}
 
 float CheckerSignMuFract(float2 u){ return sign(mu(.5-fract(u))); }
 
-void ProcRender2D::kernel2D_EvaluateTextures(int w, int h, uint32_t* outData)
+void ProcRender2D::kernel2D_EvaluateTextures(int w, int h, uint32_t* outData, int a_branchMode)
 {
   #pragma omp parallel for 
   for(int y=0;y<h;y++)
@@ -51,16 +51,18 @@ void ProcRender2D::kernel2D_EvaluateTextures(int w, int h, uint32_t* outData)
       const float2 texCoord  = float2(float(x)/float(w), float(y)/float(h));
       const float brickColor = CheckerSignMuFract(texCoord*16.0f);
       
-      int index = 2; 
-
-      //if(brickColor < 0.5f)
-      //{
-      //  index = (x + y) % TOTAL_IMPLEMANTATIONS;
-      //}
-      //else
-      //{
-      //  index = ((x + y)/16) % (TOTAL_IMPLEMANTATIONS);
-      //}
+      int index = ((x + y)/((w*2)/TOTAL_IMPLEMANTATIONS)) % (TOTAL_IMPLEMANTATIONS); // for BRANCHING_LITE
+      {
+        if(a_branchMode == BRANCHING_MEDIUM)
+          index = ((x + y)/(128/TOTAL_IMPLEMANTATIONS)) % (TOTAL_IMPLEMANTATIONS); 
+        else if(a_branchMode == BRANCHING_HEAVY)
+        {
+          if(brickColor < 0.5f)
+            index = (x + y) % TOTAL_IMPLEMANTATIONS;
+          else
+            index = ((x + y)/32) % (TOTAL_IMPLEMANTATIONS);
+        }
+      }
 
       const float3 color = allProcTextures[index]->Evaluate(texCoord);
       
@@ -70,9 +72,9 @@ void ProcRender2D::kernel2D_EvaluateTextures(int w, int h, uint32_t* outData)
   }
 }
 
-void ProcRender2D::Fractal(int w, int h, uint32_t* outData)
+void ProcRender2D::Fractal(int w, int h, uint32_t* outData, int a_branchMode)
 {
   auto before = std::chrono::high_resolution_clock::now();
-  kernel2D_EvaluateTextures(w, h, outData);  
+  kernel2D_EvaluateTextures(w, h, outData, a_branchMode);  
   m_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - before).count()/1000.f;
 }

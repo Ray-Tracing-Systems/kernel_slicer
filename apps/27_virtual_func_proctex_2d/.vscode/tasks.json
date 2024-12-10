@@ -22,15 +22,6 @@
       ]
     },
     {
-      "label"         : "Build Kernels",
-      "type"          : "shell",
-      "command"       : "bash z_build.sh",
-      "group"         : "build",
-      "problemMatcher": [
-        "$gcc"
-      ]
-    },
-    {
       "label": "Build Kernels (GLSL)",
       "type": "shell",
       "command": "cd shaders_generated && bash build.sh",
@@ -39,14 +30,6 @@
           "$gcc"
       ]
     },
-    {
-      "label"         : "Build Kernels (ISPC)",
-      "type"          : "shell",
-      "command"       : "bash z_build_ispc.sh",
-      "group"         : "build",
-      "problemMatcher": [
-        "$gcc"
-      ]
-    },
+  
   ]
 }

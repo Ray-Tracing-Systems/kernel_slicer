@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
 #include <memory>
 #include <cstdint>
@@ -31,18 +32,33 @@ int main(int argc, const char** argv)
     pImpl = std::make_shared<ProcRender2D>();
 
   pImpl->CommitDeviceData();
-  pImpl->Fractal(w, h, ldrData.data());
+  
+  int branchingModes[3] = {int(ProcRender2D::BRANCHING_LITE), 
+                           int(ProcRender2D::BRANCHING_MEDIUM), 
+                           int(ProcRender2D::BRANCHING_HEAVY)};
+  
+  for(int i=0;i<3;i++) 
+  {
+    pImpl->Fractal(w, h, ldrData.data(), branchingModes[i]);
+    
+    std::stringstream strOut;
+    {
+      if(onGPU)
+        strOut << "zout_gpu";
+      else
+        strOut << "zout_cpu";
+      strOut << i << ".bmp";
+    }
 
-  if(onGPU)
-    LiteImage::SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
-  else
-    LiteImage::SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);
-
-  float timings[4] = {0,0,0,0};
-  pImpl->GetExecutionTime("Fractal", timings);
-  std::cout << "Fractal(exec) = " << timings[0]              << " ms " << std::endl;
-  std::cout << "Fractal(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
-  std::cout << "Fractal(ovrh) = " << timings[3]              << " ms " << std::endl;
+    std::string fileName = strOut.str();
+    LiteImage::SaveBMP(fileName.c_str(), ldrData.data(), w, h);
+  
+    float timings[4] = {0,0,0,0};
+    pImpl->GetExecutionTime("Fractal", timings);
+    std::cout << "Fractal(exec) = " << timings[0]              << " ms " << std::endl;
+    std::cout << "Fractal(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
+    std::cout << "Fractal(ovrh) = " << timings[3]              << " ms " << std::endl;
+  }
 
   return 0;
 }
