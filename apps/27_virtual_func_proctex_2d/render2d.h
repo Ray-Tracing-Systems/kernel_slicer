@@ -17,6 +17,7 @@ struct IProcTexture2D
   static constexpr uint32_t TAG_VORONOI      = 4; 
   static constexpr uint32_t TAG_PERLIN       = 5;
   static constexpr uint32_t TAG_JULIA        = 6;
+  static constexpr uint32_t TAG_MANDELB_PS3D = 7;
 
   virtual uint32_t GetTag() const { return TAG_EMPTY; }      
   virtual float3 Evaluate(float2 tc) const { return float3(0.0f); }
@@ -632,3 +633,174 @@ struct Julia2D : public IProcTexture2D
 
   uint32_t m_dummy;
 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// https://www.shadertoy.com/view/7ldyDf
+
+// Color palettes https://iquilezles.org/articles/palettes/
+static inline float3 palette(float t, float3 a, float3 b, float3 c, float3 d)
+{
+  const float3 tmp = 2.0f*3.141592653f*(c*t+d);
+	return a + b*float3(std::cos(tmp.x), std::cos(tmp.y), std::cos(tmp.z));
+}
+
+static inline float3 awesomePalette(float t)
+{
+	return palette(t, float3(0.5,0.5,0.5), float3(0.5,0.5,0.5), float3(1.0,1.0,1.0), float3(0.0,0.1,0.2));
+}
+
+static inline float3 rainbow(float t)
+{
+	return palette(t, float3(0.5,0.5,0.5), float3(0.5,0.5,0.5), float3(1.0,1.0,1.0), float3(0.0,0.33,0.67));
+}
+
+// Complex multiplication
+static inline float2 cmul(float2 a, float2 b)
+{
+	return float2(a.x * b.x - a.y * b.y, a.x * b.y + b.x * a.y);
+}
+
+// Complex c^2
+static inline float2 cpow2(float2 c)
+{
+	return float2(c.x * c.x - c.y * c.y, 2.0f * c.x * c.y);
+}
+
+// Complex division
+static inline float2 cdiv(float2 a, float2 b)
+{
+	return float2(((a.x*b.x+a.y*b.y)/(b.x*b.x+b.y*b.y)),((a.y*b.x-a.x*b.y)/(b.x*b.x+b.y*b.y)));
+}
+
+// Get rotation matrix
+static inline float4x4 rotate(float theta)
+{
+	float s = sin(theta);
+	float c = cos(theta);
+	return float4x4(c, -s, 0.0f, 0.0f, 
+                  s, c, 0.0f, 0.0f,
+                  0.0f, 0.0f, 1.0f, 0.0f,
+                  0.0f, 0.0f, 0.0f, 1.0f);
+}
+
+// Potential formula
+static inline float potential(float2 c)
+{
+	float2 z = float2(0.0, 0.0); // z0
+	int iter = 0;
+
+	for (iter = 0; iter < 300; ++iter) {
+		z = cpow2(z) + c; // z_n+1 = z_n^2 + c
+		float absZ = length(z); // |z|
+		if (absZ > 100000.0f) {
+			return std::abs(std::log(std::log2(absZ)) - (float(iter) + 1.0f) * std::log(2.0f));
+		}
+	}
+
+	return -1.0;
+}
+
+// Reflection formula
+static inline float reflection(float2 c) 
+{
+  const float time = -10.0f;
+  const float rotationDuration = 1.0f;
+	float2 z  = float2(0.0f, 0.0f); // z0
+	float2 dc = float2(0.0f, 0.0f); // Derivate of c
+
+	const float h2 = 1.5; // Height of light
+  const float2 normal2 = normalize(float2(-1.0f, 1.0f));
+  const float4 normal4 = float4(normal2.x, normal2.y, 0.0f, 0.0f);
+
+	float4 angle4 = rotate(time / rotationDuration) * normal4; // Light always from top left
+  float2 angle  = float2(angle4.x, angle4.y);
+
+	for (int i = 0; i < 300; i++) {
+		dc = 2.0f * cmul(dc, z) + float2(1.0, 0.0);
+		z = cpow2(z) + c;
+
+		if (length(z) > 100.0f) { // Outside lighting calculation formula
+			float2 slope = normalize(cdiv(z, dc));
+			float reflection = dot(slope, angle) + h2;
+			reflection = reflection / (1.0 + h2); // Lower value to max 1.0
+			if (reflection < 0.0) {
+				reflection = 0.0;
+			}
+			return reflection;
+		}
+	}
+
+	return -1.0;
+}
+
+struct Pseudeo3DMandelbrot : public IProcTexture2D
+{
+  Pseudeo3DMandelbrot() 
+  {
+    coordinates[0] = float4(-0.774693, 0.1242263647, 14.0, 0.0f);
+	  coordinates[1] = float4(-0.58013, 0.48874, 14.0, 0.0f);
+	  coordinates[2] = float4(-1.77, 0.0, 5.0, 0.0f);
+	  coordinates[3] = float4(-0.744166858, 0.13150536, 13.0, 0.0f);
+	  coordinates[4] = float4(0.41646, -0.210156433, 16.0, 0.0f);
+	  coordinates[5] = float4(-0.7455, 0.1126, 10.0, 0.0f);
+	  coordinates[6] = float4(-1.1604872, 0.2706806, 12.0, 0.0f);
+	  coordinates[7] = float4(-0.735805, 0.196726496, 15.0, 0.0f);
+
+    m_tag = GetTag();
+  }
+  uint32_t GetTag() const override { return TAG_MANDELB_PS3D; }      
+
+  static constexpr int NUMBER_OF_POINTS = 8;
+
+  float3 Evaluate(float2 tc) const override 
+  { 
+    const float time = -10.0f;
+    const float centerDuration   = 31.0f;
+    const float rotationDuration = 53.0f;
+    const float2 defaultCenter   = float2(-0.6f, 0.0f);
+    const float2 currentCenter   = float2(-0.2f, 0.0f);
+    const float4 insideColor     = float4(0.1f, 0.12f, 0.15f, 1.0f);
+    const float currentZoom = 1.0f;
+    
+    // Mix between base poistion and target position
+	  float mixFactor = 1.0f - (0.5f + 0.5f * std::cos(time / centerDuration * 2.0f * 3.141592653589793f));
+  
+	  // Zoom and position calculation
+	  float zoom    = std::exp2(-currentZoom * mixFactor);
+	  float maxZoom = std::exp2(-currentZoom);
+	  
+    float4 tmp = rotate(time / rotationDuration) * float4(tc.x * zoom, tc.y * zoom, 0.0f, 0.0f); 
+    float2 c   = mix(currentCenter, defaultCenter, zoom / (1.0f - maxZoom) - maxZoom) + float2(tmp.x, tmp.y);
+	  
+    /*
+    float4 fragColor;
+    float3 color = awesomePalette(time / 50.0f + pot / 40.0f);
+	  if (ref < 0.0) { // Inner color
+	  	fragColor = insideColor;
+	  }
+	  else { // Outer color
+	  	//fragColor = vec4(color * intensity, 1.0);
+	  	//fragColor = mix(fragColor, vec4(1.0), intensity * 0.3 + clamp(ref - 0.5, 0.0, 1.0) * pow((1.0 - fract(pot)), 30.0));
+	  	fragColor = vec4(
+	  		color * intensity + // Base color
+	  		vec3(intensity) * 0.3 + // Matte white
+	  		clamp(ref - 0.5, 0.0, 1.0) * pow((1.0 - fract(pot)), 30.0), // Specular
+	  	1.0);
+	  	fragColor = clamp(fragColor, 0.0, 1.0);
+	  }*/
+
+    //float pot = potential(c);
+	  //float ref = reflection(c);
+	  //float intensity = 0.7 * (fract(pot) * ref) + 0.3;
+
+    return float3(0,0,0);
+  }
+
+  uint32_t m_dummy;
+  float4 coordinates[NUMBER_OF_POINTS];
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///
