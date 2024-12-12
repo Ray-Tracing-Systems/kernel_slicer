@@ -35,9 +35,10 @@ public:
   virtual void CommitDeviceData() {}                                                           // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) { a_out[0] = m_time; } // will be overriden in generated class    
 
-  static constexpr uint32_t TOTAL_IMPLEMANTATIONS = 5;
-
-  enum {BRANCHING_LITE = 0, BRANCHING_MEDIUM = 1, BRANCHING_HEAVY = 2 }; 
+  static constexpr int TOTAL_IMPLEMANTATIONS = 5;
+  static constexpr int BRANCHING_LITE        = 0;
+  static constexpr int BRANCHING_MEDIUM      = 1;
+  static constexpr int BRANCHING_HEAVY       = 2; 
 
 protected:
 

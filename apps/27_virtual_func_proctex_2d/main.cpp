@@ -12,9 +12,16 @@
 
 #include "vk_context.h"
 std::shared_ptr<ProcRender2D> CreateProcRender2D_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+#include "render2d_generated.h"
 
 int main(int argc, const char** argv)
 {
+  #ifndef NDEBUG
+  bool enableValidationLayers = true;
+  #else
+  bool enableValidationLayers = false;
+  #endif
+
   int w = 1024,h = 1024; 
   std::vector<uint> ldrData(w*h);
   
@@ -25,7 +32,11 @@ int main(int argc, const char** argv)
 
   if(onGPU)
   {
-    auto ctx = vk_utils::globalContextGet(false, 0);
+    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    std::vector<const char*> requiredExtensions;
+    auto deviceFeatures = ProcRender2D_Generated::ListRequiredDeviceFeatures(requiredExtensions);
+    auto ctx            = vk_utils::globalContextInit(requiredExtensions, enableValidationLayers, a_preferredDeviceId, &deviceFeatures);
+    //auto ctx = vk_utils::globalContextGet(false, 0);
     pImpl = CreateProcRender2D_Generated(ctx, w*h);
   }
   else
