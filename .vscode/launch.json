@@ -1026,7 +1026,7 @@
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
                         "-force_ray_tracing_pipeline", "1",
-                        //"-enable_callable_shaders", "1",
+                        "-enable_callable_shaders", "1",
                         //"-timestamps", "1",
                         "-I${workspaceFolder}/apps/LiteMath",    "ignore",
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 

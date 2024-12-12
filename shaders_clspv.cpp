@@ -32,6 +32,9 @@ bool kslicer::IsVectorContructorNeedsReplacement(const std::string& a_typeName)
     m_ctorReplacement.insert("float2");
     m_ctorReplacement.insert("float3");
     m_ctorReplacement.insert("float4");
+    m_ctorReplacement.insert("float2x2");
+    m_ctorReplacement.insert("float3x3");
+    m_ctorReplacement.insert("float4x4");
     m_ctorReplacement.insert("int2");
     m_ctorReplacement.insert("int3");
     m_ctorReplacement.insert("int4");
