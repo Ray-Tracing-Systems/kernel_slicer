@@ -45,11 +45,12 @@ set(VKUTILS_SOURCE ../vkutils/vk_utils.cpp
                    ../vkutils/vk_context.cpp
                    ../vkutils/vk_alloc_simple.cpp
                    ../vkutils/vk_pipeline.cpp
-                   ../vkutils/vk_descriptor_sets.cpp)     
+                   ../vkutils/vk_descriptor_sets.cpp
+                   ../vkutils/ray_tracing/vk_rt_utils.cpp)     
 
-add_executable(testapp ${MAIN_SOURCE})
-                       #${VKGEN_SOURCE} 
-                       #${VKUTILS_SOURCE})
+add_executable(testapp ${MAIN_SOURCE}
+                       ${VKGEN_SOURCE} 
+                       ${VKUTILS_SOURCE})
 
 set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} ${FREEIMAGE_LIBRARIES} OpenMP::OpenMP_CXX volk dl)

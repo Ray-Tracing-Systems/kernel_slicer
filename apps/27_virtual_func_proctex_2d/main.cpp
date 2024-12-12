@@ -10,8 +10,8 @@
 #include "render2d.h"
 #include "Image2d.h"
 
-//#include "vk_context.h"
-//std::shared_ptr<Mandelbrot> CreateMandelbrot_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+#include "vk_context.h"
+std::shared_ptr<ProcRender2D> CreateProcRender2D_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
 
 int main(int argc, const char** argv)
 {
@@ -23,12 +23,12 @@ int main(int argc, const char** argv)
 
   std::shared_ptr<ProcRender2D> pImpl = nullptr;
 
-  //if(onGPU)
-  //{
-  //  auto ctx = vk_utils::globalContextGet(false, 0);
-  //  pImpl = CreateProcRender2D_Generated(ctx, w*h);
-  //}
-  //else
+  if(onGPU)
+  {
+    auto ctx = vk_utils::globalContextGet(false, 0);
+    pImpl = CreateProcRender2D_Generated(ctx, w*h);
+  }
+  else
     pImpl = std::make_shared<ProcRender2D>();
 
   pImpl->CommitDeviceData();

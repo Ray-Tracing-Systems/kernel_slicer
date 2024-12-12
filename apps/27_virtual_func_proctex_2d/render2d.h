@@ -56,6 +56,7 @@ struct Empty2D : public IProcTexture2D
   Empty2D() { m_tag = GetTag(); }
   uint32_t GetTag() const override { return TAG_EMPTY; }      
   float3 Evaluate(float2 tc) const override { return float3(0,0,0); }
+  uint32_t m_dummy;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -111,6 +112,7 @@ struct YellowNoise : public IProcTexture2D
 
     return float3(f, f*f, 0.0f); 
   }
+  uint32_t m_dummy;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -153,6 +155,8 @@ struct Mandelbrot2D : public IProcTexture2D
 
     return float3(fr1, fg1, fb1); 
   }
+
+  uint32_t m_dummy;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -288,12 +292,10 @@ static inline float3 water(float2 uv, float3 cdir)
 struct Ocean2D : public IProcTexture2D
 {
   Ocean2D() { m_tag = GetTag(); }
-  uint32_t GetTag() const override { return TAG_OCEAN; }      
-  
-  float3 Evaluate(float2 tc) const override 
-  { 
-    return water((tc - float2(0.5f,0.5f))*16.0f, float3(0.01f,1.0f,0.01f));
-  }
+  uint32_t GetTag()          const override { return TAG_OCEAN; }      
+  float3 Evaluate(float2 tc) const override { return water((tc - float2(0.5f,0.5f))*16.0f, float3(0.01f,1.0f,0.01f)); }
+
+  uint32_t m_dummy;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -362,6 +364,8 @@ struct Voronoi2D : public IProcTexture2D
     const float f = ov(tc*16.0f, 1.0f);
     return clamp(2*float3(f*f,f*f*f,f), 0.0f, 1.0f);
   }
+
+  uint32_t m_dummy;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -581,5 +585,7 @@ struct Perlin2D : public IProcTexture2D
     float n3 = octave(2.0f * float3(tc.x+tc.y, tc.y-tc.x, tc.x*tc.y), 6, 1.5f);
     return clamp(float3(n1, n2, n3)*5.0f, 0.0f, 1.0f);
   }
+
+  uint32_t m_dummy;
 };
 
