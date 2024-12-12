@@ -16,6 +16,7 @@ struct IProcTexture2D
   static constexpr uint32_t TAG_OCEAN        = 3; 
   static constexpr uint32_t TAG_VORONOI      = 4; 
   static constexpr uint32_t TAG_PERLIN       = 5;
+  static constexpr uint32_t TAG_JULIA        = 6;
 
   virtual uint32_t GetTag() const { return TAG_EMPTY; }      
   virtual float3 Evaluate(float2 tc) const { return float3(0.0f); }
@@ -35,7 +36,8 @@ public:
   virtual void CommitDeviceData() {}                                                           // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) { a_out[0] = m_time; } // will be overriden in generated class    
 
-  static constexpr int TOTAL_IMPLEMANTATIONS = 5;
+  static constexpr int TOTAL_IMPLEMANTATIONS = 6;
+
   static constexpr int BRANCHING_LITE        = 0;
   static constexpr int BRANCHING_MEDIUM      = 1;
   static constexpr int BRANCHING_HEAVY       = 2; 
@@ -590,3 +592,43 @@ struct Perlin2D : public IProcTexture2D
   uint32_t m_dummy;
 };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static inline float3 JuliaGetColorf(float iter, float2 z)
+{
+  float3 color;
+  color.x = float(mod(iter,10.f))/9.f;
+  color.y = float(mod(iter/10.f,10.f))/9.f;
+  color.z = .5f + .5f*sin(iter/10.f-std::log2(1.f+std::log2(1.f+dot(z,z))));
+  return color;
+}
+
+struct Julia2D : public IProcTexture2D
+{
+  Julia2D() { m_tag = GetTag(); }
+  uint32_t GetTag() const override { return TAG_JULIA; }      
+  
+  float3 Evaluate(float2 tc) const override 
+  { 
+    float fTime = 5.25f;
+    float2 uv = tc;
+    
+    uv-=.5f; 
+    float2 c=float2(.7885f*std::cos(.5f*fTime),.7885f*std::sin(.5*fTime));
+    float3 color;
+    float2 z=uv;
+    float iter=0.;
+    float warp=2.;
+    for(int i=0;i<500;++i){
+        z=float2(z.x*z.x-z.y*z.y,warp*z.x*z.y)+c;
+        if (length(z)>5.0f) 
+          break;
+        iter++;
+    }
+  
+    return clamp(JuliaGetColorf(iter,z), 0.0f, 1.0f);
+  }
+
+  uint32_t m_dummy;
+};
