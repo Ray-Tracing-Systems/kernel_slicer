@@ -44,12 +44,17 @@ int main(int argc, const char** argv)
 
   pImpl->CommitDeviceData();
   
+  
   int branchingModes[3] = {int(ProcRender2D::BRANCHING_LITE), 
                            int(ProcRender2D::BRANCHING_MEDIUM), 
                            int(ProcRender2D::BRANCHING_HEAVY)};
   
+  for(int implNum = 1; implNum <= ProcRender2D::TOTAL_IMPLEMANTATIONS; implNum++)
   for(int i=0;i<3;i++) 
   {
+    pImpl->SetImplementationCount(implNum);
+    pImpl->UpdatePlainMembers();
+
     pImpl->Fractal(w, h, ldrData.data(), branchingModes[i]);
     
     std::stringstream strOut;
@@ -58,7 +63,7 @@ int main(int argc, const char** argv)
         strOut << "zout_gpu";
       else
         strOut << "zout_cpu";
-      strOut << i << ".bmp";
+      strOut << "_" implNum << "_" << i << ".bmp";
     }
 
     std::string fileName = strOut.str();
@@ -69,6 +74,9 @@ int main(int argc, const char** argv)
     std::cout << "Fractal(exec) = " << timings[0]              << " ms " << std::endl;
     std::cout << "Fractal(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
     std::cout << "Fractal(ovrh) = " << timings[3]              << " ms " << std::endl;
+
+    pImpl->GetExecutionTime("kernel2D_EvaluateTextures", timings);
+    std::cout << "Fractal(kernel time) = " << timings[0] << " ms " << std::endl;
   }
 
   return 0;

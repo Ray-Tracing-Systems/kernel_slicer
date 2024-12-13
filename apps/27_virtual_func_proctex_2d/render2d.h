@@ -8,6 +8,8 @@
 #include "LiteMath.h"
 using namespace LiteMath;
 
+constexpr static int AA = 2;
+
 struct IProcTexture2D
 {
   static constexpr uint32_t TAG_EMPTY        = 0;   
@@ -33,15 +35,20 @@ public:
   ~ProcRender2D();
 
   virtual void Fractal(int w, int h, uint32_t* outData [[size("w*h")]], int a_branchMode);
-
+  
   virtual void CommitDeviceData() {}                                                           // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) { a_out[0] = m_time; } // will be overriden in generated class    
+  virtual void UpdatePlainMembers(){}
 
   static constexpr int TOTAL_IMPLEMANTATIONS = 7;
 
   static constexpr int BRANCHING_LITE        = 0;
   static constexpr int BRANCHING_MEDIUM      = 1;
-  static constexpr int BRANCHING_HEAVY       = 2; 
+  static constexpr int BRANCHING_HEAVY       = 2;
+
+  constexpr static int AA = 2; 
+
+  virtual void SetImplementationCount(int a_count) {  m_usedImplementations = std::min(a_count, TOTAL_IMPLEMANTATIONS); }
 
 protected:
 
@@ -140,6 +147,20 @@ static inline int mandel(float c_re, float c_im, int count)
   return i;
 }
 
+static inline float3 mandelbrot2DFunc(float2 tc)
+{
+  const int index = mandel((tc.x-0.5f)*1.25f, tc.y*1.25f, 100);
+
+  const int r1 = std::min((index*128)/32, 255);
+  const int g1 = std::min((index*128)/25, 255);
+  const int b1 = std::min((index*index), 255);
+  const float fr1 = float(r1)/255.0f;
+  const float fg1 = float(g1)/255.0f;
+  const float fb1 = float(b1)/255.0f;
+
+  return float3(fr1, fg1, fb1); 
+}
+
 
 struct Mandelbrot2D : public IProcTexture2D
 {
@@ -148,17 +169,22 @@ struct Mandelbrot2D : public IProcTexture2D
   
   float3 Evaluate(float2 tc) const override 
   { 
-    const int index = mandel((tc.x-0.5f)*1.25f, tc.y*1.25f, 100);
+    // Antialiasing
+    //
+    float3 fragColor = float3(0.0f);
+	  const float fraction  = 1.0f / float(AA*1024);
+	  const float fraction2 = fraction / float(AA*1024);
+	  for (int i = 0; i < AA; i++) {
+	  	for (int j = 0; j < AA; j++) {
+	  		float2 shift = float2(
+	  			float(i) * fraction + float(AA - j - 1) * fraction2,
+	  			float(j) * fraction + float(i) * fraction2
+	  		);
+	  		fragColor += clamp(mandelbrot2DFunc(tc + shift), 0.0f, 1.0f);
+	  	}
+	  }
 
-    const int r1 = std::min((index*128)/32, 255);
-    const int g1 = std::min((index*128)/25, 255);
-    const int b1 = std::min((index*index), 255);
-
-    const float fr1 = float(r1)/255.0f;
-    const float fg1 = float(g1)/255.0f;
-    const float fb1 = float(b1)/255.0f;
-
-    return float3(fr1, fg1, fb1); 
+    return fragColor / float(AA * AA);
   }
 
   uint32_t m_dummy;
@@ -606,6 +632,27 @@ static inline float3 JuliaGetColorf(float iter, float2 z)
   return color;
 }
 
+static inline float3 JuliaFunc(float2 tc)
+{
+  float fTime = 5.25f;
+  float2 uv = tc;
+  
+  uv-=.5f; 
+  float2 c=float2(.7885f*std::cos(.5f*fTime),.7885f*std::sin(.5*fTime));
+  float3 color;
+  float2 z=uv;
+  float iter=0.;
+  float warp=2.;
+  for(int i=0;i<500;++i){
+      z=float2(z.x*z.x-z.y*z.y,warp*z.x*z.y)+c;
+      if (length(z)>5.0f) 
+        break;
+      iter++;
+  }
+
+  return clamp(JuliaGetColorf(iter,z), 0.0f, 1.0f);
+}
+
 struct Julia2D : public IProcTexture2D
 {
   Julia2D() { m_tag = GetTag(); }
@@ -613,23 +660,22 @@ struct Julia2D : public IProcTexture2D
   
   float3 Evaluate(float2 tc) const override 
   { 
-    float fTime = 5.25f;
-    float2 uv = tc;
-    
-    uv-=.5f; 
-    float2 c=float2(.7885f*std::cos(.5f*fTime),.7885f*std::sin(.5*fTime));
-    float3 color;
-    float2 z=uv;
-    float iter=0.;
-    float warp=2.;
-    for(int i=0;i<500;++i){
-        z=float2(z.x*z.x-z.y*z.y,warp*z.x*z.y)+c;
-        if (length(z)>5.0f) 
-          break;
-        iter++;
-    }
-  
-    return clamp(JuliaGetColorf(iter,z), 0.0f, 1.0f);
+    // Antialiasing
+    //
+    float3 fragColor = float3(0.0f);
+	  const float fraction  = 1.0f / float(AA*1024);
+	  const float fraction2 = fraction / float(AA*1024);
+	  for (int i = 0; i < AA; i++) {
+	  	for (int j = 0; j < AA; j++) {
+	  		float2 shift = float2(
+	  			float(i) * fraction + float(AA - j - 1) * fraction2,
+	  			float(j) * fraction + float(i) * fraction2
+	  		);
+	  		fragColor += clamp(JuliaFunc(tc + shift), 0.0f, 1.0f);
+	  	}
+	  }
+
+    return fragColor / float(AA * AA);
   }
 
   uint32_t m_dummy;
@@ -736,19 +782,47 @@ static inline float reflection(float2 c)
 	return -1.0;
 }
 
+static inline float3 render_ps3dmandelbrot(float2 tc)
+{
+  const float time = -8.5f;
+  const float centerDuration   = 31.0f;
+  const float rotationDuration = 53.0f;
+  const float2 defaultCenter   = float2(-1.5f, -0.25f);
+  const float2 currentCenter   = float2(-1.0f, +0.50f);
+  const float3 insideColor     = float3(0.1f, 0.12f, 0.15f);
+  const float currentZoom      = 1.25f;
+    
+  // Mix between base poistion and target position
+	float mixFactor = 1.0f - (0.5f + 0.5f * std::cos(time / centerDuration * 2.0f * 3.141592653589793f));
+
+	// Zoom and position calculation
+	float zoom    = std::exp2(-currentZoom * mixFactor);
+	float maxZoom = std::exp2(-currentZoom);
+	
+  float4 tmp = rotate(time / rotationDuration) * float4(tc.x * zoom, tc.y * zoom, 0.0f, 0.0f); 
+  float2 c   = mix(currentCenter, defaultCenter, zoom / (1.0f - maxZoom) - maxZoom) + float2(tmp.x, tmp.y);
+	
+  float pot = potential(c);
+	float ref = reflection(c);
+  float intensity = 0.7f * (fract(pot) * ref) + 0.3f;
+   
+  float3 fragColor;
+  float3 color = awesomePalette(time / 50.0f + pot / 40.0f);
+	if (ref < 0.0f) 
+		fragColor = insideColor;
+	else 
+  { 
+		fragColor = color * intensity + float3(intensity) * 0.3f + clamp(ref - 0.5f, 0.0f, 1.0f) * std::pow((1.0f - fract(pot)), 30.0f);
+		fragColor = clamp(fragColor, 0.0f, 1.0f);
+	}
+
+  return fragColor;
+}
+
 struct Pseudeo3DMandelbrot : public IProcTexture2D
 {
   Pseudeo3DMandelbrot() 
   {
-    coordinates[0] = float4(-0.774693, 0.1242263647, 14.0, 0.0f);
-	  coordinates[1] = float4(-0.58013, 0.48874, 14.0, 0.0f);
-	  coordinates[2] = float4(-1.77, 0.0, 5.0, 0.0f);
-	  coordinates[3] = float4(-0.744166858, 0.13150536, 13.0, 0.0f);
-	  coordinates[4] = float4(0.41646, -0.210156433, 16.0, 0.0f);
-	  coordinates[5] = float4(-0.7455, 0.1126, 10.0, 0.0f);
-	  coordinates[6] = float4(-1.1604872, 0.2706806, 12.0, 0.0f);
-	  coordinates[7] = float4(-0.735805, 0.196726496, 15.0, 0.0f);
-
     m_tag = GetTag();
   }
   uint32_t GetTag() const override { return TAG_MANDELB_PS3D; }      
@@ -757,43 +831,25 @@ struct Pseudeo3DMandelbrot : public IProcTexture2D
 
   float3 Evaluate(float2 tc) const override 
   { 
-    const float time = -8.5f;
-    const float centerDuration   = 31.0f;
-    const float rotationDuration = 53.0f;
-    const float2 defaultCenter   = float2(-1.5f, -0.5f);
-    const float2 currentCenter   = float2(-1.0f, +0.5f);
-    const float3 insideColor     = float3(0.1f, 0.12f, 0.15f);
-    const float currentZoom      = 1.25f;
-    
-    // Mix between base poistion and target position
-	  float mixFactor = 1.0f - (0.5f + 0.5f * std::cos(time / centerDuration * 2.0f * 3.141592653589793f));
-  
-	  // Zoom and position calculation
-	  float zoom    = std::exp2(-currentZoom * mixFactor);
-	  float maxZoom = std::exp2(-currentZoom);
-	  
-    float4 tmp = rotate(time / rotationDuration) * float4(tc.x * zoom, tc.y * zoom, 0.0f, 0.0f); 
-    float2 c   = mix(currentCenter, defaultCenter, zoom / (1.0f - maxZoom) - maxZoom) + float2(tmp.x, tmp.y);
-	  
-    float pot = potential(c);
-	  float ref = reflection(c);
-    float intensity = 0.7f * (fract(pot) * ref) + 0.3f;
-     
-    float3 fragColor;
-    float3 color = awesomePalette(time / 50.0f + pot / 40.0f);
-	  if (ref < 0.0f) 
-	  	fragColor = insideColor;
-	  else 
-    { 
-	  	fragColor = color * intensity + float3(intensity) * 0.3f + clamp(ref - 0.5f, 0.0f, 1.0f) * std::pow((1.0f - fract(pot)), 30.0f);
-	  	fragColor = clamp(fragColor, 0.0f, 1.0f);
+    // Antialiasing
+    //
+    float3 fragColor = float3(0.0f);
+	  const float fraction  = 1.0f / float(AA*1024);
+	  const float fraction2 = fraction / float(AA*1024);
+	  for (int i = 0; i < AA; i++) {
+	  	for (int j = 0; j < AA; j++) {
+	  		float2 shift = float2(
+	  			float(i) * fraction + float(AA - j - 1) * fraction2,
+	  			float(j) * fraction + float(i) * fraction2
+	  		);
+	  		fragColor += clamp(render_ps3dmandelbrot(tc + shift), 0.0f, 1.0f);
+	  	}
 	  }
 
-    return fragColor;
+    return fragColor / float(AA * AA);
   }
 
   uint32_t m_dummy;
-  float4 coordinates[NUMBER_OF_POINTS];
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
