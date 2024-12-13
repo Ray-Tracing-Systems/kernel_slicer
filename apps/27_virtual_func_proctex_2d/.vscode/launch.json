@@ -10,7 +10,7 @@
       "request": "launch",
       "program": "${workspaceFolder}/cmake-build-release/testapp",
       "args"   : [
-        "--cpu"
+        "--gpu"
       ],
       "stopAtEntry"    : false,
       "cwd"            : "${workspaceFolder}",

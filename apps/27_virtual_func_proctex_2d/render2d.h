@@ -38,7 +38,7 @@ public:
   
   virtual void CommitDeviceData() {}                                                           // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) { a_out[0] = m_time; } // will be overriden in generated class    
-  virtual void UpdatePlainMembers(){}
+  virtual void UpdateMembersPlainData(){}
 
   static constexpr int TOTAL_IMPLEMANTATIONS = 7;
 
