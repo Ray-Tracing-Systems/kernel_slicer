@@ -14,6 +14,7 @@ static inline uint RealColorToUint32_f3(float3 real_color)
 ProcRender2D::ProcRender2D()
 {
   InitAllTextures();
+  m_usedImplementations = TOTAL_IMPLEMANTATIONS;
 }
 
 ProcRender2D::~ProcRender2D()
@@ -26,6 +27,7 @@ ProcRender2D::~ProcRender2D()
 void ProcRender2D::InitAllTextures()
 {
   allProcTextures.push_back(new YellowNoise);
+  allProcTextures.push_back(new Pseudeo3DMandelbrot);
   allProcTextures.push_back(new Mandelbrot2D);
   allProcTextures.push_back(new Ocean2D);
   allProcTextures.push_back(new Voronoi2D);
@@ -52,23 +54,22 @@ void ProcRender2D::kernel2D_EvaluateTextures(int w, int h, uint32_t* outData, in
       const float2 texCoord  = float2(float(x)/float(w), float(y)/float(h));
       const float brickColor = CheckerSignMuFract(texCoord*16.0f);
       
-      int index = ((x + y)/((w*2)/TOTAL_IMPLEMANTATIONS)) % (TOTAL_IMPLEMANTATIONS); // for BRANCHING_LITE
+      int index = ((x + y)/((w*2)/m_usedImplementations)) % (m_usedImplementations); // for BRANCHING_LITE
       {
         if(a_branchMode == BRANCHING_MEDIUM)
-          index = ((x + y)/(128/TOTAL_IMPLEMANTATIONS)) % (TOTAL_IMPLEMANTATIONS); 
+          index = ((x + y)/(128/m_usedImplementations)) % (m_usedImplementations); 
         else if(a_branchMode == BRANCHING_HEAVY)
         {
           if(brickColor < 0.5f)
-            index = (x + y) % TOTAL_IMPLEMANTATIONS;
+            index = (x + y) % m_usedImplementations;
           else
-            index = ((x + y)/32) % (TOTAL_IMPLEMANTATIONS);
+            index = ((x + y)/32) % (m_usedImplementations);
         }
       }
 
       const float3 color = allProcTextures[index]->Evaluate(texCoord);
       
       outData[y*w+x] = RealColorToUint32_f3(color);
-
     }
   }
 }

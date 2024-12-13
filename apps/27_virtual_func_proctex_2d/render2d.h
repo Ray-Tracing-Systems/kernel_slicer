@@ -37,7 +37,7 @@ public:
   virtual void CommitDeviceData() {}                                                           // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) { a_out[0] = m_time; } // will be overriden in generated class    
 
-  static constexpr int TOTAL_IMPLEMANTATIONS = 6;
+  static constexpr int TOTAL_IMPLEMANTATIONS = 7;
 
   static constexpr int BRANCHING_LITE        = 0;
   static constexpr int BRANCHING_MEDIUM      = 1;
@@ -47,6 +47,7 @@ protected:
 
   virtual void kernel2D_EvaluateTextures(int w, int h, uint32_t* outData, int a_branchMode);
   float m_time;
+  int   m_usedImplementations;
 
   std::vector<IProcTexture2D*> allProcTextures; 
   void InitAllTextures();
@@ -756,13 +757,13 @@ struct Pseudeo3DMandelbrot : public IProcTexture2D
 
   float3 Evaluate(float2 tc) const override 
   { 
-    const float time = -10.0f;
+    const float time = -8.5f;
     const float centerDuration   = 31.0f;
     const float rotationDuration = 53.0f;
-    const float2 defaultCenter   = float2(-0.6f, 0.0f);
-    const float2 currentCenter   = float2(-0.2f, 0.0f);
-    const float4 insideColor     = float4(0.1f, 0.12f, 0.15f, 1.0f);
-    const float currentZoom = 1.0f;
+    const float2 defaultCenter   = float2(-1.5f, -0.5f);
+    const float2 currentCenter   = float2(-1.0f, +0.5f);
+    const float3 insideColor     = float3(0.1f, 0.12f, 0.15f);
+    const float currentZoom      = 1.25f;
     
     // Mix between base poistion and target position
 	  float mixFactor = 1.0f - (0.5f + 0.5f * std::cos(time / centerDuration * 2.0f * 3.141592653589793f));
@@ -774,28 +775,21 @@ struct Pseudeo3DMandelbrot : public IProcTexture2D
     float4 tmp = rotate(time / rotationDuration) * float4(tc.x * zoom, tc.y * zoom, 0.0f, 0.0f); 
     float2 c   = mix(currentCenter, defaultCenter, zoom / (1.0f - maxZoom) - maxZoom) + float2(tmp.x, tmp.y);
 	  
-    /*
-    float4 fragColor;
+    float pot = potential(c);
+	  float ref = reflection(c);
+    float intensity = 0.7f * (fract(pot) * ref) + 0.3f;
+     
+    float3 fragColor;
     float3 color = awesomePalette(time / 50.0f + pot / 40.0f);
-	  if (ref < 0.0) { // Inner color
+	  if (ref < 0.0f) 
 	  	fragColor = insideColor;
+	  else 
+    { 
+	  	fragColor = color * intensity + float3(intensity) * 0.3f + clamp(ref - 0.5f, 0.0f, 1.0f) * std::pow((1.0f - fract(pot)), 30.0f);
+	  	fragColor = clamp(fragColor, 0.0f, 1.0f);
 	  }
-	  else { // Outer color
-	  	//fragColor = vec4(color * intensity, 1.0);
-	  	//fragColor = mix(fragColor, vec4(1.0), intensity * 0.3 + clamp(ref - 0.5, 0.0, 1.0) * pow((1.0 - fract(pot)), 30.0));
-	  	fragColor = vec4(
-	  		color * intensity + // Base color
-	  		vec3(intensity) * 0.3 + // Matte white
-	  		clamp(ref - 0.5, 0.0, 1.0) * pow((1.0 - fract(pot)), 30.0), // Specular
-	  	1.0);
-	  	fragColor = clamp(fragColor, 0.0, 1.0);
-	  }*/
 
-    //float pot = potential(c);
-	  //float ref = reflection(c);
-	  //float intensity = 0.7 * (fract(pot) * ref) + 0.3;
-
-    return float3(0,0,0);
+    return fragColor;
   }
 
   uint32_t m_dummy;
