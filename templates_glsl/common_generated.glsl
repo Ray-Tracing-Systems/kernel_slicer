@@ -57,17 +57,17 @@ struct AllBufferReferences
 {% endif %}
 
 {% endfor %}
-## for Arg in Kernel.Args
+{% for Arg in Kernel.Args %}
 {% if not Arg.IsUBO %} 
 {% if Arg.IsImage %}
 layout(binding = {{loop.index}}, set = 0{% if Arg.NeedFmt%}, {{Arg.ImFormat}}{% endif %}) uniform {{Arg.Type}} {{Arg.Name}}; //
 {% else if Arg.IsAccelStruct %}
 layout(binding = {{loop.index}}, set = 0) uniform accelerationStructureEXT {{Arg.Name}};
 {% else %}
-layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}} { {{Arg.Type}} {{Arg.Name}}{% if not Arg.IsSingle %}[]{% endif %}; }; //
+layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}} { {{Arg.Type}} {{Arg.Name}}{% if not Arg.IsSingle %}[]{% endif %}; }; // 
 {% endif %} {# /* Arg.IsImage */ #}
 {% endif %} {# /* not Arg.IsUBO */ #}
-## endfor
+{% endfor %}
 layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo; };
 
 {% for Array in Kernel.ThreadLocalArrays %}

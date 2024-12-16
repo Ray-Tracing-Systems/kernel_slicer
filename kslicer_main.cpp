@@ -315,6 +315,20 @@ int main(int argc, const char **argv)
     else if (std::string(argv[argId]) == "-baseClass" && argId+1 < argc) {
       baseClases.push_back(argv[argId+1]);
     }
+    else if(std::string(argv[argId]) == "-with_buffer_reference" && argId+1 < argc)
+    {
+      const std::string buffName = argv[argId+1];
+      if(buffName == "all")
+        inputCodeInfo.withBufferReferenceAll = true;
+      else if(buffName != "")
+        inputCodeInfo.withBufferReference.insert(buffName);
+    }
+    else if(std::string(argv[argId]) == "-without_buffer_reference" && argId+1 < argc)
+    {
+      const std::string buffName = argv[argId+1];
+      if(buffName != "")
+        inputCodeInfo.withoutBufferReference.insert(buffName);
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -788,13 +802,31 @@ int main(int argc, const char **argv)
       } // end for(const auto& f : usedFunctions)
     } // end for(auto& k : inputCodeInfo.kernels)
 
-    for(const auto& k : inputCodeInfo.kernels) // fix this flag for members that were used in member functions but not in kernels directly
+    for(auto& k : inputCodeInfo.kernels) 
     {
+      // fix "usedInKernel" flag for members that were used in member functions but not in kernels directly
+      //
       for(const auto& c : k.second.usedContainers)
       {
         auto pFound = inputCodeInfo.allDataMembers.find(c.second.name);
         if(pFound != inputCodeInfo.allDataMembers.end())
           pFound->second.usedInKernel = true;
+      }
+      
+      // set bind mode (explicit with descriptor set or impleceit with buffer reference)
+      //
+      for(auto& c : k.second.usedContainers)
+      {
+        auto pNoBufferReference  = inputCodeInfo.withoutBufferReference.find(c.second.name);
+        auto pYesBufferReference = inputCodeInfo.withBufferReference.find(c.second.name);
+        if(pNoBufferReference != inputCodeInfo.withoutBufferReference.end())
+          c.second.bindWithRef = false;
+        else if(pYesBufferReference != inputCodeInfo.withBufferReference.end() || inputCodeInfo.withBufferReferenceAll)
+          c.second.bindWithRef = true;
+
+        auto pFound = inputCodeInfo.allDataMembers.find(c.second.name);
+        if(pFound != inputCodeInfo.allDataMembers.end())
+          pFound->second.bindWithRef = c.second.bindWithRef; 
       }
     }
 

@@ -68,6 +68,7 @@ namespace kslicer
 
     bool isConst       = false;
     bool isSetter      = false;
+    bool bindWithRef   = false;     
     bool isTexture()     const { return (kind == DATA_KIND::KIND_TEXTURE); }
     bool isAccelStruct() const { return (kind == DATA_KIND::KIND_ACCEL_STRUCT); }
 
@@ -397,6 +398,7 @@ namespace kslicer
     bool isPointer         = false;
     bool isConst           = false; ///<! const float4 BACKGROUND_COLOR = ... (they should not be read back)
     bool isSingle          = false; ///<! single struct inside buffer, not a vector (vector with size() == 1), special case for all_references and other service needs
+    bool bindWithRef       = false; ///<! if bound with buffer reference
 
     bool hasPrefix = false;
     bool hasIntersectionShader = false; ///<! indicate that this acceleration structure has user-defined intersection procedure
@@ -1067,6 +1069,10 @@ namespace kslicer
     std::vector< std::pair<std::string, std::string> > intersectionTriangle;
     std::unordered_set<std::string>                    intersectionWhiteList;
     std::unordered_set<std::string>                    intersectionBlackList;
+
+    std::unordered_set<std::string>                    withBufferReference;
+    std::unordered_set<std::string>                    withoutBufferReference;
+    bool                                               withBufferReferenceAll = false;
 
     std::filesystem::path mainClassFileName;
     std::string           mainClassFileInclude;

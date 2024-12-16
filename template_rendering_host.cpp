@@ -742,6 +742,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["NeedSampler"] = true;
       local["HasPrefix"]   = v.hasPrefix;
       local["PrefixName"]  = v.prefixName;
+      local["WithBuffRef"] = false;
       data["ClassTextureVars"].push_back(local);
     }
     else if(v.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
@@ -755,6 +756,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["NeedSampler"] = true;
       local["HasPrefix"]   = v.hasPrefix;
       local["PrefixName"]  = v.prefixName;
+      local["WithBuffRef"] = false;
       data["ClassTexArrayVars"].push_back(local);
       hasTextureArray = true;
     }
@@ -795,7 +797,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["PrefixName"]     = v.prefixName;
       if(v.hasPrefix)
          local["AccessSymb"]     = "->";
-
+      local["WithBuffRef"] = false;
       data["ClassTextureVars"].push_back(local);
     }
     else if(v.isContainer && kslicer::IsVectorContainer(v.containerType))
@@ -823,6 +825,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["PrefixName"]     = v.prefixName;
       local["IsVFHBuffer"]    = isVFHBuffer;
       local["VFHLevel"]       = int(level);
+      
       if(isVFHBuffer && int(level) >= 2 ) 
       {
         json found;
@@ -835,7 +838,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         local["Hierarchy"] = json();
 
       if(v.hasPrefix)
-         local["AccessSymb"]     = "->";
+         local["AccessSymb"] = "->";
+
+      local["WithBuffRef"] = false;
+      auto pFound = a_classInfo.allDataMembers.find(v.name);
+      if(pFound != a_classInfo.allDataMembers.end())
+        local["WithBuffRef"] = pFound->second.bindWithRef;
+
       data["ClassVectorVars"].push_back(local);
     }
     // TODO: add processing for Scene/Acceleration structures
@@ -962,6 +971,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       argData["Count"] = "1";
       argData["Id"]    = actualSize;
       argData["IsTextureArray"] = false;
+      argData["WithBuffRef"]    = false;
 
       if(arg.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
       {
@@ -1003,6 +1013,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       argData["Id"]    = actualSize;
       argData["Count"] = "1";
       argData["IsTextureArray"] = false;
+      argData["WithBuffRef"]    = container.second.bindWithRef;
+
 
       if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
       {
@@ -1055,6 +1067,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       argData["Id"]    = actualSize;
       argData["Count"] = "1";
       argData["IsTextureArray"] = false;
+      argData["WithBuffRef"]    = false;
       kernelJson["Args"].push_back(argData);
       actualSize++;
     }

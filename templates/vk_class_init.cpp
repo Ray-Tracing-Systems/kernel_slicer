@@ -911,8 +911,13 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   {% endif %}
 
   {% for Var in ClassVectorVars %}
+  {% if Var.WithBuffRef %}
+  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+  memberVectorsWithDevAddr.push_back(m_vdata.{{Var.Name}}Buffer);
+  {% else %}
   m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
+  {% endif %}
   {% endfor %}
 
   {% for Var in ClassTextureVars %}
