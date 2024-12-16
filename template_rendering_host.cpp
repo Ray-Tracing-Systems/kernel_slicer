@@ -468,17 +468,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   else
     data["TimeStampSize"]    = a_classInfo.m_timestampPoolSize;
   
-  bool hasBufferReferenceBind = false;
-  for(const auto& member : a_classInfo.dataMembers) {
-    auto pFound = a_classInfo.allDataMembers.find(member.name);
-    if(pFound != a_classInfo.allDataMembers.end()) {
-      if(pFound->second.bindWithRef) {
-        hasBufferReferenceBind = true;
-        break;
-      }
-    }
-  }
-
+  const bool hasBufferReferenceBind = a_classInfo.HasBufferReferenceBind();
+  
   uint32_t totalCallableShaders = 0;
   data["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
   data["CallableStructures"]    = kslicer::ListCallableStructures  (a_classInfo.m_vhierarchy, compiler, a_classInfo, totalCallableShaders);

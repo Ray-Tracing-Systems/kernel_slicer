@@ -1242,6 +1242,7 @@ namespace kslicer
     mutable std::vector<std::string> kernelsCallCmdDeclCached;
 
     std::vector< std::pair<std::string, std::string> > GetFieldsFromStruct(const clang::CXXRecordDecl* recordDecl, size_t* pSummOfFiledsSize = nullptr) const;
+    bool HasBufferReferenceBind() const;
   };
 
 

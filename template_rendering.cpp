@@ -21,6 +21,21 @@ typedef unsigned int uint;
 using namespace inja;
 using json = nlohmann::json;
 
+bool kslicer::MainClassInfo::HasBufferReferenceBind() const
+{
+  bool hasBufferReferenceBind = false;
+  for(const auto& member : this->dataMembers) {
+    auto pFound = this->allDataMembers.find(member.name);
+    if(pFound != this->allDataMembers.end()) {
+      if(pFound->second.bindWithRef) {
+        hasBufferReferenceBind = true;
+        break;
+      }
+    }
+  }
+  return hasBufferReferenceBind;
+}
+
 static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(const std::vector<std::string>& kernelsCallCmdDecl)
 {
   std::unordered_map<std::string,std::string> kernelDeclByName;
@@ -503,16 +518,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
   }
 
-  bool hasBufferReferenceBind = false;
-  for(const auto& member : a_classInfo.dataMembers) {
-    auto pFound = a_classInfo.allDataMembers.find(member.name);
-    if(pFound != a_classInfo.allDataMembers.end()) {
-      if(pFound->second.bindWithRef) {
-        hasBufferReferenceBind = true;
-        break;
-      }
-    }
-  }
+  const bool hasBufferReferenceBind = a_classInfo.HasBufferReferenceBind();
 
   json data;
   data["MainClassName"]   = a_classInfo.mainClassName;
