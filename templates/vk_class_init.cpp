@@ -960,6 +960,11 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
   {% if HasAllRefs %}
   {
     {% for Var in ClassVectorVars %}
+    {% if Var.WithBuffRef %}
+    all_references[0].{{Var.Name}}Address = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Var.Name}}Buffer);
+    {% endif %}
+    {% endfor %}
+    {% for Var in ClassVectorVars %}
     {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}
     {% for Impl in Var.Hierarchy.Implementations %}
     all_references[0].{{Impl.ClassName}}Address = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Var.Name}}_dataSBuffer) + {{Var.Name}}_obj_storage_offsets[{{Var.Hierarchy.Name}}::{{Impl.TagName}}];

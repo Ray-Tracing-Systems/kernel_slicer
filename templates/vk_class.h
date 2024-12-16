@@ -335,6 +335,11 @@ protected:
   {% if HasAllRefs %}
   struct AllBufferReferences 
   {
+    {% for Var in ClassVectorVars %}
+    {% if Var.WithBuffRef %}
+    VkDeviceAddress {{Var.Name}}Address;
+    {% endif %}
+    {% endfor %}
     {% for Ref in AllReferences %}
     VkDeviceAddress {{Ref.Name}}Address;
     {% endfor %}

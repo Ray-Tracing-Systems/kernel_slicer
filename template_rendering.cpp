@@ -503,6 +503,17 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
   }
 
+  bool hasBufferReferenceBind = false;
+  for(const auto& member : a_classInfo.dataMembers) {
+    auto pFound = a_classInfo.allDataMembers.find(member.name);
+    if(pFound != a_classInfo.allDataMembers.end()) {
+      if(pFound->second.bindWithRef) {
+        hasBufferReferenceBind = true;
+        break;
+      }
+    }
+  }
+
   json data;
   data["MainClassName"]   = a_classInfo.mainClassName;
   data["MainClassSuffix"] = a_classInfo.mainClassSuffix;
@@ -517,7 +528,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
   data["UseCallable"]        = a_settings.enableCallable;
-  data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0);
+  data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0) || hasBufferReferenceBind;
 
   data["Defines"] = std::vector<std::string>();
   for(const auto& def : usedDefines)

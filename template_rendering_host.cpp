@@ -468,16 +468,27 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   else
     data["TimeStampSize"]    = a_classInfo.m_timestampPoolSize;
   
+  bool hasBufferReferenceBind = false;
+  for(const auto& member : a_classInfo.dataMembers) {
+    auto pFound = a_classInfo.allDataMembers.find(member.name);
+    if(pFound != a_classInfo.allDataMembers.end()) {
+      if(pFound->second.bindWithRef) {
+        hasBufferReferenceBind = true;
+        break;
+      }
+    }
+  }
+
   uint32_t totalCallableShaders = 0;
   data["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
   data["CallableStructures"]    = kslicer::ListCallableStructures  (a_classInfo.m_vhierarchy, compiler, a_classInfo, totalCallableShaders);
   data["CallablesTotal"]        = totalCallableShaders;
   data["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(data["Hierarchies"]);
-  data["HasAllRefs"]            = bool(a_classInfo.m_allRefsFromVFH.size() != 0);
+  data["HasAllRefs"]            = bool(a_classInfo.m_allRefsFromVFH.size() != 0) || hasBufferReferenceBind; //
 
   bool hasTextureArray = false;
 
-  if(a_classInfo.m_allRefsFromVFH.size() != 0)
+  if(a_classInfo.m_allRefsFromVFH.size() != 0 || hasBufferReferenceBind)
   {
     data["AllReferences"] = std::vector<json>();
     for(auto ref : a_classInfo.m_allRefsFromVFH) {

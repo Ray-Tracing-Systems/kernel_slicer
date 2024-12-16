@@ -43,11 +43,16 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer {{Remap.Nam
 };
 {% endfor %}
 
+{% endfor %}
 {% if HasAllRefs %}
 struct AllBufferReferences
 {
+  {% for Hierarchy in Kernel.Hierarchies %} 
+  {% if Hierarchy.VFHLevel >= 2 and HasAllRefs %}
   {% for ImplS in Hierarchy.Implementations %}
   {{ImplS.DataStructure.Name}}Buffer {{ImplS.DataStructure.Name}}_buffer;
+  {% endfor %}
+  {% endif %}
   {% endfor %}
   {% for Remap in Kernel.IntersectionShaderRemaps %}
   {{Remap.Name}}Remap {{Remap.Name}}_remap;
@@ -55,8 +60,6 @@ struct AllBufferReferences
   {% endfor %}
 };
 {% endif %}
-
-{% endfor %}
 {% for Arg in Kernel.Args %}
 {% if not Arg.IsUBO %} 
 {% if Arg.IsImage %}
