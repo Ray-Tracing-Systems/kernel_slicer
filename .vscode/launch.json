@@ -2492,7 +2492,7 @@
                         "-enable_motion_blur", "0",
                         "-gen_gpu_api", "0",
                         "-with_buffer_reference", "all",
-                        "-without_buffer_reference", "m_packedXY", 
+                        "-without_buffer_reference", "m_packedXY",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,

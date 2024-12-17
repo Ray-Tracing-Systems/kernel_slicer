@@ -68,6 +68,7 @@ struct AllBufferReferences
   {{Remap.Name}}Remap {{Remap.Name}}_remap;
   {{Remap.Name}}Tags  {{Remap.Name}}_gtags;
   {% endfor %}
+  uint dummy[2];
 };
 {% endif %}
 {% for Arg in Kernel.Args %}
