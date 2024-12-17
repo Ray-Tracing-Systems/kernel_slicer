@@ -76,7 +76,7 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
 
 ## for KernelARG in Kernel.Args
   // binding for {{KernelARG.Name}}
-  dsBindings[{{KernelARG.Id}}].binding            = {{KernelARG.Id}};
+  dsBindings[{{KernelARG.Id}}].binding            = {{loop.index}};
   dsBindings[{{KernelARG.Id}}].descriptorType     = {{KernelARG.Type}};
   {% if KernelARG.IsTextureArray %}
   m_vdata.{{KernelARG.Name}}ArrayMaxSize = {{KernelARG.Count}};

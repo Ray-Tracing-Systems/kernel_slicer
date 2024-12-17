@@ -702,6 +702,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     json rtxNames = std::vector<json>();
     for(const auto& container : k.usedContainers)
     {
+      if(container.second.bindWithRef) // do not pass it to shader via descriptor set because we pass it with separate buffer reference
+        continue;
+
       auto pVecMember     = dataMembersCached.find(container.second.name);
       auto pVecSizeMember = dataMembersCached.find(container.second.name + "_size");
 

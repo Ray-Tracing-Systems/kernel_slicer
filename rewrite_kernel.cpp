@@ -216,7 +216,7 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
       }
     }
   }
-  else if(thisTypeName == m_mainClassName && usedWithVBR) 
+  else if(m_codeInfo->dataClassNames.find(thisTypeName) != m_codeInfo->dataClassNames.end() && usedWithVBR) 
   {
     out_text = "all_references." + fieldName + "." + fieldName;
     return true;

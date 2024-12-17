@@ -2409,7 +2409,7 @@
                         "-I${workspaceFolder}/TINYSTL",          "ignore",
                         "-shaderCC", "glsl",
                         "-with_buffer_reference", "all", // may add separate buffers by their names
-                        //"-without_buffer_reference", "m_filterWeights", // may add separate buffers by their names
+                        //"-without_buffer_reference", "m_data1", // may add separate buffers by their names
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,

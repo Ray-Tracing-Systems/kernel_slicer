@@ -1009,6 +1009,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
     for(const auto& container : k.usedContainers) // TODO: add support fo textures (!!!)
     {
+      if(container.second.bindWithRef) // do not pass it to shader via descriptor set because we pass it with separate buffer reference
+        continue;
+
       json argData;
       argData["Name"]  = container.second.name;
       argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
@@ -1016,7 +1019,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       argData["Count"] = "1";
       argData["IsTextureArray"] = false;
       argData["WithBuffRef"]    = container.second.bindWithRef;
-
 
       if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
       {
@@ -1483,6 +1485,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       {
         for(const auto& container : pFoundKernel->second.usedContainers) // add all class-member vectors bindings
         {
+          if(container.second.bindWithRef) // do not pass it to shader via descriptor set because we pass it with separate buffer reference
+            continue;
+
           json arg;
           arg["Id"]            = realId;
           arg["Name"]          = "m_vdata." + container.second.name;
