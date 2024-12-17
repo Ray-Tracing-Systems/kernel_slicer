@@ -2028,7 +2028,7 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   features2.features.shaderInt64   = {{GlobalUseInt64}};
   features2.features.shaderFloat64 = {{GlobalUseFloat64}};
   features2.features.shaderInt16   = {{GlobalUseInt16}};
-
+  
   void** ppNext = &features2.pNext;
   {% if GlobalUseInt8 or GlobalUseHalf %}
   deviceExtensions.push_back("VK_KHR_shader_float16_int8");
@@ -2108,14 +2108,14 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   deviceExtensions.push_back("VK_KHR_variable_pointers");
   deviceExtensions.push_back("VK_KHR_shader_non_semantic_info"); // for clspv
   {% endif %}
-  {% if HasAllRefs and not HasRTXAccelStruct %} {# /***** buffer device address ********/ #}
+  {% if HasAllRefs and not HasRTXAccelStruct and not ForceRayGen and not UseCallable %} {# /***** buffer device address ********/ #}
   static VkPhysicalDeviceBufferDeviceAddressFeaturesKHR bufferDeviceAddressFeatures = {};
   bufferDeviceAddressFeatures.sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
   bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
   (*ppNext) = &bufferDeviceAddressFeatures; ppNext = &bufferDeviceAddressFeatures.pNext;
   deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
   {% endif %} {# /***** buffer device address ********/ #}
-  {% if HasTextureArray %}
+  {% if HasTextureArray and not HasRTXAccelStruct and not ForceRayGen and not UseCallable %}
   static VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{};
   indexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
   indexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;

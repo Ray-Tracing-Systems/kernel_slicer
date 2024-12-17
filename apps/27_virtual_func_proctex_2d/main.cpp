@@ -59,8 +59,10 @@ int main(int argc, const char** argv)
   
   const char* branchingName[3] = {"lite", "medium", "heavy"};
   
-  for(int i=0;i<3;i++) 
-  for(int implNum = 1; implNum <= ProcRender2D::TOTAL_IMPLEMANTATIONS; implNum++)
+  int implNum = 4;
+  int i = int(ProcRender2D::BRANCHING_LITE);
+  //for(int i=0;i<3;i++) 
+  //for(int implNum = 1; implNum <= ProcRender2D::TOTAL_IMPLEMANTATIONS; implNum++)
   {
     pImpl->SetImplementationCount(implNum);
     pImpl->UpdateMembersPlainData();
