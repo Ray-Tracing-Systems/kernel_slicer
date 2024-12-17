@@ -673,10 +673,19 @@ bool kslicer::GLSLFunctionRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySub
   for(auto globalPointer : m_shit.pointers)
   {
     if(globalPointer.formal == leftText && WasNotRewrittenYet(right))
-    {
+    { 
+      bool isBufferReferenceAccess = false;
+      auto pFound = m_codeInfo->allDataMembers.find(globalPointer.actual);
+      if(pFound != m_codeInfo->allDataMembers.end())
+        isBufferReferenceAccess = pFound->second.bindWithRef;
+
       const std::string rightText = RecursiveRewrite(right);
-      const std::string texRes    = globalPointer.actual + "[" + rightText + " + " + leftText + "Offset]";
-      ReplaceTextOrWorkAround(arrayExpr->getSourceRange(), texRes); // process shitty global pointers
+      std::string textRes;
+      if(isBufferReferenceAccess)
+        textRes = std::string("all_references.") + globalPointer.actual + "." + globalPointer.actual + "[" + rightText + " + " + leftText + "Offset]";
+      else
+        textRes = globalPointer.actual + "[" + rightText + " + " + leftText + "Offset]";
+      ReplaceTextOrWorkAround(arrayExpr->getSourceRange(), textRes); // process shitty global pointers
       MarkRewritten(right);
       break;
     }

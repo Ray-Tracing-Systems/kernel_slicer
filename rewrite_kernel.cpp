@@ -133,7 +133,7 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
     return false;
   
   //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-  
+
   // (1) setter access
   //
   std::string setter, containerName;

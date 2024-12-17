@@ -1401,7 +1401,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["Id"]         = i;
       local["KernelName"] = dsArgs.kernelName;
       local["Layout"]     = dsArgs.kernelName + "DSLayout";
-      local["Args"]       = std::vector<std::string>();
+      local["Args"]       = std::vector<json>();
       local["ArgNames"]   = std::vector<std::string>();
       local["IsServiceCall"] = dsArgs.isService;
       local["IsVirtual"]     = false;
@@ -1417,6 +1417,14 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           if(ignoreArg && !isMegaKernel)
             continue;
         }
+        
+        bool accesedWithBufferRef = false;
+        auto pFound = a_classInfo.allDataMembers.find(dsArgs.descriptorSetsInfo[j].name);
+        if(pFound != a_classInfo.allDataMembers.end())
+          accesedWithBufferRef = pFound->second.bindWithRef;
+
+        if(accesedWithBufferRef)
+          continue;
 
         const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j], a_classInfo.megakernelRTV);
 
