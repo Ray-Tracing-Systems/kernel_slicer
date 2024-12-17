@@ -64,10 +64,12 @@ struct AllBufferReferences
   {% endfor %}
   {% endif %}
   {% endfor %}
+  {% if length(Kernel.Hierarchies) > 0 %}
   {% for Remap in Kernel.IntersectionShaderRemaps %}
   {{Remap.Name}}Remap {{Remap.Name}}_remap;
   {{Remap.Name}}Tags  {{Remap.Name}}_gtags;
   {% endfor %}
+  {% endif %}
   uint dummy[2];
 };
 {% endif %}
