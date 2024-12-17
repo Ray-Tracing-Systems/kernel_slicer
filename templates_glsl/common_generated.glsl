@@ -45,8 +45,18 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer {{Remap.Nam
 
 {% endfor %}
 {% if HasAllRefs %}
+{% for Var in VectorBufferRefs %}
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer {{Var.Name}}Buffer
+{
+	{{Var.Type}} {{Var.Name}}[];
+};
+
+{% endfor %}
 struct AllBufferReferences
 {
+  {% for Var in VectorBufferRefs %}
+  {{Var.Name}}Buffer {{Var.Name}};
+  {% endfor %}
   {% for Hierarchy in Kernel.Hierarchies %} 
   {% if Hierarchy.VFHLevel >= 2 and HasAllRefs %}
   {% for ImplS in Hierarchy.Implementations %}

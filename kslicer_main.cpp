@@ -821,7 +821,7 @@ int main(int argc, const char **argv)
         auto pYesBufferReference = inputCodeInfo.withBufferReference.find(c.second.name);
         if(pNoBufferReference != inputCodeInfo.withoutBufferReference.end())
           c.second.bindWithRef = false;
-        else if(pYesBufferReference != inputCodeInfo.withBufferReference.end() || inputCodeInfo.withBufferReferenceAll)
+        else if((pYesBufferReference != inputCodeInfo.withBufferReference.end() || inputCodeInfo.withBufferReferenceAll))
           c.second.bindWithRef = true;
 
         auto pFound = inputCodeInfo.allDataMembers.find(c.second.name);

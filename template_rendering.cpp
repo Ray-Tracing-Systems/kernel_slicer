@@ -536,6 +536,25 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["UseCallable"]        = a_settings.enableCallable;
   data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0) || hasBufferReferenceBind;
 
+  data["VectorBufferRefs"] = std::vector<json>();
+  for(const auto& v : a_classInfo.dataMembers)
+  {
+    if(v.isContainer && kslicer::IsVectorContainer(v.containerType))
+    {
+      kslicer::MainClassInfo::VFHHierarchy hierarchy;
+      MainClassInfo::VFH_LEVEL level = MainClassInfo::VFH_LEVEL_1;
+      if(a_classInfo.IsVFHBuffer(v.name, &level, &hierarchy))
+        continue;
+      
+      json local;
+      local["Name"]     = v.name;
+      local["Type"]     = v.containerDataType;      
+      auto pFound = a_classInfo.allDataMembers.find(v.name);
+      if(pFound != a_classInfo.allDataMembers.end() && pFound->second.bindWithRef) 
+        data["VectorBufferRefs"].push_back(local);
+    }
+  }
+
   data["Defines"] = std::vector<std::string>();
   for(const auto& def : usedDefines)
     data["Defines"].push_back(def);

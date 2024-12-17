@@ -707,9 +707,21 @@ bool kslicer::MainClassInfo::IsVFHBuffer(const std::string& a_name, VFH_LEVEL* p
 void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberInfo>& a_vector)
 {
   bool exitFromThisFunction = true;
+  bool usedWithVBR = false; // used with vector buffer reference
   for(const auto& h : m_vhierarchy) 
     if(int(h.second.level) >= 2)
       exitFromThisFunction = false;
+
+  for(const auto& v : dataMembers)
+  {
+    auto pFound = allDataMembers.find(v.name);
+    if(pFound != allDataMembers.end())
+      if(pFound->second.bindWithRef) {
+        exitFromThisFunction = false;
+        usedWithVBR = true;
+        break;
+      }
+  }
 
   if(exitFromThisFunction)
     return;
@@ -729,6 +741,7 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
     memberVFHTable.isContainer       = true;
     memberVFHTable.isSingle          = true;
     memberVFHTable.kind              = DATA_KIND::KIND_VECTOR;
+    memberVFHTable.bindWithRef       = false;
     a_vector.push_back(memberVFHTable);
     
     // add vector size and capacity for this vector
@@ -768,7 +781,7 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
       }
     }
 
-    if(usedWithAtLeastOneVFH)
+    if(usedWithAtLeastOneVFH || usedWithVBR)
     {
       kslicer::UsedContainerInfo info;
       info.type    = pMember->type;
@@ -776,10 +789,6 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
       info.kind    = pMember->kind;
       info.isConst = true;
       k.second.usedContainers[info.name] = info; 
-      if(info.name == "")
-      {
-        int a = 2;
-      }
     }
   }
   
