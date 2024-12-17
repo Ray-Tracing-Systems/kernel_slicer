@@ -2491,6 +2491,7 @@
                         "-enable_ray_tracing_pipeline", "0",
                         "-enable_motion_blur", "0",
                         "-gen_gpu_api", "0",
+                        "-with_buffer_reference", "all",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,

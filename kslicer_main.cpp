@@ -824,6 +824,9 @@ int main(int argc, const char **argv)
         else if((pYesBufferReference != inputCodeInfo.withBufferReference.end() || inputCodeInfo.withBufferReferenceAll))
           c.second.bindWithRef = true;
 
+        if(c.second.kind != kslicer::DATA_KIND::KIND_VECTOR)
+          c.second.bindWithRef = false;
+
         auto pFound = inputCodeInfo.allDataMembers.find(c.second.name);
         if(pFound != inputCodeInfo.allDataMembers.end())
           pFound->second.bindWithRef = c.second.bindWithRef; 
