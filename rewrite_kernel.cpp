@@ -143,6 +143,11 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
     return true; 
   }
   
+  bool usedWithVBR = false;
+  auto pFoundInAllData = m_codeInfo->allDataMembers.find(fieldName);
+  if(pFoundInAllData != m_codeInfo->allDataMembers.end())
+    usedWithVBR = pFoundInAllData->second.bindWithRef;
+
   bool inCompositiClass = false;
   auto pPrefix = m_codeInfo->composPrefix.find(thisTypeName);
   std::string classPrefix = "";
@@ -210,6 +215,11 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
         return true;
       }
     }
+  }
+  else if(thisTypeName == m_mainClassName && usedWithVBR) 
+  {
+    out_text = "all_references." + fieldName + "." + fieldName;
+    return true;
   }
 
   // (3) member ==> ubo.member

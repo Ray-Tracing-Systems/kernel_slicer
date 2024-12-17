@@ -547,8 +547,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         continue;
       
       json local;
-      local["Name"]     = v.name;
-      local["Type"]     = v.containerDataType;      
+      local["Name"] = v.name;
+      local["Type"] = v.containerDataType;      
       auto pFound = a_classInfo.allDataMembers.find(v.name);
       if(pFound != a_classInfo.allDataMembers.end() && pFound->second.bindWithRef) 
         data["VectorBufferRefs"].push_back(local);
