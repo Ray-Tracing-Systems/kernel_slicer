@@ -202,6 +202,7 @@ namespace kslicer
       std::string type;
       std::string name;
       int         size;
+      int         sizeOf = 0;
       DATA_KIND   kind = DATA_KIND::KIND_UNKNOWN;
 
       bool needFakeOffset = false;

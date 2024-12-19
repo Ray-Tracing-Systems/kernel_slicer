@@ -109,6 +109,8 @@ std::vector<kslicer::KernelInfo::ArgInfo> kslicer::GetUserKernelArgs(const std::
       result.push_back(arg);
   }
 
+  std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.sizeOf > b.sizeOf; });
+
   return result;
 }
 
