@@ -1038,6 +1038,7 @@ namespace kslicer
   */
   struct MainClassInfo
   {
+    std::unordered_map<std::string, const clang::CXXRecordDecl*> allASTNodes; ///<! AST nodes for all considered classes in program
     std::unordered_map<std::string, KernelInfo>     allKernels;       ///<! list of all kernels; used only on the second pass to identify Control Functions; it is not recommended to use it anywhere else
     std::unordered_map<std::string, KernelInfo>     allOtherKernels;  ///<! kernels from other classes. we probably need them if they are used.
     std::unordered_map<std::string, DataMemberInfo> allDataMembers;   ///<! list of all class data members;

@@ -238,6 +238,12 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
     // currently we don't put polimorphic C++ classes to shaders, in far future we need to process them in special way probably
     //
     CXXRecordDecl* pCXXDecl = dyn_cast<CXXRecordDecl>(type);
+
+    std::string typeName = pCXXDecl->getNameAsString();
+    auto pAstNode = m_codeInfo.allASTNodes.find(typeName);
+    if(pAstNode == m_codeInfo.allASTNodes.end())
+      m_codeInfo.allASTNodes[typeName] = pCXXDecl;
+
     if(!pCXXDecl->hasDefinition())
       return true;
     if(pCXXDecl->isPolymorphic() || pCXXDecl->isAbstract())
@@ -258,9 +264,6 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
     decl.extracted = true;
     decl.astNode   = type;
 
-    //std::cout << "[VisitTypeDecl]: recordName = " << decl.name.c_str() << std::endl;
-    //if(decl.name == "BoxHit")
-    //  int a = 2;
 
     if(decl.name != m_codeInfo.mainClassName &&
        decl.name != std::string("class ") + m_codeInfo.mainClassName &&
@@ -423,6 +426,10 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
   const QualType qThisType = f->getThisType();
   const QualType classType = qThisType.getTypePtr()->getPointeeType();
   std::string thisTypeName = ClearTypeName(classType.getAsString());
+
+  auto pAstNode = m_codeInfo.allASTNodes.find(thisTypeName);
+  if(pAstNode == m_codeInfo.allASTNodes.end())
+    m_codeInfo.allASTNodes[thisTypeName] = f->getParent();
 
   const bool isMainClassMember = IsMainClassName(thisTypeName);
   const auto pCompos           = m_composedClassInfo.find(thisTypeName);

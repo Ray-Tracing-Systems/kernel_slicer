@@ -2658,7 +2658,7 @@
         },
 
         {
-            "name"   : "Launch (OpticsRT)",
+            "name"   : "Launch (OpticsRT/Base)",
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-debug/kslicer",
@@ -2671,6 +2671,40 @@
                         "-typedef", "Float3 dvec3",
                         "-I${workspaceFolder}/TINYSTL", "ignore",
                         "-I/home/frol/PROG/vsan/opticsrt/ext/LiteMath",  "ignore",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (OpticsRT/Korobenko)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["/home/frol/PROG/vsan/opticsrt/src/triangulated_surf.cpp", 
+                        "/home/frol/PROG/vsan/opticsrt/src/aspheric_surf.cpp",
+                        "-mainClass", "TriangulatedSurface", 
+                        "-baseClass", "AsphericSurface",
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-shaderCC", "glsl",
+                        "-timestamps", "1",
+                        "-typedef", "Float3 dvec3",
+                        "-suffix", "_generated2",
+                        "-I${workspaceFolder}/TINYSTL", "ignore",
+                        "-I/home/frol/PROG/vsan/opticsrt/ext/LiteMath", "ignore",
+                        "-I/home/frol/PROG/vsan/opticsrt/ext/CrossRT",  "process",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,

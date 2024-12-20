@@ -1703,7 +1703,7 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
   data["MainClassName"]   = a_classInfo.mainClassName;
   data["MainClassSuffix"] = a_classInfo.mainClassSuffix;
   data["MainClassSuffixLowerCase"] = ToLowerCase(a_classInfo.mainClassSuffix);
-  data["UBOStructFields"] = std::vector<std::string>();
+  data["UBOStructFields"] = std::vector<json>();
   data["ShaderGLSL"]      = a_classInfo.pShaderCC->IsGLSL();
   data["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
   data["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(data["Hierarchies"]);

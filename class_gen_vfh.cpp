@@ -516,7 +516,12 @@ void kslicer::MainClassInfo::ExtractVFHConstants(const clang::CompilerInstance& 
     //// (1) get all constants inside interface
     //
     std::cout << "  process " << p.second.interfaceName.c_str() << std::endl;
-    p.second.usedDecls = kslicer::ExtractTCFromClass(p.second.interfaceName, p.second.interfaceDecl, compiler, Tool);
+
+    std::vector<std::pair<std::string, const clang::CXXRecordDecl*> > declClasses(1);
+    declClasses[0].first  = p.second.interfaceName;
+    declClasses[0].second = p.second.interfaceDecl;
+
+    p.second.usedDecls = kslicer::ExtractTCFromClass(declClasses, compiler, Tool);
 
     //// (2) juxtapose constant TAG and class implementation by analyzing GetTag() function
     //
