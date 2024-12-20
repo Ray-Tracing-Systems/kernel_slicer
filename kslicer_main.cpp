@@ -329,6 +329,15 @@ int main(int argc, const char **argv)
       if(buffName != "")
         inputCodeInfo.withoutBufferReference.insert(buffName);
     }
+    else if(std::string(argv[argId]) == "-typedef" && argId+1 < argc)
+    {
+      const std::string buffName = argv[argId+1];
+      std::stringstream strIn(buffName);
+      char original[64];
+      char replace[64];
+      strIn >> original >> replace;
+      inputCodeInfo.userTypedefs.push_back(std::make_pair(std::string(original), std::string(replace)));
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

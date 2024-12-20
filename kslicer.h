@@ -1074,6 +1074,7 @@ namespace kslicer
     std::unordered_set<std::string>                    withBufferReference;
     std::unordered_set<std::string>                    withoutBufferReference;
     bool                                               withBufferReferenceAll = false;
+    std::vector< std::pair<std::string, std::string> > userTypedefs;
 
     std::filesystem::path mainClassFileName;
     std::string           mainClassFileInclude;

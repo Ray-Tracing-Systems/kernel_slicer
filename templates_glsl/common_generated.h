@@ -90,6 +90,9 @@ complex complex_sqrt(complex z)
 }
 
 {% endif %}
+{% for UserDef in UserTypeDefs %}
+#define {{UserDef.Original}} {{UserDef.Redefined}}
+{% endfor %}
 ## for Decl in ClassDecls  
 {% if Decl.IsTdef %}
 {{Decl.Text}}

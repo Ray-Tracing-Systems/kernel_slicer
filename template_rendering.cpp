@@ -589,6 +589,14 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         excludedConstantsFromVFH.insert(decl.name);
   }
 
+  data["UserTypeDefs"] = std::vector<json>();
+  for(auto userdef : a_classInfo.userTypedefs) {
+    json local;
+    local["Original"]  = userdef.first;
+    local["Redefined"] = userdef.second;
+    data["UserTypeDefs"].push_back(local);
+  }
+
   data["ClassDecls"] = std::vector<json>();
   std::map<std::string, kslicer::DeclInClass> specConsts;
   for(const auto decl : usedDecl)

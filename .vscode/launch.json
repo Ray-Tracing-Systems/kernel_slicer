@@ -2667,6 +2667,8 @@
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
                         "-shaderCC", "glsl",
+                        "-timestamps", "1",
+                        "-typedef", "Float3 dvec3",
                         "-I${workspaceFolder}/TINYSTL", "ignore",
                         "-I/home/frol/PROG/vsan/opticsrt/ext/LiteMath",  "ignore",
                         "-DKERNEL_SLICER",
