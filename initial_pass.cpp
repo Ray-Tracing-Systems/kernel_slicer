@@ -233,16 +233,16 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
   std::string FileName  = Entry->getName().str();
   const bool isDefinitelyInsideShaders = m_codeInfo.NeedToProcessDeclInFile(FileName);
 
-  if(isa<CXXRecordDecl>(type))
+  if(clang::isa<clang::CXXRecordDecl>(type))
   {
     // currently we don't put polimorphic C++ classes to shaders, in far future we need to process them in special way probably
     //
-    CXXRecordDecl* pCXXDecl = dyn_cast<CXXRecordDecl>(type);
+    clang::CXXRecordDecl* pCXXDecl = clang::dyn_cast<clang::CXXRecordDecl>(type);
 
-    std::string typeName = pCXXDecl->getNameAsString();
-    auto pAstNode = m_codeInfo.allASTNodes.find(typeName);
-    if(pAstNode == m_codeInfo.allASTNodes.end())
-      m_codeInfo.allASTNodes[typeName] = pCXXDecl;
+    //std::string typeName = pCXXDecl->getNameAsString();
+    //auto pAstNode = m_codeInfo.allASTNodes.find(typeName);
+    //if(pAstNode == m_codeInfo.allASTNodes.end())
+    //  m_codeInfo.allASTNodes[typeName] = pCXXDecl;
 
     if(!pCXXDecl->hasDefinition())
       return true;
@@ -252,9 +252,9 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
 
   kslicer::DeclInClass decl;
 
-  if(isa<RecordDecl>(type))
+  if(clang::isa<clang::RecordDecl>(type))
   {
-    RecordDecl* pRecord = dyn_cast<RecordDecl>(type);
+    clang::RecordDecl* pRecord = clang::dyn_cast<clang::RecordDecl>(type);
     decl.name      = pRecord->getNameAsString();
     decl.type      = pRecord->getNameAsString();
     decl.srcRange  = pRecord->getSourceRange ();
