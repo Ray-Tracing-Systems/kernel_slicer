@@ -662,15 +662,15 @@ int main(int argc, const char **argv)
 
   std::vector<kslicer::FuncData> usedFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
   
-  std::vector<std::pair<std::string, const clang::CXXRecordDecl*> > declClasses(inputCodeInfo.mainClassNames.size());
-  for(auto name : inputCodeInfo.mainClassNames)
-  {
-    auto astNode = inputCodeInfo.allASTNodes.find(name);
-    if(astNode != inputCodeInfo.allASTNodes.end())
-      declClasses.push_back(std::make_pair(name, astNode->second));
-  }
+  //std::vector<std::pair<std::string, const clang::CXXRecordDecl*> > declClasses(inputCodeInfo.mainClassNames.size());
+  //for(auto name : inputCodeInfo.mainClassNames)
+  //{
+  //  auto astNode = inputCodeInfo.allASTNodes.find(name);
+  //  if(astNode != inputCodeInfo.allASTNodes.end())
+  //    declClasses.push_back(std::make_pair(name, astNode->second));
+  //}
 
-  std::vector<kslicer::DeclInClass> usedDecls     = kslicer::ExtractTCFromClass(declClasses, compiler, Tool);
+  std::vector<kslicer::DeclInClass> usedDecls = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
 
   for(const auto& usedDecl : usedDecls) // merge usedDecls with generalDecls
   {
