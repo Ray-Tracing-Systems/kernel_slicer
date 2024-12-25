@@ -481,11 +481,51 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
     }
     else if(m_mainFuncts.find(fname) != m_mainFuncts.end())
     {
-      mci.m_mainFuncNodes[fname] = f;
-      //std::cout << "control function has found:\t" << fname.c_str() << std::endl;
+      std::cout << "  control function has found: "; 
+      const clang::CXXRecordDecl* parentClass = f->getParent();
+      if(parentClass != nullptr)
+      {
+        const clang::IdentifierInfo* classInfo = parentClass->getIdentifier();
+        std::string classNameVal = classInfo->getName().str();
+        std::cout << classNameVal.c_str() << "::" << fname.c_str();
+
+        auto p = mci.baseClassOrder.find(classNameVal);
+        if(p != mci.baseClassOrder.end())
+        {
+          MainFuncNodeInfo currInfo;
+          currInfo.className = classNameVal;
+          currInfo.funcName  = fname;
+          currInfo.order     = p->second;
+          
+          auto pInfo = mci.m_mainFuncNodeInfos.find(fname);
+          if(pInfo == mci.m_mainFuncNodeInfos.end())
+          {
+            mci.m_mainFuncNodeInfos[fname] = currInfo;
+            mci.m_mainFuncNodes    [fname] = f;
+            std::cout << "\t|\t accepted ";
+          }
+          else if(pInfo->second.order < currInfo.order)
+          {
+            mci.m_mainFuncNodeInfos[fname] = currInfo;
+            mci.m_mainFuncNodes    [fname] = f;
+            std::cout << "\t|\t accepted ";
+          }
+          else
+            std::cout << "\t|\t rejected ";
+
+        }
+
+      }
+      else
+        std::cout << fname.c_str();
+      std::cout << std::endl;
+
       //std::string text = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
       //std::cout << "found src = " << text.c_str() << std::endl;
       //f->dump();
+
+      //mci.m_mainFuncNodes[fname] = f;
+      //mci.m_mainFuncNodeInfos[fname] = info;
     }
     else if(attr == CPP11_ATTR::ATTR_SETTER)
     {

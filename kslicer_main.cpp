@@ -455,7 +455,6 @@ int main(int argc, const char **argv)
   std::cout << "(1) Processing class '" << mainClassName.c_str() << "' with initial pass" << std::endl;
   std::cout << "{" << std::endl;
 
-  //std::vector<std::string> baseClases = kslicer::GetBaseClassesNames(inputCodeInfo.mainClassASTNode);
   std::vector<std::string> composClassNames;
   {
     if(composeAPIName != "")
@@ -468,6 +467,11 @@ int main(int argc, const char **argv)
   }
 
   kslicer::InitialPassASTConsumer firstPassData(cfNames, mainClassName, composClassNames, compiler, inputCodeInfo);
+  {
+    for(size_t i=0;i<baseClases.size();i++)
+      firstPassData.rv.mci.baseClassOrder[baseClases[i]] = int(i);
+    firstPassData.rv.mci.baseClassOrder[mainClassName] = int(baseClases.size());
+  }
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
 
   // вызов compiler.getDiagnosticClient().EndSourceFile() 

@@ -14,6 +14,13 @@ namespace kslicer
 {
   std::string ClearTypeName(const std::string& a_typeName);
 
+  struct MainFuncNodeInfo
+  {
+    std::string funcName;
+    std::string className;
+    int order = 0;
+  };
+
   struct ClassInfo
   {
     ClassInfo(){}
@@ -24,9 +31,11 @@ namespace kslicer
     std::unordered_map<std::string, KernelInfo>                  otherFunctions;
     std::unordered_map<std::string, DataMemberInfo>              dataMembers;
     std::unordered_map<std::string, const clang::CXXMethodDecl*> m_mainFuncNodes;
+    std::unordered_map<std::string, MainFuncNodeInfo>            m_mainFuncNodeInfos;
     std::unordered_map<std::string, const clang::CXXMethodDecl*> m_setters;
     std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFunctions;
     std::vector<const clang::CXXConstructorDecl* >               ctors;
+    std::unordered_map<std::string, int>                         baseClassOrder;
   };
 
   //// RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.
@@ -60,7 +69,7 @@ namespace kslicer
 
 
   std::string PerformClassComposition(ClassInfo& mainClassInfo, const ClassInfo& apiClassInfo, const ClassInfo& implClassInfo);
-  void        PerformInheritanceMerge(kslicer::ClassInfo& mainClassInfo, const kslicer::ClassInfo& implClassInfo);
+  void        PerformInheritanceMerge(kslicer::ClassInfo& mainClassInfo, const kslicer::ClassInfo& baseClassInfo);
 
 
   using namespace clang;
