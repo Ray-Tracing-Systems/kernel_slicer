@@ -136,10 +136,10 @@ public:
       return true;
 
     std::string debugName = f->getNameAsString();
-    if(debugName.find("m_pAccelStruct") != std::string::npos || debugName.find("RayQuery") != std::string::npos)
-    {
-      std::cout << "[debug]: find call of " << debugName.c_str() << std::endl;
-    }
+    //if(debugName.find("Newton") != std::string::npos)
+    //{
+    //  std::cout << "  [debug]: find call of " << debugName.c_str() << std::endl;
+    //}
 
     if(f->isOverloadedOperator())
       return true;
@@ -226,7 +226,7 @@ public:
           func.prefixName  = pPrefix->second;
         }
       }
-      else if(func.isVirtual && typeName != m_patternImpl.mainClassName)
+      else if(func.isVirtual && typeName != m_patternImpl.mainClassName) // --------------------------------------------------------------- HERE(!!!)
       {
         if(isRTX)
           return true;  // do not process HW accelerated 'RayQuery_' calls
@@ -270,7 +270,7 @@ public:
         else
           p->second.virtualFunctions[func.name] = func;
       }
-      else if(typeName != m_patternImpl.mainClassName)
+      else if(m_patternImpl.mainClassNames.find(typeName) == m_patternImpl.mainClassNames.end()) // condition for exclude function
         return true;
     }
 
@@ -455,7 +455,7 @@ public:
 
   bool VisitMemberExpr(clang::MemberExpr* expr)
   {
-    std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 
     std::string setter, containerName;
     if(kslicer::CheckSettersAccess(expr, &m_codeInfo, m_compiler, &setter, &containerName))
@@ -486,7 +486,7 @@ public:
     std::string prefixName = "";
     if(pPrefix != m_codeInfo.composPrefix.end())
       prefixName = pPrefix->second;
-    else if(thisTypeName != m_codeInfo.mainClassName) 
+    else if(m_codeInfo.mainClassNames.find(thisTypeName) == m_codeInfo.mainClassNames.end()) 
       return true;          
 
     // process access to arguments payload->xxx

@@ -456,7 +456,6 @@ int main(int argc, const char **argv)
   std::cout << "(1) Processing class '" << mainClassName.c_str() << "' with initial pass" << std::endl;
   std::cout << "{" << std::endl;
 
-  //std::vector<std::string> baseClases = kslicer::GetBaseClassesNames(inputCodeInfo.mainClassASTNode);
   std::vector<std::string> composClassNames;
   {
     if(composeAPIName != "")
@@ -469,6 +468,11 @@ int main(int argc, const char **argv)
   }
 
   kslicer::InitialPassASTConsumer firstPassData(cfNames, mainClassName, composClassNames, compiler, inputCodeInfo);
+  {
+    for(size_t i=0;i<baseClases.size();i++)
+      firstPassData.rv.mci.baseClassOrder[baseClases[i]] = int(i);
+    firstPassData.rv.mci.baseClassOrder[mainClassName] = int(baseClases.size());
+  }
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
 
   // вызов compiler.getDiagnosticClient().EndSourceFile() 
@@ -661,9 +665,18 @@ int main(int argc, const char **argv)
   std::cout << "(4) Extract functions, constants and structs from 'MainClass' " << std::endl;
   std::cout << "{" << std::endl;
 
-
-  std::vector<kslicer::FuncData>    usedFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
-  std::vector<kslicer::DeclInClass> usedDecls     = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
+  std::vector<kslicer::FuncData> usedFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
+   //std::vector<kslicer::DeclInClass> usedDecls = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
+  std::vector<kslicer::DeclInClass> usedDecls;
+  for(auto name : inputCodeInfo.mainClassNames)
+  {
+    auto astNode = inputCodeInfo.allASTNodes.find(name);
+    if(astNode != inputCodeInfo.allASTNodes.end())
+    {
+      auto declsPerClass = kslicer::ExtractTCFromClass(name, astNode->second, compiler, Tool);
+      usedDecls.insert(usedDecls.end(), declsPerClass.begin(), declsPerClass.end());
+    }
+  }
 
   for(const auto& usedDecl : usedDecls) // merge usedDecls with generalDecls
   {

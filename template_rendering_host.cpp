@@ -1253,7 +1253,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["UpdateMembersPlainData"]    = (pUpdPOD  != a_classInfo.allMemberFunctions.end());
     data["UpdateMembersVectorData"]   = (pUpdVec  != a_classInfo.allMemberFunctions.end());
     data["UpdateMembersTextureData"]  = (pUpdTex  != a_classInfo.allMemberFunctions.end());
-    data["GenerateSceneRestrictions"] = (pScnRstr == a_classInfo.allMemberFunctions.end() && a_classInfo.IsRTV());
+    data["GenerateSceneRestrictions"] = (pScnRstr == a_classInfo.allMemberFunctions.end());
   }
   
   // check for cector-update functions
@@ -1703,7 +1703,7 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
   data["MainClassName"]   = a_classInfo.mainClassName;
   data["MainClassSuffix"] = a_classInfo.mainClassSuffix;
   data["MainClassSuffixLowerCase"] = ToLowerCase(a_classInfo.mainClassSuffix);
-  data["UBOStructFields"] = std::vector<std::string>();
+  data["UBOStructFields"] = std::vector<json>();
   data["ShaderGLSL"]      = a_classInfo.pShaderCC->IsGLSL();
   data["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(a_classInfo.m_vhierarchy, compiler, a_classInfo);
   data["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(data["Hierarchies"]);

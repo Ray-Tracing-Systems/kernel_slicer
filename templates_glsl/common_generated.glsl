@@ -183,12 +183,6 @@ layout(location = {{loop.index}}) callableDataEXT {{S.Name}}DataType {{S.Name}}D
 }
 {% endfor %}                                 
 {% endfor %}                                 {# /*------------------------------ vfh ------------------------------ */ #}
-{% for MembFunc in Kernel.MemberFunctions %}
-{% if not (MembFunc.IsRayQuery and (Kernel.UseRayGen or (length(Kernel.IntersectionHierarhcy.Implementations) >= 1)) ) %}
-
-{{MembFunc.Text}}
-{% endif%}
-{% endfor %} 
 {% for RTName in Kernel.RTXNames %}
 // RayScene intersection with '{{RTName}}'
 //
@@ -323,3 +317,10 @@ bool {{RTName}}_RayQuery_AnyHitMotion(vec4 rayPos, vec4 rayDir, float t) { retur
 
 {% endif %}
 {% endfor %}
+
+{% for MembFunc in Kernel.MemberFunctions %}
+{% if not (MembFunc.IsRayQuery and (Kernel.UseRayGen or (length(Kernel.IntersectionHierarhcy.Implementations) >= 1)) ) %}
+
+{{MembFunc.Text}}
+{% endif%}
+{% endfor %} 

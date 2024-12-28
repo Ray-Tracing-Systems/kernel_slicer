@@ -234,11 +234,17 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
   std::string FileName  = Entry->tryGetRealPathName().str();
   const bool isDefinitelyInsideShaders = m_codeInfo.NeedToProcessDeclInFile(FileName);
 
-  if(isa<CXXRecordDecl>(type))
+  if(clang::isa<clang::CXXRecordDecl>(type))
   {
     // currently we don't put polimorphic C++ classes to shaders, in far future we need to process them in special way probably
     //
-    CXXRecordDecl* pCXXDecl = dyn_cast<CXXRecordDecl>(type);
+    clang::CXXRecordDecl* pCXXDecl = clang::dyn_cast<clang::CXXRecordDecl>(type);
+
+    //std::string typeName = pCXXDecl->getNameAsString();
+    //auto pAstNode = m_codeInfo.allASTNodes.find(typeName);
+    //if(pAstNode == m_codeInfo.allASTNodes.end())
+    //  m_codeInfo.allASTNodes[typeName] = pCXXDecl;
+
     if(!pCXXDecl->hasDefinition())
       return true;
     if(pCXXDecl->isPolymorphic() || pCXXDecl->isAbstract())
@@ -247,9 +253,9 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
 
   kslicer::DeclInClass decl;
 
-  if(isa<RecordDecl>(type))
+  if(clang::isa<clang::RecordDecl>(type))
   {
-    RecordDecl* pRecord = dyn_cast<RecordDecl>(type);
+    clang::RecordDecl* pRecord = clang::dyn_cast<clang::RecordDecl>(type);
     decl.name      = pRecord->getNameAsString();
     decl.type      = pRecord->getNameAsString();
     decl.srcRange  = pRecord->getSourceRange ();
@@ -259,9 +265,6 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
     decl.extracted = true;
     decl.astNode   = type;
 
-    //std::cout << "[VisitTypeDecl]: recordName = " << decl.name.c_str() << std::endl;
-    //if(decl.name == "BoxHit")
-    //  int a = 2;
 
     if(decl.name != m_codeInfo.mainClassName &&
        decl.name != std::string("class ") + m_codeInfo.mainClassName &&
@@ -425,6 +428,10 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
   const QualType classType = qThisType.getTypePtr()->getPointeeType();
   std::string thisTypeName = ClearTypeName(classType.getAsString());
 
+  auto pAstNode = m_codeInfo.allASTNodes.find(thisTypeName);
+  if(pAstNode == m_codeInfo.allASTNodes.end())
+    m_codeInfo.allASTNodes[thisTypeName] = f->getParent();
+
   const bool isMainClassMember = IsMainClassName(thisTypeName);
   const auto pCompos           = m_composedClassInfo.find(thisTypeName);
 
@@ -475,11 +482,51 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
     }
     else if(m_mainFuncts.find(fname) != m_mainFuncts.end())
     {
-      mci.m_mainFuncNodes[fname] = f;
-      //std::cout << "control function has found:\t" << fname.c_str() << std::endl;
+      std::cout << "  control function has found: "; 
+      const clang::CXXRecordDecl* parentClass = f->getParent();
+      if(parentClass != nullptr)
+      {
+        const clang::IdentifierInfo* classInfo = parentClass->getIdentifier();
+        std::string classNameVal = classInfo->getName().str();
+        std::cout << classNameVal.c_str() << "::" << fname.c_str();
+
+        auto p = mci.baseClassOrder.find(classNameVal);
+        if(p != mci.baseClassOrder.end())
+        {
+          MainFuncNodeInfo currInfo;
+          currInfo.className = classNameVal;
+          currInfo.funcName  = fname;
+          currInfo.order     = p->second;
+          
+          auto pInfo = mci.m_mainFuncNodeInfos.find(fname);
+          if(pInfo == mci.m_mainFuncNodeInfos.end())
+          {
+            mci.m_mainFuncNodeInfos[fname] = currInfo;
+            mci.m_mainFuncNodes    [fname] = f;
+            std::cout << "\t|\t accepted ";
+          }
+          else if(pInfo->second.order < currInfo.order)
+          {
+            mci.m_mainFuncNodeInfos[fname] = currInfo;
+            mci.m_mainFuncNodes    [fname] = f;
+            std::cout << "\t|\t accepted ";
+          }
+          else
+            std::cout << "\t|\t rejected ";
+
+        }
+
+      }
+      else
+        std::cout << fname.c_str();
+      std::cout << std::endl;
+
       //std::string text = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
       //std::cout << "found src = " << text.c_str() << std::endl;
       //f->dump();
+
+      //mci.m_mainFuncNodes[fname] = f;
+      //mci.m_mainFuncNodeInfos[fname] = info;
     }
     else if(attr == CPP11_ATTR::ATTR_SETTER)
     {
