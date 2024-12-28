@@ -1,6 +1,5 @@
 #version 460
 #extension GL_GOOGLE_include_directive : require
-{% if length(Kernel.RTXNames) > 0 %}
 {% if Kernel.UseRayGen %}
 #extension GL_EXT_ray_tracing : require 
 {% if Kernel.UseMotionBlur %}
@@ -8,7 +7,6 @@
 {% endif %}
 {% else %}
 #extension GL_EXT_ray_query : require
-{% endif %}
 {% endif %}
 {% if Kernel.NeedTexArray %}
 #extension GL_EXT_nonuniform_qualifier : require

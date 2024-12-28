@@ -11,7 +11,7 @@
 
 #include "{{IncludeClassDecl}}"
 #include "include/{{UBOIncl}}"
-{% if UseRayGen %}
+{% if UseRayGen or length(IntersectionHierarhcy.Implementations) >= 1 %}
 #include "VulkanRTX.h"
 {% endif%}
 
@@ -99,8 +99,11 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<v
   {
     auto pProxyObj = dynamic_cast<RTX_Proxy*>({{Table.AccelName}}.get());
     auto tablePtrs = pProxyObj->GetAABBToPrimTable();
-    if(tablePtrs.tableSize != 0)
+    if(tablePtrs.tableSize != 0 && tablePtrs.geomSize != 0)
+    {
       a_pCopyEngine->UpdateBuffer(m_vdata.{{Table.Name}}RemapTableBuffer, 0, tablePtrs.table, tablePtrs.tableSize*sizeof(LiteMath::uint2));
+      a_pCopyEngine->UpdateBuffer(m_vdata.{{Table.Name}}GeomTagsBuffer, 0, tablePtrs.geomTable, tablePtrs.geomSize*sizeof(LiteMath::uint));
+    }
   }
   {% endfor %}
   {% for Var in ClassVectorVars %}
@@ -109,9 +112,10 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<v
   {
     a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer      , 0, {{Var.Name}}_vtable.data(), {{Var.Name}}_vtable.size()*sizeof(unsigned)*2 );
     a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}_dataVBuffer, 0, {{Var.Name}}_dataV.data(), {{Var.Name}}_dataV.size());
-    for(size_t i=0;i<{{Var.Name}}_obj_storage_offsets.size()-1;i++) {
-      size_t     offset = {{Var.Name}}_obj_storage_offsets[i];
-      const auto& odata = {{Var.Name}}_sorted[i];
+    for(auto it = {{Var.Name}}_obj_storage_offsets.begin(); it != {{Var.Name}}_obj_storage_offsets.end(); ++it) 
+    {
+      size_t     offset = it->second;
+      const auto& odata = {{Var.Name}}_sorted[it->first];
       if(odata.size() != 0)
         a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}_dataSBuffer, offset, odata.data(), odata.size());
     }

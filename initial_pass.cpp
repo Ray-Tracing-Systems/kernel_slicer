@@ -88,8 +88,12 @@ void kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDe
     info.return_class = qtOfClass.getAsString();
   }
 
-  for (unsigned int i = 0; i < f->getNumParams(); ++i) {
-    info.args.push_back(kslicer::ProcessParameter(f->parameters()[i]));
+  for (unsigned int i = 0; i < f->getNumParams(); ++i) 
+  {
+    auto parameter = f->parameters()[i];
+    auto argInfo   = kslicer::ProcessParameter(parameter);
+    argInfo.sizeOf = m_astContext.getTypeSize(parameter->getType()) / 8;
+    info.args.push_back(argInfo);
   }
 
   info.debugOriginalText = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);

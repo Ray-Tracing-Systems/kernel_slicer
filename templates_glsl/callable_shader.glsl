@@ -106,25 +106,32 @@ struct {{RetDecl.Name}}
 {% endif %}
 {% endfor %} 
 
-hitAttributeEXT CRT_Hit attribs;
+{# /*------------------------------ BEFOR THIS SAME FOR INTERSECTION SHADER, TODO: REFACTOR(!!!) ------------------------------ */ #}
+
+{% for S in Kernel.CallableStructures %}
+{% if S.Name == MemberName %}
+struct {{S.Name}}DataType
+{
+  {% for Arg in S.Args %}
+  {{Arg.Type}} {{Arg.Name}};
+  {% endfor %}
+};
+{% endif %}
+{% endfor %}
+
+{% for S in Kernel.CallableStructures %}
+{% if S.Name == MemberName %}
+layout(location = {{loop.index}}) callableDataInEXT {{S.Name}}DataType dat;
+{% endif %}
+{% endfor %}
 
 void main()
 { 
-  vec4  rayPosAndNear = vec4(gl_ObjectRayOriginEXT,    gl_RayTminEXT);
-  vec4  rayDirAndFar  = vec4(gl_ObjectRayDirectionEXT, gl_RayTmaxEXT);
-  uvec2 remap         = all_references.{{Kernel.IntersectionHierarhcy.Name}}_remap.{{Kernel.IntersectionHierarhcy.Name}}_table[gl_InstanceCustomIndexEXT];
-  CRT_LeafInfo info;
-  info.aabbId = gl_PrimitiveID;  
-  info.primId = gl_PrimitiveID/remap.y;
-  info.instId = gl_InstanceID; 
-  info.geomId = gl_InstanceCustomIndexEXT; 
-  info.rayxId = gl_LaunchIDEXT[0];
-  info.rayyId = gl_LaunchIDEXT[1]; 
-  attribs.t   = 1e6f;  
-  attribs.primId = 0xFFFFFFFF; 
-  attribs.instId = 0xFFFFFFFF;
-  attribs.geomId = 0xFFFFFFFF;     
-  uint intersected = {{IntersectionShader.NameRewritten}}(remap.x + info.primId, rayPosAndNear, rayDirAndFar, info, attribs);
-  if(intersected != {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}}) 
-    reportIntersectionEXT(attribs.t, 0);
+  {% for S in Kernel.CallableStructures %}
+  {% for Member in Implementation.MemberFunctions %}
+  {% if Member.Name == S.Name and S.Name == MemberName %}
+  dat.ret = {{Implementation.ClassName}}_{{Member.Name}}_{{Implementation.ObjBufferName}}({% for Arg in S.Args %}{% if not Arg.IsRet %}dat.{{Arg.Name}}{% endif %}{% if loop.index < S.ArgLen and not Arg.IsRet %},{% endif %}{% endfor %});
+  {% endif %}
+  {% endfor %}
+  {% endfor %}
 }

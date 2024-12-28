@@ -321,24 +321,31 @@ protected:
     {% endfor %}
     {% for Table in RemapTables %}
     VkBuffer {{Table.Name}}RemapTableBuffer = VK_NULL_HANDLE;
+    VkBuffer {{Table.Name}}GeomTagsBuffer   = VK_NULL_HANDLE;
     {% endfor %}
   } m_vdata;
   {% for Vector in VectorMembers %}
   {% if Vector.IsVFHBuffer and Vector.VFHLevel >= 2 %}
-  std::vector<LiteMath::uint2>        {{Vector.Name}}_vtable;
-  std::vector<std::vector<uint8_t> >  {{Vector.Name}}_sorted;
-  std::vector<uint8_t>                {{Vector.Name}}_dataV;
-  std::vector<size_t>                 {{Vector.Name}}_obj_storage_offsets;
+  std::vector<LiteMath::uint2> {{Vector.Name}}_vtable;
+  std::vector<uint8_t>         {{Vector.Name}}_dataV;
+  std::unordered_map<uint32_t, std::vector<uint8_t> > {{Vector.Name}}_sorted;
+  std::unordered_map<uint32_t, size_t>                {{Vector.Name}}_obj_storage_offsets;
   {% endif %}
   {% endfor %}
   {% if HasAllRefs %}
   struct AllBufferReferences 
   {
+    {% for Var in ClassVectorVars %}
+    {% if Var.WithBuffRef %}
+    VkDeviceAddress {{Var.Name}}Address;
+    {% endif %}
+    {% endfor %}
     {% for Ref in AllReferences %}
     VkDeviceAddress {{Ref.Name}}Address;
     {% endfor %}
     {% for Remap in RemapTables %}
     VkDeviceAddress {{Remap.Name}}RemapAddr;
+    VkDeviceAddress {{Remap.Name}}GeomTags;
     {% endfor %}
   };
   std::vector<AllBufferReferences> all_references;

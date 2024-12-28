@@ -212,7 +212,7 @@ void TestClass::InitScene(int numBoxes, int numTris)
   //
   m_pRayTraceImpl->ClearGeom();
   auto geomId2 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, boxesOnTopOfSpheres.data(), boxesOnTopOfSpheres.size());
-  auto geomId0 = m_pRayTraceImpl->AddGeom_Triangles3f((const float*)trivets.data(), trivets.size(), indices.data(), indices.size(), 0, 16);
+  //auto geomId0 = m_pRayTraceImpl->AddGeom_Triangles3f((const float*)trivets.data(), trivets.size(), indices.data(), indices.size(), 0, 16);
   auto geomId1 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_BOXES, (const CRT_AABB*)boxes.data(), numBoxes);
 
   void* spherePtr = (void*)pSingleSphere; 
@@ -244,7 +244,7 @@ void TestClass::InitScene(int numBoxes, int numTris)
   
   // triangles
   //
-  m_pRayTraceImpl->AddInstance(geomId0, transformTris1);
+  //m_pRayTraceImpl->AddInstance(geomId0, transformTris1);
   //m_pRayTraceImpl->AddInstance(geomId0, transformTris2);
   
   m_pRayTraceImpl->CommitScene();

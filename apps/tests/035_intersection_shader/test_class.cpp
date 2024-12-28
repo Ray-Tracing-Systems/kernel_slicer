@@ -211,7 +211,14 @@ CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFa
   CRT_Hit hit;
   hit.primId = -1;
   
-  CRT_LeafInfo info = {};
+  CRT_LeafInfo info;
+  info.primId = 0;
+  info.aabbId = 0; 
+  info.primId = 0; 
+  info.instId = 0; 
+  info.geomId = 0; 
+  info.rayxId = 0; 
+  info.rayyId = 0; 
 
   for(uint32_t primid = 0; primid < primitives.size(); primid++)
     primitives[primid]->Intersect(rayPosAndNear, rayDirAndFar, info, &hit, this); 

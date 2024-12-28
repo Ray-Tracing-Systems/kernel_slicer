@@ -21,6 +21,21 @@ typedef unsigned int uint;
 using namespace inja;
 using json = nlohmann::json;
 
+bool kslicer::MainClassInfo::HasBufferReferenceBind() const
+{
+  bool hasBufferReferenceBind = false;
+  for(const auto& member : this->dataMembers) {
+    auto pFound = this->allDataMembers.find(member.name);
+    if(pFound != this->allDataMembers.end()) {
+      if(pFound->second.bindWithRef) {
+        hasBufferReferenceBind = true;
+        break;
+      }
+    }
+  }
+  return hasBufferReferenceBind;
+}
+
 static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(const std::vector<std::string>& kernelsCallCmdDecl)
 {
   std::unordered_map<std::string,std::string> kernelDeclByName;
@@ -94,6 +109,8 @@ std::vector<kslicer::KernelInfo::ArgInfo> kslicer::GetUserKernelArgs(const std::
       result.push_back(arg);
   }
 
+  std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.sizeOf > b.sizeOf; });
+
   return result;
 }
 
@@ -107,7 +124,8 @@ static inline size_t AlignedSize(const size_t a_size)
 
 nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHierarchy& h, 
                                            const clang::CompilerInstance& compiler,
-                                           const MainClassInfo& a_classInfo)
+                                           const MainClassInfo& a_classInfo,
+                                           size_t& fnGroupOffset)
 {
   json hierarchy;
   hierarchy["Name"]             = h.interfaceName;
@@ -156,11 +174,10 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
   hierarchy["Implementations"] = std::vector<json>();
   for(const auto& impl : h.implementations)
   {  
-    const auto p2 = h.tagByClassName.find(impl.name);
-    assert(p2 != h.tagByClassName.end());
     json currImpl;
     currImpl["ClassName"]       = impl.name;
-    currImpl["TagName"]         = p2->second;
+    currImpl["TagName"]         = impl.tagName;
+    currImpl["TagId"]           = impl.tagId;
     currImpl["MemberFunctions"] = std::vector<json>();
     currImpl["ObjBufferName"]   = h.objBufferName;
     currImpl["IsEmpty"]         = impl.isEmpty;
@@ -214,6 +231,12 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
         }
       }
       currImpl["DataStructure"] = local;
+
+      bool isTriangles = false;
+      for(auto x : a_classInfo.intersectionTriangle)
+        if(x.first == h.interfaceName && x.second == impl.name)
+          isTriangles = true;
+      currImpl["IsTriangleMesh"] = isTriangles;
     }
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     if(impl.isEmpty) 
@@ -237,6 +260,8 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
     virtualFunc["Name"] = vf.second.name;
     virtualFunc["Decl"] = vf.second.declRewritten;
     virtualFunc["Args"] = std::vector<json>();
+    virtualFunc["FuncGroupOffset"] = fnGroupOffset;
+    fnGroupOffset += (h.implementations.size() - 1);
     {
       json argJ;
       argJ["Type"] = "uint";
@@ -283,8 +308,11 @@ nlohmann::json kslicer::PutHierarchiesDataToJson(const std::unordered_map<std::s
                                                  const MainClassInfo& a_classInfo)
 {
   json data = std::vector<json>();
+  size_t fnGroupOffset = 0;
+  
   for(const auto& p : hierarchies)
-    data.push_back(PutHierarchyToJson(p.second, compiler, a_classInfo));
+    data.push_back(PutHierarchyToJson(p.second, compiler, a_classInfo, fnGroupOffset));
+  
   return data;
 }
 
@@ -300,6 +328,77 @@ nlohmann::json kslicer::FindIntersectionHierarchy(nlohmann::json a_hierarchies)
   }
   return result;
 }
+
+nlohmann::json kslicer::ListCallableStructures(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
+                                               const clang::CompilerInstance& compiler,
+                                               const MainClassInfo& a_classInfo,
+                                               uint32_t& a_totalShaders)
+{
+  auto pShaderRewriter = a_classInfo.pShaderFuncRewriter;
+  nlohmann::json data  = std::vector<json>();
+  size_t fnGroupOffset = 0;
+
+  for(const auto& h : hierarchies) {
+    
+    if(h.second.hasIntersection)
+      continue;
+
+    for(const auto& f : h.second.virtualFunctions) {
+      
+      nlohmann::json funcData;
+      funcData["Name"] = f.second.name;
+      funcData["Args"] = std::vector<json>();
+      funcData["FuncGroupOffset"] = fnGroupOffset;
+
+      // self offset/ptr
+      {
+        nlohmann::json arg;
+        arg["Name"]  = "selfId";
+        arg["Type"]  = "uint";
+        arg["IsRet"] = false;
+        funcData["Args"].push_back(arg);
+      }
+
+      // list arguments
+      // 
+      for (const auto* param : f.second.astNode->parameters()) {   
+        std::string paramName  = param->getNameAsString();       // Получаем имя параметра
+        std::string paramType  = param->getType().getAsString(); // Получаем тип параметра
+        std::string paramType2 = pShaderRewriter->RewriteStdVectorTypeStr(paramType);
+        nlohmann::json arg;
+        arg["Name"]  = paramName;
+        arg["Type"]  = paramType2;
+        arg["IsRet"] = false;
+        if(a_classInfo.dataClassNames.find(paramType) == a_classInfo.dataClassNames.end())
+          funcData["Args"].push_back(arg);
+      }
+
+      funcData["ArgLen"] = funcData["Args"].size()-1;
+      
+      // get return type
+      //
+      if(f.second.retTypeDecl != nullptr)
+      {
+        const clang::Type* type = f.second.retTypeDecl->getTypeForDecl();
+        if (const auto* recordType = clang::dyn_cast<clang::RecordType>(type)) {
+          std::string retTypeName = recordType->getDecl()->getQualifiedNameAsString();
+          nlohmann::json arg;
+          arg["Name"]  = "ret";
+          arg["Type"]  =  pShaderRewriter->RewriteStdVectorTypeStr(retTypeName);
+          arg["IsRet"] = true;
+          funcData["Args"].push_back(arg);
+        }
+      }
+      
+      fnGroupOffset += (h.second.implementations.size() - 1); // exclude empty impl
+      data.push_back(funcData);
+    }
+  }
+
+  a_totalShaders = uint32_t(fnGroupOffset);
+
+  return data;
+}                                               
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -421,6 +520,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
   }
 
+  const bool hasBufferReferenceBind = a_classInfo.HasBufferReferenceBind();
+
   json data;
   data["MainClassName"]   = a_classInfo.mainClassName;
   data["MainClassSuffix"] = a_classInfo.mainClassSuffix;
@@ -434,7 +535,27 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["UseComplex"]         = true; // a_classInfo.useComplexNumbers; does not works in appropriate way ...
   data["UseRayGen"]          = a_settings.enableRayGen;
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
-  data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0);
+  data["UseCallable"]        = a_settings.enableCallable;
+  data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0) || hasBufferReferenceBind;
+
+  data["VectorBufferRefs"] = std::vector<json>();
+  for(const auto& v : a_classInfo.dataMembers)
+  {
+    if(v.isContainer && kslicer::IsVectorContainer(v.containerType))
+    {
+      kslicer::MainClassInfo::VFHHierarchy hierarchy;
+      MainClassInfo::VFH_LEVEL level = MainClassInfo::VFH_LEVEL_1;
+      if(a_classInfo.IsVFHBuffer(v.name, &level, &hierarchy))
+        continue;
+      
+      json local;
+      local["Name"] = v.name; 
+      local["Type"] = pShaderRewriter->RewriteStdVectorTypeStr(v.containerDataType);
+      auto pFound = a_classInfo.allDataMembers.find(v.name);
+      if(pFound != a_classInfo.allDataMembers.end() && pFound->second.bindWithRef) 
+        data["VectorBufferRefs"].push_back(local);
+    }
+  }
 
   data["Defines"] = std::vector<std::string>();
   for(const auto& def : usedDefines)
@@ -466,6 +587,14 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     for(const auto& p : a_classInfo.m_vhierarchy)
       for(const auto& decl : p.second.usedDecls)
         excludedConstantsFromVFH.insert(decl.name);
+  }
+
+  data["UserTypeDefs"] = std::vector<json>();
+  for(auto userdef : a_classInfo.userTypedefs) {
+    json local;
+    local["Original"]  = userdef.first;
+    local["Redefined"] = userdef.second;
+    data["UserTypeDefs"].push_back(local);
   }
 
   data["ClassDecls"] = std::vector<json>();
@@ -564,6 +693,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsSingle"]      = false;
       argj["IsVFHBuffer"]   = false;
       argj["VFHLevel"]      = 0;
+      argj["WithBuffRef"]   = false;
 
       std::string ispcConverted = argj["Name"];
       if(argj["IsPointer"])
@@ -582,6 +712,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     json rtxNames = std::vector<json>();
     for(const auto& container : k.usedContainers)
     {
+      if(container.second.bindWithRef) // do not pass it to shader via descriptor set because we pass it with separate buffer reference
+        continue;
+
       auto pVecMember     = dataMembersCached.find(container.second.name);
       auto pVecSizeMember = dataMembersCached.find(container.second.name + "_size");
 
@@ -615,6 +748,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsPointer"]     = (pVecMember->second.kind == kslicer::DATA_KIND::KIND_VECTOR);
       argj["IsMember"]      = true;
       argj["IsSingle"]      = pVecMember->second.isSingle;
+      argj["WithBuffRef"]   = container.second.bindWithRef;
+
       ////////////////////////////////////////////////////////////////////
       MainClassInfo::VFH_LEVEL level = MainClassInfo::VFH_LEVEL_1;
       bool isVFHBuffer       = a_classInfo.IsVFHBuffer(pVecMember->second.name, &level);
@@ -684,6 +819,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["NameISPC"] = argj["Name"];
       argj["IsVFHBuffer"]   = false;
       argj["VFHLevel"]      = 0;
+      argj["WithBuffRef"]   = false;
       args.push_back(argj);
     }
 
@@ -700,6 +836,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsPointer"] = false;
       argj["IsMember"]  = false;
       argj["NameISPC"]  = argj["Name"];
+      argj["WithBuffRef"] = false;
       userArgs.push_back(argj);
     }
 
@@ -745,7 +882,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     json kernelJson;
     
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    kernelJson["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(a_classInfo.SelectVFHOnlyUsedByKernel(a_classInfo.m_vhierarchy, k), compiler, a_classInfo); 
+    uint32_t totalCallableShaders = 0;
+    auto selectedVFH = a_classInfo.SelectVFHOnlyUsedByKernel(a_classInfo.m_vhierarchy, k);
+    kernelJson["Hierarchies"]           = kslicer::PutHierarchiesDataToJson(selectedVFH, compiler, a_classInfo); 
+    kernelJson["CallableStructures"]    = kslicer::ListCallableStructures(selectedVFH, compiler, a_classInfo, totalCallableShaders);
+    kernelJson["CallablesTotal"]        = totalCallableShaders;
     kernelJson["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(kernelJson["Hierarchies"]);
     
     // add primitive remap tables for intesection shaders

@@ -379,7 +379,15 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
         dImpl.name = decl->getNameAsString();
         dImpl.objBufferName = p.second.objBufferName;
         dImpl.interfaceName = p.second.interfaceName;
-        
+
+        if(intersectionBlackList.find(dImpl.name) != intersectionBlackList.end())
+          continue;
+        else if(!intersectionWhiteList.empty())
+        {
+          if(intersectionWhiteList.find(dImpl.name) == intersectionWhiteList.end())
+            continue;
+        }
+
         MemberRewriter rv(rewrite2, a_compiler, this, dImpl, int(p.second.level)); 
         rv.TraverseDecl(const_cast<clang::CXXRecordDecl*>(dImpl.decl));                                  
         
@@ -389,14 +397,6 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
           argsByName[kv.first] = kv.second; 
 
         dImpl.isEmpty = (dImpl.name.find("Empty") != std::string::npos);
-        //for(auto member : dImpl.memberFunctions)
-        //{
-        //  if(!member.isEmpty)
-        //  {
-        //    dImpl.isEmpty = false;
-        //    break;
-        //  }
-        //}
 
         for(auto& k : kernels)
         {
@@ -412,7 +412,7 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
           }
         }
         
-        if(!alreadyHasSuchImpl)
+        if(!alreadyHasSuchImpl) 
           p.second.implementations.push_back(dImpl);
       }
     }
@@ -443,7 +443,7 @@ class TagSeeker : public clang::RecursiveASTVisitor<TagSeeker>
 {
 public:
   
-  TagSeeker(const clang::CompilerInstance& a_compiler, std::vector<kslicer::DeclInClass>& a_constants, std::unordered_map<std::string, std::string>& a_tagByName) : 
+  TagSeeker(const clang::CompilerInstance& a_compiler, std::vector<kslicer::DeclInClass>& a_constants, std::unordered_map<std::string, kslicer::MainClassInfo::VFHTagInfo>& a_tagByName) : 
             m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_knownConstants(a_constants), m_tagByClassName(a_tagByName) { m_tagByClassName.clear(); }
 
   bool VisitCXXMethodDecl(const clang::CXXMethodDecl* f)
@@ -488,7 +488,10 @@ public:
         //auto pos = funcBody.find(decl.name);
         if(decl.name == tagName)
         {
-          m_tagByClassName[thisTypeName] = decl.name;
+          kslicer::MainClassInfo::VFHTagInfo tagInfo;
+          tagInfo.name = decl.name;
+          tagInfo.id   = decl.constVal;
+          m_tagByClassName[thisTypeName] = tagInfo;
           break;
         }
       }
@@ -502,7 +505,7 @@ private:
   const clang::CompilerInstance& m_compiler;
   const clang::SourceManager&    m_sm;
   std::vector<kslicer::DeclInClass>& m_knownConstants;
-  std::unordered_map<std::string, std::string>& m_tagByClassName; 
+  std::unordered_map<std::string, kslicer::MainClassInfo::VFHTagInfo>& m_tagByClassName; 
 };
 
 
@@ -520,6 +523,29 @@ void kslicer::MainClassInfo::ExtractVFHConstants(const clang::CompilerInstance& 
     TagSeeker visitor(compiler, p.second.usedDecls, p.second.tagByClassName);
     for(auto impl : p.second.implementations)
       visitor.TraverseDecl(const_cast<clang::CXXRecordDecl*>(impl.decl));
+  }
+  
+  // fill tag name and id for each implementation
+  //
+  for(auto& p : m_vhierarchy) {
+    for(auto& impl : p.second.implementations) {
+      auto pTagInfo = p.second.tagByClassName.find(impl.name);
+      if(pTagInfo != p.second.tagByClassName.end()) {
+        impl.tagName = pTagInfo->second.name;
+        impl.tagId   = pTagInfo->second.id;
+      }
+    }
+
+    std::sort(p.second.implementations.begin(), p.second.implementations.end(), [](auto& a, auto& b){ return a.tagId < b.tagId; });
+  }
+
+  // debug output
+  //
+  std::cout << "  reordered vfh: " << std::endl;
+  for(const auto& p : m_vhierarchy)
+  {
+    for(const auto& impl : p.second.implementations)
+      std::cout << "   " << p.first.c_str() << " --> " << impl.name.c_str() << "; tag(" <<  impl.tagName.c_str() << ") = " <<  impl.tagId << std::endl;
   }
 
 }
@@ -681,9 +707,21 @@ bool kslicer::MainClassInfo::IsVFHBuffer(const std::string& a_name, VFH_LEVEL* p
 void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberInfo>& a_vector)
 {
   bool exitFromThisFunction = true;
+  bool usedWithVBR = false; // used with vector buffer reference
   for(const auto& h : m_vhierarchy) 
     if(int(h.second.level) >= 2)
       exitFromThisFunction = false;
+
+  for(const auto& v : dataMembers)
+  {
+    auto pFound = allDataMembers.find(v.name);
+    if(pFound != allDataMembers.end())
+      if(pFound->second.bindWithRef) {
+        exitFromThisFunction = false;
+        usedWithVBR = true;
+        break;
+      }
+  }
 
   if(exitFromThisFunction)
     return;
@@ -703,6 +741,7 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
     memberVFHTable.isContainer       = true;
     memberVFHTable.isSingle          = true;
     memberVFHTable.kind              = DATA_KIND::KIND_VECTOR;
+    memberVFHTable.bindWithRef       = false;
     a_vector.push_back(memberVFHTable);
     
     // add vector size and capacity for this vector
@@ -742,7 +781,7 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
       }
     }
 
-    if(usedWithAtLeastOneVFH)
+    if(usedWithAtLeastOneVFH || usedWithVBR)
     {
       kslicer::UsedContainerInfo info;
       info.type    = pMember->type;
@@ -750,10 +789,6 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
       info.kind    = pMember->kind;
       info.isConst = true;
       k.second.usedContainers[info.name] = info; 
-      if(info.name == "")
-      {
-        int a = 2;
-      }
     }
   }
   

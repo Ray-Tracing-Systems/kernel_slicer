@@ -8,13 +8,6 @@
 
 namespace kslicer
 {
-  struct TextGenSettings
-  {
-    bool enableRayGen     = false;
-    bool enableMotionBlur = false;
-    bool enableTimeStamps = false;
-  };
-
   nlohmann::json PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, const clang::CompilerInstance& compiler,
                                       const std::vector<MainFuncInfo>& a_methodsToGenerate, const std::vector<kslicer::DeclInClass>& usedDecl,
                                       const std::string& a_genIncude, const uint32_t threadsOrder[3],
@@ -40,11 +33,17 @@ namespace kslicer
 
   nlohmann::json PutHierarchyToJson(const kslicer::MainClassInfo::VFHHierarchy& h, 
                                     const clang::CompilerInstance& compiler,
-                                    const MainClassInfo& a_classInfo);
+                                    const MainClassInfo& a_classInfo,
+                                    size_t& fnGroupOffset);
 
   nlohmann::json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
                                           const clang::CompilerInstance& compiler,
                                           const MainClassInfo& a_classInfo);
+
+  nlohmann::json ListCallableStructures(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
+                                        const clang::CompilerInstance& compiler,
+                                        const MainClassInfo& a_classInfo, 
+                                        uint32_t& a_totalShaders);                                         
 
   nlohmann::json FindIntersectionHierarchy(nlohmann::json a_hierarchies);
 }

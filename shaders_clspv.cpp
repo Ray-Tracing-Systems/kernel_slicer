@@ -32,6 +32,9 @@ bool kslicer::IsVectorContructorNeedsReplacement(const std::string& a_typeName)
     m_ctorReplacement.insert("float2");
     m_ctorReplacement.insert("float3");
     m_ctorReplacement.insert("float4");
+    m_ctorReplacement.insert("float2x2");
+    m_ctorReplacement.insert("float3x3");
+    m_ctorReplacement.insert("float4x4");
     m_ctorReplacement.insert("int2");
     m_ctorReplacement.insert("int3");
     m_ctorReplacement.insert("int4");
@@ -59,7 +62,7 @@ std::string kslicer::ClspvCompiler::BuildCommand(const std::string& a_inputFile)
 }
 
 
-void kslicer::ClspvCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo)
+void kslicer::ClspvCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings)
 {
   const auto& mainClassFileName = a_codeInfo->mainClassFileName;
   const auto& ignoreFolders     = a_codeInfo->ignoreFolders;

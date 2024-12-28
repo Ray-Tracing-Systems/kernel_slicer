@@ -107,7 +107,7 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* cal
   const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);   
   const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
 
-  if(debugText == "126.0f")
+  if(debugText.find("float4x4") != std::string::npos)
   {
     int a = 2;
   }

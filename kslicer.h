@@ -28,6 +28,15 @@ std::string ToLowerCase(std::string a_str);
 
 namespace kslicer
 {
+  struct TextGenSettings
+  {
+    bool enableRayGen      = false;
+    bool enableRayGenForce = false;
+    bool enableMotionBlur  = false;
+    bool enableCallable    = false;
+    bool enableTimeStamps  = false;
+  };
+
   struct IShaderCompiler;
   enum class VKERNEL_IMPL_TYPE { VKERNEL_SWITCH = 0, VKERNEL_INDIRECT_DISPATCH=2 };
 
@@ -59,6 +68,7 @@ namespace kslicer
 
     bool isConst       = false;
     bool isSetter      = false;
+    bool bindWithRef   = false;     
     bool isTexture()     const { return (kind == DATA_KIND::KIND_TEXTURE); }
     bool isAccelStruct() const { return (kind == DATA_KIND::KIND_ACCEL_STRUCT); }
 
@@ -192,6 +202,7 @@ namespace kslicer
       std::string type;
       std::string name;
       int         size;
+      int         sizeOf = 0;
       DATA_KIND   kind = DATA_KIND::KIND_UNKNOWN;
 
       bool needFakeOffset = false;
@@ -388,6 +399,7 @@ namespace kslicer
     bool isPointer         = false;
     bool isConst           = false; ///<! const float4 BACKGROUND_COLOR = ... (they should not be read back)
     bool isSingle          = false; ///<! single struct inside buffer, not a vector (vector with size() == 1), special case for all_references and other service needs
+    bool bindWithRef       = false; ///<! if bound with buffer reference
 
     bool hasPrefix = false;
     bool hasIntersectionShader = false; ///<! indicate that this acceleration structure has user-defined intersection procedure
@@ -575,6 +587,7 @@ namespace kslicer
     bool               isArray   = false;
     bool               inClass   = false;
     uint32_t           arraySize = 0;
+    int64_t            constVal  = 0;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -898,7 +911,7 @@ namespace kslicer
     virtual bool        IsGLSL() const { return !IsSingleSource(); }
     virtual bool        IsISPC() const { return false; }
 
-    virtual void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) = 0;
+    virtual void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) = 0;
 
     virtual std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const = 0;
 
@@ -933,7 +946,7 @@ namespace kslicer
     std::string ShaderFolder()     const override { return "clspv_shaders_aux"; }
     std::string ShaderSingleFile() const override { return "z_generated.cl"; }
 
-    void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
+    void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
 
     bool        UseSeparateUBOForArguments() const override { return m_useCpp; }
     bool        UseSpecConstForWgSize()      const override { return m_useCpp; }
@@ -962,7 +975,7 @@ namespace kslicer
     ISPCCompiler(bool a_useCPP, const std::string& a_prefix);
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo[0].") + a_name; };
     std::string Name() const override { return "ISPC"; }
-    void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
+    void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
     bool        IsISPC() const override { return true; }
     std::string BuildCommand(const std::string& a_inputFile) const override;
     std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) override;
@@ -979,7 +992,7 @@ namespace kslicer
     std::string ShaderFolder()                       const override { return std::string("shaders") + ToLowerCase(m_suffix); }
     std::string ShaderSingleFile()                   const override { return ""; }
 
-    void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo) override;
+    void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
 
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
@@ -1055,6 +1068,14 @@ namespace kslicer
     std::unordered_set<std::string>                    composClassNames; 
     std::unordered_set<std::string>                    dataClassNames; 
     std::vector< std::pair<std::string, std::string> > intersectionShaders;
+    std::vector< std::pair<std::string, std::string> > intersectionTriangle;
+    std::unordered_set<std::string>                    intersectionWhiteList;
+    std::unordered_set<std::string>                    intersectionBlackList;
+
+    std::unordered_set<std::string>                    withBufferReference;
+    std::unordered_set<std::string>                    withoutBufferReference;
+    bool                                               withBufferReferenceAll = false;
+    std::vector< std::pair<std::string, std::string> > userTypedefs;
 
     std::filesystem::path mainClassFileName;
     std::string           mainClassFileInclude;
@@ -1157,12 +1178,20 @@ namespace kslicer
       bool                        isEmpty = false; ///<! empty if all memberFunctions are empty
       std::string                 objBufferName;
       std::string                 interfaceName;
+      std::string                 tagName;
+      uint32_t                    tagId;
     };
 
     enum  VFH_LEVEL{ VFH_LEVEL_1 = 1, // all imlementations are same size as interface, switch-based impl. in shader
                      VFH_LEVEL_2 = 2, // implementations of different size, GLSL_EXT_buffer_reference2, switch-based impl. in shader
                      VFH_LEVEL_3 = 3  // implementations of different size, GLSL_EXT_buffer_reference2, callable-shaders based implementation; 
                      };               // select between VFH_LEVEL_2 and VFH_LEVEL_3 is a responsibility of generator option and, there is no difference of them for user
+
+    struct VFHTagInfo
+    {
+      std::string name;
+      uint32_t    id;
+    };
 
     struct VFHHierarchy
     {
@@ -1175,7 +1204,7 @@ namespace kslicer
       bool                        hasIntersection = false;
 
       std::vector<kslicer::DeclInClass>            usedDecls;
-      std::unordered_map<std::string, std::string> tagByClassName;
+      std::unordered_map<std::string, VFHTagInfo>  tagByClassName;
       std::map<std::string, kslicer::FuncData>     virtualFunctions;
     };
 
@@ -1216,6 +1245,7 @@ namespace kslicer
     mutable std::vector<std::string> kernelsCallCmdDeclCached;
 
     std::vector< std::pair<std::string, std::string> > GetFieldsFromStruct(const clang::CXXRecordDecl* recordDecl, size_t* pSummOfFiledsSize = nullptr) const;
+    bool HasBufferReferenceBind() const;
   };
 
 

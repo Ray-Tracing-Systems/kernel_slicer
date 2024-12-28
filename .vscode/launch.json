@@ -107,7 +107,7 @@
                         "-I${workspaceFolder}/TINYSTL",       "ignore",
                         "-shaderCC", "glsl",
                         "-megakernel", "1",
-                        "-timestamps", "1",
+                        //"-timestamps", "1",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry"    : false,
@@ -709,7 +709,7 @@
             "name"   : "Launch (app_17/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/17_shadow_pt_inst/test_class.cpp",
                         "-mainClass", "TestClass", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
@@ -720,7 +720,7 @@
                         "-I${workspaceFolder}/TINYSTL",         "ignore",
                         "-I${workspaceFolder}/apps/RayTracing", "process",
                         "-megakernel", "1",
-                        "-enable_ray_tracing_pipeline", "0",
+                        "-enable_ray_tracing_pipeline", "1",
                         //"-cl-std=", "C++",
                         "-DKERNEL_SLICER",
                         "-v"],
@@ -993,6 +993,9 @@
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
                         "-megakernel", "1",
+                        "-force_ray_tracing_pipeline", "1",
+                        "-enable_callable_shaders", "1",
+                        //"-timestamps", "1",
                         "-I${workspaceFolder}/apps/LiteMath",    "ignore",
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
                         "-I${workspaceFolder}/TINYSTL",          "ignore",
@@ -1012,6 +1015,39 @@
                 }
             ]
         },
+
+        {
+            "name"   : "Launch (app_27/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/27_virtual_func_proctex_2d/render2d.cpp",
+                        "-mainClass", "ProcRender2D", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-force_ray_tracing_pipeline", "1",
+                        "-enable_callable_shaders", "1",
+                        "-timestamps", "1",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-shaderCC", "glsl",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
 
         //{
         //    "name"   : "Launch (test_001/clspv)",
@@ -2074,7 +2110,40 @@
         },
 
         {
-            "name"   : "Launch (test_035/GLSL)",
+            "name"   : "Launch (test_035/GLSL_CS_SW)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/035_intersection_shader/test_class.cpp",
+                        "-mainClass",           "TestClass",
+                        "-composInterface",     "ISceneObject",
+                        "-composImplementation","BFRayTrace",
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",  
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-I${workspaceFolder}/apps/RayTracing",  "process",
+                        "-shaderCC", "glsl",
+                        "-megakernel", "0",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (test_035/GLSL_CS_HW)",
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-debug/kslicer",
@@ -2083,6 +2152,43 @@
                         "-composInterface",     "ISceneObject",
                         "-composImplementation","BFRayTrace",
                         "-intersectionShader",  "AbtractPrimitive::Intersect", 
+                        "-intersectionTriangle","TrianglePrim", 
+                        "-enable_ray_tracing_pipeline", "0",
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",  
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-I${workspaceFolder}/apps/RayTracing",  "process",
+                        "-shaderCC", "glsl",
+                        "-megakernel", "1",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (test_035/GLSL_RT)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/035_intersection_shader/test_class.cpp",
+                        "-mainClass",           "TestClass",
+                        "-composInterface",     "ISceneObject",
+                        "-composImplementation","BFRayTrace",
+                        "-intersectionShader",  "AbtractPrimitive::Intersect", 
+                        "-intersectionTriangle","TrianglePrim", 
                         "-enable_ray_tracing_pipeline", "1",
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
@@ -2109,7 +2215,76 @@
         },
 
         {
-            "name"   : "Launch (test_036/GLSL)",
+            "name"   : "Launch (test_036/GLSL_CS_SW)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/036_intersection_shader2/test_class.cpp",
+                        "-mainClass",           "TestClass",
+                        "-composInterface",     "ISceneObject",
+                        "-composImplementation","BFRayTrace",
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",  
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I${workspaceFolder}/apps/RayTracing", "process",
+                        "-shaderCC", "glsl",
+                        "-megakernel", "1",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (test_036/GLSL_CS_HW)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/036_intersection_shader2/test_class.cpp",
+                        "-mainClass",           "TestClass",
+                        "-composInterface",     "ISceneObject",
+                        "-composImplementation","BFRayTrace",
+                        "-intersectionShader",  "AbtractPrimitive::Intersect",
+                        "-intersectionTriangle","TrianglePrim", // not mandatory 
+                        "-enable_ray_tracing_pipeline", "0",
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",  
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I${workspaceFolder}/apps/RayTracing", "process",
+                        "-shaderCC", "glsl",
+                        "-megakernel", "0",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+   
+        {
+            "name"   : "Launch (test_036/GLSL_RT)",
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-debug/kslicer",
@@ -2118,6 +2293,7 @@
                         "-composInterface",     "ISceneObject",
                         "-composImplementation","BFRayTrace",
                         "-intersectionShader",  "AbtractPrimitive::Intersect", 
+                        "-intersectionTriangle","TrianglePrim", // currently ignored for RT pipeline
                         "-enable_ray_tracing_pipeline", "1",
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
@@ -2153,7 +2329,12 @@
                         "-composInterface",     "ISceneObject",
                         "-composImplementation","BFRayTrace",
                         "-intersectionShader",  "AbtractPrimitive::Intersect",
-                        "-enable_ray_tracing_pipeline", "1",
+                        "-intersectionTriangle", "TrianglePrim",
+                        "-intersectionBlackList","TrianglePrim",
+                        "-intersectionWhiteList","SpherePrim",
+                        "-intersectionWhiteList","AABBPrim",
+                        "-intersectionWhiteList","EmptyPrim",
+                        "-enable_ray_tracing_pipeline", "0",
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
                         "-I${workspaceFolder}/apps/LiteMath",   "ignore",
@@ -2188,7 +2369,7 @@
                         "-composInterface",     "ISceneObject",
                         "-composImplementation","BFRayTrace",
                         "-intersectionShader",  "AbtractPrimitive::Intersect",
-                        "-enable_ray_tracing_pipeline", "1",
+                        "-intersectionTriangle","TrianglePrim",
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
                         "-I${workspaceFolder}/apps/LiteMath",   "ignore",
@@ -2197,6 +2378,38 @@
                         "-I${workspaceFolder}/apps/RayTracing", "process",
                         "-shaderCC", "glsl",
                         "-megakernel", "1",
+                        //"-enable_ray_tracing_pipeline", "1",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (test_039/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/039_buffer_reference/test_class.cpp",
+                        "-mainClass", "VectorTest", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",  
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-shaderCC", "glsl",
+                        "-with_buffer_reference", "all", // may add separate buffers by their names
+                        //"-without_buffer_reference", "m_data1", // may add separate buffers by their names
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,
@@ -2278,6 +2491,8 @@
                         "-enable_ray_tracing_pipeline", "0",
                         "-enable_motion_blur", "0",
                         "-gen_gpu_api", "0",
+                        "-with_buffer_reference", "all",
+                        "-without_buffer_reference", "m_packedXY",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,
@@ -2561,6 +2776,8 @@
                         "-pattern", "ipv",
                         "-pattern", "ipv",
                         "-shaderCC", "glsl",
+                        "-timestamps", "1",
+                        "-typedef", "Float3 dvec3",
                         "-I${workspaceFolder}/TINYSTL",         "ignore",
                         "-I/media/vs/data2/repos/optics/optics-rt-1/ext/LiteMath",  "ignore",
                         "-gen_gpu_api", "0",

@@ -9,7 +9,7 @@
 
 #include "{{IncludeClassDecl}}"
 
-{% if HasRTXAccelStruct %}
+{% if HasRTXAccelStruct or length(IntersectionHierarhcy.Implementations) >= 1 %}
 #include "VulkanRTX.h"
 {% endif %}
 
@@ -67,12 +67,16 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
   {% else %}
   std::array<VkDescriptorSetLayoutBinding, {{Kernel.ArgCount}}+1> dsBindings;
   {% endif %}
-
-  const auto stageFlags = {% if Kernel.UseRayGen %}VK_SHADER_STAGE_RAYGEN_BIT_KHR{% if Kernel.HasIntersection %} | VK_SHADER_STAGE_INTERSECTION_BIT_KHR{% endif %}{% else %}VK_SHADER_STAGE_COMPUTE_BIT{% endif %};
+  
+  {% if Kernel.UseRayGen %}
+  const auto stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR;
+  {% else %}
+  const auto stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+  {% endif %}
 
 ## for KernelARG in Kernel.Args
   // binding for {{KernelARG.Name}}
-  dsBindings[{{KernelARG.Id}}].binding            = {{KernelARG.Id}};
+  dsBindings[{{KernelARG.Id}}].binding            = {{loop.index}};
   dsBindings[{{KernelARG.Id}}].descriptorType     = {{KernelARG.Type}};
   {% if KernelARG.IsTextureArray %}
   m_vdata.{{KernelARG.Name}}ArrayMaxSize = {{KernelARG.Count}};

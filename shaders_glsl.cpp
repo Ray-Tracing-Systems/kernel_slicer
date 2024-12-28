@@ -11,7 +11,7 @@ kslicer::GLSLCompiler::GLSLCompiler(const std::string& a_prefix) : m_suffix(a_pr
 
 }
 
-void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo)
+void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings)
 {
   const auto& mainClassFileName = a_codeInfo->mainClassFileName;
   const auto& ignoreFolders     = a_codeInfo->ignoreFolders;
@@ -41,6 +41,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   const std::filesystem::path templatePathRedFin = templatesFolder / "reduction_finish.glsl";
   const std::filesystem::path templatePathIntShd = templatesFolder / "intersection_shader.glsl";
   const std::filesystem::path templatePathHitShd = templatesFolder / "closest_hit_shader.glsl";
+  const std::filesystem::path templatePathCalShd = templatesFolder / "callable_shader.glsl";
 
   nlohmann::json copy, kernels, intersections;
   for (auto& el : a_kernelsJson.items())
@@ -55,6 +56,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   //std::cout << "shaderPath = " << shaderPath.c_str() << std::endl;
 
   bool needRTDummies = false;
+  bool rcHitForIntersectionIsGenerated = false;
 
   std::ofstream buildSH(shaderPath / scriptName);
   #if not __WIN32__
@@ -100,20 +102,54 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
 
         if(intersectionShaders.find(outFileName_RHIT) != intersectionShaders.end())
           continue;
-        
+         
         intersectionShaders.insert(outFileName_RHIT);
 
-        kslicer::ApplyJsonToTemplate(templatePathHitShd.c_str(), shaderPath / outFileName_RHIT, ISData);
+        if(!rcHitForIntersectionIsGenerated)
+        {
+          kslicer::ApplyJsonToTemplate(templatePathHitShd.c_str(), shaderPath / "z_trace_custom_hit.glsl", ISData);
+          buildSH << "glslangValidator -V --target-env vulkan1.2 -S rchit " << "z_trace_custom_hit.glsl" << " -o " << "z_trace_custom_hit.glsl" << ".spv" << " -DGLSL -I.. ";
+          for(auto folder : ignoreFolders)
+            buildSH << "-I" << folder.c_str() << " ";
+          buildSH << std::endl;
+          rcHitForIntersectionIsGenerated = false;
+        }
+
+        //kslicer::ApplyJsonToTemplate(templatePathHitShd.c_str(), shaderPath / outFileName_RHIT, ISData);
         kslicer::ApplyJsonToTemplate(templatePathIntShd.c_str(), shaderPath / outFileName_RINT, ISData);
 
-        buildSH << "glslangValidator -V --target-env vulkan1.2 -S rchit " << outFileName_RHIT.c_str() << " -o " << outFileName_RHIT.c_str() << ".spv" << " -DGLSL -I.. ";
-        for(auto folder : ignoreFolders)
-          buildSH << "-I" << folder.c_str() << " ";
-        buildSH << std::endl;
+        //buildSH << "glslangValidator -V --target-env vulkan1.2 -S rchit " << outFileName_RHIT.c_str() << " -o " << outFileName_RHIT.c_str() << ".spv" << " -DGLSL -I.. ";
+        //for(auto folder : ignoreFolders)
+        //  buildSH << "-I" << folder.c_str() << " ";
+        //buildSH << std::endl;
         buildSH << "glslangValidator -V --target-env vulkan1.2 -S rint " << outFileName_RINT.c_str() << " -o " << outFileName_RINT.c_str() << ".spv" << " -DGLSL -I.. ";
         for(auto folder : ignoreFolders)
           buildSH << "-I" << folder.c_str() << " ";
         buildSH << std::endl;
+      }
+      
+      if(a_settings.enableCallable)
+      {
+        for(auto hierarchy : currKerneJson["Kernel"]["Hierarchies"]) {
+          for(auto impl : hierarchy["Implementations"]) {
+            for(const auto& member : impl["MemberFunctions"]) {
+            
+              nlohmann::json CSData    = copy;
+              CSData["Kernel"]         = currKerneJson["Kernel"];
+              CSData["Implementation"] = impl;
+              CSData["MemberName"]     = member["Name"];
+  
+              std::string outFileName  = a_codeInfo->RemoveKernelPrefix(kernelName) + "_" + std::string(impl["ClassName"]) + "_" + std::string(member["Name"]) + "_call.glsl";
+        
+              kslicer::ApplyJsonToTemplate(templatePathCalShd.c_str(), shaderPath / outFileName, CSData);
+              
+              buildSH << "glslangValidator -V --target-env vulkan1.2 -S rcall " << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
+              for(auto folder : ignoreFolders)
+                buildSH << "-I" << folder.c_str() << " ";
+              buildSH << std::endl;
+            }
+          }
+        }
       }
     }
 
@@ -306,6 +342,7 @@ std::unordered_map<std::string, std::string> kslicer::ListGLSLVectorReplacements
   m_vecReplacements["uint4"]  = "uvec4";
   m_vecReplacements["float4x4"] = "mat4";
   m_vecReplacements["float3x3"] = "mat3";
+  m_vecReplacements["float2x2"] = "mat2";
   m_vecReplacements["_Bool"] = "bool";
   m_vecReplacements["unsigned int"]   = "uint";
   m_vecReplacements["unsigned"]       = "uint";
@@ -318,30 +355,14 @@ std::unordered_map<std::string, std::string> kslicer::ListGLSLVectorReplacements
   m_vecReplacements["int32_t"]        = "int";
   m_vecReplacements["uint32_t"]       = "uint";
   m_vecReplacements["size_t"]         = "uint64_t";
-
-  m_vecReplacements["const float2"] = "const vec2";
-  m_vecReplacements["const float3"] = "const vec3";
-  m_vecReplacements["const float4"] = "const vec4";
-  m_vecReplacements["const int2"]   = "const ivec2";
-  m_vecReplacements["const int3"]   = "const ivec3";
-  m_vecReplacements["const int4"]   = "const ivec4";
-  m_vecReplacements["const uint2"]  = "const uvec2";
-  m_vecReplacements["const uint3"]  = "const uvec3";
-  m_vecReplacements["const uint4"]  = "const uvec4";
-  m_vecReplacements["const float4x4"] = "const mat4";
-  m_vecReplacements["const float3x3"] = "const mat3";
-  m_vecReplacements["const _Bool"] = "const bool";
-  m_vecReplacements["const unsigned int"]   = "const uint";
-  m_vecReplacements["const unsigned char"]  = "const uint8_t";
-  m_vecReplacements["const unsigned short"] = "const uint16_t";
-  m_vecReplacements["const char"]           = "const int8_t";
-  m_vecReplacements["const short"]          = "const int16_t";
-  m_vecReplacements["const uchar"]          = "const uint8_t";
-  m_vecReplacements["const ushort"]         = "const uint16_t";
-  m_vecReplacements["const int32_t"]        = "const int";
-  m_vecReplacements["const uint32_t"]       = "const uint";
-  m_vecReplacements["const size_t"]         = "const uint64_t";
-
+  
+  std::unordered_map<std::string, std::string> m_vecReplacementsConst;
+  for(auto r : m_vecReplacements)
+    m_vecReplacementsConst[std::string("const ") + r.first] = std::string("const ") + m_vecReplacements[r.first];
+  
+  for(auto rc : m_vecReplacementsConst)
+    m_vecReplacements[rc.first] = rc.second;
+    
   return m_vecReplacements;
 }
 
@@ -652,10 +673,19 @@ bool kslicer::GLSLFunctionRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySub
   for(auto globalPointer : m_shit.pointers)
   {
     if(globalPointer.formal == leftText && WasNotRewrittenYet(right))
-    {
+    { 
+      bool isBufferReferenceAccess = false;
+      auto pFound = m_codeInfo->allDataMembers.find(globalPointer.actual);
+      if(pFound != m_codeInfo->allDataMembers.end())
+        isBufferReferenceAccess = pFound->second.bindWithRef;
+
       const std::string rightText = RecursiveRewrite(right);
-      const std::string texRes    = globalPointer.actual + "[" + rightText + " + " + leftText + "Offset]";
-      ReplaceTextOrWorkAround(arrayExpr->getSourceRange(), texRes); // process shitty global pointers
+      std::string textRes;
+      if(isBufferReferenceAccess)
+        textRes = std::string("all_references.") + globalPointer.actual + "." + globalPointer.actual + "[" + rightText + " + " + leftText + "Offset]";
+      else
+        textRes = globalPointer.actual + "[" + rightText + " + " + leftText + "Offset]";
+      ReplaceTextOrWorkAround(arrayExpr->getSourceRange(), textRes); // process shitty global pointers
       MarkRewritten(right);
       break;
     }

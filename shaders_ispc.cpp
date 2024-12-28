@@ -15,7 +15,7 @@ std::string kslicer::ISPCCompiler::BuildCommand(const std::string& a_inputFile) 
   return std::string("ispc ") + a_inputFile + " --target=\"avx2-i32x8\" -O2 ";
 }
 
-void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo)
+void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings)
 {
   const auto& mainIncluideName  = a_codeInfo->mainClassFileInclude;
   const auto& mainClassFileName = a_codeInfo->mainClassFileName;

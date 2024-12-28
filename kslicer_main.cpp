@@ -194,8 +194,18 @@ int main(int argc, const char **argv)
   kslicer::TextGenSettings textGenSettings;
   if(params.find("-enable_motion_blur") != params.end())
     textGenSettings.enableMotionBlur = atoi(params["-enable_motion_blur"].c_str()) != 0;
-  if(params.find("-enable_ray_tracing_pipeline") != params.end())
+  if(params.find("-force_ray_tracing_pipeline") != params.end())
+  {
+    bool isEnabled = (atoi(params["-force_ray_tracing_pipeline"].c_str()) != 0);
+    textGenSettings.enableRayGen      = isEnabled;
+    textGenSettings.enableRayGenForce = isEnabled;
+  }
+  else if(params.find("-enable_ray_tracing_pipeline") != params.end())
     textGenSettings.enableRayGen = (atoi(params["-enable_ray_tracing_pipeline"].c_str()) != 0) || textGenSettings.enableMotionBlur;
+  
+  if(params.find("-enable_callable_shaders") != params.end()) // enable_callable_shaders
+    textGenSettings.enableCallable = (atoi(params["-enable_callable_shaders"].c_str()) != 0);
+  
   if(params.find("-timestamps") != params.end())
     textGenSettings.enableTimeStamps = (atoi(params["-timestamps"].c_str()) != 0);
 
@@ -290,8 +300,43 @@ int main(int argc, const char **argv)
       std::string funcName  = shaderClassAndFunc.substr(splitPos + 2);
       inputCodeInfo.intersectionShaders.push_back( std::make_pair(className, funcName) );
     }
+    else if(std::string(argv[argId]) == "-intersectionTriangle" && argId+1 < argc) {
+      const std::string className = argv[argId+1];
+      inputCodeInfo.intersectionTriangle.push_back( std::make_pair(className, className) );
+    }
+    else if(std::string(argv[argId]) == "-intersectionWhiteList" && argId+1 < argc) {
+      const std::string className = argv[argId+1];
+      inputCodeInfo.intersectionWhiteList.insert(className);
+    }
+    else if(std::string(argv[argId]) == "-intersectionBlackList" && argId+1 < argc) {
+      const std::string className = argv[argId+1];
+      inputCodeInfo.intersectionBlackList.insert(className);
+    }
     else if (std::string(argv[argId]) == "-baseClass" && argId+1 < argc) {
       baseClases.push_back(argv[argId+1]);
+    }
+    else if(std::string(argv[argId]) == "-with_buffer_reference" && argId+1 < argc)
+    {
+      const std::string buffName = argv[argId+1];
+      if(buffName == "all")
+        inputCodeInfo.withBufferReferenceAll = true;
+      else if(buffName != "")
+        inputCodeInfo.withBufferReference.insert(buffName);
+    }
+    else if(std::string(argv[argId]) == "-without_buffer_reference" && argId+1 < argc)
+    {
+      const std::string buffName = argv[argId+1];
+      if(buffName != "")
+        inputCodeInfo.withoutBufferReference.insert(buffName);
+    }
+    else if(std::string(argv[argId]) == "-typedef" && argId+1 < argc)
+    {
+      const std::string buffName = argv[argId+1];
+      std::stringstream strIn(buffName);
+      char original[64];
+      char replace[64];
+      strIn >> original >> replace;
+      inputCodeInfo.userTypedefs.push_back(std::make_pair(std::string(original), std::string(replace)));
     }
   }
 
@@ -767,13 +812,34 @@ int main(int argc, const char **argv)
       } // end for(const auto& f : usedFunctions)
     } // end for(auto& k : inputCodeInfo.kernels)
 
-    for(const auto& k : inputCodeInfo.kernels) // fix this flag for members that were used in member functions but not in kernels directly
+    for(auto& k : inputCodeInfo.kernels) 
     {
+      // fix "usedInKernel" flag for members that were used in member functions but not in kernels directly
+      //
       for(const auto& c : k.second.usedContainers)
       {
         auto pFound = inputCodeInfo.allDataMembers.find(c.second.name);
         if(pFound != inputCodeInfo.allDataMembers.end())
           pFound->second.usedInKernel = true;
+      }
+      
+      // set bind mode (explicit with descriptor set or impleceit with buffer reference)
+      //
+      for(auto& c : k.second.usedContainers)
+      {
+        auto pNoBufferReference  = inputCodeInfo.withoutBufferReference.find(c.second.name);
+        auto pYesBufferReference = inputCodeInfo.withBufferReference.find(c.second.name);
+        if(pNoBufferReference != inputCodeInfo.withoutBufferReference.end())
+          c.second.bindWithRef = false;
+        else if((pYesBufferReference != inputCodeInfo.withBufferReference.end() || inputCodeInfo.withBufferReferenceAll))
+          c.second.bindWithRef = true;
+
+        if(c.second.kind != kslicer::DATA_KIND::KIND_VECTOR)
+          c.second.bindWithRef = false;
+
+        auto pFound = inputCodeInfo.allDataMembers.find(c.second.name);
+        if(pFound != inputCodeInfo.allDataMembers.end())
+          pFound->second.bindWithRef = c.second.bindWithRef; 
       }
     }
 
@@ -977,8 +1043,8 @@ int main(int argc, const char **argv)
           break;
         }
       }
-      cf.megakernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
-      inputCodeInfo.globalDeviceFeatures.useRTX = inputCodeInfo.globalDeviceFeatures.useRTX || hasAccelStructs;
+      cf.megakernel.enableRTPipeline = (hasAccelStructs && textGenSettings.enableRayGen) || textGenSettings.enableRayGenForce;
+      inputCodeInfo.globalDeviceFeatures.useRTX = inputCodeInfo.globalDeviceFeatures.useRTX || hasAccelStructs || textGenSettings.enableRayGenForce;
     }
   }
 
@@ -994,7 +1060,7 @@ int main(int argc, const char **argv)
         break;
       }
     }
-    kernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
+    kernel.enableRTPipeline = (hasAccelStructs && textGenSettings.enableRayGen) || textGenSettings.enableRayGenForce;
   }
   
   ///////////////////////////////////////////////////////////////////////////// fix code for seperate kernel with RT pipeline
@@ -1138,7 +1204,7 @@ int main(int argc, const char **argv)
           break;
         }
       }
-      cf.megakernel.enableRTPipeline = hasAccelStructs && textGenSettings.enableRayGen;
+      cf.megakernel.enableRTPipeline = (hasAccelStructs && textGenSettings.enableRayGen) || textGenSettings.enableRayGenForce;
     }
   }
   else
@@ -1149,6 +1215,11 @@ int main(int argc, const char **argv)
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO, usedDefines, textGenSettings);
+  
+  //std::ofstream file(inputCodeInfo.mainClassFileName.parent_path() / "z_debug_kernels.json");
+  //file << std::setw(2) << json; //
+  //file.close();
+  
   if(inputCodeInfo.pShaderCC->IsISPC()) {
     json["Constructors"]        = jsonCPP["Constructors"];
     json["HasCommitDeviceFunc"] = jsonCPP["HasCommitDeviceFunc"];
@@ -1158,11 +1229,7 @@ int main(int argc, const char **argv)
     json["MainFunctions"]       = jsonCPP["MainFunctions"];
     json["MainInclude"]         = jsonCPP["MainInclude"];
   }
-  inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo);
-
-  //std::ofstream file(inputCodeInfo.mainClassFileName.parent_path / "z_ubo.json");
-  //file << std::setw(2) << json; //
-  //file.close();
+  inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo, textGenSettings);
 
   {
     std::filesystem::path outName = inputCodeInfo.mainClassFileName.parent_path() / "include" / uboIncludeName;
