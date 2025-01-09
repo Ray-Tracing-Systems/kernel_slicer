@@ -156,6 +156,8 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* 
 
   auto pCompos = m_composedClassInfo.find(typeName);
 
+  //std::cout << "  [VisitCXXRecordDecl]: " << typeName.c_str() << std::endl;
+
   if(IsMainClassName(typeName))
     mci.astNode = record;
   else if(pCompos != m_composedClassInfo.end())

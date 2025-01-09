@@ -40,12 +40,12 @@ std::vector<kslicer::ArgFinal> kslicer::IPV_Pattern::GetKernelTIDArgs(const Kern
 void kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
   const clang::CXXRecordDecl* parentClass = a_mainFunc.Node->getParent();
-  if(parentClass != nullptr)
-  {
-    const clang::IdentifierInfo* classInfo = parentClass->getIdentifier();
-    std::string classNameVal = classInfo->getName().str();
-    std::cout << "  [debug]: class name: " << classNameVal.c_str() << "\n";
-  }
+  //if(parentClass != nullptr)
+  //{
+  //  const clang::IdentifierInfo* classInfo = parentClass->getIdentifier();
+  //  std::string classNameVal = classInfo->getName().str();
+  //  std::cout << "  [debug]: class name: " << classNameVal.c_str() << "\n";
+  //}
 
   a_mainFunc.startTSNumber = m_timestampPoolSize;
   GetCFSourceCodeCmd(a_mainFunc, compiler, false); // ==> write this->allDescriptorSetsInfo, a_mainFunc // TODO: may simplify impl for image processing 

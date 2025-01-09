@@ -474,6 +474,12 @@ int main(int argc, const char **argv)
   }
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
 
+  if(firstPassData.rv.mci.astNode == nullptr)
+  {
+    std::cout << "  [main]: critical error, main class '" << mainClassName.c_str() << "' not found" << std::endl;
+    return 0;
+  }
+
   // вызов compiler.getDiagnosticClient().EndSourceFile() 
   // обеспечивает корректное завершение обработки диагностических сообщений 
   // для текущего исходного файла в процессе компиляции с использованием Clang.
