@@ -18,6 +18,7 @@ bool kslicer::FunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDec
     done.funBody = kslicer::GetRangeSourceCode(fDecl->getBody()->getSourceRange(), m_compiler);
     m_codeInfo->m_functionsDone[hash] = done;
   } 
+  return true;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

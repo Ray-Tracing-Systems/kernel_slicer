@@ -254,7 +254,7 @@
             "name"   : "Launch (app_05/ISPC)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
             "args"   : ["${workspaceFolder}/apps/05_filter_bloom_good/test_class.cpp",
                         "-mainClass", "ToneMapping", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
