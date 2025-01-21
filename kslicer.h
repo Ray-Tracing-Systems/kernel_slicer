@@ -671,7 +671,7 @@ namespace kslicer
     virtual std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText);
 
   public:
-    virtual bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)       { return true; } // override this in Derived class
+    virtual bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl);
     virtual bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl)     { return true; } // override this in Derived class
 
     virtual bool VisitVarDecl_Impl(clang::VarDecl* decl)                  { return true; } // override this in Derived class
