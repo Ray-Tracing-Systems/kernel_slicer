@@ -236,7 +236,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
   
-  auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "", false);
+  auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "");
   pVisitor->SetCurrKernelInfo(&a_funcInfo);
 
   //const std::string funBody  = pVisitor->RecursiveRewrite(a_funcInfo.astNode->getBody());
@@ -271,7 +271,6 @@ void kslicer::MainClassInfo::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const cl
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
-  //auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "", true);
   auto pVisitor = std::make_shared<KernelInfoVisitor>(rewrite2, compiler, this, a_funcInfo);
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
 }

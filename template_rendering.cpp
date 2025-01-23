@@ -951,7 +951,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       
       clang::Rewriter rewrite2;
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-      std::shared_ptr<KernelRewriter> pRewriter = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), std::string(""), false);
+      std::shared_ptr<KernelRewriter> pRewriter = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), std::string(""));
 
       for(const auto var : k.be.sharedDecls)
         kernelJson["SharedBE"].push_back(a_classInfo.pShaderCC->RewriteBESharedDecl(var, pRewriter));
@@ -993,7 +993,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       clang::Rewriter rewrite2;
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-      auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "", false);
+      auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "");
       //pVisitorK->ClearUserArgs();
 
       kernelJson["ThreadIds"] = std::vector<std::string>();
@@ -1187,7 +1187,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       clang::Rewriter rewrite2;
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
       auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
-      auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "", false);
+      auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "");
       pVisitorK->ClearUserArgs();
       pVisitorK->processFuncMember = true; // signal that we process function member, not the kernel itself
 
