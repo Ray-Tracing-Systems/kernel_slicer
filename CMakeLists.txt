@@ -31,7 +31,8 @@ set(KSLICER_SOURCE_FILES
     reduction.cpp
     shaders_clspv.cpp
     shaders_glsl.cpp
-    shaders_ispc.cpp)
+    shaders_ispc.cpp
+    shaders_slang.cpp)
 
 include_directories("include")
 

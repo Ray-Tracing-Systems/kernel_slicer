@@ -291,12 +291,6 @@ std::string kslicer::GLSLCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_
   }
 }
 
-std::string kslicer::GLSLCompiler::ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const
-{
-  std::string text = a_call;
-  ReplaceFirst(text, "std::", "");
-  return text;
-}
 
 void kslicer::GLSLCompiler::GetThreadSizeNames(std::string a_strs[3]) const
 {
