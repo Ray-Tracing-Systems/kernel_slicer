@@ -764,7 +764,43 @@ namespace kslicer
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////  KernelRewriter  //////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+  
+  class KernelInfoVisitor : public clang::RecursiveASTVisitor<KernelInfoVisitor> // replace all expressions with class variables to kgen_data buffer access
+  {
+  public:
+  
+    KernelInfoVisitor(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel);
+    virtual ~KernelInfoVisitor() {}
+  
+    bool VisitForStmt(clang::ForStmt* forLoop);
+    bool VisitMemberExpr(clang::MemberExpr* expr);
+    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f);
+    bool VisitReturnStmt(clang::ReturnStmt* ret);
+    bool VisitUnaryOperator(clang::UnaryOperator* expr);
+  
+    bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr);
+    bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr* expr);
+    bool VisitBinaryOperator(clang::BinaryOperator* expr);
+  
+  protected:
+  
+    void DetectTextureAccess(clang::CXXMemberCallExpr* call);
+    void DetectTextureAccess(clang::CXXOperatorCallExpr* expr);
+    void DetectTextureAccess(clang::BinaryOperator* expr);
+    void ProcessReadWriteTexture(clang::CXXOperatorCallExpr* expr, bool write);
+  
+    void ProcessReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
+    void DetectFuncReductionAccess(const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
+  
+    clang::Rewriter&               m_rewriter;
+    const clang::CompilerInstance& m_compiler;
+    kslicer::MainClassInfo*        m_codeInfo;
+    kslicer::KernelInfo&           m_currKernel;
+    //std::string                  m_mainClassName;
+  
+    std::unordered_set<uint64_t> m_visitedTexAccessNodes;
+  };
+  
   void DisplayVisitedNodes(const std::unordered_set<uint64_t>& a_nodes);
   bool CheckSettersAccess(const clang::MemberExpr* expr, const MainClassInfo* a_codeInfo, const clang::CompilerInstance& a_compiler,
                           std::string* setterS, std::string* setterM);

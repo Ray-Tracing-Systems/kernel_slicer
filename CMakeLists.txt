@@ -24,6 +24,7 @@ set(KSLICER_SOURCE_FILES
     template_rendering_host.cpp
     rewrite_functions.cpp
     rewrite_kernel.cpp
+    rewrite_kernel_info.cpp
     rewrite_control.cpp
     setter_process.cpp
     reduction.cpp

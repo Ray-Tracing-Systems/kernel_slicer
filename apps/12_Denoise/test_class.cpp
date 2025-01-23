@@ -7,6 +7,7 @@
 using std::min;
 using std::max;
 using std::abs;
+using std::sqrt;
 
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -91,7 +92,7 @@ static inline float NLMWeight(__global const float4* in_buff, int w, int h, int 
     }
   }
 
-  return w1 / std::sqrt(2.0F * (float)a_blockRadius + 1.0F);
+  return w1 / sqrt(2.0F * (float)a_blockRadius + 1.0F);
 }
 
 Denoise::Denoise(const int w, const int h) // 
@@ -149,7 +150,7 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
                                                  const float a_noiseLevel)
 {     
   m_noiseLevel  = 1.0f / (a_noiseLevel * a_noiseLevel);    
-  m_windowArea  = std::sqrt(2.0f * (float)(a_windowRadius) + 1.0f);
+  m_windowArea  = sqrt(2.0f * (float)(a_windowRadius) + 1.0f);
 
   #pragma omp parallel for collapse(2)
   for (int y = 0; y < a_height; ++y)
