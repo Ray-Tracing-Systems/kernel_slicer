@@ -633,7 +633,11 @@ namespace kslicer
     bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* arrayExpr)            { return VisitArraySubscriptExpr_Impl(arrayExpr); }
     bool VisitUnaryExprOrTypeTraitExpr(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { return VisitUnaryExprOrTypeTraitExpr_Impl(szOfExpr); }
     bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr* expr)               { return VisitCXXOperatorCallExpr_Impl(expr); }
-    
+
+    bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr) { return VisitCompoundAssignOperator_Impl(expr); }
+    bool VisitBinaryOperator(clang::BinaryOperator* expr)                 { return VisitBinaryOperator_Impl(expr); }
+    bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { return VisitDeclRefExpr_Impl(expr); }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -695,6 +699,10 @@ namespace kslicer
     virtual bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { return true; }
     virtual bool VisitCallExpr_Impl(clang::CallExpr* f);
 
+    virtual bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) { return true; }
+    virtual bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr) { return true; }
+    virtual bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) { return true; }
+
   };
 
   class FunctionRewriter2 : public FunctionRewriter ///!< BASE CLASS FOR ALL NEW BACKENDS
@@ -721,6 +729,16 @@ namespace kslicer
     bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)            override;
     bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
     bool VisitCallExpr_Impl(clang::CallExpr* f)                                        override;
+
+    bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) override;
+    bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr)                 override;
+    bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)                       override;
+
+    // Also important functions to use(!)
+    //
+    std::string RecursiveRewrite(const clang::Stmt* expr) override;
+    //void MarkRewritten(const clang::Stmt* expr);
+    //bool WasNotRewrittenYet(const clang::Stmt* expr);
 
     bool m_kernelMode = false; ///!< if proccesed function is kernel or nor
   };
