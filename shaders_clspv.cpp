@@ -191,7 +191,7 @@ kslicer::KernelRewriter::KernelRewriter(clang::Rewriter &R, const clang::Compile
                                         const std::string& a_fakeOffsetExpr, const bool a_infoPass) :
                                         m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo), m_mainClassName(a_codeInfo->mainClassName),
                                         m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_kernelIsBoolTyped(a_kernel.isBoolTyped),
-                                        m_currKernel(a_kernel), m_infoPass(a_infoPass)
+                                        m_currKernel(a_kernel)
 {
   m_pRewrittenNodes = std::make_shared< std::unordered_set<uint64_t> >();
   const auto& a_variables = a_codeInfo->dataMembers;

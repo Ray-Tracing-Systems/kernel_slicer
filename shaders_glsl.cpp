@@ -1419,7 +1419,6 @@ public:
 
   kslicer::ShaderFeatures GetShaderFeatures()       const override { return m_glslRW.GetShaderFeatures(); }
   kslicer::ShaderFeatures GetKernelShaderFeatures() const override { return m_glslRW.GetShaderFeatures(); }
-  bool                    IsInfoPass()              const override { return m_infoPass; }
 
 protected:
 
@@ -1531,9 +1530,6 @@ void GLSLKernelRewriter::ApplyDefferedWorkArounds()
 
 bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-    return true;
-
   // (#1) check if buffer/pointer to global memory is passed to a function
   //
   std::vector<kslicer::ArgMatch> usedArgMatches = kslicer::MatchCallArgsForKernel(call, m_currKernel, m_compiler);
@@ -1639,9 +1635,6 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
 
 bool GLSLKernelRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-    return true;
-
   kslicer::FuncData fdata;
   if(m_pCurrKernelInfo != nullptr) 
   {
@@ -1661,41 +1654,30 @@ bool GLSLKernelRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 
 bool GLSLKernelRewriter::VisitDeclStmt_Impl(clang::DeclStmt* stmt)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-    return true;
   m_glslRW.VisitDeclStmt_Impl(stmt);
   return true;
 }
 
 bool GLSLKernelRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-    return true;
   m_glslRW.VisitCStyleCastExpr_Impl(cast);
   return true;
 }
 
 bool GLSLKernelRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-    return true;
   m_glslRW.VisitArraySubscriptExpr_Impl(arrayExpr);
   return true;
 }
 
 bool GLSLKernelRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-    return true;
   m_glslRW.VisitUnaryExprOrTypeTraitExpr_Impl(szOfExpr);
   return true;
 }
 
 bool GLSLKernelRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
 {
-  if(m_infoPass)
-    return kslicer::KernelRewriter::VisitUnaryOperator_Impl(expr);
-
   const auto op = expr->getOpcodeStr(expr->getOpcode());
   //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); //
   if(op == "*")
@@ -1719,8 +1701,6 @@ bool GLSLKernelRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
 
 bool GLSLKernelRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-    return true;
   return m_glslRW.VisitCXXConstructExpr_Impl(call);
 }
 
@@ -1791,9 +1771,6 @@ void GLSLKernelRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, 
 
 bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-    return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr);
-
   std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler);
   std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 
@@ -1865,9 +1842,6 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
 
 bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* call)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-    return kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(call);
-
   clang::CXXMethodDecl* fDecl = call->getMethodDecl();
   if(fDecl != nullptr && WasNotRewrittenYet(call))
   {
@@ -1952,9 +1926,6 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
 
 bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-    return true;
-
   const clang::ValueDecl* pDecl = expr->getDecl();
   if(!clang::isa<clang::ParmVarDecl>(pDecl))
     return true;
@@ -1980,9 +1951,6 @@ bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
 
 bool GLSLKernelRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast)
 {
-  if(m_infoPass)
-    return true;
-
   return m_glslRW.VisitImplicitCastExpr_Impl(cast);
 }
 
@@ -1993,9 +1961,6 @@ bool GLSLKernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 
 bool GLSLKernelRewriter::VisitReturnStmt_Impl(clang::ReturnStmt* ret)
 {
-  if(m_infoPass)
-    return true;
-
   return KernelRewriter::VisitReturnStmt_Impl(ret);
 }
 
@@ -2006,9 +1971,6 @@ bool GLSLKernelRewriter::VisitCompoundAssignOperator_Impl(clang::CompoundAssignO
 
 bool GLSLKernelRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-    return KernelRewriter::VisitBinaryOperator_Impl(expr);
-
   std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler);
   std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 

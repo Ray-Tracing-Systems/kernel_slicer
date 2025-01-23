@@ -12,50 +12,6 @@
 
 bool kslicer::KernelRewriter::VisitForStmt(clang::ForStmt* forLoop)
 {
-  if(!m_infoPass) // we find nodes only during info pass
-    return true;
-  
-  const clang::Stmt* loopStart  = forLoop->getInit();
-  const clang::Expr* loopStride =	forLoop->getInc();
-  const clang::Expr* loopSize   = forLoop->getCond(); 
-  const clang::Stmt* loopBody   = forLoop->getBody();
-  
-  if(!clang::isa<clang::DeclStmt>(loopStart))
-    return true;
-  const clang::DeclStmt* initVarDS = clang::dyn_cast<clang::DeclStmt>(loopStart);
-  const clang::Decl*     initVarD  = initVarDS->getSingleDecl();
-  if(!clang::isa<clang::VarDecl>(initVarD))
-    return true;  
-  const clang::VarDecl* initVar        = clang::dyn_cast<clang::VarDecl>(initVarD);
-  const clang::SourceRange startRange  = initVar->getAnyInitializer()->getSourceRange();
-  const clang::SourceRange sizeRange   = loopSize->getSourceRange();
-  const clang::SourceRange strideRange = loopStride->getSourceRange();
-
-  const std::string startText  = kslicer::GetRangeSourceCode(startRange, m_compiler);
-  const std::string sizeText   = kslicer::GetRangeSourceCode(sizeRange, m_compiler);
-  const std::string strideText = kslicer::GetRangeSourceCode(strideRange, m_compiler);
-
-  std::string opCodeStr = "<";
-  if(clang::isa<clang::BinaryOperator>(loopSize))
-  {
-    const clang::BinaryOperator* opCompare = clang::dyn_cast<const clang::BinaryOperator>(loopSize);
-    opCodeStr = opCompare->getOpcodeStr();
-  }
-
-  for(auto& loop : m_currKernel.loopIters)
-  {
-    if(loop.startText != startText || loop.condTextOriginal != sizeText || loop.iterTextOriginal != strideText)
-      continue;
-    loop.startNode  = initVar->getAnyInitializer();
-    loop.sizeNode   = loopSize;
-    loop.strideNode = loopStride;
-    loop.bodyNode   = loopBody;
-    if(opCodeStr == "<=")
-      loop.condKind = kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL;
-    else
-      loop.condKind = kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS;
-  }
-
   return true;
 }
 
@@ -118,8 +74,6 @@ bool kslicer::CheckSettersAccess(const clang::MemberExpr* expr, const MainClassI
 
 bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text)
 {
-  if(m_infoPass)
-    return false;
   clang::ValueDecl* pValueDecl = expr->getMemberDecl();
   if(!isa<FieldDecl>(pValueDecl))
     return false;
@@ -249,7 +203,7 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
   if(m_codeInfo->pShaderCC->IsISPC() && subjectedToRed)
     return false;
   
-  if(!pMember->second.isContainer && WasNotRewrittenYet(expr) && !m_infoPass && (isInLoopInitPart || isInLoopFinishPart || !subjectedToRed) && 
+  if(!pMember->second.isContainer && WasNotRewrittenYet(expr) && (isInLoopInitPart || isInLoopFinishPart || !subjectedToRed) && 
                                                                  (isInLoopInitPart || isInLoopFinishPart || pMember->second.isArray || hasLargeSize || inMegaKernel)) 
   {
     out_text = m_codeInfo->pShaderCC->UBOAccess(pMember->second.name);
@@ -266,25 +220,6 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
 
 bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-  {
-    std::string setter, containerName;
-    if(CheckSettersAccess(expr, m_codeInfo, m_compiler, &setter, &containerName))
-    {
-      clang::QualType qt = expr->getType(); // 
-      kslicer::UsedContainerInfo container;
-      container.type     = qt.getAsString();
-      container.name     = setter + "_" + containerName;            
-      container.kind     = kslicer::GetKindOfType(qt);
-      container.isConst  = qt.isConstQualified();
-      container.isSetter = true;
-      container.setterPrefix = setter;
-      container.setterSuffix = containerName;
-      m_currKernel.usedContainers[container.name] = container;
-    }
-    return true; 
-  }
-
   std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
 
   std::string rewrittenText;
@@ -338,9 +273,6 @@ std::string kslicer::KernelRewriter::FunctionCallRewrite(const CXXConstructExpr*
 
 bool kslicer::KernelRewriter::VisitCallExpr_Impl(CallExpr* call)
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-    return true; 
-
   if(isa<CXXMemberCallExpr>(call) || isa<CXXConstructExpr>(call)) // process else-where
     return true;
 
@@ -382,9 +314,6 @@ std::string kslicer::KernelRewriter::VectorTypeContructorReplace(const std::stri
 
 bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call) // #TODO: seems it forks only for clspv, refactor this function please
 {
-  if(m_infoPass) // don't have to rewrite during infoPass
-    return true; 
-
   CXXConstructorDecl* ctorDecl = call->getConstructor();
   assert(ctorDecl != nullptr);
   
@@ -433,12 +362,6 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
   const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
   const DeclarationName dn      = dni.getName();
         std::string fname       = dn.getAsString();
-
-  if(m_infoPass) // don't have to rewrite during infoPass
-  {
-    DetectTextureAccess(f);
-    return true; 
-  }
 
   if(kslicer::IsCalledWithArrowAndVirtual(f) && WasNotRewrittenYet(f))
   {
@@ -585,7 +508,7 @@ bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
   if(processFuncMember) // don't rewrite return statements for function members
     return true;
   
-  if(!m_infoPass && WasNotRewrittenYet(ret) && m_kernelIsBoolTyped && !m_codeInfo->megakernelRTV)
+  if(WasNotRewrittenYet(ret) && m_kernelIsBoolTyped && !m_codeInfo->megakernelRTV)
   {
     std::string retExprText = RecursiveRewrite(retExpr);
     ReplaceTextOrWorkAround(ret->getSourceRange(), std::string("kgenExitCond = ") + retExprText + ";"); // "; goto KGEN_EPILOG"); !!! GLSL DOE NOT SUPPPRT GOTOs!!!
@@ -613,25 +536,7 @@ bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
   const Expr* firstArgExpr  = callExpr->getArgs()[0];
   const Expr* secondArgExpr = callExpr->getArgs()[1];
  
-  if(m_infoPass) // don't have to rewrite during infoPass
-  {
-    std::string retTypeName = kslicer::CutOffStructClass(retQt.getAsString());
-    
-    // get ObjData buffer name
-    //
-    std::string makerObjBufferName = kslicer::GetRangeSourceCode(secondArgExpr->getSourceRange(), m_compiler);
-    ReplaceFirst(makerObjBufferName, ".data()", "");
-
-    for(auto& h : m_codeInfo->m_vhierarchy)
-    {
-      if(h.second.interfaceName == retTypeName)
-      {
-        h.second.objBufferName = makerObjBufferName;       
-        break;
-      }
-    }
-  }
-  else if(WasNotRewrittenYet(ret) && !m_codeInfo->megakernelRTV)
+  if(WasNotRewrittenYet(ret) && !m_codeInfo->megakernelRTV)
   { 
     // change 'return MakeObjPtr(objPtr, ObjData) to 'kgen_objPtr = objPtr'
     //
@@ -704,12 +609,6 @@ bool kslicer::KernelRewriter::VisitUnaryOperator_Impl(UnaryOperator* expr)
       else if(op == "--")
         access.type    = KernelInfo::REDUCTION_TYPE::SUB_ONE;
 
-      if(m_infoPass)
-      {
-        m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
-        m_currKernel.subjectedToReduction[leftStr] = access;
-      }
-      else
       {
         if(m_codeInfo->pShaderCC->IsISPC())
           return true;
@@ -799,12 +698,7 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
     
     //auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
 
-    if(m_infoPass)
-    {
-      m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
-      m_currKernel.subjectedToReduction[leftStr] = access;
-    }
-    else if(WasNotRewrittenYet(expr))
+    if(WasNotRewrittenYet(expr))
     {
       if(m_codeInfo->pShaderCC->IsISPC())
         return;
@@ -1069,13 +963,7 @@ void kslicer::KernelRewriter::DetectFuncReductionAccess(const clang::Expr* lhs, 
   access.dataType  = lhs->getType().getAsString();
 
   //auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
-
-  if(m_infoPass)
-  {
-    m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
-    m_currKernel.subjectedToReduction[leftStr] = access;
-  }
-  else if (WasNotRewrittenYet(expr) && !m_codeInfo->pShaderCC->IsISPC())
+  if (WasNotRewrittenYet(expr) && !m_codeInfo->pShaderCC->IsISPC())
   {
     std::string argsType = "";
     if(numArgs > 0)

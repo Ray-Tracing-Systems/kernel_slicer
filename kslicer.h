@@ -697,7 +697,6 @@ namespace kslicer
     virtual std::string RecursiveRewriteImpl(const clang::Stmt* expr) = 0;
     virtual kslicer::ShaderFeatures GetShaderFeatures() const { return kslicer::ShaderFeatures(); }
     virtual std::unordered_set<uint64_t> GetVisitedNodes() const = 0;
-    virtual bool IsInfoPass() const = 0;
   };
 
   /**
@@ -885,7 +884,6 @@ namespace kslicer
     std::string                                              m_threadIdExplicitIndexISPC = "";
     bool                                                     m_kernelIsBoolTyped;
     kslicer::KernelInfo&                                     m_currKernel;
-    bool                                                     m_infoPass;
     bool                                                     m_explicitIdISPC = false;
 
     std::unordered_set<uint64_t>                             m_visitedTexAccessNodes;
