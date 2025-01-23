@@ -265,7 +265,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";";
 }
 
-void kslicer::IPV_Pattern::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
+void kslicer::MainClassInfo::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
 {
   //a_funcInfo.astNode->dump();
   Rewriter rewrite2;

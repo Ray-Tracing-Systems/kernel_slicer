@@ -1248,7 +1248,6 @@ int main(int argc, const char **argv)
     json["MainInclude"]         = jsonCPP["MainInclude"];
   }
   inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo, textGenSettings);
-
   {
     std::filesystem::path outName = inputCodeInfo.mainClassFileName.parent_path() / "include" / uboIncludeName;
     kslicer::ApplyJsonToTemplate("templates/ubo_def.h",  outName, jsonUBO);
@@ -1262,7 +1261,6 @@ int main(int argc, const char **argv)
 
   std::cout << "(9) Generate host code again for 'ListRequiredDeviceFeatures' " << std::endl;
   std::cout << "{" << std::endl;
-  if(true)
   {
     auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls,
                                         rawname + ToLowerCase(suffix) + ".h", threadsOrder,

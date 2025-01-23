@@ -1140,7 +1140,7 @@ namespace kslicer
     virtual MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) = 0;
     virtual std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler,
                                              std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode);
-    virtual void          VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) { } // additional informational pass, does not rewrite the code!
+    virtual void          VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler); // additional informational pass, does not rewrite the code!
 
     virtual void ProcessCallArs_KF(const KernelCallInfo& a_call);
 
@@ -1264,7 +1264,6 @@ namespace kslicer
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override;
     void          ProcessCallArs_KF(const KernelCallInfo& a_call) override;
-    void          VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) override;
 
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
     void          ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const override;
@@ -1287,7 +1286,6 @@ namespace kslicer
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override;
     std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler,
                                      std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode) override;
-    void          VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler) override;
 
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
     void          ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const override;
