@@ -10,8 +10,6 @@
 
 #include "test_class_generated.h"
 
-#include "include/Numbers_generated_ubo.h"
-
 class Numbers_GPU : public Numbers_Generated
 {
 public:

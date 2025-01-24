@@ -9,7 +9,6 @@
 #include "vk_buffers.h"
 
 #include "test_class_generated.h"
-#include "include/ArrayProcess_generated_ubo.h"
 
 class ArrayProcess_GPU : public ArrayProcess_Generated
 {
