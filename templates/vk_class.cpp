@@ -10,7 +10,6 @@
 #include "vk_images.h"
 
 #include "{{IncludeClassDecl}}"
-#include "include/{{UBOIncl}}"
 {% if UseRayGen or length(IntersectionHierarhcy.Implementations) >= 1 %}
 #include "VulkanRTX.h"
 {% endif%}

@@ -104,9 +104,7 @@ complex complex_sqrt(complex z)
 {% endif %}
 ## endfor
 
-#ifndef SKIP_UBO_INCLUDE
-#include "include/{{UBOIncl}}"
-#endif
+{% include "inc_ubo.glsl" %}
 
 /////////////////////////////////////////////////////////////////////
 /////////////////// local functions /////////////////////////////////

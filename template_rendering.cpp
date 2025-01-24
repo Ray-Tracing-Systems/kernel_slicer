@@ -573,6 +573,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       data["Includes"].push_back(keyVal.first);
   }
   data["UBOIncl"] = uboIncludeName;
+  data["UBO"]     = uboJson;
 
   // (2) declarations of struct, constants and typedefs inside class
   //

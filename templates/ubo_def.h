@@ -62,14 +62,6 @@ struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
   {% endif %}
 ## endfor
   uint dummy_last;
-{% for hierarchy in Hierarchies %}
-{% if hierarchy.IndirectDispatch %}
-
-  uint objNum_{{hierarchy.Name}}Src[{{hierarchy.ImplAlignedSize}}];  
-  uint objNum_{{hierarchy.Name}}Acc[{{hierarchy.ImplAlignedSize}}];
-  uint objNum_{{hierarchy.Name}}Off[{{hierarchy.ImplAlignedSize}}];
-{% endif %}  
-{% endfor %}
 };
 
 #endif

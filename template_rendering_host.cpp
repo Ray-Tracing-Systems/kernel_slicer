@@ -445,6 +445,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   for(auto file : a_classInfo.cppIncudes)
     data["AdditionalIncludes"].push_back(file);
   data["UBOIncl"]            = uboIncludeName;
+  data["UBO"]                = uboJson;
   data["MainClassName"]      = a_classInfo.mainClassName;
   data["MainClassSuffix"]    = a_classInfo.mainClassSuffix;
   data["MainClassSuffixLowerCase"] = ToLowerCase(a_classInfo.mainClassSuffix);

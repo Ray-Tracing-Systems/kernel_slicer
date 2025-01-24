@@ -1,7 +1,7 @@
 #version 460
 #extension GL_GOOGLE_include_directive : require
 
-#include "include/{{UBOIncl}}"
+{% include "inc_ubo.glsl" %}
 
 layout(binding = 0, set = 0) buffer dataUBO { {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo; };
 layout(binding = 1, set = 0) buffer dataInd { uvec4 indirectBuffer[]; };
