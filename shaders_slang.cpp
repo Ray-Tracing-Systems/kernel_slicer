@@ -241,9 +241,9 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
   const auto& ignoreFolders     = a_codeInfo->ignoreFolders;
 
   #ifdef _WIN32
-  const std::string scriptName = "build.bat";
+  const std::string scriptName = "build_slang.bat";
   #else
-  const std::string scriptName = "build.sh";
+  const std::string scriptName = "build_slang.sh";
   #endif
 
   std::filesystem::path folderPath = mainClassFileName.parent_path();
@@ -258,7 +258,77 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
   std::filesystem::path templatesFolder("templates_slang");
   kslicer::ApplyJsonToTemplate(templatesFolder / "common_generated_slang.h", shaderPath / headerCommon, a_kernelsJson);
 
+  const std::filesystem::path templatePath       = templatesFolder / (a_codeInfo->megakernelRTV ? "generated_mega.slang" : "generated.slang");
+  const std::filesystem::path templatePathUpdInd = templatesFolder / "update_indirect.slang";
+  const std::filesystem::path templatePathRedFin = templatesFolder / "reduction_finish.slang";
   
+  nlohmann::json copy, kernels, intersections;
+  for (auto& el : a_kernelsJson.items())
+  {
+    //std::cout << el.key() << std::endl;
+    if(std::string(el.key()) == "Kernels")
+      kernels = a_kernelsJson[el.key()];
+    else
+      copy[el.key()] = a_kernelsJson[el.key()];
+  }
+
+  std::ofstream buildSH(shaderPath / scriptName);
+  #if not __WIN32__
+  buildSH << "#!/bin/sh" << std::endl;
+  #endif
+  for(auto& kernel : kernels.items())
+  {
+    nlohmann::json currKerneJson = copy;
+    currKerneJson["Kernel"] = kernel.value();
+
+    std::string kernelName     = std::string(kernel.value()["Name"]);
+    bool useRayTracingPipeline = kernel.value()["UseRayGen"];
+    const bool vulkan11        = kernel.value()["UseSubGroups"];
+    const bool vulkan12        = useRayTracingPipeline;
+
+    std::string outFileName           = kernelName + ".slang";
+    std::filesystem::path outFilePath = shaderPath / outFileName;
+    kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
+    
+    buildSH << "slangc " << outFileName.c_str() << " -o " << kernelName.c_str() << ".comp.spv" << " -DGLSL -I.. ";
+    for(auto folder : ignoreFolders)
+      buildSH << "-I" << folder.c_str() << " ";
+    //if(vulkan12)
+    //  buildSH << "--target-env vulkan1.2 ";
+    //else if(vulkan11)
+    //  buildSH << "--target-env vulkan1.1 ";
+    //if(useRayTracingPipeline)
+    //  buildSH << "-S rgen ";
+    buildSH << std::endl;
+  
+    //if(kernel.value()["IsIndirect"])
+    //{
+    //  outFileName = kernelName + "_UpdateIndirect.slang";
+    //  outFilePath = shaderPath / outFileName;
+    //  kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
+    //  buildSH << "glslangValidator -V ";
+    //  if(vulkan11)
+    //    buildSH << "--target-env vulkan1.1 ";
+    //  buildSH << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
+    //  for(auto folder : ignoreFolders)
+    //   buildSH << "-I" << folder.c_str() << " ";
+    //  buildSH << std::endl;
+    //}
+
+    //if(kernel.value()["FinishRed"])
+    //{
+    //  outFileName = kernelName + "_Reduction.slang";
+    //  outFilePath = shaderPath / outFileName;
+    //  kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
+    //  buildSH << "glslangValidator -V ";
+    //  if(vulkan11)
+    //    buildSH << "--target-env vulkan1.1 ";
+    //  buildSH << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
+    //  for(auto folder : ignoreFolders)
+    //   buildSH << "-I" << folder.c_str() << " ";
+    //  buildSH << std::endl;
+    //}
+  }
 
 }
 

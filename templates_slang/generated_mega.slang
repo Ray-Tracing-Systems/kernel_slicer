@@ -1,27 +1,14 @@
-#version 460
-#extension GL_GOOGLE_include_directive : require
-{% if Kernel.UseRayGen %}
-#extension GL_EXT_ray_tracing : require 
-{% if Kernel.UseMotionBlur %}
-#extension GL_NV_ray_tracing_motion_blur : require
-{% endif %}
-{% else %}
-#extension GL_EXT_ray_query : require
-{% endif %}
-{% if Kernel.NeedTexArray %}
-#extension GL_EXT_nonuniform_qualifier : require
-{% endif %}
-{% if HasAllRefs %}
-#extension GL_EXT_buffer_reference : require
-{% endif %}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 {% include "common_generated.slang" %}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 {% if not Kernel.UseRayGen %}
 layout(local_size_x = {{Kernel.WGSizeX}}, local_size_y = {{Kernel.WGSizeY}}, local_size_z = {{Kernel.WGSizeZ}}) in;
 {% endif %}
-layout( push_constant ) uniform kernelArgs
+struct KernelArgs
 {
   {% for UserArg in Kernel.UserArgs %} 
   {{UserArg.Type}} {{UserArg.Name}};
@@ -30,7 +17,7 @@ layout( push_constant ) uniform kernelArgs
   {{Kernel.threadSZType2}} {{Kernel.threadSZName2}}; 
   {{Kernel.threadSZType3}} {{Kernel.threadSZName3}}; 
   uint tFlagsMask;    
-} kgenArgs;
+};
 
 ///////////////////////////////////////////////////////////////// subkernels here
 {% for sub in Kernel.Subkernels %}
