@@ -1340,7 +1340,7 @@
             "name"   : "Launch (test_009/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/tests/009_padding_v1/test_class.cpp",
                         "-mainClass", "Padding", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",

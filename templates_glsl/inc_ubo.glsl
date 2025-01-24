@@ -11,6 +11,7 @@ struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
   {% if Field.IsVec3 %}
   uint {{Field.Name}}Dummy; 
   {% endif %}
+  {% endif %}
   {% endfor %}
   uint dummy_last;
 };

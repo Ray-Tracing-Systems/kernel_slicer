@@ -8,11 +8,11 @@ struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
   {% for Field in UBO.UBOStructFields %}
   {% if not Field.IsDummy %} 
   {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %}; 
-  {% if Field.IsVec3 %}
+  {% else if Field.IsVec3 %}
   uint {{Field.Name}}Dummy; 
-  {% endif %}
   {% endif %}
   {% endfor %}
   uint dummy_last;
 };
+
 
