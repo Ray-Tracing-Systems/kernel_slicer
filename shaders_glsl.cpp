@@ -302,7 +302,15 @@ void kslicer::GLSLCompiler::GetThreadSizeNames(std::string a_strs[3]) const
   a_strs[2] = "iNumElementsZ";
 }
 
+std::string kslicer::GLSLCompiler::ProcessBufferType(const std::string& a_typeName) const
+{
+  std::string type = kslicer::CleanTypeName(a_typeName);
+  ReplaceFirst(type, "*", "");
+  if(type[type.size()-1] == ' ')
+    type = type.substr(0, type.size()-1);
 
+  return type;
+}
 
 std::string kslicer::GLSLCompiler::RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const
 {

@@ -1061,6 +1061,7 @@ namespace kslicer
     IShaderCompiler(){}
     virtual ~IShaderCompiler(){}
     virtual std::string UBOAccess(const std::string& a_name) const = 0;
+    virtual std::string ProcessBufferType(const std::string& a_typeName) const { return a_typeName; };
   
     virtual bool        IsSingleSource()   const = 0;
     virtual std::string ShaderSingleFile() const = 0;
@@ -1099,17 +1100,6 @@ namespace kslicer
     virtual std::string RewriteBESharedDecl(const clang::DeclStmt* decl, std::shared_ptr<KernelRewriter> pRewriter);
     virtual std::string RewriteBEParallelFor(const clang::ForStmt* forExpr, std::shared_ptr<KernelRewriter> pRewriter);
     virtual std::string RewriteBEStmt(const clang::Stmt* stmt, std::shared_ptr<KernelRewriter> pRewriter);
-
-    // other
-    //
-    virtual std::string ProcessBufferType(const std::string& a_typeName) const
-    { 
-      std::string type = kslicer::CleanTypeName(a_typeName);
-      ReplaceFirst(type, "*", "");
-      if(type[type.size()-1] == ' ')
-        type = type.substr(0, type.size()-1);
-      return type;
-    }
   };
 
   struct ClspvCompiler : IShaderCompiler
@@ -1159,9 +1149,9 @@ namespace kslicer
   struct GLSLCompiler : IShaderCompiler
   {
     GLSLCompiler(const std::string& a_prefix);
-    std::string UBOAccess(const std::string& a_name) const override {
-      return std::string("ubo.") + a_name;
-    };
+    std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
+    std::string ProcessBufferType(const std::string& a_typeName) const override;
+    
     bool        IsSingleSource()                     const override { return false; }
     std::string ShaderFolder()                       const override { return std::string("shaders") + ToLowerCase(m_suffix); }
     std::string ShaderSingleFile()                   const override { return ""; }
@@ -1188,6 +1178,8 @@ namespace kslicer
   {
     SlangCompiler(const std::string& a_prefix);
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
+    std::string ProcessBufferType(const std::string& a_typeName) const override;
+
     bool        IsSingleSource()                     const override { return false; }
     std::string ShaderFolder()                       const override { return std::string("shaders") + ToLowerCase(m_suffix); }
     std::string ShaderSingleFile()                   const override { return ""; }
