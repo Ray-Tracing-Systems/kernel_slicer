@@ -1054,13 +1054,14 @@ namespace kslicer
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  std::string CleanTypeName(const std::string& a_str);
+
   struct IShaderCompiler
   {
     IShaderCompiler(){}
     virtual ~IShaderCompiler(){}
     virtual std::string UBOAccess(const std::string& a_name) const = 0;
-    virtual std::string ProcessBufferType(const std::string& a_typeName) const { return a_typeName; };
-
+  
     virtual bool        IsSingleSource()   const = 0;
     virtual std::string ShaderSingleFile() const = 0;
     virtual std::string ShaderFolder()     const = 0;
@@ -1098,6 +1099,17 @@ namespace kslicer
     virtual std::string RewriteBESharedDecl(const clang::DeclStmt* decl, std::shared_ptr<KernelRewriter> pRewriter);
     virtual std::string RewriteBEParallelFor(const clang::ForStmt* forExpr, std::shared_ptr<KernelRewriter> pRewriter);
     virtual std::string RewriteBEStmt(const clang::Stmt* stmt, std::shared_ptr<KernelRewriter> pRewriter);
+
+    // other
+    //
+    virtual std::string ProcessBufferType(const std::string& a_typeName) const
+    { 
+      std::string type = kslicer::CleanTypeName(a_typeName);
+      ReplaceFirst(type, "*", "");
+      if(type[type.size()-1] == ' ')
+        type = type.substr(0, type.size()-1);
+      return type;
+    }
   };
 
   struct ClspvCompiler : IShaderCompiler
@@ -1157,8 +1169,6 @@ namespace kslicer
     void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
 
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
-
-    std::string ProcessBufferType(const std::string& a_typeName)        const override;
     void        GetThreadSizeNames(std::string a_strs[3])               const override;
 
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
@@ -1188,7 +1198,6 @@ namespace kslicer
     void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
 
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
-    std::string ProcessBufferType(const std::string& a_typeName)        const override;
     void        GetThreadSizeNames(std::string a_strs[3])               const override;
 
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
@@ -1535,7 +1544,6 @@ namespace kslicer
   KernelInfo::ArgInfo ProcessParameter(const clang::ParmVarDecl *p);
   void CheckInterlanIncInExcludedFolders(const std::vector<std::filesystem::path>& a_folders);
 
-  std::string CleanTypeName(const std::string& a_str);
   ShaderFeatures GetUsedShaderFeaturesFromTypeName(const std::string& a_str);
 
   std::unordered_set<std::string> GetAllServiceKernels();

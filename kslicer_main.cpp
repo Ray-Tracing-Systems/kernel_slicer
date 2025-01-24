@@ -268,6 +268,11 @@ int main(int argc, const char **argv)
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::GLSLCompiler>(inputCodeInfo.mainClassSuffix);
     inputCodeInfo.processFolders.push_back("include/");
   }
+  else if(shaderCCName == "slang" || shaderCCName == "SLANG" || shaderCCName == "Slang")
+  {
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::SlangCompiler>(inputCodeInfo.mainClassSuffix);
+    inputCodeInfo.processFolders.push_back("include/");
+  }
   else if(shaderCCName == "ispc" || shaderCCName == "ISPC")
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::ISPCCompiler>(useCppInKernels, inputCodeInfo.mainClassSuffix);
