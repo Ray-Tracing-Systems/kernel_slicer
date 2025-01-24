@@ -6,13 +6,10 @@
 struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
 {
   {% for Field in UBO.UBOStructFields %}
-  {% if Field.IsDummy %} 
-  uint {{Field.Name}}; 
-  {% else %}
+  {% if not Field.IsDummy %} 
   {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %}; 
-  {% if Field.IsVec3 %} 
-  // uint {{Field.Name}}Dummy; 
-  {% endif %}
+  {% if Field.IsVec3 %}
+  uint {{Field.Name}}Dummy; 
   {% endif %}
   {% endfor %}
   uint dummy_last;

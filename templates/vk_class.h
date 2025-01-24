@@ -36,7 +36,7 @@ using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data
 ## endfor
 
 /////////////////////////////////////////////////////////////////////////////////////////// UBO
-//#define LAYOUT_STD140
+#define LAYOUT_STD140
 #include "LiteMath.h"
 using   LiteMath::uint;
 typedef LiteMath::float4x4 mat4;
@@ -57,9 +57,6 @@ struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
   uint {{Field.Name}}; 
   {% else %}
   {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %}; 
-  {% if Field.IsVec3 %} 
-  // uint {{Field.Name}}Dummy; 
-  {% endif %}
   {% endif %}
   {% endfor %}
   uint dummy_last;
