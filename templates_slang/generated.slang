@@ -5,9 +5,6 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-{% if not Kernel.UseRayGen %}
-layout(local_size_x = {{Kernel.WGSizeX}}, local_size_y = {{Kernel.WGSizeY}}, local_size_z = {{Kernel.WGSizeZ}}) in;
-{% endif %}
 struct KernelArgs
 {
   {% for UserArg in Kernel.UserArgs %} 
@@ -19,25 +16,9 @@ struct KernelArgs
   uint tFlagsMask;    
 };
 
-{% if not Kernel.InitKPass %}
-{% for redvar in Kernel.SubjToRed %} 
-shared {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}}]; 
-{% endfor %}
-{% for redvar in Kernel.ArrsToRed %} 
-shared {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][{{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}}]; 
-{% endfor %}
-{% endif %}
-
-{% if Kernel.EnableBlockExpansion %}
-{% for TID in Kernel.ThreadSizeBE %}
-const {{TID.Type}} {{TID.Name}} = {{TID.Value}}; 
-{% endfor %}
-{% for Var in Kernel.SharedBE %}
-shared {{Var}}
-{% endfor %}
-{% endif %}
-
-void main()
+[shader("compute")]
+[numthreads({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}})]
+void main(uint3 a_globalTID: SV_DispatchThreadID, uint3 a_loacalTID : SV_GroupThreadID, uniform KernelArgs kgenArgs)
 {
   {% if not Kernel.EnableBlockExpansion %}
   bool runThisThread = true;
@@ -46,17 +27,17 @@ void main()
   {% if Kernel.EnableBlockExpansion %}
   {% for TID in Kernel.ThreadIds %}
   {% if TID.Simple %}
-  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(gl_WorkGroupID[{{ loop.index }}]); 
+  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(a_globalTID[{{ loop.index }}]); 
   {% else %}
-  const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + {{TID.Type}}(gl_WorkGroupID[{{ loop.index }}])*{{TID.Stride}}; 
+  const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + {{TID.Type}}(a_globalTID[{{ loop.index }}])*{{TID.Stride}}; 
   {% endif %}
   {% endfor %}
   {% else %}
   {% for TID in Kernel.ThreadIds %}
   {% if TID.Simple %}
-  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}({% if Kernel.UseRayGen %}gl_LaunchIDEXT{% else %}gl_GlobalInvocationID{% endif %}[{{ loop.index }}]); 
+  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(a_globalTID[{{ loop.index }}]); 
   {% else %}
-  const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + {{TID.Type}}({% if Kernel.UseRayGen %}gl_LaunchIDEXT{% else %}gl_GlobalInvocationID{% endif %}[{{ loop.index }}])*{{TID.Stride}}; 
+  const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + {{TID.Type}}(a_globalTID[{{ loop.index }}])*{{TID.Stride}}; 
   {% endif %}
   {% endfor %}
   {% endif %} {# /* Kernel.EnableBlockExpansion */ #}
@@ -73,7 +54,7 @@ void main()
   }
   barrier();
   {% else %}
-  if(gl_LocalInvocationID[0] == 0) {
+  if(a_loacalTID[0] == 0) {
   {{Block.Text}}
   }
   {% endif %}

@@ -290,7 +290,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     std::filesystem::path outFilePath = shaderPath / outFileName;
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
     
-    buildSH << "slangc " << outFileName.c_str() << " -o " << kernelName.c_str() << ".comp.spv" << " -DGLSL -I.. ";
+    buildSH << "slangc " << outFileName.c_str() << " -o " << kernelName.c_str() << ".comp.spv" << " -I.. ";
     for(auto folder : ignoreFolders)
       buildSH << "-I" << folder.c_str() << " ";
     //if(vulkan12)

@@ -928,7 +928,7 @@
             "name"   : "Launch (app_25/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/25_mandelbrot/mandelbrot.cpp",
                         "-mainClass", "Mandelbrot", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
