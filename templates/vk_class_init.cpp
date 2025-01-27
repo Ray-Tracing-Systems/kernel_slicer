@@ -563,7 +563,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
 
     MakeRayTracingPipelineAndLayout(shader_paths, enableMotionBlur, "main", kspec, {{Kernel.Name}}DSLayout, &{{Kernel.Name}}Layout, &{{Kernel.Name}}Pipeline);
     {% else %}
-    MakeComputePipelineAndLayout(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %}, kspec, {{Kernel.Name}}DSLayout, &{{Kernel.Name}}Layout, &{{Kernel.Name}}Pipeline);
+    MakeComputePipelineAndLayout(shaderPath.c_str(), {% if ShaderSingleFile %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %}, kspec, {{Kernel.Name}}DSLayout, &{{Kernel.Name}}Layout, &{{Kernel.Name}}Pipeline);
     {% endif %}
   }
   else
@@ -572,7 +572,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
     {{Kernel.Name}}Pipeline = nullptr;
   }
   {% if Kernel.FinishRed %}
-  {% if ShaderGLSL %}
+  {% if ShaderSingleFile %}
   shaderPath = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}_Reduction.comp.spv");
   {% endif %}
   {% if UseSpecConstWgSize %}
@@ -580,19 +580,19 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   m_specsForWGSize.pData         = specializationData;
   kspec = &m_specsForWGSize;
   {% endif %}
-  MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Reduction"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}ReductionPipeline);
+  MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderSingleFile %}"main"{% else %}"{{Kernel.OriginalName}}_Reduction"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}ReductionPipeline);
   {% endif %} {# /* if Kernel.FinishRed */ #}
   {% if Kernel.HasLoopInit %}
-  {% if ShaderGLSL %}
+  {% if ShaderSingleFile %}
   shaderPath = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}_Init.comp.spv");
   {% endif %}
-  MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Init"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}InitPipeline);
+  MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderSingleFile %}"main"{% else %}"{{Kernel.OriginalName}}_Init"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}InitPipeline);
   {% endif %} {# /* if Kernel.HasLoopInit */ #}
   {% if Kernel.HasLoopFinish %}
-  {% if ShaderGLSL %}
+  {% if ShaderSingleFile %}
   shaderPath = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}_Finish.comp.spv");
   {% endif %}
-  MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Finish"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}FinishPipeline);
+  MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderSingleFile %}"main"{% else %}"{{Kernel.OriginalName}}_Finish"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}FinishPipeline);
   {% endif %} {# /* if Kernel.HasLoopFinish */ #}
 }
 
