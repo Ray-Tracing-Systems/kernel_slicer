@@ -897,7 +897,7 @@
             "name"   : "Launch (app_24/ISPC)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/24_reinhard_tm/reinhard.cpp",
                         "-mainClass", "ReinhardTM", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",

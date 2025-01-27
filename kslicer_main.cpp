@@ -936,12 +936,7 @@ int main(int argc, const char **argv)
 
   std::sort(inputCodeInfo.dataMembers.begin(), inputCodeInfo.dataMembers.end(), kslicer::DataMemberInfo_ByAligment()); // sort by aligment in GLSL
 
-  auto jsonUBO               = kslicer::PrepareUBOJson(inputCodeInfo, inputCodeInfo.dataMembers, compiler, textGenSettings);
-  std::string uboIncludeName = inputCodeInfo.mainClassName + ToLowerCase(inputCodeInfo.mainClassSuffix) + "_ubo.h";
-
-  std::filesystem::path uboOutName = "";
-  std::cout << "  placed classVariables num = " << inputCodeInfo.dataMembers.size() << std::endl;
-  uboOutName = inputCodeInfo.mainClassFileName.parent_path() / "include" / uboIncludeName;
+  auto jsonUBO = kslicer::PrepareUBOJson(inputCodeInfo, inputCodeInfo.dataMembers, compiler, textGenSettings);
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
@@ -1149,8 +1144,7 @@ int main(int argc, const char **argv)
   std::string rawname = kslicer::CutOffFileExt(allFiles[0]);
   auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls,
                                       rawname + ToLowerCase(suffix) + ".h", threadsOrder,
-                                      uboIncludeName, composeImplName,
-                                      jsonUBO, textGenSettings);
+                                      composeImplName, jsonUBO, textGenSettings);
   
   std::cout << std::endl;
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl;
@@ -1237,7 +1231,7 @@ int main(int argc, const char **argv)
   }
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedFunctions, generalDecls, compiler, threadsOrder, uboIncludeName, jsonUBO, usedDefines, textGenSettings);
+  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedFunctions, generalDecls, compiler, threadsOrder, jsonUBO, usedDefines, textGenSettings);
   
   //std::ofstream file(inputCodeInfo.mainClassFileName.parent_path() / "z_debug_kernels.json");
   //file << std::setw(2) << json; //
@@ -1257,7 +1251,6 @@ int main(int argc, const char **argv)
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
-  kslicer::ApplyJsonToTemplate("templates/ubo_def.h",  uboOutName, jsonUBO); // need to call it after "GenerateShaders"
   kslicer::CheckForWarnings(inputCodeInfo);
 
   std::cout << "(9) Generate host code again for 'ListRequiredDeviceFeatures' " << std::endl;
@@ -1265,7 +1258,7 @@ int main(int argc, const char **argv)
   {
     auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls,
                                         rawname + ToLowerCase(suffix) + ".h", threadsOrder,
-                                        uboIncludeName, composeImplName, jsonUBO, textGenSettings);
+                                        composeImplName, jsonUBO, textGenSettings);
     kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + ToLowerCase(suffix) + "_init.cpp", jsonCPP);
   }
   std::cout << "}" << std::endl << std::endl;

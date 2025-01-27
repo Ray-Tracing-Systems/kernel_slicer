@@ -1143,7 +1143,7 @@ namespace kslicer
     bool        IsISPC() const override { return true; }
     std::string BuildCommand(const std::string& a_inputFile) const override;
     std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) override;
-
+    std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
   };
 
   struct GLSLCompiler : IShaderCompiler

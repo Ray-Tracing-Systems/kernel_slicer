@@ -480,7 +480,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
                                     const std::vector<kslicer::DeclInClass>& usedDecl,
                                     const clang::CompilerInstance& compiler,
                                     const uint32_t  threadsOrder[3],
-                                    const std::string& uboIncludeName,
                                     const nlohmann::json& uboJson,
                                     const std::vector<std::string>& usedDefines,
                                     const TextGenSettings& a_settings)
@@ -572,8 +571,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     if(a_classInfo.mainClassFileInclude.find(keyVal.first) == std::string::npos)
       data["Includes"].push_back(keyVal.first);
   }
-  data["UBOIncl"] = uboIncludeName;
-  data["UBO"]     = uboJson;
+  data["UBO"] = uboJson;
 
   // (2) declarations of struct, constants and typedefs inside class
   //

@@ -415,7 +415,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
                                              const std::vector<MainFuncInfo>& a_methodsToGenerate,
                                              const std::vector<kslicer::DeclInClass>& usedDecl,
                                              const std::string& a_genIncude, const uint32_t    threadsOrder[3],
-                                             const std::string& uboIncludeName, const std::string& a_composImplName,
+                                             const std::string& a_composImplName,
                                              const nlohmann::json& uboJson,
                                              const TextGenSettings& a_settings)
 {
@@ -444,7 +444,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["AdditionalIncludes"] = std::vector<std::string>();
   for(auto file : a_classInfo.cppIncudes)
     data["AdditionalIncludes"].push_back(file);
-  data["UBOIncl"]            = uboIncludeName;
   data["UBO"]                = uboJson;
   data["MainClassName"]      = a_classInfo.mainClassName;
   data["MainClassSuffix"]    = a_classInfo.mainClassSuffix;

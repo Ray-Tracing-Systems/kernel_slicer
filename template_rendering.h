@@ -10,16 +10,17 @@ namespace kslicer
 {
   nlohmann::json PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, const clang::CompilerInstance& compiler,
                                       const std::vector<MainFuncInfo>& a_methodsToGenerate, const std::vector<kslicer::DeclInClass>& usedDecl,
-                                      const std::string& a_genIncude, const uint32_t threadsOrder[3],
-                                      const std::string& uboIncludeName, const std::string& a_composImplName,
-                                      const nlohmann::json& uboJson, const TextGenSettings& a_settings);
+                                      const std::string& a_genIncude, 
+                                      const uint32_t threadsOrder[3],
+                                      const std::string& a_composImplName, 
+                                      const nlohmann::json& uboJson, 
+                                      const TextGenSettings& a_settings);
 
   nlohmann::json PrepareJsonForKernels(MainClassInfo& a_classInfo,
                                        const std::vector<kslicer::FuncData>& usedFunctions,
                                        const std::vector<kslicer::DeclInClass>& usedDecl,
                                        const clang::CompilerInstance& compiler,
                                        const uint32_t    threadsOrder[3],
-                                       const std::string& uboIncludeName,
                                        const nlohmann::json& uboJson,
                                        const std::vector<std::string>& usedDefines,
                                        const TextGenSettings& a_settings);

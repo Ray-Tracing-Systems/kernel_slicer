@@ -12,7 +12,19 @@
 using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data type to UBO
 {% endif %}
 ## endfor
-#include "include/{{UBOIncl}}"
+#include "LiteMath.h"
+
+struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
+{
+  {% for Field in UBO.UBOStructFields %}
+  {% if Field.IsDummy %} 
+  uint {{Field.Name}}; 
+  {% else %}
+  {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %}; 
+  {% endif %}
+  {% endfor %}
+  uint dummy_last;
+};
 
 class {{MainClassName}}_ISPC : public {{MainClassName}}
 {

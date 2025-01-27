@@ -143,3 +143,10 @@ std::string kslicer::ISPCCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
   };
   return result;
 }
+
+std::string kslicer::ISPCCompiler::ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const
+{
+  std::string call = a_call;
+  ReplaceFirst(call, "std::", "");
+  return call;
+}
