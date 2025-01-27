@@ -25,8 +25,8 @@ typedef struct SurfaceHitT
 
 typedef struct LightGeomT
 {
-  float3 boxMin;
-  float3 boxMax;
+  float4 boxMin;
+  float4 boxMax;
 } LightGeom;
 
 static inline float3 EyeRayDir(float x, float y, float w, float h, float4x4 a_mViewProjInv) // g_mViewProjInv

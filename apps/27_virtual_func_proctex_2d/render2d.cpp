@@ -30,9 +30,9 @@ void ProcRender2D::InitAllTextures()
   allProcTextures.push_back(new YellowNoise);
   allProcTextures.push_back(new Mandelbrot2D);
   allProcTextures.push_back(new Ocean2D);
-  allProcTextures.push_back(new Voronoi2D);
-  allProcTextures.push_back(new Julia2D);
-  allProcTextures.push_back(new Perlin2D);
+  //allProcTextures.push_back(new Voronoi2D);
+  //allProcTextures.push_back(new Julia2D);
+  //allProcTextures.push_back(new Perlin2D);
 }
 
 static inline float mi(float2 a){return min(a.x,a.y);}

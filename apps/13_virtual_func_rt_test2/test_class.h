@@ -98,8 +98,8 @@ public:
   float4             g_testColor = float4(0, 1, 1, 1);
   std::vector<float> g_testVector;
   uint32_t  m_emissiveMaterialId = 0;
-  LightGeom m_lightGeom = {float3(-0.3f, 2.0f, -0.3f), 
-                           float3(+0.3f, 2.0f, +0.3f)   
+  LightGeom m_lightGeom = {float4(-0.3f, 2.0f, -0.3f, 1.0f), 
+                           float4(+0.3f, 2.0f, +0.3f, 1.0f)   
                            };
 
   static constexpr uint HIT_TRIANGLE_GEOM   = 0;

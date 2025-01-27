@@ -40,7 +40,7 @@ public:
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) { a_out[0] = m_time; } // will be overriden in generated class    
   virtual void UpdateMembersPlainData(){}
 
-  static constexpr int TOTAL_IMPLEMANTATIONS = 7;
+  static constexpr int TOTAL_IMPLEMANTATIONS = 4; // 7
 
   static constexpr int BRANCHING_LITE        = 0;
   static constexpr int BRANCHING_MEDIUM      = 1;
