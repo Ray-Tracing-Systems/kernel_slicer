@@ -12,7 +12,6 @@
 #define JSON_LOG_IMPLEMENTATION
 #include "JSONLog.hpp"
 
-#define LAYOUT_STD140
 #include "LiteMath.h"
 using LiteMath::uint2;
 

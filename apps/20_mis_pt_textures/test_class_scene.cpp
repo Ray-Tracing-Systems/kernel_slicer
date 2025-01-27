@@ -4,9 +4,7 @@
 #include "cmesh4.h"
 using cmesh4::SimpleMesh;
 
-#define LAYOUT_STD140 // !!! PLEASE BE CAREFUL WITH THIS !!!
 #include "hydraxml.h"
-
 #include "Image2d.h"
 
 using LiteImage::Image2D;

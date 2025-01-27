@@ -5,7 +5,6 @@
 #include <iostream>
 #include <fstream>
 
-#define LAYOUT_STD140
 #include "LiteMath.h"
 
 struct TestData
