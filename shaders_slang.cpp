@@ -143,7 +143,25 @@ bool  kslicer::SlangRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
 {
   if(m_kernelMode)
   {
-    // ...
+    const clang::ValueDecl* pDecl = expr->getDecl();
+    if(!clang::isa<clang::ParmVarDecl>(pDecl))
+      return true;
+  
+    clang::QualType qt = pDecl->getType();
+    if(qt->isPointerType() || qt->isReferenceType()) // we can't put references to push constants
+      return true;
+  
+    const std::string textOri = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); //
+    //const std::string textRes = RecursiveRewrite(expr);
+    if(m_kernelUserArgs.find(textOri) != m_kernelUserArgs.end() && WasNotRewrittenYet(expr))
+    {
+      if(!m_codeInfo->megakernelRTV || m_pCurrKernel->isMega)
+      {
+        //ReplaceTextOrWorkAround(expr->getSourceRange(), std::string("kgenArgs.") + textOri);
+        m_rewriter.ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + textOri);
+        MarkRewritten(expr);
+      }
+    }
   }
 
   return true;
@@ -237,7 +255,7 @@ std::shared_ptr<kslicer::KernelRewriter> kslicer::SlangCompiler::MakeKernRewrite
                                                                                   MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& fakeOffs)
 {
   auto pFunc = std::make_shared<SlangRewriter>(R, a_compiler, a_codeInfo);
-  pFunc->m_kernelMode = true;
+  pFunc->InitKernelData(a_kernel);
   return std::make_shared<KernelRewriter2>(R, a_compiler, a_codeInfo, a_kernel, fakeOffs, pFunc);
 }
 
