@@ -18,7 +18,7 @@ struct KernelArgs
 
 [shader("compute")]
 [numthreads({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}})]
-void main(uint3 a_globalTID: SV_DispatchThreadID, uint3 a_loacalTID : SV_GroupThreadID, uniform KernelArgs kgenArgs)
+void main(uint3 a_globalTID: SV_DispatchThreadID, uint3 a_localTID : SV_GroupThreadID, uniform KernelArgs kgenArgs)
 {
   {% if not Kernel.EnableBlockExpansion %}
   bool runThisThread = true;

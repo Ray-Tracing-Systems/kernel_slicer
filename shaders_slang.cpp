@@ -364,6 +364,8 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
 std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter)
 {
   std::string typeInCL = a_decl.type;
+  ReplaceFirst(typeInCL, "struct ", "");
+
   std::string result = "";
   switch(a_decl.kind)
   {
@@ -375,7 +377,7 @@ std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
     result = typeInCL + " " + a_decl.name + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
-    result = "typedef " + typeInCL + " " + a_decl.name + ";";
+    result = "typealias " + a_decl.name + " = " + typeInCL + ";";
     break;
     default:
     break;

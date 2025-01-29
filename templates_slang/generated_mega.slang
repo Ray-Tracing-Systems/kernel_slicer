@@ -29,7 +29,22 @@ struct KernelArgs
 {% endfor %}
 ///////////////////////////////////////////////////////////////// subkernels here
 
-void main()
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+struct KernelArgs
+{
+  {% for UserArg in Kernel.UserArgs %} 
+  {{UserArg.Type}} {{UserArg.Name}};
+  {% endfor %}
+  {{Kernel.threadSZType1}} {{Kernel.threadSZName1}}; 
+  {{Kernel.threadSZType2}} {{Kernel.threadSZName2}}; 
+  {{Kernel.threadSZType3}} {{Kernel.threadSZName3}}; 
+  uint tFlagsMask;    
+};
+
+[shader("compute")]
+[numthreads({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}})]
+void main(uint3 a_globalTID: SV_DispatchThreadID, uniform KernelArgs kgenArgs)
 {
   ///////////////////////////////////////////////////////////////// prolog
   {% for TID in Kernel.ThreadIds %}
