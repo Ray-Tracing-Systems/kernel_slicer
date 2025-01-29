@@ -742,10 +742,12 @@ namespace kslicer
      
     // for kernel processing only
     //
-    void InitKernelData(kslicer::KernelInfo& a_kernelRef);
+    void InitKernelData(kslicer::KernelInfo& a_kernelRef, const std::string& a_fakeOffsetExp);
     bool                            m_kernelMode = false; ///!< if proccesed function is kernel or nor
     kslicer::KernelInfo*            m_pCurrKernel = nullptr;
     std::unordered_set<std::string> m_kernelUserArgs;
+    std::string                     m_fakeOffsetExp;
+    std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
   };
   
   struct IRecursiveRewriteOverride
@@ -850,6 +852,8 @@ namespace kslicer
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
     //void MarkRewritten(const clang::Stmt* expr);
     //bool WasNotRewrittenYet(const clang::Stmt* expr);
+
+    bool NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text);
   };
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

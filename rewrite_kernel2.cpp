@@ -3,7 +3,7 @@
 #include <sstream>
 #include <algorithm>
 
-void kslicer::FunctionRewriter2::InitKernelData(kslicer::KernelInfo& a_kernelRef)
+void kslicer::FunctionRewriter2::InitKernelData(kslicer::KernelInfo& a_kernelRef, const std::string& a_fakeOffsetExp)
 {
   m_kernelMode  = true;
   m_pCurrKernel = &a_kernelRef;
@@ -12,6 +12,13 @@ void kslicer::FunctionRewriter2::InitKernelData(kslicer::KernelInfo& a_kernelRef
     if(arg.isLoopSize || arg.IsUser())
       m_kernelUserArgs.insert(arg.name);
   }
+
+  // fill other auxilary structures
+  //
+  m_fakeOffsetExp = a_fakeOffsetExp;
+  m_variables.reserve(m_codeInfo->dataMembers.size());
+  for(const auto& var : m_codeInfo->dataMembers)
+    m_variables[var.name] = var;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
