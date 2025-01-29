@@ -203,3 +203,7 @@ bool kslicer::KernelRewriter2::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
 bool kslicer::KernelRewriter2::VisitDeclStmt_Impl(clang::DeclStmt* decl)                          { return m_pFunRW2->VisitDeclStmt_Impl(decl); }
 bool kslicer::KernelRewriter2::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) { return m_pFunRW2->VisitArraySubscriptExpr_Impl(arrayExpr); }
 bool kslicer::KernelRewriter2::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { return m_pFunRW2->VisitUnaryExprOrTypeTraitExpr_Impl(szOfExpr); }
+bool kslicer::KernelRewriter2::VisitMemberExpr_Impl(clang::MemberExpr* expr) 
+{ 
+  return m_pFunRW2->VisitMemberExpr_Impl(expr); 
+}

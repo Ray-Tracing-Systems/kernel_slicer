@@ -1053,6 +1053,8 @@ namespace kslicer
     bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)            override;
     bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
 
+    bool VisitMemberExpr_Impl(clang::MemberExpr* expr) override;
+
   protected:
     std::shared_ptr<FunctionRewriter2> m_pFunRW2 = nullptr;
   };
