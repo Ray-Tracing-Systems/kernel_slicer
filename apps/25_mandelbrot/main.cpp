@@ -28,7 +28,7 @@ int main(int argc, const char** argv)
 
   if(onGPU)
   {
-    auto ctx   = vk_utils::globalContextGet(true, 0);
+    auto ctx   = vk_utils::globalContextGet(false, 0);
     pImpl = CreateMandelbrot_Generated(ctx, w*h);
   }
   #ifdef USE_ISPC

@@ -1680,13 +1680,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   return data;
 }
 
-namespace kslicer
-{
-  std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo,
-                                      const std::vector<kslicer::ArgFinal>& threadIds,
-                                      const std::string a_names[3]);
-}
-
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 
 

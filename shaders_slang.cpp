@@ -537,7 +537,7 @@ std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
     break;
     case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
     ReplaceFirst(typeInCL, "_Bool", "bool");
-    result = typeInCL + " " + a_decl.name + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    result = "static " + typeInCL + " " + a_decl.name + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
     result = "typealias " + a_decl.name + " = " + typeInCL + ";";
@@ -548,3 +548,21 @@ std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
   return result;
 }
 
+std::string kslicer::SlangCompiler::RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds)
+{
+  std::string names[3];
+  this->GetThreadSizeNames(names);
+
+  const std::string names0 = std::string("kgenArgs.") + names[0];
+  const std::string names1 = std::string("kgenArgs.") + names[1];
+  const std::string names2 = std::string("kgenArgs.") + names[2];
+
+  if(threadIds.size() == 1)
+    return threadIds[0].name;
+  else if(threadIds.size() == 2)
+    return std::string("fakeOffset(") + threadIds[0].name + "," + threadIds[1].name + "," + names0 + ")";
+  else if(threadIds.size() == 3)
+    return std::string("fakeOffset2(") + threadIds[0].name + "," + threadIds[1].name + "," + threadIds[2].name + "," + names0 + "," + names1 + ")";
+  else
+    return "a_globalTID.x";
+} 

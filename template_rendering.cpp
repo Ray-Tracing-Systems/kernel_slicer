@@ -1117,18 +1117,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["WGSizeZ"]       = k.wgSize[2]; //
 
     //////////////////////////////////////////////////////////////////////////////////////////
-    std::string names[3];
-    a_classInfo.pShaderCC->GetThreadSizeNames(names);
-    if(a_classInfo.pShaderCC->IsGLSL())
-    {
-      names[0] = std::string("kgenArgs.") + names[0];
-      names[1] = std::string("kgenArgs.") + names[1];
-      names[2] = std::string("kgenArgs.") + names[2];
-    }
+    std::string threadOffsetStr = a_classInfo.pShaderCC->RTVGetFakeOffsetExpression(k, a_classInfo.GetKernelTIDArgs(k));
 
     kernelJson["shouldCheckExitFlag"] = k.checkThreadFlags;
     kernelJson["checkFlagsExpr"]      = "//xxx//";
-    kernelJson["ThreadOffset"]        = kslicer::GetFakeOffsetExpression(k, a_classInfo.GetKernelTIDArgs(k), names);
+    kernelJson["ThreadOffset"]        = threadOffsetStr;
     kernelJson["InitKPass"]           = false;
     kernelJson["IsIndirect"]          = k.isIndirect;
     if(k.isIndirect)

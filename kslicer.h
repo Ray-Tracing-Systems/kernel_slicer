@@ -1109,6 +1109,10 @@ namespace kslicer
     virtual std::string RewriteBESharedDecl(const clang::DeclStmt* decl, std::shared_ptr<KernelRewriter> pRewriter);
     virtual std::string RewriteBEParallelFor(const clang::ForStmt* forExpr, std::shared_ptr<KernelRewriter> pRewriter);
     virtual std::string RewriteBEStmt(const clang::Stmt* stmt, std::shared_ptr<KernelRewriter> pRewriter);
+    
+    // for RTV only
+    //
+    virtual std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds); 
   };
 
   struct ClspvCompiler : IShaderCompiler
@@ -1178,6 +1182,8 @@ namespace kslicer
     std::string Name() const override { return "GLSL"; }
 
     std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
+    std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds) override; 
+
   private:
     const std::string& m_suffix;
     void ProcessVectorTypesString(std::string& a_str);
@@ -1209,6 +1215,7 @@ namespace kslicer
     std::string Name() const override { return "Slang"; }
 
     std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
+    std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds) override; 
   private:
     const std::string& m_suffix;
   };

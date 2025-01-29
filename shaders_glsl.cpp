@@ -1995,3 +1995,21 @@ std::shared_ptr<kslicer::KernelRewriter> kslicer::GLSLCompiler::MakeKernRewriter
   return std::make_shared<GLSLKernelRewriter>(R, a_compiler, a_codeInfo, a_kernel, fakeOffs);
 }
 
+std::string kslicer::GLSLCompiler::RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds)
+{
+  std::string names[3];
+  this->GetThreadSizeNames(names);
+
+  const std::string names0 = std::string("kgenArgs.") + names[0];
+  const std::string names1 = std::string("kgenArgs.") + names[1];
+  const std::string names2 = std::string("kgenArgs.") + names[2];
+
+  if(threadIds.size() == 1)
+    return threadIds[0].name;
+  else if(threadIds.size() == 2)
+    return std::string("fakeOffset(") + threadIds[0].name + "," + threadIds[1].name + "," + names0 + ")";
+  else if(threadIds.size() == 3)
+    return std::string("fakeOffset2(") + threadIds[0].name + "," + threadIds[1].name + "," + threadIds[2].name + "," + names0 + "," + names1 + ")";
+  else
+    return "a_globalTID.x";
+} 
