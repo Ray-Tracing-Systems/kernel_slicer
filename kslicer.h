@@ -743,7 +743,7 @@ namespace kslicer
     // for kernel processing only
     //
     void InitKernelData(kslicer::KernelInfo& a_kernelRef);
-    bool m_kernelMode = false; ///!< if proccesed function is kernel or nor
+    bool                            m_kernelMode = false; ///!< if proccesed function is kernel or nor
     kslicer::KernelInfo*            m_pCurrKernel = nullptr;
     std::unordered_set<std::string> m_kernelUserArgs;
   };
@@ -850,8 +850,6 @@ namespace kslicer
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
     //void MarkRewritten(const clang::Stmt* expr);
     //bool WasNotRewrittenYet(const clang::Stmt* expr);
-
-    bool m_kernelMode = false; ///!< if proccesed function is kernel or nor
   };
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -54,5 +54,6 @@ int main(int argc, const char** argv)
   std::cout << "Fractal(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
   std::cout << "Fractal(ovrh) = " << timings[3]              << " ms " << std::endl;
 
+  //vk_utils::globalContextDestroy();
   return 0;
 }
