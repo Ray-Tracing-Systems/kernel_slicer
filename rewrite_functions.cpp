@@ -145,12 +145,6 @@ bool kslicer::FunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperator
     const std::string rightType = right->getType().getAsString();
     const std::string keyType   = "complex"; 
 
-    if(debugText == "eta * cosThetaI")
-    {
-      int a = 2;
-      //expr->dump();
-    }
-
     if(leftType == keyType || rightType == keyType)
     {
       const std::string leftText  = RecursiveRewrite(left);
@@ -172,6 +166,9 @@ bool kslicer::FunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperator
   return true;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 std::string kslicer::FunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
@@ -187,8 +184,23 @@ std::string kslicer::FunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
     return m_rewriter.getRewrittenText(range);
 }
 
+kslicer::RewrittenFunction kslicer::FunctionRewriter::RewriteFunction(clang::FunctionDecl* fDecl)
+{
+  kslicer::RewrittenFunction done;
+  done.funDecl = RewriteFuncDecl(fDecl); 
+  done.funBody = RecursiveRewrite(fDecl->getBody());
+  return done;
+}
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+std::string kslicer::FunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
+{
+  std::string declText = kslicer::GetRangeSourceCode(fDecl->getSourceRange(), m_compiler); 
+  auto posBrace = declText.find("{");
+  if(posBrace != std::string::npos)
+    declText = declText.substr(0,posBrace); // discard func body source code
+  return declText;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

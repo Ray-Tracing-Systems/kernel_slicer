@@ -383,10 +383,6 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     buildSH << "slangc " << outFileName.c_str() << " -o " << kernelName.c_str() << ".comp.spv" << " -I.. ";
     for(auto folder : ignoreFolders)
       buildSH << "-I" << folder.c_str() << " ";
-    //if(vulkan12)
-    //  buildSH << "--target-env vulkan1.2 ";
-    //else if(vulkan11)
-    //  buildSH << "--target-env vulkan1.1 ";
     //if(useRayTracingPipeline)
     //  buildSH << "-S rgen ";
     buildSH << std::endl;

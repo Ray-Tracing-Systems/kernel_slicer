@@ -193,6 +193,19 @@ bool kslicer::FunctionRewriter2::CheckIfExprHasArgumentThatNeedFakeOffset(const 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+kslicer::RewrittenFunction kslicer::FunctionRewriter2::RewriteFunction(clang::FunctionDecl* fDecl)
+{
+  return FunctionRewriter::RewriteFunction(fDecl);
+}
+
+std::string kslicer::FunctionRewriter2::RewriteFuncDecl(clang::FunctionDecl* fDecl)
+{
+  return FunctionRewriter::RewriteFuncDecl(fDecl);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -201,14 +214,9 @@ bool kslicer::FunctionRewriter2::VisitFunctionDecl_Impl(clang::FunctionDecl* fDe
   auto hash = kslicer::GetHashOfSourceRange(fDecl->getBody()->getSourceRange());
   if(m_codeInfo->m_functionsDone.find(hash) == m_codeInfo->m_functionsDone.end()) // it is important to put functions in 'm_functionsDone'
   {
-    kslicer::RewrittenFunction done;
-    done.funDecl = kslicer::GetRangeSourceCode(fDecl->getSourceRange(),            m_compiler); 
-    auto posBrace = done.funDecl.find("{");
-    if(posBrace != std::string::npos)
-      done.funDecl = done.funDecl.substr(0,posBrace); // discard func body source code
-    done.funBody = kslicer::GetRangeSourceCode(fDecl->getBody()->getSourceRange(), m_compiler);
-    m_codeInfo->m_functionsDone[hash] = done;
-  }  
+    m_codeInfo->m_functionsDone[hash] = RewriteFunction(fDecl);
+  }
+
   return true; 
 }
 
@@ -376,4 +384,9 @@ bool kslicer::KernelRewriter2::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryEx
 bool kslicer::KernelRewriter2::VisitMemberExpr_Impl(clang::MemberExpr* expr) 
 { 
   return m_pFunRW2->VisitMemberExpr_Impl(expr); 
+}
+
+bool kslicer::KernelRewriter2::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call)
+{
+  return m_pFunRW2->VisitCXXConstructExpr_Impl(call); 
 }

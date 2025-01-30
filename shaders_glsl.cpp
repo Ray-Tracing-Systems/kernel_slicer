@@ -860,10 +860,8 @@ bool kslicer::GLSLFunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* 
 
   if(WasNotRewrittenYet(fDecl->getBody()))
   {
-    RewrittenFunction done;
-    done.funDecl = RewriteFuncDecl(fDecl);
-    done.funBody = RecursiveRewrite(fDecl->getBody());
-    auto hash = GetHashOfSourceRange(fDecl->getBody()->getSourceRange());
+    RewrittenFunction done = RewriteFunction(fDecl);
+    const auto hash = GetHashOfSourceRange(fDecl->getBody()->getSourceRange());
     if(m_codeInfo->m_functionsDone.find(hash) == m_codeInfo->m_functionsDone.end())
       m_codeInfo->m_functionsDone[hash] = done;
     MarkRewritten(fDecl->getBody());

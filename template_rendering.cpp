@@ -1238,14 +1238,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());  //
       auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo, shit.second);
       auto funcNode  = const_cast<clang::FunctionDecl*>(pFunc->second.astNode);
-
-      const std::string funcDeclText = pVisitorF->RewriteFuncDecl(funcNode);
-      const std::string funcBodyText = pVisitorF->RecursiveRewrite(funcNode->getBody());
-
-      kernelJson["ShityFunctions"].push_back(funcDeclText + funcBodyText);
+      auto rewritten = pVisitorF->RewriteFunction(funcNode);
+      kernelJson["ShityFunctions"].push_back(rewritten.funText());
     }
 
-    kernelJson["Subkernels"]  = std::vector<std::string>();
+    kernelJson["Subkernels"]  = std::vector<json>();
     if(a_classInfo.megakernelRTV)
     {
       for(auto pSubkernel : k.subkernels)

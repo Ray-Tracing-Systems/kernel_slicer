@@ -191,6 +191,13 @@ namespace kslicer
     const clang::CXXRecordDecl* retTypeDecl;
   };
 
+  struct RewrittenFunction
+  {
+    std::string funText() const { return funDecl + funBody; }
+    std::string funDecl;
+    std::string funBody;
+  };
+
   /**
   \brief for each method MainClass::kernel_XXX
   */
@@ -642,7 +649,9 @@ namespace kslicer
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     virtual std::string RecursiveRewrite(const clang::Stmt* expr);
-    virtual std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) { return ""; } 
+    virtual std::string RewriteFuncDecl(clang::FunctionDecl* fDecl);
+
+    virtual kslicer::RewrittenFunction RewriteFunction(clang::FunctionDecl* fDecl);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -753,6 +762,9 @@ namespace kslicer
     //
     bool NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text);
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
+
+    RewrittenFunction RewriteFunction(clang::FunctionDecl* fDecl);
+    std::string       RewriteFuncDecl(clang::FunctionDecl* fDecl);
   };
   
   struct IRecursiveRewriteOverride
@@ -1056,7 +1068,8 @@ namespace kslicer
     bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)            override;
     bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
 
-    bool VisitMemberExpr_Impl(clang::MemberExpr* expr) override;
+    bool VisitMemberExpr_Impl(clang::MemberExpr* expr)      override;
+    bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override;
 
   protected:
     std::shared_ptr<FunctionRewriter2> m_pFunRW2 = nullptr;
@@ -1236,13 +1249,6 @@ namespace kslicer
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   class UsedCodeFilter;
-
-  struct RewrittenFunction
-  {
-    std::string funText() const { return funDecl + funBody; }
-    std::string funDecl;
-    std::string funBody;
-  };
 
   /**
   \brief collector of all information about input main class
