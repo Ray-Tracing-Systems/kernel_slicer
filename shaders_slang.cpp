@@ -7,6 +7,116 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+std::string kslicer::SlangRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
+{
+  std::string retT   = RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString());
+  std::string fname  = fDecl->getNameInfo().getName().getAsString();
+
+  if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix) // alter function name if it has any prefix
+    if(fname.find(m_pCurrFuncInfo->prefixName) == std::string::npos)
+      fname = m_pCurrFuncInfo->prefixName + "_" + fname;
+
+  std::string result = retT + " " + fname + "(";
+
+  //const bool shitHappends = (fname == m_shit.originalName);
+  //if(shitHappends)
+  //  result = retT + " " + m_shit.ShittyName() + "(";
+
+  for(uint32_t i=0; i < fDecl->getNumParams(); i++)
+  {
+    const clang::ParmVarDecl* pParam  = fDecl->getParamDecl(i);
+    const clang::QualType typeOfParam =	pParam->getType();
+    std::string typeStr = typeOfParam.getAsString();
+    if(typeOfParam->isPointerType())
+    {
+      bool pointerToGlobalMemory = false;
+      //if(shitHappends)
+      //{
+      //  for(auto p : m_shit.pointers)
+      //  {
+      //    if(p.formal == pParam->getNameAsString() )
+      //    {
+      //      pointerToGlobalMemory = true;
+      //      break;
+      //    }
+      //  }
+      //}
+
+      const auto originalText = kslicer::GetRangeSourceCode(pParam->getSourceRange(), m_compiler);
+
+      if(pointerToGlobalMemory)
+        result += std::string("uint ") + pParam->getNameAsString() + "Offset";
+      else if(originalText.find("[") != std::string::npos && originalText.find("]") != std::string::npos) // fixed size arrays
+      {
+        if(typeOfParam->getPointeeType().isConstQualified())
+        {
+          ReplaceFirst(typeStr, "const ", "");
+          result += originalText;
+        }
+        else
+          result += std::string("inout ") + originalText;
+      }
+      else
+      {
+        std::string paramName = pParam->getNameAsString();
+        ReplaceFirst(typeStr, "*", "");
+        if(typeOfParam->getPointeeType().isConstQualified())
+        {
+          ReplaceFirst(typeStr, "const ", "");
+          result += std::string("in ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+        }
+        else
+          result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+      }
+    }
+    else if(typeOfParam->isReferenceType())
+    {
+      if(typeOfParam->getPointeeType().isConstQualified())
+      {
+        if(typeStr.find("Texture") != std::string::npos || typeStr.find("Image") != std::string::npos)
+        {
+          auto dataType = typeOfParam.getNonReferenceType();
+          auto typeDecl = dataType->getAsRecordDecl();
+          if(typeDecl != nullptr && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl))
+          {
+            std::string containerType, containerDataType;
+            auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
+            kslicer::SplitContainerTypes(specDecl, containerType, containerDataType);
+            ReplaceFirst(containerType, "Texture", "sampler");
+            ReplaceFirst(containerType, "Image",   "sampler");
+            result += std::string("in ") + containerType + " " + pParam->getNameAsString();
+          }
+          else
+            result += std::string("in ") + dataType.getAsString() + " " + pParam->getNameAsString();
+        }
+        else
+        {
+          ReplaceFirst(typeStr, "const ", "");
+          result += std::string("in ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+        }
+      }
+      else
+      {
+        std::string typeStr2 = typeOfParam->getPointeeType().getAsString();
+        if(m_codeInfo->megakernelRTV && (typeStr.find("Texture") != std::string::npos || typeStr.find("Image") != std::string::npos))
+        {
+          result += std::string("uint a_dummyOf") + pParam->getNameAsString();
+        }
+        else
+          result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr2) + " " + pParam->getNameAsString();
+      }
+    }
+    else
+      result += RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+
+    if(i!=fDecl->getNumParams()-1)
+      result += ", ";
+  }
+
+  return result + ") ";
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -31,7 +31,7 @@ struct KernelArgs
 void main(uint3 a_globalTID: SV_DispatchThreadID, uniform KernelArgs kgenArgs)
 {
   {% for TID in Kernel.ThreadIds %}
-  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}({a_globalTID[{{ loop.index }}]); 
+  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(a_globalTID[{{ loop.index }}]); 
   {% endfor %}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {{Kernel.Source}}

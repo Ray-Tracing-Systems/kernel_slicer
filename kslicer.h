@@ -867,6 +867,7 @@ namespace kslicer
     // Also important functions to use(!)
     //
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
+    std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
     //void MarkRewritten(const clang::Stmt* expr);
     //bool WasNotRewrittenYet(const clang::Stmt* expr);
   };
