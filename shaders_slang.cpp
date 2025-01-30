@@ -19,7 +19,7 @@ std::string kslicer::SlangRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
 
   std::string result = retT + " " + fname + "(";
 
-  //const bool shitHappends = (fname == m_shit.originalName);
+  const bool shitHappends = (fname == m_shit.originalName);
   //if(shitHappends)
   //  result = retT + " " + m_shit.ShittyName() + "(";
 
@@ -31,23 +31,23 @@ std::string kslicer::SlangRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
     if(typeOfParam->isPointerType())
     {
       bool pointerToGlobalMemory = false;
-      //if(shitHappends)
-      //{
-      //  for(auto p : m_shit.pointers)
-      //  {
-      //    if(p.formal == pParam->getNameAsString() )
-      //    {
-      //      pointerToGlobalMemory = true;
-      //      break;
-      //    }
-      //  }
-      //}
+      if(shitHappends)
+      {
+        for(auto p : m_shit.pointers)
+        {
+          if(p.formal == pParam->getNameAsString() )
+          {
+            pointerToGlobalMemory = true;
+            break;
+          }
+        }
+      }
 
       const auto originalText = kslicer::GetRangeSourceCode(pParam->getSourceRange(), m_compiler);
 
-      if(pointerToGlobalMemory)
-        result += std::string("uint ") + pParam->getNameAsString() + "Offset";
-      else if(originalText.find("[") != std::string::npos && originalText.find("]") != std::string::npos) // fixed size arrays
+      //if(pointerToGlobalMemory)
+      //  result += std::string("uint ") + pParam->getNameAsString() + "Offset";
+      if(originalText.find("[") != std::string::npos && originalText.find("]") != std::string::npos) // fixed size arrays
       {
         if(typeOfParam->getPointeeType().isConstQualified())
         {
@@ -420,7 +420,9 @@ std::string kslicer::SlangCompiler::RewritePushBack(const std::string& memberNam
 std::shared_ptr<kslicer::FunctionRewriter> kslicer::SlangCompiler::MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, 
                                                                                     MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit)
 {
-  return std::make_shared<SlangRewriter>(R, a_compiler, a_codeInfo);
+  auto pFunc = std::make_shared<SlangRewriter>(R, a_compiler, a_codeInfo);
+  pFunc->m_shit = a_shit;
+  return pFunc;
 }
 
 std::shared_ptr<kslicer::KernelRewriter> kslicer::SlangCompiler::MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, 

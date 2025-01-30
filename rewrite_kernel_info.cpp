@@ -511,3 +511,40 @@ bool kslicer::KernelInfoVisitor::VisitBinaryOperator(clang::BinaryOperator* expr
   
   return true;
 }
+
+
+bool kslicer::KernelInfoVisitor::NameNeedsFakeOffset(const std::string& a_name) const
+{
+   bool exclude = false;
+   for(auto arg : m_currKernel.args)
+   {
+     if(arg.needFakeOffset && arg.name == a_name)
+       exclude = true;
+   }
+   return exclude;
+}
+
+bool kslicer::KernelInfoVisitor::VisitCallExpr(clang::CallExpr* call)
+{
+  // (#1) check if buffer/pointer to global memory is passed to a function
+  //
+  std::vector<kslicer::ArgMatch> usedArgMatches = kslicer::MatchCallArgsForKernel(call, m_currKernel, m_compiler);
+  std::vector<kslicer::ArgMatch> shittyPointers; shittyPointers.reserve(usedArgMatches.size());
+  for(const auto& x : usedArgMatches) {
+    const bool exclude = NameNeedsFakeOffset(x.actual); // #NOTE! seems that formal/actual parameters have to be swaped for the whole code
+    if(x.isPointer && !exclude)
+      shittyPointers.push_back(x);
+  }
+  
+  //const clang::FunctionDecl* fDecl = call->getDirectCallee();
+  //if(shittyPointers.size() > 0 && fDecl != nullptr)
+  //{
+  //  std::string fname = fDecl->getNameInfo().getName().getAsString();
+  //  kslicer::ShittyFunction func;
+  //  func.pointers     = shittyPointers;
+  //  func.originalName = fname;
+  //  m_currKernel.shittyFunctions.push_back(func);
+  //}
+
+  return true;
+}

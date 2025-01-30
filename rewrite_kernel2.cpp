@@ -13,6 +13,8 @@ void kslicer::FunctionRewriter2::InitKernelData(kslicer::KernelInfo& a_kernelRef
       m_kernelUserArgs.insert(arg.name);
   }
 
+  m_shit = a_kernelRef.currentShit;
+
   // fill other auxilary structures
   //
   m_fakeOffsetExp = a_fakeOffsetExp;

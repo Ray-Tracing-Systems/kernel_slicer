@@ -711,7 +711,8 @@ namespace kslicer
     virtual bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) { return true; }
     virtual bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr) { return true; }
     virtual bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) { return true; }
-
+    
+    kslicer::ShittyFunction m_shit;
   };
 
   class FunctionRewriter2 : public FunctionRewriter ///!< BASE CLASS FOR ALL NEW BACKENDS
@@ -829,10 +830,7 @@ namespace kslicer
     void        Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3]);
   
     bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
-    std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
-  
-    kslicer::ShittyFunction m_shit;
-  
+    std::string CompleteFunctionCallRewrite(clang::CallExpr* call);  
   };
 
   class SlangRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
@@ -892,6 +890,7 @@ namespace kslicer
     bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr);
     bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr* expr);
     bool VisitBinaryOperator(clang::BinaryOperator* expr);
+    bool VisitCallExpr(clang::CallExpr* call);
   
   protected:
   
@@ -902,6 +901,7 @@ namespace kslicer
   
     void ProcessReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
     void DetectFuncReductionAccess(const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
+    bool NameNeedsFakeOffset(const std::string& a_name) const;
   
     clang::Rewriter&               m_rewriter;
     const clang::CompilerInstance& m_compiler;
