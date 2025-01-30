@@ -31,7 +31,7 @@ int main(int argc, const char** argv)
   }
   else
     pImpl = std::make_shared<TestClass>();
-
+  
   pImpl->CommitDeviceData();
 
   std::vector<uint> pixelData(WIN_WIDTH*WIN_HEIGHT);  
@@ -49,5 +49,7 @@ int main(int argc, const char** argv)
   std::cout << "MainFunc(ovrh) = " << timings[3]              << " ms " << std::endl;
   
   pImpl = nullptr;
+  
+  vk_utils::globalContextDestroy();
   return 0;
 }

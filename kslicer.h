@@ -854,6 +854,7 @@ namespace kslicer
     //bool WasNotRewrittenYet(const clang::Stmt* expr);
 
     bool NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text);
+    bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
   };
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
