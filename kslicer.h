@@ -748,6 +748,11 @@ namespace kslicer
     std::unordered_set<std::string> m_kernelUserArgs;
     std::string                     m_fakeOffsetExp;
     std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
+
+    // general rewrite functions, same fal all new backends
+    //
+    bool NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text);
+    bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
   };
   
   struct IRecursiveRewriteOverride
@@ -852,9 +857,6 @@ namespace kslicer
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
     //void MarkRewritten(const clang::Stmt* expr);
     //bool WasNotRewrittenYet(const clang::Stmt* expr);
-
-    bool NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text);
-    bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
   };
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
