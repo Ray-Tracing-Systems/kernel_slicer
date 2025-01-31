@@ -758,11 +758,13 @@ namespace kslicer
     std::unordered_set<std::string> m_kernelUserArgs;
     std::string                     m_fakeOffsetExp;
     std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
+    bool                            processFuncMember = false; ///<! when process function members in the same way as kernels
 
     // general rewrite functions, same fal all new backends
     //
     bool NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text);
     bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
+    bool NameNeedsFakeOffset(const std::string& a_name) const;
 
     RewrittenFunction RewriteFunction(clang::FunctionDecl* fDecl);
     std::string       RewriteFuncDecl(clang::FunctionDecl* fDecl);
@@ -1071,6 +1073,7 @@ namespace kslicer
 
     bool VisitMemberExpr_Impl(clang::MemberExpr* expr)      override;
     bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override;
+    bool VisitCallExpr_Impl(clang::CallExpr* f);
 
   protected:
     std::shared_ptr<FunctionRewriter2> m_pFunRW2 = nullptr;
@@ -1092,7 +1095,8 @@ namespace kslicer
     virtual bool        IsSingleSource()   const = 0;
     virtual std::string ShaderSingleFile() const = 0;
     virtual std::string ShaderFolder()     const = 0;
-
+   
+    virtual bool        MemberFunctionsAreSupported() const { return false; }
     virtual bool        IsGLSL() const { return !IsSingleSource(); }
     virtual bool        IsISPC() const { return false; }
 
@@ -1182,7 +1186,8 @@ namespace kslicer
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
     std::string ProcessBufferType(const std::string& a_typeName) const override;
     
-    bool        IsSingleSource()                     const override { return false; }
+    bool        IsSingleSource()                     const override { return false;}
+    bool        MemberFunctionsAreSupported()        const override { return true; }
     std::string ShaderFolder()                       const override { return std::string("shaders") + ToLowerCase(m_suffix); }
     std::string ShaderSingleFile()                   const override { return ""; }
 
@@ -1213,8 +1218,10 @@ namespace kslicer
     std::string ProcessBufferType(const std::string& a_typeName) const override;
 
     bool        IsSingleSource()                     const override { return false; }
+    bool        MemberFunctionsAreSupported()        const override { return true; }
     std::string ShaderFolder()                       const override { return std::string("shaders") + ToLowerCase(m_suffix); }
     std::string ShaderSingleFile()                   const override { return ""; }
+    
     bool        IsGLSL() const override { return false; }
     bool        IsISPC() const override { return false; }
 

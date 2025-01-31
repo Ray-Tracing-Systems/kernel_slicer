@@ -1534,7 +1534,7 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       shittyPointers.push_back(x);
   }
 
-  // check if at leat one argument of a function call require function call rewrite due to fake offset
+  // (#2) check if at leat one argument of a function call require function call rewrite due to fake offset
   //
   bool rewriteDueToFakeOffset = false;
   {

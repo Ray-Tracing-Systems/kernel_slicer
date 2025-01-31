@@ -45,9 +45,21 @@ std::string kslicer::SlangRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
 
       const auto originalText = kslicer::GetRangeSourceCode(pParam->getSourceRange(), m_compiler);
 
-      //if(pointerToGlobalMemory)
-      //  result += std::string("uint ") + pParam->getNameAsString() + "Offset";
-      if(originalText.find("[") != std::string::npos && originalText.find("]") != std::string::npos) // fixed size arrays
+      if(pointerToGlobalMemory)
+      {
+        ReplaceFirst(typeStr, "*", "");
+        std::string bufferType = "RWStructuredBuffer";
+        if(typeStr.find("const ") != std::string::npos)
+        {
+          bufferType = "StructuredBuffer";
+          ReplaceFirst(typeStr, "const ", "");
+        }
+        while(ReplaceFirst(typeStr, " ", ""));
+
+        result += bufferType + "<" + typeStr + ">" + " " + pParam->getNameAsString() + ",";
+        result += std::string("uint ") + pParam->getNameAsString() + "Offset";
+      }
+      else if(originalText.find("[") != std::string::npos && originalText.find("]") != std::string::npos) // fixed size arrays
       {
         if(typeOfParam->getPointeeType().isConstQualified())
         {
@@ -156,7 +168,111 @@ bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  { return true; } 
 bool kslicer::SlangRewriter::VisitFieldDecl_Impl(clang::FieldDecl* decl)               { return true; }
 bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) { return true; } 
-bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* f)                    { return true; }
+bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)                    
+{ 
+  if(m_kernelMode)
+  {
+    // (#1) check if buffer/pointer to global memory is passed to a function
+    //
+    std::vector<kslicer::ArgMatch> usedArgMatches = kslicer::MatchCallArgsForKernel(call, (*m_pCurrKernel), m_compiler);
+    std::vector<kslicer::ArgMatch> shittyPointers; shittyPointers.reserve(usedArgMatches.size());
+    for(const auto& x : usedArgMatches) {
+      const bool exclude = NameNeedsFakeOffset(x.actual); // #NOTE! seems that formal/actual parameters have to be swaped for the whole code
+      if(x.isPointer && !exclude)
+        shittyPointers.push_back(x);
+    }
+  
+    // (#2) check if at leat one argument of a function call require function call rewrite due to fake offset
+    //
+    bool rewriteDueToFakeOffset = false;
+    {
+      rewriteDueToFakeOffset = false;
+      for(unsigned i=0;i<call->getNumArgs(); i++)
+      {
+        const std::string argName = kslicer::GetRangeSourceCode(call->getArg(i)->getSourceRange(), m_compiler);
+        if(NameNeedsFakeOffset(argName))
+        {
+          rewriteDueToFakeOffset = true;
+          break;
+        }
+      }
+    }
+    rewriteDueToFakeOffset = rewriteDueToFakeOffset && !processFuncMember;      // function members don't apply fake offsets because they are not kernels
+    rewriteDueToFakeOffset = rewriteDueToFakeOffset && (m_fakeOffsetExp != ""); // if fakeOffset is not set for some reason, don't use it.
+  
+    const clang::FunctionDecl* fDecl = call->getDirectCallee();
+    if(shittyPointers.size() > 0 && fDecl != nullptr)
+    {
+      std::string fname = fDecl->getNameInfo().getName().getAsString();
+  
+      kslicer::ShittyFunction func;
+      func.pointers     = shittyPointers;
+      func.originalName = fname;
+      m_pCurrKernel->shittyFunctions.push_back(func);
+  
+      std::string rewrittenRes = func.originalName + "(";
+      for(unsigned i=0;i<call->getNumArgs(); i++)
+      {
+        rewrittenRes += RecursiveRewrite(call->getArg(i));
+
+        size_t found = size_t(-1);
+        for(size_t j=0;j<shittyPointers.size();j++)
+        {
+          if(shittyPointers[j].argId == i)
+          {
+            found = j;
+            break;
+          }
+        }
+
+        if(found != size_t(-1))
+        {
+          std::string offset = "0";
+          const auto arg = kslicer::RemoveImplicitCast(call->getArg(i));
+          //const std::string debugText = kslicer::GetRangeSourceCode(arg->getSourceRange(), m_compiler);
+          //arg->dump();
+          if(clang::isa<clang::BinaryOperator>(arg))
+          {
+            const auto bo = clang::dyn_cast<clang::BinaryOperator>(arg);
+            const clang::Expr *lhs = bo->getLHS();
+            const clang::Expr *rhs = bo->getRHS();
+            if(bo->getOpcodeStr() == "+")
+              offset = RecursiveRewrite(rhs);
+          }
+          rewrittenRes += (", " + offset);
+        }
+  
+        if(i!=call->getNumArgs()-1)
+          rewrittenRes += ", ";
+      }
+      rewrittenRes += ")";
+  
+      ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenRes);
+      MarkRewritten(call);
+    }
+    else if (m_codeInfo->IsRTV() && rewriteDueToFakeOffset)
+    {
+      std::string fname        = fDecl->getNameInfo().getName().getAsString();
+      std::string rewrittenRes = fname + "(";
+      for(unsigned i=0;i<call->getNumArgs(); i++)
+      {
+        const std::string argName = kslicer::GetRangeSourceCode(call->getArg(i)->getSourceRange(), m_compiler);
+        if(NameNeedsFakeOffset(argName) && !m_codeInfo->megakernelRTV)
+          rewrittenRes += RecursiveRewrite(call->getArg(i)) + "[" + m_fakeOffsetExp + "]";
+        else
+          rewrittenRes += RecursiveRewrite(call->getArg(i));
+  
+        if(i!=call->getNumArgs()-1)
+          rewrittenRes += ", ";
+      }
+      rewrittenRes += ")";
+      ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenRes);
+      MarkRewritten(call);
+    }
+  }
+
+  return true; 
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// unually both for kernel and functions
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// unually both for kernel and functions

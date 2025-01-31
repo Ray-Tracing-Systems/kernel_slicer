@@ -334,7 +334,7 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
     const std::string textRes  = VectorTypeContructorReplace(fname, text);
     //std::cout << "[Kernel::CXXConstructExpr]" << fname.c_str() << std::endl;
 
-    if(isa<CXXTemporaryObjectExpr>(call) || IsGLSL())
+    if(clang::isa<clang::CXXTemporaryObjectExpr>(call) || IsGLSL())
     {
       ReplaceTextOrWorkAround(call->getSourceRange(), textRes);
     }

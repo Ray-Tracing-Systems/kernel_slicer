@@ -26,6 +26,7 @@ void kslicer::FunctionRewriter2::InitKernelData(kslicer::KernelInfo& a_kernelRef
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
 bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text)
 {
   if(!m_kernelMode)
@@ -191,6 +192,20 @@ bool kslicer::FunctionRewriter2::CheckIfExprHasArgumentThatNeedFakeOffset(const 
   }
 
   return needOffset;
+}
+
+bool kslicer::FunctionRewriter2::NameNeedsFakeOffset(const std::string& a_name) const
+{
+  if(m_pCurrKernel == nullptr)
+    return false;
+
+   bool exclude = false;
+   for(auto arg : m_pCurrKernel->args)
+   {
+     if(arg.needFakeOffset && arg.name == a_name)
+       exclude = true;
+   }
+   return exclude;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -391,4 +406,9 @@ bool kslicer::KernelRewriter2::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 bool kslicer::KernelRewriter2::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call)
 {
   return m_pFunRW2->VisitCXXConstructExpr_Impl(call); 
+}
+
+bool kslicer::KernelRewriter2::VisitCallExpr_Impl(clang::CallExpr* call)
+{
+  return m_pFunRW2->VisitCallExpr_Impl(call); 
 }

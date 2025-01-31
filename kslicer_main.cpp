@@ -756,7 +756,7 @@ int main(int argc, const char **argv)
 
   inputCodeInfo.AddSpecVars_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
 
-  if(inputCodeInfo.pShaderCC->IsGLSL()) // We don't implement this for OpenCL kernels yet ... or at all.
+  if(inputCodeInfo.pShaderCC->MemberFunctionsAreSupported()) // We don't implement this for OpenCL kernels yet ... or at all.
   {
     std::cout << "(4.1) Process Member function calls, extract data accesed in member functions " << std::endl;
     std::cout << "{" << std::endl;
