@@ -90,7 +90,7 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
       }
     }
     
-    bool isKernel = m_codeInfo->IsKernel(m_pCurrKernel->name);
+    bool isKernel = m_codeInfo->IsKernel(m_pCurrKernel->name) && !processFuncMember;
 
     if(foundId != size_t(-1)) // else we didn't found 'payload' in kernel arguments, so just ignore it
     {
@@ -99,7 +99,7 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
       const std::string exprContent = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
       auto pos = exprContent.find("->");
 
-      if(pos != std::string::npos)
+      if(pos != std::string::npos && !processFuncMember)
       {    
         const std::string memberName = exprContent.substr(pos+2);
         if(m_codeInfo->megakernelRTV && m_codeInfo->pShaderCC->IsGLSL()) 
