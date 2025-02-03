@@ -167,7 +167,30 @@ bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 }
 bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  { return true; } 
 bool kslicer::SlangRewriter::VisitFieldDecl_Impl(clang::FieldDecl* decl)               { return true; }
-bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) { return true; } 
+
+std::string kslicer::SlangRewriter::VectorTypeContructorReplace(const std::string& fname, const std::string& callText)
+{
+  return fname + callText;
+}
+
+bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) 
+{ 
+  const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+     
+  clang::CXXConstructorDecl* ctorDecl = call->getConstructor();
+  assert(ctorDecl != nullptr);
+  const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
+
+  if(WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0) //
+  {
+    const std::string textRes = RewriteConstructCall(call);
+    ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
+    MarkRewritten(call);
+  }
+
+  return true; 
+} 
+
 bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)                    
 { 
   if(m_kernelMode)

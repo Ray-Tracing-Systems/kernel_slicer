@@ -687,7 +687,9 @@ namespace kslicer
     std::string FunctionCallRewrite(const clang::CallExpr* call);
     std::string FunctionCallRewrite(const clang::CXXConstructExpr* call);
     std::string FunctionCallRewriteNoName(const clang::CXXConstructExpr* call);
+
     virtual std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText);
+    virtual std::string RewriteConstructCall(clang::CXXConstructExpr* call);
 
   public:
     virtual bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl);
@@ -871,6 +873,8 @@ namespace kslicer
     std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
     //void MarkRewritten(const clang::Stmt* expr);
     //bool WasNotRewrittenYet(const clang::Stmt* expr);
+
+    std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
   };
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

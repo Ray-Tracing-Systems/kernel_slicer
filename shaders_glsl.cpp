@@ -1230,12 +1230,7 @@ bool kslicer::GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCa
     
     if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0 ) //
     {
-      const std::string text = FunctionCallRewriteNoName(call);
-      std::string textRes    = VectorTypeContructorReplace(fname, text); 
-      if(fname == "complex" && call->getNumArgs() == 1)
-        textRes = "to_complex" + text;
-      else if(fname == "complex" && call->getNumArgs() == 2) // never should happen with implicit constructors
-        textRes = "make_complex" + text;
+      const std::string textRes = RewriteConstructCall(call);
       //ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
       m_rewriter.ReplaceText(call->getSourceRange(), textRes);    //
       MarkRewritten(call);

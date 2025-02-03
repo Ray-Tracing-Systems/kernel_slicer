@@ -99,27 +99,32 @@ std::string kslicer::FunctionRewriter::VectorTypeContructorReplace(const std::st
   return std::string("make_") + fname + callText;
 }
 
-bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
+std::string kslicer::FunctionRewriter::RewriteConstructCall(clang::CXXConstructExpr* call)
 {
-  CXXConstructorDecl* ctorDecl = call->getConstructor();
+  clang::CXXConstructorDecl* ctorDecl = call->getConstructor();
   assert(ctorDecl != nullptr);
-  
-  const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);   
   const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
 
-  if(debugText.find("float4x4") != std::string::npos)
-  {
-    int a = 2;
-  }
+  const std::string text = FunctionCallRewriteNoName(call);
+  std::string textRes    = VectorTypeContructorReplace(fname, text); 
+  if(fname == "complex" && call->getNumArgs() == 1)
+    textRes = "to_complex" + text;
+  else if(fname == "complex" && call->getNumArgs() == 2)
+    textRes = "make_complex" + text;
+  return textRes;
+}
+
+bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call)
+{
+  const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+     
+  clang::CXXConstructorDecl* ctorDecl = call->getConstructor();
+  assert(ctorDecl != nullptr);
+  const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
 
   if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0 ) //
   {
-    const std::string text = FunctionCallRewriteNoName(call);
-    std::string textRes    = VectorTypeContructorReplace(fname, text); 
-    if(fname == "complex" && call->getNumArgs() == 1)
-      textRes = "to_complex" + text;
-    else if(fname == "complex" && call->getNumArgs() == 2)
-      textRes = "make_complex" + text;
+    const std::string textRes = RewriteConstructCall(call);
     ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
     //m_rewriter.ReplaceText(call->getSourceRange(), textRes);    //
     MarkRewritten(call);
