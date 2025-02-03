@@ -182,7 +182,6 @@ void kslicer::RTV_Pattern::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo
   tFlagsArgRef.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL;
   tFlagsArgRef.name    = "threadFlags";
   tFlagsArgRef.kind    = DATA_KIND::KIND_POD;
-  tFlagsArgRef.umpersanned = true;
 
   // add thread flags to MainFuncions and all kernel calls for each MainFunc
   //

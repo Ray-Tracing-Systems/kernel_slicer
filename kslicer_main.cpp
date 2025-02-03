@@ -1033,7 +1033,6 @@ int main(int argc, const char **argv)
           arg.kind = inout.kind;
           arg.isConst = inout.isConst;
           arg.argType = kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG;
-          arg.umpersanned = false;
           dsInfo.descriptorSetsInfo.push_back(arg);
         }
       }
@@ -1046,7 +1045,6 @@ int main(int argc, const char **argv)
         arg.kind = c.second.kind;
         arg.isConst = c.second.isConst;
         arg.argType = kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR;
-        arg.umpersanned = false;
         dsInfo.descriptorSetsInfo.push_back(arg);
       }
     }

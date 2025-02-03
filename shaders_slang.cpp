@@ -317,7 +317,7 @@ bool kslicer::SlangRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
       }
     }
 
-    // detect " *(something)"
+    // detect " *something and &something"
     //
     const std::string exprInside = RecursiveRewrite(subExpr);
 
@@ -330,6 +330,17 @@ bool kslicer::SlangRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
       MarkRewritten(expr);
     }
   }
+  
+  // remove "&" and "*" from all arguments and expressions
+  //
+  const auto op = expr->getOpcodeStr(expr->getOpcode());
+  if(SLANG_ELIMINATE_LOCAL_POINTERS && (op == "*" || op == "&") && WasNotRewrittenYet(expr->getSubExpr()) )
+  {
+    std::string text = RecursiveRewrite(expr->getSubExpr());
+    ReplaceTextOrWorkAround(expr->getSourceRange(), text);
+    MarkRewritten(expr->getSubExpr());
+  }
+
 
   return true; 
 }

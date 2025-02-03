@@ -23,6 +23,8 @@
 #include "clang/Rewrite/Frontend/Rewriters.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
+static constexpr bool SLANG_ELIMINATE_LOCAL_POINTERS = true;
+
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 std::string ToLowerCase(std::string a_str);
 
@@ -502,9 +504,8 @@ namespace kslicer
     DATA_KIND          kind = DATA_KIND::KIND_UNKNOWN;
     const clang::Expr* node = nullptr;
 
-    bool isConst               = false;
-    bool umpersanned           = false; // just signal that '&' was applied to this argument, and thus it is likely to be (ARG_REFERENCE_LOCAL or ARG_REFERENCE_CLASS_POD)
-    bool isExcludedRTV         = false;
+    bool isConst            = false;
+    bool isExcludedRTV      = false;
 
     bool isTexture    () const { return (kind == DATA_KIND::KIND_TEXTURE); }
     bool isAccelStruct() const { return (kind == DATA_KIND::KIND_ACCEL_STRUCT); }

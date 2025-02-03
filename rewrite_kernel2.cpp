@@ -102,7 +102,7 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
       if(pos != std::string::npos && !processFuncMember)
       {    
         const std::string memberName = exprContent.substr(pos+2);
-        if(m_codeInfo->megakernelRTV) 
+        if(m_codeInfo->megakernelRTV && SLANG_ELIMINATE_LOCAL_POINTERS) 
         {
           out_text = baseName + "." + memberName;
           return true;
