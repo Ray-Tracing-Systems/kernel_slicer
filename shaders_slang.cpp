@@ -173,6 +173,23 @@ std::string kslicer::SlangRewriter::VectorTypeContructorReplace(const std::strin
   return fname + callText;
 }
 
+static void ExtractTypeAndVarNameFromConstructor(clang::CXXConstructExpr* constructExpr, clang::ASTContext* astContext, std::string& varName, std::string& typeName) 
+{
+  // (1) Получаем имя типа
+  //
+  clang::CXXConstructorDecl* ctor = constructExpr->getConstructor();
+  typeName = ctor->getNameInfo().getName().getAsString();
+  
+  // (2) Получаем имя переменной
+  clang::DynTypedNodeList parents = astContext->getParents(*constructExpr);
+  for (const clang::DynTypedNode& parent : parents) {
+      if (const clang::VarDecl* varDecl = parent.get<clang::VarDecl>()) {
+          varName = varDecl->getNameAsString();
+          break;
+      }
+  }
+}
+
 bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) 
 { 
   const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
@@ -180,6 +197,9 @@ bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr*
   clang::CXXConstructorDecl* ctorDecl = call->getConstructor();
   assert(ctorDecl != nullptr);
   const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
+  
+  std::string varName, typeName;
+  ExtractTypeAndVarNameFromConstructor(call, &m_compiler.getASTContext(), varName, typeName);
 
   if(WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0) //
   {
