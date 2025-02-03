@@ -203,7 +203,7 @@ bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr*
 
   if(WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0) //
   {
-    const std::string textRes = RewriteConstructCall(call);
+    const std::string textRes = varName + " = " + RewriteConstructCall(call);
     ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
     MarkRewritten(call);
   }
