@@ -102,7 +102,7 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
       if(pos != std::string::npos && !processFuncMember)
       {    
         const std::string memberName = exprContent.substr(pos+2);
-        if(m_codeInfo->megakernelRTV && m_codeInfo->pShaderCC->IsGLSL()) 
+        if(m_codeInfo->megakernelRTV) 
         {
           out_text = baseName + "." + memberName;
           return true;
@@ -114,7 +114,7 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
         }
       }
     }
-    else if(!isKernel && m_codeInfo->pShaderCC->IsGLSL()) // for common member functions
+    else if(!isKernel) // for common member functions
     {
       const std::string exprContent = GetRangeSourceCode(expr->getSourceRange(), m_compiler);
       auto pos = exprContent.find("->");
