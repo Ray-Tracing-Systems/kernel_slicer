@@ -44,7 +44,6 @@ std::string kslicer::SlangRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
       }
 
       const auto originalText = kslicer::GetRangeSourceCode(pParam->getSourceRange(), m_compiler);
-
       if(pointerToGlobalMemory)
       {
         ReplaceFirst(typeStr, "*", "");
@@ -134,21 +133,26 @@ std::string kslicer::SlangRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
 
 bool kslicer::SlangRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)        
 {
-  auto hash = kslicer::GetHashOfSourceRange(fDecl->getBody()->getSourceRange());
-  if(m_codeInfo->m_functionsDone.find(hash) == m_codeInfo->m_functionsDone.end()) // it is important to put functions in 'm_functionsDone'
+  if(clang::isa<clang::CXXMethodDecl>(fDecl)) // ignore methods here, process them inside VisitCXXMethodDecl_Impl
+    return true;
+
+  if(WasNotRewrittenYet(fDecl->getBody()))
   {
-    kslicer::RewrittenFunction done;
-    done.funDecl = kslicer::GetRangeSourceCode(fDecl->getSourceRange(),            m_compiler); 
-    auto posBrace = done.funDecl.find("{");
-    if(posBrace != std::string::npos)
-      done.funDecl = done.funDecl.substr(0,posBrace); // discard func body source code
-    done.funBody = kslicer::GetRangeSourceCode(fDecl->getBody()->getSourceRange(), m_compiler);
-    m_codeInfo->m_functionsDone[hash] = done;
-  }  
+    RewrittenFunction done = RewriteFunction(fDecl);
+    const auto hash = GetHashOfSourceRange(fDecl->getBody()->getSourceRange());
+    if(m_codeInfo->m_functionsDone.find(hash) == m_codeInfo->m_functionsDone.end())
+      m_codeInfo->m_functionsDone[hash] = done;
+    MarkRewritten(fDecl->getBody());
+  }
+
   return true; 
 }
 
-bool kslicer::SlangRewriter::VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl)      { return true; }
+bool kslicer::SlangRewriter::VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl)      
+{ 
+  return true; 
+}
+
 bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)             
 {
   if(m_kernelMode)

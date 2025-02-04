@@ -748,6 +748,11 @@ std::string kslicer::GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* 
 {
   std::string retT   = RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString());
   std::string fname  = fDecl->getNameInfo().getName().getAsString();
+  
+  if(fname == "NextState")
+  {
+    int a = 2;
+  }
 
   if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix) // alter function name if it has any prefix
     if(fname.find(m_pCurrFuncInfo->prefixName) == std::string::npos)
