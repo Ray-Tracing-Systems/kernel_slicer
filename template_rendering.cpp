@@ -735,7 +735,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(pVecMember->second.containerDataType);
       std::string buffType2 = pShaderRewriter->RewriteStdVectorTypeStr(buffType1);
-      if(!a_classInfo.pShaderCC->IsGLSL() && !a_classInfo.pShaderCC->IsISPC())
+      if(a_classInfo.pShaderCC->BuffersAsPointersInShaders())
         buffType2 += "*";
 
       json argj;

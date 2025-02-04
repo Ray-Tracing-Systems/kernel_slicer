@@ -61,9 +61,9 @@ int main(int argc, const char** argv)
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
   {
     float4 color = realColor[i]*normConst;
-    color.x      = powf(color.x, invGamma);
-    color.y      = powf(color.y, invGamma);
-    color.z      = powf(color.z, invGamma);
+    color.x      = std::pow(color.x, invGamma);
+    color.y      = std::pow(color.y, invGamma);
+    color.z      = std::pow(color.z, invGamma);
     color.w      = 1.0f;
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }

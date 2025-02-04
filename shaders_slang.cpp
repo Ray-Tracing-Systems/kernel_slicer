@@ -577,6 +577,7 @@ std::string kslicer::SlangCompiler::ProcessBufferType(const std::string& a_typeN
 {
   std::string type = kslicer::CleanTypeName(a_typeName);
   ReplaceFirst(type, "*", "");
+  
   if(type[type.size()-1] == ' ')
     type = type.substr(0, type.size()-1);
 

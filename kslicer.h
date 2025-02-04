@@ -1102,6 +1102,7 @@ namespace kslicer
     virtual std::string ShaderFolder()     const = 0;
    
     virtual bool        MemberFunctionsAreSupported() const { return false; }
+    virtual bool        BuffersAsPointersInShaders() const { return false; }
     virtual bool        IsGLSL() const { return !IsSingleSource(); }
     virtual bool        IsISPC() const { return false; }
 
@@ -1148,6 +1149,7 @@ namespace kslicer
     bool        IsSingleSource()   const override { return true; }
     std::string ShaderFolder()     const override { return "clspv_shaders_aux"; }
     std::string ShaderSingleFile() const override { return "z_generated.cl"; }
+    bool        BuffersAsPointersInShaders() const override { return true; }
 
     void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
 
