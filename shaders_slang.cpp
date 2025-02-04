@@ -194,8 +194,97 @@ static void ExtractTypeAndVarNameFromConstructor(clang::CXXConstructExpr* constr
   }
 }
 
+enum class ConstructorType {
+  ExplicitInitList,   // float2 v = float2{0,0}
+  ImplicitInitList,   // float2 v = {0,0}
+  DirectInitList,     // float2 v{0,0};
+  DirectParen,        // float2 v(0,0);
+  Default,            // float2 v; 
+  Other               // всё остальное что ещё придумают в С++
+};
+
+/*static ConstructorType ClassifyConstructor(clang::CXXConstructExpr* call) 
+{
+  if (call->getNumArgs() == 0)
+    return ConstructorType::Default; // float2 v(0,0);
+
+  // Получаем контекст инициализации
+  clang::Expr* initExpr = call->getArg(0);
+  // Проверяем, является ли инициализация списком ({} или = {})
+  if (call->isListInitialization()) {
+    // Проверяем, есть ли явное указание типа (float2{0,0})
+    if (initExpr && llvm::isa<clang::InitListExpr>(initExpr)) {
+      auto initList = llvm::cast<clang::InitListExpr>(initExpr);
+      if (initList->isExplicit()) {
+          return ConstructorType::ExplicitInitList; // float2 v = float2{0,0}
+      } else {
+          return ConstructorType::ImplicitInitList; // float2 v = {0,0}
+      }
+    }
+    return ConstructorType::DirectInitList; // float2 v{0,0};
+  }
+
+  // Проверяем, является ли инициализация через круглые скобки (float2 v(0,0))
+  if (call->getNumArgs() > 0)
+    return ConstructorType::DirectParen; // float2 v(0,0);
+
+  // Если ни один из случаев не подошел
+  return ConstructorType::Other;
+}*/
+
+static ConstructorType ClassifyConstructor(clang::CXXConstructExpr* call, clang::SourceManager &SM) 
+{
+  if (call == nullptr)
+    return ConstructorType::Other;
+  
+  auto initStyle = call->getConstructionKind();
+  
+  switch (initStyle) 
+  {
+    case clang::CXXConstructExpr::CK_Complete:
+    case clang::CXXConstructExpr::CK_NonVirtualBase:
+    case clang::CXXConstructExpr::CK_VirtualBase:
+    case clang::CXXConstructExpr::CK_Delegating:
+    {
+      // Default construction case
+      if (call->getNumArgs() == 0)
+        return ConstructorType::Default;
+      
+      clang::SourceLocation Begin = call->getBeginLoc();
+      clang::SourceLocation End = call->getEndLoc();
+
+      if (Begin.isValid() && End.isValid()) 
+      {
+        char BeginChar = SM.getCharacterData(Begin)[0];
+        char EndChar = SM.getCharacterData(End)[0];
+        
+        if (BeginChar == '{' && EndChar == '}') {
+          // Handling could further distinguish between ExplicitInitList
+          return call->isListInitialization() ? ConstructorType::ImplicitInitList :
+                                                ConstructorType::ExplicitInitList;
+        } 
+        else if (BeginChar == '(' && EndChar == ')')
+          return ConstructorType::DirectParen;
+        else
+          return ConstructorType::Other;
+      }
+      else
+        return ConstructorType::Other;
+    }
+    default:
+      break;
+  }
+
+  if (call->isListInitialization())
+    return ConstructorType::ExplicitInitList;
+
+  return ConstructorType::Other;
+}
+
 bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) 
 { 
+  auto constType = ClassifyConstructor(call, m_compiler.getSourceManager());
+
   const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
      
   clang::CXXConstructorDecl* ctorDecl = call->getConstructor();
