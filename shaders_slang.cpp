@@ -250,6 +250,17 @@ bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
       MarkRewritten(expr);
     }
   }
+  
+  // 'pStruct->member' ==> 'pStruct.member'
+  //
+  if(expr->isArrow() && WasNotRewrittenYet(expr->getBase()) )
+  {
+    const auto exprText     = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    const std::string lText = exprText.substr(exprText.find("->")+2);
+    const std::string rText = RecursiveRewrite(expr->getBase());
+    ReplaceTextOrWorkAround(expr->getSourceRange(), rText + "." + lText);
+    MarkRewritten(expr->getBase());
+  }
 
   return true; 
 }
@@ -485,11 +496,6 @@ bool kslicer::SlangRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   if(m_kernelMode)
   {
     // ...
-  }
-
-  if(originalText.find("unsigned int") != std::string::npos)
-  {
-    int a = 2;
   }
 
   const clang::Type::TypeClass typeClass = qt->getTypeClass();
