@@ -21,6 +21,11 @@ def compile_shaders(shader_lang, shader_folder):
         res = subprocess.run(["bash", "build.sh"],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         os.chdir("..")
+    elif shader_lang == ShaderLang.SLANG:
+        os.chdir(shader_folder)
+        res = subprocess.run(["bash", "build_slang.sh"],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        os.chdir("..")
     elif shader_lang == ShaderLang.ISPC:
         res = subprocess.run(["bash", "z_build_ispc.sh"],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -30,7 +35,7 @@ def compile_shaders(shader_lang, shader_folder):
 
 def compile_sample(sample_config, num_threads=1, enable_ispc = False):
     os.chdir(sample_config.root)
-    #Log().info("Enable_ispc: {}".format(enable_ispc))  ############################################# (!!!!)
+    #Log().info("sample_config.shader_lang = {}".format(sample_config.shader_lang))  ############################################# (!!!!)
     Log().info("Building sample shaders: {}".format(sample_config.name))
     res = compile_shaders(sample_config.shader_lang, sample_config.shader_folder)
     if res.returncode != 0:

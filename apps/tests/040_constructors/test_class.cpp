@@ -18,7 +18,7 @@ void SimpleTest::kernel1D_Test(float* a_data, unsigned int a_size)
       float2 v1 = float2{1.0f,2.0f};
       float2 v2 = {3.0f,4.0f};
       float2 v3{5.0f,6.0f};
-      float2 v4 = float2{7.0f,8.0f};
+      float2 v4 = float2(7.0f,8.0f);
       float2 v5(9.0f,10.0f);
       float2 v6;
       v6.x = 11.0f;

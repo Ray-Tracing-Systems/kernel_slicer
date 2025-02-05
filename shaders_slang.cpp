@@ -177,93 +177,22 @@ std::string kslicer::SlangRewriter::VectorTypeContructorReplace(const std::strin
   return fname + callText;
 }
 
-static void ExtractTypeAndVarNameFromConstructor(clang::CXXConstructExpr* constructExpr, clang::ASTContext* astContext, std::string& varName, std::string& typeName) 
-{
-  // (1) Получаем имя типа
-  //
-  clang::CXXConstructorDecl* ctor = constructExpr->getConstructor();
-  typeName = ctor->getNameInfo().getName().getAsString();
-  
-  // (2) Получаем имя переменной
-  clang::DynTypedNodeList parents = astContext->getParents(*constructExpr);
-  for (const clang::DynTypedNode& parent : parents) {
-      if (const clang::VarDecl* varDecl = parent.get<clang::VarDecl>()) {
-          varName = varDecl->getNameAsString();
-          break;
-      }
-  }
-}
-
-enum class ConstructorType {
-  ExplicitInitList,   // float2 v = float2{0,0}
-  ImplicitInitList,   // float2 v = {0,0}
-  DirectInitList,     // float2 v{0,0};
-  DirectParen,        // float2 v(0,0);
-  Default,            // float2 v; 
-  Other               // всё остальное что ещё придумают в С++
-};
-
-static ConstructorType ClassifyConstructor(clang::CXXConstructExpr* call, clang::SourceManager &SM) 
-{
-  if (call == nullptr)
-    return ConstructorType::Other;
-  else if (call->getNumArgs() == 0)
-    return ConstructorType::Default;
-  
-  auto initStyle = call->getConstructionKind();
-  
-  switch (initStyle) 
-  {
-    case clang::CXXConstructExpr::CK_Complete:
-    case clang::CXXConstructExpr::CK_NonVirtualBase:
-    case clang::CXXConstructExpr::CK_VirtualBase:
-    case clang::CXXConstructExpr::CK_Delegating:
-    {  
-      clang::SourceLocation Begin = call->getBeginLoc();
-      clang::SourceLocation End = call->getEndLoc();
-
-      if (Begin.isValid() && End.isValid()) 
-      {
-        char BeginChar = SM.getCharacterData(Begin)[0];
-        char EndChar = SM.getCharacterData(End)[0];
-        
-        if (BeginChar == '{' && EndChar == '}') { // Handling could further distinguish between ExplicitInitList
-          return call->isListInitialization() ? ConstructorType::ImplicitInitList : ConstructorType::ExplicitInitList;
-        } 
-        else if (BeginChar == '(' && EndChar == ')')
-          return ConstructorType::DirectParen;
-        else
-          return ConstructorType::Other;
-      }
-      else
-        return ConstructorType::Other;
-    }
-    default:
-      break;
-  }
-
-  if (call->isListInitialization())
-    return ConstructorType::ExplicitInitList;
-
-  return ConstructorType::Other;
-}
-
 bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) 
 { 
-  auto constType = ClassifyConstructor(call, m_compiler.getSourceManager());
-
-  const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+  const std::string originalText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
      
   clang::CXXConstructorDecl* ctorDecl = call->getConstructor();
   assert(ctorDecl != nullptr);
-  const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
-  
-  std::string varName, typeName;
-  ExtractTypeAndVarNameFromConstructor(call, &m_compiler.getASTContext(), varName, typeName);
-
+ 
   if(WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0) //
   {
-    const std::string textRes = varName + " = " + RewriteConstructCall(call);
+    std::string varName, typeName;
+    ExtractTypeAndVarNameFromConstructor(call, &m_compiler.getASTContext(), varName, typeName);
+    const bool hasVarName = (originalText.find(varName) == 0); // found in the start of the string
+
+    std::string textRes = RewriteConstructCall(call);
+    if(hasVarName)
+      textRes = varName + " = " + textRes;
     ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
     MarkRewritten(call);
   }

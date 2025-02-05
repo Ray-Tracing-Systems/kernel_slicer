@@ -13,6 +13,7 @@ class ShaderLang(Enum):
     OPEN_CL = 0
     GLSL    = 1
     ISPC    = 2
+    SLANG   = 3
 
 class SampleConfig:
     def __init__(self, name, args):
@@ -66,6 +67,8 @@ class SampleConfig:
                 lang = ShaderLang.GLSL
             elif arg.lower() == "ispc":
                 lang = ShaderLang.ISPC
+            elif arg.lower() == "slang":
+                lang = ShaderLang.SLANG
         return lang
 
 

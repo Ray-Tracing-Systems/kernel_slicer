@@ -70,6 +70,29 @@ void kslicer::PrintWarning(const std::string& a_msg, const clang::SourceRange& a
   std::cout << fileName.c_str() << ":" << line << ":" << col << ": warning: " << a_msg << " --> " << code.c_str() << std::endl;
 }
 
+void kslicer::ExtractTypeAndVarNameFromConstructor(clang::CXXConstructExpr* constructExpr, clang::ASTContext* astContext, std::string& varName, std::string& typeName) 
+{
+  // (0) очищаем строки
+  //
+  varName = ""; 
+  typeName = "";
+  
+  // (1) Получаем имя типа
+  //
+  clang::CXXConstructorDecl* ctor = constructExpr->getConstructor();
+  typeName = ctor->getNameInfo().getName().getAsString();
+  
+  // (2) Получаем имя переменной
+  clang::DynTypedNodeList parents = astContext->getParents(*constructExpr);
+  for (const clang::DynTypedNode& parent : parents) {
+      if (const clang::VarDecl* varDecl = parent.get<clang::VarDecl>()) {
+          varName = varDecl->getNameAsString();
+          break;
+      }
+  }
+}
+
+
 const clang::Expr* kslicer::RemoveImplicitCast(const clang::Expr* nextNode)
 {
   if(nextNode == nullptr)
