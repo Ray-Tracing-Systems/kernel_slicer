@@ -331,7 +331,12 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     if(shittyPointers.size() > 0 && fDecl != nullptr)
     {
       std::string fname = fDecl->getNameInfo().getName().getAsString();
-  
+      
+      if (fname == "kernel_GetMaterialColor")
+      {
+        int a = 2;
+      }
+
       kslicer::ShittyFunction func;
       func.pointers     = shittyPointers;
       func.originalName = fname;
@@ -375,6 +380,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       rewrittenRes += ")";
   
       ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenRes);
+      //m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
       MarkRewritten(call);
     }
     else if (m_codeInfo->IsRTV() && rewriteDueToFakeOffset)
