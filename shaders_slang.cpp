@@ -8,6 +8,90 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+std::unordered_map<std::string, std::string> kslicer::SlangRewriter::ListSlangStandartTypeReplacements()
+{
+  std::unordered_map<std::string, std::string> m_vecReplacements;
+  m_vecReplacements["_Bool"] = "bool";
+  m_vecReplacements["long int"]       = "int";
+  m_vecReplacements["unsigned long"]  = "uint";
+  m_vecReplacements["unsigned int"]   = "uint";
+  m_vecReplacements["unsigned"]       = "uint";
+  m_vecReplacements["unsigned char"]  = "uint8_t";
+  m_vecReplacements["char"]           = "int8_t";
+  m_vecReplacements["unsigned short"] = "uint16_t";
+  m_vecReplacements["short"]          = "int16_t";
+  m_vecReplacements["uchar"]          = "uint8_t";
+  m_vecReplacements["ushort"]         = "uint16_t";
+  m_vecReplacements["int32_t"]        = "int";
+  m_vecReplacements["uint32_t"]       = "uint";
+  m_vecReplacements["size_t"]             = "uint64_t";
+  m_vecReplacements["unsigned long long"] = "uint64_t";
+  m_vecReplacements["long long int"]      = "int64_t";
+  
+  std::unordered_map<std::string, std::string> m_vecReplacementsConst;
+  for(auto r : m_vecReplacements)
+    m_vecReplacementsConst[std::string("const ") + r.first] = std::string("const ") + m_vecReplacements[r.first];
+  
+  for(auto rc : m_vecReplacementsConst)
+    m_vecReplacements[rc.first] = rc.second;
+    
+  return m_vecReplacements;
+}
+
+void kslicer::SlangRewriter::Init()
+{
+  m_typesReplacement = ListSlangStandartTypeReplacements();
+}
+
+std::string kslicer::SlangRewriter::RewriteStdVectorTypeStr(const std::string& a_str) const
+{
+  const bool isConst  = (a_str.find("const") != std::string::npos);
+  std::string copy = a_str;
+  ReplaceFirst(copy, "const ", "");
+  while(ReplaceFirst(copy, " ", ""));
+
+  std::string resStr;
+  std::string typeStr = kslicer::CleanTypeName(a_str);
+
+  if(typeStr.size() > 0 && typeStr[typeStr.size()-1] == ' ')
+    typeStr = typeStr.substr(0, typeStr.size()-1);
+
+  if(typeStr.size() > 0 && typeStr[0] == ' ')
+    typeStr = typeStr.substr(1, typeStr.size()-1);
+
+  auto p = m_typesReplacement.find(typeStr);
+  if(p == m_typesReplacement.end())
+    resStr = typeStr;
+  else
+    resStr = p->second;
+
+  if(isConst)
+    resStr = std::string("const ") + resStr;
+
+  return resStr;
+}
+
+// process arrays: 'float[3] data' --> 'float data[3]' 
+std::string kslicer::SlangRewriter::RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const
+{
+  auto typeNameR = a_typeName;
+  auto posArrayBegin = typeNameR.find("[");
+  auto posArrayEnd   = typeNameR.find("]");
+  if(posArrayBegin != std::string::npos && posArrayEnd != std::string::npos)
+  {
+    varName   = varName + typeNameR.substr(posArrayBegin, posArrayEnd-posArrayBegin+1);
+    typeNameR = typeNameR.substr(0, posArrayBegin);
+  }
+
+  return RewriteStdVectorTypeStr(typeNameR);
+}
+
+bool kslicer::SlangRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // TODO: make this implementation more smart, bad implementation actually!
+{
+  std::string typeStr = kslicer::CleanTypeName(a_str);
+  return (m_typesReplacement.find(typeStr) != m_typesReplacement.end());
+}
+
 std::string kslicer::SlangRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
 {
   std::string retT   = RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString());
@@ -389,9 +473,42 @@ bool kslicer::SlangRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCal
 
 bool kslicer::SlangRewriter::VisitVarDecl_Impl(clang::VarDecl* decl) 
 { 
+  if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
+    return true;
+
+  const auto qt      = decl->getType();
+  const auto pValue  = decl->getAnyInitializer();
+
+  const std::string originalText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler);
+  const std::string varType      = qt.getAsString();
+
   if(m_kernelMode)
   {
     // ...
+  }
+
+  if(originalText.find("unsigned int") != std::string::npos)
+  {
+    int a = 2;
+  }
+
+  const clang::Type::TypeClass typeClass = qt->getTypeClass();
+  const bool isAuto = (typeClass == clang::Type::Auto);
+  if(pValue != nullptr && WasNotRewrittenYet(pValue) && (NeedsVectorTypeRewrite(varType) || isAuto))
+  {
+    std::string varName  = decl->getNameAsString();
+    std::string varNameOld = varName;
+    std::string varValue = RecursiveRewrite(pValue);
+    std::string varType2 = RewriteStdVectorTypeStr(varType, varName);
+    
+    std::string lastRewrittenText;
+    if(varValue == "" || varNameOld == varValue) // 'float3 deviation;' for some reason !decl->hasInit() does not works
+      lastRewrittenText = varType2 + " " + varName;
+    else
+      lastRewrittenText = varType2 + " " + varName + " = " + varValue;
+  
+    ReplaceTextOrWorkAround(decl->getSourceRange(), lastRewrittenText);
+    MarkRewritten(pValue);
   }
 
   return true; 

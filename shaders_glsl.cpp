@@ -519,7 +519,7 @@ std::string kslicer::GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::st
 
   auto sFeatures2 = kslicer::GetUsedShaderFeaturesFromTypeName(a_str);
   sFeatures = sFeatures || sFeatures2;
-
+  
   std::string resStr;
   std::string typeStr = kslicer::CleanTypeName(a_str);
   ReplaceFirst(typeStr, "unsigned long", "uint");

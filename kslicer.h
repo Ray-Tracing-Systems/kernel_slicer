@@ -841,8 +841,8 @@ namespace kslicer
   class SlangRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
   {
   public:
-    SlangRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) : FunctionRewriter2(R,a_compiler,a_codeInfo)  {}
-    ~SlangRewriter(){}
+    SlangRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) : FunctionRewriter2(R,a_compiler,a_codeInfo) { Init();}
+    ~SlangRewriter(){ }
 
     bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)   override;
     bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) override;
@@ -869,12 +869,22 @@ namespace kslicer
 
     // Also important functions to use(!)
     //
+    bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
+    std::string RewriteStdVectorTypeStr(const std::string& a_str) const override;
+    std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const override;
+    
+    //
+    //
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
     std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
     //void MarkRewritten(const clang::Stmt* expr);
     //bool WasNotRewrittenYet(const clang::Stmt* expr);
 
     std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
+  private:
+    void Init();
+    std::unordered_map<std::string, std::string> ListSlangStandartTypeReplacements();
+    std::unordered_map<std::string, std::string> m_typesReplacement;
   };
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
