@@ -139,8 +139,8 @@ std::string kslicer::SlangRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
         }
         while(ReplaceFirst(typeStr, " ", ""));
 
-        result += bufferType + "<" + typeStr + ">" + " " + pParam->getNameAsString() + ",";
-        result += std::string("uint ") + pParam->getNameAsString() + "Offset";
+        result += bufferType + "<" + typeStr + ">" + " " + pParam->getNameAsString();
+        //result += std::string(",") + std::string("uint ") + pParam->getNameAsString() + "Offset";
       }
       else if(originalText.find("[") != std::string::npos && originalText.find("]") != std::string::npos) // fixed size arrays
       {
@@ -350,7 +350,8 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
         //rewrittenRes += kslicer::GetRangeSourceCode(call->getArg(i)->getSourceRange(), m_compiler);
         const auto arg = kslicer::RemoveImplicitCast(call->getArg(i));
         rewrittenRes += RecursiveRewrite(arg);
-
+        
+        /*
         size_t found = size_t(-1);
         for(size_t j=0;j<shittyPointers.size();j++)
         {
@@ -375,7 +376,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
               offset = RecursiveRewrite(rhs);
           }
           rewrittenRes += ", " + offset;
-        }
+        }*/
   
         if(i!=call->getNumArgs()-1)
           rewrittenRes += ", ";
