@@ -245,8 +245,8 @@ bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
     std::string rewrittenText;
     if(NeedToRewriteMemberExpr(expr, rewrittenText))
     {
-      ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
-      //m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
+      //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
+      m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
       MarkRewritten(expr);
     }
   }
@@ -347,7 +347,9 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       std::string rewrittenRes = func.originalName + "(";
       for(unsigned i=0;i<call->getNumArgs(); i++)
       {
-        rewrittenRes += RecursiveRewrite(call->getArg(i));
+        //rewrittenRes += kslicer::GetRangeSourceCode(call->getArg(i)->getSourceRange(), m_compiler);
+        const auto arg = kslicer::RemoveImplicitCast(call->getArg(i));
+        rewrittenRes += RecursiveRewrite(arg);
 
         size_t found = size_t(-1);
         for(size_t j=0;j<shittyPointers.size();j++)
@@ -362,7 +364,6 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
         if(found != size_t(-1))
         {
           std::string offset = "0";
-          const auto arg = kslicer::RemoveImplicitCast(call->getArg(i));
           //const std::string debugText = kslicer::GetRangeSourceCode(arg->getSourceRange(), m_compiler);
           //arg->dump();
           if(clang::isa<clang::BinaryOperator>(arg))
@@ -373,14 +374,15 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
             if(bo->getOpcodeStr() == "+")
               offset = RecursiveRewrite(rhs);
           }
-          rewrittenRes += (", " + offset);
+          rewrittenRes += ", " + offset;
         }
   
         if(i!=call->getNumArgs()-1)
           rewrittenRes += ", ";
       }
       rewrittenRes += ")";
-  
+      
+      //std::cout << "  rewrittenRes = " << rewrittenRes.c_str() << std::endl;
       ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenRes);
       //m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
       MarkRewritten(call);
@@ -622,8 +624,8 @@ bool  kslicer::SlangRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
     {
       if(!m_codeInfo->megakernelRTV || m_pCurrKernel->isMega)
       {
-        ReplaceTextOrWorkAround(expr->getSourceRange(), std::string("kgenArgs.") + textOri);
-        //m_rewriter.ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + textOri);
+        //ReplaceTextOrWorkAround(expr->getSourceRange(), std::string("kgenArgs.") + textOri);
+        m_rewriter.ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + textOri);
         MarkRewritten(expr);
       }
     }
