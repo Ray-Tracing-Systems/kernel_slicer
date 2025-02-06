@@ -333,11 +333,6 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     if(shittyPointers.size() > 0 && fDecl != nullptr)
     {
       std::string fname = fDecl->getNameInfo().getName().getAsString();
-      
-      if (fname == "kernel_GetMaterialColor")
-      {
-        int a = 2;
-      }
 
       kslicer::ShittyFunction func;
       func.pointers     = shittyPointers;
@@ -347,43 +342,12 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       std::string rewrittenRes = func.originalName + "(";
       for(unsigned i=0;i<call->getNumArgs(); i++)
       {
-        //rewrittenRes += kslicer::GetRangeSourceCode(call->getArg(i)->getSourceRange(), m_compiler);
-        const auto arg = kslicer::RemoveImplicitCast(call->getArg(i));
-        rewrittenRes += RecursiveRewrite(arg);
-        
-        /*
-        size_t found = size_t(-1);
-        for(size_t j=0;j<shittyPointers.size();j++)
-        {
-          if(shittyPointers[j].argId == i)
-          {
-            found = j;
-            break;
-          }
-        }
-
-        if(found != size_t(-1))
-        {
-          std::string offset = "0";
-          //const std::string debugText = kslicer::GetRangeSourceCode(arg->getSourceRange(), m_compiler);
-          //arg->dump();
-          if(clang::isa<clang::BinaryOperator>(arg))
-          {
-            const auto bo = clang::dyn_cast<clang::BinaryOperator>(arg);
-            const clang::Expr *lhs = bo->getLHS();
-            const clang::Expr *rhs = bo->getRHS();
-            if(bo->getOpcodeStr() == "+")
-              offset = RecursiveRewrite(rhs);
-          }
-          rewrittenRes += ", " + offset;
-        }*/
-  
+        rewrittenRes += RecursiveRewrite(call->getArg(i));
         if(i!=call->getNumArgs()-1)
           rewrittenRes += ", ";
       }
       rewrittenRes += ")";
       
-      //std::cout << "  rewrittenRes = " << rewrittenRes.c_str() << std::endl;
       ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenRes);
       //m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
       MarkRewritten(call);
@@ -480,7 +444,6 @@ bool kslicer::SlangRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
     //m_rewriter.ReplaceText(expr->getSourceRange(), text);
     MarkRewritten(expr->getSubExpr());
   }
-
 
   return true; 
 }
