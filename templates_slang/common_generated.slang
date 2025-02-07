@@ -23,6 +23,10 @@ RWStructuredBuffer<{{MainClassName}}{{MainClassSuffix}}_UBO_Data> ubo;
 {{MembFunc.Decl}};
 
 {% endfor %}
+{% for ShitFunc in Kernel.ShityFunctions %} 
+{{ShitFunc}}
+
+{% endfor %}
 {% for MembFunc in Kernel.MemberFunctions %}
 {% if not (MembFunc.IsRayQuery and (Kernel.UseRayGen or (length(Kernel.IntersectionHierarhcy.Implementations) >= 1)) ) %}
 

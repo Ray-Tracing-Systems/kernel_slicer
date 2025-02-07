@@ -510,7 +510,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   }
 
   std::unordered_map<std::string, kslicer::ShittyFunction> shittyFunctions; //
-  if(a_classInfo.pShaderCC->IsGLSL())
+  if(!a_classInfo.pShaderCC->BuffersAsPointersInShaders())
   {
     for(const auto& k : a_classInfo.kernels)
     {
