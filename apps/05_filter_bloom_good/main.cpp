@@ -80,6 +80,7 @@ int main(int argc, const char** argv)
   std::cout << "kernel2D_BlurX(min) = " << timings[1] << " ms " << std::endl;
   std::cout << "kernel2D_BlurX(max) = " << timings[2] << " ms " << std::endl;
 
-  pImpl = nullptr;  
+  pImpl = nullptr;
+  vk_utils::globalContextDestroy();  
   return 0;
 }

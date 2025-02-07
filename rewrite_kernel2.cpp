@@ -364,7 +364,11 @@ std::string kslicer::FunctionRewriter2::RecursiveRewrite(const clang::Stmt* expr
 {
   if(expr == nullptr)
     return "";
-    
+  
+  std::string shallow;
+  if(DetectAndRewriteShallowPattern(expr, shallow)) 
+    return shallow;
+
   FunctionRewriter2 rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
 
@@ -374,6 +378,18 @@ std::string kslicer::FunctionRewriter2::RecursiveRewrite(const clang::Stmt* expr
     return p->second;
   else
     return m_rewriter.getRewrittenText(range);
+}
+
+bool kslicer::FunctionRewriter2::DetectAndRewriteShallowPattern(const clang::Stmt* expr, std::string& a_out)
+{
+  if(clang::isa<clang::MemberExpr>(expr))
+  {
+    const clang::MemberExpr* memberExpr = clang::dyn_cast<clang::MemberExpr>(expr);
+    if(m_kernelMode && NeedToRewriteMemberExpr(memberExpr, a_out))
+      return true;
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -23,7 +23,8 @@
 #include "clang/Rewrite/Frontend/Rewriters.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
-static constexpr bool SLANG_ELIMINATE_LOCAL_POINTERS = true;
+static constexpr bool SLANG_ELIMINATE_LOCAL_POINTERS    = true;
+static constexpr bool SLANG_SUPPORT_POINTER_ADD_IN_ARGS = true;
 
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 std::string ToLowerCase(std::string a_str);
@@ -750,8 +751,8 @@ namespace kslicer
     // Also important functions to use(!)
     //
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
-    //void MarkRewritten(const clang::Stmt* expr);
-    //bool WasNotRewrittenYet(const clang::Stmt* expr);
+    
+    virtual bool DetectAndRewriteShallowPattern(const clang::Stmt* expr, std::string& a_out);
      
     // for kernel processing only
     //

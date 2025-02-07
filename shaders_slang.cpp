@@ -140,7 +140,8 @@ std::string kslicer::SlangRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
         while(ReplaceFirst(typeStr, " ", ""));
 
         result += bufferType + "<" + typeStr + ">" + " " + pParam->getNameAsString();
-        //result += std::string(",") + std::string("uint ") + pParam->getNameAsString() + "Offset";
+        if(SLANG_SUPPORT_POINTER_ADD_IN_ARGS)
+          result += std::string(",") + std::string("uint ") + pParam->getNameAsString() + "Offset"; //
       }
       else if(originalText.find("[") != std::string::npos && originalText.find("]") != std::string::npos) // fixed size arrays
       {
@@ -342,7 +343,36 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       std::string rewrittenRes = func.originalName + "(";
       for(unsigned i=0;i<call->getNumArgs(); i++)
       {
-        rewrittenRes += RecursiveRewrite(call->getArg(i));
+        const auto arg = kslicer::RemoveImplicitCast(call->getArg(i));
+        rewrittenRes += RecursiveRewrite(arg);
+        if(SLANG_SUPPORT_POINTER_ADD_IN_ARGS)
+        {
+          size_t found = size_t(-1);
+          for(size_t j=0;j<shittyPointers.size();j++)
+          {
+            if(shittyPointers[j].argId == i)
+            {
+              found = j;
+              break;
+            }
+          }
+          if(found != size_t(-1))
+          {
+            std::string offset = "0";
+            //const std::string debugText = kslicer::GetRangeSourceCode(arg->getSourceRange(), m_compiler);
+            //arg->dump();
+            if(clang::isa<clang::BinaryOperator>(arg))
+            {
+              const auto bo = clang::dyn_cast<clang::BinaryOperator>(arg);
+              const clang::Expr *lhs = bo->getLHS();
+              const clang::Expr *rhs = bo->getRHS();
+              if(bo->getOpcodeStr() == "+")
+                offset = RecursiveRewrite(rhs);
+            }
+            rewrittenRes += ", " + offset;
+          }
+        }
+
         if(i!=call->getNumArgs()-1)
           rewrittenRes += ", ";
       }
@@ -602,6 +632,10 @@ std::string kslicer::SlangRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
     return "";
+  
+  std::string shallow;
+  if(DetectAndRewriteShallowPattern(expr, shallow)) 
+    return shallow;
     
   SlangRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
