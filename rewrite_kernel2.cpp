@@ -173,6 +173,32 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
   return false;
 }
 
+bool kslicer::FunctionRewriter2::NeedToRewriteDeclRefExpr(const clang::DeclRefExpr* expr, std::string& out_text)
+{
+  if(!m_kernelMode)
+    return false;
+
+  const clang::ValueDecl* pDecl = expr->getDecl();
+  if(!clang::isa<clang::ParmVarDecl>(pDecl))
+    return false;
+
+  clang::QualType qt = pDecl->getType();
+  if(qt->isPointerType() || qt->isReferenceType()) // we can't put references to push constants
+    return false;
+
+  const std::string textOri = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); //
+  if(m_kernelUserArgs.find(textOri) != m_kernelUserArgs.end())
+  {
+    if(!m_codeInfo->megakernelRTV || m_pCurrKernel->isMega)
+    {
+      out_text = this->KGenArgsName() + textOri;
+      return true;
+    }
+  }
+
+  return false;
+}
+
 bool kslicer::FunctionRewriter2::CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr)
 {
   if(m_pCurrKernel == nullptr)
@@ -387,6 +413,12 @@ bool kslicer::FunctionRewriter2::DetectAndRewriteShallowPattern(const clang::Stm
     const clang::MemberExpr* memberExpr = clang::dyn_cast<clang::MemberExpr>(expr);
     if(m_kernelMode && NeedToRewriteMemberExpr(memberExpr, a_out))
       return true;
+  }
+  else if(clang::isa<clang::DeclRefExpr>(expr))
+  {
+    const clang::DeclRefExpr* drExpr = clang::dyn_cast<clang::DeclRefExpr>(expr);
+    if(m_kernelMode && NeedToRewriteDeclRefExpr(drExpr, a_out))
+      return false;
   }
 
   return false;

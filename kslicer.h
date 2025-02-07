@@ -24,7 +24,7 @@
 #include "clang/Rewrite/Core/Rewriter.h"
 
 static constexpr bool SLANG_ELIMINATE_LOCAL_POINTERS    = true;
-static constexpr bool SLANG_SUPPORT_POINTER_ADD_IN_ARGS = true;
+static constexpr bool SLANG_SUPPORT_POINTER_ADD_IN_ARGS = false;
 
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 std::string ToLowerCase(std::string a_str);
@@ -764,11 +764,14 @@ namespace kslicer
     std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
     bool                            processFuncMember = false; ///<! when process function members in the same way as kernels
 
-    // general rewrite functions, same fal all new backends
+    // general rewrite functions, same for all new backends
     //
-    bool NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text);
-    bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
-    bool NameNeedsFakeOffset(const std::string& a_name) const;
+    virtual bool NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text);
+    virtual bool NeedToRewriteDeclRefExpr(const clang::DeclRefExpr* expr, std::string& out_text);
+    
+    virtual bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
+    virtual bool NameNeedsFakeOffset(const std::string& a_name) const;
+    virtual std::string KGenArgsName() const { return "kgenArgs."; }
 
     RewrittenFunction RewriteFunction(clang::FunctionDecl* fDecl);
     std::string       RewriteFuncDecl(clang::FunctionDecl* fDecl);
