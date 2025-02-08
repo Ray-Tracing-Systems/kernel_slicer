@@ -300,7 +300,7 @@ bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr*
 
 bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)                    
 { 
-  if(m_kernelMode)
+  if(m_kernelMode && WasNotRewrittenYet(call))
   {
     // (#1) check if buffer/pointer to global memory is passed to a function
     //
