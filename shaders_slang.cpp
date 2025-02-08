@@ -341,6 +341,12 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       m_pCurrKernel->shittyFunctions.push_back(func);
   
       std::string rewrittenRes = func.originalName + "(";
+      
+      //if(func.originalName == "kernel_GetMaterialColor")
+      //{
+      //  rewrittenRes = func.originalName + "(" + "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+-=)(" + ")";
+      //}
+      //else {
       for(unsigned i=0;i<call->getNumArgs(); i++)
       {
         const auto arg = kslicer::RemoveImplicitCast(call->getArg(i));
@@ -377,6 +383,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
           rewrittenRes += ", ";
       }
       rewrittenRes += ")";
+      //}
       
       ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenRes);
       //m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);

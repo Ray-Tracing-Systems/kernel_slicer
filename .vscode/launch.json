@@ -104,7 +104,7 @@
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
                         "-I${workspaceFolder}/TINYSTL",       "ignore",
                         "-shaderCC", "slang",
-                        "-megakernel", "0",
+                        "-megakernel", "1",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry"    : false,
