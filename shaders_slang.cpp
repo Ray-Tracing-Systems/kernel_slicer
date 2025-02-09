@@ -591,7 +591,7 @@ bool kslicer::SlangRewriter::VisitCompoundAssignOperator_Impl(clang::CompoundAss
 { 
   if(m_kernelMode)
   {
-    // ...
+    return FunctionRewriter2::VisitCompoundAssignOperator_Impl(expr);
   }
 
   return true; 

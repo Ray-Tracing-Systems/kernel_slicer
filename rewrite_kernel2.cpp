@@ -385,7 +385,16 @@ bool kslicer::FunctionRewriter2::VisitCompoundAssignOperator_Impl(clang::Compoun
 { 
   if(m_kernelMode)
   {
-    // ...
+    auto opRange = expr->getSourceRange();
+    if(opRange.getEnd()   <= m_pCurrKernel->loopInsides.getBegin() || 
+       opRange.getBegin() >= m_pCurrKernel->loopInsides.getEnd() ) // not inside loop
+      return true;   
+  
+    const clang::Expr* lhs = expr->getLHS();
+    const clang::Expr* rhs = expr->getRHS();
+    const auto  op  = expr->getOpcodeStr();
+  
+    DARExpr_ReductionOp(op.str(), lhs, rhs, expr);
   }
 
   return true; 
