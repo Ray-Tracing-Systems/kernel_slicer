@@ -753,7 +753,19 @@ namespace kslicer
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
     
     virtual bool DetectAndRewriteShallowPattern(const clang::Stmt* expr, std::string& a_out);
-     
+    
+    // DetectAndRewriteExpression --> DARExpr
+    //
+    virtual void DARExpr_ReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
+    virtual void DARExpr_ReductionFunc(const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
+    
+    virtual void DARExpr_RWTexture(clang::CXXOperatorCallExpr* expr, bool write);
+    virtual void DARExpr_TextureAccess(clang::CXXOperatorCallExpr* expr);
+    virtual void DARExpr_TextureAccess(clang::BinaryOperator* expr);
+    virtual void DARExpr_TextureAccess(clang::CXXMemberCallExpr* call);
+
+    std::unordered_set<uint64_t> m_visitedTexAccessNodes;
+
     // for kernel processing only
     //
     void InitKernelData(kslicer::KernelInfo& a_kernelRef, const std::string& a_fakeOffsetExp);
@@ -775,6 +787,8 @@ namespace kslicer
 
     RewrittenFunction RewriteFunction(clang::FunctionDecl* fDecl);
     std::string       RewriteFuncDecl(clang::FunctionDecl* fDecl);
+
+    virtual bool IsISPC() const { return false; }
   };
   
   struct IRecursiveRewriteOverride

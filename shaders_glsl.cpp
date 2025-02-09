@@ -1811,7 +1811,7 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
     //  int b = 3;
     //}
   }
-  else if((op == "]" || op == "[" || op == "[]") && WasNotRewrittenYet(expr))
+  else if((op == "]" || op == "[" || op == "[]") && WasNotRewrittenYet(expr)) // swap access of coords fopr mat4: mat[row][col] --> mat[col][row]
   {
     const clang::Expr* nodes[3] = {nullptr,nullptr,nullptr};
     m_glslRW.Get2DIndicesOfFloat4x4(expr,nodes);

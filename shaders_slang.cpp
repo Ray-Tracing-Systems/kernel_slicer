@@ -489,7 +489,7 @@ bool kslicer::SlangRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCal
 { 
   if(m_kernelMode)
   {
-    // ...
+    return FunctionRewriter2::VisitCXXOperatorCallExpr_Impl(expr);
   }
 
   return true; 
@@ -601,7 +601,7 @@ bool kslicer::SlangRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* exp
 {
   if(m_kernelMode)
   {
-    // ...
+    return FunctionRewriter2::VisitBinaryOperator_Impl(expr);
   }
 
   return true;

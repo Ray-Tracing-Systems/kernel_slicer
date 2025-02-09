@@ -287,7 +287,32 @@ bool kslicer::FunctionRewriter2::VisitCXXOperatorCallExpr_Impl(clang::CXXOperato
 { 
   if(m_kernelMode)
   {
-    // ...
+    DARExpr_TextureAccess(expr);
+    auto opRange = expr->getSourceRange();
+    if(opRange.getEnd()   <= m_pCurrKernel->loopInsides.getBegin() || 
+       opRange.getBegin() >= m_pCurrKernel->loopInsides.getEnd() ) // not inside loop
+      return true;   
+  
+    const auto numArgs = expr->getNumArgs();
+    if(numArgs != 2)
+      return true; 
+    
+    std::string op = GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler);  
+    if(op == "+=" || op == "-=" || op == "*=")
+    {
+      const clang::Expr* lhs = expr->getArg(0);
+      const clang::Expr* rhs = expr->getArg(1);
+  
+      DARExpr_ReductionOp(op, lhs, rhs, expr);
+    }
+    else if (op == "=")
+    {
+      const clang::Expr* lhs = expr->getArg(0);
+      const clang::Expr* rhs = expr->getArg(1);
+  
+      DARExpr_ReductionFunc(lhs, rhs, expr);
+    }
+
   }
 
   return true; 
@@ -370,7 +395,21 @@ bool kslicer::FunctionRewriter2::VisitBinaryOperator_Impl(clang::BinaryOperator*
 {
   if(m_kernelMode)
   {
-    // ...
+    auto opRange = expr->getSourceRange();
+    if(!m_codeInfo->IsRTV() && (opRange.getEnd()   <= m_pCurrKernel->loopInsides.getBegin() || 
+                                opRange.getBegin() >= m_pCurrKernel->loopInsides.getEnd())) // not inside loop
+      return true;  
+  
+    const auto op = expr->getOpcodeStr();
+    if(op != "=")
+      return true;
+    
+    DARExpr_TextureAccess(expr);
+  
+    const clang::Expr* lhs = expr->getLHS();
+    const clang::Expr* rhs = expr->getRHS();
+    
+    DARExpr_ReductionFunc(lhs, rhs, expr);
   }
 
   return true;
@@ -424,10 +463,319 @@ bool kslicer::FunctionRewriter2::DetectAndRewriteShallowPattern(const clang::Stm
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void kslicer::FunctionRewriter2::DARExpr_ReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr)
+{
+  if(!m_kernelMode || m_pCurrKernel == nullptr)
+    return;
+
+  auto pShaderRewriter = m_codeInfo->pShaderFuncRewriter;
+  std::string leftVar = GetRangeSourceCode(lhs->getSourceRange().getBegin(), m_compiler);
+  std::string leftStr = GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
+  auto p = m_pCurrKernel->usedMembers.find(leftVar);
+  if(p != m_pCurrKernel->usedMembers.end())
+  {
+    KernelInfo::ReductionAccess access;
+    access.type      = KernelInfo::REDUCTION_TYPE::UNKNOWN;
+    access.rightExpr = GetRangeSourceCode(rhs->getSourceRange(), m_compiler);
+    access.leftExpr  = leftStr;
+    access.dataType  = rhs->getType().getAsString();
+    ReplaceFirst(access.dataType, "const ", "");
+    access.dataType = pShaderRewriter->RewriteStdVectorTypeStr(access.dataType); 
+   
+    if(leftVar != leftStr && clang::isa<clang::ArraySubscriptExpr>(lhs))
+    {
+      auto lhsArray    = clang::dyn_cast<const clang::ArraySubscriptExpr>(lhs);
+      const clang::Expr* idx  = lhsArray->getIdx();  // array index
+      const clang::Expr* name = lhsArray->getBase(); // array name
+
+      access.leftIsArray = true;
+      access.arraySize   = 0;
+      access.arrayIndex  = GetRangeSourceCode(idx->getSourceRange(), m_compiler);
+      access.arrayName   = GetRangeSourceCode(name->getSourceRange(), m_compiler); 
+      
+      // extract array size
+      //
+      const clang::Expr* nextNode = kslicer::RemoveImplicitCast(lhsArray->getLHS());  
+      if(clang::isa<clang::MemberExpr>(nextNode))
+      {
+        const clang::MemberExpr* pMemberExpr = clang::dyn_cast<const clang::MemberExpr>(nextNode); 
+        const clang::ValueDecl*  valDecl     = pMemberExpr->getMemberDecl();
+        const clang::QualType    qt          = valDecl->getType();
+        const auto               typePtr     = qt.getTypePtr(); 
+        if(typePtr->isConstantArrayType()) 
+        {    
+          auto arrayType   = clang::dyn_cast<const clang::ConstantArrayType>(typePtr);     
+          access.arraySize = arrayType->getSize().getLimitedValue(); 
+        } 
+      }
+   
+      if(access.arraySize == 0)
+        kslicer::PrintError("[KernelRewriter::ProcessReductionOp]: can't determine array size ", lhs->getSourceRange(), m_compiler.getSourceManager());
+    }
+
+    if(op == "+=")
+      access.type    = KernelInfo::REDUCTION_TYPE::ADD;
+    else if(op == "*=")
+      access.type    = KernelInfo::REDUCTION_TYPE::MUL;
+    else if(op == "-=")
+      access.type    = KernelInfo::REDUCTION_TYPE::SUB;
+    
+    //auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+
+    if(WasNotRewrittenYet(expr) && !IsISPC())
+    {
+      std::string rightStr2  = RecursiveRewrite(rhs);
+      std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_pCurrKernel->GetDim(), m_pCurrKernel->wgSize);
+      if(access.leftIsArray)
+        ReplaceTextOrWorkAround(expr->getSourceRange(), access.arrayName + "Shared[" + access.arrayIndex + "][" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + rightStr2);
+      else
+        ReplaceTextOrWorkAround(expr->getSourceRange(), leftVar + "Shared[" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + rightStr2);
+      MarkRewritten(expr);
+    }
+  }
+}
+
+void kslicer::FunctionRewriter2::DARExpr_ReductionFunc(const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr)
+{
+  if(!clang::isa<clang::MemberExpr>(lhs) || !m_kernelMode || m_pCurrKernel == nullptr)
+    return;
+
+  std::string leftStr  = GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
+  std::string rightStr = GetRangeSourceCode(rhs->getSourceRange(), m_compiler);
+  auto p = m_pCurrKernel->usedMembers.find(leftStr);
+  if(p == m_pCurrKernel->usedMembers.end())
+    return;
+
+  if(clang::isa<clang::MaterializeTemporaryExpr>(rhs))
+  {
+    auto tmp = clang::dyn_cast<clang::MaterializeTemporaryExpr>(rhs);
+    rhs = tmp->getSubExpr();
+  }
+
+  if(!clang::isa<clang::CallExpr>(rhs))
+  {
+    PrintWarning("unsupported expression for reduction via assigment inside loop; must be 'a = f(a,b)'", rhs->getSourceRange(), m_compiler.getSourceManager());
+    PrintWarning("reduction for variable '" +  leftStr + "' will not be generated, sure this is ok for you?", rhs->getSourceRange(), m_compiler.getSourceManager());
+    return;
+  }  
+  
+  auto call    = clang::dyn_cast<clang::CallExpr>(rhs);
+  auto numArgs = call->getNumArgs();
+  if(numArgs != 2)
+  {
+    PrintError("function which is used in reduction must have 2 args; a = f(a,b)'", expr->getSourceRange(), m_compiler.getSourceManager());
+    return;
+  }
+
+  const clang::Expr* arg0 = call->getArg(0);
+  const clang::Expr* arg1 = call->getArg(1);
+
+  std::string arg0Str = GetRangeSourceCode(arg0->getSourceRange(), m_compiler);
+  std::string arg1Str = GetRangeSourceCode(arg1->getSourceRange(), m_compiler);
+  
+  std::string secondArg;
+  if(arg0Str == leftStr)
+  {
+    secondArg = arg1Str;
+  }
+  else if(arg1Str == leftStr)
+  {
+    secondArg = arg0Str;
+  }
+  else
+  {
+    PrintError("incorrect arguments of reduction function, one of them must be same as assigment result; a = f(a,b)'", expr->getSourceRange(), m_compiler.getSourceManager());
+    return;
+  }
+
+  std::string callExpr = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+  std::string fname    = callExpr.substr(0, callExpr.find_first_of('('));
+  
+  KernelInfo::ReductionAccess access;
+ 
+  access.type      = KernelInfo::REDUCTION_TYPE::FUNC;
+  access.funcName  = fname;
+  access.rightExpr = secondArg;
+  access.leftExpr  = leftStr;
+  access.dataType  = lhs->getType().getAsString();
+
+  //auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+  if (WasNotRewrittenYet(expr) && !IsISPC())
+  {
+    std::string argsType = "";
+    if(numArgs > 0)
+    {
+      const clang::Expr* firstArgExpr = arg0;
+      const clang::QualType qt        = firstArgExpr->getType();
+      argsType                        = qt.getAsString();
+    }
+    
+    const std::string leftStr2   = RecursiveRewrite(arg0);
+    const std::string rightStr2  = RecursiveRewrite(arg1);
+    const std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_pCurrKernel->GetDim(), m_pCurrKernel->wgSize);
+    const std::string left       = leftStr2 + "Shared[" + localIdStr + "]";
+    fname = m_codeInfo->pShaderCC->ReplaceCallFromStdNamespace(fname, argsType);
+    ReplaceTextOrWorkAround(expr->getSourceRange(), left + " = " + fname + "(" + left + ", " + rightStr2 + ")" ); 
+    MarkRewritten(expr);
+  }
+}
+
+void kslicer::FunctionRewriter2::DARExpr_RWTexture(clang::CXXOperatorCallExpr* expr, bool write)
+{
+  if(!m_kernelMode || m_pCurrKernel == nullptr)
+    return;
+
+  const auto currAccess = write ? kslicer::TEX_ACCESS::TEX_ACCESS_WRITE : kslicer::TEX_ACCESS::TEX_ACCESS_READ;
+  const auto hash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+  if(m_visitedTexAccessNodes.find(hash) != m_visitedTexAccessNodes.end())
+    return;
+
+  std::string objName = GetRangeSourceCode(clang::SourceRange(expr->getExprLoc()), m_compiler);
+  
+  // (1) process if member access
+  //
+  auto pMember = m_codeInfo->allDataMembers.find(objName);
+  if(pMember != m_codeInfo->allDataMembers.end())
+  {
+    pMember->second.tmask = kslicer::TEX_ACCESS(int(pMember->second.tmask) | int(currAccess));
+    auto p = m_pCurrKernel->texAccessInMemb.find(objName);
+    if(p != m_pCurrKernel->texAccessInMemb.end())
+      p->second = kslicer::TEX_ACCESS( int(p->second) | int(currAccess));
+    else
+    m_pCurrKernel->texAccessInMemb[objName] = currAccess;
+  }
+  
+  // (2) process if kernel argument access
+  //
+  for(const auto& arg : m_pCurrKernel->args)
+  {
+    if(arg.name == objName)
+    {
+      auto p = m_pCurrKernel->texAccessInArgs.find(objName);
+      if(p != m_pCurrKernel->texAccessInArgs.end())
+        p->second = kslicer::TEX_ACCESS( int(p->second) | int(currAccess));
+      else
+      m_pCurrKernel->texAccessInArgs[objName] = currAccess;
+    }
+  }
+
+  m_visitedTexAccessNodes.insert(hash);
+}
+
+void kslicer::FunctionRewriter2::DARExpr_TextureAccess(clang::CXXOperatorCallExpr* expr)
+{
+  if(!m_kernelMode || m_pCurrKernel == nullptr)
+    return;
+
+  std::string op = GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler); 
+  std::string debugText = GetRangeSourceCode(expr->getSourceRange(), m_compiler);     
+  if(expr->isAssignmentOp()) // detect a_brightPixels[coord] = color;
+  {
+    clang::Expr* left = expr->getArg(0); 
+    if(clang::isa<clang::CXXOperatorCallExpr>(left))
+    {
+      clang::CXXOperatorCallExpr* leftOp = clang::dyn_cast<clang::CXXOperatorCallExpr>(left);
+      std::string op2 = GetRangeSourceCode(clang::SourceRange(leftOp->getOperatorLoc()), m_compiler);  
+      if(op2 == "]" || op2 == "[" || op2 == "[]")
+        DARExpr_RWTexture(leftOp, true);
+    }
+  }
+  else if(op == "]" || op == "[" || op == "[]")
+    DARExpr_RWTexture(expr, false);
+}
+
+void kslicer::FunctionRewriter2::DARExpr_TextureAccess(clang::BinaryOperator* expr)
+{
+  if(!m_kernelMode || m_pCurrKernel == nullptr)
+    return;
+
+  std::string op = GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler); 
+  std::string debugText = GetRangeSourceCode(expr->getSourceRange(), m_compiler);     
+  if(expr->isAssignmentOp()) // detect a_brightPixels[coord] = color;
+  {
+    clang::Expr* left = expr->getLHS(); 
+    if(clang::isa<clang::CXXOperatorCallExpr>(left))
+    {
+      clang::CXXOperatorCallExpr* leftOp = clang::dyn_cast<clang::CXXOperatorCallExpr>(left);
+      std::string op2 = GetRangeSourceCode(clang::SourceRange(leftOp->getOperatorLoc()), m_compiler);  
+      if(op2 == "]" || op2 == "[" || op2 == "[]")
+        DARExpr_RWTexture(leftOp, true);
+    }
+  }
+  else if((op == "]" || op == "[" || op == "[]") && clang::isa<clang::CXXOperatorCallExpr>(expr))
+    DARExpr_RWTexture(clang::dyn_cast<clang::CXXOperatorCallExpr>(expr), false);
+}
+
+void kslicer::FunctionRewriter2::DARExpr_TextureAccess(clang::CXXMemberCallExpr* call)
+{
+  if(!m_kernelMode || m_pCurrKernel == nullptr)
+    return;
+
+  clang::CXXMethodDecl* fDecl = call->getMethodDecl();  
+  if(fDecl == nullptr)  
+    return;
+
+  //std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+  std::string fname     = fDecl->getNameInfo().getName().getAsString();
+  clang::Expr* pTexName =	call->getImplicitObjectArgument(); 
+  std::string objName   = GetRangeSourceCode(pTexName->getSourceRange(), m_compiler);     
+
+  if(fname == "sample" || fname == "Sample")
+  {
+    auto samplerArg         = call->getArg(0);
+    std::string samplerName = GetRangeSourceCode(samplerArg->getSourceRange(), m_compiler); 
+
+    // (1) process if member access
+    //
+    auto pMember = m_codeInfo->allDataMembers.find(objName);
+    if(pMember != m_codeInfo->allDataMembers.end())
+    {
+      pMember->second.tmask   = kslicer::TEX_ACCESS( int(pMember->second.tmask) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
+      auto p = m_pCurrKernel->texAccessInMemb.find(objName);
+      if(p != m_pCurrKernel->texAccessInMemb.end())
+      {
+        p->second = kslicer::TEX_ACCESS( int(p->second) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
+        m_pCurrKernel->texAccessSampler[objName] = samplerName;
+      }
+      else
+      {
+        m_pCurrKernel->texAccessInMemb [objName] = kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE;
+        m_pCurrKernel->texAccessSampler[objName] = samplerName;
+      }
+    }
+    
+    // (2) process if kernel argument access
+    //
+    for(const auto& arg : m_pCurrKernel->args)
+    {
+      if(arg.name == objName)
+      {
+        auto p = m_pCurrKernel->texAccessInArgs.find(objName);
+        if(p != m_pCurrKernel->texAccessInArgs.end())
+        {
+          p->second = kslicer::TEX_ACCESS( int(p->second) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
+          m_pCurrKernel->texAccessSampler[objName] = samplerName;
+        }
+        else
+        {
+          m_pCurrKernel->texAccessInArgs[objName]  = kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE;
+          m_pCurrKernel->texAccessSampler[objName] = samplerName;
+        }
+      }
+    }
+  }
+
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool kslicer::KernelRewriter2::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)                   { return m_pFunRW2->VisitUnaryOperator_Impl(expr); }
 bool kslicer::KernelRewriter2::VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) { return m_pFunRW2->VisitCompoundAssignOperator_Impl(expr); }
