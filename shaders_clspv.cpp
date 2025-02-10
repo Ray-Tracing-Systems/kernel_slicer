@@ -120,6 +120,49 @@ void kslicer::ClspvCompiler::GetThreadSizeNames(std::string a_strs[3]) const
   a_strs[2] = "kgen_iNumElementsZ";
 }
 
+std::string kslicer::ClspvCompiler::GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const
+{
+  return "unknownCLSubgroupOperation";
+}
+
+std::string kslicer::ClspvCompiler::GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const
+{
+  std::string res = "";
+  switch(a_access.type)
+  {
+    case KernelInfo::REDUCTION_TYPE::ADD_ONE:
+    case KernelInfo::REDUCTION_TYPE::ADD:
+    res = "atomic_add";
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::SUB:
+    case KernelInfo::REDUCTION_TYPE::SUB_ONE:
+    res = "atomic_sub";
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::FUNC:
+    {
+      if(a_access.funcName == "min" || a_access.funcName == "std::min") res = "atomic_min";
+      if(a_access.funcName == "max" || a_access.funcName == "std::max") res = "atomic_max";
+    }
+    break;
+
+    default:
+    break;
+  };
+
+  auto lastSymb  = a_access.dataType[a_access.dataType.size()-1];
+  auto firstSimb = a_access.dataType[0]; // 'u' or 'i'
+  if(isdigit(lastSymb))
+  {
+    res.push_back(lastSymb);  
+    if(firstSimb == 'u')
+      res.push_back(firstSimb);  
+  }
+
+  return res;
+}
+
 
 std::string kslicer::ClspvCompiler::ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const
 {

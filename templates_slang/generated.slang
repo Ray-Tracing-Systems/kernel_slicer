@@ -35,7 +35,7 @@ groupshared {{Var}}
 
 [shader("compute")]
 [numthreads({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}})]
-void main(uint3 a_globalTID: SV_DispatchThreadID, uint3 a_localTID : SV_GroupThreadID, uniform KernelArgs kgenArgs)
+void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog %} uint3 a_groupID : SV_GroupID, {% endif%} uint3 a_localTID : SV_GroupThreadID, uniform KernelArgs kgenArgs)
 {
   {% if not Kernel.EnableBlockExpansion %}
   bool runThisThread = true;
@@ -68,11 +68,13 @@ void main(uint3 a_globalTID: SV_DispatchThreadID, uint3 a_localTID : SV_GroupThr
   {% if Kernel.EnableBlockExpansion %}
   {% for Block in Kernel.SourceBE %}
   {% if Block.IsParallel %}
-  barrier();
+  GroupMemoryBarrierWithGroupSync();
+  // BLOCK-EXPANDED KERNEL BODY:
+  //
   {
   {{Block.Text}}
   }
-  barrier();
+  GroupMemoryBarrierWithGroupSync();
   {% else %}
   if(a_loacalTID[0] == 0) {
   {{Block.Text}}
@@ -91,6 +93,10 @@ void main(uint3 a_globalTID: SV_DispatchThreadID, uint3 a_localTID : SV_GroupThr
   {% endif %} {# /* EnableBlockExpansion */ #}
   {% if Kernel.HasEpilog %}
   // GENERATED EPILOG:
-  // ...
+  //
+  {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                      
+  {% include "inc_red_finish.slang" %}
+  {% endif %}
+  
   {% endif %} {# /* END of 'if Kernel.HasEpilog'  */ #}
 }

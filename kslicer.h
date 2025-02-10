@@ -275,8 +275,6 @@ namespace kslicer
       std::string    GetOp2(std::shared_ptr<IShaderCompiler> pShaderCC) const;
 
       bool           SupportAtomicLastStep()        const;
-      std::string    GetAtomicImplCode(bool isGLSL) const;
-      std::string    GetSubgroupOpCode(bool isGLSL) const;
       size_t         GetSizeOfDataType()            const;
     };
 
@@ -1145,9 +1143,11 @@ namespace kslicer
       return call;
     }
 
-    virtual bool        UseSeparateUBOForArguments() const { return false; }
-    virtual bool        UseSpecConstForWgSize() const { return false; }
-    virtual void        GetThreadSizeNames(std::string a_strs[3]) const = 0;
+    virtual bool UseSeparateUBOForArguments() const { return false; }
+    virtual bool UseSpecConstForWgSize() const { return false; }
+    virtual void GetThreadSizeNames(std::string a_strs[3]) const = 0;
+    virtual std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const { return "unknownSubgroup"; }
+    virtual std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const { return "unknownAtomic";}
 
     virtual std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
                                                                         kslicer::ShittyFunction a_shit = kslicer::ShittyFunction()) = 0;
@@ -1187,6 +1187,8 @@ namespace kslicer
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3])                               const override;
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
     void        GetThreadSizeNames(std::string a_strs[3])                                             const override;
+    std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
+    std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
 
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
@@ -1230,6 +1232,8 @@ namespace kslicer
 
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
     void        GetThreadSizeNames(std::string a_strs[3])               const override;
+    std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
+    std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
 
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
@@ -1265,6 +1269,8 @@ namespace kslicer
 
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
     void        GetThreadSizeNames(std::string a_strs[3])               const override;
+    std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
+    std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
 
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,

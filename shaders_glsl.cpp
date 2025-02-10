@@ -302,6 +302,67 @@ void kslicer::GLSLCompiler::GetThreadSizeNames(std::string a_strs[3]) const
   a_strs[2] = "iNumElementsZ";
 }
 
+std::string kslicer::GLSLCompiler::GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const
+{
+  std::string res = "unknownSubgroup"; 
+  switch(a_access.type)
+  {
+    case KernelInfo::REDUCTION_TYPE::ADD_ONE:
+    case KernelInfo::REDUCTION_TYPE::ADD:
+    res = "subgroupAdd";
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::SUB:
+    case KernelInfo::REDUCTION_TYPE::SUB_ONE:
+    res = "subgroupAdd";
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::FUNC:
+    {
+      if(a_access.funcName == "min" || a_access.funcName == "std::min") res = "subgroupMin";
+      if(a_access.funcName == "max" || a_access.funcName == "std::max") res = "subgroupMax";
+    }
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::MUL:
+    res = "subgroupMul";
+    break;
+
+    default:
+    break;
+  };
+  return res;
+}
+
+std::string kslicer::GLSLCompiler::GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const
+{
+  std::string res = "unknownAtomic";
+  switch(a_access.type)
+  {
+    case KernelInfo::REDUCTION_TYPE::ADD_ONE:
+    case KernelInfo::REDUCTION_TYPE::ADD:
+    res = "atomicAdd";
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::SUB:
+    case KernelInfo::REDUCTION_TYPE::SUB_ONE:
+    res = "atomicSub";
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::FUNC:
+    {
+      if(a_access.funcName == "min" || a_access.funcName == "std::min") res = "atomicMin";
+      if(a_access.funcName == "max" || a_access.funcName == "std::max") res = "atomicMax";
+    }
+    break;
+
+    default:
+    break;
+  };
+  return res;
+}
+
+
 std::string kslicer::GLSLCompiler::ProcessBufferType(const std::string& a_typeName) const
 {
   std::string type = kslicer::CleanTypeName(a_typeName);

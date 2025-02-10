@@ -648,12 +648,10 @@ std::string kslicer::SlangRewriter::RecursiveRewrite(const clang::Stmt* expr)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 kslicer::SlangCompiler::SlangCompiler(const std::string& a_prefix) : m_suffix(a_prefix)
 {
 
 }
-
 
 std::string kslicer::SlangCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const
 {
@@ -685,6 +683,66 @@ void kslicer::SlangCompiler::GetThreadSizeNames(std::string a_strs[3]) const
   a_strs[0] = "iNumElementsX";
   a_strs[1] = "iNumElementsY";
   a_strs[2] = "iNumElementsZ";
+}
+
+std::string kslicer::SlangCompiler::GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const
+{
+  std::string res = "WaveActiveSumUnknown"; 
+  switch(a_access.type)
+  {
+    case KernelInfo::REDUCTION_TYPE::ADD_ONE:
+    case KernelInfo::REDUCTION_TYPE::ADD:
+    res = "WaveActiveSum";
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::SUB:
+    case KernelInfo::REDUCTION_TYPE::SUB_ONE:
+    res = "WaveActiveSum";
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::FUNC:
+    {
+      if(a_access.funcName == "min" || a_access.funcName == "std::min") res = "WaveActiveMin";
+      if(a_access.funcName == "max" || a_access.funcName == "std::max") res = "WaveActiveMax";
+    }
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::MUL:
+    res = "WaveActiveMul";
+    break;
+
+    default:
+    break;
+  };
+  return res;
+}
+
+std::string kslicer::SlangCompiler::GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const
+{
+  std::string res = "InterlockedUnknown";
+  switch(a_access.type)
+  {
+    case KernelInfo::REDUCTION_TYPE::ADD_ONE:
+    case KernelInfo::REDUCTION_TYPE::ADD:
+    res = "InterlockedAdd";
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::SUB:
+    case KernelInfo::REDUCTION_TYPE::SUB_ONE:
+    res = "InterlockedAdd";
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::FUNC:
+    {
+      if(a_access.funcName == "min" || a_access.funcName == "std::min") res = "InterlockedMin";
+      if(a_access.funcName == "max" || a_access.funcName == "std::max") res = "InterlockedMax";
+    }
+    break;
+
+    default:
+    break;
+  };
+  return res;
 }
 
 std::string kslicer::SlangCompiler::ProcessBufferType(const std::string& a_typeName) const
