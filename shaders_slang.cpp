@@ -410,6 +410,42 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       MarkRewritten(call);
     }
   }
+  
+  if(!clang::isa<clang::CXXMemberCallExpr>(call) && !clang::isa<clang::CXXConstructExpr>(call)) // process CXXMemberCallExpr/CXXConstructExpr else-where
+  {
+    clang::FunctionDecl* fDecl = call->getDirectCallee();
+    if(fDecl == nullptr)
+      return true;
+    
+    const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+    const std::string fname     = fDecl->getNameInfo().getName().getAsString();
+  
+    ///////////////////////////////////////////////////////////////////////
+    std::string makeSmth = "";
+    if(fname == "make_float3x3_by_columns") // mat3(a,b,c) == make_float3x3_by_columns(a,b,c)
+      makeSmth = "float3x3";
+    else if(fname == "make_float3x3")       // don't change it!
+      ;
+    else if(fname.substr(0, 5) == "make_")
+      makeSmth = fname.substr(5);
+    ///////////////////////////////////////////////////////////////////////
+
+    //auto pVecMaker  = m_vecReplacements.find(makeSmth);
+    //auto pFoundSmth = m_funReplacements.find(fname);
+    //
+    //if(pFoundSmth != m_funReplacements.end() && WasNotRewrittenYet(call))
+    //{
+    //  std::string lastRewrittenText = pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call);
+    //  ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+    //  MarkRewritten(call);
+    //}
+    //else if(fDecl->isInStdNamespace() && WasNotRewrittenYet(call)) // remove "std::"
+    //{
+    //  std::string lastRewrittenText = fname + "(" + CompleteFunctionCallRewrite(call);
+    //  ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+    //  MarkRewritten(call);
+    //}
+  }
 
   return true; 
 }
