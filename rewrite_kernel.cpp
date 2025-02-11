@@ -645,8 +645,21 @@ bool kslicer::KernelRewriter::VisitUnaryOperator_Impl(UnaryOperator* expr)
 void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Expr* lhs, const Expr* rhs, const Expr* expr)
 {
   auto pShaderRewriter = m_codeInfo->pShaderFuncRewriter;
+  
+  // detect cases like "m_bodies[i].vel_charge.x += acceleration.x", extract "m_bodies[i]"; "vel_charge.x" is not supported right now !!!
+  //
+  while(clang::isa<clang::MemberExpr>(lhs))
+  {
+    const clang::MemberExpr* lhsMember = clang::dyn_cast<const clang::MemberExpr>(lhs);
+    lhs = lhsMember->getBase(); 
+  }
+
+  if(clang::isa<clang::CXXOperatorCallExpr>(lhs)) // do not process here code like "vector[i] += ..." or "texture[int2(x,y)] += ..."
+    return;
+
   std::string leftVar = GetRangeSourceCode(lhs->getSourceRange().getBegin(), m_compiler);
   std::string leftStr = GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
+
   auto p = m_currKernel.usedMembers.find(leftVar);
   if(p != m_currKernel.usedMembers.end())
   {
@@ -658,11 +671,11 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
     ReplaceFirst(access.dataType, "const ", "");
     access.dataType = pShaderRewriter->RewriteStdVectorTypeStr(access.dataType); 
    
-    if(leftVar != leftStr && isa<ArraySubscriptExpr>(lhs))
+    if(leftVar != leftStr && clang::isa<clang::ArraySubscriptExpr>(lhs))
     {
-      auto lhsArray    = dyn_cast<const ArraySubscriptExpr>(lhs);
-      const Expr* idx  = lhsArray->getIdx();  // array index
-      const Expr* name = lhsArray->getBase(); // array name
+      auto lhsArray    = clang::dyn_cast<const clang::ArraySubscriptExpr>(lhs);
+      const clang::Expr* idx  = lhsArray->getIdx();  // array index
+      const clang::Expr* name = lhsArray->getBase(); // array name
 
       access.leftIsArray = true;
       access.arraySize   = 0;
@@ -671,8 +684,8 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
       
       // extract array size
       //
-      const Expr* nextNode = kslicer::RemoveImplicitCast(lhsArray->getLHS());  
-      if(isa<MemberExpr>(nextNode))
+      const clang::Expr* nextNode = kslicer::RemoveImplicitCast(lhsArray->getLHS());  
+      if(clang::isa<clang::MemberExpr>(nextNode))
       {
         const MemberExpr* pMemberExpr = dyn_cast<const MemberExpr>(nextNode); 
         const ValueDecl*  valDecl     = pMemberExpr->getMemberDecl();

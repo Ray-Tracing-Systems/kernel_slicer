@@ -482,9 +482,21 @@ void kslicer::FunctionRewriter2::DARExpr_ReductionOp(const std::string& op, cons
   if(!m_kernelMode || m_pCurrKernel == nullptr)
     return;
 
-  auto pShaderRewriter = m_codeInfo->pShaderFuncRewriter;
-  std::string leftVar = GetRangeSourceCode(lhs->getSourceRange().getBegin(), m_compiler);
-  std::string leftStr = GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
+  // detect cases like "m_bodies[i].vel_charge.x += acceleration.x", extract "m_bodies[i]"; "vel_charge.x" is not supported right now !!!
+  //
+  while(clang::isa<clang::MemberExpr>(lhs))
+  {
+    const clang::MemberExpr* lhsMember = clang::dyn_cast<const clang::MemberExpr>(lhs);
+    lhs = lhsMember->getBase(); 
+  }
+
+  if(clang::isa<clang::CXXOperatorCallExpr>(lhs)) // do not process here code like "vector[i] += ..." or "texture[int2(x,y)] += ..."
+    return;
+
+  const std::string leftVar = GetRangeSourceCode(lhs->getSourceRange().getBegin(), m_compiler);
+  const std::string leftStr = GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
+  
+  auto pShaderRewriter = m_codeInfo->pShaderFuncRewriter;  
   auto p = m_pCurrKernel->usedMembers.find(leftVar);
   if(p != m_pCurrKernel->usedMembers.end())
   {
