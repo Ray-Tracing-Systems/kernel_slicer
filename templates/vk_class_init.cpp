@@ -605,7 +605,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
 ## endfor
   {% if UseServiceMemCopy %}
   {% if MultipleSourceShaders %}
-  std::string servPath = AlterShaderPath({% if ShaderGLSL %}"{{ShaderFolder}}/z_memcpy.comp.spv"{% else %}"{{ShaderFolder}}/serv_kernels.cpp.spv"{% endif %});
+  std::string servPath = AlterShaderPath("{{ShaderFolder}}/z_memcpy.comp.spv");
   {% else %}
   std::string servPath = AlterShaderPath(a_filePath);
   {% endif %}
@@ -616,7 +616,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   kspec = &m_specsForWGSize;
   {% endif %}
   copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
-  MakeComputePipelineAndLayout(servPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"copyKernelFloat"{% endif %}, kspec, copyKernelFloatDSLayout, &copyKernelFloatLayout, &copyKernelFloatPipeline);
+  MakeComputePipelineAndLayout(servPath.c_str(), "main", kspec, copyKernelFloatDSLayout, &copyKernelFloatLayout, &copyKernelFloatPipeline);
   {% endif %} {# /* UseServiceMemCopy */ #}
   {% if UseServiceScan %}
   {% for Scan in ServiceScan %}

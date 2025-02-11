@@ -234,6 +234,19 @@ bool kslicer::FunctionRewriter2::NameNeedsFakeOffset(const std::string& a_name) 
    return exclude;
 }
 
+std::string kslicer::FunctionRewriter2::CompleteFunctionCallRewrite(clang::CallExpr* call)
+{
+  std::string rewrittenRes = "";
+  for(unsigned i=0;i<call->getNumArgs(); i++)
+  {
+    rewrittenRes += RecursiveRewrite(call->getArg(i));
+    if(i!=call->getNumArgs()-1)
+      rewrittenRes += ", ";
+  }
+  rewrittenRes += ")";
+  return rewrittenRes;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -420,31 +420,23 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
     const std::string fname     = fDecl->getNameInfo().getName().getAsString();
   
-    ///////////////////////////////////////////////////////////////////////
-    std::string makeSmth = "";
-    if(fname == "make_float3x3_by_columns") // mat3(a,b,c) == make_float3x3_by_columns(a,b,c)
-      makeSmth = "float3x3";
-    else if(fname == "make_float3x3")       // don't change it!
-      ;
-    else if(fname.substr(0, 5) == "make_")
-      makeSmth = fname.substr(5);
-    ///////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////
+    //std::string makeSmth = "";
+    //if(fname == "make_float3x3_by_columns") // mat3(a,b,c) == make_float3x3_by_columns(a,b,c)
+    //  makeSmth = "float3x3";
+    //else if(fname == "make_float3x3")       // don't change it!
+    //  ;
+    //else if(fname.substr(0, 5) == "make_")
+    //  makeSmth = fname.substr(5);
+    /////////////////////////////////////////////////////////////////////////
 
-    //auto pVecMaker  = m_vecReplacements.find(makeSmth);
-    //auto pFoundSmth = m_funReplacements.find(fname);
-    //
-    //if(pFoundSmth != m_funReplacements.end() && WasNotRewrittenYet(call))
-    //{
-    //  std::string lastRewrittenText = pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call);
-    //  ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
-    //  MarkRewritten(call);
-    //}
-    //else if(fDecl->isInStdNamespace() && WasNotRewrittenYet(call)) // remove "std::"
-    //{
-    //  std::string lastRewrittenText = fname + "(" + CompleteFunctionCallRewrite(call);
-    //  ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
-    //  MarkRewritten(call);
-    //}
+    if(fDecl->isInStdNamespace() && WasNotRewrittenYet(call)) // remove "std::"
+    {
+      std::string lastRewrittenText = fname + "(" + CompleteFunctionCallRewrite(call);
+      ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+      MarkRewritten(call);
+    }
+
   }
 
   return true; 
@@ -909,6 +901,13 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     //   buildSH << "-I" << folder.c_str() << " ";
     //  buildSH << std::endl;
     //}
+  }
+
+  if(a_codeInfo->usedServiceCalls.find("memcpy") != a_codeInfo->usedServiceCalls.end())
+  {
+    nlohmann::json dummy;
+    kslicer::ApplyJsonToTemplate(templatesFolder / "z_memcpy.slang", shaderPath / "z_memcpy.slang", dummy); // just file copy actually
+    buildSH << "slangc z_memcpy.slang -o z_memcpy.comp.spv" << std::endl;
   }
 
 }

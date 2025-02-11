@@ -781,6 +781,7 @@ namespace kslicer
     
     virtual bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
     virtual bool NameNeedsFakeOffset(const std::string& a_name) const;
+    virtual std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
     virtual std::string KGenArgsName() const { return "kgenArgs."; }
 
     RewrittenFunction RewriteFunction(clang::FunctionDecl* fDecl);
