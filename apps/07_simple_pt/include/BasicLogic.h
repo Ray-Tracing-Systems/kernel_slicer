@@ -81,10 +81,12 @@ static inline float2 RaySphereHit(float3 orig, float3 dir, float4 sphere) // see
 
 static inline uint RealColorToUint32_f3(float3 real_color)
 {
-  float  r = real_color.x*255.0f;
-  float  g = real_color.y*255.0f;
-  float  b = real_color.z*255.0f;
-  unsigned int red = (unsigned int)r, green = (unsigned int)g, blue = (unsigned int)b;
+  const float  r = real_color.x*255.0f;
+  const float  g = real_color.y*255.0f;
+  const float  b = real_color.z*255.0f;
+  const uint red   = uint(r);
+  const uint green = uint(g);
+  const uint blue  = uint(b);
   return red | (green << 8) | (blue << 16) | 0xFF000000;
 }
 

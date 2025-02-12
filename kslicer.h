@@ -900,9 +900,10 @@ namespace kslicer
     std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
   private:
     void Init();
-    std::unordered_map<std::string, std::string> ListSlangStandartTypeReplacements();
     std::unordered_map<std::string, std::string> m_typesReplacement;
   };
+
+  std::unordered_map<std::string, std::string> ListSlangStandartTypeReplacements(bool a_NeedConstCopy = true);
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////  KernelRewriter  //////////////////////////////////////////////////////////
@@ -1285,6 +1286,7 @@ namespace kslicer
     std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds) override; 
   private:
     const std::string& m_suffix;
+    std::unordered_map<std::string, std::string> m_typesReplacement;
   };
 
   struct ServiceCall

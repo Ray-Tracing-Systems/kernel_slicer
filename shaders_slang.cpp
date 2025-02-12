@@ -8,7 +8,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string, std::string> kslicer::SlangRewriter::ListSlangStandartTypeReplacements()
+std::unordered_map<std::string, std::string> kslicer::ListSlangStandartTypeReplacements(bool a_NeedConstCopy)
 {
   std::unordered_map<std::string, std::string> m_vecReplacements;
   m_vecReplacements["_Bool"] = "bool";
@@ -28,19 +28,22 @@ std::unordered_map<std::string, std::string> kslicer::SlangRewriter::ListSlangSt
   m_vecReplacements["unsigned long long"] = "uint64_t";
   m_vecReplacements["long long int"]      = "int64_t";
   
-  std::unordered_map<std::string, std::string> m_vecReplacementsConst;
-  for(auto r : m_vecReplacements)
-    m_vecReplacementsConst[std::string("const ") + r.first] = std::string("const ") + m_vecReplacements[r.first];
-  
-  for(auto rc : m_vecReplacementsConst)
-    m_vecReplacements[rc.first] = rc.second;
+  if(a_NeedConstCopy)
+  {
+    std::unordered_map<std::string, std::string> m_vecReplacementsConst;
+    for(auto r : m_vecReplacements)
+      m_vecReplacementsConst[std::string("const ") + r.first] = std::string("const ") + m_vecReplacements[r.first];
+    
+    for(auto rc : m_vecReplacementsConst)
+      m_vecReplacements[rc.first] = rc.second;
+  }
     
   return m_vecReplacements;
 }
 
 void kslicer::SlangRewriter::Init()
 {
-  m_typesReplacement = ListSlangStandartTypeReplacements();
+  m_typesReplacement = ListSlangStandartTypeReplacements(true);
 }
 
 std::string kslicer::SlangRewriter::RewriteStdVectorTypeStr(const std::string& a_str) const
@@ -678,7 +681,7 @@ std::string kslicer::SlangRewriter::RecursiveRewrite(const clang::Stmt* expr)
 
 kslicer::SlangCompiler::SlangCompiler(const std::string& a_prefix) : m_suffix(a_prefix)
 {
-
+  m_typesReplacement = ListSlangStandartTypeReplacements(false);
 }
 
 std::string kslicer::SlangCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const
@@ -918,15 +921,25 @@ std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
   std::string typeInCL = a_decl.type;
   ReplaceFirst(typeInCL, "struct ", "");
 
+  std::string originalText = kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler);
+
   std::string result = "";
   switch(a_decl.kind)
   {
     case kslicer::DECL_IN_CLASS::DECL_STRUCT:
-    result = kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    result = originalText + ";";
     break;
     case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
-    ReplaceFirst(typeInCL, "_Bool", "bool");
-    result = "static " + typeInCL + " " + a_decl.name + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    //ReplaceFirst(typeInCL, "unsigned int", "uint");
+    //ReplaceFirst(typeInCL, "unsigned", "uint");
+    //ReplaceFirst(typeInCL, "_Bool", "bool");
+    for(const auto& pair : m_typesReplacement)
+      ReplaceFirst(typeInCL, pair.first, pair.second);
+    result = "static " + typeInCL + " " + a_decl.name + " = " + originalText + ";";
+    //if(a_decl.name.find("CRT_GEOM_MASK_AABB_BIT") != std::string::npos)
+    //{
+    //  int a = 2;
+    //}
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
     result = "typealias " + a_decl.name + " = " + typeInCL + ";";

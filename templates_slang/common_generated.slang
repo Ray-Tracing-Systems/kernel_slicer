@@ -70,7 +70,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(float4 rayPos, float4 rayDir)
   return res;
 }
 
-bool {{RTName}}_RayQuery_AnyHit(vec4 rayPos, vec4 rayDir)
+bool {{RTName}}_RayQuery_AnyHit(float4 rayPos, float4 rayDir)
 {
   RayDesc ray;
   ray.Origin    = rayPos.xyz;
@@ -85,8 +85,8 @@ bool {{RTName}}_RayQuery_AnyHit(vec4 rayPos, vec4 rayDir)
   return (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT);
 }
 
-CRT_Hit {{RTName}}_RayQuery_NearestHitMotion(vec4 rayPos, vec4 rayDir, float t) { return {{RTName}}_RayQuery_NearestHit(rayPos, rayDir); }
-bool {{RTName}}_RayQuery_AnyHitMotion(vec4 rayPos, vec4 rayDir, float t) { return {{RTName}}_RayQuery_AnyHit(rayPos, rayDir); }
+CRT_Hit {{RTName}}_RayQuery_NearestHitMotion(float4 rayPos, float4 rayDir, float t) { return {{RTName}}_RayQuery_NearestHit(rayPos, rayDir); }
+bool {{RTName}}_RayQuery_AnyHitMotion(float4 rayPos, float4 rayDir, float t) { return {{RTName}}_RayQuery_AnyHit(rayPos, rayDir); }
 
 {% endfor %}
 {% for MembFunc in Kernel.MemberFunctions %}
