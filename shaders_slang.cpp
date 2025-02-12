@@ -888,19 +888,16 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       buildSH << std::endl;
     }
 
-    //if(kernel.value()["FinishRed"])
-    //{
-    //  outFileName = kernelName + "_Reduction.slang";
-    //  outFilePath = shaderPath / outFileName;
-    //  kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
-    //  buildSH << "glslangValidator -V ";
-    //  if(vulkan11)
-    //    buildSH << "--target-env vulkan1.1 ";
-    //  buildSH << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -I.. ";
-    //  for(auto folder : ignoreFolders)
-    //   buildSH << "-I" << folder.c_str() << " ";
-    //  buildSH << std::endl;
-    //}
+    if(kernel.value()["FinishRed"])
+    {
+      outFileName = kernelName + "_Reduction.slang";
+      outFilePath = shaderPath / outFileName;
+      kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
+      buildSH << "slangc " << outFileName.c_str() << " -o " << kernelName.c_str() << "_Reduction.comp.spv" << " -I.. ";
+      for(auto folder : ignoreFolders)
+       buildSH << "-I" << folder.c_str() << " ";
+      buildSH << std::endl;
+    }
   }
 
   if(a_codeInfo->usedServiceCalls.find("memcpy") != a_codeInfo->usedServiceCalls.end())

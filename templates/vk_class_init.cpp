@@ -1027,7 +1027,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitIndirectBufferUpdateResources(con
 
   VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &m_indirectUpdateLayout));
 
-  {% if ShaderGLSL %}
   {% for Dispatch in IndirectDispatches %}
   // create indrect update pipeline for {{Dispatch.OriginalName}}
   //
@@ -1057,35 +1056,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitIndirectBufferUpdateResources(con
     vkDestroyShaderModule(device, tempShaderModule, VK_NULL_HANDLE);
   }
   {% endfor %}
-  {% else %}
-  VkShaderModule tempShaderModule = VK_NULL_HANDLE;
-  std::vector<uint32_t> code = vk_utils::readSPVFile(a_filePath);
-  VkShaderModuleCreateInfo createInfo = {};
-  createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-  createInfo.pCode    = code.data();
-  createInfo.codeSize = code.size()*sizeof(uint32_t);
-  VK_CHECK_RESULT(vkCreateShaderModule(device, &createInfo, NULL, &tempShaderModule));
-
-  {% for Dispatch in IndirectDispatches %}
-  // create indrect update pipeline for {{Dispatch.OriginalName}}
-  //
-  {
-    VkPipelineShaderStageCreateInfo shaderStageInfo = {};
-    shaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    shaderStageInfo.stage  = VK_SHADER_STAGE_COMPUTE_BIT;
-    shaderStageInfo.module = tempShaderModule;
-    shaderStageInfo.pName  = "{{Dispatch.OriginalName}}_UpdateIndirect";
-
-    VkComputePipelineCreateInfo pipelineCreateInfo = {};
-    pipelineCreateInfo.sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    pipelineCreateInfo.stage  = shaderStageInfo;
-    pipelineCreateInfo.layout = m_indirectUpdateLayout;
-    VK_CHECK_RESULT(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &m_indirectUpdate{{Dispatch.KernelName}}Pipeline));
-  }
-  {% endfor %}
-
-  vkDestroyShaderModule(device, tempShaderModule, VK_NULL_HANDLE);
-  {% endif %} {# /* end else branch of if ShaderGLSL */ #}
 }
 
 VkBufferMemoryBarrier {{MainClassName}}{{MainClassSuffix}}::BarrierForIndirectBufferUpdate(VkBuffer a_buffer)
