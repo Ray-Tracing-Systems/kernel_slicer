@@ -315,8 +315,13 @@ bool kslicer::FunctionRewriter2::VisitCXXOperatorCallExpr_Impl(clang::CXXOperato
     {
       const clang::Expr* lhs = expr->getArg(0);
       const clang::Expr* rhs = expr->getArg(1);
-  
-      DARExpr_ReductionOp(op, lhs, rhs, expr);
+      
+      std::string resText;
+      if(WasNotRewrittenYet(expr) && NeedToRewriteReductionOp(op, lhs, rhs, expr, resText));
+      {
+        ReplaceTextOrWorkAround(expr->getSourceRange(), resText); 
+        MarkRewritten(expr);
+      }
     }
     else if (op == "=")
     {
@@ -405,9 +410,14 @@ bool kslicer::FunctionRewriter2::VisitCompoundAssignOperator_Impl(clang::Compoun
   
     const clang::Expr* lhs = expr->getLHS();
     const clang::Expr* rhs = expr->getRHS();
-    const auto  op  = expr->getOpcodeStr();
-  
-    DARExpr_ReductionOp(op.str(), lhs, rhs, expr);
+    const std::string  op  = std::string(expr->getOpcodeStr()); // std::string op = GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler);
+    
+    std::string resText;
+    if(WasNotRewrittenYet(expr) && NeedToRewriteReductionOp(op, lhs, rhs, expr, resText));
+    {
+      ReplaceTextOrWorkAround(expr->getSourceRange(), resText); 
+      MarkRewritten(expr);
+    }
   }
 
   return true; 
@@ -490,10 +500,10 @@ bool kslicer::FunctionRewriter2::DetectAndRewriteShallowPattern(const clang::Stm
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void kslicer::FunctionRewriter2::DARExpr_ReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr)
+bool kslicer::FunctionRewriter2::NeedToRewriteReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr, std::string& outStr)
 {
   if(!m_kernelMode || m_pCurrKernel == nullptr)
-    return;
+    return false;
 
   // detect cases like "m_bodies[i].vel_charge.x += acceleration.x", extract "m_bodies[i]"; "vel_charge.x" is not supported right now !!!
   //
@@ -504,7 +514,7 @@ void kslicer::FunctionRewriter2::DARExpr_ReductionOp(const std::string& op, cons
   }
 
   if(clang::isa<clang::CXXOperatorCallExpr>(lhs)) // do not process here code like "vector[i] += ..." or "texture[int2(x,y)] += ..."
-    return;
+    return false;
 
   const std::string leftVar = GetRangeSourceCode(lhs->getSourceRange().getBegin(), m_compiler);
   const std::string leftStr = GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
@@ -566,12 +576,14 @@ void kslicer::FunctionRewriter2::DARExpr_ReductionOp(const std::string& op, cons
       std::string rightStr2  = RecursiveRewrite(rhs);
       std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_pCurrKernel->GetDim(), m_pCurrKernel->wgSize);
       if(access.leftIsArray)
-        ReplaceTextOrWorkAround(expr->getSourceRange(), access.arrayName + "Shared[" + access.arrayIndex + "][" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + rightStr2);
+        outStr = access.arrayName + "Shared[" + access.arrayIndex + "][" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + rightStr2;
       else
-        ReplaceTextOrWorkAround(expr->getSourceRange(), leftVar + "Shared[" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + rightStr2);
-      MarkRewritten(expr);
+        outStr = leftVar + "Shared[" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + rightStr2;
+      return true;
     }
   }
+
+  return false;
 }
 
 void kslicer::FunctionRewriter2::DARExpr_ReductionFunc(const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr)

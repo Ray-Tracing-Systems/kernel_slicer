@@ -754,7 +754,7 @@ namespace kslicer
     
     // DetectAndRewriteExpression --> DARExpr
     //
-    virtual void DARExpr_ReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
+    virtual bool NeedToRewriteReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr, std::string& outStr);
     virtual void DARExpr_ReductionFunc(const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
     
     virtual void DARExpr_RWTexture(clang::CXXOperatorCallExpr* expr, bool write);
