@@ -197,7 +197,6 @@
                         "-I${workspaceFolder}/TINYSTL",          "ignore",
                         "-I${workspaceFolder}/apps/RayTracing",  "process",
                         "-megakernel", "1",
-                        //"-cl-std=", "C++",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,
