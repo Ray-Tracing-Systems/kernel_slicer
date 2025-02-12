@@ -789,7 +789,7 @@ std::string kslicer::SlangCompiler::ProcessBufferType(const std::string& a_typeN
 
 std::string kslicer::SlangCompiler::RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const
 {
-  return std::string("{ uint offset = atomicAdd(") + UBOAccess(memberNameB) + ", 1); " + memberNameA + "[offset] = " + newElemValue + ";}";
+  return std::string("{ uint offset = 0; InterlockedAdd(") + UBOAccess(memberNameB) + ", 1, offset); " + memberNameA + "[offset] = " + newElemValue + ";}";
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -942,6 +942,8 @@ std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
     //}
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
+    for(const auto& pair : m_typesReplacement)
+      ReplaceFirst(typeInCL, pair.first, pair.second);
     result = "typealias " + a_decl.name + " = " + typeInCL + ";";
     break;
     default:

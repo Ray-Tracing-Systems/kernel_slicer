@@ -28,13 +28,13 @@ int main(int argc, const char** argv)
   ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
-  //if(onGPU)
-  //{
-  //  unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-  //  auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
-  //  pImpl = CreatePadding_Generated(ctx, array.size());
-  //}
-  //else
+  if(onGPU)
+  {
+    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+    pImpl = CreatePadding_Generated(ctx, array.size());
+  }
+  else
     pImpl = std::make_shared<SimpleTest>();
 
   std::string backendName = onGPU ? "gpu" : "cpu";
@@ -52,6 +52,6 @@ int main(int argc, const char** argv)
   JSONLog::saveToFile("zout_"+backendName+".json");
   
   pImpl = nullptr;
-  //vk_utils::globalContextDestroy();
+  vk_utils::globalContextDestroy();
   return 0;
 }
