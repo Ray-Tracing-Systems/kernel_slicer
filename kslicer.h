@@ -1145,6 +1145,8 @@ namespace kslicer
       return call;
     }
 
+    virtual std::string IndirectBufferDataType() const { return "uint4* "; }
+
     virtual bool UseSeparateUBOForArguments() const { return false; }
     virtual bool UseSpecConstForWgSize() const { return false; }
     virtual void GetThreadSizeNames(std::string a_strs[3]) const = 0;
@@ -1247,6 +1249,8 @@ namespace kslicer
 
     std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
     std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds) override; 
+    
+    std::string IndirectBufferDataType() const override { return "uvec4 "; }
 
   private:
     const std::string& m_suffix;
@@ -1284,6 +1288,9 @@ namespace kslicer
 
     std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
     std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds) override; 
+
+    std::string IndirectBufferDataType() const override { return "uint4 "; }
+
   private:
     const std::string& m_suffix;
     std::unordered_map<std::string, std::string> m_typesReplacement;

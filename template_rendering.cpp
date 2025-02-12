@@ -807,7 +807,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     if(k.isIndirect && !a_classInfo.pShaderCC->IsISPC()) // add indirect buffer to shaders
     {
       json argj;
-      argj["Type"]       = a_classInfo.pShaderCC->IsGLSL() ? "uvec4 " : "uint4* ";
+      argj["Type"]       = a_classInfo.pShaderCC->IndirectBufferDataType();
       argj["Name"]       = "m_indirectBuffer";
       argj["IsUBO"]      = false;
       argj["IsPointer"]  = false;

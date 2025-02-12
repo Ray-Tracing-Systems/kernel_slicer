@@ -877,19 +877,16 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     //  buildSH << "-S rgen ";
     buildSH << std::endl;
   
-    //if(kernel.value()["IsIndirect"])
-    //{
-    //  outFileName = kernelName + "_UpdateIndirect.slang";
-    //  outFilePath = shaderPath / outFileName;
-    //  kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
-    //  buildSH << "glslangValidator -V ";
-    //  if(vulkan11)
-    //    buildSH << "--target-env vulkan1.1 ";
-    //  buildSH << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
-    //  for(auto folder : ignoreFolders)
-    //   buildSH << "-I" << folder.c_str() << " ";
-    //  buildSH << std::endl;
-    //}
+    if(kernel.value()["IsIndirect"])
+    {
+      outFileName = kernelName + "_UpdateIndirect.slang";
+      outFilePath = shaderPath / outFileName;
+      kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
+      buildSH << "slangc " << outFileName.c_str() << " -o " << kernelName.c_str() << "_UpdateIndirect.comp.spv" << " -I.. ";
+      for(auto folder : ignoreFolders)
+       buildSH << "-I" << folder.c_str() << " ";
+      buildSH << std::endl;
+    }
 
     //if(kernel.value()["FinishRed"])
     //{
@@ -899,7 +896,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     //  buildSH << "glslangValidator -V ";
     //  if(vulkan11)
     //    buildSH << "--target-env vulkan1.1 ";
-    //  buildSH << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
+    //  buildSH << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -I.. ";
     //  for(auto folder : ignoreFolders)
     //   buildSH << "-I" << folder.c_str() << " ";
     //  buildSH << std::endl;
