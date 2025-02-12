@@ -288,7 +288,7 @@ bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr*
   {
     std::string varName, typeName;
     ExtractTypeAndVarNameFromConstructor(call, &m_compiler.getASTContext(), varName, typeName);
-    const bool hasVarName = (originalText.find(varName) == 0); // found in the start of the string
+    const bool hasVarName = (varName != "") && (originalText.find(varName) == 0); // found in the start of the string
 
     std::string textRes = RewriteConstructCall(call);
     if(hasVarName)

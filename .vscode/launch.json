@@ -196,7 +196,7 @@
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore",
                         "-I${workspaceFolder}/TINYSTL",          "ignore",
                         "-I${workspaceFolder}/apps/RayTracing",  "process",
-                        "-megakernel", "0",
+                        "-megakernel", "1",
                         //"-cl-std=", "C++",
                         "-DKERNEL_SLICER",
                         "-v"],

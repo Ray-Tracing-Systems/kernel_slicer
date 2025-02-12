@@ -2,7 +2,10 @@
 
 #include "LiteMath.h"
 using LiteMath::float2;
+using LiteMath::float4;
 using LiteMath::complex;
+
+float AddComponents(float4 f) { return f.x + f.y + f.z + f.w; }
 
 void SimpleTest::Test(float* a_data, unsigned int a_size)
 {
@@ -56,7 +59,7 @@ void SimpleTest::kernel1D_Test(float* a_data, unsigned int a_size)
       
       a_data[9+6] = c5.re + c5.im;
       a_data[9+7] = c6.re + c6.im;
-      a_data[9+8] = 0.0f;
+      a_data[9+8] = AddComponents(float4(1,2,3,4));
 
       a_data[17]  = 10.0f;
       a_data[18]  = 20.0f;
