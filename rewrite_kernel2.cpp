@@ -317,7 +317,7 @@ bool kslicer::FunctionRewriter2::VisitCXXOperatorCallExpr_Impl(clang::CXXOperato
       const clang::Expr* rhs = expr->getArg(1);
       
       std::string resText;
-      if(WasNotRewrittenYet(expr) && NeedToRewriteReductionOp(op, lhs, rhs, expr, resText));
+      if(WasNotRewrittenYet(expr) && NeedToRewriteReductionOp(op, lhs, rhs, expr, resText))
       {
         ReplaceTextOrWorkAround(expr->getSourceRange(), resText); 
         MarkRewritten(expr);
@@ -413,7 +413,7 @@ bool kslicer::FunctionRewriter2::VisitCompoundAssignOperator_Impl(clang::Compoun
     const std::string  op  = std::string(expr->getOpcodeStr()); // std::string op = GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler);
     
     std::string resText;
-    if(WasNotRewrittenYet(expr) && NeedToRewriteReductionOp(op, lhs, rhs, expr, resText));
+    if(WasNotRewrittenYet(expr) && NeedToRewriteReductionOp(op, lhs, rhs, expr, resText))
     {
       ReplaceTextOrWorkAround(expr->getSourceRange(), resText); 
       MarkRewritten(expr);
