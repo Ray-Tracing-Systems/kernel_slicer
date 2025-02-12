@@ -257,9 +257,9 @@ bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
   
   // 'pStruct->member' ==> 'pStruct.member'
   //
-  if(expr->isArrow() && WasNotRewrittenYet(expr->getBase()) )
+  const auto exprText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  if(expr->isArrow() && WasNotRewrittenYet(expr->getBase()) && exprText.find("->") != std::string::npos)
   {
-    const auto exprText     = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
     const std::string lText = exprText.substr(exprText.find("->")+2);
     const std::string rText = RecursiveRewrite(expr->getBase());
     ReplaceTextOrWorkAround(expr->getSourceRange(), rText + "." + lText);
