@@ -113,7 +113,7 @@ namespace kslicer
     const std::unordered_map<std::string, kslicer::DeclInClass>& GetOtherTypeDecls() const { return m_storedDecl;}
 
   private:
-    void ProcessKernelDef(const CXXMethodDecl *f,  std::unordered_map<std::string, KernelInfo>& a_funcList, const std::string& a_className);
+    bool ProcessKernelDef(const CXXMethodDecl *f,  std::unordered_map<std::string, KernelInfo>& a_funcList, const std::string& a_className);
     bool IsMainClassName(const std::string& a_typeName);
 
     CompilerInstance&     m_compiler;

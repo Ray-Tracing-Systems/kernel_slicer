@@ -64,10 +64,10 @@ kslicer::KernelInfo::ArgInfo kslicer::ProcessParameter(const clang::ParmVarDecl 
   return arg;
 }
 
-void kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDecl *f, std::unordered_map<std::string, KernelInfo>& a_funcList, const std::string& a_className)
+bool kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDecl *f, std::unordered_map<std::string, KernelInfo>& a_funcList, const std::string& a_className)
 {
   if (!f || !f->hasBody())
-    return;
+    return false;
 
   const QualType retType  = f->getReturnType();
   std::string retTypeName = retType.getAsString();
@@ -98,10 +98,32 @@ void kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDe
 
   info.debugOriginalText = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
 
-  if(a_className == MAIN_CLASS_NAME || m_composedClassInfo.find(a_className) != m_composedClassInfo.end())
+  if(a_className == MAIN_CLASS_NAME)
     a_funcList[info.name] = info;
+  else if(mci.baseClassOrder.find(a_className) != mci.baseClassOrder.end())
+  {
+    auto pOldFunc = a_funcList.find(info.name);
+    if(pOldFunc == a_funcList.end())
+      a_funcList[info.name] = info;
+    else
+    {
+      auto pCurr = mci.baseClassOrder.find(a_className);
+      auto pOld  = mci.baseClassOrder.find(pOldFunc->second.className);
+      if(pOld != mci.baseClassOrder.end() && pCurr != mci.baseClassOrder.end())
+      {
+        if(pCurr->second > pOld->second)
+          a_funcList[info.name] = info;
+        else
+          return false;
+      }
+      else
+        return false;
+    }
+  }
   else
     a_funcList[a_className + "::" + info.name] = info;
+
+  return true;
 }
 
 
@@ -376,7 +398,7 @@ std::string kslicer::ClearTypeName(const std::string& a_typeName)
 
 bool kslicer::InitialPassRecursiveASTVisitor::IsMainClassName(const std::string& a_typeName) 
 { 
-  return (a_typeName == MAIN_CLASS_NAME); // || m_composedClassInfo.find(a_typeName) != m_composedClassInfo.end(); 
+  return (a_typeName == MAIN_CLASS_NAME) || mci.baseClassOrder.find(a_typeName) != mci.baseClassOrder.end(); 
 }
 
 bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f)
@@ -402,7 +424,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
   const bool isMainClassMember = IsMainClassName(thisTypeName);
   const auto pCompos           = m_composedClassInfo.find(thisTypeName);
 
-  if(isMainClassMember && this->MAIN_FILE_INCLUDE == "")
+  if(thisTypeName == MAIN_CLASS_NAME && this->MAIN_FILE_INCLUDE == "") // check only actual main class
   {
     auto funcSourceRange    = f->getSourceRange();
     auto fileName           = m_sourceManager.getFilename(funcSourceRange.getBegin());
@@ -424,27 +446,29 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
     {
       if(isMainClassMember)
       {
-        ProcessKernelDef(f, mci.functions, MAIN_CLASS_NAME); // MAIN_CLASS_NAME::f ==> functions
-        std::cout << "  found member kernel " << MAIN_CLASS_NAME.c_str() << "::" << fname.c_str() << std::endl;
-        if(mci.ctors.size() == 0)
+        if(ProcessKernelDef(f, mci.functions, thisTypeName)) // thisTypeName::f ==> functions
         {
-          clang::CXXRecordDecl* pClasDecl =	f->getParent();
-          for(auto ctor : pClasDecl->ctors())
+          std::cout << "  found member kernel " << thisTypeName.c_str() << "::" << fname.c_str() << std::endl;
+          if(mci.ctors.size() == 0)
           {
-            if(!ctor->isCopyOrMoveConstructor())
-              mci.ctors.push_back(ctor);
+            clang::CXXRecordDecl* pClasDecl =	f->getParent();
+            for(auto ctor : pClasDecl->ctors())
+            {
+              if(!ctor->isCopyOrMoveConstructor())
+                mci.ctors.push_back(ctor);
+            }
           }
         }
       }
       else if(pCompos != m_composedClassInfo.end())
       {
-        ProcessKernelDef(f, pCompos->second.otherFunctions, pCompos->first);
-        std::cout << "  found member function " << pCompos->first.c_str() << "::" << fname.c_str() << std::endl;
+        if(ProcessKernelDef(f, pCompos->second.otherFunctions, pCompos->first))
+          std::cout << "  found member function " << pCompos->first.c_str() << "::" << fname.c_str() << std::endl;
       }
       else // extract other kernels and classes
       {
-        ProcessKernelDef(f, mci.otherFunctions, thisTypeName); // thisTypeName::f ==> otherFunctions
-        std::cout << "  found other kernel " << thisTypeName.c_str() << "::" << fname.c_str() << std::endl;
+        if(ProcessKernelDef(f, mci.otherFunctions, thisTypeName)) // thisTypeName::f ==> otherFunctions
+          std::cout << "  found other kernel " << thisTypeName.c_str() << "::" << fname.c_str() << std::endl;
       }
     }
     else if(m_mainFuncts.find(fname) != m_mainFuncts.end())
