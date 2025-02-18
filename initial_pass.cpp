@@ -374,7 +374,10 @@ std::string kslicer::ClearTypeName(const std::string& a_typeName)
   return copystr;
 }
 
-bool kslicer::InitialPassRecursiveASTVisitor::IsMainClassName(const std::string& a_typeName) { return (a_typeName == MAIN_CLASS_NAME); }
+bool kslicer::InitialPassRecursiveASTVisitor::IsMainClassName(const std::string& a_typeName) 
+{ 
+  return (a_typeName == MAIN_CLASS_NAME); // || m_composedClassInfo.find(a_typeName) != m_composedClassInfo.end(); 
+}
 
 bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f)
 {
