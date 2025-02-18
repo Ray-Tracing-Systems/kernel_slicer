@@ -477,10 +477,10 @@ int main(int argc, const char **argv)
     for(size_t i=0;i<baseClases.size();i++) 
     { 
       std::string className = baseClases[i];
-      firstPassData.rv.mci.baseClassOrder[className] = int(i);
       firstPassData.rv.m_baseClassInfo[className] = kslicer::ClassInfo(className);
+      firstPassData.rv.m_baseClassInfo[className].baseClassOrder = int(i);
     }
-    firstPassData.rv.mci.baseClassOrder[mainClassName] = int(baseClases.size());
+    firstPassData.rv.m_baseClassInfo[mainClassName].baseClassOrder = int(baseClases.size());
   }
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
 

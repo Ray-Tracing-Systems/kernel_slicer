@@ -35,7 +35,7 @@ namespace kslicer
     std::unordered_map<std::string, const clang::CXXMethodDecl*> m_setters;
     std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFunctions;
     std::vector<const clang::CXXConstructorDecl* >               ctors;
-    std::unordered_map<std::string, int>                         baseClassOrder;
+    int                                                          baseClassOrder = 0;
   };
 
   //// RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.

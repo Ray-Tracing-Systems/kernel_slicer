@@ -100,18 +100,18 @@ bool kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDe
 
   if(a_className == MAIN_CLASS_NAME)
     a_funcList[info.name] = info;
-  else if(mci.baseClassOrder.find(a_className) != mci.baseClassOrder.end())
+  else if(m_baseClassInfo.find(a_className) != m_baseClassInfo.end())
   {
     auto pOldFunc = a_funcList.find(info.name);
     if(pOldFunc == a_funcList.end())
       a_funcList[info.name] = info;
     else
     {
-      auto pCurr = mci.baseClassOrder.find(a_className);
-      auto pOld  = mci.baseClassOrder.find(pOldFunc->second.className);
-      if(pOld != mci.baseClassOrder.end() && pCurr != mci.baseClassOrder.end())
+      auto pCurr = m_baseClassInfo.find(a_className);
+      auto pOld  = m_baseClassInfo.find(pOldFunc->second.className);
+      if(pOld != m_baseClassInfo.end() && pCurr != m_baseClassInfo.end())
       {
-        if(pCurr->second > pOld->second)
+        if(pCurr->second.baseClassOrder > pOld->second.baseClassOrder)
           a_funcList[info.name] = info;
         else
           return false;
@@ -145,8 +145,8 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* 
 
   if(typeName == MAIN_CLASS_NAME)
     mci.astNode = record;
-  else if(mci.baseClassOrder.find(typeName) != mci.baseClassOrder.end())
-  m_baseClassInfo[typeName].astNode = record;
+  else if(m_baseClassInfo.find(typeName) != m_baseClassInfo.end())
+    m_baseClassInfo[typeName].astNode = record;
   else if(pCompos != m_composedClassInfo.end())
     pCompos->second.astNode = record;
   else if(!record->isPOD())
@@ -400,7 +400,7 @@ std::string kslicer::ClearTypeName(const std::string& a_typeName)
 
 bool kslicer::InitialPassRecursiveASTVisitor::IsMainClassName(const std::string& a_typeName) 
 { 
-  return (a_typeName == MAIN_CLASS_NAME) || mci.baseClassOrder.find(a_typeName) != mci.baseClassOrder.end(); 
+  return (a_typeName == MAIN_CLASS_NAME) || m_baseClassInfo.find(a_typeName) != m_baseClassInfo.end(); 
 }
 
 bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f)
@@ -483,13 +483,13 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
         std::string classNameVal = classInfo->getName().str();
         std::cout << classNameVal.c_str() << "::" << fname.c_str();
 
-        auto p = mci.baseClassOrder.find(classNameVal);
-        if(p != mci.baseClassOrder.end())
+        auto p = m_baseClassInfo.find(classNameVal);
+        if(p != m_baseClassInfo.end())
         {
           MainFuncNodeInfo currInfo;
           currInfo.className = classNameVal;
           currInfo.funcName  = fname;
-          currInfo.order     = p->second;
+          currInfo.order     = p->second.baseClassOrder;
           
           auto pInfo = mci.m_mainFuncNodeInfos.find(fname);
           if(pInfo == mci.m_mainFuncNodeInfos.end())
