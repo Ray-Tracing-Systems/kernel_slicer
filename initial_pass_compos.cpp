@@ -71,12 +71,12 @@ void kslicer::PerformInheritanceMerge(kslicer::ClassInfo& mainClassInfo, const k
   
   // merge kernels from base class
   //
-  //for(const auto& f : baseClassInfo.otherFunctions) 
-  //{
-  //  auto p = mainClassInfo.functions.find(f.first);
-  //  if(p == mainClassInfo.functions.end())
-  //    mainClassInfo.functions[f.first] = f.second;
-  //}
+  for(const auto& f : baseClassInfo.otherFunctions) 
+  {
+    auto p = mainClassInfo.functions.find(f.first);
+    if(p == mainClassInfo.functions.end())
+      mainClassInfo.functions[f.first] = f.second;
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
