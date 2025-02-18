@@ -1860,22 +1860,12 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
     else
       return kslicer::KernelRewriter::VisitCXXOperatorCallExpr_Impl(expr); // detect reduction access
   }
-  else if(op == "+" || op == "-" || op == "*" || op == "/")                // WTF ??? NOT IMPLEMENTED ???
+  else if(op == "+" || op == "-" || op == "*" || op == "/")                // WARNING! Could be also unary "-" and "+"
   {
-    clang::Expr* left  = kslicer::RemoveImplicitCast(expr->getArg(0));
-    clang::Expr* tight = kslicer::RemoveImplicitCast(expr->getArg(1));
-    const std::string leftType  = left->getType().getAsString();
-    const std::string rightType = tight->getType().getAsString();
-
-    //if(leftType.find("complex") != std::string::npos)
-    //{
-    //  int a = 2;
-    //}
-    //
-    //if(rightType.find("complex") != std::string::npos)
-    //{
-    //  int b = 3;
-    //}
+    //clang::Expr* left  = kslicer::RemoveImplicitCast(expr->getArg(0));   // ok
+    //clang::Expr* tight = kslicer::RemoveImplicitCast(expr->getArg(1));   // WARNING! Could be also unary "-" and "+"
+    //const std::string leftType  = left->getType().getAsString();
+    //const std::string rightType = tight->getType().getAsString();
   }
   else if((op == "]" || op == "[" || op == "[]") && WasNotRewrittenYet(expr)) // swap access of coords fopr mat4: mat[row][col] --> mat[col][row]
   {

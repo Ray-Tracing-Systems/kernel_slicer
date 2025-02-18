@@ -68,6 +68,15 @@ void kslicer::PerformInheritanceMerge(kslicer::ClassInfo& mainClassInfo, const k
     if(p == mainClassInfo.allMemberFunctions.end())             // because implementation in main (derived) class
       mainClassInfo.allMemberFunctions[name] = member.second;   // always overrides any implementations in base class
   }
+  
+  // merge kernels from base class
+  //
+  //for(const auto& f : baseClassInfo.otherFunctions) 
+  //{
+  //  auto p = mainClassInfo.functions.find(f.first);
+  //  if(p == mainClassInfo.functions.end())
+  //    mainClassInfo.functions[f.first] = f.second;
+  //}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

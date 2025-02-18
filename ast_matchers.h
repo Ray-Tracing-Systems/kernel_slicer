@@ -267,7 +267,7 @@ namespace kslicer
   public:
 
     explicit UsedCodeFilter(std::ostream& s, kslicer::MainClassInfo& a_allInfo,  kslicer::KernelInfo* a_currKernel, const clang::CompilerInstance& a_compiler) : 
-                            m_out(s), m_allInfo(a_allInfo), currKernel(a_currKernel), m_mainClassName(a_allInfo.mainClassName),
+                            m_out(s), m_allInfo(a_allInfo), currKernel(a_currKernel), 
                             m_compiler(a_compiler), m_sourceManager(a_compiler.getSourceManager()), m_astContext(a_compiler.getASTContext())
     {
     
@@ -359,8 +359,6 @@ namespace kslicer
     const clang::CompilerInstance& m_compiler;
     const clang::SourceManager&    m_sourceManager;
     const clang::ASTContext&       m_astContext;
-
-    std::string    m_mainClassName;
   };  // class UsedCodeFilter
 
 

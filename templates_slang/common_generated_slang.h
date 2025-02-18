@@ -163,6 +163,8 @@ int3   to_int3  (int4 f4)           { return f4.xyz;   }
 int4   to_int4  (int3 v, int w)     { return int4(v.x, v.y, v.z, w);   }
 
 float4 mul4x4x4(float4x4 m, float4 v) { return mul(m,v); }
+float3 mul3x3  (float4x4 m, float3 v) { return to_float3(mul(m, to_float4(v, 0.0f))); }
+float3 mul4x3  (float4x4 m, float3 v) { return to_float3(mul(m, to_float4(v, 1.0f))); }
 
 ////
 //

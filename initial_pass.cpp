@@ -98,49 +98,12 @@ void kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDe
 
   info.debugOriginalText = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
 
-  if(a_className == MAIN_CLASS_NAME)
+  if(a_className == MAIN_CLASS_NAME || m_composedClassInfo.find(a_className) != m_composedClassInfo.end())
     a_funcList[info.name] = info;
   else
     a_funcList[a_className + "::" + info.name] = info;
 }
 
-
-//void kslicer::ZeroPassRecursiveASTVisitor::ExtractAllBaseClasses(const clang::CXXRecordDecl* parentClass)
-//{
-//  // Итерируем по базовым классам
-//  for (const auto &base : parentClass->bases()) 
-//  {
-//    const clang::CXXRecordDecl* baseClass = base.getType()->getAsCXXRecordDecl();
-//    if (baseClass) 
-//    {
-//      ClassInfo baseClassInfo;
-//      baseClassInfo.astNode = baseClass;
-//      baseClassInfo.name    = baseClass->getNameAsString();
-//      if(m_composedClassInfo.find(baseClassInfo.name) == m_composedClassInfo.end())
-//        m_composedClassInfo.insert(std::make_pair(baseClassInfo.name, baseClassInfo));
-//    }
-//  }
-//}
-//
-//bool kslicer::ZeroPassRecursiveASTVisitor::VisitCXXRecordDecl(clang::CXXRecordDecl* record)
-//{
-//  if(!record->hasDefinition())
-//    return true;
-//
-//  const auto pType = record->getTypeForDecl();
-//  if(pType == nullptr)
-//    return true;
-//
-//  const auto qt       = pType->getLocallyUnqualifiedSingleStepDesugaredType();
-//  const auto typeName = ClearTypeName(qt.getAsString());
-//  if(typeName == MAIN_CLASS_NAME) 
-//  {
-//    m_codeInfo.mainClassASTNode = record;
-//    ExtractAllBaseClasses(record);
-//  }
-//
-//  return false;
-//}
 
 bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* record)
 {

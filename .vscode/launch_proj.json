@@ -355,6 +355,39 @@
         },
 
         {
+            "name"   : "Launch (OpticsRT/kiam-stage2:PolySurface)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["/home/frol/PROG/vsan/opticsrt/src/lens_array/poly_surface.cpp",
+                        "/home/frol/PROG/vsan/opticsrt/src/lens_array/surface.cpp",
+                        "-mainClass", "PolySurface", 
+                        "-baseClass", "Surface",
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-shaderCC", "glsl",
+                        "-timestamps", "1",
+                        //"-typedef", "Float3 dvec3",
+                        "-I${workspaceFolder}/TINYSTL",                   "ignore",
+                        "-I/home/frol/PROG/vsan/opticsrt/ext/LiteMath",   "ignore",
+                        "-I/home/frol/PROG/vsan/opticsrt/src",            "process",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (LiteRF)",
             "type"   : "cppdbg",
             "request": "launch",

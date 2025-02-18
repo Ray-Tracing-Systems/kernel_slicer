@@ -133,12 +133,20 @@ public:
 
     if(forLoop && func_decl)
     {
-      const VarDecl* initVar = result.Nodes.getNodeAs<clang::VarDecl>("initVar");
-      const VarDecl* condVar = result.Nodes.getNodeAs<clang::VarDecl>("condVar");
-      const VarDecl* incVar  = result.Nodes.getNodeAs<clang::VarDecl>("incVar");
-      const Expr*    loopSZ  = result.Nodes.getNodeAs<clang::Expr>   ("loopSize");
+      const clang::VarDecl* initVar = result.Nodes.getNodeAs<clang::VarDecl>("initVar");
+      const clang::VarDecl* condVar = result.Nodes.getNodeAs<clang::VarDecl>("condVar");
+      const clang::VarDecl* incVar  = result.Nodes.getNodeAs<clang::VarDecl>("incVar");
+      const clang::Expr*    loopSZ  = result.Nodes.getNodeAs<clang::Expr>   ("loopSize");
       
-      if(areSameVariable(initVar,condVar) && areSameVariable(initVar, incVar) && loopSZ)
+      const bool sameInitAndCond = areSameVariable(initVar,condVar);
+      const bool sameInitAndInc  = areSameVariable(initVar, incVar);
+
+      //std::string debugInitVar = kslicer::GetRangeSourceCode(initVar->getSourceRange(), m_compiler);
+      //std::string debugCondVar = kslicer::GetRangeSourceCode(condVar->getSourceRange(), m_compiler);
+      //std::string debugIncVar  = kslicer::GetRangeSourceCode(incVar->getSourceRange(), m_compiler);
+      //std::string debugForExp  = kslicer::GetRangeSourceCode(forLoop->getSourceRange(), m_compiler);
+
+      if(sameInitAndCond && sameInitAndInc && loopSZ)
       {
         std::string name      = initVar->getNameAsString();
         std::string debugText = kslicer::GetRangeSourceCode(forLoop->getBody()->getSourceRange(), m_compiler);
@@ -149,7 +157,7 @@ public:
           const clang::CXXMethodDecl* method      = clang::dyn_cast<clang::CXXMethodDecl>(func_decl);
           const clang::CXXRecordDecl* parentClass = method->getParent();
           std::string className = parentClass->getNameAsString();
-          fromThisClass = (className == m_mainClassName);
+          fromThisClass = (m_allInfo.mainClassNames.find(className) != m_allInfo.mainClassNames.end()); //  (className == m_mainClassName);
         }
 
         //std::cout << "  [LoopHandlerIPV]: Variable name is: " << name.c_str() << std::endl;

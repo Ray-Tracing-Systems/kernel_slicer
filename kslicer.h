@@ -297,6 +297,13 @@ namespace kslicer
         if(arg.isThreadID)
           size++;
       }
+
+      if(size == 0)
+      {
+        std::cout << "  [ReductionAccess::GetDim]: Error, zero kernel dim" << std::endl;
+        size = 1;
+      }
+
       return size;
     }
 
