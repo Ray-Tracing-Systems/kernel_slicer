@@ -106,6 +106,7 @@ namespace kslicer
 
     ClassInfo mci; // main class info
     std::unordered_map<std::string, ClassInfo>  m_composedClassInfo;
+    std::unordered_map<std::string, ClassInfo>  m_baseClassInfo;
 
     std::vector<const clang::CXXRecordDecl*> m_classList;
     std::vector<kslicer::DeclInClass> GetExtractedDecls();

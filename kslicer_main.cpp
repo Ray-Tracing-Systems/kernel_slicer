@@ -472,9 +472,14 @@ int main(int argc, const char **argv)
   }
 
   kslicer::InitialPassASTConsumer firstPassData(cfNames, mainClassName, composClassNames, compiler, inputCodeInfo);
+  // TODO: move this inside constructor ... 
   {
-    for(size_t i=0;i<baseClases.size();i++)
-      firstPassData.rv.mci.baseClassOrder[baseClases[i]] = int(i);
+    for(size_t i=0;i<baseClases.size();i++) 
+    { 
+      std::string className = baseClases[i];
+      firstPassData.rv.mci.baseClassOrder[className] = int(i);
+      firstPassData.rv.m_baseClassInfo[className] = kslicer::ClassInfo(className);
+    }
     firstPassData.rv.mci.baseClassOrder[mainClassName] = int(baseClases.size());
   }
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
@@ -507,13 +512,13 @@ int main(int argc, const char **argv)
     aux_classes.reserve(firstPassData.rv.m_composedClassInfo.size());
 
     // Преобразование unordered_map в vector
-    std::transform(firstPassData.rv.m_composedClassInfo.begin(), firstPassData.rv.m_composedClassInfo.end(), 
+    std::transform(firstPassData.rv.m_baseClassInfo.begin(), firstPassData.rv.m_baseClassInfo.end(), 
                    std::back_inserter(aux_classes), [](const auto& pair) { return pair.second.astNode; });
 
     auto sorted = kslicer::ExtractAndSortBaseClasses(aux_classes, firstPassData.rv.mci.astNode);
     for(const auto& baseClass : sorted) {
       auto typeName = baseClass->getQualifiedNameAsString();
-      const auto& classInfo = firstPassData.rv.m_composedClassInfo[typeName];
+      const auto& classInfo = firstPassData.rv.m_baseClassInfo[typeName]; // !!!!!
       kslicer::PerformInheritanceMerge(firstPassData.rv.mci, classInfo);
       inputCodeInfo.mainClassNames.insert(typeName);
     }
