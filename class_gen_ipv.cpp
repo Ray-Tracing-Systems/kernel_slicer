@@ -252,7 +252,11 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   
   std::string funcBodyText = "";
   if(kernelNodes.loopBody != nullptr)
+  {
     funcBodyText = pVisitor->RecursiveRewrite(kernelNodes.loopBody);
+    if(!clang::isa<clang::CompoundStmt>(kernelNodes.loopBody))
+      funcBodyText += ";";
+  }
 
   //if(kernelNodes.beforeLoop != nullptr)
   //  a_outLoopInitCode = pVisitor->RecursiveRewrite(kernelNodes.beforeLoop);
@@ -265,7 +269,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   //  a_outLoopFinishCode = "";
   //
   //if(kernelNodes.loopBody != nullptr)
-  //  return pVisitor->RecursiveRewrite(kernelNodes.loopBody);
+  //  return funcBodyText;
   //else
   //  return "//empty kernel body is found";
   
