@@ -423,7 +423,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
   const auto pCompos           = m_composedClassInfo.find(thisTypeName);
   const auto pBase             = m_baseClassInfo.find(thisTypeName);
 
-  if(thisTypeName == MAIN_CLASS_NAME && this->MAIN_FILE_INCLUDE == "") // check only actual main class
+  if(isMainClassMember && this->MAIN_FILE_INCLUDE == "") // check only actual main class
   {
     auto funcSourceRange    = f->getSourceRange();
     auto fileName           = m_sourceManager.getFilename(funcSourceRange.getBegin());
@@ -431,13 +431,13 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
   }
 
   if(isMainClassMember && fsrcfull != fdecl) // we need to store MethodDec with full source code, not hust decls just save this for further process in templated text rendering_host.cpp
-    mci.allMemberFunctions[fname] = f;
+    mci.funMembers[fname] = f;
   else if (isMainClassMember && fsrcfull == fdecl && fdecl.find("Block(") != std::string::npos) // needed for override CPU imple of XXXBlock functions
-    mci.allMemberFunctions[fname] = f;
+    mci.funMembers[fname] = f;
   else if (pBase != m_baseClassInfo.end())
-    pBase->second.allMemberFunctions[fname] = f;
+    pBase->second.funMembers[fname] = f;
   else if (pCompos != m_composedClassInfo.end())
-    pCompos->second.allMemberFunctions[fname] = f;
+    pCompos->second.funMembers[fname] = f;
 
   if (f->hasBody())
   {
@@ -447,7 +447,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
     {
       if(isMainClassMember)
       {
-        if(ProcessKernelDef(f, mci.functions, thisTypeName)) // thisTypeName::f ==> functions
+        if(ProcessKernelDef(f, mci.funKernels, thisTypeName)) // thisTypeName::f ==> functions
         {
           std::cout << "  found member kernel " << thisTypeName.c_str() << "::" << fname.c_str() << std::endl;
           if(mci.ctors.size() == 0)
@@ -463,18 +463,18 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
       }
       else if(pBase != m_baseClassInfo.end())
       {
-        if(ProcessKernelDef(f, pBase->second.otherFunctions, pBase->first))
+        if(ProcessKernelDef(f, pBase->second.funKernels, pBase->first))
           std::cout << "  found member function " << pBase->first.c_str() << "::" << fname.c_str() << std::endl;
       }
       else if(pCompos != m_composedClassInfo.end())
       {
-        if(ProcessKernelDef(f, pCompos->second.otherFunctions, pCompos->first))
+        if(ProcessKernelDef(f, pCompos->second.funKernels, pCompos->first))
           std::cout << "  found member function " << pCompos->first.c_str() << "::" << fname.c_str() << std::endl;
       }
       else // extract other kernels and classes
       {
-        if(ProcessKernelDef(f, mci.otherFunctions, thisTypeName)) // thisTypeName::f ==> otherFunctions
-          std::cout << "  found other kernel " << thisTypeName.c_str() << "::" << fname.c_str() << std::endl;
+        //if(ProcessKernelDef(f, mci.otherFunctions, thisTypeName)) // thisTypeName::f ==> otherFunctions
+        //  std::cout << "  found other kernel " << thisTypeName.c_str() << "::" << fname.c_str() << std::endl;
       }
     }
     else if(m_mainFuncts.find(fname) != m_mainFuncts.end())
@@ -485,34 +485,26 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
       {
         const clang::IdentifierInfo* classInfo = parentClass->getIdentifier();
         std::string classNameVal = classInfo->getName().str();
-        std::cout << classNameVal.c_str() << "::" << fname.c_str();
+        std::cout << classNameVal.c_str() << "::" << fname.c_str() << std::endl;
+        
+        MainFuncNodeInfo currInfo;
+        currInfo.className = classNameVal;
+        currInfo.funcName  = fname;
+        currInfo.astNode   = f;
 
-        auto p = m_baseClassInfo.find(classNameVal);
-        if(p != m_baseClassInfo.end())
-        {
-          MainFuncNodeInfo currInfo;
-          currInfo.className = classNameVal;
-          currInfo.funcName  = fname;
-          currInfo.order     = p->second.baseClassOrder;
-          
-          auto pInfo = mci.m_mainFuncNodeInfos.find(fname);
-          if(pInfo == mci.m_mainFuncNodeInfos.end())
-          {
-            mci.m_mainFuncNodeInfos[fname] = currInfo;
-            mci.m_mainFuncNodes    [fname] = f;
-            std::cout << "\t|\t accepted ";
-          }
-          else if(pInfo->second.order < currInfo.order)
-          {
-            mci.m_mainFuncNodeInfos[fname] = currInfo;
-            mci.m_mainFuncNodes    [fname] = f;
-            std::cout << "\t|\t accepted ";
-          }
+        auto pBase   = m_baseClassInfo.find(classNameVal);
+        //auto pCompos = m_composedClassInfo.find(classNameVal); (dowe need this ???)
+
+        if(classNameVal == MAIN_CLASS_NAME)
+          mci.funControls[fname] = currInfo;
+        else if(pBase != m_baseClassInfo.end())
+        {          
+          auto pInfo = pBase->second.funControls.find(fname);
+          if(pInfo == pBase->second.funControls.end())
+            pBase->second.funControls[fname] = currInfo;
           else
-            std::cout << "\t|\t rejected ";
-
+            std::cout << "  [InitialPassRecursiveASTVisitor]: control function error for base class '" << classNameVal << "'" << std::endl;
         }
-
       }
       else
         std::cout << fname.c_str();
@@ -521,9 +513,6 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
       //std::string text = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
       //std::cout << "found src = " << text.c_str() << std::endl;
       //f->dump();
-
-      //mci.m_mainFuncNodes[fname] = f;
-      //mci.m_mainFuncNodeInfos[fname] = info;
     }
     else if(attr == CPP11_ATTR::ATTR_SETTER)
     {

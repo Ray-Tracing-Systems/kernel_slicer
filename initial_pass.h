@@ -18,7 +18,7 @@ namespace kslicer
   {
     std::string funcName;
     std::string className;
-    int order = 0;
+    const clang::CXXMethodDecl* astNode = nullptr;
   };
 
   struct ClassInfo
@@ -27,42 +27,14 @@ namespace kslicer
     ClassInfo(const std::string& a_name) : name(a_name) {}
     std::string                                                  name;
     const clang::CXXRecordDecl*                                  astNode = nullptr;
-    std::unordered_map<std::string, KernelInfo>                  functions;
-    std::unordered_map<std::string, KernelInfo>                  otherFunctions;
+    std::unordered_map<std::string, KernelInfo>                  funKernels;
+    std::unordered_map<std::string, const clang::CXXMethodDecl*> funMembers;
+    std::unordered_map<std::string, MainFuncNodeInfo>            funControls;
     std::unordered_map<std::string, DataMemberInfo>              dataMembers;
-    std::unordered_map<std::string, const clang::CXXMethodDecl*> m_mainFuncNodes;
-    std::unordered_map<std::string, MainFuncNodeInfo>            m_mainFuncNodeInfos;
     std::unordered_map<std::string, const clang::CXXMethodDecl*> m_setters;
-    std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFunctions;
     std::vector<const clang::CXXConstructorDecl* >               ctors;
     int                                                          baseClassOrder = 0;
   };
-
-  //// RecursiveASTVisitor is the big-kahuna visitor that traverses everything in the AST.
-  ////
-  //class ZeroPassRecursiveASTVisitor : public clang::RecursiveASTVisitor<ZeroPassRecursiveASTVisitor>
-  //{
-  //public:
-  //
-  //  std::string MAIN_CLASS_NAME;
-  //
-  //  ZeroPassRecursiveASTVisitor(std::string main_class, clang::CompilerInstance& a_compiler, MainClassInfo& a_codeInfo, std::unordered_map<std::string, ClassInfo>& a_composeClassInfo) :
-  //                              MAIN_CLASS_NAME(main_class), m_compiler(a_compiler), m_astContext(a_compiler.getASTContext()), m_sourceManager(a_compiler.getSourceManager()), 
-  //                              m_codeInfo(a_codeInfo), m_composedClassInfo(a_composeClassInfo) {}
-  //
-  //  bool VisitCXXRecordDecl(clang::CXXRecordDecl* record);
-  //
-  //private:
-  // 
-  //  void ExtractAllBaseClasses(const clang::CXXRecordDecl* parentClass);
-  //
-  //  clang::CompilerInstance& m_compiler;
-  //  const clang::ASTContext& m_astContext;
-  //  clang::SourceManager&    m_sourceManager;
-  //  MainClassInfo&           m_codeInfo;
-  //
-  //  std::unordered_map<std::string, ClassInfo>&  m_composedClassInfo;
-  //};
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

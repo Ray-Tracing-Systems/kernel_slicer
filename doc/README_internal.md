@@ -50,7 +50,6 @@ struct CFNameInfo
 
    * inputCodeInfo.allKernels        // all kernels from our class
    * inputCodeInfo.allDataMembers    // all class data members
-   * inputCodeInfo.allOtherKernels   // all kernels from other classes (which are used inside *TBD*)
 
    The implementation is located in in InitialPassRecursiveASTVisitor(InitialPassASTConsumer -> InitialPassRecursiveASTVisitor).
 

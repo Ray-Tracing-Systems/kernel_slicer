@@ -552,11 +552,10 @@ int main(int argc, const char **argv)
 
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.mci.astNode;
-  inputCodeInfo.allKernels           = firstPassData.rv.mci.functions;
-  inputCodeInfo.allOtherKernels      = firstPassData.rv.mci.otherFunctions;
+  inputCodeInfo.allKernels           = firstPassData.rv.mci.funKernels;
   inputCodeInfo.allDataMembers       = firstPassData.rv.mci.dataMembers;
   inputCodeInfo.ctors                = firstPassData.rv.mci.ctors;
-  inputCodeInfo.allMemberFunctions   = firstPassData.rv.mci.allMemberFunctions;
+  inputCodeInfo.allMemberFunctions   = firstPassData.rv.mci.funMembers;
   inputCodeInfo.ProcessAllSetters(firstPassData.rv.mci.m_setters, compiler);
 
   std::vector<kslicer::DeclInClass> generalDecls = firstPassData.rv.GetExtractedDecls();
@@ -578,7 +577,7 @@ int main(int argc, const char **argv)
     const std::string& mainFuncName = f.first;
     auto& mainFuncRef = inputCodeInfo.mainFunc[mainFuncId];
     mainFuncRef.Name  = mainFuncName;
-    mainFuncRef.Node  = firstPassData.rv.mci.m_mainFuncNodes[mainFuncName];
+    mainFuncRef.Node  = firstPassData.rv.mci.funControls[mainFuncName].astNode;
 
     // Now process each main function: variables and kernel calls, if()->break and if()->return statements.
     //

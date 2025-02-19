@@ -32,7 +32,7 @@ std::string kslicer::PerformClassComposition(kslicer::ClassInfo& mainClassInfo, 
   if(prefixName == "")
     return "";
  
-  // (2) merge data and functions (dataMembers, allMemberFunctions)
+  // (2) merge data (dataMembers) and functions (allMemberFunctions)
   //
   for(auto member : implClassInfo.dataMembers) {
     member.second.name       = prefixName + "_" + member.second.name;
@@ -41,10 +41,15 @@ std::string kslicer::PerformClassComposition(kslicer::ClassInfo& mainClassInfo, 
     mainClassInfo.dataMembers[member.second.name] = member.second;
   }
 
-  for(auto member : implClassInfo.allMemberFunctions) {
+  for(auto member : implClassInfo.funMembers) {
     std::string name = prefixName + "_" + member.first;
-    mainClassInfo.allMemberFunctions[name] = member.second;
+    mainClassInfo.funMembers[name] = member.second;
   }
+
+  // (3) merge kernels (...)
+  //
+
+  // ... 
 
   return prefixName;
 }
@@ -60,22 +65,33 @@ void kslicer::PerformInheritanceMerge(kslicer::ClassInfo& mainClassInfo, const k
     member.second.prefixName = "";
     mainClassInfo.dataMembers[member.second.name] = member.second;
   }
-
-  for(auto member : baseClassInfo.allMemberFunctions) 
+   
+  // merge general functions from base class
+  //
+  for(auto member : baseClassInfo.funMembers) 
   {
     std::string name = member.first;
-    auto p = mainClassInfo.allMemberFunctions.find(name);
-    if(p == mainClassInfo.allMemberFunctions.end())             // because implementation in main (derived) class
-      mainClassInfo.allMemberFunctions[name] = member.second;   // always overrides any implementations in base class
+    auto p = mainClassInfo.funMembers.find(name);
+    if(p == mainClassInfo.funMembers.end())             // because implementation in main (derived) class
+      mainClassInfo.funMembers[name] = member.second;   // always overrides any implementations in base class
   }
   
   // merge kernels from base class
   //
-  for(const auto& f : baseClassInfo.otherFunctions) 
+  for(const auto& f : baseClassInfo.funKernels) 
   {
-    auto p = mainClassInfo.functions.find(f.first);
-    if(p == mainClassInfo.functions.end())
-      mainClassInfo.functions[f.first] = f.second;
+    auto p = mainClassInfo.funKernels.find(f.first);             // because implementation in main (derived) class
+    if(p == mainClassInfo.funKernels.end())                      // always overrides any implementations in base class
+      mainClassInfo.funKernels[f.first] = f.second;
+  }
+  
+  // merge control functions base class
+  //
+  for(const auto& f : baseClassInfo.funControls) 
+  {
+    auto p = mainClassInfo.funControls.find(f.first);   // because implementation in main (derived) class
+    if(p == mainClassInfo.funControls.end())            // always overrides any implementations in base class
+      mainClassInfo.funControls[f.first] = f.second;
   }
 }
 

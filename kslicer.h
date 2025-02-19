@@ -1324,7 +1324,6 @@ namespace kslicer
   {
     std::unordered_map<std::string, const clang::CXXRecordDecl*> allASTNodes; ///<! AST nodes for all considered classes in program
     std::unordered_map<std::string, KernelInfo>     allKernels;       ///<! list of all kernels; used only on the second pass to identify Control Functions; it is not recommended to use it anywhere else
-    std::unordered_map<std::string, KernelInfo>     allOtherKernels;  ///<! kernels from other classes. we probably need them if they are used.
     std::unordered_map<std::string, DataMemberInfo> allDataMembers;   ///<! list of all class data members;
     std::unordered_map<std::string, ProbablyUsed>   usedProbably;     ///<! variables which are used in virtual functions and *probably* will be used in *SOME* kernels if they call these virtual functions
 
