@@ -1,5 +1,6 @@
 #include "kslicer.h"
 #include "class_gen.h"
+#include "extractor.h"
 #include "ast_matchers.h"
 
 #include <sstream>
@@ -247,14 +248,35 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "");
   pVisitor->SetCurrKernelInfo(&a_funcInfo);
 
-  //const std::string funBody  = pVisitor->RecursiveRewrite(a_funcInfo.astNode->getBody());
+  auto kernelNodes = kslicer::ExtractKernelForLoops(a_funcInfo.astNode->getBody(), int(a_funcInfo.loopIters.size()), compiler);
+  
+  std::string funcBodyText = "";
+  if(kernelNodes.loopBody != nullptr)
+    funcBodyText = pVisitor->RecursiveRewrite(kernelNodes.loopBody);
 
+  //if(kernelNodes.beforeLoop != nullptr)
+  //  a_outLoopInitCode = pVisitor->RecursiveRewrite(kernelNodes.beforeLoop);
+  //else
+  //  a_outLoopInitCode = "";
+  //
+  //if(kernelNodes.afterLoop != nullptr)
+  //  a_outLoopFinishCode = pVisitor->RecursiveRewrite(kernelNodes.afterLoop);
+  //else
+  //  a_outLoopFinishCode = "";
+  //
+  //if(kernelNodes.loopBody != nullptr)
+  //  return pVisitor->RecursiveRewrite(kernelNodes.loopBody);
+  //else
+  //  return "//empty kernel body is found";
+  
+  // old way
+  //
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
   //pVisitor->TraverseStmt(const_cast<clang::Stmt*>(a_funcInfo.astNode->getBody()));
   pVisitor->ApplyDefferedWorkArounds();
   pVisitor->ResetCurrKernelInfo();
   
-  a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures(); // TODO: dont work !!!
+  a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures(); // TODO: don't work !!!
 
   if(a_funcInfo.loopOutsidesInit.isValid())
   {
@@ -270,8 +292,15 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
 
   if(a_funcInfo.loopOutsidesFinish.isValid())  
     a_outLoopFinishCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesFinish) + ";";
-
-  return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";";
+  
+  // new way
+  //
+  if(kernelNodes.loopBody != nullptr)
+    return funcBodyText;
+  else
+    return "//empty kernel body is found";
+  //else
+  //  return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";"; // old way for the case ... 
 }
 
 void kslicer::MainClassInfo::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)

@@ -1536,3 +1536,91 @@ std::vector<std::string> kslicer::ExtractDefines(const clang::CompilerInstance& 
 
   return res;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool kslicer::NodesMarker::VisitStmt(clang::Stmt* expr)
+{
+  auto hash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
+  m_rewrittenNodes.insert(hash);
+  return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class KernelExtractor : public clang::RecursiveASTVisitor<KernelExtractor>
+{
+public:
+
+  KernelExtractor(int a_loopDepth, const clang::CompilerInstance& a_compiler) :  m_targetDepth(a_loopDepth), m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()) {}
+  
+  bool VisitForStmt(clang::ForStmt* forLoop)
+  {
+    if(forLoop == nullptr)
+      return true;
+    
+    m_targetNodes.beforeLoop = m_lastVisitedStmt; // last visited 'Stmt' before we have entered inside first for loop
+
+    m_currVisited++;
+    if(m_currVisited == m_targetDepth)
+    {
+      m_targetNodes.loopStart  = forLoop->getInit();
+      m_targetNodes.loopStride = forLoop->getInc();
+      m_targetNodes.loopSize   = forLoop->getCond(); 
+      m_targetNodes.loopBody   = forLoop->getBody();
+      MarkVisited(forLoop);
+    }
+
+    return true;
+  }
+
+  bool VisitStmt(clang::Stmt* stmt)
+  {
+    if(stmt == nullptr)
+      return true;
+
+    const auto exprHash = kslicer::GetHashOfSourceRange(stmt->getSourceRange());
+    if(m_visitedNodes.find(exprHash) != m_visitedNodes.end()) // ignore statements inside loop
+      return true;                                            // which was marked with 'm_visitedNodes'
+    
+    if(clang::isa<clang::ForStmt>(stmt) || clang::isa<clang::CompoundStmt>(stmt)) // do we actually need this?
+      return true;
+
+    m_lastVisitedStmt = stmt;
+    if(m_targetNodes.loopBody != nullptr && m_targetNodes.afterLoop == nullptr) // first statement which is visited after for loop body
+    {
+      m_targetNodes.afterLoop = stmt;
+    }
+
+    return true;
+  }
+
+  bool VisitCompoundStmt(clang::CompoundStmt* stmt) { return true; } // ignore CompoundStmt-s
+
+  kslicer::KernelNodes m_targetNodes;
+
+  void MarkVisited(const clang::Stmt* currNode)
+  {
+    kslicer::NodesMarker rv(m_visitedNodes); 
+    rv.TraverseStmt(const_cast<clang::Stmt*>(currNode));
+  }
+
+private:
+  int m_targetDepth = 1;
+  int m_currVisited = 0;
+  const clang::CompilerInstance& m_compiler;
+  const clang::SourceManager&    m_sm;
+
+  std::unordered_set<uint64_t>   m_visitedNodes;
+  clang::Stmt*                   m_lastVisitedStmt = nullptr;
+};
+
+kslicer::KernelNodes kslicer::ExtractKernelForLoops(const clang::Stmt* kernelBody, int a_loopsNumber, const clang::CompilerInstance& a_compiler)
+{ 
+  KernelExtractor extractor(a_loopsNumber, a_compiler);
+  extractor.TraverseStmt(const_cast<clang::Stmt*>(kernelBody));
+  return extractor.m_targetNodes;
+}

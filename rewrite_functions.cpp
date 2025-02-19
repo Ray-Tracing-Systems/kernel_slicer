@@ -1,5 +1,6 @@
 #include "kslicer.h"
-#include "class_gen.h"
+//#include "class_gen.h"
+#include "extractor.h"
 #include "ast_matchers.h"
 
 #include <sstream>
@@ -208,13 +209,6 @@ std::string kslicer::FunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDec
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool kslicer::NodesMarker::VisitStmt(clang::Stmt* expr)
-{
-  auto hash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
-  m_rewrittenNodes.insert(hash);
-  return true;
-}
 
 void kslicer::MarkRewrittenRecursive(const clang::Stmt* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes)
 {

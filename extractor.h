@@ -29,7 +29,39 @@ namespace kslicer
   std::vector< std::unordered_map<std::string, std::string> > ArgMatchTraversal(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMambers,
                                                                                 MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);
 
-  std::vector<std::string> ExtractDefines(const clang::CompilerInstance& a_compiler);                                                                               
+  std::vector<std::string> ExtractDefines(const clang::CompilerInstance& a_compiler);      
+  
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////  NodesMarker  //////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  class NodesMarker : public RecursiveASTVisitor<NodesMarker> // mark all subsequent nodes to be rewritten, put their ash codes in 'rewrittenNodes'
+  {
+  public:
+    NodesMarker(std::unordered_set<uint64_t>& a_rewrittenNodes) : m_rewrittenNodes(a_rewrittenNodes){}
+    bool VisitStmt(Stmt* expr);
+
+  private:
+    std::unordered_set<uint64_t>& m_rewrittenNodes;
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////  NewKernelExtractor  ///////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  struct KernelNodes
+  {
+    clang::Stmt*       beforeLoop = nullptr;
+    ////////////////////////////////////////
+    const clang::Stmt* loopStart  = nullptr;
+    const clang::Expr* loopStride = nullptr;
+    const clang::Expr* loopSize   = nullptr; 
+    const clang::Stmt* loopBody   = nullptr;
+    ////////////////////////////////////////
+    clang::Stmt*       afterLoop  = nullptr;
+  };
+
+  KernelNodes ExtractKernelForLoops(const clang::Stmt* kernelBody, int a_loopsNumber, const clang::CompilerInstance& a_compiler);
 
 }
 
