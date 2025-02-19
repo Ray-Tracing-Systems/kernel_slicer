@@ -466,7 +466,7 @@ int main(int argc, const char **argv)
       composClassNames.push_back(composeAPIName);
     if(composeImplName != "")
       composClassNames.push_back(composeImplName);
-    composClassNames.insert(composClassNames.end(), baseClases.begin(), baseClases.end()); // process all base classes also
+   
     if(composeAPIName != "ISceneObject" && composeAPIName.find("ISceneObject") != std::string::npos) // need to add 'ISceneObject' if ISceneObject2 or ISceneObject_LiteRT or sms like that is used for API 
       composClassNames.push_back("ISceneObject");
   }
@@ -480,7 +480,6 @@ int main(int argc, const char **argv)
       firstPassData.rv.m_baseClassInfo[className] = kslicer::ClassInfo(className);
       firstPassData.rv.m_baseClassInfo[className].baseClassOrder = int(i);
     }
-    firstPassData.rv.m_baseClassInfo[mainClassName].baseClassOrder = int(baseClases.size());
   }
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
 

@@ -140,13 +140,14 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* 
   const auto typeName = ClearTypeName(qt.getAsString());
 
   auto pCompos = m_composedClassInfo.find(typeName);
+  auto pBase   = m_baseClassInfo.find(typeName);
 
   //std::cout << "  [VisitCXXRecordDecl]: " << typeName.c_str() << std::endl;
 
   if(typeName == MAIN_CLASS_NAME)
     mci.astNode = record;
-  else if(m_baseClassInfo.find(typeName) != m_baseClassInfo.end())
-    m_baseClassInfo[typeName].astNode = record;
+  else if(pBase != m_baseClassInfo.end())
+    pBase->second.astNode = record;
   else if(pCompos != m_composedClassInfo.end())
     pCompos->second.astNode = record;
   else if(!record->isPOD())
@@ -398,11 +399,6 @@ std::string kslicer::ClearTypeName(const std::string& a_typeName)
   return copystr;
 }
 
-bool kslicer::InitialPassRecursiveASTVisitor::IsMainClassName(const std::string& a_typeName) 
-{ 
-  return (a_typeName == MAIN_CLASS_NAME) || m_baseClassInfo.find(a_typeName) != m_baseClassInfo.end(); 
-}
-
 bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* f)
 {
   if(f->isStatic())
@@ -423,8 +419,9 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
   if(pAstNode == m_codeInfo.allASTNodes.end())
     m_codeInfo.allASTNodes[thisTypeName] = f->getParent();
 
-  const bool isMainClassMember = IsMainClassName(thisTypeName);
+  const bool isMainClassMember = (thisTypeName == MAIN_CLASS_NAME);
   const auto pCompos           = m_composedClassInfo.find(thisTypeName);
+  const auto pBase             = m_baseClassInfo.find(thisTypeName);
 
   if(thisTypeName == MAIN_CLASS_NAME && this->MAIN_FILE_INCLUDE == "") // check only actual main class
   {
@@ -437,6 +434,8 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
     mci.allMemberFunctions[fname] = f;
   else if (isMainClassMember && fsrcfull == fdecl && fdecl.find("Block(") != std::string::npos) // needed for override CPU imple of XXXBlock functions
     mci.allMemberFunctions[fname] = f;
+  else if (pBase != m_baseClassInfo.end())
+    pBase->second.allMemberFunctions[fname] = f;
   else if (pCompos != m_composedClassInfo.end())
     pCompos->second.allMemberFunctions[fname] = f;
 
@@ -461,6 +460,11 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
             }
           }
         }
+      }
+      else if(pBase != m_baseClassInfo.end())
+      {
+        if(ProcessKernelDef(f, pBase->second.otherFunctions, pBase->first))
+          std::cout << "  found member function " << pBase->first.c_str() << "::" << fname.c_str() << std::endl;
       }
       else if(pCompos != m_composedClassInfo.end())
       {
@@ -599,14 +603,14 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
 
   const std::string& thisTypeName = ClearTypeName(rd->getName().str());
   const auto pCompos = m_composedClassInfo.find(thisTypeName);
+  const auto pBase   = m_baseClassInfo.find(thisTypeName);
 
   if(thisTypeName == MAIN_CLASS_NAME)
   {
-    std::cout << "  found data member: " << fd->getName().str().c_str() << " of type\t" << qt.getAsString().c_str() << ", isPOD = " << qt.isCXX11PODType(m_astContext) << std::endl;
-
     DataMemberInfo member = ExtractMemberInfo(fd, m_astContext);
     if(member.isPointer) // we ignore pointers due to we can't pass them to GPU correctly
       return true;
+    //std::cout << "  found data member: " << fd->getName().str().c_str() << " of type\t" << qt.getAsString().c_str() << ", isPOD = " << qt.isCXX11PODType(m_astContext) << std::endl;
     mci.dataMembers[member.name] = member;
   }
   else if(pCompos != m_composedClassInfo.end())
@@ -615,6 +619,13 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitFieldDecl(FieldDecl* fd)
     if(member.isPointer) // we ignore pointers due to we can't pass them to GPU correctly
       return true;
     pCompos->second.dataMembers[member.name] = member;
+  }
+  else if(pBase != m_baseClassInfo.end())
+  {
+    DataMemberInfo member = ExtractMemberInfo(fd, m_astContext);
+    if(member.isPointer) // we ignore pointers due to we can't pass them to GPU correctly
+      return true;
+    pBase->second.dataMembers[member.name] = member;
   }
 
   return true;
