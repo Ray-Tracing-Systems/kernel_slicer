@@ -45,6 +45,8 @@ int main(int argc, const char** argv)
 
   JSONLog::write("array", array);
   JSONLog::saveToFile("zout_"+backendName+".json");
-
+  
+  pImpl = nullptr;
+  vk_utils::globalContextDestroy();  
   return 0;
 }

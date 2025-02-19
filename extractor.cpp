@@ -1562,7 +1562,7 @@ public:
     if(forLoop == nullptr)
       return true;
     
-    m_targetNodes.beforeLoop = m_lastVisitedStmt; // last visited 'Stmt' before we have entered inside first for loop
+    //m_targetNodes.beforeLoop = m_lastVisitedStmt; // does not works
 
     m_currVisited++;
     if(m_currVisited == m_targetDepth)
@@ -1590,11 +1590,10 @@ public:
       return true;
 
     m_lastVisitedStmt = stmt;
-    if(m_targetNodes.loopBody != nullptr && m_targetNodes.afterLoop == nullptr) // first statement which is visited after for loop body
-    {
-      m_targetNodes.afterLoop = stmt;
-    }
-
+    //if(m_targetNodes.loopBody != nullptr && m_targetNodes.afterLoop == nullptr) // does not works
+    //{
+    //  m_targetNodes.afterLoop = stmt;
+    //}
     return true;
   }
 

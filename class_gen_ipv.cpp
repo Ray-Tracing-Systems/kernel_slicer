@@ -258,13 +258,13 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
       funcBodyText += ";";
   }
 
-  //if(kernelNodes.beforeLoop != nullptr)
+  //if(kernelNodes.beforeLoop != nullptr)                                      // beforeLoop does not works, removed
   //  a_outLoopInitCode = pVisitor->RecursiveRewrite(kernelNodes.beforeLoop);
   //else
   //  a_outLoopInitCode = "";
   //
   //if(kernelNodes.afterLoop != nullptr)
-  //  a_outLoopFinishCode = pVisitor->RecursiveRewrite(kernelNodes.afterLoop);
+  //  a_outLoopFinishCode = pVisitor->RecursiveRewrite(kernelNodes.afterLoop); // afterLoop does not works in this way, removed
   //else
   //  a_outLoopFinishCode = "";
   //

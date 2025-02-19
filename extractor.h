@@ -51,14 +51,10 @@ namespace kslicer
 
   struct KernelNodes
   {
-    clang::Stmt*       beforeLoop = nullptr;
-    ////////////////////////////////////////
     const clang::Stmt* loopStart  = nullptr;
     const clang::Expr* loopStride = nullptr;
     const clang::Expr* loopSize   = nullptr; 
     const clang::Stmt* loopBody   = nullptr;
-    ////////////////////////////////////////
-    clang::Stmt*       afterLoop  = nullptr;
   };
 
   KernelNodes ExtractKernelForLoops(const clang::Stmt* kernelBody, int a_loopsNumber, const clang::CompilerInstance& a_compiler);
