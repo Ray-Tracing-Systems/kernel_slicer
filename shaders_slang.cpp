@@ -642,6 +642,12 @@ bool  kslicer::SlangRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
 {
   if(m_kernelMode)
   { 
+    std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    if(originalText == "scale")
+    {
+      int a = 2;
+    }
+    
     std::string rewrittenText;
     if(NeedToRewriteDeclRefExpr(expr,rewrittenText) && WasNotRewrittenYet(expr))
     {

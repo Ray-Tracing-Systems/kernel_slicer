@@ -302,9 +302,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   if(kernelNodes.loopBody != nullptr)
     return funcBodyText;
   else
-    return "//empty kernel body is found";
-  //else
-  //  return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";"; // old way for the case ... 
+    return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";"; // old way for the case ... 
 }
 
 void kslicer::MainClassInfo::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)

@@ -52,13 +52,13 @@ void main(uint3 a_globalTID: SV_DispatchThreadID, uint3 a_groupID : SV_GroupID, 
   const uint localId  = a_localTID[0];
   {% for redvar in Kernel.SubjToRed %}
   {% if not redvar.SupportAtomic %}
-  {{redvar.Name}}Shared[localId] = (globalId < kgenArgs.{{Kernel.threadSZName1}}) ?  {{ redvar.OutTempName }}[kgenArgs.{{Kernel.threadSZName2}} + globalId]  :  {{redvar.Init}}; // use kgenArgs.{{Kernel.threadSZName2}} for 'InputOffset'
+  {{redvar.Name}}Shared[localId] = (globalId < kgenArgs.{{Kernel.threadSZName1}}) ?  {{ redvar.OutTempName }}[kgenArgs.{{Kernel.threadSZName2}} + globalId]  :  {{redvar.Type}}({{redvar.Init}}); // use kgenArgs.{{Kernel.threadSZName2}} for 'InputOffset'
   {% endif %}
   {% endfor %}
   {% for redvar in Kernel.ArrsToRed %}
   {% for outName in redvar.OutTempNameA %}
   {% if not redvar.SupportAtomic %}
-  {{redvar.Name}}Shared[{{loop.index}}][localId] = (globalId < kgenArgs.{{Kernel.threadSZName1}}) ? {{ outName }}[kgenArgs.{{Kernel.threadSZName2}} + globalId] : {{redvar.Init}}; // use kgenArgs.{{Kernel.threadSZName2}} for 'InputOffset'
+  {{redvar.Name}}Shared[{{loop.index}}][localId] = (globalId < kgenArgs.{{Kernel.threadSZName1}}) ? {{ outName }}[kgenArgs.{{Kernel.threadSZName2}} + globalId] : {{redvar.Type}}({{redvar.Init}}); // use kgenArgs.{{Kernel.threadSZName2}} for 'InputOffset'
   {% endif %}
   {% endfor %}
   {% endfor %}

@@ -237,6 +237,10 @@ bool kslicer::FunctionRewriter2::NameNeedsFakeOffset(const std::string& a_name) 
 std::string kslicer::FunctionRewriter2::CompleteFunctionCallRewrite(clang::CallExpr* call)
 {
   std::string rewrittenRes = "";
+  if(rewrittenRes.find("aperture") != std::string::npos)
+  {
+    int a = 2;
+  }
   for(unsigned i=0;i<call->getNumArgs(); i++)
   {
     rewrittenRes += RecursiveRewrite(call->getArg(i));
