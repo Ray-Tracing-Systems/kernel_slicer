@@ -1383,6 +1383,9 @@ std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
     break;
     case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
     {
+      std::string originalText = kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler);
+      if(originalText == "")
+        originalText = a_decl.lostValue;
       if(typeInCL.find("const ") == std::string::npos)
         typeInCL = "const " + typeInCL;
       ReplaceFirst(typeInCL,"LiteMath::", "");
@@ -1390,10 +1393,10 @@ std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
       {
         std::stringstream sizeStr;
         sizeStr << "[" << a_decl.arraySize << "]";
-        result = typeInCL + " " + a_decl.name + sizeStr.str() + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+        result = typeInCL + " " + a_decl.name + sizeStr.str() + " = " + originalText + ";";
       }
       else
-        result = typeInCL + " " + a_decl.name + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+        result = typeInCL + " " + a_decl.name + " = " + originalText + ";";
     }
     ProcessVectorTypesString(result);
     break;

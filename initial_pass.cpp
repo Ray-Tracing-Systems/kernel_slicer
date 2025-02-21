@@ -333,6 +333,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitVarDecl(VarDecl* pTargetVar)
   {
     decl.name      = pTargetVar->getNameAsString();
     decl.type      = qt.getAsString();
+    decl.varNode   = pTargetVar;
     auto posOfDD = decl.type.find("::");
     if(posOfDD != std::string::npos)
       decl.type = decl.type.substr(posOfDD+2);
@@ -342,6 +343,14 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitVarDecl(VarDecl* pTargetVar)
     decl.order     = m_currId;
     decl.kind      = kslicer::DECL_IN_CLASS::DECL_CONSTANT;
     decl.extracted = true;
+
+    if(kslicer::GetRangeSourceCode(decl.srcRange, m_compiler) == "")
+    {
+      std::string text = kslicer::GetRangeSourceCode(pTargetVar->getSourceRange(), m_compiler);
+      const auto pos = text.find_last_of("=");
+      if(pos != std::string::npos)
+        decl.lostValue = text.substr(pos + 1, text.size());
+    }
 
     if(qt->isConstantArrayType())
     {

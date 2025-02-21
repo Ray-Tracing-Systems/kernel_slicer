@@ -914,6 +914,7 @@ std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
 {
   std::string typeInCL = a_decl.type;
   ReplaceFirst(typeInCL, "struct ", "");
+  ReplaceFirst(typeInCL, "LiteMath::", "");
 
   std::string originalText = kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler);
 
@@ -929,6 +930,8 @@ std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
     //ReplaceFirst(typeInCL, "_Bool", "bool");
     for(const auto& pair : m_typesReplacement)
       ReplaceFirst(typeInCL, pair.first, pair.second);
+    if(originalText == "")
+      originalText = a_decl.lostValue;
     result = "static " + typeInCL + " " + a_decl.name + " = " + originalText + ";";
     //if(a_decl.name.find("CRT_GEOM_MASK_AABB_BIT") != std::string::npos)
     //{

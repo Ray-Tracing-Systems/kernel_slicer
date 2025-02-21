@@ -12,13 +12,16 @@
 /////////////////////////////////////////////////////////////////////
 /////////////////// declarations in class ///////////////////////////
 /////////////////////////////////////////////////////////////////////
-#ifndef uint32_t
-#define uint32_t uint
-#endif
-#define FLT_MAX 1e37f
-#define FLT_MIN -1e37f
-#define FLT_EPSILON 1e-6f
-#define DEG_TO_RAD  0.017453293f // 
+static const float FLT_MAX = 1e37f;
+static const float FLT_MIN = -1e37f;
+static const float FLT_EPSILON = 1e-6f;
+static const float EPSILON     = 1e-6f;
+static const float DEG_TO_RAD  = 0.017453293f; 
+
+float  SQR(float x)  { return x * x; }
+double SQR(double x) { return x * x; }
+int    SQR(int x)    { return x * x; }
+uint   SQR(uint x)   { return x * x; }
 
 bool  isfinite(float x)            { return !isinf(x); }
 float copysign(float mag, float s) { return abs(mag)*sign(s); }
@@ -73,6 +76,9 @@ complex complex_sqrt(complex z)
 }
 
 {% endif %}
+## for Def in Defines  
+{{Def}}
+## endfor
 {% for UserDef in UserTypeDefs %}
 #define {{UserDef.Original}} {{UserDef.Redefined}}
 {% endfor %}
@@ -166,15 +172,9 @@ float4 mul4x4x4(float4x4 m, float4 v) { return mul(m,v); }
 float3 mul3x3  (float4x4 m, float3 v) { return to_float3(mul(m, to_float4(v, 0.0f))); }
 float3 mul4x3  (float4x4 m, float3 v) { return to_float3(mul(m, to_float4(v, 1.0f))); }
 
-////
-//
 {% for Array in ThreadLocalArrays %}
 {{Array.Type}} {{Array.Name}}[{{Array.Size}}];
 {% endfor %}
-
-## for Def in Defines  
-{{Def}}
-## endfor
 
 ## for LocalFunc in LocalFunctions  
 {{LocalFunc}}

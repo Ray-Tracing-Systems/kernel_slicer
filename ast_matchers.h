@@ -393,10 +393,10 @@ namespace kslicer
     {
       using namespace clang;
      
-      const CXXRecordDecl* const pMainClass    = result.Nodes.getNodeAs<CXXRecordDecl>("mainClass");
-      const CXXRecordDecl* const pTargetStruct = result.Nodes.getNodeAs<CXXRecordDecl>("targetStruct");
-      const VarDecl*       const pTargetVar    = result.Nodes.getNodeAs<VarDecl>      ("targetVar");
-      const TypedefDecl*   const pTargetTpdf   = result.Nodes.getNodeAs<TypedefDecl>  ("targetTypedef");
+      const clang::CXXRecordDecl* const pMainClass    = result.Nodes.getNodeAs<CXXRecordDecl>("mainClass");
+      const clang::CXXRecordDecl* const pTargetStruct = result.Nodes.getNodeAs<CXXRecordDecl>("targetStruct");
+      const clang::VarDecl*       const pTargetVar    = result.Nodes.getNodeAs<VarDecl>      ("targetVar");
+      const clang::TypedefDecl*   const pTargetTpdf   = result.Nodes.getNodeAs<TypedefDecl>  ("targetTypedef");
 
       if(pMainClass && pTargetStruct)
       {

@@ -1501,6 +1501,10 @@ static std::unordered_set<std::string> ListPredefinedMacro()
   predefined.insert("TINYSTL_ALLOCATOR_H");
   predefined.insert("TINYSTL_VECTOR_H");
   predefined.insert("TINYSTL_ALLOCATOR");
+  predefined.insert("KSLICER_DATA_SIZE");
+  predefined.insert("MAKE_QUOTE");
+  predefined.insert("MAKE_QUOTE_IMPL_");
+  predefined.insert("CFLOAT_GUARDIAN");
   return predefined;
 }
 

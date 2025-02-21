@@ -595,6 +595,7 @@ namespace kslicer
     clang::SourceRange srcRange;
     uint64_t           srcHash;
     clang::TypeDecl*   astNode = nullptr;
+    clang::VarDecl*    varNode = nullptr;
     uint32_t           order = 0; ///<! to sort them before put in generated kernels source code
     DECL_IN_CLASS      kind  = DECL_IN_CLASS::DECL_UNKNOWN;
     bool               extracted = false;
@@ -602,6 +603,7 @@ namespace kslicer
     bool               inClass   = false;
     uint32_t           arraySize = 0;
     int64_t            constVal  = 0;
+    std::string        lostValue;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
