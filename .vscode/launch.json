@@ -2182,7 +2182,7 @@
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
                         "-shaderCC", "slang",
-                        "-timestamps", "1",
+                        "-timestamps", "0",
                         "-I${workspaceFolder}/TINYSTL",                   "ignore",
                         "-I/home/frol/PROG/vsan/opticsrt/ext/LiteMath",   "ignore",
                         "-I/home/frol/PROG/vsan/opticsrt/src",            "process",

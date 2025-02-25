@@ -58,12 +58,10 @@ void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog %} uint
   {% endif %}
   {% endfor %}
   {% endif %} {# /* Kernel.EnableBlockExpansion */ #}
+  {% include "inc_exit_cond.slang" %}
   {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                        
   {% include "inc_red_init.slang" %}
   {% endif %} 
-  {% if Kernel.IsBoolean %}
-  bool kgenExitCond = false;
-  {% endif %}
   {% endif %}
   {% if Kernel.EnableBlockExpansion %}
   {% for Block in Kernel.SourceBE %}
