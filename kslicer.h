@@ -135,14 +135,16 @@ namespace kslicer
       useInt64Type = useInt64Type || rhs.useInt64Type;
       useFloat64Type = useFloat64Type || rhs.useFloat64Type;
       useHalfType    = useHalfType    || rhs.useHalfType;
+      useFloatAtomicAdd = useFloatAtomicAdd || rhs.useFloatAtomicAdd;
       return *this;
     }
 
-    bool useByteType  = false;
-    bool useShortType = false;
-    bool useInt64Type = false;
-    bool useFloat64Type = false;
-    bool useHalfType  = false;
+    bool useByteType       = false;
+    bool useShortType      = false;
+    bool useInt64Type      = false;
+    bool useFloat64Type    = false;
+    bool useHalfType       = false;
+    bool useFloatAtomicAdd = false;
   };
 
   /**

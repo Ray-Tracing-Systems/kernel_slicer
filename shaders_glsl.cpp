@@ -997,9 +997,15 @@ bool kslicer::GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     makeSmth = fname.substr(5);
   auto pVecMaker = m_vecReplacements.find(makeSmth);
   ///////////////////////////////////////////////////////////////////////
-  if(fname == "kernel_InitEyeRay")
+
+  if(fname == "atomicAdd" && call->getNumArgs() >= 2)
   {
-    int a = 2;
+    const auto arg1        = call->getArg(1); 
+    clang::QualType aType1 = arg1->getType();
+    std::string aTypeName  = aType1.getAsString();
+
+    if(aTypeName == "float" || aTypeName == "double")
+      sFeatures.useFloatAtomicAdd = true;
   }
 
   auto pFoundSmth = m_funReplacements.find(fname);
