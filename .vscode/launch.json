@@ -2127,6 +2127,64 @@
         },
 
         {
+            "name"   : "Launch (test_041/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/041_atomic_add_int/test_class.cpp",
+                        "-mainClass", "SimpleTest", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",  
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-shaderCC", "glsl",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (test_042/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/042_atomic_add_float/test_class.cpp",
+                        "-mainClass",    "SimpleTest", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern",      "ipv",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",  
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-shaderCC", "glsl",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (HydraCore3/External)",
             "type"   : "cppdbg",
             "request": "launch",
@@ -2200,6 +2258,32 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+
+        {
+            "name"   : "Launch (OpticsRT/master_v2)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["/home/frol/PROG/vsan/opticsrt-master/src/slicer/aspheric_newton.cpp",
+                        "-mainClass", "AsphericNewton",
+                        "-baseClass", "INewtonSimulator",
+                        "-baseClass", "ILensSimulator",
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-shaderFolderPrefix", "slicer/",
+                        "-pattern", "ipv",
+                        "-shaderCC", "glsl",
+                        //"-timestamps", "1",
+                        //"-typedef", "Float3 dvec3",
+                        //"-typedef", "Float  double",
+                        "-I/home/frol/PROG/vsan/opticsrt-master/src/",         "process",
+                        "-I/home/frol/PROG/vsan/opticsrt-master/ext/LiteMath", "ignore",
+                        "-I${workspaceFolder}/TINYSTL",                        "ignore",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "cwd"    : "${workspaceFolder}",
+            "MIMode": "gdb",
+            "externalConsole": false,
         },
 
     ]
