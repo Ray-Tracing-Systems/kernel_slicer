@@ -44,6 +44,10 @@ std::unordered_map<std::string, std::string> kslicer::ListSlangStandartTypeRepla
 void kslicer::SlangRewriter::Init()
 {
   m_typesReplacement = ListSlangStandartTypeReplacements(true);
+  
+  m_funReplacements.clear();
+  m_funReplacements["atomicAdd"] = "InterlockedAdd";
+  m_funReplacements["AtomicAdd"] = "InterlockedAdd";
 }
 
 std::string kslicer::SlangRewriter::RewriteStdVectorTypeStr(const std::string& a_str) const
@@ -433,7 +437,14 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     //  makeSmth = fname.substr(5);
     /////////////////////////////////////////////////////////////////////////
 
-    if(fDecl->isInStdNamespace() && WasNotRewrittenYet(call)) // remove "std::"
+    auto pFoundSmth = m_funReplacements.find(fname);
+    if(pFoundSmth != m_funReplacements.end() && WasNotRewrittenYet(call))
+    {
+      std::string lastRewrittenText = pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call);
+      ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+      MarkRewritten(call);
+    }
+    else if(fDecl->isInStdNamespace() && WasNotRewrittenYet(call)) // remove "std::"
     {
       std::string lastRewrittenText = fname + "(" + CompleteFunctionCallRewrite(call);
       ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);

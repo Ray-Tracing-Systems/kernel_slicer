@@ -250,13 +250,14 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
 
   auto kernelNodes = kslicer::ExtractKernelForLoops(a_funcInfo.astNode->getBody(), int(a_funcInfo.loopIters.size()), compiler);
   
-  std::string funcBodyText = "";
-  if(kernelNodes.loopBody != nullptr)
-  {
-    funcBodyText = pVisitor->RecursiveRewrite(kernelNodes.loopBody);
-    if(!clang::isa<clang::CompoundStmt>(kernelNodes.loopBody))
-      funcBodyText += ";";
-  }
+  std::string funcBodyText = ""; // SOME REPLACEMENT DOES NOT WORKS 
+  //{
+  //if(kernelNodes.loopBody != nullptr)
+  //{
+  //  funcBodyText = pVisitor->RecursiveRewrite(kernelNodes.loopBody);
+  //  if(!clang::isa<clang::CompoundStmt>(kernelNodes.loopBody))
+  //    funcBodyText += ";";
+  //}
 
   //if(kernelNodes.beforeLoop != nullptr)                                      // beforeLoop does not works, removed
   //  a_outLoopInitCode = pVisitor->RecursiveRewrite(kernelNodes.beforeLoop);
@@ -272,6 +273,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   //  return funcBodyText;
   //else
   //  return "//empty kernel body is found";
+  //}
   
   // old way
   //
@@ -302,7 +304,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   if(funcBodyText != "")
     return funcBodyText;
   else
-    return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";"; // old way for the case ... 
+    return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";"; // old way works
 }
 
 void kslicer::MainClassInfo::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)

@@ -912,6 +912,7 @@ namespace kslicer
   private:
     void Init();
     std::unordered_map<std::string, std::string> m_typesReplacement;
+    std::unordered_map<std::string, std::string> m_funReplacements;
   };
 
   std::unordered_map<std::string, std::string> ListSlangStandartTypeReplacements(bool a_NeedConstCopy = true);

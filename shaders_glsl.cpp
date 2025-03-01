@@ -485,6 +485,8 @@ kslicer::GLSLFunctionRewriter::GLSLFunctionRewriter(clang::Rewriter &R, const cl
   m_funReplacements["sqrtf"] = "sqrt";
   m_funReplacements["fabs"]  = "abs";
   m_funReplacements["to_float4"] = "vec4";
+  m_funReplacements["InterlockedAdd"] = "atomicAdd";
+  m_funReplacements["AtomicAdd"]      = "atomicAdd";
   m_shit = a_shit;
 }
 
@@ -998,7 +1000,7 @@ bool kslicer::GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   auto pVecMaker = m_vecReplacements.find(makeSmth);
   ///////////////////////////////////////////////////////////////////////
 
-  if(fname == "atomicAdd" && call->getNumArgs() >= 2)
+  if((fname == "atomicAdd" || fname == "AtomicAdd" || fname == "InterlockedAdd") && call->getNumArgs() >= 2)
   {
     const auto arg1        = call->getArg(1); 
     clang::QualType aType1 = arg1->getType();
