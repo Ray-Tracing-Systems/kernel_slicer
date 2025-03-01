@@ -6,7 +6,9 @@
 #extension GL_NV_ray_tracing_motion_blur : require
 {% endif %}
 {% else %}
+{% if Kernel.UseAccelS %}
 #extension GL_EXT_ray_query : require
+{% endif %}
 {% endif %}
 {% if Kernel.NeedTexArray %}
 #extension GL_EXT_nonuniform_qualifier : require
@@ -16,6 +18,9 @@
 {% endif %}
 {% if Kernel.UseSubGroups %}
 #extension GL_KHR_shader_subgroup_arithmetic: enable
+{% endif %}
+{% if Kernel.UseFloatAtomics %}
+#extension GL_EXT_shader_atomic_float : require
 {% endif %}
 
 {% include "common_generated.glsl" %}

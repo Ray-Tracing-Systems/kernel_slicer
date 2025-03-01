@@ -640,11 +640,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   for(auto k : a_classInfo.kernels)
     shaderFeatures = shaderFeatures || k.second.shaderFeatures;
 
-  data["GlobalUseInt8"]    = shaderFeatures.useByteType;
-  data["GlobalUseInt16"]   = shaderFeatures.useShortType;
-  data["GlobalUseInt64"]   = shaderFeatures.useInt64Type;
-  data["GlobalUseFloat64"] = shaderFeatures.useFloat64Type;
-  data["GlobalUseHalf"]    = shaderFeatures.useHalfType;
+  data["GlobalUseInt8"]         = shaderFeatures.useByteType;
+  data["GlobalUseInt16"]        = shaderFeatures.useShortType;
+  data["GlobalUseInt64"]        = shaderFeatures.useInt64Type;
+  data["GlobalUseFloat64"]      = shaderFeatures.useFloat64Type;
+  data["GlobalUseHalf"]         = shaderFeatures.useHalfType;
+  data["GlobalUseFloatAtomics"] = shaderFeatures.useFloatAtomicAdd;
 
   // (4) put kernels
   //
@@ -920,7 +921,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["LastArgNF1"]   = VArgsSize + MArgsSize;
     kernelJson["LastArgNF"]    = VArgsSize; // Last Argument No Flags
     kernelJson["Args"]         = args;
-    kernelJson["RTXNames"]     = rtxNames;
     kernelJson["UserArgs"]     = userArgs;
     kernelJson["Name"]         = k.name;
     kernelJson["UBOBinding"]   = args.size(); // for circle
@@ -932,6 +932,15 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["NeedTexArray"] = isTextureArrayUsedInThisKernel;
     kernelJson["WarpSize"]     = k.warpSize;
     kernelJson["InitSource"]   = "";
+    
+    kernelJson["RTXNames"]        = rtxNames;
+    kernelJson["UseAccelS"]       = (rtxNames.size() > 0);
+    kernelJson["UseInt8"]         = k.shaderFeatures.useByteType;
+    kernelJson["UseInt16"]        = k.shaderFeatures.useShortType;
+    kernelJson["UseInt64"]        = k.shaderFeatures.useInt64Type;
+    kernelJson["UseFloat64"]      = k.shaderFeatures.useFloat64Type;
+    kernelJson["UseHalf"]         = k.shaderFeatures.useHalfType;
+    kernelJson["UseFloatAtomics"] = k.shaderFeatures.useFloatAtomicAdd;
 
     kernelJson["SingleThreadISPC"] = k.singleThreadISPC;
     kernelJson["OpenMPAndISPC"]    = k.openMpAndISPC;

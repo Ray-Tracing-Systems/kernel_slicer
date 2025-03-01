@@ -2092,6 +2092,14 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   (*ppNext) = &indexingFeatures; ppNext = &indexingFeatures.pNext;
   deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
   {% endif %}
+  {% if GlobalUseFloatAtomics %}
+  static VkPhysicalDeviceShaderAtomicFloatFeaturesEXT atomicFeatures{};
+  atomicFeatures.sType                        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
+  atomicFeatures.shaderBufferFloat32AtomicAdd = VK_TRUE;
+  atomicFeatures.shaderBufferFloat64AtomicAdd = VK_TRUE;
+  (*ppNext) = &atomicFeatures; ppNext = &atomicFeatures.pNext;
+  deviceExtensions.push_back(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME);
+  {% endif %}
   return features2;
 }
 

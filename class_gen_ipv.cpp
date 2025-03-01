@@ -299,7 +299,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   
   // new way
   //
-  if(kernelNodes.loopBody != nullptr)
+  if(funcBodyText != "")
     return funcBodyText;
   else
     return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";"; // old way for the case ... 

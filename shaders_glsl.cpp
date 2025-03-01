@@ -1553,6 +1553,7 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
 
   GLSLKernelRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
+  m_glslRW.sFeatures = m_glslRW.sFeatures || rvCopy.GetKernelShaderFeatures();
 
   MarkRewritten(expr);
 

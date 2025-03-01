@@ -1288,11 +1288,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     useSubGroups = useSubGroups || k.second.enableSubGroups;
   }
 
-  data["GlobalUseInt8"]     = shaderFeatures.useByteType;
-  data["GlobalUseInt16"]    = shaderFeatures.useShortType;
-  data["GlobalUseInt64"]    = shaderFeatures.useInt64Type;
-  data["GlobalUseFloat64"]  = shaderFeatures.useFloat64Type;
-  data["GlobalUseHalf"]     = shaderFeatures.useHalfType;
+  data["GlobalUseInt8"]    = shaderFeatures.useByteType;
+  data["GlobalUseInt16"]   = shaderFeatures.useShortType;
+  data["GlobalUseInt64"]   = shaderFeatures.useInt64Type;
+  data["GlobalUseFloat64"] = shaderFeatures.useFloat64Type;
+  data["GlobalUseHalf"]    = shaderFeatures.useHalfType;
+  data["GlobalUseFloatAtomics"] = shaderFeatures.useFloatAtomicAdd;
 
   data["HasRTXAccelStruct"] = otherFeatures.useRTX;
   data["HasVarPointers"]    = (!a_classInfo.pShaderCC->IsGLSL() && !a_classInfo.pShaderCC->IsISPC()) || otherFeatures.useVarPtr;
