@@ -1297,6 +1297,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       local["Size"] = array.second.arraySize;
       kernelJson["ThreadLocalArrays"].push_back(local);
     }
+
+    kernelJson["IsSingleThreaded"] = false; 
   
     auto original = kernelJson;
 
@@ -1319,6 +1321,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         kernelJson["WGSizeX"]   = 1;
         kernelJson["WGSizeY"]   = 1;
         kernelJson["WGSizeZ"]   = 1;
+        kernelJson["IsSingleThreaded"] = true;
         data["Kernels"].push_back(kernelJson);
       }
     }
@@ -1335,6 +1338,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["WGSizeX"]   = 1;
       kernelJson["WGSizeY"]   = 1;
       kernelJson["WGSizeZ"]   = 1;
+      kernelJson["IsSingleThreaded"] = true;
       data["Kernels"].push_back(kernelJson);
     }
 

@@ -37,7 +37,7 @@ groupshared {{Var}}
 [numthreads({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}})]
 void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog %} uint3 a_groupID : SV_GroupID, {% endif%} uint3 a_localTID : SV_GroupThreadID, uniform KernelArgs kgenArgs)
 {
-  {% if not Kernel.EnableBlockExpansion %}
+  {% if not Kernel.EnableBlockExpansion and not Kernel.IsSingleThreaded %}
   bool runThisThread = true;
   {% endif %}
   {% if not Kernel.InitKPass %}
@@ -82,12 +82,16 @@ void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog %} uint
   {% else %}
   // KERNEL BODY:
   //
+  {% if not Kernel.IsSingleThreaded %}
   if(runThisThread)
   {
+  {% endif %}  
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {{Kernel.Source}}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
+  {% if not Kernel.IsSingleThreaded %}
   }
+  {% endif %}  
   {% endif %} {# /* EnableBlockExpansion */ #}
   {% if Kernel.HasEpilog %}
   // GENERATED EPILOG:
