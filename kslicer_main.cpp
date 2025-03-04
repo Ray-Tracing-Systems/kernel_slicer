@@ -91,6 +91,7 @@ int main(int argc, const char **argv)
   std::string composeAPIName  = "";
   std::string composeImplName = "";
   nlohmann::json inputOptions;
+  std::vector<std::string> composeIntersections;
 
   uint32_t    threadsOrder[3] = {0,1,2};
   uint32_t    warpSize        = 32;
@@ -343,6 +344,10 @@ int main(int argc, const char **argv)
       strIn >> original >> replace;
       inputCodeInfo.userTypedefs.push_back(std::make_pair(std::string(original), std::string(replace)));
     }
+    else if(std::string(argv[argId]) == "-intersectionShaderPlace" && argId+1 < argc)
+    {
+      composeIntersections.push_back(argv[argId+1]);
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -504,6 +509,8 @@ int main(int argc, const char **argv)
       inputCodeInfo.composPrefix[name] = composMemberName;
     
     inputCodeInfo.composClassNames.insert(composeImplName);
+    for(auto intersectionPlace : composeIntersections)
+      inputCodeInfo.composIntersection.insert(intersectionPlace);
   }
   else if(baseClases.size() != 0)
   { 

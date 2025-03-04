@@ -2286,5 +2286,53 @@
             "externalConsole": false,
         },
 
+        {
+            "name"   : "LiteRT (Closed/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : [
+            "/home/frol/PROG/vg_code/LiteRT/Renderer/eye_ray.cpp",
+            "/home/frol/PROG/vg_code/LiteRT/BVH/BVH2Common.cpp",
+            "-mainClass", "MultiRenderer",
+            "-composInterface", "ISceneObject",
+            "-composImplementation", "BVHRT",
+            "-intersectionShaderPlace", "ISceneObject",
+            "-intersectionShaderPlace", "BVHRT",
+            //"-options", "/home/frol/PROG/vg_code/LiteRT/scripts/options.json",
+            "-intersectionShader",   "AbstractObject::Intersect",
+            "-intersectionTriangle", "GeomDataTriangle",
+            "-enable_ray_tracing_pipeline", "0",
+            "-shaderFolderPrefix", "shaders/generated/",
+            "-pattern", "ipv",
+            //"-timestamps", "1",
+            "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+            "-I${workspaceFolder}/TINYSTL", "ignore",
+            "-I/home/frol/PROG/vg_code/LiteRT/dependencies", "ignore",
+            "-I/home/frol/PROG/vg_code/LiteRT/dependencies/HydraCore3/external", "ignore",
+            "-I/home/frol/PROG/vg_code/LiteRT/dependencies/HydraCore3/external/LiteMath", "ignore",
+            "-I/home/frol/PROG/vg_code/LiteRT", "process",
+            "-I/home/frol/PROG/vg_code/LiteRT/Renderer", "process",
+            "-I/home/frol/PROG/vg_code/LiteRT/BVH", "process",
+            "-I/home/frol/PROG/vg_code/LiteRT/sdfScene", "ignore",
+            "-shaderCC", "glsl",
+            "-suffix", "_gpu_rq",
+            "-DPUGIXML_NO_EXCEPTIONS",
+            "-DKERNEL_SLICER",
+            "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
     ]
 }

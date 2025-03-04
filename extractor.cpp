@@ -505,10 +505,11 @@ public:
     if(member.name == "")
       return true;
     
-    for(auto compos : m_codeInfo.composPrefix) // don't add composed members in used members list
+    for(auto compos : m_codeInfo.composPrefix) { // don't add composed members themselves in used members list
       if(compos.second == member.name)
-        return true;
-    
+        if(m_codeInfo.composIntersection.find(compos.first) == m_codeInfo.composIntersection.end()) // except if we have Intersection shaders fro them
+          return true;
+    }
     // std::cout << "  [DataExtractor]: found " << thisTypeName.c_str() << "::" << member.name.c_str() << std::endl;
 
     m_usedMembers[member.name] = member;
