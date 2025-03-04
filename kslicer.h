@@ -671,7 +671,8 @@ namespace kslicer
     virtual std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const { return RewriteStdVectorTypeStr(a_typeName); }
     virtual std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, TEX_ACCESS a_accessType, std::string& outImageFormat) const { return "readonly image2D"; }
 
-    virtual ShaderFeatures GetShaderFeatures() const { return ShaderFeatures(); }
+    mutable ShaderFeatures sFeatures;
+    virtual ShaderFeatures GetShaderFeatures() const { return sFeatures; }
     std::shared_ptr< std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
 
     virtual void SetCurrFuncInfo  (kslicer::FuncData* a_pInfo) { m_pCurrFuncInfo = a_pInfo; }
@@ -842,12 +843,7 @@ namespace kslicer
     std::unordered_map<std::string, std::string> m_vecReplacements;
     std::unordered_map<std::string, std::string> m_funReplacements;
     std::vector<std::pair<std::string, std::string> > m_vecReplacements2;
-  
-    mutable kslicer::ShaderFeatures sFeatures;
-    kslicer::ShaderFeatures GetShaderFeatures() const override
-    {
-      return sFeatures;
-    }
+
   
     std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
@@ -938,6 +934,7 @@ namespace kslicer
     bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr* expr);
     bool VisitBinaryOperator(clang::BinaryOperator* expr);
     bool VisitCallExpr(clang::CallExpr* call);
+    bool VisitVarDecl(clang::VarDecl* decl);
   
   protected:
   

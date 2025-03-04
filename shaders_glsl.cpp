@@ -549,7 +549,6 @@ void kslicer::GLSLFunctionRewriter::ApplyDefferedWorkArounds()
 
 kslicer::ShaderFeatures kslicer::GetUsedShaderFeaturesFromTypeName(const std::string& a_str)
 {
-  const bool isConst  = (a_str.find("const") != std::string::npos);
   const bool isUshort = (a_str.find("short") != std::string::npos)    || (a_str.find("ushort") != std::string::npos) ||
                         (a_str.find("uint16_t") != std::string::npos) || (a_str.find("int16_t") != std::string::npos);
   const bool isByte   = (a_str.find("char") != std::string::npos)    || (a_str.find("uchar") != std::string::npos) || (a_str.find("unsigned char") != std::string::npos) ||
@@ -1000,16 +999,6 @@ bool kslicer::GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   auto pVecMaker = m_vecReplacements.find(makeSmth);
   ///////////////////////////////////////////////////////////////////////
 
-  if((fname == "atomicAdd" || fname == "AtomicAdd" || fname == "InterlockedAdd") && call->getNumArgs() >= 2)
-  {
-    const auto arg1        = call->getArg(1); 
-    clang::QualType aType1 = arg1->getType();
-    std::string aTypeName  = aType1.getAsString();
-
-    if(aTypeName == "float" || aTypeName == "double")
-      sFeatures.useFloatAtomicAdd = true;
-  }
-
   auto pFoundSmth = m_funReplacements.find(fname);
   if(fname == "to_float3" && call->getNumArgs() == 1 && WasNotRewrittenYet(call) )
   {
@@ -1188,11 +1177,9 @@ bool kslicer::GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   const auto qt      = decl->getType();
   const auto pValue  = decl->getAnyInitializer();
 
-  const std::string debugText    = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler);
+  const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler);
   //const std::string debugTextVal = kslicer::GetRangeSourceCode(pValue->getSourceRange(), m_compiler);
   const std::string varType = qt.getAsString();
-  auto sFeatures2 = kslicer::GetUsedShaderFeaturesFromTypeName(varType);
-  m_codeInfo->globalShaderFeatures = m_codeInfo->globalShaderFeatures || sFeatures2;
 
   for (const clang::Attr* attr : decl->attrs()) 
   {

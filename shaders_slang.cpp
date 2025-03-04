@@ -11,19 +11,19 @@
 std::unordered_map<std::string, std::string> kslicer::ListSlangStandartTypeReplacements(bool a_NeedConstCopy)
 {
   std::unordered_map<std::string, std::string> m_vecReplacements;
-  m_vecReplacements["_Bool"] = "bool";
-  m_vecReplacements["long int"]       = "int";
-  m_vecReplacements["unsigned long"]  = "uint";
-  m_vecReplacements["unsigned int"]   = "uint";
-  m_vecReplacements["unsigned"]       = "uint";
-  m_vecReplacements["unsigned char"]  = "uint8_t";
-  m_vecReplacements["char"]           = "int8_t";
-  m_vecReplacements["unsigned short"] = "uint16_t";
-  m_vecReplacements["short"]          = "int16_t";
-  m_vecReplacements["uchar"]          = "uint8_t";
-  m_vecReplacements["ushort"]         = "uint16_t";
-  m_vecReplacements["int32_t"]        = "int";
-  m_vecReplacements["uint32_t"]       = "uint";
+  m_vecReplacements["_Bool"]              = "bool";
+  m_vecReplacements["long int"]           = "int";
+  m_vecReplacements["unsigned long"]      = "uint";
+  m_vecReplacements["unsigned int"]       = "uint";
+  m_vecReplacements["unsigned"]           = "uint";
+  m_vecReplacements["unsigned char"]      = "uint8_t";
+  m_vecReplacements["char"]               = "int8_t";
+  m_vecReplacements["unsigned short"]     = "uint16_t";
+  m_vecReplacements["short"]              = "int16_t";
+  m_vecReplacements["uchar"]              = "uint8_t";
+  m_vecReplacements["ushort"]             = "uint16_t";
+  m_vecReplacements["int32_t"]            = "int";
+  m_vecReplacements["uint32_t"]           = "uint";
   m_vecReplacements["size_t"]             = "uint64_t";
   m_vecReplacements["unsigned long long"] = "uint64_t";
   m_vecReplacements["long long int"]      = "int64_t";
@@ -56,6 +56,9 @@ std::string kslicer::SlangRewriter::RewriteStdVectorTypeStr(const std::string& a
   std::string copy = a_str;
   ReplaceFirst(copy, "const ", "");
   while(ReplaceFirst(copy, " ", ""));
+
+  auto sFeatures2 = kslicer::GetUsedShaderFeaturesFromTypeName(a_str);
+  sFeatures = sFeatures || sFeatures2;
 
   std::string resStr;
   std::string typeStr = kslicer::CleanTypeName(a_str);

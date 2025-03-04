@@ -526,5 +526,32 @@ bool kslicer::KernelInfoVisitor::NameNeedsFakeOffset(const std::string& a_name) 
 
 bool kslicer::KernelInfoVisitor::VisitCallExpr(clang::CallExpr* call)
 {
+  clang::FunctionDecl* fDecl = call->getDirectCallee();
+  if(fDecl == nullptr)
+    return true;
+  
+  //const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+  const std::string fname = fDecl->getNameInfo().getName().getAsString();
+
+  if((fname == "atomicAdd" || fname == "AtomicAdd" || fname == "InterlockedAdd") && call->getNumArgs() >= 2)
+  {
+    const auto arg1        = call->getArg(1); 
+    clang::QualType aType1 = arg1->getType();
+    std::string aTypeName  = aType1.getAsString();
+
+    if(aTypeName == "float" || aTypeName == "double")
+      m_currKernel.shaderFeatures.useFloatAtomicAdd = true;
+  }
+
+  return true;
+}
+
+bool kslicer::KernelInfoVisitor::VisitVarDecl(clang::VarDecl* decl)
+{
+  const auto qt = decl->getType();
+  const std::string varType = qt.getAsString();
+  auto sFeatures2 = kslicer::GetUsedShaderFeaturesFromTypeName(varType);
+  m_currKernel.shaderFeatures      = m_currKernel.shaderFeatures      || sFeatures2;
+  m_codeInfo->globalShaderFeatures = m_codeInfo->globalShaderFeatures || sFeatures2;
   return true;
 }
