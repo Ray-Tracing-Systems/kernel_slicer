@@ -73,6 +73,12 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 {{ShitFunc}}
 
 {% endfor %}
+{% for RTName in Kernel.RTXNames %}
+CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir) { CRT_Hit res; return res; }                // just to make code compilable
+CRT_Hit {{RTName}}_RayQuery_NearestHitMotion(vec4 rayPos, vec4 rayDir, float t) { CRT_Hit res; return res; } // just to make code compilable
+bool {{RTName}}_RayQuery_AnyHit(vec4 rayPos, vec4 rayDir) { return false; }                                  // just to make code compilable
+bool {{RTName}}_RayQuery_AnyHitMotion(vec4 rayPos, vec4 rayDir, float t){ return false; }                    // just to make code compilable
+{% endfor %}
 {% for MembFunc in Kernel.MemberFunctions %}
 {% if not MembFunc.IsRayQuery %}
 {{MembFunc.Decl}};
