@@ -514,7 +514,6 @@
             "-composImplementation", "BVHRT",
             "-intersectionShaderPlace", "ISceneObject",
             "-intersectionShaderPlace", "BVHRT",
-            //"-options", "/home/frol/PROG/vg_code/LiteRT/scripts/options.json",
             "-intersectionShader",   "AbstractObject::Intersect",
             "-intersectionTriangle", "GeomDataTriangle",
             "-enable_ray_tracing_pipeline", "0",
