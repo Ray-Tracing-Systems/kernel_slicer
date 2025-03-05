@@ -461,6 +461,12 @@ bool  kslicer::FunctionRewriter2::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr
   return true;
 }
 
+bool kslicer::FunctionRewriter2::VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr) 
+{
+  return true;
+}
+
+
 std::string kslicer::FunctionRewriter2::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
@@ -827,6 +833,25 @@ void kslicer::FunctionRewriter2::DARExpr_TextureAccess(clang::CXXMemberCallExpr*
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+std::string kslicer::KernelRewriter2::RecursiveRewrite(const clang::Stmt* expr)
+{
+  if(expr == nullptr)
+    return "";
+
+  KernelRewriter2 rvCopy = *this;
+  rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
+  
+  auto range = expr->getSourceRange();
+  auto p     = rvCopy.m_workAround.find(GetHashOfSourceRange(range));
+  if(p != rvCopy.m_workAround.end())
+    return p->second;
+  else
+  {
+    //rvCopy.ApplyDefferedWorkArounds();
+    return m_rewriter.getRewrittenText(range);
+  }
+}
+
 bool kslicer::KernelRewriter2::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)                   { return m_pFunRW2->VisitUnaryOperator_Impl(expr); }
 bool kslicer::KernelRewriter2::VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) { return m_pFunRW2->VisitCompoundAssignOperator_Impl(expr); }
 bool kslicer::KernelRewriter2::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr)       { return m_pFunRW2->VisitCXXOperatorCallExpr_Impl(expr); }
@@ -836,10 +861,8 @@ bool kslicer::KernelRewriter2::VisitVarDecl_Impl(clang::VarDecl* decl)          
 bool kslicer::KernelRewriter2::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)     { return m_pFunRW2->VisitCStyleCastExpr_Impl(cast); }
 bool kslicer::KernelRewriter2::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) { return m_pFunRW2->VisitImplicitCastExpr_Impl(cast); }
 
-bool kslicer::KernelRewriter2::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)                    
-{ 
-  return m_pFunRW2->VisitDeclRefExpr_Impl(expr); 
-}
+bool kslicer::KernelRewriter2::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)           {  return m_pFunRW2->VisitDeclRefExpr_Impl(expr); }
+bool kslicer::KernelRewriter2::VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr)   {  return m_pFunRW2->VisitFloatingLiteral_Impl(expr); }
 
 bool kslicer::KernelRewriter2::VisitDeclStmt_Impl(clang::DeclStmt* decl)                          { return m_pFunRW2->VisitDeclStmt_Impl(decl); }
 bool kslicer::KernelRewriter2::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) { return m_pFunRW2->VisitArraySubscriptExpr_Impl(arrayExpr); }

@@ -10,11 +10,6 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool kslicer::KernelRewriter::VisitForStmt(clang::ForStmt* forLoop)
-{
-  return true;
-}
-
 bool kslicer::KernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)               // ISPC explicit naming for thread id's
 {
   if(!m_explicitIdISPC)
@@ -215,6 +210,12 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
   }
 
   return false;
+}
+
+bool kslicer::KernelRewriter::VisitFloatingLiteral_Impl(clang::FloatingLiteral* f)
+{ 
+  std::string originalText = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
+  return true; 
 }
 
 

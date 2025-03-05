@@ -365,7 +365,7 @@
                         "-baseClass", "Surface",
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
-                        "-shaderCC", "glsl",
+                        "-shaderCC", "slang",
                         "-timestamps", "1",
                         //"-typedef", "Float3 dvec3",
                         "-I${workspaceFolder}/TINYSTL",                   "ignore",

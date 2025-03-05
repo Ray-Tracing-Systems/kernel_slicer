@@ -176,9 +176,9 @@ float4   operator*(float4x4 m, float4 v) { return mul(m,v); }
 float3   operator*(float4x4 m, float3 v) { return mul(m, float4(v,1.0f)).xyz; }
 float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
 
-double4  operator*(double4x4 m,  double4 v) { return mul(m,v); }
-double3  operator*(double4x4 m,  double3 v) { return mul(m, double4(v,1.0f)).xyz; }
-double3  operator*(double3x3 m,  double3 v) { return mul(m,v); }
+double4   operator*(double4x4 m,  double4 v) { return mul(m,v); }
+double3   operator*(double4x4 m,  double3 v) { return mul(m, double4(v,1.0f)).xyz; }
+double3   operator*(double3x3 m,  double3 v) { return mul(m,v); }
 
 {% for Array in ThreadLocalArrays %}
 {{Array.Type}} {{Array.Name}}[{{Array.Size}}];

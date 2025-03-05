@@ -662,6 +662,10 @@ namespace kslicer
     bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr) { return VisitCompoundAssignOperator_Impl(expr); }
     bool VisitBinaryOperator(clang::BinaryOperator* expr)                 { return VisitBinaryOperator_Impl(expr); }
     bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { return VisitDeclRefExpr_Impl(expr); }
+    bool VisitFloatingLiteral(clang::FloatingLiteral* expr)               
+    { 
+      return VisitFloatingLiteral_Impl(expr);
+    } 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -732,6 +736,10 @@ namespace kslicer
     virtual bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) { return true; }
     virtual bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr) { return true; }
     virtual bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) { return true; }
+    virtual bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr) 
+    { 
+      return true; 
+    }
     
     kslicer::ShittyFunction m_shit;
   };
@@ -764,6 +772,7 @@ namespace kslicer
     bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) override;
     bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr)                 override;
     bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)                       override;
+    bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr)               override;
 
     // Also important functions to use(!)
     //
@@ -880,6 +889,7 @@ namespace kslicer
 
     bool VisitVarDecl_Impl(clang::VarDecl* decl)                  override;
     bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                override;
+    bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr)  override;
 
     bool VisitMemberExpr_Impl(clang::MemberExpr* expr)             override;
     bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  override; 
@@ -973,17 +983,12 @@ namespace kslicer
     KernelRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr);
     virtual ~KernelRewriter() {}
 
-    bool VisitVarDecl(clang::VarDecl* decl)                    { return VisitVarDecl_Impl(decl);        }
-
+    bool VisitVarDecl(clang::VarDecl* decl)                    { return VisitVarDecl_Impl(decl); }
     bool VisitMemberExpr(clang::MemberExpr* expr)              { if(WasRewritten(expr)) return true; else return VisitMemberExpr_Impl(expr); }
-    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f)   { if(WasRewritten(f)) return true; else return VisitCXXMemberCallExpr_Impl(f); }
-    bool VisitCallExpr(clang::CallExpr* f)                     { if(WasRewritten(f)) return true; else return VisitCallExpr_Impl(f); }
-    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call)
-    {
-      return VisitCXXConstructExpr_Impl(call);
-    }
-    bool VisitReturnStmt(clang::ReturnStmt* ret)               { if(WasRewritten(ret)) return true; else return VisitReturnStmt_Impl(ret); }
-
+    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f)   { if(WasRewritten(f))    return true; else return VisitCXXMemberCallExpr_Impl(f); }
+    bool VisitCallExpr(clang::CallExpr* f)                     { if(WasRewritten(f))    return true; else return VisitCallExpr_Impl(f); }
+    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call)  { if(WasRewritten(call)) return true; else return VisitCXXConstructExpr_Impl(call); }
+    bool VisitReturnStmt(clang::ReturnStmt* ret)               { if(WasRewritten(ret))  return true; else return VisitReturnStmt_Impl(ret); }
     bool VisitUnaryOperator(clang::UnaryOperator* expr)        { if(WasRewritten(expr)) return true; else return VisitUnaryOperator_Impl(expr);  }
     bool VisitBinaryOperator(clang::BinaryOperator* expr)      { if(WasRewritten(expr)) return true; else return VisitBinaryOperator_Impl(expr); }
 
@@ -992,11 +997,10 @@ namespace kslicer
     bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)                 { if(WasRewritten(cast)) return true; else return VisitCStyleCastExpr_Impl(cast); }
     bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast)             { if(WasRewritten(cast)) return true; else return VisitImplicitCastExpr_Impl(cast); }
     bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { if(WasRewritten(expr)) return true; else return VisitDeclRefExpr_Impl(expr); }
+    bool VisitFloatingLiteral(clang::FloatingLiteral* expr)               { if(WasRewritten(expr)) return true; else return VisitFloatingLiteral_Impl(expr); }
     bool VisitDeclStmt(clang::DeclStmt* stmt)                             { if(WasRewritten(stmt)) return true; else return VisitDeclStmt_Impl(stmt); }
-    bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* arrayExpr)    { if(WasRewritten(arrayExpr)) return true; else return VisitArraySubscriptExpr_Impl(arrayExpr);  }
-    bool VisitUnaryExprOrTypeTraitExpr(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { return VisitUnaryExprOrTypeTraitExpr_Impl(szOfExpr); }
-
-    bool VisitForStmt(clang::ForStmt* forLoop); ///< to find nodes by their known source range and remember them
+    bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* arrayExpr)    { if(WasRewritten(arrayExpr))        return true; else return VisitArraySubscriptExpr_Impl(arrayExpr);  }
+    bool VisitUnaryExprOrTypeTraitExpr(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { if(WasRewritten(szOfExpr)) return true; else return VisitUnaryExprOrTypeTraitExpr_Impl(szOfExpr); }
 
     std::shared_ptr<std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
     virtual std::string RecursiveRewrite (const clang::Stmt* expr);
@@ -1084,7 +1088,7 @@ namespace kslicer
     virtual bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                 { return true; } // override this in Derived class
     virtual bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)  { return true; } // override this in Derived class
     virtual bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { return true; }
-
+    virtual bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* f);
     virtual bool NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text);
 
   };
@@ -1122,7 +1126,10 @@ namespace kslicer
 
     bool VisitMemberExpr_Impl(clang::MemberExpr* expr)      override;
     bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override;
-    bool VisitCallExpr_Impl(clang::CallExpr* f);
+    bool VisitCallExpr_Impl(clang::CallExpr* f)               override;
+    bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* f) override; 
+
+    std::string RecursiveRewrite(const clang::Stmt* expr) override;
 
   protected:
     std::shared_ptr<FunctionRewriter2> m_pFunRW2 = nullptr;

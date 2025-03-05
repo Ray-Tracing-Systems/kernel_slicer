@@ -609,6 +609,23 @@ bool kslicer::SlangRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl)
   return true; 
 }
 
+bool kslicer::SlangRewriter::VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr) 
+{
+  clang::QualType type = expr->getType();
+
+  const bool isDoubleLiteral = type->isRealFloatingType() && type->isSpecificBuiltinType(clang::BuiltinType::Double);
+
+  if(isDoubleLiteral && WasNotRewrittenYet(expr))
+  {
+    std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    //ReplaceTextOrWorkAround(expr->getSourceRange(), originalText + "l");
+    m_rewriter.ReplaceText(expr->getSourceRange(), originalText + "l");
+    MarkRewritten(expr);
+  }
+
+  return true;
+}
+
 bool kslicer::SlangRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) 
 { 
   if(m_kernelMode)
