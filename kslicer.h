@@ -130,12 +130,16 @@ namespace kslicer
   {
     ShaderFeatures operator||(const ShaderFeatures& rhs)
     {
-      useByteType  = useByteType  || rhs.useByteType;
-      useShortType = useShortType || rhs.useShortType;
-      useInt64Type = useInt64Type || rhs.useInt64Type;
+      useByteType    = useByteType  || rhs.useByteType;
+      useShortType   = useShortType || rhs.useShortType;
+      useInt64Type   = useInt64Type || rhs.useInt64Type;
       useFloat64Type = useFloat64Type || rhs.useFloat64Type;
       useHalfType    = useHalfType    || rhs.useHalfType;
-      useFloatAtomicAdd = useFloatAtomicAdd || rhs.useFloatAtomicAdd;
+
+      useFloatAtomicAdd  = useFloatAtomicAdd  || rhs.useFloatAtomicAdd;
+      useDoubleAtomicAdd = useDoubleAtomicAdd || rhs.useDoubleAtomicAdd;
+      use8BitStorage     = use8BitStorage     || rhs.use8BitStorage;
+
       return *this;
     }
 
@@ -144,7 +148,10 @@ namespace kslicer
     bool useInt64Type      = false;
     bool useFloat64Type    = false;
     bool useHalfType       = false;
-    bool useFloatAtomicAdd = false;
+
+    bool useFloatAtomicAdd  = false;
+    bool useDoubleAtomicAdd = false;
+    bool use8BitStorage     = false;
   };
 
   /**

@@ -178,11 +178,9 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
 float4x4 operator*(float4x4 m1, float4x4 m2) { return mul(m1,m2); }
 float3x3 operator*(float3x3 m1, float3x3 m2) { return mul(m1,m2); }
 
-double4   operator*(double4x4 m,  double4 v) { return mul(m,v); }
-double3   operator*(double4x4 m,  double3 v) { return mul(m, double4(v,1.0f)).xyz; }
-double3   operator*(double3x3 m,  double3 v) { return mul(m,v); }
-double4x4 operator*(double4x4 m1, double4x4 m2) { return mul(m1,m2); }
-double3x3 operator*(double3x3 m1, double3x3 m2) { return mul(m1,m2); }
+double4  operator*(double4x4 m,  double4 v) { return mul(m,v); }
+double3  operator*(double4x4 m,  double3 v) { return mul(m, double4(v,1.0f)).xyz; }
+double3  operator*(double3x3 m,  double3 v) { return mul(m,v); }
 
 {% for Array in ThreadLocalArrays %}
 {{Array.Type}} {{Array.Name}}[{{Array.Size}}];

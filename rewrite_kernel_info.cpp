@@ -539,8 +539,10 @@ bool kslicer::KernelInfoVisitor::VisitCallExpr(clang::CallExpr* call)
     clang::QualType aType1 = arg1->getType();
     std::string aTypeName  = aType1.getAsString();
 
-    if(aTypeName == "float" || aTypeName == "double")
+    if(aTypeName == "float")
       m_currKernel.shaderFeatures.useFloatAtomicAdd = true;
+    else if(aTypeName == "double")
+      m_currKernel.shaderFeatures.useDoubleAtomicAdd = true;
   }
 
   return true;

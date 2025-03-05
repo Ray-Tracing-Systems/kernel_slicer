@@ -1999,9 +1999,6 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   features2.features.shaderInt16   = {{GlobalUseInt16}};
   
   void** ppNext = &features2.pNext;
-  {% if GlobalUseInt8 or GlobalUseHalf %}
-  deviceExtensions.push_back("VK_KHR_shader_float16_int8");
-  {% endif %}
   {% if HasRTXAccelStruct or ForceRayGen or UseCallable %}
   {
     static VkPhysicalDeviceAccelerationStructureFeaturesKHR enabledAccelStructFeatures = {};
@@ -2076,6 +2073,7 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   (*ppNext) = &varPointersQuestion; ppNext = &varPointersQuestion.pNext;
   deviceExtensions.push_back("VK_KHR_variable_pointers");
   deviceExtensions.push_back("VK_KHR_shader_non_semantic_info"); // for clspv
+
   {% endif %}
   {% if HasAllRefs and not HasRTXAccelStruct and not ForceRayGen and not UseCallable %} {# /***** buffer device address ********/ #}
   static VkPhysicalDeviceBufferDeviceAddressFeaturesKHR bufferDeviceAddressFeatures = {};
@@ -2083,22 +2081,43 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
   (*ppNext) = &bufferDeviceAddressFeatures; ppNext = &bufferDeviceAddressFeatures.pNext;
   deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+
   {% endif %} {# /***** buffer device address ********/ #}
   {% if HasTextureArray and not HasRTXAccelStruct and not ForceRayGen and not UseCallable %}
-  static VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{};
+  static VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures = {};
   indexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
   indexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
   indexingFeatures.runtimeDescriptorArray                    = VK_TRUE;
   (*ppNext) = &indexingFeatures; ppNext = &indexingFeatures.pNext;
   deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+
   {% endif %}
-  {% if GlobalUseFloatAtomics %}
-  static VkPhysicalDeviceShaderAtomicFloatFeaturesEXT atomicFeatures{};
+  {% if GlobalUseFloatAtomics or GlobalUseDoubleAtomics %}
+  static VkPhysicalDeviceShaderAtomicFloatFeaturesEXT atomicFeatures = {};
   atomicFeatures.sType                        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
-  atomicFeatures.shaderBufferFloat32AtomicAdd = VK_TRUE;
-  atomicFeatures.shaderBufferFloat64AtomicAdd = VK_TRUE;
+  atomicFeatures.shaderBufferFloat32AtomicAdd = {{GlobalUseFloatAtomics}};
+  atomicFeatures.shaderBufferFloat64AtomicAdd = {{GlobalUseDoubleAtomics}};
   (*ppNext) = &atomicFeatures; ppNext = &atomicFeatures.pNext;
   deviceExtensions.push_back(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME);
+
+  {% endif %}
+  {% if GlobalUseInt8 or GlobalUseHalf %}
+  static VkPhysicalDeviceShaderFloat16Int8Features f16i8Features = {};
+  f16i8Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
+  f16i8Features.shaderFloat16 = {{GlobalUseHalf}};
+  f16i8Features.shaderInt8    = {{GlobalUseInt8}};
+  deviceExtensions.push_back("VK_KHR_shader_float16_int8");
+  (*ppNext) = &f16i8Features; ppNext = &f16i8Features.pNext;
+
+  {% endif %}
+  {% if GlobalUse8BitStorage %}
+  static VkPhysicalDevice8BitStorageFeatures storage8BitFeatures = {};
+  storage8BitFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES;
+  storage8BitFeatures.storageBuffer8BitAccess           = VK_TRUE;
+  storage8BitFeatures.uniformAndStorageBuffer8BitAccess = VK_TRUE;
+  storage8BitFeatures.storagePushConstant8              = VK_FALSE;
+  (*ppNext) = &storage8BitFeatures; ppNext = &storage8BitFeatures.pNext;
+
   {% endif %}
   return features2;
 }

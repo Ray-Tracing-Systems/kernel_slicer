@@ -309,11 +309,31 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
 
 void kslicer::MainClassInfo::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
 {
-  //a_funcInfo.astNode->dump();
+  // (1) run visitor for basic kernel info
+  //
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
   auto pVisitor = std::make_shared<KernelInfoVisitor>(rewrite2, compiler, this, a_funcInfo);
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
+
+  // (2) analize all buffers and iput containers for shader features and e.t.c
+  //
+  ShaderFeatures accessShaderFeatures;
+  for(const auto& arg : a_funcInfo.args) {
+    if(arg.isContainer || arg.IsPointer()) {
+      //std::cout << "arg.type = " << arg.type << std::endl;
+      accessShaderFeatures = accessShaderFeatures || kslicer::GetUsedShaderFeaturesFromTypeName(arg.type);
+    }
+  }
+
+  for(const auto& cont : a_funcInfo.usedContainers) {
+    //std::cout << "cont.second.type = " << cont.second.type.c_str() << std::endl; 
+    accessShaderFeatures = accessShaderFeatures || kslicer::GetUsedShaderFeaturesFromTypeName(cont.second.type);
+  }
+
+  a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || accessShaderFeatures;
+  if(accessShaderFeatures.useByteType)
+    a_funcInfo.shaderFeatures.use8BitStorage = true;
 }
 
