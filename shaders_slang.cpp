@@ -530,11 +530,50 @@ bool kslicer::SlangRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
   return true; 
 }
 
+static bool IsMatrixType(const std::string& a_typeName) // TODO: make it more 'soft'
+{
+  std::string typeName = a_typeName;
+  ReplaceFirst(typeName, "LiteMath::", "");
+  ReplaceFirst(typeName, "glm::", "");
+  ReplaceFirst(typeName, "std::", "");
+  if(typeName == "float2x2" || typeName == "double2x2")
+    return true;
+  else if(typeName == "float3x3" || typeName == "double3x3")
+    return true;
+  else if(typeName == "float4x4" || typeName == "double4x4")
+    return true;
+  else
+    return false;
+}
+
 bool kslicer::SlangRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) 
 { 
   if(m_kernelMode)
   {
-    return FunctionRewriter2::VisitCXXOperatorCallExpr_Impl(expr);
+    FunctionRewriter2::VisitCXXOperatorCallExpr_Impl(expr);
+  }
+  
+  std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler); 
+  if(op == "*" && expr->getNumArgs() == 2)
+  {
+    const clang::Expr* left  = expr->getArg(0);
+    const clang::Expr* right = expr->getArg(1);
+
+    const clang::QualType lhsType = left->getType();
+    const clang::QualType rhsType = right->getType();
+    
+    const std::string lhsTypeStr = lhsType.getAsString();
+    const std::string rhsTypeStr = rhsType.getAsString();
+    
+    if(WasNotRewrittenYet(expr) && IsMatrixType(lhsTypeStr) && IsMatrixType(rhsTypeStr))
+    {
+      const std::string leftText  = RecursiveRewrite(left);
+      const std::string rightText = RecursiveRewrite(right);
+      const std::string text      = "mul(" + leftText + "," + rightText + ")";
+      ReplaceTextOrWorkAround(expr->getSourceRange(), text);
+      //m_rewriter.ReplaceText(expr->getSourceRange(), text);
+      MarkRewritten(expr);
+    }
   }
 
   return true; 
