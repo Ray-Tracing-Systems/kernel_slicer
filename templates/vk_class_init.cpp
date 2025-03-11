@@ -45,6 +45,13 @@ std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix
 {% endif %}
 {% endfor %}
 
+vk_utils::VulkanDeviceFeatures {{MainClassName}}{{MainClassSuffix}}_ListRequiredDeviceFeatures()
+{
+  vk_utils::VulkanDeviceFeatures res;
+  res.features2 = {{MainClassName}}{{MainClassSuffix}}::ListRequiredDeviceFeatures(res.extensionNames);
+  return res;
+}
+
 void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount)
 {
   physicalDevice = a_physicalDevice;

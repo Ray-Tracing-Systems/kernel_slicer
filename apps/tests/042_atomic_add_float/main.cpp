@@ -11,9 +11,10 @@
 #define JSON_LOG_IMPLEMENTATION
 #include "JSONLog.hpp"
 
-//#include "vk_context.h"
-#include "test_class_generated.h"
+#include "vk_context.h"
+//#include "test_class_generated.h"
 std::shared_ptr<SimpleTest> CreateSimpleTest_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+vk_utils::VulkanDeviceFeatures SimpleTest_Generated_ListRequiredDeviceFeatures();
 
 int main(int argc, const char** argv)
 {
@@ -34,11 +35,9 @@ int main(int argc, const char** argv)
   if(onGPU)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-    std::vector<const char*> requiredExtensions;
-    auto deviceFeatures = SimpleTest_Generated::ListRequiredDeviceFeatures(requiredExtensions);
-    auto ctx            = vk_utils::globalContextInit(requiredExtensions, enableValidationLayers, a_preferredDeviceId, &deviceFeatures);
-    //auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
-    pImpl = CreateSimpleTest_Generated(ctx, 512*512);
+    auto rdf = SimpleTest_Generated_ListRequiredDeviceFeatures();
+    auto ctx = vk_utils::globalContextInit(rdf.extensionNames, enableValidationLayers, a_preferredDeviceId, &rdf.features2);
+    pImpl    = CreateSimpleTest_Generated(ctx, 512*512);
   }
   else
     pImpl = std::make_shared<SimpleTest>();
