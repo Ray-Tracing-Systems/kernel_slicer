@@ -51,6 +51,29 @@ using namespace clang;
 using kslicer::KernelInfo;
 using kslicer::DataMemberInfo;
 
+std::vector<std::string> ListProcessedFiles(nlohmann::json a_filesArray, const std::string& a_optionsPath)
+{
+  std::vector<std::string> allFiles;
+  if(!a_filesArray.is_array())
+    return allFiles;
+
+  std::filesystem::path optionsPath(a_optionsPath);
+  std::filesystem::path optionsFolder = optionsPath.parent_path();
+  
+  for(const auto& param : a_filesArray) 
+  {
+    std::filesystem::path path = param;
+    if(path.is_absolute())
+      allFiles.push_back(path.string());
+    else
+    {
+      std::filesystem::path fullPath = optionsFolder / path;
+      allFiles.push_back(fullPath.string());
+    }
+  }
+  return allFiles;
+}
+
 int main(int argc, const char **argv)
 {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -87,13 +110,14 @@ int main(int argc, const char **argv)
   else if(!ifs.is_open())
     std::cout << "[main]: warning, no '-config' is not found at '" << optionsPath.c_str() << "', is it ok?" << std::endl;
   else 
-    inputOptions = nlohmann::json::parse(ifs);
+    inputOptions = nlohmann::json::parse(ifs, nullptr, true, true);
   
   auto paramsFromConfig = inputOptions["options"];
 
+  std::vector<std::string> allFiles = ListProcessedFiles(inputOptions["source"], optionsPath);
+
   std::vector<std::string> ignoreFiles;
   std::vector<std::string> processFiles;
-  std::vector<std::string> allFiles;
   std::vector<std::string> cppIncludesAdditional;
   std::filesystem::path fileName;
   auto paramsFromCmdLine = ReadCommandLineParams(argc, argv, fileName,
@@ -102,11 +126,16 @@ int main(int argc, const char **argv)
   std::unordered_map<std::string, std::string> params;
   {
     for(const auto& param : paramsFromConfig.items()) // take params initially from config
-      params[param.key()] = param.value();
+      params[param.key()] = param.value().is_string() ? param.value().get<std::string>() : param.value().dump();
                                                   
     for(const auto& param : paramsFromCmdLine)        // and overide them from command line
       params[param.first] = param.second;
   }
+
+  auto mainClassNode = inputOptions["mainClass"];
+  if(mainClassNode.is_string())
+    params["-mainClass"] = mainClassNode.get<std::string>();
+
 
   std::filesystem::path mainFolderPath  = fileName.parent_path();
   std::string mainClassName   = "TestClass";
@@ -253,7 +282,7 @@ int main(int argc, const char **argv)
     kslicer::CheckInterlanIncInExcludedFolders(processFolders2);
   }
 
-  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params);
+  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params, fileName.c_str());
   llvm::ArrayRef<const char*> args(argsForClang.data(), argsForClang.data() + argsForClang.size());
 
   // Make sure it exists
