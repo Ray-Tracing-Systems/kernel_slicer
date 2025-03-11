@@ -1,0 +1,7 @@
+{
+    "kernels" : {},
+    "options" : {
+        "-pattern" : "rtv",
+        "-shaderCC" : "slang"
+    }
+}

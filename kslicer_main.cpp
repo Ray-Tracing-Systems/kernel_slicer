@@ -69,14 +69,44 @@ int main(int argc, const char **argv)
   std::cout << std::endl;
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  std::string optionsPath = "";
+  for(int argId = 1; argId < argc; argId++ )
+  {
+    if((std::string(argv[argId]) == "-options" || std::string(argv[argId]) == "-config")  && argId+1 < argc)
+    {
+      optionsPath = argv[argId+1];
+      break;
+    }
+  }
+  
+  nlohmann::json inputOptions;
+  std::ifstream ifs(optionsPath);
+  if(optionsPath == "")
+    std::cout << "[main]: info, '-config' is missing, which is ok in general" << std::endl;
+  else if(!ifs.is_open())
+    std::cout << "[main]: warning, no '-config' is not found at '" << optionsPath.c_str() << "', is it ok?" << std::endl;
+  else 
+    inputOptions = nlohmann::json::parse(ifs);
+  
+  auto paramsFromConfig = inputOptions["options"];
 
   std::vector<std::string> ignoreFiles;
   std::vector<std::string> processFiles;
   std::vector<std::string> allFiles;
   std::vector<std::string> cppIncludesAdditional;
   std::filesystem::path fileName;
-  auto params = ReadCommandLineParams(argc, argv, fileName,
-                                      allFiles, ignoreFiles, processFiles, cppIncludesAdditional);
+  auto paramsFromCmdLine = ReadCommandLineParams(argc, argv, fileName,
+                                                 allFiles, ignoreFiles, processFiles, cppIncludesAdditional);
+
+  std::unordered_map<std::string, std::string> params;
+  {
+    for(const auto& param : paramsFromConfig.items()) // take params initially from config
+      params[param.key()] = param.value();
+                                                  
+    for(const auto& param : paramsFromCmdLine)        // and overide them from command line
+      params[param.first] = param.second;
+  }
 
   std::filesystem::path mainFolderPath  = fileName.parent_path();
   std::string mainClassName   = "TestClass";
@@ -90,7 +120,6 @@ int main(int argc, const char **argv)
 
   std::string composeAPIName  = "";
   std::string composeImplName = "";
-  nlohmann::json inputOptions;
   std::vector<std::string> composeIntersections;
 
   uint32_t    threadsOrder[3] = {0,1,2};
@@ -105,13 +134,6 @@ int main(int argc, const char **argv)
   bool        genGPUAPI           = false;
 
   kslicer::ShaderFeatures forcedFeatures;
-
-  if(params.find("-options") != params.end())
-  {
-    std::string optionsPath = params["-options"];
-    std::ifstream ifs(optionsPath);
-    inputOptions = nlohmann::json::parse(ifs);
-  }
 
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];

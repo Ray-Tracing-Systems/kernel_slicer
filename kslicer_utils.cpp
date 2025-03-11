@@ -202,7 +202,7 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
     fileName2.concat("_temp.cpp");
     auto fileNameT  = folderPath / fileName2;
 
-    std::cout << "[kslicer]: merging input files to temporary file '" << fileName2 << std::endl;
+    std::cout << "[kslicer]: merging input files to temporary file " << fileName2 << std::endl;
     std::ofstream fout(fileNameT);
     for(auto file : allFiles)
     {
