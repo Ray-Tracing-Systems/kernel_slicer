@@ -45,6 +45,13 @@ std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix
 {% endif %}
 {% endfor %}
 
+vk_utils::VulkanDeviceFeatures {{MainClassName}}{{MainClassSuffix}}_ListRequiredDeviceFeatures()
+{
+  vk_utils::VulkanDeviceFeatures res;
+  res.features2 = {{MainClassName}}{{MainClassSuffix}}::ListRequiredDeviceFeatures(res.extensionNames);
+  return res;
+}
+
 void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount)
 {
   physicalDevice = a_physicalDevice;
@@ -385,6 +392,10 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
 
   {% for Buffer in ClassVectorVars %}
   vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
+  {% if Buffer.IsVFHBuffer and Buffer.VFHLevel >= 2 %}
+  vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}_dataSBuffer, nullptr);
+  vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}_dataVBuffer, nullptr);
+  {% endif %}
   {% endfor %}
   {% for Var in ClassTextureVars %}
   vkDestroyImage    (device, m_vdata.{{Var.Name}}Texture, nullptr);
@@ -982,10 +993,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
     {% endfor %}
   }
   {% endif %}
-  {% for Var in ClassTexArrayVars %}
-  for(size_t i = 0; i < {{Var.Name}}.size(); i++)
-    m_vdata.{{Var.Name}}ArrayView[i] = CreateView(VkFormat({{Var.Name}}[i]->format()), m_vdata.{{Var.Name}}ArrayTexture[i]);
-  {% endfor %}
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectDescriptorSets();
   {% endif %}
