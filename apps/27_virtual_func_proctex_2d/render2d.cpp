@@ -29,9 +29,9 @@ void ProcRender2D::InitAllTextures()
   allProcTextures.push_back(new Pseudeo3DMandelbrot);
   allProcTextures.push_back(new YellowNoise);
   allProcTextures.push_back(new Mandelbrot2D);
-  allProcTextures.push_back(new Ocean2D);
-  //allProcTextures.push_back(new Voronoi2D);
-  //allProcTextures.push_back(new Julia2D);
+  allProcTextures.push_back(new Julia2D);
+  //allProcTextures.push_back(new Ocean2D);
+  //allProcTextures.push_back(new Voronoi2D)
   //allProcTextures.push_back(new Perlin2D);
 }
 

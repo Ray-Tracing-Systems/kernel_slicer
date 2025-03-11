@@ -736,10 +736,7 @@ namespace kslicer
     virtual bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) { return true; }
     virtual bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr) { return true; }
     virtual bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) { return true; }
-    virtual bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr) 
-    { 
-      return true; 
-    }
+    virtual bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr) { return true; }
     
     kslicer::ShittyFunction m_shit;
   };
