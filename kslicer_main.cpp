@@ -139,7 +139,6 @@ int main(int argc, const char **argv)
 
   std::filesystem::path mainFolderPath  = fileName.parent_path();
   std::string mainClassName   = "TestClass";
-  std::string outGenerated    = "data/generated.cl";
   std::string stdlibFolder    = "";
   std::string patternName     = "rtv";
   std::string shaderCCName    = "clspv";
@@ -166,9 +165,6 @@ int main(int argc, const char **argv)
 
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
-
-  if(params.find("-out") != params.end())
-    outGenerated = params["-out"];
 
   if(params.find("-stdlibfolder") != params.end())
     stdlibFolder = params["-stdlibfolder"];
