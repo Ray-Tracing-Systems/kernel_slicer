@@ -125,6 +125,7 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
         return true;
       }
     }
+
   }
   else if(m_codeInfo->dataClassNames.find(thisTypeName) != m_codeInfo->dataClassNames.end() && usedWithVBR) 
   {
@@ -137,6 +138,16 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
   const auto pMember = m_variables.find(fieldName);
   if(pMember == m_variables.end())
     return false;
+  
+  // check 'surf_data.aperture' case
+  clang::Expr* baseExpr = expr->getBase();
+  if(baseExpr != nullptr)
+  {
+    const std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); 
+    const std::string baseName     = GetRangeSourceCode(baseExpr->getSourceRange(), m_compiler);
+    if(originalText == baseName + "." + fieldName)
+      return false;
+  }
 
   if(inCompositiClass && WasNotRewrittenYet(expr))
   {
@@ -183,7 +194,7 @@ bool kslicer::FunctionRewriter2::NeedToRewriteDeclRefExpr(const clang::DeclRefEx
     return false;
 
   clang::QualType qt = pDecl->getType();
-  if(qt->isPointerType() || qt->isReferenceType()) // we can't put references to push constants
+  if(qt->isPointerType()) // we can't put pointers to push constants, but can copy references as full structure data
     return false;
 
   const std::string textOri = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); //
