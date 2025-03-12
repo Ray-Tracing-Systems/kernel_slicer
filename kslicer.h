@@ -1386,7 +1386,7 @@ namespace kslicer
     OptionalDeviceFeatures  globalDeviceFeatures;
     
 
-    std::vector<std::string> ignoreFolders;  ///<! in these folders files are ignored
+    std::vector<std::filesystem::path> ignoreFolders;  ///<! in these folders files are ignored
     std::vector<std::filesystem::path> processFolders; ///<! in these folders files are processed to take functions and structures from them to shaders
     std::vector<std::string> ignoreFiles;    ///<! exception to 'processFolders'
     std::vector<std::string> processFiles;   ///<! exception to 'ignoreFolders'

@@ -82,7 +82,7 @@ void kslicer::ClspvCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
   std::string build = this->BuildCommand();
   buildSH << build.c_str() << " ";
   for(auto folder : ignoreFolders) {
-    if(folder.find("TINYSTL") != std::string::npos)
+    if(folder.string().find("TINYSTL") != std::string::npos)
       continue;
     buildSH << "-I" << folder.c_str() << " ";
   }

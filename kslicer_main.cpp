@@ -82,13 +82,13 @@ int main(int argc, const char **argv)
 
   if (argc < 2)
   {
-    llvm::errs() << "Usage: <filename>\n";
+    std::cout << "Usage: kslicer -config <kmake.json> " << std::endl;
     return 1;
   }
 
-  std::cout << "CMD LINE: ";
+  std::cout << "CMD LINE: " << std::endl;
   for(int i=0;i<argc;i++)
-     std::cout << argv[i] << " ";
+     std::cout << i << ": " << argv[i] << std::endl;
   std::cout << std::endl;
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -256,8 +256,10 @@ int main(int argc, const char **argv)
   
   if(params.find("-timestamps") != params.end())
     textGenSettings.enableTimeStamps = (atoi(params["-timestamps"].c_str()) != 0);
-
-  std::vector<std::string> ignoreFolders;
+  
+  // include and process folders
+  //
+  std::vector<std::filesystem::path> ignoreFolders;
   std::vector<std::filesystem::path> processFolders;
   for(auto p : params)
   {
@@ -268,6 +270,36 @@ int main(int argc, const char **argv)
       ignoreFolders.push_back(p.first.substr(2));
     else if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I' && folderT == "process")
       processFolders.push_back(p.first.substr(2));
+  }
+
+  for(auto folder : inputOptions["includeProcess"])
+  {
+    if(!folder.is_string())
+      continue;
+
+    std::filesystem::path path(folder.get<std::string>());
+    if(!path.is_absolute())
+      path = std::filesystem::absolute(std::filesystem::path(optionsPath).parent_path() / path);
+
+    if(std::filesystem::exists(path) && std::filesystem::is_directory(path))
+      processFolders.push_back(path);
+    else
+      std::cout << "[main]: bad folder from 'includeProcess' list: " << path.c_str() << std::endl;
+  }
+
+  for(auto folder : inputOptions["includeIgnore"])
+  {
+    if(!folder.is_string())
+      continue;
+
+    std::filesystem::path path(folder.get<std::string>());
+    if(!path.is_absolute())
+      path = std::filesystem::absolute(std::filesystem::path(optionsPath).parent_path() / path);
+
+    if(std::filesystem::exists(path) && std::filesystem::is_directory(path))
+      ignoreFolders.push_back(path);
+    else
+      std::cout << "[main]: bad folder from 'includeIgnore' list: " << path.c_str() << std::endl;
   }
 
   // make specific checks to be sure user don't include these files to hit project as normal files
@@ -416,34 +448,43 @@ int main(int argc, const char **argv)
   pto->Triple     = llvm::sys::getDefaultTargetTriple();
   TargetInfo *pti = TargetInfo::CreateTargetInfo(compiler.getDiagnostics(), pto);
   compiler.setTarget(pti);
-
-  {
-    compiler.getLangOpts().GNUMode = 1;
-    compiler.getLangOpts().CXXExceptions = 1;
-    compiler.getLangOpts().RTTI        = 1;
-    compiler.getLangOpts().Bool        = 1;
-    compiler.getLangOpts().CPlusPlus   = 1;
-    compiler.getLangOpts().CPlusPlus14 = 1;
-    compiler.getLangOpts().CPlusPlus17 = 1;
-  }
-
+  compiler.getLangOpts().GNUMode = 1;
+  compiler.getLangOpts().CXXExceptions = 1;
+  compiler.getLangOpts().RTTI        = 1;
+  compiler.getLangOpts().Bool        = 1;
+  compiler.getLangOpts().CPlusPlus   = 1;
+  compiler.getLangOpts().CPlusPlus14 = 1;
+  compiler.getLangOpts().CPlusPlus17 = 1;
   compiler.createFileManager();
   compiler.createSourceManager(compiler.getFileManager());
-  //g_pCompilerInstance = &compiler;
+  
+  /////////////////////////////////////////////////////////////////////////////////////////////////// -stdlibFolder
+  if(stdlibFolder == "")
+  {
+    std::filesystem::path currentPath  = std::filesystem::current_path();
+    std::filesystem::path tinystl1Path = currentPath / std::filesystem::path("TINYSTL");
+    std::filesystem::path tinystl2Path = currentPath.parent_path() / std::filesystem::path("TINYSTL");
+    
+    if(std::filesystem::exists(tinystl1Path) && std::filesystem::is_directory(tinystl1Path))
+      stdlibFolder = tinystl1Path.string();
+    else if(std::filesystem::exists(tinystl2Path) && std::filesystem::is_directory(tinystl2Path))
+      stdlibFolder = tinystl2Path.string();
+  }
+  
+  auto alreadyFound = std::find(inputCodeInfo.ignoreFolders.begin(), inputCodeInfo.ignoreFolders.end(), stdlibFolder);
+  if(stdlibFolder != "" && alreadyFound == inputCodeInfo.ignoreFolders.end())
+    inputCodeInfo.ignoreFolders.push_back(stdlibFolder);
+  /////////////////////////////////////////////////////////////////////////////////////////////////// -stdlibFolder
 
   // (0) add path dummy include files for STL and e.t.c. (we don't want to parse actually std library)
   //
   HeaderSearchOptions &headerSearchOptions = compiler.getHeaderSearchOpts();
   headerSearchOptions.AddPath(stdlibFolder.c_str(), clang::frontend::Angled, false, false);
-  for(auto p : params)
-  {
-    if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I')
-    {
-      std::string includePath = p.first.substr(2);
-      //std::cout << "[main]: add include folder: " << includePath.c_str() << std::endl;
-      headerSearchOptions.AddPath(includePath.c_str(), clang::frontend::Angled, false, false);
-    }
-  }
+  for(const auto& includePath : processFolders)
+    headerSearchOptions.AddPath(includePath.c_str(), clang::frontend::Angled, false, false);
+  for(const auto& includePath : ignoreFolders)
+    headerSearchOptions.AddPath(includePath.c_str(), clang::frontend::Angled, false, false);
+
   //headerSearchOptions.Verbose = 1;
 
   compiler.createPreprocessor(clang::TU_Complete);
@@ -462,21 +503,27 @@ int main(int argc, const char **argv)
   //
   const std::string filenameString = fileName.u8string();
   std::vector<const char*> argv2 = {argv[0], filenameString.c_str()};
-  std::vector<std::string> extraArgs; extraArgs.reserve(32);
-  for(auto p : params)
-  {
-    if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I')  // add include folders to the Tool
-    {
+  std::vector<std::string> extraArgs; 
+  extraArgs.reserve(256);
+  for(auto p : params) {
+    if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I') {
       extraArgs.push_back(std::string("-extra-arg=") + p.first);
       argv2.push_back(extraArgs.back().c_str());
     }
   }
+  for(const auto& includePath : processFolders) {
+    extraArgs.push_back(std::string("-extra-arg=") + std::string("-I") + includePath.string());
+    argv2.push_back(extraArgs.back().c_str());
+  }
+  for(const auto& includePath : ignoreFolders) {
+    extraArgs.push_back(std::string("-extra-arg=") + std::string("-I") + includePath.string());
+    argv2.push_back(extraArgs.back().c_str());
+  }
+  
   argv2.push_back("--");
   int argSize = argv2.size();
 
   llvm::cl::OptionCategory GDOpts("global-detect options");
-  //clang::tooling::CommonOptionsParser OptionsParser(argSize, argv2.data(), GDOpts);                     // clang 12
-  //clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());   // clang 12
   auto OptionsParser = clang::tooling::CommonOptionsParser::create(argSize, argv2.data(), GDOpts);        // clang 14
   clang::tooling::ClangTool Tool(OptionsParser->getCompilations(), OptionsParser->getSourcePathList());   // clang 14
 
