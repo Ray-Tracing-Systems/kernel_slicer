@@ -505,7 +505,6 @@ int main(int argc, const char **argv)
   compiler.getSourceManager().setMainFileID( compiler.getSourceManager().createFileID( pFile, clang::SourceLocation(), clang::SrcMgr::C_User));
   compiler.getDiagnosticClient().BeginSourceFile(compiler.getLangOpts(), &compiler.getPreprocessor());
 
-
   // init clang tooling
   //
   const std::string filenameString = fileName.u8string();
@@ -526,7 +525,8 @@ int main(int argc, const char **argv)
     extraArgs.push_back(std::string("-extra-arg=") + std::string("-I") + includePath.string());
     argv2.push_back(extraArgs.back().c_str());
   }
-  if(optionsPath != "") {
+  //if(optionsPath != "") 
+  { 
     extraArgs.push_back(std::string("-extra-arg=") + std::string("-I") + stdlibFolder);
     argv2.push_back(extraArgs.back().c_str());
   }
