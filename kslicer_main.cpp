@@ -526,6 +526,10 @@ int main(int argc, const char **argv)
     extraArgs.push_back(std::string("-extra-arg=") + std::string("-I") + includePath.string());
     argv2.push_back(extraArgs.back().c_str());
   }
+  if(optionsPath != "") {
+    extraArgs.push_back(std::string("-extra-arg=") + std::string("-I") + stdlibFolder);
+    argv2.push_back(extraArgs.back().c_str());
+  }
   
   argv2.push_back("--");
   int argSize = argv2.size();
