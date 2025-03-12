@@ -9,7 +9,7 @@
     "options" : {
         "-pattern"    : "rtv",
         "-shaderCC"   : "slang",
-        "-megakernel" : 0
+        "-megakernel" : 1
     },
     "source" : ["test_class.cpp"],
     "includeProcess" : [],

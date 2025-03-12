@@ -82,7 +82,7 @@ int main(int argc, const char **argv)
 
   if (argc < 2)
   {
-    std::cout << "Usage: kslicer -config <kmake.json> " << std::endl;
+    std::cout << "Normal usage: kslicer <config.json> or kslicer -config <config.json> " << std::endl;
     return 1;
   }
 
@@ -93,14 +93,21 @@ int main(int argc, const char **argv)
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   
+  // try to find config file
+  //
   std::string optionsPath = "";
-  for(int argId = 1; argId < argc; argId++ )
   {
-    if((std::string(argv[argId]) == "-options" || std::string(argv[argId]) == "-config")  && argId+1 < argc)
+    for(int argId = 1; argId < argc; argId++ )
     {
-      optionsPath = argv[argId+1];
-      break;
+      if((std::string(argv[argId]) == "-options" || std::string(argv[argId]) == "-config")  && argId+1 < argc)
+      {
+        optionsPath = argv[argId+1];
+        break;
+      }
     }
+  
+    if(std::string(argv[1]).find(".json") != std::string::npos)
+      optionsPath = argv[1];
   }
   
   nlohmann::json inputOptions;

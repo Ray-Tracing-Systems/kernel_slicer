@@ -77,7 +77,7 @@ def run_sample(test_name, on_gpu=False, gpu_id=0, on_ispc=False):
 
 def run_kslicer(sample_config: SampleConfig, test_config: TestsConfig, megakernel=False, subgroups=False):
     Log().info("Generating files by kernel_slicer with params: [\n" +
-               "\torig cpp file: {}\n".format(os.path.relpath(sample_config.orig_cpp_file)) +
+               "\tinput file : {}\n".format(os.path.relpath(sample_config.orig_cpp_file)) +
                ("\tmegakernel: {}\n".format(megakernel) if sample_config.has_megakernel_key else "") +
                ("\tsubgroups : {}\n".format(subgroups)  if sample_config.has_subgroups_key  else "") + "]")
 
