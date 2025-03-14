@@ -126,9 +126,9 @@ int main(int argc, const char **argv)
   std::vector<std::string> ignoreFiles;
   std::vector<std::string> processFiles;
   std::vector<std::string> cppIncludesAdditional;
-  std::filesystem::path fileName;
-  auto paramsFromCmdLine = ReadCommandLineParams(argc, argv, fileName,
-                                                 allFiles, ignoreFiles, processFiles, cppIncludesAdditional);
+  std::filesystem::path    fileName;
+  auto paramsFromCmdLine = ReadCommandLineParams(argc, argv, fileName,                                        // ==>
+                                                 allFiles, ignoreFiles, processFiles, cppIncludesAdditional); // <==
 
   std::unordered_map<std::string, std::string> params;
   {
@@ -160,7 +160,6 @@ int main(int argc, const char **argv)
   std::string stdlibFolder    = "";
   std::string patternName     = "rtv";
   std::string shaderCCName    = "clspv";
-  std::string hintFile        = "";
   std::string suffix          = "_Generated";
   std::string shaderFolderPrefix    = "";
 
@@ -197,9 +196,6 @@ int main(int argc, const char **argv)
 
   if(suffix == "_Generated" && (shaderCCName == "ispc") || (shaderCCName == "ISPC"))
     suffix = "_ISPC";
-
-  if(params.find("-hint") != params.end())
-    hintFile = params["-hint"];
 
   if(params.find("-warpSize") != params.end())
     warpSize = atoi(params["-warpSize"].c_str());
@@ -1108,24 +1104,35 @@ int main(int argc, const char **argv)
 
   // if user set custom work group size for kernels via hint file we should apply it befor generating kernels
   //
-  nlohmann::json wgszJson;
-  uint32_t defaultWgSize[3][3] = {{256, 1, 1},
-                                  {32,  8, 1},
-                                  {8,   8, 8}};
-  if(hintFile != "")
+  uint32_t defaultWgSize[3][3] = {{256, 1, 1}, {32,  8, 1}, {8,   8, 8}};
+
+  auto kernelsOptionsAll = inputOptions["kernels"];
+
+  if(kernelsOptionsAll["default"] != nullptr)
   {
-    std::ifstream ifs(hintFile);
-    nlohmann::json hintJson = nlohmann::json::parse(ifs);
-    wgszJson            = hintJson["WorkGroupSize"];
-    defaultWgSize[0][0] = wgszJson["default"][0];
-    defaultWgSize[0][1] = wgszJson["default"][1];
-    defaultWgSize[0][2] = wgszJson["default"][2];
-    defaultWgSize[1][0] = wgszJson["default2D"][0];
-    defaultWgSize[1][1] = wgszJson["default2D"][1];
-    defaultWgSize[1][2] = wgszJson["default2D"][2];
-    defaultWgSize[2][0] = wgszJson["default3D"][0];
-    defaultWgSize[2][1] = wgszJson["default3D"][1];
-    defaultWgSize[2][2] = wgszJson["default3D"][2];
+    defaultWgSize[0][0] = kernelsOptionsAll["default"]["wgSize"][0];
+    defaultWgSize[0][1] = kernelsOptionsAll["default"]["wgSize"][1];
+    defaultWgSize[0][2] = kernelsOptionsAll["default"]["wgSize"][2];
+  }
+  else if(kernelsOptionsAll["default1D"] != nullptr)
+  {
+    defaultWgSize[0][0] = kernelsOptionsAll["default1D"]["wgSize"][0];
+    defaultWgSize[0][1] = kernelsOptionsAll["default1D"]["wgSize"][1];
+    defaultWgSize[0][2] = kernelsOptionsAll["default1D"]["wgSize"][2];
+  }
+
+  if(kernelsOptionsAll["default2D"] != nullptr)
+  {
+    defaultWgSize[1][0] = kernelsOptionsAll["default2D"]["wgSize"][0];
+    defaultWgSize[1][1] = kernelsOptionsAll["default2D"]["wgSize"][1];
+    defaultWgSize[1][2] = kernelsOptionsAll["default2D"]["wgSize"][2];
+  }
+
+  if(kernelsOptionsAll["default3D"] != nullptr)
+  {
+    defaultWgSize[2][0] = kernelsOptionsAll["default3D"]["wgSize"][0];
+    defaultWgSize[2][1] = kernelsOptionsAll["default3D"]["wgSize"][1];
+    defaultWgSize[2][2] = kernelsOptionsAll["default3D"]["wgSize"][2];
   }
 
   for(auto& nk : inputCodeInfo.kernels)
@@ -1134,13 +1141,12 @@ int main(int argc, const char **argv)
     if(kernel.be.enabled)
       continue;
     auto kernelDim = kernel.GetDim();
-    auto it = wgszJson.find(kernel.name);
-    if(it != wgszJson.end())
+    auto kernelOptions = kernelsOptionsAll[kernel.name];
+    if(kernelOptions != nullptr)
     {
-      kernel.wgSize[0] = (*it)[0];
-      kernel.wgSize[1] = (*it)[1];
-      kernel.wgSize[2] = (*it)[2];
-      kernel.wgSize[2] = 1;
+      kernel.wgSize[0] = kernelOptions["wgSize"][0];
+      kernel.wgSize[1] = kernelOptions["wgSize"][1];
+      kernel.wgSize[2] = kernelOptions["wgSize"][2];
     }
     else
     {

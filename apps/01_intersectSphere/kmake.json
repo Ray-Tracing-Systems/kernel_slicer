@@ -4,7 +4,9 @@
     "composClasses" : {},          // specify all classes for composition pattern 
     "kernels" : {
         "kernel_RayTrace" : {"wgSize": [16, 16, 1]}, // options for target kernel will override options for 'all' of them
-        "default"         : {"wgSize": [32, 8,  1]}
+        "default"         : {"wgSize": [256, 1,  1]},
+        "default2D"       : {"wgSize": [32,  8,  1]},
+        "default3D"       : {"wgSize": [4,   4,  4]}
     },
     "options" : {
         "-pattern"    : "rtv",
