@@ -335,7 +335,14 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
   createInfo.maxPipelineRayRecursionDepth = 1;
   createInfo.layout     = (*pPipelineLayout);
   createInfo.flags      = pipelineFlags;
-  VK_CHECK_RESULT(vkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &createInfo, nullptr, pPipeline));
+  res = vkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &createInfo, nullptr, pPipeline);
+  if(res != VK_SUCCESS)
+  {
+    std::string errMsg = vk_utils::errorString(res);
+    std::cout << "[ShaderError]: vkCreateRayTracingPipelinesKHR have failed for '" << shader_paths[0].second.c_str() << "' with '" << errMsg.c_str() << "'" << std::endl;
+  }
+  else
+    m_allCreatedPipelines.push_back(*pPipeline);
 
   for (size_t i = 0; i < shader_paths.size(); ++i)
   {
@@ -372,7 +379,10 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
 ## endfor
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
-
+  {% for Table in RemapTables %}
+  vkDestroyBuffer(device, m_vdata.{{Table.Name}}RemapTableBuffer, nullptr);
+  vkDestroyBuffer(device, m_vdata.{{Table.Name}}GeomTagsBuffer, nullptr);
+  {% endfor %}
   {% if UseRayGen %}
   for(size_t i=0;i<m_allShaderTableBuffers.size();i++)
     vkDestroyBuffer(device, m_allShaderTableBuffers[i], nullptr);

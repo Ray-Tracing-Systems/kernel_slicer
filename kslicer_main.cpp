@@ -113,9 +113,9 @@ int main(int argc, const char **argv)
   nlohmann::json inputOptions;
   std::ifstream ifs(optionsPath);
   if(optionsPath == "")
-    std::cout << "[main]: info, '-config' is missing, which is ok in general" << std::endl;
+    std::cout << "[main]: config is missing, which is ok in general" << std::endl;
   else if(!ifs.is_open())
-    std::cout << "[main]: warning, no '-config' is not found at '" << optionsPath.c_str() << "', is it ok?" << std::endl;
+    std::cout << "[main]: warning, config is not found at '" << optionsPath.c_str() << "', is it ok?" << std::endl;
   else 
     inputOptions = nlohmann::json::parse(ifs, nullptr, true, true);
   
@@ -143,6 +143,17 @@ int main(int argc, const char **argv)
   if(mainClassNode.is_string())
     params["-mainClass"] = mainClassNode.get<std::string>();
 
+  std::string              composeAPIName  = "";
+  std::string              composeImplName = "";
+  std::vector<std::string> composeIntersections;
+  {
+    auto composClassNodes = inputOptions["composClasses"];
+    for(auto composNode : composClassNodes) {
+      composeAPIName  = composNode["interface"];
+      composeImplName = composNode["implementation"];
+      break; // currently support only single composition
+    }
+  }
 
   std::filesystem::path mainFolderPath  = fileName.parent_path();
   std::string mainClassName   = "TestClass";
@@ -152,10 +163,6 @@ int main(int argc, const char **argv)
   std::string hintFile        = "";
   std::string suffix          = "_Generated";
   std::string shaderFolderPrefix    = "";
-
-  std::string composeAPIName  = "";
-  std::string composeImplName = "";
-  std::vector<std::string> composeIntersections;
 
   uint32_t    threadsOrder[3] = {0,1,2};
   uint32_t    warpSize        = 32;
@@ -342,6 +349,7 @@ int main(int argc, const char **argv)
     exit(0);
   }
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
+
   inputCodeInfo.ignoreFolders  = ignoreFolders;  // set shader folders
   inputCodeInfo.processFolders = processFolders; // set common C/C++ folders
   inputCodeInfo.ignoreFiles    = ignoreFiles;    // set exceptions for common C/C++ folders (i.e. processFolders)
@@ -439,6 +447,43 @@ int main(int argc, const char **argv)
   for(auto base : inputOptions["baseClasses"]) {
     if(base.is_string())
       baseClases.push_back(base.get<std::string>());
+  }
+  
+
+  // read compos classes, intersection shaders and e.t.c
+  {
+    auto composClassNodes = inputOptions["composClasses"];
+    for(auto composNode : composClassNodes) {
+      composeAPIName  = composNode["interface"];
+      composeImplName = composNode["implementation"];
+      
+      auto intersection = composNode["intersection"];
+      if(intersection != nullptr)
+      {
+        std::string className = intersection["interface"];
+        std::string funcName  = intersection["shader"];
+        
+        inputCodeInfo.intersectionShaders.push_back( std::make_pair(className, funcName) );
+        composeIntersections.push_back(composeImplName);
+
+        if(intersection["triangle"] != nullptr) {
+          const std::string triClassName = intersection["triangle"];
+          inputCodeInfo.intersectionTriangle.push_back(std::make_pair(className, className));
+        }
+
+        if(intersection["whiteList"] != nullptr) {
+          for(auto node : intersection["whiteList"]) 
+            inputCodeInfo.intersectionWhiteList.insert(std::string(node)); 
+        }
+
+        if(intersection["blackList"] != nullptr) {
+          for(auto node : intersection["blackList"])
+            inputCodeInfo.intersectionBlackList.insert(std::string(node)); 
+        }
+        
+      }
+      break; // currently support only single composition
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
