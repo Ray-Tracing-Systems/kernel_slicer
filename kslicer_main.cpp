@@ -362,10 +362,13 @@ int main(int argc, const char **argv)
     inputCodeInfo.pHostCC   = std::make_shared<kslicer::VulkanCodeGen>();
     inputCodeInfo.processFolders.push_back("include/");
   }
-  else if(shaderCCName == "slang" || shaderCCName == "SLANG" || shaderCCName == "Slang")
+  else if(shaderCCName == "slang" || shaderCCName == "SLANG" || shaderCCName == "Slang" || shaderCCName == "cuda_slang")
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::SlangCompiler>(inputCodeInfo.mainClassSuffix);
-    inputCodeInfo.pHostCC   = std::make_shared<kslicer::VulkanCodeGen>();                              // TODO: check for CUDA back-end
+    if(shaderCCName == "cuda_slang")
+      inputCodeInfo.pHostCC = std::make_shared<kslicer::CudaCodeGen>(); 
+    else
+      inputCodeInfo.pHostCC = std::make_shared<kslicer::VulkanCodeGen>(); 
     inputCodeInfo.processFolders.push_back("include/");
   }
   else if(shaderCCName == "cuda" || shaderCCName == "CUDA")

@@ -4,7 +4,7 @@
 
 // if CUDA + Slang, include kernels which are generated from slang
 {% for Kernel in Kernels %}
-//#include "{{MainClassName}}{{MainClassSuffix}}_{{Kernel.Name}}_generated.cu"
+//#include "{{MainClassName}}{{MainClassSuffix}}_{{Kernel.Name}}_generated.cuh"
 {% endfor %}
 
 // if Pure CUDA, put kernels directly here

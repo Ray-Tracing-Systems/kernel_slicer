@@ -611,7 +611,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["Name"]      = var.name;
       local["CleanName"] = cleanName;
       local["Type"]      = var.type;
-      local["DataType"]  = var.containerType;
+      local["DataType"]  = var.containerDataType;
       local["HasPrefix"] = var.hasPrefix;
       ////////////////////////////////////////////////////////////////////
       MainClassInfo::VFH_LEVEL level = MainClassInfo::VFH_LEVEL_1;
