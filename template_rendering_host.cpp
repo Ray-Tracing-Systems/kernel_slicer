@@ -485,7 +485,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(auto ref : a_classInfo.m_allRefsFromVFH) {
       json refJson;
       refJson["Name"] = ref.name;
-      refJson["Type"] = ref.typeOfElem;
+      refJson["Type"] = kslicer::CleanTypeName(ref.typeOfElem);
       data["AllReferences"].push_back(refJson);
     }
   }
@@ -511,7 +511,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(auto sortImpl : a_classInfo.serviceCalls) {
       if (sortImpl.second.opName == "scan") {
         json local;
-        local["Type"]   = sortImpl.second.dataTypeName;
+        local["Type"]   = kslicer::CleanTypeName(sortImpl.second.dataTypeName);
         local["Lambda"] = "+";
         data["ServiceScan"].push_back(local);
       }
@@ -524,7 +524,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(auto sortImpl : a_classInfo.serviceCalls) {
       if (sortImpl.second.opName == "sort") {
         json local;
-        local["Type"]   = sortImpl.second.dataTypeName;
+        local["Type"]   = kslicer::CleanTypeName(sortImpl.second.dataTypeName);
         local["Lambda"] = sortImpl.second.lambdaSource;
         data["ServiceSort"].push_back(local);
       }
@@ -610,7 +610,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       json local;
       local["Name"]      = var.name;
       local["CleanName"] = cleanName;
-      local["Type"]      = var.type;
+      local["Type"]      = kslicer::CleanTypeName(var.type);
       local["DataType"]  = kslicer::CleanTypeName(var.containerDataType);
       local["HasPrefix"] = var.hasPrefix;
       ////////////////////////////////////////////////////////////////////
@@ -821,7 +821,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["Name"]           = v.name;
       local["SizeOffset"]     = p1->second.offsetInTargetBuffer;
       local["CapacityOffset"] = p2->second.offsetInTargetBuffer;
-      local["TypeOfData"]     = v.containerDataType;
+      local["TypeOfData"]     = kslicer::CleanTypeName(v.containerDataType);
       local["AccessSymb"]     = ".";
       local["NeedSampler"]    = false;
       local["HasPrefix"]      = v.hasPrefix;
@@ -862,7 +862,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
     json local;
     local["Name"] = v.name;
-    local["Type"] = v.containerDataType;
+    local["Type"] = kslicer::CleanTypeName(v.containerDataType);
 
     data["RedVectorVars"].push_back(local);
   }
@@ -1164,7 +1164,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       {
         json varData;
         varData["Name"] = var.second.tmpVarName;
-        varData["Type"] = var.second.dataType;
+        varData["Type"] = kslicer::CleanTypeName(var.second.dataType);
         reductionVarNames.push_back(varData);
       }
     }
@@ -1350,7 +1350,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     {
       json local;
       local["Name"] = v.second.name;
-      local["Type"] = v.second.type;
+      local["Type"] = kslicer::CleanTypeName(v.second.type);
       local["TransferDST"] = (v.second.name == "threadFlags"); // rtv thread flags
       data2["LocalVarsBuffersDecl"].push_back(local);
     }
@@ -1367,7 +1367,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       {
         json controlArg;
         controlArg["Name"]      = v.name;
-        controlArg["Type"]      = v.type;
+        controlArg["Type"]      = kslicer::CleanTypeName(v.type);
         controlArg["IsTexture"] = false;
         controlArg["IsPointer"] = false;
         controlArg["IsConst"]   = v.isConst;
@@ -1380,7 +1380,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       {
         json controlArg;
         controlArg["Name"]      = v.name;
-        controlArg["Type"]      = v.type;
+        controlArg["Type"]      = kslicer::CleanTypeName(v.type);
         controlArg["IsTexture"] = v.isTexture();
         controlArg["IsPointer"] = v.isPointer();
         controlArg["IsConst"]   = v.isConst;
@@ -1657,7 +1657,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   for(const auto& kv : a_classInfo.m_setterVars)
   {
     json local;
-    local["Type"] = kv.second;
+    local["Type"] = kslicer::CleanTypeName(kv.second);
     local["Name"] = kv.first;
     data["SetterVars"].push_back(local);
   }
@@ -1728,7 +1728,7 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
     const bool isVec3Member = ((typeStr == "vec3") || (typeStr == "ivec3") || (typeStr == "uvec3")) && a_classInfo.pShaderCC->IsGLSL();
 
     json uboField;
-    uboField["Type"]      = typeStr;
+    uboField["Type"]      = kslicer::CleanTypeName(typeStr);
     uboField["Name"]      = member.name;
     uboField["IsArray"]   = member.isArray;
     uboField["ArraySize"] = member.arraySize;
