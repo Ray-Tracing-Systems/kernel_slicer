@@ -45,7 +45,7 @@
 #include "class_gen.h"
 #include "extractor.h"
 
-using namespace clang;
+//using namespace clang;
 #include "template_rendering.h"
 
 using kslicer::KernelInfo;
@@ -174,8 +174,6 @@ int main(int argc, const char **argv)
   bool        ispcExplicitIndices = false;
   bool        genGPUAPI           = false;
 
-  kslicer::ShaderFeatures forcedFeatures;
-
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
 
@@ -237,36 +235,40 @@ int main(int argc, const char **argv)
   if(params.find("-suffix") != params.end())
     suffix = params["-suffix"];
 
-  if(params.find("-forceEnableHalf") != params.end())
-    forcedFeatures.useHalfType = (atoi(params["-forceEnableHalf"].c_str()) == 1);
-  if(params.find("-forceEnableInt8") != params.end())
-    forcedFeatures.useByteType = (atoi(params["-forceEnableInt8"].c_str()) == 1);
-  if(params.find("-forceEnableInt16") != params.end())
-    forcedFeatures.useShortType = (atoi(params["-forceEnableInt16"].c_str()) == 1);
-  if(params.find("-forceEnableInt64") != params.end())
-    forcedFeatures.useInt64Type = (atoi(params["-forceEnableInt64"].c_str()) == 1);
-
   if(params.find("-gen_gpu_api") != params.end())
     genGPUAPI = atoi(params["-gen_gpu_api"].c_str());
 
-  kslicer::TextGenSettings textGenSettings;
-  if(params.find("-enable_motion_blur") != params.end())
-    textGenSettings.enableMotionBlur = atoi(params["-enable_motion_blur"].c_str()) != 0;
-  if(params.find("-force_ray_tracing_pipeline") != params.end())
+  kslicer::ShaderFeatures forcedFeatures;
   {
-    bool isEnabled = (atoi(params["-force_ray_tracing_pipeline"].c_str()) != 0);
-    textGenSettings.enableRayGen      = isEnabled;
-    textGenSettings.enableRayGenForce = isEnabled;
+    if(params.find("-forceEnableHalf") != params.end())
+      forcedFeatures.useHalfType = (atoi(params["-forceEnableHalf"].c_str()) == 1);
+    if(params.find("-forceEnableInt8") != params.end())
+      forcedFeatures.useByteType = (atoi(params["-forceEnableInt8"].c_str()) == 1);
+    if(params.find("-forceEnableInt16") != params.end())
+      forcedFeatures.useShortType = (atoi(params["-forceEnableInt16"].c_str()) == 1);
+    if(params.find("-forceEnableInt64") != params.end())
+      forcedFeatures.useInt64Type = (atoi(params["-forceEnableInt64"].c_str()) == 1);
   }
-  else if(params.find("-enable_ray_tracing_pipeline") != params.end())
-    textGenSettings.enableRayGen = (atoi(params["-enable_ray_tracing_pipeline"].c_str()) != 0) || textGenSettings.enableMotionBlur;
-  
-  if(params.find("-enable_callable_shaders") != params.end()) // enable_callable_shaders
-    textGenSettings.enableCallable = (atoi(params["-enable_callable_shaders"].c_str()) != 0);
-  
-  if(params.find("-timestamps") != params.end())
-    textGenSettings.enableTimeStamps = (atoi(params["-timestamps"].c_str()) != 0);
-  
+
+  kslicer::TextGenSettings textGenSettings;
+  {
+    if(params.find("-enable_motion_blur") != params.end())
+      textGenSettings.enableMotionBlur = atoi(params["-enable_motion_blur"].c_str()) != 0;
+    if(params.find("-force_ray_tracing_pipeline") != params.end())
+    {
+      bool isEnabled = (atoi(params["-force_ray_tracing_pipeline"].c_str()) != 0);
+      textGenSettings.enableRayGen      = isEnabled;
+      textGenSettings.enableRayGenForce = isEnabled;
+    }
+    else if(params.find("-enable_ray_tracing_pipeline") != params.end())
+      textGenSettings.enableRayGen = (atoi(params["-enable_ray_tracing_pipeline"].c_str()) != 0) || textGenSettings.enableMotionBlur;
+    if(params.find("-enable_callable_shaders") != params.end()) // enable_callable_shaders
+      textGenSettings.enableCallable = (atoi(params["-enable_callable_shaders"].c_str()) != 0);
+    if(params.find("-timestamps") != params.end())
+      textGenSettings.enableTimeStamps = (atoi(params["-timestamps"].c_str()) != 0);
+    textGenSettings.genSeparateGPUAPI = genGPUAPI;
+  }
+
   // include and process folders
   //
   std::vector<std::filesystem::path> ignoreFolders;
@@ -357,21 +359,31 @@ int main(int argc, const char **argv)
   if(shaderCCName == "glsl" || shaderCCName == "GLSL")
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::GLSLCompiler>(inputCodeInfo.mainClassSuffix);
+    inputCodeInfo.pHostCC   = std::make_shared<kslicer::VulkanCodeGen>();
     inputCodeInfo.processFolders.push_back("include/");
   }
   else if(shaderCCName == "slang" || shaderCCName == "SLANG" || shaderCCName == "Slang")
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::SlangCompiler>(inputCodeInfo.mainClassSuffix);
+    inputCodeInfo.pHostCC   = std::make_shared<kslicer::VulkanCodeGen>();                              // TODO: check for CUDA back-end
+    inputCodeInfo.processFolders.push_back("include/");
+  }
+  else if(shaderCCName == "cuda" || shaderCCName == "CUDA")
+  {
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::SlangCompiler>(inputCodeInfo.mainClassSuffix); // TODO: add pure cuda shaders
+    inputCodeInfo.pHostCC   = std::make_shared<kslicer::CudaCodeGen>();
     inputCodeInfo.processFolders.push_back("include/");
   }
   else if(shaderCCName == "ispc" || shaderCCName == "ISPC")
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::ISPCCompiler>(useCppInKernels, inputCodeInfo.mainClassSuffix);
+    inputCodeInfo.pHostCC   = std::make_shared<kslicer::ISPCCodeGen>();
     inputCodeInfo.ignoreFolders.push_back("include/");
   }
   else
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::ClspvCompiler>(useCppInKernels, inputCodeInfo.mainClassSuffix);
+    inputCodeInfo.pHostCC   = std::make_shared<kslicer::VulkanCodeGen>();
     inputCodeInfo.ignoreFolders.push_back("include/");
   }
 
@@ -487,19 +499,19 @@ int main(int argc, const char **argv)
 
   std::unique_ptr<kslicer::MainClassInfo> pInputCodeInfoImpl = nullptr;
 
-  CompilerInstance compiler;
-  DiagnosticOptions diagnosticOptions;
+  clang::CompilerInstance compiler;
+  clang::DiagnosticOptions diagnosticOptions;
   compiler.createDiagnostics();  //compiler.createDiagnostics(argc, argv);
 
   // Create an invocation that passes any flags to preprocessor
-  std::shared_ptr<CompilerInvocation> Invocation = std::make_shared<CompilerInvocation>();
-  CompilerInvocation::CreateFromArgs(*Invocation, args, compiler.getDiagnostics());
+  std::shared_ptr<clang::CompilerInvocation> Invocation = std::make_shared<clang::CompilerInvocation>();
+  clang::CompilerInvocation::CreateFromArgs(*Invocation, args, compiler.getDiagnostics());
   compiler.setInvocation(Invocation);
 
   // Set default target triple
   std::shared_ptr<clang::TargetOptions> pto = std::make_shared<clang::TargetOptions>();
   pto->Triple     = llvm::sys::getDefaultTargetTriple();
-  TargetInfo *pti = TargetInfo::CreateTargetInfo(compiler.getDiagnostics(), pto);
+  clang::TargetInfo *pti = clang::TargetInfo::CreateTargetInfo(compiler.getDiagnostics(), pto);
   compiler.setTarget(pti);
   compiler.getLangOpts().GNUMode = 1;
   compiler.getLangOpts().CXXExceptions = 1;
@@ -531,7 +543,7 @@ int main(int argc, const char **argv)
 
   // (0) add path dummy include files for STL and e.t.c. (we don't want to parse actually std library)
   //
-  HeaderSearchOptions &headerSearchOptions = compiler.getHeaderSearchOpts();
+  auto& headerSearchOptions = compiler.getHeaderSearchOpts();
   headerSearchOptions.AddPath(stdlibFolder.c_str(), clang::frontend::Angled, false, false);
   for(const auto& includePath : processFolders)
     headerSearchOptions.AddPath(includePath.c_str(), clang::frontend::Angled, false, false);
@@ -547,7 +559,7 @@ int main(int argc, const char **argv)
   compiler.getPreprocessor().addPPCallbacks(std::make_unique<HeaderLister>(headerLister));
   compiler.createASTContext();
 
-  const FileEntry *pFile = compiler.getFileManager().getFile(fileName.u8string()).get();
+  const clang::FileEntry *pFile = compiler.getFileManager().getFile(fileName.u8string()).get();
   compiler.getSourceManager().setMainFileID( compiler.getSourceManager().createFileID( pFile, clang::SourceLocation(), clang::SrcMgr::C_User));
   compiler.getDiagnosticClient().BeginSourceFile(compiler.getLangOpts(), &compiler.getPreprocessor());
 
@@ -1318,17 +1330,7 @@ int main(int argc, const char **argv)
   std::cout << std::endl;
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl;
   std::cout << "{" << std::endl;
-  {
-    if(!inputCodeInfo.pShaderCC->IsISPC())
-    {
-      kslicer::ApplyJsonToTemplate("templates/vk_class.h",        rawname + ToLowerCase(suffix) + ".h", jsonCPP);
-      kslicer::ApplyJsonToTemplate("templates/vk_class.cpp",      rawname + ToLowerCase(suffix) + ".cpp", jsonCPP);
-      kslicer::ApplyJsonToTemplate("templates/vk_class_ds.cpp",   rawname + ToLowerCase(suffix) + "_ds.cpp", jsonCPP);
-      kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + ToLowerCase(suffix) + "_init.cpp", jsonCPP);
-      if(genGPUAPI)
-        kslicer::ApplyJsonToTemplate("templates/vk_class_api.h",  rawname + ToLowerCase(suffix) + "_api.h", jsonCPP);
-    }
-  }
+  inputCodeInfo.pHostCC->GenerateHost(rawname + ToLowerCase(suffix), jsonCPP, inputCodeInfo, textGenSettings);
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
@@ -1428,7 +1430,8 @@ int main(int argc, const char **argv)
     auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls,
                                         rawname + ToLowerCase(suffix) + ".h", threadsOrder,
                                         composeImplName, jsonUBO, textGenSettings);
-    kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", rawname + ToLowerCase(suffix) + "_init.cpp", jsonCPP);
+    
+    inputCodeInfo.pHostCC->GenerateHostDevFeatures(rawname + ToLowerCase(suffix), jsonCPP, inputCodeInfo, textGenSettings);
   }
   std::cout << "}" << std::endl << std::endl;
   std::cout << "(10) Finished! " << std::endl;

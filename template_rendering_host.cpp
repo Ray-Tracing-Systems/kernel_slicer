@@ -611,6 +611,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["Name"]      = var.name;
       local["CleanName"] = cleanName;
       local["Type"]      = var.type;
+      local["DataType"]  = var.containerType;
       local["HasPrefix"] = var.hasPrefix;
       ////////////////////////////////////////////////////////////////////
       MainClassInfo::VFH_LEVEL level = MainClassInfo::VFH_LEVEL_1;
@@ -1718,7 +1719,6 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
     size_t sizeA = member.alignedSizeInBytes;
 
     const bool isVec3Member = ((typeStr == "vec3") || (typeStr == "ivec3") || (typeStr == "uvec3")) && a_classInfo.pShaderCC->IsGLSL();
-
 
     json uboField;
     uboField["Type"]      = typeStr;

@@ -38,6 +38,7 @@ namespace kslicer
     bool enableMotionBlur  = false;
     bool enableCallable    = false;
     bool enableTimeStamps  = false;
+    bool genSeparateGPUAPI = false;
   };
 
   struct IShaderCompiler;
@@ -1316,6 +1317,35 @@ namespace kslicer
     std::unordered_map<std::string, std::string> m_typesReplacement;
   };
 
+  struct IHostCodeGen
+  {
+    IHostCodeGen(){}
+    virtual ~IHostCodeGen(){}
+
+    virtual std::string Name() const { return ""; } 
+    virtual void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
+    virtual void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
+  };
+
+  struct VulkanCodeGen : public IHostCodeGen
+  {
+    std::string Name() const override { return "Vulkan"; }
+    void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+    void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+  };
+
+  struct CudaCodeGen : public IHostCodeGen
+  {
+    std::string Name() const override { return "CUDA"; }
+    void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+  };
+
+  struct ISPCCodeGen : public IHostCodeGen
+  {
+    std::string Name() const override { return "ISPC"; }
+    void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+  };
+
   struct ServiceCall
   {
     std::string opName;
@@ -1398,6 +1428,7 @@ namespace kslicer
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
 
     std::shared_ptr<IShaderCompiler>            pShaderCC           = nullptr;
+    std::shared_ptr<IHostCodeGen>               pHostCC             = nullptr;  
     std::shared_ptr<kslicer::FunctionRewriter>  pShaderFuncRewriter = nullptr;
     uint32_t m_indirectBufferSize = 0;            ///<! size of indirect buffer
     uint32_t m_timestampPoolSize  = uint32_t(-1); ///<! size of timestamp pool for all kernels calls
