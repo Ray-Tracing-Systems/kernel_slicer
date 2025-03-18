@@ -1570,8 +1570,6 @@ namespace kslicer
     void ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler);
     void ProcessBlockExpansionKernel(KernelInfo& a_kernel, const clang::CompilerInstance& compiler);
 
-    mutable std::vector<std::string> kernelsCallCmdDeclCached;
-
     std::vector< std::pair<std::string, std::string> > GetFieldsFromStruct(const clang::CXXRecordDecl* recordDecl, size_t* pSummOfFiledsSize = nullptr) const;
     bool HasBufferReferenceBind() const;
   };

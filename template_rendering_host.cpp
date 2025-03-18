@@ -611,7 +611,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["Name"]      = var.name;
       local["CleanName"] = cleanName;
       local["Type"]      = var.type;
-      local["DataType"]  = var.containerDataType;
+      local["DataType"]  = kslicer::CleanTypeName(var.containerDataType);
       local["HasPrefix"] = var.hasPrefix;
       ////////////////////////////////////////////////////////////////////
       MainClassInfo::VFH_LEVEL level = MainClassInfo::VFH_LEVEL_1;
@@ -881,7 +881,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       currKernels.push_back(nk.second);
   }
 
-  auto& kernelsCallCmdDecl = a_classInfo.kernelsCallCmdDeclCached;
+  std::vector<std::string> kernelsCallCmdDecl;
   if(kernelsCallCmdDecl.size() == 0)
   {
     kernelsCallCmdDecl.reserve(a_classInfo.kernels.size());
@@ -932,6 +932,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["HasLoopInit"]    = k.hasInitPass;
     kernelJson["HasLoopFinish"]  = k.hasFinishPassSelf;
     kernelJson["Decl"]           = kernelDeclByName[kernName];
+
+    std::string originalSourceCode = kslicer::GetRangeSourceCode(k.astNode->getSourceRange(), compiler);
+    ReplaceFirst(originalSourceCode, "\n", "");
+    const auto begPos = originalSourceCode.find("::") + 2;
+    const auto endPos = originalSourceCode.find(")") + 1;
+    kernelJson["OriginalDecl"] = originalSourceCode.substr(begPos, endPos - begPos);
+    
     kernelJson["Args"]           = std::vector<json>();
     kernelJson["threadDim"]      = a_classInfo.GetKernelTIDArgs(k).size();
     kernelJson["UseRayGen"]      = k.enableRTPipeline && a_settings.enableRayGen;       // duplicate these options for kernels so we can

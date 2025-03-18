@@ -152,7 +152,7 @@
                         "-I${workspaceFolder}/apps/LiteMath", "ignore", 
                         "-I${workspaceFolder}/TINYSTL",       "ignore",
                         "-shaderCC", "cuda_slang",
-                        "-suffix", "_GPU",
+                        "-suffix", "_CUDA",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry"    : false,

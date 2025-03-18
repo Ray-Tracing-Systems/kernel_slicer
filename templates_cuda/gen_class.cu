@@ -39,6 +39,11 @@ public:
   {% endfor %}
   
   void InitCudaObjects(size_t a_maxThreadsGenerated);
+  void CommitDeviceData() override;
+
+  {% for Kernel in Kernels %}
+  void {{Kernel.OriginalDecl}} override;
+  {% endfor %}
   
 protected:
   {% for Vector in VectorMembers %}
@@ -68,3 +73,17 @@ void {{MainClassName}}{{MainClassSuffix}}::InitCudaObjects(size_t a_maxThreadsGe
 {
   
 }
+
+void {{MainClassName}}{{MainClassSuffix}}::CommitDeviceData()
+{ 
+  {% for Var in ClassVectorVars %}
+  {{Var.Name}}_dev.assign({{Var.Name}}.begin(), {{Var.Name}}.end());
+  {% endfor %}
+}
+
+{% for Kernel in Kernels %}
+void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
+{
+  // call actual kernel here
+}
+{% endfor %}
