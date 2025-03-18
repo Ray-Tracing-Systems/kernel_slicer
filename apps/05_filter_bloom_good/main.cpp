@@ -60,7 +60,7 @@ int main(int argc, const char** argv)
   pImpl->SetMaxImageSize(w,h);
   pImpl->CommitDeviceData();
 
-  pImpl->Bloom(w, h, (const LiteMath::float4*)hdrData.data(), ldrData.data());
+  pImpl->Bloom(w, h, (const float4*)hdrData.data(), ldrData.data());
 
   if(onGPU)
     LiteImage::SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);

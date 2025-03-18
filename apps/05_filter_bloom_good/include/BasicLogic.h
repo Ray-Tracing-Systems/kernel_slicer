@@ -3,7 +3,7 @@
 
 #ifndef ISPC
 #include "LiteMath.h"
-#ifndef __OPENCL_VERSION__
+#ifndef CUDA_MATH
 using namespace LiteMath;
 #endif
 #endif

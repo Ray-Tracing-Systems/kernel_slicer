@@ -16,6 +16,10 @@ message(STATUS ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(OpenMP)
 find_package(Vulkan)
+if(USE_CUDA)
+  find_package(CUDA REQUIRED)
+  add_compile_definitions(CUDA_MATH)
+endif()
 find_package(FreeImage REQUIRED)
 include_directories(${Vulkan_INCLUDE_DIR})
 include_directories(${FREEIMAGE_INCLUDE_DIRS})
@@ -54,6 +58,14 @@ set(VKUTILS_SOURCE ../vkutils/vk_utils.cpp
                    ../vkutils/vk_pipeline.cpp
                    ../vkutils/vk_descriptor_sets.cpp)                
 
+# Компиляция CUDA-кода
+if(USE_CUDA)
+  cuda_add_library(test_class_cuda test_class_cuda.cu)
+  set(IMPL_LIBS ${Vulkan_LIBRARY} test_class_cuda)
+else()
+  set(IMPL_LIBS ${Vulkan_LIBRARY})
+endif()
+
 if(USE_ISPC)
 add_executable(testapp ${MAIN_SOURCE} 
                        ${VKGEN_SOURCE} 
@@ -66,4 +78,4 @@ add_executable(testapp ${MAIN_SOURCE}
 endif()
 
 set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
-target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} ${FREEIMAGE_LIBRARIES} OpenMP::OpenMP_CXX volk dl)
+target_link_libraries(testapp LINK_PUBLIC ${IMPL_LIBS} ${FREEIMAGE_LIBRARIES} OpenMP::OpenMP_CXX volk dl)

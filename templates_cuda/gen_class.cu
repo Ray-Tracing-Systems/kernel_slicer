@@ -1,6 +1,5 @@
-//define sms tu include CUDA-enabled verion of LiteMath
+
 #include "LiteMath.h"
-#include <thrust/device_vector.h>
 
 // if CUDA + Slang, include kernels which are generated from slang
 {% for Kernel in Kernels %}
@@ -12,7 +11,16 @@
 //define {{Kernel.Name}} here ... 
 {% endfor %}
 
-using thrust::device_vector;
+#include <memory>
+#include "{{MainInclude}}"
+{% for Include in AdditionalIncludes %}
+#include "{{Include}}"
+{% endfor %}
+
+//#include <thrust/device_vector.h> // if use real thrust
+//using thrust::device_vector; // if use real thrust
+#include <extended/lm_device_vector.h> // if use our own implementation
+using LiteMathExtended::device_vector;
 
 class {{MainClassName}}{{MainClassSuffix}} : public {{MainClassName}}
 {

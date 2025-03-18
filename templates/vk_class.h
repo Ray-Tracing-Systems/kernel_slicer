@@ -38,6 +38,7 @@ using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data
 /////////////////////////////////////////////////////////////////////////////////////////// UBO
 
 #include "LiteMath.h"
+#ifndef CUDA_MATH
 using   LiteMath::uint;
 typedef LiteMath::float4x4 mat4;
 typedef LiteMath::float2   vec2;
@@ -49,6 +50,18 @@ typedef LiteMath::int4     ivec4;
 typedef LiteMath::uint2    uvec2;
 typedef LiteMath::uint3    uvec3;
 typedef LiteMath::uint4    uvec4;
+#else
+//typedef float4x4 mat4;
+typedef float2   vec2;
+typedef float3   vec3;
+typedef float4   vec4;
+typedef int2     ivec2;
+typedef int3     ivec3;
+typedef int4     ivec4;
+typedef uint2    uvec2;
+typedef uint3    uvec3;
+typedef uint4    uvec4;
+#endif
 
 struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
 {
