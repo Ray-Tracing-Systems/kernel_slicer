@@ -610,7 +610,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       json local;
       local["Name"]      = var.name;
       local["CleanName"] = cleanName;
-      local["Type"]      = kslicer::CleanTypeName(var.type);
+      local["Type"]      = var.type;
       local["DataType"]  = kslicer::CleanTypeName(var.containerDataType);
       local["HasPrefix"] = var.hasPrefix;
       ////////////////////////////////////////////////////////////////////

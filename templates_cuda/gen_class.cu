@@ -12,14 +12,16 @@
 {% endfor %}
 
 #include <memory>
+#include <cassert>
+#include <chrono>
 #include "{{MainInclude}}"
 {% for Include in AdditionalIncludes %}
 #include "{{Include}}"
 {% endfor %}
 
 //#include <thrust/device_vector.h> // if use real thrust
-//using thrust::device_vector; // if use real thrust
-#include <extended/lm_device_vector.h> // if use our own implementation
+//using thrust::device_vector;      // if use real thrust
+#include <extended/lm_device_vector.h>
 using LiteMathExtended::device_vector;
 
 class {{MainClassName}}{{MainClassSuffix}} : public {{MainClassName}}
@@ -54,7 +56,7 @@ public:
   {% endfor %}
   
   {% for MainFunc in MainFunctions %}
-  {{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.MainFuncDeclCmd}} override;
+  {{MainFunc.ReturnType}} {{MainFunc.MainFuncDeclCmd}} override;
   {% endfor %}
 
 protected:

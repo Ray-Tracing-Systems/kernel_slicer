@@ -104,11 +104,32 @@ bool kslicer::MainClassInfo::IsIndirect(const KernelInfo& a_kernel) const
   return isIndirect;
 } 
 
-static std::string GetControlFuncDeclText(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler)
+static std::string GetControlFuncDeclVulkan(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler)
 {
   std::string text = fDecl->getNameInfo().getName().getAsString() + "Cmd(VkCommandBuffer a_commandBuffer";
   if(fDecl->getNumParams()!= 0)
     text += ", ";
+  for(unsigned i=0;i<fDecl->getNumParams();i++)
+  {
+    auto pParam = fDecl->getParamDecl(i);
+    //const clang::QualType typeOfParam =	pParam->getType();
+    //std::string typeStr = typeOfParam.getAsString();
+    text += kslicer::GetRangeSourceCode(pParam->getSourceRange(), compiler);
+    if(i!=fDecl->getNumParams()-1)
+      text += ", ";
+  }
+
+  return text + ")";
+}
+
+
+static std::string GetControlFuncDeclCUDA(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler)
+{
+  std::string text = fDecl->getNameInfo().getName().getAsString();
+  auto posDD = text.find("::");
+  if(posDD != std::string::npos)
+    text = text.substr(posDD, text.size());
+  text += "(";
   for(unsigned i=0;i<fDecl->getNumParams();i++)
   {
     auto pParam = fDecl->getParamDecl(i);
@@ -158,7 +179,6 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
 
   a_mainFunc.ReturnType    = a_node->getReturnType().getAsString();
-  a_mainFunc.GeneratedDecl = GetControlFuncDeclText(a_node, compiler);
   a_mainFunc.startDSNumber = allDescriptorSetsInfo.size();
   a_mainFunc.OriginalDecl  = GetOriginalDeclText(a_node, compiler, IsRTV());
   
@@ -182,17 +202,28 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
   
     kslicer::MainFunctionRewriterVulkan rvVulkan(rewrite2, compiler, a_mainFunc, inOutParamList, this); // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
-    kslicer::MainFunctionRewriterCUDA   rvCUDA(rewrite2, compiler, a_mainFunc, inOutParamList, this);  
     
-    if(pHostCC->Name() == "Vulkan")          // normal dispatch in not working here due to some clang override issues, better to use switch
-      rvVulkan.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));   // 
-    else if(pHostCC->Name() == "CUDA")                                  //
+    std::string sourceCode;
+    if(pHostCC->Name() == "Vulkan")  
+    {
+      rvVulkan.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node)); // 
+      sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
+      a_mainFunc.GeneratedDecl = GetControlFuncDeclVulkan(a_node, compiler);
+    }
+    else if(pHostCC->Name() == "CUDA") 
+    {
+      kslicer::MainFunctionRewriterCUDA rvCUDA(rewrite2, compiler, a_mainFunc, inOutParamList, this);  
       rvCUDA.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));   //
+      sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
+      a_mainFunc.GeneratedDecl = GetControlFuncDeclCUDA(a_node, compiler);
+    }
     
-    std::string sourceCode   = rewrite2.getRewrittenText(clang::SourceRange(b,e));
-    size_t bracePos          = sourceCode.find("{");
-    std::string src2         = sourceCode.substr(bracePos+2);
-    a_mainFunc.CodeGenerated = src2.substr(0, src2.find_last_of("}"));
+    size_t bracePos = sourceCode.find("{");
+    if(bracePos != std::string::npos)
+    {
+      std::string src2         = sourceCode.substr(bracePos+2);
+      a_mainFunc.CodeGenerated = src2.substr(0, src2.find_last_of("}"));
+    }
   }
 }
 
