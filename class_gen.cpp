@@ -181,8 +181,13 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
     Rewriter rewrite2;
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
   
-    kslicer::MainFunctionRewriter rv(rewrite2, compiler, a_mainFunc, inOutParamList, this); // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
-    rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
+    kslicer::MainFunctionRewriterVulkan rvVulkan(rewrite2, compiler, a_mainFunc, inOutParamList, this); // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
+    kslicer::MainFunctionRewriterCUDA   rvCUDA(rewrite2, compiler, a_mainFunc, inOutParamList, this);  
+    
+    if(pHostCC->Name() == "Vulkan")          // normal dispatch in not working here due to some clang override issues, better to use switch
+      rvVulkan.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));   // 
+    else if(pHostCC->Name() == "CUDA")                                  //
+      rvCUDA.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));   //
     
     std::string sourceCode   = rewrite2.getRewrittenText(clang::SourceRange(b,e));
     size_t bracePos          = sourceCode.find("{");
@@ -202,7 +207,6 @@ std::string kslicer::MainClassInfo::GetCFDeclFromSource(const std::string& sourc
 
   return std::string("virtual ") + mainFuncDeclHead + "Cmd(VkCommandBuffer a_commandBuffer, " + mainFuncDeclTail + ";";
 }
-
 
 std::vector<std::string> ParseSizeAttributeText(const std::string& text)
 {

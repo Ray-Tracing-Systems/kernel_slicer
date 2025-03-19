@@ -53,6 +53,10 @@ public:
   void {{Kernel.OriginalDecl}} override;
   {% endfor %}
   
+  {% for MainFunc in MainFunctions %}
+  {{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.MainFuncDeclCmd}} override;
+  {% endfor %}
+
 protected:
   {% for Vector in VectorMembers %}
   device_vector<{{Vector.DataType}}> {{Vector.Name}}_dev;
@@ -94,4 +98,12 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
 {
   // call actual kernel here
 }
+
+{% endfor %}
+{% for MainFunc in MainFunctions %}
+{{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.MainFuncDeclCmd}}
+{
+  {{MainFunc.MainFuncTextCmd}}
+}
+
 {% endfor %}
