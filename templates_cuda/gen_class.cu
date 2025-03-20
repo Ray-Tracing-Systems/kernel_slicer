@@ -1,17 +1,21 @@
 
 #include "LiteMath.h"
+#include <extended/lm_device_vector.h> // also from LiteMath
 
-// if CUDA + Slang, include kernels which are generated from slang
-{% for Kernel in Kernels %}
-//#include "{{MainClassName}}{{MainClassSuffix}}_{{Kernel.Name}}_generated.cuh"
-{% endfor %}
-
-// if Pure CUDA, put kernels directly here
-{% for Kernel in Kernels %}
-//define {{Kernel.Name}} here ... 
-{% endfor %}
+namespace {{MainClassName}}{{MainClassSuffix}}_GPU
+{
+  {% for Vector in VectorMembers %}
+  __device__ LiteMathExtended::device_vector<{{Vector.DataType}}> {{Vector.Name}};
+  {% endfor %}
+  
+  // if Pure CUDA, put kernels directly here
+  {% for Kernel in Kernels %}
+  //define {{Kernel.Name}} here ... 
+  {% endfor %}
+};
 
 #include <memory>
+#include <cstdint>
 #include <cassert>
 #include <chrono>
 #include "{{MainInclude}}"
@@ -21,7 +25,6 @@
 
 //#include <thrust/device_vector.h> // if use real thrust
 //using thrust::device_vector;      // if use real thrust
-#include <extended/lm_device_vector.h>
 using LiteMathExtended::device_vector;
 
 class {{MainClassName}}{{MainClassSuffix}} : public {{MainClassName}}
@@ -90,8 +93,18 @@ void {{MainClassName}}{{MainClassSuffix}}::InitCudaObjects(size_t a_maxThreadsGe
 
 void {{MainClassName}}{{MainClassSuffix}}::CommitDeviceData()
 { 
-  {% for Var in ClassVectorVars %}
+  {% for Var in VectorMembers %}
   {{Var.Name}}_dev.assign({{Var.Name}}.begin(), {{Var.Name}}.end());
+  {% endfor %}
+  
+  {% for Var in VectorMembers %}
+  {
+    const uint32_t currSize = {{Var.Name}}_dev.size();
+    const uint32_t currCapa = {{Var.Name}}_dev.capacity();
+    cudaMemcpyToSymbol({{Var.Name}}_dev.data(), &{{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_data, sizeof(int*));
+    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_size    , &currSize, sizeof(uint32_t));
+    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_capacity, &currCapa, sizeof(uint32_t));
+  }
   {% endfor %}
 }
 
