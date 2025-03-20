@@ -97,13 +97,15 @@ void {{MainClassName}}{{MainClassSuffix}}::CommitDeviceData()
   {{Var.Name}}_dev.assign({{Var.Name}}.begin(), {{Var.Name}}.end());
   {% endfor %}
   
+  using size_type = LiteMathExtended::device_vector<int>::size_type;
   {% for Var in VectorMembers %}
   {
-    const uint32_t currSize = {{Var.Name}}_dev.size();
-    const uint32_t currCapa = {{Var.Name}}_dev.capacity();
-    cudaMemcpyToSymbol({{Var.Name}}_dev.data(), &{{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_data, sizeof(int*));
-    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_size    , &currSize, sizeof(uint32_t));
-    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_capacity, &currCapa, sizeof(uint32_t));
+    const size_type currSize = {{Var.Name}}_dev.size();
+    const size_type currCapa = {{Var.Name}}_dev.capacity();
+    const void*     currPtr  = {{Var.Name}}_dev.data();
+    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_data,     &currPtr,  sizeof(void*));
+    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_size    , &currSize, sizeof(size_type));
+    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_capacity, &currCapa, sizeof(size_type));
   }
   {% endfor %}
 }
