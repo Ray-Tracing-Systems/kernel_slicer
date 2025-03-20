@@ -1734,6 +1734,7 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
     uboField["ArraySize"] = member.arraySize;
     uboField["IsDummy"]   = false;
     uboField["IsVec3"]    = isVec3Member;
+    uboField["IsContainerInfo"] = member.isContainerInfo;
     data["UBOStructFields"].push_back(uboField);
 
     while(sizeO < sizeA) // TODO: make this more effitient

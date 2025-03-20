@@ -7,7 +7,15 @@ namespace {{MainClassName}}{{MainClassSuffix}}_GPU
   {% for Vector in VectorMembers %}
   __device__ LiteMathExtended::device_vector<{{Vector.DataType}}> {{Vector.Name}};
   {% endfor %}
-  
+  {% for Field in UBO.UBOStructFields %}
+  {% if Field.IsDummy %} 
+  __device__ uint {{Field.Name}}; 
+  {% else %}
+  {% if not Field.IsContainerInfo %}
+  __device__ {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %};
+  {% endif %}
+  {% endif %}
+  {% endfor %}
   // if Pure CUDA, put kernels directly here
   {% for Kernel in Kernels %}
   //define {{Kernel.Name}} here ... 
@@ -51,8 +59,11 @@ public:
   {% endif %}
   {% endfor %}
   
-  void InitCudaObjects(size_t a_maxThreadsGenerated);
   void CommitDeviceData() override;
+
+  void CopyUBOToDevice(bool a_updateVectorSize = true);
+  void CopyUBOFromDevice();
+  void UpdateDeviceVectors();
 
   {% for Kernel in Kernels %}
   void {{Kernel.OriginalDecl}} override;
@@ -70,33 +81,81 @@ protected:
 
 {% for ctorDecl in Constructors %}
 {% if ctorDecl.NumParams == 0 %}
-std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}(size_t a_maxThreadsGenerated)
+std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}()
 {
   auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}>();
-  pObj->InitCudaObjects(a_maxThreadsGenerated);
   return pObj;
 }
 {% else %}
 std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}({{ctorDecl.Params}})
 {
-  auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}>({{ctorDecl.PrevCall}}, size_t a_maxThreadsGenerated);
-  pObj->InitCudaObjects(a_maxThreadsGenerated);
+  auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}>({{ctorDecl.PrevCall}});
   return pObj;
 }
 {% endif %}
 {% endfor %}
 
-void {{MainClassName}}{{MainClassSuffix}}::InitCudaObjects(size_t a_maxThreadsGenerated)
+void {{MainClassName}}{{MainClassSuffix}}::CopyUBOToDevice(bool a_updateVectorSize)
 {
-  
+  {% for Var in ClassVars %}
+  {% if Var.IsArray %}
+  {% if Var.HasPrefix %}
+  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, pUnderlyingImpl->{{Var.CleanName}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
+  {% else %}
+  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, {{Var.Name}}, sizeof({{Var.Name}}));
+  {% endif %}
+  {% else %}
+  {% if Var.HasPrefix %}
+  m_uboData.{{Var.Name}} = pUnderlyingImpl->{{Var.CleanName}};
+  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, &pUnderlyingImpl->{{Var.CleanName}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
+  {% else %}
+  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, &{{Var.Name}}, sizeof({{Var.Name}}));
+  {% endif %}
+  {% endif %}
+  {% endfor %}
+  if(a_updateVectorSize)
+  {
+    using size_type = LiteMathExtended::device_vector<int>::size_type;
+    {% for Var in ClassVectorVars %}
+    {
+      const size_type currSize = {{Var.Name}}_dev.size();
+      cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_size, &currSize, sizeof(size_type));
+    }
+    {% endfor %}
+  }
 }
 
-void {{MainClassName}}{{MainClassSuffix}}::CommitDeviceData()
-{ 
-  {% for Var in VectorMembers %}
-  {{Var.Name}}_dev.assign({{Var.Name}}.begin(), {{Var.Name}}.end());
+void {{MainClassName}}{{MainClassSuffix}}::CopyUBOFromDevice()
+{
+  //cudaMemcpyFromSymbol(&h_globalVar, globalVar, sizeof(int));
+  {% for Var in ClassVars %}
+  {% if Var.IsArray %}
+  {% if Var.HasPrefix %}
+  cudaMemcpyFromSymbol(pUnderlyingImpl->{{Var.CleanName}}, {{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
+  {% else %}
+  cudaMemcpyFromSymbol({{Var.Name}}, {{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, sizeof({{Var.Name}}));
+  {% endif %}
+  {% else %}
+  {% if Var.HasPrefix %}
+  m_uboData.{{Var.Name}} = pUnderlyingImpl->{{Var.CleanName}};
+  cudaMemcpyFromSymbol(&pUnderlyingImpl->{{Var.CleanName}}, {{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
+  {% else %}
+  cudaMemcpyFromSymbol(&{{Var.Name}}, {{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, sizeof({{Var.Name}}));
+  {% endif %}
+  {% endif %}
   {% endfor %}
-  
+  using size_type = LiteMathExtended::device_vector<int>::size_type;
+  {% for Var in ClassVectorVars %}
+  {
+    size_type currSize = 0;
+    cudaMemcpyFromSymbol(&currSize, {{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_size, sizeof(size_type));
+    {{Var.Name}}.resize(currSize);
+  }
+  {% endfor %}
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::UpdateDeviceVectors()
+{
   using size_type = LiteMathExtended::device_vector<int>::size_type;
   {% for Var in VectorMembers %}
   {
@@ -110,6 +169,15 @@ void {{MainClassName}}{{MainClassSuffix}}::CommitDeviceData()
   {% endfor %}
 }
 
+void {{MainClassName}}{{MainClassSuffix}}::CommitDeviceData()
+{ 
+  {% for Var in VectorMembers %}
+  {{Var.Name}}_dev.assign({{Var.Name}}.begin(), {{Var.Name}}.end());
+  {% endfor %}
+  UpdateDeviceVectors();
+  CopyUBOToDevice(false);
+}
+
 {% for Kernel in Kernels %}
 void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
 {
@@ -120,7 +188,9 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
 {% for MainFunc in MainFunctions %}
 {{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.MainFuncDeclCmd}}
 {
+  CopyUBOToDevice(true);
   {{MainFunc.MainFuncTextCmd}}
+  CopyUBOFromDevice();
 }
 
 {% endfor %}
