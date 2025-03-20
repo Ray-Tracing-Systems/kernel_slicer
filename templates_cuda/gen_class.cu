@@ -2,7 +2,7 @@
 #include "LiteMath.h"
 #include <extended/lm_device_vector.h> // also from LiteMath
 
-namespace {{MainClassName}}{{MainClassSuffix}}_GPU
+namespace {{MainClassName}}{{MainClassSuffix}}_DEV
 {
   {% for Vector in VectorMembers %}
   __device__ LiteMathExtended::device_vector<{{Vector.DataType}}> {{Vector.Name}};
@@ -100,16 +100,16 @@ void {{MainClassName}}{{MainClassSuffix}}::CopyUBOToDevice(bool a_updateVectorSi
   {% for Var in ClassVars %}
   {% if Var.IsArray %}
   {% if Var.HasPrefix %}
-  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, pUnderlyingImpl->{{Var.CleanName}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
+  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, pUnderlyingImpl->{{Var.CleanName}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
   {% else %}
-  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, {{Var.Name}}, sizeof({{Var.Name}}));
+  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, {{Var.Name}}, sizeof({{Var.Name}}));
   {% endif %}
   {% else %}
   {% if Var.HasPrefix %}
   m_uboData.{{Var.Name}} = pUnderlyingImpl->{{Var.CleanName}};
-  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, &pUnderlyingImpl->{{Var.CleanName}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
+  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, &pUnderlyingImpl->{{Var.CleanName}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
   {% else %}
-  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, &{{Var.Name}}, sizeof({{Var.Name}}));
+  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, &{{Var.Name}}, sizeof({{Var.Name}}));
   {% endif %}
   {% endif %}
   {% endfor %}
@@ -119,7 +119,7 @@ void {{MainClassName}}{{MainClassSuffix}}::CopyUBOToDevice(bool a_updateVectorSi
     {% for Var in ClassVectorVars %}
     {
       const size_type currSize = {{Var.Name}}_dev.size();
-      cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_size, &currSize, sizeof(size_type));
+      cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}.m_size, &currSize, sizeof(size_type));
     }
     {% endfor %}
   }
@@ -131,16 +131,16 @@ void {{MainClassName}}{{MainClassSuffix}}::CopyUBOFromDevice()
   {% for Var in ClassVars %}
   {% if Var.IsArray %}
   {% if Var.HasPrefix %}
-  cudaMemcpyFromSymbol(pUnderlyingImpl->{{Var.CleanName}}, {{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
+  cudaMemcpyFromSymbol(pUnderlyingImpl->{{Var.CleanName}}, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
   {% else %}
-  cudaMemcpyFromSymbol({{Var.Name}}, {{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, sizeof({{Var.Name}}));
+  cudaMemcpyFromSymbol({{Var.Name}}, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof({{Var.Name}}));
   {% endif %}
   {% else %}
   {% if Var.HasPrefix %}
   m_uboData.{{Var.Name}} = pUnderlyingImpl->{{Var.CleanName}};
-  cudaMemcpyFromSymbol(&pUnderlyingImpl->{{Var.CleanName}}, {{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
+  cudaMemcpyFromSymbol(&pUnderlyingImpl->{{Var.CleanName}}, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
   {% else %}
-  cudaMemcpyFromSymbol(&{{Var.Name}}, {{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}, sizeof({{Var.Name}}));
+  cudaMemcpyFromSymbol(&{{Var.Name}}, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof({{Var.Name}}));
   {% endif %}
   {% endif %}
   {% endfor %}
@@ -148,7 +148,7 @@ void {{MainClassName}}{{MainClassSuffix}}::CopyUBOFromDevice()
   {% for Var in ClassVectorVars %}
   {
     size_type currSize = 0;
-    cudaMemcpyFromSymbol(&currSize, {{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_size, sizeof(size_type));
+    cudaMemcpyFromSymbol(&currSize, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}.m_size, sizeof(size_type));
     {{Var.Name}}.resize(currSize);
   }
   {% endfor %}
@@ -162,9 +162,9 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateDeviceVectors()
     const size_type currSize = {{Var.Name}}_dev.size();
     const size_type currCapa = {{Var.Name}}_dev.capacity();
     const void*     currPtr  = {{Var.Name}}_dev.data();
-    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_data,     &currPtr,  sizeof(void*));
-    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_size    , &currSize, sizeof(size_type));
-    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_GPU::{{Var.Name}}.m_capacity, &currCapa, sizeof(size_type));
+    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}.m_data,     &currPtr,  sizeof(void*));
+    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}.m_size    , &currSize, sizeof(size_type));
+    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}.m_capacity, &currCapa, sizeof(size_type));
   }
   {% endfor %}
 }
