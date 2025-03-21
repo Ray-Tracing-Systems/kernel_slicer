@@ -891,7 +891,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   auto kernelDeclByName = MakeMapForKernelsDeclByName(kernelsCallCmdDecl);
 
-  data["MultipleSourceShaders"] = !a_classInfo.pShaderCC->IsSingleSource();
+  data["MultipleSourceShaders"] = !a_classInfo.pShaderCC->IsSingleShader();
   data["ShaderFolder"]          = a_classInfo.pShaderCC->ShaderFolder();
 
   data["IndirectBufferSize"] = a_classInfo.m_indirectBufferSize;

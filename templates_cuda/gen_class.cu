@@ -16,9 +16,13 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
   {% endif %}
   {% endif %}
   {% endfor %}
-  // if Pure CUDA, put kernels directly here
-  {% for Kernel in Kernels %}
-  //define {{Kernel.Name}} here ... 
+
+  {% for Kernel in KernelList %}
+  __device__ void {{Kernel.Name}}(...)
+  {
+    {{Kernel.Source}}
+  }
+
   {% endfor %}
 };
 

@@ -373,7 +373,7 @@ int main(int argc, const char **argv)
   }
   else if(shaderCCName == "cuda" || shaderCCName == "CUDA")
   {
-    inputCodeInfo.pShaderCC = std::make_shared<kslicer::SlangCompiler>(inputCodeInfo.mainClassSuffix); // TODO: add pure cuda shaders
+    inputCodeInfo.pShaderCC = std::make_shared<kslicer::CudaCompiler>(inputCodeInfo.mainClassSuffix); 
     inputCodeInfo.pHostCC   = std::make_shared<kslicer::CudaCodeGen>();
     inputCodeInfo.processFolders.push_back("include/");
   }
@@ -1331,7 +1331,8 @@ int main(int argc, const char **argv)
   std::cout << std::endl;
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl;
   std::cout << "{" << std::endl;
-  inputCodeInfo.pHostCC->GenerateHost(rawname + ToLowerCase(suffix), jsonCPP, inputCodeInfo, textGenSettings);
+  if(!inputCodeInfo.pShaderCC->IsCUDA())
+    inputCodeInfo.pHostCC->GenerateHost(rawname + ToLowerCase(suffix), jsonCPP, inputCodeInfo, textGenSettings);
   std::cout << "}" << std::endl;
   std::cout << std::endl;
 
@@ -1418,7 +1419,12 @@ int main(int argc, const char **argv)
     json["MainFunctions"]       = jsonCPP["MainFunctions"];
     json["MainInclude"]         = jsonCPP["MainInclude"];
   }
-  inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo, textGenSettings);
+  else if(inputCodeInfo.pShaderCC->IsCUDA()) {
+    jsonCPP["KernelList"] = json["Kernels"];
+    inputCodeInfo.pHostCC->GenerateHost(rawname + ToLowerCase(suffix), jsonCPP, inputCodeInfo, textGenSettings);
+  }
+
+  inputCodeInfo.pShaderCC->GenerateShaders(json, &inputCodeInfo, textGenSettings); // not used by CUDA backend
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
