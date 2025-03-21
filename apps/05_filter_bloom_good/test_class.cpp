@@ -4,7 +4,7 @@
 
 inline uint pitch(uint x, uint y, uint pitch) { return y*pitch + x; }  
 
-inline float4 BilinearSample(__global const float4* data, int w, int h, float a_texCoordX, float a_texCoordY)
+inline float4 BilinearSample(const float4* data, int w, int h, float a_texCoordX, float a_texCoordY)
 {
   const float fw = (float)(w);
   const float fh = (float)(h);

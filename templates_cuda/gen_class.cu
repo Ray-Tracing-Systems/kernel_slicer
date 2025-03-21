@@ -188,9 +188,29 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
 {% for MainFunc in MainFunctions %}
 {{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.MainFuncDeclCmd}}
 {
+  {% for var in MainFunc.FullImpl.InputData %}
+  {{var.DataType}}* {{var.Name}}Host = {{var.Name}};
+  {% endfor %}
+  {% for var in MainFunc.FullImpl.OutputData %}
+  {{var.DataType}}* {{var.Name}}Host = {{var.Name}};
+  {% endfor %}
+
+  {% for var in MainFunc.FullImpl.InputData %}
+  cudaMalloc(&{{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
+  {% endfor %}
+  {% for var in MainFunc.FullImpl.OutputData %}
+  cudaMalloc(&{{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
+  {% endfor %}
+  {% for var in MainFunc.FullImpl.InputData %}
+  cudaMemcpy((void*){{var.Name}}, {{var.Name}}Host, {{var.DataSize}}*sizeof({{var.DataType}}), cudaMemcpyHostToDevice);
+  {% endfor %}
+
   CopyUBOToDevice(true);
   {{MainFunc.MainFuncTextCmd}}
   CopyUBOFromDevice();
+  {% for var in MainFunc.FullImpl.OutputData %}
+  cudaMemcpy({{var.Name}}Host, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}), cudaMemcpyDeviceToHost);
+  {% endfor %}
 }
 
 {% endfor %}
