@@ -4,6 +4,9 @@
 
 namespace {{MainClassName}}{{MainClassSuffix}}_DEV
 {
+  {% for LocalFunc in LocalFunctions %} 
+  {{LocalFunc}}
+  {% endfor %}
   {% for Vector in VectorMembers %}
   __device__ LiteMathExtended::device_vector<{{Vector.DataType}}> {{Vector.Name}};
   {% endfor %}
@@ -16,7 +19,7 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
   {% endif %}
   {% endif %}
   {% endfor %}
-
+  
   {% for Kernel in KernelList %}
   __device__ void {{Kernel.Name}}({%for Arg in Kernel.OriginalArgs %}{{Arg.Type}} {{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %})
   {
@@ -32,7 +35,23 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
     const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + {{TID.Type}}(_threadID[{{ loop.index }}])*{{TID.Stride}}; 
     {% endif %}
     {% endfor %}
+    bool runThisThread = true;
+    {% if not Kernel.EnableBlockExpansion %}
+    {% if Kernel.threadDim == 3 %}
+    if({{Kernel.threadName1}} >= {{Kernel.threadSZName1}} + {{Kernel.CondLE1}} || {{Kernel.threadName2}} >= {{Kernel.threadSZName2}} + {{Kernel.CondLE2}} || {{Kernel.threadName3}} >= {{Kernel.threadSZName3}} + {{Kernel.CondLE3}})
+      runThisThread = false;
+    {% else if Kernel.threadDim == 2 %}
+    if({{Kernel.threadName1}} >= {{Kernel.threadSZName1}} + {{Kernel.CondLE1}} || {{Kernel.threadName2}} >= {{Kernel.threadSZName2}} + {{Kernel.CondLE2}})
+      runThisThread = false;
+    {% else %}
+    if({{Kernel.threadName1}} >= {{Kernel.threadSZName1}} + {{Kernel.CondLE1}})
+      runThisThread = false;
+    {% endif %}
+    {% endif %} {# /* if not Kernel.EnableBlockExpansion */ #}
+    if(runThisThread) 
+    {
     {{Kernel.Source}}
+    }
   }
 
   {% endfor %}
@@ -75,6 +94,14 @@ public:
   {% endif %}
   {% endfor %}
   
+  virtual ~{{MainClassName}}{{MainClassSuffix}}()
+  {
+    {% for Vector in VectorMembers %}
+    {{Vector.Name}}_dev.resize(0);
+    {{Vector.Name}}_dev.shrink_to_fit(); 
+    {% endfor %}
+  }
+
   void CommitDeviceData() override;
 
   void CopyUBOToDevice(bool a_updateVectorSize = true);
