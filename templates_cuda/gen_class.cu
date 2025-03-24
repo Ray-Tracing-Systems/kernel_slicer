@@ -20,6 +20,18 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
   {% for Kernel in KernelList %}
   __device__ void {{Kernel.Name}}({%for Arg in Kernel.OriginalArgs %}{{Arg.Type}} {{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %})
   {
+    int _threadIndices[3] = {
+      blockIdx.x * blockDim.x + threadIdx.x,
+      blockIdx.y * blockDim.y + threadIdx.y,
+      blockIdx.z * blockDim.z + threadIdx.z
+    };
+    {% for TID in Kernel.ThreadIds %}
+    {% if TID.Simple %}
+    const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(_threadIndices[{{ loop.index }}]); 
+    {% else %}
+    const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + {{TID.Type}}(_threadIndices[{{ loop.index }}])*{{TID.Stride}}; 
+    {% endif %}
+    {% endfor %}
     {{Kernel.Source}}
   }
 
@@ -187,7 +199,7 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
 {
   dim3 block({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}});
   dim3 grid(({{Kernel.tidX}} + block.x - 1) / block.x, ({{Kernel.tidY}} + block.y - 1) / block.y, ({{Kernel.tidZ}} + block.z - 1) / block.z);
-  {{Kernel.Name}}<<<grid, block>>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
+  {{MainClassName}}{{MainClassSuffix}}_DEV::{{Kernel.Name}}<<<grid, block>>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
 }
 
 {% endfor %}
