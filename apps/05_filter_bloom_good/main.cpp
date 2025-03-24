@@ -9,8 +9,10 @@
 #include "Image2d.h"
 #include "ArgParser.h"
 
+#ifdef USE_VULKAN
 #include "vk_context.h"
 std::shared_ptr<ToneMapping> CreateToneMapping_GPU(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+#endif
 #ifdef USE_ISPC
 std::shared_ptr<ToneMapping> CreateToneMapping_ISPC();
 #endif
@@ -51,7 +53,8 @@ int main(int argc, const char** argv)
   {
     #ifdef USE_CUDA
     pImpl = CreateToneMapping_CUDA();
-    #else
+    #endif
+    #ifdef USE_VULKAN
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
     auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateToneMapping_GPU(ctx, w*h);
@@ -88,6 +91,8 @@ int main(int argc, const char** argv)
   std::cout << "kernel2D_BlurX(max) = " << timings[2] << " ms " << std::endl;
 
   pImpl = nullptr;
+  #ifdef USE_VULKAN
   vk_utils::globalContextDestroy();  
+  #endif
   return 0;
 }

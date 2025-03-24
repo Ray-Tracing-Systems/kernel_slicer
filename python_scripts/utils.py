@@ -70,6 +70,7 @@ def cmake_build(build_dir="build", build_type="Release", return_to_root=True, nu
                 os.remove(path_v2)
     os.chdir(build_dir)
     args = ["cmake", "-DCMAKE_BUILD_TYPE={}".format(build_type), ".."]
+    args.append("-DUSE_VULKAN=ON")
     if enable_ispc:
         args.append("-DUSE_ISPC=ON")
     #print(args)
