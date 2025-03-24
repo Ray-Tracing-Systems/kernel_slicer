@@ -14,6 +14,9 @@ std::shared_ptr<ToneMapping> CreateToneMapping_GPU(vk_utils::VulkanContext a_ctx
 #ifdef USE_ISPC
 std::shared_ptr<ToneMapping> CreateToneMapping_ISPC();
 #endif
+#ifdef USE_CUDA
+std::shared_ptr<ToneMapping> CreateToneMapping_CUDA();
+#endif
 
 bool LoadHDRImageFromFile(const char* a_fileName, 
                           int* pW, int* pH, std::vector<float>& a_data); // defined in imageutils.cpp
@@ -46,9 +49,13 @@ int main(int argc, const char** argv)
   
   if(onGPU)
   {
+    #ifdef USE_CUDA
+    pImpl = CreateToneMapping_CUDA();
+    #else
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
     auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateToneMapping_GPU(ctx, w*h);
+    #endif
   }
   #ifdef USE_ISPC
   else if(isISPC)
