@@ -194,7 +194,7 @@ bool kslicer::CudaRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // 
 
 bool kslicer::CudaRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)        
 {
-  return true; 
+  return FunctionRewriter2::VisitFunctionDecl_Impl(fDecl); 
 }
 
 bool kslicer::CudaRewriter::VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl)      

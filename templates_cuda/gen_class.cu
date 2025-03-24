@@ -6,6 +6,7 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
 {
   {% for LocalFunc in LocalFunctions %} 
   {{LocalFunc}}
+
   {% endfor %}
   {% for Vector in VectorMembers %}
   __device__ LiteMathExtended::device_vector<{{Vector.DataType}}> {{Vector.Name}};
@@ -21,7 +22,7 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
   {% endfor %}
   
   {% for Kernel in KernelList %}
-  __device__ void {{Kernel.Name}}({%for Arg in Kernel.OriginalArgs %}{{Arg.Type}} {{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %})
+  __global__ void {{Kernel.Name}}({%for Arg in Kernel.OriginalArgs %}{{Arg.Type}} {{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %})
   {
     const uint _threadID[3] = {
       blockIdx.x * blockDim.x + threadIdx.x,
