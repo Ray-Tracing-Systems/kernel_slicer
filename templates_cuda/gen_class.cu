@@ -5,7 +5,7 @@
 namespace {{MainClassName}}{{MainClassSuffix}}_DEV
 {
   {% for LocalFunc in LocalFunctions %} 
-  {{LocalFunc}}
+  __device__ {{LocalFunc}}
 
   {% endfor %}
   {% for Vector in VectorMembers %}
