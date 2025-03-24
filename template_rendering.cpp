@@ -114,6 +114,25 @@ std::vector<kslicer::KernelInfo::ArgInfo> kslicer::GetUserKernelArgs(const std::
   return result;
 }
 
+nlohmann::json kslicer::GetOriginalKernelJson(const KernelInfo& k, const MainClassInfo& a_classInfo)
+{
+  auto pShaderRewriter = a_classInfo.pShaderFuncRewriter;
+
+  json allArgs = std::vector<json>();
+  for(const auto& arg : k.args)
+  {
+    std::string typeName = pShaderRewriter->RewriteStdVectorTypeStr(arg.type);
+    json argj;
+    if(a_classInfo.pShaderCC->IsCUDA() && arg.IsPointer()) // strange bug with spaces when use template text rendering for that
+      typeName += "*";                                     // 
+    argj["Type"]      = typeName;
+    argj["Name"]      = arg.name;
+    argj["IsPointer"] = arg.IsPointer();
+    allArgs.push_back(argj);
+  }
+  return allArgs;
+}
+
 static inline size_t AlignedSize(const size_t a_size)
 {
   size_t currSize = 4;
@@ -840,6 +859,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       userArgs.push_back(argj);
     }
 
+    json allArgs = GetOriginalKernelJson(k, a_classInfo);
+
     // extract all arrays access in seperate map
     //
     std::unordered_map<std::string, KernelInfo::ReductionAccess> subjToRedCopy; subjToRedCopy.reserve(k.subjectedToReduction.size());
@@ -920,8 +941,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     kernelJson["LastArgNF1"]   = VArgsSize + MArgsSize;
     kernelJson["LastArgNF"]    = VArgsSize; // Last Argument No Flags
+    kernelJson["LastArgAll"]   = allArgs.size() - 1;
     kernelJson["Args"]         = args;
     kernelJson["UserArgs"]     = userArgs;
+    kernelJson["OriginalArgs"] = allArgs;
     kernelJson["Name"]         = k.name;
     kernelJson["UBOBinding"]   = args.size(); // for circle
     kernelJson["HasEpilog"]    = k.isBoolTyped || reductionVars.size() != 0 || reductionArrs.size() != 0;

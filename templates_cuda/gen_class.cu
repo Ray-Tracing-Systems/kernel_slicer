@@ -18,7 +18,7 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
   {% endfor %}
 
   {% for Kernel in KernelList %}
-  __device__ void {{Kernel.Name}}(...)
+  __device__ void {{Kernel.Name}}({%for Arg in Kernel.OriginalArgs %}{{Arg.Type}} {{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %})
   {
     {{Kernel.Source}}
   }
@@ -185,7 +185,9 @@ void {{MainClassName}}{{MainClassSuffix}}::CommitDeviceData()
 {% for Kernel in Kernels %}
 void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
 {
-  // call actual kernel here
+  dim3 block({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}});
+  dim3 grid(({{Kernel.tidX}} + block.x - 1) / block.x, ({{Kernel.tidY}} + block.y - 1) / block.y, ({{Kernel.tidZ}} + block.z - 1) / block.z);
+  {{Kernel.Name}}<<<grid, block>>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
 }
 
 {% endfor %}
@@ -214,6 +216,12 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
   CopyUBOFromDevice();
   {% for var in MainFunc.FullImpl.OutputData %}
   cudaMemcpy({{var.Name}}Host, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}), cudaMemcpyDeviceToHost);
+  {% endfor %}
+  {% for var in MainFunc.FullImpl.InputData %}
+  cudaFree({{var.Name}});
+  {% endfor %}
+  {% for var in MainFunc.FullImpl.OutputData %}
+  cudaFree({{var.Name}});
   {% endfor %}
 }
 

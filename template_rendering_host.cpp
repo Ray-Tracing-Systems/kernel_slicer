@@ -1177,6 +1177,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["WGSizeY"]      = k.wgSize[1]; //
     kernelJson["WGSizeZ"]      = k.wgSize[2]; //
 
+    json allArgs = GetOriginalKernelJson(k, a_classInfo);
+    kernelJson["OriginalArgs"] = allArgs;
+    kernelJson["LastArgAll"]   = allArgs.size() - 1;
+
     data["Kernels"].push_back(kernelJson);
   }
 
