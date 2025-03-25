@@ -81,14 +81,15 @@ int main(int argc, const char** argv)
   
   float timings[4] = {0,0,0,0};
   pImpl->GetExecutionTime("Bloom", timings);
-  std::cout << "Bloom(exec) = " << timings[0]              << " ms " << std::endl;
-  std::cout << "Bloom(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
-  std::cout << "Bloom(ovrh) = " << timings[3]              << " ms " << std::endl;
+  std::cout << "Bloom(exec) = " << timings[0] << " ms " << std::endl;
+  std::cout << "Bloom(copy) = " << timings[1] << " ms " << std::endl;
+  std::cout << "Bloom(copy) = " << timings[2] << " ms " << std::endl;
+  std::cout << "Bloom(ovrh) = " << timings[3] << " ms " << std::endl;
 
-  pImpl->GetExecutionTime("kernel2D_BlurX", timings);
-  std::cout << "kernel2D_BlurX(avg) = " << timings[0] << " ms " << std::endl;
-  std::cout << "kernel2D_BlurX(min) = " << timings[1] << " ms " << std::endl;
-  std::cout << "kernel2D_BlurX(max) = " << timings[2] << " ms " << std::endl;
+  //pImpl->GetExecutionTime("kernel2D_BlurX", timings);
+  //std::cout << "kernel2D_BlurX(avg) = " << timings[0] << " ms " << std::endl;
+  //std::cout << "kernel2D_BlurX(min) = " << timings[1] << " ms " << std::endl;
+  //std::cout << "kernel2D_BlurX(max) = " << timings[2] << " ms " << std::endl;
 
   pImpl = nullptr;
   #ifdef USE_VULKAN
