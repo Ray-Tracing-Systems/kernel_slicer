@@ -123,7 +123,7 @@ static std::string GetControlFuncDeclVulkan(const clang::FunctionDecl* fDecl, cl
 }
 
 
-static std::string GetControlFuncDeclCUDA(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler)
+static std::string GetControlFuncDeclCUDA(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler, bool a_gpuSuffix = false)
 {
   std::string text = fDecl->getNameInfo().getName().getAsString();
   auto posDD = text.find("::");

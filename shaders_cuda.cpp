@@ -284,7 +284,7 @@ std::string kslicer::CudaRewriter::RecursiveRewrite(const clang::Stmt* expr)
 
 kslicer::CudaCompiler::CudaCompiler(const std::string& a_prefix) : m_suffix(a_prefix)
 {
-  m_typesReplacement = ListSlangStandartTypeReplacements(false);
+  m_typesReplacement.clear(); 
 }
 
 std::string kslicer::CudaCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const

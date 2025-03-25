@@ -104,7 +104,9 @@ public:
   }
 
   void CommitDeviceData() override;
-
+  {% if HasGetTimeFunc %}
+  void GetExecutionTime(const char* a_funcName, float a_out[4]) override;
+  {% endif %}
   void CopyUBOToDevice(bool a_updateVectorSize = true);
   void CopyUBOFromDevice();
   void UpdateDeviceVectors();
@@ -114,12 +116,16 @@ public:
   {% endfor %}
   
   {% for MainFunc in MainFunctions %}
-  {{MainFunc.ReturnType}} {{MainFunc.MainFuncDeclCmd}} override;
+  {{MainFunc.ReturnType}} {{MainFunc.Name}}({%for Arg in MainFunc.InOutVarsAll %}{%if Arg.IsConst %}const {%endif%}{{Arg.Type}} {{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %}) override;
+  virtual {{MainFunc.ReturnType}} {{MainFunc.Name}}GPU({%for Arg in MainFunc.InOutVarsAll %}{%if Arg.IsConst %}const {%endif%}{{Arg.Type}} {{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %});
   {% endfor %}
 
 protected:
   {% for Vector in VectorMembers %}
   device_vector<{{Vector.DataType}}> {{Vector.Name}}_dev;
+  {% endfor %}
+  {% for MainFunc in MainFunctions %}
+  float m_exTime{{MainFunc.Name}}[4] = {0,0,0,0};
   {% endfor %}
 };
 
@@ -232,7 +238,12 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
 
 {% endfor %}
 {% for MainFunc in MainFunctions %}
-{{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.MainFuncDeclCmd}}
+{{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.Name}}GPU({%for Arg in MainFunc.InOutVarsAll %}{%if Arg.IsConst %}const {%endif%}{{Arg.Type}} {{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %})
+{
+  {{MainFunc.MainFuncTextCmd}}
+}
+
+{{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.Name}}({%for Arg in MainFunc.InOutVarsAll %}{%if Arg.IsConst %}const {%endif%}{{Arg.Type}} {{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %})
 {
   {% for var in MainFunc.FullImpl.InputData %}
   {{var.DataType}}* {{var.Name}}Host = {{var.Name}};
@@ -240,29 +251,84 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
   {% for var in MainFunc.FullImpl.OutputData %}
   {{var.DataType}}* {{var.Name}}Host = {{var.Name}};
   {% endfor %}
-
+  
+  cudaEvent_t _start, _stop;
+  cudaEventCreate(&_start);
+  cudaEventCreate(&_stop);
+  
+  cudaEventRecord(_start);
   {% for var in MainFunc.FullImpl.InputData %}
   cudaMalloc(&{{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endfor %}
   {% for var in MainFunc.FullImpl.OutputData %}
   cudaMalloc(&{{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endfor %}
+  cudaEventRecord(_stop);
+  cudaEventSynchronize(_stop);
+  cudaEventElapsedTime(&m_exTime{{MainFunc.Name}}[3], _start, _stop);
+  
+  cudaEventRecord(_start);
   {% for var in MainFunc.FullImpl.InputData %}
   cudaMemcpy((void*){{var.Name}}, {{var.Name}}Host, {{var.DataSize}}*sizeof({{var.DataType}}), cudaMemcpyHostToDevice);
   {% endfor %}
-
   CopyUBOToDevice(true);
-  {{MainFunc.MainFuncTextCmd}}
+  cudaEventRecord(_stop);
+  cudaEventSynchronize(_stop);
+  cudaEventElapsedTime(&m_exTime{{MainFunc.Name}}[1], _start, _stop);
+  
+  cudaEventRecord(_start);
+  {% if MainFunc.IsVoid %}
+  {{MainFunc.Name}}GPU({%for Arg in MainFunc.InOutVarsAll %}{{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %});
+  {% else %}
+  auto _resFromGPU = {{MainFunc.Name}}GPU({%for Arg in MainFunc.InOutVarsAll %}{{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %});
+  {% endif %}
+  cudaEventRecord(_stop);
+  cudaEventSynchronize(_stop);
+  cudaEventElapsedTime(&m_exTime{{MainFunc.Name}}[0], _start, _stop);
+  
+  cudaEventRecord(_start);
   CopyUBOFromDevice();
   {% for var in MainFunc.FullImpl.OutputData %}
   cudaMemcpy({{var.Name}}Host, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}), cudaMemcpyDeviceToHost);
   {% endfor %}
+  cudaEventRecord(_stop);
+  cudaEventSynchronize(_stop);
+  cudaEventElapsedTime(&m_exTime{{MainFunc.Name}}[2], _start, _stop);
+  
+  cudaEventRecord(_start);
   {% for var in MainFunc.FullImpl.InputData %}
   cudaFree((void*){{var.Name}});
   {% endfor %}
   {% for var in MainFunc.FullImpl.OutputData %}
   cudaFree({{var.Name}});
   {% endfor %}
+  cudaEventRecord(_stop);
+  cudaEventSynchronize(_stop);
+  float _timeForFree = 0.0f;
+  cudaEventElapsedTime(&_timeForFree, _start, _stop);
+  m_exTime{{MainFunc.Name}}[3] += _timeForFree;
+  cudaEventDestroy(_start);
+  cudaEventDestroy(_stop);
+  {% if not MainFunc.IsVoid %}
+  return _resFromGPU;
+  {% endif %}
 }
 
 {% endfor %}
+{% if HasGetTimeFunc %}
+
+void {{MainClassName}}{{MainClassSuffix}}::GetExecutionTime(const char* a_funcName, float a_out[4])
+{
+  {% for MainFunc in MainFunctions %}
+  {% if MainFunc.OverrideMe %}
+  if(std::string(a_funcName) == "{{MainFunc.Name}}" || std::string(a_funcName) == "{{MainFunc.Name}}Block")
+  {
+    a_out[0] = m_exTime{{MainFunc.Name}}[0];
+    a_out[1] = m_exTime{{MainFunc.Name}}[1];
+    a_out[2] = m_exTime{{MainFunc.Name}}[2];
+    a_out[3] = m_exTime{{MainFunc.Name}}[3];
+  }
+  {% endif %}
+  {% endfor %}
+}
+{% endif %}

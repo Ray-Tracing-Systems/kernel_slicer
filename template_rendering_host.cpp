@@ -1362,16 +1362,21 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     uint32_t inOutNum = 0;
     uint32_t inOutPod = 0;
     uint32_t inOutAll = 0;
-    data2["InOutVars"]    = std::vector<std::string>();
-    data2["InOutVarsPod"] = std::vector<std::string>(); //
-    data2["InOutVarsAll"] = std::vector<std::string>(); //
+    data2["InOutVars"]    = std::vector<json>();
+    data2["InOutVarsPod"] = std::vector<json>(); //
+    data2["InOutVarsAll"] = std::vector<json>(); //
     for(const auto& v : mainFunc.InOuts)
     {
+      std::string typeName = kslicer::CleanTypeName(v.type);
+      if(v.isPointer() && a_classInfo.pHostCC->Name() == "CUDA")
+        typeName += "*";
+
+      json controlArg;
+      controlArg["Name"] = v.name;
+      controlArg["Type"] = typeName;
+
       if((v.isThreadId || v.kind == DATA_KIND::KIND_POD || v.kind == DATA_KIND::KIND_UNKNOWN) && !a_classInfo.pShaderCC->IsISPC())
       {
-        json controlArg;
-        controlArg["Name"]      = v.name;
-        controlArg["Type"]      = kslicer::CleanTypeName(v.type);
         controlArg["IsTexture"] = false;
         controlArg["IsPointer"] = false;
         controlArg["IsConst"]   = v.isConst;
@@ -1382,9 +1387,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       }
       else
       {
-        json controlArg;
-        controlArg["Name"]      = v.name;
-        controlArg["Type"]      = kslicer::CleanTypeName(v.type);
         controlArg["IsTexture"] = v.isTexture();
         controlArg["IsPointer"] = v.isPointer();
         controlArg["IsConst"]   = v.isConst;
@@ -1398,6 +1400,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["InOutVarsNumPod"] = inOutPod;
     data2["InOutVarsNumAll"] = inOutAll;
     data2["InOutVarsNum"]    = inOutNum;
+    data2["InOutVarsLast"]   = mainFunc.InOuts.size()-1;
 
     // for impl, ds bindings
     //
@@ -1595,6 +1598,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["MainFuncDeclCmd"]      = mainFunc.GeneratedDecl;
     data2["MainFuncTextCmd"]      = mainFunc.CodeGenerated;
     data2["ReturnType"]           = mainFunc.ReturnType;
+    data2["IsVoid"]               = (mainFunc.ReturnType == "void");
     data2["IsRTV"]                = a_classInfo.IsRTV();
     data2["IsMega"]               = a_classInfo.megakernelRTV;
     data2["NeedThreadFlags"]      = a_classInfo.NeedThreadFlags();
