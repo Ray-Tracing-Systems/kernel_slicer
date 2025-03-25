@@ -1,7 +1,5 @@
 #include "test_class.h"
 
-using LiteMath::dot;
-
 SimpleTest::SimpleTest() {}
 
 void SimpleTest::CalcAndAccum(uint32_t a_threadsNum, float* a_out)

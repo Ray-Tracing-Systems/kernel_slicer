@@ -20,6 +20,10 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
   {% endif %}
   {% endif %}
   {% endfor %}
+  {% for MembFunc in AllMemberFunctions %}
+  
+  __device__ {{MembFunc.Text}}
+  {% endfor %}
   
   {% for Kernel in KernelList %}
   __global__ void {{Kernel.Name}}({%for Arg in Kernel.OriginalArgs %}{{Arg.Type}} {{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %})
@@ -62,6 +66,8 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
 #include <cstdint>
 #include <cassert>
 #include <chrono>
+#include <vector>
+#include <string>
 #include "{{MainInclude}}"
 {% for Include in AdditionalIncludes %}
 #include "{{Include}}"

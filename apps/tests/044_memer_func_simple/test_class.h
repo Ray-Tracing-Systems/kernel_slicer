@@ -2,8 +2,6 @@
 #include "LiteMath.h"
 #include <cstdint>
 
-using LiteMath::float4x4;
-using LiteMath::float4;
 
 class SimpleTest
 {

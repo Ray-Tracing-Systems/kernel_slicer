@@ -1420,8 +1420,9 @@ int main(int argc, const char **argv)
     json["MainInclude"]         = jsonCPP["MainInclude"];
   }
   else if(inputCodeInfo.pShaderCC->IsCUDA()) {
-    jsonCPP["KernelList"]      = json["Kernels"];
-    jsonCPP["LocalFunctions"]  = json["LocalFunctions"];
+    jsonCPP["KernelList"]         = json["Kernels"];
+    jsonCPP["LocalFunctions"]     = json["LocalFunctions"];
+    jsonCPP["AllMemberFunctions"] = json["AllMemberFunctions"];
     inputCodeInfo.pHostCC->GenerateHost(rawname + ToLowerCase(suffix), jsonCPP, inputCodeInfo, textGenSettings);
   }
 

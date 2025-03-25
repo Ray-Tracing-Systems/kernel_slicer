@@ -682,6 +682,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernels = a_classInfo.kernels;
   }
 
+  std::unordered_map<uint64_t, json> allUsedMemberFunctions;
+
   data["Kernels"] = std::vector<json>();
   for (const auto& nk : kernels)
   {
@@ -1250,6 +1252,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         funData["IsRayQuery"] = (funcDeclText.find("CRT_Hit") == 0 && funcDeclText.find("RayQuery_") != std::string::npos);
         funData["UseVFH"]     = false; 
         kernelJson["MemberFunctions"].push_back(funData);
+        
+        auto hash = kslicer::GetHashOfSourceRange(funcNode->getSourceRange());
+        allUsedMemberFunctions[hash] = funData;
       }
     }
 
@@ -1412,6 +1417,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     local["Size"] = array.second.arraySize;
     data["ThreadLocalArrays"].push_back(local);
   }
+
+  data["AllMemberFunctions"] = std::vector<json>();
+  for(const auto& pair : allUsedMemberFunctions)
+    data["AllMemberFunctions"].push_back(pair.second);
 
   return data;
 }
