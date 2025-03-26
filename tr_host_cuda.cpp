@@ -23,3 +23,30 @@ bool kslicer::MainFunctionRewriterCUDA::VisitCXXMemberCallExpr(clang::CXXMemberC
 
   return true;
 }
+
+bool kslicer::MainFunctionRewriterCUDA::VisitCallExpr(clang::CallExpr* f)
+{
+  const FunctionDecl* fDecl = f->getDirectCallee();
+  if(fDecl == nullptr)             // definitely can't process nullpointer
+    return true;
+
+  // Get name of function
+  const DeclarationNameInfo dni = fDecl->getNameInfo();
+  const DeclarationName dn      = dni.getName();
+  const std::string fname       = dn.getAsString();
+
+  if(fname == "memcpy")
+  {
+    std::stringstream strOut;
+    strOut << "cudaMemcpy(";
+    for (unsigned i = 0; i < f->getNumArgs(); ++i) {
+      const clang::Expr* arg = f->getArg(i);
+      const std::string exprContent = GetRangeSourceCode(arg->getSourceRange(), m_compiler);
+      strOut << exprContent.c_str() << ", ";
+    }
+    strOut << "cudaMemcpyDeviceToDevice)";
+    m_rewriter.ReplaceText(f->getSourceRange(), strOut.str());
+  }
+
+  return true;
+}

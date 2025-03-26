@@ -1,9 +1,18 @@
 
 #include "LiteMath.h"
 #include <extended/lm_device_vector.h> // also from LiteMath
+#include "{{MainInclude}}"
+#include <cfloat>
 
 namespace {{MainClassName}}{{MainClassSuffix}}_DEV
 {
+  using _Bool = bool;
+  {% for Decl in ClassDecls %}
+  {% if Decl.InClass and Decl.IsType %}
+  using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data type to kernels
+  {% endif %}
+  {% endfor %}
+
   {% for LocalFunc in LocalFunctions %} 
   __device__ {{LocalFunc}}
 
@@ -59,6 +68,36 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
   }
   
   {% endif %}
+  __device__ float atomicMin(float* address, float val) 
+  {
+    int* addr_as_int = (int*)address;
+    int old = *addr_as_int;
+    int expected;
+    do {
+        expected = old;
+        float current_val = __int_as_float(old);
+        if (val >= current_val) 
+          break;  // Если новое значение не меньше, выходим
+        old = atomicCAS(addr_as_int, expected, __float_as_int(val));
+    } while (expected != old);
+    return __int_as_float(old);
+  }
+
+  __device__ float atomicMax(float* address, float val) 
+  {
+    int* addr_as_int = (int*)address;
+    int old = *addr_as_int;
+    int expected;
+    do {
+        expected = old;
+        float current_val = __int_as_float(old);
+        if (val <= current_val) 
+          break;  // Если новое значение не больше, выходим
+        old = atomicCAS(addr_as_int, expected, __float_as_int(val));
+    } while (expected != old);
+    return __int_as_float(old);
+  }
+ 
   {% for Kernel in KernelList %}
   __global__ void {{Kernel.Name}}({%for Arg in Kernel.OriginalArgs %}{{Arg.Type}} {{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %})
   {
@@ -107,6 +146,24 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
     {% endif %} {# /* END of 'if Kernel.HasEpilog'  */ #}
   }
 
+  {% if Kernel.IsIndirect and not Kernel.IsSingleThreaded %}
+  __global__ void {{Kernel.Name}}_Indirect({%for Arg in Kernel.OriginalArgs %}{{Arg.Type}} {{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %})
+  {
+    dim3 blocksNum, blockSize;
+    blocksNum.x = ({{Kernel.IndirectSizeX}} - {{Kernel.IndirectStartX}} + {{Kernel.WGSizeX}} - 1)/{{Kernel.WGSizeX}};
+    {% if Kernel.threadDim == 2 %}
+    blocksNum.y = ({{Kernel.IndirectSizeY}} - {{Kernel.IndirectStartY}} + {{Kernel.WGSizeY}} - 1)/{{Kernel.WGSizeY}};
+    {% endif %}
+    {% if Kernel.threadDim == 3 %}
+    blocksNum.z = ({{Kernel.IndirectSizeZ}} - {{Kernel.IndirectStartZ}} + {{Kernel.WGSizeZ}} - 1)/{{Kernel.WGSizeZ}};
+    {% endif %}
+    blockSize.x = {{Kernel.WGSizeX}};
+    blockSize.y = {{Kernel.WGSizeY}};
+    blockSize.z = {{Kernel.WGSizeZ}};
+    {{Kernel.Name}}<<<blocksNum, blockSize>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
+  }
+  
+  {% endif %}
   {% endfor %}
 };
 
@@ -285,12 +342,16 @@ void {{MainClassName}}{{MainClassSuffix}}::CommitDeviceData()
 {% for Kernel in Kernels %}
 void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
 {
-  dim3 block({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}});
-  dim3 grid(({{Kernel.tidX}} + block.x - 1) / block.x, ({{Kernel.tidY}} + block.y - 1) / block.y, ({{Kernel.tidZ}} + block.z - 1) / block.z);
   {% if Kernel.HasLoopInit %}
   {{MainClassName}}{{MainClassSuffix}}_DEV::{{Kernel.OriginalName}}_Init<<<1,1>>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
   {% endif %}
+  {% if Kernel.IsIndirect %}
+  {{MainClassName}}{{MainClassSuffix}}_DEV::{{Kernel.OriginalName}}_Indirect<<<1, 1>>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
+  {% else %}
+  dim3 block({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}});
+  dim3 grid(({{Kernel.tidX}} + block.x - 1) / block.x, ({{Kernel.tidY}} + block.y - 1) / block.y, ({{Kernel.tidZ}} + block.z - 1) / block.z);
   {{MainClassName}}{{MainClassSuffix}}_DEV::{{Kernel.OriginalName}}<<<grid, block>>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
+  {% endif %}
   {% if Kernel.HasLoopFinish %}
   {{MainClassName}}{{MainClassSuffix}}_DEV::{{Kernel.OriginalName}}_Finish<<<1,1>>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
   {% endif %}

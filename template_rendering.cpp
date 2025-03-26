@@ -1169,29 +1169,29 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       if(k.loopIters.size() > 0)
       {
-        std::string exprContent      = kslicer::ReplaceSizeCapacityExpr(k.loopIters[0].sizeText);
+        std::string exprContent      = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[0].sizeText);
         kernelJson["IndirectSizeX"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
         kernelJson["IndirectStartX"] = kernelJson["ThreadIds"][0]["Start"];
       }
 
       if(k.loopIters.size() > 1)
       {
-        std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[1].sizeText);
-        kernelJson["IndirectSizeY"] = a_classInfo.pShaderCC->UBOAccess(exprContent);
+        std::string exprContent      = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[1].sizeText);
+        kernelJson["IndirectSizeY"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
         kernelJson["IndirectStartY"] = kernelJson["ThreadIds"][1]["Start"];
       }
 
       if(k.loopIters.size() > 2)
       {
-        std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[2].sizeText);
-        kernelJson["IndirectSizeZ"] = a_classInfo.pShaderCC->UBOAccess(exprContent);
+        std::string exprContent      = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[2].sizeText);
+        kernelJson["IndirectSizeZ"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
         kernelJson["IndirectStartZ"] = kernelJson["ThreadIds"][2]["Start"];
       }
-
+       
       kernelJson["IndirectOffset"] = k.indirectBlockOffset;
-      kernelJson["threadSZName1"]  = "kgen_iNumElementsX";
-      kernelJson["threadSZName2"]  = "kgen_iNumElementsY";
-      kernelJson["threadSZName3"]  = "kgen_iNumElementsZ";
+      kernelJson["threadSZName1"]  = "kgen_iNumElementsX"; // TODO: get this for inirect diapatch with CUDA
+      kernelJson["threadSZName2"]  = "kgen_iNumElementsY"; // TODO: get this for inirect diapatch with CUDA
+      kernelJson["threadSZName3"]  = "kgen_iNumElementsZ"; // TODO: get this for inirect diapatch with CUDA
     }
     else
     {
@@ -1425,7 +1425,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   return data;
 }
 
-std::string kslicer::ReplaceSizeCapacityExpr(const std::string& a_str)
+std::string kslicer::IShaderCompiler::ReplaceSizeCapacityExpr(const std::string& a_str) const
 {
   const auto posOfPoint = a_str.find(".");
   if(posOfPoint != std::string::npos)

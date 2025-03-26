@@ -93,6 +93,8 @@ namespace kslicer
     MainClassInfo*   m_pCodeInfo = nullptr;
 
     bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f);
+    bool VisitCallExpr(clang::CallExpr* f);
+    
 
   private:
 

@@ -15,11 +15,11 @@ public:
 
   RedPixels(){}
 
-  typedef struct PixelInfoT
+  struct PixelInfo
   {
     uint32_t value;
     uint32_t index;
-  }PixelInfo;
+  };
 
   typedef uint32_t MyHandle;
   

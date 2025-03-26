@@ -1173,6 +1173,7 @@ namespace kslicer
     bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
 
     bool VisitMemberExpr_Impl(clang::MemberExpr* expr)      override;
+    bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* call) override;
     bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override;
     bool VisitCallExpr_Impl(clang::CallExpr* f)               override;
     bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* f) override; 
@@ -1194,6 +1195,7 @@ namespace kslicer
     IShaderCompiler(){}
     virtual ~IShaderCompiler(){}
     virtual std::string UBOAccess(const std::string& a_name) const = 0;
+    virtual std::string ReplaceSizeCapacityExpr(const std::string& a_str) const;
     virtual std::string ProcessBufferType(const std::string& a_typeName) const { return a_typeName; };
   
     virtual bool        IsSingleShader()   const = 0;
@@ -1376,6 +1378,7 @@ namespace kslicer
   {
     CudaCompiler(const std::string& a_prefix);
     std::string UBOAccess(const std::string& a_name) const override { return a_name; } //std::string("ubo.") + a_name; };
+    std::string ReplaceSizeCapacityExpr(const std::string& a_str) const override { return a_str; }
     std::string ProcessBufferType(const std::string& a_typeName) const override;
 
     bool        IsSingleShader()                     const override { return true; }
@@ -1728,7 +1731,6 @@ namespace kslicer
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::SourceManager& sm);
   std::string CutOffFileExt(const std::string& a_filePath);
   std::string CutOffStructClass(const std::string& a_typeName);
-  std::string ReplaceSizeCapacityExpr(const std::string& a_str);
   
   FuncData FuncDataFromKernel(const kslicer::KernelInfo& k);
   uint64_t GetHashOfSourceRange(const clang::SourceRange& a_range);

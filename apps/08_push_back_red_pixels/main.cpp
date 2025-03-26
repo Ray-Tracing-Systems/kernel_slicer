@@ -11,8 +11,13 @@
 #define JSON_LOG_IMPLEMENTATION
 #include <JSONLog.hpp>
 
+#ifdef USE_VULKAN
 #include "vk_context.h"
 std::shared_ptr<RedPixels> CreateRedPixels_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+#endif
+#ifdef USE_CUDA
+std::shared_ptr<RedPixels> CreateRedPixels_Generated();
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -37,9 +42,14 @@ int main(int argc, const char** argv)
   
   if(onGPU)
   {
+    #ifdef USE_VULKAN
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
     auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateRedPixels_Generated(ctx, inputImageData.size());
+    #endif
+    #ifdef USE_CUDA
+    pImpl = CreateRedPixels_Generated();
+    #endif
   }
   else
     pImpl = std::make_shared<RedPixels>();
@@ -71,6 +81,8 @@ int main(int argc, const char** argv)
   std::cout << "ProcessPixels(ovrh) = " << timings[3]              << " ms " << std::endl;
 
   pImpl = nullptr;
+  #ifdef USE_VULKAN
   vk_utils::globalContextDestroy();
+  #endif
   return 0;
 }

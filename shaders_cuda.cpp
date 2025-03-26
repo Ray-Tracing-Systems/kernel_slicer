@@ -117,8 +117,17 @@ bool kslicer::CudaRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
   return true; 
 }
 
-bool kslicer::CudaRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  { return true; } 
-bool kslicer::CudaRewriter::VisitFieldDecl_Impl(clang::FieldDecl* decl)               { return true; }
+bool kslicer::CudaRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  
+{ 
+  if(m_kernelMode)
+  {
+   
+  }
+
+  return true; 
+} 
+
+bool kslicer::CudaRewriter::VisitFieldDecl_Impl(clang::FieldDecl* decl) { return true; }
 
 std::string kslicer::CudaRewriter::VectorTypeContructorReplace(const std::string& fname, const std::string& callText)
 {
