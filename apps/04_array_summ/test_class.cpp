@@ -21,4 +21,5 @@ void Numbers::kernel1D_ArraySumm(const int* a_data, size_t a_dataSize)
     if(a_data[i] > 0)
       m_summ += a_data[i];
   }
+  m_summ += 1; // test for loop end
 }

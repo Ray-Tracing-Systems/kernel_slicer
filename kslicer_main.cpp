@@ -833,7 +833,7 @@ int main(int argc, const char **argv)
       uint32_t buffNumber = 0;
       for(auto& redVar : kernel.subjectedToReduction)
       {
-        if(redVar.second.SupportAtomicLastStep() || inputCodeInfo.pShaderCC->IsISPC())
+        if(inputCodeInfo.pShaderCC->SupportAtomicGlobal(redVar.second))
           continue;
 
         std::stringstream strOut;

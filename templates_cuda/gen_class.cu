@@ -28,6 +28,7 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
   {% for Kernel in KernelList %}
   __global__ void {{Kernel.Name}}({%for Arg in Kernel.OriginalArgs %}{{Arg.Type}} {{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %})
   {
+    {% if not Kernel.IsSingleThreaded %}
     const uint _threadID[3] = {
       blockIdx.x * blockDim.x + threadIdx.x,
       blockIdx.y * blockDim.y + threadIdx.y,
@@ -52,13 +53,26 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
     if({{Kernel.threadName1}} >= {{Kernel.threadSZName1}} + {{Kernel.CondLE1}})
       runThisThread = false;
     {% endif %}
+    {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                        
+    {% include "inc_red_init.cu" %}
+    {% endif %} 
     {% endif %} {# /* if not Kernel.EnableBlockExpansion */ #}
     if(runThisThread) 
     {
+    {% endif %} {# /* if not Kernel.IsSingleThreaded */ #}
     {{Kernel.Source}}
+    {% if not Kernel.EnableBlockExpansion and not Kernel.IsSingleThreaded %}
     }
+    {% endif %}
+    {% if Kernel.HasEpilog %}
+    // GENERATED EPILOG:
+    //
+    {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                      
+    {% include "inc_red_finish.cu" %}
+    {% endif %}
+    {% endif %} {# /* END of 'if Kernel.HasEpilog'  */ #}
   }
-
+  
   {% endfor %}
 };
 
@@ -239,7 +253,13 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
 {
   dim3 block({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}});
   dim3 grid(({{Kernel.tidX}} + block.x - 1) / block.x, ({{Kernel.tidY}} + block.y - 1) / block.y, ({{Kernel.tidZ}} + block.z - 1) / block.z);
+  {% if Kernel.HasLoopInit %}
+  {{MainClassName}}{{MainClassSuffix}}_DEV::{{Kernel.OriginalName}}_Init<<<1,1>>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
+  {% endif %}
   {{MainClassName}}{{MainClassSuffix}}_DEV::{{Kernel.OriginalName}}<<<grid, block>>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
+  {% if Kernel.HasLoopFinish %}
+  {{MainClassName}}{{MainClassSuffix}}_DEV::{{Kernel.OriginalName}}_Finish<<<1,1>>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
+  {% endif %}
 }
 
 {% endfor %}

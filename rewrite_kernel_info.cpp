@@ -303,8 +303,8 @@ bool kslicer::KernelInfoVisitor::VisitUnaryOperator(clang::UnaryOperator* expr)
       else if(op == "--")
         access.type    = kslicer::KernelInfo::REDUCTION_TYPE::SUB_ONE;
 
-      
-      m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
+      bool supportAtomicForThisType = m_codeInfo->pShaderCC->SupportAtomicGlobal(access);
+      m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !supportAtomicForThisType; // if atomics can not be used, we must insert additional finish pass
       m_currKernel.subjectedToReduction[leftStr] = access;
     }
   }
@@ -367,8 +367,8 @@ void kslicer::KernelInfoVisitor::ProcessReductionOp(const std::string& op, const
       access.type    = kslicer::KernelInfo::REDUCTION_TYPE::SUB;
     
     //auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
-
-    m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
+    bool supportAtomicForThisType = m_codeInfo->pShaderCC->SupportAtomicGlobal(access);
+    m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !supportAtomicForThisType; // if atomics can not be used, we must insert additional finish pass
     m_currKernel.subjectedToReduction[leftStr] = access;
   }
 }
@@ -438,8 +438,8 @@ void kslicer::KernelInfoVisitor::DetectFuncReductionAccess(const clang::Expr* lh
   access.dataType  = lhs->getType().getAsString();
 
   //auto exprHash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
-
-  m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !access.SupportAtomicLastStep(); // if atomics can not be used, we must insert additional finish pass
+  bool supportAtomicForThisType = m_codeInfo->pShaderCC->SupportAtomicGlobal(access);
+  m_currKernel.hasFinishPass = m_currKernel.hasFinishPass || !supportAtomicForThisType; // if atomics can not be used, we must insert additional finish pass
   m_currKernel.subjectedToReduction[leftStr] = access;
 }
 

@@ -458,7 +458,7 @@ static json ReductionAccessFill(const kslicer::KernelInfo::ReductionAccess& seco
   varJ["NegLastStep"]   = (second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB || second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB_ONE);
   varJ["BinFuncForm"]   = (second.type == kslicer::KernelInfo::REDUCTION_TYPE::FUNC);
   varJ["OutTempName"]   = second.tmpVarName;
-  varJ["SupportAtomic"] = second.SupportAtomicLastStep();
+  varJ["SupportAtomic"] = pShaderCC->SupportAtomicGlobal(second); 
   varJ["AtomicOp"]      = pShaderCC->GetAtomicImplCode(second);
   varJ["SubgroupOp"]    = pShaderCC->GetSubgroupOpCode(second);
   //varJ["UseSubgroups"]  = second.useSubGroups;

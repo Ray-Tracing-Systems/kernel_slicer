@@ -289,26 +289,24 @@ kslicer::CudaCompiler::CudaCompiler(const std::string& a_prefix) : m_suffix(a_pr
 
 std::string kslicer::CudaCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const
 {
-  // uint3 a_localTID  : SV_GroupThreadID
-  // uint3 a_globalTID : SV_DispatchThreadID
   if(a_kernelDim == 1)
-    return "a_localTID.x";
+    return "threadIdx.x";
   else if(a_kernelDim == 2)
   {
     std::stringstream strOut;
-    strOut << "a_localTID.x + " << a_wgSize[0] << "*a_localTID.y";
+    strOut << "threadIdx.x + " << a_wgSize[0] << "*threadIdx.y";
     return strOut.str();
   }
   else if(a_kernelDim == 3)
   {
     std::stringstream strOut;
-    strOut << "a_localTID.x + " << a_wgSize[0] << "*a_localTID.y + " << a_wgSize[0]*a_wgSize[1] << "*a_localTID.z";
+    strOut << "threadIdx.x + " << a_wgSize[0] << "*threadIdx.y + " << a_wgSize[0]*a_wgSize[1] << "*threadIdx.z";
     return strOut.str();
   }
   else
   {
-    std::cout << "  [SlangCompiler::LocalIdExpr]: Error, bad kernelDim = " << a_kernelDim << std::endl;
-    return "a_localTID.x";
+    std::cout << "  [CudaCompiler::LocalIdExpr]: Error, bad kernelDim = " << a_kernelDim << std::endl;
+    return "threadIdx.x";
   }
 }
 
@@ -353,23 +351,23 @@ std::string kslicer::CudaCompiler::GetSubgroupOpCode(const kslicer::KernelInfo::
 
 std::string kslicer::CudaCompiler::GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const
 {
-  std::string res = "InterlockedUnknown";
+  std::string res = "atomicUnknown";
   switch(a_access.type)
   {
     case KernelInfo::REDUCTION_TYPE::ADD_ONE:
     case KernelInfo::REDUCTION_TYPE::ADD:
-    res = "InterlockedAdd";
+    res = "atomicAdd";
     break;
 
     case KernelInfo::REDUCTION_TYPE::SUB:
     case KernelInfo::REDUCTION_TYPE::SUB_ONE:
-    res = "InterlockedAdd";
+    res = "atomicAdd";
     break;
 
     case KernelInfo::REDUCTION_TYPE::FUNC:
     {
-      if(a_access.funcName == "min" || a_access.funcName == "std::min") res = "InterlockedMin";
-      if(a_access.funcName == "max" || a_access.funcName == "std::max") res = "InterlockedMax";
+      if(a_access.funcName == "min" || a_access.funcName == "std::min") res = "atomicMin";
+      if(a_access.funcName == "max" || a_access.funcName == "std::max") res = "atomicMax";
     }
     break;
 

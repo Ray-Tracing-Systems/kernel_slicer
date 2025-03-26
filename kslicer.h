@@ -1222,6 +1222,8 @@ namespace kslicer
     virtual bool UseSeparateUBOForArguments() const { return false; }
     virtual bool UseSpecConstForWgSize() const { return false; }
     virtual void GetThreadSizeNames(std::string a_strs[3]) const = 0;
+    
+    virtual bool        SupportAtomicGlobal(const KernelInfo::ReductionAccess& acc)             const { return acc.SupportAtomicLastStep(); } 
     virtual std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const { return "unknownSubgroup"; }
     virtual std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const { return "unknownAtomic";}
 
@@ -1292,6 +1294,8 @@ namespace kslicer
     std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) override;
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
     bool        BuffersAsPointersInShaders() const override { return false; }
+
+    bool        SupportAtomicGlobal(const KernelInfo::ReductionAccess& acc) const override { return true; }
   };
 
   struct GLSLCompiler : IShaderCompiler
@@ -1389,6 +1393,7 @@ namespace kslicer
     void        GetThreadSizeNames(std::string a_strs[3])               const override;
     std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
     std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
+    bool        SupportAtomicGlobal(const KernelInfo::ReductionAccess& acc) const override { return true; }
 
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,

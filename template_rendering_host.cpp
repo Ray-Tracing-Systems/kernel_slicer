@@ -1157,10 +1157,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
     // identify wherther we nedd to add reduction pass after current kernel
     //
-    json reductionVarNames = std::vector<std::string>();
+    json reductionVarNames = std::vector<json>();
     for(const auto& var : k.subjectedToReduction)
     {
-      if(!var.second.SupportAtomicLastStep())
+      if(!a_classInfo.pShaderCC->SupportAtomicGlobal(var.second))
       {
         json varData;
         varData["Name"] = var.second.tmpVarName;

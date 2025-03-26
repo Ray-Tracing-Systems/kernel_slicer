@@ -5,13 +5,18 @@
 #include <cstdint>
 
 #include "test_class.h"
-#include "test_class_generated.h"
 #include "ArgParser.h"
 #define JSON_LOG_IMPLEMENTATION
 #include "JSONLog.hpp"
 
+#ifdef USE_VULKAN
 #include "vk_context.h"
 std::shared_ptr<Numbers> CreateNumbers_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+vk_utils::VulkanDeviceFeatures Numbers_Generated_ListRequiredDeviceFeatures();
+#endif
+#ifdef USE_CUDA
+std::shared_ptr<Numbers> CreateNumbers_Generated();
+#endif
 #ifdef USE_ISPC
 std::shared_ptr<Numbers> CreateNumbers_ISPC();
 #endif
@@ -52,13 +57,15 @@ int main(int argc, const char** argv)
   std::shared_ptr<Numbers> pImpl = nullptr;
   if(onGPU)
   {
+    #ifdef USE_VULKAN
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-
-    std::vector<const char*> requiredExtensions;
-    auto deviceFeatures = Numbers_Generated::ListRequiredDeviceFeatures(requiredExtensions);
-    auto ctx            = vk_utils::globalContextInit(requiredExtensions, enableValidationLayers, a_preferredDeviceId, &deviceFeatures);
-    //auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
-    pImpl = CreateNumbers_Generated(ctx, array.size());
+    auto features = Numbers_Generated_ListRequiredDeviceFeatures();
+    auto ctx      = vk_utils::globalContextInit(features.extensionNames, enableValidationLayers, a_preferredDeviceId, &features.features2);
+    pImpl         = CreateNumbers_Generated(ctx, array.size());
+    #endif
+    #ifdef USE_CUDA
+    pImpl = CreateNumbers_Generated();
+    #endif
   }
   #ifdef USE_ISPC
   else if(isISPC)
@@ -66,7 +73,7 @@ int main(int argc, const char** argv)
   #endif
   else
     pImpl = std::make_shared<Numbers>();
-
+  
   pImpl->CalcArraySumm(array.data(), unsigned(array.size()));
 
   JSONLog::write("array summ", pImpl->m_summ);
@@ -82,6 +89,8 @@ int main(int argc, const char** argv)
   std::cout << "CalcArraySumm(ovrh) = " << timings[3]              << " ms " << std::endl;
   
   pImpl = nullptr;
+  #ifdef USE_VULKAN
   vk_utils::globalContextDestroy();  
+  #endif
   return 0;
 }
