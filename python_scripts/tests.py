@@ -126,7 +126,7 @@ def run_test(sample_config: SampleConfig, test_config: TestsConfig, workdir):
             if return_code != 0:
                 os.chdir(workdir)
                 return -1
-            return_code = compile_sample(sample_config, test_config.num_threads, enable_ispc = False)
+            return_code = compile_sample(sample_config, test_config.num_threads, enable_ispc = (sample_config.shaderType == "ispc"), enable_cuda = (sample_config.shaderType == "cuda"))
             if return_code != 0:
                 return -1
             return_code = run_sample(sample_config.name, on_gpu=True, gpu_id=test_config.gpu_id)
@@ -144,7 +144,7 @@ def run_test(sample_config: SampleConfig, test_config: TestsConfig, workdir):
             if return_code != 0:
                 os.chdir(workdir)
                 return -1
-            return_code = compile_sample(sample_config, test_config.num_threads, enable_ispc = False)
+            return_code = compile_sample(sample_config, test_config.num_threads, enable_ispc = (sample_config.shaderType == "ispc"), enable_cuda = (sample_config.shaderType == "cuda"))
             if return_code != 0:
                 return -1
             return_code = run_sample(sample_config.name, on_gpu=True, gpu_id=test_config.gpu_id)

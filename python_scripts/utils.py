@@ -74,10 +74,12 @@ def cmake_build(build_dir="build", build_type="Release", return_to_root=True, nu
         args.append("-DUSE_CUDA=ON")
         args.append("-DUSE_VULKAN=OFF")
     else:
-      args.append("-DUSE_VULKAN=ON")
+        args.append("-DUSE_VULKAN=ON")
+      
     if enable_ispc:
         args.append("-DUSE_ISPC=ON")
-    #print(args)
+    #print("enable_cuda = ", enable_cuda)
+    #print("cmake args: ", args)
     res = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if res.returncode != 0:
         return res, "cmake build failed"
