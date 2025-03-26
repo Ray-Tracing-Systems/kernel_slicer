@@ -66,7 +66,6 @@ set(VKUTILS_SOURCE ../vkutils/vk_utils.cpp
                    ../vkutils/vk_pipeline.cpp
                    ../vkutils/vk_descriptor_sets.cpp)                
 
-
 set(LIBS ${FREEIMAGE_LIBRARIES} OpenMP::OpenMP_CXX)
 
 if(USE_CUDA)

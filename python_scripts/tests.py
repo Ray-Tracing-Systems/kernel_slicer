@@ -29,11 +29,11 @@ def compile_shaders(shader_lang, shader_folder):
     elif shader_lang == ShaderLang.ISPC:
         res = subprocess.run(["bash", "z_build_ispc.sh"],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
+    elif shader_lang == ShaderLang.CUDA:
+        res = subprocess.CompletedProcess(args=[], returncode=0, stdout=b"OK\n", stderr=b"")
     return res
 
-
-def compile_sample(sample_config, num_threads=1, enable_ispc = False):
+def compile_sample(sample_config, num_threads=1, enable_ispc = False, enable_cuda = False):
     os.chdir(sample_config.root)
     #Log().info("sample_config.shader_lang = {}".format(sample_config.shader_lang))  ############################################# (!!!!)
     Log().info("Building sample shaders: {}".format(sample_config.name))
@@ -44,7 +44,7 @@ def compile_sample(sample_config, num_threads=1, enable_ispc = False):
         return -1
     
     Log().info("Building sample cppcode: {}".format(sample_config.name))
-    res, msg = utils.cmake_build("build", "Release", return_to_root=True, num_threads=num_threads, clearAll=True, enable_ispc=enable_ispc)
+    res, msg = utils.cmake_build("build", "Release", return_to_root=True, num_threads=num_threads, clearAll=True, enable_ispc=enable_ispc, enable_cuda=enable_cuda)
     if res.returncode != 0:
         Log().status_info("{} release build: ".format(sample_config.name) + msg, status=Status.FAILED)
         Log().save_std_output("{}_release_build".format(sample_config.name), res.stdout.decode(), res.stderr.decode())
@@ -100,7 +100,7 @@ def run_test(sample_config: SampleConfig, test_config: TestsConfig, workdir):
     if return_code != 0:
         os.chdir(workdir)
         return -1
-    return_code = compile_sample(sample_config, test_config.num_threads, enable_ispc = (sample_config.shaderType == "ispc"))
+    return_code = compile_sample(sample_config, test_config.num_threads, enable_ispc = (sample_config.shaderType == "ispc"), enable_cuda = (sample_config.shaderType == "cuda"))
     if return_code != 0:
         return -1
 

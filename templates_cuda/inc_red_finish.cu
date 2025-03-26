@@ -26,11 +26,7 @@
     if(localId < {{Kernel.WarpSize}})
     {
     {% for redvar in Kernel.SubjToRed %}
-    {% if redvar.BinFuncForm %}
-    {{redvar.Name}}Shared[0] = {{redvar.SubgroupOp}}({{redvar.Op2}}({{redvar.Name}}Shared[localId], {{redvar.Name}}Shared[localId + {{Kernel.WarpSize}}]) );
-    {% else %}
-    {{redvar.Name}}Shared[0] = {{redvar.SubgroupOp}}({{redvar.Name}}Shared[localId] {{redvar.Op2}} {{redvar.Name}}Shared[localId + {{Kernel.WarpSize}}] );
-    {% endif %}
+    {{redvar.SubgroupOp}}({{redvar.Name}}Shared, localId);
     {% endfor %}                                      {# /* end put subgroup here */ #}
     {% for redvar in Kernel.ArrsToRed %}              {# /* begin put subgroup */ #}
     {% for index in range(redvar.ArraySize) %}        {# /* begin put subgroup */ #}

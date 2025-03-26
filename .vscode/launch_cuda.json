@@ -15,7 +15,7 @@
                         "-I${workspaceFolder}/TINYSTL",          "ignore", 
                         "-shaderCC", "cuda",
                         "-warpSize", "32",
-                        "-enableSubgroup", "1",
+                        "-enableSubgroup", "0",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,

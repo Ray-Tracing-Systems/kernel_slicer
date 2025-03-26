@@ -324,23 +324,23 @@ std::string kslicer::CudaCompiler::GetSubgroupOpCode(const kslicer::KernelInfo::
   {
     case KernelInfo::REDUCTION_TYPE::ADD_ONE:
     case KernelInfo::REDUCTION_TYPE::ADD:
-    res = "WaveActiveSum";
+    res = "WarpReduceSum";
     break;
 
     case KernelInfo::REDUCTION_TYPE::SUB:
     case KernelInfo::REDUCTION_TYPE::SUB_ONE:
-    res = "WaveActiveSum";
+    res = "WarpReduceSum";
     break;
 
     case KernelInfo::REDUCTION_TYPE::FUNC:
     {
-      if(a_access.funcName == "min" || a_access.funcName == "std::min") res = "WaveActiveMin";
-      if(a_access.funcName == "max" || a_access.funcName == "std::max") res = "WaveActiveMax";
+      if(a_access.funcName == "min" || a_access.funcName == "std::min") res = "WarpReduceMin";
+      if(a_access.funcName == "max" || a_access.funcName == "std::max") res = "WarpReduceMax";
     }
     break;
 
     case KernelInfo::REDUCTION_TYPE::MUL:
-    res = "WaveActiveMul";
+    res = "WarpReduceMul";
     break;
 
     default:

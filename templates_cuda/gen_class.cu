@@ -24,7 +24,41 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
   
   __device__ {{MembFunc.Text}}
   {% endfor %}
+  {% if UseSubGroups %}
+  template<typename T>
+  __device__ void WarpReduceSum(volatile T* sdata, int tid) 
+  {
+    sdata[tid] += sdata[tid + 32];
+    sdata[tid] += sdata[tid + 16];
+    sdata[tid] += sdata[tid + 8];
+    sdata[tid] += sdata[tid + 4];
+    sdata[tid] += sdata[tid + 2];
+    sdata[tid] += sdata[tid + 1];
+  }
+
+  template<typename T>
+  __device__ void WarpReduceMin(volatile T* sdata, int tid) 
+  {
+    sdata[tid] = min(sdata[tid], sdata[tid + 32]);
+    sdata[tid] = min(sdata[tid], sdata[tid + 16]);
+    sdata[tid] = min(sdata[tid], sdata[tid + 8]);
+    sdata[tid] = min(sdata[tid], sdata[tid + 4]);
+    sdata[tid] = min(sdata[tid], sdata[tid + 2]);
+    sdata[tid] = min(sdata[tid], sdata[tid + 1]);
+  }
+
+  template<typename T>
+  __device__ void WarpReduceMax(volatile T* sdata, int tid) 
+  {
+    sdata[tid] = max(sdata[tid], sdata[tid + 32]);
+    sdata[tid] = max(sdata[tid], sdata[tid + 16]);
+    sdata[tid] = max(sdata[tid], sdata[tid + 8]);
+    sdata[tid] = max(sdata[tid], sdata[tid + 4]);
+    sdata[tid] = max(sdata[tid], sdata[tid + 2]);
+    sdata[tid] = max(sdata[tid], sdata[tid + 1]);
+  }
   
+  {% endif %}
   {% for Kernel in KernelList %}
   __global__ void {{Kernel.Name}}({%for Arg in Kernel.OriginalArgs %}{{Arg.Type}} {{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %})
   {
@@ -72,7 +106,7 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
     {% endif %}
     {% endif %} {# /* END of 'if Kernel.HasEpilog'  */ #}
   }
-  
+
   {% endfor %}
 };
 
