@@ -116,6 +116,18 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
     {% endfor %}
     bool runThisThread = true;
     {% if not Kernel.EnableBlockExpansion %}
+    {% if Kernel.IsIndirect %}
+    {% if Kernel.threadDim == 3 %}
+    if({{Kernel.threadName1}} >= {{Kernel.IndirectSizeX}} + {{Kernel.CondLE1}} || {{Kernel.threadName2}} >= {{Kernel.IndirectSizeY}} + {{Kernel.CondLE2}} || {{Kernel.threadName3}} >= {{Kernel.IndirectSizeZ}} + {{Kernel.CondLE3}})
+      runThisThread = false;
+    {% else if Kernel.threadDim == 2 %}
+    if({{Kernel.threadName1}} >= {{Kernel.IndirectSizeX}} + {{Kernel.CondLE1}} || {{Kernel.threadName2}} >= {{Kernel.IndirectSizeY}} + {{Kernel.CondLE2}})
+      runThisThread = false;
+    {% else %}
+    if({{Kernel.threadName1}} >= {{Kernel.IndirectSizeX}} + {{Kernel.CondLE1}})
+      runThisThread = false;
+    {% endif %}
+    {% else %}
     {% if Kernel.threadDim == 3 %}
     if({{Kernel.threadName1}} >= {{Kernel.threadSZName1}} + {{Kernel.CondLE1}} || {{Kernel.threadName2}} >= {{Kernel.threadSZName2}} + {{Kernel.CondLE2}} || {{Kernel.threadName3}} >= {{Kernel.threadSZName3}} + {{Kernel.CondLE3}})
       runThisThread = false;
@@ -126,6 +138,7 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
     if({{Kernel.threadName1}} >= {{Kernel.threadSZName1}} + {{Kernel.CondLE1}})
       runThisThread = false;
     {% endif %}
+    {% endif %} {# /* if Kernel.IsIndirect  */ #}
     {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                        
     {% include "inc_red_init.cu" %}
     {% endif %} 
@@ -160,7 +173,7 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
     blockSize.x = {{Kernel.WGSizeX}};
     blockSize.y = {{Kernel.WGSizeY}};
     blockSize.z = {{Kernel.WGSizeZ}};
-    {{Kernel.Name}}<<<blocksNum, blockSize>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
+    {{Kernel.Name}}<<<blocksNum, blockSize>>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
   }
   
   {% endif %}
@@ -347,6 +360,7 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
   {% endif %}
   {% if Kernel.IsIndirect %}
   {{MainClassName}}{{MainClassSuffix}}_DEV::{{Kernel.OriginalName}}_Indirect<<<1, 1>>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
+  cudaDeviceSynchronize(); // do we need to wait here? 
   {% else %}
   dim3 block({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}});
   dim3 grid(({{Kernel.tidX}} + block.x - 1) / block.x, ({{Kernel.tidY}} + block.y - 1) / block.y, ({{Kernel.tidZ}} + block.z - 1) / block.z);

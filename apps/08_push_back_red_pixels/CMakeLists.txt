@@ -59,6 +59,7 @@ set(VKUTILS_SOURCE ../vkutils/vk_utils.cpp
 set(LIBS OpenMP::OpenMP_CXX)
 
 if(USE_CUDA)
+  set(CUDA_SEPARABLE_COMPILATION ON)
   set(CMAKE_CUDA_ARCHITECTURES "60;70;75;80")
   cuda_add_library(test_class_cuda test_class_generated.cu)
   list(APPEND LIBS test_class_cuda)
