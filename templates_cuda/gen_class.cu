@@ -289,12 +289,8 @@ void {{MainClassName}}{{MainClassSuffix}}::CopyUBOToDevice(bool a_updateVectorSi
   {% endfor %}
   if(a_updateVectorSize)
   {
-    using size_type = LiteMathExtended::device_vector<int>::size_type;
-    {% for Var in ClassVectorVars %}
-    {
-      const size_type currSize = {{Var.Name}}_dev.size();
-      cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}.m_size, &currSize, sizeof(size_type));
-    }
+    {% for Var in VectorMembers %}
+    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, &{{Var.Name}}_dev, sizeof(LiteMathExtended::device_vector<{{Var.DataType}}>));
     {% endfor %}
   }
 }
@@ -317,40 +313,28 @@ void {{MainClassName}}{{MainClassSuffix}}::CopyUBOFromDevice(bool a_updateVector
   {% endif %}
   {% endif %}
   {% endfor %}
-  using size_type = LiteMathExtended::device_vector<int>::size_type;
-  size_type currSize = 0;
   if(a_updateVectorSize)
   {
-    {% for Var in ClassVectorVars %}
-    cudaMemcpyFromSymbol(&currSize, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}.m_size, sizeof(size_type));
-    {{Var.Name}}.resize(currSize);
+    {% for Var in VectorMembers %}
+    cudaMemcpyFromSymbol(&{{Var.Name}}_dev, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof(LiteMathExtended::device_vector<{{Var.DataType}}>));
+    if({{Var.Name}}.size() != {{Var.Name}}_dev.size())
+      {{Var.Name}}.resize({{Var.Name}}_dev.size());
     {% endfor %}
   }
 }
 
-void {{MainClassName}}{{MainClassSuffix}}::UpdateDeviceVectors()
+void {{MainClassName}}{{MainClassSuffix}}::UpdateDeviceVectors() 
 {
-  using size_type = LiteMathExtended::device_vector<int>::size_type;
-  {% for Var in VectorMembers %}
-  {
-    const size_type currSize = {{Var.Name}}_dev.size();
-    const size_type currCapa = {{Var.Name}}_dev.capacity();
-    const void*     currPtr  = {{Var.Name}}_dev.data();
-    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}.m_data,     &currPtr,  sizeof(void*));
-    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}.m_size    , &currSize, sizeof(size_type));
-    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}.m_capacity, &currCapa, sizeof(size_type));
-  }
-  {% endfor %}
-}
-
-void {{MainClassName}}{{MainClassSuffix}}::CommitDeviceData()
-{ 
   {% for Var in VectorMembers %}
   {{Var.Name}}_dev.reserve({{Var.Name}}.capacity());
   {{Var.Name}}_dev.assign({{Var.Name}}.begin(), {{Var.Name}}.end());
   {% endfor %}
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::CommitDeviceData()
+{
   UpdateDeviceVectors();
-  CopyUBOToDevice(false);
+  CopyUBOToDevice(true);
 }
 
 {% for Kernel in Kernels %}
