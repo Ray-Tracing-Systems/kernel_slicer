@@ -375,7 +375,7 @@ int main(int argc, const char **argv)
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::CudaCompiler>(inputCodeInfo.mainClassSuffix); 
     inputCodeInfo.pHostCC   = std::make_shared<kslicer::CudaCodeGen>();
-    inputCodeInfo.processFolders.push_back("include/");
+    inputCodeInfo.ignoreFolders.push_back("include/");
   }
   else if(shaderCCName == "ispc" || shaderCCName == "ISPC")
   {
