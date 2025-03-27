@@ -151,7 +151,56 @@ bool kslicer::CudaRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
 { 
   if(m_kernelMode)
   {
+    clang::Expr* subExpr = expr->getSubExpr();
+    if(subExpr == nullptr)
+      return true;
+
+    const auto op = expr->getOpcodeStr(expr->getOpcode());
+    if(op == "++" || op == "--") // detect ++ and -- for reduction
+    {
+      auto opRange = expr->getSourceRange();
+      if(opRange.getEnd()   <= m_pCurrKernel->loopInsides.getBegin() || 
+         opRange.getBegin() >= m_pCurrKernel->loopInsides.getEnd() ) // not inside loop
+        return true;     
+      
+      const auto op = expr->getOpcodeStr(expr->getOpcode());
+      std::string leftStr = kslicer::GetRangeSourceCode(subExpr->getSourceRange(), m_compiler);
+  
+      auto p = m_pCurrKernel->usedMembers.find(leftStr);
+      if(p != m_pCurrKernel->usedMembers.end() && WasNotRewrittenYet(expr))
+      {
+        KernelInfo::ReductionAccess access;
+        access.type      = KernelInfo::REDUCTION_TYPE::UNKNOWN;
+        access.rightExpr = "";
+        access.leftExpr  = leftStr;
+        access.dataType  = subExpr->getType().getAsString();
+  
+        if(op == "++")
+          access.type    = KernelInfo::REDUCTION_TYPE::ADD_ONE;
+        else if(op == "--")
+          access.type    = KernelInfo::REDUCTION_TYPE::SUB_ONE;
+        
+        std::string leftStr2   = RecursiveRewrite(expr->getSubExpr()); 
+        std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_pCurrKernel->GetDim(), m_pCurrKernel->wgSize);
+        ReplaceTextOrWorkAround(expr->getSourceRange(), leftStr2 + "Shared[" + localIdStr + "]++");
+        MarkRewritten(expr);
+      }
+    }
+
+    // detect " *something and &something"
+    //
+    const std::string exprInside = RecursiveRewrite(subExpr);
+
+    if(op == "*" && !expr->canOverflow() && CheckIfExprHasArgumentThatNeedFakeOffset(exprInside) && WasNotRewrittenYet(expr)) 
+    {
+      if(m_codeInfo->megakernelRTV || m_fakeOffsetExp == "")
+        ReplaceTextOrWorkAround(expr->getSourceRange(), exprInside);
+      else
+        ReplaceTextOrWorkAround(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
+      MarkRewritten(expr);
+    }
   }
+  
   return true; 
 }
 

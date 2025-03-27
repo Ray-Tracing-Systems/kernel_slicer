@@ -232,7 +232,7 @@ public:
   void GetExecutionTime(const char* a_funcName, float a_out[4]) override;
   {% endif %}
   void CopyUBOToDevice(bool a_updateVectorSize = true);
-  void CopyUBOFromDevice();
+  void CopyUBOFromDevice(bool a_updateVectorSize = true);
   void UpdateDeviceVectors();
 
   {% for Kernel in Kernels %}
@@ -299,9 +299,8 @@ void {{MainClassName}}{{MainClassSuffix}}::CopyUBOToDevice(bool a_updateVectorSi
   }
 }
 
-void {{MainClassName}}{{MainClassSuffix}}::CopyUBOFromDevice()
+void {{MainClassName}}{{MainClassSuffix}}::CopyUBOFromDevice(bool a_updateVectorSize)
 {
-  //cudaMemcpyFromSymbol(&h_globalVar, globalVar, sizeof(int));
   {% for Var in ClassVars %}
   {% if Var.IsArray %}
   {% if Var.HasPrefix %}
@@ -319,13 +318,14 @@ void {{MainClassName}}{{MainClassSuffix}}::CopyUBOFromDevice()
   {% endif %}
   {% endfor %}
   using size_type = LiteMathExtended::device_vector<int>::size_type;
-  {% for Var in ClassVectorVars %}
+  size_type currSize = 0;
+  if(a_updateVectorSize)
   {
-    size_type currSize = 0;
+    {% for Var in ClassVectorVars %}
     cudaMemcpyFromSymbol(&currSize, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}.m_size, sizeof(size_type));
     {{Var.Name}}.resize(currSize);
+    {% endfor %}
   }
-  {% endfor %}
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::UpdateDeviceVectors()
@@ -346,6 +346,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateDeviceVectors()
 void {{MainClassName}}{{MainClassSuffix}}::CommitDeviceData()
 { 
   {% for Var in VectorMembers %}
+  {{Var.Name}}_dev.reserve({{Var.Name}}.capacity());
   {{Var.Name}}_dev.assign({{Var.Name}}.begin(), {{Var.Name}}.end());
   {% endfor %}
   UpdateDeviceVectors();

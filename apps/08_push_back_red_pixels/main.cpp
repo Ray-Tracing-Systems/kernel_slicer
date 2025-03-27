@@ -61,13 +61,12 @@ int main(int argc, const char** argv)
 
   pImpl->ProcessPixels(inputImageData.data(), inputImageData.data(), inputImageData.size());
 
-  JSONLog::write("m_redPixelsNum", pImpl->m_redPixelsNum);
-  JSONLog::write("m_otherPixelsNum", pImpl->m_otherPixelsNum);
-  JSONLog::write("m_testPixelsAmount", pImpl->m_testPixelsAmount);
-  JSONLog::write("m_foundPixels_size", pImpl->m_foundPixels.size());
-  JSONLog::write("m_testMin(float)", pImpl->m_testMin);
-  JSONLog::write("m_testMax(float)", pImpl->m_testMax);
-  JSONLog::write("found red pixels count", pImpl->m_foundPixels.size());
+  JSONLog::write("m_redPixelsNum      : ", pImpl->m_redPixelsNum);
+  JSONLog::write("m_otherPixelsNum    : ", pImpl->m_otherPixelsNum);
+  JSONLog::write("m_testPixelsAmount  : ", pImpl->m_testPixelsAmount);
+  JSONLog::write("m_foundPixels.size(): ", pImpl->m_foundPixels.size());
+  JSONLog::write("m_testMin(float)    : ", pImpl->m_testMin);
+  JSONLog::write("m_testMax(float)    : ", pImpl->m_testMax);
 
   JSONLog::saveToFile("zout_"+backendName+".json");
   LiteImage::SaveBMP(("zout_"+backendName+".bmp").c_str(), inputImageData.data(), w, h);
