@@ -1373,7 +1373,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
       json controlArg;
       controlArg["Name"] = v.name;
-      controlArg["Type"] = typeName;
+      if(v.isRef)
+        controlArg["Type"] = typeName + "& ";
+      else
+        controlArg["Type"] = typeName;
 
       if((v.isThreadId || v.kind == DATA_KIND::KIND_POD || v.kind == DATA_KIND::KIND_UNKNOWN) && !a_classInfo.pShaderCC->IsISPC())
       {

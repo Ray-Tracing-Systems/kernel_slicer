@@ -29,8 +29,12 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
   {% endif %}
   {% endif %}
   {% endfor %}
-  {% for MembFunc in AllMemberFunctions %}
   
+  {% for MembFunc in AllMemberFunctions %}
+  __device__ {{MembFunc.Decl}};
+  {% endfor %}
+  {% for MembFunc in AllMemberFunctions %}
+
   __device__ {{MembFunc.Text}}
   {% endfor %}
   {% if UseSubGroups %}

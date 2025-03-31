@@ -486,6 +486,7 @@ namespace kslicer
     std::string type = "";
     DATA_KIND   kind = DATA_KIND::KIND_UNKNOWN;
     bool isConst     = false;
+    bool isRef       = false;
     bool isThreadId  = false;
     bool isTexture() const { return (kind == DATA_KIND::KIND_TEXTURE); };
     bool isPointer() const { return (kind == DATA_KIND::KIND_POINTER); };

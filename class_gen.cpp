@@ -269,6 +269,12 @@ kslicer::InOutVarInfo kslicer::GetParamInfo(const clang::ParmVarDecl* currParam,
   InOutVarInfo var;
   var.name      = currParam->getNameAsString();
   var.type      = qt.getAsString();
+  if(qt->isReferenceType())
+  {
+    var.isConst   = qt.getNonReferenceType().isConstQualified();
+    var.isRef     = true;
+  }
+
   auto id       = std::find(tidNames.begin(), tidNames.end(), var.name);
   if(qt->isPointerType())
   {
