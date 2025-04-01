@@ -41,10 +41,10 @@ namespace std
     T* get() { return data; }
     const T* get() const { return data; }
 
-    bool operator==(shared_ptr<T> rhs) { return false; }
+    bool operator==(unique_ptr<T> rhs) { return false; }
     bool operator==(void* rhs) { return false; }
 
-    bool operator!=(shared_ptr<T> rhs) { return true; }
+    bool operator!=(unique_ptr<T> rhs) { return true; }
     bool operator!=(void* rhs) { return true; }
 
   protected:

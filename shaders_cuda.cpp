@@ -80,6 +80,9 @@ std::string kslicer::CudaRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
     std::string typeStr = typeOfParam.getAsString();
     if(typeOfParam->isPointerType())
       typeStr += "*";
+    else if(typeOfParam->isReferenceType())
+      typeStr += "&";
+    
     result += RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
     if(i!=fDecl->getNumParams()-1)
       result += ", ";
