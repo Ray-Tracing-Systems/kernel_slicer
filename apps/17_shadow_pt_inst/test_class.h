@@ -83,7 +83,6 @@ public:
 
 protected:
 
-  float3 m_camPos = float3(0.0f, 0.85f, 4.5f);
   void InitSceneMaterials(int a_numSpheres, int a_seed = 0);
 
   std::vector<float4>          m_materials;

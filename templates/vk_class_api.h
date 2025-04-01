@@ -26,7 +26,6 @@ using namespace LiteMath;
 using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data type to UBO
 {% endif %}
 ## endfor
-#include "include/{{UBOIncl}}"
 {% for SetterDecl in SettersDecl %}  
 {{SetterDecl}}
 

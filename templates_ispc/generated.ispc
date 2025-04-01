@@ -1,7 +1,20 @@
 /////////////////////////////////////////////////////////////////////
 /////////////////// include files ///////////////////////////////////
 /////////////////////////////////////////////////////////////////////
-#include "include/{{UBOIncl}}"
+#include "LiteMathISPC.h"
+
+struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
+{
+  {% for Field in UBO.UBOStructFields %}
+  {% if Field.IsDummy %} 
+  uint {{Field.Name}}; 
+  {% else %}
+  {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %}; 
+  {% endif %}
+  {% endfor %}
+  uint dummy_last;
+};
+
 ## for Incl in Includes  
 #include "{{Incl}}"
 ## endfor

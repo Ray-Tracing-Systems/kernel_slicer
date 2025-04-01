@@ -2,6 +2,19 @@
 /////////////////// include files ///////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 #include "LiteMathCL.h"
+
+struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
+{
+  {% for Field in UBO.UBOStructFields %}
+  {% if Field.IsDummy %} 
+  uint {{Field.Name}}; 
+  {% else %}
+  {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %}; 
+  {% endif %}
+  {% endfor %}
+  uint dummy_last;
+};
+
 ## for Incl in Includes  
 #include "{{Incl}}"
 ## endfor
@@ -12,8 +25,6 @@
 ## for Decl in ClassDecls  
 {{Decl.Text}}
 ## endfor
-
-#include "include/{{UBOIncl}}"
 
 {% if length(Hierarchies) > 0 %}
 {% for Hierarchy in Hierarchies %}

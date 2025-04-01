@@ -1,7 +1,6 @@
 #ifndef BASIC_PROJ_LOGIC_H
 #define BASIC_PROJ_LOGIC_H
 
-#define LAYOUT_STD140
 #include "LiteMath.h"
 #ifndef __OPENCL_VERSION__
 using namespace LiteMath;

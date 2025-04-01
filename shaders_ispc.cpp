@@ -5,6 +5,28 @@
   #include <sys/types.h>
 #endif
 
+bool kslicer::FunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)
+{
+  auto hash = kslicer::GetHashOfSourceRange(fDecl->getBody()->getSourceRange());
+  if(m_codeInfo->m_functionsDone.find(hash) == m_codeInfo->m_functionsDone.end())
+  {
+    kslicer::RewrittenFunction done;
+    done.funDecl = kslicer::GetRangeSourceCode(fDecl->getSourceRange(),            m_compiler); 
+    auto posBrace = done.funDecl.find("{");
+    if(posBrace != std::string::npos)
+      done.funDecl = done.funDecl.substr(0,posBrace); // discard func body source code
+    done.funBody = kslicer::GetRangeSourceCode(fDecl->getBody()->getSourceRange(), m_compiler);
+    m_codeInfo->m_functionsDone[hash] = done;
+  } 
+  return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 kslicer::ISPCCompiler::ISPCCompiler(bool a_useCPP, const std::string& a_prefix) : ClspvCompiler(a_useCPP, a_prefix)
 {
 

@@ -40,12 +40,12 @@ std::vector<kslicer::ArgFinal> kslicer::IPV_Pattern::GetKernelTIDArgs(const Kern
 void kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
   const clang::CXXRecordDecl* parentClass = a_mainFunc.Node->getParent();
-  if(parentClass != nullptr)
-  {
-    const clang::IdentifierInfo* classInfo = parentClass->getIdentifier();
-    std::string classNameVal = classInfo->getName().str();
-    std::cout << "  [debug]: class name: " << classNameVal.c_str() << "\n";
-  }
+  //if(parentClass != nullptr)
+  //{
+  //  const clang::IdentifierInfo* classInfo = parentClass->getIdentifier();
+  //  std::string classNameVal = classInfo->getName().str();
+  //  std::cout << "  [debug]: class name: " << classNameVal.c_str() << "\n";
+  //}
 
   a_mainFunc.startTSNumber = m_timestampPoolSize;
   GetCFSourceCodeCmd(a_mainFunc, compiler, false); // ==> write this->allDescriptorSetsInfo, a_mainFunc // TODO: may simplify impl for image processing 
@@ -236,7 +236,7 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
   
-  auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "", false);
+  auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "");
   pVisitor->SetCurrKernelInfo(&a_funcInfo);
 
   //const std::string funBody  = pVisitor->RecursiveRewrite(a_funcInfo.astNode->getBody());
@@ -265,13 +265,13 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";";
 }
 
-void kslicer::IPV_Pattern::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
+void kslicer::MainClassInfo::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
 {
   //a_funcInfo.astNode->dump();
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
-  auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "", true);
+  auto pVisitor = std::make_shared<KernelInfoVisitor>(rewrite2, compiler, this, a_funcInfo);
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
 }
 

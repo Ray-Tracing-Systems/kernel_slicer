@@ -14,7 +14,6 @@
 #include "ray_tracing/vk_rt_utils.h"
 {% endif %}
 #include "{{IncludeClassDecl}}"
-#include "include/{{UBOIncl}}"
 
 {% if length(SceneMembers) > 0 %}
 #include "CrossRT.h"

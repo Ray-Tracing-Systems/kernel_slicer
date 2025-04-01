@@ -480,7 +480,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
                                     const std::vector<kslicer::DeclInClass>& usedDecl,
                                     const clang::CompilerInstance& compiler,
                                     const uint32_t  threadsOrder[3],
-                                    const std::string& uboIncludeName,
                                     const nlohmann::json& uboJson,
                                     const std::vector<std::string>& usedDefines,
                                     const TextGenSettings& a_settings)
@@ -572,7 +571,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     if(a_classInfo.mainClassFileInclude.find(keyVal.first) == std::string::npos)
       data["Includes"].push_back(keyVal.first);
   }
-  data["UBOIncl"] = uboIncludeName;
+  data["UBO"] = uboJson;
 
   // (2) declarations of struct, constants and typedefs inside class
   //
@@ -951,7 +950,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       
       clang::Rewriter rewrite2;
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-      std::shared_ptr<KernelRewriter> pRewriter = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), std::string(""), false);
+      std::shared_ptr<KernelRewriter> pRewriter = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), std::string(""));
 
       for(const auto var : k.be.sharedDecls)
         kernelJson["SharedBE"].push_back(a_classInfo.pShaderCC->RewriteBESharedDecl(var, pRewriter));
@@ -993,7 +992,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       clang::Rewriter rewrite2;
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-      auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "", false);
+      auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "");
       //pVisitorK->ClearUserArgs();
 
       kernelJson["ThreadIds"] = std::vector<std::string>();
@@ -1187,7 +1186,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       clang::Rewriter rewrite2;
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
       auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
-      auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "", false);
+      auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "");
       pVisitorK->ClearUserArgs();
       pVisitorK->processFuncMember = true; // signal that we process function member, not the kernel itself
 
@@ -1359,11 +1358,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       
       //f.astNode->dump();
       pVisitorF->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
-
+      
       auto p = a_classInfo.m_functionsDone.find(GetHashOfSourceRange(f.astNode->getBody()->getSourceRange()));
       if(p == a_classInfo.m_functionsDone.end())
       {
-        std::cout << "[PrepareJsonForKernels]: ALERT! function " << f.name << " is not found in 'm_functionsDone'" << std::endl;
+        std::cout << "  [PrepareJsonForKernels]: ALERT! function " << f.name << " is not found in 'm_functionsDone'" << std::endl;
         continue;
       }
   

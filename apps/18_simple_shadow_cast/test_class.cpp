@@ -74,7 +74,7 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
   // dirty hack to offset shadow ray in next kernel
   //
   const float3 hitPos    = to_float3(rayPos) + res.t*0.99995f*to_float3(rayDir);
-  const float3 boxCenter = 0.5f*(m_lightGeom.boxMin + m_lightGeom.boxMax);
+  const float3 boxCenter = 0.5f*(to_float3(m_lightGeom.boxMin) + to_float3(m_lightGeom.boxMax));
   (*out_surfPos)         = to_float4(hitPos + 1e-6f*normalize(boxCenter - hitPos), 0.0f);
 
   return (res.primId != -1) && (res.t < rayDir.w);
@@ -90,7 +90,7 @@ void TestClass::kernel_CalcShadow(uint tid, const float4* in_pos, float* out_sha
   for(int i=0;i<numSamples;i++)
   {
     const float2 uv = rndFloat2_Pseudo(&gen);
-    const float3 samplePos  = m_lightGeom.boxMin + float3(uv.x, 0.5f, uv.y)*(m_lightGeom.boxMax - m_lightGeom.boxMin);
+    const float3 samplePos  = to_float3(m_lightGeom.boxMin) + float3(uv.x, 0.5f, uv.y)*to_float3(m_lightGeom.boxMax - m_lightGeom.boxMin);
     
     const float3 shadowRayPos = to_float3(*in_pos);
     const float  hitDist      = length(samplePos - shadowRayPos);

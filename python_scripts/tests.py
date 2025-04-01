@@ -30,7 +30,7 @@ def compile_shaders(shader_lang, shader_folder):
 
 def compile_sample(sample_config, num_threads=1, enable_ispc = False):
     os.chdir(sample_config.root)
-    
+    #Log().info("Enable_ispc: {}".format(enable_ispc))  ############################################# (!!!!)
     Log().info("Building sample shaders: {}".format(sample_config.name))
     res = compile_shaders(sample_config.shader_lang, sample_config.shader_folder)
     if res.returncode != 0:
