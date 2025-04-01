@@ -39,8 +39,9 @@ include_directories("include")
 option(KSLICER_LLVM_BUILD "Build kernel_slicer as a LLVM project module" OFF)
 
 if(NOT KSLICER_LLVM_BUILD)
-  set(LLVM_VER "17")
-  set(LLVM_LIB "LLVM-${LLVM_VER}")
+  set(LLVM_VER "19.1")
+  set(LLVM_LIB "LLVM")
+  include("/usr/lib/llvm-19/cmake/LLVMConfig.cmake")
 
   if(WIN32)
     if(MSVC)

@@ -2457,41 +2457,29 @@
 
         {
             "name"   : "Launch (HydraCore3/ORB)",
-            "type"   : "cppdbg",
+            "type"   : "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
-            "args"   : ["/home/frol/PROG/HydraRepos/hydraapi3/external/HydraCore3/integrator_pt.cpp",
-                        "/home/frol/PROG/HydraRepos/hydraapi3/external/HydraCore3/integrator_pt_lgt.cpp",
-                        "/home/frol/PROG/HydraRepos/hydraapi3/external/HydraCore3/integrator_pt_mat.cpp",
-                        "/home/frol/PROG/HydraRepos/hydraapi3/external/HydraCore3/integrator_rt.cpp",
-                        "/home/frol/PROG/HydraRepos/hydraapi3/external/HydraCore3/integrator_spectrum.cpp",
+            "program": "${workspaceFolder}/build/kslicer",
+            "args"   : ["/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/integrator_pt.cpp",
+                        "/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/integrator_pt_lgt.cpp",
+                        "/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/integrator_pt_mat.cpp",
+                        "/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/integrator_rt.cpp",
+                        "/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/integrator_spectrum.cpp",
                         "-mainClass", "Integrator", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "rtv",
                         "-shaderCC", "glsl",
                         "-I${workspaceFolder}/TINYSTL",         "ignore",
-                        "-I/home/frol/PROG/HydraRepos/hydraapi3/external/HydraCore3/external/LiteMath",  "ignore",
-                        "-I/home/frol/PROG/HydraRepos/hydraapi3/external/HydraCore3/external/LiteScene", "ignore",
-                        "-I/home/frol/PROG/HydraRepos/hydraapi3/external/HydraCore3/external/CrossRT",   "process",
-                        "-I/home/frol/PROG/HydraRepos/hydraapi3/external/HydraCore3/cam_plugin",         "process",  
+                        "-I/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/external/LiteMath",  "ignore",
+                        "-I/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/external/LiteScene", "ignore",
+                        "-I/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/external/CrossRT",   "process",
+                        "-I/media/vs/data2/repos/hydra/HydraAPI3/external/HydraCore3/cam_plugin",         "process",  
                         "-megakernel", "1",
                         "-enable_ray_tracing_pipeline", "0",
                         "-enable_motion_blur", "0",
                         "-gen_gpu_api", "0",
                         "-DKERNEL_SLICER",
                         "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
         },
 
         {
