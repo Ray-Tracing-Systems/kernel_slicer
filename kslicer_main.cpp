@@ -51,6 +51,29 @@ using namespace clang;
 using kslicer::KernelInfo;
 using kslicer::DataMemberInfo;
 
+std::vector<std::string> ListProcessedFiles(nlohmann::json a_filesArray, const std::string& a_optionsPath)
+{
+  std::vector<std::string> allFiles;
+  if(!a_filesArray.is_array())
+    return allFiles;
+
+  std::filesystem::path optionsPath(a_optionsPath);
+  std::filesystem::path optionsFolder = optionsPath.parent_path();
+  
+  for(const auto& param : a_filesArray) 
+  {
+    std::filesystem::path path = param;
+    if(path.is_absolute())
+      allFiles.push_back(path.string());
+    else
+    {
+      std::filesystem::path fullPath = optionsFolder / path;
+      allFiles.push_back(fullPath.string());
+    }
+  }
+  return allFiles;
+}
+
 int main(int argc, const char **argv)
 {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -59,38 +82,86 @@ int main(int argc, const char **argv)
 
   if (argc < 2)
   {
-    llvm::errs() << "Usage: <filename>\n";
+    std::cout << "Normal usage: kslicer <config.json> or kslicer -config <config.json> " << std::endl;
     return 1;
   }
 
-  std::cout << "CMD LINE: ";
+  std::cout << "CMD LINE: " << std::endl;
   for(int i=0;i<argc;i++)
-     std::cout << argv[i] << " ";
+     std::cout << i << ": " << argv[i] << std::endl;
   std::cout << std::endl;
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  // try to find config file
+  //
+  std::string optionsPath = "";
+  {
+    for(int argId = 1; argId < argc; argId++ )
+    {
+      if((std::string(argv[argId]) == "-options" || std::string(argv[argId]) == "-config")  && argId+1 < argc)
+      {
+        optionsPath = argv[argId+1];
+        break;
+      }
+    }
+  
+    if(std::string(argv[1]).find(".json") != std::string::npos)
+      optionsPath = argv[1];
+  }
+  
+  nlohmann::json inputOptions;
+  std::ifstream ifs(optionsPath);
+  if(optionsPath == "")
+    std::cout << "[main]: config is missing, which is ok in general" << std::endl;
+  else if(!ifs.is_open())
+    std::cout << "[main]: warning, config is not found at '" << optionsPath.c_str() << "', is it ok?" << std::endl;
+  else 
+    inputOptions = nlohmann::json::parse(ifs, nullptr, true, true);
+  
+  auto paramsFromConfig = inputOptions["options"];
+
+  std::vector<std::string> allFiles = ListProcessedFiles(inputOptions["source"], optionsPath);
 
   std::vector<std::string> ignoreFiles;
   std::vector<std::string> processFiles;
-  std::vector<std::string> allFiles;
   std::vector<std::string> cppIncludesAdditional;
-  std::filesystem::path fileName;
-  auto params = ReadCommandLineParams(argc, argv, fileName,
-                                      allFiles, ignoreFiles, processFiles, cppIncludesAdditional);
+  std::filesystem::path    fileName;
+  auto paramsFromCmdLine = ReadCommandLineParams(argc, argv, fileName,                                        // ==>
+                                                 allFiles, ignoreFiles, processFiles, cppIncludesAdditional); // <==
+
+  std::unordered_map<std::string, std::string> params;
+  {
+    for(const auto& param : paramsFromConfig.items()) // take params initially from config
+      params[param.key()] = param.value().is_string() ? param.value().get<std::string>() : param.value().dump();
+                                                  
+    for(const auto& param : paramsFromCmdLine)        // and overide them from command line
+      params[param.first] = param.second;
+  }
+
+  auto mainClassNode = inputOptions["mainClass"];
+  if(mainClassNode.is_string())
+    params["-mainClass"] = mainClassNode.get<std::string>();
+
+  std::string              composeAPIName  = "";
+  std::string              composeImplName = "";
+  std::vector<std::string> composeIntersections;
+  {
+    auto composClassNodes = inputOptions["composClasses"];
+    for(auto composNode : composClassNodes) {
+      composeAPIName  = composNode["interface"];
+      composeImplName = composNode["implementation"];
+      break; // currently support only single composition
+    }
+  }
 
   std::filesystem::path mainFolderPath  = fileName.parent_path();
   std::string mainClassName   = "TestClass";
-  std::string outGenerated    = "data/generated.cl";
   std::string stdlibFolder    = "";
   std::string patternName     = "rtv";
   std::string shaderCCName    = "clspv";
-  std::string hintFile        = "";
   std::string suffix          = "_Generated";
   std::string shaderFolderPrefix    = "";
-
-  std::string composeAPIName  = "";
-  std::string composeImplName = "";
-  nlohmann::json inputOptions;
 
   uint32_t    threadsOrder[3] = {0,1,2};
   uint32_t    warpSize        = 32;
@@ -105,18 +176,8 @@ int main(int argc, const char **argv)
 
   kslicer::ShaderFeatures forcedFeatures;
 
-  if(params.find("-options") != params.end())
-  {
-    std::string optionsPath = params["-options"];
-    std::ifstream ifs(optionsPath);
-    inputOptions = nlohmann::json::parse(ifs);
-  }
-
   if(params.find("-mainClass") != params.end())
     mainClassName = params["-mainClass"];
-
-  if(params.find("-out") != params.end())
-    outGenerated = params["-out"];
 
   if(params.find("-stdlibfolder") != params.end())
     stdlibFolder = params["-stdlibfolder"];
@@ -135,9 +196,6 @@ int main(int argc, const char **argv)
 
   if(suffix == "_Generated" && (shaderCCName == "ispc") || (shaderCCName == "ISPC"))
     suffix = "_ISPC";
-
-  if(params.find("-hint") != params.end())
-    hintFile = params["-hint"];
 
   if(params.find("-warpSize") != params.end())
     warpSize = atoi(params["-warpSize"].c_str());
@@ -208,8 +266,10 @@ int main(int argc, const char **argv)
   
   if(params.find("-timestamps") != params.end())
     textGenSettings.enableTimeStamps = (atoi(params["-timestamps"].c_str()) != 0);
-
-  std::vector<std::string> ignoreFolders;
+  
+  // include and process folders
+  //
+  std::vector<std::filesystem::path> ignoreFolders;
   std::vector<std::filesystem::path> processFolders;
   for(auto p : params)
   {
@@ -222,6 +282,36 @@ int main(int argc, const char **argv)
       processFolders.push_back(p.first.substr(2));
   }
 
+  for(auto folder : inputOptions["includeProcess"])
+  {
+    if(!folder.is_string())
+      continue;
+
+    std::filesystem::path path(folder.get<std::string>());
+    if(!path.is_absolute())
+      path = std::filesystem::absolute(std::filesystem::path(optionsPath).parent_path() / path);
+
+    if(std::filesystem::exists(path) && std::filesystem::is_directory(path))
+      processFolders.push_back(path);
+    else
+      std::cout << "[main]: bad folder from 'includeProcess' list: " << path.c_str() << std::endl;
+  }
+
+  for(auto folder : inputOptions["includeIgnore"])
+  {
+    if(!folder.is_string())
+      continue;
+
+    std::filesystem::path path(folder.get<std::string>());
+    if(!path.is_absolute())
+      path = std::filesystem::absolute(std::filesystem::path(optionsPath).parent_path() / path);
+
+    if(std::filesystem::exists(path) && std::filesystem::is_directory(path))
+      ignoreFolders.push_back(path);
+    else
+      std::cout << "[main]: bad folder from 'includeIgnore' list: " << path.c_str() << std::endl;
+  }
+
   // make specific checks to be sure user don't include these files to hit project as normal files
   //
   {
@@ -230,7 +320,7 @@ int main(int argc, const char **argv)
     kslicer::CheckInterlanIncInExcludedFolders(processFolders2);
   }
 
-  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params);
+  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params, fileName.c_str());
   llvm::ArrayRef<const char*> args(argsForClang.data(), argsForClang.data() + argsForClang.size());
 
   // Make sure it exists
@@ -255,6 +345,7 @@ int main(int argc, const char **argv)
     exit(0);
   }
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
+
   inputCodeInfo.ignoreFolders  = ignoreFolders;  // set shader folders
   inputCodeInfo.processFolders = processFolders; // set common C/C++ folders
   inputCodeInfo.ignoreFiles    = ignoreFiles;    // set exceptions for common C/C++ folders (i.e. processFolders)
@@ -343,6 +434,52 @@ int main(int argc, const char **argv)
       strIn >> original >> replace;
       inputCodeInfo.userTypedefs.push_back(std::make_pair(std::string(original), std::string(replace)));
     }
+    else if(std::string(argv[argId]) == "-intersectionShaderPlace" && argId+1 < argc)
+    {
+      composeIntersections.push_back(argv[argId+1]);
+    }
+  }
+
+  for(auto base : inputOptions["baseClasses"]) {
+    if(base.is_string())
+      baseClases.push_back(base.get<std::string>());
+  }
+  
+
+  // read compos classes, intersection shaders and e.t.c
+  {
+    auto composClassNodes = inputOptions["composClasses"];
+    for(auto composNode : composClassNodes) {
+      composeAPIName  = composNode["interface"];
+      composeImplName = composNode["implementation"];
+      
+      auto intersection = composNode["intersection"];
+      if(intersection != nullptr)
+      {
+        std::string className = intersection["interface"];
+        std::string funcName  = intersection["shader"];
+        
+        inputCodeInfo.intersectionShaders.push_back( std::make_pair(className, funcName) );
+        composeIntersections.push_back(composeImplName);
+
+        if(intersection["triangle"] != nullptr) {
+          const std::string triClassName = intersection["triangle"];
+          inputCodeInfo.intersectionTriangle.push_back(std::make_pair(className, className));
+        }
+
+        if(intersection["whiteList"] != nullptr) {
+          for(auto node : intersection["whiteList"]) 
+            inputCodeInfo.intersectionWhiteList.insert(std::string(node)); 
+        }
+
+        if(intersection["blackList"] != nullptr) {
+          for(auto node : intersection["blackList"])
+            inputCodeInfo.intersectionBlackList.insert(std::string(node)); 
+        }
+        
+      }
+      break; // currently support only single composition
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -364,34 +501,43 @@ int main(int argc, const char **argv)
   pto->Triple     = llvm::sys::getDefaultTargetTriple();
   TargetInfo *pti = TargetInfo::CreateTargetInfo(compiler.getDiagnostics(), pto);
   compiler.setTarget(pti);
-
-  {
-    compiler.getLangOpts().GNUMode = 1;
-    compiler.getLangOpts().CXXExceptions = 1;
-    compiler.getLangOpts().RTTI        = 1;
-    compiler.getLangOpts().Bool        = 1;
-    compiler.getLangOpts().CPlusPlus   = 1;
-    compiler.getLangOpts().CPlusPlus14 = 1;
-    compiler.getLangOpts().CPlusPlus17 = 1;
-  }
-
+  compiler.getLangOpts().GNUMode = 1;
+  compiler.getLangOpts().CXXExceptions = 1;
+  compiler.getLangOpts().RTTI        = 1;
+  compiler.getLangOpts().Bool        = 1;
+  compiler.getLangOpts().CPlusPlus   = 1;
+  compiler.getLangOpts().CPlusPlus14 = 1;
+  compiler.getLangOpts().CPlusPlus17 = 1;
   compiler.createFileManager();
   compiler.createSourceManager(compiler.getFileManager());
-  //g_pCompilerInstance = &compiler;
+  
+  /////////////////////////////////////////////////////////////////////////////////////////////////// -stdlibFolder
+  if(stdlibFolder == "")
+  {
+    std::filesystem::path currentPath  = std::filesystem::current_path();
+    std::filesystem::path tinystl1Path = currentPath / std::filesystem::path("TINYSTL");
+    std::filesystem::path tinystl2Path = currentPath.parent_path() / std::filesystem::path("TINYSTL");
+    
+    if(std::filesystem::exists(tinystl1Path) && std::filesystem::is_directory(tinystl1Path))
+      stdlibFolder = tinystl1Path.string();
+    else if(std::filesystem::exists(tinystl2Path) && std::filesystem::is_directory(tinystl2Path))
+      stdlibFolder = tinystl2Path.string();
+  }
+  
+  auto alreadyFound = std::find(inputCodeInfo.ignoreFolders.begin(), inputCodeInfo.ignoreFolders.end(), stdlibFolder);
+  if(stdlibFolder != "" && alreadyFound == inputCodeInfo.ignoreFolders.end())
+    inputCodeInfo.ignoreFolders.push_back(stdlibFolder);
+  /////////////////////////////////////////////////////////////////////////////////////////////////// -stdlibFolder
 
   // (0) add path dummy include files for STL and e.t.c. (we don't want to parse actually std library)
   //
   HeaderSearchOptions &headerSearchOptions = compiler.getHeaderSearchOpts();
   headerSearchOptions.AddPath(stdlibFolder.c_str(), clang::frontend::Angled, false, false);
-  for(auto p : params)
-  {
-    if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I')
-    {
-      std::string includePath = p.first.substr(2);
-      //std::cout << "[main]: add include folder: " << includePath.c_str() << std::endl;
-      headerSearchOptions.AddPath(includePath.c_str(), clang::frontend::Angled, false, false);
-    }
-  }
+  for(const auto& includePath : processFolders)
+    headerSearchOptions.AddPath(includePath.c_str(), clang::frontend::Angled, false, false);
+  for(const auto& includePath : ignoreFolders)
+    headerSearchOptions.AddPath(includePath.c_str(), clang::frontend::Angled, false, false);
+
   //headerSearchOptions.Verbose = 1;
 
   compiler.createPreprocessor(clang::TU_Complete);
@@ -406,26 +552,36 @@ int main(int argc, const char **argv)
   compiler.getSourceManager().setMainFileID( compiler.getSourceManager().createFileID( file, clang::SourceLocation(), clang::SrcMgr::C_User));
   compiler.getDiagnosticClient().BeginSourceFile(compiler.getLangOpts(), &compiler.getPreprocessor());
 
-
   // init clang tooling
   //
   const std::string filenameString = fileName.u8string();
   std::vector<const char*> argv2 = {argv[0], filenameString.c_str()};
-  std::vector<std::string> extraArgs; extraArgs.reserve(32);
-  for(auto p : params)
-  {
-    if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I')  // add include folders to the Tool
-    {
+  std::vector<std::string> extraArgs; 
+  extraArgs.reserve(256);
+  for(auto p : params) {
+    if(p.first.size() > 1 && p.first[0] == '-' && p.first[1] == 'I') {
       extraArgs.push_back(std::string("-extra-arg=") + p.first);
       argv2.push_back(extraArgs.back().c_str());
     }
   }
+  for(const auto& includePath : processFolders) {
+    extraArgs.push_back(std::string("-extra-arg=") + std::string("-I") + includePath.string());
+    argv2.push_back(extraArgs.back().c_str());
+  }
+  for(const auto& includePath : ignoreFolders) {
+    extraArgs.push_back(std::string("-extra-arg=") + std::string("-I") + includePath.string());
+    argv2.push_back(extraArgs.back().c_str());
+  }
+  //if(optionsPath != "") 
+  { 
+    extraArgs.push_back(std::string("-extra-arg=") + std::string("-I") + stdlibFolder);
+    argv2.push_back(extraArgs.back().c_str());
+  }
+  
   argv2.push_back("--");
   int argSize = argv2.size();
 
   llvm::cl::OptionCategory GDOpts("global-detect options");
-  //clang::tooling::CommonOptionsParser OptionsParser(argSize, argv2.data(), GDOpts);                     // clang 12
-  //clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());   // clang 12
   auto OptionsParser = clang::tooling::CommonOptionsParser::create(argSize, argv2.data(), GDOpts);        // clang 14
   clang::tooling::ClangTool Tool(OptionsParser->getCompilations(), OptionsParser->getSourcePathList());   // clang 14
 
@@ -467,16 +623,20 @@ int main(int argc, const char **argv)
       composClassNames.push_back(composeAPIName);
     if(composeImplName != "")
       composClassNames.push_back(composeImplName);
-    composClassNames.insert(composClassNames.end(), baseClases.begin(), baseClases.end()); // process all base classes also
+   
     if(composeAPIName != "ISceneObject" && composeAPIName.find("ISceneObject") != std::string::npos) // need to add 'ISceneObject' if ISceneObject2 or ISceneObject_LiteRT or sms like that is used for API 
       composClassNames.push_back("ISceneObject");
   }
 
   kslicer::InitialPassASTConsumer firstPassData(cfNames, mainClassName, composClassNames, compiler, inputCodeInfo);
+  // TODO: move this inside constructor ... 
   {
-    for(size_t i=0;i<baseClases.size();i++)
-      firstPassData.rv.mci.baseClassOrder[baseClases[i]] = int(i);
-    firstPassData.rv.mci.baseClassOrder[mainClassName] = int(baseClases.size());
+    for(size_t i=0;i<baseClases.size();i++) 
+    { 
+      std::string className = baseClases[i];
+      firstPassData.rv.m_baseClassInfo[className] = kslicer::ClassInfo(className);
+      firstPassData.rv.m_baseClassInfo[className].baseClassOrder = int(i);
+    }
   }
   ParseAST(compiler.getPreprocessor(), &firstPassData, compiler.getASTContext());
 
@@ -501,6 +661,8 @@ int main(int argc, const char **argv)
       inputCodeInfo.composPrefix[name] = composMemberName;
     
     inputCodeInfo.composClassNames.insert(composeImplName);
+    for(auto intersectionPlace : composeIntersections)
+      inputCodeInfo.composIntersection.insert(intersectionPlace);
   }
   else if(baseClases.size() != 0)
   { 
@@ -508,13 +670,13 @@ int main(int argc, const char **argv)
     aux_classes.reserve(firstPassData.rv.m_composedClassInfo.size());
 
     // Преобразование unordered_map в vector
-    std::transform(firstPassData.rv.m_composedClassInfo.begin(), firstPassData.rv.m_composedClassInfo.end(), 
+    std::transform(firstPassData.rv.m_baseClassInfo.begin(), firstPassData.rv.m_baseClassInfo.end(), 
                    std::back_inserter(aux_classes), [](const auto& pair) { return pair.second.astNode; });
 
     auto sorted = kslicer::ExtractAndSortBaseClasses(aux_classes, firstPassData.rv.mci.astNode);
     for(const auto& baseClass : sorted) {
       auto typeName = baseClass->getQualifiedNameAsString();
-      const auto& classInfo = firstPassData.rv.m_composedClassInfo[typeName];
+      const auto& classInfo = firstPassData.rv.m_baseClassInfo[typeName]; // !!!!!
       kslicer::PerformInheritanceMerge(firstPassData.rv.mci, classInfo);
       inputCodeInfo.mainClassNames.insert(typeName);
     }
@@ -549,11 +711,10 @@ int main(int argc, const char **argv)
 
   inputCodeInfo.mainClassFileInclude = firstPassData.rv.MAIN_FILE_INCLUDE;
   inputCodeInfo.mainClassASTNode     = firstPassData.rv.mci.astNode;
-  inputCodeInfo.allKernels           = firstPassData.rv.mci.functions;
-  inputCodeInfo.allOtherKernels      = firstPassData.rv.mci.otherFunctions;
+  inputCodeInfo.allKernels           = firstPassData.rv.mci.funKernels;
   inputCodeInfo.allDataMembers       = firstPassData.rv.mci.dataMembers;
   inputCodeInfo.ctors                = firstPassData.rv.mci.ctors;
-  inputCodeInfo.allMemberFunctions   = firstPassData.rv.mci.allMemberFunctions;
+  inputCodeInfo.allMemberFunctions   = firstPassData.rv.mci.funMembers;
   inputCodeInfo.ProcessAllSetters(firstPassData.rv.mci.m_setters, compiler);
 
   std::vector<kslicer::DeclInClass> generalDecls = firstPassData.rv.GetExtractedDecls();
@@ -575,7 +736,7 @@ int main(int argc, const char **argv)
     const std::string& mainFuncName = f.first;
     auto& mainFuncRef = inputCodeInfo.mainFunc[mainFuncId];
     mainFuncRef.Name  = mainFuncName;
-    mainFuncRef.Node  = firstPassData.rv.mci.m_mainFuncNodes[mainFuncName];
+    mainFuncRef.Node  = firstPassData.rv.mci.funControls[mainFuncName].astNode;
 
     // Now process each main function: variables and kernel calls, if()->break and if()->return statements.
     //
@@ -757,7 +918,7 @@ int main(int argc, const char **argv)
 
   inputCodeInfo.AddSpecVars_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels);
 
-  if(inputCodeInfo.pShaderCC->IsGLSL()) // We don't implement this for OpenCL kernels yet ... or at all.
+  if(inputCodeInfo.pShaderCC->MemberFunctionsAreSupported()) // We don't implement this for OpenCL kernels yet ... or at all.
   {
     std::cout << "(4.1) Process Member function calls, extract data accesed in member functions " << std::endl;
     std::cout << "{" << std::endl;
@@ -944,24 +1105,35 @@ int main(int argc, const char **argv)
 
   // if user set custom work group size for kernels via hint file we should apply it befor generating kernels
   //
-  nlohmann::json wgszJson;
-  uint32_t defaultWgSize[3][3] = {{256, 1, 1},
-                                  {32,  8, 1},
-                                  {8,   8, 8}};
-  if(hintFile != "")
+  uint32_t defaultWgSize[3][3] = {{256, 1, 1}, {32,  8, 1}, {8,   8, 8}};
+
+  auto kernelsOptionsAll = inputOptions["kernels"];
+
+  if(kernelsOptionsAll["default"] != nullptr)
   {
-    std::ifstream ifs(hintFile);
-    nlohmann::json hintJson = nlohmann::json::parse(ifs);
-    wgszJson            = hintJson["WorkGroupSize"];
-    defaultWgSize[0][0] = wgszJson["default"][0];
-    defaultWgSize[0][1] = wgszJson["default"][1];
-    defaultWgSize[0][2] = wgszJson["default"][2];
-    defaultWgSize[1][0] = wgszJson["default2D"][0];
-    defaultWgSize[1][1] = wgszJson["default2D"][1];
-    defaultWgSize[1][2] = wgszJson["default2D"][2];
-    defaultWgSize[2][0] = wgszJson["default3D"][0];
-    defaultWgSize[2][1] = wgszJson["default3D"][1];
-    defaultWgSize[2][2] = wgszJson["default3D"][2];
+    defaultWgSize[0][0] = kernelsOptionsAll["default"]["wgSize"][0];
+    defaultWgSize[0][1] = kernelsOptionsAll["default"]["wgSize"][1];
+    defaultWgSize[0][2] = kernelsOptionsAll["default"]["wgSize"][2];
+  }
+  else if(kernelsOptionsAll["default1D"] != nullptr)
+  {
+    defaultWgSize[0][0] = kernelsOptionsAll["default1D"]["wgSize"][0];
+    defaultWgSize[0][1] = kernelsOptionsAll["default1D"]["wgSize"][1];
+    defaultWgSize[0][2] = kernelsOptionsAll["default1D"]["wgSize"][2];
+  }
+
+  if(kernelsOptionsAll["default2D"] != nullptr)
+  {
+    defaultWgSize[1][0] = kernelsOptionsAll["default2D"]["wgSize"][0];
+    defaultWgSize[1][1] = kernelsOptionsAll["default2D"]["wgSize"][1];
+    defaultWgSize[1][2] = kernelsOptionsAll["default2D"]["wgSize"][2];
+  }
+
+  if(kernelsOptionsAll["default3D"] != nullptr)
+  {
+    defaultWgSize[2][0] = kernelsOptionsAll["default3D"]["wgSize"][0];
+    defaultWgSize[2][1] = kernelsOptionsAll["default3D"]["wgSize"][1];
+    defaultWgSize[2][2] = kernelsOptionsAll["default3D"]["wgSize"][2];
   }
 
   for(auto& nk : inputCodeInfo.kernels)
@@ -970,13 +1142,12 @@ int main(int argc, const char **argv)
     if(kernel.be.enabled)
       continue;
     auto kernelDim = kernel.GetDim();
-    auto it = wgszJson.find(kernel.name);
-    if(it != wgszJson.end())
+    auto kernelOptions = kernelsOptionsAll[kernel.name];
+    if(kernelOptions != nullptr)
     {
-      kernel.wgSize[0] = (*it)[0];
-      kernel.wgSize[1] = (*it)[1];
-      kernel.wgSize[2] = (*it)[2];
-      kernel.wgSize[2] = 1;
+      kernel.wgSize[0] = kernelOptions["wgSize"][0];
+      kernel.wgSize[1] = kernelOptions["wgSize"][1];
+      kernel.wgSize[2] = kernelOptions["wgSize"][2];
     }
     else
     {
@@ -1034,7 +1205,6 @@ int main(int argc, const char **argv)
           arg.kind = inout.kind;
           arg.isConst = inout.isConst;
           arg.argType = kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG;
-          arg.umpersanned = false;
           dsInfo.descriptorSetsInfo.push_back(arg);
         }
       }
@@ -1047,7 +1217,6 @@ int main(int argc, const char **argv)
         arg.kind = c.second.kind;
         arg.isConst = c.second.isConst;
         arg.argType = kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR;
-        arg.umpersanned = false;
         dsInfo.descriptorSetsInfo.push_back(arg);
       }
     }

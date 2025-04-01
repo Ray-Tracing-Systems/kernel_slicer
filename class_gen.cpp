@@ -283,17 +283,8 @@ std::vector<kslicer::InOutVarInfo> kslicer::ListParamsOfMainFunc(const CXXMethod
 
 std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode)
 {
-  const CXXMethodDecl* a_node = a_funcInfo.astNode;
-  
-  std::string names[3];
-  pShaderCC->GetThreadSizeNames(names);
-  if(pShaderCC->IsGLSL())
-  {
-    names[0] = std::string("kgenArgs.") + names[0];
-    names[1] = std::string("kgenArgs.") + names[1];
-    names[2] = std::string("kgenArgs.") + names[2];
-  }
-  std::string fakeOffsetExpr = kslicer::GetFakeOffsetExpression(a_funcInfo, GetKernelTIDArgs(a_funcInfo), names);
+  const clang::CXXMethodDecl* a_node = a_funcInfo.astNode;
+  std::string fakeOffsetExpr = pShaderCC->RTVGetFakeOffsetExpression(a_funcInfo, GetKernelTIDArgs(a_funcInfo));
 
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());

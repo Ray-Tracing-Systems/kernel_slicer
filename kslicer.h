@@ -23,6 +23,9 @@
 #include "clang/Rewrite/Frontend/Rewriters.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 
+static constexpr bool SLANG_ELIMINATE_LOCAL_POINTERS    = true;
+static constexpr bool SLANG_SUPPORT_POINTER_ADD_IN_ARGS = false;
+
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 std::string ToLowerCase(std::string a_str);
 
@@ -127,19 +130,28 @@ namespace kslicer
   {
     ShaderFeatures operator||(const ShaderFeatures& rhs)
     {
-      useByteType  = useByteType  || rhs.useByteType;
-      useShortType = useShortType || rhs.useShortType;
-      useInt64Type = useInt64Type || rhs.useInt64Type;
+      useByteType    = useByteType  || rhs.useByteType;
+      useShortType   = useShortType || rhs.useShortType;
+      useInt64Type   = useInt64Type || rhs.useInt64Type;
       useFloat64Type = useFloat64Type || rhs.useFloat64Type;
       useHalfType    = useHalfType    || rhs.useHalfType;
+
+      useFloatAtomicAdd  = useFloatAtomicAdd  || rhs.useFloatAtomicAdd;
+      useDoubleAtomicAdd = useDoubleAtomicAdd || rhs.useDoubleAtomicAdd;
+      use8BitStorage     = use8BitStorage     || rhs.use8BitStorage;
+
       return *this;
     }
 
-    bool useByteType  = false;
-    bool useShortType = false;
-    bool useInt64Type = false;
-    bool useFloat64Type = false;
-    bool useHalfType  = false;
+    bool useByteType       = false;
+    bool useShortType      = false;
+    bool useInt64Type      = false;
+    bool useFloat64Type    = false;
+    bool useHalfType       = false;
+
+    bool useFloatAtomicAdd  = false;
+    bool useDoubleAtomicAdd = false;
+    bool use8BitStorage     = false;
   };
 
   /**
@@ -189,6 +201,13 @@ namespace kslicer
     
     std::string retTypeName;
     const clang::CXXRecordDecl* retTypeDecl;
+  };
+
+  struct RewrittenFunction
+  {
+    std::string funText() const { return funDecl + funBody; }
+    std::string funDecl;
+    std::string funBody;
   };
 
   /**
@@ -265,8 +284,6 @@ namespace kslicer
       std::string    GetOp2(std::shared_ptr<IShaderCompiler> pShaderCC) const;
 
       bool           SupportAtomicLastStep()        const;
-      std::string    GetAtomicImplCode(bool isGLSL) const;
-      std::string    GetSubgroupOpCode(bool isGLSL) const;
       size_t         GetSizeOfDataType()            const;
     };
 
@@ -289,6 +306,13 @@ namespace kslicer
         if(arg.isThreadID)
           size++;
       }
+
+      if(size == 0)
+      {
+        std::cout << "  [ReductionAccess::GetDim]: Error, zero kernel dim" << std::endl;
+        size = 1;
+      }
+
       return size;
     }
 
@@ -495,9 +519,8 @@ namespace kslicer
     DATA_KIND          kind = DATA_KIND::KIND_UNKNOWN;
     const clang::Expr* node = nullptr;
 
-    bool isConst               = false;
-    bool umpersanned           = false; // just signal that '&' was applied to this argument, and thus it is likely to be (ARG_REFERENCE_LOCAL or ARG_REFERENCE_CLASS_POD)
-    bool isExcludedRTV         = false;
+    bool isConst            = false;
+    bool isExcludedRTV      = false;
 
     bool isTexture    () const { return (kind == DATA_KIND::KIND_TEXTURE); }
     bool isAccelStruct() const { return (kind == DATA_KIND::KIND_ACCEL_STRUCT); }
@@ -581,6 +604,7 @@ namespace kslicer
     clang::SourceRange srcRange;
     uint64_t           srcHash;
     clang::TypeDecl*   astNode = nullptr;
+    clang::VarDecl*    varNode = nullptr;
     uint32_t           order = 0; ///<! to sort them before put in generated kernels source code
     DECL_IN_CLASS      kind  = DECL_IN_CLASS::DECL_UNKNOWN;
     bool               extracted = false;
@@ -588,6 +612,7 @@ namespace kslicer
     bool               inClass   = false;
     uint32_t           arraySize = 0;
     int64_t            constVal  = 0;
+    std::string        lostValue;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -637,12 +662,18 @@ namespace kslicer
     bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr) { return VisitCompoundAssignOperator_Impl(expr); }
     bool VisitBinaryOperator(clang::BinaryOperator* expr)                 { return VisitBinaryOperator_Impl(expr); }
     bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { return VisitDeclRefExpr_Impl(expr); }
+    bool VisitFloatingLiteral(clang::FloatingLiteral* expr)               
+    { 
+      return VisitFloatingLiteral_Impl(expr);
+    } 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     virtual std::string RecursiveRewrite(const clang::Stmt* expr);
-    virtual std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) { return ""; } 
+    virtual std::string RewriteFuncDecl(clang::FunctionDecl* fDecl);
+
+    virtual kslicer::RewrittenFunction RewriteFunction(clang::FunctionDecl* fDecl);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -651,7 +682,8 @@ namespace kslicer
     virtual std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const { return RewriteStdVectorTypeStr(a_typeName); }
     virtual std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, TEX_ACCESS a_accessType, std::string& outImageFormat) const { return "readonly image2D"; }
 
-    virtual ShaderFeatures GetShaderFeatures() const { return ShaderFeatures(); }
+    mutable ShaderFeatures sFeatures;
+    virtual ShaderFeatures GetShaderFeatures() const { return sFeatures; }
     std::shared_ptr< std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
 
     virtual void SetCurrFuncInfo  (kslicer::FuncData* a_pInfo) { m_pCurrFuncInfo = a_pInfo; }
@@ -677,7 +709,9 @@ namespace kslicer
     std::string FunctionCallRewrite(const clang::CallExpr* call);
     std::string FunctionCallRewrite(const clang::CXXConstructExpr* call);
     std::string FunctionCallRewriteNoName(const clang::CXXConstructExpr* call);
+
     virtual std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText);
+    virtual std::string RewriteConstructCall(clang::CXXConstructExpr* call);
 
   public:
     virtual bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl);
@@ -702,7 +736,9 @@ namespace kslicer
     virtual bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) { return true; }
     virtual bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr) { return true; }
     virtual bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) { return true; }
-
+    virtual bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr) { return true; }
+    
+    kslicer::ShittyFunction m_shit;
   };
 
   class FunctionRewriter2 : public FunctionRewriter ///!< BASE CLASS FOR ALL NEW BACKENDS
@@ -733,14 +769,50 @@ namespace kslicer
     bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) override;
     bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr)                 override;
     bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)                       override;
+    bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr)               override;
 
     // Also important functions to use(!)
     //
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
-    //void MarkRewritten(const clang::Stmt* expr);
-    //bool WasNotRewrittenYet(const clang::Stmt* expr);
+    
+    virtual bool DetectAndRewriteShallowPattern(const clang::Stmt* expr, std::string& a_out);
+    
+    // DetectAndRewriteExpression --> DARExpr
+    //
+    virtual bool NeedToRewriteReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr, std::string& outStr);
+    virtual void DARExpr_ReductionFunc(const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
+    
+    virtual void DARExpr_RWTexture(clang::CXXOperatorCallExpr* expr, bool write);
+    virtual void DARExpr_TextureAccess(clang::CXXOperatorCallExpr* expr);
+    virtual void DARExpr_TextureAccess(clang::BinaryOperator* expr);
+    virtual void DARExpr_TextureAccess(clang::CXXMemberCallExpr* call);
 
-    bool m_kernelMode = false; ///!< if proccesed function is kernel or nor
+    std::unordered_set<uint64_t> m_visitedTexAccessNodes;
+
+    // for kernel processing only
+    //
+    void InitKernelData(kslicer::KernelInfo& a_kernelRef, const std::string& a_fakeOffsetExp);
+    bool                            m_kernelMode = false; ///!< if proccesed function is kernel or nor
+    kslicer::KernelInfo*            m_pCurrKernel = nullptr;
+    std::unordered_set<std::string> m_kernelUserArgs;
+    std::string                     m_fakeOffsetExp;
+    std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
+    bool                            processFuncMember = false; ///<! when process function members in the same way as kernels
+
+    // general rewrite functions, same for all new backends
+    //
+    virtual bool NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text);
+    virtual bool NeedToRewriteDeclRefExpr(const clang::DeclRefExpr* expr, std::string& out_text);
+    
+    virtual bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
+    virtual bool NameNeedsFakeOffset(const std::string& a_name) const;
+    virtual std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
+    virtual std::string KGenArgsName() const { return "kgenArgs."; }
+
+    RewrittenFunction RewriteFunction(clang::FunctionDecl* fDecl);
+    std::string       RewriteFuncDecl(clang::FunctionDecl* fDecl);
+
+    virtual bool IsISPC() const { return false; }
   };
   
   struct IRecursiveRewriteOverride
@@ -784,12 +856,7 @@ namespace kslicer
     std::unordered_map<std::string, std::string> m_vecReplacements;
     std::unordered_map<std::string, std::string> m_funReplacements;
     std::vector<std::pair<std::string, std::string> > m_vecReplacements2;
-  
-    mutable kslicer::ShaderFeatures sFeatures;
-    kslicer::ShaderFeatures GetShaderFeatures() const override
-    {
-      return sFeatures;
-    }
+
   
     std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
@@ -805,23 +872,21 @@ namespace kslicer
     void        Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3]);
   
     bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
-    std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
-  
-    kslicer::ShittyFunction m_shit;
-  
+    std::string CompleteFunctionCallRewrite(clang::CallExpr* call);  
   };
 
   class SlangRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
   {
   public:
-    SlangRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) : FunctionRewriter2(R,a_compiler,a_codeInfo)  {}
-    ~SlangRewriter(){}
+    SlangRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) : FunctionRewriter2(R,a_compiler,a_codeInfo) { Init();}
+    ~SlangRewriter(){ }
 
     bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)   override;
     bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) override;
 
     bool VisitVarDecl_Impl(clang::VarDecl* decl)                  override;
     bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                override;
+    bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr)  override;
 
     bool VisitMemberExpr_Impl(clang::MemberExpr* expr)             override;
     bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  override; 
@@ -842,12 +907,25 @@ namespace kslicer
 
     // Also important functions to use(!)
     //
+    bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
+    std::string RewriteStdVectorTypeStr(const std::string& a_str) const override;
+    std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const override;
+    
+    //
+    //
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
+    std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
     //void MarkRewritten(const clang::Stmt* expr);
     //bool WasNotRewrittenYet(const clang::Stmt* expr);
 
-    bool m_kernelMode = false; ///!< if proccesed function is kernel or nor
+    std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
+  private:
+    void Init();
+    std::unordered_map<std::string, std::string> m_typesReplacement;
+    std::unordered_map<std::string, std::string> m_funReplacements;
   };
+
+  std::unordered_map<std::string, std::string> ListSlangStandartTypeReplacements(bool a_NeedConstCopy = true);
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////  KernelRewriter  //////////////////////////////////////////////////////////
@@ -869,6 +947,8 @@ namespace kslicer
     bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr);
     bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr* expr);
     bool VisitBinaryOperator(clang::BinaryOperator* expr);
+    bool VisitCallExpr(clang::CallExpr* call);
+    bool VisitVarDecl(clang::VarDecl* decl);
   
   protected:
   
@@ -879,6 +959,7 @@ namespace kslicer
   
     void ProcessReductionOp(const std::string& op, const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
     void DetectFuncReductionAccess(const clang::Expr* lhs, const clang::Expr* rhs, const clang::Expr* expr);
+    bool NameNeedsFakeOffset(const std::string& a_name) const;
   
     clang::Rewriter&               m_rewriter;
     const clang::CompilerInstance& m_compiler;
@@ -899,17 +980,12 @@ namespace kslicer
     KernelRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& a_fakeOffsetExpr);
     virtual ~KernelRewriter() {}
 
-    bool VisitVarDecl(clang::VarDecl* decl)                    { return VisitVarDecl_Impl(decl);        }
-
+    bool VisitVarDecl(clang::VarDecl* decl)                    { return VisitVarDecl_Impl(decl); }
     bool VisitMemberExpr(clang::MemberExpr* expr)              { if(WasRewritten(expr)) return true; else return VisitMemberExpr_Impl(expr); }
-    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f)   { if(WasRewritten(f)) return true; else return VisitCXXMemberCallExpr_Impl(f); }
-    bool VisitCallExpr(clang::CallExpr* f)                     { if(WasRewritten(f)) return true; else return VisitCallExpr_Impl(f); }
-    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call)
-    {
-      return VisitCXXConstructExpr_Impl(call);
-    }
-    bool VisitReturnStmt(clang::ReturnStmt* ret)               { if(WasRewritten(ret)) return true; else return VisitReturnStmt_Impl(ret); }
-
+    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f)   { if(WasRewritten(f))    return true; else return VisitCXXMemberCallExpr_Impl(f); }
+    bool VisitCallExpr(clang::CallExpr* f)                     { if(WasRewritten(f))    return true; else return VisitCallExpr_Impl(f); }
+    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call)  { if(WasRewritten(call)) return true; else return VisitCXXConstructExpr_Impl(call); }
+    bool VisitReturnStmt(clang::ReturnStmt* ret)               { if(WasRewritten(ret))  return true; else return VisitReturnStmt_Impl(ret); }
     bool VisitUnaryOperator(clang::UnaryOperator* expr)        { if(WasRewritten(expr)) return true; else return VisitUnaryOperator_Impl(expr);  }
     bool VisitBinaryOperator(clang::BinaryOperator* expr)      { if(WasRewritten(expr)) return true; else return VisitBinaryOperator_Impl(expr); }
 
@@ -918,11 +994,10 @@ namespace kslicer
     bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)                 { if(WasRewritten(cast)) return true; else return VisitCStyleCastExpr_Impl(cast); }
     bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast)             { if(WasRewritten(cast)) return true; else return VisitImplicitCastExpr_Impl(cast); }
     bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { if(WasRewritten(expr)) return true; else return VisitDeclRefExpr_Impl(expr); }
+    bool VisitFloatingLiteral(clang::FloatingLiteral* expr)               { if(WasRewritten(expr)) return true; else return VisitFloatingLiteral_Impl(expr); }
     bool VisitDeclStmt(clang::DeclStmt* stmt)                             { if(WasRewritten(stmt)) return true; else return VisitDeclStmt_Impl(stmt); }
-    bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* arrayExpr)    { if(WasRewritten(arrayExpr)) return true; else return VisitArraySubscriptExpr_Impl(arrayExpr);  }
-    bool VisitUnaryExprOrTypeTraitExpr(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { return VisitUnaryExprOrTypeTraitExpr_Impl(szOfExpr); }
-
-    bool VisitForStmt(clang::ForStmt* forLoop); ///< to find nodes by their known source range and remember them
+    bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* arrayExpr)    { if(WasRewritten(arrayExpr))        return true; else return VisitArraySubscriptExpr_Impl(arrayExpr);  }
+    bool VisitUnaryExprOrTypeTraitExpr(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { if(WasRewritten(szOfExpr)) return true; else return VisitUnaryExprOrTypeTraitExpr_Impl(szOfExpr); }
 
     std::shared_ptr<std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
     virtual std::string RecursiveRewrite (const clang::Stmt* expr);
@@ -1010,7 +1085,7 @@ namespace kslicer
     virtual bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                 { return true; } // override this in Derived class
     virtual bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)  { return true; } // override this in Derived class
     virtual bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { return true; }
-
+    virtual bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* f);
     virtual bool NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text);
 
   };
@@ -1046,6 +1121,13 @@ namespace kslicer
     bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)            override;
     bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
 
+    bool VisitMemberExpr_Impl(clang::MemberExpr* expr)      override;
+    bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override;
+    bool VisitCallExpr_Impl(clang::CallExpr* f)               override;
+    bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* f) override; 
+
+    std::string RecursiveRewrite(const clang::Stmt* expr) override;
+
   protected:
     std::shared_ptr<FunctionRewriter2> m_pFunRW2 = nullptr;
   };
@@ -1066,7 +1148,9 @@ namespace kslicer
     virtual bool        IsSingleSource()   const = 0;
     virtual std::string ShaderSingleFile() const = 0;
     virtual std::string ShaderFolder()     const = 0;
-
+   
+    virtual bool        MemberFunctionsAreSupported() const { return false; }
+    virtual bool        BuffersAsPointersInShaders() const { return false; }
     virtual bool        IsGLSL() const { return !IsSingleSource(); }
     virtual bool        IsISPC() const { return false; }
 
@@ -1081,9 +1165,13 @@ namespace kslicer
       return call;
     }
 
-    virtual bool        UseSeparateUBOForArguments() const { return false; }
-    virtual bool        UseSpecConstForWgSize() const { return false; }
-    virtual void        GetThreadSizeNames(std::string a_strs[3]) const = 0;
+    virtual std::string IndirectBufferDataType() const { return "uint4* "; }
+
+    virtual bool UseSeparateUBOForArguments() const { return false; }
+    virtual bool UseSpecConstForWgSize() const { return false; }
+    virtual void GetThreadSizeNames(std::string a_strs[3]) const = 0;
+    virtual std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const { return "unknownSubgroup"; }
+    virtual std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const { return "unknownAtomic";}
 
     virtual std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
                                                                         kslicer::ShittyFunction a_shit = kslicer::ShittyFunction()) = 0;
@@ -1100,6 +1188,10 @@ namespace kslicer
     virtual std::string RewriteBESharedDecl(const clang::DeclStmt* decl, std::shared_ptr<KernelRewriter> pRewriter);
     virtual std::string RewriteBEParallelFor(const clang::ForStmt* forExpr, std::shared_ptr<KernelRewriter> pRewriter);
     virtual std::string RewriteBEStmt(const clang::Stmt* stmt, std::shared_ptr<KernelRewriter> pRewriter);
+    
+    // for RTV only
+    //
+    virtual std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds); 
   };
 
   struct ClspvCompiler : IShaderCompiler
@@ -1109,6 +1201,7 @@ namespace kslicer
     bool        IsSingleSource()   const override { return true; }
     std::string ShaderFolder()     const override { return "clspv_shaders_aux"; }
     std::string ShaderSingleFile() const override { return "z_generated.cl"; }
+    bool        BuffersAsPointersInShaders() const override { return true; }
 
     void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
 
@@ -1118,6 +1211,8 @@ namespace kslicer
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3])                               const override;
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
     void        GetThreadSizeNames(std::string a_strs[3])                                             const override;
+    std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
+    std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
 
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
@@ -1144,6 +1239,7 @@ namespace kslicer
     std::string BuildCommand(const std::string& a_inputFile) const override;
     std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) override;
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
+    bool        BuffersAsPointersInShaders() const override { return false; }
   };
 
   struct GLSLCompiler : IShaderCompiler
@@ -1152,7 +1248,8 @@ namespace kslicer
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
     std::string ProcessBufferType(const std::string& a_typeName) const override;
     
-    bool        IsSingleSource()                     const override { return false; }
+    bool        IsSingleSource()                     const override { return false;}
+    bool        MemberFunctionsAreSupported()        const override { return true; }
     std::string ShaderFolder()                       const override { return std::string("shaders") + ToLowerCase(m_suffix); }
     std::string ShaderSingleFile()                   const override { return ""; }
 
@@ -1160,6 +1257,8 @@ namespace kslicer
 
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
     void        GetThreadSizeNames(std::string a_strs[3])               const override;
+    std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
+    std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
 
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
@@ -1169,6 +1268,10 @@ namespace kslicer
     std::string Name() const override { return "GLSL"; }
 
     std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
+    std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds) override; 
+    
+    std::string IndirectBufferDataType() const override { return "uvec4 "; }
+
   private:
     const std::string& m_suffix;
     void ProcessVectorTypesString(std::string& a_str);
@@ -1177,12 +1280,14 @@ namespace kslicer
   struct SlangCompiler : IShaderCompiler
   {
     SlangCompiler(const std::string& a_prefix);
-    std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
+    std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo[0].") + a_name; };
     std::string ProcessBufferType(const std::string& a_typeName) const override;
 
     bool        IsSingleSource()                     const override { return false; }
+    bool        MemberFunctionsAreSupported()        const override { return true; }
     std::string ShaderFolder()                       const override { return std::string("shaders") + ToLowerCase(m_suffix); }
     std::string ShaderSingleFile()                   const override { return ""; }
+    
     bool        IsGLSL() const override { return false; }
     bool        IsISPC() const override { return false; }
 
@@ -1191,6 +1296,8 @@ namespace kslicer
 
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
     void        GetThreadSizeNames(std::string a_strs[3])               const override;
+    std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
+    std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
 
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
@@ -1200,8 +1307,13 @@ namespace kslicer
     std::string Name() const override { return "Slang"; }
 
     std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
+    std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds) override; 
+
+    std::string IndirectBufferDataType() const override { return "uint4 "; }
+
   private:
     const std::string& m_suffix;
+    std::unordered_map<std::string, std::string> m_typesReplacement;
   };
 
   struct ServiceCall
@@ -1218,13 +1330,6 @@ namespace kslicer
 
   class UsedCodeFilter;
 
-  struct RewrittenFunction
-  {
-    std::string funText() const { return funDecl + funBody; }
-    std::string funDecl;
-    std::string funBody;
-  };
-
   /**
   \brief collector of all information about input main class
   */
@@ -1232,7 +1337,6 @@ namespace kslicer
   {
     std::unordered_map<std::string, const clang::CXXRecordDecl*> allASTNodes; ///<! AST nodes for all considered classes in program
     std::unordered_map<std::string, KernelInfo>     allKernels;       ///<! list of all kernels; used only on the second pass to identify Control Functions; it is not recommended to use it anywhere else
-    std::unordered_map<std::string, KernelInfo>     allOtherKernels;  ///<! kernels from other classes. we probably need them if they are used.
     std::unordered_map<std::string, DataMemberInfo> allDataMembers;   ///<! list of all class data members;
     std::unordered_map<std::string, ProbablyUsed>   usedProbably;     ///<! variables which are used in virtual functions and *probably* will be used in *SOME* kernels if they call these virtual functions
 
@@ -1274,6 +1378,7 @@ namespace kslicer
     std::string           mainClassSuffix;
     
     std::unordered_map<std::string, std::string> composPrefix;
+    std::unordered_set<std::string>              composIntersection;
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
     std::vector<const clang::CXXConstructorDecl* > ctors;
     std::string shaderFolderPrefix = "";
@@ -1281,7 +1386,7 @@ namespace kslicer
     OptionalDeviceFeatures  globalDeviceFeatures;
     
 
-    std::vector<std::string> ignoreFolders;  ///<! in these folders files are ignored
+    std::vector<std::filesystem::path> ignoreFolders;  ///<! in these folders files are ignored
     std::vector<std::filesystem::path> processFolders; ///<! in these folders files are processed to take functions and structures from them to shaders
     std::vector<std::string> ignoreFiles;    ///<! exception to 'processFolders'
     std::vector<std::string> processFiles;   ///<! exception to 'ignoreFolders'
@@ -1507,7 +1612,7 @@ namespace kslicer
 
   void PrintError(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm);
   void PrintWarning(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm);
-  //const clang::SourceManager&
+  void ExtractTypeAndVarNameFromConstructor(clang::CXXConstructExpr* constructExpr, clang::ASTContext* astContext, std::string& varName, std::string& typeName);
 
 
   bool IsTexture(clang::QualType a_qt);
@@ -1579,7 +1684,7 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
                                                                    std::vector<std::string>& processFiles,
                                                                    std::vector<std::string>& cppIncludes);
 
-std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params);
+std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params, const char* a_mainFileName);
 
 void MakeAbsolutePathRelativeTo(std::filesystem::path& a_filePath, const std::filesystem::path& a_folderPath);
 

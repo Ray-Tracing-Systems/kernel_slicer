@@ -21,6 +21,11 @@ def compile_shaders(shader_lang, shader_folder):
         res = subprocess.run(["bash", "build.sh"],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         os.chdir("..")
+    elif shader_lang == ShaderLang.SLANG:
+        os.chdir(shader_folder)
+        res = subprocess.run(["bash", "build_slang.sh"],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        os.chdir("..")
     elif shader_lang == ShaderLang.ISPC:
         res = subprocess.run(["bash", "z_build_ispc.sh"],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -30,7 +35,7 @@ def compile_shaders(shader_lang, shader_folder):
 
 def compile_sample(sample_config, num_threads=1, enable_ispc = False):
     os.chdir(sample_config.root)
-    #Log().info("Enable_ispc: {}".format(enable_ispc))  ############################################# (!!!!)
+    #Log().info("sample_config.shader_lang = {}".format(sample_config.shader_lang))  ############################################# (!!!!)
     Log().info("Building sample shaders: {}".format(sample_config.name))
     res = compile_shaders(sample_config.shader_lang, sample_config.shader_folder)
     if res.returncode != 0:
@@ -72,7 +77,7 @@ def run_sample(test_name, on_gpu=False, gpu_id=0, on_ispc=False):
 
 def run_kslicer(sample_config: SampleConfig, test_config: TestsConfig, megakernel=False, subgroups=False):
     Log().info("Generating files by kernel_slicer with params: [\n" +
-               "\torig cpp file: {}\n".format(os.path.relpath(sample_config.orig_cpp_file)) +
+               "\tinput file : {}\n".format(os.path.relpath(sample_config.orig_cpp_file)) +
                ("\tmegakernel: {}\n".format(megakernel) if sample_config.has_megakernel_key else "") +
                ("\tsubgroups : {}\n".format(subgroups)  if sample_config.has_subgroups_key  else "") + "]")
 

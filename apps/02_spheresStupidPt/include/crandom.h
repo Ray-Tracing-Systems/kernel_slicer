@@ -3,11 +3,10 @@
 
 #include "BasicLogic.h"
 
-typedef struct RandomGenT
+struct RandomGen
 {
   uint2 state;
-
-} RandomGen;
+};
 
 static inline unsigned int NextState(RandomGen* gen)
 {

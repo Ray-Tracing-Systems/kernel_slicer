@@ -195,11 +195,9 @@ void TestClass::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color)
   kernel_InitEyeRay(tid, in_pakedXY, &flags, &rayPosAndNear, &rayDirAndFar);
 
   Lite_Hit hit;
-  kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &flags,
-                  &hit);
+  kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &flags, &hit);
   
-  kernel_GetMaterialColor(tid, &hit, spheresMaterials.data(), 
-                          out_color);
+  kernel_GetMaterialColor(tid, &hit, spheresMaterials.data(), out_color);
 }
 
 void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color)

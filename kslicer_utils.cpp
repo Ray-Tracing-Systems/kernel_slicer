@@ -70,6 +70,29 @@ void kslicer::PrintWarning(const std::string& a_msg, const clang::SourceRange& a
   std::cout << fileName.c_str() << ":" << line << ":" << col << ": warning: " << a_msg << " --> " << code.c_str() << std::endl;
 }
 
+void kslicer::ExtractTypeAndVarNameFromConstructor(clang::CXXConstructExpr* constructExpr, clang::ASTContext* astContext, std::string& varName, std::string& typeName) 
+{
+  // (0) очищаем строки
+  //
+  varName = ""; 
+  typeName = "";
+  
+  // (1) Получаем имя типа
+  //
+  clang::CXXConstructorDecl* ctor = constructExpr->getConstructor();
+  typeName = ctor->getNameInfo().getName().getAsString();
+  
+  // (2) Получаем имя переменной
+  clang::DynTypedNodeList parents = astContext->getParents(*constructExpr);
+  for (const clang::DynTypedNode& parent : parents) {
+      if (const clang::VarDecl* varDecl = parent.get<clang::VarDecl>()) {
+          varName = varDecl->getNameAsString();
+          break;
+      }
+  }
+}
+
+
 const clang::Expr* kslicer::RemoveImplicitCast(const clang::Expr* nextNode)
 {
   if(nextNode == nullptr)
@@ -163,7 +186,7 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
 
   if(allFiles.size() == 0)
   {
-    std::cout << "[kslicer]: no input file is specified " << std::endl;
+    std::cout << "[main]: no input file is specified " << std::endl;
     exit(0);
   }
   else if(allFiles.size() == 1)
@@ -179,7 +202,7 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
     fileName2.concat("_temp.cpp");
     auto fileNameT  = folderPath / fileName2;
 
-    std::cout << "[kslicer]: merging input files to temporary file '" << fileName2 << std::endl;
+    std::cout << "[kslicer]: merging input files to temporary file " << fileName2 << std::endl;
     std::ofstream fout(fileNameT);
     for(auto file : allFiles)
     {
@@ -199,11 +222,14 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
   return cmdLineParams;
 }
 
-std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params)
+std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params, const char* a_mainFileName)
 {
   std::unordered_set<std::string> values;
   for(auto p : params)
     values.insert(p.second);
+
+  bool foundDSlicer  = false;
+  bool foundMainFile = false;
 
   std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
   argsForClang.reserve(argc);
@@ -211,7 +237,18 @@ std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const 
   {
     if(params.find(argv[i]) == params.end() && values.find(argv[i]) == values.end())
       argsForClang.push_back(argv[i]);
+
+    if(std::string(argv[i]) == "-DKERNEL_SLICER")
+      foundDSlicer = true;
+    else if(std::string(argv[i]) == a_mainFileName)
+      foundMainFile = true;
   }
+  
+  if(!foundMainFile)
+    argsForClang.insert(argsForClang.begin(), a_mainFileName);
+
+  if(!foundDSlicer)
+    argsForClang.push_back("-DKERNEL_SLICER");
 
   return argsForClang;
 }

@@ -62,6 +62,9 @@ int main(int argc, const char** argv)
   pImpl->GetExecutionTime("IPTcompress", timings);
   std::cout << "IPTcompress(exec) = " << timings[0]              << " ms " << std::endl;
   std::cout << "IPTcompress(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
-  std::cout << "IPTcompress(ovrh) = " << timings[3]              << " ms " << std::endl; 
+  std::cout << "IPTcompress(ovrh) = " << timings[3]              << " ms " << std::endl;
+  
+  pImpl = nullptr;
+  vk_utils::globalContextDestroy();  
   return 0;
 }

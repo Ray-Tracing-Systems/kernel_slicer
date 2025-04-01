@@ -45,6 +45,13 @@ std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix
 {% endif %}
 {% endfor %}
 
+vk_utils::VulkanDeviceFeatures {{MainClassName}}{{MainClassSuffix}}_ListRequiredDeviceFeatures()
+{
+  vk_utils::VulkanDeviceFeatures res;
+  res.features2 = {{MainClassName}}{{MainClassSuffix}}::ListRequiredDeviceFeatures(res.extensionNames);
+  return res;
+}
+
 void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount)
 {
   physicalDevice = a_physicalDevice;
@@ -328,7 +335,14 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
   createInfo.maxPipelineRayRecursionDepth = 1;
   createInfo.layout     = (*pPipelineLayout);
   createInfo.flags      = pipelineFlags;
-  VK_CHECK_RESULT(vkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &createInfo, nullptr, pPipeline));
+  res = vkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &createInfo, nullptr, pPipeline);
+  if(res != VK_SUCCESS)
+  {
+    std::string errMsg = vk_utils::errorString(res);
+    std::cout << "[ShaderError]: vkCreateRayTracingPipelinesKHR have failed for '" << shader_paths[0].second.c_str() << "' with '" << errMsg.c_str() << "'" << std::endl;
+  }
+  else
+    m_allCreatedPipelines.push_back(*pPipeline);
 
   for (size_t i = 0; i < shader_paths.size(); ++i)
   {
@@ -365,7 +379,10 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
 ## endfor
   vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
-
+  {% for Table in RemapTables %}
+  vkDestroyBuffer(device, m_vdata.{{Table.Name}}RemapTableBuffer, nullptr);
+  vkDestroyBuffer(device, m_vdata.{{Table.Name}}GeomTagsBuffer, nullptr);
+  {% endfor %}
   {% if UseRayGen %}
   for(size_t i=0;i<m_allShaderTableBuffers.size();i++)
     vkDestroyBuffer(device, m_allShaderTableBuffers[i], nullptr);
@@ -385,6 +402,10 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
 
   {% for Buffer in ClassVectorVars %}
   vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
+  {% if Buffer.IsVFHBuffer and Buffer.VFHLevel >= 2 %}
+  vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}_dataSBuffer, nullptr);
+  vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}_dataVBuffer, nullptr);
+  {% endif %}
   {% endfor %}
   {% for Var in ClassTextureVars %}
   vkDestroyImage    (device, m_vdata.{{Var.Name}}Texture, nullptr);
@@ -563,7 +584,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
 
     MakeRayTracingPipelineAndLayout(shader_paths, enableMotionBlur, "main", kspec, {{Kernel.Name}}DSLayout, &{{Kernel.Name}}Layout, &{{Kernel.Name}}Pipeline);
     {% else %}
-    MakeComputePipelineAndLayout(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %}, kspec, {{Kernel.Name}}DSLayout, &{{Kernel.Name}}Layout, &{{Kernel.Name}}Pipeline);
+    MakeComputePipelineAndLayout(shaderPath.c_str(), {% if ShaderSingleFile %}"main"{% else %}"{{Kernel.OriginalName}}"{% endif %}, kspec, {{Kernel.Name}}DSLayout, &{{Kernel.Name}}Layout, &{{Kernel.Name}}Pipeline);
     {% endif %}
   }
   else
@@ -572,7 +593,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
     {{Kernel.Name}}Pipeline = nullptr;
   }
   {% if Kernel.FinishRed %}
-  {% if ShaderGLSL %}
+  {% if ShaderSingleFile %}
   shaderPath = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}_Reduction.comp.spv");
   {% endif %}
   {% if UseSpecConstWgSize %}
@@ -580,19 +601,19 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   m_specsForWGSize.pData         = specializationData;
   kspec = &m_specsForWGSize;
   {% endif %}
-  MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Reduction"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}ReductionPipeline);
+  MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderSingleFile %}"main"{% else %}"{{Kernel.OriginalName}}_Reduction"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}ReductionPipeline);
   {% endif %} {# /* if Kernel.FinishRed */ #}
   {% if Kernel.HasLoopInit %}
-  {% if ShaderGLSL %}
+  {% if ShaderSingleFile %}
   shaderPath = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}_Init.comp.spv");
   {% endif %}
-  MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Init"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}InitPipeline);
+  MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderSingleFile %}"main"{% else %}"{{Kernel.OriginalName}}_Init"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}InitPipeline);
   {% endif %} {# /* if Kernel.HasLoopInit */ #}
   {% if Kernel.HasLoopFinish %}
-  {% if ShaderGLSL %}
+  {% if ShaderSingleFile %}
   shaderPath = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}_Finish.comp.spv");
   {% endif %}
-  MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"{{Kernel.OriginalName}}_Finish"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}FinishPipeline);
+  MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderSingleFile %}"main"{% else %}"{{Kernel.OriginalName}}_Finish"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}FinishPipeline);
   {% endif %} {# /* if Kernel.HasLoopFinish */ #}
 }
 
@@ -605,7 +626,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
 ## endfor
   {% if UseServiceMemCopy %}
   {% if MultipleSourceShaders %}
-  std::string servPath = AlterShaderPath({% if ShaderGLSL %}"{{ShaderFolder}}/z_memcpy.comp.spv"{% else %}"{{ShaderFolder}}/serv_kernels.cpp.spv"{% endif %});
+  std::string servPath = AlterShaderPath("{{ShaderFolder}}/z_memcpy.comp.spv");
   {% else %}
   std::string servPath = AlterShaderPath(a_filePath);
   {% endif %}
@@ -616,7 +637,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   kspec = &m_specsForWGSize;
   {% endif %}
   copyKernelFloatDSLayout = CreatecopyKernelFloatDSLayout();
-  MakeComputePipelineAndLayout(servPath.c_str(), {% if ShaderGLSL %}"main"{% else %}"copyKernelFloat"{% endif %}, kspec, copyKernelFloatDSLayout, &copyKernelFloatLayout, &copyKernelFloatPipeline);
+  MakeComputePipelineAndLayout(servPath.c_str(), "main", kspec, copyKernelFloatDSLayout, &copyKernelFloatLayout, &copyKernelFloatPipeline);
   {% endif %} {# /* UseServiceMemCopy */ #}
   {% if UseServiceScan %}
   {% for Scan in ServiceScan %}
@@ -982,10 +1003,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
     {% endfor %}
   }
   {% endif %}
-  {% for Var in ClassTexArrayVars %}
-  for(size_t i = 0; i < {{Var.Name}}.size(); i++)
-    m_vdata.{{Var.Name}}ArrayView[i] = CreateView(VkFormat({{Var.Name}}[i]->format()), m_vdata.{{Var.Name}}ArrayTexture[i]);
-  {% endfor %}
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectDescriptorSets();
   {% endif %}
@@ -1027,7 +1044,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitIndirectBufferUpdateResources(con
 
   VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &m_indirectUpdateLayout));
 
-  {% if ShaderGLSL %}
   {% for Dispatch in IndirectDispatches %}
   // create indrect update pipeline for {{Dispatch.OriginalName}}
   //
@@ -1057,35 +1073,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitIndirectBufferUpdateResources(con
     vkDestroyShaderModule(device, tempShaderModule, VK_NULL_HANDLE);
   }
   {% endfor %}
-  {% else %}
-  VkShaderModule tempShaderModule = VK_NULL_HANDLE;
-  std::vector<uint32_t> code = vk_utils::readSPVFile(a_filePath);
-  VkShaderModuleCreateInfo createInfo = {};
-  createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-  createInfo.pCode    = code.data();
-  createInfo.codeSize = code.size()*sizeof(uint32_t);
-  VK_CHECK_RESULT(vkCreateShaderModule(device, &createInfo, NULL, &tempShaderModule));
-
-  {% for Dispatch in IndirectDispatches %}
-  // create indrect update pipeline for {{Dispatch.OriginalName}}
-  //
-  {
-    VkPipelineShaderStageCreateInfo shaderStageInfo = {};
-    shaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    shaderStageInfo.stage  = VK_SHADER_STAGE_COMPUTE_BIT;
-    shaderStageInfo.module = tempShaderModule;
-    shaderStageInfo.pName  = "{{Dispatch.OriginalName}}_UpdateIndirect";
-
-    VkComputePipelineCreateInfo pipelineCreateInfo = {};
-    pipelineCreateInfo.sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    pipelineCreateInfo.stage  = shaderStageInfo;
-    pipelineCreateInfo.layout = m_indirectUpdateLayout;
-    VK_CHECK_RESULT(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &m_indirectUpdate{{Dispatch.KernelName}}Pipeline));
-  }
-  {% endfor %}
-
-  vkDestroyShaderModule(device, tempShaderModule, VK_NULL_HANDLE);
-  {% endif %} {# /* end else branch of if ShaderGLSL */ #}
 }
 
 VkBufferMemoryBarrier {{MainClassName}}{{MainClassSuffix}}::BarrierForIndirectBufferUpdate(VkBuffer a_buffer)
@@ -2029,9 +2016,6 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   features2.features.shaderInt16   = {{GlobalUseInt16}};
   
   void** ppNext = &features2.pNext;
-  {% if GlobalUseInt8 or GlobalUseHalf %}
-  deviceExtensions.push_back("VK_KHR_shader_float16_int8");
-  {% endif %}
   {% if HasRTXAccelStruct or ForceRayGen or UseCallable %}
   {
     static VkPhysicalDeviceAccelerationStructureFeaturesKHR enabledAccelStructFeatures = {};
@@ -2106,6 +2090,7 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   (*ppNext) = &varPointersQuestion; ppNext = &varPointersQuestion.pNext;
   deviceExtensions.push_back("VK_KHR_variable_pointers");
   deviceExtensions.push_back("VK_KHR_shader_non_semantic_info"); // for clspv
+
   {% endif %}
   {% if HasAllRefs and not HasRTXAccelStruct and not ForceRayGen and not UseCallable %} {# /***** buffer device address ********/ #}
   static VkPhysicalDeviceBufferDeviceAddressFeaturesKHR bufferDeviceAddressFeatures = {};
@@ -2113,14 +2098,43 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
   (*ppNext) = &bufferDeviceAddressFeatures; ppNext = &bufferDeviceAddressFeatures.pNext;
   deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+
   {% endif %} {# /***** buffer device address ********/ #}
   {% if HasTextureArray and not HasRTXAccelStruct and not ForceRayGen and not UseCallable %}
-  static VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{};
+  static VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures = {};
   indexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
   indexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
   indexingFeatures.runtimeDescriptorArray                    = VK_TRUE;
   (*ppNext) = &indexingFeatures; ppNext = &indexingFeatures.pNext;
   deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+
+  {% endif %}
+  {% if GlobalUseFloatAtomics or GlobalUseDoubleAtomics %}
+  static VkPhysicalDeviceShaderAtomicFloatFeaturesEXT atomicFeatures = {};
+  atomicFeatures.sType                        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
+  atomicFeatures.shaderBufferFloat32AtomicAdd = {{GlobalUseFloatAtomics}};
+  atomicFeatures.shaderBufferFloat64AtomicAdd = {{GlobalUseDoubleAtomics}};
+  (*ppNext) = &atomicFeatures; ppNext = &atomicFeatures.pNext;
+  deviceExtensions.push_back(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME);
+
+  {% endif %}
+  {% if GlobalUseInt8 or GlobalUseHalf %}
+  static VkPhysicalDeviceShaderFloat16Int8Features f16i8Features = {};
+  f16i8Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
+  f16i8Features.shaderFloat16 = {{GlobalUseHalf}};
+  f16i8Features.shaderInt8    = {{GlobalUseInt8}};
+  deviceExtensions.push_back("VK_KHR_shader_float16_int8");
+  (*ppNext) = &f16i8Features; ppNext = &f16i8Features.pNext;
+
+  {% endif %}
+  {% if GlobalUse8BitStorage %}
+  static VkPhysicalDevice8BitStorageFeatures storage8BitFeatures = {};
+  storage8BitFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES;
+  storage8BitFeatures.storageBuffer8BitAccess           = VK_TRUE;
+  storage8BitFeatures.uniformAndStorageBuffer8BitAccess = VK_TRUE;
+  storage8BitFeatures.storagePushConstant8              = VK_FALSE;
+  (*ppNext) = &storage8BitFeatures; ppNext = &storage8BitFeatures.pNext;
+
   {% endif %}
   return features2;
 }

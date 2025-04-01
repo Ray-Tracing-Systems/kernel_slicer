@@ -52,5 +52,6 @@ int main(int argc, const char** argv)
   std::cout << "BFRT_ReadAndCompute(exec) = " << timings[0] << " ms " << std::endl;
   
   pImpl = nullptr;
+  vk_utils::globalContextDestroy();
   return 0;
 }

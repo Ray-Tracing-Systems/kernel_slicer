@@ -3,11 +3,18 @@
 
 {% include "common_generated.slang" %}
 
+///////////////////////////////////////////////////////////////// subkernels here
+{% for sub in Kernel.Subkernels %}
+{{sub.Decl}}
+{
+  {{sub.Source}}
+}
+
+{% endfor %}
+///////////////////////////////////////////////////////////////// subkernels here
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-{% if not Kernel.UseRayGen %}
-layout(local_size_x = {{Kernel.WGSizeX}}, local_size_y = {{Kernel.WGSizeY}}, local_size_z = {{Kernel.WGSizeZ}}) in;
-{% endif %}
 struct KernelArgs
 {
   {% for UserArg in Kernel.UserArgs %} 
@@ -19,24 +26,13 @@ struct KernelArgs
   uint tFlagsMask;    
 };
 
-///////////////////////////////////////////////////////////////// subkernels here
-{% for sub in Kernel.Subkernels %}
-{{sub.Decl}}
+[shader("compute")]
+[numthreads({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}})]
+void main(uint3 a_globalTID: SV_DispatchThreadID, uniform KernelArgs kgenArgs)
 {
-  {{sub.Source}}
-}
-
-{% endfor %}
-///////////////////////////////////////////////////////////////// subkernels here
-
-void main()
-{
-  ///////////////////////////////////////////////////////////////// prolog
   {% for TID in Kernel.ThreadIds %}
-  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}({% if Kernel.UseRayGen %}gl_LaunchIDEXT{% else %}gl_GlobalInvocationID{% endif %}[{{ loop.index }}]); 
+  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(a_globalTID[{{ loop.index }}]); 
   {% endfor %}
-  ///////////////////////////////////////////////////////////////// prolog
-
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {{Kernel.Source}}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}

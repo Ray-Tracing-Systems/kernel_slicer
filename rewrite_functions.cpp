@@ -1,5 +1,6 @@
 #include "kslicer.h"
-#include "class_gen.h"
+//#include "class_gen.h"
+#include "extractor.h"
 #include "ast_matchers.h"
 
 #include <sstream>
@@ -99,27 +100,32 @@ std::string kslicer::FunctionRewriter::VectorTypeContructorReplace(const std::st
   return std::string("make_") + fname + callText;
 }
 
-bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
+std::string kslicer::FunctionRewriter::RewriteConstructCall(clang::CXXConstructExpr* call)
 {
-  CXXConstructorDecl* ctorDecl = call->getConstructor();
+  clang::CXXConstructorDecl* ctorDecl = call->getConstructor();
   assert(ctorDecl != nullptr);
-  
-  const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);   
   const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
 
-  if(debugText.find("float4x4") != std::string::npos)
-  {
-    int a = 2;
-  }
+  const std::string text = FunctionCallRewriteNoName(call);
+  std::string textRes    = VectorTypeContructorReplace(fname, text); 
+  if(fname == "complex" && call->getNumArgs() == 1)
+    textRes = "to_complex" + text;
+  else if(fname == "complex" && call->getNumArgs() == 2)
+    textRes = "make_complex" + text;
+  return textRes;
+}
+
+bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call)
+{
+  const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+     
+  clang::CXXConstructorDecl* ctorDecl = call->getConstructor();
+  assert(ctorDecl != nullptr);
+  const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
 
   if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0 ) //
   {
-    const std::string text = FunctionCallRewriteNoName(call);
-    std::string textRes    = VectorTypeContructorReplace(fname, text); 
-    if(fname == "complex" && call->getNumArgs() == 1)
-      textRes = "to_complex" + text;
-    else if(fname == "complex" && call->getNumArgs() == 2)
-      textRes = "make_complex" + text;
+    const std::string textRes = RewriteConstructCall(call);
     ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
     //m_rewriter.ReplaceText(call->getSourceRange(), textRes);    //
     MarkRewritten(call);
@@ -145,12 +151,6 @@ bool kslicer::FunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperator
     const std::string rightType = right->getType().getAsString();
     const std::string keyType   = "complex"; 
 
-    if(debugText == "eta * cosThetaI")
-    {
-      int a = 2;
-      //expr->dump();
-    }
-
     if(leftType == keyType || rightType == keyType)
     {
       const std::string leftText  = RecursiveRewrite(left);
@@ -172,6 +172,9 @@ bool kslicer::FunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperator
   return true;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 std::string kslicer::FunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
@@ -187,17 +190,25 @@ std::string kslicer::FunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
     return m_rewriter.getRewrittenText(range);
 }
 
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool kslicer::NodesMarker::VisitStmt(clang::Stmt* expr)
+kslicer::RewrittenFunction kslicer::FunctionRewriter::RewriteFunction(clang::FunctionDecl* fDecl)
 {
-  auto hash = kslicer::GetHashOfSourceRange(expr->getSourceRange());
-  m_rewrittenNodes.insert(hash);
-  return true;
+  kslicer::RewrittenFunction done;
+  done.funDecl = RewriteFuncDecl(fDecl); 
+  done.funBody = RecursiveRewrite(fDecl->getBody());
+  return done;
 }
+
+std::string kslicer::FunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
+{
+  std::string declText = kslicer::GetRangeSourceCode(fDecl->getSourceRange(), m_compiler); 
+  auto posBrace = declText.find("{");
+  if(posBrace != std::string::npos)
+    declText = declText.substr(0,posBrace); // discard func body source code
+  return declText;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void kslicer::MarkRewrittenRecursive(const clang::Stmt* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes)
 {

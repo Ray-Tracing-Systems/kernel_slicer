@@ -38,6 +38,15 @@
       "problemMatcher": [
           "$gcc"
       ]
+    },
+    {
+      "label": "Build Kernels (Slang)",
+      "type": "shell",
+      "command": "cd shaders_generated && bash build_slang.sh",
+      "group": "build",
+      "problemMatcher": [
+          "$gcc"
+      ]
     }
   ]
 }

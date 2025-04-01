@@ -13,12 +13,23 @@ class ShaderLang(Enum):
     OPEN_CL = 0
     GLSL    = 1
     ISPC    = 2
+    SLANG   = 3
 
 class SampleConfig:
+    def get_config_if_have(self, args):
+        for i, arg in enumerate(args):
+            if arg in ("-config", "-options"):
+                if i + 1 < len(args):
+                    return args[i + 1]
+        return ""
     def __init__(self, name, args):
         self.name = name
         self.__args = SampleConfig.__fix_paths_in_args(args)
-        self.orig_cpp_file = self.__args[0]
+        configPath = self.get_config_if_have(self.__args)
+        if configPath == "":
+          self.orig_cpp_file = self.__args[0]
+        else:
+          self.orig_cpp_file = configPath
         self.root = SampleConfig.__extract_sample_root(self.orig_cpp_file)
         self.shader_lang = SampleConfig.__extract_shader_lang(self.__args)
         self.has_megakernel_key = "-megakernel" in self.__args
@@ -66,6 +77,8 @@ class SampleConfig:
                 lang = ShaderLang.GLSL
             elif arg.lower() == "ispc":
                 lang = ShaderLang.ISPC
+            elif arg.lower() == "slang":
+                lang = ShaderLang.SLANG
         return lang
 
 

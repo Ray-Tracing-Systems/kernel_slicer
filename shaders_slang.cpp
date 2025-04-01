@@ -7,50 +7,573 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_map<std::string, std::string> kslicer::ListSlangStandartTypeReplacements(bool a_NeedConstCopy)
+{
+  std::unordered_map<std::string, std::string> m_vecReplacements;
+  m_vecReplacements["_Bool"]              = "bool";
+  m_vecReplacements["long int"]           = "int";
+  m_vecReplacements["unsigned long"]      = "uint";
+  m_vecReplacements["unsigned int"]       = "uint";
+  m_vecReplacements["unsigned"]           = "uint";
+  m_vecReplacements["unsigned char"]      = "uint8_t";
+  m_vecReplacements["char"]               = "int8_t";
+  m_vecReplacements["unsigned short"]     = "uint16_t";
+  m_vecReplacements["short"]              = "int16_t";
+  m_vecReplacements["uchar"]              = "uint8_t";
+  m_vecReplacements["ushort"]             = "uint16_t";
+  m_vecReplacements["int32_t"]            = "int";
+  m_vecReplacements["uint32_t"]           = "uint";
+  m_vecReplacements["size_t"]             = "uint64_t";
+  m_vecReplacements["unsigned long long"] = "uint64_t";
+  m_vecReplacements["long long int"]      = "int64_t";
+  
+  if(a_NeedConstCopy)
+  {
+    std::unordered_map<std::string, std::string> m_vecReplacementsConst;
+    for(auto r : m_vecReplacements)
+      m_vecReplacementsConst[std::string("const ") + r.first] = std::string("const ") + m_vecReplacements[r.first];
+    
+    for(auto rc : m_vecReplacementsConst)
+      m_vecReplacements[rc.first] = rc.second;
+  }
+    
+  return m_vecReplacements;
+}
+
+void kslicer::SlangRewriter::Init()
+{
+  m_typesReplacement = ListSlangStandartTypeReplacements(true);
+  
+  m_funReplacements.clear();
+  m_funReplacements["atomicAdd"] = "InterlockedAdd";
+  m_funReplacements["AtomicAdd"] = "InterlockedAdd";
+}
+
+std::string kslicer::SlangRewriter::RewriteStdVectorTypeStr(const std::string& a_str) const
+{
+  const bool isConst  = (a_str.find("const") != std::string::npos);
+  std::string copy = a_str;
+  ReplaceFirst(copy, "const ", "");
+  while(ReplaceFirst(copy, " ", ""));
+
+  auto sFeatures2 = kslicer::GetUsedShaderFeaturesFromTypeName(a_str);
+  sFeatures = sFeatures || sFeatures2;
+
+  std::string resStr;
+  std::string typeStr = kslicer::CleanTypeName(a_str);
+
+  if(typeStr.size() > 0 && typeStr[typeStr.size()-1] == ' ')
+    typeStr = typeStr.substr(0, typeStr.size()-1);
+
+  if(typeStr.size() > 0 && typeStr[0] == ' ')
+    typeStr = typeStr.substr(1, typeStr.size()-1);
+
+  auto p = m_typesReplacement.find(typeStr);
+  if(p == m_typesReplacement.end())
+    resStr = typeStr;
+  else
+    resStr = p->second;
+
+  if(isConst)
+    resStr = std::string("const ") + resStr;
+
+  return resStr;
+}
+
+// process arrays: 'float[3] data' --> 'float data[3]' 
+std::string kslicer::SlangRewriter::RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const
+{
+  auto typeNameR = a_typeName;
+  auto posArrayBegin = typeNameR.find("[");
+  auto posArrayEnd   = typeNameR.find("]");
+  if(posArrayBegin != std::string::npos && posArrayEnd != std::string::npos)
+  {
+    varName   = varName + typeNameR.substr(posArrayBegin, posArrayEnd-posArrayBegin+1);
+    typeNameR = typeNameR.substr(0, posArrayBegin);
+  }
+
+  return RewriteStdVectorTypeStr(typeNameR);
+}
+
+bool kslicer::SlangRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // TODO: make this implementation more smart, bad implementation actually!
+{
+  std::string typeStr = kslicer::CleanTypeName(a_str);
+  return (m_typesReplacement.find(typeStr) != m_typesReplacement.end());
+}
+
+std::string kslicer::SlangRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
+{
+  std::string retT   = RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString());
+  std::string fname  = fDecl->getNameInfo().getName().getAsString();
+
+  if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix) // alter function name if it has any prefix
+    if(fname.find(m_pCurrFuncInfo->prefixName) == std::string::npos)
+      fname = m_pCurrFuncInfo->prefixName + "_" + fname;
+
+  std::string result = retT + " " + fname + "(";
+
+  const bool shitHappends = (fname == m_shit.originalName);
+  //if(shitHappends)
+  //  result = retT + " " + m_shit.ShittyName() + "(";
+
+  for(uint32_t i=0; i < fDecl->getNumParams(); i++)
+  {
+    const clang::ParmVarDecl* pParam  = fDecl->getParamDecl(i);
+    const clang::QualType typeOfParam =	pParam->getType();
+    std::string typeStr = typeOfParam.getAsString();
+    if(typeOfParam->isPointerType())
+    {
+      bool pointerToGlobalMemory = false;
+      if(shitHappends)
+      {
+        for(auto p : m_shit.pointers)
+        {
+          if(p.formal == pParam->getNameAsString() )
+          {
+            pointerToGlobalMemory = true;
+            break;
+          }
+        }
+      }
+
+      const auto originalText = kslicer::GetRangeSourceCode(pParam->getSourceRange(), m_compiler);
+      if(pointerToGlobalMemory)
+      {
+        ReplaceFirst(typeStr, "*", "");
+        std::string bufferType = "RWStructuredBuffer";
+        if(typeStr.find("const ") != std::string::npos)
+        {
+          //bufferType = "StructuredBuffer";
+          ReplaceFirst(typeStr, "const ", "");
+        }
+        while(ReplaceFirst(typeStr, " ", ""));
+
+        result += bufferType + "<" + typeStr + ">" + " " + pParam->getNameAsString();
+        if(SLANG_SUPPORT_POINTER_ADD_IN_ARGS)
+          result += std::string(",") + std::string("uint ") + pParam->getNameAsString() + "Offset"; //
+      }
+      else if(originalText.find("[") != std::string::npos && originalText.find("]") != std::string::npos) // fixed size arrays
+      {
+        if(typeOfParam->getPointeeType().isConstQualified())
+        {
+          ReplaceFirst(typeStr, "const ", "");
+          result += originalText;
+        }
+        else
+          result += std::string("inout ") + originalText;
+      }
+      else
+      {
+        std::string paramName = pParam->getNameAsString();
+        ReplaceFirst(typeStr, "*", "");
+        if(typeOfParam->getPointeeType().isConstQualified())
+        {
+          ReplaceFirst(typeStr, "const ", "");
+          result += std::string("in ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+        }
+        else
+          result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+      }
+    }
+    else if(typeOfParam->isReferenceType())
+    {
+      if(typeOfParam->getPointeeType().isConstQualified())
+      {
+        if(typeStr.find("Texture") != std::string::npos || typeStr.find("Image") != std::string::npos)
+        {
+          auto dataType = typeOfParam.getNonReferenceType();
+          auto typeDecl = dataType->getAsRecordDecl();
+          if(typeDecl != nullptr && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl))
+          {
+            std::string containerType, containerDataType;
+            auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
+            kslicer::SplitContainerTypes(specDecl, containerType, containerDataType);
+            ReplaceFirst(containerType, "Texture", "sampler");
+            ReplaceFirst(containerType, "Image",   "sampler");
+            result += std::string("in ") + containerType + " " + pParam->getNameAsString();
+          }
+          else
+            result += std::string("in ") + dataType.getAsString() + " " + pParam->getNameAsString();
+        }
+        else
+        {
+          ReplaceFirst(typeStr, "const ", "");
+          result += std::string("in ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+        }
+      }
+      else
+      {
+        std::string typeStr2 = typeOfParam->getPointeeType().getAsString();
+        if(m_codeInfo->megakernelRTV && (typeStr.find("Texture") != std::string::npos || typeStr.find("Image") != std::string::npos))
+        {
+          result += std::string("uint a_dummyOf") + pParam->getNameAsString();
+        }
+        else
+          result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr2) + " " + pParam->getNameAsString();
+      }
+    }
+    else
+      result += RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+
+    if(i!=fDecl->getNumParams()-1)
+      result += ", ";
+  }
+
+  return result + ") ";
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool kslicer::SlangRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)        
 {
-  auto hash = kslicer::GetHashOfSourceRange(fDecl->getBody()->getSourceRange());
-  if(m_codeInfo->m_functionsDone.find(hash) == m_codeInfo->m_functionsDone.end()) // it is important to put functions in 'm_functionsDone'
+  if(clang::isa<clang::CXXMethodDecl>(fDecl)) // ignore methods here, process them inside VisitCXXMethodDecl_Impl
+    return true;
+
+  if(WasNotRewrittenYet(fDecl->getBody()))
   {
-    kslicer::RewrittenFunction done;
-    done.funDecl = kslicer::GetRangeSourceCode(fDecl->getSourceRange(),            m_compiler); 
-    auto posBrace = done.funDecl.find("{");
-    if(posBrace != std::string::npos)
-      done.funDecl = done.funDecl.substr(0,posBrace); // discard func body source code
-    done.funBody = kslicer::GetRangeSourceCode(fDecl->getBody()->getSourceRange(), m_compiler);
-    m_codeInfo->m_functionsDone[hash] = done;
-  }  
-  return true; 
-}
-
-bool kslicer::SlangRewriter::VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl)      { return true; }
-bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)             { return true; }
-bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  { return true; } 
-bool kslicer::SlangRewriter::VisitFieldDecl_Impl(clang::FieldDecl* decl)               { return true; }
-bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) { return true; } 
-bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* f)                    { return true; }
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// unually both for kernel and functions
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// unually both for kernel and functions
-
-bool kslicer::SlangRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* op)
-{ 
-  if(m_kernelMode)
-  {
-    // ...
+    RewrittenFunction done = RewriteFunction(fDecl);
+    const auto hash = GetHashOfSourceRange(fDecl->getBody()->getSourceRange());
+    if(m_codeInfo->m_functionsDone.find(hash) == m_codeInfo->m_functionsDone.end())
+      m_codeInfo->m_functionsDone[hash] = done;
+    MarkRewritten(fDecl->getBody());
   }
 
   return true; 
+}
+
+bool kslicer::SlangRewriter::VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl)      
+{ 
+  return true; 
+}
+
+bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)             
+{
+  if(m_kernelMode)
+  {
+    std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    std::string rewrittenText;
+    if(NeedToRewriteMemberExpr(expr, rewrittenText))
+    {
+      //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
+      m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
+      MarkRewritten(expr);
+    }
+  }
+  
+  // 'pStruct->member' ==> 'pStruct.member'
+  //
+  const auto exprText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  if(expr->isArrow() && WasNotRewrittenYet(expr->getBase()) && exprText.find("->") != std::string::npos)
+  {
+    const std::string lText = exprText.substr(exprText.find("->")+2);
+    const std::string rText = RecursiveRewrite(expr->getBase());
+    ReplaceTextOrWorkAround(expr->getSourceRange(), rText + "." + lText);
+    //m_rewriter.ReplaceText(expr->getSourceRange(), rText + "." + lText);
+    MarkRewritten(expr->getBase());
+  }
+
+  return true; 
+}
+bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  { return true; } 
+bool kslicer::SlangRewriter::VisitFieldDecl_Impl(clang::FieldDecl* decl)               { return true; }
+
+std::string kslicer::SlangRewriter::VectorTypeContructorReplace(const std::string& fname, const std::string& callText)
+{
+  return fname + callText;
+}
+
+bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) 
+{ 
+  const std::string originalText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+     
+  clang::CXXConstructorDecl* ctorDecl = call->getConstructor();
+  assert(ctorDecl != nullptr);
+ 
+  if(WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0) //
+  {
+    std::string varName, typeName;
+    ExtractTypeAndVarNameFromConstructor(call, &m_compiler.getASTContext(), varName, typeName);
+    const bool hasVarName = (varName != "") && (originalText.find(varName) == 0); // found in the start of the string
+
+    std::string textRes = RewriteConstructCall(call);
+    if(hasVarName)
+      textRes = varName + " = " + textRes;
+    ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
+    //m_rewriter.ReplaceText(call->getSourceRange(), textRes);
+    MarkRewritten(call);
+  }
+
+  return true; 
+} 
+
+bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)                    
+{ 
+  if(m_kernelMode && WasNotRewrittenYet(call))
+  {
+    // (#1) check if buffer/pointer to global memory is passed to a function
+    //
+    std::vector<kslicer::ArgMatch> usedArgMatches = kslicer::MatchCallArgsForKernel(call, (*m_pCurrKernel), m_compiler);
+    std::vector<kslicer::ArgMatch> shittyPointers; shittyPointers.reserve(usedArgMatches.size());
+    for(const auto& x : usedArgMatches) {
+      const bool exclude = NameNeedsFakeOffset(x.actual); // #NOTE! seems that formal/actual parameters have to be swaped for the whole code
+      if(x.isPointer && !exclude)
+        shittyPointers.push_back(x);
+    }
+  
+    // (#2) check if at leat one argument of a function call require function call rewrite due to fake offset
+    //
+    bool rewriteDueToFakeOffset = false;
+    {
+      rewriteDueToFakeOffset = false;
+      for(unsigned i=0;i<call->getNumArgs(); i++)
+      {
+        const std::string argName = kslicer::GetRangeSourceCode(call->getArg(i)->getSourceRange(), m_compiler);
+        if(NameNeedsFakeOffset(argName))
+        {
+          rewriteDueToFakeOffset = true;
+          break;
+        }
+      }
+    }
+    rewriteDueToFakeOffset = rewriteDueToFakeOffset && !processFuncMember;      // function members don't apply fake offsets because they are not kernels
+    rewriteDueToFakeOffset = rewriteDueToFakeOffset && (m_fakeOffsetExp != ""); // if fakeOffset is not set for some reason, don't use it.
+  
+    const clang::FunctionDecl* fDecl = call->getDirectCallee();
+    if(shittyPointers.size() > 0 && fDecl != nullptr)
+    {
+      std::string fname = fDecl->getNameInfo().getName().getAsString();
+
+      kslicer::ShittyFunction func;
+      func.pointers     = shittyPointers;
+      func.originalName = fname;
+      m_pCurrKernel->shittyFunctions.push_back(func);
+  
+      std::string rewrittenRes = func.originalName + "(";
+      
+      //if(func.originalName == "kernel_GetMaterialColor")
+      //{
+      //  rewrittenRes = func.originalName + "(" + "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+-=)(" + ")";
+      //}
+      //else {
+      for(unsigned i=0;i<call->getNumArgs(); i++)
+      {
+        const auto arg = kslicer::RemoveImplicitCast(call->getArg(i));
+        rewrittenRes += RecursiveRewrite(arg);
+        if(SLANG_SUPPORT_POINTER_ADD_IN_ARGS)
+        {
+          size_t found = size_t(-1);
+          for(size_t j=0;j<shittyPointers.size();j++)
+          {
+            if(shittyPointers[j].argId == i)
+            {
+              found = j;
+              break;
+            }
+          }
+          if(found != size_t(-1))
+          {
+            std::string offset = "0";
+            //const std::string debugText = kslicer::GetRangeSourceCode(arg->getSourceRange(), m_compiler);
+            //arg->dump();
+            if(clang::isa<clang::BinaryOperator>(arg))
+            {
+              const auto bo = clang::dyn_cast<clang::BinaryOperator>(arg);
+              const clang::Expr *lhs = bo->getLHS();
+              const clang::Expr *rhs = bo->getRHS();
+              if(bo->getOpcodeStr() == "+")
+                offset = RecursiveRewrite(rhs);
+            }
+            rewrittenRes += ", " + offset;
+          }
+        }
+
+        if(i!=call->getNumArgs()-1)
+          rewrittenRes += ", ";
+      }
+      rewrittenRes += ")";
+      //}
+      
+      ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenRes);
+      //m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
+      MarkRewritten(call);
+    }
+    else if (m_codeInfo->IsRTV() && rewriteDueToFakeOffset)
+    {
+      std::string fname        = fDecl->getNameInfo().getName().getAsString();
+      std::string rewrittenRes = fname + "(";
+      for(unsigned i=0;i<call->getNumArgs(); i++)
+      {
+        const std::string argName = kslicer::GetRangeSourceCode(call->getArg(i)->getSourceRange(), m_compiler);
+        if(NameNeedsFakeOffset(argName) && !m_codeInfo->megakernelRTV)
+          rewrittenRes += RecursiveRewrite(call->getArg(i)) + "[" + m_fakeOffsetExp + "]";
+        else
+          rewrittenRes += RecursiveRewrite(call->getArg(i));
+  
+        if(i!=call->getNumArgs()-1)
+          rewrittenRes += ", ";
+      }
+      rewrittenRes += ")";
+      ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenRes);
+      //m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
+      MarkRewritten(call);
+    }
+  }
+  
+  if(!clang::isa<clang::CXXMemberCallExpr>(call) && !clang::isa<clang::CXXConstructExpr>(call)) // process CXXMemberCallExpr/CXXConstructExpr else-where
+  {
+    clang::FunctionDecl* fDecl = call->getDirectCallee();
+    if(fDecl == nullptr)
+      return true;
+    
+    const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+    const std::string fname     = fDecl->getNameInfo().getName().getAsString();
+  
+    /////////////////////////////////////////////////////////////////////////
+    //std::string makeSmth = "";
+    //if(fname == "make_float3x3_by_columns") // mat3(a,b,c) == make_float3x3_by_columns(a,b,c)
+    //  makeSmth = "float3x3";
+    //else if(fname == "make_float3x3")       // don't change it!
+    //  ;
+    //else if(fname.substr(0, 5) == "make_")
+    //  makeSmth = fname.substr(5);
+    /////////////////////////////////////////////////////////////////////////
+
+    auto pFoundSmth = m_funReplacements.find(fname);
+    if(pFoundSmth != m_funReplacements.end() && WasNotRewrittenYet(call))
+    {
+      std::string lastRewrittenText = pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call);
+      ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+      MarkRewritten(call);
+    }
+    else if(fDecl->isInStdNamespace() && WasNotRewrittenYet(call)) // remove "std::"
+    {
+      std::string lastRewrittenText = fname + "(" + CompleteFunctionCallRewrite(call);
+      ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+      MarkRewritten(call);
+    }
+
+  }
+
+  return true; 
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// unually both for kernel and functions
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// unually both for kernel and functions
+
+bool kslicer::SlangRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
+{ 
+  if(m_kernelMode)
+  {
+    clang::Expr* subExpr = expr->getSubExpr();
+    if(subExpr == nullptr)
+      return true;
+
+    const auto op = expr->getOpcodeStr(expr->getOpcode());
+    if(op == "++" || op == "--") // detect ++ and -- for reduction
+    {
+      auto opRange = expr->getSourceRange();
+      if(opRange.getEnd()   <= m_pCurrKernel->loopInsides.getBegin() || 
+         opRange.getBegin() >= m_pCurrKernel->loopInsides.getEnd() ) // not inside loop
+        return true;     
+      
+      const auto op = expr->getOpcodeStr(expr->getOpcode());
+      std::string leftStr = kslicer::GetRangeSourceCode(subExpr->getSourceRange(), m_compiler);
+  
+      auto p = m_pCurrKernel->usedMembers.find(leftStr);
+      if(p != m_pCurrKernel->usedMembers.end() && WasNotRewrittenYet(expr))
+      {
+        KernelInfo::ReductionAccess access;
+        access.type      = KernelInfo::REDUCTION_TYPE::UNKNOWN;
+        access.rightExpr = "";
+        access.leftExpr  = leftStr;
+        access.dataType  = subExpr->getType().getAsString();
+  
+        if(op == "++")
+          access.type    = KernelInfo::REDUCTION_TYPE::ADD_ONE;
+        else if(op == "--")
+          access.type    = KernelInfo::REDUCTION_TYPE::SUB_ONE;
+        
+        std::string leftStr2   = RecursiveRewrite(expr->getSubExpr()); 
+        std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_pCurrKernel->GetDim(), m_pCurrKernel->wgSize);
+        ReplaceTextOrWorkAround(expr->getSourceRange(), leftStr2 + "Shared[" + localIdStr + "]++");
+        MarkRewritten(expr);
+      }
+    }
+
+    // detect " *something and &something"
+    //
+    const std::string exprInside = RecursiveRewrite(subExpr);
+
+    if(op == "*" && !expr->canOverflow() && CheckIfExprHasArgumentThatNeedFakeOffset(exprInside) && WasNotRewrittenYet(expr)) 
+    {
+      if(m_codeInfo->megakernelRTV || m_fakeOffsetExp == "")
+        ReplaceTextOrWorkAround(expr->getSourceRange(), exprInside);
+      else
+        ReplaceTextOrWorkAround(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
+      MarkRewritten(expr);
+    }
+  }
+  
+  // remove "&" and "*" from all arguments and expressions
+  //
+  const auto op = expr->getOpcodeStr(expr->getOpcode());
+  if(SLANG_ELIMINATE_LOCAL_POINTERS && (op == "*" || op == "&") && WasNotRewrittenYet(expr->getSubExpr()) )
+  {
+    std::string text = RecursiveRewrite(expr->getSubExpr());
+    ReplaceTextOrWorkAround(expr->getSourceRange(), text);
+    //m_rewriter.ReplaceText(expr->getSourceRange(), text);
+    MarkRewritten(expr->getSubExpr());
+  }
+
+  return true; 
+}
+
+static bool IsMatrixType(const std::string& a_typeName) // TODO: make it more 'soft'
+{
+  std::string typeName = a_typeName;
+  ReplaceFirst(typeName, "LiteMath::", "");
+  ReplaceFirst(typeName, "glm::", "");
+  ReplaceFirst(typeName, "std::", "");
+  if(typeName == "float2x2" || typeName == "double2x2")
+    return true;
+  else if(typeName == "float3x3" || typeName == "double3x3")
+    return true;
+  else if(typeName == "float4x4" || typeName == "double4x4")
+    return true;
+  else
+    return false;
 }
 
 bool kslicer::SlangRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) 
 { 
   if(m_kernelMode)
   {
-    // ...
+    FunctionRewriter2::VisitCXXOperatorCallExpr_Impl(expr);
+  }
+  
+  std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler); 
+  if(op == "*" && expr->getNumArgs() == 2)
+  {
+    const clang::Expr* left  = expr->getArg(0);
+    const clang::Expr* right = expr->getArg(1);
+
+    const clang::QualType lhsType = left->getType();
+    const clang::QualType rhsType = right->getType();
+    
+    const std::string lhsTypeStr = lhsType.getAsString();
+    const std::string rhsTypeStr = rhsType.getAsString();
+    
+    if(WasNotRewrittenYet(expr) && IsMatrixType(lhsTypeStr) && IsMatrixType(rhsTypeStr))
+    {
+      const std::string leftText  = RecursiveRewrite(left);
+      const std::string rightText = RecursiveRewrite(right);
+      const std::string text      = "mul(" + leftText + "," + rightText + ")";
+      ReplaceTextOrWorkAround(expr->getSourceRange(), text);
+      //m_rewriter.ReplaceText(expr->getSourceRange(), text);
+      MarkRewritten(expr);
+    }
   }
 
   return true; 
@@ -58,9 +581,38 @@ bool kslicer::SlangRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCal
 
 bool kslicer::SlangRewriter::VisitVarDecl_Impl(clang::VarDecl* decl) 
 { 
+  if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
+    return true;
+
+  const auto qt      = decl->getType();
+  const auto pValue  = decl->getAnyInitializer();
+
+  const std::string originalText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler);
+  const std::string varType      = qt.getAsString();
+
   if(m_kernelMode)
   {
     // ...
+  }
+
+  const clang::Type::TypeClass typeClass = qt->getTypeClass();
+  const bool isAuto = (typeClass == clang::Type::Auto);
+  if(pValue != nullptr && WasNotRewrittenYet(pValue) && (NeedsVectorTypeRewrite(varType) || isAuto))
+  {
+    std::string varName  = decl->getNameAsString();
+    std::string varNameOld = varName;
+    std::string varValue = RecursiveRewrite(pValue);
+    std::string varType2 = RewriteStdVectorTypeStr(varType, varName);
+    
+    std::string lastRewrittenText;
+    if(varValue == "" || varNameOld == varValue) // 'float3 deviation;' for some reason !decl->hasInit() does not works
+      lastRewrittenText = varType2 + " " + varName;
+    else
+      lastRewrittenText = varType2 + " " + varName + " = " + varValue;
+  
+    ReplaceTextOrWorkAround(decl->getSourceRange(), lastRewrittenText);
+    //m_rewriter.ReplaceText(decl->getSourceRange(), lastRewrittenText);
+    MarkRewritten(pValue);
   }
 
   return true; 
@@ -96,6 +648,23 @@ bool kslicer::SlangRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl)
   return true; 
 }
 
+bool kslicer::SlangRewriter::VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr) 
+{
+  clang::QualType type = expr->getType();
+
+  const bool isDoubleLiteral = type->isRealFloatingType() && type->isSpecificBuiltinType(clang::BuiltinType::Double);
+
+  if(isDoubleLiteral && WasNotRewrittenYet(expr))
+  {
+    std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    //ReplaceTextOrWorkAround(expr->getSourceRange(), originalText + "l");
+    m_rewriter.ReplaceText(expr->getSourceRange(), originalText + "l");
+    MarkRewritten(expr);
+  }
+
+  return true;
+}
+
 bool kslicer::SlangRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) 
 { 
   if(m_kernelMode)
@@ -123,7 +692,7 @@ bool kslicer::SlangRewriter::VisitCompoundAssignOperator_Impl(clang::CompoundAss
 { 
   if(m_kernelMode)
   {
-    // ...
+    return FunctionRewriter2::VisitCompoundAssignOperator_Impl(expr);
   }
 
   return true; 
@@ -133,7 +702,7 @@ bool kslicer::SlangRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* exp
 {
   if(m_kernelMode)
   {
-    // ...
+    return FunctionRewriter2::VisitBinaryOperator_Impl(expr);
   }
 
   return true;
@@ -142,8 +711,20 @@ bool kslicer::SlangRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* exp
 bool  kslicer::SlangRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) 
 {
   if(m_kernelMode)
-  {
-    // ...
+  { 
+    std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    if(originalText == "scale")
+    {
+      int a = 2;
+    }
+    
+    std::string rewrittenText;
+    if(NeedToRewriteDeclRefExpr(expr,rewrittenText) && WasNotRewrittenYet(expr))
+    {
+      //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
+      m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
+      MarkRewritten(expr);
+    }
   }
 
   return true;
@@ -153,6 +734,10 @@ std::string kslicer::SlangRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
     return "";
+  
+  std::string shallow;
+  if(DetectAndRewriteShallowPattern(expr, shallow)) 
+    return shallow;
     
   SlangRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
@@ -170,12 +755,10 @@ std::string kslicer::SlangRewriter::RecursiveRewrite(const clang::Stmt* expr)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 kslicer::SlangCompiler::SlangCompiler(const std::string& a_prefix) : m_suffix(a_prefix)
 {
-
+  m_typesReplacement = ListSlangStandartTypeReplacements(false);
 }
-
 
 std::string kslicer::SlangCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const
 {
@@ -209,10 +792,71 @@ void kslicer::SlangCompiler::GetThreadSizeNames(std::string a_strs[3]) const
   a_strs[2] = "iNumElementsZ";
 }
 
+std::string kslicer::SlangCompiler::GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const
+{
+  std::string res = "WaveActiveSumUnknown"; 
+  switch(a_access.type)
+  {
+    case KernelInfo::REDUCTION_TYPE::ADD_ONE:
+    case KernelInfo::REDUCTION_TYPE::ADD:
+    res = "WaveActiveSum";
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::SUB:
+    case KernelInfo::REDUCTION_TYPE::SUB_ONE:
+    res = "WaveActiveSum";
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::FUNC:
+    {
+      if(a_access.funcName == "min" || a_access.funcName == "std::min") res = "WaveActiveMin";
+      if(a_access.funcName == "max" || a_access.funcName == "std::max") res = "WaveActiveMax";
+    }
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::MUL:
+    res = "WaveActiveMul";
+    break;
+
+    default:
+    break;
+  };
+  return res;
+}
+
+std::string kslicer::SlangCompiler::GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const
+{
+  std::string res = "InterlockedUnknown";
+  switch(a_access.type)
+  {
+    case KernelInfo::REDUCTION_TYPE::ADD_ONE:
+    case KernelInfo::REDUCTION_TYPE::ADD:
+    res = "InterlockedAdd";
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::SUB:
+    case KernelInfo::REDUCTION_TYPE::SUB_ONE:
+    res = "InterlockedAdd";
+    break;
+
+    case KernelInfo::REDUCTION_TYPE::FUNC:
+    {
+      if(a_access.funcName == "min" || a_access.funcName == "std::min") res = "InterlockedMin";
+      if(a_access.funcName == "max" || a_access.funcName == "std::max") res = "InterlockedMax";
+    }
+    break;
+
+    default:
+    break;
+  };
+  return res;
+}
+
 std::string kslicer::SlangCompiler::ProcessBufferType(const std::string& a_typeName) const
 {
   std::string type = kslicer::CleanTypeName(a_typeName);
   ReplaceFirst(type, "*", "");
+  
   if(type[type.size()-1] == ' ')
     type = type.substr(0, type.size()-1);
 
@@ -221,7 +865,7 @@ std::string kslicer::SlangCompiler::ProcessBufferType(const std::string& a_typeN
 
 std::string kslicer::SlangCompiler::RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const
 {
-  return std::string("{ uint offset = atomicAdd(") + UBOAccess(memberNameB) + ", 1); " + memberNameA + "[offset] = " + newElemValue + ";}";
+  return std::string("{ uint offset = 0; InterlockedAdd(") + UBOAccess(memberNameB) + ", 1, offset); " + memberNameA + "[offset] = " + newElemValue + ";}";
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -230,14 +874,16 @@ std::string kslicer::SlangCompiler::RewritePushBack(const std::string& memberNam
 std::shared_ptr<kslicer::FunctionRewriter> kslicer::SlangCompiler::MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, 
                                                                                     MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit)
 {
-  return std::make_shared<SlangRewriter>(R, a_compiler, a_codeInfo);
+  auto pFunc = std::make_shared<SlangRewriter>(R, a_compiler, a_codeInfo);
+  pFunc->m_shit = a_shit;
+  return pFunc;
 }
 
 std::shared_ptr<kslicer::KernelRewriter> kslicer::SlangCompiler::MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, 
                                                                                   MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, const std::string& fakeOffs)
 {
   auto pFunc = std::make_shared<SlangRewriter>(R, a_compiler, a_codeInfo);
-  pFunc->m_kernelMode = true;
+  pFunc->InitKernelData(a_kernel, fakeOffs);
   return std::make_shared<KernelRewriter2>(R, a_compiler, a_codeInfo, a_kernel, fakeOffs, pFunc);
 }
 
@@ -303,41 +949,38 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     buildSH << "slangc " << outFileName.c_str() << " -o " << kernelName.c_str() << ".comp.spv" << " -I.. ";
     for(auto folder : ignoreFolders)
       buildSH << "-I" << folder.c_str() << " ";
-    //if(vulkan12)
-    //  buildSH << "--target-env vulkan1.2 ";
-    //else if(vulkan11)
-    //  buildSH << "--target-env vulkan1.1 ";
     //if(useRayTracingPipeline)
     //  buildSH << "-S rgen ";
     buildSH << std::endl;
   
-    //if(kernel.value()["IsIndirect"])
-    //{
-    //  outFileName = kernelName + "_UpdateIndirect.slang";
-    //  outFilePath = shaderPath / outFileName;
-    //  kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
-    //  buildSH << "glslangValidator -V ";
-    //  if(vulkan11)
-    //    buildSH << "--target-env vulkan1.1 ";
-    //  buildSH << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
-    //  for(auto folder : ignoreFolders)
-    //   buildSH << "-I" << folder.c_str() << " ";
-    //  buildSH << std::endl;
-    //}
+    if(kernel.value()["IsIndirect"])
+    {
+      outFileName = kernelName + "_UpdateIndirect.slang";
+      outFilePath = shaderPath / outFileName;
+      kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
+      buildSH << "slangc " << outFileName.c_str() << " -o " << kernelName.c_str() << "_UpdateIndirect.comp.spv" << " -I.. ";
+      for(auto folder : ignoreFolders)
+       buildSH << "-I" << folder.c_str() << " ";
+      buildSH << std::endl;
+    }
 
-    //if(kernel.value()["FinishRed"])
-    //{
-    //  outFileName = kernelName + "_Reduction.slang";
-    //  outFilePath = shaderPath / outFileName;
-    //  kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
-    //  buildSH << "glslangValidator -V ";
-    //  if(vulkan11)
-    //    buildSH << "--target-env vulkan1.1 ";
-    //  buildSH << outFileName.c_str() << " -o " << outFileName.c_str() << ".spv" << " -DGLSL -I.. ";
-    //  for(auto folder : ignoreFolders)
-    //   buildSH << "-I" << folder.c_str() << " ";
-    //  buildSH << std::endl;
-    //}
+    if(kernel.value()["FinishRed"])
+    {
+      outFileName = kernelName + "_Reduction.slang";
+      outFilePath = shaderPath / outFileName;
+      kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
+      buildSH << "slangc " << outFileName.c_str() << " -o " << kernelName.c_str() << "_Reduction.comp.spv" << " -I.. ";
+      for(auto folder : ignoreFolders)
+       buildSH << "-I" << folder.c_str() << " ";
+      buildSH << std::endl;
+    }
+  }
+
+  if(a_codeInfo->usedServiceCalls.find("memcpy") != a_codeInfo->usedServiceCalls.end())
+  {
+    nlohmann::json dummy;
+    kslicer::ApplyJsonToTemplate(templatesFolder / "z_memcpy.slang", shaderPath / "z_memcpy.slang", dummy); // just file copy actually
+    buildSH << "slangc z_memcpy.slang -o z_memcpy.comp.spv" << std::endl;
   }
 
 }
@@ -346,18 +989,35 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
 std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter)
 {
   std::string typeInCL = a_decl.type;
+  ReplaceFirst(typeInCL, "struct ", "");
+  ReplaceFirst(typeInCL, "LiteMath::", "");
+
+  std::string originalText = kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler);
+
   std::string result = "";
   switch(a_decl.kind)
   {
     case kslicer::DECL_IN_CLASS::DECL_STRUCT:
-    result = kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    result = originalText + ";";
     break;
     case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
-    ReplaceFirst(typeInCL, "_Bool", "bool");
-    result = typeInCL + " " + a_decl.name + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    //ReplaceFirst(typeInCL, "unsigned int", "uint");
+    //ReplaceFirst(typeInCL, "unsigned", "uint");
+    //ReplaceFirst(typeInCL, "_Bool", "bool");
+    for(const auto& pair : m_typesReplacement)
+      ReplaceFirst(typeInCL, pair.first, pair.second);
+    if(originalText == "")
+      originalText = a_decl.lostValue;
+    result = "static " + typeInCL + " " + a_decl.name + " = " + originalText + ";";
+    //if(a_decl.name.find("CRT_GEOM_MASK_AABB_BIT") != std::string::npos)
+    //{
+    //  int a = 2;
+    //}
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
-    result = "typedef " + typeInCL + " " + a_decl.name + ";";
+    for(const auto& pair : m_typesReplacement)
+      ReplaceFirst(typeInCL, pair.first, pair.second);
+    result = "typealias " + a_decl.name + " = " + typeInCL + ";";
     break;
     default:
     break;
@@ -365,3 +1025,21 @@ std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
   return result;
 }
 
+std::string kslicer::SlangCompiler::RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds)
+{
+  std::string names[3];
+  this->GetThreadSizeNames(names);
+
+  const std::string names0 = std::string("kgenArgs.") + names[0];
+  const std::string names1 = std::string("kgenArgs.") + names[1];
+  const std::string names2 = std::string("kgenArgs.") + names[2];
+
+  if(threadIds.size() == 1)
+    return threadIds[0].name;
+  else if(threadIds.size() == 2)
+    return std::string("fakeOffset(") + threadIds[0].name + "," + threadIds[1].name + "," + names0 + ")";
+  else if(threadIds.size() == 3)
+    return std::string("fakeOffset2(") + threadIds[0].name + "," + threadIds[1].name + "," + threadIds[2].name + "," + names0 + "," + names1 + ")";
+  else
+    return "a_globalTID.x";
+} 

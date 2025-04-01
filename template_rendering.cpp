@@ -440,8 +440,8 @@ static json ReductionAccessFill(const kslicer::KernelInfo::ReductionAccess& seco
   varJ["BinFuncForm"]   = (second.type == kslicer::KernelInfo::REDUCTION_TYPE::FUNC);
   varJ["OutTempName"]   = second.tmpVarName;
   varJ["SupportAtomic"] = second.SupportAtomicLastStep();
-  varJ["AtomicOp"]      = second.GetAtomicImplCode(pShaderCC->IsGLSL());
-  varJ["SubgroupOp"]    = second.GetSubgroupOpCode(pShaderCC->IsGLSL());
+  varJ["AtomicOp"]      = pShaderCC->GetAtomicImplCode(second);
+  varJ["SubgroupOp"]    = pShaderCC->GetSubgroupOpCode(second);
   //varJ["UseSubgroups"]  = second.useSubGroups;
   varJ["IsArray"]       = second.leftIsArray;
   varJ["ArraySize"]     = second.arraySize;
@@ -510,7 +510,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   }
 
   std::unordered_map<std::string, kslicer::ShittyFunction> shittyFunctions; //
-  if(a_classInfo.pShaderCC->IsGLSL())
+  if(!a_classInfo.pShaderCC->BuffersAsPointersInShaders())
   {
     for(const auto& k : a_classInfo.kernels)
     {
@@ -640,11 +640,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   for(auto k : a_classInfo.kernels)
     shaderFeatures = shaderFeatures || k.second.shaderFeatures;
 
-  data["GlobalUseInt8"]    = shaderFeatures.useByteType;
-  data["GlobalUseInt16"]   = shaderFeatures.useShortType;
-  data["GlobalUseInt64"]   = shaderFeatures.useInt64Type;
-  data["GlobalUseFloat64"] = shaderFeatures.useFloat64Type;
-  data["GlobalUseHalf"]    = shaderFeatures.useHalfType;
+  data["GlobalUseInt8"]         = shaderFeatures.useByteType;
+  data["GlobalUseInt16"]        = shaderFeatures.useShortType;
+  data["GlobalUseInt64"]        = shaderFeatures.useInt64Type;
+  data["GlobalUseFloat64"]      = shaderFeatures.useFloat64Type;
+  data["GlobalUseHalf"]         = shaderFeatures.useHalfType;
+  data["GlobalUseFloatAtomics"] = shaderFeatures.useFloatAtomicAdd;
 
   // (4) put kernels
   //
@@ -735,7 +736,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(pVecMember->second.containerDataType);
       std::string buffType2 = pShaderRewriter->RewriteStdVectorTypeStr(buffType1);
-      if(!a_classInfo.pShaderCC->IsGLSL() && !a_classInfo.pShaderCC->IsISPC())
+      if(a_classInfo.pShaderCC->BuffersAsPointersInShaders())
         buffType2 += "*";
 
       json argj;
@@ -807,7 +808,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     if(k.isIndirect && !a_classInfo.pShaderCC->IsISPC()) // add indirect buffer to shaders
     {
       json argj;
-      argj["Type"]       = a_classInfo.pShaderCC->IsGLSL() ? "uvec4 " : "uint4* ";
+      argj["Type"]       = a_classInfo.pShaderCC->IndirectBufferDataType();
       argj["Name"]       = "m_indirectBuffer";
       argj["IsUBO"]      = false;
       argj["IsPointer"]  = false;
@@ -920,7 +921,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["LastArgNF1"]   = VArgsSize + MArgsSize;
     kernelJson["LastArgNF"]    = VArgsSize; // Last Argument No Flags
     kernelJson["Args"]         = args;
-    kernelJson["RTXNames"]     = rtxNames;
     kernelJson["UserArgs"]     = userArgs;
     kernelJson["Name"]         = k.name;
     kernelJson["UBOBinding"]   = args.size(); // for circle
@@ -932,6 +932,15 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["NeedTexArray"] = isTextureArrayUsedInThisKernel;
     kernelJson["WarpSize"]     = k.warpSize;
     kernelJson["InitSource"]   = "";
+    
+    kernelJson["RTXNames"]        = rtxNames;
+    kernelJson["UseAccelS"]       = (rtxNames.size() > 0);
+    kernelJson["UseInt8"]         = k.shaderFeatures.useByteType;
+    kernelJson["UseInt16"]        = k.shaderFeatures.useShortType;
+    kernelJson["UseInt64"]        = k.shaderFeatures.useInt64Type;
+    kernelJson["UseFloat64"]      = k.shaderFeatures.useFloat64Type;
+    kernelJson["UseHalf"]         = k.shaderFeatures.useHalfType;
+    kernelJson["UseFloatAtomics"] = k.shaderFeatures.useFloatAtomicAdd;
 
     kernelJson["SingleThreadISPC"] = k.singleThreadISPC;
     kernelJson["OpenMPAndISPC"]    = k.openMpAndISPC;
@@ -1117,18 +1126,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["WGSizeZ"]       = k.wgSize[2]; //
 
     //////////////////////////////////////////////////////////////////////////////////////////
-    std::string names[3];
-    a_classInfo.pShaderCC->GetThreadSizeNames(names);
-    if(a_classInfo.pShaderCC->IsGLSL())
-    {
-      names[0] = std::string("kgenArgs.") + names[0];
-      names[1] = std::string("kgenArgs.") + names[1];
-      names[2] = std::string("kgenArgs.") + names[2];
-    }
+    std::string threadOffsetStr = a_classInfo.pShaderCC->RTVGetFakeOffsetExpression(k, a_classInfo.GetKernelTIDArgs(k));
 
     kernelJson["shouldCheckExitFlag"] = k.checkThreadFlags;
     kernelJson["checkFlagsExpr"]      = "//xxx//";
-    kernelJson["ThreadOffset"]        = kslicer::GetFakeOffsetExpression(k, a_classInfo.GetKernelTIDArgs(k), names);
+    kernelJson["ThreadOffset"]        = threadOffsetStr;
     kernelJson["InitKPass"]           = false;
     kernelJson["IsIndirect"]          = k.isIndirect;
     if(k.isIndirect)
@@ -1245,14 +1247,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());  //
       auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo, shit.second);
       auto funcNode  = const_cast<clang::FunctionDecl*>(pFunc->second.astNode);
-
-      const std::string funcDeclText = pVisitorF->RewriteFuncDecl(funcNode);
-      const std::string funcBodyText = pVisitorF->RecursiveRewrite(funcNode->getBody());
-
-      kernelJson["ShityFunctions"].push_back(funcDeclText + funcBodyText);
+      auto rewritten = pVisitorF->RewriteFunction(funcNode);
+      kernelJson["ShityFunctions"].push_back(rewritten.funText());
     }
 
-    kernelJson["Subkernels"]  = std::vector<std::string>();
+    kernelJson["Subkernels"]  = std::vector<json>();
     if(a_classInfo.megakernelRTV)
     {
       for(auto pSubkernel : k.subkernels)
@@ -1298,6 +1297,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       local["Size"] = array.second.arraySize;
       kernelJson["ThreadLocalArrays"].push_back(local);
     }
+
+    kernelJson["IsSingleThreaded"] = false; 
   
     auto original = kernelJson;
 
@@ -1320,6 +1321,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         kernelJson["WGSizeX"]   = 1;
         kernelJson["WGSizeY"]   = 1;
         kernelJson["WGSizeZ"]   = 1;
+        kernelJson["IsSingleThreaded"] = true;
         data["Kernels"].push_back(kernelJson);
       }
     }
@@ -1336,6 +1338,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["WGSizeX"]   = 1;
       kernelJson["WGSizeY"]   = 1;
       kernelJson["WGSizeZ"]   = 1;
+      kernelJson["IsSingleThreaded"] = true;
       data["Kernels"].push_back(kernelJson);
     }
 

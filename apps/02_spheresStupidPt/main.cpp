@@ -61,9 +61,9 @@ int main(int argc, const char** argv)
   for(int i=0;i<WIN_HEIGHT*WIN_HEIGHT;i++)
   {
     float4 color = realColor[i]*normConst;
-    color.x      = powf(color.x, invGamma);
-    color.y      = powf(color.y, invGamma);
-    color.z      = powf(color.z, invGamma);
+    color.x      = std::pow(color.x, invGamma);
+    color.y      = std::pow(color.y, invGamma);
+    color.z      = std::pow(color.z, invGamma);
     color.w      = 1.0f;
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }
@@ -78,5 +78,8 @@ int main(int argc, const char** argv)
   std::cout << "StupidPathTraceBlock(exec) = " << timings[0]              << " ms " << std::endl;
   std::cout << "StupidPathTraceBlock(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
   std::cout << "StupidPathTraceBlock(ovrh) = " << timings[3]              << " ms " << std::endl;
+
+  pImpl = nullptr;  
+  vk_utils::globalContextDestroy();
   return 0;
 }

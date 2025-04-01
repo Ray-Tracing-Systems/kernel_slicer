@@ -662,7 +662,6 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractA
     arg.node          = checkExpr;
     if(text[0] == '&')
     {
-      arg.umpersanned = true;
       text = text.substr(1);
       auto pClassVar = m_allClassMembers.find(text);
       if(pClassVar != m_allClassMembers.end())

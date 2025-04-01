@@ -85,25 +85,8 @@ namespace kslicer
   };
 
   std::vector<InOutVarInfo> ListParamsOfMainFunc(const CXXMethodDecl* a_node, const clang::CompilerInstance& compiler);
-  
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////  NodesMarker  //////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  
-  class NodesMarker : public RecursiveASTVisitor<NodesMarker> // mark all subsequent nodes to be rewritten, put their ash codes in 'rewrittenNodes'
-  {
-  public:
-    NodesMarker(std::unordered_set<uint64_t>& a_rewrittenNodes) : m_rewrittenNodes(a_rewrittenNodes){}
-    bool VisitStmt(Stmt* expr);
-
-  private:
-    std::unordered_set<uint64_t>& m_rewrittenNodes;
-  };
 
   void ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo);
-  std::string GetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, 
-                                      const std::vector<kslicer::ArgFinal>& threadIds,
-                                      const std::string a_names[3]);
 }
 
 

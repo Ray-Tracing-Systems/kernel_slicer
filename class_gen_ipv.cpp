@@ -1,5 +1,6 @@
 #include "kslicer.h"
 #include "class_gen.h"
+#include "extractor.h"
 #include "ast_matchers.h"
 
 #include <sstream>
@@ -133,12 +134,20 @@ public:
 
     if(forLoop && func_decl)
     {
-      const VarDecl* initVar = result.Nodes.getNodeAs<clang::VarDecl>("initVar");
-      const VarDecl* condVar = result.Nodes.getNodeAs<clang::VarDecl>("condVar");
-      const VarDecl* incVar  = result.Nodes.getNodeAs<clang::VarDecl>("incVar");
-      const Expr*    loopSZ  = result.Nodes.getNodeAs<clang::Expr>   ("loopSize");
+      const clang::VarDecl* initVar = result.Nodes.getNodeAs<clang::VarDecl>("initVar");
+      const clang::VarDecl* condVar = result.Nodes.getNodeAs<clang::VarDecl>("condVar");
+      const clang::VarDecl* incVar  = result.Nodes.getNodeAs<clang::VarDecl>("incVar");
+      const clang::Expr*    loopSZ  = result.Nodes.getNodeAs<clang::Expr>   ("loopSize");
       
-      if(areSameVariable(initVar,condVar) && areSameVariable(initVar, incVar) && loopSZ)
+      const bool sameInitAndCond = areSameVariable(initVar,condVar);
+      const bool sameInitAndInc  = areSameVariable(initVar, incVar);
+
+      //std::string debugInitVar = kslicer::GetRangeSourceCode(initVar->getSourceRange(), m_compiler);
+      //std::string debugCondVar = kslicer::GetRangeSourceCode(condVar->getSourceRange(), m_compiler);
+      //std::string debugIncVar  = kslicer::GetRangeSourceCode(incVar->getSourceRange(), m_compiler);
+      //std::string debugForExp  = kslicer::GetRangeSourceCode(forLoop->getSourceRange(), m_compiler);
+
+      if(sameInitAndCond && sameInitAndInc && loopSZ)
       {
         std::string name      = initVar->getNameAsString();
         std::string debugText = kslicer::GetRangeSourceCode(forLoop->getBody()->getSourceRange(), m_compiler);
@@ -149,7 +158,7 @@ public:
           const clang::CXXMethodDecl* method      = clang::dyn_cast<clang::CXXMethodDecl>(func_decl);
           const clang::CXXRecordDecl* parentClass = method->getParent();
           std::string className = parentClass->getNameAsString();
-          fromThisClass = (className == m_mainClassName);
+          fromThisClass = (m_allInfo.mainClassNames.find(className) != m_allInfo.mainClassNames.end()); //  (className == m_mainClassName);
         }
 
         //std::cout << "  [LoopHandlerIPV]: Variable name is: " << name.c_str() << std::endl;
@@ -239,13 +248,41 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
   auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "");
   pVisitor->SetCurrKernelInfo(&a_funcInfo);
 
-  //const std::string funBody  = pVisitor->RecursiveRewrite(a_funcInfo.astNode->getBody());
+  auto kernelNodes = kslicer::ExtractKernelForLoops(a_funcInfo.astNode->getBody(), int(a_funcInfo.loopIters.size()), compiler);
+  
+  std::string funcBodyText = ""; // SOME REPLACEMENT DOES NOT WORKS 
+  //{
+  //if(kernelNodes.loopBody != nullptr)
+  //{
+  //  funcBodyText = pVisitor->RecursiveRewrite(kernelNodes.loopBody);
+  //  if(!clang::isa<clang::CompoundStmt>(kernelNodes.loopBody))
+  //    funcBodyText += ";";
+  //}
 
+  //if(kernelNodes.beforeLoop != nullptr)                                      // beforeLoop does not works, removed
+  //  a_outLoopInitCode = pVisitor->RecursiveRewrite(kernelNodes.beforeLoop);
+  //else
+  //  a_outLoopInitCode = "";
+  //
+  //if(kernelNodes.afterLoop != nullptr)
+  //  a_outLoopFinishCode = pVisitor->RecursiveRewrite(kernelNodes.afterLoop); // afterLoop does not works in this way, removed
+  //else
+  //  a_outLoopFinishCode = "";
+  //
+  //if(kernelNodes.loopBody != nullptr)
+  //  return funcBodyText;
+  //else
+  //  return "//empty kernel body is found";
+  //}
+  
+  // old way
+  //
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
+  //pVisitor->TraverseStmt(const_cast<clang::Stmt*>(a_funcInfo.astNode->getBody()));
   pVisitor->ApplyDefferedWorkArounds();
   pVisitor->ResetCurrKernelInfo();
   
-  a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures(); // TODO: dont work !!!
+  a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures(); // TODO: don't work !!!
 
   if(a_funcInfo.loopOutsidesInit.isValid())
   {
@@ -261,17 +298,44 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
 
   if(a_funcInfo.loopOutsidesFinish.isValid())  
     a_outLoopFinishCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesFinish) + ";";
-
-  return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";";
+  
+  // new way
+  //
+  if(funcBodyText != "")
+    return funcBodyText;
+  else
+    return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";"; // old way works
 }
 
 void kslicer::MainClassInfo::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
 {
   //a_funcInfo.astNode->dump();
+
+  // (1) run visitor for basic kernel info
+  //
   Rewriter rewrite2;
   rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
 
   auto pVisitor = std::make_shared<KernelInfoVisitor>(rewrite2, compiler, this, a_funcInfo);
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
+
+  // (2) analize all buffers and iput containers for shader features and e.t.c
+  //
+  ShaderFeatures accessShaderFeatures;
+  for(const auto& arg : a_funcInfo.args) {
+    if(arg.isContainer || arg.IsPointer()) {
+      //std::cout << "arg.type = " << arg.type << std::endl;
+      accessShaderFeatures = accessShaderFeatures || kslicer::GetUsedShaderFeaturesFromTypeName(arg.type);
+    }
+  }
+
+  for(const auto& cont : a_funcInfo.usedContainers) {
+    //std::cout << "cont.second.type = " << cont.second.type.c_str() << std::endl; 
+    accessShaderFeatures = accessShaderFeatures || kslicer::GetUsedShaderFeaturesFromTypeName(cont.second.type);
+  }
+
+  a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || accessShaderFeatures;
+  if(accessShaderFeatures.useByteType)
+    a_funcInfo.shaderFeatures.use8BitStorage = true;
 }
 

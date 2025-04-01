@@ -84,5 +84,8 @@ int main(int argc, const char** argv)
   std::cout << "NaivePathTraceBlock(exec) = " << timings[0]              << " ms " << std::endl;
   std::cout << "NaivePathTraceBlock(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
   std::cout << "NaivePathTraceBlock(ovrh) = " << timings[3]              << " ms " << std::endl;
+
+  pImpl = nullptr;
+  vk_utils::globalContextDestroy();  
   return 0;
 }

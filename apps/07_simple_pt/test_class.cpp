@@ -24,7 +24,7 @@ void TestClass::kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPos
   const uint y = (XY & 0xFFFF0000) >> 16;
 
   const float3 rayDir = EyeRayDir(x, y, WIN_WIDTH, WIN_HEIGHT, m_worldViewProjInv); 
-  const float3 rayPos = m_camPos;
+  const float3 rayPos = to_float3(m_camPos);
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
   *rayDirAndFar  = to_float4(rayDir, FLT_MAX);
@@ -42,14 +42,14 @@ void TestClass::kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPo
   const uint y = (XY & 0xFFFF0000) >> 16;
 
   const float3 rayDir = EyeRayDir(x, y, WIN_WIDTH, WIN_HEIGHT, m_worldViewProjInv); 
-  const float3 rayPos = m_camPos;
+  const float3 rayPos = to_float3(m_camPos);
   
   *rayPosAndNear = to_float4(rayPos, 0.0f);
   *rayDirAndFar  = to_float4(rayDir, FLT_MAX);
 }
 
 
-bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
+void TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                                 Lite_Hit* out_hit, float2* out_bars)
 {
   const float4 rayPos = *rayPosAndNear;
@@ -85,10 +85,11 @@ bool TestClass::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* r
       res.geomId = HIT_TRIANGLE_GEOM;
   }
  
+  if((res.primId == -1) || (res.t >= rayDir.w)) // use 'res.primId' as active flag
+    res.primId = -1;                            // if no hit, set this id to invalid primitive id
+
   *out_hit  = res;
   *out_bars = baricentrics;
-  return (res.primId != -1) && (res.t < rayDir.w);
-  
 }
 
 void TestClass::kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY)
@@ -107,7 +108,7 @@ void TestClass::kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, uint* out_c
   {
     out_color[tid] = RealColorToUint32_f3(float3(1,1,1));
   }
-  else
+  else if(in_hit->primId >= 0)
   {
     const uint32_t mtId = m_materialIds[in_hit->primId];
     const float4 mdata  = m_materials[mtId];
@@ -129,6 +130,8 @@ void TestClass::kernel_NextBounce(uint tid, const Lite_Hit* in_hit, const float2
       *accumColor = float4(0,0,0,0);
     return;
   }
+  else if (in_hit->primId < 0)
+    return;
   
   // process surcase hit case
   //
@@ -174,8 +177,7 @@ void TestClass::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color)
 
   Lite_Hit hit; 
   float2   baricentrics; 
-  if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
-    return;
+  kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics);
   
   kernel_GetRayColor(tid, &hit, out_color);
 }
@@ -201,8 +203,7 @@ void TestClass::NaivePathTrace(uint tid, uint a_maxDepth, const uint* in_pakedXY
   for(int depth = 0; depth < a_maxDepth; depth++) 
   {
     Lite_Hit hit;
-    if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
-      break;
+    kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics);
     
     kernel_NextBounce(tid, &hit, &baricentrics, 
                       &rayPosAndNear, &rayDirAndFar, &accumColor, &accumThoroughput);

@@ -52,7 +52,7 @@ public:
   void kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar);        // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
   void kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumuThoroughput);        
 
-  bool kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
+  void kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                        Lite_Hit* out_hit, float2* out_bars);
 
   void kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, uint* out_color);
@@ -78,7 +78,7 @@ public:
 
 protected:
 
-  float3 m_camPos = float3(0.0f, 0.85f, 4.5f);
+  float4 m_camPos = float4(0.0f, 0.85f, 4.5f, 1.0f);
   void InitSceneMaterials(int a_numSpheres, int a_seed = 0);
 
   std::vector<uint32_t>        m_indicesReordered;

@@ -16,11 +16,28 @@ struct KernelArgs
   uint tFlagsMask;    
 };
 
+{% if not Kernel.InitKPass %}
+{% for redvar in Kernel.SubjToRed %}
+groupshared {{redvar.Type}} {{redvar.Name}}Shared[{{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}}]; 
+{% endfor %}
+{% for redvar in Kernel.ArrsToRed %}
+groupshared {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][{{Kernel.WGSizeX}}*{{Kernel.WGSizeY}}*{{Kernel.WGSizeZ}}]; 
+{% endfor %}
+{% endif %}
+{% if Kernel.EnableBlockExpansion %}
+{% for TID in Kernel.ThreadSizeBE %}
+const {{TID.Type}} {{TID.Name}} = {{TID.Value}}; 
+{% endfor %}
+{% for Var in Kernel.SharedBE %}
+groupshared {{Var}}
+{% endfor %}
+{% endif %}
+
 [shader("compute")]
 [numthreads({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}})]
-void main(uint3 a_globalTID: SV_DispatchThreadID, uint3 a_loacalTID : SV_GroupThreadID, uniform KernelArgs kgenArgs)
+void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog %} uint3 a_groupID : SV_GroupID, {% endif%} uint3 a_localTID : SV_GroupThreadID, uniform KernelArgs kgenArgs)
 {
-  {% if not Kernel.EnableBlockExpansion %}
+  {% if not Kernel.EnableBlockExpansion and not Kernel.IsSingleThreaded %}
   bool runThisThread = true;
   {% endif %}
   {% if not Kernel.InitKPass %}
@@ -41,18 +58,21 @@ void main(uint3 a_globalTID: SV_DispatchThreadID, uint3 a_loacalTID : SV_GroupTh
   {% endif %}
   {% endfor %}
   {% endif %} {# /* Kernel.EnableBlockExpansion */ #}
-  {% if Kernel.IsBoolean %}
-  bool kgenExitCond = false;
-  {% endif %}
+  {% include "inc_exit_cond.slang" %}
+  {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                        
+  {% include "inc_red_init.slang" %}
+  {% endif %} 
   {% endif %}
   {% if Kernel.EnableBlockExpansion %}
   {% for Block in Kernel.SourceBE %}
   {% if Block.IsParallel %}
-  barrier();
+  GroupMemoryBarrierWithGroupSync();
+  // BLOCK-EXPANDED KERNEL BODY:
+  //
   {
   {{Block.Text}}
   }
-  barrier();
+  GroupMemoryBarrierWithGroupSync();
   {% else %}
   if(a_loacalTID[0] == 0) {
   {{Block.Text}}
@@ -60,15 +80,25 @@ void main(uint3 a_globalTID: SV_DispatchThreadID, uint3 a_loacalTID : SV_GroupTh
   {% endif %}
   {% endfor %}
   {% else %}
+  // KERNEL BODY:
+  //
+  {% if not Kernel.IsSingleThreaded %}
   if(runThisThread)
   {
+  {% endif %}  
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {{Kernel.Source}}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
+  {% if not Kernel.IsSingleThreaded %}
   }
+  {% endif %}  
   {% endif %} {# /* EnableBlockExpansion */ #}
   {% if Kernel.HasEpilog %}
   // GENERATED EPILOG:
-  // ...
+  //
+  {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                      
+  {% include "inc_red_finish.slang" %}
+  {% endif %}
+  
   {% endif %} {# /* END of 'if Kernel.HasEpilog'  */ #}
 }

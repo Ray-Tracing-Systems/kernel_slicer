@@ -28,7 +28,7 @@ int main(int argc, const char** argv)
 
   if(onGPU)
   {
-    auto ctx   = vk_utils::globalContextGet(false, 0);
+    auto ctx   = vk_utils::globalContextGet(true, 0);
     pImpl = CreateMandelbrot_Generated(ctx, w*h);
   }
   #ifdef USE_ISPC
@@ -53,6 +53,11 @@ int main(int argc, const char** argv)
   std::cout << "Fractal(exec) = " << timings[0]              << " ms " << std::endl;
   std::cout << "Fractal(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
   std::cout << "Fractal(ovrh) = " << timings[3]              << " ms " << std::endl;
-
+  
+  // destroy all objects
+  //
+  pImpl = nullptr;
+  vk_utils::globalContextDestroy();
+  
   return 0;
 }
