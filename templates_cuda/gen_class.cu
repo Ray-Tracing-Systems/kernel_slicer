@@ -299,13 +299,13 @@ std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix
 {% endfor %}
 {% for ctorDecl in Constructors %}
 {% if ctorDecl.NumParams == 0 %}
-std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}DEV()
+std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}_DEV()
 {
   auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}DEV>();
   return pObj;
 }
 {% else %}
-std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}DEV({{ctorDecl.Params}})
+std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}_DEV({{ctorDecl.Params}})
 {
   auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}DEV>({{ctorDecl.PrevCall}});
   return pObj;
