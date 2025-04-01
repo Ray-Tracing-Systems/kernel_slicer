@@ -257,6 +257,31 @@ protected:
   {% endfor %}
 };
 
+class {{MainClassName}}{{MainClassSuffix}}DEV : public {{MainClassName}}{{MainClassSuffix}}
+{
+public:
+
+  {% for ctorDecl in Constructors %}
+  {% if ctorDecl.NumParams == 0 %}
+  {{ctorDecl.ClassName}}{{MainClassSuffix}}DEV() {}
+  {% else %}
+  {{ctorDecl.ClassName}}{{MainClassSuffix}}DEV({{ctorDecl.Params}}) : {{ctorDecl.ClassName}}({{ctorDecl.PrevCall}}) {}
+  {% endif %}
+  {% endfor %}
+  {% for MainFunc in MainFunctions %}
+  
+  {{MainFunc.ReturnType}} {{MainFunc.Name}}({%for Arg in MainFunc.InOutVarsAll %}{%if Arg.IsConst %}const {%endif%}{{Arg.Type}} {{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %}) override {
+    {% if MainFunc.IsVoid %}
+    {{MainFunc.Name}}GPU({%for Arg in MainFunc.InOutVarsAll %}{{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %});
+    {% else %}
+    return {{MainFunc.Name}}GPU({%for Arg in MainFunc.InOutVarsAll %}{{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %});
+    {% endif %}
+  }
+  {% endfor %}
+
+protected:
+};
+
 {% for ctorDecl in Constructors %}
 {% if ctorDecl.NumParams == 0 %}
 std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}()
@@ -268,6 +293,21 @@ std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix
 std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}({{ctorDecl.Params}})
 {
   auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}>({{ctorDecl.PrevCall}});
+  return pObj;
+}
+{% endif %}
+{% endfor %}
+{% for ctorDecl in Constructors %}
+{% if ctorDecl.NumParams == 0 %}
+std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}DEV()
+{
+  auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}DEV>();
+  return pObj;
+}
+{% else %}
+std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}DEV({{ctorDecl.Params}})
+{
+  auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}DEV>({{ctorDecl.PrevCall}});
   return pObj;
 }
 {% endif %}
