@@ -74,7 +74,7 @@ std::vector<std::string> ListProcessedFiles(nlohmann::json a_filesArray, const s
   return allFiles;
 }
 
-int main(int argc, const char **argv)
+int main(int argc, const char **argv) // 
 {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
   std::cout << "[main]: work_dir = " << std::filesystem::current_path() << std::endl;
