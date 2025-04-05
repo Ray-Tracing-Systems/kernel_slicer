@@ -317,6 +317,9 @@ namespace kslicer
       return size;
     }
 
+    int loopInsidesOrder        = 100;
+    int loopOutsidesInitOrder   = 100;
+
     clang::SourceRange    loopInsides;          ///<! used by IPV pattern to extract loops insides and make them kernel source
     clang::SourceRange    loopOutsidesInit;     ///<! used by IPV pattern to extract code before loops and then make additional initialization kernel
     clang::SourceRange    loopOutsidesFinish;   ///<! used by IPV pattern to extract code after  loops and then make additional finalization kernel
@@ -1489,7 +1492,7 @@ namespace kslicer
     std::unordered_map<uint64_t, RewrittenFunction> m_functionsDone;
 
     std::string                                        mainClassName;         ///<! Current main class (derived)
-    std::unordered_set<std::string>                    mainClassNames;        ///<! All main classes (derived + base)
+    std::unordered_map<std::string, int>               mainClassNames;        ///<! All main classes (derived + base)
     std::unordered_set<std::string>                    composClassNames; 
     std::unordered_set<std::string>                    dataClassNames; 
     std::vector< std::pair<std::string, std::string> > intersectionShaders;

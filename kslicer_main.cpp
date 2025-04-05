@@ -688,20 +688,23 @@ int main(int argc, const char **argv) //
                    std::back_inserter(aux_classes), [](const auto& pair) { return pair.second.astNode; });
 
     auto sorted = kslicer::ExtractAndSortBaseClasses(aux_classes, firstPassData.rv.mci.astNode);
-    for(const auto& baseClass : sorted) {
+    for(size_t classOrder = 0; classOrder < sorted.size(); classOrder++) {
+      const auto& baseClass = sorted[classOrder];
       auto typeName = baseClass->getQualifiedNameAsString();
       const auto& classInfo = firstPassData.rv.m_baseClassInfo[typeName]; // !!!!!
       kslicer::PerformInheritanceMerge(firstPassData.rv.mci, classInfo);
-      inputCodeInfo.mainClassNames.insert(typeName);
+      inputCodeInfo.mainClassNames[typeName] = int(classOrder) + 1; 
     }
   }
   
-  inputCodeInfo.mainClassNames.insert(inputCodeInfo.mainClassName); // put main (derived) class name in this hash-set, use 'mainClassNames' instead of 'mainClassName' later
+  inputCodeInfo.mainClassNames[inputCodeInfo.mainClassName] = 0; // put main (derived) class name in this hash-set, use 'mainClassNames' instead of 'mainClassName' later
   
   // merge mainClassNames and composClassNames in single array, add 'const Type' names to it; TODO: merge to single function
   {
     inputCodeInfo.dataClassNames.clear();
-    inputCodeInfo.dataClassNames.insert(inputCodeInfo.mainClassNames.begin(),   inputCodeInfo.mainClassNames.end());
+    //inputCodeInfo.dataClassNames.insert(inputCodeInfo.mainClassNames.begin(),   inputCodeInfo.mainClassNames.end());
+    for(auto c : inputCodeInfo.mainClassNames)
+      inputCodeInfo.dataClassNames.insert(c.first);
     inputCodeInfo.dataClassNames.insert(inputCodeInfo.composClassNames.begin(), inputCodeInfo.composClassNames.end());
     inputCodeInfo.dataClassNames.insert("ISceneObject");  // TODO: list all base classes for compose classes 
     inputCodeInfo.dataClassNames.insert("ISceneObject2"); // TODO: list all base classes for compose classes 
@@ -856,10 +859,10 @@ int main(int argc, const char **argv) //
   std::vector<kslicer::DeclInClass> usedDecls;
   for(auto name : inputCodeInfo.mainClassNames)
   {
-    auto astNode = inputCodeInfo.allASTNodes.find(name);
+    auto astNode = inputCodeInfo.allASTNodes.find(name.first);
     if(astNode != inputCodeInfo.allASTNodes.end())
     {
-      auto declsPerClass = kslicer::ExtractTCFromClass(name, astNode->second, compiler, Tool);
+      auto declsPerClass = kslicer::ExtractTCFromClass(name.first, astNode->second, compiler, Tool);
       usedDecls.insert(usedDecls.end(), declsPerClass.begin(), declsPerClass.end());
     }
   }
