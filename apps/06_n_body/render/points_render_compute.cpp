@@ -91,8 +91,8 @@ void PointsRender::LoadScene(const char *path, bool transpose_inst_matrices)
 
   m_pNBodySimGenerated->setParameters(SEED, ITERATIONS);
   m_pNBodySimGenerated->InitVulkanObjects(m_device, m_physicalDevice, nBody::BODIES_COUNT);
-  m_pNBodySimGenerated->InitMemberBuffers();
-  m_pNBodySimGenerated->UpdateAll(m_pCopy);
+  m_pNBodySimGenerated->InitDeviceData();
+  m_pNBodySimGenerated->UpdateDeviceData(m_pCopy);
 
   m_pointsData.pointsBuf = vk_utils::createBuffer(m_device, nBody::BODIES_COUNT * sizeof(nBody::BodyState),
                                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |

@@ -68,8 +68,8 @@ public:
     {% if HasPrefixData %}
     UpdatePrefixPointers(); 
     {% endif %}
-    InitMemberBuffers();
-    UpdateAll(a_pCopyEngine);
+    InitDeviceData();
+    UpdateDeviceData(a_pCopyEngine);
   }  
 
 ## for MainFunc in MainFunctions
@@ -91,8 +91,8 @@ public:
   {% for SetterFunc in SetterFuncs %}  
   {{SetterFunc}}
   {% endfor %}
-  virtual void InitMemberBuffers() = 0;
-  virtual void UpdateAll(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine) = 0;
+  virtual void InitDeviceData() = 0;
+  virtual void UpdateDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine) = 0;
 protected:
   {% for MainFunc in MainFunctions %}
   virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}} = 0;

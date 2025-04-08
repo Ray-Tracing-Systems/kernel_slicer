@@ -353,53 +353,18 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
 }
 {% endif %}
 
-{{MainClassName}}{{MainClassSuffix}}::~{{MainClassName}}{{MainClassSuffix}}()
+void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
 {
-  {% if EnableTimeStamps %}
-  if(m_queryPoolTimestamps != VK_NULL_HANDLE)
-    vkDestroyQueryPool(device, m_queryPoolTimestamps, nullptr);
-  {% endif %}
-  for(size_t i=0;i<m_allCreatedPipelines.size();i++)
-    vkDestroyPipeline(device, m_allCreatedPipelines[i], nullptr);
-  for(size_t i=0;i<m_allCreatedPipelineLayouts.size();i++)
-    vkDestroyPipelineLayout(device, m_allCreatedPipelineLayouts[i], nullptr);
-
-  {% if UseServiceScan %}
-  {% for Scan in ServiceScan %}
-  m_scan_{{Scan.Type}}.DeleteDSLayouts(device);
-  {% endfor %}
-  {% endif %} {# /* UseServiceScan */ #}
-  {% if UseServiceSort %}
-  {% for Sort in ServiceSort %}
-  m_sort_{{Sort.Type}}.DeleteDSLayouts(device);
-  {% endfor %}
-  {% endif %} {# /* UseServiceSort */ #}
-## for Kernel in Kernels
-  vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
-  {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
-## endfor
-  vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
+  if(m_commitCount == 0)
+    return;
+  vkDestroyBuffer(device, m_classDataBuffer, nullptr);
   {% for Table in RemapTables %}
   vkDestroyBuffer(device, m_vdata.{{Table.Name}}RemapTableBuffer, nullptr);
   vkDestroyBuffer(device, m_vdata.{{Table.Name}}GeomTagsBuffer, nullptr);
   {% endfor %}
-  {% if UseRayGen %}
-  for(size_t i=0;i<m_allShaderTableBuffers.size();i++)
-    vkDestroyBuffer(device, m_allShaderTableBuffers[i], nullptr);
-  {% endif %}
-## for MainFunc in MainFunctions
-  {% if MainFunc.IsRTV and not MainFunc.IsMega %}
-  {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
-  vkDestroyBuffer(device, {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer, nullptr);
-  {% endfor %}
-  {% endif %}
-## endfor
-
-  vkDestroyBuffer(device, m_classDataBuffer, nullptr);
   {% if UseSeparateUBO %}
   vkDestroyBuffer(device, m_uboArgsBuffer, nullptr);
   {% endif %}
-
   {% for Buffer in ClassVectorVars %}
   vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
   {% if Buffer.IsVFHBuffer and Buffer.VFHLevel >= 2 %}
@@ -440,10 +405,47 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
   m_scan_{{Scan.Type}}.DeleteTempBuffers(device);
   {% endfor %}
   {% endif %}
+  FreeAllAllocations(m_allMems);
   {% if UseRayGen %}
+  for(size_t i=0;i<m_allShaderTableBuffers.size();i++)
+    vkDestroyBuffer(device, m_allShaderTableBuffers[i], nullptr);
   vkFreeMemory(device, m_allShaderTableMem, nullptr);
   {% endif %}
-  FreeAllAllocations(m_allMems);
+}
+
+{{MainClassName}}{{MainClassSuffix}}::~{{MainClassName}}{{MainClassSuffix}}()
+{
+  {% if EnableTimeStamps %}
+  if(m_queryPoolTimestamps != VK_NULL_HANDLE)
+    vkDestroyQueryPool(device, m_queryPoolTimestamps, nullptr);
+  {% endif %}
+  for(size_t i=0;i<m_allCreatedPipelines.size();i++)
+    vkDestroyPipeline(device, m_allCreatedPipelines[i], nullptr);
+  for(size_t i=0;i<m_allCreatedPipelineLayouts.size();i++)
+    vkDestroyPipelineLayout(device, m_allCreatedPipelineLayouts[i], nullptr);
+  {% if UseServiceScan %}
+  {% for Scan in ServiceScan %}
+  m_scan_{{Scan.Type}}.DeleteDSLayouts(device);
+  {% endfor %}
+  {% endif %} {# /* UseServiceScan */ #}
+  {% if UseServiceSort %}
+  {% for Sort in ServiceSort %}
+  m_sort_{{Sort.Type}}.DeleteDSLayouts(device);
+  {% endfor %}
+  {% endif %} {# /* UseServiceSort */ #}
+## for Kernel in Kernels
+  vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
+  {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
+## endfor
+  vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
+## for MainFunc in MainFunctions
+  {% if MainFunc.IsRTV and not MainFunc.IsMega %}
+  {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
+  vkDestroyBuffer(device, {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer, nullptr);
+  {% endfor %}
+  {% endif %}
+## endfor
+  DeleteDeviceData();
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::InitHelpers()
@@ -775,18 +777,10 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
     for(size_t j=0;j<groups[i].bufsClean.size();j++)
       groups[i].bufsClean[j] = groups[i].bufs[j].buf;
   }
-
   {% if IsRTV and not IsMega %}
   auto& allBuffersRef = a_tempBuffersOverlay ? groups[largestIndex].bufsClean : allBuffers;
   {% else %}
   auto& allBuffersRef = allBuffers;
-  {% endif %}
-
-  m_classDataBuffer = vk_utils::createBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | GetAdditionalFlagsForUBO());
-  allBuffersRef.push_back(m_classDataBuffer);
-  {% if UseSeparateUBO %}
-  m_uboArgsBuffer = vk_utils::createBuffer(device, 256, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-  allBuffersRef.push_back(m_uboArgsBuffer);
   {% endif %}
   {% for Buffer in RedVectorVars %}
   {
@@ -795,7 +789,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
     allBuffersRef.push_back(m_vdata.{{Buffer.Name}}Buffer);
   }
   {% endfor %}
-
   {% if UseServiceScan %}
   {% for Scan in ServiceScan %}
   {
@@ -853,11 +846,17 @@ static size_t PackObject_{{Hierarchy.Name}}(std::vector<uint8_t>& buffer, const 
 {% endif %}
 {% endfor %}
 
-void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
+void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
 {
   std::vector<VkBuffer> memberVectorsWithDevAddr;
   std::vector<VkBuffer> memberVectors;
   std::vector<VkImage>  memberTextures;
+  m_classDataBuffer = vk_utils::createBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | GetAdditionalFlagsForUBO());
+  memberVectors.push_back(m_classDataBuffer);
+  {% if UseSeparateUBO %}
+  m_uboArgsBuffer = vk_utils::createBuffer(device, 256, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  memberVectors.push_back(m_uboArgsBuffer);
+  {% endif %}
   {% for Var in ClassVectorVars %}
   {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}
   

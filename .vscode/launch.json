@@ -2158,5 +2158,49 @@
                 }
             ]
         },
+
+        {
+            "name"   : "Launch (HydraCore3/External)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt.cpp",
+                        "/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt_lgt.cpp",
+                        "/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt_mat.cpp",
+                        "/home/frol/PROG/HydraRepos/HydraCore3/integrator_rt.cpp",
+                        "/home/frol/PROG/HydraRepos/HydraCore3/integrator_spectrum.cpp",
+                        //"/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt_lite.cpp",
+                        "-mainClass", "Integrator", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        //"-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        //"-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/external/LiteMath",  "ignore",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/external/LiteScene", "ignore",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/external/CrossRT",   "process",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/cam_plugin",         "process",  
+                        "-megakernel", "1",
+                        "-enable_ray_tracing_pipeline", "0",
+                        "-enable_motion_blur", "0",
+                        "-gen_gpu_api", "0",
+                        //"-with_buffer_reference", "all",
+                        //"-without_buffer_reference", "m_packedXY",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
     ]
 }

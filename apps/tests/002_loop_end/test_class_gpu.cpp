@@ -89,7 +89,7 @@ int32_t array_summ_gpu(const int32_t* inArrayCPU, const size_t inArrayCPUSize, u
 
   auto pGPUImpl = std::make_shared<Numbers_GPU>();                        // !!! USING GENERATED CODE !!! 
   pGPUImpl->InitVulkanObjects(device, physicalDevice, inArrayCPUSize+1);  // !!! PARTICULAR THIS SAMPLE ISSUE !!!! IMPORTANT !!!! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  pGPUImpl->InitMemberBuffers();                                          // !!! USING GENERATED CODE !!! 
+  pGPUImpl->InitDeviceData();                                             // !!! USING GENERATED CODE !!! 
 
   // (3) Create buffer
   //
@@ -98,7 +98,7 @@ int32_t array_summ_gpu(const int32_t* inArrayCPU, const size_t inArrayCPUSize, u
   VkDeviceMemory colorMem    = vk_utils::allocateAndBindWithPadding(device, physicalDevice, {colorBufferLDR});
 
   pGPUImpl->SetVulkanInOutFor_CalcArraySumm(colorBufferLDR, 0); // <==
-  pGPUImpl->UpdateAll(pCopyHelper);                             // !!! USING GENERATED CODE !!!
+  pGPUImpl->UpdateDeviceData(pCopyHelper);                               // !!! USING GENERATED CODE !!!
   
   pCopyHelper->UpdateBuffer(colorBufferLDR, 0, inArrayCPU, bufferSizeLDR);
 
