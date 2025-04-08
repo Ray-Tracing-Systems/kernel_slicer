@@ -2163,7 +2163,7 @@
             "name"   : "Launch (HydraCore3/External)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt.cpp",
                         "/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt_lgt.cpp",
                         "/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt_mat.cpp",

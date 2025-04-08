@@ -531,6 +531,13 @@ bool kslicer::MainFunctionRewriterVulkan::VisitCallExpr(CallExpr* call)
     MarkRewritten(call);
   }
 
+  //std::cout << m_mainFunc.Name << " --> " << fname << std::endl;
+  //if(m_pCodeInfo->persistentRTV && !m_mainFunc.usePersistentThreads && (fname == "RTVPersistent_Iters" || fname == "RTVPersistent_SetIter"))
+  //{
+  //  std::cout << "  Enable Persistent Threads for " << m_mainFunc.Name << std::endl;
+  //  m_mainFunc.usePersistentThreads = true;
+  //}
+
   return true;
 }
 

@@ -27,12 +27,13 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
   for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
   {
     std::string kernDecl = kernelsCallCmdDecl[i];
-    //std::cout << "kernDecl = " << kernDecl.c_str() << std::endl;
-    size_t      rbPos    = kernDecl.find("Cmd(");
-    assert(rbPos    != std::string::npos);
-
-    std::string kernName       = kernDecl.substr(0, rbPos);
-    kernelDeclByName[kernName] = kernDecl;
+   
+    size_t  rbPos = kernDecl.find("Cmd("); 
+    if(rbPos != std::string::npos)         // fail when second pass for CPP generation is happed; TODO: fix by making this list only once
+    {
+      std::string kernName       = kernDecl.substr(0, rbPos);
+      kernelDeclByName[kernName] = kernDecl;
+    }
   }
   return kernelDeclByName;
 }
