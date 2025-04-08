@@ -1647,6 +1647,7 @@ namespace kslicer
     kslicer::VKERNEL_IMPL_TYPE defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
     bool halfFloatTextures = false;
     bool megakernelRTV     = false;
+    bool persistentRTV     = false; // current implementation for persistent threads on done only for megakernels in RTV
     bool useComplexNumbers = false;
     bool genGPUAPI         = false;
     bool forceAllBufToRefs = false;

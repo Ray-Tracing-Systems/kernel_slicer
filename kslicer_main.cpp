@@ -168,6 +168,7 @@ int main(int argc, const char **argv) //
   bool        useCppInKernels = false;
   bool        halfFloatTextures  = false;
   bool        useMegakernel      = false;
+  bool        usePersistentThreads = false;
   auto        defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
   bool        enableSubGroupOps  = false;
   int         ispcThreadModel    = 0;
@@ -206,6 +207,9 @@ int main(int argc, const char **argv) //
 
   if(params.find("-megakernel") != params.end())
     useMegakernel = (params["-megakernel"] == "1");
+
+  if(params.find("-persistent") != params.end())
+    usePersistentThreads = (params["-persistent"] == "1");
 
   if(params.find("-cl-std=") != params.end())
     useCppInKernels = params["-cl-std="].find("++") != std::string::npos;
@@ -393,6 +397,7 @@ int main(int argc, const char **argv) //
   inputCodeInfo.defaultVkernelType   = defaultVkernelType;
   inputCodeInfo.halfFloatTextures    = halfFloatTextures;
   inputCodeInfo.megakernelRTV        = useMegakernel;
+  inputCodeInfo.persistentRTV        = usePersistentThreads;
   inputCodeInfo.mainClassSuffix      = suffix;
   inputCodeInfo.shaderFolderPrefix   = shaderFolderPrefix;
   inputCodeInfo.globalShaderFeatures = forcedFeatures;

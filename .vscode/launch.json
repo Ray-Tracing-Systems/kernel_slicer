@@ -2182,6 +2182,7 @@
                         "-I/home/frol/PROG/HydraRepos/HydraCore3/external/CrossRT",   "process",
                         "-I/home/frol/PROG/HydraRepos/HydraCore3/cam_plugin",         "process",  
                         "-megakernel", "1",
+                        "-persistent", "1",
                         "-enable_ray_tracing_pipeline", "0",
                         "-enable_motion_blur", "0",
                         "-gen_gpu_api", "0",

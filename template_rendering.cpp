@@ -555,6 +555,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
   data["UseCallable"]        = a_settings.enableCallable;
   data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0) || hasBufferReferenceBind;
+  data["UsePersistentThreads"] = a_classInfo.persistentRTV;
 
   data["VectorBufferRefs"] = std::vector<json>();
   for(const auto& v : a_classInfo.dataMembers)
@@ -683,6 +684,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   }
 
   std::unordered_map<uint64_t, json> allUsedMemberFunctions;
+  std::unordered_set<std::string>    excludedMemberFunctions;
+ 
+  if(a_classInfo.persistentRTV)
+  {
+    excludedMemberFunctions.insert("RTVPersistent_ThreadId");
+    excludedMemberFunctions.insert("RTVPersistent_SetIter");
+    excludedMemberFunctions.insert("RTVPersistent_Iters");
+    excludedMemberFunctions.insert("RTVPersistent_IsFirst");
+    excludedMemberFunctions.insert("RTVPersistent_ReduceAdd4f");
+  }
 
   data["Kernels"] = std::vector<json>();
   for (const auto& nk : kernels)
@@ -1234,6 +1245,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         }
 
         if(fromVFH) // skip virtual functions because they are proccesed else-where
+          continue;
+
+        if(excludedMemberFunctions.find(f.second.name) != excludedMemberFunctions.end())
           continue;
 
         auto funcNode    = const_cast<clang::FunctionDecl*>(f.second.astNode);
