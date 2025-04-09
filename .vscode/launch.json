@@ -2191,7 +2191,7 @@
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
+            "cwd"    : "${workspaceFolder}", //
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
