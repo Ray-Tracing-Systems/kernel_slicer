@@ -137,7 +137,7 @@ public:
     {{MainFunc.Name}}_local.{{Arg.Name}}Offset = {{Arg.Name}}Offset;
     {% endif %}
 ## endfor
-    InitAllGeneratedDescriptorSets_{{MainFunc.Name}}();
+    UpdateAllGeneratedDescriptorSets_{{MainFunc.Name}}();
   }
 
 ## endfor
@@ -148,20 +148,23 @@ public:
   {% endfor %}
 
   {% if GenGpuApi %}
-  void InitMemberBuffers() override;
-  void UpdateAll(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine) override
+  void InitDeviceData() override;
+  void UpdateDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine) override
   {
     UpdatePlainMembers(a_pCopyEngine);
     UpdateVectorMembers(a_pCopyEngine);
     UpdateTextureMembers(a_pCopyEngine);
   }
   {% else %}
-  virtual void InitMemberBuffers();
-  virtual void UpdateAll(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
+  virtual void InitDeviceData();
+  virtual void UpdateDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
   {
     UpdatePlainMembers(a_pCopyEngine);
     UpdateVectorMembers(a_pCopyEngine);
     UpdateTextureMembers(a_pCopyEngine);
+    {% if UseRayGen %}
+    AllocAllShaderBindingTables();
+    {% endif %}
   }
   {% endif %}
   {% for UpdateFun in UpdateVectorFun %}
@@ -187,18 +190,18 @@ public:
   }
   {% endif %}
   std::shared_ptr<vk_utils::ICopyEngine> m_pLastCopyHelper = nullptr;
+  virtual void DeleteDeviceData();
   virtual void CommitDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper) // you have to define this virtual function in the original imput class
   {
     {% if HasPrefixData %}
     UpdatePrefixPointers();
     {% endif %}
     ReserveEmptyVectors();
-    InitMemberBuffers();
-    {% if UseRayGen %}
-    AllocAllShaderBindingTables();
-    {% endif %}
-    UpdateAll(a_pCopyHelper);
+    DeleteDeviceData();
+    InitDeviceData();
+    UpdateDeviceData(a_pCopyHelper);
     m_pLastCopyHelper = a_pCopyHelper;
+    m_commitCount++;
   }
   {% if HasCommitDeviceFunc %}
   void CommitDeviceData() override { CommitDeviceData(m_ctx.pCopyHelper); }
@@ -280,6 +283,7 @@ protected:
   uint32_t                   m_currThreadFlags = 0;
   std::vector<MemLoc>        m_allMems;
   VkPhysicalDeviceProperties m_devProps;
+  size_t                     m_commitCount = 0;
 
   VkBufferMemoryBarrier BarrierForClearFlags(VkBuffer a_buffer);
   VkBufferMemoryBarrier BarrierForSingleBuffer(VkBuffer a_buffer);
@@ -291,7 +295,7 @@ protected:
   virtual void AllocateAllDescriptorSets();
 
 ## for MainFunc in MainFunctions
-  virtual void InitAllGeneratedDescriptorSets_{{MainFunc.Name}}();
+  virtual void UpdateAllGeneratedDescriptorSets_{{MainFunc.Name}}();
 ## endfor
 
   virtual void AssignBuffersToMemory(const std::vector<VkBuffer>& a_buffers, VkDeviceMemory a_mem);
@@ -583,7 +587,7 @@ public:
   {% if EnableTimeStamps %}
   VkQueryPool m_queryPoolTimestamps = VK_NULL_HANDLE;
   uint32_t    m_timestampPoolSize = 0;
-  float       m_timestampPeriod = 1.0f;
+  float       m_timestampPeriod   = 1.0f;
   void        ResetTimeStampMeasurements();
   void        AccumTimeStampMeasurements(uint32_t a_start, uint32_t a_size);
   struct PerKernelMeasure 
@@ -596,5 +600,6 @@ public:
   std::unordered_map<std::string, PerKernelMeasure> m_kernelTimings;
   std::vector<std::string>                          m_tsIdToKernelName;
   {% endif %}
+  uint32_t m_subgroupSize = 1; 
 };
 

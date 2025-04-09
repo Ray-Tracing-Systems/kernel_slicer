@@ -510,8 +510,8 @@ bool kslicer::MainFunctionRewriterVulkan::VisitCXXMemberCallExpr(CXXMemberCallEx
 
 bool kslicer::MainFunctionRewriterVulkan::VisitCallExpr(CallExpr* call)
 {
-  if(isa<CXXMemberCallExpr>(call)) // because we process them in "VisitCXXMemberCallExpr"
-    return true;
+  //if(isa<CXXMemberCallExpr>(call)) // because we process them in "VisitCXXMemberCallExpr"
+  //  return true;
 
   const FunctionDecl* fDecl = call->getDirectCallee();
   if(fDecl == nullptr)             // definitely can't process nullpointer
@@ -529,6 +529,13 @@ bool kslicer::MainFunctionRewriterVulkan::VisitCallExpr(CallExpr* call)
     std::string testStr = MakeServiceKernelCallCmdString(call, fname);
     ReplaceTextOrWorkAround(call->getSourceRange(), testStr);
     MarkRewritten(call);
+  }
+
+  //std::cout << "  [CF::Vulkan]:" << m_mainFunc.Name << " --> " << fname << std::endl;
+  if(m_pCodeInfo->persistentRTV && !m_mainFunc.usePersistentThreads && (fname == "RTVPersistent_Iters" || fname == "RTVPersistent_SetIter"))
+  {
+    std::cout << "    --> Enable Persistent Threads for '" << m_mainFunc.Name << "'" << std::endl;
+    m_mainFunc.usePersistentThreads = true;
   }
 
   return true;

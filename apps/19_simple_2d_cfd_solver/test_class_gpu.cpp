@@ -98,12 +98,12 @@ std::vector<float> solve_gpu(int N, const std::vector<float>& density, const std
                                                                     fIDs.transfer,
                                                                     8 * 1024 * 1024);
 
-    auto pGPUImpl = std::make_shared<Solver_Generated>();          // !!! USING GENERATED CODE !!!
+    auto pGPUImpl = std::make_shared<Solver_Generated>();      // !!! USING GENERATED CODE !!!
     pGPUImpl->setParameters(N, density, vx, vy, 0.033, 0, 0);
-    pGPUImpl->InitVulkanObjects(device, physicalDevice, 1); // !!! USING GENERATED CODE !!!
-
-    pGPUImpl->InitMemberBuffers();                                      // !!! USING GENERATED CODE !!!
-    pGPUImpl->UpdateAll(pCopyHelper);                                   // !!! USING GENERATED CODE !!!
+    
+    pGPUImpl->InitVulkanObjects(device, physicalDevice, 1);    // !!! USING GENERATED CODE !!!
+    pGPUImpl->InitDeviceData();                                // !!! USING GENERATED CODE !!!
+    pGPUImpl->UpdateDeviceData(pCopyHelper);                   // !!! USING GENERATED CODE !!!
 
     // (3) Create buffer
     //

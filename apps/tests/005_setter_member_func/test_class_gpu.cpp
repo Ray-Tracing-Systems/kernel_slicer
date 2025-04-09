@@ -89,7 +89,7 @@ int32_t array_summ_gpu(const std::vector<int32_t>& inArrayCPU)
   auto pGPUImpl    = std::make_shared<ArrayProcess_GPU>();                // !!! USING GENERATED CODE !!!
   pGPUImpl->ReserveTestData(inArrayCPU.size());                           // !!! USING GENERATED CODE !!!
   pGPUImpl->InitVulkanObjects(device, physicalDevice, inArrayCPU.size()); // !!! USING GENERATED CODE !!!
-  pGPUImpl->InitMemberBuffers();                                          // !!! USING GENERATED CODE !!! 
+  pGPUImpl->InitDeviceData();                                             // !!! USING GENERATED CODE !!! 
 
   // (3) Create buffer
   //
@@ -108,7 +108,7 @@ int32_t array_summ_gpu(const std::vector<int32_t>& inArrayCPU)
   userOut.someSize        = inArrayCPU.size();
   pGPUImpl->SetOutputVulkan(userOut);                                            // !!! USING GENERATED CODE !!!
   pGPUImpl->SetVulkanInOutFor_ProcessArrays(numbersBuffer, 0, numbersBuffer, 0); // !!! USING GENERATED CODE !!!
-  pGPUImpl->UpdateAll(pCopyHelper);                                              // !!! USING GENERATED CODE !!!
+  pGPUImpl->UpdateDeviceData(pCopyHelper);                                       // !!! USING GENERATED CODE !!!
   
   pCopyHelper->UpdateBuffer(numbersBuffer, 0, inArrayCPU.data(), bufferSize);
 

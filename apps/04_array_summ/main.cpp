@@ -74,6 +74,8 @@ int main(int argc, const char** argv)
   else
     pImpl = std::make_shared<Numbers>();
   
+  pImpl->CommitDeviceData();
+  
   pImpl->CalcArraySumm(array.data(), unsigned(array.size()));
 
   JSONLog::write("array summ", pImpl->m_summ);

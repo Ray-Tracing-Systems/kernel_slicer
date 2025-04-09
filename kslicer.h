@@ -317,6 +317,9 @@ namespace kslicer
       return size;
     }
 
+    int loopInsidesOrder        = 100;
+    int loopOutsidesInitOrder   = 100;
+
     clang::SourceRange    loopInsides;          ///<! used by IPV pattern to extract loops insides and make them kernel source
     clang::SourceRange    loopOutsidesInit;     ///<! used by IPV pattern to extract code before loops and then make additional initialization kernel
     clang::SourceRange    loopOutsidesFinish;   ///<! used by IPV pattern to extract code after  loops and then make additional finalization kernel
@@ -589,6 +592,7 @@ namespace kslicer
     std::unordered_map<uint64_t, KernelStatementInfo> CallsInsideFor;
 
     bool   needToAddThreadFlags = false;
+    bool   usePersistentThreads = false;
     KernelInfo                     megakernel;     ///<! for RTV pattern only, when joing everything to mega-kernel
     std::vector<const KernelInfo*> subkernels;     ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
     std::vector<KernelInfo>        subkernelsData; ///<! for RTV pattern only
@@ -1489,7 +1493,7 @@ namespace kslicer
     std::unordered_map<uint64_t, RewrittenFunction> m_functionsDone;
 
     std::string                                        mainClassName;         ///<! Current main class (derived)
-    std::unordered_set<std::string>                    mainClassNames;        ///<! All main classes (derived + base)
+    std::unordered_map<std::string, int>               mainClassNames;        ///<! All main classes (derived + base)
     std::unordered_set<std::string>                    composClassNames; 
     std::unordered_set<std::string>                    dataClassNames; 
     std::vector< std::pair<std::string, std::string> > intersectionShaders;
@@ -1546,7 +1550,7 @@ namespace kslicer
     //
     virtual MList         ListMatchers_CF(const std::string& mainFuncName) = 0;
     virtual MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) = 0;
-    virtual void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) = 0;
+    virtual void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler);
 
     virtual void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList) {}
 
@@ -1644,6 +1648,7 @@ namespace kslicer
     kslicer::VKERNEL_IMPL_TYPE defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
     bool halfFloatTextures = false;
     bool megakernelRTV     = false;
+    bool persistentRTV     = false; // current implementation for persistent threads on done only for megakernels in RTV
     bool useComplexNumbers = false;
     bool genGPUAPI         = false;
     bool forceAllBufToRefs = false;
@@ -1678,7 +1683,6 @@ namespace kslicer
   {
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
-    void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;
 
     void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>&  a_kernelList) override;
 
@@ -1705,7 +1709,6 @@ namespace kslicer
   {
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
-    void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;
 
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override;

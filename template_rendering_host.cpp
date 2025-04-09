@@ -27,12 +27,13 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
   for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
   {
     std::string kernDecl = kernelsCallCmdDecl[i];
-    //std::cout << "kernDecl = " << kernDecl.c_str() << std::endl;
-    size_t      rbPos    = kernDecl.find("Cmd(");
-    assert(rbPos    != std::string::npos);
-
-    std::string kernName       = kernDecl.substr(0, rbPos);
-    kernelDeclByName[kernName] = kernDecl;
+   
+    size_t  rbPos = kernDecl.find("Cmd("); 
+    if(rbPos != std::string::npos)         // fail when second pass for CPP generation is happed; TODO: fix by making this list only once
+    {
+      std::string kernName       = kernDecl.substr(0, rbPos);
+      kernelDeclByName[kernName] = kernDecl;
+    }
   }
   return kernelDeclByName;
 }
@@ -452,6 +453,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["ShaderGLSL"]         = a_classInfo.pShaderCC->IsGLSL();
   data["UseSeparateUBO"]     = a_classInfo.pShaderCC->UseSeparateUBOForArguments();
   data["UseSpecConstWgSize"] = a_classInfo.pShaderCC->UseSpecConstForWgSize();
+  data["UsePersistentThreads"] = a_classInfo.persistentRTV;
 
   data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
   data["UseServiceScan"]     = (a_classInfo.usedServiceCalls.find("exclusive_scan") != a_classInfo.usedServiceCalls.end()) || (a_classInfo.usedServiceCalls.find("inclusive_scan") != a_classInfo.usedServiceCalls.end());
@@ -1620,6 +1622,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["MegaKernelCall"]       = mainFunc.MegaKernelCall;
     data2["UseRayGen"]            = mainFunc.megakernel.enableRTPipeline;
     data2["UseRayGen"]            = mainFunc.megakernel.enableRTPipeline;
+    data2["UsePersistentThreads"] = mainFunc.usePersistentThreads;
     data["MainFunctions"].push_back(data2);
   }
 

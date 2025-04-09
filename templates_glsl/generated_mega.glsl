@@ -14,6 +14,9 @@
 {% if HasAllRefs %}
 #extension GL_EXT_buffer_reference : require
 {% endif %}
+{% if UsePersistentThreads %}
+#extension GL_KHR_shader_subgroup_arithmetic : require
+{% endif %}
 
 {% include "common_generated.glsl" %}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,8 +51,10 @@ void main()
   {% for TID in Kernel.ThreadIds %}
   const {{TID.Type}} {{TID.Name}} = {{TID.Type}}({% if Kernel.UseRayGen %}gl_LaunchIDEXT{% else %}gl_GlobalInvocationID{% endif %}[{{ loop.index }}]); 
   {% endfor %}
+  {% if UsePersistentThreads %}
+  g_persistentTotalSize = kgenArgs.{{Kernel.threadSZName1}};
+  {%endif%}
   ///////////////////////////////////////////////////////////////// prolog
-
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {{Kernel.Source}}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
