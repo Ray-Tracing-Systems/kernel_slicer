@@ -491,21 +491,6 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
   {% endif %}
   {% endfor %}
 
-  {# /**
-  VkBuffer tempBuffer = pAllocatorSpec->GetBufferBlock(0);
-  size_t currOffset = 0;
-  {% for var in MainFunc.FullImpl.InputData %}
-  size_t {{var.Name}}Offset = currOffset;
-  size_t {{var.Name}}Size   = {{var.DataSize}}*sizeof({{var.DataType}});
-  currOffset += vk_utils::getPaddedSize({{var.Name}}Size, 1024);
-  {% endfor %}
-  {% for var in MainFunc.FullImpl.OutputData %}
-  size_t {{var.Name}}Offset = currOffset;
-  size_t {{var.Name}}Size   = {{var.DataSize}}*sizeof({{var.DataType}});
-  currOffset += vk_utils::getPaddedSize({{var.Name}}Size, 1024);
-  {% endfor %}
-  **/ #}
-
   VkDeviceMemory buffersMem = VK_NULL_HANDLE; // vk_utils::allocateAndBindWithPadding(device, physicalDevice, buffers);
   VkDeviceMemory imagesMem  = VK_NULL_HANDLE; // vk_utils::allocateAndBindWithPadding(device, physicalDevice, std::vector<VkBuffer>(), images);
 
@@ -658,6 +643,9 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
     {% if HasProgressBar %}
     if(a_numPasses > 1)
       ProgressBarStart();
+    {% endif %}
+    {% if MainFunc.UsePersistentThreads %}
+    a_numPasses = a_numPasses / m_subgroupSize;
     {% endif %}
     for(uint32_t pass = 0; pass < a_numPasses; pass++) {
       vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);

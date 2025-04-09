@@ -1069,7 +1069,7 @@ int main(int argc, const char **argv) //
     auto auxDecriptorSets = inputCodeInfo.allDescriptorSetsInfo;
     for(auto& mainFunc : inputCodeInfo.mainFunc)
     {
-      std::cout << "  process subkernel " << mainFunc.Name.c_str() << std::endl;
+      std::cout << "  process CF as megakernel " << mainFunc.Name.c_str() << std::endl;
       inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
     }
     inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);

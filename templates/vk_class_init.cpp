@@ -76,15 +76,21 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
     if(res != VK_SUCCESS)
       std::cout << "[InitVulkanObjects]: ALERT! can't create timestamp pool " << std::endl;
     ResetTimeStampMeasurements();
-    // get timestampPeriod from device props
-    //
-    VkPhysicalDeviceProperties2 physicalDeviceProperties;
-    physicalDeviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-    physicalDeviceProperties.pNext = nullptr;
-    vkGetPhysicalDeviceProperties2(physicalDevice, &physicalDeviceProperties);
-    m_timestampPeriod = float(physicalDeviceProperties.properties.limits.timestampPeriod);
   }
   {% endif %}
+  // get timestampPeriod from device props
+  //
+  VkPhysicalDeviceProperties2 physicalDeviceProperties{};
+  VkPhysicalDeviceSubgroupProperties  subgroupProperties{};
+  subgroupProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
+  subgroupProperties.pNext = nullptr;
+  physicalDeviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+  physicalDeviceProperties.pNext = &subgroupProperties;
+  vkGetPhysicalDeviceProperties2(physicalDevice, &physicalDeviceProperties);
+  {% if EnableTimeStamps %}
+  m_timestampPeriod = float(physicalDeviceProperties.properties.limits.timestampPeriod);
+  {% endif %}
+  m_subgroupSize    = subgroupProperties.subgroupSize;
   {% if length(SceneMembers) > 0 %}
   auto queueAllFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
   {% endif %}

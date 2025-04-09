@@ -1622,6 +1622,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["MegaKernelCall"]       = mainFunc.MegaKernelCall;
     data2["UseRayGen"]            = mainFunc.megakernel.enableRTPipeline;
     data2["UseRayGen"]            = mainFunc.megakernel.enableRTPipeline;
+    data2["UsePersistentThreads"] = mainFunc.usePersistentThreads;
     data["MainFunctions"].push_back(data2);
   }
 
