@@ -3,6 +3,7 @@
 #include <extended/lm_device_vector.h> // also from LiteMath
 #include "{{MainInclude}}"
 #include <cfloat>
+#include <mutex>
 
 namespace {{MainClassName}}{{MainClassSuffix}}_DEV
 {
@@ -265,7 +266,10 @@ protected:
   {% endfor %}
 
   {{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData* m_pUBO = nullptr;
+  static std::mutex m_mtx;
 };
+
+std::mutex {{MainClassName}}{{MainClassSuffix}}::m_mtx;
 
 class {{MainClassName}}{{MainClassSuffix}}DEV : public {{MainClassName}}{{MainClassSuffix}}
 {
@@ -431,6 +435,7 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
 {% for MainFunc in MainFunctions %}
 {{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.Name}}GPU({%for Arg in MainFunc.InOutVarsAll %}{%if Arg.IsConst %}const {%endif%}{{Arg.Type}} {{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %})
 {
+  std::lock_guard<std::mutex> lock(m_mtx); // lock for UpdateObjectContext/ReadObjectContext to be ussied for this object only
   UpdateObjectContext();
   {{MainFunc.MainFuncTextCmd}}
   ReadObjectContext();
