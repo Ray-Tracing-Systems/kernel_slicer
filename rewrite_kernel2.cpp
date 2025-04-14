@@ -167,7 +167,7 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
   const bool inMegaKernel     = m_codeInfo->megakernelRTV;
   const bool subjectedToRed   = m_pCurrKernel->subjectedToReduction.find(fieldName) != m_pCurrKernel->subjectedToReduction.end();
   
-  if(m_codeInfo->pShaderCC->IsISPC() && subjectedToRed)
+  if((m_codeInfo->pShaderCC->IsISPC() || m_codeInfo->pShaderCC->IsCUDA()) && subjectedToRed)
     return false;
   
   if(!pMember->second.isContainer && WasNotRewrittenYet(expr) && (isInLoopInitPart || isInLoopFinishPart || !subjectedToRed) && 

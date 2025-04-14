@@ -1382,7 +1382,7 @@ namespace kslicer
   struct CudaCompiler : IShaderCompiler
   {
     CudaCompiler(const std::string& a_prefix);
-    std::string UBOAccess(const std::string& a_name) const override { return a_name; } //std::string("ubo.") + a_name; };
+    std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; } //  { return a_name; }
     std::string ReplaceSizeCapacityExpr(const std::string& a_str) const override { return a_str; }
     std::string ProcessBufferType(const std::string& a_typeName) const override;
 

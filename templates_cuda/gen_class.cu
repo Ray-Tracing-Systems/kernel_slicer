@@ -20,15 +20,19 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
   {% for Vector in VectorMembers %}
   __device__ LiteMathExtended::device_vector<{{Vector.DataType}}> {{Vector.Name}};
   {% endfor %}
-  {% for Field in UBO.UBOStructFields %}
-  {% if Field.IsDummy %} 
-  __device__ uint {{Field.Name}}; 
-  {% else %}
-  {% if not Field.IsContainerInfo %}
-  __device__ {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %};
-  {% endif %}
-  {% endif %}
-  {% endfor %}
+  struct {{MainClassName}}{{MainClassSuffix}}_UBO
+  {
+    {% for Field in UBO.UBOStructFields %}
+    {% if Field.IsDummy %} 
+    uint {{Field.Name}}; 
+    {% else %}
+    {% if not Field.IsContainerInfo %}
+    {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %};
+    {% endif %}
+    {% endif %}
+    {% endfor %}
+  };
+  __device__ {{MainClassName}}{{MainClassSuffix}}_UBO ubo;
   
   {% for MembFunc in AllMemberFunctions %}
   __device__ {{MembFunc.Decl}};
@@ -315,22 +319,23 @@ std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix
 
 void {{MainClassName}}{{MainClassSuffix}}::CopyUBOToDevice(bool a_updateVectorSize)
 {
+  {{MainClassName}}{{MainClassSuffix}}_DEV::{{MainClassName}}{{MainClassSuffix}}_UBO ubo;
   {% for Var in ClassVars %}
   {% if Var.IsArray %}
   {% if Var.HasPrefix %}
-  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, pUnderlyingImpl->{{Var.CleanName}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
+  memcpy(&ubo.{{Var.Name}}, &pUnderlyingImpl->{{Var.CleanName}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
   {% else %}
-  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, {{Var.Name}}, sizeof({{Var.Name}}));
+  memcpy(&ubo.{{Var.Name}}, &{{Var.Name}}, sizeof({{Var.Name}}));
   {% endif %}
   {% else %}
   {% if Var.HasPrefix %}
-  m_uboData.{{Var.Name}} = pUnderlyingImpl->{{Var.CleanName}};
-  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, &pUnderlyingImpl->{{Var.CleanName}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
+  ubo.{{Var.Name}} = pUnderlyingImpl->{{Var.CleanName}};
   {% else %}
-  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, &{{Var.Name}}, sizeof({{Var.Name}}));
+  ubo.{{Var.Name}} = {{Var.Name}};
   {% endif %}
   {% endif %}
   {% endfor %}
+  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::ubo, &ubo, sizeof(ubo));
   if(a_updateVectorSize)
   {
     {% for Var in VectorMembers %}
@@ -341,19 +346,21 @@ void {{MainClassName}}{{MainClassSuffix}}::CopyUBOToDevice(bool a_updateVectorSi
 
 void {{MainClassName}}{{MainClassSuffix}}::CopyUBOFromDevice(bool a_updateVectorSize)
 {
+  {{MainClassName}}{{MainClassSuffix}}_DEV::{{MainClassName}}{{MainClassSuffix}}_UBO ubo;
+  cudaMemcpyFromSymbol(&ubo, {{MainClassName}}{{MainClassSuffix}}_DEV::ubo, sizeof(ubo));
   {% for Var in ClassVars %}
   {% if Var.IsArray %}
   {% if Var.HasPrefix %}
-  cudaMemcpyFromSymbol(pUnderlyingImpl->{{Var.CleanName}}, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
+  memcpy(pUnderlyingImpl->{{Var.CleanName}}, &ubo.{{Var.Name}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
   {% else %}
-  cudaMemcpyFromSymbol({{Var.Name}}, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof({{Var.Name}}));
+  memcpy({{Var.Name}}, &ubo.{{Var.Name}}, sizeof({{Var.Name}}));
   {% endif %}
   {% else %}
   {% if Var.HasPrefix %}
-  m_uboData.{{Var.Name}} = pUnderlyingImpl->{{Var.CleanName}};
+  pUnderlyingImpl->{{Var.CleanName}} = ubo.{{Var.Name}};
   cudaMemcpyFromSymbol(&pUnderlyingImpl->{{Var.CleanName}}, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
   {% else %}
-  cudaMemcpyFromSymbol(&{{Var.Name}}, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof({{Var.Name}}));
+  {{Var.Name}} = ubo.{{Var.Name}};
   {% endif %}
   {% endif %}
   {% endfor %}

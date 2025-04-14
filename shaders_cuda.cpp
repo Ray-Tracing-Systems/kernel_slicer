@@ -114,7 +114,14 @@ bool kslicer::CudaRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 {
   if(m_kernelMode)
   {
-   
+    std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    std::string rewrittenText;
+    if(NeedToRewriteMemberExpr(expr, rewrittenText))
+    {
+      //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
+      m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
+      MarkRewritten(expr);
+    }
   }
 
   return true; 
