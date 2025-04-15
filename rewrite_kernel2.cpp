@@ -44,7 +44,11 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
   if(!WasNotRewrittenYet(expr))
     return false;
   
-  //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  if(debugText == "zmin")
+  {
+    int a = 2;
+  }
 
   // (1) setter access
   //
@@ -167,7 +171,7 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
   const bool inMegaKernel     = m_codeInfo->megakernelRTV;
   const bool subjectedToRed   = m_pCurrKernel->subjectedToReduction.find(fieldName) != m_pCurrKernel->subjectedToReduction.end();
   
-  if((m_codeInfo->pShaderCC->IsISPC() || m_codeInfo->pShaderCC->IsCUDA()) && subjectedToRed)
+  if(m_codeInfo->pShaderCC->IsISPC() && subjectedToRed)
     return false;
   
   if(!pMember->second.isContainer && WasNotRewrittenYet(expr) && (isInLoopInitPart || isInLoopFinishPart || !subjectedToRed) && 
