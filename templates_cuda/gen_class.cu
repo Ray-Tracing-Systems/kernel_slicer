@@ -8,9 +8,14 @@
 namespace {{MainClassName}}{{MainClassSuffix}}_DEV
 {
   using _Bool = bool;
-  {% for Decl in ClassDecls %}
+  {% for Decl in ClassDecls %} 
   {% if Decl.InClass and Decl.IsType %}
-  using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data type to kernels
+  using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; 
+  {% endif %}
+  {% endfor %}
+  {% for Decl in ClassDecls %} 
+  {% if Decl.InClass and not Decl.IsType and not Decl.IsTdef %}
+  {{Decl.Text}} 
   {% endif %}
   {% endfor %}
 
