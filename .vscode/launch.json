@@ -127,6 +127,7 @@
                         "/home/frol/PROG/vsan/opticsrt/src/lens_array/surface.cpp",
                         "-mainClass", "PolySurface", 
                         "-baseClass", "Surface",
+                        "-makerInterfaceName", "ISurface",
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
                         "-shaderCC", "cuda",

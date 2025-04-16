@@ -449,6 +449,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["MainClassName"]      = a_classInfo.mainClassName;
   data["MainClassSuffix"]    = a_classInfo.mainClassSuffix;
   data["MainClassSuffixLowerCase"] = ToLowerCase(a_classInfo.mainClassSuffix);
+  data["MainClassMakerInterface"]  = a_settings.interfaceName;
   data["ShaderSingleFile"]   = a_classInfo.pShaderCC->ShaderSingleFile();
   data["ShaderGLSL"]         = a_classInfo.pShaderCC->IsGLSL();
   data["UseSeparateUBO"]     = a_classInfo.pShaderCC->UseSeparateUBOForArguments();

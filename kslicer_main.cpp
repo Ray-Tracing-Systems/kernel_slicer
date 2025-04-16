@@ -271,6 +271,9 @@ int main(int argc, const char **argv) //
     if(params.find("-timestamps") != params.end())
       textGenSettings.enableTimeStamps = (atoi(params["-timestamps"].c_str()) != 0);
     textGenSettings.genSeparateGPUAPI = genGPUAPI;
+    textGenSettings.interfaceName = mainClassName;
+    if(params.find("-makerInterfaceName") != params.end())
+      textGenSettings.interfaceName = params["-makerInterfaceName"];
   }
 
   // include and process folders
