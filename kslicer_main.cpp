@@ -480,6 +480,7 @@ int main(int argc, const char **argv) //
         std::string funcName  = intersection["shader"];
         
         inputCodeInfo.intersectionShaders.push_back( std::make_pair(className, funcName) );
+        composeIntersections.push_back(composeAPIName);
         composeIntersections.push_back(composeImplName);
 
         if(intersection["triangle"] != nullptr) {
