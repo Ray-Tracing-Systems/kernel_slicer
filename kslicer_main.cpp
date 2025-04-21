@@ -1165,7 +1165,7 @@ int main(int argc, const char **argv) //
       continue;
     auto kernelDim = kernel.GetDim();
     auto kernelOptions = kernelsOptionsAll[kernel.name];
-    if(kernelOptions != nullptr)
+    if(kernelOptions != nullptr && kernelOptions["wgSize"] != nullptr)
     {
       kernel.wgSize[0] = kernelOptions["wgSize"][0];
       kernel.wgSize[1] = kernelOptions["wgSize"][1];
