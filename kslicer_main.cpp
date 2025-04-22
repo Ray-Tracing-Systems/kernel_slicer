@@ -271,6 +271,9 @@ int main(int argc, const char **argv) //
     if(params.find("-timestamps") != params.end())
       textGenSettings.enableTimeStamps = (atoi(params["-timestamps"].c_str()) != 0);
     textGenSettings.genSeparateGPUAPI = genGPUAPI;
+    textGenSettings.interfaceName = mainClassName;
+    if(params.find("-makerInterfaceName") != params.end())
+      textGenSettings.interfaceName = params["-makerInterfaceName"];
   }
 
   // include and process folders
@@ -860,7 +863,6 @@ int main(int argc, const char **argv) //
   std::cout << "{" << std::endl;
 
   std::vector<kslicer::FuncData> usedFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
-   //std::vector<kslicer::DeclInClass> usedDecls = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
   std::vector<kslicer::DeclInClass> usedDecls;
   for(auto name : inputCodeInfo.mainClassNames)
   {
@@ -875,11 +877,12 @@ int main(int argc, const char **argv) //
   for(const auto& usedDecl : usedDecls) // merge usedDecls with generalDecls
   {
     bool found = false;
-    for(const auto& currDecl : generalDecls)
+    for(auto& currDecl : generalDecls)
     {
       if(currDecl.name == usedDecl.name)
       {
         found = true;
+        currDecl.inClass = true;
         break;
       }
     }

@@ -39,6 +39,7 @@ namespace kslicer
     bool enableCallable    = false;
     bool enableTimeStamps  = false;
     bool genSeparateGPUAPI = false;
+    std::string interfaceName;
   };
 
   struct IShaderCompiler;
@@ -1383,12 +1384,11 @@ namespace kslicer
   {
     CudaCompiler(const std::string& a_prefix);
     std::string UBOAccess(const std::string& a_name) const override 
-    { 
-      if(a_name == "m_foundPixels")
-      {
-        int a = 2;
-      }
-      return std::string("ubo.") + a_name; 
+    {
+      if(a_name.find(".size()") != std::string::npos) // kernelJson["IndirectSizeX"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
+        return a_name;
+      else
+        return std::string("ubo.") + a_name; 
     } //  { return a_name; }
     std::string ReplaceSizeCapacityExpr(const std::string& a_str) const override { return a_str; }
     std::string ProcessBufferType(const std::string& a_typeName) const override;

@@ -449,6 +449,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["MainClassName"]      = a_classInfo.mainClassName;
   data["MainClassSuffix"]    = a_classInfo.mainClassSuffix;
   data["MainClassSuffixLowerCase"] = ToLowerCase(a_classInfo.mainClassSuffix);
+  data["MainClassMakerInterface"]  = a_settings.interfaceName;
   data["ShaderSingleFile"]   = a_classInfo.pShaderCC->ShaderSingleFile();
   data["ShaderGLSL"]         = a_classInfo.pShaderCC->IsGLSL();
   data["UseSeparateUBO"]     = a_classInfo.pShaderCC->UseSeparateUBOForArguments();
@@ -1698,7 +1699,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     json c_decl;
     c_decl["InClass"] = decl.inClass;
     c_decl["IsType"]  = (decl.kind == DECL_IN_CLASS::DECL_STRUCT);
+    c_decl["IsTdef"]  = (decl.kind == DECL_IN_CLASS::DECL_TYPEDEF); // || (decl.kind == DECL_IN_CLASS::DECL_TYPEDEF);
     c_decl["Type"]    = kslicer::CleanTypeName(decl.type);
+    c_decl["Text"]    = a_classInfo.pShaderCC->PrintHeaderDecl(decl, compiler, a_classInfo.pShaderFuncRewriter);
+    c_decl["Type"]    = kslicer::CleanTypeName(decl.type);
+
     data["ClassDecls"].push_back(c_decl);
   }
 
