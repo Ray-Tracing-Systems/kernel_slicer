@@ -355,9 +355,10 @@ void SimpleTest_Generated::kernel1D_CopyData(float* a_out, const float* a_in, ui
 void SimpleTest_Generated::CalcAndAccumGPU(const float* in_data, uint32_t a_threadsNum, float* a_out)
 {
   std::lock_guard<std::mutex> lock(m_mtx); // lock for UpdateObjectContext/ReadObjectContext to be ussied for this object only
-  UpdateObjectContext();
   
   size_t alignedSize = ReduceAddInit(m_accum_dev, m_accum_dev.size(), a_threadsNum);
+  UpdateObjectContext();
+  
   kernel1D_CalcAndAccum(in_data, a_threadsNum, a_out, uint32_t(alignedSize));
   ReduceAddComplete(m_accum_dev, a_threadsNum);
   kernel1D_CopyData(a_out, m_accum_dev.data(), uint32_t(m_accum.size()));
