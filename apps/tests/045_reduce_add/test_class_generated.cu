@@ -71,8 +71,10 @@ template<typename T> inline void ReduceAddComplete(LiteMathExtended::device_vect
   size_t currSize   = a_threadsNum/blockSize; 
   
   {
-    std::vector<T> debug(currSize);
-    cudaMemcpy(debug.data(), a_vec.data() + a_vec.size(), debug.size()*sizeof(T), cudaMemcpyDeviceToHost);
+    //std::vector<T> debug(currSize);
+    //cudaMemcpy(debug.data(), a_vec.data() + a_vec.size(), debug.size()*sizeof(T), cudaMemcpyDeviceToHost);
+    std::vector<T> debug(a_vec.size());
+    cudaMemcpy(debug.data(), a_vec.data(), debug.size()*sizeof(T), cudaMemcpyDeviceToHost);
     int a = 2;
   }
 
@@ -94,46 +96,46 @@ namespace SimpleTest_Generated_DEV
 {
   using _Bool = bool;
 
-  template<typename T, typename IndexType> // TODO: pass block size via template parameter
-  __device__ inline void ReduceAdd(LiteMathExtended::device_vector<T>& a_vec, IndexType offset, T val)
-  {
-    //__shared__ T sval;
-    //if(threadIdx.x == 0)
-    //  sval = 0;
-    //__syncthreads();
-    //atomicAdd(&sval, val);
-    //__syncthreads();
-    //if(threadIdx.x == 0)
-    //  atomicAdd(a_vec.data() + offset, sval);
-
-    __shared__ T sdata[256*1*1]; 
-    sdata[threadIdx.x] = val;
-    __syncthreads();
-    if (threadIdx.x < 128)
-      sdata[threadIdx.x] += sdata[threadIdx.x + 128];
-    __syncthreads();
-    if (threadIdx.x < 64)
-      sdata[threadIdx.x] += sdata[threadIdx.x + 64];
-    __syncthreads();
-    if (threadIdx.x < 32) sdata[threadIdx.x] += sdata[threadIdx.x + 32];
-    __syncthreads();
-    if (threadIdx.x < 16) sdata[threadIdx.x] += sdata[threadIdx.x + 16];
-    __syncthreads();
-    if (threadIdx.x < 8)  sdata[threadIdx.x] += sdata[threadIdx.x + 8];
-    __syncthreads();
-    if (threadIdx.x < 4)  sdata[threadIdx.x] += sdata[threadIdx.x + 4];
-    __syncthreads();
-    if (threadIdx.x < 2)  sdata[threadIdx.x] += sdata[threadIdx.x + 2];
-    __syncthreads();
-    if (threadIdx.x < 1)  sdata[threadIdx.x] += sdata[threadIdx.x + 1];
-    __syncthreads();
-
-    if(threadIdx.x == 0)
-    {
-      atomicAdd(a_vec.data() + offset,  sdata[0]);
-      //(a_vec.data() + a_vec.size())[blockIdx.x] = sdata[0];
-    }
-  }
+  //template<typename T, typename IndexType> // TODO: pass block size via template parameter
+  //__device__ inline void ReduceAdd(LiteMathExtended::device_vector<T>& a_vec, IndexType offset, T val)
+  //{
+  //  //__shared__ T sval;
+  //  //if(threadIdx.x == 0)
+  //  //  sval = 0;
+  //  //__syncthreads();
+  //  //atomicAdd(&sval, val);
+  //  //__syncthreads();
+  //  //if(threadIdx.x == 0)
+  //  //  atomicAdd(a_vec.data() + offset, sval);
+  //
+  //  __shared__ T sdata[256*1*1]; 
+  //  sdata[threadIdx.x] = val;
+  //  __syncthreads();
+  //  if (threadIdx.x < 128)
+  //    sdata[threadIdx.x] += sdata[threadIdx.x + 128];
+  //  __syncthreads();
+  //  if (threadIdx.x < 64)
+  //    sdata[threadIdx.x] += sdata[threadIdx.x + 64];
+  //  __syncthreads();
+  //  if (threadIdx.x < 32) sdata[threadIdx.x] += sdata[threadIdx.x + 32];
+  //  __syncthreads();
+  //  if (threadIdx.x < 16) sdata[threadIdx.x] += sdata[threadIdx.x + 16];
+  //  __syncthreads();
+  //  if (threadIdx.x < 8)  sdata[threadIdx.x] += sdata[threadIdx.x + 8];
+  //  __syncthreads();
+  //  if (threadIdx.x < 4)  sdata[threadIdx.x] += sdata[threadIdx.x + 4];
+  //  __syncthreads();
+  //  if (threadIdx.x < 2)  sdata[threadIdx.x] += sdata[threadIdx.x + 2];
+  //  __syncthreads();
+  //  if (threadIdx.x < 1)  sdata[threadIdx.x] += sdata[threadIdx.x + 1];
+  //  __syncthreads();
+  //
+  //  if(threadIdx.x == 0)
+  //  {
+  //    atomicAdd(a_vec.data() + offset,  sdata[0]);
+  //    //(a_vec.data() + a_vec.size())[blockIdx.x] = sdata[0];
+  //  }
+  //}
 
   template<typename T, typename IndexType> // TODO: pass block size via template parameter
   __device__ inline void ReduceAdd(LiteMathExtended::device_vector<T>& a_vec, IndexType offset, IndexType a_sizeAligned, T val)
@@ -147,31 +149,32 @@ namespace SimpleTest_Generated_DEV
     //if(threadIdx.x == 0)
     //  atomicAdd(a_vec.data() + offset, sval);
 
-    __shared__ T sdata[256*1*1]; 
-    sdata[threadIdx.x] = val;
-    __syncthreads();
-    if (threadIdx.x < 128)
-      sdata[threadIdx.x] += sdata[threadIdx.x + 128];
-    __syncthreads();
-    if (threadIdx.x < 64)
-      sdata[threadIdx.x] += sdata[threadIdx.x + 64];
-    __syncthreads();
-    if (threadIdx.x < 32) sdata[threadIdx.x] += sdata[threadIdx.x + 32];
-    __syncthreads();
-    if (threadIdx.x < 16) sdata[threadIdx.x] += sdata[threadIdx.x + 16];
-    __syncthreads();
-    if (threadIdx.x < 8)  sdata[threadIdx.x] += sdata[threadIdx.x + 8];
-    __syncthreads();
-    if (threadIdx.x < 4)  sdata[threadIdx.x] += sdata[threadIdx.x + 4];
-    __syncthreads();
-    if (threadIdx.x < 2)  sdata[threadIdx.x] += sdata[threadIdx.x + 2];
-    __syncthreads();
-    if (threadIdx.x < 1)  sdata[threadIdx.x] += sdata[threadIdx.x + 1];
-    __syncthreads();
+    //__shared__ T sdata[256*1*1]; 
+    //sdata[threadIdx.x] = val;
+    //__syncthreads();
+    //if (threadIdx.x < 128)
+    //  sdata[threadIdx.x] += sdata[threadIdx.x + 128];
+    //__syncthreads();
+    //if (threadIdx.x < 64)
+    //  sdata[threadIdx.x] += sdata[threadIdx.x + 64];
+    //__syncthreads();
+    //if (threadIdx.x < 32) sdata[threadIdx.x] += sdata[threadIdx.x + 32];
+    //__syncthreads();
+    //if (threadIdx.x < 16) sdata[threadIdx.x] += sdata[threadIdx.x + 16];
+    //__syncthreads();
+    //if (threadIdx.x < 8)  sdata[threadIdx.x] += sdata[threadIdx.x + 8];
+    //__syncthreads();
+    //if (threadIdx.x < 4)  sdata[threadIdx.x] += sdata[threadIdx.x + 4];
+    //__syncthreads();
+    //if (threadIdx.x < 2)  sdata[threadIdx.x] += sdata[threadIdx.x + 2];
+    //__syncthreads();
+    //if (threadIdx.x < 1)  sdata[threadIdx.x] += sdata[threadIdx.x + 1];
+    //__syncthreads();
 
     if(threadIdx.x == 0)
     {
-      (a_vec.data() + a_vec.size())[blockIdx.x] += sdata[0]; // a_sizeAligned*offset + 
+      //(a_vec.data() + a_vec.size())[blockIdx.x] += 1.0f; //sdata[0]; // a_sizeAligned*offset + 
+      a_vec[blockIdx.x] = 1.0f; //sdata[0]; // a_sizeAligned*offset + 
     }
   }
 
@@ -184,12 +187,7 @@ namespace SimpleTest_Generated_DEV
  
   __global__ void kernel1D_CalcAndAccum(const float* __restrict__  in_data, uint32_t a_threadsNum, float* __restrict__  a_out, uint32_t a_alignedSize)
   {
-    const uint _threadID[3] = {
-      blockIdx.x * blockDim.x + threadIdx.x,
-      blockIdx.y * blockDim.y + threadIdx.y,
-      blockIdx.z * blockDim.z + threadIdx.z
-    };
-    const int i = int(_threadID[0]); 
+    //const int i = blockIdx.x * blockDim.x + threadIdx.x
   
     ReduceAdd<float, uint32_t>(m_accum, 0, a_alignedSize, 0.1f);
     //ReduceAdd<float, uint32_t>(m_accum, 1, a_alignedSize, 0.5f);
