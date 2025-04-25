@@ -22,6 +22,8 @@ template<typename T> inline size_t ReduceAddInit(LiteMathExtended::device_vector
 
   a_vec.reserve(a_targetSize + currOffset);
   a_vec.resize(a_targetSize);
+  cudaMemset(a_vec.data(), 0, a_vec.capacity()*sizeof(T)); 
+
   return (a_threadsNum / blockSize); 
 }
 
@@ -67,7 +69,14 @@ template<typename T> inline void ReduceAddComplete(LiteMathExtended::device_vect
 { 
   const size_t blockSize = 256;
   size_t currSize   = a_threadsNum/blockSize; 
-  size_t currOffset = currSize*a_vec.size();
+  
+  {
+    std::vector<T> debug(currSize);
+    cudaMemcpy(debug.data(), a_vec.data() + a_vec.size(), debug.size()*sizeof(T), cudaMemcpyDeviceToHost);
+    int a = 2;
+  }
+
+  size_t currOffset = currSize; //*a_vec.size();
   size_t oldOffset  = a_vec.size();
   while (currSize > 1) 
   {
@@ -162,7 +171,7 @@ namespace SimpleTest_Generated_DEV
 
     if(threadIdx.x == 0)
     {
-      (a_vec.data() + a_vec.size())[a_sizeAligned*offset + blockIdx.x] = sdata[0];
+      (a_vec.data() + a_vec.size())[blockIdx.x] += sdata[0]; // a_sizeAligned*offset + 
     }
   }
 
@@ -172,36 +181,6 @@ namespace SimpleTest_Generated_DEV
   {
   };
   __device__ UniformBufferObjectData ubo;
-  
-  __device__ float atomicMin(float* address, float val) 
-  {
-    int* addr_as_int = (int*)address;
-    int old = *addr_as_int;
-    int expected;
-    do {
-        expected = old;
-        float current_val = __int_as_float(old);
-        if (val >= current_val) 
-          break;  // Если новое значение не меньше, выходим
-        old = atomicCAS(addr_as_int, expected, __float_as_int(val));
-    } while (expected != old);
-    return __int_as_float(old);
-  }
-
-  __device__ float atomicMax(float* address, float val) 
-  {
-    int* addr_as_int = (int*)address;
-    int old = *addr_as_int;
-    int expected;
-    do {
-        expected = old;
-        float current_val = __int_as_float(old);
-        if (val <= current_val) 
-          break;  // Если новое значение не больше, выходим
-        old = atomicCAS(addr_as_int, expected, __float_as_int(val));
-    } while (expected != old);
-    return __int_as_float(old);
-  }
  
   __global__ void kernel1D_CalcAndAccum(const float* __restrict__  in_data, uint32_t a_threadsNum, float* __restrict__  a_out, uint32_t a_alignedSize)
   {
@@ -213,10 +192,10 @@ namespace SimpleTest_Generated_DEV
     const int i = int(_threadID[0]); 
   
     ReduceAdd<float, uint32_t>(m_accum, 0, a_alignedSize, 0.1f);
-    ReduceAdd<float, uint32_t>(m_accum, 1, a_alignedSize, 0.5f);
-    ReduceAdd<float, uint32_t>(m_accum, 2, a_alignedSize, 1.0f);
-    ReduceAdd<float, uint32_t>(m_accum, 3, a_alignedSize, 2.0f);
-    ReduceAdd<float, uint32_t>(m_accum, 4, a_alignedSize, 3.0f);
+    //ReduceAdd<float, uint32_t>(m_accum, 1, a_alignedSize, 0.5f);
+    //ReduceAdd<float, uint32_t>(m_accum, 2, a_alignedSize, 1.0f);
+    //ReduceAdd<float, uint32_t>(m_accum, 3, a_alignedSize, 2.0f);
+    //ReduceAdd<float, uint32_t>(m_accum, 4, a_alignedSize, 3.0f);
   }
 
   __global__ void kernel1D_CopyData(float* __restrict__  a_out, const float* __restrict__  a_in, uint32_t a_size)
