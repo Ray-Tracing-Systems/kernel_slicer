@@ -28,7 +28,7 @@ int main(int argc, const char** argv)
   #endif
 
   std::vector<float> outputArray(5);
-  std::vector<float> inputArray(256*256);
+  std::vector<float> inputArray(512*256);
   for(size_t i=0;i<outputArray.size();i++)
     outputArray[i] = 0;
   for(size_t i=0;i<inputArray.size();i++)
