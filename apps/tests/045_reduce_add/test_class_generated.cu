@@ -203,7 +203,7 @@ namespace SimpleTest_Generated_DEV
     return __int_as_float(old);
   }
  
-  __global__ void kernel1D_CalcAndAccum(const float* __restrict__  in_data, uint32_t a_threadsNum, float* __restrict__  a_out)
+  __global__ void kernel1D_CalcAndAccum(const float* __restrict__  in_data, uint32_t a_threadsNum, float* __restrict__  a_out, uint32_t a_alignedSize)
   {
     const uint _threadID[3] = {
       blockIdx.x * blockDim.x + threadIdx.x,
@@ -212,11 +212,11 @@ namespace SimpleTest_Generated_DEV
     };
     const int i = int(_threadID[0]); 
   
-    ReduceAdd<float, uint32_t>(m_accum, 0, 0.1f);
-    ReduceAdd<float, uint32_t>(m_accum, 1, 0.5f);
-    ReduceAdd<float, uint32_t>(m_accum, 2, 1.0f);
-    ReduceAdd<float, uint32_t>(m_accum, 3, 2.0f);
-    ReduceAdd<float, uint32_t>(m_accum, 4, 3.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 0, a_alignedSize, 0.1f);
+    ReduceAdd<float, uint32_t>(m_accum, 1, a_alignedSize, 0.5f);
+    ReduceAdd<float, uint32_t>(m_accum, 2, a_alignedSize, 1.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 3, a_alignedSize, 2.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 4, a_alignedSize, 3.0f);
   }
 
   __global__ void kernel1D_CopyData(float* __restrict__  a_out, const float* __restrict__  a_in, uint32_t a_size)
@@ -271,7 +271,7 @@ public:
   void CopyUBOFromDevice();
   void UpdateDeviceVectors();
 
-  void kernel1D_CalcAndAccum(const float* in_data, uint32_t a_threadsNum, float* a_out) override;
+  void kernel1D_CalcAndAccum(const float* in_data, uint32_t a_threadsNum, float* a_out, uint32_t a_alignedSize);
   void kernel1D_CopyData(float* a_out, const float* a_in, uint32_t a_size) override;
   
   void CalcAndAccum(const float* in_data, uint32_t a_threadsNum, float* a_out) override;
@@ -361,11 +361,11 @@ void SimpleTest_Generated::ReadObjectContext(bool a_updateVec)
   }
 }
 
-void SimpleTest_Generated::kernel1D_CalcAndAccum(const float* in_data, uint32_t a_threadsNum, float* a_out)
+void SimpleTest_Generated::kernel1D_CalcAndAccum(const float* in_data, uint32_t a_threadsNum, float* a_out, uint32_t a_alignedSize)
 {
   dim3 block(256, 1, 1);
   dim3 grid((a_threadsNum + block.x - 1) / block.x, (1 + block.y - 1) / block.y, (1 + block.z - 1) / block.z);
-  SimpleTest_Generated_DEV::kernel1D_CalcAndAccum<<<grid, block>>>(in_data, a_threadsNum, a_out);
+  SimpleTest_Generated_DEV::kernel1D_CalcAndAccum<<<grid, block>>>(in_data, a_threadsNum, a_out, a_alignedSize);
 }
 
 void SimpleTest_Generated::kernel1D_CopyData(float* a_out, const float* a_in, uint32_t a_size)
@@ -380,8 +380,8 @@ void SimpleTest_Generated::CalcAndAccumGPU(const float* in_data, uint32_t a_thre
   std::lock_guard<std::mutex> lock(m_mtx); // lock for UpdateObjectContext/ReadObjectContext to be ussied for this object only
   UpdateObjectContext();
   
-  ReduceAddInit(m_accum_dev, m_accum_dev.size(), a_threadsNum);
-  kernel1D_CalcAndAccum(in_data, a_threadsNum, a_out);
+  size_t alignedSize = ReduceAddInit(m_accum_dev, m_accum_dev.size(), a_threadsNum);
+  kernel1D_CalcAndAccum(in_data, a_threadsNum, a_out, uint32_t(alignedSize));
   ReduceAddComplete(m_accum_dev, a_threadsNum);
   kernel1D_CopyData(a_out, m_accum_dev.data(), uint32_t(m_accum.size()));
 
