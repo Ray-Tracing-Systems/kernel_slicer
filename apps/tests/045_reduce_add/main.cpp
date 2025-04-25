@@ -27,7 +27,7 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
 
-  std::vector<float> outputArray(4);
+  std::vector<float> outputArray(5);
   std::vector<float> inputArray(256*256);
   for(size_t i=0;i<outputArray.size();i++)
     outputArray[i] = 0;

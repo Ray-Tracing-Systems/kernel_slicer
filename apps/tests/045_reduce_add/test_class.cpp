@@ -9,7 +9,7 @@ using LiteMath::ReduceAdd;
 
 SimpleTest::SimpleTest() 
 {
-  m_accum.resize(4); 
+  m_accum.resize(5); 
   for(auto& x : m_accum) 
     x = 0;
 }
@@ -24,14 +24,15 @@ void SimpleTest::CalcAndAccum(const float* in_data, uint32_t a_threadsNum, float
 
 void SimpleTest::kernel1D_CalcAndAccum(const float* in_data, uint32_t a_threadsNum, float* a_out)
 {
-  #pragma omp parallel for
+  //#pragma omp parallel for
   for(int i=0; i < a_threadsNum; i++)
   {
     float x = in_data[i];
-    ReduceAdd<float, uint32_t>(m_accum, 0, x);
-    ReduceAdd<float, uint32_t>(m_accum, 1, x*x - x);
-    ReduceAdd<float, uint32_t>(m_accum, 2, cos(x*x*x) - sin(x*x + x));
-    ReduceAdd<float, uint32_t>(m_accum, 3, sin(x));
+    ReduceAdd<float, uint32_t>(m_accum, 0, 0.1f);
+    ReduceAdd<float, uint32_t>(m_accum, 1, 0.5f);
+    ReduceAdd<float, uint32_t>(m_accum, 2, 1.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 3, 2.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 4, 3.0f);
   }
 }
 
