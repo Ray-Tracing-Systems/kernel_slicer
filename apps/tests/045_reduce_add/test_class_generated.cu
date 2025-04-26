@@ -31,14 +31,14 @@ template<typename T> inline size_t ReduceAddInit(LiteMathExtended::device_vector
 }
 
 template<typename T, typename IndexType>
-__global__ void BlockReduce(const T* in_data, T* out_data, IndexType a_threadsNum, IndexType a_currSize, IndexType a_alignedSize)
+__global__ void BlockReduce(const T* in_data, T* out_data, IndexType a_currSize, IndexType a_alignedSize)
 {
-  const IndexType eid = blockIdx.x/a_currSize;
-  const IndexType tid = blockIdx.x*blockDim.x + threadIdx.x;
+  const IndexType eid = (blockIdx.x / a_currSize);
+  const IndexType tid = (blockIdx.x % a_currSize)*blockDim.x + threadIdx.x;
 
   __shared__ T sdata[256*1*1]; 
-  if(tid < a_threadsNum)
-    sdata[threadIdx.x] = in_data[tid];
+  if(tid < a_currSize)
+    sdata[threadIdx.x] = in_data[tid + eid*a_alignedSize];
   else
     sdata[threadIdx.x] = 0;
   __syncthreads();
@@ -86,8 +86,8 @@ template<typename T> inline void ReduceAddComplete(LiteMathExtended::device_vect
   {
     size_t numBlocks  = (currSize + blockSize - 1) / blockSize;
     size_t outOffset  = (numBlocks == 1) ? 0 : inputOffset + currSize;
-    size_t numBlocks2 = numBlocks; //*a_vec.size();
-    BlockReduce <T,size_t> <<<numBlocks2, blockSize>>> (a_vec.data() + inputOffset, a_vec.data() + outOffset, currSize, currSize, a_sizeAligned);
+    size_t numBlocks2 = numBlocks*a_vec.size();
+    BlockReduce <T,size_t> <<<numBlocks2, blockSize>>> (a_vec.data() + inputOffset, a_vec.data() + outOffset, currSize, a_sizeAligned);
     currSize    = numBlocks;
     inputOffset = outOffset;
   }
