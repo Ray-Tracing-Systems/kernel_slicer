@@ -64,7 +64,8 @@ __global__ void BlockReduce(T* inout_data, IndexType inOffset, IndexType outOffs
 
   if(threadIdx.x == 0)
   {
-    inout_data[eid*a_alignedSize + outOffset + blockIdx.x] = sdata[0];
+    const size_t finalOffset = (outOffset == 0) ? eid : eid*a_alignedSize + outOffset + blockIdx.x;
+    inout_data[finalOffset]  = sdata[0];
   }
 }
 
