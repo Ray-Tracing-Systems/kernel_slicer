@@ -28,13 +28,13 @@ template<typename T> inline size_t ReduceAddInit(LiteMathExtended::device_vector
 }
 
 template<typename T, typename IndexType>
-__global__ void BlockReduce(const T* in_data, T* out_data, IndexType a_threadsNum, IndexType a_vecSize, IndexType a_currSize)
+__global__ void BlockReduce(const T* in_data, T* out_data, IndexType a_threadsNum, IndexType a_alignedSize, IndexType a_currSize)
 {
   const IndexType eid = blockIdx.x / a_currSize;
   if(eid != 0)
     return;
     
-  const IndexType tid = (blockIdx.x % a_currSize) * blockDim.x + threadIdx.x;
+  const IndexType tid = blockIdx.x*blockDim.x + threadIdx.x;
 
   __shared__ T sdata[256*1*1]; 
   if(tid < a_threadsNum)
@@ -64,7 +64,7 @@ __global__ void BlockReduce(const T* in_data, T* out_data, IndexType a_threadsNu
 
   if(threadIdx.x == 0)
   {
-    out_data[blockIdx.x] = sdata[0];
+    out_data[blockIdx.x + eid*a_alignedSize] = sdata[0];
   }
 }
 
