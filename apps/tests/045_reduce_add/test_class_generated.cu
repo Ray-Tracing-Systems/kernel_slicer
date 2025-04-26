@@ -8,32 +8,32 @@
 template<typename T> inline size_t ReduceAddInit(LiteMathExtended::device_vector<T>& a_vec, size_t a_targetSize, size_t a_threadsNum) 
 { 
   const size_t blockSize = 256;
-  size_t currOffset = 0;
   size_t currSize   = a_threadsNum/blockSize;
+  
+  size_t inputOffset  = a_vec.size();
   while (currSize > 1) 
   {
-    currOffset += currSize*a_targetSize;
-    size_t numBlocks = (currSize + blockSize - 1) / blockSize;
-    //BlockReduce (...)
-    currSize = numBlocks;
+    size_t numBlocks  = (currSize + blockSize - 1) / blockSize;
+    size_t outOffset  = inputOffset + currSize;
+    //BlockReduce <T,size_t> <<<numBlocks, blockSize>>> (...);
+    currSize    = numBlocks;
+    inputOffset = outOffset;
   }
+  inputOffset++; // reserve and make add to 2
 
-  currOffset += a_targetSize;
+  size_t alignedSize = inputOffset*a_targetSize;
 
-  a_vec.reserve(a_targetSize + currOffset);
+  a_vec.reserve(a_targetSize + alignedSize);
   a_vec.resize(a_targetSize);
   cudaMemset(a_vec.data(), 0, a_vec.capacity()*sizeof(T)); 
 
-  return (a_threadsNum / blockSize); 
+  return alignedSize; 
 }
 
 template<typename T, typename IndexType>
-__global__ void BlockReduce(const T* in_data, T* out_data, IndexType a_threadsNum, IndexType a_alignedSize, IndexType a_currSize)
+__global__ void BlockReduce(const T* in_data, T* out_data, IndexType a_threadsNum, IndexType a_currSize, IndexType a_alignedSize)
 {
-  const IndexType eid = blockIdx.x / a_currSize;
-  if(eid != 0)
-    return;
-    
+  const IndexType eid = blockIdx.x/a_currSize;
   const IndexType tid = blockIdx.x*blockDim.x + threadIdx.x;
 
   __shared__ T sdata[256*1*1]; 
@@ -68,7 +68,7 @@ __global__ void BlockReduce(const T* in_data, T* out_data, IndexType a_threadsNu
   }
 }
 
-template<typename T> inline void ReduceAddComplete(LiteMathExtended::device_vector<T>& a_vec, size_t a_threadsNum) 
+template<typename T> inline void ReduceAddComplete(LiteMathExtended::device_vector<T>& a_vec, size_t a_threadsNum, size_t a_sizeAligned) 
 { 
   const size_t blockSize = 256;
   size_t currSize = a_threadsNum/blockSize; 
@@ -86,8 +86,8 @@ template<typename T> inline void ReduceAddComplete(LiteMathExtended::device_vect
   {
     size_t numBlocks  = (currSize + blockSize - 1) / blockSize;
     size_t outOffset  = (numBlocks == 1) ? 0 : inputOffset + currSize;
-    size_t numBlocks2 = numBlocks*a_vec.size();
-    BlockReduce <T,size_t> <<<numBlocks2, blockSize>>> (a_vec.data() + inputOffset, a_vec.data() + outOffset, currSize, a_vec.size(), currSize);
+    size_t numBlocks2 = numBlocks; //*a_vec.size();
+    BlockReduce <T,size_t> <<<numBlocks2, blockSize>>> (a_vec.data() + inputOffset, a_vec.data() + outOffset, currSize, currSize, a_sizeAligned);
     currSize    = numBlocks;
     inputOffset = outOffset;
   }
@@ -140,10 +140,10 @@ namespace SimpleTest_Generated_DEV
     //const int i = blockIdx.x * blockDim.x + threadIdx.x
   
     ReduceAdd<float, uint32_t>(m_accum, 0, a_alignedSize, 1.0f);
-    //ReduceAdd<float, uint32_t>(m_accum, 1, a_alignedSize, 2.0f);
-    //ReduceAdd<float, uint32_t>(m_accum, 2, a_alignedSize, 3.0f);
-    //ReduceAdd<float, uint32_t>(m_accum, 3, a_alignedSize, 4.0f);
-    //ReduceAdd<float, uint32_t>(m_accum, 4, a_alignedSize, 5.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 1, a_alignedSize, 2.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 2, a_alignedSize, 3.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 3, a_alignedSize, 4.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 4, a_alignedSize, 5.0f);
   }
 
   __global__ void kernel1D_CopyData(float* __restrict__  a_out, const float* __restrict__  a_in, uint32_t a_size)
@@ -310,7 +310,7 @@ void SimpleTest_Generated::CalcAndAccumGPU(const float* in_data, uint32_t a_thre
   UpdateObjectContext();
 
   kernel1D_CalcAndAccum(in_data, a_threadsNum, a_out, uint32_t(alignedSize));
-  ReduceAddComplete(m_accum_dev, a_threadsNum);
+  ReduceAddComplete(m_accum_dev, a_threadsNum, alignedSize);
   kernel1D_CopyData(a_out, m_accum_dev.data(), uint32_t(m_accum.size()));
 
   ReadObjectContext();
