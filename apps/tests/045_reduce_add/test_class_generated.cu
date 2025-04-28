@@ -4,13 +4,14 @@
 #include "test_class.h"
 #include <cfloat>
 #include <mutex>
+#include <fstream>
 
 template<typename T> inline size_t ReduceAddInit(LiteMathExtended::device_vector<T>& a_vec, size_t a_targetSize, size_t a_threadsNum) 
 { 
   const size_t blockSize = 256;
-  size_t currSize   = a_threadsNum/blockSize;
+  size_t currSize = a_threadsNum/blockSize;
   
-  size_t inputOffset  = a_vec.size();
+  size_t inputOffset = 0;
   while (currSize > 1) 
   {
     size_t numBlocks  = (currSize + blockSize - 1) / blockSize;
@@ -21,13 +22,13 @@ template<typename T> inline size_t ReduceAddInit(LiteMathExtended::device_vector
   }
   inputOffset++; // reserve and make add to 2
 
-  size_t alignedSize = inputOffset*a_targetSize;
+  size_t auxSize = inputOffset*a_targetSize;
 
-  a_vec.reserve(a_targetSize + alignedSize);
+  a_vec.reserve(a_targetSize + auxSize);
   a_vec.resize(a_targetSize);
   cudaMemset(a_vec.data(), 0, a_vec.capacity()*sizeof(T)); 
 
-  return alignedSize; 
+  return inputOffset; 
 }
 
 template<typename T, typename IndexType>
@@ -74,13 +75,13 @@ template<typename T> inline void ReduceAddComplete(LiteMathExtended::device_vect
   const size_t blockSize = 256;
   size_t currSize = a_threadsNum/blockSize; 
 
-  //{
-  //  std::vector<T> debug(currSize);
-  //  cudaMemcpy(debug.data(), a_vec.data() + a_vec.size(), debug.size()*sizeof(T), cudaMemcpyDeviceToHost);
-  //  //std::vector<T> debug(a_vec.size());
-  //  //cudaMemcpy(debug.data(), a_vec.data(), debug.size()*sizeof(T), cudaMemcpyDeviceToHost);
-  //  int a = 2;
-  //}
+  {
+    std::vector<T> debug(a_vec.capacity());
+    cudaMemcpy(debug.data(), a_vec.data(), debug.size()*sizeof(T), cudaMemcpyDeviceToHost);
+    std::ofstream fout("z_debug.txt"); 
+    for(size_t i=0;i<debug.size();i++)
+      fout << i << "\t" << debug[i] << std::endl;
+  }
 
   size_t inputOffset  = a_vec.size();
   while (currSize > 1) 
@@ -91,6 +92,14 @@ template<typename T> inline void ReduceAddComplete(LiteMathExtended::device_vect
     BlockReduce <T,size_t> <<<numBlocks2, blockSize>>> (a_vec.data(), inputOffset, outOffset, currSize, numBlocks, a_sizeAligned);
     currSize    = numBlocks;
     inputOffset = outOffset;
+  }
+
+  {
+    std::vector<T> debug(a_vec.capacity());
+    cudaMemcpy(debug.data(), a_vec.data(), debug.size()*sizeof(T), cudaMemcpyDeviceToHost);
+    std::ofstream fout("z_debug2.txt"); 
+    for(size_t i=0;i<debug.size();i++)
+      fout << i << "\t" << debug[i] << std::endl;
   }
 }
 
@@ -312,6 +321,7 @@ void SimpleTest_Generated::CalcAndAccumGPU(const float* in_data, uint32_t a_thre
 
   kernel1D_CalcAndAccum(in_data, a_threadsNum, a_out, uint32_t(alignedSize));
   ReduceAddComplete(m_accum_dev, a_threadsNum, alignedSize);
+  
   kernel1D_CopyData(a_out, m_accum_dev.data(), uint32_t(m_accum.size()));
 
   ReadObjectContext();
