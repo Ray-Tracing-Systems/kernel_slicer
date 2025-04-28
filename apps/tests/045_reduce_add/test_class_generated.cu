@@ -35,7 +35,8 @@ template<typename T, typename IndexType>
 __global__ void BlockReduce(T* inout_data, IndexType inOffset, IndexType outOffset, IndexType a_currSize, IndexType a_numBlocks, IndexType a_alignedSize)
 {
   const IndexType eid = (blockIdx.x / a_numBlocks);
-  const IndexType tid = (blockIdx.x % a_numBlocks)*blockDim.x + threadIdx.x;
+  const IndexType bid = (blockIdx.x % a_numBlocks);
+  const IndexType tid = bid*blockDim.x + threadIdx.x;
 
   __shared__ T sdata[256*1*1]; 
   if(tid < a_currSize)
@@ -65,7 +66,7 @@ __global__ void BlockReduce(T* inout_data, IndexType inOffset, IndexType outOffs
 
   if(threadIdx.x == 0)
   {
-    const size_t finalOffset = (outOffset == 0) ? eid : eid*a_alignedSize + outOffset + blockIdx.x;
+    const size_t finalOffset = (outOffset == 0) ? eid : eid*a_alignedSize + outOffset + bid;
     inout_data[finalOffset]  = sdata[0];
   }
 }
@@ -75,13 +76,13 @@ template<typename T> inline void ReduceAddComplete(LiteMathExtended::device_vect
   const size_t blockSize = 256;
   size_t currSize = a_threadsNum/blockSize; 
 
-  {
-    std::vector<T> debug(a_vec.capacity());
-    cudaMemcpy(debug.data(), a_vec.data(), debug.size()*sizeof(T), cudaMemcpyDeviceToHost);
-    std::ofstream fout("z_debug.txt"); 
-    for(size_t i=0;i<debug.size();i++)
-      fout << i << "\t" << debug[i] << std::endl;
-  }
+  //{
+  //  std::vector<T> debug(a_vec.capacity());
+  //  cudaMemcpy(debug.data(), a_vec.data(), debug.size()*sizeof(T), cudaMemcpyDeviceToHost);
+  //  std::ofstream fout("z_debug.txt"); 
+  //  for(size_t i=0;i<debug.size();i++)
+  //    fout << i << "\t" << debug[i] << std::endl;
+  //}
 
   size_t inputOffset  = a_vec.size();
   while (currSize > 1) 
@@ -94,13 +95,13 @@ template<typename T> inline void ReduceAddComplete(LiteMathExtended::device_vect
     inputOffset = outOffset;
   }
 
-  {
-    std::vector<T> debug(a_vec.capacity());
-    cudaMemcpy(debug.data(), a_vec.data(), debug.size()*sizeof(T), cudaMemcpyDeviceToHost);
-    std::ofstream fout("z_debug2.txt"); 
-    for(size_t i=0;i<debug.size();i++)
-      fout << i << "\t" << debug[i] << std::endl;
-  }
+  //{
+  //  std::vector<T> debug(a_vec.capacity());
+  //  cudaMemcpy(debug.data(), a_vec.data(), debug.size()*sizeof(T), cudaMemcpyDeviceToHost);
+  //  std::ofstream fout("z_debug2.txt"); 
+  //  for(size_t i=0;i<debug.size();i++)
+  //    fout << i << "\t" << debug[i] << std::endl;
+  //}
 }
 
 namespace SimpleTest_Generated_DEV
