@@ -4,6 +4,7 @@
 #include "{{MainInclude}}"
 #include <cfloat>
 #include <mutex>
+#include <cub/block/block_reduce.cuh>
 
 template<typename T> inline size_t ReduceAddInit(std::vector<T>& a_vec, size_t a_targetSize) { return a_vec.size(); }
 template<typename T> inline void   ReduceAddComplete(std::vector<T>& a_vec) { }
@@ -12,42 +13,59 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
 {
   using _Bool = bool;
 
-  template<typename T, typename IndexType> // TODO: pass block size via template parameter
+  //template<typename T, typename IndexType> // TODO: pass block size via template parameter
+  //__device__ inline void ReduceAdd(LiteMathExtended::device_vector<T>& a_vec, IndexType offset, T val)
+  //{
+  //  if(!isfinite(val))
+  //    val = 0;
+  //  //__shared__ T sval;
+  //  //if(threadIdx.x == 0)
+  //  //  sval = 0;
+  //  //__syncthreads();
+  //  //atomicAdd(&sval, val);
+  //  //__syncthreads();
+  //  //if(threadIdx.x == 0)
+  //  //  atomicAdd(a_vec.data() + offset, sval);
+  //  __shared__ T sdata[256*1*1]; 
+  //  sdata[threadIdx.x] = val;
+  //  __syncthreads();
+  //  if (threadIdx.x < 128)
+  //    sdata[threadIdx.x] += sdata[threadIdx.x + 128];
+  //  __syncthreads();
+  //  if (threadIdx.x < 64)
+  //    sdata[threadIdx.x] += sdata[threadIdx.x + 64];
+  //  __syncthreads();
+  //  if (threadIdx.x < 32) sdata[threadIdx.x] += sdata[threadIdx.x + 32];
+  //  __syncthreads();
+  //  if (threadIdx.x < 16) sdata[threadIdx.x] += sdata[threadIdx.x + 16];
+  //  __syncthreads();
+  //  if (threadIdx.x < 8)  sdata[threadIdx.x] += sdata[threadIdx.x + 8];
+  //  __syncthreads();
+  //  if (threadIdx.x < 4)  sdata[threadIdx.x] += sdata[threadIdx.x + 4];
+  //  __syncthreads();
+  //  if (threadIdx.x < 2)  sdata[threadIdx.x] += sdata[threadIdx.x + 2];
+  //  __syncthreads();
+  //  if (threadIdx.x < 1)  sdata[threadIdx.x] += sdata[threadIdx.x + 1];
+  //  __syncthreads();
+  //  if(threadIdx.x == 0)
+  //    atomicAdd(a_vec.data() + offset,  sdata[0]);
+  //}
+
+  template<typename T, typename IndexType, int BLOCK_SIZE = 256>
   __device__ inline void ReduceAdd(LiteMathExtended::device_vector<T>& a_vec, IndexType offset, T val)
   {
     if(!isfinite(val))
-      val = 0;
-    //__shared__ T sval;
-    //if(threadIdx.x == 0)
-    //  sval = 0;
-    //__syncthreads();
-    //atomicAdd(&sval, val);
-    //__syncthreads();
-    //if(threadIdx.x == 0)
-    //  atomicAdd(a_vec.data() + offset, sval);
-    __shared__ T sdata[256*1*1]; 
-    sdata[threadIdx.x] = val;
-    __syncthreads();
-    if (threadIdx.x < 128)
-      sdata[threadIdx.x] += sdata[threadIdx.x + 128];
-    __syncthreads();
-    if (threadIdx.x < 64)
-      sdata[threadIdx.x] += sdata[threadIdx.x + 64];
-    __syncthreads();
-    if (threadIdx.x < 32) sdata[threadIdx.x] += sdata[threadIdx.x + 32];
-    __syncthreads();
-    if (threadIdx.x < 16) sdata[threadIdx.x] += sdata[threadIdx.x + 16];
-    __syncthreads();
-    if (threadIdx.x < 8)  sdata[threadIdx.x] += sdata[threadIdx.x + 8];
-    __syncthreads();
-    if (threadIdx.x < 4)  sdata[threadIdx.x] += sdata[threadIdx.x + 4];
-    __syncthreads();
-    if (threadIdx.x < 2)  sdata[threadIdx.x] += sdata[threadIdx.x + 2];
-    __syncthreads();
-    if (threadIdx.x < 1)  sdata[threadIdx.x] += sdata[threadIdx.x + 1];
-    __syncthreads();
+        val = 0;
+        
+    // Определяем временное хранилище для CUB
+    __shared__ typename cub::BlockReduce<T, BLOCK_SIZE>::TempStorage temp_storage;
+  
+    // Выполняем редукцию по блоку
+    T block_sum = cub::BlockReduce<T, BLOCK_SIZE>(temp_storage).Sum(val);
+  
+    // Первый поток атомарно добавляет результат в глобальную память
     if(threadIdx.x == 0)
-      atomicAdd(a_vec.data() + offset,  sdata[0]);
+      atomicAdd(a_vec.data() + offset, block_sum);
   }
 
   template<typename T, typename IndexType> // TODO: pass block size via template parameter
