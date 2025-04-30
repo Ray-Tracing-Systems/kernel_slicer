@@ -178,6 +178,39 @@
         },
 
         {
+            "name"   : "Launch (OpticsRT/kiam-stage2:AccelPolySurface/CUDA)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["/home/frol/PROG/vsan/opticsrt/src/lens_array/accel_poly_surface.cpp",
+                        "/home/frol/PROG/vsan/opticsrt/src/lens_array/surface.cpp",
+                        "-mainClass", "AccelPolySurface", 
+                        "-baseClass", "PolySurface", 
+                        "-baseClass", "Surface",
+                        "-makerInterfaceName", "ISurface",
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-shaderCC", "cuda",
+                        "-I${workspaceFolder}/TINYSTL",                   "ignore",
+                        "-I/home/frol/PROG/vsan/opticsrt/ext/LiteMath",   "ignore",
+                        "-I/home/frol/PROG/vsan/opticsrt/src",            "process",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (OpticsRT/kiam-stage2:PolySurface/Slang)",
             "type"   : "cppdbg",
             "request": "launch",
