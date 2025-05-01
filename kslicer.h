@@ -993,7 +993,7 @@ namespace kslicer
   {
   public:
   
-    KernelInfoVisitor(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel);
+    KernelInfoVisitor(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, bool a_onlyShaderFeatures = false);
     virtual ~KernelInfoVisitor() {}
   
     bool VisitForStmt(clang::ForStmt* forLoop);
@@ -1023,6 +1023,7 @@ namespace kslicer
     const clang::CompilerInstance& m_compiler;
     kslicer::MainClassInfo*        m_codeInfo;
     kslicer::KernelInfo&           m_currKernel;
+    bool                           m_onlyShaderFeatures;
   
     std::unordered_set<uint64_t> m_visitedTexAccessNodes;
   };

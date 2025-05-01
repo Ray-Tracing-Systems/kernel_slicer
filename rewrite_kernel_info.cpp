@@ -12,15 +12,18 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 kslicer::KernelInfoVisitor::KernelInfoVisitor(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, 
-                                              kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel) : 
+                                              kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, bool a_onlyShaderFeatures) : 
                                               m_rewriter(R), m_compiler(a_compiler), 
-                                              m_codeInfo(a_codeInfo), m_currKernel(a_kernel)
+                                              m_codeInfo(a_codeInfo), m_currKernel(a_kernel), m_onlyShaderFeatures(a_onlyShaderFeatures)
 {
   
 }
 
 bool kslicer::KernelInfoVisitor::VisitForStmt(clang::ForStmt* forLoop)
-{  
+{ 
+  if(m_onlyShaderFeatures)
+    return true;
+
   const clang::Stmt* loopStart  = forLoop->getInit();
   const clang::Expr* loopStride =	forLoop->getInc();
   const clang::Expr* loopSize   = forLoop->getCond(); 
@@ -67,6 +70,9 @@ bool kslicer::KernelInfoVisitor::VisitForStmt(clang::ForStmt* forLoop)
 
 bool kslicer::KernelInfoVisitor::VisitMemberExpr(clang::MemberExpr* expr)
 {
+  if(m_onlyShaderFeatures)
+    return true;
+    
   std::string setter, containerName;
   if(CheckSettersAccess(expr, m_codeInfo, m_compiler, &setter, &containerName))
   {
@@ -224,12 +230,17 @@ void kslicer::KernelInfoVisitor::ProcessReadWriteTexture(clang::CXXOperatorCallE
 
 bool kslicer::KernelInfoVisitor::VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f)
 {
+  if(m_onlyShaderFeatures) // ?
+    return true;           // ?
   DetectTextureAccess(f);
   return true; 
 }
 
 bool kslicer::KernelInfoVisitor::VisitReturnStmt(clang::ReturnStmt* ret)
 {
+  if(m_onlyShaderFeatures)
+    return true;
+
   clang::Expr* retExpr = ret->getRetValue();
   if (!retExpr)
     return true;
@@ -274,6 +285,9 @@ bool kslicer::KernelInfoVisitor::VisitReturnStmt(clang::ReturnStmt* ret)
 
 bool kslicer::KernelInfoVisitor::VisitUnaryOperator(clang::UnaryOperator* expr)
 {
+  if(m_onlyShaderFeatures)
+    return true;
+
   clang::Expr* subExpr =	expr->getSubExpr();
   if(subExpr == nullptr)
     return true;
@@ -445,6 +459,9 @@ void kslicer::KernelInfoVisitor::DetectFuncReductionAccess(const clang::Expr* lh
 
 bool kslicer::KernelInfoVisitor::VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr)
 {
+  if(m_onlyShaderFeatures)
+    return true;
+
   auto opRange = expr->getSourceRange();
   if(opRange.getEnd()   <= m_currKernel.loopInsides.getBegin() || 
      opRange.getBegin() >= m_currKernel.loopInsides.getEnd() ) // not inside loop
@@ -461,6 +478,9 @@ bool kslicer::KernelInfoVisitor::VisitCompoundAssignOperator(clang::CompoundAssi
 
 bool kslicer::KernelInfoVisitor::VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr* expr)
 {
+  if(m_onlyShaderFeatures)
+    return true;
+
   std::string debugTxt = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); 
 
   DetectTextureAccess(expr);
@@ -494,6 +514,9 @@ bool kslicer::KernelInfoVisitor::VisitCXXOperatorCallExpr(clang::CXXOperatorCall
 
 bool kslicer::KernelInfoVisitor::VisitBinaryOperator(clang::BinaryOperator* expr) // detect reduction like m_var = F(m_var,expr)
 {
+  if(m_onlyShaderFeatures)
+    return true;
+    
   auto opRange = expr->getSourceRange();
   if(!m_codeInfo->IsRTV() && (opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd())) // not inside loop
     return true;  

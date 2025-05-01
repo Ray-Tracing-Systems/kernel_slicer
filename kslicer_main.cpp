@@ -957,7 +957,7 @@ int main(int argc, const char **argv) //
       clang::Rewriter rewrite2;
       rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
     
-      auto pInfoVisitor = std::make_shared<kslicer::KernelInfoVisitor>(rewrite2, compiler, &inputCodeInfo, k.second);
+      auto pInfoVisitor = std::make_shared<kslicer::KernelInfoVisitor>(rewrite2, compiler, &inputCodeInfo, k.second, true);
 
       for(const auto& f : usedFunctionsCopy)
       {
@@ -967,7 +967,6 @@ int main(int argc, const char **argv) //
         // get shader features and other from used member function
         //
         pInfoVisitor->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
-        //std::cout << "  [main]: process member func " << f.name.c_str() << " for used shader features" << std::endl;
 
         // list all input parameters for each call of member function inside kernel; in this way we know which textures, vectors and samplers were actually used by these functions
         //
