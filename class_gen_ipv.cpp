@@ -329,7 +329,7 @@ void kslicer::MainClassInfo::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const cl
   auto pVisitor = std::make_shared<KernelInfoVisitor>(rewrite2, compiler, this, a_funcInfo);
   pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
 
-  // (2) analize all buffers and iput containers for shader features and e.t.c
+  // (2) analize all buffers and input containers for shader features and e.t.c
   //
   ShaderFeatures accessShaderFeatures;
   for(const auto& arg : a_funcInfo.args) {

@@ -2,6 +2,7 @@
 #include "LiteMath.h"
 #include <extended/lm_device_vector.h> // also from LiteMath
 #include "{{MainInclude}}"
+#include <vector>
 #include <cfloat>
 #include <mutex>
 #include <cub/block/block_reduce.cuh>

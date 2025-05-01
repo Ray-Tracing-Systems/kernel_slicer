@@ -2,142 +2,75 @@
 #include "LiteMath.h"
 #include <extended/lm_device_vector.h> // also from LiteMath
 #include "test_class.h"
+#include <vector>
 #include <cfloat>
 #include <mutex>
-#include <fstream>
+#include <cub/block/block_reduce.cuh>
 
-template<typename T> inline size_t ReduceAddInit(LiteMathExtended::device_vector<T>& a_vec, size_t a_targetSize, size_t a_threadsNum) 
-{ 
-  const size_t blockSize = 256;
-  size_t currSize = a_threadsNum/blockSize;
-  
-  size_t inputOffset = 0;
-  while (currSize > 1) 
-  {
-    size_t numBlocks  = (currSize + blockSize - 1) / blockSize;
-    size_t outOffset  = inputOffset + currSize;
-    //BlockReduce <T,size_t> <<<numBlocks, blockSize>>> (...);
-    currSize    = numBlocks;
-    inputOffset = outOffset;
-  }
-  inputOffset++; // reserve and make add to 2
-
-  size_t auxSize = inputOffset*a_targetSize;
-
-  a_vec.reserve(a_targetSize + auxSize);
-  a_vec.resize(a_targetSize);
-  cudaMemset(a_vec.data(), 0, a_vec.capacity()*sizeof(T)); 
-
-  return inputOffset; 
-}
-
-template<typename T, typename IndexType>
-__global__ void BlockReduce(T* inout_data, IndexType inOffset, IndexType outOffset, IndexType a_currSize, IndexType a_numBlocks, IndexType a_alignedSize)
-{
-  const IndexType eid = (blockIdx.x / a_numBlocks);
-  const IndexType bid = (blockIdx.x % a_numBlocks);
-  const IndexType tid = bid*blockDim.x + threadIdx.x;
-
-  __shared__ T sdata[256*1*1]; 
-  if(tid < a_currSize)
-    sdata[threadIdx.x] = inout_data[eid*a_alignedSize + inOffset + tid];
-  else
-    sdata[threadIdx.x] = 0;
-  __syncthreads();
-
-  if (threadIdx.x < 128)
-    sdata[threadIdx.x] += sdata[threadIdx.x + 128];
-  __syncthreads();
-  if (threadIdx.x < 64)
-    sdata[threadIdx.x] += sdata[threadIdx.x + 64];
-  __syncthreads();
-  if (threadIdx.x < 32) sdata[threadIdx.x] += sdata[threadIdx.x + 32];
-  __syncthreads();
-  if (threadIdx.x < 16) sdata[threadIdx.x] += sdata[threadIdx.x + 16];
-  __syncthreads();
-  if (threadIdx.x < 8)  sdata[threadIdx.x] += sdata[threadIdx.x + 8];
-  __syncthreads();
-  if (threadIdx.x < 4)  sdata[threadIdx.x] += sdata[threadIdx.x + 4];
-  __syncthreads();
-  if (threadIdx.x < 2)  sdata[threadIdx.x] += sdata[threadIdx.x + 2];
-  __syncthreads();
-  if (threadIdx.x < 1)  sdata[threadIdx.x] += sdata[threadIdx.x + 1];
-  __syncthreads();
-
-  if(threadIdx.x == 0)
-  {
-    const size_t finalOffset = (outOffset == 0) ? eid : eid*a_alignedSize + outOffset + bid;
-    inout_data[finalOffset]  = sdata[0];
-  }
-}
-
-template<typename T> inline void ReduceAddComplete(LiteMathExtended::device_vector<T>& a_vec, size_t a_threadsNum, size_t a_sizeAligned) 
-{ 
-  const size_t blockSize = 256;
-  size_t currSize = a_threadsNum/blockSize; 
-
-  //{
-  //  std::vector<T> debug(a_vec.capacity());
-  //  cudaMemcpy(debug.data(), a_vec.data(), debug.size()*sizeof(T), cudaMemcpyDeviceToHost);
-  //  std::ofstream fout("z_debug.txt"); 
-  //  for(size_t i=0;i<debug.size();i++)
-  //    fout << i << "\t" << debug[i] << std::endl;
-  //}
-
-  size_t inputOffset  = a_vec.size();
-  while (currSize > 1) 
-  {
-    size_t numBlocks  = (currSize + blockSize - 1) / blockSize;
-    size_t outOffset  = (numBlocks == 1) ? 0 : inputOffset + currSize;
-    size_t numBlocks2 = numBlocks*a_vec.size();
-    BlockReduce <T,size_t> <<<numBlocks2, blockSize>>> (a_vec.data(), inputOffset, outOffset, currSize, numBlocks, a_sizeAligned);
-    currSize    = numBlocks;
-    inputOffset = outOffset;
-  }
-
-  //{
-  //  std::vector<T> debug(a_vec.capacity());
-  //  cudaMemcpy(debug.data(), a_vec.data(), debug.size()*sizeof(T), cudaMemcpyDeviceToHost);
-  //  std::ofstream fout("z_debug2.txt"); 
-  //  for(size_t i=0;i<debug.size();i++)
-  //    fout << i << "\t" << debug[i] << std::endl;
-  //}
-}
+template<typename T> inline size_t ReduceAddInit(std::vector<T>& a_vec, size_t a_targetSize) { return a_vec.size(); }
+template<typename T> inline void   ReduceAddComplete(std::vector<T>& a_vec) { }
 
 namespace SimpleTest_Generated_DEV
 {
   using _Bool = bool;
 
-  template<typename T, typename IndexType> // TODO: pass block size via template parameter
-  __device__ inline void ReduceAdd(LiteMathExtended::device_vector<T>& a_vec, IndexType offset, IndexType a_sizeAligned, T val)
-  {
-    __shared__ T sdata[256*1*1]; 
-    sdata[threadIdx.x] = val;
-    __syncthreads();
-    if (threadIdx.x < 128)
-      sdata[threadIdx.x] += sdata[threadIdx.x + 128];
-    __syncthreads();
-    if (threadIdx.x < 64)
-      sdata[threadIdx.x] += sdata[threadIdx.x + 64];
-    __syncthreads();
-    if (threadIdx.x < 32) sdata[threadIdx.x] += sdata[threadIdx.x + 32];
-    __syncthreads();
-    if (threadIdx.x < 16) sdata[threadIdx.x] += sdata[threadIdx.x + 16];
-    __syncthreads();
-    if (threadIdx.x < 8)  sdata[threadIdx.x] += sdata[threadIdx.x + 8];
-    __syncthreads();
-    if (threadIdx.x < 4)  sdata[threadIdx.x] += sdata[threadIdx.x + 4];
-    __syncthreads();
-    if (threadIdx.x < 2)  sdata[threadIdx.x] += sdata[threadIdx.x + 2];
-    __syncthreads();
-    if (threadIdx.x < 1)  sdata[threadIdx.x] += sdata[threadIdx.x + 1];
-    __syncthreads();
+  //template<typename T, typename IndexType> // TODO: pass block size via template parameter
+  //__device__ inline void ReduceAdd(LiteMathExtended::device_vector<T>& a_vec, IndexType offset, T val)
+  //{
+  //  if(!isfinite(val))
+  //    val = 0;
+  //  //__shared__ T sval;
+  //  //if(threadIdx.x == 0)
+  //  //  sval = 0;
+  //  //__syncthreads();
+  //  //atomicAdd(&sval, val);
+  //  //__syncthreads();
+  //  //if(threadIdx.x == 0)
+  //  //  atomicAdd(a_vec.data() + offset, sval);
+  //  __shared__ T sdata[256*1*1]; 
+  //  sdata[threadIdx.x] = val;
+  //  __syncthreads();
+  //  if (threadIdx.x < 128)
+  //    sdata[threadIdx.x] += sdata[threadIdx.x + 128];
+  //  __syncthreads();
+  //  if (threadIdx.x < 64)
+  //    sdata[threadIdx.x] += sdata[threadIdx.x + 64];
+  //  __syncthreads();
+  //  if (threadIdx.x < 32) sdata[threadIdx.x] += sdata[threadIdx.x + 32];
+  //  __syncthreads();
+  //  if (threadIdx.x < 16) sdata[threadIdx.x] += sdata[threadIdx.x + 16];
+  //  __syncthreads();
+  //  if (threadIdx.x < 8)  sdata[threadIdx.x] += sdata[threadIdx.x + 8];
+  //  __syncthreads();
+  //  if (threadIdx.x < 4)  sdata[threadIdx.x] += sdata[threadIdx.x + 4];
+  //  __syncthreads();
+  //  if (threadIdx.x < 2)  sdata[threadIdx.x] += sdata[threadIdx.x + 2];
+  //  __syncthreads();
+  //  if (threadIdx.x < 1)  sdata[threadIdx.x] += sdata[threadIdx.x + 1];
+  //  __syncthreads();
+  //  if(threadIdx.x == 0)
+  //    atomicAdd(a_vec.data() + offset,  sdata[0]);
+  //}
 
+  template<typename T, typename IndexType, int BLOCK_SIZE = 256>
+  __device__ inline void ReduceAdd(LiteMathExtended::device_vector<T>& a_vec, IndexType offset, T val)
+  {
+    if(!isfinite(val))
+        val = 0;
+        
+    // Определяем временное хранилище для CUB
+    __shared__ typename cub::BlockReduce<T, BLOCK_SIZE>::TempStorage temp_storage;
+  
+    // Выполняем редукцию по блоку
+    T block_sum = cub::BlockReduce<T, BLOCK_SIZE>(temp_storage).Sum(val);
+  
+    // Первый поток атомарно добавляет результат в глобальную память
     if(threadIdx.x == 0)
-    {
-      (a_vec.data() + a_vec.size())[a_sizeAligned*offset + blockIdx.x] += sdata[0]; 
-    }
+      atomicAdd(a_vec.data() + offset, block_sum);
   }
+
+  template<typename T, typename IndexType> // TODO: pass block size via template parameter
+  __device__ inline void ReduceAdd(LiteMathExtended::device_vector<T>& a_vec, IndexType offset, IndexType a_sizeAligned, T val)  { ReduceAdd<T,IndexType>(a_vec, offset, val); }
 
 
   __device__ LiteMathExtended::device_vector<float> m_accum;
@@ -145,16 +78,56 @@ namespace SimpleTest_Generated_DEV
   {
   };
   __device__ UniformBufferObjectData ubo;
- 
-  __global__ void kernel1D_CalcAndAccum(const float* __restrict__  in_data, uint32_t a_threadsNum, float* __restrict__  a_out, uint32_t a_alignedSize)
-  {
-    //const int i = blockIdx.x * blockDim.x + threadIdx.x
   
-    ReduceAdd<float, uint32_t>(m_accum, 0, a_alignedSize, 1.0f);
-    ReduceAdd<float, uint32_t>(m_accum, 1, a_alignedSize, 2.0f);
-    ReduceAdd<float, uint32_t>(m_accum, 2, a_alignedSize, 3.0f);
-    ReduceAdd<float, uint32_t>(m_accum, 3, a_alignedSize, 4.0f);
-    ReduceAdd<float, uint32_t>(m_accum, 4, a_alignedSize, 5.0f);
+  __device__ float atomicMin(float* address, float val) 
+  {
+    int* addr_as_int = (int*)address;
+    int old = *addr_as_int;
+    int expected;
+    do {
+        expected = old;
+        float current_val = __int_as_float(old);
+        if (val >= current_val) 
+          break;  // Если новое значение не меньше, выходим
+        old = atomicCAS(addr_as_int, expected, __float_as_int(val));
+    } while (expected != old);
+    return __int_as_float(old);
+  }
+
+  __device__ float atomicMax(float* address, float val) 
+  {
+    int* addr_as_int = (int*)address;
+    int old = *addr_as_int;
+    int expected;
+    do {
+        expected = old;
+        float current_val = __int_as_float(old);
+        if (val <= current_val) 
+          break;  // Если новое значение не больше, выходим
+        old = atomicCAS(addr_as_int, expected, __float_as_int(val));
+    } while (expected != old);
+    return __int_as_float(old);
+  }
+ 
+  __global__ void kernel1D_CalcAndAccum(const float* __restrict__  in_data, uint32_t a_threadsNum, float* __restrict__  a_out)
+  {
+    const uint _threadID[3] = {
+      blockIdx.x * blockDim.x + threadIdx.x,
+      blockIdx.y * blockDim.y + threadIdx.y,
+      blockIdx.z * blockDim.z + threadIdx.z
+    };
+    const int i = int(_threadID[0]); 
+    bool runThisThread = true;
+    if(i >= a_threadsNum + 0)
+      runThisThread = false;
+    
+    //float x = in_data[i];
+    ReduceAdd<float, uint32_t>(m_accum, 0, 1.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 1, 2.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 2, 3.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 3, 4.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 4, 5.0f);
+  
   }
 
   __global__ void kernel1D_CopyData(float* __restrict__  a_out, const float* __restrict__  a_in, uint32_t a_size)
@@ -168,8 +141,7 @@ namespace SimpleTest_Generated_DEV
     bool runThisThread = true;
     if(i >= a_size + 0)
       runThisThread = false;
-    if(runThisThread) 
-    {
+    if(runThisThread) {
     a_out[i] = a_in[i];
     }
   }
@@ -209,7 +181,7 @@ public:
   void CopyUBOFromDevice();
   void UpdateDeviceVectors();
 
-  void kernel1D_CalcAndAccum(const float* in_data, uint32_t a_threadsNum, float* a_out, uint32_t a_alignedSize);
+  void kernel1D_CalcAndAccum(const float* in_data, uint32_t a_threadsNum, float* a_out) override;
   void kernel1D_CopyData(float* a_out, const float* a_in, uint32_t a_size) override;
   
   void CalcAndAccum(const float* in_data, uint32_t a_threadsNum, float* a_out) override;
@@ -299,11 +271,11 @@ void SimpleTest_Generated::ReadObjectContext(bool a_updateVec)
   }
 }
 
-void SimpleTest_Generated::kernel1D_CalcAndAccum(const float* in_data, uint32_t a_threadsNum, float* a_out, uint32_t a_alignedSize)
+void SimpleTest_Generated::kernel1D_CalcAndAccum(const float* in_data, uint32_t a_threadsNum, float* a_out)
 {
   dim3 block(256, 1, 1);
   dim3 grid((a_threadsNum + block.x - 1) / block.x, (1 + block.y - 1) / block.y, (1 + block.z - 1) / block.z);
-  SimpleTest_Generated_DEV::kernel1D_CalcAndAccum<<<grid, block>>>(in_data, a_threadsNum, a_out, a_alignedSize);
+  SimpleTest_Generated_DEV::kernel1D_CalcAndAccum<<<grid, block>>>(in_data, a_threadsNum, a_out);
 }
 
 void SimpleTest_Generated::kernel1D_CopyData(float* a_out, const float* a_in, uint32_t a_size)
@@ -316,13 +288,10 @@ void SimpleTest_Generated::kernel1D_CopyData(float* a_out, const float* a_in, ui
 void SimpleTest_Generated::CalcAndAccumGPU(const float* in_data, uint32_t a_threadsNum, float* a_out)
 {
   std::lock_guard<std::mutex> lock(m_mtx); // lock for UpdateObjectContext/ReadObjectContext to be ussied for this object only
-  
-  size_t alignedSize = ReduceAddInit(m_accum_dev, m_accum_dev.size(), a_threadsNum);
   UpdateObjectContext();
-
-  kernel1D_CalcAndAccum(in_data, a_threadsNum, a_out, uint32_t(alignedSize));
-  ReduceAddComplete(m_accum_dev, a_threadsNum, alignedSize);
-  
+    ReduceAddInit(m_accum, m_accum.size());
+  kernel1D_CalcAndAccum(in_data, a_threadsNum, a_out);
+  ReduceAddComplete(m_accum);
   kernel1D_CopyData(a_out, m_accum_dev.data(), uint32_t(m_accum.size()));
 
   ReadObjectContext();

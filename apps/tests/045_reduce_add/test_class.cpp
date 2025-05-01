@@ -24,15 +24,15 @@ void SimpleTest::CalcAndAccum(const float* in_data, uint32_t a_threadsNum, float
 
 void SimpleTest::kernel1D_CalcAndAccum(const float* in_data, uint32_t a_threadsNum, float* a_out)
 {
-  //#pragma omp parallel for
+  #pragma omp parallel for
   for(int i=0; i < a_threadsNum; i++)
   {
-    float x = in_data[i];
-    ReduceAdd<float, uint32_t>(m_accum, 0, 0.1f);
-    ReduceAdd<float, uint32_t>(m_accum, 1, 0.5f);
-    ReduceAdd<float, uint32_t>(m_accum, 2, 1.0f);
-    ReduceAdd<float, uint32_t>(m_accum, 3, 2.0f);
-    ReduceAdd<float, uint32_t>(m_accum, 4, 3.0f);
+    //float x = in_data[i];
+    ReduceAdd<float, uint32_t>(m_accum, 0, 1.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 1, 2.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 2, 3.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 3, 4.0f);
+    ReduceAdd<float, uint32_t>(m_accum, 4, 5.0f);
   }
 }
 
