@@ -380,6 +380,7 @@ namespace kslicer
     bool     singleThreadISPC = false;
     bool     openMpAndISPC    = false;
     bool     explicitIdISPC   = false;
+    bool     useBlockOperations = false;         ///<! kernel uses ReduceAdd pattern for vector, all threads must be valid (don't add if(runThisThread) {... })
 
     bool      isIndirect = false;                ///<! IPV pattern; if loop size is defined by class member variable or vector size, we interpret it as indirect dispatching
     uint32_t  indirectBlockOffset = 0;           ///<! IPV pattern; for such kernels we have to know some offset in indirect buffer for thread blocks number (use int4 data for each kernel)

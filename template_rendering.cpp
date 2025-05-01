@@ -977,6 +977,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["UseFloat64"]      = k.shaderFeatures.useFloat64Type;
     kernelJson["UseHalf"]         = k.shaderFeatures.useHalfType;
     kernelJson["UseFloatAtomics"] = k.shaderFeatures.useFloatAtomicAdd;
+    kernelJson["UseBlockReduce"]  = k.useBlockOperations;
 
     kernelJson["SingleThreadISPC"] = k.singleThreadISPC;
     kernelJson["OpenMPAndISPC"]    = k.openMpAndISPC;

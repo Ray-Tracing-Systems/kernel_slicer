@@ -220,11 +220,12 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
     {% include "inc_red_init.cu" %}
     {% endif %} 
     {% endif %} {# /* if not Kernel.EnableBlockExpansion */ #}
-    if(runThisThread) 
-    {
+    {% if not Kernel.EnableBlockExpansion and not Kernel.IsSingleThreaded and not Kernel.UseBlockReduce %}
+    if(runThisThread) {
+    {% endif %}
     {% endif %} {# /* if not Kernel.IsSingleThreaded */ #}
     {{Kernel.Source}}
-    {% if not Kernel.EnableBlockExpansion and not Kernel.IsSingleThreaded %}
+    {% if not Kernel.EnableBlockExpansion and not Kernel.IsSingleThreaded and not Kernel.UseBlockReduce %}
     }
     {% endif %}
     {% if Kernel.HasEpilog %}
