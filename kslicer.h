@@ -39,6 +39,7 @@ namespace kslicer
     bool enableCallable    = false;
     bool enableTimeStamps  = false;
     bool genSeparateGPUAPI = false;
+    bool useCUBforCUDA     = true;
     std::string interfaceName;
   };
 

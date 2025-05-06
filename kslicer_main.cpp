@@ -274,6 +274,8 @@ int main(int argc, const char **argv) //
     textGenSettings.interfaceName = mainClassName;
     if(params.find("-makerInterfaceName") != params.end())
       textGenSettings.interfaceName = params["-makerInterfaceName"];
+    if(params.find("-useCUB") != params.end())
+      textGenSettings.useCUBforCUDA = (atoi(params["-useCUB"].c_str()) != 0);
   }
 
   // include and process folders
