@@ -8,12 +8,12 @@ config_black_list = {
     "Launch (msu/vk_graphics_rt2)"
 }
 
-
 class ShaderLang(Enum):
     OPEN_CL = 0
     GLSL    = 1
     ISPC    = 2
     SLANG   = 3
+    CUDA    = 4
 
 class SampleConfig:
     def get_config_if_have(self, args):
@@ -79,6 +79,8 @@ class SampleConfig:
                 lang = ShaderLang.ISPC
             elif arg.lower() == "slang":
                 lang = ShaderLang.SLANG
+            elif arg.lower() == "cuda":
+                lang = ShaderLang.CUDA
         return lang
 
 

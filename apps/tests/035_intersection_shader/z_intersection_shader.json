@@ -1,6 +1,0 @@
-{
-  "IsIntersection": true,
-  "Name": "Intersect",
-  "NameRewritten": "SpherePrim_Intersect_m_pRayTraceImpl_primitives",
-  "Source": "uint SpherePrim_Intersect_m_pRayTraceImpl_primitives(uint selfId, vec4 rayPosAndNear, vec4 rayDirAndFar, inout CRT_Hit pHit  ) { \n    vec4 sphere = (all_references.SpherePrim_buffer.m_pRayTraceImpl_primitives[selfId].boxMin + all_references.SpherePrim_buffer.m_pRayTraceImpl_primitives[selfId].boxMax)*0.5f;\n    sphere.w      = (all_references.SpherePrim_buffer.m_pRayTraceImpl_primitives[selfId].boxMax.x - all_references.SpherePrim_buffer.m_pRayTraceImpl_primitives[selfId].boxMin.x)*0.5f;\n    \n    const vec2 tm0 = RaySphereHit(rayPosAndNear.xyz, rayDirAndFar.xyz, sphere);\n    const bool hit = (tm0.x < tm0.y) && (tm0.y > rayPosAndNear.w) && (tm0.x < rayDirAndFar.w);\n    if(hit)\n    {\n      pHit.t      = tm0.x;\n      pHit.primId = all_references.SpherePrim_buffer.m_pRayTraceImpl_primitives[selfId].m_primId;\n      return TAG_SPHERES; \n    }\n    else\n      return TAG_EMPTY;\n  }"
-}

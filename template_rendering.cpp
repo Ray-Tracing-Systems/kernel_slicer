@@ -114,6 +114,25 @@ std::vector<kslicer::KernelInfo::ArgInfo> kslicer::GetUserKernelArgs(const std::
   return result;
 }
 
+nlohmann::json kslicer::GetOriginalKernelJson(const KernelInfo& k, const MainClassInfo& a_classInfo)
+{
+  auto pShaderRewriter = a_classInfo.pShaderFuncRewriter;
+
+  json allArgs = std::vector<json>();
+  for(const auto& arg : k.args)
+  {
+    std::string typeName = pShaderRewriter->RewriteStdVectorTypeStr(arg.type);
+    json argj;
+    if(a_classInfo.pShaderCC->IsCUDA() && arg.IsPointer()) // strange bug with spaces when use template text rendering for that
+      typeName += "*";                                     // 
+    argj["Type"]      = typeName;
+    argj["Name"]      = arg.name;
+    argj["IsPointer"] = arg.IsPointer();
+    allArgs.push_back(argj);
+  }
+  return allArgs;
+}
+
 static inline size_t AlignedSize(const size_t a_size)
 {
   size_t currSize = 4;
@@ -439,7 +458,7 @@ static json ReductionAccessFill(const kslicer::KernelInfo::ReductionAccess& seco
   varJ["NegLastStep"]   = (second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB || second.type == kslicer::KernelInfo::REDUCTION_TYPE::SUB_ONE);
   varJ["BinFuncForm"]   = (second.type == kslicer::KernelInfo::REDUCTION_TYPE::FUNC);
   varJ["OutTempName"]   = second.tmpVarName;
-  varJ["SupportAtomic"] = second.SupportAtomicLastStep();
+  varJ["SupportAtomic"] = pShaderCC->SupportAtomicGlobal(second); 
   varJ["AtomicOp"]      = pShaderCC->GetAtomicImplCode(second);
   varJ["SubgroupOp"]    = pShaderCC->GetSubgroupOpCode(second);
   //varJ["UseSubgroups"]  = second.useSubGroups;
@@ -536,6 +555,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
   data["UseCallable"]        = a_settings.enableCallable;
   data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0) || hasBufferReferenceBind;
+  data["UsePersistentThreads"] = a_classInfo.persistentRTV;
 
   data["VectorBufferRefs"] = std::vector<json>();
   for(const auto& v : a_classInfo.dataMembers)
@@ -661,6 +681,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
     else
       kernels = a_classInfo.kernels;
+  }
+
+  std::unordered_map<uint64_t, json> allUsedMemberFunctions;
+  std::unordered_set<std::string>    excludedMemberFunctions;
+ 
+  if(a_classInfo.persistentRTV)
+  {
+    excludedMemberFunctions.insert("RTVPersistent_ThreadId");
+    excludedMemberFunctions.insert("RTVPersistent_SetIter");
+    excludedMemberFunctions.insert("RTVPersistent_Iters");
+    excludedMemberFunctions.insert("RTVPersistent_IsFirst");
+    excludedMemberFunctions.insert("RTVPersistent_ReduceAdd4f");
   }
 
   data["Kernels"] = std::vector<json>();
@@ -840,6 +872,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       userArgs.push_back(argj);
     }
 
+    json allArgs = GetOriginalKernelJson(k, a_classInfo);
+
     // extract all arrays access in seperate map
     //
     std::unordered_map<std::string, KernelInfo::ReductionAccess> subjToRedCopy; subjToRedCopy.reserve(k.subjectedToReduction.size());
@@ -920,8 +954,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     kernelJson["LastArgNF1"]   = VArgsSize + MArgsSize;
     kernelJson["LastArgNF"]    = VArgsSize; // Last Argument No Flags
+    kernelJson["LastArgAll"]   = allArgs.size() - 1;
     kernelJson["Args"]         = args;
     kernelJson["UserArgs"]     = userArgs;
+    kernelJson["OriginalArgs"] = allArgs;
     kernelJson["Name"]         = k.name;
     kernelJson["UBOBinding"]   = args.size(); // for circle
     kernelJson["HasEpilog"]    = k.isBoolTyped || reductionVars.size() != 0 || reductionArrs.size() != 0;
@@ -1144,29 +1180,29 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       if(k.loopIters.size() > 0)
       {
-        std::string exprContent      = kslicer::ReplaceSizeCapacityExpr(k.loopIters[0].sizeText);
+        std::string exprContent      = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[0].sizeText);
         kernelJson["IndirectSizeX"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
         kernelJson["IndirectStartX"] = kernelJson["ThreadIds"][0]["Start"];
       }
 
       if(k.loopIters.size() > 1)
       {
-        std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[1].sizeText);
-        kernelJson["IndirectSizeY"] = a_classInfo.pShaderCC->UBOAccess(exprContent);
+        std::string exprContent      = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[1].sizeText);
+        kernelJson["IndirectSizeY"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
         kernelJson["IndirectStartY"] = kernelJson["ThreadIds"][1]["Start"];
       }
 
       if(k.loopIters.size() > 2)
       {
-        std::string exprContent     = kslicer::ReplaceSizeCapacityExpr(k.loopIters[2].sizeText);
-        kernelJson["IndirectSizeZ"] = a_classInfo.pShaderCC->UBOAccess(exprContent);
+        std::string exprContent      = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[2].sizeText);
+        kernelJson["IndirectSizeZ"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
         kernelJson["IndirectStartZ"] = kernelJson["ThreadIds"][2]["Start"];
       }
-
+       
       kernelJson["IndirectOffset"] = k.indirectBlockOffset;
-      kernelJson["threadSZName1"]  = "kgen_iNumElementsX";
-      kernelJson["threadSZName2"]  = "kgen_iNumElementsY";
-      kernelJson["threadSZName3"]  = "kgen_iNumElementsZ";
+      kernelJson["threadSZName1"]  = "kgen_iNumElementsX"; // TODO: get this for inirect diapatch with CUDA
+      kernelJson["threadSZName2"]  = "kgen_iNumElementsY"; // TODO: get this for inirect diapatch with CUDA
+      kernelJson["threadSZName3"]  = "kgen_iNumElementsZ"; // TODO: get this for inirect diapatch with CUDA
     }
     else
     {
@@ -1211,6 +1247,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         if(fromVFH) // skip virtual functions because they are proccesed else-where
           continue;
 
+        if(excludedMemberFunctions.find(f.second.name) != excludedMemberFunctions.end())
+          continue;
+
         auto funcNode    = const_cast<clang::FunctionDecl*>(f.second.astNode);
         auto funcDataPtr = const_cast<kslicer::FuncData*>  (&f.second);
 
@@ -1227,6 +1266,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         funData["IsRayQuery"] = (funcDeclText.find("CRT_Hit") == 0 && funcDeclText.find("RayQuery_") != std::string::npos);
         funData["UseVFH"]     = false; 
         kernelJson["MemberFunctions"].push_back(funData);
+        
+        auto hash = kslicer::GetHashOfSourceRange(funcNode->getSourceRange());
+        allUsedMemberFunctions[hash] = funData;
       }
     }
 
@@ -1390,10 +1432,14 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     data["ThreadLocalArrays"].push_back(local);
   }
 
+  data["AllMemberFunctions"] = std::vector<json>();
+  for(const auto& pair : allUsedMemberFunctions)
+    data["AllMemberFunctions"].push_back(pair.second);
+
   return data;
 }
 
-std::string kslicer::ReplaceSizeCapacityExpr(const std::string& a_str)
+std::string kslicer::IShaderCompiler::ReplaceSizeCapacityExpr(const std::string& a_str) const
 {
   const auto posOfPoint = a_str.find(".");
   if(posOfPoint != std::string::npos)

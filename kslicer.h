@@ -38,6 +38,7 @@ namespace kslicer
     bool enableMotionBlur  = false;
     bool enableCallable    = false;
     bool enableTimeStamps  = false;
+    bool genSeparateGPUAPI = false;
   };
 
   struct IShaderCompiler;
@@ -316,6 +317,9 @@ namespace kslicer
       return size;
     }
 
+    int loopInsidesOrder        = 100;
+    int loopOutsidesInitOrder   = 100;
+
     clang::SourceRange    loopInsides;          ///<! used by IPV pattern to extract loops insides and make them kernel source
     clang::SourceRange    loopOutsidesInit;     ///<! used by IPV pattern to extract code before loops and then make additional initialization kernel
     clang::SourceRange    loopOutsidesFinish;   ///<! used by IPV pattern to extract code after  loops and then make additional finalization kernel
@@ -485,6 +489,7 @@ namespace kslicer
     std::string type = "";
     DATA_KIND   kind = DATA_KIND::KIND_UNKNOWN;
     bool isConst     = false;
+    bool isRef       = false;
     bool isThreadId  = false;
     bool isTexture() const { return (kind == DATA_KIND::KIND_TEXTURE); };
     bool isPointer() const { return (kind == DATA_KIND::KIND_POINTER); };
@@ -587,6 +592,7 @@ namespace kslicer
     std::unordered_map<uint64_t, KernelStatementInfo> CallsInsideFor;
 
     bool   needToAddThreadFlags = false;
+    bool   usePersistentThreads = false;
     KernelInfo                     megakernel;     ///<! for RTV pattern only, when joing everything to mega-kernel
     std::vector<const KernelInfo*> subkernels;     ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
     std::vector<KernelInfo>        subkernelsData; ///<! for RTV pattern only
@@ -925,6 +931,56 @@ namespace kslicer
     std::unordered_map<std::string, std::string> m_funReplacements;
   };
 
+  class CudaRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
+  {
+  public:
+    CudaRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) : FunctionRewriter2(R,a_compiler,a_codeInfo) { Init();}
+    ~CudaRewriter(){ }
+
+    bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)   override;
+    bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) override;
+
+    bool VisitVarDecl_Impl(clang::VarDecl* decl)                  override;
+    bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                override;
+    bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr)  override;
+
+    bool VisitMemberExpr_Impl(clang::MemberExpr* expr)             override;
+    bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  override; 
+    bool VisitFieldDecl_Impl(clang::FieldDecl* decl)               override;
+    bool VisitUnaryOperator_Impl(clang::UnaryOperator* op)         override;
+    bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)     override;
+    bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) override;
+    bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override; 
+    bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
+
+    bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)            override;
+    bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
+    bool VisitCallExpr_Impl(clang::CallExpr* f)                                        override;
+
+    bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) override;
+    bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr)                 override;
+    bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)                       override;
+
+    // Also important functions to use(!)
+    //
+    bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
+    std::string RewriteStdVectorTypeStr(const std::string& a_str) const override;
+    std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const override;
+    
+    //
+    //
+    std::string RecursiveRewrite(const clang::Stmt* expr) override;
+    std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
+    //void MarkRewritten(const clang::Stmt* expr);
+    //bool WasNotRewrittenYet(const clang::Stmt* expr);
+
+    std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
+  private:
+    void Init();
+    std::unordered_map<std::string, std::string> m_typesReplacement;
+    std::unordered_map<std::string, std::string> m_funReplacements;
+  };
+
   std::unordered_map<std::string, std::string> ListSlangStandartTypeReplacements(bool a_NeedConstCopy = true);
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1122,6 +1178,7 @@ namespace kslicer
     bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
 
     bool VisitMemberExpr_Impl(clang::MemberExpr* expr)      override;
+    bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* call) override;
     bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override;
     bool VisitCallExpr_Impl(clang::CallExpr* f)               override;
     bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* f) override; 
@@ -1143,16 +1200,18 @@ namespace kslicer
     IShaderCompiler(){}
     virtual ~IShaderCompiler(){}
     virtual std::string UBOAccess(const std::string& a_name) const = 0;
+    virtual std::string ReplaceSizeCapacityExpr(const std::string& a_str) const;
     virtual std::string ProcessBufferType(const std::string& a_typeName) const { return a_typeName; };
   
-    virtual bool        IsSingleSource()   const = 0;
+    virtual bool        IsSingleShader()   const = 0;
     virtual std::string ShaderSingleFile() const = 0;
     virtual std::string ShaderFolder()     const = 0;
    
     virtual bool        MemberFunctionsAreSupported() const { return false; }
-    virtual bool        BuffersAsPointersInShaders() const { return false; }
-    virtual bool        IsGLSL() const { return !IsSingleSource(); }
+    virtual bool        BuffersAsPointersInShaders()  const { return false; }
+    virtual bool        IsGLSL() const { return !IsSingleShader(); }
     virtual bool        IsISPC() const { return false; }
+    virtual bool        IsCUDA() const { return false; }
 
     virtual void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) = 0;
 
@@ -1170,6 +1229,8 @@ namespace kslicer
     virtual bool UseSeparateUBOForArguments() const { return false; }
     virtual bool UseSpecConstForWgSize() const { return false; }
     virtual void GetThreadSizeNames(std::string a_strs[3]) const = 0;
+    
+    virtual bool        SupportAtomicGlobal(const KernelInfo::ReductionAccess& acc)             const { return acc.SupportAtomicLastStep(); } 
     virtual std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const { return "unknownSubgroup"; }
     virtual std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const { return "unknownAtomic";}
 
@@ -1198,7 +1259,7 @@ namespace kslicer
   {
     ClspvCompiler(bool a_useCPP, const std::string& a_prefix);
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo->") + a_name; };
-    bool        IsSingleSource()   const override { return true; }
+    bool        IsSingleShader()   const override { return true; }
     std::string ShaderFolder()     const override { return "clspv_shaders_aux"; }
     std::string ShaderSingleFile() const override { return "z_generated.cl"; }
     bool        BuffersAsPointersInShaders() const override { return true; }
@@ -1240,6 +1301,8 @@ namespace kslicer
     std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) override;
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
     bool        BuffersAsPointersInShaders() const override { return false; }
+
+    bool        SupportAtomicGlobal(const KernelInfo::ReductionAccess& acc) const override { return true; }
   };
 
   struct GLSLCompiler : IShaderCompiler
@@ -1248,7 +1311,7 @@ namespace kslicer
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
     std::string ProcessBufferType(const std::string& a_typeName) const override;
     
-    bool        IsSingleSource()                     const override { return false;}
+    bool        IsSingleShader()                     const override { return false;}
     bool        MemberFunctionsAreSupported()        const override { return true; }
     std::string ShaderFolder()                       const override { return std::string("shaders") + ToLowerCase(m_suffix); }
     std::string ShaderSingleFile()                   const override { return ""; }
@@ -1283,7 +1346,7 @@ namespace kslicer
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo[0].") + a_name; };
     std::string ProcessBufferType(const std::string& a_typeName) const override;
 
-    bool        IsSingleSource()                     const override { return false; }
+    bool        IsSingleShader()                     const override { return false; }
     bool        MemberFunctionsAreSupported()        const override { return true; }
     std::string ShaderFolder()                       const override { return std::string("shaders") + ToLowerCase(m_suffix); }
     std::string ShaderSingleFile()                   const override { return ""; }
@@ -1314,6 +1377,76 @@ namespace kslicer
   private:
     const std::string& m_suffix;
     std::unordered_map<std::string, std::string> m_typesReplacement;
+  };
+
+  struct CudaCompiler : IShaderCompiler
+  {
+    CudaCompiler(const std::string& a_prefix);
+    std::string UBOAccess(const std::string& a_name) const override { return a_name; } //std::string("ubo.") + a_name; };
+    std::string ReplaceSizeCapacityExpr(const std::string& a_str) const override { return a_str; }
+    std::string ProcessBufferType(const std::string& a_typeName) const override;
+
+    bool        IsSingleShader()                     const override { return true; }
+    bool        MemberFunctionsAreSupported()        const override { return true; }
+    std::string ShaderFolder()                       const override { return ""; }
+    std::string ShaderSingleFile()                   const override { return ""; }
+    
+    bool        IsGLSL() const override { return false; }
+    bool        IsISPC() const override { return false; }
+    bool        IsCUDA() const override { return true;  }
+
+    void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
+
+    std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
+    void        GetThreadSizeNames(std::string a_strs[3])               const override;
+    std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
+    std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
+    bool        SupportAtomicGlobal(const KernelInfo::ReductionAccess& acc) const override { return true; }
+
+    std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
+    std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
+                                                                kslicer::KernelInfo& a_kernel, const std::string& fakeOffs) override;
+
+    std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) override;
+    std::string Name() const override { return "CUDA"; }
+
+    std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
+    std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds) override; 
+
+    std::string IndirectBufferDataType() const override { return "uint4 "; }
+
+  private:
+    const std::string& m_suffix;
+    std::unordered_map<std::string, std::string> m_typesReplacement;
+  };
+
+  struct IHostCodeGen
+  {
+    IHostCodeGen(){}
+    virtual ~IHostCodeGen(){}
+
+    virtual std::string Name() const { return ""; } 
+    virtual void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
+    virtual void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
+  };
+
+  struct VulkanCodeGen : public IHostCodeGen
+  {
+    std::string Name() const override { return "Vulkan"; }
+    void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+    void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+  };
+
+  struct CudaCodeGen : public IHostCodeGen
+  {
+    std::string Name() const override { return "CUDA"; }
+    void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+  };
+
+  struct ISPCCodeGen : public IHostCodeGen
+  {
+    std::string Name() const override { return "ISPC"; }
+    void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
   };
 
   struct ServiceCall
@@ -1360,7 +1493,7 @@ namespace kslicer
     std::unordered_map<uint64_t, RewrittenFunction> m_functionsDone;
 
     std::string                                        mainClassName;         ///<! Current main class (derived)
-    std::unordered_set<std::string>                    mainClassNames;        ///<! All main classes (derived + base)
+    std::unordered_map<std::string, int>               mainClassNames;        ///<! All main classes (derived + base)
     std::unordered_set<std::string>                    composClassNames; 
     std::unordered_set<std::string>                    dataClassNames; 
     std::vector< std::pair<std::string, std::string> > intersectionShaders;
@@ -1398,6 +1531,7 @@ namespace kslicer
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
 
     std::shared_ptr<IShaderCompiler>            pShaderCC           = nullptr;
+    std::shared_ptr<IHostCodeGen>               pHostCC             = nullptr;  
     std::shared_ptr<kslicer::FunctionRewriter>  pShaderFuncRewriter = nullptr;
     uint32_t m_indirectBufferSize = 0;            ///<! size of indirect buffer
     uint32_t m_timestampPoolSize  = uint32_t(-1); ///<! size of timestamp pool for all kernels calls
@@ -1416,7 +1550,7 @@ namespace kslicer
     //
     virtual MList         ListMatchers_CF(const std::string& mainFuncName) = 0;
     virtual MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) = 0;
-    virtual void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) = 0;
+    virtual void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler);
 
     virtual void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList) {}
 
@@ -1514,6 +1648,7 @@ namespace kslicer
     kslicer::VKERNEL_IMPL_TYPE defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
     bool halfFloatTextures = false;
     bool megakernelRTV     = false;
+    bool persistentRTV     = false; // current implementation for persistent threads on done only for megakernels in RTV
     bool useComplexNumbers = false;
     bool genGPUAPI         = false;
     bool forceAllBufToRefs = false;
@@ -1539,8 +1674,6 @@ namespace kslicer
     void ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler);
     void ProcessBlockExpansionKernel(KernelInfo& a_kernel, const clang::CompilerInstance& compiler);
 
-    mutable std::vector<std::string> kernelsCallCmdDeclCached;
-
     std::vector< std::pair<std::string, std::string> > GetFieldsFromStruct(const clang::CXXRecordDecl* recordDecl, size_t* pSummOfFiledsSize = nullptr) const;
     bool HasBufferReferenceBind() const;
   };
@@ -1550,7 +1683,6 @@ namespace kslicer
   {
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
-    void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;
 
     void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>&  a_kernelList) override;
 
@@ -1577,7 +1709,6 @@ namespace kslicer
   {
     MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
-    void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler) override;
 
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override;
@@ -1604,7 +1735,6 @@ namespace kslicer
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::SourceManager& sm);
   std::string CutOffFileExt(const std::string& a_filePath);
   std::string CutOffStructClass(const std::string& a_typeName);
-  std::string ReplaceSizeCapacityExpr(const std::string& a_str);
   
   FuncData FuncDataFromKernel(const kslicer::KernelInfo& k);
   uint64_t GetHashOfSourceRange(const clang::SourceRange& a_range);

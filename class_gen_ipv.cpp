@@ -38,23 +38,6 @@ std::vector<kslicer::ArgFinal> kslicer::IPV_Pattern::GetKernelTIDArgs(const Kern
   return args;
 }
 
-void kslicer::IPV_Pattern::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
-{
-  const clang::CXXRecordDecl* parentClass = a_mainFunc.Node->getParent();
-  //if(parentClass != nullptr)
-  //{
-  //  const clang::IdentifierInfo* classInfo = parentClass->getIdentifier();
-  //  std::string classNameVal = classInfo->getName().str();
-  //  std::cout << "  [debug]: class name: " << classNameVal.c_str() << "\n";
-  //}
-
-  a_mainFunc.startTSNumber = m_timestampPoolSize;
-  GetCFSourceCodeCmd(a_mainFunc, compiler, false); // ==> write this->allDescriptorSetsInfo, a_mainFunc // TODO: may simplify impl for image processing 
-  a_mainFunc.endDSNumber   = allDescriptorSetsInfo.size();
-  a_mainFunc.endTSNumber   = m_timestampPoolSize;
-  a_mainFunc.InOuts        = kslicer::ListParamsOfMainFunc(a_mainFunc.Node, compiler);
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -123,6 +106,23 @@ public:
     return "1";
   }
 
+  bool FromThisClass(const clang::FunctionDecl* func_decl, int& classOrder)
+  {
+    bool fromThisClass = true;
+    if(func_decl->getNameAsString() == currKernel->name && clang::isa<clang::CXXMethodDecl>(func_decl))
+    {
+      const clang::CXXMethodDecl* method      = clang::dyn_cast<clang::CXXMethodDecl>(func_decl);
+      const clang::CXXRecordDecl* parentClass = method->getParent();
+      std::string className = parentClass->getNameAsString();
+      auto pFound = m_allInfo.mainClassNames.find(className);
+      fromThisClass = (pFound != m_allInfo.mainClassNames.end()); //  (className == m_mainClassName);
+      if(fromThisClass)
+        classOrder = pFound->second;
+    }
+
+    return fromThisClass;
+  }
+
   void run(clang::ast_matchers::MatchFinder::MatchResult const & result) override
   {
     using namespace clang;
@@ -149,20 +149,18 @@ public:
 
       if(sameInitAndCond && sameInitAndInc && loopSZ)
       {
-        std::string name      = initVar->getNameAsString();
-        std::string debugText = kslicer::GetRangeSourceCode(forLoop->getBody()->getSourceRange(), m_compiler);
+        std::string name = initVar->getNameAsString();
+        //std::string debugText = kslicer::GetRangeSourceCode(forLoop->getBody()->getSourceRange(), m_compiler);
         
-        bool fromThisClass = true;
-        if(func_decl->getNameAsString() == currKernel->name && clang::isa<clang::CXXMethodDecl>(func_decl))
-        {
-          const clang::CXXMethodDecl* method      = clang::dyn_cast<clang::CXXMethodDecl>(func_decl);
-          const clang::CXXRecordDecl* parentClass = method->getParent();
-          std::string className = parentClass->getNameAsString();
-          fromThisClass = (m_allInfo.mainClassNames.find(className) != m_allInfo.mainClassNames.end()); //  (className == m_mainClassName);
-        }
+        int classOrder = 0;
+        bool fromThisClass = FromThisClass(func_decl, classOrder);
+        if(classOrder > currKernel->loopInsidesOrder) // found loop in derived already, skip base
+          fromThisClass = false;
+        else if(classOrder < currKernel->loopInsidesOrder) // override all loops by this (derived)
+          currKernel->loopIters.clear();
 
         //std::cout << "  [LoopHandlerIPV]: Variable name is: " << name.c_str() << std::endl;
-        if(currKernel->loopIters.size() < m_maxNesting && fromThisClass)
+        if(fromThisClass && currKernel->loopIters.size() < m_maxNesting)
         {
           const clang::QualType qt = initVar->getType();
           kslicer::KernelInfo::LoopIter tidArg;
@@ -180,44 +178,56 @@ public:
           //tidArg.startNode   = initVar->getAnyInitializer();                   // seems does not works
           //tidArg.sizeNode    = loopSZ;                                         // seems does not works
           //tidArg.strideNode  = forLoop->getInc();                              // seems does not works
-
+         
           tidArg.loopNesting = uint32_t(currKernel->loopIters.size());
           currKernel->loopIters.push_back(tidArg);
+
           currKernel->loopInsides = forLoop->getBody()->getSourceRange();
+          currKernel->loopInsidesOrder = classOrder;
         }
       }
     }
     else if(loopOutsidesInit && func_decl)
     {
-      currKernel->loopOutsidesInit    = loopOutsidesInit->getSourceRange();
-      auto debugText = kslicer::GetRangeSourceCode(loopOutsidesInit->getSourceRange(), m_compiler);
-      //std::cout << "debugText = " << debugText.c_str() << std::endl;
-      clang::SourceLocation endOfInit = currKernel->loopOutsidesInit.getEnd();
-      auto p = loopOutsidesInit->body_begin();
-      for(; p != loopOutsidesInit->body_end(); ++p)
-      {
-        const Stmt* expr = *p; 
-        if(isa<ForStmt>(expr))                       // TODO: CHECK THIS IS EXACTLY THE 'for' WE NEED! HOW?
-          break;                                     // TODO: REMEMBER 'for' LOCATION IN SOME VARIABLE AND IGNORE OTHER 'fors' INSIDE 'if(forLoop && func_decl)'        
-        endOfInit = expr->getSourceRange().getEnd(); // TODO: WHICH ARE NOT INSIDE THIS FOR AND NOT THIS FOR ITSELF.
-      }
-
-      currKernel->hasInitPass = (currKernel->loopOutsidesInit.getEnd() != endOfInit);
-      currKernel->loopOutsidesInit.setEnd(endOfInit);
+      int classOrder = 0;
+      bool fromThisClass = FromThisClass(func_decl, classOrder);
+      if(classOrder > currKernel->loopOutsidesInitOrder)
+        fromThisClass = false;
       
-      ++p;
-      if(p != loopOutsidesInit->body_end())
+      if(fromThisClass)
       {
-        const Stmt* beginOfEnd = *p;
-        const auto range = beginOfEnd->getSourceRange();
-        const auto begin = range.getBegin();
-        currKernel->loopOutsidesFinish.setBegin(begin);
-        p = loopOutsidesInit->body_end(); --p;
-        const Stmt* endOfFinish = *p;
-        currKernel->loopOutsidesFinish.setEnd(endOfFinish->getSourceRange().getEnd());
-        currKernel->hasFinishPassSelf = (currKernel->loopOutsidesFinish.getBegin() != currKernel->loopOutsidesFinish.getEnd());
-        //auto debugMeTail = kslicer::GetRangeSourceCode(currKernel->loopOutsidesFinish, m_compiler);
-        //std::cout << "debugMeTail = " << debugMeTail.c_str() << std::endl;
+        currKernel->loopOutsidesInit      = loopOutsidesInit->getSourceRange();
+        currKernel->loopOutsidesInitOrder = classOrder;
+
+        auto debugText = kslicer::GetRangeSourceCode(loopOutsidesInit->getSourceRange(), m_compiler);
+        //std::cout << "debugText = " << debugText.c_str() << std::endl;
+        clang::SourceLocation endOfInit = currKernel->loopOutsidesInit.getEnd();
+        auto p = loopOutsidesInit->body_begin();
+        for(; p != loopOutsidesInit->body_end(); ++p)
+        {
+          const Stmt* expr = *p; 
+          if(isa<ForStmt>(expr))                       // TODO: CHECK THIS IS EXACTLY THE 'for' WE NEED! HOW?
+            break;                                     // TODO: REMEMBER 'for' LOCATION IN SOME VARIABLE AND IGNORE OTHER 'fors' INSIDE 'if(forLoop && func_decl)'        
+          endOfInit = expr->getSourceRange().getEnd(); // TODO: WHICH ARE NOT INSIDE THIS FOR AND NOT THIS FOR ITSELF.
+        }
+
+        currKernel->hasInitPass = (currKernel->loopOutsidesInit.getEnd() != endOfInit);
+        currKernel->loopOutsidesInit.setEnd(endOfInit);
+      
+        ++p;
+        if(p != loopOutsidesInit->body_end())
+        {
+          const Stmt* beginOfEnd = *p;
+          const auto range = beginOfEnd->getSourceRange();
+          const auto begin = range.getBegin();
+          currKernel->loopOutsidesFinish.setBegin(begin);
+          p = loopOutsidesInit->body_end(); --p;
+          const Stmt* endOfFinish = *p;
+          currKernel->loopOutsidesFinish.setEnd(endOfFinish->getSourceRange().getEnd());
+          currKernel->hasFinishPassSelf = (currKernel->loopOutsidesFinish.getBegin() != currKernel->loopOutsidesFinish.getEnd());
+          //auto debugMeTail = kslicer::GetRangeSourceCode(currKernel->loopOutsidesFinish, m_compiler);
+          //std::cout << "debugMeTail = " << debugMeTail.c_str() << std::endl;
+        }
       }
     }
     else

@@ -76,15 +76,21 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
     if(res != VK_SUCCESS)
       std::cout << "[InitVulkanObjects]: ALERT! can't create timestamp pool " << std::endl;
     ResetTimeStampMeasurements();
-    // get timestampPeriod from device props
-    //
-    VkPhysicalDeviceProperties2 physicalDeviceProperties;
-    physicalDeviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-    physicalDeviceProperties.pNext = nullptr;
-    vkGetPhysicalDeviceProperties2(physicalDevice, &physicalDeviceProperties);
-    m_timestampPeriod = float(physicalDeviceProperties.properties.limits.timestampPeriod);
   }
   {% endif %}
+  // get timestampPeriod from device props
+  //
+  VkPhysicalDeviceProperties2 physicalDeviceProperties{};
+  VkPhysicalDeviceSubgroupProperties  subgroupProperties{};
+  subgroupProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
+  subgroupProperties.pNext = nullptr;
+  physicalDeviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+  physicalDeviceProperties.pNext = &subgroupProperties;
+  vkGetPhysicalDeviceProperties2(physicalDevice, &physicalDeviceProperties);
+  {% if EnableTimeStamps %}
+  m_timestampPeriod = float(physicalDeviceProperties.properties.limits.timestampPeriod);
+  {% endif %}
+  m_subgroupSize    = subgroupProperties.subgroupSize;
   {% if length(SceneMembers) > 0 %}
   auto queueAllFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
   {% endif %}
@@ -353,53 +359,18 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
 }
 {% endif %}
 
-{{MainClassName}}{{MainClassSuffix}}::~{{MainClassName}}{{MainClassSuffix}}()
+void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
 {
-  {% if EnableTimeStamps %}
-  if(m_queryPoolTimestamps != VK_NULL_HANDLE)
-    vkDestroyQueryPool(device, m_queryPoolTimestamps, nullptr);
-  {% endif %}
-  for(size_t i=0;i<m_allCreatedPipelines.size();i++)
-    vkDestroyPipeline(device, m_allCreatedPipelines[i], nullptr);
-  for(size_t i=0;i<m_allCreatedPipelineLayouts.size();i++)
-    vkDestroyPipelineLayout(device, m_allCreatedPipelineLayouts[i], nullptr);
-
-  {% if UseServiceScan %}
-  {% for Scan in ServiceScan %}
-  m_scan_{{Scan.Type}}.DeleteDSLayouts(device);
-  {% endfor %}
-  {% endif %} {# /* UseServiceScan */ #}
-  {% if UseServiceSort %}
-  {% for Sort in ServiceSort %}
-  m_sort_{{Sort.Type}}.DeleteDSLayouts(device);
-  {% endfor %}
-  {% endif %} {# /* UseServiceSort */ #}
-## for Kernel in Kernels
-  vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
-  {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
-## endfor
-  vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
+  if(m_commitCount == 0)
+    return;
+  vkDestroyBuffer(device, m_classDataBuffer, nullptr);
   {% for Table in RemapTables %}
   vkDestroyBuffer(device, m_vdata.{{Table.Name}}RemapTableBuffer, nullptr);
   vkDestroyBuffer(device, m_vdata.{{Table.Name}}GeomTagsBuffer, nullptr);
   {% endfor %}
-  {% if UseRayGen %}
-  for(size_t i=0;i<m_allShaderTableBuffers.size();i++)
-    vkDestroyBuffer(device, m_allShaderTableBuffers[i], nullptr);
-  {% endif %}
-## for MainFunc in MainFunctions
-  {% if MainFunc.IsRTV and not MainFunc.IsMega %}
-  {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
-  vkDestroyBuffer(device, {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer, nullptr);
-  {% endfor %}
-  {% endif %}
-## endfor
-
-  vkDestroyBuffer(device, m_classDataBuffer, nullptr);
   {% if UseSeparateUBO %}
   vkDestroyBuffer(device, m_uboArgsBuffer, nullptr);
   {% endif %}
-
   {% for Buffer in ClassVectorVars %}
   vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
   {% if Buffer.IsVFHBuffer and Buffer.VFHLevel >= 2 %}
@@ -440,10 +411,47 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
   m_scan_{{Scan.Type}}.DeleteTempBuffers(device);
   {% endfor %}
   {% endif %}
+  FreeAllAllocations(m_allMems);
   {% if UseRayGen %}
+  for(size_t i=0;i<m_allShaderTableBuffers.size();i++)
+    vkDestroyBuffer(device, m_allShaderTableBuffers[i], nullptr);
   vkFreeMemory(device, m_allShaderTableMem, nullptr);
   {% endif %}
-  FreeAllAllocations(m_allMems);
+}
+
+{{MainClassName}}{{MainClassSuffix}}::~{{MainClassName}}{{MainClassSuffix}}()
+{
+  {% if EnableTimeStamps %}
+  if(m_queryPoolTimestamps != VK_NULL_HANDLE)
+    vkDestroyQueryPool(device, m_queryPoolTimestamps, nullptr);
+  {% endif %}
+  for(size_t i=0;i<m_allCreatedPipelines.size();i++)
+    vkDestroyPipeline(device, m_allCreatedPipelines[i], nullptr);
+  for(size_t i=0;i<m_allCreatedPipelineLayouts.size();i++)
+    vkDestroyPipelineLayout(device, m_allCreatedPipelineLayouts[i], nullptr);
+  {% if UseServiceScan %}
+  {% for Scan in ServiceScan %}
+  m_scan_{{Scan.Type}}.DeleteDSLayouts(device);
+  {% endfor %}
+  {% endif %} {# /* UseServiceScan */ #}
+  {% if UseServiceSort %}
+  {% for Sort in ServiceSort %}
+  m_sort_{{Sort.Type}}.DeleteDSLayouts(device);
+  {% endfor %}
+  {% endif %} {# /* UseServiceSort */ #}
+## for Kernel in Kernels
+  vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
+  {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
+## endfor
+  vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
+## for MainFunc in MainFunctions
+  {% if MainFunc.IsRTV and not MainFunc.IsMega %}
+  {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
+  vkDestroyBuffer(device, {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer, nullptr);
+  {% endfor %}
+  {% endif %}
+## endfor
+  DeleteDeviceData();
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::InitHelpers()
@@ -775,18 +783,10 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
     for(size_t j=0;j<groups[i].bufsClean.size();j++)
       groups[i].bufsClean[j] = groups[i].bufs[j].buf;
   }
-
   {% if IsRTV and not IsMega %}
   auto& allBuffersRef = a_tempBuffersOverlay ? groups[largestIndex].bufsClean : allBuffers;
   {% else %}
   auto& allBuffersRef = allBuffers;
-  {% endif %}
-
-  m_classDataBuffer = vk_utils::createBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | GetAdditionalFlagsForUBO());
-  allBuffersRef.push_back(m_classDataBuffer);
-  {% if UseSeparateUBO %}
-  m_uboArgsBuffer = vk_utils::createBuffer(device, 256, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-  allBuffersRef.push_back(m_uboArgsBuffer);
   {% endif %}
   {% for Buffer in RedVectorVars %}
   {
@@ -795,7 +795,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
     allBuffersRef.push_back(m_vdata.{{Buffer.Name}}Buffer);
   }
   {% endfor %}
-
   {% if UseServiceScan %}
   {% for Scan in ServiceScan %}
   {
@@ -853,58 +852,62 @@ static size_t PackObject_{{Hierarchy.Name}}(std::vector<uint8_t>& buffer, const 
 {% endif %}
 {% endfor %}
 
-void {{MainClassName}}{{MainClassSuffix}}::InitMemberBuffers()
+void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
 {
   std::vector<VkBuffer> memberVectorsWithDevAddr;
   std::vector<VkBuffer> memberVectors;
   std::vector<VkImage>  memberTextures;
+  m_classDataBuffer = vk_utils::createBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | GetAdditionalFlagsForUBO());
+  memberVectors.push_back(m_classDataBuffer);
+  {% if UseSeparateUBO %}
+  m_uboArgsBuffer = vk_utils::createBuffer(device, 256, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  memberVectors.push_back(m_uboArgsBuffer);
+  {% endif %}
   {% for Var in ClassVectorVars %}
   {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}
   
-  if({{Var.Name}}_sorted.empty()) // Pack all objects of '{{Var.Hierarchy.Name}}'
-  {
-    auto& bufferV = {{Var.Name}}_dataV;
-    auto& sorted  = {{Var.Name}}_sorted;
-    auto& vtable  = {{Var.Name}}_vtable;
-    vtable.resize({{Var.Name}}{{Var.AccessSymb}}size());
-    //sorted.resize({{length(Var.Hierarchy.Implementations)}} + 1);
-    bufferV.resize(16*4); // ({{Var.Name}}.size()*sizeof({{Var.Name}})); actual reserve may not be needed due to implementation don't have vectors. TODO: you may cvheck this explicitly in kslicer
-    for(size_t arrId=0;arrId<sorted.size(); arrId++) {
-      sorted[arrId].reserve({{Var.Name}}{{Var.AccessSymb}}size()*sizeof({{Var.Hierarchy.Name}}));
-      sorted[arrId].resize(0);
-    }
-    
-    std::unordered_map<uint32_t, uint32_t> objCount;
-
-    for(size_t i=0;i<{{Var.Name}}{{Var.AccessSymb}}size();i++) 
-    {
-      const auto tag = {{Var.Name}}{{Var.AccessSymb}}at(i)->GetTag(); 
-      PackObject_{{Var.Hierarchy.Name}}(sorted[tag], {{Var.Name}}{{Var.AccessSymb}}at(i));
-
-      auto p = objCount.find(tag);
-      if(p == objCount.end())
-        p = objCount.insert(std::make_pair(tag,0)).first;
-
-      vtable[i] = LiteMath::uint2(tag, uint32_t(p->second));
-      p->second++;
-    }
-
-    const size_t buffReferenceAlign = 16; // from EXT_buffer_reference spec: "If the layout qualifier is not specified, it defaults to 16 bytes"
-    size_t objDataBufferSize = 0;
-    {{Var.Name}}_obj_storage_offsets.reserve(sorted.size());
-    for(auto it = sorted.begin(); it != sorted.end(); ++it)
-    {
-      {{Var.Name}}_obj_storage_offsets[it->first] = objDataBufferSize;
-      objDataBufferSize += vk_utils::getPaddedSize(it->second.size(), buffReferenceAlign);
-    }
-
-    m_vdata.{{Var.Name}}_dataSBuffer = vk_utils::createBuffer(device, objDataBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-    m_vdata.{{Var.Name}}_dataVBuffer = vk_utils::createBuffer(device, bufferV.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-    m_vdata.{{Var.Name}}_dataSOffset = 0;
-    m_vdata.{{Var.Name}}_dataVOffset = 0;
-    memberVectorsWithDevAddr.push_back(m_vdata.{{Var.Name}}_dataSBuffer);
-    memberVectors.push_back(m_vdata.{{Var.Name}}_dataVBuffer);
+  // Pack all objects of '{{Var.Hierarchy.Name}}'
+  auto& bufferV = {{Var.Name}}_dataV;
+  auto& sorted  = {{Var.Name}}_sorted;
+  auto& vtable  = {{Var.Name}}_vtable;
+  vtable.resize({{Var.Name}}{{Var.AccessSymb}}size());
+  sorted.clear();
+  bufferV.resize(16*4); // ({{Var.Name}}.size()*sizeof({{Var.Name}})); actual reserve may not be needed due to implementation don't have vectors. TODO: you may cvheck this explicitly in kslicer
+  for(size_t arrId=0;arrId<sorted.size(); arrId++) {
+    sorted[arrId].reserve({{Var.Name}}{{Var.AccessSymb}}size()*sizeof({{Var.Hierarchy.Name}}));
+    sorted[arrId].resize(0);
   }
+    
+  std::unordered_map<uint32_t, uint32_t> objCount;
+
+  for(size_t i=0;i<{{Var.Name}}{{Var.AccessSymb}}size();i++) 
+  {
+    const auto tag = {{Var.Name}}{{Var.AccessSymb}}at(i)->GetTag(); 
+    PackObject_{{Var.Hierarchy.Name}}(sorted[tag], {{Var.Name}}{{Var.AccessSymb}}at(i));
+
+    auto p = objCount.find(tag);
+    if(p == objCount.end())
+      p = objCount.insert(std::make_pair(tag,0)).first;
+
+    vtable[i] = LiteMath::uint2(tag, uint32_t(p->second));
+    p->second++;
+  }
+
+  const size_t buffReferenceAlign = 16; // from EXT_buffer_reference spec: "If the layout qualifier is not specified, it defaults to 16 bytes"
+  size_t objDataBufferSize = 0;
+  {{Var.Name}}_obj_storage_offsets.reserve(sorted.size());
+  for(auto it = sorted.begin(); it != sorted.end(); ++it)
+  {
+    {{Var.Name}}_obj_storage_offsets[it->first] = objDataBufferSize;
+    objDataBufferSize += vk_utils::getPaddedSize(it->second.size(), buffReferenceAlign);
+  }
+
+  m_vdata.{{Var.Name}}_dataSBuffer = vk_utils::createBuffer(device, objDataBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+  m_vdata.{{Var.Name}}_dataVBuffer = vk_utils::createBuffer(device, bufferV.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  m_vdata.{{Var.Name}}_dataSOffset = 0;
+  m_vdata.{{Var.Name}}_dataVOffset = 0;
+  memberVectorsWithDevAddr.push_back(m_vdata.{{Var.Name}}_dataSBuffer);
+  memberVectors.push_back(m_vdata.{{Var.Name}}_dataVBuffer);
   {% endif %}
   {% endfor %}
   {% for Table in RemapTables %}

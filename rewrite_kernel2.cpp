@@ -293,7 +293,10 @@ bool kslicer::FunctionRewriter2::VisitFunctionDecl_Impl(clang::FunctionDecl* fDe
 
 bool kslicer::FunctionRewriter2::VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl)      { return true; }
 bool kslicer::FunctionRewriter2::VisitMemberExpr_Impl(clang::MemberExpr* expr)             { return true; }
-bool kslicer::FunctionRewriter2::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  { return true; } 
+bool kslicer::FunctionRewriter2::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  
+{ 
+  return true; 
+} 
 bool kslicer::FunctionRewriter2::VisitFieldDecl_Impl(clang::FieldDecl* decl)               { return true; }
 bool kslicer::FunctionRewriter2::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) { return true; } 
 bool kslicer::FunctionRewriter2::VisitCallExpr_Impl(clang::CallExpr* f)                    { return true; }
@@ -881,6 +884,11 @@ bool kslicer::KernelRewriter2::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryEx
 bool kslicer::KernelRewriter2::VisitMemberExpr_Impl(clang::MemberExpr* expr) 
 { 
   return m_pFunRW2->VisitMemberExpr_Impl(expr); 
+}
+
+bool kslicer::KernelRewriter2::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* call)
+{
+  return m_pFunRW2->VisitCXXMemberCallExpr_Impl(call); 
 }
 
 bool kslicer::KernelRewriter2::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call)

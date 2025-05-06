@@ -276,7 +276,142 @@ bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 
   return true; 
 }
-bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  { return true; } 
+
+bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  
+{ 
+   // Get name of function
+  //
+  const clang::DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
+  const clang::DeclarationName dn      = dni.getName();
+        std::string fname              = dn.getAsString();
+
+  if(kslicer::IsCalledWithArrowAndVirtual(f) && WasNotRewrittenYet(f))
+  {
+    auto buffAndOffset = kslicer::GetVFHAccessNodes(f, m_compiler);
+    if(buffAndOffset.buffName != "" && buffAndOffset.offsetName != "")
+    {
+      std::string buffText2  = buffAndOffset.buffName;
+      std::string offsetText = buffAndOffset.offsetName; //GetRangeSourceCode(buffAndOffset.offsetNode->getSourceRange(), m_compiler); 
+      
+      std::string textCallNoName = "(" + offsetText; 
+      if(f->getNumArgs() != 0)
+        textCallNoName += ",";
+        
+      for(unsigned i=0;i<f->getNumArgs();i++)
+      {
+        const auto pParam                   = f->getArg(i);
+        const clang::QualType typeOfParam   =	pParam->getType();
+        const std::string typeNameRewritten = kslicer::CleanTypeName(typeOfParam.getAsString());
+        if(m_codeInfo->dataClassNames.find(typeNameRewritten) != m_codeInfo->dataClassNames.end()) 
+        {
+          if(i==f->getNumArgs()-1)
+            textCallNoName[textCallNoName.rfind(",")] = ' ';
+          continue;
+        }
+
+        textCallNoName += RecursiveRewrite(f->getArg(i));
+        if(i < f->getNumArgs()-1)
+          textCallNoName += ",";
+      }
+      
+      auto pBuffNameFromVFH = m_codeInfo->m_vhierarchy.find(buffAndOffset.interfaceTypeName);
+      if(pBuffNameFromVFH != m_codeInfo->m_vhierarchy.end())
+        buffText2 = pBuffNameFromVFH->second.objBufferName;
+
+      std::string vcallFunc  = buffAndOffset.interfaceName + "_" + fname + "_" + buffText2 + textCallNoName + ")";
+      ReplaceTextOrWorkAround(f->getSourceRange(), vcallFunc);
+      MarkRewritten(f);
+    }
+  }
+
+  // Get name of "this" type; we should check wherther this member is std::vector<T>  
+  //
+  const clang::QualType qt = f->getObjectType();
+  const auto& thisTypeName = qt.getAsString();
+  clang::CXXRecordDecl* typeDecl  = f->getRecordDecl(); 
+  const std::string cleanTypeName = kslicer::CleanTypeName(thisTypeName);
+  
+  const bool isVector   = (typeDecl != nullptr && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl)) && thisTypeName.find("vector<") != std::string::npos; 
+  const bool isRTX      = (thisTypeName == "struct ISceneObject") && (fname.find("RayQuery_") != std::string::npos);
+  const auto pPrefix    = m_codeInfo->composPrefix.find(cleanTypeName);
+  const bool isPrefixed = (pPrefix != m_codeInfo->composPrefix.end());
+  
+  if(isVector && WasNotRewrittenYet(f))
+  {
+    const std::string exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
+    const auto posOfPoint         = exprContent.find(".");
+    std::string memberNameA       = exprContent.substr(0, posOfPoint);
+    
+    if(processFuncMember && m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix)
+      memberNameA = m_pCurrFuncInfo->prefixName + "_" + memberNameA;
+
+    if(fname == "size" || fname == "capacity")
+    {
+      const std::string memberNameB = memberNameA + "_" + fname;
+      ReplaceTextOrWorkAround(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
+      MarkRewritten(f);
+    }
+    else if(fname == "resize")
+    {
+      if(m_pCurrKernel != nullptr && f->getSourceRange().getBegin() <= m_pCurrKernel->loopOutsidesInit.getEnd()) // TODO: SEEMS INCORECT LOGIC
+      {
+        assert(f->getNumArgs() == 1);
+        const clang::Expr* currArgExpr  = f->getArgs()[0];
+        std::string newSizeValue = RecursiveRewrite(currArgExpr); 
+        std::string memberNameB  = memberNameA + "_size = " + newSizeValue;
+        ReplaceTextOrWorkAround(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
+        MarkRewritten(f);
+      }
+    }
+    else if(fname == "push_back")
+    {
+      assert(f->getNumArgs() == 1);
+      const clang::Expr* currArgExpr  = f->getArgs()[0];
+      std::string newElemValue = RecursiveRewrite(currArgExpr);
+
+      std::string memberNameB  = memberNameA + "_size";
+      std::string resulingText = m_codeInfo->pShaderCC->RewritePushBack(memberNameA, memberNameB, newElemValue);
+      ReplaceTextOrWorkAround(f->getSourceRange(), resulingText);
+      MarkRewritten(f);
+    }
+    else if(fname == "data")
+    {
+      ReplaceTextOrWorkAround(f->getSourceRange(), memberNameA);
+      MarkRewritten(f);
+    }
+    else 
+    {
+      kslicer::PrintError(std::string("Unsuppoted std::vector method") + fname, f->getSourceRange(), m_compiler.getSourceManager());
+    }
+  }
+  else if((isRTX || isPrefixed) && WasNotRewrittenYet(f))
+  {
+    const auto exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
+    const auto posOfPoint  = exprContent.find("->"); // seek for "m_pImpl->Func()" 
+    
+    std::string memberNameA;
+    if(isPrefixed && posOfPoint == std::string::npos)   // Func() inside composed class of m_pImpl
+      memberNameA = pPrefix->second;
+    else
+      memberNameA = exprContent.substr(0, posOfPoint);  // m_pImpl->Func() inside main class
+
+    std::string resCallText = memberNameA + "_" + fname + "(";
+    for(unsigned i=0;i<f->getNumArgs(); i++)
+    {
+      resCallText += RecursiveRewrite(f->getArg(i));
+      //if(i == f->getNumArgs()-2 && lastArgIsEmpty)
+      //  break;
+      if(i!=f->getNumArgs()-1)
+        resCallText += ", ";
+    }
+    resCallText += ")";
+    ReplaceTextOrWorkAround(f->getSourceRange(), resCallText);
+    MarkRewritten(f);
+  }
+
+  return true; 
+} 
+
 bool kslicer::SlangRewriter::VisitFieldDecl_Impl(clang::FieldDecl* decl)               { return true; }
 
 std::string kslicer::SlangRewriter::VectorTypeContructorReplace(const std::string& fname, const std::string& callText)

@@ -104,11 +104,32 @@ bool kslicer::MainClassInfo::IsIndirect(const KernelInfo& a_kernel) const
   return isIndirect;
 } 
 
-static std::string GetControlFuncDeclText(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler)
+static std::string GetControlFuncDeclVulkan(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler)
 {
   std::string text = fDecl->getNameInfo().getName().getAsString() + "Cmd(VkCommandBuffer a_commandBuffer";
   if(fDecl->getNumParams()!= 0)
     text += ", ";
+  for(unsigned i=0;i<fDecl->getNumParams();i++)
+  {
+    auto pParam = fDecl->getParamDecl(i);
+    //const clang::QualType typeOfParam =	pParam->getType();
+    //std::string typeStr = typeOfParam.getAsString();
+    text += kslicer::GetRangeSourceCode(pParam->getSourceRange(), compiler);
+    if(i!=fDecl->getNumParams()-1)
+      text += ", ";
+  }
+
+  return text + ")";
+}
+
+
+static std::string GetControlFuncDeclCUDA(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler, bool a_gpuSuffix = false)
+{
+  std::string text = fDecl->getNameInfo().getName().getAsString();
+  auto posDD = text.find("::");
+  if(posDD != std::string::npos)
+    text = text.substr(posDD, text.size());
+  text += "(";
   for(unsigned i=0;i<fDecl->getNumParams();i++)
   {
     auto pParam = fDecl->getParamDecl(i);
@@ -158,7 +179,6 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
   clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
 
   a_mainFunc.ReturnType    = a_node->getReturnType().getAsString();
-  a_mainFunc.GeneratedDecl = GetControlFuncDeclText(a_node, compiler);
   a_mainFunc.startDSNumber = allDescriptorSetsInfo.size();
   a_mainFunc.OriginalDecl  = GetOriginalDeclText(a_node, compiler, IsRTV());
   
@@ -181,13 +201,29 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
     Rewriter rewrite2;
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
   
-    kslicer::MainFunctionRewriter rv(rewrite2, compiler, a_mainFunc, inOutParamList, this); // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
-    rv.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
+    kslicer::MainFunctionRewriterVulkan rvVulkan(rewrite2, compiler, a_mainFunc, inOutParamList, this); // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
     
-    std::string sourceCode   = rewrite2.getRewrittenText(clang::SourceRange(b,e));
-    size_t bracePos          = sourceCode.find("{");
-    std::string src2         = sourceCode.substr(bracePos+2);
-    a_mainFunc.CodeGenerated = src2.substr(0, src2.find_last_of("}"));
+    std::string sourceCode;
+    if(pHostCC->Name() == "Vulkan")  
+    {
+      rvVulkan.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node)); // 
+      sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
+      a_mainFunc.GeneratedDecl = GetControlFuncDeclVulkan(a_node, compiler);
+    }
+    else if(pHostCC->Name() == "CUDA") 
+    {
+      kslicer::MainFunctionRewriterCUDA rvCUDA(rewrite2, compiler, a_mainFunc, inOutParamList, this);  
+      rvCUDA.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));   //
+      sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
+      a_mainFunc.GeneratedDecl = GetControlFuncDeclCUDA(a_node, compiler);
+    }
+    
+    size_t bracePos = sourceCode.find("{");
+    if(bracePos != std::string::npos)
+    {
+      std::string src2         = sourceCode.substr(bracePos+2);
+      a_mainFunc.CodeGenerated = src2.substr(0, src2.find_last_of("}"));
+    }
   }
 }
 
@@ -202,7 +238,6 @@ std::string kslicer::MainClassInfo::GetCFDeclFromSource(const std::string& sourc
 
   return std::string("virtual ") + mainFuncDeclHead + "Cmd(VkCommandBuffer a_commandBuffer, " + mainFuncDeclTail + ";";
 }
-
 
 std::vector<std::string> ParseSizeAttributeText(const std::string& text)
 {
@@ -234,6 +269,12 @@ kslicer::InOutVarInfo kslicer::GetParamInfo(const clang::ParmVarDecl* currParam,
   InOutVarInfo var;
   var.name      = currParam->getNameAsString();
   var.type      = qt.getAsString();
+  if(qt->isReferenceType())
+  {
+    var.isConst   = qt.getNonReferenceType().isConstQualified();
+    var.isRef     = true;
+  }
+
   auto id       = std::find(tidNames.begin(), tidNames.end(), var.name);
   if(qt->isPointerType())
   {

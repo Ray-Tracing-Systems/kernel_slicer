@@ -205,7 +205,7 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::CreatematMulTranspos
 }
 
 ## for MainFunc in MainFunctions
-void {{MainClassName}}{{MainClassSuffix}}::InitAllGeneratedDescriptorSets_{{MainFunc.Name}}()
+void {{MainClassName}}{{MainClassSuffix}}::UpdateAllGeneratedDescriptorSets_{{MainFunc.Name}}()
 {
   // now create actual bindings
   //

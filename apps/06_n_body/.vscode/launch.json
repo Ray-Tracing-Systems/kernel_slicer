@@ -41,6 +41,7 @@
       "program": "${workspaceFolder}/cmake-build-debug/testapp",
       "args": [
         "--test",
+        "--gpu",
         "bbb"
       ],
       "stopAtEntry": false,

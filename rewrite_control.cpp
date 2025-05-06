@@ -5,7 +5,7 @@
 #include <sstream>
 #include <algorithm>
 
-void kslicer::MainFunctionRewriter::ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text)
+void kslicer::MainFunctionRewriterVulkan::ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text)
 {
   if(a_range.getBegin().getRawEncoding() == a_range.getEnd().getRawEncoding())
     m_workAround[GetHashOfSourceRange(a_range)] = a_text;
@@ -13,7 +13,7 @@ void kslicer::MainFunctionRewriter::ReplaceTextOrWorkAround(clang::SourceRange a
     m_rewriter.ReplaceText(a_range, a_text);
 }
 
-bool kslicer::MainFunctionRewriter::WasNotRewrittenYet(const clang::Stmt* expr) const
+bool kslicer::MainFunctionRewriterVulkan::WasNotRewrittenYet(const clang::Stmt* expr) const
 {
   if(expr == nullptr)
     return true;
@@ -23,14 +23,14 @@ bool kslicer::MainFunctionRewriter::WasNotRewrittenYet(const clang::Stmt* expr) 
   return (m_pRewrittenNodes->find(exprHash) == m_pRewrittenNodes->end());
 }
 
-void kslicer::MainFunctionRewriter::MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, *m_pRewrittenNodes); }
+void kslicer::MainFunctionRewriterVulkan::MarkRewritten(const clang::Stmt* expr) { kslicer::MarkRewrittenRecursive(expr, *m_pRewrittenNodes); }
 
-std::string kslicer::MainFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
+std::string kslicer::MainFunctionRewriterVulkan::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
     return "";
   
-  MainFunctionRewriter rvCopy = *this;
+  MainFunctionRewriterVulkan rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
   
   auto range = expr->getSourceRange();
@@ -44,7 +44,7 @@ std::string kslicer::MainFunctionRewriter::RecursiveRewrite(const clang::Stmt* e
   }
 }
 
-bool kslicer::MainFunctionRewriter::VisitCXXMethodDecl(CXXMethodDecl* f)
+bool kslicer::MainFunctionRewriterVulkan::VisitCXXMethodDecl(CXXMethodDecl* f)
 {
   if (f->hasBody())
   {
@@ -111,7 +111,7 @@ std::vector<NameFlagsPair> ListAccessedTextures(const std::vector<kslicer::ArgRe
 }
 
 
-std::string kslicer::MainFunctionRewriter::MakeKernelCallCmdString(CXXMemberCallExpr* f)
+std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemberCallExpr* f)
 {
   const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
   const DeclarationName dn      = dni.getName();
@@ -280,7 +280,7 @@ static std::string SubstrBetween(const std::string& a_str, const std::string& fi
   return a_str;
 }
 
-std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallExpr* call, const std::string& a_name)
+std::string kslicer::MainFunctionRewriterVulkan::MakeServiceKernelCallCmdString(CallExpr* call, const std::string& a_name)
 {
   std::string kernName = "copyKernelFloat"; // extract from 'call' exact name of service function;
   auto originArgs = ExtractArgumentsOfAKernelCall(call, m_mainFunc.ExcludeList);
@@ -479,7 +479,7 @@ std::string kslicer::MainFunctionRewriter::MakeServiceKernelCallCmdString(CallEx
 
 
 
-bool kslicer::MainFunctionRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
+bool kslicer::MainFunctionRewriterVulkan::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
 {
   // Get name of function
   const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
@@ -501,17 +501,17 @@ bool kslicer::MainFunctionRewriter::VisitCXXMemberCallExpr(CXXMemberCallExpr* f)
     else
     {
       //std::string callStr = MakeKernelCallCmdString(f);
-      std::cout << "  [MainFunctionRewriter::VisitCXXMemberCallExpr]: can't process kernel call for " << fname.c_str() << std::endl;
+      std::cout << "  [MainFunctionRewriterVulkan::VisitCXXMemberCallExpr]: can't process kernel call for " << fname.c_str() << std::endl;
     }
   }
 
   return true;
 }
 
-bool kslicer::MainFunctionRewriter::VisitCallExpr(CallExpr* call)
+bool kslicer::MainFunctionRewriterVulkan::VisitCallExpr(CallExpr* call)
 {
-  if(isa<CXXMemberCallExpr>(call)) // because we process them in "VisitCXXMemberCallExpr"
-    return true;
+  //if(isa<CXXMemberCallExpr>(call)) // because we process them in "VisitCXXMemberCallExpr"
+  //  return true;
 
   const FunctionDecl* fDecl = call->getDirectCallee();
   if(fDecl == nullptr)             // definitely can't process nullpointer
@@ -531,10 +531,17 @@ bool kslicer::MainFunctionRewriter::VisitCallExpr(CallExpr* call)
     MarkRewritten(call);
   }
 
+  //std::cout << "  [CF::Vulkan]:" << m_mainFunc.Name << " --> " << fname << std::endl;
+  if(m_pCodeInfo->persistentRTV && !m_mainFunc.usePersistentThreads && (fname == "RTVPersistent_Iters" || fname == "RTVPersistent_SetIter"))
+  {
+    std::cout << "    --> Enable Persistent Threads for '" << m_mainFunc.Name << "'" << std::endl;
+    m_mainFunc.usePersistentThreads = true;
+  }
+
   return true;
 }
 
-bool kslicer::MainFunctionRewriter::VisitIfStmt(IfStmt* ifExpr)
+bool kslicer::MainFunctionRewriterVulkan::VisitIfStmt(IfStmt* ifExpr)
 {
   Expr* conBody = ifExpr->getCond();
   if(isa<UnaryOperator>(conBody)) // if(!kernel_XXX(...))
@@ -563,7 +570,7 @@ bool kslicer::MainFunctionRewriter::VisitIfStmt(IfStmt* ifExpr)
   return true;
 }
 
-bool kslicer::MainFunctionRewriter::VisitMemberExpr(MemberExpr* expr)
+bool kslicer::MainFunctionRewriterVulkan::VisitMemberExpr(MemberExpr* expr)
 {
   if(!WasNotRewrittenYet(expr))
     return true;
@@ -619,7 +626,7 @@ bool kslicer::IsPointerContainer(const std::string& a_typeName)
 }
 
 
-std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriter::ExtractArgumentsOfAKernelCall(CallExpr* f, const std::unordered_set<std::string>& a_excludeList)
+std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriterVulkan::ExtractArgumentsOfAKernelCall(CallExpr* f, const std::unordered_set<std::string>& a_excludeList)
 {
   std::vector<kslicer::ArgReferenceOnCall> args;
   args.reserve(20);

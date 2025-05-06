@@ -9,10 +9,15 @@
 #include "Image2d.h"
 #include "ArgParser.h"
 
+#ifdef USE_VULKAN
 #include "vk_context.h"
 std::shared_ptr<ToneMapping> CreateToneMapping_GPU(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+#endif
 #ifdef USE_ISPC
 std::shared_ptr<ToneMapping> CreateToneMapping_ISPC();
+#endif
+#ifdef USE_CUDA
+std::shared_ptr<ToneMapping> CreateToneMapping_CUDA();
 #endif
 
 bool LoadHDRImageFromFile(const char* a_fileName, 
@@ -46,9 +51,14 @@ int main(int argc, const char** argv)
   
   if(onGPU)
   {
+    #ifdef USE_CUDA
+    pImpl = CreateToneMapping_CUDA();
+    #endif
+    #ifdef USE_VULKAN
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
     auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateToneMapping_GPU(ctx, w*h);
+    #endif
   }
   #ifdef USE_ISPC
   else if(isISPC)
@@ -60,7 +70,7 @@ int main(int argc, const char** argv)
   pImpl->SetMaxImageSize(w,h);
   pImpl->CommitDeviceData();
 
-  pImpl->Bloom(w, h, (const LiteMath::float4*)hdrData.data(), ldrData.data());
+  pImpl->Bloom(w, h, (const float4*)hdrData.data(), ldrData.data());
 
   if(onGPU)
     LiteImage::SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);
@@ -71,16 +81,19 @@ int main(int argc, const char** argv)
   
   float timings[4] = {0,0,0,0};
   pImpl->GetExecutionTime("Bloom", timings);
-  std::cout << "Bloom(exec) = " << timings[0]              << " ms " << std::endl;
-  std::cout << "Bloom(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
-  std::cout << "Bloom(ovrh) = " << timings[3]              << " ms " << std::endl;
+  std::cout << "Bloom(exec)       = " << timings[0] << " ms " << std::endl;
+  std::cout << "Bloom(CPU => GPU) = " << timings[1] << " ms " << std::endl;
+  std::cout << "Bloom(CPU <= GPU) = " << timings[2] << " ms " << std::endl;
+  std::cout << "Bloom(ovrhead)    = " << timings[3] << " ms " << std::endl;
 
-  pImpl->GetExecutionTime("kernel2D_BlurX", timings);
-  std::cout << "kernel2D_BlurX(avg) = " << timings[0] << " ms " << std::endl;
-  std::cout << "kernel2D_BlurX(min) = " << timings[1] << " ms " << std::endl;
-  std::cout << "kernel2D_BlurX(max) = " << timings[2] << " ms " << std::endl;
+  //pImpl->GetExecutionTime("kernel2D_BlurX", timings);
+  //std::cout << "kernel2D_BlurX(avg) = " << timings[0] << " ms " << std::endl;
+  //std::cout << "kernel2D_BlurX(min) = " << timings[1] << " ms " << std::endl;
+  //std::cout << "kernel2D_BlurX(max) = " << timings[2] << " ms " << std::endl;
 
   pImpl = nullptr;
+  #ifdef USE_VULKAN
   vk_utils::globalContextDestroy();  
+  #endif
   return 0;
 }

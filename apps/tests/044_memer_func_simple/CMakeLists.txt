@@ -4,8 +4,8 @@ project (test)
 # get rid of annoying MSVC warnings.
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 set (CMAKE_CXX_STANDARD 17)
-option(USE_ISPC "Enable ISPC implementation" OFF)
-option(USE_CUDA "Enable CUDA implementation" OFF)
+option(USE_ISPC   "Enable ISPC implementation" OFF)
+option(USE_CUDA   "Enable CUDA implementation" OFF)
 option(USE_VULKAN "Enable Vulkan implementation" ON)
 
 include_directories(".")
@@ -28,12 +28,11 @@ if(USE_CUDA)
   add_compile_definitions(USE_CUDA)
 endif()
 
-include_directories(${FREEIMAGE_INCLUDE_DIRS})
-include_directories("../LiteMath" "../utils")
+include_directories("../../LiteMath" "../../utils")
 if(USE_VULKAN)
   include_directories(${Vulkan_INCLUDE_DIR})
-  include_directories("../vkutils" "../volk")
-  link_directories("../volk")
+  include_directories("../../vkutils" "../../volk")
+  link_directories("../../volk")
 endif()
 if(USE_ISPC)
   add_compile_definitions(USE_ISPC)
@@ -44,44 +43,36 @@ endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -fPIC -Wno-attributes")
 
-
-set(MAIN_SOURCE main.cpp 
-                test_class.cpp)
-
-set(ISPC_SOURCE test_class_ispc.cpp
-                test_class_kernels.o
-                ../LiteMathAux/ispc_tasksys.cpp)
+set(SOURCE main.cpp test_class.cpp)
+set(LIBS OpenMP::OpenMP_CXX)
 
 set(VKGEN_SOURCE test_class_generated.cpp 
                  test_class_generated_ds.cpp
-                 test_class_generated_init.cpp)
+                 test_class_generated_init.cpp )
 
-set(VKUTILS_SOURCE ../vkutils/vk_utils.cpp
-                   ../vkutils/vk_copy.cpp
-                   ../vkutils/vk_buffers.cpp
-                   ../vkutils/vk_images.cpp
-                   ../vkutils/vk_context.cpp
-                   ../vkutils/vk_alloc_simple.cpp
-                   ../vkutils/vk_pipeline.cpp
-                   ../vkutils/vk_descriptor_sets.cpp)                
-
-set(LIBS OpenMP::OpenMP_CXX)
+set(VKUTILS_SOURCE ../../vkutils/vk_utils.cpp
+                   ../../vkutils/vk_copy.cpp
+                   ../../vkutils/vk_buffers.cpp
+                   ../../vkutils/vk_images.cpp
+                   ../../vkutils/vk_context.cpp
+                   ../../vkutils/vk_alloc_simple.cpp
+                   ../../vkutils/vk_pipeline.cpp
+                   ../../vkutils/vk_descriptor_sets.cpp)
 
 if(USE_CUDA)
   cuda_add_library(test_class_cuda test_class_generated.cu)
   list(APPEND LIBS test_class_cuda)
 endif()
 
-if(USE_ISPC)
-  list(APPEND MAIN_SOURCE ${ISPC_SOURCE})
-endif()
+#if(USE_ISPC)
+#  list(APPEND SOURCE ${ISPC_SOURCE})
+#endif()
 
 if(USE_VULKAN)
-  list(APPEND MAIN_SOURCE ${VKGEN_SOURCE} ${VKUTILS_SOURCE} )
+  list(APPEND SOURCE ${VKGEN_SOURCE} ${VKUTILS_SOURCE} )
   list(APPEND LIBS volk dl)
-endif()
+endif()                   
 
-add_executable(testapp ${MAIN_SOURCE})
-
+add_executable(testapp ${SOURCE})
 set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 target_link_libraries(testapp LINK_PUBLIC ${LIBS})

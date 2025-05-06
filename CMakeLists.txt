@@ -32,7 +32,11 @@ set(KSLICER_SOURCE_FILES
     shaders_clspv.cpp
     shaders_glsl.cpp
     shaders_ispc.cpp
-    shaders_slang.cpp)
+    shaders_slang.cpp
+    shaders_cuda.cpp
+    tr_host_vulkan.cpp
+    tr_host_cuda.cpp
+    tr_host_ispc.cpp)
 
 include_directories("include")
 

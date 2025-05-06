@@ -60,7 +60,7 @@ def clear_dir(dir_path):
             print('Failed to delete %s. Reason: %s' % (file_path, e))
 
 
-def cmake_build(build_dir="build", build_type="Release", return_to_root=True, num_threads=1, clearAll = False, enable_ispc=False):
+def cmake_build(build_dir="build", build_type="Release", return_to_root=True, num_threads=1, clearAll = False, enable_ispc=False, enable_cuda = False):
     if not os.path.isdir(build_dir):
         os.mkdir(build_dir)
     if clearAll:
@@ -70,9 +70,16 @@ def cmake_build(build_dir="build", build_type="Release", return_to_root=True, nu
                 os.remove(path_v2)
     os.chdir(build_dir)
     args = ["cmake", "-DCMAKE_BUILD_TYPE={}".format(build_type), ".."]
+    if enable_cuda:
+        args.append("-DUSE_CUDA=ON")
+        args.append("-DUSE_VULKAN=OFF")
+    else:
+        args.append("-DUSE_VULKAN=ON")
+      
     if enable_ispc:
         args.append("-DUSE_ISPC=ON")
-    #print(args)
+    #print("enable_cuda = ", enable_cuda)
+    #print("cmake args: ", args)
     res = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if res.returncode != 0:
         return res, "cmake build failed"

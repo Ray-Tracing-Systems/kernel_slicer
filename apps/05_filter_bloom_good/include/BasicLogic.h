@@ -3,12 +3,18 @@
 
 #ifndef ISPC
 #include "LiteMath.h"
-#ifndef __OPENCL_VERSION__
+#ifndef CUDA_MATH
 using namespace LiteMath;
 #endif
 #endif
 
-static inline uint RealColorToUint32(float4 real_color)
+#ifdef __CUDACC__
+#define _HostDevice_ __host__ __device__
+#else
+#define _HostDevice_ 
+#endif 
+
+_HostDevice_ static inline uint RealColorToUint32(float4 real_color)
 {
   float  r = real_color.x*255.0f;
   float  g = real_color.y*255.0f;
@@ -26,7 +32,7 @@ static inline uint RealColorToUint32(float4 real_color)
 #define WIN_WIDTH  512
 #define WIN_HEIGHT 512
 
-static uint pitchOffset(uint x, uint y) { return y*WIN_WIDTH + x; } 
+_HostDevice_ static uint pitchOffset(uint x, uint y) { return y*WIN_WIDTH + x; } 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

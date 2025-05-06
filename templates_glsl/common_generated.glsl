@@ -317,7 +317,15 @@ bool {{RTName}}_RayQuery_AnyHitMotion(vec4 rayPos, vec4 rayDir, float t) { retur
 
 {% endif %}
 {% endfor %}
-
+{% if UsePersistentThreads %}
+uint   g_persistentIter;
+uint   g_persistentTotalSize;
+uint   RTVPersistent_ThreadId(uint a_tid)    { return (a_tid + g_persistentIter*g_persistentTotalSize)/gl_SubgroupSize; }
+void   RTVPersistent_SetIter(uint a_pid)     { g_persistentIter = a_pid; }
+uint   RTVPersistent_Iters()                 { return gl_SubgroupSize;   }
+bool   RTVPersistent_IsFirst()               { return (gl_LocalInvocationID[0] % gl_SubgroupSize) == 0;  }
+vec4   RTVPersistent_ReduceAdd4f(vec4 color) { return subgroupAdd(color); }
+{% endif %}
 {% for MembFunc in Kernel.MemberFunctions %}
 {% if not (MembFunc.IsRayQuery and (Kernel.UseRayGen or (length(Kernel.IntersectionHierarhcy.Implementations) >= 1)) ) %}
 

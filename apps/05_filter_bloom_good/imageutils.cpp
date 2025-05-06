@@ -67,6 +67,7 @@ bool LoadLDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<
 
   (*pW) = width;
   (*pH) = height;
+  return true;
 }
 
 bool SaveLDRImageToFile(const char* a_fileName, int w, int h, int32_t* data)

@@ -1,0 +1,121 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name"   : "Launch (app_04/Cuda)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/04_array_summ/test_class.cpp",
+                        "-mainClass", "Numbers", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",
+                        "-I${workspaceFolder}/TINYSTL",          "ignore", 
+                        "-shaderCC", "cuda",
+                        "-warpSize", "32",
+                        "-enableSubgroup", "0",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name"   : "Launch (app_05/Cuda)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/05_filter_bloom_good/test_class.cpp",
+                        "-mainClass", "ToneMapping", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-reorderLoops", "YX",
+                        "-I${workspaceFolder}/apps/LiteMath", "ignore", 
+                        "-I${workspaceFolder}/TINYSTL",       "ignore",
+                        "-shaderCC", "cuda",
+                        "-suffix", "_CUDA",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name"   : "Launch (app_08/Cuda)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/08_push_back_red_pixels/test_class.cpp",
+                        "-mainClass", "RedPixels", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-I${workspaceFolder}/apps/LiteMath", "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-I${workspaceFolder}/TINYSTL",       "ignore",
+                        "-shaderCC", "cuda",
+                        "-warpSize", "32",
+                        "-enableSubgroup", "1",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name"   : "Launch (test_044/Cuda)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/044_memer_func_simple/test_class.cpp",
+                        "-mainClass",    "SimpleTest", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern",      "ipv",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-shaderCC", "cuda",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+    ]
+}

@@ -47,6 +47,8 @@ namespace kslicer
                                         uint32_t& a_totalShaders);                                         
 
   nlohmann::json FindIntersectionHierarchy(nlohmann::json a_hierarchies);
+
+  nlohmann::json GetOriginalKernelJson(const KernelInfo& k, const MainClassInfo& a_classInfo);
 }
 
 #endif

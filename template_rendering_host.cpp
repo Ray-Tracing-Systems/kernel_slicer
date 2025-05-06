@@ -27,12 +27,13 @@ static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(
   for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
   {
     std::string kernDecl = kernelsCallCmdDecl[i];
-    //std::cout << "kernDecl = " << kernDecl.c_str() << std::endl;
-    size_t      rbPos    = kernDecl.find("Cmd(");
-    assert(rbPos    != std::string::npos);
-
-    std::string kernName       = kernDecl.substr(0, rbPos);
-    kernelDeclByName[kernName] = kernDecl;
+   
+    size_t  rbPos = kernDecl.find("Cmd("); 
+    if(rbPos != std::string::npos)         // fail when second pass for CPP generation is happed; TODO: fix by making this list only once
+    {
+      std::string kernName       = kernDecl.substr(0, rbPos);
+      kernelDeclByName[kernName] = kernDecl;
+    }
   }
   return kernelDeclByName;
 }
@@ -452,6 +453,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["ShaderGLSL"]         = a_classInfo.pShaderCC->IsGLSL();
   data["UseSeparateUBO"]     = a_classInfo.pShaderCC->UseSeparateUBOForArguments();
   data["UseSpecConstWgSize"] = a_classInfo.pShaderCC->UseSpecConstForWgSize();
+  data["UsePersistentThreads"] = a_classInfo.persistentRTV;
 
   data["UseServiceMemCopy"]  = (a_classInfo.usedServiceCalls.find("memcpy") != a_classInfo.usedServiceCalls.end());
   data["UseServiceScan"]     = (a_classInfo.usedServiceCalls.find("exclusive_scan") != a_classInfo.usedServiceCalls.end()) || (a_classInfo.usedServiceCalls.find("inclusive_scan") != a_classInfo.usedServiceCalls.end());
@@ -485,7 +487,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(auto ref : a_classInfo.m_allRefsFromVFH) {
       json refJson;
       refJson["Name"] = ref.name;
-      refJson["Type"] = ref.typeOfElem;
+      refJson["Type"] = kslicer::CleanTypeName(ref.typeOfElem);
       data["AllReferences"].push_back(refJson);
     }
   }
@@ -511,7 +513,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(auto sortImpl : a_classInfo.serviceCalls) {
       if (sortImpl.second.opName == "scan") {
         json local;
-        local["Type"]   = sortImpl.second.dataTypeName;
+        local["Type"]   = kslicer::CleanTypeName(sortImpl.second.dataTypeName);
         local["Lambda"] = "+";
         data["ServiceScan"].push_back(local);
       }
@@ -524,7 +526,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(auto sortImpl : a_classInfo.serviceCalls) {
       if (sortImpl.second.opName == "sort") {
         json local;
-        local["Type"]   = sortImpl.second.dataTypeName;
+        local["Type"]   = kslicer::CleanTypeName(sortImpl.second.dataTypeName);
         local["Lambda"] = sortImpl.second.lambdaSource;
         data["ServiceSort"].push_back(local);
       }
@@ -611,6 +613,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["Name"]      = var.name;
       local["CleanName"] = cleanName;
       local["Type"]      = var.type;
+      local["DataType"]  = kslicer::CleanTypeName(var.containerDataType);
       local["HasPrefix"] = var.hasPrefix;
       ////////////////////////////////////////////////////////////////////
       MainClassInfo::VFH_LEVEL level = MainClassInfo::VFH_LEVEL_1;
@@ -820,7 +823,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["Name"]           = v.name;
       local["SizeOffset"]     = p1->second.offsetInTargetBuffer;
       local["CapacityOffset"] = p2->second.offsetInTargetBuffer;
-      local["TypeOfData"]     = v.containerDataType;
+      local["TypeOfData"]     = kslicer::CleanTypeName(v.containerDataType);
       local["AccessSymb"]     = ".";
       local["NeedSampler"]    = false;
       local["HasPrefix"]      = v.hasPrefix;
@@ -861,7 +864,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
     json local;
     local["Name"] = v.name;
-    local["Type"] = v.containerDataType;
+    local["Type"] = kslicer::CleanTypeName(v.containerDataType);
 
     data["RedVectorVars"].push_back(local);
   }
@@ -880,7 +883,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       currKernels.push_back(nk.second);
   }
 
-  auto& kernelsCallCmdDecl = a_classInfo.kernelsCallCmdDeclCached;
+  std::vector<std::string> kernelsCallCmdDecl;
   if(kernelsCallCmdDecl.size() == 0)
   {
     kernelsCallCmdDecl.reserve(a_classInfo.kernels.size());
@@ -890,7 +893,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   auto kernelDeclByName = MakeMapForKernelsDeclByName(kernelsCallCmdDecl);
 
-  data["MultipleSourceShaders"] = !a_classInfo.pShaderCC->IsSingleSource();
+  data["MultipleSourceShaders"] = !a_classInfo.pShaderCC->IsSingleShader();
   data["ShaderFolder"]          = a_classInfo.pShaderCC->ShaderFolder();
 
   data["IndirectBufferSize"] = a_classInfo.m_indirectBufferSize;
@@ -931,6 +934,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["HasLoopInit"]    = k.hasInitPass;
     kernelJson["HasLoopFinish"]  = k.hasFinishPassSelf;
     kernelJson["Decl"]           = kernelDeclByName[kernName];
+
+    std::string originalSourceCode = kslicer::GetRangeSourceCode(k.astNode->getSourceRange(), compiler);
+    ReplaceFirst(originalSourceCode, "\n", "");
+    const auto begPos = originalSourceCode.find("::") + 2;
+    const auto endPos = originalSourceCode.find(")") + 1;
+    kernelJson["OriginalDecl"] = originalSourceCode.substr(begPos, endPos - begPos);
+    
     kernelJson["Args"]           = std::vector<json>();
     kernelJson["threadDim"]      = a_classInfo.GetKernelTIDArgs(k).size();
     kernelJson["UseRayGen"]      = k.enableRTPipeline && a_settings.enableRayGen;       // duplicate these options for kernels so we can
@@ -1149,14 +1159,14 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
     // identify wherther we nedd to add reduction pass after current kernel
     //
-    json reductionVarNames = std::vector<std::string>();
+    json reductionVarNames = std::vector<json>();
     for(const auto& var : k.subjectedToReduction)
     {
-      if(!var.second.SupportAtomicLastStep())
+      if(!a_classInfo.pShaderCC->SupportAtomicGlobal(var.second))
       {
         json varData;
         varData["Name"] = var.second.tmpVarName;
-        varData["Type"] = var.second.dataType;
+        varData["Type"] = kslicer::CleanTypeName(var.second.dataType);
         reductionVarNames.push_back(varData);
       }
     }
@@ -1168,6 +1178,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["WGSizeX"]      = k.wgSize[0]; //
     kernelJson["WGSizeY"]      = k.wgSize[1]; //
     kernelJson["WGSizeZ"]      = k.wgSize[2]; //
+
+    json allArgs = GetOriginalKernelJson(k, a_classInfo);
+    kernelJson["OriginalArgs"] = allArgs;
+    kernelJson["LastArgAll"]   = allArgs.size() - 1;
 
     data["Kernels"].push_back(kernelJson);
   }
@@ -1342,7 +1356,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     {
       json local;
       local["Name"] = v.second.name;
-      local["Type"] = v.second.type;
+      local["Type"] = kslicer::CleanTypeName(v.second.type);
       local["TransferDST"] = (v.second.name == "threadFlags"); // rtv thread flags
       data2["LocalVarsBuffersDecl"].push_back(local);
     }
@@ -1350,16 +1364,24 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     uint32_t inOutNum = 0;
     uint32_t inOutPod = 0;
     uint32_t inOutAll = 0;
-    data2["InOutVars"]    = std::vector<std::string>();
-    data2["InOutVarsPod"] = std::vector<std::string>(); //
-    data2["InOutVarsAll"] = std::vector<std::string>(); //
+    data2["InOutVars"]    = std::vector<json>();
+    data2["InOutVarsPod"] = std::vector<json>(); //
+    data2["InOutVarsAll"] = std::vector<json>(); //
     for(const auto& v : mainFunc.InOuts)
     {
+      std::string typeName = kslicer::CleanTypeName(v.type);
+      if(v.isPointer() && a_classInfo.pHostCC->Name() == "CUDA")
+        typeName += "*";
+
+      json controlArg;
+      controlArg["Name"] = v.name;
+      if(v.isRef)
+        controlArg["Type"] = typeName + "& ";
+      else
+        controlArg["Type"] = typeName;
+
       if((v.isThreadId || v.kind == DATA_KIND::KIND_POD || v.kind == DATA_KIND::KIND_UNKNOWN) && !a_classInfo.pShaderCC->IsISPC())
       {
-        json controlArg;
-        controlArg["Name"]      = v.name;
-        controlArg["Type"]      = v.type;
         controlArg["IsTexture"] = false;
         controlArg["IsPointer"] = false;
         controlArg["IsConst"]   = v.isConst;
@@ -1370,9 +1392,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       }
       else
       {
-        json controlArg;
-        controlArg["Name"]      = v.name;
-        controlArg["Type"]      = v.type;
         controlArg["IsTexture"] = v.isTexture();
         controlArg["IsPointer"] = v.isPointer();
         controlArg["IsConst"]   = v.isConst;
@@ -1386,6 +1405,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["InOutVarsNumPod"] = inOutPod;
     data2["InOutVarsNumAll"] = inOutAll;
     data2["InOutVarsNum"]    = inOutNum;
+    data2["InOutVarsLast"]   = mainFunc.InOuts.size()-1;
 
     // for impl, ds bindings
     //
@@ -1583,6 +1603,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["MainFuncDeclCmd"]      = mainFunc.GeneratedDecl;
     data2["MainFuncTextCmd"]      = mainFunc.CodeGenerated;
     data2["ReturnType"]           = mainFunc.ReturnType;
+    data2["IsVoid"]               = (mainFunc.ReturnType == "void");
     data2["IsRTV"]                = a_classInfo.IsRTV();
     data2["IsMega"]               = a_classInfo.megakernelRTV;
     data2["NeedThreadFlags"]      = a_classInfo.NeedThreadFlags();
@@ -1601,6 +1622,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["MegaKernelCall"]       = mainFunc.MegaKernelCall;
     data2["UseRayGen"]            = mainFunc.megakernel.enableRTPipeline;
     data2["UseRayGen"]            = mainFunc.megakernel.enableRTPipeline;
+    data2["UsePersistentThreads"] = mainFunc.usePersistentThreads;
     data["MainFunctions"].push_back(data2);
   }
 
@@ -1649,7 +1671,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   for(const auto& kv : a_classInfo.m_setterVars)
   {
     json local;
-    local["Type"] = kv.second;
+    local["Type"] = kslicer::CleanTypeName(kv.second);
     local["Name"] = kv.first;
     data["SetterVars"].push_back(local);
   }
@@ -1719,14 +1741,14 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
 
     const bool isVec3Member = ((typeStr == "vec3") || (typeStr == "ivec3") || (typeStr == "uvec3")) && a_classInfo.pShaderCC->IsGLSL();
 
-
     json uboField;
-    uboField["Type"]      = typeStr;
+    uboField["Type"]      = kslicer::CleanTypeName(typeStr);
     uboField["Name"]      = member.name;
     uboField["IsArray"]   = member.isArray;
     uboField["ArraySize"] = member.arraySize;
     uboField["IsDummy"]   = false;
     uboField["IsVec3"]    = isVec3Member;
+    uboField["IsContainerInfo"] = member.isContainerInfo;
     data["UBOStructFields"].push_back(uboField);
 
     while(sizeO < sizeA) // TODO: make this more effitient
