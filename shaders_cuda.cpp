@@ -155,6 +155,26 @@ bool kslicer::CudaRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* 
 
 bool kslicer::CudaRewriter::VisitCallExpr_Impl(clang::CallExpr* call)                    
 { 
+  if(m_kernelMode && WasNotRewrittenYet(call))
+  {
+    clang::FunctionDecl* fDecl = call->getDirectCallee();
+    if(fDecl == nullptr)
+      return true;
+
+    const std::string fname    = fDecl->getNameInfo().getName().getAsString();
+    const std::string callText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+    const auto ddPos = callText.find("::");
+    const std::string baseClassName = callText.substr(0, ddPos);
+    std::string funcName = fname;
+    if(baseClassName != m_codeInfo->mainClassName &&  m_codeInfo->mainClassNames.find(baseClassName) !=  m_codeInfo->mainClassNames.end())
+    {
+      funcName = baseClassName + "_" + fname;
+      const std::string lastRewrittenText = funcName + "(" + CompleteFunctionCallRewrite(call);
+      ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+      MarkRewritten(call);
+    }
+  }
+
   return true; 
 }
 
