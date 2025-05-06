@@ -814,9 +814,13 @@ std::string kslicer::GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* 
     int a = 2;
   }
 
-  if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix) // alter function name if it has any prefix
+  if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix)          // alter function name if it has any prefix
+  { 
     if(fname.find(m_pCurrFuncInfo->prefixName) == std::string::npos)
       fname = m_pCurrFuncInfo->prefixName + "_" + fname;
+  }
+  else if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->name != fname) // alter function name if was changed
+    fname = m_pCurrFuncInfo->name;
 
   std::string result = retT + " " + fname + "(";
 
