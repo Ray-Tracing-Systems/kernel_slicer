@@ -568,8 +568,9 @@ int main(int argc, const char **argv) //
   compiler.getPreprocessor().addPPCallbacks(std::make_unique<HeaderLister>(headerLister));
   compiler.createASTContext();
 
-  const clang::FileEntry *pFile = compiler.getFileManager().getFile(fileName.u8string()).get();
-  compiler.getSourceManager().setMainFileID( compiler.getSourceManager().createFileID( pFile, clang::SourceLocation(), clang::SrcMgr::C_User));
+  // const clang::FileEntry *pFile = compiler.getFileManager().getFile(fileName.u8string()).get();
+  clang::FileEntryRef file = compiler.getFileManager().getFileRef(fileName.u8string()).get();
+  compiler.getSourceManager().setMainFileID( compiler.getSourceManager().createFileID( file, clang::SourceLocation(), clang::SrcMgr::C_User));
   compiler.getDiagnosticClient().BeginSourceFile(compiler.getLangOpts(), &compiler.getPreprocessor());
 
   // init clang tooling
