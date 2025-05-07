@@ -164,11 +164,14 @@ bool kslicer::CudaRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     const std::string fname    = fDecl->getNameInfo().getName().getAsString();
     const std::string callText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
     const auto ddPos = callText.find("::");
-    const std::string baseClassName = callText.substr(0, ddPos);
-    std::string funcName = fname;
-    if(baseClassName != m_codeInfo->mainClassName &&  m_codeInfo->mainClassNames.find(baseClassName) !=  m_codeInfo->mainClassNames.end())
+    if(ddPos != std::string::npos)
     {
-      funcName = baseClassName + "_" + fname;
+      std::string funcName = fname;
+      const std::string baseClassName = callText.substr(0, ddPos);
+      if(baseClassName != m_codeInfo->mainClassName && m_codeInfo->mainClassNames.find(baseClassName) != m_codeInfo->mainClassNames.end())
+      {
+        funcName = baseClassName + "_" + fname;
+      }
       const std::string lastRewrittenText = funcName + "(" + CompleteFunctionCallRewrite(call);
       ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
       MarkRewritten(call);

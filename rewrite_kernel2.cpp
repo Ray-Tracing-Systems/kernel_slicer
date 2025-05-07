@@ -248,10 +248,6 @@ bool kslicer::FunctionRewriter2::NameNeedsFakeOffset(const std::string& a_name) 
 std::string kslicer::FunctionRewriter2::CompleteFunctionCallRewrite(clang::CallExpr* call)
 {
   std::string rewrittenRes = "";
-  //if(rewrittenRes.find("aperture") != std::string::npos)
-  //{
-  //  int a = 2;
-  //}
   for(unsigned i=0;i<call->getNumArgs(); i++)
   {
     rewrittenRes += RecursiveRewrite(call->getArg(i));
@@ -503,17 +499,48 @@ std::string kslicer::FunctionRewriter2::RecursiveRewrite(const clang::Stmt* expr
 
 bool kslicer::FunctionRewriter2::DetectAndRewriteShallowPattern(const clang::Stmt* expr, std::string& a_out)
 {
+  if(!m_kernelMode)
+    return false;
+  
   if(clang::isa<clang::MemberExpr>(expr))
   {
     const clang::MemberExpr* memberExpr = clang::dyn_cast<clang::MemberExpr>(expr);
-    if(m_kernelMode && NeedToRewriteMemberExpr(memberExpr, a_out))
+    if(NeedToRewriteMemberExpr(memberExpr, a_out))
       return true;
   }
   else if(clang::isa<clang::DeclRefExpr>(expr))
   {
     const clang::DeclRefExpr* drExpr = clang::dyn_cast<clang::DeclRefExpr>(expr);
-    if(m_kernelMode && NeedToRewriteDeclRefExpr(drExpr, a_out))
-      return false;
+    if(NeedToRewriteDeclRefExpr(drExpr, a_out))
+      return true;
+  }
+  else if(clang::isa<clang::BinaryOperator>(expr))
+  {
+    const clang::BinaryOperator* binOp = clang::dyn_cast<clang::BinaryOperator>(expr);
+    const clang::Expr* lhs = kslicer::RemoveImplicitCast(binOp->getLHS());  // Указатель на 'a'
+    const clang::Expr* rhs = kslicer::RemoveImplicitCast(binOp->getRHS());  // Указатель на 'b'
+    std::string opCode = std::string(binOp->getOpcodeStr());
+    std::string leftRes  = kslicer::GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
+    std::string rightRes = kslicer::GetRangeSourceCode(rhs->getSourceRange(), m_compiler);
+    if(DetectAndRewriteShallowPattern(lhs, leftRes) || DetectAndRewriteShallowPattern(rhs, rightRes))
+    {
+      a_out = leftRes + opCode + rightRes;
+      return true;
+    }
+  }
+  else if(clang::isa<clang::CXXOperatorCallExpr>(expr)) 
+  {
+    const clang::CXXOperatorCallExpr* opCall = clang::dyn_cast<clang::CXXOperatorCallExpr>(expr);
+    const clang::Expr* lhs = kslicer::RemoveImplicitCast(opCall->getArg(0));
+    const clang::Expr* rhs = kslicer::RemoveImplicitCast(opCall->getArg(1));
+    std::string opCode = clang::getOperatorSpelling(opCall->getOperator());
+    std::string leftRes  = kslicer::GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
+    std::string rightRes = kslicer::GetRangeSourceCode(rhs->getSourceRange(), m_compiler);
+    if(DetectAndRewriteShallowPattern(lhs, leftRes) || DetectAndRewriteShallowPattern(rhs, rightRes))
+    {
+      a_out = leftRes + opCode + rightRes;
+      return true;
+    }
   }
 
   return false;
