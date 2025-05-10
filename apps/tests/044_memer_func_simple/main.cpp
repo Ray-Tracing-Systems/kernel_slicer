@@ -15,7 +15,7 @@
 #include "vk_context.h"
 std::shared_ptr<SimpleTest> CreateSimpleTest_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 #endif
-#ifdef USE_CUDA
+#if defined(USE_CUDA) or defined(USE_HIP)
 std::shared_ptr<SimpleTest> CreateSimpleTest_Generated();
 #endif
 
@@ -37,7 +37,7 @@ int main(int argc, const char** argv)
   bool onGPU = args.hasOption("--gpu");
   if(onGPU)
   {
-    #ifdef USE_CUDA
+    #if defined(USE_CUDA) or defined(USE_HIP)
     pImpl = CreateSimpleTest_Generated();
     #endif
     #ifdef USE_VULKAN

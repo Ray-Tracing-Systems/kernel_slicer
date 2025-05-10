@@ -375,15 +375,22 @@ int main(int argc, const char **argv) //
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::SlangCompiler>(inputCodeInfo.mainClassSuffix);
     if(shaderCCName == "cuda_slang")
-      inputCodeInfo.pHostCC = std::make_shared<kslicer::CudaCodeGen>(); 
+      inputCodeInfo.pHostCC = std::make_shared<kslicer::CudaCodeGen>("cuda"); 
     else
       inputCodeInfo.pHostCC = std::make_shared<kslicer::VulkanCodeGen>(); 
     inputCodeInfo.processFolders.push_back("include/");
   }
-  else if(shaderCCName == "cuda" || shaderCCName == "CUDA")
+  else if(shaderCCName == "cuda" || shaderCCName == "CUDA" || shaderCCName == "hip" || shaderCCName == "HIP" || shaderCCName == "musa" || shaderCCName == "MUSA")
   {
+    std::string actualCUDAType = "cuda";
+    {
+      if(shaderCCName == "hip" || shaderCCName == "HIP")
+        actualCUDAType = "hip";
+      else if(shaderCCName == "musa" || shaderCCName == "MUSA")
+        actualCUDAType = "musa";
+    }
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::CudaCompiler>(inputCodeInfo.mainClassSuffix); 
-    inputCodeInfo.pHostCC   = std::make_shared<kslicer::CudaCodeGen>();
+    inputCodeInfo.pHostCC   = std::make_shared<kslicer::CudaCodeGen>(actualCUDAType);
     inputCodeInfo.ignoreFolders.push_back("include/");
   }
   else if(shaderCCName == "ispc" || shaderCCName == "ISPC")

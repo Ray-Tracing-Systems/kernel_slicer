@@ -1,13 +1,18 @@
-
+{% if cuda == "cuda" %}
 #include "LiteMath.h"
 #include <extended/lm_device_vector.h> // also from LiteMath
+{% if UseCUB %}
+#include <cub/block/block_reduce.cuh>
+{% endif %}
+{% else if cuda == "hip" %}
+#include <hip/hip_runtime.h>
+#include "LiteMath.h"
+{% endif %}
+
 #include "{{MainInclude}}"
 #include <vector>
 #include <cfloat>
 #include <mutex>
-{% if UseCUB %}
-#include <cub/block/block_reduce.cuh>
-{% endif %}
 
 template<typename T> inline size_t ReduceAddInit(std::vector<T>& a_vec, size_t a_targetSize) { return a_vec.size(); }
 template<typename T> inline void   ReduceAddComplete(std::vector<T>& a_vec) { }
@@ -15,7 +20,7 @@ template<typename T> inline void   ReduceAddComplete(std::vector<T>& a_vec) { }
 namespace {{MainClassName}}{{MainClassSuffix}}_DEV
 {
   using _Bool = bool;
-  {% if UseCUB %}
+  {% if UseCUB and cuda == "cuda" %}
   template<typename T, typename IndexType, int BLOCK_SIZE = 256>
   __device__ inline void ReduceAdd(LiteMathExtended::device_vector<T>& a_vec, IndexType offset, T val)
   {
@@ -306,7 +311,7 @@ public:
     {{Vector.Name}}_dev.resize(0);
     {{Vector.Name}}_dev.shrink_to_fit(); 
     {% endfor %}
-    cudaFree(m_pUBO); m_pUBO = nullptr;
+    {{cuda}}Free(m_pUBO); m_pUBO = nullptr;
   }
 
   void CommitDeviceData() override;
@@ -402,7 +407,7 @@ std::shared_ptr<{{MainClassMakerInterface}}> Create{{ctorDecl.ClassName}}{{MainC
 void {{MainClassName}}{{MainClassSuffix}}::CopyUBOToDevice()
 {
   if(m_pUBO == nullptr)
-    cudaMalloc(&m_pUBO, sizeof({{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData));
+    {{cuda}}Malloc(&m_pUBO, sizeof({{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData));
   
   {{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData ubo;
   {% for Var in ClassVars %}
@@ -420,13 +425,13 @@ void {{MainClassName}}{{MainClassSuffix}}::CopyUBOToDevice()
   {% endif %}
   {% endif %}
   {% endfor %}
-  cudaMemcpy(m_pUBO, &ubo, sizeof(ubo), cudaMemcpyHostToDevice);
+  {{cuda}}Memcpy(m_pUBO, &ubo, sizeof(ubo), {{cuda}}MemcpyHostToDevice);
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::CopyUBOFromDevice()
 {
   {{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData ubo;
-  cudaMemcpy(&ubo, m_pUBO, sizeof(ubo), cudaMemcpyDeviceToHost);
+  {{cuda}}Memcpy(&ubo, m_pUBO, sizeof(ubo), {{cuda}}MemcpyDeviceToHost);
   {% for Var in ClassVars %}
   {% if Var.IsArray %}
   {% if Var.HasPrefix %}
@@ -464,22 +469,22 @@ void {{MainClassName}}{{MainClassSuffix}}::CommitDeviceData()
 
 void {{MainClassName}}{{MainClassSuffix}}::UpdateObjectContext(bool a_updateVec)
 {
-  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::ubo, m_pUBO, sizeof({{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData), 0, cudaMemcpyDeviceToDevice);
+  {{cuda}}MemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::ubo, m_pUBO, sizeof({{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData), 0, {{cuda}}MemcpyDeviceToDevice);
   if(a_updateVec)
   {
     {% for Var in VectorMembers %}
-    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, &{{Var.Name}}_dev, sizeof(LiteMathExtended::device_vector<{{Var.DataType}}>));
+    {{cuda}}MemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, &{{Var.Name}}_dev, sizeof(LiteMathExtended::device_vector<{{Var.DataType}}>));
     {% endfor %}
   }
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::ReadObjectContext(bool a_updateVec)
 {
-  cudaMemcpyFromSymbol(m_pUBO, {{MainClassName}}{{MainClassSuffix}}_DEV::ubo, sizeof({{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData), 0, cudaMemcpyDeviceToDevice);
+  {{cuda}}MemcpyFromSymbol(m_pUBO, {{MainClassName}}{{MainClassSuffix}}_DEV::ubo, sizeof({{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData), 0, {{cuda}}MemcpyDeviceToDevice);
   if(a_updateVec)
   {
     {% for Var in VectorMembers %}
-    cudaMemcpyFromSymbol(&{{Var.Name}}_dev, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof(LiteMathExtended::device_vector<{{Var.DataType}}>));
+    {{cuda}}MemcpyFromSymbol(&{{Var.Name}}_dev, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof(LiteMathExtended::device_vector<{{Var.DataType}}>));
     {% endfor %}
   }
 }
@@ -492,7 +497,7 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
   {% endif %}
   {% if Kernel.IsIndirect %}
   {{MainClassName}}{{MainClassSuffix}}_DEV::{{Kernel.OriginalName}}_Indirect<<<1, 1>>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
-  cudaDeviceSynchronize(); // do we need to wait here? 
+  {{cuda}}DeviceSynchronize(); // do we need to wait here? 
   {% else %}
   dim3 block({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}});
   dim3 grid(({{Kernel.tidX}} + block.x - 1) / block.x, ({{Kernel.tidY}} + block.y - 1) / block.y, ({{Kernel.tidZ}} + block.z - 1) / block.z);
@@ -522,63 +527,63 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
   {{var.DataType}}* {{var.Name}}Host = {{var.Name}};
   {% endfor %}
   
-  cudaEvent_t _start, _stop;
-  cudaEventCreate(&_start);
-  cudaEventCreate(&_stop);
+  {{cuda}}Event_t _start, _stop;
+  {{cuda}}EventCreate(&_start);
+  {{cuda}}EventCreate(&_stop);
   
-  cudaEventRecord(_start);
+  {{cuda}}EventRecord(_start);
   {% for var in MainFunc.FullImpl.InputData %}
-  cudaMalloc(&{{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
+  {{cuda}}Malloc(&{{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endfor %}
   {% for var in MainFunc.FullImpl.OutputData %}
-  cudaMalloc(&{{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
+  {{cuda}}Malloc(&{{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endfor %}
-  cudaEventRecord(_stop);
-  cudaEventSynchronize(_stop);
-  cudaEventElapsedTime(&m_exTime{{MainFunc.Name}}[3], _start, _stop);
+  {{cuda}}EventRecord(_stop);
+  {{cuda}}EventSynchronize(_stop);
+  {{cuda}}EventElapsedTime(&m_exTime{{MainFunc.Name}}[3], _start, _stop);
   
-  cudaEventRecord(_start);
+  {{cuda}}EventRecord(_start);
   {% for var in MainFunc.FullImpl.InputData %}
-  cudaMemcpy((void*){{var.Name}}, {{var.Name}}Host, {{var.DataSize}}*sizeof({{var.DataType}}), cudaMemcpyHostToDevice);
+  {{cuda}}Memcpy((void*){{var.Name}}, {{var.Name}}Host, {{var.DataSize}}*sizeof({{var.DataType}}), {{cuda}}MemcpyHostToDevice);
   {% endfor %}
   CopyUBOToDevice();
-  cudaEventRecord(_stop);
-  cudaEventSynchronize(_stop);
-  cudaEventElapsedTime(&m_exTime{{MainFunc.Name}}[1], _start, _stop);
+  {{cuda}}EventRecord(_stop);
+  {{cuda}}EventSynchronize(_stop);
+  {{cuda}}EventElapsedTime(&m_exTime{{MainFunc.Name}}[1], _start, _stop);
   
-  cudaEventRecord(_start);
+  {{cuda}}EventRecord(_start);
   {% if MainFunc.IsVoid %}
   {{MainFunc.Name}}GPU({%for Arg in MainFunc.InOutVarsAll %}{{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %});
   {% else %}
   auto _resFromGPU = {{MainFunc.Name}}GPU({%for Arg in MainFunc.InOutVarsAll %}{{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %});
   {% endif %}
-  cudaEventRecord(_stop);
-  cudaEventSynchronize(_stop);
-  cudaEventElapsedTime(&m_exTime{{MainFunc.Name}}[0], _start, _stop);
+  {{cuda}}EventRecord(_stop);
+  {{cuda}}EventSynchronize(_stop);
+  {{cuda}}EventElapsedTime(&m_exTime{{MainFunc.Name}}[0], _start, _stop);
   
-  cudaEventRecord(_start);
+  {{cuda}}EventRecord(_start);
   CopyUBOFromDevice();
   {% for var in MainFunc.FullImpl.OutputData %}
-  cudaMemcpy({{var.Name}}Host, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}), cudaMemcpyDeviceToHost);
+  {{cuda}}Memcpy({{var.Name}}Host, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}), {{cuda}}MemcpyDeviceToHost);
   {% endfor %}
-  cudaEventRecord(_stop);
-  cudaEventSynchronize(_stop);
-  cudaEventElapsedTime(&m_exTime{{MainFunc.Name}}[2], _start, _stop);
+  {{cuda}}EventRecord(_stop);
+  {{cuda}}EventSynchronize(_stop);
+  {{cuda}}EventElapsedTime(&m_exTime{{MainFunc.Name}}[2], _start, _stop);
   
-  cudaEventRecord(_start);
+  {{cuda}}EventRecord(_start);
   {% for var in MainFunc.FullImpl.InputData %}
-  cudaFree((void*){{var.Name}});
+  {{cuda}}Free((void*){{var.Name}});
   {% endfor %}
   {% for var in MainFunc.FullImpl.OutputData %}
-  cudaFree({{var.Name}});
+  {{cuda}}Free({{var.Name}});
   {% endfor %}
-  cudaEventRecord(_stop);
-  cudaEventSynchronize(_stop);
+  {{cuda}}EventRecord(_stop);
+  {{cuda}}EventSynchronize(_stop);
   float _timeForFree = 0.0f;
-  cudaEventElapsedTime(&_timeForFree, _start, _stop);
+  {{cuda}}EventElapsedTime(&_timeForFree, _start, _stop);
   m_exTime{{MainFunc.Name}}[3] += _timeForFree;
-  cudaEventDestroy(_start);
-  cudaEventDestroy(_stop);
+  {{cuda}}EventDestroy(_start);
+  {{cuda}}EventDestroy(_stop);
   {% if not MainFunc.IsVoid %}
   return _resFromGPU;
   {% endif %}

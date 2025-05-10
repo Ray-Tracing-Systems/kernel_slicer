@@ -472,6 +472,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["TimeStampSize"]    = a_classInfo.m_timestampPoolSize;
   
   data["UseCUB"] = a_settings.useCUBforCUDA;
+  data["cuda"]   = a_classInfo.pHostCC->Name();
 
   const bool hasBufferReferenceBind = a_classInfo.HasBufferReferenceBind();
   
@@ -1373,7 +1374,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     for(const auto& v : mainFunc.InOuts)
     {
       std::string typeName = kslicer::CleanTypeName(v.type);
-      if(v.isPointer() && a_classInfo.pHostCC->Name() == "CUDA")
+      if(v.isPointer() && a_classInfo.pHostCC->IsCUDA())
         typeName += "*";
 
       json controlArg;

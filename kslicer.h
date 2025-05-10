@@ -1438,6 +1438,7 @@ namespace kslicer
     virtual std::string Name() const { return ""; } 
     virtual void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
     virtual void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
+    virtual bool IsCUDA() const { return false; }
   };
 
   struct VulkanCodeGen : public IHostCodeGen
@@ -1449,8 +1450,11 @@ namespace kslicer
 
   struct CudaCodeGen : public IHostCodeGen
   {
-    std::string Name() const override { return "CUDA"; }
+    CudaCodeGen(const std::string& a_actualCUDAImpl) : m_actualCUDAImpl(a_actualCUDAImpl) {}
+    std::string Name() const override { return m_actualCUDAImpl; }
     void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+    bool IsCUDA() const override { return true; }
+    std::string m_actualCUDAImpl;
   };
 
   struct ISPCCodeGen : public IHostCodeGen
