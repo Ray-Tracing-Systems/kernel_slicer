@@ -1,13 +1,13 @@
 {% if cuda == "cuda" %}
-#include "LiteMath.h"
-#include <extended/lm_device_vector.h> // also from LiteMath
+#include <cuda_runtime.h>
 {% if UseCUB %}
 #include <cub/block/block_reduce.cuh>
 {% endif %}
 {% else if cuda == "hip" %}
 #include <hip/hip_runtime.h>
-#include "LiteMath.h"
 {% endif %}
+#include "LiteMath.h"
+#include <extended/lm_device_vector.h> // also from LiteMath
 
 #include "{{MainInclude}}"
 #include <vector>

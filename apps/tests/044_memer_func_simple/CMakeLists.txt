@@ -31,6 +31,7 @@ endif()
 if(USE_HIP)
   find_package(HIP REQUIRED)
   enable_language(HIP)
+  add_compile_definitions(CUDA_MATH)
   add_compile_definitions(USE_HIP)
 endif()
 
