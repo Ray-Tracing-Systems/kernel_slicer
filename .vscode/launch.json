@@ -43,7 +43,7 @@
                         "-reorderLoops", "YX",
                         "-I${workspaceFolder}/apps/LiteMath", "ignore", 
                         "-I${workspaceFolder}/TINYSTL",       "ignore",
-                        "-shaderCC", "cuda",
+                        "-shaderCC", "hip",
                         "-suffix", "_CUDA",
                         "-DKERNEL_SLICER",
                         "-v"],
