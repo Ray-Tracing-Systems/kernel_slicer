@@ -101,7 +101,7 @@
                         "-pattern",      "ipv",
                         "-I${workspaceFolder}/apps/LiteMath",    "ignore",
                         "-I${workspaceFolder}/TINYSTL",          "ignore",
-                        "-shaderCC", "cuda",
+                        "-shaderCC", "hip",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,

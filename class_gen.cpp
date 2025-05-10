@@ -210,7 +210,7 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
       sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
       a_mainFunc.GeneratedDecl = GetControlFuncDeclVulkan(a_node, compiler);
     }
-    else if(pHostCC->Name() == "CUDA") 
+    else if(pHostCC->IsCUDA()) 
     {
       kslicer::MainFunctionRewriterCUDA rvCUDA(rewrite2, compiler, a_mainFunc, inOutParamList, this);  
       rvCUDA.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));   //
