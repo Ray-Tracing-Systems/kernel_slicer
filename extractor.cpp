@@ -128,15 +128,15 @@ public:
 
   bool VisitCallExpr(clang::CallExpr* call)
   {
-    std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler);
-    //std::cout << "  [debug]: debugText = '" << debugText.c_str() << "'" << std::endl;
+    std::string callText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler);
+    //std::cout << "  [debug]: callText = '" << debugText.c_str() << "'" << std::endl;
 
     const clang::FunctionDecl* f = call->getDirectCallee();
     if(f == nullptr)
       return true;
 
-    std::string debugName = f->getNameAsString();
-    //if(debugName.find("Newton") != std::string::npos)
+    //std::string debugName = f->getNameAsString();
+    //if(debugName.find("CalcSurfFuncAndDerivs") != std::string::npos)
     //{
     //  std::cout << "  [debug]: find call of " << debugName.c_str() << std::endl;
     //}
@@ -153,6 +153,13 @@ public:
 
     kslicer::FuncData func;
     func.name = f->getNameAsString();
+    auto ddPos = callText.find("::"); // support for 'BaseClass::Func(...)'
+    if(ddPos != std::string::npos)
+    {
+      const std::string baseClassName = callText.substr(0, ddPos);
+      if(baseClassName != m_patternImpl.mainClassName && m_patternImpl.mainClassNames.find(baseClassName) != m_patternImpl.mainClassNames.end())
+        func.name = baseClassName + "_" + func.name;
+    }
 
     const std::string fsrc = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
     if(fsrc.find("{") == std::string::npos) // if don't have full source code in this node, just decl, need to obtain correct node

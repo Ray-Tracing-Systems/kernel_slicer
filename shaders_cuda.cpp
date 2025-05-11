@@ -67,9 +67,13 @@ std::string kslicer::CudaRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
   std::string retT   = RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString());
   std::string fname  = fDecl->getNameInfo().getName().getAsString();
 
-  if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix) // alter function name if it has any prefix
+  if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix)          // alter function name if it has any prefix
+  { 
     if(fname.find(m_pCurrFuncInfo->prefixName) == std::string::npos)
       fname = m_pCurrFuncInfo->prefixName + "_" + fname;
+  }
+  else if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->name != fname) // alter function name if was changed
+    fname = m_pCurrFuncInfo->name;
 
   std::string result = retT + " " + fname + "(";
 
@@ -114,7 +118,14 @@ bool kslicer::CudaRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 {
   if(m_kernelMode)
   {
-   
+    std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    std::string rewrittenText;
+    if(NeedToRewriteMemberExpr(expr, rewrittenText))
+    {
+      //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
+      m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
+      MarkRewritten(expr);
+    }
   }
 
   return true; 
@@ -144,6 +155,29 @@ bool kslicer::CudaRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* 
 
 bool kslicer::CudaRewriter::VisitCallExpr_Impl(clang::CallExpr* call)                    
 { 
+  if(m_kernelMode && WasNotRewrittenYet(call))
+  {
+    clang::FunctionDecl* fDecl = call->getDirectCallee();
+    if(fDecl == nullptr)
+      return true;
+
+    const std::string fname    = fDecl->getNameInfo().getName().getAsString();
+    const std::string callText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+    const auto ddPos = callText.find("::");
+    if(ddPos != std::string::npos)
+    {
+      std::string funcName = fname;
+      const std::string baseClassName = callText.substr(0, ddPos);
+      if(baseClassName != m_codeInfo->mainClassName && m_codeInfo->mainClassNames.find(baseClassName) != m_codeInfo->mainClassNames.end())
+      {
+        funcName = baseClassName + "_" + fname;
+      }
+      const std::string lastRewrittenText = funcName + "(" + CompleteFunctionCallRewrite(call);
+      ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+      MarkRewritten(call);
+    }
+  }
+
   return true; 
 }
 

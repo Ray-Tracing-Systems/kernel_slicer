@@ -39,6 +39,8 @@ namespace kslicer
     bool enableCallable    = false;
     bool enableTimeStamps  = false;
     bool genSeparateGPUAPI = false;
+    bool useCUBforCUDA     = true;
+    std::string interfaceName;
   };
 
   struct IShaderCompiler;
@@ -379,6 +381,7 @@ namespace kslicer
     bool     singleThreadISPC = false;
     bool     openMpAndISPC    = false;
     bool     explicitIdISPC   = false;
+    bool     useBlockOperations = false;         ///<! kernel uses ReduceAdd pattern for vector, all threads must be valid (don't add if(runThisThread) {... })
 
     bool      isIndirect = false;                ///<! IPV pattern; if loop size is defined by class member variable or vector size, we interpret it as indirect dispatching
     uint32_t  indirectBlockOffset = 0;           ///<! IPV pattern; for such kernels we have to know some offset in indirect buffer for thread blocks number (use int4 data for each kernel)
@@ -991,7 +994,7 @@ namespace kslicer
   {
   public:
   
-    KernelInfoVisitor(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel);
+    KernelInfoVisitor(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, bool a_onlyShaderFeatures = false);
     virtual ~KernelInfoVisitor() {}
   
     bool VisitForStmt(clang::ForStmt* forLoop);
@@ -1021,6 +1024,7 @@ namespace kslicer
     const clang::CompilerInstance& m_compiler;
     kslicer::MainClassInfo*        m_codeInfo;
     kslicer::KernelInfo&           m_currKernel;
+    bool                           m_onlyShaderFeatures;
   
     std::unordered_set<uint64_t> m_visitedTexAccessNodes;
   };
@@ -1382,7 +1386,13 @@ namespace kslicer
   struct CudaCompiler : IShaderCompiler
   {
     CudaCompiler(const std::string& a_prefix);
-    std::string UBOAccess(const std::string& a_name) const override { return a_name; } //std::string("ubo.") + a_name; };
+    std::string UBOAccess(const std::string& a_name) const override 
+    {
+      if(a_name.find(".size()") != std::string::npos) // kernelJson["IndirectSizeX"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
+        return a_name;
+      else
+        return std::string("ubo.") + a_name; 
+    } //  { return a_name; }
     std::string ReplaceSizeCapacityExpr(const std::string& a_str) const override { return a_str; }
     std::string ProcessBufferType(const std::string& a_typeName) const override;
 
@@ -1428,6 +1438,7 @@ namespace kslicer
     virtual std::string Name() const { return ""; } 
     virtual void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
     virtual void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
+    virtual bool IsCUDA() const { return false; }
   };
 
   struct VulkanCodeGen : public IHostCodeGen
@@ -1439,8 +1450,11 @@ namespace kslicer
 
   struct CudaCodeGen : public IHostCodeGen
   {
-    std::string Name() const override { return "CUDA"; }
+    CudaCodeGen(const std::string& a_actualCUDAImpl) : m_actualCUDAImpl(a_actualCUDAImpl) {}
+    std::string Name() const override { return m_actualCUDAImpl; }
     void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+    bool IsCUDA() const override { return true; }
+    std::string m_actualCUDAImpl;
   };
 
   struct ISPCCodeGen : public IHostCodeGen

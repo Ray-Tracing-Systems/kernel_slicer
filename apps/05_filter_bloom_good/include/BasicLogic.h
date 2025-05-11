@@ -8,7 +8,9 @@ using namespace LiteMath;
 #endif
 #endif
 
-#ifdef __CUDACC__
+#if defined(USE_CUDA)
+#define _HostDevice_ __host__ __device__
+#elif defined(__HIPCC__)
 #define _HostDevice_ __host__ __device__
 #else
 #define _HostDevice_ 

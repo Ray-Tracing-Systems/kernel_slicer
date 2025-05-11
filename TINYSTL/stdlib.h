@@ -11,3 +11,6 @@ namespace std
   void* malloc (size_t __size);
   void  free(void* data);
 };
+
+static constexpr int EXIT_FAILURE =	1;	/* Failing exit status.  */
+static constexpr int EXIT_SUCCESS =	0;	/* Successful exit status.  */

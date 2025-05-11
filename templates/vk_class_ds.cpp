@@ -17,22 +17,26 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
 {
   // allocate pool
   //
-  VkDescriptorPoolSize buffersSize, combinedImageSamSize, imageStorageSize;
+  VkDescriptorPoolSize buffersSize, combinedImageSamSize, imageStorageSize, accelStorageSize;
   buffersSize.type                     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
   buffersSize.descriptorCount          = {{TotalBuffersUsed}} + 64; // + 64 for reserve
 
   std::vector<VkDescriptorPoolSize> poolSizes = {buffersSize};
-
-  combinedImageSamSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  combinedImageSamSize.descriptorCount = {{TotalTexArrayUsed}}*GetDefaultMaxTextures() + {{TotalTexCombinedUsed}};
-
-  imageStorageSize.type                = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-  imageStorageSize.descriptorCount     = {{TotalTexStorageUsed}};
-
-  if(combinedImageSamSize.descriptorCount > 0)
-    poolSizes.push_back(combinedImageSamSize);
-  if(imageStorageSize.descriptorCount > 0)
-    poolSizes.push_back(imageStorageSize);
+  {
+    combinedImageSamSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    combinedImageSamSize.descriptorCount = {{TotalTexArrayUsed}}*GetDefaultMaxTextures() + {{TotalTexCombinedUsed}};
+    imageStorageSize.type                = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    imageStorageSize.descriptorCount     = {{TotalTexStorageUsed}};
+    accelStorageSize.type                = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+    imageStorageSize.descriptorCount     = {{TotalAccels + 1}};
+  
+    if(combinedImageSamSize.descriptorCount > 0)
+      poolSizes.push_back(combinedImageSamSize);
+    if(imageStorageSize.descriptorCount > 0)
+      poolSizes.push_back(imageStorageSize);
+    if(accelStorageSize.descriptorCount > 0)
+      poolSizes.push_back(accelStorageSize);
+  }
 
   VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
   descriptorPoolCreateInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

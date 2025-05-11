@@ -15,7 +15,7 @@
 #include "vk_context.h"
 std::shared_ptr<SimpleTest> CreateSimpleTest_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 #endif
-#if defined(USE_CUDA) or defined(USE_HIP)
+#ifdef USE_CUDA
 std::shared_ptr<SimpleTest> CreateSimpleTest_Generated();
 #endif
 
@@ -27,9 +27,12 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
 
-  std::vector<float> outputArray(8);
+  std::vector<float> outputArray(5);
+  std::vector<float> inputArray(512*256);
   for(size_t i=0;i<outputArray.size();i++)
     outputArray[i] = 0;
+  for(size_t i=0;i<inputArray.size();i++)
+    inputArray[i] = 0.01f*float(i);
 
   std::shared_ptr<SimpleTest> pImpl = nullptr;
   ArgParser args(argc, argv);
@@ -37,7 +40,7 @@ int main(int argc, const char** argv)
   bool onGPU = args.hasOption("--gpu");
   if(onGPU)
   {
-    #if defined(USE_CUDA) or defined(USE_HIP)
+    #ifdef USE_CUDA
     pImpl = CreateSimpleTest_Generated();
     #endif
     #ifdef USE_VULKAN
@@ -53,15 +56,12 @@ int main(int argc, const char** argv)
   std::string backendName = onGPU ? "gpu" : "cpu";
 
   pImpl->CommitDeviceData();
-  pImpl->CalcAndAccum(outputArray.size(), outputArray.data());
+  pImpl->CalcAndAccum(inputArray.data(), inputArray.size(), outputArray.data());
   
-  float outputArray2[8] = {};
-  for(int i=0;i<8;i++) {
+  for(int i=0;i<outputArray.size();i++) 
     std::cout << i << "\t" << outputArray[i] << std::endl;
-    outputArray2[i] = outputArray[i];
-  }
 
-  JSONLog::write("array", outputArray2);
+  JSONLog::write("array", outputArray);
   JSONLog::saveToFile("zout_"+backendName+".json");
   
   pImpl = nullptr;
