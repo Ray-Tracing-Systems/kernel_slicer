@@ -70,9 +70,9 @@
     {% for redvar in Kernel.SubjToRed %}
     {% if redvar.SupportAtomic %}
     {% if redvar.NegLastStep %}
-    {{redvar.AtomicOp}}(&{{redvar.Name}}, -{{redvar.Name}}Shared[0]);
+    {{redvar.AtomicOp}}(&ubo.{{redvar.Name}}, -{{redvar.Name}}Shared[0]);
     {% else %}
-    {{redvar.AtomicOp}}(&{{redvar.Name}}, {{redvar.Name}}Shared[0]);
+    {{redvar.AtomicOp}}(&ubo.{{redvar.Name}}, {{redvar.Name}}Shared[0]);
     {% endif %}
     {% else %}
     {{ redvar.OutTempName }}[offset] = {{redvar.Name}}Shared[0]; // finish reduction in subsequent kernel passes
@@ -82,9 +82,9 @@
     {% for outName in redvar.OutTempNameA %}
     {% if redvar.SupportAtomic %}
     {% if redvar.NegLastStep %}
-    {{redvar.AtomicOp}}(&{{redvar.Name}}[{{loop.index}}], -{{redvar.Name}}Shared[{{loop.index}}][0]);
+    {{redvar.AtomicOp}}(&ubo.{{redvar.Name}}[{{loop.index}}], -{{redvar.Name}}Shared[{{loop.index}}][0]);
     {% else %}
-    {{redvar.AtomicOp}}(&{{redvar.Name}}[{{loop.index}}], {{redvar.Name}}Shared[{{loop.index}}][0]);
+    {{redvar.AtomicOp}}(&ubo.{{redvar.Name}}[{{loop.index}}], {{redvar.Name}}Shared[{{loop.index}}][0]);
     {% endif %}
     {% else %}
     {{ outName }}[blockIdx.x] = {{redvar.Name}}Shared[{{loop.index}}][0]; // finish reduction in subsequent kernel passes

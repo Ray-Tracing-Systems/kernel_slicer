@@ -124,7 +124,7 @@ nlohmann::json kslicer::GetOriginalKernelJson(const KernelInfo& k, const MainCla
     std::string typeName = pShaderRewriter->RewriteStdVectorTypeStr(arg.type);
     json argj;
     if(a_classInfo.pShaderCC->IsCUDA() && arg.IsPointer()) // strange bug with spaces when use template text rendering for that
-      typeName += "*";                                     // 
+      typeName += "* __restrict__ ";                        // 
     argj["Type"]      = typeName;
     argj["Name"]      = arg.name;
     argj["IsPointer"] = arg.IsPointer();
@@ -977,6 +977,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["UseFloat64"]      = k.shaderFeatures.useFloat64Type;
     kernelJson["UseHalf"]         = k.shaderFeatures.useHalfType;
     kernelJson["UseFloatAtomics"] = k.shaderFeatures.useFloatAtomicAdd;
+    kernelJson["UseBlockReduce"]  = k.useBlockOperations;
 
     kernelJson["SingleThreadISPC"] = k.singleThreadISPC;
     kernelJson["OpenMPAndISPC"]    = k.openMpAndISPC;

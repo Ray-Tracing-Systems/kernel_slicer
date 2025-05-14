@@ -1,15 +1,92 @@
-
+{% if cuda == "cuda" %}
+#include <cuda_runtime.h>
+{% if UseCUB %}
+#include <cub/block/block_reduce.cuh>
+{% endif %}
+{% else if cuda == "hip" %}
+#include <hip/hip_runtime.h>
+{% endif %}
 #include "LiteMath.h"
 #include <extended/lm_device_vector.h> // also from LiteMath
+
 #include "{{MainInclude}}"
+#include <vector>
 #include <cfloat>
+#include <mutex>
+
+template<typename T> inline size_t ReduceAddInit(std::vector<T>& a_vec, size_t a_targetSize) { return a_vec.size(); }
+template<typename T> inline void   ReduceAddComplete(std::vector<T>& a_vec) { }
 
 namespace {{MainClassName}}{{MainClassSuffix}}_DEV
 {
   using _Bool = bool;
-  {% for Decl in ClassDecls %}
+  {% if UseCUB and cuda == "cuda" %}
+  template<typename T, typename IndexType, int BLOCK_SIZE = 256>
+  __device__ inline void ReduceAdd(LiteMathExtended::device_vector<T>& a_vec, IndexType offset, T val)
+  {
+    if(!isfinite(val))
+      val = 0;
+        
+    // Определяем временное хранилище для CUB
+    __shared__ typename cub::BlockReduce<T, BLOCK_SIZE>::TempStorage temp_storage;
+  
+    // Выполняем редукцию по блоку
+    T block_sum = cub::BlockReduce<T, BLOCK_SIZE>(temp_storage).Sum(val);
+  
+    // Первый поток атомарно добавляет результат в глобальную память
+    if(threadIdx.x == 0)
+      atomicAdd(a_vec.data() + offset, block_sum);
+  }
+  {% else %}
+  template<typename T, typename IndexType> // TODO: pass block size via template parameter
+  __device__ inline void ReduceAdd(LiteMathExtended::device_vector<T>& a_vec, IndexType offset, T val)
+  {
+    if(!isfinite(val))
+      val = 0;
+    //__shared__ T sval;
+    //if(threadIdx.x == 0)
+    //  sval = 0;
+    //__syncthreads();
+    //atomicAdd(&sval, val);
+    //__syncthreads();
+    //if(threadIdx.x == 0)
+    //  atomicAdd(a_vec.data() + offset, sval);
+    __shared__ T sdata[256*1*1]; 
+    sdata[threadIdx.x] = val;
+    __syncthreads();
+    if (threadIdx.x < 128)
+      sdata[threadIdx.x] += sdata[threadIdx.x + 128];
+    __syncthreads();
+    if (threadIdx.x < 64)
+      sdata[threadIdx.x] += sdata[threadIdx.x + 64];
+    __syncthreads();
+    if (threadIdx.x < 32) sdata[threadIdx.x] += sdata[threadIdx.x + 32];
+    __syncthreads();
+    if (threadIdx.x < 16) sdata[threadIdx.x] += sdata[threadIdx.x + 16];
+    __syncthreads();
+    if (threadIdx.x < 8)  sdata[threadIdx.x] += sdata[threadIdx.x + 8];
+    __syncthreads();
+    if (threadIdx.x < 4)  sdata[threadIdx.x] += sdata[threadIdx.x + 4];
+    __syncthreads();
+    if (threadIdx.x < 2)  sdata[threadIdx.x] += sdata[threadIdx.x + 2];
+    __syncthreads();
+    if (threadIdx.x < 1)  sdata[threadIdx.x] += sdata[threadIdx.x + 1];
+    __syncthreads();
+    if(threadIdx.x == 0)
+      atomicAdd(a_vec.data() + offset,  sdata[0]);
+  }
+  {% endif %}
+  template<typename T, typename IndexType> // TODO: pass block size via template parameter
+  __device__ inline void ReduceAdd(LiteMathExtended::device_vector<T>& a_vec, IndexType offset, IndexType a_sizeAligned, T val)  { ReduceAdd<T,IndexType>(a_vec, offset, val); }
+
+  {% for Decl in ClassDecls %} 
   {% if Decl.InClass and Decl.IsType %}
-  using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data type to kernels
+  using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; 
+  {% endif %}
+  {% endfor %}
+  {% for Decl in ClassDecls %} 
+  {% if Decl.InClass and not Decl.IsType and not Decl.IsTdef %}
+  {{Decl.Text}} 
   {% endif %}
   {% endfor %}
 
@@ -20,15 +97,19 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
   {% for Vector in VectorMembers %}
   __device__ LiteMathExtended::device_vector<{{Vector.DataType}}> {{Vector.Name}};
   {% endfor %}
-  {% for Field in UBO.UBOStructFields %}
-  {% if Field.IsDummy %} 
-  __device__ uint {{Field.Name}}; 
-  {% else %}
-  {% if not Field.IsContainerInfo %}
-  __device__ {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %};
-  {% endif %}
-  {% endif %}
-  {% endfor %}
+  struct UniformBufferObjectData
+  {
+    {% for Field in UBO.UBOStructFields %}
+    {% if Field.IsDummy %} 
+    uint {{Field.Name}}; 
+    {% else %}
+    {% if not Field.IsContainerInfo %}
+    {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %};
+    {% endif %}
+    {% endif %}
+    {% endfor %}
+  };
+  __device__ UniformBufferObjectData ubo;
   
   {% for MembFunc in AllMemberFunctions %}
   __device__ {{MembFunc.Decl}};
@@ -147,11 +228,12 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
     {% include "inc_red_init.cu" %}
     {% endif %} 
     {% endif %} {# /* if not Kernel.EnableBlockExpansion */ #}
-    if(runThisThread) 
-    {
+    {% if not Kernel.EnableBlockExpansion and not Kernel.IsSingleThreaded and not Kernel.UseBlockReduce %}
+    if(runThisThread) {
+    {% endif %}
     {% endif %} {# /* if not Kernel.IsSingleThreaded */ #}
     {{Kernel.Source}}
-    {% if not Kernel.EnableBlockExpansion and not Kernel.IsSingleThreaded %}
+    {% if not Kernel.EnableBlockExpansion and not Kernel.IsSingleThreaded and not Kernel.UseBlockReduce %}
     }
     {% endif %}
     {% if Kernel.HasEpilog %}
@@ -229,14 +311,15 @@ public:
     {{Vector.Name}}_dev.resize(0);
     {{Vector.Name}}_dev.shrink_to_fit(); 
     {% endfor %}
+    {{cuda}}Free(m_pUBO); m_pUBO = nullptr;
   }
 
   void CommitDeviceData() override;
   {% if HasGetTimeFunc %}
   void GetExecutionTime(const char* a_funcName, float a_out[4]) override;
   {% endif %}
-  void CopyUBOToDevice(bool a_updateVectorSize = true);
-  void CopyUBOFromDevice(bool a_updateVectorSize = true);
+  void CopyUBOToDevice();
+  void CopyUBOFromDevice();
   void UpdateDeviceVectors();
 
   {% for Kernel in Kernels %}
@@ -248,6 +331,9 @@ public:
   virtual {{MainFunc.ReturnType}} {{MainFunc.Name}}GPU({%for Arg in MainFunc.InOutVarsAll %}{%if Arg.IsConst %}const {%endif%}{{Arg.Type}} {{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %});
   {% endfor %}
 
+  virtual void UpdateObjectContext(bool a_updateVec = true);
+  virtual void ReadObjectContext(bool a_updateVec = true);
+
 protected:
   {% for Vector in VectorMembers %}
   device_vector<{{Vector.DataType}}> {{Vector.Name}}_dev;
@@ -255,7 +341,12 @@ protected:
   {% for MainFunc in MainFunctions %}
   float m_exTime{{MainFunc.Name}}[4] = {0,0,0,0};
   {% endfor %}
+
+  {{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData* m_pUBO = nullptr;
+  static std::mutex m_mtx;
 };
+
+std::mutex {{MainClassName}}{{MainClassSuffix}}::m_mtx;
 
 class {{MainClassName}}{{MainClassSuffix}}DEV : public {{MainClassName}}{{MainClassSuffix}}
 {
@@ -284,13 +375,13 @@ protected:
 
 {% for ctorDecl in Constructors %}
 {% if ctorDecl.NumParams == 0 %}
-std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}()
+std::shared_ptr<{{MainClassMakerInterface}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}()
 {
   auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}>();
   return pObj;
 }
 {% else %}
-std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}({{ctorDecl.Params}})
+std::shared_ptr<{{MainClassMakerInterface}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}({{ctorDecl.Params}})
 {
   auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}>({{ctorDecl.PrevCall}});
   return pObj;
@@ -299,13 +390,13 @@ std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix
 {% endfor %}
 {% for ctorDecl in Constructors %}
 {% if ctorDecl.NumParams == 0 %}
-std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}_DEV()
+std::shared_ptr<{{MainClassMakerInterface}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}_DEV()
 {
   auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}DEV>();
   return pObj;
 }
 {% else %}
-std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}_DEV({{ctorDecl.Params}})
+std::shared_ptr<{{MainClassMakerInterface}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix}}_DEV({{ctorDecl.Params}})
 {
   auto pObj = std::make_shared<{{MainClassName}}{{MainClassSuffix}}DEV>({{ctorDecl.PrevCall}});
   return pObj;
@@ -313,58 +404,53 @@ std::shared_ptr<{{MainClassName}}> Create{{ctorDecl.ClassName}}{{MainClassSuffix
 {% endif %}
 {% endfor %}
 
-void {{MainClassName}}{{MainClassSuffix}}::CopyUBOToDevice(bool a_updateVectorSize)
+void {{MainClassName}}{{MainClassSuffix}}::CopyUBOToDevice()
 {
+  if(m_pUBO == nullptr)
+    {{cuda}}Malloc(&m_pUBO, sizeof({{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData));
+  
+  {{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData ubo;
   {% for Var in ClassVars %}
   {% if Var.IsArray %}
   {% if Var.HasPrefix %}
-  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, pUnderlyingImpl->{{Var.CleanName}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
+  memcpy(&ubo.{{Var.Name}}, &pUnderlyingImpl->{{Var.CleanName}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
   {% else %}
-  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, {{Var.Name}}, sizeof({{Var.Name}}));
+  memcpy(&ubo.{{Var.Name}}, &{{Var.Name}}, sizeof({{Var.Name}}));
   {% endif %}
   {% else %}
   {% if Var.HasPrefix %}
-  m_uboData.{{Var.Name}} = pUnderlyingImpl->{{Var.CleanName}};
-  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, &pUnderlyingImpl->{{Var.CleanName}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
+  ubo.{{Var.Name}} = pUnderlyingImpl->{{Var.CleanName}};
   {% else %}
-  cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, &{{Var.Name}}, sizeof({{Var.Name}}));
+  ubo.{{Var.Name}} = {{Var.Name}};
   {% endif %}
   {% endif %}
   {% endfor %}
-  if(a_updateVectorSize)
-  {
-    {% for Var in VectorMembers %}
-    cudaMemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, &{{Var.Name}}_dev, sizeof(LiteMathExtended::device_vector<{{Var.DataType}}>));
-    {% endfor %}
-  }
+  {{cuda}}Memcpy(m_pUBO, &ubo, sizeof(ubo), {{cuda}}MemcpyHostToDevice);
 }
 
-void {{MainClassName}}{{MainClassSuffix}}::CopyUBOFromDevice(bool a_updateVectorSize)
+void {{MainClassName}}{{MainClassSuffix}}::CopyUBOFromDevice()
 {
+  {{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData ubo;
+  {{cuda}}Memcpy(&ubo, m_pUBO, sizeof(ubo), {{cuda}}MemcpyDeviceToHost);
   {% for Var in ClassVars %}
   {% if Var.IsArray %}
   {% if Var.HasPrefix %}
-  cudaMemcpyFromSymbol(pUnderlyingImpl->{{Var.CleanName}}, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
+  memcpy(pUnderlyingImpl->{{Var.CleanName}}, &ubo.{{Var.Name}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
   {% else %}
-  cudaMemcpyFromSymbol({{Var.Name}}, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof({{Var.Name}}));
+  memcpy({{Var.Name}}, &ubo.{{Var.Name}}, sizeof({{Var.Name}}));
   {% endif %}
   {% else %}
   {% if Var.HasPrefix %}
-  m_uboData.{{Var.Name}} = pUnderlyingImpl->{{Var.CleanName}};
-  cudaMemcpyFromSymbol(&pUnderlyingImpl->{{Var.CleanName}}, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof(pUnderlyingImpl->{{Var.CleanName}}));
+  pUnderlyingImpl->{{Var.CleanName}} = ubo.{{Var.Name}};
   {% else %}
-  cudaMemcpyFromSymbol(&{{Var.Name}}, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof({{Var.Name}}));
+  {{Var.Name}} = ubo.{{Var.Name}};
   {% endif %}
   {% endif %}
   {% endfor %}
-  if(a_updateVectorSize)
-  {
-    {% for Var in VectorMembers %}
-    cudaMemcpyFromSymbol(&{{Var.Name}}_dev, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof(LiteMathExtended::device_vector<{{Var.DataType}}>));
-    if({{Var.Name}}.size() != {{Var.Name}}_dev.size())
-      {{Var.Name}}.resize({{Var.Name}}_dev.size());
-    {% endfor %}
-  }
+  {% for Var in VectorMembers %}
+  if({{Var.Name}}.size() != {{Var.Name}}_dev.size())
+    {{Var.Name}}.resize({{Var.Name}}_dev.size());
+  {% endfor %}
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::UpdateDeviceVectors() 
@@ -378,7 +464,29 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateDeviceVectors()
 void {{MainClassName}}{{MainClassSuffix}}::CommitDeviceData()
 {
   UpdateDeviceVectors();
-  CopyUBOToDevice(true);
+  CopyUBOToDevice();
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::UpdateObjectContext(bool a_updateVec)
+{
+  {{cuda}}MemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::ubo, m_pUBO, sizeof({{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData), 0, {{cuda}}MemcpyDeviceToDevice);
+  if(a_updateVec)
+  {
+    {% for Var in VectorMembers %}
+    {{cuda}}MemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, &{{Var.Name}}_dev, sizeof(LiteMathExtended::device_vector<{{Var.DataType}}>));
+    {% endfor %}
+  }
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::ReadObjectContext(bool a_updateVec)
+{
+  {{cuda}}MemcpyFromSymbol(m_pUBO, {{MainClassName}}{{MainClassSuffix}}_DEV::ubo, sizeof({{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData), 0, {{cuda}}MemcpyDeviceToDevice);
+  if(a_updateVec)
+  {
+    {% for Var in VectorMembers %}
+    {{cuda}}MemcpyFromSymbol(&{{Var.Name}}_dev, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof(LiteMathExtended::device_vector<{{Var.DataType}}>));
+    {% endfor %}
+  }
 }
 
 {% for Kernel in Kernels %}
@@ -389,7 +497,7 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
   {% endif %}
   {% if Kernel.IsIndirect %}
   {{MainClassName}}{{MainClassSuffix}}_DEV::{{Kernel.OriginalName}}_Indirect<<<1, 1>>>({%for Arg in Kernel.OriginalArgs %}{{Arg.Name}}{% if loop.index != Kernel.LastArgAll %}, {% endif %}{% endfor %});
-  cudaDeviceSynchronize(); // do we need to wait here? 
+  {{cuda}}DeviceSynchronize(); // do we need to wait here? 
   {% else %}
   dim3 block({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}});
   dim3 grid(({{Kernel.tidX}} + block.x - 1) / block.x, ({{Kernel.tidY}} + block.y - 1) / block.y, ({{Kernel.tidZ}} + block.z - 1) / block.z);
@@ -404,7 +512,10 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
 {% for MainFunc in MainFunctions %}
 {{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.Name}}GPU({%for Arg in MainFunc.InOutVarsAll %}{%if Arg.IsConst %}const {%endif%}{{Arg.Type}} {{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %})
 {
+  std::lock_guard<std::mutex> lock(m_mtx); // lock for UpdateObjectContext/ReadObjectContext to be ussied for this object only
+  UpdateObjectContext();
   {{MainFunc.MainFuncTextCmd}}
+  ReadObjectContext();
 }
 
 {{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.Name}}({%for Arg in MainFunc.InOutVarsAll %}{%if Arg.IsConst %}const {%endif%}{{Arg.Type}} {{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %})
@@ -416,63 +527,63 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
   {{var.DataType}}* {{var.Name}}Host = {{var.Name}};
   {% endfor %}
   
-  cudaEvent_t _start, _stop;
-  cudaEventCreate(&_start);
-  cudaEventCreate(&_stop);
+  {{cuda}}Event_t _start, _stop;
+  {{cuda}}EventCreate(&_start);
+  {{cuda}}EventCreate(&_stop);
   
-  cudaEventRecord(_start);
+  {{cuda}}EventRecord(_start);
   {% for var in MainFunc.FullImpl.InputData %}
-  cudaMalloc(&{{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
+  {{cuda}}Malloc(&{{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endfor %}
   {% for var in MainFunc.FullImpl.OutputData %}
-  cudaMalloc(&{{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
+  {{cuda}}Malloc(&{{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endfor %}
-  cudaEventRecord(_stop);
-  cudaEventSynchronize(_stop);
-  cudaEventElapsedTime(&m_exTime{{MainFunc.Name}}[3], _start, _stop);
+  {{cuda}}EventRecord(_stop);
+  {{cuda}}EventSynchronize(_stop);
+  {{cuda}}EventElapsedTime(&m_exTime{{MainFunc.Name}}[3], _start, _stop);
   
-  cudaEventRecord(_start);
+  {{cuda}}EventRecord(_start);
   {% for var in MainFunc.FullImpl.InputData %}
-  cudaMemcpy((void*){{var.Name}}, {{var.Name}}Host, {{var.DataSize}}*sizeof({{var.DataType}}), cudaMemcpyHostToDevice);
+  {{cuda}}Memcpy((void*){{var.Name}}, {{var.Name}}Host, {{var.DataSize}}*sizeof({{var.DataType}}), {{cuda}}MemcpyHostToDevice);
   {% endfor %}
-  CopyUBOToDevice(true);
-  cudaEventRecord(_stop);
-  cudaEventSynchronize(_stop);
-  cudaEventElapsedTime(&m_exTime{{MainFunc.Name}}[1], _start, _stop);
+  CopyUBOToDevice();
+  {{cuda}}EventRecord(_stop);
+  {{cuda}}EventSynchronize(_stop);
+  {{cuda}}EventElapsedTime(&m_exTime{{MainFunc.Name}}[1], _start, _stop);
   
-  cudaEventRecord(_start);
+  {{cuda}}EventRecord(_start);
   {% if MainFunc.IsVoid %}
   {{MainFunc.Name}}GPU({%for Arg in MainFunc.InOutVarsAll %}{{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %});
   {% else %}
   auto _resFromGPU = {{MainFunc.Name}}GPU({%for Arg in MainFunc.InOutVarsAll %}{{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %});
   {% endif %}
-  cudaEventRecord(_stop);
-  cudaEventSynchronize(_stop);
-  cudaEventElapsedTime(&m_exTime{{MainFunc.Name}}[0], _start, _stop);
+  {{cuda}}EventRecord(_stop);
+  {{cuda}}EventSynchronize(_stop);
+  {{cuda}}EventElapsedTime(&m_exTime{{MainFunc.Name}}[0], _start, _stop);
   
-  cudaEventRecord(_start);
+  {{cuda}}EventRecord(_start);
   CopyUBOFromDevice();
   {% for var in MainFunc.FullImpl.OutputData %}
-  cudaMemcpy({{var.Name}}Host, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}), cudaMemcpyDeviceToHost);
+  {{cuda}}Memcpy({{var.Name}}Host, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}), {{cuda}}MemcpyDeviceToHost);
   {% endfor %}
-  cudaEventRecord(_stop);
-  cudaEventSynchronize(_stop);
-  cudaEventElapsedTime(&m_exTime{{MainFunc.Name}}[2], _start, _stop);
+  {{cuda}}EventRecord(_stop);
+  {{cuda}}EventSynchronize(_stop);
+  {{cuda}}EventElapsedTime(&m_exTime{{MainFunc.Name}}[2], _start, _stop);
   
-  cudaEventRecord(_start);
+  {{cuda}}EventRecord(_start);
   {% for var in MainFunc.FullImpl.InputData %}
-  cudaFree((void*){{var.Name}});
+  {{cuda}}Free((void*){{var.Name}});
   {% endfor %}
   {% for var in MainFunc.FullImpl.OutputData %}
-  cudaFree({{var.Name}});
+  {{cuda}}Free({{var.Name}});
   {% endfor %}
-  cudaEventRecord(_stop);
-  cudaEventSynchronize(_stop);
+  {{cuda}}EventRecord(_stop);
+  {{cuda}}EventSynchronize(_stop);
   float _timeForFree = 0.0f;
-  cudaEventElapsedTime(&_timeForFree, _start, _stop);
+  {{cuda}}EventElapsedTime(&_timeForFree, _start, _stop);
   m_exTime{{MainFunc.Name}}[3] += _timeForFree;
-  cudaEventDestroy(_start);
-  cudaEventDestroy(_stop);
+  {{cuda}}EventDestroy(_start);
+  {{cuda}}EventDestroy(_stop);
   {% if not MainFunc.IsVoid %}
   return _resFromGPU;
   {% endif %}

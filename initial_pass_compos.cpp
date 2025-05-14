@@ -74,6 +74,11 @@ void kslicer::PerformInheritanceMerge(kslicer::ClassInfo& mainClassInfo, const k
     auto p = mainClassInfo.funMembers.find(name);
     if(p == mainClassInfo.funMembers.end())             // because implementation in main (derived) class
       mainClassInfo.funMembers[name] = member.second;   // always overrides any implementations in base class
+    else                                                             // but we can store overriden function with it's unique name: 'class_function'
+    {                                                                // 
+      std::string funName = baseClassInfo.name + "_" + member.first; //
+      mainClassInfo.funMembers[funName] = member.second;             //
+    }
   }
   
   // merge kernels from base class
@@ -83,6 +88,11 @@ void kslicer::PerformInheritanceMerge(kslicer::ClassInfo& mainClassInfo, const k
     auto p = mainClassInfo.funKernels.find(f.first);             // because implementation in main (derived) class
     if(p == mainClassInfo.funKernels.end())                      // always overrides any implementations in base class
       mainClassInfo.funKernels[f.first] = f.second;
+    else                                                         // but we can store overriden function with it's unique name: 'class_function'
+    {                                                            // 
+      std::string funName = baseClassInfo.name + "_" + f.first;  //
+      mainClassInfo.funKernels[funName] = f.second;              //
+    }
   }
   
   // merge control functions base class

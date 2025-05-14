@@ -271,6 +271,11 @@ int main(int argc, const char **argv) //
     if(params.find("-timestamps") != params.end())
       textGenSettings.enableTimeStamps = (atoi(params["-timestamps"].c_str()) != 0);
     textGenSettings.genSeparateGPUAPI = genGPUAPI;
+    textGenSettings.interfaceName = mainClassName;
+    if(params.find("-makerInterfaceName") != params.end())
+      textGenSettings.interfaceName = params["-makerInterfaceName"];
+    if(params.find("-useCUB") != params.end())
+      textGenSettings.useCUBforCUDA = (atoi(params["-useCUB"].c_str()) != 0);
   }
 
   // include and process folders
@@ -370,15 +375,22 @@ int main(int argc, const char **argv) //
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::SlangCompiler>(inputCodeInfo.mainClassSuffix);
     if(shaderCCName == "cuda_slang")
-      inputCodeInfo.pHostCC = std::make_shared<kslicer::CudaCodeGen>(); 
+      inputCodeInfo.pHostCC = std::make_shared<kslicer::CudaCodeGen>("cuda"); 
     else
       inputCodeInfo.pHostCC = std::make_shared<kslicer::VulkanCodeGen>(); 
     inputCodeInfo.processFolders.push_back("include/");
   }
-  else if(shaderCCName == "cuda" || shaderCCName == "CUDA")
+  else if(shaderCCName == "cuda" || shaderCCName == "CUDA" || shaderCCName == "hip" || shaderCCName == "HIP" || shaderCCName == "musa" || shaderCCName == "MUSA")
   {
+    std::string actualCUDAType = "cuda";
+    {
+      if(shaderCCName == "hip" || shaderCCName == "HIP")
+        actualCUDAType = "hip";
+      else if(shaderCCName == "musa" || shaderCCName == "MUSA")
+        actualCUDAType = "musa";
+    }
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::CudaCompiler>(inputCodeInfo.mainClassSuffix); 
-    inputCodeInfo.pHostCC   = std::make_shared<kslicer::CudaCodeGen>();
+    inputCodeInfo.pHostCC   = std::make_shared<kslicer::CudaCodeGen>(actualCUDAType);
     inputCodeInfo.ignoreFolders.push_back("include/");
   }
   else if(shaderCCName == "ispc" || shaderCCName == "ISPC")
@@ -862,7 +874,6 @@ int main(int argc, const char **argv) //
   std::cout << "{" << std::endl;
 
   std::vector<kslicer::FuncData> usedFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
-   //std::vector<kslicer::DeclInClass> usedDecls = kslicer::ExtractTCFromClass(inputCodeInfo.mainClassName, inputCodeInfo.mainClassASTNode, compiler, Tool);
   std::vector<kslicer::DeclInClass> usedDecls;
   for(auto name : inputCodeInfo.mainClassNames)
   {
@@ -877,11 +888,12 @@ int main(int argc, const char **argv) //
   for(const auto& usedDecl : usedDecls) // merge usedDecls with generalDecls
   {
     bool found = false;
-    for(const auto& currDecl : generalDecls)
+    for(auto& currDecl : generalDecls)
     {
       if(currDecl.name == usedDecl.name)
       {
         found = true;
+        currDecl.inClass = true;
         break;
       }
     }
@@ -952,11 +964,20 @@ int main(int argc, const char **argv) //
       for(auto memberF : k.second.usedMemberFunctions)                    // (1) process member functions
         usedFunctionsCopy.push_back(memberF.second);                                                                                                                           
       usedFunctionsCopy.push_back(kslicer::FuncDataFromKernel(k.second)); // (2) process kernel in the same way as used member functions by this kernel  
+      
+      clang::Rewriter rewrite2;
+      rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+    
+      auto pInfoVisitor = std::make_shared<kslicer::KernelInfoVisitor>(rewrite2, compiler, &inputCodeInfo, k.second, true);
 
       for(const auto& f : usedFunctionsCopy)
       {
         if(!f.isMember) // and if is called from this kernel.It it is called, list all input parameters for each call!
           continue;
+
+        // get shader features and other from used member function
+        //
+        pInfoVisitor->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
 
         // list all input parameters for each call of member function inside kernel; in this way we know which textures, vectors and samplers were actually used by these functions
         //
