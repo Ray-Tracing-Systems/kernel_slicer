@@ -28,7 +28,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
     imageStorageSize.type                = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     imageStorageSize.descriptorCount     = {{TotalTexStorageUsed}};
     accelStorageSize.type                = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-    imageStorageSize.descriptorCount     = {{TotalAccels + 1}};
+    accelStorageSize.descriptorCount     = {% if TotalAccels > 0 %} {{TotalAccels+1}} {% else %} 0 {% endif %};
   
     if(combinedImageSamSize.descriptorCount > 0)
       poolSizes.push_back(combinedImageSamSize);
