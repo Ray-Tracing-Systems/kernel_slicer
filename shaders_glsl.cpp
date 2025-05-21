@@ -100,8 +100,8 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
         ISData["Kernel"]             = currKerneJson["Kernel"];
         ISData["Implementation"]     = impl;
         ISData["IntersectionShader"] = intersectionShader;
-        std::string outFileName_RHIT = std::string(impl["ClassName"]) + "_" + std::string(intersectionShader["Name"]) + "_hit.glsl";
-        std::string outFileName_RINT = std::string(impl["ClassName"]) + "_" + std::string(intersectionShader["Name"]) + "_int.glsl";
+        std::string outFileName_RHIT = kernelName + std::string("_") + std::string(impl["ClassName"]) + "_" + std::string(intersectionShader["Name"]) + "_hit.glsl";
+        std::string outFileName_RINT = kernelName + std::string("_") + std::string(impl["ClassName"]) + "_" + std::string(intersectionShader["Name"]) + "_int.glsl";
 
         if(intersectionShaders.find(outFileName_RHIT) != intersectionShaders.end())
           continue;
@@ -140,7 +140,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
               CSData["Implementation"] = impl;
               CSData["MemberName"]     = member["Name"];
   
-              std::string outFileName  = a_codeInfo->RemoveKernelPrefix(kernelName) + "_" + std::string(impl["ClassName"]) + "_" + std::string(member["Name"]) + "_call.glsl";
+              std::string outFileName  = kernelName + "_" + std::string(impl["ClassName"]) + "_" + std::string(member["Name"]) + "_call.glsl";
         
               kslicer::ApplyJsonToTemplate(templatePathCalShd.c_str(), shaderPath / outFileName, CSData);
               

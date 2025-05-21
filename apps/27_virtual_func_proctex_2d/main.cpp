@@ -94,7 +94,9 @@ int main(int argc, const char** argv)
 
     float timeKern = timings[0];
     fout << implNum <<";" << branchingName[i] << ";" << timeCmd << ";" << timeKern << ";" << std::endl;
-  }
-
+  } 
+  
+  pImpl = nullptr;
+  vk_utils::globalContextDestroy();
   return 0;
 }

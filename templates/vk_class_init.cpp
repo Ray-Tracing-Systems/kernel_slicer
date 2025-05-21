@@ -547,7 +547,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
     {% for Func in Impl.MemberFunctions %}
     {% if Func.IsIntersection %}
 
-    std::string shader{{Impl.ClassName}}RINT = AlterShaderPath("{{ShaderFolder}}/{{Impl.ClassName}}_{{Func.Name}}_int.glsl.spv");
+    std::string shader{{Impl.ClassName}}RINT = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}_{{Impl.ClassName}}_{{Func.Name}}_int.glsl.spv");
     std::string shader{{Impl.ClassName}}RHIT = AlterShaderPath("{{ShaderFolder}}/z_trace_custom_hit.glsl.spv");  
     {% endif %}
     {% endfor %}
@@ -556,7 +556,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
     {% for Func in Hierarchy.VirtualFunctions %}
 
     {% for Impl in Hierarchy.Implementations %}
-    std::string shader{{Impl.ClassName}}_{{Func.Name}} = AlterShaderPath("{{ShaderFolder}}/{{Kernel.Name}}_{{Impl.ClassName}}_{{Func.Name}}_call.glsl.spv");
+    std::string shader{{Impl.ClassName}}_{{Func.Name}} = AlterShaderPath("{{ShaderFolder}}/{{Kernel.OriginalName}}_{{Impl.ClassName}}_{{Func.Name}}_call.glsl.spv");
     {% endfor %}
     {% endfor %}
     {% endif %}
