@@ -466,6 +466,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UseMotionBlur"]      = a_settings.enableMotionBlur;
   data["UseCallable"]        = a_settings.enableCallable;
   data["EnableTimeStamps"]   = a_settings.enableTimeStamps;
+  data["UsePipelineCache"]   = a_settings.usePipelineCache;
   if(a_classInfo.megakernelRTV)
     data["TimeStampSize"]    = a_classInfo.megakernelsByName.size();
   else

@@ -458,12 +458,12 @@ protected:
   std::vector<VkStridedDeviceAddressRegionKHR> {{Kernel.Name}}SBTStrides;
   {% endif %}
   {% endfor %}
-
   {% if UseSpecConstWgSize %}
   VkSpecializationMapEntry m_specializationEntriesWgSize[3];
   VkSpecializationInfo     m_specsForWGSize;
-  {% endif %}
 
+  {% endif %}
+  VkPipelineCache m_pipelineCache = VK_NULL_HANDLE; // if pipeline cache not enabled, will be VK_NULL_HANDLE 
   virtual VkBufferUsageFlags GetAdditionalFlagsForUBO() const;
   virtual uint32_t           GetDefaultMaxTextures() const;
 

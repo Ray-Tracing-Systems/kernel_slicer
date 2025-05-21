@@ -38,6 +38,7 @@ namespace kslicer
     bool enableMotionBlur  = false;
     bool enableCallable    = false;
     bool enableTimeStamps  = false;
+    bool usePipelineCache  = false;
     bool genSeparateGPUAPI = false;
     bool useCUBforCUDA     = true;
     std::string interfaceName;

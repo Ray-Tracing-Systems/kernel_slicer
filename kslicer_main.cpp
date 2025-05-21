@@ -270,8 +270,10 @@ int main(int argc, const char **argv) //
       textGenSettings.enableCallable = (atoi(params["-enable_callable_shaders"].c_str()) != 0);
     if(params.find("-timestamps") != params.end())
       textGenSettings.enableTimeStamps = (atoi(params["-timestamps"].c_str()) != 0);
+    if(params.find("-pipelinecache") != params.end())
+      textGenSettings.usePipelineCache = (atoi(params["-pipelinecache"].c_str()) != 0);
     textGenSettings.genSeparateGPUAPI = genGPUAPI;
-    textGenSettings.interfaceName = mainClassName;
+    textGenSettings.interfaceName     = mainClassName;
     if(params.find("-makerInterfaceName") != params.end())
       textGenSettings.interfaceName = params["-makerInterfaceName"];
     if(params.find("-useCUB") != params.end())

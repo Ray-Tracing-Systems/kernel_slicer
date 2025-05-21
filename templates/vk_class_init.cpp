@@ -184,7 +184,7 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeComputePipelineAndLayout(const ch
   pipelineInfo.stage              = shaderStageInfo;
   pipelineInfo.layout             = (*pPipelineLayout);
   pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-  res = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pPipeline);
+  res = vkCreateComputePipelines(device, m_pipelineCache, 1, &pipelineInfo, nullptr, pPipeline);
   if(res != VK_SUCCESS)
   {
     std::string errMsg = vk_utils::errorString(res);
@@ -216,7 +216,7 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeComputePipelineOnly(const char* a
   pipelineInfo.stage              = shaderStageInfo;
   pipelineInfo.layout             = pipelineLayout;
   pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-  VkResult res = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pPipeline);
+  VkResult res = vkCreateComputePipelines(device, m_pipelineCache, 1, &pipelineInfo, nullptr, pPipeline);
   if(res != VK_SUCCESS)
   {
     std::string errMsg = vk_utils::errorString(res);
@@ -341,7 +341,7 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
   createInfo.maxPipelineRayRecursionDepth = 1;
   createInfo.layout     = (*pPipelineLayout);
   createInfo.flags      = pipelineFlags;
-  res = vkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &createInfo, nullptr, pPipeline);
+  res = vkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, m_pipelineCache, 1, &createInfo, nullptr, pPipeline);
   if(res != VK_SUCCESS)
   {
     std::string errMsg = vk_utils::errorString(res);
@@ -451,6 +451,9 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
   {% endfor %}
   {% endif %}
 ## endfor
+  {% if UsePipelineCache %}
+  vkDestroyPipelineCache(device, m_pipelineCache, nullptr);
+  {% endif %}
   DeleteDeviceData();
 }
 
@@ -627,8 +630,39 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
 
 ## endfor
 
+{% if UsePipelineCache %}
+static std::vector<char> loadPipelineCacheData(const std::string& filename) 
+{
+  std::ifstream file(filename, std::ios::binary | std::ios::ate);
+  if (!file.is_open()) {
+      return {};  // Файла нет — вернём пустые данные
+  }
+  size_t fileSize = file.tellg();
+  file.seekg(0);
+  std::vector<char> data(fileSize);
+  file.read(data.data(), fileSize);
+  return data;
+}
+
+{% endif %}
 void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
 {
+  {% if UsePipelineCache %}
+  std::string cachePath       = AlterShaderPath("{{ShaderFolder}}/zzpcache.bin");
+  std::vector<char> cacheData = loadPipelineCacheData(cachePath.c_str());
+  VkPipelineCacheCreateInfo cacheInfo = {};
+  cacheInfo.sType           = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+  cacheInfo.initialDataSize = cacheData.size();
+  cacheInfo.pInitialData    = cacheData.data();
+  
+  VkResult pipelineCacheCreated = vkCreatePipelineCache(device, &cacheInfo, nullptr, &m_pipelineCache);
+  if (pipelineCacheCreated != VK_SUCCESS) 
+  {
+    cacheInfo.initialDataSize = 0;
+    cacheInfo.pInitialData    = nullptr;
+    vkCreatePipelineCache(device, &cacheInfo, nullptr, &m_pipelineCache);
+  }
+  {% endif %}
 ## for Kernel in Kernels
   InitKernel_{{Kernel.Name}}(a_filePath);
 ## endfor
@@ -720,6 +754,17 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   {% endif %} {# /* UseMatMult */ #}
   {% if length(IndirectDispatches) > 0 %}
   InitIndirectBufferUpdateResources(a_filePath);
+  {% endif %}
+  {% if UsePipelineCache %}
+  // update pipeline cache
+  { 
+    size_t cacheSize;
+    vkGetPipelineCacheData(device, m_pipelineCache, &cacheSize, nullptr);
+    std::vector<uint8_t> cacheData(cacheSize);
+    vkGetPipelineCacheData(device, m_pipelineCache, &cacheSize, cacheData.data());
+    std::ofstream file(cachePath.c_str(), std::ios::binary);
+    file.write(reinterpret_cast<char*>(cacheData.data()), cacheSize);
+  }
   {% endif %}
 }
 
