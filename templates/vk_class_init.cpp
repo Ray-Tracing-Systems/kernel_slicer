@@ -1409,7 +1409,6 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(
     imageViewInfo.flags                           = 0;
     imageViewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
     imageViewInfo.format                          = formats[i];
-
     if(imageViewInfo.format == VK_FORMAT_R32_SFLOAT || imageViewInfo.format == VK_FORMAT_R8_UNORM  || imageViewInfo.format == VK_FORMAT_R8_SNORM ||
        imageViewInfo.format == VK_FORMAT_R16_SFLOAT || imageViewInfo.format == VK_FORMAT_R16_UNORM || imageViewInfo.format == VK_FORMAT_R16_SNORM)
       imageViewInfo.components                    = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R }; 
