@@ -14,33 +14,18 @@ void kslicer::ISPCRewriter::Init()
 
 std::string kslicer::ISPCRewriter::RewriteStdVectorTypeStr(const std::string& a_str) const
 {
-  const bool isConst  = (a_str.find("const") != std::string::npos);
-  std::string copy = a_str;
-  ReplaceFirst(copy, "const ", "");
-  while(ReplaceFirst(copy, " ", ""));
-
-  auto sFeatures2 = kslicer::GetUsedShaderFeaturesFromTypeName(a_str);
-  sFeatures = sFeatures || sFeatures2;
-
-  std::string resStr;
-  std::string typeStr = kslicer::CleanTypeName(a_str);
-
-  if(typeStr.size() > 0 && typeStr[typeStr.size()-1] == ' ')
-    typeStr = typeStr.substr(0, typeStr.size()-1);
-
-  if(typeStr.size() > 0 && typeStr[0] == ' ')
-    typeStr = typeStr.substr(1, typeStr.size()-1);
-
-  auto p = m_typesReplacement.find(typeStr);
-  if(p == m_typesReplacement.end())
-    resStr = typeStr;
-  else
-    resStr = p->second;
-
+  const bool isConst = (a_str.find("const ") != std::string::npos);
+  std::string typeStr = a_str;
+  ReplaceFirst(typeStr, "struct LiteMath::", "");
+  ReplaceFirst(typeStr, "LiteMath::", "");
+  ReplaceFirst(typeStr, "struct glm::", "");
+  ReplaceFirst(typeStr, "glm::", "");
+  ReplaceFirst(typeStr, "const ",    "");
+  ReplaceFirst(typeStr, m_codeInfo->mainClassName + "::", "");
+  ReplaceFirst(typeStr, "struct float4x4", "float4x4");       // small inconvinience in math library
   if(isConst)
-    resStr = std::string("const ") + resStr;
-
-  return resStr;
+    typeStr = std::string("const ") + typeStr;
+  return typeStr;
 }
 
 // process arrays: 'float[3] data' --> 'float data[3]' 
@@ -450,6 +435,7 @@ std::string kslicer::ISPCRewriter::RecursiveRewrite(const clang::Stmt* expr)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+constexpr static bool NEW_REWRITER = true;
 
 kslicer::ISPCCompiler::ISPCCompiler(bool a_useCPP, const std::string& a_prefix) : ClspvCompiler(a_useCPP, a_prefix)
 {
@@ -458,19 +444,27 @@ kslicer::ISPCCompiler::ISPCCompiler(bool a_useCPP, const std::string& a_prefix) 
 
 std::shared_ptr<kslicer::FunctionRewriter> kslicer::ISPCCompiler::MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit)
 {
-  auto pFunc = std::make_shared<ISPCRewriter>(R, a_compiler, a_codeInfo);
-  pFunc->m_shit = a_shit;
-  return pFunc;
-  //return std::make_shared<kslicer::FunctionRewriter>(R, a_compiler, a_codeInfo);
+  if(NEW_REWRITER)
+  {
+    auto pFunc = std::make_shared<ISPCRewriter>(R, a_compiler, a_codeInfo);
+    pFunc->m_shit = a_shit;
+    return pFunc;
+  }
+  else
+    return std::make_shared<kslicer::FunctionRewriter>(R, a_compiler, a_codeInfo);
 }
 
 std::shared_ptr<kslicer::KernelRewriter> kslicer::ISPCCompiler::MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
                                                                                  kslicer::KernelInfo& a_kernel, const std::string& fakeOffs)
 {
-  auto pFunc = std::make_shared<ISPCRewriter>(R, a_compiler, a_codeInfo);
-  pFunc->InitKernelData(a_kernel, fakeOffs);
-  return std::make_shared<KernelRewriter2>(R, a_compiler, a_codeInfo, a_kernel, fakeOffs, pFunc);
-  //return std::make_shared<kslicer::KernelRewriter>(R, a_compiler, a_codeInfo, a_kernel, fakeOffs);
+  if(NEW_REWRITER)
+  {
+    auto pFunc = std::make_shared<ISPCRewriter>(R, a_compiler, a_codeInfo);
+    pFunc->InitKernelData(a_kernel, fakeOffs);
+    return std::make_shared<KernelRewriter2>(R, a_compiler, a_codeInfo, a_kernel, fakeOffs, pFunc);
+  }
+  else
+    return std::make_shared<kslicer::KernelRewriter>(R, a_compiler, a_codeInfo, a_kernel, fakeOffs);
 }
 
 
