@@ -41,6 +41,7 @@ namespace kslicer
     bool usePipelineCache  = false;
     bool genSeparateGPUAPI = false;
     bool useCUBforCUDA     = true;
+    bool skipUBORead       = false;
     std::string interfaceName;
   };
 
@@ -1714,6 +1715,7 @@ namespace kslicer
     bool useComplexNumbers = false;
     bool genGPUAPI         = false;
     bool forceAllBufToRefs = false;
+    bool placeVectorsInUBO = true;
 
     std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;
     std::vector<BufferReference>                  m_allRefsFromVFH;

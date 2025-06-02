@@ -278,6 +278,8 @@ int main(int argc, const char **argv) //
       textGenSettings.interfaceName = params["-makerInterfaceName"];
     if(params.find("-useCUB") != params.end())
       textGenSettings.useCUBforCUDA = (atoi(params["-useCUB"].c_str()) != 0);
+    if(params.find("-skip_ubo_read") != params.end())
+      textGenSettings.skipUBORead = atoi(params["-skip_ubo_read"].c_str());
   }
 
   // include and process folders
@@ -407,6 +409,10 @@ int main(int argc, const char **argv) //
     inputCodeInfo.pHostCC   = std::make_shared<kslicer::VulkanCodeGen>();
     inputCodeInfo.ignoreFolders.push_back("include/");
   }
+
+  // override this parameter with value that we have read from commadn line
+  if(params.find("-vec_in_ubo") != params.end())
+    inputCodeInfo.placeVectorsInUBO = atoi(params["-vec_in_ubo"].c_str());
 
   inputCodeInfo.defaultVkernelType   = defaultVkernelType;
   inputCodeInfo.halfFloatTextures    = halfFloatTextures;

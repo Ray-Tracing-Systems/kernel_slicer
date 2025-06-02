@@ -30,6 +30,7 @@ std::vector<kslicer::ArgFinal> kslicer::IPV_Pattern::GetKernelTIDArgs(const Kern
     arg2.type        = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
     arg2.loopIter    = arg;
     arg2.loopIter.id = i;
+
     args.push_back(arg2);
   }
 

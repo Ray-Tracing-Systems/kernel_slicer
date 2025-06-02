@@ -683,8 +683,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernels = a_classInfo.kernels;
   }
 
-  std::unordered_map<uint64_t, json> allUsedMemberFunctions;
-  std::unordered_set<std::string>    excludedMemberFunctions;
+  std::map<uint64_t, json>        allUsedMemberFunctions;
+  std::unordered_set<std::string> excludedMemberFunctions;
  
   if(a_classInfo.persistentRTV)
   {
@@ -1182,6 +1182,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       if(k.loopIters.size() > 0)
       {
         std::string exprContent      = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[0].sizeText);
+        if(a_classInfo.pShaderCC->IsCUDA() && a_classInfo.placeVectorsInUBO)
+          exprContent = std::string("ubo.") + exprContent;
         kernelJson["IndirectSizeX"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
         kernelJson["IndirectStartX"] = kernelJson["ThreadIds"][0]["Start"];
       }
@@ -1189,6 +1191,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       if(k.loopIters.size() > 1)
       {
         std::string exprContent      = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[1].sizeText);
+        if(a_classInfo.pShaderCC->IsCUDA() && a_classInfo.placeVectorsInUBO)
+          exprContent = std::string("ubo.") + exprContent;
         kernelJson["IndirectSizeY"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
         kernelJson["IndirectStartY"] = kernelJson["ThreadIds"][1]["Start"];
       }
@@ -1196,6 +1200,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       if(k.loopIters.size() > 2)
       {
         std::string exprContent      = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[2].sizeText);
+        if(a_classInfo.pShaderCC->IsCUDA() && a_classInfo.placeVectorsInUBO)
+          exprContent = std::string("ubo.") + exprContent;
         kernelJson["IndirectSizeZ"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
         kernelJson["IndirectStartZ"] = kernelJson["ThreadIds"][2]["Start"];
       }
@@ -1447,6 +1453,9 @@ std::string kslicer::IShaderCompiler::ReplaceSizeCapacityExpr(const std::string&
   {
     const std::string memberNameA = a_str.substr(0, posOfPoint);
     const std::string fname       = a_str.substr(posOfPoint+1);
+
+    //if(IsCUDA() && )
+
     return memberNameA + "_" + fname.substr(0, fname.find("("));
   }
   else

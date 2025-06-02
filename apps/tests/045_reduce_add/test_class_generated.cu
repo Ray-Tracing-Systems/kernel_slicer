@@ -34,12 +34,13 @@ namespace SimpleTest_Generated_DEV
   __device__ inline void ReduceAdd(LiteMathExtended::device_vector<T>& a_vec, IndexType offset, IndexType a_sizeAligned, T val)  { ReduceAdd<T,IndexType>(a_vec, offset, val); }
 
 
-  __device__ LiteMathExtended::device_vector<float> m_accum;
   struct UniformBufferObjectData
   {
+    LiteMathExtended::device_vector<float> m_accum;
   };
   __device__ UniformBufferObjectData ubo;
-  
+
+
   __device__ float atomicMin(float* address, float val) 
   {
     int* addr_as_int = (int*)address;
@@ -83,11 +84,11 @@ namespace SimpleTest_Generated_DEV
       runThisThread = false;
     
     //float x = in_data[i];
-    ReduceAdd<float, uint32_t>(m_accum, 0, 1.0f);
-    ReduceAdd<float, uint32_t>(m_accum, 1, 2.0f);
-    ReduceAdd<float, uint32_t>(m_accum, 2, 3.0f);
-    ReduceAdd<float, uint32_t>(m_accum, 3, 4.0f);
-    ReduceAdd<float, uint32_t>(m_accum, 4, 5.0f);
+    ReduceAdd<float, uint32_t>(ubo.m_accum, 0, 1.0f);
+    ReduceAdd<float, uint32_t>(ubo.m_accum, 1, 2.0f);
+    ReduceAdd<float, uint32_t>(ubo.m_accum, 2, 3.0f);
+    ReduceAdd<float, uint32_t>(ubo.m_accum, 3, 4.0f);
+    ReduceAdd<float, uint32_t>(ubo.m_accum, 4, 5.0f);
   
   }
 
@@ -191,6 +192,9 @@ void SimpleTest_Generated::CopyUBOToDevice()
     cudaMalloc(&m_pUBO, sizeof(SimpleTest_Generated_DEV::UniformBufferObjectData));
   
   SimpleTest_Generated_DEV::UniformBufferObjectData ubo;
+  ubo.m_accum.m_data     = m_accum_dev.data();
+  ubo.m_accum.m_size     = m_accum_dev.size();
+  ubo.m_accum.m_capacity = m_accum_dev.capacity();
   cudaMemcpy(m_pUBO, &ubo, sizeof(ubo), cudaMemcpyHostToDevice);
 }
 
@@ -198,8 +202,11 @@ void SimpleTest_Generated::CopyUBOFromDevice()
 {
   SimpleTest_Generated_DEV::UniformBufferObjectData ubo;
   cudaMemcpy(&ubo, m_pUBO, sizeof(ubo), cudaMemcpyDeviceToHost);
-  if(m_accum.size() != m_accum_dev.size())
-    m_accum.resize(m_accum_dev.size());
+  if(m_accum.size() != ubo.m_accum.size())
+  {
+    m_accum.resize(ubo.m_accum.size());
+    m_accum.resize(ubo.m_accum.size());
+  }
 }
 
 void SimpleTest_Generated::UpdateDeviceVectors() 
@@ -217,19 +224,11 @@ void SimpleTest_Generated::CommitDeviceData()
 void SimpleTest_Generated::UpdateObjectContext(bool a_updateVec)
 {
   cudaMemcpyToSymbol(SimpleTest_Generated_DEV::ubo, m_pUBO, sizeof(SimpleTest_Generated_DEV::UniformBufferObjectData), 0, cudaMemcpyDeviceToDevice);
-  if(a_updateVec)
-  {
-    cudaMemcpyToSymbol(SimpleTest_Generated_DEV::m_accum, &m_accum_dev, sizeof(LiteMathExtended::device_vector<float>));
-  }
 }
 
 void SimpleTest_Generated::ReadObjectContext(bool a_updateVec)
 {
   cudaMemcpyFromSymbol(m_pUBO, SimpleTest_Generated_DEV::ubo, sizeof(SimpleTest_Generated_DEV::UniformBufferObjectData), 0, cudaMemcpyDeviceToDevice);
-  if(a_updateVec)
-  {
-    cudaMemcpyFromSymbol(&m_accum_dev, SimpleTest_Generated_DEV::m_accum, sizeof(LiteMathExtended::device_vector<float>));
-  }
 }
 
 void SimpleTest_Generated::kernel1D_CalcAndAccum(const float* in_data, uint32_t a_threadsNum, float* a_out)

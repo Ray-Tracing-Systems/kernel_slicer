@@ -163,15 +163,16 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
   // // m_currKernel.hasInitPass &&
   const bool isInLoopInitPart   = !m_codeInfo->IsRTV() && (expr->getSourceRange().getEnd()   < m_pCurrKernel->loopInsides.getBegin());
   const bool isInLoopFinishPart = !m_codeInfo->IsRTV() && (expr->getSourceRange().getBegin() > m_pCurrKernel->loopInsides.getEnd());
-  const bool hasLargeSize     = true; // (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);
-  const bool inMegaKernel     = m_codeInfo->megakernelRTV;
-  const bool subjectedToRed   = m_pCurrKernel->subjectedToReduction.find(fieldName) != m_pCurrKernel->subjectedToReduction.end();
-  
+  const bool hasLargeSize   = true; // (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);
+  const bool inMegaKernel   = m_codeInfo->megakernelRTV;
+  const bool subjectedToRed = m_pCurrKernel->subjectedToReduction.find(fieldName) != m_pCurrKernel->subjectedToReduction.end();
+  const bool checkContainer = !pMember->second.isContainer || m_codeInfo->placeVectorsInUBO; // || CUDA_ENABLE_UBO 
+
   if(m_codeInfo->pShaderCC->IsISPC() && subjectedToRed)
     return false;
   
-  if(!pMember->second.isContainer && WasNotRewrittenYet(expr) && (isInLoopInitPart || isInLoopFinishPart || !subjectedToRed) && 
-                                                                 (isInLoopInitPart || isInLoopFinishPart || pMember->second.isArray || hasLargeSize || inMegaKernel)) 
+  if(checkContainer && WasNotRewrittenYet(expr) && (isInLoopInitPart || isInLoopFinishPart || !subjectedToRed) && 
+                                                   (isInLoopInitPart || isInLoopFinishPart || pMember->second.isArray || hasLargeSize || inMegaKernel)) 
   {
     out_text = m_codeInfo->pShaderCC->UBOAccess(pMember->second.name);
     clang::SourceRange thisRng = expr->getSourceRange();

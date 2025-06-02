@@ -472,7 +472,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   else
     data["TimeStampSize"]    = a_classInfo.m_timestampPoolSize;
   
-  data["UseCUB"] = a_settings.useCUBforCUDA;
+  data["UseCUB"]      = a_settings.useCUBforCUDA;
+  data["SkipReadUBO"] = a_settings.skipUBORead;
+  data["VecUBO"] = a_classInfo.placeVectorsInUBO;
   data["cuda"]   = a_classInfo.pHostCC->Name();
 
   const bool hasBufferReferenceBind = a_classInfo.HasBufferReferenceBind();

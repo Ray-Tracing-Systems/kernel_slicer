@@ -94,11 +94,18 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
   __device__ {{LocalFunc}}
 
   {% endfor %}
+  {% if not VecUBO %}
   {% for Vector in VectorMembers %}
   __device__ LiteMathExtended::device_vector<{{Vector.DataType}}> {{Vector.Name}};
   {% endfor %}
+  {% endif %}
   struct UniformBufferObjectData
   {
+    {% if VecUBO %}
+    {% for Vector in VectorMembers %}
+    LiteMathExtended::device_vector<{{Vector.DataType}}> {{Vector.Name}};
+    {% endfor %}
+    {% endif %}
     {% for Field in UBO.UBOStructFields %}
     {% if Field.IsDummy %} 
     uint {{Field.Name}}; 
@@ -110,10 +117,11 @@ namespace {{MainClassName}}{{MainClassSuffix}}_DEV
     {% endfor %}
   };
   __device__ UniformBufferObjectData ubo;
-  
+
   {% for MembFunc in AllMemberFunctions %}
   __device__ {{MembFunc.Decl}};
   {% endfor %}
+
   {% for MembFunc in AllMemberFunctions %}
 
   __device__ {{MembFunc.Text}}
@@ -425,6 +433,13 @@ void {{MainClassName}}{{MainClassSuffix}}::CopyUBOToDevice()
   {% endif %}
   {% endif %}
   {% endfor %}
+  {% if VecUBO %}
+  {% for Vector in VectorMembers %}
+  ubo.{{Vector.Name}}.m_data     = {{Vector.Name}}_dev.data();
+  ubo.{{Vector.Name}}.m_size     = {{Vector.Name}}_dev.size();
+  ubo.{{Vector.Name}}.m_capacity = {{Vector.Name}}_dev.capacity();
+  {% endfor %}
+  {% endif %}
   {{cuda}}Memcpy(m_pUBO, &ubo, sizeof(ubo), {{cuda}}MemcpyHostToDevice);
 }
 
@@ -447,10 +462,20 @@ void {{MainClassName}}{{MainClassSuffix}}::CopyUBOFromDevice()
   {% endif %}
   {% endif %}
   {% endfor %}
+  {% if VecUBO %}
+  {% for Var in VectorMembers %}
+  if({{Var.Name}}.size() != ubo.{{Var.Name}}.size())
+  {
+    {{Var.Name}}.resize(ubo.{{Var.Name}}.size());
+    {{Var.Name}}.resize(ubo.{{Var.Name}}.size());
+  }
+  {% endfor %}
+  {% else %}
   {% for Var in VectorMembers %}
   if({{Var.Name}}.size() != {{Var.Name}}_dev.size())
     {{Var.Name}}.resize({{Var.Name}}_dev.size());
   {% endfor %}
+  {% endif %}
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::UpdateDeviceVectors() 
@@ -470,23 +495,27 @@ void {{MainClassName}}{{MainClassSuffix}}::CommitDeviceData()
 void {{MainClassName}}{{MainClassSuffix}}::UpdateObjectContext(bool a_updateVec)
 {
   {{cuda}}MemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::ubo, m_pUBO, sizeof({{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData), 0, {{cuda}}MemcpyDeviceToDevice);
+  {% if not VecUBO %}
   if(a_updateVec)
   {
     {% for Var in VectorMembers %}
     {{cuda}}MemcpyToSymbol({{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, &{{Var.Name}}_dev, sizeof(LiteMathExtended::device_vector<{{Var.DataType}}>));
     {% endfor %}
   }
+  {% endif %}
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::ReadObjectContext(bool a_updateVec)
 {
   {{cuda}}MemcpyFromSymbol(m_pUBO, {{MainClassName}}{{MainClassSuffix}}_DEV::ubo, sizeof({{MainClassName}}{{MainClassSuffix}}_DEV::UniformBufferObjectData), 0, {{cuda}}MemcpyDeviceToDevice);
+  {% if not VecUBO %}
   if(a_updateVec)
   {
     {% for Var in VectorMembers %}
     {{cuda}}MemcpyFromSymbol(&{{Var.Name}}_dev, {{MainClassName}}{{MainClassSuffix}}_DEV::{{Var.Name}}, sizeof(LiteMathExtended::device_vector<{{Var.DataType}}>));
     {% endfor %}
   }
+  {% endif %}
 }
 
 {% for Kernel in Kernels %}
@@ -515,7 +544,9 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.OriginalDecl}}
   std::lock_guard<std::mutex> lock(m_mtx); // lock for UpdateObjectContext/ReadObjectContext to be ussied for this object only
   UpdateObjectContext();
   {{MainFunc.MainFuncTextCmd}}
+  {% if not SkipReadUBO %}
   ReadObjectContext();
+  {% endif %}
 }
 
 {{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.Name}}({%for Arg in MainFunc.InOutVarsAll %}{%if Arg.IsConst %}const {%endif%}{{Arg.Type}} {{Arg.Name}}{% if loop.index != MainFunc.InOutVarsLast %}, {% endif %}{% endfor %})
