@@ -5,7 +5,102 @@
   #include <sys/types.h>
 #endif
 
-bool kslicer::FunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)
+void kslicer::ISPCRewriter::Init()
+{ 
+  m_funReplacements.clear();
+  //m_funReplacements["atomicAdd"] = "InterlockedAdd";
+  //m_funReplacements["AtomicAdd"] = "InterlockedAdd";
+}
+
+std::string kslicer::ISPCRewriter::RewriteStdVectorTypeStr(const std::string& a_str) const
+{
+  const bool isConst  = (a_str.find("const") != std::string::npos);
+  std::string copy = a_str;
+  ReplaceFirst(copy, "const ", "");
+  while(ReplaceFirst(copy, " ", ""));
+
+  auto sFeatures2 = kslicer::GetUsedShaderFeaturesFromTypeName(a_str);
+  sFeatures = sFeatures || sFeatures2;
+
+  std::string resStr;
+  std::string typeStr = kslicer::CleanTypeName(a_str);
+
+  if(typeStr.size() > 0 && typeStr[typeStr.size()-1] == ' ')
+    typeStr = typeStr.substr(0, typeStr.size()-1);
+
+  if(typeStr.size() > 0 && typeStr[0] == ' ')
+    typeStr = typeStr.substr(1, typeStr.size()-1);
+
+  auto p = m_typesReplacement.find(typeStr);
+  if(p == m_typesReplacement.end())
+    resStr = typeStr;
+  else
+    resStr = p->second;
+
+  if(isConst)
+    resStr = std::string("const ") + resStr;
+
+  return resStr;
+}
+
+// process arrays: 'float[3] data' --> 'float data[3]' 
+std::string kslicer::ISPCRewriter::RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const
+{
+  auto typeNameR = a_typeName;
+  auto posArrayBegin = typeNameR.find("[");
+  auto posArrayEnd   = typeNameR.find("]");
+  if(posArrayBegin != std::string::npos && posArrayEnd != std::string::npos)
+  {
+    varName   = varName + typeNameR.substr(posArrayBegin, posArrayEnd-posArrayBegin+1);
+    typeNameR = typeNameR.substr(0, posArrayBegin);
+  }
+
+  return RewriteStdVectorTypeStr(typeNameR);
+}
+
+std::string kslicer::ISPCRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
+{
+  std::string retT   = RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString());
+  std::string fname  = fDecl->getNameInfo().getName().getAsString();
+
+  if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix)          // alter function name if it has any prefix
+  { 
+    if(fname.find(m_pCurrFuncInfo->prefixName) == std::string::npos)
+      fname = m_pCurrFuncInfo->prefixName + "_" + fname;
+  }
+  else if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->name != fname) // alter function name if was changed
+    fname = m_pCurrFuncInfo->name;
+
+  std::string result = retT + " " + fname + "(";
+
+  for(uint32_t i=0; i < fDecl->getNumParams(); i++)
+  {
+    const clang::ParmVarDecl* pParam  = fDecl->getParamDecl(i);
+    const clang::QualType typeOfParam =	pParam->getType();
+    std::string typeStr = typeOfParam.getAsString();
+    if(typeOfParam->isPointerType())
+      typeStr += "*";
+    else if(typeOfParam->isReferenceType())
+      typeStr += "&";
+    
+    result += RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+    if(i!=fDecl->getNumParams()-1)
+      result += ", ";
+  }
+
+  return result + ") ";
+}
+
+bool kslicer::ISPCRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // TODO: make this implementation more smart, bad implementation actually!
+{
+  std::string typeStr = kslicer::CleanTypeName(a_str);
+  return (m_typesReplacement.find(typeStr) != m_typesReplacement.end());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool kslicer::ISPCRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)        
 {
   auto hash = kslicer::GetHashOfSourceRange(fDecl->getBody()->getSourceRange());
   if(m_codeInfo->m_functionsDone.find(hash) == m_codeInfo->m_functionsDone.end())
@@ -18,8 +113,337 @@ bool kslicer::FunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDec
     done.funBody = kslicer::GetRangeSourceCode(fDecl->getBody()->getSourceRange(), m_compiler);
     m_codeInfo->m_functionsDone[hash] = done;
   } 
+  return true; 
+}
+
+bool kslicer::ISPCRewriter::VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl)      
+{ 
+  return true; 
+}
+
+bool kslicer::ISPCRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)             
+{
+  if(m_kernelMode)
+  {
+    std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+    std::string rewrittenText;
+    if(NeedToRewriteMemberExpr(expr, rewrittenText))
+    {
+      //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
+      m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
+      MarkRewritten(expr);
+    }
+  }
+
+  return true; 
+}
+
+bool kslicer::ISPCRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  
+{ 
+  if(m_kernelMode)
+  {
+    // Get name of function
+    //
+    const clang::DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
+    const clang::DeclarationName dn      = dni.getName();
+          std::string fname       = dn.getAsString();
+
+    // Get name of "this" type; we should check wherther this member is std::vector<T>  
+    //
+    const clang::QualType qt = f->getObjectType();
+    const auto& thisTypeName = qt.getAsString();
+    clang::CXXRecordDecl* typeDecl  = f->getRecordDecl(); 
+    const std::string cleanTypeName = kslicer::CleanTypeName(thisTypeName);
+    
+    const bool isVector   = (typeDecl != nullptr && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl)) && thisTypeName.find("vector<") != std::string::npos; 
+    const bool isRTX      = (thisTypeName == "struct ISceneObject") && (fname.find("RayQuery_") != std::string::npos);
+    const auto pPrefix    = m_codeInfo->composPrefix.find(cleanTypeName);
+    const bool isPrefixed = (pPrefix != m_codeInfo->composPrefix.end());
+    
+    if(isVector && WasNotRewrittenYet(f))
+    {
+      const std::string exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
+      const auto posOfPoint         = exprContent.find(".");
+      std::string memberNameA       = exprContent.substr(0, posOfPoint);
+      
+      if(processFuncMember && m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix)
+        memberNameA = m_pCurrFuncInfo->prefixName + "_" + memberNameA;
+  
+      if(fname == "size" || fname == "capacity")
+      {
+        const std::string memberNameB = memberNameA + "_" + fname;
+        ReplaceTextOrWorkAround(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
+        MarkRewritten(f);
+      }
+      else if(fname == "resize")
+      {
+        //if(f->getSourceRange().getBegin() <= m_currKernel.loopOutsidesInit.getEnd()) // TODO: SEEMS INCORECT LOGIC
+        //{
+        //  assert(f->getNumArgs() == 1);
+        //  const clang::Expr* currArgExpr  = f->getArgs()[0];
+        //  std::string newSizeValue = RecursiveRewrite(currArgExpr); 
+        //  std::string memberNameB  = memberNameA + "_size = " + newSizeValue;
+        //  ReplaceTextOrWorkAround(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
+        //  MarkRewritten(f);
+        //}
+      }
+      else if(fname == "push_back")
+      {
+        assert(f->getNumArgs() == 1);
+        const clang::Expr* currArgExpr  = f->getArgs()[0];
+        std::string newElemValue = RecursiveRewrite(currArgExpr);
+  
+        std::string memberNameB  = memberNameA + "_size";
+        std::string resulingText = m_codeInfo->pShaderCC->RewritePushBack(memberNameA, memberNameB, newElemValue);
+        ReplaceTextOrWorkAround(f->getSourceRange(), resulingText);
+        MarkRewritten(f);
+      }
+      else if(fname == "data")
+      {
+        ReplaceTextOrWorkAround(f->getSourceRange(), memberNameA);
+        MarkRewritten(f);
+      }
+      else 
+      {
+        kslicer::PrintError(std::string("Unsuppoted std::vector method") + fname, f->getSourceRange(), m_compiler.getSourceManager());
+      }
+    }
+  }
+
+  return true; 
+} 
+
+bool kslicer::ISPCRewriter::VisitFieldDecl_Impl(clang::FieldDecl* decl) { return true; }
+
+std::string kslicer::ISPCRewriter::VectorTypeContructorReplace(const std::string& fname, const std::string& callText)
+{
+  return fname + callText;
+}
+
+bool kslicer::ISPCRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) 
+{ 
+  return true; 
+} 
+
+bool kslicer::ISPCRewriter::VisitCallExpr_Impl(clang::CallExpr* call)                    
+{ 
+  if(m_kernelMode && WasNotRewrittenYet(call))
+  {
+    clang::FunctionDecl* fDecl = call->getDirectCallee();
+    if(fDecl == nullptr)
+      return true;
+
+    const std::string fname    = fDecl->getNameInfo().getName().getAsString();
+    const std::string callText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+    const auto ddPos = callText.find("::");
+    if(ddPos != std::string::npos)
+    {
+      std::string funcName = fname;
+      const std::string baseClassName = callText.substr(0, ddPos);
+      if(baseClassName != m_codeInfo->mainClassName && m_codeInfo->mainClassNames.find(baseClassName) != m_codeInfo->mainClassNames.end())
+      {
+        funcName = baseClassName + "_" + fname;
+      }
+      const std::string lastRewrittenText = funcName + "(" + CompleteFunctionCallRewrite(call);
+      ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+      MarkRewritten(call);
+    }
+  }
+
+  return true; 
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// unually both for kernel and functions
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// unually both for kernel and functions
+
+bool kslicer::ISPCRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
+{ 
+  if(m_kernelMode)
+  {
+    clang::Expr* subExpr = expr->getSubExpr();
+    if(subExpr == nullptr)
+      return true;
+
+    const auto op = expr->getOpcodeStr(expr->getOpcode());
+    if(op == "++" || op == "--") // detect ++ and -- for reduction
+    {
+      auto opRange = expr->getSourceRange();
+      if(opRange.getEnd()   <= m_pCurrKernel->loopInsides.getBegin() || 
+         opRange.getBegin() >= m_pCurrKernel->loopInsides.getEnd() ) // not inside loop
+        return true;     
+      
+      const auto op = expr->getOpcodeStr(expr->getOpcode());
+      std::string leftStr = kslicer::GetRangeSourceCode(subExpr->getSourceRange(), m_compiler);
+  
+      auto p = m_pCurrKernel->usedMembers.find(leftStr);
+      if(p != m_pCurrKernel->usedMembers.end() && WasNotRewrittenYet(expr))
+      {
+        KernelInfo::ReductionAccess access;
+        access.type      = KernelInfo::REDUCTION_TYPE::UNKNOWN;
+        access.rightExpr = "";
+        access.leftExpr  = leftStr;
+        access.dataType  = subExpr->getType().getAsString();
+  
+        if(op == "++")
+          access.type    = KernelInfo::REDUCTION_TYPE::ADD_ONE;
+        else if(op == "--")
+          access.type    = KernelInfo::REDUCTION_TYPE::SUB_ONE;
+        
+        //std::string leftStr2   = RecursiveRewrite(expr->getSubExpr()); 
+        //std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_pCurrKernel->GetDim(), m_pCurrKernel->wgSize);
+        //ReplaceTextOrWorkAround(expr->getSourceRange(), leftStr2 + "Shared[" + localIdStr + "]++");
+        //MarkRewritten(expr);
+      }
+    }
+
+    // detect " *something and &something"
+    //
+    const std::string exprInside = RecursiveRewrite(subExpr);
+
+    if(op == "*" && !expr->canOverflow() && CheckIfExprHasArgumentThatNeedFakeOffset(exprInside) && WasNotRewrittenYet(expr)) 
+    {
+      if(m_codeInfo->megakernelRTV || m_fakeOffsetExp == "")
+        ReplaceTextOrWorkAround(expr->getSourceRange(), exprInside);
+      else
+        ReplaceTextOrWorkAround(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
+      MarkRewritten(expr);
+    }
+  }
+  
+  return true; 
+}
+
+bool kslicer::ISPCRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) 
+{ 
+  if(m_kernelMode)
+  {
+    FunctionRewriter2::VisitCXXOperatorCallExpr_Impl(expr);
+  }
+
+  return true; 
+}
+
+bool kslicer::ISPCRewriter::VisitVarDecl_Impl(clang::VarDecl* decl) 
+{ 
+  if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
+    return true;
+
+  if(m_kernelMode)
+  {
+    // ...
+  }
+
+  return true; 
+}
+
+bool kslicer::ISPCRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)           
+{ 
+  if(m_kernelMode)
+  {
+    // ...
+  }
+
+  return true;   
+}
+
+bool kslicer::ISPCRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) 
+{ 
+  if(m_kernelMode)
+  {
+    // ...
+  }
+
+  return true; 
+}
+
+bool kslicer::ISPCRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl)             
+{ 
+  if(m_kernelMode)
+  {
+    // ...
+  }
+
+  return true; 
+}
+
+bool kslicer::ISPCRewriter::VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr) 
+{
   return true;
 }
+
+bool kslicer::ISPCRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) 
+{ 
+  if(m_kernelMode)
+  {
+    // ...
+  }
+
+  return true; 
+}
+
+bool kslicer::ISPCRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) 
+{ 
+  if(m_kernelMode)
+  {
+    // ...
+  }
+
+  return true; 
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// usually only for kernel
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// usually only for kernel
+
+bool kslicer::ISPCRewriter::VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) 
+{ 
+  if(m_kernelMode)
+  {
+    
+  }
+
+  return true; 
+}
+
+bool kslicer::ISPCRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr)
+{
+  if(m_kernelMode)
+  {
+    
+  }
+
+  return true;
+}
+
+bool  kslicer::ISPCRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) 
+{
+  if(m_kernelMode)
+  { 
+
+  }
+
+  return true;
+}
+
+std::string kslicer::ISPCRewriter::RecursiveRewrite(const clang::Stmt* expr)
+{
+  if(expr == nullptr)
+    return "";
+  
+  std::string shallow;
+  if(DetectAndRewriteShallowPattern(expr, shallow)) 
+    return shallow;
+    
+  ISPCRewriter rvCopy = *this;
+  rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
+
+  auto range = expr->getSourceRange();
+  auto p = rvCopy.m_workAround.find(GetHashOfSourceRange(range));
+  if(p != rvCopy.m_workAround.end())
+    return p->second;
+  else
+    return m_rewriter.getRewrittenText(range);
+}
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -31,6 +455,24 @@ kslicer::ISPCCompiler::ISPCCompiler(bool a_useCPP, const std::string& a_prefix) 
 {
 
 }
+
+std::shared_ptr<kslicer::FunctionRewriter> kslicer::ISPCCompiler::MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit)
+{
+  auto pFunc = std::make_shared<ISPCRewriter>(R, a_compiler, a_codeInfo);
+  pFunc->m_shit = a_shit;
+  return pFunc;
+  //return std::make_shared<kslicer::FunctionRewriter>(R, a_compiler, a_codeInfo);
+}
+
+std::shared_ptr<kslicer::KernelRewriter> kslicer::ISPCCompiler::MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
+                                                                                 kslicer::KernelInfo& a_kernel, const std::string& fakeOffs)
+{
+  auto pFunc = std::make_shared<ISPCRewriter>(R, a_compiler, a_codeInfo);
+  pFunc->InitKernelData(a_kernel, fakeOffs);
+  return std::make_shared<KernelRewriter2>(R, a_compiler, a_codeInfo, a_kernel, fakeOffs, pFunc);
+  //return std::make_shared<kslicer::KernelRewriter>(R, a_compiler, a_codeInfo, a_kernel, fakeOffs);
+}
+
 
 std::string kslicer::ISPCCompiler::BuildCommand(const std::string& a_inputFile) const
 {

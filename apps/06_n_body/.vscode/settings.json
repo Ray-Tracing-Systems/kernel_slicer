@@ -50,7 +50,13 @@
     "cinttypes": "cpp",
     "typeinfo": "cpp",
     "map": "cpp",
-    "set": "cpp"
+    "set": "cpp",
+    "semaphore": "cpp",
+    "bitset": "cpp",
+    "__hash_table": "cpp",
+    "__split_buffer": "cpp",
+    "queue": "cpp",
+    "stack": "cpp"
   },
   "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
 }
