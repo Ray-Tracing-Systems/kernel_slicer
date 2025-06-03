@@ -212,15 +212,15 @@ void TestClass::InitScene(int numBoxes, int numTris)
   // put all geometry inaside impl.
   //
   m_pRayTraceImpl->ClearGeom();
-  auto geomId2 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, boxesOnTopOfSpheres.data(), boxesOnTopOfSpheres.size());
+  auto geomId2 = m_pRayTraceImpl->AddGeom_AABB(TAG_SPHERES, boxesOnTopOfSpheres.data(), boxesOnTopOfSpheres.size());
   auto geomId0 = m_pRayTraceImpl->AddGeom_Triangles3f((const float*)trivets.data(), trivets.size(), indices.data(), indices.size(), 0, 16);
-  auto geomId1 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_BOXES, (const CRT_AABB*)boxes.data(), numBoxes);
+  auto geomId1 = m_pRayTraceImpl->AddGeom_AABB(TAG_BOXES, (const CRT_AABB*)boxes.data(), numBoxes);
 
   void* spherePtr = (void*)pSingleSphere; 
-  auto geomId3 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, (const CRT_AABB*)singleSphereBoxes.data(), singleSphereBoxes.size(), &spherePtr, 1);
+  auto geomId3 = m_pRayTraceImpl->AddGeom_AABB(TAG_SPHERES, (const CRT_AABB*)singleSphereBoxes.data(), singleSphereBoxes.size(), &spherePtr, 1);
 
   void* spheresPtrArray[] = {(void*)pSphere1, (void*)pSphere2}; 
-  auto geomId4 = m_pRayTraceImpl->AddGeom_AABB(AbtractPrimitive::TAG_SPHERES, (const CRT_AABB*)sphereBoxes.data(), sphereBoxes.size(), spheresPtrArray, 2);
+  auto geomId4 = m_pRayTraceImpl->AddGeom_AABB(TAG_SPHERES, (const CRT_AABB*)sphereBoxes.data(), sphereBoxes.size(), spheresPtrArray, 2);
 
   float4x4 transformTris1 = LiteMath::translate4x4(float3(0.3f, 0.60f, 0.0f)) * LiteMath::rotate4x4Z(+LiteMath::DEG_TO_RAD*45.0f);
   float4x4 transformTris2 = LiteMath::translate4x4(float3(0.7f, 0.75f, 0.0f)) * LiteMath::rotate4x4Z(-LiteMath::DEG_TO_RAD*45.0f);
@@ -231,22 +231,14 @@ void TestClass::InitScene(int numBoxes, int numTris)
 
   m_pRayTraceImpl->ClearScene();
   
-  // boxes
-  //
-  m_pRayTraceImpl->AddInstance(geomId1, LiteMath::float4x4());
-  m_pRayTraceImpl->AddInstance(geomId1, LiteMath::translate4x4(float3(0.4f, 0.4f, 0.0f)));
+  m_pRayTraceImpl->AddInstance(geomId2, transformSpheres1);    // spheres
+  m_pRayTraceImpl->AddInstance(geomId1, LiteMath::float4x4()); // boxes
+  m_pRayTraceImpl->AddInstance(geomId3, transformSpheres2);    // spheres
   
-  // spheres
-  //
-  m_pRayTraceImpl->AddInstance(geomId2, transformSpheres1);
-  m_pRayTraceImpl->AddInstance(geomId3, transformSpheres2);
-  m_pRayTraceImpl->AddInstance(geomId2, transformSpheres3);
-  m_pRayTraceImpl->AddInstance(geomId4, transformTris2);
-  
-  // triangles
-  //
-  m_pRayTraceImpl->AddInstance(geomId0, transformTris1);
-  //m_pRayTraceImpl->AddInstance(geomId0, transformTris2);
+  m_pRayTraceImpl->AddInstance(geomId1, LiteMath::translate4x4(float3(0.4f, 0.4f, 0.0f)));   // boxes
+  m_pRayTraceImpl->AddInstance(geomId2, transformSpheres3); // spheres
+  m_pRayTraceImpl->AddInstance(geomId0, transformTris1);    // triangles
+  m_pRayTraceImpl->AddInstance(geomId4, transformTris2);    // spheres
   
   m_pRayTraceImpl->CommitScene();
 
@@ -274,20 +266,25 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
   }  
   
   indices = std::vector<uint32_t>(a_triIndices, a_triIndices + a_indNumber);
+   
+  const size_t oldSize     = m_primtable.size();
+  const size_t oldTrisSize = m_tris.size();
+  
+  m_primtable.resize(oldSize + a_indNumber/3);
 
-  const size_t oldSize = primitives.size();
-  primitives.resize(oldSize + a_indNumber/3);
   std::vector<CRT_AABB> boxesOfTris(a_indNumber/3);
 
-  for(size_t i = oldSize; i < primitives.size(); i++) 
+  for(size_t i = oldSize; i < m_primtable.size(); i++) 
   {
     const size_t oldIndex = i - oldSize;
     const uint32_t A      = a_triIndices[oldIndex*3+0];
     const uint32_t B      = a_triIndices[oldIndex*3+1];
     const uint32_t C      = a_triIndices[oldIndex*3+2];
-    primitives [i] = new TrianglePrim(oldIndex); 
     boxesOfTris[oldIndex].boxMin = LiteMath::min(trivets[A], LiteMath::min(trivets[B], trivets[C]));
     boxesOfTris[oldIndex].boxMax = LiteMath::max(trivets[A], LiteMath::max(trivets[B], trivets[C]));
+    
+    m_primtable[i] = ((TAG_TRIANGLES << 28) & 0xF0000000) | (uint32_t(m_tris.size()) & 0x0FFFFFFF);
+    m_tris.push_back(TrianglePrim(oldIndex));
   }
   
   const size_t oldBoxSize = allBoxes.size();
@@ -297,12 +294,12 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
   {
     uint32_t primIndex   = uint32_t(oldSize + (i - oldBoxSize));
     allBoxes[i].boxMin.w = LiteMath::as_float(primIndex);
-    allBoxes[i].boxMax.w = LiteMath::as_float(AbtractPrimitive::TAG_TRIANGLES);
+    allBoxes[i].boxMax.w = LiteMath::as_float(TAG_TRIANGLES);
   }
 
   BLASInfo info;
   info.startPrim = uint32_t(oldSize);
-  info.sizePrims = uint32_t(primitives.size() - oldSize);
+  info.sizePrims = uint32_t(m_primtable.size() - oldSize);
   info.startAABB = uint32_t(oldBoxSize);
   info.sizeAABBs = uint32_t(allBoxes.size() - oldBoxSize);
 
@@ -313,41 +310,60 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
 
 uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber, void** a_customPrimPtrs, size_t a_customPrimCount)
 {
-  const size_t oldSize    = primitives.size();
+  const size_t oldSize    = m_primtable.size();
   const size_t oldBoxSize = allBoxes.size();
   size_t actualPrimsCount = a_boxNumber;
 
-  if(a_typeId == AbtractPrimitive::TAG_BOXES) 
+  if(a_typeId == TAG_BOXES) 
   {
-    primitives.resize(oldSize + a_boxNumber);
-    for(size_t i = oldSize; i < primitives.size(); i++)
-      primitives[i] = new AABBPrim(boxMinMaxF8[i-oldSize].boxMin, boxMinMaxF8[i-oldSize].boxMax, uint32_t(i-oldSize)); 
+    const size_t oldBoxSize = m_aabbs.size();
+
+    m_primtable.resize(oldSize + a_boxNumber);
+    for(size_t i = oldSize; i < m_primtable.size(); i++) 
+    {
+      const uint32_t oldIndex = uint32_t(i-oldSize);
+      m_primtable[i] = ((TAG_BOXES << 28) & 0xF0000000) | (uint32_t(m_aabbs.size()) & 0x0FFFFFFF);
+      m_aabbs.push_back(AABBPrim(boxMinMaxF8[i-oldSize].boxMin, boxMinMaxF8[i-oldSize].boxMax, oldIndex));
+    }
   }
-  else if(a_typeId == AbtractPrimitive::TAG_SPHERES)
+  else if(a_typeId == TAG_SPHERES)
   {
     if(a_customPrimPtrs != nullptr)
     {
       actualPrimsCount = a_customPrimCount;
-      primitives.resize(oldSize + a_customPrimCount);
-      for(size_t i = oldSize; i < primitives.size(); i++)
-        primitives[i] = (SpherePrim*)(a_customPrimPtrs[i - oldSize]);
+      m_primtable.resize(oldSize + a_customPrimCount);
+      for(size_t i = oldSize; i < m_primtable.size(); i++) 
+      {
+        const uint32_t oldIndex   = uint32_t(i-oldSize);
+        SpherePrim* pSphere = (SpherePrim*)(a_customPrimPtrs[i - oldSize]);
+
+        m_primtable[i] = ((TAG_SPHERES << 28) & 0xF0000000) | (uint32_t(m_spheres.size()) & 0x0FFFFFFF);
+        m_spheres.push_back(*pSphere);
+      }
     }
     else
     {
-      primitives.resize(oldSize + a_boxNumber);
-      for(size_t i = oldSize; i < primitives.size(); i++) {
+      m_primtable.resize(oldSize + a_boxNumber);
+      for(size_t i = oldSize; i < m_primtable.size(); i++) 
+      {
+        const uint32_t oldIndex = uint32_t(i-oldSize);
         float4 center = 0.5f*(boxMinMaxF8[i-oldSize].boxMin + boxMinMaxF8[i-oldSize].boxMax);
         center.w      = 0.5f*(boxMinMaxF8[i-oldSize].boxMax.x - boxMinMaxF8[i-oldSize].boxMin.x);
-        primitives[i] = new SpherePrim(center, uint32_t(i-oldSize)); 
+      
+        m_primtable[i] = ((TAG_SPHERES << 28) & 0xF0000000) | (uint32_t(m_spheres.size()) & 0x0FFFFFFF);
+        m_spheres.push_back(SpherePrim(center, oldIndex));
       }
     }
 
   }
   else 
   {
-    primitives.resize(oldSize + a_boxNumber);
-    for(size_t i = oldSize; i < primitives.size(); i++)
-      primitives[i] = new EmptyPrim(); 
+    m_primtable.resize(oldSize + a_boxNumber);
+    for(size_t i = oldSize; i < m_primtable.size(); i++)
+    {
+      const uint32_t oldIndex = uint32_t(i-oldSize);
+      m_primtable[i] = ((TAG_EMPTY << 28) & 0xF0000000) | (oldIndex & 0x0FFFFFFF);
+    }
   }
 
   allBoxes.insert(allBoxes.end(), boxMinMaxF8, boxMinMaxF8 + a_boxNumber);
@@ -384,10 +400,7 @@ uint32_t BFRayTrace::AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_
 
 BFRayTrace::~BFRayTrace()
 {
-  for(size_t i=0;i<primitives.size();i++) {
-    delete primitives[i];
-    primitives[i] = nullptr;
-  }
+
 }
              
 void BFRayTrace::UpdateGeom_Triangles3f(uint32_t a_geomId, const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber, uint32_t a_flags, size_t vByteStride) {}
@@ -405,42 +418,41 @@ static inline float3 matmul4x3(float4x4 m, float3 v)
 
 uint32_t BFRayTrace::IntersectionShader(float4 rayPosAndNear, float4 rayDirAndFar, CRT_LeafInfo info, CRT_Hit* pHit)
 {
-  const uint32_t tag = primitives[info.primId]->GetTag();
-  uint32_t res = AbtractPrimitive::TAG_EMPTY;
+  const uint32_t tabValue = m_primtable[info.primId];
+  const uint32_t tag      = (tabValue & 0xF0000000) >> 28;
+  const uint32_t pid      = tabValue & 0x0FFFFFFF;
+
+  uint32_t res = TAG_EMPTY;
   switch(tag)
   {
-    case AbtractPrimitive::TAG_BOXES:
+    case TAG_BOXES:
     {
-      const AABBPrim* box    = (const AABBPrim*)(primitives[info.primId]);
       const float3 rayDirInv = 1.0f/to_float3(rayDirAndFar);
-
-      const float4 myBoxMin = box->boxMin;
-      const float4 myBoxMax = box->boxMax;
-      const float2 tMinMax  = RayBoxIntersection2( to_float3(rayPosAndNear), rayDirInv, to_float3(myBoxMin), to_float3(myBoxMax));
+      const float4 myBoxMin  = m_aabbs[pid].boxMin;
+      const float4 myBoxMax  = m_aabbs[pid].boxMax;
+      const float2 tMinMax   = RayBoxIntersection2( to_float3(rayPosAndNear), rayDirInv, to_float3(myBoxMin), to_float3(myBoxMax));
       
       if(tMinMax.x <= tMinMax.y && tMinMax.y >= rayPosAndNear.w && tMinMax.x <= rayDirAndFar.w)
       {
         pHit->t      = tMinMax.x;
-        pHit->primId = box->m_primId; 
+        pHit->primId = m_aabbs[pid].m_primId; 
         pHit->geomId = info.geomId;
         pHit->instId = info.instId;   
-        res = AbtractPrimitive::TAG_BOXES; 
+        res = TAG_BOXES; 
       }
       else
-        res = AbtractPrimitive::TAG_EMPTY;
+        res = TAG_EMPTY;
     }
     break;
     
-    case AbtractPrimitive::TAG_TRIANGLES:
+    case TAG_TRIANGLES:
     {
-      const TrianglePrim* tri = (const TrianglePrim*)(primitives[info.primId]);
-
       const float3 rayPos = to_float3(rayPosAndNear);
       const float3 rayDir = to_float3(rayDirAndFar);
   
-      const uint32_t A = indices[tri->m_primId*3+0];
-      const uint32_t B = indices[tri->m_primId*3+1];
-      const uint32_t C = indices[tri->m_primId*3+2];
+      const uint32_t A = indices[m_tris[pid].m_primId*3+0];
+      const uint32_t B = indices[m_tris[pid].m_primId*3+1];
+      const uint32_t C = indices[m_tris[pid].m_primId*3+2];
    
       const float3 A_pos = to_float3(trivets[A]);
       const float3 B_pos = to_float3(trivets[B]);
@@ -460,22 +472,20 @@ uint32_t BFRayTrace::IntersectionShader(float4 rayPosAndNear, float4 rayDirAndFa
       if (v >= -1e-6f && u >= -1e-6f && (u + v <= 1.0f + 1e-6f) && t > rayPosAndNear.w && t < rayDirAndFar.w)
       {
         pHit->t      = t;
-        pHit->primId = int(tri->m_primId);
+        pHit->primId = int(m_tris[pid].m_primId);
         pHit->geomId = info.geomId;
         pHit->instId = info.instId;
-        res = AbtractPrimitive::TAG_TRIANGLES; 
+        res = TAG_TRIANGLES; 
       }
       else
-        res = AbtractPrimitive::TAG_EMPTY;
+        res = TAG_EMPTY;
     }
     break;
 
 
-    case AbtractPrimitive::TAG_SPHERES:
+    case TAG_SPHERES:
     {
-      const SpherePrim* sphere = (const SpherePrim*)(primitives[info.primId]);
-
-      const float2 tm0 = RaySphereHit(to_float3(rayPosAndNear), to_float3(rayDirAndFar), sphere->sphData);
+      const float2 tm0 = RaySphereHit(to_float3(rayPosAndNear), to_float3(rayDirAndFar), m_spheres[pid].sphData);
       const bool hit   = (tm0.x < tm0.y) && (tm0.y > rayPosAndNear.w) && (tm0.x < rayDirAndFar.w);
       if(hit)
       {
@@ -483,10 +493,10 @@ uint32_t BFRayTrace::IntersectionShader(float4 rayPosAndNear, float4 rayDirAndFa
         pHit->primId = info.primId;
         pHit->geomId = info.geomId;
         pHit->instId = info.instId;
-        res = AbtractPrimitive::TAG_SPHERES; 
+        res = TAG_SPHERES; 
       }
       else
-        res = AbtractPrimitive::TAG_EMPTY;
+        res = TAG_EMPTY;
     }
     break;
 
@@ -495,8 +505,6 @@ uint32_t BFRayTrace::IntersectionShader(float4 rayPosAndNear, float4 rayDirAndFa
   };
   
   return res;
-  
-  //return primitives[info.primId]->Intersect(rayPosAndNear, rayDirAndFar, info, pHit, this); 
 }
 
 CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFar)
@@ -532,7 +540,7 @@ CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFa
         info.aabbId = boxId;
         info.primId = primid;
         auto res = IntersectionShader(rayPosAndNear2, rayDirAndFar2, info, &hit); 
-        if(res != AbtractPrimitive::TAG_EMPTY)
+        if(res != TAG_EMPTY)
           break;
       }
     }

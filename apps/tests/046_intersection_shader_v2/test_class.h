@@ -73,30 +73,48 @@ static inline float2 RaySphereHit(float3 orig, float3 dir, float4 sphere) // see
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct BFRayTrace;
-
-struct AbtractPrimitive                         // This is implementation deal, can be any
-{
-  static constexpr uint32_t TAG_EMPTY     = 0;  // !!! #REQUIRED by kernel slicer: Empty/Default impl must have zero both tag and offset
-  static constexpr uint32_t TAG_TRIANGLES = 1; 
-  static constexpr uint32_t TAG_BOXES     = 2; 
-  static constexpr uint32_t TAG_SPHERES   = 3; 
-
-  AbtractPrimitive(){}  // Dispatching on GPU hierarchy must not have destructors, especially virtual 
-  virtual ~AbtractPrimitive(){}     
-
-  virtual uint32_t GetTag() const { return 0; };
-  virtual uint32_t Intersect(float4 rayPosAndNear,float4 rayDirAndFar, CRT_LeafInfo info, CRT_Hit* pHit, BFRayTrace* pData) const { return TAG_EMPTY; }
-
-  uint32_t m_tag = TAG_EMPTY;
-};
-
 struct BLASInfo
 {
   uint32_t startPrim;
   uint32_t sizePrims;
   uint32_t startAABB;
   uint32_t sizeAABBs;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static constexpr uint32_t TAG_EMPTY     = 0;  // !!! #REQUIRED by kernel slicer: Empty/Default impl must have zero both tag and offset
+static constexpr uint32_t TAG_TRIANGLES = 1; 
+static constexpr uint32_t TAG_BOXES     = 2; 
+static constexpr uint32_t TAG_SPHERES   = 3; 
+
+struct AABBPrim 
+{
+  AABBPrim(float4 a_boxMin, float4 a_boxMax, uint32_t a_primId) 
+  { 
+    boxMin   = a_boxMin; 
+    boxMax   = a_boxMax; 
+    m_primId = a_primId;
+  }
+
+  uint   m_primId;
+  float4 boxMin;
+  float4 boxMax;
+};
+
+struct TrianglePrim 
+{
+  TrianglePrim(uint32_t a_triId) { m_primId = a_triId; }
+  uint32_t m_primId = 0;
+};
+
+struct SpherePrim 
+{
+  SpherePrim(float4 a_sphData, uint32_t a_primId) { sphData = a_sphData; m_primId = a_primId; }
+  
+  uint m_primId;
+  float4 sphData;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +127,7 @@ struct BFRayTrace : public ISceneObject
 
   const char* Name() const override { return "BFRayTrace"; }
 
-  void     ClearGeom() override { primitives.clear(); primitives.reserve(1000); startEnd.clear(); allBoxes.reserve(1024); allBoxes.clear(); } 
+  void     ClearGeom() override { m_primtable.clear(); m_primtable.reserve(1000); startEnd.clear(); allBoxes.reserve(1024); allBoxes.clear(); } 
 
   uint32_t AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber,
                                uint32_t a_flags = BUILD_HIGH, size_t vByteStride = sizeof(float)*3) override;
@@ -135,9 +153,15 @@ struct BFRayTrace : public ISceneObject
 
   uint32_t IntersectionShader(float4 rayPosAndNear, float4 rayDirAndFar, CRT_LeafInfo info, CRT_Hit* pHit);
 
+  std::vector<uint32_t>          m_primtable;
+  // --> //
+  std::vector<AABBPrim>          m_aabbs;
+  std::vector<TrianglePrim>      m_tris;
+  std::vector<SpherePrim>        m_spheres;
   std::vector<float4>            trivets;
   std::vector<uint32_t>          indices;
-  std::vector<AbtractPrimitive*> primitives;
+  // <-- // 
+
   std::vector<BLASInfo>          startEnd;
   std::vector<CRT_AABB>          allBoxes;
 
@@ -145,132 +169,6 @@ struct BFRayTrace : public ISceneObject
   std::vector<float4x4>          m_instMatricesFwd; ///< instance matrices
   std::vector<float4x4>          m_instMatricesInv; ///< inverse instance matrices
 };
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct AABBPrim : public AbtractPrimitive
-{
-  AABBPrim(float4 a_boxMin, float4 a_boxMax, uint32_t a_primId) 
-  { 
-    boxMin   = a_boxMin; 
-    boxMax   = a_boxMax; 
-    m_tag    = GetTag();
-    m_primId = a_primId;
-  }
-
-  uint32_t GetTag() const override { return TAG_BOXES; }      
-
-  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_LeafInfo info, CRT_Hit* pHit, BFRayTrace* pData) const override 
-  { 
-    const float3 rayDirInv = 1.0f/to_float3(rayDirAndFar);
-
-    const float4 myBoxMin = boxMin;
-    const float4 myBoxMax = boxMax;
-    const float2 tMinMax  = RayBoxIntersection2( to_float3(rayPosAndNear), rayDirInv, to_float3(myBoxMin), to_float3(myBoxMax));
-    
-    if(tMinMax.x <= tMinMax.y && tMinMax.y >= rayPosAndNear.w && tMinMax.x <= rayDirAndFar.w)
-    {
-      pHit->t      = tMinMax.x;
-      pHit->primId = m_primId; 
-      pHit->geomId = info.geomId;
-      pHit->instId = info.instId;   
-      return TAG_BOXES; 
-    }
-    else
-      return TAG_EMPTY;
-  }
-  uint   m_primId;
-  uint   m_dummy[2];
-  float4 boxMin;
-  float4 boxMax;
-};
-
-struct TrianglePrim : public AbtractPrimitive
-{
-  TrianglePrim(uint32_t a_triId) { m_tag = GetTag(); m_primId = a_triId; }
-
-  uint32_t GetTag() const override { return TAG_TRIANGLES; }   
-
-  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_LeafInfo info, CRT_Hit* pHit, BFRayTrace* pData) const override 
-  { 
-    const float3 rayPos = to_float3(rayPosAndNear);
-    const float3 rayDir = to_float3(rayDirAndFar);
-
-    const uint32_t A = pData->indices[m_primId*3+0];
-    const uint32_t B = pData->indices[m_primId*3+1];
-    const uint32_t C = pData->indices[m_primId*3+2];
- 
-    const float3 A_pos = to_float3(pData->trivets[A]);
-    const float3 B_pos = to_float3(pData->trivets[B]);
-    const float3 C_pos = to_float3(pData->trivets[C]);
-  
-    const float3 edge1 = B_pos - A_pos;
-    const float3 edge2 = C_pos - A_pos;
-    const float3 pvec = cross(rayDir, edge2);
-    const float3 tvec = rayPos - A_pos;
-    const float3 qvec = cross(tvec, edge1);
-  
-    const float invDet = 1.0f / dot(edge1, pvec);
-    const float v = dot(tvec, pvec) * invDet;
-    const float u = dot(qvec, rayDir) * invDet;
-    const float t = dot(edge2, qvec) * invDet;
-  
-    if (v >= -1e-6f && u >= -1e-6f && (u + v <= 1.0f + 1e-6f) && t > rayPosAndNear.w && t < rayDirAndFar.w)
-    {
-      pHit->t      = t;
-      pHit->primId = int(m_primId);
-      pHit->geomId = info.geomId;
-      pHit->instId = info.instId;
-      return TAG_TRIANGLES; 
-    }
-    else
-      return TAG_EMPTY;
-  }   
-
-  uint32_t m_primId = 0;
-};
-
-struct SpherePrim : public AbtractPrimitive
-{
-  SpherePrim(float4 a_sphData, uint32_t a_primId) { sphData  = a_sphData; m_primId = a_primId; }
-
-  uint32_t GetTag() const override { return TAG_SPHERES; }     
-
-  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_LeafInfo info, CRT_Hit* pHit, BFRayTrace* pData) const override 
-  { 
-    const float2 tm0 = RaySphereHit(to_float3(rayPosAndNear), to_float3(rayDirAndFar), sphData);
-    const bool hit   = (tm0.x < tm0.y) && (tm0.y > rayPosAndNear.w) && (tm0.x < rayDirAndFar.w);
-    if(hit)
-    {
-      pHit->t      = tm0.x;
-      pHit->primId = info.primId;
-      pHit->geomId = info.geomId;
-      pHit->instId = info.instId;
-      return TAG_SPHERES; 
-    }
-    else
-      return TAG_EMPTY;
-  } 
-  
-  uint m_primId;
-  uint dummy[2];
-  float4 sphData;
-};
-
-struct EmptyPrim : public AbtractPrimitive
-{
-  EmptyPrim() { m_tag = GetTag();  }  
-
-  uint32_t GetTag() const override { return TAG_EMPTY; }    
-  uint32_t Intersect(float4 rayPosAndNear, float4 rayDirAndFar, CRT_LeafInfo info, CRT_Hit* pHit, BFRayTrace* pData) const override { return TAG_EMPTY; }  
-
-  uint dummy;
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 class TestClass 
 {
