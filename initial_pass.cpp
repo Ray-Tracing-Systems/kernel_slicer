@@ -319,7 +319,13 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitVarDecl(VarDecl* pTargetVar)
   if(Entry == nullptr)
     return true;
 
-  std::string FileName   = Entry->getName().str();
+  //std::string debugText = kslicer::GetRangeSourceCode(pTargetVar->getSourceRange(), m_compiler);
+  //if(debugText.find("TAG_") != std::string::npos)
+  //{
+  //  int a = 2;
+  //}
+
+  std::string FileName = Entry->getName().str();
   if(!m_codeInfo.NeedToProcessDeclInFile(FileName))
     return true;
 

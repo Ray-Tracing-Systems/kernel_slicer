@@ -35,7 +35,7 @@ static inline int Clampi(const int x, const int a, const int b)
   else            return x;
 }
 
-struct PixelLdr { unsigned char r, g, b; };
+struct PixelLdr { unsigned int r, g, b; };
 
 PixelLdr DecodeIntToInt3(const int32_t& pxData)
 {

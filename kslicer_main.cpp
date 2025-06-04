@@ -284,6 +284,9 @@ int main(int argc, const char **argv) //
 
   // include and process folders
   //
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
   std::vector<std::filesystem::path> ignoreFolders;
   std::vector<std::filesystem::path> processFolders;
   for(auto p : params)
@@ -329,11 +332,11 @@ int main(int argc, const char **argv) //
 
   // make specific checks to be sure user don't include these files to hit project as normal files
   //
-  {
-    auto processFolders2 = processFolders;
-    processFolders2.push_back(mainFolderPath);
-    kslicer::CheckInterlanIncInExcludedFolders(processFolders2);
-  }
+  processFolders.push_back(mainFolderPath);                    // always process all includes in main folder (?)
+  kslicer::CheckInterlanIncInExcludedFolders(processFolders);  //
+  
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params, fileName.c_str());
   llvm::ArrayRef<const char*> args(argsForClang.data(), argsForClang.data() + argsForClang.size());

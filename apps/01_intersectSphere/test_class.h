@@ -7,12 +7,6 @@
 #include <iostream>
 #include <fstream>
 
-template<class T> struct MyTestVector
-{
-  T _data[6];
-  T* data() { return &_data[0]; }
-};
-
 class TestClass // : public DataClass
 {
 public:
@@ -46,7 +40,6 @@ protected:
   unsigned int m_data1;
   float m_data2[3];
   std::vector<unsigned int>  m_someBufferData;
-  MyTestVector<unsigned int> m_someBufferData2;
 };
 
 #endif
