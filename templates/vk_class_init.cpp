@@ -21,7 +21,7 @@ ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, 
                               uint32_t a_maxMeshes, uint32_t a_maxTotalVertices, uint32_t a_maxTotalPrimitives, uint32_t a_maxPrimitivesPerMesh,
                               bool build_as_add, bool has_aabb);
 {% endif %}
-{% if UseRayGen or length(IntersectionHierarhcy.Implementations) >= 1 %}
+{% if UseRayGen or length(IntersectionHierarhcy.Implementations) >= 1 or HasIntersectionShaders %}
 #include "VulkanRTX.h"
 {% endif%}
 
@@ -2068,7 +2068,7 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   features2.features.shaderInt16   = {{GlobalUseInt16}};
   
   void** ppNext = &features2.pNext;
-  {% if HasRTXAccelStruct or ForceRayGen or UseCallable %}
+  {% if HasRTXAccelStruct or ForceRayGen or UseCallable or HasIntersectionShaders %}
   {
     static VkPhysicalDeviceAccelerationStructureFeaturesKHR enabledAccelStructFeatures = {};
     static VkPhysicalDeviceBufferDeviceAddressFeatures      enabledDeviceAddressFeatures = {};

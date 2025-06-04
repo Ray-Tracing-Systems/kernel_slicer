@@ -487,6 +487,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["HasAllRefs"]            = bool(a_classInfo.m_allRefsFromVFH.size() != 0) || hasBufferReferenceBind; //
 
   bool hasTextureArray = false;
+  bool hasIntersectionShaders = false;
 
   if(a_classInfo.m_allRefsFromVFH.size() != 0 || hasBufferReferenceBind)
   {
@@ -930,6 +931,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       indirectJson["Offset"]       = k.indirectBlockOffset;
       data["IndirectDispatches"].push_back(indirectJson);
     }
+
+    hasIntersectionShaders = hasIntersectionShaders || k.hasIntersectionShader2;
 
     json kernelJson;
     kernelJson["Name"]           = kernName;
@@ -1639,6 +1642,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["TotalTexArrayUsed"]    = totalTexArrayUsed;
   data["TotalAccels"]          = totalAccels;
   data["HasTextureArray"]      = hasTextureArray;
+  data["HasIntersectionShaders"] = hasIntersectionShaders;
 
   data["HasFullImpl"] = atLeastOneFullOverride;
   if(atLeastOneFullOverride && a_classInfo.ctors.size() == 0)

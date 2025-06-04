@@ -285,7 +285,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
       info.rayxId = gl_GlobalInvocationID[0];
       info.rayyId = gl_GlobalInvocationID[1]; 
       
-      uint intersected = 0; // Call Intersection Shader Here;  
+      uint intersected = {{Kernel.IS2_AccObjName}}_{{Kernel.IS2_ShaderName}}(rayPosAndNear, rayDirAndFar, info, res); 
       if(intersected != 0) 
         rayQueryGenerateIntersectionEXT(rayQuery, res.t);      
     }

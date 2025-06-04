@@ -925,7 +925,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["HasIntersectionShader2"]= k.hasIntersectionShader2;
     if(k.hasIntersectionShader2)
     {
-      //kernelJson["XXX"]=
+      kernelJson["IS2_AccObjName"] = k.intersectionShader2Info.accObjName;
+      kernelJson["IS2_BufferName"] = k.intersectionShader2Info.bufferName;
+      kernelJson["IS2_ShaderName"] = k.intersectionShader2Info.shaderName;
+      kernelJson["IS2_TriTagName"] = k.intersectionShader2Info.triTagName;
     }
 
     // add primitive remap tables for intesection shaders
