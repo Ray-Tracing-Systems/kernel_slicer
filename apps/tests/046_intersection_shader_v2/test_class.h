@@ -91,29 +91,17 @@ static constexpr uint32_t TAG_SPHERES   = 3;
 
 struct AABBPrim 
 {
-  AABBPrim(float4 a_boxMin, float4 a_boxMax, uint32_t a_primId) 
-  { 
-    boxMin   = a_boxMin; 
-    boxMax   = a_boxMax; 
-    m_primId = a_primId;
-  }
-
-  uint   m_primId;
   float4 boxMin;
   float4 boxMax;
 };
 
 struct TrianglePrim 
 {
-  TrianglePrim(uint32_t a_triId) { m_primId = a_triId; }
-  uint32_t m_primId = 0;
+  uint32_t m_primId;
 };
 
 struct SpherePrim 
 {
-  SpherePrim(float4 a_sphData, uint32_t a_primId) { sphData = a_sphData; m_primId = a_primId; }
-  
-  uint m_primId;
   float4 sphData;
 };
 
@@ -179,19 +167,12 @@ public:
 
   virtual void InitScene(int numBoxes, int numTris);
 
-  virtual void Render(uint tidX, uint tidY, uint* out_color __attribute__((size("tidX", "tidY"))));
-  virtual void RenderBlock(uint tidX, uint tidY, uint* out_color, uint32_t a_numPasses = 1);
+  virtual void Render(uint a_sizeX, uint a_sizeY, uint* out_color [[size("a_sizeX", "a_sizeY")]]);
+  virtual void kernel2D_Render(uint a_sizeX, uint a_sizeY, uint* out_color);
 
   virtual void CommitDeviceData() {}                                     // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]); // will be overriden in generated class
 
-  virtual void kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* rayDirAndFar, uint tidX, uint tidY); // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
-
-  virtual void kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFar, 
-                               CRT_Hit* out_hit, uint tidX, uint tidY);
-  
-  virtual void kernel_TestColor(const CRT_Hit* in_hit, uint* out_color, uint tidX, uint tidY);
-  
   static constexpr int WIN_WIDTH  = 512;
   static constexpr int WIN_HEIGHT = 512;
 
@@ -212,6 +193,5 @@ protected:
 
   float m_time1;
 };
-
 
 #endif
