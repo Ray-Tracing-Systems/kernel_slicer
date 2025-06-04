@@ -767,7 +767,7 @@ void kslicer::MainClassInfo::AppendAllRefsBufferIfNeeded(std::vector<DataMemberI
     return;
   }
 
-  // add to kernel.usedContainers to bind it to shaders further (because we must readreferences from this buffer)
+  // add to kernel.usedContainers to bind it to shaders further (because we must read references from this buffer)
   //
   for(auto& k : this->kernels) // TODO: check if kernel actually needs this buffer in some way
   {

@@ -1,0 +1,15 @@
+{
+    "mainClass"     : "TestClass", // must explicitly specify main class as main process 'unit' for slicer
+    "baseClasses"   : [],          // specify all base clases in  reverse order from leaf to root
+    "composClasses" : [{"interface" : "ISceneObject", 
+                        "implementation": "BFRayTrace"}], // specify all classes for composition pattern 
+    "options" : {
+        "-pattern"     : "ipv",
+        "-reorderLoops": "YX",
+        "-shaderCC"    : "glsl"
+    },
+    "source"         : ["test_class.cpp"],
+    "includeProcess" : ["../../RayTracing"],
+    "includeIgnore"  : ["../../LiteMath"],
+    "end" : ""
+}

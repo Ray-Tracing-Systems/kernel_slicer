@@ -222,7 +222,7 @@ public:
         {
           auto name = pClass->getName().str();
           m_codeInfo.mainClassASTNode = pClass;
-          std::cout << "[MainFuncSeeker]: find main class " << name.c_str() << ", poiter = " << m_codeInfo.mainClassASTNode << std::endl;
+          std::cout << "[MainFuncSeeker]: find main class " << name.c_str() << std::endl;
         }
       }
     }

@@ -498,17 +498,27 @@ int main(int argc, const char **argv) //
       
       auto intersection = composNode["intersection"];
       if(intersection != nullptr)
-      {
-        std::string className = intersection["interface"];
-        std::string funcName  = intersection["shader"];
-        
-        inputCodeInfo.intersectionShaders.push_back( std::make_pair(className, funcName) );
-        composeIntersections.push_back(composeAPIName);
-        composeIntersections.push_back(composeImplName);
+      { 
+        if(intersection["interface"] !=  nullptr && intersection["shader"] != nullptr) // old style intersection shader via VFH
+        {
+          std::string className = intersection["interface"];
+          std::string funcName  = intersection["shader"];
 
-        if(intersection["triangle"] != nullptr) {
-          const std::string triClassName = intersection["triangle"];
-          inputCodeInfo.intersectionTriangle.push_back(std::make_pair(className, className));
+          inputCodeInfo.intersectionShaders.push_back( std::make_pair(className, funcName) );
+          composeIntersections.push_back(composeAPIName);
+          composeIntersections.push_back(composeImplName);
+  
+          if(intersection["triangle"] != nullptr) {
+            const std::string triClassName = intersection["triangle"];
+            inputCodeInfo.intersectionTriangle.push_back(std::make_pair(className, className));
+          }
+        }
+        else if(intersection["shader"] != nullptr)
+        {
+          if(intersection["triangle"] != nullptr) 
+          {
+            // #TODO: ADD HERE INFO ABOUT INTERSECTION SHADER2 (!!!)
+          }
         }
 
         if(intersection["whiteList"] != nullptr) {
