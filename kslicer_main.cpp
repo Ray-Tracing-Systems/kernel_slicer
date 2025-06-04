@@ -487,7 +487,8 @@ int main(int argc, const char **argv) //
     if(base.is_string())
       baseClases.push_back(base.get<std::string>());
   }
-  
+
+  kslicer::IntersectionShader2 foundIntersectionShader;
 
   // read compos classes, intersection shaders and e.t.c
   {
@@ -499,7 +500,7 @@ int main(int argc, const char **argv) //
       auto intersection = composNode["intersection"];
       if(intersection != nullptr)
       { 
-        if(intersection["interface"] !=  nullptr && intersection["shader"] != nullptr) // old style intersection shader via VFH
+        if(intersection["interface"] != nullptr && intersection["shader"] != nullptr) // old style intersection shader via VFH
         {
           std::string className = intersection["interface"];
           std::string funcName  = intersection["shader"];
@@ -515,11 +516,18 @@ int main(int argc, const char **argv) //
         }
         else if(intersection["shader"] != nullptr)
         {
-          if(intersection["triangle"] != nullptr) 
-          {
-            // #TODO: ADD HERE INFO ABOUT INTERSECTION SHADER2 (!!!)
+          kslicer::IntersectionShader2 shader;
+          {            
+            shader.shaderName = intersection["shader"];
+            if(intersection["triangle"] != nullptr) 
+              shader.triTagName = intersection["triangle"];
+            if(intersection["buffer"] != nullptr)
+              shader.bufferName = intersection["buffer"];
+            if(intersection["accel"] != nullptr)
+              shader.accObjName = intersection["accel"];
           }
-        }
+          foundIntersectionShader = shader;
+        } 
 
         if(intersection["whiteList"] != nullptr) {
           for(auto node : intersection["whiteList"]) 
@@ -1156,7 +1164,8 @@ int main(int argc, const char **argv) //
 
   inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
   inputCodeInfo.AppendAllRefsBufferIfNeeded(inputCodeInfo.dataMembers);                       // add abstract to concrete tables
-  inputCodeInfo.AppendAccelStructForIntersectionShadersIfNeeded(inputCodeInfo.dataMembers, composeImplName); 
+  inputCodeInfo.AppendAccelStructForIntersectionShadersIfNeeded(inputCodeInfo.dataMembers, composeImplName);         // ==> process old style (obsolete) intersection shaders
+  inputCodeInfo.AppendAccelStructForIntersectionShadersIfNeeded(inputCodeInfo.dataMembers, foundIntersectionShader); // ==> process new style (simplified) intersection shaders
 
   inputCodeInfo.ProcessMemberTypes(firstPassData.rv.GetOtherTypeDecls(), compiler.getSourceManager(), generalDecls);                   // ==> generalDecls
   inputCodeInfo.ProcessMemberTypesAligment(inputCodeInfo.dataMembers, firstPassData.rv.GetOtherTypeDecls(), compiler.getASTContext()); // ==> inputCodeInfo.dataMembers

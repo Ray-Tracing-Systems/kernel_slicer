@@ -215,6 +215,14 @@ namespace kslicer
     std::string funBody;
   };
 
+  struct IntersectionShader2
+  {
+    std::string shaderName;
+    std::string triTagName;
+    std::string bufferName;
+    std::string accObjName;
+  };
+
   /**
   \brief for each method MainClass::kernel_XXX
   */
@@ -330,6 +338,8 @@ namespace kslicer
     bool                  hasInitPass   = false;///<! used by IPV pattern (currently); indicate that we need insert additional single-threaded run before current kernel (for reduction init or indirect dispatch buffer init)
     bool                  hasFinishPass = false;///<! used by IPV pattern (currently); indicate that we need insert additional passes              after  current kernel
     bool                  hasFinishPassSelf = false; ///<! if we need to do some-thing after loop and after generated loop finish pass
+    bool                  hasIntersectionShader2 = false;
+    IntersectionShader2   intersectionShader2Info;
 
     const clang::CXXMethodDecl* astNode = nullptr;
     bool usedInMainFunc = false;                ///<! wherther kernel is actually used or just declared
@@ -1559,6 +1569,7 @@ namespace kslicer
     std::unordered_map<std::string, int>               mainClassNames;        ///<! All main classes (derived + base)
     std::unordered_set<std::string>                    composClassNames; 
     std::unordered_set<std::string>                    dataClassNames; 
+
     std::vector< std::pair<std::string, std::string> > intersectionShaders;
     std::vector< std::pair<std::string, std::string> > intersectionTriangle;
     std::unordered_set<std::string>                    intersectionWhiteList;
@@ -1625,6 +1636,7 @@ namespace kslicer
     virtual void ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool);
     virtual void AppendAllRefsBufferIfNeeded(std::vector<DataMemberInfo>& a_vector);
     virtual void AppendAccelStructForIntersectionShadersIfNeeded(std::vector<DataMemberInfo>& a_vector, std::string composImplName);
+    virtual void AppendAccelStructForIntersectionShadersIfNeeded(std::vector<DataMemberInfo>& a_vector, const IntersectionShader2& a_shader);
 
     //// \\
 

@@ -885,6 +885,47 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
   
 }
 
+void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std::vector<DataMemberInfo>& a_vector, const IntersectionShader2& a_shader)
+{
+  if(a_shader.shaderName == "")
+    return;
+  
+  // mark accel struct
+  //
+  for(auto& member : a_vector) {
+    if(member.kind == DATA_KIND::KIND_ACCEL_STRUCT && member.name == a_shader.accObjName) {
+      member.hasIntersectionShader = true;
+      member.intersectionClassName = "NoAPISwitchBasedIntersectionShader";
+    }
+  }
+
+  // add to kernel.usedContainers to bind it to shaders further 
+  //
+  for(auto& k : this->kernels) 
+  {
+    bool found = false;
+    for(auto pair : k.second.usedContainers) {
+      if(pair.first.find(a_shader.accObjName + "_") == 0) {
+        found = true;
+        break; 
+      }
+    }
+  
+    if(found) 
+    {
+      kslicer::UsedContainerInfo info;
+      info.type    = "std::shared_ptr<struct ISceneObject>";
+      info.name    = a_shader.accObjName;
+      info.kind    = DATA_KIND::KIND_ACCEL_STRUCT;
+      info.isConst = true;
+      k.second.usedContainers[info.name] = info; 
+      k.second.hasIntersectionShader2    = true;
+      k.second.intersectionShader2Info   = a_shader;
+    }
+  }
+  
+}
+
 std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy> kslicer::MainClassInfo::SelectVFHOnlyUsedByKernel(const std::unordered_map<std::string, VFHHierarchy>& a_hierarhices, const KernelInfo& k) const
 {
   auto copy = a_hierarhices; 

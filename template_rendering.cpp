@@ -922,7 +922,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["CallableStructures"]    = kslicer::ListCallableStructures(selectedVFH, compiler, a_classInfo, totalCallableShaders);
     kernelJson["CallablesTotal"]        = totalCallableShaders;
     kernelJson["IntersectionHierarhcy"] = kslicer::FindIntersectionHierarchy(kernelJson["Hierarchies"]);
-    
+    kernelJson["HasIntersectionShader2"]= k.hasIntersectionShader2;
+    if(k.hasIntersectionShader2)
+    {
+      //kernelJson["XXX"]=
+    }
+
     // add primitive remap tables for intesection shaders
     //
     kernelJson["IntersectionShaderRemaps"] = std::vector<json>();

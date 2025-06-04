@@ -266,6 +266,29 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
       if(intersected != {{Kernel.IntersectionHierarhcy.EmptyImplementation.TagName}}) 
         rayQueryGenerateIntersectionEXT(rayQuery, res.t);      
     }
+    {% else if Kernel.HasIntersectionShader2 %}
+    if(rayQueryGetIntersectionTypeEXT(rayQuery, false) == gl_RayQueryCandidateIntersectionTriangleEXT)
+    {
+      //TODO: add opacity check here
+      rayQueryConfirmIntersectionEXT(rayQuery);
+    }
+    else if (rayQueryGetIntersectionTypeEXT(rayQuery, false) == gl_RayQueryCandidateIntersectionAABBEXT)
+    {
+      vec4  rayPosAndNear = vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, false),    rayPos.w);
+      vec4  rayDirAndFar  = vec4(rayQueryGetIntersectionObjectRayDirectionEXT(rayQuery, false), rayDir.w);
+     
+      CRT_LeafInfo info;
+      info.aabbId = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, false);  
+      info.primId = info.aabbId;
+      info.instId = rayQueryGetIntersectionInstanceIdEXT(rayQuery, false); 
+      info.geomId = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false);
+      info.rayxId = gl_GlobalInvocationID[0];
+      info.rayyId = gl_GlobalInvocationID[1]; 
+      
+      uint intersected = 0; // Call Intersection Shader Here;  
+      if(intersected != 0) 
+        rayQueryGenerateIntersectionEXT(rayQuery, res.t);      
+    }
     {% endif %}
   } // actually may omit 'while' when 'gl_RayFlagsOpaqueEXT' is used
  
