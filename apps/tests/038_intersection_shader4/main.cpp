@@ -51,5 +51,6 @@ int main(int argc, const char** argv)
   std::cout << "Render(exec) = " << timings[0] << " ms " << std::endl;
   
   pImpl = nullptr;
+  vk_utils::globalContextDestroy();
   return 0;
 }

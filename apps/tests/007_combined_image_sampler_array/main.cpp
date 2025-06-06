@@ -28,7 +28,7 @@ int main(int argc, const char** argv)
   std::shared_ptr<TestCombinedImage> pImpl = nullptr;
   if(onGPU)
   {
-    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0); //..
     auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateTestCombinedImage_Generated(ctx, width*height);
   }
@@ -43,6 +43,9 @@ int main(int argc, const char** argv)
     LiteImage::SaveBMP("zout_gpu.bmp", color.data(), width, height);  
   else
     LiteImage::SaveBMP("zout_cpu.bmp", color.data(), width, height);  
+  
+  pImpl = nullptr;
+  vk_utils::globalContextDestroy();  
 
   return 0;
 }

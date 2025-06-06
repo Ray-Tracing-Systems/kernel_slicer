@@ -189,21 +189,21 @@ static inline float3 cross(float3 a, float3 b)
 }
 
 
-static inline float atomic_max_global(uniform float * uniform ptr, uniform float value) 
-{ 
-  uniform float cur;
-  while (value > (cur = *ptr))
-    value = atomic_compare_exchange_global(ptr, cur, value);
-  return value;
-}
-
-static inline float atomic_min_global(uniform float * uniform ptr, uniform float value) 
-{ 
-  uniform float cur;
-  while (value < (cur = *ptr))
-    value = atomic_compare_exchange_global(ptr, cur, value);
-  return value;
-}
+//static inline float atomic_max_global(uniform float * uniform ptr, uniform float value) 
+//{ 
+//  uniform float cur;
+//  while (value > (cur = *ptr))
+//    value = atomic_compare_exchange_global(ptr, cur, value);
+//  return value;
+//}
+//
+//static inline float atomic_min_global(uniform float * uniform ptr, uniform float value) 
+//{ 
+//  uniform float cur;
+//  while (value < (cur = *ptr))
+//    value = atomic_compare_exchange_global(ptr, cur, value);
+//  return value;
+//}
 
 static inline float as_float(int x)    { return floatbits(x); }
 static inline float as_float(uint32 x) { return floatbits(x); }

@@ -18,7 +18,7 @@
       "request": "launch",
       "program": "${workspaceFolder}/cmake-build-release/testapp",
       "args": [
-        //"--test",
+        "--test",
         "--gpu"
       ],
       "stopAtEntry": false,

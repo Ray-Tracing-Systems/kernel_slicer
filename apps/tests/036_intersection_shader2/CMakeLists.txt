@@ -65,7 +65,7 @@ add_executable(testapp main.cpp
                        ../../vkutils/geom/cmesh.cpp
                        ../../vkutils/ray_tracing/vk_rt_utils.cpp
                        ../../vkutils/geom/vk_mesh.cpp
-                       ../../LiteScene/pugixml.cpp
+                       ../../LiteScene/3rd_party/pugixml.cpp
                        ../../LiteScene/hydraxml.cpp
                        ../../LiteScene/scene_mgr.cpp
                        ../../LiteScene/cmesh4.cpp

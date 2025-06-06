@@ -43,6 +43,9 @@ int main(int argc, const char** argv)
     LiteImage::SaveBMP("zout_gpu.bmp", color.data(), width, height);  
   else
     LiteImage::SaveBMP("zout_cpu.bmp", color.data(), width, height);  
-
+  
+  pImpl = nullptr;
+  vk_utils::globalContextDestroy();  
+  
   return 0;
 }

@@ -27,9 +27,8 @@ int main(int argc, const char** argv)
   if(onGPU)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-    std::vector<const char*> requiredExtensions;
     auto deviceFeatures = TestClass_Generated_ListRequiredDeviceFeatures();
-    auto ctx = vk_utils::globalContextInit(requiredExtensions, enableValidationLayers, a_preferredDeviceId, &deviceFeatures.features2);
+    auto ctx            = vk_utils::globalContextInit(deviceFeatures.extensionNames, enableValidationLayers, a_preferredDeviceId, &deviceFeatures.features2);
     pImpl = CreateTestClass_Generated(TestClass::WIN_WIDTH, TestClass::WIN_HEIGHT, ctx, TestClass::WIN_WIDTH*TestClass::WIN_HEIGHT);
   }
   else
