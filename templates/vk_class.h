@@ -147,26 +147,16 @@ public:
   {{SetterFunc}}
   {% endfor %}
 
-  {% if GenGpuApi %}
-  void InitDeviceData() override;
-  void UpdateDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine) override
+  {% if not GenGpuApi %} virtual {% endif %} void InitDeviceData() {% if GenGpuApi %} override {% endif %};
+  {% if not GenGpuApi %} virtual {% endif %} void UpdateDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine) {% if GenGpuApi %} override {% endif %}
   {
-    UpdatePlainMembers(a_pCopyEngine);
     UpdateVectorMembers(a_pCopyEngine);
     UpdateTextureMembers(a_pCopyEngine);
-  }
-  {% else %}
-  virtual void InitDeviceData();
-  virtual void UpdateDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
-  {
     UpdatePlainMembers(a_pCopyEngine);
-    UpdateVectorMembers(a_pCopyEngine);
-    UpdateTextureMembers(a_pCopyEngine);
     {% if UseRayGen %}
     AllocAllShaderBindingTables();
     {% endif %}
   }
-  {% endif %}
   {% for UpdateFun in UpdateVectorFun %}
   {% if UpdateFun.NumParams == 2 %}
   void {{UpdateFun.Name}}(size_t a_first, size_t a_size) override;
@@ -367,6 +357,9 @@ protected:
     VkBuffer {{Table.Name}}GeomTagsBuffer   = VK_NULL_HANDLE;
     {% endfor %}
   } m_vdata;
+  {% for buff in ISV2 %}
+  std::vector<uint2> {{buff.IS2_AccObjName}}_remap;
+  {% endfor %}
   {% for Vector in VectorMembers %}
   {% if Vector.IsVFHBuffer and Vector.VFHLevel >= 2 %}
   std::vector<LiteMath::uint2> {{Vector.Name}}_vtable;

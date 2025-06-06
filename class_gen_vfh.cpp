@@ -921,6 +921,41 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
       k.second.usedContainers[info.name] = info; 
       k.second.hasIntersectionShader2    = true;
       k.second.intersectionShader2Info   = a_shader;
+
+      DataMemberInfo remapTableBuffer; // append remap table
+      {
+        remapTableBuffer.type = "std::vector<uint2>";
+        remapTableBuffer.name = a_shader.accObjName + "_remap";
+        remapTableBuffer.sizeInBytes = sizeof(void*)*4;
+        remapTableBuffer.kind  = kslicer::DATA_KIND::KIND_VECTOR;
+        remapTableBuffer.usedInKernel    = true;
+        remapTableBuffer.isContainerInfo = false;
+        remapTableBuffer.isContainer     = true;
+        remapTableBuffer.containerDataType = "uint2";
+        remapTableBuffer.containerType     = "std::vector";
+        remapTableBuffer.isSingle          = false;
+      }
+      a_vector.push_back(remapTableBuffer);
+
+      kslicer::DataMemberInfo size;
+      size.type         = "uint";
+      size.sizeInBytes  = sizeof(unsigned int);
+      size.name         = remapTableBuffer.name + "_size";
+      size.usedInKernel = true;
+      size.isContainerInfo = true;
+      size.kind         = kslicer::DATA_KIND::KIND_POD;
+      kslicer::DataMemberInfo capacity = size;
+      capacity.name     = remapTableBuffer.name + "_capacity";
+
+      a_vector.push_back(size);
+      a_vector.push_back(capacity);
+
+      kslicer::UsedContainerInfo info2;
+      info2.type    = remapTableBuffer.type;
+      info2.name    = remapTableBuffer.name;
+      info2.kind    = remapTableBuffer.kind;
+      info2.isConst = true;
+      k.second.usedContainers[info2.name] = info2; 
     }
   }
   

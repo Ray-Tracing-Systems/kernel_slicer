@@ -10,7 +10,7 @@
 #include "vk_images.h"
 
 #include "{{IncludeClassDecl}}"
-{% if UseRayGen or length(IntersectionHierarhcy.Implementations) >= 1 %}
+{% if UseRayGen or length(IntersectionHierarhcy.Implementations) >= 1 or HasIntersectionShaders %}
 #include "VulkanRTX.h"
 {% endif%}
 

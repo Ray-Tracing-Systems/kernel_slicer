@@ -907,6 +907,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["IndirectBufferSize"] = a_classInfo.m_indirectBufferSize;
   data["IndirectDispatches"] = std::vector<json>();
   data["Kernels"]            = std::vector<json>();
+  data["ISV2"]               = std::vector<json>();
+
+  std::unordered_set<std::string> ISAccels;
 
   bool useSubgroups = false;
   int subgroupMaxSize = 0;
@@ -933,6 +936,20 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     }
 
     hasIntersectionShaders = hasIntersectionShaders || k.hasIntersectionShader2;
+    if(k.hasIntersectionShader2)
+    {
+      auto pFound = ISAccels.find(k.intersectionShader2Info.accObjName);
+      if(pFound == ISAccels.end())
+      {
+        json isJson;
+        isJson["IS2_AccObjName"] = k.intersectionShader2Info.accObjName;
+        isJson["IS2_BufferName"] = k.intersectionShader2Info.bufferName;
+        isJson["IS2_ShaderName"] = k.intersectionShader2Info.shaderName;
+        isJson["IS2_TriTagName"] = k.intersectionShader2Info.triTagName;
+        data["ISV2"].push_back(isJson);
+        ISAccels.insert(k.intersectionShader2Info.accObjName);
+      }
+    }
 
     json kernelJson;
     kernelJson["Name"]           = kernName;

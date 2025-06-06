@@ -973,11 +973,16 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
     }
   }
   {% endfor %}
-  
+  {% for buff in ISV2 %}
+  {
+    auto pProxyObj = dynamic_cast<RTX_Proxy*>({{buff.IS2_AccObjName}}.get());
+    auto tablePtrs = pProxyObj->GetAABBToPrimTable();
+    {{buff.IS2_AccObjName}}_remap = std::vector(tablePtrs.table, tablePtrs.table + tablePtrs.tableSize);
+  }
+  {% endfor %}
   {% if HasAllRefs %}
   all_references.resize(1); // need just single element to store all references
   {% endif %}
-
   {% for Var in ClassVectorVars %}
   {% if Var.WithBuffRef %}
   m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
@@ -987,7 +992,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
   {% endif %}
   {% endfor %}
-
   {% for Var in ClassTextureVars %}
   m_vdata.{{Var.Name}}Texture = CreateTexture2D({{Var.Name}}{{Var.AccessSymb}}width(), {{Var.Name}}{{Var.AccessSymb}}height(), VkFormat({{Var.Format}}), {{Var.Usage}});
   {% if Var.NeedSampler %}
