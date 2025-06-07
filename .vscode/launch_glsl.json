@@ -2132,40 +2132,9 @@
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-debug/kslicer",
-            "args"   : ["${workspaceFolder}/apps/tests/046_intersection_shader_v2/test_class.cpp",
-                        "-mainClass",           "TestClass",
-                        "-composInterface",     "ISceneObject",
-                        "-composImplementation","BFRayTrace",
-                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
-                        "-pattern",      "ipv",
-                        "-reorderLoops", "YX",
-                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
-                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",  
-                        "-I${workspaceFolder}/TINYSTL",          "ignore",
-                        "-I${workspaceFolder}/apps/RayTracing",  "process",
-                        "-shaderCC", "glsl",
-                        "-DKERNEL_SLICER",
-                        "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-
-        {
-            "name"   : "Launch (test_046/GLSL_CS_SW)",
-            "type"   : "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
-            "args"   : ["${workspaceFolder}/apps/tests/046_intersection_shader_v2/kmake_cs.json"],
+            "args"   : ["${workspaceFolder}/apps/tests/046_intersection_shader_v2/kmake_cs.json",
+                        "-shaderCC", "glsl",  // needed for slicer test script, not needed in practice
+                        ],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],
@@ -2185,7 +2154,9 @@
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-debug/kslicer",
-            "args"   : ["${workspaceFolder}/apps/tests/046_intersection_shader_v2/kmake_rq.json"],
+            "args"   : ["${workspaceFolder}/apps/tests/046_intersection_shader_v2/kmake_rq.json",
+                         "-shaderCC", "glsl",  // needed for slicer test script, not needed in practice
+                        ],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],
