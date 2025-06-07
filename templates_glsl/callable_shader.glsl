@@ -85,16 +85,6 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 {{Contant.Type}} {{Contant.Name}} = {{Contant.Value}};
 {% endfor %} 
 
-{% for RetDecl in Hierarchy.AuxDecls %}
-struct {{RetDecl.Name}} 
-{
-  {% for Field in RetDecl.Fields %}
-  {{Field.Type}} {{Field.Name}};
-  {% endfor %}
-};
-
-{% endfor %}
-
 {% for Member in Implementation.MemberFunctions %}
 {{Member.Source}}
 
