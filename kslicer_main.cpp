@@ -1386,7 +1386,7 @@ int main(int argc, const char **argv) //
   std::string rawname = kslicer::CutOffFileExt(allFiles[0]);
   auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls,
                                       rawname + ToLowerCase(suffix) + ".h", threadsOrder,
-                                      composeImplName, jsonUBO, textGenSettings);
+                                      composeImplName, jsonUBO, textGenSettings, foundIntersectionShader);
   
   std::cout << std::endl;
   std::cout << "(7) Perform final templated text rendering to generate Vulkan calls" << std::endl;
@@ -1498,7 +1498,7 @@ int main(int argc, const char **argv) //
   {
     auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls,
                                         rawname + ToLowerCase(suffix) + ".h", threadsOrder,
-                                        composeImplName, jsonUBO, textGenSettings);
+                                        composeImplName, jsonUBO, textGenSettings, foundIntersectionShader);
     
     inputCodeInfo.pHostCC->GenerateHostDevFeatures(rawname + ToLowerCase(suffix), jsonCPP, inputCodeInfo, textGenSettings);
   }

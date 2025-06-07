@@ -5,8 +5,6 @@
                         "implementation" : "BFRayTrace",
                         "intersection"   : {
                             "shader"   : "IntersectionShader",
-                            "triangle" : "TAG_TRIANGLES",
-                            "buffer"   : "m_primtable",
                             "accel"    : "m_pRayTraceImpl"
                           }
                         }], // specify all classes for composition pattern 

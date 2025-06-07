@@ -276,10 +276,11 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
     {
       vec4  rayPosAndNear = vec4(rayQueryGetIntersectionObjectRayOriginEXT(rayQuery, false),    rayPos.w);
       vec4  rayDirAndFar  = vec4(rayQueryGetIntersectionObjectRayDirectionEXT(rayQuery, false), rayDir.w);
-     
+      uvec2 remap         = {{RTName}}_remap[rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false)];
+
       CRT_LeafInfo info;
       info.aabbId = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, false);  
-      info.primId = info.aabbId;
+      info.primId = remap.x + info.aabbId/remap.y;
       info.instId = rayQueryGetIntersectionInstanceIdEXT(rayQuery, false); 
       info.geomId = rayQueryGetIntersectionInstanceCustomIndexEXT(rayQuery, false);
       info.rayxId = gl_GlobalInvocationID[0];
@@ -305,13 +306,6 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(vec4 rayPos, vec4 rayDir)
     res.coords[2] = 1.0f - bars.y - bars.x;
     res.coords[3] = 0.0f;
   }
-  //else if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT)
-  //{
-  //  res.primId = -1;
-  //  res.instId = -1;
-  //  res.geomId = -1;
-  //  res.t      = rayDir.w;
-  //}
 
   return res;
 }
@@ -340,7 +334,7 @@ bool   RTVPersistent_IsFirst()               { return (gl_LocalInvocationID[0] %
 vec4   RTVPersistent_ReduceAdd4f(vec4 color) { return subgroupAdd(color); }
 {% endif %}
 {% for MembFunc in Kernel.MemberFunctions %}
-{% if not (MembFunc.IsRayQuery and (Kernel.UseRayGen or (length(Kernel.IntersectionHierarhcy.Implementations) >= 1)) ) %}
+{% if not (MembFunc.IsRayQuery and (Kernel.UseRayGen or Kernel.HasIntersectionShader2 or (length(Kernel.IntersectionHierarhcy.Implementations) >= 1)) ) %}
 
 {{MembFunc.Text}}
 {% endif%}

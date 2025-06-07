@@ -81,7 +81,6 @@ uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8
     m_primtable.resize(oldSize + a_boxNumber);
     for(size_t i = oldSize; i < m_primtable.size(); i++) 
     {
-      const uint32_t oldIndex = uint32_t(i-oldSize);
       m_primtable[i] = ((TAG_BOXES << 28) & 0xF0000000) | (uint32_t(m_aabbs.size()) & 0x0FFFFFFF);
       AABBPrim box;
       box.boxMin = boxMinMaxF8[i-oldSize].boxMin;
@@ -97,7 +96,6 @@ uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8
       m_primtable.resize(oldSize + a_customPrimCount);
       for(size_t i = oldSize; i < m_primtable.size(); i++) 
       {
-        const uint32_t oldIndex   = uint32_t(i-oldSize);
         SpherePrim* pSphere = (SpherePrim*)(a_customPrimPtrs[i - oldSize]);
 
         m_primtable[i] = ((TAG_SPHERES << 28) & 0xF0000000) | (uint32_t(m_spheres.size()) & 0x0FFFFFFF);
@@ -109,7 +107,6 @@ uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8
       m_primtable.resize(oldSize + a_boxNumber);
       for(size_t i = oldSize; i < m_primtable.size(); i++) 
       {
-        const uint32_t oldIndex = uint32_t(i-oldSize);
         float4 center = 0.5f*(boxMinMaxF8[i-oldSize].boxMin + boxMinMaxF8[i-oldSize].boxMax);
         center.w      = 0.5f*(boxMinMaxF8[i-oldSize].boxMax.x - boxMinMaxF8[i-oldSize].boxMin.x);
       
@@ -305,6 +302,19 @@ CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFa
   }
 
   return hit;
+}
+
+void BFRayTrace::CommitScene(uint32_t options) 
+{
+  std::cout << "[BFRayTrace::CommitScene]: " << std::endl;
+  for(size_t primId = 0; primId < m_primtable.size(); primId++) 
+  {
+    const uint32_t tab = m_primtable[primId];
+    const uint32_t tag = (tab & 0xF0000000) >> 28;
+    const uint32_t pid = (tab & 0x0FFFFFFF);
+    std::cout << "(tag, primId,pid) = (" << tag << "," << primId << ", " << pid << ")" << std::endl; 
+  
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

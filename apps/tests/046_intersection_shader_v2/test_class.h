@@ -128,7 +128,7 @@ struct BFRayTrace : public ISceneObject
   void     UpdateGeom_AABB(uint32_t a_geomId, uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber, void** a_customPrimPtrs, size_t a_customPrimCount) override;
 
   void     ClearScene() override { m_instMatricesFwd.clear(); m_instMatricesInv.clear(); m_instStartEnd.clear(); } 
-  void     CommitScene(uint32_t options = BUILD_HIGH) override {}
+  void     CommitScene(uint32_t options = BUILD_HIGH) override;
   uint32_t AddInstanceMotion(uint32_t a_geomId, const LiteMath::float4x4* a_matrices, uint32_t a_matrixNumber) override {return 0;}
   uint32_t AddInstance(uint32_t a_geomId, const LiteMath::float4x4& a_matrix) override;
   void     UpdateInstance(uint32_t a_instanceId, const LiteMath::float4x4& a_matrix) override {}

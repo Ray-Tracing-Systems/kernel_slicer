@@ -108,7 +108,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
                                                              maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true, {{ScnObj.HasIntersectionShader}}),
                                                              [](ISceneObject *p) { DeleteSceneRT(p); } );
   {% if ScnObj.HasIntersectionShader %}
-  {{ScnObj.Name}} = std::make_shared<RTX_Proxy>({{ScnObj.Name}}Old, {{ScnObj.Name}}); // wrap both user and RTX implementation with proxy object 
+  {{ScnObj.Name}} = std::make_shared<RTX_Proxy>({{ScnObj.Name}}Old, {{ScnObj.Name}}{% if ScnObj.HasIntersectionShader2 %}, true{% endif %}); // wrap both user and RTX implementation with proxy object 
   {% endif %}
   {% endfor %}
   {% if UseSubGroups %}

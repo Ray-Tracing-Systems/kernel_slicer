@@ -418,7 +418,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
                                              const std::string& a_genIncude, const uint32_t    threadsOrder[3],
                                              const std::string& a_composImplName,
                                              const nlohmann::json& uboJson,
-                                             const TextGenSettings& a_settings)
+                                             const TextGenSettings& a_settings,
+                                             const kslicer::IntersectionShader2& a_foundIS2)
 {
   std::filesystem::path folderPath = a_classInfo.mainClassFileName.parent_path();
   std::string shaderPath           = "./" + a_classInfo.pShaderCC->ShaderFolder();
@@ -644,6 +645,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         local["Name"]                  = var.name;
         local["HasIntersectionShader"] = var.hasIntersectionShader; //
         local["IntersectionImplName"]  = var.intersectionClassName; //
+        local["HasIntersectionShader2"]= (a_foundIS2.shaderName != "");
         data["SceneMembers"].push_back(local);
       }
     }

@@ -14,7 +14,8 @@ namespace kslicer
                                       const uint32_t threadsOrder[3],
                                       const std::string& a_composImplName, 
                                       const nlohmann::json& uboJson, 
-                                      const TextGenSettings& a_settings);
+                                      const TextGenSettings& a_settings,
+                                      const IntersectionShader2& a_foundIS2);
 
   nlohmann::json PrepareJsonForKernels(MainClassInfo& a_classInfo,
                                        const std::vector<kslicer::FuncData>& usedFunctions,
