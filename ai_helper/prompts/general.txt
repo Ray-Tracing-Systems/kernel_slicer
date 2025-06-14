@@ -1,0 +1,20 @@
+kernel_slicer is a parallel programming technology. It tooks C++ class on input (called main class further).
+In class there are kernel and control functions. kernel funcions have specific prefix like "kernel1D_" or "kernel2D_" and have parallel loops inside.
+A single parallel loop for "kernel1D_", two nested  parallel loops for "kernel2D_" and e.t.c. 
+Inside kernels there can not be two (and more) consecutive loops. If we have them in the algorithm, it should be split to two consecutive kernel call.
+
+Control functions call kernel functions and thus define algorithm of kernel launch.
+A kernel from kernel is not allowed to call. A control function also could call kernell only with 1 level of recursion.
+Control from control is not allowed to call. But both kernel and control functions can call common function members.
+Some functions like CommitDeviceData and GetExecutionTime must be in the class.
+
+For control functions pointers must be marked with special construction [[size("...")]] where ... is an expression which depend on constrol function parameters and this expression is used to count element number for array represented with a pointer. All pointers coulbd be marked with "const" (this mean "in" sematics for data) or if they are not marked with "const" they assumed to be with an "out" semetics. "inout" sematrics is not allowed with pointers. 
+Therefore please always add "const" for input arrays and use separatare ointers without "const" for output.
+
+Inside control functions vectors (mean std::vector) must not be declared/created. 
+Move any vector declaration inside class.
+All vectors must be memvers of the main class.
+
+For vector types it uses HLSL semntic like float2, float3, float4 and e.t.c.
+These types are difined in "LiteMath.h". If we need any HLSL type just include "LiteMath.h" and make it public with using directive like: using LiteMath::float4x4 for float4x4 type.
+
