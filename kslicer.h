@@ -1802,7 +1802,7 @@ namespace kslicer
   /**
   \brief select local variables of main class that can be placed in auxilary buffer
   */
-  std::vector<DataMemberInfo> MakeClassDataListAndCalcOffsets(std::unordered_map<std::string, DataMemberInfo>& vars);
+  std::vector<DataMemberInfo> MakeClassDataListAndCalcOffsets(std::unordered_map<std::string, DataMemberInfo>& vars, const std::unordered_set<std::string>& a_forceUsed);
   std::vector<kslicer::KernelInfo::ArgInfo> GetUserKernelArgs(const std::vector<kslicer::KernelInfo::ArgInfo>& a_allArgs);
 
   std::vector<std::string> GetAllPredefinedThreadIdNamesRTV();

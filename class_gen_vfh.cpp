@@ -893,6 +893,7 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
   // mark accel struct
   //
   for(auto& member : a_vector) {
+    //std::cout << "member.name = " << member.name.c_str() << std::endl; 
     if(member.kind == DATA_KIND::KIND_ACCEL_STRUCT && member.name == a_shader.accObjName) {
       member.hasIntersectionShader = true;
       member.intersectionClassName = "NoAPISwitchBasedIntersectionShader";
@@ -956,6 +957,17 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
       info2.kind    = remapTableBuffer.kind;
       info2.isConst = true;
       k.second.usedContainers[info2.name] = info2; 
+
+      //kslicer::ProbablyUsed pcontainer;
+      //pcontainer.astNode       = pFieldDecl;
+      //pcontainer.isContainer   = true;
+      //pcontainer.info          = container;
+      //pcontainer.interfaceName = m_interfaceName;
+      //pcontainer.className     = m_className;
+      //pcontainer.objBufferName = m_objBufferName;
+      //auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
+      //kslicer::SplitContainerTypes(specDecl, pcontainer.containerType, pcontainer.containerDataType);
+      //m_codeInfo->usedProbably[container.name] = pcontainer;
     }
   }
   

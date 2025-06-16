@@ -527,6 +527,27 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     containerInfo.kind  = cont.second.info.kind;
     dataMembersCached[cont.first] = containerInfo;
   }
+  //for (const auto& nk : a_classInfo.kernels) {
+  //  for(const auto& container : nk.second.usedContainers)
+  //  {
+  //    if(dataMembersCached.find(container.first) != dataMembersCached.end())
+  //      continue;
+  //
+  //    //DataMemberInfo containerInfo;
+  //    //containerInfo.isArray     = false;
+  //    //containerInfo.isPointer   = false;
+  //    //containerInfo.isContainer = true;
+  //    //containerInfo.name          = cont.first;
+  //    //containerInfo.type          = cont.second.containerType + std::string("<") + cont.second.containerDataType + ">";
+  //    //containerInfo.sizeInBytes   = 0; // not used by containers
+  //    //containerInfo.usedInKernel  = true;
+  //    //containerInfo.containerType = cont.second.containerType;
+  //    //containerInfo.containerDataType = cont.second.containerDataType;
+  //    //containerInfo.usage = kslicer::DATA_USAGE::USAGE_USER;
+  //    //containerInfo.kind  = cont.second.info.kind;
+  //    //dataMembersCached[container.first] = containerInfo;
+  //  }
+  //}
 
   std::unordered_map<std::string, kslicer::ShittyFunction> shittyFunctions; //
   if(!a_classInfo.pShaderCC->BuffersAsPointersInShaders())

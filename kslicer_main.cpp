@@ -1162,7 +1162,13 @@ int main(int argc, const char **argv) //
   std::cout << "(6) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl;
   std::cout << "{" << std::endl;
 
-  inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers);
+  std::unordered_set<std::string> forceUsedInKernel;
+  {
+    if(foundIntersectionShader.accObjName != "")
+      forceUsedInKernel.insert(foundIntersectionShader.accObjName);
+  }
+
+  inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers, forceUsedInKernel);
   inputCodeInfo.AppendAllRefsBufferIfNeeded(inputCodeInfo.dataMembers);                       // add abstract to concrete tables
   inputCodeInfo.AppendAccelStructForIntersectionShadersIfNeeded(inputCodeInfo.dataMembers, composeImplName);         // ==> process old style (obsolete) intersection shaders
   inputCodeInfo.AppendAccelStructForIntersectionShadersIfNeeded(inputCodeInfo.dataMembers, foundIntersectionShader); // ==> process new style (simplified) intersection shaders

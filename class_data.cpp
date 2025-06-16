@@ -36,7 +36,7 @@ static inline size_t AlignedSize(const size_t a_size)
   return currSize;
 }
 
-std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(std::unordered_map<std::string, DataMemberInfo>& a_vars)
+std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(std::unordered_map<std::string, DataMemberInfo>& a_vars, const std::unordered_set<std::string>& a_forceUsed)
 {
   std::vector<kslicer::DataMemberInfo> resVars;
   resVars.reserve(a_vars.size());
@@ -45,9 +45,12 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
   //
   for(const auto& keyval : a_vars)
   {
-    if(!keyval.second.isContainer && keyval.second.usedInKernel && !IsSamplerTypeName(keyval.second.type)) // exclude texture samplers
+    const bool forceUsed    = a_forceUsed.find(keyval.second.name) != a_forceUsed.end();
+    const bool usedInKernel = keyval.second.usedInKernel || forceUsed;
+
+    if((!keyval.second.isContainer || forceUsed) && usedInKernel && !IsSamplerTypeName(keyval.second.type)) // exclude texture samplers
       resVars.push_back(keyval.second);
-    else if((keyval.second.usedInKernel || keyval.second.usedInMainFn) && keyval.second.isContainer && !keyval.second.IsUsedTexture())
+    else if((usedInKernel || keyval.second.usedInMainFn) && keyval.second.isContainer && !keyval.second.IsUsedTexture())
     {
       kslicer::DataMemberInfo size;
       size.type         = "uint";
@@ -58,7 +61,7 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
       size.kind         = kslicer::DATA_KIND::KIND_POD;
       kslicer::DataMemberInfo capacity = size;
       capacity.name     = keyval.second.name + "_capacity";
-
+      
       resVars.push_back(size);
       resVars.push_back(capacity);
     }
