@@ -110,6 +110,7 @@ int main(int argc, const char **argv) //
       optionsPath = argv[1];
   }
   
+  std::unordered_map<std::string, std::string> defines;
   nlohmann::json inputOptions;
   std::ifstream ifs(optionsPath);
   if(optionsPath == "")
@@ -120,6 +121,12 @@ int main(int argc, const char **argv) //
     inputOptions = nlohmann::json::parse(ifs, nullptr, true, true);
   
   auto paramsFromConfig = inputOptions["options"];
+  auto inputDefines     = inputOptions["defines"];
+  if(inputDefines != nullptr)
+  {
+     for(const auto& param : inputDefines.items()) 
+      defines[param.key()] = param.value().is_string() ? param.value().get<std::string>() : "";
+  }
 
   std::vector<std::string> allFiles = ListProcessedFiles(inputOptions["source"], optionsPath);
 
@@ -329,7 +336,7 @@ int main(int argc, const char **argv) //
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params, fileName.c_str());
+  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params, fileName.c_str(), defines);
   llvm::ArrayRef<const char*> args(argsForClang.data(), argsForClang.data() + argsForClang.size());
 
   // Make sure it exists

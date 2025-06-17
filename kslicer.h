@@ -1888,7 +1888,7 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
                                                                    std::vector<std::string>& processFiles,
                                                                    std::vector<std::string>& cppIncludes);
 
-std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params, const char* a_mainFileName);
+std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params, const char* a_mainFileName,  const std::unordered_map<std::string,std::string>& defines);
 
 void MakeAbsolutePathRelativeTo(std::filesystem::path& a_filePath, const std::filesystem::path& a_folderPath);
 

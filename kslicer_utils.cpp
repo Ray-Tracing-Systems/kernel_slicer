@@ -222,7 +222,7 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
   return cmdLineParams;
 }
 
-std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params, const char* a_mainFileName)
+std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params, const char* a_mainFileName,  const std::unordered_map<std::string,std::string>& defines)
 {
   std::unordered_set<std::string> values;
   for(auto p : params)
@@ -230,6 +230,8 @@ std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const 
 
   bool foundDSlicer  = false;
   bool foundMainFile = false;
+
+  static std::vector<std::string> g_data;
 
   std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
   argsForClang.reserve(argc);
@@ -245,10 +247,27 @@ std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const 
   }
   
   if(!foundMainFile)
+  {
     argsForClang.insert(argsForClang.begin(), a_mainFileName);
+  }
 
   if(!foundDSlicer)
     argsForClang.push_back("-DKERNEL_SLICER");
+  
+  for(auto def : defines)
+  {
+    std::string name = def.first;
+    if(name.find("-D") != 0)
+      name = std::string("-D") + name;
+    
+    g_data.push_back(name);
+    argsForClang.push_back(g_data.back().c_str());
+    if(def.second != "")
+    {
+      g_data.push_back(def.second);
+      argsForClang.push_back(g_data.back().c_str());
+    }
+  }
 
   return argsForClang;
 }

@@ -2248,7 +2248,7 @@
             ]
         },
 
-         {
+        {
             "name"   : "Launch (LiteRT/config)",
             "type"   : "cppdbg",
             "request": "launch",
