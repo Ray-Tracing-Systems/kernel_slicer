@@ -1160,10 +1160,10 @@ int main(int argc, const char **argv) //
   std::cout << "{" << std::endl;
 
   std::unordered_set<std::string> forceUsedInKernel;
-  {
-    if(foundIntersectionShader.accObjName != "")
-      forceUsedInKernel.insert(foundIntersectionShader.accObjName);
-  }
+  //{
+  //  if(foundIntersectionShader.accObjName != "")
+  //    forceUsedInKernel.insert(foundIntersectionShader.accObjName);
+  //}
 
   inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers, forceUsedInKernel);
   inputCodeInfo.AppendAllRefsBufferIfNeeded(inputCodeInfo.dataMembers);                       // add abstract to concrete tables
