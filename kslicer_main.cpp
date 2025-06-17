@@ -169,7 +169,6 @@ int main(int argc, const char **argv) //
   bool        halfFloatTextures  = false;
   bool        useMegakernel      = false;
   bool        usePersistentThreads = false;
-  auto        defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
   bool        enableSubGroupOps  = false;
   int         ispcThreadModel    = 0;
   bool        ispcExplicitIndices = false;
@@ -215,14 +214,6 @@ int main(int argc, const char **argv) //
     useCppInKernels = params["-cl-std="].find("++") != std::string::npos;
   else if(params.find("-cl-std") != params.end())
     useCppInKernels = params["-cl-std"].find("++") != std::string::npos;
-
-  if(params.find("-vkernel_t=") != params.end())
-  {
-    if(params["-vkernel_t="] == "switch")
-      defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
-    else if(params["-vkernel_t="] == "indirect_dispatch")
-      defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_INDIRECT_DISPATCH;
-  }
 
   if(params.find("-ispc_threads") != params.end())
     ispcThreadModel = atoi(params["-ispc_threads"].c_str());
@@ -417,7 +408,6 @@ int main(int argc, const char **argv) //
   if(params.find("-vec_in_ubo") != params.end())
     inputCodeInfo.placeVectorsInUBO = atoi(params["-vec_in_ubo"].c_str());
 
-  inputCodeInfo.defaultVkernelType   = defaultVkernelType;
   inputCodeInfo.halfFloatTextures    = halfFloatTextures;
   inputCodeInfo.megakernelRTV        = useMegakernel;
   inputCodeInfo.persistentRTV        = usePersistentThreads;

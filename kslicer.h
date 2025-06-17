@@ -46,7 +46,6 @@ namespace kslicer
   };
 
   struct IShaderCompiler;
-  enum class VKERNEL_IMPL_TYPE { VKERNEL_SWITCH = 0, VKERNEL_INDIRECT_DISPATCH=2 };
 
   enum class DATA_KIND  { KIND_UNKNOWN = 0,
                           KIND_POD,                             ///<! Any Plain Old Data
@@ -1720,7 +1719,6 @@ namespace kslicer
       std::string typeOfElem;
     };
 
-    kslicer::VKERNEL_IMPL_TYPE defaultVkernelType = kslicer::VKERNEL_IMPL_TYPE::VKERNEL_SWITCH;
     bool halfFloatTextures = false;
     bool megakernelRTV     = false;
     bool persistentRTV     = false; // current implementation for persistent threads on done only for megakernels in RTV

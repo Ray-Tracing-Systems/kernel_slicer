@@ -900,6 +900,8 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
     }
   }
 
+  std::unordered_set<std::string> alreadyAdded;
+
   // add to kernel.usedContainers to bind it to shaders further 
   //
   for(auto& k : this->kernels) 
@@ -922,7 +924,7 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
       k.second.usedContainers[info.name] = info; 
       k.second.hasIntersectionShader2    = true;
       k.second.intersectionShader2Info   = a_shader;
-
+      
       DataMemberInfo remapTableBuffer; // append remap table
       {
         remapTableBuffer.type = "std::vector<uint2>";
@@ -936,8 +938,7 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
         remapTableBuffer.containerType     = "std::vector";
         remapTableBuffer.isSingle          = false;
       }
-      a_vector.push_back(remapTableBuffer);
-
+      
       kslicer::DataMemberInfo size;
       size.type         = "uint";
       size.sizeInBytes  = sizeof(unsigned int);
@@ -947,9 +948,14 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
       size.kind         = kslicer::DATA_KIND::KIND_POD;
       kslicer::DataMemberInfo capacity = size;
       capacity.name     = remapTableBuffer.name + "_capacity";
-
-      a_vector.push_back(size);
-      a_vector.push_back(capacity);
+      
+      if(alreadyAdded.find(a_shader.accObjName) == alreadyAdded.end())
+      {
+        a_vector.push_back(remapTableBuffer);
+        a_vector.push_back(size);
+        a_vector.push_back(capacity);
+        alreadyAdded.insert(info.name);
+      }
 
       kslicer::UsedContainerInfo info2;
       info2.type    = remapTableBuffer.type;
@@ -957,17 +963,6 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
       info2.kind    = remapTableBuffer.kind;
       info2.isConst = true;
       k.second.usedContainers[info2.name] = info2; 
-
-      //kslicer::ProbablyUsed pcontainer;
-      //pcontainer.astNode       = pFieldDecl;
-      //pcontainer.isContainer   = true;
-      //pcontainer.info          = container;
-      //pcontainer.interfaceName = m_interfaceName;
-      //pcontainer.className     = m_className;
-      //pcontainer.objBufferName = m_objBufferName;
-      //auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
-      //kslicer::SplitContainerTypes(specDecl, pcontainer.containerType, pcontainer.containerDataType);
-      //m_codeInfo->usedProbably[container.name] = pcontainer;
     }
   }
   
