@@ -39,7 +39,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(float4 rayPos, float4 rayDir)
   ray.TMax      = rayDir.w;
 
   RayQuery<RAY_FLAG_FORCE_OPAQUE> rayQuery;
-  rayQuery.TraceRayInline(m_pAccelStruct, RAY_FLAG_NONE, 0xff, ray);
+  rayQuery.TraceRayInline({{RTName}}, RAY_FLAG_NONE, 0xff, ray);
   
   CRT_Hit res;
   res.primId = -1;
@@ -47,15 +47,38 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(float4 rayPos, float4 rayDir)
   res.geomId = -1;
   res.t      = rayDir.w;
   
-  while(rayQuery.Proceed()) 
+  while(rayQuery.Proceed())
   {
-
+    {% if Kernel.HasIntersectionShader2 %}
+    if (rayQuery.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+    {
+      // TODO: add opacity check here, use rayQuery.Abort() if didn't find the hit;
+      rayQuery.CommitNonOpaqueTriangleHit();
+    }
+    else if (rayQuery.CandidateType() == CANDIDATE_PROCEDURAL_PRIMITIVE)
+    {
+      float4 rayPosAndNear = float4(rayQuery.WorldRayOrigin(), rayPos.w);
+      float4 rayDirAndFar  = float4(rayQuery.WorldRayDirection(), rayDir.w);
+      const uint geomIndex = rayQuery.CandidateInstanceContributionToHitGroupIndex(); //rayQuery.CandidateGeometryIndex();
+      uint2 remap = {{ RTName }}_remap[geomIndex];
+      CRT_LeafInfo info;
+      info.aabbId = rayQuery.CandidatePrimitiveIndex();
+      info.primId = remap.x + info.aabbId / remap.y;
+      info.instId = rayQuery.CandidateInstanceID();
+      info.geomId = geomIndex;
+      info.rayxId = 0; // TODO: gl_GlobalInvocationID[0];
+      info.rayyId = 0; // TODO: gl_GlobalInvocationID[1];
+      uint intersected = {{ Kernel.IS2_AccObjName }}_{{ Kernel.IS2_ShaderName}}(rayPosAndNear, rayDirAndFar, info, res);
+      if (intersected != 0)
+        rayQuery.CommitProceduralPrimitiveHit(res.t);
+    }
+    {% endif %}
   } // may omit 'while' loop when 'RAY_FLAG_FORCE_OPAQUE' is used
 
   if(rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
   {
     res.primId = rayQuery.CommittedPrimitiveIndex();
-    res.geomId = rayQuery.CommittedGeometryIndex();
+    res.geomId = rayQuery.CommittedInstanceContributionToHitGroupIndex(); // rayQuery.CommittedGeometryIndex();
     res.instId = rayQuery.CommittedInstanceID();
     res.t      = rayQuery.CommittedRayT();
 
@@ -79,7 +102,7 @@ bool {{RTName}}_RayQuery_AnyHit(float4 rayPos, float4 rayDir)
   ray.TMax      = rayDir.w;
 
   RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
-  rayQuery.TraceRayInline(m_pAccelStruct, RAY_FLAG_NONE, 0xff, ray);
+  rayQuery.TraceRayInline({{RTName}}, RAY_FLAG_NONE, 0xff, ray);
   rayQuery.Proceed();
 
   return (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT);
@@ -90,7 +113,7 @@ bool {{RTName}}_RayQuery_AnyHitMotion(float4 rayPos, float4 rayDir, float t) { r
 
 {% endfor %}
 {% for MembFunc in Kernel.MemberFunctions %}
-{% if not (MembFunc.IsRayQuery and (Kernel.UseRayGen or (length(Kernel.IntersectionHierarhcy.Implementations) >= 1)) ) %}
+{% if not (MembFunc.IsRayQuery and (Kernel.UseRayGen or Kernel.HasIntersectionShader2 or (length(Kernel.IntersectionHierarhcy.Implementations) >= 1)) ) %}
 
 {{MembFunc.Text}}
 {% endif%}
