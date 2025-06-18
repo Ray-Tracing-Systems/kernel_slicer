@@ -1343,6 +1343,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["HasRTXAccelStruct"] = otherFeatures.useRTX;
   data["HasVarPointers"]    = (std::dynamic_pointer_cast<ClspvCompiler>(a_classInfo.pShaderCC) != nullptr) || otherFeatures.useVarPtr;
   data["HasSubGroups"]      = useSubGroups;
+  data["SlangShaders"]      = (a_classInfo.pShaderCC->Name() == "slang" || a_classInfo.pShaderCC->Name() == "Slang" || a_classInfo.pShaderCC->Name() == "SLANG");
 
   data["MainFunctions"] = std::vector<json>();
   bool atLeastOneFullOverride = false;

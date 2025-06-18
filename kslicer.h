@@ -1244,6 +1244,20 @@ namespace kslicer
 
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
 
+    void SetCurrFuncInfo(kslicer::FuncData* a_pInfo) override 
+    { 
+      m_pCurrFuncInfo = a_pInfo; 
+      if(m_pFunRW2 != nullptr)
+        m_pFunRW2->SetCurrFuncInfo(a_pInfo);
+    }
+    
+    void ResetCurrFuncInfo() override 
+    { 
+      m_pCurrFuncInfo = nullptr; 
+      if(m_pFunRW2 != nullptr)
+        m_pFunRW2->ResetCurrFuncInfo();
+    }
+
   protected:
     std::shared_ptr<FunctionRewriter2> m_pFunRW2 = nullptr;
   };

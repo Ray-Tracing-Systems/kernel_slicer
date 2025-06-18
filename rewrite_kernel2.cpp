@@ -45,7 +45,7 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
     return false;
   
   std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-  if(debugText == "spheresPosRadius")
+  if(debugText == "m_instMatricesInv")
   {
     int a = 2;
   }

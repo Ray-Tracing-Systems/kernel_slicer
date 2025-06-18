@@ -28,7 +28,7 @@ int main(int argc, const char** argv)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
     auto deviceFeatures = TestClass_Generated_ListRequiredDeviceFeatures();
-    auto ctx            = vk_utils::globalContextInit(deviceFeatures.extensionNames, enableValidationLayers, a_preferredDeviceId, &deviceFeatures.features2);
+    auto ctx            = vk_utils::globalContextInit(deviceFeatures, enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateTestClass_Generated(TestClass::WIN_WIDTH, TestClass::WIN_HEIGHT, ctx, TestClass::WIN_WIDTH*TestClass::WIN_HEIGHT);
   }
   else

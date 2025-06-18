@@ -289,6 +289,12 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
   const clang::DeclarationName dn      = dni.getName();
         std::string fname              = dn.getAsString();
 
+  std::string debugText = GetRangeSourceCode(f->getSourceRange(), m_compiler); 
+  if(debugText.find("as_uint") != std::string::npos)
+  {
+    int a = 2;
+  }
+
   if(kslicer::IsCalledWithArrowAndVirtual(f) && WasNotRewrittenYet(f))
   {
     auto buffAndOffset = kslicer::GetVFHAccessNodes(f, m_compiler);
@@ -346,7 +352,7 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
     const auto posOfPoint         = exprContent.find(".");
     std::string memberNameA       = exprContent.substr(0, posOfPoint);
     
-    if(processFuncMember && m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix)
+    if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix)
       memberNameA = m_pCurrFuncInfo->prefixName + "_" + memberNameA;
 
     if(fname == "size" || fname == "capacity")
@@ -383,6 +389,15 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
       ReplaceTextOrWorkAround(f->getSourceRange(), memberNameA);
       MarkRewritten(f);
     }
+    //else if(fname == "as_uint")
+    //{
+    //  assert(f->getNumArgs() == 1);
+    //  const clang::Expr* currArgExpr = f->getArgs()[0];
+    //  std::string newElemValue = RecursiveRewrite(currArgExpr);
+    //  std::string resulingText = "asuint(" + newElemValue + ")";
+    //  ReplaceTextOrWorkAround(f->getSourceRange(), resulingText);
+    //  MarkRewritten(f);
+    //}
     else 
     {
       kslicer::PrintError(std::string("Unsuppoted std::vector method") + fname, f->getSourceRange(), m_compiler.getSourceManager());
@@ -449,6 +464,38 @@ bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr*
 
 bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)                    
 { 
+  if(clang::isa<clang::CXXMemberCallExpr>(call) || clang::isa<clang::CXXConstructExpr>(call)) // process CXXMemberCallExpr else-where
+    return true;
+
+  clang::FunctionDecl* fDecl = call->getDirectCallee();
+  if(fDecl == nullptr)
+    return true;
+  
+  const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
+  const std::string fname = fDecl->getNameInfo().getName().getAsString();
+
+  if((fname == "as_int32" || fname == "as_int") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
+  {
+    const std::string text = RecursiveRewrite(call->getArg(0));
+    ReplaceTextOrWorkAround(call->getSourceRange(), "asint(" + text + ")");
+    MarkRewritten(call);
+  }
+  else if((fname == "as_uint32" || fname == "as_uint") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
+  {
+    const std::string text = RecursiveRewrite(call->getArg(0));
+    ReplaceTextOrWorkAround(call->getSourceRange(), "asuint(" + text + ")");
+    MarkRewritten(call);
+  }
+  else if((fname == "as_float" || fname == "as_float32")  && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
+  {
+    const std::string text  = RecursiveRewrite(call->getArg(0));
+    const auto qtOfArg      = call->getArg(0)->getType();
+    const std::string tname = kslicer::CleanTypeName(qtOfArg.getAsString());
+    std::string lastRewrittenText = "asfloat(" + text + ")";
+    ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+    MarkRewritten(call);
+  }
+
   if(m_kernelMode && WasNotRewrittenYet(call))
   {
     // (#1) check if buffer/pointer to global memory is passed to a function
@@ -729,6 +776,21 @@ bool kslicer::SlangRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   const std::string originalText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler);
   const std::string varType      = qt.getAsString();
 
+  //kslicer::FuncData fdata;
+  //bool wasSet = false;
+  //if(m_pCurrKernel != nullptr) 
+  //{
+  //  fdata.astNode  = m_pCurrKernel->astNode;
+  //  fdata.name     = m_pCurrKernel->name;
+  //  fdata.srcRange = fdata.astNode->getSourceRange();
+  //  fdata.srcHash  = kslicer::GetHashOfSourceRange(fdata.srcRange);
+  //  fdata.isMember = false;
+  //  fdata.isKernel = true;
+  //  fdata.depthUse = 0;    
+  //  this->SetCurrFuncInfo(&fdata);  
+  //  wasSet = true;
+  //};
+
   if(m_kernelMode)
   {
     // ...
@@ -753,6 +815,9 @@ bool kslicer::SlangRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
     //m_rewriter.ReplaceText(decl->getSourceRange(), lastRewrittenText);
     MarkRewritten(pValue);
   }
+  
+  //if(wasSet) 
+  //  this->ResetCurrFuncInfo();  
 
   return true; 
 }

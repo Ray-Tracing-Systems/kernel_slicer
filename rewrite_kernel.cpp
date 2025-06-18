@@ -81,7 +81,11 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
   if(!WasNotRewrittenYet(expr))
     return false;
   
-  //std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
+  if(debugText == "m_instMatricesInv")
+  {
+    int a = 2;
+  }
 
   // (1) setter access
   //
