@@ -57,14 +57,14 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(float4 rayPos, float4 rayDir)
     }
     else if (rayQuery.CandidateType() == CANDIDATE_PROCEDURAL_PRIMITIVE)
     {
-      float4 rayPosAndNear = float4(rayQuery.WorldRayOrigin(), rayPos.w);
-      float4 rayDirAndFar  = float4(rayQuery.WorldRayDirection(), rayDir.w);
-      const uint geomIndex = rayQuery.CandidateInstanceContributionToHitGroupIndex(); //rayQuery.CandidateGeometryIndex();
+      float4 rayPosAndNear = float4(rayQuery.CandidateObjectRayOrigin(), rayPos.w);
+      float4 rayDirAndFar  = float4(rayQuery.CandidateObjectRayDirection(), rayDir.w);
+      const uint geomIndex = rayQuery.CandidateInstanceID(); // rayQuery.CandidateGeometryIndex();
       uint2 remap = {{ RTName }}_remap[geomIndex];
       CRT_LeafInfo info;
       info.aabbId = rayQuery.CandidatePrimitiveIndex();
       info.primId = remap.x + info.aabbId / remap.y;
-      info.instId = rayQuery.CandidateInstanceID();
+      info.instId = rayQuery.CandidateInstanceIndex();
       info.geomId = geomIndex;
       info.rayxId = 0; // TODO: gl_GlobalInvocationID[0];
       info.rayyId = 0; // TODO: gl_GlobalInvocationID[1];
@@ -78,7 +78,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(float4 rayPos, float4 rayDir)
   if(rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
   {
     res.primId = rayQuery.CommittedPrimitiveIndex();
-    res.geomId = rayQuery.CommittedInstanceContributionToHitGroupIndex(); // rayQuery.CommittedGeometryIndex();
+    res.geomId = rayQuery.CommittedGeometryIndex(); // (??)
     res.instId = rayQuery.CommittedInstanceID();
     res.t      = rayQuery.CommittedRayT();
 
