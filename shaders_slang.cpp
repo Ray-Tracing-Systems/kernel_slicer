@@ -464,9 +464,6 @@ bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr*
 
 bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)                    
 { 
-  if(clang::isa<clang::CXXMemberCallExpr>(call) || clang::isa<clang::CXXConstructExpr>(call)) // process CXXMemberCallExpr else-where
-    return true;
-
   clang::FunctionDecl* fDecl = call->getDirectCallee();
   if(fDecl == nullptr)
     return true;
@@ -495,8 +492,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
     MarkRewritten(call);
   }
-
-  if(m_kernelMode && WasNotRewrittenYet(call))
+  else if(m_kernelMode && WasNotRewrittenYet(call))
   {
     // (#1) check if buffer/pointer to global memory is passed to a function
     //
