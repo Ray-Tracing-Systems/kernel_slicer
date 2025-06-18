@@ -1725,7 +1725,7 @@ namespace kslicer
     bool useComplexNumbers = false;
     bool genGPUAPI         = false;
     bool forceAllBufToRefs = false;
-    bool placeVectorsInUBO = true;
+    bool placeVectorsInUBO = false;
 
     std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;
     std::vector<BufferReference>                  m_allRefsFromVFH;
