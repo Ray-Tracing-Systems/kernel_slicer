@@ -318,6 +318,38 @@
         },
 
         {
+            "name"   : "Launch (test_018/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/018_compos_v1/test_class.cpp",
+                        "-mainClass", "TestClass",
+                        "-composInterface", "IRayTraceImpl",
+                        "-composImplementation","BFRayTrace", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-I${workspaceFolder}/apps/LiteMath", "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",  
+                        "-I${workspaceFolder}/TINYSTL",       "ignore",
+                        "-shaderCC", "slang",
+                        "-megakernel", "1",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (test_040/Slang)",
             "type"   : "cppdbg",
             "request": "launch",
