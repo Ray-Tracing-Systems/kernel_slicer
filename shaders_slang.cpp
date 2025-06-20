@@ -1220,7 +1220,16 @@ std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
       ReplaceFirst(typeInCL, pair.first, pair.second);
     if(originalText == "")
       originalText = a_decl.lostValue;
-    result = "static " + typeInCL + " " + a_decl.name + " = " + originalText + ";";
+
+    if(a_decl.isArray)
+    {
+      std::stringstream sizeStr;
+      sizeStr << "[" << a_decl.arraySize << "]";
+      result = "static const " + typeInCL + " " + a_decl.name + sizeStr.str() + " = " + originalText + ";";
+    }
+    else
+      result = "static " + typeInCL + " " + a_decl.name + " = " + originalText + ";";
+   
     ProcessVectorTypesString(result);
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
