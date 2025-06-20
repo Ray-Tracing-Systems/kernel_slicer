@@ -14,6 +14,8 @@ struct BoxHit
 {
   uint32_t id;
   float tHit;
+  unsigned id2;
+  unsigned id3;
 };
 
 struct Cow
@@ -21,6 +23,7 @@ struct Cow
   float pos;
   float moooo;
   float mass;
+  unsigned id2;
 };
 
 static inline BoxHit make_BoxHit(uint32_t a_id, float a_t)
@@ -36,9 +39,10 @@ class TestClass
 public:
   TestClass(){}
 
-  virtual void Test(BoxHit* a_data __attribute__((size("a_size"))), unsigned int a_size);
+  virtual void Test(BoxHit* a_data [[size("a_size")]], unsigned int a_size);
   void kernel1D_Test(BoxHit* a_data, unsigned int a_size, Cow a_cow);
 
+  uint32_t m_array[256];
 
   virtual void CommitDeviceData() {}                                       // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class

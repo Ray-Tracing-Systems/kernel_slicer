@@ -50,6 +50,8 @@ namespace kslicer
   nlohmann::json FindIntersectionHierarchy(nlohmann::json a_hierarchies);
 
   nlohmann::json GetOriginalKernelJson(const KernelInfo& k, const MainClassInfo& a_classInfo);
+
+  std::vector<std::pair<std::string, std::string> > SortByKeysByLen(const std::unordered_map<std::string, std::string>& a_map);
 }
 
 #endif

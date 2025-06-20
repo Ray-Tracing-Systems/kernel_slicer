@@ -960,6 +960,17 @@ kslicer::SlangCompiler::SlangCompiler(const std::string& a_prefix) : m_suffix(a_
   m_typesReplacement = ListSlangStandartTypeReplacements(false);
 }
 
+void kslicer::SlangCompiler::ProcessVectorTypesString(std::string& a_str)
+{
+  static auto vecReplacements = kslicer::SortByKeysByLen(ListSlangStandartTypeReplacements(false));
+  for(auto p : vecReplacements)
+  {
+    std::string strToSearch = p.first + " ";
+    while(a_str.find(strToSearch) != std::string::npos) // replace all of them
+      ReplaceFirst(a_str, p.first, p.second);
+  }
+}
+
 std::string kslicer::SlangCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const
 {
   // uint3 a_localTID  : SV_GroupThreadID
@@ -1199,6 +1210,7 @@ std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
   {
     case kslicer::DECL_IN_CLASS::DECL_STRUCT:
     result = originalText + ";";
+    ProcessVectorTypesString(result);
     break;
     case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
     //ReplaceFirst(typeInCL, "unsigned int", "uint");
@@ -1209,10 +1221,7 @@ std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
     if(originalText == "")
       originalText = a_decl.lostValue;
     result = "static " + typeInCL + " " + a_decl.name + " = " + originalText + ";";
-    //if(a_decl.name.find("CRT_GEOM_MASK_AABB_BIT") != std::string::npos)
-    //{
-    //  int a = 2;
-    //}
+    ProcessVectorTypesString(result);
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
     for(const auto& pair : m_typesReplacement)

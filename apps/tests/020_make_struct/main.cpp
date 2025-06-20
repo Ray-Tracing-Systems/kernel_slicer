@@ -11,6 +11,7 @@
 
 #include "vk_context.h"
 std::shared_ptr<TestClass> CreateTestClass_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+vk_utils::VulkanDeviceFeatures TestClass_Generated_ListRequiredDeviceFeatures();
 
 int main(int argc, const char** argv)
 {
@@ -30,7 +31,8 @@ int main(int argc, const char** argv)
   if(onGPU)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+    auto deviceFeatures = TestClass_Generated_ListRequiredDeviceFeatures();
+    auto ctx            = vk_utils::globalContextInit(deviceFeatures, enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateTestClass_Generated(ctx, array.size());
   }
   else
@@ -55,6 +57,8 @@ int main(int argc, const char** argv)
   JSONLog::write("array", outArray);
   JSONLog::write("array", outArray2);
   JSONLog::saveToFile("zout_"+backendName+".json");
-
+  
+  pImpl = nullptr;
+  vk_utils::globalContextDestroy();  
   return 0;
 }

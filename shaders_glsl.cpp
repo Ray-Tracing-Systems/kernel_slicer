@@ -461,7 +461,7 @@ std::string kslicer::CleanTypeName(const std::string& a_str)
   return typeName;
 }
 
-std::vector<std::pair<std::string, std::string> > SortByKeysByLen(const std::unordered_map<std::string, std::string>& a_map)
+std::vector<std::pair<std::string, std::string> > kslicer::SortByKeysByLen(const std::unordered_map<std::string, std::string>& a_map)
 {
   std::vector<std::pair<std::string, std::string> > res;
   res.reserve(a_map.size());
@@ -474,7 +474,7 @@ std::vector<std::pair<std::string, std::string> > SortByKeysByLen(const std::uno
 kslicer::GLSLFunctionRewriter::GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) : FunctionRewriter(R,a_compiler,a_codeInfo)
 {
   m_vecReplacements  = kslicer::ListGLSLVectorReplacements();
-  m_vecReplacements2 = SortByKeysByLen(m_vecReplacements);
+  m_vecReplacements2 = kslicer::SortByKeysByLen(m_vecReplacements);
   m_funReplacements["fmin"]  = "min";
   m_funReplacements["fmax"]  = "max";
   m_funReplacements["fminf"] = "min";
@@ -1356,7 +1356,7 @@ void kslicer::GLSLFunctionRewriter::Get2DIndicesOfFloat4x4(const clang::CXXOpera
 
 void kslicer::GLSLCompiler::ProcessVectorTypesString(std::string& a_str)
 {
-  static auto vecReplacements = SortByKeysByLen(ListGLSLVectorReplacements());
+  static auto vecReplacements = kslicer::SortByKeysByLen(ListGLSLVectorReplacements());
   for(auto p : vecReplacements)
   {
     std::string strToSearch = p.first + " ";

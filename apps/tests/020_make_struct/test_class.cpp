@@ -10,6 +10,10 @@ void TestClass::Test(BoxHit* a_data, unsigned int a_size)
 
 void TestClass::kernel1D_Test(BoxHit* a_data, uint32_t a_size, Cow a_cow)
 {
-  for(uint32_t i=0; i<a_size; i++)
+  for(uint32_t i=0; i<a_size; i++) 
+  {
+    unsigned test = 0;
+    float test2 = float(test + m_array[2]); 
     a_data[i] = make_BoxHit(i, a_cow.moooo);
+  }
 }

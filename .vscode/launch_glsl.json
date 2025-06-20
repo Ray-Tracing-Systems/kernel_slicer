@@ -1366,8 +1366,6 @@
             "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/tests/020_make_struct/test_class.cpp",
                         "-mainClass", "TestClass",
-                        //"-composInterface", "ISceneObject",
-                        //"-composImplementation","BFRayTrace", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
                         "-pattern", "ipv",
                         "-I${workspaceFolder}/apps/LiteMath",   "ignore", 

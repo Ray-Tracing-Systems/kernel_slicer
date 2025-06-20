@@ -1451,6 +1451,7 @@ namespace kslicer
     std::string IndirectBufferDataType() const override { return "uint4 "; }
 
   private:
+    void ProcessVectorTypesString(std::string& a_str);
     const std::string& m_suffix;
     std::unordered_map<std::string, std::string> m_typesReplacement;
   };
