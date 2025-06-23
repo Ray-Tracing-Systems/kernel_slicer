@@ -429,8 +429,11 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
     {
       const std::string texCoord = RecursiveRewrite(call->getArg(texCoordId));
       //const std::string lastRewrittenText = std::string("textureLod") + "(" + objName + ", " + texCoord + ", 0)";
-      const std::string lastRewrittenText = objName + ".SampleLevel(" + texCoord + ", 0)";
-      ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+      auto posBrace = objName.find_first_of("[");
+      assert(posBrace != std::string::npos);
+      const std::string samplerName   = objName.substr(0, posBrace) + "_sam" + objName.substr(posBrace);
+      const std::string rewrittenText = objName + ".SampleLevel(" + samplerName + ", " + texCoord + ", 0)";
+      ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenText);
       MarkRewritten(call);
     }
   }
