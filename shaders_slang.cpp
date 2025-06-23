@@ -281,64 +281,64 @@ bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
   return true; 
 }
 
-bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  
+bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* call)  
 { 
    // Get name of function
   //
-  const clang::DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
+  const clang::DeclarationNameInfo dni = call->getMethodDecl()->getNameInfo();
   const clang::DeclarationName dn      = dni.getName();
         std::string fname              = dn.getAsString();
 
-  std::string debugText = GetRangeSourceCode(f->getSourceRange(), m_compiler); 
-  if(debugText.find("as_uint") != std::string::npos)
+  std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+  if(debugText.find("sample") != std::string::npos)
   {
     int a = 2;
   }
 
-  if(kslicer::IsCalledWithArrowAndVirtual(f) && WasNotRewrittenYet(f))
-  {
-    auto buffAndOffset = kslicer::GetVFHAccessNodes(f, m_compiler);
-    if(buffAndOffset.buffName != "" && buffAndOffset.offsetName != "")
-    {
-      std::string buffText2  = buffAndOffset.buffName;
-      std::string offsetText = buffAndOffset.offsetName; //GetRangeSourceCode(buffAndOffset.offsetNode->getSourceRange(), m_compiler); 
-      
-      std::string textCallNoName = "(" + offsetText; 
-      if(f->getNumArgs() != 0)
-        textCallNoName += ",";
-        
-      for(unsigned i=0;i<f->getNumArgs();i++)
-      {
-        const auto pParam                   = f->getArg(i);
-        const clang::QualType typeOfParam   =	pParam->getType();
-        const std::string typeNameRewritten = kslicer::CleanTypeName(typeOfParam.getAsString());
-        if(m_codeInfo->dataClassNames.find(typeNameRewritten) != m_codeInfo->dataClassNames.end()) 
-        {
-          if(i==f->getNumArgs()-1)
-            textCallNoName[textCallNoName.rfind(",")] = ' ';
-          continue;
-        }
-
-        textCallNoName += RecursiveRewrite(f->getArg(i));
-        if(i < f->getNumArgs()-1)
-          textCallNoName += ",";
-      }
-      
-      auto pBuffNameFromVFH = m_codeInfo->m_vhierarchy.find(buffAndOffset.interfaceTypeName);
-      if(pBuffNameFromVFH != m_codeInfo->m_vhierarchy.end())
-        buffText2 = pBuffNameFromVFH->second.objBufferName;
-
-      std::string vcallFunc  = buffAndOffset.interfaceName + "_" + fname + "_" + buffText2 + textCallNoName + ")";
-      ReplaceTextOrWorkAround(f->getSourceRange(), vcallFunc);
-      MarkRewritten(f);
-    }
-  }
+  //if(kslicer::IsCalledWithArrowAndVirtual(call) && WasNotRewrittenYet(call))
+  //{
+  //  auto buffAndOffset = kslicer::GetVFHAccessNodes(call, m_compiler);
+  //  if(buffAndOffset.buffName != "" && buffAndOffset.offsetName != "")
+  //  {
+  //    std::string buffText2  = buffAndOffset.buffName;
+  //    std::string offsetText = buffAndOffset.offsetName; //GetRangeSourceCode(buffAndOffset.offsetNode->getSourceRange(), m_compiler); 
+  //    
+  //    std::string textCallNoName = "(" + offsetText; 
+  //    if(call->getNumArgs() != 0)
+  //      textCallNoName += ",";
+  //      
+  //    for(unsigned i=0;i<call->getNumArgs();i++)
+  //    {
+  //      const auto pParam                   = call->getArg(i);
+  //      const clang::QualType typeOfParam   =	pParam->getType();
+  //      const std::string typeNameRewritten = kslicer::CleanTypeName(typeOfParam.getAsString());
+  //      if(m_codeInfo->dataClassNames.find(typeNameRewritten) != m_codeInfo->dataClassNames.end()) 
+  //      {
+  //        if(i==call->getNumArgs()-1)
+  //          textCallNoName[textCallNoName.rfind(",")] = ' ';
+  //        continue;
+  //      }
+  //
+  //      textCallNoName += RecursiveRewrite(call->getArg(i));
+  //      if(i < call->getNumArgs()-1)
+  //        textCallNoName += ",";
+  //    }
+  //    
+  //    auto pBuffNameFromVFH = m_codeInfo->m_vhierarchy.find(buffAndOffset.interfaceTypeName);
+  //    if(pBuffNameFromVFH != m_codeInfo->m_vhierarchy.end())
+  //      buffText2 = pBuffNameFromVFH->second.objBufferName;
+  //
+  //    std::string vcallFunc  = buffAndOffset.interfaceName + "_" + fname + "_" + buffText2 + textCallNoName + ")";
+  //    ReplaceTextOrWorkAround(call->getSourceRange(), vcallFunc);
+  //    MarkRewritten(call);
+  //  }
+  //}
 
   // Get name of "this" type; we should check wherther this member is std::vector<T>  
   //
-  const clang::QualType qt = f->getObjectType();
+  const clang::QualType qt = call->getObjectType();
   const auto& thisTypeName = qt.getAsString();
-  clang::CXXRecordDecl* typeDecl  = f->getRecordDecl(); 
+  clang::CXXRecordDecl* typeDecl  = call->getRecordDecl(); 
   const std::string cleanTypeName = kslicer::CleanTypeName(thisTypeName);
   
   const bool isVector   = (typeDecl != nullptr && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl)) && thisTypeName.find("vector<") != std::string::npos; 
@@ -346,9 +346,9 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
   const auto pPrefix    = m_codeInfo->composPrefix.find(cleanTypeName);
   const bool isPrefixed = (pPrefix != m_codeInfo->composPrefix.end());
   
-  if(isVector && WasNotRewrittenYet(f))
+  if(isVector && WasNotRewrittenYet(call))
   {
-    const std::string exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
+    const std::string exprContent = GetRangeSourceCode(call->getSourceRange(), m_compiler);
     const auto posOfPoint         = exprContent.find(".");
     std::string memberNameA       = exprContent.substr(0, posOfPoint);
     
@@ -358,54 +358,45 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
     if(fname == "size" || fname == "capacity")
     {
       const std::string memberNameB = memberNameA + "_" + fname;
-      ReplaceTextOrWorkAround(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
-      MarkRewritten(f);
+      ReplaceTextOrWorkAround(call->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
+      MarkRewritten(call);
     }
     else if(fname == "resize")
     {
-      if(m_pCurrKernel != nullptr && f->getSourceRange().getBegin() <= m_pCurrKernel->loopOutsidesInit.getEnd()) // TODO: SEEMS INCORECT LOGIC
+      if(m_pCurrKernel != nullptr && call->getSourceRange().getBegin() <= m_pCurrKernel->loopOutsidesInit.getEnd()) // TODO: SEEMS INCORECT LOGIC
       {
-        assert(f->getNumArgs() == 1);
-        const clang::Expr* currArgExpr  = f->getArgs()[0];
+        assert(call->getNumArgs() == 1);
+        const clang::Expr* currArgExpr  = call->getArgs()[0];
         std::string newSizeValue = RecursiveRewrite(currArgExpr); 
         std::string memberNameB  = memberNameA + "_size = " + newSizeValue;
-        ReplaceTextOrWorkAround(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
-        MarkRewritten(f);
+        ReplaceTextOrWorkAround(call->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
+        MarkRewritten(call);
       }
     }
     else if(fname == "push_back")
     {
-      assert(f->getNumArgs() == 1);
-      const clang::Expr* currArgExpr  = f->getArgs()[0];
+      assert(call->getNumArgs() == 1);
+      const clang::Expr* currArgExpr  = call->getArgs()[0];
       std::string newElemValue = RecursiveRewrite(currArgExpr);
 
       std::string memberNameB  = memberNameA + "_size";
       std::string resulingText = m_codeInfo->pShaderCC->RewritePushBack(memberNameA, memberNameB, newElemValue);
-      ReplaceTextOrWorkAround(f->getSourceRange(), resulingText);
-      MarkRewritten(f);
+      ReplaceTextOrWorkAround(call->getSourceRange(), resulingText);
+      MarkRewritten(call);
     }
     else if(fname == "data")
     {
-      ReplaceTextOrWorkAround(f->getSourceRange(), memberNameA);
-      MarkRewritten(f);
+      ReplaceTextOrWorkAround(call->getSourceRange(), memberNameA);
+      MarkRewritten(call);
     }
-    //else if(fname == "as_uint")
-    //{
-    //  assert(f->getNumArgs() == 1);
-    //  const clang::Expr* currArgExpr = f->getArgs()[0];
-    //  std::string newElemValue = RecursiveRewrite(currArgExpr);
-    //  std::string resulingText = "asuint(" + newElemValue + ")";
-    //  ReplaceTextOrWorkAround(f->getSourceRange(), resulingText);
-    //  MarkRewritten(f);
-    //}
     else 
     {
-      kslicer::PrintError(std::string("Unsuppoted std::vector method") + fname, f->getSourceRange(), m_compiler.getSourceManager());
+      kslicer::PrintError(std::string("Unsuppoted std::vector method") + fname, call->getSourceRange(), m_compiler.getSourceManager());
     }
   }
-  else if((isRTX || isPrefixed) && WasNotRewrittenYet(f))
+  else if((isRTX || isPrefixed) && WasNotRewrittenYet(call))
   {
-    const auto exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
+    const auto exprContent = GetRangeSourceCode(call->getSourceRange(), m_compiler);
     const auto posOfPoint  = exprContent.find("->"); // seek for "m_pImpl->Func()" 
     
     std::string memberNameA;
@@ -415,17 +406,33 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
       memberNameA = exprContent.substr(0, posOfPoint);  // m_pImpl->Func() inside main class
 
     std::string resCallText = memberNameA + "_" + fname + "(";
-    for(unsigned i=0;i<f->getNumArgs(); i++)
+    for(unsigned i=0;i<call->getNumArgs(); i++)
     {
-      resCallText += RecursiveRewrite(f->getArg(i));
+      resCallText += RecursiveRewrite(call->getArg(i));
       //if(i == f->getNumArgs()-2 && lastArgIsEmpty)
       //  break;
-      if(i!=f->getNumArgs()-1)
+      if(i!=call->getNumArgs()-1)
         resCallText += ", ";
     }
     resCallText += ")";
-    ReplaceTextOrWorkAround(f->getSourceRange(), resCallText);
-    MarkRewritten(f);
+    ReplaceTextOrWorkAround(call->getSourceRange(), resCallText);
+    MarkRewritten(call);
+  }
+  else if((fname == "sample" || fname == "Sample") && WasNotRewrittenYet(call))
+  {
+    //std::string debugText = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
+    clang::Expr* pTexName =	call->getImplicitObjectArgument();
+    std::string objName   = kslicer::GetRangeSourceCode(pTexName->getSourceRange(), m_compiler);
+    int texCoordId   = 0;    
+    bool needRewrite = kslicer::NeedRewriteTextureArray(call, objName, texCoordId);
+    if(needRewrite)
+    {
+      const std::string texCoord = RecursiveRewrite(call->getArg(texCoordId));
+      //const std::string lastRewrittenText = std::string("textureLod") + "(" + objName + ", " + texCoord + ", 0)";
+      const std::string lastRewrittenText = objName + ".SampleLevel(" + texCoord + ", 0)";
+      ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+      MarkRewritten(call);
+    }
   }
 
   return true; 

@@ -1895,6 +1895,8 @@ namespace kslicer
 
   VFHAccessNodes GetVFHAccessNodes(const clang::CXXMemberCallExpr* f, const clang::CompilerInstance& a_compiler);
   bool IsCalledWithArrowAndVirtual(const clang::CXXMemberCallExpr* f);
+
+  bool NeedRewriteTextureArray(clang::CXXMemberCallExpr* a_call, std::string& objName, int& texCoordId);
 }
 
 std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::filesystem::path& fileName,

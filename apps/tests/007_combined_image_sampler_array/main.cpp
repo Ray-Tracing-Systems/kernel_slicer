@@ -9,6 +9,7 @@
 
 #include "vk_context.h"
 std::shared_ptr<TestCombinedImage> CreateTestCombinedImage_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+vk_utils::VulkanDeviceFeatures TestCombinedImage_Generated_ListRequiredDeviceFeatures();
 
 int main(int argc, const char** argv)
 {
@@ -29,7 +30,8 @@ int main(int argc, const char** argv)
   if(onGPU)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0); //..
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+    auto deviceFeatures = TestCombinedImage_Generated_ListRequiredDeviceFeatures();
+    auto ctx            = vk_utils::globalContextInit(deviceFeatures, enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateTestCombinedImage_Generated(ctx, width*height);
   }
   else

@@ -1891,45 +1891,49 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
   return true;
 }
 
+bool kslicer::NeedRewriteTextureArray(clang::CXXMemberCallExpr* a_call, std::string& objName, int& texCoordId)
+{
+  clang::Expr* pTexName =	a_call->getImplicitObjectArgument();
+  bool needRewrite = true;
+  const clang::QualType leftType = pTexName->getType();
+  std::string typeName = leftType.getAsString();
+  texCoordId = 1;  ///<! texture.sample(m_sampler, texCoord)
+  if(leftType->isPointerType()) // buffer ? --> ignore
+  {
+    const auto qt2        = leftType->getPointeeType();
+    std::string typeName2 = qt2.getAsString();
+    ReplaceFirst(typeName2, "const ",  ""); // remove 'const '
+    ReplaceFirst(typeName2, "struct ", ""); // remove 'struct '
+    ReplaceFirst(objName, "->",  "");       // remove '->'
+    needRewrite = kslicer::IsCombinedImageSamplerTypeName(typeName2);
+    texCoordId  = 0;                                         ///<! combinedObject->sample(texCoord)
+  }
+  else if(!kslicer::IsTexture(leftType))
+  {
+    needRewrite = false;
+  }
+  return needRewrite;
+}
+
 bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* call)
 {
   clang::CXXMethodDecl* fDecl = call->getMethodDecl();
   if(fDecl != nullptr && WasNotRewrittenYet(call))
   {
     //std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler);
-    std::string fname     = fDecl->getNameInfo().getName().getAsString();
-    clang::Expr* pTexName =	call->getImplicitObjectArgument();
-    std::string objName   = kslicer::GetRangeSourceCode(pTexName->getSourceRange(), m_compiler);
+    std::string fname = fDecl->getNameInfo().getName().getAsString();
 
     if(fname == "sample" || fname == "Sample")
     {
-      bool needRewrite = true;
-      const clang::QualType leftType = pTexName->getType();
-      std::string typeName = leftType.getAsString();
-      int texCoordId = 1;                                        ///<! texture.sample(m_sampler, texCoord)
-      if(leftType->isPointerType()) // buffer ? --> ignore
-      {
-        const auto qt2        = leftType->getPointeeType();
-        std::string typeName2 = qt2.getAsString();
-        ReplaceFirst(typeName2, "const ",  ""); // remove 'const '
-        ReplaceFirst(typeName2, "struct ", ""); // remove 'struct '
-        ReplaceFirst(objName, "->",  "");       // remove '->'
-        needRewrite = kslicer::IsCombinedImageSamplerTypeName(typeName2);
-        texCoordId  = 0;                                         ///<! combinedObject->sample(texCoord)
-      }
-      else if(!kslicer::IsTexture(leftType))
-      {
-        needRewrite = false;
-      }
+      clang::Expr* pTexName =	call->getImplicitObjectArgument();
+      std::string objName   = kslicer::GetRangeSourceCode(pTexName->getSourceRange(), m_compiler);
+      int texCoordId   = 0;    
+      bool needRewrite = kslicer::NeedRewriteTextureArray(call, objName, texCoordId);
 
       if(needRewrite)
       {
-        //clang::Expr* samplerExpr = call->getArg(0); // TODO: process sampler? use separate sampler and image?
-        //clang::Expr* txCoordExpr = call->getArg(1);
-        //std::string text1 = kslicer::GetRangeSourceCode(samplerExpr->getSourceRange(), m_compiler);
-        //std::string text2 = kslicer::GetRangeSourceCode(txCoordExpr->getSourceRange(), m_compiler);
         const std::string texCoord = RecursiveRewrite(call->getArg(texCoordId));
-        const std::string lastRewrittenText = std::string("texture") + "(" + objName + ", " + texCoord + ")";
+        const std::string lastRewrittenText = std::string("textureLod") + "(" + objName + ", " + texCoord + ", 0)";
         ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
         MarkRewritten(call);
       }

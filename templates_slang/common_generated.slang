@@ -6,7 +6,7 @@ layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}}; //
 {% for Arg in Kernel.Args %}
 {% if not Arg.IsUBO %} 
 {% if Arg.IsImage %}
-RWTexture2D<Arg.Type> {{Arg.Name}}; // TODO: this is Ot a combined image sampler (!!!)
+Texture2D<float4> {{Arg.Name}}; //
 {% else if Arg.IsAccelStruct %}
 RaytracingAccelerationStructure {{Arg.Name}};
 {% else %}
