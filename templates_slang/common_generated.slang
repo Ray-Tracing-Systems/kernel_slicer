@@ -4,17 +4,20 @@ layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}}; //
 {% endfor %}
 
 {% for Arg in Kernel.Args %}
-{% if not Arg.IsUBO %} 
+{% if not Arg.IsUBO %}
 {% if Arg.IsImage %}
-Texture2D<float4> {{Arg.Name}}; //
+{% if Kernel.UseCombinedImageSampler %}[[vk::binding({{loop.index}}, 0)]] {% endif %}Texture2D<float4> {{Arg.Name}}; //
+{% if Arg.IsImageArray %}
+[[vk::binding({{loop.index}}, 0)]] SamplerState {{Arg.NameSam}};
+{% endif %}
 {% else if Arg.IsAccelStruct %}
-RaytracingAccelerationStructure {{Arg.Name}};
+{% if Kernel.UseCombinedImageSampler %}[[vk::binding({{loop.index}}, 0)]] {% endif %}RaytracingAccelerationStructure {{Arg.Name}};
 {% else %}
-RWStructuredBuffer<{{Arg.Type}}> {{Arg.Name}}; // 
+{% if Kernel.UseCombinedImageSampler %}[[vk::binding({{loop.index}}, 0)]] {% endif %}RWStructuredBuffer<{{Arg.Type}}> {{Arg.Name}}; // 
 {% endif %} {# /* Arg.IsImage */ #}
 {% endif %} {# /* not Arg.IsUBO */ #}
 {% endfor %}
-RWStructuredBuffer<{{MainClassName}}{{MainClassSuffix}}_UBO_Data> ubo;
+{% if Kernel.UseCombinedImageSampler %}[[vk::binding({{length(Kernel.Args)}}, 0)]] {% endif %}RWStructuredBuffer<{{MainClassName}}{{MainClassSuffix}}_UBO_Data> ubo;
 
 {% for Array in Kernel.ThreadLocalArrays %}
 {{Array.Type}} {{Array.Name}}[{{Array.Size}}];

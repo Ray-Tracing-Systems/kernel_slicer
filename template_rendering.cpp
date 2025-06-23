@@ -738,6 +738,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Name"]     = commonArg.name;
       argj["IsUBO"]    = commonArg.isDefinedInClass;
       argj["IsImage"]  = commonArg.isImage;
+      argj["IsImageArray"]  = false;
       argj["IsAccelStruct"] = false;
       argj["NeedFmt"]       = !commonArg.isSampler;
       argj["ImFormat"]      = commonArg.imageFormat;
@@ -762,6 +763,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     // now add all std::vector members
     //
+    bool usedCombinedImageSamplers = false;
     json rtxNames = std::vector<json>();
     for(const auto& container : k.usedContainers)
     {
@@ -797,6 +799,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["Name"]       = pVecMember->second.name;
       argj["IsUBO"]      = false;
       argj["IsImage"]    = false;
+      argj["IsImageArray"]  = false;
       argj["IsAccelStruct"] = false;
       argj["IsPointer"]     = (pVecMember->second.kind == kslicer::DATA_KIND::KIND_VECTOR);
       argj["IsMember"]      = true;
@@ -821,20 +824,25 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       if(pVecMember->second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
       {
         argj["IsImage"]  = true;
+        argj["IsImageArray"] = false;
         argj["Type"]     = "sampler2D";
         argj["NeedFmt"]  = false;
         argj["ImFormat"] = "";
         argj["SizeOffset"] = 0;
+        usedCombinedImageSamplers = true;
       }
       else if(pVecMember->second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
       {
         argj["Name"]     = pVecMember->second.name + "[]";
+        argj["NameSam"]  = pVecMember->second.name + "_sam[]";
         argj["IsImage"]  = true;
+        argj["IsImageArray"] = true;
         argj["Type"]     = "sampler2D";
         argj["NeedFmt"]  = false;
         argj["ImFormat"] = "";
         argj["SizeOffset"] = 0;
         isTextureArrayUsedInThisKernel = true;
+        usedCombinedImageSamplers      = true;
       }
       else if(pVecMember->second.isContainer && kslicer::IsTextureContainer(pVecMember->second.containerType))
       {
@@ -995,6 +1003,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["ArrsToRed"]    = reductionArrs;
     kernelJson["FinishRed"]    = needFinishReductionPass;
     kernelJson["NeedTexArray"] = isTextureArrayUsedInThisKernel;
+    kernelJson["UseCombinedImageSampler"] = usedCombinedImageSamplers;
     kernelJson["WarpSize"]     = k.warpSize;
     kernelJson["InitSource"]   = "";
     
