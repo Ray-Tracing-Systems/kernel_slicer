@@ -975,6 +975,8 @@ int main(int argc, const char **argv) //
     std::sort(usedFunctions.begin(), usedFunctions.end(), [](const auto& a, const auto& b) { return a.depthUse > b.depthUse; });
 
   std::vector<std::string> usedDefines = kslicer::ExtractDefines(compiler);
+  //for(auto def : defines) 
+  //  usedDefines.push_back(std::string("#define ") + def.first + " " + def.second);
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;

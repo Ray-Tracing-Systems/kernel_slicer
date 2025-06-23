@@ -284,7 +284,11 @@ namespace kslicer
       CallExpr const * funcCall = result.Nodes.getNodeAs<CallExpr>("functionCall");
       FunctionDecl const * func = result.Nodes.getNodeAs<FunctionDecl>("fdecl");
 
-      //clang::SourceManager& srcMgr(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
+      clang::SourceManager& srcMgr(const_cast<clang::SourceManager &>(result.Context->getSourceManager()));
+      //if(l_var == nullptr)
+      //{
+      //  std::cout << "[missed var decl]: kernel " << func_decl->getNameAsString() << std::endl;
+      //}
 
       if(func_decl && l_var && var)
       {
@@ -294,6 +298,11 @@ namespace kslicer
           auto varName     = var->getNameAsString();
           auto pDataMember = m_allInfo.allDataMembers.find(varName);
           auto pSetterMemb = m_allInfo.m_setterVars.find(varName);
+          
+          //if(varName == "m_pRayTraceImpl" || varName == "m_pAccelStruct")
+          //{
+          //  int a = 2;
+          //}
 
           if(pDataMember != m_allInfo.allDataMembers.end())
           {
