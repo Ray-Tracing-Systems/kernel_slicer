@@ -481,6 +481,11 @@ bool kslicer::FunctionRewriter2::VisitFloatingLiteral_Impl(clang::FloatingLitera
   return true;
 }
 
+bool kslicer::FunctionRewriter2::VisitReturnStmt_Impl(clang::ReturnStmt* ret)
+{
+  return true;
+}
+
 
 std::string kslicer::FunctionRewriter2::RecursiveRewrite(const clang::Stmt* expr)
 {
@@ -934,4 +939,9 @@ bool kslicer::KernelRewriter2::VisitCXXConstructExpr_Impl(clang::CXXConstructExp
 bool kslicer::KernelRewriter2::VisitCallExpr_Impl(clang::CallExpr* call)
 {
   return m_pFunRW2->VisitCallExpr_Impl(call); 
+}
+
+bool kslicer::KernelRewriter2::VisitReturnStmt_Impl(clang::ReturnStmt* ret)
+{
+  return m_pFunRW2->VisitReturnStmt_Impl(ret); 
 }

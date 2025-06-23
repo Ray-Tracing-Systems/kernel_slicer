@@ -757,6 +757,7 @@ namespace kslicer
     virtual bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr) { return true; }
     virtual bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) { return true; }
     virtual bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr) { return true; }
+    virtual bool VisitReturnStmt_Impl(clang::ReturnStmt* ret) { return true; }
     
     kslicer::ShittyFunction m_shit;
   };
@@ -790,6 +791,8 @@ namespace kslicer
     bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr)                 override;
     bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)                       override;
     bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr)               override;
+
+    bool VisitReturnStmt_Impl(clang::ReturnStmt* ret) override;
 
     // Also important functions to use(!)
     //
@@ -1241,6 +1244,8 @@ namespace kslicer
     bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override;
     bool VisitCallExpr_Impl(clang::CallExpr* f)               override;
     bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* f) override; 
+   
+    bool VisitReturnStmt_Impl(clang::ReturnStmt* ret) override;
 
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
 

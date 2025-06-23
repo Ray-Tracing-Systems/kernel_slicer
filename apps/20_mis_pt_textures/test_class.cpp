@@ -59,7 +59,7 @@ void Integrator::kernel_InitEyeRay2(uint tid, const uint* packedXY,
 }
 
 
-bool Integrator::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
+void Integrator::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                                 Lite_Hit* out_hit, float2* out_bars)
 {
   const float4 rayPos = *rayPosAndNear;
@@ -77,7 +77,7 @@ bool Integrator::kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* 
  
   *out_hit  = res;
   *out_bars = baricentrics;
-  return (res.primId != -1);
+  //return (res.primId != -1);
 }
 
 void Integrator::kernel_RayTrace2(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar,
@@ -346,8 +346,7 @@ void Integrator::CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color
 
   Lite_Hit hit; 
   float2   baricentrics; 
-  if(!kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics))
-    return;
+  kernel_RayTrace(tid, &rayPosAndNear, &rayDirAndFar, &hit, &baricentrics);
   
   kernel_GetRayColor(tid, &hit, in_pakedXY, out_color);
 }

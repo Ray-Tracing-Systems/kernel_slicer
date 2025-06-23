@@ -61,7 +61,7 @@ public:
   void kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar);        // (tid,tidX,tidY,tidZ) are SPECIAL PREDEFINED NAMES!!!
   void kernel_InitEyeRay2(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar, float4* accumColor, float4* accumuThoroughput, RandomGen* gen, uint* rayFlags);        
 
-  bool kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
+  void kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
                        Lite_Hit* out_hit, float2* out_bars);
 
   void kernel_RayTrace2(uint tid, const float4* rayPosAndNear, const float4* rayDirAndFar,
