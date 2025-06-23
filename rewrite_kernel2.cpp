@@ -45,7 +45,7 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
     return false;
   
   std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-  if(debugText == "m_instMatricesInv")
+  if(debugText == "m_SdfSBSDataF")
   {
     int a = 2;
   }
@@ -543,7 +543,10 @@ bool kslicer::FunctionRewriter2::DetectAndRewriteShallowPattern(const clang::Stm
     std::string rightRes = kslicer::GetRangeSourceCode(rhs->getSourceRange(), m_compiler);
     if(DetectAndRewriteShallowPattern(lhs, leftRes) || DetectAndRewriteShallowPattern(rhs, rightRes))
     {
-      a_out = leftRes + opCode + rightRes;
+      if(opCode == "[]")
+        a_out = leftRes + "[" + rightRes + "]";
+      else
+        a_out = leftRes + opCode + rightRes;
       return true;
     }
   }
