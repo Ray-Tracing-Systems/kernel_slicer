@@ -154,7 +154,7 @@ void Integrator::kernel_GetRayColor(uint tid, const Lite_Hit* in_hit, const uint
   const Lite_Hit lhit = *in_hit;
   if(lhit.geomId == -1)
   {
-    out_color[tid] = 0;
+    //out_color[tid] = 0;
     return;
   }
 

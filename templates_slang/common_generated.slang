@@ -62,7 +62,7 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(float4 rayPos, float4 rayDir)
     {
       float4 rayPosAndNear = float4(rayQuery.CandidateObjectRayOrigin(), rayPos.w);
       float4 rayDirAndFar  = float4(rayQuery.CandidateObjectRayDirection(), rayDir.w);
-      const uint geomIndex = rayQuery.CandidateInstanceID(); // rayQuery.CandidateGeometryIndex();
+      const uint geomIndex = rayQuery.CandidateInstanceID(); // user defined geometry per-inatsnce index
       uint2 remap = {{ RTName }}_remap[geomIndex];
       CRT_LeafInfo info;
       info.aabbId = rayQuery.CandidatePrimitiveIndex();
@@ -80,9 +80,9 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(float4 rayPos, float4 rayDir)
 
   if(rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
   {
-    res.primId = rayQuery.CommittedPrimitiveIndex();
-    res.geomId = rayQuery.CommittedGeometryIndex(); // (??)
-    res.instId = rayQuery.CommittedInstanceID();
+    res.primId = rayQuery.CommittedPrimitiveIndex(); // auto generated index
+    res.geomId = rayQuery.CommittedInstanceID();     // user defined geometry per-inatsnce index
+    res.instId = rayQuery.CommittedInstanceIndex();  // auto generated index
     res.t      = rayQuery.CommittedRayT();
 
     float2 bars = rayQuery.CommittedTriangleBarycentrics();
