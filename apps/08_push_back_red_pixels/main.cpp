@@ -14,6 +14,7 @@
 #ifdef USE_VULKAN
 #include "vk_context.h"
 std::shared_ptr<RedPixels> CreateRedPixels_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+vk_utils::VulkanDeviceFeatures RedPixels_Generated_ListRequiredDeviceFeatures();
 #endif
 #ifdef USE_CUDA
 std::shared_ptr<RedPixels> CreateRedPixels_Generated();
@@ -44,8 +45,9 @@ int main(int argc, const char** argv)
   {
     #ifdef USE_VULKAN
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
-    pImpl = CreateRedPixels_Generated(ctx, inputImageData.size());
+    auto features = RedPixels_Generated_ListRequiredDeviceFeatures();
+    auto ctx = vk_utils::globalContextInit(features, enableValidationLayers, a_preferredDeviceId);
+    pImpl    = CreateRedPixels_Generated(ctx, inputImageData.size());
     #endif
     #ifdef USE_CUDA
     pImpl = CreateRedPixels_Generated();

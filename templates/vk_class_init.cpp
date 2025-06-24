@@ -403,6 +403,8 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
   {% for Buffer in RedVectorVars %}
   vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
   {% endfor %}
+  if(copyKernelFloatDSLayout != VK_NULL_HANDLE)
+     vkDestroyDescriptorSetLayout(device, copyKernelFloatDSLayout, nullptr);
   {% if length(IndirectDispatches) > 0 %}
   vkDestroyBuffer(device, m_indirectBuffer, nullptr);
   vkDestroyDescriptorSetLayout(device, m_indirectUpdateDSLayout, nullptr);
