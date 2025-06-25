@@ -34,7 +34,29 @@ groupshared {{Var}}
 {% endif %}
 
 {% for Fun in Kernel.TemplatedFun %}
-// void {{Fun.Name}}(.., {{Fun.Arg0}} value) { ... }
+{% if Fun.NameT == "ReduceAdd" %}
+groupshared {{Fun.Type0}} shared_data[256];
+void {{Fun.Name}}(RWStructuredBuffer<{{Fun.Type0}}> a_buffer, uint a_offset, {{Fun.Type0}} value, uint threadIdx)
+{
+  if (isnan(value) || isinf(value))
+    value = 0.0f;
+
+  shared_data[threadIdx] = value;
+  GroupMemoryBarrierWithGroupSync();
+
+  if (threadIdx < 128) shared_data[threadIdx] += shared_data[threadIdx + 128]; GroupMemoryBarrierWithGroupSync();
+  if (threadIdx < 64)  shared_data[threadIdx] += shared_data[threadIdx + 64];  GroupMemoryBarrierWithGroupSync();
+  if (threadIdx < 32)  shared_data[threadIdx] += shared_data[threadIdx + 32];  GroupMemoryBarrierWithGroupSync();
+  if (threadIdx < 16)  shared_data[threadIdx] += shared_data[threadIdx + 16];  GroupMemoryBarrierWithGroupSync();
+  if (threadIdx < 8)   shared_data[threadIdx] += shared_data[threadIdx + 8];   GroupMemoryBarrierWithGroupSync();
+  if (threadIdx < 4)   shared_data[threadIdx] += shared_data[threadIdx + 4];   GroupMemoryBarrierWithGroupSync();
+  if (threadIdx < 2)   shared_data[threadIdx] += shared_data[threadIdx + 2];   GroupMemoryBarrierWithGroupSync();
+  if (threadIdx < 1)   shared_data[threadIdx] += shared_data[threadIdx + 1];   GroupMemoryBarrierWithGroupSync();
+  
+  if (threadIdx == 0)
+    InterlockedAdd(a_buffer[a_offset], shared_data[0]);
+}
+{% endif %}
 {% endfor %}
 
 [shader("compute")]

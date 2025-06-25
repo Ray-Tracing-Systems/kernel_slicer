@@ -518,7 +518,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       suffix = "U";
     else if(typeName == "int" || typeName == "int32_t")
       suffix = "I";
-    const std::string rewrittenText = "ReduceAdd" + suffix + "(" + argText0 + ", uint(" + argText1 + "), " + argText2 + ")";
+    const std::string rewrittenText = "ReduceAdd" + suffix + "(" + argText0 + ", uint(" + argText1 + "), " + argText2 + ", a_localTID.x)";
 
     if(m_pCurrKernel != nullptr)
     {
@@ -526,8 +526,9 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       if(found == m_pCurrKernel->templatedFunctionsLM.end())
       {
         TemplatedFunctionLM funInfo;
-        funInfo.name     = "ReduceAdd" + suffix;
-        funInfo.types[0] = typeName;
+        funInfo.name         = "ReduceAdd" + suffix;
+        funInfo.nameOriginal = "ReduceAdd";
+        funInfo.types[0]     = typeName;
         m_pCurrKernel->templatedFunctionsLM[funInfo.name] = funInfo;
       }
     }

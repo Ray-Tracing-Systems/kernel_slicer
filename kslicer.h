@@ -225,6 +225,7 @@ namespace kslicer
   struct TemplatedFunctionLM ///<! for templated functions from LiteMath which should be generated per kernel
   {
     std::string name;
+    std::string nameOriginal;
     std::string types[4]; ///<! max 4 templated arguments currently
   };
 

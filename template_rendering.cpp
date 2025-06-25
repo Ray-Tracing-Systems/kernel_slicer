@@ -1391,11 +1391,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["TemplatedFun"] = std::vector<json>();
     for(auto x : k.templatedFunctionsLM) {
       json local;
-      local["Name"] = x.second.name;
-      local["Arg0"] = x.second.types[0];
-      local["Arg1"] = x.second.types[1];
-      local["Arg2"] = x.second.types[2];
-      local["Arg3"] = x.second.types[3];
+      local["Name"]  = x.second.name;
+      local["NameT"] = x.second.nameOriginal;
+      local["Type0"] = x.second.types[0];
+      local["Type1"] = x.second.types[1];
+      local["Type2"] = x.second.types[2];
+      local["Type3"] = x.second.types[3];
       kernelJson["TemplatedFun"].push_back(local);
     }
 
