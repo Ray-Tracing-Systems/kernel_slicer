@@ -51,14 +51,14 @@
 using kslicer::KernelInfo;
 using kslicer::DataMemberInfo;
 
-std::vector<std::string> ListProcessedFiles(nlohmann::json a_filesArray, const std::string& a_optionsPath)
+std::vector<std::string> ListProcessedFiles(nlohmann::json a_filesArray, std::filesystem::path optionsFolder)
 {
   std::vector<std::string> allFiles;
   if(!a_filesArray.is_array())
     return allFiles;
 
-  std::filesystem::path optionsPath(a_optionsPath);
-  std::filesystem::path optionsFolder = optionsPath.parent_path();
+  //std::filesystem::path optionsPath(a_optionsPath);
+  //std::filesystem::path optionsFolder = optionsPath.parent_path();
   
   for(const auto& param : a_filesArray) 
   {
@@ -119,7 +119,7 @@ int main(int argc, const char **argv) //
     std::cout << "[main]: warning, config is not found at '" << optionsPath.c_str() << "', is it ok?" << std::endl;
   else 
     inputOptions = nlohmann::json::parse(ifs, nullptr, true, true);
-  
+
   auto paramsFromConfig = inputOptions["options"];
   auto inputDefines     = inputOptions["defines"];
   if(inputDefines != nullptr)
@@ -128,7 +128,13 @@ int main(int argc, const char **argv) //
       defines[param.key()] = param.value().is_string() ? param.value().get<std::string>() : "";
   }
 
-  std::vector<std::string> allFiles = ListProcessedFiles(inputOptions["source"], optionsPath);
+  auto baseProjectPath = std::filesystem::path(optionsPath).parent_path();
+  if(inputOptions["baseDirectory"] != nullptr)
+  {
+    const std::string value = inputOptions["baseDirectory"];
+    baseProjectPath = std::filesystem::absolute(baseProjectPath / value).lexically_normal();
+  }
+  std::vector<std::string> allFiles = ListProcessedFiles(inputOptions["source"], baseProjectPath);
 
   std::vector<std::string> ignoreFiles;
   std::vector<std::string> processFiles;
@@ -164,6 +170,7 @@ int main(int argc, const char **argv) //
 
   std::filesystem::path mainFolderPath  = fileName.parent_path();
   std::string mainClassName   = "TestClass";
+  std::string selfFolder      = "";
   std::string stdlibFolder    = "";
   std::string patternName     = "rtv";
   std::string shaderCCName    = "clspv";
@@ -186,6 +193,9 @@ int main(int argc, const char **argv) //
 
   if(params.find("-stdlibfolder") != params.end())
     stdlibFolder = params["-stdlibfolder"];
+
+  if(params.find("-selfdir") != params.end())
+    selfFolder = params["-selfdir"];
 
   if(params.find("-pattern") != params.end())
     patternName = params["-pattern"];
@@ -305,7 +315,7 @@ int main(int argc, const char **argv) //
 
     std::filesystem::path path(folder.get<std::string>());
     if(!path.is_absolute())
-      path = std::filesystem::absolute(std::filesystem::path(optionsPath).parent_path() / path);
+      path = std::filesystem::absolute(baseProjectPath / path);
 
     if(std::filesystem::exists(path) && std::filesystem::is_directory(path))
       processFolders.push_back(path);
@@ -320,7 +330,7 @@ int main(int argc, const char **argv) //
 
     std::filesystem::path path(folder.get<std::string>());
     if(!path.is_absolute())
-      path = std::filesystem::absolute(std::filesystem::path(optionsPath).parent_path() / path);
+      path = std::filesystem::absolute(baseProjectPath / path);
 
     if(std::filesystem::exists(path) && std::filesystem::is_directory(path))
       ignoreFolders.push_back(path);
@@ -573,6 +583,9 @@ int main(int argc, const char **argv) //
   compiler.createSourceManager(compiler.getFileManager());
   
   /////////////////////////////////////////////////////////////////////////////////////////////////// -stdlibFolder
+  if(selfFolder != "")
+    std::filesystem::current_path(selfFolder);
+
   if(stdlibFolder == "")
   {
     std::filesystem::path currentPath  = std::filesystem::current_path();
