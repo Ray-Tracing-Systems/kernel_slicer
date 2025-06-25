@@ -1387,7 +1387,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
 
     kernelJson["IsSingleThreaded"] = false; 
-  
+    
+    kernelJson["TemplatedFun"] = std::vector<json>();
+    for(auto x : k.templatedFunctionsLM) {
+      json local;
+      local["Name"] = x.second.name;
+      local["Arg0"] = x.second.types[0];
+      local["Arg1"] = x.second.types[1];
+      local["Arg2"] = x.second.types[2];
+      local["Arg3"] = x.second.types[3];
+      kernelJson["TemplatedFun"].push_back(local);
+    }
+
     auto original = kernelJson;
 
     // if we have additional init statements we should add additional init kernel before our kernel

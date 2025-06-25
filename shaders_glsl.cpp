@@ -1496,7 +1496,6 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
   while(clang::isa<clang::ImplicitCastExpr>(expr))
     expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->IgnoreImpCasts();
 
-  //expr->dump();
   if(clang::isa<clang::DeclRefExpr>(expr)) // bugfix for recurive rewrite of single node, function args access
   {
     std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); //
@@ -1642,7 +1641,6 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
         std::string offset = "0";
         const auto arg = kslicer::RemoveImplicitCast(call->getArg(i));
         //const std::string debugText = kslicer::GetRangeSourceCode(arg->getSourceRange(), m_compiler);
-        //arg->dump();
         if(clang::isa<clang::BinaryOperator>(arg))
         {
           const auto bo = clang::dyn_cast<clang::BinaryOperator>(arg);

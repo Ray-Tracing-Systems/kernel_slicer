@@ -33,6 +33,10 @@ groupshared {{Var}}
 {% endfor %}
 {% endif %}
 
+{% for Fun in Kernel.TemplatedFun %}
+// void {{Fun.Name}}(.., {{Fun.Arg0}} value) { ... }
+{% endfor %}
+
 [shader("compute")]
 [numthreads({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}})]
 void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog %} uint3 a_groupID : SV_GroupID, {% endif%} uint3 a_localTID : SV_GroupThreadID, uniform KernelArgs kgenArgs)

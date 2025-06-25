@@ -290,7 +290,7 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
         std::string fname              = dn.getAsString();
 
   std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler); 
-  if(debugText.find("sample") != std::string::npos)
+  if(debugText.find("ReduceAdd") != std::string::npos)
   {
     int a = 2;
   }
@@ -502,6 +502,39 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
     MarkRewritten(call);
   }
+  else if(fname == "ReduceAdd" && call->getNumArgs() == 3 && WasNotRewrittenYet(call))
+  {
+    const std::string argText0 = RecursiveRewrite(call->getArg(0));
+    const std::string argText1 = RecursiveRewrite(call->getArg(1));
+    const std::string argText2 = RecursiveRewrite(call->getArg(2));
+    auto posOfTypeBeg = debugText.find("<");
+    auto posOfTypeEnd = debugText.find(",");
+    std::string typeName = debugText.substr(posOfTypeBeg+1, posOfTypeEnd-posOfTypeBeg-1);
+    ReplaceFirst(typeName, " ", "");
+    std::string suffix = "F";
+    if(typeName == "double")
+      suffix = "D";
+    else if(typeName == "uint" || typeName == "uint32_t" || typeName == "unsignedint")
+      suffix = "U";
+    else if(typeName == "int" || typeName == "int32_t")
+      suffix = "I";
+    const std::string rewrittenText = "ReduceAdd" + suffix + "(" + argText0 + ", uint(" + argText1 + "), " + argText2 + ")";
+
+    if(m_pCurrKernel != nullptr)
+    {
+      auto found = m_pCurrKernel->templatedFunctionsLM.find("ReduceAdd" + suffix);
+      if(found == m_pCurrKernel->templatedFunctionsLM.end())
+      {
+        TemplatedFunctionLM funInfo;
+        funInfo.name     = "ReduceAdd" + suffix;
+        funInfo.types[0] = typeName;
+        m_pCurrKernel->templatedFunctionsLM[funInfo.name] = funInfo;
+      }
+    }
+
+    ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenText);
+    MarkRewritten(call);
+  }
   else if(m_kernelMode && WasNotRewrittenYet(call))
   {
     // (#1) check if buffer/pointer to global memory is passed to a function
@@ -568,7 +601,6 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
           {
             std::string offset = "0";
             //const std::string debugText = kslicer::GetRangeSourceCode(arg->getSourceRange(), m_compiler);
-            //arg->dump();
             if(clang::isa<clang::BinaryOperator>(arg))
             {
               const auto bo = clang::dyn_cast<clang::BinaryOperator>(arg);

@@ -222,6 +222,12 @@ namespace kslicer
     std::string accObjName;
   };
 
+  struct TemplatedFunctionLM ///<! for templated functions from LiteMath which should be generated per kernel
+  {
+    std::string name;
+    std::string types[4]; ///<! max 4 templated arguments currently
+  };
+
   /**
   \brief for each method MainClass::kernel_XXX
   */
@@ -361,6 +367,7 @@ namespace kslicer
     std::vector<const KernelInfo*>                     subkernels;          ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
     ShittyFunction                                     currentShit;         ///<!
     std::unordered_map<std::string, ArrayData>         threadLocalArrays;
+    std::map<std::string, TemplatedFunctionLM>         templatedFunctionsLM;
    
     struct BEBlock
     {

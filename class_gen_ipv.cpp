@@ -320,8 +320,6 @@ std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, con
 
 void kslicer::MainClassInfo::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)
 {
-  //a_funcInfo.astNode->dump();
-
   // (1) run visitor for basic kernel info
   //
   Rewriter rewrite2;

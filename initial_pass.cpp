@@ -524,10 +524,6 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
       else
         std::cout << fname.c_str();
       std::cout << std::endl;
-
-      //std::string text = kslicer::GetRangeSourceCode(f->getSourceRange(), m_compiler);
-      //std::cout << "found src = " << text.c_str() << std::endl;
-      //f->dump();
     }
     else if(attr == CPP11_ATTR::ATTR_SETTER)
     {
