@@ -35,6 +35,7 @@ endif()
 
 if(USE_WGPU)
   add_compile_definitions(USE_WGPU)
+  include_directories("../wkutils")
   get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
   set(EXTERNAL_DIR ${PARENT_DIR}/external)
   add_subdirectory(${EXTERNAL_DIR}/webgpu ${CMAKE_CURRENT_BINARY_DIR}/webgpu)
@@ -65,7 +66,13 @@ set(VKUTILS_SOURCE ../vkutils/vk_utils.cpp
                    ../vkutils/vk_context.cpp
                    ../vkutils/vk_alloc_simple.cpp
                    ../vkutils/vk_pipeline.cpp
-                   ../vkutils/vk_descriptor_sets.cpp)     
+                   ../vkutils/vk_descriptor_sets.cpp)    
+
+
+#set(WKGEN_SOURCE mandelbrot_wgpu.cpp)    
+
+set(WKUTILS_SOURCE ../wkutils/wk_context.cpp) # ../wkutils/vk_utils.cpp
+
 
 set(SOURCE ${MAIN_SOURCE})
 set(LINK ${FREEIMAGE_LIBRARIES})
@@ -79,6 +86,7 @@ if(USE_ISPC)
 endif()
 if(USE_WGPU)
   list(APPEND LINK webgpu)
+  list(APPEND SOURCE ${WKUTILS_SOURCE})
 endif()
 
 add_executable(testapp ${SOURCE})

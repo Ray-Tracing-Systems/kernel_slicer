@@ -1,6 +1,7 @@
 #include "wk_context.h"
 
-WulkanContext wk_utils::globalContextInit(WulkanDeviceFeatures a_features)
+wk_utils::WulkanContext wk_utils::globalContextInit(WulkanDeviceFeatures a_features)
 {
-  return nullptr;
+  WulkanContext res = {};
+  return res;
 }

@@ -15,6 +15,11 @@ std::shared_ptr<Mandelbrot> CreateMandelbrot_Generated(vk_utils::VulkanContext a
 vk_utils::VulkanDeviceFeatures Mandelbrot_Generated_ListRequiredDeviceFeatures();
 #endif
 
+#ifdef USE_WGPU
+#include "wk_context.h"
+
+#endif
+
 #ifdef USE_ISPC
 std::shared_ptr<Mandelbrot> CreateMandelbrot_ISPC(); 
 #endif
@@ -36,6 +41,14 @@ int main(int argc, const char** argv)
     auto features = Mandelbrot_Generated_ListRequiredDeviceFeatures();
     auto ctx      = vk_utils::globalContextInit(features, true, 0);
     pImpl         = CreateMandelbrot_Generated(ctx, w*h);
+  }
+  #endif
+  #ifdef USE_WGPU
+  if(onGPU)
+  {
+    auto features = wk_utils::WulkanDeviceFeatures{};
+    auto ctx      = wk_utils::globalContextInit(features);
+    pImpl         = nullptr;
   }
   #endif
   #ifdef USE_ISPC
