@@ -69,9 +69,8 @@ set(VKUTILS_SOURCE ../vkutils/vk_utils.cpp
                    ../vkutils/vk_descriptor_sets.cpp)    
 
 
-#set(WKGEN_SOURCE mandelbrot_wgpu.cpp)    
-
-set(WKUTILS_SOURCE ../wkutils/wk_context.cpp) # ../wkutils/vk_utils.cpp
+set(WKGEN_SOURCE mandelbrot_wgpu.cpp)    
+set(WKUTILS_SOURCE ../wkutils/wk_context.cpp) # ../wkutils/wk_utils.cpp
 
 
 set(SOURCE ${MAIN_SOURCE})
@@ -86,7 +85,7 @@ if(USE_ISPC)
 endif()
 if(USE_WGPU)
   list(APPEND LINK webgpu)
-  list(APPEND SOURCE ${WKUTILS_SOURCE})
+  list(APPEND SOURCE ${WKGEN_SOURCE} ${WKUTILS_SOURCE})
 endif()
 
 add_executable(testapp ${SOURCE})

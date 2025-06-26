@@ -1535,6 +1535,13 @@ namespace kslicer
     void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
   };
 
+  struct WGPUCodeGen : public IHostCodeGen
+  {
+    std::string Name() const override { return "WebGPU"; }
+    void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+    void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+  };
+
   struct CudaCodeGen : public IHostCodeGen
   {
     CudaCodeGen(const std::string& a_actualCUDAImpl) : m_actualCUDAImpl(a_actualCUDAImpl) {}

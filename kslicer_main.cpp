@@ -398,7 +398,7 @@ int main(int argc, const char **argv) //
   else if(shaderCCName == "wgpu" || shaderCCName == "WebGPU" || shaderCCName == "WEBGPU")
   {
     inputCodeInfo.pShaderCC = std::make_shared<kslicer::SlangCompiler>(inputCodeInfo.mainClassSuffix, true);
-    inputCodeInfo.pHostCC   = std::make_shared<kslicer::VulkanCodeGen>(); 
+    inputCodeInfo.pHostCC   = std::make_shared<kslicer::WGPUCodeGen>(); 
     inputCodeInfo.processFolders.push_back("include/");
   }
   else if(shaderCCName == "cuda" || shaderCCName == "CUDA" || shaderCCName == "hip" || shaderCCName == "HIP" || shaderCCName == "musa" || shaderCCName == "MUSA")

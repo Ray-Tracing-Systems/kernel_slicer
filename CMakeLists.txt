@@ -36,7 +36,8 @@ set(KSLICER_SOURCE_FILES
     shaders_cuda.cpp
     tr_host_vulkan.cpp
     tr_host_cuda.cpp
-    tr_host_ispc.cpp)
+    tr_host_ispc.cpp
+    tr_host_wgpu.cpp)
 
 include_directories("include")
 
