@@ -9,8 +9,12 @@
 #include "mandelbrot.h"
 #include "Image2d.h"
 
+#ifdef USE_VULKAN
 #include "vk_context.h"
 std::shared_ptr<Mandelbrot> CreateMandelbrot_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+vk_utils::VulkanDeviceFeatures Mandelbrot_Generated_ListRequiredDeviceFeatures();
+#endif
+
 #ifdef USE_ISPC
 std::shared_ptr<Mandelbrot> CreateMandelbrot_ISPC(); 
 #endif
@@ -25,17 +29,20 @@ int main(int argc, const char** argv)
   bool isISPC = args.hasOption("--ispc");
 
   std::shared_ptr<Mandelbrot> pImpl = nullptr;
-
+  
+  #ifdef USE_VULKAN
   if(onGPU)
   {
-    auto ctx   = vk_utils::globalContextGet(true, 0);
-    pImpl = CreateMandelbrot_Generated(ctx, w*h);
+    auto features = Mandelbrot_Generated_ListRequiredDeviceFeatures();
+    auto ctx      = vk_utils::globalContextInit(features, true, 0);
+    pImpl         = CreateMandelbrot_Generated(ctx, w*h);
   }
+  #endif
   #ifdef USE_ISPC
-  else if(isISPC)
+  if(isISPC)
     pImpl = CreateMandelbrot_ISPC();
   #endif
-  else
+  if(!onGPU)
     pImpl = std::make_shared<Mandelbrot>();
 
   pImpl->CommitDeviceData();
@@ -57,7 +64,8 @@ int main(int argc, const char** argv)
   // destroy all objects
   //
   pImpl = nullptr;
+  #ifdef USE_VULKAN
   vk_utils::globalContextDestroy();
-  
+  #endif
   return 0;
 }

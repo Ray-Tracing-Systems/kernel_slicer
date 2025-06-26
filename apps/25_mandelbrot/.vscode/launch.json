@@ -9,9 +9,7 @@
       "type"   : "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/cmake-build-release/testapp",
-      "args"   : [
-        "--ispc"
-      ],
+      "args"   : ["--gpu"],
       "stopAtEntry"    : false,
       "cwd"            : "${workspaceFolder}",
       "environment"    : [],
