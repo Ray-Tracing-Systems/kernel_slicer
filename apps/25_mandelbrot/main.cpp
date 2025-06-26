@@ -17,7 +17,7 @@ vk_utils::VulkanDeviceFeatures Mandelbrot_Generated_ListRequiredDeviceFeatures()
 
 #ifdef USE_WGPU
 #include "wk_context.h"
-
+std::shared_ptr<Mandelbrot> CreateMandelbrot_WGPU(wk_utils::WulkanContext a_ctx, size_t a_maxThreadsGenerated);
 #endif
 
 #ifdef USE_ISPC
@@ -48,7 +48,7 @@ int main(int argc, const char** argv)
   {
     auto features = wk_utils::WulkanDeviceFeatures{};
     auto ctx      = wk_utils::globalContextInit(features);
-    pImpl         = nullptr;
+    pImpl         = CreateMandelbrot_WGPU(ctx, w*h);
   }
   #endif
   #ifdef USE_ISPC

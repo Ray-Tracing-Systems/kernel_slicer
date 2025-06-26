@@ -92,8 +92,32 @@ public:
   }
   {% endif %}
   {% endfor %}
+
+  virtual void InitWulkanObjects(WGPUDevice a_device, WGPUAdapter a_physicalDevice, size_t a_maxThreads);
   
 protected:
 
+  WGPUAdapter  physicalDevice = nullptr;
+  WGPUDevice   device         = nullptr;
+
+  {% for Kernel in Kernels %}
+  WGPUComputePipeline {{Kernel.Name}}Pipeline = nullptr;
+  WGPUBindGroupLayout {{Kernel.Name}}DSLayout = nullptr;
+  {% if Kernel.HasLoopInit %}
+  WGPUComputePipeline {{Kernel.Name}}InitPipeline = nullptr;
+  {% endif %}
+  {% if Kernel.HasLoopFinish %}
+  WGPUComputePipeline {{Kernel.Name}}FinishPipeline = nullptr;
+  {% endif %}
+  {% if Kernel.FinishRed %}
+  WGPUComputePipeline {{Kernel.Name}}ReductionPipeline = nullptr;
+  {% endif %}
+  virtual void InitKernel_{{Kernel.Name}}(const char* a_filePath);
+  {% if Kernel.IsIndirect %}
+  virtual void {{Kernel.Name}}_UpdateIndirect();
+  {% endif %}
+  {% endfor %}
+
+  virtual void InitKernels(const char* a_path);
 };
 
