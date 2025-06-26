@@ -18,4 +18,6 @@ namespace wk_utils
   };
 
   WulkanContext globalContextInit(WulkanDeviceFeatures a_features);
+
+  void printDeviceInfo(WGPUAdapter adapter);
 };
