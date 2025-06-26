@@ -10,6 +10,11 @@ static inline int read_data2(const int* a_data, int a_id)
   return read_data(a_data, 0, a_id) + read_data(a_data, 1, a_id);
 }
 
+static inline int read_data3(const int* x)
+{
+  return *x + 1;
+}
+
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
 
@@ -22,16 +27,19 @@ TestVecDataAccessFromMember::TestVecDataAccessFromMember(size_t a_size)
 
 int TestVecDataAccessFromMember::getMemberData(int a_id)
 {
-  return read_data(m_vec.data(), 2, a_id - 2) + read_data2(m_vec.data(), 5);
+  if(false)                               // dummy call which indicate that read_data uses global pointer
+    read_data(m_vec.data(), 2, a_id - 2); // should fix problem
+
+  return read_data2(m_vec.data(), 5);
 }
 
 void TestVecDataAccessFromMember::kernel1D_Run(const int a_size, int* outData1ui)
 {
   for(int i=0;i<a_size;i++)
   {
-    const int val0 = read_data(m_vec.data(), 0, i);
-    const int val1 = read_data2(m_vec.data(), 10);
-    outData1ui[i]  = getMemberData(i) + val0 + val1;
+    const int temp = i;
+    const int val0 = read_data3(&temp);
+    outData1ui[i]  = getMemberData(i); // + val0 + val1;
   }
 }
 
