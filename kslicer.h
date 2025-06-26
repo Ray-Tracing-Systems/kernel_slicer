@@ -1298,6 +1298,7 @@ namespace kslicer
     virtual bool        IsGLSL() const { return !IsSingleShader(); }
     virtual bool        IsISPC() const { return false; }
     virtual bool        IsCUDA() const { return false; }
+    virtual bool        IsWGPU() const { return false; }
 
     virtual void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) = 0;
 
@@ -1442,7 +1443,7 @@ namespace kslicer
     
     bool        IsGLSL() const override { return false; }
     bool        IsISPC() const override { return false; }
-
+    bool        IsWGPU() const override { return m_wgpuEnabled; }
 
     void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
 

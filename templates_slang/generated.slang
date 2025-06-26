@@ -64,7 +64,11 @@ void {{Fun.Name}}(RWStructuredBuffer<{{Fun.Type0}}> a_buffer, uint a_offset, {{F
 void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog %} uint3 a_groupID : SV_GroupID, {% endif%} uint3 a_localTID : SV_GroupThreadID, uniform KernelArgs kgenArgs)
 {
   {% if not Kernel.EnableBlockExpansion and not Kernel.IsSingleThreaded %}
+  {% if WGPUMode %}
+  bool runThisThread = (ubo[0].dummy_last != 1234567); // access 'ubo[0].dummy_last' prevent slang compiler to discard ubo if it is not used
+  {% else %}
   bool runThisThread = true;
+  {% endif %}
   {% endif %}
   {% if not Kernel.InitKPass %}
   {% if Kernel.EnableBlockExpansion %}
