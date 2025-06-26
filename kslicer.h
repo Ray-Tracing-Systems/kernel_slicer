@@ -1431,7 +1431,7 @@ namespace kslicer
 
   struct SlangCompiler : IShaderCompiler
   {
-    SlangCompiler(const std::string& a_prefix);
+    SlangCompiler(const std::string& a_prefix, bool a_wgpuEnabled = false);
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo[0].") + a_name; };
     std::string ProcessBufferType(const std::string& a_typeName) const override;
 
@@ -1467,6 +1467,7 @@ namespace kslicer
     void ProcessVectorTypesString(std::string& a_str);
     const std::string& m_suffix;
     std::unordered_map<std::string, std::string> m_typesReplacement;
+    bool m_wgpuEnabled;
   };
 
   struct CudaCompiler : IShaderCompiler

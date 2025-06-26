@@ -1002,7 +1002,7 @@ std::string kslicer::SlangRewriter::RecursiveRewrite(const clang::Stmt* expr)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-kslicer::SlangCompiler::SlangCompiler(const std::string& a_prefix) : m_suffix(a_prefix)
+kslicer::SlangCompiler::SlangCompiler(const std::string& a_prefix, bool a_wgpuEnabled) : m_suffix(a_prefix), m_wgpuEnabled(a_wgpuEnabled)
 {
   m_typesReplacement = ListSlangStandartTypeReplacements(false);
 }
@@ -1204,11 +1204,22 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     std::filesystem::path outFilePath = shaderPath / outFileName;
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
     
-    buildSH << "slangc " << outFileName.c_str() << " -o " << kernelName.c_str() << ".comp.spv" << " -I.. ";
+    std::string targetString;
+    std::string targetSuffix;
+    if(m_wgpuEnabled)
+    {
+      targetString = " -target wgsl -stage compute -entry main -o ";
+      targetSuffix = ".wgsl";
+    }
+    else
+    {
+      targetString = " -o ";
+      targetSuffix = ".comp.spv";
+    }
+
+    buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << targetSuffix.c_str() << " -I.. ";
     for(auto folder : ignoreFolders)
       buildSH << "-I" << folder.c_str() << " ";
-    //if(useRayTracingPipeline)
-    //  buildSH << "-S rgen ";
     buildSH << std::endl;
   
     if(kernel.value()["IsIndirect"])
@@ -1216,7 +1227,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       outFileName = kernelName + "_UpdateIndirect.slang";
       outFilePath = shaderPath / outFileName;
       kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
-      buildSH << "slangc " << outFileName.c_str() << " -o " << kernelName.c_str() << "_UpdateIndirect.comp.spv" << " -I.. ";
+      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_UpdateIndirect" << targetSuffix.c_str() << " -I.. ";
       for(auto folder : ignoreFolders)
        buildSH << "-I" << folder.c_str() << " ";
       buildSH << std::endl;
@@ -1227,7 +1238,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       outFileName = kernelName + "_Reduction.slang";
       outFilePath = shaderPath / outFileName;
       kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
-      buildSH << "slangc " << outFileName.c_str() << " -o " << kernelName.c_str() << "_Reduction.comp.spv" << " -I.. ";
+      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_Reduction" << targetSuffix.c_str() << " -I.. ";
       for(auto folder : ignoreFolders)
        buildSH << "-I" << folder.c_str() << " ";
       buildSH << std::endl;
