@@ -717,6 +717,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     excludedMemberFunctions.insert("RTVPersistent_ReduceAdd4f");
   }
 
+  bool haveReduceAdd = false;
+
   data["Kernels"] = std::vector<json>();
   for (const auto& nk : kernels)
   {
@@ -1387,7 +1389,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
 
     kernelJson["IsSingleThreaded"] = false; 
-    
     kernelJson["TemplatedFun"] = std::vector<json>();
     for(auto x : k.templatedFunctionsLM) {
       json local;
@@ -1398,6 +1399,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       local["Type2"] = x.second.types[2];
       local["Type3"] = x.second.types[3];
       kernelJson["TemplatedFun"].push_back(local);
+      if(x.second.nameOriginal == "ReduceAdd")
+        haveReduceAdd = true;
     }
 
     auto original = kernelJson;
@@ -1443,6 +1446,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
 
   } // for (const auto& nk : kernels)
+  
+  data["HaveReduceAdd"] = haveReduceAdd;
 
   // (5) generate local functions
   //

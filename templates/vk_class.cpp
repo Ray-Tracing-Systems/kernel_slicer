@@ -32,7 +32,8 @@ constexpr uint32_t KGEN_FLAG_DONT_SET_EXIT     = 4;
 constexpr uint32_t KGEN_FLAG_SET_EXIT_NEGATIVE = 8;
 {% endif %}
 constexpr uint32_t KGEN_REDUCTION_LAST_STEP    = 16;
-
+template<typename T> inline size_t ReduceAddInit(std::vector<T>& a_vec, size_t a_targetSize) { return a_vec.size(); } 
+template<typename T> inline void   ReduceAddComplete(std::vector<T>& a_vec) { }
 
 void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
 {

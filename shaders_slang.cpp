@@ -530,6 +530,10 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
         funInfo.nameOriginal = "ReduceAdd";
         funInfo.types[0]     = typeName;
         m_pCurrKernel->templatedFunctionsLM[funInfo.name] = funInfo;
+        if(typeName == "float")
+          m_codeInfo->globalShaderFeatures.useFloatAtomicAdd = true;
+        else if(typeName == "double")
+          m_codeInfo->globalShaderFeatures.useDoubleAtomicAdd = true;
       }
     }
 
