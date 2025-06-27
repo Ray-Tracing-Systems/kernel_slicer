@@ -148,6 +148,80 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllBindingGroup_{{MainFunc.Name
 
 {% endfor %}
 
+{% for Kernel in Kernels %}
+{% if Kernel.IsIndirect %}
+void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Name}}_UpdateIndirect()
+{
+  //VkBufferMemoryBarrier barIndirect = BarrierForIndirectBufferUpdate(m_indirectBuffer);
+  //vkCmdBindDescriptorSets(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectUpdateLayout, 0, 1, &m_indirectUpdateDS, 0, nullptr);
+  //vkCmdBindPipeline      (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_indirectUpdate{{Kernel.Name}}Pipeline);
+  //vkCmdDispatch          (m_currCmdBuffer, 1, 1, 1);
+  //vkCmdPipelineBarrier   (m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0, nullptr, 1, &barIndirect, 0, nullptr);
+}
+
+{% endif %}
+void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
+{
+  uint32_t blockSizeX = {{Kernel.WGSizeX}};
+  uint32_t blockSizeY = {{Kernel.WGSizeY}};
+  uint32_t blockSizeZ = {{Kernel.WGSizeZ}};
+
+  struct KernelArgsPC
+  {
+    {% for Arg in Kernel.AuxArgs %}
+    {{Arg.Type}} m_{{Arg.Name}};
+    {% endfor %}
+    uint32_t m_sizeX;
+    uint32_t m_sizeY;
+    uint32_t m_sizeZ;
+  } pcData;
+
+  {% if Kernel.SmplX %}
+  uint32_t sizeX  = uint32_t({{Kernel.tidX}});
+  {% else %}
+  uint32_t sizeX  = uint32_t(std::abs(int32_t({{Kernel.tidX}}) - int32_t({{Kernel.begX}})));
+  {% endif %}
+  {% if Kernel.SmplY %}
+  uint32_t sizeY  = uint32_t({{Kernel.tidY}});
+  {% else %}
+  uint32_t sizeY  = uint32_t(std::abs(int32_t({{Kernel.tidY}}) - int32_t({{Kernel.begY}})));
+  {% endif %}
+  {% if Kernel.SmplZ %}
+  uint32_t sizeZ  = uint32_t({{Kernel.tidZ}});
+  {% else %}
+  uint32_t sizeZ  = uint32_t(std::abs(int32_t({{Kernel.tidZ}}) - int32_t({{Kernel.begZ}})));
+  {% endif %}
+
+  pcData.m_sizeX  = {{Kernel.tidX}};
+  pcData.m_sizeY  = {{Kernel.tidY}};
+  pcData.m_sizeZ  = {{Kernel.tidZ}};
+  {% for Arg in Kernel.AuxArgs %}
+  pcData.m_{{Arg.Name}} = {{Arg.Name}};
+  {% endfor %}
+  {% if Kernel.HasLoopFinish %}
+  KernelArgsPC oldPCData = pcData;
+  {% endif %}
+ 
+  //vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, {% if Kernel.UseRayGen %}VK_SHADER_STAGE_RAYGEN_BIT_KHR{% else %}VK_SHADER_STAGE_COMPUTE_BIT{% endif %}, 0, sizeof(KernelArgsPC), &pcData);
+  {% if Kernel.HasLoopInit %}
+  //vkCmdDispatch(m_currCmdBuffer, 1, 1, 1); // init kernel
+  {% endif %}
+  {# /* --------------------------------------------------------------------------------------------------------------------------------------- */ #}
+  {% if Kernel.IsIndirect %}
+  //vkCmdBindPipeline    (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
+  //vkCmdDispatchIndirect(m_currCmdBuffer, m_indirectBuffer, {{Kernel.IndirectOffset}}*sizeof(uint32_t)*4);
+  {% else %}
+  wgpuComputePassEncoderSetPipeline(m_currPassCS, {{Kernel.Name}}Pipeline);
+  wgpuComputePassEncoderDispatchWorkgroups(m_currPassCS, (sizeX + blockSizeX - 1) / blockSizeX, (sizeY + blockSizeY - 1) / blockSizeY, (sizeZ + blockSizeZ - 1) / blockSizeZ);
+  {% endif %} {# /* NOT INDIRECT DISPATCH */ #}
+  {# /* --------------------------------------------------------------------------------------------------------------------------------------- */ #}
+  {% if Kernel.HasLoopFinish %}
+  //vkCmdDispatch(m_currCmdBuffer, 1, 1, 1); // finish kernel
+  {% endif %}
+}
+
+{% endfor %}
+
 {% for MainFunc in MainFunctions %}
 {{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.MainFuncDeclCmd}}
 {

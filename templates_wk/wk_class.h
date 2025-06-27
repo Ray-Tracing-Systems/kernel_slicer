@@ -148,6 +148,10 @@ protected:
 
   virtual void InitKernels(const char* a_path);
 
+  {% for KernelDecl in KernelsDecls %}
+  {{KernelDecl}}
+  {% endfor %}
+
   {% for MainFunc in MainFunctions %}
   struct {{MainFunc.Name}}_Data
   {
