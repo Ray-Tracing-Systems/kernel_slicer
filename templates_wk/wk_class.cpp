@@ -43,6 +43,32 @@ void {{MainClassName}}{{MainClassSuffix}}::InitWulkanObjects(WGPUDevice a_device
   device         = a_device;
   queue          = wgpuDeviceGetQueue(device);
   InitKernels("{{ShaderFolder}}");
+  InitDeviceData();
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
+{
+  WGPUBufferDescriptor uboDesc = {};
+  uboDesc.size  = sizeof(m_uboData);
+  uboDesc.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopySrc | WGPUBufferUsage_CopyDst;
+
+  WGPUBufferDescriptor pcbDesc = {};
+  pcbDesc.size  = m_pushConstantStride*m_totalDSNumber;
+  pcbDesc.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst;
+
+  m_classDataBuffer    = wgpuDeviceCreateBuffer(device, &uboDesc);
+  m_pushConstantBuffer = wgpuDeviceCreateBuffer(device, &pcbDesc);
+  m_pushConstantSize   = m_pushConstantStride; // per each binding group
+  m_classDataSize      = uboDesc.size;         // total size of ubo buffer
+  
+  {% if length(ClassVectorVars) != 0 %}
+  WGPUBufferDescriptor bufDesc = {};
+  {% endif %}
+  {% for Var in ClassVectorVars %}
+  bufDesc.size  = {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}});
+  bufDesc.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst;
+  m_vdata.{{Var.Name}}Buffer = wgpuDeviceCreateBuffer(device, &bufDesc);
+  {% endfor %}
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_path)

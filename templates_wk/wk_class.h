@@ -148,6 +148,7 @@ protected:
   {% endfor %}
 
   virtual void InitKernels(const char* a_path);
+  virtual void InitDeviceData();
 
   {% for KernelDecl in KernelsDecls %}
   {{KernelDecl}}
@@ -180,7 +181,8 @@ protected:
   {% endfor %}
 
   WGPUBindGroup m_allGeneratedDS[{{TotalDSNumber}}];
-  
+  const size_t  m_totalDSNumber = {{TotalDSNumber}};
+
   WGPUBuffer    m_classDataBuffer = nullptr;
   size_t        m_classDataSize   = 0;
 
@@ -191,5 +193,7 @@ protected:
   WGPUCommandEncoder     m_currEncoder  = nullptr;
   WGPUComputePassEncoder m_currPassCS   = nullptr;
   size_t                 m_currPCOffset = 0;
+
+  {{MainClassName}}{{MainClassSuffix}}_UBO_Data m_uboData;
 }; 
 
