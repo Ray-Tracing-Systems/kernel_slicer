@@ -163,8 +163,9 @@ std::string kslicer::MainFunctionRewriterWGPU::MakeKernelCallCmdString(CXXMember
 
     if(pKernel->second.isIndirect)
       strOut << kernName.c_str() << "_UpdateIndirect();" << std::endl << "  ";
-
-    strOut << "wgpuComputePassEncoderSetBindGroup(m_currPassCS, 0, m_allGeneratedDS[" << p2->second << "]" << ", 0, nullptr);" << std::endl;
+    
+    strOut << "m_currPCOffset = m_pushConstantStride*" << p2->second << ";" << std::endl;
+    strOut << "  wgpuComputePassEncoderSetBindGroup(m_currPassCS, 0, m_allGeneratedDS[" << p2->second << "]" << ", 0, nullptr);" << std::endl;
     strOut << "  " << kernName.c_str() << "Cmd" << textOfArgs.c_str();
   }
 

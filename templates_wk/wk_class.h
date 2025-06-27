@@ -127,6 +127,7 @@ protected:
 
   WGPUAdapter  physicalDevice = nullptr;
   WGPUDevice   device         = nullptr;
+  WGPUQueue    queue          = nullptr;
 
   {% for Kernel in Kernels %}
   WGPUComputePipeline {{Kernel.Name}}Pipeline = nullptr;
@@ -183,10 +184,12 @@ protected:
   WGPUBuffer    m_classDataBuffer = nullptr;
   size_t        m_classDataSize   = 0;
 
-  WGPUBuffer    m_pushConstantBuffer = nullptr;
+  WGPUBuffer    m_pushConstantBuffer = nullptr; // use this buffer to emulate push constants
   size_t        m_pushConstantSize   = 0;
+  size_t        m_pushConstantStride = 128;     // each binding point have it's own offset inside this buffer
   
-  WGPUCommandEncoder     m_currEncoder = nullptr;
-  WGPUComputePassEncoder m_currPassCS  = nullptr;
+  WGPUCommandEncoder     m_currEncoder  = nullptr;
+  WGPUComputePassEncoder m_currPassCS   = nullptr;
+  size_t                 m_currPCOffset = 0;
 }; 
 

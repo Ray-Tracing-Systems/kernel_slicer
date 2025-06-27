@@ -41,6 +41,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitWulkanObjects(WGPUDevice a_device
 {
   physicalDevice = a_physicalDevice;
   device         = a_device;
+  queue          = wgpuDeviceGetQueue(device);
   InitKernels("{{ShaderFolder}}");
 }
 
@@ -134,7 +135,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllBindingGroup_{{MainFunc.Name
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1]         = WGPUBindGroupEntry{};
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].binding = {{DescriptorSet.ArgNumber}}+1;
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].buffer  = m_pushConstantBuffer;
-    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].offset  = 0;
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].offset  = m_pushConstantStride*{{DescriptorSet.Id}}; // offset for {{DescriptorSet.Id}} binding group
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].size    = m_pushConstantSize;
 
     WGPUBindGroupDescriptor bgDesc = {};
@@ -201,8 +202,8 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   {% if Kernel.HasLoopFinish %}
   KernelArgsPC oldPCData = pcData;
   {% endif %}
- 
-  //vkCmdPushConstants(m_currCmdBuffer, {{Kernel.Name}}Layout, {% if Kernel.UseRayGen %}VK_SHADER_STAGE_RAYGEN_BIT_KHR{% else %}VK_SHADER_STAGE_COMPUTE_BIT{% endif %}, 0, sizeof(KernelArgsPC), &pcData);
+  
+  wgpuQueueWriteBuffer(queue, m_pushConstantBuffer, m_currPCOffset, &pcData, sizeof(KernelArgsPC)); // push constant emulation
   {% if Kernel.HasLoopInit %}
   //vkCmdDispatch(m_currCmdBuffer, 1, 1, 1); // init kernel
   {% endif %}
