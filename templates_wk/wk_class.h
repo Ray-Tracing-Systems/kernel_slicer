@@ -171,6 +171,7 @@ protected:
   } {{MainFunc.Name}}_local;
 
   void UpdateAllBindingGroup_{{MainFunc.Name}}();
+  virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}};
   {% endfor %}
 
   WGPUBindGroup m_allGeneratedDS[{{TotalDSNumber}}];
@@ -181,5 +182,7 @@ protected:
   WGPUBuffer    m_pushConstantBuffer = nullptr;
   size_t        m_pushConstantSize   = 0;
   
+  WGPUCommandEncoder     m_currEncoder = nullptr;
+  WGPUComputePassEncoder m_currPassCS  = nullptr;
 }; 
 

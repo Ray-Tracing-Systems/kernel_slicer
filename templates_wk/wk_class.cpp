@@ -148,6 +148,21 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllBindingGroup_{{MainFunc.Name
 
 {% endfor %}
 
+{% for MainFunc in MainFunctions %}
+{{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.MainFuncDeclCmd}}
+{
+  WGPUComputePassDescriptor passDesc = {};
+  m_currEncoder = a_commandEncoder;
+  m_currPassCS  = wgpuCommandEncoderBeginComputePass(m_currEncoder, &passDesc);
+  {% if MainFunc.IsMega %}
+  wgpuComputePassEncoderSetBindGroup(m_currPassCS, 0, m_allGeneratedDS[{{MainFunc.DSId}}], 0, nullptr);  
+  {{MainFunc.MegaKernelCall}}
+  {% else %}
+  {{MainFunc.MainFuncTextCmd}}
+  {% endif %} {# /* end of else branch */ #}
+  wgpuComputePassEncoderEnd(m_currPassCS);
+}
+{% endfor %}
 
 {{MainClassName}}{{MainClassSuffix}}::~{{MainClassName}}{{MainClassSuffix}}()
 {

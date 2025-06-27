@@ -177,7 +177,7 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
     {
       rvWGPU.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node)); // 
       sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
-      a_mainFunc.GeneratedDecl = kslicer::GetControlFuncDeclVulkan(a_node, compiler);
+      a_mainFunc.GeneratedDecl = kslicer::GetControlFuncDeclWGPU(a_node, compiler);
     }
     else if(pHostCC->IsCUDA()) 
     {
@@ -204,8 +204,11 @@ std::string kslicer::MainClassInfo::GetCFDeclFromSource(const std::string& sourc
 
   while(mainFuncDeclHead[mainFuncDeclHead.size()-1] == ' ')
     mainFuncDeclHead = mainFuncDeclHead.substr(0, mainFuncDeclHead.size()-1);
-
-  return std::string("virtual ") + mainFuncDeclHead + "Cmd(VkCommandBuffer a_commandBuffer, " + mainFuncDeclTail + ";";
+  
+  if(pHostCC->Name() == "WebGPU")
+    return std::string("virtual ") + mainFuncDeclHead + "Cmd(WGPUCommandEncoder a_encoder, " + mainFuncDeclTail + ";";
+  else
+    return std::string("virtual ") + mainFuncDeclHead + "Cmd(VkCommandBuffer a_commandBuffer, " + mainFuncDeclTail + ";";
 }
 
 std::vector<std::string> ParseSizeAttributeText(const std::string& text)

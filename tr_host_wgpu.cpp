@@ -24,13 +24,10 @@ std::string kslicer::GetControlFuncDeclWGPU(const clang::FunctionDecl* fDecl, cl
   for(unsigned i=0;i<fDecl->getNumParams();i++)
   {
     auto pParam = fDecl->getParamDecl(i);
-    //const clang::QualType typeOfParam =	pParam->getType();
-    //std::string typeStr = typeOfParam.getAsString();
     text += kslicer::GetRangeSourceCode(pParam->getSourceRange(), compiler);
     if(i!=fDecl->getNumParams()-1)
       text += ", ";
   }
-
   return text + ")";
 }
 
@@ -162,48 +159,12 @@ std::string kslicer::MainFunctionRewriterWGPU::MakeKernelCallCmdString(CXXMember
     auto p3 = m_mainFunc.CallsInsideFor.find(callSourceRangeHash);
     auto p4 = m_mainFunc.ExitExprIfCall.find(callSourceRangeHash);
 
-    std::string flagsVariableName = "";
-    if(p3 != m_mainFunc.CallsInsideFor.end())
-    {
-      flagsVariableName = "inForFlags";
-
-      if(pKernel->second.isBoolTyped && p4 == m_mainFunc.ExitExprIfCall.end())
-        flagsVariableName += "D";
-      else if(p3->second.isNegative)
-        flagsVariableName += "N";
-    }
-    else
-    {
-      flagsVariableName = "outOfForFlags";
-      if(pKernel->second.isBoolTyped && p4 == m_mainFunc.ExitExprIfCall.end())
-        flagsVariableName += "D";
-      else if(p4 != m_mainFunc.ExitExprIfCall.end() && p4->second.isNegative)
-        flagsVariableName += "N";
-    }
-
     auto accesedTextures = kslicer::ListAccessedTextures(args, pKernelInfo->second);
 
     if(pKernel->second.isIndirect)
       strOut << kernName.c_str() << "_UpdateIndirect();" << std::endl << "  ";
 
-    std::string currStageBits    = pKernel->second.enableRTPipeline ? "VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR" : "VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT";
-    std::string currBindingPoint = pKernel->second.enableRTPipeline ? "VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR" : "VK_PIPELINE_BIND_POINT_COMPUTE";
-
-    strOut << "{vkCmdBindDescriptorSets(a_commandBuffer, " << currBindingPoint.c_str() << ", ";
-    strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
-    if(m_pCodeInfo->NeedThreadFlags())
-      strOut << "  m_currThreadFlags = " << flagsVariableName.c_str() << ";" << std::endl;
-    if(m_pCodeInfo->m_timestampPoolSize != uint32_t(-1)) // disabled
-      strOut << "  " << " vkCmdWriteTimestamp(a_commandBuffer, " << currStageBits.c_str() << ", m_queryPoolTimestamps, " <<  m_pCodeInfo->m_timestampPoolSize*2+0 << ");" << std::endl;
-    strOut << "  " << kernName.c_str() << "Cmd" << textOfArgs.c_str() << ";" << std::endl;
-    if(m_pCodeInfo->m_timestampPoolSize != uint32_t(-1)) // disabled
-    {
-      strOut << "  " << " vkCmdWriteTimestamp(a_commandBuffer, " << currStageBits.c_str() << ", m_queryPoolTimestamps, " <<  m_pCodeInfo->m_timestampPoolSize*2+1 << ");" << std::endl;
-      strOut << "  " << " m_tsIdToKernelName[" << m_pCodeInfo->m_timestampPoolSize << "] = \"" << fname.c_str() << "\";" << std::endl;
-      m_pCodeInfo->m_timestampPoolSize++;
-    }
-    strOut << "  " << "vkCmdPipelineBarrier(m_currCmdBuffer, prevStageBits, " << currStageBits.c_str() << ", 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);" << std::endl;
-    strOut << "  " << "prevStageBits = " << currStageBits.c_str() << ";}";
+    strOut << "wgpuComputePassEncoderSetBindGroup(m_currPassCS, 0, m_allGeneratedDS[" << p2->second << "]" << ", 0, nullptr)";
   }
 
   return strOut.str();
