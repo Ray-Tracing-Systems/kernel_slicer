@@ -92,6 +92,35 @@ public:
   }
   {% endif %}
   {% endfor %}
+  
+  {% for MainFunc in MainFunctions %}
+  virtual void SetWulkanInOutFor_{{MainFunc.Name}}(
+    {% for Arg in MainFunc.InOutVars %}
+    {% if Arg.IsTexture %}
+    WGPUImage     {{Arg.Name}}Text,
+    WGPUImageView {{Arg.Name}}View,
+    {% else %}
+    WGPUBuffer {{Arg.Name}}Buffer,
+    size_t     {{Arg.Name}}Offset,
+    {% endif %}
+    {% endfor %}
+    uint32_t dummyArgument = 0)
+  {
+    {% for Arg in MainFunc.InOutVars %}
+    {% if Arg.IsTexture %}
+    {{MainFunc.Name}}_local.{{Arg.Name}}Text   = {{Arg.Name}}Text;
+    {{MainFunc.Name}}_local.{{Arg.Name}}View   = {{Arg.Name}}View;
+    {% else %}
+    {{MainFunc.Name}}_local.{{Arg.Name}}Buffer = {{Arg.Name}}Buffer;
+    {{MainFunc.Name}}_local.{{Arg.Name}}Offset = {{Arg.Name}}Offset;
+    {% endif %}
+    {% endfor %}
+    UpdateAllBindingGroup_{{MainFunc.Name}}();
+  }
+
+  {% endfor %}
+
+  virtual ~{{MainClassName}}{{MainClassSuffix}}();
 
   virtual void InitWulkanObjects(WGPUDevice a_device, WGPUAdapter a_physicalDevice, size_t a_maxThreads);
   
@@ -119,5 +148,39 @@ protected:
   {% endfor %}
 
   virtual void InitKernels(const char* a_path);
-};
+
+  {% for MainFunc in MainFunctions %}
+  struct {{MainFunc.Name}}_Data
+  {
+    {% if MainFunc.IsRTV and not MainFunc.IsMega %}
+    {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
+    WGPUBuffer {{Buffer.Name}}Buffer = nullptr;
+    size_t     {{Buffer.Name}}Offset = 0;
+    {% endfor %}
+    {% endif %}
+    {% for Arg in MainFunc.InOutVars %}
+    {% if Arg.IsTexture %}
+    WGPUImage     {{Arg.Name}}Text = nullptr;
+    WGPUImageView {{Arg.Name}}View = nullptr;
+    {% else %}
+    WGPUBuffer {{Arg.Name}}Buffer = nullptr;
+    size_t     {{Arg.Name}}Offset = 0;
+    size_t     {{Arg.Name}}Size   = 0;
+    {% endif %}
+    {% endfor %}
+    bool needToClearOutput = {% if MainFunc.IsRTV %}true{% else %}false{% endif %};
+  } {{MainFunc.Name}}_local;
+
+  void UpdateAllBindingGroup_{{MainFunc.Name}}();
+  {% endfor %}
+
+  WGPUBindGroup m_allGeneratedDS[{{TotalDSNumber}}];
+  
+  WGPUBuffer    m_classDataBuffer = nullptr;
+  size_t        m_classDataSize   = 0;
+
+  WGPUBuffer    m_pushConstantBuffer = nullptr;
+  size_t        m_pushConstantSize   = 0;
+  
+}; 
 

@@ -3,11 +3,11 @@
 
 void kslicer::WGPUCodeGen::GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings)
 {
-  kslicer::ApplyJsonToTemplate("templates_wk/wk_class.h",        fullSuffix + ".h",   jsonHost);
-  kslicer::ApplyJsonToTemplate("templates_wk/wk_class.cpp",      fullSuffix + ".cpp", jsonHost);
+  kslicer::ApplyJsonToTemplate("templates_wk/wk_class.h",   fullSuffix + ".h",   jsonHost);
+  kslicer::ApplyJsonToTemplate("templates_wk/wk_class.cpp", fullSuffix + ".cpp", jsonHost);
 }
 
 void kslicer::WGPUCodeGen::GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings)
 {
-  //kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", fullSuffix + "_init.cpp", jsonHost);
+  //kslicer::ApplyJsonToTemplate("templates_wk/wk_class.cpp", fullSuffix + ".cpp", jsonHost);
 }

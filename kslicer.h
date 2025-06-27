@@ -1527,6 +1527,7 @@ namespace kslicer
     virtual void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
     virtual void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
     virtual bool IsCUDA() const { return false; }
+    virtual bool NeedDescriprorSets() const { return false; }
   };
 
   struct VulkanCodeGen : public IHostCodeGen
@@ -1534,6 +1535,7 @@ namespace kslicer
     std::string Name() const override { return "Vulkan"; }
     void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
     void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+    bool NeedDescriprorSets() const override { return true; }
   };
 
   struct WGPUCodeGen : public IHostCodeGen
@@ -1541,6 +1543,7 @@ namespace kslicer
     std::string Name() const override { return "WebGPU"; }
     void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
     void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+    bool NeedDescriprorSets() const override { return true; }
   };
 
   struct CudaCodeGen : public IHostCodeGen

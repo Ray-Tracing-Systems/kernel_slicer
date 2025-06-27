@@ -204,7 +204,7 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
     kslicer::MainFunctionRewriterVulkan rvVulkan(rewrite2, compiler, a_mainFunc, inOutParamList, this); // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
     
     std::string sourceCode;
-    if(pHostCC->Name() == "Vulkan")  
+    if(pHostCC->NeedDescriprorSets())  
     {
       rvVulkan.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node)); // 
       sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));

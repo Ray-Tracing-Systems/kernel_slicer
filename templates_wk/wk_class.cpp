@@ -74,3 +74,84 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
 }
 
 {% endfor %}
+
+{% for MainFunc in MainFunctions %}
+void {{MainClassName}}{{MainClassSuffix}}::UpdateAllBindingGroup_{{MainFunc.Name}}()
+{
+  // now create actual bindings
+  //
+  {% for DescriptorSet in MainFunc.DescriptorSets %}
+  // descriptor set #{{DescriptorSet.Id}}: {{DescriptorSet.KernelName}}Cmd ({{DescriptorSet.ArgNames}})
+  {
+    std::array<WGPUBindGroupEntry, {{DescriptorSet.ArgNumber}} + 2> descriptorBufferInfo;
+    std::array<WGPUBindGroupEntry, {{DescriptorSet.ArgNumber}} + 2> descriptorImageInfo;
+
+    {% for Arg in DescriptorSet.Args %}
+    {% if Arg.IsTexture %}
+    //descriptorImageInfo[{{Arg.Id}}].imageView   = {{Arg.Name}}View;
+    //descriptorImageInfo[{{Arg.Id}}].imageLayout = {{Arg.AccessLayout}};
+    //descriptorImageInfo[{{Arg.Id}}].sampler     = {{Arg.SamplerName}};
+    {% else if Arg.IsTextureArray %}
+    //std::vector<VkDescriptorImageInfo> {{Arg.NameOriginal}}Info(m_vdata.{{Arg.NameOriginal}}ArrayMaxSize);
+    //for(size_t i=0; i<m_vdata.{{Arg.NameOriginal}}ArrayMaxSize; i++)
+    //{
+    //  if(i < {{Arg.NameOriginal}}.size())
+    //  {
+    //    {{Arg.NameOriginal}}Info[i].sampler     = m_vdata.{{Arg.NameOriginal}}ArraySampler[i];
+    //    {{Arg.NameOriginal}}Info[i].imageView   = m_vdata.{{Arg.NameOriginal}}ArrayView   [i];
+    //    {{Arg.NameOriginal}}Info[i].imageLayout = {{Arg.AccessLayout}};
+    //  }
+    //  else
+    //  {
+    //    {{Arg.NameOriginal}}Info[i].sampler     = m_vdata.{{Arg.NameOriginal}}ArraySampler[0];
+    //    {{Arg.NameOriginal}}Info[i].imageView   = m_vdata.{{Arg.NameOriginal}}ArrayView   [0];
+    //    {{Arg.NameOriginal}}Info[i].imageLayout = {{Arg.AccessLayout}};
+    //  }
+    //}
+    {% else if Arg.IsAccelStruct %}
+    //{
+    //  VulkanRTX* pScene = dynamic_cast<VulkanRTX*>({{Arg.Name}}->UnderlyingImpl(1));
+    //  if(pScene == nullptr)
+    //    std::cout << "[{{MainClassName}}{{MainClassSuffix}}::InitAllGeneratedDescriptorSets_{{MainFunc.Name}}]: fatal error, wrong accel struct type" << std::endl;
+    //  accelStructs       [{{Arg.Id}}] = pScene->GetSceneAccelStruct();
+    //  descriptorAccelInfo[{{Arg.Id}}] = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,VK_NULL_HANDLE,1,&accelStructs[{{Arg.Id}}]};
+    //}
+    {% else %}
+    descriptorBufferInfo[{{Arg.Id}}]         = WGPUBindGroupEntry{};
+    descriptorBufferInfo[{{Arg.Id}}].binding = {{Arg.Id}};
+    descriptorBufferInfo[{{Arg.Id}}].buffer  = {{Arg.Name}}Buffer;
+    descriptorBufferInfo[{{Arg.Id}}].offset  = {{Arg.Name}}Offset;
+    descriptorBufferInfo[{{Arg.Id}}].size    = {{Arg.Name}}Size; 
+    {% endif %}
+  
+    {% endfor %}
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}]         = WGPUBindGroupEntry{};
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].binding = {{DescriptorSet.ArgNumber}};
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].buffer  = m_classDataBuffer;
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].offset  = 0;
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}].size    = m_classDataSize;
+    
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1]         = WGPUBindGroupEntry{};
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].binding = {{DescriptorSet.ArgNumber}}+1;
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].buffer  = m_pushConstantBuffer;
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].offset  = 0;
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].size    = m_pushConstantSize;
+   
+    //vkUpdateDescriptorSets(device, uint32_t(writeDescriptorSet.size()), writeDescriptorSet.data(), 0, NULL);
+
+    WGPUBindGroupDescriptor bgDesc = {};
+    bgDesc.layout     = {{DescriptorSet.KernelName}}DSLayout; 
+    bgDesc.entryCount = descriptorBufferInfo.size();
+    bgDesc.entries    = descriptorBufferInfo.data();
+    m_allGeneratedDS[{{DescriptorSet.Id}}] = wgpuDeviceCreateBindGroup(device, &bgDesc);
+  }
+  {% endfor %}
+}
+
+{% endfor %}
+
+
+{{MainClassName}}{{MainClassSuffix}}::~{{MainClassName}}{{MainClassSuffix}}()
+{
+  
+}
