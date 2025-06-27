@@ -102,9 +102,12 @@ namespace kslicer
     const clang::CompilerInstance& m_compiler;
     const clang::SourceManager&    m_sm;
   };
+  
+  std::string GetControlFuncDeclWGPU(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler);
+  std::string GetControlFuncDeclVulkan(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler);
+  std::string GetControlFuncDeclCUDA(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler, bool a_gpuSuffix = false);
 
   std::vector<InOutVarInfo> ListParamsOfMainFunc(const CXXMethodDecl* a_node, const clang::CompilerInstance& compiler);
-
   void ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo);
 }
 

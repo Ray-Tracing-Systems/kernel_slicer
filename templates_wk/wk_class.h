@@ -92,7 +92,10 @@ public:
   }
   {% endif %}
   {% endfor %}
+  virtual ~{{MainClassName}}{{MainClassSuffix}}();
   
+  virtual void InitWulkanObjects(WGPUDevice a_device, WGPUAdapter a_physicalDevice, size_t a_maxThreads);
+
   {% for MainFunc in MainFunctions %}
   virtual void SetWulkanInOutFor_{{MainFunc.Name}}(
     {% for Arg in MainFunc.InOutVars %}
@@ -119,10 +122,6 @@ public:
   }
 
   {% endfor %}
-
-  virtual ~{{MainClassName}}{{MainClassSuffix}}();
-
-  virtual void InitWulkanObjects(WGPUDevice a_device, WGPUAdapter a_physicalDevice, size_t a_maxThreads);
   
 protected:
 

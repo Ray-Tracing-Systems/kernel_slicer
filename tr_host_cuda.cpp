@@ -10,6 +10,26 @@ void kslicer::CudaCodeGen::GenerateHost(std::string fullSuffix, nlohmann::json j
   kslicer::ApplyJsonToTemplate("templates_cuda/gen_class.cu", fullSuffix + suffix, jsonHost);
 }
 
+std::string kslicer::GetControlFuncDeclCUDA(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler, bool a_gpuSuffix)
+{
+  std::string text = fDecl->getNameInfo().getName().getAsString();
+  auto posDD = text.find("::");
+  if(posDD != std::string::npos)
+    text = text.substr(posDD, text.size());
+  text += "(";
+  for(unsigned i=0;i<fDecl->getNumParams();i++)
+  {
+    auto pParam = fDecl->getParamDecl(i);
+    //const clang::QualType typeOfParam =	pParam->getType();
+    //std::string typeStr = typeOfParam.getAsString();
+    text += kslicer::GetRangeSourceCode(pParam->getSourceRange(), compiler);
+    if(i!=fDecl->getNumParams()-1)
+      text += ", ";
+  }
+
+  return text + ")";
+}
+
 bool kslicer::MainFunctionRewriterCUDA::VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f)
 {
   const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();

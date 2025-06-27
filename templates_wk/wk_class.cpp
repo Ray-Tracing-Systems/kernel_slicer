@@ -136,8 +136,6 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllBindingGroup_{{MainFunc.Name
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].buffer  = m_pushConstantBuffer;
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].offset  = 0;
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].size    = m_pushConstantSize;
-   
-    //vkUpdateDescriptorSets(device, uint32_t(writeDescriptorSet.size()), writeDescriptorSet.data(), 0, NULL);
 
     WGPUBindGroupDescriptor bgDesc = {};
     bgDesc.layout     = {{DescriptorSet.KernelName}}DSLayout; 

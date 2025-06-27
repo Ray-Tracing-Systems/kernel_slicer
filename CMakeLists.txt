@@ -26,7 +26,6 @@ set(KSLICER_SOURCE_FILES
     rewrite_kernel.cpp
     rewrite_kernel2.cpp
     rewrite_kernel_info.cpp
-    rewrite_control.cpp
     setter_process.cpp
     reduction.cpp
     shaders_clspv.cpp

@@ -104,44 +104,6 @@ bool kslicer::MainClassInfo::IsIndirect(const KernelInfo& a_kernel) const
   return isIndirect;
 } 
 
-static std::string GetControlFuncDeclVulkan(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler)
-{
-  std::string text = fDecl->getNameInfo().getName().getAsString() + "Cmd(VkCommandBuffer a_commandBuffer";
-  if(fDecl->getNumParams()!= 0)
-    text += ", ";
-  for(unsigned i=0;i<fDecl->getNumParams();i++)
-  {
-    auto pParam = fDecl->getParamDecl(i);
-    //const clang::QualType typeOfParam =	pParam->getType();
-    //std::string typeStr = typeOfParam.getAsString();
-    text += kslicer::GetRangeSourceCode(pParam->getSourceRange(), compiler);
-    if(i!=fDecl->getNumParams()-1)
-      text += ", ";
-  }
-
-  return text + ")";
-}
-
-
-static std::string GetControlFuncDeclCUDA(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler, bool a_gpuSuffix = false)
-{
-  std::string text = fDecl->getNameInfo().getName().getAsString();
-  auto posDD = text.find("::");
-  if(posDD != std::string::npos)
-    text = text.substr(posDD, text.size());
-  text += "(";
-  for(unsigned i=0;i<fDecl->getNumParams();i++)
-  {
-    auto pParam = fDecl->getParamDecl(i);
-    //const clang::QualType typeOfParam =	pParam->getType();
-    //std::string typeStr = typeOfParam.getAsString();
-    text += kslicer::GetRangeSourceCode(pParam->getSourceRange(), compiler);
-    if(i!=fDecl->getNumParams()-1)
-      text += ", ";
-  }
-
-  return text + ")";
-}
 
 static std::string GetOriginalDeclText(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler, bool isRTV)
 {
@@ -208,14 +170,14 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
     {
       rvVulkan.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node)); // 
       sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
-      a_mainFunc.GeneratedDecl = GetControlFuncDeclVulkan(a_node, compiler);
+      a_mainFunc.GeneratedDecl = kslicer::GetControlFuncDeclVulkan(a_node, compiler);
     }
     else if(pHostCC->IsCUDA()) 
     {
       kslicer::MainFunctionRewriterCUDA rvCUDA(rewrite2, compiler, a_mainFunc, inOutParamList, this);  
       rvCUDA.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));   //
       sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
-      a_mainFunc.GeneratedDecl = GetControlFuncDeclCUDA(a_node, compiler);
+      a_mainFunc.GeneratedDecl = kslicer::GetControlFuncDeclCUDA(a_node, compiler);
     }
     
     size_t bracePos = sourceCode.find("{");
