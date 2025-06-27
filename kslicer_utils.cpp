@@ -146,6 +146,184 @@ std::string ToLowerCase(std::string a_str)
   return a_str;
 }
 
+std::unordered_set<std::string> kslicer::GetAllServiceKernels()
+{
+  std::unordered_set<std::string> names;
+  names.insert("copyKernelFloat");
+  names.insert("matMulTranspose");
+  return names;
+}
+
+std::string kslicer::ExtractSizeFromArgExpression(const std::string& a_str)
+{
+  auto posOfPlus = a_str.find("+");
+  auto posOfEnd  = a_str.find(".end()");
+
+  if(posOfPlus != std::string::npos)
+  {
+    std::string sizeExpr = a_str.substr(posOfPlus+1);
+    ReplaceFirst(sizeExpr," ", "");
+    return sizeExpr;
+  }
+  else if(posOfEnd != std::string::npos)
+  {
+    return a_str.substr(0, posOfEnd) + ".size()";
+  }
+
+  return a_str;
+}
+
+std::string kslicer::ClearNameFromBegin(const std::string& a_str)
+{
+  auto posOfBeg = a_str.find(".begin()");
+  if(posOfBeg != std::string::npos)
+    return a_str.substr(0, posOfBeg);
+
+  return a_str;
+}
+
+std::string kslicer::FixLamdbaSourceCode(std::string a_str)
+{
+  while(ReplaceFirst(a_str, "uint32_t ", "uint "));
+  while(ReplaceFirst(a_str, "unsigned int ", "uint "));
+
+  while(ReplaceFirst(a_str, "uint2 ",    "uvec2 "));
+  while(ReplaceFirst(a_str, "uint3 ",    "uvec3 "));
+  while(ReplaceFirst(a_str, "uint4 ",    "uvec4 "));
+
+  while(ReplaceFirst(a_str, "int2 ",     "ivec2 "));
+  while(ReplaceFirst(a_str, "int3 ",     "ivec3 "));
+  while(ReplaceFirst(a_str, "int4 ",     "ivec4 "));
+
+  while(ReplaceFirst(a_str, "float2 ",   "vec2 "));
+  while(ReplaceFirst(a_str, "float3 ",   "vec3 "));
+  while(ReplaceFirst(a_str, "float4 ",   "vec4 "));
+
+  return a_str;
+}
+
+std::string kslicer::SubstrBetween(const std::string& a_str, const std::string& first, const std::string& second)
+{
+  auto pos1 = a_str.find(first);
+  auto pos2 = a_str.find(second);
+  if(pos1 != std::string::npos && pos2 != std::string::npos)
+    return a_str.substr(pos1+1, pos2 - pos1 - 1);
+  return a_str;
+}
+
+bool kslicer::IsTexture(clang::QualType a_qt)
+{
+  if(a_qt->isReferenceType())
+    a_qt = a_qt.getNonReferenceType();
+
+  auto typeDecl = a_qt->getAsRecordDecl();
+  if(typeDecl == nullptr || !clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl))
+    return false;
+
+  const std::string typeName = a_qt.getAsString();
+  return (typeName.find("Texture") != std::string::npos || typeName.find("Image") != std::string::npos);
+}
+
+bool kslicer::IsAccelStruct(const std::string& a_typeName)
+{
+  if( (a_typeName == "struct ISceneObject")  || (a_typeName == "ISceneObject") || 
+      (a_typeName == "struct ISceneObject2") || (a_typeName == "ISceneObject2") )
+    return true;
+  else if(a_typeName.find("ISceneObject_") != std::string::npos)  
+    return true;
+  else
+    return false;
+}
+
+bool kslicer::IsVectorContainer(const std::string& a_typeName)
+{
+  return (a_typeName == "vector") || (a_typeName == "std::vector") || (a_typeName == "cvex::vector");
+}
+
+bool kslicer::IsPointerContainer(const std::string& a_typeName)
+{
+  return (a_typeName == "shared_ptr") || (a_typeName == "unique_ptr") ||
+         (a_typeName == "std::shared_ptr") || (a_typeName == "std::unique_ptr");
+}
+
+std::string kslicer::MakeKernellCallSignature(const std::string& a_mainFuncName, const std::vector<ArgReferenceOnCall>& a_args, const std::unordered_map<std::string, UsedContainerInfo>& a_usedContainers)
+{
+  std::stringstream strOut;
+  for(const auto& arg : a_args)
+  {
+    switch(arg.argType)
+    {
+      case KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL:
+      strOut << "[L]";
+      break;
+
+      case KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG:
+      strOut << "[A][" << a_mainFuncName.c_str() << "]" ;
+      break;
+
+      case KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR:
+      strOut << "[V]";
+      break;
+
+      case KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_POD:
+      strOut << "[P]";
+      break;
+
+      case KERN_CALL_ARG_TYPE::ARG_REFERENCE_THREAD_ID:
+      strOut << "[T]";
+      break;
+
+      default:
+      strOut << "[U]";
+      break;
+    };
+
+    strOut << arg.name.c_str();
+  }
+
+  for(const auto& vecName : a_usedContainers)
+    strOut << "[MV][" << vecName.second.name.c_str() << "]";
+
+  return strOut.str();
+}
+
+std::vector<kslicer::NameFlagsPair> kslicer::ListAccessedTextures(const std::vector<kslicer::ArgReferenceOnCall>& args, const kslicer::KernelInfo& kernel)
+{
+  std::vector<kslicer::NameFlagsPair> accesedTextures;
+  accesedTextures.reserve(16);
+  for(uint32_t i=0;i<uint32_t(args.size());i++)
+  {
+    if(args[i].isTexture())
+    {
+      std::string argNameInKernel = kernel.args[i].name;
+      auto pFlags = kernel.texAccessInArgs.find(argNameInKernel);
+      kslicer::NameFlagsPair tex;
+      tex.name  = args[i].name;
+      if(pFlags != kernel.texAccessInArgs.end())
+        tex.flags = pFlags->second;
+      tex.isArg = true;
+      tex.argId = i;
+      accesedTextures.push_back(tex);
+    }
+  }
+  for(const auto& container : kernel.usedContainers)
+  {
+    if(container.second.isTexture())
+    {
+      auto pFlags = kernel.texAccessInMemb.find(container.second.name);
+      kslicer::NameFlagsPair tex;
+      tex.name  = container.second.name;
+      if(pFlags != kernel.texAccessInMemb.end())
+        tex.flags = pFlags->second;
+      else
+        tex.flags = kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE;
+      tex.isArg = false;
+      accesedTextures.push_back(tex);
+    }
+  }
+  return accesedTextures;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

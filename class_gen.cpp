@@ -164,11 +164,18 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
   
     kslicer::MainFunctionRewriterVulkan rvVulkan(rewrite2, compiler, a_mainFunc, inOutParamList, this); // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
+    kslicer::MainFunctionRewriterWGPU   rvWGPU(rewrite2, compiler, a_mainFunc, inOutParamList, this);   // ==> write this->allDescriptorSetsInfo during 'TraverseDecl'
     
     std::string sourceCode;
-    if(pHostCC->NeedDescriprorSets())  
+    if(pHostCC->Name() == "Vulkan")  
     {
       rvVulkan.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node)); // 
+      sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
+      a_mainFunc.GeneratedDecl = kslicer::GetControlFuncDeclVulkan(a_node, compiler);
+    }
+    else if(pHostCC->Name() == "WebGPU")  
+    {
+      rvWGPU.TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node)); // 
       sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
       a_mainFunc.GeneratedDecl = kslicer::GetControlFuncDeclVulkan(a_node, compiler);
     }

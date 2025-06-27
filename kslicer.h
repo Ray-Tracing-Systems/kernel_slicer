@@ -1527,7 +1527,6 @@ namespace kslicer
     virtual void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
     virtual void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
     virtual bool IsCUDA() const { return false; }
-    virtual bool NeedDescriprorSets() const { return false; }
   };
 
   struct VulkanCodeGen : public IHostCodeGen
@@ -1535,7 +1534,6 @@ namespace kslicer
     std::string Name() const override { return "Vulkan"; }
     void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
     void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
-    bool NeedDescriprorSets() const override { return true; }
   };
 
   struct WGPUCodeGen : public IHostCodeGen
@@ -1543,7 +1541,6 @@ namespace kslicer
     std::string Name() const override { return "WebGPU"; }
     void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
     void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
-    bool NeedDescriprorSets() const override { return true; }
   };
 
   struct CudaCodeGen : public IHostCodeGen
@@ -1922,6 +1919,25 @@ namespace kslicer
   bool IsCalledWithArrowAndVirtual(const clang::CXXMemberCallExpr* f);
 
   bool NeedRewriteTextureArray(clang::CXXMemberCallExpr* a_call, std::string& objName, int& texCoordId);
+
+  std::string ExtractSizeFromArgExpression(const std::string& a_str);
+  std::string ClearNameFromBegin(const std::string& a_str);
+  std::string FixLamdbaSourceCode(std::string a_str);
+  std::string SubstrBetween(const std::string& a_str, const std::string& first, const std::string& second);
+  
+  struct NameFlagsPair
+  {
+    std::string         name;
+    kslicer::TEX_ACCESS flags;
+    uint32_t            argId = 0;
+    bool                isArg = false;
+  };
+  std::vector<NameFlagsPair> ListAccessedTextures(const std::vector<kslicer::ArgReferenceOnCall>& args, const kslicer::KernelInfo& kernel);
+  
+  /**\brief put all args together with comma or ',' to gave unique key for any concrete argument sequence.
+    \return unique strig key which you can pass in std::unordered_map for example 
+  */
+  std::string MakeKernellCallSignature(const std::string& a_mainFuncName, const std::vector<ArgReferenceOnCall>& a_args, const std::unordered_map<std::string, UsedContainerInfo>& a_usedContainers);
 }
 
 std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::filesystem::path& fileName,
