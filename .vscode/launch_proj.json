@@ -682,7 +682,7 @@
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-debug/kslicer",
-            "args"   : ["/home/frol/PROG/vg_code/LiteRT/options_rtx.json", "-v"],
+            "args"   : ["/home/frol/PROG/vg_code/LiteRT/options_comp.json", "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],

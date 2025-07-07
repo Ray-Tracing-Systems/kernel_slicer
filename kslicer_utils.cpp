@@ -410,6 +410,7 @@ std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const 
   bool foundMainFile = false;
 
   static std::vector<std::string> g_data;
+  g_data.reserve(128);
 
   std::vector<const char*> argsForClang; // exclude our input from cmdline parameters and pass the rest to clang
   argsForClang.reserve(argc);
