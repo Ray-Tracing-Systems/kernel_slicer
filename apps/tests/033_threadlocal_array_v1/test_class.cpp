@@ -1,6 +1,6 @@
 #include "test_class.h"
 
-float fSumm(int tid)
+float TestClass::fSumm(int tid)
 {
   [[threadlocal]] float tempData2[8];
     
