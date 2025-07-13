@@ -182,10 +182,6 @@ double3   operator*(double3x3 m,  double3 v) { return mul(m,v); }
 
 static inline uint bitCount(uint x) { return countbits(x); }
 
-{% for Array in ThreadLocalArrays %}
-{{Array.Type}} {{Array.Name}}[{{Array.Size}}];
-{% endfor %}
-
 ## for LocalFunc in LocalFunctions  
 {{LocalFunc}}
 

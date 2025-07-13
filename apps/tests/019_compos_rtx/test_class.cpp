@@ -62,6 +62,7 @@ void TestClass::kernel_InitEyeRay(uint* flags, float4* rayPosAndNear, float4* ra
 void TestClass::kernel_RayTrace(const float4* rayPosAndNear, float4* rayDirAndFar, 
                                 int* out_hit, uint tidX, uint tidY)
 {
+  [[threadlocal]] int stack1[16];
   CRT_Hit hit = m_pAccelStruct->RayQuery_NearestHit(*rayPosAndNear, *rayDirAndFar);
   *out_hit = hit.primId;
 }
@@ -122,6 +123,8 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
 
 CRT_Hit BFRayTrace::RayQuery_NearestHit(float4 rayPosAndNear, float4 rayDirAndFar)
 {
+  [[threadlocal]] int stack2[16];
+
   const float3 rayPos  = to_float3(rayPosAndNear);
   const float3 ray_dir = to_float3(rayDirAndFar);
 

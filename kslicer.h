@@ -741,6 +741,8 @@ namespace kslicer
     virtual std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText);
     virtual std::string RewriteConstructCall(clang::CXXConstructExpr* call);
 
+    virtual void CkeckAndProcessForThreadLocalVarDecl(clang::VarDecl* decl);
+
   public:
     virtual bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl);
     virtual bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl)     { return true; } // override this in Derived class

@@ -160,10 +160,6 @@ struct Box4f
   vec4 boxMax;
 };  
 
-{% for Array in ThreadLocalArrays %}
-{{Array.Type}} {{Array.Name}}[{{Array.Size}}];
-{% endfor %}
-
 #define KGEN_FLAG_RETURN            1
 #define KGEN_FLAG_BREAK             2
 #define KGEN_FLAG_DONT_SET_EXIT     4

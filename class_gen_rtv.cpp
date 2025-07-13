@@ -313,6 +313,8 @@ kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo
       res.texAccessInMemb.insert(x);
     for(const auto& x : a_kernels[i]->texAccessSampler)
       res.texAccessSampler.insert(x);
+    for(const auto& x : a_kernels[i]->threadLocalArrays)
+      res.threadLocalArrays.insert(x);
   }
 
   // (3) join shader features

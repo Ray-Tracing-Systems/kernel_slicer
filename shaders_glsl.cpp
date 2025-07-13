@@ -1171,22 +1171,13 @@ const clang::DeclStmt* getParentDeclContext(const clang::VarDecl* varDecl, clang
     return nullptr;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
+void kslicer::FunctionRewriter::CkeckAndProcessForThreadLocalVarDecl(clang::VarDecl* decl)
 {
-  if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
-    return true;
-
-  const auto qt      = decl->getType();
-  const auto pValue  = decl->getAnyInitializer();
-
-  const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler);
-  //const std::string debugTextVal = kslicer::GetRangeSourceCode(pValue->getSourceRange(), m_compiler);
-  const std::string varType = qt.getAsString();
-
   for (const clang::Attr* attr : decl->attrs()) 
   {
     //const std::string attrType = attr->getSpelling();
-    const std::string attrText = kslicer::GetRangeSourceCode(attr->getRange(), m_compiler);
+    const std::string attrText  = kslicer::GetRangeSourceCode(attr->getRange(), m_compiler);
+    const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler);
 
     clang::QualType varType = decl->getType();
 
@@ -1211,7 +1202,7 @@ bool kslicer::GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
         if(declStmt != nullptr && WasNotRewrittenYet(declStmt))
         {
           std::stringstream strOut;
-          strOut << "// " << debugText.c_str() << "; was moved to global scope in GLSL"; // 123
+          strOut << "// " << debugText.c_str() << "; // was moved to global scope in GLSL"; // 123
           ReplaceTextOrWorkAround(declStmt->getSourceRange(), strOut.str());
           MarkRewritten(declStmt);
           
@@ -1234,6 +1225,22 @@ bool kslicer::GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
       }
     }
   }
+
+}
+
+bool kslicer::GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
+{
+  if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
+    return true;
+
+  CkeckAndProcessForThreadLocalVarDecl(decl);
+
+  const auto qt      = decl->getType();
+  const auto pValue  = decl->getAnyInitializer();
+
+  //const std::string debugText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler);
+  //const std::string debugTextVal = kslicer::GetRangeSourceCode(pValue->getSourceRange(), m_compiler);
+  const std::string varType = qt.getAsString();
 
   const clang::Type::TypeClass typeClass = qt->getTypeClass();
   const bool isAuto = (typeClass == clang::Type::Auto);

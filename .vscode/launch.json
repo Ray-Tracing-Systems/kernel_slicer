@@ -446,7 +446,7 @@
             "name"   : "Launch (test_019/Slang_CS)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/tests/019_compos_rtx/test_class.cpp",
                         "-mainClass", "TestClass",
                         "-composInterface", "ISceneObject",

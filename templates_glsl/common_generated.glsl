@@ -89,7 +89,9 @@ layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassN
 {% for Array in Kernel.ThreadLocalArrays %}
 {{Array.Type}} {{Array.Name}}[{{Array.Size}}];
 {% endfor %}
-
+{% for Array in ThreadLocalArrays %}
+{{Array.Type}} {{Array.Name}}[{{Array.Size}}];
+{% endfor %}
 {% for ShitFunc in Kernel.ShityFunctions %} 
 {{ShitFunc}}
 

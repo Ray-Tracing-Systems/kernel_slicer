@@ -812,27 +812,14 @@ bool kslicer::SlangRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 { 
   if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
     return true;
+  
+  CkeckAndProcessForThreadLocalVarDecl(decl);
 
   const auto qt      = decl->getType();
   const auto pValue  = decl->getAnyInitializer();
 
   const std::string originalText = kslicer::GetRangeSourceCode(decl->getSourceRange(), m_compiler);
   const std::string varType      = qt.getAsString();
-
-  //kslicer::FuncData fdata;
-  //bool wasSet = false;
-  //if(m_pCurrKernel != nullptr) 
-  //{
-  //  fdata.astNode  = m_pCurrKernel->astNode;
-  //  fdata.name     = m_pCurrKernel->name;
-  //  fdata.srcRange = fdata.astNode->getSourceRange();
-  //  fdata.srcHash  = kslicer::GetHashOfSourceRange(fdata.srcRange);
-  //  fdata.isMember = false;
-  //  fdata.isKernel = true;
-  //  fdata.depthUse = 0;    
-  //  this->SetCurrFuncInfo(&fdata);  
-  //  wasSet = true;
-  //};
 
   if(m_kernelMode)
   {

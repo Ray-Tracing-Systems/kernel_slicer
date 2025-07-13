@@ -20,7 +20,10 @@ layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}}; //
 {% if Kernel.UseCombinedImageSampler %}[[vk::binding({{length(Kernel.Args)}}, 0)]] {% endif %}RWStructuredBuffer<{{MainClassName}}{{MainClassSuffix}}_UBO_Data> ubo;
 
 {% for Array in Kernel.ThreadLocalArrays %}
-{{Array.Type}} {{Array.Name}}[{{Array.Size}}];
+static {{Array.Type}} {{Array.Name}}[{{Array.Size}}];
+{% endfor %}
+{% for Array in ThreadLocalArrays %}
+static {{Array.Type}} {{Array.Name}}[{{Array.Size}}];
 {% endfor %}
 {% for MembFunc in Kernel.MemberFunctions %}
 {{MembFunc.Decl}};
