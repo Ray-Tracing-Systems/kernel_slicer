@@ -429,10 +429,16 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
     {
       const std::string texCoord = RecursiveRewrite(call->getArg(texCoordId));
       //const std::string lastRewrittenText = std::string("textureLod") + "(" + objName + ", " + texCoord + ", 0)";
-      auto posBrace = objName.find_first_of("[");
-      assert(posBrace != std::string::npos);
-      const std::string samplerName   = objName.substr(0, posBrace) + "_sam" + objName.substr(posBrace);
-      const std::string rewrittenText = objName + ".SampleLevel(" + samplerName + ", " + texCoord + ", 0)";
+      auto posBraceOpen  = objName.find_first_of("[");
+      auto posBraceClose = objName.find_first_of("]");
+      assert(posBraceOpen != std::string::npos);
+      assert(posBraceClose != std::string::npos);
+
+      const std::string baseName      = objName.substr(0, posBraceOpen);
+      const std::string indexName     = std::string("NonUniformResourceIndex(") + objName.substr(posBraceOpen+1, posBraceClose-posBraceOpen-1) + std::string(")");
+      const std::string samplerName   = baseName + "_sam" + "[" + indexName + "]";
+      const std::string rewrittenText = baseName + "[" + indexName + "]" + ".SampleLevel(" + samplerName + ", " + texCoord + ", 0)";
+
       ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenText);
       MarkRewritten(call);
     }
