@@ -42,6 +42,7 @@ namespace kslicer
     bool genSeparateGPUAPI = false;
     bool useCUBforCUDA     = true;
     bool skipUBORead       = false;
+    bool uboIsAlwaysConst  = false;
     std::string interfaceName;
   };
 
@@ -250,6 +251,7 @@ namespace kslicer
       bool isThreadFlags  = false;
       bool isReference    = false;
       bool isContainer    = false;
+      bool isConstant     = false;
 
       std::string containerType;
       std::string containerDataType;
@@ -425,6 +427,7 @@ namespace kslicer
     bool        isImage          = false;
     bool        isSampler        = false;
     bool        isPointer        = false;
+    bool        isConstant       = false;
   };
 
   /**

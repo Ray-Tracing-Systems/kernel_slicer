@@ -12,6 +12,7 @@
 #ifdef USE_VULKAN
 #include "vk_context.h"
 std::shared_ptr<ToneMapping> CreateToneMapping_GPU(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+vk_utils::VulkanDeviceFeatures ToneMapping_GPU_ListRequiredDeviceFeatures();
 #endif
 #ifdef USE_ISPC
 std::shared_ptr<ToneMapping> CreateToneMapping_ISPC();
@@ -56,7 +57,8 @@ int main(int argc, const char** argv)
     #endif
     #ifdef USE_VULKAN
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+    auto features = ToneMapping_GPU_ListRequiredDeviceFeatures();
+    auto ctx = vk_utils::globalContextInit(features, enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateToneMapping_GPU(ctx, w*h);
     #endif
   }

@@ -288,6 +288,8 @@ int main(int argc, const char **argv) //
       textGenSettings.useCUBforCUDA = (atoi(params["-useCUB"].c_str()) != 0);
     if(params.find("-skip_ubo_read") != params.end())
       textGenSettings.skipUBORead = atoi(params["-skip_ubo_read"].c_str());
+    if(params.find("-const_ubo") != params.end())
+      textGenSettings.uboIsAlwaysConst = (atoi(params["-const_ubo"].c_str()) != 0);
   }
 
   // include and process folders
@@ -1255,6 +1257,21 @@ int main(int argc, const char **argv) //
       kernel.wgSize[1] = defaultWgSize[kernelDim-1][1];
       kernel.wgSize[2] = defaultWgSize[kernelDim-1][2];
     }
+
+    if(kernelOptions != nullptr && kernelOptions["nonConstantData"] != nullptr)
+    {
+      auto ncBuffers = kernelOptions["nonConstantData"];
+      // (1) set all to const 
+      for(auto& arg : kernel.args) 
+      {
+        if(ncBuffers[arg.name] != nullptr)
+        {
+          arg.isConstant = (ncBuffers[arg.name].get<int>() != 0);
+        }
+        else
+          arg.isConstant = true;
+      }
+    }
   }
 
   auto& megakernelsByName = inputCodeInfo.megakernelsByName;
@@ -1490,7 +1507,7 @@ int main(int argc, const char **argv) //
   }
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedFunctions, generalDecls, compiler, threadsOrder, jsonUBO, usedDefines, textGenSettings);
+  auto json = kslicer::PrepareJsonForKernels(inputCodeInfo, usedFunctions, generalDecls, compiler, threadsOrder, jsonUBO, kernelsOptionsAll, usedDefines, textGenSettings);
   
   //std::ofstream file(inputCodeInfo.mainClassFileName.parent_path() / "z_debug_kernels.json");
   //file << std::setw(2) << json; //

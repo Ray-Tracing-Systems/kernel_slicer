@@ -128,6 +128,7 @@ nlohmann::json kslicer::GetOriginalKernelJson(const KernelInfo& k, const MainCla
     argj["Type"]      = typeName;
     argj["Name"]      = arg.name;
     argj["IsPointer"] = arg.IsPointer();
+    argj["IsConst"]   = arg.isConstant;
     allArgs.push_back(argj);
   }
   return allArgs;
@@ -501,6 +502,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
                                     const clang::CompilerInstance& compiler,
                                     const uint32_t  threadsOrder[3],
                                     const nlohmann::json& uboJson,
+                                    const nlohmann::json& kernelOptions,
                                     const std::vector<std::string>& usedDefines,
                                     const TextGenSettings& a_settings)
 {
@@ -749,6 +751,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsPointer"]     = commonArg.isPointer;
       argj["IsMember"]      = false;
       argj["IsSingle"]      = false;
+      argj["IsConst"]       = commonArg.isConstant;
       argj["IsVFHBuffer"]   = false;
       argj["VFHLevel"]      = 0;
       argj["WithBuffRef"]   = false;
@@ -808,6 +811,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsPointer"]     = (pVecMember->second.kind == kslicer::DATA_KIND::KIND_VECTOR);
       argj["IsMember"]      = true;
       argj["IsSingle"]      = pVecMember->second.isSingle;
+      argj["IsConst"]       = pVecMember->second.isConst;
       argj["WithBuffRef"]   = container.second.bindWithRef;
 
       ////////////////////////////////////////////////////////////////////
@@ -881,6 +885,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsAccelStruct"] = false;
       argj["IsMember"]   = false;
       argj["IsSingle"]   = false;
+      argj["IsConst"]    = false;
       argj["NameISPC"] = argj["Name"];
       argj["IsVFHBuffer"]   = false;
       argj["VFHLevel"]      = 0;
@@ -900,6 +905,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsUBO"] = false;
       argj["IsPointer"] = false;
       argj["IsMember"]  = false;
+      argj["IsConst"]   = arg.isConstant;
       argj["NameISPC"]  = argj["Name"];
       argj["WithBuffRef"] = false;
       userArgs.push_back(argj);
@@ -992,6 +998,33 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["RedLoop2"].push_back(c);
 
     kernelJson["UseSubGroups"] = k.enableSubGroups;
+    
+    //if(k.name == "kernel2D_BlurX")
+    //{
+    //  int a = 2;
+    //}
+
+    // explicitly override const flags for all args
+    //
+    if(kernelOptions != nullptr) {
+      if(kernelOptions.find(k.name) != kernelOptions.end()) {
+        auto thisKernelOptions = kernelOptions[k.name];
+        if(thisKernelOptions["nonConstantData"] != nullptr) {
+          auto nonConstData = thisKernelOptions["nonConstantData"];
+          for(auto& arg : args) {
+            if(arg["Name"] == nullptr)
+              continue;
+            std::string name = arg["Name"].get<std::string>();
+            if(nonConstData[name.c_str()] != nullptr) {
+              bool isConst = (nonConstData[name.c_str()].get<int>() == 0);
+              arg["IsConst"] = isConst;
+            }
+            else 
+              arg["IsConst"] = true;
+          }
+        }
+      }
+    }
 
     kernelJson["LastArgNF1"]   = VArgsSize + MArgsSize;
     kernelJson["LastArgNF"]    = VArgsSize; // Last Argument No Flags
@@ -1008,6 +1041,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["FinishRed"]    = needFinishReductionPass;
     kernelJson["NeedTexArray"] = isTextureArrayUsedInThisKernel;
     kernelJson["UseCombinedImageSampler"] = usedCombinedImageSamplers;
+    kernelJson["ContantUBO"]              = a_settings.uboIsAlwaysConst; // TODO: add check if kernel mosify ubo data
     kernelJson["WarpSize"]     = k.warpSize;
     kernelJson["InitSource"]   = "";
     

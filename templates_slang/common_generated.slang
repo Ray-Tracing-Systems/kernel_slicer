@@ -13,11 +13,11 @@ layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}}; //
 {% else if Arg.IsAccelStruct %}
 {% if Kernel.UseCombinedImageSampler %}[[vk::binding({{loop.index}}, 0)]] {% endif %}RaytracingAccelerationStructure {{Arg.Name}};
 {% else %}
-{% if Kernel.UseCombinedImageSampler %}[[vk::binding({{loop.index}}, 0)]] {% endif %}RWStructuredBuffer<{{Arg.Type}}> {{Arg.Name}}; // 
+{% if Kernel.UseCombinedImageSampler %}[[vk::binding({{loop.index}}, 0)]] {% endif %}{%if not Arg.IsConst%}RW{% endif %}StructuredBuffer<{{Arg.Type}}> {{Arg.Name}}; // 
 {% endif %} {# /* Arg.IsImage */ #}
 {% endif %} {# /* not Arg.IsUBO */ #}
 {% endfor %}
-{% if Kernel.UseCombinedImageSampler %}[[vk::binding({{length(Kernel.Args)}}, 0)]] {% endif %}RWStructuredBuffer<{{MainClassName}}{{MainClassSuffix}}_UBO_Data> ubo;
+{% if Kernel.UseCombinedImageSampler %}[[vk::binding({{length(Kernel.Args)}}, 0)]] {% endif %}{%if not Kernel.ContantUBO%}RW{% endif %}StructuredBuffer<{{MainClassName}}{{MainClassSuffix}}_UBO_Data> ubo;
 
 {% for Array in Kernel.ThreadLocalArrays %}
 static {{Array.Type}} {{Array.Name}}[{{Array.Size}}];

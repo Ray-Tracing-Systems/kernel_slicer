@@ -344,7 +344,8 @@ std::vector<kslicer::ArgFinal> kslicer::MainClassInfo::GetKernelCommonArgs(const
     if((!arg.isThreadID && !arg.isLoopSize && !arg.IsUser()) || pShaderCC->IsISPC())
     { 
       ArgFinal arg2;
-      arg2.name  = arg.name;
+      arg2.name       = arg.name;
+      arg2.isConstant = arg.isConstant;
       
       if(arg.IsTexture())
       {

@@ -1,0 +1,21 @@
+{
+    "mainClass"     : "ToneMapping", // must explicitly specify main class as main process 'unit' for slicer
+    "baseClasses"   : [],            // specify all base clases in  reverse order from leaf to root
+    "composClasses" : {},            // specify all classes for composition pattern 
+    "kernels" : {
+        "kernel2D_BlurX" : {"nonConstantData": {"a_dataOut" : 1} },
+        "kernel2D_BlurY" : {"nonConstantData": {"a_dataOut" : 1} }
+    },
+    "options" : {
+        "-pattern"      : "ipv",
+        "-reorderLoops" : "YX",
+        "-shaderCC"     : "slang",
+        "-suffix"       : "_GPU",
+        "-timestamps"   : "1",
+        "-const_ubo"    : "1"
+    },
+    "source" : ["test_class.cpp"],
+    "includeProcess" : [],
+    "includeIgnore"  : ["../LiteMath"],
+    "end" : ""
+}

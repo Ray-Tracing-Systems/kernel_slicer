@@ -23,6 +23,7 @@ namespace kslicer
                                        const clang::CompilerInstance& compiler,
                                        const uint32_t    threadsOrder[3],
                                        const nlohmann::json& uboJson,
+                                       const nlohmann::json& kernelOptions,
                                        const std::vector<std::string>& usedDefines,
                                        const TextGenSettings& a_settings);
 
