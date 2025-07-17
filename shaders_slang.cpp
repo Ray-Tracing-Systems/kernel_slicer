@@ -427,15 +427,42 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
     bool needRewrite = kslicer::NeedRewriteTextureArray(call, objName, texCoordId);
     if(needRewrite)
     {
-      const std::string texCoord = RecursiveRewrite(call->getArg(texCoordId));
-      //const std::string lastRewrittenText = std::string("textureLod") + "(" + objName + ", " + texCoord + ", 0)";
-      auto posBraceOpen  = objName.find_first_of("[");
-      auto posBraceClose = objName.find_first_of("]");
-      assert(posBraceOpen != std::string::npos);
-      assert(posBraceClose != std::string::npos);
+      const std::string texCoord = RecursiveRewrite(call->getArg(texCoordId));      
+      std::string baseName = "", indexName = "";
+      pTexName = kslicer::RemoveImplicitCast(pTexName);
+      if(clang::isa<clang::CXXOperatorCallExpr>(pTexName))
+      {
+        auto pArrorOp  = clang::dyn_cast<clang::CXXOperatorCallExpr>(pTexName);
+        std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(pArrorOp->getOperatorLoc()), m_compiler); 
+        clang::Expr* left  = kslicer::RemoveImplicitCast(pArrorOp->getArg(0));
 
-      const std::string baseName      = objName.substr(0, posBraceOpen);
-      const std::string indexName     = std::string("NonUniformResourceIndex(") + objName.substr(posBraceOpen+1, posBraceClose-posBraceOpen-1) + std::string(")");
+        if(clang::isa<clang::CXXOperatorCallExpr>(left) && op == "->")
+        {
+          auto pArrayAccess = clang::dyn_cast<clang::CXXOperatorCallExpr>(left);
+          std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(pArrayAccess->getOperatorLoc()), m_compiler); 
+          if(op == "[]" || op == "[" || op == "]")
+          {
+            clang::Expr* left     = kslicer::RemoveImplicitCast(pArrayAccess->getArg(0));
+            clang::Expr* right    = kslicer::RemoveImplicitCast(pArrayAccess->getArg(1));
+            std::string textLeft  = kslicer::GetRangeSourceCode(left->getSourceRange(), m_compiler);
+            std::string textRight = kslicer::GetRangeSourceCode(right->getSourceRange(), m_compiler);
+            baseName  = textLeft;
+            indexName = std::string("NonUniformResourceIndex(") + textRight + std::string(")");
+          }
+        }
+      }
+      
+      if(baseName == "")
+      {
+        auto posBraceOpen  = objName.find_first_of("[");
+        auto posBraceClose = objName.find_first_of("]");
+        assert(posBraceOpen != std::string::npos);
+        assert(posBraceClose != std::string::npos);
+  
+        baseName  = objName.substr(0, posBraceOpen);
+        indexName = std::string("NonUniformResourceIndex(") + objName.substr(posBraceOpen+1, posBraceClose-posBraceOpen-1) + std::string(")");
+      }
+
       const std::string samplerName   = baseName + "_sam" + "[" + indexName + "]";
       const std::string rewrittenText = baseName + "[" + indexName + "]" + ".SampleLevel(" + samplerName + ", " + texCoord + ", 0)";
 
