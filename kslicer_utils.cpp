@@ -246,7 +246,7 @@ bool kslicer::IsPointerContainer(const std::string& a_typeName)
          (a_typeName == "std::shared_ptr") || (a_typeName == "std::unique_ptr");
 }
 
-std::string kslicer::MakeKernellCallSignature(const std::string& a_mainFuncName, const std::vector<ArgReferenceOnCall>& a_args, const std::unordered_map<std::string, UsedContainerInfo>& a_usedContainers)
+std::string kslicer::MakeKernellCallSignature(const std::string& a_mainFuncName, const std::vector<ArgReferenceOnCall>& a_args, const std::map<std::string, UsedContainerInfo>& a_usedContainers)
 {
   std::stringstream strOut;
   for(const auto& arg : a_args)

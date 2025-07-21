@@ -192,7 +192,7 @@ std::string kslicer::MainFunctionRewriterWGPU::MakeServiceKernelCallCmdString(Ca
       args[1].kind    = DATA_KIND::KIND_POINTER;
     }
 
-    const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, std::unordered_map<std::string, kslicer::UsedContainerInfo>()); // + strOut1.str();
+    const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, std::map<std::string, kslicer::UsedContainerInfo>()); // + strOut1.str();
     auto p2 = dsIdBySignature.find(callSign);
     if(p2 == dsIdBySignature.end())
     {
@@ -256,7 +256,7 @@ std::string kslicer::MainFunctionRewriterWGPU::MakeServiceKernelCallCmdString(Ca
     dsLayoutName = "m_scan_" + call.dataTypeName;
     args[2].name = "m_scan_" + call.dataTypeName + ".m_scanTempData";
 
-    const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, std::unordered_map<std::string, kslicer::UsedContainerInfo>()); // + strOut1.str();
+    const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, std::map<std::string, kslicer::UsedContainerInfo>()); // + strOut1.str();
     auto p2 = dsIdBySignature.find(callSign);
     if(p2 == dsIdBySignature.end())
     {
@@ -302,7 +302,7 @@ std::string kslicer::MainFunctionRewriterWGPU::MakeServiceKernelCallCmdString(Ca
     kernName     = "m_sort_" + call.dataTypeName + ".sort";
     dsLayoutName = "m_sort_" + call.dataTypeName;
 
-    const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, std::unordered_map<std::string, kslicer::UsedContainerInfo>()); // + strOut1.str();
+    const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, std::map<std::string, kslicer::UsedContainerInfo>()); // + strOut1.str();
     auto p2 = dsIdBySignature.find(callSign);
     if(p2 == dsIdBySignature.end())
     {
@@ -334,7 +334,7 @@ std::string kslicer::MainFunctionRewriterWGPU::MakeServiceKernelCallCmdString(Ca
       args[i].kind    = DATA_KIND::KIND_POINTER;
     }
 
-    const auto callSign = kslicer::MakeKernellCallSignature(m_mainFuncName, args, std::unordered_map<std::string, kslicer::UsedContainerInfo>()); // + strOut1.str();
+    const auto callSign = kslicer::MakeKernellCallSignature(m_mainFuncName, args, std::map<std::string, kslicer::UsedContainerInfo>()); // + strOut1.str();
     auto p2 = dsIdBySignature.find(callSign);
     if(p2 == dsIdBySignature.end())
     {

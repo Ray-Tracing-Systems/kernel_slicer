@@ -1206,7 +1206,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
 
     buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << targetSuffix.c_str() << " -I.. ";
     for(auto folder : ignoreFolders)
-      buildSH << "-I" << folder.c_str() << " ";
+      buildSH << "-I" << folder.u8string().c_str() << " ";
     buildSH << std::endl;
   
     if(kernel.value()["IsIndirect"])
@@ -1216,7 +1216,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
       buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_UpdateIndirect" << targetSuffix.c_str() << " -I.. ";
       for(auto folder : ignoreFolders)
-       buildSH << "-I" << folder.c_str() << " ";
+       buildSH << "-I" << folder.u8string().c_str() << " ";
       buildSH << std::endl;
     }
 
@@ -1227,7 +1227,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
       buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_Reduction" << targetSuffix.c_str() << " -I.. ";
       for(auto folder : ignoreFolders)
-       buildSH << "-I" << folder.c_str() << " ";
+       buildSH << "-I" << folder.u8string().c_str() << " ";
       buildSH << std::endl;
     }
   }

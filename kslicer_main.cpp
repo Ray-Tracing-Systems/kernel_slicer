@@ -62,7 +62,7 @@ std::vector<std::string> ListProcessedFiles(nlohmann::json a_filesArray, std::fi
   
   for(const auto& param : a_filesArray) 
   {
-    std::filesystem::path path = param;
+    std::filesystem::path path = std::filesystem::u8path((std::string)param);
     if(path.is_absolute())
       allFiles.push_back(path.string());
     else
@@ -348,7 +348,7 @@ int main(int argc, const char **argv) //
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params, fileName.c_str(), defines);
+  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params, fileName.u8string().c_str(), defines);
   llvm::ArrayRef<const char*> args(argsForClang.data(), argsForClang.data() + argsForClang.size());
 
   // Make sure it exists
@@ -587,6 +587,7 @@ int main(int argc, const char **argv) //
   compiler.getLangOpts().CPlusPlus   = 1;
   compiler.getLangOpts().CPlusPlus14 = 1;
   compiler.getLangOpts().CPlusPlus17 = 1;
+  compiler.getLangOpts().CPlusPlus11 = 1;
   compiler.createFileManager();
   compiler.createSourceManager(compiler.getFileManager());
   
@@ -616,9 +617,9 @@ int main(int argc, const char **argv) //
   auto& headerSearchOptions = compiler.getHeaderSearchOpts();
   headerSearchOptions.AddPath(stdlibFolder.c_str(), clang::frontend::Angled, false, false);
   for(const auto& includePath : processFolders)
-    headerSearchOptions.AddPath(includePath.c_str(), clang::frontend::Angled, false, false);
+    headerSearchOptions.AddPath(includePath.u8string().c_str(), clang::frontend::Angled, false, false);
   for(const auto& includePath : ignoreFolders)
-    headerSearchOptions.AddPath(includePath.c_str(), clang::frontend::Angled, false, false);
+    headerSearchOptions.AddPath(includePath.u8string().c_str(), clang::frontend::Angled, false, false);
 
   //headerSearchOptions.Verbose = 1;
 
