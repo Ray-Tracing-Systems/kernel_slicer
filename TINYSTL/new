@@ -36,7 +36,7 @@ namespace tinystl {
 
 // for WINDOWS
 
-#ifdef WIN32
+#if defined(_WIN32) || defined(WIN32)
 inline void* operator new(unsigned long long, tinystl::placeholder, void* ptr) { return ptr;}
 void*        operator new(unsigned long long, void*) throw(); // in placement new
 #else

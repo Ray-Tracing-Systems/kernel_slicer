@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
 #include <algorithm>
@@ -358,7 +359,7 @@ namespace kslicer
 
     std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
-    std::unordered_map<std::string, UsedContainerInfo>     usedContainers;      ///<! list of all std::vector<T> member names which is referenced inside kernel
+    std::map<std::string, UsedContainerInfo>     usedContainers;      ///<! list of all std::vector<T> member names which is referenced inside kernel
     std::unordered_set<std::string>                        usedMembers;         ///<! list of all other variables used inside kernel
     std::unordered_map<uint64_t, FuncData>                 usedMemberFunctions; ///<! list of all used member functions from this kernel
 
@@ -1942,7 +1943,7 @@ namespace kslicer
   /**\brief put all args together with comma or ',' to gave unique key for any concrete argument sequence.
     \return unique strig key which you can pass in std::unordered_map for example 
   */
-  std::string MakeKernellCallSignature(const std::string& a_mainFuncName, const std::vector<ArgReferenceOnCall>& a_args, const std::unordered_map<std::string, UsedContainerInfo>& a_usedContainers);
+  std::string MakeKernellCallSignature(const std::string& a_mainFuncName, const std::vector<ArgReferenceOnCall>& a_args, const std::map<std::string, UsedContainerInfo>& a_usedContainers);
 }
 
 std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::filesystem::path& fileName,

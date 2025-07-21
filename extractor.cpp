@@ -1030,7 +1030,7 @@ bool kslicer::MainClassInfo::IsInExcludedFolder(const std::string& fileName)
   bool exclude = false;
   for(auto folder : this->ignoreFolders)  //
   {
-    if(fileName.find(folder) != std::string::npos)
+    if(fileName.find(folder.u8string()) != std::string::npos)
     {
       exclude = true;
       break;
@@ -1071,7 +1071,7 @@ bool kslicer::MainClassInfo::NeedToProcessDeclInFile(const std::string a_fileNam
   {
     for(auto folder : this->ignoreFolders)        // consider ["maypath/AA"] in 'processFolders' and ["maypath/AA/BB"] in 'ignoreFolders'
     {                                             // we should definitely ignore such definitions
-      if(a_fileName.find(folder) != std::string::npos)
+      if(a_fileName.find(folder.u8string()) != std::string::npos)
       {
         needInsertToKernels = false;
         break;
