@@ -902,6 +902,25 @@ bool kslicer::SlangRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr*
     // ...
   }
 
+  clang::Expr* preNext = cast->getSubExpr();
+
+  if(clang::isa<clang::CXXConstructExpr>(preNext))
+  {
+    auto call = clang::dyn_cast<clang::CXXConstructExpr>(preNext);
+    clang::CXXConstructorDecl* ctorDecl = call->getConstructor();
+    const std::string fname = ctorDecl->getNameInfo().getName().getAsString();
+    
+    if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0 ) //
+    {
+      const std::string textRes = RewriteConstructCall(call);
+      //ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
+      m_rewriter.ReplaceText(call->getSourceRange(), textRes);    //
+      MarkRewritten(call);
+    }
+
+    return true;
+  }
+
   return true; 
 }
 

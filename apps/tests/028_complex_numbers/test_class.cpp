@@ -11,7 +11,7 @@ static inline complex filmPhaseDiff(complex cosTheta, complex eta, float thickne
 
 static inline complex FrComplexRefl(complex cosThetaI, complex cosThetaT, complex iorI, complex iorT, int polarization)
 {
-  return 126.0f;
+  return complex(126.0f) + cosThetaT*(iorI - iorT);
 }
 
 void TestClass::Test(BoxHit* a_data, unsigned int a_size)

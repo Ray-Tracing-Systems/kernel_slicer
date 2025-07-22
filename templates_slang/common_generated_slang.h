@@ -39,25 +39,7 @@ complex make_complex(float re, float im) {
   return res;
 }
 
-complex to_complex(float re)              { return make_complex(re, 0.0f);}
-complex complex_add(complex a, complex b) { return make_complex(a.re + b.re, a.im + b.im); }
-complex complex_sub(complex a, complex b) { return make_complex(a.re - b.re, a.im - b.im); }
-complex complex_mul(complex a, complex b) { return make_complex(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re); }
-complex complex_div(complex a, complex b) {
-  const float scale = 1 / (b.re * b.re + b.im * b.im);
-  return make_complex(scale * (a.re * b.re + a.im * b.im), scale * (a.im * b.re - a.re * b.im));
-}
-
-complex real_add_complex(float value, complex z) { return complex_add(to_complex(value),z); }
-complex real_sub_complex(float value, complex z) { return complex_sub(to_complex(value),z); }
-complex real_mul_complex(float value, complex z) { return complex_mul(to_complex(value),z); }
-complex real_div_complex(float value, complex z) { return complex_div(to_complex(value),z); }
-
-complex complex_add_real(complex z, float value) { return complex_add(z, to_complex(value)); }
-complex complex_sub_real(complex z, float value) { return complex_sub(z, to_complex(value)); }
-complex complex_mul_real(complex z, float value) { return complex_mul(z, to_complex(value)); }
-complex complex_div_real(complex z, float value) { return complex_div(z, to_complex(value)); }
-
+complex to_complex(float re) { return make_complex(re, 0.0f);}
 float real(complex z) { return z.re;}
 float imag(complex z) { return z.im; }
 float complex_norm(complex z) { return z.re * z.re + z.im * z.im; }
@@ -73,6 +55,35 @@ complex complex_sqrt(complex z)
     return make_complex(t1, t2);
   else
     return make_complex(abs(t2), copysign(t1, z.im));
+}
+
+complex operator+(complex a, complex b) { return make_complex(a.re + b.re, a.im + b.im); }
+complex operator+(complex a, float b)   { return make_complex(a.re + b, a.im); }
+complex operator+(float a, complex b)   { return make_complex(a + b.re, b.im); }
+
+complex operator-(complex a, complex b) { return make_complex(a.re - b.re, a.im - b.im); }
+complex operator-(complex a, float b)   { return make_complex(a.re - b, a.im); }
+complex operator-(float a, complex b)   { return make_complex(a - b.re, -b.im); }
+
+complex operator*(complex a, complex b) { return make_complex(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re); }
+complex operator*(complex a, float b)   { return make_complex(a.re * b, a.im * b); }
+complex operator*(float a, complex b)   { return make_complex(a * b.re, a * b.im); }
+
+complex operator/(complex a, complex b)
+{
+  float norm = complex_norm(b);
+  return make_complex( (a.re * b.re + a.im * b.im) / norm, (a.im * b.re - a.re * b.im) / norm);
+}
+
+complex operator/(complex a, float b)
+{
+  return make_complex(a.re / b, a.im / b);
+}
+
+complex operator/(float a, complex b)
+{
+  float norm = complex_norm(b);
+  return make_complex((a * b.re) / norm, (-a * b.im) / norm);
 }
 
 {% endif %}

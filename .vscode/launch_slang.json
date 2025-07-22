@@ -508,6 +508,35 @@
         },
 
         {
+            "name"   : "Launch (test_028/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/028_complex_numbers/test_class.cpp",
+                        "-mainClass", "TestClass", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore", 
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-shaderCC", "slang",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (test_040/Slang)",
             "type"   : "cppdbg",
             "request": "launch",
@@ -723,6 +752,44 @@
             "program": "${workspaceFolder}/cmake-build-release/kslicer",
             "args"   : ["/home/frol/PROG/vg_code/LiteRT/config/slicer/options_rq.json",
                         "-shaderCC", "slang", 
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "HydraCore3(Slang/External)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt.cpp",
+                        "/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt_lgt.cpp",
+                        "/home/frol/PROG/HydraRepos/HydraCore3/integrator_pt_mat.cpp",
+                        "/home/frol/PROG/HydraRepos/HydraCore3/integrator_rt.cpp",
+                        "/home/frol/PROG/HydraRepos/HydraCore3/integrator_spectrum.cpp",
+                        "-mainClass", "Integrator", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-shaderCC", "slang",
+                        "-const_ubo", "1",
+                        "-I${workspaceFolder}/TINYSTL",                               "ignore",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/external/LiteMath",  "ignore",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/external/LiteScene", "ignore",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/external/CrossRT",   "process",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/cam_plugin",         "process",  
+                        "-megakernel", "1",
+                        "-gen_gpu_api", "0",
+                        "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
