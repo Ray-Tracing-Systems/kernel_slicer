@@ -148,7 +148,8 @@ std::string kslicer::SlangRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
         std::string bufferType = "RWStructuredBuffer";
         if(typeStr.find("const ") != std::string::npos)
         {
-          //bufferType = "StructuredBuffer";
+          if(m_codeInfo->shitIsAlwaysConst)
+            bufferType = "StructuredBuffer";
           ReplaceFirst(typeStr, "const ", "");
         }
         while(ReplaceFirst(typeStr, " ", ""));

@@ -435,6 +435,9 @@ int main(int argc, const char **argv) //
   if(params.find("-vec_in_ubo") != params.end())
     inputCodeInfo.placeVectorsInUBO = atoi(params["-vec_in_ubo"].c_str());
 
+  if(params.find("-const_shit") != params.end())
+    inputCodeInfo.shitIsAlwaysConst = (atoi(params["-const_shit"].c_str()) != 0);
+
   inputCodeInfo.halfFloatTextures    = halfFloatTextures;
   inputCodeInfo.megakernelRTV        = useMegakernel;
   inputCodeInfo.persistentRTV        = usePersistentThreads;
@@ -1211,12 +1214,15 @@ int main(int argc, const char **argv) //
   uint32_t defaultWgSize[3][3] = {{256, 1, 1}, {32,  8, 1}, {8,   8, 8}};
 
   auto kernelsOptionsAll = inputOptions["kernels"];
+  auto pDefaultOpts = kernelsOptionsAll.find("all");
+  if(pDefaultOpts == kernelsOptionsAll.end())
+    pDefaultOpts = kernelsOptionsAll.find("default");
 
-  if(kernelsOptionsAll["default"] != nullptr)
+  if(pDefaultOpts != kernelsOptionsAll.end() && (*pDefaultOpts)["wgSize"] != nullptr)
   {
-    defaultWgSize[0][0] = kernelsOptionsAll["default"]["wgSize"][0];
-    defaultWgSize[0][1] = kernelsOptionsAll["default"]["wgSize"][1];
-    defaultWgSize[0][2] = kernelsOptionsAll["default"]["wgSize"][2];
+    defaultWgSize[0][0] = (*pDefaultOpts)["wgSize"][0];
+    defaultWgSize[0][1] = (*pDefaultOpts)["wgSize"][1];
+    defaultWgSize[0][2] = (*pDefaultOpts)["wgSize"][2];
   }
   else if(kernelsOptionsAll["default1D"] != nullptr)
   {
@@ -1245,12 +1251,15 @@ int main(int argc, const char **argv) //
     if(kernel.be.enabled)
       continue;
     auto kernelDim = kernel.GetDim();
-    auto kernelOptions = kernelsOptionsAll[kernel.name];
-    if(kernelOptions != nullptr && kernelOptions["wgSize"] != nullptr)
+    auto kernelOptionsLocal = kernelsOptionsAll[kernel.name];
+    if(kernelOptionsLocal != nullptr && pDefaultOpts != kernelsOptionsAll.end())
+      kernelOptionsLocal = (*pDefaultOpts);
+
+    if(kernelOptionsLocal != nullptr && kernelOptionsLocal["wgSize"] != nullptr)
     {
-      kernel.wgSize[0] = kernelOptions["wgSize"][0];
-      kernel.wgSize[1] = kernelOptions["wgSize"][1];
-      kernel.wgSize[2] = kernelOptions["wgSize"][2];
+      kernel.wgSize[0] = kernelOptionsLocal["wgSize"][0];
+      kernel.wgSize[1] = kernelOptionsLocal["wgSize"][1];
+      kernel.wgSize[2] = kernelOptionsLocal["wgSize"][2];
     }
     else
     {
@@ -1259,16 +1268,13 @@ int main(int argc, const char **argv) //
       kernel.wgSize[2] = defaultWgSize[kernelDim-1][2];
     }
 
-    if(kernelOptions != nullptr && kernelOptions["nonConstantData"] != nullptr)
+    if(kernelOptionsLocal != nullptr && kernelOptionsLocal["nonConstantData"] != nullptr)
     {
-      auto ncBuffers = kernelOptions["nonConstantData"];
-      // (1) set all to const 
+      auto ncBuffers = kernelOptionsLocal["nonConstantData"];
       for(auto& arg : kernel.args) 
       {
         if(ncBuffers[arg.name] != nullptr)
-        {
           arg.isConstant = (ncBuffers[arg.name].get<int>() != 0);
-        }
         else
           arg.isConstant = true;
       }
@@ -1284,13 +1290,32 @@ int main(int argc, const char **argv) //
       cf.megakernel = kslicer::joinToMegaKernel(cf.subkernels, cf);
       cf.megakernel.isMega = true;
       cf.MegaKernelCall    = kslicer::GetCFMegaKernelCall(cf);
+
+      // apply kernel options to megakernels in the same way
+      {
+        auto kernelOptionsLocal = kernelsOptionsAll[cf.megakernel.name];
+        if(kernelOptionsLocal != nullptr && pDefaultOpts != kernelsOptionsAll.end())
+          kernelOptionsLocal = (*pDefaultOpts);
+        
+        if(kernelOptionsLocal != nullptr && kernelOptionsLocal["nonConstantData"] != nullptr)
+        {
+          auto ncBuffers = kernelOptionsLocal["nonConstantData"];
+          for(auto& arg : cf.megakernel.args) 
+          {
+            if(ncBuffers[arg.name] != nullptr)
+              arg.isConstant = (ncBuffers[arg.name].get<int>() != 0);
+            else
+              arg.isConstant = true;
+          }
+        }
+      }
+
       megakernelsByName[cf.megakernel.name] = cf.megakernel;
     }
 
     ObtainKernelsDecl(megakernelsByName, compiler, inputCodeInfo.mainClassName, inputCodeInfo);
     for(auto& cf : inputCodeInfo.mainFunc)
       cf.megakernel.DeclCmd = megakernelsByName[cf.megakernel.name].DeclCmd;
-
 
     // fix megakernels descriptor sets
     //
@@ -1402,13 +1427,13 @@ int main(int argc, const char **argv) //
   
   // apply user exclude lists for kernels
   //
-  auto kernelOptions = inputOptions["kernels"];
   for(auto& k : inputCodeInfo.kernels) 
   {
-    auto p = kernelOptions.find(k.second.name);
-    if(p != kernelOptions.end())
+    auto p = kernelsOptionsAll.find(k.second.name);
+    if(p != kernelsOptionsAll.end() || pDefaultOpts != kernelsOptionsAll.end())
     {
-      for(auto excludeFunc : (*p)["ExcludeFunctions"].items()) {
+      auto pOption = (p != kernelsOptionsAll.end()) ? p : pDefaultOpts;
+      for(auto excludeFunc : (*pOption)["ExcludeFunctions"].items()) {
         std::string name = excludeFunc.value();
         for(auto p = k.second.usedMemberFunctions.begin(); p!=  k.second.usedMemberFunctions.end(); ++p) {
           if(p->second.name == name) {
@@ -1418,7 +1443,7 @@ int main(int argc, const char **argv) //
         }
       }
 
-      for(auto excludeData : (*p)["ExcludeData"].items()) {
+      for(auto excludeData : (*pOption)["ExcludeData"].items()) {
         std::string name = excludeData.value();
         auto p = k.second.usedContainers.find(name);
         if(p != k.second.usedContainers.end())

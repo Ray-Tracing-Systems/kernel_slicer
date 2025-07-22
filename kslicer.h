@@ -1769,6 +1769,7 @@ namespace kslicer
     bool genGPUAPI         = false;
     bool forceAllBufToRefs = false;
     bool placeVectorsInUBO = false;
+    bool shitIsAlwaysConst = false;
 
     std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;
     std::vector<BufferReference>                  m_allRefsFromVFH;

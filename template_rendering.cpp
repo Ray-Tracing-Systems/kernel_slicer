@@ -508,6 +508,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 {
   auto pShaderRewriter = a_classInfo.pShaderFuncRewriter;
 
+  auto pDefaultOpts = kernelOptions.find("all");
+  if(pDefaultOpts == kernelOptions.end())
+    pDefaultOpts = kernelOptions.find("default");
+
   std::unordered_map<std::string, DataMemberInfo> dataMembersCached;
   dataMembersCached.reserve(a_classInfo.dataMembers.size());
   for(const auto& member : a_classInfo.dataMembers)
@@ -1008,7 +1012,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     //
     if(kernelOptions != nullptr) {
       if(kernelOptions.find(k.name) != kernelOptions.end()) {
+        
         auto thisKernelOptions = kernelOptions[k.name];
+        if(thisKernelOptions == nullptr && pDefaultOpts != kernelOptions.end())
+          thisKernelOptions = (*pDefaultOpts);
+
         if(thisKernelOptions["nonConstantData"] != nullptr) {
           auto nonConstData = thisKernelOptions["nonConstantData"];
           for(auto& arg : args) {
