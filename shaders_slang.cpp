@@ -535,6 +535,12 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
     MarkRewritten(call);
   }
+  else if((fname == "inverse4x4") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
+  {
+    const std::string text = RecursiveRewrite(call->getArg(0));
+    ReplaceTextOrWorkAround(call->getSourceRange(), "inverse(" + text + ")");
+    MarkRewritten(call);
+  }
   else if(fname == "ReduceAdd" && call->getNumArgs() == 3 && WasNotRewrittenYet(call))
   {
     const std::string argText0 = RecursiveRewrite(call->getArg(0));

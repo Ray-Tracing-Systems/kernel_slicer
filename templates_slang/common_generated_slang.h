@@ -142,6 +142,30 @@ float4x4 rotate4x4Z(float phi)
                   float4(0.0f,      0.0f,     0.0f, 1.0f));
 }
 
+float3x3 inverse3x3(float3x3 m)
+{
+  float det = determinant(m);
+  if (abs(det) < 1e-8)
+    return float3x3(0, 0, 0, 0, 0, 0, 0, 0, 0);
+    
+  float invDet = 1.0 / det;
+  
+  float3x3 adj;
+  adj._11 = +(m._22 * m._33 - m._23 * m._32) * invDet;
+  adj._12 = -(m._12 * m._33 - m._13 * m._32) * invDet;
+  adj._13 = +(m._12 * m._23 - m._13 * m._22) * invDet;
+  
+  adj._21 = -(m._21 * m._33 - m._23 * m._31) * invDet;
+  adj._22 = +(m._11 * m._33 - m._13 * m._31) * invDet;
+  adj._23 = -(m._11 * m._23 - m._13 * m._21) * invDet;
+  
+  adj._31 = +(m._21 * m._32 - m._22 * m._31) * invDet;
+  adj._32 = -(m._11 * m._32 - m._12 * m._31) * invDet;
+  adj._33 = +(m._11 * m._22 - m._12 * m._21) * invDet;
+  
+  return adj;
+}
+
 //float4x4 inverse4x4(float4x4 m) { return inverse(m); }
 //float3 mul4x3(float4x4 m, float3 v) { return (m*float4(v, 1.0f)).xyz; }
 //float3 mul3x3(float4x4 m, float3 v) { return (m*float4(v, 0.0f)).xyz; }
