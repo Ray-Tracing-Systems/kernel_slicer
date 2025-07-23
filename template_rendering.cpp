@@ -654,7 +654,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     if(excludedNames.find(decl.type) != excludedNames.end())
       continue;
 
-    if(a_classInfo.pShaderCC->IsGLSL() && decl.name.find("KSPEC_") != std::string::npos) { // process specialization constants, remove them from normal constants
+    if(a_classInfo.pHostCC->HasSpecConstants() && a_classInfo.pShaderCC->IsGLSL() && decl.name.find("KSPEC_") != std::string::npos) { // process specialization constants, remove them from normal constants
       std::string val = kslicer::GetRangeSourceCode(decl.srcRange, compiler);
       specConsts[val] = decl;
       continue;
@@ -1109,7 +1109,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["SharedBE"]    = std::vector<std::string>();
     }
 
-    kernelJson["SpecConstants"] = std::vector<std::string>();
+    kernelJson["SpecConstants"] = std::vector<json>();
     for(auto keyval : specConsts)
     {
       json kspec;
