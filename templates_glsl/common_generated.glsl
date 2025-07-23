@@ -80,11 +80,11 @@ layout(binding = {{loop.index}}, set = 0{% if Arg.NeedFmt%}, {{Arg.ImFormat}}{% 
 {% else if Arg.IsAccelStruct %}
 layout(binding = {{loop.index}}, set = 0) uniform accelerationStructureEXT {{Arg.Name}};
 {% else %}
-layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}} { {{Arg.Type}} {{Arg.Name}}{% if not Arg.IsSingle %}[]{% endif %}; }; // 
+layout(binding = {{loop.index}}, set = 0) {%if Arg.IsConst%} readonly {% endif %} buffer data{{loop.index}} { {{Arg.Type}} {{Arg.Name}}{% if not Arg.IsSingle %}[]{% endif %}; }; // 
 {% endif %} {# /* Arg.IsImage */ #}
 {% endif %} {# /* not Arg.IsUBO */ #}
 {% endfor %}
-layout(binding = {{length(Kernel.Args)}}, set = 0) buffer dataUBO { {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo; };
+layout(binding = {{length(Kernel.Args)}}, set = 0) {%if Kernel.ContantUBO%} readonly {% endif %} buffer dataUBO { {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo; };
 
 {% for Array in Kernel.ThreadLocalArrays %}
 {{Array.Type}} {{Array.Name}}[{{Array.Size}}];
