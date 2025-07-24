@@ -1049,7 +1049,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["FinishRed"]    = needFinishReductionPass;
     kernelJson["NeedTexArray"] = isTextureArrayUsedInThisKernel;
     kernelJson["UseCombinedImageSampler"] = usedCombinedImageSamplers;
-    kernelJson["ContantUBO"]              = a_settings.uboIsAlwaysConst; // TODO: add check if kernel mosify ubo data
+    kernelJson["ContantUBO"]              = a_settings.uboIsAlwaysConst;
+    kernelJson["UniformUBO"]              = a_settings.uboIsAlwaysUniform; 
     kernelJson["WarpSize"]     = k.warpSize;
     kernelJson["InitSource"]   = "";
     

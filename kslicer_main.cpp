@@ -112,24 +112,28 @@ int main(int argc, const char **argv) //
   
   std::unordered_map<std::string, std::string> defines;
   nlohmann::json inputOptions;
+  bool emptyConfig = true; // need this because inputOptions["sms"] actually creates empty node and thing are not working
   std::ifstream ifs(optionsPath);
   if(optionsPath == "")
     std::cout << "[main]: config is missing, which is ok in general" << std::endl;
   else if(!ifs.is_open())
     std::cout << "[main]: warning, config is not found at '" << optionsPath.c_str() << "', is it ok?" << std::endl;
   else 
+  {
     inputOptions = nlohmann::json::parse(ifs, nullptr, true, true);
+    emptyConfig  = false;
+  }
 
   auto paramsFromConfig = inputOptions["options"];
   auto inputDefines     = inputOptions["defines"];
-  if(inputDefines != nullptr)
+  if(inputDefines != nullptr && !emptyConfig)
   {
      for(const auto& param : inputDefines.items()) 
       defines[param.key()] = param.value().is_string() ? param.value().get<std::string>() : "";
   }
 
   auto baseProjectPath = std::filesystem::path(optionsPath).parent_path();
-  if(inputOptions["baseDirectory"] != nullptr)
+  if(inputOptions["baseDirectory"] != nullptr && !emptyConfig)
   {
     const std::string value = inputOptions["baseDirectory"];
     baseProjectPath = std::filesystem::absolute(baseProjectPath / value).lexically_normal();
@@ -290,6 +294,8 @@ int main(int argc, const char **argv) //
       textGenSettings.skipUBORead = atoi(params["-skip_ubo_read"].c_str());
     if(params.find("-const_ubo") != params.end())
       textGenSettings.uboIsAlwaysConst = (atoi(params["-const_ubo"].c_str()) != 0);
+    if(params.find("-uniform_ubo") != params.end())
+      textGenSettings.uboIsAlwaysUniform = (atoi(params["-uniform_ubo"].c_str()) != 0);
   }
 
   // include and process folders
@@ -1218,27 +1224,27 @@ int main(int argc, const char **argv) //
   if(pDefaultOpts == kernelsOptionsAll.end())
     pDefaultOpts = kernelsOptionsAll.find("default");
 
-  if(pDefaultOpts != kernelsOptionsAll.end() && (*pDefaultOpts)["wgSize"] != nullptr)
+  if(pDefaultOpts != kernelsOptionsAll.end() && (*pDefaultOpts)["wgSize"] != nullptr && !emptyConfig)
   {
     defaultWgSize[0][0] = (*pDefaultOpts)["wgSize"][0];
     defaultWgSize[0][1] = (*pDefaultOpts)["wgSize"][1];
     defaultWgSize[0][2] = (*pDefaultOpts)["wgSize"][2];
   }
-  else if(kernelsOptionsAll["default1D"] != nullptr)
+  else if(kernelsOptionsAll["default1D"] != nullptr && !emptyConfig)
   {
     defaultWgSize[0][0] = kernelsOptionsAll["default1D"]["wgSize"][0];
     defaultWgSize[0][1] = kernelsOptionsAll["default1D"]["wgSize"][1];
     defaultWgSize[0][2] = kernelsOptionsAll["default1D"]["wgSize"][2];
   }
 
-  if(kernelsOptionsAll["default2D"] != nullptr)
+  if(kernelsOptionsAll["default2D"] != nullptr && !emptyConfig)
   {
     defaultWgSize[1][0] = kernelsOptionsAll["default2D"]["wgSize"][0];
     defaultWgSize[1][1] = kernelsOptionsAll["default2D"]["wgSize"][1];
     defaultWgSize[1][2] = kernelsOptionsAll["default2D"]["wgSize"][2];
   }
 
-  if(kernelsOptionsAll["default3D"] != nullptr)
+  if(kernelsOptionsAll["default3D"] != nullptr && !emptyConfig)
   {
     defaultWgSize[2][0] = kernelsOptionsAll["default3D"]["wgSize"][0];
     defaultWgSize[2][1] = kernelsOptionsAll["default3D"]["wgSize"][1];
@@ -1430,24 +1436,29 @@ int main(int argc, const char **argv) //
   for(auto& k : inputCodeInfo.kernels) 
   {
     auto p = kernelsOptionsAll.find(k.second.name);
-    if(p != kernelsOptionsAll.end() || pDefaultOpts != kernelsOptionsAll.end())
+    if((p != kernelsOptionsAll.end() || pDefaultOpts != kernelsOptionsAll.end()) && !emptyConfig)
     {
       auto pOption = (p != kernelsOptionsAll.end()) ? p : pDefaultOpts;
-      for(auto excludeFunc : (*pOption)["ExcludeFunctions"].items()) {
-        std::string name = excludeFunc.value();
-        for(auto p = k.second.usedMemberFunctions.begin(); p!=  k.second.usedMemberFunctions.end(); ++p) {
-          if(p->second.name == name) {
-            k.second.usedMemberFunctions.erase(p);
-            break;
+      if(pOption != kernelsOptionsAll.end())
+      {
+        if((*pOption)["ExcludeFunctions"] != nullptr){
+        for(auto excludeFunc : (*pOption)["ExcludeFunctions"].items()) {
+          std::string name = excludeFunc.value();
+          for(auto p = k.second.usedMemberFunctions.begin(); p!=  k.second.usedMemberFunctions.end(); ++p) {
+            if(p->second.name == name) {
+              k.second.usedMemberFunctions.erase(p);
+              break;
+            }
           }
-        }
-      }
-
-      for(auto excludeData : (*pOption)["ExcludeData"].items()) {
-        std::string name = excludeData.value();
-        auto p = k.second.usedContainers.find(name);
-        if(p != k.second.usedContainers.end())
-          k.second.usedContainers.erase(p);
+        }}
+        
+        if((*pOption)["ExcludeData"] != nullptr){
+        for(auto excludeData : (*pOption)["ExcludeData"].items()) {
+          std::string name = excludeData.value();
+          auto p = k.second.usedContainers.find(name);
+          if(p != k.second.usedContainers.end())
+            k.second.usedContainers.erase(p);
+        }}
       }
     }
   }

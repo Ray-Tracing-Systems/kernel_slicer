@@ -44,6 +44,7 @@ namespace kslicer
     bool useCUBforCUDA     = true;
     bool skipUBORead       = false;
     bool uboIsAlwaysConst  = false;
+    bool uboIsAlwaysUniform = false;
     std::string interfaceName;
   };
 

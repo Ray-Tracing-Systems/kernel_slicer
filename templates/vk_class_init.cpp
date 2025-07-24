@@ -909,7 +909,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   std::vector<VkBuffer> memberVectorsWithDevAddr;
   std::vector<VkBuffer> memberVectors;
   std::vector<VkImage>  memberTextures;
-  m_classDataBuffer = vk_utils::createBuffer(device, sizeof(m_uboData),  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | GetAdditionalFlagsForUBO());
+  m_classDataBuffer = vk_utils::createBuffer(device, sizeof(m_uboData), {% if UniformUBO %} VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT {% else %} VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | GetAdditionalFlagsForUBO() {% endif %} | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   memberVectors.push_back(m_classDataBuffer);
   {% if UseSeparateUBO %}
   m_uboArgsBuffer = vk_utils::createBuffer(device, 256, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);

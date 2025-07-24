@@ -905,6 +905,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   data["MultipleSourceShaders"] = !a_classInfo.pShaderCC->IsSingleShader();
   data["ShaderFolder"]          = a_classInfo.pShaderCC->ShaderFolder();
+  data["ContantUBO"]            = a_settings.uboIsAlwaysConst;
+  data["UniformUBO"]            = a_settings.uboIsAlwaysUniform; 
 
   data["IndirectBufferSize"] = a_classInfo.m_indirectBufferSize;
   data["IndirectDispatches"] = std::vector<json>();
@@ -1663,6 +1665,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["TotalAccels"]          = totalAccels;
   data["HasTextureArray"]      = hasTextureArray;
   data["HasIntersectionShaders"] = hasIntersectionShaders;
+  data["TotalKernels"]           = currKernels.size();
 
   data["HasFullImpl"] = atLeastOneFullOverride;
   if(atLeastOneFullOverride && a_classInfo.ctors.size() == 0)

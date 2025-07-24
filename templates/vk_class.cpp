@@ -685,7 +685,11 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
   {# /* pCopyHelper->ReadBuffer(tempBuffer, {{var.Name}}Offset, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}})); */ #}
   {% endif %}
   {% endfor %}
+  {% if ContantUBO or UniformUBO %}
+  //this->ReadPlainMembers(pCopyHelper);
+  {% else %}
   this->ReadPlainMembers(pCopyHelper);
+  {% endif %}
   afterCopy2 = std::chrono::high_resolution_clock::now();
   m_exTime{{MainFunc.Name}}.msCopyFromGPU = std::chrono::duration_cast<std::chrono::microseconds>(afterCopy2 - beforeCopy2).count()/1000.f;
 

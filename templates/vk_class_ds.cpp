@@ -38,6 +38,13 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
       poolSizes.push_back(accelStorageSize);
   }
 
+  {% if UniformUBO %}
+  VkDescriptorPoolSize uboSize = {};
+  uboSize.type             = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  uboSize.descriptorCount  = {{TotalKernels}} + 4; // + 4 for reserve
+  poolSizes.push_back(uboSize);
+  {% endif %}
+
   VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
   descriptorPoolCreateInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   descriptorPoolCreateInfo.maxSets       = {{TotalDSNumber}} + 2; // add 1 to prevent zero case and one more for internal needs
@@ -96,7 +103,7 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
 ## endfor
 
   dsBindings[{{Kernel.ArgCount}}].binding            = {{Kernel.ArgCount}};
-  dsBindings[{{Kernel.ArgCount}}].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  dsBindings[{{Kernel.ArgCount}}].descriptorType     = {% if UniformUBO %} VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER {% else %} VK_DESCRIPTOR_TYPE_STORAGE_BUFFER {% endif %};
   dsBindings[{{Kernel.ArgCount}}].descriptorCount    = 1;
   dsBindings[{{Kernel.ArgCount}}].stageFlags         = stageFlags;
   dsBindings[{{Kernel.ArgCount}}].pImmutableSamplers = nullptr;
@@ -340,7 +347,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllGeneratedDescriptorSets_{{Ma
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].dstSet           = m_allGeneratedDS[{{DescriptorSet.Id}}];
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].dstBinding       = {{DescriptorSet.ArgNumber}};
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorCount  = 1;
-    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorType   = {% if UniformUBO %} VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER {% else %} VK_DESCRIPTOR_TYPE_STORAGE_BUFFER {% endif %};
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pBufferInfo      = &descriptorBufferInfo[{{DescriptorSet.ArgNumber}}];
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pImageInfo       = nullptr;
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pTexelBufferView = nullptr;

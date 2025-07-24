@@ -84,7 +84,7 @@ layout(binding = {{loop.index}}, set = 0) {%if Arg.IsConst%} readonly {% endif %
 {% endif %} {# /* Arg.IsImage */ #}
 {% endif %} {# /* not Arg.IsUBO */ #}
 {% endfor %}
-layout(binding = {{length(Kernel.Args)}}, set = 0) {%if Kernel.ContantUBO%} readonly {% endif %} buffer dataUBO { {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo; };
+layout(binding = {{length(Kernel.Args)}}, set = 0) {%if Kernel.UniformUBO%} uniform {% else %} {%if Kernel.ContantUBO%} readonly {% endif %} buffer {% endif %} dataUBO { {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo; };
 
 {% for Array in Kernel.ThreadLocalArrays %}
 {{Array.Type}} {{Array.Name}}[{{Array.Size}}];
