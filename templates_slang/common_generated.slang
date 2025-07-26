@@ -118,6 +118,17 @@ CRT_Hit {{RTName}}_RayQuery_NearestHitMotion(float4 rayPos, float4 rayDir, float
 bool {{RTName}}_RayQuery_AnyHitMotion(float4 rayPos, float4 rayDir, float t) { return {{RTName}}_RayQuery_AnyHit(rayPos, rayDir); }
 
 {% endfor %}
+{% if UsePersistentThreads %}
+
+static uint g_persistentIter;
+static uint g_persistentTotalSize;
+uint RTVPersistent_ThreadId(uint a_tid) { return (a_tid + g_persistentIter * g_persistentTotalSize) / WaveGetLaneCount(); }
+void RTVPersistent_SetIter(uint a_pid)  { g_persistentIter = a_pid; }
+uint RTVPersistent_Iters()   { return WaveGetLaneCount(); }
+bool RTVPersistent_IsFirst() { return (WaveGetLaneIndex() == 0); }
+float4 RTVPersistent_ReduceAdd4f(float4 color) { return WaveActiveSum(color); }
+{% endif %}
+
 {% for MembFunc in Kernel.MemberFunctions %}
 {% if not (MembFunc.IsRayQuery and (Kernel.UseRayGen or Kernel.HasIntersectionShader2 or (length(Kernel.IntersectionHierarhcy.Implementations) >= 1)) ) %}
 
