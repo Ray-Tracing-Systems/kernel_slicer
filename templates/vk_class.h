@@ -20,7 +20,10 @@ using LiteImage::Image2D;
 using LiteImage::Sampler;
 using namespace LiteMath;
 {% endif %}
+{% if IsMega %}
+#define {{MainClassName}}_MEGAKERNEL 1
 
+{% endif %}
 #include "{{MainInclude}}"
 {% if GenGpuApi %}
 #include "{{MainIncludeApi}}"
