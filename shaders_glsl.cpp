@@ -1185,32 +1185,33 @@ void kslicer::FunctionRewriter::CkeckAndProcessForThreadLocalVarDecl(clang::VarD
     {
       std::cout << "  found: " << attrText.c_str() << " for " << debugText.c_str() << std::endl;
       std::string varName = decl->getNameAsString();
-      auto p = m_codeInfo->m_threadLocalArrays.find(varName.c_str());
-      if(p == m_codeInfo->m_threadLocalArrays.end())
+      
+      const clang::ArrayType* arrayType = varType->getAsArrayTypeUnsafe();
+      clang::QualType elementType = arrayType->getElementType();
+      
+      int arraySize = 0;
+      if (const clang::ConstantArrayType* constantArrayType = llvm::dyn_cast<clang::ConstantArrayType>(arrayType)) {
+        clang::SmallVector<char, 16> tmpBuf;
+        constantArrayType->getSize().toStringUnsigned(tmpBuf, 10);
+        arraySize = std::atoi(tmpBuf.data());
+      }
+
+      const clang::DeclStmt* declStmt = getParentDeclContext(decl, m_compiler.getASTContext());
+      if(declStmt != nullptr && WasNotRewrittenYet(declStmt))
       {
-        const clang::ArrayType* arrayType = varType->getAsArrayTypeUnsafe();
-        clang::QualType elementType = arrayType->getElementType();
+        std::stringstream strOut;
+        strOut << "// " << debugText.c_str() << "; // was moved to global scope in shader"; // 123
+        ReplaceTextOrWorkAround(declStmt->getSourceRange(), strOut.str());
+        MarkRewritten(declStmt);
         
-        int arraySize = 0;
-        if (const clang::ConstantArrayType* constantArrayType = llvm::dyn_cast<clang::ConstantArrayType>(arrayType)) {
-          clang::SmallVector<char, 16> tmpBuf;
-          constantArrayType->getSize().toStringUnsigned(tmpBuf, 10);
-          arraySize = std::atoi(tmpBuf.data());
-        }
-
-        const clang::DeclStmt* declStmt = getParentDeclContext(decl, m_compiler.getASTContext());
-        if(declStmt != nullptr && WasNotRewrittenYet(declStmt))
+        kslicer::ArrayData array;
+        array.arrayName = varName;
+        array.elemType  = elementType.getAsString();
+        array.arraySize = arraySize;
+        
+        auto p = m_codeInfo->m_threadLocalArrays.find(varName.c_str());
+        if(p == m_codeInfo->m_threadLocalArrays.end())
         {
-          std::stringstream strOut;
-          strOut << "// " << debugText.c_str() << "; // was moved to global scope in GLSL"; // 123
-          ReplaceTextOrWorkAround(declStmt->getSourceRange(), strOut.str());
-          MarkRewritten(declStmt);
-          
-          kslicer::ArrayData array;
-          array.arrayName = varName;
-          array.elemType  = elementType.getAsString();
-          array.arraySize = arraySize;
-
           if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->isKernel) 
           {
             auto pKernel = m_codeInfo->kernels.find(m_pCurrFuncInfo->name);
@@ -1223,6 +1224,7 @@ void kslicer::FunctionRewriter::CkeckAndProcessForThreadLocalVarDecl(clang::VarD
             m_codeInfo->m_threadLocalArrays[array.arrayName] = array;
         }
       }
+      
     }
   }
 
