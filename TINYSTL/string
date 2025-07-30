@@ -2,6 +2,7 @@
 #define STD_STRING_HEADER
 
 #include <cstring>
+#include <cstddef>
 
 /*
 *******************************************
@@ -2017,7 +2018,8 @@ namespace str {
 	}; /* TEMPLATE CLASS string_base<T> */
 
 	typedef string_base<char> string;				/* normal string (value_type = char) */
-	typedef string_base<wchar_t> wstring;			/* wide string (value_type = wchar_t) */
+	//typedef string_base<wchar_t> wstring;			/* wide string (value_type = wchar_t) */
+	typedef string_base<unsigned> wstring;			/* wide string (value_type = wchar_t) */
 /* only add string16 and string32 if C++11 or higher is supported */
 #ifdef STR_CPP11_OR_HIGHER
 	typedef string_base<char16_t> string16;			/* UTF-16 string (value_type = char16_t) */
@@ -2048,12 +2050,12 @@ namespace str {
 
 namespace std
 {
-  typedef str::string_base<char>    string;			/* normal string (value_type = char) */
-	typedef str::string_base<wchar_t> wstring;		/* wide string (value_type = wchar_t) */
+  typedef str::string string;			/* normal string (value_type = char) */
+  typedef str::string wstring;			/* wide string (value_type = wchar_t) */
 /* only add string16 and string32 if C++11 or higher is supported */
 #ifdef STR_CPP11_OR_HIGHER
-	typedef str::string_base<char16_t> string16;	/* UTF-16 string (value_type = char16_t) */
-	typedef str::string_base<char32_t> string32;	/* UTF-32 string (value_type = char32_t) */
+  typedef str::string_base<char16_t> string16;	/* UTF-16 string (value_type = char16_t) */
+  typedef str::string_base<char32_t> string32;	/* UTF-32 string (value_type = char32_t) */
 #endif
 };
 

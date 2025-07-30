@@ -328,7 +328,9 @@ std::vector<kslicer::NameFlagsPair> kslicer::ListAccessedTextures(const std::vec
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::filesystem::path& fileName,
+std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, 
+                                                                   std::unordered_map<std::string, std::string>& defines,
+                                                                   std::filesystem::path& fileName,
                                                                    std::vector<std::string>& allFiles,
                                                                    std::vector<std::string>& ignoreFiles,
                                                                    std::vector<std::string>& processFiles,
@@ -360,6 +362,27 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
     }
     else if(key.find(".cpp") != std::string::npos)
       allFiles.push_back(key);
+    else if(isDefine)
+    {
+      std::string name, value; 
+      size_t spacePos = key.find(' ', 2);
+      if (spacePos != std::string::npos) 
+      {
+        // Извлекаем имя определения (после -D и до пробела)
+        name = key.substr(2, spacePos - 2);
+        // Извлекаем значение (после пробела)
+        value = key.substr(spacePos + 1);
+      } 
+      else 
+      {
+        // Если пробела нет, вся строка после -D считается именем, значение пустое
+        name = key.substr(2);
+        value = "";
+      }
+
+      if(name != "")
+        defines[name] = value;
+    }
   }
 
   if(allFiles.size() == 0)
@@ -367,8 +390,8 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
     std::cout << "[main]: no input file is specified " << std::endl;
     exit(0);
   }
-  else if(allFiles.size() == 1)
-    fileName = allFiles[0];
+  //else if(allFiles.size() == 1)
+  //  fileName = allFiles[0];
   else
   {
     fileName = allFiles[0];
@@ -382,6 +405,9 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
 
     std::cout << "[kslicer]: merging input files to temporary file " << fileName2 << std::endl;
     std::ofstream fout(fileNameT);
+    for(auto def : defines)
+      fout << "#define " << def.first << " " << def.second << std::endl;
+
     for(auto file : allFiles)
     {
       fout << "////////////////////////////////////////////////////" << std::endl;

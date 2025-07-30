@@ -832,7 +832,7 @@
             "name"   : "HydraCore3(Slang/config-mega-swrt-v1)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["-config", "/home/frol/PROG/HydraRepos/HydraCore3/kmake_mega_swrt_v1.json",
                         "-shaderCC", "slang",
                         "-persistent", "0",
@@ -880,7 +880,7 @@
             "program": "${workspaceFolder}/cmake-build-release/kslicer",
             "args"   : ["-config", "/home/frol/PROG/HydraRepos/HydraCore3/kmake_wave_swrt_v1.json",
                         "-shaderCC", "slang", 
-                        "-std=c++11", "-v"
+                        "-v"
                         ],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",

@@ -144,8 +144,7 @@ int main(int argc, const char **argv) //
   std::vector<std::string> processFiles;
   std::vector<std::string> cppIncludesAdditional;
   std::filesystem::path    fileName;
-  auto paramsFromCmdLine = ReadCommandLineParams(argc, argv, fileName,                                        // ==>
-                                                 allFiles, ignoreFiles, processFiles, cppIncludesAdditional); // <==
+  auto paramsFromCmdLine = ReadCommandLineParams(argc, argv, defines, fileName,  allFiles, ignoreFiles, processFiles, cppIncludesAdditional);
 
   std::unordered_map<std::string, std::string> params;
   {
@@ -577,10 +576,10 @@ int main(int argc, const char **argv) //
 
   clang::CompilerInstance compiler;
   clang::DiagnosticOptions diagnosticOptions;
-  compiler.createDiagnostics();  //compiler.createDiagnostics(argc, argv);
+  compiler.createDiagnostics();  //compiler.createDiagnostics(argc, argv); //
 
   // Create an invocation that passes any flags to preprocessor
-  std::shared_ptr<clang::CompilerInvocation> Invocation = std::make_shared<clang::CompilerInvocation>();
+  std::shared_ptr<clang::CompilerInvocation> Invocation = std::make_shared<clang::CompilerInvocation>(); //
   clang::CompilerInvocation::CreateFromArgs(*Invocation, args, compiler.getDiagnostics());
   compiler.setInvocation(Invocation);
 
@@ -629,11 +628,11 @@ int main(int argc, const char **argv) //
     headerSearchOptions.AddPath(includePath.u8string().c_str(), clang::frontend::Angled, false, false);
   for(const auto& includePath : ignoreFolders)
     headerSearchOptions.AddPath(includePath.u8string().c_str(), clang::frontend::Angled, false, false);
-
+  
   //headerSearchOptions.Verbose = 1;
-
+  compiler.getPreprocessorOpts().UsePredefines = false;
   compiler.createPreprocessor(clang::TU_Complete);
-  compiler.getPreprocessorOpts().UsePredefines = true;
+  compiler.getPreprocessorOpts().UsePredefines = false;
   // register our header lister
   HeaderLister headerLister(&inputCodeInfo);
   compiler.getPreprocessor().addPPCallbacks(std::make_unique<HeaderLister>(headerLister));
@@ -1583,7 +1582,16 @@ int main(int argc, const char **argv) //
     inputCodeInfo.pHostCC->GenerateHostDevFeatures(rawname + ToLowerCase(suffix), jsonCPP, inputCodeInfo, textGenSettings);
   }
   std::cout << "}" << std::endl << std::endl;
-  std::cout << "(10) Finished! " << std::endl;
+  
+  std::string mainFileNameStr = fileName.string();
+  
+  if(mainFileNameStr.find("_temp.cpp") != std::string::npos)
+  {
+    std::cout << "(10) Removing tmp file " << mainFileNameStr.c_str() << std::endl;
+    std::filesystem::remove(fileName);
+  }
+
+  std::cout << "(10) Finished! " << std::endl;  
 
   return 0;
 } // 14:56;01;05;2025

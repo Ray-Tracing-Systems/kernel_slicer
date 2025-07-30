@@ -1950,7 +1950,9 @@ namespace kslicer
   std::string MakeKernellCallSignature(const std::string& a_mainFuncName, const std::vector<ArgReferenceOnCall>& a_args, const std::map<std::string, UsedContainerInfo>& a_usedContainers);
 }
 
-std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, std::filesystem::path& fileName,
+std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, 
+                                                                   std::unordered_map<std::string, std::string>& defines,
+                                                                   std::filesystem::path& fileName,
                                                                    std::vector<std::string>& allFiles,
                                                                    std::vector<std::string>& ignoreFiles,
                                                                    std::vector<std::string>& processFiles,
