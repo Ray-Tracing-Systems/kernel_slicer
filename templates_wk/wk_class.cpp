@@ -405,7 +405,7 @@ void {{MainClassName}}{{MainClassSuffix}}::ReadBufferBack(WGPUBuffer a_buffer, s
   if(m_readBackBuffer == nullptr || m_readBackSize < maxReadSize)
   {
     WGPUBufferDescriptor readDesc = {};
-    readDesc.size    = bufDesc.size;
+    readDesc.size    = maxReadSize;
     readDesc.usage   = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
     m_readBackBuffer = wgpuDeviceCreateBuffer(device, &readDesc);
   }
