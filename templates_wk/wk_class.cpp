@@ -265,6 +265,66 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
 }
 {% endfor %}
 
+{% for MainFunc in MainFunctions %}
+{% if MainFunc.OverrideMe %}
+
+{{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.DeclOrig}}
+{
+  // (1) get global Vulkan context objects
+  //
+  // VkInstance       instance       = m_ctx.instance;
+  // VkPhysicalDevice physicalDevice = m_ctx.physicalDevice;
+  // VkDevice         device         = m_ctx.device;
+  // VkCommandPool    commandPool    = m_ctx.commandPool;
+  // VkQueue          computeQueue   = m_ctx.computeQueue;
+  // VkQueue          transferQueue  = m_ctx.transferQueue;
+  // auto             pCopyHelper    = m_ctx.pCopyHelper;
+  // auto             pAllocatorSpec = m_ctx.pAllocatorSpecial;
+
+  // (2) create GPU objects
+  //
+  WGPUBufferDescriptor bufDesc = {};
+  {% for var in MainFunc.FullImpl.InputData %}
+  {% if var.IsTexture %}
+  //auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+  //size_t {{var.Name}}ImgId = images.size();
+  //images.push_back(&{{var.Name}}Img);
+  //images2.push_back({{var.Name}}Img.image);
+  {% else %}
+  bufDesc.size  = {{var.DataSize}}*sizeof({{var.DataType}});
+  bufDesc.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst;
+  WGPUBuffer {{var.Name}}GPU = wgpuDeviceCreateBuffer(device, &bufDesc);
+  {% endif %}
+  {% endfor %}
+  {% for var in MainFunc.FullImpl.OutputData %}
+  {% if var.IsTexture %}
+  //auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, outFlags);
+  //size_t {{var.Name}}ImgId = images.size();
+  //images.push_back(&{{var.Name}}Img);
+  //images2.push_back({{var.Name}}Img.image);
+  {% else %}
+  bufDesc.size  = {{var.DataSize}}*sizeof({{var.DataType}});
+  bufDesc.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopySrc;
+  WGPUBuffer {{var.Name}}GPU = wgpuDeviceCreateBuffer(device, &bufDesc);
+  {% endif %}
+  {% endfor %}
+
+  // (3) copy input data to GPU
+  //
+
+  // (4) now execute algorithm on GPU
+  //
+
+  // (5) copy output data to CPU
+  //
+
+  // (6) free resources
+  //
+  
+}
+{% endif %}
+{% endfor %}
+
 {{MainClassName}}{{MainClassSuffix}}::~{{MainClassName}}{{MainClassSuffix}}()
 {
   

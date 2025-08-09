@@ -305,6 +305,7 @@
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
                         "-I${workspaceFolder}/TINYSTL",          "ignore",
                         "-shaderCC", "slang",
+                        "-const_ubo", "1",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry"    : false,

@@ -153,6 +153,12 @@ protected:
   {% for KernelDecl in KernelsDecls %}
   {{KernelDecl}}
   {% endfor %}
+  
+  {% for MainFunc in MainFunctions %}
+  {% if MainFunc.OverrideMe %}
+  {{MainFunc.ReturnType}} {{MainFunc.DeclOrig}} override;
+  {% endif %}
+  {% endfor %}
 
   {% for MainFunc in MainFunctions %}
   struct {{MainFunc.Name}}_Data
