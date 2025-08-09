@@ -54,7 +54,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
 
   WGPUBufferDescriptor pcbDesc = {};
   pcbDesc.size  = m_pushConstantStride*m_totalDSNumber;
-  pcbDesc.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst;
+  pcbDesc.usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst;
 
   m_classDataBuffer    = wgpuDeviceCreateBuffer(device, &uboDesc);
   m_pushConstantBuffer = wgpuDeviceCreateBuffer(device, &pcbDesc);
@@ -368,6 +368,8 @@ void {{MainClassName}}{{MainClassSuffix}}::ReadBufferBack(WGPUBuffer a_buffer, s
   WGPUBuffer {{var.Name}}GPU = wgpuDeviceCreateBuffer(device, &bufDesc);
   {% endif %}
   {% endfor %}
+
+  SetWulkanInOutFor_{{MainFunc.Name}}({{MainFunc.FullImpl.ArgsOnSetInOut}});
 
   // (3) copy input data to GPU
   //
