@@ -150,6 +150,13 @@ protected:
   virtual void InitKernels(const char* a_path);
   virtual void InitDeviceData();
 
+  virtual void UpdatePlainMembers();
+
+  void CommitDeviceData() override 
+  {
+    UpdatePlainMembers();
+  }
+
   {% for KernelDecl in KernelsDecls %}
   {{KernelDecl}}
   {% endfor %}
@@ -192,6 +199,9 @@ protected:
   WGPUBuffer    m_classDataBuffer = nullptr;
   size_t        m_classDataSize   = 0;
 
+  WGPUBuffer    m_readBackBuffer = nullptr;
+  size_t        m_readBackSize   = 0;
+
   WGPUBuffer    m_pushConstantBuffer = nullptr; // use this buffer to emulate push constants
   size_t        m_pushConstantSize   = 0;
   size_t        m_pushConstantStride = 128;     // each binding point have it's own offset inside this buffer
@@ -201,5 +211,7 @@ protected:
   size_t                 m_currPCOffset = 0;
 
   {{MainClassName}}{{MainClassSuffix}}_UBO_Data m_uboData;
+
+  virtual void ReadBufferBack(WGPUBuffer a_buffer, size_t a_size, void* a_data);
 }; 
 

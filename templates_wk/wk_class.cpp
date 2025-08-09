@@ -78,6 +78,35 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_path)
   {% endfor %}
 }
 
+void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembers()
+{
+  const size_t maxAllowedSize = std::numeric_limits<uint32_t>::max();
+  {% if HasPrefixData %}
+  auto pUnderlyingImpl = dynamic_cast<{{PrefixDataClass}}*>({{PrefixDataName}}->UnderlyingImpl(0));
+  {% endif %}
+  {% for Var in ClassVars %}
+  {% if Var.IsArray %}
+  {% if Var.HasPrefix %}
+  memcpy(m_uboData.{{Var.Name}}, pUnderlyingImpl->{{Var.CleanName}},sizeof(m_uboData.{{Var.Name}}));
+  {% else %}
+  memcpy(m_uboData.{{Var.Name}},{{Var.Name}},sizeof({{Var.Name}}));
+  {% endif %}
+  {% else %}
+  {% if Var.HasPrefix %}
+  m_uboData.{{Var.Name}} = pUnderlyingImpl->{{Var.CleanName}};
+  {% else %}
+  m_uboData.{{Var.Name}} = {{Var.Name}};
+  {% endif %}
+  {% endif %}
+  {% endfor %}
+  {% for Var in ClassVectorVars %}
+  m_uboData.{{Var.Name}}_size     = uint32_t( {{Var.Name}}{{Var.AccessSymb}}size() );     assert( {{Var.Name}}{{Var.AccessSymb}}size() < maxAllowedSize );
+  m_uboData.{{Var.Name}}_capacity = uint32_t( {{Var.Name}}{{Var.AccessSymb}}capacity() ); assert( {{Var.Name}}{{Var.AccessSymb}}capacity() < maxAllowedSize );
+  {% endfor %}
+  m_uboData.dummy_last = 0; // Slang to WebGPU issue: access 'ubo[0].dummy_last' prevent slang compiler to discard ubo if it is not used
+  wgpuQueueWriteBuffer(queue, m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
+}
+
 {% for Kernel in Kernels %}
 void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char* a_filePath)
 {
@@ -265,25 +294,55 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
 }
 {% endfor %}
 
+void {{MainClassName}}{{MainClassSuffix}}::ReadBufferBack(WGPUBuffer a_buffer, size_t a_size, void* a_data)
+{
+  WGPUCommandEncoder encoderRB = wgpuDeviceCreateCommandEncoder(device, nullptr);
+  wgpuCommandEncoderCopyBufferToBuffer(encoderRB, a_buffer, 0, m_readBackBuffer, 0, a_size);
+
+  WGPUCommandBuffer cmdRB = wgpuCommandEncoderFinish(encoderRB, nullptr);
+  //wgpuCommandEncoderRelease(encoderRB); //removed function ?
+  wgpuQueueSubmit(queue, 1, &cmdRB);
+  
+  // 10. Map and read back result
+  struct Context {
+    bool ready;
+    WGPUBuffer buffer;
+  };
+  Context context = { false, m_readBackBuffer };
+
+  auto onBuffer2Mapped = [](WGPUBufferMapAsyncStatus status, void* pUserData) {
+    Context* context = reinterpret_cast<Context*>(pUserData);
+    context->ready = true;
+    if (status != WGPUBufferMapAsyncStatus_Success) 
+    {
+      std::cout << "[{{MainClassName}}{{MainClassSuffix}}::ReadBufferBack]: buffer mapped with status " << status << std::endl;
+      return;
+    }
+  };
+
+  wgpuBufferMapAsync(m_readBackBuffer, WGPUMapMode_Read, 0, a_size, onBuffer2Mapped, (void*)&context);
+
+  while (!context.ready) {
+    wgpuDevicePoll(device, false, nullptr);
+  }
+
+  const float* mapped = static_cast<const float*>(wgpuBufferGetMappedRange(m_readBackBuffer, 0, a_size));
+  std::memcpy(a_data, mapped, a_size);
+  wgpuBufferUnmap(m_readBackBuffer);
+}
+
 {% for MainFunc in MainFunctions %}
 {% if MainFunc.OverrideMe %}
 
 {{MainFunc.ReturnType}} {{MainClassName}}{{MainClassSuffix}}::{{MainFunc.DeclOrig}}
 {
-  // (1) get global Vulkan context objects
+  // (1) reserved
   //
-  // VkInstance       instance       = m_ctx.instance;
-  // VkPhysicalDevice physicalDevice = m_ctx.physicalDevice;
-  // VkDevice         device         = m_ctx.device;
-  // VkCommandPool    commandPool    = m_ctx.commandPool;
-  // VkQueue          computeQueue   = m_ctx.computeQueue;
-  // VkQueue          transferQueue  = m_ctx.transferQueue;
-  // auto             pCopyHelper    = m_ctx.pCopyHelper;
-  // auto             pAllocatorSpec = m_ctx.pAllocatorSpecial;
 
   // (2) create GPU objects
   //
   WGPUBufferDescriptor bufDesc = {};
+  // in
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
   //auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
@@ -296,6 +355,7 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   WGPUBuffer {{var.Name}}GPU = wgpuDeviceCreateBuffer(device, &bufDesc);
   {% endif %}
   {% endfor %}
+  // out
   {% for var in MainFunc.FullImpl.OutputData %}
   {% if var.IsTexture %}
   //auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, outFlags);
@@ -311,12 +371,56 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
 
   // (3) copy input data to GPU
   //
+  {% for var in MainFunc.FullImpl.InputData %}
+  {% if var.IsTexture %}
+  //pCopyHelper->UpdateImage({{var.Name}}Img.image, {{var.Name}}.data(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp(), VK_IMAGE_LAYOUT_GENERAL);
+  {% else %}
+  wgpuQueueWriteBuffer(queue, {{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
+  {% endif %}
+  {% endfor %}
 
   // (4) now execute algorithm on GPU
   //
+  WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(device, nullptr);
+  {{MainFunc.Name}}Cmd(encoder, {{MainFunc.FullImpl.ArgsOnCall}});
+
+  WGPUCommandBuffer cmd = wgpuCommandEncoderFinish(encoder, nullptr);
+  //wgpuCommandEncoderRelease(encoder); //removed function ?
+  wgpuQueueSubmit(queue, 1, &cmd);
 
   // (5) copy output data to CPU
   //
+  size_t maxReadSize = 0;
+  {% for var in MainFunc.FullImpl.OutputData %}
+  {% if var.IsTexture %}
+  //pCopyHelper->ReadImage({{var.Name}}Img.image, {{var.Name}}.data(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp());
+  maxReadSize = std::max(maxReadSize, size_t({{var.Name}}.width()*{{var.Name}}.height()*{{var.Name}}.bpp()));
+  {% else %}
+  maxReadSize = std::max(maxReadSize, size_t({{var.DataSize}}*sizeof({{var.DataType}})));
+  {% endif %}
+  {% endfor %}
+  
+  if(m_readBackBuffer == nullptr || m_readBackSize < maxReadSize)
+  {
+    WGPUBufferDescriptor readDesc = {};
+    readDesc.size    = bufDesc.size;
+    readDesc.usage   = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
+    m_readBackBuffer = wgpuDeviceCreateBuffer(device, &readDesc);
+  }
+
+  {% for var in MainFunc.FullImpl.OutputData %}
+  {% if var.IsTexture %}
+  //pCopyHelper->ReadImage({{var.Name}}Img.image, {{var.Name}}.data(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp());
+  {% else %}
+  ReadBufferBack({{var.Name}}GPU, {{var.DataSize}}*sizeof({{var.DataType}}), {{var.Name}});
+  {% endif %}
+  {% endfor %}
+
+  {% if ContantUBO or UniformUBO %}
+  //this->ReadPlainMembers(pCopyHelper);
+  {% else %}
+  //this->ReadPlainMembers(pCopyHelper); // TODO: implement 'ReadPlainMembers'
+  {% endif %}
 
   // (6) free resources
   //
