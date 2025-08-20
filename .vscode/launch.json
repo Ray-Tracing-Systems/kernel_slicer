@@ -918,5 +918,76 @@
                 }
             ]
         },
+
+        {
+            "name"   : "HeavyRT(eye_ray_cs)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["-config", "/home/frol/PROG/HydraRepos/HydraCore3/external/HeavyRT/config/eye_cs.json",
+                        "-shaderCC", "slang", 
+                        "-v"
+                        ],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "HeavyRT(eye_ray_rq)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["-config", "/home/frol/PROG/HydraRepos/HydraCore3/external/HeavyRT/config/eye_rq.json",
+                        "-shaderCC", "slang", 
+                        "-v"
+                        ],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+
+        {
+            "name"   : "LiteRT(Hydra)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["-config", "/home/frol/PROG/vg_code/LiteRT/config/slicer/options_hydra.json",
+                        "-shaderCC", "slang", 
+                        "-v"
+                        ],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
     ]
 }

@@ -315,6 +315,15 @@ kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo
       res.texAccessSampler.insert(x);
     for(const auto& x : a_kernels[i]->threadLocalArrays)
       res.threadLocalArrays.insert(x);
+
+    if(a_kernels[i]->hasIntersectionShader2)
+    {
+      res.hasIntersectionShader2 = true;
+      res.intersectionShader2Info.accObjName = a_kernels[i]->intersectionShader2Info.accObjName;
+      res.intersectionShader2Info.bufferName = a_kernels[i]->intersectionShader2Info.bufferName;
+      res.intersectionShader2Info.shaderName = a_kernels[i]->intersectionShader2Info.shaderName;
+      res.intersectionShader2Info.triTagName = a_kernels[i]->intersectionShader2Info.triTagName;
+    }
   }
 
   // (3) join shader features
@@ -339,6 +348,14 @@ kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo
       for(const auto& member : k->usedMemberFunctions)
         res.usedMemberFunctions.insert(member);
   }
+
+  //if(k.hasIntersectionShader2)
+  //{
+  //  kernelJson["IS2_AccObjName"] = k.intersectionShader2Info.accObjName;
+  //  kernelJson["IS2_BufferName"] = k.intersectionShader2Info.bufferName;
+  //  kernelJson["IS2_ShaderName"] = k.intersectionShader2Info.shaderName;
+  //  kernelJson["IS2_TriTagName"] = k.intersectionShader2Info.triTagName;
+  //}
 
   res.isMega = true;
   return res;
