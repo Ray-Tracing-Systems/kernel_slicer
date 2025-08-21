@@ -155,6 +155,10 @@ int main(int argc, const char **argv)
       params[param.first] = param.second;
   }
 
+  auto additionalIcludes = inputOptions["additionaIncludes"];
+  for(auto additionalIclude : additionalIcludes)
+    cppIncludesAdditional.push_back(additionalIclude.get<std::string>());
+
   auto mainClassNode = inputOptions["mainClass"];
   if(mainClassNode.is_string())
     params["-mainClass"] = mainClassNode.get<std::string>();

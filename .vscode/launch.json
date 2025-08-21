@@ -304,8 +304,7 @@
                         "-I${workspaceFolder}/apps/LiteMath",    "ignore",
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
                         "-I${workspaceFolder}/TINYSTL",          "ignore",
-                        "-shaderCC", "wgpu",
-                        "-suffix", "_WGPU",
+                        "-shaderCC", "slang",
                         "-const_ubo", "1",
                         "-DKERNEL_SLICER",
                         "-v"],
@@ -770,27 +769,6 @@
         },
 
         {
-            "name"   : "LiteRT(SSC)",
-            "type"   : "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
-            "args"   : ["/home/frol/PROG/vg_code/LiteRT/config/slicer/options_streaming_comp.json",
-                        "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-
-        {
             "name"   : "HydraCore3(Slang/External)",
             "type"   : "cppdbg",
             "request": "launch",
@@ -920,14 +898,11 @@
         },
 
         {
-            "name"   : "HeavyRT(eye_ray_cs)",
+            "name"   : "HeavyRT(EYE:CS)",
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-release/kslicer",
-            "args"   : ["-config", "/home/frol/PROG/HydraRepos/HydraCore3/external/HeavyRT/config/eye_cs.json",
-                        "-shaderCC", "slang", 
-                        "-v"
-                        ],
+            "args"   : ["/home/frol/PROG/HydraRepos/HydraCore3/external/HeavyRT/config/eye_cs.json"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],
@@ -943,38 +918,11 @@
         },
 
         {
-            "name"   : "HeavyRT(eye_ray_rq)",
-            "type"   : "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
-            "args"   : ["-config", "/home/frol/PROG/HydraRepos/HydraCore3/external/HeavyRT/config/eye_rq.json",
-                        "-shaderCC", "slang", 
-                        "-v"
-                        ],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-
-
-        {
-            "name"   : "LiteRT(Hydra)",
+            "name"   : "HeavyRT(EYE:RQ)",
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-release/kslicer",
-            "args"   : ["-config", "/home/frol/PROG/vg_code/LiteRT/config/slicer/options_hydra.json",
-                        "-shaderCC", "slang", 
-                        "-v"
-                        ],
+            "args"   : ["/home/frol/PROG/HydraRepos/HydraCore3/external/HeavyRT/config/eye_rq.json"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],
@@ -989,5 +937,24 @@
             ]
         },
 
+         {
+            "name"   : "HeavyRT(AO:CS)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/HydraRepos/HydraCore3/external/HeavyRT/config/rtao_cs.json"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
     ]
 }
