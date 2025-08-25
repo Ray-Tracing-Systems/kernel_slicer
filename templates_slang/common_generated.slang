@@ -95,6 +95,12 @@ CRT_Hit {{RTName}}_RayQuery_NearestHit(float4 rayPos, float4 rayDir)
     res.coords[2] = 1.0f - bars.y - bars.x;
     res.coords[3] = 0.0f;
   }
+  {% if Kernel.IS2_HasFinish %}
+  else
+  {
+    {{ Kernel.IS2_AccObjName }}_{{ Kernel.IS2_FinishName}}(rayPos, rayDir, res);
+  }
+  {% endif %}
 
   return res;
 }

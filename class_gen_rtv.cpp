@@ -318,11 +318,8 @@ kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo
 
     if(a_kernels[i]->hasIntersectionShader2)
     {
-      res.hasIntersectionShader2 = true;
-      res.intersectionShader2Info.accObjName = a_kernels[i]->intersectionShader2Info.accObjName;
-      res.intersectionShader2Info.bufferName = a_kernels[i]->intersectionShader2Info.bufferName;
-      res.intersectionShader2Info.shaderName = a_kernels[i]->intersectionShader2Info.shaderName;
-      res.intersectionShader2Info.triTagName = a_kernels[i]->intersectionShader2Info.triTagName;
+      res.hasIntersectionShader2  = true;
+      res.intersectionShader2Info = a_kernels[i]->intersectionShader2Info;
     }
   }
 

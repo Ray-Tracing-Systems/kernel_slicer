@@ -548,6 +548,8 @@ int main(int argc, const char **argv)
           kslicer::IntersectionShader2 shader;
           {            
             shader.shaderName = intersection["shader"];
+            if(intersection["complete"] != nullptr) 
+              shader.finishName = intersection["complete"];
             if(intersection["triangle"] != nullptr) 
               shader.triTagName = intersection["triangle"];
             if(intersection["buffer"] != nullptr)

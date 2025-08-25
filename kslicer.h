@@ -219,7 +219,8 @@ namespace kslicer
 
   struct IntersectionShader2
   {
-    std::string shaderName;
+    std::string shaderName; ///<! intersection check    (main intersection shader)
+    std::string finishName; ///<! intersection complete (when intersection is found, complete with normal computing and e.t.c)
     std::string triTagName;
     std::string bufferName;
     std::string accObjName;
