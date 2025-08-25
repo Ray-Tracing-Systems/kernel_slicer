@@ -127,6 +127,7 @@ void RTVPersistent_SetIter(uint a_pid)  { g_persistentIter = a_pid; }
 uint RTVPersistent_Iters()   { return WaveGetLaneCount(); }
 bool RTVPersistent_IsFirst() { return (WaveGetLaneIndex() == 0); }
 float4 RTVPersistent_ReduceAdd4f(float4 color) { return WaveActiveSum(color); }
+float  RTVPersistent_ReduceAdd1f(float  color) { return WaveActiveSum(color); }
 {% endif %}
 
 {% for MembFunc in Kernel.MemberFunctions %}

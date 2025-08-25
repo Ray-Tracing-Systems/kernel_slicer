@@ -722,6 +722,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     excludedMemberFunctions.insert("RTVPersistent_Iters");
     excludedMemberFunctions.insert("RTVPersistent_IsFirst");
     excludedMemberFunctions.insert("RTVPersistent_ReduceAdd4f");
+    excludedMemberFunctions.insert("RTVPersistent_ReduceAdd1f");
   }
 
   bool haveReduceAdd = false;

@@ -646,7 +646,7 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
       ProgressBarStart();
     {% endif %}
     {% if MainFunc.UsePersistentThreads %}
-    a_numPasses = a_numPasses / m_subgroupSize;
+    a_numPasses = std::max(a_numPasses / m_subgroupSize, 1u);
     {% endif %}
     for(uint32_t pass = 0; pass < a_numPasses; pass++) {
       vk_utils::executeCommandBufferNow(commandBuffer, computeQueue, device);
