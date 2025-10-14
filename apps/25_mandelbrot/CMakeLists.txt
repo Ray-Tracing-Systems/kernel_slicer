@@ -37,9 +37,9 @@ if(USE_WGPU)
   add_compile_definitions(USE_WGPU)
   include_directories("../wkutils")
   get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
-  set(EXTERNAL_DIR ${PARENT_DIR}/external)
-  add_subdirectory(${EXTERNAL_DIR}/webgpu ${CMAKE_CURRENT_BINARY_DIR}/webgpu)
-  include_directories(${CMAKE_SOURCE_DIR}/../external/webgpu/include)
+  add_subdirectory(${PARENT_DIR}/webgpu ${CMAKE_CURRENT_BINARY_DIR}/webgpu)
+  #include_directories(${PARENT_DIR}/webgpu-native/include)
+  #link_directories(${PARENT_DIR}/webgpu-native/lib)
 endif()
 
 #uncomment this to detect broken memory problems via gcc sanitizers
@@ -88,9 +88,12 @@ if(USE_WGPU)
   list(APPEND SOURCE ${WKGEN_SOURCE} ${WKUTILS_SOURCE})
 endif()
 
+
 add_executable(testapp ${SOURCE})
 set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 target_link_libraries(testapp LINK_PUBLIC ${LINK} OpenMP::OpenMP_CXX dl)
+
 if(USE_WGPU)
+  #target_link_libraries(testapp PRIVATE wgpu_native)
   target_copy_webgpu_binaries(testapp)
 endif()
