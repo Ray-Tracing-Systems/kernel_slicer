@@ -72,7 +72,6 @@ set(VKUTILS_SOURCE ../vkutils/vk_utils.cpp
 set(WKGEN_SOURCE mandelbrot_wgpu.cpp)    
 set(WKUTILS_SOURCE ../wkutils/wk_context.cpp) # ../wkutils/wk_utils.cpp
 
-
 set(SOURCE ${MAIN_SOURCE})
 set(LINK ${FREEIMAGE_LIBRARIES})
 

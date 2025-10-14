@@ -97,6 +97,7 @@ static WGPUAdapter requestAdapterSync(WGPUInstance instance, WGPURequestAdapterO
 
   wgpuInstanceRequestAdapter(instance, &adapterOpts, adapterCallbackInfo);
   //std::cout << "WGPU adapter: " << adapter << std::endl;
+  return adapter;
 }
 
 static WGPUDevice requestDeviceSync(WGPUAdapter adapter, const WGPUDeviceDescriptor* descriptor) 
@@ -131,7 +132,7 @@ static WGPUDevice requestDeviceSync(WGPUAdapter adapter, const WGPUDeviceDescrip
   //}
   //assert(userData.device != nullptr && "Failed to acquire device");
   //return userData.device;
-
+  return device;
 }
 
 wk_utils::WulkanContext wk_utils::globalContextInit(WulkanDeviceFeatures a_features)
