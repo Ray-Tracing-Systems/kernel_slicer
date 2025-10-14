@@ -132,6 +132,7 @@ static WGPUDevice requestDeviceSync(WGPUAdapter adapter, const WGPUDeviceDescrip
   //}
   //assert(userData.device != nullptr && "Failed to acquire device");
   //return userData.device;
+
   return device;
 }
 
