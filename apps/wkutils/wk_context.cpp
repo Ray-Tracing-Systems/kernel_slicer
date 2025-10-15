@@ -2,144 +2,92 @@
 #include <iostream>
 #include <cassert>
 
-// old implementation
-//
-//void wk_utils::printDeviceInfo(WGPUAdapter adapter) 
-//{
-//  // Получаем свойства адаптера
-//  WGPUAdapterProperties props = {};
-//  wgpuAdapterGetProperties(adapter, &props);
-//  // Печатаем имя адаптера (драйвер/видеокарта)
-//  std::cout << "[wgpu]: Name      : " << props.name << std::endl;
-//  if(props.driverDescription != nullptr)
-//  std::cout << "[wgpu]: Driver    : " << props.driverDescription << std::endl;
-//  std::cout << "[wgpu]: Backend   : " << props.backendType << std::endl;
-//  std::cout << "[wgpu]: Device ID : " << props.deviceID << std::endl;
-//}
+#include <thread>
+#include <chrono>
+#include <mutex>
 
-void wk_utils::printDeviceInfo(WGPUAdapter adapter) 
-{
-  std::cout << "WGPUAdapter name is not avaliable in new WGPU implementations ... " << std::endl;
+using wk_utils::WulkanContext;
+
+std::string_view toStdStringView(WGPUStringView wgpuStringView) {
+    return
+        wgpuStringView.data == nullptr
+        ? std::string_view()
+        : wgpuStringView.length == WGPU_STRLEN
+        ? std::string_view(wgpuStringView.data)
+        : std::string_view(wgpuStringView.data, wgpuStringView.length);
 }
 
-static void onDeviceError(WGPUErrorType type, const char* message, void*) 
-{
-  std::cout << "[wgpu device error]: " << message << std::endl;
+/**
+ * Utility function to get a WebGPU device, so that
+ *     WGPUDevice device = requestDeviceSync(adapter, options);
+ * is roughly equivalent to
+ *     const device = await adapter.requestDevice(descriptor);
+ * It is very similar to requestAdapter
+ */
+WGPUDevice requestDeviceSync(WGPUInstance instance, WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor) {
+    struct UserData {
+        WGPUDevice device = nullptr;
+        bool requestEnded = false;
+    };
+    UserData userData;
+
+    // The callback
+    auto onDeviceRequestEnded = [](
+        WGPURequestDeviceStatus status,
+        WGPUDevice device,
+        WGPUStringView message,
+        void* userdata1,
+        void* /* userdata2 */
+    ) {
+        UserData& userData = *reinterpret_cast<UserData*>(userdata1);
+        if (status == WGPURequestDeviceStatus_Success) {
+            userData.device = device;
+        } else {
+            std::cerr << "Error while requesting device: " << toStdStringView(message) << std::endl;
+        }
+        userData.requestEnded = true;
+    };
+
+    // Build the callback info
+    WGPURequestDeviceCallbackInfo callbackInfo = {
+        /* nextInChain = */ nullptr,
+        /* mode = */ WGPUCallbackMode_AllowProcessEvents,
+        /* callback = */ onDeviceRequestEnded,
+        /* userdata1 = */ &userData,
+        /* userdata2 = */ nullptr
+    };
+
+    // Call to the WebGPU request adapter procedure
+    wgpuAdapterRequestDevice(adapter, descriptor, callbackInfo);
+
+    // Hand the execution to the WebGPU instance until the request ended
+    wgpuInstanceProcessEvents(instance);
+    while (!userData.requestEnded) {
+         std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        wgpuInstanceProcessEvents(instance);
+    }
+
+    return userData.device;
 }
 
-//struct UserData 
-//{
-//  WGPUAdapter adapter = nullptr;
-//  bool requestEnded = false;
-//};
-//
-//static void onAdapterRequestEnded(WGPURequestAdapterStatus status, WGPUAdapter adapter, const char* message, void* pUserData) 
-//{
-//  UserData* userData = reinterpret_cast<UserData*>(pUserData);
-//  if (status == WGPURequestAdapterStatus_Success) {
-//      userData->adapter = adapter;
-//  } else {
-//      std::cout << "Could not get WebGPU adapter: " << message << std::endl;
-//  }
-//  userData->requestEnded = true;
-//}
-
-//static WGPUAdapter requestAdapterSync(WGPUInstance instance, WGPURequestAdapterOptions const* options) 
-//{
-//  UserData userData;
-//  wgpuInstanceRequestAdapter(
-//      instance,
-//      options,
-//      onAdapterRequestEnded,
-//      &userData
-//  );
-//  // Wait until the callback sets requestEnded to true
-//  while (!userData.requestEnded) {
-//      // You may want to yield or sleep a bit here in real code
-//  }
-//  assert(userData.adapter != nullptr && "Failed to acquire adapter");
-//  return userData.adapter;
-//}
-
-#define UNUSED(x) (void)(x)
-
-// Utility function to request an adapter synchronously
-static void handle_request_adapter(WGPURequestAdapterStatus status,
-                                   WGPUAdapter adapter, WGPUStringView message,
-                                   void *userdata1, void *userdata2)
+void onAdapterRequestEnded(
+    WGPURequestAdapterStatus  status,  // a success status
+    WGPUAdapter               adapter, // the returned adapter
+    WGPUStringView            message, // optional error message
+    void* userdata1,                   // custom user data, as provided when requesting the adapter
+    void* userdata2) 
 {
-  UNUSED(status);
-  UNUSED(message);
-  UNUSED(userdata2);
-  *(WGPUAdapter *)userdata1 = adapter;
-}
-
-static void handle_request_device(WGPURequestDeviceStatus status,
-                                  WGPUDevice device, WGPUStringView message,
-                                  void *userdata1, void *userdata2)
-{
-  UNUSED(status);
-  UNUSED(message);
-  UNUSED(userdata2);
-  *(WGPUDevice *)userdata1 = device;
-}
-
-static WGPUAdapter requestAdapterSync(WGPUInstance instance, WGPURequestAdapterOptions const* options) 
-{
-  WGPUAdapter adapter;
-  WGPURequestAdapterOptions adapterOpts = {};
-  adapterOpts.nextInChain = nullptr;
-
-  const WGPURequestAdapterCallbackInfo adapterCallbackInfo = {
-    .callback = handle_request_adapter,
-    .userdata1 = &adapter
-  };
-
-  wgpuInstanceRequestAdapter(instance, &adapterOpts, adapterCallbackInfo);
-  //std::cout << "WGPU adapter: " << adapter << std::endl;
-  return adapter;
-}
-
-static WGPUDevice requestDeviceSync(WGPUAdapter adapter, const WGPUDeviceDescriptor* descriptor) 
-{
-  struct UserData {
-      WGPUDevice device = nullptr;
-      bool requestEnded = false;
-  } userData;
-  auto onDeviceRequestEnded = [](WGPURequestDeviceStatus status, WGPUDevice device, const char* message, void* pUserData) {
-      UserData* userData = reinterpret_cast<UserData*>(pUserData);
-      if (status == WGPURequestDeviceStatus_Success) {
-          userData->device = device;
-      } else {
-          std::cout << "Could not get WebGPU device: " << message << std::endl;
-      }
-      userData->requestEnded = true;
-  };
-
-  WGPUDevice device;
-
-  const WGPURequestDeviceCallbackInfo deviceCallbackInfo = {
-    .callback = handle_request_device,
-    .userdata1 = &device
-  };
-
-  wgpuAdapterRequestDevice(adapter, NULL, deviceCallbackInfo);
-  std::cout << "WGPU device: " << device << std::endl;
-
-  //wgpuAdapterRequestDevice(adapter, descriptor, onDeviceRequestEnded, &userData);
-  //while (!userData.requestEnded) {
-  //    // Optionally sleep/yield here
-  //}
-  //assert(userData.device != nullptr && "Failed to acquire device");
-  //return userData.device;
-
-  return device;
+  WulkanContext* pContext = (WulkanContext*)userdata1;
+  bool* pRequestEnded     = (bool*)(userdata2);
+  *pRequestEnded = true;
+  pContext->physicalDevice = adapter;
 }
 
 wk_utils::WulkanContext wk_utils::globalContextInit(WulkanDeviceFeatures a_features)
 {
+  //dawnProcSetProcs(&dawn::native::GetProcs());
   WulkanContext res = {};
-
+  
   // The vector size
   WGPUInstanceDescriptor desc = {};
   desc.nextInChain = nullptr;
@@ -153,25 +101,33 @@ wk_utils::WulkanContext wk_utils::globalContextInit(WulkanDeviceFeatures a_featu
     return res;
   }
 
-  WGPURequestAdapterOptions adapterOpts = {};
-  adapterOpts.nextInChain     = nullptr;
-  adapterOpts.powerPreference = WGPUPowerPreference_HighPerformance;
+  bool requestEnded = false;
 
-  res.physicalDevice = requestAdapterSync(res.instance, &adapterOpts);
-  printDeviceInfo(res.physicalDevice);
+  // Build callback info
+  WGPURequestAdapterCallbackInfo callbackInfo = {
+    .nextInChain = nullptr,
+    .mode        = WGPUCallbackMode_AllowProcessEvents, // more on this later
+    .callback    = onAdapterRequestEnded,
+    .userdata1   = &res,
+    .userdata2   = &requestEnded, // custom user data is simply a pointer to a boolean in this case
+  };
 
-  //  Create device
-  WGPUDeviceDescriptor deviceDesc = {};
-  deviceDesc.nextInChain = nullptr;
-  //deviceDesc.label = "Cur Device"; // Optional: for debugging
-  //deviceDesc.requiredFeaturesCount = 0; // No special features
-  deviceDesc.requiredFeatures = nullptr;
-  deviceDesc.requiredLimits = nullptr;
-  deviceDesc.defaultQueue.nextInChain = nullptr;
-  //deviceDesc.defaultQueue.label = "The default queue";
+  // Start the request
+  WGPURequestAdapterOptions options = {};
+  options.nextInChain = nullptr;
+  wgpuInstanceRequestAdapter(res.instance, &options, callbackInfo);
+  wgpuInstanceProcessEvents (res.instance);
+  while (!requestEnded) {
+    // Hand the execution to the WebGPU instance so that it can check for
+    // pending async operations, in which case it invokes our callbacks.
+    wgpuInstanceProcessEvents(res.instance);
 
-  res.device = requestDeviceSync(res.physicalDevice, &deviceDesc);
-  //wgpuDeviceSetUncapturedErrorCallback(res.device, onDeviceError, nullptr);
+    // Even if waiting for 10ms before testing again, this is a terrible idea
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  WGPUDeviceDescriptor deviceDesc = WGPU_DEVICE_DESCRIPTOR_INIT;
+  res.device = requestDeviceSync(res.instance, res.physicalDevice, &deviceDesc);
 
   return res;
 }
