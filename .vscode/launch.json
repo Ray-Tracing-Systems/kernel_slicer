@@ -336,7 +336,7 @@
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
                         "-I${workspaceFolder}/TINYSTL",          "ignore",
                         "-shaderCC", "wgpu",
-                        "-suffix", "_wgpu",
+                        "-suffix", "_WGPU",
                         "-const_ubo", "1",
                         "-DKERNEL_SLICER",
                         "-v"],
