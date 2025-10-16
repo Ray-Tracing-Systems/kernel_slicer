@@ -38,8 +38,8 @@ if(USE_WGPU)
   include_directories("../wkutils")
   get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
   set(EXTERNAL_DIR ${PARENT_DIR}/external)
-  add_subdirectory(${EXTERNAL_DIR}/webgpu ${CMAKE_CURRENT_BINARY_DIR}/webgpu)
-  include_directories(${CMAKE_SOURCE_DIR}/../external/webgpu/include)
+  add_subdirectory(${PARENT_DIR}/webgpu ${CMAKE_CURRENT_BINARY_DIR}/webgpu)
+  include_directories(${PARENT_DIR}/webgpu/include)
 endif()
 
 #uncomment this to detect broken memory problems via gcc sanitizers

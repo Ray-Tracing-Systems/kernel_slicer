@@ -105,7 +105,7 @@ wk_utils::WulkanContext wk_utils::globalContextInit(WulkanDeviceFeatures a_featu
   WGPUDeviceDescriptor deviceDesc = {};
   deviceDesc.nextInChain = nullptr;
   deviceDesc.label = "Cur Device"; // Optional: for debugging
-  deviceDesc.requiredFeaturesCount = 0; // No special features
+  //deviceDesc.requiredFeaturesCount = 0; // No special features
   deviceDesc.requiredFeatures = nullptr;
   deviceDesc.requiredLimits = nullptr;
   deviceDesc.defaultQueue.nextInChain = nullptr;
