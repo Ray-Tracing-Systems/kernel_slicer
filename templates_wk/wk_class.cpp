@@ -335,7 +335,8 @@ void {{MainClassName}}{{MainClassSuffix}}::ReadBufferBack(WGPUBuffer a_buffer, s
   //images.push_back(&{{var.Name}}Img);
   //images2.push_back({{var.Name}}Img.image);
   {% else %}
-  bufDesc.size  = {{var.DataSize}}*sizeof({{var.DataType}});
+  const size_t {{var.Name}}Size = {{var.DataSize}}*sizeof({{var.DataType}});
+  bufDesc.size  = {{var.Name}}Size;
   bufDesc.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopySrc;
   WGPUBuffer {{var.Name}}GPU = wgpuDeviceCreateBuffer(device, &bufDesc);
   {% endif %}

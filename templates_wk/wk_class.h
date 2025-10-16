@@ -101,6 +101,7 @@ public:
     {% else %}
     WGPUBuffer {{Arg.Name}}Buffer,
     size_t     {{Arg.Name}}Offset,
+    size_t     {{Arg.Name}}Size,
     {% endif %}
     {% endfor %}
     uint32_t dummyArgument = 0)
@@ -112,6 +113,7 @@ public:
     {% else %}
     {{MainFunc.Name}}_local.{{Arg.Name}}Buffer = {{Arg.Name}}Buffer;
     {{MainFunc.Name}}_local.{{Arg.Name}}Offset = {{Arg.Name}}Offset;
+    {{MainFunc.Name}}_local.{{Arg.Name}}Size   = {{Arg.Name}}Size;
     {% endif %}
     {% endfor %}
     UpdateAllBindingGroup_{{MainFunc.Name}}();

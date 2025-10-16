@@ -337,12 +337,15 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
     if(i!=a_func.Node->getNumParams()-1)
       callsOut << ", ";
 
-    if(paramType->isPointerType())                                       //#TODO: implement for textures also
+    if(paramType->isPointerType())       
     {
       if(useBufferOffsets)
         commandInOut << "tempBuffer, " << pParam->getNameAsString() << "Offset";
       else
         commandInOut << pParam->getNameAsString() << "GPU, 0";
+
+      if(a_classInfo.pHostCC->IsWGPU())
+        commandInOut << ", " << pParam->getNameAsString() << "Size";
 
       if(i!=a_func.Node->getNumParams()-1)
       {
