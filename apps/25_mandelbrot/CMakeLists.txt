@@ -40,6 +40,17 @@ if(USE_WGPU)
   set(EXTERNAL_DIR ${PARENT_DIR}/external)
   add_subdirectory(${PARENT_DIR}/webgpu ${CMAKE_CURRENT_BINARY_DIR}/webgpu)
   include_directories(${PARENT_DIR}/webgpu/include)
+
+  # Проверяем, определена ли переменная и равна ли она "WGPU"
+  if(WEBGPU_BACKEND STREQUAL "WGPU")
+    # Если да, добавляем глобальный дефайн -DUSE_WGPU_BACKEND
+    add_definitions(-DUSE_WGPU)
+    message(STATUS "Using WGPU backend")
+  else()
+    # Иначе, добавляем другой дефайн (например, для Dawn)
+    add_definitions(-DUSE_DAWN)
+    message(STATUS "Using DAWN backend (or default)")
+  endif()
 endif()
 
 #uncomment this to detect broken memory problems via gcc sanitizers

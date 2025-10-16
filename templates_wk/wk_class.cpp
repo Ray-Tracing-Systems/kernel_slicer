@@ -296,39 +296,11 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
 
 void {{MainClassName}}{{MainClassSuffix}}::ReadBufferBack(WGPUBuffer a_buffer, size_t a_size, void* a_data)
 {
-  WGPUCommandEncoder encoderRB = wgpuDeviceCreateCommandEncoder(device, nullptr);
-  wgpuCommandEncoderCopyBufferToBuffer(encoderRB, a_buffer, 0, m_readBackBuffer, 0, a_size);
-
-  WGPUCommandBuffer cmdRB = wgpuCommandEncoderFinish(encoderRB, nullptr);
-  //wgpuCommandEncoderRelease(encoderRB); //removed function ?
-  wgpuQueueSubmit(queue, 1, &cmdRB);
-  
-  // 10. Map and read back result
-  struct Context {
-    bool ready;
-    WGPUBuffer buffer;
-  };
-  Context context = { false, m_readBackBuffer };
-
-  auto onBuffer2Mapped = [](WGPUBufferMapAsyncStatus status, void* pUserData) {
-    Context* context = reinterpret_cast<Context*>(pUserData);
-    context->ready = true;
-    if (status != WGPUBufferMapAsyncStatus_Success) 
-    {
-      std::cout << "[{{MainClassName}}{{MainClassSuffix}}::ReadBufferBack]: buffer mapped with status " << status << std::endl;
-      return;
-    }
-  };
-
-  wgpuBufferMapAsync(m_readBackBuffer, WGPUMapMode_Read, 0, a_size, onBuffer2Mapped, (void*)&context);
-
-  while (!context.ready) {
-    wgpuDevicePoll(device, false, nullptr);
-  }
-
-  const float* mapped = static_cast<const float*>(wgpuBufferGetMappedRange(m_readBackBuffer, 0, a_size));
-  std::memcpy(a_data, mapped, a_size);
-  wgpuBufferUnmap(m_readBackBuffer);
+  wk_utils::WulkanContext ctx;
+  ctx.device         = device;
+  ctx.physicalDevice = physicalDevice;
+  ctx.instance       = nullptr; //TODO: set instance 
+  wk_utils::readBufferBack(ctx, queue, a_buffer, m_readBackBuffer, a_size, a_data);
 }
 
 {% for MainFunc in MainFunctions %}

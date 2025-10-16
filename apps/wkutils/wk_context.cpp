@@ -1,6 +1,7 @@
 #include "wk_context.h"
 #include <iostream>
 #include <cassert>
+#include <cstring>
 
 void wk_utils::printDeviceInfo(WGPUAdapter adapter) 
 {
@@ -115,4 +116,41 @@ wk_utils::WulkanContext wk_utils::globalContextInit(WulkanDeviceFeatures a_featu
   wgpuDeviceSetUncapturedErrorCallback(res.device, onDeviceError, nullptr);
 
   return res;
+}
+
+void wk_utils::readBufferBack(WulkanContext a_ctx, WGPUQueue a_queue, WGPUBuffer a_buffer, WGPUBuffer a_tmpBuffer, size_t a_size, void* a_data)
+{
+  WGPUCommandEncoder encoderRB = wgpuDeviceCreateCommandEncoder(a_ctx.device, nullptr);
+  wgpuCommandEncoderCopyBufferToBuffer(encoderRB, a_buffer, 0, a_tmpBuffer, 0, a_size);
+
+  WGPUCommandBuffer cmdRB = wgpuCommandEncoderFinish(encoderRB, nullptr);
+  //wgpuCommandEncoderRelease(encoderRB); //removed function ?
+  wgpuQueueSubmit(a_queue, 1, &cmdRB);
+  
+  // 10. Map and read back result
+  struct Context {
+    bool ready;
+    WGPUBuffer buffer;
+  };
+  Context context = { false, a_tmpBuffer };
+
+  auto onBuffer2Mapped = [](WGPUBufferMapAsyncStatus status, void* pUserData) {
+    Context* context = reinterpret_cast<Context*>(pUserData);
+    context->ready = true;
+    if (status != WGPUBufferMapAsyncStatus_Success) 
+    {
+      std::cout << "[Mandelbrot_WGPU::ReadBufferBack]: buffer mapped with status " << status << std::endl;
+      return;
+    }
+  };
+
+  wgpuBufferMapAsync(a_tmpBuffer, WGPUMapMode_Read, 0, a_size, onBuffer2Mapped, (void*)&context);
+
+  while (!context.ready) {
+    wgpuDevicePoll(a_ctx.device, false, nullptr);
+  }
+
+  const float* mapped = static_cast<const float*>(wgpuBufferGetMappedRange(a_tmpBuffer, 0, a_size));
+  std::memcpy(a_data, mapped, a_size);
+  wgpuBufferUnmap(a_tmpBuffer);
 }
