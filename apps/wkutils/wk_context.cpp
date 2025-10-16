@@ -146,8 +146,13 @@ void wk_utils::readBufferBack(WulkanContext a_ctx, WGPUQueue a_queue, WGPUBuffer
 
   wgpuBufferMapAsync(a_tmpBuffer, WGPUMapMode_Read, 0, a_size, onBuffer2Mapped, (void*)&context);
 
-  while (!context.ready) {
+  while (!context.ready) 
+  {
+    #ifdef USE_DAWN
+    wgpuDeviceTick(a_ctx.device);
+    #else
     wgpuDevicePoll(a_ctx.device, false, nullptr);
+    #endif
   }
 
   const float* mapped = static_cast<const float*>(wgpuBufferGetMappedRange(a_tmpBuffer, 0, a_size));

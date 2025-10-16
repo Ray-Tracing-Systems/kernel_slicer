@@ -1,7 +1,11 @@
 #pragma once
 
+#ifdef USE_DAWN
+#include <webgpu/webgpu.hpp>
+#else
 #include <webgpu/webgpu.h>
 #include <webgpu/wgpu.h>
+#endif
 
 namespace wk_utils
 {

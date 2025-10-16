@@ -5,10 +5,6 @@
 #include <string>
 #include <unordered_map>
 #include <array>
-
-#include <webgpu/webgpu.h>
-#include <webgpu/wgpu.h>
-
 #include "wk_context.h"
 
 {% if length(TextureMembers) > 0 or length(ClassTexArrayVars) > 0 %}
