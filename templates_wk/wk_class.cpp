@@ -70,6 +70,14 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   {% endfor %}
 }
 
+void {{MainClassName}}{{MainClassSuffix}}::GetExecutionTime(const char* a_funcName, float a_out[4]) // NOT IMPLEMENTED 
+{
+  a_out[0] = 0.0f;
+  a_out[1] = 0.0f;
+  a_out[2] = 0.0f;
+  a_out[3] = 0.0f;
+}
+
 void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_path)
 {
   {% for Kernel in Kernels %}
@@ -104,6 +112,14 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembers()
   {% endfor %}
   m_uboData.dummy_last = 0; // Slang to WebGPU issue: access 'ubo[0].dummy_last' prevent slang compiler to discard ubo if it is not used
   wgpuQueueWriteBuffer(queue, m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers()
+{
+  {% for Var in ClassVectorVars %}
+  if({{Var.Name}}{{Var.AccessSymb}}size() > 0)
+    wgpuQueueWriteBuffer(queue, m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}{{Var.AccessSymb}}data(), {{Var.Name}}{{Var.AccessSymb}}size()*sizeof({{Var.TypeOfData}}) );
+  {% endfor %}
 }
 
 {% for Kernel in Kernels %}

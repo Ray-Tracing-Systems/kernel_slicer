@@ -149,12 +149,16 @@ protected:
   virtual void InitDeviceData();
 
   virtual void UpdatePlainMembers();
+  virtual void UpdateVectorMembers();
 
   void CommitDeviceData() override 
   {
     InitDeviceData();
     UpdatePlainMembers();
+    UpdateVectorMembers();
   }
+
+  void GetExecutionTime(const char* a_funcName, float a_out[4]) override; 
 
   {% for KernelDecl in KernelsDecls %}
   {{KernelDecl}}
