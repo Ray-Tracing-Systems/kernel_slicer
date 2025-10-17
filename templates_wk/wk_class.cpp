@@ -122,6 +122,27 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers()
   {% endfor %}
 }
 
+{% for UpdateFun in UpdateVectorFun %}
+{% if UpdateFun.NumParams == 2 %}
+void {{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}(size_t a_first, size_t a_size)
+{
+  if(a_first + a_size > {{UpdateFun.VectorName}}.size())
+  {
+    std::cout << "[{{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}]: FAILED! wrong first element or size or both " << std::endl;
+    return;
+  }
+
+  wgpuQueueWriteBuffer(queue, m_vdata.{{UpdateFun.VectorName}}Buffer, a_first*sizeof({{UpdateFun.TypeOfData}}), {{UpdateFun.VectorName}}.data() + a_first, a_size*sizeof({{UpdateFun.TypeOfData}}) );
+}
+{%else%}
+void {{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}()
+{
+  if({{UpdateFun.VectorName}}.size() != 0)
+    wgpuQueueWriteBuffer(queue, m_vdata.{{UpdateFun.VectorName}}Buffer, 0, {{UpdateFun.VectorName}}.data(), {{UpdateFun.VectorName}}.size()*sizeof({{UpdateFun.TypeOfData}}) );
+}
+{%endif%}
+{% endfor %}
+
 {% for Kernel in Kernels %}
 void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char* a_filePath)
 {

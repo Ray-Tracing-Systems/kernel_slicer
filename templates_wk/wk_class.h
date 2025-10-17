@@ -150,6 +150,13 @@ protected:
 
   virtual void UpdatePlainMembers();
   virtual void UpdateVectorMembers();
+  {% for UpdateFun in UpdateVectorFun %}
+  {% if UpdateFun.NumParams == 2 %}
+  void {{UpdateFun.Name}}(size_t a_first, size_t a_size) override;
+  {% else %}
+  void {{UpdateFun.Name}}() override;
+  {% endif %}
+  {% endfor %}
 
   void CommitDeviceData() override 
   {

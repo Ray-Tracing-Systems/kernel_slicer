@@ -66,6 +66,8 @@ protected:
   virtual void kernel2D_BlurY(int tidX, int tidY, const float4* a_dataIn, float4* a_dataOut);
   virtual void kernel2D_MixAndToneMap(int tidX, int tidY, const float4* inData4f, const float4* inBrightPixels, unsigned int* outData1ui);
 
+  //virtual void Update_m_brightPixels(size_t a_start, size_t a_size) {}
+
   std::vector<float4> m_brightPixels;
   std::vector<float4> m_downsampledImage;
   std::vector<float4> m_tempImage;
