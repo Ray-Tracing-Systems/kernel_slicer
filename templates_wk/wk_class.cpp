@@ -43,7 +43,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitWulkanObjects(WGPUDevice a_device
   device         = a_device;
   queue          = wgpuDeviceGetQueue(device);
   InitKernels("{{ShaderFolder}}");
-  InitDeviceData();
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
@@ -68,6 +67,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   bufDesc.size  = {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}});
   bufDesc.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst;
   m_vdata.{{Var.Name}}Buffer = wgpuDeviceCreateBuffer(device, &bufDesc);
+  m_vdata.{{Var.Name}}Size   = bufDesc.size;
   {% endfor %}
 }
 

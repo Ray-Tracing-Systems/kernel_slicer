@@ -152,6 +152,7 @@ protected:
 
   void CommitDeviceData() override 
   {
+    InitDeviceData();
     UpdatePlainMembers();
   }
 
@@ -190,6 +191,15 @@ protected:
   void UpdateAllBindingGroup_{{MainFunc.Name}}();
   virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}};
   {% endfor %}
+
+  struct MembersDataGPU
+  {
+    {% for Vector in VectorMembers %}
+    WGPUBuffer {{Vector.Name}}Buffer = nullptr;
+    size_t     {{Vector.Name}}Offset = 0;
+    size_t     {{Vector.Name}}Size   = 0;
+    {% endfor %}
+  } m_vdata;
 
   WGPUBindGroup m_allGeneratedDS[{{TotalDSNumber}}];
   const size_t  m_totalDSNumber = {{TotalDSNumber}};

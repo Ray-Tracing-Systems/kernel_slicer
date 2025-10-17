@@ -345,7 +345,7 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
         commandInOut << pParam->getNameAsString() << "GPU, 0";
 
       if(a_classInfo.pHostCC->IsWGPU())
-        commandInOut << ", " << pParam->getNameAsString() << "Size";
+         commandInOut << ", WGPU_WHOLE_SIZE"; // commandInOut << ", " << pParam->getNameAsString() << "Size";
 
       if(i!=a_func.Node->getNumParams()-1)
       {
