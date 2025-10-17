@@ -211,8 +211,7 @@ protected:
   size_t        m_readBackSize   = 0;
 
   WGPUBuffer    m_pushConstantBuffer = nullptr; // use this buffer to emulate push constants
-  size_t        m_pushConstantSize   = 0;
-  size_t        m_pushConstantStride = 128;     // each binding point have it's own offset inside this buffer
+  size_t        m_pushConstantStride = 256;     // each binding point have it's own offset inside this buffer
   
   WGPUCommandEncoder     m_currEncoder  = nullptr;
   WGPUComputePassEncoder m_currPassCS   = nullptr;

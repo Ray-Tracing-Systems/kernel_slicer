@@ -57,7 +57,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
 
   m_classDataBuffer    = wgpuDeviceCreateBuffer(device, &uboDesc);
   m_pushConstantBuffer = wgpuDeviceCreateBuffer(device, &pcbDesc);
-  m_pushConstantSize   = m_pushConstantStride; // per each binding group
   m_classDataSize      = uboDesc.size;         // total size of ubo buffer
   
   {% if length(ClassVectorVars) != 0 %}
@@ -191,7 +190,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllBindingGroup_{{MainFunc.Name
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].binding = {{DescriptorSet.ArgNumber}}+1;
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].buffer  = m_pushConstantBuffer;
     descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].offset  = m_pushConstantStride*{{DescriptorSet.Id}}; // offset for {{DescriptorSet.Id}} binding group
-    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].size    = m_pushConstantSize;
+    descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1].size    = m_pushConstantStride;
 
     WGPUBindGroupDescriptor bgDesc = {};
     bgDesc.layout     = {{DescriptorSet.KernelName}}DSLayout; 
