@@ -155,7 +155,7 @@ void wk_utils::readBufferBack(WulkanContext a_ctx, WGPUQueue a_queue, WGPUBuffer
     #endif
   }
 
-  const float* mapped = static_cast<const float*>(wgpuBufferGetMappedRange(a_tmpBuffer, 0, a_size));
+  const float* mapped = static_cast<const float*>(wgpuBufferGetConstMappedRange(a_tmpBuffer, 0, a_size));
   std::memcpy(a_data, mapped, a_size);
   wgpuBufferUnmap(a_tmpBuffer);
 }
