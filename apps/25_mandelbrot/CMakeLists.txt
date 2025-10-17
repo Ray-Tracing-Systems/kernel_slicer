@@ -34,21 +34,18 @@ if(USE_ISPC)
 endif()
 
 if(USE_WGPU)
-  add_compile_definitions(USE_WGPU)
+  add_compile_definitions(USE_WEBGPU)
   include_directories("../wkutils")
   get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
   set(EXTERNAL_DIR ${PARENT_DIR}/external)
   add_subdirectory(${PARENT_DIR}/webgpu ${CMAKE_CURRENT_BINARY_DIR}/webgpu)
   include_directories(${PARENT_DIR}/webgpu/include)
 
-  # Проверяем, определена ли переменная и равна ли она "WGPU"
   if(WEBGPU_BACKEND STREQUAL "WGPU")
-    # Если да, добавляем глобальный дефайн -DUSE_WGPU_BACKEND
-    add_definitions(-DUSE_WGPU)
+    add_compile_definitions(-DUSE_WGPU)
     message(STATUS "Using WGPU backend")
   else()
-    # Иначе, добавляем другой дефайн (например, для Dawn)
-    add_definitions(-DUSE_DAWN)
+    add_compile_definitions(-DUSE_DAWN)
     message(STATUS "Using DAWN backend (or default)")
   endif()
 endif()
@@ -82,7 +79,6 @@ set(VKUTILS_SOURCE ../vkutils/vk_utils.cpp
 
 set(WKGEN_SOURCE mandelbrot_wgpu.cpp)    
 set(WKUTILS_SOURCE ../wkutils/wk_context.cpp) # ../wkutils/wk_utils.cpp
-
 
 set(SOURCE ${MAIN_SOURCE})
 set(LINK ${FREEIMAGE_LIBRARIES})

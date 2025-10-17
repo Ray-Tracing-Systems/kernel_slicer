@@ -20,6 +20,10 @@ std::shared_ptr<ToneMapping> CreateToneMapping_ISPC();
 #if defined(USE_CUDA) or defined(USE_HIP)
 std::shared_ptr<ToneMapping> CreateToneMapping_CUDA();
 #endif
+#ifdef USE_WEBGPU
+#include "wk_context.h"
+std::shared_ptr<ToneMapping> CreateToneMapping_WGPU(wk_utils::WulkanContext a_ctx, size_t a_maxThreadsGenerated);
+#endif
 
 bool LoadHDRImageFromFile(const char* a_fileName, 
                           int* pW, int* pH, std::vector<float>& a_data); // defined in imageutils.cpp
@@ -60,6 +64,11 @@ int main(int argc, const char** argv)
     auto features = ToneMapping_GPU_ListRequiredDeviceFeatures();
     auto ctx = vk_utils::globalContextInit(features, enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateToneMapping_GPU(ctx, w*h);
+    #endif
+    #ifdef USE_WEBGPU
+    auto features = wk_utils::WulkanDeviceFeatures{};
+    auto ctx      = wk_utils::globalContextInit(features);
+    pImpl         = CreateToneMapping_WGPU(ctx, w*h);
     #endif
   }
   #ifdef USE_ISPC

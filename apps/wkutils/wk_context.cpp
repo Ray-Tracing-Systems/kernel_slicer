@@ -124,7 +124,9 @@ void wk_utils::readBufferBack(WulkanContext a_ctx, WGPUQueue a_queue, WGPUBuffer
   wgpuCommandEncoderCopyBufferToBuffer(encoderRB, a_buffer, 0, a_tmpBuffer, 0, a_size);
 
   WGPUCommandBuffer cmdRB = wgpuCommandEncoderFinish(encoderRB, nullptr);
-  //wgpuCommandEncoderRelease(encoderRB); //removed function ?
+  #ifdef USE_DAWN
+  wgpuCommandEncoderRelease(encoderRB); //removed function ?
+  #endif
   wgpuQueueSubmit(a_queue, 1, &cmdRB);
   
   // 10. Map and read back result

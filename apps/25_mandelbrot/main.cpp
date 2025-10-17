@@ -15,7 +15,7 @@ std::shared_ptr<Mandelbrot> CreateMandelbrot_Generated(vk_utils::VulkanContext a
 vk_utils::VulkanDeviceFeatures Mandelbrot_Generated_ListRequiredDeviceFeatures();
 #endif
 
-#ifdef USE_WGPU
+#ifdef USE_WEBGPU
 #include "wk_context.h"
 std::shared_ptr<Mandelbrot> CreateMandelbrot_WGPU(wk_utils::WulkanContext a_ctx, size_t a_maxThreadsGenerated);
 #endif
@@ -43,7 +43,7 @@ int main(int argc, const char** argv)
     pImpl         = CreateMandelbrot_Generated(ctx, w*h);
   }
   #endif
-  #ifdef USE_WGPU
+  #ifdef USE_WEBGPU
   if(onGPU)
   {
     auto features = wk_utils::WulkanDeviceFeatures{};

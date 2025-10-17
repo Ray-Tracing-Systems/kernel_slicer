@@ -49,6 +49,15 @@
             ]
         },
         {
+            "label": "Build Kernels (Slang/WGPU)",
+            "type": "shell",
+            "command": "cd shaders_wgpu && bash build_slang.sh",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
             "label": "Build Kernels (ISPC)",
             "type": "shell",
             "command": "bash z_build_ispc.sh",
