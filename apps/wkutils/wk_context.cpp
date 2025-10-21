@@ -200,18 +200,38 @@ void wk_utils::readBufferBack(WulkanContext a_ctx, WGPUQueue a_queue, WGPUBuffer
     WGPUBuffer buffer;
   };
   Context context = { false, a_tmpBuffer };
+  
+  #if WGPU_DISTR >= 30
+  auto onBuffer2Mapped = [](WGPUMapAsyncStatus status, WGPUStringView message, void* pUserData, void* userdata2) {
+    Context* context = reinterpret_cast<Context*>(pUserData);
+    context->ready = true;
+    if (status != WGPUMapAsyncStatus_Success) 
+    {
+      std::string tempMsg(message.data, message.length);
+      std::cout << "[wk_utils::readBufferBack]: buffer mapped with status " << tempMsg.c_str() << std::endl;
+      return;
+    }
+  };
+
+  WGPUBufferMapCallbackInfo cbInfo = {};
+  cbInfo.callback  = onBuffer2Mapped;
+  cbInfo.userdata1 = &context;
+  wgpuBufferMapAsync(a_tmpBuffer, WGPUMapMode_Read, 0, a_size, cbInfo);
+   
+  #else
 
   auto onBuffer2Mapped = [](WGPUBufferMapAsyncStatus status, void* pUserData) {
     Context* context = reinterpret_cast<Context*>(pUserData);
     context->ready = true;
     if (status != WGPUBufferMapAsyncStatus_Success) 
     {
-      std::cout << "[Mandelbrot_WGPU::ReadBufferBack]: buffer mapped with status " << status << std::endl;
+      std::cout << "[wk_utils::readBufferBack]: buffer mapped with status " << status << std::endl;
       return;
     }
   };
 
   wgpuBufferMapAsync(a_tmpBuffer, WGPUMapMode_Read, 0, a_size, onBuffer2Mapped, (void*)&context);
+  #endif
 
   while (!context.ready) 
   {
