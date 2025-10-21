@@ -73,6 +73,7 @@ static WGPUAdapter requestAdapterSync(WGPUInstance instance, WGPURequestAdapterO
   WGPURequestAdapterCallbackInfo callbackInfo = {};
   callbackInfo.callback  = onAdapterRequestEnded;
   callbackInfo.userdata1 = &userData;
+  callbackInfo.mode      = WGPUCallbackMode_AllowSpontaneous;
   wgpuInstanceRequestAdapter(instance, options, callbackInfo);
   #else
   wgpuInstanceRequestAdapter(instance, options, onAdapterRequestEnded, &userData);
@@ -107,6 +108,7 @@ static WGPUDevice requestDeviceSync(WGPUAdapter adapter, const WGPUDeviceDescrip
   WGPURequestDeviceCallbackInfo callbackInfo = {};
   callbackInfo.callback  = onDeviceRequestEnded;
   callbackInfo.userdata1 = &userData;
+  callbackInfo.mode      = WGPUCallbackMode_AllowSpontaneous;
   wgpuAdapterRequestDevice(adapter, descriptor, callbackInfo);
   #else
   auto onDeviceRequestEnded = [](WGPURequestDeviceStatus status, WGPUDevice device, const char* message, void* pUserData) {
@@ -216,6 +218,7 @@ void wk_utils::readBufferBack(WulkanContext a_ctx, WGPUQueue a_queue, WGPUBuffer
   WGPUBufferMapCallbackInfo cbInfo = {};
   cbInfo.callback  = onBuffer2Mapped;
   cbInfo.userdata1 = &context;
+  cbInfo.mode      = WGPUCallbackMode_AllowSpontaneous;
   wgpuBufferMapAsync(a_tmpBuffer, WGPUMapMode_Read, 0, a_size, cbInfo);
    
   #else

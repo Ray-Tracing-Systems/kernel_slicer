@@ -149,6 +149,18 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   std::string shaderPath = std::string(a_filePath) + "/{{Kernel.OriginalName}}" + ".wgsl";
   auto shaderSrc = readFile(shaderPath.c_str());
 
+  #if WGPU_DISTR >= 30
+  WGPUShaderModuleWGSLDescriptor wgslDesc = {};
+  wgslDesc.chain.sType = WGPUSType_ShaderSourceWGSL;
+  wgslDesc.code = {shaderSrc.c_str(), WGPU_STRLEN};
+  WGPUShaderModuleDescriptor shaderDesc = {};
+  shaderDesc.nextInChain = &wgslDesc.chain;
+  WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(device, &shaderDesc);
+  
+  WGPUComputePipelineDescriptor pipelineDesc = {};
+  pipelineDesc.compute.module     = shaderModule;
+  pipelineDesc.compute.entryPoint = {"main", WGPU_STRLEN};
+  #else
   WGPUShaderModuleWGSLDescriptor wgslDesc = {};
   wgslDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
   wgslDesc.code = shaderSrc.c_str();
@@ -156,10 +168,10 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   shaderDesc.nextInChain = &wgslDesc.chain;
   WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(device, &shaderDesc);
 
-  // 5. Create compute pipeline
   WGPUComputePipelineDescriptor pipelineDesc = {};
   pipelineDesc.compute.module     = shaderModule;
   pipelineDesc.compute.entryPoint = "main";
+  #endif
 
   {{Kernel.Name}}Pipeline = wgpuDeviceCreateComputePipeline(device, &pipelineDesc);
   {{Kernel.Name}}DSLayout = wgpuComputePipelineGetBindGroupLayout({{Kernel.Name}}Pipeline, 0);
