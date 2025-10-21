@@ -7,6 +7,8 @@
 #include <webgpu/wgpu.h>
 #endif
 
+#define WGPU_DISTR 30
+
 namespace wk_utils
 {
   struct WulkanDeviceFeatures

@@ -5,6 +5,8 @@
 
 void wk_utils::printDeviceInfo(WGPUAdapter adapter) 
 {
+  #if WGPU_DISTR >= 30
+  #else
   // Получаем свойства адаптера
   WGPUAdapterProperties props = {};
   wgpuAdapterGetProperties(adapter, &props);
@@ -14,11 +16,7 @@ void wk_utils::printDeviceInfo(WGPUAdapter adapter)
   std::cout << "[wgpu]: Driver    : " << props.driverDescription << std::endl;
   std::cout << "[wgpu]: Backend   : " << props.backendType << std::endl;
   std::cout << "[wgpu]: Device ID : " << props.deviceID << std::endl;
-}
-
-static void onDeviceError(WGPUErrorType type, const char* message, void*) 
-{
-  std::cout << "[wgpu device error]: " << message << std::endl;
+  #endif
 }
 
 struct UserData 
@@ -26,6 +24,32 @@ struct UserData
   WGPUAdapter adapter = nullptr;
   bool requestEnded = false;
 };
+
+#if WGPU_DISTR >= 30
+
+static void onDeviceError(WGPUDevice const * device, WGPUErrorType type, WGPUStringView message, void* userdata1, void* userdata2) 
+{
+  std::string tempMsg(message.data, message.length);
+  std::cout << "[wgpu device error]: " << tempMsg.c_str() << std::endl;
+}
+
+static void onAdapterRequestEnded(WGPURequestAdapterStatus status, WGPUAdapter adapter, WGPUStringView message, void* pUserData,  void *userdata2) 
+{
+  UserData* userData = reinterpret_cast<UserData*>(pUserData);
+  if (status == WGPURequestAdapterStatus_Success) {
+    userData->adapter = adapter;
+  } else {
+    std::string tempMsg(message.data, message.length);
+    std::cout << "Could not get WebGPU adapter: " << tempMsg.c_str() << std::endl; //  << message << std::endl;
+  }
+  userData->requestEnded = true;
+}
+#else
+
+static void onDeviceError(WGPUErrorType type, const char* message, void*) 
+{
+  std::cout << "[wgpu device error]: " << message << std::endl;
+}
 
 static void onAdapterRequestEnded(WGPURequestAdapterStatus status, WGPUAdapter adapter, const char* message, void* pUserData) 
 {
@@ -37,16 +61,23 @@ static void onAdapterRequestEnded(WGPURequestAdapterStatus status, WGPUAdapter a
   }
   userData->requestEnded = true;
 }
+#endif
 
 static WGPUAdapter requestAdapterSync(WGPUInstance instance, WGPURequestAdapterOptions const* options) 
 {
   UserData userData;
-  wgpuInstanceRequestAdapter(
-      instance,
-      options,
-      onAdapterRequestEnded,
-      &userData
-  );
+  #if WGPU_DISTR >= 30
+  //static auto cCallback = [](WGPURequestAdapterStatus status, WGPUAdapter adapter, char const * message, void * userdata) -> void {
+	//	onAdapterRequestEnded(status, adapter, message, userdata);
+	//};
+  WGPURequestAdapterCallbackInfo callbackInfo = {};
+  callbackInfo.callback  = onAdapterRequestEnded;
+  callbackInfo.userdata1 = &userData;
+  wgpuInstanceRequestAdapter(instance, options, callbackInfo);
+  #else
+  wgpuInstanceRequestAdapter(instance, options, onAdapterRequestEnded, &userData);
+  #endif
+
   // Wait until the callback sets requestEnded to true
   while (!userData.requestEnded) {
       // You may want to yield or sleep a bit here in real code
@@ -61,16 +92,33 @@ static WGPUDevice requestDeviceSync(WGPUAdapter adapter, const WGPUDeviceDescrip
       WGPUDevice device = nullptr;
       bool requestEnded = false;
   } userData;
+  
+  #if WGPU_DISTR >= 30
+  auto onDeviceRequestEnded = [](WGPURequestDeviceStatus status, WGPUDevice device, WGPUStringView message, void* pUserData, void *userdata2) {
+    UserData* userData = reinterpret_cast<UserData*>(pUserData);
+    if (status == WGPURequestDeviceStatus_Success) {
+        userData->device = device;
+    } else {
+     std::string tempMsg(message.data, message.length);
+     std::cout << "Could not get WebGPU device: " << tempMsg.c_str() << std::endl;
+    }
+    userData->requestEnded = true;
+  };
+  WGPURequestDeviceCallbackInfo callbackInfo = {};
+  callbackInfo.callback  = onDeviceRequestEnded;
+  callbackInfo.userdata1 = &userData;
+  wgpuAdapterRequestDevice(adapter, descriptor, callbackInfo);
+  #else
   auto onDeviceRequestEnded = [](WGPURequestDeviceStatus status, WGPUDevice device, const char* message, void* pUserData) {
-      UserData* userData = reinterpret_cast<UserData*>(pUserData);
-      if (status == WGPURequestDeviceStatus_Success) {
-          userData->device = device;
-      } else {
-          std::cout << "Could not get WebGPU device: " << message << std::endl;
-      }
-      userData->requestEnded = true;
+    UserData* userData = reinterpret_cast<UserData*>(pUserData);
+    if (status == WGPURequestDeviceStatus_Success)
+      userData->device = device;
+    else 
+      std::cout << "Could not get WebGPU device: " << message << std::endl;
+    userData->requestEnded = true;
   };
   wgpuAdapterRequestDevice(adapter, descriptor, onDeviceRequestEnded, &userData);
+  #endif
   while (!userData.requestEnded) {
       // Optionally sleep/yield here
   }
@@ -105,15 +153,32 @@ wk_utils::WulkanContext wk_utils::globalContextInit(WulkanDeviceFeatures a_featu
   //  Create device
   WGPUDeviceDescriptor deviceDesc = {};
   deviceDesc.nextInChain = nullptr;
-  deviceDesc.label = "Cur Device"; // Optional: for debugging
+  #if WGPU_DISTR >= 30
+  deviceDesc.label = {"Wulkan Device", WGPU_STRLEN},  // Optional: for debugging
+  #else
+  deviceDesc.label = "Wulkan Device"; // Optional: for debugging
+  #endif
   //deviceDesc.requiredFeaturesCount = 0; // No special features
   deviceDesc.requiredFeatures = nullptr;
   deviceDesc.requiredLimits = nullptr;
   deviceDesc.defaultQueue.nextInChain = nullptr;
-  deviceDesc.defaultQueue.label = "The default queue";
+  #if WGPU_DISTR >= 30
+  deviceDesc.defaultQueue.label = {"DefaultQueue", WGPU_STRLEN}; 
+  WGPUUncapturedErrorCallbackInfo uncapturedCallbackInfo = {};
+  {
+    uncapturedCallbackInfo.callback  = onDeviceError;
+    uncapturedCallbackInfo.userdata1 = nullptr; 
+  }
+  deviceDesc.uncapturedErrorCallbackInfo = uncapturedCallbackInfo;
+  #else
+  deviceDesc.defaultQueue.label = "DefaultQueue";
+  #endif
 
   res.device = requestDeviceSync(res.physicalDevice, &deviceDesc);
+  
+  #if WGPU_DISTR <= 20
   wgpuDeviceSetUncapturedErrorCallback(res.device, onDeviceError, nullptr);
+  #endif
 
   return res;
 }
