@@ -150,12 +150,19 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   auto shaderSrc = readFile(shaderPath.c_str());
 
   #if WGPU_DISTR >= 30
+  {% if WGPU_VER > 30 %}
+  const WGPUChainedStruct          tmp1 = {.sType = WGPUSType_ShaderSourceWGSL };
+  const WGPUShaderSourceWGSL       tmp2 = {.chain = tmp1, .code = {shaderSrc.c_str(), WGPU_STRLEN},};
+  const WGPUShaderModuleDescriptor tmp3 = {.nextInChain = (const WGPUChainedStruct *)&tmp2, .label = {"{{Kernel.OriginalName}} shader module", WGPU_STRLEN} };
+  WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(device, &tmp3);
+  {% else %}
   WGPUShaderModuleWGSLDescriptor wgslDesc = {};
   wgslDesc.chain.sType = WGPUSType_ShaderSourceWGSL;
   wgslDesc.code = {shaderSrc.c_str(), WGPU_STRLEN};
   WGPUShaderModuleDescriptor shaderDesc = {};
   shaderDesc.nextInChain = &wgslDesc.chain;
   WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(device, &shaderDesc);
+  {% endif %}
   
   WGPUComputePipelineDescriptor pipelineDesc = {};
   pipelineDesc.compute.module     = shaderModule;
@@ -167,7 +174,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   WGPUShaderModuleDescriptor shaderDesc = {};
   shaderDesc.nextInChain = &wgslDesc.chain;
   WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(device, &shaderDesc);
-
   WGPUComputePipelineDescriptor pipelineDesc = {};
   pipelineDesc.compute.module     = shaderModule;
   pipelineDesc.compute.entryPoint = "main";

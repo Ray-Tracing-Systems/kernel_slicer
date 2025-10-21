@@ -34,6 +34,8 @@ namespace kslicer
 {
   struct TextGenSettings
   {
+    std::string interfaceName;
+    uint32_t wgpu_ver = 30;
     bool enableRayGen      = false;
     bool enableRayGenForce = false;
     bool enableMotionBlur  = false;
@@ -45,7 +47,6 @@ namespace kslicer
     bool skipUBORead       = false;
     bool uboIsAlwaysConst  = false;
     bool uboIsAlwaysUniform = false;
-    std::string interfaceName;
   };
 
   struct IShaderCompiler;

@@ -299,6 +299,8 @@ int main(int argc, const char **argv)
       textGenSettings.uboIsAlwaysConst = (atoi(params["-const_ubo"].c_str()) != 0);
     if(params.find("-uniform_ubo") != params.end())
       textGenSettings.uboIsAlwaysUniform = (atoi(params["-uniform_ubo"].c_str()) != 0);
+    if(params.find("-wgpu_ver") != params.end())
+      textGenSettings.wgpu_ver = atoi(params["-wgpu_ver"].c_str());
   }
 
   // include and process folders

@@ -478,6 +478,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   
   data["UseCUB"]      = a_settings.useCUBforCUDA;
   data["SkipReadUBO"] = a_settings.skipUBORead;
+  data["WGPU_VER"]    = a_settings.wgpu_ver;
   data["VecUBO"] = a_classInfo.placeVectorsInUBO;
   data["cuda"]   = a_classInfo.pHostCC->Name();
 
