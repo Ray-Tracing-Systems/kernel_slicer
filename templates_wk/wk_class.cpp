@@ -33,7 +33,7 @@ static std::string readFile(const char* path)
 
 wk_utils::WulkanDeviceFeatures {{MainClassName}}{{MainClassSuffix}}_ListRequiredDeviceFeatures()
 {
-  wk_utils::WulkanDeviceFeatures res;
+  wk_utils::WulkanDeviceFeatures res = {};
   return res;
 }
 
@@ -163,7 +163,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   shaderDesc.nextInChain = &wgslDesc.chain;
   WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(device, &shaderDesc);
   {% endif %}
-  
+
   WGPUComputePipelineDescriptor pipelineDesc = {};
   pipelineDesc.compute.module     = shaderModule;
   pipelineDesc.compute.entryPoint = {"main", WGPU_STRLEN};
