@@ -146,7 +146,8 @@ void {{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}()
 {% for Kernel in Kernels %}
 void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char* a_filePath)
 {
-  std::string shaderPath = std::string(a_filePath) + "/{{Kernel.OriginalName}}" + ".wgsl";
+  const std::string shaderPath1 = std::string(a_filePath) + "/{{Kernel.OriginalName}}" + ".wgsl";
+  const std::string shaderPath  = AlterShaderPath(shaderPath1.c_str());
   auto shaderSrc = readFile(shaderPath.c_str());
 
   #if WGPU_DISTR >= 30

@@ -231,5 +231,11 @@ protected:
   {{MainClassName}}{{MainClassSuffix}}_UBO_Data m_uboData;
 
   virtual void ReadBufferBack(WGPUBuffer a_buffer, size_t a_size, void* a_data);
+
+  {% if HasGetResDirFunc %}
+  virtual std::string AlterShaderPath(const char* in_shaderPath) { return GetResourcesRootDir() + "/" + std::string("{{ShaderFolderPrefix}}") + std::string(in_shaderPath); }
+  {% else %}
+  virtual std::string AlterShaderPath(const char* in_shaderPath) { return std::string("{{ShaderFolderPrefix}}") + std::string(in_shaderPath); }
+  {% endif %}
 }; 
 
