@@ -922,6 +922,7 @@
                         "-shaderCC", "wgpu",
                         "-suffix",   "_WGPU", 
                         "-wgpu_ver", "35",
+                        "-shaderFolderPrefix", "demo_app/streaming",
                         "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
