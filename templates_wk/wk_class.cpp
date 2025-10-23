@@ -122,13 +122,26 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers()
   {% endfor %}
 }
 
+void {{MainClassName}}{{MainClassSuffix}}::ReserveEmptyVectors()
+{
+  {% for Var in ClassVectorVars %}
+  {% if Var.AccessSymb == "." %}
+  if({{Var.Name}}{{Var.AccessSymb}}capacity() == 0)
+    {{Var.Name}}{{Var.AccessSymb}}reserve(4);
+  {% else %}
+  if({{Var.Name}} != nullptr && {{Var.Name}}{{Var.AccessSymb}}capacity() == 0)
+    {{Var.Name}}{{Var.AccessSymb}}reserve(4);
+  {% endif %}
+  {% endfor %}
+}
+
 {% for UpdateFun in UpdateVectorFun %}
 {% if UpdateFun.NumParams == 2 %}
 void {{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}(size_t a_first, size_t a_size)
 {
   if(m_vdata.{{UpdateFun.VectorName}}Buffer == nullptr)
     return;
-    
+
   if(a_first + a_size > {{UpdateFun.VectorName}}.size())
   {
     std::cout << "[{{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}]: FAILED! wrong first element or size or both " << std::endl;

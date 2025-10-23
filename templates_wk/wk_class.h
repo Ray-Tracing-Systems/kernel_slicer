@@ -118,8 +118,9 @@ public:
     {% endfor %}
     UpdateAllBindingGroup_{{MainFunc.Name}}();
   }
-
+  virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}};
   {% endfor %}
+  
   
 protected:
 
@@ -150,6 +151,8 @@ protected:
 
   virtual void UpdatePlainMembers();
   virtual void UpdateVectorMembers();
+  virtual void ReserveEmptyVectors();
+
   {% for UpdateFun in UpdateVectorFun %}
   {% if UpdateFun.NumParams == 2 %}
   void {{UpdateFun.Name}}(size_t a_first, size_t a_size) override;
@@ -160,6 +163,7 @@ protected:
 
   void CommitDeviceData() override 
   {
+    ReserveEmptyVectors();
     InitDeviceData();
     UpdatePlainMembers();
     UpdateVectorMembers();
@@ -200,7 +204,6 @@ protected:
   } {{MainFunc.Name}}_local;
 
   void UpdateAllBindingGroup_{{MainFunc.Name}}();
-  virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}};
   {% endfor %}
 
   struct MembersDataGPU
