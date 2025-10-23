@@ -126,6 +126,9 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers()
 {% if UpdateFun.NumParams == 2 %}
 void {{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}(size_t a_first, size_t a_size)
 {
+  if(m_vdata.{{UpdateFun.VectorName}}Buffer == nullptr)
+    return;
+    
   if(a_first + a_size > {{UpdateFun.VectorName}}.size())
   {
     std::cout << "[{{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}]: FAILED! wrong first element or size or both " << std::endl;
