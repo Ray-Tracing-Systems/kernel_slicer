@@ -48,7 +48,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitWulkanObjects(WGPUDevice a_device
 void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
 {
   WGPUBufferDescriptor uboDesc = {};
-  uboDesc.size  = sizeof(m_uboData);
+  uboDesc.size  = std::max<size_t>(sizeof(m_uboData), 1024);
   uboDesc.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopySrc | WGPUBufferUsage_CopyDst;
 
   WGPUBufferDescriptor pcbDesc = {};
@@ -57,7 +57,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
 
   m_classDataBuffer    = wgpuDeviceCreateBuffer(device, &uboDesc);
   m_pushConstantBuffer = wgpuDeviceCreateBuffer(device, &pcbDesc);
-  m_classDataSize      = uboDesc.size;         // total size of ubo buffer
+  m_classDataSize      = uboDesc.size;
   
   {% if length(ClassVectorVars) != 0 %}
   WGPUBufferDescriptor bufDesc = {};
@@ -124,13 +124,15 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers()
 
 void {{MainClassName}}{{MainClassSuffix}}::ReserveEmptyVectors()
 {
+  const size_t minBindingSize    = 512; // bytes
+  const size_t minElementsNumber = minBindingSize/4; // bytes
   {% for Var in ClassVectorVars %}
   {% if Var.AccessSymb == "." %}
-  if({{Var.Name}}{{Var.AccessSymb}}capacity() == 0)
-    {{Var.Name}}{{Var.AccessSymb}}reserve(4);
+  if({{Var.Name}}{{Var.AccessSymb}}capacity() < minElementsNumber)
+    {{Var.Name}}{{Var.AccessSymb}}reserve(minElementsNumber);
   {% else %}
-  if({{Var.Name}} != nullptr && {{Var.Name}}{{Var.AccessSymb}}capacity() == 0)
-    {{Var.Name}}{{Var.AccessSymb}}reserve(4);
+  if({{Var.Name}} != nullptr && {{Var.Name}}{{Var.AccessSymb}}capacity() < minElementsNumber)
+    {{Var.Name}}{{Var.AccessSymb}}reserve(minElementsNumber);
   {% endif %}
   {% endfor %}
 }
