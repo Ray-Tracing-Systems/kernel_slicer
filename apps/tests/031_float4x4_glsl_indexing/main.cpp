@@ -45,12 +45,12 @@ int main(int argc, const char** argv)
   pImpl->CommitDeviceData();
   pImpl->Test(array.data(), unsigned(array.size()));
 
-  for(int i=0;i<4;i++)
+  for(int i=0;i<8;i++)
     std::cout << i << ":\t" << array[i].x << " " <<  array[i].y << " " <<  array[i].z << " " << array[i].w << std::endl;
   
-  float  outArray2[16] = {};
+  float  outArray2[32] = {};
 
-  for(int i=0;i<4;i++) 
+  for(int i=0;i<8;i++) 
   {
     outArray2[i*4+0]  = array[i][0];
     outArray2[i*4+1]  = array[i][1];
