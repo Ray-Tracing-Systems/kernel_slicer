@@ -163,6 +163,10 @@ mat3 make_float3x3(vec3 a, vec3 b, vec3 c) { // different way than mat3(a,b,c)
               a.z, b.z, c.z);
 }
 
+void set_row2f(inout mat2 m, int col, vec2 value) { m[0][col] = value.x; m[1][col] = value.y; }
+void set_row3f(inout mat3 m, int col, vec3 value) { m[0][col] = value.x; m[1][col] = value.y; m[2][col] = value.z; }
+void set_row4f(inout mat4 m, int col, vec4 value) { m[0][col] = value.x; m[1][col] = value.y; m[2][col] = value.z; m[3][col] = value.w; }
+
 vec4 cross3(vec4 a, vec4 b) { return vec4(cross(a.xyz, b.xyz), 1.0f); }
 
 struct Box4f 

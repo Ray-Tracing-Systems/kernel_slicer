@@ -1940,12 +1940,9 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
       std::string indexVal  = kslicer::GetRangeSourceCode(call->getArg(0)->getSourceRange(), m_compiler);
       std::string argValue  = RecursiveRewrite(call->getArg(1));
       
-      // TODO: implement this with a function that takes type name to get correct number of elements
-      //
-      std::string lastRewrittenText = "{" + objName + "[0]" + "[" + indexVal + "] = " + argValue + "[0]; " + 
-                                            objName + "[1]" + "[" + indexVal + "] = " + argValue + "[1]; " +
-                                            objName + "[2]" + "[" + indexVal + "] = " + argValue + "[2]; " +
-                                            objName + "[3]" + "[" + indexVal + "] = " + argValue + "[3]; }";
+      std::string baseType = thisTypeName.substr(0, 1);
+      std::string number   = thisTypeName.substr(thisTypeName.size()-1, 1);
+      std::string lastRewrittenText = "set_row" + number + baseType + "(" + objName + ", " + indexVal + ", " + argValue + ")";
 
       ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
       MarkRewritten(call);
