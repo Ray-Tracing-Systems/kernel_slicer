@@ -1,5 +1,8 @@
 #include "test_class.h"
 
+using LiteMath::make_float4x4_from_rows;
+using LiteMath::make_float4x4_from_cols;
+
 float4x4 TestMatFunc()
 {
   float4x4 m;
@@ -57,6 +60,12 @@ void TestClass::kernel1D_Test(float4* a_data, uint32_t a_size)
     testMatrix[3][1] = 14.0f;
     testMatrix[3][2] = 15.0f;
     testMatrix[3][3] = 16.0f;
+  
+    ///////////////////////////////////////////////////////////
+    float4x4 testMatrixRow = make_float4x4_from_rows(float4(1,2,3,4), 
+                                                     float4(5,6,7,8),
+                                                     float4(9,10,11,12),
+                                                     float4(13,14,15,16));
 
     if(i == 0)
       a_data[i] = m_testMatrix*testInput;

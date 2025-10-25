@@ -9,8 +9,10 @@
 #define JSON_LOG_IMPLEMENTATION
 #include "JSONLog.hpp"
 
+#ifdef USE_VULKAN
 #include "vk_context.h"
 std::shared_ptr<TestClass> CreateTestClass_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -27,6 +29,7 @@ int main(int argc, const char** argv)
 
   bool onGPU = args.hasOption("--gpu");
   
+  #ifdef USE_VULKAN
   if(onGPU)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
@@ -34,6 +37,7 @@ int main(int argc, const char** argv)
     pImpl = CreateTestClass_Generated(ctx, array.size());
   }
   else
+  #endif
     pImpl = std::make_shared<TestClass>();
 
   std::string backendName = onGPU ? "gpu" : "cpu";
