@@ -110,6 +110,17 @@ complex complex_sqrt(complex z)
 /////////////////// local functions /////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 
+mat4 make_float4x4_from_cols(vec4 a, vec4 b, vec4 c, vec4 d) { return mat4(a, b, c, d); } // swaped rows/cols logic between LiteMath <=> GLSL
+mat4 make_float4x4_from_rows(vec4 a, vec4 b, vec4 c, vec4 d)                              // swaped rows/cols logic between LiteMath <=> GLSL
+{
+  return mat4(
+      a.x, b.x, c.x, d.x,
+      a.y, b.y, c.y, d.y,
+      a.z, b.z, c.z, d.z,
+      a.w, b.w, c.w, d.w
+  );
+}
+
 mat4 translate4x4(vec3 delta)
 {
   return mat4(vec4(1.0, 0.0, 0.0, 0.0),

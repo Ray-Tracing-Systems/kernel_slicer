@@ -70,3 +70,15 @@ bool kslicer::IsCombinedImageSamplerTypeName(const std::string& a_typeName)
   return false;
 }
 
+bool kslicer::IsMatrixTypeName(const std::string& a_typeName)
+{
+  if(a_typeName      == "float2x2" || a_typeName == "double2x2")
+    return true;
+  else if(a_typeName == "float3x3" || a_typeName == "double3x3")
+    return true;
+  else if(a_typeName == "float4x4" || a_typeName == "double4x4")
+    return true;
+  else
+    return false;
+}
+

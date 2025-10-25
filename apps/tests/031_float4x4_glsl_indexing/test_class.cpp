@@ -72,6 +72,18 @@ void TestClass::kernel1D_Test(float4* a_data, uint32_t a_size)
                                                      float4(3,7,11,15),
                                                      float4(4,8,12,16));
 
+    float4x4 testMatrixRow2;
+    testMatrixRow2.set_row(0, float4(1,2,3,4));
+    testMatrixRow2.set_row(1, float4(5,6,7,8));
+    testMatrixRow2.set_row(2, float4(9,10,11,12));
+    testMatrixRow2.set_row(3, float4(13,14,15,16));
+
+    float4x4 testMatrixCol2;
+    testMatrixCol2.set_col(0, float4(1,5,9, 13));
+    testMatrixCol2.set_col(1, float4(2,6,10,14));
+    testMatrixCol2.set_col(2, float4(3,7,11,15));
+    testMatrixCol2.set_col(3, float4(4,8,12,16));
+
     if(i == 0)
       a_data[i] = m_testMatrix*testInput;
     else if(i == 1)
@@ -85,9 +97,9 @@ void TestClass::kernel1D_Test(float4* a_data, uint32_t a_size)
     else if (i == 5)
       a_data[i] = testMatrixCol*testInput;
     else if (i == 6)
-      a_data[i] = testMatrixRow*testInput;
+      a_data[i] = testMatrixRow2*testInput;
     else if (i == 7)
-      a_data[i] = testMatrixCol*testInput;
+      a_data[i] = testMatrixCol2*testInput;
     else 
       a_data[i] = float4(0,0,0,0);
   }

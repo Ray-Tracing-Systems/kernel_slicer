@@ -1925,12 +1925,43 @@ bool kslicer::NeedRewriteTextureArray(clang::CXXMemberCallExpr* a_call, std::str
 bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* call)
 {
   clang::CXXMethodDecl* fDecl = call->getMethodDecl();
+  const clang::QualType qt    = call->getObjectType();
+  const auto& thisTypeName    = qt.getAsString();
+
   if(fDecl != nullptr && WasNotRewrittenYet(call))
   {
     //std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), m_compiler);
     std::string fname = fDecl->getNameInfo().getName().getAsString();
+    
+    if(fname == "set_row" && kslicer::IsMatrixTypeName(thisTypeName))
+    {
+      clang::Expr* pMatName =	call->getImplicitObjectArgument();
+      std::string  objName  = kslicer::GetRangeSourceCode(pMatName->getSourceRange(), m_compiler);
+      std::string indexVal  = kslicer::GetRangeSourceCode(call->getArg(0)->getSourceRange(), m_compiler);
+      std::string argValue  = RecursiveRewrite(call->getArg(1));
+      
+      // TODO: implement this with a function that takes type name to get correct number of elements
+      //
+      std::string lastRewrittenText = "{" + objName + "[0]" + "[" + indexVal + "] = " + argValue + "[0]; " + 
+                                            objName + "[1]" + "[" + indexVal + "] = " + argValue + "[1]; " +
+                                            objName + "[2]" + "[" + indexVal + "] = " + argValue + "[2]; " +
+                                            objName + "[3]" + "[" + indexVal + "] = " + argValue + "[3]; }";
 
-    if(fname == "sample" || fname == "Sample")
+      ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+      MarkRewritten(call);
+    }
+    else if(fname == "set_col" && kslicer::IsMatrixTypeName(thisTypeName))
+    {
+      clang::Expr* pMatName =	call->getImplicitObjectArgument();
+      std::string  objName  = kslicer::GetRangeSourceCode(pMatName->getSourceRange(), m_compiler);
+      std::string indexVal  = kslicer::GetRangeSourceCode(call->getArg(0)->getSourceRange(), m_compiler);
+      std::string argValue  = RecursiveRewrite(call->getArg(1));
+      
+      std::string lastRewrittenText = objName + "[" + indexVal + "] = " + argValue;
+      ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+      MarkRewritten(call);
+    }
+    else if(fname == "sample" || fname == "Sample")
     {
       clang::Expr* pTexName =	call->getImplicitObjectArgument();
       std::string objName   = kslicer::GetRangeSourceCode(pTexName->getSourceRange(), m_compiler);

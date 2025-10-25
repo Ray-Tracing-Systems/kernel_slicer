@@ -110,6 +110,9 @@ complex operator/(float a, complex b)
 /////////////////// local functions /////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 
+float4x4 make_float4x4_from_cols(float4 a, float4 b, float4 c, float4 d) { return transpose(float4x4(a, b, c, d)); }
+float4x4 make_float4x4_from_rows(float4 a, float4 b, float4 c, float4 d) { return float4x4(a, b, c, d); }
+
 float4x4 translate4x4(float3 delta)
 {
   return float4x4(float4(1.0, 0.0, 0.0, 0.0),

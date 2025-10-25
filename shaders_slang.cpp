@@ -296,45 +296,6 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
     int a = 2;
   }
 
-  //if(kslicer::IsCalledWithArrowAndVirtual(call) && WasNotRewrittenYet(call))
-  //{
-  //  auto buffAndOffset = kslicer::GetVFHAccessNodes(call, m_compiler);
-  //  if(buffAndOffset.buffName != "" && buffAndOffset.offsetName != "")
-  //  {
-  //    std::string buffText2  = buffAndOffset.buffName;
-  //    std::string offsetText = buffAndOffset.offsetName; //GetRangeSourceCode(buffAndOffset.offsetNode->getSourceRange(), m_compiler); 
-  //    
-  //    std::string textCallNoName = "(" + offsetText; 
-  //    if(call->getNumArgs() != 0)
-  //      textCallNoName += ",";
-  //      
-  //    for(unsigned i=0;i<call->getNumArgs();i++)
-  //    {
-  //      const auto pParam                   = call->getArg(i);
-  //      const clang::QualType typeOfParam   =	pParam->getType();
-  //      const std::string typeNameRewritten = kslicer::CleanTypeName(typeOfParam.getAsString());
-  //      if(m_codeInfo->dataClassNames.find(typeNameRewritten) != m_codeInfo->dataClassNames.end()) 
-  //      {
-  //        if(i==call->getNumArgs()-1)
-  //          textCallNoName[textCallNoName.rfind(",")] = ' ';
-  //        continue;
-  //      }
-  //
-  //      textCallNoName += RecursiveRewrite(call->getArg(i));
-  //      if(i < call->getNumArgs()-1)
-  //        textCallNoName += ",";
-  //    }
-  //    
-  //    auto pBuffNameFromVFH = m_codeInfo->m_vhierarchy.find(buffAndOffset.interfaceTypeName);
-  //    if(pBuffNameFromVFH != m_codeInfo->m_vhierarchy.end())
-  //      buffText2 = pBuffNameFromVFH->second.objBufferName;
-  //
-  //    std::string vcallFunc  = buffAndOffset.interfaceName + "_" + fname + "_" + buffText2 + textCallNoName + ")";
-  //    ReplaceTextOrWorkAround(call->getSourceRange(), vcallFunc);
-  //    MarkRewritten(call);
-  //  }
-  //}
-
   // Get name of "this" type; we should check wherther this member is std::vector<T>  
   //
   const clang::QualType qt = call->getObjectType();
@@ -417,6 +378,34 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
     }
     resCallText += ")";
     ReplaceTextOrWorkAround(call->getSourceRange(), resCallText);
+    MarkRewritten(call);
+  }
+  else if(fname == "set_row" && kslicer::IsMatrixTypeName(thisTypeName) && WasNotRewrittenYet(call))
+  {
+    clang::Expr* pMatName =	call->getImplicitObjectArgument();
+    std::string  objName  = kslicer::GetRangeSourceCode(pMatName->getSourceRange(), m_compiler);
+    std::string indexVal  = kslicer::GetRangeSourceCode(call->getArg(0)->getSourceRange(), m_compiler);
+    std::string argValue  = RecursiveRewrite(call->getArg(1));
+      
+    std::string lastRewrittenText = objName + "[" + indexVal + "] = " + argValue;
+    ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+    MarkRewritten(call);
+  }
+  else if(fname == "set_col" && kslicer::IsMatrixTypeName(thisTypeName) && WasNotRewrittenYet(call))
+  {
+    clang::Expr* pMatName =	call->getImplicitObjectArgument();
+    std::string  objName  = kslicer::GetRangeSourceCode(pMatName->getSourceRange(), m_compiler);
+    std::string indexVal  = kslicer::GetRangeSourceCode(call->getArg(0)->getSourceRange(), m_compiler);
+    std::string argValue  = RecursiveRewrite(call->getArg(1));
+      
+    // TODO: implement this with a function that takes type name to get correct number of elements
+    //
+    std::string lastRewrittenText = "{" + objName + "[0]" + "[" + indexVal + "] = " + argValue + "[0]; " + 
+                                          objName + "[1]" + "[" + indexVal + "] = " + argValue + "[1]; " +
+                                          objName + "[2]" + "[" + indexVal + "] = " + argValue + "[2]; " +
+                                          objName + "[3]" + "[" + indexVal + "] = " + argValue + "[3]; }";
+
+    ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
     MarkRewritten(call);
   }
   else if((fname == "sample" || fname == "Sample") && WasNotRewrittenYet(call))
