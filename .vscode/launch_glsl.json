@@ -1245,6 +1245,7 @@
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore",  
                         "-I${workspaceFolder}/TINYSTL",       "ignore",
                         "-shaderCC", "glsl",
+                        "-expand_macro", "1",
                         "-DKERNEL_SLICER",
                         "-v"],
             "stopAtEntry": false,

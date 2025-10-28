@@ -402,24 +402,101 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
     fileName2.replace_extension("");
     fileName2.concat("_temp.cpp");
     auto fileNameT  = folderPath / fileName2;
-
+    
     std::cout << "[kslicer]: merging input files to temporary file " << fileName2 << std::endl;
+    
     std::ofstream fout(fileNameT);
     for(auto def : defines)
       fout << "#define " << def.first << " " << def.second << std::endl;
 
-    for(auto file : allFiles)
+    auto pExpand = cmdLineParams.find("-expand_macro");
+    if(pExpand != cmdLineParams.end() && (pExpand->second == "1" || pExpand->second == "true")) // merging with macro expansion
     {
-      fout << "////////////////////////////////////////////////////" << std::endl;
-      fout << "//// input file: " << file << std::endl;
-      fout << "////////////////////////////////////////////////////" << std::endl;
-      std::ifstream fin(file);
-      std::string line;
-      while (std::getline(fin, line))
-        fout << line.c_str() << std::endl;
+      std::cout << "[kslicer]: expand multiline macro defs; please note kslicer calls separate clang installation!" << std::endl;
+      
+      std::vector<std::string> linesWithIncludes;
+      linesWithIncludes.reserve(64);
+      
+      for(auto file : allFiles)
+      {
+        std::ifstream fin(file);
+        std::string line;
+        // (1) extract includes
+        //
+        int lastInclude = 0;
+        int lineNumber = 0;
+        linesWithIncludes.clear();
+        while (std::getline(fin, line))
+        { 
+          if(line.find("#include") != std::string::npos)
+          {
+            linesWithIncludes.push_back(line);
+            lastInclude = lineNumber;
+          }
+          lineNumber++;
+        }
+        
+        // (1) extract code and process it with clang++ to expand macro definitions
+        //
+        std::string tempFileName1 = file + "_temp1.cpp";
+        std::string tempFileName2 = file + "_temp2.cpp";
+        std::ofstream tempOutForExpand(tempFileName1.c_str());
+
+        fin.close();
+        fin.open(file);
+        //std::cout << "[kslicer]: seekg is failed! " << std::endl;
+      
+        lineNumber = 0;
+        while (std::getline(fin, line))
+        {
+          if(lineNumber > lastInclude)
+            tempOutForExpand << line.c_str() << std::endl;
+          lineNumber++;
+        }
+        
+        std::string commandLine = std::string("clang++ ") + tempFileName1 + " -E -o " + tempFileName2; 
+        tempOutForExpand.close();
+        std::cout << "[kslicer]: exec '" << commandLine.c_str() << "'" << std::endl;
+        int result = std::system(commandLine.c_str()); 
+        if(result != 0)
+          std::cout << "[kslicer]: exec FAILED! : " << std::endl;
+        
+        // (3) join files
+        //
+        fout << "////////////////////////////////////////////////////" << std::endl;
+        fout << "//// input file: " << file << std::endl;
+        fout << "////////////////////////////////////////////////////" << std::endl;
+
+        for(auto line : linesWithIncludes)
+          fout << line.c_str() << std::endl;
+        std::ifstream fin2(tempFileName2);
+        while (std::getline(fin2, line)) {
+          if(line[0] == '#')
+            continue;
+          fout << line.c_str() << std::endl;
+        }
+      
+        std::filesystem::remove(tempFileName1);
+        std::filesystem::remove(tempFileName2);
+      }
     }
+    else // normal merging
+    {  
+      for(auto file : allFiles)
+      {
+        fout << "////////////////////////////////////////////////////" << std::endl;
+        fout << "//// input file: " << file << std::endl;
+        fout << "////////////////////////////////////////////////////" << std::endl;
+        std::ifstream fin(file);
+        std::string line;
+        while (std::getline(fin, line))
+          fout << line.c_str() << std::endl;
+      }
+    }
+
     fout.close();
     fileName = fileNameT;
+
     std::cout << "[kslicer]: merging finished" << std::endl;
   }
 
