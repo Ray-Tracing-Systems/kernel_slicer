@@ -121,6 +121,8 @@ public:
   virtual {{MainFunc.ReturnType}} {{MainFunc.Decl}};
   {% endfor %}
   
+  virtual void UpdatePlainMembers();
+  virtual void UpdateVectorMembers();
   
 protected:
 
@@ -149,8 +151,6 @@ protected:
   virtual void InitKernels(const char* a_path);
   virtual void InitDeviceData();
 
-  virtual void UpdatePlainMembers();
-  virtual void UpdateVectorMembers();
   virtual void ReserveEmptyVectors();
 
   {% for UpdateFun in UpdateVectorFun %}
