@@ -39,9 +39,9 @@ wk_utils::WulkanDeviceFeatures {{MainClassName}}{{MainClassSuffix}}_ListRequired
 
 void {{MainClassName}}{{MainClassSuffix}}::InitWulkanObjects(WGPUDevice a_device, WGPUAdapter a_physicalDevice, size_t a_maxThreads)
 {
-  physicalDevice = a_physicalDevice;
-  device         = a_device;
-  queue          = wgpuDeviceGetQueue(device);
+  m_physicalDevice = a_physicalDevice;
+  m_device         = a_device;
+  m_queue          = wgpuDeviceGetQueue(m_device);
   InitKernels("{{ShaderFolder}}");
 }
 
@@ -55,8 +55,8 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   pcbDesc.size  = m_pushConstantStride*m_totalDSNumber;
   pcbDesc.usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst;
 
-  m_classDataBuffer    = wgpuDeviceCreateBuffer(device, &uboDesc);
-  m_pushConstantBuffer = wgpuDeviceCreateBuffer(device, &pcbDesc);
+  m_classDataBuffer    = wgpuDeviceCreateBuffer(m_device, &uboDesc);
+  m_pushConstantBuffer = wgpuDeviceCreateBuffer(m_device, &pcbDesc);
   m_classDataSize      = uboDesc.size;
   
   {% if length(ClassVectorVars) != 0 %}
@@ -65,7 +65,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   {% for Var in ClassVectorVars %}
   bufDesc.size  = {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}});
   bufDesc.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst;
-  m_vdata.{{Var.Name}}Buffer = wgpuDeviceCreateBuffer(device, &bufDesc);
+  m_vdata.{{Var.Name}}Buffer = wgpuDeviceCreateBuffer(m_device, &bufDesc);
   m_vdata.{{Var.Name}}Size   = bufDesc.size;
   {% endfor %}
 }
@@ -111,14 +111,14 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembers()
   m_uboData.{{Var.Name}}_capacity = uint32_t( {{Var.Name}}{{Var.AccessSymb}}capacity() ); assert( {{Var.Name}}{{Var.AccessSymb}}capacity() < maxAllowedSize );
   {% endfor %}
   m_uboData.dummy_last = 0; // Slang to WebGPU issue: access 'ubo[0].dummy_last' prevent slang compiler to discard ubo if it is not used
-  wgpuQueueWriteBuffer(queue, m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
+  wgpuQueueWriteBuffer(m_queue, m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers()
 {
   {% for Var in ClassVectorVars %}
   if({{Var.Name}}{{Var.AccessSymb}}size() > 0)
-    wgpuQueueWriteBuffer(queue, m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}{{Var.AccessSymb}}data(), {{Var.Name}}{{Var.AccessSymb}}size()*sizeof({{Var.TypeOfData}}) );
+    wgpuQueueWriteBuffer(m_queue, m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}{{Var.AccessSymb}}data(), {{Var.Name}}{{Var.AccessSymb}}size()*sizeof({{Var.TypeOfData}}) );
   {% endfor %}
 }
 
@@ -150,13 +150,13 @@ void {{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}(size_t a_first, si
     return;
   }
 
-  wgpuQueueWriteBuffer(queue, m_vdata.{{UpdateFun.VectorName}}Buffer, a_first*sizeof({{UpdateFun.TypeOfData}}), {{UpdateFun.VectorName}}.data() + a_first, a_size*sizeof({{UpdateFun.TypeOfData}}) );
+  wgpuQueueWriteBuffer(m_queue, m_vdata.{{UpdateFun.VectorName}}Buffer, a_first*sizeof({{UpdateFun.TypeOfData}}), {{UpdateFun.VectorName}}.data() + a_first, a_size*sizeof({{UpdateFun.TypeOfData}}) );
 }
 {%else%}
 void {{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}()
 {
   if({{UpdateFun.VectorName}}.size() != 0)
-    wgpuQueueWriteBuffer(queue, m_vdata.{{UpdateFun.VectorName}}Buffer, 0, {{UpdateFun.VectorName}}.data(), {{UpdateFun.VectorName}}.size()*sizeof({{UpdateFun.TypeOfData}}) );
+    wgpuQueueWriteBuffer(m_queue, m_vdata.{{UpdateFun.VectorName}}Buffer, 0, {{UpdateFun.VectorName}}.data(), {{UpdateFun.VectorName}}.size()*sizeof({{UpdateFun.TypeOfData}}) );
 }
 {%endif%}
 {% endfor %}
@@ -173,14 +173,14 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   const WGPUChainedStruct          tmp1 = {.sType = WGPUSType_ShaderSourceWGSL };
   const WGPUShaderSourceWGSL       tmp2 = {.chain = tmp1, .code = {shaderSrc.c_str(), WGPU_STRLEN},};
   const WGPUShaderModuleDescriptor tmp3 = {.nextInChain = (const WGPUChainedStruct *)&tmp2, .label = {"{{Kernel.OriginalName}} shader module", WGPU_STRLEN} };
-  WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(device, &tmp3);
+  WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(m_device, &tmp3);
   {% else %}
   WGPUShaderModuleWGSLDescriptor wgslDesc = {};
   wgslDesc.chain.sType = WGPUSType_ShaderSourceWGSL;
   wgslDesc.code = {shaderSrc.c_str(), WGPU_STRLEN};
   WGPUShaderModuleDescriptor shaderDesc = {};
   shaderDesc.nextInChain = &wgslDesc.chain;
-  WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(device, &shaderDesc);
+  WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(m_device, &shaderDesc);
   {% endif %}
 
   WGPUComputePipelineDescriptor pipelineDesc = {};
@@ -192,13 +192,13 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   wgslDesc.code = shaderSrc.c_str();
   WGPUShaderModuleDescriptor shaderDesc = {};
   shaderDesc.nextInChain = &wgslDesc.chain;
-  WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(device, &shaderDesc);
+  WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(m_device, &shaderDesc);
   WGPUComputePipelineDescriptor pipelineDesc = {};
   pipelineDesc.compute.module     = shaderModule;
   pipelineDesc.compute.entryPoint = "main";
   #endif
 
-  {{Kernel.Name}}Pipeline = wgpuDeviceCreateComputePipeline(device, &pipelineDesc);
+  {{Kernel.Name}}Pipeline = wgpuDeviceCreateComputePipeline(m_device, &pipelineDesc);
   {{Kernel.Name}}DSLayout = wgpuComputePipelineGetBindGroupLayout({{Kernel.Name}}Pipeline, 0);
 }
 
@@ -270,7 +270,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllBindingGroup_{{MainFunc.Name
     bgDesc.layout     = {{DescriptorSet.KernelName}}DSLayout; 
     bgDesc.entryCount = descriptorBufferInfo.size();
     bgDesc.entries    = descriptorBufferInfo.data();
-    m_allGeneratedDS[{{DescriptorSet.Id}}] = wgpuDeviceCreateBindGroup(device, &bgDesc);
+    m_allGeneratedDS[{{DescriptorSet.Id}}] = wgpuDeviceCreateBindGroup(m_device, &bgDesc);
   }
   {% endfor %}
 }
@@ -331,7 +331,7 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   KernelArgsPC oldPCData = pcData;
   {% endif %}
   
-  wgpuQueueWriteBuffer(queue, m_pushConstantBuffer, m_currPCOffset, &pcData, sizeof(KernelArgsPC)); // push constant emulation
+  wgpuQueueWriteBuffer(m_queue, m_pushConstantBuffer, m_currPCOffset, &pcData, sizeof(KernelArgsPC)); // push constant emulation
   {% if Kernel.HasLoopInit %}
   //vkCmdDispatch(m_currCmdBuffer, 1, 1, 1); // init kernel
   {% endif %}
@@ -370,10 +370,10 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
 void {{MainClassName}}{{MainClassSuffix}}::ReadBufferBack(WGPUBuffer a_buffer, size_t a_size, void* a_data)
 {
   wk_utils::WulkanContext ctx;
-  ctx.device         = device;
-  ctx.physicalDevice = physicalDevice;
+  ctx.device         = m_device;
+  ctx.physicalDevice = m_physicalDevice;
   ctx.instance       = nullptr; //TODO: set instance 
-  wk_utils::readBufferBack(ctx, queue, a_buffer, m_readBackBuffer, a_size, a_data);
+  wk_utils::readBufferBack(ctx, m_queue, a_buffer, m_readBackBuffer, a_size, a_data);
 }
 
 {% for MainFunc in MainFunctions %}
@@ -390,20 +390,20 @@ void {{MainClassName}}{{MainClassSuffix}}::ReadBufferBack(WGPUBuffer a_buffer, s
   // in
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
-  //auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+  //auto {{var.Name}}Img = vk_utils::createImg(m_device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
   //size_t {{var.Name}}ImgId = images.size();
   //images.push_back(&{{var.Name}}Img);
   //images2.push_back({{var.Name}}Img.image);
   {% else %}
   bufDesc.size  = {{var.DataSize}}*sizeof({{var.DataType}});
   bufDesc.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst;
-  WGPUBuffer {{var.Name}}GPU = wgpuDeviceCreateBuffer(device, &bufDesc);
+  WGPUBuffer {{var.Name}}GPU = wgpuDeviceCreateBuffer(m_device, &bufDesc);
   {% endif %}
   {% endfor %}
   // out
   {% for var in MainFunc.FullImpl.OutputData %}
   {% if var.IsTexture %}
-  //auto {{var.Name}}Img = vk_utils::createImg(device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, outFlags);
+  //auto {{var.Name}}Img = vk_utils::createImg(m_device, {{var.Name}}.width(), {{var.Name}}.height(), {{var.Format}}, outFlags);
   //size_t {{var.Name}}ImgId = images.size();
   //images.push_back(&{{var.Name}}Img);
   //images2.push_back({{var.Name}}Img.image);
@@ -411,7 +411,7 @@ void {{MainClassName}}{{MainClassSuffix}}::ReadBufferBack(WGPUBuffer a_buffer, s
   const size_t {{var.Name}}Size = {{var.DataSize}}*sizeof({{var.DataType}});
   bufDesc.size  = {{var.Name}}Size;
   bufDesc.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopySrc;
-  WGPUBuffer {{var.Name}}GPU = wgpuDeviceCreateBuffer(device, &bufDesc);
+  WGPUBuffer {{var.Name}}GPU = wgpuDeviceCreateBuffer(m_device, &bufDesc);
   {% endif %}
   {% endfor %}
 
@@ -423,18 +423,18 @@ void {{MainClassName}}{{MainClassSuffix}}::ReadBufferBack(WGPUBuffer a_buffer, s
   {% if var.IsTexture %}
   //pCopyHelper->UpdateImage({{var.Name}}Img.image, {{var.Name}}.data(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp(), VK_IMAGE_LAYOUT_GENERAL);
   {% else %}
-  wgpuQueueWriteBuffer(queue, {{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
+  wgpuQueueWriteBuffer(m_queue, {{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {% endif %}
   {% endfor %}
 
   // (4) now execute algorithm on GPU
   //
-  WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(device, nullptr);
+  WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(m_device, nullptr);
   {{MainFunc.Name}}Cmd(encoder, {{MainFunc.FullImpl.ArgsOnCall}});
 
   WGPUCommandBuffer cmd = wgpuCommandEncoderFinish(encoder, nullptr);
   //wgpuCommandEncoderRelease(encoder); //removed function ?
-  wgpuQueueSubmit(queue, 1, &cmd);
+  wgpuQueueSubmit(m_queue, 1, &cmd);
 
   // (5) copy output data to CPU
   //
@@ -453,7 +453,7 @@ void {{MainClassName}}{{MainClassSuffix}}::ReadBufferBack(WGPUBuffer a_buffer, s
     WGPUBufferDescriptor readDesc = {};
     readDesc.size    = maxReadSize;
     readDesc.usage   = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
-    m_readBackBuffer = wgpuDeviceCreateBuffer(device, &readDesc);
+    m_readBackBuffer = wgpuDeviceCreateBuffer(m_device, &readDesc);
   }
 
   {% for var in MainFunc.FullImpl.OutputData %}

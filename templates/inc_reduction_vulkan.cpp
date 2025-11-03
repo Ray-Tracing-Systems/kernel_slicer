@@ -1,6 +1,6 @@
   ///// complete kernel with reduction passes
   {
-    VkBufferMemoryBarrier barUBO = BarrierForSingleBuffer(m_classDataBuffer);
+    VkBufferMemoryBarrier redBarUBO = BarrierForSingleBuffer(m_classDataBuffer);
     VkBufferMemoryBarrier redBars   [{{Kernel.RedVarsFPNum}}]; 
     VkBuffer              redBuffers[{{Kernel.RedVarsFPNum}}+1] = { {% for RedVarName in Kernel.RedVarsFPArr %}m_vdata.{{RedVarName.Name}}Buffer, {% endfor %} VK_NULL_HANDLE};
     size_t                szOfElems [{{Kernel.RedVarsFPNum}}+1] = { {% for RedVarName in Kernel.RedVarsFPArr %}sizeof({{RedVarName.Type}}), {% endfor %} 0};
@@ -41,7 +41,7 @@
       vkCmdDispatch(m_currCmdBuffer, nextSize, 1, 1);
       
       if(wholeSize <= wgSize)
-        vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
+        vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &redBarUBO, 0, nullptr);
       else
       {
         uint32_t arrSize = sizeof(redBars)/sizeof(redBars[0]);

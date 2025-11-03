@@ -192,7 +192,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateTextureMembers(std::shared_ptr<
   vkCmdPipelineBarrier(cmdBuff,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,0,nullptr,0,nullptr,uint32_t(barriers.size()),barriers.data());
   vkEndCommandBuffer(cmdBuff);
 
-  vk_utils::executeCommandBufferNow(cmdBuff, transferQueue, device);
+  vk_utils::executeCommandBufferNow(cmdBuff, transferQueue, m_device);
   {% endif %}
 }
 
@@ -731,7 +731,7 @@ void {{MainClassName}}{{MainClassSuffix}}::ResetTimeStampMeasurements()
 void {{MainClassName}}{{MainClassSuffix}}::AccumTimeStampMeasurements(uint32_t a_start, uint32_t a_size)
 {
   std::vector<uint64_t> time_stamps(m_timestampPoolSize);
-  vkGetQueryPoolResults(device, m_queryPoolTimestamps, 
+  vkGetQueryPoolResults(m_device, m_queryPoolTimestamps, 
                         a_start, a_size, 
                         a_size * sizeof(uint64_t), time_stamps.data() + a_start, 
                         sizeof(uint64_t), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);

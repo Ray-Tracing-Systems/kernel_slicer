@@ -126,9 +126,9 @@ public:
   
 protected:
 
-  WGPUAdapter  physicalDevice = nullptr;
-  WGPUDevice   device         = nullptr;
-  WGPUQueue    queue          = nullptr;
+  WGPUAdapter  m_physicalDevice = nullptr;
+  WGPUDevice   m_device         = nullptr;
+  WGPUQueue    m_queue          = nullptr;
 
   {% for Kernel in Kernels %}
   WGPUComputePipeline {{Kernel.Name}}Pipeline = nullptr;
