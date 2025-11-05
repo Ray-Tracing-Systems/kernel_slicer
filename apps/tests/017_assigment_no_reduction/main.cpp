@@ -11,6 +11,7 @@
 
 #include "vk_context.h"
 std::shared_ptr<Numbers> CreateNumbers_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+vk_utils::VulkanDeviceFeatures Numbers_Generated_ListRequiredDeviceFeatures();
 
 int32_t array_summ_cpu(const std::vector<int32_t>& array);
 int32_t array_summ_gpu(const std::vector<int32_t>& array);
@@ -40,7 +41,9 @@ int main(int argc, const char** argv)
   if(onGPU)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+    
+    auto rdf = Numbers_Generated_ListRequiredDeviceFeatures();
+    auto ctx = vk_utils::globalContextInit(rdf.extensionNames, enableValidationLayers, a_preferredDeviceId, &rdf.features2);
     pImpl = CreateNumbers_Generated(ctx, array.size());
   }
   else
