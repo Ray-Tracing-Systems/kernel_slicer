@@ -297,6 +297,22 @@ In practical applications of Ray Tracing there is a problem with effitiency of c
 
 * [Example #4: virtual kernel call (WORK IN PROGRESS!)](doc/README_ex04.md)
 
+## Launching tests
+
+* Build volk: cd apps/volk && cmake . && make 
+
+* Choose json that you want to test from .vscode folder (e.g. launch_slang.json) copy it and rename to launch.json
+
+* Run a scrit to generate test list: cd python_scripts && python3 gen_sample_list.py
+
+* Look at sample_names.json file and remove some tests if you don't want to run them (e.g. tests for LiteRT/Hydra)
+
+* Launch tests: bash run_tests.bat 
+
+* For some tests you need to install additional packages:
+  Freeimage: sudo apt install libfreeimage-dev
+
+
 ## Internal documentaion
 
 The documentation for general concepts of how it works is located [here](doc/README_internal.md)
