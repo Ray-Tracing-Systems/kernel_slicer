@@ -59,8 +59,8 @@ vk_utils::VulkanDeviceFeatures {{MainClassName}}{{MainClassSuffix}}_ListRequired
 
 void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, VkPhysicalDevice a_physicalDevice, size_t a_maxThreadsCount)
 {
-  physicalDevice = a_physicalDevice;
-  device         = a_device;
+  m_physicalDevice = a_physicalDevice;
+  m_device         = a_device;
   m_allCreatedPipelineLayouts.reserve(256);
   m_allCreatedPipelines.reserve(256);
   {% if length(SpecConstants) > 0 %}
@@ -77,7 +77,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
     query_pool_info.sType      = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
     query_pool_info.queryType  = VK_QUERY_TYPE_TIMESTAMP;
     query_pool_info.queryCount = m_timestampPoolSize; 
-    VkResult res = vkCreateQueryPool(device, &query_pool_info, nullptr, &m_queryPoolTimestamps);
+    VkResult res = vkCreateQueryPool(m_device, &query_pool_info, nullptr, &m_queryPoolTimestamps);
     if(res != VK_SUCCESS)
       std::cout << "[InitVulkanObjects]: ALERT! can't create timestamp pool " << std::endl;
     ResetTimeStampMeasurements();
@@ -91,13 +91,13 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   subgroupProperties.pNext = nullptr;
   physicalDeviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
   physicalDeviceProperties.pNext = &subgroupProperties;
-  vkGetPhysicalDeviceProperties2(physicalDevice, &physicalDeviceProperties);
+  vkGetPhysicalDeviceProperties2(m_physicalDevice, &physicalDeviceProperties);
   {% if EnableTimeStamps %}
   m_timestampPeriod = float(physicalDeviceProperties.properties.limits.timestampPeriod);
   {% endif %}
   m_subgroupSize    = subgroupProperties.subgroupSize;
   {% if length(SceneMembers) > 0 %}
-  auto queueAllFID = vk_utils::getQueueFamilyIndex(physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
+  auto queueAllFID = vk_utils::getQueueFamilyIndex(m_physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
   {% endif %}
   {% for ScnObj in SceneMembers %}
   uint32_t userRestrictions[4];
@@ -156,7 +156,7 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeComputePipelineAndLayout(const ch
   shaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
 
   auto shaderCode   = vk_utils::readSPVFile(a_shaderPath);
-  auto shaderModule = vk_utils::createShaderModule(device, shaderCode);
+  auto shaderModule = vk_utils::createShaderModule(m_device, shaderCode);
 
   shaderStageInfo.module              = shaderModule;
   shaderStageInfo.pName               = a_mainName;
@@ -174,7 +174,7 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeComputePipelineAndLayout(const ch
   pipelineLayoutInfo.pSetLayouts            = &a_dsLayout;
   pipelineLayoutInfo.setLayoutCount         = 1;
 
-  VkResult res = vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, pPipelineLayout);
+  VkResult res = vkCreatePipelineLayout(m_device, &pipelineLayoutInfo, nullptr, pPipelineLayout);
   if(res != VK_SUCCESS)
   {
     std::string errMsg = vk_utils::errorString(res);
@@ -189,7 +189,7 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeComputePipelineAndLayout(const ch
   pipelineInfo.stage              = shaderStageInfo;
   pipelineInfo.layout             = (*pPipelineLayout);
   pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-  res = vkCreateComputePipelines(device, m_pipelineCache, 1, &pipelineInfo, nullptr, pPipeline);
+  res = vkCreateComputePipelines(m_device, m_pipelineCache, 1, &pipelineInfo, nullptr, pPipeline);
   if(res != VK_SUCCESS)
   {
     std::string errMsg = vk_utils::errorString(res);
@@ -199,7 +199,7 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeComputePipelineAndLayout(const ch
     m_allCreatedPipelines.push_back(*pPipeline);
 
   if (shaderModule != VK_NULL_HANDLE)
-    vkDestroyShaderModule(device, shaderModule, VK_NULL_HANDLE);
+    vkDestroyShaderModule(m_device, shaderModule, VK_NULL_HANDLE);
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::MakeComputePipelineOnly(const char* a_shaderPath, const char* a_mainName, const VkSpecializationInfo *a_specInfo, const VkDescriptorSetLayout a_dsLayout, VkPipelineLayout pipelineLayout, VkPipeline* pPipeline)
@@ -209,7 +209,7 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeComputePipelineOnly(const char* a
   shaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
 
   auto shaderCode   = vk_utils::readSPVFile(a_shaderPath);
-  auto shaderModule = vk_utils::createShaderModule(device, shaderCode);
+  auto shaderModule = vk_utils::createShaderModule(m_device, shaderCode);
 
   shaderStageInfo.module              = shaderModule;
   shaderStageInfo.pName               = a_mainName;
@@ -221,7 +221,7 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeComputePipelineOnly(const char* a
   pipelineInfo.stage              = shaderStageInfo;
   pipelineInfo.layout             = pipelineLayout;
   pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-  VkResult res = vkCreateComputePipelines(device, m_pipelineCache, 1, &pipelineInfo, nullptr, pPipeline);
+  VkResult res = vkCreateComputePipelines(m_device, m_pipelineCache, 1, &pipelineInfo, nullptr, pPipeline);
   if(res != VK_SUCCESS)
   {
     std::string errMsg = vk_utils::errorString(res);
@@ -231,7 +231,7 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeComputePipelineOnly(const char* a
     m_allCreatedPipelines.push_back(*pPipeline);
 
   if (shaderModule != VK_NULL_HANDLE)
-    vkDestroyShaderModule(device, shaderModule, VK_NULL_HANDLE);
+    vkDestroyShaderModule(m_device, shaderModule, VK_NULL_HANDLE);
 }
 {% if UseRayGen %}
 
@@ -256,7 +256,7 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
     shaderStage.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     shaderStage.stage  = stage;
     auto shaderCode    = vk_utils::readSPVFile(path.c_str());
-    shaderModules.push_back(vk_utils::createShaderModule(device, shaderCode));
+    shaderModules.push_back(vk_utils::createShaderModule(m_device, shaderCode));
     shaderStage.module = shaderModules.back();
     shaderStage.pName  = a_mainName;
     assert(shaderStage.module != VK_NULL_HANDLE);
@@ -322,7 +322,7 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
   pipelineLayoutInfo.pSetLayouts            = &a_dsLayout;
   pipelineLayoutInfo.setLayoutCount         = 1;
 
-  VkResult res = vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, pPipelineLayout);
+  VkResult res = vkCreatePipelineLayout(m_device, &pipelineLayoutInfo, nullptr, pPipelineLayout);
   if(res != VK_SUCCESS)
   {
     std::string errMsg = vk_utils::errorString(res);
@@ -346,7 +346,7 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
   createInfo.maxPipelineRayRecursionDepth = 1;
   createInfo.layout     = (*pPipelineLayout);
   createInfo.flags      = pipelineFlags;
-  res = vkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, m_pipelineCache, 1, &createInfo, nullptr, pPipeline);
+  res = vkCreateRayTracingPipelinesKHR(m_device, VK_NULL_HANDLE, m_pipelineCache, 1, &createInfo, nullptr, pPipeline);
   if(res != VK_SUCCESS)
   {
     std::string errMsg = vk_utils::errorString(res);
@@ -358,7 +358,7 @@ void {{MainClassName}}{{MainClassSuffix}}::MakeRayTracingPipelineAndLayout(const
   for (size_t i = 0; i < shader_paths.size(); ++i)
   {
     if(shaderModules[i] != VK_NULL_HANDLE)
-      vkDestroyShaderModule(device, shaderModules[i], VK_NULL_HANDLE);
+      vkDestroyShaderModule(m_device, shaderModules[i], VK_NULL_HANDLE);
     shaderModules[i] = VK_NULL_HANDLE;
   }
 }
@@ -368,61 +368,61 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
 {
   if(m_commitCount == 0)
     return;
-  vkDestroyBuffer(device, m_classDataBuffer, nullptr);
+  vkDestroyBuffer(m_device, m_classDataBuffer, nullptr);
   {% for Table in RemapTables %}
-  vkDestroyBuffer(device, m_vdata.{{Table.Name}}RemapTableBuffer, nullptr);
-  vkDestroyBuffer(device, m_vdata.{{Table.Name}}GeomTagsBuffer, nullptr);
+  vkDestroyBuffer(m_device, m_vdata.{{Table.Name}}RemapTableBuffer, nullptr);
+  vkDestroyBuffer(m_device, m_vdata.{{Table.Name}}GeomTagsBuffer, nullptr);
   {% endfor %}
   {% if UseSeparateUBO %}
-  vkDestroyBuffer(device, m_uboArgsBuffer, nullptr);
+  vkDestroyBuffer(m_device, m_uboArgsBuffer, nullptr);
   {% endif %}
   {% for Buffer in ClassVectorVars %}
-  vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
+  vkDestroyBuffer(m_device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
   {% if Buffer.IsVFHBuffer and Buffer.VFHLevel >= 2 %}
-  vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}_dataSBuffer, nullptr);
-  vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}_dataVBuffer, nullptr);
+  vkDestroyBuffer(m_device, m_vdata.{{Buffer.Name}}_dataSBuffer, nullptr);
+  vkDestroyBuffer(m_device, m_vdata.{{Buffer.Name}}_dataVBuffer, nullptr);
   {% endif %}
   {% endfor %}
   {% for Var in ClassTextureVars %}
-  vkDestroyImage    (device, m_vdata.{{Var.Name}}Texture, nullptr);
-  vkDestroyImageView(device, m_vdata.{{Var.Name}}View, nullptr);
+  vkDestroyImage    (m_device, m_vdata.{{Var.Name}}Texture, nullptr);
+  vkDestroyImageView(m_device, m_vdata.{{Var.Name}}View, nullptr);
   if(m_vdata.{{Var.Name}}Sampler != VK_NULL_HANDLE)
-     vkDestroySampler(device, m_vdata.{{Var.Name}}Sampler, nullptr);
+     vkDestroySampler(m_device, m_vdata.{{Var.Name}}Sampler, nullptr);
   {% endfor %}
   {% for Var in ClassTexArrayVars %}
   for(auto obj : m_vdata.{{Var.Name}}ArrayTexture)
-    vkDestroyImage(device, obj, nullptr);
+    vkDestroyImage(m_device, obj, nullptr);
   for(auto obj : m_vdata.{{Var.Name}}ArrayView)
-    vkDestroyImageView(device, obj, nullptr);
+    vkDestroyImageView(m_device, obj, nullptr);
   for(auto obj : m_vdata.{{Var.Name}}ArraySampler)
-  vkDestroySampler(device, obj, nullptr);
+  vkDestroySampler(m_device, obj, nullptr);
   {% endfor %}
   {% for Sam in SamplerMembers %}
-  vkDestroySampler(device, m_vdata.{{Sam}}, nullptr);
+  vkDestroySampler(m_device, m_vdata.{{Sam}}, nullptr);
   {% endfor %}
   {% for Buffer in RedVectorVars %}
-  vkDestroyBuffer(device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
+  vkDestroyBuffer(m_device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
   {% endfor %}
   if(copyKernelFloatDSLayout != VK_NULL_HANDLE)
-     vkDestroyDescriptorSetLayout(device, copyKernelFloatDSLayout, nullptr);
+     vkDestroyDescriptorSetLayout(m_device, copyKernelFloatDSLayout, nullptr);
   {% if length(IndirectDispatches) > 0 %}
-  vkDestroyBuffer(device, m_indirectBuffer, nullptr);
-  vkDestroyDescriptorSetLayout(device, m_indirectUpdateDSLayout, nullptr);
-  vkDestroyPipelineLayout(device, m_indirectUpdateLayout, nullptr);
+  vkDestroyBuffer(m_device, m_indirectBuffer, nullptr);
+  vkDestroyDescriptorSetLayout(m_device, m_indirectUpdateDSLayout, nullptr);
+  vkDestroyPipelineLayout(m_device, m_indirectUpdateLayout, nullptr);
   {% for Dispatch in IndirectDispatches %}
-  vkDestroyPipeline(device, m_indirectUpdate{{Dispatch.KernelName}}Pipeline, nullptr);
+  vkDestroyPipeline(m_device, m_indirectUpdate{{Dispatch.KernelName}}Pipeline, nullptr);
   {% endfor %}
   {% endif %}
   {% if UseServiceScan %}
   {% for Scan in ServiceScan %}
-  m_scan_{{Scan.Type}}.DeleteTempBuffers(device);
+  m_scan_{{Scan.Type}}.DeleteTempBuffers(m_device);
   {% endfor %}
   {% endif %}
   FreeAllAllocations(m_allMems);
   {% if UseRayGen %}
   for(size_t i=0;i<m_allShaderTableBuffers.size();i++)
-    vkDestroyBuffer(device, m_allShaderTableBuffers[i], nullptr);
-  vkFreeMemory(device, m_allShaderTableMem, nullptr);
+    vkDestroyBuffer(m_device, m_allShaderTableBuffers[i], nullptr);
+  vkFreeMemory(m_device, m_allShaderTableMem, nullptr);
   {% endif %}
 }
 
@@ -430,43 +430,43 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
 {
   {% if EnableTimeStamps %}
   if(m_queryPoolTimestamps != VK_NULL_HANDLE)
-    vkDestroyQueryPool(device, m_queryPoolTimestamps, nullptr);
+    vkDestroyQueryPool(m_device, m_queryPoolTimestamps, nullptr);
   {% endif %}
   for(size_t i=0;i<m_allCreatedPipelines.size();i++)
-    vkDestroyPipeline(device, m_allCreatedPipelines[i], nullptr);
+    vkDestroyPipeline(m_device, m_allCreatedPipelines[i], nullptr);
   for(size_t i=0;i<m_allCreatedPipelineLayouts.size();i++)
-    vkDestroyPipelineLayout(device, m_allCreatedPipelineLayouts[i], nullptr);
+    vkDestroyPipelineLayout(m_device, m_allCreatedPipelineLayouts[i], nullptr);
   {% if UseServiceScan %}
   {% for Scan in ServiceScan %}
-  m_scan_{{Scan.Type}}.DeleteDSLayouts(device);
+  m_scan_{{Scan.Type}}.DeleteDSLayouts(m_device);
   {% endfor %}
   {% endif %} {# /* UseServiceScan */ #}
   {% if UseServiceSort %}
   {% for Sort in ServiceSort %}
-  m_sort_{{Sort.Type}}.DeleteDSLayouts(device);
+  m_sort_{{Sort.Type}}.DeleteDSLayouts(m_device);
   {% endfor %}
   {% endif %} {# /* UseServiceSort */ #}
 ## for Kernel in Kernels
-  vkDestroyDescriptorSetLayout(device, {{Kernel.Name}}DSLayout, nullptr);
+  vkDestroyDescriptorSetLayout(m_device, {{Kernel.Name}}DSLayout, nullptr);
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
 ## endfor
-  vkDestroyDescriptorPool(device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
+  vkDestroyDescriptorPool(m_device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
 ## for MainFunc in MainFunctions
   {% if MainFunc.IsRTV and not MainFunc.IsMega %}
   {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
-  vkDestroyBuffer(device, {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer, nullptr);
+  vkDestroyBuffer(m_device, {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer, nullptr);
   {% endfor %}
   {% endif %}
 ## endfor
   {% if UsePipelineCache %}
-  vkDestroyPipelineCache(device, m_pipelineCache, nullptr);
+  vkDestroyPipelineCache(m_device, m_pipelineCache, nullptr);
   {% endif %}
   DeleteDeviceData();
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::InitHelpers()
 {
-  vkGetPhysicalDeviceProperties(physicalDevice, &m_devProps);
+  vkGetPhysicalDeviceProperties(m_physicalDevice, &m_devProps);
   {% if UseSpecConstWgSize %}
   {
     m_specializationEntriesWgSize[0].constantID = 0;
@@ -662,12 +662,12 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   cacheInfo.initialDataSize = cacheData.size();
   cacheInfo.pInitialData    = cacheData.data();
   
-  VkResult pipelineCacheCreated = vkCreatePipelineCache(device, &cacheInfo, nullptr, &m_pipelineCache);
+  VkResult pipelineCacheCreated = vkCreatePipelineCache(m_device, &cacheInfo, nullptr, &m_pipelineCache);
   if (pipelineCacheCreated != VK_SUCCESS) 
   {
     cacheInfo.initialDataSize = 0;
     cacheInfo.pInitialData    = nullptr;
-    vkCreatePipelineCache(device, &cacheInfo, nullptr, &m_pipelineCache);
+    vkCreatePipelineCache(m_device, &cacheInfo, nullptr, &m_pipelineCache);
   }
   {% endif %}
 ## for Kernel in Kernels
@@ -694,7 +694,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   {
     const std::string servPathFwd         = AlterShaderPath("{{ShaderFolder}}/z_scan_{{Scan.Type}}_block.comp.spv");
     const std::string servPathProp        = AlterShaderPath("{{ShaderFolder}}/z_scan_{{Scan.Type}}_propagate.comp.spv");
-    m_scan_{{Scan.Type}}.internalDSLayout = m_scan_{{Scan.Type}}.CreateInternalScanDSLayout(device);
+    m_scan_{{Scan.Type}}.internalDSLayout = m_scan_{{Scan.Type}}.CreateInternalScanDSLayout(m_device);
     MakeComputePipelineAndLayout(servPathFwd.c_str(),  "main", nullptr, m_scan_{{Scan.Type}}.internalDSLayout, &m_scan_{{Scan.Type}}.scanFwdLayout,  &m_scan_{{Scan.Type}}.scanFwdPipeline);
     MakeComputePipelineAndLayout(servPathProp.c_str(), "main", nullptr, m_scan_{{Scan.Type}}.internalDSLayout, &m_scan_{{Scan.Type}}.scanPropLayout, &m_scan_{{Scan.Type}}.scanPropPipeline);
   }
@@ -709,7 +709,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
     std::string bitonic1024Path = AlterShaderPath("{{ShaderFolder}}/z_bitonic_{{Sort.Type}}_1024.comp.spv");
     std::string bitonic2048Path = AlterShaderPath("{{ShaderFolder}}/z_bitonic_{{Sort.Type}}_2048.comp.spv");
 
-    m_sort_{{Sort.Type}}.sortDSLayout = m_sort_{{Sort.Type}}.CreateSortDSLayout(device);
+    m_sort_{{Sort.Type}}.sortDSLayout = m_sort_{{Sort.Type}}.CreateSortDSLayout(m_device);
     MakeComputePipelineAndLayout(bitonicPassPath.c_str(),  "main", nullptr, m_sort_{{Sort.Type}}.sortDSLayout, &m_sort_{{Sort.Type}}.bitonicPassLayout, &m_sort_{{Sort.Type}}.bitonicPassPipeline);
 
     if(m_devProps.limits.maxComputeWorkGroupSize[0] >= 256)
@@ -766,9 +766,9 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernels(const char* a_filePath)
   // update pipeline cache
   { 
     size_t cacheSize;
-    vkGetPipelineCacheData(device, m_pipelineCache, &cacheSize, nullptr);
+    vkGetPipelineCacheData(m_device, m_pipelineCache, &cacheSize, nullptr);
     std::vector<uint8_t> cacheData(cacheSize);
-    vkGetPipelineCacheData(device, m_pipelineCache, &cacheSize, cacheData.data());
+    vkGetPipelineCacheData(m_device, m_pipelineCache, &cacheSize, cacheData.data());
     std::ofstream file(cachePath.c_str(), std::ios::binary);
     file.write(reinterpret_cast<char*>(cacheData.data()), cacheSize);
   }
@@ -807,11 +807,11 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
   localBuffers{{MainFunc.Name}}.bufs.reserve(32);
   {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
   {% if Buffer.TransferDST %}
-  {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer = vk_utils::createBuffer(device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer = vk_utils::createBuffer(m_device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   {% else %}
-  {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer = vk_utils::createBuffer(device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  {{MainFunc.Name}}_local.{{Buffer.Name}}Buffer = vk_utils::createBuffer(m_device, sizeof({{Buffer.Type}})*a_maxThreadsCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
   {% endif %}
-  localBuffers{{MainFunc.Name}}.bufs.push_back(BufferReqPair({{MainFunc.Name}}_local.{{Buffer.Name}}Buffer, device));
+  localBuffers{{MainFunc.Name}}.bufs.push_back(BufferReqPair({{MainFunc.Name}}_local.{{Buffer.Name}}Buffer, m_device));
   {% endfor %}
   for(const auto& pair : localBuffers{{MainFunc.Name}}.bufs)
   {
@@ -843,14 +843,14 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
   {% for Buffer in RedVectorVars %}
   {
     const size_t sizeOfBuffer = ComputeReductionAuxBufferElements(a_maxThreadsCount, REDUCTION_BLOCK_SIZE)*sizeof({{Buffer.Type}});
-    m_vdata.{{Buffer.Name}}Buffer = vk_utils::createBuffer(device, sizeOfBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_vdata.{{Buffer.Name}}Buffer = vk_utils::createBuffer(m_device, sizeOfBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     allBuffersRef.push_back(m_vdata.{{Buffer.Name}}Buffer);
   }
   {% endfor %}
   {% if UseServiceScan %}
   {% for Scan in ServiceScan %}
   {
-    auto tempBuffersForScan = m_scan_{{Scan.Type}}.InitTempBuffers(device, std::max(a_maxThreadsCount, size_t(256)));
+    auto tempBuffersForScan = m_scan_{{Scan.Type}}.InitTempBuffers(m_device, std::max(a_maxThreadsCount, size_t(256)));
     allBuffersRef.insert(allBuffersRef.end(), tempBuffersForScan.begin(), tempBuffersForScan.end());
   }
   {% endfor %}
@@ -909,10 +909,10 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   std::vector<VkBuffer> memberVectorsWithDevAddr;
   std::vector<VkBuffer> memberVectors;
   std::vector<VkImage>  memberTextures;
-  m_classDataBuffer = vk_utils::createBuffer(device, sizeof(m_uboData), {% if UniformUBO %} VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT {% else %} VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | GetAdditionalFlagsForUBO() {% endif %} | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  m_classDataBuffer = vk_utils::createBuffer(m_device, sizeof(m_uboData), {% if UniformUBO %} VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT {% else %} VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | GetAdditionalFlagsForUBO() {% endif %} | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   memberVectors.push_back(m_classDataBuffer);
   {% if UseSeparateUBO %}
-  m_uboArgsBuffer = vk_utils::createBuffer(device, 256, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  m_uboArgsBuffer = vk_utils::createBuffer(m_device, 256, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   memberVectors.push_back(m_uboArgsBuffer);
   {% endif %}
   {% for Var in ClassVectorVars %}
@@ -954,8 +954,8 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
     objDataBufferSize += vk_utils::getPaddedSize(it->second.size(), buffReferenceAlign);
   }
 
-  m_vdata.{{Var.Name}}_dataSBuffer = vk_utils::createBuffer(device, objDataBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-  m_vdata.{{Var.Name}}_dataVBuffer = vk_utils::createBuffer(device, bufferV.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  m_vdata.{{Var.Name}}_dataSBuffer = vk_utils::createBuffer(m_device, objDataBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+  m_vdata.{{Var.Name}}_dataVBuffer = vk_utils::createBuffer(m_device, bufferV.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   m_vdata.{{Var.Name}}_dataSOffset = 0;
   m_vdata.{{Var.Name}}_dataVOffset = 0;
   memberVectorsWithDevAddr.push_back(m_vdata.{{Var.Name}}_dataSBuffer);
@@ -968,8 +968,8 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
     auto tablePtrs = pProxyObj->GetAABBToPrimTable();
     if(tablePtrs.tableSize != 0)
     {
-      m_vdata.{{Table.Name}}RemapTableBuffer = vk_utils::createBuffer(device, tablePtrs.tableSize*sizeof(LiteMath::uint2), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-      m_vdata.{{Table.Name}}GeomTagsBuffer   = vk_utils::createBuffer(device, tablePtrs.geomSize*sizeof(LiteMath::uint), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+      m_vdata.{{Table.Name}}RemapTableBuffer = vk_utils::createBuffer(m_device, tablePtrs.tableSize*sizeof(LiteMath::uint2), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+      m_vdata.{{Table.Name}}GeomTagsBuffer   = vk_utils::createBuffer(m_device, tablePtrs.geomSize*sizeof(LiteMath::uint), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
       memberVectorsWithDevAddr.push_back(m_vdata.{{Table.Name}}RemapTableBuffer);
       memberVectorsWithDevAddr.push_back(m_vdata.{{Table.Name}}GeomTagsBuffer);
     }
@@ -992,10 +992,10 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   {% endif %}
   {% for Var in ClassVectorVars %}
   {% if Var.WithBuffRef %}
-  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(m_device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
   memberVectorsWithDevAddr.push_back(m_vdata.{{Var.Name}}Buffer);
   {% else %}
-  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(m_device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
   {% endif %}
   {% endfor %}
@@ -1030,7 +1030,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   {% endfor %}
 
   {% if length(IndirectDispatches) > 0 %}
-  m_indirectBuffer = vk_utils::createBuffer(device, {{IndirectBufferSize}}*sizeof(uint32_t)*4, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
+  m_indirectBuffer = vk_utils::createBuffer(m_device, {{IndirectBufferSize}}*sizeof(uint32_t)*4, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
   memberVectors.push_back(m_indirectBuffer);
   {% endif %}
   AllocMemoryForMemberBuffersAndImages(memberVectors, memberTextures);
@@ -1040,23 +1040,23 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   {
     {% for Var in ClassVectorVars %}
     {% if Var.WithBuffRef %}
-    all_references[0].{{Var.Name}}Address = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Var.Name}}Buffer);
+    all_references[0].{{Var.Name}}Address = vk_rt_utils::getBufferDeviceAddress(m_device, m_vdata.{{Var.Name}}Buffer);
     {% endif %}
     {% endfor %}
     {% for Var in ClassVectorVars %}
     {% if Var.IsVFHBuffer and Var.VFHLevel >= 2 %}
     {% for Impl in Var.Hierarchy.Implementations %}
-    all_references[0].{{Impl.ClassName}}Address = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Var.Name}}_dataSBuffer) + {{Var.Name}}_obj_storage_offsets[{{Var.Hierarchy.Name}}::{{Impl.TagName}}];
+    all_references[0].{{Impl.ClassName}}Address = vk_rt_utils::getBufferDeviceAddress(m_device, m_vdata.{{Var.Name}}_dataSBuffer) + {{Var.Name}}_obj_storage_offsets[{{Var.Hierarchy.Name}}::{{Impl.TagName}}];
     {% endfor %}
     {% endif %}
     {% endfor %}
     {% for Table in RemapTables %}
     if(m_vdata.{{Table.Name}}RemapTableBuffer != VK_NULL_HANDLE)
-      all_references[0].{{Table.Name}}RemapAddr = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Table.Name}}RemapTableBuffer);
+      all_references[0].{{Table.Name}}RemapAddr = vk_rt_utils::getBufferDeviceAddress(m_device, m_vdata.{{Table.Name}}RemapTableBuffer);
     else
       all_references[0].{{Table.Name}}RemapAddr = VkDeviceAddress(0);
     if(m_vdata.{{Table.Name}}GeomTagsBuffer != VK_NULL_HANDLE)
-      all_references[0].{{Table.Name}}GeomTags = vk_rt_utils::getBufferDeviceAddress(device, m_vdata.{{Table.Name}}GeomTagsBuffer);
+      all_references[0].{{Table.Name}}GeomTags = vk_rt_utils::getBufferDeviceAddress(m_device, m_vdata.{{Table.Name}}GeomTagsBuffer);
     else
       all_references[0].{{Table.Name}}GeomTags = VkDeviceAddress(0);
     {% endfor %}
@@ -1090,7 +1090,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitIndirectBufferUpdateResources(con
   descriptorSetLayoutCreateInfo.bindingCount = 2;
   descriptorSetLayoutCreateInfo.pBindings    = bindings;
 
-  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &m_indirectUpdateDSLayout));
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_device, &descriptorSetLayoutCreateInfo, NULL, &m_indirectUpdateDSLayout));
 
   VkDescriptorSetLayout oneTwo[2] = {m_indirectUpdateDSLayout,m_indirectUpdateDSLayout};
 
@@ -1101,7 +1101,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitIndirectBufferUpdateResources(con
   pipelineLayoutInfo.pSetLayouts            = oneTwo;
   pipelineLayoutInfo.setLayoutCount         = 2;
 
-  VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &m_indirectUpdateLayout));
+  VK_CHECK_RESULT(vkCreatePipelineLayout(m_device, &pipelineLayoutInfo, nullptr, &m_indirectUpdateLayout));
 
   {% for Dispatch in IndirectDispatches %}
   // create indrect update pipeline for {{Dispatch.OriginalName}}
@@ -1115,7 +1115,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitIndirectBufferUpdateResources(con
     createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     createInfo.pCode    = code.data();
     createInfo.codeSize = code.size()*sizeof(uint32_t);
-    VK_CHECK_RESULT(vkCreateShaderModule(device, &createInfo, NULL, &tempShaderModule));
+    VK_CHECK_RESULT(vkCreateShaderModule(m_device, &createInfo, NULL, &tempShaderModule));
 
     VkPipelineShaderStageCreateInfo shaderStageInfo = {};
     shaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1127,9 +1127,9 @@ void {{MainClassName}}{{MainClassSuffix}}::InitIndirectBufferUpdateResources(con
     pipelineCreateInfo.sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     pipelineCreateInfo.stage  = shaderStageInfo;
     pipelineCreateInfo.layout = m_indirectUpdateLayout;
-    VK_CHECK_RESULT(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &m_indirectUpdate{{Dispatch.KernelName}}Pipeline));
+    VK_CHECK_RESULT(vkCreateComputePipelines(m_device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, NULL, &m_indirectUpdate{{Dispatch.KernelName}}Pipeline));
 
-    vkDestroyShaderModule(device, tempShaderModule, VK_NULL_HANDLE);
+    vkDestroyShaderModule(m_device, tempShaderModule, VK_NULL_HANDLE);
   }
   {% endfor %}
 }
@@ -1185,7 +1185,7 @@ VkImage {{MainClassName}}{{MainClassSuffix}}::CreateTexture2D(const int a_width,
   imgCreateInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
   imgCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   imgCreateInfo.arrayLayers   = 1;
-  VK_CHECK_RESULT(vkCreateImage(device, &imgCreateInfo, nullptr, &result));
+  VK_CHECK_RESULT(vkCreateImage(m_device, &imgCreateInfo, nullptr, &result));
   return result;
 }
 
@@ -1210,7 +1210,7 @@ VkSampler {{MainClassName}}{{MainClassSuffix}}::CreateSampler(const Sampler& a_s
   samplerInfo.anisotropyEnable = (a_sampler.maxAnisotropy > 1) ? VK_TRUE : VK_FALSE;
   samplerInfo.borderColor      = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
   samplerInfo.unnormalizedCoordinates = VK_FALSE;
-  VK_CHECK_RESULT(vkCreateSampler(device, &samplerInfo, nullptr, &result));
+  VK_CHECK_RESULT(vkCreateSampler(m_device, &samplerInfo, nullptr, &result));
   return result;
 }
 
@@ -1245,7 +1245,7 @@ VkImageView {{MainClassName}}{{MainClassSuffix}}::CreateView(VkFormat a_format, 
   createInfo.subresourceRange.baseArrayLayer = 0;
   createInfo.subresourceRange.layerCount     = 1;
 
-  VK_CHECK_RESULT(vkCreateImageView(device, &createInfo, nullptr, &result));
+  VK_CHECK_RESULT(vkCreateImageView(m_device, &createInfo, nullptr, &result));
   return result;
 }
 
@@ -1309,7 +1309,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AssignBuffersToMemory(const std::vect
   for(size_t i=0;i<memInfos.size();i++)
   {
     if(a_buffers[i] != VK_NULL_HANDLE)
-      vkGetBufferMemoryRequirements(device, a_buffers[i], &memInfos[i]);
+      vkGetBufferMemoryRequirements(m_device, a_buffers[i], &memInfos[i]);
     else
     {
       memInfos[i] = memInfos[0];
@@ -1330,7 +1330,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AssignBuffersToMemory(const std::vect
   for (size_t i = 0; i < memInfos.size(); i++)
   {
     if(a_buffers[i] != VK_NULL_HANDLE)
-      vkBindBufferMemory(device, a_buffers[i], a_mem, offsets[i]);
+      vkBindBufferMemory(m_device, a_buffers[i], a_mem, offsets[i]);
   }
 }
 
@@ -1339,7 +1339,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AssignBuffersToMemory(const std::vect
   MemLoc currLoc;
   if(a_buffers.size() > 0)
   {
-    currLoc.memObject = vk_utils::allocateAndBindWithPadding(device, physicalDevice, a_buffers, a_flags);
+    currLoc.memObject = vk_utils::allocateAndBindWithPadding(m_device, m_physicalDevice, a_buffers, a_flags);
     currLoc.allocId   = m_allMems.size();
     m_allMems.push_back(currLoc);
   }
@@ -1353,7 +1353,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AssignBuffersToMemory(const std::vect
   {
     std::vector<VkMemoryRequirements> reqs(a_images.size());
     for(size_t i=0; i<reqs.size(); i++)
-      vkGetImageMemoryRequirements(device, a_images[i], &reqs[i]);
+      vkGetImageMemoryRequirements(m_device, a_images[i], &reqs[i]);
 
     for(size_t i=0; i<reqs.size(); i++)
     {
@@ -1371,11 +1371,11 @@ void {{MainClassName}}{{MainClassSuffix}}::AssignBuffersToMemory(const std::vect
     allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocateInfo.pNext           = nullptr;
     allocateInfo.allocationSize  = memTotal;
-    allocateInfo.memoryTypeIndex = vk_utils::findMemoryType(reqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice);
-    VK_CHECK_RESULT(vkAllocateMemory(device, &allocateInfo, NULL, &currLoc.memObject));
+    allocateInfo.memoryTypeIndex = vk_utils::findMemoryType(reqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_physicalDevice);
+    VK_CHECK_RESULT(vkAllocateMemory(m_device, &allocateInfo, NULL, &currLoc.memObject));
 
     for(size_t i=0;i<a_images.size();i++) {
-      VK_CHECK_RESULT(vkBindImageMemory(device, a_images[i], currLoc.memObject, offsets[i]));
+      VK_CHECK_RESULT(vkBindImageMemory(m_device, a_images[i], currLoc.memObject, offsets[i]));
     }
 
     currLoc.allocId = m_allMems.size();
@@ -1389,7 +1389,7 @@ void {{MainClassName}}{{MainClassSuffix}}::FreeAllAllocations(std::vector<MemLoc
   // in general you may check 'mem.allocId' for unique to be sure you dont free mem twice
   // for default implementation this is not needed
   for(auto mem : a_memLoc)
-    vkFreeMemory(device, mem.memObject, nullptr);
+    vkFreeMemory(m_device, mem.memObject, nullptr);
   a_memLoc.resize(0);
 }
 
@@ -1399,7 +1399,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(
   for(size_t i = 0; i < a_buffers.size(); ++i)                    // if not, split to multiple allocations
   {
     if(a_buffers[i] != VK_NULL_HANDLE)
-      vkGetBufferMemoryRequirements(device, a_buffers[i], &bufMemReqs[i]);
+      vkGetBufferMemoryRequirements(m_device, a_buffers[i], &bufMemReqs[i]);
     else
     {
       bufMemReqs[i] = bufMemReqs[0];
@@ -1476,7 +1476,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(
     imageViewInfo.subresourceRange.layerCount     = 1;
     imageViewInfo.subresourceRange.levelCount     = 1;
     imageViewInfo.image                           = textures[i];     // The view will be based on the texture's image
-    VK_CHECK_RESULT(vkCreateImageView(device, &imageViewInfo, nullptr, views[i]));
+    VK_CHECK_RESULT(vkCreateImageView(m_device, &imageViewInfo, nullptr, views[i]));
   }
   {% endif %}
 }
@@ -1491,7 +1491,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
     VkPhysicalDeviceProperties2 deviceProperties2{};
     deviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
     deviceProperties2.pNext = &rtPipelineProperties;
-    vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
+    vkGetPhysicalDeviceProperties2(m_physicalDevice, &deviceProperties2);
   }
   
   const uint32_t handleSize        = rtPipelineProperties.shaderGroupHandleSize;
@@ -1536,10 +1536,10 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
   
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
    
-    auto raygenBuf  = vk_utils::createBuffer(device, rgenStride, flags);
-    auto raymissBuf = vk_utils::createBuffer(device, missSize, flags); 
-    auto rayhitBuf  = vk_utils::createBuffer(device, hitSize , flags); 
-    auto callBuf    = vk_utils::createBuffer(device, callSize, flags);
+    auto raygenBuf  = vk_utils::createBuffer(m_device, rgenStride, flags);
+    auto raymissBuf = vk_utils::createBuffer(m_device, missSize, flags); 
+    auto rayhitBuf  = vk_utils::createBuffer(m_device, hitSize , flags); 
+    auto callBuf    = vk_utils::createBuffer(m_device, callSize, flags);
 
     m_allShaderTableBuffers.push_back(raygenBuf);
     m_allShaderTableBuffers.push_back(raymissBuf);
@@ -1554,8 +1554,8 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
   {
     auto a_buffers = m_allShaderTableBuffers; // in
     auto& res      = m_allShaderTableMem;     // in out
-    auto a_dev     = device;                  // in
-    auto a_physDev = physicalDevice;          // in
+    auto a_dev     = m_device;                // in
+    auto a_physDev = m_physicalDevice;        // in
 
     std::vector<VkMemoryRequirements> memInfos(a_buffers.size());
     for(size_t i = 0; i < memInfos.size(); ++i)
@@ -1598,7 +1598,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
   // (3) get all device addresses
   //
   char* mapped = nullptr;
-  VkResult result = vkMapMemory(device, m_allShaderTableMem, 0, memTotal, 0, (void**)&mapped);
+  VkResult result = vkMapMemory(m_device, m_allShaderTableMem, 0, memTotal, 0, (void**)&mapped);
   VK_CHECK_RESULT(result);
 
   int groupId = 0;
@@ -1607,7 +1607,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
   if({{Kernel.Name}}Pipeline != VK_NULL_HANDLE)
   {   
     std::vector<uint8_t> shaderHandleStorage(allRTPipelines[groupId].numShaderGroups * handleSize);
-    VK_CHECK_RESULT(vkGetRayTracingShaderGroupHandlesKHR(device, allRTPipelines[groupId].pipeline, 0, allRTPipelines[groupId].numShaderGroups, shaderHandleStorage.size(), shaderHandleStorage.data()));
+    VK_CHECK_RESULT(vkGetRayTracingShaderGroupHandlesKHR(m_device, allRTPipelines[groupId].pipeline, 0, allRTPipelines[groupId].numShaderGroups, shaderHandleStorage.size(), shaderHandleStorage.data()));
     auto *pData     = shaderHandleStorage.data();
 
     auto raygenBuf  = m_allShaderTableBuffers[groupId*4+0];
@@ -1620,11 +1620,11 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
     const auto callSize   = vk_utils::getSBTAlignedSize((allRTPipelines[groupId].callStages+1)* handleSizeAligned, rtPipelineProperties.shaderGroupBaseAlignment); // +1 to avoid zero buffer size
 
     {{Kernel.Name}}SBTStrides.resize(4);
-    {{Kernel.Name}}SBTStrides[0] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, raygenBuf),  rgenStride,         rgenStride };
-    {{Kernel.Name}}SBTStrides[1] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, raymissBuf), handleSizeAligned,  missSize };
-    {{Kernel.Name}}SBTStrides[2] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, rayhitBuf),  handleSizeAligned,  hitSize };
+    {{Kernel.Name}}SBTStrides[0] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(m_device, raygenBuf),  rgenStride,         rgenStride };
+    {{Kernel.Name}}SBTStrides[1] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(m_device, raymissBuf), handleSizeAligned,  missSize };
+    {{Kernel.Name}}SBTStrides[2] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(m_device, rayhitBuf),  handleSizeAligned,  hitSize };
     {% if UseCallable and Kernel.CallablesTotal > 0 %}
-    {{Kernel.Name}}SBTStrides[3] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(device, raycallBuf), handleSizeAligned,  callSize };
+    {{Kernel.Name}}SBTStrides[3] = VkStridedDeviceAddressRegionKHR{ vk_rt_utils::getBufferDeviceAddress(m_device, raycallBuf), handleSizeAligned,  callSize };
     {% else %}
     {{Kernel.Name}}SBTStrides[3] = VkStridedDeviceAddressRegionKHR{ 0u, 0u, 0u };
     {% endif %}
@@ -1657,7 +1657,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocAllShaderBindingTables()
   {% endif%}
   {% endfor %}
 
-  vkUnmapMemory(device, m_allShaderTableMem);
+  vkUnmapMemory(m_device, m_allShaderTableMem);
 }
 {% endif %}
 {% if UseServiceScan %}

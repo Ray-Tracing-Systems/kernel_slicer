@@ -51,7 +51,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
   descriptorPoolCreateInfo.poolSizeCount = poolSizes.size();
   descriptorPoolCreateInfo.pPoolSizes    = poolSizes.data();
 
-  VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, NULL, &m_dsPool));
+  VK_CHECK_RESULT(vkCreateDescriptorPool(m_device, &descriptorPoolCreateInfo, NULL, &m_dsPool));
 
   // allocate all descriptor sets
   //
@@ -66,7 +66,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
   descriptorSetAllocateInfo.descriptorSetCount = {{TotalDSNumber}};
   descriptorSetAllocateInfo.pSetLayouts        = layouts;
 
-  auto tmpRes = vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, m_allGeneratedDS);
+  auto tmpRes = vkAllocateDescriptorSets(m_device, &descriptorSetAllocateInfo, m_allGeneratedDS);
   VK_CHECK_RESULT(tmpRes);
 }
 
@@ -126,7 +126,7 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
   descriptorSetLayoutCreateInfo.pBindings    = dsBindings.data();
 
   VkDescriptorSetLayout layout = nullptr;
-  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_device, &descriptorSetLayoutCreateInfo, NULL, &layout));
   return layout;
 }
 ## endfor
@@ -166,7 +166,7 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::CreatecopyKernelFloa
   descriptorSetLayoutCreateInfo.pBindings    = dsBindings.data();
 
   VkDescriptorSetLayout layout = nullptr;
-  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_device, &descriptorSetLayoutCreateInfo, NULL, &layout));
   return layout;
 }
 
@@ -211,7 +211,7 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::CreatematMulTranspos
   descriptorSetLayoutCreateInfo.pBindings    = dsBindings.data();
 
   VkDescriptorSetLayout layout = nullptr;
-  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, NULL, &layout));
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_device, &descriptorSetLayoutCreateInfo, NULL, &layout));
   return layout;
 }
 
@@ -372,7 +372,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllGeneratedDescriptorSets_{{Ma
     writeDescriptorSet[uboId].pTexelBufferView = nullptr;
 
     {% endif %}
-    vkUpdateDescriptorSets(device, uint32_t(writeDescriptorSet.size()), writeDescriptorSet.data(), 0, NULL);
+    vkUpdateDescriptorSets(m_device, uint32_t(writeDescriptorSet.size()), writeDescriptorSet.data(), 0, NULL);
   }
 ## endfor
 }
@@ -393,7 +393,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitIndirectDescriptorSets()
   descriptorSetAllocateInfo.descriptorSetCount = 1;
   descriptorSetAllocateInfo.pSetLayouts        = &m_indirectUpdateDSLayout;
 
-  auto tmpRes = vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, &m_indirectUpdateDS);
+  auto tmpRes = vkAllocateDescriptorSets(m_device, &descriptorSetAllocateInfo, &m_indirectUpdateDS);
   VK_CHECK_RESULT(tmpRes);
 
   VkDescriptorBufferInfo descriptorBufferInfo[2];
@@ -429,6 +429,6 @@ void {{MainClassName}}{{MainClassSuffix}}::InitIndirectDescriptorSets()
   writeDescriptorSet[1].pImageInfo       = nullptr;
   writeDescriptorSet[1].pTexelBufferView = nullptr;
 
-  vkUpdateDescriptorSets(device, 2, writeDescriptorSet, 0, NULL);
+  vkUpdateDescriptorSets(m_device, 2, writeDescriptorSet, 0, NULL);
 }
 {% endif %}
