@@ -53,6 +53,9 @@ int main(int argc, const char** argv)
 
   //JSONLog::write("array summ", pImpl->m_summ);
   //JSONLog::saveToFile("zout_"+backendName+".json");
-
+  pImpl = nullptr;
+  #ifdef USE_VULKAN
+  vk_utils::globalContextDestroy();
+  #endif
   return 0;
 }

@@ -383,6 +383,9 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
   vkDestroyBuffer(m_device, m_vdata.{{Buffer.Name}}_dataVBuffer, nullptr);
   {% endif %}
   {% endfor %}
+  {% if HaveLocalContainers %}
+  vkDestroyBuffer(m_device, m_vdata.localTempBuffer, nullptr);
+  {% endif %}
   {% for Var in ClassTextureVars %}
   vkDestroyImage    (m_device, m_vdata.{{Var.Name}}Texture, nullptr);
   vkDestroyImageView(m_device, m_vdata.{{Var.Name}}View, nullptr);
