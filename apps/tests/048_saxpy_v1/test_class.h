@@ -23,4 +23,5 @@ public:
 
   virtual void CommitDeviceData() {}                                       // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class
+  //virtual size_t GetTempBufferSize() const { return size_t(2048*2048*16); }
 };

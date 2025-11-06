@@ -364,6 +364,9 @@ protected:
     size_t   localTempOffset = 0;
     {% endif %}
   } m_vdata;
+  {% if DefineGetTempBufferSize %}
+  virtual size_t GetTempBufferSize() const { return size_t(2048*2048*16); } // return m_vdata.localTempBuffer size
+  {% endif %}
   {% for buff in ISV2 %}
   std::vector<uint2> {{buff.IS2_AccObjName}}_remap;
   {% endfor %}

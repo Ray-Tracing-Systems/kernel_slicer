@@ -1033,6 +1033,10 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   m_indirectBuffer = vk_utils::createBuffer(m_device, {{IndirectBufferSize}}*sizeof(uint32_t)*4, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
   memberVectors.push_back(m_indirectBuffer);
   {% endif %}
+  {% if HaveLocalContainers %}
+  m_vdata.localTempBuffer = vk_utils::createBuffer(m_device, GetTempBufferSize(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  memberVectors.push_back(m_vdata.localTempBuffer);
+  {% endif %}
   AllocMemoryForMemberBuffersAndImages(memberVectors, memberTextures);
   if(memberVectorsWithDevAddr.size() != 0)
     AllocAndBind(memberVectorsWithDevAddr, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT);
