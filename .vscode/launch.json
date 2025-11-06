@@ -48,6 +48,38 @@
                 }
             ]
         },
+
+         {
+            "name"   : "Launch (app_03/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/03_spheresStupidPt_loopBreak/test_class.cpp",
+                        "-mainClass", "TestClass", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "rtv",
+                        "-I${workspaceFolder}/apps/LiteMath", "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-I${workspaceFolder}/TINYSTL",       "ignore",
+                        "-shaderCC", "slang",
+                        "-megakernel", "0",
+                        //"-timestamps", "1",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
         {
             "name"   : "Launch (app_04/Slang_v1)",
             "type"   : "cppdbg",
@@ -893,6 +925,34 @@
             "args"   : ["${workspaceFolder}/apps/tests/046_intersection_shader_v2/kmake_rq.json",
                          "-shaderCC", "slang",  // needed for slicer test script, not needed in practice
                         ],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (test_048/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/048_saxpy_v1/test_class.cpp",
+                        "-mainClass",    "Numbers", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern",      "ipv",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-shaderCC", "slang",
+                        "-DKERNEL_SLICER",
+                        "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],
