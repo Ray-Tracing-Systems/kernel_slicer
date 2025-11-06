@@ -7,9 +7,11 @@ void Numbers::SAXPY(const float* a_adata,
                     const float* a_cdata, 
                           float* a_result, unsigned int a_dataSize)
 {
-  std::vector<float> temp(a_dataSize);
-  kernel1D_Mult(temp.data(), a_adata, a_bdata, a_dataSize);
-  kernel1D_Add(a_result, temp.data(), a_cdata, a_dataSize);
+  unsigned int sizeLocal = a_dataSize;
+  std::vector<float> temp(sizeLocal);
+  
+  kernel1D_Mult(temp.data(), a_adata, a_bdata, sizeLocal);
+  kernel1D_Add(a_result, temp.data(), a_cdata, sizeLocal);
 }
                           
 

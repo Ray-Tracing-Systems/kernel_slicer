@@ -505,9 +505,14 @@ namespace kslicer
 
     bool        isArray   = false;
     bool        isConst   = false;
+    bool        isContainer = false;
+
     size_t      arraySize = 0;
     std::string typeOfArrayElement;
     size_t      sizeInBytesOfArrayElement = 0;
+
+    std::string containerType;
+    std::string containerDataType;
   };
 
   /**

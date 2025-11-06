@@ -167,6 +167,9 @@ namespace kslicer
           return;
 
         auto typeInfo = m_astContext.getTypeInfo(qt);
+        const auto typeDecl    = qt->getAsRecordDecl();
+        const bool isContainer = (typeDecl != nullptr) && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl);
+
 
         DataLocalVarInfo varInfo;
         varInfo.name        = var->getNameAsString();
@@ -189,6 +192,11 @@ namespace kslicer
           varInfo.typeOfArrayElement = qtOfElem.getAsString();
           varInfo.sizeInBytesOfArrayElement = typeInfo2.Width / 8;
           varInfo.isArray = true;
+        }
+        else if(isContainer)
+        {
+          auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
+          kslicer::SplitContainerTypes(specDecl, varInfo.containerType, varInfo.containerDataType);
         }
 
         if(var->isLocalVarDecl() && !var->isConstexpr() && !qt.isConstQualified()) // list only local variables, exclude function arguments and all constants 
