@@ -1354,6 +1354,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["MainFunctions"] = std::vector<json>();
   bool atLeastOneFullOverride = false;
 
+  ////////////////////////////////////////////////////////////////// local containers override
+  bool haveLocalContainers = false;
+  std::unordered_map<std::string, DataLocalVarInfo> localContainers;
+  ////////////////////////////////////////////////////////////////// local containers override
+
   size_t totalBuffersUsed     = 0;
   size_t totalTexCombinedUsed = 0;
   size_t totalTexStorageUsed  = 0;
@@ -1395,6 +1400,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["Type"] = kslicer::CleanTypeName(v.second.type);
       local["TransferDST"] = (v.second.name == "threadFlags"); // rtv thread flags
       data2["LocalVarsBuffersDecl"].push_back(local);
+
+      if(v.second.isContainer)
+        localContainers[v.second.name] = v.second;
     }
 
     uint32_t inOutNum = 0;
@@ -1445,7 +1453,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
     // for impl, ds bindings
     //
-
     for(size_t i=mainFunc.startDSNumber; i<mainFunc.endDSNumber; i++)
     {
       auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
@@ -1485,8 +1492,18 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         if(accesedWithBufferRef)
           continue;
 
-        const std::string dsArgName = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j], a_classInfo.megakernelRTV);
-
+        std::string dsArgName   = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j], a_classInfo.megakernelRTV);
+        auto posBegin = dsArgName.find("m_vdata.");
+        if(posBegin != std::string::npos)
+        {
+          std::string dsArhgName2 = dsArgName.substr(posBegin + 8);
+          if(localContainers.find(dsArhgName2) != localContainers.end())
+          {
+            dsArgName = "m_vdata.localTemp";
+            haveLocalContainers = true;
+          }
+        }
+        
         json arg;
         arg["Id"]            = realId;
         arg["Name"]          = dsArgName;
@@ -1670,6 +1687,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["HasTextureArray"]      = hasTextureArray;
   data["HasIntersectionShaders"] = hasIntersectionShaders;
   data["TotalKernels"]           = currKernels.size();
+  data["HaveLocalContainers"]    = haveLocalContainers;
 
   data["HasFullImpl"] = atLeastOneFullOverride;
   if(atLeastOneFullOverride && a_classInfo.ctors.size() == 0)

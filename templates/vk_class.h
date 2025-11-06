@@ -359,6 +359,10 @@ protected:
     VkBuffer {{Table.Name}}RemapTableBuffer = VK_NULL_HANDLE;
     VkBuffer {{Table.Name}}GeomTagsBuffer   = VK_NULL_HANDLE;
     {% endfor %}
+    {% if HaveLocalContainers %}
+    VkBuffer localTempBuffer = VK_NULL_HANDLE;
+    size_t   localTempOffset = 0;
+    {% endif %}
   } m_vdata;
   {% for buff in ISV2 %}
   std::vector<uint2> {{buff.IS2_AccObjName}}_remap;

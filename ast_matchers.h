@@ -177,6 +177,7 @@ namespace kslicer
         varInfo.sizeInBytes = typeInfo.Width / 8;
         varInfo.isArray     = false;
         varInfo.isConst     = qt.isConstQualified();
+        varInfo.isContainer = isContainer;
         varInfo.arraySize   = 0;
         varInfo.typeOfArrayElement = ""; 
         
