@@ -142,9 +142,13 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
   
   // detect localContainers usage
   //
+  int32_t currId = 0;
+  int32_t argId  = 0;
+  std::map<int32_t, int32_t >                       localContainerMap;
   std::vector<std::pair<std::string, std::string> > localContainerOffsets;
   for(auto arg : args)
   {
+    argId++;
     const auto pos = arg.name.find(".data()");
     if(pos == std::string::npos)
       continue;
@@ -155,6 +159,8 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
       continue;
 
     localContainerOffsets.push_back(std::make_pair(pFoundContainer->second.name, pFoundContainer->second.containerDataType));
+    localContainerMap[argId-1] = currId;
+    currId++;
   }
 
   //std::string textOfCall = GetRangeSourceCode(f->getSourceRange(), m_compiler);
@@ -217,26 +223,34 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
     uint32_t numBuffers = 0;
     if(m_pCodeInfo->hasLocalContainers)
     {
-      strOut << "uint32_t lcOffsets[] = {0, ";
+      strOut << "uint32_t lcSize[] = {";
+      for (auto it = localContainerOffsets.begin(); it != localContainerOffsets.end(); ++it) 
+      {
+        strOut << "uint32_t(" << it->first << ".size()*sizeof(" << it->second << "))";
+        if (std::next(it) != localContainerOffsets.end()) 
+          strOut << ", ";
+        else
+          strOut << ", 0}; ";
+      }
+      strOut << std::endl << "  " << "std::exclusive_scan(lcSize, lcSize + " << localContainerOffsets.size()+1 << ", lcSize, 0);" << std::endl << "  ";
+      
+      strOut << "uint32_t lcOffsets[] = { ";
       for (auto it = pKernel->second.args.begin(); it != pKernel->second.args.end(); ++it) 
       {
         if(it->kind == DATA_KIND::KIND_POINTER || it->kind == DATA_KIND::KIND_VECTOR) {
-          strOut << "0";
+          auto pLCID = localContainerMap.find(numBuffers);
+          if(pLCID != localContainerMap.end())
+            strOut << "lcSize[" << pLCID->second << "]";
+          else
+            strOut << "0";
           numBuffers++;
         }
         if (std::next(it) != pKernel->second.args.end()) // TODO: FIX IT (!!!)
           strOut << ", ";
         else
-          strOut << "}; ";
+          strOut << "0 }; ";
       }
-      //for (auto it = localContainerOffsets.begin(); it != localContainerOffsets.end(); ++it) 
-      //{
-      //  strOut << "uint32_t(" << it->first << ".size()*sizeof(" << it->second << "))";
-      //  if (std::next(it) != localContainerOffsets.end()) 
-      //    strOut << ", ";
-      //  else
-      //    strOut << "}; ";
-      //}
+
       strOut << std::endl << "  ";
     }
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, " << currBindingPoint.c_str() << ", ";

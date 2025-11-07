@@ -4,6 +4,10 @@
 #include <cassert>
 #include <chrono>
 #include <array>
+{% if HaveLocalContainers %}
+#include <algorithm>
+#include <numeric>
+{% endif %}
 
 #include "vk_copy.h"
 #include "vk_context.h"
