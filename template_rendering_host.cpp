@@ -1373,6 +1373,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["InOutVarsNum"]    = inOutNum;
     data2["InOutVarsLast"]   = mainFunc.InOuts.size()-1;
 
+    std::vector<std::string> localContainersPreCFName;
+    std::set<std::string>    localContainersPreCFNameSet;
+
     // for impl, ds bindings
     //
     for(size_t i=mainFunc.startDSNumber; i<mainFunc.endDSNumber; i++)
@@ -1423,6 +1426,11 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           {
             dsArgName = "m_vdata.localTemp";
             haveLocalContainers = true;
+            auto pFoundInSet = localContainersPreCFNameSet.find(dsArhgName2);
+            if(pFoundInSet == localContainersPreCFNameSet.end()) {
+              localContainersPreCFName.push_back(dsArhgName2);
+              localContainersPreCFNameSet.insert(dsArhgName2);
+            }
           }
         }
         
@@ -1574,6 +1582,19 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       data2["DescriptorSets"].push_back(local);
     }
     //debug.close();
+    
+    data2["LocalContainers"] = std::vector<json>();
+    for(const auto& localContainerName : localContainersPreCFName)
+    {
+      auto pContainer = localContainers.find(localContainerName);
+      if(pContainer != localContainers.end()) {
+        json offsetData;
+        offsetData["Name"]     = pContainer->second.name;
+        offsetData["ContType"] = pContainer->second.containerType;
+        offsetData["DataType"] = pContainer->second.containerDataType;
+        data2["LocalContainers"].push_back(offsetData);
+      }
+    }
 
     data2["MainFuncDeclCmd"]      = mainFunc.GeneratedDecl;
     data2["MainFuncTextCmd"]      = mainFunc.CodeGenerated;
